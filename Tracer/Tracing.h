@@ -371,6 +371,7 @@ InitializeTraceStores(
     _In_opt_    PDWORD          InitialFileSizes
 );
 
+TRACER_API
 BOOL
 InitializeTraceContext(
     _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT      TraceContext,
