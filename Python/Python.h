@@ -1154,12 +1154,15 @@ typedef LONG (*PPYFRAME_GETLINENUMBER)(PPYFRAMEOBJECT FrameObject);
 typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
 typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
 typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPYTRACEFUNC, PPYOBJECT);
+typedef PPYOBJECT (*PPYDICT_GETITEMSTRING)(PPYOBJECT, PCCH);
 
 typedef struct _PYTHON {
     DWORD Size;
+    HMODULE ModuleHandle;
 
     // Functions
     PPY_GETVERSION          Py_GetVersion;
+    PPYDICT_GETITEMSTRING   PyDict_GetItemString;
     PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber;
     PPYEVAL_SETTRACEFUNC    PyEval_SetTraceFunc;
     PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;
@@ -1184,6 +1187,7 @@ typedef struct _PYTHON {
     PCSTR   VersionString;
     USHORT  MajorVersion;
     USHORT  MinorVersion;
+    USHORT  PatchLevel;
 
 } PYTHON, *PPYTHON, **PPPYTHON;
 
