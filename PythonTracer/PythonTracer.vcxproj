@@ -35,8 +35,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{5A6314C6-E7D7-4C59-993A-6B28F8F21565}</ProjectGuid>
-    <RootNamespace>Tracer</RootNamespace>
+    <ProjectGuid>{9E26840A-F841-4818-A240-922B7F9E1AB4}</ProjectGuid>
+    <RootNamespace>PythonTracer</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -59,8 +59,7 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Tracer.h" />
-    <ClInclude Include="Tracing.h" />
+    <ClInclude Include="PythonTracer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c">
@@ -69,7 +68,7 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Tracing.c" />
+    <ClCompile Include="PythonTracer.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
