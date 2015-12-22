@@ -10,10 +10,18 @@ extern "C" {
 #include <Windows.h>
 #include "../Tracer/Tracer.h"
 
+#ifdef _M_AMD64
+typedef __int64 Py_ssize_t;
+typedef __int64 SSIZE_T, *PSSIZE_T;
+#else
+typedef _W64 int Py_ssize_t;
+typedef _W64 int SSIZE_T, *PSSIZE_T;
+#endif
+
 #define _PYOBJECT_HEAD              \
     union {                         \
-        SIZE_T  ob_refcnt;          \
-        SIZE_T  ReferenceCount;     \
+        Py_ssize_t  ob_refcnt;      \
+        SSIZE_T     ReferenceCount; \
     };                              \
     union {                         \
         PVOID ob_type;              \
@@ -21,17 +29,10 @@ extern "C" {
     };
 
 #define _PYVAROBJECT_HEAD           \
+    _PYOBJECT_HEAD                  \
     union {                         \
-        SIZE_T  ob_refcnt;          \
-        SIZE_T  ReferenceCount;     \
-    };                              \
-    union {                         \
-        PVOID ob_type;              \
-        PVOID TypeObject;           \
-    };                              \
-    union {                         \
-        SIZE_T  ob_size;            \
-        SIZE_T  ObjectSize;         \
+        Py_ssize_t  ob_size;        \
+        SSIZE_T  ObjectSize;        \
     };
 
 
@@ -66,8 +67,8 @@ typedef struct _PYSTRINGOBJECT {
 typedef struct _PYUNICODEOBJECT {
     _PYOBJECT_HEAD
     union {
-        size_t length;
-        SIZE_T Length;
+        Py_ssize_t  length;
+        SSIZE_T     Length;
     };
     union {
         wchar_t *str;
@@ -484,7 +485,7 @@ typedef struct _PYFRAMEOBJECT34_35 {
     };
     union {
         char f_executing;
-        BOOLEAN StillExecuting;
+        CHAR StillExecuting;
     };
     union {
         PyTryBlock f_blockstack[CO_MAXBLOCKS];
@@ -503,17 +504,656 @@ typedef struct _PYMETHODDEF {
     };
 } PYMETHODDEF, *PPYMETHODDEF, PyMethodDef;
 
-typedef VOID (*PPYDESTRUCTOR)(PPYOBJECT);
-typedef PPYDESTRUCTOR destructor;
+typedef PPYOBJECT (*PPYGETTER)(PPYOBJECT, PVOID), (*getter);
+typedef LONG (*PPYSETTER)(PPYOBJECT, PPYOBJECT, PVOID), (*setter);
+typedef struct _PYGETSETDEF {
+    union {
+        char *name;
+        PCHAR Name;
+    };
+    union {
+        getter      get;
+        PPYGETTER   Get;
+    };
+    union {
+        setter      set;
+        PPYSETTER   Set;
+    };
+    union {
+        char *doc;
+        PCHAR Doc;
+    };
+    union {
+        void *closure;
+        PVOID Closure;
+    };
+} PYGETSETDEF, *PPYGETSETDEF, PyGetSetDef;
+
+typedef VOID (*PPYDESTRUCTOR)(PPYOBJECT), (*destructor);
+typedef PPYOBJECT (*PPYUNARYFUNC)(PPYOBJECT), (*unaryfunc);
+typedef PPYOBJECT (*PPYBINARYFUNC)(PPYOBJECT, PPYOBJECT), (*binaryfunc);
+typedef PPYOBJECT (*PPYTERNARYFUNC)(PPYOBJECT, PPYOBJECT, PPYOBJECT), (*ternaryfunc);
+typedef LONG (*PPYINQUIRYFUNC)(PPYOBJECT), (*inquiry);
+typedef SSIZE_T (*PPYLENFUNC)(PPYOBJECT), (*lenfunc);
+typedef PPYOBJECT (*PPYSSIZEARGFUNC)(PPYOBJECT, SSIZE_T), (*ssizeargfunc);
+typedef PPYOBJECT (*PPYSSIZESSIZEARGFUNC)(PPYOBJECT, SSIZE_T SSIZE_T), (*ssizessizeargfunc);
+typedef LONG (*PPYSSIZEOBJARGPROC)(PPYOBJECT, SSIZE_T, PPYOBJECT), (*ssizeobjargproc);
+typedef LONG (*PPYSSIZESSIZEOBJARGPROC)(PPYOBJECT, SSIZE_T, SSIZE_T, PPYOBJECT), (*ssizeobjargproc);
+typedef LONG (*PPYOBJOBJARGPROC)(PPYOBJECT, PPYOBJECT, PPYOBJECT), (*objobjargproc);
+
+typedef struct _PYBUFFER {
+    union {
+        void *buf;
+        PVOID Buffer;
+    };
+    union {
+        PyObject *obj;
+        PPYOBJECT Object;
+    };
+    union {
+        Py_ssize_t  len;
+        SSIZE_T     Length;
+    };
+    union {
+        Py_ssize_t  itemsize;
+        SSIZE_T     ItemSize;
+    };
+    union {
+        int readonly;
+        LONG ReadOnly;
+    };
+    union {
+        int ndim;
+        LONG NumberOfDimensions;
+    };
+    union {
+        char *format;
+        PCHAR Format;
+    };
+    union {
+        Py_ssize_t  *shape;
+        PSSIZE_T     Shape;
+    };
+    union {
+        Py_ssize_t  *strides;
+        PSSIZE_T     Strides;
+    };
+    union {
+        Py_ssize_t  *suboffsets;
+        PSSIZE_T     SubOffsets;
+    };
+    union {
+        void    *internal;
+        PVOID    Internal;
+    };
+} PYBUFFER, *PPYBUFFER, Py_buffer;
+
+typedef LONG (*PPYGETBUFFERPROC)(PPYOBJECT, PPYBUFFER, LONG), (*getbufferproc);
+typedef VOID (*PPYRELEASEBUFFERPROC)(PPYOBJECT, PPYBUFFER), (*releasebufferproc);
+
+typedef struct _PYBUFFERPROCS {
+    union {
+        getbufferproc           bf_getbuffer;
+        PPYGETBUFFERPROC        GetBuffer;
+    };
+    union {
+        releasebufferproc       bf_releasebuffer;
+        PPYRELEASEBUFFERPROC    ReleaseBuffer;
+    };
+} PYBUFFERPROCS, *PPYBUFFERPROCS, PyBufferProcs;
+
+typedef LONG (*PPYOBJOBJPROC)(PPYOBJECT, PPYOBJECT), (*objobjproc);
+typedef LONG (*PPYVISITPROC)(PPYOBJECT, PPYOBJECT), (*visitproc);
+
+typedef LONG (*PYFREEFUNC)(PVOID), (*freefunc);
+
+typedef struct _PYASYNCMETHODS {
+    union {
+        unaryfunc       am_await;
+        PPYUNARYFUNC    AsyncAwait;
+    };
+    union {
+        unaryfunc       am_aiter;
+        PPYUNARYFUNC    AsyncIter;
+    };
+    union {
+        unaryfunc       am_next;
+        PPYUNARYFUNC    AsyncNext;
+    };
+} PYASYNCMETHODS, *PPYASYNCMETHODS, PyAsyncMethods;
+
+typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
+
+typedef struct _PYTYPEOBJECT {
+    union {
+        const char *tp_name;
+        PCCH        Name;
+    };
+    union {
+        Py_ssize_t  tp_basicsize;
+        SSIZE_T     BasicSize;
+    };
+    union {
+        Py_ssize_t  tp_itemsize;
+        SSIZE_T     ItemSize;
+    };
+    union {
+        destructor      tp_dealloc;
+        PPYDESTRUCTOR   Dealloc;
+    };
+    union {
+        void    *tp_print;
+        PVOID    Print;
+    };
+    union {
+        void    *tp_getattr;
+        PVOID    GetAttribute;
+    };
+    union {
+        void    *tp_setattr;
+        PVOID    SetAttribute;
+    };
+    union {
+        union {
+            void            *tp_compare;
+            PyAsyncMethods  *tp_as_async;
+        };
+        union {
+            PVOID           Compare;
+            PPYASYNCMETHODS AsyncMethods;
+        };
+    };
+    union {
+        void    *tp_repr;
+        PVOID    Repr;
+    };
+    union {
+        void    *tp_as_number;
+        PVOID   NumberMethods;
+    };
+    union {
+        void    *tp_as_sequence;
+        PVOID   SequenceMethods;
+    };
+    union {
+        void    *tp_as_mapping;
+        PVOID   MappingMethods;
+    };
+    union {
+        void    *tp_hash;
+        PVOID   Hash;
+    };
+    union {
+        void    *tp_call;
+        PVOID   Call;
+    };
+    union {
+        void    *tp_str;
+        PVOID   Str;
+    };
+    union {
+        void    *tp_getattro;
+        PVOID   GetAttributeObject;
+    };
+    union {
+        void    *tp_setattro;
+        PVOID   SetAttributeObject;
+    };
+    union {
+        PyBufferProcs   *tp_as_buffer;
+        PPYBUFFERPROCS  BufferMethods;
+    };
+    union {
+        long    tp_flags;
+        LONG    Flags;
+    };
+    union {
+        const char *tp_doc;
+        PCCH Doc;
+    };
+    union {
+        void    *tp_traverse;
+        PVOID   Traverse;
+    };
+    union {
+        void    *tp_clear;
+        PVOID   Clear;
+    };
+    union {
+        void    *tp_richcompare;
+        PVOID   RichCompare;
+    };
+    union {
+        Py_ssize_t  tp_weaklistoffset;
+        SSIZE_T     WeakListOffset;
+    };
+    union {
+        void    *tp_iter;
+        PVOID   Iter;
+    };
+    union {
+        void    *tp_iternext;
+        PVOID   IterNext;
+    };
+    union {
+        PyMethodDef *tp_methods;
+        PPYMETHODDEF Methods;
+    };
+    union {
+        PyMethodDef *tp_members;
+        PPYMETHODDEF MemberMethods;
+    };
+    union {
+        PyGetSetDef *tp_getset;
+        PPYGETSETDEF GetSetMethods;
+    };
+    union {
+        PyTypeObject *tp_base;
+        PPYTYPEOBJECT BaseType;
+    };
+    union {
+        PyObject *tp_dict;
+        PPYOBJECT Dict;
+    };
+    union {
+        void    *tp_descr_get;
+        PVOID   DescriptorGet;
+    };
+    union {
+        void    *tp_descr_set;
+        PVOID   DescriptorSet;
+    };
+    union {
+        Py_ssize_t  tp_dictoffset;
+        SSIZE_T     DictOffset;
+    };
+    union {
+        void    *tp_init;
+        PVOID   Init;
+    };
+    union {
+        void    *tp_alloc;
+        PVOID   Alloc;
+    };
+    union {
+        void    *tp_new;
+        PVOID   New;
+    };
+    union {
+        void    *tp_free;
+        PVOID   Free;
+    };
+    union {
+        void    *tp_is_gc;
+        PVOID   IsGC;
+    };
+    union {
+        PyObject    *tp_bases;
+        PPYOBJECT   Bases;
+    };
+    union {
+        PyObject    *tp_mro;
+        PPYOBJECT   MethodResolutionOrder;
+    };
+    union {
+        PyObject    *tp_cache;
+        PPYOBJECT   Cache;
+    };
+    union {
+        PyObject    *tp_subclasses;
+        PPYOBJECT   Subclasses;
+    };
+    union {
+        PyObject    *tp_weaklist;
+        PPYOBJECT   WeakList;
+    };
+    union {
+        PyObject    *tp_del;
+        PVOID       Del;
+    };
+    union {
+        unsigned int tp_version_tag;
+        ULONG        VersionTag;
+    };
+} PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
+
+typedef struct _PYTUPLEOBJECT {
+    _PYVAROBJECT_HEAD
+    union {
+        PyObject *ob_item[1];
+        PPYOBJECT Item[1];
+    };
+};
+
+typedef struct _PYCFUNCTIONOBJECT {
+    union {
+        PyMethodDef *m_ml;
+        PPYMETHODDEF Method;
+    };
+    union {
+        PyObject    *m_self;
+        PPYOBJECT    Self;
+    };
+    union {
+        PyObject    *m_module;
+        PPYOBJECT    Module;
+    };
+} PYCFUNCTIONOBJECT, *PPYCFUNCTIONOBJECT, PyCFunctionObject;
+
+typedef struct _PYINTERPRETERSTATE PYINTERPRETERSTATE, *PPYINTERPRETERSTATE, PyInterpreterState;
+
+typedef LONG (*PPYTRACEFUNC)(PPYOBJECT, PPYFRAMEOBJECT, LONG, PPYOBJECT), (*Py_tracefunc);
+
+typedef struct _PYTHREADSTATE25_27 PYTHREADSTATE25_27, *PPYTHREADSTATE25_27, PyThreadState25_27;
+
+typedef struct _PYTHREADSTATE25_27 {
+    union {
+        PyThreadState25_27 *next;
+        PPYTHREADSTATE25_27 Next;
+    };
+    union {
+        PyInterpreterState *interp;
+        PPYINTERPRETERSTATE Interpreter;
+    };
+    union {
+        PyFrameObject   *frame;
+        PPYFRAMEOBJECT  Frame;
+    };
+    union {
+        int recursion_depth;
+        LONG RecursionDepth;
+    };
+    union {
+        int tracing;
+        LONG Tracing;
+    };
+    union {
+        int use_tracing;
+        LONG UseTracing;
+    };
+    union {
+        Py_tracefunc    c_profilefunc;
+        PPYTRACEFUNC    ProfileFunction;
+    };
+    union {
+        Py_tracefunc    c_tracefunc;
+        PPYTRACEFUNC    TraceFunction;
+    };
+    union {
+        PyObject    *c_profileobj;
+        PPYOBJECT    ProfileObject;
+    };
+    union {
+        PyObject    *c_traceobj;
+        PPYOBJECT    TraceObject;
+    };
+    union {
+        PyObject    *curexc_type;
+        PPYOBJECT    CurrentExceptionType;
+    };
+    union {
+        PyObject    *curexc_value;
+        PPYOBJECT    CurrentExceptionValue;
+    };
+    union {
+        PyObject    *curexc_traceback;
+        PPYOBJECT    CurrentExceptionTraceback;
+    };
+    union {
+        PyObject    *exc_type;
+        PPYOBJECT    ExceptionType;
+    };
+    union {
+        PyObject    *exc_value;
+        PPYOBJECT    ExceptionValue;
+    };
+    union {
+        PyObject    *exc_traceback;
+        PPYOBJECT    ExceptionTraceback;
+    };
+    union {
+        PyObject    *dict;
+        PPYOBJECT   Dict;
+    };
+    union {
+        int tick_counter;
+        LONG TickCounter;
+    };
+    union {
+        int gilstate_counter;
+        LONG GilstateCounter;
+    };
+    union {
+        PyObject *async_exc;
+        PPYOBJECT AsyncException;
+    };
+    union {
+        long thread_id;
+        LONG ThreadId;
+    };
+} PYTHREADSTATE25_27, *PPYTHREADSTATE25_27, PyThreadState25_27;
+
+typedef struct _PYTHREADSTATE30_33 PYTHREADSTATE30_33, *PPYTHREADSTATE30_33, PyThreadState30_33;
+
+typedef struct _PYTHREADSTATE30_33 {
+    union {
+        PyThreadState30_33 *next;
+        PPYTHREADSTATE30_33 Next;
+    };
+    union {
+        PyInterpreterState *interp;
+        PPYINTERPRETERSTATE Interpreter;
+    };
+    union {
+        PyFrameObject   *frame;
+        PPYFRAMEOBJECT  Frame;
+    };
+    union {
+        int recursion_depth;
+        LONG RecursionDepth;
+    };
+    union {
+        char overflowed;
+        CHAR Overflowed;
+    };
+    union {
+        char recursion_critical;
+        CHAR RecursionCritical;
+    };
+    union {
+        int tracing;
+        LONG Tracing;
+    };
+    union {
+        int use_tracing;
+        LONG UseTracing;
+    };
+    union {
+        Py_tracefunc    c_profilefunc;
+        PPYTRACEFUNC    ProfileFunction;
+    };
+    union {
+        Py_tracefunc    c_tracefunc;
+        PPYTRACEFUNC    TraceFunction;
+    };
+    union {
+        PyObject    *c_profileobj;
+        PPYOBJECT    ProfileObject;
+    };
+    union {
+        PyObject    *c_traceobj;
+        PPYOBJECT    TraceObject;
+    };
+    union {
+        PyObject    *curexc_type;
+        PPYOBJECT    CurrentExceptionType;
+    };
+    union {
+        PyObject    *curexc_value;
+        PPYOBJECT    CurrentExceptionValue;
+    };
+    union {
+        PyObject    *curexc_traceback;
+        PPYOBJECT    CurrentExceptionTraceback;
+    };
+    union {
+        PyObject    *exc_type;
+        PPYOBJECT    ExceptionType;
+    };
+    union {
+        PyObject    *exc_value;
+        PPYOBJECT    ExceptionValue;
+    };
+    union {
+        PyObject    *exc_traceback;
+        PPYOBJECT    ExceptionTraceback;
+    };
+    union {
+        PyObject    *dict;
+        PPYOBJECT   Dict;
+    };
+    union {
+        int tick_counter;
+        LONG TickCounter;
+    };
+    union {
+        int gilstate_counter;
+        LONG GilstateCounter;
+    };
+    union {
+        PyObject *async_exc;
+        PPYOBJECT AsyncException;
+    };
+    union {
+        long thread_id;
+        LONG ThreadId;
+    };
+} PYTHREADSTATE30_33, *PPYTHREADSTATE30_33, PyThreadState30_33;
+
+typedef struct _PYTHREADSTATE34_35 PYTHREADSTATE34_35, *PPYTHREADSTATE34_35, PyThreadState34_35;
+
+typedef struct _PYTHREADSTATE34_35 {
+    union {
+        PyThreadState34_35 *prev;
+        PPYTHREADSTATE34_35 Prev;
+    };
+    union {
+        PyThreadState34_35 *next;
+        PPYTHREADSTATE34_35 Next;
+    };
+    union {
+        PyInterpreterState *interp;
+        PPYINTERPRETERSTATE Interpreter;
+    };
+    union {
+        PyFrameObject   *frame;
+        PPYFRAMEOBJECT  Frame;
+    };
+    union {
+        int recursion_depth;
+        LONG RecursionDepth;
+    };
+    union {
+        char overflowed;
+        CHAR Overflowed;
+    };
+    union {
+        char recursion_critical;
+        CHAR RecursionCritical;
+    };
+    union {
+        int tracing;
+        LONG Tracing;
+    };
+    union {
+        int use_tracing;
+        LONG UseTracing;
+    };
+    union {
+        Py_tracefunc    c_profilefunc;
+        PPYTRACEFUNC    ProfileFunction;
+    };
+    union {
+        Py_tracefunc    c_tracefunc;
+        PPYTRACEFUNC    TraceFunction;
+    };
+    union {
+        PyObject    *c_profileobj;
+        PPYOBJECT    ProfileObject;
+    };
+    union {
+        PyObject    *c_traceobj;
+        PPYOBJECT    TraceObject;
+    };
+    union {
+        PyObject    *curexc_type;
+        PPYOBJECT    CurrentExceptionType;
+    };
+    union {
+        PyObject    *curexc_value;
+        PPYOBJECT    CurrentExceptionValue;
+    };
+    union {
+        PyObject    *curexc_traceback;
+        PPYOBJECT    CurrentExceptionTraceback;
+    };
+    union {
+        PyObject    *exc_type;
+        PPYOBJECT    ExceptionType;
+    };
+    union {
+        PyObject    *exc_value;
+        PPYOBJECT    ExceptionValue;
+    };
+    union {
+        PyObject    *exc_traceback;
+        PPYOBJECT    ExceptionTraceback;
+    };
+    union {
+        PyObject    *dict;
+        PPYOBJECT   Dict;
+    };
+    union {
+        int tick_counter;
+        LONG TickCounter;
+    };
+    union {
+        int gilstate_counter;
+        LONG GilstateCounter;
+    };
+    union {
+        PyObject *async_exc;
+        PPYOBJECT AsyncException;
+    };
+    union {
+        long thread_id;
+        LONG ThreadId;
+    };
+} PYTHREADSTATE34_35, *PPYTHREADSTATE34_35, PyThreadState34_35;
+
+typedef struct _PYINTOBJECT {
+    _PYOBJECT_HEAD
+    union {
+        long ob_ival;
+        LONG Value;
+    };
+} PYINTOBJECT, *PPYINTOBJECT, PyIntObject;
+
+typedef struct _PYLONGOBJECT {
+    _PYVAROBJECT_HEAD
+    union {
+        unsigned int ob_digit[1];
+        DWORD Digit[1];
+    };
+} PYLONGOBJECT, *PPYLONGOBJECT, PyLongObject;
 
 typedef PCSTR (*PPY_GETVERSION)();
 typedef VOID (*PPY_INCREF)(PPYOBJECT);
 typedef VOID (*PPY_DECREF)(PPYOBJECT);
 typedef LONG (*PPYFRAME_GETLINENUMBER)(PPYFRAMEOBJECT FrameObject);
 typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
-typedef SIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
-typedef LONG (*PPY_TRACEFUNC)(PPYOBJECT, PPYFRAMEOBJECT, LONG, PPYOBJECT);
-typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPY_TRACEFUNC, PPYOBJECT);
+typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
+typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPYTRACEFUNC, PPYOBJECT);
 
 typedef struct _PYTHON {
     DWORD Size;
