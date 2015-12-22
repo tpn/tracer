@@ -18,6 +18,104 @@
 #include "Python.h"
 #include "../Tracer/Tracing.h"
 
+_Check_return_
+BOOL
+LoadPythonSymbols(
+    _In_    HMODULE     PythonModule,
+    _Out_   PPYTHON     Python
+)
+{
+    if (!PythonModule) {
+        return FALSE;
+    }
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    Python->PyCode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCode_Type");
+    if (!Python->PyCode_Type) {
+        goto error;
+    }
+
+    Python->PyDict_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyDict_Type");
+    if (!Python->PyDict_Type) {
+        goto error;
+    }
+
+    Python->PyTuple_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyTuple_Type");
+    if (!Python->PyTuple_Type) {
+        goto error;
+    }
+
+    Python->PyType_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyType_Type");
+    if (!Python->PyType_Type) {
+        goto error;
+    }
+
+    Python->PyFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyFunction_Type");
+    if (!Python->PyFunction_Type) {
+        goto error;
+    }
+
+    Python->PyString_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyString_Type");
+    if (!Python->PyString_Type) {
+        Python->PyBytes_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyBytes_Type");
+        if (!Python->PyBytes_Type) {
+            goto error;
+        }
+    }
+
+    Python->PyUnicode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyUnicode_Type");
+    if (!Python->PyUnicode_Type) {
+        goto error;
+    }
+
+    Python->PyCFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCFunction_Type");
+    if (!Python->PyCFunction_Type) {
+        goto error;
+    }
+
+    Python->PyInstance_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyInstance_Type");
+    if (!Python->PyInstance_Type) {
+        goto error;
+    }
+
+    Python->PyModule_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyModule_Type");
+    if (!Python->PyModule_Type) {
+        goto error;
+    }
+
+    Python->PyFrame_GetLineNumber = (PPYFRAME_GETLINENUMBER)GetProcAddress(PythonModule, "PyFrame_GetLineNumber");
+    if (!Python->PyFrame_GetLineNumber) {
+        goto error;
+    }
+
+    Python->PyEval_SetTraceFunc = (PPYEVAL_SETTRACEFUNC)GetProcAddress(PythonModule, "PyEval_SetTraceFunc");
+    if (!Python->PyEval_SetTraceFunc) {
+        goto error;
+    }
+
+    Python->Py_IncRef = (PPY_INCREF)GetProcAddress(PythonModule, "Py_IncRef");
+    if (!Python->Py_IncRef) {
+        goto error;
+    }
+
+    Python->Py_DecRef = (PPY_DECREF)GetProcAddress(PythonModule, "Py_DecRef");
+    if (!Python->Py_DecRef) {
+        goto error;
+    }
+
+    Python->PyUnicode_AsUnicode = (PPYUNICODE_ASUNICODE)GetProcAddress(PythonModule, "PyUnicode_AsUnicode");
+    Python->PyUnicode_GetLength = (PPYUNICODE_GETLENGTH)GetProcAddress(PythonModule, "PyUnicode_GetLength");
+
+    return TRUE;
+
+error:
+    return FALSE;
+}
+
+_Check_return_
 BOOL
 InitializePython(
     _In_        HMODULE     PythonModule,
@@ -104,84 +202,7 @@ InitializePython(
         goto error;
     }
 
-    Python->PyCode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCode_Type");
-    if (!Python->PyCode_Type) {
-        goto error;
-    }
-
-    Python->PyDict_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyDict_Type");
-    if (!Python->PyDict_Type) {
-        goto error;
-    }
-
-    Python->PyTuple_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyTuple_Type");
-    if (!Python->PyTuple_Type) {
-        goto error;
-    }
-
-    Python->PyType_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyType_Type");
-    if (!Python->PyType_Type) {
-        goto error;
-    }
-
-    Python->PyFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyFunction_Type");
-    if (!Python->PyFunction_Type) {
-        goto error;
-    }
-
-    Python->PyString_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyString_Type");
-    if (!Python->PyString_Type) {
-        Python->PyBytes_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyBytes_Type");
-        if (!Python->PyBytes_Type) {
-            goto error;
-        }
-    }
-
-    Python->PyUnicode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyUnicode_Type");
-    if (!Python->PyUnicode_Type) {
-        goto error;
-    }
-
-    Python->PyCFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCFunction_Type");
-    if (!Python->PyCFunction_Type) {
-        goto error;
-    }
-
-    Python->PyInstance_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyInstance_Type");
-    if (!Python->PyInstance_Type) {
-        goto error;
-    }
-
-    Python->PyModule_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyModule_Type");
-    if (!Python->PyModule_Type) {
-        goto error;
-    }
-
-    Python->PyFrame_GetLineNumber = (PPYFRAME_GETLINENUMBER)GetProcAddress(PythonModule, "PyFrame_GetLineNumber");
-    if (!Python->PyFrame_GetLineNumber) {
-        goto error;
-    }
-
-    Python->PyUnicode_AsUnicode = (PPYUNICODE_ASUNICODE)GetProcAddress(PythonModule, "PyUnicode_AsUnicode");
-    if (!Python->PyUnicode_AsUnicode) {
-        goto error;
-    }
-
-    // Added in 3.3
-    Python->PyUnicode_GetLength = (PPYUNICODE_GETLENGTH)GetProcAddress(PythonModule, "PyUnicode_GetLength");
-
-    Python->PyEval_SetTraceFunc = (PPYEVAL_SETTRACEFUNC)GetProcAddress(PythonModule, "PyEval_SetTraceFunc");
-    if (!Python->PyEval_SetTraceFunc) {
-        goto error;
-    }
-
-    Python->Py_IncRef = (PPY_INCREF)GetProcAddress(PythonModule, "Py_IncRef");
-    if (!Python->Py_IncRef) {
-        goto error;
-    }
-
-    Python->Py_DecRef = (PPY_DECREF)GetProcAddress(PythonModule, "Py_DecRef");
-    if (!Python->Py_DecRef) {
+    if (!LoadPythonSymbols(PythonModule, Python)) {
         goto error;
     }
 
