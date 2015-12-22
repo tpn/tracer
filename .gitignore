@@ -2,3 +2,6 @@
 x64
 *.opensdf
 .vs
+ipch
+Debug
+Release

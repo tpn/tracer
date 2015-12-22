@@ -22,8 +22,12 @@ extern "C" {
 
 #include "stdafx.h"
 
+typedef CHAR *PSZ;
+typedef const CHAR *PCSZ;
+
 typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
 typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
+typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(_In_ PCSZ String, _In_opt_ ULONG Base, _Out_ PULONG Value);
 
 typedef struct _SYSTEM_TIMER_FUNCTION {
     PGETSYSTEMTIMEPRECISEASFILETIME GetSystemTimePreciseAsFileTime;
@@ -374,7 +378,7 @@ InitializeTraceStores(
 TRACER_API
 BOOL
 InitializeTraceContext(
-    _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT      TraceContext,
+    _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT TraceContext,
     _In_    PDWORD              SizeOfTraceContext,
     _In_    PTRACE_SESSION      TraceSession,
     _In_    PTRACE_STORES       TraceStores,

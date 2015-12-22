@@ -15,7 +15,8 @@
 // permissions and limitations under the License.
 
 #include <Windows.h>
-#include "Tracing.h"
+#include "Python.h"
+#include "../Tracer/Tracing.h"
 
 BOOL
 InitializePython(
@@ -24,8 +25,13 @@ InitializePython(
     _Inout_     PDWORD      SizeOfPython
 )
 {
-    PCHAR Version;
-    BOOL IsSupportedVersion;
+    PCCH Version;
+    ULONG MajorVersion;
+    ULONG MinorVersion;
+    HMODULE NtdllModule;
+    BOOLEAN IsSupportedVersion;
+    CHAR VersionString[2] = { 0 };
+    PRTLCHARTOINTEGER RtlCharToInteger;
 
     if (!Python) {
         if (SizeOfPython) {
@@ -59,21 +65,41 @@ InitializePython(
         goto error;
     }
 
-    Version = Python->VersionString;
-    Python->MajorVersion = atoi(Version);
+    NtdllModule = LoadLibraryW(L"ntdll");
+    if (NtdllModule == INVALID_HANDLE_VALUE) {
+        goto error;
+    }
+
+    RtlCharToInteger = (PRTLCHARTOINTEGER)GetProcAddress(NtdllModule, "RtlCharToInteger");
+    if (!RtlCharToInteger) {
+        goto error;
+    }
+
+    VersionString[0] = Python->VersionString[0];
+    if (FAILED(RtlCharToInteger(VersionString, 0, &MajorVersion))) {
+        goto error;
+    }
+    Python->MajorVersion = (USHORT)MajorVersion;
+
     Python->MinorVersion = 0;
+    Version = Python->VersionString;
     while (*Version && *Version >= '0' && *Version <= '9') {
         Version++;
     }
     if (*Version == '.') {
         Version++;
-        Python->MinorVersion = atoi(Version);
+        VersionString[0] = *Version;
+        if (FAILED(RtlCharToInteger(VersionString, 0, &MinorVersion))) {
+            goto error;
+        }
+        Python->MinorVersion = (USHORT)MinorVersion;
     }
 
     IsSupportedVersion = (
         (Python->MajorVersion == 2 && (Python->MinorVersion >= 4 && Python->MinorVersion <= 7)) ||
         (Python->MajorVersion == 3 && (Python->MinorVersion >= 0 && Python->MinorVersion <= 5))
     );
+
     if (!IsSupportedVersion) {
         goto error;
     }
@@ -159,7 +185,6 @@ InitializePython(
         goto error;
     }
 
-
     Python->Size = *SizeOfPython;
     return TRUE;
 
@@ -167,85 +192,6 @@ error:
     // Clear any partial state.
     SecureZeroMemory(Python, sizeof(*Python));
     return FALSE;
-}
-
-LONG
-PyTraceCallbackBasic(
-    _In_        PTRACE_CONTEXT  TraceContext,
-    _In_        PPYFRAMEOBJECT  FrameObject,
-    _In_opt_    LONG            EventType,
-    _In_opt_    PPYOBJECT       ArgObject
-)
-{
-    PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
-    PTRACE_STORES TraceStores;
-    PTRACE_STORE Events;
-    PTRACE_EVENT Event, LastEvent = NULL;
-
-    if (!TraceContext) {
-        return 1;
-    }
-
-    TraceStores = TraceContext->TraceStores;
-    if (!TraceStores) {
-        return 1;
-    }
-
-    Events = &TraceStores->Events;
-
-    if (Events->AllocateRecords == AllocateRecords) {
-        // This will be easier for the compiler to inline versus the indirect
-        // call below.
-        Event = (PTRACE_EVENT)AllocateRecords(TraceContext, Events, sizeof(*Event), 1);
-    } else {
-        Event = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, sizeof(*Event), 1);
-    }
-
-    SystemTimerFunction = TraceContext->SystemTimerFunction;
-
-    if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
-        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event->ftSystemTime);
-    } else if (SystemTimerFunction->NtQuerySystemTime) {
-        SystemTimerFunction->NtQuerySystemTime(&Event->liSystemTime);
-    }
-
-    Event->Version = 1;
-    Event->EventType = (USHORT)EventType;
-
-    if (sizeof(FrameObject) == sizeof(Event->FramePointer.QuadPart)) {
-        // 64-bit
-        Event->ullObjPointer = ObjPointer;
-        Event->ullFramePointer = FrameObject;
-        Event->ProcessId = __readgsdword(0x40);
-        Event->ThreadId = __readgsdword(0x48);
-    } else {
-        // 32-bit
-        Event->uliObjPointer.LowPart = ObjPointer;
-        Event->uliFramePointer.LowPart = FrameObject;
-        Event->ProcessId = __readgsdword(0x20);
-        Event->ThreadId = __readgsdword(0x24);
-    }
-
-    Event->SequenceId = TraceContext->SequenceId;
-
-    switch (EventType) {
-        case TraceEventType_PyTrace_CALL:
-            break;
-        case TraceEventType_PyTrace_EXCEPTION:
-            break;
-        case TraceEventType_PyTrace_LINE:
-            break;
-        case TraceEventType_PyTrace_RETURN:
-            break;
-        case TraceEventType_PyTrace_C_CALL:
-            break;
-        case TraceEventType_PyTrace_C_EXCEPTION:
-            break;
-        case TraceEventType_PyTrace_C_RETURN:
-            break;
-    }
-
-    return 0;
 }
 
 #ifdef __cpp
