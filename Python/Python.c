@@ -248,6 +248,7 @@ InitializePython(
         goto error;
     }
 
+    Python->ModuleHandle = PythonModule;
     Python->Size = *SizeOfPython;
     return TRUE;
 

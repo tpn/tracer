@@ -1155,6 +1155,14 @@ typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
 typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
 typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPYTRACEFUNC, PPYOBJECT);
 typedef PPYOBJECT (*PPYDICT_GETITEMSTRING)(PPYOBJECT, PCCH);
+typedef BOOL (*PGETPYSTRINGLENGTHASUNICODE)(
+    _In_    PPYOBJECT   StringObject,
+    _Out_   PUSHORT     Length
+);
+typedef BOOL (*PPYSTRINGTOUNICODESTRING)(
+    _In_    PPYOBJECT           StringObject,
+    _Out_   PUNICODE_STRING     UnicodeString
+);
 
 typedef struct _PYTHON {
     DWORD Size;
@@ -1189,6 +1197,10 @@ typedef struct _PYTHON {
     USHORT  MinorVersion;
     USHORT  PatchLevel;
 
+    // Our custom helpers
+    PGETPYSTRINGLENGTHASUNICODE GetPyStringLengthAsUnicode;
+    PPYSTRINGTOUNICODESTRING    PyStringToUnicodeString;
+
 } PYTHON, *PPYTHON, **PPPYTHON;
 
 TRACER_API
@@ -1197,6 +1209,20 @@ InitializePython(
     _In_                         HMODULE     PythonModule,
     _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
     _Inout_                      PDWORD      SizeOfPython
+);
+
+TRACER_API
+BOOL
+GetStringLengthAsUnicode(
+    _In_    PPYOBJECT       StringObject,
+    _Out_   PUSHORT         UnicodeLength;
+);
+
+TRACER_API
+BOOL
+PyStringToUnicodeString(
+    _In_    PPYOBJECT       StringObject,
+    _Out_   PUNICODE_STRING UnicodeString
 );
 
 #ifdef __cpp
