@@ -198,7 +198,7 @@ ResolveAndVerifyPythonVersion(
                 if (FAILED(RtlCharToInteger(VersionString, 0, &PatchLevel))) {
                     goto error;
                 }
-                Python->PatchLevel = (USHORT)((Python->PatchLevel << 1) + PatchLevel);
+                Python->PatchLevel = (USHORT)((Python->PatchLevel * 10) + PatchLevel);
             }
         }
     }
