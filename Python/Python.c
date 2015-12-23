@@ -91,7 +91,7 @@ LoadPythonSymbols(
         goto error;
     }
 
-    Python->PyEval_SetTraceFunc = (PPYEVAL_SETTRACEFUNC)GetProcAddress(PythonModule, "PyEval_SetTraceFunc");
+    Python->PyEval_SetTraceFunc = (PPYEVAL_SETTRACEFUNC)GetProcAddress(PythonModule, "PyEval_SetTrace");
     if (!Python->PyEval_SetTraceFunc) {
         goto error;
     }
