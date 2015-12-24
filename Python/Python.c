@@ -171,8 +171,8 @@ LoadPythonFunctions(
         goto error;
     }
 
-    PythonFunctions->PyEval_SetTraceFunc = (PPYEVAL_SETTRACEFUNC)GetProcAddress(PythonModule, "PyEval_SetTrace");
-    if (!PythonFunctions->PyEval_SetTraceFunc) {
+    PythonFunctions->PyEval_SetTrace = (PPYEVAL_SETTRACE)GetProcAddress(PythonModule, "PyEval_SetTrace");
+    if (!PythonFunctions->PyEval_SetTrace) {
         goto error;
     }
 

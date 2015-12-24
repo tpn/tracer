@@ -7,12 +7,14 @@ extern "C" {
 
 LONG
 PyTraceCallbackBasic(
-    _In_        PTRACE_CONTEXT  TraceContext,
-    _In_        PPYFRAMEOBJECT  FrameObject,
-    _In_opt_    LONG            EventType,
-    _In_opt_    PPYOBJECT       ArgObject
+    _In_        PPYTHON_TRACE_CONTEXT    PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
 )
 {
+    PPYTHON Python;
+    PTRACE_CONTEXT TraceContext;
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
     PTRACE_STORES TraceStores;
     PTRACE_STORE Events;
@@ -20,6 +22,16 @@ PyTraceCallbackBasic(
     ULARGE_INTEGER RecordSize = { sizeof(*Event) };
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
+    if (!PythonTraceContext) {
+        return 1;
+    }
+
+    Python = PythonTraceContext->Python;
+    if (!Python) {
+        return 1;
+    }
+
+    TraceContext = PythonTraceContext->TraceContext;
     if (!TraceContext) {
         return 1;
     }
@@ -78,6 +90,89 @@ PyTraceCallbackBasic(
     };
 
     return 0;
+}
+
+BOOL
+InitializePythonTraceContext(
+    _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_                                     PULONG                  SizeOfPythonTraceContext,
+    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction
+)
+{
+    if (!PythonTraceContext) {
+        if (SizeOfPythonTraceContext) {
+            *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
+        }
+        return FALSE;
+    }
+
+    if (!SizeOfPythonTraceContext) {
+        return FALSE;
+    }
+
+    if (*SizeOfPythonTraceContext < sizeof(*PythonTraceContext)) {
+        return FALSE;
+    } else if (*SizeOfPythonTraceContext == 0) {
+        *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
+    }
+
+    SecureZeroMemory(PythonTraceContext, sizeof(*PythonTraceContext));
+
+    if (PythonTraceFunction) {
+        PythonTraceContext->PythonTraceFunction = PythonTraceFunction;
+    } else {
+        PythonTraceContext->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallbackBasic;
+    }
+
+    PythonTraceContext->Size = *SizeOfPythonTraceContext;
+    return TRUE;
+}
+
+BOOL
+StartTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+)
+{
+    PPYTHON Python;
+    PPYTRACEFUNC TraceFunction;
+
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    Python = PythonTraceContext->Python;
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    TraceFunction = PythonTraceContext->PythonTraceFunction;
+
+    Python->PyEval_SetTrace(TraceFunction, (PPYOBJECT)PythonTraceContext);
+
+    return TRUE;
+}
+
+BOOL
+StopTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+)
+{
+    PPYTHON Python;
+
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    Python = PythonTraceContext->Python;
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    Python->PyEval_SetTrace(NULL, NULL);
+
+    return TRUE;
 }
 
 #ifdef __cplusplus

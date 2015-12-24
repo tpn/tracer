@@ -1170,7 +1170,7 @@ typedef VOID (*PPY_DECREF)(PPYOBJECT);
 typedef LONG (*PPYFRAME_GETLINENUMBER)(PPYFRAMEOBJECT FrameObject);
 typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
 typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
-typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPYTRACEFUNC, PPYOBJECT);
+typedef LONG (*PPYEVAL_SETTRACE)(PPYTRACEFUNC, PPYOBJECT);
 typedef PPYOBJECT (*PPYDICT_GETITEMSTRING)(PPYOBJECT, PCCH);
 typedef enum _PYGILSTATE {
     PyGILState_LOCKED,
@@ -1183,7 +1183,7 @@ typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
     PPY_GETVERSION          Py_GetVersion;                      \
     PPYDICT_GETITEMSTRING   PyDict_GetItemString;               \
     PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber;              \
-    PPYEVAL_SETTRACEFUNC    PyEval_SetTraceFunc;                \
+    PPYEVAL_SETTRACE        PyEval_SetTrace;                    \
     PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;                \
     PPYUNICODE_GETLENGTH    PyUnicode_GetLength;                \
     PPY_INCREF              Py_IncRef;                          \
