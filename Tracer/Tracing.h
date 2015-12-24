@@ -34,12 +34,14 @@ typedef struct _SYSTEM_TIMER_FUNCTION {
     PNTQUERYSYSTEMTIME NtQuerySystemTime;
 } SYSTEM_TIMER_FUNCTION, *PSYSTEM_TIMER_FUNCTION, **PPSYSTEM_TIMER_FUNCTION;
 
+/*
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
     PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
+*/
 
 typedef struct _TRACE_EVENT1 {
     USHORT          Version;        //  2   2
@@ -218,7 +220,7 @@ typedef VOID (*PREGISTER_NAME_CALLBACK)(
 typedef VOID (*PREGISTER_MODULE_CALLBACK)(
     _Inout_ PTRACE_CONTEXT  TraceContext,
     _In_    DWORD_PTR       ModuleToken,
-    _In_    PUNICODE_STRING ModuleName
+    _In_    PCWSTR          ModuleName
 );
 
 // Called for each unique (ModuleToken, FunctionToken, FunctionName).
@@ -234,8 +236,8 @@ typedef VOID (*PREGISTER_FUNCTION_CALLBACK)(
 typedef VOID (*PREGISTER_SOURCE_FILE_CALLBACK)(
     _Inout_ PTRACE_CONTEXT  TraceContext,
     _In_    DWORD_PTR       ModuleToken,
-    _In_    PUNICODE_STRING ModuleName,
-    _In_    PUNICODE_STRING ModulePath
+    _In_    PCWSTR          ModuleName,
+    _In_    PCWSTR          ModulePath
 );
 
 typedef VOID (*PREGISTER_CALLBACK)(VOID);

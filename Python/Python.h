@@ -9,6 +9,20 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Tracer/Tracer.h"
+#include "Rtl.h"
+
+enum PythonVersion {
+    PythonVersion_Unknown,
+    PythonVersion_25 = 0x0205,
+    PythonVersion_26 = 0x0206,
+    PythonVersion_27 = 0x0207,
+    PythonVersion_30 = 0x0300,
+    PythonVersion_31 = 0x0301,
+    PythonVersion_32 = 0x0302,
+    PythonVersion_33 = 0x0303,
+    PythonVersion_34 = 0x0304,
+    PythonVersion_35 = 0x0305
+};
 
 #ifdef _M_AMD64
 typedef __int64 Py_ssize_t;
@@ -284,70 +298,72 @@ typedef struct _PYCODEOBJECT33_35 {
 
 typedef struct _PYCODEOBJECTOFFSETS {
     union {
-        USHORT co_argcount;
-        USHORT ArgumentCount;
+        const USHORT co_argcount;
+        const USHORT ArgumentCount;
     };
     union {
-        USHORT co_kwonlyargcount;
-        USHORT KeywordOnlyArgumentCount;
+        const USHORT co_kwonlyargcount;
+        const USHORT KeywordOnlyArgumentCount;
     };
     union {
-        USHORT co_nlocals;
-        USHORT NumberOfLocals;
+        const USHORT co_nlocals;
+        const USHORT NumberOfLocals;
     };
     union {
-        USHORT co_stacksize;
-        USHORT StackSize;
+        const USHORT co_stacksize;
+        const USHORT StackSize;
     };
     union {
-        USHORT co_flags;
-        USHORT Flags;
+        const USHORT co_flags;
+        const USHORT Flags;
     };
     union {
-        USHORT co_code;
-        USHORT Code;
+        const USHORT co_code;
+        const USHORT Code;
     };
     union {
-        USHORT co_consts;
-        USHORT Constants;
+        const USHORT co_consts;
+        const USHORT Constants;
     };
     union {
-        USHORT co_names;
-        USHORT Names;
+        const USHORT co_names;
+        const USHORT Names;
     };
     union {
-        USHORT co_varnames;
-        USHORT LocalVariableNames;
+        const USHORT co_varnames;
+        const USHORT LocalVariableNames;
     };
     union {
-        USHORT co_freevars;
-        USHORT FreeVariableNames;
+        const USHORT co_freevars;
+        const USHORT FreeVariableNames;
     };
     union {
-        USHORT co_cellvars;
-        USHORT CellVariableNames;
+        const USHORT co_cellvars;
+        const USHORT CellVariableNames;
     };
     union {
-        USHORT co_filename;
-        USHORT Filename;
+        const USHORT co_filename;
+        const USHORT Filename;
     };
     union {
-        USHORT co_name;
-        USHORT Name;
+        const USHORT co_name;
+        const USHORT Name;
     };
     union {
-        USHORT co_firstlineno;
-        USHORT FirstLineNumber;
+        const USHORT co_firstlineno;
+        const USHORT FirstLineNumber;
     };
     union {
-        USHORT co_lnotab;
-        USHORT LineNumberTable;
+        const USHORT co_lnotab;
+        const USHORT LineNumberTable;
     };
     union {
-        USHORT co_zombieframe;
-        USHORT ZombieFrame;
+        const USHORT co_zombieframe;
+        const USHORT ZombieFrame;
     };
 } PYCODEOBJECTOFFSETS, *PPYCODEOBJECTOFFSETS;
+typedef const PYCODEOBJECTOFFSETS CPYCODEOBJECTOFFSETS, *PCPYCODEOBJECTOFFSETS;
+//typedef const PPYCODEOBJECTOFFSETS *PCPYCODEOBJECTOFFSETS;
 
 typedef struct _PYFUNCTIONOBJECT {
     _PYOBJECT_HEAD
@@ -1147,6 +1163,7 @@ typedef struct _PYLONGOBJECT {
     };
 } PYLONGOBJECT, *PPYLONGOBJECT, PyLongObject;
 
+// Python functions
 typedef PCSTR (*PPY_GETVERSION)();
 typedef VOID (*PPY_INCREF)(PPYOBJECT);
 typedef VOID (*PPY_DECREF)(PPYOBJECT);
@@ -1155,51 +1172,156 @@ typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
 typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
 typedef LONG (*PPYEVAL_SETTRACEFUNC)(PPYTRACEFUNC, PPYOBJECT);
 typedef PPYOBJECT (*PPYDICT_GETITEMSTRING)(PPYOBJECT, PCCH);
-typedef BOOL (*PGETPYSTRINGLENGTHASUNICODE)(
-    _In_    PPYOBJECT   StringObject,
-    _Out_   PUSHORT     Length
+typedef enum _PYGILSTATE {
+    PyGILState_LOCKED,
+    PyGILState_UNLOCKED
+} PYGILSTATE, *PPYGILSTATE, PyGILState_STATE;
+typedef PYGILSTATE (*PPYGILSTATE_ENSURE)();
+typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
+
+#define _PYTHONFUNCTIONS_HEAD                                   \
+    PPY_GETVERSION          Py_GetVersion;                      \
+    PPYDICT_GETITEMSTRING   PyDict_GetItemString;               \
+    PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber;              \
+    PPYEVAL_SETTRACEFUNC    PyEval_SetTraceFunc;                \
+    PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;                \
+    PPYUNICODE_GETLENGTH    PyUnicode_GetLength;                \
+    PPY_INCREF              Py_IncRef;                          \
+    PPY_DECREF              Py_DecRef;                          \
+    PPYGILSTATE_ENSURE      PyGILState_Ensure;                  \
+    PPYGILSTATE_RELEASE     PyGILState_Release;
+
+typedef struct _PYTHONFUNCTIONS {
+    _PYTHONFUNCTIONS_HEAD
+} PYTHONFUNCTIONS, *PPYTHONFUNCTIONS;
+
+#define _PYTHONDATA_HEAD                                        \
+    PPYOBJECT PyCode_Type;                                      \
+    PPYOBJECT PyDict_Type;                                      \
+    PPYOBJECT PyTuple_Type;                                     \
+    PPYOBJECT PyType_Type;                                      \
+    PPYOBJECT PyFunction_Type;                                  \
+    PPYOBJECT PyString_Type;                                    \
+    PPYOBJECT PyBytes_Type;                                     \
+    PPYOBJECT PyUnicode_Type;                                   \
+    PPYOBJECT PyCFunction_Type;                                 \
+    PPYOBJECT PyInstance_Type;                                  \
+    PPYOBJECT PyModule_Type;
+
+typedef struct _PYTHONDATA {
+    _PYTHONDATA_HEAD
+} PYTHONDATA, *PPYTHONDATA;
+
+
+#define _PYTHONVERSION_HEAD                                     \
+    PCSTR   VersionString;                                      \
+    USHORT  MajorVersion;                                       \
+    USHORT  MinorVersion;                                       \
+    USHORT  PatchLevel;
+
+typedef struct _PYTHONVERSION {
+    _PYTHONVERSION_HEAD
+} PYTHONVERSION, *PPYTHONVERSION;
+
+typedef struct _PYTHON PYTHON, *PPYTHON, **PPPYTHON;
+
+typedef BOOL (*PGETUNICODELENGTHFORPYTHONSTRING)(
+    _In_    PPYTHON     Python,
+    _In_    PPYOBJECT   StringOrUnicodeObject,
+    _Out_   PULONG      UnicodeLength
 );
-typedef BOOL (*PPYSTRINGTOUNICODESTRING)(
+
+typedef BOOL (*PCONVERTPYSTRINGTOUNICODESTRING)(
+    _In_    PPYTHON             Python,
     _In_    PPYOBJECT           StringObject,
-    _Out_   PUNICODE_STRING     UnicodeString
+    _Inout_ PPUNICODE_STRING    UnicodeString,
+    _In_    BOOL                AllocateMaximumSize
 );
+
+#define _PYTHONEXFUNCTIONS_HEAD                                             \
+    PGETUNICODELENGTHFORPYTHONSTRING    GetUnicodeLengthForPythonString;    \
+    PCONVERTPYSTRINGTOUNICODESTRING     ConvertPythonStringToUnicodeString;
+
+typedef struct _PYTHONEXFUNCTIONS {
+    _PYTHONEXFUNCTIONS_HEAD
+} PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
+
+#define _PYTHONEXRUNTIME_HEAD \
+    HANDLE  StringsHeap;
+
+typedef struct _PYTHONEXRUNTIME {
+    _PYTHONEXRUNTIME_HEAD
+} PYTHONEXRUNTIME, *PPYTHONEXRUNTIME;
+
+#define _PYTHONOBJECTOFFSETS_HEAD                       \
+    PCPYCODEOBJECTOFFSETS     PyCodeObjectOffsets;
+
+typedef struct _PYTHONOBJECTOFFSETS {
+    _PYTHONOBJECTOFFSETS_HEAD
+} PYTHONOBJECTOFFSETS, *PPYTHONOBJECTOFFSETS, **PPPYTHONOBJECTOFFSETS;
+
+#define _PYTHONEXDATA_HEAD                              \
+    BOOLEAN IsDebug;                                    \
+    USHORT  FilenameStringObjectOffsetFromCodeObject;
+
+typedef struct _PYTHONEXDATA {
+    _PYTHONEXDATA_HEAD
+} PYTHONEXDATA, *PPYTHONEXDATA;
 
 typedef struct _PYTHON {
     DWORD Size;
-    HMODULE ModuleHandle;
+    HMODULE PythonModule;
+    HMODULE PythonExModule;
 
-    // Functions
-    PPY_GETVERSION          Py_GetVersion;
-    PPYDICT_GETITEMSTRING   PyDict_GetItemString;
-    PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber;
-    PPYEVAL_SETTRACEFUNC    PyEval_SetTraceFunc;
-    PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;
-    PPYUNICODE_GETLENGTH    PyUnicode_GetLength;
-    PPY_INCREF              Py_IncRef;
-    PPY_DECREF              Py_DecRef;
+    union {
+        PYTHONFUNCTIONS PythonFunctions;
+        struct {
+            _PYTHONFUNCTIONS_HEAD
+        };
+    };
 
-    // Data Types
-    PPYOBJECT PyCode_Type;
-    PPYOBJECT PyDict_Type;
-    PPYOBJECT PyTuple_Type;
-    PPYOBJECT PyType_Type;
-    PPYOBJECT PyFunction_Type;
-    PPYOBJECT PyString_Type;
-    PPYOBJECT PyBytes_Type;
-    PPYOBJECT PyUnicode_Type;
-    PPYOBJECT PyCFunction_Type;
-    PPYOBJECT PyInstance_Type;
-    PPYOBJECT PyModule_Type;
+    union {
+        PYTHONDATA PythonData;
+        struct {
+            _PYTHONDATA_HEAD
+        };
+    };
 
-    // Computed/Derived Values
-    PCSTR   VersionString;
-    USHORT  MajorVersion;
-    USHORT  MinorVersion;
-    USHORT  PatchLevel;
+    union {
+        PYTHONVERSION PythonVersion;
+        struct {
+            _PYTHONVERSION_HEAD
+        };
+    };
 
-    // Our custom helpers
-    PGETPYSTRINGLENGTHASUNICODE GetPyStringLengthAsUnicode;
-    PPYSTRINGTOUNICODESTRING    PyStringToUnicodeString;
+    union {
+        PYTHONEXFUNCTIONS PythonExFunctions;
+        struct {
+            _PYTHONEXFUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        PYTHONEXDATA PythonExData;
+        struct {
+            _PYTHONEXDATA_HEAD
+        };
+    };
+
+    union {
+        PYTHONOBJECTOFFSETS PythonObjectOffsets;
+        struct {
+            _PYTHONOBJECTOFFSETS_HEAD
+        };
+    };
+
+    union {
+        PYTHONEXRUNTIME PythonExRuntime;
+        struct {
+            _PYTHONEXRUNTIME_HEAD
+        };
+    };
+
 
 } PYTHON, *PPYTHON, **PPPYTHON;
 
@@ -1213,16 +1335,27 @@ InitializePython(
 
 TRACER_API
 BOOL
-GetStringLengthAsUnicode(
-    _In_    PPYOBJECT       StringObject,
-    _Out_   PUSHORT         UnicodeLength;
+GetUnicodeLengthForPythonString(
+    _In_    PPYTHON         Python,
+    _In_    PPYOBJECT       StringOrUnicodeObject,
+    _Out_   PULONG          UnicodeLength
 );
 
 TRACER_API
 BOOL
-PyStringToUnicodeString(
-    _In_    PPYOBJECT       StringObject,
-    _Out_   PUNICODE_STRING UnicodeString
+ConvertPythonStringToUnicodeString(
+    _In_    PPYTHON             Python,
+    _In_    PPYOBJECT           StringOrUnicodeObject,
+    _Out_   PPUNICODE_STRING    UnicodeString,
+    _In_    BOOL                AllocateMaximumSize
+);
+
+TRACER_API
+BOOL
+GetModuleFilenameStringObjectFromCodeObject(
+    _In_    PPYTHON     Python,
+    _In_    PPYOBJECT   CodeObject,
+    _Inout_ PPPYOBJECT  FilenameStringObject
 );
 
 #ifdef __cpp
