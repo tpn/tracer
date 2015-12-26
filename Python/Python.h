@@ -8,8 +8,8 @@ extern "C" {
 #endif
 
 #include <Windows.h>
+#include "../Rtl/Rtl.h"
 #include "../Tracer/Tracer.h"
-#include "Rtl.h"
 
 enum PythonVersion {
     PythonVersion_Unknown,

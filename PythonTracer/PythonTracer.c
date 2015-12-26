@@ -43,7 +43,14 @@ PyTraceCallbackBasic(
 
     Events = &TraceStores->Events;
 
+    if (!Events || !Events->AllocateRecords) {
+        return 1;
+    }
+
     Event = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    if (!Event) {
+        return 1;
+    }
 
     SystemTimerFunction = TraceContext->SystemTimerFunction;
 
@@ -71,6 +78,7 @@ PyTraceCallbackBasic(
     }
 
     Event->SequenceId = TraceContext->SequenceId;
+    ++TraceContext->SequenceId;
 
     switch (EventType) {
         case TraceEventType_PyTrace_CALL:
@@ -96,7 +104,10 @@ BOOL
 InitializePythonTraceContext(
     _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _Inout_                                     PULONG                  SizeOfPythonTraceContext,
-    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction
+    _In_                                        PPYTHON                 Python,
+    _In_                                        PTRACE_CONTEXT          TraceContext,
+    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction,
+    _In_opt_                                    PVOID                   UserData
 )
 {
     if (!PythonTraceContext) {
@@ -112,19 +123,22 @@ InitializePythonTraceContext(
 
     if (*SizeOfPythonTraceContext < sizeof(*PythonTraceContext)) {
         return FALSE;
-    } else if (*SizeOfPythonTraceContext == 0) {
-        *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
     }
 
-    SecureZeroMemory(PythonTraceContext, sizeof(*PythonTraceContext));
+    if (!Python) {
+        return FALSE;
+    };
 
-    if (PythonTraceFunction) {
-        PythonTraceContext->PythonTraceFunction = PythonTraceFunction;
-    } else {
+    PythonTraceContext->Size = *SizeOfPythonTraceContext;
+    PythonTraceContext->Python = Python;
+    PythonTraceContext->TraceContext = TraceContext;
+    PythonTraceContext->PythonTraceFunction = PythonTraceFunction;
+    PythonTraceContext->UserData = UserData;
+
+    if (!PythonTraceContext->PythonTraceFunction) {
         PythonTraceContext->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallbackBasic;
     }
 
-    PythonTraceContext->Size = *SizeOfPythonTraceContext;
     return TRUE;
 }
 
@@ -134,7 +148,7 @@ StartTracing(
 )
 {
     PPYTHON Python;
-    PPYTRACEFUNC TraceFunction;
+    PPYTRACEFUNC PythonTraceFunction;
 
     if (!PythonTraceContext) {
         return FALSE;
@@ -146,9 +160,13 @@ StartTracing(
         return FALSE;
     }
 
-    TraceFunction = PythonTraceContext->PythonTraceFunction;
+    PythonTraceFunction = PythonTraceContext->PythonTraceFunction;
 
-    Python->PyEval_SetTrace(TraceFunction, (PPYOBJECT)PythonTraceContext);
+    if (!PythonTraceFunction) {
+        return FALSE;
+    }
+
+    Python->PyEval_SetTrace(PythonTraceFunction, (PPYOBJECT)PythonTraceContext);
 
     return TRUE;
 }

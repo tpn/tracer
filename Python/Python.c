@@ -16,7 +16,6 @@
 
 #include "stdafx.h"
 #include <Windows.h>
-#include "Rtl.h"
 #include "Python.h"
 #include "../Tracer/Tracing.h"
 
@@ -489,6 +488,7 @@ InitializePython(
     _Inout_     PDWORD      SizeOfPython
 )
 {
+
     if (!Python) {
         if (SizeOfPython) {
             *SizeOfPython = sizeof(*Python);

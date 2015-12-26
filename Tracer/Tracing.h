@@ -22,18 +22,6 @@ extern "C" {
 
 #include "stdafx.h"
 
-typedef CHAR *PSZ;
-typedef const CHAR *PCSZ;
-
-typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
-typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
-typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(_In_ PCSZ String, _In_opt_ ULONG Base, _Out_ PULONG Value);
-
-typedef struct _SYSTEM_TIMER_FUNCTION {
-    PGETSYSTEMTIMEPRECISEASFILETIME GetSystemTimePreciseAsFileTime;
-    PNTQUERYSYSTEMTIME NtQuerySystemTime;
-} SYSTEM_TIMER_FUNCTION, *PSYSTEM_TIMER_FUNCTION, **PPSYSTEM_TIMER_FUNCTION;
-
 /*
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -119,7 +107,7 @@ typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    ULARGE_INTEGER  NumberOfRecords
 );
 
-typedef PVOID (*PGET_ALLOCATION_SIZE)(
+typedef BOOL (*PGET_ALLOCATION_SIZE)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
     _Inout_ PULARGE_INTEGER TotalSize,
@@ -351,21 +339,13 @@ typedef struct _TRACE_SESSION {
 } TRACE_SESSION, *PTRACE_SESSION;
 
 typedef struct _TRACE_CONTEXT {
-    DWORD                       Size;
-    DWORD                       SequenceId;
+    ULONG                       Size;
+    ULONG                       SequenceId;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
-    PPYTRACE_CALLBACK           TraceCallback;
     PSYSTEM_TIMER_FUNCTION      SystemTimerFunction;
+    PVOID                       UserData;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
-
-_Check_return_
-TRACER_API
-BOOL
-CallSystemTimer(
-    _Out_       PFILETIME               SystemTime,
-    _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
-);
 
 TRACER_API
 BOOL
@@ -376,14 +356,34 @@ InitializeTraceStores(
     _In_opt_    PDWORD          InitialFileSizes
 );
 
+typedef BOOL (*PINITIALIZETRACESESSION)(
+    _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
+    _In_                                 PDWORD         SizeOfTraceSession
+);
+
+TRACER_API
+BOOL
+InitializeTraceSession(
+    _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
+    _In_                                 PDWORD         SizeOfTraceSession
+);
+
+typedef BOOL (*PINITIALIZETRACECONTEXT)(
+    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT  TraceContext,
+    _In_                                    PDWORD          SizeOfTraceContext,
+    _In_                                    PTRACE_SESSION  TraceSession,
+    _In_                                    PTRACE_STORES   TraceStores,
+    _In_opt_                                PVOID           UserData
+);
+
 TRACER_API
 BOOL
 InitializeTraceContext(
-    _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT TraceContext,
-    _In_    PDWORD              SizeOfTraceContext,
-    _In_    PTRACE_SESSION      TraceSession,
-    _In_    PTRACE_STORES       TraceStores,
-    _In_    PPYTRACE_CALLBACK   TraceCallback
+    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT  TraceContext,
+    _In_                                    PDWORD          SizeOfTraceContext,
+    _In_                                    PTRACE_SESSION  TraceSession,
+    _In_                                    PTRACE_STORES   TraceStores,
+    _In_opt_                                PVOID           UserData
 );
 
 TRACER_API
@@ -427,6 +427,25 @@ GetNextRecords(
     ULARGE_INTEGER RecordSize,
     ULARGE_INTEGER RecordCount
 );
+
+TRACER_API
+LPVOID
+AllocateRecords(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    ULARGE_INTEGER  RecordSize,
+    _In_    ULARGE_INTEGER  NumberOfRecords
+);
+
+TRACER_API
+BOOL
+GetAllocationSize(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _Inout_ PULARGE_INTEGER TotalSize,
+    _Inout_ PULARGE_INTEGER AllocatedSize
+);
+
 
 TRACER_API
 VOID

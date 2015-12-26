@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <Windows.h>
+#include "../Rtl/Rtl.h"
 #include "../Tracer/Tracer.h"
 #include "../Tracer/Tracing.h"
 #include "../Python/Python.h"
@@ -49,6 +50,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PPYTHON         Python;
     PTRACE_CONTEXT  TraceContext;
     PPYTRACEFUNC    PythonTraceFunction;
+    PVOID           UserData;
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
 TRACER_API
@@ -65,7 +67,10 @@ BOOL
 InitializePythonTraceContext(
     _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _Inout_                                     PULONG                  SizeOfPythonTraceContext,
-    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction
+    _In_                                        PPYTHON                 Python,
+    _In_                                        PTRACE_CONTEXT          TraceContext,
+    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction,
+    _In_opt_                                    PVOID                   UserData
 );
 
 TRACER_API

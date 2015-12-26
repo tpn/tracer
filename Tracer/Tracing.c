@@ -301,6 +301,8 @@ InitializeStore(
 
     TraceStore->NextAddress = TraceStore->BaseAddress;
 
+    TraceStore->AllocateRecords = AllocateRecords;
+
     return TRUE;
 error:
     CloseTraceStore(TraceStore);
@@ -373,69 +375,9 @@ InitializeTraceStore(
     TraceStore->MetadataStore = MetadataStore;
     TraceStore->pMetadata = (PTRACE_STORE_METADATA)MetadataStore->BaseAddress;
 
-    if (!RefreshTraceStoreFileInfo(TraceStore)) {
+    if (!InitializeStore(Path, TraceStore, InitialSize)) {
         goto error;
     }
-
-    TraceStore->MappingSize.HighPart = 0;
-    TraceStore->MappingSize.LowPart = InitialSize;
-
-    // If the allocated size of the underlying file is less than our desired
-    // mapping size (which is primed by the InitialSize parameter), extend the
-    // file to that length (via SetFilePointerEx(), then SetEndOfFile()).
-    if (TraceStore->FileInfo.AllocationSize.QuadPart < TraceStore->MappingSize.QuadPart) {
-        LARGE_INTEGER StartOfFile = { 0 };
-        Success = SetFilePointerEx(
-            TraceStore->FileHandle,
-            TraceStore->MappingSize,
-            NULL,
-            FILE_BEGIN
-        );
-        if (!Success) {
-            goto error;
-        }
-        // Extend the file.
-        if (!SetEndOfFile(TraceStore->FileHandle)) {
-            goto error;
-        }
-        // Reset the file pointer back to the start.
-        Success = SetFilePointerEx(
-            TraceStore->FileHandle,
-            StartOfFile,
-            NULL,
-            FILE_BEGIN
-        );
-        if (!Success) {
-            goto error;
-        }
-    }
-
-    TraceStore->MappingHandle = CreateFileMapping(
-        TraceStore->FileHandle,
-        NULL,
-        PAGE_READWRITE,
-        0,
-        TraceStore->MappingSize.LowPart,
-        NULL
-    );
-
-    if (TraceStore->MappingHandle == INVALID_HANDLE_VALUE) {
-        goto error;
-    }
-
-    TraceStore->BaseAddress = MapViewOfFile(
-        TraceStore->MappingHandle,
-        FILE_MAP_READ | FILE_MAP_WRITE,
-        0,
-        0,
-        TraceStore->MappingSize.LowPart
-    );
-
-    if (!TraceStore->BaseAddress) {
-        goto error;
-    }
-
-    TraceStore->NextAddress = TraceStore->BaseAddress;
 
     return TRUE;
 error:
@@ -553,13 +495,13 @@ InitializeTraceStores(
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return FALSE;
         }
-        Result = InitializeTraceStore(
+        Success = InitializeTraceStore(
             Path,
             TraceStore,
             MetadataStore,
             InitialSize
         );
-        if (FAILED(Result)) {
+        if (!Success) {
             return FALSE;
         }
     }
@@ -729,10 +671,7 @@ AllocateRecords(
 
     ReturnAddress = TraceStore->NextAddress;
 
-    TraceStore->NextAddress = (LPVOID)(
-        (DWORD_PTR)ReturnAddress +
-        AllocationSize
-    );
+    TraceStore->NextAddress = (LPVOID)((ULONG_PTR)ReturnAddress + AllocationSize);
 
     TraceStore->pMetadata->NumberOfRecords.QuadPart += NumberOfRecords.QuadPart;
 
@@ -755,12 +694,42 @@ GetNextRecord(
 }
 
 BOOL
+InitializeTraceSession(
+    _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
+    _In_                                 PDWORD         SizeOfTraceSession
+)
+{
+    if (!TraceSession) {
+        if (SizeOfTraceSession) {
+            *SizeOfTraceSession = sizeof(*TraceSession);
+        }
+        return FALSE;
+    }
+
+    if (!SizeOfTraceSession) {
+        return FALSE;
+    }
+
+    if (*SizeOfTraceSession < sizeof(*TraceSession)) {
+        return FALSE;
+    } else if (*SizeOfTraceSession == 0) {
+        *SizeOfTraceSession = sizeof(*TraceSession);
+    }
+
+    SecureZeroMemory(TraceSession, sizeof(*TraceSession));
+
+    GetSystemTimeAsFileTime(&TraceSession->SystemTime);
+    return TRUE;
+
+}
+
+BOOL
 InitializeTraceContext(
-    _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT TraceContext,
-    _In_    PDWORD              SizeOfTraceContext,
-    _In_    PTRACE_SESSION      TraceSession,
-    _In_    PTRACE_STORES       TraceStores,
-    _In_    PPYTRACE_CALLBACK   TraceCallback
+    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT  TraceContext,
+    _In_                                    PDWORD          SizeOfTraceContext,
+    _In_                                    PTRACE_SESSION  TraceSession,
+    _In_                                    PTRACE_STORES   TraceStores,
+    _In_opt_                                PVOID           UserData
 )
 {
     if (!TraceContext) {
@@ -786,10 +755,6 @@ InitializeTraceContext(
         return FALSE;
     }
 
-    if (!TraceCallback) {
-        return FALSE;
-    }
-
     TraceContext->SystemTimerFunction = GetSystemTimerFunction();
     if (!TraceContext->SystemTimerFunction) {
         return FALSE;
@@ -798,8 +763,8 @@ InitializeTraceContext(
     TraceContext->Size = *SizeOfTraceContext;
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
-    TraceContext->TraceCallback = TraceCallback;
     TraceContext->SequenceId = 1;
+    TraceContext->UserData = UserData;
 
     return TRUE;
 }
