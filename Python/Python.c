@@ -275,6 +275,8 @@ LoadPythonExFunctions(
 
     PythonExFunctions->ConvertPythonStringToUnicodeString = (PCONVERTPYSTRINGTOUNICODESTRING)GetProcAddress(PythonExModule, "ConvertPythonStringToUnicodeString");
 
+    PythonExFunctions->ResolveFrameObjectDetails = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetails");
+
     return TRUE;
 }
 
@@ -698,6 +700,45 @@ GetFunctionNameStringObjectAndLineNumberFromCodeObject(
 
     return TRUE;
 }
+
+BOOL
+ResolveFrameObjectDetails(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
+)
+{
+    if (!Python) {
+        return FALSE;
+    }
+
+    if (!CodeObject) {
+        return FALSE;
+    }
+
+    if (!ModuleFilenameStringObject) {
+        return FALSE;
+    }
+
+    if (!FunctionNameStringObject) {
+        return FALSE;
+    }
+
+    if (!LineNumber) {
+        return FALSE;
+    }
+
+    *CodeObject = FrameObject->Code;
+    *ModuleFilenameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->Filename));
+    *FunctionNameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->Name));
+    *LineNumber = *((PULONG)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->FirstLineNumber));
+
+    return TRUE;
+}
+
 
 BOOL
 GetClassNameStringObjectFromFrameObject(

@@ -7,19 +7,22 @@ extern "C" {
 
 LONG
 PyTraceCallbackBasic(
-    _In_        PPYTHON_TRACE_CONTEXT    PythonTraceContext,
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_        PPYFRAMEOBJECT          FrameObject,
     _In_opt_    LONG                    EventType,
     _In_opt_    PPYOBJECT               ArgObject
 )
 {
+    BOOL Success;
     PPYTHON Python;
+    PPYOBJECT CodeObject;
     PTRACE_CONTEXT TraceContext;
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
     PTRACE_STORES TraceStores;
     PTRACE_STORE Events;
-    PTRACE_EVENT Event, LastEvent = NULL;
-    ULARGE_INTEGER RecordSize = { sizeof(*Event) };
+    PTRACE_EVENT EventRecord = NULL, LastEvent = NULL;
+    TRACE_EVENT  Event = { 0 };
+    ULARGE_INTEGER RecordSize = { sizeof(Event) };
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
     if (!PythonTraceContext) {
@@ -47,38 +50,69 @@ PyTraceCallbackBasic(
         return 1;
     }
 
-    Event = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
-    if (!Event) {
+    Success = Python->ResolveFrameObjectDetails(Python,
+                                                FrameObject,
+                                                &CodeObject,
+                                                (PPPYOBJECT)&Event.ModulePointer,
+                                                (PPPYOBJECT)&Event.FuncPointer,
+                                                (PULONG)&Event.LineNumber);
+
+    if (!Success) {
         return 1;
+    }
+
+    Event.Version = 1;
+    Event.EventType = (USHORT)EventType;
+
+    if (EventType == TraceEventType_PyTrace_LINE) {
+        //
+        // Get the actual line number if we're a trace event.
+        //
+        Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
+
+        /*
+        LastEvent = (PTRACE_EVENT)((ULONG_PTR)Events->NextAddress - sizeof(TRACE_EVENT));
+        if ((ULONG_PTR)LastEvent <= (ULONG_PTR)Events->BaseAddress) {
+            LastEvent = NULL;
+        }
+        */
+        LastEvent = (PTRACE_EVENT)Events->PrevAddress;
+
+        if (LastEvent &&
+            LastEvent->EventType == TraceEventType_PyTrace_LINE &&
+            LastEvent->LineNumber == Event.LineNumber &&
+            LastEvent->FramePointer == (ULONG_PTR)FrameObject &&
+            LastEvent->FuncPointer == (ULONG_PTR)Event.FuncPointer &&
+            LastEvent->ModulePointer == (ULONG_PTR)Event.ModulePointer) {
+
+            ++LastEvent->LineCount;
+            return 0;
+        }
     }
 
     SystemTimerFunction = TraceContext->SystemTimerFunction;
 
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
-        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event->ftSystemTime);
+        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event.ftSystemTime);
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        SystemTimerFunction->NtQuerySystemTime(&Event->liSystemTime);
+        SystemTimerFunction->NtQuerySystemTime(&Event.liSystemTime);
     }
 
-    Event->Version = 1;
-    Event->EventType = (USHORT)EventType;
-
-    if (sizeof(FrameObject) == sizeof(Event->uliFramePointer.QuadPart)) {
+    if (sizeof(FrameObject) == sizeof(Event.uliFramePointer.QuadPart)) {
         // 64-bit
-        Event->ullObjPointer = (ULONGLONG)ArgObject;
-        Event->ullFramePointer = (ULONGLONG)FrameObject;
-        Event->ProcessId = __readgsdword(0x40);
-        Event->ThreadId = __readgsdword(0x48);
+        Event.ullObjPointer = (ULONGLONG)ArgObject;
+        Event.ullFramePointer = (ULONGLONG)FrameObject;
+        Event.ProcessId = __readgsdword(0x40);
+        Event.ThreadId = __readgsdword(0x48);
     } else {
         // 32-bit
-        Event->uliObjPointer.LowPart = (DWORD)ArgObject;
-        Event->uliFramePointer.LowPart = (DWORD)FrameObject;
-        Event->ProcessId = __readgsdword(0x20);
-        Event->ThreadId = __readgsdword(0x24);
+        Event.uliObjPointer.LowPart = (DWORD)ArgObject;
+        Event.uliFramePointer.LowPart = (DWORD)FrameObject;
+        Event.ProcessId = __readgsdword(0x20);
+        Event.ThreadId = __readgsdword(0x24);
     }
 
-    Event->SequenceId = TraceContext->SequenceId;
-    ++TraceContext->SequenceId;
+    Event.SequenceId = ++TraceContext->SequenceId;
 
     switch (EventType) {
         case TraceEventType_PyTrace_CALL:
@@ -86,6 +120,7 @@ PyTraceCallbackBasic(
         case TraceEventType_PyTrace_EXCEPTION:
             break;
         case TraceEventType_PyTrace_LINE:
+            Event.LineCount = 1;
             break;
         case TraceEventType_PyTrace_RETURN:
             break;
@@ -96,6 +131,21 @@ PyTraceCallbackBasic(
         case TraceEventType_PyTrace_C_RETURN:
             break;
     };
+
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    if (!EventRecord) {
+        return 1;
+    }
+
+    __try {
+        RtlCopyMemory(EventRecord, &Event, sizeof(Event));
+    } __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ||
+                GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?
+                    EXCEPTION_EXECUTE_HANDLER :
+                    EXCEPTION_CONTINUE_SEARCH) {
+
+        return 1;
+    }
 
     return 0;
 }

@@ -1238,9 +1238,19 @@ typedef BOOL (*PCONVERTPYSTRINGTOUNICODESTRING)(
     _In_    BOOL                AllocateMaximumSize
 );
 
+typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
+);
+
 #define _PYTHONEXFUNCTIONS_HEAD                                             \
     PGETUNICODELENGTHFORPYTHONSTRING    GetUnicodeLengthForPythonString;    \
-    PCONVERTPYSTRINGTOUNICODESTRING     ConvertPythonStringToUnicodeString;
+    PCONVERTPYSTRINGTOUNICODESTRING     ConvertPythonStringToUnicodeString; \
+    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetails;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
@@ -1321,8 +1331,6 @@ typedef struct _PYTHON {
             _PYTHONEXRUNTIME_HEAD
         };
     };
-
-
 } PYTHON, *PPYTHON, **PPPYTHON;
 
 TRACER_API
@@ -1356,6 +1364,17 @@ GetModuleFilenameStringObjectFromCodeObject(
     _In_    PPYTHON     Python,
     _In_    PPYOBJECT   CodeObject,
     _Inout_ PPPYOBJECT  FilenameStringObject
+);
+
+TRACER_API
+BOOL
+ResolveFrameObjectDetails(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
 );
 
 #ifdef __cpp

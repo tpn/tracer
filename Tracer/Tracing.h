@@ -121,6 +121,7 @@ typedef struct _TRACE_STORE {
     FILE_STANDARD_INFO      FileInfo;
     PCRITICAL_SECTION       CriticalSection;
     PVOID                   BaseAddress;
+    PVOID                   PrevAddress;
     PVOID                   NextAddress;
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
