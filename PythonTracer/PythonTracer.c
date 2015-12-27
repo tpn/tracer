@@ -137,15 +137,7 @@ PyTraceCallbackBasic(
         return 1;
     }
 
-    __try {
-        RtlCopyMemory(EventRecord, &Event, sizeof(Event));
-    } __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ||
-                GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?
-                    EXCEPTION_EXECUTE_HANDLER :
-                    EXCEPTION_CONTINUE_SEARCH) {
-
-        return 1;
-    }
+    RtlCopyMemory(EventRecord, &Event, sizeof(Event));
 
     return 0;
 }
