@@ -114,6 +114,13 @@ typedef BOOL (*PGET_ALLOCATION_SIZE)(
     _Inout_ PULARGE_INTEGER AllocatedSize
 );
 
+typedef struct _TRACE_STORE_THREADPOOL {
+    PTP_POOL Threadpool;
+    TP_CALLBACK_ENVIRON CallbackEnvironment;
+    PTP_WORK ExtendTraceStoreCallback;
+    HANDLE ExtendTraceStoreEvent;
+};
+
 typedef struct _TRACE_STORE {
     HANDLE                  FileHandle;
     HANDLE                  MappingHandle;
@@ -121,8 +128,16 @@ typedef struct _TRACE_STORE {
     FILE_STANDARD_INFO      FileInfo;
     PCRITICAL_SECTION       CriticalSection;
     PVOID                   BaseAddress;
+    PVOID                   EndAddress;
     PVOID                   PrevAddress;
     PVOID                   NextAddress;
+    struct {
+        HANDLE  MappingHandle;
+        PVOID   BaseAddress;
+        PVOID   EndAddress;
+        PVOID   PrevAddress;
+        PVOID   NextAddress;
+    } NextMapping;
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
     union {
