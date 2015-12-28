@@ -397,7 +397,7 @@ InitializeTraceStores(
     LPWSTR FileNameDest;
     PTRACE_STORES MetadataStores;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
-    DWORD TraceStoresAllocationSize = GetTraceStoresAllocationSize();
+    DWORD TraceStoresAllocationSize = GetTraceStoresAllocationSize(NumberOfTraceStores);
     DWORD LongestPossibleDirectoryLength = (
         _OUR_MAX_PATH   -
         1               - // '\'
@@ -612,11 +612,11 @@ GetTraceStoreNumberOfRecords(
 }
 
 DWORD
-GetTraceStoresAllocationSize(void)
+GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
     // Account for the metadata stores, which are located after
     // the trace stores.
-    return sizeof(TRACE_STORES) * 2;
+    return (sizeof(TRACE_STORES) + (sizeof(TRACE_STORE) * NumberOfTraceStores * 2));
 }
 
 _Check_return_
@@ -723,11 +723,12 @@ InitializeTraceSession(
 
 BOOL
 InitializeTraceContext(
-    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT  TraceContext,
-    _In_                                    PDWORD          SizeOfTraceContext,
-    _In_                                    PTRACE_SESSION  TraceSession,
-    _In_                                    PTRACE_STORES   TraceStores,
-    _In_opt_                                PVOID           UserData
+    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
+    _In_                                    PDWORD                  SizeOfTraceContext,
+    _In_                                    PTRACE_SESSION          TraceSession,
+    _In_                                    PTRACE_STORES           TraceStores,
+    _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
+    _In_opt_                                PVOID                   UserData
 )
 {
     if (!TraceContext) {
@@ -753,6 +754,10 @@ InitializeTraceContext(
         return FALSE;
     }
 
+    if (!ThreadpoolCallbackEnvironment) {
+        return FALSE;
+    }
+
     TraceContext->SystemTimerFunction = GetSystemTimerFunction();
     if (!TraceContext->SystemTimerFunction) {
         return FALSE;
@@ -762,6 +767,7 @@ InitializeTraceContext(
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
     TraceContext->SequenceId = 1;
+    TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
 
     return TRUE;

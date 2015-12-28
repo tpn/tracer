@@ -382,7 +382,7 @@ typedef struct _PYFUNCTIONOBJECT {
         PyObject *func_defaults;
         PPYOBJECT Defaults;
     };
-};
+} PYFUNCTIONOBJECT, *PPYFUNCTIONOBJECT;
 
 #define CO_MAXBLOCKS 20
 typedef struct _PYTRYBLOCK {
@@ -479,7 +479,7 @@ typedef struct _PYFRAMEOBJECT25_33 {
         PyObject *f_localsplus[1];
         PPYOBJECT LocalsPlusStack[1];
     };
-};
+} PYFRAMEOBJECT25_33, *PPYFRAMEOBJECT25_33;
 
 typedef struct _PYFRAMEOBJECT34_35 {
     _PYFRAMEOBJECT_HEAD
@@ -511,7 +511,7 @@ typedef struct _PYFRAMEOBJECT34_35 {
         PyObject *f_localsplus[1];
         PPYOBJECT LocalsPlusStack[1];
     };
-};
+} PYFRAMEOBJECT34_35, *PPYFRAMEOBJECT34_35;
 
 typedef struct _PYMETHODDEF {
     union {
@@ -839,7 +839,7 @@ typedef struct _PYTUPLEOBJECT {
         PyObject *ob_item[1];
         PPYOBJECT Item[1];
     };
-};
+} PYTUPLEOBJECT, *PPYTUPLEOBJECT;
 
 typedef struct _PYCFUNCTIONOBJECT {
     union {

@@ -44,7 +44,7 @@ PyTraceCallbackBasic(
         return 1;
     }
 
-    Events = &TraceStores->Events;
+    Events = &TraceStores->Stores[0];
 
     if (!Events || !Events->AllocateRecords) {
         return 1;
@@ -98,6 +98,22 @@ PyTraceCallbackBasic(
         SystemTimerFunction->NtQuerySystemTime(&Event.liSystemTime);
     }
 
+#ifdef _M_X64
+    Event.ullObjPointer = (ULONGLONG)ArgObject;
+    Event.ullFramePointer = (ULONGLONG)FrameObject;
+    Event.ProcessId = __readgsdword(0x40);
+    Event.ThreadId = __readgsdword(0x48);
+#elif _M_X86
+    // 32-bit
+    Event.uliObjPointer.LowPart = (DWORD_PTR)ArgObject;
+    Event.uliFramePointer.LowPart = (DWORD_PTR)FrameObject;
+    Event.ProcessId = __readgsdword(0x20);
+    Event.ThreadId = __readgsdword(0x24);
+#else
+#error Unsupported architecture.
+#endif
+
+    /*
     if (sizeof(FrameObject) == sizeof(Event.uliFramePointer.QuadPart)) {
         // 64-bit
         Event.ullObjPointer = (ULONGLONG)ArgObject;
@@ -106,11 +122,12 @@ PyTraceCallbackBasic(
         Event.ThreadId = __readgsdword(0x48);
     } else {
         // 32-bit
-        Event.uliObjPointer.LowPart = (DWORD)ArgObject;
-        Event.uliFramePointer.LowPart = (DWORD)FrameObject;
+        Event.uliObjPointer.LowPart = (DWORD_PTR)ArgObject;
+        Event.uliFramePointer.LowPart = (DWORD_PTR)FrameObject;
         Event.ProcessId = __readgsdword(0x20);
         Event.ThreadId = __readgsdword(0x24);
     }
+    */
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
