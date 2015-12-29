@@ -72,8 +72,9 @@ typedef struct _RTL {
 
 } RTL, *PRTL, **PPRTL;
 
-#define RtlOffsetToPointer(B,O)  ((PCHAR)( ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
-#define RtlPointerToOffset(B,P)  ((ULONG)( ((PCHAR)(P)) - ((PCHAR)(B))  ))
+#define RtlOffsetToPointer(B,O)    ((PCHAR)( ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)( ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
+#define RtlPointerToOffset(B,P)    ((ULONG)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
 
 #ifdef __cpp
 } // extern "C"
