@@ -128,6 +128,7 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
     HANDLE          MappingHandle;      \
     LARGE_INTEGER   MappingSize;        \
     PVOID           BaseAddress;        \
+    PVOID           PrefaultAddress;    \
     PVOID           ExtendAtAddress;    \
     PVOID           EndAddress;         \
     PVOID           PrevAddress;        \
@@ -138,7 +139,7 @@ typedef struct _TRACE_STORE_MEMORY_MAP {
 } TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP;
 
 typedef struct _TRACE_STORE {
-    PTRACE_STORES           TraceStores;
+    PTRACE_CONTEXT          TraceContext;
     HANDLE                  FileHandle;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
@@ -146,6 +147,9 @@ typedef struct _TRACE_STORE {
     FILE_STANDARD_INFO      FileInfo;
     PCRITICAL_SECTION       CriticalSection;
     ULONG                   DroppedRecords;
+    PTP_WORK                PrefaultFuturePageWork;
+    PTP_WORK                ExtendFileWork;
+    HANDLE                  FileExtendedEvent;
 
     union {
         TRACE_STORE_MEMORY_MAP  TraceStoreMemoryMap;
@@ -157,7 +161,8 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
 
     PTRACE_STORE            MetadataStore;
-    PALLOCATE_RECORDS       AllocateRecords; union {
+    PALLOCATE_RECORDS       AllocateRecords;
+    union {
         union {
             struct {
                 ULARGE_INTEGER  NumberOfRecords;
