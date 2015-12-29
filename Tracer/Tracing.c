@@ -378,7 +378,10 @@ GetMetadataStoresFromTracesStores(
     _In_    PTRACE_STORES   TraceStores
 )
 {
-    return (PTRACE_STORES)((DWORD_PTR)TraceStores + sizeof(TRACE_STORES));
+    return (PTRACE_STORES)(
+        (DWORD_PTR)&TraceStores->Stores[0] + 
+        (sizeof(TRACE_STORE) * TraceStores->NumberOfTraceStores)
+    );
 }
 
 BOOL
