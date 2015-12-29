@@ -695,8 +695,8 @@ GetFunctionNameStringObjectAndLineNumberFromCodeObject(
         return FALSE;
     }
 
-    *FunctionNameStringObject = (PPYOBJECT)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->Name);
-    *LineNumber = (DWORD)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->FirstLineNumber);
+    *FunctionNameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->Name));
+    *LineNumber = *((PULONG)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->FirstLineNumber));
 
     return TRUE;
 }
