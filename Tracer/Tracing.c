@@ -461,8 +461,6 @@ InitializeTraceStores(
         return FALSE;
     }
 
-    TraceStores->NumberOfTraceStores = NumberOfTraceStores;
-
     if (!Sizes) {
         Sizes = (LPDWORD)&InitialTraceStoreFileSizes[0];
     }
@@ -533,6 +531,8 @@ InitializeTraceStores(
             return FALSE;
         }
     }
+
+    TraceStores->NumberOfTraceStores = NumberOfTraceStores;
 
     return TRUE;
 }
@@ -671,7 +671,12 @@ GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
     // Account for the metadata stores, which are located after
     // the trace stores.
-    return (sizeof(TRACE_STORES) + ((sizeof(TRACE_STORE) * NumberOfTraceStores * 2)-1));
+    return (
+        sizeof(TRACE_STORES) + (
+            (sizeof(TRACE_STORE) * NumberOfTraceStores * 2) -
+            sizeof(TRACE_STORE)
+        )
+    );
 }
 
 VOID
@@ -892,6 +897,8 @@ InitializeTraceContext(
         if (!TraceStore->PrefaultFuturePageWork) {
             return FALSE;
         }
+
+        TraceStore->TraceContext = TraceContext;
     }
 
     return TRUE;
@@ -925,4 +932,4 @@ RegisterFunction(
 } // extern "C"
 #endif
 
-// vim: set ts=8 sw=4 sts expandtab si ai:
+// vim: set ts=8 sw=4 sts=4 expandtab si ai:
