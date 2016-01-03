@@ -326,6 +326,10 @@ InitializeStore(
         return TRUE;
     }
 
+    //
+    // We submit a file extension threadpool work when we're "InitialSize"-bytes away
+    // from the end address.  This will probably need tuning.
+    //
     TraceStore->ExtendAtAddress = (PVOID)RtlOffsetFromPointer(TraceStore->EndAddress,
                                                               TraceStore->InitialSize.LowPart);
 
@@ -417,7 +421,7 @@ GetMetadataStoresFromTracesStores(
 )
 {
     return (PTRACE_STORES)(
-        (DWORD_PTR)&TraceStores->Stores[0] + 
+        (DWORD_PTR)&TraceStores->Stores[0] +
         (sizeof(TRACE_STORE) * TraceStores->NumberOfTraceStores)
     );
 }
