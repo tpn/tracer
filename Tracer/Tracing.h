@@ -59,25 +59,25 @@ typedef struct _TRACE_EVENT {
     union {
         ULARGE_INTEGER  uliFramePointer;    //  8   40
         ULONGLONG       ullFramePointer;
-        DWORD_PTR       FramePointer;
+        ULONG_PTR       FramePointer;
     };
     __declspec(align(8))
     union {
         LARGE_INTEGER   uliModulePointer;   //  8   48
         ULONGLONG       ullModulePointer;
-        DWORD_PTR       ModulePointer;
+        ULONG_PTR       ModulePointer;
     };
     __declspec(align(8))
     union {
         ULARGE_INTEGER  uliFuncPointer;     //  8   56
         ULONGLONG       ullFuncPointer;
-        DWORD_PTR       FuncPointer;
+        ULONG_PTR       FuncPointer;
     };
     __declspec(align(8))
     union {
         ULARGE_INTEGER  uliObjPointer;      //  8   64
         ULONGLONG       ullObjPointer;
-        DWORD_PTR       ObjPointer;
+        ULONG_PTR       ObjPointer;
     };
 } TRACE_EVENT, *PTRACE_EVENT;
 
