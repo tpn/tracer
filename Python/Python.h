@@ -1252,7 +1252,8 @@ typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
 #define _PYTHONEXFUNCTIONS_HEAD                                             \
     PGETUNICODELENGTHFORPYTHONSTRING    GetUnicodeLengthForPythonString;    \
     PCONVERTPYSTRINGTOUNICODESTRING     ConvertPythonStringToUnicodeString; \
-    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetails;
+    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetails;          \
+    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetailsFast;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
@@ -1378,6 +1379,52 @@ ResolveFrameObjectDetails(
     _Inout_ PPPYOBJECT      FunctionNameStringObject,
     _Inout_ PULONG          LineNumber
 );
+
+TRACER_API
+BOOL
+ResolveFrameObjectDetailsFast(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
+);
+
+FORCEINLINE
+VOID
+ResolveFrameObjectDetailsInline(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
+)
+{
+    *CodeObject = FrameObject->Code;
+
+    *ModuleFilenameStringObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            FrameObject->Code,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
+
+    *FunctionNameStringObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            FrameObject->Code,
+            Python->PyCodeObjectOffsets->Name
+        )
+    );
+
+    *LineNumber = *(
+        (PULONG)RtlOffsetToPointer(
+            FrameObject->Code,
+            Python->PyCodeObjectOffsets->FirstLineNumber
+        )
+    );
+}
 
 #ifdef __cpp
 } // extern "C"

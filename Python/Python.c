@@ -282,6 +282,8 @@ LoadPythonExFunctions(
 
     PythonExFunctions->ResolveFrameObjectDetails = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetails");
 
+    PythonExFunctions->ResolveFrameObjectDetailsFast = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetailsFast");
+
     return TRUE;
 }
 
@@ -707,6 +709,29 @@ GetFunctionNameStringObjectAndLineNumberFromCodeObject(
 }
 
 BOOL
+ResolveFrameObjectDetailsFast(
+    _In_    PPYTHON         Python,
+    _In_    PPYFRAMEOBJECT  FrameObject,
+    _Inout_ PPPYOBJECT      CodeObject,
+    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
+    _Inout_ PPPYOBJECT      FunctionNameStringObject,
+    _Inout_ PULONG          LineNumber
+)
+{
+    ResolveFrameObjectDetailsInline(
+        Python,
+        FrameObject,
+        CodeObject,
+        ModuleFilenameStringObject,
+        FunctionNameStringObject,
+        LineNumber
+    );
+
+    return TRUE;
+}
+
+
+BOOL
 ResolveFrameObjectDetails(
     _In_    PPYTHON         Python,
     _In_    PPYFRAMEOBJECT  FrameObject,
@@ -736,14 +761,15 @@ ResolveFrameObjectDetails(
         return FALSE;
     }
 
-    *CodeObject = FrameObject->Code;
-    *ModuleFilenameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->Filename));
-    *FunctionNameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->Name));
-    *LineNumber = *((PULONG)RtlOffsetToPointer(FrameObject->Code, Python->PyCodeObjectOffsets->FirstLineNumber));
-
-    return TRUE;
+    return ResolveFrameObjectDetailsFast(
+        Python,
+        FrameObject,
+        CodeObject,
+        ModuleFilenameStringObject,
+        FunctionNameStringObject,
+        LineNumber
+    );
 }
-
 
 BOOL
 GetClassNameStringObjectFromFrameObject(
