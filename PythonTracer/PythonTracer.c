@@ -6,6 +6,18 @@ extern "C" {
 #include "PythonTracer.h"
 
 LONG
+PyTraceCallbackDummy(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+)
+{
+    return 0;
+}
+
+
+LONG
 PyTraceCallbackBasic(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_        PPYFRAMEOBJECT          FrameObject,
@@ -63,6 +75,8 @@ PyTraceCallbackBasic(
 
     Event.Version = 1;
     Event.EventType = (USHORT)EventType;
+    Event.FramePointer = (ULONG_PTR)FrameObject;
+    Event.ObjPointer = (ULONG_PTR)ArgObject;
 
     if (EventType == TraceEventType_PyTrace_LINE) {
         //
@@ -70,12 +84,6 @@ PyTraceCallbackBasic(
         //
         Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
 
-        /*
-        LastEvent = (PTRACE_EVENT)((ULONG_PTR)Events->NextAddress - sizeof(TRACE_EVENT));
-        if ((ULONG_PTR)LastEvent <= (ULONG_PTR)Events->BaseAddress) {
-            LastEvent = NULL;
-        }
-        */
         LastEvent = (PTRACE_EVENT)Events->PrevAddress;
 
         if (LastEvent &&
@@ -86,6 +94,7 @@ PyTraceCallbackBasic(
             LastEvent->ModulePointer == (ULONG_PTR)Event.ModulePointer) {
 
             ++LastEvent->LineCount;
+            Event.SequenceId = ++TraceContext->SequenceId;
             return 0;
         }
     }
@@ -99,37 +108,15 @@ PyTraceCallbackBasic(
     }
 
 #ifdef _M_X64
-    Event.ullObjPointer = (ULONGLONG)ArgObject;
-    Event.ullFramePointer = (ULONGLONG)FrameObject;
     Event.ProcessId = __readgsdword(0x40);
     Event.ThreadId = __readgsdword(0x48);
 #elif _M_X86
     // 32-bit
-    Event.uliObjPointer.LowPart = (DWORD_PTR)ArgObject;
-    Event.uliFramePointer.LowPart = (DWORD_PTR)FrameObject;
     Event.ProcessId = __readgsdword(0x20);
     Event.ThreadId = __readgsdword(0x24);
 #else
 #error Unsupported architecture.
 #endif
-
-    /*
-    if (sizeof(FrameObject) == sizeof(Event.uliFramePointer.QuadPart)) {
-        // 64-bit
-        Event.ullObjPointer = (ULONGLONG)ArgObject;
-        Event.ullFramePointer = (ULONGLONG)FrameObject;
-        Event.ProcessId = __readgsdword(0x40);
-        Event.ThreadId = __readgsdword(0x48);
-    } else {
-        // 32-bit
-        Event.uliObjPointer.LowPart = (DWORD_PTR)ArgObject;
-        Event.uliFramePointer.LowPart = (DWORD_PTR)FrameObject;
-        Event.ProcessId = __readgsdword(0x20);
-        Event.ThreadId = __readgsdword(0x24);
-    }
-    */
-
-    Event.SequenceId = ++TraceContext->SequenceId;
 
     switch (EventType) {
         case TraceEventType_PyTrace_CALL:
@@ -151,8 +138,125 @@ PyTraceCallbackBasic(
 
     EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
     if (!EventRecord) {
-        return 1;
+        return 0;
     }
+
+    Event.SequenceId = ++TraceContext->SequenceId;
+
+    RtlCopyMemory(EventRecord, &Event, sizeof(Event));
+
+    return 0;
+}
+
+LONG
+PyTraceCallbackFast(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+)
+{
+    PPYTHON Python;
+    PPYOBJECT CodeObject;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE Events;
+    PTRACE_EVENT EventRecord = NULL, LastEvent = NULL;
+    TRACE_EVENT  Event = { 0 };
+    ULARGE_INTEGER RecordSize = { sizeof(Event) };
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+
+    Python = PythonTraceContext->Python;
+    TraceContext = PythonTraceContext->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    CodeObject = FrameObject->Code;
+
+    Event.Version = 1;
+    Event.EventType = (USHORT)EventType;
+    Event.FramePointer = (ULONG_PTR)FrameObject;
+    Event.ObjPointer = (ULONG_PTR)ArgObject;
+
+    Event.ModulePointer = (ULONG_PTR)*(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
+
+    Event.FuncPointer = (ULONG_PTR)*(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Name
+        )
+    );
+
+    Event.LineNumber = *(
+        (PULONG)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->FirstLineNumber
+        )
+    );
+
+    Events = &TraceStores->Stores[0];
+
+    if (EventType == TraceEventType_PyTrace_LINE) {
+        //
+        // Get the actual line number if we're a trace event.
+        //
+        Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
+
+        LastEvent = (PTRACE_EVENT)Events->PrevAddress;
+
+        if (LastEvent &&
+            LastEvent->EventType == TraceEventType_PyTrace_LINE &&
+            LastEvent->LineNumber == Event.LineNumber &&
+            LastEvent->FramePointer == (ULONG_PTR)FrameObject &&
+            LastEvent->FuncPointer == (ULONG_PTR)Event.FuncPointer &&
+            LastEvent->ModulePointer == (ULONG_PTR)Event.ModulePointer) {
+
+            ++LastEvent->LineCount;
+            Event.SequenceId = ++TraceContext->SequenceId;
+            return 0;
+        }
+    }
+
+    // Event.SystemTime
+
+#ifdef _M_X64
+    Event.ProcessId = __readgsdword(0x40);
+    Event.ThreadId = __readgsdword(0x48);
+#elif _M_X86
+    // 32-bit
+    Event.ProcessId = __readgsdword(0x20);
+    Event.ThreadId = __readgsdword(0x24);
+#else
+#error Unsupported architecture.
+#endif
+
+    switch (EventType) {
+        case TraceEventType_PyTrace_CALL:
+            break;
+        case TraceEventType_PyTrace_EXCEPTION:
+            break;
+        case TraceEventType_PyTrace_LINE:
+            Event.LineCount = 1;
+            break;
+        case TraceEventType_PyTrace_RETURN:
+            break;
+        case TraceEventType_PyTrace_C_CALL:
+            break;
+        case TraceEventType_PyTrace_C_EXCEPTION:
+            break;
+        case TraceEventType_PyTrace_C_RETURN:
+            break;
+    };
+
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    if (!EventRecord) {
+        return 0;
+    }
+
+    Event.SequenceId = ++TraceContext->SequenceId;
 
     RtlCopyMemory(EventRecord, &Event, sizeof(Event));
 
@@ -248,6 +352,57 @@ StopTracing(
     }
 
     Python->PyEval_SetTrace(NULL, NULL);
+
+    return TRUE;
+}
+
+BOOL
+StartProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+)
+{
+    PPYTHON Python;
+    PPYTRACEFUNC PythonTraceFunction;
+
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    Python = PythonTraceContext->Python;
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    PythonTraceFunction = PythonTraceContext->PythonTraceFunction;
+
+    if (!PythonTraceFunction) {
+        return FALSE;
+    }
+
+    Python->PyEval_SetProfile(PythonTraceFunction, (PPYOBJECT)PythonTraceContext);
+
+    return TRUE;
+}
+
+BOOL
+StopProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+)
+{
+    PPYTHON Python;
+
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    Python = PythonTraceContext->Python;
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    Python->PyEval_SetProfile(NULL, NULL);
 
     return TRUE;
 }

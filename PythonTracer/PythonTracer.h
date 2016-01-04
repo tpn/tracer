@@ -55,12 +55,31 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 
 TRACER_API
 LONG
+PyTraceCallbackDummy(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+);
+
+TRACER_API
+LONG
 PyTraceCallbackBasic(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_        PPYFRAMEOBJECT          FrameObject,
     _In_opt_    LONG                    EventType,
     _In_opt_    PPYOBJECT               ArgObject
 );
+
+TRACER_API
+LONG
+PyTraceCallbackFast(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+);
+
 
 TRACER_API
 BOOL
@@ -85,3 +104,14 @@ StopTracing(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
 );
 
+TRACER_API
+BOOL
+StartProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
+
+TRACER_API
+BOOL
+StopProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
