@@ -1,18 +1,4 @@
-// Python Tools for Visual Studio
-// Copyright(c) Microsoft Corporation
-// All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the License); you may not use
-// this file except in compliance with the License. You may obtain a copy of the
-// License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// THIS CODE IS PROVIDED ON AN  *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS
-// OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY
-// IMPLIED WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABLITY OR NON-INFRINGEMENT.
-//
-// See the Apache Version 2.0 License for specific language governing
-// permissions and limitations under the License.
+// Copyright Trent Nelson <trent@trent.me>
 
 #include <Windows.h>
 #include <Strsafe.h>
@@ -216,12 +202,16 @@ InitializeStore(
 )
 {
     BOOL Success;
+    BOOL IsMetadataStore = FALSE;
+    LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
     if (!Path || !TraceStore) {
         return FALSE;
     }
 
     if (!TraceStore->FileHandle) {
+        // We're a metadata store.
+        IsMetadataStore = TRUE;
         TraceStore->FileHandle = CreateFileW(
             Path,
             GENERIC_READ | GENERIC_WRITE,
@@ -241,8 +231,19 @@ InitializeStore(
         goto error;
     }
 
+    TraceStore->InitialSize.HighPart = 0;
+    TraceStore->InitialSize.LowPart = InitialSize;
+    TraceStore->ExtensionSize.HighPart = 0;
+    TraceStore->ExtensionSize.LowPart = InitialSize;
+    TraceStore->MaximumSize.QuadPart = 0LL;
+
     TraceStore->MappingSize.HighPart = 0;
     TraceStore->MappingSize.LowPart = InitialSize;
+
+    // Cap the mapping size to the maximum if necessary.
+    if (TraceStore->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
+        TraceStore->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
+    }
 
     // If the allocated size of the underlying file is less than our desired
     // mapping size (which is primed by the InitialSize parameter), extend the
@@ -269,8 +270,21 @@ InitializeStore(
             NULL,
             FILE_BEGIN
         );
-        if (!Success) {
+        // Update the file info.
+        if (!Success || !RefreshTraceStoreFileInfo(TraceStore)) {
             goto error;
+        }
+    }
+    // Alternatively, if we're not a metadata trace store (in which case, TraceStore->MetadataStore
+    // would be NULL), if the existing file has a size greater than the initial size, use a larger
+    // mapping size, provided it's under our maximum mapping size.
+    else if (TraceStore->MetadataStore &&
+             TraceStore->FileInfo.AllocationSize.QuadPart > TraceStore->MappingSize.QuadPart) {
+
+        TraceStore->MappingSize.QuadPart = TraceStore->FileInfo.AllocationSize.QuadPart;
+
+        if (TraceStore->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
+            TraceStore->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
         }
     }
 
@@ -299,7 +313,25 @@ InitializeStore(
         goto error;
     }
 
+    InitializeSRWLock(&TraceStore->SlimReadWriteLock);
+
+    TraceStore->PrevAddress = NULL;
     TraceStore->NextAddress = TraceStore->BaseAddress;
+    TraceStore->EndAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress,
+                                                       TraceStore->MappingSize.LowPart);
+
+    TraceStore->AllocateRecords = AllocateRecords;
+
+    if (IsMetadataStore) {
+        return TRUE;
+    }
+
+    //
+    // We submit a file extension threadpool work when we're "InitialSize"-bytes away
+    // from the end address.  This will probably need tuning.
+    //
+    TraceStore->ExtendAtAddress = (PVOID)RtlOffsetFromPointer(TraceStore->EndAddress,
+                                                              TraceStore->InitialSize.LowPart);
 
     return TRUE;
 error:
@@ -348,7 +380,7 @@ InitializeTraceStore(
         GENERIC_READ | GENERIC_WRITE,
         FILE_SHARE_READ,
         NULL,
-        CREATE_ALWAYS,
+        OPEN_ALWAYS,
         FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
         NULL
     );
@@ -373,69 +405,9 @@ InitializeTraceStore(
     TraceStore->MetadataStore = MetadataStore;
     TraceStore->pMetadata = (PTRACE_STORE_METADATA)MetadataStore->BaseAddress;
 
-    if (!RefreshTraceStoreFileInfo(TraceStore)) {
+    if (!InitializeStore(Path, TraceStore, InitialSize)) {
         goto error;
     }
-
-    TraceStore->MappingSize.HighPart = 0;
-    TraceStore->MappingSize.LowPart = InitialSize;
-
-    // If the allocated size of the underlying file is less than our desired
-    // mapping size (which is primed by the InitialSize parameter), extend the
-    // file to that length (via SetFilePointerEx(), then SetEndOfFile()).
-    if (TraceStore->FileInfo.AllocationSize.QuadPart < TraceStore->MappingSize.QuadPart) {
-        LARGE_INTEGER StartOfFile = { 0 };
-        Success = SetFilePointerEx(
-            TraceStore->FileHandle,
-            TraceStore->MappingSize,
-            NULL,
-            FILE_BEGIN
-        );
-        if (!Success) {
-            goto error;
-        }
-        // Extend the file.
-        if (!SetEndOfFile(TraceStore->FileHandle)) {
-            goto error;
-        }
-        // Reset the file pointer back to the start.
-        Success = SetFilePointerEx(
-            TraceStore->FileHandle,
-            StartOfFile,
-            NULL,
-            FILE_BEGIN
-        );
-        if (!Success) {
-            goto error;
-        }
-    }
-
-    TraceStore->MappingHandle = CreateFileMapping(
-        TraceStore->FileHandle,
-        NULL,
-        PAGE_READWRITE,
-        0,
-        TraceStore->MappingSize.LowPart,
-        NULL
-    );
-
-    if (TraceStore->MappingHandle == INVALID_HANDLE_VALUE) {
-        goto error;
-    }
-
-    TraceStore->BaseAddress = MapViewOfFile(
-        TraceStore->MappingHandle,
-        FILE_MAP_READ | FILE_MAP_WRITE,
-        0,
-        0,
-        TraceStore->MappingSize.LowPart
-    );
-
-    if (!TraceStore->BaseAddress) {
-        goto error;
-    }
-
-    TraceStore->NextAddress = TraceStore->BaseAddress;
 
     return TRUE;
 error:
@@ -448,7 +420,10 @@ GetMetadataStoresFromTracesStores(
     _In_    PTRACE_STORES   TraceStores
 )
 {
-    return (PTRACE_STORES)((DWORD_PTR)TraceStores + sizeof(TRACE_STORES));
+    return (PTRACE_STORES)(
+        (DWORD_PTR)&TraceStores->Stores[0] +
+        (sizeof(TRACE_STORE) * TraceStores->NumberOfTraceStores)
+    );
 }
 
 BOOL
@@ -461,13 +436,12 @@ InitializeTraceStores(
 {
     BOOL Success;
     HRESULT Result;
-    DWORD Index;
+    DWORD Index, StoreIndex;
     DWORD LastError;
     WCHAR Path[_OUR_MAX_PATH];
     LPWSTR FileNameDest;
-    PTRACE_STORES MetadataStores;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
-    DWORD TraceStoresAllocationSize = GetTraceStoresAllocationSize();
+    DWORD TraceStoresAllocationSize = GetTraceStoresAllocationSize(NumberOfTraceStores);
     DWORD LongestPossibleDirectoryLength = (
         _OUR_MAX_PATH   -
         1               - // '\'
@@ -490,8 +464,6 @@ InitializeTraceStores(
     if (!BaseDirectory) {
         return FALSE;
     }
-
-    MetadataStores = GetMetadataStoresFromTracesStores(TraceStores);
 
     if (!Sizes) {
         Sizes = (LPDWORD)&InitialTraceStoreFileSizes[0];
@@ -543,9 +515,9 @@ InitializeTraceStores(
         }
     }
 
-    for (Index = 0; Index < NumberOfTraceStores; Index++) {
-        PTRACE_STORE TraceStore = &TraceStores->Stores[Index];
-        PTRACE_STORE MetadataStore = &MetadataStores->Stores[Index];
+    for (Index = 0, StoreIndex = 0; Index < NumberOfTraceStores; Index++, StoreIndex += 2) {
+        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
+        PTRACE_STORE MetadataStore = TraceStore+1;
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
         Result = StringCchCopyW(FileNameDest, RemainingChars.QuadPart, FileName);
@@ -553,16 +525,18 @@ InitializeTraceStores(
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return FALSE;
         }
-        Result = InitializeTraceStore(
+        Success = InitializeTraceStore(
             Path,
             TraceStore,
             MetadataStore,
             InitialSize
         );
-        if (FAILED(Result)) {
+        if (!Success) {
             return FALSE;
         }
     }
+
+    TraceStores->NumberOfTraceStores = NumberOfTraceStores;
 
     return TRUE;
 }
@@ -597,6 +571,21 @@ CloseStore(
         TraceStore->FileHandle = NULL;
     }
 
+    if (TraceStore->FileExtendedEvent) {
+        CloseHandle(TraceStore->FileExtendedEvent);
+        TraceStore->FileExtendedEvent = NULL;
+    }
+
+    if (TraceStore->ExtendFileWork) {
+        CloseThreadpoolWork(TraceStore->ExtendFileWork);
+        TraceStore->ExtendFileWork = NULL;
+    }
+
+    if (TraceStore->PrefaultFuturePageWork) {
+        CloseThreadpoolWork(TraceStore->PrefaultFuturePageWork);
+        TraceStore->PrefaultFuturePageWork = NULL;
+    }
+
     if (TraceStore->CriticalSection) {
         LeaveCriticalSection(TraceStore->CriticalSection);
     }
@@ -622,13 +611,13 @@ CloseTraceStore(
 void
 CloseTraceStores(PTRACE_STORES TraceStores)
 {
-    DWORD Index;
+    USHORT Index;
 
     if (!TraceStores) {
         return;
     }
 
-    for (Index = 0; Index < NumberOfTraceStores; Index++) {
+    for (Index = 0; Index < NumberOfTraceStores * 2; Index += 2) {
         CloseTraceStore(&TraceStores->Stores[Index]);
     }
 }
@@ -682,11 +671,44 @@ GetTraceStoreNumberOfRecords(
 }
 
 DWORD
-GetTraceStoresAllocationSize(void)
+GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
     // Account for the metadata stores, which are located after
     // the trace stores.
-    return sizeof(TRACE_STORES) * 2;
+    return (
+        sizeof(TRACE_STORES) + (
+            (sizeof(TRACE_STORE) * NumberOfTraceStores * 2) -
+            sizeof(TRACE_STORE)
+        )
+    );
+}
+
+VOID
+CALLBACK
+PrefaultFuturePageCallback(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+)
+{
+    PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
+    PULONG FaultAddress;
+    AcquireSRWLockShared(&TraceStore->SlimReadWriteLock);
+    RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
+    ReleaseSRWLockShared(&TraceStore->SlimReadWriteLock);
+    *FaultAddress = 0;
+}
+
+VOID
+CALLBACK
+ExtendTraceStoreFileCallback(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+)
+{
+    PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
+    SetEventWhenCallbackReturns(Instance, TraceStore->FileExtendedEvent);
 }
 
 _Check_return_
@@ -699,18 +721,16 @@ AllocateRecords(
 )
 {
     DWORD_PTR AllocationSize;
-    LPVOID ReturnAddress;
+    PVOID ReturnAddress = NULL, NextAddress = NULL;
 
     if (!TraceStore) {
         return NULL;
     }
 
-    if (sizeof(TraceStore->NextAddress) == sizeof(RecordSize.QuadPart)) {
-        AllocationSize = (DWORD_PTR)(
-            RecordSize.QuadPart *
-            NumberOfRecords.QuadPart
-        );
-    } else {
+#ifdef _M_X64
+    AllocationSize = (DWORD_PTR)(RecordSize.QuadPart * NumberOfRecords.QuadPart);
+#else
+    {
         ULARGE_INTEGER Size = { 0 };
         // Ignore allocation attempts over 2GB on 32-bit.
         if (RecordSize.HighPart != 0 || NumberOfRecords.HighPart != 0) {
@@ -722,20 +742,41 @@ AllocateRecords(
         }
         AllocationSize = (DWORD_PTR)Size.LowPart;
     }
+#endif
 
     if (TraceStore->CriticalSection) {
         EnterCriticalSection(TraceStore->CriticalSection);
     }
 
-    ReturnAddress = TraceStore->NextAddress;
+    if (!TraceStore->pMetadata->RecordSize.QuadPart) {
+        TraceStore->pMetadata->RecordSize.QuadPart = RecordSize.QuadPart;
+    }
 
-    TraceStore->NextAddress = (LPVOID)(
-        (DWORD_PTR)ReturnAddress +
-        AllocationSize
-    );
+    if (TraceStore->pMetadata->RecordSize.QuadPart != RecordSize.QuadPart) {
+        goto end;
+    }
+
+    NextAddress = (PVOID)((ULONG_PTR)TraceStore->NextAddress + AllocationSize);
+
+    if (NextAddress >= TraceStore->EndAddress) {
+        //TRACE_STORE_MEMORY_MAP NextMemoryMap;
+        // Need to copy over the NextMemoryMap details if created.
+        ++TraceStore->DroppedRecords;
+        goto end;
+    }
+    else if (NextAddress >= TraceStore->PrefaultAddress) {
+
+    } else if (NextAddress >= TraceStore->ExtendAtAddress) {
+
+    }
 
     TraceStore->pMetadata->NumberOfRecords.QuadPart += NumberOfRecords.QuadPart;
 
+    TraceStore->PrevAddress = TraceStore->NextAddress;
+    TraceStore->NextAddress = NextAddress;
+    ReturnAddress = TraceStore->PrevAddress;
+
+end:
     if (TraceStore->CriticalSection) {
         LeaveCriticalSection(TraceStore->CriticalSection);
     }
@@ -755,14 +796,46 @@ GetNextRecord(
 }
 
 BOOL
-InitializeTraceContext(
-    _Inout_bytecap_(*SizeOfTraceContext) PTRACE_CONTEXT TraceContext,
-    _In_    PDWORD              SizeOfTraceContext,
-    _In_    PTRACE_SESSION      TraceSession,
-    _In_    PTRACE_STORES       TraceStores,
-    _In_    PPYTRACE_CALLBACK   TraceCallback
+InitializeTraceSession(
+    _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
+    _In_                                 PDWORD         SizeOfTraceSession
 )
 {
+    if (!TraceSession) {
+        if (SizeOfTraceSession) {
+            *SizeOfTraceSession = sizeof(*TraceSession);
+        }
+        return FALSE;
+    }
+
+    if (!SizeOfTraceSession) {
+        return FALSE;
+    }
+
+    if (*SizeOfTraceSession < sizeof(*TraceSession)) {
+        return FALSE;
+    } else if (*SizeOfTraceSession == 0) {
+        *SizeOfTraceSession = sizeof(*TraceSession);
+    }
+
+    SecureZeroMemory(TraceSession, sizeof(*TraceSession));
+
+    GetSystemTimeAsFileTime(&TraceSession->SystemTime);
+    return TRUE;
+
+}
+
+BOOL
+InitializeTraceContext(
+    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
+    _In_                                    PDWORD                  SizeOfTraceContext,
+    _In_                                    PTRACE_SESSION          TraceSession,
+    _In_                                    PTRACE_STORES           TraceStores,
+    _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
+    _In_opt_                                PVOID                   UserData
+)
+{
+    USHORT Index;
     if (!TraceContext) {
         if (SizeOfTraceContext) {
             *SizeOfTraceContext = sizeof(*TraceContext);
@@ -786,7 +859,7 @@ InitializeTraceContext(
         return FALSE;
     }
 
-    if (!TraceCallback) {
+    if (!ThreadpoolCallbackEnvironment) {
         return FALSE;
     }
 
@@ -798,8 +871,39 @@ InitializeTraceContext(
     TraceContext->Size = *SizeOfTraceContext;
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
-    TraceContext->TraceCallback = TraceCallback;
     TraceContext->SequenceId = 1;
+    TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
+    TraceContext->UserData = UserData;
+
+    for (Index = 0; Index < TraceStores->NumberOfTraceStores * 2; Index += 2) {
+        PTRACE_STORE TraceStore = &TraceStores->Stores[Index];
+        TraceStore->FileExtendedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+        if (!TraceStore->FileExtendedEvent) {
+            return FALSE;
+        }
+
+        TraceStore->ExtendFileWork = CreateThreadpoolWork(
+            &ExtendTraceStoreFileCallback,
+            TraceStore,
+            ThreadpoolCallbackEnvironment
+        );
+
+        if (!TraceStore->ExtendFileWork) {
+            return FALSE;
+        }
+
+        TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
+            &PrefaultFuturePageCallback,
+            TraceStore,
+            ThreadpoolCallbackEnvironment
+        );
+
+        if (!TraceStore->PrefaultFuturePageWork) {
+            return FALSE;
+        }
+
+        TraceStore->TraceContext = TraceContext;
+    }
 
     return TRUE;
 }
@@ -831,3 +935,5 @@ RegisterFunction(
 #ifdef __cpp
 } // extern "C"
 #endif
+
+// vim: set ts=8 sw=4 sts=4 expandtab si ai:

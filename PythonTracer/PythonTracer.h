@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <Windows.h>
+#include "../Rtl/Rtl.h"
 #include "../Tracer/Tracer.h"
 #include "../Tracer/Tracing.h"
 #include "../Python/Python.h"
@@ -44,12 +45,73 @@ static const DWORD NumberOfTraceEventTypes = (
     sizeof(EVENT_TYPE)
 );
 
+typedef struct _PYTHON_TRACE_CONTEXT {
+    ULONG           Size;
+    PPYTHON         Python;
+    PTRACE_CONTEXT  TraceContext;
+    PPYTRACEFUNC    PythonTraceFunction;
+    PVOID           UserData;
+} PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
+
+TRACER_API
+LONG
+PyTraceCallbackDummy(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+);
+
 TRACER_API
 LONG
 PyTraceCallbackBasic(
-    _In_        PTRACE_CONTEXT  TraceContext,
-    _In_        PPYFRAMEOBJECT  FrameObject,
-    _In_opt_    LONG            EventType,
-    _In_opt_    PPYOBJECT       ArgObject
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
 );
 
+TRACER_API
+LONG
+PyTraceCallbackFast(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+);
+
+
+TRACER_API
+BOOL
+InitializePythonTraceContext(
+    _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_                                     PULONG                  SizeOfPythonTraceContext,
+    _In_                                        PPYTHON                 Python,
+    _In_                                        PTRACE_CONTEXT          TraceContext,
+    _In_opt_                                    PPYTRACEFUNC            PythonTraceFunction,
+    _In_opt_                                    PVOID                   UserData
+);
+
+TRACER_API
+BOOL
+StartTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
+
+TRACER_API
+BOOL
+StopTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
+
+TRACER_API
+BOOL
+StartProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
+
+TRACER_API
+BOOL
+StopProfiling(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
