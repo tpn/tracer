@@ -123,16 +123,18 @@ typedef struct _TRACE_STORE_THREADPOOL {
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
-#define _TRACE_STORE_MEMORY_MAP_HEAD    \
-    SRWLOCK         SlimReadWriteLock;  \
-    HANDLE          MappingHandle;      \
-    LARGE_INTEGER   MappingSize;        \
-    PVOID           BaseAddress;        \
-    PVOID           PrefaultAddress;    \
-    PVOID           ExtendAtAddress;    \
-    PVOID           EndAddress;         \
-    PVOID           PrevAddress;        \
-    PVOID           NextAddress;
+#define _TRACE_STORE_MEMORY_MAP_HEAD        \
+    CRITICAL_SECTION    CritialSection;     \
+    HANDLE              FileHandle;         \
+    FILE_STANDARD_INFO  FileInfo;           \
+    HANDLE              MappingHandle;      \
+    LARGE_INTEGER       MappingSize;        \
+    PVOID               BaseAddress;        \
+    PVOID               PrefaultAddress;    \
+    PVOID               ExtendAtAddress;    \
+    PVOID               EndAddress;         \
+    PVOID               PrevAddress;        \
+    PVOID               NextAddress;
 
 typedef struct _TRACE_STORE_MEMORY_MAP {
     _TRACE_STORE_MEMORY_MAP_HEAD
@@ -140,12 +142,9 @@ typedef struct _TRACE_STORE_MEMORY_MAP {
 
 typedef struct _TRACE_STORE {
     PTRACE_CONTEXT          TraceContext;
-    HANDLE                  FileHandle;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
     LARGE_INTEGER           MaximumSize;
-    FILE_STANDARD_INFO      FileInfo;
-    PCRITICAL_SECTION       CriticalSection;
     ULONG                   DroppedRecords;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                ExtendFileWork;
@@ -159,6 +158,7 @@ typedef struct _TRACE_STORE {
     };
 
     TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
+    TRACE_STORE_MEMORY_MAP  LastTraceStoreMemoryMap;
 
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;

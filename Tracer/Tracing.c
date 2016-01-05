@@ -180,6 +180,21 @@ RefreshTraceStoreFileInfo(PTRACE_STORE TraceStore)
 }
 
 BOOL
+RefreshTraceStoreMemoryMapFileInfo(PTRACE_STORE_MEMORY_MAP TraceStoreMemoryMap)
+{
+    if (!TraceStoreMemoryMap) {
+        return FALSE;
+    }
+
+    return GetFileInformationByHandleEx(
+        TraceStoreMemoryMap->FileHandle,
+        (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo,
+        &TraceStoreMemoryMap->FileInfo,
+        sizeof(TraceStoreMemoryMap->FileInfo)
+    );
+}
+
+BOOL
 SetTraceStoreCriticalSection(
     _Inout_     PTRACE_STORE        TraceStore,
     _In_        PCRITICAL_SECTION   CriticalSection
@@ -313,8 +328,6 @@ InitializeStore(
         goto error;
     }
 
-    InitializeSRWLock(&TraceStore->SlimReadWriteLock);
-
     TraceStore->PrevAddress = NULL;
     TraceStore->NextAddress = TraceStore->BaseAddress;
     TraceStore->EndAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress,
@@ -322,9 +335,24 @@ InitializeStore(
 
     TraceStore->AllocateRecords = AllocateRecords;
 
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
+
     if (IsMetadataStore) {
         return TRUE;
     }
+
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->NextTraceStoreMemoryMap.CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
+
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->LastTraceStoreMemoryMap.CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
 
     //
     // We submit a file extension threadpool work when we're "InitialSize"-bytes away
@@ -332,6 +360,13 @@ InitializeStore(
     //
     TraceStore->ExtendAtAddress = (PVOID)RtlOffsetFromPointer(TraceStore->EndAddress,
                                                               TraceStore->InitialSize.LowPart);
+
+    //
+    // For now, we only use a single file handle (i.e. single file) with
+    // multiple memory mappings.  Down the track we may add support for
+    // multiple files to multiple memory mappings.
+    //
+    TraceStore->NextTraceStoreMemoryMap.FileHandle = TraceStore->FileHandle;
 
     return TRUE;
 error:
@@ -550,9 +585,7 @@ CloseStore(
         return;
     }
 
-    if (TraceStore->CriticalSection) {
-        EnterCriticalSection(TraceStore->CriticalSection);
-    }
+    EnterCriticalSection(&TraceStore->CriticalSection);
 
     if (TraceStore->BaseAddress) {
         FlushViewOfFile(TraceStore->BaseAddress, 0);
@@ -586,9 +619,7 @@ CloseStore(
         TraceStore->PrefaultFuturePageWork = NULL;
     }
 
-    if (TraceStore->CriticalSection) {
-        LeaveCriticalSection(TraceStore->CriticalSection);
-    }
+    LeaveCriticalSection(&TraceStore->CriticalSection);
 }
 
 VOID
@@ -632,18 +663,14 @@ GetTraceStoreBytesWritten(
         return FALSE;
     }
 
-    if (TraceStore->CriticalSection) {
-        EnterCriticalSection(TraceStore->CriticalSection);
-    }
+    EnterCriticalSection(&TraceStore->CriticalSection);
 
     BytesWritten->QuadPart = (
         (DWORD_PTR)TraceStore->NextAddress -
         (DWORD_PTR)TraceStore->BaseAddress
     );
 
-    if (TraceStore->CriticalSection) {
-        LeaveCriticalSection(TraceStore->CriticalSection);
-    }
+    LeaveCriticalSection(TraceStore->CriticalSection);
 
     return TRUE;
 }
@@ -658,9 +685,7 @@ GetTraceStoreNumberOfRecords(
         return FALSE;
     }
 
-    if (TraceStore->CriticalSection) {
-        EnterCriticalSection(TraceStore->CriticalSection);
-    }
+    EnterCriticalSection(&TraceStore->CriticalSection);
 
     NumberOfRecords->QuadPart = TraceStore->pMetadata->NumberOfRecords.QuadPart;
 
@@ -673,8 +698,16 @@ GetTraceStoreNumberOfRecords(
 DWORD
 GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
-    // Account for the metadata stores, which are located after
-    // the trace stores.
+    // For each trace store, we also store a metadata trace store, hence the
+    // "NumberOfTraceStores * 2" part.  The subsequent "minus size of one
+    // trace store" accounts for the fact that the TRACE_STORES structure
+    // includes a single trace store structure, e.g.:
+    //      typedef struct _TRACE_STORES {
+    //          ...
+    //          TRACE_STORE Stores[1];
+    //
+    // So if NumberOfTraceStores is 6, there will actually be space for
+    // 12 TRACE_STORE structures.
     return (
         sizeof(TRACE_STORES) + (
             (sizeof(TRACE_STORE) * NumberOfTraceStores * 2) -
@@ -693,9 +726,9 @@ PrefaultFuturePageCallback(
 {
     PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
     PULONG FaultAddress;
-    AcquireSRWLockShared(&TraceStore->SlimReadWriteLock);
+    EnterCriticalSection(&TraceStore->CritialSection);
     RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
-    ReleaseSRWLockShared(&TraceStore->SlimReadWriteLock);
+    LeaveCriticalSection(&TraceStore->CritialSection);
     *FaultAddress = 0;
 }
 
@@ -707,8 +740,134 @@ ExtendTraceStoreFileCallback(
     _Inout_     PTP_WORK                Work
 )
 {
+    BOOL Success;
     PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
+    PTRACE_CONTEXT TraceContext = TraceStore->TraceContext;
+    PTRACE_STORE_MEMORY_MAP NextMemoryMap = &TraceStore->NextMemoryMap;
+    LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
+
+    if (!NextMemoryMap->FileHandle) {
+        return;
+    }
+
+    // We don't support extension of metadata stores at the moment.
+    if (!TraceStore->MetadataStore) {
+        return;
+    }
+
+    EnterCriticalSection(&TraceStore->NextMemoryMap.CriticalSection);
+
+    if (!RefreshTraceStoreMemoryMapFileInfo(NextMemoryMap)) {
+        goto error;
+    }
+
+    NextMemoryMap->MappingSize.HighPart = 0;
+    NextMemoryMap->MappingSize.LowPart = TraceStore->InitialSize.LowPart;
+
+    // Cap the mapping size to the maximum if necessary.
+    if (NextMemoryMap->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
+        NextMemoryMap->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
+    }
+
+    //
+    // If the allocated file size is less than the mapping size, extend the file.
+    //
+    if (NextMemoryMap->FileInfo.AllocationSize.QuadPart < NextMemoryMap->MappingSize.QuadPart) {
+        Success = SetFilePointerEx(
+            NextMemoryMap->FileHandle,
+            NextMemoryMap->MappingSize,
+            NULL,
+            FILE_BEGIN
+        );
+        if (!Success) {
+            goto error;
+        }
+        // Extend the file.
+        if (!SetEndOfFile(NextMemoryMap->FileHandle)) {
+            goto error;
+        }
+    }
+    // Alternatively, if we're not a metadata trace store (in which case, TraceStore->MetadataStore
+    // would be NULL), if the existing file has a size greater than the initial size, use a larger
+    // mapping size, provided it's under our maximum mapping size.
+    else if (NextMemoryMap->FileInfo.AllocationSize.QuadPart > NextMemoryMap->MappingSize.QuadPart) {
+
+        NextMemoryMap->MappingSize.QuadPart = NextMemoryMap->FileInfo.AllocationSize.QuadPart;
+
+        if (NextMemoryMap->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
+            NextMemoryMap->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
+        }
+    }
+
+    NextMemoryMap->MappingHandle = CreateFileMapping(
+        NextMemoryMap->FileHandle,
+        NULL,
+        PAGE_READWRITE,
+        NextMemoryMap->MappingSize.HighPart,
+        NextMemoryMap->MappingSize.LowPart,
+        NULL
+    );
+
+    if (TraceStore->MappingHandle == INVALID_HANDLE_VALUE) {
+        goto error;
+    }
+
+    TraceStore->BaseAddress = MapViewOfFile(
+        TraceStore->MappingHandle,
+        FILE_MAP_READ | FILE_MAP_WRITE,
+        0,
+        0,
+        TraceStore->MappingSize.LowPart
+    );
+
+    if (!TraceStore->BaseAddress) {
+        goto error;
+    }
+
+    TraceStore->PrevAddress = NULL;
+    TraceStore->NextAddress = TraceStore->BaseAddress;
+    TraceStore->EndAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress,
+                                                       TraceStore->MappingSize.LowPart);
+
+    TraceStore->AllocateRecords = AllocateRecords;
+
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
+
+    if (IsMetadataStore) {
+        return TRUE;
+    }
+
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->NextTraceStoreMemoryMap.CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
+
+    InitializeCriticalSectionAndSpinCount(
+        &TraceStore->LastTraceStoreMemoryMap.CriticalSection,
+        DefaultTraceStoreCriticalSectionSpinCount
+    );
+
+    //
+    // We submit a file extension threadpool work when we're "InitialSize"-bytes away
+    // from the end address.  This will probably need tuning.
+    //
+    TraceStore->ExtendAtAddress = (PVOID)RtlOffsetFromPointer(TraceStore->EndAddress,
+                                                              TraceStore->InitialSize.LowPart);
+
+    //
+    // For now, we only use a single file handle (i.e. single file) with
+    // multiple memory mappings.  Down the track we may add support for
+    // multiple files to multiple memory mappings.
+    //
+    TraceStore->NextTraceStoreMemoryMap.FileHandle = TraceStore->FileHandle;
+
+end:
     SetEventWhenCallbackReturns(Instance, TraceStore->FileExtendedEvent);
+error:
+    LeaveCriticalSection(&TraceStore->NextTraceStoreMemoryMap.CriticalSection);
 }
 
 _Check_return_
@@ -744,9 +903,7 @@ AllocateRecords(
     }
 #endif
 
-    if (TraceStore->CriticalSection) {
-        EnterCriticalSection(TraceStore->CriticalSection);
-    }
+    EnterCriticalSection(&TraceStore->CriticalSection);
 
     if (!TraceStore->pMetadata->RecordSize.QuadPart) {
         TraceStore->pMetadata->RecordSize.QuadPart = RecordSize.QuadPart;
@@ -765,6 +922,7 @@ AllocateRecords(
         goto end;
     }
     else if (NextAddress >= TraceStore->PrefaultAddress) {
+        
 
     } else if (NextAddress >= TraceStore->ExtendAtAddress) {
 
@@ -777,9 +935,7 @@ AllocateRecords(
     ReturnAddress = TraceStore->PrevAddress;
 
 end:
-    if (TraceStore->CriticalSection) {
-        LeaveCriticalSection(TraceStore->CriticalSection);
-    }
+    LeaveCriticalSection(&TraceStore->CriticalSection);
 
     return ReturnAddress;
 }
