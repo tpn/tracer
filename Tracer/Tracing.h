@@ -124,7 +124,7 @@ typedef struct _TRACE_STORE_THREADPOOL {
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
 #define _TRACE_STORE_MEMORY_MAP_HEAD        \
-    CRITICAL_SECTION    CritialSection;     \
+    CRITICAL_SECTION    CriticalSection;    \
     HANDLE              FileHandle;         \
     FILE_STANDARD_INFO  FileInfo;           \
     HANDLE              MappingHandle;      \

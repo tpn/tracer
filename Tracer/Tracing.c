@@ -194,20 +194,6 @@ RefreshTraceStoreMemoryMapFileInfo(PTRACE_STORE_MEMORY_MAP TraceStoreMemoryMap)
     );
 }
 
-BOOL
-SetTraceStoreCriticalSection(
-    _Inout_     PTRACE_STORE        TraceStore,
-    _In_        PCRITICAL_SECTION   CriticalSection
-)
-{
-    if (!TraceStore || !CriticalSection) {
-        return FALSE;
-    }
-
-    TraceStore->CriticalSection = CriticalSection;
-
-    return TRUE;
-}
 
 BOOL
 InitializeStore(
@@ -670,7 +656,7 @@ GetTraceStoreBytesWritten(
         (DWORD_PTR)TraceStore->BaseAddress
     );
 
-    LeaveCriticalSection(TraceStore->CriticalSection);
+    LeaveCriticalSection(&TraceStore->CriticalSection);
 
     return TRUE;
 }
@@ -689,9 +675,8 @@ GetTraceStoreNumberOfRecords(
 
     NumberOfRecords->QuadPart = TraceStore->pMetadata->NumberOfRecords.QuadPart;
 
-    if (TraceStore->CriticalSection) {
-        LeaveCriticalSection(TraceStore->CriticalSection);
-    }
+    LeaveCriticalSection(&TraceStore->CriticalSection);
+
     return TRUE;
 }
 
@@ -699,9 +684,9 @@ DWORD
 GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
     // For each trace store, we also store a metadata trace store, hence the
-    // "NumberOfTraceStores * 2" part.  The subsequent "minus size of one
-    // trace store" accounts for the fact that the TRACE_STORES structure
-    // includes a single trace store structure, e.g.:
+    // "NumberOfTraceStores * 2" part.  The subsequent "minus size-of-1-trace-store"
+    // accounts for the fact that the TRACE_STORES structure includes a single trace
+    // store structure, e.g.:
     //      typedef struct _TRACE_STORES {
     //          ...
     //          TRACE_STORE Stores[1];
@@ -726,36 +711,30 @@ PrefaultFuturePageCallback(
 {
     PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
     PULONG FaultAddress;
-    EnterCriticalSection(&TraceStore->CritialSection);
+    EnterCriticalSection(&TraceStore->CriticalSection);
     RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
-    LeaveCriticalSection(&TraceStore->CritialSection);
+    LeaveCriticalSection(&TraceStore->CriticalSection);
     *FaultAddress = 0;
 }
 
-VOID
-CALLBACK
-ExtendTraceStoreFileCallback(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
-)
+BOOL
+ExtendTraceStoreFile(_Inout_ PTRACE_STORE TraceStore)
 {
     BOOL Success;
-    PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
     PTRACE_CONTEXT TraceContext = TraceStore->TraceContext;
-    PTRACE_STORE_MEMORY_MAP NextMemoryMap = &TraceStore->NextMemoryMap;
+    PTRACE_STORE_MEMORY_MAP NextMemoryMap = &TraceStore->NextTraceStoreMemoryMap;
     LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
     if (!NextMemoryMap->FileHandle) {
-        return;
+        return FALSE;
     }
 
     // We don't support extension of metadata stores at the moment.
     if (!TraceStore->MetadataStore) {
-        return;
+        return FALSE;
     }
 
-    EnterCriticalSection(&TraceStore->NextMemoryMap.CriticalSection);
+    EnterCriticalSection(&NextMemoryMap->CriticalSection);
 
     if (!RefreshTraceStoreMemoryMapFileInfo(NextMemoryMap)) {
         goto error;
@@ -865,10 +844,26 @@ ExtendTraceStoreFileCallback(
     TraceStore->NextTraceStoreMemoryMap.FileHandle = TraceStore->FileHandle;
 
 end:
-    SetEventWhenCallbackReturns(Instance, TraceStore->FileExtendedEvent);
+    
 error:
     LeaveCriticalSection(&TraceStore->NextTraceStoreMemoryMap.CriticalSection);
 }
+
+VOID
+CALLBACK
+ExtendTraceStoreFileCallback(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+)
+{
+
+    BOOL Success = ExtendTraceStoreFile((PTRACE_STORE)Context);
+    if (Success) {
+        SetEvent()
+
+}
+
 
 _Check_return_
 LPVOID
