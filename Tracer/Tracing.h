@@ -127,6 +127,7 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
     CRITICAL_SECTION    CriticalSection;    \
     HANDLE              FileHandle;         \
     FILE_STANDARD_INFO  FileInfo;           \
+    LARGE_INTEGER       CurrentFilePointer; \
     HANDLE              MappingHandle;      \
     LARGE_INTEGER       MappingSize;        \
     PVOID               BaseAddress;        \
