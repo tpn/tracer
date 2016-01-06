@@ -131,11 +131,10 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
     HANDLE              MappingHandle;      \
     LARGE_INTEGER       MappingSize;        \
     PVOID               BaseAddress;        \
-    PVOID               PrefaultAddress;    \
-    PVOID               ExtendAtAddress;    \
-    PVOID               EndAddress;         \
     PVOID               PrevAddress;        \
     PVOID               NextAddress;
+
+#define TRACE_STORE_COPY_FROM_FIELD FileHandle
 
 typedef struct _TRACE_STORE_MEMORY_MAP {
     _TRACE_STORE_MEMORY_MAP_HEAD
@@ -427,6 +426,11 @@ TRACER_API
 BOOL
 FlushTraceStores(PTRACE_CONTEXT TraceContext);
 
+TRACER_API
+VOID
+SubmitTraceStoreFileExtensionThreadpoolWork(
+    _Inout_     PTRACE_STORE    TraceStore
+);
 
 TRACER_API
 VOID

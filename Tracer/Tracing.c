@@ -259,32 +259,13 @@ InitializeStore(
         goto error;
     }
 
-
     //
-    // If the allocated size of the underlying file is less than our desired
-    // mapping size (which is primed by the InitialSize parameter), extend the
-    // file to that length via SetEndOfFile().
+    // Extend the file if necessary.
     //
-    if (TraceStore->FileInfo.AllocationSize.QuadPart < TraceStore->MappingSize.QuadPart) {
+    if (TraceStore->FileInfo.EndOfFile.QuadPart < TraceStore->MappingSize.QuadPart) {
 
-        //
-        // Extend the file.
-        //
         if (!SetEndOfFile(TraceStore->FileHandle)) {
             goto error;
-        }
-
-    }
-    // Alternatively, if we're not a metadata trace store (in which case, TraceStore->MetadataStore
-    // would be NULL), if the existing file has a size greater than the initial size, use a larger
-    // mapping size, provided it's under our maximum mapping size.
-    else if (TraceStore->MetadataStore &&
-             TraceStore->FileInfo.AllocationSize.QuadPart > TraceStore->MappingSize.QuadPart) {
-
-        TraceStore->MappingSize.QuadPart = TraceStore->FileInfo.AllocationSize.QuadPart;
-
-        if (TraceStore->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
-            TraceStore->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
         }
     }
 
@@ -315,8 +296,6 @@ InitializeStore(
 
     TraceStore->PrevAddress = NULL;
     TraceStore->NextAddress = TraceStore->BaseAddress;
-    TraceStore->EndAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress,
-                                                       TraceStore->MappingSize.LowPart);
 
     TraceStore->AllocateRecords = AllocateRecords;
 
@@ -338,13 +317,6 @@ InitializeStore(
         &TraceStore->LastTraceStoreMemoryMap.CriticalSection,
         DefaultTraceStoreCriticalSectionSpinCount
     );
-
-    //
-    // We submit a file extension threadpool work when we're "InitialSize"-bytes away
-    // from the end address.  This will probably need tuning.
-    //
-    TraceStore->ExtendAtAddress = (PVOID)RtlOffsetFromPointer(TraceStore->EndAddress,
-                                                              TraceStore->InitialSize.LowPart);
 
     //
     // For now, we only use a single file handle (i.e. single file) with
@@ -708,12 +680,12 @@ PrefaultFuturePageCallback(
     _Inout_     PTP_WORK                Work
 )
 {
-    PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
-    PULONG FaultAddress;
-    EnterCriticalSection(&TraceStore->CriticalSection);
-    RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
-    LeaveCriticalSection(&TraceStore->CriticalSection);
-    *FaultAddress = 0;
+    //PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
+    //PULONG FaultAddress;
+    //EnterCriticalSection(&TraceStore->CriticalSection);
+    //RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
+    //LeaveCriticalSection(&TraceStore->CriticalSection);
+    //*FaultAddress = 0;
 }
 
 BOOL
@@ -734,7 +706,14 @@ ExtendTraceStoreFile(_Inout_ PTRACE_STORE TraceStore)
         return FALSE;
     }
 
-    EnterCriticalSection(&NextMemoryMap->CriticalSection);
+    //
+    // There will only ever be contention for this critical section
+    // when someone has (erroneously) submitted multiple file extension
+    // requests in quick succession.
+    //
+    if (!TryEnterCriticalSection(&NextMemoryMap->CriticalSection)) {
+        return FALSE;
+    }
 
     if (!RefreshTraceStoreMemoryMapFileInfo(NextMemoryMap)) {
         return FALSE;
@@ -763,9 +742,9 @@ ExtendTraceStoreFile(_Inout_ PTRACE_STORE TraceStore)
     }
 
     //
-    // If the current file pointer is past the file's allocated size, extend the file.
+    // If the current file pointer is past the end of the file, extend the file.
     //
-    if (NextMemoryMap->FileInfo.AllocationSize.QuadPart < NextMemoryMap->CurrentFilePointer.QuadPart) {
+    if (NextMemoryMap->FileInfo.EndOfFile.QuadPart < NextMemoryMap->CurrentFilePointer.QuadPart) {
 
         if (!SetEndOfFile(NextMemoryMap->FileHandle)) {
             goto error;
@@ -796,9 +775,7 @@ ExtendTraceStoreFile(_Inout_ PTRACE_STORE TraceStore)
     }
 
     NextMemoryMap->PrevAddress = NULL;
-    NextMemoryMap->NextAddress = NextMemoryMap->BaseAddress;
-    NextMemoryMap->EndAddress = (PVOID)RtlOffsetToPointer(NextMemoryMap->BaseAddress,
-                                                          NextMemoryMap->MappingSize.LowPart);
+    NextMemoryMap->NextAddress = NULL;
 
     Result = TRUE;
     SetEvent(TraceStore->FileExtendedEvent);
@@ -819,13 +796,49 @@ ExtendTraceStoreFileCallback(
     _Inout_     PTP_WORK                Work
 )
 {
-
-    BOOL Success = ExtendTraceStoreFile((PTRACE_STORE)Context);
-    if (Success) {
-        SetEvent()
-
+    ExtendTraceStoreFile((PTRACE_STORE)Context);
 }
 
+VOID
+SubmitTraceStoreFileExtensionThreadpoolWork(
+    _Inout_     PTRACE_STORE    TraceStore
+)
+{
+    SubmitThreadpoolWork(TraceStore->ExtendFileWork);
+}
+
+VOID
+AdvanceTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
+{
+    PTRACE_STORE_MEMORY_MAP ThisMemoryMap = &TraceStore->TraceStoreMemoryMap;
+    PTRACE_STORE_MEMORY_MAP NextMemoryMap = &TraceStore->NextTraceStoreMemoryMap;
+    PTRACE_STORE_MEMORY_MAP LastMemoryMap = &TraceStore->LastTraceStoreMemoryMap;
+
+    EnterCriticalSection(&LastMemoryMap->CriticalSection);
+
+    LastMemoryMap->FileHandle = ThisMemoryMap->FileHandle;
+    LastMemoryMap->MappingHandle = ThisMemoryMap->MappingHandle;
+    LastMemoryMap->BaseAddress = ThisMemoryMap->BaseAddress;
+    LastMemoryMap->MappingSize.QuadPart = ThisMemoryMap->MappingSize.QuadPart;
+
+    LeaveCriticalSection(&LastMemoryMap->CriticalSection);
+    //SubmitThreadpoolWork(TraceStore->RetireLastMemoryMapWork);
+
+    EnterCriticalSection(&NextMemoryMap->CriticalSection);
+
+    ThisMemoryMap->FileHandle = NextMemoryMap->FileHandle;
+    ThisMemoryMap->MappingHandle = NextMemoryMap->MappingHandle;
+    ThisMemoryMap->BaseAddress = NextMemoryMap->BaseAddress;
+    ThisMemoryMap->PrevAddress = NULL;
+    ThisMemoryMap->NextAddress = NULL;
+    ThisMemoryMap->MappingSize.QuadPart = NextMemoryMap->MappingSize.QuadPart;
+
+    NextMemoryMap->MappingHandle = NULL;
+    NextMemoryMap->BaseAddress = NULL;
+
+    LeaveCriticalSection(&NextMemoryMap->CriticalSection);
+    SubmitThreadpoolWork(TraceStore->ExtendFileWork);
+}
 
 _Check_return_
 LPVOID
@@ -837,7 +850,9 @@ AllocateRecords(
 )
 {
     DWORD_PTR AllocationSize;
-    PVOID ReturnAddress = NULL, NextAddress = NULL;
+    PVOID ReturnAddress = NULL;
+    PVOID NextAddress;
+    PVOID EndAddress;
 
     if (!TraceStore) {
         return NULL;
@@ -870,26 +885,35 @@ AllocateRecords(
         goto end;
     }
 
-    NextAddress = (PVOID)((ULONG_PTR)TraceStore->NextAddress + AllocationSize);
+    NextAddress = (PVOID)RtlOffsetToPointer(TraceStore->NextAddress, AllocationSize);
+    EndAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress, TraceStore->MappingSize.LowPart);
 
-    if (NextAddress >= TraceStore->EndAddress) {
-        //TRACE_STORE_MEMORY_MAP NextMemoryMap;
-        // Need to copy over the NextMemoryMap details if created.
-        ++TraceStore->DroppedRecords;
-        goto end;
+    if (NextAddress >= EndAddress) {
+        if (WaitForSingleObject(TraceStore->FileExtendedEvent, 0) != WAIT_OBJECT_0) {
+            ++TraceStore->DroppedRecords;
+            goto end;
+        }
+
+        AdvanceTraceStoreMemoryMap(TraceStore);
+        NextAddress = (PVOID)RtlOffsetToPointer(TraceStore->BaseAddress, AllocationSize);
     }
-    else if (NextAddress >= TraceStore->PrefaultAddress) {
 
-
-    } else if (NextAddress >= TraceStore->ExtendAtAddress) {
-
-    }
+    //else if (NextAddress >= TraceStore->PrefaultAddress) {
+    //    SubmitThreadpoolWork(TraceStore->PrefaultFuturePageWork);
+    //}
 
     TraceStore->pMetadata->NumberOfRecords.QuadPart += NumberOfRecords.QuadPart;
 
     TraceStore->PrevAddress = TraceStore->NextAddress;
     TraceStore->NextAddress = NextAddress;
     ReturnAddress = TraceStore->PrevAddress;
+
+    // 
+    // If we advanced our trace store memory maps above, this will be null.
+    //
+    if (!ReturnAddress) {
+        ReturnAddress = TraceStore->BaseAddress;
+    }
 
 end:
     LeaveCriticalSection(&TraceStore->CriticalSection);
@@ -1004,6 +1028,8 @@ InitializeTraceContext(
         if (!TraceStore->ExtendFileWork) {
             return FALSE;
         }
+
+        SubmitThreadpoolWork(TraceStore->ExtendFileWork);
 
         TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
             &PrefaultFuturePageCallback,
