@@ -6,6 +6,14 @@ extern "C" {
 
 #include <Windows.h>
 
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
+
+#ifndef PAGE_ALIGN
+#define PAGE_ALIGN(Va) ((PVOID)((ULONG_PTR)(Va) & ~(PAGE_SIZE - 1)))
+#endif
+
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;

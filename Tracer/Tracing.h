@@ -52,8 +52,8 @@ typedef struct _TRACE_EVENT {
     DWORD           SequenceId;             //  4   24
     __declspec(align(8))
     union {
-        LARGE_INTEGER   liSystemTime;       //  8   32
-        FILETIME        ftSystemTime;
+        LARGE_INTEGER   liTimeStamp;        //  8   32
+        FILETIME        ftTimeStamp;
     };
     __declspec(align(8))
     union {
@@ -158,6 +158,7 @@ typedef struct _TRACE_STORE {
     };
 
     TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
+    TRACE_STORE_MEMORY_MAP  PrevTraceStoreMemoryMap;
     TRACE_STORE_MEMORY_MAP  LastTraceStoreMemoryMap;
 
     PTRACE_STORE            MetadataStore;
@@ -375,6 +376,7 @@ typedef struct _TRACE_CONTEXT {
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
     PSYSTEM_TIMER_FUNCTION      SystemTimerFunction;
+    LARGE_INTEGER               PerformanceCounterFrequency;
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
@@ -481,6 +483,27 @@ AllocateRecords(
     _In_    PTRACE_STORE    TraceStore,
     _In_    ULARGE_INTEGER  RecordSize,
     _In_    ULARGE_INTEGER  NumberOfRecords
+);
+
+TRACER_API
+BOOL
+WriteRecords(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    ULARGE_INTEGER  RecordSize,
+    _In_    ULARGE_INTEGER  NumberOfRecords,
+    _In_    PVOID           FirstRecord,
+    _In_    PVOID          *DestinationAddress
+);
+
+TRACER_API
+LPVOID
+WriteBytes(
+    _In_     PTRACE_CONTEXT  TraceContext,
+    _In_     PTRACE_STORE    TraceStore,
+    _In_     ULARGE_INTEGER  NumberOfBytes,
+    _In_     PVOID           Buffer,
+    _In_opt_ PVOID          *DestinationAddress
 );
 
 TRACER_API

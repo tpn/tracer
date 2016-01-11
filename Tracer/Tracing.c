@@ -680,12 +680,24 @@ PrefaultFuturePageCallback(
     _Inout_     PTP_WORK                Work
 )
 {
-    //PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
-    //PULONG FaultAddress;
-    //EnterCriticalSection(&TraceStore->CriticalSection);
-    //RtlCopyMemory(&FaultAddress, TraceStore->PrefaultAddress, sizeof(PULONG));
-    //LeaveCriticalSection(&TraceStore->CriticalSection);
-    //*FaultAddress = 0;
+    PTRACE_STORE TraceStore = (PTRACE_STORE)Context;
+    PCHAR FaultAddress;
+    PCHAR EndAddress;
+    
+    if (!TryEnterCriticalSection(&TraceStore->CriticalSection)) {
+        return;
+    }
+
+    FaultAddress = PAGE_ALIGN(RtlOffsetToPointer(TraceStore->NextAddress, PAGE_SIZE));
+    EndAddress = RtlOffsetToPointer(TraceStore->BaseAddress, TraceStore->MappingSize.LowPart);
+    
+    LeaveCriticalSection(&TraceStore->CriticalSection);
+    
+    if (FaultAddress >= EndAddress) {
+        return;
+    }
+
+    *(volatile *)FaultAddress;
 }
 
 BOOL
@@ -812,7 +824,32 @@ AdvanceTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
 {
     PTRACE_STORE_MEMORY_MAP ThisMemoryMap = &TraceStore->TraceStoreMemoryMap;
     PTRACE_STORE_MEMORY_MAP NextMemoryMap = &TraceStore->NextTraceStoreMemoryMap;
-    PTRACE_STORE_MEMORY_MAP LastMemoryMap = &TraceStore->LastTraceStoreMemoryMap;
+    PTRACE_STORE_MEMORY_MAP PrevMemoryMap = &TraceStore->PrevTraceStoreMemoryMap;
+    PTRACE_STORE_MEMORY_MAP PrevPrevMemoryMap = &TraceStore->PrevPrevTraceStoreMemoryMap;
+
+    EnterCriticalSection(&PrevMemoryMap->CriticalSection);
+
+    PrevPrevMemoryMap.FileHandle = PrevMemoryMap->FileHandle;
+    PrevPrevMemoryMap.MappingHandle = PrevMemoryMap->MappingHandle;
+    PrevPrevMemoryMap.BaseAddress = PrevMemoryMap->BaseAddress;
+    PrevPrevMemoryMap.MappingSize.QuadPart = PrevMemoryMap->MappingSize.QuadPart;
+
+    PrevMemoryMap->FileHandle = ThisMemoryMap->FileHandle;
+    PrevMemoryMap->MappingHandle = ThisMemoryMap->MappingHandle;
+    PrevMemoryMap->BaseAddress = ThisMemoryMap->BaseAddress;
+    PrevMemoryMap->MappingSize.QuadPart = ThisMemoryMap->MappingSize.QuadPart;
+    
+    LeaveCriticalSection(&PrevMemoryMap->CriticalSection);
+
+
+
+    LastMemoryMap->FileHandle = PrevMemoryMap->FileHandle;
+    LastMemoryMap->MappingHandle = PrevMemoryMap->MappingHandle;
+    LastMemoryMap->BaseAddress = PrevMemoryMap->BaseAddress;
+    LastMemoryMap->MappingSize.QuadPart = PrevMemoryMap->MappingSize.QuadPart;
+
+    LeaveCriticalSection(&LastMemoryMap->CriticalSection);
+    //SubmitThreadpoolWork(TraceStore->RetireLastMemoryMapWork);
 
     EnterCriticalSection(&LastMemoryMap->CriticalSection);
 
@@ -822,7 +859,6 @@ AdvanceTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     LastMemoryMap->MappingSize.QuadPart = ThisMemoryMap->MappingSize.QuadPart;
 
     LeaveCriticalSection(&LastMemoryMap->CriticalSection);
-    //SubmitThreadpoolWork(TraceStore->RetireLastMemoryMapWork);
 
     EnterCriticalSection(&NextMemoryMap->CriticalSection);
 
@@ -1011,6 +1047,8 @@ InitializeTraceContext(
     TraceContext->SequenceId = 1;
     TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
+
+    QueryPerformanceFrequency(&TraceContext->PerformanceCounterFrequency);
 
     for (Index = 0; Index < TraceStores->NumberOfTraceStores * 2; Index += 2) {
         PTRACE_STORE TraceStore = &TraceStores->Stores[Index];
