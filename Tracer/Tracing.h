@@ -123,6 +123,17 @@ typedef struct _TRACE_STORE_THREADPOOL {
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
+typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP_LIST_ITEM {
+    __declspec(align(16)) SLIST_ENTRY   ListEntry;          // 16       16
+    __declspec(align(8))  HANDLE        FileHandle;         // 8        24
+    __declspec(align(8))  HANDLE        MappingHandle;      // 8        30
+    __declspec(align(8))  LARGE_INTEGER MappingSize;        // 8        38
+    __declspec(align(8))  PVOID         BaseAddress;        // 8        46
+    __declspec(align(8))  PVOID         PrevAddress;        // 8        54
+    __declspec(align(8))  PVOID         NextAddress;        // 8        60
+    __declspec(align(4))  ULONG         Unused;             // 4        64
+} TRACE_STORE_MEMORY_MAP_LIST_ITEM, *PTRACE_STORE_MEMORY_MAP_LIST_ITEM;
+
 #define _TRACE_STORE_MEMORY_MAP_HEAD        \
     CRITICAL_SECTION    CriticalSection;    \
     HANDLE              FileHandle;         \
@@ -148,7 +159,12 @@ typedef struct _TRACE_STORE {
     ULONG                   DroppedRecords;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                ExtendFileWork;
+    PTP_WORK                RetireOldMemoryMapWork;
     HANDLE                  FileExtendedEvent;
+
+    SLIST_HEADER            OldMemoryMaps;
+    SLIST_HEADER            NextMemoryMaps;
+    SLIST_HEADER            FreeMemoryMaps;
 
     union {
         TRACE_STORE_MEMORY_MAP  TraceStoreMemoryMap;
@@ -159,7 +175,6 @@ typedef struct _TRACE_STORE {
 
     TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
     TRACE_STORE_MEMORY_MAP  PrevTraceStoreMemoryMap;
-    TRACE_STORE_MEMORY_MAP  LastTraceStoreMemoryMap;
 
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
@@ -379,6 +394,7 @@ typedef struct _TRACE_CONTEXT {
     LARGE_INTEGER               PerformanceCounterFrequency;
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
+    HANDLE                      HeapHandle;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 TRACER_API
@@ -400,6 +416,18 @@ BOOL
 InitializeTraceSession(
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
     _In_                                 PDWORD         SizeOfTraceSession
+);
+
+TRACER_API
+BOOL
+BindTraceStoreToTraceContext(
+    _Inout_ PTRACE_STORE TraceStore,
+    _Inout_ PTRACE_CONTEXT TraceContext
+);
+
+typedef BOOL (*PBINDTRACESTORETOTRACECONTEXT)(
+    _Inout_ PTRACE_STORE TraceStore,
+    _Inout_ PTRACE_CONTEXT TraceContext
 );
 
 typedef BOOL (*PINITIALIZETRACECONTEXT)(
