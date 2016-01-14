@@ -17,6 +17,8 @@ static const SIZE_T MaximumTraceContextHeapSize = (1 << 31); // 2GB
 
 static const USHORT InitialFreeMemoryMaps = 32;
 
+static const ULONG DefaultTraceStoreMappingSize = (1 << 21); // 2MB
+
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
 
@@ -232,28 +234,20 @@ BOOL
 InitializeStore(
     _In_        PCWSTR Path,
     _Inout_     PTRACE_STORE TraceStore,
-    _In_opt_    DWORD InitialSize
+    _In_opt_    ULONG InitialSize,
+    _In_opt_    ULONG MappingSize
 )
 {
     BOOL Success;
-    BOOL IsMetadataStore = FALSE;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
-    FILE_STANDARD_INFO FileInfo;
 
     if (!Path || !TraceStore) {
         return FALSE;
     }
 
-    if (!TraceStore->MemoryMap) {
-        return FALSE;
-    }
-
-    MemoryMap = TraceStore->MemoryMap;
-
-    if (!MemoryMap->FileHandle) {
+    if (!TraceStore->FileHandle) {
         // We're a metadata store.
         IsMetadataStore = TRUE;
-        MemoryMap->FileHandle = CreateFileW(
+        TraceStore->FileHandle = CreateFileW(
             Path,
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ,
@@ -268,7 +262,7 @@ InitializeStore(
         goto error;
     }
 
-    if (!RefreshTraceStoreFileInfo(TraceStore)) {
+    if (!RefreshTraceStoreFileInfo(TraceStore, &FileInfo)) {
         goto error;
     }
 
@@ -278,8 +272,12 @@ InitializeStore(
     TraceStore->ExtensionSize.LowPart = InitialSize;
     TraceStore->MaximumSize.QuadPart = 0LL;
 
+    if (!MappingSize) {
+        MappingSize = DefaultTraceStoreMappingSize;
+    }
+
     TraceStore->MappingSize.HighPart = 0;
-    TraceStore->MappingSize.LowPart = InitialSize;
+    TraceStore->MappingSize.LowPart = MappingSize;
 
     //
     // Cap the mapping size to the maximum if necessary.
@@ -287,6 +285,23 @@ InitializeStore(
     if (TraceStore->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
         TraceStore->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
     }
+
+    TraceStore->AllocateRecords = AllocateRecords;
+
+    return TRUE;
+error:
+    CloseTraceStore(TraceStore);
+    return FALSE;
+}
+
+VOID
+BindStore(
+    _Inout_     PTRACE_STORE TraceStore,
+    _In_opt_    ULONG InitialSize,
+    _In_opt_    ULONG MappingSize
+)
+{
+    BOOL Success;
 
     Success = SetFilePointerEx(TraceStore->FileHandle,
                                TraceStore->MappingSize,
@@ -335,7 +350,6 @@ InitializeStore(
     TraceStore->PrevAddress = NULL;
     TraceStore->NextAddress = TraceStore->BaseAddress;
 
-    TraceStore->AllocateRecords = AllocateRecords;
 
     InitializeCriticalSectionAndSpinCount(
         &TraceStore->CriticalSection,
@@ -1129,7 +1143,7 @@ AllocateRecords(
 
         NextMemoryMap->FileHandle = MemoryMap->FileHandle;
         NextMemoryMap->FileOffset.QuadPart += MemoryMap->MappingSize.QuadPart;
-        NextMemoryMap->MappingSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+        NextMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
 
         PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMap, NextMemoryMap);
         SubmitThreadpoolWork(&TraceStore->PrepareNextMemoryMapWork);
@@ -1248,6 +1262,7 @@ BindTraceStoreToTraceContext(
     _Inout_ PTRACE_CONTEXT TraceContext
 )
 {
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
 
     if (!TraceStore) {
         return FALSE;
@@ -1272,13 +1287,17 @@ BindTraceStoreToTraceContext(
         return FALSE;
     }
 
+    if (!PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, &FirstMemoryMap)) {
+        return FALSE;
+    }
+
     TraceStore->FileExtendedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!TraceStore->FileExtendedEvent) {
         return FALSE;
     }
 
     TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
-        &ExtendTraceStoreFileCallback,
+        &PrepareNextTraceStoreMemoryMapCallback,
         TraceStore,
         TraceContext->ThreadpoolCallbackEnvironment
     );
@@ -1286,8 +1305,6 @@ BindTraceStoreToTraceContext(
     if (!TraceStore->PrepareNextMemoryMapWork) {
         return FALSE;
     }
-
-    SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
 
     TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
         &PrefaultFuturePageCallback,
@@ -1310,6 +1327,13 @@ BindTraceStoreToTraceContext(
     }
 
     TraceStore->TraceContext = TraceContext;
+
+    FirstMemoryMap->FileHandle = TraceStore->FileHandle;
+    FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
+
+    PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMap, FirstMemoryMap);
+    SubmitThreadpoolWork(&TraceStore->PrepareNextMemoryMapWork);
+
 
     return TRUE;
 }

@@ -150,15 +150,15 @@ C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
 
 #define TRACE_STORE_COPY_FROM_FIELD FileHandle
 
-typedef struct _TRACE_STORE__MEMORY_MAP {
-    _TRACE_STORE_MEMORY_MAP_HEAD
-} TRACE_STORE__MEMORY_MAP, *PTRACE_STORE__MEMORY_MAP;
+//typedef struct _TRACE_STORE__MEMORY_MAP {
+//    _TRACE_STORE_MEMORY_MAP_HEAD
+//} TRACE_STORE__MEMORY_MAP, *PTRACE_STORE__MEMORY_MAP;
 
 typedef struct _TRACE_STORE {
     PTRACE_CONTEXT          TraceContext;               //  8       8
     LARGE_INTEGER           InitialSize;                //  8       16
     LARGE_INTEGER           ExtensionSize;              //  8       24
-    LARGE_INTEGER           MaximumSize;                //  8       32
+    LARGE_INTEGER           MappingSize;                //  8       32
     PTP_WORK                PrefaultFuturePageWork;     //  8       40
     PTP_WORK                PrepareNextMemoryMapWork;   //  8       48
     PTP_WORK                ReleasePrevMemoryMapWork;   //  8       56
@@ -175,6 +175,8 @@ typedef struct _TRACE_STORE {
     ULONG DroppedRecords;                               //  4       148
     ULONG ExhaustedFreeMemoryMaps;                      //  4       152
     ULONG AllocationsOutpacingNextMemoryMapPreparation; //  4       152
+
+    HANDLE FileHandle;
 
     /*
     union {
@@ -222,7 +224,7 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const DWORD InitialTraceStoreFileSizes[] = {
+static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
     10 << 20,   // frames
     10 << 20,   // modules
