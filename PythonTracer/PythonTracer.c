@@ -16,7 +16,6 @@ PyTraceCallbackDummy(
     return 0;
 }
 
-
 LONG
 PyTraceCallbackBasic(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
@@ -136,7 +135,7 @@ PyTraceCallbackBasic(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }
@@ -256,7 +255,7 @@ PyTraceCallbackFast(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }

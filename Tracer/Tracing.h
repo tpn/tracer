@@ -22,6 +22,8 @@ extern "C" {
 
 #include "stdafx.h"
 
+//typedef struct FILE_STANDARD_INFO *PFILE_STANDARD_INFO;
+
 /*
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -103,8 +105,8 @@ typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
-    _In_    ULARGE_INTEGER  RecordSize,
-    _In_    ULARGE_INTEGER  NumberOfRecords
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords
 );
 
 typedef BOOL (*PGET_ALLOCATION_SIZE)(
@@ -124,7 +126,13 @@ typedef struct _TRACE_STORE_THREADPOOL {
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
 typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP {
-    __declspec(align(16)) SLIST_ENTRY   ListEntry;          // 16       16
+    union {
+        __declspec(align(16)) SLIST_ENTRY   ListEntry;      // 16       16
+        struct {
+            __declspec(align(8)) PVOID      PrevAddress;
+            __declspec(align(8)) PVOID      Unused1;
+        };
+    };
     __declspec(align(8))  HANDLE        FileHandle;         // 8        24
     __declspec(align(8))  HANDLE        MappingHandle;      // 8        32
     __declspec(align(8))  LARGE_INTEGER FileOffset;         // 8        40
@@ -155,28 +163,30 @@ C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
 //} TRACE_STORE__MEMORY_MAP, *PTRACE_STORE__MEMORY_MAP;
 
 typedef struct _TRACE_STORE {
+    SLIST_HEADER            CloseMemoryMaps;            //  16      80
+    SLIST_HEADER            PrepareMemoryMaps;          //  16      96
+    SLIST_HEADER            NextMemoryMaps;             //  16      112
+    SLIST_HEADER            FreeMemoryMaps;             //  16      128
+    SLIST_HEADER            PrefaultMemoryMaps;         //  16      134
+
     PTRACE_CONTEXT          TraceContext;               //  8       8
     LARGE_INTEGER           InitialSize;                //  8       16
     LARGE_INTEGER           ExtensionSize;              //  8       24
     LARGE_INTEGER           MappingSize;                //  8       32
     PTP_WORK                PrefaultFuturePageWork;     //  8       40
     PTP_WORK                PrepareNextMemoryMapWork;   //  8       48
-    PTP_WORK                ReleasePrevMemoryMapWork;   //  8       56
-    HANDLE                  FileExtendedEvent;          //  8       64
+    PTP_WORK                CloseMemoryMapWork;         //  8       56
+    HANDLE                  NextMemoryMapAvailableEvent;//  8       64
 
-    SLIST_HEADER            ReleaseMemoryMaps;          //  16      80
-    SLIST_HEADER            PrepareMemoryMaps;          //  16      96
-    SLIST_HEADER            FreeMemoryMaps;             //  16      112
-
-    PTRACE_STORE_MEMORY_MAP PrevMemoryMap;              //  8       120
-    PTRACE_STORE_MEMORY_MAP MemoryMap;                  //  8       128
-    volatile PTRACE_STORE_MEMORY_MAP NextMemoryMap;     //  8       136
+    PTRACE_STORE_MEMORY_MAP PrevMemoryMap;              //  8       130
+    PTRACE_STORE_MEMORY_MAP MemoryMap;                  //  8       138
 
     ULONG DroppedRecords;                               //  4       148
     ULONG ExhaustedFreeMemoryMaps;                      //  4       152
     ULONG AllocationsOutpacingNextMemoryMapPreparation; //  4       152
 
     HANDLE FileHandle;
+    PVOID PrevAddress;
 
     /*
     union {
@@ -507,7 +517,7 @@ LPVOID
 GetNextRecord(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore,
-    ULARGE_INTEGER RecordSize
+    PULARGE_INTEGER RecordSize
 );
 
 TRACER_API
@@ -523,8 +533,8 @@ LPVOID
 AllocateRecords(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
-    _In_    ULARGE_INTEGER  RecordSize,
-    _In_    ULARGE_INTEGER  NumberOfRecords
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords
 );
 
 TRACER_API
@@ -546,6 +556,12 @@ WriteBytes(
     _In_     ULARGE_INTEGER  NumberOfBytes,
     _In_     PVOID           Buffer,
     _In_opt_ PVOID          *DestinationAddress
+);
+
+TRACER_API
+PVOID
+GetPreviousAllocationAddress(
+    _In_ PTRACE_STORE TraceStore
 );
 
 TRACER_API
