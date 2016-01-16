@@ -16,7 +16,6 @@ PyTraceCallbackDummy(
     return 0;
 }
 
-
 LONG
 PyTraceCallbackBasic(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
@@ -102,9 +101,9 @@ PyTraceCallbackBasic(
     SystemTimerFunction = TraceContext->SystemTimerFunction;
 
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
-        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event.ftSystemTime);
+        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event.ftTimeStamp);
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        SystemTimerFunction->NtQuerySystemTime(&Event.liSystemTime);
+        SystemTimerFunction->NtQuerySystemTime(&Event.liTimeStamp);
     }
 
 #ifdef _M_X64
@@ -136,7 +135,7 @@ PyTraceCallbackBasic(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }
@@ -199,14 +198,19 @@ PyTraceCallbackFast(
 
     Events = &TraceStores->Stores[0];
 
+    LastEvent = (PTRACE_EVENT)Events->PrevAddress;
+
     if (EventType == TraceEventType_PyTrace_LINE) {
         //
         // Get the actual line number if we're a trace event.
         //
         Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
 
-        LastEvent = (PTRACE_EVENT)Events->PrevAddress;
-
+        //
+        // List and dict comprehensions register a line event for each iteration.
+        // Rather than creating a separate event for each line trace, we increment
+        // the line count of the previous event if it's present.
+        //
         if (LastEvent &&
             LastEvent->EventType == TraceEventType_PyTrace_LINE &&
             LastEvent->LineNumber == Event.LineNumber &&
@@ -220,7 +224,7 @@ PyTraceCallbackFast(
         }
     }
 
-    // Event.SystemTime
+    QueryPerformanceCounter(&Event.liTimeStamp);
 
 #ifdef _M_X64
     Event.ProcessId = __readgsdword(0x40);
@@ -251,7 +255,7 @@ PyTraceCallbackFast(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }
