@@ -165,10 +165,17 @@ PyTraceCallbackFast(
     ULARGE_INTEGER RecordSize = { sizeof(Event) };
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
-    Python = PythonTraceContext->Python;
-    TraceContext = PythonTraceContext->TraceContext;
-    TraceStores = TraceContext->TraceStores;
     CodeObject = FrameObject->Code;
+
+    if (PythonTraceContext->FunctionObject) {
+        if (PythonTraceContext->FunctionObject->Code != CodeObject) {
+            return 0;
+        }
+    }
+
+    TraceContext = PythonTraceContext->TraceContext;
+    Python = PythonTraceContext->Python;
+    TraceStores = TraceContext->TraceStores;
 
     Event.Version = 1;
     Event.EventType = (USHORT)EventType;
@@ -289,6 +296,7 @@ InitializePythonTraceContext(
     }
 
     if (*SizeOfPythonTraceContext < sizeof(*PythonTraceContext)) {
+        *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
         return FALSE;
     }
 
@@ -407,6 +415,25 @@ StopProfiling(
     }
 
     Python->PyEval_SetProfile(NULL, NULL);
+
+    return TRUE;
+}
+
+BOOL
+AddFunction(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_    PVOID                   FunctionObject
+)
+{
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    if (!FunctionObject) {
+        return FALSE;
+    }
+
+    PythonTraceContext->FunctionObject = (PPYFUNCTIONOBJECT)FunctionObject;
 
     return TRUE;
 }
