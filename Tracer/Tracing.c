@@ -1132,7 +1132,7 @@ AllocateRecords(
 
     } else {
 
-        ReturnAddress = MemoryMap->PrevAddress = MemoryMap->NextAddress;
+        ReturnAddress = MemoryMap->PrevAddress = TraceStore->PrevAddress = MemoryMap->NextAddress;
         MemoryMap->NextAddress = NextAddress;
 
     }
