@@ -188,18 +188,6 @@ typedef struct _TRACE_STORE {
     HANDLE FileHandle;
     PVOID PrevAddress;
 
-    /*
-    union {
-        TRACE_STORE_MEMORY_MAP  TraceStoreMemoryMap;
-        struct {
-            _TRACE_STORE_MEMORY_MAP_HEAD
-        };
-    };
-
-    TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
-    TRACE_STORE_MEMORY_MAP  PrevTraceStoreMemoryMap;
-    */
-
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
     union {
