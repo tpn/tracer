@@ -503,7 +503,7 @@ CloseMemoryMap(_In_ PTRACE_STORE_MEMORY_MAP MemoryMap)
 
     if (MemoryMap->BaseAddress) {
         FlushViewOfFile(MemoryMap->BaseAddress, 0);
-        UnmapViewOfFile(MemoryMap->BaseAddress);  
+        UnmapViewOfFile(MemoryMap->BaseAddress);
         MemoryMap->BaseAddress = NULL;
     }
 
@@ -962,7 +962,7 @@ RecordTraceStoreAllocation(
             Metadata = (PTRACE_STORE_METADATA)Address;
             Metadata->RecordSize.QuadPart = MetadataRecordSize.QuadPart;
             Metadata->NumberOfRecords.QuadPart = 0;
-            
+
             TraceStore->pMetadata = Metadata;
         }
 
