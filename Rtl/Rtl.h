@@ -80,9 +80,15 @@ typedef struct _RTL {
 
 } RTL, *PRTL, **PPRTL;
 
-#define RtlOffsetToPointer(B,O)    ((PCHAR)( ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
-#define RtlOffsetFromPointer(B,O)  ((PCHAR)( ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
-#define RtlPointerToOffset(B,P)    ((ULONG)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
+#define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
+#define RtlPointerToOffset(B,P)    ((ULONG_PTR)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
+
+#define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
+#define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
+
+#define ALIGN_DOWN(Address, Alignment) ((ULONG_PTR)(Address) & ~((ULONG_PTR)(Alignment)-1))
+#define ALIGN_UP(Address, Alignment) (ALIGN_DOWN((Address) + (Alignment) - 1), (Alignment))
 
 #ifdef __cpp
 } // extern "C"
