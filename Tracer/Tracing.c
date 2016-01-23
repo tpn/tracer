@@ -635,8 +635,6 @@ GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 VOID
 PrefaultFutureTraceStorePage(_Inout_ PTRACE_STORE TraceStore)
 {
-    PCHAR FaultAddress;
-    PCHAR EndAddress;
     PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
 
     if (!TraceStore) {
@@ -647,14 +645,9 @@ PrefaultFutureTraceStorePage(_Inout_ PTRACE_STORE TraceStore)
         return;
     }
 
-    FaultAddress = PAGE_ALIGN(RtlOffsetToPointer(PrefaultMemoryMap->NextAddress, PAGE_SIZE));
-    EndAddress = RtlOffsetToPointer(PrefaultMemoryMap->BaseAddress, PrefaultMemoryMap->MappingSize.LowPart);
+    PrefaultPage(PrefaultMemoryMap->NextAddress);
 
-    if (FaultAddress >= EndAddress) {
-        return;
-    }
-
-    *(volatile *)FaultAddress;
+    ReturnFreeTraceStoreMemoryMap(TraceStore, PrefaultMemoryMap);
 }
 
 VOID
@@ -762,6 +755,13 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     }
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
+
+    //
+    // Prefault the first two pages.  The AllocateRecords function will
+    // take care of prefaulting subsequent pages.
+    //
+    PrefaultPage(MemoryMap->BaseAddress);
+    PrefaultNextPage(MemoryMap->BaseAddress);
 
     Result = TRUE;
     PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
@@ -1083,6 +1083,8 @@ AllocateRecords(
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
     PVOID EndAddress;
+    PVOID PrevPage;
+    PVOID NextPage;
 
     if (!TraceStore) {
         return NULL;
@@ -1131,6 +1133,37 @@ AllocateRecords(
         MemoryMap->NextAddress = (PVOID)RtlOffsetToPointer(MemoryMap->BaseAddress, AllocationSize);
 
     } else {
+
+        //
+        // If this allocation cross a page boundary, we prefault the page
+        // after the next page in a separate thread (as long as it's still
+        // within our allocated range).
+        //
+        PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
+        NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
+
+        if (PrevPage != NextPage) {
+
+            PVOID PageAfterNextPage = (PVOID)((ULONG_PTR)NextPage + PAGE_SIZE);
+
+            if (PageAfterNextPage < EndAddress) {
+
+                PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
+
+                if (PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, &PrefaultMemoryMap)) {
+
+                    //
+                    // Prefault the page after the next page after this
+                    // address.  That is, prefault the page that is two
+                    // pages away from whatever page NextAddress is in.
+                    //
+                    PrefaultMemoryMap->NextAddress = PageAfterNextPage;
+
+                    PushTraceStoreMemoryMap(&TraceStore->PrefaultMemoryMaps, PrefaultMemoryMap);
+                    SubmitThreadpoolWork(TraceStore->PrefaultFuturePageWork);
+                }
+            }
+        }
 
         ReturnAddress = MemoryMap->PrevAddress = TraceStore->PrevAddress = MemoryMap->NextAddress;
         MemoryMap->NextAddress = NextAddress;
@@ -1382,6 +1415,12 @@ RegisterFunction(
 )
 {
 
+}
+
+VOID
+Debugbreak()
+{
+    __debugbreak();
 }
 
 #ifdef __cpp

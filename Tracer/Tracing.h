@@ -591,6 +591,10 @@ RegisterModule(
     _In_        PCWSTR          ModuleFilename
 );
 
+TRACER_API
+VOID
+Debugbreak();
+
 #ifdef __cpp
 } // extern "C"
 #endif
