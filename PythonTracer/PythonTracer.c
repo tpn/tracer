@@ -5,6 +5,8 @@ extern "C" {
 
 #include "PythonTracer.h"
 
+extern PVOID (*__C_specific_handler)();
+
 LONG
 PyTraceCallbackDummy(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
@@ -155,6 +157,7 @@ PyTraceCallbackFast(
     _In_opt_    PPYOBJECT               ArgObject
 )
 {
+    PRTL Rtl;
     PPYTHON Python;
     PPYOBJECT CodeObject;
     PTRACE_CONTEXT TraceContext;
@@ -173,6 +176,7 @@ PyTraceCallbackFast(
         }
     }
 
+    Rtl = PythonTraceContext->Rtl;
     TraceContext = PythonTraceContext->TraceContext;
     Python = PythonTraceContext->Python;
     TraceStores = TraceContext->TraceStores;
@@ -269,13 +273,16 @@ PyTraceCallbackFast(
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
-    RtlCopyMemory(EventRecord, &Event, sizeof(Event));
+    if (!Rtl->CopyToMappedMemory(EventRecord, &Event, sizeof(Event))) {
+        ++Events->DroppedRecords;
+    }
 
     return 0;
 }
 
 BOOL
 InitializePythonTraceContext(
+    _In_                                        PRTL                    Rtl,
     _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _Inout_                                     PULONG                  SizeOfPythonTraceContext,
     _In_                                        PPYTHON                 Python,
@@ -304,7 +311,12 @@ InitializePythonTraceContext(
         return FALSE;
     };
 
+    if (!Rtl) {
+        return FALSE;
+    }
+
     PythonTraceContext->Size = *SizeOfPythonTraceContext;
+    PythonTraceContext->Rtl = Rtl;
     PythonTraceContext->Python = Python;
     PythonTraceContext->TraceContext = TraceContext;
     PythonTraceContext->PythonTraceFunction = PythonTraceFunction;

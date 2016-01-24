@@ -291,6 +291,7 @@ error:
 
 BOOL
 InitializeTraceStore(
+    _In_        PRTL Rtl,
     _In_        PCWSTR Path,
     _Inout_     PTRACE_STORE TraceStore,
     _Inout_     PTRACE_STORE MetadataStore,
@@ -302,7 +303,7 @@ InitializeTraceStore(
     HRESULT Result;
     WCHAR MetadataPath[_OUR_MAX_PATH];
 
-    if (!Path || !TraceStore) {
+    if (!Path || !TraceStore || !Rtl) {
         return FALSE;
     }
 
@@ -324,6 +325,8 @@ InitializeTraceStore(
     if (FAILED(Result)) {
         return FALSE;
     }
+
+    TraceStore->Rtl = Rtl;
 
     // Create the data file first, before the :metadata stream.
     TraceStore->FileHandle = CreateFileW(
@@ -379,6 +382,7 @@ GetMetadataStoresFromTracesStores(
 
 BOOL
 InitializeTraceStores(
+    _In_        PRTL            Rtl,
     _In_        PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
@@ -409,6 +413,10 @@ InitializeTraceStores(
 
     if (!TraceStores || *SizeOfTraceStores < TraceStoresAllocationSize) {
         *SizeOfTraceStores = TraceStoresAllocationSize;
+        return FALSE;
+    }
+
+    if (!Rtl) {
         return FALSE;
     }
 
@@ -466,6 +474,8 @@ InitializeTraceStores(
         }
     }
 
+    TraceStores->Rtl = Rtl;
+
     for (Index = 0, StoreIndex = 0; Index < NumberOfTraceStores; Index++, StoreIndex += 2) {
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
         PTRACE_STORE MetadataStore = TraceStore+1;
@@ -478,6 +488,7 @@ InitializeTraceStores(
             return FALSE;
         }
         Success = InitializeTraceStore(
+            Rtl,
             Path,
             TraceStore,
             MetadataStore,
@@ -1187,6 +1198,7 @@ GetNextRecord(
 
 BOOL
 InitializeTraceSession(
+    _In_                                 PRTL           Rtl,
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
     _In_                                 PULONG         SizeOfTraceSession
 )
@@ -1209,6 +1221,8 @@ InitializeTraceSession(
     }
 
     SecureZeroMemory(TraceSession, sizeof(*TraceSession));
+
+    TraceSession->Rtl = Rtl;
 
     GetSystemTimeAsFileTime(&TraceSession->SystemTime);
     return TRUE;
@@ -1312,6 +1326,7 @@ BindTraceStoreToTraceContext(
 
 BOOL
 InitializeTraceContext(
+    _In_                                    PRTL                    Rtl,
     _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
     _In_                                    PULONG                  SizeOfTraceContext,
     _In_                                    PTRACE_SESSION          TraceSession,
@@ -1321,6 +1336,11 @@ InitializeTraceContext(
 )
 {
     USHORT Index;
+
+    if (!Rtl) {
+        return FALSE;
+    }
+
     if (!TraceContext) {
         if (SizeOfTraceContext) {
             *SizeOfTraceContext = sizeof(*TraceContext);
