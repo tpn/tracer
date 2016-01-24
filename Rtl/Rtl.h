@@ -65,9 +65,42 @@ CallSystemTimer(
     _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
 );
 
-typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(_In_ PCSZ String, _In_opt_ ULONG Base, _Out_ PULONG Value);
+typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
+    _In_ PCSZ String,
+    _In_opt_ ULONG Base,
+    _Out_ PULONG Value
+);
+
+typedef EXCEPTION_DISPOSITION (__cdecl *PCSPECIFICHANDLER)(
+    PEXCEPTION_RECORD ExceptionRecord,
+    ULONG_PTR Frame,
+    PCONTEXT Context,
+    struct _DISPATCHER_CONTEXT *Dispatch
+);
+
+#define _RTLFUNCTIONS_HEAD                                          \
+    PRTLCHARTOINTEGER RtlCharToInteger;                             \
+    PCSPECIFICHANDLER __C_specific_handler;
+
+typedef struct _RTLFUNCTIONS {
+    _RTLFUNCTIONS_HEAD
+} RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
+
+typedef PVOID (*PCOPYTOMAPPEDMEMORY)(
+    PVOID Destination,
+    LPCVOID Source,
+    SIZE_T Size
+);
+
+#define _RTLEXFUNCTIONS_HEAD \
+    PCOPYTOMAPPEDMEMORY CopyToMappedMemory;
+
+typedef struct _RTLEXFUNCTIONS {
+    _RTLEXFUNCTIONS_HEAD
+} RTLEXFUNCTIONS, *PRTLEXFUNCTIONS, **PPRTLEXFUNCTIONS;
 
 typedef struct _RTL {
+    ULONG       Size;
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
 
@@ -75,6 +108,20 @@ typedef struct _RTL {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
         struct {
             _SYSTEM_TIMER_FUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        RTLFUNCTIONS RtlFunctions;
+        struct {
+            _RTLFUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        RTLEXFUNCTIONS RtlExFunctions;
+        struct {
+            _RTLEXFUNCTIONS_HEAD
         };
     };
 
@@ -89,6 +136,23 @@ typedef struct _RTL {
 
 #define ALIGN_DOWN(Address, Alignment) ((ULONG_PTR)(Address) & ~((ULONG_PTR)(Alignment)-1))
 #define ALIGN_UP(Address, Alignment) (ALIGN_DOWN((Address) + (Alignment) - 1), (Alignment))
+
+#define RTL_API __declspec(dllexport)
+
+RTL_API
+BOOL
+InitializeRtl(
+    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_                   PULONG SizeOfRtl
+);
+
+RTL_API
+PVOID
+CopyToMappedMemory(
+    PVOID Destination,
+    LPCVOID Source,
+    SIZE_T Size
+);
 
 #ifdef __cpp
 } // extern "C"

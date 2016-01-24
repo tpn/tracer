@@ -1282,9 +1282,10 @@ typedef struct _PYTHONEXDATA {
 } PYTHONEXDATA, *PPYTHONEXDATA;
 
 typedef struct _PYTHON {
-    DWORD Size;
+    ULONG Size;
     HMODULE PythonModule;
     HMODULE PythonExModule;
+    PRTL Rtl;
 
     union {
         PYTHONFUNCTIONS PythonFunctions;
@@ -1336,9 +1337,17 @@ typedef struct _PYTHON {
     };
 } PYTHON, *PPYTHON, **PPPYTHON;
 
+typedef BOOL (*PINITIALIZEPYTHON)(
+    _In_                         PRTL        Rtl,
+    _In_                         HMODULE     PythonModule,
+    _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
+    _Inout_                      PDWORD      SizeOfPython
+);
+
 TRACER_API
 BOOL
 InitializePython(
+    _In_                         PRTL        Rtl,
     _In_                         HMODULE     PythonModule,
     _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
     _Inout_                      PDWORD      SizeOfPython
