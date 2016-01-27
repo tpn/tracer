@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ebb98965-02d5-48b2-96a2-0f9973a629a1}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>ez_setup.py</StartupFile>
+    <StartupFile>bin\tracer.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,35 +21,7 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="bin\tpn.py" />
-    <Compile Include="build\lib\tpn\cli.py" />
-    <Compile Include="build\lib\tpn\clipboard\pbcopy.py" />
-    <Compile Include="build\lib\tpn\clipboard\win32.py" />
-    <Compile Include="build\lib\tpn\clipboard\__init__.py" />
-    <Compile Include="build\lib\tpn\command.py" />
-    <Compile Include="build\lib\tpn\commandinvariant.py" />
-    <Compile Include="build\lib\tpn\commands.py" />
-    <Compile Include="build\lib\tpn\config.py" />
-    <Compile Include="build\lib\tpn\constants.py" />
-    <Compile Include="build\lib\tpn\debug.py" />
-    <Compile Include="build\lib\tpn\example_commands.py" />
-    <Compile Include="build\lib\tpn\invariant.py" />
-    <Compile Include="build\lib\tpn\kbhit.py" />
-    <Compile Include="build\lib\tpn\logic.py" />
-    <Compile Include="build\lib\tpn\path.py" />
-    <Compile Include="build\lib\tpn\pipe_win32.py" />
-    <Compile Include="build\lib\tpn\progressbar.py" />
-    <Compile Include="build\lib\tpn\util.py" />
-    <Compile Include="build\lib\tpn\visualstudio\commands.py" />
-    <Compile Include="build\lib\tpn\visualstudio\datrie.py" />
-    <Compile Include="build\lib\tpn\visualstudio\numpy.py" />
-    <Compile Include="build\lib\tpn\visualstudio\project.py" />
-    <Compile Include="build\lib\tpn\visualstudio\pyodbc.py" />
-    <Compile Include="build\lib\tpn\visualstudio\solution.py" />
-    <Compile Include="build\lib\tpn\visualstudio\templates.py" />
-    <Compile Include="build\lib\tpn\visualstudio\__init__.py" />
-    <Compile Include="build\lib\tpn\_version.py" />
-    <Compile Include="build\lib\tpn\__init__.py" />
+    <Compile Include="bin\tracer.py" />
     <Compile Include="ez_setup.py" />
     <Compile Include="lib\tracer\cli.py" />
     <Compile Include="lib\tracer\clipboard\pbcopy.py" />
@@ -73,7 +45,6 @@
     <Compile Include="lib\tracer\progressbar.py" />
     <Compile Include="lib\tracer\runvspyprof.py" />
     <Compile Include="lib\tracer\testprof.py" />
-    <Compile Include="lib\tracer\tracer.py" />
     <Compile Include="lib\tracer\util.py" />
     <Compile Include="lib\tracer\util_win32.py" />
     <Compile Include="lib\tracer\visualstudio\commands.py" />
@@ -93,11 +64,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="bin" />
-    <Folder Include="build\" />
-    <Folder Include="build\lib\" />
-    <Folder Include="build\lib\tpn" />
-    <Folder Include="build\lib\tpn\clipboard" />
-    <Folder Include="build\lib\tpn\visualstudio" />
     <Folder Include="lib\" />
     <Folder Include="lib\tracer" />
     <Folder Include="lib\tracer\clipboard" />
