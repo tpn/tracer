@@ -5,8 +5,6 @@ extern "C" {
 
 #include "PythonTracer.h"
 
-extern PVOID (*__C_specific_handler)();
-
 LONG
 PyTraceCallbackDummy(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
