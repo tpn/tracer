@@ -1,9 +1,26 @@
 #include "Rtl.h"
 
-PCSPECIFICHANDLER __C_specific_handler = NULL;
+INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
+
+PVECTORED_EXCEPTION_HANDLER VectoredExceptionHandler = NULL;
 
 INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
-INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
+
+LONG
+WINAPI
+CopyMappedMemoryVectoredExceptionHandler(
+_In_ PEXCEPTION_POINTERS ExceptionInfo
+)
+{
+    PCONTEXT Context = ExceptionInfo->ContextRecord;
+    PEXCEPTION_RECORD Exception = ExceptionInfo->ExceptionRecord;
+
+    if (Exception->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
 
 BOOL
 CALLBACK
@@ -13,8 +30,8 @@ SetCSpecificHandlerCallback(
     PVOID *lpContext
 )
 {
-    __C_specific_handler = (PCSPECIFICHANDLER)Parameter;
-    return TRUE;
+    VectoredExceptionHandler = AddVectoredExceptionHandler(1, CopyMappedMemoryVectoredExceptionHandler);
+    return (BOOL)VectoredExceptionHandler;
 }
 
 BOOL
@@ -137,15 +154,7 @@ CopyToMemoryMappedMemory(
     SIZE_T Size
 )
 {
-    __try {
- 
-        return memcpy(Destination, Source, Size);
-
-    } __except (GetExceptionCode() == EXCEPTION_IN_PAGE_ERROR ?
-                EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
-
-        return NULL;
-    }
+    return memcpy(Destination, Source, Size);
 }
 
 _Check_return_
