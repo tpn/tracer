@@ -315,40 +315,20 @@ class TestTracer(InvariantAwareCommand):
     def run(self):
         InvariantAwareCommand.run(self)
 
+
+class SqlLocalDb(InvariantAwareCommand):
+    """
+    Run the SqlLocalDB executable.
+    """
+    _verbose_ = True
+
+    def run(self):
+        InvariantAwareCommand.run(self)
         conf = self.conf
-        dllpath = self.options.profiler_dll
-        if not dllpath:
-            if self.options.use_debug_dlls:
-                dllpath = conf.ptvs_debug_dll_path
-            else:
-                dllpath = conf.ptvs_dll_path
 
-        import ctypes
-        from .wintypes import DWORD
-        from .dll import pytrace
+        sqllocaldb = conf.sqllocaldb_exe
 
-        dll = pytrace(path=dllpath)
-
-        basedir = ctypes.c_wchar_p(self._base_dir)
-
-        size = dll.GetTraceStoresAllocationSize()
-        stores = ctypes.create_string_buffer(size)
-
-        import pdb
-        if self.options.pause_before_starting:
-            dll.Debugbreak()
-            import pdb
-            pdb.set_trace()
-
-        dll.InitializeTraceStores(
-            basedir,
-            ctypes.pointer(stores),
-            ctypes.byref(size),
-            ctypes.c_void_p(0),
-        )
-
-        import ipdb
-        ipdb.set_trace()
-        self.dll = dll
+        func = getattr(sqllocaldb, self.args[0])
+        self._out(func(*self.args[1:]))
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
