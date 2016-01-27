@@ -162,6 +162,47 @@ class Config(RawConfigParser):
             raise ConfigObjectAlreadyCreated()
         CONFIG = self
 
+    def get_multiline_csv_as_list(self, section, name):
+        return self._csv_as_list(
+            self.get_multiline_to_single_line(section, name)
+        )
+
+    def get_csv_as_list(self, section, name):
+        return self._csv_as_list(self.get(section, name))
+        return [ n.strip() for n in csv.split(',') ]
+
+    def _csv_as_list(self, csv):
+        return [ n.strip() for n in csv.split(',') ]
+
+    def get_multiline_to_single_line(self, section, name):
+        return (
+            self.get(section, name)
+                .replace(os.linesep, '')
+                .replace('\\', '')
+                .strip()
+        )
+
+    def get_multiline(self, section, name):
+        # I'm sure there's a more efficient way of doing this.
+        value = self.get(section, name)
+        if not value:
+            return
+
+        output = list()
+        lines = value.split(os.linesep)
+        pattern = re.compile(r'(.+?)([\s]*\\)')
+        for line in lines:
+            if line.endswith('\\'):
+                matches = pattern.findall(line)
+                if matches:
+                    output.append(matches[0][0])
+            elif line:
+                output.append(line)
+
+        joined = '\n'.join(output)
+        return joined
+
+
     @classproperty
     @classmethod
     def namespace(cls):
@@ -457,5 +498,36 @@ class Config(RawConfigParser):
             self.get('tracer', 'tracer_pythontracer_debug_dll_path'),
         )
 
+    @property
+    @memoize
+    def sqllocaldb_versions(self):
+        versions = self.get_csv_as_list('sqllocaldb', 'versions')
+        return reversed(sorted(int(i) for i in versions))
+
+    @property
+    @memoize
+    def sqllocaldb_exe_path(self):
+        for version in self.sqllocaldb_versions:
+            name = 'sqllocaldb%d_exe' % version
+            exe_path = self.get('sqllocaldb', name)
+            if not exe_path:
+                raise ConfigError(
+                    "[sqllocaldb] section has no entry named %s; "
+                    "either remove the version or add the correct "
+                    "entry" % name
+                )
+            if isfile(exe_path):
+                return exe_path
+
+        raise RuntimeError(
+            "Could not find any instance sqllocaldb.exe installed. "
+            "See [sqllocaldb] configuration section."
+        )
+
+    @property
+    def sqllocaldb_exe(self):
+        from .util import ProcessWrapper
+        exe = ProcessWrapper(self.sqllocaldb_exe_path)
+        return exe
 
 # vim:set ts=8 sw=4 sts=4 tw=78 et:
