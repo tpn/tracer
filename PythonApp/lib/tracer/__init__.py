@@ -218,7 +218,7 @@ def rtl(path=None, dll=None):
 
     dll.InitializeRtl.restype = BOOL
     dll.InitializeRtl.argtypes = [
-        PRTL,
+        PVOID,
         PULONG,
     ]
 
