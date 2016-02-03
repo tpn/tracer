@@ -191,12 +191,8 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         return FALSE;
     }
 
-    if (!(Rtl->__C_specific_handler = (PCSPECIFICHANDLER)
-        GetProcAddress(Rtl->NtdllModule, "__C_specific_handler"))) {
-        return FALSE;
-    }
-
-    if (!SetCSpecificHandler(Rtl->__C_specific_handler)) {
+    if (!(Rtl->RtlInitializeGenericTable = (PRTL_INITIALIZE_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitializeGenericTable"))) {
         return FALSE;
     }
 
