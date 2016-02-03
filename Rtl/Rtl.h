@@ -363,14 +363,14 @@ typedef struct _RTLFUNCTIONS {
 // RtlEx functions.
 //
 
-typedef PVOID (*PCOPYTOMAPPEDMEMORY)(
+typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
 );
 
 #define _RTLEXFUNCTIONS_HEAD \
-    PCOPYTOMAPPEDMEMORY CopyToMappedMemory;
+    PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -417,6 +417,10 @@ typedef struct _RTL {
 #define RTL_API __declspec(dllexport)
 
 RTL_API
+VOID
+Debugbreak();
+
+RTL_API
 BOOL
 InitializeRtl(
     _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
@@ -425,7 +429,7 @@ InitializeRtl(
 
 RTL_API
 PVOID
-CopyToMappedMemory(
+CopyToMemoryMappedMemory(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
