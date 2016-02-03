@@ -215,8 +215,8 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CopyToMappedMemory = (PCOPYTOMAPPEDMEMORY)
-        GetProcAddress(RtlExModule, "CopyToMappedMemory"))) {
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
+        GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
         return FALSE;
     }
 
@@ -298,4 +298,10 @@ InitializeRtl(
     }
 
     return TRUE;
+}
+
+VOID
+Debugbreak()
+{
+    __debugbreak();
 }
