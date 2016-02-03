@@ -200,6 +200,16 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
 }
 
 
+BOOLEAN
+RtlCheckBit(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG BitPosition
+    )
+{
+    return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
+}
+
+
 _Check_return_
 BOOL
 LoadRtlExFunctions(
