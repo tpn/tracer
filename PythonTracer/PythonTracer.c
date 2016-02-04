@@ -16,7 +16,6 @@ PyTraceCallbackDummy(
     return 0;
 }
 
-
 LONG
 PyTraceCallbackBasic(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
@@ -102,9 +101,9 @@ PyTraceCallbackBasic(
     SystemTimerFunction = TraceContext->SystemTimerFunction;
 
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
-        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event.ftSystemTime);
+        SystemTimerFunction->GetSystemTimePreciseAsFileTime(&Event.ftTimeStamp);
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        SystemTimerFunction->NtQuerySystemTime(&Event.liSystemTime);
+        SystemTimerFunction->NtQuerySystemTime(&Event.liTimeStamp);
     }
 
 #ifdef _M_X64
@@ -136,7 +135,7 @@ PyTraceCallbackBasic(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }
@@ -156,6 +155,7 @@ PyTraceCallbackFast(
     _In_opt_    PPYOBJECT               ArgObject
 )
 {
+    PRTL Rtl;
     PPYTHON Python;
     PPYOBJECT CodeObject;
     PTRACE_CONTEXT TraceContext;
@@ -166,10 +166,18 @@ PyTraceCallbackFast(
     ULARGE_INTEGER RecordSize = { sizeof(Event) };
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
-    Python = PythonTraceContext->Python;
-    TraceContext = PythonTraceContext->TraceContext;
-    TraceStores = TraceContext->TraceStores;
     CodeObject = FrameObject->Code;
+
+    if (PythonTraceContext->FunctionObject) {
+        if (PythonTraceContext->FunctionObject->Code != CodeObject) {
+            return 0;
+        }
+    }
+
+    Rtl = PythonTraceContext->Rtl;
+    TraceContext = PythonTraceContext->TraceContext;
+    Python = PythonTraceContext->Python;
+    TraceStores = TraceContext->TraceStores;
 
     Event.Version = 1;
     Event.EventType = (USHORT)EventType;
@@ -199,14 +207,19 @@ PyTraceCallbackFast(
 
     Events = &TraceStores->Stores[0];
 
+    LastEvent = (PTRACE_EVENT)Events->PrevAddress;
+
     if (EventType == TraceEventType_PyTrace_LINE) {
         //
         // Get the actual line number if we're a trace event.
         //
         Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
 
-        LastEvent = (PTRACE_EVENT)Events->PrevAddress;
-
+        //
+        // List and dict comprehensions register a line event for each iteration.
+        // Rather than creating a separate event for each line trace, we increment
+        // the line count of the previous event if it's present.
+        //
         if (LastEvent &&
             LastEvent->EventType == TraceEventType_PyTrace_LINE &&
             LastEvent->LineNumber == Event.LineNumber &&
@@ -220,7 +233,7 @@ PyTraceCallbackFast(
         }
     }
 
-    // Event.SystemTime
+    QueryPerformanceCounter(&Event.liTimeStamp);
 
 #ifdef _M_X64
     Event.ProcessId = __readgsdword(0x40);
@@ -251,20 +264,23 @@ PyTraceCallbackFast(
             break;
     };
 
-    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, RecordSize, NumberOfRecords);
+    EventRecord = (PTRACE_EVENT)Events->AllocateRecords(TraceContext, Events, &RecordSize, &NumberOfRecords);
     if (!EventRecord) {
         return 0;
     }
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
-    RtlCopyMemory(EventRecord, &Event, sizeof(Event));
+    if (!Rtl->CopyToMappedMemory(EventRecord, &Event, sizeof(Event))) {
+        ++Events->DroppedRecords;
+    }
 
     return 0;
 }
 
 BOOL
 InitializePythonTraceContext(
+    _In_                                        PRTL                    Rtl,
     _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _Inout_                                     PULONG                  SizeOfPythonTraceContext,
     _In_                                        PPYTHON                 Python,
@@ -285,6 +301,7 @@ InitializePythonTraceContext(
     }
 
     if (*SizeOfPythonTraceContext < sizeof(*PythonTraceContext)) {
+        *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
         return FALSE;
     }
 
@@ -292,7 +309,12 @@ InitializePythonTraceContext(
         return FALSE;
     };
 
+    if (!Rtl) {
+        return FALSE;
+    }
+
     PythonTraceContext->Size = *SizeOfPythonTraceContext;
+    PythonTraceContext->Rtl = Rtl;
     PythonTraceContext->Python = Python;
     PythonTraceContext->TraceContext = TraceContext;
     PythonTraceContext->PythonTraceFunction = PythonTraceFunction;
@@ -403,6 +425,25 @@ StopProfiling(
     }
 
     Python->PyEval_SetProfile(NULL, NULL);
+
+    return TRUE;
+}
+
+BOOL
+AddFunction(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_    PVOID                   FunctionObject
+)
+{
+    if (!PythonTraceContext) {
+        return FALSE;
+    }
+
+    if (!FunctionObject) {
+        return FALSE;
+    }
+
+    PythonTraceContext->FunctionObject = (PPYFUNCTIONOBJECT)FunctionObject;
 
     return TRUE;
 }

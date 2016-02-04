@@ -6,3 +6,5 @@ ipch
 Debug
 Release
 *.opendb
+tags
+*.pyc

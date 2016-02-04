@@ -8,6 +8,8 @@ _uuid_regex="[0-9A-F]{8,8}-[0-9A-F]{4,4}-[0-9A-F]{4,4}-[0-9A-F]{4,4}-[0-9A-F]{12
 
 if [ -z "$1" ]; then
     echo "error: missing project name"
+    echo "  usage:  ./mknewproject.sh <Project>"
+    echo "   e.g.:  ./mknewproject.sh PythonTracer"
     exit 1
 fi
 

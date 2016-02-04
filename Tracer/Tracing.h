@@ -22,6 +22,8 @@ extern "C" {
 
 #include "stdafx.h"
 
+//typedef struct FILE_STANDARD_INFO *PFILE_STANDARD_INFO;
+
 /*
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -52,8 +54,8 @@ typedef struct _TRACE_EVENT {
     DWORD           SequenceId;             //  4   24
     __declspec(align(8))
     union {
-        LARGE_INTEGER   liSystemTime;       //  8   32
-        FILETIME        ftSystemTime;
+        LARGE_INTEGER   liTimeStamp;        //  8   32
+        FILETIME        ftTimeStamp;
     };
     __declspec(align(8))
     union {
@@ -103,8 +105,8 @@ typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
-    _In_    ULARGE_INTEGER  RecordSize,
-    _In_    ULARGE_INTEGER  NumberOfRecords
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords
 );
 
 typedef BOOL (*PGET_ALLOCATION_SIZE)(
@@ -123,42 +125,52 @@ typedef struct _TRACE_STORE_THREADPOOL {
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
-#define _TRACE_STORE_MEMORY_MAP_HEAD    \
-    SRWLOCK         SlimReadWriteLock;  \
-    HANDLE          MappingHandle;      \
-    LARGE_INTEGER   MappingSize;        \
-    PVOID           BaseAddress;        \
-    PVOID           PrefaultAddress;    \
-    PVOID           ExtendAtAddress;    \
-    PVOID           EndAddress;         \
-    PVOID           PrevAddress;        \
-    PVOID           NextAddress;
-
-typedef struct _TRACE_STORE_MEMORY_MAP {
-    _TRACE_STORE_MEMORY_MAP_HEAD
-} TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP;
-
-typedef struct _TRACE_STORE {
-    PTRACE_CONTEXT          TraceContext;
-    HANDLE                  FileHandle;
-    LARGE_INTEGER           InitialSize;
-    LARGE_INTEGER           ExtensionSize;
-    LARGE_INTEGER           MaximumSize;
-    FILE_STANDARD_INFO      FileInfo;
-    PCRITICAL_SECTION       CriticalSection;
-    ULONG                   DroppedRecords;
-    PTP_WORK                PrefaultFuturePageWork;
-    PTP_WORK                ExtendFileWork;
-    HANDLE                  FileExtendedEvent;
-
+typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP {
     union {
-        TRACE_STORE_MEMORY_MAP  TraceStoreMemoryMap;
+        __declspec(align(16)) SLIST_ENTRY   ListEntry;      // 16       16
         struct {
-            _TRACE_STORE_MEMORY_MAP_HEAD
+            __declspec(align(8)) PVOID      PrevAddress;
+            __declspec(align(8)) PVOID      Unused1;
         };
     };
+    __declspec(align(8))  HANDLE        FileHandle;         // 8        24
+    __declspec(align(8))  HANDLE        MappingHandle;      // 8        32
+    __declspec(align(8))  LARGE_INTEGER FileOffset;         // 8        40
+    __declspec(align(8))  LARGE_INTEGER MappingSize;        // 8        48
+    __declspec(align(8))  PVOID         BaseAddress;        // 8        56
+    __declspec(align(8))  PVOID         NextAddress;        // 8        64
+} TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP, **PPTRACE_STORE_MEMORY_MAP;
 
-    TRACE_STORE_MEMORY_MAP  NextTraceStoreMemoryMap;
+typedef volatile PTRACE_STORE_MEMORY_MAP VPTRACE_STORE_MEMORY_MAP;
+
+C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
+
+typedef struct _TRACE_STORE {
+    SLIST_HEADER            CloseMemoryMaps;
+    SLIST_HEADER            PrepareMemoryMaps;
+    SLIST_HEADER            NextMemoryMaps;
+    SLIST_HEADER            FreeMemoryMaps;
+    SLIST_HEADER            PrefaultMemoryMaps;
+
+    PRTL                    Rtl;
+    PTRACE_CONTEXT          TraceContext;
+    LARGE_INTEGER           InitialSize;
+    LARGE_INTEGER           ExtensionSize;
+    LARGE_INTEGER           MappingSize;
+    PTP_WORK                PrefaultFuturePageWork;
+    PTP_WORK                PrepareNextMemoryMapWork;
+    PTP_WORK                CloseMemoryMapWork;
+    HANDLE                  NextMemoryMapAvailableEvent;
+
+    PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    ULONG DroppedRecords;
+    ULONG ExhaustedFreeMemoryMaps;
+    ULONG AllocationsOutpacingNextMemoryMapPreparation;
+
+    HANDLE FileHandle;
+    PVOID PrevAddress;
 
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
@@ -194,7 +206,7 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const DWORD InitialTraceStoreFileSizes[] = {
+static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
     10 << 20,   // frames
     10 << 20,   // modules
@@ -207,6 +219,7 @@ typedef struct _TRACE_STORES {
     USHORT  Size;
     USHORT  NumberOfTraceStores;
     ULONG   Reserved;
+    PRTL    Rtl;
     TRACE_STORE Stores[1];
 } TRACE_STORES, *PTRACE_STORES;
 
@@ -360,6 +373,7 @@ typedef struct _PYTRACE_CALLBACKS {
 typedef BOOL (*PPYTRACE)(LPVOID Frame, INT What, LPVOID Arg);
 
 typedef struct _TRACE_SESSION {
+    PRTL                Rtl;
     LARGE_INTEGER       SessionId;
     GUID                MachineGuid;
     PISID               Sid;
@@ -372,37 +386,56 @@ typedef struct _TRACE_SESSION {
 typedef struct _TRACE_CONTEXT {
     ULONG                       Size;
     ULONG                       SequenceId;
+    PRTL                        Rtl;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
     PSYSTEM_TIMER_FUNCTION      SystemTimerFunction;
+    LARGE_INTEGER               PerformanceCounterFrequency;
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
+    HANDLE                      HeapHandle;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 TRACER_API
 BOOL
 InitializeTraceStores(
+    _In_        PRTL            Rtl,
     _In_        PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
-    _Inout_     PDWORD          SizeOfTraceStores,
-    _In_opt_    PDWORD          InitialFileSizes
+    _Inout_     PULONG          SizeOfTraceStores,
+    _In_opt_    PULONG          InitialFileSizes
 );
 
 typedef BOOL (*PINITIALIZETRACESESSION)(
+    _In_                                 PRTL           Rtl,
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
-    _In_                                 PDWORD         SizeOfTraceSession
+    _In_                                 PULONG         SizeOfTraceSession
 );
 
 TRACER_API
 BOOL
 InitializeTraceSession(
+    _In_                                 PRTL           Rtl,
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
-    _In_                                 PDWORD         SizeOfTraceSession
+    _In_                                 PULONG         SizeOfTraceSession
+);
+
+TRACER_API
+BOOL
+BindTraceStoreToTraceContext(
+    _Inout_ PTRACE_STORE TraceStore,
+    _Inout_ PTRACE_CONTEXT TraceContext
+);
+
+typedef BOOL (*PBINDTRACESTORETOTRACECONTEXT)(
+    _Inout_ PTRACE_STORE TraceStore,
+    _Inout_ PTRACE_CONTEXT TraceContext
 );
 
 typedef BOOL (*PINITIALIZETRACECONTEXT)(
+    _In_                                    PRTL                    Rtl,
     _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
-    _In_                                    PDWORD                  SizeOfTraceContext,
+    _In_                                    PULONG                  SizeOfTraceContext,
     _In_                                    PTRACE_SESSION          TraceSession,
     _In_                                    PTRACE_STORES           TraceStores,
     _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
@@ -412,8 +445,9 @@ typedef BOOL (*PINITIALIZETRACECONTEXT)(
 TRACER_API
 BOOL
 InitializeTraceContext(
+    _In_                                    PRTL                    Rtl,
     _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
-    _In_                                    PDWORD                  SizeOfTraceContext,
+    _In_                                    PULONG                  SizeOfTraceContext,
     _In_                                    PTRACE_SESSION          TraceSession,
     _In_                                    PTRACE_STORES           TraceStores,
     _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
@@ -426,6 +460,11 @@ TRACER_API
 BOOL
 FlushTraceStores(PTRACE_CONTEXT TraceContext);
 
+TRACER_API
+VOID
+SubmitTraceStoreFileExtensionThreadpoolWork(
+    _Inout_     PTRACE_STORE    TraceStore
+);
 
 TRACER_API
 VOID
@@ -458,7 +497,7 @@ LPVOID
 GetNextRecord(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore,
-    ULARGE_INTEGER RecordSize
+    PULARGE_INTEGER RecordSize
 );
 
 TRACER_API
@@ -474,8 +513,35 @@ LPVOID
 AllocateRecords(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords
+);
+
+TRACER_API
+BOOL
+WriteRecords(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
     _In_    ULARGE_INTEGER  RecordSize,
-    _In_    ULARGE_INTEGER  NumberOfRecords
+    _In_    ULARGE_INTEGER  NumberOfRecords,
+    _In_    PVOID           FirstRecord,
+    _In_    PVOID          *DestinationAddress
+);
+
+TRACER_API
+LPVOID
+WriteBytes(
+    _In_     PTRACE_CONTEXT  TraceContext,
+    _In_     PTRACE_STORE    TraceStore,
+    _In_     ULARGE_INTEGER  NumberOfBytes,
+    _In_     PVOID           Buffer,
+    _In_opt_ PVOID          *DestinationAddress
+);
+
+TRACER_API
+PVOID
+GetPreviousAllocationAddress(
+    _In_ PTRACE_STORE TraceStore
 );
 
 TRACER_API
@@ -516,6 +582,10 @@ RegisterModule(
     _In_        PCWSTR          ModuleName,
     _In_        PCWSTR          ModuleFilename
 );
+
+TRACER_API
+VOID
+Debugbreak();
 
 #ifdef __cpp
 } // extern "C"

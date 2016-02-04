@@ -2,6 +2,53 @@
 
 INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
 
+PVECTORED_EXCEPTION_HANDLER VectoredExceptionHandler = NULL;
+
+INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
+
+LONG
+WINAPI
+CopyMappedMemoryVectoredExceptionHandler(
+_In_ PEXCEPTION_POINTERS ExceptionInfo
+)
+{
+    PCONTEXT Context = ExceptionInfo->ContextRecord;
+    PEXCEPTION_RECORD Exception = ExceptionInfo->ExceptionRecord;
+
+    if (Exception->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+BOOL
+CALLBACK
+SetCSpecificHandlerCallback(
+    PINIT_ONCE InitOnce,
+    PVOID Parameter,
+    PVOID *lpContext
+)
+{
+    VectoredExceptionHandler = AddVectoredExceptionHandler(1, CopyMappedMemoryVectoredExceptionHandler);
+    return (BOOL)VectoredExceptionHandler;
+}
+
+BOOL
+SetCSpecificHandler(PCSPECIFICHANDLER Handler)
+{
+    BOOL Status;
+
+    Status = InitOnceExecuteOnce(
+        &InitOnceCSpecificHandler,
+        SetCSpecificHandlerCallback,
+        Handler,
+        NULL
+    );
+
+    return Status;
+}
+
 BOOL
 CALLBACK
 GetSystemTimerFunctionCallback(
@@ -99,3 +146,172 @@ CallSystemTimer(
     return TRUE;
 }
 
+_Check_return_
+PVOID
+CopyToMemoryMappedMemory(
+    PVOID Destination,
+    LPCVOID Source,
+    SIZE_T Size
+)
+{
+    return memcpy(Destination, Source, Size);
+}
+
+_Check_return_
+BOOL
+LoadRtlSymbols(_Inout_ PRTL Rtl)
+{
+
+    if (!(Rtl->Kernel32Module = LoadLibraryA("kernel32"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->NtdllModule = LoadLibraryA("ntdll"))) {
+        return FALSE;
+    }
+
+    Rtl->GetSystemTimePreciseAsFileTime = (PGETSYSTEMTIMEPRECISEASFILETIME)
+        GetProcAddress(Rtl->Kernel32Module, "GetSystemTimePreciseAsFileTime");
+
+    Rtl->NtQuerySystemTime = (PNTQUERYSYSTEMTIME)
+        GetProcAddress(Rtl->NtdllModule, "NtQuerySystemTime");
+
+    if (Rtl->GetSystemTimePreciseAsFileTime) {
+        Rtl->SystemTimerFunction.GetSystemTimePreciseAsFileTime = 
+            Rtl->GetSystemTimePreciseAsFileTime;
+    } else if (Rtl->NtQuerySystemTime) {
+        Rtl->SystemTimerFunction.NtQuerySystemTime =
+            Rtl->NtQuerySystemTime;
+    } else {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
+        GetProcAddress(Rtl->NtdllModule, "RtlCharToInteger"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInitializeGenericTable = (PRTL_INITIALIZE_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitializeGenericTable"))) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+BOOLEAN
+RtlCheckBit(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG BitPosition
+    )
+{
+    return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
+}
+
+
+_Check_return_
+BOOL
+LoadRtlExFunctions(
+    _In_opt_ HMODULE RtlExModule,
+    _Inout_  PRTLEXFUNCTIONS RtlExFunctions
+    )
+{
+    if (!RtlExModule) {
+        return FALSE;
+    }
+
+    if (!RtlExFunctions) {
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
+        GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+_Check_return_
+BOOL
+LoadRtlExSymbols(
+    _In_opt_ HMODULE RtlExModule,
+    _Inout_  PRTL    Rtl
+)
+{
+    HMODULE Module;
+
+    if (!Rtl) {
+        return FALSE;
+    }
+
+    if (RtlExModule) {
+        Module = RtlExModule;
+
+    } else {
+
+        DWORD Flags = (
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS          |
+            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+        );
+
+        if (!GetModuleHandleEx(Flags, (LPCTSTR)&LoadRtlExFunctions, &Module)) {
+            return FALSE;
+        }
+
+        if (!Module) {
+            return FALSE;
+        }
+    }
+
+    if (!LoadRtlExFunctions(Module, &Rtl->RtlExFunctions)) {
+        return FALSE;
+    }
+
+    return TRUE;
+
+}
+
+BOOL
+InitializeRtl(
+    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_                   PULONG SizeOfRtl
+    )
+{
+    if (!Rtl) {
+        if (SizeOfRtl) {
+            *SizeOfRtl = sizeof(*Rtl);
+        }
+        return FALSE;
+    }
+
+    if (!SizeOfRtl) {
+        return FALSE;
+    }
+
+    if (*SizeOfRtl < sizeof(*Rtl)) {
+        *SizeOfRtl = sizeof(*Rtl);
+        return FALSE;
+    } else {
+        *SizeOfRtl = sizeof(*Rtl);
+    }
+
+    SecureZeroMemory(Rtl, sizeof(*Rtl));
+
+    if (!LoadRtlSymbols(Rtl)) {
+        return FALSE;
+    }
+
+    if (!LoadRtlExSymbols(NULL, Rtl)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+VOID
+Debugbreak()
+{
+    __debugbreak();
+}
