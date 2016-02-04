@@ -46,11 +46,13 @@ static const DWORD NumberOfTraceEventTypes = (
 );
 
 typedef struct _PYTHON_TRACE_CONTEXT {
-    ULONG           Size;
-    PPYTHON         Python;
-    PTRACE_CONTEXT  TraceContext;
-    PPYTRACEFUNC    PythonTraceFunction;
-    PVOID           UserData;
+    ULONG             Size;
+    PRTL              Rtl;
+    PPYTHON           Python;
+    PTRACE_CONTEXT    TraceContext;
+    PPYTRACEFUNC      PythonTraceFunction;
+    PVOID             UserData;
+    PPYFUNCTIONOBJECT FunctionObject;
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
 TRACER_API
@@ -84,6 +86,7 @@ PyTraceCallbackFast(
 TRACER_API
 BOOL
 InitializePythonTraceContext(
+    _In_                                        PRTL                    Rtl,
     _Out_bytecap_(*SizeOfPythonTraceContext)    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _Inout_                                     PULONG                  SizeOfPythonTraceContext,
     _In_                                        PPYTHON                 Python,
@@ -114,4 +117,11 @@ TRACER_API
 BOOL
 StopProfiling(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+);
+
+TRACER_API
+BOOL
+AddFunction(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_    PVOID                   FunctionObject
 );

@@ -414,7 +414,7 @@ _Check_return_
 BOOL
 ResolveAndVerifyPythonVersion(
     _In_    HMODULE     PythonModule,
-    _Out_   PPYTHON     Python
+    _Inout_ PPYTHON     Python
 )
 {
     PCCH Version;
@@ -424,7 +424,7 @@ ResolveAndVerifyPythonVersion(
     CHAR VersionString[2] = { 0 };
     PRTLCHARTOINTEGER RtlCharToInteger;
 
-    HMODULE NtdllModule;
+    RtlCharToInteger = Python->Rtl->RtlCharToInteger;
 
     Python->Py_GetVersion = (PPY_GETVERSION)GetProcAddress(PythonModule, "Py_GetVersion");
     if (!Python->Py_GetVersion) {
@@ -432,17 +432,6 @@ ResolveAndVerifyPythonVersion(
     }
     Python->VersionString = Python->Py_GetVersion();
     if (!Python->VersionString) {
-        goto error;
-    }
-
-    NtdllModule = LoadLibraryW(L"ntdll");
-    if (NtdllModule == INVALID_HANDLE_VALUE) {
-        goto error;
-    }
-
-    // This is horrendous.
-    RtlCharToInteger = (PRTLCHARTOINTEGER)GetProcAddress(NtdllModule, "RtlCharToInteger");
-    if (!RtlCharToInteger) {
         goto error;
     }
 
@@ -492,9 +481,10 @@ error:
 _Check_return_
 BOOL
 InitializePython(
+    _In_        PRTL        Rtl,
     _In_        HMODULE     PythonModule,
     _Out_       PPYTHON     Python,
-    _Inout_     PDWORD      SizeOfPython
+    _Inout_     PULONG      SizeOfPython
 )
 {
 
@@ -519,7 +509,13 @@ InitializePython(
         return FALSE;
     }
 
+    if (!Rtl) {
+        return FALSE;
+    }
+
     SecureZeroMemory(Python, sizeof(*Python));
+
+    Python->Rtl = Rtl;
 
     if (!ResolveAndVerifyPythonVersion(PythonModule, Python)) {
         goto error;
