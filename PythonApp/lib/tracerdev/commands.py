@@ -1,0 +1,239 @@
+#===============================================================================
+# Imports
+#===============================================================================
+import sys
+
+import textwrap
+
+from os.path import (
+    join,
+    abspath,
+    dirname,
+    basename,
+    normpath,
+)
+
+from tracer.path import join_path
+
+from tracer.util import strip_linesep_if_present
+
+from tracer.command import (
+    Command,
+    CommandError,
+)
+
+from tracer.invariant import (
+    BoolInvariant,
+    PathInvariant,
+    StringInvariant,
+    DirectoryInvariant,
+    PositiveIntegerInvariant,
+)
+
+from tracer.commandinvariant import (
+    InvariantAwareCommand,
+)
+
+#===============================================================================
+# Commands
+#===============================================================================
+
+class TestTracer(InvariantAwareCommand):
+    """
+    Runs the vspyprof against the given file.
+    """
+    _verbose_ = True
+
+    pause_before_starting = None
+    class PauseBeforeStartingArg(BoolInvariant):
+        _help = (
+            "If set to true, pauses prior to starting profiling.  This allows "
+            "you to independently attach debuggers, etc."
+        )
+        _default = False
+        _mandatory = False
+
+    base_dir = None
+    _base_dir = None
+    class BaseDirArg(DirectoryInvariant):
+        _help = "Base directory to pass to tracer"
+
+    dll = None
+
+    def run(self):
+        InvariantAwareCommand.run(self)
+
+
+class SqlLocalDb(InvariantAwareCommand):
+    """
+    Run the SqlLocalDB executable.
+    """
+    _verbose_ = True
+
+    def run(self):
+        InvariantAwareCommand.run(self)
+        conf = self.conf
+
+        sqllocaldb = conf.sqllocaldb_exe
+
+        func = getattr(sqllocaldb, self.args[0])
+        self._out(func(*self.args[1:]))
+
+class LoadRtl(InvariantAwareCommand):
+    """
+    Load the Rtl DLL.
+    """
+    rtl = None
+    rtl_size = None
+
+
+    def run(self):
+        InvariantAwareCommand.run(self)
+
+        from tracer import rtl, RTL
+        from ctypes import create_string_buffer, sizeof, byref
+        from ctypes.wintypes import ULONG
+
+        #self.rtl = RTL()
+        self.rtl_size = ULONG()
+
+        rtl_dll = rtl(self.conf.tracer_rtl_debug_dll_path)
+
+        success = rtl_dll.InitializeRtl(
+            0,
+            byref(self.rtl_size)
+        )
+
+        self.rtl = create_string_buffer(self.rtl_size.value)
+
+        import pdb
+        pdb.set_trace()
+
+        success = rtl_dll.InitializeRtl(
+            byref(self.rtl),
+            byref(self.rtl_size)
+        )
+
+        if not success:
+            if self.rtl_size.value != sizeof(self.rtl):
+                msg = "Warning: RTL size mismatch: %d != %d\n" % (
+                    self.rtl_size.value,
+                    sizeof(self.rtl)
+                )
+                self._err(msg)
+                self.rtl = create_string_buffer(
+                    self.rtl_size.value
+                )
+                success = rtl_dll.InitializeRtl(
+                    byref(self.rtl),
+                    byref(self.rtl_size),
+                )
+
+            if not success:
+                raise RuntimeError("InitializeRtl() failed")
+
+        self._out("Loaded Rtl successfully.")
+
+        self.interactive = True
+        return self
+
+class SyncRtlHeader(InvariantAwareCommand):
+    """
+    Compares the members of _RTLFUNCTIONS_HEAD to symbols resolved in
+    LoadRtlSymbols() function and adds the necessary GetProcAddress()
+    steps.  If a function pointer's typedef has a comment starting
+    with `// Win ` above it, it is assumed that the function first
+    appeared *after* Windows 7, and as such, failure to resolve the
+    function (i.e. when running on Windows 7) isn't considered fatal.
+
+    E.g.:
+
+    // Win 8
+    typedef ULONG (NTAPI *PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE)(
+        _In_ PRTL_BITMAP BitMapHeader,
+        _In_ ULONG StartingIndex,
+        _In_ ULONG Length
+        );
+
+    """
+    template = """\
+    if (!(Rtl->%(funcname)s = (%(typedef)s)
+        GetProcAddress(Rtl->NtdllModule, "%(funcname)s"))) {
+        return FALSE;
+    }
+"""
+
+    header_path = None
+    class HeaderPathArg(PathInvariant):
+        _arg = '-H/--header-path'
+        _help = "path of the Rtl.h file [default: %default]"
+
+        def _default(self):
+            return join_path(dirname(__file__), "../../../Rtl/Rtl.h")
+
+    source_path = None
+    class SourcePathArg(PathInvariant):
+        _help = "path of the Rtl.c file [default: %default]"
+
+        def _default(self):
+            return join_path(dirname(__file__), "../../../Rtl/Rtl.c")
+
+    functions_head_macro_name = None
+    class FunctionsHeadMacroNameArg(StringInvariant):
+        _help = "name of the macro used to capture the functions to be sync'd"
+        _default = "_RTLFUNCTIONS_HEAD"
+
+    function_to_patch = None
+    class FunctionToPatchArg(StringInvariant):
+        _help = (
+            "name of the C function to potentially patch in order to sync "
+            "the functions in the macro with the symbols resolved via "
+            "GetProcAddress() calls"
+        )
+        _default = "LoadRtlSymbols"
+
+    def run(self):
+        header_path = self.options.header_path
+        source_path = self.options.source_path
+        macro_func_name = self.options.functions_head_macro_name
+        function_to_patch = self.options.function_to_patch
+
+        import re
+
+        from tracer.sourcefile import SourceFile
+
+        header = SourceFile(header_path)
+        self._verbose("Loaded header: %s" % header_path)
+
+        source = SourceFile(source_path)
+        self._verbose("Loaded source: %s" % source_path)
+
+        functions = header.functions_from_multiline_define(macro_func_name)
+
+
+        first_function = functions[0]
+        first_template = self.template % first_function._asdict()
+
+        first_block_lines = first_template.splitlines()
+        func = source.function_definition(function_to_patch, first_block_lines)
+        if not func:
+            msg = "no function named %s found in %s"
+            raise CommandError(msg % (function_to_patch, source_path))
+
+        new_blocks = [ self.template % fn._asdict() for fn in functions ]
+
+        pre_lines = source.lines[:func.first_block_line]
+        post_lines = source.lines[func.last_block_line+2:]
+
+        new_lines = pre_lines + new_blocks + post_lines + ['']
+
+        new_text = '\n'.join(new_lines)
+
+        with open(source_path, 'wb') as f:
+            f.write(new_text)
+
+        self._verbose("Synchronized file.")
+
+
+
+# vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

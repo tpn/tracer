@@ -28,10 +28,6 @@ from .commandinvariant import (
 # Commands
 #===============================================================================
 
-class HelloWorld(Command):
-    def run(self):
-        self._out('Hello, World!')
-
 class VsProfileProgram(InvariantAwareCommand):
     """
     Runs the vspyprof against the given file.
@@ -289,103 +285,5 @@ class TestVsPyProfTraceStores(InvariantAwareCommand):
         import ipdb
         ipdb.set_trace()
         self.dll = dll
-
-class TestTracer(InvariantAwareCommand):
-    """
-    Runs the vspyprof against the given file.
-    """
-    _verbose_ = True
-
-    pause_before_starting = None
-    class PauseBeforeStartingArg(BoolInvariant):
-        _help = (
-            "If set to true, pauses prior to starting profiling.  This allows "
-            "you to independently attach debuggers, etc."
-        )
-        _default = False
-        _mandatory = False
-
-    base_dir = None
-    _base_dir = None
-    class BaseDirArg(DirectoryInvariant):
-        _help = "Base directory to pass to tracer"
-
-    dll = None
-
-    def run(self):
-        InvariantAwareCommand.run(self)
-
-
-class SqlLocalDb(InvariantAwareCommand):
-    """
-    Run the SqlLocalDB executable.
-    """
-    _verbose_ = True
-
-    def run(self):
-        InvariantAwareCommand.run(self)
-        conf = self.conf
-
-        sqllocaldb = conf.sqllocaldb_exe
-
-        func = getattr(sqllocaldb, self.args[0])
-        self._out(func(*self.args[1:]))
-
-class LoadRtl(InvariantAwareCommand):
-    """
-    Load the Rtl DLL.
-    """
-    rtl = None
-    rtl_size = None
-
-
-    def run(self):
-        InvariantAwareCommand.run(self)
-
-        from . import rtl, RTL
-        from ctypes import create_string_buffer, sizeof, byref
-        from ctypes.wintypes import ULONG
-
-        #self.rtl = RTL()
-        self.rtl_size = ULONG()
-
-        rtl_dll = rtl(self.conf.tracer_rtl_debug_dll_path)
-
-        success = rtl_dll.InitializeRtl(
-            0,
-            byref(self.rtl_size)
-        )
-
-        self.rtl = create_string_buffer(self.rtl_size.value)
-
-        import ipdb
-        ipdb.set_trace()
-
-        success = rtl_dll.InitializeRtl(
-            byref(self.rtl),
-            byref(self.rtl_size)
-        )
-
-        if not success:
-            if self.rtl_size.value != sizeof(self.rtl):
-                msg = "Warning: RTL size mismatch: %d != %d\n" % (
-                    self.rtl_size.value,
-                    sizeof(self.rtl)
-                )
-                self._err(msg)
-                self.rtl = create_string_buffer(
-                    self.rtl_size.value
-                )
-                success = rtl_dll.InitializeRtl(
-                    byref(self.rtl),
-                    byref(self.rtl_size),
-                )
-
-            if not success:
-                raise RuntimeError("InitializeRtl() failed")
-        self.interactive = True
-        return self
-
-
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

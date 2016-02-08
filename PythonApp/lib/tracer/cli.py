@@ -248,17 +248,6 @@ class CLI(object):
         self.returncode = 0
         self.commandline = None
 
-        include_tracer = True
-        for name in self.module_names:
-            if name == '-tracer':
-                include_tracer = False
-                self.module_names.remove('-tracer')
-            elif name == 'tracer':
-                include_tracer = False
-
-        if include_tracer:
-            self.module_names.insert(0, 'tracer')
-
         ensure_unique(self.module_names)
 
         self.modules = Dict()
@@ -570,8 +559,13 @@ if __name__ == '__main__':
 
     args_queue.join()
 
-def main():
-    args = [ 'tracer', 'tracer' ] + sys.argv[1:]
+def main(program_name=None, library_name=None):
+    if not program_name:
+        program_name = 'tracer'
+    if not library_name:
+        library_name = 'tracer'
+
+    args = [ program_name, library_name ] + sys.argv[1:]
     cli = run(*args)
     sys.exit(cli.returncode)
 

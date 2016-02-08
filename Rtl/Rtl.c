@@ -201,6 +201,271 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         return FALSE;
     }
 
+    if (!(Rtl->RtlInsertElementGenericTable = (PRTL_INSERT_ELEMENT_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInsertElementGenericTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInsertElementGenericTableFull = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)
+        GetProcAddress(Rtl->NtdllModule, "RtlInsertElementGenericTableFull"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlDeleteElementGenericTable = (PRTL_DELETE_ELEMENT_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlDeleteElementGenericTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlLookupElementGenericTable = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupElementGenericTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlLookupElementGenericTableFull = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupElementGenericTableFull"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEnumerateGenericTable = (PRTL_ENUMERATE_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateGenericTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEnumerateGenericTableWithoutSplaying = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateGenericTableWithoutSplaying"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlGetElementGenericTable = (PRTL_GET_ELEMENT_GENERIC_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlGetElementGenericTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlNumberGenericTableElements = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS)
+        GetProcAddress(Rtl->NtdllModule, "RtlNumberGenericTableElements"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlIsGenericTableEmpty = (PRTL_IS_GENERIC_TABLE_EMPTY)
+        GetProcAddress(Rtl->NtdllModule, "RtlIsGenericTableEmpty"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->PfxInitialize = (PPFX_INITIALIZE)
+        GetProcAddress(Rtl->NtdllModule, "PfxInitialize"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->PfxInsertPrefix = (PPFX_INSERT_PREFIX)
+        GetProcAddress(Rtl->NtdllModule, "PfxInsertPrefix"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->PfxRemovePrefix = (PPFX_REMOVE_PREFIX)
+        GetProcAddress(Rtl->NtdllModule, "PfxRemovePrefix"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->PfxFindPrefix = (PPFX_FIND_PREFIX)
+        GetProcAddress(Rtl->NtdllModule, "PfxFindPrefix"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlCrc32 = (PRTLCRC32)
+        GetProcAddress(Rtl->NtdllModule, "RtlCrc32"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlCrc64 = (PRTLCRC64)
+        GetProcAddress(Rtl->NtdllModule, "RtlCrc64"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlPrefixUnicodeString = (PRTL_PREFIX_UNICODE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlPrefixUnicodeString"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlCreateHashTable = (PRTL_CREATE_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlCreateHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlCreateHashTableEx = (PRTL_CREATE_HASH_TABLE_EX)
+        GetProcAddress(Rtl->NtdllModule, "RtlCreateHashTableEx"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlDeleteHashTable = (PRTL_DELETE_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlDeleteHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInsertEntryHashTable = (PRTL_INSERT_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInsertEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlRemoveEntryHashTable = (PRTL_REMOVE_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlRemoveEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlLookupEntryHashTable = (PRTL_LOOKUP_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlGetNextEntryHashTable = (PRTL_GET_NEXT_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlGetNextEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEnumerateEntryHashTable = (PRTL_ENUMERATE_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEndEnumerationHashTable = (PRTL_END_ENUMERATION_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlEndEnumerationHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInitWeakEnumerationHashTable = (PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitWeakEnumerationHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlWeaklyEnumerateEntryHashTable = (PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlWeaklyEnumerateEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEndWeakEnumerationHashTable = (PRTL_END_WEAK_ENUMERATION_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlEndWeakEnumerationHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInitStrongEnumerationHashTable = (PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitStrongEnumerationHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlStronglyEnumerateEntryHashTable = (PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlStronglyEnumerateEntryHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlEndStrongEnumerationHashTable = (PRTL_END_STRONG_ENUMERATION_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlEndStrongEnumerationHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlExpandHashTable = (PRTL_EXPAND_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlExpandHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlContractHashTable = (PRTL_CONTRACT_HASH_TABLE)
+        GetProcAddress(Rtl->NtdllModule, "RtlContractHashTable"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlInitializeBitMap = (PRTL_INITIALIZE_BITMAP)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitializeBitMap"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlClearBit = (PRTL_CLEAR_BIT)
+        GetProcAddress(Rtl->NtdllModule, "RtlClearBit"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlSetBit = (PRTL_SET_BIT)
+        GetProcAddress(Rtl->NtdllModule, "RtlSetBit"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlTestBit = (PRTL_TEST_BIT)
+        GetProcAddress(Rtl->NtdllModule, "RtlTestBit"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlClearAllBits = (PRTL_CLEAR_ALL_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlClearAllBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlSetAllBits = (PRTL_SET_ALL_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlSetAllBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindClearBits = (PRTL_FIND_CLEAR_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindClearBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindSetBits = (PRTL_FIND_SET_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindSetBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindClearBitsAndSet = (PRTL_FIND_CLEAR_BITS_AND_SET)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindClearBitsAndSet"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindSetBitsAndClear = (PRTL_FIND_SET_BITS_AND_CLEAR)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindSetBitsAndClear"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlClearBits = (PRTL_CLEAR_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlClearBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlSetBits = (PRTL_SET_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlSetBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindClearRuns = (PRTL_FIND_CLEAR_RUNS)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindClearRuns"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindLongestRunClear = (PRTL_FIND_LONGEST_RUN_CLEAR)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindLongestRunClear"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlNumberOfClearBits = (PRTL_NUMBER_OF_CLEAR_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlNumberOfClearBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlNumberOfSetBits = (PRTL_NUMBER_OF_SET_BITS)
+        GetProcAddress(Rtl->NtdllModule, "RtlNumberOfSetBits"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlAreBitsClear = (PRTL_ARE_BITS_CLEAR)
+        GetProcAddress(Rtl->NtdllModule, "RtlAreBitsClear"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlAreBitsSet = (PRTL_ARE_BITS_SET)
+        GetProcAddress(Rtl->NtdllModule, "RtlAreBitsSet"))) {
+        return FALSE;
+    }
+
+    if (!(Rtl->RtlFindNextForwardRunClear = (PRTL_FIND_NEXT_FORWARD_RUN_CLEAR)
+        GetProcAddress(Rtl->NtdllModule, "RtlFindNextForwardRunClear"))) {
+        return FALSE;
+    }
+
     //
     // End of auto-generated function resolutions.
     //
