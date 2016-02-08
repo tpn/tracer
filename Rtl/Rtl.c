@@ -177,7 +177,7 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         GetProcAddress(Rtl->NtdllModule, "NtQuerySystemTime");
 
     if (Rtl->GetSystemTimePreciseAsFileTime) {
-        Rtl->SystemTimerFunction.GetSystemTimePreciseAsFileTime = 
+        Rtl->SystemTimerFunction.GetSystemTimePreciseAsFileTime =
             Rtl->GetSystemTimePreciseAsFileTime;
     } else if (Rtl->NtQuerySystemTime) {
         Rtl->SystemTimerFunction.NtQuerySystemTime =
