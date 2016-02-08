@@ -186,6 +186,11 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         return FALSE;
     }
 
+    //
+    // Start of auto-generated function resolutions.  Any manual modifications
+    // will be lost; run `tracerdev sync-rtl-header` to keep in sync.
+    //
+
     if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
         GetProcAddress(Rtl->NtdllModule, "RtlCharToInteger"))) {
         return FALSE;
@@ -195,6 +200,10 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         GetProcAddress(Rtl->NtdllModule, "RtlInitializeGenericTable"))) {
         return FALSE;
     }
+
+    //
+    // End of auto-generated function resolutions.
+    //
 
     return TRUE;
 }
@@ -208,7 +217,6 @@ RtlCheckBit(
 {
     return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
 }
-
 
 _Check_return_
 BOOL
