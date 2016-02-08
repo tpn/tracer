@@ -16,6 +16,16 @@ extern "C" {
 
 typedef const LONG CLONG;
 
+
+typedef const SHORT CSHORT;
+
+typedef struct _STRING {
+    USHORT Length;
+    USHORT MaximumLength;
+    PCHAR  Buffer;
+} STRING, *PSTRING, **PPSTRING;
+
+
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
@@ -23,6 +33,7 @@ typedef struct _UNICODE_STRING {
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+#define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
 #define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
 
 typedef union _ULONG_INTEGER {
@@ -96,94 +107,6 @@ typedef BOOLEAN (NTAPI *PRTL_SUFFIX_UNICODE_STRING)(
     );
 
 //
-// Prefix Tables
-//
-
-typedef struct _PREFIX_TABLE_ENTRY {
-    CSHORT NodeTypeCode;
-    CSHORT NameLength;
-    struct _PREFIX_TABLE_ENTRY *NextPrefixTree;
-    RTL_SPLAY_LINKS Links;
-    PSTRING Prefix;
-} PREFIX_TABLE_ENTRY;
-typedef PREFIX_TABLE_ENTRY *PPREFIX_TABLE_ENTRY;
-
-typedef struct _PREFIX_TABLE {
-    CSHORT NodeTypeCode;
-    CSHORT NameLength;
-    PPREFIX_TABLE_ENTRY NextPrefixTree;
-} PREFIX_TABLE;
-typedef PREFIX_TABLE *PPREFIX_TABLE;
-
-typedef VOID (NTAPI *PPFX_INITIALIZE)(
-    _Out_ PPREFIX_TABLE PrefixTable
-    );
-
-typedef BOOLEAN (NTAPI *PPFX_INSERT_PREFIX)(
-    _In_ PPREFIX_TABLE PrefixTable,
-    _In_ PSTRING Prefix,
-    _Out_ PPREFIX_TABLE_ENTRY PrefixTableEntry
-    );
-
-typedef VOID (NTAPI *PPFX_REMOVE_PREFIX)(
-    _In_ PPREFIX_TABLE PrefixTable,
-    _In_ PPREFIX_TABLE_ENTRY PrefixTableEntry
-    );
-
-typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
-    _In_ PPREFIX_TABLE PrefixTable,
-    _In_ PSTRING FullName
-    );
-
-//
-// Unicode Prefix Table
-//
-
-typedef struct _UNICODE_PREFIX_TABLE_ENTRY {
-    CSHORT NodeTypeCode;
-    CSHORT NameLength;
-    struct _UNICODE_PREFIX_TABLE_ENTRY *NextPrefixTree;
-    struct _UNICODE_PREFIX_TABLE_ENTRY *CaseMatch;
-    RTL_SPLAY_LINKS Links;
-    PUNICODE_STRING Prefix;
-} UNICODE_PREFIX_TABLE_ENTRY;
-typedef UNICODE_PREFIX_TABLE_ENTRY *PUNICODE_PREFIX_TABLE_ENTRY;
-
-typedef struct _UNICODE_PREFIX_TABLE {
-    CSHORT NodeTypeCode;
-    CSHORT NameLength;
-    PUNICODE_PREFIX_TABLE_ENTRY NextPrefixTree;
-    PUNICODE_PREFIX_TABLE_ENTRY LastNextEntry;
-} UNICODE_PREFIX_TABLE;
-typedef UNICODE_PREFIX_TABLE *PUNICODE_PREFIX_TABLE;
-
-typedef VOID (NTAPI *PRTL_INITIALIZE_UNICODE_PREFIX)(
-    _Out_ PUNICODE_PREFIX_TABLE PrefixTable
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_INSERT_UNICODE_PREFIX)(
-    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
-    _In_ PUNICODE_STRING Prefix,
-    _Out_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
-    );
-
-typedef VOID (NTAPI *PRTL_REMOVE_UNICODE_PREFIX)(
-    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
-    _In_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
-    );
-
-typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_FIND_UNICODE_PREFIX)(
-    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
-    _In_ PCUNICODE_STRING FullName,
-    _In_ ULONG CaseInsensitiveIndex
-    );
-
-typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
-    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
-    _In_ BOOLEAN Restart
-    );
-
-//
 // Generic Tables (Splay, Avl)
 //
 
@@ -247,14 +170,14 @@ typedef VOID (NTAPI *PRTL_INITIALIZE_GENERIC_TABLE)(
 
 typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE)(
     _In_ PRTL_GENERIC_TABLE Table,
-    _In_reads_bytes_(BufferSize) PVOID Buffer,
+    _In_ PVOID Buffer,
     _In_ CLONG BufferSize,
     _Out_opt_ PBOOLEAN NewElement
     );
 
 typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)(
     _In_ PRTL_GENERIC_TABLE Table,
-    _In_reads_bytes_(BufferSize) PVOID Buffer,
+    _In_ PVOID Buffer,
     _In_ CLONG BufferSize,
     _Out_opt_ PBOOLEAN NewElement,
     _In_ PVOID NodeOrParent,
@@ -398,14 +321,14 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE {
 typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG Shift,
-    _Reserved_ ULONG Flags
+    _In_ ULONG Flags
     );
 
 typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG InitialSize,
     _In_ ULONG Shift,
-    _Reserved_ ULONG Flags
+    _In_ ULONG Flags
     );
 
 typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
@@ -490,12 +413,99 @@ typedef BOOLEAN (NTAPI *PRTL_CONTRACT_HASH_TABLE)(
     );
 
 //
+// Prefix Tables
+//
+typedef struct _PREFIX_TABLE_ENTRY {
+    CSHORT NodeTypeCode;
+    CSHORT NameLength;
+    struct _PREFIX_TABLE_ENTRY *NextPrefixTree;
+    RTL_SPLAY_LINKS Links;
+    PSTRING Prefix;
+} PREFIX_TABLE_ENTRY;
+typedef PREFIX_TABLE_ENTRY *PPREFIX_TABLE_ENTRY;
+
+typedef struct _PREFIX_TABLE {
+    CSHORT NodeTypeCode;
+    CSHORT NameLength;
+    PPREFIX_TABLE_ENTRY NextPrefixTree;
+} PREFIX_TABLE;
+typedef PREFIX_TABLE *PPREFIX_TABLE;
+
+typedef VOID (NTAPI *PPFX_INITIALIZE)(
+    _Out_ PPREFIX_TABLE PrefixTable
+    );
+
+typedef BOOLEAN (NTAPI *PPFX_INSERT_PREFIX)(
+    _In_ PPREFIX_TABLE PrefixTable,
+    _In_ PSTRING Prefix,
+    _Out_ PPREFIX_TABLE_ENTRY PrefixTableEntry
+    );
+
+typedef VOID (NTAPI *PPFX_REMOVE_PREFIX)(
+    _In_ PPREFIX_TABLE PrefixTable,
+    _In_ PPREFIX_TABLE_ENTRY PrefixTableEntry
+    );
+
+typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
+    _In_ PPREFIX_TABLE PrefixTable,
+    _In_ PSTRING FullName
+    );
+
+//
+// Unicode Prefix Table
+//
+
+typedef struct _UNICODE_PREFIX_TABLE_ENTRY {
+    CSHORT NodeTypeCode;
+    CSHORT NameLength;
+    struct _UNICODE_PREFIX_TABLE_ENTRY *NextPrefixTree;
+    struct _UNICODE_PREFIX_TABLE_ENTRY *CaseMatch;
+    RTL_SPLAY_LINKS Links;
+    PUNICODE_STRING Prefix;
+} UNICODE_PREFIX_TABLE_ENTRY;
+typedef UNICODE_PREFIX_TABLE_ENTRY *PUNICODE_PREFIX_TABLE_ENTRY;
+
+typedef struct _UNICODE_PREFIX_TABLE {
+    CSHORT NodeTypeCode;
+    CSHORT NameLength;
+    PUNICODE_PREFIX_TABLE_ENTRY NextPrefixTree;
+    PUNICODE_PREFIX_TABLE_ENTRY LastNextEntry;
+} UNICODE_PREFIX_TABLE;
+typedef UNICODE_PREFIX_TABLE *PUNICODE_PREFIX_TABLE;
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_UNICODE_PREFIX)(
+    _Out_ PUNICODE_PREFIX_TABLE PrefixTable
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_INSERT_UNICODE_PREFIX)(
+    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
+    _In_ PUNICODE_STRING Prefix,
+    _Out_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
+    );
+
+typedef VOID (NTAPI *PRTL_REMOVE_UNICODE_PREFIX)(
+    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
+    _In_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
+    );
+
+typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_FIND_UNICODE_PREFIX)(
+    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
+    _In_ PCUNICODE_STRING FullName,
+    _In_ ULONG CaseInsensitiveIndex
+    );
+
+typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
+    _In_ PUNICODE_PREFIX_TABLE PrefixTable,
+    _In_ BOOLEAN Restart
+    );
+
+//
 // Bitmaps
 //
 
 typedef struct _RTL_BITMAP {
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
+    ULONG SizeOfBitMap;     // Number of bits.
+    PULONG Buffer;
 } RTL_BITMAP, *PRTL_BITMAP;
 
 typedef struct _RTL_BITMAP_RUN {
@@ -604,14 +614,6 @@ typedef VOID (NTAPI *PRTL_SET_BITS)(
     _In_ ULONG NumberToSet
     );
 
-typedef struct _RTL_BITMAP_RUN {
-
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
-
-} RTL_BITMAP_RUN;
-typedef RTL_BITMAP_RUN *PRTL_BITMAP_RUN;
-
 typedef ULONG (NTAPI *PRTL_FIND_CLEAR_RUNS)(
     _In_ PRTL_BITMAP BitMapHeader,
     _Out_ PRTL_BITMAP_RUN RunArray,
@@ -662,36 +664,19 @@ typedef ULONG (NTAPI *PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)(
     );
 
 //
-// The following two are Windows 8+ only.
-//
-typedef ULONG (NTAPI *PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE)(
-    _In_ PRTL_BITMAP BitMapHeader,
-    _In_ ULONG StartingIndex,
-    _In_ ULONG Length
-    );
-
-typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
-    _In_ PRTL_BITMAP BitMapHeader,
-    _In_ ULONG StartingIndex,
-    _In_ ULONG Length
-    );
-
-//
 // CRC32 and CRC64
 //
 typedef ULONG (NTAPI *PRTLCRC32)(
-    _In_reads_bytes_(Size) const void *Buffer,
+    _In_ const void *Buffer,
     _In_ size_t Size,
     _In_ ULONG InitialCrc
     );
 
 typedef ULONGLONG (NTAPI *PRTLCRC64)(
-    _In_reads_bytes_(Size) const void *Buffer,
+    _In_ const void *Buffer,
     _In_ size_t Size,
     _In_ ULONGLONG InitialCrc
     );
-
-
 
 #define _RTLFUNCTIONS_HEAD                                                                  \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                     \
@@ -710,15 +695,9 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                     \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                     \
     PPFX_FIND_PREFIX PfxFindPrefix;                                                         \
-    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
-    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
-    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
-    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
-    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                          \
     PRTLCRC32 RtlCrc32;                                                                     \
     PRTLCRC64 RtlCrc64;                                                                     \
     PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                      \
-    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
     PRTL_CREATE_HASH_TABLE RtlCreateHashTable; \
     PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
     PRTL_DELETE_HASH_TABLE RtlDeleteHashTable; \
@@ -750,22 +729,46 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_SET_BITS RtlSetBits; \
     PRTL_FIND_CLEAR_RUNS RtlFindClearRuns; \
     PRTL_FIND_LONGEST_RUN_CLEAR RtlFindLongestRunClear; \
-    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear; \
     PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits; \
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits; \
     PRTL_ARE_BITS_CLEAR RtlAreBitsClear; \
     PRTL_ARE_BITS_SET RtlAreBitsSet; \
     PRTL_FIND_NEXT_FORWARD_RUN_CLEAR RtlFindNextForwardRunClear; \
-    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear; \
-    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
-    PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange; \
-
-
-
+    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
 } RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
+
+// Win 8
+typedef ULONG (NTAPI *PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG StartingIndex,
+    _In_ ULONG Length
+    );
+
+// Win 8
+typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG StartingIndex,
+    _In_ ULONG Length
+    );
+
+#define _RTLFUNCTIONS8_HEAD \
+    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
+    PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange;
+
+//
+// Functions that aren't currently resolving.
+//
+#define _RTL_XXX \
+    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
+    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
+    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
+    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
+    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                          \
+    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;
 
 //
 // RtlEx functions.
