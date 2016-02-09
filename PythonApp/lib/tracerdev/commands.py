@@ -159,7 +159,13 @@ class SyncRtlHeader(InvariantAwareCommand):
     template = """\
     if (!(Rtl->%(funcname)s = (%(typedef)s)
         GetProcAddress(Rtl->NtdllModule, "%(funcname)s"))) {
-        return FALSE;
+
+        if (!(Rtl->%(funcname)s = (%(typedef)s)
+            GetProcAddress(Rtl->NtosKrnlModule, "%(funcname)s"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve '%(funcname)s'");
+            return FALSE;
+        }
     }
 """
 

@@ -695,11 +695,8 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                     \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                     \
     PPFX_FIND_PREFIX PfxFindPrefix;                                                         \
-    PRTLCRC32 RtlCrc32;                                                                     \
-    PRTLCRC64 RtlCrc64;                                                                     \
     PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                      \
     PRTL_CREATE_HASH_TABLE RtlCreateHashTable; \
-    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
     PRTL_DELETE_HASH_TABLE RtlDeleteHashTable; \
     PRTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable; \
     PRTL_REMOVE_ENTRY_HASH_TABLE RtlRemoveEntryHashTable; \
@@ -710,9 +707,6 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE RtlInitWeakEnumerationHashTable; \
     PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE RtlWeaklyEnumerateEntryHashTable; \
     PRTL_END_WEAK_ENUMERATION_HASH_TABLE RtlEndWeakEnumerationHashTable; \
-    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable; \
-    PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE RtlStronglyEnumerateEntryHashTable; \
-    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable; \
     PRTL_EXPAND_HASH_TABLE RtlExpandHashTable; \
     PRTL_CONTRACT_HASH_TABLE RtlContractHashTable; \
     PRTL_INITIALIZE_BITMAP RtlInitializeBitMap; \
@@ -733,8 +727,14 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits; \
     PRTL_ARE_BITS_CLEAR RtlAreBitsClear; \
     PRTL_ARE_BITS_SET RtlAreBitsSet; \
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear; \
     PRTL_FIND_NEXT_FORWARD_RUN_CLEAR RtlFindNextForwardRunClear; \
-    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;
+    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;  \
+    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
+    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
+    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
+    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
+    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -755,6 +755,12 @@ typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
     );
 
 #define _RTLFUNCTIONS8_HEAD \
+    PRTLCRC32 RtlCrc32;                                                                     \
+    PRTLCRC64 RtlCrc64;                                                                     \
+    PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE RtlStronglyEnumerateEntryHashTable; \
+    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable; \
+    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable; \
+    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
     PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
     PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange;
 
@@ -791,6 +797,7 @@ typedef struct _RTL {
     ULONG       Size;
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
+    HMODULE     NtosKrnlModule;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
