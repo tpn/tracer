@@ -331,6 +331,149 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlInitializeGenericTableAvl = (PRTL_INITIALIZE_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitializeGenericTableAvl"))) {
+
+        if (!(Rtl->RtlInitializeGenericTableAvl = (PRTL_INITIALIZE_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlInitializeGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlInsertElementGenericTableAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlInsertElementGenericTableAvl"))) {
+
+        if (!(Rtl->RtlInsertElementGenericTableAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlInsertElementGenericTableFullAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlInsertElementGenericTableFullAvl"))) {
+
+        if (!(Rtl->RtlInsertElementGenericTableFullAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTableFullAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableFullAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlDeleteElementGenericTableAvl = (PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlDeleteElementGenericTableAvl"))) {
+
+        if (!(Rtl->RtlDeleteElementGenericTableAvl = (PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlDeleteElementGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteElementGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlLookupElementGenericTableAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupElementGenericTableAvl"))) {
+
+        if (!(Rtl->RtlLookupElementGenericTableAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlLookupElementGenericTableFullAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupElementGenericTableFullAvl"))) {
+
+        if (!(Rtl->RtlLookupElementGenericTableFullAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTableFullAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableFullAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlEnumerateGenericTableAvl = (PRTL_ENUMERATE_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateGenericTableAvl"))) {
+
+        if (!(Rtl->RtlEnumerateGenericTableAvl = (PRTL_ENUMERATE_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlEnumerateGenericTableWithoutSplayingAvl = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateGenericTableWithoutSplayingAvl"))) {
+
+        if (!(Rtl->RtlEnumerateGenericTableWithoutSplayingAvl = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableWithoutSplayingAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableWithoutSplayingAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlLookupFirstMatchingElementGenericTableAvl = (PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlLookupFirstMatchingElementGenericTableAvl"))) {
+
+        if (!(Rtl->RtlLookupFirstMatchingElementGenericTableAvl = (PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupFirstMatchingElementGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupFirstMatchingElementGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlEnumerateGenericTableLikeADirectory = (PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)
+        GetProcAddress(Rtl->NtdllModule, "RtlEnumerateGenericTableLikeADirectory"))) {
+
+        if (!(Rtl->RtlEnumerateGenericTableLikeADirectory = (PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableLikeADirectory"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableLikeADirectory'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlGetElementGenericTableAvl = (PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlGetElementGenericTableAvl"))) {
+
+        if (!(Rtl->RtlGetElementGenericTableAvl = (PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlGetElementGenericTableAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlGetElementGenericTableAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlNumberGenericTableElementsAvl = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlNumberGenericTableElementsAvl"))) {
+
+        if (!(Rtl->RtlNumberGenericTableElementsAvl = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlNumberGenericTableElementsAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlNumberGenericTableElementsAvl'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlIsGenericTableEmptyAvl = (PRTL_IS_GENERIC_TABLE_EMPTY_AVL)
+        GetProcAddress(Rtl->NtdllModule, "RtlIsGenericTableEmptyAvl"))) {
+
+        if (!(Rtl->RtlIsGenericTableEmptyAvl = (PRTL_IS_GENERIC_TABLE_EMPTY_AVL)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlIsGenericTableEmptyAvl"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmptyAvl'");
+            return FALSE;
+        }
+    }
+
     if (!(Rtl->PfxInitialize = (PPFX_INITIALIZE)
         GetProcAddress(Rtl->NtdllModule, "PfxInitialize"))) {
 
@@ -812,6 +955,7 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
 }
 
 
+RTL_API
 BOOLEAN
 RtlCheckBit(
     _In_ PRTL_BITMAP BitMapHeader,
@@ -820,6 +964,86 @@ RtlCheckBit(
 {
     return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
 }
+
+//
+// Functions for Splay Macros
+//
+
+RTL_API
+VOID
+RtlInitializeSplayLinks(
+    _Out_ PRTL_SPLAY_LINKS Links
+    )
+{
+    Links->Parent = Links;
+    Links->LeftChild = NULL;
+    Links->RightChild = NULL;
+}
+
+RTL_API
+PRTL_SPLAY_LINKS
+RtlParent(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return Links->Parent;
+}
+
+RTL_API
+PRTL_SPLAY_LINKS
+RtlLeftChild(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return Links->LeftChild;
+}
+
+RTL_API
+PRTL_SPLAY_LINKS
+RtlRightChild(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return Links->RightChild;
+}
+
+RTL_API
+BOOLEAN
+RtlIsRoot(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return (RtlParent(Links) == Links);
+}
+
+RTL_API
+BOOLEAN
+RtlIsLeftChild(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return (RtlLeftChild(RtlParent(Links)) == Links);
+}
+
+RTL_API
+BOOLEAN
+RtlIsRightChild(_In_ PRTL_SPLAY_LINKS Links)
+{
+    return (RtlRightChild(RtlParent(Links)) == Links);
+}
+
+RTL_API
+VOID
+RtlInsertAsLeftChild (
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    )
+{
+    ParentLinks->LeftChild = ChildLinks;
+    ChildLinks->Parent = ParentLinks;
+}
+
+RTL_API
+VOID
+RtlInsertAsRightChild (
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    )
+{
+    ParentLinks->RightChild = ChildLinks;
+    ChildLinks->Parent = ParentLinks;
+}
+
 
 _Check_return_
 BOOL
@@ -836,10 +1060,83 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
-        GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
+    //
+    // Start of auto-generated section.
+    //
+
+    if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
+        GetProcAddress(RtlExModule, "RtlCheckBit"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlCheckBit'");
         return FALSE;
     }
+
+    if (!(RtlExFunctions->RtlInitializeSplayLinks = (PRTL_INITIALIZE_SPLAY_LINKS)
+        GetProcAddress(RtlExModule, "RtlInitializeSplayLinks"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInitializeSplayLinks'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlParent = (PRTL_PARENT)
+        GetProcAddress(RtlExModule, "RtlParent"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlParent'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlLeftChild = (PRTL_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlRightChild = (PRTL_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsRoot = (PRTL_IS_ROOT)
+        GetProcAddress(RtlExModule, "RtlIsRoot"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsRoot'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsLeftChild = (PRTL_IS_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlIsLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsRightChild = (PRTL_IS_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlIsRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlInsertAsLeftChild = (PRTL_INSERT_AS_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlInsertAsLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInsertAsLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlInsertAsRightChild = (PRTL_INSERT_AS_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlInsertAsRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInsertAsRightChild'");
+        return FALSE;
+    }
+
+    //
+    // End of auto-generated section.
+    //
 
     return TRUE;
 }
