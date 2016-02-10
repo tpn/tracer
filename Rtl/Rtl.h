@@ -107,7 +107,21 @@ typedef BOOLEAN (NTAPI *PRTL_SUFFIX_UNICODE_STRING)(
     );
 
 //
-// Generic Tables (Splay, Avl)
+// Splay Links
+//
+typedef struct _RTL_SPLAY_LINKS {
+    struct _RTL_SPLAY_LINKS *Parent;
+    struct _RTL_SPLAY_LINKS *LeftChild;
+    struct _RTL_SPLAY_LINKS *RightChild;
+} RTL_SPLAY_LINKS, *PRTL_SPLAY_LINKS;
+
+typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
+    _Inout_ PRTL_SPLAY_LINKS Links
+    );
+
+
+//
+// Generic Tables
 //
 
 typedef enum _TABLE_SEARCH_RESULT{
@@ -116,13 +130,6 @@ typedef enum _TABLE_SEARCH_RESULT{
     TableInsertAsLeft,
     TableInsertAsRight
 } TABLE_SEARCH_RESULT;
-
-
-typedef struct _RTL_SPLAY_LINKS {
-    struct _RTL_SPLAY_LINKS *Parent;
-    struct _RTL_SPLAY_LINKS *LeftChild;
-    struct _RTL_SPLAY_LINKS *RightChild;
-} RTL_SPLAY_LINKS, *PRTL_SPLAY_LINKS;
 
 struct _RTL_GENERIC_TABLE;
 
@@ -224,7 +231,6 @@ typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY)(
     _In_ PRTL_GENERIC_TABLE Table
     );
 
-
 //
 // Avl Table
 //
@@ -273,6 +279,88 @@ typedef NTSTATUS (NTAPI *PRTL_AVL_MATCH_FUNCTION)(
     _In_ PVOID UserData,
     _In_ PVOID MatchData
     );
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_GENERIC_TABLE_AVL)(
+    _Out_ PRTL_AVL_TABLE Table,
+    _In_ PRTL_AVL_COMPARE_ROUTINE CompareRoutine,
+    _In_ PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine,
+    _In_ PRTL_AVL_FREE_ROUTINE FreeRoutine,
+    _In_opt_ PVOID TableContext
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement,
+    _In_ PVOID NodeOrParent,
+    _In_ TABLE_SEARCH_RESULT SearchResult
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _Out_ PVOID *NodeOrParent,
+    _Out_ TABLE_SEARCH_RESULT *SearchResult
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ BOOLEAN Restart
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _Inout_ PVOID *RestartKey
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _Out_ PVOID *RestartKey
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_opt_ PRTL_AVL_MATCH_FUNCTION MatchFunction,
+    _In_opt_ PVOID MatchData,
+    _In_ ULONG NextFlag,
+    _Inout_ PVOID *RestartKey,
+    _Inout_ PULONG DeleteCount,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ ULONG I
+    );
+
+typedef PVOID (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)(
+    _In_ PRTL_AVL_TABLE Table
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY_AVL)(
+    _In_ PRTL_AVL_TABLE Table
+    );
+
+    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;
 
 //
 // Hash Tables
@@ -691,6 +779,20 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_GET_ELEMENT_GENERIC_TABLE RtlGetElementGenericTable;                               \
     PRTL_NUMBER_GENERIC_TABLE_ELEMENTS RtlNumberGenericTableElements;                       \
     PRTL_IS_GENERIC_TABLE_EMPTY RtlIsGenericTableEmpty;                                     \
+    PRTL_SPLAY_LINKS RtlSplayLinks; \
+    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;                         \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL RtlInsertElementGenericTableAvl;                         \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL RtlInsertElementGenericTableFullAvl;                \
+    PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL RtlDeleteElementGenericTableAvl;                         \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL RtlLookupElementGenericTableAvl;                         \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL RtlLookupElementGenericTableFullAvl;                \
+    PRTL_ENUMERATE_GENERIC_TABLE_AVL RtlEnumerateGenericTableAvl;                                  \
+    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL RtlEnumerateGenericTableWithoutSplayingAvl;  \
+    PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL RtlLookupFirstMatchingElementGenericTableAvl; \
+    PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY RtlEnumerateGenericTableLikeADirectory;  \
+    PRTL_GET_ELEMENT_GENERIC_TABLE_AVL RtlGetElementGenericTableAvl;                               \
+    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL RtlNumberGenericTableElementsAvl;                       \
+    PRTL_IS_GENERIC_TABLE_EMPTY_AVL RtlIsGenericTableEmptyAvl;                                     \
     PPFX_INITIALIZE PfxInitialize;                                                          \
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                     \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                     \
@@ -768,11 +870,6 @@ typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
 // Functions that aren't currently resolving.
 //
 #define _RTL_XXX \
-    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
-    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
-    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
-    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
-    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                          \
     PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
     PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;
 
@@ -780,13 +877,71 @@ typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
 // RtlEx functions.
 //
 
+typedef BOOLEAN (*PRTL_CHECK_BIT)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG BitPosition
+    );
+
+typedef VOID (*PRTL_INITIALIZE_SPLAY_LINKS)(
+    _Out_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_PARENT)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_LEFT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_RIGHT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_ROOT)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_LEFT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_RIGHT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef VOID (*PRTL_INSERT_AS_LEFT_CHILD)(
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    );
+
+typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    );
+
+
+//
+// Our functions
+//
 typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
 );
 
+
 #define _RTLEXFUNCTIONS_HEAD \
+    PRTL_CHECK_BIT RtlCheckBit; \
+    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks; \
+    PRTL_PARENT RtlParent; \
+    PRTL_LEFT_CHILD RtlLeftChild; \
+    PRTL_RIGHT_CHILD RtlRightChild; \
+    PRTL_IS_ROOT RtlIsRoot; \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild; \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild; \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild; \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild; \
     PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;
 
 typedef struct _RTLEXFUNCTIONS {
