@@ -133,13 +133,22 @@ class SourceFile(InvariantAwareObject):
         return results
 
     def function_definition(self, funcname, block=None):
+        partial = False
         found = False
         for (lineno, line) in enumerate(self.lines):
-            if line.startswith(funcname):
+            if not partial:
+                if line.startswith(funcname):
+                    partial = True
+            else:
                 next_line = self.lines[lineno+1]
                 if next_line == '{':
                     found = True
                     break
+                elif next_line.startswith('    '):
+                    continue
+                else:
+                    partial = False
+                    continue
 
         if not found:
             return None
