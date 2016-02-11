@@ -226,6 +226,10 @@ class SyncRtlHeader(InvariantAwareCommand):
             msg = "no function named %s found in %s"
             raise CommandError(msg % (function_to_patch, source_path))
 
+        if not func.first_block_line:
+            msg = "Could not find starting template:\n%s"
+            raise CommandError(msg % first_template)
+
         new_blocks = [ self.template % fn._asdict() for fn in functions ]
 
         pre_lines = source.lines[:func.first_block_line]
