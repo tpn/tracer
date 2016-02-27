@@ -16,6 +16,16 @@ extern "C" {
 
 typedef const LONG CLONG;
 
+
+typedef const SHORT CSHORT;
+
+typedef struct _STRING {
+    USHORT Length;
+    USHORT MaximumLength;
+    PCHAR  Buffer;
+} STRING, *PSTRING, **PPSTRING;
+
+
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
@@ -23,6 +33,7 @@ typedef struct _UNICODE_STRING {
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+#define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
 #define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
 
 typedef union _ULONG_INTEGER {
@@ -96,9 +107,402 @@ typedef BOOLEAN (NTAPI *PRTL_SUFFIX_UNICODE_STRING)(
     );
 
 //
-// Prefix Tables
+// Splay Links
+//
+typedef struct _RTL_SPLAY_LINKS {
+    struct _RTL_SPLAY_LINKS *Parent;
+    struct _RTL_SPLAY_LINKS *LeftChild;
+    struct _RTL_SPLAY_LINKS *RightChild;
+} RTL_SPLAY_LINKS, *PRTL_SPLAY_LINKS;
+
+typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
+    _Inout_ PRTL_SPLAY_LINKS Links
+    );
+
+
+//
+// Generic Tables
 //
 
+typedef enum _TABLE_SEARCH_RESULT{
+    TableEmptyTree,
+    TableFoundNode,
+    TableInsertAsLeft,
+    TableInsertAsRight
+} TABLE_SEARCH_RESULT;
+
+struct _RTL_GENERIC_TABLE;
+
+typedef enum _RTL_GENERIC_COMPARE_RESULTS {
+    GenericLessThan,
+    GenericGreaterThan,
+    GenericEqual
+} RTL_GENERIC_COMPARE_RESULTS;
+
+typedef RTL_GENERIC_COMPARE_RESULTS (NTAPI *PRTL_GENERIC_COMPARE_ROUTINE)(
+    _In_ struct _RTL_GENERIC_TABLE  *Table,
+    _In_ PVOID  FirstStruct,
+    _In_ PVOID  SecondStruct
+    );
+
+typedef PVOID (NTAPI *PRTL_GENERIC_ALLOCATE_ROUTINE) (
+    _In_ struct _RTL_GENERIC_TABLE  *Table,
+    _In_ CLONG  ByteSize
+    );
+
+typedef VOID (NTAPI *PRTL_GENERIC_FREE_ROUTINE)(
+    _In_ struct _RTL_GENERIC_TABLE *Table,
+    _In_ PVOID  Buffer
+    );
+
+typedef struct _RTL_GENERIC_TABLE {
+    PRTL_SPLAY_LINKS              TableRoot;
+    LIST_ENTRY                    InsertOrderList;
+    PLIST_ENTRY                   OrderedPointer;
+    ULONG                         WhichOrderedElement;
+    ULONG                         NumberGenericTableElements;
+    PRTL_GENERIC_COMPARE_ROUTINE  CompareRoutine;
+    PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine;
+    PRTL_GENERIC_FREE_ROUTINE     FreeRoutine;
+    PVOID                         TableContext;
+} RTL_GENERIC_TABLE, *PRTL_GENERIC_TABLE;
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_GENERIC_TABLE)(
+    _Out_    PRTL_GENERIC_TABLE            Table,
+    _In_     PRTL_GENERIC_COMPARE_ROUTINE  CompareRoutine,
+    _In_     PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine,
+    _In_     PRTL_GENERIC_FREE_ROUTINE     FreeRoutine,
+    _In_opt_ PVOID                         TableContext
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement,
+    _In_ PVOID NodeOrParent,
+    _In_ TABLE_SEARCH_RESULT SearchResult
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_DELETE_ELEMENT_GENERIC_TABLE)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer,
+    _Out_ PVOID *NodeOrParent,
+    _Out_ TABLE_SEARCH_RESULT *SearchResult
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ BOOLEAN Restart
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _Inout_ PVOID *RestartKey
+    );
+
+typedef PVOID (NTAPI *PRTL_GET_ELEMENT_GENERIC_TABLE)(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ ULONG I
+    );
+
+typedef PVOID (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS)(
+    _In_ PRTL_GENERIC_TABLE Table
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY)(
+    _In_ PRTL_GENERIC_TABLE Table
+    );
+
+//
+// Avl Table
+//
+
+typedef struct _RTL_BALANCED_LINKS {
+    struct _RTL_BALANCED_LINKS *Parent;
+    struct _RTL_BALANCED_LINKS *LeftChild;
+    struct _RTL_BALANCED_LINKS *RightChild;
+    CHAR Balance;
+    UCHAR Reserved[3];
+} RTL_BALANCED_LINKS;
+typedef RTL_BALANCED_LINKS *PRTL_BALANCED_LINKS;
+
+typedef RTL_GENERIC_COMPARE_RESULTS (NTAPI *PRTL_AVL_COMPARE_ROUTINE)(
+    _In_ struct _RTL_AVL_TABLE *Table,
+    _In_ PVOID FirstStruct,
+    _In_ PVOID SecondStruct
+    );
+
+typedef PVOID (NTAPI *PRTL_AVL_ALLOCATE_ROUTINE)(
+    _In_ struct _RTL_AVL_TABLE *Table,
+    _In_ CLONG ByteSize
+    );
+
+typedef VOID (NTAPI *PRTL_AVL_FREE_ROUTINE)(
+    _In_ struct _RTL_AVL_TABLE *Table,
+    _In_ __drv_freesMem(Mem) _Post_invalid_ PVOID Buffer
+    );
+
+typedef struct _RTL_AVL_TABLE {
+    RTL_BALANCED_LINKS BalancedRoot;
+    PVOID OrderedPointer;
+    ULONG WhichOrderedElement;
+    ULONG NumberGenericTableElements;
+    ULONG DepthOfTree;
+    PRTL_BALANCED_LINKS RestartKey;
+    ULONG DeleteCount;
+    PRTL_AVL_COMPARE_ROUTINE CompareRoutine;
+    PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine;
+    PRTL_AVL_FREE_ROUTINE FreeRoutine;
+    PVOID TableContext;
+} RTL_AVL_TABLE, *PRTL_AVL_TABLE;
+
+typedef NTSTATUS (NTAPI *PRTL_AVL_MATCH_FUNCTION)(
+    _In_ struct _RTL_AVL_TABLE *Table,
+    _In_ PVOID UserData,
+    _In_ PVOID MatchData
+    );
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_GENERIC_TABLE_AVL)(
+    _Out_ PRTL_AVL_TABLE Table,
+    _In_ PRTL_AVL_COMPARE_ROUTINE CompareRoutine,
+    _In_ PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine,
+    _In_ PRTL_AVL_FREE_ROUTINE FreeRoutine,
+    _In_opt_ PVOID TableContext
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement
+    );
+
+typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _In_ CLONG BufferSize,
+    _Out_opt_ PBOOLEAN NewElement,
+    _In_ PVOID NodeOrParent,
+    _In_ TABLE_SEARCH_RESULT SearchResult
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _Out_ PVOID *NodeOrParent,
+    _Out_ TABLE_SEARCH_RESULT *SearchResult
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ BOOLEAN Restart
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _Inout_ PVOID *RestartKey
+    );
+
+typedef PVOID (NTAPI *PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ PVOID Buffer,
+    _Out_ PVOID *RestartKey
+    );
+
+typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_opt_ PRTL_AVL_MATCH_FUNCTION MatchFunction,
+    _In_opt_ PVOID MatchData,
+    _In_ ULONG NextFlag,
+    _Inout_ PVOID *RestartKey,
+    _Inout_ PULONG DeleteCount,
+    _In_ PVOID Buffer
+    );
+
+typedef PVOID (NTAPI *PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)(
+    _In_ PRTL_AVL_TABLE Table,
+    _In_ ULONG I
+    );
+
+typedef PVOID (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)(
+    _In_ PRTL_AVL_TABLE Table
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY_AVL)(
+    _In_ PRTL_AVL_TABLE Table
+    );
+
+    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;
+
+//
+// Hash Tables
+//
+typedef struct _RTL_DYNAMIC_HASH_TABLE_ENTRY {
+    LIST_ENTRY Linkage;
+    ULONG_PTR Signature;
+} RTL_DYNAMIC_HASH_TABLE_ENTRY, *PRTL_DYNAMIC_HASH_TABLE_ENTRY;
+
+typedef struct _RTL_DYNAMIC_HASH_TABLE_CONTEXT {
+    PLIST_ENTRY ChainHead;
+    PLIST_ENTRY PrevLinkage;
+    ULONG_PTR Signature;
+} RTL_DYNAMIC_HASH_TABLE_CONTEXT, *PRTL_DYNAMIC_HASH_TABLE_CONTEXT;
+
+typedef struct _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR {
+    union {
+       RTL_DYNAMIC_HASH_TABLE_ENTRY HashEntry;
+       PLIST_ENTRY CurEntry;
+    };
+    PLIST_ENTRY ChainHead;
+    ULONG BucketIndex;
+} RTL_DYNAMIC_HASH_TABLE_ENUMERATOR, *PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR;
+
+typedef struct _RTL_DYNAMIC_HASH_TABLE {
+
+    // Entries initialized at creation
+    ULONG Flags;
+    ULONG Shift;
+
+    // Entries used in bucket computation.
+    ULONG TableSize;
+    ULONG Pivot;
+    ULONG DivisorMask;
+
+    // Counters
+    ULONG NumEntries;
+    ULONG NonEmptyBuckets;
+    ULONG NumEnumerators;
+
+    // The directory. This field is for internal use only.
+    PVOID Directory;
+
+} RTL_DYNAMIC_HASH_TABLE, *PRTL_DYNAMIC_HASH_TABLE;
+
+typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
+    _In_ ULONG Shift,
+    _In_ ULONG Flags
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
+    _In_ ULONG InitialSize,
+    _In_ ULONG Shift,
+    _In_ ULONG Flags
+    );
+
+typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_INSERT_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
+    _In_ ULONG_PTR Signature,
+    _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_REMOVE_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
+    _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    );
+
+typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_LOOKUP_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _In_ ULONG_PTR Signature,
+    _Out_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    );
+
+typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_GET_NEXT_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _In_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_INIT_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_ENUMERATE_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef VOID (NTAPI *PRTL_END_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef VOID (NTAPI *PRTL_END_WEAK_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef VOID (NTAPI *PRTL_END_STRONG_ENUMERATION_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_EXPAND_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_CONTRACT_HASH_TABLE)(
+    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
+    );
+
+//
+// Prefix Tables
+//
 typedef struct _PREFIX_TABLE_ENTRY {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
@@ -184,318 +588,12 @@ typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
     );
 
 //
-// Generic Tables (Splay, Avl)
-//
-
-typedef enum _TABLE_SEARCH_RESULT{
-    TableEmptyTree,
-    TableFoundNode,
-    TableInsertAsLeft,
-    TableInsertAsRight
-} TABLE_SEARCH_RESULT;
-
-
-typedef struct _RTL_SPLAY_LINKS {
-    struct _RTL_SPLAY_LINKS *Parent;
-    struct _RTL_SPLAY_LINKS *LeftChild;
-    struct _RTL_SPLAY_LINKS *RightChild;
-} RTL_SPLAY_LINKS, *PRTL_SPLAY_LINKS;
-
-struct _RTL_GENERIC_TABLE;
-
-typedef enum _RTL_GENERIC_COMPARE_RESULTS {
-    GenericLessThan,
-    GenericGreaterThan,
-    GenericEqual
-} RTL_GENERIC_COMPARE_RESULTS;
-
-typedef RTL_GENERIC_COMPARE_RESULTS (NTAPI *PRTL_GENERIC_COMPARE_ROUTINE)(
-    _In_ struct _RTL_GENERIC_TABLE  *Table,
-    _In_ PVOID  FirstStruct,
-    _In_ PVOID  SecondStruct
-    );
-
-typedef PVOID (NTAPI *PRTL_GENERIC_ALLOCATE_ROUTINE) (
-    _In_ struct _RTL_GENERIC_TABLE  *Table,
-    _In_ CLONG  ByteSize
-    );
-
-typedef VOID (NTAPI *PRTL_GENERIC_FREE_ROUTINE)(
-    _In_ struct _RTL_GENERIC_TABLE *Table,
-    _In_ PVOID  Buffer
-    );
-
-typedef struct _RTL_GENERIC_TABLE {
-    PRTL_SPLAY_LINKS              TableRoot;
-    LIST_ENTRY                    InsertOrderList;
-    PLIST_ENTRY                   OrderedPointer;
-    ULONG                         WhichOrderedElement;
-    ULONG                         NumberGenericTableElements;
-    PRTL_GENERIC_COMPARE_ROUTINE  CompareRoutine;
-    PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine;
-    PRTL_GENERIC_FREE_ROUTINE     FreeRoutine;
-    PVOID                         TableContext;
-} RTL_GENERIC_TABLE, *PRTL_GENERIC_TABLE;
-
-typedef VOID (NTAPI *PRTL_INITIALIZE_GENERIC_TABLE)(
-    _Out_    PRTL_GENERIC_TABLE            Table,
-    _In_     PRTL_GENERIC_COMPARE_ROUTINE  CompareRoutine,
-    _In_     PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine,
-    _In_     PRTL_GENERIC_FREE_ROUTINE     FreeRoutine,
-    _In_opt_ PVOID                         TableContext
-    );
-
-typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_reads_bytes_(BufferSize) PVOID Buffer,
-    _In_ CLONG BufferSize,
-    _Out_opt_ PBOOLEAN NewElement
-    );
-
-typedef PVOID (NTAPI *PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_reads_bytes_(BufferSize) PVOID Buffer,
-    _In_ CLONG BufferSize,
-    _Out_opt_ PBOOLEAN NewElement,
-    _In_ PVOID NodeOrParent,
-    _In_ TABLE_SEARCH_RESULT SearchResult
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_DELETE_ELEMENT_GENERIC_TABLE)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ PVOID Buffer
-    );
-
-typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ PVOID Buffer
-    );
-
-typedef PVOID (NTAPI *PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ PVOID Buffer,
-    _Out_ PVOID *NodeOrParent,
-    _Out_ TABLE_SEARCH_RESULT *SearchResult
-    );
-
-typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ BOOLEAN Restart
-    );
-
-typedef PVOID (NTAPI *PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _Inout_ PVOID *RestartKey
-    );
-
-typedef PVOID (NTAPI *PRTL_GET_ELEMENT_GENERIC_TABLE)(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ ULONG I
-    );
-
-typedef PVOID (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS)(
-    _In_ PRTL_GENERIC_TABLE Table
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY)(
-    _In_ PRTL_GENERIC_TABLE Table
-    );
-
-
-//
-// Avl Table
-//
-
-typedef struct _RTL_BALANCED_LINKS {
-    struct _RTL_BALANCED_LINKS *Parent;
-    struct _RTL_BALANCED_LINKS *LeftChild;
-    struct _RTL_BALANCED_LINKS *RightChild;
-    CHAR Balance;
-    UCHAR Reserved[3];
-} RTL_BALANCED_LINKS;
-typedef RTL_BALANCED_LINKS *PRTL_BALANCED_LINKS;
-
-typedef RTL_GENERIC_COMPARE_RESULTS (NTAPI *PRTL_AVL_COMPARE_ROUTINE)(
-    _In_ struct _RTL_AVL_TABLE *Table,
-    _In_ PVOID FirstStruct,
-    _In_ PVOID SecondStruct
-    );
-
-typedef PVOID (NTAPI *PRTL_AVL_ALLOCATE_ROUTINE)(
-    _In_ struct _RTL_AVL_TABLE *Table,
-    _In_ CLONG ByteSize
-    );
-
-typedef VOID (NTAPI *PRTL_AVL_FREE_ROUTINE)(
-    _In_ struct _RTL_AVL_TABLE *Table,
-    _In_ __drv_freesMem(Mem) _Post_invalid_ PVOID Buffer
-    );
-
-typedef struct _RTL_AVL_TABLE {
-    RTL_BALANCED_LINKS BalancedRoot;
-    PVOID OrderedPointer;
-    ULONG WhichOrderedElement;
-    ULONG NumberGenericTableElements;
-    ULONG DepthOfTree;
-    PRTL_BALANCED_LINKS RestartKey;
-    ULONG DeleteCount;
-    PRTL_AVL_COMPARE_ROUTINE CompareRoutine;
-    PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine;
-    PRTL_AVL_FREE_ROUTINE FreeRoutine;
-    PVOID TableContext;
-} RTL_AVL_TABLE, *PRTL_AVL_TABLE;
-
-typedef NTSTATUS (NTAPI *PRTL_AVL_MATCH_FUNCTION)(
-    _In_ struct _RTL_AVL_TABLE *Table,
-    _In_ PVOID UserData,
-    _In_ PVOID MatchData
-    );
-
-//
-// Hash Tables
-//
-typedef struct _RTL_DYNAMIC_HASH_TABLE_ENTRY {
-    LIST_ENTRY Linkage;
-    ULONG_PTR Signature;
-} RTL_DYNAMIC_HASH_TABLE_ENTRY, *PRTL_DYNAMIC_HASH_TABLE_ENTRY;
-
-typedef struct _RTL_DYNAMIC_HASH_TABLE_CONTEXT {
-    PLIST_ENTRY ChainHead;
-    PLIST_ENTRY PrevLinkage;
-    ULONG_PTR Signature;
-} RTL_DYNAMIC_HASH_TABLE_CONTEXT, *PRTL_DYNAMIC_HASH_TABLE_CONTEXT;
-
-typedef struct _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR {
-    union {
-       RTL_DYNAMIC_HASH_TABLE_ENTRY HashEntry;
-       PLIST_ENTRY CurEntry;
-    };
-    PLIST_ENTRY ChainHead;
-    ULONG BucketIndex;
-} RTL_DYNAMIC_HASH_TABLE_ENUMERATOR, *PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR;
-
-typedef struct _RTL_DYNAMIC_HASH_TABLE {
-
-    // Entries initialized at creation
-    ULONG Flags;
-    ULONG Shift;
-
-    // Entries used in bucket computation.
-    ULONG TableSize;
-    ULONG Pivot;
-    ULONG DivisorMask;
-
-    // Counters
-    ULONG NumEntries;
-    ULONG NonEmptyBuckets;
-    ULONG NumEnumerators;
-
-    // The directory. This field is for internal use only.
-    PVOID Directory;
-
-} RTL_DYNAMIC_HASH_TABLE, *PRTL_DYNAMIC_HASH_TABLE;
-
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
-    _In_ ULONG Shift,
-    _Reserved_ ULONG Flags
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
-    _In_ ULONG InitialSize,
-    _In_ ULONG Shift,
-    _Reserved_ ULONG Flags
-    );
-
-typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_INSERT_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
-    _In_ ULONG_PTR Signature,
-    _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_REMOVE_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
-    _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
-    );
-
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_LOOKUP_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _In_ ULONG_PTR Signature,
-    _Out_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
-    );
-
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_GET_NEXT_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _In_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_INIT_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_ENUMERATE_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef VOID (NTAPI *PRTL_END_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef VOID (NTAPI *PRTL_END_WEAK_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef VOID (NTAPI *PRTL_END_STRONG_ENUMERATION_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
-    _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_EXPAND_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
-    );
-
-typedef BOOLEAN (NTAPI *PRTL_CONTRACT_HASH_TABLE)(
-    _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
-    );
-
-//
 // Bitmaps
 //
 
 typedef struct _RTL_BITMAP {
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
+    ULONG SizeOfBitMap;     // Number of bits.
+    PULONG Buffer;
 } RTL_BITMAP, *PRTL_BITMAP;
 
 typedef struct _RTL_BITMAP_RUN {
@@ -604,14 +702,6 @@ typedef VOID (NTAPI *PRTL_SET_BITS)(
     _In_ ULONG NumberToSet
     );
 
-typedef struct _RTL_BITMAP_RUN {
-
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
-
-} RTL_BITMAP_RUN;
-typedef RTL_BITMAP_RUN *PRTL_BITMAP_RUN;
-
 typedef ULONG (NTAPI *PRTL_FIND_CLEAR_RUNS)(
     _In_ PRTL_BITMAP BitMapHeader,
     _Out_ PRTL_BITMAP_RUN RunArray,
@@ -662,36 +752,19 @@ typedef ULONG (NTAPI *PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)(
     );
 
 //
-// The following two are Windows 8+ only.
-//
-typedef ULONG (NTAPI *PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE)(
-    _In_ PRTL_BITMAP BitMapHeader,
-    _In_ ULONG StartingIndex,
-    _In_ ULONG Length
-    );
-
-typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
-    _In_ PRTL_BITMAP BitMapHeader,
-    _In_ ULONG StartingIndex,
-    _In_ ULONG Length
-    );
-
-//
 // CRC32 and CRC64
 //
 typedef ULONG (NTAPI *PRTLCRC32)(
-    _In_reads_bytes_(Size) const void *Buffer,
+    _In_ const void *Buffer,
     _In_ size_t Size,
     _In_ ULONG InitialCrc
     );
 
 typedef ULONGLONG (NTAPI *PRTLCRC64)(
-    _In_reads_bytes_(Size) const void *Buffer,
+    _In_ const void *Buffer,
     _In_ size_t Size,
     _In_ ULONGLONG InitialCrc
     );
-
-
 
 #define _RTLFUNCTIONS_HEAD                                                                  \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                     \
@@ -706,21 +779,26 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_GET_ELEMENT_GENERIC_TABLE RtlGetElementGenericTable;                               \
     PRTL_NUMBER_GENERIC_TABLE_ELEMENTS RtlNumberGenericTableElements;                       \
     PRTL_IS_GENERIC_TABLE_EMPTY RtlIsGenericTableEmpty;                                     \
+    PRTL_SPLAY_LINKS RtlSplayLinks; \
+    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;                         \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL RtlInsertElementGenericTableAvl;                         \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL RtlInsertElementGenericTableFullAvl;                \
+    PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL RtlDeleteElementGenericTableAvl;                         \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL RtlLookupElementGenericTableAvl;                         \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL RtlLookupElementGenericTableFullAvl;                \
+    PRTL_ENUMERATE_GENERIC_TABLE_AVL RtlEnumerateGenericTableAvl;                                  \
+    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL RtlEnumerateGenericTableWithoutSplayingAvl;  \
+    PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL RtlLookupFirstMatchingElementGenericTableAvl; \
+    PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY RtlEnumerateGenericTableLikeADirectory;  \
+    PRTL_GET_ELEMENT_GENERIC_TABLE_AVL RtlGetElementGenericTableAvl;                               \
+    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL RtlNumberGenericTableElementsAvl;                       \
+    PRTL_IS_GENERIC_TABLE_EMPTY_AVL RtlIsGenericTableEmptyAvl;                                     \
     PPFX_INITIALIZE PfxInitialize;                                                          \
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                     \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                     \
     PPFX_FIND_PREFIX PfxFindPrefix;                                                         \
-    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
-    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
-    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
-    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
-    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                          \
-    PRTLCRC32 RtlCrc32;                                                                     \
-    PRTLCRC64 RtlCrc64;                                                                     \
     PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                      \
-    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
     PRTL_CREATE_HASH_TABLE RtlCreateHashTable; \
-    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
     PRTL_DELETE_HASH_TABLE RtlDeleteHashTable; \
     PRTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable; \
     PRTL_REMOVE_ENTRY_HASH_TABLE RtlRemoveEntryHashTable; \
@@ -731,9 +809,6 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE RtlInitWeakEnumerationHashTable; \
     PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE RtlWeaklyEnumerateEntryHashTable; \
     PRTL_END_WEAK_ENUMERATION_HASH_TABLE RtlEndWeakEnumerationHashTable; \
-    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable; \
-    PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE RtlStronglyEnumerateEntryHashTable; \
-    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable; \
     PRTL_EXPAND_HASH_TABLE RtlExpandHashTable; \
     PRTL_CONTRACT_HASH_TABLE RtlContractHashTable; \
     PRTL_INITIALIZE_BITMAP RtlInitializeBitMap; \
@@ -750,34 +825,123 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_SET_BITS RtlSetBits; \
     PRTL_FIND_CLEAR_RUNS RtlFindClearRuns; \
     PRTL_FIND_LONGEST_RUN_CLEAR RtlFindLongestRunClear; \
-    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear; \
     PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits; \
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits; \
     PRTL_ARE_BITS_CLEAR RtlAreBitsClear; \
     PRTL_ARE_BITS_SET RtlAreBitsSet; \
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear; \
     PRTL_FIND_NEXT_FORWARD_RUN_CLEAR RtlFindNextForwardRunClear; \
-    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear; \
-    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
-    PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange; \
-
-
-
+    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;  \
+    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
+    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
+    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
+    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
+    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
 } RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
 
+// Win 8
+typedef ULONG (NTAPI *PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG StartingIndex,
+    _In_ ULONG Length
+    );
+
+// Win 8
+typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG StartingIndex,
+    _In_ ULONG Length
+    );
+
+#define _RTLFUNCTIONS8_HEAD \
+    PRTLCRC32 RtlCrc32;                                                                     \
+    PRTLCRC64 RtlCrc64;                                                                     \
+    PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE RtlStronglyEnumerateEntryHashTable; \
+    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable; \
+    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable; \
+    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
+    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
+    PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange;
+
+//
+// Functions that aren't currently resolving.
+//
+#define _RTL_XXX \
+    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;
+
 //
 // RtlEx functions.
 //
 
+typedef BOOLEAN (*PRTL_CHECK_BIT)(
+    _In_ PRTL_BITMAP BitMapHeader,
+    _In_ ULONG BitPosition
+    );
+
+typedef VOID (*PRTL_INITIALIZE_SPLAY_LINKS)(
+    _Out_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_PARENT)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_LEFT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef PRTL_SPLAY_LINKS (*PRTL_RIGHT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_ROOT)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_LEFT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef BOOLEAN (*PRTL_IS_RIGHT_CHILD)(
+    _In_ PRTL_SPLAY_LINKS Links
+    );
+
+typedef VOID (*PRTL_INSERT_AS_LEFT_CHILD)(
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    );
+
+typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
+    _Inout_ PRTL_SPLAY_LINKS ParentLinks,
+    _Inout_ PRTL_SPLAY_LINKS ChildLinks
+    );
+
+
+//
+// Our functions
+//
 typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
 );
 
+
 #define _RTLEXFUNCTIONS_HEAD \
+    PRTL_CHECK_BIT RtlCheckBit; \
+    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks; \
+    PRTL_PARENT RtlParent; \
+    PRTL_LEFT_CHILD RtlLeftChild; \
+    PRTL_RIGHT_CHILD RtlRightChild; \
+    PRTL_IS_ROOT RtlIsRoot; \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild; \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild; \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild; \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild; \
     PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -788,6 +952,7 @@ typedef struct _RTL {
     ULONG       Size;
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
+    HMODULE     NtosKrnlModule;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

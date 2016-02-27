@@ -271,7 +271,7 @@ PyTraceCallbackFast(
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
-    if (!Rtl->CopyToMappedMemory(EventRecord, &Event, sizeof(Event))) {
+    if (!Rtl->CopyToMemoryMappedMemory(EventRecord, &Event, sizeof(Event))) {
         ++Events->DroppedRecords;
     }
 
