@@ -124,7 +124,7 @@ typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
 // Generic Tables
 //
 
-typedef enum _TABLE_SEARCH_RESULT{
+typedef enum _TABLE_SEARCH_RESULT {
     TableEmptyTree,
     TableFoundNode,
     TableInsertAsLeft,
