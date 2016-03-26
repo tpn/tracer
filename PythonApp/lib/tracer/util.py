@@ -496,6 +496,50 @@ def prepend_error_if_missing(s):
         s if s.startswith('error: ') else 'error: ' + s
     )
 
+def align_trailing_slashes(text_or_lines, trailer='\\'):
+    """
+    >>> t = 'foo; \\\n bar;   \\\n superhornet; \\\n'
+    >>> align_trailing_slashes(t)
+    """
+    if isinstance(text_or_lines, list):
+        lines = text_or_lines
+        was_list = True
+    else:
+        lines = text_or_lines.splitlines()
+        was_list = False
+
+    longest_length = 0
+
+    tmp_lines = []
+    for line in lines:
+        line = line.rstrip()
+        if line.endswith(trailer):
+            line = line[:-1]
+        line = line.rstrip()
+        length = len(line)
+        if length > longest_length:
+            longest_length = length
+        tmp_lines.append(line)
+
+    eol = longest_length + 1
+
+    lines = []
+    for line in tmp_lines:
+        line = line.rstrip()
+        length = len(line)
+        padding = ' ' * ((longest_length - length) + 1)
+        line = '%s%s%s' % (line, padding, trailer)
+        lines.append(line)
+
+    last_line = lines[-1]
+    last_line = last_line[:-1].rstrip()
+    lines[-1] = last_line
+
+    if was_list:
+        return lines
+    else:
+        return '\n'.join(lines)
+
 def render_text_table(rows, **kwds):
     banner = kwds.get('banner')
     footer = kwds.get('footer')

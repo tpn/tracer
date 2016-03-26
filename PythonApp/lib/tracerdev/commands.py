@@ -216,7 +216,6 @@ class SyncRtlHeader(InvariantAwareCommand):
 
         functions = header.functions_from_multiline_define(macro_func_name)
 
-
         first_function = functions[0]
         first_template = self.template % first_function._asdict()
 
@@ -338,6 +337,82 @@ class SyncRtlExFunctions(InvariantAwareCommand):
 
         self._verbose("Synchronized file.")
 
+
+class FindMultilineMacros(InvariantAwareCommand):
+    """
+    Prints a list of all multi-line macros found in the incoming source file.
+    """
+
+    path = None
+    class PathArg(PathInvariant):
+        _help = "path of the file"
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = options.path
+
+        from tracer.sourcefile import SourceFile
+
+        source = SourceFile(path)
+        verbose("Loaded file: %s" % path)
+
+        names = source.multiline_defines.keys()
+        if names:
+            out('\n'.join(names))
+
+class TrailingSlashesAlign(InvariantAwareCommand):
+    """
+    Finds all multi-line macros and aligns trailing slashes where necessary.
+    """
+
+    path = None
+    class PathArg(PathInvariant):
+        _help = "path of the file"
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = options.path
+
+        from tracer.sourcefile import SourceFile
+
+        source = SourceFile(path)
+        orig_data = source.data
+        orig_lines = source.lines
+
+        defines = source.defines
+        multiline_macro_defines = source.multiline_macro_defines
+
+        if not multiline_macro_defines:
+            return
+
+        lines = source.lines
+        dirty = False
+
+        from tracer.util import align_trailing_slashes
+
+        for (name, macro) in multiline_macro_defines.items():
+            old_lines = macro.lines
+            new_lines = align_trailing_slashes(old_lines)
+            old_length = len(old_lines)
+            new_length = len(new_lines)
+            assert old_length == new_length, (old_length, new_length)
+            if new_lines == old_lines:
+                continue
+
+            lines[macro.first_lineno:macro.last_lineno+1] = new_lines
+            dirty = True
+            out("Aligned trailing slashes for %s macro." % name)
+
+        if dirty:
+            with open(path, 'wb') as f:
+                f.write('\n'.join(lines))
+                f.write('\n')
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
