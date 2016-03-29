@@ -45,6 +45,20 @@ static const DWORD NumberOfTraceEventTypes = (
     sizeof(EVENT_TYPE)
 );
 
+typedef struct _PYTHON_MODULE {
+    PPYOBJECT ModuleFilenameObject;
+    PUNICODE_STRING Name;
+    PUNICODE_STRING Path;
+} PYTHON_MODULE, *PPYTHON_MODULE;
+
+typedef struct _PYTHON_FUNCTION {
+    PPYOBJECT CodeObject;
+    PUNICODE_STRING ClassName;
+    PUNICODE_STRING FunctionName;
+    PUNICODE_STRING ModuleName;
+    PUNICODE_STRING FileName;
+} PYTHON_FUNCTION, *PPYTHON_FUNCTION;
+
 typedef struct _PYTHON_TRACE_CONTEXT {
     ULONG             Size;
     PRTL              Rtl;
@@ -53,6 +67,9 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PPYTRACEFUNC      PythonTraceFunction;
     PVOID             UserData;
     PPYFUNCTIONOBJECT FunctionObject;
+    PRTL_GENERIC_TABLE FunctionsTable;
+    PRTL_GENERIC_TABLE ModulesTable;
+
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
 TRACER_API
