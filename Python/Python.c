@@ -280,6 +280,8 @@ LoadPythonExFunctions(
 
     PythonExFunctions->ConvertPythonStringToUnicodeString = (PCONVERTPYSTRINGTOUNICODESTRING)GetProcAddress(PythonExModule, "ConvertPythonStringToUnicodeString");
 
+    PythonExFunctions->CopyPythonStringToUnicodeString = (PCOPY_PYTHON_STRING_TO_UNICODE_STRING)GetProcAddress(PythonExModule, "CopyPythonStringToUnicodeString");
+
     PythonExFunctions->ResolveFrameObjectDetails = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetails");
 
     PythonExFunctions->ResolveFrameObjectDetailsFast = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetailsFast");
@@ -649,6 +651,146 @@ ConvertPythonStringToUnicodeString(
 
     return FALSE;
 
+}
+
+BOOL
+CopyPythonStringToUnicodeString(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringOrUnicodeObject,
+    _Inout_  PPUNICODE_STRING    UnicodeString,
+    _In_     BOOL                AllocateMaximumSize,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext
+)
+{
+    PRTL Rtl;
+    PUNICODE_STRING String;
+    LARGE_INTEGER RequiredSizeInBytes;
+    LARGE_INTEGER AllocationSizeInBytes;
+
+    if (!Python) {
+        return FALSE;
+    }
+
+    if (!StringOrUnicodeObject) {
+        return FALSE;
+    }
+
+    if (!UnicodeString) {
+        return FALSE;
+    }
+
+    Rtl = Python->Rtl;
+
+    if (!Rtl) {
+        return FALSE;
+    }
+
+    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+        ULONG Index;
+        PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
+        RequiredSizeInBytes.QuadPart = StringObject->ObjectSize * sizeof(WCHAR);
+
+        if (RequiredSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
+            return FALSE;
+        }
+
+        if (RequiredSizeInBytes.HighPart != 0) {
+            return FALSE;
+        }
+
+        if (AllocateMaximumSize) {
+            AllocationSizeInBytes.QuadPart = MAX_USTRING - 2;
+        } else {
+            AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
+        }
+
+        if (AllocationSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
+            return FALSE;
+        }
+
+        if (AllocationSizeInBytes.HighPart != 0) {
+            return FALSE;
+        }
+
+        String = (PUNICODE_STRING)AllocationRoutine(
+            AllocationContext,
+            AllocationSizeInBytes.LowPart
+        );
+
+        if (!String) {
+            return FALSE;
+        }
+
+        String->Length = (USHORT)RequiredSizeInBytes.LowPart;
+        String->MaximumLength = (USHORT)AllocationSizeInBytes.LowPart-sizeof(UNICODE_STRING);
+        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+
+        for (Index = 0; Index < StringObject->ObjectSize; Index++) {
+            String->Buffer[Index] = (WCHAR)StringObject->Value[Index];
+        }
+
+        *UnicodeString = String;
+        return TRUE;
+
+    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+        PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
+        UNICODE_STRING Source;
+
+        if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
+            RequiredSizeInBytes.QuadPart = Python->PyUnicode_GetLength(StringOrUnicodeObject) * sizeof(WCHAR);
+            Source.Buffer = Python->PyUnicode_AsUnicode(StringOrUnicodeObject);
+        } else {
+            RequiredSizeInBytes.QuadPart = UnicodeObject->Length * sizeof(WCHAR);
+            Source.Buffer = UnicodeObject->String;
+        }
+
+        if (RequiredSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
+            return FALSE;
+        }
+
+        if (RequiredSizeInBytes.HighPart != 0) {
+            return FALSE;
+        }
+
+        Source.Length = (USHORT)RequiredSizeInBytes.LowPart;
+        Source.MaximumLength = Source.Length;
+
+        if (AllocateMaximumSize) {
+            AllocationSizeInBytes.QuadPart = MAX_USTRING - 2;
+        } else {
+            AllocationSizeInBytes.QuadPart = Source.Length + sizeof(UnicodeString);
+        }
+
+        if (AllocationSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
+            return FALSE;
+        }
+
+        if (AllocationSizeInBytes.HighPart != 0) {
+            return FALSE;
+        }
+
+        String = (PUNICODE_STRING)AllocationRoutine(
+            AllocationContext,
+            AllocationSizeInBytes.LowPart
+        );
+
+        if (!String) {
+            return FALSE;
+        }
+
+        String->Length = Source.Length;
+        String->MaximumLength = (USHORT)AllocationSizeInBytes.LowPart - sizeof(UNICODE_STRING);
+        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+        Rtl->RtlCopyUnicodeString(String, &Source);
+
+        return TRUE;
+
+    } else {
+        return FALSE;
+    }
+
+    return FALSE;
 }
 
 BOOL

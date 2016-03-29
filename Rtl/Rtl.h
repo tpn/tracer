@@ -25,7 +25,6 @@ typedef struct _STRING {
     PCHAR  Buffer;
 } STRING, *PSTRING, **PPSTRING;
 
-
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
@@ -33,6 +32,13 @@ typedef struct _UNICODE_STRING {
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+typedef VOID (RTL_COPY_UNICODE_STRING)(
+    _Inout_  PUNICODE_STRING  DestinationString,
+    _In_opt_ PCUNICODE_STRING SourceString
+    );
+typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
+
+// 65536
 #define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
 #define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
 
@@ -836,7 +842,8 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                                 \
     PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                                 \
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
-    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;
+    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
+    PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -929,6 +936,13 @@ typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     LPCVOID Source,
     SIZE_T Size
 );
+
+typedef PVOID (ALLOCATION_ROUTINE)(
+    _In_opt_ PVOID AllocationContext,
+    _In_ const ULONG ByteSize
+    );
+
+typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
 
 
 #define _RTLEXFUNCTIONS_HEAD                             \

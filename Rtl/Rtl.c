@@ -969,6 +969,17 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyUnicodeString"))) {
+
+        if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyUnicodeString"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlCopyUnicodeString'");
+            return FALSE;
+        }
+    }
+
     //
     // End of auto-generated function resolutions.
     //
