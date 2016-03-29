@@ -48,6 +48,7 @@
     <Compile Include="lib\tracer\pipe_win32.py" />
     <Compile Include="lib\tracer\progressbar.py" />
     <Compile Include="lib\tracer\runvspyprof.py" />
+    <Compile Include="lib\tracer\sourcefile.py" />
     <Compile Include="lib\tracer\testprof.py" />
     <Compile Include="lib\tracer\util.py" />
     <Compile Include="lib\tracer\util_win32.py" />
