@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 typedef const LONG CLONG;
-
+typedef PVOID *PPVOID;
 
 typedef const SHORT CSHORT;
 
@@ -31,6 +31,7 @@ typedef struct _UNICODE_STRING {
     PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
+#define UNICODE_NULL ((WCHAR)0)
 
 typedef VOID (RTL_COPY_UNICODE_STRING)(
     _Inout_  PUNICODE_STRING  DestinationString,
@@ -943,6 +944,13 @@ typedef PVOID (ALLOCATION_ROUTINE)(
     );
 
 typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
+
+typedef VOID (FREE_ROUTINE)(
+    _In_opt_ PVOID Context,
+    _In_ PVOID Buffer
+    );
+
+typedef FREE_ROUTINE *PFREE_ROUTINE;
 
 
 #define _RTLEXFUNCTIONS_HEAD                             \

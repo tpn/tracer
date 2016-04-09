@@ -654,11 +654,57 @@ ConvertPythonStringToUnicodeString(
 }
 
 BOOL
+GetPythonStringInformation(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringOrUnicodeObject,
+    _Out_    PSIZE_T             Length,
+    _Out_    PUSHORT             Width,
+    _Out_    PPVOID              Buffer
+)
+{
+    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+
+        PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
+
+        *Length = StringObject->ObjectSize;
+        *Buffer = StringObject->Value;
+
+        *Width = sizeof(CHAR);
+
+    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+
+        PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
+        UNICODE_STRING Source;
+
+        if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
+
+            *Length = Python->PyUnicode_GetLength(StringOrUnicodeObject);
+            *Buffer = Python->PyUnicode_AsUnicode(StringOrUnicodeObject);
+
+        } else {
+
+            *Length = UnicodeObject->Length;
+            *Buffer = UnicodeObject->String;
+
+        }
+
+        *Width = sizeof(WCHAR);
+
+    } else {
+
+        return FALSE;
+
+    }
+
+    return TRUE;
+}
+
+BOOL
 CopyPythonStringToUnicodeString(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           StringOrUnicodeObject,
     _Inout_  PPUNICODE_STRING    UnicodeString,
-    _In_     BOOL                AllocateMaximumSize,
+    _In_opt_ USHORT              AllocationSize;
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext
 )
@@ -699,9 +745,12 @@ CopyPythonStringToUnicodeString(
             return FALSE;
         }
 
-        if (AllocateMaximumSize) {
-            AllocationSizeInBytes.QuadPart = MAX_USTRING - 2;
+        if (AllocationSize && (AllocationSize > (RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING)))) {
+
+            AllocationSizeInBytes.QuadPart = AllocationSize + sizeof(UNICODE_STRING);
+
         } else {
+
             AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
         }
 
@@ -734,13 +783,17 @@ CopyPythonStringToUnicodeString(
         return TRUE;
 
     } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+
         PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
         UNICODE_STRING Source;
 
         if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
+
             RequiredSizeInBytes.QuadPart = Python->PyUnicode_GetLength(StringOrUnicodeObject) * sizeof(WCHAR);
             Source.Buffer = Python->PyUnicode_AsUnicode(StringOrUnicodeObject);
+
         } else {
+
             RequiredSizeInBytes.QuadPart = UnicodeObject->Length * sizeof(WCHAR);
             Source.Buffer = UnicodeObject->String;
         }
@@ -756,11 +809,15 @@ CopyPythonStringToUnicodeString(
         Source.Length = (USHORT)RequiredSizeInBytes.LowPart;
         Source.MaximumLength = Source.Length;
 
-        if (AllocateMaximumSize) {
-            AllocationSizeInBytes.QuadPart = MAX_USTRING - 2;
+        if (AllocationSize && (AllocationSize > (RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING)))) {
+
+            AllocationSizeInBytes.QuadPart = AllocationSize + sizeof(UNICODE_STRING);
+
         } else {
-            AllocationSizeInBytes.QuadPart = Source.Length + sizeof(UnicodeString);
+
+            AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
         }
+
 
         if (AllocationSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
             return FALSE;
@@ -791,6 +848,360 @@ CopyPythonStringToUnicodeString(
     }
 
     return FALSE;
+}
+
+BOOL
+GetModuleNameFromQualifiedPath(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           ModuleFilenameObject,
+    _Inout_  PPUNICODE_STRING    Path,
+    _Inout_  PPSTRING            Name,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext
+    )
+{
+    BOOL Success = FALSE;
+    const PSTR InitPy = L"__init__.py";
+    const USHORT InitPyLen = sizeof(InitModulePy);
+    BOOL IsInit;
+
+    //
+    // If the path length
+
+    if (Path->Length
+
+}
+
+BOOL
+GetModuleNameAndQualifiedPathFromModuleFilename(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           ModuleFilenameObject,
+    _Inout_  PPUNICODE_STRING    Path,
+    _Inout_  PPSTRING            Name,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext
+    )
+{
+    BOOL Success;
+    BOOL Qualify = FALSE;
+    HRESULT Result;
+
+    SSIZE_T Length;
+    USHORT  Width;
+    PVOID   Buffer;
+
+    ULARGE_INTEGER Size;
+    ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
+
+    USHORT Count;
+    PWSTR Dest;
+
+    PUNICODE_STRING String;
+
+    Success = GetPythonStringInformation(
+        Python,
+        ModuleFilenameObject,
+        &Length,
+        &Width,
+        &Buffer
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (Width != sizeof(CHAR) || Width != sizeof(WCHAR)) {
+        __debugbreak();
+    }
+
+    //
+    // Calculate the size in bytes + trailing NUL.
+    //
+
+    Size.QuadPart = (Length * Width) + sizeof(WCHAR);
+
+    //
+    // Verify string size doesn't exceed our maximum unicode object size.
+    //
+
+    if (Size.HighPart != 0 || Size.LowPart > MaxSize.LowPart) {
+        return FALSE;
+    }
+
+    //
+    // Determine if we need to qualify the path.
+    //
+
+    if (Length >= 3) {
+
+        if (Width == sizeof(CHAR)) {
+
+            PSTR Buf = (PVOID)Buffer;
+
+            Qualify = (Buf[1] != ':' || Buf[2] != '\\');
+
+        } else {
+
+            PWSTR Buf = (PWSTR)Buffer;
+
+            Qualify = (Buf[1] != L':' || Buf[2] != '\\');
+
+        }
+
+    } else if (Length >= 2) {
+
+        if (Width == sizeof(CHAR)) {
+
+            PSTR Buf = (PSTR)Buffer;
+
+            Qualify = (Buf[0] != '\\' || Buf[1] != '\\');
+
+        } else {
+
+            PWSTR Buf = (PWSTR)Buffer;
+
+            Qualify = (Buf[0] != L'\\' || Buf[1] != L'\\');
+
+        }
+    }
+
+    if (Qualify) {
+
+        //
+        // Get the length (in characters) of the current directory and verify it
+        // fits within our unicode string size constraints.
+        //
+
+        ULONG CurDirLength;
+        ULONG CurDirSize;
+        ULONG RequiredSizeInBytes;
+
+        RequiredSizeInBytes = GetCurrentDirectoryW(0, NULL);
+        if (RequiredSizeInBytes == 0) {
+            return FALSE;
+        }
+
+        //
+        // Update the allocation size with the current directory size plus
+        // a joining backslash character.
+        //
+
+        Size.QuadPart = Size.LowPart + sizeof(WCHAR) + RequiredSizeInBytes;
+
+        //
+        // Verify it's within our limits.
+        //
+
+        if (Size.HighPart != 0 || Size.LowPart > MaxSize.LowPart) {
+            return FALSE;
+        }
+
+        //
+        // The size is within our max unicode string size; bump the size to
+        // reflect the size of the UNICODE_STRING structure, and then proceed
+        // with allocation.
+        //
+
+        Size.LowPart += sizeof(UNICODE_STRING);
+
+        String = (PUNICODE_STRING)AllocateRoutine(AllocationContext, Size.LowPart);
+
+        if (!String) {
+            return FALSE;
+        }
+
+        //
+        // Point the buffer to the memory immediately after the struct and
+        // initialize length and maximum length.
+        //
+
+        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+        String->Length = Size.LowPart;
+        String->MaximumLength = Size.LowPart;
+
+        //
+        // CurDirLength will represent the length (number of characters, not
+        // bytes) of the string copied into our buffer.
+        //
+
+        CurDirLength = GetCurrentDirectoryW(RequiredSizeInBytes, String->Buffer);
+        if (CurDirLength == 0) {
+            return FALSE;
+        }
+
+        Dest = &String->Buffer[CurDirLength];
+
+        //
+        // Add the joining backslash.
+        //
+
+        *Dest++ = L'\\';
+
+
+    } else {
+
+        //
+        // Path is already qualified; just allocate a new unicode string.
+        //
+
+        String = (PUNICODE_STRING)AllocateRoutine(AllocationContext, Size.LowPart);
+
+        if (!String) {
+            return FALSE;
+        }
+
+        //
+        // Point the buffer to the memory immediately after the struct and
+        // initialize length and maximum length.
+        //
+
+        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+        String->Length = Size.LowPart;
+        String->MaximumLength = Size.LowPart;
+
+        Dest = String->Buffer;
+
+    }
+
+    //
+    // Copy the rest of the name over.
+    //
+
+    Count = Length + 1;
+
+    if (Width == sizeof(CHAR)) {
+        PSTR Source = (PSTR)Buffer;
+
+        while (--Count) {
+            *Dest++ = (WCHAR)*Source++;
+        }
+
+    } else {
+        PWSTR Source = (PWSTR)Buffer;
+
+        while (--Count) {
+            *Dest++ = *Source++;
+        }
+    }
+
+    //
+    // Add terminating NUL.
+    //
+
+    *Dest++ = UNICODE_NULL;
+
+    //
+    // Update the user's path pointer.
+    //
+
+    *Path = String;
+
+    //
+    // We've handled the path, now construct the module name.
+    //
+
+
+    Success = Python->CopyPythonStringToUnicodeString(
+        Python,
+        ModuleFilenameObject,
+        Path,
+        Name,
+        MAX_PATH,
+        AllocationRoutine,
+        AllocationContext,
+        FreeRoutine,
+        FreeContext
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (Path->Length >= 3) {
+
+        Qualify = (
+            Path->Buffer[1] != L':' ||
+            Path->Buffer[2] != L'\\'
+        );
+
+    } else if (Path->Length >= 2) {
+
+        Qualify = (
+            Path->Buffer[0] != L'\\' ||
+            Path->Buffer[1] != L'\\'
+        );
+
+    }
+
+    if (Qualify) {
+
+        DWORD Length;
+        WSTR Buffer[MAX_PATH];
+        UNICODE_STRING NewPath = { 0, MAX_PATH, Buffer };
+
+        //
+        // Get the length of the current directory.
+        //
+
+        Length = GetCurrentDirectoryW(0, NULL) * sizeof(WCHAR);
+
+
+
+        if (Length > 0) {
+            DWORD NewLength, Offset;
+
+            //
+            // Calculate the new length of the path.
+            //
+
+            NewLength = Length + 1 + Path->Length;
+
+            if (NewLength > Path->MaximumLength) {
+
+                return FALSE;
+
+            }
+
+            //
+            // New length is within our maximum length.
+            //
+
+            Offset = Length +
+            // path
+
+            if (Length + Path->Length + 2 > Path->MaximumLength) {
+
+                //
+                // Current directory + path length exceeds maximum size.
+                //
+
+                return FALSE;
+
+            }
+
+            //
+            // Copy the filename to the part of the buffer that'll reside
+            // after the directory name.
+            //
+
+            Result = StringCchCatW(
+
+        }
+
+        if (GetCurrentDirectoryW(MAX_PATH, Buffer) != 0) {
+            WSTR
+
+
+            if (Path->[0] != L'\\' &&
+
+            }
+
+        }
+
+
+    }
+
+
 }
 
 BOOL

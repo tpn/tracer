@@ -514,7 +514,7 @@ class Tracer:
             byref(self.python_trace_context_size),
             byref(self.python),
             byref(self.trace_context),
-            self.tracer_pythontracer_dll.PyTraceCallbackFast,
+            self.tracer_pythontracer_dll.PyTraceCallbackDev1,
             None,
         )
         if not success:
