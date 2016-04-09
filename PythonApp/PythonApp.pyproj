@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ebb98965-02d5-48b2-96a2-0f9973a629a1}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>bin\tracer.py</StartupFile>
+    <StartupFile>pt.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -64,6 +64,8 @@
     <Compile Include="lib\tracer\wintypes.py" />
     <Compile Include="lib\tracer\_version.py" />
     <Compile Include="lib\tracer\__init__.py" />
+    <Compile Include="pt.py" />
+    <Compile Include="ptd.py" />
     <Compile Include="setup.py" />
     <Compile Include="versioneer.py" />
   </ItemGroup>

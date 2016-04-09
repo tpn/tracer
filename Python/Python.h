@@ -1391,7 +1391,21 @@ CopyPythonStringToUnicodeString(
     _In_     BOOL                AllocateMaximumSize,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext
-);
+    );
+
+TRACER_API
+BOOL
+GetNameAndQualifiedPathFromModuleFilename(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           ModuleFilenameObject,
+    _Inout_  PPUNICODE_STRING    Path,
+    _Inout_  PPSTRING            Name,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
+    );
+
 
 TRACER_API
 BOOL

@@ -1,4 +1,6 @@
-
+////////////////////////////////////////////////////////////////////////////////
+// PythonTracer.c
+////////////////////////////////////////////////////////////////////////////////
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +23,19 @@ TraceStoreAllocationRoutine(
         &RecordSize,
         &NumberOfRecords
     );
+}
+
+VOID
+TraceStoreFreeRoutine(
+    _In_opt_ PVOID AllocationContext,
+    _In_     PVOID Buffer
+    )
+{
+    //
+    // Trace stores don't currently have a free routine.
+    //
+
+    return;
 }
 
 LONG
@@ -296,8 +311,82 @@ PyTraceCallbackFast(
     return 0;
 }
 
+BOOL
+PyTracePrepareTraceEvent(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+    )
+{
+    PPYOBJECT CodeObject = FrameObject->Code;
+    PPYTHON Python = PythonTraceContext->Python;
+
+    TraceEvent->Version = 1;
+    TraceEvent->EventType = (USHORT)EventType;
+    TraceEvent->FramePointer = (ULONG_PTR)FrameObject;
+    TraceEvent->ObjPointer = (ULONG_PTR)ArgObject;
+
+    CodeObject = FrameObject->Code;
+
+    TraceEvent->ModulePointer = (ULONG_PTR)*(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
+
+    TraceEvent->FuncPointer = (ULONG_PTR)*(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Name
+        )
+    );
+
+    TraceEvent->LineNumber = *(
+        (PULONG)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->FirstLineNumber
+        )
+    );
+
+    return TRUE;
+}
+
+VOID
+PyTraceContinueTraceEvent(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    )
+{
+    PPYTHON Python = PythonTraceContext->Python;
+
+    QueryPerformanceCounter(&TraceEvent->liTimeStamp);
+
+    if (TraceEvent->EventType == TraceEventType_PyTrace_LINE) {
+        //
+        // Get the actual line number if we're tracing a line.
+        //
+        TraceEvent->LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
+    }
+
+#ifdef _M_X64
+    TraceEvent->ProcessId = __readgsdword(0x40);
+    TraceEvent->ThreadId = __readgsdword(0x48);
+#elif _M_X86
+    // 32-bit
+    TraceEvent->ProcessId = __readgsdword(0x20);
+    TraceEvent->ThreadId = __readgsdword(0x24);
+#else
+#error Unsupported architecture.
+#endif
+
+}
+
 LONG
-PyTraceCallbackGenericTable(
+PyTraceCallback(
     _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_        PPYFRAMEOBJECT          FrameObject,
     _In_opt_    LONG                    EventType,
@@ -306,7 +395,88 @@ PyTraceCallbackGenericTable(
 {
     PRTL Rtl;
     PPYTHON Python;
-    PPYOBJECT CodeObject;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+    TRACE_EVENT  Event = { 0 };
+    ULARGE_INTEGER RecordSize = { sizeof(Event) };
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
+    BOOLEAN Success;
+
+    Rtl = Context->Rtl;
+    TraceContext = Context->TraceContext;
+    Python = Context->Python;
+    TraceStores = TraceContext->TraceStores;
+
+    Success = Context->PrepareTraceEvent(Context,
+                                         &Event,
+                                         FrameObject,
+                                         EventType,
+                                         ArgObject);
+
+    if (!Success) {
+        return 0;
+    }
+
+    switch (EventType) {
+        case TraceEventType_PyTrace_CALL:
+
+            Success = (
+                ++Context->Depth > Context->SkipFrames &&
+                Context->RegisterPythonFunction(Context, &Event, FrameObject)
+            );
+
+            if (Success) {
+                Context->ContinueTraceEvent(Context, &Event, FrameObject);
+                Context->TraceCall(Context, &Event, FrameObject);
+            }
+            break;
+
+        case TraceEventType_PyTrace_EXCEPTION:
+            break;
+
+        case TraceEventType_PyTrace_LINE:
+            Event.LineCount = 1;
+            break;
+
+        case TraceEventType_PyTrace_RETURN:
+
+            Success = (
+                Context->Depth &&
+                --Context->Depth > Context->SkipFrames &&
+                Context->RegisterPythonFunction(Context, &Event, FrameObject)
+            );
+
+            if (Success) {
+                Context->ContinueTraceEvent(Context, &Event, FrameObject);
+                Context->TraceReturn(Context, &Event, FrameObject);
+            }
+
+            break;
+
+        case TraceEventType_PyTrace_C_CALL:
+            break;
+        case TraceEventType_PyTrace_C_EXCEPTION:
+            break;
+        case TraceEventType_PyTrace_C_RETURN:
+            break;
+    };
+
+    Event.SequenceId = ++TraceContext->SequenceId;
+
+    return 0;
+}
+
+BOOL
+PyTraceRegisterPythonFunction(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+)
+{
+    PRTL Rtl;
+    PPYTHON Python;
+    PPYOBJECT CodeObject = FrameObject->Code;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     PTRACE_STORE Events;
@@ -323,19 +493,20 @@ PyTraceCallbackGenericTable(
     ULARGE_INTEGER ModuleRecordSize = { sizeof(ModuleRecord) };
     PTRACE_STORE Strings;
     BOOL Success = FALSE;
+    PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
+    PFUNCTIONS_TABLE FunctionsTable;
+    PMODULES_TABLE ModulesTable;
 
     CodeObject = FrameObject->Code;
 
-    if (PythonTraceContext->FunctionObject) {
-        if (PythonTraceContext->FunctionObject->Code != CodeObject) {
-            return 0;
-        }
-    }
-
     Python = PythonTraceContext->Python;
 
+    //
+    // Make sure we've been passed a Python code object.
+    //
+
     if (CodeObject->TypeObject != Python->PyCode_Type) {
-        return 0;
+        return FALSE;
     }
 
     Rtl = PythonTraceContext->Rtl;
@@ -344,64 +515,97 @@ PyTraceCallbackGenericTable(
 
     FunctionRecord.CodeObject = CodeObject;
 
+    //
+    // Insert the function into our table if it's not already present.
+    //
+
     Function = Rtl->RtlInsertElementGenericTable(
-        PythonTraceContext->FunctionsTable,
+        Context->FunctionsTable,
         &FunctionRecord,
         FunctionRecordSize.LowPart,
         &NewFunction
         );
 
-    if (NewFunction) {
+    if (!NewFunction) {
 
         //
-        // Have we seen this module before?
+        // We've already seen this function before, no need to do anything else.
         //
-        ModuleRecord.ModuleFilenameObject = *(
-            (PPPYOBJECT)RtlOffsetToPointer(
-                CodeObject,
-                Python->PyCodeObjectOffsets->Filename
-            )
-        );
 
-        Module = Rtl->RtlInsertElementGenericTable(
-            PythonTraceContext->ModulesTable,
-            &ModuleRecord,
-            ModuleRecordSize.LowPart,
-            &NewModule
-        );
+        return TRUE;
+    }
 
-        if (NewModule) {
-            BOOL Success;
+    //
+    // We haven't seen this function before.  Determine if we've seen the
+    // module filename.
+    //
 
-            Python->Py_IncRef(Module->ModuleFilenameObject);
+    ModuleRecord.ModuleFilenameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
 
-            //
-            // This is the first time we've seen this module.  We need to save
-            // UNICODE_STRING instances of the qualified path and the module
-            // name.
-            //
-            Strings = &TraceStores->Stores[TRACE_STORE_STRINGS_INDEX];
+    ModulesTable = Context->ModulesTable;
 
-            Success = Python->CopyPythonStringToUnicodeString(
-                Python,
-                Module->ModuleFilenameObject,
-                &Module->Path,
-                FALSE,
-                TraceStoreAllocationRoutine,
-                Strings
+    Module = Rtl->RtlInsertElementGenericTable(
+        ModulesTable,
+        &ModuleRecord,
+        ModuleRecordSize.LowPart,
+        &NewModule
+    );
+
+    if (!NewModule) {
+
+        //
+        // We've already seen this module before.  Fill in the function details
+        // accordingly.
+        //
+        Function->Module = Module;
+
+    } else {
+
+        //Python->Py_IncRef(Module->ModuleFilenameObject);
+
+        //
+        // This is the first time we've seen this module.  We need to save
+        // UNICODE_STRING instances of the qualified path and the module
+        // name.
+        //
+        Strings = &TraceStores->Stores[TRACE_STORE_STRINGS_INDEX];
+
+        Success = Python->GetNameAndQualifiedPathFromModuleFilename(
+            Python,
+            Module->ModuleFilenameObject,
+            &Module->Path,
+            &Module->Name,
+            TraceStoreAllocationRoutine,
+            Strings,
+            TraceStoreFreeRoutine,
+            NULL
             );
 
-            if (!Success) {
-                //
-                // xxx todo: remove elements...
-                //
-                __debugbreak();
-            }
+        if (!Success) {
 
+            //
+            // Remove the function from the table and return.  (This may not
+            // be the best way to handle this -- not sure what circumstances
+            // we're going to fail to copy a Python string.)
+            //
 
-
-
+            Python->Py_DecRef(Module->ModuleFilenameObject);
+            Rtl->RtlDeleteElementGenericTable(ModulesTable, Module);
+            Rtl->RtlDeleteElementGenericTable(FunctionsTable, Function);
+            return 0;
         }
+
+        Success = Rtl->EnsureQualifiedPath(
+
+
+    } else {
+
+    }
 
 
     }
@@ -504,6 +708,7 @@ PyTraceCallbackGenericTable(
 
     return 0;
 }
+
 
 PVOID
 NTAPI
@@ -655,8 +860,18 @@ InitializePythonTraceContext(
     PythonTraceContext->UserData = UserData;
 
     if (!PythonTraceContext->PythonTraceFunction) {
-        PythonTraceContext->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallbackBasic;
+        PythonTraceContext->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallback;
     }
+
+    PythonTraceContext->PrepareTraceEvent = PyTracePrepareTraceEvent;
+    PythonTraceContext->ContinueTraceEvent = PyTraceContinueTraceEvent;
+
+    PythonTraceContext->RegisterPythonFunction = PyTraceRegisterPythonFunction;
+
+    PythonTraceContext->TraceCall = PyTraceCall;
+    PythonTraceContext->TraceLine = PyTraceLine;
+    PythonTraceContext->TraceReturn = PyTraceReturn;
+
 
     //Rtl->RtlInitializeGenericTable(
     //    &PythonTraceContext->FunctionsTable,

@@ -49,15 +49,74 @@ typedef struct _PYTHON_MODULE {
     PPYOBJECT ModuleFilenameObject;
     PUNICODE_STRING Name;
     PUNICODE_STRING Path;
+    PREFIX_TABLE_ENTRY Prefix;
 } PYTHON_MODULE, *PPYTHON_MODULE;
 
 typedef struct _PYTHON_FUNCTION {
     PPYOBJECT CodeObject;
+    PYTHON_MODULE Module;
+    PUNICODE_STRING Name;
+    PUNICODE_STRING Path;
     PUNICODE_STRING ClassName;
     PUNICODE_STRING FunctionName;
     PUNICODE_STRING ModuleName;
-    PUNICODE_STRING FileName;
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION;
+
+//
+// Forward decls.
+//
+typedef struct _PYTHON_TRACE_CONTEXT PYTHON_TRACE_CONTEXT;
+typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
+
+typedef BOOLEAN (PYTHON_TRACE_CALL)(
+    _Inout_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_ PTRACE_EVENT          Event,
+    _In_    PPYFRAMEOBJECT        FrameObject
+    );
+typedef PYTHON_TRACE_CALL *PPYTHON_TRACE_CALL;
+
+typedef BOOLEAN (PYTHON_TRACE_LINE)(
+    _Inout_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_ PTRACE_EVENT          Event,
+    _In_    PPYFRAMEOBJECT        FrameObject
+    );
+typedef PYTHON_TRACE_LINE *PPYTHON_TRACE_LINE;
+
+typedef BOOLEAN (PYTHON_TRACE_RETURN)(
+    _Inout_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_ PTRACE_EVENT          Event,
+    _In_    PPYFRAMEOBJECT        FrameObject
+    );
+typedef PYTHON_TRACE_RETURN *PPYTHON_TRACE_RETURN;
+
+typedef BOOLEAN (REGISTER_PYTHON_FUNCTION)(
+    _Inout_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_ PTRACE_EVENT          Event,
+    _In_    PPYFRAMEOBJECT        FrameObject
+    );
+typedef REGISTER_PYTHON_FUNCTION *PREGISTER_PYTHON_FUNCTION;
+
+typedef BOOLEAN (PREPARE_TRACE_EVENT)(
+    _Inout_  PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_  PTRACE_EVENT          Event,
+    _In_     PPYFRAMEOBJECT        FrameObject,
+    _In_opt_ LONG                  EventType,
+    _In_opt_ PPYOBJECT             ArgObject
+    );
+typedef PREPARE_TRACE_EVENT *PPREPARE_TRACE_EVENT;
+
+typedef VOID (CONTINUE_TRACE_EVENT)(
+    _Inout_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _Inout_ PTRACE_EVENT          Event,
+    _In_    PPYFRAMEOBJECT        FrameObject
+    );
+typedef CONTINUE_TRACE_EVENT *PCONTINUE_TRACE_EVENT;
+
+typedef RTL_GENERIC_TABLE FUNCTIONS_TABLE;
+typedef FUNCTIONS_TABLE *PFUNCTIONS_TABLE;
+
+typedef RTL_GENERIC_TABLE MODULES_TABLE;
+typedef MODULES_TABLE *PMODULES_TABLE;
 
 typedef struct _PYTHON_TRACE_CONTEXT {
     ULONG             Size;
@@ -66,9 +125,23 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PTRACE_CONTEXT    TraceContext;
     PPYTRACEFUNC      PythonTraceFunction;
     PVOID             UserData;
+
     PPYFUNCTIONOBJECT FunctionObject;
-    PRTL_GENERIC_TABLE FunctionsTable;
-    PRTL_GENERIC_TABLE ModulesTable;
+
+    ULONG             Depth;
+    ULONG             SkipFrames;
+
+    PFUNCTIONS_TABLE FunctionsTable;
+    PMODULES_TABLE   ModulesTable;
+
+    PPREPARE_TRACE_EVENT PrepareTraceEvent;
+    PCONTINUE_TRACE_EVENT ContinueTraceEvent;
+
+    PREGISTER_PYTHON_FUNCTION RegisterPythonFunction;
+
+    PPYTHON_TRACE_CALL TraceCall;
+    PPYTHON_TRACE_LINE TraceLine;
+    PPYTHON_TRACE_RETURN TraceReturn;
 
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
@@ -98,6 +171,56 @@ PyTraceCallbackFast(
     _In_opt_    LONG                    EventType,
     _In_opt_    PPYOBJECT               ArgObject
 );
+
+TRACER_API
+BOOL
+PyTracePrepareTraceEvent(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+    );
+
+TRACER_API
+VOID
+PyTraceContinueTraceEvent(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    );
+
+TRACER_API
+BOOL
+PyTraceRegisterPythonFunction(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    );
+
+TRACER_API
+VOID
+PyTraceCall(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    );
+
+TRACER_API
+VOID
+PyTraceLine(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    );
+
+TRACER_API
+VOID
+PyTraceReturn(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _Inout_     PTRACE_EVENT            TraceEvent,
+    _In_        PPYFRAMEOBJECT          FrameObject
+    );
 
 
 TRACER_API
