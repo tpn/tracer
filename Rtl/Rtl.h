@@ -14,10 +14,17 @@ extern "C" {
 #define PAGE_ALIGN(Va) ((PVOID)((ULONG_PTR)(Va) & ~(PAGE_SIZE - 1)))
 #endif
 
+#ifndef ARGUMENT_PRESENT
+#define ARGUMENT_PRESENT(ArgumentPointer)    (                 \
+    (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL) )
+#endif
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 
 typedef const SHORT CSHORT;
+
+typedef struct _RTL *PRTL;
 
 typedef struct _STRING {
     USHORT Length;
@@ -42,6 +49,8 @@ typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
 // 65536
 #define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
 #define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
+
+#define RTL_CONSTANT_STRING(s) { sizeof( s ) - sizeof( (s)[0] ), sizeof( s ), s }
 
 typedef union _ULONG_INTEGER {
     struct {
@@ -91,6 +100,18 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _Out_ PULONG Value
 );
 
+typedef
+_Check_return_
+NTSYSAPI
+SIZE_T
+(NTAPI RTL_COMPARE_MEMORY)(
+_In_ const VOID * Source1,
+_In_ const VOID * Source2,
+_In_ SIZE_T Length
+);
+
+typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
+
 typedef EXCEPTION_DISPOSITION (__cdecl *PCSPECIFICHANDLER)(
     PEXCEPTION_RECORD ExceptionRecord,
     ULONG_PTR Frame,
@@ -116,6 +137,7 @@ typedef BOOLEAN (NTAPI *PRTL_SUFFIX_UNICODE_STRING)(
 //
 // Splay Links
 //
+
 typedef struct _RTL_SPLAY_LINKS {
     struct _RTL_SPLAY_LINKS *Parent;
     struct _RTL_SPLAY_LINKS *LeftChild;
@@ -601,12 +623,19 @@ typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
 typedef struct _RTL_BITMAP {
     ULONG SizeOfBitMap;     // Number of bits.
     PULONG Buffer;
-} RTL_BITMAP, *PRTL_BITMAP;
+} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
 
 typedef struct _RTL_BITMAP_RUN {
     ULONG StartingIndex;
     ULONG NumberOfBits;
-} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN;
+} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
+
+//
+// The various bitmap find functions return 0xFFFFFFFF
+// if they couldn't find the requested bit pattern.
+//
+
+#define BITS_NOT_FOUND 0xFFFFFFFF
 
 typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP)(
     _Out_ PRTL_BITMAP BitMapHeader,
@@ -767,7 +796,7 @@ typedef ULONG (NTAPI *PRTLCRC32)(
     _In_ ULONG InitialCrc
     );
 
-typedef ULONGLONG (NTAPI *PRTLCRC64)(
+typedef ULONGLONG(NTAPI *PRTLCRC64)(
     _In_ const void *Buffer,
     _In_ size_t Size,
     _In_ ULONGLONG InitialCrc
@@ -786,7 +815,6 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_GET_ELEMENT_GENERIC_TABLE RtlGetElementGenericTable;                                          \
     PRTL_NUMBER_GENERIC_TABLE_ELEMENTS RtlNumberGenericTableElements;                                  \
     PRTL_IS_GENERIC_TABLE_EMPTY RtlIsGenericTableEmpty;                                                \
-    PRTL_SPLAY_LINKS RtlSplayLinks;                                                                    \
     PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;                                    \
     PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL RtlInsertElementGenericTableAvl;                             \
     PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL RtlInsertElementGenericTableFullAvl;                    \
@@ -844,7 +872,8 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                                 \
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
     PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
-    PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;
+    PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
+    PRTL_COMPARE_MEMORY RtlCompareMemory;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -879,7 +908,8 @@ typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
 //
 #define _RTL_XXX                                       \
     PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString; \
-    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;    \
+    PRTL_SPLAY_LINKS RtlSplayLinks;
 
 //
 // RtlEx functions.
@@ -938,6 +968,16 @@ typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     SIZE_T Size
 );
 
+typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+    );
+
+typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
+
 typedef PVOID (ALLOCATION_ROUTINE)(
     _In_opt_ PVOID AllocationContext,
     _In_ const ULONG ByteSize
@@ -953,18 +993,19 @@ typedef VOID (FREE_ROUTINE)(
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
 
-#define _RTLEXFUNCTIONS_HEAD                             \
-    PRTL_CHECK_BIT RtlCheckBit;                          \
-    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks; \
-    PRTL_PARENT RtlParent;                               \
-    PRTL_LEFT_CHILD RtlLeftChild;                        \
-    PRTL_RIGHT_CHILD RtlRightChild;                      \
-    PRTL_IS_ROOT RtlIsRoot;                              \
-    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                   \
-    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                 \
-    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;      \
-    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;    \
-    PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;
+#define _RTLEXFUNCTIONS_HEAD                                \
+    PRTL_CHECK_BIT RtlCheckBit;                             \
+    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;    \
+    PRTL_PARENT RtlParent;                                  \
+    PRTL_LEFT_CHILD RtlLeftChild;                           \
+    PRTL_RIGHT_CHILD RtlRightChild;                         \
+    PRTL_IS_ROOT RtlIsRoot;                                 \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                      \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                    \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;         \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;       \
+    PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;     \
+    PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -1029,6 +1070,17 @@ CopyToMemoryMappedMemory(
     LPCVOID Source,
     SIZE_T Size
 );
+
+RTL_API
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+);
+
 
 #ifdef __cpp
 } // extern "C"
