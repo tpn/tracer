@@ -902,7 +902,7 @@ GetModuleNameFromQualifiedPath(
         //
 
         Offset = Path->Length - __init__py.Length;
-        Filename = (PWCH)Path->Buffer[Offset];
+        Filename = &Path->Buffer[Offset];
 
         //
         // Shift length left to account for 2-byte WCHAR strings.
@@ -1157,6 +1157,8 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
         ULONG CurDirLength;
         ULONG RequiredSizeInBytes;
+        USHORT StringLength;
+        USHORT StringMaximumLength;
 
         RequiredSizeInBytes = GetCurrentDirectoryW(0, NULL);
         if (RequiredSizeInBytes == 0) {
@@ -1198,7 +1200,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         //
 
         String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-        String->Length = (USHORT)Size.LowPart;
+        String->Length = (USHORT)Size.LowPart-2;
         String->MaximumLength = (USHORT)Size.LowPart;
 
         //
@@ -1282,6 +1284,18 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
     // We've handled the path, now construct the module name.
     // (XXX TODO.)
     //
+
+    Success = GetModuleNameFromQualifiedPath(
+        Python,
+        *Path,
+        ModuleName,
+        AllocationRoutine,
+        AllocationContext
+        );
+
+    if (!Success) {
+        return FALSE;
+    }
 
     return FALSE;
 
