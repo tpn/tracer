@@ -44,11 +44,11 @@ typedef _W64 int SSIZE_T, *PSSIZE_T;
         PVOID TypeObject;           \
     };
 
-#define _PYVAROBJECT_HEAD           \
-    _PYOBJECT_HEAD                  \
-    union {                         \
-        Py_ssize_t  ob_size;        \
-        SSIZE_T  ObjectSize;        \
+#define _PYVAROBJECT_HEAD    \
+    _PYOBJECT_HEAD           \
+    union {                  \
+        Py_ssize_t  ob_size; \
+        SSIZE_T  ObjectSize; \
     };
 
 
@@ -404,51 +404,51 @@ typedef struct _PYTRYBLOCK {
 
 typedef struct _PYFRAMEOBJECT PYFRAMEOBJECT, *PPYFRAMEOBJECT, PyFrameObject;
 
-#define _PYFRAMEOBJECT_HEAD             \
-    _PYVAROBJECT_HEAD                   \
-    union {                             \
-        PyFrameObject *f_back;          \
-        PPYFRAMEOBJECT Back;            \
-    };                                  \
-    union {                             \
-        PyObject *f_code;               \
-        PPYOBJECT Code;                 \
-    };                                  \
-    union {                             \
-        PyObject *f_builtins;           \
-        PPYOBJECT Builtins;             \
-    };                                  \
-    union {                             \
-        PyObject *f_globals;            \
-        PPYOBJECT Globals;              \
-    };                                  \
-    union {                             \
-        PyObject *f_locals;             \
-        PPYOBJECT Locals;               \
-    };                                  \
-    union {                             \
-        PyObject **f_valuestack;        \
-        PPPYOBJECT ValueStack;          \
-    };                                  \
-    union {                             \
-        PyObject **f_stacktop;          \
-        PPPYOBJECT StackTop;            \
-    };                                  \
-    union {                             \
-        PyObject *f_trace;              \
-        PPYOBJECT Trace;                \
-    };                                  \
-    union {                             \
-        PyObject *f_exc_type;           \
-        PPYOBJECT ExceptionType;        \
-    };                                  \
-    union {                             \
-        PyObject *f_exc_value;          \
-        PPYOBJECT ExceptionValue;       \
-    };                                  \
-    union {                             \
-        PyObject *f_exc_traceback;      \
-        PPYOBJECT ExceptionTraceback;   \
+#define _PYFRAMEOBJECT_HEAD           \
+    _PYVAROBJECT_HEAD                 \
+    union {                           \
+        PyFrameObject *f_back;        \
+        PPYFRAMEOBJECT Back;          \
+    };                                \
+    union {                           \
+        PyObject *f_code;             \
+        PPYOBJECT Code;               \
+    };                                \
+    union {                           \
+        PyObject *f_builtins;         \
+        PPYOBJECT Builtins;           \
+    };                                \
+    union {                           \
+        PyObject *f_globals;          \
+        PPYOBJECT Globals;            \
+    };                                \
+    union {                           \
+        PyObject *f_locals;           \
+        PPYOBJECT Locals;             \
+    };                                \
+    union {                           \
+        PyObject **f_valuestack;      \
+        PPPYOBJECT ValueStack;        \
+    };                                \
+    union {                           \
+        PyObject **f_stacktop;        \
+        PPPYOBJECT StackTop;          \
+    };                                \
+    union {                           \
+        PyObject *f_trace;            \
+        PPYOBJECT Trace;              \
+    };                                \
+    union {                           \
+        PyObject *f_exc_type;         \
+        PPYOBJECT ExceptionType;      \
+    };                                \
+    union {                           \
+        PyObject *f_exc_value;        \
+        PPYOBJECT ExceptionValue;     \
+    };                                \
+    union {                           \
+        PyObject *f_exc_traceback;    \
+        PPYOBJECT ExceptionTraceback; \
     };
 
 typedef struct _PYFRAMEOBJECT {
@@ -1182,34 +1182,34 @@ typedef enum _PYGILSTATE {
 typedef PYGILSTATE (*PPYGILSTATE_ENSURE)();
 typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
 
-#define _PYTHONFUNCTIONS_HEAD                                   \
-    PPY_GETVERSION          Py_GetVersion;                      \
-    PPYDICT_GETITEMSTRING   PyDict_GetItemString;               \
-    PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber;              \
-    PPYEVAL_SETTRACE        PyEval_SetProfile;                  \
-    PPYEVAL_SETTRACE        PyEval_SetTrace;                    \
-    PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;                \
-    PPYUNICODE_GETLENGTH    PyUnicode_GetLength;                \
-    PPY_INCREF              Py_IncRef;                          \
-    PPY_DECREF              Py_DecRef;                          \
-    PPYGILSTATE_ENSURE      PyGILState_Ensure;                  \
+#define _PYTHONFUNCTIONS_HEAD                      \
+    PPY_GETVERSION          Py_GetVersion;         \
+    PPYDICT_GETITEMSTRING   PyDict_GetItemString;  \
+    PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber; \
+    PPYEVAL_SETTRACE        PyEval_SetProfile;     \
+    PPYEVAL_SETTRACE        PyEval_SetTrace;       \
+    PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;   \
+    PPYUNICODE_GETLENGTH    PyUnicode_GetLength;   \
+    PPY_INCREF              Py_IncRef;             \
+    PPY_DECREF              Py_DecRef;             \
+    PPYGILSTATE_ENSURE      PyGILState_Ensure;     \
     PPYGILSTATE_RELEASE     PyGILState_Release;
 
 typedef struct _PYTHONFUNCTIONS {
     _PYTHONFUNCTIONS_HEAD
 } PYTHONFUNCTIONS, *PPYTHONFUNCTIONS;
 
-#define _PYTHONDATA_HEAD                                        \
-    PPYOBJECT PyCode_Type;                                      \
-    PPYOBJECT PyDict_Type;                                      \
-    PPYOBJECT PyTuple_Type;                                     \
-    PPYOBJECT PyType_Type;                                      \
-    PPYOBJECT PyFunction_Type;                                  \
-    PPYOBJECT PyString_Type;                                    \
-    PPYOBJECT PyBytes_Type;                                     \
-    PPYOBJECT PyUnicode_Type;                                   \
-    PPYOBJECT PyCFunction_Type;                                 \
-    PPYOBJECT PyInstance_Type;                                  \
+#define _PYTHONDATA_HEAD        \
+    PPYOBJECT PyCode_Type;      \
+    PPYOBJECT PyDict_Type;      \
+    PPYOBJECT PyTuple_Type;     \
+    PPYOBJECT PyType_Type;      \
+    PPYOBJECT PyFunction_Type;  \
+    PPYOBJECT PyString_Type;    \
+    PPYOBJECT PyBytes_Type;     \
+    PPYOBJECT PyUnicode_Type;   \
+    PPYOBJECT PyCFunction_Type; \
+    PPYOBJECT PyInstance_Type;  \
     PPYOBJECT PyModule_Type;
 
 typedef struct _PYTHONDATA {
@@ -1217,10 +1217,10 @@ typedef struct _PYTHONDATA {
 } PYTHONDATA, *PPYTHONDATA;
 
 
-#define _PYTHONVERSION_HEAD                                     \
-    PCSTR   VersionString;                                      \
-    USHORT  MajorVersion;                                       \
-    USHORT  MinorVersion;                                       \
+#define _PYTHONVERSION_HEAD \
+    PCSTR   VersionString;  \
+    USHORT  MajorVersion;   \
+    USHORT  MinorVersion;   \
     USHORT  PatchLevel;
 
 typedef struct _PYTHONVERSION {
@@ -1260,12 +1260,24 @@ typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
     _Inout_ PULONG          LineNumber
 );
 
-#define _PYTHONEXFUNCTIONS_HEAD                                               \
-    PGETUNICODELENGTHFORPYTHONSTRING      GetUnicodeLengthForPythonString;    \
-    PCONVERTPYSTRINGTOUNICODESTRING       ConvertPythonStringToUnicodeString; \
-    PCOPY_PYTHON_STRING_TO_UNICODE_STRING CopyPythonStringToUnicodeString;    \
-    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetails;          \
-    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetailsFast;
+typedef BOOL(*PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           ModuleFilenameObject,
+    _Inout_  PPUNICODE_STRING    Path,
+    _Inout_  PPSTRING            ModuleName,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
+    );
+
+#define _PYTHONEXFUNCTIONS_HEAD                                                                  \
+    PGETUNICODELENGTHFORPYTHONSTRING      GetUnicodeLengthForPythonString;                       \
+    PCONVERTPYSTRINGTOUNICODESTRING       ConvertPythonStringToUnicodeString;                    \
+    PCOPY_PYTHON_STRING_TO_UNICODE_STRING CopyPythonStringToUnicodeString;                       \
+    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetails;                             \
+    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetailsFast;                         \
+    PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME GetModuleNameAndQualifiedPathFromModuleFilename;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
@@ -1278,15 +1290,15 @@ typedef struct _PYTHONEXRUNTIME {
     _PYTHONEXRUNTIME_HEAD
 } PYTHONEXRUNTIME, *PPYTHONEXRUNTIME;
 
-#define _PYTHONOBJECTOFFSETS_HEAD                       \
+#define _PYTHONOBJECTOFFSETS_HEAD                  \
     PCPYCODEOBJECTOFFSETS     PyCodeObjectOffsets;
 
 typedef struct _PYTHONOBJECTOFFSETS {
     _PYTHONOBJECTOFFSETS_HEAD
 } PYTHONOBJECTOFFSETS, *PPYTHONOBJECTOFFSETS, **PPPYTHONOBJECTOFFSETS;
 
-#define _PYTHONEXDATA_HEAD                              \
-    BOOLEAN IsDebug;                                    \
+#define _PYTHONEXDATA_HEAD                            \
+    BOOLEAN IsDebug;                                  \
     USHORT  FilenameStringObjectOffsetFromCodeObject;
 
 typedef struct _PYTHONEXDATA {
@@ -1388,14 +1400,14 @@ CopyPythonStringToUnicodeString(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           StringOrUnicodeObject,
     _Inout_  PPUNICODE_STRING    UnicodeString,
-    _In_     BOOL                AllocateMaximumSize,
+    _In_opt_ USHORT              AllocationSize,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext
     );
 
 TRACER_API
 BOOL
-GetNameAndQualifiedPathFromModuleFilename(
+GetModuleNameAndQualifiedPathFromModuleFilename(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           ModuleFilenameObject,
     _Inout_  PPUNICODE_STRING    Path,

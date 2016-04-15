@@ -47,14 +47,14 @@ static const DWORD NumberOfTraceEventTypes = (
 
 typedef struct _PYTHON_MODULE {
     PPYOBJECT ModuleFilenameObject;
-    PUNICODE_STRING Name;
+    PSTRING Name;
     PUNICODE_STRING Path;
     PREFIX_TABLE_ENTRY Prefix;
 } PYTHON_MODULE, *PPYTHON_MODULE;
 
 typedef struct _PYTHON_FUNCTION {
     PPYOBJECT CodeObject;
-    PYTHON_MODULE Module;
+    PPYTHON_MODULE Module;
     PUNICODE_STRING Name;
     PUNICODE_STRING Path;
     PUNICODE_STRING ClassName;
@@ -98,8 +98,9 @@ typedef REGISTER_PYTHON_FUNCTION *PREGISTER_PYTHON_FUNCTION;
 
 typedef BOOLEAN (PREPARE_TRACE_EVENT)(
     _Inout_  PPYTHON_TRACE_CONTEXT PythonTraceContext,
-    _Inout_  PTRACE_EVENT          Event,
-    _In_     PPYFRAMEOBJECT        FrameObject,
+    _Inout_  PTRACE_EVENT          TraceEvent,
+    _In_     PPYFRAMEOBJECT  
+    FrameObject,
     _In_opt_ LONG                  EventType,
     _In_opt_ PPYOBJECT             ArgObject
     );
@@ -131,8 +132,8 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     ULONG             Depth;
     ULONG             SkipFrames;
 
-    PFUNCTIONS_TABLE FunctionsTable;
-    PMODULES_TABLE   ModulesTable;
+    FUNCTIONS_TABLE   FunctionsTable;
+    MODULES_TABLE     ModulesTable;
 
     PPREPARE_TRACE_EVENT PrepareTraceEvent;
     PCONTINUE_TRACE_EVENT ContinueTraceEvent;

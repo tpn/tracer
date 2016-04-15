@@ -286,6 +286,8 @@ LoadPythonExFunctions(
 
     PythonExFunctions->ResolveFrameObjectDetailsFast = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetailsFast");
 
+    PythonExFunctions->GetModuleNameAndQualifiedPathFromModuleFilename = (PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)GetProcAddress(PythonExModule, "GetModuleNameAndQualifiedPathFromModuleFilename");
+
     return TRUE;
 }
 
@@ -674,7 +676,6 @@ GetPythonStringInformation(
     } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
 
         PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
-        UNICODE_STRING Source;
 
         if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
 
@@ -704,7 +705,7 @@ CopyPythonStringToUnicodeString(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           StringOrUnicodeObject,
     _Inout_  PPUNICODE_STRING    UnicodeString,
-    _In_opt_ USHORT              AllocationSize;
+    _In_opt_ USHORT              AllocationSize,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext
 )
@@ -853,22 +854,203 @@ CopyPythonStringToUnicodeString(
 BOOL
 GetModuleNameFromQualifiedPath(
     _In_     PPYTHON             Python,
-    _In_     PPYOBJECT           ModuleFilenameObject,
-    _Inout_  PPUNICODE_STRING    Path,
-    _Inout_  PPSTRING            Name,
+    _In_     PUNICODE_STRING     Path,
+    _Out_    PPSTRING            ModuleName,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext
     )
 {
     BOOL Success = FALSE;
-    const PSTR InitPy = L"__init__.py";
-    const USHORT InitPyLen = sizeof(InitModulePy);
-    BOOL IsInit;
+    USHORT Offset = 0;
+    USHORT Limit = 0;
+    USHORT Index;
+    USHORT ReversedIndex;
+    PRTL Rtl;
+    HANDLE HeapHandle;
+    RTL_BITMAP Bitmap;
+    SIZE_T BitmapBufferSizeInBytes;
+    PRTL_FIND_SET_BITS FindSetBits;
+    UNICODE_STRING Package;
+    CONST static UNICODE_STRING __init__py = RTL_CONSTANT_STRING(L"\\__init__.py");
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Path)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ModuleName)) {
+        return FALSE;
+    }
+
+    Rtl = Python->Rtl;
+    FindSetBits = Rtl->RtlFindSetBits;
 
     //
-    // If the path length
+    // Determine if the path ends with __init__.py.
+    //
 
-    if (Path->Length
+    if (Path->Length >= __init__py.Length) {
+        SIZE_T Size, Matched;
+        PWCH Filename;
+
+        //
+        // Get the offset into the path where "\\__init__.py" would be found,
+        // if present.
+        //
+
+        Offset = Path->Length - __init__py.Length;
+        Filename = (PWCH)Path->Buffer[Offset];
+
+        //
+        // Shift length left to account for 2-byte WCHAR strings.
+        //
+
+        Size = __init__py.Length << 1;
+
+        //
+        // Compare the filename with our "\\__init__.py" string.
+        //
+
+        Matched = Rtl->RtlCompareMemory(Filename, __init__py.Buffer, Size);
+
+        if (Matched == Size) {
+
+            //
+            // It's a match; the fully qualified path is a filename ending in
+            // "__init__.py", so we use the parent directory name for the module
+            // name.
+            //
+
+            Limit = Offset - 1;
+
+        }
+        else {
+
+            //
+            // We're not dealing with an __init__.py file, so the current filename
+            // will be used in the module name.  If the filename has an extension,
+            // we remove it (by adjusting Limit to point to the character before
+            // the period).
+            //
+
+            WCHAR Char;
+            BOOL Found = FALSE;
+
+            Index = Path->Length;
+
+            do {
+                //
+                // Reverse through the path looking for either a
+                // period or backslash.
+                //
+
+                Char = Path->Buffer[Index];
+
+                if (Char == L'.') {
+                    Found = TRUE;
+                    break;
+                }
+                else if (Char == L'\\') {
+                    break;
+                }
+
+            } while (Index--);
+
+            if (Found) {
+                Limit = Index - 1;
+            }
+
+        }
+    }
+
+    //
+    // Limit marks the end of the path we're using for the module name.
+    // If it hasn't been set at this point, default to using the length
+    // of the entire path.
+    //
+
+    if (!Limit) {
+        Limit = Path->Length;
+    }
+
+    //
+    // Identify the starting offset into the path that we're going to use
+    // as the starting point for the module name.  Reversing through the
+    // path string, this will be the last directory we find with a file
+    // named "__init__.py" (indicating that the directory is a module).
+    //
+
+    //
+    // Create a reversed bitmap for the backslashes in the path.
+    //
+    HeapHandle = GetProcessHeap();
+    if (!HeapHandle) {
+        return FALSE;
+    }
+
+    Bitmap.SizeOfBitMap = Path->Length;
+
+    BitmapBufferSizeInBytes = Bitmap.SizeOfBitMap >> 3;
+
+    Bitmap.Buffer = (PULONG)HeapAlloc(HeapHandle,
+                                      HEAP_ZERO_MEMORY,
+                                      BitmapBufferSizeInBytes);
+
+    if (!Bitmap.Buffer) {
+        return FALSE;
+    }
+
+    Success = Rtl->FindCharsInUnicodeString(Rtl, Path, L'\\', &Bitmap, TRUE);
+
+    if (!Success) {
+        HeapFree(HeapHandle, 0, Bitmap.Buffer);
+        return FALSE;
+    }
+
+    Package.Buffer = (PWCH)HeapAlloc(HeapHandle,
+                                     HEAP_ZERO_MEMORY,
+                                     Path->Length);
+
+    if (!Package.Buffer) {
+        HeapFree(HeapHandle, 0, Bitmap.Buffer);
+        return FALSE;
+    }
+
+    Package.Length = Path->Length;
+    Package.MaximumLength = Path->MaximumLength;
+
+    RtlCopyMemory(Package.Buffer, Path->Buffer, Path->Length);
+
+    ReversedIndex = 0;
+
+    do {
+        ULONG NextBackslashReversed;
+        USHORT NextBackslash;
+
+        //
+        // Find the next backslash.
+        //
+        NextBackslashReversed = FindSetBits(&Bitmap, 1, ReversedIndex);
+
+        if (NextBackslashReversed == BITS_NOT_FOUND) {
+            //
+            // We shouldn't ever get here.
+            //
+            __debugbreak();
+        }
+
+        //
+        // Convert the reversed bitmap position into the offset into the
+        // buffer.
+        //
+        NextBackslash = Path->Length - (USHORT)NextBackslashReversed;
+
+    } while (Index--);
+
+    return FALSE;
 
 }
 
@@ -877,14 +1059,15 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           ModuleFilenameObject,
     _Inout_  PPUNICODE_STRING    Path,
-    _Inout_  PPSTRING            Name,
+    _Inout_  PPSTRING            ModuleName,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
     )
 {
     BOOL Success;
     BOOL Qualify = FALSE;
-    HRESULT Result;
 
     SSIZE_T Length;
     USHORT  Width;
@@ -910,7 +1093,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         return FALSE;
     }
 
-    if (Width != sizeof(CHAR) || Width != sizeof(WCHAR)) {
+    if (Width != sizeof(CHAR) && Width != sizeof(WCHAR)) {
         __debugbreak();
     }
 
@@ -973,7 +1156,6 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         //
 
         ULONG CurDirLength;
-        ULONG CurDirSize;
         ULONG RequiredSizeInBytes;
 
         RequiredSizeInBytes = GetCurrentDirectoryW(0, NULL);
@@ -1004,7 +1186,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
         Size.LowPart += sizeof(UNICODE_STRING);
 
-        String = (PUNICODE_STRING)AllocateRoutine(AllocationContext, Size.LowPart);
+        String = (PUNICODE_STRING)AllocationRoutine(AllocationContext, Size.LowPart);
 
         if (!String) {
             return FALSE;
@@ -1016,8 +1198,8 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         //
 
         String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-        String->Length = Size.LowPart;
-        String->MaximumLength = Size.LowPart;
+        String->Length = (USHORT)Size.LowPart;
+        String->MaximumLength = (USHORT)Size.LowPart;
 
         //
         // CurDirLength will represent the length (number of characters, not
@@ -1044,7 +1226,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         // Path is already qualified; just allocate a new unicode string.
         //
 
-        String = (PUNICODE_STRING)AllocateRoutine(AllocationContext, Size.LowPart);
+        String = (PUNICODE_STRING)AllocationRoutine(AllocationContext, Size.LowPart);
 
         if (!String) {
             return FALSE;
@@ -1056,8 +1238,8 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         //
 
         String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-        String->Length = Size.LowPart;
-        String->MaximumLength = Size.LowPart;
+        String->Length = (USHORT)Size.LowPart;
+        String->MaximumLength = (USHORT)Size.LowPart;
 
         Dest = String->Buffer;
 
@@ -1067,7 +1249,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
     // Copy the rest of the name over.
     //
 
-    Count = Length + 1;
+    Count = ((USHORT)Length) + 1;
 
     if (Width == sizeof(CHAR)) {
         PSTR Source = (PSTR)Buffer;
@@ -1098,109 +1280,10 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
     //
     // We've handled the path, now construct the module name.
+    // (XXX TODO.)
     //
 
-
-    Success = Python->CopyPythonStringToUnicodeString(
-        Python,
-        ModuleFilenameObject,
-        Path,
-        Name,
-        MAX_PATH,
-        AllocationRoutine,
-        AllocationContext,
-        FreeRoutine,
-        FreeContext
-    );
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    if (Path->Length >= 3) {
-
-        Qualify = (
-            Path->Buffer[1] != L':' ||
-            Path->Buffer[2] != L'\\'
-        );
-
-    } else if (Path->Length >= 2) {
-
-        Qualify = (
-            Path->Buffer[0] != L'\\' ||
-            Path->Buffer[1] != L'\\'
-        );
-
-    }
-
-    if (Qualify) {
-
-        DWORD Length;
-        WSTR Buffer[MAX_PATH];
-        UNICODE_STRING NewPath = { 0, MAX_PATH, Buffer };
-
-        //
-        // Get the length of the current directory.
-        //
-
-        Length = GetCurrentDirectoryW(0, NULL) * sizeof(WCHAR);
-
-
-
-        if (Length > 0) {
-            DWORD NewLength, Offset;
-
-            //
-            // Calculate the new length of the path.
-            //
-
-            NewLength = Length + 1 + Path->Length;
-
-            if (NewLength > Path->MaximumLength) {
-
-                return FALSE;
-
-            }
-
-            //
-            // New length is within our maximum length.
-            //
-
-            Offset = Length +
-            // path
-
-            if (Length + Path->Length + 2 > Path->MaximumLength) {
-
-                //
-                // Current directory + path length exceeds maximum size.
-                //
-
-                return FALSE;
-
-            }
-
-            //
-            // Copy the filename to the part of the buffer that'll reside
-            // after the directory name.
-            //
-
-            Result = StringCchCatW(
-
-        }
-
-        if (GetCurrentDirectoryW(MAX_PATH, Buffer) != 0) {
-            WSTR
-
-
-            if (Path->[0] != L'\\' &&
-
-            }
-
-        }
-
-
-    }
-
+    return FALSE;
 
 }
 

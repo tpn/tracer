@@ -340,6 +340,7 @@ InitializeTraceStore(
     );
 
     if (TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
+        DWORD LastError = GetLastError();
         goto error;
     }
 
@@ -1152,8 +1153,8 @@ AllocateRecords(
         (PVOID)RtlOffsetToPointer(
             MemoryMap->NextAddress,
             AllocationSize
-        );
-    )
+        )
+    );
 
     EndAddress = (
         (PVOID)RtlOffsetToPointer(

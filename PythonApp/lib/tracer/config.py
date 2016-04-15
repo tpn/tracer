@@ -500,6 +500,23 @@ class Config(RawConfigParser):
 
     @property
     @memoize
+    def tracer_sqlite3_dll_path(self):
+        return join_path(
+            self.tracer_dir,
+            self.get('tracer', 'tracer_sqlite3_dll_path'),
+        )
+
+    @property
+    @memoize
+    def tracer_sqlite3_debug_dll_path(self):
+        return join_path(
+            self.tracer_dir,
+            self.get('tracer', 'tracer_sqlite3_debug_dll_path'),
+        )
+
+
+    @property
+    @memoize
     def sqllocaldb_versions(self):
         versions = self.get_csv_as_list('sqllocaldb', 'versions')
         return reversed(sorted(int(i) for i in versions))

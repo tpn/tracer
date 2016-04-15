@@ -157,6 +157,29 @@ CopyToMemoryMappedMemory(
     return memcpy(Destination, Source, Size);
 }
 
+
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+)
+{
+    USHORT Index;
+    USHORT Length = String->Length;
+
+    for (Index = 0; Index < Length; Index++) {
+        if (String->Buffer[Index] == Char) {
+            Rtl->RtlSetBit(Bitmap, Reverse ? Length - Index : Index);
+        }
+    }
+
+    return TRUE;
+}
+
+
 _Check_return_
 BOOL
 LoadRtlSymbols(_Inout_ PRTL Rtl)
@@ -327,17 +350,6 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlIsGenericTableEmpty"))) {
 
             OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmpty'");
-            return FALSE;
-        }
-    }
-
-    if (!(Rtl->RtlSplayLinks = (PRTL_SPLAY_LINKS)
-        GetProcAddress(Rtl->NtdllModule, "RtlSplayLinks"))) {
-
-        if (!(Rtl->RtlSplayLinks = (PRTL_SPLAY_LINKS)
-            GetProcAddress(Rtl->NtosKrnlModule, "RtlSplayLinks"))) {
-
-            OutputDebugStringA("Rtl: failed to resolve 'RtlSplayLinks'");
             return FALSE;
         }
     }
@@ -980,6 +992,17 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlCompareMemory = (PRTL_COMPARE_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlCompareMemory"))) {
+
+        if (!(Rtl->RtlCompareMemory = (PRTL_COMPARE_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCompareMemory"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlCompareMemory'");
+            return FALSE;
+        }
+    }
+
     //
     // End of auto-generated function resolutions.
     //
@@ -1171,6 +1194,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'CopyToMemoryMappedMemory'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FindCharsInUnicodeString = (PFIND_CHARS_IN_UNICODE_STRING)
+        GetProcAddress(RtlExModule, "FindCharsInUnicodeString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FindCharsInUnicodeString'");
         return FALSE;
     }
 
