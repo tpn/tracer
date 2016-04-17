@@ -1271,20 +1271,90 @@ typedef BOOL(*PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)(
     _In_opt_ PVOID               FreeContext
     );
 
-#define _PYTHONEXFUNCTIONS_HEAD                                                                  \
-    PGETUNICODELENGTHFORPYTHONSTRING      GetUnicodeLengthForPythonString;                       \
-    PCONVERTPYSTRINGTOUNICODESTRING       ConvertPythonStringToUnicodeString;                    \
-    PCOPY_PYTHON_STRING_TO_UNICODE_STRING CopyPythonStringToUnicodeString;                       \
-    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetails;                             \
-    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetailsFast;                         \
-    PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME GetModuleNameAndQualifiedPathFromModuleFilename;
+typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE PYTHON_DIRECTORY_PREFIX_TABLE;
+typedef PYTHON_DIRECTORY_PREFIX_TABLE *PPYTHON_DIRECTORY_PREFIX_TABLE;
+
+typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
+typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
+typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY **PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
+
+typedef BOOL (*PADD_DIRECTORY_ENTRY)(
+    _In_      PPYTHON Python,
+    _In_      PUNICODE_STRING Directory,
+    _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_  PVOID AllocationContext
+    );
+
+#define _PYTHONEXFUNCTIONS_HEAD                                                                               \
+    PGETUNICODELENGTHFORPYTHONSTRING GetUnicodeLengthForPythonString;                                         \
+    PCONVERTPYSTRINGTOUNICODESTRING ConvertPythonStringToUnicodeString;                                       \
+    PCOPY_PYTHON_STRING_TO_UNICODE_STRING CopyPythonStringToUnicodeString;                                    \
+    PRESOLVEFRAMEOBJECTDETAILS ResolveFrameObjectDetails;                                                     \
+    PRESOLVEFRAMEOBJECTDETAILS ResolveFrameObjectDetailsFast;                                                 \
+    PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME GetModuleNameAndQualifiedPathFromModuleFilename; \
+    PADD_DIRECTORY_ENTRY AddDirectoryEntry;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
 } PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
 
-#define _PYTHONEXRUNTIME_HEAD \
-    HANDLE  StringsHeap;
+typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE {
+    //
+    // Inline the UNICODE_PREFIX_TABLE struct.
+    //
+    union {
+        UNICODE_PREFIX_TABLE PrefixTable;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY NextPrefixTree;
+            PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY LastNextEntry;
+        };
+    };
+} PYTHON_DIRECTORY_PREFIX_TABLE, *PPYTHON_DIRECTORY_PREFIX_TABLE;
+
+typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
+    //
+    // Inline the UNICODE_PREFIX_TABLE_ENTRY struct.
+    //
+    union {
+        UNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY NextPrefixTree;
+            PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY CaseMatch;
+            RTL_SPLAY_LINKS Links;
+            PUNICODE_STRING Prefix;
+        };
+    };
+
+    DECLSPEC_ALIGN(8)
+    union {
+        ULONG Flags;        
+        struct {
+            ULONG IsModule:1;
+        };
+    };
+    ULONG Unused1;
+
+    DECLSPEC_ALIGN(8)
+    union {
+        //
+        // If IsModule == 1, ModuleName will be active.  Otherwise,
+        // FirstModulePrefix will point to the first prefix table
+        // entry that is a module.
+        //
+        PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY FirstModulePrefix;
+        PSTRING ModuleName;
+    };
+
+} PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY, *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
+
+#define _PYTHONEXRUNTIME_HEAD                           \
+    HANDLE  HeapHandle;                                 \
+    PYTHON_DIRECTORY_PREFIX_TABLE DirectoryPrefixTable;
 
 typedef struct _PYTHONEXRUNTIME {
     _PYTHONEXRUNTIME_HEAD
@@ -1483,6 +1553,16 @@ ResolveFrameObjectDetailsInline(
         )
     );
 }
+
+TRACER_API
+BOOL
+AddDirectoryEntry(
+    _In_      PPYTHON Python,
+    _In_      PUNICODE_STRING Directory,
+    _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_  PVOID AllocationContext
+    );
 
 #ifdef __cpp
 } // extern "C"
