@@ -331,6 +331,17 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlSplayLinks = (PRTL_SPLAY_LINKS)
+        GetProcAddress(Rtl->NtdllModule, "RtlSplayLinks"))) {
+
+        if (!(Rtl->RtlSplayLinks = (PRTL_SPLAY_LINKS)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlSplayLinks"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlSplayLinks'");
+            return FALSE;
+        }
+    }
+
     if (!(Rtl->RtlInitializeGenericTableAvl = (PRTL_INITIALIZE_GENERIC_TABLE_AVL)
         GetProcAddress(Rtl->NtdllModule, "RtlInitializeGenericTableAvl"))) {
 
@@ -947,6 +958,28 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlNextUnicodePrefix = (PRTL_NEXT_UNICODE_PREFIX)
+        GetProcAddress(Rtl->NtdllModule, "RtlNextUnicodePrefix"))) {
+
+        if (!(Rtl->RtlNextUnicodePrefix = (PRTL_NEXT_UNICODE_PREFIX)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlNextUnicodePrefix"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlNextUnicodePrefix'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyUnicodeString"))) {
+
+        if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyUnicodeString"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlCopyUnicodeString'");
+            return FALSE;
+        }
+    }
+
     //
     // End of auto-generated function resolutions.
     //
@@ -1131,6 +1164,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "RtlInsertAsRightChild"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'RtlInsertAsRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
+        GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyToMemoryMappedMemory'");
         return FALSE;
     }
 

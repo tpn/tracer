@@ -25,10 +25,12 @@ enum PythonVersion {
 };
 
 #ifdef _M_AMD64
-typedef __int64 Py_ssize_t;
+typedef __int64 Py_ssize_t, PY_SSIZE;
+typedef __int64 Py_hash_t, PY_HASH;
 typedef __int64 SSIZE_T, *PSSIZE_T;
 #else
-typedef _W64 int Py_ssize_t;
+typedef _W64 int Py_ssize_t, Py_SSIZE;
+typedef _W64 int Py_hash_t, PY_HASH;
 typedef _W64 int SSIZE_T, *PSSIZE_T;
 #endif
 
@@ -1240,6 +1242,15 @@ typedef BOOL (*PCONVERTPYSTRINGTOUNICODESTRING)(
     _In_    BOOL                AllocateMaximumSize
 );
 
+typedef BOOL (*PCOPY_PYTHON_STRING_TO_UNICODE_STRING)(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringObject,
+    _Inout_  PPUNICODE_STRING    UnicodeString,
+    _In_     BOOL                AllocateMaximumSize,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext
+);
+
 typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
     _In_    PPYTHON         Python,
     _In_    PPYFRAMEOBJECT  FrameObject,
@@ -1249,11 +1260,12 @@ typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
     _Inout_ PULONG          LineNumber
 );
 
-#define _PYTHONEXFUNCTIONS_HEAD                                             \
-    PGETUNICODELENGTHFORPYTHONSTRING    GetUnicodeLengthForPythonString;    \
-    PCONVERTPYSTRINGTOUNICODESTRING     ConvertPythonStringToUnicodeString; \
-    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetails;          \
-    PRESOLVEFRAMEOBJECTDETAILS          ResolveFrameObjectDetailsFast;
+#define _PYTHONEXFUNCTIONS_HEAD                                               \
+    PGETUNICODELENGTHFORPYTHONSTRING      GetUnicodeLengthForPythonString;    \
+    PCONVERTPYSTRINGTOUNICODESTRING       ConvertPythonStringToUnicodeString; \
+    PCOPY_PYTHON_STRING_TO_UNICODE_STRING CopyPythonStringToUnicodeString;    \
+    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetails;          \
+    PRESOLVEFRAMEOBJECTDETAILS            ResolveFrameObjectDetailsFast;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
@@ -1368,6 +1380,17 @@ ConvertPythonStringToUnicodeString(
     _In_    PPYOBJECT           StringOrUnicodeObject,
     _Out_   PPUNICODE_STRING    UnicodeString,
     _In_    BOOL                AllocateMaximumSize
+);
+
+TRACER_API
+BOOL
+CopyPythonStringToUnicodeString(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringOrUnicodeObject,
+    _Inout_  PPUNICODE_STRING    UnicodeString,
+    _In_     BOOL                AllocateMaximumSize,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext
 );
 
 TRACER_API

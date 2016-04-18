@@ -11,12 +11,15 @@ from ctypes.wintypes import *
 # Globals/Aliases
 #===============================================================================
 VOID = None
+CLONG = c_long
 SIZE_T = c_size_t
 ULONG_PTR = SIZE_T
 LONG_PTR = SIZE_T
 DWORD_PTR = SIZE_T
 PULONG = POINTER(ULONG)
+PBOOLEAN = POINTER(c_bool)
 PVOID = c_void_p
+PPVOID = POINTER(PVOID)
 PWSTR = c_wchar_p
 PCWSTR = c_wchar_p
 PDWORD = POINTER(DWORD)
@@ -64,6 +67,7 @@ class LIST_ENTRY(Structure):
         ('Flink', PVOID),
         ('Blink', PVOID),
     ]
+PLIST_ENTRY = POINTER(LIST_ENTRY)
 
 class CRITICAL_SECTION_DEBUG(Structure):
     _fields_ = [
@@ -148,6 +152,112 @@ TP_CALLBACK_ENVIRON = TP_CALLBACK_ENVIRON_V3
 PTP_CALLBACK_ENVIRON_V3 = POINTER(TP_CALLBACK_ENVIRON_V3)
 PTP_CALLBACK_ENVIRON = POINTER(TP_CALLBACK_ENVIRON)
 
+# Splay
+class RTL_SPLAY_LINKS(Structure):
+    pass
+PRTL_SPLAY_LINKS = POINTER(RTL_SPLAY_LINKS)
+
+RTL_SPLAY_LINKS._fields_ = [
+    ('Parent', PRTL_SPLAY_LINKS),
+    ('LeftChild', PRTL_SPLAY_LINKS),
+    ('RightChild', PRTL_SPLAY_LINKS),
+]
+
+TableEmptyTree = 0
+TableFoundNode = 1
+TableInsertAsLeft = 2
+TableInsertAsRight = 3
+TABLE_SEARCH_RESULT = INT
+
+GenericLessThan = 0
+GenericGreaterThan = 1
+GenericEqual = 2
+
+class RTL_GENERIC_TABLE(Structure):
+    pass
+PRTL_GENERIC_TABLE = POINTER(RTL_GENERIC_TABLE)
+
+RTL_GENERIC_COMPARE_ROUTINE = WINFUNCTYPE(PVOID,
+    PRTL_GENERIC_TABLE, # Table
+    PVOID,              # FirstStruct
+    PVOID,              # SecondStruct
+)
+PRTL_GENERIC_COMPARE_ROUTINE = POINTER(RTL_GENERIC_COMPARE_ROUTINE)
+
+RTL_GENERIC_ALLOCATE_ROUTINE = WINFUNCTYPE(PVOID,
+    PRTL_GENERIC_TABLE, # Table
+    CLONG,              # ByteSize
+)
+PRTL_GENERIC_ALLOCATE_ROUTINE = POINTER(RTL_GENERIC_ALLOCATE_ROUTINE)
+
+RTL_GENERIC_FREE_ROUTINE = WINFUNCTYPE(VOID,
+    PRTL_GENERIC_TABLE, # Table
+    PVOID,              # Buffer
+)
+PRTL_GENERIC_FREE_ROUTINE = POINTER(RTL_GENERIC_FREE_ROUTINE)
+
+RTL_GENERIC_TABLE._fields_ = (
+    ('TableRoot', PRTL_SPLAY_LINKS),
+    ('InsertOrderList', LIST_ENTRY),
+    ('OrderedPointer', PLIST_ENTRY),
+    ('WhichOrderedElement', ULONG),
+    ('NumberGenericTableElements', ULONG),
+    ('CompareRoutine', PRTL_GENERIC_COMPARE_ROUTINE),
+    ('AllocateRoutine', PRTL_GENERIC_ALLOCATE_ROUTINE),
+    ('FreeRoutine', PRTL_GENERIC_FREE_ROUTINE),
+    ('TableContext', PVOID),
+)
+PRTL_GENERIC_TABLE = POINTER(RTL_GENERIC_TABLE)
+
+# Hash Table
+
+class RTL_DYNAMIC_HASH_TABLE_ENTRY(Structure):
+    _fields_ = [
+        ('Linkage', LIST_ENTRY),
+        ('Signature', ULONG_PTR),
+    ]
+
+class RTL_DYNAMIC_HASH_TABLE_CONTEXT(Structure):
+    _fields_ = [
+        ('ChainHead', PLIST_ENTRY),
+        ('PrevLinkage', PLIST_ENTRY),
+        ('Signature', ULONG_PTR),
+    ]
+
+class _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR_INNER(Union):
+    _fields_ = [
+        ('HashEntry', RTL_DYNAMIC_HASH_TABLE_ENTRY),
+        ('CurEntry', PLIST_ENTRY),
+    ]
+
+class RTL_DYNAMIC_HASH_TABLE_ENUMERATOR(Structure):
+    _fields_ = [
+        ('u', _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR_INNER),
+        ('ChainHead', PLIST_ENTRY),
+        ('BucketIndex', ULONG),
+    ]
+
+class RTL_DYNAMIC_HASH_TABLE(Structure):
+    _fields_ = [
+        # Initialized at creation.
+        ('Flags', ULONG),
+        ('Shift', ULONG),
+
+        # Used for bucket computation.
+        ('TableSize', ULONG),
+        ('Pivot', ULONG),
+        ('DivisorMask', ULONG),
+
+        # Counters.
+        ('NumEntries', ULONG),
+        ('NonEmptyBuckets', ULONG),
+        ('NumEnumerators', ULONG),
+
+        # Directory (internal).
+        ('Directory', PVOID),
+    ]
+PRTL_DYNAMIC_HASH_TABLE = POINTER(RTL_DYNAMIC_HASH_TABLE)
+
 
 #===============================================================================
 # Kernel32
@@ -169,6 +279,78 @@ kernel32.CloseThreadpool.argtypes = [ PTP_POOL, ]
 #===============================================================================
 # NtDll
 #===============================================================================
+ntdll = ctypes.windll.ntdll
+
+#ntdll.RtlInitializeGenericTable.restype = VOID
+#ntdll.RtlInitializeGenericTable.argtypes = [
+#    PRTL_GENERIC_TABLE,
+#    PRTL_GENERIC_COMPARE_ROUTINE,
+#    PRTL_GENERIC_ALLOCATE_ROUTINE,
+#    PRTL_GENERIC_FREE_ROUTINE,
+#    PVOID,
+#]
+
+RTL_INITIALIZE_GENERIC_TABLE = WINFUNCTYPE(VOID,
+    PRTL_GENERIC_TABLE,
+    PRTL_GENERIC_COMPARE_ROUTINE,
+    PRTL_GENERIC_ALLOCATE_ROUTINE,
+    PRTL_GENERIC_FREE_ROUTINE,
+    PVOID,
+)
+PRTL_INITIALIZE_GENERIC_TABLE = POINTER(RTL_INITIALIZE_GENERIC_TABLE)
+
+RtlInitializeGenericTable = (
+    RTL_INITIALIZE_GENERIC_TABLE(ntdll.RtlInitializeGenericTable)
+)
+
+#ntdll.RtlInsertElementGenericTable.restype = PVOID
+#ntdll.RtlInsertElementGenericTable.argtypes = [
+#    PRTL_GENERIC_TABLE, # Table
+#    PVOID,              # Buffer
+#    CLONG,              # BufferSize
+#    PBOOLEAN,           # NewElement
+#]
+RTL_INSERT_ELEMENT_GENERIC_TABLE = WINFUNCTYPE(PVOID,
+    PRTL_GENERIC_TABLE, # Table
+    PVOID,              # Buffer
+    CLONG,              # BufferSize
+    #PBOOLEAN,          # NewElement
+)
+
+RtlInsertElementGenericTable = (
+    RTL_INSERT_ELEMENT_GENERIC_TABLE(ntdll.RtlInsertElementGenericTable)
+)
+
+
+ntdll.RtlInsertElementGenericTableFull.restype = PVOID
+ntdll.RtlInsertElementGenericTableFull.argtypes = [
+    PRTL_GENERIC_TABLE,     # Table
+    PVOID,                  # Buffer
+    CLONG,                  # BufferSize
+    PBOOLEAN,               # NewElement
+    PVOID,                  # NodeOrParent
+    TABLE_SEARCH_RESULT,    # SearchResult
+]
+
+ntdll.RtlDeleteElementGenericTable.restype = BOOLEAN
+ntdll.RtlDeleteElementGenericTable.argtypes = [
+    PRTL_GENERIC_TABLE, # Table
+    PVOID,              # Buffer
+]
+
+ntdll.RtlLookupElementGenericTable.restype = PVOID
+ntdll.RtlLookupElementGenericTable.argtypes = [
+    PRTL_GENERIC_TABLE, # Table
+    PVOID,              # Buffer
+]
+
+ntdll.RtlCreateHashTable.restype = BOOLEAN
+ntdll.RtlCreateHashTable.argtypes = [
+    PRTL_DYNAMIC_HASH_TABLE,
+    ULONG,  # Shift
+    ULONG,  # Flags
+]
+
 
 #===============================================================================
 # Functions
