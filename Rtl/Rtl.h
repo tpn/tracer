@@ -25,7 +25,6 @@ typedef struct _STRING {
     PCHAR  Buffer;
 } STRING, *PSTRING, **PPSTRING;
 
-
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
@@ -33,6 +32,13 @@ typedef struct _UNICODE_STRING {
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+typedef VOID (RTL_COPY_UNICODE_STRING)(
+    _Inout_  PUNICODE_STRING  DestinationString,
+    _In_opt_ PCUNICODE_STRING SourceString
+    );
+typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
+
+// 65536
 #define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
 #define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
 
@@ -64,8 +70,8 @@ typedef BOOL (*PGETSYSTEMTIMEPRECISEASLARGEINTEGER)(
     _Out_   PLARGE_INTEGER  SystemTime
 );
 
-#define _SYSTEM_TIMER_FUNCTIONS_HEAD                                    \
-    PGETSYSTEMTIMEPRECISEASFILETIME GetSystemTimePreciseAsFileTime;     \
+#define _SYSTEM_TIMER_FUNCTIONS_HEAD                                \
+    PGETSYSTEMTIMEPRECISEASFILETIME GetSystemTimePreciseAsFileTime; \
     PNTQUERYSYSTEMTIME NtQuerySystemTime;
 
 typedef struct _SYSTEM_TIMER_FUNCTION {
@@ -766,77 +772,78 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     _In_ ULONGLONG InitialCrc
     );
 
-#define _RTLFUNCTIONS_HEAD                                                                  \
-    PRTLCHARTOINTEGER RtlCharToInteger;                                                     \
-    PRTL_INITIALIZE_GENERIC_TABLE RtlInitializeGenericTable;                                \
-    PRTL_INSERT_ELEMENT_GENERIC_TABLE RtlInsertElementGenericTable;                         \
-    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL RtlInsertElementGenericTableFull;                \
-    PRTL_DELETE_ELEMENT_GENERIC_TABLE RtlDeleteElementGenericTable;                         \
-    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE RtlLookupElementGenericTable;                         \
-    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL RtlLookupElementGenericTableFull;                \
-    PRTL_ENUMERATE_GENERIC_TABLE RtlEnumerateGenericTable;                                  \
-    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING RtlEnumerateGenericTableWithoutSplaying;  \
-    PRTL_GET_ELEMENT_GENERIC_TABLE RtlGetElementGenericTable;                               \
-    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS RtlNumberGenericTableElements;                       \
-    PRTL_IS_GENERIC_TABLE_EMPTY RtlIsGenericTableEmpty;                                     \
-    PRTL_SPLAY_LINKS RtlSplayLinks; \
-    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;                         \
-    PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL RtlInsertElementGenericTableAvl;                         \
-    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL RtlInsertElementGenericTableFullAvl;                \
-    PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL RtlDeleteElementGenericTableAvl;                         \
-    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL RtlLookupElementGenericTableAvl;                         \
-    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL RtlLookupElementGenericTableFullAvl;                \
-    PRTL_ENUMERATE_GENERIC_TABLE_AVL RtlEnumerateGenericTableAvl;                                  \
-    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL RtlEnumerateGenericTableWithoutSplayingAvl;  \
+#define _RTLFUNCTIONS_HEAD                                                                             \
+    PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
+    PRTL_INITIALIZE_GENERIC_TABLE RtlInitializeGenericTable;                                           \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE RtlInsertElementGenericTable;                                    \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL RtlInsertElementGenericTableFull;                           \
+    PRTL_DELETE_ELEMENT_GENERIC_TABLE RtlDeleteElementGenericTable;                                    \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE RtlLookupElementGenericTable;                                    \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL RtlLookupElementGenericTableFull;                           \
+    PRTL_ENUMERATE_GENERIC_TABLE RtlEnumerateGenericTable;                                             \
+    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING RtlEnumerateGenericTableWithoutSplaying;             \
+    PRTL_GET_ELEMENT_GENERIC_TABLE RtlGetElementGenericTable;                                          \
+    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS RtlNumberGenericTableElements;                                  \
+    PRTL_IS_GENERIC_TABLE_EMPTY RtlIsGenericTableEmpty;                                                \
+    PRTL_SPLAY_LINKS RtlSplayLinks;                                                                    \
+    PRTL_INITIALIZE_GENERIC_TABLE_AVL RtlInitializeGenericTableAvl;                                    \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL RtlInsertElementGenericTableAvl;                             \
+    PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL RtlInsertElementGenericTableFullAvl;                    \
+    PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL RtlDeleteElementGenericTableAvl;                             \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL RtlLookupElementGenericTableAvl;                             \
+    PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL RtlLookupElementGenericTableFullAvl;                    \
+    PRTL_ENUMERATE_GENERIC_TABLE_AVL RtlEnumerateGenericTableAvl;                                      \
+    PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL RtlEnumerateGenericTableWithoutSplayingAvl;      \
     PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL RtlLookupFirstMatchingElementGenericTableAvl; \
-    PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY RtlEnumerateGenericTableLikeADirectory;  \
-    PRTL_GET_ELEMENT_GENERIC_TABLE_AVL RtlGetElementGenericTableAvl;                               \
-    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL RtlNumberGenericTableElementsAvl;                       \
-    PRTL_IS_GENERIC_TABLE_EMPTY_AVL RtlIsGenericTableEmptyAvl;                                     \
-    PPFX_INITIALIZE PfxInitialize;                                                          \
-    PPFX_INSERT_PREFIX PfxInsertPrefix;                                                     \
-    PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                     \
-    PPFX_FIND_PREFIX PfxFindPrefix;                                                         \
-    PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                      \
-    PRTL_CREATE_HASH_TABLE RtlCreateHashTable; \
-    PRTL_DELETE_HASH_TABLE RtlDeleteHashTable; \
-    PRTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable; \
-    PRTL_REMOVE_ENTRY_HASH_TABLE RtlRemoveEntryHashTable; \
-    PRTL_LOOKUP_ENTRY_HASH_TABLE RtlLookupEntryHashTable; \
-    PRTL_GET_NEXT_ENTRY_HASH_TABLE RtlGetNextEntryHashTable; \
-    PRTL_ENUMERATE_ENTRY_HASH_TABLE RtlEnumerateEntryHashTable; \
-    PRTL_END_ENUMERATION_HASH_TABLE RtlEndEnumerationHashTable; \
-    PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE RtlInitWeakEnumerationHashTable; \
-    PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE RtlWeaklyEnumerateEntryHashTable; \
-    PRTL_END_WEAK_ENUMERATION_HASH_TABLE RtlEndWeakEnumerationHashTable; \
-    PRTL_EXPAND_HASH_TABLE RtlExpandHashTable; \
-    PRTL_CONTRACT_HASH_TABLE RtlContractHashTable; \
-    PRTL_INITIALIZE_BITMAP RtlInitializeBitMap; \
-    PRTL_CLEAR_BIT RtlClearBit; \
-    PRTL_SET_BIT RtlSetBit; \
-    PRTL_TEST_BIT RtlTestBit; \
-    PRTL_CLEAR_ALL_BITS RtlClearAllBits; \
-    PRTL_SET_ALL_BITS RtlSetAllBits; \
-    PRTL_FIND_CLEAR_BITS RtlFindClearBits; \
-    PRTL_FIND_SET_BITS RtlFindSetBits; \
-    PRTL_FIND_CLEAR_BITS_AND_SET RtlFindClearBitsAndSet; \
-    PRTL_FIND_SET_BITS_AND_CLEAR RtlFindSetBitsAndClear; \
-    PRTL_CLEAR_BITS RtlClearBits; \
-    PRTL_SET_BITS RtlSetBits; \
-    PRTL_FIND_CLEAR_RUNS RtlFindClearRuns; \
-    PRTL_FIND_LONGEST_RUN_CLEAR RtlFindLongestRunClear; \
-    PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits; \
-    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits; \
-    PRTL_ARE_BITS_CLEAR RtlAreBitsClear; \
-    PRTL_ARE_BITS_SET RtlAreBitsSet; \
-    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear; \
-    PRTL_FIND_NEXT_FORWARD_RUN_CLEAR RtlFindNextForwardRunClear; \
-    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;  \
-    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                              \
-    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                      \
-    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                      \
-    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                          \
-    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;
+    PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY RtlEnumerateGenericTableLikeADirectory;             \
+    PRTL_GET_ELEMENT_GENERIC_TABLE_AVL RtlGetElementGenericTableAvl;                                   \
+    PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL RtlNumberGenericTableElementsAvl;                           \
+    PRTL_IS_GENERIC_TABLE_EMPTY_AVL RtlIsGenericTableEmptyAvl;                                         \
+    PPFX_INITIALIZE PfxInitialize;                                                                     \
+    PPFX_INSERT_PREFIX PfxInsertPrefix;                                                                \
+    PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                                \
+    PPFX_FIND_PREFIX PfxFindPrefix;                                                                    \
+    PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                                 \
+    PRTL_CREATE_HASH_TABLE RtlCreateHashTable;                                                         \
+    PRTL_DELETE_HASH_TABLE RtlDeleteHashTable;                                                         \
+    PRTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable;                                              \
+    PRTL_REMOVE_ENTRY_HASH_TABLE RtlRemoveEntryHashTable;                                              \
+    PRTL_LOOKUP_ENTRY_HASH_TABLE RtlLookupEntryHashTable;                                              \
+    PRTL_GET_NEXT_ENTRY_HASH_TABLE RtlGetNextEntryHashTable;                                           \
+    PRTL_ENUMERATE_ENTRY_HASH_TABLE RtlEnumerateEntryHashTable;                                        \
+    PRTL_END_ENUMERATION_HASH_TABLE RtlEndEnumerationHashTable;                                        \
+    PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE RtlInitWeakEnumerationHashTable;                             \
+    PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE RtlWeaklyEnumerateEntryHashTable;                           \
+    PRTL_END_WEAK_ENUMERATION_HASH_TABLE RtlEndWeakEnumerationHashTable;                               \
+    PRTL_EXPAND_HASH_TABLE RtlExpandHashTable;                                                         \
+    PRTL_CONTRACT_HASH_TABLE RtlContractHashTable;                                                     \
+    PRTL_INITIALIZE_BITMAP RtlInitializeBitMap;                                                        \
+    PRTL_CLEAR_BIT RtlClearBit;                                                                        \
+    PRTL_SET_BIT RtlSetBit;                                                                            \
+    PRTL_TEST_BIT RtlTestBit;                                                                          \
+    PRTL_CLEAR_ALL_BITS RtlClearAllBits;                                                               \
+    PRTL_SET_ALL_BITS RtlSetAllBits;                                                                   \
+    PRTL_FIND_CLEAR_BITS RtlFindClearBits;                                                             \
+    PRTL_FIND_SET_BITS RtlFindSetBits;                                                                 \
+    PRTL_FIND_CLEAR_BITS_AND_SET RtlFindClearBitsAndSet;                                               \
+    PRTL_FIND_SET_BITS_AND_CLEAR RtlFindSetBitsAndClear;                                               \
+    PRTL_CLEAR_BITS RtlClearBits;                                                                      \
+    PRTL_SET_BITS RtlSetBits;                                                                          \
+    PRTL_FIND_CLEAR_RUNS RtlFindClearRuns;                                                             \
+    PRTL_FIND_LONGEST_RUN_CLEAR RtlFindLongestRunClear;                                                \
+    PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits;                                                    \
+    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;                                                        \
+    PRTL_ARE_BITS_CLEAR RtlAreBitsClear;                                                               \
+    PRTL_ARE_BITS_SET RtlAreBitsSet;                                                                   \
+    PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;                                                    \
+    PRTL_FIND_NEXT_FORWARD_RUN_CLEAR RtlFindNextForwardRunClear;                                       \
+    PRTL_FIND_LAST_BACKWARD_RUN_CLEAR RtlFindLastBackwardRunClear;                                     \
+    PRTL_INITIALIZE_UNICODE_PREFIX RtlInitializeUnicodePrefix;                                         \
+    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;                                                 \
+    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;                                                 \
+    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
+    PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
+    PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -856,21 +863,21 @@ typedef ULONG (NTAPI *PRTL_NUMBER_OF_SET_BITS_IN_RANGE)(
     _In_ ULONG Length
     );
 
-#define _RTLFUNCTIONS8_HEAD \
-    PRTLCRC32 RtlCrc32;                                                                     \
-    PRTLCRC64 RtlCrc64;                                                                     \
+#define _RTLFUNCTIONS8_HEAD                                                      \
+    PRTLCRC32 RtlCrc32;                                                          \
+    PRTLCRC64 RtlCrc64;                                                          \
     PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE RtlStronglyEnumerateEntryHashTable; \
-    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable; \
-    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable; \
-    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx; \
-    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange; \
+    PRTL_END_STRONG_ENUMERATION_HASH_TABLE RtlEndStrongEnumerationHashTable;     \
+    PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE RtlInitStrongEnumerationHashTable;   \
+    PRTL_CREATE_HASH_TABLE_EX RtlCreateHashTableEx;                              \
+    PRTL_NUMBER_OF_CLEAR_BITS_IN_RANGE RtlNumberOfClearBitsInRange;              \
     PRTL_NUMBER_OF_SET_BITS_IN_RANGE RtlNumberOfSetBitsInRange;
 
 //
 // Functions that aren't currently resolving.
 //
-#define _RTL_XXX \
-    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString;                                      \
+#define _RTL_XXX                                       \
+    PRTL_SUFFIX_UNICODE_STRING RtlSuffixUnicodeString; \
     PRTL_FIND_FIRST_RUN_CLEAR RtlFindFirstRunClear;
 
 //
@@ -930,18 +937,25 @@ typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
     SIZE_T Size
 );
 
+typedef PVOID (ALLOCATION_ROUTINE)(
+    _In_opt_ PVOID AllocationContext,
+    _In_ const ULONG ByteSize
+    );
 
-#define _RTLEXFUNCTIONS_HEAD \
-    PRTL_CHECK_BIT RtlCheckBit; \
+typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
+
+
+#define _RTLEXFUNCTIONS_HEAD                             \
+    PRTL_CHECK_BIT RtlCheckBit;                          \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks; \
-    PRTL_PARENT RtlParent; \
-    PRTL_LEFT_CHILD RtlLeftChild; \
-    PRTL_RIGHT_CHILD RtlRightChild; \
-    PRTL_IS_ROOT RtlIsRoot; \
-    PRTL_IS_LEFT_CHILD RtlIsLeftChild; \
-    PRTL_IS_RIGHT_CHILD RtlIsRightChild; \
-    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild; \
-    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild; \
+    PRTL_PARENT RtlParent;                               \
+    PRTL_LEFT_CHILD RtlLeftChild;                        \
+    PRTL_RIGHT_CHILD RtlRightChild;                      \
+    PRTL_IS_ROOT RtlIsRoot;                              \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                   \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                 \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;      \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;    \
     PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;
 
 typedef struct _RTLEXFUNCTIONS {

@@ -10,8 +10,9 @@ import textwrap
 from collections import namedtuple
 
 from .util import (
-    strip_linesep_if_present,
     memoize,
+    align_trailing_slashes,
+    strip_linesep_if_present,
 )
 
 from .command import (
@@ -48,6 +49,15 @@ FunctionDefinition = namedtuple(
         'first_block_line',
         'last_block_line',
         'last_return_line',
+    ]
+)
+
+MultilineMacroDefinition = namedtuple(
+    'MultilineMacroDefinition', [
+        'name',
+        'first_lineno',
+        'last_lineno',
+        'lines',
     ]
 )
 
@@ -108,9 +118,9 @@ class SourceFile(InvariantAwareObject):
 
     @property
     @memoize
-    def multiline_defines(self):
+    def multiline_macro_defines(self):
         results = {}
-        import pdb
+
         for define in self.defines:
             lines = []
             (lineno, line) = define
@@ -119,32 +129,44 @@ class SourceFile(InvariantAwareObject):
 
             name = line.replace('#define ', '')
             name = name[:name.find(' ')]
+            first_lineno = lineno
+            lines.append(line)
 
             lineno += 1
             line = self.lines[lineno]
 
             while line.endswith('\\'):
-                lines.append((lineno, line))
+                lines.append(line)
                 lineno += 1
                 line = self.lines[lineno]
 
-            results[name] = lines
+            last_lineno = lineno
+            lines.append(line)
+
+            results[name] = MultilineMacroDefinition(
+                name=name,
+                first_lineno=first_lineno,
+                last_lineno=last_lineno,
+                lines=lines
+            )
 
         return results
 
     def function_definition(self, funcname, block=None):
         partial = False
         found = False
+        func_line = None
         for (lineno, line) in enumerate(self.lines):
             if not partial:
                 if line.startswith(funcname):
                     partial = True
+                    func_line = line
+                    continue
             else:
-                next_line = self.lines[lineno+1]
-                if next_line == '{':
+                if line == '{':
                     found = True
                     break
-                elif next_line.startswith('    '):
+                elif line.startswith('    '):
                     continue
                 else:
                     partial = False
@@ -197,19 +219,16 @@ class SourceFile(InvariantAwareObject):
     @memoize
     def functions_from_multiline_define(self, name):
         results = []
-        for (lineno, line) in self.multiline_defines[name]:
+        macro = self.multiline_macro_defines[name]
+        for (lineno, line) in enumerate(macro.lines):
+            if line.startswith('#define'):
+                continue
             length = len(line)
             line = line[4:line.find(';')]
             (typedef, funcname) = line.split(' ')
             results.append(Function(lineno, length, typedef, funcname))
         return results
 
-    def replace_blocks():
-        pass
-
-    @memoize
-    def functions_from_head_macro(self, name):
-        return self.multiline_defines.get(name)
 
 class HeaderFile(SourceFile):
     pass

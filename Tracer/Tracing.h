@@ -191,8 +191,10 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"trace_frames.dat",
     L"trace_modules.dat",
     L"trace_functions.dat",
+    L"trace_filenames.dat",
     L"trace_exceptions.dat",
     L"trace_lines.dat",
+    L"trace_strings.dat",
 };
 
 static const PCWSTR TraceStoreMetadataSuffix = L":metadata";
@@ -211,9 +213,20 @@ static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // frames
     10 << 20,   // modules
     10 << 20,   // functions
+    10 << 20,   // filenames
     10 << 20,   // exceptions
     10 << 20,   // lines
+    10 << 20,   // strings
 };
+
+#define TRACE_STORE_EVENTS_INDEX 0
+#define TRACE_STORE_FRAMES_INDEX 1
+#define TRACE_STORE_MODULES_INDEX 2
+#define TRACE_STORE_FUNCTIONS_INDEX 3
+#define TRACE_STORE_FILENAMES_INDEX 4
+#define TRACE_STORE_EXCEPTIONS_INDEX 5
+#define TRACE_STORE_LINES_INDEX 6
+#define TRACE_STORE_STRINGS_INDEX 7
 
 typedef struct _TRACE_STORES {
     USHORT  Size;

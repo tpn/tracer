@@ -254,30 +254,30 @@ sampleFrame struct
 sampleFrame ends
 
 
-sample2 PROC FRAME
-    alloc_stack SIZEOF sampleFrame
-    
-    ;sub rsp, 24
-    ;.allocstack 24
-    
-    save_reg rdi, sampleFrame.SavedRdi
-    save_reg rsi, sampleFrame.SavedRsi
-    
-    END_PROLOGUE
-    ;.endprolog
-
-    ; function body
-
-    mov rsi, sampleFrame.SavedRsi[rsp]
-    mov rdi, sampleFrame.SavedRdi[rsp]
-
-    ; Here?s the official epilog
-
-    BEGIN_EPILOGUE
-
-    add rsp, (sizeof sampleFrame)
-    ret
-sample2 ENDP
+;sample2 PROC FRAME
+;    alloc_stack SIZEOF sampleFrame
+;
+;    ;sub rsp, 24
+;    ;.allocstack 24
+;
+;    save_reg rdi, sampleFrame.SavedRdi
+;    save_reg rsi, sampleFrame.SavedRsi
+;
+;    END_PROLOGUE
+;    ;.endprolog
+;
+;    ; function body
+;
+;    mov rsi, sampleFrame.SavedRsi[rsp]
+;    mov rdi, sampleFrame.SavedRdi[rsp]
+;
+;    ; Here?s the official epilog
+;
+;    BEGIN_EPILOGUE
+;
+;    add rsp, (sizeof sampleFrame)
+;    ret
+;sample2 ENDP
 
 text SEGMENT
 PUBLIC Example3
