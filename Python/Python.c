@@ -14,8 +14,7 @@ static CONST PUNICODE_STRING InitPyFiles[] = {
     (PUNICODE_STRING)&__init__pyo
 };
 
-static CONST USHORT NumberOfInitPyFiles = 3;
-static CONST USHORT MaxInitPyFileLengthInBytes = 13; // Exclude trailing NUL.
+static CONST USHORT NumberOfInitPyFiles = sizeof(InitPyFiles) / sizeof(InitPyFiles[0]);
 
 static const PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27 = {
     FIELD_OFFSET(PYCODEOBJECT25_27, ArgumentCount),
@@ -288,6 +287,8 @@ LoadPythonExFunctions(
 
     PythonExFunctions->AddDirectoryEntry = (PADD_DIRECTORY_ENTRY)GetProcAddress(PythonExModule, "AddDirectoryEntry");
 
+    PythonExFunctions->GetModuleNameFromDirectory = (PGET_MODULE_NAME_FROM_DIRECTORY)GetProcAddress(PythonExModule, "GetModuleNameFromDirectory");
+
     return TRUE;
 }
 
@@ -319,7 +320,7 @@ LoadPythonExRuntime(
         return FALSE;
     }
 
-    Offset = FIELD_OFFSET(PYTHON, PythonExRuntime); 
+    Offset = FIELD_OFFSET(PYTHON, PythonExRuntime);
     Python = (PPYTHON)(RtlOffsetFromPointer(PythonExRuntime, Offset));
     Rtl = Python->Rtl;
 
@@ -497,11 +498,11 @@ error:
 _Check_return_
 BOOL
 InitializePython(
-    _In_        PRTL        Rtl,
-    _In_        HMODULE     PythonModule,
-    _Out_       PPYTHON     Python,
-    _Inout_     PULONG      SizeOfPython
-)
+    _In_                         PRTL        Rtl,
+    _In_                         HMODULE     PythonModule,
+    _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
+    _Inout_                      PULONG      SizeOfPython
+    )
 {
 
     if (!Python) {
@@ -863,31 +864,46 @@ CopyPythonStringToUnicodeString(
     return FALSE;
 }
 
+FORCEINLINE
+BOOL
+IsModuleDirectory(
+    _In_      PRTL Rtl,
+    _In_      PUNICODE_STRING Directory,
+    _Out_     PBOOL IsModule
+    )
+{
+    return Rtl->FilesExist(Rtl,
+                           Directory,
+                           NumberOfInitPyFiles,
+                           (PPUNICODE_STRING)InitPyFiles,
+                           IsModule,
+                           NULL,
+                           NULL);
+}
+
 BOOL
 AddDirectoryEntry(
     _In_      PPYTHON Python,
     _In_      PUNICODE_STRING Directory,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID AllocationContext
+    _In_opt_  PVOID AllocationContext,
+    _In_      PFREE_ROUTINE FreeRoutine,
+    _In_opt_  PVOID FreeContext
     )
 {
     PRTL Rtl;
 
     PUNICODE_PREFIX_TABLE PrefixTable;
     PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-    
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
-    PCHAR EntryRawBuffer = NULL;
 
-    USHORT NumberOfFilenames = NumberOfInitPyFiles;
-    USHORT MaxFilenameLength = MaxInitPyFileLengthInBytes;
-    PPUNICODE_STRING Filenames = (PPUNICODE_STRING)InitPyFiles;
-    
+    PVOID Buffer;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
+
     PUNICODE_STRING Match = NULL;
     BOOL CaseInsensitive = TRUE;
     BOOL Success = FALSE;
-    BOOL Exists = FALSE;
+    BOOL IsModule = FALSE;
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -897,30 +913,32 @@ AddDirectoryEntry(
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(AllocationRoutine)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(FreeRoutine)) {
+        return FALSE;
+    }
+
     Rtl = Python->Rtl;
 
-    Success = Rtl->FilesExist(
-        Rtl,
-        Directory,
-        NumberOfFilenames,
-        Filenames,
-        MaxFilenameLength,
-        &Exists,
-        &Match
-        );
+    Success = IsModuleDirectory(Rtl, Directory, &IsModule);
 
     if (!Success) {
         return FALSE;
     }
 
-    EntryRawBuffer = AllocationRoutine(AllocationContext, sizeof(*Entry));
-    if (!EntryRawBuffer) {
+    Buffer = AllocationRoutine(AllocationContext, sizeof(*Entry))
+    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)(
+        AllocationRoutine(AllocationContext,
+                          sizeof(*Entry))
+    );
+    if (!Entry) {
         return FALSE;
     }
 
-    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)EntryRawBuffer;
-
-    Entry->IsModule = Exists;
+    Entry->IsModule = IsModule;
 
     PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
     PrefixTableEntry = (PUNICODE_PREFIX_TABLE_ENTRY)Entry;
@@ -929,18 +947,17 @@ AddDirectoryEntry(
                                           Directory,
                                           PrefixTableEntry);
 
+    //
+    // Intentional follow-on.
+    //
+
+Error:
+
     if (!Success) {
-        // XXX TODO: free memory.
-        return FALSE;
+        FreeRoutine(FreeContext, Entry);
     }
 
-    //
-    // Set the module name... potentially inheriting the parent's module name.
-    //
-
-    // (Keep adding parents until we don't find any more directories?)
-
-    return TRUE;
+    return Success;
 }
 
 
@@ -949,18 +966,23 @@ GetModuleNameFromDirectory(
     _In_     PPYTHON             Python,
     _In_     PUNICODE_STRING     Directory,
     _In_     PRTL_BITMAP         Backslashes,
+    _In_     PUSHORT             BitmapHintIndex,
+    _In_     PUSHORT             NumberOfBackslashesRemaining,
     _Out_    PPSTRING            ModuleName,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
     )
 {
     PRTL Rtl;
 
     PUNICODE_PREFIX_TABLE PrefixTable;
     PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-    
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
-    
+
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry = NULL;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ParentEntry = NULL;
+
     PUNICODE_STRING Match = NULL;
     BOOL CaseInsensitive = TRUE;
     BOOL Success;
@@ -981,9 +1003,11 @@ GetModuleNameFromDirectory(
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(ModuleName) || !ARGUMENT_PRESENT(*ModuleName)) {
+    if (!ARGUMENT_PRESENT(ModuleName)) {
         return FALSE;
     }
+
+    Rtl = Python->Rtl;
 
     //
     // Initialize pointer to the UNICODE_PREFIX_TABLE.
@@ -1012,7 +1036,7 @@ GetModuleNameFromDirectory(
             // and return success.
             //
             Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Match;
-            *ModuleName = Entry->ModuleName;
+            *ModuleName = &Entry->ModuleName;
             return TRUE;
         }
 
@@ -1031,12 +1055,29 @@ GetModuleNameFromDirectory(
         // directory.
         //
 
+        ParentEntry = Entry;
+        Entry = NULL;
+
     }
 
     //
     // We need to add a new entry for the directory.
     //
-    Success = Python->AddDirectoryEntry(Python, Directory, &Entry);
+
+    Success = Python->AddDirectoryEntry(Python,
+                                        Directory,
+                                        &Entry,
+                                        AllocationRoutine,
+                                        AllocationContext,
+                                        FreeRoutine,
+                                        FreeContext);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Now we need
 
 
     return FALSE;
@@ -1048,33 +1089,30 @@ GetModuleNameFromQualifiedPath(
     _In_     PUNICODE_STRING     Path,
     _Out_    PPSTRING            ModuleName,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
     )
 {
+    PRTL Rtl;
     BOOL Success = FALSE;
-    USHORT Offset = 0;
     USHORT Limit = 0;
-    USHORT Index;
+    USHORT Offset = 0;
     USHORT ReversedIndex;
+    USHORT BitmapHintIndex;
     USHORT NumberOfChars;
     USHORT InitPyNumberOfChars;
     USHORT NumberOfBackslashes;
-    PRTL Rtl;
+    USHORT NumberOfBackslashesRemaining;
     HANDLE HeapHandle = NULL;
-    RTL_BITMAP Bitmap = { 0, 0 };
-    PRTL_BITMAP BitmapPointer = &Bitmap;
-    PRTL_TEST_BIT TestBit;
-    PRTL_FIND_SET_BITS FindSetBits;
-    PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString;
-    UNICODE_STRING Package;
     UNICODE_STRING Filename;
     UNICODE_STRING Directory;
-    //UNICODE_STRING BaseDirectory;
-    //UNICODE_STRING ModuleDirectory;
     BOOL IsInitPy = FALSE;
     BOOL CaseSensitive = TRUE;
-    //UNICODE_STRING FinalName;
-
+    BOOL Reversed = TRUE;
+    CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
+    RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
+    PRTL_BITMAP BitmapPointer = &Bitmap;
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -1089,13 +1127,10 @@ GetModuleNameFromQualifiedPath(
     }
 
     //
-    // Load the Rtl/RtlEx functions we'll be using.
+    // Initialize Rtl and character length variables.
     //
 
     Rtl = Python->Rtl;
-    TestBit = Rtl->RtlTestBit;
-    FindSetBits = Rtl->RtlFindSetBits;
-    CreateBitmapIndexForUnicodeString = Rtl->CreateBitmapIndexForUnicodeString;
 
     NumberOfChars = Path->Length >> 1;
     InitPyNumberOfChars = __init__py.Length >> 1;
@@ -1103,13 +1138,14 @@ GetModuleNameFromQualifiedPath(
     //
     // Create a reversed bitmap for the backslashes in the path.
     //
-    Success = CreateBitmapIndexForUnicodeString(
+
+    Success = Rtl->CreateBitmapIndexForUnicodeString(
         Rtl,
         Path,
         L'\\',
         &HeapHandle,
         &BitmapPointer,
-        TRUE
+        Reversed
         );
 
     if (!Success) {
@@ -1120,10 +1156,9 @@ GetModuleNameFromQualifiedPath(
     // Make sure there's at least one backslash in the path.
     //
 
-    NumberOfBackslashes = (USHORT)Rtl->RtlNumberOfSetBits(&Bitmap);
+    NumberOfBackslashes = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
     if (NumberOfBackslashes == 0) {
-        HeapFree(HeapHandle, 0, Bitmap.Buffer);
-        return FALSE;
+        goto Error;
     }
 
     //
@@ -1131,195 +1166,205 @@ GetModuleNameFromQualifiedPath(
     // and calculating the offset into the string buffer.
     //
 
-    ReversedIndex = (USHORT)FindSetBits(&Bitmap, 1, 0);
+    ReversedIndex = (USHORT)Rtl->RtlFindSetBits(BitmapPointer, 1, 0);
     Offset = NumberOfChars - ReversedIndex + 1;
 
-    Filename.Length = ReversedIndex;
-    Filename.MaximumLength = ReversedIndex + sizeof(WCHAR);
+    Filename.Length = (ReversedIndex << 1);
+    Filename.MaximumLength = (ReversedIndex << 1) + sizeof(WCHAR);
     Filename.Buffer = &Path->Buffer[Offset];
 
     //
     // Extract the directory name.
     //
-    Directory.Length = Offset - 1;
+
+    Directory.Length = (Offset - 1) << 1;
     Directory.MaximumLength = Directory.Length;
     Directory.Buffer = Path->Buffer;
 
-    //Success = GetModuleNameFromDirectory()
+    //
+    // Get the module name from the directory.
+    //
+    BitmapHintIndex = ReversedIndex + 1;
+    NumberOfBackslashesRemaining = NumberOfBackslashes - 1;
+
+    Success = Python->GetModuleNameFromDirectory(Python,
+                                                 &Directory,
+                                                 BitmapPointer,
+                                                 &BitmapHintIndex,
+                                                 &NumberOfBackslashesRemaining,
+                                                 ModuleName,
+                                                 AllocationRoutine,
+                                                 AllocationContext,
+                                                 FreeRoutine,
+                                                 FreeContext);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // If the filename is "__init__.py[co]", the final module name will be the
+    // one returned above for the directory.  If it's anything else, we need to
+    // append the filename without the prefix.
+    //
 
     IsInitPy = Rtl->RtlPrefixUnicodeString(&Filename, &__init__py, CaseSensitive);
 
-    if (!IsInitPy) {
-
-
-    }
-
-
-
-    //
-    // Determine if the path ends with __init__.py.
-    //
-
-
-    if (Path->Length >= __init__py.Length &&
-        (TestBit(&Bitmap, InitPyNumberOfChars) ||
-         TestBit(&Bitmap, InitPyNumberOfChars-1)))
-    {
-        SIZE_T Size = __init__py.Length;
-        SIZE_T Matched;
-        PWCH Filename;
+    if (IsInitPy) {
 
         //
-        // Get the offset into the path where "__init__.py" would be found,
-        // if present.
+        // Nothing more to do.
         //
 
-        Offset = NumberOfChars - InitPyNumberOfChars + 1;
-        Filename = &Path->Buffer[Offset];
+        Success = TRUE;
+
+    } else {
 
         //
-        // Compare the filename with our "\\__init__.py" string.
+        // Construct the final module name by appending the filename,
+        // sans file extension, to the module name.
         //
 
-        Matched = Rtl->RtlCompareMemory(Filename, __init__py.Buffer, Size);
+        WCHAR Char;
+        USHORT Index;
+
+        PSTR Dest;
+        PWSTR File;
+        PSTRING Final;
+        ULONG_INTEGER AllocationSize;
+        PSTR ModuleBuffer = (*ModuleName)->Buffer;
+        USHORT ModuleLength = (*ModuleName)->Length;
 
         //
-        // Allow the 
-        if (Matched == Size || Matched - 1 == Size) {
+        // Find the first trailing period.
+        //
 
-            //
-            // It's a match; the fully qualified path is a filename ending in
-            // "__init__.py", so we use the parent directory name for the module
-            // name.
-            //
+        for (Index = Filename.Length - 1; Index > 0; Index--) {
+            Char = Filename.Buffer[Index];
+            if (Char == L'.') {
 
-            Limit = Offset - 1;
-
-        }
-        else {
-
-            //
-            // We're not dealing with an __init__.py file, so the current filename
-            // will be used in the module name.  If the filename has an extension,
-            // we remove it (by adjusting Limit to point to the character before
-            // the period).
-            //
-
-            WCHAR Char;
-            BOOL Found = FALSE;
-
-            Index = NumberOfChars - 1;
-
-            do {
                 //
-                // Reverse through the path looking for either a
-                // period or backslash.
+                // We can re-use the Filename UNICODE_STRING here to truncate
+                // the length such that the extension is omitted (i.e. there's
+                // no need to allocate a new string).
                 //
 
-                Char = Path->Buffer[Index];
-
-                if (Char == L'.') {
-                    Found = TRUE;
-                    break;
-                }
-                else if (Char == L'\\') {
-                    break;
-                }
-
-            } while (Index--);
-
-            if (Found) {
-                Limit = Index;
+                Filename.Length = Index + 1;
+                break;
             }
-
-            //
-            // FinalName captures the name of this file, excluding extension.
-            // E.g. if our fully qualified path was "C:\Source\Foo\bar.py",
-            // FinalName will be "bar".
-
-            //FinalName.Buffer = 
-
         }
-    }
-
-    //
-    // Limit marks the end of the path we're using for the module name.
-    // If it hasn't been set at this point, default to using the number
-    // of characters of the entire path.
-    //
-
-    if (!Limit) {
-        Limit = NumberOfChars;
-    }
-
-    //
-    // Identify the starting offset into the path that we're going to use
-    // as the starting point for the module name.  Reversing through the
-    // path string, this will be the last directory we find with a file
-    // named "__init__.py" (indicating that the directory is a module).
-    //
-
-
-
-    Package.Buffer = (PWCH)HeapAlloc(HeapHandle,
-                                     HEAP_ZERO_MEMORY,
-                                     Path->MaximumLength);
-
-    if (!Package.Buffer) {
-        HeapFree(HeapHandle, 0, Bitmap.Buffer);
-        return FALSE;
-    }
-
-    Package.Length = Path->Length;
-    Package.MaximumLength = Path->MaximumLength;
-
-    __movsw(Package.Buffer, Path->Buffer, Path->Length);
-    //RtlCopyMemory(Package.Buffer, Path->Buffer, Path->Length);
-
-    //
-    // Example path: "c:\\users\\trent\\home\\src\\tpn\\lib\\tpn\\util.py".
-    // The .py will have been removed, leaving "..\\util".  We test for the
-    // presence of "..\\tpn\\util\\__init__.py",
-    //
-    // XXX - remove util from name... 
-    //  "c:\\users\\trent\\home\\src\\tpn\\lib\\tpn\\util.py"       - Original.
-    //  "c:\\users\\trent\\home\\src\\tpn\\lib\\tpn\\__init__.py"   - Exists.
-    //  "c:\\users\\trent\\home\\src\\tpn\\lib\\__init__.py"        - Doesn't exist.
-    // Therefore the module name will be tpn.util.
-    //
-
-    ReversedIndex = 0;
-
-    do {
-        ULONG NextBackslashReversed;
-        USHORT NextBackslash;
 
         //
-        // Find the next backslash.
+        // Calculate the final name length.
         //
-        NextBackslashReversed = FindSetBits(&Bitmap, 1, ReversedIndex);
 
-        if (NextBackslashReversed == BITS_NOT_FOUND) {
+        AllocationSize.LongPart = (
+            ModuleLength            +
+            sizeof(CHAR)            + // joining '.'
+            (Filename.Length >> 1)  + // shift wchar -> char length
+            sizeof(CHAR)              // terminating NUL
+        );
+
+        if (AllocationSize.HighPart != 0 ||
+            AllocationSize.LowPart > MAX_STRING)
+        {
+
             //
-            // We shouldn't ever get here.
+            // Final size exceeds string limits.  For now, just return
+            // failure.  If it turns out this is a problem in practice,
+            // we can add as much of the filename that will fit then an
+            // elipsis.
             //
+
+            Success = FALSE;
+            goto Error;
+        }
+
+        //
+        // Allocate a new STRING for the final module name.
+        //
+
+        Final = (PSTRING)AllocationRoutine(AllocationContext,
+                                           AllocationSize.LongPart);
+
+        if (!Final) {
+            Success = FALSE;
+            goto Error;
+        }
+
+        //
+        // Initialize the STRING structure.
+        //
+
+        Final->Length = AllocationSize.LowPart - sizeof(CHAR);
+        Final->MaximumLength = AllocationSize.LowPart;
+        Final->Buffer = (PSTR)RtlOffsetToPointer(Final, sizeof(STRING));
+
+        //
+        // Copy over the module name.
+        //
+
+        __movsb(Final->Buffer, ModuleBuffer, ModuleLength);
+
+        //
+        // Add the joining period.
+        //
+
+        Dest = &Final->Buffer[ModuleLength];
+
+        *Dest++ = '.';
+
+        //
+        // Copy over the filename.
+        //
+        File = Filename.Buffer;
+
+        for (Index = 0; Index < Filename.Length; Index++) {
+            *Dest++ = (CHAR)*File++;
+        }
+
+        //
+        // And the final NUL.
+        //
+
+        *Dest = '\0';
+
+        //
+        // And finally, update the caller's module name pointer.
+        //
+
+        *ModuleName = Final;
+
+        Success = TRUE;
+
+    }
+
+    //
+    // Intentional follow-on.
+    //
+
+Error:
+    if (HeapHandle) {
+
+        //
+        // HeapHandle will be set if a new bitmap had to be allocated
+        // because our stack-allocated one was too small.
+        //
+
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+
+            //
+            // This should never happen.  If HeapHandle is set, the buffers
+            // should differ.
+            //
+
             __debugbreak();
         }
 
-        //
-        // Convert the reversed bitmap position into the offset into the
-        // buffer.
-        //
-        NextBackslash = NumberOfChars - (USHORT)NextBackslashReversed;
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    }
 
-    } while (Index--);
-
-
-    HeapFree(HeapHandle, 0, Bitmap.Buffer);
-    HeapFree(HeapHandle, 0, Package.Buffer);
-
-    return FALSE;
-
+    return Success;
 }
 
 BOOL
@@ -1500,7 +1545,6 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
         *Dest++ = L'\\';
 
-
     } else {
 
         //
@@ -1537,11 +1581,11 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
     //
     // Copy the rest of the name over.
     //
-   
+
     if (Width == sizeof(CHAR)) {
         PSTR Source = (PSTR)Buffer;
         USHORT Count = ((USHORT)Length) + 1;
-        
+
         while (--Count) {
             *Dest++ = (WCHAR)*Source++;
         }
@@ -1572,7 +1616,9 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         String,
         ModuleName,
         AllocationRoutine,
-        AllocationContext
+        AllocationContext,
+        FreeRoutine,
+        FreeContext
         );
 
     if (!Success) {

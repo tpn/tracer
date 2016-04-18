@@ -53,7 +53,7 @@ typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
 
 typedef NTSTATUS(*PRTL_APPEND_UNICODE_STRING_TO_STRING)(
     _Inout_ PUNICODE_STRING  Destination,
-    _In_    PCUNICODE_STRING Source    
+    _In_    PCUNICODE_STRING Source
     );
 
 // 65536
@@ -1023,14 +1023,15 @@ typedef VOID (FREE_ROUTINE)(
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
 typedef BOOL (FILES_EXIST)(
-    _In_      PRTL Rtl,
-    _In_      PUNICODE_STRING Directory,
-    _In_      USHORT NumberOfFilenames,
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
     _In_      PPUNICODE_STRING Filenames,
-    _In_      USHORT MaxFilenameLength,
-    _Out_     PBOOL Exists,
-    _Out_opt_ PPUNICODE_STRING Which
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
+    _Out_opt_ PPUNICODE_STRING WhichFilename
     );
+
 typedef FILES_EXIST *PFILES_EXIST;
 
 #define _RTLEXFUNCTIONS_HEAD                                                   \
@@ -1143,6 +1144,39 @@ CreateBitmapIndexForUnicodeString(
     _Inout_  PPRTL_BITMAP        BitmapPointer,
     _In_     BOOL                Reverse
     );
+
+RTL_API
+_Check_return_
+BOOL
+FilesExist(
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
+    _In_      PPUNICODE_STRING Filenames,
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
+    _Out_opt_ PPUNICODE_STRING WhichFilename
+    );
+
+FORCEINLINE
+BOOL
+AppendUnicodeCharToUnicodeString(
+    _Inout_ PUNICODE_STRING Destination,
+    _In_    WCHAR           Char
+    )
+{
+    USHORT NewOffset = Destination->Length >> 1;
+    USHORT NewLength = Destination->Length + sizeof(WCHAR);
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
 
 #ifdef __cpp
 } // extern "C"

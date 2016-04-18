@@ -596,7 +596,7 @@ PyTraceRegisterPythonFunction(
             // we're going to fail to copy a Python string.)
             //
 
-            Python->Py_DecRef(Module->ModuleFilenameObject);
+            //Python->Py_DecRef(Module->ModuleFilenameObject);
             Rtl->RtlDeleteElementGenericTable(ModulesTable, Module);
             Rtl->RtlDeleteElementGenericTable(FunctionsTable, Function);
             return 0;
