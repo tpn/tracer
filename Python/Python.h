@@ -1216,7 +1216,6 @@ typedef struct _PYTHONDATA {
     _PYTHONDATA_HEAD
 } PYTHONDATA, *PPYTHONDATA;
 
-
 #define _PYTHONVERSION_HEAD \
     PCSTR   VersionString;  \
     USHORT  MajorVersion;   \
@@ -1260,11 +1259,24 @@ typedef BOOL (*PRESOLVEFRAMEOBJECTDETAILS)(
     _Inout_ PULONG          LineNumber
 );
 
-typedef BOOL(*PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)(
+typedef BOOL (*PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           ModuleFilenameObject,
     _Inout_  PPUNICODE_STRING    Path,
     _Inout_  PPSTRING            ModuleName,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
+    );
+
+typedef BOOL (*PGET_MODULE_NAME_FROM_DIRECTORY)(
+    _In_     PPYTHON             Python,
+    _In_     PUNICODE_STRING     Directory,
+    _In_     PRTL_BITMAP         Backslashes,
+    _In_     PUSHORT             BitmapHintIndex,
+    _In_     PUSHORT             NumberOfBackslashesRemaining,
+    _Out_    PPSTRING            ModuleName,
     _In_     PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_ PVOID               AllocationContext,
     _In_     PFREE_ROUTINE       FreeRoutine,
@@ -1283,7 +1295,9 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     _In_      PUNICODE_STRING Directory,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID AllocationContext
+    _In_opt_  PVOID AllocationContext,
+    _In_      PFREE_ROUTINE FreeRoutine,
+    _In_opt_  PVOID FreeContext
     );
 
 #define _PYTHONEXFUNCTIONS_HEAD                                                                               \
@@ -1293,6 +1307,7 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     PRESOLVEFRAMEOBJECTDETAILS ResolveFrameObjectDetails;                                                     \
     PRESOLVEFRAMEOBJECTDETAILS ResolveFrameObjectDetailsFast;                                                 \
     PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME GetModuleNameAndQualifiedPathFromModuleFilename; \
+    PGET_MODULE_NAME_FROM_DIRECTORY GetModuleNameFromDirectory;                                               \
     PADD_DIRECTORY_ENTRY AddDirectoryEntry;
 
 typedef struct _PYTHONEXFUNCTIONS {
@@ -1332,7 +1347,7 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
 
     DECLSPEC_ALIGN(8)
     union {
-        ULONG Flags;        
+        ULONG Flags;
         struct {
             ULONG IsModule:1;
         };
@@ -1347,7 +1362,7 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
         // entry that is a module.
         //
         PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY FirstModulePrefix;
-        PSTRING ModuleName;
+        STRING ModuleName;
     };
 
 } PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY, *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
@@ -1431,11 +1446,11 @@ typedef struct _PYTHON {
     };
 } PYTHON, *PPYTHON, **PPPYTHON;
 
-typedef BOOL (*PINITIALIZEPYTHON)(
+typedef BOOL (*PINITIALIZE_PYTHON)(
     _In_                         PRTL        Rtl,
     _In_                         HMODULE     PythonModule,
     _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
-    _Inout_                      PDWORD      SizeOfPython
+    _Inout_                      PULONG      SizeOfPython
 );
 
 TRACER_API
@@ -1444,7 +1459,7 @@ InitializePython(
     _In_                         PRTL        Rtl,
     _In_                         HMODULE     PythonModule,
     _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
-    _Inout_                      PDWORD      SizeOfPython
+    _Inout_                      PULONG      SizeOfPython
 );
 
 TRACER_API
@@ -1488,6 +1503,20 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
     _In_opt_ PVOID               FreeContext
     );
 
+TRACER_API
+BOOL
+GetModuleNameFromDirectory(
+    _In_     PPYTHON             Python,
+    _In_     PUNICODE_STRING     Directory,
+    _In_     PRTL_BITMAP         Backslashes,
+    _In_     PUSHORT             BitmapHintIndex,
+    _In_     PUSHORT             NumberOfBackslashesRemaining,
+    _Out_    PPSTRING            ModuleName,
+    _In_     PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PVOID               AllocationContext,
+    _In_     PFREE_ROUTINE       FreeRoutine,
+    _In_opt_ PVOID               FreeContext
+    );
 
 TRACER_API
 BOOL
@@ -1561,7 +1590,9 @@ AddDirectoryEntry(
     _In_      PUNICODE_STRING Directory,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID AllocationContext
+    _In_opt_  PVOID AllocationContext,
+    _In_      PFREE_ROUTINE FreeRoutine,
+    _In_opt_  PVOID FreeContext
     );
 
 #ifdef __cpp

@@ -156,7 +156,8 @@ CopyToMemoryMappedMemory(
     SIZE_T Size
 )
 {
-    return memcpy(Destination, Source, Size);
+    //return RtlCopyMemory(Destination, Source, Size);
+    return NULL;
 }
 
 
@@ -217,10 +218,12 @@ CreateBitmapIndexForUnicodeString(
 Routine Description:
 
     This is a helper function that simplifies creating bitmap indexes for
-    UNICODE_STRING structures.  It can allocate either the entire RTL_BITMAP
-    structure plus corresponding space for the bitmap buffer, or just the
-    bitmap buffer itself if the user provides an existing RTL_BITMAP struct.
-    
+    UNICODE_STRING structures.  The routine will use the user-supplied bitmap
+    if it is big enough (govered by the SizeOfBitMap field).  If it isn't,
+    a new buffer will be allocated.  If no bitmap is provided at all, the
+    entire structure plus the bitmap buffer space will be allocated from the
+    heap.
+
     Typically, callers would provide their own pointer to a stack-allocated
     RTL_BITMAP struct if they only need the bitmap for the scope of their
     function call.  For longer-lived bitmaps, a pointer to a NULL pointer
@@ -228,7 +231,7 @@ Routine Description:
     allocated.
 
     Caller is responsible for freeing either the entire RTL_BITMAP or the
-    underlying Bitmap->Buffer.
+    underlying Bitmap->Buffer if a heap allocation took place.
 
 Arguments:
 
@@ -241,18 +244,24 @@ Arguments:
         passed directly to FindCharsInUnicodeString().
 
     HeapHandlePointer - Supplies a pointer to the underlying heap handle
-        to use for allocation.  If this pointer points to a NULL value,
-        the default process heap handle will be used (obtained via
-        GetProcessHeap()), and the pointed-to location will be updated
-        with the handle value.  The caller will need this in order to
-        perform the subsequent HeapFree().
+        to use for allocation.  If a heap allocation is required and this
+        pointer points to a NULL value, the default process heap handle
+        will be used (obtained via GetProcessHeap()), and the pointed-to
+        location will be updated with the handle value.  (The caller will
+        need this in order to perform the subsequent HeapFree() of the
+        relevant structure.)
 
     BitmapPointer - Supplies a pointer to a PRTL_BITMAP structure.  If the
         pointed-to location is NULL, additional space for the RTL_BITMAP
         structure will be allocated on top of the bitmap buffer space, and
         the pointed-to location will be updated with the resulting address.
-        User is responsible for freeing either the entire PRTL_BITMAP struct
-        or the Bitmap->Buffer, depending on usage.
+        If the pointed-to location is non-NULL and the SizeOfBitMap field
+        is greater than or equal to the required bitmap size, the bitmap
+        will be used directly and no heap allocations will take place.
+        The SizeOfBitMap field in this example will be altered to match the
+        required size.  If a heap allocation takes place, user is responsible
+        for cleaning it up (i.e. either freeing the entire PRTL_BITMAP struct
+        returned, or just the Bitmap->Buffer, depending on usage).
 
     Reverse - Supplies a boolean flag indicating the bitmap index should be
         created in reverse.  This is passed to FindCharsInUnicodeString().
@@ -261,17 +270,56 @@ Return Value:
 
     TRUE on success, FALSE on error.
 
+Examples:
+
+    A stack-allocated bitmap structure and buffer:
+
+        CHAR StackBuffer[_MAX_FNAME >> 3];
+        RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBuffer };
+        PRTL_BITMAP BitmapPointer = &Bitmap;
+        HANDLE HeapHandle;
+
+        BOOL Success = CreateBitmapIndexForUnicodeString(Rtl,
+                                                         String,
+                                                         L'\\',
+                                                         &HeapHandle,
+                                                         &BitmapPointer,
+                                                         FALSE);
+
+        ...
+
+Error:
+    if (HeapHandle) {
+
+        //
+        // HeapHandle will be set if a new bitmap had to be allocated
+        // because our stack-allocated one was too small.
+        //
+
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+
+            //
+            // This should never happen.  If HeapHandle is set, the buffers
+            // should differ.
+            //
+
+            __debugbreak();
+        }
+
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    }
+
 --*/
 
 {
     USHORT NumberOfCharacters;
     USHORT AlignedNumberOfCharacters;
     SIZE_T BitmapBufferSizeInBytes;
-    PRTL_BITMAP Bitmap;
-    HANDLE HeapHandle;
     BOOL UpdateBitmapPointer;
     BOOL UpdateHeapHandlePointer;
     BOOL Success;
+    HANDLE HeapHandle = NULL;
+    PRTL_BITMAP Bitmap = NULL;
 
     //
     // Verify arguments.
@@ -293,8 +341,40 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Resolve the number of characters, then make sure it's aligned to the
+    // platform's pointer size.
+    //
+
+    NumberOfCharacters = String->Length >> 1;
+    AlignedNumberOfCharacters = ALIGN_UP_USHORT_TO_POINTER_SIZE(NumberOfCharacters);
+
+    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
+
+
+    //
+    // If *BitmapPointer is non-NULL, see if it's big enough to hold the bitmap.
+    //
+
+    if (*BitmapPointer) {
+
+        if ((*BitmapPointer)->SizeOfBitMap >= AlignedNumberOfCharacters) {
+
+            //
+            // The user-provided bitmap is big enough.  Jump straight to the
+            // starting point.
+            //
+
+            Bitmap = *BitmapPointer;
+            UpdateHeapHandlePointer = FALSE;
+            UpdateBitmapPointer = FALSE;
+
+            goto Start;
+        }
+    }
+
     if (!*HeapHandlePointer) {
-        
+
         //
         // If the pointer to the heap handle to use is NULL, default to using
         // the default process heap via GetProcessHeap().  Note that we also
@@ -311,7 +391,7 @@ Return Value:
         UpdateHeapHandlePointer = TRUE;
     }
     else {
-        
+
         //
         // Use the handle the user provided.
         //
@@ -319,15 +399,6 @@ Return Value:
         HeapHandle = *HeapHandlePointer;
         UpdateHeapHandlePointer = FALSE;
     }
-
-    //
-    // Resolve the number of characters, then make sure it's aligned to the
-    // platform's pointer size.
-    //
-    NumberOfCharacters = String->Length >> 1;
-    AlignedNumberOfCharacters = ALIGN_UP_USHORT_TO_POINTER_SIZE(NumberOfCharacters);
-
-    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
 
     if (!*BitmapPointer) {
 
@@ -337,11 +408,9 @@ Return Value:
         // well.
         //
 
-        Bitmap = (PRTL_BITMAP)HeapAlloc(
-            HeapHandle,
-            HEAP_ZERO_MEMORY,
-            BitmapBufferSizeInBytes + sizeof(RTL_BITMAP)
-            );
+        SIZE_T AllocationSize = BitmapBufferSizeInBytes + sizeof(RTL_BITMAP);
+
+        Bitmap = (PRTL_BITMAP)HeapAlloc(HeapHandle, 0, AllocationSize);
 
         if (!Bitmap) {
             return FALSE;
@@ -350,7 +419,7 @@ Return Value:
         //
         // Point the bitmap buffer to the end of the RTL_BITMAP struct.
         //
-        
+
         Bitmap->Buffer = (PULONG)RtlOffsetToPointer(Bitmap, sizeof(RTL_BITMAP));
 
         //
@@ -370,11 +439,7 @@ Return Value:
 
         Bitmap = *BitmapPointer;
 
-        Bitmap->Buffer = (PULONG)HeapAlloc(
-            HeapHandle,
-            HEAP_ZERO_MEMORY,
-            BitmapBufferSizeInBytes
-            );
+        Bitmap->Buffer = (PULONG)HeapAlloc(HeapHandle, 0, BitmapBufferSizeInBytes);
 
         if (!Bitmap->Buffer) {
             return FALSE;
@@ -389,10 +454,12 @@ Return Value:
 
     }
 
+Start:
+
     //
     // There will be one bit per character.
     //
-    
+
     Bitmap->SizeOfBitMap = AlignedNumberOfCharacters;
 
     if (!Bitmap->Buffer) {
@@ -400,24 +467,35 @@ Return Value:
     }
 
     //
+    // Clear all bits in the bitmap.
+    //
+
+    Rtl->RtlClearAllBits(Bitmap);
+
+
+    //
     // Fill in the bitmap index.
     //
 
     Success = Rtl->FindCharsInUnicodeString(Rtl, String, Char, Bitmap, Reverse);
 
-    if (!Success) {
+    if (!Success && HeapHandle) {
+
+        //
+        // HeapHandle will only be set if we had to do heap allocations.
+        //
 
         if (UpdateBitmapPointer) {
 
             //
             // Free the entire structure.
             //
-            
+
             HeapFree(HeapHandle, 0, Bitmap);
 
         }
         else {
-            
+
             //
             // Free just the buffer.
             //
@@ -430,7 +508,7 @@ Return Value:
     }
 
     //
-    // Update user pointers if necessary, then return successfully.
+    // Update caller's pointers if applicable, then return successfully.
     //
 
     if (UpdateBitmapPointer) {
@@ -447,26 +525,25 @@ Return Value:
 _Check_return_
 BOOL
 FilesExist(
-    _In_      PRTL Rtl,
-    _In_      PUNICODE_STRING Directory,
-    _In_      USHORT NumberOfFilenames,
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
     _In_      PPUNICODE_STRING Filenames,
-    _In_      USHORT MaxFilenameLength,
-    _Out_     PBOOL Exists,
-    _Out_opt_ PUSHORT WhichIndex,
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
     _Out_opt_ PPUNICODE_STRING WhichFilename
     )
 {
     USHORT Index;
     PWCHAR HeapBuffer;
-    HANDLE HeapHandle;
     ULONG CombinedSizeInBytes;
     USHORT DirectoryLength;
+    USHORT MaxFilenameLength = 0;
     UNICODE_STRING Path;
     PUNICODE_STRING Filename;
-    HRESULT Result;
     DWORD Attributes;
     BOOL Success = FALSE;
+    HANDLE HeapHandle = NULL;
     WCHAR StackBuffer[_MAX_PATH];
 
     //
@@ -489,8 +566,32 @@ FilesExist(
         return FALSE;
     }
 
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        BOOL SanityCheck;
+
+        Filename = Filenames[Index];
+
+        //
+        // Quick sanity check.
+        //
+        SanityCheck = (
+            Filename &&
+            Filename->Length > 0 &&
+            Filename->Buffer != NULL
+        );
+
+        if (!SanityCheck) {
+            __debugbreak();
+        }
+
+        if (Filename->Length > MaxFilenameLength) {
+            MaxFilenameLength = Filename->Length;
+        }
+    }
+
+
     //
-    // See if the combined size of the extended volume prefix ("\\?\"), 
+    // See if the combined size of the extended volume prefix ("\\?\"),
     // directory, joining backslash, maximum filename length and terminating
     // NUL is less than or equal to _MAX_PATH.  If it is, we can use the
     // stack-allocated Path buffer above; if not, allocate a new buffer from
@@ -556,9 +657,9 @@ FilesExist(
     Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefix);
 
     if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
-        FAILED(Rtl->RtlAppendUnicodeToString(&Path, L"\\")))
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\'))
     {
-        goto Error;
+	goto Error;
     }
 
     //
@@ -577,34 +678,13 @@ FilesExist(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // We've already validated our lengths, so these should never fail.
         //
 
-        if (!Filename || Filename->Length == 0 || Filename->Buffer == NULL) {
+	if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0'))
+        {
             goto Error;
-        }
-
-        Result = Rtl->RtlAppendUnicodeStringToString(&Path, Filename);
-
-        if (!FAILED(Result)) {
-
-            //
-            // Add the trailing NUL.
-            //
-
-            Result = Rtl->RtlAppendUnicodeToString(&Path, UNICODE_NULL);
-        }
-
-        if (FAILED(Result)) {
-
-            //
-            // If either call failed, it'll be because of STATUS_BUFFER_TO_SMALL,
-            // which means the user was telling fibs about the longest filename
-            // length.
-            //
-
-            goto Error;
-
         }
 
         //
@@ -617,7 +697,7 @@ FilesExist(
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
             (Attributes & FILE_ATTRIBUTE_DIRECTORY))
         {
-            
+
             //
             // File doesn't exist or is a directory.  Reset the path length
             // and continue.
