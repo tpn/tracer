@@ -496,6 +496,8 @@ PyTraceRegisterPythonFunction(
     PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
     PFUNCTIONS_TABLE FunctionsTable;
     PMODULES_TABLE ModulesTable;
+    LONG ModuleFilenameHash;
+    LONG CodeObjectHash;
 
     CodeObject = FrameObject->Code;
 
@@ -514,6 +516,8 @@ PyTraceRegisterPythonFunction(
     TraceStores = TraceContext->TraceStores;
 
     FunctionRecord.CodeObject = CodeObject;
+
+    FunctionRecord.CodeObjectHash = Python->PyObject_Hash(CodeObject);
 
     //
     // Insert the function into our table if it's not already present.
@@ -737,6 +741,31 @@ GenericComparePointer(
     }
 }
 
+FORCEINLINE
+RTL_GENERIC_COMPARE_RESULTS
+GenericComparePyObjectHash(
+    _In_ PPYTHON Python,
+    _In_ PVOID FirstStruct,
+    _In_ PVOID SecondStruct
+    )
+{
+    PPYOBJECT First = (PPYOBJECT)FirstStruct;
+    PPYOBJECT Second = (PPYOBJECT)SecondStruct;
+
+    LONG FirstHash = Python->PyObject_Hash(First);
+    LONG SecondHash = Python->PyObject_Hash(Second);
+
+    if (First < Second) {
+        return GenericLessThan;
+    }
+    else if (First > Second) {
+        return GenericGreaterThan;
+    }
+    else {
+        return GenericEqual;
+    }
+}
+
 RTL_GENERIC_COMPARE_RESULTS
 NTAPI
 CodeObjectCompare(
@@ -759,6 +788,13 @@ FunctionCompare(
     PPYTHON_FUNCTION First = (PPYTHON_FUNCTION)FirstStruct;
     PPYTHON_FUNCTION Second = (PPYTHON_FUNCTION)SecondStruct;
 
+    PPYTHON_MODULE First = (PPYTHON_MODULE)FirstStruct;
+    PPYTHON_MODULE Second = (PPYTHON_MODULE)SecondStruct;
+    PPYTHON_TRACE_CONTEXT Context;
+
+    Context = CONTAINING_RECORD(Table, PYTHON_TRACE_CONTEXT, ModulesTable);
+
+
     return GenericComparePointer(Table,
                                  First->CodeObject,
                                  Second->CodeObject);
@@ -774,10 +810,13 @@ ModuleCompare(
 {
     PPYTHON_MODULE First = (PPYTHON_MODULE)FirstStruct;
     PPYTHON_MODULE Second = (PPYTHON_MODULE)SecondStruct;
+    PPYTHON_TRACE_CONTEXT Context;
 
-    return GenericComparePointer(Table,
-                                 First->ModuleFilenameObject,
-                                 Second->ModuleFilenameObject);
+    Context = CONTAINING_RECORD(Table, PYTHON_TRACE_CONTEXT, ModulesTable);
+
+    return GenericComparePyObjectHash(Context->Python,
+                                      First->ModuleFilenameObject,
+                                      Second->ModuleFilenameObject);
 }
 
 

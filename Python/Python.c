@@ -202,6 +202,16 @@ LoadPythonFunctions(
         goto error;
     }
 
+    PythonFunctions->PyObject_Compare = (PPYOBJECT_COMPARE)GetProcAddress(PythonModule, "PyObject_Compare");
+    if (!PythonFunctions->PyObject_Compare) {
+        goto error;
+    }
+
+    PythonFunctions->PyObject_Hash = (PPYOBJECT_HASH)GetProcAddress(PythonModule, "PyObject_Hash");
+    if (!PythonFunctions->PyObject_Hash) {
+        goto error;
+    }
+
     PythonFunctions->PyUnicode_AsUnicode = (PPYUNICODE_ASUNICODE)GetProcAddress(PythonModule, "PyUnicode_AsUnicode");
     PythonFunctions->PyUnicode_GetLength = (PPYUNICODE_GETLENGTH)GetProcAddress(PythonModule, "PyUnicode_GetLength");
 
@@ -982,6 +992,7 @@ AddDirectoryEntry(
             //
 
             AllocationSize += 2;
+
         } else {
 
             //
@@ -1105,67 +1116,6 @@ AddDirectoryEntry(
 }
 
 BOOL
-AddRootDirectory(
-    _In_      PPYTHON Python,
-    _In_      PUNICODE_STRING Directory,
-    _Out_     PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
-    _In_      PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID AllocationContext,
-    _In_      PFREE_ROUTINE FreeRoutine,
-    _In_opt_  PVOID FreeContext
-    )
-/*++
-
-Routine Description:
-
-    This routine adds a root (non-module) directory to the prefix table.
-
---*/
-{
-    PRTL Rtl;
-
-    PUNICODE_PREFIX_TABLE PrefixTable;
-    PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-
-    PVOID Buffer;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
-
-    PUNICODE_STRING Match = NULL;
-    BOOL CaseInsensitive = TRUE;
-    BOOL Success = FALSE;
-
-    Rtl = Python->Rtl;
-
-    Buffer = AllocationRoutine(AllocationContext, sizeof(*Entry));
-    if (!Buffer) {
-        return FALSE;
-    }
-
-    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Buffer;
-
-    Entry->IsModule = FALSE;
-
-    ClearString(&Entry->ModuleName);
-
-    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
-    PrefixTableEntry = (PUNICODE_PREFIX_TABLE_ENTRY)Entry;
-
-    Success = Rtl->RtlInsertUnicodePrefix(PrefixTable,
-                                          Directory,
-                                          PrefixTableEntry);
-
-    if (!Success) {
-        FreeRoutine(FreeContext, Buffer);
-        Success = TRUE;
-    }
-    else if (ARGUMENT_PRESENT(EntryPointer)) {
-        *EntryPointer = Entry;
-    }
-
-    return Success;
-}
-
-BOOL
 GetModuleNameFromDirectory(
     _In_     PPYTHON             Python,
     _In_     PUNICODE_STRING     Directory,
@@ -1242,21 +1192,23 @@ GetModuleNameFromDirectory(
     //
     // Initialize pointer to the UNICODE_PREFIX_TABLE.
     //
+
     PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
 
     //
     // Seach for the directory in the prefix table.
     //
+
     PrefixTableEntry = Rtl->RtlFindUnicodePrefix(PrefixTable,
                                                  Directory,
                                                  CaseInsensitive);
 
     if (PrefixTableEntry) {
-        PUNICODE_STRING Match;
 
         //
         // A match was found, see if it matches our entire directory string.
         //
+
         Match = PrefixTableEntry->Prefix;
 
         if (Match->Length == Directory->Length) {
@@ -1265,6 +1217,7 @@ GetModuleNameFromDirectory(
             // The match is exact.  Fill in the user's module name pointer
             // and return success.
             //
+
             Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)PrefixTableEntry;
             *ModuleName = &Entry->ModuleName;
             return TRUE;
@@ -1272,10 +1225,12 @@ GetModuleNameFromDirectory(
 
 
         if (Match->Length > Directory->Length) {
+
             //
             // We should never get a longer match than the directory name
             // we searched for.
             //
+
             __debugbreak();
         }
 
@@ -1578,7 +1533,8 @@ FoundAncestor:
 
         //
         // Fill out the NextDirectory et al structures based on the next
-        // directory after the current ancestor.
+        // directory after the current ancestor.  (Reversing the bitmap
+        // may help here.)
         //
 
         __debugbreak();
@@ -1672,14 +1628,12 @@ GetModuleNameFromQualifiedPath(
     // Create a reversed bitmap for the backslashes in the path.
     //
 
-    Success = Rtl->CreateBitmapIndexForUnicodeString(
-        Rtl,
-        Path,
-        L'\\',
-        &HeapHandle,
-        &BitmapPointer,
-        Reversed
-        );
+    Success = Rtl->CreateBitmapIndexForUnicodeString(Rtl,
+                                                     Path,
+                                                     L'\\',
+                                                     &HeapHandle,
+                                                     &BitmapPointer,
+                                                     Reversed);
 
     if (!Success) {
         return FALSE;
