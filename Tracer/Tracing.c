@@ -340,6 +340,7 @@ InitializeTraceStore(
     );
 
     if (TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
+        DWORD LastError = GetLastError();
         goto error;
     }
 
@@ -1108,30 +1109,59 @@ AllocateRecords(
     }
 
 #ifdef _M_X64
-    AllocationSize = (ULONG_PTR)(RecordSize->QuadPart * NumberOfRecords->QuadPart);
+
+    AllocationSize = (
+        (ULONG_PTR)(
+            RecordSize->QuadPart *
+            NumberOfRecords->QuadPart
+        )
+    );
+
     if (AllocationSize > (ULONG_PTR)MemoryMap->MappingSize.QuadPart) {
         return NULL;
     }
+
 #else
     {
         ULARGE_INTEGER Size = { 0 };
+
+        //
         // Ignore allocation attempts over 2GB on 32-bit.
+        //
+
         if (RecordSize->HighPart != 0 || NumberOfRecords->HighPart != 0) {
             return NULL;
         }
-        Size->QuadPart = UInt32x32To64(RecordSize->LowPart, NumberOfRecords->LowPart);
+
+        Size->QuadPart = UInt32x32To64(RecordSize->LowPart,
+                                       NumberOfRecords->LowPart);
+
         if (Size->HighPart != 0) {
             return NULL;
         }
+
         AllocationSize = (ULONG_PTR)Size->LowPart;
+
     }
+
     if (AllocationSize > MemoryMap->MappingSize.LowPart) {
         return NULL;
     }
 #endif
 
-    NextAddress = (PVOID)RtlOffsetToPointer(MemoryMap->NextAddress, AllocationSize);
-    EndAddress = (PVOID)RtlOffsetToPointer(MemoryMap->BaseAddress, MemoryMap->MappingSize.LowPart);
+    NextAddress = (
+        (PVOID)RtlOffsetToPointer(
+            MemoryMap->NextAddress,
+            AllocationSize
+        )
+    );
+
+    EndAddress = (
+        (PVOID)RtlOffsetToPointer(
+            MemoryMap->BaseAddress,
+            MemoryMap->MappingSize.LowPart
+        )
+    );
 
     if (NextAddress > EndAddress) {
 
@@ -1141,7 +1171,13 @@ AllocateRecords(
 
         MemoryMap = TraceStore->MemoryMap;
         ReturnAddress = MemoryMap->BaseAddress;
-        MemoryMap->NextAddress = (PVOID)RtlOffsetToPointer(MemoryMap->BaseAddress, AllocationSize);
+
+        MemoryMap->NextAddress = (
+            (PVOID)RtlOffsetToPointer(
+                MemoryMap->BaseAddress,
+                AllocationSize
+            )
+        );
 
     } else {
 
@@ -1150,6 +1186,7 @@ AllocateRecords(
         // after the next page in a separate thread (as long as it's still
         // within our allocated range).
         //
+
         PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
         NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
 
