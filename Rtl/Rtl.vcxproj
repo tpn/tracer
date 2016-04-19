@@ -72,7 +72,7 @@
     <ClCompile Include="Rtl.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'"/>
+    <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

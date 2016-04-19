@@ -1293,7 +1293,10 @@ typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY **PPPYTHON_DIRECTORY_PREFIX_TABLE_EN
 typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     _In_      PPYTHON Python,
     _In_      PUNICODE_STRING Directory,
+    _In_opt_  PUNICODE_STRING DirectoryName,
+    _In_opt_  PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      BOOL IsRoot,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID AllocationContext,
     _In_      PFREE_ROUTINE FreeRoutine,
@@ -1355,15 +1358,10 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
     ULONG Unused1;
 
     DECLSPEC_ALIGN(8)
-    union {
-        //
-        // If IsModule == 1, ModuleName will be active.  Otherwise,
-        // FirstModulePrefix will point to the first prefix table
-        // entry that is a module.
-        //
-        PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY FirstModulePrefix;
-        STRING ModuleName;
-    };
+    LIST_ENTRY ListEntry;
+    UNICODE_STRING Directory;   // Prefix will point here.
+    STRING ModuleName;          // Full module name.
+    STRING Name;                // File name (sans extension).
 
 } PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY, *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 
@@ -1588,7 +1586,10 @@ BOOL
 AddDirectoryEntry(
     _In_      PPYTHON Python,
     _In_      PUNICODE_STRING Directory,
+    _In_opt_  PUNICODE_STRING DirectoryName,
+    _In_opt_  PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      BOOL IsRoot,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID AllocationContext,
     _In_      PFREE_ROUTINE FreeRoutine,

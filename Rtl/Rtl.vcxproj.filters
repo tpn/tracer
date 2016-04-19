@@ -40,5 +40,8 @@
     <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'">
       <Filter>Source Files</Filter>
     </MASM>
+    <MASM Include="Rtlx64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

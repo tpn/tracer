@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tracer", "Tracer\Tracer.vcxproj", "{5A6314C6-E7D7-4C59-993A-6B28F8F21565}"
 EndProject
@@ -20,6 +20,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Dia", "Dia\Dia.vcxproj", "{DB7101D9-0916-463F-BFFD-09857019611E}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PythonApp", "PythonApp\PythonApp.pyproj", "{EBB98965-02D5-48B2-96A2-0F9973A629A1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Python27", "Python27\Python27.vcxproj", "{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -209,6 +211,28 @@ Global
 		{EBB98965-02D5-48B2-96A2-0F9973A629A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBB98965-02D5-48B2-96A2-0F9973A629A1}.Release|x64.ActiveCfg = Release|Any CPU
 		{EBB98965-02D5-48B2-96A2-0F9973A629A1}.Release|x86.ActiveCfg = Release|Any CPU
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Debug|x64.ActiveCfg = Debug|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Debug|x64.Build.0 = Debug|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Debug|x86.ActiveCfg = Debug|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Debug|x86.Build.0 = Debug|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|Any CPU.ActiveCfg = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|Any CPU.Build.0 = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|x64.ActiveCfg = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|x64.Build.0 = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|x86.ActiveCfg = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGInstrument|x86.Build.0 = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|Any CPU.ActiveCfg = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|Any CPU.Build.0 = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|x64.ActiveCfg = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|x64.Build.0 = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|x86.ActiveCfg = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.PGUpdate|x86.Build.0 = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Release|Any CPU.ActiveCfg = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Release|x64.ActiveCfg = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Release|x64.Build.0 = Release|x64
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Release|x86.ActiveCfg = Release|Win32
+		{65C1EEB4-1E82-4DF1-B044-E492C84DBE7B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -220,8 +220,6 @@ class SourceFile(InvariantAwareObject):
     def functions_from_multiline_define(self, name):
         results = []
         macro = self.multiline_macro_defines[name]
-        import ipdb
-        ipdb.set_trace()
         for (lineno, line) in enumerate(macro.lines):
             if line.startswith('#define'):
                 continue

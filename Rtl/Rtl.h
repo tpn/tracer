@@ -30,7 +30,7 @@ typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
     PCHAR  Buffer;
-} STRING, *PSTRING, **PPSTRING;
+} STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -51,9 +51,19 @@ typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
     _In_opt_ PCWSTR          Source
     );
 
-typedef NTSTATUS(*PRTL_APPEND_UNICODE_STRING_TO_STRING)(
+typedef NTSTATUS (*PRTL_APPEND_UNICODE_STRING_TO_STRING)(
     _Inout_ PUNICODE_STRING  Destination,
     _In_    PCUNICODE_STRING Source
+    );
+
+typedef NTSTATUS (*PRTL_UNICODE_STRING_TO_ANSI_STRING)(
+    _Inout_ PANSI_STRING     DestinationString,
+    _In_    PCUNICODE_STRING SourceString,
+    _In_    BOOLEAN          AllocateDestinationString
+    );
+
+typedef ULONG (*PRTL_UNICODE_STRING_TO_ANSI_SIZE)(
+    _In_ PUNICODE_STRING UnicodeString
     );
 
 // 65536
@@ -891,6 +901,8 @@ typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
     PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_APPEND_UNICODE_STRING_TO_STRING RtlAppendUnicodeStringToString;                               \
+    PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
+    PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;
 
@@ -1034,6 +1046,14 @@ typedef BOOL (FILES_EXIST)(
 
 typedef FILES_EXIST *PFILES_EXIST;
 
+typedef BOOL (*PCOPY_UNICODE_STRING)(
+    _In_  PRTL                  Rtl,
+    _In_  PCUNICODE_STRING      Source,
+    _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    );
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
@@ -1146,6 +1166,17 @@ CreateBitmapIndexForUnicodeString(
     );
 
 RTL_API
+BOOL
+CreateUnicodeString(
+    _In_  PRTL                  Rtl,
+    _In_  PCUNICODE_STRING      Source,
+    _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    );
+
+
+RTL_API
 _Check_return_
 BOOL
 FilesExist(
@@ -1176,6 +1207,211 @@ AppendUnicodeCharToUnicodeString(
     Destination->Length = NewLength;
 
     return TRUE;
+}
+
+FORCEINLINE
+BOOL
+CreateUnicodeStringInline(
+    _In_  PRTL                  Rtl,
+    _In_  PCUNICODE_STRING      Source,
+    _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    )
+{
+    PUNICODE_STRING String;
+    USHORT Length = Source->Length;
+    ULONG AllocationSize = Length + sizeof(UNICODE_STRING);
+
+    String = (PUNICODE_STRING)AllocationRoutine(AllocationContext,
+                                                AllocationSize);
+
+    if (!String) {
+        return FALSE;
+    }
+
+    String->Length = 0;
+    String->MaximumLength = Length;
+    String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+
+    Rtl->RtlCopyUnicodeString(String, Source);
+    *Destination = String;
+
+    return TRUE;
+}
+
+FORCEINLINE
+VOID
+CopyUnicodeStringInline(
+    _In_    PRTL                  Rtl,
+    _In_    PCUNICODE_STRING      Source,
+    _Inout_ PUNICODE_STRING       Destination
+    )
+{
+    Destination->Length = 0;
+    Destination->MaximumLength = Source->Length;
+    Destination->Buffer = (PWSTR)RtlOffsetToPointer(Destination,
+                                                    sizeof(UNICODE_STRING));
+
+    Rtl->RtlCopyUnicodeString(Destination, Source);
+}
+
+FORCEINLINE
+VOID
+ClearUnicodeString(_Inout_ PUNICODE_STRING String)
+{
+    String->Length = 0;
+    String->MaximumLength = 0;
+    String->Buffer = NULL;
+}
+
+FORCEINLINE
+VOID
+ClearString(_Inout_ PSTRING String)
+{
+    String->Length = 0;
+    String->MaximumLength = 0;
+    String->Buffer = NULL;
+}
+
+//
+// Verbatim copy of the doubly-linked list inline methods.
+//
+#define RTL_STATIC_LIST_HEAD(x) LIST_ENTRY x = { &x, &x }
+
+FORCEINLINE
+VOID
+InitializeListHead(
+    _Out_ PLIST_ENTRY ListHead
+    )
+
+{
+
+    ListHead->Flink = ListHead->Blink = ListHead;
+    return;
+}
+
+_Must_inspect_result_
+BOOLEAN
+CFORCEINLINE
+IsListEmpty(
+    _In_ const LIST_ENTRY * ListHead
+    )
+
+{
+
+    return (BOOLEAN)(ListHead->Flink == ListHead);
+}
+
+FORCEINLINE
+BOOLEAN
+RemoveEntryList(
+    _In_ PLIST_ENTRY Entry
+    )
+
+{
+
+    PLIST_ENTRY Blink;
+    PLIST_ENTRY Flink;
+
+    Flink = Entry->Flink;
+    Blink = Entry->Blink;
+    Blink->Flink = Flink;
+    Flink->Blink = Blink;
+    return (BOOLEAN)(Flink == Blink);
+}
+
+FORCEINLINE
+PLIST_ENTRY
+RemoveHeadList(
+    _Inout_ PLIST_ENTRY ListHead
+    )
+
+{
+
+    PLIST_ENTRY Flink;
+    PLIST_ENTRY Entry;
+
+    Entry = ListHead->Flink;
+    Flink = Entry->Flink;
+    ListHead->Flink = Flink;
+    Flink->Blink = ListHead;
+    return Entry;
+}
+
+
+
+FORCEINLINE
+PLIST_ENTRY
+RemoveTailList(
+    _Inout_ PLIST_ENTRY ListHead
+    )
+
+{
+
+    PLIST_ENTRY Blink;
+    PLIST_ENTRY Entry;
+
+    Entry = ListHead->Blink;
+    Blink = Entry->Blink;
+    ListHead->Blink = Blink;
+    Blink->Flink = ListHead;
+    return Entry;
+}
+
+
+FORCEINLINE
+VOID
+InsertTailList(
+    _Inout_ PLIST_ENTRY ListHead,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+
+    PLIST_ENTRY Blink;
+
+    Blink = ListHead->Blink;
+    Entry->Flink = ListHead;
+    Entry->Blink = Blink;
+    Blink->Flink = Entry;
+    ListHead->Blink = Entry;
+    return;
+}
+
+
+FORCEINLINE
+VOID
+InsertHeadList(
+    _Inout_ PLIST_ENTRY ListHead,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+
+    PLIST_ENTRY Flink;
+
+    Flink = ListHead->Flink;
+    Entry->Flink = Flink;
+    Entry->Blink = ListHead;
+    Flink->Blink = Entry;
+    ListHead->Flink = Entry;
+    return;
+}
+
+FORCEINLINE
+VOID
+AppendTailList(
+    _Inout_ PLIST_ENTRY ListHead,
+    _Inout_ PLIST_ENTRY ListToAppend
+    )
+{
+
+    PLIST_ENTRY ListEnd = ListHead->Blink;
+
+    ListHead->Blink->Flink = ListToAppend;
+    ListHead->Blink = ListToAppend->Blink;
+    ListToAppend->Blink->Flink = ListHead;
+    ListToAppend->Blink = ListEnd;
+    return;
 }
 
 #ifdef __cpp
