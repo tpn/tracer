@@ -54,6 +54,7 @@ typedef struct _PYTHON_MODULE {
 
 typedef struct _PYTHON_FUNCTION {
     PPYOBJECT CodeObject;
+    LONG CodeObjectHash;
     PPYTHON_MODULE Module;
     PUNICODE_STRING Name;
     PUNICODE_STRING Path;

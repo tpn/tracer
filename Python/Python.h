@@ -558,6 +558,9 @@ typedef PPYOBJECT (*PPYSSIZESSIZEARGFUNC)(PPYOBJECT, SSIZE_T SSIZE_T), (*ssizess
 typedef LONG (*PPYSSIZEOBJARGPROC)(PPYOBJECT, SSIZE_T, PPYOBJECT), (*ssizeobjargproc);
 typedef LONG (*PPYSSIZESSIZEOBJARGPROC)(PPYOBJECT, SSIZE_T, SSIZE_T, PPYOBJECT), (*ssizeobjargproc);
 typedef LONG (*PPYOBJOBJARGPROC)(PPYOBJECT, PPYOBJECT, PPYOBJECT), (*objobjargproc);
+typedef INT (*PCOMPARE_FUNCTION)(PPYOBJECT, PPYOBJECT), (*cmpfunc);
+typedef LONG (*PHASH_FUNCTION)(PPYOBJECT), (*hashfunc);
+typedef PPYOBJECT (*PRICH_COMPARE_FUNCTION)(PPYOBJECT, PPYOBJECT, INT), (*richcmpfunc);
 
 typedef struct _PYBUFFER {
     union {
@@ -673,12 +676,12 @@ typedef struct _PYTYPEOBJECT {
     };
     union {
         union {
-            void            *tp_compare;
+            hashfunc         tp_compare;
             PyAsyncMethods  *tp_as_async;
         };
         union {
-            PVOID           Compare;
-            PPYASYNCMETHODS AsyncMethods;
+            PCOMPARE_FUNCTION Compare;
+            PPYASYNCMETHODS   AsyncMethods;
         };
     };
     union {
@@ -698,8 +701,8 @@ typedef struct _PYTYPEOBJECT {
         PVOID   MappingMethods;
     };
     union {
-        void    *tp_hash;
-        PVOID   Hash;
+        hashfunc        tp_hash;
+        PHASH_FUNCTION  Hash;
     };
     union {
         void    *tp_call;
@@ -738,8 +741,8 @@ typedef struct _PYTYPEOBJECT {
         PVOID   Clear;
     };
     union {
-        void    *tp_richcompare;
-        PVOID   RichCompare;
+        richcmpfunc            tp_richcompare;
+        PRICH_COMPARE_FUNCTION RichCompare;
     };
     union {
         Py_ssize_t  tp_weaklistoffset;
@@ -1181,6 +1184,8 @@ typedef enum _PYGILSTATE {
 } PYGILSTATE, *PPYGILSTATE, PyGILState_STATE;
 typedef PYGILSTATE (*PPYGILSTATE_ENSURE)();
 typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
+typedef LONG (*PPYOBJECT_HASH)(PPYOBJECT);
+typedef INT (*PPYOBJECT_COMPARE)(PPYOBJECT, PPYOBJECT, PINT);
 
 #define _PYTHONFUNCTIONS_HEAD                      \
     PPY_GETVERSION          Py_GetVersion;         \
@@ -1193,7 +1198,9 @@ typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
     PPY_INCREF              Py_IncRef;             \
     PPY_DECREF              Py_DecRef;             \
     PPYGILSTATE_ENSURE      PyGILState_Ensure;     \
-    PPYGILSTATE_RELEASE     PyGILState_Release;
+    PPYGILSTATE_RELEASE     PyGILState_Release;    \
+    PPYOBJECT_HASH          PyObject_Hash;         \
+    PPYOBJECT_COMPARE       PyObject_Compare;
 
 typedef struct _PYTHONFUNCTIONS {
     _PYTHONFUNCTIONS_HEAD
@@ -1317,6 +1324,17 @@ typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
 } PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
 
+typedef struct _PYTHON_FUNCTION {
+    PPYOBJECT CodeObject;
+    LONG CodeObjectHash;
+    PPYTHON_MODULE Module;
+    PUNICODE_STRING Name;
+    PUNICODE_STRING Path;
+    PUNICODE_STRING ClassName;
+    PUNICODE_STRING FunctionName;
+    PUNICODE_STRING ModuleName;
+} PYTHON_FUNCTION, *PPYTHON_FUNCTION;
+
 typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE {
     //
     // Inline the UNICODE_PREFIX_TABLE struct.
@@ -1356,6 +1374,24 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
         };
     };
     ULONG Unused1;
+
+    //
+    // Inline the RTL_DYNAMIC_HASH_TABLE_ENTRY struct.
+    //
+
+    union {
+        RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+        struct {
+            LIST_ENTRY Linkage;
+            union {
+                ULONG_PTR Signature;
+                struct {
+                    ULONG SignatureLow;
+                    ULONG SignatureHigh;
+                };
+            };
+        };
+    };
 
     DECLSPEC_ALIGN(8)
     LIST_ENTRY ListEntry;
@@ -1579,6 +1615,16 @@ ResolveFrameObjectDetailsInline(
             Python->PyCodeObjectOffsets->FirstLineNumber
         )
     );
+}
+
+FORCEINLINE
+LONG
+HashCodeObject(
+    _In_ PPYTHON Python,
+    _In_ PPYOBJECT CodeObject
+)
+{
+
 }
 
 TRACER_API
