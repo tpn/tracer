@@ -568,7 +568,7 @@ PyTraceRegisterPythonFunction(
 
     } else {
 
-        //Python->Py_IncRef(Module->ModuleFilenameObject);
+        Python->Py_IncRef(Module->ModuleFilenameObject);
 
         //
         // This is the first time we've seen this module.  We need to save
@@ -596,18 +596,17 @@ PyTraceRegisterPythonFunction(
             // we're going to fail to copy a Python string.)
             //
 
-            //Python->Py_DecRef(Module->ModuleFilenameObject);
+            Python->Py_DecRef(Module->ModuleFilenameObject);
             Rtl->RtlDeleteElementGenericTable(ModulesTable, Module);
             Rtl->RtlDeleteElementGenericTable(FunctionsTable, Function);
             return 0;
         }
 
-        //Success = Rtl->EnsureQualifiedPath(
-
+        Function->Module = Module;
 
     }
 
-    return FALSE;
+    return TRUE;
 }
 
 VOID
@@ -716,9 +715,9 @@ CodeObjectFreeFromHeap(
     HeapFree(HeapHandle, 0, Buffer);
 }
 
+FORCEINLINE
 RTL_GENERIC_COMPARE_RESULTS
-NTAPI
-CodeObjectCompare(
+GenericComparePointer(
     _In_ PRTL_GENERIC_TABLE Table,
     _In_ PVOID FirstStruct,
     _In_ PVOID SecondStruct
@@ -737,6 +736,50 @@ CodeObjectCompare(
         return GenericEqual;
     }
 }
+
+RTL_GENERIC_COMPARE_RESULTS
+NTAPI
+CodeObjectCompare(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID FirstStruct,
+    _In_ PVOID SecondStruct
+    )
+{
+    return GenericComparePointer(Table, FirstStruct, SecondStruct);
+}
+
+RTL_GENERIC_COMPARE_RESULTS
+NTAPI
+FunctionCompare(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID FirstStruct,
+    _In_ PVOID SecondStruct
+    )
+{
+    PPYTHON_FUNCTION First = (PPYTHON_FUNCTION)FirstStruct;
+    PPYTHON_FUNCTION Second = (PPYTHON_FUNCTION)SecondStruct;
+
+    return GenericComparePointer(Table,
+                                 First->CodeObject,
+                                 Second->CodeObject);
+}
+
+RTL_GENERIC_COMPARE_RESULTS
+NTAPI
+ModuleCompare(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID FirstStruct,
+    _In_ PVOID SecondStruct
+    )
+{
+    PPYTHON_MODULE First = (PPYTHON_MODULE)FirstStruct;
+    PPYTHON_MODULE Second = (PPYTHON_MODULE)SecondStruct;
+
+    return GenericComparePointer(Table,
+                                 First->ModuleFilenameObject,
+                                 Second->ModuleFilenameObject);
+}
+
 
 BOOL
 InitializePythonTraceContext(
@@ -802,7 +845,7 @@ InitializePythonTraceContext(
 
     Rtl->RtlInitializeGenericTable(
         &PythonTraceContext->FunctionsTable,
-        CodeObjectCompare,
+        FunctionCompare,
         CodeObjectAllocateFromHeap,
         CodeObjectFreeFromHeap,
         PythonTraceContext
@@ -810,7 +853,7 @@ InitializePythonTraceContext(
 
     Rtl->RtlInitializeGenericTable(
         &PythonTraceContext->ModulesTable,
-        CodeObjectCompare,
+        ModuleCompare,
         CodeObjectAllocateFromHeap,
         CodeObjectFreeFromHeap,
         PythonTraceContext

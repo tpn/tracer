@@ -885,7 +885,10 @@ BOOL
 AddDirectoryEntry(
     _In_      PPYTHON Python,
     _In_      PUNICODE_STRING Directory,
+    _In_opt_  PUNICODE_STRING DirectoryName,
+    _In_opt_  PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry,
     _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      BOOL IsRoot,
     _In_      PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID AllocationContext,
     _In_      PFREE_ROUTINE FreeRoutine,
@@ -898,12 +901,22 @@ AddDirectoryEntry(
     PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
 
     PVOID Buffer;
+    ULONG AllocationSize;
     PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
+
+    PSTRING AncestorModuleName;
+    PSTRING Name;
+    PSTRING ModuleName;
+    USHORT Offset;
+    USHORT NameLength;
+
+    PUNICODE_STRING DirectoryPrefix;
 
     PUNICODE_STRING Match = NULL;
     BOOL CaseInsensitive = TRUE;
     BOOL Success = FALSE;
-    BOOL IsModule = FALSE;
+    BOOL IsModule;
+    BOOL AncestorIsRoot;
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -921,24 +934,218 @@ AddDirectoryEntry(
         return FALSE;
     }
 
+    //
+    // Non-root nodes must have a name and ancestor provided.
+    //
+
+    if (IsRoot) {
+
+        AllocationSize = sizeof(*Entry);
+
+        IsModule = FALSE;
+        AncestorIsRoot = FALSE;
+
+    } else {
+
+        if (!ARGUMENT_PRESENT(DirectoryName)) {
+            return FALSE;
+        }
+
+        if (!ARGUMENT_PRESENT(AncestorEntry)) {
+            return FALSE;
+        }
+
+        IsModule = TRUE;
+
+        AncestorIsRoot = !AncestorEntry->IsModule;
+
+        if (AncestorEntry->Name.Length != 0 ||
+            AncestorEntry->ModuleName.Length != 0)
+        {
+            __debugbreak();
+        }
+
+        AncestorModuleName = &AncestorEntry->ModuleName;
+
+        NameLength = (DirectoryName->Length >> 1); // wchar -> char
+
+        AllocationSize = (
+            sizeof(*Entry)                    +
+            AncestorModuleName->MaximumLength + // includes trailing NUL
+            NameLength
+        );
+
+        if (!AncestorIsRoot) {
+
+            //
+            // Account for the joining period + NUL.
+            //
+
+            AllocationSize += 2;
+        } else {
+
+            //
+            // Account for just the trailing NUL.
+            //
+
+            AllocationSize += 1;
+        }
+
+    }
+
     Rtl = Python->Rtl;
 
-    Success = IsModuleDirectory(Rtl, Directory, &IsModule);
+    AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
 
-    if (!Success) {
+    Buffer = AllocationRoutine(AllocationContext, AllocationSize);
+    if (!Buffer) {
         return FALSE;
     }
 
-    Buffer = AllocationRoutine(AllocationContext, sizeof(*Entry))
-    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)(
-        AllocationRoutine(AllocationContext,
-                          sizeof(*Entry))
-    );
-    if (!Entry) {
-        return FALSE;
-    }
+    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Buffer;
 
     Entry->IsModule = IsModule;
+
+    if (IsRoot) {
+
+        ClearString(&Entry->ModuleName);
+        ClearString(&Entry->Name);
+
+    } else {
+
+        PSTR Dest;
+        PWSTR Source;
+        USHORT Count;
+
+        ModuleName = &Entry->ModuleName;
+        Name = &Entry->Name;
+
+        if (!AncestorIsRoot) {
+            Offset = AncestorModuleName->Length + 1;
+        } else {
+            Offset = 0;
+        }
+
+        ModuleName->Length = Offset + NameLength;
+        ModuleName->MaximumLength = ModuleName->Length + 1;
+
+        Name->Length = NameLength;
+        Name->MaximumLength = NameLength + 1;
+
+        //
+        // The new module name lives at the end of the structure.
+        //
+
+        ModuleName->Buffer = (PSTR)RtlOffsetToPointer(Entry, sizeof(*Entry));
+
+        //
+        // Point the name into the relevant offset of the ModuleName.
+        //
+
+        Name->Buffer = &ModuleName->Buffer[Offset];
+
+        if (!AncestorIsRoot) {
+
+            //
+            // Copy the ModuleName over.
+            //
+
+            __movsb(ModuleName->Buffer,
+                    AncestorModuleName->Buffer,
+                    AncestorModuleName->Length);
+
+            //
+            // Add the period.
+            //
+
+            ModuleName->Buffer[Offset-1] = '.';
+
+        }
+
+        //
+        // Copy the name over.
+        //
+
+        Count = NameLength;
+        Dest = Name->Buffer;
+        Source = DirectoryName->Buffer;
+
+        while (Count--) {
+            *Dest++ = (CHAR)*Source++;
+        }
+
+        //
+        // And add the final trailing NUL.
+        //
+
+        *Dest++ = '\0';
+    }
+
+    DirectoryPrefix = &Entry->Directory;
+
+    DirectoryPrefix->Length = Directory->Length;
+    DirectoryPrefix->MaximumLength = Directory->MaximumLength;
+    DirectoryPrefix->Buffer = Directory->Buffer;
+
+    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
+    PrefixTableEntry = (PUNICODE_PREFIX_TABLE_ENTRY)Entry;
+
+    Success = Rtl->RtlInsertUnicodePrefix(PrefixTable,
+                                          DirectoryPrefix,
+                                          PrefixTableEntry);
+
+    if (!Success) {
+        FreeRoutine(FreeContext, Buffer);
+    }
+    else if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = Entry;
+    }
+
+    return Success;
+}
+
+BOOL
+AddRootDirectory(
+    _In_      PPYTHON Python,
+    _In_      PUNICODE_STRING Directory,
+    _Out_     PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
+    _In_      PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_  PVOID AllocationContext,
+    _In_      PFREE_ROUTINE FreeRoutine,
+    _In_opt_  PVOID FreeContext
+    )
+/*++
+
+Routine Description:
+
+    This routine adds a root (non-module) directory to the prefix table.
+
+--*/
+{
+    PRTL Rtl;
+
+    PUNICODE_PREFIX_TABLE PrefixTable;
+    PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
+
+    PVOID Buffer;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
+
+    PUNICODE_STRING Match = NULL;
+    BOOL CaseInsensitive = TRUE;
+    BOOL Success = FALSE;
+
+    Rtl = Python->Rtl;
+
+    Buffer = AllocationRoutine(AllocationContext, sizeof(*Entry));
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Buffer;
+
+    Entry->IsModule = FALSE;
+
+    ClearString(&Entry->ModuleName);
 
     PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
     PrefixTableEntry = (PUNICODE_PREFIX_TABLE_ENTRY)Entry;
@@ -947,19 +1154,16 @@ AddDirectoryEntry(
                                           Directory,
                                           PrefixTableEntry);
 
-    //
-    // Intentional follow-on.
-    //
-
-Error:
-
     if (!Success) {
-        FreeRoutine(FreeContext, Entry);
+        FreeRoutine(FreeContext, Buffer);
+        Success = TRUE;
+    }
+    else if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = Entry;
     }
 
     return Success;
 }
-
 
 BOOL
 GetModuleNameFromDirectory(
@@ -981,11 +1185,37 @@ GetModuleNameFromDirectory(
     PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
 
     PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry = NULL;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY RootEntry = NULL;
     PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ParentEntry = NULL;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry = NULL;
 
     PUNICODE_STRING Match = NULL;
     BOOL CaseInsensitive = TRUE;
     BOOL Success;
+
+    UNICODE_STRING NextName;
+    UNICODE_STRING AncestorName;
+    UNICODE_STRING PreviousName;
+    UNICODE_STRING DirectoryName;
+
+    UNICODE_STRING NextDirectory;
+    UNICODE_STRING RootDirectory;
+    UNICODE_STRING ParentDirectory;
+    UNICODE_STRING AncestorDirectory;
+    UNICODE_STRING PreviousDirectory;
+
+    PUNICODE_STRING NextPrefix;
+    PUNICODE_STRING RootPrefix;
+    PUNICODE_STRING ParentPrefix;
+    PUNICODE_STRING AncestorPrefix;
+    PUNICODE_STRING PreviousPrefix;
+
+    USHORT Offset;
+    USHORT ReversedIndex;
+    USHORT NumberOfChars;
+    USHORT LastReversedIndex;
+    USHORT CumulativeReversedIndex;
+    BOOL IsModule = FALSE;
 
     //
     // Validate arguments.
@@ -1035,7 +1265,7 @@ GetModuleNameFromDirectory(
             // The match is exact.  Fill in the user's module name pointer
             // and return success.
             //
-            Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Match;
+            Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)PrefixTableEntry;
             *ModuleName = &Entry->ModuleName;
             return TRUE;
         }
@@ -1052,7 +1282,9 @@ GetModuleNameFromDirectory(
         //
         // A shorter entry was found.  Fall through to the following code
         // which will handle inserting a new prefix table entry for the
-        // directory.
+        // directory.  Note that we just set the shorter directory as our
+        // parent directory; later on, once we've actually calculated our
+        // parent directory, we may revise this to be an ancestory entry.
         //
 
         ParentEntry = Entry;
@@ -1061,12 +1293,315 @@ GetModuleNameFromDirectory(
     }
 
     //
-    // We need to add a new entry for the directory.
+    // Final step: make sure directory entries have been added for all of our
+    // parent directories, up to and including the first one we find without
+    // an __init__.py file present.  The directory after this becomes the start
+    // of our module name.
+    //
+
+    //
+    // Get the index of the next backslash if possible.
+    //
+
+    if (!*NumberOfBackslashesRemaining) {
+        __debugbreak();
+
+        //
+        // This will be hit if the directory we just added was a root volume,
+        // e.g. the file was c:\foo.py and we added c:\.  Set the module name
+        // to be empty and return.
+        //
+
+        Entry->IsModule = FALSE;
+        ClearString(&Entry->ModuleName);
+        return TRUE;
+
+    }
+
+    //
+    // We have at least one parent directory to process.  Extract it.
+    //
+
+    LastReversedIndex = (*BitmapHintIndex)++;
+
+    ReversedIndex = (USHORT)Rtl->RtlFindSetBits(Backslashes, 1, *BitmapHintIndex);
+
+    if (ReversedIndex == BITS_NOT_FOUND) {
+
+        //
+        // Should never happen.
+        //
+
+        __debugbreak();
+    }
+
+    NumberOfChars = Directory->Length >> 1;
+    Offset = NumberOfChars - ReversedIndex + LastReversedIndex + 1;
+    CumulativeReversedIndex = LastReversedIndex;
+
+    //
+    // Extract the directory name, and the parent directory's full path.
+    //
+
+    DirectoryName.Length = ((ReversedIndex - CumulativeReversedIndex) << 1) - sizeof(WCHAR);
+    DirectoryName.MaximumLength = DirectoryName.Length;
+    DirectoryName.Buffer = &Directory->Buffer[Offset];
+
+    ParentDirectory.Length = (Offset - 1) << 1;
+    ParentDirectory.MaximumLength = (Offset - 1) << 1;
+    ParentDirectory.Buffer = Directory->Buffer;
+
+    //
+    // Special-case fast-path: if ParentEntry is defined and the length matches
+    // ParentDirectory, we can assume all paths have already been added.
+    //
+
+    if (ParentEntry) {
+        ParentPrefix = ParentEntry->Prefix;
+
+        if (ParentPrefix->Length == ParentDirectory.Length) {
+
+            //
+            // Parent has been added.
+            //
+
+            goto FoundParent;
+
+        }
+
+        //
+        // An ancestor, not our immediate parent, has been added.
+        //
+
+        AncestorEntry = ParentEntry;
+        AncestorPrefix = ParentPrefix;
+        ParentEntry = NULL;
+        ParentPrefix = NULL;
+
+        goto FoundAncestor;
+    }
+
+    //
+    // No parent entry was found at all, we need to find the first directory
+    // in our hierarchy that *doesn't* have an __init__.py file, then add that
+    // and all subsequent directories up-to and including our parent.
+    //
+
+    PreviousDirectory.Length = ParentDirectory.Length;
+    PreviousDirectory.MaximumLength = ParentDirectory.MaximumLength;
+    PreviousDirectory.Buffer = ParentDirectory.Buffer;
+
+    AncestorDirectory.Length = ParentDirectory.Length;
+    AncestorDirectory.MaximumLength = ParentDirectory.MaximumLength;
+    AncestorDirectory.Buffer = ParentDirectory.Buffer;
+
+    PreviousName.Length = DirectoryName.Length;
+    PreviousName.MaximumLength = DirectoryName.MaximumLength;
+    PreviousName.Buffer = DirectoryName.Buffer;
+
+    AncestorName.Length = DirectoryName.Length;
+    AncestorName.MaximumLength = DirectoryName.MaximumLength;
+    AncestorName.Buffer = DirectoryName.Buffer;
+
+    do {
+
+        if (!*NumberOfBackslashesRemaining) {
+
+            IsModule = FALSE;
+
+        } else {
+
+            Success = IsModuleDirectory(Rtl, &AncestorDirectory, &IsModule);
+
+            if (!Success) {
+
+                //
+                // We treat failure of the IsModuleDirectory() call the same as
+                // if it indicated that the directory wasn't a module (i.e. didn't
+                // have an __init__.py file), mainly because there's not really
+                // any other sensible option.  (Unwinding all of the entries we
+                // may have added seems like overkill at this point.)
+                //
+
+                IsModule = FALSE;
+            }
+        }
+
+        if (!IsModule) {
+
+            //
+            // We've found the first non-module directory we're looking for.
+            // This becomes our root directory.
+            //
+
+            RootDirectory.Length = AncestorDirectory.Length;
+            RootDirectory.MaximumLength = AncestorDirectory.MaximumLength;
+            RootDirectory.Buffer = AncestorDirectory.Buffer;
+            RootPrefix = &RootDirectory;
+
+            Success = Python->AddDirectoryEntry(Python,
+                                                &RootDirectory,
+                                                NULL,
+                                                NULL,
+                                                &RootEntry,
+                                                TRUE,
+                                                AllocationRoutine,
+                                                AllocationContext,
+                                                FreeRoutine,
+                                                FreeContext);
+
+            if (!Success) {
+                return FALSE;
+            }
+
+            if (PreviousDirectory.Length > RootDirectory.Length) {
+
+                //
+                // Add the previous directory as the first "module" directory.
+                //
+
+                Success = Python->AddDirectoryEntry(Python,
+                                                    &PreviousDirectory,
+                                                    &PreviousName,
+                                                    RootEntry,
+                                                    &AncestorEntry,
+                                                    FALSE,
+                                                    AllocationRoutine,
+                                                    AllocationContext,
+                                                    FreeRoutine,
+                                                    FreeContext);
+
+                if (!Success) {
+                    return FALSE;
+                }
+
+                //
+                // Determine if we need to process more ancestors, or if if that
+                // was actually the parent path.
+                //
+                if (AncestorEntry->Prefix->Length == ParentDirectory.Length) {
+
+                    ParentPrefix = AncestorEntry->Prefix;
+                    ParentEntry = AncestorEntry;
+
+                    goto FoundParent;
+
+                } else {
+
+                    goto FoundAncestor;
+
+                }
+
+            } else {
+
+                //
+                // Our parent directory is the root directory.
+                //
+
+                ParentPrefix = RootPrefix;
+                ParentEntry = RootEntry;
+
+                goto FoundParent;
+
+            }
+
+            break;
+        }
+
+        //
+        // Parent directory is also a module.  Make sure we're not on the root level.
+        //
+
+        if (!--(*NumberOfBackslashesRemaining)) {
+
+            //
+            // Force the loop to continue, which will trigger the check at the top for
+            // number of remaining backslashes, which will fail, which causes the path
+            // to be added as a root, which is what we want.
+            //
+
+            continue;
+        }
+
+        PreviousPrefix = &PreviousDirectory;
+
+        PreviousDirectory.Length = AncestorDirectory.Length;
+        PreviousDirectory.MaximumLength = AncestorDirectory.MaximumLength;
+        PreviousDirectory.Buffer = AncestorDirectory.Buffer;
+
+        PreviousName.Length = AncestorName.Length;
+        PreviousName.MaximumLength = AncestorName.MaximumLength;
+        PreviousName.Buffer = AncestorName.Buffer;
+
+        LastReversedIndex = (*BitmapHintIndex)++;
+
+        ReversedIndex = (USHORT)Rtl->RtlFindSetBits(Backslashes, 1, *BitmapHintIndex);
+
+        if (ReversedIndex == BITS_NOT_FOUND) {
+
+            //
+            // Should never happen.
+            //
+
+            __debugbreak();
+        }
+
+        CumulativeReversedIndex += LastReversedIndex;
+        Offset = NumberOfChars - ReversedIndex + CumulativeReversedIndex + 1;
+
+        //
+        // Extract the ancestor name and directory full path.
+        //
+
+        AncestorName.Length = ((ReversedIndex - CumulativeReversedIndex) << 1) - sizeof(WCHAR);
+        AncestorName.MaximumLength = DirectoryName.Length;
+        AncestorName.Buffer = &Directory->Buffer[Offset];
+
+        AncestorDirectory.Length = (Offset - 1) << 1;
+        AncestorDirectory.MaximumLength = (Offset - 1) << 1;
+        AncestorDirectory.Buffer = Directory->Buffer;
+
+        //
+        // Continue the loop.
+        //
+
+    } while (1);
+
+FoundAncestor:
+
+    //
+    // Keep adding entries for the next directories as long as they're
+    // not the parent directory.
+    //
+
+    do {
+
+        //
+        // Fill out the NextDirectory et al structures based on the next
+        // directory after the current ancestor.
+        //
+
+        __debugbreak();
+
+        NextName;
+        NextPrefix;
+        NextDirectory;
+
+    } while (1);
+
+FoundParent:
+
+
+    //
+    // Add a new entry for the directory.
     //
 
     Success = Python->AddDirectoryEntry(Python,
                                         Directory,
+                                        &DirectoryName,
+                                        ParentEntry,
                                         &Entry,
+                                        FALSE,
                                         AllocationRoutine,
                                         AllocationContext,
                                         FreeRoutine,
@@ -1076,11 +1611,9 @@ GetModuleNameFromDirectory(
         return FALSE;
     }
 
-    //
-    // Now we need
+    *ModuleName = &Entry->ModuleName;
 
-
-    return FALSE;
+    return TRUE;
 }
 
 BOOL
@@ -1184,7 +1717,7 @@ GetModuleNameFromQualifiedPath(
     //
     // Get the module name from the directory.
     //
-    BitmapHintIndex = ReversedIndex + 1;
+    BitmapHintIndex = ReversedIndex;
     NumberOfBackslashesRemaining = NumberOfBackslashes - 1;
 
     Success = Python->GetModuleNameFromDirectory(Python,
@@ -1239,7 +1772,7 @@ GetModuleNameFromQualifiedPath(
         // Find the first trailing period.
         //
 
-        for (Index = Filename.Length - 1; Index > 0; Index--) {
+        for (Index = (Filename.Length >> 1) - 1; Index > 0; Index--) {
             Char = Filename.Buffer[Index];
             if (Char == L'.') {
 
@@ -1249,7 +1782,7 @@ GetModuleNameFromQualifiedPath(
                 // no need to allocate a new string).
                 //
 
-                Filename.Length = Index + 1;
+                Filename.Length = (Index << 1);
                 break;
             }
         }
@@ -1319,7 +1852,7 @@ GetModuleNameFromQualifiedPath(
         //
         File = Filename.Buffer;
 
-        for (Index = 0; Index < Filename.Length; Index++) {
+        for (Index = 0; Index < (Filename.Length >> 1); Index++) {
             *Dest++ = (CHAR)*File++;
         }
 
@@ -1632,8 +2165,7 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
     *Path = String;
 
-    return FALSE;
-
+    return TRUE;
 }
 
 BOOL

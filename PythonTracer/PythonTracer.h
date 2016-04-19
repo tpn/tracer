@@ -99,8 +99,7 @@ typedef REGISTER_PYTHON_FUNCTION *PREGISTER_PYTHON_FUNCTION;
 typedef BOOLEAN (PREPARE_TRACE_EVENT)(
     _Inout_  PPYTHON_TRACE_CONTEXT PythonTraceContext,
     _Inout_  PTRACE_EVENT          TraceEvent,
-    _In_     PPYFRAMEOBJECT  
-    FrameObject,
+    _In_     PPYFRAMEOBJECT        FrameObject,
     _In_opt_ LONG                  EventType,
     _In_opt_ PPYOBJECT             ArgObject
     );

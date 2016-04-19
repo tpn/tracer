@@ -312,6 +312,7 @@ def pythontracer(path=None, dll=None):
     return dll
 
 def sqlite3(path=None, dll=None):
+    return None
     assert path or dll
     if not dll:
         dll = ctypes.PyDLL(path)

@@ -720,6 +720,12 @@ FilesExist(
 
         *Exists = FALSE;
 
+        //
+        // The files didn't exist, but no error occurred, so we return success.
+        //
+
+        Success = TRUE;
+
     } else {
 
         *Exists = TRUE;
@@ -750,6 +756,40 @@ Error:
 
     return Success;
 }
+
+BOOL
+CreateUnicodeString(
+    _In_  PRTL                  Rtl,
+    _In_  PCUNICODE_STRING      Source,
+    _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    )
+{
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Source)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Destination)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AllocationRoutine)) {
+        return FALSE;
+    }
+
+    return CreateUnicodeStringInline(Rtl,
+                                     Source,
+                                     Destination,
+                                     AllocationRoutine,
+                                     AllocationContext);
+
+}
+
 
 
 _Check_return_
@@ -1582,6 +1622,28 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlAppendUnicodeStringToString"))) {
 
             OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeStringToString'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlUnicodeStringToAnsiSize = (PRTL_UNICODE_STRING_TO_ANSI_SIZE)
+        GetProcAddress(Rtl->NtdllModule, "RtlUnicodeStringToAnsiSize"))) {
+
+        if (!(Rtl->RtlUnicodeStringToAnsiSize = (PRTL_UNICODE_STRING_TO_ANSI_SIZE)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlUnicodeStringToAnsiSize"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiSize'");
+            return FALSE;
+        }
+    }
+
+    if (!(Rtl->RtlUnicodeStringToAnsiString = (PRTL_UNICODE_STRING_TO_ANSI_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlUnicodeStringToAnsiString"))) {
+
+        if (!(Rtl->RtlUnicodeStringToAnsiString = (PRTL_UNICODE_STRING_TO_ANSI_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlUnicodeStringToAnsiString"))) {
+
+            OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiString'");
             return FALSE;
         }
     }
