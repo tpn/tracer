@@ -286,4 +286,122 @@ class TestVsPyProfTraceStores(InvariantAwareCommand):
         ipdb.set_trace()
         self.dll = dll
 
+class TestTracer(InvariantAwareCommand):
+    """
+    Runs the vspyprof against the given file.
+    """
+    _verbose_ = True
+
+    python_file = None
+    _python_file = None
+    class PythonFileArg(PathInvariant):
+        _help = "Path to the Python file to profile"
+        _mandatory = True
+
+    python_exe = None
+    _python_exe = None
+    class PythonExeArg(PathInvariant):
+        _help = (
+            "Path to the Python interpreter to use.  Defaults to "
+            "[ptvs:python_exe], or if that's not set, whatever "
+            "sys.executable is."
+        )
+        _mandatory = False
+
+    program_args = None
+    class ProgramArgsArg(StringInvariant):
+        _help = (
+            "Additional list of arguments to pass to the Python "
+            "file being profiled.  (XXX: Not Yet Implemented.)"
+        )
+        _mandatory = False
+
+    vspyprof_dll = None
+    class VspyprofDllArg(PathInvariant):
+        _help = (
+            "Path to the Visual Studio Profiler DLL "
+            "(defaults to [ptvs:dll] in config file)."
+        )
+        _mandatory = False
+
+    use_debug_dlls = None
+    class UseDebugDllsArg(BoolInvariant):
+        _help = "Use the debug versions of profiler DLLs."
+        _mandatory = False
+        _default = False
+
+    trace = None
+    class TraceArg(BoolInvariant):
+        _help = "Enable tracing (instead of profiling)."
+        _mandatory = False
+        _default = False
+
+    custom_profiler_dll = None
+    class CustomProfilerDllArg(PathInvariant):
+        _help = (
+            "Optional path to a custom profile DLL to use instead of the "
+            "Visual Studio vsperf.dll that vspyprof.dll was built against. "
+            "This must export C __stdcall symbols for EnterFunction, "
+            "ExitFunction, NameToken and SourceLine.  (See PythonApi.cpp "
+            "in PTVS for more info.)"
+        )
+        _mandatory = False
+
+    pause_before_starting = None
+    class PauseBeforeStartingArg(BoolInvariant):
+        _help = (
+            "If set to true, pauses prior to starting profiling.  This allows "
+            "you to independently attach debuggers, etc."
+        )
+        _default = False
+        _mandatory = False
+
+    base_dir = None
+    _base_dir = None
+    class BaseDirArg(DirectoryInvariant):
+        _help = "Base directory to pass to tracer"
+
+    dll = None
+
+    def run(self):
+        InvariantAwareCommand.run(self)
+
+        conf = self.conf
+        dllpath = self.options.profiler_dll
+        if not dllpath:
+            if self.options.use_debug_dlls:
+                dllpath = conf.ptvs_debug_dll_path
+            else:
+                dllpath = conf.ptvs_dll_path
+
+        import ctypes
+        from .wintypes import DWORD
+        from .dll import pytrace
+
+        dll = pytrace(path=dllpath)
+
+        basedir = ctypes.c_wchar_p(self._base_dir)
+
+        size = dll.GetTraceStoresAllocationSize()
+        stores = ctypes.create_string_buffer(size)
+
+        import pdb
+        if self.options.pause_before_starting:
+            dll.Debugbreak()
+            import pdb
+            pdb.set_trace()
+
+        dll.InitializeTraceStores(
+            basedir,
+            ctypes.pointer(stores),
+            ctypes.byref(size),
+            ctypes.c_void_p(0),
+        )
+
+        import ipdb
+        ipdb.set_trace()
+        self.dll = dll
+
+
+
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

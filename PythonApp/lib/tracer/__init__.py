@@ -47,6 +47,7 @@ class RTL(Structure):
         ('CopyToMappedMemory', PVOID),
     ]
 PRTL = POINTER(RTL)
+PRTL = PVOID
 
 class TRACE_STORE_METADATA(Structure):
     _fields_ = [
@@ -158,6 +159,7 @@ class TRACE_CONTEXT(Structure):
         ('HeapHandle',                      HANDLE),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
+PTRACE_CONTEXT = PVOID
 
 class PYTHON_TRACE_CONTEXT(Structure):
     _fields_ = [
@@ -169,6 +171,7 @@ class PYTHON_TRACE_CONTEXT(Structure):
         ('FunctionObject',          PVOID),
     ]
 PPYTHON_TRACE_CONTEXT = POINTER(PYTHON_TRACE_CONTEXT)
+PPYTHON_TRACE_CONTEXT = PVOID
 
 #===============================================================================
 # Functions
@@ -231,7 +234,7 @@ def tracer(path=None, dll=None):
 
     dll.InitializeTraceStores.restype = BOOL
     dll.InitializeTraceStores.argtypes = [
-        PRTL,
+        PVOID, #PRTL,
         PWSTR,
         PVOID,
         PDWORD,
@@ -240,7 +243,7 @@ def tracer(path=None, dll=None):
 
     dll.InitializeTraceContext.restype = BOOL
     dll.InitializeTraceContext.argtypes = [
-        PRTL,
+        PVOID, #PRTL,
         PTRACE_CONTEXT,
         PDWORD,
         PTRACE_SESSION,
@@ -250,7 +253,7 @@ def tracer(path=None, dll=None):
 
     dll.InitializeTraceSession.restype = BOOL
     dll.InitializeTraceSession.argtypes = [
-        PRTL,
+        PVOID, #PRTL,
         PTRACE_SESSION,
         PDWORD
     ]
@@ -273,7 +276,7 @@ def python(path=None, dll=None):
 
     dll.InitializePython.restype = BOOL
     dll.InitializePython.argtypes = [
-        PRTL,
+        PVOID, #PRTL,
         HMODULE,
         PVOID,
         PULONG,
@@ -288,8 +291,8 @@ def pythontracer(path=None, dll=None):
 
     dll.InitializePythonTraceContext.restype = BOOL
     dll.InitializePythonTraceContext.argtypes = [
-        PRTL,
-        PPYTHON_TRACE_CONTEXT,
+        PVOID, #PRTL,
+        PVOID, #PPYTHON_TRACE_CONTEXT,
         PULONG,
         PPYTHON,
         PTRACE_CONTEXT,
@@ -309,6 +312,7 @@ def pythontracer(path=None, dll=None):
     return dll
 
 def sqlite3(path=None, dll=None):
+    return None
     assert path or dll
     if not dll:
         dll = ctypes.PyDLL(path)
@@ -409,6 +413,7 @@ class Tracer:
         )
         self.python = create_string_buffer(self.python_size.value)
         success = self.tracer_python_dll.InitializePython(
+            self.rtl,
             sys.dllhandle,
             byref(self.python),
             byref(self.python_size),
@@ -505,16 +510,27 @@ class Tracer:
                 self.threadpool = None
                 raise TracerError("InitializeTraceContext() failed")
 
-        self.python_trace_context = PYTHON_TRACE_CONTEXT()
         self.python_trace_context_size = ULONG(sizeof(PYTHON_TRACE_CONTEXT))
+        self.tracer_pythontracer_dll.InitializePythonTraceContext(
+            None,
+            None,
+            byref(self.python_trace_context_size),
+            None,
+            None,
+            None,
+            None,
+        )
+
+        self.python_trace_context = create_string_buffer(
+            self.python_trace_context_size.value
+        )
         success = self.tracer_pythontracer_dll.InitializePythonTraceContext(
             byref(self.rtl),
-            byref(self.trace_context),
             byref(self.python_trace_context),
             byref(self.python_trace_context_size),
             byref(self.python),
             byref(self.trace_context),
-            self.tracer_pythontracer_dll.PyTraceCallbackFast,
+            None,
             None,
         )
         if not success:

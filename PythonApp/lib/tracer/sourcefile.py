@@ -225,7 +225,7 @@ class SourceFile(InvariantAwareObject):
                 continue
             length = len(line)
             line = line[4:line.find(';')]
-            (typedef, funcname) = line.split(' ')
+            (typedef, funcname) = line.split()
             results.append(Function(lineno, length, typedef, funcname))
         return results
 
