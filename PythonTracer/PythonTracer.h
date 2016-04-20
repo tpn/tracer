@@ -45,23 +45,6 @@ static const DWORD NumberOfTraceEventTypes = (
     sizeof(EVENT_TYPE)
 );
 
-typedef struct _PYTHON_MODULE {
-    PPYOBJECT ModuleFilenameObject;
-    PSTRING Name;
-    PUNICODE_STRING Path;
-    PREFIX_TABLE_ENTRY Prefix;
-} PYTHON_MODULE, *PPYTHON_MODULE;
-
-typedef struct _PYTHON_FUNCTION {
-    PPYOBJECT CodeObject;
-    PPYTHON_MODULE Module;
-    PUNICODE_STRING Name;
-    PUNICODE_STRING Path;
-    PUNICODE_STRING ClassName;
-    PUNICODE_STRING FunctionName;
-    PUNICODE_STRING ModuleName;
-} PYTHON_FUNCTION, *PPYTHON_FUNCTION;
-
 //
 // Forward decls.
 //
@@ -112,12 +95,6 @@ typedef VOID (CONTINUE_TRACE_EVENT)(
     );
 typedef CONTINUE_TRACE_EVENT *PCONTINUE_TRACE_EVENT;
 
-typedef RTL_GENERIC_TABLE FUNCTIONS_TABLE;
-typedef FUNCTIONS_TABLE *PFUNCTIONS_TABLE;
-
-typedef RTL_GENERIC_TABLE MODULES_TABLE;
-typedef MODULES_TABLE *PMODULES_TABLE;
-
 typedef struct _PYTHON_TRACE_CONTEXT {
     ULONG             Size;
     PRTL              Rtl;
@@ -126,13 +103,8 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PPYTRACEFUNC      PythonTraceFunction;
     PVOID             UserData;
 
-    PPYFUNCTIONOBJECT FunctionObject;
-
     ULONG             Depth;
     ULONG             SkipFrames;
-
-    FUNCTIONS_TABLE   FunctionsTable;
-    MODULES_TABLE     ModulesTable;
 
     PPREPARE_TRACE_EVENT PrepareTraceEvent;
     PCONTINUE_TRACE_EVENT ContinueTraceEvent;
