@@ -295,11 +295,91 @@ LoadPythonExFunctions(
 
     PythonExFunctions->GetModuleNameAndQualifiedPathFromModuleFilename = (PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)GetProcAddress(PythonExModule, "GetModuleNameAndQualifiedPathFromModuleFilename");
 
+    PythonExFunctions->RegisterFunction = NULL;
+
+    PythonExFunctions->RegisterFrame = (PREGISTER_FRAME)GetProcAddress(PythonExModule, "RegisterFrame");
+
+    PythonExFunctions->AddDirectoryEntry = (PADD_DIRECTORY_ENTRY)GetProcAddress(PythonExModule, "AddDirectoryEntry");
+
     PythonExFunctions->AddDirectoryEntry = (PADD_DIRECTORY_ENTRY)GetProcAddress(PythonExModule, "AddDirectoryEntry");
 
     PythonExFunctions->GetModuleNameFromDirectory = (PGET_MODULE_NAME_FROM_DIRECTORY)GetProcAddress(PythonExModule, "GetModuleNameFromDirectory");
 
+    PythonExFunctions->InitializePythonRuntimeTables = (PINITIALIZE_PYTHON_RUNTIME_TABLES)GetProcAddress(PythonExModule, "InitializePythonRuntimeTables");
+
     return TRUE;
+}
+
+PVOID
+HeapAllocationRoutine(
+    _In_ HANDLE HeapHandle,
+    _In_ ULONG ByteSize
+    )
+{
+    return HeapAlloc(HeapHandle, 0, ByteSize);
+}
+
+VOID
+HeapFreeRoutine(
+    _In_ HANDLE HeapHandle,
+    _In_ PVOID Buffer
+)
+{
+    HeapFree(HeapHandle, 0, Buffer);
+}
+
+PVOID
+NTAPI
+FunctionTableAllocationRoutine(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ CLONG ByteSize
+)
+{
+    PPYTHON Python = (PPYTHON)Table->TableContext;
+    return Python->AllocationRoutine(Python->AllocationContext, ByteSize);
+}
+
+VOID
+NTAPI
+FunctionTableFreeRoutine(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PVOID Buffer
+)
+{
+    PPYTHON Python = (PPYTHON)Table->TableContext;
+    Python->FreeRoutine(Python->FreeContext, Buffer);
+}
+
+FORCEINLINE
+RTL_GENERIC_COMPARE_RESULTS
+GenericComparePointer(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ ULONG_PTR First,
+    _In_ ULONG_PTR Second
+    )
+{
+    if (First < Second) {
+        return GenericLessThan;
+    }
+    else if (First > Second) {
+        return GenericGreaterThan;
+    }
+    else {
+        return GenericEqual;
+    }
+}
+
+RTL_GENERIC_COMPARE_RESULTS
+FunctionTableCompareRoutine(
+    _In_ PRTL_GENERIC_TABLE Table,
+    _In_ PPYTHON_FUNCTION First,
+    _In_ PPYTHON_FUNCTION Second
+)
+{
+    PPYTHON Python = (PPYTHON)Table->TableContext;
+    return GenericComparePointer(Table,
+                                 (ULONG_PTR)First->CodeObject,
+                                 (ULONG_PTR)Second->CodeObject);
 }
 
 _Check_return_
@@ -309,11 +389,7 @@ LoadPythonExRuntime(
     _Inout_     PPYTHONEXRUNTIME PythonExRuntime
 )
 {
-    PPYTHON Python;
-    PRTL Rtl;
-    USHORT Offset;
     DWORD HeapFlags;
-    PUNICODE_PREFIX_TABLE PrefixTable;
 
     if (!PythonExModule) {
         return FALSE;
@@ -330,12 +406,61 @@ LoadPythonExRuntime(
         return FALSE;
     }
 
-    Offset = FIELD_OFFSET(PYTHON, PythonExRuntime);
-    Python = (PPYTHON)(RtlOffsetFromPointer(PythonExRuntime, Offset));
-    Rtl = Python->Rtl;
+    return TRUE;
+}
 
-    PrefixTable = &PythonExRuntime->DirectoryPrefixTable.PrefixTable;
+_Check_return_
+BOOL
+InitializePythonRuntimeTables(
+    _In_        PPYTHON Python,
+    _In_opt_    PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_    PVOID AllocationContext,
+    _In_opt_    PFREE_ROUTINE FreeRoutine,
+    _In_opt_    PVOID FreeContext
+    )
+{
+    PRTL Rtl;
+    Rtl = Python->Rtl;
+    PUNICODE_PREFIX_TABLE PrefixTable;
+    PRTL_GENERIC_TABLE GenericTable;
+
+    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
     Rtl->RtlInitializeUnicodePrefix(PrefixTable);
+
+    //
+    // If the allocation routine isn't provided, default to the generic
+    // heap allocation routine.
+    //
+
+    if (!ARGUMENT_PRESENT(AllocationRoutine)) {
+
+        Python->AllocationRoutine = HeapAllocationRoutine;
+        Python->AllocationContext = Python->HeapHandle;
+
+        Python->FreeRoutine = HeapFreeRoutine;
+        Python->FreeContext = Python->HeapHandle;
+
+    }
+    else {
+
+        Python->AllocationRoutine = AllocationRoutine;
+        Python->AllocationContext = AllocationContext;
+
+        Python->FreeRoutine = FreeRoutine;
+        Python->FreeContext = FreeContext;
+
+    }
+
+    Python->FunctionTableCompareRoutine = FunctionTableCompareRoutine;
+    Python->FunctionTableAllocateRoutine = FunctionTableAllocationRoutine;
+    Python->FunctionTableFreeRoutine = FunctionTableFreeRoutine;
+
+    GenericTable = &Python->FunctionTable.GenericTable;
+    Rtl->RtlInitializeGenericTable(GenericTable,
+                                   Python->FunctionTableCompareRoutine,
+                                   Python->FunctionTableAllocateRoutine,
+                                   Python->FunctionTableFreeRoutine,
+                                   Python);
 
     return TRUE;
 }
@@ -343,8 +468,8 @@ LoadPythonExRuntime(
 _Check_return_
 BOOL
 LoadPythonExSymbols(
-    _In_opt_    HMODULE PythonExModule,
-    _Inout_     PPYTHON Python
+    _In_opt_    HMODULE             PythonExModule,
+    _Inout_     PPYTHON             Python
 )
 {
     HMODULE Module;
@@ -508,10 +633,10 @@ error:
 _Check_return_
 BOOL
 InitializePython(
-    _In_                         PRTL        Rtl,
-    _In_                         HMODULE     PythonModule,
-    _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
-    _Inout_                      PULONG      SizeOfPython
+    _In_                         PRTL                Rtl,
+    _In_                         HMODULE             PythonModule,
+    _Out_bytecap_(*SizeOfPython) PPYTHON             Python,
+    _Inout_                      PULONG              SizeOfPython
     )
 {
 
@@ -557,6 +682,12 @@ InitializePython(
     }
 
     Python->Size = *SizeOfPython;
+
+    Python->NumberOfCacheElements = (
+        sizeof(Python->CodeObjectCache) /
+        sizeof(Python->CodeObjectCache[0])
+    );
+
     return TRUE;
 
 error:
@@ -584,10 +715,10 @@ GetUnicodeLengthForPythonString(
         return FALSE;
     }
 
-    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
 
 
-    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
 
     } else {
         return FALSE;
@@ -621,7 +752,7 @@ ConvertPythonStringToUnicodeString(
         return FALSE;
     }
 
-    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
         ULONG Index;
         PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
         RequiredSizeInBytes.QuadPart = StringObject->ObjectSize * sizeof(WCHAR);
@@ -662,7 +793,7 @@ ConvertPythonStringToUnicodeString(
         *UnicodeString = String;
         return TRUE;
 
-    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
 
         if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
 
@@ -687,7 +818,7 @@ GetPythonStringInformation(
     _Out_    PPVOID              Buffer
 )
 {
-    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
 
         PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
 
@@ -696,7 +827,7 @@ GetPythonStringInformation(
 
         *Width = sizeof(CHAR);
 
-    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
 
         PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
 
@@ -756,7 +887,7 @@ CopyPythonStringToUnicodeString(
         return FALSE;
     }
 
-    if (StringOrUnicodeObject->TypeObject == Python->PyString_Type) {
+    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
         ULONG Index;
         PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
         RequiredSizeInBytes.QuadPart = StringObject->ObjectSize * sizeof(WCHAR);
@@ -806,7 +937,7 @@ CopyPythonStringToUnicodeString(
         *UnicodeString = String;
         return TRUE;
 
-    } else if (StringOrUnicodeObject->TypeObject == Python->PyUnicode_Type) {
+    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
 
         PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
         UNICODE_STRING Source;
@@ -2244,6 +2375,90 @@ GetClassNameStringObjectFromFrameObject(
     _In_    PPYFRAMEOBJECT  FrameObject,
     _In_    PPPYOBJECT      ClassNameStringObject
 )
+{
+    return FALSE;
+}
+
+BOOL
+RegisterFrame(
+    _In_      PPYTHON   Python,
+    _In_      PPYOBJECT FrameObject,
+    _In_      LONG      EventType,
+    _In_      PPYOBJECT ArgObject
+)
+{
+    PRTL Rtl;
+    PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
+    PPYOBJECT CodeObject;
+    LONG FilenameHash;
+    LONG CodeObjectHash;
+    LONG FirstLineNumber;
+    LONG Hash;
+    PPYOBJECT FilenameObject;
+    PPYSTRINGOBJECT Filename;
+    PYTHON_FUNCTION FunctionRecord;
+    PPYTHON_FUNCTION Function;
+    PPYTHON_FUNCTION_TABLE FunctionTable;
+    BOOL NewFunction;
+
+    CodeObject = Frame->Code;
+
+    if (CodeObject->Type != (PPYTYPEOBJECT)Python->PyCode_Type) {
+        return FALSE;
+    }
+
+    Rtl = Python->Rtl;
+
+    FunctionRecord.CodeObject = CodeObject;
+
+    FunctionTable = &Python->FunctionTable;
+
+    Function = Rtl->RtlInsertElementGenericTable(FunctionTable,
+                                                 &FunctionRecord,
+                                                 sizeof(FunctionRecord),
+                                                 &NewFunction);
+
+    if (!NewFunction) {
+
+        //
+        // We've already seen this function.
+        //
+
+        return TRUE;
+    }
+
+    //
+    // New function.  Have we seen the module?
+    //
+
+    FilenameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
+
+    Filename = (PPYSTRINGOBJECT)FilenameObject;
+    FilenameHash = Filename->Hash;
+    if (!FilenameHash || FilenameHash == -1) {
+        PHASH_FUNCTION Hash = Filename->Type->Hash;
+        if (Hash) {
+            FilenameHash = Hash((PPYOBJECT)Filename);
+        }
+    }
+
+    Hash = Python->PyObject_Hash(CodeObject);
+    Hash ^= FilenameHash;
+    Hash ^= FirstLineNumber;
+
+}
+
+BOOL
+RegisterFunction(
+    _In_      PPYTHON   Python,
+    _In_      PPYOBJECT CodeObject,
+    _Out_opt_ PPPYTHON_FUNCTION PythonFunctionPointer
+    )
 {
     return FALSE;
 }

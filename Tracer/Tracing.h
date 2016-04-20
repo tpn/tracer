@@ -109,6 +109,12 @@ typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    PULARGE_INTEGER NumberOfRecords
 );
 
+typedef _Check_return_ VOID (*PFREE_RECORDS)(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PVOID           Buffer
+);
+
 typedef BOOL (*PGET_ALLOCATION_SIZE)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
@@ -174,6 +180,7 @@ typedef struct _TRACE_STORE {
 
     PTRACE_STORE            MetadataStore;
     PALLOCATE_RECORDS       AllocateRecords;
+    PFREE_RECORDS           FreeRecords;
     union {
         union {
             struct {
@@ -529,6 +536,14 @@ AllocateRecords(
     _In_    PULARGE_INTEGER RecordSize,
     _In_    PULARGE_INTEGER NumberOfRecords
 );
+
+TRACER_API
+VOID
+FreeRecords(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PVOID           Buffer
+    );
 
 TRACER_API
 BOOL

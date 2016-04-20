@@ -27,15 +27,15 @@ TraceStoreAllocationRoutine(
 
 VOID
 TraceStoreFreeRoutine(
-    _In_opt_ PVOID AllocationContext,
+    _In_opt_ PVOID FreeContext,
     _In_     PVOID Buffer
     )
 {
-    //
-    // Trace stores don't currently have a free routine.
-    //
+    PTRACE_STORE TraceStore = (PTRACE_STORE)FreeContext;
 
-    return;
+    TraceStore->FreeRecords(TraceStore->TraceContext,
+                            TraceStore,
+                            Buffer);
 }
 
 LONG
@@ -200,12 +200,6 @@ PyTraceCallbackFast(
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
     CodeObject = FrameObject->Code;
-
-    if (PythonTraceContext->FunctionObject) {
-        if (PythonTraceContext->FunctionObject->Code != CodeObject) {
-            return 0;
-        }
-    }
 
     Rtl = PythonTraceContext->Rtl;
     TraceContext = PythonTraceContext->TraceContext;
@@ -483,21 +477,21 @@ PyTraceRegisterPythonFunction(
     PTRACE_EVENT EventRecord = NULL, LastEvent = NULL;
     TRACE_EVENT  Event = { 0 };
     PPYTHON_FUNCTION Function;
-    PYTHON_FUNCTION FunctionRecord = { 0 };
+    PYTHON_FUNCTION FunctionRecord;
     ULARGE_INTEGER EventRecordSize = { sizeof(Event) };
     ULARGE_INTEGER FunctionRecordSize = { sizeof(FunctionRecord) };
     ULARGE_INTEGER OneRecord = { 1 };
     BOOLEAN NewFunction = FALSE, NewModule = FALSE;
-    PPYTHON_MODULE Module;
-    PYTHON_MODULE ModuleRecord = { 0 };
-    ULARGE_INTEGER ModuleRecordSize = { sizeof(ModuleRecord) };
-    PTRACE_STORE Strings;
+    //PPYTHON_MODULE Module;
+    //PYTHON_MODULE ModuleRecord = { 0 };
+    //ULARGE_INTEGER ModuleRecordSize = { sizeof(ModuleRecord) };
+    PTRACE_STORE Store;
     BOOL Success = FALSE;
     PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
-    PFUNCTIONS_TABLE FunctionsTable;
-    PMODULES_TABLE ModulesTable;
-    LONG ModuleFilenameHash;
-    LONG CodeObjectHash;
+    //PPYTHON_FUNCTION_TABLE FunctionsTable;
+    LONG FilenameHash;
+    PPYOBJECT FilenameObject;
+    PPYSTRINGOBJECT Filename;
 
     CodeObject = FrameObject->Code;
 
@@ -507,7 +501,7 @@ PyTraceRegisterPythonFunction(
     // Make sure we've been passed a Python code object.
     //
 
-    if (CodeObject->TypeObject != Python->PyCode_Type) {
+    if (CodeObject->Type != (PPYTYPEOBJECT)Python->PyCode_Type) {
         return FALSE;
     }
 
@@ -515,15 +509,33 @@ PyTraceRegisterPythonFunction(
     TraceContext = PythonTraceContext->TraceContext;
     TraceStores = TraceContext->TraceStores;
 
-    FunctionRecord.CodeObject = CodeObject;
+    FilenameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
 
-    FunctionRecord.CodeObjectHash = Python->PyObject_Hash(CodeObject);
+    Filename = (PPYSTRINGOBJECT)FilenameObject;
+    FilenameHash = Filename->Hash;
+    if (!FilenameHash || FilenameHash == -1) {
+        PHASH_FUNCTION Hash = Filename->Type->Hash;
+        if (Hash) {
+            FilenameHash = Hash((PPYOBJECT)Filename);
+        }
+    }
+
+    FunctionRecord.CodeObject = CodeObject;
+    FunctionRecord.FilenameObject = FilenameObject;
+    FunctionRecord.FilenameHash = FilenameHash;
 
     //
     // Insert the function into our table if it's not already present.
     //
 
-    FunctionsTable = &Context->FunctionsTable;
+    //FunctionsTable = &Context->FunctionsTable;
+
+    /*
 
     Function = Rtl->RtlInsertElementGenericTable(
         FunctionsTable,
@@ -531,6 +543,7 @@ PyTraceRegisterPythonFunction(
         FunctionRecordSize.LowPart,
         &NewFunction
         );
+        */
 
     if (!NewFunction) {
 
@@ -541,10 +554,20 @@ PyTraceRegisterPythonFunction(
         return TRUE;
     }
 
+    FunctionRecord.CodeObjectHash = Python->PyObject_Hash(CodeObject);
+
     //
     // We haven't seen this function before.  Determine if we've seen the
     // module filename.
     //
+
+    /*
+    FilenameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
 
     ModuleRecord.ModuleFilenameObject = *(
         (PPPYOBJECT)RtlOffsetToPointer(
@@ -561,6 +584,7 @@ PyTraceRegisterPythonFunction(
         ModuleRecordSize.LowPart,
         &NewModule
     );
+    */
 
     if (!NewModule) {
 
@@ -568,28 +592,32 @@ PyTraceRegisterPythonFunction(
         // We've already seen this module before.  Fill in the function details
         // accordingly.
         //
-        Function->Module = Module;
+        //Function->Module = Module;
 
     } else {
+        PUNICODE_STRING Path;
+        PSTRING Name;
 
-        Python->Py_IncRef(Module->ModuleFilenameObject);
+        //Python->Py_IncRef(Module->ModuleFilenameObject);
 
         //
         // This is the first time we've seen this module.  We need to save
         // UNICODE_STRING instances of the qualified path and the module
         // name.
         //
-        Strings = &TraceStores->Stores[TRACE_STORE_STRINGS_INDEX];
+        Store = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
+
+        Function = NULL;
 
         Success = Python->GetModuleNameAndQualifiedPathFromModuleFilename(
             Python,
-            Module->ModuleFilenameObject,
-            &Module->Path,
-            &Module->Name,
+            Function->FilenameObject,
+            &Path,
+            &Name,
             TraceStoreAllocationRoutine,
-            Strings,
+            Store,
             TraceStoreFreeRoutine,
-            NULL
+            Store
             );
 
         if (!Success) {
@@ -600,13 +628,13 @@ PyTraceRegisterPythonFunction(
             // we're going to fail to copy a Python string.)
             //
 
-            Python->Py_DecRef(Module->ModuleFilenameObject);
-            Rtl->RtlDeleteElementGenericTable(ModulesTable, Module);
-            Rtl->RtlDeleteElementGenericTable(FunctionsTable, Function);
+            //Python->Py_DecRef(Module->ModuleFilenameObject);
+            //Rtl->RtlDeleteElementGenericTable(ModulesTable, Module);
+            //Rtl->RtlDeleteElementGenericTable(FunctionsTable, Function);
             return 0;
         }
 
-        Function->Module = Module;
+        //Function->Module = Module;
 
     }
 
@@ -788,35 +816,20 @@ FunctionCompare(
     PPYTHON_FUNCTION First = (PPYTHON_FUNCTION)FirstStruct;
     PPYTHON_FUNCTION Second = (PPYTHON_FUNCTION)SecondStruct;
 
-    PPYTHON_MODULE First = (PPYTHON_MODULE)FirstStruct;
-    PPYTHON_MODULE Second = (PPYTHON_MODULE)SecondStruct;
-    PPYTHON_TRACE_CONTEXT Context;
+    //PPYTHON Python;
+    //PPYTHON_TRACE_CONTEXT Context;
 
-    Context = CONTAINING_RECORD(Table, PYTHON_TRACE_CONTEXT, ModulesTable);
+    /*
+    Context = CONTAINING_RECORD(Table->TableContext,
+                                PYTHON_TRACE_CONTEXT,
+                                FunctionTable);
 
+    Python = Context->Python;
+    */
 
     return GenericComparePointer(Table,
                                  First->CodeObject,
                                  Second->CodeObject);
-}
-
-RTL_GENERIC_COMPARE_RESULTS
-NTAPI
-ModuleCompare(
-    _In_ PRTL_GENERIC_TABLE Table,
-    _In_ PVOID FirstStruct,
-    _In_ PVOID SecondStruct
-    )
-{
-    PPYTHON_MODULE First = (PPYTHON_MODULE)FirstStruct;
-    PPYTHON_MODULE Second = (PPYTHON_MODULE)SecondStruct;
-    PPYTHON_TRACE_CONTEXT Context;
-
-    Context = CONTAINING_RECORD(Table, PYTHON_TRACE_CONTEXT, ModulesTable);
-
-    return GenericComparePyObjectHash(Context->Python,
-                                      First->ModuleFilenameObject,
-                                      Second->ModuleFilenameObject);
 }
 
 
@@ -831,6 +844,9 @@ InitializePythonTraceContext(
     _In_opt_                                    PVOID                   UserData
 )
 {
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE TraceStore;
+
     if (!PythonTraceContext) {
         if (SizeOfPythonTraceContext) {
             *SizeOfPythonTraceContext = sizeof(*PythonTraceContext);
@@ -882,6 +898,18 @@ InitializePythonTraceContext(
 
     PythonTraceContext->SkipFrames = 1;
 
+    TraceStores = TraceContext->TraceStores;
+    TraceStore = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
+
+    Python->InitializePythonRuntimeTables(
+        Python,
+        TraceStoreAllocationRoutine,
+        TraceStore,
+        TraceStoreFreeRoutine,
+        TraceStore
+    );
+
+    /*
     Rtl->RtlInitializeGenericTable(
         &PythonTraceContext->FunctionsTable,
         FunctionCompare,
@@ -892,11 +920,12 @@ InitializePythonTraceContext(
 
     Rtl->RtlInitializeGenericTable(
         &PythonTraceContext->ModulesTable,
-        ModuleCompare,
+        GenericComparePointer,
         CodeObjectAllocateFromHeap,
         CodeObjectFreeFromHeap,
         PythonTraceContext
     );
+    */
 
     return TRUE;
 }
@@ -1017,7 +1046,7 @@ AddFunction(
         return FALSE;
     }
 
-    PythonTraceContext->FunctionObject = (PPYFUNCTIONOBJECT)FunctionObject;
+    //PythonTraceContext->FunctionObject = (PPYFUNCTIONOBJECT)FunctionObject;
 
     return TRUE;
 }

@@ -276,10 +276,19 @@ def python(path=None, dll=None):
 
     dll.InitializePython.restype = BOOL
     dll.InitializePython.argtypes = [
-        PVOID, #PRTL,
-        HMODULE,
-        PVOID,
-        PULONG,
+        PVOID,      # Rtl
+        HMODULE,    # PythonModule,
+        PVOID,      # Python
+        PULONG,     # SizeOfPython
+    ]
+
+    dll.InitializePythonRuntimeTables.restype = BOOL
+    dll.InitializePythonRuntimeTables.argtypes = [
+        PVOID,  # Python
+        PVOID,  # AllocationRoutine
+        PVOID,  # AllocationContext
+        PVOID,  # FreeRoutine
+        PVOID,  # FreeContext
     ]
 
     return dll
