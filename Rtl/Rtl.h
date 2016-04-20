@@ -1291,9 +1291,8 @@ InitializeListHead(
     return;
 }
 
-_Must_inspect_result_
+FORCEINLINE
 BOOLEAN
-CFORCEINLINE
 IsListEmpty(
     _In_ const LIST_ENTRY * ListHead
     )

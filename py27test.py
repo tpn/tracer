@@ -67,3 +67,7 @@ else:
 
 with t:
     bits_table(output=null_writer)
+
+print("Press any key to continue.")
+dummy = sys.stdin.read(1)
+

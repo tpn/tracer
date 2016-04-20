@@ -34,14 +34,16 @@ typedef _W64 int Py_hash_t, PY_HASH;
 typedef _W64 int SSIZE_T, *PSSIZE_T;
 #endif
 
+typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
+
 #define _PYOBJECT_HEAD              \
     union {                         \
         Py_ssize_t  ob_refcnt;      \
         SSIZE_T     ReferenceCount; \
     };                              \
     union {                         \
-        PVOID ob_type;              \
-        PVOID TypeObject;           \
+        PyTypeObject *ob_type;      \
+        PPYTYPEOBJECT Type;         \
     };
 
 #define _PYVAROBJECT_HEAD    \
@@ -61,7 +63,6 @@ typedef struct _PYVAROBJECT {
     _PYVAROBJECT_HEAD
 } PYVAROBJECT, *PPYVAROBJECT, PyVarObject;
 
-typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
 typedef struct _PYTHREADSTATE PYTHREADSTATE, *PPYTHREADSTATE, PyThreadState;
 
 typedef struct _PYSTRINGOBJECT {
@@ -646,6 +647,7 @@ typedef struct _PYASYNCMETHODS {
 typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
 
 typedef struct _PYTYPEOBJECT {
+    _PYVAROBJECT_HEAD
     union {
         const char *tp_name;
         PCCH        Name;
@@ -1297,6 +1299,18 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY PYTHON_DIRECTORY_PREFIX_TABL
 typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY **PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 
+typedef struct _PYTHON_FUNCTION PYTHON_FUNCTION;
+typedef PYTHON_FUNCTION *PPYTHON_FUNCTION;
+typedef PYTHON_FUNCTION **PPPYTHON_FUNCTION;
+
+typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
+    _In_      PPYTHON             Python,
+    _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_  PVOID               AllocationContext,
+    _In_opt_  PFREE_ROUTINE       FreeRoutine,
+    _In_opt_  PVOID               FreeContext
+    );
+
 typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     _In_      PPYTHON Python,
     _In_      PUNICODE_STRING Directory,
@@ -1310,6 +1324,19 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     _In_opt_  PVOID FreeContext
     );
 
+typedef BOOL (*PREGISTER_FRAME)(
+    _In_      PPYTHON   Python,
+    _In_      PPYOBJECT FrameObject,
+    _In_      LONG      EventType,
+    _In_      PPYOBJECT ArgObject
+    );
+
+typedef BOOL (*PREGISTER_FUNCTION)(
+    _In_      PPYTHON   Python,
+    _In_      PPYOBJECT CodeObject,
+    _Out_opt_ PPPYTHON_FUNCTION PythonFunctionPointer
+    );
+
 #define _PYTHONEXFUNCTIONS_HEAD                                                                               \
     PGETUNICODELENGTHFORPYTHONSTRING GetUnicodeLengthForPythonString;                                         \
     PCONVERTPYSTRINGTOUNICODESTRING ConvertPythonStringToUnicodeString;                                       \
@@ -1318,22 +1345,14 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     PRESOLVEFRAMEOBJECTDETAILS ResolveFrameObjectDetailsFast;                                                 \
     PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME GetModuleNameAndQualifiedPathFromModuleFilename; \
     PGET_MODULE_NAME_FROM_DIRECTORY GetModuleNameFromDirectory;                                               \
-    PADD_DIRECTORY_ENTRY AddDirectoryEntry;
+    PREGISTER_FRAME RegisterFrame;                                                                            \
+    PREGISTER_FUNCTION RegisterFunction;                                                                      \
+    PADD_DIRECTORY_ENTRY AddDirectoryEntry;                                                                   \
+    PINITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
 } PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
-
-typedef struct _PYTHON_FUNCTION {
-    PPYOBJECT CodeObject;
-    LONG CodeObjectHash;
-    PPYTHON_MODULE Module;
-    PUNICODE_STRING Name;
-    PUNICODE_STRING Path;
-    PUNICODE_STRING ClassName;
-    PUNICODE_STRING FunctionName;
-    PUNICODE_STRING ModuleName;
-} PYTHON_FUNCTION, *PPYTHON_FUNCTION;
 
 typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE {
     //
@@ -1399,11 +1418,74 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
     STRING ModuleName;          // Full module name.
     STRING Name;                // File name (sans extension).
 
+    LIST_ENTRY Files;
+
 } PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY, *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 
-#define _PYTHONEXRUNTIME_HEAD                           \
-    HANDLE  HeapHandle;                                 \
-    PYTHON_DIRECTORY_PREFIX_TABLE DirectoryPrefixTable;
+typedef struct _PYTHON_FUNCTION {
+    union {
+        PPYOBJECT          CodeObject;
+        PPYCODEOBJECT25_27 Code25_27;
+        PPYCODEOBJECT30_32 Code30_32;
+        PPYCODEOBJECT33_35 Code33_35;
+    };
+    union {
+        PPYOBJECT        FilenameObject;
+        PPYSTRINGOBJECT  FilenameString;
+        PPYUNICODEOBJECT FilenameUnicode;
+    };
+    LONG   CodeObjectHash;
+    LONG   FilenameHash;
+    PCHAR  Name;
+    LONG   NameHash;
+    USHORT FirstLineNumber;
+    USHORT UnusedShort1;
+    ULONG  UnusedLong1;
+    STRING Filename;
+    STRING FullName;
+    STRING ModuleName;
+    STRING ClassName;
+    STRING FunctionName;
+    LIST_ENTRY ListEntry;
+    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ModuleEntry;
+} PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
+
+typedef struct _PYTHON_FUNCTION_TABLE {
+    //
+    // Inline RTL_GENERIC_TABLE.
+    //
+    union {
+        RTL_GENERIC_TABLE GenericTable;
+        struct {
+            PRTL_SPLAY_LINKS              TableRoot;
+            LIST_ENTRY                    InsertOrderList;
+            PLIST_ENTRY                   OrderedPointer;
+            ULONG                         WhichOrderedElement;
+            ULONG                         NumberGenericTableElements;
+            PRTL_GENERIC_COMPARE_ROUTINE  CompareRoutine;
+            PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine;
+            PRTL_GENERIC_FREE_ROUTINE     FreeRoutine;
+            union {
+                PVOID TableContext;
+                PPYTHON_FUNCTION PythonFunction;
+            };
+        };
+    };
+} PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE;
+
+#define _PYTHONEXRUNTIME_HEAD                                   \
+    HANDLE  HeapHandle;                                         \
+    PYTHON_DIRECTORY_PREFIX_TABLE DirectoryPrefixTable;         \
+    PALLOCATION_ROUTINE AllocationRoutine;                      \
+    PVOID AllocationContext;                                    \
+    PFREE_ROUTINE FreeRoutine;                                  \
+    PVOID FreeContext;                                          \
+    PYTHON_FUNCTION_TABLE FunctionTable;                        \
+    PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;   \
+    PRTL_GENERIC_ALLOCATE_ROUTINE FunctionTableAllocateRoutine; \
+    PRTL_GENERIC_FREE_ROUTINE FunctionTableFreeRoutine;         \
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
+
 
 typedef struct _PYTHONEXRUNTIME {
     _PYTHONEXRUNTIME_HEAD
@@ -1478,23 +1560,43 @@ typedef struct _PYTHON {
             _PYTHONEXRUNTIME_HEAD
         };
     };
+
+    USHORT NumberOfCacheElements;
+    PPYOBJECT CodeObjectCache[32];
 } PYTHON, *PPYTHON, **PPPYTHON;
 
 typedef BOOL (*PINITIALIZE_PYTHON)(
-    _In_                         PRTL        Rtl,
-    _In_                         HMODULE     PythonModule,
-    _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
-    _Inout_                      PULONG      SizeOfPython
-);
+    _In_                         PRTL                Rtl,
+    _In_                         HMODULE             PythonModule,
+    _Out_bytecap_(*SizeOfPython) PPYTHON             Python,
+    _Inout_                      PULONG              SizeOfPython
+    );
 
 TRACER_API
 BOOL
 InitializePython(
-    _In_                         PRTL        Rtl,
-    _In_                         HMODULE     PythonModule,
-    _Out_bytecap_(*SizeOfPython) PPYTHON     Python,
-    _Inout_                      PULONG      SizeOfPython
+    _In_                         PRTL                Rtl,
+    _In_                         HMODULE             PythonModule,
+    _Out_bytecap_(*SizeOfPython) PPYTHON             Python,
+    _Inout_                      PULONG              SizeOfPython
+    );
+
+TRACER_API
+BOOL
+InitializePythonRuntimeTables(
+    _In_      PPYTHON             Python,
+    _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_  PVOID               AllocationContext,
+    _In_opt_  PFREE_ROUTINE       FreeRoutine,
+    _In_opt_  PVOID               FreeContext
 );
+
+TRACER_API
+VOID
+SetPythonThreadpoolCallbackEnvironment(
+    _In_ PPYTHON              Python,
+    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment
+    );
 
 TRACER_API
 BOOL
@@ -1617,16 +1719,6 @@ ResolveFrameObjectDetailsInline(
     );
 }
 
-FORCEINLINE
-LONG
-HashCodeObject(
-    _In_ PPYTHON Python,
-    _In_ PPYOBJECT CodeObject
-)
-{
-
-}
-
 TRACER_API
 BOOL
 AddDirectoryEntry(
@@ -1641,6 +1733,16 @@ AddDirectoryEntry(
     _In_      PFREE_ROUTINE FreeRoutine,
     _In_opt_  PVOID FreeContext
     );
+
+TRACER_API
+BOOL
+RegisterFrame(
+    _In_      PPYTHON   Python,
+    _In_      PPYOBJECT FrameObject,
+    _In_      LONG      EventType,
+    _In_      PPYOBJECT ArgObject
+    );
+
 
 #ifdef __cpp
 } // extern "C"

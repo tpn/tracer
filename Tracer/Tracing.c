@@ -282,6 +282,7 @@ InitializeStore(
     }
 
     TraceStore->AllocateRecords = AllocateRecords;
+    TraceStore->FreeRecords = FreeRecords;
 
     return TRUE;
 error:
@@ -1092,6 +1093,7 @@ AllocateRecords(
 {
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     ULONG_PTR AllocationSize;
+    PULONG SizePointer;
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
     PVOID EndAddress;
@@ -1108,9 +1110,14 @@ AllocateRecords(
         return NULL;
     }
 
+    //
+    // Account for the size header.
+    //
+    AllocationSize = sizeof(ULONG);
+
 #ifdef _M_X64
 
-    AllocationSize = (
+    AllocationSize += (
         (ULONG_PTR)(
             RecordSize->QuadPart *
             NumberOfRecords->QuadPart
@@ -1219,7 +1226,9 @@ AllocateRecords(
     }
 
     RecordTraceStoreAllocation(TraceStore, RecordSize, NumberOfRecords);
-    return ReturnAddress;
+    SizePointer = (PULONG)ReturnAddress;
+    *SizePointer = (ULONG)AllocationSize - sizeof(ULONG);
+    return RtlOffsetToPointer(SizePointer, sizeof(ULONG));
 }
 
 LPVOID
@@ -1231,6 +1240,19 @@ GetNextRecord(
 {
     ULARGE_INTEGER RecordCount = { 1 };
     return AllocateRecords(TraceContext, TraceStore, RecordSize, &RecordCount);
+}
+
+VOID
+FreeRecords(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PVOID           Buffer
+)
+{
+    //
+    // Not currently implemented.
+    //
+    return;
 }
 
 BOOL
