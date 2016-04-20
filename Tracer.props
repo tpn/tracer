@@ -68,7 +68,9 @@
       <UseDebugLibraries>true</UseDebugLibraries>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
+      <!--
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      -->
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

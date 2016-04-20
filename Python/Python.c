@@ -2391,15 +2391,16 @@ RegisterFrame(
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
     PPYOBJECT CodeObject;
     LONG FilenameHash;
-    LONG CodeObjectHash;
-    LONG FirstLineNumber;
+
+    //LONG CodeObjectHash;
+    //LONG FirstLineNumber;
     LONG Hash;
     PPYOBJECT FilenameObject;
     PPYSTRINGOBJECT Filename;
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
-    BOOL NewFunction;
+    BOOLEAN NewFunction;
 
     CodeObject = Frame->Code;
 
@@ -2413,7 +2414,7 @@ RegisterFrame(
 
     FunctionTable = &Python->FunctionTable;
 
-    Function = Rtl->RtlInsertElementGenericTable(FunctionTable,
+    Function = Rtl->RtlInsertElementGenericTable(&FunctionTable->GenericTable,
                                                  &FunctionRecord,
                                                  sizeof(FunctionRecord),
                                                  &NewFunction);
@@ -2449,20 +2450,11 @@ RegisterFrame(
 
     Hash = Python->PyObject_Hash(CodeObject);
     Hash ^= FilenameHash;
-    Hash ^= FirstLineNumber;
+    //Hash ^= FirstLineNumber;
+
+    return TRUE;
 
 }
-
-BOOL
-RegisterFunction(
-    _In_      PPYTHON   Python,
-    _In_      PPYOBJECT CodeObject,
-    _Out_opt_ PPPYTHON_FUNCTION PythonFunctionPointer
-    )
-{
-    return FALSE;
-}
-
 
 #ifdef __cpp
 } // extern "C"
