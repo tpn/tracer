@@ -17,6 +17,8 @@ BOOL IsHexChar(BYTE ch)
     }
 }
 
+
+#if 0
 // NOTE: caller must free the buffer returned
 BYTE *HexToBinary(char *Input, DWORD InputLength, DWORD *OutputLength)
 {
@@ -182,4 +184,6 @@ abort:
     if (ByteString) free(ByteString);
     return NULL;
 }
+
+#endif
 

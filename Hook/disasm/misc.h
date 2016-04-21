@@ -6,9 +6,6 @@ extern "C" {
 #endif
 
 #include <windows.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <assert.h>
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

@@ -41,37 +41,37 @@
 #define EXT_SUFFIX(a, b, c) CPU_UNKNOWN, ITYPE_EXT_SUFFIX, "", { a, b, c }, NOCOND, NOCHANGE, NOACTION, IGNORED
 #define EXT_MODRM CPU_UNKNOWN, ITYPE_EXT_MODRM, "", NOARGS, NOCOND, NOCHANGE, NOACTION, IGNORED
 
-#define SET_MODRM(modrm, src) \
-{ \
+#define SET_MODRM(modrm, src)         \
+{                                     \
     (modrm).mod = GET_MODRM_MOD(src); \
     (modrm).reg = GET_MODRM_REG(src); \
-    (modrm).rm = GET_MODRM_RM(src); \
+    (modrm).rm = GET_MODRM_RM(src);   \
 }
 
-#define SET_REX_MODRM(rex_modrm, rex, modrm) \
-{ \
-    (rex_modrm).rm = ((rex).b << 3) | (modrm).rm; \
+#define SET_REX_MODRM(rex_modrm, rex, modrm)        \
+{                                                   \
+    (rex_modrm).rm = ((rex).b << 3) | (modrm).rm;   \
     (rex_modrm).reg = ((rex).r << 3) | (modrm).reg; \
 }
 
-#define SET_SIB(sib, src) \
-{ \
+#define SET_SIB(sib, src)             \
+{                                     \
     (sib).scale = GET_SIB_SCALE(src); \
     (sib).index = GET_SIB_INDEX(src); \
-    (sib).base =  GET_SIB_BASE(src); \
+    (sib).base =  GET_SIB_BASE(src);  \
 }
 
-#define SET_REX_SIB(rex_sib, rex, sib) \
-{ \
+#define SET_REX_SIB(rex_sib, rex, sib)              \
+{                                                   \
     (rex_sib).index = ((rex).x << 3) | (sib).index; \
-    (rex_sib).base = ((rex).b << 3) | (sib).base; \
+    (rex_sib).base = ((rex).b << 3) | (sib).base;   \
 }
 
-#define SET_REX(rex, src) \
-{ \
-    (rex).w = GET_REX_W(src);   \
-    (rex).r = GET_REX_R(src);   \
-    (rex).x = GET_REX_X(src);   \
+#define SET_REX(rex, src)     \
+{                             \
+    (rex).w = GET_REX_W(src); \
+    (rex).r = GET_REX_R(src); \
+    (rex).x = GET_REX_X(src); \
     (rex).b = GET_REX_B(src); \
 }
 

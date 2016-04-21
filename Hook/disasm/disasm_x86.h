@@ -825,7 +825,7 @@ void X86_CloseInstruction(struct _INSTRUCTION *Instruction);
 BOOL X86_TranslateInstruction(struct _INSTRUCTION *Instruction, BOOL Verbose);
 
 // Instruction decoder
-BOOL X86_GetInstruction(struct _INSTRUCTION *Instruction, U8 *Address, DWORD Flags);
+BOOL X86_GetInstruction(PRTL Rtl, struct _INSTRUCTION *Instruction, U8 *Address, DWORD Flags);
 
 // Function finding
 U8 *X86_FindFunctionByPrologue(struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, DWORD Flags);

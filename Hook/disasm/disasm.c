@@ -1,8 +1,8 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
 #undef NDEBUG
-#include <assert.h>
 #include <windows.h>
 #include "disasm.h"
+
 
 #ifdef NO_SANITY_CHECKS
 #define NDEBUG
@@ -42,6 +42,7 @@ struct _ARCHITECTURE_FORMAT *GetArchitectureFormat(ARCHITECTURE_TYPE Type);
 //////////////////////////////////////////////////////////////////////
 // Disassembler setup
 //////////////////////////////////////////////////////////////////////
+
 
 BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture)
 {
@@ -84,14 +85,14 @@ BOOL InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
 // If Disassemble = TRUE, then Instruction->String is valid (also requires Decode = TRUE)
 //
 // WARNING: This will overwrite the previously obtained instruction
-INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags)
+INSTRUCTION *GetInstruction(PRTL Rtl, DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags)
 {
 	if (Disassembler->Initialized != DISASSEMBLER_INITIALIZED) { assert(0); return NULL; }
 	assert(Address);
 	InitInstruction(&Disassembler->Instruction, Disassembler);
 	Disassembler->Instruction.Address = Address;
 	Disassembler->Instruction.VirtualAddressDelta = VirtualAddress - (U64)Address;
-	if (!Disassembler->Functions->GetInstruction(&Disassembler->Instruction, Address, Flags))
+	if (!Disassembler->Functions->GetInstruction(Rtl, &Disassembler->Instruction, Address, Flags))
 	{
 		assert(Disassembler->Instruction.Address == Address);
 		assert(Disassembler->Instruction.Length < MAX_INSTRUCTION_LENGTH);

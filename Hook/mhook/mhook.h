@@ -24,5 +24,11 @@
 #define _M_IX86_X64
 #endif
 
-BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction);
-BOOL Mhook_Unhook(PVOID *ppHookedFunction);
+#include "../../Rtl/Rtl.h"
+
+#define memmove(dest, src, length) Rtl->RtlMoveMemory(dest, src, length)
+#define malloc(bytes) HeapAlloc(Rtl->HeapHandle, HEAP_ZERO_MEMORY, bytes)
+#define free(ptr) HeapFree(Rtl->HeapHandle, 0, ptr)
+
+BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction);
+BOOL Mhook_Unhook(PRTL Rtl, PVOID *ppHookedFunction);

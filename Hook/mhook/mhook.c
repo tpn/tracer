@@ -49,6 +49,7 @@
 #define ODPRINTF(a)
 #endif
 
+/*
 inline void __cdecl odprintf(PCSTR format, ...) {
     va_list args;
     va_start(args, format);
@@ -71,7 +72,7 @@ inline void __cdecl odprintf(PCSTR format, ...) {
     }
 }
 
-inline void __cdecl odprintf(PCWSTR format, ...) {
+inline void __cdecl odprintfw(PCWSTR format, ...) {
     va_list args;
     va_start(args, format);
     int len = _vscwprintf(format, args);
@@ -92,6 +93,7 @@ inline void __cdecl odprintf(PCWSTR format, ...) {
         va_end(args);
     }
 }
+*/
 
 #endif //#ifndef ODPRINTF
 
@@ -166,9 +168,14 @@ typedef BOOL (WINAPI * _Thread32Next)(
 
 //=========================================================================
 // Bring in the toolhelp functions from kernel32
+/*
 _CreateToolhelp32Snapshot fnCreateToolhelp32Snapshot;
 _Thread32First fnThread32First;
 _Thread32Next fnThread32Next;
+*/
+#define fnCreateToolhelp32Snapshot(dwFlags, th32ProcessID) Rtl.CreateToolhelp32Snapshot(dwFlags, th32ProcessID)
+#define fnThread32First(hSnapshot, lpte) Rtl.Thread32First(hSnapshot, lpte)
+#define fnThread32Next(hSnapshot, lpte) Rtl.Thread32Next(hSnapshot, lpte)
 
 //=========================================================================
 // Internal function:
@@ -480,7 +487,7 @@ static VOID TrampolineFree(MHOOKS_TRAMPOLINE* pTrampoline, BOOL bNeverUsed) {
 // Suspend a given thread and try to make sure that its instruction
 // pointer is not in the given range.
 //=========================================================================
-static HANDLE SuspendOneThread(DWORD dwThreadId, PBYTE pbCode, DWORD cbBytes) {
+static HANDLE SuspendOneThread(PRTL Rtl, DWORD dwThreadId, PBYTE pbCode, DWORD cbBytes) {
     // open the thread
     HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, dwThreadId);
     if (GOOD_HANDLE(hThread)) {
@@ -535,7 +542,7 @@ static HANDLE SuspendOneThread(DWORD dwThreadId, PBYTE pbCode, DWORD cbBytes) {
 //
 // Resumes all previously suspended threads in the current process.
 //=========================================================================
-static VOID ResumeOtherThreads() {
+static VOID ResumeOtherThreads(PRTL Rtl) {
     // make sure things go as fast as possible
     INT nOriginalPriority = GetThreadPriority(GetCurrentThread());
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -558,19 +565,19 @@ static VOID ResumeOtherThreads() {
 // Suspend all threads in this process while trying to make sure that their
 // instruction pointer is not in the given range.
 //=========================================================================
-static BOOL SuspendOtherThreads(PBYTE pbCode, DWORD cbBytes) {
+static BOOL SuspendOtherThreads(PRTL Rtl, PBYTE pbCode, DWORD cbBytes) {
     BOOL bRet = FALSE;
     // make sure we're the most important thread in the process
     INT nOriginalPriority = GetThreadPriority(GetCurrentThread());
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
     // get a view of the threads in the system
-    HANDLE hSnap = fnCreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, GetCurrentProcessId());
+    HANDLE hSnap = Rtl->CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, GetCurrentProcessId());
     if (GOOD_HANDLE(hSnap)) {
         THREADENTRY32 te;
         te.dwSize = sizeof(te);
         // count threads in this process (except for ourselves)
         DWORD nThreadsInProcess = 0;
-        if (fnThread32First(hSnap, &te)) {
+        if (Rtl->Thread32First(hSnap, &te)) {
             do {
                 if (te.th32OwnerProcessID == GetCurrentProcessId()) {
                     if (te.th32ThreadID != GetCurrentThreadId()) {
@@ -578,7 +585,7 @@ static BOOL SuspendOtherThreads(PBYTE pbCode, DWORD cbBytes) {
                     }
                 }
                 te.dwSize = sizeof(te);
-            } while(fnThread32Next(hSnap, &te));
+            } while(Rtl->Thread32Next(hSnap, &te));
         }
         ODPRINTF((L"mhooks: SuspendOtherThreads: counted %d other threads", nThreadsInProcess));
         if (nThreadsInProcess) {
@@ -590,12 +597,12 @@ static BOOL SuspendOtherThreads(PBYTE pbCode, DWORD cbBytes) {
                 BOOL bFailed = FALSE;
                 te.dwSize = sizeof(te);
                 // go through every thread
-                if (fnThread32First(hSnap, &te)) {
+                if (Rtl->Thread32First(hSnap, &te)) {
                     do {
                         if (te.th32OwnerProcessID == GetCurrentProcessId()) {
                             if (te.th32ThreadID != GetCurrentThreadId()) {
                                 // attempt to suspend it
-                                g_hThreadHandles[nCurrentThread] = SuspendOneThread(te.th32ThreadID, pbCode, cbBytes);
+                                g_hThreadHandles[nCurrentThread] = SuspendOneThread(Rtl, te.th32ThreadID, pbCode, cbBytes);
                                 if (GOOD_HANDLE(g_hThreadHandles[nCurrentThread])) {
                                     ODPRINTF((L"mhooks: SuspendOtherThreads: successfully suspended %d", te.th32ThreadID));
                                     nCurrentThread++;
@@ -612,7 +619,7 @@ static BOOL SuspendOtherThreads(PBYTE pbCode, DWORD cbBytes) {
                             }
                         }
                         te.dwSize = sizeof(te);
-                    } while(fnThread32Next(hSnap, &te) && !bFailed);
+                    } while(Rtl->Thread32Next(hSnap, &te) && !bFailed);
                 }
                 g_nThreadHandles = nCurrentThread;
                 bRet = !bFailed;
@@ -629,7 +636,7 @@ static BOOL SuspendOtherThreads(PBYTE pbCode, DWORD cbBytes) {
     SetThreadPriority(GetCurrentThread(), nOriginalPriority);
     if (!bRet) {
         ODPRINTF((L"mhooks: SuspendOtherThreads: Had a problem (or not running multithreaded), resuming all threads."));
-        ResumeOtherThreads();
+        ResumeOtherThreads(Rtl);
     }
     return bRet;
 }
@@ -660,7 +667,7 @@ static void FixupIPRelativeAddressing(PBYTE pbNew, PBYTE pbOriginal, MHOOKS_PATC
 // at which point disassembly must stop.
 // Finally, detect and collect information on IP-relative instructions
 // that we can patch.
-static DWORD DisassembleAndSkip(PVOID pFunction, DWORD dwMinLen, MHOOKS_PATCHDATA* pdata) {
+static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOKS_PATCHDATA* pdata) {
     DWORD dwRet = 0;
     pdata->nLimitDown = 0;
     pdata->nLimitUp = 0;
@@ -679,7 +686,7 @@ static DWORD DisassembleAndSkip(PVOID pFunction, DWORD dwMinLen, MHOOKS_PATCHDAT
         DWORD dwFlags = DISASM_DECODE | DISASM_DISASSEMBLE | DISASM_ALIGNOUTPUT;
 
         ODPRINTF((L"mhooks: DisassembleAndSkip: Disassembling %p", pLoc));
-        while ( (dwRet < dwMinLen) && (pins = GetInstruction(&dis, (ULONG_PTR)pLoc, pLoc, dwFlags)) ) {
+        while ( (dwRet < dwMinLen) && (pins = GetInstruction(Rtl, &dis, (ULONG_PTR)pLoc, pLoc, dwFlags)) ) {
             ODPRINTF(("mhooks: DisassembleAndSkip: %p:(0x%2.2x) %s", pLoc, pins->Length, pins->String));
             if (pins->Type == ITYPE_RET     ) break;
             if (pins->Type == ITYPE_BRANCH  ) break;
@@ -769,9 +776,12 @@ static DWORD DisassembleAndSkip(PVOID pFunction, DWORD dwMinLen, MHOOKS_PATCHDAT
 }
 
 //=========================================================================
-BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction) {
+BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
     MHOOKS_TRAMPOLINE* pTrampoline = NULL;
     PVOID pSystemFunction = *ppSystemFunction;
+    if (!Rtl->CreateToolhelp32Snapshot) {
+        __debugbreak();
+    }
     // ensure thread-safety
     EnterCritSec();
     ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
@@ -781,12 +791,12 @@ BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction) {
     ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
     // figure out the length of the overwrite zone
     MHOOKS_PATCHDATA patchdata = {0};
-    DWORD dwInstructionLength = DisassembleAndSkip(pSystemFunction, MHOOK_JMPSIZE, &patchdata);
+    DWORD dwInstructionLength = DisassembleAndSkip(Rtl, pSystemFunction, MHOOK_JMPSIZE, &patchdata);
     if (dwInstructionLength >= MHOOK_JMPSIZE) {
         ODPRINTF((L"mhooks: Mhook_SetHook: disassembly signals %d bytes", dwInstructionLength));
         // suspend every other thread in this process, and make sure their IP
         // is not in the code we're about to overwrite.
-        SuspendOtherThreads((PBYTE)pSystemFunction, dwInstructionLength);
+        SuspendOtherThreads(Rtl, (PBYTE)pSystemFunction, dwInstructionLength);
         // allocate a trampoline structure (TODO: it is pretty wasteful to get
         // VirtualAlloc to grab chunks of memory smaller than 100 bytes)
         pTrampoline = TrampolineAlloc((PBYTE)pSystemFunction, patchdata.nLimitUp, patchdata.nLimitDown);
@@ -872,7 +882,7 @@ BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction) {
             }
         }
         // resume everybody else
-        ResumeOtherThreads();
+        ResumeOtherThreads(Rtl);
     } else {
         ODPRINTF((L"mhooks: disassembly signals %d bytes (unacceptable)", dwInstructionLength));
     }
@@ -881,7 +891,7 @@ BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction) {
 }
 
 //=========================================================================
-BOOL Mhook_Unhook(PVOID *ppHookedFunction) {
+BOOL Mhook_Unhook(PRTL Rtl, PVOID *ppHookedFunction) {
     ODPRINTF((L"mhooks: Mhook_Unhook: %p", *ppHookedFunction));
     BOOL bRet = FALSE;
     EnterCritSec();
@@ -889,7 +899,7 @@ BOOL Mhook_Unhook(PVOID *ppHookedFunction) {
     MHOOKS_TRAMPOLINE* pTrampoline = TrampolineGet((PBYTE)*ppHookedFunction);
     if (pTrampoline) {
         // make sure nobody's executing code where we're about to overwrite a few bytes
-        SuspendOtherThreads(pTrampoline->pSystemFunction, pTrampoline->cbOverwrittenCode);
+        SuspendOtherThreads(Rtl, pTrampoline->pSystemFunction, pTrampoline->cbOverwrittenCode);
         ODPRINTF((L"mhooks: Mhook_Unhook: found struct at %p", pTrampoline));
         DWORD dwOldProtectSystemFunction = 0;
         // make memory writable
@@ -913,7 +923,7 @@ BOOL Mhook_Unhook(PVOID *ppHookedFunction) {
             ODPRINTF((L"mhooks: Mhook_Unhook: failed VirtualProtect 1: %d", gle()));
         }
         // make the other guys runnable
-        ResumeOtherThreads();
+        ResumeOtherThreads(Rtl);
     }
     LeaveCritSec();
     return bRet;

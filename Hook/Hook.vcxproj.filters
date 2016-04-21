@@ -51,7 +51,7 @@
     <ClInclude Include="disasm\misc.h">
       <Filter>Header Files\disasm</Filter>
     </ClInclude>
-    <ClInclude Include="hook.h">
+    <ClInclude Include="Hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -77,7 +77,7 @@
     <ClCompile Include="disasm\cpu.c">
       <Filter>Source Files\disasm</Filter>
     </ClCompile>
-    <ClCompile Include="hook.c">
+    <ClCompile Include="Hook.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

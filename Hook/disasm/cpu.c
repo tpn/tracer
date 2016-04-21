@@ -1,6 +1,9 @@
 // Copyright (C) 2003, Matt Conover (mconover@gmail.com)
 #include "cpu.h"
-#include <assert.h>
+//#include <assert.h>
+
+#undef assert
+#define assert
 
 // NOTE: this assumes default scenarios (i.e., we assume CS/DS/ES/SS and flat
 // and all have a base of 0 and limit of 0xffffffff, we don't try to verify

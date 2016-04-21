@@ -1,8 +1,9 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
 #undef NDEBUG
-#include <assert.h>
 #include "disasm.h"
 #include "cpu.h"
+
+//#pragma intrinsic(_memmove)
 
 // Since addresses are internally represented as 64-bit, we need to specially handle
 // cases where IP + Displacement wraps around for 16-bit/32-bit operand size
@@ -29,6 +30,8 @@
 #endif
 
 #define printf
+#define fflush(stdout)
+#define stdout
 
 ////////////////////////////////////////////////////////////////////////
 // Internal macros
@@ -59,18 +62,19 @@
 #define X86_POP_REG 0x58
 
 #define OPCSTR Instruction->String+Instruction->StringIndex
-#define APPEND Instruction->StringIndex += (U8)_snprintf
-#define APPENDPAD(x) \
-{ \
-    if (Instruction->StringAligned) \
-    {  \
-            if (Instruction->StringIndex > x) assert(0); \
-            while (x != Instruction->StringIndex) APPENDB(' ');  \
-    }  \
-    else if (Instruction->StringIndex) \
-    {  \
-        APPENDB(' '); \
-    } \
+//#define APPEND Instruction->StringIndex += (U8)_snprintf
+#define APPEND
+#define APPENDPAD(x)                                            \
+{                                                               \
+    if (Instruction->StringAligned)                             \
+    {                                                           \
+            if (Instruction->StringIndex > x) assert(0);        \
+            while (x != Instruction->StringIndex) APPENDB(' '); \
+    }                                                           \
+    else if (Instruction->StringIndex)                          \
+    {                                                           \
+        APPENDB(' ');                                           \
+    }                                                           \
 }
 
 #define APPENDB(a) Instruction->String[Instruction->StringIndex++] = a
@@ -81,128 +85,130 @@
 // If an address size prefix is used for an instruction that doesn't make sense, restore it
 // to the default
 
-#define SANITY_CHECK_OPERAND_SIZE() \
-{ \
-    if (!Instruction->AnomalyOccurred && X86Instruction->HasOperandSizePrefix) \
-    { \
+#define SANITY_CHECK_OPERAND_SIZE()                                                                            \
+{                                                                                                              \
+    if (!Instruction->AnomalyOccurred && X86Instruction->HasOperandSizePrefix)                                 \
+    {                                                                                                          \
         if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected operand size prefix\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
-        X86Instruction->HasOperandSizePrefix = FALSE; \
-        switch (X86Instruction->OperandSize) \
-        { \
-            case 4: X86Instruction->OperandSize = 2; break; \
-            case 2: X86Instruction->OperandSize = 4; break; \
-            default: assert(0); \
-        } \
-    } \
+        Instruction->AnomalyOccurred = TRUE;                                                                   \
+        X86Instruction->HasOperandSizePrefix = FALSE;                                                          \
+        switch (X86Instruction->OperandSize)                                                                   \
+        {                                                                                                      \
+            case 4: X86Instruction->OperandSize = 2; break;                                                    \
+            case 2: X86Instruction->OperandSize = 4; break;                                                    \
+            default: assert(0);                                                                                \
+        }                                                                                                      \
+    }                                                                                                          \
 }
 
-#define SANITY_CHECK_ADDRESS_SIZE() \
-{ \
-    if (!Instruction->AnomalyOccurred && X86Instruction->HasAddressSizePrefix) \
-    { \
+#define SANITY_CHECK_ADDRESS_SIZE()                                                                            \
+{                                                                                                              \
+    if (!Instruction->AnomalyOccurred && X86Instruction->HasAddressSizePrefix)                                 \
+    {                                                                                                          \
         if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected address size prefix\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
-    } \
-    X86Instruction->HasAddressSizePrefix = FALSE; \
-    switch (INS_ARCH_TYPE(Instruction)) \
-    { \
-        case ARCH_X64: X86Instruction->AddressSize = 8; break; \
-        case ARCH_X86: X86Instruction->AddressSize = 4; break; \
-        case ARCH_X86_16: X86Instruction->AddressSize = 2; break; \
-    } \
+        Instruction->AnomalyOccurred = TRUE;                                                                   \
+    }                                                                                                          \
+    X86Instruction->HasAddressSizePrefix = FALSE;                                                              \
+    switch (INS_ARCH_TYPE(Instruction))                                                                        \
+    {                                                                                                          \
+        case ARCH_X64: X86Instruction->AddressSize = 8; break;                                                 \
+        case ARCH_X86: X86Instruction->AddressSize = 4; break;                                                 \
+        case ARCH_X86_16: X86Instruction->AddressSize = 2; break;                                              \
+    }                                                                                                          \
 }
 
-#define SANITY_CHECK_SEGMENT_OVERRIDE() \
-    if (!Instruction->AnomalyOccurred && X86Instruction->HasSegmentOverridePrefix) \
-    { \
+#define SANITY_CHECK_SEGMENT_OVERRIDE()                                                                     \
+    if (!Instruction->AnomalyOccurred && X86Instruction->HasSegmentOverridePrefix)                          \
+    {                                                                                                       \
         if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: Unexpected segment override\n", VIRTUAL_ADDRESS); \
-        Instruction->AnomalyOccurred = TRUE; \
+        Instruction->AnomalyOccurred = TRUE;                                                                \
     }
 
-#define INSTR_INC(size) \
-{ \
+#define INSTR_INC(size)          \
+{                                \
     Instruction->Length += size; \
-    Address += size; \
+    Address += size;             \
 }
 
-#define X86_SET_TARGET() \
-{ \
-    if (X86Instruction->HasSelector) \
-    { \
-        if (!Instruction->AnomalyOccurred) \
-        { \
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector); \
-            Instruction->AnomalyOccurred = TRUE; \
-        } \
-    } \
-    else \
-    { \
-        switch (X86Instruction->Segment) \
-        { \
-            case SEG_CS: \
-            case SEG_DS: \
-            case SEG_SS: \
-            case SEG_ES: \
-                assert(!X86Instruction->HasSelector); \
-                Operand->TargetAddress = (U64)X86Instruction->Displacement; \
-                /* assert(!GetAbsoluteAddressFromSegment((BYTE)X86Instruction->Segment, (DWORD)X86Instruction->Displacement) || GetAbsoluteAddressFromSegment(X86Instruction->Segment, (DWORD)X86Instruction->Displacement) == Operand->TargetAddress); */ \
-                break; \
-            case SEG_FS: \
-            case SEG_GS: \
-                assert(!X86Instruction->HasSelector); \
-                Operand->TargetAddress = (U64)GetAbsoluteAddressFromSegment((BYTE)X86Instruction->Segment, (DWORD)X86Instruction->Displacement); \
-                break; \
-            default: \
-                assert(0); /* shouldn't be possible */ \
-                break; \
-        } \
-    } \
+#define X86_SET_TARGET()                                                                                                                                                                                                                                   \
+{                                                                                                                                                                                                                                                          \
+    if (X86Instruction->HasSelector)                                                                                                                                                                                                                       \
+    {                                                                                                                                                                                                                                                      \
+        if (!Instruction->AnomalyOccurred)                                                                                                                                                                                                                 \
+        {                                                                                                                                                                                                                                                  \
+            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector);                                                                                                                    \
+            Instruction->AnomalyOccurred = TRUE;                                                                                                                                                                                                           \
+        }                                                                                                                                                                                                                                                  \
+    }                                                                                                                                                                                                                                                      \
+    else                                                                                                                                                                                                                                                   \
+    {                                                                                                                                                                                                                                                      \
+        switch (X86Instruction->Segment)                                                                                                                                                                                                                   \
+        {                                                                                                                                                                                                                                                  \
+            case SEG_CS:                                                                                                                                                                                                                                   \
+            case SEG_DS:                                                                                                                                                                                                                                   \
+            case SEG_SS:                                                                                                                                                                                                                                   \
+            case SEG_ES:                                                                                                                                                                                                                                   \
+                assert(!X86Instruction->HasSelector);                                                                                                                                                                                                      \
+                Operand->TargetAddress = (U64)X86Instruction->Displacement;                                                                                                                                                                                \
+                break;                                                                                                                                                                                                                                     \
+            case SEG_FS:                                                                                                                                                                                                                                   \
+            case SEG_GS:                                                                                                                                                                                                                                   \
+                assert(!X86Instruction->HasSelector);                                                                                                                                                                                                      \
+                Operand->TargetAddress = (U64)GetAbsoluteAddressFromSegment( \
+                    (BYTE)X86Instruction->Segment, \
+                    (DWORD)X86Instruction->Displacement \
+                );                                                                                                           \
+                break;                                                                                                                                                                                                                                     \
+            default:                                                                                                                                                                                                                                       \
+                assert(0); /* shouldn't be possible */                                                                                                                                                                                                     \
+                break;                                                                                                                                                                                                                                     \
+        }                                                                                                                                                                                                                                                  \
+    }                                                                                                                                                                                                                                                      \
 }
 
-#define X86_SET_SEG(reg) \
-{ \
+#define X86_SET_SEG(reg)                                                                 \
+{                                                                                        \
     if (!X86Instruction->HasSegmentOverridePrefix && (reg == REG_EBP || reg == REG_ESP)) \
-    { \
-        assert(!X86Instruction->HasSelector); \
-        X86Instruction->Segment = SEG_SS; \
-    } \
+    {                                                                                    \
+        assert(!X86Instruction->HasSelector);                                            \
+        X86Instruction->Segment = SEG_SS;                                                \
+    }                                                                                    \
 }
 
-#define X86_SET_ADDR() \
-{ \
-    if (Operand->Flags & OP_DST) \
-    { \
-        assert(!X86Instruction->HasDstAddressing); \
-        X86Instruction->HasDstAddressing = TRUE; \
-        X86Instruction->DstOpIndex[X86Instruction->DstOpCount] = (U8)OperandIndex; \
-        X86Instruction->DstOpCount++; \
-        X86Instruction->DstAddressIndex = (U8)OperandIndex; \
-    } \
-    if (Operand->Flags & OP_SRC) \
-    { \
+#define X86_SET_ADDR()                                                                    \
+{                                                                                         \
+    if (Operand->Flags & OP_DST)                                                          \
+    {                                                                                     \
+        assert(!X86Instruction->HasDstAddressing);                                        \
+        X86Instruction->HasDstAddressing = TRUE;                                          \
+        X86Instruction->DstOpIndex[X86Instruction->DstOpCount] = (U8)OperandIndex;        \
+        X86Instruction->DstOpCount++;                                                     \
+        X86Instruction->DstAddressIndex = (U8)OperandIndex;                               \
+    }                                                                                     \
+    if (Operand->Flags & OP_SRC)                                                          \
+    {                                                                                     \
         if (Instruction->Type != ITYPE_STRCMP) assert(!X86Instruction->HasSrcAddressing); \
-        X86Instruction->HasSrcAddressing = TRUE; \
-        X86Instruction->SrcOpIndex[X86Instruction->SrcOpCount] = (U8)OperandIndex; \
-        X86Instruction->SrcOpCount++; \
-        X86Instruction->SrcAddressIndex = (U8)OperandIndex; \
-    } \
+        X86Instruction->HasSrcAddressing = TRUE;                                          \
+        X86Instruction->SrcOpIndex[X86Instruction->SrcOpCount] = (U8)OperandIndex;        \
+        X86Instruction->SrcOpCount++;                                                     \
+        X86Instruction->SrcAddressIndex = (U8)OperandIndex;                               \
+    }                                                                                     \
 }
 
-#define X86_SET_REG(reg) \
-{ \
-    if (Operand->Flags & OP_DST) \
-    { \
-        X86Instruction->DstOpIndex[X86Instruction->DstOpCount] = (U8)OperandIndex; \
-        X86Instruction->DstOpCount++; \
-        assert(OperandIndex < 2); \
+#define X86_SET_REG(reg)                                                               \
+{                                                                                      \
+    if (Operand->Flags & OP_DST)                                                       \
+    {                                                                                  \
+        X86Instruction->DstOpIndex[X86Instruction->DstOpCount] = (U8)OperandIndex;     \
+        X86Instruction->DstOpCount++;                                                  \
+        assert(OperandIndex < 2);                                                      \
         if (Operand->Length > 1 && reg == REG_ESP) Instruction->Groups |= ITYPE_STACK; \
-    } \
-    if (Operand->Flags & OP_SRC) \
-    { \
-        X86Instruction->SrcOpIndex[X86Instruction->SrcOpCount] = (U8)OperandIndex; \
-        X86Instruction->SrcOpCount++; \
-    } \
+    }                                                                                  \
+    if (Operand->Flags & OP_SRC)                                                       \
+    {                                                                                  \
+        X86Instruction->SrcOpIndex[X86Instruction->SrcOpCount] = (U8)OperandIndex;     \
+        X86Instruction->SrcOpCount++;                                                  \
+    }                                                                                  \
 }
 
 #define CHECK_AMD64_REG() { if (IS_AMD64()) Operand->Register += AMD64_DIFF; }
@@ -564,15 +570,15 @@ INTERNAL U64 ApplyDisplacement(U64 Address, INSTRUCTION *Instruction);
 // Instruction setup
 //////////////////////////////////////////////////////////
 
-#define APPLY_OFFSET(addr) \
-{ \
-    switch (X86Instruction->OperandSize) \
-    { \
-        case 8: addr = ((U64)(addr + Instruction->VirtualAddressDelta)); break; \
+#define APPLY_OFFSET(addr)                                                           \
+{                                                                                    \
+    switch (X86Instruction->OperandSize)                                             \
+    {                                                                                \
+        case 8: addr = ((U64)(addr + Instruction->VirtualAddressDelta)); break;      \
         case 4: addr = (U64)((U32)(addr + Instruction->VirtualAddressDelta)); break; \
-        case 2: addr = (U64)((U8)(addr + Instruction->VirtualAddressDelta)); break; \
-        default: assert(0); break; \
-    } \
+        case 2: addr = (U64)((U8)(addr + Instruction->VirtualAddressDelta)); break;  \
+        default: assert(0); break;                                                   \
+    }                                                                                \
 }
 
 BOOL X86_InitInstruction(INSTRUCTION *Instruction)
@@ -612,145 +618,145 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
 // You can change these to whatever you prefer
 ////////////////////////////////////////////////////////////
 
-#define X86_WRITE_OPFLAGS() \
-    if (Flags & DISASM_SHOWFLAGS) \
-    { \
-        APPENDB('{'); \
+#define X86_WRITE_OPFLAGS()                               \
+    if (Flags & DISASM_SHOWFLAGS)                         \
+    {                                                     \
+        APPENDB('{');                                     \
         assert(Operand->Flags & (OP_EXEC|OP_SRC|OP_DST)); \
-        if (Operand->Flags & OP_IPREL) APPENDB('r'); \
-        if (Operand->Flags & OP_FAR) APPENDB('f'); \
-        if (Operand->Flags & OP_CONDR) APPENDB('c'); \
-        if (Operand->Flags & OP_EXEC) APPENDB('X'); \
-        else if (Operand->Flags & OP_SRC) APPENDB('R'); \
-        if (Operand->Flags & OP_CONDW) APPENDB('c'); \
-        if (Operand->Flags & OP_DST) APPENDB('W'); \
-        if (Operand->Flags & OP_SYS) APPENDB('S'); \
-        if (Operand->Flags & OP_ADDRESS) APPENDB('A'); \
-        if (Operand->Flags & OP_PARAM) APPENDB('P'); \
-        if (Operand->Flags & OP_LOCAL) APPENDB('L'); \
-        if (Operand->Flags & OP_GLOBAL) APPENDB('G'); \
-        APPENDB('}'); \
+        if (Operand->Flags & OP_IPREL) APPENDB('r');      \
+        if (Operand->Flags & OP_FAR) APPENDB('f');        \
+        if (Operand->Flags & OP_CONDR) APPENDB('c');      \
+        if (Operand->Flags & OP_EXEC) APPENDB('X');       \
+        else if (Operand->Flags & OP_SRC) APPENDB('R');   \
+        if (Operand->Flags & OP_CONDW) APPENDB('c');      \
+        if (Operand->Flags & OP_DST) APPENDB('W');        \
+        if (Operand->Flags & OP_SYS) APPENDB('S');        \
+        if (Operand->Flags & OP_ADDRESS) APPENDB('A');    \
+        if (Operand->Flags & OP_PARAM) APPENDB('P');      \
+        if (Operand->Flags & OP_LOCAL) APPENDB('L');      \
+        if (Operand->Flags & OP_GLOBAL) APPENDB('G');     \
+        APPENDB('}');                                     \
     }
 
-#define X86_WRITE_IMMEDIATE() \
-{ \
-    switch (Operand->Length) \
-    { \
-        case 8: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02I64X=", Operand->Value_U64); \
-            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%I64u", Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02I64X=%I64d", -Operand->Value_S64, Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%I64d", Operand->Value_S64); \
-            break; \
-        case 4: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02lX=", (U32)Operand->Value_U64); \
+#define X86_WRITE_IMMEDIATE()                                                                                                        \
+{                                                                                                                                    \
+    switch (Operand->Length)                                                                                                         \
+    {                                                                                                                                \
+        case 8:                                                                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02I64X=", Operand->Value_U64);                                                             \
+            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%I64u", Operand->Value_U64);    \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02I64X=%I64d", -Operand->Value_S64, Operand->Value_S64);*/                         \
+            else APPEND(OPCSTR, SIZE_LEFT, "%I64d", Operand->Value_S64);                                                             \
+            break;                                                                                                                   \
+        case 4:                                                                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02lX=", (U32)Operand->Value_U64);                                                          \
             if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%lu", (U32)Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02lX=%ld", (U32)-Operand->Value_S64, (S32)Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%ld", (S32)Operand->Value_S64); \
-            break; \
-        case 2: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U16)Operand->Value_U64); \
-            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%u", (U16)Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X=%d", (U16)-Operand->Value_S64, (S16)Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%d", (S16)Operand->Value_S64); \
-            break; \
-        case 1: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U8)Operand->Value_U64); \
-            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%u", (U8)Operand->Value_U64); \
-            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X=%d", (U8)-Operand->Value_S64, (S8)Operand->Value_S64);*/ \
-            else APPEND(OPCSTR, SIZE_LEFT, "%d", (S8)Operand->Value_S64); \
-            break; \
-        default: assert(0); break; \
-    } \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02lX=%ld", (U32)-Operand->Value_S64, (S32)Operand->Value_S64);*/                   \
+            else APPEND(OPCSTR, SIZE_LEFT, "%ld", (S32)Operand->Value_S64);                                                          \
+            break;                                                                                                                   \
+        case 2:                                                                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U16)Operand->Value_U64);                                                           \
+            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%u", (U16)Operand->Value_U64);  \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X=%d", (U16)-Operand->Value_S64, (S16)Operand->Value_S64);*/                     \
+            else APPEND(OPCSTR, SIZE_LEFT, "%d", (S16)Operand->Value_S64);                                                           \
+            break;                                                                                                                   \
+        case 1:                                                                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%02X=", (U8)Operand->Value_U64);                                                            \
+            if (Operand->Value_S64 >= 0 || !(Operand->Flags & OP_SIGNED)) APPEND(OPCSTR, SIZE_LEFT, "%u", (U8)Operand->Value_U64);   \
+            /*else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X=%d", (U8)-Operand->Value_S64, (S8)Operand->Value_S64);*/                       \
+            else APPEND(OPCSTR, SIZE_LEFT, "%d", (S8)Operand->Value_S64);                                                            \
+            break;                                                                                                                   \
+        default: assert(0); break;                                                                                                   \
+    }                                                                                                                                \
 }
 
-#define X86_WRITE_ABSOLUTE_DISPLACEMENT() \
-{  \
-    switch (X86Instruction->AddressSize) \
-    { \
-        case 8: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%04I64X", X86Instruction->Displacement); \
-            break; \
-        case 4: \
+#define X86_WRITE_ABSOLUTE_DISPLACEMENT()                                            \
+{                                                                                    \
+    switch (X86Instruction->AddressSize)                                             \
+    {                                                                                \
+        case 8:                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%04I64X", X86Instruction->Displacement);    \
+            break;                                                                   \
+        case 4:                                                                      \
             APPEND(OPCSTR, SIZE_LEFT, "0x%04lX", (U32)X86Instruction->Displacement); \
-            break; \
-        case 2: \
-            APPEND(OPCSTR, SIZE_LEFT, "0x%04X", (U16)X86Instruction->Displacement); \
-            break; \
-        default: assert(0); break; \
-    } \
+            break;                                                                   \
+        case 2:                                                                      \
+            APPEND(OPCSTR, SIZE_LEFT, "0x%04X", (U16)X86Instruction->Displacement);  \
+            break;                                                                   \
+        default: assert(0); break;                                                   \
+    }                                                                                \
 }
 
-#define X86_WRITE_RELATIVE_DISPLACEMENT64() \
+#define X86_WRITE_RELATIVE_DISPLACEMENT64()                                                                       \
     if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02I64X", X86Instruction->Displacement); \
     else APPEND(OPCSTR, SIZE_LEFT, "-0x%02I64X", -X86Instruction->Displacement);
 
-#define X86_WRITE_RELATIVE_DISPLACEMENT32() \
+#define X86_WRITE_RELATIVE_DISPLACEMENT32()                                                                          \
     if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02lX", (U32)X86Instruction->Displacement); \
     else APPEND(OPCSTR, SIZE_LEFT, "-0x%02lX", (U32)-X86Instruction->Displacement);
 
-#define X86_WRITE_RELATIVE_DISPLACEMENT16() \
+#define X86_WRITE_RELATIVE_DISPLACEMENT16()                                                                         \
     if (X86Instruction->Displacement >= 0) APPEND(OPCSTR, SIZE_LEFT, "+0x%02X", (U16)X86Instruction->Displacement); \
     else APPEND(OPCSTR, SIZE_LEFT, "-0x%02X", (U16)-X86Instruction->Displacement);
 
-#define X86_WRITE_RELATIVE_DISPLACEMENT() \
-{  \
-    switch (X86Instruction->AddressSize) \
-    { \
-        case 8: \
+#define X86_WRITE_RELATIVE_DISPLACEMENT()       \
+{                                               \
+    switch (X86Instruction->AddressSize)        \
+    {                                           \
+        case 8:                                 \
             X86_WRITE_RELATIVE_DISPLACEMENT64() \
-            break; \
-        case 4: \
+            break;                              \
+        case 4:                                 \
             X86_WRITE_RELATIVE_DISPLACEMENT32() \
-            break; \
-        case 2: \
+            break;                              \
+        case 2:                                 \
             X86_WRITE_RELATIVE_DISPLACEMENT16() \
-            break; \
-        default: assert(0); break; \
-    } \
+            break;                              \
+        default: assert(0); break;              \
+    }                                           \
 }
 
-#define X86_WRITE_IP_OFFSET(op) \
-{ \
-    switch (X86Instruction->OperandSize) \
-    { \
-        case 8: \
-            APPENDS("[rip+ilen"); \
-            assert((op)->TargetAddress); \
-            X86_WRITE_RELATIVE_DISPLACEMENT64() \
-            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04I64X", (op)->TargetAddress+Instruction->VirtualAddressDelta); \
-            break; \
-        case 4: \
-            APPENDS("[eip+ilen"); \
-            assert((op)->TargetAddress); \
-            X86_WRITE_RELATIVE_DISPLACEMENT32() \
+#define X86_WRITE_IP_OFFSET(op)                                                                                  \
+{                                                                                                                \
+    switch (X86Instruction->OperandSize)                                                                         \
+    {                                                                                                            \
+        case 8:                                                                                                  \
+            APPENDS("[rip+ilen");                                                                                \
+            assert((op)->TargetAddress);                                                                         \
+            X86_WRITE_RELATIVE_DISPLACEMENT64()                                                                  \
+            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04I64X", (op)->TargetAddress+Instruction->VirtualAddressDelta);      \
+            break;                                                                                               \
+        case 4:                                                                                                  \
+            APPENDS("[eip+ilen");                                                                                \
+            assert((op)->TargetAddress);                                                                         \
+            X86_WRITE_RELATIVE_DISPLACEMENT32()                                                                  \
             APPEND(OPCSTR, SIZE_LEFT, "]=0x%04lX", (U32)((op)->TargetAddress+Instruction->VirtualAddressDelta)); \
-            break; \
-        case 2: \
-            APPENDS("[ip+ilen"); \
-            X86_WRITE_RELATIVE_DISPLACEMENT16() \
-            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04X", (U16)((op)->TargetAddress+Instruction->VirtualAddressDelta)); \
-            break; \
-        default: assert(0); break; \
-    } \
+            break;                                                                                               \
+        case 2:                                                                                                  \
+            APPENDS("[ip+ilen");                                                                                 \
+            X86_WRITE_RELATIVE_DISPLACEMENT16()                                                                  \
+            APPEND(OPCSTR, SIZE_LEFT, "]=0x%04X", (U16)((op)->TargetAddress+Instruction->VirtualAddressDelta));  \
+            break;                                                                                               \
+        default: assert(0); break;                                                                               \
+    }                                                                                                            \
 }
 
-#define X86_WRITE_OFFSET(op) \
-{ \
-    assert((op)->Length <= 8); \
-    if (X86Instruction->HasSelector) \
-    { \
-        assert((op)->Flags & OP_FAR); \
-        APPEND(OPCSTR, SIZE_LEFT, "%s 0x%02X:[", DataSizes[((op)->Length >> 1)], X86Instruction->Selector); \
-    } \
-    else \
-    { \
-        assert(!((op)->Flags & OP_FAR)); \
-        assert(X86Instruction->Segment < SEG_MAX) ; \
+#define X86_WRITE_OFFSET(op)                                                                                     \
+{                                                                                                                \
+    assert((op)->Length <= 8);                                                                                   \
+    if (X86Instruction->HasSelector)                                                                             \
+    {                                                                                                            \
+        assert((op)->Flags & OP_FAR);                                                                            \
+        APPEND(OPCSTR, SIZE_LEFT, "%s 0x%02X:[", DataSizes[((op)->Length >> 1)], X86Instruction->Selector);      \
+    }                                                                                                            \
+    else                                                                                                         \
+    {                                                                                                            \
+        assert(!((op)->Flags & OP_FAR));                                                                         \
+        assert(X86Instruction->Segment < SEG_MAX) ;                                                              \
         APPEND(OPCSTR, SIZE_LEFT, "%s %s:[", DataSizes[((op)->Length >> 1)], Segments[X86Instruction->Segment]); \
-    } \
-    X86_WRITE_ABSOLUTE_DISPLACEMENT() \
-    APPENDB(']'); \
+    }                                                                                                            \
+    X86_WRITE_ABSOLUTE_DISPLACEMENT()                                                                            \
+    APPENDB(']');                                                                                                \
 }
 
 void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
@@ -967,7 +973,7 @@ U8 *X86_FindFunctionByPrologue(INSTRUCTION *Instruction, U8 *StartAddress, U8 *E
 // Instruction decoder
 //////////////////////////////////////////////////////////
 
-BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
+BOOL X86_GetInstruction(PRTL Rtl, INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 {
     BOOL SpecialExtension = FALSE;
     U8 Opcode = 0, OpcodeExtension = 0, Group = 0, SSE_Prefix = 0, Suffix;
@@ -999,7 +1005,9 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
     assert(!Instruction->StringIndex && !Instruction->Length);
 
     Disassembler->Stage1Count++;
-    if (Flags & DISASM_ALIGNOUTPUT) Instruction->StringAligned = TRUE;
+    if (Flags & DISASM_ALIGNOUTPUT) {
+        Instruction->StringAligned = TRUE;
+    }
 
     //
     // Get prefixes or three byte opcode
@@ -1227,7 +1235,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         Instruction->PrefixCount++;
         X86Instruction->rex_b = Opcode;
         SET_REX(X86Instruction->rex, X86Instruction->rex_b);
-        DISASM_OUTPUT(("[0x%08I64X] REX prefix 0x%02X (prefix count %d, w=%d, r=%d, x=%d, b=%d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount, X86Instruction->rex.w, X86Instruction->rex.r, X86Instruction->rex.x, X86Instruction->rex.b));
+        //DISASM_OUTPUT(("[0x%08I64X] REX prefix 0x%02X (prefix count %d, w=%d, r=%d, x=%d, b=%d)\n", VIRTUAL_ADDRESS, Opcode, Instruction->PrefixCount, X86Instruction->rex.w, X86Instruction->rex.r, X86Instruction->rex.x, X86Instruction->rex.b));
 
         assert(X86Instruction->AddressSize >= 4);
         if (X86Instruction->rex.w)
@@ -1320,7 +1328,7 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 
         if (X86_SPECIAL_EXTENSION(X86Opcode))
         {
-            DISASM_OUTPUT(("[0x%08I64X] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
+            //DISASM_OUTPUT(("[0x%08I64X] Special opcode extension 0x%02X 0x%02X\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode));
             SpecialExtension = TRUE;
             goto HasSpecialExtension;
         }
@@ -1422,12 +1430,12 @@ BOOL X86_GetInstruction(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
             X86Instruction->Group = (U8)Group;
             assert(Group > 0 && Group <= 19);
             assert(X86Opcode->Mnemonic);
-            DISASM_OUTPUT(("[0x%08I64X] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
+            //DISASM_OUTPUT(("[0x%08I64X] Group %d (bytes 0x%02X 0x%02X) extension 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, Group, X86_TWO_BYTE_OPCODE, Opcode, OpcodeExtension, X86Opcode->Mnemonic));
         }
         else
         {
             assert(X86Opcode->Mnemonic);
-            DISASM_OUTPUT(("[0x%08I64X] Two byte opcode 0x%02X 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic));
+            //DISASM_OUTPUT(("[0x%08I64X] Two byte opcode 0x%02X 0x%02X (\"%s\")\n", VIRTUAL_ADDRESS, X86_TWO_BYTE_OPCODE, Opcode, X86Opcode->Mnemonic));
             X86Instruction->HasModRM = X86_ModRM_2[Opcode];
             if (X86Instruction->HasModRM) X86Instruction->modrm_b = *Address;
         }

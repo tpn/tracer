@@ -13,8 +13,71 @@
 extern "C" {
 #endif
 #include <windows.h>
-#include <stdio.h>
 #include "misc.h"
+
+#include "../../Rtl/Rtl.h"
+
+#define memmove(dest, src, length) Rtl->RtlMoveMemory(dest, src, length)
+#define malloc(bytes) HeapAlloc(Rtl->HeapHandle, HEAP_ZERO_MEMORY, bytes)
+#define free(ptr) HeapFree(Rtl->HeapHandle, 0, ptr)
+
+
+/*
+static INIT_ONCE InitOnceInitRtl = INIT_ONCE_STATIC_INIT;
+static BOOL
+CALLBACK
+InitRtlCallback(
+    PINIT_ONCE InitOnce,
+    PVOID Parameter,
+    PVOID *lpContext
+)
+{
+    PROC Proc;
+    BOOL Success;
+    HMODULE Module;
+    PINITIALIZE_RTL InitializeRtl;
+    ULONG SizeOfRtl = sizeof(Rtl);
+
+    Module = LoadLibraryA("Rtl");
+    Proc = GetProcAddress(Module, "InitializeRtl");
+    if (!Proc) {
+        __debugbreak();
+    }
+
+    InitializeRtl = (PINITIALIZE_RTL)Proc;
+    if (!InitializeRtl) {
+        __debugbreak();
+    }
+
+    Success = InitializeRtl(&Rtl, &SizeOfRtl);
+    if (!Success) {
+        __debugbreak();
+    }
+
+    return TRUE;
+}
+
+
+FORCEINLINE
+BOOL
+InitRtl(VOID)
+{
+    BOOL Status;
+
+    Status = InitOnceExecuteOnce(
+        &InitOnceInitRtl,
+        InitRtlCallback,
+        NULL,
+        NULL
+    );
+
+    return Status;
+}
+*/
+
+
+#undef assert
+#define assert
 
 typedef signed char S8;
 typedef unsigned char U8;
@@ -422,7 +485,7 @@ typedef enum _ARCHITECTURE_TYPE
 
 typedef BOOL (*INIT_INSTRUCTION)(struct _INSTRUCTION *Instruction);
 typedef void (*DUMP_INSTRUCTION)(struct _INSTRUCTION *Instruction, BOOL ShowBytes, BOOL Verbose);
-typedef BOOL (*GET_INSTRUCTION)(struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
+typedef BOOL (*GET_INSTRUCTION)(PRTL Rtl, struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
 typedef U8 *(*FIND_FUNCTION_BY_PROLOGUE)(struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags);
 
 typedef struct _ARCHITECTURE_FORMAT_FUNCTIONS
@@ -570,7 +633,7 @@ typedef struct _DISASSEMBLER
 
 BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture);
 void CloseDisassembler(DISASSEMBLER *Disassembler);
-INSTRUCTION *GetInstruction(DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags);
+INSTRUCTION *GetInstruction(PRTL Rtl, DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags);
 
 #ifdef __cplusplus
 }
