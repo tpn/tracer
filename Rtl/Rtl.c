@@ -8,20 +8,92 @@ INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
 
 CONST static UNICODE_STRING ExtendedLengthVolumePrefix = RTL_CONSTANT_STRING(L"\\\\?\\");
 
-LONG
-WINAPI
-CopyMappedMemoryVectoredExceptionHandler(
-_In_ PEXCEPTION_POINTERS ExceptionInfo
+//
+// As we don't link to the CRT, we don't get a __C_specific_handler entry,
+// which the linker will complain about as soon as we use __try/__except.
+// What we do is define a __C_specific_handler_impl pointer to the original
+// function (that lives in ntdll), then implement our own function by the
+// same name that calls the underlying impl pointer.  In order to do this
+// we have to disable some compiler/linker warnings regarding mismatched
+// stuff.
+//
+
+static P__C_SPECIFIC_HANDLER __C_specific_handler_impl = NULL;
+
+#pragma warning(push)
+#pragma warning(disable: 4028 4273)
+
+EXCEPTION_DISPOSITION
+__cdecl
+__C_specific_handler(
+    PEXCEPTION_RECORD ExceptionRecord,
+    ULONG_PTR Frame,
+    PCONTEXT Context,
+    struct _DISPATCHER_CONTEXT *Dispatch
 )
 {
-    PCONTEXT Context = ExceptionInfo->ContextRecord;
-    PEXCEPTION_RECORD Exception = ExceptionInfo->ExceptionRecord;
+    return __C_specific_handler_impl(ExceptionRecord,
+                                     Frame,
+                                     Context,
+                                     Dispatch);
+}
 
-    if (Exception->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
-        return EXCEPTION_CONTINUE_EXECUTION;
+#pragma warning(pop)
+
+#pragma intrinsic(memcpy)
+
+_Check_return_
+PVOID
+CopyToMemoryMappedMemory(
+    PVOID Destination,
+    LPCVOID Source,
+    SIZE_T Size
+)
+{
+
+    //
+    // Writing to memory mapped memory could raise a STATUS_IN_PAGE_ERROR
+    // if there has been an issue with the backing store (such as memory
+    // mapping a file on a network drive, then having the network fail).
+    // Catch such exceptions and return NULL.
+    //
+
+    __try {
+
+        return RtlCopyMemory(Destination, Source, Size);
+
+    } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
+                EXCEPTION_EXECUTE_HANDLER :
+                EXCEPTION_CONTINUE_EXECUTION)
+    {
+        return NULL;
+    }
+}
+
+BOOL
+TestExceptionHandler(VOID)
+{
+    //
+    // Try assigning '1' to the memory address 0x10.
+    //
+
+    __try {
+
+        (*(volatile *)(PCHAR)10) = '1';
+
+    }
+    __except (GetExceptionCode() == STATUS_ACCESS_VIOLATION ?
+              EXCEPTION_EXECUTE_HANDLER :
+              EXCEPTION_CONTINUE_SEARCH)
+    {
+        return TRUE;
     }
 
-    return EXCEPTION_CONTINUE_SEARCH;
+    //
+    // This should be unreachable.
+    //
+
+    return FALSE;
 }
 
 BOOL
@@ -32,19 +104,29 @@ SetCSpecificHandlerCallback(
     PVOID *lpContext
 )
 {
-    VectoredExceptionHandler = AddVectoredExceptionHandler(1, CopyMappedMemoryVectoredExceptionHandler);
-    return (VectoredExceptionHandler ? TRUE : FALSE);
+    PROC Handler;
+    HMODULE Module;
+    BOOL Success = FALSE;
+
+    Module = (HMODULE)Parameter;
+
+    if (Handler = GetProcAddress(Module, "__C_specific_handler")) {
+        __C_specific_handler_impl = (P__C_SPECIFIC_HANDLER)Handler;
+        Success = TRUE;
+    }
+
+    return Success;
 }
 
 BOOL
-SetCSpecificHandler(PCSPECIFICHANDLER Handler)
+SetCSpecificHandler(_In_ HMODULE Module)
 {
     BOOL Status;
 
     Status = InitOnceExecuteOnce(
         &InitOnceCSpecificHandler,
         SetCSpecificHandlerCallback,
-        Handler,
+        Module,
         NULL
     );
 
@@ -146,18 +228,6 @@ CallSystemTimer(
     }
 
     return TRUE;
-}
-
-_Check_return_
-PVOID
-CopyToMemoryMappedMemory(
-    PVOID Destination,
-    LPCVOID Source,
-    SIZE_T Size
-)
-{
-    //return RtlCopyMemory(Destination, Source, Size);
-    return NULL;
 }
 
 
@@ -1685,7 +1755,11 @@ RtlCheckBit(
     _In_ ULONG BitPosition
     )
 {
+#ifdef _M_AMD64
     return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
+#else
+    return BitTest((LONG const *)BitMapHeader->Buffer, (LONG)BitPosition);
+#endif
 }
 
 //
@@ -1857,7 +1931,7 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPY_TO_MEMORY_MAPPED_MEMORY)
         GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'CopyToMemoryMappedMemory'");
@@ -1882,6 +1956,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "FilesExist"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'FilesExist'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->TestExceptionHandler = (PTEST_EXCEPTION_HANDLER)
+        GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
         return FALSE;
     }
 
@@ -1961,6 +2042,8 @@ InitializeRtl(
     if (!LoadRtlSymbols(Rtl)) {
         return FALSE;
     }
+
+    SetCSpecificHandler(Rtl->NtdllModule);
 
     if (!LoadRtlExSymbols(NULL, Rtl)) {
         return FALSE;

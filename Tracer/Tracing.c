@@ -49,7 +49,7 @@ FindLongestTraceStoreFileNameCallback(
 
     for (Index = 0; Index < NumberOfTraceStores; Index++) {
         LPCWSTR FileName = TraceStoreFileNames[Index];
-        if (FAILED(StringCchLengthW(FileName, MaxPath, &Length.QuadPart))) {
+        if (FAILED(StringCchLengthW(FileName, MaxPath, (PSIZE_T)&Length.QuadPart))) {
             return FALSE;
         }
         if (Length.QuadPart > Longest.QuadPart) {
@@ -433,7 +433,7 @@ InitializeTraceStores(
     Result = StringCchLengthW(
         BaseDirectory,
         LongestPossibleDirectoryLength,
-        &DirectoryLength.QuadPart
+        (PSIZE_T)&DirectoryLength.QuadPart
     );
 
     if (FAILED(Result)) {
@@ -484,7 +484,7 @@ InitializeTraceStores(
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
         ULONG MappingSize = DefaultTraceStoreMappingSize;
-        Result = StringCchCopyW(FileNameDest, RemainingChars.QuadPart, FileName);
+        Result = StringCchCopyW(FileNameDest, (SIZE_T)RemainingChars.QuadPart, FileName);
         if (FAILED(Result)) {
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return FALSE;

@@ -132,7 +132,7 @@ _In_ SIZE_T Length
 
 typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
-typedef EXCEPTION_DISPOSITION (__cdecl *PCSPECIFICHANDLER)(
+typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
     PEXCEPTION_RECORD ExceptionRecord,
     ULONG_PTR Frame,
     PCONTEXT Context,
@@ -993,7 +993,7 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
 //
 // Our functions
 //
-typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
+typedef PVOID (*PCOPY_TO_MEMORY_MAPPED_MEMORY)(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
@@ -1054,6 +1054,13 @@ typedef BOOL (*PCOPY_UNICODE_STRING)(
     _In_  PVOID                 AllocationContext
     );
 
+typedef BOOL (*PHASH_UNICODE_STRING_TO_ATOM)(
+    _In_  PUNICODE_STRING String,
+    _Out_ PULONG Hash
+    );
+
+typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
@@ -1065,10 +1072,11 @@ typedef BOOL (*PCOPY_UNICODE_STRING)(
     PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                       \
     PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                            \
     PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                          \
-    PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;                        \
+    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
-    PFILES_EXIST FilesExist;
+    PFILES_EXIST FilesExist;                                                   \
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -1102,6 +1110,9 @@ typedef struct _RTL {
     };
 
 } RTL, *PRTL, **PPRTL;
+
+#define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
 #define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
 #define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
@@ -1189,6 +1200,10 @@ FilesExist(
     _Out_opt_ PPUNICODE_STRING WhichFilename
     );
 
+RTL_API
+BOOL
+TestExceptionHandler(VOID);
+
 FORCEINLINE
 BOOL
 AppendUnicodeCharToUnicodeString(
@@ -1272,6 +1287,82 @@ ClearString(_Inout_ PSTRING String)
     String->Length = 0;
     String->MaximumLength = 0;
     String->Buffer = NULL;
+}
+
+FORCEINLINE
+ULONG
+HashUnicodeToAtom(_In_ PWSTR String)
+{
+    PWCH Buffer;
+    WCHAR Char;
+    ULONG Hash;
+
+    Hash = 0;
+    Buffer = String;
+    while (*Buffer != UNICODE_NULL) {
+        Char = RtlUpcaseUnicodeChar(*Buffer++);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashUnicodeStringToAtom(_In_ PUNICODE_STRING String)
+{
+    PWCH Buffer;
+    WCHAR Char;
+    ULONG Hash;
+    USHORT Index;
+
+    Hash = 0;
+    Buffer = String->Buffer;
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = RtlUpcaseUnicodeChar(Buffer[Index]);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashAnsiToAtom(_In_ PSTR String)
+{
+    PCH Pointer;
+    CHAR Char;
+    ULONG Hash;
+
+    Hash = 0;
+    Pointer = String;
+    while (*Pointer != '\0') {
+        Char = RtlUpcaseChar(*Pointer++);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashAnsiStringToAtom(_In_ PSTRING String)
+{
+    PCH Buffer;
+    CHAR Char;
+    ULONG Hash;
+    USHORT Index;
+
+    Hash = 0;
+    Buffer = String->Buffer;
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = RtlUpcaseChar(Buffer[Index]);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
 }
 
 //
