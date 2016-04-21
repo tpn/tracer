@@ -35,8 +35,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{48C8BAC4-5648-4484-ABAC-19D014993449}</ProjectGuid>
-    <RootNamespace>Sqlite3102</RootNamespace>
+    <ProjectGuid>{C45E2595-23B1-4473-9A36-A46B7CABC51B}</ProjectGuid>
+    <RootNamespace>Store</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -68,7 +68,6 @@
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
-  <Import Project="..\Crt.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -84,7 +83,7 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="sqlite3.h" />
+    <ClInclude Include="Store.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c">
@@ -93,7 +92,7 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="sqlite3.c" />
+    <ClCompile Include="Store.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

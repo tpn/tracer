@@ -132,7 +132,7 @@ _In_ SIZE_T Length
 
 typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
-typedef EXCEPTION_DISPOSITION (__cdecl *PCSPECIFICHANDLER)(
+typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
     PEXCEPTION_RECORD ExceptionRecord,
     ULONG_PTR Frame,
     PCONTEXT Context,
@@ -821,12 +821,41 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     );
 
 //
+// Tool Help
+//
+
+typedef struct tagTHREADENTRY32 *LPTHREADENTRY32;
+
+typedef HANDLE (WINAPI * PCREATE_TOOLHELP32_SNAPSHOT)(
+    DWORD dwFlags,
+    DWORD th32ProcessID
+    );
+
+typedef BOOL (WINAPI *PTHREAD32_FIRST)(
+    HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte
+    );
+
+typedef BOOL (WINAPI *PTHREAD32_NEXT)(
+    HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte
+    );
+
+//
 // Misc
 //
 typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     _In_ PVOID Source,
     _In_ SIZE_T Length
     );
+
+typedef VOID (*PRTL_MOVE_MEMORY)(
+    _Out_       VOID UNALIGNED *Destination,
+    _In_  const VOID UNALIGNED *Source,
+    _In_        SIZE_T          Length
+    );
+
+#undef RtlMoveMemory
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
@@ -904,7 +933,11 @@ typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
-    PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;
+    PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
+    PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
+    PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
+    PTHREAD32_FIRST Thread32First;                                                                     \
+    PTHREAD32_NEXT Thread32Next;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -993,7 +1026,7 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
 //
 // Our functions
 //
-typedef PVOID (*PCOPYTOMEMORYMAPPEDMEMORY)(
+typedef PVOID (*PCOPY_TO_MEMORY_MAPPED_MEMORY)(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
@@ -1054,6 +1087,13 @@ typedef BOOL (*PCOPY_UNICODE_STRING)(
     _In_  PVOID                 AllocationContext
     );
 
+typedef BOOL (*PHASH_UNICODE_STRING_TO_ATOM)(
+    _In_  PUNICODE_STRING String,
+    _Out_ PULONG Hash
+    );
+
+typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
@@ -1065,10 +1105,11 @@ typedef BOOL (*PCOPY_UNICODE_STRING)(
     PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                       \
     PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                            \
     PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                          \
-    PCOPYTOMEMORYMAPPEDMEMORY CopyToMemoryMappedMemory;                        \
+    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
-    PFILES_EXIST FilesExist;
+    PFILES_EXIST FilesExist;                                                   \
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -1079,6 +1120,8 @@ typedef struct _RTL {
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
+
+    HANDLE      HeapHandle;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -1102,6 +1145,14 @@ typedef struct _RTL {
     };
 
 } RTL, *PRTL, **PPRTL;
+
+typedef BOOL (*PINITIALIZE_RTL)(
+    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_                   PULONG SizeOfRtl
+    );
+
+#define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
 #define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
 #define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
@@ -1189,6 +1240,10 @@ FilesExist(
     _Out_opt_ PPUNICODE_STRING WhichFilename
     );
 
+RTL_API
+BOOL
+TestExceptionHandler(VOID);
+
 FORCEINLINE
 BOOL
 AppendUnicodeCharToUnicodeString(
@@ -1273,6 +1328,114 @@ ClearString(_Inout_ PSTRING String)
     String->MaximumLength = 0;
     String->Buffer = NULL;
 }
+
+FORCEINLINE
+ULONG
+HashUnicodeToAtom(_In_ PWSTR String)
+{
+    PWCH Buffer;
+    WCHAR Char;
+    ULONG Hash;
+
+    Hash = 0;
+    Buffer = String;
+    while (*Buffer != UNICODE_NULL) {
+        Char = RtlUpcaseUnicodeChar(*Buffer++);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashUnicodeStringToAtom(_In_ PUNICODE_STRING String)
+{
+    PWCH Buffer;
+    WCHAR Char;
+    ULONG Hash;
+    USHORT Index;
+
+    Hash = 0;
+    Buffer = String->Buffer;
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = RtlUpcaseUnicodeChar(Buffer[Index]);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashAnsiToAtom(_In_ PSTR String)
+{
+    PCH Pointer;
+    CHAR Char;
+    ULONG Hash;
+
+    Hash = 0;
+    Pointer = String;
+    while (*Pointer != '\0') {
+        Char = RtlUpcaseChar(*Pointer++);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+ULONG
+HashAnsiStringToAtom(_In_ PSTRING String)
+{
+    PCH Buffer;
+    CHAR Char;
+    ULONG Hash;
+    USHORT Index;
+
+    Hash = 0;
+    Buffer = String->Buffer;
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = RtlUpcaseChar(Buffer[Index]);
+        Hash = Hash + (Char << 1) + (Char >> 1) + Char;
+    }
+
+    return Hash;
+}
+
+FORCEINLINE
+BOOL
+InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
+{
+    PROC Proc;
+    BOOL Success;
+    HMODULE Module;
+    PINITIALIZE_RTL InitializeRtl;
+
+    Module = LoadLibraryA("Rtl");
+    Proc = GetProcAddress(Module, "InitializeRtl");
+    if (!Proc) {
+        __debugbreak();
+    }
+
+    InitializeRtl = (PINITIALIZE_RTL)Proc;
+    if (!InitializeRtl) {
+        __debugbreak();
+    }
+
+    Success = InitializeRtl(Rtl, SizeOfRtl);
+    if (!Success) {
+        __debugbreak();
+    }
+
+    return TRUE;
+}
+
+RTL_API
+BOOL
+InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
 //
 // Verbatim copy of the doubly-linked list inline methods.

@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{1295BECE-FC35-422B-AB84-960D919B2128}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{6CA73B9D-2BB9-471A-A0F9-81785F1B4C04}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{26E49796-6FD4-4EDB-978D-6F129F1570A3}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\mhook">
+      <UniqueIdentifier>{540f6577-4309-45e8-9797-17cf10b06d41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\disasm">
+      <UniqueIdentifier>{2cf9da5b-f923-4495-848b-d4e3635f0566}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\mhook">
+      <UniqueIdentifier>{991f47ab-19c3-45ec-a05a-fb772fc248dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\disasm">
+      <UniqueIdentifier>{0690c787-c17d-4c4d-bdec-82aa5074e329}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mhook\mhook.h">
+      <Filter>Header Files\mhook</Filter>
+    </ClInclude>
+    <ClInclude Include="disasm\cpu.h">
+      <Filter>Header Files\disasm</Filter>
+    </ClInclude>
+    <ClInclude Include="disasm\disasm.h">
+      <Filter>Header Files\disasm</Filter>
+    </ClInclude>
+    <ClInclude Include="disasm\disasm_x86.h">
+      <Filter>Header Files\disasm</Filter>
+    </ClInclude>
+    <ClInclude Include="disasm\disasm_x86_tables.h">
+      <Filter>Header Files\disasm</Filter>
+    </ClInclude>
+    <ClInclude Include="disasm\misc.h">
+      <Filter>Header Files\disasm</Filter>
+    </ClInclude>
+    <ClInclude Include="Hook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dllmain.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mhook\mhook.c">
+      <Filter>Source Files\mhook</Filter>
+    </ClCompile>
+    <ClCompile Include="disasm\misc.c">
+      <Filter>Source Files\disasm</Filter>
+    </ClCompile>
+    <ClCompile Include="disasm\disasm_x86.c">
+      <Filter>Source Files\disasm</Filter>
+    </ClCompile>
+    <ClCompile Include="disasm\disasm.c">
+      <Filter>Source Files\disasm</Filter>
+    </ClCompile>
+    <ClCompile Include="disasm\cpu.c">
+      <Filter>Source Files\disasm</Filter>
+    </ClCompile>
+    <ClCompile Include="Hook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -35,8 +35,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{48C8BAC4-5648-4484-ABAC-19D014993449}</ProjectGuid>
-    <RootNamespace>Sqlite3102</RootNamespace>
+    <ProjectGuid>{8A955480-C02A-4F46-B894-4C61F29729F4}</ProjectGuid>
+    <RootNamespace>Hook</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -68,7 +68,6 @@
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
-  <Import Project="..\Crt.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -82,18 +81,29 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClInclude Include="disasm\cpu.h" />
+    <ClInclude Include="disasm\disasm.h" />
+    <ClInclude Include="disasm\disasm_x86.h" />
+    <ClInclude Include="disasm\disasm_x86_tables.h" />
+    <ClInclude Include="disasm\misc.h" />
+    <ClInclude Include="mhook\mhook.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="sqlite3.h" />
+    <ClInclude Include="Hook.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="disasm\cpu.c" />
+    <ClCompile Include="disasm\disasm.c" />
+    <ClCompile Include="disasm\disasm_x86.c" />
+    <ClCompile Include="disasm\misc.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="mhook\mhook.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="sqlite3.c" />
+    <ClCompile Include="Hook.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

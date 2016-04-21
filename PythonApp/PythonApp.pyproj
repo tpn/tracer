@@ -66,6 +66,7 @@
     <Compile Include="lib\tracer\__init__.py" />
     <Compile Include="pt.py" />
     <Compile Include="ptd.py" />
+    <Compile Include="py27test.py" />
     <Compile Include="setup.py" />
     <Compile Include="versioneer.py" />
   </ItemGroup>

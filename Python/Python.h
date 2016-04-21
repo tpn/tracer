@@ -31,7 +31,7 @@ typedef __int64 SSIZE_T, *PSSIZE_T;
 #else
 typedef _W64 int Py_ssize_t, Py_SSIZE;
 typedef _W64 int Py_hash_t, PY_HASH;
-typedef _W64 int SSIZE_T, *PSSIZE_T;
+//typedef _W64 int SSIZE_T, *PSSIZE_T;
 #endif
 
 typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;

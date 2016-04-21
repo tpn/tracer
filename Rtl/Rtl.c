@@ -8,20 +8,92 @@ INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
 
 CONST static UNICODE_STRING ExtendedLengthVolumePrefix = RTL_CONSTANT_STRING(L"\\\\?\\");
 
-LONG
-WINAPI
-CopyMappedMemoryVectoredExceptionHandler(
-_In_ PEXCEPTION_POINTERS ExceptionInfo
+//
+// As we don't link to the CRT, we don't get a __C_specific_handler entry,
+// which the linker will complain about as soon as we use __try/__except.
+// What we do is define a __C_specific_handler_impl pointer to the original
+// function (that lives in ntdll), then implement our own function by the
+// same name that calls the underlying impl pointer.  In order to do this
+// we have to disable some compiler/linker warnings regarding mismatched
+// stuff.
+//
+
+static P__C_SPECIFIC_HANDLER __C_specific_handler_impl = NULL;
+
+#pragma warning(push)
+#pragma warning(disable: 4028 4273)
+
+EXCEPTION_DISPOSITION
+__cdecl
+__C_specific_handler(
+    PEXCEPTION_RECORD ExceptionRecord,
+    ULONG_PTR Frame,
+    PCONTEXT Context,
+    struct _DISPATCHER_CONTEXT *Dispatch
 )
 {
-    PCONTEXT Context = ExceptionInfo->ContextRecord;
-    PEXCEPTION_RECORD Exception = ExceptionInfo->ExceptionRecord;
+    return __C_specific_handler_impl(ExceptionRecord,
+                                     Frame,
+                                     Context,
+                                     Dispatch);
+}
 
-    if (Exception->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) {
-        return EXCEPTION_CONTINUE_EXECUTION;
+#pragma warning(pop)
+
+#pragma intrinsic(memcpy)
+
+_Check_return_
+PVOID
+CopyToMemoryMappedMemory(
+    PVOID Destination,
+    LPCVOID Source,
+    SIZE_T Size
+)
+{
+
+    //
+    // Writing to memory mapped memory could raise a STATUS_IN_PAGE_ERROR
+    // if there has been an issue with the backing store (such as memory
+    // mapping a file on a network drive, then having the network fail).
+    // Catch such exceptions and return NULL.
+    //
+
+    __try {
+
+        return RtlCopyMemory(Destination, Source, Size);
+
+    } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
+                EXCEPTION_EXECUTE_HANDLER :
+                EXCEPTION_CONTINUE_EXECUTION)
+    {
+        return NULL;
+    }
+}
+
+BOOL
+TestExceptionHandler(VOID)
+{
+    //
+    // Try assigning '1' to the memory address 0x10.
+    //
+
+    __try {
+
+        (*(volatile *)(PCHAR)10) = '1';
+
+    }
+    __except (GetExceptionCode() == STATUS_ACCESS_VIOLATION ?
+              EXCEPTION_EXECUTE_HANDLER :
+              EXCEPTION_CONTINUE_SEARCH)
+    {
+        return TRUE;
     }
 
-    return EXCEPTION_CONTINUE_SEARCH;
+    //
+    // This should be unreachable.
+    //
+
+    return FALSE;
 }
 
 BOOL
@@ -32,19 +104,29 @@ SetCSpecificHandlerCallback(
     PVOID *lpContext
 )
 {
-    VectoredExceptionHandler = AddVectoredExceptionHandler(1, CopyMappedMemoryVectoredExceptionHandler);
-    return (VectoredExceptionHandler ? TRUE : FALSE);
+    PROC Handler;
+    HMODULE Module;
+    BOOL Success = FALSE;
+
+    Module = (HMODULE)Parameter;
+
+    if (Handler = GetProcAddress(Module, "__C_specific_handler")) {
+        __C_specific_handler_impl = (P__C_SPECIFIC_HANDLER)Handler;
+        Success = TRUE;
+    }
+
+    return Success;
 }
 
 BOOL
-SetCSpecificHandler(PCSPECIFICHANDLER Handler)
+SetCSpecificHandler(_In_ HMODULE Module)
 {
     BOOL Status;
 
     Status = InitOnceExecuteOnce(
         &InitOnceCSpecificHandler,
         SetCSpecificHandlerCallback,
-        Handler,
+        Module,
         NULL
     );
 
@@ -146,18 +228,6 @@ CallSystemTimer(
     }
 
     return TRUE;
-}
-
-_Check_return_
-PVOID
-CopyToMemoryMappedMemory(
-    PVOID Destination,
-    LPCVOID Source,
-    SIZE_T Size
-)
-{
-    //return RtlCopyMemory(Destination, Source, Size);
-    return NULL;
 }
 
 
@@ -840,8 +910,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlCharToInteger"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlCharToInteger'");
-            return FALSE;
+            if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCharToInteger"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCharToInteger'");
+                return FALSE;
+            }
         }
     }
 
@@ -851,8 +925,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInitializeGenericTable = (PRTL_INITIALIZE_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInitializeGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlInitializeGenericTable = (PRTL_INITIALIZE_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitializeGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -862,8 +940,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertElementGenericTable = (PRTL_INSERT_ELEMENT_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlInsertElementGenericTable = (PRTL_INSERT_ELEMENT_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertElementGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -873,8 +955,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertElementGenericTableFull = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTableFull"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableFull'");
-            return FALSE;
+            if (!(Rtl->RtlInsertElementGenericTableFull = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertElementGenericTableFull"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableFull'");
+                return FALSE;
+            }
         }
     }
 
@@ -884,8 +970,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlDeleteElementGenericTable = (PRTL_DELETE_ELEMENT_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlDeleteElementGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteElementGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlDeleteElementGenericTable = (PRTL_DELETE_ELEMENT_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlDeleteElementGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteElementGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -895,8 +985,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupElementGenericTable = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlLookupElementGenericTable = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupElementGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -906,8 +1000,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupElementGenericTableFull = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTableFull"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableFull'");
-            return FALSE;
+            if (!(Rtl->RtlLookupElementGenericTableFull = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupElementGenericTableFull"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableFull'");
+                return FALSE;
+            }
         }
     }
 
@@ -917,8 +1015,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateGenericTable = (PRTL_ENUMERATE_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateGenericTable = (PRTL_ENUMERATE_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -928,8 +1030,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateGenericTableWithoutSplaying = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableWithoutSplaying"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableWithoutSplaying'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateGenericTableWithoutSplaying = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateGenericTableWithoutSplaying"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableWithoutSplaying'");
+                return FALSE;
+            }
         }
     }
 
@@ -939,8 +1045,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlGetElementGenericTable = (PRTL_GET_ELEMENT_GENERIC_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlGetElementGenericTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlGetElementGenericTable'");
-            return FALSE;
+            if (!(Rtl->RtlGetElementGenericTable = (PRTL_GET_ELEMENT_GENERIC_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlGetElementGenericTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlGetElementGenericTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -950,8 +1060,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlNumberGenericTableElements = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlNumberGenericTableElements"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlNumberGenericTableElements'");
-            return FALSE;
+            if (!(Rtl->RtlNumberGenericTableElements = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlNumberGenericTableElements"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlNumberGenericTableElements'");
+                return FALSE;
+            }
         }
     }
 
@@ -961,8 +1075,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlIsGenericTableEmpty = (PRTL_IS_GENERIC_TABLE_EMPTY)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlIsGenericTableEmpty"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmpty'");
-            return FALSE;
+            if (!(Rtl->RtlIsGenericTableEmpty = (PRTL_IS_GENERIC_TABLE_EMPTY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlIsGenericTableEmpty"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmpty'");
+                return FALSE;
+            }
         }
     }
 
@@ -972,8 +1090,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInitializeGenericTableAvl = (PRTL_INITIALIZE_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInitializeGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlInitializeGenericTableAvl = (PRTL_INITIALIZE_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitializeGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -983,8 +1105,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertElementGenericTableAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlInsertElementGenericTableAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertElementGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -994,8 +1120,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertElementGenericTableFullAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertElementGenericTableFullAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableFullAvl'");
-            return FALSE;
+            if (!(Rtl->RtlInsertElementGenericTableFullAvl = (PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertElementGenericTableFullAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertElementGenericTableFullAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1005,8 +1135,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlDeleteElementGenericTableAvl = (PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlDeleteElementGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteElementGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlDeleteElementGenericTableAvl = (PRTL_DELETE_ELEMENT_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlDeleteElementGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteElementGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1016,8 +1150,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupElementGenericTableAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlLookupElementGenericTableAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupElementGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1027,8 +1165,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupElementGenericTableFullAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupElementGenericTableFullAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableFullAvl'");
-            return FALSE;
+            if (!(Rtl->RtlLookupElementGenericTableFullAvl = (PRTL_LOOKUP_ELEMENT_GENERIC_TABLE_FULL_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupElementGenericTableFullAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupElementGenericTableFullAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1038,8 +1180,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateGenericTableAvl = (PRTL_ENUMERATE_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateGenericTableAvl = (PRTL_ENUMERATE_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1049,8 +1195,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateGenericTableWithoutSplayingAvl = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableWithoutSplayingAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableWithoutSplayingAvl'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateGenericTableWithoutSplayingAvl = (PRTL_ENUMERATE_GENERIC_TABLE_WITHOUT_SPLAYING_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateGenericTableWithoutSplayingAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableWithoutSplayingAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1060,8 +1210,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupFirstMatchingElementGenericTableAvl = (PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupFirstMatchingElementGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupFirstMatchingElementGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlLookupFirstMatchingElementGenericTableAvl = (PRTL_LOOKUP_FIRST_MATCHING_ELEMENT_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupFirstMatchingElementGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupFirstMatchingElementGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1071,8 +1225,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateGenericTableLikeADirectory = (PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateGenericTableLikeADirectory"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableLikeADirectory'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateGenericTableLikeADirectory = (PRTL_ENUMERATE_GENERIC_TABLE_LIKE_A_DICTIONARY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateGenericTableLikeADirectory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateGenericTableLikeADirectory'");
+                return FALSE;
+            }
         }
     }
 
@@ -1082,8 +1240,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlGetElementGenericTableAvl = (PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlGetElementGenericTableAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlGetElementGenericTableAvl'");
-            return FALSE;
+            if (!(Rtl->RtlGetElementGenericTableAvl = (PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlGetElementGenericTableAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlGetElementGenericTableAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1093,8 +1255,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlNumberGenericTableElementsAvl = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlNumberGenericTableElementsAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlNumberGenericTableElementsAvl'");
-            return FALSE;
+            if (!(Rtl->RtlNumberGenericTableElementsAvl = (PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlNumberGenericTableElementsAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlNumberGenericTableElementsAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1104,8 +1270,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlIsGenericTableEmptyAvl = (PRTL_IS_GENERIC_TABLE_EMPTY_AVL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlIsGenericTableEmptyAvl"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmptyAvl'");
-            return FALSE;
+            if (!(Rtl->RtlIsGenericTableEmptyAvl = (PRTL_IS_GENERIC_TABLE_EMPTY_AVL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlIsGenericTableEmptyAvl"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlIsGenericTableEmptyAvl'");
+                return FALSE;
+            }
         }
     }
 
@@ -1115,8 +1285,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->PfxInitialize = (PPFX_INITIALIZE)
             GetProcAddress(Rtl->NtosKrnlModule, "PfxInitialize"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'PfxInitialize'");
-            return FALSE;
+            if (!(Rtl->PfxInitialize = (PPFX_INITIALIZE)
+                GetProcAddress(Rtl->Kernel32Module, "PfxInitialize"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'PfxInitialize'");
+                return FALSE;
+            }
         }
     }
 
@@ -1126,8 +1300,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->PfxInsertPrefix = (PPFX_INSERT_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "PfxInsertPrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'PfxInsertPrefix'");
-            return FALSE;
+            if (!(Rtl->PfxInsertPrefix = (PPFX_INSERT_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "PfxInsertPrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'PfxInsertPrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1137,8 +1315,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->PfxRemovePrefix = (PPFX_REMOVE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "PfxRemovePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'PfxRemovePrefix'");
-            return FALSE;
+            if (!(Rtl->PfxRemovePrefix = (PPFX_REMOVE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "PfxRemovePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'PfxRemovePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1148,8 +1330,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->PfxFindPrefix = (PPFX_FIND_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "PfxFindPrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'PfxFindPrefix'");
-            return FALSE;
+            if (!(Rtl->PfxFindPrefix = (PPFX_FIND_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "PfxFindPrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'PfxFindPrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1159,8 +1345,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlPrefixUnicodeString = (PRTL_PREFIX_UNICODE_STRING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlPrefixUnicodeString"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlPrefixUnicodeString'");
-            return FALSE;
+            if (!(Rtl->RtlPrefixUnicodeString = (PRTL_PREFIX_UNICODE_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlPrefixUnicodeString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlPrefixUnicodeString'");
+                return FALSE;
+            }
         }
     }
 
@@ -1170,8 +1360,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlCreateHashTable = (PRTL_CREATE_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlCreateHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlCreateHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlCreateHashTable = (PRTL_CREATE_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCreateHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCreateHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1181,8 +1375,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlDeleteHashTable = (PRTL_DELETE_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlDeleteHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlDeleteHashTable = (PRTL_DELETE_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlDeleteHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlDeleteHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1192,8 +1390,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertEntryHashTable = (PRTL_INSERT_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlInsertEntryHashTable = (PRTL_INSERT_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1203,8 +1405,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlRemoveEntryHashTable = (PRTL_REMOVE_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlRemoveEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlRemoveEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlRemoveEntryHashTable = (PRTL_REMOVE_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlRemoveEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlRemoveEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1214,8 +1420,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlLookupEntryHashTable = (PRTL_LOOKUP_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlLookupEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlLookupEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlLookupEntryHashTable = (PRTL_LOOKUP_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLookupEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLookupEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1225,8 +1435,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlGetNextEntryHashTable = (PRTL_GET_NEXT_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlGetNextEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlGetNextEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlGetNextEntryHashTable = (PRTL_GET_NEXT_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlGetNextEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlGetNextEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1236,8 +1450,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEnumerateEntryHashTable = (PRTL_ENUMERATE_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEnumerateEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlEnumerateEntryHashTable = (PRTL_ENUMERATE_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEnumerateEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEnumerateEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1247,8 +1465,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEndEnumerationHashTable = (PRTL_END_ENUMERATION_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEndEnumerationHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEndEnumerationHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlEndEnumerationHashTable = (PRTL_END_ENUMERATION_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEndEnumerationHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEndEnumerationHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1258,8 +1480,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInitWeakEnumerationHashTable = (PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInitWeakEnumerationHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInitWeakEnumerationHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlInitWeakEnumerationHashTable = (PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitWeakEnumerationHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitWeakEnumerationHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1269,8 +1495,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlWeaklyEnumerateEntryHashTable = (PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlWeaklyEnumerateEntryHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlWeaklyEnumerateEntryHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlWeaklyEnumerateEntryHashTable = (PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlWeaklyEnumerateEntryHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlWeaklyEnumerateEntryHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1280,8 +1510,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlEndWeakEnumerationHashTable = (PRTL_END_WEAK_ENUMERATION_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlEndWeakEnumerationHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlEndWeakEnumerationHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlEndWeakEnumerationHashTable = (PRTL_END_WEAK_ENUMERATION_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEndWeakEnumerationHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEndWeakEnumerationHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1291,8 +1525,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlExpandHashTable = (PRTL_EXPAND_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlExpandHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlExpandHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlExpandHashTable = (PRTL_EXPAND_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlExpandHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlExpandHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1302,8 +1540,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlContractHashTable = (PRTL_CONTRACT_HASH_TABLE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlContractHashTable"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlContractHashTable'");
-            return FALSE;
+            if (!(Rtl->RtlContractHashTable = (PRTL_CONTRACT_HASH_TABLE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlContractHashTable"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlContractHashTable'");
+                return FALSE;
+            }
         }
     }
 
@@ -1313,8 +1555,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInitializeBitMap = (PRTL_INITIALIZE_BITMAP)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInitializeBitMap"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeBitMap'");
-            return FALSE;
+            if (!(Rtl->RtlInitializeBitMap = (PRTL_INITIALIZE_BITMAP)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitializeBitMap"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeBitMap'");
+                return FALSE;
+            }
         }
     }
 
@@ -1324,8 +1570,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlClearBit = (PRTL_CLEAR_BIT)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlClearBit"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlClearBit'");
-            return FALSE;
+            if (!(Rtl->RtlClearBit = (PRTL_CLEAR_BIT)
+                GetProcAddress(Rtl->Kernel32Module, "RtlClearBit"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlClearBit'");
+                return FALSE;
+            }
         }
     }
 
@@ -1335,8 +1585,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlSetBit = (PRTL_SET_BIT)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlSetBit"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlSetBit'");
-            return FALSE;
+            if (!(Rtl->RtlSetBit = (PRTL_SET_BIT)
+                GetProcAddress(Rtl->Kernel32Module, "RtlSetBit"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlSetBit'");
+                return FALSE;
+            }
         }
     }
 
@@ -1346,8 +1600,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlTestBit = (PRTL_TEST_BIT)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlTestBit"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlTestBit'");
-            return FALSE;
+            if (!(Rtl->RtlTestBit = (PRTL_TEST_BIT)
+                GetProcAddress(Rtl->Kernel32Module, "RtlTestBit"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlTestBit'");
+                return FALSE;
+            }
         }
     }
 
@@ -1357,8 +1615,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlClearAllBits = (PRTL_CLEAR_ALL_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlClearAllBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlClearAllBits'");
-            return FALSE;
+            if (!(Rtl->RtlClearAllBits = (PRTL_CLEAR_ALL_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlClearAllBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlClearAllBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1368,8 +1630,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlSetAllBits = (PRTL_SET_ALL_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlSetAllBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlSetAllBits'");
-            return FALSE;
+            if (!(Rtl->RtlSetAllBits = (PRTL_SET_ALL_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlSetAllBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlSetAllBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1379,8 +1645,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindClearBits = (PRTL_FIND_CLEAR_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindClearBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearBits'");
-            return FALSE;
+            if (!(Rtl->RtlFindClearBits = (PRTL_FIND_CLEAR_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindClearBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1390,8 +1660,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindSetBits = (PRTL_FIND_SET_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindSetBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindSetBits'");
-            return FALSE;
+            if (!(Rtl->RtlFindSetBits = (PRTL_FIND_SET_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindSetBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindSetBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1401,8 +1675,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindClearBitsAndSet = (PRTL_FIND_CLEAR_BITS_AND_SET)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindClearBitsAndSet"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearBitsAndSet'");
-            return FALSE;
+            if (!(Rtl->RtlFindClearBitsAndSet = (PRTL_FIND_CLEAR_BITS_AND_SET)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindClearBitsAndSet"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearBitsAndSet'");
+                return FALSE;
+            }
         }
     }
 
@@ -1412,8 +1690,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindSetBitsAndClear = (PRTL_FIND_SET_BITS_AND_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindSetBitsAndClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindSetBitsAndClear'");
-            return FALSE;
+            if (!(Rtl->RtlFindSetBitsAndClear = (PRTL_FIND_SET_BITS_AND_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindSetBitsAndClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindSetBitsAndClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1423,8 +1705,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlClearBits = (PRTL_CLEAR_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlClearBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlClearBits'");
-            return FALSE;
+            if (!(Rtl->RtlClearBits = (PRTL_CLEAR_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlClearBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlClearBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1434,8 +1720,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlSetBits = (PRTL_SET_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlSetBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlSetBits'");
-            return FALSE;
+            if (!(Rtl->RtlSetBits = (PRTL_SET_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlSetBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlSetBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1445,8 +1735,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindClearRuns = (PRTL_FIND_CLEAR_RUNS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindClearRuns"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearRuns'");
-            return FALSE;
+            if (!(Rtl->RtlFindClearRuns = (PRTL_FIND_CLEAR_RUNS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindClearRuns"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindClearRuns'");
+                return FALSE;
+            }
         }
     }
 
@@ -1456,8 +1750,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindLongestRunClear = (PRTL_FIND_LONGEST_RUN_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindLongestRunClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindLongestRunClear'");
-            return FALSE;
+            if (!(Rtl->RtlFindLongestRunClear = (PRTL_FIND_LONGEST_RUN_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindLongestRunClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindLongestRunClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1467,8 +1765,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlNumberOfClearBits = (PRTL_NUMBER_OF_CLEAR_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlNumberOfClearBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlNumberOfClearBits'");
-            return FALSE;
+            if (!(Rtl->RtlNumberOfClearBits = (PRTL_NUMBER_OF_CLEAR_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlNumberOfClearBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlNumberOfClearBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1478,8 +1780,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlNumberOfSetBits = (PRTL_NUMBER_OF_SET_BITS)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlNumberOfSetBits"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlNumberOfSetBits'");
-            return FALSE;
+            if (!(Rtl->RtlNumberOfSetBits = (PRTL_NUMBER_OF_SET_BITS)
+                GetProcAddress(Rtl->Kernel32Module, "RtlNumberOfSetBits"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlNumberOfSetBits'");
+                return FALSE;
+            }
         }
     }
 
@@ -1489,8 +1795,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlAreBitsClear = (PRTL_ARE_BITS_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlAreBitsClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlAreBitsClear'");
-            return FALSE;
+            if (!(Rtl->RtlAreBitsClear = (PRTL_ARE_BITS_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAreBitsClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAreBitsClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1500,8 +1810,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlAreBitsSet = (PRTL_ARE_BITS_SET)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlAreBitsSet"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlAreBitsSet'");
-            return FALSE;
+            if (!(Rtl->RtlAreBitsSet = (PRTL_ARE_BITS_SET)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAreBitsSet"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAreBitsSet'");
+                return FALSE;
+            }
         }
     }
 
@@ -1511,8 +1825,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindFirstRunClear = (PRTL_FIND_FIRST_RUN_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindFirstRunClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindFirstRunClear'");
-            return FALSE;
+            if (!(Rtl->RtlFindFirstRunClear = (PRTL_FIND_FIRST_RUN_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindFirstRunClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindFirstRunClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1522,8 +1840,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindNextForwardRunClear = (PRTL_FIND_NEXT_FORWARD_RUN_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindNextForwardRunClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindNextForwardRunClear'");
-            return FALSE;
+            if (!(Rtl->RtlFindNextForwardRunClear = (PRTL_FIND_NEXT_FORWARD_RUN_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindNextForwardRunClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindNextForwardRunClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1533,8 +1855,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindLastBackwardRunClear = (PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindLastBackwardRunClear"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindLastBackwardRunClear'");
-            return FALSE;
+            if (!(Rtl->RtlFindLastBackwardRunClear = (PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindLastBackwardRunClear"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindLastBackwardRunClear'");
+                return FALSE;
+            }
         }
     }
 
@@ -1544,8 +1870,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInitializeUnicodePrefix = (PRTL_INITIALIZE_UNICODE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInitializeUnicodePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeUnicodePrefix'");
-            return FALSE;
+            if (!(Rtl->RtlInitializeUnicodePrefix = (PRTL_INITIALIZE_UNICODE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitializeUnicodePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitializeUnicodePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1555,8 +1885,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlInsertUnicodePrefix = (PRTL_INSERT_UNICODE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlInsertUnicodePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlInsertUnicodePrefix'");
-            return FALSE;
+            if (!(Rtl->RtlInsertUnicodePrefix = (PRTL_INSERT_UNICODE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInsertUnicodePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInsertUnicodePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1566,8 +1900,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlRemoveUnicodePrefix = (PRTL_REMOVE_UNICODE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlRemoveUnicodePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlRemoveUnicodePrefix'");
-            return FALSE;
+            if (!(Rtl->RtlRemoveUnicodePrefix = (PRTL_REMOVE_UNICODE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "RtlRemoveUnicodePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlRemoveUnicodePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1577,8 +1915,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlFindUnicodePrefix = (PRTL_FIND_UNICODE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlFindUnicodePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlFindUnicodePrefix'");
-            return FALSE;
+            if (!(Rtl->RtlFindUnicodePrefix = (PRTL_FIND_UNICODE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFindUnicodePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFindUnicodePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1588,8 +1930,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlNextUnicodePrefix = (PRTL_NEXT_UNICODE_PREFIX)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlNextUnicodePrefix"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlNextUnicodePrefix'");
-            return FALSE;
+            if (!(Rtl->RtlNextUnicodePrefix = (PRTL_NEXT_UNICODE_PREFIX)
+                GetProcAddress(Rtl->Kernel32Module, "RtlNextUnicodePrefix"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlNextUnicodePrefix'");
+                return FALSE;
+            }
         }
     }
 
@@ -1599,8 +1945,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyUnicodeString"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlCopyUnicodeString'");
-            return FALSE;
+            if (!(Rtl->RtlCopyUnicodeString = (PRTL_COPY_UNICODE_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyUnicodeString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyUnicodeString'");
+                return FALSE;
+            }
         }
     }
 
@@ -1610,8 +1960,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlAppendUnicodeToString"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeToString'");
-            return FALSE;
+            if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAppendUnicodeToString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeToString'");
+                return FALSE;
+            }
         }
     }
 
@@ -1621,8 +1975,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlAppendUnicodeStringToString = (PRTL_APPEND_UNICODE_STRING_TO_STRING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlAppendUnicodeStringToString"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeStringToString'");
-            return FALSE;
+            if (!(Rtl->RtlAppendUnicodeStringToString = (PRTL_APPEND_UNICODE_STRING_TO_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAppendUnicodeStringToString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeStringToString'");
+                return FALSE;
+            }
         }
     }
 
@@ -1632,8 +1990,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlUnicodeStringToAnsiSize = (PRTL_UNICODE_STRING_TO_ANSI_SIZE)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlUnicodeStringToAnsiSize"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiSize'");
-            return FALSE;
+            if (!(Rtl->RtlUnicodeStringToAnsiSize = (PRTL_UNICODE_STRING_TO_ANSI_SIZE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlUnicodeStringToAnsiSize"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiSize'");
+                return FALSE;
+            }
         }
     }
 
@@ -1643,8 +2005,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlUnicodeStringToAnsiString = (PRTL_UNICODE_STRING_TO_ANSI_STRING)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlUnicodeStringToAnsiString"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiString'");
-            return FALSE;
+            if (!(Rtl->RtlUnicodeStringToAnsiString = (PRTL_UNICODE_STRING_TO_ANSI_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlUnicodeStringToAnsiString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiString'");
+                return FALSE;
+            }
         }
     }
 
@@ -1654,8 +2020,12 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlCompareMemory = (PRTL_COMPARE_MEMORY)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlCompareMemory"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlCompareMemory'");
-            return FALSE;
+            if (!(Rtl->RtlCompareMemory = (PRTL_COMPARE_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCompareMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCompareMemory'");
+                return FALSE;
+            }
         }
     }
 
@@ -1665,8 +2035,72 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         if (!(Rtl->RtlPrefetchMemoryNonTemporal = (PRTL_PREFETCH_MEMORY_NON_TEMPORAL)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlPrefetchMemoryNonTemporal"))) {
 
-            OutputDebugStringA("Rtl: failed to resolve 'RtlPrefetchMemoryNonTemporal'");
-            return FALSE;
+            if (!(Rtl->RtlPrefetchMemoryNonTemporal = (PRTL_PREFETCH_MEMORY_NON_TEMPORAL)
+                GetProcAddress(Rtl->Kernel32Module, "RtlPrefetchMemoryNonTemporal"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlPrefetchMemoryNonTemporal'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlMoveMemory = (PRTL_MOVE_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlMoveMemory"))) {
+
+        if (!(Rtl->RtlMoveMemory = (PRTL_MOVE_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlMoveMemory"))) {
+
+            if (!(Rtl->RtlMoveMemory = (PRTL_MOVE_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlMoveMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlMoveMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
+        GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
+
+        if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
+            GetProcAddress(Rtl->NtosKrnlModule, "CreateToolhelp32Snapshot"))) {
+
+            if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
+                GetProcAddress(Rtl->Kernel32Module, "CreateToolhelp32Snapshot"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'CreateToolhelp32Snapshot'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->Thread32First = (PTHREAD32_FIRST)
+        GetProcAddress(Rtl->NtdllModule, "Thread32First"))) {
+
+        if (!(Rtl->Thread32First = (PTHREAD32_FIRST)
+            GetProcAddress(Rtl->NtosKrnlModule, "Thread32First"))) {
+
+            if (!(Rtl->Thread32First = (PTHREAD32_FIRST)
+                GetProcAddress(Rtl->Kernel32Module, "Thread32First"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'Thread32First'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->Thread32Next = (PTHREAD32_NEXT)
+        GetProcAddress(Rtl->NtdllModule, "Thread32Next"))) {
+
+        if (!(Rtl->Thread32Next = (PTHREAD32_NEXT)
+            GetProcAddress(Rtl->NtosKrnlModule, "Thread32Next"))) {
+
+            if (!(Rtl->Thread32Next = (PTHREAD32_NEXT)
+                GetProcAddress(Rtl->Kernel32Module, "Thread32Next"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'Thread32Next'");
+                return FALSE;
+            }
         }
     }
 
@@ -1685,7 +2119,11 @@ RtlCheckBit(
     _In_ ULONG BitPosition
     )
 {
+#ifdef _M_AMD64
     return BitTest64((LONG64 const *)BitMapHeader->Buffer, (LONG64)BitPosition);
+#else
+    return BitTest((LONG const *)BitMapHeader->Buffer, (LONG)BitPosition);
+#endif
 }
 
 //
@@ -1857,7 +2295,7 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPYTOMEMORYMAPPEDMEMORY)
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPY_TO_MEMORY_MAPPED_MEMORY)
         GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'CopyToMemoryMappedMemory'");
@@ -1882,6 +2320,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "FilesExist"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'FilesExist'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->TestExceptionHandler = (PTEST_EXCEPTION_HANDLER)
+        GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
         return FALSE;
     }
 
@@ -1938,6 +2383,8 @@ InitializeRtl(
     _Inout_                   PULONG SizeOfRtl
     )
 {
+    HANDLE HeapHandle;
+
     if (!Rtl) {
         if (SizeOfRtl) {
             *SizeOfRtl = sizeof(*Rtl);
@@ -1956,11 +2403,20 @@ InitializeRtl(
         *SizeOfRtl = sizeof(*Rtl);
     }
 
+    HeapHandle = GetProcessHeap();
+    if (!HeapHandle) {
+        return FALSE;
+    }
+
     SecureZeroMemory(Rtl, sizeof(*Rtl));
 
     if (!LoadRtlSymbols(Rtl)) {
         return FALSE;
     }
+
+    SetCSpecificHandler(Rtl->NtdllModule);
+
+    Rtl->HeapHandle = HeapHandle;
 
     if (!LoadRtlExSymbols(NULL, Rtl)) {
         return FALSE;
@@ -1968,6 +2424,14 @@ InitializeRtl(
 
     return TRUE;
 }
+
+RTL_API
+BOOL
+InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl)
+{
+    return InitializeRtlManuallyInline(Rtl, SizeOfRtl);
+}
+
 
 VOID
 Debugbreak()
