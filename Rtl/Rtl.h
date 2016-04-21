@@ -821,12 +821,41 @@ typedef ULONGLONG (NTAPI *PRTLCRC64)(
     );
 
 //
+// Tool Help
+//
+
+typedef struct tagTHREADENTRY32 *LPTHREADENTRY32;
+
+typedef HANDLE (WINAPI * PCREATE_TOOLHELP32_SNAPSHOT)(
+    DWORD dwFlags,
+    DWORD th32ProcessID
+    );
+
+typedef BOOL (WINAPI *PTHREAD32_FIRST)(
+    HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte
+    );
+
+typedef BOOL (WINAPI *PTHREAD32_NEXT)(
+    HANDLE hSnapshot,
+    LPTHREADENTRY32 lpte
+    );
+
+//
 // Misc
 //
 typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     _In_ PVOID Source,
     _In_ SIZE_T Length
     );
+
+typedef VOID (*PRTL_MOVE_MEMORY)(
+    _Out_       VOID UNALIGNED *Destination,
+    _In_  const VOID UNALIGNED *Source,
+    _In_        SIZE_T          Length
+    );
+
+#undef RtlMoveMemory
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
@@ -904,7 +933,11 @@ typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
-    PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;
+    PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
+    PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
+    PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
+    PTHREAD32_FIRST Thread32First;                                                                     \
+    PTHREAD32_NEXT Thread32Next;
 
 typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
@@ -1088,6 +1121,8 @@ typedef struct _RTL {
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
 
+    HANDLE      HeapHandle;
+
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
         struct {
@@ -1110,6 +1145,11 @@ typedef struct _RTL {
     };
 
 } RTL, *PRTL, **PPRTL;
+
+typedef BOOL (*PINITIALIZE_RTL)(
+    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_                   PULONG SizeOfRtl
+    );
 
 #define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 #define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
@@ -1364,6 +1404,38 @@ HashAnsiStringToAtom(_In_ PSTRING String)
 
     return Hash;
 }
+
+FORCEINLINE
+BOOL
+InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
+{
+    PROC Proc;
+    BOOL Success;
+    HMODULE Module;
+    PINITIALIZE_RTL InitializeRtl;
+
+    Module = LoadLibraryA("Rtl");
+    Proc = GetProcAddress(Module, "InitializeRtl");
+    if (!Proc) {
+        __debugbreak();
+    }
+
+    InitializeRtl = (PINITIALIZE_RTL)Proc;
+    if (!InitializeRtl) {
+        __debugbreak();
+    }
+
+    Success = InitializeRtl(Rtl, SizeOfRtl);
+    if (!Success) {
+        __debugbreak();
+    }
+
+    return TRUE;
+}
+
+RTL_API
+BOOL
+InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
 //
 // Verbatim copy of the doubly-linked list inline methods.
