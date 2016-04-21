@@ -57,6 +57,7 @@ PyTraceCallbackBasic(
     _In_opt_    PPYOBJECT               ArgObject
 )
 {
+    PRTL Rtl;
     BOOL Success;
     PPYTHON Python;
     PPYOBJECT CodeObject;
@@ -75,6 +76,11 @@ PyTraceCallbackBasic(
 
     Python = PythonTraceContext->Python;
     if (!Python) {
+        return 1;
+    }
+
+    Rtl = Python->Rtl;
+    if (!Rtl) {
         return 1;
     }
 
@@ -175,7 +181,7 @@ PyTraceCallbackBasic(
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
-    RtlCopyMemory(EventRecord, &Event, sizeof(Event));
+    Rtl->CopyToMemoryMappedMemory(Rtl, EventRecord, &Event, sizeof(Event));
 
     return 0;
 }
@@ -298,7 +304,7 @@ PyTraceCallbackFast(
 
     Event.SequenceId = ++TraceContext->SequenceId;
 
-    if (!Rtl->CopyToMemoryMappedMemory(EventRecord, &Event, sizeof(Event))) {
+    if (!Rtl->CopyToMemoryMappedMemory(Rtl, EventRecord, &Event, sizeof(Event))) {
         ++Events->DroppedRecords;
     }
 
