@@ -36,7 +36,7 @@ typedef struct _DISASM_ARG_INFO
 // Function prototypes
 //////////////////////////////////////////////////////////////////////
 
-BOOL InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler);
+BOOL InitInstruction(PRTL Rtl, INSTRUCTION *Instruction, DISASSEMBLER *Disassembler);
 struct _ARCHITECTURE_FORMAT *GetArchitectureFormat(ARCHITECTURE_TYPE Type);
 
 //////////////////////////////////////////////////////////////////////
@@ -44,11 +44,11 @@ struct _ARCHITECTURE_FORMAT *GetArchitectureFormat(ARCHITECTURE_TYPE Type);
 //////////////////////////////////////////////////////////////////////
 
 
-BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture)
+BOOL InitDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture)
 {
 	ARCHITECTURE_FORMAT *ArchFormat;
 
-	memset(Disassembler, 0, sizeof(DISASSEMBLER));
+	Rtl->RtlFillMemory(Disassembler, 0, sizeof(DISASSEMBLER));
 	Disassembler->Initialized = DISASSEMBLER_INITIALIZED;
 
 	ArchFormat = GetArchitectureFormat(Architecture);
@@ -58,21 +58,21 @@ BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture
 	return TRUE;
 }
 
-void CloseDisassembler(DISASSEMBLER *Disassembler)
+void CloseDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler)
 {
-	memset(Disassembler, 0, sizeof(DISASSEMBLER));
+	Rtl->RtlFillMemory(Disassembler, 0, sizeof(DISASSEMBLER));
 }
 
 //////////////////////////////////////////////////////////////////////
 // Instruction setup
 //////////////////////////////////////////////////////////////////////
 
-BOOL InitInstruction(INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
+BOOL InitInstruction(PRTL Rtl, INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
 {
-	memset(Instruction, 0, sizeof(INSTRUCTION));
+	Rtl->RtlFillMemory(Instruction, 0, sizeof(INSTRUCTION));
 	Instruction->Initialized = INSTRUCTION_INITIALIZED;
 	Instruction->Disassembler = Disassembler;
-	memset(Instruction->String, ' ', MAX_OPCODE_DESCRIPTION-1);
+	Rtl->RtlFillMemory(Instruction->String, ' ', MAX_OPCODE_DESCRIPTION-1);
 	Instruction->String[MAX_OPCODE_DESCRIPTION-1] = '\0';
 	return TRUE;
 }
@@ -89,7 +89,7 @@ INSTRUCTION *GetInstruction(PRTL Rtl, DISASSEMBLER *Disassembler, U64 VirtualAdd
 {
 	if (Disassembler->Initialized != DISASSEMBLER_INITIALIZED) { assert(0); return NULL; }
 	assert(Address);
-	InitInstruction(&Disassembler->Instruction, Disassembler);
+	InitInstruction(Rtl, &Disassembler->Instruction, Disassembler);
 	Disassembler->Instruction.Address = Address;
 	Disassembler->Instruction.VirtualAddressDelta = VirtualAddress - (U64)Address;
 	if (!Disassembler->Functions->GetInstruction(Rtl, &Disassembler->Instruction, Address, Flags))

@@ -3,7 +3,6 @@
 #include "disasm.h"
 #include "cpu.h"
 
-//#pragma intrinsic(_memmove)
 
 // Since addresses are internally represented as 64-bit, we need to specially handle
 // cases where IP + Displacement wraps around for 16-bit/32-bit operand size
@@ -480,19 +479,19 @@ char *X86_Registers[0xE0] =
     "r15" // 0xDF
 };
 
-void OutputBounds(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputGeneral(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputDescriptor(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputSegOffset(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputPackedReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputPackedBCD(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputScalarReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputScalarGeneral(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputFPUEnvironment(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputFPUState(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
-void OutputCPUState(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputBounds(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputGeneral(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputDescriptor(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputSegOffset(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputPackedReal(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputPackedBCD(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputScalarReal(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputScalarGeneral(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputFPUEnvironment(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputFPUState(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+void OutputCPUState(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
 
-typedef void (*OUTPUT_OPTYPE)(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
+typedef void (*OUTPUT_OPTYPE)(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex);
 #define OPTYPE_SHIFT 24
 #define MAX_OPTYPE_INDEX 26
 OUTPUT_OPTYPE OptypeHandlers[] =
@@ -560,7 +559,7 @@ U32 X86_GetLength(INSTRUCTION *Instruction, U8 *Address);
 #endif
 
 INTERNAL BOOL IsValidLockPrefix(X86_INSTRUCTION *Instruction, U8 Opcode, U32 OpcodeLength, U8 Group, U8 OpcodeExtension);
-INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags);
+INTERNAL U8 *SetOperands(PRTL Rtl, INSTRUCTION *Instruction, U8 *Address, U32 Flags);
 INTERNAL U8 *SetModRM32(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
 INTERNAL U8 *SetModRM16(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
 INTERNAL U8 *SetSIB(INSTRUCTION *Instruction, U8 *Address, INSTRUCTION_OPERAND *Operand, U32 OperandIndex, BOOL SuppressErrors);
@@ -581,14 +580,14 @@ INTERNAL U64 ApplyDisplacement(U64 Address, INSTRUCTION *Instruction);
     }                                                                                \
 }
 
-BOOL X86_InitInstruction(INSTRUCTION *Instruction)
+BOOL X86_InitInstruction(PRTL Rtl, INSTRUCTION *Instruction)
 {
     X86_INSTRUCTION *X86Instruction;
 #ifdef NO_SANITY_CHECKS
     assert(0); // be sure assertions are disabled
 #endif
     X86Instruction = &Instruction->X86;
-    memset(X86Instruction, 0, sizeof(X86_INSTRUCTION));
+    Rtl->RtlFillMemory(X86Instruction, 0, sizeof(X86_INSTRUCTION));
 
     switch (INS_ARCH_TYPE(Instruction))
     {
@@ -759,7 +758,7 @@ BOOL X86_InitInstruction(INSTRUCTION *Instruction)
     APPENDB(']');                                                                                                \
 }
 
-void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputAddress(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     BOOL ShowDisplacement = FALSE;
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
@@ -818,29 +817,29 @@ void OutputAddress(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 O
     }
 }
 
-void OutputBounds(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputBounds(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing);
     assert(!(Operand->Length & 1));
     Operand->Length >>= 1;
     APPENDB('(');
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     APPENDS(", ");
     X86Instruction->Displacement += Operand->Length;
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     X86Instruction->Displacement -= Operand->Length;
     APPENDB(')');
     Operand->Length <<= 1;
 }
 
-void OutputGeneral(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputGeneral(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     if ((X86Instruction->HasDstAddressing && X86Instruction->DstAddressIndex == OperandIndex) ||
         (X86Instruction->HasSrcAddressing && X86Instruction->SrcAddressIndex == OperandIndex))
     {
-        OutputAddress(Instruction, Operand, OperandIndex);
+        OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     }
     else
     {
@@ -848,20 +847,20 @@ void OutputGeneral(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 O
     }
 }
 
-void OutputDescriptor(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputDescriptor(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing || X86Instruction->HasDstAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
 }
 
-void OutputPackedReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputPackedReal(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     if ((X86Instruction->HasDstAddressing && X86Instruction->DstAddressIndex == OperandIndex) ||
         (X86Instruction->HasSrcAddressing && X86Instruction->SrcAddressIndex == OperandIndex))
     {
-        OutputAddress(Instruction, Operand, OperandIndex);
+        OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     }
     else
     {
@@ -869,13 +868,13 @@ void OutputPackedReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U3
     }
 }
 
-void OutputPackedBCD(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputPackedBCD(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     if ((X86Instruction->HasDstAddressing && X86Instruction->DstAddressIndex == OperandIndex) ||
         (X86Instruction->HasSrcAddressing && X86Instruction->SrcAddressIndex == OperandIndex))
     {
-        OutputAddress(Instruction, Operand, OperandIndex);
+        OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     }
     else
     {
@@ -883,13 +882,13 @@ void OutputPackedBCD(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32
     }
 }
 
-void OutputScalarReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputScalarReal(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     if ((X86Instruction->HasDstAddressing && X86Instruction->DstAddressIndex == OperandIndex) ||
         (X86Instruction->HasSrcAddressing && X86Instruction->SrcAddressIndex == OperandIndex))
     {
-        OutputAddress(Instruction, Operand, OperandIndex);
+        OutputAddress(Rtl, Instruction, Operand, OperandIndex);
     }
     else
     {
@@ -897,44 +896,44 @@ void OutputScalarReal(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U3
     }
 }
 
-void OutputScalarGeneral(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputScalarGeneral(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     if (Operand->Type == OPTYPE_FLOAT)
     {
-        OutputScalarReal(Instruction, Operand, OperandIndex);
+        OutputScalarReal(Rtl, Instruction, Operand, OperandIndex);
     }
     else
     {
-        OutputGeneral(Instruction, Operand, OperandIndex);
+        OutputGeneral(Rtl, Instruction, Operand, OperandIndex);
     }
 }
 
-void OutputFPUEnvironment(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputFPUEnvironment(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing || X86Instruction->HasDstAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
 }
 
-void OutputFPUState(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputFPUState(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing || X86Instruction->HasDstAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
 }
 
-void OutputCPUState(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputCPUState(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
 }
 
-void OutputSegOffset(INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
+void OutputSegOffset(PRTL Rtl, INSTRUCTION *Instruction, INSTRUCTION_OPERAND *Operand, U32 OperandIndex)
 {
     X86_INSTRUCTION *X86Instruction = &Instruction->X86;
     assert(X86Instruction->HasSrcAddressing);
-    OutputAddress(Instruction, Operand, OperandIndex);
+    OutputAddress(Rtl, Instruction, Operand, OperandIndex);
 }
 
 ////////////////////////////////////////////////////////////
@@ -963,7 +962,7 @@ PROLOGUE StandardPrologues[] =
 //
 // This will match a standard prologue and then analyze the following instructions to verify
 // it is a valid function
-U8 *X86_FindFunctionByPrologue(INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags)
+U8 *X86_FindFunctionByPrologue(PRTL Rtl, INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags)
 {
     assert(0); // TODO
     return NULL;
@@ -995,7 +994,7 @@ BOOL X86_GetInstruction(PRTL Rtl, INSTRUCTION *Instruction, U8 *Address, U32 Fla
         Decode = TRUE;
     }
 
-    if (!Address || !X86_InitInstruction(Instruction))
+    if (!Address || !X86_InitInstruction(Rtl, Instruction))
     {
         assert(0);
         goto abort;
@@ -1599,7 +1598,7 @@ HasSpecialExtension:
             Instruction->Operands[1].Flags = X86Opcode->OperandFlags[1] & X86_OPFLAGS_MASK;
             Instruction->Operands[2].Flags = X86Opcode->OperandFlags[2] & X86_OPFLAGS_MASK;
             assert(Address == Instruction->Address + Instruction->Length);
-            if (!SetOperands(Instruction, Address, Flags & DISASM_SUPPRESSERRORS)) goto abort;
+            if (!SetOperands(Rtl, Instruction, Address, Flags & DISASM_SUPPRESSERRORS)) goto abort;
             Suffix = Instruction->Address[Instruction->Length++];
             Instruction->OpcodeBytes[2] = Suffix;
             Instruction->OpcodeLength = 3;
@@ -1835,7 +1834,7 @@ HasSpecialExtension:
         Instruction->Operands[0].Flags = X86Opcode->OperandFlags[0] & X86_OPFLAGS_MASK;
         Instruction->Operands[1].Flags = X86Opcode->OperandFlags[1] & X86_OPFLAGS_MASK;
         Instruction->Operands[2].Flags = X86Opcode->OperandFlags[2] & X86_OPFLAGS_MASK;
-        Address = SetOperands(Instruction, Address, Flags);
+        Address = SetOperands(Rtl, Instruction, Address, Flags);
         if (!Address) goto abort;
         assert(!(Instruction->Operands[0].Flags & 0x7F));
         assert(!(Instruction->Operands[1].Flags & 0x7F));
@@ -2536,7 +2535,7 @@ abort:
 //
 // Returns the address immediately following the operand (e.g., the next operand or the
 // start of the next instruction
-INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
+INTERNAL U8 *SetOperands(PRTL Rtl, INSTRUCTION *Instruction, U8 *Address, U32 Flags)
 {
     INSTRUCTION_OPERAND *Operand;
     U32 Index, OperandIndex;
@@ -4097,7 +4096,7 @@ INTERNAL U8 *SetOperands(INSTRUCTION *Instruction, U8 *Address, U32 Flags)
         {
             Index = OperandType >> OPTYPE_SHIFT;
             assert(Index > 0 && Index < MAX_OPTYPE_INDEX && OptypeHandlers[Index]);
-            OptypeHandlers[Index](Instruction, Operand, OperandIndex);
+            OptypeHandlers[Index](Rtl, Instruction, Operand, OperandIndex);
             X86_WRITE_OPFLAGS();
         }
     }

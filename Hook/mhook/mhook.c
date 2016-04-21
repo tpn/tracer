@@ -20,7 +20,7 @@
 
 #include <windows.h>
 #include <tlhelp32.h>
-#include <stdio.h>
+
 #include "mhook.h"
 #include "../disasm/disasm.h"
 
@@ -44,10 +44,18 @@
 
 #ifdef _DEBUG
 //#define ODPRINTF(a) odprintf a
-#define ODPRINTF(a)
+#define ODPRINTF(a) odprintf a
 #else
 #define ODPRINTF(a)
 #endif
+
+FORCEINLINE
+void
+__cdecl
+odprintf(PCWSTR format, ...)
+{
+    OutputDebugStringW(format);
+}
 
 /*
 inline void __cdecl odprintf(PCSTR format, ...) {
@@ -147,6 +155,7 @@ static DWORD g_nHooksInUse = 0;
 static HANDLE* g_hThreadHandles = NULL;
 static DWORD g_nThreadHandles = 0;
 #define MHOOK_JMPSIZE 5
+#define MHOOK_JMPSIZE_ALLOWED 8
 #define MHOOK_MINALLOCSIZE 4096
 
 //=========================================================================
@@ -680,14 +689,14 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
     #error unsupported platform
 #endif
     DISASSEMBLER dis;
-    if (InitDisassembler(&dis, arch)) {
+    if (InitDisassembler(Rtl, &dis, arch)) {
         INSTRUCTION* pins = NULL;
         U8* pLoc = (U8*)pFunction;
         DWORD dwFlags = DISASM_DECODE | DISASM_DISASSEMBLE | DISASM_ALIGNOUTPUT;
 
         ODPRINTF((L"mhooks: DisassembleAndSkip: Disassembling %p", pLoc));
         while ( (dwRet < dwMinLen) && (pins = GetInstruction(Rtl, &dis, (ULONG_PTR)pLoc, pLoc, dwFlags)) ) {
-            ODPRINTF(("mhooks: DisassembleAndSkip: %p:(0x%2.2x) %s", pLoc, pins->Length, pins->String));
+            ODPRINTF((L"mhooks: DisassembleAndSkip: %p:(0x%2.2x) %s", pLoc, pins->Length, pins->String));
             if (pins->Type == ITYPE_RET     ) break;
             if (pins->Type == ITYPE_BRANCH  ) break;
             if (pins->Type == ITYPE_BRANCHCC) break;
@@ -769,7 +778,7 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
             pLoc  += pins->Length;
         }
 
-        CloseDisassembler(&dis);
+        CloseDisassembler(Rtl, &dis);
     }
 
     return dwRet;
@@ -790,9 +799,10 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
     pHookFunction   = SkipJumps((PBYTE)pHookFunction);
     ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
     // figure out the length of the overwrite zone
-    MHOOKS_PATCHDATA patchdata = {0};
+    MHOOKS_PATCHDATA patchdata;
+    SecureZeroMemory(&patchdata, sizeof(patchdata));
     DWORD dwInstructionLength = DisassembleAndSkip(Rtl, pSystemFunction, MHOOK_JMPSIZE, &patchdata);
-    if (dwInstructionLength >= MHOOK_JMPSIZE) {
+    if (dwInstructionLength >= MHOOK_JMPSIZE_ALLOWED) {
         ODPRINTF((L"mhooks: Mhook_SetHook: disassembly signals %d bytes", dwInstructionLength));
         // suspend every other thread in this process, and make sure their IP
         // is not in the code we're about to overwrite.
@@ -884,6 +894,7 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
         // resume everybody else
         ResumeOtherThreads(Rtl);
     } else {
+        __debugbreak();
         ODPRINTF((L"mhooks: disassembly signals %d bytes (unacceptable)", dwInstructionLength));
     }
     LeaveCritSec();

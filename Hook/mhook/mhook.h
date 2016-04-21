@@ -26,6 +26,7 @@
 
 #include "../../Rtl/Rtl.h"
 
+#define memset(dest, val, size) Rtl->RtlFillMemory(dest, val, size)
 #define memmove(dest, src, length) Rtl->RtlMoveMemory(dest, src, length)
 #define malloc(bytes) HeapAlloc(Rtl->HeapHandle, HEAP_ZERO_MEMORY, bytes)
 #define free(ptr) HeapFree(Rtl->HeapHandle, 0, ptr)
