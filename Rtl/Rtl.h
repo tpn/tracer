@@ -21,6 +21,7 @@ extern "C" {
 
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
+typedef const PVOID PCVOID;
 
 typedef const SHORT CSHORT;
 
@@ -856,15 +857,15 @@ typedef VOID (*PRTL_MOVE_MEMORY)(
     );
 
 typedef PVOID (__cdecl *PRTL_COPY_MEMORY)(
-    _Out_writes_bytes_all_(size) void *dst,
-    _In_reads_bytes_(size) const void *src,
-    _In_ size_t size
+    _Out_ PVOID   Destination,
+    _In_  LPCVOID Source,
+    _In_  SIZE_T  Size
     );
 
 typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
-    _Out_writes_bytes_all_(Size) PVOID  Destination,
-    _In_                         INT    Value,
-    _In_                         SIZE_T Size
+    _Out_ PVOID  Destination,
+    _In_  INT    Value,
+    _In_  SIZE_T Size
     );
 
 #undef RtlFillMemory
