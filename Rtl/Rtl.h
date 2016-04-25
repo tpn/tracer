@@ -21,6 +21,7 @@ extern "C" {
 
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
+typedef const PVOID PCVOID;
 
 typedef const SHORT CSHORT;
 
@@ -855,7 +856,21 @@ typedef VOID (*PRTL_MOVE_MEMORY)(
     _In_        SIZE_T          Length
     );
 
+typedef PVOID (__cdecl *PRTL_COPY_MEMORY)(
+    _Out_ PVOID   Destination,
+    _In_  LPCVOID Source,
+    _In_  SIZE_T  Size
+    );
+
+typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
+    _Out_ PVOID  Destination,
+    _In_  INT    Value,
+    _In_  SIZE_T Size
+    );
+
+#undef RtlFillMemory
 #undef RtlMoveMemory
+#undef RtlCopyMemory
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
@@ -935,6 +950,8 @@ typedef VOID (*PRTL_MOVE_MEMORY)(
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
+    PRTL_COPY_MEMORY RtlCopyMemory;                                                                    \
+    PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
@@ -1027,6 +1044,7 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
 // Our functions
 //
 typedef PVOID (*PCOPY_TO_MEMORY_MAPPED_MEMORY)(
+    PRTL Rtl,
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
@@ -1189,6 +1207,7 @@ InitializeRtl(
 RTL_API
 PVOID
 CopyToMemoryMappedMemory(
+    PRTL Rtl,
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
