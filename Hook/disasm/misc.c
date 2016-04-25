@@ -77,7 +77,7 @@ BYTE *HexToBinary(char *Input, DWORD InputLength, DWORD *OutputLength)
             goto abort;
         }
 
-        Rtl->RtlFillMemory(ByteString, 0, ByteCount+1);
+        SecureZeroMemory(ByteString, 0, ByteCount+1);
         for (i = 0, j = 0; j < ByteCount; i += 3, j++)
         {
             while (isspace(Input[i])) i++; // skip over extra space, \r, and \n
@@ -125,7 +125,7 @@ BYTE *HexToBinary(char *Input, DWORD InputLength, DWORD *OutputLength)
             goto abort;
         }
 
-        Rtl->RtlFillMemory(ByteString, 0, ByteCount+1);
+        SecureZeroMemory(ByteString, 0, ByteCount+1);
         for (i = j = 0; j < ByteCount; i += 2, j++)
         {
             i += 2;
@@ -166,7 +166,7 @@ BYTE *HexToBinary(char *Input, DWORD InputLength, DWORD *OutputLength)
             goto abort;
         }
 
-        Rtl->RtlFillMemory(ByteString, 0, ByteCount+1);
+        SecureZeroMemory(ByteString, 0, ByteCount+1);
         for (i = 0, j = 0; j < ByteCount; i += 2, j++)
         {
             temp_byte[0] = Input[i];

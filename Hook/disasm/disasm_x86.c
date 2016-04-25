@@ -1,5 +1,7 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
 #undef NDEBUG
+
+#include "../stdafx.h"
 #include "disasm.h"
 #include "cpu.h"
 
@@ -129,40 +131,44 @@
     Address += size;             \
 }
 
-#define X86_SET_TARGET()                                                                                                                                                                                                                                   \
-{                                                                                                                                                                                                                                                          \
-    if (X86Instruction->HasSelector)                                                                                                                                                                                                                       \
-    {                                                                                                                                                                                                                                                      \
-        if (!Instruction->AnomalyOccurred)                                                                                                                                                                                                                 \
-        {                                                                                                                                                                                                                                                  \
-            if (!SuppressErrors) printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n", VIRTUAL_ADDRESS, X86Instruction->Selector);                                                                                                                    \
-            Instruction->AnomalyOccurred = TRUE;                                                                                                                                                                                                           \
-        }                                                                                                                                                                                                                                                  \
-    }                                                                                                                                                                                                                                                      \
-    else                                                                                                                                                                                                                                                   \
-    {                                                                                                                                                                                                                                                      \
-        switch (X86Instruction->Segment)                                                                                                                                                                                                                   \
-        {                                                                                                                                                                                                                                                  \
-            case SEG_CS:                                                                                                                                                                                                                                   \
-            case SEG_DS:                                                                                                                                                                                                                                   \
-            case SEG_SS:                                                                                                                                                                                                                                   \
-            case SEG_ES:                                                                                                                                                                                                                                   \
-                assert(!X86Instruction->HasSelector);                                                                                                                                                                                                      \
-                Operand->TargetAddress = (U64)X86Instruction->Displacement;                                                                                                                                                                                \
-                break;                                                                                                                                                                                                                                     \
-            case SEG_FS:                                                                                                                                                                                                                                   \
-            case SEG_GS:                                                                                                                                                                                                                                   \
-                assert(!X86Instruction->HasSelector);                                                                                                                                                                                                      \
+#define X86_SET_TARGET()                                                     \
+{                                                                            \
+    if (X86Instruction->HasSelector)                                         \
+    {                                                                        \
+        if (!Instruction->AnomalyOccurred)                                   \
+        {                                                                    \
+            if (!SuppressErrors) {                                           \
+                printf("[0x%08I64X] ANOMALY: unexpected segment 0x%02X\n",   \
+                       VIRTUAL_ADDRESS,                                      \
+                       X86Instruction->Selector);                            \
+            }                                                                \
+            Instruction->AnomalyOccurred = TRUE;                             \
+        }                                                                    \
+    }                                                                        \
+    else                                                                     \
+    {                                                                        \
+        switch (X86Instruction->Segment)                                     \
+        {                                                                    \
+            case SEG_CS:                                                     \
+            case SEG_DS:                                                     \
+            case SEG_SS:                                                     \
+            case SEG_ES:                                                     \
+                assert(!X86Instruction->HasSelector);                        \
+                Operand->TargetAddress = (U64)X86Instruction->Displacement;  \
+                break;                                                       \
+            case SEG_FS:                                                     \
+            case SEG_GS:                                                     \
+                assert(!X86Instruction->HasSelector);                        \
                 Operand->TargetAddress = (U64)GetAbsoluteAddressFromSegment( \
-                    (BYTE)X86Instruction->Segment, \
-                    (DWORD)X86Instruction->Displacement \
-                );                                                                                                           \
-                break;                                                                                                                                                                                                                                     \
-            default:                                                                                                                                                                                                                                       \
-                assert(0); /* shouldn't be possible */                                                                                                                                                                                                     \
-                break;                                                                                                                                                                                                                                     \
-        }                                                                                                                                                                                                                                                  \
-    }                                                                                                                                                                                                                                                      \
+                    (BYTE)X86Instruction->Segment,                           \
+                    (DWORD)X86Instruction->Displacement                      \
+                );                                                           \
+                break;                                                       \
+            default:                                                         \
+                assert(0); /* shouldn't be possible */                       \
+                break;                                                       \
+        }                                                                    \
+    }                                                                        \
 }
 
 #define X86_SET_SEG(reg)                                                                 \
@@ -587,7 +593,7 @@ BOOL X86_InitInstruction(PRTL Rtl, INSTRUCTION *Instruction)
     assert(0); // be sure assertions are disabled
 #endif
     X86Instruction = &Instruction->X86;
-    Rtl->RtlFillMemory(X86Instruction, 0, sizeof(X86_INSTRUCTION));
+    SecureZeroMemory(X86Instruction, sizeof(X86_INSTRUCTION));
 
     switch (INS_ARCH_TYPE(Instruction))
     {

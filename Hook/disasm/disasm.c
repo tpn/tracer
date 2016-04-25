@@ -1,5 +1,7 @@
 // Copyright (C) 2004, Matt Conover (mconover@gmail.com)
 #undef NDEBUG
+
+#include "../stdafx.h"
 #include <windows.h>
 #include "disasm.h"
 
@@ -48,7 +50,7 @@ BOOL InitDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Ar
 {
 	ARCHITECTURE_FORMAT *ArchFormat;
 
-	Rtl->RtlFillMemory(Disassembler, 0, sizeof(DISASSEMBLER));
+	SecureZeroMemory(Disassembler, sizeof(DISASSEMBLER));
 	Disassembler->Initialized = DISASSEMBLER_INITIALIZED;
 
 	ArchFormat = GetArchitectureFormat(Architecture);
@@ -60,7 +62,7 @@ BOOL InitDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Ar
 
 void CloseDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler)
 {
-	Rtl->RtlFillMemory(Disassembler, 0, sizeof(DISASSEMBLER));
+	SecureZeroMemory(Disassembler, sizeof(DISASSEMBLER));
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -69,10 +71,10 @@ void CloseDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler)
 
 BOOL InitInstruction(PRTL Rtl, INSTRUCTION *Instruction, DISASSEMBLER *Disassembler)
 {
-	Rtl->RtlFillMemory(Instruction, 0, sizeof(INSTRUCTION));
+	SecureZeroMemory(Instruction, sizeof(INSTRUCTION));
 	Instruction->Initialized = INSTRUCTION_INITIALIZED;
 	Instruction->Disassembler = Disassembler;
-	Rtl->RtlFillMemory(Instruction->String, ' ', MAX_OPCODE_DESCRIPTION-1);
+	memset(Instruction->String, ' ', MAX_OPCODE_DESCRIPTION-1);
 	Instruction->String[MAX_OPCODE_DESCRIPTION-1] = '\0';
 	return TRUE;
 }

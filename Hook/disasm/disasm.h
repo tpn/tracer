@@ -13,17 +13,20 @@
 extern "C" {
 #endif
 
-#define _CRT_MEMORY_DEFINED
+//#define _CRT_MEMORY_DEFINED
 
-#define memset(dest, val, size) Rtl->RtlFillMemory(dest, val, size)
+//#define memset(dest, val, size) Rtl->RtlFillMemory(dest, val, size)
 
 #include <windows.h>
 #include "misc.h"
 
 #include "../../Rtl/Rtl.h"
 
+#pragma intrinsic(memcpy)
+//#pragma intrinsic(memset)
+
 #define memmove(dest, src, length) Rtl->RtlMoveMemory(dest, src, length)
-//#define _memset(dest, val, size) Rtl->RtlFillMemory(dest, val, size)
+#define memset(dest, val, size) Rtl->RtlFillMemory(dest, size, val)
 #define malloc(bytes) HeapAlloc(Rtl->HeapHandle, HEAP_ZERO_MEMORY, bytes)
 #define free(ptr) HeapFree(Rtl->HeapHandle, 0, ptr)
 
