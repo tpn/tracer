@@ -18,124 +18,14 @@
 //FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 //IN THE SOFTWARE.
 
+#include "../stdafx.h"
 #include <windows.h>
 #include <tlhelp32.h>
-#include <stdio.h>
-#include "mhook.h"
-#include "../disasm/disasm.h"
 
-//=========================================================================
-#ifndef cntof
-#define cntof(a) (sizeof(a)/sizeof(a[0]))
-#endif
+#pragma intrinsic(memset)
 
-//=========================================================================
-#ifndef GOOD_HANDLE
-#define GOOD_HANDLE(a) ((a!=INVALID_HANDLE_VALUE)&&(a!=NULL))
-#endif
-
-//=========================================================================
-#ifndef gle
-#define gle GetLastError
-#endif
-
-//=========================================================================
-#ifndef ODPRINTF
-
-#ifdef _DEBUG
-//#define ODPRINTF(a) odprintf a
-#define ODPRINTF(a)
-#else
-#define ODPRINTF(a)
-#endif
-
-/*
-inline void __cdecl odprintf(PCSTR format, ...) {
-    va_list args;
-    va_start(args, format);
-    int len = _vscprintf(format, args);
-    if (len > 0) {
-        len += (1 + 2);
-        PSTR buf = (PSTR) malloc(len);
-        if (buf) {
-            len = vsprintf_s(buf, len, format, args);
-            if (len > 0) {
-                while (len && isspace(buf[len-1])) len--;
-                buf[len++] = '\r';
-                buf[len++] = '\n';
-                buf[len] = 0;
-                OutputDebugStringA(buf);
-            }
-            free(buf);
-        }
-        va_end(args);
-    }
-}
-
-inline void __cdecl odprintfw(PCWSTR format, ...) {
-    va_list args;
-    va_start(args, format);
-    int len = _vscwprintf(format, args);
-    if (len > 0) {
-        len += (1 + 2);
-        PWSTR buf = (PWSTR) malloc(sizeof(WCHAR)*len);
-        if (buf) {
-            len = vswprintf_s(buf, len, format, args);
-            if (len > 0) {
-                while (len && iswspace(buf[len-1])) len--;
-                buf[len++] = L'\r';
-                buf[len++] = L'\n';
-                buf[len] = 0;
-                OutputDebugStringW(buf);
-            }
-            free(buf);
-        }
-        va_end(args);
-    }
-}
-*/
-
-#endif //#ifndef ODPRINTF
-
-//=========================================================================
-#define MHOOKS_MAX_CODE_BYTES   32
-#define MHOOKS_MAX_RIPS          4
-
-typedef struct _MHOOKS_TRAMPOLINE MHOOKS_TRAMPOLINE;
-typedef MHOOKS_TRAMPOLINE *PMHOOKS_TRAMPOLINE;
-
-//=========================================================================
-// The trampoline structure - stores every bit of info about a hook
-typedef struct _MHOOKS_TRAMPOLINE {
-    PBYTE   pSystemFunction;                                // the original system function
-    DWORD   cbOverwrittenCode;                              // number of bytes overwritten by the jump
-    PBYTE   pHookFunction;                                  // the hook function that we provide
-    BYTE    codeJumpToHookFunction[MHOOKS_MAX_CODE_BYTES];  // placeholder for code that jumps to the hook function
-    BYTE    codeTrampoline[MHOOKS_MAX_CODE_BYTES];          // placeholder for code that holds the first few
-                                                            //   bytes from the system function and a jump to the remainder
-                                                            //   in the original location
-    BYTE    codeUntouched[MHOOKS_MAX_CODE_BYTES];           // placeholder for unmodified original code
-                                                            //   (we patch IP-relative addressing)
-    PMHOOKS_TRAMPOLINE pPrevTrampoline;                     // When in the free list, thess are pointers to the prev and next entry.
-    PMHOOKS_TRAMPOLINE pNextTrampoline;                     // When not in the free list, this is a pointer to the prev and next trampoline in use.
-} MHOOKS_TRAMPOLINE, *PMHOOKS_TRAMPOLINE, **PPMHOOKS_TRAMPOLINE;
-
-//=========================================================================
-// The patch data structures - store info about rip-relative instructions
-// during hook placement
-typedef struct _MHOOKS_RIPINFO
-{
-    DWORD   dwOffset;
-    S64     nDisplacement;
-} MHOOKS_RIPINFO, *PMHOOKS_RIPINFO;
-
-typedef struct _MHOOKS_PATCHDATA
-{
-    S64             nLimitUp;
-    S64             nLimitDown;
-    DWORD           nRipCnt;
-    MHOOKS_RIPINFO  rips[MHOOKS_MAX_RIPS];
-} MHOOKS_PATCHDATA, *PMHOOKS_PATCHDATA;
+//#include "../disasm/disasm.h"
+//#include "mhook.h"
 
 //=========================================================================
 // Global vars
@@ -316,6 +206,81 @@ static PBYTE EmitJump(PBYTE pbCode, PBYTE pbJumpTo) {
     return pbCode;
 }
 
+static PBYTE EmitPushImm8(PBYTE pbCode, BYTE Key)
+{
+    *pbCode++ = 0x6a;
+    *pbCode++ = Key;
+    return pbCode;
+}
+
+static PBYTE EmitPushImm16(PBYTE pbCode, USHORT Key)
+{
+    *pbCode++ = 0x66; // 16-bit operand prefix
+    *pbCode++ = 0x6a; // push imm16
+    *((PUSHORT)pbCode)++ = Key;
+    return pbCode;
+}
+
+static PBYTE EmitPushImm32(PBYTE pbCode, ULONG Key)
+{
+    *pbCode++ = 0x68;           // push
+    *((PULONG)pbCode)++ = Key;  // imm32
+    return pbCode;
+}
+
+static PBYTE EmitPushImm32x2(PBYTE pbCode, ULONGLONG Key)
+{
+    //
+    // Push an 8 byte immediate value via two 4-byte pushes.
+    // The low bytes are pushed first, then the high bytes.
+    // This is done to facilitate the following:
+    //      pop ecx         ; pop high bytes
+    //      shl rcx, 32     ; shift into top 32-bits
+    //      pop ecx         ; pop low bytes into bottom 32-bits
+    //
+
+    ULARGE_INTEGER Buf;
+    Buf.QuadPart = (ULONGLONG)Key;
+    pbCode = EmitPushImm32(pbCode, Buf.LowPart);
+    // sub rsp, 8
+    pbCode = EmitPushImm32(pbCode, Buf.HighPart);
+    return pbCode;
+}
+
+static PBYTE EmitPushULongPtr(PBYTE pbCode, ULONG_PTR Key)
+{
+#ifndef _M_X64
+    pbCode = EmitPushImm32(pbCode, Key);
+#else
+    return EmitPushImm32x2(pbCode, Key);
+#endif
+}
+
+static PBYTE EmitMovRaxImm64(PBYTE pbCode, ULONGLONG Key)
+{
+    *pbCode++ = 0x48;   // rex.w
+    *pbCode++ = 0xb8;   // mov rax,
+    *((PULONGLONG)pbCode)++ = (ULONGLONG)Key;
+    return pbCode;
+}
+
+static PBYTE EmitMovRaxRipRelative64(PBYTE pbCode, ULONGLONG Key)
+{
+    //
+    // This doesn't work.
+    //
+    *pbCode++ = 0x48;   // rex.w
+    *pbCode++ = 0x8b;   // mov rax,
+    *pbCode++ = 0x05;   // RIP relative
+    *((PULONG)pbCode)++ = (ULONG)0x08; // Byte offset from RIP
+    *pbCode++ = 0x07;   //
+    *pbCode++ = 0;
+    *pbCode++ = 0;
+    *pbCode++ = 0;
+    *((PULONGLONG)pbCode)++ = (ULONGLONG)Key;
+    return pbCode;
+}
+
 
 //=========================================================================
 // Internal function:
@@ -334,7 +299,8 @@ static size_t RoundDown(size_t addr, size_t rndDown)
 // near as possible to the specified function.
 //=========================================================================
 static MHOOKS_TRAMPOLINE* BlockAlloc(PBYTE pSystemFunction, PBYTE pbLower, PBYTE pbUpper) {
-    SYSTEM_INFO sSysInfo =  {0};
+    SYSTEM_INFO sSysInfo;
+    SecureZeroMemory(&sSysInfo, sizeof(sSysInfo));
     GetSystemInfo(&sSysInfo);
 
     // Always allocate in bulk, in case the system actually has a smaller allocation granularity than MINALLOCSIZE.
@@ -680,14 +646,14 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
     #error unsupported platform
 #endif
     DISASSEMBLER dis;
-    if (InitDisassembler(&dis, arch)) {
+    if (InitDisassembler(Rtl, &dis, arch)) {
         INSTRUCTION* pins = NULL;
         U8* pLoc = (U8*)pFunction;
         DWORD dwFlags = DISASM_DECODE | DISASM_DISASSEMBLE | DISASM_ALIGNOUTPUT;
 
         ODPRINTF((L"mhooks: DisassembleAndSkip: Disassembling %p", pLoc));
         while ( (dwRet < dwMinLen) && (pins = GetInstruction(Rtl, &dis, (ULONG_PTR)pLoc, pLoc, dwFlags)) ) {
-            ODPRINTF(("mhooks: DisassembleAndSkip: %p:(0x%2.2x) %s", pLoc, pins->Length, pins->String));
+            ODPRINTF((L"mhooks: DisassembleAndSkip: %p:(0x%2.2x) %s", pLoc, pins->Length, pins->String));
             if (pins->Type == ITYPE_RET     ) break;
             if (pins->Type == ITYPE_BRANCH  ) break;
             if (pins->Type == ITYPE_BRANCHCC) break;
@@ -769,14 +735,15 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
             pLoc  += pins->Length;
         }
 
-        CloseDisassembler(&dis);
+        CloseDisassembler(Rtl, &dis);
     }
 
     return dwRet;
 }
 
 //=========================================================================
-BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
+BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key) {
+    PFUNCTION Function = (PFUNCTION)Key;
     MHOOKS_TRAMPOLINE* pTrampoline = NULL;
     PVOID pSystemFunction = *ppSystemFunction;
     if (!Rtl->CreateToolhelp32Snapshot) {
@@ -790,7 +757,9 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
     pHookFunction   = SkipJumps((PBYTE)pHookFunction);
     ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
     // figure out the length of the overwrite zone
-    MHOOKS_PATCHDATA patchdata = {0};
+    MHOOKS_PATCHDATA patchdata;
+    SecureZeroMemory(&patchdata, sizeof(patchdata));
+
     DWORD dwInstructionLength = DisassembleAndSkip(Rtl, pSystemFunction, MHOOK_JMPSIZE, &patchdata);
     if (dwInstructionLength >= MHOOK_JMPSIZE) {
         ODPRINTF((L"mhooks: Mhook_SetHook: disassembly signals %d bytes", dwInstructionLength));
@@ -810,7 +779,9 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
                 // mark our trampoline buffer to PAGE_EXECUTE_READWRITE
                 if (VirtualProtect(pTrampoline, sizeof(MHOOKS_TRAMPOLINE), PAGE_EXECUTE_READWRITE, &dwOldProtectTrampolineFunction)) {
                     ODPRINTF((L"mhooks: Mhook_SetHook: readwrite set on trampoline structure"));
-
+                    DWORD_PTR Distance;
+                    PBYTE ValueAddress = NULL;
+                    PBYTE JumpAddress = NULL;
                     // create our trampoline function
                     PBYTE pbCode = pTrampoline->codeTrampoline;
                     // save original code..
@@ -818,6 +789,7 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
                         pTrampoline->codeUntouched[i] = pbCode[i] = ((PBYTE)pSystemFunction)[i];
                     }
                     pbCode += dwInstructionLength;
+
                     // plus a jump to the continuation in the original location
                     pbCode = EmitJump(pbCode, ((PBYTE)pSystemFunction) + dwInstructionLength);
                     ODPRINTF((L"mhooks: Mhook_SetHook: updated the trampoline"));
@@ -825,9 +797,14 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
                     // fix up any IP-relative addressing in the code
                     FixupIPRelativeAddressing(pTrampoline->codeTrampoline, (PBYTE)pSystemFunction, &patchdata);
 
-                    DWORD_PTR dwDistance = (PBYTE)pHookFunction < (PBYTE)pSystemFunction ?
-                        (PBYTE)pSystemFunction - (PBYTE)pHookFunction : (PBYTE)pHookFunction - (PBYTE)pSystemFunction;
-                    if (dwDistance > 0x7fff0000) {
+                    if ((PBYTE)pHookFunction < (PBYTE)pSystemFunction) {
+                        Distance = (PBYTE)pSystemFunction - (PBYTE)pHookFunction;
+                    }
+                    else {
+                        Distance = (PBYTE)pHookFunction - (PBYTE)pSystemFunction;
+                    }
+
+                    if (Distance > 0x7fff0000) {
                         // create a stub that jumps to the replacement function.
                         // we need this because jumping from the API to the hook directly
                         // will be a long jump, which is 14 bytes on x64, and we want to
@@ -845,11 +822,15 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
 
                         // update the API itself
                         pbCode = (PBYTE)pSystemFunction;
+                        //pbCode = EmitPushULongPtr(pbCode, (ULONG_PTR)Key);
+                        pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
                         pbCode = EmitJump(pbCode, pTrampoline->codeJumpToHookFunction);
                     } else {
                         // the jump will be at most 5 bytes so we can do it directly
                         // update the API itself
                         pbCode = (PBYTE)pSystemFunction;
+                        //pbCode = EmitPushULongPtr(pbCode, (ULONG_PTR)Key);
+                        pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
                         pbCode = EmitJump(pbCode, (PBYTE)pHookFunction);
                     }
 
@@ -891,7 +872,7 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction) {
 }
 
 //=========================================================================
-BOOL Mhook_Unhook(PRTL Rtl, PVOID *ppHookedFunction) {
+BOOL Mhook_Unhook(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key) {
     ODPRINTF((L"mhooks: Mhook_Unhook: %p", *ppHookedFunction));
     BOOL bRet = FALSE;
     EnterCritSec();

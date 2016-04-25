@@ -40,11 +40,10 @@ __C_specific_handler(
 
 #pragma warning(pop)
 
-#pragma intrinsic(memcpy)
-
 _Check_return_
 PVOID
 CopyToMemoryMappedMemory(
+    PRTL Rtl,
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
@@ -60,7 +59,7 @@ CopyToMemoryMappedMemory(
 
     __try {
 
-        return RtlCopyMemory(Destination, Source, Size);
+        return Rtl->RtlCopyMemory(Destination, Source, Size);
 
     } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
                 EXCEPTION_EXECUTE_HANDLER :
@@ -2054,6 +2053,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "RtlMoveMemory"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlMoveMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCopyMemory = (PRTL_COPY_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyMemory"))) {
+
+        if (!(Rtl->RtlCopyMemory = (PRTL_COPY_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyMemory"))) {
+
+            if (!(Rtl->RtlCopyMemory = (PRTL_COPY_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlFillMemory = (PRTL_FILL_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlFillMemory"))) {
+
+        if (!(Rtl->RtlFillMemory = (PRTL_FILL_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlFillMemory"))) {
+
+            if (!(Rtl->RtlFillMemory = (PRTL_FILL_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFillMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFillMemory'");
                 return FALSE;
             }
         }

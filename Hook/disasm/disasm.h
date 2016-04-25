@@ -12,12 +12,21 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//#define _CRT_MEMORY_DEFINED
+
+//#define memset(dest, val, size) Rtl->RtlFillMemory(dest, val, size)
+
 #include <windows.h>
 #include "misc.h"
 
 #include "../../Rtl/Rtl.h"
 
+#pragma intrinsic(memcpy)
+//#pragma intrinsic(memset)
+
 #define memmove(dest, src, length) Rtl->RtlMoveMemory(dest, src, length)
+#define memset(dest, val, size) Rtl->RtlFillMemory(dest, size, val)
 #define malloc(bytes) HeapAlloc(Rtl->HeapHandle, HEAP_ZERO_MEMORY, bytes)
 #define free(ptr) HeapFree(Rtl->HeapHandle, 0, ptr)
 
@@ -483,10 +492,10 @@ typedef enum _ARCHITECTURE_TYPE
 
 } ARCHITECTURE_TYPE;
 
-typedef BOOL (*INIT_INSTRUCTION)(struct _INSTRUCTION *Instruction);
-typedef void (*DUMP_INSTRUCTION)(struct _INSTRUCTION *Instruction, BOOL ShowBytes, BOOL Verbose);
+typedef BOOL(*INIT_INSTRUCTION)(PRTL Rtl, struct _INSTRUCTION *Instruction);
+typedef void(*DUMP_INSTRUCTION)(PRTL Rtl, struct _INSTRUCTION *Instruction, BOOL ShowBytes, BOOL Verbose);
 typedef BOOL (*GET_INSTRUCTION)(PRTL Rtl, struct _INSTRUCTION *Instruction, U8 *Address, U32 Flags);
-typedef U8 *(*FIND_FUNCTION_BY_PROLOGUE)(struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags);
+typedef U8 *(*FIND_FUNCTION_BY_PROLOGUE)(PRTL Rtl, struct _INSTRUCTION *Instruction, U8 *StartAddress, U8 *EndAddress, U32 Flags);
 
 typedef struct _ARCHITECTURE_FORMAT_FUNCTIONS
 {
@@ -631,8 +640,8 @@ typedef struct _DISASSEMBLER
 #define DISASM_ALIGNOUTPUT         (1<<5)
 #define DISASM_DISASSEMBLE_MASK (DISASM_ALIGNOUTPUT|DISASM_SHOWBYTES|DISASM_DISASSEMBLE)
 
-BOOL InitDisassembler(DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture);
-void CloseDisassembler(DISASSEMBLER *Disassembler);
+BOOL InitDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler, ARCHITECTURE_TYPE Architecture);
+void CloseDisassembler(PRTL Rtl, DISASSEMBLER *Disassembler);
 INSTRUCTION *GetInstruction(PRTL Rtl, DISASSEMBLER *Disassembler, U64 VirtualAddress, U8 *Address, U32 Flags);
 
 #ifdef __cplusplus
