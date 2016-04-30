@@ -855,6 +855,43 @@ GetPythonStringInformation(
 }
 
 BOOL
+WrapPythonStringAsString(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringOrUnicodeObject,
+    _Out_    PPSTRING            String
+    )
+{
+    SIZE_T Length;
+    USHORT Width;
+    PVOID  Buffer;
+
+    BOOL Success;
+
+    Success = GetPythonStringInformation(
+        Python,
+        StringOrUnicodeObject,
+        &Length,
+        &Width,
+        &Buffer
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (Width == 2) {
+        Length = Length << 1;
+    } else if (Width != 1) {
+        __debugbreak();
+    }
+
+    (*String)->MaximumLength = (*String)->Length = (USHORT)Length;
+    (*String)->Buffer = Buffer;
+
+    return TRUE;
+}
+
+BOOL
 CopyPythonStringToUnicodeString(
     _In_     PPYTHON             Python,
     _In_     PPYOBJECT           StringOrUnicodeObject,
@@ -2132,7 +2169,10 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
         AllocSizeInBytes = Size.LowPart + sizeof(UNICODE_STRING);
 
-        String = (PUNICODE_STRING)AllocationRoutine(AllocationContext, AllocSizeInBytes);
+        String = (PUNICODE_STRING)AllocationRoutine(
+            AllocationContext,
+            AllocSizeInBytes
+        );
 
         if (!String) {
             return FALSE;
@@ -2142,14 +2182,23 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
         // Point the buffer to the memory immediately after the struct.
         //
 
-        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+        String->Buffer = (PWSTR)(
+            RtlOffsetToPointer(
+                String,
+                sizeof(UNICODE_STRING)
+            )
+        );
 
         //
         // CurDirLength will represent the length (number of characters, not
         // bytes) of the string copied into our buffer.
         //
 
-        CurDirLength = GetCurrentDirectoryW(RequiredSizeInBytes, String->Buffer);
+        CurDirLength = GetCurrentDirectoryW(
+            RequiredSizeInBytes,
+            String->Buffer
+        );
+
         if (CurDirLength == 0) {
             FreeRoutine(FreeContext, String);
             return FALSE;
@@ -2172,16 +2221,23 @@ GetModuleNameAndQualifiedPathFromModuleFilename(
 
         AllocSizeInBytes = Size.LowPart + sizeof(UNICODE_STRING);
 
-        String = (PUNICODE_STRING)AllocationRoutine(AllocationContext, AllocSizeInBytes);
+        String = (PUNICODE_STRING)AllocationRoutine(
+            AllocationContext,
+            AllocSizeInBytes
+        );
 
         if (!String) {
             return FALSE;
         }
 
-        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+        String->Buffer = (PWSTR)(
+            RtlOffsetToPointer(
+                String,
+                sizeof(UNICODE_STRING)
+            )
+        );
 
         Dest = String->Buffer;
-
     }
 
     if (!String) {
@@ -2272,7 +2328,12 @@ GetModuleFilenameStringObjectFromCodeObject(
         return FALSE;
     }
 
-    *ModuleFilenameStringObject = (PPYOBJECT)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->Filename);
+    *ModuleFilenameStringObject = (PPYOBJECT)(
+        RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
     return TRUE;
 }
 
@@ -2380,27 +2441,46 @@ GetClassNameStringObjectFromFrameObject(
 }
 
 BOOL
+BindFunctionToPathEntry(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ PPYTHON_PATH_TABLE_ENTRY PathEntry
+    )
+{
+    __debugbreak();
+    return FALSE;
+}
+
+BOOL
 RegisterFrame(
     _In_      PPYTHON   Python,
     _In_      PPYOBJECT FrameObject,
     _In_      LONG      EventType,
-    _In_      PPYOBJECT ArgObject
+    _In_      PPYOBJECT ArgObject,
+    _Out_opt_ PVOID     Token
 )
 {
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
     PPYOBJECT CodeObject;
-    LONG FilenameHash;
+    //LONG FilenameHash;
 
     //LONG CodeObjectHash;
     //LONG FirstLineNumber;
-    LONG Hash;
+    //LONG Hash;
     PPYOBJECT FilenameObject;
-    PPYSTRINGOBJECT Filename;
+    //PPYSTRINGOBJECT Filename;
+    PSTRING Match;
+    PSTRING Path;
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
     BOOLEAN NewFunction;
+    PPREFIX_TABLE_ENTRY PrefixTableEntry;
+    PPREFIX_TABLE PrefixTable;
+    //PPYTHON_PATH_TABLE PathTable;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry;
+    BOOL Success;
 
     CodeObject = Frame->Code;
 
@@ -2414,10 +2494,12 @@ RegisterFrame(
 
     FunctionTable = &Python->FunctionTable;
 
-    Function = Rtl->RtlInsertElementGenericTable(&FunctionTable->GenericTable,
-                                                 &FunctionRecord,
-                                                 sizeof(FunctionRecord),
-                                                 &NewFunction);
+    Function = Rtl->RtlInsertElementGenericTable(
+        &FunctionTable->GenericTable,
+        &FunctionRecord,
+        sizeof(FunctionRecord),
+        &NewFunction
+    );
 
     if (!NewFunction) {
 
@@ -2429,7 +2511,8 @@ RegisterFrame(
     }
 
     //
-    // New function.  Have we seen the module?
+    // New function.  Check the prefix tree to see if we've seen the filename
+    // before.
     //
 
     FilenameObject = *(
@@ -2439,17 +2522,76 @@ RegisterFrame(
         )
     );
 
-    Filename = (PPYSTRINGOBJECT)FilenameObject;
-    FilenameHash = Filename->Hash;
-    if (!FilenameHash || FilenameHash == -1) {
-        PHASH_FUNCTION Hash = Filename->Type->Hash;
-        if (Hash) {
-            FilenameHash = Hash((PPYOBJECT)Filename);
-        }
+    Success = WrapPythonStringAsString(
+        Python,
+        FilenameObject,
+        &Path
+    );
+
+    if (!Success) {
+        return FALSE;
     }
 
-    Hash = Python->PyObject_Hash(CodeObject);
-    Hash ^= FilenameHash;
+    PrefixTable = &Python->PathTable.PrefixTable;
+
+    PrefixTableEntry = Rtl->PfxFindPrefix(PrefixTable, Path);
+    PathEntry = (PPYTHON_PATH_TABLE_ENTRY)PrefixTableEntry;
+
+    if (PathEntry) {
+
+        //
+        // A match was found, see if it matches our entire path.
+        //
+
+        Match = PathEntry->Prefix;
+
+        if (Match->Length == Path->Length) {
+
+            //
+            // An exact match was found, we've seen this filename before.
+            // Fill in the Function with the relevant details and return.
+            //
+
+            return BindFunctionToPathEntry(
+                Python,
+                Function,
+                PathEntry
+            );
+
+        } else if (Match->Length > Path->Length) {
+
+            //
+            // We should never get a match that is longer than the path we
+            // searched for.
+            //
+
+            __debugbreak();
+
+        }
+
+        //
+        // A shorter entry was found.  Fall through to the following code
+        // which will handle inserting a new prefix table entry for the
+        // directory.  Note that we just set the shorter directory as our
+        // parent directory; later on, once we've actually calculated our
+        // parent directory, we may revise this to be an ancestory entry.
+        //
+
+        //ParentEntry = Entry;
+        //Entry = NULL;
+
+    }
+
+    //FilenameHash = Filename->Hash;
+    //if (!FilenameHash || FilenameHash == -1) {
+    //    PHASH_FUNCTION Hash = Filename->Type->Hash;
+    //    if (Hash) {
+    //        FilenameHash = Hash((PPYOBJECT)Filename);
+    //    }
+    //}
+
+    //Hash = Python->PyObject_Hash(CodeObject);
+    //Hash ^= FilenameHash;
     //Hash ^= FirstLineNumber;
 
     return TRUE;
@@ -2459,3 +2601,5 @@ RegisterFrame(
 #ifdef __cpp
 } // extern "C"
 #endif
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
