@@ -1332,10 +1332,11 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     );
 
 typedef BOOL (*PREGISTER_FRAME)(
-    _In_      PPYTHON   Python,
-    _In_      PPYOBJECT FrameObject,
-    _In_      LONG      EventType,
-    _In_      PPYOBJECT ArgObject
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Out_opt_ PVOID           Token
     );
 
 typedef BOOL (*PREGISTER_FUNCTION)(
@@ -1801,11 +1802,11 @@ AddDirectoryEntry(
 TRACER_API
 BOOL
 RegisterFrame(
-    _In_      PPYTHON    Python,
-    _In_      PPYOBJECT  FrameObject,
-    _In_      LONG       EventType,
-    _In_      PPYOBJECT  ArgObject,
-    _Out_opt_ PVOID      Token
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Out_opt_ PVOID           Token
     );
 
 

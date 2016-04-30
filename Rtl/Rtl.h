@@ -1069,7 +1069,35 @@ typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     BOOL                Reverse
     );
 
-typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+
+typedef BOOL (FIND_CHARS_IN_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
+
+typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse
+    );
+
+typedef CREATE_BITMAP_INDEX_FOR_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_STRING;
+
+RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;
+RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringSse42;
+RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringAvx;
+RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringAvx2;
 
 typedef PVOID (ALLOCATION_ROUTINE)(
     _In_opt_ PVOID AllocationContext,

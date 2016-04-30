@@ -108,12 +108,13 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     union {
         ULONG Flags;
         struct {
-            ULONG Started:1;
+            ULONG StartedTracing:1;
         };
     };
     ULONG Unused1;
 
-    ULONGLONG
+    ULONGLONG LastTimestamp;
+
 
     PPREPARE_TRACE_EVENT PrepareTraceEvent;
     PCONTINUE_TRACE_EVENT ContinueTraceEvent;

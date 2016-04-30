@@ -101,16 +101,10 @@ typedef struct _TRACE_EVENT2 {
         };
     };
 
-    BYTE    EventType;
     USHORT  FileAtom;
     USHORT  LineNumber;
-    USHORT          Version;                //  2   2
-    USHORT          EventType;              //  2   4
-    DWORD           ProcessId;              //  4   8
-    DWORD           ThreadId;               //  4   12
-    DWORD           LineNumber;             //  4   16
-    DWORD           LineCount;              //  4   20
-    DWORD           SequenceId;             //  4   24
+    DWORD   LineCount;              //  4   20
+    DWORD   SequenceId;             //  4   24
     __declspec(align(8))
     union {
         LARGE_INTEGER   liTimeStamp;        //  8   32
