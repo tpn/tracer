@@ -83,6 +83,65 @@ typedef struct _TRACE_EVENT {
     };
 } TRACE_EVENT, *PTRACE_EVENT;
 
+typedef struct _TRACE_EVENT2 {
+    union {
+        ULONG Flags;
+        struct {
+            union {
+                ULONG EventType:5;
+                struct {
+                    ULONG IsCall:1;         // PyTrace_CALL
+                    ULONG IsException:1;    // PyTrace_EXCEPTION
+                    ULONG IsLine:1;         // PyTrace_LINE
+                    ULONG IsReturn:1;       // PyTrace_RETURN
+                    ULONG IsC:1;
+                };
+            };
+            ULONG Unused:27;
+        };
+    };
+
+    BYTE    EventType;
+    USHORT  FileAtom;
+    USHORT  LineNumber;
+    USHORT          Version;                //  2   2
+    USHORT          EventType;              //  2   4
+    DWORD           ProcessId;              //  4   8
+    DWORD           ThreadId;               //  4   12
+    DWORD           LineNumber;             //  4   16
+    DWORD           LineCount;              //  4   20
+    DWORD           SequenceId;             //  4   24
+    __declspec(align(8))
+    union {
+        LARGE_INTEGER   liTimeStamp;        //  8   32
+        FILETIME        ftTimeStamp;
+    };
+    __declspec(align(8))
+    union {
+        ULARGE_INTEGER  uliFramePointer;    //  8   40
+        ULONGLONG       ullFramePointer;
+        ULONG_PTR       FramePointer;
+    };
+    __declspec(align(8))
+    union {
+        LARGE_INTEGER   uliModulePointer;   //  8   48
+        ULONGLONG       ullModulePointer;
+        ULONG_PTR       ModulePointer;
+    };
+    __declspec(align(8))
+    union {
+        ULARGE_INTEGER  uliFuncPointer;     //  8   56
+        ULONGLONG       ullFuncPointer;
+        ULONG_PTR       FuncPointer;
+    };
+    __declspec(align(8))
+    union {
+        ULARGE_INTEGER  uliObjPointer;      //  8   64
+        ULONGLONG       ullObjPointer;
+        ULONG_PTR       ObjPointer;
+    };
+} TRACE_EVENT2, *PTRACE_EVENT2;
+
 typedef struct _PYTRACE_CALL {
     USHORT Version;
     DWORD LineNumber;

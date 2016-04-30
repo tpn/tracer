@@ -328,7 +328,7 @@ SymEnumSymbolsCallback(
 
 VOID
 WINAPI
-mainCRTStartup()
+_mainCRTStartupHooked()
 {
     DWORD ExitCode = 1;
 

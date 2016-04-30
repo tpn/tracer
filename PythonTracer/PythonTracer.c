@@ -387,7 +387,7 @@ PyTraceContinueTraceEvent(
 
 LONG
 PyTraceCallback(
-    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYTHON_TRACE_CONTEXT   Context,
     _In_        PPYFRAMEOBJECT          FrameObject,
     _In_opt_    LONG                    EventType,
     _In_opt_    PPYOBJECT               ArgObject
@@ -397,15 +397,124 @@ PyTraceCallback(
     PPYTHON Python;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
-    TRACE_EVENT  Event = { 0 };
-    ULARGE_INTEGER RecordSize = { sizeof(Event) };
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
+    TRACE_EVENT  Event;
+    BOOLEAN Continue;
     BOOLEAN Success;
+    PVOID Token;
+    BOOL StartedTracing;
+    BOOL IsCall;
+    BOOL IsReturn;
+    BOOL IsLine;
+    BOOL IsException;
+
+    StartedTracing = (BOOL)Context->StartedTracing
+
+    IsCall = (
+        EventType == TraceEventType_PyTrace_CALL   ||
+        EventType == TraceEventType_PyTrace_C_CALL ||
+    );
+
+    IsReturn = (
+        EventType == TraceEventType_PyTrace_RETURN   ||
+        EventType == TraceEventType_PyTrace_C_RETURN ||
+    );
+
+    IsLine = (EventType == TraceEventType_PyTrace_LINE);
+
+    IsException = (
+        EventType == TraceEventType_PyTrace_EXCEPTION   ||
+        EventType == TraceEventType_PyTrace_C_EXCEPTION ||
+    );
+
+    if (!StartedTracing) {
+
+        if (!IsCall) {
+
+            //
+            // If we haven't started tracing yet, we can ignore any events that
+            // aren't PyTrace_CALL or PyTrace_C_CALL.
+            //
+
+            return 0;
+        }
+
+        //
+        // We haven't started tracing yet, and this is a call event.  See if
+        // we need to skip the frame.
+        //
+
+        if (++Context->Depth <= Context->SkipFrames) {
+
+            //
+            // Skip the frame.
+            //
+
+            return 0;
+        }
+
+        //
+        // Indicate we've started tracing by toggling the context flag.
+        //
+
+        StartedTracing = Context->StartedTracing = TRUE;
+
+    } else {
+
+        //
+        // We've already started tracing.
+        //
+
+        if (IsReturn) {
+
+            //
+            // Context->Depth should never be 0 here if StartedTracing is set.
+            //
+
+            if (!Context->Depth) {
+                __debugbreak();
+            }
+
+            if (--Context->Depth <= Context->SkipFrames) {
+
+                //
+                // We're returning from a skipped frame.  Stop tracing.
+                //
+
+                Context->StartedTracing = FALSE;
+
+                return 0;
+
+            }
+        }
+    }
+
+    //
+    // Determine if this is a function of interest by calling RegisterFrame().
+    //
+
+    Python = Context->Python;
+
+    Continue = Python->RegisterFrame(Python,
+                                     FrameObject,
+                                     EventType,
+                                     ArgObject,
+                                     &Token);
+
+    if (!Continue) {
+
+        //
+        // This isn't a function of interest, return.
+        //
+
+        return 0;
+    }
+
+    //
+    // The function is of interest, continue tracing.
+    //
 
     Rtl = Context->Rtl;
     TraceContext = Context->TraceContext;
-    Python = Context->Python;
     TraceStores = TraceContext->TraceStores;
 
     Success = Context->PrepareTraceEvent(Context,
@@ -466,6 +575,102 @@ PyTraceCallback(
 
     return 0;
 }
+
+LONG
+PyTraceCallbackOrig(
+    _In_        PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+)
+{
+    PRTL Rtl;
+    PPYTHON Python;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+    TRACE_EVENT  Event = { 0 };
+    ULARGE_INTEGER RecordSize = { sizeof(Event) };
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    PPYTHON_TRACE_CONTEXT Context = PythonTraceContext;
+    BOOLEAN Continue;
+    BOOLEAN Success;
+    ULONG_PTR Token;
+
+    Rtl = Context->Rtl;
+    TraceContext = Context->TraceContext;
+    Python = Context->Python;
+    TraceStores = TraceContext->TraceStores;
+
+    Continue = Python->RegisterFrame(Python,
+                                     FrameObject,
+                                     EventType,
+                                     ArgObject,
+                                     &Token);
+
+    if (!Continue) {
+        return 0;
+    }
+
+    Success = Context->PrepareTraceEvent(Context,
+                                         &Event,
+                                         FrameObject,
+                                         EventType,
+                                         ArgObject);
+
+    if (!Success) {
+        return 0;
+    }
+
+    switch (EventType) {
+        case TraceEventType_PyTrace_CALL:
+
+            Success = (
+                ++Context->Depth > Context->SkipFrames &&
+                Context->RegisterPythonFunction(Context, &Event, FrameObject)
+            );
+
+            if (Success) {
+                Context->ContinueTraceEvent(Context, &Event, FrameObject);
+                Context->TraceCall(Context, &Event, FrameObject);
+            }
+            break;
+
+        case TraceEventType_PyTrace_EXCEPTION:
+            break;
+
+        case TraceEventType_PyTrace_LINE:
+            Event.LineCount = 1;
+            break;
+
+        case TraceEventType_PyTrace_RETURN:
+
+            Success = (
+                Context->Depth &&
+                --Context->Depth > Context->SkipFrames &&
+                Context->RegisterPythonFunction(Context, &Event, FrameObject)
+            );
+
+            if (Success) {
+                Context->ContinueTraceEvent(Context, &Event, FrameObject);
+                Context->TraceReturn(Context, &Event, FrameObject);
+            }
+
+            break;
+
+        case TraceEventType_PyTrace_C_CALL:
+            break;
+        case TraceEventType_PyTrace_C_EXCEPTION:
+            break;
+        case TraceEventType_PyTrace_C_RETURN:
+            break;
+    };
+
+    Event.SequenceId = ++TraceContext->SequenceId;
+
+    return 0;
+}
+
+
 
 BOOL
 PyTraceRegisterPythonFunction(
