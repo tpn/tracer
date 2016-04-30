@@ -407,23 +407,23 @@ PyTraceCallback(
     BOOL IsLine;
     BOOL IsException;
 
-    StartedTracing = (BOOL)Context->StartedTracing
+    StartedTracing = (BOOL)Context->StartedTracing;
 
     IsCall = (
         EventType == TraceEventType_PyTrace_CALL   ||
-        EventType == TraceEventType_PyTrace_C_CALL ||
+        EventType == TraceEventType_PyTrace_C_CALL
     );
 
     IsReturn = (
         EventType == TraceEventType_PyTrace_RETURN   ||
-        EventType == TraceEventType_PyTrace_C_RETURN ||
+        EventType == TraceEventType_PyTrace_C_RETURN
     );
 
     IsLine = (EventType == TraceEventType_PyTrace_LINE);
 
     IsException = (
         EventType == TraceEventType_PyTrace_EXCEPTION   ||
-        EventType == TraceEventType_PyTrace_C_EXCEPTION ||
+        EventType == TraceEventType_PyTrace_C_EXCEPTION
     );
 
     if (!StartedTracing) {

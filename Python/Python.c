@@ -421,11 +421,15 @@ InitializePythonRuntimeTables(
 {
     PRTL Rtl;
     Rtl = Python->Rtl;
-    PUNICODE_PREFIX_TABLE PrefixTable;
+    PPREFIX_TABLE PrefixTable;
+    PUNICODE_PREFIX_TABLE UnicodePrefixTable;
     PRTL_GENERIC_TABLE GenericTable;
 
-    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
-    Rtl->RtlInitializeUnicodePrefix(PrefixTable);
+    UnicodePrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
+    Rtl->RtlInitializeUnicodePrefix(UnicodePrefixTable);
+
+    PrefixTable = &Python->PathTable.PrefixTable;
+    Rtl->PfxInitialize(PrefixTable);
 
     //
     // If the allocation routine isn't provided, default to the generic
@@ -854,11 +858,12 @@ GetPythonStringInformation(
     return TRUE;
 }
 
+FORCEINLINE
 BOOL
 WrapPythonStringAsString(
-    _In_     PPYTHON             Python,
-    _In_     PPYOBJECT           StringOrUnicodeObject,
-    _Out_    PPSTRING            String
+    _In_     PPYTHON    Python,
+    _In_     PPYOBJECT  StringOrUnicodeObject,
+    _Out_    PSTRING    String
     )
 {
     SIZE_T Length;
@@ -885,8 +890,8 @@ WrapPythonStringAsString(
         __debugbreak();
     }
 
-    (*String)->MaximumLength = (*String)->Length = (USHORT)Length;
-    (*String)->Buffer = Buffer;
+    String->MaximumLength = String->Length = (USHORT)Length;
+    String->Buffer = Buffer;
 
     return TRUE;
 }
@@ -2453,11 +2458,11 @@ BindFunctionToPathEntry(
 
 BOOL
 RegisterFrame(
-    _In_      PPYTHON   Python,
-    _In_      PPYOBJECT FrameObject,
-    _In_      LONG      EventType,
-    _In_      PPYOBJECT ArgObject,
-    _Out_opt_ PVOID     Token
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Out_opt_ PVOID           Token
 )
 {
     PRTL Rtl;
@@ -2471,6 +2476,7 @@ RegisterFrame(
     PPYOBJECT FilenameObject;
     //PPYSTRINGOBJECT Filename;
     PSTRING Match;
+    STRING PathString;
     PSTRING Path;
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
@@ -2522,10 +2528,12 @@ RegisterFrame(
         )
     );
 
+    Path = &PathString;
+
     Success = WrapPythonStringAsString(
         Python,
         FilenameObject,
-        &Path
+        Path
     );
 
     if (!Success) {

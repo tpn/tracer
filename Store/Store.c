@@ -1,7 +1,6 @@
 // Copyright Trent Nelson <trent@trent.me>
 
-#include <Windows.h>
-#include <Strsafe.h>
+#include "Store.h"
 
 INIT_ONCE InitOnceFindLongestStoreFileName = INIT_ONCE_STATIC_INIT;
 
