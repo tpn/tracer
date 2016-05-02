@@ -1806,7 +1806,8 @@ GetModuleNameFromQualifiedPath(
                                                      L'\\',
                                                      &HeapHandle,
                                                      &BitmapPointer,
-                                                     Reversed);
+                                                     Reversed,
+                                                     NULL);
 
     if (!Success) {
         return FALSE;

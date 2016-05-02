@@ -607,7 +607,7 @@ Start:
 
     FindChars = FindCharsFunction;
     if (!FindChars) {
-        FindChars = Rtl->FindCharsInUnicodeString;
+        FindChars = FindCharsInUnicodeString;
     }
 
     Success = FindChars(Rtl, String, Char, Bitmap, Reverse);
@@ -660,11 +660,11 @@ BOOL
 CreateBitmapIndexForString(
     _In_     PRTL           Rtl,
     _In_     PSTRING        String,
-    _In_     WCHAR          Char,
+    _In_     CHAR           Char,
     _Inout_  PHANDLE        HeapHandlePointer,
     _Inout_  PPRTL_BITMAP   BitmapPointer,
     _In_     BOOL           Reverse,
-    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction;
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
     )
 
 /*++
@@ -947,7 +947,7 @@ Start:
 
     FindChars = FindCharsFunction;
     if (!FindChars) {
-        FindChars = Rtl->FindCharsInString;
+        FindChars = FindCharsInString;
     }
 
     Success = FindChars(Rtl, String, Char, Bitmap, Reverse);
@@ -1093,8 +1093,7 @@ FilesExist(
 
         Path.Buffer = &StackBuffer[0];
 
-    }
-    else if (CombinedSizeInBytes > MAX_USTRING) {
+    } else if (CombinedSizeInBytes > MAX_USTRING) {
 
         goto Error;
 
@@ -2747,6 +2746,20 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "CreateBitmapIndexForUnicodeString"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'CreateBitmapIndexForUnicodeString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FindCharsInString = (PFIND_CHARS_IN_STRING)
+        GetProcAddress(RtlExModule, "FindCharsInString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FindCharsInString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CreateBitmapIndexForString = (PCREATE_BITMAP_INDEX_FOR_STRING)
+        GetProcAddress(RtlExModule, "CreateBitmapIndexForString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CreateBitmapIndexForString'");
         return FALSE;
     }
 
