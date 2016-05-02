@@ -6,6 +6,8 @@ extern "C" {
 
 #include <Windows.h>
 
+#define RTL_API __declspec(dllexport)
+
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
@@ -1060,13 +1062,23 @@ typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
 
 typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
 
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+    );
+
 typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
     _In_     PUNICODE_STRING     String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
     );
 
 typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
@@ -1082,22 +1094,42 @@ typedef BOOL (FIND_CHARS_IN_STRING)(
 
 typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
 
+RTL_API
+_Check_return_
+BOOL
+FindCharsInString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
 typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
     _In_     PRTL           Rtl,
     _In_     PSTRING        String,
     _In_     CHAR           Char,
     _Inout_  PHANDLE        HeapHandlePointer,
     _Inout_  PPRTL_BITMAP   BitmapPointer,
-    _In_     BOOL           Reverse
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
     );
 
 typedef CREATE_BITMAP_INDEX_FOR_STRING \
        *PCREATE_BITMAP_INDEX_FOR_STRING;
 
-RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;
-RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringSse42;
-RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringAvx;
-RTL_API CREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForStringAvx2;
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
 
 typedef PVOID (ALLOCATION_ROUTINE)(
     _In_opt_ PVOID AllocationContext,
@@ -1154,6 +1186,8 @@ typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
     PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
+    PFIND_CHARS_IN_STRING FindCharsInString;                                   \
+    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                \
     PFILES_EXIST FilesExist;                                                   \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;
 
@@ -1219,8 +1253,6 @@ typedef BOOL (*PINITIALIZE_RTL)(
 #define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                                           \
     (USHORT)(ALIGN_DOWN_USHORT_TO_POINTER_SIZE((Value) + ((USHORT)sizeof(ULONG_PTR)-1)))
 
-#define RTL_API __declspec(dllexport)
-
 RTL_API
 VOID
 Debugbreak();
@@ -1243,28 +1275,6 @@ CopyToMemoryMappedMemory(
 
 RTL_API
 BOOL
-FindCharsInUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PRTL_BITMAP         Bitmap,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-_Check_return_
-BOOL
-CreateBitmapIndexForUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PHANDLE             HeapHandlePointer,
-    _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
     _In_  PCUNICODE_STRING      Source,
@@ -1272,7 +1282,6 @@ CreateUnicodeString(
     _In_  PALLOCATION_ROUTINE   AllocationRoutine,
     _In_  PVOID                 AllocationContext
     );
-
 
 RTL_API
 _Check_return_
