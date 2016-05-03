@@ -6,6 +6,8 @@ extern "C" {
 
 #include <Windows.h>
 
+#define RTL_API __declspec(dllexport)
+
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
@@ -32,6 +34,7 @@ typedef struct _STRING {
     USHORT MaximumLength;
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
+typedef const STRING *PCSTRING;
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -46,6 +49,12 @@ typedef VOID (RTL_COPY_UNICODE_STRING)(
     _In_opt_ PCUNICODE_STRING SourceString
     );
 typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
+
+typedef VOID (RTL_COPY_STRING)(
+    _Out_    PSTRING  DestinationString,
+    _In_opt_ PCSTRING SourceString
+    );
+typedef RTL_COPY_STRING *PRTL_COPY_STRING;
 
 typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
     _Inout_  PUNICODE_STRING Destination,
@@ -143,6 +152,18 @@ typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
 //
 // Prefix Helpers
 //
+typedef BOOLEAN (NTAPI *PRTL_PREFIX_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOLEAN CaseInSensitive
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_SUFFIX_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOLEAN CaseInSensitive
+    );
+
 typedef BOOLEAN (NTAPI *PRTL_PREFIX_UNICODE_STRING)(
     _In_ PCUNICODE_STRING String1,
     _In_ PCUNICODE_STRING String2,
@@ -902,6 +923,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                                \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                                \
     PPFX_FIND_PREFIX PfxFindPrefix;                                                                    \
+    PRTL_PREFIX_STRING RtlPrefixString;                                                                \
     PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                                 \
     PRTL_CREATE_HASH_TABLE RtlCreateHashTable;                                                         \
     PRTL_DELETE_HASH_TABLE RtlDeleteHashTable;                                                         \
@@ -943,6 +965,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
     PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
     PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
+    PRTL_COPY_STRING RtlCopyString;                                                                    \
     PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_APPEND_UNICODE_STRING_TO_STRING RtlAppendUnicodeStringToString;                               \
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
@@ -1060,16 +1083,89 @@ typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
 
 typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
 
+RTL_API
+_Check_return_
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+    );
+
 typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
     _In_     PUNICODE_STRING     String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
     );
 
-typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PHANDLE             HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP        BitmapPointer,
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
+);
+
+typedef BOOL (FIND_CHARS_IN_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+FindCharsInString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
+
+typedef CREATE_BITMAP_INDEX_FOR_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
 
 typedef PVOID (ALLOCATION_ROUTINE)(
     _In_opt_ PVOID AllocationContext,
@@ -1085,7 +1181,7 @@ typedef VOID (FREE_ROUTINE)(
 
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
-typedef BOOL (FILES_EXIST)(
+typedef BOOL (FILES_EXISTW)(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1095,12 +1191,32 @@ typedef BOOL (FILES_EXIST)(
     _Out_opt_ PPUNICODE_STRING WhichFilename
     );
 
-typedef FILES_EXIST *PFILES_EXIST;
+typedef FILES_EXISTW *PFILES_EXISTW;
+
+typedef BOOL (FILES_EXISTA)(
+    _In_      PRTL     Rtl,
+    _In_      PSTRING  Directory,
+    _In_      USHORT   NumberOfFilenames,
+    _In_      PPSTRING Filenames,
+    _Out_     PBOOL    Exists,
+    _Out_opt_ PUSHORT  WhichIndex,
+    _Out_opt_ PPSTRING WhichFilename
+    );
+
+typedef FILES_EXISTA *PFILES_EXISTA;
 
 typedef BOOL (*PCOPY_UNICODE_STRING)(
     _In_  PRTL                  Rtl,
     _In_  PCUNICODE_STRING      Source,
     _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    );
+
+typedef BOOL (*PCOPY_STRING)(
+    _In_  PRTL                  Rtl,
+    _In_  PCSTRING              Source,
+    _Out_ PPSTRING              Destination,
     _In_  PALLOCATION_ROUTINE   AllocationRoutine,
     _In_  PVOID                 AllocationContext
     );
@@ -1126,7 +1242,10 @@ typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
     PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
-    PFILES_EXIST FilesExist;                                                   \
+    PFIND_CHARS_IN_STRING FindCharsInString;                                   \
+    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                \
+    PFILES_EXISTW FilesExistW;                                                 \
+    PFILES_EXISTA FilesExistA;                                                 \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -1191,8 +1310,6 @@ typedef BOOL (*PINITIALIZE_RTL)(
 #define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                                           \
     (USHORT)(ALIGN_DOWN_USHORT_TO_POINTER_SIZE((Value) + ((USHORT)sizeof(ULONG_PTR)-1)))
 
-#define RTL_API __declspec(dllexport)
-
 RTL_API
 VOID
 Debugbreak();
@@ -1215,28 +1332,6 @@ CopyToMemoryMappedMemory(
 
 RTL_API
 BOOL
-FindCharsInUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PRTL_BITMAP         Bitmap,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-_Check_return_
-BOOL
-CreateBitmapIndexForUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PHANDLE             HeapHandlePointer,
-    _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
     _In_  PCUNICODE_STRING      Source,
@@ -1245,11 +1340,10 @@ CreateUnicodeString(
     _In_  PVOID                 AllocationContext
     );
 
-
 RTL_API
 _Check_return_
 BOOL
-FilesExist(
+FilesExistW(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1257,6 +1351,19 @@ FilesExist(
     _Out_     PBOOL            Exists,
     _Out_opt_ PUSHORT          WhichIndex,
     _Out_opt_ PPUNICODE_STRING WhichFilename
+    );
+
+RTL_API
+_Check_return_
+BOOL
+FilesExistA(
+    _In_      PRTL     Rtl,
+    _In_      PSTRING  Directory,
+    _In_      USHORT   NumberOfFilenames,
+    _In_      PPSTRING Filenames,
+    _Out_     PBOOL    Exists,
+    _Out_opt_ PUSHORT  WhichIndex,
+    _Out_opt_ PPSTRING WhichFilename
     );
 
 RTL_API
@@ -1282,6 +1389,53 @@ AppendUnicodeCharToUnicodeString(
 
     return TRUE;
 }
+
+FORCEINLINE
+BOOL
+AppendCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    Char
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = Destination->Length + sizeof(CHAR);
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendStringAndCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    PSTRING String,
+    _In_    CHAR    Char
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 1;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
 
 FORCEINLINE
 BOOL
@@ -1329,6 +1483,31 @@ CopyUnicodeStringInline(
 
     Rtl->RtlCopyUnicodeString(Destination, Source);
 }
+
+FORCEINLINE
+VOID
+CopyString(
+    _Out_    PSTRING Destination,
+    _In_opt_ PCSTRING Source
+    )
+{
+    USHORT Length;
+
+    if (!Source) {
+        Destination->Length = 0;
+        return;
+    }
+
+    Length = min(Destination->MaximumLength, Source->Length);
+
+    __movsb((PBYTE)Destination->Buffer,
+            (PBYTE)Source->Buffer,
+            Length);
+
+    Destination->Length = Length;
+
+}
+
 
 FORCEINLINE
 VOID

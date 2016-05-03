@@ -3,8 +3,6 @@ import ctypes
 import sys
 import os
 
-os.environ['COMPUTERNAME']
-
 if os.environ['USERNAME'] == 'r541964':
     sys.path.insert(0, r'c:\users\r541964\home\src\tpn\lib')
     sys.path.insert(0, r'c:\users\r541964\home\src\tracer\PythonApp\lib')
@@ -31,12 +29,6 @@ trace_events_dat_path = join_path(basedir, 'trace_events.dat')
 trace_events_dat_metadata_path = ''.join((trace_events_dat_path, ':metadata'))
 
 import re
-
-from tpn.convert import (
-    convert_windows_typedef_to_python_ctypes_structure,
-    TYPEDEF_FILE_STANDARD_INFO,
-    PYTHON_CTYPES_FILE_STANDARD_INFO_FORMAT
-)
 
 from tpn.util import bits_table, NullObject
 null_writer = NullObject()
