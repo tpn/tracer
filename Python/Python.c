@@ -24,7 +24,7 @@ static CONST PUNICODE_STRING InitPyFilesA[] = {
     (PUNICODE_STRING)&A__init__pyo
 };
 
-static CONST USHORT NumberOfInitPyFiles = sizeof(InitPyFiles) / sizeof(InitPyFiles[0]);
+static CONST USHORT NumberOfInitPyFiles = sizeof(InitPyFilesA) / sizeof(InitPyFilesA[0]);
 
 static const PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27 = {
     FIELD_OFFSET(PYCODEOBJECT25_27, ArgumentCount),
@@ -1935,7 +1935,7 @@ GetModuleNameFromDirectory(
 
         } else {
 
-            Success = IsModuleDirectory(Rtl, &AncestorDirectory, &IsModule);
+            Success = IsModuleDirectoryW(Rtl, &AncestorDirectory, &IsModule);
 
             if (!Success) {
 
@@ -2906,7 +2906,7 @@ QualifyPath(
     PSTRING String;
     PSTR Dest;
 
-    Size = SourcePath->Length;
+    Size.QuadPart = SourcePath->Length;
     Buffer = SourcePath->Buffer;
 
     //
@@ -2942,7 +2942,7 @@ QualifyPath(
 
     String = (PSTRING)HeapAlloc(HeapHandle,
                                 HEAP_ZERO_MEMORY,
-                                AllocSizeInBytes.LowPart);
+                                AllocSizeInBytes);
 
     if (!String) {
         return FALSE;
@@ -2964,7 +2964,7 @@ QualifyPath(
     // bytes) of the string copied into our buffer.
     //
 
-    CurDirLength = GetCurrentDirectoryW(
+    CurDirLength = GetCurrentDirectoryA(
         RequiredSizeInBytes,
         String->Buffer
     );
@@ -2996,6 +2996,8 @@ QualifyPath(
 
     __movsb(Dest, Buffer, Length);
 
+    Dest += Length;
+
     //
     // Add terminating NUL.
     //
@@ -3026,10 +3028,10 @@ GetPathEntryForDirectory(
     PPREFIX_TABLE PrefixTable;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
 
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY RootEntry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ParentEntry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry = NULL;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry = NULL;
+    PPYTHON_PATH_TABLE_ENTRY RootEntry = NULL;
+    PPYTHON_PATH_TABLE_ENTRY ParentEntry = NULL;
+    PPYTHON_PATH_TABLE_ENTRY AncestorEntry = NULL;
 
     PSTRING Match = NULL;
     BOOL CaseInsensitive = TRUE;
@@ -3133,8 +3135,8 @@ GetPathEntryForDirectory(
         // parent directory, we may revise this to be an ancestory entry.
         //
 
-        ParentEntry = Entry;
-        Entry = NULL;
+        ParentEntry = PathEntry;
+        PathEntry = NULL;
 
     }
 
@@ -3158,8 +3160,8 @@ GetPathEntryForDirectory(
         // to be empty and return.
         //
 
-        Entry->IsModule = FALSE;
-        ClearString(&Entry->ModuleName);
+        PathEntry->IsModule = FALSE;
+        ClearString(&PathEntry->ModuleName);
         return TRUE;
 
     }
@@ -3196,7 +3198,7 @@ GetPathEntryForDirectory(
     //
 
     DirectoryName.Length = (
-        (ReversedIndex - CumulativeReversedIndex)
+        (ReversedIndex - CumulativeReversedIndex) -
         sizeof(CHAR)
     );
     DirectoryName.MaximumLength = DirectoryName.Length;
@@ -3411,8 +3413,8 @@ GetPathEntryForDirectory(
         AncestorName.MaximumLength = DirectoryName.Length;
         AncestorName.Buffer = &Directory->Buffer[Offset];
 
-        AncestorDirectory.Length = (Offset - 1) << 1;
-        AncestorDirectory.MaximumLength = (Offset - 1) << 1;
+        AncestorDirectory.Length = Offset - 1;
+        AncestorDirectory.MaximumLength = Offset - 1;
         AncestorDirectory.Buffer = Directory->Buffer;
 
         //
@@ -3455,14 +3457,14 @@ FoundParent:
                                 Directory,
                                 &DirectoryName,
                                 ParentEntry,
-                                &Entry,
+                                &PathEntry,
                                 FALSE);
 
     if (!Success) {
         return FALSE;
     }
 
-    *PathEntryPointer = Entry;
+    *PathEntryPointer = PathEntry;
 
     return TRUE;
 }
@@ -3471,7 +3473,7 @@ BOOL
 GetParentPathEntryForFile(
     _In_  PPYTHON    Python,
     _In_  PSTRING    Path,
-    _In_  PPYFRAMEOBJECT FrameObject;
+    _In_  PPYFRAMEOBJECT FrameObject,
     _Out_ PPYTHON_PATH_TABLE_ENTRY ParentPathEntryPointer
     )
 /*++
@@ -3582,7 +3584,7 @@ Routine Description:
                                        BitmapPointer,
                                        &BitmapHintIndex,
                                        &NumberOfBackslashesRemaining,
-                                       &ParentPathEntry);
+                                       ParentPathEntryPointer);
 
     if (!Success) {
         goto Error;

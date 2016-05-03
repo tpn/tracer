@@ -50,6 +50,12 @@ typedef VOID (RTL_COPY_UNICODE_STRING)(
     );
 typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
 
+typedef VOID (RTL_COPY_STRING)(
+    _Out_    PSTRING  DestinationString,
+    _In_opt_ PCSTRING SourceString
+    );
+typedef RTL_COPY_STRING *PRTL_COPY_STRING;
+
 typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
     _Inout_  PUNICODE_STRING Destination,
     _In_opt_ PCWSTR          Source
@@ -959,6 +965,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
     PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
     PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
+    PRTL_COPY_STRING RtlCopyString;                                                                    \
     PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_APPEND_UNICODE_STRING_TO_STRING RtlAppendUnicodeStringToString;                               \
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
@@ -1418,8 +1425,8 @@ AppendStringAndCharToString(
         return FALSE;
     }
 
-    __movsb(Destination->Buffer[NewOffset],
-            String->Buffer,
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
             String->Length);
 
     NewOffset += String->Length;
@@ -1476,6 +1483,31 @@ CopyUnicodeStringInline(
 
     Rtl->RtlCopyUnicodeString(Destination, Source);
 }
+
+FORCEINLINE
+VOID
+CopyString(
+    _Out_    PSTRING Destination,
+    _In_opt_ PCSTRING Source
+    )
+{
+    USHORT Length;
+
+    if (!Source) {
+        Destination->Length = 0;
+        return;
+    }
+
+    Length = min(Destination->MaximumLength, Source->Length);
+
+    __movsb((PBYTE)Destination->Buffer,
+            (PBYTE)Source->Buffer,
+            Length);
+
+    Destination->Length = Length;
+
+}
+
 
 FORCEINLINE
 VOID

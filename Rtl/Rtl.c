@@ -1247,7 +1247,7 @@ FilesExistA(
     )
 {
     USHORT Index;
-    PWCHAR HeapBuffer;
+    PCHAR HeapBuffer;
     ULONG CombinedSizeInBytes;
     USHORT DirectoryLength;
     USHORT MaxFilenameLength = 0;
@@ -1311,11 +1311,11 @@ FilesExistA(
     //
 
     CombinedSizeInBytes = (
-        ExtendedLengthVolumePrefix.Length +
-        Directory->Length                 +
-        sizeof(CHAR)                      + // joining backslash
-        MaxFilenameLength                 +
-        sizeof(CHAR)                        // terminating NUL
+        ExtendedLengthVolumePrefixA.Length +
+        Directory->Length                  +
+        sizeof(CHAR)                       + // joining backslash
+        MaxFilenameLength                  +
+        sizeof(CHAR)                         // terminating NUL
     );
 
     //
@@ -1348,7 +1348,7 @@ FilesExistA(
             return FALSE;
         }
 
-        HeapBuffer = (PWCHAR)HeapAlloc(HeapHandle, 0, CombinedSizeInBytes);
+        HeapBuffer = (PCHAR)HeapAlloc(HeapHandle, 0, CombinedSizeInBytes);
 
         if (!HeapBuffer) {
             return FALSE;
@@ -1365,7 +1365,7 @@ FilesExistA(
     // Copy the volume prefix, then append the directory and joining backslash.
     //
 
-    Rtl->RtlCopyString(&Path, &ExtendedLengthVolumePrefixA);
+    CopyString(&Path, &ExtendedLengthVolumePrefixA);
 
     if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
 	goto Error;
@@ -1399,7 +1399,7 @@ FilesExistA(
         // attributes.
         //
 
-        Attributes = GetFileAttributesW(Path.Buffer);
+        Attributes = GetFileAttributesA(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
             (Attributes & FILE_ATTRIBUTE_DIRECTORY))
@@ -2601,6 +2601,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "RtlCopyUnicodeString"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlCopyUnicodeString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyString"))) {
+
+        if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyString"))) {
+
+            if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyString'");
                 return FALSE;
             }
         }
