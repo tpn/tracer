@@ -6,7 +6,11 @@ PVECTORED_EXCEPTION_HANDLER VectoredExceptionHandler = NULL;
 
 INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
 
-CONST static UNICODE_STRING ExtendedLengthVolumePrefix = RTL_CONSTANT_STRING(L"\\\\?\\");
+CONST static UNICODE_STRING ExtendedLengthVolumePrefixW = \
+    RTL_CONSTANT_STRING(L"\\\\?\\");
+
+CONST static STRING ExtendedLengthVolumePrefixA = \
+    RTL_CONSTANT_STRING("\\\\?\\");
 
 //
 // As we don't link to the CRT, we don't get a __C_specific_handler entry,
@@ -998,7 +1002,7 @@ Start:
 
 _Check_return_
 BOOL
-FilesExist(
+FilesExistW(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1073,11 +1077,11 @@ FilesExist(
     //
 
     CombinedSizeInBytes = (
-        ExtendedLengthVolumePrefix.Length +
-        Directory->Length                 +
-        sizeof(WCHAR)                     + // joining backslash
-        MaxFilenameLength                 +
-        sizeof(WCHAR)                       // terminating NUL
+        ExtendedLengthVolumePrefixW.Length  +
+        Directory->Length                   +
+        sizeof(WCHAR)                       + // joining backslash
+        MaxFilenameLength                   +
+        sizeof(WCHAR)                         // terminating NUL
     );
 
     //
@@ -1127,7 +1131,7 @@ FilesExist(
     // Copy the volume prefix, then append the directory and joining backslash.
     //
 
-    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefix);
+    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
 
     if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
         !AppendUnicodeCharToUnicodeString(&Path, L'\\'))
@@ -1157,6 +1161,236 @@ FilesExist(
 	if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
             !AppendUnicodeCharToUnicodeString(&Path, L'\0'))
         {
+            goto Error;
+        }
+
+        //
+        // We successfully constructed the path, so we can now look up the file
+        // attributes.
+        //
+
+        Attributes = GetFileAttributesW(Path.Buffer);
+
+        if (Attributes == INVALID_FILE_ATTRIBUTES ||
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+
+            //
+            // File doesn't exist or is a directory.  Reset the path length
+            // and continue.
+            //
+
+            Path.Length = DirectoryLength;
+
+            continue;
+        }
+
+        //
+        // Success!  File exists and *isn't* a directory.  We're done.
+        //
+
+        Success = TRUE;
+        break;
+    }
+
+    if (!Success) {
+
+        *Exists = FALSE;
+
+        //
+        // The files didn't exist, but no error occurred, so we return success.
+        //
+
+        Success = TRUE;
+
+    } else {
+
+        *Exists = TRUE;
+
+        //
+        // Update the user's pointers if applicable.
+        //
+
+        if (ARGUMENT_PRESENT(WhichIndex)) {
+            *WhichIndex = Index;
+        }
+
+        if (ARGUMENT_PRESENT(WhichFilename)) {
+            *WhichFilename = Filename;
+        }
+
+    }
+
+    //
+    // Intentional follow-on to "Error"; Success code will be set
+    // appropriately by this stage.
+    //
+
+Error:
+    if (HeapHandle) {
+        HeapFree(HeapHandle, 0, Path.Buffer);
+    }
+
+    return Success;
+}
+
+_Check_return_
+BOOL
+FilesExistA(
+    _In_      PRTL      Rtl,
+    _In_      PSTRING   Directory,
+    _In_      USHORT    NumberOfFilenames,
+    _In_      PPSTRING  Filenames,
+    _Out_     PBOOL     Exists,
+    _Out_opt_ PUSHORT   WhichIndex,
+    _Out_opt_ PPSTRING  WhichFilename
+    )
+{
+    USHORT Index;
+    PWCHAR HeapBuffer;
+    ULONG CombinedSizeInBytes;
+    USHORT DirectoryLength;
+    USHORT MaxFilenameLength = 0;
+    STRING Path;
+    PSTRING Filename;
+    DWORD Attributes;
+    BOOL Success = FALSE;
+    HANDLE HeapHandle = NULL;
+    CHAR StackBuffer[_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Directory)) {
+        return FALSE;
+    }
+
+    if (NumberOfFilenames == 0) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Filenames) || !ARGUMENT_PRESENT(Filenames[0])) {
+        return FALSE;
+    }
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        BOOL SanityCheck;
+
+        Filename = Filenames[Index];
+
+        //
+        // Quick sanity check.
+        //
+        SanityCheck = (
+            Filename &&
+            Filename->Length > 0 &&
+            Filename->Buffer != NULL
+        );
+
+        if (!SanityCheck) {
+            __debugbreak();
+        }
+
+        if (Filename->Length > MaxFilenameLength) {
+            MaxFilenameLength = Filename->Length;
+        }
+    }
+
+
+    //
+    // See if the combined size of the extended volume prefix ("\\?\"),
+    // directory, joining backslash, maximum filename length and terminating
+    // NUL is less than or equal to _MAX_PATH.  If it is, we can use the
+    // stack-allocated Path buffer above; if not, allocate a new buffer from
+    // the default heap.
+    //
+
+    CombinedSizeInBytes = (
+        ExtendedLengthVolumePrefix.Length +
+        Directory->Length                 +
+        sizeof(CHAR)                      + // joining backslash
+        MaxFilenameLength                 +
+        sizeof(CHAR)                        // terminating NUL
+    );
+
+    //
+    // Point Path->Buffer at the stack or heap buffer depending on the
+    // combined size.
+    //
+
+    if (CombinedSizeInBytes <= _MAX_PATH) {
+
+        //
+        // We can use our stack buffer.
+        //
+
+        Path.Buffer = &StackBuffer[0];
+
+    } else if (CombinedSizeInBytes > MAX_STRING) {
+
+        goto Error;
+
+    }
+    else {
+
+        //
+        // The combined size exceeds _MAX_PATH so allocate the required memory
+        // from the heap.
+        //
+
+        HeapHandle = GetProcessHeap();
+        if (!HeapHandle) {
+            return FALSE;
+        }
+
+        HeapBuffer = (PWCHAR)HeapAlloc(HeapHandle, 0, CombinedSizeInBytes);
+
+        if (!HeapBuffer) {
+            return FALSE;
+        }
+
+        Path.Buffer = HeapBuffer;
+
+    }
+
+    Path.Length = 0;
+    Path.MaximumLength = (USHORT)CombinedSizeInBytes;
+
+    //
+    // Copy the volume prefix, then append the directory and joining backslash.
+    //
+
+    Rtl->RtlCopyString(&Path, &ExtendedLengthVolumePrefixA);
+
+    if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
+	goto Error;
+    }
+
+    //
+    // Make a note of the length at this point as we'll need to revert to it
+    // after each unsuccessful file test.
+    //
+
+    DirectoryLength = Path.Length;
+
+    //
+    // Enumerate over the array of filenames and look for the first one that
+    // exists.
+    //
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        Filename = Filenames[Index];
+
+        //
+        // We've already validated our lengths, so these should never fail.
+        //
+
+        if (!AppendStringAndCharToString(&Path, Filename, '\0')) {
             goto Error;
         }
 
@@ -1737,6 +1971,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "PfxFindPrefix"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'PfxFindPrefix'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlPrefixString"))) {
+
+        if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlPrefixString"))) {
+
+            if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlPrefixString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlPrefixString'");
                 return FALSE;
             }
         }
@@ -2763,10 +3012,17 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->FilesExist = (PFILES_EXIST)
-        GetProcAddress(RtlExModule, "FilesExist"))) {
+    if (!(RtlExFunctions->FilesExistW = (PFILES_EXISTW)
+        GetProcAddress(RtlExModule, "FilesExistW"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'FilesExist'");
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistW'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FilesExistA = (PFILES_EXISTA)
+        GetProcAddress(RtlExModule, "FilesExistA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistA'");
         return FALSE;
     }
 

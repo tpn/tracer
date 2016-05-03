@@ -822,15 +822,17 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID
 
                         // update the API itself
                         pbCode = (PBYTE)pSystemFunction;
-                        //pbCode = EmitPushULongPtr(pbCode, (ULONG_PTR)Key);
-                        pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+                        if (Key) {
+                            pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+                        }
                         pbCode = EmitJump(pbCode, pTrampoline->codeJumpToHookFunction);
                     } else {
                         // the jump will be at most 5 bytes so we can do it directly
                         // update the API itself
                         pbCode = (PBYTE)pSystemFunction;
-                        //pbCode = EmitPushULongPtr(pbCode, (ULONG_PTR)Key);
-                        pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+                        if (Key) {
+                            pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+                        }
                         pbCode = EmitJump(pbCode, (PBYTE)pHookFunction);
                     }
 
