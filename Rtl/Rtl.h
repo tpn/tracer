@@ -34,6 +34,7 @@ typedef struct _STRING {
     USHORT MaximumLength;
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
+typedef const STRING *PCSTRING;
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
