@@ -1188,6 +1188,23 @@ typedef PYGILSTATE (*PPYGILSTATE_ENSURE)();
 typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
 typedef LONG (*PPYOBJECT_HASH)(PPYOBJECT);
 typedef INT (*PPYOBJECT_COMPARE)(PPYOBJECT, PPYOBJECT, PINT);
+typedef PVOID (*PPYMEM_MALLOC)(SIZE_T);
+typedef PVOID (*PPYMEM_REALLOC)(PVOID, SIZE_T);
+typedef VOID (*PPYMEM_FREE)(PVOID);
+typedef PVOID (*PPYMEM_MALLOC)(SIZE_T);
+typedef PVOID (*PPYMEM_REALLOC)(PVOID, SIZE_T);
+typedef VOID (*PPYMEM_FREE)(PVOID);
+typedef PVOID (*PPYOBJECT_MALLOC)(SIZE_T);
+typedef PVOID (*PPYOBJECT_REALLOC)(PVOID, SIZE_T);
+typedef VOID (*PPYOBJECT_FREE)(PVOID);
+typedef SSIZE_T (*PPYGC_COLLECT)(VOID);
+typedef PPYOBJECT (*PPYOBJECT_GC_MALLOC)(SIZE_T);
+typedef PPYOBJECT (*PPYOBJECT_GC_NEW)(PPYTYPEOBJECT);
+typedef PPYVAROBJECT (*PPYOBJECT_GC_NEWVAR)(PPYTYPEOBJECT, SSIZE_T);
+typedef PPYVAROBJECT (*PPYOBJECT_GC_RESIZE)(PPYVAROBJECT, SSIZE_T);
+typedef VOID (*PPYOBJECT_GC_TRACK)(PVOID);
+typedef VOID (*PPYOBJECT_GC_UNTRACK)(PVOID);
+typedef VOID (*PPYOBJECT_GC_DEL)(PVOID);
 
 #define _PYTHONFUNCTIONS_HEAD                      \
     PPY_GETVERSION          Py_GetVersion;         \
@@ -1202,7 +1219,22 @@ typedef INT (*PPYOBJECT_COMPARE)(PPYOBJECT, PPYOBJECT, PINT);
     PPYGILSTATE_ENSURE      PyGILState_Ensure;     \
     PPYGILSTATE_RELEASE     PyGILState_Release;    \
     PPYOBJECT_HASH          PyObject_Hash;         \
-    PPYOBJECT_COMPARE       PyObject_Compare;
+    PPYOBJECT_COMPARE       PyObject_Compare;      \
+    PPYMEM_MALLOC           PyMem_Malloc;          \
+    PPYMEM_REALLOC          PyMem_Realloc;         \
+    PPYMEM_FREE             PyMem_Free;            \
+    PPYOBJECT_MALLOC        PyObject_Malloc;       \
+    PPYOBJECT_REALLOC       PyObject_Realloc;      \
+    PPYOBJECT_FREE          PyObject_Free;         \
+    PPYGC_COLLECT           PyGC_Collect;          \
+    PPYOBJECT_GC_MALLOC     PyObject_GC_Malloc;    \
+    PPYOBJECT_GC_NEW        PyObject_GC_New;       \
+    PPYOBJECT_GC_NEWVAR     PyObject_GC_NewVar;    \
+    PPYOBJECT_GC_RESIZE     PyObject_GC_Resize;    \
+    PPYOBJECT_GC_TRACK      PyObject_GC_Track;     \
+    PPYOBJECT_GC_UNTRACK    PyObject_GC_UnTrack;   \
+    PPYOBJECT_GC_DEL        PyObject_GC_Del;
+
 
 typedef struct _PYTHONFUNCTIONS {
     _PYTHONFUNCTIONS_HEAD
@@ -1299,6 +1331,13 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY PYTHON_DIRECTORY_PREFIX_TABL
 typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 typedef PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY **PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 
+typedef struct _PYTHON_PATH_TABLE PYTHON_PATH_TABLE;
+typedef PYTHON_PATH_TABLE *PPYTHON_PATH_TABLE;
+
+typedef struct _PYTHON_PATH_TABLE_ENTRY PYTHON_PATH_TABLE_ENTRY;
+typedef PYTHON_PATH_TABLE_ENTRY *PPYTHON_PATH_TABLE_ENTRY;
+typedef PYTHON_PATH_TABLE_ENTRY **PPPYTHON_PATH_TABLE_ENTRY;
+
 typedef struct _PYTHON_FUNCTION PYTHON_FUNCTION;
 typedef PYTHON_FUNCTION *PPYTHON_FUNCTION;
 typedef PYTHON_FUNCTION **PPPYTHON_FUNCTION;
@@ -1325,10 +1364,11 @@ typedef BOOL (*PADD_DIRECTORY_ENTRY)(
     );
 
 typedef BOOL (*PREGISTER_FRAME)(
-    _In_      PPYTHON   Python,
-    _In_      PPYOBJECT FrameObject,
-    _In_      LONG      EventType,
-    _In_      PPYOBJECT ArgObject
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Out_opt_ PVOID           Token
     );
 
 typedef BOOL (*PREGISTER_FUNCTION)(
@@ -1422,6 +1462,66 @@ typedef struct _PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY {
 
 } PYTHON_DIRECTORY_PREFIX_TABLE_ENTRY, *PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY;
 
+typedef struct _PYTHON_PATH_TABLE {
+
+    //
+    // Inline the PREFIX_TABLE struct.
+    //
+
+    union {
+        PREFIX_TABLE PrefixTable;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;
+            PPYTHON_PATH_TABLE_ENTRY LastNextEntry;
+        };
+    };
+} PYTHON_PATH_TABLE, *PPYTHON_PATH_TABLE;
+
+typedef struct _PYTHON_PATH_TABLE_ENTRY {
+
+    //
+    // Inline the PREFIX_TABLE_ENTRY struct.
+    //
+
+    union {
+        PREFIX_TABLE_ENTRY PrefixTableEntry;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;
+            PPYTHON_PATH_TABLE_ENTRY CaseMatch;
+            RTL_SPLAY_LINKS Links;
+            PSTRING Prefix;
+        };
+    };
+
+    DECLSPEC_ALIGN(8)
+    union {
+        ULONG Flags;
+        struct {
+            ULONG IsModule:1;
+            ULONG IsDirectory:1;
+        };
+    };
+    ULONG Unused1;
+
+    DECLSPEC_ALIGN(8)
+    LIST_ENTRY ListEntry;
+
+    //
+    // Fully-qualified path name.  Prefix will point to &Path.
+    //
+
+    STRING Path;        // Fully qualified path.
+    STRING Directory;   // Prefix will point here.
+    STRING ModuleName;  // Full module name.
+    STRING Name;        // File name (sans extension).
+
+} PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
+
+
 typedef struct _PYTHON_FUNCTION {
     union {
         PPYOBJECT          CodeObject;
@@ -1474,8 +1574,9 @@ typedef struct _PYTHON_FUNCTION_TABLE {
 } PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE;
 
 #define _PYTHONEXRUNTIME_HEAD                                   \
-    HANDLE  HeapHandle;                                         \
+    HANDLE HeapHandle;                                          \
     PYTHON_DIRECTORY_PREFIX_TABLE DirectoryPrefixTable;         \
+    PYTHON_PATH_TABLE PathTable;                                \
     PALLOCATION_ROUTINE AllocationRoutine;                      \
     PVOID AllocationContext;                                    \
     PFREE_ROUTINE FreeRoutine;                                  \
@@ -1737,10 +1838,11 @@ AddDirectoryEntry(
 TRACER_API
 BOOL
 RegisterFrame(
-    _In_      PPYTHON   Python,
-    _In_      PPYOBJECT FrameObject,
-    _In_      LONG      EventType,
-    _In_      PPYOBJECT ArgObject
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Out_opt_ PVOID           Token
     );
 
 

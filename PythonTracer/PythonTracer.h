@@ -105,6 +105,16 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 
     ULONG             Depth;
     ULONG             SkipFrames;
+    union {
+        ULONG Flags;
+        struct {
+            ULONG StartedTracing:1;
+        };
+    };
+    ULONG Unused1;
+
+    ULONGLONG LastTimestamp;
+
 
     PPREPARE_TRACE_EVENT PrepareTraceEvent;
     PCONTINUE_TRACE_EVENT ContinueTraceEvent;

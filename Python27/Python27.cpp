@@ -28,6 +28,7 @@ main(int argc, char **argv)
     PIMAGE_DATA_DIRECTORY DirectoryEntry;
     PIMAGE_DATA_DIRECTORY Imports;
     PIMAGE_DATA_DIRECTORY Exports;
+    PIMAGE_DATA_DIRECTORY RelocationDirectory;
     PIMAGE_EXPORT_DIRECTORY ExportDirectory;
     PIMAGE_SYMBOL Symbol;
     PIMAGE_SYMBOL_EX SymbolEx;
@@ -69,9 +70,13 @@ main(int argc, char **argv)
     ULONG_PTR Function;
     PIMAGE_IMPORT_BY_NAME ImportName;
 
+    PIMAGE_BASE_RELOCATION Relocation;
+
     ULONG_PTR BaseAddress;
     ULONG_PTR ImportAddress;
     ULONG_PTR ExportAddress;
+
+    LONG NumberOfRvaAndSizes;
 
     if (!(Module = LoadLibraryA("python27.dll"))) {
         return 1;
@@ -106,6 +111,17 @@ main(int argc, char **argv)
     OptionalHeader = (PIMAGE_OPTIONAL_HEADER)&NtHeader->OptionalHeader;
     FirstSectionHeader = IMAGE_FIRST_SECTION(NtHeader);
 
+    NumberOfRvaAndSizes = OptionalHeader->NumberOfRvaAndSizes;
+    DataDirectory = OptionalHeader->DataDirectory;
+    Directory = &DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+    ULONG_PTR RelocationsAddress = Directory->VirtualAddress;
+
+    Relocation = (PIMAGE_BASE_RELOCATION)(
+        RelocationsAddress +
+        BaseAddress
+        );
+
+
     DataDirectory = OptionalHeader->DataDirectory;
     Directory = &DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     ImportAddress = Directory->VirtualAddress;
@@ -128,8 +144,9 @@ main(int argc, char **argv)
         OriginalThunk = (PIMAGE_THUNK_DATA)(OriginalFirstThunk + BaseAddress);
         PatchedThunk = (PIMAGE_THUNK_DATA)(FirstThunk + BaseAddress);
 
-        while ((Original = OriginalThunk->u1.Ordinal) || PatchedThunk->u1.Ordinal) {
+        while (OriginalThunk->u1.Ordinal || PatchedThunk->u1.Ordinal) {
 
+            Original = OriginalThunk->u1.Ordinal;
             if (!Original) {
                 Original = PatchedThunk->u1.Ordinal;
             }
@@ -137,8 +154,7 @@ main(int argc, char **argv)
                 Ordinal = IMAGE_ORDINAL(Original);
                 ProcAddress = NULL;
                 Name = NULL;
-            }
-            else {
+            } else {
                 ImportByName = (PIMAGE_IMPORT_BY_NAME)(Original + BaseAddress);
                 Name = (PCHAR)ImportByName->Name;
                 ProcAddress = GetProcAddress(Module, Name);
@@ -165,9 +181,21 @@ main(int argc, char **argv)
     ExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(ExportAddress + BaseAddress);
 
     NumberOfExports = ExportDirectory->NumberOfFunctions;
-    BaseExportFunctions = (PDWORD)(ExportDirectory->AddressOfFunctions + BaseAddress);
-    BaseExportOrdinals = (PWORD)(ExportDirectory->AddressOfNameOrdinals + BaseAddress);
-    BaseExportNames = (PDWORD)(ExportDirectory->AddressOfNames + BaseAddress);
+
+    BaseExportFunctions = (PDWORD)(
+        ExportDirectory->AddressOfFunctions +
+        BaseAddress
+    );
+
+    BaseExportOrdinals = (PWORD)(
+        ExportDirectory->AddressOfNameOrdinals +
+        BaseAddress
+    );
+
+    BaseExportNames = (PDWORD)(
+        ExportDirectory->AddressOfNames +
+        BaseAddress
+    );
 
     for (Index = 0; Index < NumberOfExports; Index++) {
         DWORD NameRva = BaseExportNames[Index];
@@ -187,6 +215,7 @@ main(int argc, char **argv)
     FunctionPointerRva = BaseExportFunctions-1;
 
 
+    /*
     Count = NumberOfExports;
     Index = 0;
     do {
@@ -202,7 +231,7 @@ main(int argc, char **argv)
         Ordinal = (WORD)(*OrdinalPointer + ExportDirectory->Base);
 
     } while (--Count);
-
+    */
     /*
     for (Index = 0; Index < NumberOfExports; Index++) {
 
