@@ -804,7 +804,7 @@ Error:
     // platform's pointer size.
     //
 
-    NumberOfCharacters = String->Length >> 1;
+    NumberOfCharacters = String->Length;
     AlignedNumberOfCharacters = (
         ALIGN_UP_USHORT_TO_POINTER_SIZE(
             NumberOfCharacters
@@ -2606,6 +2606,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitString"))) {
+
+        if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlInitString"))) {
+
+            if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitString'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
         GetProcAddress(Rtl->NtdllModule, "RtlCopyString"))) {
 
@@ -2676,6 +2691,51 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "RtlUnicodeStringToAnsiString"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlEqualString"))) {
+
+        if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEqualString"))) {
+
+            if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEqualString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEqualString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlEqualUnicodeString"))) {
+
+        if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEqualUnicodeString"))) {
+
+            if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEqualUnicodeString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEqualUnicodeString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlAppendUnicodeToString"))) {
+
+        if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlAppendUnicodeToString"))) {
+
+            if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAppendUnicodeToString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeToString'");
                 return FALSE;
             }
         }

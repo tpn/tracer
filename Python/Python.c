@@ -24,7 +24,12 @@ static CONST PUNICODE_STRING InitPyFilesA[] = {
     (PUNICODE_STRING)&A__init__pyo
 };
 
-static CONST USHORT NumberOfInitPyFiles = sizeof(InitPyFilesA) / sizeof(InitPyFilesA[0]);
+static CONST USHORT NumberOfInitPyFiles = (
+    sizeof(InitPyFilesA) /
+    sizeof(InitPyFilesA[0])
+);
+
+static const STRING SELFA = RTL_CONSTANT_STRING("self");
 
 static const PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27 = {
     FIELD_OFFSET(PYCODEOBJECT25_27, ArgumentCount),
@@ -81,6 +86,28 @@ static const PYCODEOBJECTOFFSETS PyCodeObjectOffsets33_35 = {
     FIELD_OFFSET(PYCODEOBJECT33_35, FirstLineNumber),
     FIELD_OFFSET(PYCODEOBJECT33_35, LineNumberTable),
     FIELD_OFFSET(PYCODEOBJECT33_35, ZombieFrame),
+};
+
+static const PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets25_33 = {
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, ThreadState),
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, LastInstruction),
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, LineNumber),
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, BlockIndex),
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, BlockStack),
+    FIELD_OFFSET(PYFRAMEOBJECT25_33, LocalsPlusStack),
+    0, // Generator
+    0  // StillExecuting
+};
+
+static const PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_35 = {
+    0, // ThreadState
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, LastInstruction),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, LineNumber),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, BlockIndex),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, BlockStack),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, LocalsPlusStack),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, Generator),
+    FIELD_OFFSET(PYFRAMEOBJECT34_35, StillExecuting)
 };
 
 _Check_return_
@@ -556,6 +583,8 @@ InitializePythonRuntimeTables(
     PrefixTable = &Python->PathTable.PrefixTable;
     Rtl->PfxInitialize(PrefixTable);
 
+    Rtl->PfxInitialize(&Python->ModuleNameTable);
+
     //
     // If the allocation routine isn't provided, default to the generic
     // heap allocation routine.
@@ -674,6 +703,10 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
         return FALSE;
     }
 
+    //
+    // (It's easier doing this with a separate switch statement for each one.)
+    //
+
     switch (Python->MajorVersion) {
         case 2:
             Python->PyCodeObjectOffsets = &PyCodeObjectOffsets25_27;
@@ -696,6 +729,34 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
         default:
             return FALSE;
     };
+
+    //
+    // Resolve CodeObject offsets.
+    //
+
+    switch (Python->MajorVersion) {
+        case 2:
+            Python->PyFrameObjectOffsets = &PyFrameObjectOffsets25_33;
+            break;
+        case 3:
+            switch (Python->MinorVersion) {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    Python->PyFrameObjectOffsets = &PyFrameObjectOffsets25_33;
+                    break;
+                case 4:
+                case 5:
+                    Python->PyFrameObjectOffsets = &PyFrameObjectOffsets34_35;
+                    break;
+                default:
+                    return FALSE;
+            };
+        default:
+            return FALSE;
+    };
+
 
     return TRUE;
 }
@@ -1527,7 +1588,7 @@ RegisterDirectory(
 
         IsModule = TRUE;
 
-        AncestorIsRoot = !AncestorEntry->IsModule;
+        AncestorIsRoot = (BOOL)AncestorEntry->IsNonModuleDirectory;
 
         if (AncestorEntry->Name.Length != 0 ||
             AncestorEntry->ModuleName.Length != 0)
@@ -1548,7 +1609,7 @@ RegisterDirectory(
         if (!AncestorIsRoot) {
 
             //
-            // Account for the joining period + NUL.
+            // Account for the joining slash + NUL.
             //
 
             AllocationSize += 2;
@@ -1575,7 +1636,11 @@ RegisterDirectory(
 
     Entry = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
 
-    Entry->IsModule = IsModule;
+    if (IsModule) {
+        Entry->IsModuleDirectory = TRUE;
+    } else {
+        Entry->IsNonModuleDirectory = TRUE;
+    }
 
     if (IsRoot) {
 
@@ -1626,10 +1691,10 @@ RegisterDirectory(
                     AncestorModuleName->Length);
 
             //
-            // Add the period.
+            // Add the slash.
             //
 
-            ModuleName->Buffer[Offset-1] = '.';
+            ModuleName->Buffer[Offset-1] = '\\';
 
         }
 
@@ -1641,7 +1706,6 @@ RegisterDirectory(
         Dest = Name->Buffer;
         Source = DirectoryName->Buffer;
 
-        __debugbreak();
         __movsb(Dest, Source, Count);
 
         Dest += Count;
@@ -1653,7 +1717,7 @@ RegisterDirectory(
         *Dest++ = '\0';
     }
 
-    DirectoryPrefix = &Entry->Directory;
+    DirectoryPrefix = &Entry->Path;
 
     DirectoryPrefix->Length = Directory->Length;
     DirectoryPrefix->MaximumLength = Directory->MaximumLength;
@@ -2852,14 +2916,352 @@ GetClassNameStringObjectFromFrameObject(
 }
 
 BOOL
-BindFunctionToPathEntry(
-    _In_ PPYTHON Python,
-    _In_ PPYTHON_FUNCTION Function,
-    _In_ PPYTHON_PATH_TABLE_ENTRY PathEntry
+GetSelf(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_FUNCTION    Function,
+    _In_    PPYFRAMEOBJECT      FrameObject,
+    _Out_   PPYOBJECT           SelfPointer
     )
 {
-    __debugbreak();
+    BOOL Success = FALSE;
+    PPYOBJECT Self = NULL;
+    PPYOBJECT Locals = FrameObject->Locals;
+    PPYOBJECT CodeObject = Function->CodeObject;
+    PPYCODEOBJECTOFFSETS CodeOffsets = Python->PyCodeObjectOffsets;
+    PPYFRAMEOBJECTOFFSETS FrameOffsets;
+
+    LONG ArgumentCount;
+    PPYTUPLEOBJECT ArgumentNames;
+
+    //
+    // Attempt to resolve self from the locals dictionary.
+    //
+
+    if (Locals && Locals->Type == Python->PyDict_Type) {
+        if ((Self = Python->PyDict_GetItemString(Locals, "self"))) {
+            Success = TRUE;
+            goto End;
+        }
+    }
+
+    //
+    // If that didn't work, see if the first argument's name was "self", and
+    // if so, use that.
+    //
+
+    ArgumentCount = *(
+        (PLONG)RtlOffsetToPointer(
+            CodeObject,
+            CodeOffsets->ArgumentCount
+        )
+    );
+
+    ArgumentNames = *(
+        (PPPYTUPLEOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            CodeOffsets->LocalVariableNames
+        )
+    );
+
+    if (ArgumentCount != 0 && ArgumentNames->Type == Python->PyTuple_Type) {
+        static const STRING SelfString = RTL_CONSTANT_STRING("self");
+        PRTL_EQUAL_STRING EqualString = Python->Rtl->RtlEqualString;
+        STRING ArgumentName;
+
+        Success = WrapPythonStringAsString(
+            Python,
+            ArgumentNames->Item[0],
+            &ArgumentName
+        );
+
+        if (!Success) {
+            return FALSE;
+        }
+
+        if (EqualString(ArgumentName, SelfString)) {
+            Self = *(
+                (PPPYOBJECT)RtlOffsetToPointer(
+                    FrameObject,
+                    Python->PyFrameObjectOffsets->LocalsPlusStack[0]
+                )
+            );
+        }
+    }
+
+    Success = TRUE;
+
+End:
+    *SelfPointer = Self;
+    return Success;
+}
+
+BOOL
+GetClassNameFromSelf(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_FUNCTION    Function,
+    _In_    PPYFRAMEOBJECT      FrameObject,
+    _In_    PPYOBJECT           Self,
+    _In_    PSTRING             FunctionName,
+    _Out_   PPCHAR              ClassNameBuffer
+    )
+{
+    BOOL Success;
+    PPYTUPLEOBJECT Mro;
+    PPYTYPEOBJECT TypeObject;
+    PPYOBJECT TypeDict;
+    PPYOBJECT PyType_Type;
+    PPYOBJECT PyDict_Type;
+    PPYOBJECT PyFunction_Type;
+    PPYOBJECT CodeObject;
+    PPYOBJECT FunctionObject;
+    PPYOBJECT FunctionCodeObject;
+    PPYDICT_GETITEMSTRING PyDict_GetItemString;
+    ULONG Index;
+
+    if (Python->PyInstance_Type && Self->Type == Python->PyInstance_Type) {
+        STRING Class;
+        PPYINSTANCEOBJECT Instance = (PPYINSTANCEOBJECT)Self;
+        PPYOBJECT ClassNameObject = Instance->OldStyleClass->Name;
+
+        Success = WrapPythonStringAsString(Python, ClassNameObject, &Class);
+        if (!Success) {
+            return FALSE;
+        }
+
+        *ClassNameBuffer = Class->Buffer;
+        return TRUE;
+    }
+
+    Mro = (PPYTUPLEOBJECT)Self->Type->MethodResolutionOrder;
+    if (!Mro || Mro->Type != Python->PyTuple_Type) {
+
+        //
+        // We should always have an MRO for new-style classes.
+        //
+
+        return FALSE;
+    }
+
+    CodeObject = FrameObject->Code;
+    PyType_Type = Python->PyType_Type;
+    PyDict_Type = Python->PyDict_Type;
+    PyDict_GetItemString = Python->PyDict_GetItemString;
+    PyFunction_Type = Python->PyFunction_Type;
+
+    //
+    // Walk the MRO looking for our method.
+    //
+
+    for (Index = 0; Index < Mro->ObjectSize; Index++) {
+        PCHAR Source;
+        PCHAR Dest;
+        USHORT Count;
+        USHORT Remaining;
+        USHORT Length;
+        USHORT NameLength;
+        BOOL Finished;
+
+        TypeObject = Mro->Item[Index];
+
+        if (TypeObject != PyType_Type) {
+            continue;
+        }
+
+        DictObject = TypeObject->Dict;
+        if (DictObject->Type != PyDict_Type) {
+            continue;
+        }
+
+        FunctionObject = PyDict_GetItemString(
+            DictObject,
+            FunctionName->Buffer
+        );
+
+        if (!FunctionObject || FunctionObject->Type != PyFunction_Type) {
+            continue;
+        }
+
+        FunctionCodeObject = ((PPYFUNCTIONOBJECT)FunctionObject)->Code;
+        if (FunctionCodeObject != CodeObject) {
+            continue;
+        }
+
+        //
+        // We've found the function in the MRO whose code object matches the
+        // code object of our frame, so use the class name of this type.
+        //
+
+        *ClassNameBuffer = TypeObject->Name;
+        return TRUE;
+    }
+
     return FALSE;
+}
+
+BOOL
+FinalizeFunction(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ PPYFRAMEOBJECT FrameObject
+    )
+/*++
+
+Routine Description:
+
+    This method is responsible for finalizing details about a function, such
+    as the function name, class name (if any), module name and first line
+    number.  A frame object is provided to assist with resolution of names.
+
+    It is called once per function after a new PYTHON_PATH_TABLE_ENTRY has been
+    inserted into the path prefix table.
+
+
+--*/
+{
+    BOOL Success;
+    PRTL Rtl;
+    PCHAR Dest;
+    PCHAR Start;
+    PPYOBJECT Self = NULL;
+    PPYOBJECT Locals;
+    PPYOBJECT FunctionNameObject;
+    PPYOBJECT CodeObject = Function->CodeObject;
+    PPYCODEOBJECTOFFSETS CodeObjectOffsets = Python->PyCodeObjectOffsets;
+    PPYFRAMEOBJECTOFFSETS FrameOffsets;
+    PSTRING FunctionName;
+    PSTRING ClassName;
+    PSTRING FullName;
+    PSTRING ModuleName;
+    USHORT Offset;
+    USHORT FullNameLength;
+    PCHAR ClassNameBuffer = NULL;
+    PVOID Buffer;
+
+    Function->PathEntry = PathEntry;
+
+    Function->FirstLineNumber = *(
+        (PULONG)RtlOffsetToPointer(
+            CodeObject,
+            CodeObjectOffsets->FirstLineNumber
+        )
+    );
+
+    FunctionNameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            CodeObjectOffsets->Name
+        )
+    );
+
+    FunctionName = &Function->Name;
+
+    Success = WrapPythonStringAsString(Python,
+                                       FunctionNameObject,
+                                       FunctionName);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Success = GetSelf(Python, Function, FrameObject, &Self);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    ClassName = &Function->ClassName;
+    ClearString(ClassName);
+    Rtl = Python->Rtl;
+
+    if (Self) {
+
+        Success = GetClassNameFromSelf(Python,
+                                       Function,
+                                       FrameObject,
+                                       Self,
+                                       FunctionName,
+                                       &ClassNameBuffer);
+
+        if (!Success) {
+            return FALSE;
+        }
+
+        if (!*ClassNamePointer) {
+            return FALSE;
+        }
+
+        Rtl->RtlInitString(ClassName, *ClassNameBuffer);
+
+    }
+
+    ModuleName = PathEntry->ModuleName;
+
+    //
+    // Calculate the length of the full name.  The extra +1s are accounting
+    // for joining slashes and the final trailing NUL.
+    //
+
+    FullNameLength = (
+        ModuleName->Length                              +
+        1                                               +
+        (ClassName->Length ? ClassName->Length + 1 : 0) +
+        FunctionName->Length                            +
+        1
+    );
+
+    if (FullNameLength > MAX_USTRING) {
+        return FALSE;
+    }
+
+    Buffer = Python->AllocationRoutine(
+        Python->AllocationContext,
+        FullNameLength
+    );
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    //
+    // Construct the final full name.  After each part has been copied, update
+    // the corresponding Buffer pointer to the relevant point within the newly-
+    // allocated buffer for the full name.
+    //
+
+    FullName = &Function->FullName;
+    ClearString(FullName);
+    FullName->Buffer = (PCHAR)Buffer;
+
+    Dest = FullName->Buffer;
+
+    __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
+    Dest += ModuleName->Length;
+    ModuleName->Buffer = FullName->Buffer;
+
+    *Dest++ = '\\';
+
+    if (ClassName->Length) {
+        Start = Dest;
+        __movsb(Dest, (PBYTE)ClassName->Buffer, ClassName->Length);
+        ClassName->Buffer = Start;
+        Dest += ClassName->Length;
+        *Dest++ = '\\';
+    }
+
+    Start = Dest;
+    __movsb(Dest, (PBYTE)FunctionName->Buffer, FunctionName->Length);
+    FunctionName->Buffer = Start;
+    Dest += FunctionName->Length;
+    *Dest++ = '\0';
+
+    //
+    // Omit trailing NUL from Length.
+    //
+
+    FullName->Length = FullNameLength-1;
+    FullName->MaximumLength = FullNameLength;
+
+    return TRUE;
 }
 
 FORCEINLINE
@@ -2885,17 +3287,11 @@ IsQualifiedPath(_In_ PSTRING Path)
 
 BOOL
 QualifyPath(
-        _In_    PSTRING     SourcePath,
-        _Out_   PPSTRING    DestinationPathPointer,
-        _In_    HANDLE      HeapHandle
+        _In_        PPYTHON             Python,
+        _In_        PSTRING             SourcePath,
+        _Out_       PPSTRING            DestinationPathPointer
     )
 {
-    BOOL Success;
-    BOOL Qualify = FALSE;
-
-    USHORT Length;
-    PSTR   Buffer;
-
     ULARGE_INTEGER Size;
     CONST ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
     ULONG AllocSizeInBytes;
@@ -2906,8 +3302,32 @@ QualifyPath(
     PSTRING String;
     PSTR Dest;
 
+    PALLOCATION_ROUTINE AllocationRoutine;
+    PVOID AllocationContext;
+
+    PFREE_ROUTINE FreeRoutine;
+    PVOID FreeContext;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(SourcePath)) {
+        return FALSE;
+    }
+
+
+    if (!ARGUMENT_PRESENT(DestinationPathPointer)) {
+        return FALSE;
+    }
+
+    AllocationRoutine = Python->AllocationRoutine;
+    AllocationContext = Python->AllocationContext;
+
+    FreeRoutine = Python->FreeRoutine;
+    FreeContext = Python->FreeContext;
+
     Size.QuadPart = SourcePath->Length;
-    Buffer = SourcePath->Buffer;
 
     //
     // Get the length (in characters) of the current directory and verify it
@@ -2940,9 +3360,7 @@ QualifyPath(
 
     AllocSizeInBytes = Size.LowPart + sizeof(STRING);
 
-    String = (PSTRING)HeapAlloc(HeapHandle,
-                                HEAP_ZERO_MEMORY,
-                                AllocSizeInBytes);
+    String = (PSTRING)AllocationRoutine(AllocationContext, AllocSizeInBytes);
 
     if (!String) {
         return FALSE;
@@ -2970,7 +3388,7 @@ QualifyPath(
     );
 
     if (CurDirLength == 0) {
-        HeapFree(HeapHandle, 0, String);
+        FreeRoutine(FreeContext, String);
         return FALSE;
     }
 
@@ -2994,15 +3412,13 @@ QualifyPath(
     // Copy the rest of the name over.
     //
 
-    __movsb(Dest, Buffer, Length);
-
-    Dest += Length;
+    __movsb(Dest, SourcePath->Buffer, SourcePath->Length);
 
     //
     // Add terminating NUL.
     //
 
-    *Dest++ = '\0';
+    Dest[String->Length] = '\0';
 
     //
     // And finally, update the user's pointer.
@@ -3160,7 +3576,7 @@ GetPathEntryForDirectory(
         // to be empty and return.
         //
 
-        PathEntry->IsModule = FALSE;
+        SetPathEntryType(PathEntry, NonModuleDirectory);
         ClearString(&PathEntry->ModuleName);
         return TRUE;
 
@@ -3464,30 +3880,27 @@ FoundParent:
         return FALSE;
     }
 
+End:
     *PathEntryPointer = PathEntry;
 
     return TRUE;
 }
 
 BOOL
-GetParentPathEntryForFile(
+RegisterFile(
     _In_  PPYTHON    Python,
-    _In_  PSTRING    Path,
+    _In_  PSTRING    QualifiedPath,
     _In_  PPYFRAMEOBJECT FrameObject,
-    _Out_ PPYTHON_PATH_TABLE_ENTRY ParentPathEntryPointer
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 /*++
 
 Routine Description:
 
-    This routine takes a fully qualified path name of a Python file and returns
-    the corresponding path entry for the enclosing directory, building up a
-    prefix tree as it goes along.
+    This routine registers a new Python source code filename.
 
 --*/
 {
-    PRTL Rtl;
-    BOOL Success = FALSE;
     USHORT Limit = 0;
     USHORT Offset = 0;
     USHORT ReversedIndex;
@@ -3496,15 +3909,43 @@ Routine Description:
     USHORT InitPyNumberOfChars;
     USHORT NumberOfBackslashes;
     USHORT NumberOfBackslashesRemaining;
-    HANDLE HeapHandle;
-    STRING Filename;
-    STRING Directory;
+
+    BOOL Success;
     BOOL IsInitPy = FALSE;
     BOOL CaseSensitive = TRUE;
     BOOL Reversed = TRUE;
+    BOOL WeOwnPathBuffer;
+
+    ULONG AllocationSize;
+
+    HANDLE HeapHandle = NULL;
+
+    PRTL Rtl;
+    PPYOBJECT CodeObject;
+    PPYOBJECT FilenameObject;
+    PPREFIX_TABLE PrefixTable;
+    PPREFIX_TABLE_ENTRY PrefixTableEntry;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry;
+    PPYTHON_PATH_TABLE_ENTRY DirectoryEntry;
+    PALLOCATION_ROUTINE AllocationRoutine;
+    PVOID AllocationContext;
+    PFREE_ROUTINE FreeRoutine;
+    PVOID FreeContext;
+    PVOID Buffer;
+    PSTRING Path = QualifiedPath;
+    PSTRING Name;
+    PSTRING ModuleName;
+    PSTRING DirectoryName;
+    PSTRING DirectoryModuleName;
+    PRTL_BITMAP BitmapPointer;
+
+    STRING PathString;
+    STRING Filename;
+    STRING Directory;
+
     CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
     RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
-    PRTL_BITMAP BitmapPointer = &Bitmap;
+    BitmapPointer = &Bitmap;
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -3514,9 +3955,46 @@ Routine Description:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(ParentPathEntryPointer)) {
+    if (!ARGUMENT_PRESENT(FrameObject)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(PathEntryPointer)) {
+        return FALSE;
+    }
+
+    AllocationRoutine = Python->AllocationRoutine;
+    AllocationContext = Python->AllocationContext;
+
+    FreeRoutine = Python->FreeRoutine;
+    FreeContext = Python->FreeContext;
+
+    CodeObject = FrameObject->Code;
+
+    FilenameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            Python->PyCodeObjectOffsets->Filename
+        )
+    );
+
+    Success = WrapPythonStringAsString(
+        Python,
+        FilenameObject,
+        &PathString
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // If the path was qualified, we will have already allocated new space for
+    // it.  If not, we'll need to account for additional space to store a copy
+    // of the string later on in this method.
+    //
+
+    WeOwnPathBuffer = (Path->Buffer != QualifiedPath->Buffer);
 
     //
     // Initialize Rtl and character length variables.
@@ -3576,19 +4054,130 @@ Routine Description:
     //
     // Get the module name from the directory.
     //
+
     BitmapHintIndex = ReversedIndex;
     NumberOfBackslashesRemaining = NumberOfBackslashes - 1;
 
+    //
+    // Get the PathEntry for the directory.  This will build up the path table
+    // prefix tree with any intermediate module directories until we hit the
+    // first "non-module" directory (i.e. the first directory that doesn't have
+    // an __init__.py file).
+    //
+
+    DirectoryEntry = NULL;
     Success = GetPathEntryForDirectory(Python,
                                        &Directory,
                                        BitmapPointer,
                                        &BitmapHintIndex,
                                        &NumberOfBackslashesRemaining,
-                                       ParentPathEntryPointer);
+                                       &DirectoryEntry);
 
     if (!Success) {
         goto Error;
     }
+
+    if (!DirectoryEntry) {
+
+        //
+        // We weren't able to create a parent path entry for the directory.
+        // Not sure when this would happen at the moment, so __debugbreak().
+        //
+
+        __debugbreak();
+
+    }
+
+    //
+    // Now that we have a DirectoryEntry for our parent directory, we can
+    // continue creating a PathEntry for this filename and filling in the
+    // relevant details.
+    //
+
+    AllocationSize = sizeof(*PathEntry);
+
+    if (!WeOwnPathBuffer) {
+
+        //
+        // Account for path length plus trailing NUL.
+        //
+
+        AllocationSize += Path->Length + 1;
+    }
+
+    Buffer = AllocationRoutine(AllocationContext, AllocationSize);
+    if (!Buffer) {
+        goto Error;
+    }
+
+    PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
+
+    Path = &PathEntry->Path;
+    Path->Length = QualifiedPath->Length;
+    Path->MaximumLength = Path->Length + 1;
+
+    if (!WeOwnPathBuffer) {
+
+        //
+        // If we didn't own the incoming path's buffer, point the STRING's
+        // Buffer field to the end of our newly-allocated PathEntry struct
+        // and copy the string over.
+        //
+
+        Path->Buffer = (PSTR)RtlOffsetToPointer(PathEntry, sizeof(*PathEntry));
+
+        //
+        // Copy the path string over to the new buffer.
+        //
+
+        __movsb((PBYTE)Path->Buffer,
+                (PBYTE)QualifiedPath->Buffer,
+                Path->Length);
+
+        //
+        // Add trailing NUL.
+        //
+
+        Path->Buffer[Path->Length] = '\0';
+
+    } else {
+
+        //
+        // We own the incoming path's buffer, so we can just point the new
+        // field at the existing buffer.
+        //
+
+        Path->Buffer = QualifiedPath->Buffer;
+
+    }
+
+    //
+    // Add the newly created PathEntry to our path table prefix tree.
+    //
+
+    PrefixTable = &Python->PathTable.PrefixTable;
+    PrefixTableEntry = (PPREFIX_TABLE_ENTRY)PathEntry;
+
+    Success = Rtl->PfxInsertPrefix(PrefixTable,
+                                   Path,
+                                   PrefixTableEntry);
+
+    if (!Success) {
+        if (WeOwnPathBuffer) {
+            FreeRoutine(FreeContext, QualifiedPath->Buffer);
+        }
+        FreeRoutine(FreeContext, Buffer);
+        goto Error;
+    }
+
+    //
+    // Initialize shortcut pointers.
+    //
+
+    Name = &PathEntry->Name;
+    ModuleName = &PathEntry->ModuleName;
+    DirectoryName = &DirectoryEntry->Name;
+    DirectoryModuleName = &DirectoryEntry->ModuleName;
 
     //
     // If the filename is "__init__.py[co]", the final module name will be the
@@ -3603,7 +4192,14 @@ Routine Description:
     if (IsInitPy) {
 
         //
-        // Nothing more to do.
+        // Inherit the directory entry's name and module name fields.
+        //
+
+        InitializeStringFromString(Name, DirectoryName);
+        InitializeStringFromString(ModuleName, DirectoryModuleName);
+
+        //
+        // We're done, no more processing is necessary.
         //
 
         Success = TRUE;
@@ -3622,8 +4218,8 @@ Routine Description:
         PSTR File;
         PSTRING Final;
         ULONG_INTEGER AllocationSize;
-        PSTR ModuleBuffer = (*ModuleName)->Buffer;
-        USHORT ModuleLength = (*ModuleName)->Length;
+        PSTR ModuleBuffer = DirectoryModuleName->Buffer;
+        USHORT ModuleLength = DirectoryModuleName->Length;
 
         //
         // Find the first trailing period.
@@ -3650,7 +4246,7 @@ Routine Description:
 
         AllocationSize.LongPart = (
             ModuleLength            +
-            sizeof(CHAR)            + // joining '.'
+            sizeof(CHAR)            + // joining slash
             Filename.Length         +
             sizeof(CHAR)              // terminating NUL
         );
@@ -3697,12 +4293,12 @@ Routine Description:
         __movsb(Final->Buffer, ModuleBuffer, ModuleLength);
 
         //
-        // Add the joining period.
+        // Add the joining slash.
         //
 
         Dest = &Final->Buffer[ModuleLength];
 
-        *Dest++ = '.';
+        *Dest++ = '\\';
 
         //
         // Copy over the filename.
@@ -3711,7 +4307,6 @@ Routine Description:
 
         __movsb(Dest, File, Filename.Length);
 
-        __debugbreak();
         Dest += Filename.Length;
 
         //
@@ -3720,69 +4315,43 @@ Routine Description:
 
         *Dest = '\0';
 
-        //
-        // And finally, update the caller's module name pointer.
-        //
-
-        // xxx: update the entry?!
-        // was:
-        //   *ModuleName = Final;
-        __debugbreak();
-
         Success = TRUE;
 
     }
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    if (!PathEntry) {
+        __debugbreak();
+    }
+
+    PathEntry->IsFile = TRUE;
 
     //
     // Intentional follow-on.
     //
 
 Error:
-    if (HeapHandle) {
+
+    //
+    // Update the caller's path entry pointer.
+    //
+
+    *PathEntryPointer = PathEntry;
+
+    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)BitmapPointer->Buffer) {
 
         //
-        // HeapHandle will be set if a new bitmap had to be allocated
-        // because our stack-allocated one was too small.
+        // We'll hit this point if a new bitmap had to be allocated because
+        // our stack-allocated one was too small.  Make sure we free it here.
         //
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
-
-            //
-            // This should never happen.  If HeapHandle is set, the buffers
-            // should differ.
-            //
-
-            __debugbreak();
-        }
 
         HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
     }
 
     return Success;
-}
-
-
-BOOL
-RegisterFile(
-    _In_      PPYTHON         Python,
-    _In_      PSTRING         Path,
-    _In_      PPYFRAMEOBJECT  FrameObject,
-    _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
-    )
-/*++
-
-Routine Description:
-
-    This routine registers a new Python filename.
-
-
---*/
-{
-    PRTL Rtl;
-
-    BOOL Success;
-
-
 }
 
 BOOL
@@ -3796,23 +4365,19 @@ GetPathEntryFromFrame(
 {
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
-    PPYOBJECT CodeObject;
     PPYOBJECT FilenameObject;
-    //PPYSTRINGOBJECT Filename;
     PSTRING Match;
     STRING PathString;
     PSTRING Path;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
     PPREFIX_TABLE PrefixTable;
-    PPYTHON_PATH_TABLE PathTable;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
-    BOOL QualifiedCheck = FALSE;
-    BOOL WeOwnPath = FALSE;
+    BOOL TriedQualified = FALSE;
     BOOL Success;
 
     FilenameObject = *(
         (PPPYOBJECT)RtlOffsetToPointer(
-            CodeObject,
+            FrameObject->Code,
             Python->PyCodeObjectOffsets->Filename
         )
     );
@@ -3830,6 +4395,7 @@ GetPathEntryFromFrame(
     }
 
     PrefixTable = &Python->PathTable.PrefixTable;
+    Rtl = Python->Rtl;
 
 Retry:
     PrefixTableEntry = Rtl->PfxFindPrefix(PrefixTable, Path);
@@ -3868,23 +4434,24 @@ Retry:
         // will handle inserting a new prefix table entry for the file.
         //
 
-    } else if (!QualifiedCheck) {
+    } else if (!TriedQualified) {
 
         //
         // See if we need to qualify the path and potentially do another prefix
         // tree search.  We don't do this up front because non-qualified paths
-        // are pretty infrequent.
+        // are pretty infrequent and the initial prefix tree lookup is on the
+        // hot path.
         //
 
         if (!IsQualifiedPath(Path)) {
 
-            Success = QualifyPath(Path, &Path, Python->HeapHandle);
+            Success = QualifyPath(Python, Path, &Path);
 
             if (!Success) {
                 goto End;
             }
 
-            QualifiedCheck = TRUE;
+            TriedQualified = TRUE;
             goto Retry;
         }
 
@@ -3925,23 +4492,11 @@ RegisterFrame(
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
     PPYOBJECT CodeObject;
-    //LONG FilenameHash;
 
-    //LONG CodeObjectHash;
-    //LONG FirstLineNumber;
-    //LONG Hash;
-    PPYOBJECT FilenameObject;
-    //PPYSTRINGOBJECT Filename;
-    PSTRING Match;
-    STRING PathString;
-    PSTRING Path;
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
     BOOLEAN NewFunction;
-    PPREFIX_TABLE_ENTRY PrefixTableEntry;
-    PPREFIX_TABLE PrefixTable;
-    //PPYTHON_PATH_TABLE PathTable;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     BOOL Success;
 
@@ -3995,14 +4550,11 @@ RegisterFrame(
     if (PathEntry) {
 
         //
-        // Bind the function to this path entry.
+        // Finish resolving the remaining details about the function.
         //
 
-        return BindFunctionToPathEntry(
-            Python,
-            Function,
-            PathEntry
-        );
+        Function->PathEntry = PathEntry;
+        return FinalizeFunction(Python, Function, FrameObject);
 
     } else {
 
