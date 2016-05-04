@@ -125,63 +125,36 @@ LoadPythonData(
         return FALSE;
     }
 
-    PythonData->PyCode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCode_Type");
-    if (!PythonData->PyCode_Type) {
-        goto error;
+#define TRY_RESOLVE_TYPE(Name) (               \
+    PythonData->##Name.Type = (PPYTYPEOBJECT)( \
+        GetProcAddress(                        \
+            PythonModule,                      \
+            #Name "_Type"                      \
+        )                                      \
+    )                                          \
+)
+
+#define RESOLVE_TYPE(Name)                                          \
+    if (!TRY_RESOLVE_TYPE(Name)) {                                  \
+        OutputDebugStringA("Failed to resolve Python!" #Name "\n"); \
+        return FALSE;                                               \
     }
 
-    PythonData->PyDict_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyDict_Type");
-    if (!PythonData->PyDict_Type) {
-        goto error;
+    if (!TRY_RESOLVE_TYPE(PyString)) {
+        RESOLVE_TYPE(PyBytes);
     }
 
-    PythonData->PyTuple_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyTuple_Type");
-    if (!PythonData->PyTuple_Type) {
-        goto error;
-    }
-
-    PythonData->PyType_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyType_Type");
-    if (!PythonData->PyType_Type) {
-        goto error;
-    }
-
-    PythonData->PyFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyFunction_Type");
-    if (!PythonData->PyFunction_Type) {
-        goto error;
-    }
-
-    PythonData->PyString_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyString_Type");
-    if (!PythonData->PyString_Type) {
-        PythonData->PyBytes_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyBytes_Type");
-        if (!PythonData->PyBytes_Type) {
-            goto error;
-        }
-    }
-
-    PythonData->PyUnicode_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyUnicode_Type");
-    if (!PythonData->PyUnicode_Type) {
-        goto error;
-    }
-
-    PythonData->PyCFunction_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyCFunction_Type");
-    if (!PythonData->PyCFunction_Type) {
-        goto error;
-    }
-
-    PythonData->PyInstance_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyInstance_Type");
-    if (!PythonData->PyInstance_Type) {
-        goto error;
-    }
-
-    PythonData->PyModule_Type = (PPYOBJECT)GetProcAddress(PythonModule, "PyModule_Type");
-    if (!PythonData->PyModule_Type) {
-        goto error;
-    }
+    RESOLVE_TYPE(PyCode);
+    RESOLVE_TYPE(PyDict);
+    RESOLVE_TYPE(PyTuple);
+    RESOLVE_TYPE(PyType);
+    RESOLVE_TYPE(PyFunction);
+    RESOLVE_TYPE(PyUnicode);
+    RESOLVE_TYPE(PyCFunction);
+    RESOLVE_TYPE(PyInstance);
+    RESOLVE_TYPE(PyModule);
 
     return TRUE;
-
-error:
-    return FALSE;
 }
 
 _Check_return_
@@ -191,186 +164,59 @@ LoadPythonFunctions(
     _Inout_ PPYTHONFUNCTIONS    PythonFunctions
 )
 {
-    if (!PythonModule) {
+    if (!ARGUMENT_PRESENT(PythonModule)) {
         return FALSE;
     }
 
-    if (!PythonFunctions) {
+    if (!ARGUMENT_PRESENT(PythonFunctions)) {
         return FALSE;
     }
 
-    PythonFunctions->PyFrame_GetLineNumber = (PPYFRAME_GETLINENUMBER)GetProcAddress(PythonModule, "PyFrame_GetLineNumber");
-    if (!PythonFunctions->PyFrame_GetLineNumber) {
-        goto error;
+#define TRY_RESOLVE_FUNCTION(Type, Name) ( \
+    PythonFunctions->##Name = (Type)(      \
+        GetProcAddress(                    \
+            PythonModule,                  \
+            #Name                          \
+        )                                  \
+    )                                      \
+)
+
+#define RESOLVE_FUNCTION(Type, Name)                                \
+    if (!TRY_RESOLVE_FUNCTION(Type, Name)) {                        \
+        OutputDebugStringA("Failed to resolve Python!" #Name "\n"); \
+        return FALSE;                                               \
     }
 
-    PythonFunctions->PyEval_SetProfile = (PPYEVAL_SETPROFILE)GetProcAddress(PythonModule, "PyEval_SetProfile");
-    if (!PythonFunctions->PyEval_SetProfile) {
-        goto error;
-    }
+    RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
+    RESOLVE_FUNCTION(PPYDICT_GETITEMSTRING, PyDict_GetItemString);
+    RESOLVE_FUNCTION(PPYFRAME_GETLINENUMBER, PyFrame_GetLineNumber);
+    RESOLVE_FUNCTION(PPYEVAL_SETTRACE, PyEval_SetProfile);
+    RESOLVE_FUNCTION(PPYEVAL_SETTRACE, PyEval_SetTrace);
+    RESOLVE_FUNCTION(PPY_INCREF, Py_IncRef);
+    RESOLVE_FUNCTION(PPY_DECREF, Py_DecRef);
+    RESOLVE_FUNCTION(PPYGILSTATE_ENSURE, PyGILState_Ensure);
+    RESOLVE_FUNCTION(PPYGILSTATE_RELEASE, PyGILState_Release);
+    RESOLVE_FUNCTION(PPYOBJECT_HASH, PyObject_Hash);
+    RESOLVE_FUNCTION(PPYOBJECT_COMPARE, PyObject_Compare);
+    RESOLVE_FUNCTION(PPYMEM_MALLOC, PyMem_Malloc);
+    RESOLVE_FUNCTION(PPYMEM_REALLOC, PyMem_Realloc);
+    RESOLVE_FUNCTION(PPYMEM_FREE, PyMem_Free);
+    RESOLVE_FUNCTION(PPYOBJECT_MALLOC, PyObject_Malloc);
+    RESOLVE_FUNCTION(PPYOBJECT_REALLOC, PyObject_Realloc);
+    RESOLVE_FUNCTION(PPYOBJECT_FREE, PyObject_Free);
+    RESOLVE_FUNCTION(PPYGC_COLLECT, PyGC_Collect);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_MALLOC, _PyObject_GC_Malloc);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_NEW, _PyObject_GC_New);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_NEWVAR, _PyObject_GC_NewVar);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_RESIZE, _PyObject_GC_Resize);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_TRACK, PyObject_GC_Track);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_UNTRACK, PyObject_GC_UnTrack);
+    RESOLVE_FUNCTION(PPYOBJECT_GC_DEL, PyObject_GC_Del);
 
-    PythonFunctions->PyEval_SetTrace = (PPYEVAL_SETTRACE)GetProcAddress(PythonModule, "PyEval_SetTrace");
-    if (!PythonFunctions->PyEval_SetTrace) {
-        goto error;
-    }
-
-    PythonFunctions->PyDict_GetItemString = (PPYDICT_GETITEMSTRING)GetProcAddress(PythonModule, "PyDict_GetItemString");
-    if (!PythonFunctions->PyDict_GetItemString) {
-        goto error;
-    }
-
-    PythonFunctions->Py_IncRef = (PPY_INCREF)GetProcAddress(PythonModule, "Py_IncRef");
-    if (!PythonFunctions->Py_IncRef) {
-        goto error;
-    }
-
-    PythonFunctions->Py_DecRef = (PPY_DECREF)GetProcAddress(PythonModule, "Py_DecRef");
-    if (!PythonFunctions->Py_DecRef) {
-        goto error;
-    }
-
-    PythonFunctions->PyGILState_Ensure = (PPYGILSTATE_ENSURE)GetProcAddress(PythonModule, "PyGILState_Ensure");
-    if (!PythonFunctions->PyGILState_Ensure) {
-        goto error;
-    }
-
-    PythonFunctions->PyGILState_Release = (PPYGILSTATE_RELEASE)GetProcAddress(PythonModule, "PyGILState_Release");
-    if (!PythonFunctions->PyGILState_Release) {
-        goto error;
-    }
-
-    PythonFunctions->PyObject_Compare = (PPYOBJECT_COMPARE)GetProcAddress(PythonModule, "PyObject_Compare");
-    if (!PythonFunctions->PyObject_Compare) {
-        goto error;
-    }
-
-    PythonFunctions->PyObject_Hash = (PPYOBJECT_HASH)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_Hash"
-        )
-    );
-
-    if (!PythonFunctions->PyObject_Hash) {
-        goto error;
-    }
-
-    PythonFunctions->PyUnicode_AsUnicode = (PPYUNICODE_ASUNICODE)(
-        GetProcAddress(
-            PythonModule,
-            "PyUnicode_AsUnicode"
-        )
-    );
-
-    PythonFunctions->PyUnicode_GetLength = (PPYUNICODE_GETLENGTH)(
-        GetProcAddress(
-            PythonModule,
-            "PyUnicode_GetLength"
-        )
-    );
-
-    PythonFunctions->PyMem_Malloc = (PPYMEM_MALLOC)(
-        GetProcAddress(
-            PythonModule,
-            "PyMem_Malloc"
-        )
-    );
-
-    PythonFunctions->PyMem_Realloc = (PPYMEM_REALLOC)(
-        GetProcAddress(
-            PythonModule,
-            "PyMem_Realloc"
-        )
-    );
-
-    PythonFunctions->PyMem_Free = (PPYMEM_FREE)(
-        GetProcAddress(
-            PythonModule,
-            "PyMem_Free"
-        )
-    );
-
-    PythonFunctions->PyObject_Malloc = (PPYOBJECT_MALLOC)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_Malloc"
-        )
-    );
-
-    PythonFunctions->PyObject_Realloc = (PPYOBJECT_REALLOC)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_Realloc"
-        )
-    );
-
-    PythonFunctions->PyObject_Free = (PPYOBJECT_FREE)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_Free"
-        )
-    );
-
-    PythonFunctions->PyGC_Collect = (PPYGC_COLLECT)(
-        GetProcAddress(
-            PythonModule,
-            "PyGC_Collect"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_Malloc = (PPYOBJECT_GC_MALLOC)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_Malloc"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_New = (PPYOBJECT_GC_NEW)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_New"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_NewVar = (PPYOBJECT_GC_NEWVAR)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_NewVar"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_Resize = (PPYOBJECT_GC_RESIZE)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_Resize"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_Track = (PPYOBJECT_GC_TRACK)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_Track"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_UnTrack = (PPYOBJECT_GC_UNTRACK)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_UnTrack"
-        )
-    );
-
-    PythonFunctions->PyObject_GC_Del = (PPYOBJECT_GC_DEL)(
-        GetProcAddress(
-            PythonModule,
-            "PyObject_GC_Del"
-        )
-    );
+    TRY_RESOLVE_FUNCTION(PPYUNICODE_ASUNICODE, PyUnicode_AsUnicode);
+    TRY_RESOLVE_FUNCTION(PPYUNICODE_GETLENGTH, PyUnicode_GetLength);
 
     return TRUE;
-
-error:
-    return FALSE;
 }
 
 _Check_return_
@@ -435,29 +281,26 @@ LoadPythonExFunctions(
         return FALSE;
     }
 
-    PythonExFunctions->GetUnicodeLengthForPythonString = (PGETUNICODELENGTHFORPYTHONSTRING)GetProcAddress(PythonExModule, "GetUnicodeLengthForPythonString");
+#define TRY_RESOLVE_FUNCTIONEX(Type, Name) ( \
+    PythonExFunctions->##Name = (Type)(      \
+        GetProcAddress(                    \
+            PythonExModule,                  \
+            #Name                          \
+        )                                  \
+    )                                      \
+)
 
-    PythonExFunctions->ConvertPythonStringToUnicodeString = (PCONVERTPYSTRINGTOUNICODESTRING)GetProcAddress(PythonExModule, "ConvertPythonStringToUnicodeString");
+#define RESOLVE_FUNCTIONEX(Type, Name)                                \
+    if (!TRY_RESOLVE_FUNCTIONEX(Type, Name)) {                        \
+        OutputDebugStringA("Failed to resolve PythonEx!" #Name "\n"); \
+        return FALSE;                                               \
+    }
 
-    PythonExFunctions->CopyPythonStringToUnicodeString = (PCOPY_PYTHON_STRING_TO_UNICODE_STRING)GetProcAddress(PythonExModule, "CopyPythonStringToUnicodeString");
-
-    PythonExFunctions->ResolveFrameObjectDetails = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetails");
-
-    PythonExFunctions->ResolveFrameObjectDetailsFast = (PRESOLVEFRAMEOBJECTDETAILS)GetProcAddress(PythonExModule, "ResolveFrameObjectDetailsFast");
-
-    PythonExFunctions->GetModuleNameAndQualifiedPathFromModuleFilename = (PGET_MODULE_NAME_AND_QUALIFIED_PATH_FROM_MODULE_FILENAME)GetProcAddress(PythonExModule, "GetModuleNameAndQualifiedPathFromModuleFilename");
-
-    PythonExFunctions->RegisterFunction = NULL;
-
-    PythonExFunctions->RegisterFrame = (PREGISTER_FRAME)GetProcAddress(PythonExModule, "RegisterFrame");
-
-    PythonExFunctions->AddDirectoryEntry = (PADD_DIRECTORY_ENTRY)GetProcAddress(PythonExModule, "AddDirectoryEntry");
-
-    PythonExFunctions->AddDirectoryEntry = (PADD_DIRECTORY_ENTRY)GetProcAddress(PythonExModule, "AddDirectoryEntry");
-
-    PythonExFunctions->GetModuleNameFromDirectory = (PGET_MODULE_NAME_FROM_DIRECTORY)GetProcAddress(PythonExModule, "GetModuleNameFromDirectory");
-
-    PythonExFunctions->InitializePythonRuntimeTables = (PINITIALIZE_PYTHON_RUNTIME_TABLES)GetProcAddress(PythonExModule, "InitializePythonRuntimeTables");
+    RESOLVE_FUNCTIONEX(PREGISTER_FRAME, RegisterFrame);
+    RESOLVE_FUNCTIONEX(
+        PINITIALIZE_PYTHON_RUNTIME_TABLES,
+        InitializePythonRuntimeTables
+    );
 
     return TRUE;
 }
@@ -574,11 +417,7 @@ InitializePythonRuntimeTables(
     PRTL Rtl;
     Rtl = Python->Rtl;
     PPREFIX_TABLE PrefixTable;
-    PUNICODE_PREFIX_TABLE UnicodePrefixTable;
     PRTL_GENERIC_TABLE GenericTable;
-
-    UnicodePrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
-    Rtl->RtlInitializeUnicodePrefix(UnicodePrefixTable);
 
     PrefixTable = &Python->PathTable.PrefixTable;
     Rtl->PfxInitialize(PrefixTable);
@@ -904,122 +743,7 @@ error:
     return FALSE;
 }
 
-BOOL
-GetUnicodeLengthForPythonString(
-    _In_    PPYTHON         Python,
-    _In_    PPYOBJECT       StringOrUnicodeObject,
-    _Out_   PULONG          UnicodeLength
-)
-{
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!StringOrUnicodeObject) {
-        return FALSE;
-    }
-
-    if (!UnicodeLength) {
-        return FALSE;
-    }
-
-    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
-
-
-    } else if (StringOrUnicodeObject->Type ==
-               (PPYTYPEOBJECT)Python->PyUnicode_Type)
-    {
-        ;
-
-    } else {
-        return FALSE;
-    }
-
-    return FALSE;
-}
-
-_Check_return_
-BOOL
-ConvertPythonStringToUnicodeString(
-    _In_    PPYTHON             Python,
-    _In_    PPYOBJECT           StringOrUnicodeObject,
-    _Out_   PPUNICODE_STRING    UnicodeString,
-    _In_    BOOL                AllocateMaximumSize
-)
-{
-    PUNICODE_STRING String;
-    LARGE_INTEGER RequiredSizeInBytes;
-    LARGE_INTEGER AllocationSizeInBytes;
-
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!StringOrUnicodeObject) {
-        return FALSE;
-    }
-
-    if (!UnicodeString) {
-        return FALSE;
-    }
-
-    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
-        ULONG Index;
-        PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
-        RequiredSizeInBytes.QuadPart = StringObject->ObjectSize * sizeof(WCHAR);
-        if (RequiredSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
-            return FALSE;
-        }
-
-        if (RequiredSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-        if (AllocateMaximumSize) {
-            AllocationSizeInBytes.QuadPart = MAX_USTRING - 2;
-        } else {
-            AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
-        }
-
-        if (AllocationSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-
-        String = (PUNICODE_STRING)HeapAlloc(Python->HeapHandle,
-                                            HEAP_ZERO_MEMORY,
-                                            AllocationSizeInBytes.LowPart);
-        if (!String) {
-            return FALSE;
-        }
-
-        String->Length = (USHORT)RequiredSizeInBytes.LowPart;
-        String->MaximumLength = (USHORT)AllocationSizeInBytes.LowPart-sizeof(UNICODE_STRING);
-        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-
-        for (Index = 0; Index < StringObject->ObjectSize; Index++) {
-            String->Buffer[Index] = (WCHAR)StringObject->Value[Index];
-        }
-
-        *UnicodeString = String;
-        return TRUE;
-
-    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
-
-        if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
-
-        }
-
-        return FALSE;
-
-    } else {
-        return FALSE;
-    }
-
-    return FALSE;
-
-}
-
+FORCEINLINE
 BOOL
 GetPythonStringInformation(
     _In_     PPYTHON             Python,
@@ -1029,18 +753,17 @@ GetPythonStringInformation(
     _Out_    PPVOID              Buffer
 )
 {
-    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
+    PYOBJECTEX Object;
+    Object.Object = StringOrUnicodeObject;
 
-        PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
+    if (StringOrUnicodeObject->Type == Python->PyString.Type) {
 
-        *Length = StringObject->ObjectSize;
-        *Buffer = StringObject->Value;
+        *Length = Object.String->ObjectSize;
+        *Buffer = Object.String->Value;
 
         *Width = sizeof(CHAR);
 
-    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
-
-        PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
+    } else if (StringOrUnicodeObject->Type == Python->PyUnicode.Type) {
 
         if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
 
@@ -1049,8 +772,8 @@ GetPythonStringInformation(
 
         } else {
 
-            *Length = UnicodeObject->Length;
-            *Buffer = UnicodeObject->String;
+            *Length = Object.Unicode->Length;
+            *Buffer = Object.Unicode->String;
 
         }
 
@@ -1103,157 +826,6 @@ WrapPythonStringAsString(
     return TRUE;
 }
 
-BOOL
-CopyPythonStringToUnicodeString(
-    _In_     PPYTHON             Python,
-    _In_     PPYOBJECT           StringOrUnicodeObject,
-    _Inout_  PPUNICODE_STRING    UnicodeString,
-    _In_opt_ USHORT              AllocationSize,
-    _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext
-)
-{
-    PRTL Rtl;
-    PUNICODE_STRING String;
-    LARGE_INTEGER RequiredSizeInBytes;
-    LARGE_INTEGER AllocationSizeInBytes;
-
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!StringOrUnicodeObject) {
-        return FALSE;
-    }
-
-    if (!UnicodeString) {
-        return FALSE;
-    }
-
-    Rtl = Python->Rtl;
-
-    if (!Rtl) {
-        return FALSE;
-    }
-
-    if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyString_Type) {
-        ULONG Index;
-        PPYSTRINGOBJECT StringObject = (PPYSTRINGOBJECT)StringOrUnicodeObject;
-        RequiredSizeInBytes.QuadPart = StringObject->ObjectSize * sizeof(WCHAR);
-
-        if (RequiredSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
-            return FALSE;
-        }
-
-        if (RequiredSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-        if (AllocationSize && (AllocationSize > (RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING)))) {
-
-            AllocationSizeInBytes.QuadPart = AllocationSize + sizeof(UNICODE_STRING);
-
-        } else {
-
-            AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
-        }
-
-        if (AllocationSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
-            return FALSE;
-        }
-
-        if (AllocationSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-        String = (PUNICODE_STRING)AllocationRoutine(
-            AllocationContext,
-            AllocationSizeInBytes.LowPart
-        );
-
-        if (!String) {
-            return FALSE;
-        }
-
-        String->Length = (USHORT)RequiredSizeInBytes.LowPart;
-        String->MaximumLength = (USHORT)AllocationSizeInBytes.LowPart-sizeof(UNICODE_STRING);
-        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-
-        for (Index = 0; Index < StringObject->ObjectSize; Index++) {
-            String->Buffer[Index] = (WCHAR)StringObject->Value[Index];
-        }
-
-        *UnicodeString = String;
-        return TRUE;
-
-    } else if (StringOrUnicodeObject->Type == (PPYTYPEOBJECT)Python->PyUnicode_Type) {
-
-        PPYUNICODEOBJECT UnicodeObject = (PPYUNICODEOBJECT)StringOrUnicodeObject;
-        UNICODE_STRING Source;
-
-        if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
-
-            RequiredSizeInBytes.QuadPart = Python->PyUnicode_GetLength(StringOrUnicodeObject) * sizeof(WCHAR);
-            Source.Buffer = Python->PyUnicode_AsUnicode(StringOrUnicodeObject);
-
-        } else {
-
-            RequiredSizeInBytes.QuadPart = UnicodeObject->Length * sizeof(WCHAR);
-            Source.Buffer = UnicodeObject->String;
-        }
-
-        if (RequiredSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
-            return FALSE;
-        }
-
-        if (RequiredSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-        Source.Length = (USHORT)RequiredSizeInBytes.LowPart;
-        Source.MaximumLength = Source.Length;
-
-        if (AllocationSize && (AllocationSize > (RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING)))) {
-
-            AllocationSizeInBytes.QuadPart = AllocationSize + sizeof(UNICODE_STRING);
-
-        } else {
-
-            AllocationSizeInBytes.QuadPart = RequiredSizeInBytes.LowPart + sizeof(UNICODE_STRING);
-        }
-
-
-        if (AllocationSizeInBytes.QuadPart > (MAX_USTRING-2-sizeof(UNICODE_STRING))) {
-            return FALSE;
-        }
-
-        if (AllocationSizeInBytes.HighPart != 0) {
-            return FALSE;
-        }
-
-        String = (PUNICODE_STRING)AllocationRoutine(
-            AllocationContext,
-            AllocationSizeInBytes.LowPart
-        );
-
-        if (!String) {
-            return FALSE;
-        }
-
-        String->Length = Source.Length;
-        String->MaximumLength = (USHORT)AllocationSizeInBytes.LowPart - sizeof(UNICODE_STRING);
-        String->Buffer = (PWSTR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-        Rtl->RtlCopyUnicodeString(String, &Source);
-
-        return TRUE;
-
-    } else {
-        return FALSE;
-    }
-
-    return FALSE;
-}
-
 FORCEINLINE
 BOOL
 IsModuleDirectoryW(
@@ -1286,230 +858,6 @@ IsModuleDirectoryA(
                             IsModule,
                             NULL,
                             NULL);
-}
-
-BOOL
-AddDirectoryEntry(
-    _In_      PPYTHON Python,
-    _In_      PUNICODE_STRING Directory,
-    _In_opt_  PUNICODE_STRING DirectoryName,
-    _In_opt_  PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry,
-    _Out_opt_ PPPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY EntryPointer,
-    _In_      BOOL IsRoot,
-    _In_      PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID AllocationContext,
-    _In_      PFREE_ROUTINE FreeRoutine,
-    _In_opt_  PVOID FreeContext
-    )
-{
-    PRTL Rtl;
-
-    PUNICODE_PREFIX_TABLE PrefixTable;
-    PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-
-    PVOID Buffer;
-    ULONG AllocationSize;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry;
-
-    PSTRING AncestorModuleName;
-    PSTRING Name;
-    PSTRING ModuleName;
-    USHORT Offset;
-    USHORT NameLength;
-
-    PUNICODE_STRING DirectoryPrefix;
-
-    PUNICODE_STRING Match = NULL;
-    BOOL CaseInsensitive = TRUE;
-    BOOL Success = FALSE;
-    BOOL IsModule;
-    BOOL AncestorIsRoot;
-
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Directory)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(AllocationRoutine)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(FreeRoutine)) {
-        return FALSE;
-    }
-
-    //
-    // Non-root nodes must have a name and ancestor provided.
-    //
-
-    if (IsRoot) {
-
-        AllocationSize = sizeof(*Entry);
-
-        IsModule = FALSE;
-        AncestorIsRoot = FALSE;
-
-    } else {
-
-        if (!ARGUMENT_PRESENT(DirectoryName)) {
-            return FALSE;
-        }
-
-        if (!ARGUMENT_PRESENT(AncestorEntry)) {
-            return FALSE;
-        }
-
-        IsModule = TRUE;
-
-        AncestorIsRoot = !AncestorEntry->IsModule;
-
-        if (AncestorEntry->Name.Length != 0 ||
-            AncestorEntry->ModuleName.Length != 0)
-        {
-            __debugbreak();
-        }
-
-        AncestorModuleName = &AncestorEntry->ModuleName;
-
-        NameLength = (DirectoryName->Length >> 1); // wchar -> char
-
-        AllocationSize = (
-            sizeof(*Entry)                    +
-            AncestorModuleName->MaximumLength + // includes trailing NUL
-            NameLength
-        );
-
-        if (!AncestorIsRoot) {
-
-            //
-            // Account for the joining period + NUL.
-            //
-
-            AllocationSize += 2;
-
-        } else {
-
-            //
-            // Account for just the trailing NUL.
-            //
-
-            AllocationSize += 1;
-        }
-
-    }
-
-    Rtl = Python->Rtl;
-
-    AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
-
-    Buffer = AllocationRoutine(AllocationContext, AllocationSize);
-    if (!Buffer) {
-        return FALSE;
-    }
-
-    Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)Buffer;
-
-    Entry->IsModule = IsModule;
-
-    if (IsRoot) {
-
-        ClearString(&Entry->ModuleName);
-        ClearString(&Entry->Name);
-
-    } else {
-
-        PSTR Dest;
-        PWSTR Source;
-        USHORT Count;
-
-        ModuleName = &Entry->ModuleName;
-        Name = &Entry->Name;
-
-        if (!AncestorIsRoot) {
-            Offset = AncestorModuleName->Length + 1;
-        } else {
-            Offset = 0;
-        }
-
-        ModuleName->Length = Offset + NameLength;
-        ModuleName->MaximumLength = ModuleName->Length + 1;
-
-        Name->Length = NameLength;
-        Name->MaximumLength = NameLength + 1;
-
-        //
-        // The new module name lives at the end of the structure.
-        //
-
-        ModuleName->Buffer = (PSTR)RtlOffsetToPointer(Entry, sizeof(*Entry));
-
-        //
-        // Point the name into the relevant offset of the ModuleName.
-        //
-
-        Name->Buffer = &ModuleName->Buffer[Offset];
-
-        if (!AncestorIsRoot) {
-
-            //
-            // Copy the ModuleName over.
-            //
-
-            __movsb(ModuleName->Buffer,
-                    AncestorModuleName->Buffer,
-                    AncestorModuleName->Length);
-
-            //
-            // Add the period.
-            //
-
-            ModuleName->Buffer[Offset-1] = '.';
-
-        }
-
-        //
-        // Copy the name over.
-        //
-
-        Count = NameLength;
-        Dest = Name->Buffer;
-        Source = DirectoryName->Buffer;
-
-        while (Count--) {
-            *Dest++ = (CHAR)*Source++;
-        }
-
-        //
-        // And add the final trailing NUL.
-        //
-
-        *Dest++ = '\0';
-    }
-
-    DirectoryPrefix = &Entry->Directory;
-
-    DirectoryPrefix->Length = Directory->Length;
-    DirectoryPrefix->MaximumLength = Directory->MaximumLength;
-    DirectoryPrefix->Buffer = Directory->Buffer;
-
-    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
-    PrefixTableEntry = (PUNICODE_PREFIX_TABLE_ENTRY)Entry;
-
-    Success = Rtl->RtlInsertUnicodePrefix(PrefixTable,
-                                          DirectoryPrefix,
-                                          PrefixTableEntry);
-
-    if (!Success) {
-        FreeRoutine(FreeContext, Buffer);
-    }
-    else if (ARGUMENT_PRESENT(EntryPointer)) {
-        *EntryPointer = Entry;
-    }
-
-    return Success;
 }
 
 BOOL
@@ -1740,1182 +1088,6 @@ RegisterDirectory(
 }
 
 BOOL
-GetModuleNameFromDirectory(
-    _In_     PPYTHON             Python,
-    _In_     PUNICODE_STRING     Directory,
-    _In_     PRTL_BITMAP         Backslashes,
-    _In_     PUSHORT             BitmapHintIndex,
-    _In_     PUSHORT             NumberOfBackslashesRemaining,
-    _Out_    PPSTRING            ModuleName,
-    _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext,
-    _In_     PFREE_ROUTINE       FreeRoutine,
-    _In_opt_ PVOID               FreeContext
-    )
-{
-    PRTL Rtl;
-
-    PUNICODE_PREFIX_TABLE PrefixTable;
-    PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY Entry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY RootEntry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ParentEntry = NULL;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY AncestorEntry = NULL;
-
-    PUNICODE_STRING Match = NULL;
-    BOOL CaseInsensitive = TRUE;
-    BOOL Success;
-
-    UNICODE_STRING NextName;
-    UNICODE_STRING AncestorName;
-    UNICODE_STRING PreviousName;
-    UNICODE_STRING DirectoryName;
-
-    UNICODE_STRING NextDirectory;
-    UNICODE_STRING RootDirectory;
-    UNICODE_STRING ParentDirectory;
-    UNICODE_STRING AncestorDirectory;
-    UNICODE_STRING PreviousDirectory;
-
-    PUNICODE_STRING NextPrefix;
-    PUNICODE_STRING RootPrefix;
-    PUNICODE_STRING ParentPrefix;
-    PUNICODE_STRING AncestorPrefix;
-    PUNICODE_STRING PreviousPrefix;
-
-    USHORT Offset;
-    USHORT ReversedIndex;
-    USHORT NumberOfChars;
-    USHORT LastReversedIndex;
-    USHORT CumulativeReversedIndex;
-    BOOL IsModule = FALSE;
-
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Directory)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Backslashes)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(ModuleName)) {
-        return FALSE;
-    }
-
-    Rtl = Python->Rtl;
-
-    //
-    // Initialize pointer to the UNICODE_PREFIX_TABLE.
-    //
-
-    PrefixTable = &Python->DirectoryPrefixTable.PrefixTable;
-
-    //
-    // Seach for the directory in the prefix table.
-    //
-
-    PrefixTableEntry = Rtl->RtlFindUnicodePrefix(PrefixTable,
-                                                 Directory,
-                                                 CaseInsensitive);
-
-    if (PrefixTableEntry) {
-
-        //
-        // A match was found, see if it matches our entire directory string.
-        //
-
-        Match = PrefixTableEntry->Prefix;
-
-        if (Match->Length == Directory->Length) {
-
-            //
-            // The match is exact.  Fill in the user's module name pointer
-            // and return success.
-            //
-
-            Entry = (PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY)PrefixTableEntry;
-            *ModuleName = &Entry->ModuleName;
-            return TRUE;
-        }
-
-
-        if (Match->Length > Directory->Length) {
-
-            //
-            // We should never get a longer match than the directory name
-            // we searched for.
-            //
-
-            __debugbreak();
-        }
-
-        //
-        // A shorter entry was found.  Fall through to the following code
-        // which will handle inserting a new prefix table entry for the
-        // directory.  Note that we just set the shorter directory as our
-        // parent directory; later on, once we've actually calculated our
-        // parent directory, we may revise this to be an ancestory entry.
-        //
-
-        ParentEntry = Entry;
-        Entry = NULL;
-
-    }
-
-    //
-    // Final step: make sure directory entries have been added for all of our
-    // parent directories, up to and including the first one we find without
-    // an __init__.py file present.  The directory after this becomes the start
-    // of our module name.
-    //
-
-    //
-    // Get the index of the next backslash if possible.
-    //
-
-    if (!*NumberOfBackslashesRemaining) {
-        __debugbreak();
-
-        //
-        // This will be hit if the directory we just added was a root volume,
-        // e.g. the file was c:\foo.py and we added c:\.  Set the module name
-        // to be empty and return.
-        //
-
-        Entry->IsModule = FALSE;
-        ClearString(&Entry->ModuleName);
-        return TRUE;
-
-    }
-
-    //
-    // We have at least one parent directory to process.  Extract it.
-    //
-
-    LastReversedIndex = (*BitmapHintIndex)++;
-
-    ReversedIndex = (USHORT)(
-        Rtl->RtlFindSetBits(
-            Backslashes,
-            1,
-            *BitmapHintIndex
-        )
-    );
-
-    if (ReversedIndex == BITS_NOT_FOUND) {
-
-        //
-        // Should never happen.
-        //
-
-        __debugbreak();
-    }
-
-    NumberOfChars = Directory->Length >> 1;
-    Offset = NumberOfChars - ReversedIndex + LastReversedIndex + 1;
-    CumulativeReversedIndex = LastReversedIndex;
-
-    //
-    // Extract the directory name, and the parent directory's full path.
-    //
-
-    DirectoryName.Length = (
-        ((ReversedIndex - CumulativeReversedIndex) << 1) -
-        sizeof(WCHAR)
-    );
-    DirectoryName.MaximumLength = DirectoryName.Length;
-    DirectoryName.Buffer = &Directory->Buffer[Offset];
-
-    ParentDirectory.Length = (Offset - 1) << 1;
-    ParentDirectory.MaximumLength = (Offset - 1) << 1;
-    ParentDirectory.Buffer = Directory->Buffer;
-
-    //
-    // Special-case fast-path: if ParentEntry is defined and the length matches
-    // ParentDirectory, we can assume all paths have already been added.
-    //
-
-    if (ParentEntry) {
-        ParentPrefix = ParentEntry->Prefix;
-
-        if (ParentPrefix->Length == ParentDirectory.Length) {
-
-            //
-            // Parent has been added.
-            //
-
-            goto FoundParent;
-
-        }
-
-        //
-        // An ancestor, not our immediate parent, has been added.
-        //
-
-        AncestorEntry = ParentEntry;
-        AncestorPrefix = ParentPrefix;
-        ParentEntry = NULL;
-        ParentPrefix = NULL;
-
-        goto FoundAncestor;
-    }
-
-    //
-    // No parent entry was found at all, we need to find the first directory
-    // in our hierarchy that *doesn't* have an __init__.py file, then add that
-    // and all subsequent directories up-to and including our parent.
-    //
-
-    PreviousDirectory.Length = ParentDirectory.Length;
-    PreviousDirectory.MaximumLength = ParentDirectory.MaximumLength;
-    PreviousDirectory.Buffer = ParentDirectory.Buffer;
-
-    AncestorDirectory.Length = ParentDirectory.Length;
-    AncestorDirectory.MaximumLength = ParentDirectory.MaximumLength;
-    AncestorDirectory.Buffer = ParentDirectory.Buffer;
-
-    PreviousName.Length = DirectoryName.Length;
-    PreviousName.MaximumLength = DirectoryName.MaximumLength;
-    PreviousName.Buffer = DirectoryName.Buffer;
-
-    AncestorName.Length = DirectoryName.Length;
-    AncestorName.MaximumLength = DirectoryName.MaximumLength;
-    AncestorName.Buffer = DirectoryName.Buffer;
-
-    do {
-
-        if (!*NumberOfBackslashesRemaining) {
-
-            IsModule = FALSE;
-
-        } else {
-
-            Success = IsModuleDirectoryW(Rtl, &AncestorDirectory, &IsModule);
-
-            if (!Success) {
-
-                //
-                // We treat failure of the IsModuleDirectory() call the same
-                // as if it indicated that the directory wasn't a module (i.e.
-                // didn't have an __init__.py file), mainly because there's
-                // not really any other sensible option.  (Unwinding all of
-                // the entries we may have added seems like overkill at this
-                // point.)
-                //
-
-                IsModule = FALSE;
-            }
-        }
-
-        if (!IsModule) {
-
-            //
-            // We've found the first non-module directory we're looking for.
-            // This becomes our root directory.
-            //
-
-            RootDirectory.Length = AncestorDirectory.Length;
-            RootDirectory.MaximumLength = AncestorDirectory.MaximumLength;
-            RootDirectory.Buffer = AncestorDirectory.Buffer;
-            RootPrefix = &RootDirectory;
-
-            Success = Python->AddDirectoryEntry(Python,
-                                                &RootDirectory,
-                                                NULL,
-                                                NULL,
-                                                &RootEntry,
-                                                TRUE,
-                                                AllocationRoutine,
-                                                AllocationContext,
-                                                FreeRoutine,
-                                                FreeContext);
-
-            if (!Success) {
-                return FALSE;
-            }
-
-            if (PreviousDirectory.Length > RootDirectory.Length) {
-
-                //
-                // Add the previous directory as the first "module" directory.
-                //
-
-                Success = Python->AddDirectoryEntry(Python,
-                                                    &PreviousDirectory,
-                                                    &PreviousName,
-                                                    RootEntry,
-                                                    &AncestorEntry,
-                                                    FALSE,
-                                                    AllocationRoutine,
-                                                    AllocationContext,
-                                                    FreeRoutine,
-                                                    FreeContext);
-
-                if (!Success) {
-                    return FALSE;
-                }
-
-                //
-                // Determine if we need to process more ancestors, or if that
-                // was actually the parent path.
-                //
-
-                if (AncestorEntry->Prefix->Length == ParentDirectory.Length) {
-
-                    ParentPrefix = AncestorEntry->Prefix;
-                    ParentEntry = AncestorEntry;
-
-                    goto FoundParent;
-
-                } else {
-
-                    goto FoundAncestor;
-
-                }
-
-            } else {
-
-                //
-                // Our parent directory is the root directory.
-                //
-
-                ParentPrefix = RootPrefix;
-                ParentEntry = RootEntry;
-
-                goto FoundParent;
-
-            }
-
-            break;
-        }
-
-        //
-        // Parent directory is also a module.  Make sure we're not on the
-        // root level.
-        //
-
-        if (!--(*NumberOfBackslashesRemaining)) {
-
-            //
-            // Force the loop to continue, which will trigger the check at the
-            // top for number of remaining backslashes, which will fail, which
-            // causes the path to be added as a root, which is what we want.
-            //
-
-            continue;
-        }
-
-        PreviousPrefix = &PreviousDirectory;
-
-        PreviousDirectory.Length = AncestorDirectory.Length;
-        PreviousDirectory.MaximumLength = AncestorDirectory.MaximumLength;
-        PreviousDirectory.Buffer = AncestorDirectory.Buffer;
-
-        PreviousName.Length = AncestorName.Length;
-        PreviousName.MaximumLength = AncestorName.MaximumLength;
-        PreviousName.Buffer = AncestorName.Buffer;
-
-        LastReversedIndex = (*BitmapHintIndex)++;
-
-        ReversedIndex = (USHORT)Rtl->RtlFindSetBits(Backslashes, 1,
-                                                    *BitmapHintIndex);
-
-        if (ReversedIndex == BITS_NOT_FOUND) {
-
-            //
-            // Should never happen.
-            //
-
-            __debugbreak();
-        }
-
-        CumulativeReversedIndex += LastReversedIndex;
-        Offset = NumberOfChars - ReversedIndex + CumulativeReversedIndex + 1;
-
-        //
-        // Extract the ancestor name and directory full path.
-        //
-
-        AncestorName.Length = (
-            ((ReversedIndex - CumulativeReversedIndex) << 1) -
-            sizeof(WCHAR)
-        );
-        AncestorName.MaximumLength = DirectoryName.Length;
-        AncestorName.Buffer = &Directory->Buffer[Offset];
-
-        AncestorDirectory.Length = (Offset - 1) << 1;
-        AncestorDirectory.MaximumLength = (Offset - 1) << 1;
-        AncestorDirectory.Buffer = Directory->Buffer;
-
-        //
-        // Continue the loop.
-        //
-
-    } while (1);
-
-FoundAncestor:
-
-    //
-    // Keep adding entries for the next directories as long as they're
-    // not the parent directory.
-    //
-
-    do {
-
-        //
-        // Fill out the NextDirectory et al structures based on the next
-        // directory after the current ancestor.  (Reversing the bitmap
-        // may help here.)
-        //
-
-        __debugbreak();
-
-        NextName;
-        NextPrefix;
-        NextDirectory;
-
-    } while (1);
-
-FoundParent:
-
-
-    //
-    // Add a new entry for the directory.
-    //
-
-    Success = Python->AddDirectoryEntry(Python,
-                                        Directory,
-                                        &DirectoryName,
-                                        ParentEntry,
-                                        &Entry,
-                                        FALSE,
-                                        AllocationRoutine,
-                                        AllocationContext,
-                                        FreeRoutine,
-                                        FreeContext);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    *ModuleName = &Entry->ModuleName;
-
-    return TRUE;
-}
-
-BOOL
-GetModuleNameFromQualifiedPath(
-    _In_     PPYTHON             Python,
-    _In_     PUNICODE_STRING     Path,
-    _Out_    PPSTRING            ModuleName,
-    _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext,
-    _In_     PFREE_ROUTINE       FreeRoutine,
-    _In_opt_ PVOID               FreeContext
-    )
-{
-    PRTL Rtl;
-    BOOL Success = FALSE;
-    USHORT Limit = 0;
-    USHORT Offset = 0;
-    USHORT ReversedIndex;
-    USHORT BitmapHintIndex;
-    USHORT NumberOfChars;
-    USHORT InitPyNumberOfChars;
-    USHORT NumberOfBackslashes;
-    USHORT NumberOfBackslashesRemaining;
-    HANDLE HeapHandle = NULL;
-    UNICODE_STRING Filename;
-    UNICODE_STRING Directory;
-    BOOL IsInitPy = FALSE;
-    BOOL CaseSensitive = TRUE;
-    BOOL Reversed = TRUE;
-    CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
-    RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
-    PRTL_BITMAP BitmapPointer = &Bitmap;
-
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Path)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(ModuleName)) {
-        return FALSE;
-    }
-
-    //
-    // Initialize Rtl and character length variables.
-    //
-
-    Rtl = Python->Rtl;
-
-    NumberOfChars = Path->Length >> 1;
-    InitPyNumberOfChars = W__init__py.Length >> 1;
-
-    //
-    // Create a reversed bitmap for the backslashes in the path.
-    //
-
-    Success = Rtl->CreateBitmapIndexForUnicodeString(Rtl,
-                                                     Path,
-                                                     L'\\',
-                                                     &HeapHandle,
-                                                     &BitmapPointer,
-                                                     Reversed,
-                                                     NULL);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    //
-    // Make sure there's at least one backslash in the path.
-    //
-
-    NumberOfBackslashes = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
-    if (NumberOfBackslashes == 0) {
-        goto Error;
-    }
-
-    //
-    // Extract the filename from the path by finding the first backslash
-    // and calculating the offset into the string buffer.
-    //
-
-    ReversedIndex = (USHORT)Rtl->RtlFindSetBits(BitmapPointer, 1, 0);
-    Offset = NumberOfChars - ReversedIndex + 1;
-
-    Filename.Length = (ReversedIndex << 1);
-    Filename.MaximumLength = (ReversedIndex << 1) + sizeof(WCHAR);
-    Filename.Buffer = &Path->Buffer[Offset];
-
-    //
-    // Extract the directory name.
-    //
-
-    Directory.Length = (Offset - 1) << 1;
-    Directory.MaximumLength = Directory.Length;
-    Directory.Buffer = Path->Buffer;
-
-    //
-    // Get the module name from the directory.
-    //
-    BitmapHintIndex = ReversedIndex;
-    NumberOfBackslashesRemaining = NumberOfBackslashes - 1;
-
-    Success = Python->GetModuleNameFromDirectory(Python,
-                                                 &Directory,
-                                                 BitmapPointer,
-                                                 &BitmapHintIndex,
-                                                 &NumberOfBackslashesRemaining,
-                                                 ModuleName,
-                                                 AllocationRoutine,
-                                                 AllocationContext,
-                                                 FreeRoutine,
-                                                 FreeContext);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // If the filename is "__init__.py[co]", the final module name will be the
-    // one returned above for the directory.  If it's anything else, we need to
-    // append the filename without the prefix.
-    //
-
-    IsInitPy = Rtl->RtlPrefixUnicodeString(&Filename,
-                                           &W__init__py,
-                                           CaseSensitive);
-
-    if (IsInitPy) {
-
-        //
-        // Nothing more to do.
-        //
-
-        Success = TRUE;
-
-    } else {
-
-        //
-        // Construct the final module name by appending the filename,
-        // sans file extension, to the module name.
-        //
-
-        WCHAR Char;
-        USHORT Index;
-
-        PSTR Dest;
-        PWSTR File;
-        PSTRING Final;
-        ULONG_INTEGER AllocationSize;
-        PSTR ModuleBuffer = (*ModuleName)->Buffer;
-        USHORT ModuleLength = (*ModuleName)->Length;
-
-        //
-        // Find the first trailing period.
-        //
-
-        for (Index = (Filename.Length >> 1) - 1; Index > 0; Index--) {
-            Char = Filename.Buffer[Index];
-            if (Char == L'.') {
-
-                //
-                // We can re-use the Filename UNICODE_STRING here to truncate
-                // the length such that the extension is omitted (i.e. there's
-                // no need to allocate a new string).
-                //
-
-                Filename.Length = (Index << 1);
-                break;
-            }
-        }
-
-        //
-        // Calculate the final name length.
-        //
-
-        AllocationSize.LongPart = (
-            ModuleLength            +
-            sizeof(CHAR)            + // joining '.'
-            (Filename.Length >> 1)  + // shift wchar -> char length
-            sizeof(CHAR)              // terminating NUL
-        );
-
-        if (AllocationSize.HighPart != 0 ||
-            AllocationSize.LowPart > MAX_STRING)
-        {
-
-            //
-            // Final size exceeds string limits.  For now, just return
-            // failure.  If it turns out this is a problem in practice,
-            // we can add as much of the filename that will fit then an
-            // elipsis.
-            //
-
-            Success = FALSE;
-            goto Error;
-        }
-
-        //
-        // Allocate a new STRING for the final module name.
-        //
-
-        Final = (PSTRING)AllocationRoutine(AllocationContext,
-                                           AllocationSize.LongPart);
-
-        if (!Final) {
-            Success = FALSE;
-            goto Error;
-        }
-
-        //
-        // Initialize the STRING structure.
-        //
-
-        Final->Length = AllocationSize.LowPart - sizeof(CHAR);
-        Final->MaximumLength = AllocationSize.LowPart;
-        Final->Buffer = (PSTR)RtlOffsetToPointer(Final, sizeof(STRING));
-
-        //
-        // Copy over the module name.
-        //
-
-        __movsb(Final->Buffer, ModuleBuffer, ModuleLength);
-
-        //
-        // Add the joining period.
-        //
-
-        Dest = &Final->Buffer[ModuleLength];
-
-        *Dest++ = '.';
-
-        //
-        // Copy over the filename.
-        //
-        File = Filename.Buffer;
-
-        for (Index = 0; Index < (Filename.Length >> 1); Index++) {
-            *Dest++ = (CHAR)*File++;
-        }
-
-        //
-        // And the final NUL.
-        //
-
-        *Dest = '\0';
-
-        //
-        // And finally, update the caller's module name pointer.
-        //
-
-        *ModuleName = Final;
-
-        Success = TRUE;
-
-    }
-
-    //
-    // Intentional follow-on.
-    //
-
-Error:
-    if (HeapHandle) {
-
-        //
-        // HeapHandle will be set if a new bitmap had to be allocated
-        // because our stack-allocated one was too small.
-        //
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
-
-            //
-            // This should never happen.  If HeapHandle is set, the buffers
-            // should differ.
-            //
-
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
-    }
-
-    return Success;
-}
-
-BOOL
-GetModuleNameAndQualifiedPathFromModuleFilename(
-    _In_     PPYTHON             Python,
-    _In_     PPYOBJECT           ModuleFilenameObject,
-    _Inout_  PPUNICODE_STRING    Path,
-    _Inout_  PPSTRING            ModuleName,
-    _In_     PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PVOID               AllocationContext,
-    _In_     PFREE_ROUTINE       FreeRoutine,
-    _In_opt_ PVOID               FreeContext
-    )
-{
-    BOOL Success;
-    BOOL Qualify = FALSE;
-
-    SSIZE_T Length;
-    USHORT  Width;
-    PVOID   Buffer;
-
-    ULARGE_INTEGER Size;
-    CONST ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
-    ULONG AllocSizeInBytes;
-
-    PWSTR Dest;
-
-    PUNICODE_STRING String;
-
-    Success = GetPythonStringInformation(
-        Python,
-        ModuleFilenameObject,
-        &Length,
-        &Width,
-        &Buffer
-    );
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    //
-    // Calculate the size in bytes from the length (characters) and width.
-    //
-
-    if (Width == sizeof(CHAR)) {
-
-        Size.QuadPart = (Length << 1);
-
-    } else if (Width == sizeof(WCHAR)) {
-
-        Size.QuadPart = Length;
-
-    } else {
-
-        //
-        // Shouldn't ever get here.
-        //
-
-        __debugbreak();
-    }
-
-    //
-    // Account for the trailing NUL.
-    //
-
-    Size.QuadPart += sizeof(WCHAR);
-
-    //
-    // Verify string size doesn't exceed our maximum unicode object size.
-    //
-
-    if (Size.HighPart != 0 || Size.LowPart > MaxSize.LowPart) {
-        return FALSE;
-    }
-
-    //
-    // Determine if we need to qualify the path.
-    //
-
-    if (Length >= 3) {
-
-        if (Width == sizeof(CHAR)) {
-
-            PSTR Buf = (PVOID)Buffer;
-
-            Qualify = (Buf[1] != ':' || Buf[2] != '\\');
-
-        } else {
-
-            PWSTR Buf = (PWSTR)Buffer;
-
-            Qualify = (Buf[1] != L':' || Buf[2] != '\\');
-
-        }
-
-    } else if (Length >= 2) {
-
-        if (Width == sizeof(CHAR)) {
-
-            PSTR Buf = (PSTR)Buffer;
-
-            Qualify = (Buf[0] != '\\' || Buf[1] != '\\');
-
-        } else {
-
-            PWSTR Buf = (PWSTR)Buffer;
-
-            Qualify = (Buf[0] != L'\\' || Buf[1] != L'\\');
-
-        }
-    }
-
-    if (Qualify) {
-
-        //
-        // Get the length (in characters) of the current directory and verify it
-        // fits within our unicode string size constraints.
-        //
-
-        ULONG CurDirLength;
-        ULONG RequiredSizeInBytes;
-
-        RequiredSizeInBytes = GetCurrentDirectoryW(0, NULL);
-        if (RequiredSizeInBytes == 0) {
-            return FALSE;
-        }
-
-        //
-        // Update the allocation size with the current directory size plus
-        // a joining backslash character.
-        //
-
-        Size.QuadPart = Size.LowPart + sizeof(WCHAR) + RequiredSizeInBytes;
-
-        //
-        // Verify it's within our limits.
-        //
-
-        if (Size.HighPart != 0 || Size.LowPart > MaxSize.LowPart) {
-            return FALSE;
-        }
-
-        //
-        // Account for the UNICODE_STRING struct size.
-        //
-
-        AllocSizeInBytes = Size.LowPart + sizeof(UNICODE_STRING);
-
-        String = (PUNICODE_STRING)AllocationRoutine(
-            AllocationContext,
-            AllocSizeInBytes
-        );
-
-        if (!String) {
-            return FALSE;
-        }
-
-        //
-        // Point the buffer to the memory immediately after the struct.
-        //
-
-        String->Buffer = (PWSTR)(
-            RtlOffsetToPointer(
-                String,
-                sizeof(UNICODE_STRING)
-            )
-        );
-
-        //
-        // CurDirLength will represent the length (number of characters, not
-        // bytes) of the string copied into our buffer.
-        //
-
-        CurDirLength = GetCurrentDirectoryW(
-            RequiredSizeInBytes,
-            String->Buffer
-        );
-
-        if (CurDirLength == 0) {
-            FreeRoutine(FreeContext, String);
-            return FALSE;
-        }
-
-        Dest = &String->Buffer[CurDirLength];
-
-        //
-        // Add the joining backslash and update the destination pointer.
-        //
-
-        *Dest++ = L'\\';
-
-    } else {
-
-        //
-        // Path is already qualified; just allocate a new unicode string,
-        // accounting for the additional UNICODE_STRING struct overhead.
-        //
-
-        AllocSizeInBytes = Size.LowPart + sizeof(UNICODE_STRING);
-
-        String = (PUNICODE_STRING)AllocationRoutine(
-            AllocationContext,
-            AllocSizeInBytes
-        );
-
-        if (!String) {
-            return FALSE;
-        }
-
-        String->Buffer = (PWSTR)(
-            RtlOffsetToPointer(
-                String,
-                sizeof(UNICODE_STRING)
-            )
-        );
-
-        Dest = String->Buffer;
-    }
-
-    if (!String) {
-        __debugbreak();
-    }
-
-    //
-    // Initialize the maximum string length (number of bytes, including NUL),
-    // and the string length (number of bytes, not including NUL).
-    //
-
-    String->MaximumLength = (USHORT)Size.LowPart;
-    String->Length = ((USHORT)Size.LowPart) - sizeof(WCHAR);
-
-    //
-    // Copy the rest of the name over.
-    //
-
-    if (Width == sizeof(CHAR)) {
-        PSTR Source = (PSTR)Buffer;
-        USHORT Count = ((USHORT)Length) + 1;
-
-        while (--Count) {
-            *Dest++ = (WCHAR)*Source++;
-        }
-
-    } else {
-
-        //
-        // Both source and destination are WCHAR, so we can use __movsw() here.
-        // (This will generate a `rep movsw` instruction.)
-        //
-
-        __movsw(Dest, (PWSTR)Buffer, Length);
-
-    }
-
-    //
-    // Add terminating NUL.
-    //
-
-    *Dest++ = UNICODE_NULL;
-
-    //
-    // We've handled the path, now construct the module name.
-    //
-
-    Success = GetModuleNameFromQualifiedPath(
-        Python,
-        String,
-        ModuleName,
-        AllocationRoutine,
-        AllocationContext,
-        FreeRoutine,
-        FreeContext
-        );
-
-    if (!Success) {
-        FreeRoutine(FreeContext, String);
-        return FALSE;
-    }
-
-    //
-    // Update the user's path pointer.
-    //
-
-    *Path = String;
-
-    return TRUE;
-}
-
-BOOL
-GetModuleFilenameStringObjectFromCodeObject(
-    _In_    PPYTHON     Python,
-    _In_    PPYOBJECT   CodeObject,
-    _Inout_ PPPYOBJECT  ModuleFilenameStringObject
-)
-{
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!CodeObject) {
-        return FALSE;
-    }
-
-    if (!ModuleFilenameStringObject) {
-        return FALSE;
-    }
-
-    *ModuleFilenameStringObject = (PPYOBJECT)(
-        RtlOffsetToPointer(
-            CodeObject,
-            Python->PyCodeObjectOffsets->Filename
-        )
-    );
-    return TRUE;
-}
-
-BOOL
-GetFunctionNameStringObjectAndLineNumberFromCodeObject(
-    _In_    PPYTHON     Python,
-    _In_    PPYOBJECT   CodeObject,
-    _Inout_ PPPYOBJECT  FunctionNameStringObject,
-    _Inout_ PDWORD      LineNumber
-)
-{
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!CodeObject) {
-        return FALSE;
-    }
-
-    if (!FunctionNameStringObject) {
-        return FALSE;
-    }
-
-    if (!LineNumber) {
-        return FALSE;
-    }
-
-    *FunctionNameStringObject = *((PPPYOBJECT)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->Name));
-    *LineNumber = *((PULONG)RtlOffsetToPointer(CodeObject, Python->PyCodeObjectOffsets->FirstLineNumber));
-
-    return TRUE;
-}
-
-BOOL
-ResolveFrameObjectDetailsFast(
-    _In_    PPYTHON         Python,
-    _In_    PPYFRAMEOBJECT  FrameObject,
-    _Inout_ PPPYOBJECT      CodeObject,
-    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
-    _Inout_ PPPYOBJECT      FunctionNameStringObject,
-    _Inout_ PULONG          LineNumber
-)
-{
-    ResolveFrameObjectDetailsInline(
-        Python,
-        FrameObject,
-        CodeObject,
-        ModuleFilenameStringObject,
-        FunctionNameStringObject,
-        LineNumber
-    );
-
-    return TRUE;
-}
-
-
-BOOL
-ResolveFrameObjectDetails(
-    _In_    PPYTHON         Python,
-    _In_    PPYFRAMEOBJECT  FrameObject,
-    _Inout_ PPPYOBJECT      CodeObject,
-    _Inout_ PPPYOBJECT      ModuleFilenameStringObject,
-    _Inout_ PPPYOBJECT      FunctionNameStringObject,
-    _Inout_ PULONG          LineNumber
-)
-{
-    if (!Python) {
-        return FALSE;
-    }
-
-    if (!CodeObject) {
-        return FALSE;
-    }
-
-    if (!ModuleFilenameStringObject) {
-        return FALSE;
-    }
-
-    if (!FunctionNameStringObject) {
-        return FALSE;
-    }
-
-    if (!LineNumber) {
-        return FALSE;
-    }
-
-    return ResolveFrameObjectDetailsFast(
-        Python,
-        FrameObject,
-        CodeObject,
-        ModuleFilenameStringObject,
-        FunctionNameStringObject,
-        LineNumber
-    );
-}
-
-BOOL
-GetClassNameStringObjectFromFrameObject(
-    _In_    PPYTHON         Python,
-    _In_    PPYFRAMEOBJECT  FrameObject,
-    _In_    PPPYOBJECT      ClassNameStringObject
-)
-{
-    return FALSE;
-}
-
-BOOL
 GetSelf(
     _In_    PPYTHON             Python,
     _In_    PPYTHON_FUNCTION    Function,
@@ -2927,7 +1099,7 @@ GetSelf(
     PPYOBJECT Self = NULL;
     PPYOBJECT Locals = FrameObject->Locals;
     PPYOBJECT CodeObject = Function->CodeObject;
-    
+
     LONG ArgumentCount;
     PPYTUPLEOBJECT ArgumentNames;
 
@@ -2935,7 +1107,7 @@ GetSelf(
     // Attempt to resolve self from the locals dictionary.
     //
 
-    if (Locals && (PPYOBJECT)Locals->Type == Python->PyDict_Type) {
+    if (Locals && Locals->Type == Python->PyDict.Type) {
         if ((Self = Python->PyDict_GetItemString(Locals, "self"))) {
             Success = TRUE;
             goto End;
@@ -2961,7 +1133,7 @@ GetSelf(
         )
     );
 
-    if (ArgumentCount != 0 && (PPYOBJECT)ArgumentNames->Type == Python->PyTuple_Type) {
+    if (ArgumentCount != 0 && ArgumentNames->Type == Python->PyTuple.Type) {
         static const STRING SelfString = RTL_CONSTANT_STRING("self");
         PRTL_EQUAL_STRING EqualString = Python->Rtl->RtlEqualString;
         STRING ArgumentName;
@@ -3004,19 +1176,16 @@ GetClassNameFromSelf(
     )
 {
     BOOL Success;
+    ULONG Index;
     PPYTUPLEOBJECT Mro;
     PPYTYPEOBJECT TypeObject;
     PPYOBJECT TypeDict;
-    PPYOBJECT PyType_Type;
-    PPYOBJECT PyDict_Type;
-    PPYOBJECT PyFunction_Type;
     PPYOBJECT CodeObject;
-    PPYOBJECT FunctionObject;
-    PPYOBJECT FunctionCodeObject;
+    PYOBJECTEX Func;
     PPYDICT_GETITEMSTRING PyDict_GetItemString;
-    ULONG Index;
+    PCHAR FuncName;
 
-    if (Python->PyInstance_Type && Self->Type == Python->PyInstance_Type) {
+    if (Python->PyInstance.Type && Self->Type == Python->PyInstance.Type) {
         STRING Class;
         PPYINSTANCEOBJECT Instance = (PPYINSTANCEOBJECT)Self;
         PPYOBJECT ClassNameObject = Instance->OldStyleClass->Name;
@@ -3026,12 +1195,12 @@ GetClassNameFromSelf(
             return FALSE;
         }
 
-        *ClassNameBuffer = Class->Buffer;
+        *ClassNameBuffer = Class.Buffer;
         return TRUE;
     }
 
     Mro = (PPYTUPLEOBJECT)Self->Type->MethodResolutionOrder;
-    if (!Mro || Mro->Type != Python->PyTuple_Type) {
+    if (!Mro || Mro->Type != Python->PyTuple.Type) {
 
         //
         // We should always have an MRO for new-style classes.
@@ -3040,47 +1209,34 @@ GetClassNameFromSelf(
         return FALSE;
     }
 
+    FuncName = FunctionName->Buffer;
     CodeObject = FrameObject->Code;
-    PyType_Type = Python->PyType_Type;
-    PyDict_Type = Python->PyDict_Type;
     PyDict_GetItemString = Python->PyDict_GetItemString;
-    PyFunction_Type = Python->PyFunction_Type;
 
     //
     // Walk the MRO looking for our method.
     //
 
     for (Index = 0; Index < Mro->ObjectSize; Index++) {
-        PCHAR Source;
-        PCHAR Dest;
-        USHORT Count;
-        USHORT Remaining;
-        USHORT Length;
-        USHORT NameLength;
-        BOOL Finished;
 
-        TypeObject = Mro->Item[Index];
+        TypeObject = (PPYTYPEOBJECT)Mro->Item[Index];
 
-        if (TypeObject != PyType_Type) {
+        if (TypeObject->Type != Python->PyType.Type) {
             continue;
         }
 
-        DictObject = TypeObject->Dict;
-        if (DictObject->Type != PyDict_Type) {
+        TypeDict = TypeObject->Dict;
+        if (TypeDict->Type != Python->PyDict.Type) {
             continue;
         }
 
-        FunctionObject = PyDict_GetItemString(
-            DictObject,
-            FunctionName->Buffer
-        );
+        Func.Object = PyDict_GetItemString(TypeDict, FuncName);
 
-        if (!FunctionObject || FunctionObject->Type != PyFunction_Type) {
+        if (!Func.Object || Func.Object->Type != Python->PyFunction.Type) {
             continue;
         }
 
-        FunctionCodeObject = ((PPYFUNCTIONOBJECT)FunctionObject)->Code;
-        if (FunctionCodeObject != CodeObject) {
+        if (Func.Function->Code != CodeObject) {
             continue;
         }
 
@@ -3089,7 +1245,7 @@ GetClassNameFromSelf(
         // code object of our frame, so use the class name of this type.
         //
 
-        *ClassNameBuffer = TypeObject->Name;
+        *ClassNameBuffer = (PCHAR)TypeObject->Name;
         return TRUE;
     }
 
@@ -3121,23 +1277,21 @@ Routine Description:
     PCHAR Dest;
     PCHAR Start;
     PPYOBJECT Self = NULL;
-    PPYOBJECT Locals;
     PPYOBJECT FunctionNameObject;
     PPYOBJECT CodeObject = Function->CodeObject;
-    PPYCODEOBJECTOFFSETS CodeObjectOffsets = Python->PyCodeObjectOffsets;
-    PPYFRAMEOBJECTOFFSETS FrameOffsets;
+    PCPYCODEOBJECTOFFSETS CodeObjectOffsets = Python->PyCodeObjectOffsets;
     PSTRING FunctionName;
     PSTRING ClassName;
     PSTRING FullName;
     PSTRING ModuleName;
-    USHORT Offset;
     USHORT FullNameLength;
     PCHAR ClassNameBuffer = NULL;
     PVOID Buffer;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry;
 
-    Function->PathEntry = PathEntry;
+    PathEntry = Function->PathEntry;
 
-    Function->FirstLineNumber = *(
+    Function->FirstLineNumber = (USHORT)*(
         (PULONG)RtlOffsetToPointer(
             CodeObject,
             CodeObjectOffsets->FirstLineNumber
@@ -3151,7 +1305,8 @@ Routine Description:
         )
     );
 
-    FunctionName = &Function->Name;
+    Rtl = Python->Rtl;
+    FunctionName = &Function->FunctionName;
 
     Success = WrapPythonStringAsString(Python,
                                        FunctionNameObject,
@@ -3169,7 +1324,6 @@ Routine Description:
 
     ClassName = &Function->ClassName;
     ClearString(ClassName);
-    Rtl = Python->Rtl;
 
     if (Self) {
 
@@ -3184,15 +1338,15 @@ Routine Description:
             return FALSE;
         }
 
-        if (!*ClassNamePointer) {
+        if (!*ClassNameBuffer) {
             return FALSE;
         }
 
-        Rtl->RtlInitString(ClassName, *ClassNameBuffer);
+        Rtl->RtlInitString(ClassName, (PCSZ)*ClassNameBuffer);
 
     }
 
-    ModuleName = PathEntry->ModuleName;
+    ModuleName = &PathEntry->ModuleName;
 
     //
     // Calculate the length of the full name.  The extra +1s are accounting
@@ -3574,7 +1728,7 @@ GetPathEntryForDirectory(
         // to be empty and return.
         //
 
-        SetPathEntryType(PathEntry, NonModuleDirectory);
+        PathEntry->IsNonModuleDirectory = TRUE;
         ClearString(&PathEntry->ModuleName);
         return TRUE;
 
@@ -3864,7 +2018,7 @@ FoundParent:
 
 
     //
-    // Add a new entry for the directory.
+    // Add a new entry for the parent directory.
     //
 
     Success = RegisterDirectory(Python,
@@ -4265,7 +2419,7 @@ Routine Description:
         }
 
         //
-        // Allocate a new STRING for the final module name.
+        // Allocate a new buffer for the final module name.
         //
 
         Final = (PSTRING)AllocationRoutine(AllocationContext,
@@ -4508,7 +2662,7 @@ RegisterFrame(
 
     CodeObject = Frame->Code;
 
-    if (CodeObject->Type != (PPYTYPEOBJECT)Python->PyCode_Type) {
+    if (CodeObject->Type != Python->PyCode.Type) {
         return FALSE;
     }
 
