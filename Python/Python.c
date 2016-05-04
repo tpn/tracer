@@ -2920,16 +2920,14 @@ GetSelf(
     _In_    PPYTHON             Python,
     _In_    PPYTHON_FUNCTION    Function,
     _In_    PPYFRAMEOBJECT      FrameObject,
-    _Out_   PPYOBJECT           SelfPointer
+    _Out_   PPPYOBJECT          SelfPointer
     )
 {
     BOOL Success = FALSE;
     PPYOBJECT Self = NULL;
     PPYOBJECT Locals = FrameObject->Locals;
     PPYOBJECT CodeObject = Function->CodeObject;
-    PPYCODEOBJECTOFFSETS CodeOffsets = Python->PyCodeObjectOffsets;
-    PPYFRAMEOBJECTOFFSETS FrameOffsets;
-
+    
     LONG ArgumentCount;
     PPYTUPLEOBJECT ArgumentNames;
 
@@ -2937,7 +2935,7 @@ GetSelf(
     // Attempt to resolve self from the locals dictionary.
     //
 
-    if (Locals && Locals->Type == Python->PyDict_Type) {
+    if (Locals && (PPYOBJECT)Locals->Type == Python->PyDict_Type) {
         if ((Self = Python->PyDict_GetItemString(Locals, "self"))) {
             Success = TRUE;
             goto End;
@@ -2952,18 +2950,18 @@ GetSelf(
     ArgumentCount = *(
         (PLONG)RtlOffsetToPointer(
             CodeObject,
-            CodeOffsets->ArgumentCount
+            Python->PyCodeObjectOffsets->ArgumentCount
         )
     );
 
     ArgumentNames = *(
         (PPPYTUPLEOBJECT)RtlOffsetToPointer(
             CodeObject,
-            CodeOffsets->LocalVariableNames
+            Python->PyCodeObjectOffsets->LocalVariableNames
         )
     );
 
-    if (ArgumentCount != 0 && ArgumentNames->Type == Python->PyTuple_Type) {
+    if (ArgumentCount != 0 && (PPYOBJECT)ArgumentNames->Type == Python->PyTuple_Type) {
         static const STRING SelfString = RTL_CONSTANT_STRING("self");
         PRTL_EQUAL_STRING EqualString = Python->Rtl->RtlEqualString;
         STRING ArgumentName;
@@ -2978,11 +2976,11 @@ GetSelf(
             return FALSE;
         }
 
-        if (EqualString(ArgumentName, SelfString)) {
+        if (EqualString(&ArgumentName, &SelfString, FALSE)) {
             Self = *(
                 (PPPYOBJECT)RtlOffsetToPointer(
                     FrameObject,
-                    Python->PyFrameObjectOffsets->LocalsPlusStack[0]
+                    Python->PyFrameObjectOffsets->LocalsPlusStack
                 )
             );
         }
@@ -4479,6 +4477,14 @@ End:
 
     return Success;
 }
+
+BOOL
+FinalizeFunction(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ PPYFRAMEOBJECT FrameObject
+    );
+
 
 BOOL
 RegisterFrame(
