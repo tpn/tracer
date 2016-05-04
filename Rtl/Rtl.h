@@ -24,6 +24,7 @@ extern "C" {
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
+typedef CHAR **PPCHAR;
 
 typedef const SHORT CSHORT;
 
@@ -44,10 +45,13 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+typedef CONST char *PCSZ;
+
 typedef VOID (RTL_INIT_STRING)(
     _Out_       PSTRING     DestinationString,
     _In_opt_    PCSZ        SourceString
     );
+
 typedef RTL_INIT_STRING *PRTL_INIT_STRING;
 
 typedef VOID (RTL_COPY_UNICODE_STRING)(
@@ -1004,7 +1008,6 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
     PRTL_EQUAL_STRING RtlEqualString;                                                                  \
     PRTL_EQUAL_UNICODE_STRING RtlEqualUnicodeString;                                                   \
-    PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
@@ -1014,7 +1017,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
-typedef struct _RTLFUNCTIONS {
+typedef struct _RTLFUNCTIONSE {
     _RTLFUNCTIONS_HEAD
 } RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
 

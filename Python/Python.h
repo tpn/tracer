@@ -915,7 +915,7 @@ typedef struct _PYTUPLEOBJECT {
         PyObject *ob_item[1];
         PPYOBJECT Item[1];
     };
-} PYTUPLEOBJECT, *PPYTUPLEOBJECT;
+} PYTUPLEOBJECT, *PPYTUPLEOBJECT, **PPPYTUPLEOBJECT;
 
 typedef struct _PYCFUNCTIONOBJECT {
     union {

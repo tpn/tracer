@@ -2726,21 +2726,6 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
-    if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
-        GetProcAddress(Rtl->NtdllModule, "RtlAppendUnicodeToString"))) {
-
-        if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
-            GetProcAddress(Rtl->NtosKrnlModule, "RtlAppendUnicodeToString"))) {
-
-            if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
-                GetProcAddress(Rtl->Kernel32Module, "RtlAppendUnicodeToString"))) {
-
-                OutputDebugStringA("Rtl: failed to resolve 'RtlAppendUnicodeToString'");
-                return FALSE;
-            }
-        }
-    }
-
     if (!(Rtl->RtlCompareMemory = (PRTL_COMPARE_MEMORY)
         GetProcAddress(Rtl->NtdllModule, "RtlCompareMemory"))) {
 
