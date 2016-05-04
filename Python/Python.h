@@ -65,6 +65,21 @@ typedef struct _PYVAROBJECT {
 
 typedef struct _PYTHREADSTATE PYTHREADSTATE, *PPYTHREADSTATE, PyThreadState;
 
+typedef struct _PYOLDSTYLECLASS {
+    PPYOBJECT Bases;
+    PPYOBJECT Dict;
+    PPYOBJECT Name;
+    PPYOBJECT GetAttr;
+    PPYOBJECT SetAttr;
+    PPYOBJECT DelAttr;
+} PYOLDSTYLECLASS, *PPYOLDSTYLECLASS;
+
+typedef struct _PYINSTANCEOBJECT {
+    PPYOLDSTYLECLASS OldStyleClass;
+    PPYOBJECT Dict;
+    PPYOBJECT WeakRefList;
+} PYINSTANCEOBJECT, *PPYINSTANCEOBJECT;
+
 typedef struct _PYSTRINGOBJECT {
     _PYVAROBJECT_HEAD
     union {
@@ -515,6 +530,60 @@ typedef struct _PYFRAMEOBJECT34_35 {
         PPYOBJECT LocalsPlusStack[1];
     };
 } PYFRAMEOBJECT34_35, *PPYFRAMEOBJECT34_35;
+
+//
+// We only capture the offsets for the struct members that are not consistent
+// between 2.7-3.x.
+//
+
+typedef struct _PYFRAMEOBJECTOFFSETS {
+
+    //
+    // PYFRAMEOBJECT25_33
+    //
+
+    union {
+        const USHORT f_state;
+        const USHORT ThreadState;
+    };
+    union {
+        const USHORT f_lasti;
+        const USHORT LastInstruction;
+    };
+    union {
+        const USHORT f_lineno;
+        const USHORT LineNumber;
+    };
+    union {
+        const USHORT f_iblock;
+        const USHORT BlockIndex;
+    };
+    union {
+        const USHORT f_blockstack;
+        const USHORT BlockStack;
+    };
+    union {
+        const USHORT f_localsplus;
+        const USHORT LocalsPlusStack;
+    };
+
+    //
+    // PYFRAMEOBJECT34_35
+    //
+
+    union {
+        const USHORT f_gen;
+        const USHORT Generator;
+    };
+    union {
+        const USHORT f_executing;
+        const USHORT StillExecuting;
+    };
+
+} PYFRAMEOBJECTOFFSETS, *PPYFRAMEOBJECTOFFSETS;
+
+typedef const PYFRAMEOBJECTOFFSETS CPYFRAMEOBJECTOFFSETS;
+typedef const PYFRAMEOBJECTOFFSETS *PCPYFRAMEOBJECTOFFSETS;
 
 typedef struct _PYMETHODDEF {
     union {
@@ -1479,6 +1548,12 @@ typedef struct _PYTHON_PATH_TABLE {
     };
 } PYTHON_PATH_TABLE, *PPYTHON_PATH_TABLE;
 
+typedef enum _PYTHON_PATH_ENTRY_TYPE {
+    ModuleDirectory     =        1,
+    NonModuleDirectory  =   1 << 1, // 2
+    File                =   1 << 2, // 4
+} PYTHON_PATH_ENTRY_TYPE, *PPYTHON_PATH_ENTRY_TYPE;
+
 typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
     //
@@ -1499,28 +1574,44 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
     DECLSPEC_ALIGN(8)
     union {
-        ULONG Flags;
+        PYTHON_PATH_ENTRY_TYPE PathEntryType;
         struct {
-            ULONG IsModule:1;
-            ULONG IsDirectory:1;
+            ULONG IsModuleDirectory:1;
+            ULONG IsNonModuleDirectory:1;
+            ULONG IsFile:1;
+            ULONG UnusedFlags:27;
         };
     };
-    ULONG Unused1;
-
-    DECLSPEC_ALIGN(8)
-    LIST_ENTRY ListEntry;
+    ULONG Padding1;
 
     //
     // Fully-qualified path name.  Prefix will point to &Path.
     //
 
-    STRING Path;        // Fully qualified path.
-    STRING Directory;   // Prefix will point here.
+    STRING Path;
     STRING ModuleName;  // Full module name.
     STRING Name;        // File name (sans extension).
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
 
+FORCEINLINE
+VOID
+SetPathEntryType(
+    _In_    PPYTHON_PATH_TABLE_ENTRY    PathEntry,
+    _In_    PYTHON_PATH_ENTRY_TYPE      EntryType
+    )
+{
+    PathEntry->PathEntryType = EntryType;
+}
+
+FORCEINLINE
+VOID
+SetPathEntryTypeToModuleDirectory(
+    _In_    PPYTHON_PATH_TABLE_ENTRY    PathEntry
+    )
+{
+    SetPathEntryType(PathEntry, ModuleDirectory);
+}
 
 typedef struct _PYTHON_FUNCTION {
     union {
@@ -1543,11 +1634,11 @@ typedef struct _PYTHON_FUNCTION {
     ULONG  UnusedLong1;
     STRING Filename;
     STRING FullName;
-    STRING ModuleName;
+    PSTRING ModuleName;
     STRING ClassName;
     STRING FunctionName;
     LIST_ENTRY ListEntry;
-    PPYTHON_DIRECTORY_PREFIX_TABLE_ENTRY ModuleEntry;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry;
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 
 typedef struct _PYTHON_FUNCTION_TABLE {
@@ -1577,6 +1668,7 @@ typedef struct _PYTHON_FUNCTION_TABLE {
     HANDLE HeapHandle;                                          \
     PYTHON_DIRECTORY_PREFIX_TABLE DirectoryPrefixTable;         \
     PYTHON_PATH_TABLE PathTable;                                \
+    PREFIX_TABLE ModuleNameTable;                               \
     PALLOCATION_ROUTINE AllocationRoutine;                      \
     PVOID AllocationContext;                                    \
     PFREE_ROUTINE FreeRoutine;                                  \
@@ -1592,8 +1684,9 @@ typedef struct _PYTHONEXRUNTIME {
     _PYTHONEXRUNTIME_HEAD
 } PYTHONEXRUNTIME, *PPYTHONEXRUNTIME;
 
-#define _PYTHONOBJECTOFFSETS_HEAD                  \
-    PCPYCODEOBJECTOFFSETS     PyCodeObjectOffsets;
+#define _PYTHONOBJECTOFFSETS_HEAD                 \
+    PCPYCODEOBJECTOFFSETS   PyCodeObjectOffsets;  \
+    PCPYFRAMEOBJECTOFFSETS  PyFrameObjectOffsets;
 
 typedef struct _PYTHONOBJECTOFFSETS {
     _PYTHONOBJECTOFFSETS_HEAD

@@ -44,6 +44,12 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+typedef VOID (RTL_INIT_STRING)(
+    _Out_       PSTRING     DestinationString,
+    _In_opt_    PCSZ        SourceString
+    );
+typedef RTL_INIT_STRING *PRTL_INIT_STRING;
+
 typedef VOID (RTL_COPY_UNICODE_STRING)(
     _Inout_  PUNICODE_STRING  DestinationString,
     _In_opt_ PCUNICODE_STRING SourceString
@@ -76,11 +82,36 @@ typedef ULONG (*PRTL_UNICODE_STRING_TO_ANSI_SIZE)(
     _In_ PUNICODE_STRING UnicodeString
     );
 
-// 65536
-#define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
-#define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
+typedef BOOLEAN (*PRTL_EQUAL_STRING)(
+    _In_    PCSTRING    String1,
+    _In_    PCSTRING    String2,
+    _In_    BOOLEAN     CaseInSensitive
+    );
 
-#define RTL_CONSTANT_STRING(s) { sizeof( s ) - sizeof( (s)[0] ), sizeof( s ), s }
+typedef BOOLEAN (*PRTL_EQUAL_UNICODE_STRING)(
+    _In_    PCUNICODE_STRING    String1,
+    _In_    PCUNICODE_STRING    String2,
+    _In_    BOOLEAN             CaseInSensitive
+    );
+
+// 65536
+#define MAX_STRING  (                              \
+    sizeof(CHAR) * (                               \
+        (1 << (sizeof(USHORT) * 8)) / sizeof(CHAR) \
+    )                                              \
+)
+
+#define MAX_USTRING (                               \
+    sizeof(WCHAR) * (                               \
+        (1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR) \
+    )                                               \
+)
+
+#define RTL_CONSTANT_STRING(s) { \
+    sizeof(s) - sizeof((s)[0]),  \
+    sizeof( s ),                 \
+    s                            \
+}
 
 typedef union _ULONG_INTEGER {
     struct {
@@ -965,11 +996,15 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
     PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
     PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
+    PRTL_INIT_STRING RtlInitString;                                                                    \
     PRTL_COPY_STRING RtlCopyString;                                                                    \
     PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_APPEND_UNICODE_STRING_TO_STRING RtlAppendUnicodeStringToString;                               \
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
+    PRTL_EQUAL_STRING RtlEqualString;                                                                  \
+    PRTL_EQUAL_UNICODE_STRING RtlEqualUnicodeString;                                                   \
+    PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
@@ -1062,6 +1097,38 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
     _Inout_ PRTL_SPLAY_LINKS ChildLinks
     );
 
+
+//
+// Our types
+//
+
+typedef struct _BITMAP_INDEX {
+    USHORT NumberOfUniqueChars;
+    USHORT Alignment;
+    RTL_BITMAP Forward;
+    RTL_BITMAP Reverse;
+    CHAR Char[sizeof(ULONG_PTR)];
+} BITMAP_INDEX, *PBITMAP_INDEX, **PPBITMAP_INDEX;
+
+typedef struct _STRINGEX {
+    USHORT NumberOfBitmapIndexes;
+
+    //
+    // Inline STRING structure.
+    //
+
+    union {
+        STRING String;
+        struct {
+            USHORT Length;
+            USHORT MaximumLength;
+            PCHAR  Buffer;
+        };
+    };
+
+    BITMAP_INDEX BitmapIndexes[1];
+
+} STRINGEX, *PSTRINGEX, **PPSTRINGEX;
 
 //
 // Our functions
@@ -1310,6 +1377,10 @@ typedef BOOL (*PINITIALIZE_RTL)(
 #define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                                           \
     (USHORT)(ALIGN_DOWN_USHORT_TO_POINTER_SIZE((Value) + ((USHORT)sizeof(ULONG_PTR)-1)))
 
+#define BITMAP_ALIGNMENT 128
+#define ALIGN_UP_BITMAP(Address)                  \
+    (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
+
 RTL_API
 VOID
 Debugbreak();
@@ -1369,6 +1440,18 @@ FilesExistA(
 RTL_API
 BOOL
 TestExceptionHandler(VOID);
+
+FORCEINLINE
+VOID
+InitializeStringFromString(
+    _Out_   PSTRING     Dest,
+    _In_    PCSTRING    Source
+    )
+{
+    Dest->Length = Source->Length;
+    Dest->MaximumLength = Source->MaximumLength;
+    Dest->Buffer = Source->Buffer;
+}
 
 FORCEINLINE
 BOOL
@@ -1431,6 +1514,65 @@ AppendStringAndCharToString(
 
     NewOffset += String->Length;
     Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendCharAndStringToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    Char,
+    _In_    PSTRING String
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 1;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = Char;
+    NewOffset += 1;
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendCharAndStringAndCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    FirstChar,
+    _In_    PSTRING String,
+    _In_    CHAR    SecondChar
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 2;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = FirstChar;
+    NewOffset += 1;
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = SecondChar;
     Destination->Length = NewLength;
 
     return TRUE;
