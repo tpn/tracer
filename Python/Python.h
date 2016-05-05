@@ -1423,6 +1423,11 @@ typedef enum _PYTHON_PATH_ENTRY_TYPE {
     ModuleDirectory     =        1,
     NonModuleDirectory  =   1 << 1, // 2
     File                =   1 << 2, // 4
+    Class               =   1 << 3, // 8
+    Function            =   1 << 4, // 16
+    Builtin             =   1 << 5, // 32
+    CFunction           =   1 << 6, // 64
+    Line                =   1 << 7  // 128
 } PYTHON_PATH_ENTRY_TYPE, *PPYTHON_PATH_ENTRY_TYPE;
 
 typedef struct _PYTHON_PATH_TABLE_ENTRY {
@@ -1450,10 +1455,12 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
             ULONG IsModuleDirectory:1;
             ULONG IsNonModuleDirectory:1;
             ULONG IsFile:1;
-            ULONG UnusedFlags:27;
+            ULONG IsClass:1;
+            ULONG IsFunction:1;
+            ULONG IsBuiltin:1;
         };
     };
-    ULONG Padding1;
+    ULONG Unused1;
 
     //
     // Fully-qualified path name.  Prefix will point to &Path.  (The underlying
@@ -1463,34 +1470,59 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     STRING Path;
 
     //
-    // Full module name, using backslashes instead of periods.  (Allowing it
-    // to be used in other prefix trees.)
+    // Full name, using backslashes instead of periods, allowing it to be used
+    // in other prefix trees.  The underlying FullName->Buffer will always be
+    // allocated uniquely for each PathEntry.
+    //
+
+    STRING FullName;
+
+    //
+    // Full module name, using backslashes instead of periods, allowing it
+    // to be used in other prefix trees.  The underlying buffer will be unique
+    // to this path entry.
     //
 
     STRING ModuleName;
 
     //
-    // Name of the file or directory.  If file, this will exclude the extension.
+    // Name of the entry.  If the entry is a file, this will exclude the file
+    // extension (and period).  This will always be a view into the FullName
+    // buffer above (i.e. Name->Buffer will be advanced to the relevant offset
+    // and Length/MaximumLength set accordingly).
     //
 
-    STRING Name;        // File name (sans extension).
+    union {
+        STRING Name;
+        STRING FunctionName;
+    };
+
+    //
+    // ClassName will only be filled out if the entry type is Function and
+    // there's a class name available.  It will be a view into FullName.
+    //
+
+    STRING ClassName;
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
 
 typedef struct _PYTHON_FUNCTION {
+    PYTHON_PATH_TABLE_ENTRY PathEntry;
+
     union {
         PPYOBJECT          CodeObject;
         PPYCODEOBJECT25_27 Code25_27;
         PPYCODEOBJECT30_32 Code30_32;
         PPYCODEOBJECT33_35 Code33_35;
     };
+
     USHORT FirstLineNumber;
-    USHORT UnusedShort1;
+    USHORT LastLineNumber;
+
     ULONG  UnusedLong1;
-    STRING FullName;
-    STRING ClassName;
-    STRING FunctionName;
-    PPYTHON_PATH_TABLE_ENTRY PathEntry;
+
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
+
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 
 typedef struct _PYTHON_FUNCTION_TABLE {

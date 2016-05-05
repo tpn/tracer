@@ -2801,6 +2801,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->bsearch = (PBSEARCH)
+        GetProcAddress(Rtl->NtdllModule, "bsearch"))) {
+
+        if (!(Rtl->bsearch = (PBSEARCH)
+            GetProcAddress(Rtl->NtosKrnlModule, "bsearch"))) {
+
+            if (!(Rtl->bsearch = (PBSEARCH)
+                GetProcAddress(Rtl->Kernel32Module, "bsearch"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'bsearch'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->qsort = (PQSORT)
+        GetProcAddress(Rtl->NtdllModule, "qsort"))) {
+
+        if (!(Rtl->qsort = (PQSORT)
+            GetProcAddress(Rtl->NtosKrnlModule, "qsort"))) {
+
+            if (!(Rtl->qsort = (PQSORT)
+                GetProcAddress(Rtl->Kernel32Module, "qsort"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'qsort'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
         GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
 

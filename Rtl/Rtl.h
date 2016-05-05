@@ -24,6 +24,7 @@ extern "C" {
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
+typedef const PVOID CPVOID;
 typedef CHAR **PPCHAR;
 
 typedef const SHORT CSHORT;
@@ -164,6 +165,26 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _In_opt_ ULONG Base,
     _Out_ PULONG Value
 );
+
+typedef INT (__cdecl *PCRTCOMPARE)(
+    _In_    CONST PVOID Key,
+    _In_    CONST PVOID Datum
+    );
+
+typedef PVOID (*PBSEARCH)(
+    _In_ CPVOID      Key,
+    _In_ CPVOID      Base,
+    _In_ SIZE_T      NumberOfElements,
+    _In_ SIZE_T      WidthOfElement,
+    _In_ PCRTCOMPARE Compare
+    );
+
+typedef VOID (*PQSORT)(
+    _In_ PVOID       Base,
+    _In_ SIZE_T      NumberOfElements,
+    _In_ SIZE_T      WidthOfElement,
+    _In_ PCRTCOMPARE Compare
+    );
 
 typedef
 _Check_return_
@@ -1013,6 +1034,8 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
     PRTL_COPY_MEMORY RtlCopyMemory;                                                                    \
     PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
+    PBSEARCH bsearch;                                                                                  \
+    PQSORT qsort;                                                                                      \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
@@ -1368,17 +1391,19 @@ typedef BOOL (*PINITIALIZE_RTL)(
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 #define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
-#define ALIGN_DOWN(Address, Alignment)                   \
-    ((ULONG_PTR)(Address) & ~((ULONG_PTR)(Alignment)-1))
+#define ALIGN_DOWN(Address, Alignment)                     \
+    ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))
 
-#define ALIGN_UP(Address, Alignment)                         \
-    (ALIGN_DOWN((Address) + ((Alignment) - 1), (Alignment)))
+#define ALIGN_UP(Address, Alignment) (                        \
+    (((ULONG_PTR)(Address)) + (((ULONG_PTR)(Alignment))-1)) & \
+    ~(((ULONG_PTR)(Alignment))-1)                             \
+)
 
-#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                 \
-    (USHORT)((USHORT)(Value) & ~((USHORT)sizeof(ULONG_PTR) - 1))
+#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
 
-#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                                           \
-    (USHORT)(ALIGN_DOWN_USHORT_TO_POINTER_SIZE((Value) + ((USHORT)sizeof(ULONG_PTR)-1)))
+#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_UP((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
 
 #define BITMAP_ALIGNMENT 128
 #define ALIGN_UP_BITMAP(Address)                  \
