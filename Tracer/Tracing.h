@@ -645,18 +645,6 @@ RegisterName(
 
 TRACER_API
 VOID
-RegisterFunction(
-    _Inout_     PTRACE_CONTEXT  TraceContext,
-    _In_        DWORD_PTR       FunctionToken,
-    _In_        PCWSTR          FunctionName,
-    _In_        DWORD           LineNumber,
-    _In_opt_    DWORD_PTR       ModuleToken,
-    _In_opt_    PCWSTR          ModuleName,
-    _In_opt_    PCWSTR          ModuleFilename
-);
-
-TRACER_API
-VOID
 RegisterModule(
     _Inout_     PTRACE_CONTEXT  TraceContext,
     _In_        DWORD_PTR       ModuleToken,

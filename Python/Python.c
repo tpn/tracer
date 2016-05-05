@@ -4,6 +4,8 @@
 #include "Python.h"
 #include "../Tracer/Tracing.h"
 
+#pragma intrinsic(strlen)
+
 static CONST UNICODE_STRING W__init__py  = RTL_CONSTANT_STRING(L"__init__.py");
 static CONST UNICODE_STRING W__init__pyc = RTL_CONSTANT_STRING(L"__init__.pyc");
 static CONST UNICODE_STRING W__init__pyo = RTL_CONSTANT_STRING(L"__init__.pyo");
@@ -1253,7 +1255,7 @@ GetClassNameFromSelf(
 }
 
 BOOL
-FinalizeFunction(
+RegisterFunction(
     _In_ PPYTHON Python,
     _In_ PPYTHON_FUNCTION Function,
     _In_ PPYFRAMEOBJECT FrameObject
@@ -1280,16 +1282,22 @@ Routine Description:
     PPYOBJECT FunctionNameObject;
     PPYOBJECT CodeObject = Function->CodeObject;
     PCPYCODEOBJECTOFFSETS CodeObjectOffsets = Python->PyCodeObjectOffsets;
+    PSTRING Path;
     PSTRING FunctionName;
     PSTRING ClassName;
     PSTRING FullName;
     PSTRING ModuleName;
-    USHORT FullNameLength;
     PCHAR ClassNameBuffer = NULL;
+    USHORT FullNameAllocSize;
+    USHORT FullNameLength;
     PVOID Buffer;
+    PSTRING ParentModuleName;
+    PSTRING ParentName;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
 
-    PathEntry = Function->PathEntry;
+    PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Function;
+    ParentPathEntry = Function->ParentPathEntry;
 
     Function->FirstLineNumber = (USHORT)*(
         (PULONG)RtlOffsetToPointer(
@@ -1306,7 +1314,7 @@ Routine Description:
     );
 
     Rtl = Python->Rtl;
-    FunctionName = &Function->FunctionName;
+    FunctionName = &PathEntry->FunctionName;
 
     Success = WrapPythonStringAsString(Python,
                                        FunctionNameObject,
@@ -1322,7 +1330,7 @@ Routine Description:
         return FALSE;
     }
 
-    ClassName = &Function->ClassName;
+    ClassName = &PathEntry->ClassName;
     ClearString(ClassName);
 
     if (Self) {
@@ -1338,15 +1346,27 @@ Routine Description:
             return FALSE;
         }
 
-        if (!*ClassNameBuffer) {
+        if (!ClassNameBuffer) {
             return FALSE;
         }
 
-        Rtl->RtlInitString(ClassName, (PCSZ)*ClassNameBuffer);
-
+        ClassName->Length = (USHORT)strlen((PCSZ)ClassNameBuffer);
+        ClassName->MaximumLength = ClassName->Length;
+        ClassName->Buffer = ClassNameBuffer;
     }
 
+    //
+    // Initialize the module name, initially pointing at our parent's
+    // buffer.
+    //
+
+    ParentModuleName = &ParentPathEntry->ModuleName;
     ModuleName = &PathEntry->ModuleName;
+    ModuleName->Length = ParentModuleName->Length;
+    ModuleName->MaximumLength = ParentModuleName->Length;
+    ModuleName->Buffer = ParentModuleName->Buffer;
+
+    ParentName = &ParentPathEntry->Name;
 
     //
     // Calculate the length of the full name.  The extra +1s are accounting
@@ -1354,15 +1374,22 @@ Routine Description:
     //
 
     FullNameLength = (
-        ModuleName->Length                              +
-        1                                               +
-        (ClassName->Length ? ClassName->Length + 1 : 0) +
-        FunctionName->Length                            +
+        ModuleName->Length                                +
+        1                                                 +
+        (ParentName->Length ? ParentName->Length + 1 : 0) +
+        (ClassName->Length ? ClassName->Length + 1 : 0)   +
+        FunctionName->Length                              +
         1
     );
 
     if (FullNameLength > MAX_USTRING) {
         return FALSE;
+    }
+
+    FullNameAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength);
+
+    if (FullNameAllocSize > MAX_STRING) {
+        FullNameAllocSize = (USHORT)MAX_STRING;
     }
 
     Buffer = Python->AllocationRoutine(
@@ -1380,7 +1407,7 @@ Routine Description:
     // allocated buffer for the full name.
     //
 
-    FullName = &Function->FullName;
+    FullName = &PathEntry->FullName;
     ClearString(FullName);
     FullName->Buffer = (PCHAR)Buffer;
 
@@ -1391,6 +1418,12 @@ Routine Description:
     ModuleName->Buffer = FullName->Buffer;
 
     *Dest++ = '\\';
+
+    if (ParentName->Length) {
+        __movsb(Dest, (PBYTE)ParentName->Buffer, ParentName->Length);
+        Dest += ParentName->Length;
+        *Dest++ = '\\';
+    }
 
     if (ClassName->Length) {
         Start = Dest;
@@ -1412,6 +1445,17 @@ Routine Description:
 
     FullName->Length = FullNameLength-1;
     FullName->MaximumLength = FullNameLength;
+
+    //
+    // Point our path at our parent.
+    //
+
+    Path = &PathEntry->Path;
+    Path->Length = ParentPathEntry->Path.Length;
+    Path->MaximumLength = Path->Length;
+    Path->Buffer = ParentPathEntry->Path.Buffer;
+
+    PathEntry->IsFunction = TRUE;
 
     return TRUE;
 }
@@ -2053,6 +2097,9 @@ Routine Description:
 
 --*/
 {
+    CHAR Char;
+
+    USHORT Index;
     USHORT Limit = 0;
     USHORT Offset = 0;
     USHORT ReversedIndex;
@@ -2061,6 +2108,7 @@ Routine Description:
     USHORT InitPyNumberOfChars;
     USHORT NumberOfBackslashes;
     USHORT NumberOfBackslashesRemaining;
+    USHORT ModuleLength;
 
     BOOL Success;
     BOOL IsInitPy = FALSE;
@@ -2084,8 +2132,10 @@ Routine Description:
     PFREE_ROUTINE FreeRoutine;
     PVOID FreeContext;
     PVOID Buffer;
+    PSTR ModuleBuffer;
     PSTRING Path = QualifiedPath;
     PSTRING Name;
+    PSTRING FullName;
     PSTRING ModuleName;
     PSTRING DirectoryName;
     PSTRING DirectoryModuleName;
@@ -2094,6 +2144,13 @@ Routine Description:
     STRING PathString;
     STRING Filename;
     STRING Directory;
+
+    PSTR Dest;
+    PSTR File;
+    PSTR Start;
+    USHORT PathAllocSize;
+    USHORT FullNameLength;
+    USHORT FullNameAllocSize;
 
     CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
     RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
@@ -2246,6 +2303,21 @@ Routine Description:
     // relevant details.
     //
 
+    //
+    // Initialize convenience pointers.
+    //
+
+    DirectoryName = &DirectoryEntry->Name;
+    DirectoryModuleName = &DirectoryEntry->ModuleName;
+    ModuleBuffer = DirectoryModuleName->Buffer;
+    ModuleLength = DirectoryModuleName->Length;
+
+    //
+    // Determine our final allocation size ahead of time so that we only have
+    // to do a single allocation for the PathEntry struct plus any additional
+    // string buffers.
+    //
+
     AllocationSize = sizeof(*PathEntry);
 
     if (!WeOwnPathBuffer) {
@@ -2254,8 +2326,42 @@ Routine Description:
         // Account for path length plus trailing NUL.
         //
 
-        AllocationSize += Path->Length + 1;
+        PathAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(Path->Length + 1);
+        AllocationSize += PathAllocSize;
+
+    } else {
+
+        PathAllocSize = 0;
     }
+
+    //
+    // Determine the length of the file part (filename sans extension).
+    //
+
+    for (Index = Filename.Length - 1; Index > 0; Index--) {
+        Char = Filename.Buffer[Index];
+        if (Char == '.') {
+
+            //
+            // We can re-use the Filename STRING here to truncate the length
+            // such that the extension is omitted (i.e. there's no need to
+            // allocate a new string as we're going to be copying into a new
+            // string buffer shortly).
+            //
+
+            Filename.Length = Index;
+            break;
+        }
+    }
+
+    FullNameLength = (
+        ModuleLength            +
+        sizeof(CHAR)            + // joining slash
+        Filename.Length         +
+        sizeof(CHAR)              // terminating NUL
+    );
+
+    FullNameAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength);
 
     Buffer = AllocationRoutine(AllocationContext, AllocationSize);
     if (!Buffer) {
@@ -2264,9 +2370,40 @@ Routine Description:
 
     PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
 
+    PathEntry->IsFile = TRUE;
+
     Path = &PathEntry->Path;
+
     Path->Length = QualifiedPath->Length;
-    Path->MaximumLength = Path->Length + 1;
+    Path->MaximumLength = PathAllocSize;
+
+    //
+    // Initialize shortcut pointers.
+    //
+
+    Name = &PathEntry->Name;
+    FullName = &PathEntry->FullName;
+    ModuleName = &PathEntry->ModuleName;
+
+    //
+    // Update the lengths of our strings.
+    //
+
+    FullName->Length = FullNameLength - 1; // exclude trailing NUL
+    FullName->MaximumLength = FullNameAllocSize;
+
+    Name->Length = Filename.Length;
+    Name->MaximumLength = Filename.MaximumLength;
+
+    ModuleName->Length = ModuleLength;
+    ModuleName->MaximumLength = ModuleLength;
+    ModuleName->Buffer = ModuleBuffer;
+
+    //
+    // Clear the strings we won't be using.
+    //
+
+    ClearString(&PathEntry->ClassName);
 
     if (!WeOwnPathBuffer) {
 
@@ -2292,6 +2429,12 @@ Routine Description:
 
         Path->Buffer[Path->Length] = '\0';
 
+        //
+        // Point the FullName->Buffer to after us.
+        //
+
+        FullName->Buffer = Path->Buffer + PathAllocSize;
+
     } else {
 
         //
@@ -2300,6 +2443,17 @@ Routine Description:
         //
 
         Path->Buffer = QualifiedPath->Buffer;
+
+        //
+        // The FullName->Buffer will come straight after the PathEntry.
+        //
+
+        FullName->Buffer = (PSTR)(
+            RtlOffsetToPointer(
+                PathEntry,
+                sizeof(*PathEntry)
+            )
+        );
 
     }
 
@@ -2322,164 +2476,46 @@ Routine Description:
         goto Error;
     }
 
-    //
-    // Initialize shortcut pointers.
-    //
-
-    Name = &PathEntry->Name;
-    ModuleName = &PathEntry->ModuleName;
-    DirectoryName = &DirectoryEntry->Name;
-    DirectoryModuleName = &DirectoryEntry->ModuleName;
 
     //
-    // If the filename is "__init__.py[co]", the final module name will be the
-    // one returned above for the directory.  If it's anything else, we need to
-    // append the filename without the prefix.
+    // Construct the final full name.  After each part has been copied, update
+    // the corresponding Buffer pointer to the relevant point within the newly-
+    // allocated buffer for the full name.
     //
 
-    IsInitPy = Rtl->RtlPrefixString(&Filename,
-                                    &A__init__py,
-                                    CaseSensitive);
+    Dest = FullName->Buffer;
 
-    if (IsInitPy) {
+    //
+    // Copy module name.
+    //
 
-        //
-        // Inherit the directory entry's name and module name fields.
-        //
+    __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
+    Dest += ModuleName->Length;
+    ModuleName->Buffer = FullName->Buffer;
 
-        InitializeStringFromString(Name, DirectoryName);
-        InitializeStringFromString(ModuleName, DirectoryModuleName);
+    //
+    // Add joining slash.
+    //
 
-        //
-        // We're done, no more processing is necessary.
-        //
+    *Dest++ = '\\';
 
-        Success = TRUE;
+    //
+    // Copy the file name.
+    //
 
-    } else {
+    Start = Dest;
+    File = Filename.Buffer;
+    __movsb(Dest, File, Filename.Length);
+    Name->Buffer = Start;
+    Dest += Filename.Length;
 
-        //
-        // Construct the final module name by appending the filename,
-        // sans file extension, to the module name.
-        //
+    //
+    // Add the trailing NUL.
+    //
 
-        CHAR Char;
-        USHORT Index;
+    *Dest++ = '\0';
 
-        PSTR Dest;
-        PSTR File;
-        PSTRING Final;
-        ULONG_INTEGER AllocationSize;
-        PSTR ModuleBuffer = DirectoryModuleName->Buffer;
-        USHORT ModuleLength = DirectoryModuleName->Length;
-
-        //
-        // Find the first trailing period.
-        //
-
-        for (Index = Filename.Length - 1; Index > 0; Index--) {
-            Char = Filename.Buffer[Index];
-            if (Char == '.') {
-
-                //
-                // We can re-use the Filename STRING here to truncate the length
-                // such that the extension is omitted (i.e. there's no need to
-                // allocate a new string).
-                //
-
-                Filename.Length = Index;
-                break;
-            }
-        }
-
-        //
-        // Calculate the final name length.
-        //
-
-        AllocationSize.LongPart = (
-            ModuleLength            +
-            sizeof(CHAR)            + // joining slash
-            Filename.Length         +
-            sizeof(CHAR)              // terminating NUL
-        );
-
-        if (AllocationSize.HighPart != 0 ||
-            AllocationSize.LowPart > MAX_STRING)
-        {
-
-            //
-            // Final size exceeds string limits.  For now, just return
-            // failure.  If it turns out this is a problem in practice,
-            // we can add as much of the filename that will fit then an
-            // elipsis.
-            //
-
-            Success = FALSE;
-            goto Error;
-        }
-
-        //
-        // Allocate a new buffer for the final module name.
-        //
-
-        Final = (PSTRING)AllocationRoutine(AllocationContext,
-                                           AllocationSize.LongPart);
-
-        if (!Final) {
-            Success = FALSE;
-            goto Error;
-        }
-
-        //
-        // Initialize the STRING structure.
-        //
-
-        Final->Length = AllocationSize.LowPart - sizeof(CHAR);
-        Final->MaximumLength = AllocationSize.LowPart;
-        Final->Buffer = (PSTR)RtlOffsetToPointer(Final, sizeof(STRING));
-
-        //
-        // Copy over the module name.
-        //
-
-        __movsb(Final->Buffer, ModuleBuffer, ModuleLength);
-
-        //
-        // Add the joining slash.
-        //
-
-        Dest = &Final->Buffer[ModuleLength];
-
-        *Dest++ = '\\';
-
-        //
-        // Copy over the filename.
-        //
-        File = Filename.Buffer;
-
-        __movsb(Dest, File, Filename.Length);
-
-        Dest += Filename.Length;
-
-        //
-        // And the final NUL.
-        //
-
-        *Dest = '\0';
-
-        Success = TRUE;
-
-    }
-
-    if (!Success) {
-        __debugbreak();
-    }
-
-    if (!PathEntry) {
-        __debugbreak();
-    }
-
-    PathEntry->IsFile = TRUE;
+    Success = TRUE;
 
     //
     // Intentional follow-on.
@@ -2633,20 +2669,12 @@ End:
 }
 
 BOOL
-FinalizeFunction(
-    _In_ PPYTHON Python,
-    _In_ PPYTHON_FUNCTION Function,
-    _In_ PPYFRAMEOBJECT FrameObject
-    );
-
-
-BOOL
 RegisterFrame(
     _In_      PPYTHON         Python,
     _In_      PPYFRAMEOBJECT  FrameObject,
     _In_      LONG            EventType,
     _In_opt_  PPYOBJECT       ArgObject,
-    _Out_opt_ PVOID           Token
+    _Out_opt_ PPPYTHON_FUNCTION FunctionPointer
     )
 {
     PRTL Rtl;
@@ -2657,7 +2685,7 @@ RegisterFrame(
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
     BOOLEAN NewFunction;
-    PPYTHON_PATH_TABLE_ENTRY PathEntry;
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
     BOOL Success;
 
     CodeObject = Frame->Code;
@@ -2697,34 +2725,28 @@ RegisterFrame(
                                     FrameObject,
                                     EventType,
                                     ArgObject,
-                                    &PathEntry);
+                                    &ParentPathEntry);
+
+    if (!Success || !ParentPathEntry) {
+        return FALSE;
+    }
+
+    Function->ParentPathEntry = ParentPathEntry;
+    Function->CodeObject = CodeObject;
+
+    Success = RegisterFunction(Python,
+                               Function,
+                               FrameObject);
 
     if (!Success) {
         return FALSE;
     }
 
-    //
-    // If PathEntry is set, it will be the prefix table entry for the file.
-    //
-
-    if (PathEntry) {
-
-        //
-        // Finish resolving the remaining details about the function.
-        //
-
-        Function->PathEntry = PathEntry;
-        return FinalizeFunction(Python, Function, FrameObject);
-
-    } else {
-
-        //
-        // If path entry wasn't provided, we don't care about this function.
-        //
-
-        return TRUE;
-
+    if (ARGUMENT_PRESENT(FunctionPointer)) {
+        *FunctionPointer = Function;
     }
+
+    return TRUE;
 }
 
 #ifdef __cpp

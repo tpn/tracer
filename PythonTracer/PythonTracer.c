@@ -58,9 +58,9 @@ PyTraceCallbackBasic(
 )
 {
     PRTL Rtl;
-    BOOL Success;
+    BOOL Success = FALSE;
     PPYTHON Python;
-    PPYOBJECT CodeObject;
+    //PPYOBJECT CodeObject;
     PTRACE_CONTEXT TraceContext;
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
     PTRACE_STORES TraceStores;
@@ -100,13 +100,14 @@ PyTraceCallbackBasic(
         return 1;
     }
 
+    /*
     Success = Python->ResolveFrameObjectDetails(Python,
                                                 FrameObject,
                                                 &CodeObject,
                                                 (PPPYOBJECT)&Event.ModulePointer,
                                                 (PPPYOBJECT)&Event.FuncPointer,
                                                 (PULONG)&Event.LineNumber);
-
+    */
     if (!Success) {
         return 1;
     }
@@ -712,7 +713,7 @@ PyTraceRegisterPythonFunction(
     // Make sure we've been passed a Python code object.
     //
 
-    if (CodeObject->Type != (PPYTYPEOBJECT)Python->PyCode_Type) {
+    if (CodeObject->Type != Python->PyCode.Type) {
         return FALSE;
     }
 
@@ -737,8 +738,8 @@ PyTraceRegisterPythonFunction(
     }
 
     FunctionRecord.CodeObject = CodeObject;
-    FunctionRecord.FilenameObject = FilenameObject;
-    FunctionRecord.FilenameHash = FilenameHash;
+    //FunctionRecord.FilenameObject = FilenameObject;
+    //FunctionRecord.FilenameHash = FilenameHash;
 
     //
     // Insert the function into our table if it's not already present.
@@ -765,7 +766,7 @@ PyTraceRegisterPythonFunction(
         return TRUE;
     }
 
-    FunctionRecord.CodeObjectHash = Python->PyObject_Hash(CodeObject);
+    //FunctionRecord.CodeObjectHash = Python->PyObject_Hash(CodeObject);
 
     //
     // We haven't seen this function before.  Determine if we've seen the
@@ -806,8 +807,8 @@ PyTraceRegisterPythonFunction(
         //Function->Module = Module;
 
     } else {
-        PUNICODE_STRING Path;
-        PSTRING Name;
+        //PUNICODE_STRING Path;
+        //PSTRING Name;
 
         //Python->Py_IncRef(Module->ModuleFilenameObject);
 
@@ -819,7 +820,8 @@ PyTraceRegisterPythonFunction(
         Store = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
 
         Function = NULL;
-
+        
+        /*
         Success = Python->GetModuleNameAndQualifiedPathFromModuleFilename(
             Python,
             Function->FilenameObject,
@@ -830,6 +832,7 @@ PyTraceRegisterPythonFunction(
             TraceStoreFreeRoutine,
             Store
             );
+        */
 
         if (!Success) {
 
