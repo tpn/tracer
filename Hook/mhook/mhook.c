@@ -873,6 +873,137 @@ BOOL Mhook_SetHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID
     return (pTrampoline != NULL);
 }
 
+BOOL Mhook_ForceHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key) {
+    BOOL Success;
+    PFUNCTION Function = (PFUNCTION)Key;
+    MHOOKS_TRAMPOLINE* pTrampoline = NULL;
+    PVOID pSystemFunction = *ppSystemFunction;
+    if (!Rtl->CreateToolhelp32Snapshot) {
+        __debugbreak();
+    }
+    // ensure thread-safety
+    EnterCritSec();
+    ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
+    // find the real functions (jump over jump tables, if any)
+    pSystemFunction = SkipJumps((PBYTE)pSystemFunction);
+    pHookFunction = SkipJumps((PBYTE)pHookFunction);
+    ODPRINTF((L"mhooks: Mhook_SetHook: Started on the job: %p / %p", pSystemFunction, pHookFunction));
+    // figure out the length of the overwrite zone
+    MHOOKS_PATCHDATA patchdata;
+    SecureZeroMemory(&patchdata, sizeof(patchdata));
+
+    DWORD dwInstructionLength = 5;
+    SuspendOtherThreads(Rtl, (PBYTE)pSystemFunction, dwInstructionLength);
+    // allocate a trampoline structure (TODO: it is pretty wasteful to get
+    // VirtualAlloc to grab chunks of memory smaller than 100 bytes)
+    pTrampoline = TrampolineAlloc((PBYTE)pSystemFunction, patchdata.nLimitUp, patchdata.nLimitDown);
+    if (!pTrampoline) {
+        goto Error;
+    }
+
+    DWORD dwOldProtectSystemFunction = 0;
+    DWORD dwOldProtectTrampolineFunction = 0;
+    // set the system function to PAGE_EXECUTE_READWRITE
+    if (!VirtualProtect(pSystemFunction,
+                        dwInstructionLength,
+                        PAGE_EXECUTE_READWRITE,
+                        &dwOldProtectSystemFunction))
+    {
+        goto Error;
+    }
+
+    ODPRINTF((L"mhooks: Mhook_SetHook: readwrite set on system function"));
+    // mark our trampoline buffer to PAGE_EXECUTE_READWRITE
+    if (!VirtualProtect(pTrampoline,
+                        sizeof(MHOOKS_TRAMPOLINE),
+                        PAGE_EXECUTE_READWRITE, 
+                        &dwOldProtectTrampolineFunction))
+    {
+        goto Error;
+    }
+
+    DWORD_PTR Distance;
+    PBYTE ValueAddress = NULL;
+    PBYTE JumpAddress = NULL;
+    // create our trampoline function
+    PBYTE pbCode = pTrampoline->codeTrampoline;
+    // save original code..
+    /*
+    for (DWORD i = 0; i<dwInstructionLength; i++) {
+        pTrampoline->codeUntouched[i] = pbCode[i] = ((PBYTE)pSystemFunction)[i];
+    }
+    pbCode += dwInstructionLength;
+    */
+
+    // plus a jump to the continuation in the original location
+    //pbCode = EmitJump(pbCode, ((PBYTE)pSystemFunction) + dwInstructionLength);
+
+    if ((PBYTE)pHookFunction < (PBYTE)pSystemFunction) {
+        Distance = (PBYTE)pSystemFunction - (PBYTE)pHookFunction;
+    }
+    else {
+        Distance = (PBYTE)pHookFunction - (PBYTE)pSystemFunction;
+    }
+
+    if (Distance > 0x7fff0000) {
+        // create a stub that jumps to the replacement function.
+        // we need this because jumping from the API to the hook directly
+        // will be a long jump, which is 14 bytes on x64, and we want to
+        // avoid that - the API may or may not have room for such stuff.
+        // (remember, we only have 5 bytes guaranteed in the API.)
+        // on the other hand we do have room, and the trampoline will always be
+        // within +/- 2GB of the API, so we do the long jump in there.
+        // the API will jump to the "reverse trampoline" which
+        // will jump to the user's hook code.
+        pbCode = pTrampoline->codeJumpToHookFunction;
+        pbCode = EmitJump(pbCode, (PBYTE)pHookFunction);
+        ODPRINTF((L"mhooks: Mhook_SetHook: created reverse trampoline"));
+        FlushInstructionCache(GetCurrentProcess(), pTrampoline->codeJumpToHookFunction,
+            pbCode - pTrampoline->codeJumpToHookFunction);
+
+        // update the API itself
+        pbCode = (PBYTE)pSystemFunction;
+        if (Key) {
+            pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+        }
+        pbCode = EmitJump(pbCode, pTrampoline->codeJumpToHookFunction);
+    }
+    else {
+        // the jump will be at most 5 bytes so we can do it directly
+        // update the API itself
+        pbCode = (PBYTE)pSystemFunction;
+        if (Key) {
+            pbCode = EmitMovRaxImm64(pbCode, (ULONGLONG)Key);
+        }
+        pbCode = EmitJump(pbCode, (PBYTE)pHookFunction);
+    }
+
+    // update data members
+    pTrampoline->cbOverwrittenCode = dwInstructionLength;
+    pTrampoline->pSystemFunction = (PBYTE)pSystemFunction;
+    pTrampoline->pHookFunction = (PBYTE)pHookFunction;
+
+    // flush instruction cache and restore original protection
+    FlushInstructionCache(GetCurrentProcess(), pTrampoline->codeTrampoline, dwInstructionLength);
+    VirtualProtect(pTrampoline, sizeof(MHOOKS_TRAMPOLINE), dwOldProtectTrampolineFunction, &dwOldProtectTrampolineFunction);
+    // flush instruction cache and restore original protection
+    FlushInstructionCache(GetCurrentProcess(), pSystemFunction, dwInstructionLength);
+    VirtualProtect(pSystemFunction, dwInstructionLength, dwOldProtectSystemFunction, &dwOldProtectSystemFunction);
+
+    Success = TRUE;
+    
+Error:
+    ResumeOtherThreads(Rtl);
+    LeaveCritSec();
+
+    if (!Success) {
+        TrampolineFree(pTrampoline, TRUE);
+        pTrampoline = NULL;
+    }
+
+    return (pTrampoline != NULL);
+}
+
 //=========================================================================
 BOOL Mhook_Unhook(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key) {
     ODPRINTF((L"mhooks: Mhook_Unhook: %p", *ppHookedFunction));

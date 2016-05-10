@@ -12,9 +12,8 @@ extern "C" {
 
 typedef struct _FUNCTION FUNCTION, *PFUNCTION;
 
-typedef BOOL (*PHOOK)(PRTL Rtl, PFUNCTION Function);
-
-typedef BOOL (*PUNHOOK)(PRTL Rtl, PFUNCTION Function);
+typedef BOOL (*PHOOK)(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key);
+typedef BOOL (*PUNHOOK)(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key);
 
 typedef BOOL (*PHOOK_FUNCTION)(PRTL Rtl, PFUNCTION Function);
 
@@ -26,6 +25,10 @@ typedef VOID (*PINITIALIZE_FUNCTION)(
 RTL_API
 BOOL
 Hook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key);
+
+RTL_API
+BOOL
+Mhook_ForceHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key);
 
 RTL_API
 BOOL

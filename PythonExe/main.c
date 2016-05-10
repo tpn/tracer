@@ -1,8 +1,20 @@
 #include "stdafx.h"
 
+static CONST CHAR PythonExePath[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python.exe";
+static CONST CHAR PythonDllPath[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python27.dll";
+static CONST CHAR PythonPrefix[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711";
+
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
+typedef PCHAR (*PPY_GET_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
 
 typedef PPY_MAIN *PPPY_MAIN;
+typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
+typedef PPY_GET_EXEC_PREFIX *PPPY_GET_EXEC_PREFIX;
+typedef PPY_GET_PROGRAM_NAME *PPPY_GET_PROGRAM_NAME;
+typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
 
 typedef CHAR **PPSTR;
 typedef WCHAR **PPWSTR;
@@ -30,6 +42,38 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
     }                                                                \
 } while (0)
 
+#define HOOK(Source, Dest) do { \
+    if (!Hook(Rtl, Source, Dest, NULL)) { \
+        OutputDebugStringA("Failed to hook " #Source " ->" #Dest); \
+        goto End; \
+    } \
+} while (0);
+
+/*
+PCHAR
+Our_Py_GetPath(void)
+{
+    return "";
+}
+
+CHAR[]
+Our_Py_GetPrefix(void)
+{
+    return PythonPrefix;
+}
+
+CONST PCHAR
+Our_Py_GetExecPrefix(void)
+{
+    return Our_Py_GetPrefix();
+}
+
+PCHAR
+Our_Py_GetProgramFullPath(void)
+{
+    return PythonExePath;
+}
+*/
 
 VOID
 WINAPI
@@ -41,10 +85,17 @@ mainCRTStartup()
     HMODULE Shell32;
     HMODULE Python;
     HMODULE RtlModule;
+    HMODULE HookModule;
+
+    PHOOK Hook;
+    PUNHOOK Unhook;
 
     PINITIALIZE_RTL InitializeRtl;
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
     PPY_MAIN Py_Main;
+    PPY_GET_PREFIX Py_GetPrefix;
+    PPY_GET_EXEC_PREFIX Py_GetExecPrefix;
+    PPY_GET_PROGRAM_FULL_PATH Py_GetProgramFullPath;
 
     PWSTR CommandLine;
     LONG NumberOfArgs;
@@ -53,6 +104,10 @@ mainCRTStartup()
     LONG Index;
     HANDLE HeapHandle;
     ULONG AllocSize;
+    //PCHAR Prefix;
+    //PCHAR ExecPrefix;
+    PCHAR Path;
+    USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
 
     RTL RtlRecord;
     PRTL Rtl = &RtlRecord;
@@ -71,14 +126,35 @@ mainCRTStartup()
     LOAD(Shell32, "shell32");
     RESOLVE(Shell32, PCOMMAND_LINE_TO_ARGV, CommandLineToArgvW);
 
-    LOAD(Python, "python27.dll");
+    LOAD(Python, PythonDllPath);
     RESOLVE(Python, PPY_MAIN, Py_Main);
+    RESOLVE(Python, PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE(Python, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE(Python, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
+
+    LOAD(HookModule, "Hook");
+    RESOLVE(HookModule, PHOOK, Hook);
+    RESOLVE(HookModule, PUNHOOK, Unhook);
 
     HeapHandle = GetProcessHeap();
     if (!HeapHandle) {
         OutputDebugStringA("GetProcessHeap() failed.");
         goto End;
     }
+
+    //HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
+    //Prefix = Py_GetPrefix();
+
+    //HOOK((PPVOID)&Py_GetExecPrefix, Our_Py_GetExecPrefix);
+    //ExecPrefix = Py_GetExecPrefix();
+
+    //HOOK((PPVOID)&Py_GetProgramFullPath, Our_Py_GetProgramFullPath);
+    Path = Py_GetProgramFullPath();
+    Rtl->RtlCopyMemory(Path, PythonExePath, sizeof(PythonExePath));
+
+    //Prefix = Py_GetPrefix();
+    //ExecPrefix = Py_GetExecPrefix();
+    //Path = Py_GetProgramFullPath();
 
     CommandLine = GetCommandLineW();
     UnicodeArgv = CommandLineToArgvW(CommandLine, &NumberOfArgs);
@@ -89,6 +165,11 @@ mainCRTStartup()
         PWSTR UnicodeArg = UnicodeArgv[Index];
         PSTR AnsiArg;
         INT Size;
+
+        if (Index == 0) {
+            AnsiArgv[Index] = (PCHAR)PythonExePath;
+            continue;
+        }
 
         Size = WideCharToMultiByte(
             CP_UTF8,
@@ -130,7 +211,7 @@ mainCRTStartup()
 
     ExitCode = Py_Main(NumberOfArgs, AnsiArgv);
 
-    for (Index = 0; Index < NumberOfArgs; Index++) {
+    for (Index = 1; Index < NumberOfArgs; Index++) {
         HeapFree(HeapHandle, 0, AnsiArgv[Index]);
     }
 

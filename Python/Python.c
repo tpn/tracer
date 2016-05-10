@@ -192,6 +192,7 @@ LoadPythonFunctions(
     RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
     RESOLVE_FUNCTION(PPYDICT_GETITEMSTRING, PyDict_GetItemString);
     RESOLVE_FUNCTION(PPYFRAME_GETLINENUMBER, PyFrame_GetLineNumber);
+    RESOLVE_FUNCTION(PPYCODE_ADDR2LINE, PyCode_Addr2Line);
     RESOLVE_FUNCTION(PPYEVAL_SETTRACE, PyEval_SetProfile);
     RESOLVE_FUNCTION(PPYEVAL_SETTRACE, PyEval_SetTrace);
     RESOLVE_FUNCTION(PPY_INCREF, Py_IncRef);
@@ -422,9 +423,12 @@ InitializePythonRuntimeTables(
     PRTL_GENERIC_TABLE GenericTable;
 
     PrefixTable = &Python->PathTable.PrefixTable;
+    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
     Rtl->PfxInitialize(PrefixTable);
 
-    Rtl->PfxInitialize(&Python->ModuleNameTable);
+    PrefixTable = &Python->ModuleNameTable;
+    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+    Rtl->PfxInitialize(PrefixTable);
 
     //
     // If the allocation routine isn't provided, default to the generic
@@ -749,28 +753,28 @@ FORCEINLINE
 BOOL
 GetPythonStringInformation(
     _In_     PPYTHON             Python,
-    _In_     PPYOBJECT           StringOrUnicodeObject,
+    _In_     PPYOBJECT           StringishObject,
     _Out_    PSIZE_T             Length,
     _Out_    PUSHORT             Width,
     _Out_    PPVOID              Buffer
 )
 {
     PYOBJECTEX Object;
-    Object.Object = StringOrUnicodeObject;
+    Object.Object = StringishObject;
 
-    if (StringOrUnicodeObject->Type == Python->PyString.Type) {
+    if (StringishObject->Type == Python->PyString.Type) {
 
         *Length = Object.String->ObjectSize;
         *Buffer = Object.String->Value;
 
         *Width = sizeof(CHAR);
 
-    } else if (StringOrUnicodeObject->Type == Python->PyUnicode.Type) {
+    } else if (StringishObject->Type == Python->PyUnicode.Type) {
 
         if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
 
-            *Length = Python->PyUnicode_GetLength(StringOrUnicodeObject);
-            *Buffer = Python->PyUnicode_AsUnicode(StringOrUnicodeObject);
+            *Length = Python->PyUnicode_GetLength(StringishObject);
+            *Buffer = Python->PyUnicode_AsUnicode(StringishObject);
 
         } else {
 
@@ -780,6 +784,13 @@ GetPythonStringInformation(
         }
 
         *Width = sizeof(WCHAR);
+
+    } else if (StringishObject->Type == Python->PyBytes.Type) {
+
+        *Length = Object.Bytes->ObjectSize;
+        *Buffer = Object.Bytes->Value;
+
+        *Width = sizeof(CHAR);
 
     } else {
 
@@ -794,7 +805,7 @@ FORCEINLINE
 BOOL
 WrapPythonStringAsString(
     _In_     PPYTHON    Python,
-    _In_     PPYOBJECT  StringOrUnicodeObject,
+    _In_     PPYOBJECT  StringishObject,
     _Out_    PSTRING    String
     )
 {
@@ -806,7 +817,7 @@ WrapPythonStringAsString(
 
     Success = GetPythonStringInformation(
         Python,
-        StringOrUnicodeObject,
+        StringishObject,
         &Length,
         &Width,
         &Buffer
@@ -861,6 +872,7 @@ IsModuleDirectoryA(
                             NULL,
                             NULL);
 }
+
 
 BOOL
 RegisterDirectory(
@@ -1254,6 +1266,111 @@ GetClassNameFromSelf(
     return FALSE;
 }
 
+VOID
+ResolveLineNumbersForPython2(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_FUNCTION    Function
+    )
+{
+    USHORT Index;
+    USHORT Address;
+    USHORT TableSize;
+    USHORT LineNumber;
+    USHORT SizeOfByteCode;
+    USHORT NumberOfLines;
+    USHORT FirstLineNumber;
+    USHORT PreviousAddress;
+    USHORT NumberOfByteCodes;
+    USHORT PreviousLineNumber;
+    PPYSTRINGOBJECT ByteCodes;
+    PLINE_NUMBER Table;
+    PLINE_NUMBER_TABLE2 LineNumbers;
+    PPYCODEOBJECT25_27 CodeObject;
+
+    CodeObject = (PPYCODEOBJECT25_27)Function->CodeObject;
+    ByteCodes = (PPYSTRINGOBJECT)CodeObject->Code;
+    SizeOfByteCode = (USHORT)ByteCodes->ObjectSize;
+
+    LineNumbers = (PLINE_NUMBER_TABLE2)CodeObject->LineNumberTable;
+
+    //
+    // The underlying ObjectSize will refer to the number of bytes; as each
+    // entry is two bytes, shift right once.
+    //
+
+    TableSize = (USHORT)LineNumbers->ObjectSize >> 1;
+
+    Address = 0;
+    NumberOfLines = 0;
+    PreviousAddress = 0;
+    NumberOfByteCodes = 0;
+    PreviousLineNumber = 0;
+    FirstLineNumber = LineNumber = (USHORT)CodeObject->FirstLineNumber;
+
+    for (Index = 0; Index < TableSize; Index++) {
+
+        USHORT ByteIncrement;
+        USHORT LineIncrement;
+
+        Table = &LineNumbers->Table[Index];
+
+        ByteIncrement = Table->ByteIncrement;
+        LineIncrement = Table->LineIncrement;
+
+        if (ByteIncrement) {
+            if (LineNumber != PreviousLineNumber) {
+                NumberOfLines++;
+                PreviousLineNumber = LineNumber;
+            }
+        }
+
+        if (LineIncrement) {
+            if (Address != PreviousAddress) {
+                NumberOfByteCodes++;
+                PreviousAddress = Address;
+            }
+        }
+
+        Address += ByteIncrement;
+        LineNumber += LineIncrement;
+    }
+
+    if (LineNumber != PreviousLineNumber) {
+        NumberOfLines++;
+        PreviousLineNumber = LineNumber;
+    }
+
+    if (Address != PreviousAddress) {
+        NumberOfByteCodes++;
+        PreviousAddress = Address;
+    }
+
+    Function->FirstLineNumber = FirstLineNumber;
+    Function->LastLineNumber = PreviousLineNumber;
+    Function->NumberOfLines = NumberOfLines;
+    
+    Function->SizeOfByteCode = SizeOfByteCode;
+    Function->LastByteCodeOffset = PreviousAddress;
+    Function->NumberOfByteCodes = NumberOfByteCodes;
+
+}
+
+VOID
+ResolveLineNumbers(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function
+    )
+{
+    if (Python->MajorVersion == 2) {
+        ResolveLineNumbersForPython2(Python, Function);
+    } else {
+        Function->FirstLineNumber = 0;
+        Function->LastLineNumber = 0;
+        Function->NumberOfLines = 0;
+        Function->NumberOfByteCodes = 0;
+    }
+}
+
 BOOL
 RegisterFunction(
     _In_ PPYTHON Python,
@@ -1394,7 +1511,7 @@ Routine Description:
 
     Buffer = Python->AllocationRoutine(
         Python->AllocationContext,
-        FullNameLength
+        FullNameAllocSize
     );
 
     if (!Buffer) {
@@ -1423,6 +1540,16 @@ Routine Description:
         __movsb(Dest, (PBYTE)ParentName->Buffer, ParentName->Length);
         Dest += ParentName->Length;
         *Dest++ = '\\';
+
+        //
+        // If the parent is a file, update the module name to account
+        // for the parent's module name, plus the joining slash.
+        //
+
+        if (ParentPathEntry->IsFile) {
+            ModuleName->Length += ParentName->Length + 1;
+            ModuleName->MaximumLength = ModuleName->Length;
+        }
     }
 
     if (ClassName->Length) {
@@ -1444,7 +1571,7 @@ Routine Description:
     //
 
     FullName->Length = FullNameLength-1;
-    FullName->MaximumLength = FullNameLength;
+    FullName->MaximumLength = FullNameAllocSize;
 
     //
     // Point our path at our parent.
@@ -1456,6 +1583,8 @@ Routine Description:
     Path->Buffer = ParentPathEntry->Path.Buffer;
 
     PathEntry->IsFunction = TRUE;
+
+    ResolveLineNumbers(Python, Function);
 
     return TRUE;
 }
@@ -2160,7 +2289,7 @@ Routine Description:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Path)) {
+    if (!ARGUMENT_PRESENT(QualifiedPath)) {
         return FALSE;
     }
 
@@ -2203,7 +2332,7 @@ Routine Description:
     // of the string later on in this method.
     //
 
-    WeOwnPathBuffer = (Path->Buffer != QualifiedPath->Buffer);
+    WeOwnPathBuffer = (Path->Buffer != PathString.Buffer);
 
     //
     // Initialize Rtl and character length variables.
@@ -2362,6 +2491,8 @@ Routine Description:
     );
 
     FullNameAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength);
+
+    AllocationSize += FullNameAllocSize;
 
     Buffer = AllocationRoutine(AllocationContext, AllocationSize);
     if (!Buffer) {
@@ -2713,7 +2844,7 @@ RegisterFrame(
         // We've already seen this function.
         //
 
-        return TRUE;
+        goto End;
     }
 
     //
@@ -2742,6 +2873,7 @@ RegisterFrame(
         return FALSE;
     }
 
+End:
     if (ARGUMENT_PRESENT(FunctionPointer)) {
         *FunctionPointer = Function;
     }

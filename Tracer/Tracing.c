@@ -38,6 +38,7 @@ FindLongestTraceStoreFileNameCallback(
 )
 {
     DWORD Index;
+    NTSTATUS Result;
     ULARGE_INTEGER Longest = { 0 };
     ULARGE_INTEGER Length = { 0 };
     DWORD MaxPath = (
@@ -49,7 +50,12 @@ FindLongestTraceStoreFileNameCallback(
 
     for (Index = 0; Index < NumberOfTraceStores; Index++) {
         LPCWSTR FileName = TraceStoreFileNames[Index];
-        if (FAILED(StringCchLengthW(FileName, MaxPath, (PSIZE_T)&Length.QuadPart))) {
+        Result = StringCchLengthW(
+            FileName,
+            MaxPath,
+            (PSIZE_T)&Length.QuadPart
+        );
+        if (FAILED(Result)) {
             return FALSE;
         }
         if (Length.QuadPart > Longest.QuadPart) {
@@ -953,7 +959,7 @@ RecordTraceStoreAllocation(
     _Inout_ PTRACE_STORE     TraceStore,
     _In_    PULARGE_INTEGER  RecordSize,
     _In_    PULARGE_INTEGER  NumberOfRecords
-)
+    )
 {
     PTRACE_STORE_METADATA Metadata;
 
@@ -1271,10 +1277,10 @@ AllocateRecords(
             }
         }
 
-        ReturnAddress               = \
-            MemoryMap->PrevAddress  = \
-            TraceStore->PrevAddress = \
-            MemoryMap->NextAddress  = NextAddress;
+
+        ReturnAddress           = MemoryMap->NextAddress;
+        MemoryMap->PrevAddress  = MemoryMap->NextAddress;
+        TraceStore->PrevAddress = MemoryMap->NextAddress;
 
         MemoryMap->NextAddress = NextAddress;
 
@@ -1300,7 +1306,7 @@ FreeRecords(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
     _In_    PVOID           Buffer
-)
+    )
 {
     //
     // Not currently implemented.
@@ -1521,8 +1527,8 @@ InitializeTraceContext(
         PTRACE_STORE MetadataStore = &TraceStores->Stores[Index+1];
 
         //
-        // Bind the metadata store first so that the trace store can update its pMetadata
-        // pointer.
+        // Bind the metadata store first so that the trace store can update
+        // its pMetadata pointer.
         //
 
         if (!BindTraceStoreToTraceContext(MetadataStore, TraceContext)) {

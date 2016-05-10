@@ -5,7 +5,7 @@
 BOOL
 Hook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key)
 {
-    return Mhook_SetHook(Rtl, ppSystemFunction, pHookFunction, Key);
+    return Mhook_ForceHook(Rtl, ppSystemFunction, pHookFunction, Key);
 }
 
 RTL_API
