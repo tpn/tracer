@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ebb98965-02d5-48b2-96a2-0f9973a629a1}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>pt.py</StartupFile>
+    <StartupFile>fc.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -23,6 +23,9 @@
   <ItemGroup>
     <Compile Include="bin\tracer.py" />
     <Compile Include="ez_setup.py" />
+    <Compile Include="fc.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="lib\tracerdev\commands.py" />
     <Compile Include="lib\tracerdev\config.py" />
     <Compile Include="lib\tracerdev\rtl.py" />

@@ -255,6 +255,7 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"trace_exceptions.dat",
     L"trace_lines.dat",
     L"trace_strings.dat",
+    L"trace_callstack.dat",
 };
 
 static const PCWSTR TraceStoreMetadataSuffix = L":metadata";
@@ -277,6 +278,7 @@ static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // exceptions
     10 << 20,   // lines
     10 << 20,   // strings
+    10 << 20,   // call stack
 };
 
 #define TRACE_STORE_EVENTS_INDEX 0
@@ -287,6 +289,7 @@ static const ULONG InitialTraceStoreFileSizes[] = {
 #define TRACE_STORE_EXCEPTIONS_INDEX 5
 #define TRACE_STORE_LINES_INDEX 6
 #define TRACE_STORE_STRINGS_INDEX 7
+#define TRACE_STORE_CALL_STACK 8
 
 typedef struct _TRACE_STORES {
     USHORT  Size;

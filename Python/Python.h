@@ -66,6 +66,7 @@ typedef struct _PYVAROBJECT {
 typedef struct _PYTHREADSTATE PYTHREADSTATE, *PPYTHREADSTATE, PyThreadState;
 
 typedef struct _PYOLDSTYLECLASS {
+    _PYOBJECT_HEAD
     PPYOBJECT Bases;
     PPYOBJECT Dict;
     PPYOBJECT Name;
@@ -75,6 +76,7 @@ typedef struct _PYOLDSTYLECLASS {
 } PYOLDSTYLECLASS, *PPYOLDSTYLECLASS;
 
 typedef struct _PYINSTANCEOBJECT {
+    _PYOBJECT_HEAD
     PPYOLDSTYLECLASS OldStyleClass;
     PPYOBJECT Dict;
     PPYOBJECT WeakRefList;
@@ -95,6 +97,20 @@ typedef struct _PYSTRINGOBJECT {
         CHAR Value[1];
     };
 } PYSTRINGOBJECT, *PPYSTRINGOBJECT;
+
+typedef struct _PYBYTESOBJECT {
+    _PYVAROBJECT_HEAD
+
+    union {
+        long ob_shash;
+        LONG Hash;
+    };
+    union {
+        char ob_sval[1];
+        CHAR Value[1];
+    };
+
+} PYBYTESOBJECT, *PPYBYTESOBJECT;
 
 typedef struct _PYUNICODEOBJECT {
     _PYOBJECT_HEAD
@@ -1246,6 +1262,10 @@ typedef struct _PYLONGOBJECT {
     };
 } PYLONGOBJECT, *PPYLONGOBJECT, PyLongObject;
 
+//
+// Our custom helper types
+//
+
 typedef struct _PYOBJECTEX {
     union {
         PPYOBJECT               Object;
@@ -1261,17 +1281,89 @@ typedef struct _PYOBJECTEX {
         PPYINTOBJECT            Int;
         PPYTUPLEOBJECT          Tuple;
         PPYFUNCTIONOBJECT       Function;
+        PPYBYTESOBJECT          Bytes;
         PPYSTRINGOBJECT         String;
         PPYUNICODEOBJECT        Unicode;
         PPYINSTANCEOBJECT       Instance;
     };
 } PYOBJECTEX, *PPYOBJECTEX, **PPPYOBJECTEX;
 
+typedef struct _LINE_NUMBER {
+    union {
+        WCHAR Pair;
+        CHAR Value[2];
+        struct {
+            BYTE ByteIncrement;
+            BYTE LineIncrement;
+        };
+    };
+} LINE_NUMBER, *PLINE_NUMBER, **PPLINE_NUMBER;
+
+//
+// Python 2.x uses a PyString type for the line number table.
+//
+
+typedef struct _LINE_NUMBER_TABLE2 {
+
+    //
+    // Inline PYOBJECT.
+    //
+
+    SSIZE_T ReferenceCount;
+    PPYTYPEOBJECT Type;
+
+    //
+    // Inline PYVAROBJECT.
+    //
+
+    SSIZE_T ObjectSize;
+
+    //
+    // Inline PYSTRINGOBJECT.
+    //
+
+    LONG Hash;
+    LONG State;
+
+    LINE_NUMBER Table[1];
+
+} LINE_NUMBER_TABLE2, *PLINE_NUMBER_TABLE2;
+
+//
+// Python 3.x uses a PyBytes type for the line number table.
+//
+
+typedef struct _LINE_NUMBER_TABLE3 {
+
+    //
+    // Inline PYOBJECT.
+    //
+
+    SSIZE_T ReferenceCount;
+    PPYTYPEOBJECT Type;
+
+    //
+    // Inline PYVAROBJECT.
+    //
+
+    SSIZE_T ObjectSize;
+
+    //
+    // Inline PYBYTESOBJECT.
+    //
+
+    LONG Hash;
+
+    LINE_NUMBER Table[1];
+
+} LINE_NUMBER_TABLE3, *PLINE_NUMBER_TABLE3;
+
 // Python functions
 typedef PCSTR (*PPY_GETVERSION)();
 typedef VOID (*PPY_INCREF)(PPYOBJECT);
 typedef VOID (*PPY_DECREF)(PPYOBJECT);
 typedef LONG (*PPYFRAME_GETLINENUMBER)(PPYFRAMEOBJECT FrameObject);
+typedef LONG (*PPYCODE_ADDR2LINE)(PPYOBJECT CodeObject, LONG);
 typedef PWSTR (*PPYUNICODE_ASUNICODE)(PPYOBJECT Object);
 typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
 typedef LONG (*PPYEVAL_SETTRACE)(PPYTRACEFUNC, PPYOBJECT);
@@ -1307,6 +1399,7 @@ typedef VOID (*PPYOBJECT_GC_DEL)(PVOID);
     PPY_GETVERSION          Py_GetVersion;         \
     PPYDICT_GETITEMSTRING   PyDict_GetItemString;  \
     PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber; \
+    PPYCODE_ADDR2LINE       PyCode_Addr2Line;      \
     PPYEVAL_SETTRACE        PyEval_SetProfile;     \
     PPYEVAL_SETTRACE        PyEval_SetTrace;       \
     PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;   \
@@ -1393,8 +1486,8 @@ typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
     _In_opt_  PVOID               FreeContext
     );
 
-#define _PYTHONEXFUNCTIONS_HEAD \
-    PREGISTER_FRAME RegisterFrame; \
+#define _PYTHONEXFUNCTIONS_HEAD                                      \
+    PREGISTER_FRAME RegisterFrame;                                   \
     PINITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
 
 typedef struct _PYTHONEXFUNCTIONS {
@@ -1413,7 +1506,6 @@ typedef struct _PYTHON_PATH_TABLE {
             CSHORT NodeTypeCode;
             CSHORT NameLength;
             PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;
-            PPYTHON_PATH_TABLE_ENTRY LastNextEntry;
         };
     };
 
@@ -1427,7 +1519,7 @@ typedef enum _PYTHON_PATH_ENTRY_TYPE {
     Function            =   1 << 4, // 16
     Builtin             =   1 << 5, // 32
     CFunction           =   1 << 6, // 64
-    Line                =   1 << 7  // 128
+    PythonLine          =   1 << 7  // 128
 } PYTHON_PATH_ENTRY_TYPE, *PPYTHON_PATH_ENTRY_TYPE;
 
 typedef struct _PYTHON_PATH_TABLE_ENTRY {
@@ -1442,7 +1534,6 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
             CSHORT NodeTypeCode;
             CSHORT NameLength;
             PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;
-            PPYTHON_PATH_TABLE_ENTRY CaseMatch;
             RTL_SPLAY_LINKS Links;
             PSTRING Prefix;
         };
@@ -1508,6 +1599,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
 typedef struct _PYTHON_FUNCTION {
     PYTHON_PATH_TABLE_ENTRY PathEntry;
+    PREFIX_TABLE_ENTRY ModuleNameEntry;
 
     union {
         PPYOBJECT          CodeObject;
@@ -1518,8 +1610,12 @@ typedef struct _PYTHON_FUNCTION {
 
     USHORT FirstLineNumber;
     USHORT LastLineNumber;
+    USHORT NumberOfLines;
+    USHORT SizeOfByteCode;
+    USHORT LastByteCodeOffset;
+    USHORT NumberOfByteCodes;
 
-    ULONG  UnusedLong1;
+    RTL_BITMAP LineNumbersBitmap;
 
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
 
