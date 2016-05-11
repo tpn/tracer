@@ -1,11 +1,11 @@
-from __future__ import print_function
+﻿from __future__ import print_function
 import ctypes
 import sys
 import os
 
 if os.environ['USERNAME'] == 'r541964':
-    sys.path.insert(0, r'c:\users\r541964\home\src\tpn\lib')
-    sys.path.insert(0, r'c:\users\r541964\home\src\tracer\PythonApp\lib')
+    sys.path.insert(0, r'd:\src\tpn\lib')
+    sys.path.insert(0, r'd:\src\tracer\PythonApp\lib')
     basedir = r'e:\trace2'
 else:
     if os.environ['COMPUTERNAME'] == 'COUGAR':
@@ -46,16 +46,21 @@ reload(tracer)
 
 use_debug = True
 
-#print("Press any key to continue.")
-#dummy = sys.stdin.read(1)
+print("Press any key to continue.")
+dummy = sys.stdin.read(1)
 
 if use_debug:
+    print("using debug")
     t = tracer.Tracer.create_debug(basedir, conf)
 else:
+    print("not using debug")
     t = tracer.Tracer.create_release(basedir, conf)
 
-#print("Press any key to continue.")
-#dummy = sys.stdin.read(1)
+print("Created tracer...")
+print("Press any key to continue.")
+dummy = sys.stdin.read(1)
+
+t.add_module('tpn')
 
 with t:
     bits_table(output=null_writer)

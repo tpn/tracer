@@ -634,15 +634,13 @@ typedef struct _PREFIX_TABLE_ENTRY {
     struct _PREFIX_TABLE_ENTRY *NextPrefixTree;
     RTL_SPLAY_LINKS Links;
     PSTRING Prefix;
-} PREFIX_TABLE_ENTRY;
-typedef PREFIX_TABLE_ENTRY *PPREFIX_TABLE_ENTRY;
+} PREFIX_TABLE_ENTRY, *PPREFIX_TABLE_ENTRY, **PPPREFIX_TABLE_ENTRY;
 
 typedef struct _PREFIX_TABLE {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
     PPREFIX_TABLE_ENTRY NextPrefixTree;
-} PREFIX_TABLE;
-typedef PREFIX_TABLE *PPREFIX_TABLE;
+} PREFIX_TABLE, *PPREFIX_TABLE, **PPPREFIX_TABLE;
 
 typedef VOID (NTAPI *PPFX_INITIALIZE)(
     _Out_ PPREFIX_TABLE PrefixTable
@@ -1398,6 +1396,10 @@ typedef BOOL (*PINITIALIZE_RTL)(
     (((ULONG_PTR)(Address)) + (((ULONG_PTR)(Alignment))-1)) & \
     ~(((ULONG_PTR)(Alignment))-1)                             \
 )
+
+#define ALIGN_UP_POINTER(Address) (ALIGN_UP(Address, sizeof(ULONG_PTR)))
+
+#define ALIGN_DOWN_POINTER(Address) (ALIGN_DOWN(Address, sizeof(ULONG_PTR)))
 
 #define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
     (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))

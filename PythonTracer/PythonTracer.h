@@ -340,4 +340,11 @@ AddFunction(
     _In_    PVOID                   FunctionObject
     );
 
+TRACER_API
+BOOL
+AddModuleName(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
+    _In_    PPYOBJECT               ModuleNameObject
+    );
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

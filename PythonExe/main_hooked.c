@@ -5,7 +5,7 @@
 #define _NO_CVCONST_H
 #include <DbgHelp.h>
 #pragma warning(pop)
-//#pragma comment(lib, "dbghelp")
+#pragma comment(lib, "dbghelp")
 
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 

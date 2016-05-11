@@ -1784,6 +1784,95 @@ RegisterFrame(
     _Out_opt_ PVOID           Token
     );
 
+FORCEINLINE
+BOOL
+GetPythonStringInformation(
+    _In_     PPYTHON             Python,
+    _In_     PPYOBJECT           StringishObject,
+    _Out_    PSIZE_T             Length,
+    _Out_    PUSHORT             Width,
+    _Out_    PPVOID              Buffer
+)
+{
+    PYOBJECTEX Object;
+    Object.Object = StringishObject;
+
+    if (StringishObject->Type == Python->PyString.Type) {
+
+        *Length = Object.String->ObjectSize;
+        *Buffer = Object.String->Value;
+
+        *Width = sizeof(CHAR);
+
+    } else if (StringishObject->Type == Python->PyUnicode.Type) {
+
+        if (Python->PyUnicode_AsUnicode && Python->PyUnicode_GetLength) {
+
+            *Length = Python->PyUnicode_GetLength(StringishObject);
+            *Buffer = Python->PyUnicode_AsUnicode(StringishObject);
+
+        } else {
+
+            *Length = Object.Unicode->Length;
+            *Buffer = Object.Unicode->String;
+
+        }
+
+        *Width = sizeof(WCHAR);
+
+    } else if (StringishObject->Type == Python->PyBytes.Type) {
+
+        *Length = Object.Bytes->ObjectSize;
+        *Buffer = Object.Bytes->Value;
+
+        *Width = sizeof(CHAR);
+
+    } else {
+
+        return FALSE;
+
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+WrapPythonStringAsString(
+    _In_     PPYTHON    Python,
+    _In_     PPYOBJECT  StringishObject,
+    _Out_    PSTRING    String
+    )
+{
+    SIZE_T Length;
+    USHORT Width;
+    PVOID  Buffer;
+
+    BOOL Success;
+
+    Success = GetPythonStringInformation(
+        Python,
+        StringishObject,
+        &Length,
+        &Width,
+        &Buffer
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (Width == 2) {
+        Length = Length << 1;
+    } else if (Width != 1) {
+        __debugbreak();
+    }
+
+    String->MaximumLength = String->Length = (USHORT)Length;
+    String->Buffer = Buffer;
+
+    return TRUE;
+}
 
 #ifdef __cpp
 } // extern "C"
