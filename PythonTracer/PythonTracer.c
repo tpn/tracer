@@ -130,66 +130,46 @@ PyTraceCallback(
 
     if (!StartedTracing) {
 
-        if (!IsCall) {
+        if (!IsLine) {
 
             //
-            // If we haven't started tracing yet, we can ignore any events that
-            // aren't PyTrace_CALL or PyTrace_C_CALL.
-            //
-
-            return 0;
-        }
-
-        //
-        // We haven't started tracing yet, and this is a call event.  See if
-        // we need to skip the frame.
-        //
-
-        if (++Context->Depth <= Context->SkipFrames) {
-
-            //
-            // Skip the frame.
+            // If we haven't started tracing yet, we can ignore any event that
+            // isn't a line event.  (In practice, there will usually be one
+            // return event/frame before we get a line event we're interested
+            // in.)
             //
 
             return 0;
         }
 
         //
-        // Indicate we've started tracing by toggling the context flag.
+        // We've received our first line event of interest, start tracing.
         //
 
         StartedTracing = Context->StartedTracing = TRUE;
 
         IsFirstTrace = TRUE;
 
+        Context->Depth = 1;
+
     } else {
 
         //
-        // We've already started tracing.
+        // If we're already tracing, just update our counters accordingly.
+        // The depth used to be used in conjunction with Context->SkipFrames,
+        // but now it's not.  It may be removed altogether.
         //
 
-        if (IsReturn) {
+        if (IsCall) {
 
-            //
-            // Context->Depth should never be 0 here if StartedTracing is set.
-            //
+            ++Context->Depth;
 
-            if (!Context->Depth) {
-                __debugbreak();
-            }
+        } else if (IsReturn) {
 
-            if (--Context->Depth <= Context->SkipFrames) {
+            --Context->Depth;
 
-                //
-                // We're returning from a skipped frame.  Stop tracing.
-                //
-
-                Context->StartedTracing = FALSE;
-
-                return 0;
-
-            }
         }
+
     }
 
     //
@@ -198,6 +178,8 @@ PyTraceCallback(
 
     Rtl = Context->Rtl;
     Python = Context->Python;
+
+
 
     Success = Python->RegisterFrame(Python,
                                     FrameObject,
@@ -217,12 +199,25 @@ PyTraceCallback(
 
     //
     // We obtained the PYTHON_FUNCTION for this frame; use the module name to
-    // determine if we should keep tracing.
+    // determine if we should keep tracing by checking for a prefix table entry
+    // in our module filter table.
     //
 
     ModuleName = &Function->PathEntry.ModuleName;
     Table = &Context->ModuleFilterTable;
 
+    Entry = Rtl->PfxFindPrefix(Table, ModuleName);
+
+    if (!Entry) {
+
+        //
+        // The function doesn't reside in a module we're tracing, return.
+        //
+
+        return 0;
+    }
+
+#if 0
     if (IsFirstTrace && !Context->FirstFunction) {
 
         //
@@ -247,6 +242,7 @@ PyTraceCallback(
             return 0;
         }
     }
+#endif
 
     //
     // The function resides in a module (or submodule) we're tracing, continue.
@@ -673,27 +669,32 @@ StartProfiling(
         return FALSE;
     }
 
-    Python->PyEval_SetProfile(PythonTraceFunction, (PPYOBJECT)PythonTraceContext);
+    Python->PyEval_SetProfile(
+        PythonTraceFunction,
+        (PPYOBJECT)PythonTraceContext
+    );
 
     return TRUE;
 }
 
 BOOL
 StopProfiling(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    _In_    PPYTHON_TRACE_CONTEXT   Context
 )
 {
     PPYTHON Python;
 
-    if (!PythonTraceContext) {
+    if (!Context) {
         return FALSE;
     }
 
-    Python = PythonTraceContext->Python;
+    Python = Context->Python;
 
     if (!Python) {
         return FALSE;
     }
+
+    Context->StartedTracing = FALSE;
 
     Python->PyEval_SetProfile(NULL, NULL);
 
@@ -718,6 +719,165 @@ AddFunction(
 
     return TRUE;
 }
+
+BOOL
+AddPrefixTableEntry(
+    _In_      PPYTHON_TRACE_CONTEXT   Context,
+    _In_      PPYOBJECT               StringObject,
+    _In_      PPREFIX_TABLE           PrefixTable,
+    _Out_opt_ PPPREFIX_TABLE_ENTRY    EntryPointer
+    )
+{
+    PRTL Rtl;
+    PPYTHON Python;
+    STRING String;
+    PSTRING Name;
+    PPREFIX_TABLE_ENTRY Entry;
+    ULONG AllocSize;
+    PVOID Buffer;
+    BOOL Success;
+
+    Rtl = Context->Rtl;
+    Python = Context->Python;
+
+    //
+    // Get a STRING representation of the incoming PyObject string name.
+    //
+
+    Success = WrapPythonStringAsString(Python,
+                                       StringObject,
+                                       &String);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Make sure it's within our limits.
+    //
+
+    if (String.Length >= MAX_STRING) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the entry isn't already in the tree.
+    //
+
+    Entry = Rtl->PfxFindPrefix(PrefixTable, &String);
+
+    if (Entry) {
+
+        //
+        // Entry already exists, nothing more to do.  We don't check the
+        // lengths here as our use case for this function is currently limited
+        // to runtime manipulation of the module filter table, where a prefix
+        // entry is sufficient to enable tracing for a module.
+        //
+
+        return TRUE;
+    }
+
+    //
+    // Entry doesn't exist in the prefix table, allocate space for a
+    // PREFIX_TABLE_ENTRY, the corresponding STRING, and the underlying buffer
+    // (which we copy so that we can control ownership lifetime), plus 1 for
+    // the trailing NUL.
+    //
+
+    AllocSize = (
+        sizeof(PREFIX_TABLE_ENTRY)  +
+        sizeof(STRING)              +
+        String.Length               +
+        1
+    );
+
+    AllocSize = ALIGN_UP_POINTER(AllocSize);
+
+    Buffer = Python->AllocationRoutine(Python->AllocationContext, AllocSize);
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    Entry = (PPREFIX_TABLE_ENTRY)Buffer;
+
+    //
+    // Point our STRING struct to after the PREFIX_TABLE_ENTRY.
+    //
+
+    Name = (PSTRING)(
+        RtlOffsetToPointer(
+            Buffer,
+            sizeof(PREFIX_TABLE_ENTRY)
+        )
+    );
+
+    //
+    // And point the STRING's buffer to after the STRING struct.
+    //
+
+    Name->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Buffer,
+            sizeof(PREFIX_TABLE_ENTRY) +
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Fill in the name length details and copy the string over.
+    //
+
+    Name->Length = String.Length;
+    Name->MaximumLength = String.Length+1;
+    __movsb(Name->Buffer, String.Buffer, Name->Length);
+
+    //
+    // Add trailing NUL.
+    //
+
+    Name->Buffer[Name->Length] = '\0';
+
+    //
+    // Finally, add to the table.
+    //
+
+    Success = Rtl->PfxInsertPrefix(PrefixTable, Name, Entry);
+
+    //
+    // Update caller's pointer if applicable.
+    //
+
+    if (Success) {
+        if (ARGUMENT_PRESENT(EntryPointer)) {
+            *EntryPointer = Entry;
+        }
+    }
+
+    return TRUE;
+}
+
+BOOL
+AddModuleName(
+    _In_    PPYTHON_TRACE_CONTEXT   Context,
+    _In_    PPYOBJECT               ModuleNameObject
+    )
+{
+    if (!ARGUMENT_PRESENT(Context)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ModuleNameObject)) {
+        return FALSE;
+    }
+
+    return AddPrefixTableEntry(Context,
+                               ModuleNameObject,
+                               &Context->ModuleFilterTable,
+                               NULL);
+}
+
 
 #ifdef __cplusplus
 } // extern "C"

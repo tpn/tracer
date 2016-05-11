@@ -312,6 +312,9 @@ def pythontracer(path=None, dll=None):
     dll.AddFunction.restype = BOOL
     #dll.AddFunction.argtypes = [ PVOID, ]
 
+    dll.AddModuleName.restype = BOOL
+    dll.AddModuleName.argtypes = [ PVOID, py_object ]
+
     dll.StartTracing.restype = BOOL
     dll.StartTracing.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
 
@@ -583,6 +586,13 @@ class Tracer:
         if not dll.AddFunction(self.python_trace_context, func):
             raise TracerError("AddFunction() failed")
 
+    def add_module(self, module_name):
+        name = module_name.replace('.', '\\')
+        dll = self.tracer_pythontracer_dll
+        arg = py_object(name)
+        if not dll.AddModuleName(self.python_trace_context, arg):
+            raise TracerError("AddModuleName() failed")
+
     def start(self):
         dll = self.tracer_pythontracer_dll
         if not dll.StartTracing(self.python_trace_context):
@@ -602,7 +612,6 @@ class Tracer:
         dll = self.tracer_pythontracer_dll
         if not dll.StopProfiling(self.python_trace_context):
             raise TracerError("StopProfiling() failed")
-
 
     def close_trace_stores(self):
         self.tracer_dll.CloseTraceStores(byref(self.trace_stores))
