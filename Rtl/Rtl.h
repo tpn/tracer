@@ -943,6 +943,24 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     _In_  SIZE_T Size
     );
 
+#ifdef _M_X64
+
+#ifndef BitTestAndSet
+#define BitTestAndSet _bittestandset
+#endif
+
+#define FastSetBit(Bitmap, BitNumber) (             \
+    BitTestAndSet((PLONG)Bitmap->Buffer, BitNumber) \
+)
+
+#else
+
+#define FastSetBit(Bitmap, BitNumber) ( \
+    Rtl->RtlSetBit(Bitmap, BitNumber)   \
+)
+
+#endif
+
 #undef RtlFillMemory
 #undef RtlMoveMemory
 #undef RtlCopyMemory
@@ -1319,6 +1337,13 @@ typedef BOOL (*PHASH_UNICODE_STRING_TO_ATOM)(
 
 typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
 
+typedef BOOL (*PLOAD_SHLWAPI)(PRTL Rtl);
+
+typedef BOOL (*PPATH_CANONICALIZEA)(
+        _Out_   LPSTR   Dest,
+        _In_    LPCSTR  Source
+    );
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
@@ -1337,17 +1362,26 @@ typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
     PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                \
     PFILES_EXISTW FilesExistW;                                                 \
     PFILES_EXISTA FilesExistA;                                                 \
-    PTEST_EXCEPTION_HANDLER TestExceptionHandler;
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
+    PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
 } RTLEXFUNCTIONS, *PRTLEXFUNCTIONS, **PPRTLEXFUNCTIONS;
+
+#define _SHLWAPIFUNCTIONS_HEAD             \
+    PPATH_CANONICALIZEA PathCanonicalizeA;
+
+typedef struct _SHLWAPI_FUNCTIONS {
+    _SHLWAPIFUNCTIONS_HEAD
+} SHLWAPI_FUNCTIONS, *PSHLWAPI_FUNCTIONS, **PPSHLWAPI_FUNCTIONS;
 
 typedef struct _RTL {
     ULONG       Size;
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
+    HMODULE     ShlwapiModule;
 
     HANDLE      HeapHandle;
 
@@ -1369,6 +1403,13 @@ typedef struct _RTL {
         RTLEXFUNCTIONS RtlExFunctions;
         struct {
             _RTLEXFUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        SHLWAPI_FUNCTIONS ShlwapiFunctions;
+        struct {
+            _SHLWAPIFUNCTIONS_HEAD
         };
     };
 
@@ -1803,9 +1844,34 @@ InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
     return TRUE;
 }
 
+
+FORCEINLINE
+VOID
+InlineFindCharsInString(
+    _In_     PSTRING      String,
+    _In_     CHAR         CharToFind,
+    _Inout_  PRTL_BITMAP  Bitmap
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    CHAR Char;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        if (Char == CharToFind) {
+            FastSetBit(Bitmap, Index);
+        }
+    }
+}
+
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
+
+RTL_API
+BOOL
+LoadShlwapi(PRTL Rtl);
 
 //
 // Verbatim copy of the doubly-linked list inline methods.

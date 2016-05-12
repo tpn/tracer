@@ -100,6 +100,60 @@ TestExceptionHandler(VOID)
 }
 
 BOOL
+LoadShlwapiFunctions(
+    _In_    HMODULE             ShlwapiModule,
+    _In_    PSHLWAPI_FUNCTIONS  ShlwapiFunctions
+    )
+{
+    if (!ARGUMENT_PRESENT(ShlwapiModule)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ShlwapiFunctions)) {
+        return FALSE;
+    }
+
+#define TRY_RESOLVE_SHLWAPI_FUNCTION(Type, Name) ( \
+    ShlwapiFunctions->##Name = (Type)(             \
+        GetProcAddress(                            \
+            ShlwapiModule,                         \
+            #Name                                  \
+        )                                          \
+    )                                              \
+)
+
+#define RESOLVE_SHLWAPI_FUNCTION(Type, Name)                         \
+    if (!TRY_RESOLVE_SHLWAPI_FUNCTION(Type, Name)) {                 \
+        OutputDebugStringA("Failed to resolve Shlwapi!" #Name "\n"); \
+        return FALSE;                                                \
+    }
+
+
+    RESOLVE_SHLWAPI_FUNCTION(PPATH_CANONICALIZEA, PathCanonicalizeA);
+
+    return TRUE;
+
+}
+
+BOOL
+LoadShlwapi(PRTL Rtl)
+{
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (Rtl->ShlwapiModule) {
+        return TRUE;
+    }
+
+    if (!(Rtl->ShlwapiModule = LoadLibraryA("shlwapi"))) {
+        return FALSE;
+    }
+
+    return LoadShlwapiFunctions(Rtl->ShlwapiModule, &Rtl->ShlwapiFunctions);
+}
+
+BOOL
 CALLBACK
 SetCSpecificHandlerCallback(
     PINIT_ONCE InitOnce,
@@ -159,7 +213,9 @@ GetSystemTimerFunctionCallback(
 
     Proc = GetProcAddress(Module, "GetSystemTimePreciseAsFileTime");
     if (Proc) {
-        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (PGETSYSTEMTIMEPRECISEASFILETIME)Proc;
+        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (
+            (PGETSYSTEMTIMEPRECISEASFILETIME)Proc
+        );
     } else {
         Module = LoadLibrary(TEXT("ntdll"));
         if (!Module) {
@@ -247,7 +303,6 @@ FindCharsInUnicodeString(
     USHORT NumberOfCharacters = String->Length >> 1;
     ULONG  Bit;
     WCHAR  Char;
-    PRTL_SET_BIT RtlSetBit = Rtl->RtlSetBit;
 
     //
     // We use two loop implementations in order to avoid an additional
@@ -259,7 +314,7 @@ FindCharsInUnicodeString(
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
                 Bit = NumberOfCharacters - Index;
-                RtlSetBit(Bitmap, Bit);
+                FastSetBit(Bitmap, Bit);
             }
         }
     }
@@ -267,7 +322,7 @@ FindCharsInUnicodeString(
         for (Index = 0; Index < NumberOfCharacters; Index++) {
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
-                RtlSetBit(Bitmap, Index);
+                FastSetBit(Bitmap, Index);
             }
         }
     }
@@ -287,7 +342,7 @@ FindCharsInString(
     USHORT Index;
     USHORT NumberOfCharacters = String->Length;
     ULONG  Bit;
-    WCHAR  Char;
+    CHAR Char;
     PRTL_SET_BIT RtlSetBit = Rtl->RtlSetBit;
 
     //
@@ -300,7 +355,7 @@ FindCharsInString(
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
                 Bit = NumberOfCharacters - Index;
-                RtlSetBit(Bitmap, Bit);
+                FastSetBit(Bitmap, Bit);
             }
         }
     }
@@ -308,7 +363,7 @@ FindCharsInString(
         for (Index = 0; Index < NumberOfCharacters; Index++) {
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
-                RtlSetBit(Bitmap, Index);
+                FastSetBit(Bitmap, Index);
             }
         }
     }
@@ -3120,6 +3175,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->LoadShlwapi = (PLOAD_SHLWAPI)
+        GetProcAddress(RtlExModule, "LoadShlwapi"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadShlwapi'");
         return FALSE;
     }
 

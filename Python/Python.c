@@ -718,6 +718,10 @@ InitializePython(
         return FALSE;
     }
 
+    if (!Rtl->LoadShlwapi(Rtl)) {
+        goto error;
+    }
+
     SecureZeroMemory(Python, sizeof(*Python));
 
     Python->Rtl = Rtl;
@@ -782,6 +786,7 @@ IsModuleDirectoryA(
                             NULL,
                             NULL);
 }
+
 
 BOOL
 RegisterDirectory(
@@ -861,11 +866,13 @@ RegisterDirectory(
 
         AncestorIsRoot = (BOOL)AncestorEntry->IsNonModuleDirectory;
 
-        if (AncestorEntry->Name.Length != 0 ||
-            AncestorEntry->ModuleName.Length != 0)
+        /*
+        if (AncestorEntry->Name.Length == 0 ||
+            AncestorEntry->ModuleName.Length == 0)
         {
             __debugbreak();
         }
+        */
 
         AncestorModuleName = &AncestorEntry->ModuleName;
 
@@ -1008,6 +1015,61 @@ RegisterDirectory(
     }
 
     return Success;
+}
+
+FORCEINLINE
+BOOL
+RegisterRoot(
+    _In_      PPYTHON Python,
+    _In_      PSTRING Directory,
+    _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    )
+{
+    return RegisterDirectory(Python,
+                             Directory,
+                             NULL,
+                             NULL,
+                             PathEntryPointer,
+                             TRUE);
+}
+
+//
+// This is currently identical to RegisterRoot().  In fact, we may deprecate
+// RegisterRoot() in favor of this method, as it is more accurately named.
+//
+
+FORCEINLINE
+BOOL
+RegisterNonModuleDirectory(
+    _In_      PPYTHON Python,
+    _In_      PSTRING Directory,
+    _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    )
+{
+    return RegisterDirectory(Python,
+                             Directory,
+                             NULL,
+                             NULL,
+                             PathEntryPointer,
+                             TRUE);
+}
+
+FORCEINLINE
+BOOL
+RegisterModuleDirectory(
+    _In_      PPYTHON Python,
+    _In_      PSTRING Directory,
+    _In_      PSTRING DirectoryName,
+    _In_      PPYTHON_PATH_TABLE_ENTRY AncestorEntry,
+    _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    )
+{
+    return RegisterDirectory(Python,
+                             Directory,
+                             DirectoryName,
+                             AncestorEntry,
+                             PathEntryPointer,
+                             FALSE);
 }
 
 BOOL
@@ -1258,7 +1320,7 @@ ResolveLineNumbersForPython2(
     Function->FirstLineNumber = FirstLineNumber;
     Function->LastLineNumber = PreviousLineNumber;
     Function->NumberOfLines = NumberOfLines;
-    
+
     Function->SizeOfByteCode = SizeOfByteCode;
     Function->LastByteCodeOffset = PreviousAddress;
     Function->NumberOfByteCodes = NumberOfByteCodes;
@@ -1532,21 +1594,25 @@ QualifyPath(
         _Out_       PPSTRING            DestinationPathPointer
     )
 {
-    ULARGE_INTEGER Size;
-    CONST ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
-    ULONG AllocSizeInBytes;
+    BOOL Success;
+    PRTL Rtl;
 
+    CONST ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
+
+    ULONG AllocSizeInBytes;
     ULONG CurDirLength;
-    ULONG RequiredSizeInBytes;
 
     PSTRING String;
-    PSTR Dest;
+    PCHAR Dest;
 
     PALLOCATION_ROUTINE AllocationRoutine;
     PVOID AllocationContext;
 
-    PFREE_ROUTINE FreeRoutine;
-    PVOID FreeContext;
+    ULONG Remaining;
+    USHORT NewLength;
+
+    CHAR Buffer[_MAX_PATH];
+    CHAR CanonPath[_MAX_PATH];
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -1556,7 +1622,6 @@ QualifyPath(
         return FALSE;
     }
 
-
     if (!ARGUMENT_PRESENT(DestinationPathPointer)) {
         return FALSE;
     }
@@ -1564,43 +1629,111 @@ QualifyPath(
     AllocationRoutine = Python->AllocationRoutine;
     AllocationContext = Python->AllocationContext;
 
-    FreeRoutine = Python->FreeRoutine;
-    FreeContext = Python->FreeContext;
+    Rtl = Python->Rtl;
 
-    Size.QuadPart = SourcePath->Length;
+    Dest = (PCHAR)Buffer;
+    CurDirLength = GetCurrentDirectoryA(_MAX_PATH, Dest);
 
     //
-    // Get the length (in characters) of the current directory and verify it
-    // fits within our unicode string size constraints.
+    // Initial validation of the directory length.
     //
 
-    RequiredSizeInBytes = GetCurrentDirectoryW(0, NULL);
-    if (RequiredSizeInBytes == 0) {
+    if (CurDirLength == 0) {
+
+        return FALSE;
+
+    } else if (CurDirLength > MaxSize.LowPart) {
+
         return FALSE;
     }
 
     //
-    // Update the allocation size with the current directory size plus
-    // a joining backslash character.
+    // Update the destination pointer.
     //
 
-    Size.QuadPart = Size.LowPart + sizeof(CHAR) + RequiredSizeInBytes;
+    Dest += CurDirLength;
 
     //
-    // Verify it's within our limits.
+    // Append the joining slash and update the length if necessary.
     //
 
-    if (Size.HighPart != 0 || Size.LowPart > MaxSize.LowPart) {
+    if (*Dest != '\\') {
+        *Dest++ = '\\';
+        CurDirLength += 1;
+    }
+
+    //
+    // Calculate remaining space (account for trailing NUL).
+    //
+
+    Remaining = _MAX_PATH - CurDirLength - 1;
+
+    if (Remaining < SourcePath->Length) {
+
+        //
+        // Not enough space left for our source path to be appended.
+        //
+
+        return FALSE;
+
+    }
+
+    //
+    // There's enough space, copy the source path over.
+    //
+
+    __movsb(Dest, SourcePath->Buffer, SourcePath->Length);
+
+    Dest += SourcePath->Length;
+
+    //
+    // Add terminating NUL.
+    //
+
+    *Dest = '\0';
+
+    //
+    // Our temporary buffer now contains a concatenated current directory name
+    // and source path plus trailing NUL.  Call PathCanonicalize() against it
+    // and store the results in another stack-allocated _MAX_PATH-sized temp
+    // buffer.
+    //
+
+    Success = Rtl->PathCanonicalizeA((PSTR)&CanonPath, (PSTR)&Buffer);
+
+    if (!Success) {
         return FALSE;
     }
 
     //
-    // Account for the STRING struct size.
+    // Get the new length for the canonicalized path.
     //
 
-    AllocSizeInBytes = Size.LowPart + sizeof(STRING);
+    NewLength = (USHORT)strlen((PCSTR)&CanonPath);
 
-    String = (PSTRING)AllocationRoutine(AllocationContext, AllocSizeInBytes);
+    //
+    // Sanity check that there is still a trailing NUL where we expect.
+    //
+
+    if (CanonPath[NewLength] != '\0') {
+        __debugbreak();
+    }
+
+    //
+    // Now calculate the allocation size we need for the final string and
+    // containing STRING struct.
+    //
+
+    AllocSizeInBytes = sizeof(STRING) + NewLength;
+
+    AllocSizeInBytes = ALIGN_UP_POINTER(AllocSizeInBytes);
+
+    String = (PSTRING)(
+        Python->AllocationRoutine(
+            Python->AllocationContext,
+            AllocSizeInBytes
+        )
+    );
 
     if (!String) {
         return FALSE;
@@ -1618,50 +1751,23 @@ QualifyPath(
     );
 
     //
-    // CurDirLength will represent the length (number of characters, not
-    // bytes) of the string copied into our buffer.
+    // Initialize sizes.  NewLength includes trailing NUL, so omit it for
+    // String->Length.
     //
 
-    CurDirLength = GetCurrentDirectoryA(
-        RequiredSizeInBytes,
-        String->Buffer
-    );
-
-    if (CurDirLength == 0) {
-        FreeRoutine(FreeContext, String);
-        return FALSE;
-    }
-
-    Dest = &String->Buffer[CurDirLength];
+    String->Length = NewLength-1;
+    String->MaximumLength = (USHORT)(AllocSizeInBytes - sizeof(STRING));
 
     //
-    // Add the joining backslash and update the destination pointer.
+    // And finally, copy over the canonicalized path.  We've already verified
+    // that CanonPath is NUL terminated, so we can just use NewLength here to
+    // pick up the terminating NUL from CanonPath.
     //
 
-    *Dest++ = '\\';
+    __movsb((PBYTE)String->Buffer, (LPCBYTE)&CanonPath[0], NewLength);
 
     //
-    // Initialize the maximum string length (number of bytes, including NUL),
-    // and the string length (number of bytes, not including NUL).
-    //
-
-    String->MaximumLength = (USHORT)Size.LowPart;
-    String->Length = ((USHORT)Size.LowPart) - sizeof(CHAR);
-
-    //
-    // Copy the rest of the name over.
-    //
-
-    __movsb(Dest, SourcePath->Buffer, SourcePath->Length);
-
-    //
-    // Add terminating NUL.
-    //
-
-    Dest[String->Length] = '\0';
-
-    //
-    // And finally, update the user's pointer.
+    // Update the caller's pointer and return.
     //
 
     *DestinationPathPointer = String;
@@ -1681,11 +1787,14 @@ GetPathEntryForDirectory(
 {
     PRTL Rtl;
 
+    PRTL_BITMAP Bitmap;
+
     PPREFIX_TABLE PrefixTable;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
 
     PPYTHON_PATH_TABLE_ENTRY PathEntry = NULL;
     PPYTHON_PATH_TABLE_ENTRY RootEntry = NULL;
+    PPYTHON_PATH_TABLE_ENTRY NextEntry = NULL;
     PPYTHON_PATH_TABLE_ENTRY ParentEntry = NULL;
     PPYTHON_PATH_TABLE_ENTRY AncestorEntry = NULL;
 
@@ -1704,18 +1813,25 @@ GetPathEntryForDirectory(
     STRING AncestorDirectory;
     STRING PreviousDirectory;
 
-    PSTRING NextPrefix;
     PSTRING RootPrefix;
     PSTRING ParentPrefix;
     PSTRING AncestorPrefix;
     PSTRING PreviousPrefix;
 
+    PUSHORT ForwardHintIndex;
+
     USHORT Offset;
+    USHORT ForwardIndex;
     USHORT ReversedIndex;
     USHORT NumberOfChars;
+    USHORT LastForwardIndex;
     USHORT LastReversedIndex;
+    USHORT CumulativeForwardIndex;
     USHORT CumulativeReversedIndex;
+    USHORT RemainingAncestors;
+
     BOOL IsModule = FALSE;
+    BOOL IsRoot = FALSE;
 
     //
     // Validate arguments.
@@ -1788,19 +1904,58 @@ GetPathEntryForDirectory(
         // which will handle inserting a new prefix table entry for the
         // directory.  Note that we just set the shorter directory as our
         // parent directory; later on, once we've actually calculated our
-        // parent directory, we may revise this to be an ancestory entry.
+        // parent directory, we may revise this to be an ancestor entry.
         //
 
         ParentEntry = PathEntry;
         PathEntry = NULL;
 
+    } else {
+
+        //
+        // No path entry was present.  If the directory *isn't* a module, it
+        // becomes our root directory.  If it is a module, we let execution
+        // fall through to the normal parent/ancestor directory processing
+        // logic below.
+        //
+
+        Success = IsModuleDirectoryA(Rtl, Directory, &IsModule);
+
+        if (!Success) {
+
+            //
+            // Treat failure equivalent to "IsModule = FALSE".  See comment
+            // in while loop below for more explanation.
+            //
+
+            IsModule = FALSE;
+
+        }
+
+        if (!IsModule) {
+
+            //
+            // Register this directory as the root and return.
+            //
+
+            return RegisterRoot(Python, Directory, PathEntryPointer);
+
+        }
+
     }
 
     //
-    // Final step: make sure directory entries have been added for all of our
-    // parent directories, up to and including the first one we find without
-    // an __init__.py file present.  The directory after this becomes the start
-    // of our module name.
+    // If we get here, we will be in one of the following states:
+    //
+    //  1.  An ancestor path (i.e. a prefix match) of Directory already exists
+    //      in the prefix tree.
+    //
+    //  2.  No common ancestor exists, and the Directory has an __init__.py
+    //      file, indicating that it is a module.
+    //
+    // In either case, we need to ensure the relevant ancestor directories
+    // have been added, up to the "root" directory (i.e. the first directory
+    // we find that has no __init__.py file present).
     //
 
     //
@@ -1953,12 +2108,7 @@ GetPathEntryForDirectory(
             RootDirectory.Buffer = AncestorDirectory.Buffer;
             RootPrefix = &RootDirectory;
 
-            Success = RegisterDirectory(Python,
-                                        &RootDirectory,
-                                        NULL,
-                                        NULL,
-                                        &RootEntry,
-                                        TRUE);
+            Success = RegisterRoot(Python, RootPrefix, &RootEntry);
 
             if (!Success) {
                 return FALSE;
@@ -2083,38 +2233,198 @@ FoundAncestor:
 
     //
     // Keep adding entries for the next directories as long as they're
-    // not the parent directory.
+    // not the parent directory.  AncestorEntry will be set here to the entry
+    // for the initial matching ancestor path entry.  ParentDirectory will
+    // still represent the target parent directory we need to add ancestor
+    // entries up-to (but not including).
     //
+
+    //
+    // Re-use our reversed bitmap to create a forward bitmap of backslashes.
+    //
+
+    AncestorPrefix = AncestorEntry->Prefix;
+    NextName.Length = ParentDirectory.Length - AncestorPrefix->Length - 1;
+    NextName.MaximumLength = NextName.Length;
+    NextName.Buffer = ParentDirectory.Buffer + AncestorPrefix->Length + 1;
+
+    //
+    // Truncate our existing bitmap to an aligned size matching the number of
+    // remaining characters to scan through.
+    //
+
+    Bitmap = Backslashes;
+    Bitmap->SizeOfBitMap = ALIGN_UP_USHORT_TO_POINTER_SIZE(NextName.Length);
+    Rtl->RtlClearAllBits(Bitmap);
+
+    InlineFindCharsInString(&NextName, '\\', Bitmap);
+
+    //
+    // Add one to account for the fact that our Remaining.Length omits the
+    // last trailing backslash from the path.
+    //
+
+    RemainingAncestors = (USHORT)Rtl->RtlNumberOfSetBits(Bitmap) + 1;
+
+    if (RemainingAncestors == 1) {
+
+        //
+        // We don't need to consult the bitmap at all if there is only one
+        // ancestor directory remaining; the NextName string we prepared
+        // above has all the details we need.
+        //
+
+        NextDirectory.Length = AncestorPrefix->Length + NextName.Length + 1;
+        NextDirectory.MaximumLength = NextDirectory.Length;
+
+    } else {
+
+        if (RemainingAncestors == 0) {
+
+            //
+            // Shouldn't be possible.
+            //
+
+            __debugbreak();
+        }
+
+        //
+        // As we have multiple ancestors to process, use the bitmap to find
+        // out where the first one ends.
+        //
+
+        ForwardIndex = (USHORT)Rtl->RtlFindSetBits(Bitmap, 1, 0);
+        ForwardHintIndex = &ForwardIndex;
+        CumulativeForwardIndex = ForwardIndex;
+
+        NextName.Length = ForwardIndex + 1;
+        NextName.MaximumLength = NextName.Length;
+
+        NextDirectory.Length = AncestorPrefix->Length + ForwardIndex + 1;
+        NextDirectory.MaximumLength = NextDirectory.Length;
+
+    }
+
+    NextDirectory.Buffer = ParentDirectory.Buffer;
 
     do {
 
         //
-        // Fill out the NextDirectory et al structures based on the next
-        // directory after the current ancestor.  (Reversing the bitmap
-        // may help here.)
+        // Use the same logic as above with regards to handling the failure
+        // of IsModuleDirectory (i.e. treat it as if it were IsModule = FALSE).
         //
 
-        __debugbreak();
+        Success = IsModuleDirectoryA(Rtl, &NextDirectory, &IsModule);
 
-        NextName;
-        NextPrefix;
-        NextDirectory;
+        if (!Success) {
+            IsModule = FALSE;
+        }
+
+        if (!IsModule) {
+
+            Success = RegisterNonModuleDirectory(Python,
+                                                 &NextDirectory,
+                                                 &NextEntry);
+
+        } else {
+
+            Success = RegisterModuleDirectory(Python,
+                                              &NextDirectory,
+                                              &NextName,
+                                              AncestorEntry,
+                                              &NextEntry);
+
+        }
+
+        if (!Success) {
+            return FALSE;
+        }
+
+        //
+        // See if that was the last ancestor directory we need to add.
+        //
+
+        if (!--RemainingAncestors) {
+
+            //
+            // Invariant check: if there are no more ancestors, the length of
+            // the path prefix just added should match the length of our parent
+            // directory.
+            //
+
+            if (NextEntry->Prefix->Length != ParentDirectory.Length) {
+                __debugbreak();
+            }
+
+            //
+            // This ancestor is our parent entry, continue to the final step.
+            //
+
+            ParentEntry = NextEntry;
+
+            goto FoundParent;
+        }
+
+        //
+        // There are still ancestor paths remaining.
+        //
+
+        LastForwardIndex = (*ForwardHintIndex)++;
+
+        ForwardIndex = (USHORT)Rtl->RtlFindSetBits(Bitmap, 1,
+                                                   *ForwardHintIndex);
+
+        if (ForwardIndex == BITS_NOT_FOUND) {
+
+            //
+            // Should never happen.
+            //
+
+            __debugbreak();
+        }
+
+        CumulativeForwardIndex += LastForwardIndex;
+
+        //
+        // Isolate the name portion of the next ancestor.
+        //
+
+        NextName.Length = CumulativeForwardIndex - ForwardIndex;
+        NextName.MaximumLength = NextName.Length;
+        NextName.Buffer += NextName.Length;
+
+        //
+        // Update the directory length.
+        //
+
+        NextDirectory.Length += ForwardIndex;
+        NextDirectory.MaximumLength = NextDirectory.Length;
+
+        //
+        // Continue the loop.
+        //
 
     } while (1);
 
 FoundParent:
 
-
     //
     // Add a new entry for the parent directory.
     //
+
+    Success = IsModuleDirectoryA(Rtl, Directory, &IsModule);
+    if (!Success) {
+        IsModule = FALSE;
+    }
+
+    IsRoot = (IsModule ? FALSE : TRUE);
 
     Success = RegisterDirectory(Python,
                                 Directory,
                                 &DirectoryName,
                                 ParentEntry,
                                 &PathEntry,
-                                FALSE);
+                                IsRoot);
 
     if (!Success) {
         return FALSE;
@@ -2161,6 +2471,7 @@ Routine Description:
     BOOL WeOwnPathBuffer;
 
     ULONG AllocationSize;
+    ULONG AlignedAllocationSize;
 
     HANDLE HeapHandle = NULL;
 
@@ -2357,6 +2668,17 @@ Routine Description:
     ModuleLength = DirectoryModuleName->Length;
 
     //
+    // Invariant check: if the directory's module name length is 0, verify
+    // the corresponding path entry indicates it is a non-module directory.
+    //
+
+    if (ModuleLength == 0) {
+        if (!DirectoryEntry->IsNonModuleDirectory) {
+            __debugbreak();
+        }
+    }
+
+    //
     // Determine our final allocation size ahead of time so that we only have
     // to do a single allocation for the PathEntry struct plus any additional
     // string buffers.
@@ -2398,18 +2720,39 @@ Routine Description:
         }
     }
 
+    //
+    // Calculate the length.  The first sizeof(CHAR) accounts for the joining
+    // backslash if there's a module name, the second sizeof(CHAR) accounts
+    // for the terminating NUL.
+    //
+
     FullNameLength = (
-        ModuleLength            +
-        sizeof(CHAR)            + // joining slash
-        Filename.Length         +
-        sizeof(CHAR)              // terminating NUL
+        (ModuleLength ? ModuleLength + sizeof(CHAR) : 0)    +
+        Filename.Length                                     +
+        sizeof(CHAR)
     );
 
-    FullNameAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength);
+    AllocationSize += FullNameLength;
 
-    AllocationSize += FullNameAllocSize;
+    AlignedAllocationSize = ALIGN_UP_POINTER(AllocationSize);
 
-    Buffer = AllocationRoutine(AllocationContext, AllocationSize);
+    FullNameAllocSize = FullNameLength;
+
+    //
+    // Let the full name buffer's maximum size extend to the end of the
+    // allocation.
+    //
+
+    if (AllocationSize != AlignedAllocationSize) {
+        ULONG AdditionalSize = (AlignedAllocationSize - AllocationSize);
+        ULONG FinalFullNameSize = FullNameAllocSize + AdditionalSize;
+        if (FinalFullNameSize > MAX_USTRING) {
+            FinalFullNameSize = MAX_USTRING;
+        }
+        FullNameAllocSize = (USHORT)FinalFullNameSize;
+    }
+
+    Buffer = AllocationRoutine(AllocationContext, AlignedAllocationSize);
     if (!Buffer) {
         goto Error;
     }
@@ -2421,7 +2764,10 @@ Routine Description:
     Path = &PathEntry->Path;
 
     Path->Length = QualifiedPath->Length;
-    Path->MaximumLength = PathAllocSize;
+    Path->MaximumLength = (
+        PathAllocSize ? PathAllocSize :
+                        QualifiedPath->MaximumLength
+    );
 
     //
     // Initialize shortcut pointers.
@@ -2532,18 +2878,20 @@ Routine Description:
     Dest = FullName->Buffer;
 
     //
-    // Copy module name.
+    // Copy module name if applicable.
     //
 
-    __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
-    Dest += ModuleName->Length;
-    ModuleName->Buffer = FullName->Buffer;
+    if (ModuleName->Length) {
+        __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
+        Dest += ModuleName->Length;
+        ModuleName->Buffer = FullName->Buffer;
 
-    //
-    // Add joining slash.
-    //
+        //
+        // Add joining slash.
+        //
 
-    *Dest++ = '\\';
+        *Dest++ = '\\';
+    }
 
     //
     // Copy the file name.
@@ -2787,6 +3135,11 @@ RegisterFrame(
     if (!Success) {
         return FALSE;
     }
+
+#ifdef _DEBUG
+    OutputDebugStringA(Function->PathEntry.Path.Buffer);
+    OutputDebugStringA("\n");
+#endif
 
 End:
     if (ARGUMENT_PRESENT(FunctionPointer)) {
