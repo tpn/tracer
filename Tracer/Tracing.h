@@ -228,6 +228,13 @@ typedef struct _TRACE_STORE {
     ULONG ExhaustedFreeMemoryMaps;
     ULONG AllocationsOutpacingNextMemoryMapPreparation;
 
+    union {
+        ULONG Flags;
+        struct {
+            ULONG NoRetire:1;
+        };
+    };
+
     HANDLE FileHandle;
     PVOID PrevAddress;
 
