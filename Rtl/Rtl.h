@@ -99,18 +99,9 @@ typedef BOOLEAN (*PRTL_EQUAL_UNICODE_STRING)(
     _In_    BOOLEAN             CaseInSensitive
     );
 
-// 65536
-#define MAX_STRING  (                              \
-    sizeof(CHAR) * (                               \
-        (1 << (sizeof(USHORT) * 8)) / sizeof(CHAR) \
-    )                                              \
-)
-
-#define MAX_USTRING (                               \
-    sizeof(WCHAR) * (                               \
-        (1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR) \
-    )                                               \
-)
+// 65535 (1 << 16)
+#define MAX_STRING  ((USHORT)0xffff)
+#define MAX_USTRING ((USHORT)0xffff)
 
 #define RTL_CONSTANT_STRING(s) { \
     sizeof(s) - sizeof((s)[0]),  \
