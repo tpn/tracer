@@ -1388,6 +1388,8 @@ Routine Description:
     PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Function;
     ParentPathEntry = Function->ParentPathEntry;
 
+    PathEntry->IsValid = FALSE;
+
     Function->FirstLineNumber = (USHORT)*(
         (PULONG)RtlOffsetToPointer(
             CodeObject,
@@ -1423,6 +1425,7 @@ Routine Description:
     ClearString(ClassName);
 
     if (Self) {
+        USHORT ClassNameLength;
 
         Success = GetClassNameFromSelf(Python,
                                        Function,
@@ -1439,13 +1442,18 @@ Routine Description:
             return FALSE;
         }
 
+        ClassNameLength = (USHORT)strlen((PCSZ)ClassNameBuffer);
+
         //
-        // Omit the trailing NUL for the class name length as we're using
-        // counted strings.
+        // Ensure we've got a NUL-terminated string.
         //
 
-        ClassName->Length = (USHORT)strlen((PCSZ)ClassNameBuffer) - 1;
-        ClassName->MaximumLength = ClassName->Length;
+        if (ClassNameBuffer[ClassNameLength] != '\0') {
+            __debugbreak();
+        }
+
+        ClassName->Length = ClassNameLength;
+        ClassName->MaximumLength = ClassNameLength;
         ClassName->Buffer = ClassNameBuffer;
     }
 
@@ -1476,7 +1484,7 @@ Routine Description:
         1
     );
 
-    if (FullNameLength > MAX_USTRING) {
+    if (FullNameLength > MAX_STRING) {
         return FALSE;
     }
 
@@ -1562,6 +1570,8 @@ Routine Description:
     PathEntry->IsFunction = TRUE;
 
     ResolveLineNumbers(Python, Function);
+
+    PathEntry->IsValid = TRUE;
 
     return TRUE;
 }
@@ -2297,7 +2307,7 @@ FoundAncestor:
         ForwardHintIndex = &ForwardIndex;
         CumulativeForwardIndex = ForwardIndex;
 
-        NextName.Length = ForwardIndex + 1;
+        NextName.Length = ForwardIndex;
         NextName.MaximumLength = NextName.Length;
 
         NextDirectory.Length = AncestorPrefix->Length + ForwardIndex + 1;
@@ -2363,41 +2373,62 @@ FoundAncestor:
             ParentEntry = NextEntry;
 
             goto FoundParent;
+
         }
 
         //
         // There are still ancestor paths remaining.
         //
 
-        LastForwardIndex = (*ForwardHintIndex)++;
+        if (RemainingAncestors == 1) {
 
-        ForwardIndex = (USHORT)Rtl->RtlFindSetBits(Bitmap, 1,
-                                                   *ForwardHintIndex);
+            NextName.Length = (
+                ParentDirectory.Length -
+                NextDirectory.Length   -
+                1
+            );
 
-        if (ForwardIndex == BITS_NOT_FOUND) {
+            NextName.Buffer += (ForwardIndex + 1);
+
+            NextDirectory.Length += (NextName.Length + 1);
+
+        } else {
+
+            LastForwardIndex = (*ForwardHintIndex)++;
+
+            CumulativeForwardIndex += LastForwardIndex;
+
+            ForwardIndex = (USHORT)(
+                Rtl->RtlFindSetBits(Bitmap, 1,
+                                    *ForwardHintIndex)
+            );
+
+            NextName.Length = CumulativeForwardIndex - ForwardIndex;
+            NextName.Buffer += ForwardIndex;
+            NextDirectory.Length += ForwardIndex;
+        }
+
+        if (ForwardIndex == BITS_NOT_FOUND ||
+            ForwardIndex == LastForwardIndex) {
 
             //
             // Should never happen.
             //
 
             __debugbreak();
-        }
 
-        CumulativeForwardIndex += LastForwardIndex;
+        }
 
         //
         // Isolate the name portion of the next ancestor.
         //
 
-        NextName.Length = CumulativeForwardIndex - ForwardIndex;
         NextName.MaximumLength = NextName.Length;
-        NextName.Buffer += NextName.Length;
 
         //
         // Update the directory length.
         //
 
-        NextDirectory.Length += ForwardIndex;
         NextDirectory.MaximumLength = NextDirectory.Length;
 
         //
@@ -3136,9 +3167,11 @@ RegisterFrame(
         return FALSE;
     }
 
+#if 0
 #ifdef _DEBUG
     OutputDebugStringA(Function->PathEntry.Path.Buffer);
     OutputDebugStringA("\n");
+#endif
 #endif
 
 End:
@@ -3146,7 +3179,7 @@ End:
         *FunctionPointer = Function;
     }
 
-    return TRUE;
+    return IsValidFunction(Function);
 }
 
 #ifdef __cpp

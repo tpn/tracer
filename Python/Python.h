@@ -1549,6 +1549,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
             ULONG IsClass:1;
             ULONG IsFunction:1;
             ULONG IsBuiltin:1;
+            ULONG IsValid:1;
         };
     };
     ULONG Unused1;
@@ -1645,6 +1646,10 @@ typedef struct _PYTHON_FUNCTION_TABLE {
         };
     };
 } PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE;
+
+#define IsValidFunction(Function) (                  \
+    (BOOL)(Function && Function->PathEntry.IsValid)  \
+)
 
 #define _PYTHONEXRUNTIME_HEAD                                   \
     HANDLE HeapHandle;                                          \
