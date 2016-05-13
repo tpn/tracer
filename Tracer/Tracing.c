@@ -1047,14 +1047,19 @@ ConsumeNextTraceStoreMemoryMap(
     //
 
     if (PrevPrevMemoryMap) {
+
         TraceStore->PrevMemoryMap = NULL;
 
-        PushTraceStoreMemoryMap(
-            &TraceStore->CloseMemoryMaps,
-            PrevPrevMemoryMap
-        );
+        if (!TraceStore->NoRetire) {
 
-        SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
+            PushTraceStoreMemoryMap(
+                &TraceStore->CloseMemoryMaps,
+                PrevPrevMemoryMap
+                );
+
+            SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
+
+        }
     }
 
     //
@@ -1067,17 +1072,16 @@ ConsumeNextTraceStoreMemoryMap(
 
     if (!Success) {
 
-        Success = (
+        Success = CreateMemoryMapsForTraceStore(TraceStore,
+                                                TraceStore->TraceContext,
+                                                0);
 
-            CreateMemoryMapsForTraceStore(TraceStore,
-                                          TraceStore->TraceContext,
-                                          0)
+        if (Success) {
 
-                &&
+            Success = PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps,
+                                             &PrepareMemoryMap);
 
-            PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps,
-                                   &PrepareMemoryMap)
-        );
+        }
 
         if (!Success) {
             ++TraceStore->DroppedRecords;
