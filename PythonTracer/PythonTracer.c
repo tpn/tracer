@@ -56,19 +56,6 @@ TraceStoreFreeRoutine(
                             Buffer);
 }
 
-FORCEINLINE
-VOID
-PrepareTraceEvent(
-    _In_    PPYTHON_TRACE_CONTEXT Context,
-    _Inout_ PPYTHON_TRACE_EVENT   Event,
-    _In_    PPYTHON_FUNCTION      Function
-    )
-{
-    Context->LastTimestamp.QuadPart = Context->ThisTimestamp.QuadPart;
-    QueryPerformanceCounter(&Context->ThisTimestamp);
-
-}
-
 LONG
 PyTraceCallback(
     _In_        PPYTHON_TRACE_CONTEXT   Context,
@@ -94,7 +81,7 @@ PyTraceCallback(
     PYTHON_TRACE_EVENT Event;
     PPYTHON_TRACE_EVENT LastEvent;
     PPYTHON_TRACE_EVENT ThisEvent;
-    PPYTHON_FUNCTION Function;
+    PPYTHON_FUNCTION Function = NULL;
     PSTRING ModuleName;
     PPREFIX_TABLE Table;
     PPREFIX_TABLE_ENTRY Entry;
@@ -104,12 +91,12 @@ PyTraceCallback(
     StartedTracing = (BOOL)Context->StartedTracing;
 
     IsCall = (
-        EventType == TraceEventType_PyTrace_CALL   ||
+        EventType == TraceEventType_PyTrace_CALL        ||
         EventType == TraceEventType_PyTrace_C_CALL
     );
 
     IsReturn = (
-        EventType == TraceEventType_PyTrace_RETURN   ||
+        EventType == TraceEventType_PyTrace_RETURN      ||
         EventType == TraceEventType_PyTrace_C_RETURN
     );
 
@@ -197,6 +184,11 @@ PyTraceCallback(
         return 0;
     }
 
+    if (!Function || Function->PathEntry.Path.Length == 0) {
+        __debugbreak();
+        return 0;
+    }
+
     //
     // We obtained the PYTHON_FUNCTION for this frame; use the module name to
     // determine if we should keep tracing by checking for a prefix table entry
@@ -204,6 +196,7 @@ PyTraceCallback(
     //
 
     ModuleName = &Function->PathEntry.ModuleName;
+
     Table = &Context->ModuleFilterTable;
 
     Entry = Rtl->PfxFindPrefix(Table, ModuleName);
@@ -216,33 +209,6 @@ PyTraceCallback(
 
         return 0;
     }
-
-#if 0
-    if (IsFirstTrace && !Context->FirstFunction) {
-
-        //
-        // This is the first function we've traced.  Use the function's module
-        // name as our initial filter.
-        //
-
-        Context->FirstFunction = Function;
-        Entry = &Function->ModuleNameEntry;
-        Rtl->PfxInsertPrefix(Table, ModuleName, Entry);
-
-    } else {
-
-        Entry = Rtl->PfxFindPrefix(Table, ModuleName);
-
-        if (!Entry) {
-
-            //
-            // The function doesn't reside in a module we're tracing.
-            //
-
-            return 0;
-        }
-    }
-#endif
 
     //
     // The function resides in a module (or submodule) we're tracing, continue.
@@ -573,6 +539,8 @@ InitializePythonTraceContext(
     TraceStores = TraceContext->TraceStores;
     TraceStore = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
 
+    TraceStore->NoRetire = TRUE;
+
     Python->InitializePythonRuntimeTables(
         Python,
         TraceStoreAllocationRoutine,
@@ -594,7 +562,7 @@ InitializePythonTraceContext(
 BOOL
 StartTracing(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-)
+    )
 {
     PPYTHON Python;
     PPYTRACEFUNC PythonTraceFunction;
@@ -626,7 +594,7 @@ StartTracing(
 BOOL
 StopTracing(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-)
+    )
 {
     PPYTHON Python;
 
@@ -648,7 +616,7 @@ StopTracing(
 BOOL
 StartProfiling(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-)
+    )
 {
     PPYTHON Python;
     PPYTRACEFUNC PythonTraceFunction;
@@ -680,7 +648,7 @@ StartProfiling(
 BOOL
 StopProfiling(
     _In_    PPYTHON_TRACE_CONTEXT   Context
-)
+    )
 {
     PPYTHON Python;
 
@@ -705,7 +673,7 @@ BOOL
 AddFunction(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_    PVOID                   FunctionObject
-)
+    )
 {
     if (!PythonTraceContext) {
         return FALSE;
@@ -853,6 +821,13 @@ AddPrefixTableEntry(
         if (ARGUMENT_PRESENT(EntryPointer)) {
             *EntryPointer = Entry;
         }
+    } else {
+
+        //
+        // Shouldn't be able to get here.
+        //
+
+        __debugbreak();
     }
 
     return TRUE;
