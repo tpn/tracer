@@ -1609,6 +1609,8 @@ typedef struct _PYTHON_FUNCTION {
         PPYCODEOBJECT33_35 Code33_35;
     };
 
+    ULONG CodeObjectHash;
+
     USHORT FirstLineNumber;
     USHORT LastLineNumber;
     USHORT NumberOfLines;
@@ -1789,6 +1791,7 @@ RegisterFrame(
     _Out_opt_ PVOID           Token
     );
 
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 GetPythonStringInformation(

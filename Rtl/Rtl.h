@@ -1817,6 +1817,11 @@ InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
     PINITIALIZE_RTL InitializeRtl;
 
     Module = LoadLibraryA("Rtl");
+
+    if (!Module) {
+        return FALSE;
+    }
+
     Proc = GetProcAddress(Module, "InitializeRtl");
     if (!Proc) {
         __debugbreak();
