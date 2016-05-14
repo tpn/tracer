@@ -96,6 +96,7 @@ typedef struct _PYTHON_TRACE_EVENT {
     };
 
     // 8 bytes
+    DECLSPEC_ALIGN(8)
     PPYTHON_FUNCTION Function;
 
     // 4 bytes
