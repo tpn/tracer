@@ -9,7 +9,7 @@ if os.environ['USERNAME'] == 'r541964':
     basedir = r'e:\trace2'
 else:
     if os.environ['COMPUTERNAME'] == 'COUGAR':
-        basedir = r'S:\Data'
+        basedir = r'S:\trace'
     else:
         basedir = r'C:\Users\Trent\Home\data'
     sys.path.insert(0, r'c:\users\trent\home\src\tpn\lib')
@@ -63,7 +63,8 @@ dummy = sys.stdin.read(1)
 t.add_module('tpn')
 
 with t:
-    bits_table(output=null_writer)
+    for i in range(10000):
+        bits_table(output=null_writer)
 
 print("Press any key to continue.")
 dummy = sys.stdin.read(1)

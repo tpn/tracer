@@ -1,18 +1,3 @@
-// Python Tools for Visual Studio
-// Copyright(c) Microsoft Corporation
-// All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the License); you may not use
-// this file except in compliance with the License. You may obtain a copy of the
-// License at http://www.apache.org/licenses/LICENSE-2.0
-//
-// THIS CODE IS PROVIDED ON AN  *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS
-// OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY
-// IMPLIED WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABLITY OR NON-INFRINGEMENT.
-//
-// See the Apache Version 2.0 License for specific language governing
-// permissions and limitations under the License.
 
 #pragma once
 
@@ -21,6 +6,9 @@ extern "C" {
 #endif
 
 #include "stdafx.h"
+
+#define MAX_UNICODE_STRING 255
+#define _OUR_MAX_PATH MAX_UNICODE_STRING
 
 //typedef struct FILE_STANDARD_INFO *PFILE_STANDARD_INFO;
 
@@ -147,9 +135,20 @@ typedef struct _PYTRACE_CALL {
 } PYTRACE_CALL, *PPYTRACE_CALL;
 
 typedef struct _TRACE_STORE_METADATA {
-    ULARGE_INTEGER          NumberOfRecords;
-    LARGE_INTEGER           RecordSize;
+    union {
+        ULARGE_INTEGER  NumberOfRecords;
+        ULARGE_INTEGER  NumberOfAllocations;
+    };
+    union {
+        LARGE_INTEGER   RecordSize;
+        ULARGE_INTEGER  AllocationSize;
+    };
 } TRACE_STORE_METADATA, *PTRACE_STORE_METADATA;
+
+typedef struct _TRACE_STORE_ADDRESS {
+    PVOID   Start;
+    PVOID   End;
+} TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS;
 
 typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
@@ -197,7 +196,11 @@ typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP {
     __declspec(align(8))  LARGE_INTEGER FileOffset;         // 8        40
     __declspec(align(8))  LARGE_INTEGER MappingSize;        // 8        48
     __declspec(align(8))  PVOID         BaseAddress;        // 8        56
-    __declspec(align(8))  PVOID         NextAddress;        // 8        64
+    __declspec(align(8))
+    union {
+        PVOID DesiredBaseAddress;                           // 8        64
+        PVOID NextAddress;                                  // 8        64
+    };
 } TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP, **PPTRACE_STORE_MEMORY_MAP;
 
 typedef volatile PTRACE_STORE_MEMORY_MAP VPTRACE_STORE_MEMORY_MAP;
@@ -232,6 +235,8 @@ typedef struct _TRACE_STORE {
         ULONG Flags;
         struct {
             ULONG NoRetire:1;
+            ULONG NoPrefaulting:1;
+            ULONG RecordSimpleMetadata:1;
         };
     };
 
@@ -239,35 +244,63 @@ typedef struct _TRACE_STORE {
     PVOID PrevAddress;
 
     PTRACE_STORE            MetadataStore;
+    PTRACE_STORE            AddressStore;
+
     PALLOCATE_RECORDS       AllocateRecords;
     PFREE_RECORDS           FreeRecords;
+
+    //
+    // Inline TRACE_STORE_METADATA.
+    //
+
     union {
         union {
             struct {
-                ULARGE_INTEGER  NumberOfRecords;
-                LARGE_INTEGER   RecordSize;
+                union {
+                    ULARGE_INTEGER  NumberOfRecords;
+                    ULARGE_INTEGER  NumberOfAllocations;
+                };
+                union {
+                    LARGE_INTEGER   RecordSize;
+                    ULARGE_INTEGER  AllocationSize;
+                };
             };
             TRACE_STORE_METADATA Metadata;
         };
         PTRACE_STORE_METADATA pMetadata;
     };
+
+    //
+    // Inline TRACE_STORE_ADDRESS_RANGE
+    union {
+        union {
+            struct {
+                PVOID   Start;
+                PVOID   End;
+            };
+            TRACE_STORE_ADDRESS Address;
+        };
+        PTRACE_STORE_ADDRESS pAddress;
+    };
+
+    UNICODE_STRING Path;
+    WCHAR PathBuffer[_OUR_MAX_PATH];
 } TRACE_STORE, *PTRACE_STORE;
 
 static const LPCWSTR TraceStoreFileNames[] = {
     L"trace_events.dat",
-    L"trace_frames.dat",
-    L"trace_modules.dat",
     L"trace_functions.dat",
-    L"trace_filenames.dat",
-    L"trace_exceptions.dat",
-    L"trace_lines.dat",
-    L"trace_strings.dat",
-    L"trace_callstack.dat",
 };
 
-static const PCWSTR TraceStoreMetadataSuffix = L":metadata";
+static const WCHAR TraceStoreMetadataSuffix[] = L":metadata";
 static const DWORD TraceStoreMetadataSuffixLength = (
     sizeof(TraceStoreMetadataSuffix) /
+    sizeof(WCHAR)
+);
+
+static const WCHAR TraceStoreAddressSuffix[] = L":address";
+static const DWORD TraceStoreAddressSuffixLength = (
+    sizeof(TraceStoreAddressSuffix) /
     sizeof(WCHAR)
 );
 
@@ -276,27 +309,19 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
+static const USHORT ElementsPerTraceStore = 3;
+
 static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
-    10 << 20,   // frames
-    10 << 20,   // modules
     10 << 20,   // functions
-    10 << 20,   // filenames
-    10 << 20,   // exceptions
-    10 << 20,   // lines
-    10 << 20,   // strings
-    10 << 20,   // call stack
 };
 
-#define TRACE_STORE_EVENTS_INDEX 0
-#define TRACE_STORE_FRAMES_INDEX 1
-#define TRACE_STORE_MODULES_INDEX 2
-#define TRACE_STORE_FUNCTIONS_INDEX 3
-#define TRACE_STORE_FILENAMES_INDEX 4
-#define TRACE_STORE_EXCEPTIONS_INDEX 5
-#define TRACE_STORE_LINES_INDEX 6
-#define TRACE_STORE_STRINGS_INDEX 7
-#define TRACE_STORE_CALL_STACK 8
+#define TRACE_STORE_EVENTS_INDEX                0
+#define TRACE_STORE_EVENTS_METADATA_INDEX       1
+#define TRACE_STORE_EVENTS_ADDRESSES_INDEX      2
+#define TRACE_STORE_FUNCTIONS_INDEX             3
+#define TRACE_STORE_FUNCTIONS_METADATA_INDEX    4
+#define TRACE_STORE_FUNCTIONS_ADDRESSES_INDEX   5
 
 typedef struct _TRACE_STORES {
     USHORT  Size;

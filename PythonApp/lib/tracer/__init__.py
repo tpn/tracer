@@ -173,6 +173,22 @@ class PYTHON_TRACE_CONTEXT(Structure):
 PPYTHON_TRACE_CONTEXT = POINTER(PYTHON_TRACE_CONTEXT)
 PPYTHON_TRACE_CONTEXT = PVOID
 
+class _PYTHON_TRACE_EVENT_TIME_FIELD(Union):
+    _fields_ = [
+        ('Timestamp',   LARGE_INTEGER),
+        ('Elapsed',     LARGE_INTEGER),
+    ]
+
+class _PYTHON_TRACE_EVENT_TYPE_BITFIELD(Structure):
+    _fields_ = [
+        ('IsCall',          ULONG, 1),
+        ('IsException',     ULONG, 1),
+        ('IsLine',          ULONG, 1),
+        ('IsReturn',        ULONG, 1),
+        ('IsC',             ULONG, 1),
+        ('IsReverseJump',   ULONG, 1),
+    ]
+
 #===============================================================================
 # Functions
 #===============================================================================
@@ -244,17 +260,17 @@ def tracer(path=None, dll=None):
     dll.InitializeTraceContext.restype = BOOL
     dll.InitializeTraceContext.argtypes = [
         PVOID, #PRTL,
-        PTRACE_CONTEXT,
+        PVOID, #PTRACE_CONTEXT,
         PDWORD,
-        PTRACE_SESSION,
-        PTRACE_STORES,
+        PVOID, #PTRACE_SESSION,
+        PVOID, #PTRACE_STORES,
         PVOID,
     ]
 
     dll.InitializeTraceSession.restype = BOOL
     dll.InitializeTraceSession.argtypes = [
         PVOID, #PRTL,
-        PTRACE_SESSION,
+        PVOID, #PTRACE_SESSION,
         PDWORD
     ]
 
