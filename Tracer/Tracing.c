@@ -21,6 +21,10 @@ static const ULONG DefaultMetadataTraceStoreMappingSize = (1 << 16); // 64KB
 static const ULONG DefaultAddressTraceStoreSize         = (1 << 21); // 2MB
 static const ULONG DefaultAddressTraceStoreMappingSize  = (1 << 16); // 64KB
 
+BOOL
+RecordTraceStoreAddress(
+    _In_    PTRACE_STORE TraceStore
+    );
 
 FORCEINLINE
 BOOL
@@ -167,7 +171,9 @@ GetSystemTimerFunctionCallback(
 
     Proc = GetProcAddress(Module, "GetSystemTimePreciseAsFileTime");
     if (Proc) {
-        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (PGETSYSTEMTIMEPRECISEASFILETIME)Proc;
+        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (
+            (PGETSYSTEMTIMEPRECISEASFILETIME)Proc
+        );
     } else {
         Module = LoadLibrary(TEXT("ntdll"));
         if (!Module) {
@@ -192,7 +198,11 @@ ReturnFreeTraceStoreMemoryMap(
 )
 {
     SecureZeroMemory(MemoryMap, sizeof(*MemoryMap));
-    InterlockedPushEntrySList(&TraceStore->FreeMemoryMaps, &MemoryMap->ListEntry);
+
+    InterlockedPushEntrySList(
+        &TraceStore->FreeMemoryMaps,
+        &MemoryMap->ListEntry
+    );
 }
 
 PSYSTEM_TIMER_FUNCTION
@@ -240,11 +250,22 @@ CallSystemTimer(
     }
 
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
+
         SystemTimerFunction->GetSystemTimePreciseAsFileTime(SystemTime);
+
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        if (!SystemTimerFunction->NtQuerySystemTime((PLARGE_INTEGER)SystemTime)) {
+        BOOL Success;
+
+        Success = (
+            SystemTimerFunction->NtQuerySystemTime(
+                (PLARGE_INTEGER)SystemTime
+            )
+        );
+
+        if (!Success) {
             return FALSE;
         }
+
     } else {
         return FALSE;
     }
@@ -530,7 +551,8 @@ InitializeTraceStores(
 {
     BOOL Success;
     HRESULT Result;
-    DWORD Index, StoreIndex;
+    DWORD Index;
+    DWORD StoreIndex;
     DWORD LastError;
     WCHAR Path[_OUR_MAX_PATH];
     LPWSTR FileNameDest;
@@ -614,13 +636,14 @@ InitializeTraceStores(
 
     TraceStores->Rtl = Rtl;
 
-    for (Index = 0, StoreIndex = 0;
-         Index < NumberOfTraceStores;
-         Index++, StoreIndex += ElementsPerTraceStore)
-    {
+    TraceStores->NumberOfTraceStores = NumberOfTraceStores;
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
         PTRACE_STORE MetadataStore = TraceStore+1;
         PTRACE_STORE AddressStore = TraceStore+2;
+
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
         ULONG MappingSize = DefaultTraceStoreMappingSize;
@@ -649,8 +672,6 @@ InitializeTraceStores(
             return FALSE;
         }
     }
-
-    TraceStores->NumberOfTraceStores = NumberOfTraceStores;
 
     return TRUE;
 }
@@ -765,59 +786,55 @@ void
 CloseTraceStores(PTRACE_STORES TraceStores)
 {
     USHORT Index;
+    USHORT StoreIndex;
 
     if (!TraceStores) {
         return;
     }
 
-    for (Index = 0;
-         Index < (NumberOfTraceStores * ElementsPerTraceStore);
-         Index += ElementsPerTraceStore) {
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
-        CloseTraceStore(&TraceStores->Stores[Index]);
+        CloseTraceStore(&TraceStores->Stores[StoreIndex]);
     }
 }
 
 DWORD
 GetTraceStoresAllocationSize(const USHORT NumberOfTraceStores)
 {
-    //
-    // For each trace store, we also store a metadata trace store, hence the
-    // "NumberOfTraceStores * 2" part.  The subsequent "minus size-of-1-trace
-    // -store" accounts for the fact that the TRACE_STORES structure includes
-    // a single trace store structure, e.g.:
-    //      typedef struct _TRACE_STORES {
-    //          ...
-    //          TRACE_STORE Stores[1];
-    //
-    // So if NumberOfTraceStores is 6, there will actually be space for
-    // 12 TRACE_STORE structures.
-    //
-    return (
-        sizeof(TRACE_STORES) + (
-            (
-                sizeof(TRACE_STORE) *
-                NumberOfTraceStores *
-                ElementsPerTraceStore
-            ) -
-            sizeof(TRACE_STORE)
-        )
+    SHORT Delta;
+    USHORT ExtraSize;
+    USHORT DefaultNumberOfTraceStores = (
+        RTL_FIELD_SIZE(TRACE_STORES, Stores) /
+        sizeof(TRACE_STORE)
     );
+
+    Delta = (NumberOfTraceStores - DefaultNumberOfTraceStores);
+
+    if (Delta <= 0) {
+        return sizeof(TRACE_STORES);
+    }
+
+    ExtraSize = sizeof(TRACE_STORE) * Delta * ElementsPerTraceStore;
+
+    return sizeof(TRACE_STORES) + ExtraSize;
 }
 
 VOID
 PrefaultFutureTraceStorePage(_Inout_ PTRACE_STORE TraceStore)
 {
+    BOOL Success;
     PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
 
     if (!TraceStore) {
         return;
     }
 
-    if (!PopTraceStoreMemoryMap(
-            &TraceStore->PrefaultMemoryMaps,
-            &PrefaultMemoryMap))
-    {
+    Success = PopTraceStoreMemoryMap(
+        &TraceStore->PrefaultMemoryMaps,
+        &PrefaultMemoryMap
+    );
+
+    if (!Success) {
         return;
     }
 
@@ -842,7 +859,7 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
 {
     BOOL Result;
     BOOL Success;
-    PVOID DesiredBaseAddress;
+    PVOID PreferredBaseAddress;
     FILE_STANDARD_INFO FileInfo;
     LARGE_INTEGER CurrentFileOffset, NewFileOffset, DistanceToMove;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -868,7 +885,13 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     //
 
     DistanceToMove.QuadPart = 0;
-    if (!SetFilePointerEx(TraceStore->FileHandle, DistanceToMove, &CurrentFileOffset, FILE_CURRENT)) {
+
+    Success = SetFilePointerEx(TraceStore->FileHandle,
+                               DistanceToMove,
+                               &CurrentFileOffset,
+                               FILE_CURRENT);
+
+    if (!Success) {
         goto Error;
     }
 
@@ -927,7 +950,7 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
         goto Error;
     }
 
-    DesiredBaseAddress = MemoryMap->DesiredBaseAddress;
+    PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
 
 Retry:
     MemoryMap->BaseAddress = MapViewOfFileEx(
@@ -936,37 +959,36 @@ Retry:
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
         MemoryMap->MappingSize.LowPart,
-        DesiredBaseAddress
+        PreferredBaseAddress
     );
 
     if (!MemoryMap->BaseAddress) {
 
-        if (DesiredBaseAddress) {
-            DesiredBaseAddress = NULL;
+        if (PreferredBaseAddress) {
+            PreferredBaseAddress = NULL;
             goto Retry;
         }
 
         goto Error;
     }
 
-    MemoryMap->NextAddress = MemoryMap->BaseAddress;
-
     if (!IsMetadataTraceStore(TraceStore)) {
 
-        //
-        // xxx todo: save address information.
-        //
-
-        ;
-
+        RecordTraceStoreAddress(TraceStore);
     }
 
-    //
-    // Prefault the first two pages.  The AllocateRecords function will
-    // take care of prefaulting subsequent pages.
-    //
-    PrefaultPage(MemoryMap->BaseAddress);
-    PrefaultNextPage(MemoryMap->BaseAddress);
+    MemoryMap->NextAddress = MemoryMap->BaseAddress;
+
+    if (!TraceStore->NoPrefaulting) {
+
+        //
+        // Prefault the first two pages.  The AllocateRecords function will
+        // take care of prefaulting subsequent pages.
+        //
+
+        PrefaultPage(MemoryMap->BaseAddress);
+        PrefaultNextPage(MemoryMap->BaseAddress);
+    }
 
     Result = TRUE;
     PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
@@ -1121,6 +1143,70 @@ CreateMemoryMapsForTraceStore(
     return TRUE;
 }
 
+_Success_(return != 0)
+BOOL
+LoadNextTraceStoreAddress(
+    _In_    PTRACE_STORE TraceStore,
+    _Out_   PPTRACE_STORE_ADDRESS AddressPointer
+    )
+{
+    PRTL Rtl;
+    PVOID Buffer;
+    TRACE_STORE_ADDRESS Address;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+    PALLOCATE_RECORDS AllocateRecords;
+    PTRACE_STORE AddressStore;
+    PTRACE_CONTEXT Context;
+
+    ULARGE_INTEGER AddressRecordSize = { sizeof(Address) };
+    ULARGE_INTEGER NumberOfAddressRecords = { 1 };
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AddressPointer)) {
+        return FALSE;
+    }
+
+    if (IsMetadataTraceStore(TraceStore)) {
+
+        //
+        // Should never be called against a metadata store.
+        //
+
+        __debugbreak();
+
+        return FALSE;
+    }
+
+    Rtl = TraceStore->Rtl;
+    Context = TraceStore->TraceContext;
+    AddressStore = TraceStore->AddressStore;
+    AllocateRecords = AddressStore->AllocateRecords;
+
+    Buffer = AllocateRecords(Context,
+                             AddressStore,
+                             &AddressRecordSize,
+                             &NumberOfAddressRecords);
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    MemoryMap = TraceStore->MemoryMap;
+
+    Address.PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+    Address.BaseAddress = MemoryMap->BaseAddress;
+    Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+    Address.MappedSequenceId.QuadPart = TraceStore->MappingSequenceId++;
+    Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
+
+    Rtl->CopyToMemoryMappedMemory(Rtl, Buffer, &Address, sizeof(Address));
+
+    return TRUE;
+}
+
 BOOL
 RecordTraceStoreAllocation(
     _Inout_ PTRACE_STORE     TraceStore,
@@ -1220,7 +1306,7 @@ ConsumeNextTraceStoreMemoryMap(
             PushTraceStoreMemoryMap(
                 &TraceStore->CloseMemoryMaps,
                 PrevPrevMemoryMap
-                );
+            );
 
             SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
 
@@ -1268,6 +1354,7 @@ ConsumeNextTraceStoreMemoryMap(
         //
         // Return the PrepareMemoryMap back to the free list.
         //
+
         ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
         return FALSE;
     }
@@ -1549,14 +1636,22 @@ BindTraceStoreToTraceContext(
     InitializeSListHead(&TraceStore->NextMemoryMaps);
     InitializeSListHead(&TraceStore->PrefaultMemoryMaps);
 
-    if (!CreateMemoryMapsForTraceStore(TraceStore,
-                                       TraceContext,
-                                       InitialFreeMemoryMaps)) {
+    Success = CreateMemoryMapsForTraceStore(
+        TraceStore,
+        TraceContext,
+        InitialFreeMemoryMaps
+    );
 
+    if (!Success) {
         return FALSE;
     }
 
-    if (!PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, &FirstMemoryMap)) {
+    Success = PopTraceStoreMemoryMap(
+        &TraceStore->FreeMemoryMaps,
+        &FirstMemoryMap
+    );
+
+    if (!Success) {
         return FALSE;
     }
 
@@ -1610,14 +1705,23 @@ BindTraceStoreToTraceContext(
     FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
 
     if (!IsMetadataTraceStore(TraceStore)) {
+        BOOL SetPreferredBaseAddress;
         PTRACE_STORE AddressStore;
+        PTRACE_STORE_ADDRESS Address;
 
         AddressStore = TraceStore->AddressStore;
-        TraceStore->pAddress = (
-            (PTRACE_STORE_ADDRESS)AddressStore->MemoryMap->BaseAddress
+        Address = (PTRACE_STORE_ADDRESS)AddressStore->MemoryMap->BaseAddress;
+        TraceStore->pAddress = Address;
+
+        SetPreferredBaseAddress = (
+            Address->MappedSize.QuadPart == TraceStore->MappingSize.QuadPart &&
+            Address->MappedSequenceId.QuadPart == 0 &&
+            ((ULONG_PTR)Address->BaseAddress & ((1ULL << 47)-1)) == 0
         );
 
-        FirstMemoryMap->DesiredBaseAddress = TraceStore->pAddress->Start;
+        if (SetPreferredBaseAddress) {
+            FirstMemoryMap->PreferredBaseAddress = Address->BaseAddress;
+        }
     }
 
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, FirstMemoryMap);
@@ -1660,6 +1764,7 @@ InitializeTraceContext(
 )
 {
     USHORT Index;
+    USHORT StoreIndex;
 
     if (!Rtl) {
         return FALSE;
@@ -1715,17 +1820,19 @@ InitializeTraceContext(
 
     QueryPerformanceFrequency(&TraceContext->PerformanceCounterFrequency);
 
-    for (Index = 0;
-         Index < (TraceStores->NumberOfTraceStores * ElementsPerTraceStore);
-         Index += ElementsPerTraceStore) {
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
-        PTRACE_STORE TraceStore = &TraceStores->Stores[Index];
-        PTRACE_STORE MetadataStore = &TraceStores->Stores[Index+1];
-        PTRACE_STORE AddressStore = &TraceStores->Stores[Index+2];
+        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
+        PTRACE_STORE MetadataStore = TraceStore+1;
+        PTRACE_STORE AddressStore = TraceStore+2;
+
+        TraceStore->SequenceId = TraceContext->SequenceId++;
+        MetadataStore->SequenceId = TraceStore->SequenceId;
+        AddressStore->SequenceId = TraceStore->SequenceId;
 
         //
-        // Bind the metadata store first so that the trace store can update
-        // its pMetadata pointer.
+        // Bind the metadata stores first so that the trace store can update
+        // its p<Metadata> pointers.
         //
 
         if (!BindTraceStoreToTraceContext(MetadataStore, TraceContext)) {
@@ -1779,4 +1886,4 @@ Debugbreak()
 } // extern "C"
 #endif
 
-// vim: set ts=8 sw=4 sts=4 expandtab si ai:
+// vim: set ts=8 sw=4 sts=4 expandtab si ai                                    :
