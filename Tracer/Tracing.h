@@ -146,9 +146,12 @@ typedef struct _TRACE_STORE_METADATA {
 } TRACE_STORE_METADATA, *PTRACE_STORE_METADATA;
 
 typedef struct _TRACE_STORE_ADDRESS {
-    PVOID   Start;
-    PVOID   End;
-} TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS;
+    PVOID         PreferredBaseAddress;
+    PVOID         BaseAddress;
+    LARGE_INTEGER MappedSize;
+    LARGE_INTEGER MappedSequenceId;
+    LARGE_INTEGER FileOffset;
+} TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
 
 typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
@@ -198,7 +201,7 @@ typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP {
     __declspec(align(8))  PVOID         BaseAddress;        // 8        56
     __declspec(align(8))
     union {
-        PVOID DesiredBaseAddress;                           // 8        64
+        PVOID PreferredBaseAddress;                         // 8        64
         PVOID NextAddress;                                  // 8        64
     };
 } TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP, **PPTRACE_STORE_MEMORY_MAP;
@@ -227,9 +230,11 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
+    ULONGLONG MappingSequenceId;
     ULONG DroppedRecords;
     ULONG ExhaustedFreeMemoryMaps;
     ULONG AllocationsOutpacingNextMemoryMapPreparation;
+    ULONG SequenceId;
 
     union {
         ULONG Flags;
@@ -275,8 +280,11 @@ typedef struct _TRACE_STORE {
     union {
         union {
             struct {
-                PVOID   Start;
-                PVOID   End;
+                PVOID         PreferredBaseAddress;
+                PVOID         BaseAddress;
+                LARGE_INTEGER MappedSize;
+                LARGE_INTEGER MappedSequenceId;
+                LARGE_INTEGER FileOffset;
             };
             TRACE_STORE_ADDRESS Address;
         };
@@ -323,12 +331,20 @@ static const ULONG InitialTraceStoreFileSizes[] = {
 #define TRACE_STORE_FUNCTIONS_METADATA_INDEX    4
 #define TRACE_STORE_FUNCTIONS_ADDRESSES_INDEX   5
 
+#define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
+    for (Index = 0, StoreIndex = 0;                                 \
+         Index < TraceStores->NumberOfTraceStores;                  \
+         Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
+
+#define MAX_TRACE_STORES 2
+
 typedef struct _TRACE_STORES {
     USHORT  Size;
     USHORT  NumberOfTraceStores;
-    ULONG   Reserved;
+    USHORT  ElementsPerTraceStore;
+    USHORT  Reserved;
     PRTL    Rtl;
-    TRACE_STORE Stores[1];
+    TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
 typedef struct _PYTRACE_INFO {
