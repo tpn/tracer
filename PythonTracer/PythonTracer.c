@@ -483,7 +483,6 @@ InitializePythonTraceContext(
     _In_opt_ PVOID UserData
     )
 {
-    BOOL Reuse;
     PTRACE_STORE FunctionsStore;
     PTRACE_STORE EventsStore;
     PTRACE_STORES TraceStores;
@@ -532,15 +531,12 @@ InitializePythonTraceContext(
 
     FunctionsStore->NoRetire = TRUE;
 
-    Reuse = (BOOL)(!FunctionsStore->NoPreferredAddressReuse);
-
     Python->InitializePythonRuntimeTables(
         Python,
         TraceStoreAllocationRoutine,
         FunctionsStore,
         TraceStoreFreeRoutine,
-        FunctionsStore,
-        Reuse
+        FunctionsStore
     );
 
     EventsStore = &TraceStores->Stores[TRACE_STORE_EVENTS_INDEX];

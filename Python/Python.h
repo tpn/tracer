@@ -1483,8 +1483,7 @@ typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
     _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID               AllocationContext,
     _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext,
-    _In_      BOOL                Reuse
+    _In_opt_  PVOID               FreeContext
     );
 
 #define _PYTHONEXFUNCTIONS_HEAD                                      \
@@ -1782,8 +1781,7 @@ InitializePythonRuntimeTables(
     _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID               AllocationContext,
     _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext,
-    _In_      BOOL                Reuse
+    _In_opt_  PVOID               FreeContext
 );
 
 TRACER_API
