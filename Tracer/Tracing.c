@@ -22,8 +22,9 @@ static const ULONG DefaultAddressTraceStoreSize         = (1 << 21); // 2MB
 static const ULONG DefaultAddressTraceStoreMappingSize  = (1 << 16); // 64KB
 
 BOOL
-RecordTraceStoreAddress(
-    _In_    PTRACE_STORE TraceStore
+LoadNextTraceStoreAddress(
+    _In_    PTRACE_STORE TraceStore,
+    _Out_   PPTRACE_STORE_ADDRESS AddressPointer
     );
 
 FORCEINLINE
@@ -337,8 +338,8 @@ InitializeStore(
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ,
             NULL,
-            CREATE_ALWAYS,
-            FILE_FLAG_OVERLAPPED,
+            OPEN_ALWAYS,
+            FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
             NULL
         );
     }
@@ -466,6 +467,9 @@ InitializeTraceStore(
         return FALSE;
     }
 
+    TraceStore->Rtl = Rtl;
+    MetadataStore->Rtl = Rtl;
+    AddressStore->Rtl = Rtl;
 
     if (!InitializeTraceStorePath(Path, TraceStore)) {
         return FALSE;
@@ -478,8 +482,6 @@ InitializeTraceStore(
     if (!InitializeTraceStorePath(&AddressPath[0], AddressStore)) {
         return FALSE;
     }
-
-    TraceStore->Rtl = Rtl;
 
     // Create the data file first, before the :metadata stream.
     TraceStore->FileHandle = CreateFileW(
@@ -637,6 +639,7 @@ InitializeTraceStores(
     TraceStores->Rtl = Rtl;
 
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
+    TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
@@ -857,14 +860,28 @@ PrefaultFuturePageCallback(
 BOOL
 PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
 {
-    BOOL Result;
     BOOL Success;
+    BOOL IsMetadata;
+    BOOL HaveAddress;
+    BOOL SetPreferredBaseAddress;
+    PRTL Rtl;
+    NTSTATUS Result;
     PVOID PreferredBaseAddress;
+    PVOID OriginalPreferredBaseAddress;
+    TRACE_STORE_ADDRESS Address;
+    PTRACE_STORE_ADDRESS AddressPointer;
     FILE_STANDARD_INFO FileInfo;
     LARGE_INTEGER CurrentFileOffset, NewFileOffset, DistanceToMove;
+    ULONGLONG MappedSequenceId;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    if (!TraceStore) {
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    Rtl = TraceStore->Rtl;
+
+    if (!Rtl) {
         return FALSE;
     }
 
@@ -879,6 +896,8 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
         goto Error;
     }
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
 
     //
     // Get the current file offset.
@@ -950,9 +969,102 @@ PrepareNextTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
         goto Error;
     }
 
-    PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+    MappedSequenceId = TraceStore->MappedSequenceId.QuadPart++;
 
-Retry:
+    PreferredBaseAddress = NULL;
+    OriginalPreferredBaseAddress = NULL;
+
+    if (IsMetadata) {
+
+        //
+        // We don't attempt to re-use addresses if we're metadata.
+        //
+
+        HaveAddress = FALSE;
+
+        goto TryMapMemory;
+    }
+
+    //
+    // Attempt to load the next trace store address and re-use the previous
+    // mapping base address.
+    //
+
+    Success = LoadNextTraceStoreAddress(TraceStore, &AddressPointer);
+
+    if (!Success) {
+
+        HaveAddress = FALSE;
+
+    } else {
+
+        HaveAddress = TRUE;
+
+        //
+        // Don't try and re-use the preferred base address if we've been
+        // explicitly instructed not to.
+        //
+
+        if (TraceStore->NoPreferredAddressReuse) {
+            goto TryMapMemory;
+        }
+
+        //
+        // Copy the record to our local stack-allocated struct.  This
+        // simplifies our code as we only have to do one CopyMappedMemory()
+        // here to read it in then another one at the end when we write it
+        // back out (instead of multiple __try/__except blocks that catch
+        // STATUS_IN_PAGE_ERROR).
+        //
+
+        Result = Rtl->RtlCopyMappedMemory(
+            &Address,
+            AddressPointer,
+            sizeof(Address)
+        );
+
+        if (FAILED(Result)) {
+
+            //
+            // Jump straight to our memory mapping code without using any
+            // preferred base addresses.
+            //
+
+            goto TryMapMemory;
+        }
+
+        //
+        // If the mapping sequence, size and file offset line up, and the
+        // address is under 128TB, use the preferred base address.
+        //
+
+        SetPreferredBaseAddress = (
+            Address.MappedSequenceId.QuadPart == MappedSequenceId          &&
+            Address.MappedSize.QuadPart == MemoryMap->MappingSize.QuadPart &&
+            Address.FileOffset.QuadPart == MemoryMap->FileOffset.QuadPart  &&
+            (ULONG_PTR)Address.BaseAddress < ((1ULL << 47) - 1)
+        );
+
+        if (SetPreferredBaseAddress) {
+
+            //
+            // Everything lines up, try use this as the base address.
+            //
+
+            PreferredBaseAddress = Address.BaseAddress;
+
+        } else {
+
+            //
+            // As soon as one address record doesn't line up we disable all
+            // future re-use attempts.
+            //
+
+            TraceStore->NoPreferredAddressReuse = TRUE;
+        }
+    }
+
+TryMapMemory:
     MemoryMap->BaseAddress = MapViewOfFileEx(
         MemoryMap->MappingHandle,
         FILE_MAP_READ | FILE_MAP_WRITE,
@@ -965,39 +1077,97 @@ Retry:
     if (!MemoryMap->BaseAddress) {
 
         if (PreferredBaseAddress) {
+
+            //
+            // Make a note of the original preferred base address, clear it,
+            // then attempt the mapping again.
+            //
+
+            OriginalPreferredBaseAddress = PreferredBaseAddress;
             PreferredBaseAddress = NULL;
-            goto Retry;
+            goto TryMapMemory;
         }
 
         goto Error;
+
     }
 
-    if (!IsMetadataTraceStore(TraceStore)) {
-
-        RecordTraceStoreAddress(TraceStore);
+    if (IsMetadata) {
+        goto Finalize;
     }
+
+    if (!PreferredBaseAddress && OriginalPreferredBaseAddress) {
+
+        //
+        // The mapping succeeded, but not at our original preferred address.
+        // When we implement relocation support, we'll need to do that here.
+        //
+
+        PreferredBaseAddress = OriginalPreferredBaseAddress;
+
+    }
+
+    if (HaveAddress) {
+
+        //
+        // Record all of the mapping information in our address record, then
+        // copy it back to the memory-map-backed AddressPointer.
+        //
+
+        Address.PreferredBaseAddress = PreferredBaseAddress;
+        Address.BaseAddress = MemoryMap->BaseAddress;
+        Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+        Address.MappedSequenceId.QuadPart = MappedSequenceId;
+        Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
+
+        Result = Rtl->RtlCopyMappedMemory(
+            AddressPointer,
+            &Address,
+            sizeof(Address)
+        );
+
+        if (FAILED(Result)) {
+
+            //
+            // There's not really much we can do here.
+            //
+
+        }
+    }
+
+    //
+    // Intentional follow-on.
+    //
+
+Finalize:
+
+    //
+    // Initialize the next address to the base address.
+    //
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
 
     if (!TraceStore->NoPrefaulting) {
+
+        PVOID BaseAddress = MemoryMap->BaseAddress;
 
         //
         // Prefault the first two pages.  The AllocateRecords function will
         // take care of prefaulting subsequent pages.
         //
 
-        PrefaultPage(MemoryMap->BaseAddress);
-        PrefaultNextPage(MemoryMap->BaseAddress);
+        PrefaultPage(BaseAddress);
+        PrefaultNextPage(BaseAddress);
     }
 
-    Result = TRUE;
+    Success = TRUE;
     PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
     SetEvent(TraceStore->NextMemoryMapAvailableEvent);
 
     goto End;
 
 Error:
-    Result = FALSE;
+    Success = FALSE;
 
     if (MemoryMap->MappingHandle) {
         CloseHandle(MemoryMap->MappingHandle);
@@ -1007,7 +1177,7 @@ Error:
     ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
 
 End:
-    return Result;
+    return Success;
 }
 
 VOID
@@ -1153,7 +1323,6 @@ LoadNextTraceStoreAddress(
     PRTL Rtl;
     PVOID Buffer;
     TRACE_STORE_ADDRESS Address;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
     PALLOCATE_RECORDS AllocateRecords;
     PTRACE_STORE AddressStore;
     PTRACE_CONTEXT Context;
@@ -1194,15 +1363,8 @@ LoadNextTraceStoreAddress(
         return FALSE;
     }
 
-    MemoryMap = TraceStore->MemoryMap;
-
-    Address.PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
-    Address.BaseAddress = MemoryMap->BaseAddress;
-    Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
-    Address.MappedSequenceId.QuadPart = TraceStore->MappingSequenceId++;
-    Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
-
-    Rtl->CopyToMemoryMappedMemory(Rtl, Buffer, &Address, sizeof(Address));
+    *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
+    TraceStore->pAddress = (PTRACE_STORE_ADDRESS)Buffer;
 
     return TRUE;
 }
@@ -1265,6 +1427,7 @@ RecordTraceStoreAllocation(
     //
     // Update the record count.
     //
+
     Metadata->NumberOfRecords.QuadPart += NumberOfRecords->QuadPart;
     return TRUE;
 }
@@ -1361,9 +1524,9 @@ ConsumeNextTraceStoreMemoryMap(
 
     //
     // We've now got the two things we need: a free memory map to fill in with
-    // the details of the next memory map to prepare (PrepareMemoryMap), and the
-    // ready memory map (NextMemoryMap) that contains an active mapping ready
-    // for use.
+    // the details of the next memory map to prepare (PrepareMemoryMap), and
+    // the ready memory map (NextMemoryMap) that contains an active mapping
+    // ready for use.
     //
 
     if (TraceStore->MemoryMap) {
@@ -1498,9 +1661,11 @@ AllocateRecords(
     } else if (!TraceStore->NoPrefaulting) {
 
         //
-        // If this allocation cross a page boundary, we prefault the page
+        // If this allocation crosses a page boundary, we prefault the page
         // after the next page in a separate thread (as long as it's still
-        // within our allocated range).
+        // within our allocated range).  (We do this in a separate thread as
+        // a page fault will put the thread into an alertable wait (i.e.
+        // suspends it) until the underlying I/O completes.)
         //
 
         PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
@@ -1523,6 +1688,7 @@ AllocateRecords(
                     // address.  That is, prefault the page that is two
                     // pages away from whatever page NextAddress is in.
                     //
+
                     PrefaultMemoryMap->NextAddress = PageAfterNextPage;
 
                     PushTraceStoreMemoryMap(&TraceStore->PrefaultMemoryMaps,
@@ -1612,7 +1778,7 @@ BOOL
 BindTraceStoreToTraceContext(
     _Inout_ PTRACE_STORE TraceStore,
     _Inout_ PTRACE_CONTEXT TraceContext
-)
+    )
 {
     BOOL Success;
     DWORD Result;
@@ -1703,26 +1869,6 @@ BindTraceStoreToTraceContext(
 
     FirstMemoryMap->FileHandle = TraceStore->FileHandle;
     FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
-
-    if (!IsMetadataTraceStore(TraceStore)) {
-        BOOL SetPreferredBaseAddress;
-        PTRACE_STORE AddressStore;
-        PTRACE_STORE_ADDRESS Address;
-
-        AddressStore = TraceStore->AddressStore;
-        Address = (PTRACE_STORE_ADDRESS)AddressStore->MemoryMap->BaseAddress;
-        TraceStore->pAddress = Address;
-
-        SetPreferredBaseAddress = (
-            Address->MappedSize.QuadPart == TraceStore->MappingSize.QuadPart &&
-            Address->MappedSequenceId.QuadPart == 0 &&
-            ((ULONG_PTR)Address->BaseAddress & ((1ULL << 47)-1)) == 0
-        );
-
-        if (SetPreferredBaseAddress) {
-            FirstMemoryMap->PreferredBaseAddress = Address->BaseAddress;
-        }
-    }
 
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, FirstMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);

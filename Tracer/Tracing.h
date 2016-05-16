@@ -242,6 +242,7 @@ typedef struct _TRACE_STORE {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
             ULONG RecordSimpleMetadata:1;
+            ULONG NoPreferredAddressReuse:1;
         };
     };
 

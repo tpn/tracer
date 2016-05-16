@@ -414,21 +414,15 @@ InitializePythonRuntimeTables(
     _In_opt_    PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_    PVOID AllocationContext,
     _In_opt_    PFREE_ROUTINE FreeRoutine,
-    _In_opt_    PVOID FreeContext
+    _In_opt_    PVOID FreeContext,
+    _In_        BOOL Reuse
     )
 {
     PRTL Rtl;
     Rtl = Python->Rtl;
     PPREFIX_TABLE PrefixTable;
     PRTL_GENERIC_TABLE GenericTable;
-
-    PrefixTable = &Python->PathTable.PrefixTable;
-    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
-    Rtl->PfxInitialize(PrefixTable);
-
-    PrefixTable = &Python->ModuleNameTable;
-    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
-    Rtl->PfxInitialize(PrefixTable);
+    PVOID Buffer;
 
     //
     // If the allocation routine isn't provided, default to the generic
@@ -454,16 +448,48 @@ InitializePythonRuntimeTables(
 
     }
 
+    Buffer = Python->AllocationRoutine(Python->AllocationContext,
+                                       sizeof(PYTHON_PATH_TABLE));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    Python->PathTable = (PPYTHON_PATH_TABLE)Buffer;
+
+    if (!Reuse) {
+
+        PrefixTable = &Python->PathTable->PrefixTable;
+        SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+        Rtl->PfxInitialize(PrefixTable);
+    }
+
+    PrefixTable = &Python->ModuleNameTable;
+    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+    Rtl->PfxInitialize(PrefixTable);
+
     Python->FunctionTableCompareRoutine = FunctionTableCompareRoutine;
     Python->FunctionTableAllocateRoutine = FunctionTableAllocationRoutine;
     Python->FunctionTableFreeRoutine = FunctionTableFreeRoutine;
 
-    GenericTable = &Python->FunctionTable.GenericTable;
-    Rtl->RtlInitializeGenericTable(GenericTable,
-                                   Python->FunctionTableCompareRoutine,
-                                   Python->FunctionTableAllocateRoutine,
-                                   Python->FunctionTableFreeRoutine,
-                                   Python);
+    Buffer = Python->AllocationRoutine(Python->AllocationContext,
+                                       sizeof(PYTHON_FUNCTION_TABLE));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    Python->FunctionTable = (PPYTHON_FUNCTION_TABLE)Buffer;
+
+    GenericTable = &Python->FunctionTable->GenericTable;
+
+    if (!Reuse) {
+        Rtl->RtlInitializeGenericTable(GenericTable,
+                                       Python->FunctionTableCompareRoutine,
+                                       Python->FunctionTableAllocateRoutine,
+                                       Python->FunctionTableFreeRoutine,
+                                       Python);
+    }
 
     return TRUE;
 }
@@ -1001,7 +1027,7 @@ RegisterDirectory(
     DirectoryPrefix->MaximumLength = Directory->MaximumLength;
     DirectoryPrefix->Buffer = Directory->Buffer;
 
-    PrefixTable = &Python->PathTable.PrefixTable;
+    PrefixTable = &Python->PathTable->PrefixTable;
     PrefixTableEntry = (PPREFIX_TABLE_ENTRY)Entry;
 
     Success = Rtl->PfxInsertPrefix(PrefixTable,
@@ -1869,7 +1895,7 @@ GetPathEntryForDirectory(
     // Initialize pointer to the PREFIX_TABLE.
     //
 
-    PrefixTable = &Python->PathTable.PrefixTable;
+    PrefixTable = &Python->PathTable->PrefixTable;
 
     //
     // Seach for the directory in the prefix table.
@@ -2884,7 +2910,7 @@ Routine Description:
     // Add the newly created PathEntry to our path table prefix tree.
     //
 
-    PrefixTable = &Python->PathTable.PrefixTable;
+    PrefixTable = &Python->PathTable->PrefixTable;
     PrefixTableEntry = (PPREFIX_TABLE_ENTRY)PathEntry;
 
     Success = Rtl->PfxInsertPrefix(PrefixTable,
@@ -3007,7 +3033,7 @@ GetPathEntryFromFrame(
         return FALSE;
     }
 
-    PrefixTable = &Python->PathTable.PrefixTable;
+    PrefixTable = &Python->PathTable->PrefixTable;
     Rtl = Python->Rtl;
 
 Retry:
@@ -3123,7 +3149,7 @@ RegisterFrame(
 
     FunctionRecord.CodeObject = CodeObject;
 
-    FunctionTable = &Python->FunctionTable;
+    FunctionTable = Python->FunctionTable;
 
     Function = Rtl->RtlInsertElementGenericTable(
         &FunctionTable->GenericTable,

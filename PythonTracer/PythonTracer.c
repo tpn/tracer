@@ -466,17 +466,6 @@ FunctionCompare(
     PPYTHON_FUNCTION First = (PPYTHON_FUNCTION)FirstStruct;
     PPYTHON_FUNCTION Second = (PPYTHON_FUNCTION)SecondStruct;
 
-    //PPYTHON Python;
-    //PPYTHON_TRACE_CONTEXT Context;
-
-    /*
-    Context = CONTAINING_RECORD(Table->TableContext,
-                                PYTHON_TRACE_CONTEXT,
-                                FunctionTable);
-
-    Python = Context->Python;
-    */
-
     return GenericComparePointer(Table,
                                  First->CodeObject,
                                  Second->CodeObject);
@@ -494,7 +483,9 @@ InitializePythonTraceContext(
     _In_opt_ PVOID UserData
     )
 {
-    PTRACE_STORE TraceStore;
+    BOOL Reuse;
+    PTRACE_STORE FunctionsStore;
+    PTRACE_STORE EventsStore;
     PTRACE_STORES TraceStores;
 
     if (!Context) {
@@ -537,17 +528,24 @@ InitializePythonTraceContext(
     Context->SkipFrames = 1;
 
     TraceStores = TraceContext->TraceStores;
-    TraceStore = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
+    FunctionsStore = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
 
-    TraceStore->NoRetire = TRUE;
+    FunctionsStore->NoRetire = TRUE;
+
+    Reuse = (BOOL)(!FunctionsStore->NoPreferredAddressReuse);
 
     Python->InitializePythonRuntimeTables(
         Python,
         TraceStoreAllocationRoutine,
-        TraceStore,
+        FunctionsStore,
         TraceStoreFreeRoutine,
-        TraceStore
+        FunctionsStore,
+        Reuse
     );
+
+    EventsStore = &TraceStores->Stores[TRACE_STORE_EVENTS_INDEX];
+
+    EventsStore->NoPreferredAddressReuse = TRUE;
 
     Context->FirstFunction = NULL;
     QueryPerformanceFrequency(&Context->Frequency);
