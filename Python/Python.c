@@ -414,8 +414,7 @@ InitializePythonRuntimeTables(
     _In_opt_    PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_    PVOID AllocationContext,
     _In_opt_    PFREE_ROUTINE FreeRoutine,
-    _In_opt_    PVOID FreeContext,
-    _In_        BOOL Reuse
+    _In_opt_    PVOID FreeContext
     )
 {
     PRTL Rtl;
@@ -457,12 +456,9 @@ InitializePythonRuntimeTables(
 
     Python->PathTable = (PPYTHON_PATH_TABLE)Buffer;
 
-    if (!Reuse) {
-
-        PrefixTable = &Python->PathTable->PrefixTable;
-        SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
-        Rtl->PfxInitialize(PrefixTable);
-    }
+    PrefixTable = &Python->PathTable->PrefixTable;
+    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+    Rtl->PfxInitialize(PrefixTable);
 
     PrefixTable = &Python->ModuleNameTable;
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
@@ -483,13 +479,11 @@ InitializePythonRuntimeTables(
 
     GenericTable = &Python->FunctionTable->GenericTable;
 
-    if (!Reuse) {
-        Rtl->RtlInitializeGenericTable(GenericTable,
-                                       Python->FunctionTableCompareRoutine,
-                                       Python->FunctionTableAllocateRoutine,
-                                       Python->FunctionTableFreeRoutine,
-                                       Python);
-    }
+    Rtl->RtlInitializeGenericTable(GenericTable,
+                                   Python->FunctionTableCompareRoutine,
+                                   Python->FunctionTableAllocateRoutine,
+                                   Python->FunctionTableFreeRoutine,
+                                   Python);
 
     return TRUE;
 }
