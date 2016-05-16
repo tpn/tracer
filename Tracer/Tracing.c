@@ -1565,6 +1565,7 @@ AllocateRecords(
     _In_    PULARGE_INTEGER NumberOfRecords
 )
 {
+    BOOL Success;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     ULONG_PTR AllocationSize;
     PVOID ReturnAddress = NULL;
@@ -1658,43 +1659,58 @@ AllocateRecords(
             )
         );
 
-    } else if (!TraceStore->NoPrefaulting) {
+    } else {
 
-        //
-        // If this allocation crosses a page boundary, we prefault the page
-        // after the next page in a separate thread (as long as it's still
-        // within our allocated range).  (We do this in a separate thread as
-        // a page fault will put the thread into an alertable wait (i.e.
-        // suspends it) until the underlying I/O completes.)
-        //
+        if (!TraceStore->NoPrefaulting) {
 
-        PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
-        NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
+            //
+            // If this allocation crosses a page boundary, we prefault the page
+            // after the next page in a separate thread (as long as it's still
+            // within our allocated range).  (We do this in a separate thread
+            // as a page fault will put the thread into an alertable wait (i.e.
+            // suspends it) until the underlying I/O completes.  That would
+            // adversely affect the latency of our hot-path tracing code where
+            // allocations are done quite frequently.)
+            //
 
-        if (PrevPage != NextPage) {
+            PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
+            NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
 
-            PVOID PageAfterNextPage = (PVOID)((ULONG_PTR)NextPage + PAGE_SIZE);
+            if (PrevPage != NextPage) {
 
-            if (PageAfterNextPage < EndAddress) {
+                PVOID PageAfterNextPage = (PVOID)(
+                    (ULONG_PTR)
+                        NextPage + PAGE_SIZE
+                );
 
-                PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
+                if (PageAfterNextPage < EndAddress) {
 
-                if (PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps,
-                                           &PrefaultMemoryMap))
-                {
+                    PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
 
-                    //
-                    // Prefault the page after the next page after this
-                    // address.  That is, prefault the page that is two
-                    // pages away from whatever page NextAddress is in.
-                    //
+                    Success = PopTraceStoreMemoryMap(
+                        &TraceStore->FreeMemoryMaps,
+                        &PrefaultMemoryMap
+                    );
 
-                    PrefaultMemoryMap->NextAddress = PageAfterNextPage;
+                    if (Success) {
 
-                    PushTraceStoreMemoryMap(&TraceStore->PrefaultMemoryMaps,
-                                            PrefaultMemoryMap);
+                        //
+                        // Prefault the page after the next page after this
+                        // address.  That is, prefault the page that is two
+                        // pages away from whatever page NextAddress is in.
+                        //
 
-                    SubmitThreadpoolWork(TraceStore->PrefaultFuturePageWork);
+                        PrefaultMemoryMap->NextAddress = PageAfterNextPage;
+
+                        PushTraceStoreMemoryMap(
+                            &TraceStore->PrefaultMemoryMaps,
+                            PrefaultMemoryMap
+                        );
+
+                        SubmitThreadpoolWork(
+                            TraceStore->PrefaultFuturePageWork
+                        );
+                    }
                 }
             }
         }
