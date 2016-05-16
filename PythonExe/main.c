@@ -1,8 +1,8 @@
 #include "stdafx.h"
 
-static CONST CHAR PythonExePath[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python.exe";
-static CONST CHAR PythonDllPath[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python27.dll";
-static CONST CHAR PythonPrefix[] = "C:\\Users\\r541964\\Anaconda2\\envs\\py2711";
+static CONST CHAR PythonExePath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python.exe";
+static CONST CHAR PythonDllPath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python27.dll";
+static CONST CHAR PythonPrefix[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711";
 
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 typedef PCHAR (*PPY_GET_PREFIX)(VOID);
@@ -160,6 +160,9 @@ mainCRTStartup()
     UnicodeArgv = CommandLineToArgvW(CommandLine, &NumberOfArgs);
     AllocSize = (sizeof(PSTR) * NumberOfArgs) + 1;
     AnsiArgv = (PPSTR)HeapAlloc(HeapHandle, HEAP_ZERO_MEMORY, AllocSize);
+    if (!AnsiArgv) {
+        goto End;
+    }
 
     for (Index = 0; Index < NumberOfArgs; Index++) {
         PWSTR UnicodeArg = UnicodeArgv[Index];

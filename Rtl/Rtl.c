@@ -2841,6 +2841,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyMappedMemory"))) {
+
+        if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyMappedMemory"))) {
+
+            if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyMappedMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyMappedMemory'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->RtlFillMemory = (PRTL_FILL_MEMORY)
         GetProcAddress(Rtl->NtdllModule, "RtlFillMemory"))) {
 

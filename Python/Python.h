@@ -1483,7 +1483,8 @@ typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
     _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID               AllocationContext,
     _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext
+    _In_opt_  PVOID               FreeContext,
+    _In_      BOOL                Reuse
     );
 
 #define _PYTHONEXFUNCTIONS_HEAD                                      \
@@ -1653,15 +1654,18 @@ typedef struct _PYTHON_FUNCTION_TABLE {
     (BOOL)(Function && Function->PathEntry.IsValid)  \
 )
 
+typedef PREFIX_TABLE MODULE_NAME_TABLE;
+typedef MODULE_NAME_TABLE *PMODULE_NAME_TABLE, **PPMODULE_NAME_TABLE;
+
 #define _PYTHONEXRUNTIME_HEAD                                   \
     HANDLE HeapHandle;                                          \
-    PYTHON_PATH_TABLE PathTable;                                \
     PREFIX_TABLE ModuleNameTable;                               \
+    PPYTHON_PATH_TABLE PathTable;                               \
+    PPYTHON_FUNCTION_TABLE FunctionTable;                       \
     PALLOCATION_ROUTINE AllocationRoutine;                      \
     PVOID AllocationContext;                                    \
     PFREE_ROUTINE FreeRoutine;                                  \
     PVOID FreeContext;                                          \
-    PYTHON_FUNCTION_TABLE FunctionTable;                        \
     PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;   \
     PRTL_GENERIC_ALLOCATE_ROUTINE FunctionTableAllocateRoutine; \
     PRTL_GENERIC_FREE_ROUTINE FunctionTableFreeRoutine;         \
@@ -1778,7 +1782,8 @@ InitializePythonRuntimeTables(
     _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
     _In_opt_  PVOID               AllocationContext,
     _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext
+    _In_opt_  PVOID               FreeContext,
+    _In_      BOOL                Reuse
 );
 
 TRACER_API

@@ -928,6 +928,12 @@ typedef PVOID (__cdecl *PRTL_COPY_MEMORY)(
     _In_  SIZE_T  Size
     );
 
+typedef NTSTATUS (NTAPI *PRTL_COPY_MAPPED_MEMORY)(
+    _Out_ PVOID   Destination,
+    _In_  LPCVOID Source,
+    _In_  SIZE_T  Size
+    );
+
 typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     _Out_ PVOID  Destination,
     _In_  INT    Value,
@@ -1040,6 +1046,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
     PRTL_COPY_MEMORY RtlCopyMemory;                                                                    \
+    PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;                                                       \
     PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
