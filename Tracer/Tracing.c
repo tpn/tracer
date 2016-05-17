@@ -1667,9 +1667,10 @@ AllocateRecords(
             // If this allocation crosses a page boundary, we prefault the page
             // after the next page in a separate thread (as long as it's still
             // within our allocated range).  (We do this in a separate thread
-            // as a page fault will put the thread into an alertable wait (i.e.
-            // suspends it) until the underlying I/O completes.  That would
-            // adversely affect the latency of our hot-path tracing code where
+            // as a page fault may put the thread into an alertable wait (i.e.
+            // suspends it) until the underlying I/O completes if the request
+            // couldn't be served by the cache manager.  That would adversely
+            // affect the latency of our hot-path tracing code where
             // allocations are done quite frequently.)
             //
 
@@ -1715,6 +1716,9 @@ AllocateRecords(
             }
         }
 
+        //
+        // Update the relevant memory map addresses.
+        //
 
         ReturnAddress           = MemoryMap->NextAddress;
         MemoryMap->PrevAddress  = MemoryMap->NextAddress;
