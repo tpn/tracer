@@ -56,6 +56,38 @@ TraceStoreFreeRoutine(
                             Buffer);
 }
 
+BOOL
+IsFunctionOfInterestPrefixTree(
+    _In_    PRTL                    Rtl,
+    _In_    PPYTHON_TRACE_CONTEXT   Context,
+    _In_    PPYTHON_FUNCTION        Function
+    )
+{
+    PSTRING ModuleName;
+    PPREFIX_TABLE Table;
+    PPREFIX_TABLE_ENTRY Entry;
+
+    ModuleName = &Function->PathEntry.ModuleName;
+
+    Table = &Context->ModuleFilterTable;
+
+    Entry = Rtl->PfxFindPrefix(Table, ModuleName);
+
+    return (Entry ? TRUE : FALSE);
+}
+
+BOOL
+IsFunctionOfInterestBinarySearch(
+    _In_    PRTL                    Rtl,
+    _In_    PPYTHON_TRACE_CONTEXT   Context,
+    _In_    PPYTHON_FUNCTION        Function
+    )
+{
+    return FALSE;
+}
+
+#define IsFunctionOfInterest IsFunctionOfInterestPrefixTree
+
 LONG
 PyTraceCallback(
     _In_        PPYTHON_TRACE_CONTEXT   Context,
@@ -82,9 +114,6 @@ PyTraceCallback(
     PPYTHON_TRACE_EVENT LastEvent;
     PPYTHON_TRACE_EVENT ThisEvent;
     PPYTHON_FUNCTION Function = NULL;
-    PSTRING ModuleName;
-    PPREFIX_TABLE Table;
-    PPREFIX_TABLE_ENTRY Entry;
     LARGE_INTEGER Elapsed;
 
     IsFirstTrace = FALSE;
@@ -190,21 +219,15 @@ PyTraceCallback(
     }
 
     //
-    // We obtained the PYTHON_FUNCTION for this frame; use the module name to
-    // determine if we should keep tracing by checking for a prefix table entry
-    // in our module filter table.
+    // We obtained the PYTHON_FUNCTION for this frame, check to see if it's
+    // of interest to this tracing session.
     //
 
-    ModuleName = &Function->PathEntry.ModuleName;
-
-    Table = &Context->ModuleFilterTable;
-
-    Entry = Rtl->PfxFindPrefix(Table, ModuleName);
-
-    if (!Entry) {
+    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
 
         //
-        // The function doesn't reside in a module we're tracing, return.
+        // Function isn't of interest (i.e. doesn't reside in a module we're
+        // tracing), so return.
         //
 
         return 0;
@@ -486,6 +509,8 @@ InitializePythonTraceContext(
     PTRACE_STORE FunctionsStore;
     PTRACE_STORE EventsStore;
     PTRACE_STORES TraceStores;
+    //PTP_WORK Work;
+    //PTP_CALLBACK_ENVIRON CallbackEnv;
 
     if (!Context) {
         if (SizeOfContext) {
@@ -503,13 +528,23 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
-    if (!Python) {
+    if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
     };
 
-    if (!Rtl) {
+    if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return FALSE;
+    }
+
+    //CallbackEnv = TraceContext->ThreadpoolCallbackEnvironment;
+
+    //if (!CallbackEnv) {
+    //    return FALSE;
+    //}
 
     SecureZeroMemory(Context, sizeof(*Context));
 

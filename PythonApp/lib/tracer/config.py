@@ -514,6 +514,21 @@ class Config(RawConfigParser):
             self.get('tracer', 'tracer_sqlite3_debug_dll_path'),
         )
 
+    @property
+    @memoize
+    def tracer_tracersqlite_dll_path(self):
+        return join_path(
+            self.tracer_dir,
+            self.get('tracer', 'tracer_tracersqlite_dll_path'),
+        )
+
+    @property
+    @memoize
+    def tracer_tracersqlite_debug_dll_path(self):
+        return join_path(
+            self.tracer_dir,
+            self.get('tracer', 'tracer_tracersqlite_debug_dll_path'),
+        )
 
     @property
     @memoize

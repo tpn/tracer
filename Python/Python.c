@@ -1593,6 +1593,33 @@ Routine Description:
 
     PathEntry->IsValid = TRUE;
 
+    //
+    // Calculate the code object's hash.
+    //
+
+    Function->CodeObjectHash = Python->PyObject_Hash(CodeObject);
+
+    //
+    // Calculate the atoms for the strings.
+    //
+
+    PathEntry->NameAtom = HashAnsiStringToAtom(&PathEntry->Name);
+    PathEntry->PathAtom = HashAnsiStringToAtom(&PathEntry->Path);
+    PathEntry->FullNameAtom = HashAnsiStringToAtom(&PathEntry->FullName);
+    PathEntry->ModuleNameAtom = HashAnsiStringToAtom(&PathEntry->ModuleName);
+
+    //
+    // Calculate a final hash value.
+    //
+
+    Function->Hash = (
+        PathEntry->PathEntryType    ^
+        PathEntry->PathAtom         ^
+        PathEntry->FullNameAtom     ^
+        Function->CodeObjectHash    ^
+        Function->NumberOfLines
+    );
+
     return TRUE;
 }
 
