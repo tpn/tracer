@@ -99,6 +99,25 @@ typedef BOOLEAN (*PRTL_EQUAL_UNICODE_STRING)(
     _In_    BOOLEAN             CaseInSensitive
     );
 
+typedef LONG (*PRTL_COMPARE_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOL     CaseInSensitive
+    );
+
+typedef LONG (*PCOMPARE_STRING_CASE_INSENSITIVE)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    );
+
+RTL_API
+LONG
+CompareStringCaseInsensitive(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    );
+
+
 // 65535 (1 << 16)
 #define MAX_STRING  ((USHORT)0xffff)
 #define MAX_USTRING ((USHORT)0xffff)
@@ -177,15 +196,11 @@ typedef VOID (*PQSORT)(
     _In_ PCRTCOMPARE Compare
     );
 
-typedef
-_Check_return_
-NTSYSAPI
-SIZE_T
-(NTAPI RTL_COMPARE_MEMORY)(
-_In_ const VOID * Source1,
-_In_ const VOID * Source2,
-_In_ SIZE_T Length
-);
+typedef NTSYSAPI SIZE_T (NTAPI RTL_COMPARE_MEMORY)(
+    _In_ const VOID * Source1,
+    _In_ const VOID * Source2,
+    _In_ SIZE_T Length
+    );
 
 typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
@@ -654,6 +669,101 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
     );
 
 //
+// Our extended PREFIX_TABLE and STRING_TABLE functionality.
+//
+
+#define INITIAL_STRING_TABLE_NUM_ELEMENTS 7
+
+typedef struct _STRING_TABLE {
+    PRTL Rtl;
+    HANDLE HeapHandle;
+    USHORT NumberOfElements;
+    USHORT Available;
+    ULONG Unused1;
+
+    //
+    // Function pointers needed for searching and sorting.
+    //
+
+    PCRTCOMPARE Compare;
+    PBSEARCH BinarySearch;
+    PQSORT QuickSort;
+
+    //
+    // Base address of the underlying PSTRING array.
+    //
+
+    PPSTRING Table;
+
+} STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
+
+typedef BOOL (*PCREATE_STRING_TABLE)(
+    _In_        HANDLE          HeapHandle,
+    _In_opt_    USHORT          NumberOfElements,
+    _Out_       PPSTRING_TABLE  StringTablePointer
+    );
+
+typedef VOID (*PDESTROY_STRING_TABLE)(
+    _In_    PPSTRING_TABLE  StringTable
+    );
+
+RTL_API
+_Success_(return != 0)
+BOOL
+CreateStringTable(
+    _In_        PRTL            Rtl,
+    _In_        HANDLE          HeapHandle,
+    _In_opt_    PUSHORT         NumberOfElements,
+    _Out_       PPSTRING_TABLE  StringTablePointer
+    );
+
+typedef BOOL (*PINSERT_STRING_TABLE)(
+    _In_        PSTRING_TABLE   StringTable,
+    _In_        PSTRING         String,
+    _Out_opt_   PBOOL           NewElement
+    );
+
+RTL_API
+_Success_(return != 0)
+BOOL
+InsertStringTable(
+    _In_        PSTRING_TABLE   StringTable,
+    _In_        PSTRING         String,
+    _Out_opt_   PBOOL           NewElement
+    );
+
+typedef struct _PREFIX_TABLE_EX {
+
+    //
+    // Inline the PREFIX_TABLE struct.
+    //
+
+    union {
+        PREFIX_TABLE PrefixTable;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPREFIX_TABLE_ENTRY NextPrefixTree;
+        };
+    };
+
+    //
+    // Inline the STRING_TABLE struct.
+    //
+
+    union {
+        STRING_TABLE Strings;
+        struct {
+            HANDLE HeapHandle;
+            USHORT NumberOfElements;
+            USHORT Available;
+            PPSTRING Array;
+        };
+    };
+
+} PREFIX_TABLE_EX, *PPREFIX_TABLE_EX, **PPPREFIX_TABLE_EX;
+
+//
 // Unicode Prefix Table
 //
 
@@ -1042,6 +1152,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
     PRTL_EQUAL_STRING RtlEqualString;                                                                  \
     PRTL_EQUAL_UNICODE_STRING RtlEqualUnicodeString;                                                   \
+    PRTL_COMPARE_STRING RtlCompareString;                                                              \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \

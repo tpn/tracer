@@ -1511,6 +1511,7 @@ typedef struct _PYTHON_PATH_TABLE {
 
 } PYTHON_PATH_TABLE, *PPYTHON_PATH_TABLE;
 
+
 typedef enum _PYTHON_PATH_ENTRY_TYPE {
     ModuleDirectory     =        1,
     NonModuleDirectory  =   1 << 1, // 2
@@ -1596,6 +1597,16 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
     STRING ClassName;
 
+    //
+    // Atoms for the strings.
+    //
+
+    ULONG PathAtom;
+    ULONG FullNameAtom;
+    ULONG ModuleNameAtom;
+    ULONG NameAtom;
+    ULONG ClassNameAtom;
+
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
 
 typedef struct _PYTHON_FUNCTION {
@@ -1610,6 +1621,7 @@ typedef struct _PYTHON_FUNCTION {
     };
 
     ULONG CodeObjectHash;
+    ULONG Hash;
 
     USHORT FirstLineNumber;
     USHORT LastLineNumber;
@@ -1782,7 +1794,7 @@ InitializePythonRuntimeTables(
     _In_opt_  PVOID               AllocationContext,
     _In_opt_  PFREE_ROUTINE       FreeRoutine,
     _In_opt_  PVOID               FreeContext
-);
+    );
 
 TRACER_API
 BOOL
@@ -1803,7 +1815,7 @@ GetPythonStringInformation(
     _Out_    PSIZE_T             Length,
     _Out_    PUSHORT             Width,
     _Out_    PPVOID              Buffer
-)
+    )
 {
     PYOBJECTEX Object;
     Object.Object = StringishObject;

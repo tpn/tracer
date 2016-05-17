@@ -277,7 +277,9 @@ typedef struct _TRACE_STORE {
     };
 
     //
-    // Inline TRACE_STORE_ADDRESS_RANGE
+    // Inline TRACE_STORE_ADDRESS.
+    //
+
     union {
         union {
             struct {
@@ -298,7 +300,7 @@ typedef struct _TRACE_STORE {
 
 static const LPCWSTR TraceStoreFileNames[] = {
     L"trace_events.dat",
-    L"trace_functions.dat",
+    L"trace_functions.dat"
 };
 
 static const WCHAR TraceStoreMetadataSuffix[] = L":metadata";
@@ -322,7 +324,7 @@ static const USHORT ElementsPerTraceStore = 3;
 
 static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
-    10 << 20,   // functions
+    10 << 20    // functions
 };
 
 #define TRACE_STORE_EVENTS_INDEX                0

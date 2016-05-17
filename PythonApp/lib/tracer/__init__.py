@@ -14,6 +14,8 @@ from .wintypes import *
 
 from .util import NullObject
 
+from .path import join_path
+
 from multiprocessing import cpu_count
 
 #===============================================================================
@@ -340,7 +342,13 @@ def pythontracer(path=None, dll=None):
     return dll
 
 def sqlite3(path=None, dll=None):
-    return None
+    assert path or dll
+    if not dll:
+        dll = ctypes.PyDLL(path)
+
+    return dll
+
+def tracersqlite(path=None, dll=None):
     assert path or dll
     if not dll:
         dll = ctypes.PyDLL(path)
@@ -353,10 +361,12 @@ def sqlite3(path=None, dll=None):
 class trace:
     def __init__(self, func):
         self.func = func
+
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self.func
         return partial(self, obj)
+
     def __call__(self, *args, **kw):
         global TRACER
         tracer = TRACER
@@ -381,6 +391,7 @@ class Tracer:
                  tracer_dll_path,
                  tracer_rtl_dll_path,
                  tracer_sqlite3_dll_path,
+                 tracer_tracersqlite_dll_path,
                  tracer_python_dll_path,
                  tracer_pythontracer_dll_path,
                  threadpool=None,
@@ -389,9 +400,12 @@ class Tracer:
         self.basedir = basedir
         self.system_dll = sys.dllhandle
 
+        self.tracer_sqlitedb_path = join_path(basedir, "trace.db")
+
         self.tracer_dll_path = tracer_dll_path
         self.tracer_rtl_dll_path = tracer_rtl_dll_path
         self.tracer_sqlite3_dll_path = tracer_sqlite3_dll_path
+        self.tracer_tracersqlite_dll_path = tracer_tracersqlite_dll_path
         self.tracer_python_dll_path = tracer_python_dll_path
         self.tracer_pythontracer_dll_path = tracer_pythontracer_dll_path
 
@@ -578,6 +592,7 @@ class Tracer:
             conf.tracer_debug_dll_path,
             conf.tracer_rtl_debug_dll_path,
             conf.tracer_sqlite3_debug_dll_path,
+            conf.tracer_tracersqlite_debug_dll_path,
             conf.tracer_python_debug_dll_path,
             conf.tracer_pythontracer_debug_dll_path,
         )
@@ -593,6 +608,7 @@ class Tracer:
             conf.tracer_dll_path,
             conf.tracer_rtl_dll_path,
             conf.tracer_sqlite3_dll_path,
+            conf.tracer_tracersqlite_dll_path,
             conf.tracer_python_dll_path,
             conf.tracer_pythontracer_dll_path,
         )
@@ -631,6 +647,13 @@ class Tracer:
 
     def close_trace_stores(self):
         self.tracer_dll.CloseTraceStores(byref(self.trace_stores))
+
+    def save(self):
+        dll = self.tracer_pythontracer_dll_path
+
+    def finish(self):
+        self.save()
+        self.close_trace_stores()
 
     def __enter__(self):
         self.start()
