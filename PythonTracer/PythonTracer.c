@@ -303,7 +303,7 @@ PyTraceCallback(
             // Microseconds to seconds.
             //
 
-            Elapsed.QuadPart *= 1000000;
+            Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
 
             //
             // Divide by frequency to get elapsed microseconds.
@@ -612,6 +612,8 @@ StartTracing(
         return FALSE;
     }
 
+    QueryPerformanceCounter(&PythonTraceContext->StartTimestamp);
+
     Python->PyEval_SetTrace(
         PythonTraceFunction,
         (PPYOBJECT)PythonTraceContext
@@ -636,6 +638,8 @@ StopTracing(
     if (!Python) {
         return FALSE;
     }
+
+    QueryPerformanceCounter(&PythonTraceContext->StopTimestamp);
 
     Python->PyEval_SetTrace(NULL, NULL);
 

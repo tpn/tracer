@@ -712,7 +712,6 @@ InitializePython(
     _Inout_                      PULONG              SizeOfPython
     )
 {
-
     if (!Python) {
         if (SizeOfPython) {
             *SizeOfPython = sizeof(*Python);
