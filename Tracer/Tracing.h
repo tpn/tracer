@@ -7,6 +7,8 @@ extern "C" {
 
 #include "stdafx.h"
 
+#define TIMESTAMP_TO_SECONDS 1000000;
+
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
 
@@ -40,30 +42,30 @@ typedef struct _TRACE_EVENT {
     DWORD           LineNumber;             //  4   16
     DWORD           LineCount;              //  4   20
     DWORD           SequenceId;             //  4   24
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         LARGE_INTEGER   liTimeStamp;        //  8   32
         FILETIME        ftTimeStamp;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliFramePointer;    //  8   40
         ULONGLONG       ullFramePointer;
         ULONG_PTR       FramePointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         LARGE_INTEGER   uliModulePointer;   //  8   48
         ULONGLONG       ullModulePointer;
         ULONG_PTR       ModulePointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliFuncPointer;     //  8   56
         ULONGLONG       ullFuncPointer;
         ULONG_PTR       FuncPointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliObjPointer;      //  8   64
         ULONGLONG       ullObjPointer;
@@ -93,30 +95,30 @@ typedef struct _TRACE_EVENT2 {
     USHORT  LineNumber;
     DWORD   LineCount;              //  4   20
     DWORD   SequenceId;             //  4   24
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         LARGE_INTEGER   liTimeStamp;        //  8   32
         FILETIME        ftTimeStamp;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliFramePointer;    //  8   40
         ULONGLONG       ullFramePointer;
         ULONG_PTR       FramePointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         LARGE_INTEGER   uliModulePointer;   //  8   48
         ULONGLONG       ullModulePointer;
         ULONG_PTR       ModulePointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliFuncPointer;     //  8   56
         ULONGLONG       ullFuncPointer;
         ULONG_PTR       FuncPointer;
     };
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)
     union {
         ULARGE_INTEGER  uliObjPointer;      //  8   64
         ULONGLONG       ullObjPointer;
@@ -151,7 +153,91 @@ typedef struct _TRACE_STORE_ADDRESS {
     LARGE_INTEGER MappedSize;
     LARGE_INTEGER MappedSequenceId;
     LARGE_INTEGER FileOffset;
+
+    //
+    // Timestamps are kept at each stage of the memory map's lifecycle.  They
+    // are used to calculate the elapsed times (in microseconds) below.  The
+    // LARGE_INTEGER structs are passed to QueryPerformanceCounter(&Counter).
+    //
+
+    struct {
+
+        //
+        // The time where the new memory map was pushed onto the "prepare
+        // memory map" threadpool work queue.
+        //
+
+        LARGE_INTEGER Requested;
+
+        //
+        // The time the memory map was pushed onto the "next memory map
+        // available" list.
+        //
+
+        LARGE_INTEGER Prepared;
+
+        //
+        // The time the memory map was popped off the available list and put
+        // into active use.
+        //
+
+        LARGE_INTEGER Consumed;
+
+        //
+        // The time the memory map was pushed onto the "release memory map"
+        // queue.
+        //
+
+        LARGE_INTEGER Retired;
+
+        //
+        // The time the memory map had been released; this will be after the
+        // view has been flushed and the memory map handle has been closed.
+        //
+
+        LARGE_INTEGER Released;
+
+    } Timestamp;
+
+    //
+    // Elapsed timestamps that capture the time the memory map spent in various
+    // states.
+    //
+
+    struct {
+
+        //
+        // Time between Requested and Prepared.
+        //
+
+        LARGE_INTEGER AwaitingPreparation;
+
+
+        //
+        // Time between Prepared and Consumed.
+        //
+
+        LARGE_INTEGER AwaitingConsumption;
+
+        //
+        // Time between Consumed and Retired.
+        //
+
+        LARGE_INTEGER Active;
+
+        //
+        // Time between Retired and Released.
+        //
+
+        LARGE_INTEGER AwaitingRelease;
+
+    } Elapsed;
+
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
+
+typedef struct _TRACE_STORE_EOF {
+    LARGE_INTEGER EndOfFile;
+} TRACE_STORE_EOF, *PTRACE_STORE_EOF, **PPTRACE_STORE_EOF;
 
 typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
@@ -186,23 +272,23 @@ typedef struct _TRACE_STORE_THREADPOOL {
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
-typedef struct __declspec(align(16)) _TRACE_STORE_MEMORY_MAP {
+typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_MEMORY_MAP {
     union {
-        __declspec(align(16)) SLIST_ENTRY   ListEntry;      // 16       16
+        DECLSPEC_ALIGN(16) SLIST_ENTRY              ListEntry;   // 8       8
         struct {
-            __declspec(align(8)) PVOID      PrevAddress;
-            __declspec(align(8)) PVOID      Unused1;
+            DECLSPEC_ALIGN(8) PVOID                 PrevAddress; // 8       8
+            DECLSPEC_ALIGN(8) PTRACE_STORE_ADDRESS  pAddress;    // 8       16
         };
     };
-    __declspec(align(8))  HANDLE        FileHandle;         // 8        24
-    __declspec(align(8))  HANDLE        MappingHandle;      // 8        32
-    __declspec(align(8))  LARGE_INTEGER FileOffset;         // 8        40
-    __declspec(align(8))  LARGE_INTEGER MappingSize;        // 8        48
-    __declspec(align(8))  PVOID         BaseAddress;        // 8        56
-    __declspec(align(8))
+    DECLSPEC_ALIGN(8)  HANDLE        FileHandle;                // 8        24
+    DECLSPEC_ALIGN(8)  HANDLE        MappingHandle;             // 8        32
+    DECLSPEC_ALIGN(8)  LARGE_INTEGER FileOffset;                // 8        40
+    DECLSPEC_ALIGN(8)  LARGE_INTEGER MappingSize;               // 8        48
+    DECLSPEC_ALIGN(8)  PVOID         BaseAddress;               // 8        56
+    DECLSPEC_ALIGN(8)
     union {
-        PVOID PreferredBaseAddress;                         // 8        64
-        PVOID NextAddress;                                  // 8        64
+        PVOID PreferredBaseAddress;                             // 8        64
+        PVOID NextAddress;                                      // 8        64
     };
 } TRACE_STORE_MEMORY_MAP, *PTRACE_STORE_MEMORY_MAP, **PPTRACE_STORE_MEMORY_MAP;
 
@@ -236,6 +322,11 @@ typedef struct _TRACE_STORE {
     ULONG AllocationsOutpacingNextMemoryMapPreparation;
     ULONG SequenceId;
 
+    LARGE_INTEGER Frequency;
+
+    LARGE_INTEGER TotalNumberOfAllocations;
+    LARGE_INTEGER TotalAllocationSize;
+
     union {
         ULONG Flags;
         struct {
@@ -243,14 +334,21 @@ typedef struct _TRACE_STORE {
             ULONG NoPrefaulting:1;
             ULONG RecordSimpleMetadata:1;
             ULONG NoPreferredAddressReuse:1;
+            ULONG IsReadonly:1;
+            ULONG SetEndOfFileOnClose:1;
         };
     };
+
+    DWORD CreateFileDesiredAccess;
+    DWORD CreateFileMappingDesiredAccess;
+    DWORD MapViewOfFileProtectionFlags;
 
     HANDLE FileHandle;
     PVOID PrevAddress;
 
     PTRACE_STORE            MetadataStore;
     PTRACE_STORE            AddressStore;
+    PTRACE_STORE            EofStore;
 
     PALLOCATE_RECORDS       AllocateRecords;
     PFREE_RECORDS           FreeRecords;
@@ -294,6 +392,20 @@ typedef struct _TRACE_STORE {
         PTRACE_STORE_ADDRESS pAddress;
     };
 
+    //
+    // Inline TRACE_STORE_EOF.
+    //
+
+    union {
+        union {
+            struct {
+                LARGE_INTEGER EndOfFile;
+            };
+            TRACE_STORE_EOF Eof;
+        };
+        PTRACE_STORE_EOF pEof;
+    };
+
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
 } TRACE_STORE, *PTRACE_STORE;
@@ -315,12 +427,18 @@ static const DWORD TraceStoreAddressSuffixLength = (
     sizeof(WCHAR)
 );
 
+static const WCHAR TraceStoreEofSuffix[] = L":eof";
+static const DWORD TraceStoreEofSuffixLength = (
+    sizeof(TraceStoreEofSuffix) /
+    sizeof(WCHAR)
+);
+
 static const USHORT NumberOfTraceStores = (
     sizeof(TraceStoreFileNames) /
     sizeof(LPCWSTR)
 );
 
-static const USHORT ElementsPerTraceStore = 3;
+static const USHORT ElementsPerTraceStore = 4;
 
 static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
@@ -330,9 +448,11 @@ static const ULONG InitialTraceStoreFileSizes[] = {
 #define TRACE_STORE_EVENTS_INDEX                0
 #define TRACE_STORE_EVENTS_METADATA_INDEX       1
 #define TRACE_STORE_EVENTS_ADDRESSES_INDEX      2
-#define TRACE_STORE_FUNCTIONS_INDEX             3
-#define TRACE_STORE_FUNCTIONS_METADATA_INDEX    4
-#define TRACE_STORE_FUNCTIONS_ADDRESSES_INDEX   5
+#define TRACE_STORE_EVENTS_EOF_INDEX            3
+#define TRACE_STORE_FUNCTIONS_INDEX             4
+#define TRACE_STORE_FUNCTIONS_METADATA_INDEX    5
+#define TRACE_STORE_FUNCTIONS_ADDRESSES_INDEX   6
+#define TRACE_STORE_FUNCTIONS_EOF_INDEX         7
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -566,7 +686,8 @@ typedef BOOL (*PINITIALIZETRACECONTEXT)(
     _In_                                    PTRACE_SESSION          TraceSession,
     _In_                                    PTRACE_STORES           TraceStores,
     _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_                                PVOID                   UserData
+    _In_opt_                                PVOID                   UserData,
+    _In_                                    BOOL                    Readonly
 );
 
 TRACER_API
@@ -578,10 +699,25 @@ InitializeTraceContext(
     _In_                                    PTRACE_SESSION          TraceSession,
     _In_                                    PTRACE_STORES           TraceStores,
     _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_                                PVOID                   UserData
+    _In_opt_                                PVOID                   UserData,
+    _In_                                    BOOL                    Readonly
 );
 
 typedef BOOL (*PFLUSHTRACESTORES)(_In_ PTRACE_CONTEXT TraceContext);
+
+FORCEINLINE
+BOOL
+HasVaryingRecordSizes(
+    _In_    PTRACE_STORE    TraceStore
+    )
+{
+    return (
+        TraceStore->pEof->EndOfFile.QuadPart == (
+            TraceStore->pMetadata->RecordSize.QuadPart *
+            TraceStore->pMetadata->NumberOfRecords.QuadPart
+        )
+    );
+}
 
 TRACER_API
 BOOL

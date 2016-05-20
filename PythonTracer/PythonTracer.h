@@ -199,6 +199,8 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     ULONG Unused1;
 
     LARGE_INTEGER Frequency;
+    LARGE_INTEGER StartTimestamp;
+    LARGE_INTEGER StopTimestamp;
     LARGE_INTEGER LastTimestamp;
     LARGE_INTEGER ThisTimestamp;
 
