@@ -257,6 +257,7 @@ def tracer(path=None, dll=None):
         PVOID,
         PDWORD,
         PDWORD,
+        PVOID,  # Readonly, should be BOOL
     ]
 
     dll.InitializeTraceContext.restype = BOOL
@@ -266,6 +267,7 @@ def tracer(path=None, dll=None):
         PDWORD,
         PVOID, #PTRACE_SESSION,
         PVOID, #PTRACE_STORES,
+        PVOID,
         PVOID,
     ]
 
@@ -344,7 +346,10 @@ def pythontracer(path=None, dll=None):
 def sqlite3(path=None, dll=None):
     assert path or dll
     if not dll:
-        dll = ctypes.PyDLL(path)
+        try:
+            dll = ctypes.PyDLL(path)
+        except:
+            dll = None
 
     return dll
 
@@ -474,6 +479,7 @@ class Tracer:
             byref(self.trace_stores),
             byref(self.trace_stores_size),
             None,
+            None,   # readonly
         )
         if not success:
             if self.trace_stores_size.value != sizeof(self.trace_stores):
@@ -490,7 +496,8 @@ class Tracer:
                     self.basedir,
                     byref(self.trace_stores),
                     byref(self.trace_stores_size),
-                    None
+                    None,
+                    None,   # readonly
                 )
 
             if not success:
@@ -526,6 +533,7 @@ class Tracer:
             byref(self.trace_stores),
             byref(self.threadpool_callback_environment),
             None,
+            None,
         )
         if not success:
             if self.trace_context_size.value != sizeof(self.trace_context):
@@ -544,6 +552,7 @@ class Tracer:
                     byref(self.trace_session),
                     byref(self.trace_stores),
                     byref(self.threadpool_callback_environment),
+                    None,
                     None,
                 )
 

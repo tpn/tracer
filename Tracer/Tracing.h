@@ -340,8 +340,8 @@ typedef struct _TRACE_STORE {
     };
 
     DWORD CreateFileDesiredAccess;
-    DWORD CreateFileMappingDesiredAccess;
-    DWORD MapViewOfFileProtectionFlags;
+    DWORD CreateFileMappingProtectionFlags;
+    DWORD MapViewOfFileDesiredAccess;
 
     HANDLE FileHandle;
     PVOID PrevAddress;
@@ -650,7 +650,8 @@ InitializeTraceStores(
     _In_        PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
-    _In_opt_    PULONG          InitialFileSizes
+    _In_opt_    PULONG          InitialFileSizes,
+    _In_        BOOL            Readonly
 );
 
 typedef BOOL (*PINITIALIZETRACESESSION)(
