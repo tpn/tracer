@@ -336,8 +336,6 @@ InitializeStore(
     _In_opt_    ULONG MappingSize
 )
 {
-    DWORD DesiredAccess;
-
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
     }
@@ -346,17 +344,11 @@ InitializeStore(
         return FALSE;
     }
 
-    if (TraceStore->IsReadonly) {
-        DesiredAccess = GENERIC_READ;
-    } else {
-        DesiredAccess = GENERIC_READ | GENERIC_WRITE;
-    }
-
     if (!TraceStore->FileHandle) {
         // We're a metadata store.
         TraceStore->FileHandle = CreateFileW(
             Path,
-            DesiredAccess,
+            TraceStore->CreateFileDesiredAccess,
             FILE_SHARE_READ,
             NULL,
             OPEN_ALWAYS,
@@ -521,6 +513,21 @@ InitializeTraceStore(
     }
 
 #define INIT_METADATA(Name)                                            \
+    Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
+    Name##Store->SequenceId = TraceStore->SequenceId;                  \
+    Name##Store->CreateFileDesiredAccess = (                           \
+        TraceStore->CreateFileDesiredAccess                            \
+    );                                                                 \
+    Name##Store->CreateFileMappingProtectionFlags = (                  \
+        TraceStore->CreateFileMappingProtectionFlags                   \
+    );                                                                 \
+    Name##Store->MapViewOfFileDesiredAccess = (                        \
+        TraceStore->MapViewOfFileDesiredAccess                         \
+    );                                                                 \
+    Name##Store->Frequency.QuadPart = (                                \
+        TraceStore->Frequency.QuadPart                                 \
+    );                                                                 \
+                                                                       \
     Success = InitializeStore(                                         \
         &##Name##Path[0],                                              \
         ##Name##Store,                                                 \
@@ -557,7 +564,8 @@ InitializeTraceStores(
     _In_        PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
-    _In_opt_    PULONG          InitialFileSizes
+    _In_opt_    PULONG          InitialFileSizes,
+    _In_        BOOL            Readonly
 )
 {
     BOOL Success;
@@ -565,6 +573,9 @@ InitializeTraceStores(
     DWORD Index;
     DWORD StoreIndex;
     DWORD LastError;
+    DWORD CreateFileDesiredAccess;
+    DWORD CreateFileMappingProtectionFlags;
+    DWORD MapViewOfFileDesiredAccess;
     WCHAR Path[_OUR_MAX_PATH];
     LPWSTR FileNameDest;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
@@ -579,6 +590,7 @@ InitializeTraceStores(
     );
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
+    LARGE_INTEGER Frequency;
     PULONG Sizes = InitialFileSizes;
 
     if (!SizeOfTraceStores) {
@@ -650,6 +662,18 @@ InitializeTraceStores(
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
 
+    if (Readonly) {
+        CreateFileDesiredAccess = GENERIC_READ;
+        CreateFileMappingProtectionFlags = PAGE_READONLY;
+        MapViewOfFileDesiredAccess = FILE_MAP_READ;
+    } else {
+        CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
+        CreateFileMappingProtectionFlags = PAGE_READWRITE;
+        MapViewOfFileDesiredAccess =  FILE_MAP_READ | FILE_MAP_WRITE;
+    }
+
+    QueryPerformanceFrequency(&Frequency);
+
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
@@ -670,6 +694,17 @@ InitializeTraceStores(
         if (FAILED(Result)) {
             return FALSE;
         }
+
+        TraceStore->IsReadonly = Readonly;
+        TraceStore->SequenceId = Index;
+        TraceStore->CreateFileDesiredAccess = CreateFileDesiredAccess;
+        TraceStore->CreateFileMappingProtectionFlags = (
+            CreateFileMappingProtectionFlags
+        );
+        TraceStore->MapViewOfFileDesiredAccess = (
+            MapViewOfFileDesiredAccess
+        );
+        TraceStore->Frequency.QuadPart = Frequency.QuadPart;
 
         Success = InitializeTraceStore(
             Rtl,
@@ -999,13 +1034,15 @@ PrepareNextTraceStoreMemoryMap(
     MemoryMap->MappingHandle = CreateFileMapping(
         MemoryMap->FileHandle,
         NULL,
-        TraceStore->CreateFileMappingDesiredAccess,
+        TraceStore->CreateFileMappingProtectionFlags,
         NewFileOffset.HighPart,
         NewFileOffset.LowPart,
         NULL
     );
 
-    if (MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
+    if (MemoryMap->MappingHandle == NULL ||
+        MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
+        DWORD LastError = GetLastError();
         goto Error;
     }
 
@@ -1092,7 +1129,7 @@ TryMapMemory:
 
     MemoryMap->BaseAddress = MapViewOfFileEx(
         MemoryMap->MappingHandle,
-        TraceStore->MapViewOfFileProtectionFlags,
+        TraceStore->MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
         MemoryMap->MappingSize.LowPart,
@@ -1861,6 +1898,10 @@ PrepareMemoryMap:
         MemoryMap->MappingSize.QuadPart
     );
 
+    if (IsMetadata) {
+        goto SubmitPreparedMemoryMap;
+    }
+
     //
     // Attempt to load the next address record and fill in the relevant details.
     // This will become the prepared memory map's address record if everything
@@ -2119,7 +2160,7 @@ UpdateAddresses:
 
     }
 
-    if (!TraceStore->IsReadonly) {
+    if (!IsMetadataTraceStore(TraceStore) && !TraceStore->IsReadonly) {
 
         if (!TraceStore->RecordSimpleMetadata) {
 
@@ -2458,9 +2499,6 @@ InitializeTraceContext(
 {
     USHORT Index;
     USHORT StoreIndex;
-    DWORD CreateFileDesiredAccess;
-    DWORD CreateFileMappingDesiredAccess;
-    DWORD MapViewOfFileProtectionFlags;
     LARGE_INTEGER Frequency;
 
     if (!Rtl) {
@@ -2518,39 +2556,14 @@ InitializeTraceContext(
     QueryPerformanceFrequency(&Frequency);
     TraceContext->PerformanceCounterFrequency.QuadPart = Frequency.QuadPart;
 
-    if (Readonly) {
-        CreateFileDesiredAccess = GENERIC_READ;
-        CreateFileMappingDesiredAccess = FILE_MAP_READ;
-        MapViewOfFileProtectionFlags = PAGE_READONLY;
-    } else {
-        CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-        CreateFileMappingDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
-        MapViewOfFileProtectionFlags = PAGE_READWRITE;
-    }
-
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-        PTRACE_STORE MetadataStore = TraceStore+1;
-        PTRACE_STORE AddressStore = TraceStore+2;
-        PTRACE_STORE EofStore = TraceStore+3;
-
-        ULONG SequenceId = TraceContext->SequenceId++;
+        PTRACE_STORE MetadataStore = TraceStore + 1;
+        PTRACE_STORE AddressStore = TraceStore + 2;
+        PTRACE_STORE EofStore = TraceStore + 3;
 
 #define BIND_STORE(Name)                                              \
-    Name##Store->IsReadonly = Readonly;                               \
-    Name##Store->SequenceId = SequenceId;                             \
-    Name##Store->CreateFileDesiredAccess = (                          \
-        CreateFileDesiredAccess                                       \
-    );                                                                \
-    Name##Store->CreateFileMappingDesiredAccess = (                   \
-        CreateFileMappingDesiredAccess                                \
-    );                                                                \
-    Name##Store->MapViewOfFileProtectionFlags = (                     \
-        MapViewOfFileProtectionFlags                                  \
-    );                                                                \
-    Name##Store->Frequency.QuadPart = Frequency.QuadPart;             \
-                                                                      \
     if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
         return FALSE;                                                 \
     }
