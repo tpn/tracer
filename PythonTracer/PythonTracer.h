@@ -89,17 +89,21 @@ typedef enum _PYTHON_TRACE_EVENT_TYPE {
 } PYTHON_TRACE_EVENT_TYPE, *PPYTHON_TRACE_EVENT_TYPE;
 
 typedef struct _PYTHON_TRACE_EVENT {
-    // 8 bytes
-    union {
-        LARGE_INTEGER Timestamp;
-        LARGE_INTEGER Elapsed;
-    };
-
-    // 8 bytes
-    DECLSPEC_ALIGN(8)
+    LARGE_INTEGER Timestamp;
     PPYTHON_FUNCTION Function;
 
-    // 4 bytes
+    ULONGLONG WorkingSetSize;
+    ULONGLONG PageFaultCount;
+    ULONGLONG CommittedSize;
+    ULONGLONG Unused2;
+
+    ULONG TimestampDelta;
+    ULONG ElapsedMicroseconds;
+
+    ULONG WorkingSetDelta;
+    ULONG PageFaultDelta;
+    ULONG CommittedDelta;
+
     union {
         ULONG Flags;
         PYTHON_TRACE_EVENT_TYPE Type;
@@ -113,11 +117,24 @@ typedef struct _PYTHON_TRACE_EVENT {
         };
     };
 
-    // 4 bytes
-    union {
-        ULONG Padding1;
-        ULONG LineNumber;
-    };
+    ULONG CodeObjectHash;
+    ULONG FunctionHash;
+
+    ULONG FunctionReferenceCount;
+
+    ULONG PathAtom;
+    ULONG FullNameAtom;
+    ULONG ModuleNameAtom;
+    ULONG ClassNameAtom;
+    ULONG NameAtom;
+
+    USHORT LineNumber;
+    USHORT FirstLineNumber;
+    USHORT LastLineNumber;
+    USHORT NumberOfLines;
+
+    USHORT Padding[8];
+
 } PYTHON_TRACE_EVENT, *PPYTHON_TRACE_EVENT, **PPPYTHON_TRACE_EVENT;
 
 typedef struct _PYTHON_TRACE_CALL_EVENT {
@@ -194,6 +211,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
         ULONG Flags;
         struct {
             ULONG StartedTracing:1;
+            ULONG TraceMemory:1;
         };
     };
     ULONG Unused1;
@@ -310,6 +328,18 @@ InitializePythonTraceContext(
     _In_ PTRACE_CONTEXT TraceContext,
     _In_opt_ PPYTRACEFUNC PythonTraceFunction,
     _In_opt_ PVOID UserData
+    );
+
+TRACER_API
+VOID
+EnableMemoryTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    );
+
+TRACER_API
+VOID
+DisableMemoryTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     );
 
 TRACER_API

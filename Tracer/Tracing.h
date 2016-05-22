@@ -303,6 +303,8 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
+    volatile ULONG          NumberOfActiveMemoryMaps;
+
     PRTL                    Rtl;
     PTRACE_CONTEXT          TraceContext;
     LARGE_INTEGER           InitialSize;
@@ -312,6 +314,7 @@ typedef struct _TRACE_STORE {
     PTP_WORK                PrepareNextMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
     HANDLE                  NextMemoryMapAvailableEvent;
+    HANDLE                  AllMemoryMapsAreFreeEvent;
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -372,24 +375,6 @@ typedef struct _TRACE_STORE {
             TRACE_STORE_METADATA Metadata;
         };
         PTRACE_STORE_METADATA pMetadata;
-    };
-
-    //
-    // Inline TRACE_STORE_ADDRESS.
-    //
-
-    union {
-        union {
-            struct {
-                PVOID         PreferredBaseAddress;
-                PVOID         BaseAddress;
-                LARGE_INTEGER MappedSize;
-                LARGE_INTEGER MappedSequenceId;
-                LARGE_INTEGER FileOffset;
-            };
-            TRACE_STORE_ADDRESS Address;
-        };
-        PTRACE_STORE_ADDRESS pAddress;
     };
 
     //

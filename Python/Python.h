@@ -1620,6 +1620,8 @@ typedef struct _PYTHON_FUNCTION {
         PPYCODEOBJECT33_35 Code33_35;
     };
 
+    ULONG ReferenceCount;
+
     ULONG CodeObjectHash;
     ULONG Hash;
 

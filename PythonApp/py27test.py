@@ -61,10 +61,16 @@ print("Press any key to continue.")
 dummy = sys.stdin.read(1)
 
 t.add_module('tpn')
+t.enable_memory_tracing()
 
 with t:
-    for i in range(10000):
+    for i in range(1000):
         bits_table(output=null_writer)
+
+print("Press any key to continue.")
+dummy = sys.stdin.read(1)
+
+t.finish()
 
 print("Press any key to continue.")
 dummy = sys.stdin.read(1)

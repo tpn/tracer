@@ -885,14 +885,6 @@ RegisterDirectory(
 
         AncestorIsRoot = (BOOL)AncestorEntry->IsNonModuleDirectory;
 
-        /*
-        if (AncestorEntry->Name.Length == 0 ||
-            AncestorEntry->ModuleName.Length == 0)
-        {
-            __debugbreak();
-        }
-        */
-
         AncestorModuleName = &AncestorEntry->ModuleName;
 
         NameLength = DirectoryName->Length;
@@ -1618,6 +1610,12 @@ Routine Description:
         Function->CodeObjectHash    ^
         Function->NumberOfLines
     );
+
+    //
+    // Initialize the reference count.
+    //
+
+    Function->ReferenceCount = 1;
 
     return TRUE;
 }
@@ -3181,9 +3179,10 @@ RegisterFrame(
     if (!NewFunction) {
 
         //
-        // We've already seen this function.
+        // We've already seen this function.  Increment the reference count.
         //
 
+        Function->ReferenceCount++;
         goto End;
     }
 
@@ -3212,13 +3211,6 @@ RegisterFrame(
     if (!Success) {
         return FALSE;
     }
-
-#if 0
-#ifdef _DEBUG
-    OutputDebugStringA(Function->PathEntry.Path.Buffer);
-    OutputDebugStringA("\n");
-#endif
-#endif
 
 End:
     if (ARGUMENT_PRESENT(FunctionPointer)) {

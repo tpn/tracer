@@ -88,6 +88,24 @@ IsFunctionOfInterestBinarySearch(
 
 #define IsFunctionOfInterest IsFunctionOfInterestPrefixTree
 
+TRACER_API
+VOID
+EnableMemoryTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceMemory = TRUE;
+}
+
+TRACER_API
+VOID
+DisableMemoryTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceMemory = FALSE;
+}
+
 LONG
 PyTraceCallback(
     _In_        PPYTHON_TRACE_CONTEXT   Context,
@@ -104,17 +122,26 @@ PyTraceCallback(
     BOOL IsLine;
     BOOL IsException;
     BOOL IsC;
+    BOOL HaveMemoryCounters = FALSE;
 
     PRTL Rtl;
     PPYTHON Python;
+    HRESULT Result;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     PTRACE_STORE Events;
     PYTHON_TRACE_EVENT Event;
-    PPYTHON_TRACE_EVENT LastEvent;
+    PYTHON_TRACE_EVENT LastEvent;
+    PPYTHON_TRACE_EVENT LastEventPointer;
     PPYTHON_TRACE_EVENT ThisEvent;
     PPYTHON_FUNCTION Function = NULL;
     LARGE_INTEGER Elapsed;
+    PROCESS_MEMORY_COUNTERS_EX MemoryCounters;
+    ULONG SizeOfTraceEvent = sizeof(PYTHON_TRACE_EVENT);
+
+    if (SizeOfTraceEvent % 2 != 0) {
+        __debugbreak();
+    }
 
     IsFirstTrace = FALSE;
     StartedTracing = (BOOL)Context->StartedTracing;
@@ -196,7 +223,6 @@ PyTraceCallback(
     Python = Context->Python;
 
 
-
     Success = Python->RegisterFrame(Python,
                                     FrameObject,
                                     EventType,
@@ -246,7 +272,36 @@ PyTraceCallback(
     TraceStores = TraceContext->TraceStores;
     Events = &TraceStores->Stores[TRACE_STORE_EVENTS_INDEX];
 
-    LastEvent = (PPYTHON_TRACE_EVENT)Events->PrevAddress;
+    LastEventPointer = (PPYTHON_TRACE_EVENT)Events->PrevAddress;
+
+    if (Context->TraceMemory) {
+
+        HANDLE CurrentProcess = (HANDLE)-1;
+
+        Success = Rtl->K32GetProcessMemoryInfo(
+            CurrentProcess,
+            (PPROCESS_MEMORY_COUNTERS)&MemoryCounters,
+            sizeof(MemoryCounters)
+        );
+
+        if (Success) {
+            HaveMemoryCounters = TRUE;
+        }
+
+    }
+
+    /*
+    if (Events->pMetadata->NumberOfAllocations.QuadPart == 21844) {
+        __debugbreak();
+    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21845) {
+        __debugbreak();
+    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21846) {
+        __debugbreak();
+    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21847) {
+        __debugbreak();
+    }*/
+
+    SecureZeroMemory(&Event, sizeof(Event));
 
     //
     // Save the timestamp for this event.
@@ -259,8 +314,18 @@ PyTraceCallback(
     //
 
     Event.Function = Function;
-    Event.Flags = 0;
     Event.IsC = IsC;
+    Event.CodeObjectHash = Function->CodeObjectHash;
+    Event.FunctionHash = Function->Hash;
+    Event.FunctionReferenceCount = Function->ReferenceCount;
+    Event.FirstLineNumber = Function->FirstLineNumber;
+    Event.LastLineNumber = Function->LastLineNumber;
+    Event.NumberOfLines = Function->NumberOfLines;
+    Event.PathAtom = Function->PathEntry.PathAtom;
+    Event.FullNameAtom = Function->PathEntry.FullNameAtom;
+    Event.ModuleNameAtom = Function->PathEntry.ModuleNameAtom;
+    Event.ClassNameAtom = Function->PathEntry.ClassNameAtom;
+    Event.NameAtom = Function->PathEntry.NameAtom;
 
     if (IsException) {
 
@@ -286,48 +351,122 @@ PyTraceCallback(
         // Update the line number for this event.
         //
 
-        Event.LineNumber = Python->PyFrame_GetLineNumber(FrameObject);
+        Event.LineNumber = (USHORT)Python->PyFrame_GetLineNumber(FrameObject);
 
-        if (LastEvent && LastEvent->IsLine) {
+    }
 
-            //
-            // Update the duration for the line event.
-            //
+    if (HaveMemoryCounters) {
+        Event.WorkingSetSize = MemoryCounters.WorkingSetSize;
+        Event.PageFaultCount = MemoryCounters.PageFaultCount;
+        Event.CommittedSize  = MemoryCounters.PrivateUsage;
+    } else {
+        Event.WorkingSetSize = 0;
+        Event.WorkingSetDelta = 0;
+        Event.PageFaultCount = 0;
+        Event.PageFaultDelta = 0;
+        Event.CommittedSize = 0;
+        Event.CommittedDelta = 0;
+    }
 
-            Elapsed.QuadPart = (
-                Event.Timestamp.QuadPart -
-                LastEvent->Timestamp.QuadPart
-            );
+    if (!LastEventPointer) {
+        goto Finalize;
+    }
 
-            //
-            // Microseconds to seconds.
-            //
+    //
+    // Take a local copy of the last event.
+    //
 
-            Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
+    Result = Rtl->RtlCopyMappedMemory(&LastEvent,
+                                      LastEventPointer,
+                                      sizeof(LastEvent));
 
-            //
-            // Divide by frequency to get elapsed microseconds.
-            //
+    if (FAILED(Result)) {
 
-            Elapsed.QuadPart /= Context->Frequency.QuadPart;
+        //
+        // STATUS_IN_PAGE_ERROR occurred whilst copying the last event.
+        //
 
-            //
-            // Copy the elapsed microsecond value back to the last event.
-            //
+        goto Finalize;
+    }
 
-            LastEvent->Elapsed.QuadPart = Elapsed.QuadPart;
+    //
+    // Calculate the timestamp delta.
+    //
 
-            //
-            // If the last event's line number was greater than this line
-            // number, we've jumped backwards, presumably as part of a loop.
-            //
+    LastEvent.TimestampDelta = (ULONG)(
+        Event.Timestamp.QuadPart -
+        LastEvent.Timestamp.QuadPart
+    );
 
-            if (LastEvent->LineNumber > Event.LineNumber) {
-                Event.IsReverseJump = TRUE;
-            }
+    //
+    // Update the duration for the line event.
+    //
 
+    Elapsed.HighPart = 0;
+    Elapsed.LowPart = LastEvent.TimestampDelta;
+
+    //
+    // Microseconds to seconds.
+    //
+
+    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
+
+    //
+    // Divide by frequency to get elapsed microseconds.
+    //
+
+    Elapsed.QuadPart /= Context->Frequency.QuadPart;
+
+    //
+    // Copy the elapsed microsecond value back to the last event.
+    //
+
+    LastEvent.ElapsedMicroseconds = Elapsed.LowPart;
+
+    if (LastEvent.IsLine) {
+
+        //
+        // If the last event's line number was greater than this line
+        // number, we've jumped backwards, presumably as part of a loop.
+        //
+
+        if (LastEvent.LineNumber > Event.LineNumber) {
+            Event.IsReverseJump = TRUE;
         }
     }
+
+    if (HaveMemoryCounters) {
+
+        //
+        // Calculate memory counter deltas.
+        //
+
+        LastEvent.WorkingSetDelta = (ULONG)(
+            Event.WorkingSetSize -
+            LastEvent.WorkingSetSize
+        );
+
+        LastEvent.PageFaultDelta = (ULONG)(
+            Event.PageFaultCount -
+            LastEvent.PageFaultCount
+        );
+
+        LastEvent.CommittedDelta = (ULONG)(
+            Event.CommittedSize -
+            LastEvent.CommittedSize
+        );
+
+    }
+
+    //
+    // Copy the last event back, ignoring the return value.
+    //
+
+    Rtl->RtlCopyMappedMemory(LastEventPointer,
+                             &LastEvent,
+                             sizeof(LastEvent));
+
+Finalize:
 
     //
     // Allocate a new event record, then copy our temporary event over.
@@ -339,7 +478,13 @@ PyTraceCallback(
         return 0;
     }
 
-    Rtl->CopyToMemoryMappedMemory(Rtl, ThisEvent, &Event, sizeof(Event));
+    if (Event.Flags > 40) {
+        __debugbreak();
+    }
+
+    Rtl->RtlCopyMappedMemory(ThisEvent,
+                             &Event,
+                             sizeof(Event));
 
     return 0;
 }
