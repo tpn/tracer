@@ -2918,6 +2918,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+        GetProcAddress(Rtl->NtdllModule, "K32GetProcessMemoryInfo"))) {
+
+        if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32GetProcessMemoryInfo"))) {
+
+            if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+                GetProcAddress(Rtl->Kernel32Module, "K32GetProcessMemoryInfo"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32GetProcessMemoryInfo'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
         GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
 

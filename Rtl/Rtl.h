@@ -149,6 +149,39 @@ typedef union _LONG_INTEGER {
 typedef CHAR *PSZ;
 typedef const CHAR *PCSZ;
 
+typedef struct _PROCESS_MEMORY_COUNTERS {
+    DWORD  cb;
+    DWORD  PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+} PROCESS_MEMORY_COUNTERS, *PPROCESS_MEMORY_COUNTERS;
+
+typedef struct _PROCESS_MEMORY_COUNTERS_EX {
+    DWORD  cb;
+    DWORD  PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+    SIZE_T PrivateUsage;
+} PROCESS_MEMORY_COUNTERS_EX, *PPROCESS_MEMORY_COUNTERS_EX;
+
+typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
+    _In_    HANDLE                      Process,
+    _In_    PPROCESS_MEMORY_COUNTERS    ppsmemCounters,
+    _In_    DWORD                       cb
+    );
+
 typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
 typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
 
@@ -1161,6 +1194,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
+    PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;

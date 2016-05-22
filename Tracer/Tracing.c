@@ -205,7 +205,7 @@ VOID
 ReturnFreeTraceStoreMemoryMap(
     _Inout_ PTRACE_STORE TraceStore,
     _Inout_ PTRACE_STORE_MEMORY_MAP MemoryMap
-)
+    )
 {
     SecureZeroMemory(MemoryMap, sizeof(*MemoryMap));
 
@@ -213,6 +213,10 @@ ReturnFreeTraceStoreMemoryMap(
         &TraceStore->FreeMemoryMaps,
         &MemoryMap->ListEntry
     );
+
+    if (!InterlockedDecrement(&TraceStore->NumberOfActiveMemoryMaps)) {
+        SetEvent(TraceStore->AllMemoryMapsAreFreeEvent);
+    }
 }
 
 PSYSTEM_TIMER_FUNCTION
@@ -286,9 +290,9 @@ CallSystemTimer(
 FORCEINLINE
 BOOL
 PopTraceStoreMemoryMap(
-    _Inout_ PSLIST_HEADER ListHead,
-    _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
-)
+    _In_ PSLIST_HEADER ListHead,
+    _In_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    )
 {
     PSLIST_ENTRY ListEntry = InterlockedPopEntrySList(ListHead);
     if (!ListEntry) {
@@ -298,6 +302,29 @@ PopTraceStoreMemoryMap(
     *MemoryMap = CONTAINING_RECORD(ListEntry,
                                    TRACE_STORE_MEMORY_MAP,
                                    ListEntry);
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+PopFreeTraceStoreMemoryMap(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    )
+{
+    PSLIST_HEADER ListHead = &TraceStore->FreeMemoryMaps;
+
+    PSLIST_ENTRY ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
+        return FALSE;
+    }
+
+    *MemoryMap = CONTAINING_RECORD(ListEntry,
+                                   TRACE_STORE_MEMORY_MAP,
+                                   ListEntry);
+
+    InterlockedIncrement(&TraceStore->NumberOfActiveMemoryMaps);
 
     return TRUE;
 }
@@ -351,7 +378,7 @@ InitializeStore(
             TraceStore->CreateFileDesiredAccess,
             FILE_SHARE_READ,
             NULL,
-            OPEN_ALWAYS,
+            CREATE_ALWAYS,
             FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
             NULL
         );
@@ -502,7 +529,7 @@ InitializeTraceStore(
         TraceStore->CreateFileDesiredAccess,
         FILE_SHARE_READ,
         NULL,
-        OPEN_ALWAYS,
+        CREATE_ALWAYS,
         FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
         NULL
     );
@@ -754,11 +781,11 @@ SubmitCloseMemoryMapThreadpoolWork(
     _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
 )
 {
-    if (!TraceStore) {
+    if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
 
-    if (!MemoryMap || !*MemoryMap) {
+    if (!ARGUMENT_PRESENT(MemoryMap) || !*MemoryMap) {
         return;
     }
 
@@ -767,14 +794,101 @@ SubmitCloseMemoryMapThreadpoolWork(
     *MemoryMap = NULL;
 }
 
+BOOL
+TruncateStore(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    BOOL Success;
+    BOOL IsMetadata;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER TotalAllocationSize;
+    FILE_STANDARD_INFO FileInfo;
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    TotalAllocationSize.QuadPart = TraceStore->TotalAllocationSize.QuadPart;
+
+    if (!IsMetadata) {
+
+        EndOfFile.QuadPart = TraceStore->pEof->EndOfFile.QuadPart;
+
+        if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
+            __debugbreak();
+        }
+
+    } else {
+
+        if (TotalAllocationSize.QuadPart == 0) {
+
+            if (TraceStore->NumberOfAllocations.QuadPart != 1) {
+                __debugbreak();
+            }
+
+            TotalAllocationSize.QuadPart = TraceStore->RecordSize.QuadPart;
+        }
+
+        EndOfFile.QuadPart = TotalAllocationSize.QuadPart;
+    }
+
+    //
+    // Get the file's current end of file info.
+    //
+
+    Success = GetFileInformationByHandleEx(
+        TraceStore->FileHandle,
+        (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo,
+        &FileInfo,
+        sizeof(FileInfo)
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (FileInfo.EndOfFile.QuadPart == EndOfFile.QuadPart) {
+
+        //
+        // Nothing more to do.
+        //
+
+        return TRUE;
+    }
+
+    //
+    // Adjust the file pointer to the desired position.
+    //
+
+    Success = SetFilePointerEx(TraceStore->FileHandle,
+                               EndOfFile,
+                               NULL,
+                               FILE_BEGIN);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // And set the end of file.
+    //
+
+    Success = SetEndOfFile(TraceStore->FileHandle);
+
+    return Success;
+}
+
 VOID
 CloseStore(
     _In_ PTRACE_STORE TraceStore
-)
+    )
 {
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    if (!TraceStore) {
+    if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
 
@@ -785,7 +899,10 @@ CloseStore(
         SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
     }
 
+    WaitForSingleObject(TraceStore->AllMemoryMapsAreFreeEvent, INFINITE);
+
     if (TraceStore->FileHandle) {
+        TruncateStore(TraceStore);
         FlushFileBuffers(TraceStore->FileHandle);
         CloseHandle(TraceStore->FileHandle);
         TraceStore->FileHandle = NULL;
@@ -794,6 +911,11 @@ CloseStore(
     if (TraceStore->NextMemoryMapAvailableEvent) {
         CloseHandle(TraceStore->NextMemoryMapAvailableEvent);
         TraceStore->NextMemoryMapAvailableEvent = NULL;
+    }
+
+    if (TraceStore->AllMemoryMapsAreFreeEvent) {
+        CloseHandle(TraceStore->AllMemoryMapsAreFreeEvent);
+        TraceStore->AllMemoryMapsAreFreeEvent = NULL;
     }
 
     if (TraceStore->CloseMemoryMapWork) {
@@ -818,9 +940,19 @@ CloseTraceStore(
     _In_ PTRACE_STORE TraceStore
 )
 {
-    if (!TraceStore) {
+    if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
+
+    //
+    // Close the trace store first before the metadata stores.  This is
+    // important because closing the trace store will retire any active memory
+    // maps, which will update the underlying MemoryMap->pAddress structures,
+    // which will be backed by the AddressStore, which we can only access as
+    // long as we haven't closed it.
+    //
+
+    CloseStore(TraceStore);
 
     if (TraceStore->MetadataStore) {
         CloseStore(TraceStore->MetadataStore);
@@ -837,7 +969,6 @@ CloseTraceStore(
         TraceStore->EofStore = NULL;
     }
 
-    CloseStore(TraceStore);
 }
 
 void
@@ -1108,7 +1239,7 @@ PrepareNextTraceStoreMemoryMap(
     // sequence ID will already be incremented by this stage.
     //
 
-    MappedSequenceId = TraceStore->MappedSequenceId.QuadPart - 1;
+    MappedSequenceId = TraceStore->MappingSequenceId - 1;
 
     //
     // If the mapping sequence, size and file offset line up, and the
@@ -1195,15 +1326,14 @@ TryMapMemory:
     }
 
     //
-    // Record all of the mapping information in our address record.  Note that
-    // we don't copy over the mapping sequence ID, that should already be set
-    // correctly.
+    // Record all of the mapping information in our address record.
     //
 
     Address.PreferredBaseAddress = PreferredBaseAddress;
     Address.BaseAddress = MemoryMap->BaseAddress;
-    Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
     Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
+    Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+    Address.MappedSequenceId.QuadPart = MappedSequenceId;
 
     //
     // Take a local copy of the timestamp.
@@ -1474,7 +1604,7 @@ CreateMemoryMapsForTraceStore(
     _Inout_ PTRACE_STORE TraceStore,
     _Inout_ PTRACE_CONTEXT TraceContext,
     _In_ ULONG NumberOfItems
-)
+    )
 {
     PTRACE_STORE_MEMORY_MAP MemoryMaps;
     SIZE_T AllocationSize;
@@ -1567,7 +1697,6 @@ LoadNextTraceStoreAddress(
     }
 
     *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
-    TraceStore->pAddress = (PTRACE_STORE_ADDRESS)Buffer;
 
     return TRUE;
 }
@@ -1652,7 +1781,6 @@ ConsumeNextTraceStoreMemoryMap(
     PTRACE_STORE_MEMORY_MAP PrepareMemoryMap;
     TRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS AddressPointer;
-    ULONGLONG MappedSequenceId;
     LARGE_INTEGER Timestamp;
     LARGE_INTEGER Elapsed;
 
@@ -1769,8 +1897,8 @@ RetireOldMemoryMap:
 
 StartPreparation:
 
-    Success = PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps,
-                                     &PrepareMemoryMap);
+    Success = PopFreeTraceStoreMemoryMap(TraceStore,
+                                         &PrepareMemoryMap);
 
     if (!Success) {
 
@@ -1780,9 +1908,8 @@ StartPreparation:
 
         if (Success) {
 
-            Success = PopTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps,
-                                             &PrepareMemoryMap);
-
+            Success = PopFreeTraceStoreMemoryMap(TraceStore,
+                                                 &PrepareMemoryMap);
         }
 
         if (!Success) {
@@ -1908,7 +2035,7 @@ StartPreparation:
 
 PrepareMemoryMap:
 
-    MappedSequenceId = TraceStore->MappedSequenceId.QuadPart++;
+    TraceStore->MappingSequenceId++;
 
     //
     // Prepare the next memory map with the relevant offset details based
@@ -2154,8 +2281,8 @@ AllocateRecords(
 
                 PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
 
-                Success = PopTraceStoreMemoryMap(
-                    &TraceStore->FreeMemoryMaps,
+                Success = PopFreeTraceStoreMemoryMap(
+                    TraceStore,
                     &PrefaultMemoryMap
                 );
 
@@ -2328,10 +2455,7 @@ BindTraceStoreToTraceContext(
         return FALSE;
     }
 
-    Success = PopTraceStoreMemoryMap(
-        &TraceStore->FreeMemoryMaps,
-        &FirstMemoryMap
-    );
+    Success = PopFreeTraceStoreMemoryMap(TraceStore, &FirstMemoryMap);
 
     if (!Success) {
         return FALSE;
@@ -2347,6 +2471,19 @@ BindTraceStoreToTraceContext(
     );
 
     if (!TraceStore->NextMemoryMapAvailableEvent) {
+        return FALSE;
+    }
+
+    TraceStore->AllMemoryMapsAreFreeEvent = (
+        CreateEvent(
+            NULL,
+            FALSE,
+            FALSE,
+            NULL
+        )
+    );
+
+    if (!TraceStore->AllMemoryMapsAreFreeEvent) {
         return FALSE;
     }
 
@@ -2389,7 +2526,7 @@ BindTraceStoreToTraceContext(
     // Advance the trace store's mapped sequence ID counter.
     //
 
-    TraceStore->MappedSequenceId.QuadPart++;
+    TraceStore->MappingSequenceId++;
 
     //
     // If we're metadata, go straight to submission of the prepared memory map.

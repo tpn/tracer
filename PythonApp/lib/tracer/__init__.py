@@ -335,6 +335,12 @@ def pythontracer(path=None, dll=None):
     dll.AddModuleName.restype = BOOL
     dll.AddModuleName.argtypes = [ PVOID, py_object ]
 
+    dll.EnableMemoryTracing.restype = VOID
+    dll.EnableMemoryTracing.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
+
+    dll.DisableMemoryTracing.restype = VOID
+    dll.DisableMemoryTracing.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
+
     dll.StartTracing.restype = BOOL
     dll.StartTracing.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
 
@@ -621,6 +627,14 @@ class Tracer:
             conf.tracer_python_dll_path,
             conf.tracer_pythontracer_dll_path,
         )
+
+    def enable_memory_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.EnableMemoryTracing(self.python_trace_context)
+
+    def disable_memory_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.DisableMemoryTracing(self.python_trace_context)
 
     def add_function(self, func):
         dll = self.tracer_pythontracer_dll
