@@ -580,7 +580,10 @@ InitializeTraceStores(
     LPWSTR FileNameDest;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
     DWORD TraceStoresAllocationSize = (
-        GetTraceStoresAllocationSize(NumberOfTraceStores)
+        GetTraceStoresAllocationSize(
+            NumberOfTraceStores *
+            ElementsPerTraceStore
+        )
     );
     DWORD LongestPossibleDirectoryLength = (
         _OUR_MAX_PATH   -
@@ -647,7 +650,8 @@ InitializeTraceStores(
         2
     );
 
-    SecureZeroMemory(TraceStores, sizeof(TraceStores));
+    SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
+    TraceStores->Size = (USHORT)TraceStoresAllocationSize;
 
     Success = CreateDirectory(BaseDirectory, NULL);
     if (!Success) {
@@ -919,7 +923,7 @@ PrepareNextTraceStoreMemoryMap(
     BOOL HaveAddress;
     BOOL SetPreferredBaseAddress;
     PRTL Rtl;
-    NTSTATUS Result;
+    HRESULT Result;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
     TRACE_STORE_ADDRESS Address;
@@ -1065,10 +1069,6 @@ PrepareNextTraceStoreMemoryMap(
 
     HaveAddress = TRUE;
 
-    if (TraceStore->NoPreferredAddressReuse) {
-        goto TryMapMemory;
-    }
-
     //
     // Take a local copy of the address.
     //
@@ -1083,9 +1083,24 @@ PrepareNextTraceStoreMemoryMap(
         // Disable the address and go straight to preparation.
         //
 
+        HaveAddress = FALSE;
+        AddressPointer = NULL;
         MemoryMap->pAddress = NULL;
         goto TryMapMemory;
 
+    }
+
+    if (TraceStore->NoPreferredAddressReuse) {
+
+        //
+        // If we've been instructed not to use the preferred address, we can
+        // skip the following logic and go straight to mapping the memory.
+        // We do this check after we copy the AddressPointer to the local
+        // Address struct because we're in 'HaveAddress = TRUE' mode and we
+        // expect the Address struct to be set correctly later on.
+        //
+
+        goto TryMapMemory;
     }
 
     //
@@ -1231,13 +1246,22 @@ TryMapMemory:
         sizeof(Address)
     );
 
-    if (!FAILED(Result)) {
+    if (FAILED(Result)) {
 
         //
         // Disable the address struct.
         //
 
         MemoryMap->pAddress = NULL;
+
+    } else if (MemoryMap->pAddress != AddressPointer) {
+
+        //
+        // Invariant check: this should never get hit.
+        //
+
+        __debugbreak();
+
     }
 
     //
@@ -1684,7 +1708,7 @@ ConsumeNextTraceStoreMemoryMap(
                                       AddressPointer,
                                       sizeof(Address));
 
-    if (!FAILED(Result)) {
+    if (FAILED(Result)) {
 
         PrevPrevMemoryMap->pAddress = NULL;
         goto RetireOldMemoryMap;
@@ -1724,7 +1748,7 @@ ConsumeNextTraceStoreMemoryMap(
                                       &Address,
                                       sizeof(Address));
 
-    if (!Result) {
+    if (FAILED(Result)) {
 
         PrevPrevMemoryMap->pAddress = NULL;
     }
@@ -1789,8 +1813,8 @@ StartPreparation:
     //
     // We've now got the two things we need: a free memory map to fill in with
     // the details of the next memory map to prepare (PrepareMemoryMap), and
-    // the ready memory map (NextMemoryMap) that contains an active mapping
-    // ready for use.
+    // the ready memory map (MemoryMap) that contains an active mapping ready
+    // for use.
     //
 
     if (TraceStore->MemoryMap) {
@@ -1837,6 +1861,7 @@ StartPreparation:
         // Ignore and continue.
         //
 
+        MemoryMap->pAddress = NULL;
         goto PrepareMemoryMap;
     }
 
@@ -1966,13 +1991,21 @@ PrepareMemoryMap:
                                       &Address,
                                       sizeof(Address));
 
-    if (!FAILED(Result)) {
+    if (SUCCEEDED(Result)) {
 
         //
         // Update the memory map to point at the address struct.
         //
 
-        PrepareMemoryMap->pAddress;
+        PrepareMemoryMap->pAddress = AddressPointer;
+
+    } else if (PrepareMemoryMap->pAddress != NULL) {
+
+        //
+        // Invariant check: this should never get hit.
+        //
+
+        __debugbreak();
     }
 
 SubmitPreparedMemoryMap:
@@ -2353,6 +2386,12 @@ BindTraceStoreToTraceContext(
     FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
 
     //
+    // Advance the trace store's mapped sequence ID counter.
+    //
+
+    TraceStore->MappedSequenceId.QuadPart++;
+
+    //
     // If we're metadata, go straight to submission of the prepared memory map.
     //
 
@@ -2416,6 +2455,8 @@ BindTraceStoreToTraceContext(
     // Zero out everything else.
     //
 
+    Address.MappedSequenceId.QuadPart = 0;
+
     Address.Timestamp.Prepared.QuadPart = 0;
     Address.Timestamp.Consumed.QuadPart = 0;
     Address.Timestamp.Retired.QuadPart = 0;
@@ -2435,7 +2476,7 @@ BindTraceStoreToTraceContext(
                                       &Address,
                                       sizeof(Address));
 
-    if (!FAILED(Result)) {
+    if (SUCCEEDED(Result)) {
 
         //
         // Update the memory map to point at the address struct.
@@ -2462,7 +2503,7 @@ SubmitFirstMemoryMap:
         return FALSE;
     }
 
-    if (!IsMetadataTraceStore(TraceStore)) {
+    if (!IsMetadata) {
         PTRACE_STORE MetadataStore;
         PTRACE_STORE EofStore;
 

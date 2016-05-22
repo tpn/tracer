@@ -150,9 +150,9 @@ typedef struct _TRACE_STORE_METADATA {
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;
     PVOID         BaseAddress;
+    LARGE_INTEGER FileOffset;
     LARGE_INTEGER MappedSize;
     LARGE_INTEGER MappedSequenceId;
-    LARGE_INTEGER FileOffset;
 
     //
     // Timestamps are kept at each stage of the memory map's lifecycle.  They
@@ -459,7 +459,7 @@ static const ULONG InitialTraceStoreFileSizes[] = {
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
-#define MAX_TRACE_STORES 2
+#define MAX_TRACE_STORES 8
 
 typedef struct _TRACE_STORES {
     USHORT  Size;
