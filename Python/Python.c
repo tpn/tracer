@@ -112,13 +112,492 @@ static const PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_35 = {
     FIELD_OFFSET(PYFRAMEOBJECT34_35, StillExecuting)
 };
 
+LONG
+PythonStringHash(
+    _In_    PPYTHON Python,
+    _In_    PSTRING String
+    )
+{
+    PCHAR Char;
+    USHORT Length;
+    LONG Hash;
+
+    if (String->Length == 0) {
+        return 0;
+    }
+
+    Length = String->Length;
+    Char = String->Buffer;
+
+    Hash = Python->_Py_HashSecret.Prefix;
+
+    Hash ^= *Char << 7;
+
+    while (--Length >= 0) {
+        Hash = (1000003*Hash) ^ *Char++;
+    }
+
+    Hash ^= String->Length;
+    Hash ^= Python->_Py_HashSecret.Suffix;
+
+    if (Hash == -1) {
+        Hash = -2;
+    }
+
+    return Hash;
+}
+
+
+BOOL
+SetPythonAllocators(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_ALLOCATORS  Allocators
+    )
+{
+    PRTL Rtl;
+    ULONG SizeOfAllocators = sizeof(*Allocators);
+    ULONG NumberOfAllocators = (
+        (SizeOfAllocators - (sizeof(ULONG) * 2)) /
+        sizeof(PYTHON_ALLOCATOR)
+    );
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocators)) {
+        return FALSE;
+    }
+
+    if (Allocators->SizeInBytes != SizeOfAllocators) {
+        return FALSE;
+    }
+
+    if (Allocators->NumberOfAllocators != NumberOfAllocators) {
+        return FALSE;
+    }
+
+    Rtl = Python->Rtl;
+
+    Rtl->RtlCopyMemory(&Python->Allocators,
+                       Allocators,
+                       SizeOfAllocators);
+
+    return TRUE;
+}
+
+BOOL
+AllocateString(
+    _In_  PPYTHON  Python,
+    _Out_ PPSTRING StringPointer
+    )
+{
+    PSTRING String;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringPointer)) {
+        return FALSE;
+    }
+
+    String = (PSTRING)ALLOCATE(String, sizeof(STRING));
+
+    if (!String) {
+        return FALSE;
+    }
+
+    String->Length = 0;
+    String->MaximumLength = 0;
+    String->Buffer = NULL;
+
+    *StringPointer = String;
+
+    return TRUE;
+}
+
+BOOL
+AllocateStringBuffer(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _In_  PSTRING  String
+    )
+{
+    PVOID Buffer;
+    ULONG AlignedSize;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(String)) {
+        return FALSE;
+    }
+
+    if (StringBufferSizeInBytes == 0) {
+        return FALSE;
+    }
+
+    AlignedSize = ALIGN_UP(StringBufferSizeInBytes, sizeof(ULONG_PTR));
+
+    Buffer = ALLOCATE(StringBuffer, AlignedSize);
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    String->Length = 0;
+    String->MaximumLength = (USHORT)AlignedSize;
+    String->Buffer = (PCHAR)Buffer;
+
+    return TRUE;
+}
+
+BOOL
+AllocateStringAndBuffer(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _Out_ PPSTRING StringPointer
+    )
+{
+    PSTRING String;
+
+    if (!AllocateString(Python, &String)) {
+        return FALSE;
+    }
+
+    if (!AllocateStringBuffer(Python, StringBufferSizeInBytes, String)) {
+        FreeString(Python, String);
+        return FALSE;
+    }
+
+    *StringPointer = String;
+
+    return TRUE;
+}
+
+
+VOID
+FreeString(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    )
+{
+
+
+}
+
+VOID
+FreeStringAndBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    )
+{
+
+
+}
+
+VOID
+FreeStringBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    )
+{
+
+
+}
+
+VOID
+FreeStringBufferDirect(
+    _In_        PPYTHON Python,
+    _In_opt_    PVOID   Buffer
+    )
+{
+
+
+}
+
+
+BOOL
+AllocateHashedString(
+    _In_  PPYTHON  Python,
+    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    )
+{
+    PPYTHON_HASHED_STRING HashedString;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(HashedStringPointer)) {
+        return FALSE;
+    }
+
+    HashedString = (PPYTHON_HASHED_STRING)(
+        ALLOCATE(HashedString, sizeof(PYTHON_HASHED_STRING))
+    );
+
+    if (!HashedString) {
+        return FALSE;
+    }
+
+    SecureZeroMemory(HashedString, sizeof(*HashedString));
+
+    *HashedStringPointer = HashedString;
+
+    return TRUE;
+}
+
+BOOL
+AllocateHashedStringAndBuffer(
+    _In_  PPYTHON                Python,
+    _In_  USHORT                 StringBufferSizeInBytes,
+    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    )
+{
+    PVOID Buffer;
+    PPYTHON_HASHED_STRING HashedString;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(HashedStringPointer)) {
+        return FALSE;
+    }
+
+    HashedString = (PPYTHON_HASHED_STRING)(
+        ALLOCATE(HashedString, sizeof(*HashedString))
+    );
+
+    if (!HashedString) {
+        return FALSE;
+    }
+
+    SecureZeroMemory(HashedString, sizeof(*HashedString));
+
+    Buffer = ALLOCATE(Buffer, StringBufferSizeInBytes);
+
+    if (!Buffer) {
+        FREE(HashedString, HashedString);
+        return FALSE;
+    }
+
+    HashedString->MaximumLength = StringBufferSizeInBytes;
+    HashedString->Buffer = (PCHAR)Buffer;
+
+    *HashedStringPointer = HashedString;
+
+    return TRUE;
+}
+
+BOOL
+FinalizeHashedString(
+    _In_        PPYTHON                 Python,
+    _Inout_     PPYTHON_HASHED_STRING   HashedString,
+    _Out_opt_   PPPYTHON_HASHED_STRING  ExistingHashedStringPointer
+    )
+{
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(HashedString)) {
+        return FALSE;
+    }
+
+    HashedString->Atom = HashAnsiStringToAtom(&HashedString->String);
+    HashedString->Hash = PythonStringHash(Python, &HashedString->String);
+
+    return TRUE;
+}
+
+BOOL
+AllocateBuffer(
+    _In_  PPYTHON Python,
+    _In_  ULONG   SizeInBytes,
+    _Out_ PPVOID  BufferPointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BufferPointer)) {
+        return FALSE;
+    }
+
+    Buffer = ALLOCATE(Buffer, SizeInBytes);
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    *BufferPointer = Buffer;
+
+    return TRUE;
+}
+
+VOID
+FreeBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PVOID   Buffer
+    )
+{
+
+}
+
+BOOL
+AllocatePythonFunctionTable(
+    _In_    PPYTHON                 Python,
+    _Out_   PPPYTHON_FUNCTION_TABLE FunctionTablePointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(FunctionTablePointer)) {
+        return FALSE;
+    }
+
+    Buffer = ALLOCATE(FunctionTable, sizeof(PYTHON_FUNCTION_TABLE));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    *FunctionTablePointer = (PPYTHON_FUNCTION_TABLE)Buffer;
+
+    return TRUE;
+}
+
+BOOL
+AllocatePythonPathTable(
+    _In_ PPYTHON Python,
+    _Out_ PPPYTHON_PATH_TABLE PathTablePointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(PathTablePointer)) {
+        return FALSE;
+    }
+
+    Buffer = ALLOCATE(PathTable, sizeof(PYTHON_PATH_TABLE));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    *PathTablePointer = (PPYTHON_PATH_TABLE)Buffer;
+
+    return TRUE;
+
+}
+
+BOOL
+AllocatePythonPathTableEntry(
+    _In_  PPYTHON Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(PathTableEntryPointer)) {
+        return FALSE;
+    }
+
+    Buffer = ALLOCATE(PathTableEntry, sizeof(PYTHON_PATH_TABLE_ENTRY));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    SecureZeroMemory(Buffer, sizeof(PYTHON_PATH_TABLE_ENTRY));
+
+    *PathTableEntryPointer = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
+
+    return TRUE;
+}
+
+VOID
+FreePythonPathTableEntry(
+    _In_        PPYTHON                  Python,
+    _In_opt_    PPYTHON_PATH_TABLE_ENTRY PathTableEntry
+    )
+{
+
+}
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndString(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
+    )
+{
+    return FALSE;
+}
+
+BOOL
+AllocatePythonPathTableEntryAndStringWithBuffer(
+    _In_  PPYTHON                   Python,
+    _In_  ULONG                     StringBufferSize,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
+    )
+{
+    return FALSE;
+}
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndHashedString(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    )
+{
+    return FALSE;
+}
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndHashedStringWithBuffer(
+    _In_  PPYTHON                   Python,
+    _In_  ULONG                     StringBufferSize,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    )
+{
+    return FALSE;
+}
+
+
 _Check_return_
 BOOL
 LoadPythonData(
     _In_    HMODULE     PythonModule,
     _Out_   PPYTHONDATA PythonData
-)
+    )
 {
+    PPY_HASH_SECRET PyHashSecret;
+
     if (!PythonModule) {
         return FALSE;
     }
@@ -155,6 +634,24 @@ LoadPythonData(
     RESOLVE_TYPE(PyCFunction);
     RESOLVE_TYPE(PyInstance);
     RESOLVE_TYPE(PyModule);
+
+    //
+    // The hash secret is a little fiddly.
+    //
+
+    PyHashSecret = (PPY_HASH_SECRET)(
+        GetProcAddress(
+            PythonModule,
+            "_Py_HashSecret"
+        )
+    );
+    if (PyHashSecret) {
+        PythonData->_Py_HashSecret.Prefix = PyHashSecret->Prefix;
+        PythonData->_Py_HashSecret.Suffix = PyHashSecret->Suffix;
+    } else {
+        PythonData->_Py_HashSecret.Prefix = 0;
+        PythonData->_Py_HashSecret.Suffix = 0;
+    }
 
     return TRUE;
 }
@@ -286,20 +783,28 @@ LoadPythonExFunctions(
 
 #define TRY_RESOLVE_FUNCTIONEX(Type, Name) ( \
     PythonExFunctions->##Name = (Type)(      \
-        GetProcAddress(                    \
+        GetProcAddress(                      \
             PythonExModule,                  \
-            #Name                          \
-        )                                  \
-    )                                      \
+            #Name                            \
+        )                                    \
+    )                                        \
 )
 
 #define RESOLVE_FUNCTIONEX(Type, Name)                                \
     if (!TRY_RESOLVE_FUNCTIONEX(Type, Name)) {                        \
         OutputDebugStringA("Failed to resolve PythonEx!" #Name "\n"); \
-        return FALSE;                                               \
+        return FALSE;                                                 \
     }
 
+    RESOLVE_FUNCTIONEX(PALLOCATE_STRING, AllocateString);
+    RESOLVE_FUNCTIONEX(PALLOCATE_STRING_AND_BUFFER, AllocateStringAndBuffer);
+    RESOLVE_FUNCTIONEX(PALLOCATE_STRING_BUFFER, AllocateStringBuffer);
+    RESOLVE_FUNCTIONEX(PFREE_STRING_BUFFER, FreeStringBuffer);
+    RESOLVE_FUNCTIONEX(PFREE_STRING_BUFFER_DIRECT, FreeStringBufferDirect);
+    RESOLVE_FUNCTIONEX(PALLOCATE_BUFFER, AllocateBuffer);
+    RESOLVE_FUNCTIONEX(PFREE_BUFFER, FreeBuffer);
     RESOLVE_FUNCTIONEX(PREGISTER_FRAME, RegisterFrame);
+    RESOLVE_FUNCTIONEX(PSET_PYTHON_ALLOCATORS, SetPythonAllocators);
     RESOLVE_FUNCTIONEX(
         PINITIALIZE_PYTHON_RUNTIME_TABLES,
         InitializePythonRuntimeTables
@@ -334,7 +839,7 @@ FunctionTableAllocationRoutine(
 )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
-    return Python->AllocationRoutine(Python->AllocationContext, ByteSize);
+    return ALLOCATE(FunctionTableEntry, ByteSize);
 }
 
 VOID
@@ -345,7 +850,7 @@ FunctionTableFreeRoutine(
 )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
-    Python->FreeRoutine(Python->FreeContext, Buffer);
+    FREE(FunctionTableEntry, Buffer);
 }
 
 FORCEINLINE
@@ -410,51 +915,25 @@ LoadPythonExRuntime(
 _Check_return_
 BOOL
 InitializePythonRuntimeTables(
-    _In_        PPYTHON Python,
-    _In_opt_    PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_    PVOID AllocationContext,
-    _In_opt_    PFREE_ROUTINE FreeRoutine,
-    _In_opt_    PVOID FreeContext
+    _In_ PPYTHON Python
     )
 {
+    BOOL Success;
     PRTL Rtl;
-    Rtl = Python->Rtl;
     PPREFIX_TABLE PrefixTable;
     PRTL_GENERIC_TABLE GenericTable;
-    PVOID Buffer;
+    PPYTHON_PATH_TABLE PathTable;
+    PPYTHON_FUNCTION_TABLE FunctionTable;
 
-    //
-    // If the allocation routine isn't provided, default to the generic
-    // heap allocation routine.
-    //
+    Rtl = Python->Rtl;
 
-    if (!ARGUMENT_PRESENT(AllocationRoutine)) {
+    Success = AllocatePythonPathTable(Python, &PathTable);
 
-        Python->AllocationRoutine = HeapAllocationRoutine;
-        Python->AllocationContext = Python->HeapHandle;
-
-        Python->FreeRoutine = HeapFreeRoutine;
-        Python->FreeContext = Python->HeapHandle;
-
-    }
-    else {
-
-        Python->AllocationRoutine = AllocationRoutine;
-        Python->AllocationContext = AllocationContext;
-
-        Python->FreeRoutine = FreeRoutine;
-        Python->FreeContext = FreeContext;
-
-    }
-
-    Buffer = Python->AllocationRoutine(Python->AllocationContext,
-                                       sizeof(PYTHON_PATH_TABLE));
-
-    if (!Buffer) {
+    if (!Success) {
         return FALSE;
     }
 
-    Python->PathTable = (PPYTHON_PATH_TABLE)Buffer;
+    Python->PathTable = PathTable;
 
     PrefixTable = &Python->PathTable->PrefixTable;
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
@@ -468,14 +947,13 @@ InitializePythonRuntimeTables(
     Python->FunctionTableAllocateRoutine = FunctionTableAllocationRoutine;
     Python->FunctionTableFreeRoutine = FunctionTableFreeRoutine;
 
-    Buffer = Python->AllocationRoutine(Python->AllocationContext,
-                                       sizeof(PYTHON_FUNCTION_TABLE));
+    Success = AllocatePythonFunctionTable(Python, &FunctionTable);
 
-    if (!Buffer) {
+    if (!Success) {
         return FALSE;
     }
 
-    Python->FunctionTable = (PPYTHON_FUNCTION_TABLE)Buffer;
+    Python->FunctionTable = FunctionTable;
 
     GenericTable = &Python->FunctionTable->GenericTable;
 
@@ -822,8 +1300,7 @@ RegisterDirectory(
     PPREFIX_TABLE PrefixTable;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
 
-    PVOID Buffer;
-    ULONG AllocationSize;
+    ULONG StringBufferSize;
     PPYTHON_PATH_TABLE_ENTRY Entry;
 
     PSTRING AncestorModuleName;
@@ -840,12 +1317,6 @@ RegisterDirectory(
     BOOL IsModule;
     BOOL AncestorIsRoot;
 
-    PALLOCATION_ROUTINE AllocationRoutine;
-    PVOID AllocationContext;
-
-    PFREE_ROUTINE FreeRoutine;
-    PVOID FreeContext;
-
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
     }
@@ -854,19 +1325,11 @@ RegisterDirectory(
         return FALSE;
     }
 
-    AllocationRoutine = Python->AllocationRoutine;
-    AllocationContext = Python->AllocationContext;
-
-    FreeRoutine = Python->FreeRoutine;
-    FreeContext = Python->FreeContext;
-
     //
     // Non-root nodes must have a name and ancestor provided.
     //
 
     if (IsRoot) {
-
-        AllocationSize = sizeof(*Entry);
 
         IsModule = FALSE;
         AncestorIsRoot = FALSE;
@@ -889,8 +1352,7 @@ RegisterDirectory(
 
         NameLength = DirectoryName->Length;
 
-        AllocationSize = (
-            sizeof(*Entry)                    +
+        StringBufferSize = (
             AncestorModuleName->MaximumLength + // includes trailing NUL
             NameLength
         );
@@ -901,7 +1363,7 @@ RegisterDirectory(
             // Account for the joining slash + NUL.
             //
 
-            AllocationSize += 2;
+            StringBufferSize += 2;
 
         } else {
 
@@ -909,21 +1371,20 @@ RegisterDirectory(
             // Account for just the trailing NUL.
             //
 
-            AllocationSize += 1;
+            StringBufferSize += 1;
+        }
+
+        if (StringBufferSize > MAX_USTRING) {
+            return FALSE;
         }
 
     }
 
     Rtl = Python->Rtl;
 
-    AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
-
-    Buffer = AllocationRoutine(AllocationContext, AllocationSize);
-    if (!Buffer) {
+    if (!AllocatePythonPathTableEntry(Python, &Entry)) {
         return FALSE;
     }
-
-    Entry = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
 
     if (IsModule) {
         Entry->IsModuleDirectory = TRUE;
@@ -931,18 +1392,25 @@ RegisterDirectory(
         Entry->IsNonModuleDirectory = TRUE;
     }
 
-    if (IsRoot) {
-
-        ClearString(&Entry->ModuleName);
-        ClearString(&Entry->Name);
-
-    } else {
+    if (!IsRoot) {
 
         PSTR Dest;
         PSTR Source;
         USHORT Count;
 
+        //
+        // We verified that StringBufferSizes was < MAX_USTRING above.
+        //
+
+        USHORT Size = (USHORT)StringBufferSize;
+
         ModuleName = &Entry->ModuleName;
+
+        if (!AllocateStringBuffer(Python, Size, ModuleName)) {
+            FreePythonPathTableEntry(Python, Entry);
+            return FALSE;
+        }
+
         Name = &Entry->Name;
 
         if (!AncestorIsRoot) {
@@ -952,7 +1420,15 @@ RegisterDirectory(
         }
 
         ModuleName->Length = Offset + NameLength;
-        ModuleName->MaximumLength = ModuleName->Length + 1;
+
+        if (ModuleName->MaximumLength <= ModuleName->Length) {
+
+            //
+            // There should be space for at least the trailing NUL.
+            //
+
+            __debugbreak();
+        }
 
         Name->Length = NameLength;
         Name->MaximumLength = NameLength + 1;
@@ -961,7 +1437,7 @@ RegisterDirectory(
         // The new module name lives at the end of the structure.
         //
 
-        ModuleName->Buffer = (PSTR)RtlOffsetToPointer(Entry, sizeof(*Entry));
+        //ModuleName->Buffer = (PSTR)RtlOffsetToPointer(Entry, sizeof(*Entry));
 
         //
         // Point the name into the relevant offset of the ModuleName.
@@ -1020,7 +1496,8 @@ RegisterDirectory(
                                    PrefixTableEntry);
 
     if (!Success) {
-        FreeRoutine(FreeContext, Buffer);
+        FreeStringBuffer(Python, &Entry->ModuleName);
+        FreePythonPathTableEntry(Python, Entry);
     } else if (ARGUMENT_PRESENT(EntryPointer)) {
         *EntryPointer = Entry;
     }
@@ -1390,7 +1867,6 @@ Routine Description:
     PCHAR ClassNameBuffer = NULL;
     USHORT FullNameAllocSize;
     USHORT FullNameLength;
-    PVOID Buffer;
     PSTRING ParentModuleName;
     PSTRING ParentName;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
@@ -1505,15 +1981,6 @@ Routine Description:
         FullNameAllocSize = (USHORT)MAX_STRING;
     }
 
-    Buffer = Python->AllocationRoutine(
-        Python->AllocationContext,
-        FullNameAllocSize
-    );
-
-    if (!Buffer) {
-        return FALSE;
-    }
-
     //
     // Construct the final full name.  After each part has been copied, update
     // the corresponding Buffer pointer to the relevant point within the newly-
@@ -1521,8 +1988,14 @@ Routine Description:
     //
 
     FullName = &PathEntry->FullName;
-    ClearString(FullName);
-    FullName->Buffer = (PCHAR)Buffer;
+
+    Success = AllocateStringBuffer(Python, FullNameAllocSize, FullName);
+    if (!Success) {
+        return FALSE;
+    }
+
+    //ClearString(FullName);
+    //FullName->Buffer = (PCHAR)Buffer;
 
     Dest = FullName->Buffer;
 
@@ -1599,6 +2072,12 @@ Routine Description:
     PathEntry->FullNameAtom = HashAnsiStringToAtom(&PathEntry->FullName);
     PathEntry->ModuleNameAtom = HashAnsiStringToAtom(&PathEntry->ModuleName);
 
+    if (ClassName->Length) {
+        PathEntry->ClassNameAtom = HashAnsiStringToAtom(&PathEntry->ClassName);
+    } else {
+        PathEntry->ClassNameAtom = 0;
+    }
+
     //
     // Calculate a final hash value.
     //
@@ -1653,14 +2132,10 @@ QualifyPath(
 
     CONST ULARGE_INTEGER MaxSize = { MAX_USTRING - 2 };
 
-    ULONG AllocSizeInBytes;
     ULONG CurDirLength;
 
     PSTRING String;
     PCHAR Dest;
-
-    PALLOCATION_ROUTINE AllocationRoutine;
-    PVOID AllocationContext;
 
     ULONG Remaining;
     USHORT NewLength;
@@ -1679,9 +2154,6 @@ QualifyPath(
     if (!ARGUMENT_PRESENT(DestinationPathPointer)) {
         return FALSE;
     }
-
-    AllocationRoutine = Python->AllocationRoutine;
-    AllocationContext = Python->AllocationContext;
 
     Rtl = Python->Rtl;
 
@@ -1774,35 +2246,13 @@ QualifyPath(
     }
 
     //
-    // Now calculate the allocation size we need for the final string and
-    // containing STRING struct.
+    // Now allocate the string.
     //
 
-    AllocSizeInBytes = sizeof(STRING) + NewLength;
-
-    AllocSizeInBytes = ALIGN_UP_POINTER(AllocSizeInBytes);
-
-    String = (PSTRING)(
-        Python->AllocationRoutine(
-            Python->AllocationContext,
-            AllocSizeInBytes
-        )
-    );
-
-    if (!String) {
+    Success = AllocateStringAndBuffer(Python, NewLength, &String);
+    if (!Success) {
         return FALSE;
     }
-
-    //
-    // Point the buffer to the memory immediately after the struct.
-    //
-
-    String->Buffer = (PSTR)(
-        RtlOffsetToPointer(
-            String,
-            sizeof(STRING)
-        )
-    );
 
     //
     // Initialize sizes.  NewLength includes trailing NUL, so omit it for
@@ -1810,7 +2260,10 @@ QualifyPath(
     //
 
     String->Length = NewLength-1;
-    String->MaximumLength = (USHORT)(AllocSizeInBytes - sizeof(STRING));
+
+    if (String->MaximumLength <= String->Length) {
+        __debugbreak();
+    }
 
     //
     // And finally, copy over the canonicalized path.  We've already verified
@@ -2545,9 +2998,6 @@ Routine Description:
     BOOL Reversed = TRUE;
     BOOL WeOwnPathBuffer;
 
-    ULONG AllocationSize;
-    ULONG AlignedAllocationSize;
-
     HANDLE HeapHandle = NULL;
 
     PRTL Rtl;
@@ -2557,11 +3007,6 @@ Routine Description:
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     PPYTHON_PATH_TABLE_ENTRY DirectoryEntry;
-    PALLOCATION_ROUTINE AllocationRoutine;
-    PVOID AllocationContext;
-    PFREE_ROUTINE FreeRoutine;
-    PVOID FreeContext;
-    PVOID Buffer;
     PSTR ModuleBuffer;
     PSTRING Path = QualifiedPath;
     PSTRING Name;
@@ -2581,6 +3026,7 @@ Routine Description:
     USHORT PathAllocSize;
     USHORT FullNameLength;
     USHORT FullNameAllocSize;
+    USHORT ExpectedMaximumLength;
 
     CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
     RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
@@ -2601,12 +3047,6 @@ Routine Description:
     if (!ARGUMENT_PRESENT(PathEntryPointer)) {
         return FALSE;
     }
-
-    AllocationRoutine = Python->AllocationRoutine;
-    AllocationContext = Python->AllocationContext;
-
-    FreeRoutine = Python->FreeRoutine;
-    FreeContext = Python->FreeContext;
 
     CodeObject = FrameObject->Code;
 
@@ -2753,14 +3193,6 @@ Routine Description:
         }
     }
 
-    //
-    // Determine our final allocation size ahead of time so that we only have
-    // to do a single allocation for the PathEntry struct plus any additional
-    // string buffers.
-    //
-
-    AllocationSize = sizeof(*PathEntry);
-
     if (!WeOwnPathBuffer) {
 
         //
@@ -2768,7 +3200,6 @@ Routine Description:
         //
 
         PathAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(Path->Length + 1);
-        AllocationSize += PathAllocSize;
 
     } else {
 
@@ -2807,49 +3238,62 @@ Routine Description:
         sizeof(CHAR)
     );
 
-    AllocationSize += FullNameLength;
-
-    AlignedAllocationSize = ALIGN_UP_POINTER(AllocationSize);
-
     FullNameAllocSize = FullNameLength;
 
-    //
-    // Let the full name buffer's maximum size extend to the end of the
-    // allocation.
-    //
-
-    if (AllocationSize != AlignedAllocationSize) {
-        ULONG AdditionalSize = (AlignedAllocationSize - AllocationSize);
-        ULONG FinalFullNameSize = FullNameAllocSize + AdditionalSize;
-        if (FinalFullNameSize > MAX_USTRING) {
-            FinalFullNameSize = MAX_USTRING;
-        }
-        FullNameAllocSize = (USHORT)FinalFullNameSize;
+    Success = AllocatePythonPathTableEntry(Python, &PathEntry);
+    if (!Success) {
+        return FALSE;
     }
-
-    Buffer = AllocationRoutine(AllocationContext, AlignedAllocationSize);
-    if (!Buffer) {
-        goto Error;
-    }
-
-    PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Buffer;
 
     PathEntry->IsFile = TRUE;
 
     Path = &PathEntry->Path;
+    FullName = &PathEntry->FullName;
+
+    //
+    // Allocate the full name string and the path string if we don't already
+    // own it.
+    //
+
+    if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
+        FreePythonPathTableEntry(Python, PathEntry);
+        return FALSE;
+    }
+
+    if (!WeOwnPathBuffer) {
+
+        if (!AllocateStringBuffer(Python, PathAllocSize, Path)) {
+            FreeStringBuffer(Python, FullName);
+            FreePythonPathTableEntry(Python, PathEntry);
+            return FALSE;
+        }
+
+    } else {
+
+        //
+        // Re-use the qualified path's details.
+        //
+
+        Path->MaximumLength = QualifiedPath->MaximumLength;
+        Path->Buffer = QualifiedPath->Buffer;
+    }
 
     Path->Length = QualifiedPath->Length;
-    Path->MaximumLength = (
+
+    ExpectedMaximumLength = (
         PathAllocSize ? PathAllocSize :
                         QualifiedPath->MaximumLength
     );
+
+    if (Path->MaximumLength < ExpectedMaximumLength) {
+        __debugbreak();
+    }
 
     //
     // Initialize shortcut pointers.
     //
 
     Name = &PathEntry->Name;
-    FullName = &PathEntry->FullName;
     ModuleName = &PathEntry->ModuleName;
 
     //
@@ -2857,7 +3301,10 @@ Routine Description:
     //
 
     FullName->Length = FullNameLength - 1; // exclude trailing NUL
-    FullName->MaximumLength = FullNameAllocSize;
+
+    if (FullName->MaximumLength <= FullName->Length) {
+        __debugbreak();
+    }
 
     Name->Length = Filename.Length;
     Name->MaximumLength = Filename.MaximumLength;
@@ -2866,24 +3313,10 @@ Routine Description:
     ModuleName->MaximumLength = ModuleLength;
     ModuleName->Buffer = ModuleBuffer;
 
-    //
-    // Clear the strings we won't be using.
-    //
-
-    ClearString(&PathEntry->ClassName);
-
     if (!WeOwnPathBuffer) {
 
         //
-        // If we didn't own the incoming path's buffer, point the STRING's
-        // Buffer field to the end of our newly-allocated PathEntry struct
-        // and copy the string over.
-        //
-
-        Path->Buffer = (PSTR)RtlOffsetToPointer(PathEntry, sizeof(*PathEntry));
-
-        //
-        // Copy the path string over to the new buffer.
+        // If we didn't own the incoming path's buffer, copy it over.
         //
 
         __movsb((PBYTE)Path->Buffer,
@@ -2895,32 +3328,6 @@ Routine Description:
         //
 
         Path->Buffer[Path->Length] = '\0';
-
-        //
-        // Point the FullName->Buffer to after us.
-        //
-
-        FullName->Buffer = Path->Buffer + PathAllocSize;
-
-    } else {
-
-        //
-        // We own the incoming path's buffer, so we can just point the new
-        // field at the existing buffer.
-        //
-
-        Path->Buffer = QualifiedPath->Buffer;
-
-        //
-        // The FullName->Buffer will come straight after the PathEntry.
-        //
-
-        FullName->Buffer = (PSTR)(
-            RtlOffsetToPointer(
-                PathEntry,
-                sizeof(*PathEntry)
-            )
-        );
 
     }
 
@@ -2936,10 +3343,16 @@ Routine Description:
                                    PrefixTableEntry);
 
     if (!Success) {
+
+        FreeStringBuffer(Python, FullName);
+        FreePythonPathTableEntry(Python, PathEntry);
+
         if (WeOwnPathBuffer) {
-            FreeRoutine(FreeContext, QualifiedPath->Buffer);
+            FreeStringAndBuffer(Python, QualifiedPath);
+        } else {
+            FreeStringBuffer(Python, Path);
         }
-        FreeRoutine(FreeContext, Buffer);
+
         goto Error;
     }
 

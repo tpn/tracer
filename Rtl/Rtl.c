@@ -2933,6 +2933,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+        GetProcAddress(Rtl->NtdllModule, "GetProcessIoCounters"))) {
+
+        if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+            GetProcAddress(Rtl->NtosKrnlModule, "GetProcessIoCounters"))) {
+
+            if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+                GetProcAddress(Rtl->Kernel32Module, "GetProcessIoCounters"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'GetProcessIoCounters'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+        GetProcAddress(Rtl->NtdllModule, "GetProcessHandleCount"))) {
+
+        if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+            GetProcAddress(Rtl->NtosKrnlModule, "GetProcessHandleCount"))) {
+
+            if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+                GetProcAddress(Rtl->Kernel32Module, "GetProcessHandleCount"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'GetProcessHandleCount'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
         GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
 

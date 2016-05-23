@@ -1262,6 +1262,12 @@ typedef struct _PYLONGOBJECT {
     };
 } PYLONGOBJECT, *PPYLONGOBJECT, PyLongObject;
 
+typedef struct _PY_HASH_SECRET {
+    LONG Prefix;
+    LONG Suffix;
+} PY_HASH_SECRET, *PPY_HASH_SECRET;
+
+
 //
 // Our custom helper types
 //
@@ -1380,9 +1386,6 @@ typedef INT (*PPYOBJECT_COMPARE)(PPYOBJECT, PPYOBJECT, PINT);
 typedef PVOID (*PPYMEM_MALLOC)(SIZE_T);
 typedef PVOID (*PPYMEM_REALLOC)(PVOID, SIZE_T);
 typedef VOID (*PPYMEM_FREE)(PVOID);
-typedef PVOID (*PPYMEM_MALLOC)(SIZE_T);
-typedef PVOID (*PPYMEM_REALLOC)(PVOID, SIZE_T);
-typedef VOID (*PPYMEM_FREE)(PVOID);
 typedef PVOID (*PPYOBJECT_MALLOC)(SIZE_T);
 typedef PVOID (*PPYOBJECT_REALLOC)(PVOID, SIZE_T);
 typedef VOID (*PPYOBJECT_FREE)(PVOID);
@@ -1430,17 +1433,18 @@ typedef struct _PYTHONFUNCTIONS {
     _PYTHONFUNCTIONS_HEAD
 } PYTHONFUNCTIONS, *PPYTHONFUNCTIONS;
 
-#define _PYTHONDATA_HEAD        \
-    PYTYPEOBJECTEX PyString;    \
-    PYTYPEOBJECTEX PyBytes;     \
-    PYTYPEOBJECTEX PyCode;      \
-    PYTYPEOBJECTEX PyDict;      \
-    PYTYPEOBJECTEX PyTuple;     \
-    PYTYPEOBJECTEX PyType;      \
-    PYTYPEOBJECTEX PyFunction;  \
-    PYTYPEOBJECTEX PyUnicode;   \
-    PYTYPEOBJECTEX PyCFunction; \
-    PYTYPEOBJECTEX PyInstance;  \
+#define _PYTHONDATA_HEAD           \
+    PY_HASH_SECRET _Py_HashSecret; \
+    PYTYPEOBJECTEX PyString;       \
+    PYTYPEOBJECTEX PyBytes;        \
+    PYTYPEOBJECTEX PyCode;         \
+    PYTYPEOBJECTEX PyDict;         \
+    PYTYPEOBJECTEX PyTuple;        \
+    PYTYPEOBJECTEX PyType;         \
+    PYTYPEOBJECTEX PyFunction;     \
+    PYTYPEOBJECTEX PyUnicode;      \
+    PYTYPEOBJECTEX PyCFunction;    \
+    PYTYPEOBJECTEX PyInstance;     \
     PYTYPEOBJECTEX PyModule;
 
 typedef struct _PYTHONDATA {
@@ -1461,6 +1465,7 @@ typedef struct _PYTHON PYTHON, *PPYTHON, **PPPYTHON;
 
 typedef struct _PYTHON_PATH_TABLE PYTHON_PATH_TABLE;
 typedef PYTHON_PATH_TABLE *PPYTHON_PATH_TABLE;
+typedef PYTHON_PATH_TABLE **PPPYTHON_PATH_TABLE;
 
 typedef struct _PYTHON_PATH_TABLE_ENTRY PYTHON_PATH_TABLE_ENTRY;
 typedef PYTHON_PATH_TABLE_ENTRY *PPYTHON_PATH_TABLE_ENTRY;
@@ -1469,6 +1474,95 @@ typedef PYTHON_PATH_TABLE_ENTRY **PPPYTHON_PATH_TABLE_ENTRY;
 typedef struct _PYTHON_FUNCTION PYTHON_FUNCTION;
 typedef PYTHON_FUNCTION *PPYTHON_FUNCTION;
 typedef PYTHON_FUNCTION **PPPYTHON_FUNCTION;
+
+typedef struct _PYTHON_ALLOCATOR {
+    PALLOCATION_ROUTINE AllocationRoutine;
+    PVOID AllocationContext;
+    PFREE_ROUTINE FreeRoutine;
+    PVOID FreeContext;
+} PYTHON_ALLOCATOR, *PPYTHON_ALLOCATOR, **PPPYTHON_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_STRING_ALLOCATOR;
+typedef PYTHON_STRING_ALLOCATOR *PPYTHON_STRING_ALLOCATOR;
+typedef PYTHON_STRING_ALLOCATOR **PPPYTHON_STRING_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_HASHED_STRING_ALLOCATOR;
+typedef PYTHON_HASHED_STRING_ALLOCATOR *PPYTHON_HASHED_STRING_ALLOCATOR;
+typedef PYTHON_HASHED_STRING_ALLOCATOR **PPPYTHON_HASHED_STRING_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_BUFFER_ALLOCATOR;
+typedef PYTHON_BUFFER_ALLOCATOR *PPYTHON_BUFFER_ALLOCATOR;
+typedef PYTHON_BUFFER_ALLOCATOR **PPPYTHON_BUFFER_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_FUNCTION_TABLE_ALLOCATOR;
+typedef PYTHON_FUNCTION_TABLE_ALLOCATOR *PPYTHON_FUNCTION_TABLE_ALLOCATOR;
+typedef PYTHON_FUNCTION_TABLE_ALLOCATOR **PPPYTHON_FUNCTION_TABLE_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
+typedef PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR \
+       *PPYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
+typedef PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR \
+      **PPPYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_PATH_TABLE_ALLOCATOR;
+typedef PYTHON_PATH_TABLE_ALLOCATOR *PPYTHON_PATH_TABLE_ALLOCATOR;
+typedef PYTHON_PATH_TABLE_ALLOCATOR **PPPYTHON_PATH_TABLE_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
+typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR *PPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
+typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR **PPPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
+
+typedef struct _PYTHON_ALLOCATORS {
+    ULONG SizeInBytes;
+    ULONG NumberOfAllocators;
+
+    PYTHON_STRING_ALLOCATOR               String;
+    PYTHON_BUFFER_ALLOCATOR               StringBuffer;
+    PYTHON_HASHED_STRING_ALLOCATOR        HashedString;
+    PYTHON_BUFFER_ALLOCATOR               HashedStringBuffer;
+    PYTHON_BUFFER_ALLOCATOR               Buffer;
+    PYTHON_FUNCTION_TABLE_ALLOCATOR       FunctionTable;
+    PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR FunctionTableEntry;
+    PYTHON_PATH_TABLE_ALLOCATOR           PathTable;
+    PYTHON_PATH_TABLE_ENTRY_ALLOCATOR     PathTableEntry;
+
+} PYTHON_ALLOCATORS, *PPYTHON_ALLOCATORS, **PPPYTHON_ALLOCATORS;
+
+#define ALLOCATE(Name, Size)                           \
+    Python->Allocators.##Name##.AllocationRoutine(     \
+        Python->Allocators.##Name##.AllocationContext, \
+        Size                                           \
+    )
+
+#define FREE(Name, Pointer)                      \
+    Python->Allocators.##Name##.FreeRoutine(     \
+        Python->Allocators.##Name##.FreeContext, \
+        Pointer                                  \
+    )
+
+typedef BOOL (*PSET_PYTHON_ALLOCATORS)(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_ALLOCATORS  Allocators
+    );
+
+typedef struct _PYTHON_HASHED_STRING {
+    ULONG Atom;
+    LONG  Hash;
+
+    //
+    // Inline STRING struct.
+    //
+
+    union {
+        STRING String;
+        struct {
+            USHORT Length;
+            USHORT MaximumLength;
+            PCHAR Buffer;
+        };
+    };
+
+} PYTHON_HASHED_STRING, *PPYTHON_HASHED_STRING, **PPPYTHON_HASHED_STRING;
 
 typedef BOOL (*PREGISTER_FRAME)(
     _In_      PPYTHON         Python,
@@ -1479,15 +1573,110 @@ typedef BOOL (*PREGISTER_FRAME)(
     );
 
 typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
-    _In_      PPYTHON             Python,
-    _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID               AllocationContext,
-    _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext
+    _In_      PPYTHON             Python
+    );
+
+typedef BOOL (*PALLOCATE_STRING)(
+    _In_  PPYTHON  Python,
+    _Out_ PPSTRING StringPointer
+    );
+
+typedef VOID (*PFREE_STRING)(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    );
+
+typedef BOOL (*PALLOCATE_STRING_BUFFER)(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _In_  PPSTRING StringPointer
+    );
+
+typedef BOOL (*PALLOCATE_STRING_AND_BUFFER)(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _Out_ PPSTRING StringPointer
+    );
+
+typedef BOOL (*PALLOCATE_STRING_BUFFER)(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _In_  PPSTRING String
+    );
+
+typedef VOID (*PFREE_STRING_AND_BUFFER)(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    );
+
+typedef VOID (*PFREE_STRING_BUFFER)(
+    _In_        PPYTHON  Python,
+    _In_opt_    PSTRING  String
+    );
+
+typedef VOID (*PFREE_STRING_BUFFER_DIRECT)(
+    _In_        PPYTHON  Python,
+    _In_opt_    PVOID    Buffer
+    );
+
+typedef BOOL (*PALLOCATE_HASHED_STRING)(
+    _In_  PPYTHON                Python,
+    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    );
+
+typedef BOOL (*PALLOCATE_HASHED_STRING_AND_BUFFER)(
+    _In_  PPYTHON                Python,
+    _In_  USHORT                 StringBufferSizeInBytes,
+    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    );
+
+typedef BOOL (*PFINALIZE_HASHED_STRING)(
+    _In_        PPYTHON                 Python,
+    _Inout_     PPYTHON_HASHED_STRING   HashedString,
+    _Out_opt_   PPPYTHON_HASHED_STRING  ExistingHashedStringPointer
+    );
+
+typedef BOOL (*PALLOCATE_BUFFER)(
+    _In_  PPYTHON Python,
+    _In_  ULONG   SizeInBytes,
+    _Out_ PPVOID  BufferPointer
+    );
+
+typedef VOID (*PFREE_BUFFER)(
+    _In_        PPYTHON Python,
+    _In_opt_    PVOID   Buffer
+    );
+
+typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY)(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
+    );
+
+typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING)(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
+    );
+
+typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER)(
+    _In_  PPYTHON                   Python,
+    _In_  ULONG                     StringBufferSize,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
     );
 
 #define _PYTHONEXFUNCTIONS_HEAD                                      \
+    PALLOCATE_STRING AllocateString;                                 \
+    PALLOCATE_STRING_BUFFER AllocateStringBuffer;                    \
+    PALLOCATE_STRING_AND_BUFFER AllocateStringAndBuffer;             \
+    PFREE_STRING FreeString;                                         \
+    PFREE_STRING_AND_BUFFER FreeStringAndBuffer;                     \
+    PFREE_STRING_BUFFER FreeStringBuffer;                            \
+    PFREE_STRING_BUFFER_DIRECT FreeStringBufferDirect;               \
+    PALLOCATE_BUFFER AllocateBuffer;                                 \
+    PFREE_BUFFER FreeBuffer;                                         \
     PREGISTER_FRAME RegisterFrame;                                   \
+    PSET_PYTHON_ALLOCATORS SetPythonAllocators;                      \
     PINITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
 
 typedef struct _PYTHONEXFUNCTIONS {
@@ -1661,11 +1850,12 @@ typedef struct _PYTHON_FUNCTION_TABLE {
             };
         };
     };
-} PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE;
+} PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE, **PPPYTHON_FUNCTION_TABLE;
 
-#define IsValidFunction(Function) (                  \
-    (BOOL)(Function && Function->PathEntry.IsValid)  \
+#define IsValidFunction(Function) (                 \
+    (BOOL)(Function && Function->PathEntry.IsValid) \
 )
+
 
 typedef PREFIX_TABLE MODULE_NAME_TABLE;
 typedef MODULE_NAME_TABLE *PMODULE_NAME_TABLE, **PPMODULE_NAME_TABLE;
@@ -1675,14 +1865,11 @@ typedef MODULE_NAME_TABLE *PMODULE_NAME_TABLE, **PPMODULE_NAME_TABLE;
     PREFIX_TABLE ModuleNameTable;                               \
     PPYTHON_PATH_TABLE PathTable;                               \
     PPYTHON_FUNCTION_TABLE FunctionTable;                       \
-    PALLOCATION_ROUTINE AllocationRoutine;                      \
-    PVOID AllocationContext;                                    \
-    PFREE_ROUTINE FreeRoutine;                                  \
-    PVOID FreeContext;                                          \
     PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;   \
     PRTL_GENERIC_ALLOCATE_ROUTINE FunctionTableAllocateRoutine; \
     PRTL_GENERIC_FREE_ROUTINE FunctionTableFreeRoutine;         \
-    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;         \
+    PYTHON_ALLOCATORS Allocators;
 
 
 typedef struct _PYTHONEXRUNTIME {
@@ -1764,6 +1951,157 @@ typedef struct _PYTHON {
     PPYOBJECT CodeObjectCache[32];
 } PYTHON, *PPYTHON, **PPPYTHON;
 
+TRACER_API
+BOOL
+SetPythonAllocators(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_ALLOCATORS  Allocators
+    );
+
+TRACER_API
+BOOL
+AllocateString(
+    _In_  PPYTHON  Python,
+    _Out_ PPSTRING StringPointer
+    );
+
+TRACER_API
+BOOL
+AllocateStringAndBuffer(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _Out_ PPSTRING StringPointer
+    );
+
+TRACER_API
+BOOL
+AllocateStringBuffer(
+    _In_  PPYTHON  Python,
+    _In_  USHORT   StringBufferSizeInBytes,
+    _In_  PSTRING  String
+    );
+
+TRACER_API
+VOID
+FreeString(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    );
+
+TRACER_API
+VOID
+FreeStringAndBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    );
+
+TRACER_API
+VOID
+FreeStringBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PSTRING String
+    );
+
+TRACER_API
+VOID
+FreeStringBufferDirect(
+    _In_        PPYTHON Python,
+    _In_opt_    PVOID   Buffer
+    );
+
+TRACER_API
+BOOL
+AllocateHashedString(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    );
+
+TRACER_API
+BOOL
+AllocateHashedStringAndBuffer(
+    _In_  PPYTHON Python,
+    _In_  USHORT  StringBufferSizeInBytes,
+    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    );
+
+TRACER_API
+BOOL
+FinalizeHashedString(
+    _In_    PPYTHON                 Python,
+    _Inout_ PPYTHON_HASHED_STRING   HashedString,
+    _Out_   PPPYTHON_HASHED_STRING  UpdatedHashedStringPointer
+    );
+
+TRACER_API
+BOOL
+AllocateBuffer(
+    _In_  PPYTHON Python,
+    _In_  ULONG   SizeInBytes,
+    _Out_ PPVOID  BufferPointer
+    );
+
+TRACER_API
+VOID
+FreeBuffer(
+    _In_        PPYTHON Python,
+    _In_opt_    PVOID   Buffer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonFunctionTable(
+    _In_ PPYTHON Python,
+    _Out_ PPPYTHON_FUNCTION_TABLE FunctionTablePointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTable(
+    _In_ PPYTHON Python,
+    _Out_ PPPYTHON_PATH_TABLE PathTablePointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntry(
+    _In_  PPYTHON Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndString(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndStringWithBuffer(
+    _In_  PPYTHON                   Python,
+    _In_  ULONG                     StringBufferSize,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPSTRING                  StringPointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndHashedString(
+    _In_  PPYTHON                   Python,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    );
+
+TRACER_API
+BOOL
+AllocatePythonPathTableEntryAndHashedStringWithBuffer(
+    _In_  PPYTHON                   Python,
+    _In_  ULONG                     StringBufferSize,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    );
+
 typedef BOOL (*PINITIALIZE_PYTHON)(
     _In_                         PRTL                Rtl,
     _In_                         HMODULE             PythonModule,
@@ -1791,11 +2129,7 @@ SetPythonThreadpoolCallbackEnvironment(
 TRACER_API
 BOOL
 InitializePythonRuntimeTables(
-    _In_      PPYTHON             Python,
-    _In_opt_  PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_  PVOID               AllocationContext,
-    _In_opt_  PFREE_ROUTINE       FreeRoutine,
-    _In_opt_  PVOID               FreeContext
+    _In_      PPYTHON             Python
     );
 
 TRACER_API
@@ -1899,6 +2233,44 @@ WrapPythonStringAsString(
     return TRUE;
 }
 
+FORCEINLINE
+LONG
+PythonStringHashInline(
+    _In_    PPYTHON Python,
+    _In_    PSTRING String
+    )
+{
+    PCHAR Char;
+    USHORT Length;
+    LONG Hash;
+
+    if (String->Length == 0) {
+        return 0;
+    }
+
+    Length = String->Length;
+    Char = String->Buffer;
+
+    Hash = Python->_Py_HashSecret.Prefix;
+
+    Hash ^= *Char << 7;
+
+    while (--Length >= 0) {
+        Hash = (1000003*Hash) ^ *Char++;
+    }
+
+    Hash ^= String->Length;
+    Hash ^= Python->_Py_HashSecret.Suffix;
+
+    if (Hash == -1) {
+        Hash = -2;
+    }
+
+    return Hash;
+}
+
 #ifdef __cpp
 } // extern "C"
 #endif
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
