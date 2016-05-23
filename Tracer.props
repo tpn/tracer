@@ -81,7 +81,7 @@
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+
       <!--
       <IgnoreSpecificDefaultLibraries>libc;vcruntime1400d;vcruntime1400;ucrtbased;msvcr100;msvcr100d%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       -->
@@ -103,10 +103,13 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
+    <Link Condition="$(Configuration) != 'PGInstrument'">
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+    </Link>
     <Lib>
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">PGInstrument</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">PGUpdate</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">true</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">true</LinkTimeCodeGeneration>
     </Lib>
     <ResourceCompile>
       <!--
