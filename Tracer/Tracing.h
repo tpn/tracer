@@ -396,8 +396,17 @@ typedef struct _TRACE_STORE {
 } TRACE_STORE, *PTRACE_STORE;
 
 static const LPCWSTR TraceStoreFileNames[] = {
-    L"trace_events.dat",
-    L"trace_functions.dat"
+    L"TraceEvent.dat",
+    L"TraceString.dat",
+    L"TraceStringBuffer.dat",
+    L"TraceHashedString.dat",
+    L"TraceHashedStringBuffer.dat",
+    L"TraceBuffer.dat",
+    L"TraceFunctionTable.dat",
+    L"TraceFunctionTableEntry.dat",
+    L"TracePathTable.dat",
+    L"TracePathTableEntry.dat",
+    L"TraceSession.dat"
 };
 
 static const WCHAR TraceStoreMetadataSuffix[] = L":metadata";
@@ -427,24 +436,79 @@ static const USHORT ElementsPerTraceStore = 4;
 
 static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // events
-    10 << 20    // functions
+    10 << 20,   // strings
+    10 << 20,   // strings_buffer
+    10 << 20,   // hashed_strings
+    10 << 20,   // hashed_strings_buffer
+    10 << 20,   // buffer
+    10 << 20,   // function_table
+    10 << 20,   // function_table_entry
+    10 << 20,   // path_table
+    10 << 20,   // path_table_entry
+    10 << 20    // trace_session
 };
 
-#define TRACE_STORE_EVENTS_INDEX                0
-#define TRACE_STORE_EVENTS_METADATA_INDEX       1
-#define TRACE_STORE_EVENTS_ADDRESSES_INDEX      2
-#define TRACE_STORE_EVENTS_EOF_INDEX            3
-#define TRACE_STORE_FUNCTIONS_INDEX             4
-#define TRACE_STORE_FUNCTIONS_METADATA_INDEX    5
-#define TRACE_STORE_FUNCTIONS_ADDRESSES_INDEX   6
-#define TRACE_STORE_FUNCTIONS_EOF_INDEX         7
+#define TraceStoreEventIndex                                        0
+#define TraceStoreEventMetadataIndex                                1
+#define TraceStoreEventAddressIndex                                 2
+#define TraceStoreEventEofIndex                                     3
+
+#define TraceStoreStringIndex                                       4
+#define TraceStoreStringMetadataIndex                               5
+#define TraceStoreStringAddressIndex                                6
+#define TraceStoreStringEofIndex                                    7
+
+#define TraceStoreStringBufferIndex                                 8
+#define TraceStoreStringBufferMetadataIndex                         9
+#define TraceStoreStringBufferAddressIndex                          10
+#define TraceStoreStringBufferEofIndex                              11
+
+#define TraceStoreHashedStringIndex                                 12
+#define TraceStoreHashedStringMetadataIndex                         13
+#define TraceStoreHashedStringAddressIndex                          14
+#define TraceStoreHashedStringEofIndex                              15
+
+#define TraceStoreHashedStringBufferIndex                           16
+#define TraceStoreHashedStringBufferMetadataIndex                   17
+#define TraceStoreHashedStringBufferAddressIndex                    18
+#define TraceStoreHashedStringBufferEofIndex                        19
+
+#define TraceStoreBufferIndex                                       20
+#define TraceStoreBufferMetadataIndex                               21
+#define TraceStoreBufferAddressIndex                                22
+#define TraceStoreBufferEofIndex                                    23
+
+#define TraceStoreFunctionTableIndex                                24
+#define TraceStoreFunctionTableMetadataIndex                        25
+#define TraceStoreFunctionTableAddressIndex                         26
+#define TraceStoreFunctionTableEofIndex                             27
+
+#define TraceStoreFunctionTableEntryIndex                           28
+#define TraceStoreFunctionTableEntryMetadataIndex                   29
+#define TraceStoreFunctionTableEntryAddressIndex                    30
+#define TraceStoreFunctionTableEntryEofIndex                        31
+
+#define TraceStorePathTableIndex                                    32
+#define TraceStorePathTableMetadataIndex                            33
+#define TraceStorePathTableAddressIndex                             34
+#define TraceStorePathTableEofIndex                                 35
+
+#define TraceStorePathTableEntryIndex                               36
+#define TraceStorePathTableEntryMetadataIndex                       37
+#define TraceStorePathTableEntryAddressIndex                        38
+#define TraceStorePathTableEntryEofIndex                            39
+
+#define TraceStoreSessionIndex                                      40
+#define TraceStoreSessionMetadataIndex                              41
+#define TraceStoreSessionAddressIndex                               42
+#define TraceStoreSessionEofIndex                                   43
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
-#define MAX_TRACE_STORES 8
+#define MAX_TRACE_STORES 44
 
 typedef struct _TRACE_STORES {
     USHORT  Size;

@@ -17,21 +17,21 @@ PythonTraceEventDataType = np.dtype([
     ('WorkingSetSize', np.uint64),
     ('PageFaultCount', np.uint64),
     ('CommittedSize', np.uint64),
-    ('Unused2', np.uint64),
 
+    ('ReadTransferCount', np.uint64),
+    ('WriteTransferCount', np.uint64),
+
+    ('HandleCount', np.uint32),
     ('TimestampDelta', np.uint32),
     ('ElapsedMicroseconds', np.uint32),
 
-    ('WorkingSetDelta', np.uint32),
-    ('PageFaultDelta', np.uint32),
-    ('CommittedDelta', np.uint32),
-
-    ('Flags', np.uint32),
+    ('WorkingSetDelta', np.int32),
+    ('CommittedDelta', np.int32),
+    ('ReadTransferDelta', np.uint32),
+    ('WriteTransferDelta', np.uint32),
 
     ('CodeObjectHash', np.uint32),
     ('FunctionHash', np.uint32),
-
-    ('FunctionReferenceCount', np.uint32),
 
     ('PathAtom', np.uint32),
     ('FullNameAtom', np.uint32),
@@ -39,13 +39,16 @@ PythonTraceEventDataType = np.dtype([
     ('ClassNameAtom', np.uint32),
     ('NameAtom', np.uint32),
 
+    ('Flags', np.uint32),
+
+    ('HandleDelta', np.int16),
+    ('PageFaultDelta', np.uint16),
+
     ('LineNumber', np.uint16),
     ('FirstLineNumber', np.uint16),
     ('LastLineNumber', np.uint16),
     ('NumberOfLines', np.uint16),
 
-    ('Padding1', np.uint64),
-    ('Padding2', np.uint64),
 ])
 
 AddressDataType = np.dtype([

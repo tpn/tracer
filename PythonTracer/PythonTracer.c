@@ -106,6 +106,42 @@ DisableMemoryTracing(
     PythonTraceContext->TraceMemory = FALSE;
 }
 
+TRACER_API
+VOID
+EnableIoCountersTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceIoCounters = TRUE;
+}
+
+TRACER_API
+VOID
+DisableIoCountersTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceIoCounters = FALSE;
+}
+
+TRACER_API
+VOID
+EnableHandleCountTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceHandleCount = TRUE;
+}
+
+TRACER_API
+VOID
+DisableHandleCountTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    )
+{
+    PythonTraceContext->TraceHandleCount = FALSE;
+}
+
 LONG
 PyTraceCallback(
     _In_        PPYTHON_TRACE_CONTEXT   Context,
@@ -123,13 +159,15 @@ PyTraceCallback(
     BOOL IsException;
     BOOL IsC;
     BOOL HaveMemoryCounters = FALSE;
+    BOOL HaveIoCounters = FALSE;
+    BOOL HaveHandleCount = FALSE;
 
     PRTL Rtl;
     PPYTHON Python;
     HRESULT Result;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
-    PTRACE_STORE Events;
+    PTRACE_STORE EventStore;
     PYTHON_TRACE_EVENT Event;
     PYTHON_TRACE_EVENT LastEvent;
     PPYTHON_TRACE_EVENT LastEventPointer;
@@ -137,11 +175,9 @@ PyTraceCallback(
     PPYTHON_FUNCTION Function = NULL;
     LARGE_INTEGER Elapsed;
     PROCESS_MEMORY_COUNTERS_EX MemoryCounters;
-    ULONG SizeOfTraceEvent = sizeof(PYTHON_TRACE_EVENT);
-
-    if (SizeOfTraceEvent % 2 != 0) {
-        __debugbreak();
-    }
+    IO_COUNTERS IoCounters;
+    DWORD HandleCount;
+    HANDLE CurrentProcess = (HANDLE)-1;
 
     IsFirstTrace = FALSE;
     StartedTracing = (BOOL)Context->StartedTracing;
@@ -270,13 +306,11 @@ PyTraceCallback(
 
     TraceContext = Context->TraceContext;
     TraceStores = TraceContext->TraceStores;
-    Events = &TraceStores->Stores[TRACE_STORE_EVENTS_INDEX];
+    EventStore = &TraceStores->Stores[TraceStoreEventIndex];
 
-    LastEventPointer = (PPYTHON_TRACE_EVENT)Events->PrevAddress;
+    LastEventPointer = (PPYTHON_TRACE_EVENT)EventStore->PrevAddress;
 
     if (Context->TraceMemory) {
-
-        HANDLE CurrentProcess = (HANDLE)-1;
 
         Success = Rtl->K32GetProcessMemoryInfo(
             CurrentProcess,
@@ -290,16 +324,25 @@ PyTraceCallback(
 
     }
 
-    /*
-    if (Events->pMetadata->NumberOfAllocations.QuadPart == 21844) {
-        __debugbreak();
-    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21845) {
-        __debugbreak();
-    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21846) {
-        __debugbreak();
-    } else if (Events->pMetadata->NumberOfAllocations.QuadPart == 21847) {
-        __debugbreak();
-    }*/
+    if (Context->TraceIoCounters) {
+
+        Success = Rtl->GetProcessIoCounters(CurrentProcess,
+                                            &IoCounters);
+
+        if (Success) {
+            HaveIoCounters = TRUE;
+        }
+    }
+
+    if (Context->TraceHandleCount) {
+
+        Success = Rtl->GetProcessHandleCount(CurrentProcess,
+                                             &HandleCount);
+
+        if (Success) {
+            HaveHandleCount = TRUE;
+        }
+    }
 
     SecureZeroMemory(&Event, sizeof(Event));
 
@@ -317,7 +360,6 @@ PyTraceCallback(
     Event.IsC = IsC;
     Event.CodeObjectHash = Function->CodeObjectHash;
     Event.FunctionHash = Function->Hash;
-    Event.FunctionReferenceCount = Function->ReferenceCount;
     Event.FirstLineNumber = Function->FirstLineNumber;
     Event.LastLineNumber = Function->LastLineNumber;
     Event.NumberOfLines = Function->NumberOfLines;
@@ -359,13 +401,15 @@ PyTraceCallback(
         Event.WorkingSetSize = MemoryCounters.WorkingSetSize;
         Event.PageFaultCount = MemoryCounters.PageFaultCount;
         Event.CommittedSize  = MemoryCounters.PrivateUsage;
-    } else {
-        Event.WorkingSetSize = 0;
-        Event.WorkingSetDelta = 0;
-        Event.PageFaultCount = 0;
-        Event.PageFaultDelta = 0;
-        Event.CommittedSize = 0;
-        Event.CommittedDelta = 0;
+    }
+
+    if (HaveIoCounters) {
+        Event.ReadTransferCount = IoCounters.ReadTransferCount;
+        Event.WriteTransferCount = IoCounters.WriteTransferCount;
+    }
+
+    if (HaveHandleCount) {
+        Event.HandleCount = HandleCount;
     }
 
     if (!LastEventPointer) {
@@ -441,19 +485,46 @@ PyTraceCallback(
         // Calculate memory counter deltas.
         //
 
-        LastEvent.WorkingSetDelta = (ULONG)(
+        LastEvent.WorkingSetDelta = (LONG)(
             Event.WorkingSetSize -
             LastEvent.WorkingSetSize
         );
 
-        LastEvent.PageFaultDelta = (ULONG)(
+        LastEvent.PageFaultDelta = (USHORT)(
             Event.PageFaultCount -
             LastEvent.PageFaultCount
         );
 
-        LastEvent.CommittedDelta = (ULONG)(
+        LastEvent.CommittedDelta = (LONG)(
             Event.CommittedSize -
             LastEvent.CommittedSize
+        );
+
+    }
+
+    if (HaveIoCounters) {
+
+        //
+        // Calculate IO counter deltas.
+        //
+
+        LastEvent.ReadTransferDelta = (ULONG)(
+            Event.ReadTransferCount -
+            LastEvent.ReadTransferCount
+        );
+
+        LastEvent.WriteTransferDelta = (ULONG)(
+            Event.WriteTransferCount -
+            LastEvent.WriteTransferCount
+        );
+
+    }
+
+    if (HaveHandleCount) {
+
+        LastEvent.HandleDelta = (SHORT)(
+            Event.HandleCount -
+            LastEvent.HandleDelta
         );
 
     }
@@ -472,14 +543,10 @@ Finalize:
     // Allocate a new event record, then copy our temporary event over.
     //
 
-    ThisEvent = AllocatePythonTraceEvent(Events);
+    ThisEvent = AllocatePythonTraceEvent(EventStore);
 
     if (!ThisEvent) {
         return 0;
-    }
-
-    if (Event.Flags > 40) {
-        __debugbreak();
     }
 
     Rtl->RtlCopyMappedMemory(ThisEvent,
@@ -651,11 +718,19 @@ InitializePythonTraceContext(
     _In_opt_ PVOID UserData
     )
 {
-    PTRACE_STORE FunctionsStore;
-    PTRACE_STORE EventsStore;
     PTRACE_STORES TraceStores;
-    //PTP_WORK Work;
-    //PTP_CALLBACK_ENVIRON CallbackEnv;
+    PTRACE_STORE EventStore;
+    PTRACE_STORE StringStore;
+    PTRACE_STORE StringBufferStore;
+    PTRACE_STORE HashedStringStore;
+    PTRACE_STORE HashedStringBufferStore;
+    PTRACE_STORE BufferStore;
+    PTRACE_STORE FunctionTableStore;
+    PTRACE_STORE FunctionTableEntryStore;
+    PTRACE_STORE PathTableStore;
+    PTRACE_STORE PathTableEntryStore;
+    PYTHON_ALLOCATORS Allocators;
+    ULONG NumberOfAllocators = 0;
 
     if (!Context) {
         if (SizeOfContext) {
@@ -685,12 +760,6 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
-    //CallbackEnv = TraceContext->ThreadpoolCallbackEnvironment;
-
-    //if (!CallbackEnv) {
-    //    return FALSE;
-    //}
-
     SecureZeroMemory(Context, sizeof(*Context));
 
     Context->Size = *SizeOfContext;
@@ -707,21 +776,38 @@ InitializePythonTraceContext(
     Context->SkipFrames = 1;
 
     TraceStores = TraceContext->TraceStores;
-    FunctionsStore = &TraceStores->Stores[TRACE_STORE_FUNCTIONS_INDEX];
 
-    FunctionsStore->NoRetire = TRUE;
+#define INIT_STORE_ALLOCATOR(Name)                                       \
+    Name##Store = &TraceStores->Stores[TraceStore##Name##Index];         \
+    Name##Store->NoRetire = TRUE;                                        \
+    Allocators.##Name##.AllocationRoutine = TraceStoreAllocationRoutine; \
+    Allocators.##Name##.AllocationContext = ##Name##Store;               \
+    Allocators.##Name##.FreeRoutine = TraceStoreFreeRoutine;             \
+    Allocators.##Name##.FreeContext = ##Name##Store;                     \
+    NumberOfAllocators++;
 
-    Python->InitializePythonRuntimeTables(
-        Python,
-        TraceStoreAllocationRoutine,
-        FunctionsStore,
-        TraceStoreFreeRoutine,
-        FunctionsStore
-    );
+    INIT_STORE_ALLOCATOR(String);
+    INIT_STORE_ALLOCATOR(StringBuffer);
+    INIT_STORE_ALLOCATOR(HashedString);
+    INIT_STORE_ALLOCATOR(HashedStringBuffer);
+    INIT_STORE_ALLOCATOR(Buffer);
+    INIT_STORE_ALLOCATOR(FunctionTable);
+    INIT_STORE_ALLOCATOR(FunctionTableEntry);
+    INIT_STORE_ALLOCATOR(PathTable);
+    INIT_STORE_ALLOCATOR(PathTableEntry);
 
-    EventsStore = &TraceStores->Stores[TRACE_STORE_EVENTS_INDEX];
+    EventStore = &TraceStores->Stores[TraceStoreEventIndex];
+    EventStore->NoRetire = FALSE;
+    EventStore->NoPreferredAddressReuse = TRUE;
 
-    EventsStore->NoPreferredAddressReuse = TRUE;
+    Allocators.NumberOfAllocators = NumberOfAllocators;
+    Allocators.SizeInBytes = sizeof(Allocators);
+
+    if (!Python->SetPythonAllocators(Python, &Allocators)) {
+        return FALSE;
+    }
+
+    Python->InitializePythonRuntimeTables(Python);
 
     Context->FirstFunction = NULL;
     QueryPerformanceFrequency(&Context->Frequency);
@@ -940,7 +1026,9 @@ AddPrefixTableEntry(
 
     AllocSize = ALIGN_UP_POINTER(AllocSize);
 
-    Buffer = Python->AllocationRoutine(Python->AllocationContext, AllocSize);
+    if (!Python->AllocateBuffer(Python, AllocSize, &Buffer)) {
+        return FALSE;
+    }
 
     if (!Buffer) {
         return FALSE;

@@ -182,6 +182,16 @@ typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
     _In_    DWORD                       cb
     );
 
+typedef BOOL (WINAPI *PGET_PROCESS_IO_COUNTERS)(
+    _In_    HANDLE          Process,
+    _Out_   PIO_COUNTERS    lpIoCounters
+    );
+
+typedef BOOL (WINAPI *PGET_PROCESS_HANDLE_COUNT)(
+    _In_        HANDLE      Process,
+    _Inout_     PDWORD      pdwHandleCount
+    );
+
 typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
 typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
 
@@ -1195,6 +1205,8 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
+    PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
+    PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;

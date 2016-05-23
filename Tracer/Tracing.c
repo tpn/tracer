@@ -2153,12 +2153,12 @@ AllocateRecords(
     )
 {
     BOOL Success;
+    PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     ULONG_PTR AllocationSize;
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
     PVOID EndAddress;
-    PVOID ThisPage;
     PVOID PrevPage;
     PVOID NextPage;
     PVOID PageAfterNextPage;
@@ -2232,31 +2232,113 @@ AllocateRecords(
         )
     );
 
-    //
-    // XXX todo: ensure an allocation doesn't span a page; put a fake
-    // allocation in there to extend.
-    //
-
-    ThisPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
     PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
     NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
     PageAfterNextPage = (PVOID)((ULONG_PTR)NextPage + PAGE_SIZE);
 
     if (NextAddress > EndAddress) {
 
+        ULONG_PTR PrevMemoryMapAllocSize;
+        ULONG_PTR NextMemoryMapAllocSize;
+
+        PrevMemoryMap = MemoryMap;
+
+        PrevMemoryMapAllocSize = (
+            (ULONG_PTR)EndAddress -
+            (ULONG_PTR)PrevMemoryMap->NextAddress
+        );
+
+        NextMemoryMapAllocSize = (
+            (ULONG_PTR)NextAddress -
+            (ULONG_PTR)EndAddress
+        );
+
         if (!ConsumeNextTraceStoreMemoryMap(TraceStore)) {
             return NULL;
         }
 
         MemoryMap = TraceStore->MemoryMap;
-        ReturnAddress = MemoryMap->BaseAddress;
 
-        MemoryMap->NextAddress = (
-            (PVOID)RtlOffsetToPointer(
-                MemoryMap->BaseAddress,
-                AllocationSize
-            )
-        );
+        if (PrevMemoryMapAllocSize == 0) {
+
+            //
+            // No spill necessary.
+            //
+
+            ReturnAddress = MemoryMap->BaseAddress;
+
+            MemoryMap->NextAddress = (
+                (PVOID)RtlOffsetToPointer(
+                    MemoryMap->BaseAddress,
+                    AllocationSize
+                )
+            );
+
+        } else {
+
+            //
+            // The requested allocation will spill over into the next memory
+            // map.  This is fine as long as the next memory map is mapped at a
+            // contiguous address.
+            //
+
+            if (MemoryMap->BaseAddress != EndAddress) {
+
+                //
+                // Ugh, non-contiguous mapping.
+                //
+
+                __debugbreak();
+
+                ReturnAddress = MemoryMap->BaseAddress;
+
+                MemoryMap->NextAddress = (
+                    (PVOID)RtlOffsetToPointer(
+                        MemoryMap->BaseAddress,
+                        AllocationSize
+                    )
+                );
+
+            } else {
+
+                //
+                // The mapping is contiguous.
+                //
+
+
+                //
+                // Our return address will be the value of the previous memory
+                // map's next address.
+                //
+
+                ReturnAddress = PrevMemoryMap->NextAddress;
+
+                //
+                // Update the previous address fields.
+                //
+
+                PrevMemoryMap->PrevAddress = PrevMemoryMap->NextAddress;
+                TraceStore->PrevAddress = PrevMemoryMap->NextAddress;
+                MemoryMap->PrevAddress = PrevMemoryMap->NextAddress;
+
+                //
+                // Adjust the new memory map's NextAddress to account for the
+                // bytes we had to spill over.
+                //
+
+                MemoryMap->NextAddress = (
+                    (PVOID)RtlOffsetToPointer(
+                        MemoryMap->BaseAddress,
+                        NextMemoryMapAllocSize
+                    )
+                );
+
+                if (MemoryMap->NextAddress != NextAddress) {
+                    __debugbreak();
+                }
+            }
+
+        }
 
     } else {
 
@@ -2339,6 +2421,17 @@ UpdateAddresses:
 
     TraceStore->TotalNumberOfAllocations.QuadPart += 1;
     TraceStore->TotalAllocationSize.QuadPart += AllocationSize;
+
+    if (MemoryMap->NextAddress == EndAddress) {
+
+        //
+        // This memory map has been filled entirely; attempt to consume the
+        // next one.  Ignore the return code; we can't do much at this point
+        // if it fails.
+        //
+
+        ConsumeNextTraceStoreMemoryMap(TraceStore);
+    }
 
     return ReturnAddress;
 }

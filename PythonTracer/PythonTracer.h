@@ -89,23 +89,36 @@ typedef enum _PYTHON_TRACE_EVENT_TYPE {
 } PYTHON_TRACE_EVENT_TYPE, *PPYTHON_TRACE_EVENT_TYPE;
 
 typedef struct _PYTHON_TRACE_EVENT {
-    LARGE_INTEGER Timestamp;
-    PPYTHON_FUNCTION Function;
+    LARGE_INTEGER Timestamp;            // 8
+    PPYTHON_FUNCTION Function;          // 8        16
 
-    ULONGLONG WorkingSetSize;
-    ULONGLONG PageFaultCount;
-    ULONGLONG CommittedSize;
-    ULONGLONG Unused2;
+    ULONGLONG WorkingSetSize;           // 8        24
+    ULONGLONG PageFaultCount;           // 8        32
+    ULONGLONG CommittedSize;            // 8        40
 
-    ULONG TimestampDelta;
-    ULONG ElapsedMicroseconds;
+    ULONGLONG ReadTransferCount;        // 8        48
+    ULONGLONG WriteTransferCount;       // 8        56
 
-    ULONG WorkingSetDelta;
-    ULONG PageFaultDelta;
-    ULONG CommittedDelta;
+    ULONG HandleCount;                  // 4        60
+    ULONG TimestampDelta;               // 4        64
+    ULONG ElapsedMicroseconds;          // 4        68
+
+    LONG WorkingSetDelta;               // 4        72
+    LONG CommittedDelta;                // 4        76
+    ULONG ReadTransferDelta;            // 4        80
+    ULONG WriteTransferDelta;           // 4        84
+
+    ULONG CodeObjectHash;               // 4        88
+    ULONG FunctionHash;                 // 4        92
+
+    ULONG PathAtom;                     // 4        96
+    ULONG FullNameAtom;                 // 4        100
+    ULONG ModuleNameAtom;               // 4        104
+    ULONG ClassNameAtom;                // 4        108
+    ULONG NameAtom;                     // 4        112
 
     union {
-        ULONG Flags;
+        ULONG Flags;                    // 4        116
         PYTHON_TRACE_EVENT_TYPE Type;
         struct {
             ULONG IsCall:1;         // PyTrace_CALL
@@ -114,28 +127,33 @@ typedef struct _PYTHON_TRACE_EVENT {
             ULONG IsReturn:1;       // PyTrace_RETURN
             ULONG IsC:1;
             ULONG IsReverseJump:1;
+            ULONG UnusedLow:2;      // 8 bits, 1 byte (24 bits, 3 bytes remain)
+
+            ULONG :24;  // Unused bits
+        };
+        struct {
+            BYTE FlagsByte1;
+            BYTE FlagsByte2;
+            BYTE FlagsByte3;
+            BYTE FlagsByte4;
+        };
+        struct {
+            USHORT FlagsLow;
+            USHORT FlagsHigh;
         };
     };
 
-    ULONG CodeObjectHash;
-    ULONG FunctionHash;
+    SHORT HandleDelta;                  // 2        118
+    USHORT PageFaultDelta;              // 2        120
 
-    ULONG FunctionReferenceCount;
-
-    ULONG PathAtom;
-    ULONG FullNameAtom;
-    ULONG ModuleNameAtom;
-    ULONG ClassNameAtom;
-    ULONG NameAtom;
-
-    USHORT LineNumber;
-    USHORT FirstLineNumber;
-    USHORT LastLineNumber;
-    USHORT NumberOfLines;
-
-    USHORT Padding[8];
+    USHORT LineNumber;                  // 2        122
+    USHORT FirstLineNumber;             // 2        124
+    USHORT LastLineNumber;              // 2        126
+    USHORT NumberOfLines;               // 2        128
 
 } PYTHON_TRACE_EVENT, *PPYTHON_TRACE_EVENT, **PPPYTHON_TRACE_EVENT;
+
+C_ASSERT(sizeof(PYTHON_TRACE_EVENT) == 128);
 
 typedef struct _PYTHON_TRACE_CALL_EVENT {
     LIST_ENTRY ListEntry;
@@ -212,6 +230,8 @@ typedef struct _PYTHON_TRACE_CONTEXT {
         struct {
             ULONG StartedTracing:1;
             ULONG TraceMemory:1;
+            ULONG TraceIoCounters:1;
+            ULONG TraceHandleCount:1;
         };
     };
     ULONG Unused1;
@@ -341,6 +361,31 @@ VOID
 DisableMemoryTracing(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     );
+
+TRACER_API
+VOID
+EnableIoCounterTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    );
+
+TRACER_API
+VOID
+DisableIoCounterTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    );
+
+TRACER_API
+VOID
+EnableHandleCountTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    );
+
+TRACER_API
+VOID
+DisableHandleCountTracing(
+    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    );
+
 
 TRACER_API
 BOOL

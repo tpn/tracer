@@ -636,6 +636,22 @@ class Tracer:
         dll = self.tracer_pythontracer_dll
         dll.DisableMemoryTracing(self.python_trace_context)
 
+    def enable_io_counters_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.EnableIoCountersTracing(self.python_trace_context)
+
+    def disable_io_counters_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.DisableIoCountersTracing(self.python_trace_context)
+
+    def enable_handle_count_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.EnableHandleCountTracing(self.python_trace_context)
+
+    def disable_handle_count_tracing(self):
+        dll = self.tracer_pythontracer_dll
+        dll.DisableHandleCountTracing(self.python_trace_context)
+
     def add_function(self, func):
         dll = self.tracer_pythontracer_dll
         if not dll.AddFunction(self.python_trace_context, func):
