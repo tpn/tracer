@@ -62,6 +62,8 @@ dummy = sys.stdin.read(1)
 
 t.add_module('tpn')
 t.enable_memory_tracing()
+t.enable_io_counters_tracing()
+t.enable_handle_count_tracing()
 
 with t:
     for i in range(1000):
