@@ -311,6 +311,9 @@ def python(path=None, dll=None):
         PVOID,  # FreeContext
     ]
 
+    dll.HashAndAtomizeAnsi.restype = BOOL
+    dll.HashAndAtomizeAnsi.argtypes = [ PVOID, c_char_p, PULONG, PULONG ]
+
     return dll
 
 def pythontracer(path=None, dll=None):
@@ -627,6 +630,21 @@ class Tracer:
             conf.tracer_python_dll_path,
             conf.tracer_pythontracer_dll_path,
         )
+
+    def hash_and_atomize_string(self, string):
+        c_hash = ULONG()
+        c_atom = ULONG()
+        c_str = c_char_p(string)
+        dll = self.tracer_python_dll
+        success = dll.HashAndAtomizeAnsi(
+            self.python,
+            c_str,
+            byref(c_hash),
+            byref(c_atom)
+        )
+        if not success:
+            raise RuntimeError("hash_and_atomize_string() failed")
+        return (c_hash.value, c_atom.value)
 
     def enable_memory_tracing(self):
         dll = self.tracer_pythontracer_dll
