@@ -378,7 +378,7 @@ InitializeStore(
             TraceStore->CreateFileDesiredAccess,
             FILE_SHARE_READ,
             NULL,
-            CREATE_ALWAYS,
+            OPEN_ALWAYS,
             FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
             NULL
         );
@@ -529,7 +529,7 @@ InitializeTraceStore(
         TraceStore->CreateFileDesiredAccess,
         FILE_SHARE_READ,
         NULL,
-        CREATE_ALWAYS,
+        OPEN_ALWAYS,
         FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
         NULL
     );
@@ -779,7 +779,7 @@ VOID
 SubmitCloseMemoryMapThreadpoolWork(
     _In_ PTRACE_STORE TraceStore,
     _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
-)
+    )
 {
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
@@ -1049,10 +1049,10 @@ PrepareNextTraceStoreMemoryMap(
     _Inout_ PTRACE_STORE TraceStore
     )
 {
+    USHORT NumaNode;
     BOOL Success;
     BOOL IsMetadata;
     BOOL HaveAddress;
-    BOOL SetPreferredBaseAddress;
     PRTL Rtl;
     HRESULT Result;
     PVOID PreferredBaseAddress;
@@ -1061,7 +1061,6 @@ PrepareNextTraceStoreMemoryMap(
     PTRACE_STORE_ADDRESS AddressPointer;
     FILE_STANDARD_INFO FileInfo;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
-    ULONGLONG MappedSequenceId;
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
     LARGE_INTEGER DistanceToMove;
@@ -1181,8 +1180,15 @@ PrepareNextTraceStoreMemoryMap(
         goto Error;
     }
 
-    PreferredBaseAddress = NULL;
     OriginalPreferredBaseAddress = NULL;
+
+    //
+    // MemoryMap->BaseAddress will be the next contiguous address for this
+    // mapping.  It is set by ConsumeNextTraceStoreMemoryMap().  We use it
+    // as our preferred base address if we can.
+    //
+
+    PreferredBaseAddress = MemoryMap->BaseAddress;
 
     AddressPointer = MemoryMap->pAddress;
 
@@ -1219,56 +1225,6 @@ PrepareNextTraceStoreMemoryMap(
         MemoryMap->pAddress = NULL;
         goto TryMapMemory;
 
-    }
-
-    if (TraceStore->NoPreferredAddressReuse) {
-
-        //
-        // If we've been instructed not to use the preferred address, we can
-        // skip the following logic and go straight to mapping the memory.
-        // We do this check after we copy the AddressPointer to the local
-        // Address struct because we're in 'HaveAddress = TRUE' mode and we
-        // expect the Address struct to be set correctly later on.
-        //
-
-        goto TryMapMemory;
-    }
-
-    //
-    // The - 1 here is to reflect the fact that the trace store's mapped
-    // sequence ID will already be incremented by this stage.
-    //
-
-    MappedSequenceId = TraceStore->MappingSequenceId - 1;
-
-    //
-    // If the mapping sequence, size and file offset line up, and the
-    // address is under 128TB, use the preferred base address.
-    //
-
-    SetPreferredBaseAddress = (
-        Address.MappedSequenceId.QuadPart == MappedSequenceId          &&
-        Address.MappedSize.QuadPart == MemoryMap->MappingSize.QuadPart &&
-        Address.FileOffset.QuadPart == MemoryMap->FileOffset.QuadPart  &&
-        (ULONG_PTR)Address.BaseAddress < ((1ULL << 47) - 1)
-    );
-
-    if (SetPreferredBaseAddress) {
-
-        //
-        // Everything lines up, try use this as the base address.
-        //
-
-        PreferredBaseAddress = Address.BaseAddress;
-
-    } else {
-
-        //
-        // As soon as one address record doesn't line up we disable all
-        // future re-use attempts.
-        //
-
-        TraceStore->NoPreferredAddressReuse = TRUE;
     }
 
 TryMapMemory:
@@ -1333,7 +1289,22 @@ TryMapMemory:
     Address.BaseAddress = MemoryMap->BaseAddress;
     Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
     Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
-    Address.MappedSequenceId.QuadPart = MappedSequenceId;
+
+    //
+    // Fill in the thread and processor information.
+    //
+
+    Address.FulfillingThreadId = GetCurrentThreadId();
+
+    GetCurrentProcessorNumberEx(&Address.FulfillingProcessor);
+
+    Success = GetNumaProcessorNodeEx(&Address.FulfillingProcessor, &NumaNode);
+
+    if (Success) {
+        Address.FulfillingNumaNode = (UCHAR)NumaNode;
+    } else {
+        Address.FulfillingNumaNode = 0;
+    }
 
     //
     // Take a local copy of the timestamp.
@@ -1499,8 +1470,10 @@ ReleasePrevTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     HRESULT Result;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     TRACE_STORE_ADDRESS Address;
+    LARGE_INTEGER PreviousTimestamp;
     LARGE_INTEGER Timestamp;
     LARGE_INTEGER Elapsed;
+    PLARGE_INTEGER ElapsedPointer;
 
     if (!PopTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, &MemoryMap)) {
         return FALSE;
@@ -1548,23 +1521,65 @@ ReleasePrevTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     Address.Timestamp.Released.QuadPart = Timestamp.QuadPart;
 
     //
-    // Calculate the elapsed time between when the memory map was submitted
-    // for retirement and now.
+    // Determine what state this memory map was in at the time of being closed.
+    // For a memory map that has progressed through the normal lifecycle, it'll
+    // typically be in 'AwaitingRelease' at this point.  However, we could be
+    // getting called against an active memory map or prepared memory map if
+    // we're getting released as a result of closing the trace store.
     //
 
-    Elapsed.QuadPart = (
-        Timestamp.QuadPart -
-        Address.Timestamp.Retired.QuadPart
-    );
+    if (Address.Timestamp.Retired.QuadPart != 0) {
 
+        //
+        // Normal memory map awaiting retirement.  Elapsed.AwaitingRelease
+        // will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Retired.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingRelease;
+
+    } else if (Address.Timestamp.Consumed.QuadPart != 0) {
+
+        //
+        // An active memory map.  Elapsed.Active will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Consumed.QuadPart;
+        ElapsedPointer = &Address.Elapsed.Active;
+
+    } else if (Address.Timestamp.Prepared.QuadPart != 0) {
+
+        //
+        // A prepared memory map awaiting consumption.
+        // Elapsed.AwaitingConsumption will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Prepared.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingConsumption;
+
+    } else {
+
+        //
+        // A memory map that wasn't even prepared.  Highly unlikely.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Requested.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingPreparation;
+    }
+
+    //
+    // Calculate the elapsed time.
+    //
+
+    Elapsed.QuadPart = Timestamp.QuadPart - PreviousTimestamp.QuadPart;
     Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
     Elapsed.QuadPart /= TraceStore->Frequency.QuadPart;
 
     //
-    // Update the address record with the elapsed time.
+    // Update the target elapsed time.
     //
 
-    Address.Elapsed.AwaitingRelease.QuadPart = Elapsed.QuadPart;
+    ElapsedPointer->QuadPart = Elapsed.QuadPart;
 
     //
     // Copy the local record back to the backing store and ignore the
@@ -1654,7 +1669,10 @@ LoadNextTraceStoreAddress(
     )
 {
     PRTL Rtl;
+    BOOL Success;
     PVOID Buffer;
+    HRESULT Result;
+    USHORT NumaNode;
     TRACE_STORE_ADDRESS Address;
     PALLOCATE_RECORDS AllocateRecords;
     PTRACE_STORE AddressStore;
@@ -1682,6 +1700,15 @@ LoadNextTraceStoreAddress(
         return FALSE;
     }
 
+    if (PAGE_SIZE % AddressRecordSize.QuadPart) {
+
+        //
+        // The record isn't evenly divisible by PAGE_SIZE.
+        //
+
+        __debugbreak();
+    }
+
     Rtl = TraceStore->Rtl;
     Context = TraceStore->TraceContext;
     AddressStore = TraceStore->AddressStore;
@@ -1696,9 +1723,36 @@ LoadNextTraceStoreAddress(
         return FALSE;
     }
 
-    *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
+    SecureZeroMemory(&Address, sizeof(Address));
 
-    return TRUE;
+    Address.MappedSequenceId = (
+        InterlockedIncrement(&TraceStore->MappedSequenceId)
+    );
+
+    Address.ProcessId = GetCurrentProcessId();
+    Address.RequestingThreadId = GetCurrentThreadId();
+
+    GetCurrentProcessorNumberEx(&Address.RequestingProcessor);
+
+    Success = GetNumaProcessorNodeEx(&Address.RequestingProcessor, &NumaNode);
+
+    if (Success) {
+        Address.RequestingNumaNode = (UCHAR)NumaNode;
+    } else {
+        Address.RequestingNumaNode = 0;
+    }
+
+
+    Result = Rtl->RtlCopyMappedMemory(Buffer,
+                                      &Address,
+                                      sizeof(Address));
+
+    if (SUCCEEDED(Result)) {
+        *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 BOOL
@@ -2035,8 +2089,6 @@ StartPreparation:
 
 PrepareMemoryMap:
 
-    TraceStore->MappingSequenceId++;
-
     //
     // Prepare the next memory map with the relevant offset details based
     // on the new memory map and submit it to the threadpool.
@@ -2048,6 +2100,18 @@ PrepareMemoryMap:
     PrepareMemoryMap->FileOffset.QuadPart = (
         MemoryMap->FileOffset.QuadPart +
         MemoryMap->MappingSize.QuadPart
+    );
+
+    //
+    // Set the base address to the next contiguous address for this mapping.
+    // PrepareNextTraceStoreMemoryMap() will attempt to honor this if it can.
+    //
+
+    PrepareMemoryMap->BaseAddress = (
+        (PVOID)RtlOffsetToPointer(
+            MemoryMap->BaseAddress,
+            MemoryMap->MappingSize.LowPart
+        )
     );
 
     if (IsMetadata) {
@@ -2095,20 +2159,6 @@ PrepareMemoryMap:
     //
 
     Address.Timestamp.Requested.QuadPart = Timestamp.QuadPart;
-
-    //
-    // Zero out all other timestamps and elapsed.
-    //
-
-    Address.Timestamp.Prepared.QuadPart = 0;
-    Address.Timestamp.Consumed.QuadPart = 0;
-    Address.Timestamp.Retired.QuadPart = 0;
-    Address.Timestamp.Released.QuadPart = 0;
-
-    Address.Elapsed.AwaitingPreparation.QuadPart = 0;
-    Address.Elapsed.AwaitingConsumption.QuadPart = 0;
-    Address.Elapsed.Active.QuadPart = 0;
-    Address.Elapsed.AwaitingRelease.QuadPart = 0;
 
     //
     // Copy the local record back to the backing store.
@@ -2288,7 +2338,12 @@ AllocateRecords(
                 // Ugh, non-contiguous mapping.
                 //
 
-                __debugbreak();
+                if (!TraceStore->IsReadonly &&
+                    !IsMetadataTraceStore(TraceStore) &&
+                    !HasVaryingRecordSizes(TraceStore)) {
+
+                    __debugbreak();
+                }
 
                 ReturnAddress = MemoryMap->BaseAddress;
 
@@ -2616,12 +2671,6 @@ BindTraceStoreToTraceContext(
     FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
 
     //
-    // Advance the trace store's mapped sequence ID counter.
-    //
-
-    TraceStore->MappingSequenceId++;
-
-    //
     // If we're metadata, go straight to submission of the prepared memory map.
     //
 
@@ -2684,8 +2733,6 @@ BindTraceStoreToTraceContext(
     //
     // Zero out everything else.
     //
-
-    Address.MappedSequenceId.QuadPart = 0;
 
     Address.Timestamp.Prepared.QuadPart = 0;
     Address.Timestamp.Consumed.QuadPart = 0;

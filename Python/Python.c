@@ -6,6 +6,9 @@
 
 #pragma intrinsic(strlen)
 
+static CONST USHORT TargetSizeOfPythonPathTableEntry = 128;
+static CONST USHORT TargetSizeOfPythonFunctionTableEntry = 256;
+
 static CONST UNICODE_STRING W__init__py  = RTL_CONSTANT_STRING(L"__init__.py");
 static CONST UNICODE_STRING W__init__pyc = RTL_CONSTANT_STRING(L"__init__.pyc");
 static CONST UNICODE_STRING W__init__pyo = RTL_CONSTANT_STRING(L"__init__.pyo");
@@ -110,6 +113,78 @@ static const PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_35 = {
     FIELD_OFFSET(PYFRAMEOBJECT34_35, LocalsPlusStack),
     FIELD_OFFSET(PYFRAMEOBJECT34_35, Generator),
     FIELD_OFFSET(PYFRAMEOBJECT34_35, StillExecuting)
+};
+
+static const PYTHON_PATH_TABLE_ENTRY_OFFSETS PythonPathTableEntryOffsets = {
+    sizeof(PYTHON_PATH_TABLE_ENTRY),
+    (sizeof(PYTHON_PATH_TABLE_ENTRY_OFFSETS) / sizeof(USHORT)) - 2,
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NodeTypeCode),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PrefixNameLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathEntryType),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Links),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Parent),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, LeftChild),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, RightChild),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Prefix),
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Path),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathMaximumLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathBuffer),
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullName),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameMaximumLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameBuffer),
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleName),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameMaximumLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameBuffer),
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Name),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameMaximumLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameBuffer),
+
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassName),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameMaximumLength),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameBuffer),
+};
+
+static const PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets = {
+    sizeof(PYTHON_FUNCTION),
+    (sizeof(PYTHON_FUNCTION_OFFSETS) / sizeof(USHORT)) - 2,
+
+    FIELD_OFFSET(PYTHON_FUNCTION, PathEntry),
+    FIELD_OFFSET(PYTHON_FUNCTION, ParentPathEntry),
+    FIELD_OFFSET(PYTHON_FUNCTION, CodeObject),
+
+    FIELD_OFFSET(PYTHON_FUNCTION, LineNumbersBitmap),
+    FIELD_OFFSET(PYTHON_FUNCTION, Histogram),
+    FIELD_OFFSET(PYTHON_FUNCTION, CodeLineNumbers),
+
+    FIELD_OFFSET(PYTHON_FUNCTION, ReferenceCount),
+    FIELD_OFFSET(PYTHON_FUNCTION, CodeObjectHash),
+    FIELD_OFFSET(PYTHON_FUNCTION, FunctionHash),
+    FIELD_OFFSET(PYTHON_FUNCTION, Unused1),
+
+    FIELD_OFFSET(PYTHON_FUNCTION, FirstLineNumber),
+    FIELD_OFFSET(PYTHON_FUNCTION, NumberOfLines),
+    FIELD_OFFSET(PYTHON_FUNCTION, NumberOfCodeLines),
+    FIELD_OFFSET(PYTHON_FUNCTION, SizeOfByteCode),
+
+    FIELD_OFFSET(PYTHON_FUNCTION, Unused2),
+    FIELD_OFFSET(PYTHON_FUNCTION, Unused3),
+    FIELD_OFFSET(PYTHON_FUNCTION, Unused4),
 };
 
 LONG
@@ -804,6 +879,7 @@ LoadPythonExFunctions(
     RESOLVE_FUNCTIONEX(PALLOCATE_BUFFER, AllocateBuffer);
     RESOLVE_FUNCTIONEX(PFREE_BUFFER, FreeBuffer);
     RESOLVE_FUNCTIONEX(PREGISTER_FRAME, RegisterFrame);
+    RESOLVE_FUNCTIONEX(PHASH_AND_ATOMIZE_ANSI, HashAndAtomizeAnsi);
     RESOLVE_FUNCTIONEX(PSET_PYTHON_ALLOCATORS, SetPythonAllocators);
     RESOLVE_FUNCTIONEX(
         PINITIALIZE_PYTHON_RUNTIME_TABLES,
@@ -839,6 +915,9 @@ FunctionTableAllocationRoutine(
 )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
+    if (ByteSize != TargetSizeOfPythonFunctionTableEntry) {
+        __debugbreak();
+    }
     return ALLOCATE(FunctionTableEntry, ByteSize);
 }
 
@@ -1036,6 +1115,54 @@ IsSupportedPythonVersion(_In_ PPYTHON Python)
 
 _Check_return_
 BOOL
+ResolvePythonExOffsets(_In_ PPYTHON Python)
+{
+    //
+    // Validate some of our trickier offsets here, which makes it slightly
+    // nicer to deal with errors during development versus a C_ASSERT()
+    // approach, which doesn't give feedback when the expression fails.
+    //
+
+    CONST USHORT OffsetA1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NextPrefixTree);
+    CONST USHORT OffsetA2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree);
+
+    CONST USHORT OffsetB1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NodeTypeCode);
+    CONST USHORT OffsetB2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NodeTypeCode);
+
+    CONST USHORT OffsetC1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NameLength);
+    CONST USHORT OffsetC2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PrefixNameLength);
+
+    CONST USHORT SizeOfPythonFunction = sizeof(PYTHON_FUNCTION);
+    CONST USHORT SizeOfPythonFunctionTableEntry = sizeof(PYTHON_FUNCTION_TABLE_ENTRY);
+    CONST USHORT SizeOfTableEntryHeaderHeader = sizeof(TABLE_ENTRY_HEADER_HEADER);
+    CONST USHORT SizeOfPythonPathTableEntry = sizeof(PYTHON_PATH_TABLE_ENTRY);
+    CONST USHORT TargetFunctionEntrySize = TargetSizeOfPythonFunctionTableEntry;
+    CONST USHORT TargetPathEntrySize = TargetSizeOfPythonPathTableEntry;
+
+#define ASSERT_EQUAL(Left, Right) \
+    if (Left != Right) {          \
+        __debugbreak();           \
+    }
+
+    ASSERT_EQUAL(OffsetA1, OffsetA2);
+    ASSERT_EQUAL(OffsetB1, OffsetB2);
+    ASSERT_EQUAL(OffsetC1, OffsetC2);
+
+    ASSERT_EQUAL(SizeOfPythonFunctionTableEntry, TargetFunctionEntrySize);
+    ASSERT_EQUAL(SizeOfPythonPathTableEntry, TargetPathEntrySize);
+
+    Python->PythonPathTableEntryOffsets = &PythonPathTableEntryOffsets;
+    Python->PythonFunctionOffsets = &PythonFunctionOffsets;
+
+    ASSERT_EQUAL(PythonPathTableEntryOffsets.Size, 128);
+    ASSERT_EQUAL(SizeOfPythonFunctionTableEntry, 256);
+    ASSERT_EQUAL(PythonFunctionOffsets.Size, 256-SizeOfTableEntryHeaderHeader);
+
+    return TRUE;
+}
+
+_Check_return_
+BOOL
 ResolvePythonOffsets(_In_ PPYTHON Python)
 {
     if (!Python) {
@@ -1100,8 +1227,7 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
             return FALSE;
     };
 
-
-    return TRUE;
+    return ResolvePythonExOffsets(Python);
 }
 
 _Check_return_
@@ -1739,7 +1865,6 @@ ResolveLineNumbersForPython2(
     USHORT NumberOfLines;
     USHORT FirstLineNumber;
     USHORT PreviousAddress;
-    USHORT NumberOfByteCodes;
     USHORT PreviousLineNumber;
     PPYSTRINGOBJECT ByteCodes;
     PLINE_NUMBER Table;
@@ -1762,7 +1887,6 @@ ResolveLineNumbersForPython2(
     Address = 0;
     NumberOfLines = 0;
     PreviousAddress = 0;
-    NumberOfByteCodes = 0;
     PreviousLineNumber = 0;
     FirstLineNumber = LineNumber = (USHORT)CodeObject->FirstLineNumber;
 
@@ -1781,12 +1905,10 @@ ResolveLineNumbersForPython2(
                 NumberOfLines++;
                 PreviousLineNumber = LineNumber;
             }
-            NumberOfByteCodes++;
         }
 
         if (LineIncrement) {
             if (Address != PreviousAddress) {
-                NumberOfByteCodes++;
                 PreviousAddress = Address;
             }
         }
@@ -1801,18 +1923,25 @@ ResolveLineNumbersForPython2(
     }
 
     if (Address != PreviousAddress) {
-        NumberOfByteCodes++;
         PreviousAddress = Address;
     }
 
     Function->FirstLineNumber = FirstLineNumber;
-    Function->LastLineNumber = PreviousLineNumber;
-    Function->NumberOfLines = NumberOfLines;
-
+    Function->NumberOfLines = (
+        PreviousLineNumber -
+        FirstLineNumber
+    );
     Function->SizeOfByteCode = SizeOfByteCode;
-    Function->LastByteCodeOffset = PreviousAddress;
-    Function->NumberOfByteCodes = NumberOfByteCodes;
+    Function->NumberOfCodeLines = NumberOfLines;
 
+    //
+    // Now that we know the total number of code lines and total number of
+    // lines, we have enough information to create a line number bitmap,
+    // a line-number-to-relative-index table, and a line-hit histogram.
+    // All of which are an XXX todo.
+    //
+
+    return;
 }
 
 VOID
@@ -1825,9 +1954,9 @@ ResolveLineNumbers(
         ResolveLineNumbersForPython2(Python, Function);
     } else {
         Function->FirstLineNumber = 0;
-        Function->LastLineNumber = 0;
         Function->NumberOfLines = 0;
-        Function->NumberOfByteCodes = 0;
+        Function->NumberOfCodeLines = 0;
+        Function->SizeOfByteCode = 0;
     }
 }
 
@@ -1892,7 +2021,7 @@ Routine Description:
     );
 
     Rtl = Python->Rtl;
-    FunctionName = &PathEntry->FunctionName;
+    FunctionName = &PathEntry->Name;
 
     Success = WrapPythonStringAsString(Python,
                                        FunctionNameObject,
@@ -2082,12 +2211,12 @@ Routine Description:
     // Calculate a final hash value.
     //
 
-    Function->Hash = (
+    Function->FunctionHash = (
         PathEntry->PathEntryType    ^
         PathEntry->PathAtom         ^
         PathEntry->FullNameAtom     ^
         Function->CodeObjectHash    ^
-        Function->NumberOfLines
+        Function->NumberOfCodeLines
     );
 
     //
@@ -3632,6 +3761,23 @@ End:
 
     return IsValidFunction(Function);
 }
+
+TRACER_API
+BOOL
+HashAndAtomizeAnsi(
+    _In_    PPYTHON Python,
+    _In_    PSTR String,
+    _Out_   PULONG HashPointer,
+    _Out_   PULONG AtomPointer
+    )
+{
+
+    return HashAndAtomizeAnsiInline(Python,
+                                    String,
+                                    HashPointer,
+                                    AtomPointer);
+}
+
 
 #ifdef __cpp
 } // extern "C"
