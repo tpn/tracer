@@ -148,11 +148,12 @@ typedef struct _TRACE_STORE_METADATA {
 } TRACE_STORE_METADATA, *PTRACE_STORE_METADATA;
 
 typedef struct _TRACE_STORE_ADDRESS {
-    PVOID         PreferredBaseAddress;
-    PVOID         BaseAddress;
-    LARGE_INTEGER FileOffset;
-    LARGE_INTEGER MappedSize;
-    LARGE_INTEGER MappedSequenceId;
+    PVOID         PreferredBaseAddress;                     // 8    0   8
+    PVOID         BaseAddress;                              // 8    8   16
+    LARGE_INTEGER FileOffset;                               // 8    16  24
+    LARGE_INTEGER MappedSize;                               // 8    24  32
+    DWORD         ProcessId;                                // 4    32  36
+    DWORD         RequestingThreadId;                       // 4    36  40
 
     //
     // Timestamps are kept at each stage of the memory map's lifecycle.  They
@@ -167,35 +168,35 @@ typedef struct _TRACE_STORE_ADDRESS {
         // memory map" threadpool work queue.
         //
 
-        LARGE_INTEGER Requested;
+        LARGE_INTEGER Requested;                            // 8    40  48
 
         //
         // The time the memory map was pushed onto the "next memory map
         // available" list.
         //
 
-        LARGE_INTEGER Prepared;
+        LARGE_INTEGER Prepared;                             // 8    48  56
 
         //
         // The time the memory map was popped off the available list and put
         // into active use.
         //
 
-        LARGE_INTEGER Consumed;
+        LARGE_INTEGER Consumed;                             // 8    56  64
 
         //
         // The time the memory map was pushed onto the "release memory map"
         // queue.
         //
 
-        LARGE_INTEGER Retired;
+        LARGE_INTEGER Retired;                              // 8    64  72
 
         //
         // The time the memory map had been released; this will be after the
         // view has been flushed and the memory map handle has been closed.
         //
 
-        LARGE_INTEGER Released;
+        LARGE_INTEGER Released;                             // 8    72  80
 
     } Timestamp;
 
@@ -210,30 +211,60 @@ typedef struct _TRACE_STORE_ADDRESS {
         // Time between Requested and Prepared.
         //
 
-        LARGE_INTEGER AwaitingPreparation;
+        LARGE_INTEGER AwaitingPreparation;                  // 8    80  88
 
 
         //
         // Time between Prepared and Consumed.
         //
 
-        LARGE_INTEGER AwaitingConsumption;
+        LARGE_INTEGER AwaitingConsumption;                  // 8    88  96
 
         //
         // Time between Consumed and Retired.
         //
 
-        LARGE_INTEGER Active;
+        LARGE_INTEGER Active;                               // 8    96  104
 
         //
         // Time between Retired and Released.
         //
 
-        LARGE_INTEGER AwaitingRelease;
+        LARGE_INTEGER AwaitingRelease;                      // 8    104 112
 
     } Elapsed;
 
+    LONG MappedSequenceId;                                  // 4    112 116
+
+    union {
+        PROCESSOR_NUMBER RequestingProcessor;                // 4    116 120
+        struct {
+            WORD RequestingProcGroup;
+            BYTE RequestingProcNumber;
+            union {
+                BYTE RequestingProcReserved;
+                UCHAR RequestingNumaNode;
+            };
+        };
+    };
+
+    union {
+        PROCESSOR_NUMBER FulfillingProcessor;                // 4    120 124
+        struct {
+            WORD FulfillingProcGroup;
+            BYTE FulfillingProcNumber;
+            union {
+                BYTE FulfillingProcReserved;
+                UCHAR FulfillingNumaNode;
+            };
+        };
+    };
+
+    DWORD FulfillingThreadId;                                // 4    124 128
+
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
+
+C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -319,7 +350,8 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    ULONGLONG MappingSequenceId;
+    volatile LONG MappedSequenceId;
+
     ULONG DroppedRecords;
     ULONG ExhaustedFreeMemoryMaps;
     ULONG AllocationsOutpacingNextMemoryMapPreparation;
@@ -406,7 +438,11 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceFunctionTableEntry.dat",
     L"TracePathTable.dat",
     L"TracePathTableEntry.dat",
-    L"TraceSession.dat"
+    L"TraceSession.dat",
+    L"TraceFilenameString.dat",
+    L"TraceFilenameStringBuffer.dat",
+    L"TraceDirectoryString.dat",
+    L"TraceDirectoryStringBuffer.dat",
 };
 
 static const WCHAR TraceStoreMetadataSuffix[] = L":metadata";
@@ -435,17 +471,21 @@ static const USHORT NumberOfTraceStores = (
 static const USHORT ElementsPerTraceStore = 4;
 
 static const ULONG InitialTraceStoreFileSizes[] = {
-    10 << 20,   // events
-    10 << 20,   // strings
-    10 << 20,   // strings_buffer
-    10 << 20,   // hashed_strings
-    10 << 20,   // hashed_strings_buffer
-    10 << 20,   // buffer
-    10 << 20,   // function_table
-    10 << 20,   // function_table_entry
-    10 << 20,   // path_table
-    10 << 20,   // path_table_entry
-    10 << 20    // trace_session
+    10 << 20,   // Event
+    10 << 20,   // String
+    10 << 20,   // StringBuffer
+    10 << 20,   // HashedString
+    10 << 20,   // HashedStringBuffer
+    10 << 20,   // Buffer
+    10 << 20,   // FunctionTable
+    10 << 20,   // FunctionTableEntry
+    10 << 20,   // PathTable
+    10 << 20,   // PathTableEntry
+    10 << 20,   // TraceSession
+    10 << 20,   // TraceFilenameString
+    10 << 20,   // TraceFilenameStringBuffer
+    10 << 20,   // TraceDirectoryString
+    10 << 20    // TraceDirectoryStringBuffer
 };
 
 #define TraceStoreEventIndex                                        0
@@ -503,12 +543,33 @@ static const ULONG InitialTraceStoreFileSizes[] = {
 #define TraceStoreSessionAddressIndex                               42
 #define TraceStoreSessionEofIndex                                   43
 
+#define TraceStoreFilenameStringIndex                               44
+#define TraceStoreFilenameStringMetadataIndex                       45
+#define TraceStoreFilenameStringAddressIndex                        46
+#define TraceStoreFilenameStringEofIndex                            47
+
+#define TraceStoreFilenameStringBufferIndex                         48
+#define TraceStoreFilenameStringBufferMetadataIndex                 49
+#define TraceStoreFilenameStringBufferAddressIndex                  50
+#define TraceStoreFilenameStringBufferEofIndex                      51
+
+#define TraceStoreDirectoryStringIndex                              52
+#define TraceStoreDirectoryStringMetadataIndex                      53
+#define TraceStoreDirectoryStringAddressIndex                       54
+#define TraceStoreDirectoryStringEofIndex                           55
+
+#define TraceStoreDirectoryStringBufferIndex                        56
+#define TraceStoreDirectoryStringBufferMetadataIndex                57
+#define TraceStoreDirectoryStringBufferAddressIndex                 58
+#define TraceStoreDirectoryStringBufferEofIndex                     59
+
+#define MAX_TRACE_STORES                                            60
+
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
-#define MAX_TRACE_STORES 44
 
 typedef struct _TRACE_STORES {
     USHORT  Size;

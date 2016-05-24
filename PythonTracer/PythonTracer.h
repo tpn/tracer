@@ -88,6 +88,8 @@ typedef enum _PYTHON_TRACE_EVENT_TYPE {
     Invalid     =   1 << 31
 } PYTHON_TRACE_EVENT_TYPE, *PPYTHON_TRACE_EVENT_TYPE;
 
+#pragma pack(push, DefaultAlignment, 2)
+
 typedef struct _PYTHON_TRACE_EVENT {
     LARGE_INTEGER Timestamp;            // 8
     PPYTHON_FUNCTION Function;          // 8        16
@@ -148,10 +150,12 @@ typedef struct _PYTHON_TRACE_EVENT {
 
     USHORT LineNumber;                  // 2        122
     USHORT FirstLineNumber;             // 2        124
-    USHORT LastLineNumber;              // 2        126
-    USHORT NumberOfLines;               // 2        128
+    USHORT NumberOfLines;               // 2        126
+    USHORT NumberOfCodeLines;           // 2        128
 
 } PYTHON_TRACE_EVENT, *PPYTHON_TRACE_EVENT, **PPPYTHON_TRACE_EVENT;
+
+#pragma pack(pop, DefaultAlignment)
 
 C_ASSERT(sizeof(PYTHON_TRACE_EVENT) == 128);
 

@@ -34,6 +34,7 @@ typedef struct _RTL *PRTL;
 typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
+    ULONG  Atom;
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
 typedef const STRING *PCSTRING;
@@ -41,6 +42,7 @@ typedef const STRING *PCSTRING;
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
+    ULONG  Atom;
     PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
@@ -125,6 +127,7 @@ CompareStringCaseInsensitive(
 #define RTL_CONSTANT_STRING(s) { \
     sizeof(s) - sizeof((s)[0]),  \
     sizeof( s ),                 \
+    0,                           \
     s                            \
 }
 
@@ -299,6 +302,26 @@ typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
 //
 // Generic Tables
 //
+
+typedef struct _TABLE_ENTRY_HEADER {
+
+    RTL_SPLAY_LINKS SplayLinks;
+    LIST_ENTRY ListEntry;
+    LONGLONG UserData;
+
+} TABLE_ENTRY_HEADER, *PTABLE_ENTRY_HEADER;
+
+//
+// _HEADER_HEADER is a terrible name for something, unless you're dealing with
+// the header of a header, which is what we're dealing with here.
+//
+
+typedef struct _TABLE_ENTRY_HEADER_HEADER {
+
+    RTL_SPLAY_LINKS SplayLinks;
+    LIST_ENTRY ListEntry;
+
+} TABLE_ENTRY_HEADER_HEADER, *PTABLE_ENTRY_HEADER_HEADER;
 
 typedef enum _TABLE_SEARCH_RESULT {
     TableEmptyTree,

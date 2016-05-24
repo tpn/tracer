@@ -1512,6 +1512,15 @@ typedef PYTHON_ALLOCATOR PYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
 typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR *PPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
 typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR **PPPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
 
+typedef PYTHON_ALLOCATOR PYTHON_FILENAME_STRING_ALLOCATOR;
+typedef PYTHON_FILENAME_STRING_ALLOCATOR *PPYTHON_FILENAME_STRING_ALLOCATOR;
+typedef PYTHON_FILENAME_STRING_ALLOCATOR **PPPYTHON_FILENAME_STRING_ALLOCATOR;
+
+typedef PYTHON_ALLOCATOR PYTHON_DIRECTORY_STRING_ALLOCATOR;
+typedef PYTHON_DIRECTORY_STRING_ALLOCATOR *PPYTHON_DIRECTORY_STRING_ALLOCATOR;
+typedef PYTHON_DIRECTORY_STRING_ALLOCATOR **PPPYTHON_DIRECTORY_STRING_ALLOCATOR;
+
+
 typedef struct _PYTHON_ALLOCATORS {
     ULONG SizeInBytes;
     ULONG NumberOfAllocators;
@@ -1525,6 +1534,10 @@ typedef struct _PYTHON_ALLOCATORS {
     PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR FunctionTableEntry;
     PYTHON_PATH_TABLE_ALLOCATOR           PathTable;
     PYTHON_PATH_TABLE_ENTRY_ALLOCATOR     PathTableEntry;
+    PYTHON_FILENAME_STRING_ALLOCATOR      FilenameString;
+    PYTHON_BUFFER_ALLOCATOR               FilenameStringBuffer;
+    PYTHON_DIRECTORY_STRING_ALLOCATOR     DirectoryString;
+    PYTHON_BUFFER_ALLOCATOR               DirectoryStringBuffer;
 
 } PYTHON_ALLOCATORS, *PPYTHON_ALLOCATORS, **PPPYTHON_ALLOCATORS;
 
@@ -1546,8 +1559,8 @@ typedef BOOL (*PSET_PYTHON_ALLOCATORS)(
     );
 
 typedef struct _PYTHON_HASHED_STRING {
-    ULONG Atom;
-    LONG  Hash;
+    ULONG Atom;                             //  4
+    LONG  Hash;                             //  4       8
 
     //
     // Inline STRING struct.
@@ -1665,6 +1678,13 @@ typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER)(
     _Out_ PPSTRING                  StringPointer
     );
 
+typedef BOOL (*PHASH_AND_ATOMIZE_ANSI)(
+    _In_    PPYTHON Python,
+    _In_    PSTR String,
+    _Out_   PULONG HashPointer,
+    _Out_   PULONG AtomPointer
+    );
+
 #define _PYTHONEXFUNCTIONS_HEAD                                      \
     PALLOCATE_STRING AllocateString;                                 \
     PALLOCATE_STRING_BUFFER AllocateStringBuffer;                    \
@@ -1677,11 +1697,14 @@ typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER)(
     PFREE_BUFFER FreeBuffer;                                         \
     PREGISTER_FRAME RegisterFrame;                                   \
     PSET_PYTHON_ALLOCATORS SetPythonAllocators;                      \
+    PHASH_AND_ATOMIZE_ANSI HashAndAtomizeAnsi;                       \
     PINITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
 
 typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
 } PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
+
+#pragma pack(push, 8)
 
 typedef struct _PYTHON_PATH_TABLE {
 
@@ -1700,7 +1723,6 @@ typedef struct _PYTHON_PATH_TABLE {
 
 } PYTHON_PATH_TABLE, *PPYTHON_PATH_TABLE;
 
-
 typedef enum _PYTHON_PATH_ENTRY_TYPE {
     ModuleDirectory     =        1,
     NonModuleDirectory  =   1 << 1, // 2
@@ -1714,42 +1736,61 @@ typedef enum _PYTHON_PATH_ENTRY_TYPE {
 
 typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
-    //
-    // Inline the PREFIX_TABLE_ENTRY struct.
-    //
-
-    union {
-        PREFIX_TABLE_ENTRY PrefixTableEntry;
+    //                                                      //      s
+    // Inline the PREFIX_TABLE_ENTRY struct.                //  s   t
+    //                                                      //  i   a   e
+                                                            //  z   r   n
+    union {                                                 //  e   t   d
+        PREFIX_TABLE_ENTRY PrefixTableEntry;                //  ^   ^   ^
         struct {
-            CSHORT NodeTypeCode;
-            CSHORT NameLength;
-            PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;
-            RTL_SPLAY_LINKS Links;
-            PSTRING Prefix;
+            //
+            // Stash our flags in here given that NextPrefixTree needs to be
+            // 8-byte aligned and we're only 4-byte aligned at this point.
+            //
+
+            CSHORT NodeTypeCode;                            //  2   0   2
+            CSHORT PrefixNameLength;                        //  2   2   4
+
+            union {
+                ULONG Flags;                                //  4   4   8
+                PYTHON_PATH_ENTRY_TYPE PathEntryType;
+                struct {
+                    ULONG IsModuleDirectory : 1;
+                    ULONG IsNonModuleDirectory : 1;
+                    ULONG IsFile : 1;
+                    ULONG IsClass : 1;
+                    ULONG IsFunction : 1;
+                    ULONG IsBuiltin : 1;
+                    ULONG IsValid : 1;
+                };
+            };
+
+            PPYTHON_PATH_TABLE_ENTRY NextPrefixTree;        // 8    8   16
+            union {
+                RTL_SPLAY_LINKS Links;                      // 24   16  40
+                struct {
+                    PRTL_SPLAY_LINKS    Parent;             // 8    16  24
+                    PRTL_SPLAY_LINKS    LeftChild;          // 8    24  32
+                    PRTL_SPLAY_LINKS    RightChild;         // 8    32  40
+                };
+            };
+            PSTRING Prefix;                                 // 8    40  48
         };
     };
 
-    DECLSPEC_ALIGN(8)
+    //
+    // Fully-qualified path name.  Prefix will typically point here.
+    //
+
     union {
-        PYTHON_PATH_ENTRY_TYPE PathEntryType;
+        STRING Path;                                        // 16   48  64
         struct {
-            ULONG IsModuleDirectory:1;
-            ULONG IsNonModuleDirectory:1;
-            ULONG IsFile:1;
-            ULONG IsClass:1;
-            ULONG IsFunction:1;
-            ULONG IsBuiltin:1;
-            ULONG IsValid:1;
+            USHORT PathLength;                              // 2    48  50
+            USHORT PathMaximumLength;                       // 2    50  52
+            ULONG  PathAtom;                                // 4    52  56
+            PCHAR  PathBuffer;                              // 8    56  64
         };
     };
-    ULONG Unused1;
-
-    //
-    // Fully-qualified path name.  Prefix will point to &Path.  (The underlying
-    // Path->Buffer is usually allocated straight after this struct in memory.)
-    //
-
-    STRING Path;
 
     //
     // Full name, using backslashes instead of periods, allowing it to be used
@@ -1757,7 +1798,15 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     // allocated uniquely for each PathEntry.
     //
 
-    STRING FullName;
+    union {
+        STRING FullName;                                    // 16   64  80
+        struct {
+            USHORT FullNameLength;                          // 2    64  66
+            USHORT FullNameMaximumLength;                   // 2    66  68
+            ULONG  FullNameAtom;                            // 4    68  72
+            PCHAR  FullNameBuffer;                          // 8    72  80
+        };
+    };
 
     //
     // Full module name, using backslashes instead of periods, allowing it
@@ -1765,7 +1814,15 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     // to this path entry.
     //
 
-    STRING ModuleName;
+    union {
+        STRING ModuleName;                                  // 16   80  96
+        struct {
+            USHORT ModuleNameLength;                        // 2    80  82
+            USHORT ModuleNameMaximumLength;                 // 2    82  84
+            ULONG  ModuleNameAtom;                          // 4    84  88
+            PCHAR  ModuleNameBuffer;                        // 8    88  96
+        };
+    };
 
     //
     // Name of the entry.  If the entry is a file, this will exclude the file
@@ -1775,8 +1832,13 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     //
 
     union {
-        STRING Name;
-        STRING FunctionName;
+        STRING Name;                                        // 16   96  112
+        struct {
+            USHORT NameLength;                              // 2    96  98
+            USHORT NameMaximumLength;                       // 2    98  100
+            ULONG  NameAtom;                                // 4    100 104
+            PCHAR  NameBuffer;                              // 8    104 112
+        };
     };
 
     //
@@ -1784,48 +1846,231 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     // there's a class name available.  It will be a view into FullName.
     //
 
-    STRING ClassName;
-
-    //
-    // Atoms for the strings.
-    //
-
-    ULONG PathAtom;
-    ULONG FullNameAtom;
-    ULONG ModuleNameAtom;
-    ULONG NameAtom;
-    ULONG ClassNameAtom;
+    union {
+        STRING ClassName;                                    // 16  112 128
+        struct {
+            USHORT ClassNameLength;                          // 2   112 114
+            USHORT ClassNameMaximumLength;                   // 2   114 116
+            ULONG  ClassNameAtom;                            // 4   116 120
+            PCHAR  ClassNameBuffer;                          // 8   120 128
+        };
+    };
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
 
-typedef struct _PYTHON_FUNCTION {
-    PYTHON_PATH_TABLE_ENTRY PathEntry;
-    PREFIX_TABLE_ENTRY ModuleNameEntry;
+C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 128);
 
+#pragma pack(pop)
+
+typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
+    USHORT Size;
+    USHORT NumberOfFields;
+
+    USHORT NodeTypeCodeOffset;
+    USHORT PrefixNameLengthOffset;
+    USHORT PathEntryTypeOffset;
+    USHORT NextPrefixTreeOffset;
+    USHORT LinksOffset;
+    USHORT LinksParentOffset;
+    USHORT LinksLeftChildOffset;
+    USHORT LinksRightChildOffset;
+    USHORT PrefixOffset;
+
+    USHORT PathOffset;
+    USHORT PathLengthOffset;
+    USHORT PathMaximumLengthOffset;
+    USHORT PathAtomOffset;
+    USHORT PathBufferOffset;
+
+    USHORT FullNameOffset;
+    USHORT FullNameLengthOffset;
+    USHORT FullNameMaximumLengthOffset;
+    USHORT FullNameAtomOffset;
+    USHORT FullNameBufferOffset;
+
+    USHORT ModuleNameOffset;
+    USHORT ModuleNameLengthOffset;
+    USHORT ModuleNameMaximumLengthOffset;
+    USHORT ModuleNameAtomOffset;
+    USHORT ModuleNameBufferOffset;
+
+    USHORT NameOffset;
+    USHORT NameLengthOffset;
+    USHORT NameMaximumLengthOffset;
+    USHORT NameAtomOffset;
+    USHORT NameBufferOffset;
+
+    USHORT ClassNameOffset;
+    USHORT ClassNameLengthOffset;
+    USHORT ClassNameMaximumLengthOffset;
+    USHORT ClassNameAtomOffset;
+    USHORT ClassNameBufferOffset;
+
+} PYTHON_PATH_TABLE_ENTRY_OFFSETS, *PPYTHON_PATH_TABLE_ENTRY_OFFSETS;
+
+#pragma pack(push, 8)
+
+typedef struct _PYTHON_FUNCTION {
+
+    //
+    // The PYTHON_PATH_TABLE_ENTRY leaves us conveniently aligned at 128-bytes,
+    // so stash all of our 8-byte pointers straight after it.
+    //
+
+    PYTHON_PATH_TABLE_ENTRY PathEntry;                      // 128  0   128
+
+    DECLSPEC_ALIGN(8)
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;               // 8    128 136
+
+    DECLSPEC_ALIGN(8)
     union {
-        PPYOBJECT          CodeObject;
+        PPYOBJECT          CodeObject;                      // 8    136 144
         PPYCODEOBJECT25_27 Code25_27;
         PPYCODEOBJECT30_32 Code30_32;
         PPYCODEOBJECT33_35 Code33_35;
     };
 
-    ULONG ReferenceCount;
+    DECLSPEC_ALIGN(8)
+    PRTL_BITMAP LineNumbersBitmap;                          // 8    144 152
 
-    ULONG CodeObjectHash;
-    ULONG Hash;
+    DECLSPEC_ALIGN(8)
+    PVOID Histogram;                                        // 8    152 160
 
-    USHORT FirstLineNumber;
-    USHORT LastLineNumber;
-    USHORT NumberOfLines;
-    USHORT SizeOfByteCode;
-    USHORT LastByteCodeOffset;
-    USHORT NumberOfByteCodes;
+    DECLSPEC_ALIGN(8)
+    PUSHORT CodeLineNumbers;                                // 8    160 168
 
-    RTL_BITMAP LineNumbersBitmap;
+    ULONG ReferenceCount;                                   // 4    168 172
+    ULONG CodeObjectHash;                                   // 4    172 176
+    ULONG FunctionHash;                                     // 4    176 180
+    ULONG Unused1;                                          // 4    180 184
 
-    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
+    USHORT FirstLineNumber;                                 // 2    184 186
+    USHORT NumberOfLines;                                   // 2    186 188
+    USHORT NumberOfCodeLines;                               // 2    188 190
+    USHORT SizeOfByteCode;                                  // 2    190 192
+
+    //
+    // It's advantageous having this struct fitting neatly into a PAGE_SIZE,
+    // which in our case will be a 256-byte struct.  Add the necessary padding
+    // to fill it out.  Feel free to repurpose these bytes down the track.
+    //
+
+    //
+    // We calculate the size by taking 192 above, subtracting it from 256,
+    // giving 64, then subtracting another 40 to account for the generic table
+    // header, giving 24 bytes remaining for a target size of 216 bytes.
+    //
+    // We fill this space with 3 x 8-byte ULONGLONGs.
+    //
+
+    ULONGLONG Unused2;                                      // 8    192 200
+    ULONGLONG Unused3;                                      // 8    200 208
+    ULONGLONG Unused4;                                      // 8    208 216
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
+
+//C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 256);
+
+typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
+
+    //
+    // Inline TABLE_ENTRY_HEADER.
+    //
+    // The generic table routines manage this otherwise opaque structure --
+    // however, we need to be aware of it given that we want to keep the entire
+    // structure that is written to the backing trace store to 256 bytes.
+    //
+
+    //
+    // Note: we don't use a union here like we normally do, e.g.:
+    //      union {
+    //          TABLE_ENTRY_HEADER TableEntryHeader;
+    //          struct {
+    //              // Inline definition of struct.
+    //              ...
+    //          };
+    //
+    // This is because TABLE_ENTRY_HEADER has a 'LONGLONG UserData' field that
+    // actually represents the start of the user data, i.e. our PYTHON_FUNCTION
+    // struct.
+    //
+
+    struct {
+
+        //
+        // Inline RTL_SPLAY_LINKS.
+        //
+
+        union {
+            RTL_SPLAY_LINKS Links;                      // 24   0   24
+            struct {
+                PRTL_SPLAY_LINKS    Parent;             // 8    0   8
+                PRTL_SPLAY_LINKS    LeftChild;          // 8    8   16
+                PRTL_SPLAY_LINKS    RightChild;         // 8    16  24
+            };
+        };
+
+        //
+        // Inline LIST_ENTRY.
+        //
+
+        union {
+            LIST_ENTRY ListEntry;                       // 16   24  40
+            struct {
+                PLIST_ENTRY Flink;                      // 8    24  32
+                PLIST_ENTRY Blink;                      // 8    32  40
+            };
+        };
+
+        //
+        // This is where we omit LONGLONG UserData in lie of the Function field
+        // below.
+        //
+        // LONGLONG UserData;
+        //
+    };
+
+    PYTHON_FUNCTION Function;
+
+} PYTHON_FUNCTION_TABLE_ENTRY, *PPYTHON_FUNCTION_TABLE_ENTRY;
+
+typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
+
+#pragma pack(pop)
+
+
+#pragma pack(push, 2)
+
+typedef struct _PYTHON_FUNCTION_OFFSETS {
+    USHORT Size;
+    USHORT NumberOfFields;
+
+    USHORT PathEntryOffset;
+    USHORT ParentPathEntryOffset;
+    USHORT CodeObjectOffset;
+
+    USHORT LineNumbersBitmapOffset;
+    USHORT HistogramOffset;
+    USHORT LineNumberToIndexTableOffset;
+
+    USHORT ReferenceCountOffset;
+    USHORT CodeObjectHashOffset;
+    USHORT FunctionHashOffset;
+    USHORT Unused1Offset;
+
+    USHORT FirstLineNumberOffset;
+    USHORT NumberOfLinesOffset;
+    USHORT NumberOfCodeLinesOffset;
+    USHORT SizeOfByteCodeOffset;
+
+    USHORT Unused2Offset;
+    USHORT Unused3Offset;
+    USHORT Unused4Offset;
+
+} PYTHON_FUNCTION_OFFSETS, *PPYTHON_FUNCTION_OFFSETS;
+
+#pragma pack(pop)
+
 
 typedef struct _PYTHON_FUNCTION_TABLE {
 
@@ -1851,6 +2096,8 @@ typedef struct _PYTHON_FUNCTION_TABLE {
         };
     };
 } PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE, **PPPYTHON_FUNCTION_TABLE;
+
+//#pragma pack(pop, DefaultAlignment)
 
 #define IsValidFunction(Function) (                 \
     (BOOL)(Function && Function->PathEntry.IsValid) \
@@ -1883,6 +2130,22 @@ typedef struct _PYTHONEXRUNTIME {
 typedef struct _PYTHONOBJECTOFFSETS {
     _PYTHONOBJECTOFFSETS_HEAD
 } PYTHONOBJECTOFFSETS, *PPYTHONOBJECTOFFSETS, **PPPYTHONOBJECTOFFSETS;
+
+typedef const  PYTHON_PATH_TABLE_ENTRY_OFFSETS  \
+              CPYTHON_PATH_TABLE_ENTRY_OFFSETS, \
+            *PCPYTHON_PATH_TABLE_ENTRY_OFFSETS;
+
+typedef const  PYTHON_FUNCTION_OFFSETS  \
+              CPYTHON_FUNCTION_OFFSETS, \
+            *PCPYTHON_FUNCTION_OFFSETS;
+
+#define _PYTHONEX_OFFSETS_HEAD                                     \
+    PCPYTHON_PATH_TABLE_ENTRY_OFFSETS PythonPathTableEntryOffsets; \
+    PCPYTHON_FUNCTION_OFFSETS PythonFunctionOffsets;
+
+typedef struct _PYTHONEX_OFFSETS {
+    _PYTHONEX_OFFSETS_HEAD
+} PYTHONEX_OFFSETS, *PPYTHONEX_OFFSETS, **PPPYTHONEX_OFFSETSA;
 
 #define _PYTHONEXDATA_HEAD                            \
     BOOLEAN IsDebug;                                  \
@@ -1937,6 +2200,13 @@ typedef struct _PYTHON {
         PYTHONOBJECTOFFSETS PythonObjectOffsets;
         struct {
             _PYTHONOBJECTOFFSETS_HEAD
+        };
+    };
+
+    union {
+        PYTHONEX_OFFSETS PythonExOffsets;
+        struct {
+            _PYTHONEX_OFFSETS_HEAD
         };
     };
 
@@ -2101,6 +2371,16 @@ AllocatePythonPathTableEntryAndHashedStringWithBuffer(
     _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
     _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
     );
+
+TRACER_API
+BOOL
+HashAndAtomizeAnsi(
+    _In_    PPYTHON Python,
+    _In_    PSTR String,
+    _Out_   PULONG HashPointer,
+    _Out_   PULONG AtomPointer
+    );
+
 
 typedef BOOL (*PINITIALIZE_PYTHON)(
     _In_                         PRTL                Rtl,
@@ -2267,6 +2547,79 @@ PythonStringHashInline(
     }
 
     return Hash;
+}
+
+FORCEINLINE
+BOOL
+PythonAnsiHashInline(
+    _In_    PPYTHON Python,
+    _In_    PSTR    String,
+    _Out_   PULONG  HashPointer
+    )
+{
+    USHORT Length = 0;
+    LONG Hash;
+    PCHAR Char;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(String)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(HashPointer)) {
+        return FALSE;
+    }
+
+    Char = String;
+
+    Hash = Python->_Py_HashSecret.Prefix;
+
+    Hash ^= *Char << 7;
+
+    while (*Char != '\0') {
+        Length++;
+        Hash = (1000003*Hash) ^ *Char++;
+    }
+
+    Hash ^= Length;
+    Hash ^= Python->_Py_HashSecret.Suffix;
+
+    if (Hash == -1) {
+        Hash = -2;
+    }
+
+    *HashPointer = Hash;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+HashAndAtomizeAnsiInline(
+    _In_    PPYTHON Python,
+    _In_    PSTR String,
+    _Out_   PULONG HashPointer,
+    _Out_   PULONG AtomPointer
+    )
+{
+    ULONG Atom;
+
+    if (!ARGUMENT_PRESENT(AtomPointer)) {
+        return FALSE;
+    }
+
+    if (!PythonAnsiHashInline(Python, String, HashPointer)) {
+        return FALSE;
+    }
+
+    Atom = HashAnsiToAtom(String);
+
+    *AtomPointer = Atom;
+
+    return TRUE;
 }
 
 #ifdef __cpp

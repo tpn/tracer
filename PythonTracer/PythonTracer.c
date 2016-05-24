@@ -359,10 +359,10 @@ PyTraceCallback(
     Event.Function = Function;
     Event.IsC = IsC;
     Event.CodeObjectHash = Function->CodeObjectHash;
-    Event.FunctionHash = Function->Hash;
+    Event.FunctionHash = Function->FunctionHash;
     Event.FirstLineNumber = Function->FirstLineNumber;
-    Event.LastLineNumber = Function->LastLineNumber;
     Event.NumberOfLines = Function->NumberOfLines;
+    Event.NumberOfCodeLines = Function->NumberOfCodeLines;
     Event.PathAtom = Function->PathEntry.PathAtom;
     Event.FullNameAtom = Function->PathEntry.FullNameAtom;
     Event.ModuleNameAtom = Function->PathEntry.ModuleNameAtom;
@@ -729,6 +729,10 @@ InitializePythonTraceContext(
     PTRACE_STORE FunctionTableEntryStore;
     PTRACE_STORE PathTableStore;
     PTRACE_STORE PathTableEntryStore;
+    PTRACE_STORE FilenameStringStore;
+    PTRACE_STORE FilenameStringBufferStore;
+    PTRACE_STORE DirectoryStringStore;
+    PTRACE_STORE DirectoryStringBufferStore;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
 
@@ -795,6 +799,10 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(FunctionTableEntry);
     INIT_STORE_ALLOCATOR(PathTable);
     INIT_STORE_ALLOCATOR(PathTableEntry);
+    INIT_STORE_ALLOCATOR(FilenameString);
+    INIT_STORE_ALLOCATOR(FilenameStringBuffer);
+    INIT_STORE_ALLOCATOR(DirectoryString);
+    INIT_STORE_ALLOCATOR(DirectoryStringBuffer);
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
     EventStore->NoRetire = FALSE;
