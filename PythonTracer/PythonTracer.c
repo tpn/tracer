@@ -151,16 +151,13 @@ PyTraceCallback(
     )
 {
     BOOL Success;
-    BOOL IsFirstTrace;
-    BOOL StartedTracing;
     BOOL IsCall;
     BOOL IsReturn;
     BOOL IsLine;
     BOOL IsException;
     BOOL IsC;
-    BOOL HaveMemoryCounters = FALSE;
-    BOOL HaveIoCounters = FALSE;
-    BOOL HaveHandleCount = FALSE;
+
+    PYTHON_TRACE_CONTEXT_FLAGS Flags = Context->Flags;
 
     PRTL Rtl;
     PPYTHON Python;
@@ -178,9 +175,6 @@ PyTraceCallback(
     IO_COUNTERS IoCounters;
     DWORD HandleCount;
     HANDLE CurrentProcess = (HANDLE)-1;
-
-    IsFirstTrace = FALSE;
-    StartedTracing = (BOOL)Context->StartedTracing;
 
     IsCall = (
         EventType == TraceEventType_PyTrace_CALL        ||
@@ -207,45 +201,75 @@ PyTraceCallback(
         EventType == TraceEventType_PyTrace_C_EXCEPTION
     );
 
-    if (!StartedTracing) {
 
-        if (!IsLine) {
+    if (!Flags.HasStarted) {
+
+        //
+        // We haven't started tracing/profiling yet.
+        //
+
+        if (Flags.IsProfile) {
 
             //
-            // If we haven't started tracing yet, we can ignore any event that
-            // isn't a line event.  (In practice, there will usually be one
-            // return event/frame before we get a line event we're interested
-            // in.)
+            // We are in profile mode.
             //
 
-            return 0;
+            if (!IsCall) {
+
+                //
+                // If we haven't started profiling yet, we can ignore any
+                // event that isn't a call event.  (In practice, there will
+                // usually be one return event/frame before we get a call
+                // event we're interested in.)
+                //
+
+                return 0;
+
+            }
+
+        } else {
+
+            //
+            // We are in tracing mode.
+            //
+
+            if (!IsLine) {
+
+                //
+                // If we haven't started tracing yet, we can ignore any event
+                // that isn't a line event.  (In practice, there will usually
+                // be one return event/frame before we get a line event we're
+                // interested in.)
+                //
+
+                return 0;
+            }
+
         }
 
         //
-        // We've received our first line event of interest, start tracing.
+        // We've received our first profile/trace event of interest.  Toggle
+        // our 'HasStarted' flag and set our context depth to 1.
         //
 
-        StartedTracing = Context->StartedTracing = TRUE;
-
-        IsFirstTrace = TRUE;
+        Flags.HasStarted = Context->Flags.HasStarted = TRUE;
 
         Context->Depth = 1;
 
     } else {
 
         //
-        // If we're already tracing, just update our counters accordingly.
-        // The depth used to be used in conjunction with Context->SkipFrames,
-        // but now it's not.  It may be removed altogether.
+        // We're already tracing/profiling, so just update our depth counter
+        // accordingly if we're a call/return.
         //
 
         if (IsCall) {
 
-            ++Context->Depth;
+            Context->Depth++;
 
         } else if (IsReturn) {
 
-            --Context->Depth;
+            Context->Depth++;
 
         }
 
@@ -310,7 +334,7 @@ PyTraceCallback(
 
     LastEventPointer = (PPYTHON_TRACE_EVENT)EventStore->PrevAddress;
 
-    if (Context->TraceMemory) {
+    if (Flags.TraceMemory) {
 
         Success = Rtl->K32GetProcessMemoryInfo(
             CurrentProcess,
@@ -318,29 +342,29 @@ PyTraceCallback(
             sizeof(MemoryCounters)
         );
 
-        if (Success) {
-            HaveMemoryCounters = TRUE;
+        if (!Success) {
+            Flags.TraceMemory = FALSE;
         }
 
     }
 
-    if (Context->TraceIoCounters) {
+    if (Flags.TraceIoCounters) {
 
         Success = Rtl->GetProcessIoCounters(CurrentProcess,
                                             &IoCounters);
 
-        if (Success) {
-            HaveIoCounters = TRUE;
+        if (!Success) {
+            Flags.TraceIoCounters = FALSE;
         }
     }
 
-    if (Context->TraceHandleCount) {
+    if (Flags.TraceHandleCount) {
 
         Success = Rtl->GetProcessHandleCount(CurrentProcess,
                                              &HandleCount);
 
-        if (Success) {
-            HaveHandleCount = TRUE;
+        if (!Success) {
+            Flags.TraceHandleCount = TRUE;
         }
     }
 
@@ -399,18 +423,22 @@ PyTraceCallback(
 
     }
 
-    if (HaveMemoryCounters) {
+    //
+    // Save memory, I/O and handle counts if applicable.
+    //
+
+    if (Flags.TraceMemory) {
         Event.WorkingSetSize = MemoryCounters.WorkingSetSize;
         Event.PageFaultCount = MemoryCounters.PageFaultCount;
         Event.CommittedSize  = MemoryCounters.PrivateUsage;
     }
 
-    if (HaveIoCounters) {
+    if (Flags.TraceIoCounters) {
         Event.ReadTransferCount = IoCounters.ReadTransferCount;
         Event.WriteTransferCount = IoCounters.WriteTransferCount;
     }
 
-    if (HaveHandleCount) {
+    if (Flags.TraceHandleCount) {
         Event.HandleCount = HandleCount;
     }
 
@@ -455,7 +483,11 @@ PyTraceCallback(
         }
     }
 
-    if (HaveMemoryCounters) {
+    //
+    // Calculate deltas for memory, I/O and handle counts, if applicable.
+    //
+
+    if (Flags.TraceMemory) {
 
         //
         // Calculate memory counter deltas.
@@ -478,7 +510,7 @@ PyTraceCallback(
 
     }
 
-    if (HaveIoCounters) {
+    if (Flags.TraceIoCounters) {
 
         //
         // Calculate IO counter deltas.
@@ -496,7 +528,11 @@ PyTraceCallback(
 
     }
 
-    if (HaveHandleCount) {
+    if (Flags.TraceHandleCount) {
+
+        //
+        // Calcualte handle count delta.
+        //
 
         LastEvent.HandleDelta = (SHORT)(
             Event.HandleCount -
@@ -831,6 +867,8 @@ StartTracing(
 
     QueryPerformanceCounter(&PythonTraceContext->StartTimestamp);
 
+    PythonTraceContext->IsProfile = FALSE;
+
     Python->PyEval_SetTrace(
         PythonTraceFunction,
         (PPYOBJECT)PythonTraceContext
@@ -887,6 +925,8 @@ StartProfiling(
         return FALSE;
     }
 
+    PythonTraceContext->IsProfile = TRUE;
+
     Python->PyEval_SetProfile(
         PythonTraceFunction,
         (PPYOBJECT)PythonTraceContext
@@ -912,7 +952,7 @@ StopProfiling(
         return FALSE;
     }
 
-    Context->StartedTracing = FALSE;
+    Context->HasStarted = FALSE;
 
     Python->PyEval_SetProfile(NULL, NULL);
 

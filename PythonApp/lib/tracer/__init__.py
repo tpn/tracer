@@ -350,6 +350,12 @@ def pythontracer(path=None, dll=None):
     dll.StopTracing.restype = BOOL
     dll.StopTracing.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
 
+    dll.StartProfiling.restype = BOOL
+    dll.StartProfiling.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
+
+    dll.StopProfiling.restype = BOOL
+    dll.StopProfiling.argtypes = [ PPYTHON_TRACE_CONTEXT, ]
+
     return dll
 
 def sqlite3(path=None, dll=None):
@@ -413,6 +419,7 @@ class Tracer:
 
         self.basedir = basedir
         self.system_dll = sys.dllhandle
+        self.profile = False
 
         self.tracer_sqlitedb_path = join_path(basedir, "trace.db")
 
@@ -682,12 +689,12 @@ class Tracer:
         if not dll.AddModuleName(self.python_trace_context, arg):
             raise TracerError("AddModuleName() failed")
 
-    def start(self):
+    def start_tracing(self):
         dll = self.tracer_pythontracer_dll
         if not dll.StartTracing(self.python_trace_context):
             raise TracerError("StartTracing() failed")
 
-    def stop(self):
+    def stop_tracing(self):
         dll = self.tracer_pythontracer_dll
         if not dll.StopTracing(self.python_trace_context):
             raise TracerError("StopTracing() failed")
@@ -713,10 +720,16 @@ class Tracer:
         self.close_trace_stores()
 
     def __enter__(self):
-        self.start()
+        if self.profile:
+            self.start_profiling()
+        else:
+            self.start_tracing()
         return self
 
     def __exit__(self, *exc_info):
-        self.stop()
+        if self.profile:
+            self.stop_profiling()
+        else:
+            self.stop_tracing()
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :
