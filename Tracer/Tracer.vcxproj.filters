@@ -27,6 +27,9 @@
     <ClInclude Include="Tracing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TraceStoreIndex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

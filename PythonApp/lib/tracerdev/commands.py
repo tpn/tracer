@@ -512,5 +512,66 @@ class TrailingSlashesAlign(InvariantAwareCommand):
                 f.write('\n'.join(lines))
                 f.write('\n')
 
+class SyncTraceStoreIndexHeader(InvariantAwareCommand):
+    """
+    Finds all multi-line macros and aligns trailing slashes where necessary.
+    """
+    _shortname_ = 'tsi'
+
+    path = None
+    _path = None
+    class PathArg(PathInvariant):
+        _help = "path of the TraceStoreIndex.h file [default: %default]"
+
+        def _default(self):
+            return join_path(
+                dirname(__file__),
+                "../../../Tracer/TraceStoreIndex.h"
+            )
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = self._path
+
+        from tracer.sourcefile import SourceFile
+
+        source = SourceFile(path)
+        orig_data = source.data
+        orig_lines = source.lines
+
+        lines = source.lines
+        dirty = False
+
+        new_lines = []
+
+        count = 0
+        digits = 1
+        for line in lines:
+            parts = line.split(' ')
+            if digits == 1:
+                parts[-1] = str(count)
+            else:
+                assert digits == 2, digits
+                parts = parts[:-2]
+                parts.append(str(count))
+
+            new_line = ' '.join(parts)
+            if new_line != line:
+                dirty = True
+
+            new_lines.append(new_line)
+
+            count += 1
+            if digits == 1 and count == 10:
+                digits = 2
+
+        if dirty:
+            with open(path, 'wb') as f:
+                f.write('\n'.join(new_lines))
+                f.write('\n')
+            out("Updated header.")
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

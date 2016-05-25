@@ -350,12 +350,13 @@ PyTraceCallback(
     // Save the timestamp for this event.
     //
 
-    QueryPerformanceCounter(&Event.Timestamp);
+    TraceContextQueryPerformanceCounter(TraceContext, &Elapsed);
 
     //
     // Fill out the function.
     //
 
+    Event.Timestamp.QuadPart = Elapsed.QuadPart;
     Event.Function = Function;
     Event.IsC = IsC;
     Event.CodeObjectHash = Function->CodeObjectHash;
@@ -363,11 +364,12 @@ PyTraceCallback(
     Event.FirstLineNumber = Function->FirstLineNumber;
     Event.NumberOfLines = Function->NumberOfLines;
     Event.NumberOfCodeLines = Function->NumberOfCodeLines;
-    Event.PathAtom = Function->PathEntry.PathAtom;
-    Event.FullNameAtom = Function->PathEntry.FullNameAtom;
-    Event.ModuleNameAtom = Function->PathEntry.ModuleNameAtom;
-    Event.ClassNameAtom = Function->PathEntry.ClassNameAtom;
-    Event.NameAtom = Function->PathEntry.NameAtom;
+    Event.PathHash = Function->PathEntry.PathHash;
+    Event.FullNameHash = Function->PathEntry.FullNameHash;
+    Event.ModuleNameHash = Function->PathEntry.ModuleNameHash;
+    Event.ClassNameHash = Function->PathEntry.ClassNameHash;
+    Event.NameHash = Function->PathEntry.NameHash;
+    Event.ThreadId = FastGetCurrentThreadId();
 
     if (IsException) {
 
@@ -434,37 +436,11 @@ PyTraceCallback(
     }
 
     //
-    // Calculate the timestamp delta.
+    // Calculate the elapsed time relative to the last event's timestamp and
+    // then update its elapsed microsecond field.
     //
 
-    LastEvent.TimestampDelta = (ULONG)(
-        Event.Timestamp.QuadPart -
-        LastEvent.Timestamp.QuadPart
-    );
-
-    //
-    // Update the duration for the line event.
-    //
-
-    Elapsed.HighPart = 0;
-    Elapsed.LowPart = LastEvent.TimestampDelta;
-
-    //
-    // Microseconds to seconds.
-    //
-
-    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
-
-    //
-    // Divide by frequency to get elapsed microseconds.
-    //
-
-    Elapsed.QuadPart /= Context->Frequency.QuadPart;
-
-    //
-    // Copy the elapsed microsecond value back to the last event.
-    //
-
+    Elapsed.QuadPart -= LastEvent.Timestamp.QuadPart;
     LastEvent.ElapsedMicroseconds = Elapsed.LowPart;
 
     if (LastEvent.IsLine) {
@@ -735,6 +711,7 @@ InitializePythonTraceContext(
     PTRACE_STORE DirectoryStringBufferStore;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
+    USHORT TraceStoreIndex;
 
     if (!Context) {
         if (SizeOfContext) {
@@ -782,6 +759,7 @@ InitializePythonTraceContext(
     TraceStores = TraceContext->TraceStores;
 
 #define INIT_STORE_ALLOCATOR(Name)                                       \
+    TraceStoreIndex = TraceStore##Name##Index;                           \
     Name##Store = &TraceStores->Stores[TraceStore##Name##Index];         \
     Name##Store->NoRetire = TRUE;                                        \
     Allocators.##Name##.AllocationRoutine = TraceStoreAllocationRoutine; \

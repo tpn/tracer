@@ -44,7 +44,7 @@ os.path.exists(conf.tracer_pythontracer_debug_dll_path)
 import tracer
 reload(tracer)
 
-use_debug = True
+use_debug = False
 
 print("Press any key to continue.")
 dummy = sys.stdin.read(1)
@@ -66,6 +66,8 @@ t.enable_io_counters_tracing()
 t.enable_handle_count_tracing()
 
 with t:
+    import numpy as np
+    import pandas as pd
     for i in range(1000):
         bits_table(output=null_writer)
 

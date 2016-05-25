@@ -132,31 +132,31 @@ static const PYTHON_PATH_TABLE_ENTRY_OFFSETS PythonPathTableEntryOffsets = {
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Path),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathLength),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathMaximumLength),
-    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathHash),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathBuffer),
 
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullName),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameLength),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameMaximumLength),
-    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameHash),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameBuffer),
 
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleName),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameLength),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameMaximumLength),
-    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameHash),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameBuffer),
 
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Name),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameLength),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameMaximumLength),
-    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameHash),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameBuffer),
 
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassName),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameLength),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameMaximumLength),
-    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameAtom),
+    FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameHash),
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameBuffer),
 };
 
@@ -186,42 +186,6 @@ static const PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets = {
     FIELD_OFFSET(PYTHON_FUNCTION, Unused3),
     FIELD_OFFSET(PYTHON_FUNCTION, Unused4),
 };
-
-LONG
-PythonStringHash(
-    _In_    PPYTHON Python,
-    _In_    PSTRING String
-    )
-{
-    PCHAR Char;
-    USHORT Length;
-    LONG Hash;
-
-    if (String->Length == 0) {
-        return 0;
-    }
-
-    Length = String->Length;
-    Char = String->Buffer;
-
-    Hash = Python->_Py_HashSecret.Prefix;
-
-    Hash ^= *Char << 7;
-
-    while (--Length >= 0) {
-        Hash = (1000003*Hash) ^ *Char++;
-    }
-
-    Hash ^= String->Length;
-    Hash ^= Python->_Py_HashSecret.Suffix;
-
-    if (Hash == -1) {
-        Hash = -2;
-    }
-
-    return Hash;
-}
-
 
 BOOL
 SetPythonAllocators(
@@ -483,7 +447,7 @@ FinalizeHashedString(
     }
 
     HashedString->Atom = HashAnsiStringToAtom(&HashedString->String);
-    HashedString->Hash = PythonStringHash(Python, &HashedString->String);
+    HashString(Python, &HashedString->String);
 
     return TRUE;
 }
@@ -1124,19 +1088,32 @@ ResolvePythonExOffsets(_In_ PPYTHON Python)
     //
 
     CONST USHORT OffsetA1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NextPrefixTree);
-    CONST USHORT OffsetA2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree);
+    CONST USHORT OffsetA2 = (
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree)
+    );
 
     CONST USHORT OffsetB1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NodeTypeCode);
-    CONST USHORT OffsetB2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NodeTypeCode);
+    CONST USHORT OffsetB2 = (
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NodeTypeCode)
+    );
 
     CONST USHORT OffsetC1 = FIELD_OFFSET(PREFIX_TABLE_ENTRY, NameLength);
-    CONST USHORT OffsetC2 = FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PrefixNameLength);
+    CONST USHORT OffsetC2 = (
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PrefixNameLength)
+    );
 
     CONST USHORT SizeOfPythonFunction = sizeof(PYTHON_FUNCTION);
-    CONST USHORT SizeOfPythonFunctionTableEntry = sizeof(PYTHON_FUNCTION_TABLE_ENTRY);
-    CONST USHORT SizeOfTableEntryHeaderHeader = sizeof(TABLE_ENTRY_HEADER_HEADER);
+    CONST USHORT SizeOfPythonFunctionTableEntry = (
+        sizeof(PYTHON_FUNCTION_TABLE_ENTRY)
+    );
+    CONST USHORT SizeOfTableEntryHeaderHeader = (
+        sizeof(TABLE_ENTRY_HEADER_HEADER)
+    );
+
     CONST USHORT SizeOfPythonPathTableEntry = sizeof(PYTHON_PATH_TABLE_ENTRY);
-    CONST USHORT TargetFunctionEntrySize = TargetSizeOfPythonFunctionTableEntry;
+    CONST USHORT TargetFunctionEntrySize = (
+        TargetSizeOfPythonFunctionTableEntry
+    );
     CONST USHORT TargetPathEntrySize = TargetSizeOfPythonPathTableEntry;
 
 #define ASSERT_EQUAL(Left, Right) \
@@ -1558,12 +1535,6 @@ RegisterDirectory(
 
         Name->Length = NameLength;
         Name->MaximumLength = NameLength + 1;
-
-        //
-        // The new module name lives at the end of the structure.
-        //
-
-        //ModuleName->Buffer = (PSTR)RtlOffsetToPointer(Entry, sizeof(*Entry));
 
         //
         // Point the name into the relevant offset of the ModuleName.
@@ -2123,9 +2094,6 @@ Routine Description:
         return FALSE;
     }
 
-    //ClearString(FullName);
-    //FullName->Buffer = (PCHAR)Buffer;
-
     Dest = FullName->Buffer;
 
     __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
@@ -2168,7 +2136,7 @@ Routine Description:
     // Omit trailing NUL from Length.
     //
 
-    FullName->Length = FullNameLength-1;
+    FullName->Length = FullNameLength - 1;
     FullName->MaximumLength = FullNameAllocSize;
 
     //
@@ -2193,18 +2161,18 @@ Routine Description:
     Function->CodeObjectHash = Python->PyObject_Hash(CodeObject);
 
     //
-    // Calculate the atoms for the strings.
+    // Hash the strings.
     //
 
-    PathEntry->NameAtom = HashAnsiStringToAtom(&PathEntry->Name);
-    PathEntry->PathAtom = HashAnsiStringToAtom(&PathEntry->Path);
-    PathEntry->FullNameAtom = HashAnsiStringToAtom(&PathEntry->FullName);
-    PathEntry->ModuleNameAtom = HashAnsiStringToAtom(&PathEntry->ModuleName);
+    HashString(Python, &PathEntry->Name);
+    HashString(Python, &PathEntry->Path);
+    HashString(Python, &PathEntry->FullName);
+    HashString(Python, &PathEntry->ModuleName);
 
     if (ClassName->Length) {
-        PathEntry->ClassNameAtom = HashAnsiStringToAtom(&PathEntry->ClassName);
+        HashString(Python, &PathEntry->ClassName);
     } else {
-        PathEntry->ClassNameAtom = 0;
+        PathEntry->ClassName.Hash = 0;
     }
 
     //
@@ -2213,8 +2181,8 @@ Routine Description:
 
     Function->FunctionHash = (
         PathEntry->PathEntryType    ^
-        PathEntry->PathAtom         ^
-        PathEntry->FullNameAtom     ^
+        PathEntry->PathHash         ^
+        PathEntry->FullNameHash     ^
         Function->CodeObjectHash    ^
         Function->NumberOfCodeLines
     );
@@ -3767,7 +3735,7 @@ BOOL
 HashAndAtomizeAnsi(
     _In_    PPYTHON Python,
     _In_    PSTR String,
-    _Out_   PULONG HashPointer,
+    _Out_   PLONG HashPointer,
     _Out_   PULONG AtomPointer
     )
 {
