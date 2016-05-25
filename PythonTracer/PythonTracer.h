@@ -24,13 +24,13 @@ typedef enum _TraceEventType {
     TraceEventType_PyTrace_C_RETURN = 6,
 } TraceEventType;
 
-typedef struct _EVENT_TYPE {
+typedef struct _EVENT_TYPE_NAME {
     TraceEventType  Id;
     PCWSTR          Name;
     PCSTR           NameA;
-} EVENT_TYPE, *PEVENT_TYPE;
+} EVENT_TYPE_NAME, *PEVENT_TYPE_NAME;
 
-static const EVENT_TYPE EventTypes[] = {
+static const EVENT_TYPE_NAME EventTypeNames[] = {
 
     {
         TraceEventType_PyTrace_CALL,
@@ -76,8 +76,8 @@ static const EVENT_TYPE EventTypes[] = {
 };
 
 static const DWORD NumberOfTraceEventTypes = (
-    sizeof(EventTypes) /
-    sizeof(EVENT_TYPE)
+    sizeof(EventTypeNames) /
+    sizeof(EVENT_TYPE_NAME)
 );
 
 typedef enum _PYTHON_TRACE_EVENT_TYPE {
@@ -219,26 +219,61 @@ typedef VOID (CONTINUE_TRACE_EVENT)(
     );
 typedef CONTINUE_TRACE_EVENT *PCONTINUE_TRACE_EVENT;
 
-typedef struct _PYTHON_TRACE_CONTEXT {
-    ULONG             Size;
-    PRTL              Rtl;
-    PPYTHON           Python;
-    PTRACE_CONTEXT    TraceContext;
-    PPYTRACEFUNC      PythonTraceFunction;
-    PVOID             UserData;
-
-    ULONG             Depth;
-    ULONG             SkipFrames;
+typedef struct _PYTHON_TRACE_CONTEXT_FLAGS {
     union {
         ULONG Flags;
         struct {
-            ULONG StartedTracing:1;
+            ULONG IsProfile:1;
+            ULONG HasStarted:1;
             ULONG TraceMemory:1;
             ULONG TraceIoCounters:1;
             ULONG TraceHandleCount:1;
         };
     };
-    ULONG Unused1;
+} PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
+
+typedef struct _EVENT_TYPE {
+    union {
+        ULONG EventType;
+    };
+    struct {
+        ULONG IsCall:1;
+        ULONG IsReturn:1;
+        ULONG IsLine:1;
+        ULONG IsException:1;
+        ULONG IsC:1;
+    };
+} EVENT_TYPE, *PEVENT_TYPE;
+
+typedef struct _PYTHON_TRACE_CONTEXT {
+
+    ULONG             Size;                                 // 4    0   4
+
+    //
+    // Inline PYTHON_TRACE_CONTEXT_FLAGS.
+    //
+
+    union {
+        PYTHON_TRACE_CONTEXT_FLAGS Flags;                   // 4    4   8
+        struct {
+            ULONG IsProfile:1;
+            ULONG HasStarted:1;
+            ULONG TraceMemory:1;
+            ULONG TraceIoCounters:1;
+            ULONG TraceHandleCount:1;
+        };
+    };
+
+    PRTL              Rtl;                                  // 8    8   16
+    PPYTHON           Python;                               // 8    16  24
+    PTRACE_CONTEXT    TraceContext;                         // 8    24  32
+    PPYTRACEFUNC      PythonTraceFunction;                  // 8    32  40
+    PVOID             UserData;                             // 8    40  48
+
+    ULONG             Depth;
+    ULONG             SkipFrames;
+
+    ULONG Unused2;
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER StartTimestamp;
