@@ -37,27 +37,27 @@ PythonPathTableEntryDataType = np.dtype([
 
     ('PathLength', np.uint16),
     ('PathMaximumLength', np.uint16),
-    ('PathAtom', np.uint32),
+    ('PathHash', np.uint32),
     ('PathBuffer', np.uint64),
 
     ('FullNameLength', np.uint16),
     ('FullNameMaximumLength', np.uint16),
-    ('FullNameAtom', np.uint32),
+    ('FullNameHash', np.uint32),
     ('FullNameBuffer', np.uint64),
 
     ('ModuleNameLength', np.uint16),
     ('ModuleNameMaximumLength', np.uint16),
-    ('ModuleNameAtom', np.uint32),
+    ('ModuleNameHash', np.uint32),
     ('ModuleNameBuffer', np.uint64),
 
     ('NameLength', np.uint16),
     ('NameMaximumLength', np.uint16),
-    ('NameAtom', np.uint32),
+    ('NameHash', np.uint32),
     ('NameBuffer', np.uint64),
 
     ('ClassNameLength', np.uint16),
     ('ClassNameMaximumLength', np.uint16),
-    ('ClassNameAtom', np.uint32),
+    ('ClassNameHash', np.uint32),
     ('ClassNameBuffer', np.uint64),
 ], align=True)
 
@@ -76,27 +76,27 @@ PythonFunctionDataType = np.dtype([
 
     ('PathLength', np.uint16),
     ('PathMaximumLength', np.uint16),
-    ('PathAtom', np.uint32),
+    ('PathHash', np.int32),
     ('PathBuffer', np.uint64),
 
     ('FullNameLength', np.uint16),
     ('FullNameMaximumLength', np.uint16),
-    ('FullNameAtom', np.uint32),
+    ('FullNameHash', np.int32),
     ('FullNameBuffer', np.uint64),
 
     ('ModuleNameLength', np.uint16),
     ('ModuleNameMaximumLength', np.uint16),
-    ('ModuleNameAtom', np.uint32),
+    ('ModuleNameHash', np.int32),
     ('ModuleNameBuffer', np.uint64),
 
     ('NameLength', np.uint16),
     ('NameMaximumLength', np.uint16),
-    ('NameAtom', np.uint32),
+    ('NameHash', np.int32),
     ('NameBuffer', np.uint64),
 
     ('ClassNameLength', np.uint16),
     ('ClassNameMaximumLength', np.uint16),
-    ('ClassNameAtom', np.uint32),
+    ('ClassNameHash', np.int32),
     ('ClassNameBuffer', np.uint64),
     # End of PYTHON_PATH_TABLE_ENTRY
 
@@ -142,27 +142,27 @@ PythonFunctionTableEntryDataType = np.dtype([
 
     ('PathLength', np.uint16),
     ('PathMaximumLength', np.uint16),
-    ('PathAtom', np.uint32),
+    ('PathHash', np.int32),
     ('PathBuffer', np.uint64),
 
     ('FullNameLength', np.uint16),
     ('FullNameMaximumLength', np.uint16),
-    ('FullNameAtom', np.uint32),
+    ('FullNameHash', np.int32),
     ('FullNameBuffer', np.uint64),
 
     ('ModuleNameLength', np.uint16),
     ('ModuleNameMaximumLength', np.uint16),
-    ('ModuleNameAtom', np.uint32),
+    ('ModuleNameHash', np.int32),
     ('ModuleNameBuffer', np.uint64),
 
     ('NameLength', np.uint16),
     ('NameMaximumLength', np.uint16),
-    ('NameAtom', np.uint32),
+    ('NameHash', np.int32),
     ('NameBuffer', np.uint64),
 
     ('ClassNameLength', np.uint16),
     ('ClassNameMaximumLength', np.uint16),
-    ('ClassNameAtom', np.uint32),
+    ('ClassNameHash', np.int32),
     ('ClassNameBuffer', np.uint64),
     # End of PYTHON_PATH_TABLE_ENTRY
 
@@ -173,7 +173,7 @@ PythonFunctionTableEntryDataType = np.dtype([
     ('CodeLineNumbers', np.uint64),
 
     ('ReferenceCount', np.uint32),
-    ('CodeObjectHash', np.uint32),
+    ('CodeObjectHash', np.int32),
     ('FunctionHash', np.uint32),
     ('Unused1', np.uint32),
 
@@ -187,6 +187,44 @@ PythonFunctionTableEntryDataType = np.dtype([
     ('Unused4', np.uint64),
 ], align=True)
 
+
+SlimPythonFunctionTableEntryDataTypeColumns = [
+    'PathEntryType',
+    'PathLength',
+    'PathMaximumLength',
+    'PathHash',
+    'PathBuffer',
+
+    'FullNameLength',
+    'FullNameMaximumLength',
+    'FullNameHash',
+    'FullNameBuffer',
+
+    'ModuleNameLength',
+    'ModuleNameMaximumLength',
+    'ModuleNameHash',
+    'ModuleNameBuffer',
+
+    'NameLength',
+    'NameMaximumLength',
+    'NameHash',
+    'NameBuffer',
+
+    'ClassNameLength',
+    'ClassNameMaximumLength',
+    'ClassNameHash',
+    'ClassNameBuffer',
+
+    'ReferenceCount',
+    'CodeObjectHash',
+    'FunctionHash',
+
+    'FirstLineNumber',
+    'NumberOfLines',
+    'NumberOfCodeLines',
+    'SizeOfByteCode',
+]
+
 PythonTraceEventDataType = np.dtype([
     ('Timestamp', np.uint64),
     ('Function', np.uint64),
@@ -199,7 +237,7 @@ PythonTraceEventDataType = np.dtype([
     ('WriteTransferCount', np.uint64),
 
     ('HandleCount', np.uint32),
-    ('TimestampDelta', np.uint32),
+    ('ThreadId', np.uint32),
     ('ElapsedMicroseconds', np.uint32),
 
     ('WorkingSetDelta', np.int32),
@@ -210,11 +248,11 @@ PythonTraceEventDataType = np.dtype([
     ('CodeObjectHash', np.uint32),
     ('FunctionHash', np.uint32),
 
-    ('PathAtom', np.uint32),
-    ('FullNameAtom', np.uint32),
-    ('ModuleNameAtom', np.uint32),
-    ('ClassNameAtom', np.uint32),
-    ('NameAtom', np.uint32),
+    ('PathHash', np.int32),
+    ('FullNameHash', np.int32),
+    ('ModuleNameHash', np.int32),
+    ('ClassNameHash', np.int32),
+    ('NameHash', np.int32),
 
     ('Flags', np.uint32),
 
@@ -226,6 +264,26 @@ PythonTraceEventDataType = np.dtype([
     ('NumberOfLines', np.uint16),
     ('NumberOfCodeLines', np.uint16),
 ], align=True)
+
+SlimPythonTraceEventDataTypeColumns = [
+    'Timestamp',
+    'Function',
+    'ElapsedMicroseconds',
+    'WorkingSetDelta',
+    'CommittedDelta',
+    'ReadTransferDelta',
+    'WriteTransferDelta',
+    'HandleDelta',
+    'PageFaultDelta',
+    'PathHash',
+    'FullNameHash',
+    'ModuleNameHash',
+    'ClassNameHash',
+    'NameHash',
+    'LineNumber',
+    'NumberOfLines',
+    'NumberOfCodeLines'
+]
 
 AddressDataType = np.dtype([
     ('PreferredBaseAddress', np.uint64),
@@ -253,57 +311,107 @@ AddressDataType = np.dtype([
     ('FulfillingThreadId', np.uint32),
 ], align=True)
 
-MetadataDataType = np.dtype([
+AllocationDataType = np.dtype([
     ('NumberOfRecords', np.uint64),
     ('RecordSize', np.uint64),
 ], align=True)
+
+InfoDataType = np.dtype([
+    # TRACE_STORE_EOF
+    ('EndOfFile', np.uint64),
+    # TRACE_STORE_TIME
+    ('Frequency', np.uint64),
+    ('Multiplicand', np.uint64),
+    ('StartTime', np.uint64),
+    ('StartCounter', np.uint64),
+    # TRACE_STORE_STATS
+    ('DroppedRecords', np.uint32),
+    ('ExhaustedFreeMemoryMaps', np.uint32),
+    ('AllocationsOutpacingNextMemoryMapPreparation', np.uint32),
+    ('PreferredAddressUnavailable', np.uint32),
+], align=True)
+
+DefaultHashedStringColumns = [
+    'Path',
+    'FullName',
+    'ModuleName',
+    'Name',
+    'ClassName',
+]
 
 #===============================================================================
 # Classes
 #===============================================================================
 class TraceStore:
+    slim = None
     dtype = None
     filename = None
+    hashed_string_columns = None
 
-    def __init__(self, basedir, filename=None):
+    def __init__(self, basedir, filename=None, string_buffer_store=None,
+                                slim=True):
         if not filename:
             filename = self.filename
         self.path = join_path(basedir, filename)
-        self.metadata_path = '%s:metadata' % self.path
+        self.allocation_path = '%s:allocation' % self.path
         self.address_path = '%s:address' % self.path
-        self.eof_path = '%s:eof' % self.path
+        self.info_path = '%s:info' % self.path
 
-        with open(self.metadata_path, 'rb') as f:
-            self.metadata_np = np.fromfile(f, dtype=MetadataDataType)
+        with open(self.allocation_path, 'rb') as f:
+            self.allocation_np = np.fromfile(f, dtype=AllocationDataType)
 
         with open(self.address_path, 'rb') as f:
             self.address_np = np.fromfile(f, dtype=AddressDataType)
 
-        with open(self.eof_path, 'rb') as f:
-            self.eof_data = f.read()
+        with open(self.info_path, 'rb') as f:
+            self.info_np = np.fromfile(f, dtype=InfoDataType)
 
-        self.metadata_df = pd.DataFrame(self.metadata_np)
+        self.allocation_df = pd.DataFrame(self.allocation_np)
         self.address_df = pd.DataFrame(self.address_np)
+        self.info_df = pd.DataFrame(self.info_np)
+        self.string_buffer_store = string_buffer_store
 
-        self.load_data()
+        self.load_data(slim=slim)
 
-    def load_data(self):
+    def load_data(self, slim=None):
         with open(self.path, 'rb') as f:
             self.data_np = np.fromfile(f, dtype=self.dtype)
 
         self.data_df = pd.DataFrame(self.data_np)
 
+        if slim:
+            self.data_df = self.data_df[self.slim]
+
+        if self.hashed_string_columns and self.string_buffer_store:
+            sb = self.string_buffer_store
+            for column in self.hashed_string_columns:
+                self.resolve_string_hashes(sb.string_items, column)
+
+    def resolve_string_hashes(self, string_items, column_prefix):
+        hash_col = '%sHash' % column_prefix
+        string_col = '%sString' % column_prefix
+
+        columns = [ hash_col, string_col ]
+        df = pd.DataFrame(string_items, columns=columns)
+
+        self.data_df = self.data_df.merge(df, on=hash_col, how='left')
+
 class PythonTraceEventStore(TraceStore):
+    slim = SlimPythonTraceEventDataTypeColumns
     dtype = PythonTraceEventDataType
     filename = 'TraceEvent.dat'
+    hashed_string_columns = DefaultHashedStringColumns
 
 class PythonFunctionTableEntryStore(TraceStore):
+    slim = SlimPythonFunctionTableEntryDataTypeColumns
     dtype = PythonFunctionTableEntryDataType
     filename = 'TraceFunctionTableEntry.dat'
+    hashed_string_columns = DefaultHashedStringColumns
 
 class PythonPathTableEntryStore(TraceStore):
     dtype = PythonPathTableEntryDataType
     filename = 'TracePathTableEntry.dat'
+    has_hashed_strings = True
 
 class StringStore(TraceStore):
     dtype = StringDataType
@@ -313,12 +421,29 @@ class StringBufferStore(TraceStore):
     dtype = StringDataType
     filename = 'TraceStringBuffer.dat'
 
-    def load_data(self):
+    def load_data(self, slim=None):
         with open(self.path, 'rb') as f:
             self.data = f.read()
 
+        self.strings = [ s for s in self.data.split('\x00') if s ]
+        self.hashed_strings = { hash(s): s for s in self.strings }
+        self.hashed_strings[0] = '';
+        self.hashed_strings[-1] = '';
+        self.hashed_strings[-2] = '';
+        self.string_items = self.hashed_strings.items()
+
+    @classmethod
+    def to_hash_map(self, tracer, strings):
+        hashes = {}
+        failed = []
+        for string in strings:
+            (hash_value, _) = tracer.hash_and_atomize_string(string)
+            if hash_value != hash(string):
+                failed.append((hash_value, hash(string), string))
+            else:
+                hashes[hash_value] = string
 
 
-        self.data_df = pd.DataFrame(self.data_np)
+        return (hashes, failed)
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

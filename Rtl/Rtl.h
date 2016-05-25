@@ -34,7 +34,7 @@ typedef struct _RTL *PRTL;
 typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
-    ULONG  Atom;
+    LONG   Hash;
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
 typedef const STRING *PCSTRING;
@@ -42,7 +42,7 @@ typedef const STRING *PCSTRING;
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
-    ULONG  Atom;
+    LONG   Hash;
     PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;

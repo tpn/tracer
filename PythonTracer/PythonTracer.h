@@ -102,7 +102,7 @@ typedef struct _PYTHON_TRACE_EVENT {
     ULONGLONG WriteTransferCount;       // 8        56
 
     ULONG HandleCount;                  // 4        60
-    ULONG TimestampDelta;               // 4        64
+    ULONG ThreadId;                     // 4        64
     ULONG ElapsedMicroseconds;          // 4        68
 
     LONG WorkingSetDelta;               // 4        72
@@ -113,11 +113,11 @@ typedef struct _PYTHON_TRACE_EVENT {
     ULONG CodeObjectHash;               // 4        88
     ULONG FunctionHash;                 // 4        92
 
-    ULONG PathAtom;                     // 4        96
-    ULONG FullNameAtom;                 // 4        100
-    ULONG ModuleNameAtom;               // 4        104
-    ULONG ClassNameAtom;                // 4        108
-    ULONG NameAtom;                     // 4        112
+    ULONG PathHash;                     // 4        96
+    ULONG FullNameHash;                 // 4        100
+    ULONG ModuleNameHash;               // 4        104
+    ULONG ClassNameHash;                // 4        108
+    ULONG NameHash;                     // 4        112
 
     union {
         ULONG Flags;                    // 4        116

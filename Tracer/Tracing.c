@@ -15,20 +15,22 @@ static const SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
 static const USHORT InitialFreeMemoryMaps = 32;
 
-static const USHORT TraceStoreMetadataStructSize = sizeof(TRACE_STORE_METADATA);
+static const USHORT TraceStoreAllocationStructSize = (
+    sizeof(TRACE_STORE_ALLOCATION)
+);
 static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
-static const USHORT TraceStoreEofStructSize = sizeof(TRACE_STORE_EOF);
+static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-static const ULONG DefaultTraceStoreMappingSize         = (1 << 21); // 2MB
+static const ULONG DefaultTraceStoreMappingSize             = (1 << 21); // 2MB
 
-static const ULONG DefaultMetadataTraceStoreSize        = (1 << 21); // 2MB
-static const ULONG DefaultMetadataTraceStoreMappingSize = (1 << 16); // 64KB
+static const ULONG DefaultAllocationTraceStoreSize          = (1 << 21); // 2MB
+static const ULONG DefaultAllocationTraceStoreMappingSize   = (1 << 16); // 64KB
 
-static const ULONG DefaultAddressTraceStoreSize         = (1 << 21); // 2MB
-static const ULONG DefaultAddressTraceStoreMappingSize  = (1 << 16); // 64KB
+static const ULONG DefaultAddressTraceStoreSize             = (1 << 21); // 2MB
+static const ULONG DefaultAddressTraceStoreMappingSize      = (1 << 16); // 64KB
 
-static const ULONG DefaultEofTraceStoreSize             = (1 << 16); // 64KB
-static const ULONG DefaultEofTraceStoreMappingSize      = (1 << 16); // 64KB
+static const ULONG DefaultInfoTraceStoreSize                = (1 << 16); // 64KB
+static const ULONG DefaultInfoTraceStoreMappingSize         = (1 << 16); // 64KB
 
 BOOL
 LoadNextTraceStoreAddress(
@@ -40,7 +42,7 @@ FORCEINLINE
 BOOL
 IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
 {
-    return (TraceStore->MetadataStore == NULL);
+    return TraceStore->IsMetadata;
 }
 
 BOOL
@@ -54,7 +56,7 @@ FindLongestTraceStoreFileName(_Out_ PUSHORT LengthPointer)
         _OUR_MAX_PATH   -
         3               - /* C:\ */
         1               - // NUL
-        TraceStoreMetadataSuffixLength
+        LongestTraceStoreSuffixLength
     );
 
     for (Index = 0; Index < NumberOfTraceStores; Index++) {
@@ -71,7 +73,7 @@ FindLongestTraceStoreFileName(_Out_ PUSHORT LengthPointer)
             Longest.QuadPart = Length.QuadPart;
         }
     }
-    Longest.QuadPart += TraceStoreMetadataSuffixLength;
+    Longest.QuadPart += LongestTraceStoreSuffixLength;
 
     if (Longest.QuadPart > MAX_STRING) {
         return FALSE;
@@ -99,7 +101,7 @@ FindLongestTraceStoreFileNameCallback(
         _OUR_MAX_PATH   -
         3               - /* C:\ */
         1               - // NUL
-        TraceStoreMetadataSuffixLength
+        TraceStoreAllocationSuffixLength
     );
 
     for (Index = 0; Index < NumberOfTraceStores; Index++) {
@@ -116,7 +118,7 @@ FindLongestTraceStoreFileNameCallback(
             Longest.QuadPart = Length.QuadPart;
         }
     }
-    Longest.QuadPart += TraceStoreMetadataSuffixLength;
+    Longest.QuadPart += TraceStoreAllocationSuffixLength;
 
     *((PDWORD64)lpContext) = Longest.QuadPart;
 
@@ -457,21 +459,21 @@ InitializeTraceStore(
     _In_        PRTL Rtl,
     _In_        PCWSTR Path,
     _Inout_     PTRACE_STORE TraceStore,
-    _Inout_     PTRACE_STORE MetadataStore,
+    _Inout_     PTRACE_STORE AllocationStore,
     _Inout_     PTRACE_STORE AddressStore,
-    _Inout_     PTRACE_STORE EofStore,
+    _Inout_     PTRACE_STORE InfoStore,
     _In_opt_    ULONG InitialSize,
     _In_opt_    ULONG MappingSize
     )
 {
     BOOL Success;
     HRESULT Result;
-    WCHAR MetadataPath[_OUR_MAX_PATH];
+    WCHAR AllocationPath[_OUR_MAX_PATH];
     WCHAR AddressPath[_OUR_MAX_PATH];
-    WCHAR EofPath[_OUR_MAX_PATH];
-    PCWSTR MetadataSuffix = TraceStoreMetadataSuffix;
+    WCHAR InfoPath[_OUR_MAX_PATH];
+    PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
     PCWSTR AddressSuffix = TraceStoreAddressSuffix;
-    PCWSTR EofSuffix = TraceStoreEofSuffix;
+    PCWSTR InfoSuffix = TraceStoreInfoSuffix;
 
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
@@ -510,9 +512,9 @@ InitializeTraceStore(
         return FALSE;                                                 \
     }
 
-    INIT_METADATA_PATH(Metadata);
+    INIT_METADATA_PATH(Allocation);
     INIT_METADATA_PATH(Address);
-    INIT_METADATA_PATH(Eof);
+    INIT_METADATA_PATH(Info);
 
     TraceStore->Rtl = Rtl;
 
@@ -540,6 +542,7 @@ InitializeTraceStore(
     }
 
 #define INIT_METADATA(Name)                                            \
+    Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
     Name##Store->SequenceId = TraceStore->SequenceId;                  \
     Name##Store->CreateFileDesiredAccess = (                           \
@@ -571,9 +574,11 @@ InitializeTraceStore(
                                                                        \
     TraceStore->##Name##Store = ##Name##Store;
 
-    INIT_METADATA(Metadata);
+    INIT_METADATA(Allocation);
     INIT_METADATA(Address);
-    INIT_METADATA(Eof);
+    INIT_METADATA(Info);
+
+    TraceStore->IsMetadata = FALSE;
 
     if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize)) {
         goto Error;
@@ -620,7 +625,6 @@ InitializeTraceStores(
     );
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
-    LARGE_INTEGER Frequency;
     PULONG Sizes = InitialFileSizes;
 
     if (!SizeOfTraceStores) {
@@ -703,14 +707,12 @@ InitializeTraceStores(
         MapViewOfFileDesiredAccess =  FILE_MAP_READ | FILE_MAP_WRITE;
     }
 
-    QueryPerformanceFrequency(&Frequency);
-
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-        PTRACE_STORE MetadataStore = TraceStore + 1;
+        PTRACE_STORE AllocationStore = TraceStore + 1;
         PTRACE_STORE AddressStore = TraceStore + 2;
-        PTRACE_STORE EofStore = TraceStore + 3;
+        PTRACE_STORE InfoStore = TraceStore + 3;
 
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
@@ -735,15 +737,14 @@ InitializeTraceStores(
         TraceStore->MapViewOfFileDesiredAccess = (
             MapViewOfFileDesiredAccess
         );
-        TraceStore->Frequency.QuadPart = Frequency.QuadPart;
 
         Success = InitializeTraceStore(
             Rtl,
             Path,
             TraceStore,
-            MetadataStore,
+            AllocationStore,
             AddressStore,
-            EofStore,
+            InfoStore,
             InitialSize,
             MappingSize
         );
@@ -954,9 +955,9 @@ CloseTraceStore(
 
     CloseStore(TraceStore);
 
-    if (TraceStore->MetadataStore) {
-        CloseStore(TraceStore->MetadataStore);
-        TraceStore->MetadataStore = NULL;
+    if (TraceStore->AllocationStore) {
+        CloseStore(TraceStore->AllocationStore);
+        TraceStore->AllocationStore = NULL;
     }
 
     if (TraceStore->AddressStore) {
@@ -964,9 +965,9 @@ CloseTraceStore(
         TraceStore->AddressStore = NULL;
     }
 
-    if (TraceStore->EofStore) {
-        CloseStore(TraceStore->EofStore);
-        TraceStore->EofStore = NULL;
+    if (TraceStore->InfoStore) {
+        CloseStore(TraceStore->InfoStore);
+        TraceStore->InfoStore = NULL;
     }
 
 }
@@ -1064,14 +1065,28 @@ PrepareNextTraceStoreMemoryMap(
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
     LARGE_INTEGER DistanceToMove;
-    LARGE_INTEGER Timestamp;
     LARGE_INTEGER Elapsed;
+    PTRACE_STORE_STATS Stats;
+    TRACE_STORE_STATS DummyStats = { 0 };
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return FALSE;
     }
 
     Rtl = TraceStore->Rtl;
+
+    //
+    // We may not have a stats struct available yet if this is the first
+    // call to PrepareNextTraceStoreMemoryMap().  If that's the case, just
+    // point the pointer at a dummy one.  This simplifies the rest of the
+    // code in the function.
+    //
+
+    Stats = TraceStore->pStats;
+
+    if (!Stats) {
+        Stats = &DummyStats;
+    }
 
     if (!Rtl) {
         return FALSE;
@@ -1249,6 +1264,7 @@ TryMapMemory:
 
             OriginalPreferredBaseAddress = PreferredBaseAddress;
             PreferredBaseAddress = NULL;
+            Stats->PreferredAddressUnavailable++;
             goto TryMapMemory;
         }
 
@@ -1294,45 +1310,32 @@ TryMapMemory:
     // Fill in the thread and processor information.
     //
 
-    Address.FulfillingThreadId = GetCurrentThreadId();
+    Address.FulfillingThreadId = FastGetCurrentThreadId();
 
     GetCurrentProcessorNumberEx(&Address.FulfillingProcessor);
 
     Success = GetNumaProcessorNodeEx(&Address.FulfillingProcessor, &NumaNode);
 
-    if (Success) {
-        Address.FulfillingNumaNode = (UCHAR)NumaNode;
-    } else {
-        Address.FulfillingNumaNode = 0;
-    }
+    Address.FulfillingNumaNode = (Success ? (UCHAR)NumaNode : 0);
+
 
     //
     // Take a local copy of the timestamp.
     //
 
-    QueryPerformanceCounter(&Timestamp);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
 
     //
     // Copy it to the Prepared timestamp.
     //
 
-    Address.Timestamp.Prepared.QuadPart = Timestamp.QuadPart;
+    Address.Timestamp.Prepared.QuadPart = Elapsed.QuadPart;
 
     //
     // Calculate the elapsed time spent awaiting preparation.
     //
 
-    Elapsed.QuadPart = (
-        Timestamp.QuadPart -
-        Address.Timestamp.Requested.QuadPart
-    );
-
-    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
-    Elapsed.QuadPart /= TraceStore->Frequency.QuadPart;
-
-    //
-    // Copy it to the elapsed AwaitingPreparation timestamp.
-    //
+    Elapsed.QuadPart -= Address.Timestamp.Requested.QuadPart;
 
     Address.Elapsed.AwaitingPreparation.QuadPart = Elapsed.QuadPart;
 
@@ -1471,7 +1474,6 @@ ReleasePrevTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     TRACE_STORE_ADDRESS Address;
     LARGE_INTEGER PreviousTimestamp;
-    LARGE_INTEGER Timestamp;
     LARGE_INTEGER Elapsed;
     PLARGE_INTEGER ElapsedPointer;
 
@@ -1509,16 +1511,16 @@ ReleasePrevTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     }
 
     //
-    // Take a local copy of the timestamp.
+    // Get a local copy of the elapsed start time.
     //
 
-    QueryPerformanceCounter(&Timestamp);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
 
     //
     // Copy it to the Released timestamp.
     //
 
-    Address.Timestamp.Released.QuadPart = Timestamp.QuadPart;
+    Address.Timestamp.Released.QuadPart = Elapsed.QuadPart;
 
     //
     // Determine what state this memory map was in at the time of being closed.
@@ -1571,9 +1573,7 @@ ReleasePrevTraceStoreMemoryMap(_Inout_ PTRACE_STORE TraceStore)
     // Calculate the elapsed time.
     //
 
-    Elapsed.QuadPart = Timestamp.QuadPart - PreviousTimestamp.QuadPart;
-    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
-    Elapsed.QuadPart /= TraceStore->Frequency.QuadPart;
+    Elapsed.QuadPart -= PreviousTimestamp.QuadPart;
 
     //
     // Update the target elapsed time.
@@ -1729,8 +1729,8 @@ LoadNextTraceStoreAddress(
         InterlockedIncrement(&TraceStore->MappedSequenceId)
     );
 
-    Address.ProcessId = GetCurrentProcessId();
-    Address.RequestingThreadId = GetCurrentThreadId();
+    Address.ProcessId = FastGetCurrentProcessId();
+    Address.RequestingThreadId = FastGetCurrentThreadId();
 
     GetCurrentProcessorNumberEx(&Address.RequestingProcessor);
 
@@ -1762,54 +1762,54 @@ RecordTraceStoreAllocation(
     _In_    PULARGE_INTEGER  NumberOfRecords
     )
 {
-    PTRACE_STORE_METADATA Metadata;
+    PTRACE_STORE_ALLOCATION Allocation;
 
     if (TraceStore->IsReadonly) {
         __debugbreak();
     }
 
     if (IsMetadataTraceStore(TraceStore)) {
-        Metadata = &TraceStore->Metadata;
+        Allocation = &TraceStore->Allocation;
 
         //
         // Metadata trace stores should never have variable record sizes.
         //
 
-        if (Metadata->RecordSize.QuadPart != RecordSize->QuadPart) {
+        if (Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
             return FALSE;
         }
 
     } else {
 
-        Metadata = TraceStore->pMetadata;
+        Allocation = TraceStore->pAllocation;
 
-        if (Metadata->NumberOfRecords.QuadPart == 0 ||
-            Metadata->RecordSize.QuadPart != RecordSize->QuadPart) {
+        if (Allocation->NumberOfRecords.QuadPart == 0 ||
+            Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
 
             PVOID Address;
-            ULARGE_INTEGER MetadataRecordSize = { sizeof(*Metadata) };
-            ULARGE_INTEGER NumberOfMetadataRecords = { 1 };
+            ULARGE_INTEGER AllocationRecordSize = { sizeof(*Allocation) };
+            ULARGE_INTEGER NumberOfAllocationRecords = { 1 };
 
             //
             // Allocate a new metadata record.
             //
 
-            Address = TraceStore->MetadataStore->AllocateRecords(
+            Address = TraceStore->AllocationStore->AllocateRecords(
                 TraceStore->TraceContext,
-                TraceStore->MetadataStore,
-                &MetadataRecordSize,
-                &NumberOfMetadataRecords
+                TraceStore->AllocationStore,
+                &AllocationRecordSize,
+                &NumberOfAllocationRecords
             );
 
             if (!Address) {
                 return FALSE;
             }
 
-            Metadata = (PTRACE_STORE_METADATA)Address;
-            Metadata->RecordSize.QuadPart = RecordSize->QuadPart;
-            Metadata->NumberOfRecords.QuadPart = 0;
+            Allocation = (PTRACE_STORE_ALLOCATION)Address;
+            Allocation->RecordSize.QuadPart = RecordSize->QuadPart;
+            Allocation->NumberOfRecords.QuadPart = 0;
 
-            TraceStore->pMetadata = Metadata;
+            TraceStore->pAllocation = Allocation;
         }
     }
 
@@ -1817,7 +1817,7 @@ RecordTraceStoreAllocation(
     // Update the record count.
     //
 
-    Metadata->NumberOfRecords.QuadPart += NumberOfRecords->QuadPart;
+    Allocation->NumberOfRecords.QuadPart += NumberOfRecords->QuadPart;
     return TRUE;
 }
 
@@ -1835,8 +1835,10 @@ ConsumeNextTraceStoreMemoryMap(
     PTRACE_STORE_MEMORY_MAP PrepareMemoryMap;
     TRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS AddressPointer;
-    LARGE_INTEGER Timestamp;
+    LARGE_INTEGER RequestedTimestamp;
     LARGE_INTEGER Elapsed;
+    PTRACE_STORE_STATS Stats;
+    TRACE_STORE_STATS DummyStats = { 0 };
 
     Rtl = TraceStore->Rtl;
 
@@ -1851,6 +1853,20 @@ ConsumeNextTraceStoreMemoryMap(
     // dropped trace records are preferable to indeterminate waits for
     // resources to be available.
     //
+
+
+    //
+    // We may not have a stats struct available yet if this is the first
+    // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
+    // point the pointer at a dummy one.  This simplifies the rest of the
+    // code in the function.
+    //
+
+    Stats = TraceStore->pStats;
+
+    if (!Stats) {
+        Stats = &DummyStats;
+    }
 
     PrevPrevMemoryMap = TraceStore->PrevMemoryMap;
 
@@ -1900,25 +1916,19 @@ ConsumeNextTraceStoreMemoryMap(
     // Take a local timestamp.
     //
 
-    QueryPerformanceCounter(&Timestamp);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
 
     //
     // Copy to the Retired timestamp.
     //
 
-    Address.Timestamp.Retired.QuadPart = Timestamp.QuadPart;
+    Address.Timestamp.Retired.QuadPart = Elapsed.QuadPart;
 
     //
     // Calculate the memory map's active elapsed time.
     //
 
-    Elapsed.QuadPart = (
-        Timestamp.QuadPart -
-        Address.Timestamp.Consumed.QuadPart
-    );
-
-    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
-    Elapsed.QuadPart /= TraceStore->Frequency.QuadPart;
+    Elapsed.QuadPart -= Address.Timestamp.Consumed.QuadPart;
 
     Address.Elapsed.Active.QuadPart = Elapsed.QuadPart;
 
@@ -1967,8 +1977,8 @@ StartPreparation:
         }
 
         if (!Success) {
-            ++TraceStore->DroppedRecords;
-            ++TraceStore->ExhaustedFreeMemoryMaps;
+            Stats->DroppedRecords++;
+            Stats->ExhaustedFreeMemoryMaps++;
             return FALSE;
         }
     }
@@ -1980,8 +1990,8 @@ StartPreparation:
         // being done asynchronously in the threadpool, so drop the record.
         //
 
-        ++TraceStore->AllocationsOutpacingNextMemoryMapPreparation;
-        ++TraceStore->DroppedRecords;
+        Stats->AllocationsOutpacingNextMemoryMapPreparation++;
+        Stats->DroppedRecords++;
 
         //
         // Return the PrepareMemoryMap back to the free list.
@@ -2052,25 +2062,25 @@ StartPreparation:
     // timestamp.
     //
 
-    QueryPerformanceCounter(&Timestamp);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Save the timestamp before we start fiddling with it.
+    //
+
+    RequestedTimestamp.QuadPart = Elapsed.QuadPart;
 
     //
     // Update the Consumed timestamp.
     //
 
-    Address.Timestamp.Consumed.QuadPart = Timestamp.QuadPart;
+    Address.Timestamp.Consumed.QuadPart = Elapsed.QuadPart;
 
     //
     // Calculate elapsed time between Prepared and Consumed.
     //
 
-    Elapsed.QuadPart = (
-        Timestamp.QuadPart -
-        Address.Timestamp.Prepared.QuadPart
-    );
-
-    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
-    Elapsed.QuadPart /= TraceStore->Frequency.QuadPart;
+    Elapsed.QuadPart -= Address.Timestamp.Prepared.QuadPart;
 
     //
     // Save as the AwaitingConsumption timestamp.
@@ -2158,7 +2168,7 @@ PrepareMemoryMap:
     // Copy the timestamp we took earlier to the Requested timestamp.
     //
 
-    Address.Timestamp.Requested.QuadPart = Timestamp.QuadPart;
+    Address.Timestamp.Requested.QuadPart = RequestedTimestamp.QuadPart;
 
     //
     // Copy the local record back to the backing store.
@@ -2459,7 +2469,7 @@ UpdateAddresses:
 
     if (!IsMetadataTraceStore(TraceStore) && !TraceStore->IsReadonly) {
 
-        if (!TraceStore->RecordSimpleMetadata) {
+        if (!TraceStore->RecordSimpleAllocation) {
 
             RecordTraceStoreAllocation(TraceStore,
                                        RecordSize,
@@ -2467,8 +2477,8 @@ UpdateAddresses:
 
         } else {
 
-            TraceStore->pMetadata->NumberOfAllocations.QuadPart += 1;
-            TraceStore->pMetadata->AllocationSize.QuadPart += AllocationSize;
+            TraceStore->pAllocation->NumberOfAllocations.QuadPart += 1;
+            TraceStore->pAllocation->AllocationSize.QuadPart += AllocationSize;
         }
 
         TraceStore->pEof->EndOfFile.QuadPart += AllocationSize;
@@ -2559,9 +2569,13 @@ BindTraceStoreToTraceContext(
     DWORD WaitResult;
     HRESULT Result;
     PRTL Rtl;
-    TRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS AddressPointer;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_STATS Stats;
+    PLARGE_INTEGER Elapsed;
+    TRACE_STORE_ADDRESS Address;
 
     //
     // Verify arguments.
@@ -2578,6 +2592,8 @@ BindTraceStoreToTraceContext(
     if (!TraceContext->HeapHandle) {
         return FALSE;
     }
+
+    Rtl = TraceStore->Rtl;
 
     //
     // Initialize all of our singly-linked list heads.
@@ -2703,8 +2719,6 @@ BindTraceStoreToTraceContext(
     // manually here for the first map.
     //
 
-    Rtl = TraceStore->Rtl;
-
     //
     // Take a local copy.
     //
@@ -2728,7 +2742,8 @@ BindTraceStoreToTraceContext(
     // Set the Requested timestamp.
     //
 
-    QueryPerformanceCounter(&Address.Timestamp.Requested);
+    Elapsed = &Address.Timestamp.Requested;
+    TraceStoreQueryPerformanceCounter(TraceStore, Elapsed);
 
     //
     // Zero out everything else.
@@ -2780,23 +2795,56 @@ SubmitFirstMemoryMap:
         return FALSE;
     }
 
-    if (!IsMetadata) {
-        PTRACE_STORE MetadataStore;
-        PTRACE_STORE EofStore;
+    if (IsMetadata) {
 
-        MetadataStore = TraceStore->MetadataStore;
-        TraceStore->pMetadata = (
-            (PTRACE_STORE_METADATA)MetadataStore->MemoryMap->BaseAddress
+        //
+        // Metadata stores just use the TraceStore-backed, non-memory-mapped
+        // TRACE_STORE_INFO struct.
+        //
+
+        TraceStore->pInfo = &TraceStore->Info;
+
+    } else {
+
+        PTRACE_STORE AllocationStore;
+        PTRACE_STORE InfoStore;
+
+        AllocationStore = TraceStore->AllocationStore;
+        TraceStore->pAllocation = (
+            (PTRACE_STORE_ALLOCATION)AllocationStore->MemoryMap->BaseAddress
         );
 
-        EofStore = TraceStore->EofStore;
-        TraceStore->pEof = (
-            (PTRACE_STORE_EOF)EofStore->MemoryMap->BaseAddress
+        InfoStore = TraceStore->InfoStore;
+        TraceStore->pInfo = (
+            (PTRACE_STORE_INFO)InfoStore->MemoryMap->BaseAddress
         );
 
-        if (!TraceStore->IsReadonly) {
-            TraceStore->pEof->EndOfFile.QuadPart = 0;
-        }
+    }
+
+    Eof = TraceStore->pEof = &TraceStore->pInfo->Eof;
+    Time = TraceStore->pTime = &TraceStore->pInfo->Time;
+    Stats = TraceStore->pStats = &TraceStore->pInfo->Stats;
+
+    if (!TraceStore->IsReadonly) {
+        PTRACE_STORE_TIME SourceTime = &TraceContext->Time;
+
+        //
+        // Initialize Eof.
+        //
+
+        Eof->EndOfFile.QuadPart = 0;
+
+        //
+        // Copy time.
+        //
+
+        Rtl->RtlCopyMappedMemory(Time, SourceTime, sizeof(*Time));
+
+        //
+        // Zero out stats.
+        //
+
+        SecureZeroMemory(Stats, sizeof(*Stats));
     }
 
     return TRUE;
@@ -2813,11 +2861,10 @@ InitializeTraceContext(
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID UserData,
     _In_     BOOL Readonly
-)
+    )
 {
     USHORT Index;
     USHORT StoreIndex;
-    LARGE_INTEGER Frequency;
 
     if (!Rtl) {
         return FALSE;
@@ -2871,24 +2918,23 @@ InitializeTraceContext(
         return FALSE;
     }
 
-    QueryPerformanceFrequency(&Frequency);
-    TraceContext->PerformanceCounterFrequency.QuadPart = Frequency.QuadPart;
+    InitializeTraceStoreTime(&TraceContext->Time);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-        PTRACE_STORE MetadataStore = TraceStore + 1;
+        PTRACE_STORE AllocationStore = TraceStore + 1;
         PTRACE_STORE AddressStore = TraceStore + 2;
-        PTRACE_STORE EofStore = TraceStore + 3;
+        PTRACE_STORE InfoStore = TraceStore + 3;
 
 #define BIND_STORE(Name)                                              \
     if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
         return FALSE;                                                 \
     }
 
-        BIND_STORE(Metadata);
+        BIND_STORE(Allocation);
         BIND_STORE(Address);
-        BIND_STORE(Eof);
+        BIND_STORE(Info);
 
         //
         // The TraceStore needs to come last as it requires the metadata stores

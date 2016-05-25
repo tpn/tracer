@@ -1,9 +1,10 @@
-
 #pragma once
 
 #ifdef __cpplus
 extern "C" {
 #endif
+
+#include "TraceStoreIndex.h"
 
 #include "stdafx.h"
 
@@ -136,7 +137,7 @@ typedef struct _PYTRACE_CALL {
     DWORD_PTR LineToken;
 } PYTRACE_CALL, *PPYTRACE_CALL;
 
-typedef struct _TRACE_STORE_METADATA {
+typedef struct _TRACE_STORE_ALLOCATION {
     union {
         ULARGE_INTEGER  NumberOfRecords;
         ULARGE_INTEGER  NumberOfAllocations;
@@ -145,7 +146,7 @@ typedef struct _TRACE_STORE_METADATA {
         LARGE_INTEGER   RecordSize;
         ULARGE_INTEGER  AllocationSize;
     };
-} TRACE_STORE_METADATA, *PTRACE_STORE_METADATA;
+} TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;                     // 8    0   8
@@ -237,7 +238,7 @@ typedef struct _TRACE_STORE_ADDRESS {
     LONG MappedSequenceId;                                  // 4    112 116
 
     union {
-        PROCESSOR_NUMBER RequestingProcessor;                // 4    116 120
+        PROCESSOR_NUMBER RequestingProcessor;               // 4    116 120
         struct {
             WORD RequestingProcGroup;
             BYTE RequestingProcNumber;
@@ -249,7 +250,7 @@ typedef struct _TRACE_STORE_ADDRESS {
     };
 
     union {
-        PROCESSOR_NUMBER FulfillingProcessor;                // 4    120 124
+        PROCESSOR_NUMBER FulfillingProcessor;               // 4    120 124
         struct {
             WORD FulfillingProcGroup;
             BYTE FulfillingProcNumber;
@@ -260,7 +261,7 @@ typedef struct _TRACE_STORE_ADDRESS {
         };
     };
 
-    DWORD FulfillingThreadId;                                // 4    124 128
+    DWORD FulfillingThreadId;                               // 4    124 128
 
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
 
@@ -269,6 +270,87 @@ C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
 } TRACE_STORE_EOF, *PTRACE_STORE_EOF, **PPTRACE_STORE_EOF;
+
+typedef struct _TRACE_STORE_TIME {
+
+    //
+    // The value of QueryPerformanceFrequency().
+    //
+
+    LARGE_INTEGER   Frequency;
+
+    //
+    // The multiplicand used when calculating elapsed time from the performance
+    // counter and frequency using the MSDN-recommended approach:
+    //
+    //      Elapsed.QuadPart *= Multiplicand.QuadPart;
+    //      Elapsed.QuadPart /= Frequency.QuadPart;
+    //
+    //
+
+    LARGE_INTEGER   Multiplicand;
+
+    //
+    // The time the store had its first record allocated, plus a corresponding
+    // performance counter taken just after the time is recorded.
+    //
+
+    FILETIME        StartTime;
+
+    LARGE_INTEGER   StartCounter;
+
+
+} TRACE_STORE_TIME, *PTRACE_STORE_TIME, **PPTRACE_STORE_TIME;
+
+typedef struct _TRACE_STORE_STATS {
+    ULONG DroppedRecords;
+    ULONG ExhaustedFreeMemoryMaps;
+    ULONG AllocationsOutpacingNextMemoryMapPreparation;
+    ULONG PreferredAddressUnavailable;
+} TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
+
+typedef struct _TRACE_STORE_INFO {
+
+    //
+    // Inline TRACE_STORE_EOF.
+    //
+
+    union {
+        TRACE_STORE_EOF Eof;
+        struct {
+            LARGE_INTEGER EndOfFile;
+        };
+    };
+
+    //
+    // Inline TRACE_STORE_TIME.
+    //
+
+    union {
+        TRACE_STORE_TIME Time;
+        struct {
+            LARGE_INTEGER   Frequency;
+            LARGE_INTEGER   Multiplicand;
+            FILETIME        StartTime;
+            LARGE_INTEGER   StartCounter;
+        };
+    };
+
+    //
+    // Inline TRACE_STORE_STATS.
+    //
+
+    union {
+        TRACE_STORE_STATS Stats;
+        struct {
+            ULONG DroppedRecords;
+            ULONG ExhaustedFreeMemoryMaps;
+            ULONG AllocationsOutpacingNextMemoryMapPreparation;
+            ULONG PreferredAddressUnavailable;
+        };
+    };
+
+} TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 
 typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
@@ -334,8 +416,6 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
-    volatile ULONG          NumberOfActiveMemoryMaps;
-
     PRTL                    Rtl;
     PTRACE_CONTEXT          TraceContext;
     LARGE_INTEGER           InitialSize;
@@ -350,14 +430,17 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    volatile LONG MappedSequenceId;
+    volatile ULONG  NumberOfActiveMemoryMaps;
 
-    ULONG DroppedRecords;
-    ULONG ExhaustedFreeMemoryMaps;
-    ULONG AllocationsOutpacingNextMemoryMapPreparation;
+    volatile LONG   MappedSequenceId;
+
+    //
+    // Each trace store, when initialized, is assigned a unique sequence
+    // ID, starting at 1.  The trace store and all metadata stores share
+    // the same sequence ID.
+    //
+
     ULONG SequenceId;
-
-    LARGE_INTEGER Frequency;
 
     LARGE_INTEGER TotalNumberOfAllocations;
     LARGE_INTEGER TotalAllocationSize;
@@ -367,10 +450,11 @@ typedef struct _TRACE_STORE {
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
-            ULONG RecordSimpleMetadata:1;
+            ULONG RecordSimpleAllocation:1;
             ULONG NoPreferredAddressReuse:1;
             ULONG IsReadonly:1;
             ULONG SetEndOfFileOnClose:1;
+            ULONG IsMetadata:1;
         };
     };
 
@@ -381,50 +465,101 @@ typedef struct _TRACE_STORE {
     HANDLE FileHandle;
     PVOID PrevAddress;
 
-    PTRACE_STORE            MetadataStore;
+    PTRACE_STORE            AllocationStore;
     PTRACE_STORE            AddressStore;
-    PTRACE_STORE            EofStore;
+    PTRACE_STORE            InfoStore;
 
     PALLOCATE_RECORDS       AllocateRecords;
     PFREE_RECORDS           FreeRecords;
 
     //
-    // Inline TRACE_STORE_METADATA.
+    // Inline TRACE_STORE_ALLOCATION.
     //
 
     union {
-        union {
-            struct {
-                union {
-                    ULARGE_INTEGER  NumberOfRecords;
-                    ULARGE_INTEGER  NumberOfAllocations;
-                };
-                union {
-                    LARGE_INTEGER   RecordSize;
-                    ULARGE_INTEGER  AllocationSize;
-                };
+        TRACE_STORE_ALLOCATION Allocation;
+        struct {
+            union {
+                ULARGE_INTEGER  NumberOfRecords;
+                ULARGE_INTEGER  NumberOfAllocations;
             };
-            TRACE_STORE_METADATA Metadata;
+            union {
+                LARGE_INTEGER   RecordSize;
+                ULARGE_INTEGER  AllocationSize;
+            };
         };
-        PTRACE_STORE_METADATA pMetadata;
     };
+    PTRACE_STORE_ALLOCATION pAllocation;
 
     //
-    // Inline TRACE_STORE_EOF.
+    // Inline TRACE_STORE_INFO.
     //
 
     union {
-        union {
-            struct {
-                LARGE_INTEGER EndOfFile;
+
+        TRACE_STORE_INFO Info;
+
+        struct {
+
+            //
+            // Inline TRACE_STORE_EOF.
+            //
+
+            union {
+
+                TRACE_STORE_EOF Eof;
+
+                struct {
+                    LARGE_INTEGER EndOfFile;
+                };
+
             };
-            TRACE_STORE_EOF Eof;
+
+
+            //
+            // Inline TRACE_STORE_TIME.
+            //
+
+            union {
+
+                TRACE_STORE_TIME Time;
+
+                struct {
+                    LARGE_INTEGER   Frequency;
+                    LARGE_INTEGER   Multiplicand;
+                    FILETIME        StartTime;
+                    LARGE_INTEGER   StartCounter;
+                };
+
+            };
+
+            //
+            // Inline TRACE_STORE_STATS.
+            //
+
+            union {
+
+                TRACE_STORE_STATS Stats;
+
+                struct {
+                    ULONG DroppedRecords;
+                    ULONG ExhaustedFreeMemoryMaps;
+                    ULONG AllocationsOutpacingNextMemoryMapPreparation;
+                    ULONG Unused1;
+                };
+
+            };
         };
-        PTRACE_STORE_EOF pEof;
     };
+
+    PTRACE_STORE_EOF    pEof;
+    PTRACE_STORE_TIME   pTime;
+    PTRACE_STORE_STATS  pStats;
+    PTRACE_STORE_INFO   pInfo;
 
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
+
 } TRACE_STORE, *PTRACE_STORE;
 
 static const LPCWSTR TraceStoreFileNames[] = {
@@ -445,9 +580,9 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceDirectoryStringBuffer.dat",
 };
 
-static const WCHAR TraceStoreMetadataSuffix[] = L":metadata";
-static const DWORD TraceStoreMetadataSuffixLength = (
-    sizeof(TraceStoreMetadataSuffix) /
+static const WCHAR TraceStoreAllocationSuffix[] = L":allocation";
+static const DWORD TraceStoreAllocationSuffixLength = (
+    sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
@@ -457,9 +592,14 @@ static const DWORD TraceStoreAddressSuffixLength = (
     sizeof(WCHAR)
 );
 
-static const WCHAR TraceStoreEofSuffix[] = L":eof";
-static const DWORD TraceStoreEofSuffixLength = (
-    sizeof(TraceStoreEofSuffix) /
+static const WCHAR TraceStoreInfoSuffix[] = L":info";
+static const DWORD TraceStoreInfoSuffixLength = (
+    sizeof(TraceStoreInfoSuffix) /
+    sizeof(WCHAR)
+);
+
+static const USHORT LongestTraceStoreSuffixLength = (
+    sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
@@ -487,83 +627,6 @@ static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // TraceDirectoryString
     10 << 20    // TraceDirectoryStringBuffer
 };
-
-#define TraceStoreEventIndex                                        0
-#define TraceStoreEventMetadataIndex                                1
-#define TraceStoreEventAddressIndex                                 2
-#define TraceStoreEventEofIndex                                     3
-
-#define TraceStoreStringIndex                                       4
-#define TraceStoreStringMetadataIndex                               5
-#define TraceStoreStringAddressIndex                                6
-#define TraceStoreStringEofIndex                                    7
-
-#define TraceStoreStringBufferIndex                                 8
-#define TraceStoreStringBufferMetadataIndex                         9
-#define TraceStoreStringBufferAddressIndex                          10
-#define TraceStoreStringBufferEofIndex                              11
-
-#define TraceStoreHashedStringIndex                                 12
-#define TraceStoreHashedStringMetadataIndex                         13
-#define TraceStoreHashedStringAddressIndex                          14
-#define TraceStoreHashedStringEofIndex                              15
-
-#define TraceStoreHashedStringBufferIndex                           16
-#define TraceStoreHashedStringBufferMetadataIndex                   17
-#define TraceStoreHashedStringBufferAddressIndex                    18
-#define TraceStoreHashedStringBufferEofIndex                        19
-
-#define TraceStoreBufferIndex                                       20
-#define TraceStoreBufferMetadataIndex                               21
-#define TraceStoreBufferAddressIndex                                22
-#define TraceStoreBufferEofIndex                                    23
-
-#define TraceStoreFunctionTableIndex                                24
-#define TraceStoreFunctionTableMetadataIndex                        25
-#define TraceStoreFunctionTableAddressIndex                         26
-#define TraceStoreFunctionTableEofIndex                             27
-
-#define TraceStoreFunctionTableEntryIndex                           28
-#define TraceStoreFunctionTableEntryMetadataIndex                   29
-#define TraceStoreFunctionTableEntryAddressIndex                    30
-#define TraceStoreFunctionTableEntryEofIndex                        31
-
-#define TraceStorePathTableIndex                                    32
-#define TraceStorePathTableMetadataIndex                            33
-#define TraceStorePathTableAddressIndex                             34
-#define TraceStorePathTableEofIndex                                 35
-
-#define TraceStorePathTableEntryIndex                               36
-#define TraceStorePathTableEntryMetadataIndex                       37
-#define TraceStorePathTableEntryAddressIndex                        38
-#define TraceStorePathTableEntryEofIndex                            39
-
-#define TraceStoreSessionIndex                                      40
-#define TraceStoreSessionMetadataIndex                              41
-#define TraceStoreSessionAddressIndex                               42
-#define TraceStoreSessionEofIndex                                   43
-
-#define TraceStoreFilenameStringIndex                               44
-#define TraceStoreFilenameStringMetadataIndex                       45
-#define TraceStoreFilenameStringAddressIndex                        46
-#define TraceStoreFilenameStringEofIndex                            47
-
-#define TraceStoreFilenameStringBufferIndex                         48
-#define TraceStoreFilenameStringBufferMetadataIndex                 49
-#define TraceStoreFilenameStringBufferAddressIndex                  50
-#define TraceStoreFilenameStringBufferEofIndex                      51
-
-#define TraceStoreDirectoryStringIndex                              52
-#define TraceStoreDirectoryStringMetadataIndex                      53
-#define TraceStoreDirectoryStringAddressIndex                       54
-#define TraceStoreDirectoryStringEofIndex                           55
-
-#define TraceStoreDirectoryStringBufferIndex                        56
-#define TraceStoreDirectoryStringBufferMetadataIndex                57
-#define TraceStoreDirectoryStringBufferAddressIndex                 58
-#define TraceStoreDirectoryStringBufferEofIndex                     59
-
-#define MAX_TRACE_STORES                                            60
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -751,6 +814,25 @@ typedef struct _TRACE_CONTEXT {
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
     HANDLE                      HeapHandle;
+
+    //
+    // Inline TRACE_STORE_TIME.
+    //
+
+    union {
+
+        TRACE_STORE_TIME Time;
+
+        struct {
+            LARGE_INTEGER   Frequency;
+            LARGE_INTEGER   Multiplicand;
+            FILETIME        StartTime;
+            LARGE_INTEGER   StartCounter;
+        };
+
+    };
+
+
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 TRACER_API
@@ -785,36 +867,56 @@ BindTraceStoreToTraceContext(
     _Inout_ PTRACE_CONTEXT TraceContext
 );
 
-typedef BOOL (*PBINDTRACESTORETOTRACECONTEXT)(
+typedef BOOL (*PBIND_TRACE_STORE_TO_TRACE_CONTEXT)(
     _Inout_ PTRACE_STORE TraceStore,
     _Inout_ PTRACE_CONTEXT TraceContext
 );
 
-typedef BOOL (*PINITIALIZETRACECONTEXT)(
-    _In_                                    PRTL                    Rtl,
-    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
-    _In_                                    PULONG                  SizeOfTraceContext,
-    _In_                                    PTRACE_SESSION          TraceSession,
-    _In_                                    PTRACE_STORES           TraceStores,
-    _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_                                PVOID                   UserData,
-    _In_                                    BOOL                    Readonly
-);
+typedef BOOL (*PINITIALIZE_TRACE_CONTEXT)(
+    _In_     PRTL            Rtl,
+    _Inout_bytecap_(*SizeOfTraceContext)
+             PTRACE_CONTEXT  TraceContext,
+    _In_     PULONG          SizeOfTraceContext,
+    _In_     PTRACE_SESSION  TraceSession,
+    _In_     PTRACE_STORES   TraceStores,
+    _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PVOID UserData,
+    _In_     BOOL Readonly
+    );
 
+_Success_(return != 0)
 TRACER_API
 BOOL
 InitializeTraceContext(
-    _In_                                    PRTL                    Rtl,
-    _Inout_bytecap_(*SizeOfTraceContext)    PTRACE_CONTEXT          TraceContext,
-    _In_                                    PULONG                  SizeOfTraceContext,
-    _In_                                    PTRACE_SESSION          TraceSession,
-    _In_                                    PTRACE_STORES           TraceStores,
-    _In_                                    PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_                                PVOID                   UserData,
-    _In_                                    BOOL                    Readonly
-);
+    _In_     PRTL            Rtl,
+    _Inout_bytecap_(*SizeOfTraceContext)
+             PTRACE_CONTEXT  TraceContext,
+    _In_     PULONG          SizeOfTraceContext,
+    _In_     PTRACE_SESSION  TraceSession,
+    _In_     PTRACE_STORES   TraceStores,
+    _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PVOID UserData,
+    _In_     BOOL Readonly
+    );
 
 typedef BOOL (*PFLUSHTRACESTORES)(_In_ PTRACE_CONTEXT TraceContext);
+
+#ifdef _M_X64 
+#pragma intrinsic(__readgsdword)
+FORCEINLINE
+DWORD
+FastGetCurrentProcessId(VOID)
+{
+    return __readgsdword(0x40);
+}
+
+FORCEINLINE
+DWORD
+FastGetCurrentThreadId(VOID)
+{
+    return __readgsdword(0x48);
+}
+#endif
 
 FORCEINLINE
 BOOL
@@ -824,10 +926,79 @@ HasVaryingRecordSizes(
 {
     return (
         TraceStore->pEof->EndOfFile.QuadPart == (
-            TraceStore->pMetadata->RecordSize.QuadPart *
-            TraceStore->pMetadata->NumberOfRecords.QuadPart
+            TraceStore->pAllocation->RecordSize.QuadPart *
+            TraceStore->pAllocation->NumberOfRecords.QuadPart
         )
     );
+}
+
+FORCEINLINE
+VOID
+TraceTimeQueryPerformanceCounter(
+    _In_    PTRACE_STORE_TIME   Time,
+    _Out_   PLARGE_INTEGER      ElapsedPointer
+    )
+{
+    LARGE_INTEGER Elapsed;
+
+    //
+    // Query the performance counter.
+    //
+
+    QueryPerformanceCounter(&Elapsed);
+
+    //
+    // Get the elapsed time since the start of the trace.
+    //
+
+    Elapsed.QuadPart -= Time->StartCounter.QuadPart;
+
+    //
+    // Convert to microseconds.
+    //
+
+    Elapsed.QuadPart *= Time->Multiplicand.QuadPart;
+    Elapsed.QuadPart /= Time->Frequency.QuadPart;
+
+    //
+    // Update the caller's pointer.
+    //
+
+    ElapsedPointer->QuadPart = Elapsed.QuadPart;
+
+}
+
+FORCEINLINE
+VOID
+TraceContextQueryPerformanceCounter(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _Out_   PLARGE_INTEGER  ElapsedPointer
+    )
+{
+    TraceTimeQueryPerformanceCounter(&TraceContext->Time, ElapsedPointer);
+}
+
+FORCEINLINE
+VOID
+TraceStoreQueryPerformanceCounter(
+    _In_    PTRACE_STORE    TraceStore,
+    _Out_   PLARGE_INTEGER  ElapsedPointer
+    )
+{
+    TraceTimeQueryPerformanceCounter(&TraceStore->TraceContext->Time,
+                                     ElapsedPointer);
+}
+
+FORCEINLINE
+VOID
+InitializeTraceStoreTime(
+    _In_ PTRACE_STORE_TIME Time
+    )
+{
+    QueryPerformanceFrequency(&Time->Frequency);
+    Time->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
+    GetSystemTimeAsFileTime(&Time->StartTime);
+    QueryPerformanceCounter(&Time->StartCounter);
 }
 
 TRACER_API

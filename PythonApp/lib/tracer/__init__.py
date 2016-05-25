@@ -312,7 +312,7 @@ def python(path=None, dll=None):
     ]
 
     dll.HashAndAtomizeAnsi.restype = BOOL
-    dll.HashAndAtomizeAnsi.argtypes = [ PVOID, c_char_p, PULONG, PULONG ]
+    dll.HashAndAtomizeAnsi.argtypes = [ PVOID, c_char_p, PLONG, PULONG ]
 
     return dll
 
@@ -632,7 +632,7 @@ class Tracer:
         )
 
     def hash_and_atomize_string(self, string):
-        c_hash = ULONG()
+        c_hash = LONG()
         c_atom = ULONG()
         c_str = c_char_p(string)
         dll = self.tracer_python_dll

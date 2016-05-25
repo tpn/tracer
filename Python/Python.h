@@ -1681,7 +1681,7 @@ typedef BOOL (*PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER)(
 typedef BOOL (*PHASH_AND_ATOMIZE_ANSI)(
     _In_    PPYTHON Python,
     _In_    PSTR String,
-    _Out_   PULONG HashPointer,
+    _Out_   PLONG HashPointer,
     _Out_   PULONG AtomPointer
     );
 
@@ -1755,13 +1755,13 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
                 ULONG Flags;                                //  4   4   8
                 PYTHON_PATH_ENTRY_TYPE PathEntryType;
                 struct {
-                    ULONG IsModuleDirectory : 1;
-                    ULONG IsNonModuleDirectory : 1;
-                    ULONG IsFile : 1;
-                    ULONG IsClass : 1;
-                    ULONG IsFunction : 1;
-                    ULONG IsBuiltin : 1;
-                    ULONG IsValid : 1;
+                    ULONG IsModuleDirectory : 1;    // 1
+                    ULONG IsNonModuleDirectory : 1; // 2
+                    ULONG IsFile : 1;               // 4
+                    ULONG IsClass : 1;              // 8
+                    ULONG IsFunction : 1;           // 16
+                    ULONG IsBuiltin : 1;            // 32
+                    ULONG IsValid : 1;              // 64
                 };
             };
 
@@ -1787,7 +1787,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT PathLength;                              // 2    48  50
             USHORT PathMaximumLength;                       // 2    50  52
-            ULONG  PathAtom;                                // 4    52  56
+            LONG   PathHash;                                // 4    52  56
             PCHAR  PathBuffer;                              // 8    56  64
         };
     };
@@ -1803,7 +1803,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT FullNameLength;                          // 2    64  66
             USHORT FullNameMaximumLength;                   // 2    66  68
-            ULONG  FullNameAtom;                            // 4    68  72
+            LONG   FullNameHash;                            // 4    68  72
             PCHAR  FullNameBuffer;                          // 8    72  80
         };
     };
@@ -1819,7 +1819,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT ModuleNameLength;                        // 2    80  82
             USHORT ModuleNameMaximumLength;                 // 2    82  84
-            ULONG  ModuleNameAtom;                          // 4    84  88
+            LONG   ModuleNameHash;                          // 4    84  88
             PCHAR  ModuleNameBuffer;                        // 8    88  96
         };
     };
@@ -1836,7 +1836,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT NameLength;                              // 2    96  98
             USHORT NameMaximumLength;                       // 2    98  100
-            ULONG  NameAtom;                                // 4    100 104
+            LONG   NameHash;                                // 4    100 104
             PCHAR  NameBuffer;                              // 8    104 112
         };
     };
@@ -1851,7 +1851,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT ClassNameLength;                          // 2   112 114
             USHORT ClassNameMaximumLength;                   // 2   114 116
-            ULONG  ClassNameAtom;                            // 4   116 120
+            LONG   ClassNameHash;                            // 4   116 120
             PCHAR  ClassNameBuffer;                          // 8   120 128
         };
     };
@@ -1940,7 +1940,7 @@ typedef struct _PYTHON_FUNCTION {
     PUSHORT CodeLineNumbers;                                // 8    160 168
 
     ULONG ReferenceCount;                                   // 4    168 172
-    ULONG CodeObjectHash;                                   // 4    172 176
+    LONG  CodeObjectHash;                                   // 4    172 176
     ULONG FunctionHash;                                     // 4    176 180
     ULONG Unused1;                                          // 4    180 184
 
@@ -2377,7 +2377,7 @@ BOOL
 HashAndAtomizeAnsi(
     _In_    PPYTHON Python,
     _In_    PSTR String,
-    _Out_   PULONG HashPointer,
+    _Out_   PLONG HashPointer,
     _Out_   PULONG AtomPointer
     );
 
@@ -2521,7 +2521,7 @@ PythonStringHashInline(
     )
 {
     PCHAR Char;
-    USHORT Length;
+    SHORT Length;
     LONG Hash;
 
     if (String->Length == 0) {
@@ -2529,7 +2529,7 @@ PythonStringHashInline(
     }
 
     Length = String->Length;
-    Char = String->Buffer;
+    Char = &String->Buffer[0];
 
     Hash = Python->_Py_HashSecret.Prefix;
 
@@ -2550,14 +2550,24 @@ PythonStringHashInline(
 }
 
 FORCEINLINE
+VOID
+HashString(
+    _In_ PPYTHON Python,
+    _In_ PSTRING String
+    )
+{
+    String->Hash = PythonStringHashInline(Python, String);
+}
+
+FORCEINLINE
 BOOL
 PythonAnsiHashInline(
     _In_    PPYTHON Python,
     _In_    PSTR    String,
-    _Out_   PULONG  HashPointer
+    _Out_   PLONG  HashPointer
     )
 {
-    USHORT Length = 0;
+    SHORT Length = 0;
     LONG Hash;
     PCHAR Char;
 
@@ -2601,7 +2611,7 @@ BOOL
 HashAndAtomizeAnsiInline(
     _In_    PPYTHON Python,
     _In_    PSTR String,
-    _Out_   PULONG HashPointer,
+    _Out_   PLONG HashPointer,
     _Out_   PULONG AtomPointer
     )
 {

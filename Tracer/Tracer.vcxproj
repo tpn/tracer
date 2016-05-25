@@ -92,6 +92,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Tracer.h" />
+    <ClInclude Include="TraceStoreIndex.h" />
     <ClInclude Include="Tracing.h" />
   </ItemGroup>
   <ItemGroup>
