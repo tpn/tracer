@@ -67,6 +67,15 @@ IsFunctionOfInterestPrefixTree(
     PPREFIX_TABLE Table;
     PPREFIX_TABLE_ENTRY Entry;
 
+    if (!Context->HasModuleFilter) {
+
+        //
+        // Trace everything.
+        //
+
+        return TRUE;
+    }
+
     ModuleName = &Function->PathEntry.ModuleName;
 
     Table = &Context->ModuleFilterTable;
@@ -1131,6 +1140,8 @@ AddModuleName(
     _In_    PPYOBJECT               ModuleNameObject
     )
 {
+    BOOL Success;
+
     if (!ARGUMENT_PRESENT(Context)) {
         return FALSE;
     }
@@ -1139,12 +1150,17 @@ AddModuleName(
         return FALSE;
     }
 
-    return AddPrefixTableEntry(Context,
-                               ModuleNameObject,
-                               &Context->ModuleFilterTable,
-                               NULL);
-}
+    Success = AddPrefixTableEntry(Context,
+                                  ModuleNameObject,
+                                  &Context->ModuleFilterTable,
+                                  NULL);
 
+    if (Success) {
+        Context->HasModuleFilter = TRUE;
+    }
+
+    return Success;
+}
 
 #ifdef __cplusplus
 } // extern "C"

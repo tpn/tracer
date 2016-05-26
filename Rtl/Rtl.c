@@ -2888,6 +2888,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+        GetProcAddress(Rtl->NtdllModule, "RtlLocalTimeToSystemTime"))) {
+
+        if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlLocalTimeToSystemTime"))) {
+
+            if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLocalTimeToSystemTime"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLocalTimeToSystemTime'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+        GetProcAddress(Rtl->NtdllModule, "RtlTimeToSecondsSince1970"))) {
+
+        if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlTimeToSecondsSince1970"))) {
+
+            if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+                GetProcAddress(Rtl->Kernel32Module, "RtlTimeToSecondsSince1970"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlTimeToSecondsSince1970'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->bsearch = (PBSEARCH)
         GetProcAddress(Rtl->NtdllModule, "bsearch"))) {
 

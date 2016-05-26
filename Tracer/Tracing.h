@@ -8,134 +8,11 @@ extern "C" {
 
 #include "stdafx.h"
 
-#define TIMESTAMP_TO_SECONDS 1000000;
+#define TIMESTAMP_TO_SECONDS    1000000
+#define SECONDS_TO_MICROSECONDS 1000000
 
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
-
-//typedef struct FILE_STANDARD_INFO *PFILE_STANDARD_INFO;
-
-/*
-typedef struct _UNICODE_STRING {
-    USHORT Length;
-    USHORT MaximumLength;
-    PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
-typedef const UNICODE_STRING *PCUNICODE_STRING;
-*/
-
-typedef struct _TRACE_EVENT1 {
-    USHORT          Version;        //  2   2
-    USHORT          EventId;        //  2   4
-    DWORD           Flags;          //  4   8
-    LARGE_INTEGER   SystemTime;     //  8   16
-    DWORD           ProcessId;      //  4   20
-    DWORD           ThreadId;       //  4   24
-    DWORD_PTR       Event;          //  8   30
-    USHORT          Unused;         //  2   32
-} TRACE_EVENT1, *PTRACE_EVENT1;
-
-typedef struct _TRACE_EVENT {
-    USHORT          Version;                //  2   2
-    USHORT          EventType;              //  2   4
-    DWORD           ProcessId;              //  4   8
-    DWORD           ThreadId;               //  4   12
-    DWORD           LineNumber;             //  4   16
-    DWORD           LineCount;              //  4   20
-    DWORD           SequenceId;             //  4   24
-    DECLSPEC_ALIGN(8)
-    union {
-        LARGE_INTEGER   liTimeStamp;        //  8   32
-        FILETIME        ftTimeStamp;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliFramePointer;    //  8   40
-        ULONGLONG       ullFramePointer;
-        ULONG_PTR       FramePointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        LARGE_INTEGER   uliModulePointer;   //  8   48
-        ULONGLONG       ullModulePointer;
-        ULONG_PTR       ModulePointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliFuncPointer;     //  8   56
-        ULONGLONG       ullFuncPointer;
-        ULONG_PTR       FuncPointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliObjPointer;      //  8   64
-        ULONGLONG       ullObjPointer;
-        ULONG_PTR       ObjPointer;
-    };
-} TRACE_EVENT, *PTRACE_EVENT;
-
-typedef struct _TRACE_EVENT2 {
-    union {
-        ULONG Flags;
-        struct {
-            union {
-                ULONG EventType:5;
-                struct {
-                    ULONG IsCall:1;         // PyTrace_CALL
-                    ULONG IsException:1;    // PyTrace_EXCEPTION
-                    ULONG IsLine:1;         // PyTrace_LINE
-                    ULONG IsReturn:1;       // PyTrace_RETURN
-                    ULONG IsC:1;
-                };
-            };
-            ULONG Unused:27;
-        };
-    };
-
-    USHORT  FileAtom;
-    USHORT  LineNumber;
-    DWORD   LineCount;              //  4   20
-    DWORD   SequenceId;             //  4   24
-    DECLSPEC_ALIGN(8)
-    union {
-        LARGE_INTEGER   liTimeStamp;        //  8   32
-        FILETIME        ftTimeStamp;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliFramePointer;    //  8   40
-        ULONGLONG       ullFramePointer;
-        ULONG_PTR       FramePointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        LARGE_INTEGER   uliModulePointer;   //  8   48
-        ULONGLONG       ullModulePointer;
-        ULONG_PTR       ModulePointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliFuncPointer;     //  8   56
-        ULONGLONG       ullFuncPointer;
-        ULONG_PTR       FuncPointer;
-    };
-    DECLSPEC_ALIGN(8)
-    union {
-        ULARGE_INTEGER  uliObjPointer;      //  8   64
-        ULONGLONG       ullObjPointer;
-        ULONG_PTR       ObjPointer;
-    };
-} TRACE_EVENT2, *PTRACE_EVENT2;
-
-typedef struct _PYTRACE_CALL {
-    USHORT Version;
-    DWORD LineNumber;
-    USHORT Unused1;
-    DWORD_PTR FrameToken;
-    DWORD_PTR ModuleToken;
-    DWORD_PTR FunctionToken;
-    DWORD_PTR LineToken;
-} PYTRACE_CALL, *PPYTRACE_CALL;
 
 typedef struct _TRACE_STORE_ALLOCATION {
     union {
@@ -295,10 +172,16 @@ typedef struct _TRACE_STORE_TIME {
     // performance counter taken just after the time is recorded.
     //
 
-    FILETIME        StartTime;
+    struct {
+        FILETIME        FileTimeUtc;
+        FILETIME        FileTimeLocal;
+        SYSTEMTIME      SystemTimeUtc;
+        SYSTEMTIME      SystemTimeLocal;
+        ULARGE_INTEGER  SecondsSince1970;
+        ULARGE_INTEGER  MicrosecondsSince1970;
+    } StartTime;
 
     LARGE_INTEGER   StartCounter;
-
 
 } TRACE_STORE_TIME, *PTRACE_STORE_TIME, **PPTRACE_STORE_TIME;
 
@@ -329,10 +212,12 @@ typedef struct _TRACE_STORE_INFO {
     union {
         TRACE_STORE_TIME Time;
         struct {
-            LARGE_INTEGER   Frequency;
-            LARGE_INTEGER   Multiplicand;
-            FILETIME        StartTime;
-            LARGE_INTEGER   StartCounter;
+            FILETIME        FileTimeUtc;
+            FILETIME        FileTimeLocal;
+            SYSTEMTIME      SystemTimeUtc;
+            SYSTEMTIME      SystemTimeLocal;
+            ULARGE_INTEGER  SecondsSince1970;
+            ULARGE_INTEGER  MicrosecondsSince1970;
         };
     };
 
@@ -610,8 +495,13 @@ static const USHORT NumberOfTraceStores = (
 
 static const USHORT ElementsPerTraceStore = 4;
 
+//
+// The Event trace store gets an initial file size of 80MB,
+// everything else gets 10MB.
+//
+
 static const ULONG InitialTraceStoreFileSizes[] = {
-    10 << 20,   // Event
+    10 << 23,   // Event
     10 << 20,   // String
     10 << 20,   // StringBuffer
     10 << 20,   // HashedString
@@ -846,7 +736,7 @@ InitializeTraceStores(
     _In_        BOOL            Readonly
 );
 
-typedef BOOL (*PINITIALIZETRACESESSION)(
+typedef BOOL (*PINITIALIZE_TRACE_SESSION)(
     _In_                                 PRTL           Rtl,
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
     _In_                                 PULONG         SizeOfTraceSession
@@ -899,9 +789,9 @@ InitializeTraceContext(
     _In_     BOOL Readonly
     );
 
-typedef BOOL (*PFLUSHTRACESTORES)(_In_ PTRACE_CONTEXT TraceContext);
+typedef BOOL (*PFLUSH_TRACE_STORES)(_In_ PTRACE_CONTEXT TraceContext);
 
-#ifdef _M_X64 
+#ifdef _M_X64
 #pragma intrinsic(__readgsdword)
 FORCEINLINE
 DWORD
@@ -925,7 +815,7 @@ HasVaryingRecordSizes(
     )
 {
     return (
-        TraceStore->pEof->EndOfFile.QuadPart == (
+        TraceStore->pEof->EndOfFile.QuadPart != (
             TraceStore->pAllocation->RecordSize.QuadPart *
             TraceStore->pAllocation->NumberOfRecords.QuadPart
         )
@@ -961,6 +851,12 @@ TraceTimeQueryPerformanceCounter(
     Elapsed.QuadPart /= Time->Frequency.QuadPart;
 
     //
+    // Update relative to 1970 C UNIX time.
+    //
+
+    Elapsed.QuadPart += Time->StartTime.MicrosecondsSince1970.QuadPart;
+
+    //
     // Update the caller's pointer.
     //
 
@@ -989,17 +885,13 @@ TraceStoreQueryPerformanceCounter(
                                      ElapsedPointer);
 }
 
-FORCEINLINE
-VOID
+TRACER_API
+BOOL
 InitializeTraceStoreTime(
-    _In_ PTRACE_STORE_TIME Time
-    )
-{
-    QueryPerformanceFrequency(&Time->Frequency);
-    Time->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
-    GetSystemTimeAsFileTime(&Time->StartTime);
-    QueryPerformanceCounter(&Time->StartCounter);
-}
+    _In_    PRTL                Rtl,
+    _In_    PTRACE_STORE_TIME   Time
+    );
+
 
 TRACER_API
 BOOL

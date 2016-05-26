@@ -25,42 +25,39 @@ import tpn.wintypes
 reload(tpn.wintypes)
 from tpn.wintypes import *
 
-trace_events_dat_path = join_path(basedir, 'trace_events.dat')
-trace_events_dat_metadata_path = ''.join((trace_events_dat_path, ':metadata'))
-
 import re
 
 from tpn.util import bits_table, NullObject
 null_writer = NullObject()
 
+conf = None
 import tracer.config
-conf = tracer.config.Config()
-conf.load()
+conf = tracer.config.get_or_create_config()
+#conf = tracer.config.Config()
+#conf.load()
 
-conf.tracer_pythontracer_debug_dll_path
-
-os.path.exists(conf.tracer_pythontracer_debug_dll_path)
+#conf.tracer_pythontracer_debug_dll_path
 
 import tracer
 reload(tracer)
 
-use_debug = False
+use_debug = True
 
-print("Press any key to continue.")
-dummy = sys.stdin.read(1)
+#print("Press any key to continue.")
+#dummy = sys.stdin.read(1)
 
 if use_debug:
-    print("using debug")
+    #print("using debug")
     t = tracer.Tracer.create_debug(basedir, conf)
 else:
-    print("not using debug")
+    #print("not using debug")
     t = tracer.Tracer.create_release(basedir, conf)
 
-print("Created tracer...")
-print("Press any key to continue.")
-dummy = sys.stdin.read(1)
+#print("Created tracer...")
+#print("Press any key to continue.")
+#dummy = sys.stdin.read(1)
 
-t.add_module('tpn')
+#t.add_module('tpn')
 t.enable_memory_tracing()
 t.enable_io_counters_tracing()
 t.enable_handle_count_tracing()
@@ -71,8 +68,8 @@ with t:
     for i in range(1000):
         bits_table(output=null_writer)
 
-print("Press any key to continue.")
-dummy = sys.stdin.read(1)
+#print("Press any key to continue.")
+#dummy = sys.stdin.read(1)
 
 t.finish()
 
