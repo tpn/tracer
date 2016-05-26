@@ -261,6 +261,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
             ULONG TraceMemory:1;
             ULONG TraceIoCounters:1;
             ULONG TraceHandleCount:1;
+            ULONG HasModuleFilter:1;
         };
     };
 

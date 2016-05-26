@@ -226,7 +226,7 @@ SlimPythonFunctionTableEntryDataTypeColumns = [
 ]
 
 PythonTraceEventDataType = np.dtype([
-    ('Timestamp', np.uint64),
+    ('Timestamp', 'datetime64[us]'),
     ('Function', np.uint64),
 
     ('WorkingSetSize', np.uint64),
@@ -239,6 +239,7 @@ PythonTraceEventDataType = np.dtype([
     ('HandleCount', np.uint32),
     ('ThreadId', np.uint32),
     ('ElapsedMicroseconds', np.uint32),
+    #('ElapsedMicroseconds', 'timedelta[us]'),
 
     ('WorkingSetDelta', np.int32),
     ('CommittedDelta', np.int32),
@@ -292,15 +293,18 @@ AddressDataType = np.dtype([
     ('MappedSize', np.uint64),
     ('ProcessId', np.uint32),
     ('RequestingThreadId', np.uint32),
-    ('RequestedTimestamp', np.uint64),
-    ('PreparedTimestamp', np.uint64),
-    ('ConsumedTimestamp', np.uint64),
-    ('RetiredTimestamp', np.uint64),
-    ('ReleasedTimestamp', np.uint64),
-    ('AwaitingPreparation', np.uint64),
-    ('AwaitingConsumption', np.uint64),
-    ('Active', np.uint64),
-    ('AwaitingRelease', np.uint64),
+
+    ('RequestedTimestamp', 'datetime64[us]'),
+    ('PreparedTimestamp', 'datetime64[us]'),
+    ('ConsumedTimestamp', 'datetime64[us]'),
+    ('RetiredTimestamp', 'datetime64[us]'),
+    ('ReleasedTimestamp', 'datetime64[us]'),
+
+    ('AwaitingPreparation', 'timedelta64[us]'),
+    ('AwaitingConsumption', 'timedelta64[us]'),
+    ('Active', 'timedelta64[us]'),
+    ('AwaitingRelease', 'timedelta64[us]'),
+
     ('MappedSequenceId', np.int32),
     ('RequestingProcessorGroup', np.uint16),
     ('RequestingProcessorNumber', np.uint8),
@@ -322,7 +326,20 @@ InfoDataType = np.dtype([
     # TRACE_STORE_TIME
     ('Frequency', np.uint64),
     ('Multiplicand', np.uint64),
-    ('StartTime', np.uint64),
+    ('StartFileTimeUtc', np.uint64),
+    ('StartFileTimeLocal', np.uint64),
+    ('SystemTimeUtc', np.uint64),
+    # SYSTEMTIME (local)
+    ('Year', np.uint16),
+    ('Month', np.uint16),
+    ('DayOfWeek', np.uint16),
+    ('Day', np.uint16),
+    ('Hour', np.uint16),
+    ('Minute', np.uint16),
+    ('Second', np.uint16),
+    ('Millisecond', np.uint16),
+    ('SecondsSince1970', np.uint64),
+    ('MicrosecondsSince1970', np.uint64),
     ('StartCounter', np.uint64),
     # TRACE_STORE_STATS
     ('DroppedRecords', np.uint32),
@@ -401,6 +418,11 @@ class PythonTraceEventStore(TraceStore):
     dtype = PythonTraceEventDataType
     filename = 'TraceEvent.dat'
     hashed_string_columns = DefaultHashedStringColumns
+
+    def load_data(self, slim=None):
+        TraceStore.load_data(self, slim=slim)
+        elapsed = self.data_df['ElapsedMicroseconds'].astype('timedelta64[us]')
+        self.data_df['Elapsed'] = elapsed
 
 class PythonFunctionTableEntryStore(TraceStore):
     slim = SlimPythonFunctionTableEntryDataTypeColumns

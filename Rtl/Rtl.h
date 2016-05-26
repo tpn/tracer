@@ -195,7 +195,10 @@ typedef BOOL (WINAPI *PGET_PROCESS_HANDLE_COUNT)(
     _Inout_     PDWORD      pdwHandleCount
     );
 
-typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
+typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(
+    _Out_ LPFILETIME lpSystemTimeAsFileTime
+);
+
 typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
 
 typedef BOOL (*PGETSYSTEMTIMEPRECISEASLARGEINTEGER)(
@@ -1087,6 +1090,7 @@ typedef BOOL (WINAPI *PTHREAD32_NEXT)(
 //
 // Misc
 //
+
 typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     _In_ PVOID Source,
     _In_ SIZE_T Length
@@ -1114,6 +1118,16 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     _Out_ PVOID  Destination,
     _In_  INT    Value,
     _In_  SIZE_T Size
+    );
+
+typedef BOOLEAN (WINAPI *PRTL_LOCAL_TIME_TO_SYSTEM_TIME)(
+    _In_    PLARGE_INTEGER  LocalTime,
+    _In_    PLARGE_INTEGER  SystemTime
+    );
+
+typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
+    _In_    PLARGE_INTEGER  Time,
+    _Out_   PULONG          ElapsedSeconds
     );
 
 #ifdef _M_X64
@@ -1225,6 +1239,8 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_COPY_MEMORY RtlCopyMemory;                                                                    \
     PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;                                                       \
     PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
+    PRTL_LOCAL_TIME_TO_SYSTEM_TIME RtlLocalTimeToSystemTime;                                           \
+    PRTL_TIME_TO_SECONDS_SINCE_1970 RtlTimeToSecondsSince1970;                                         \
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \

@@ -22,6 +22,7 @@ static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
 static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
 static const ULONG DefaultTraceStoreMappingSize             = (1 << 21); // 2MB
+static const ULONG DefaultTraceStoreEventMappingSize        = (1 << 23); // 8MB
 
 static const ULONG DefaultAllocationTraceStoreSize          = (1 << 21); // 2MB
 static const ULONG DefaultAllocationTraceStoreMappingSize   = (1 << 16); // 64KB
@@ -31,6 +32,73 @@ static const ULONG DefaultAddressTraceStoreMappingSize      = (1 << 16); // 64KB
 
 static const ULONG DefaultInfoTraceStoreSize                = (1 << 16); // 64KB
 static const ULONG DefaultInfoTraceStoreMappingSize         = (1 << 16); // 64KB
+
+_Check_return_
+BOOL
+CallSystemTimer(
+    _Out_       PFILETIME               SystemTime,
+    _Inout_opt_ PPSYSTEM_TIMER_FUNCTION SystemTimerFunctionPointer
+    );
+
+_Check_return_
+_Success_(return != 0)
+BOOL
+InitializeTraceStoreTime(
+    _In_    PRTL                Rtl,
+    _In_    PTRACE_STORE_TIME   Time
+    )
+{
+    BOOL Success;
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Time)) {
+        return FALSE;
+    }
+
+    QueryPerformanceFrequency(&Time->Frequency);
+    Time->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
+
+    Success = CallSystemTimer(&Time->StartTime.FileTimeUtc, NULL);
+    QueryPerformanceCounter(&Time->StartCounter);
+    GetSystemTime(&Time->StartTime.SystemTimeUtc);
+    GetLocalTime(&Time->StartTime.SystemTimeLocal);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Success = FileTimeToLocalFileTime(
+        &Time->StartTime.FileTimeUtc,
+        &Time->StartTime.FileTimeLocal
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Time->StartTime.SecondsSince1970.HighPart = 0;
+
+    Success = Rtl->RtlTimeToSecondsSince1970(
+        (PLARGE_INTEGER)&Time->StartTime.FileTimeLocal,
+        &Time->StartTime.SecondsSince1970.LowPart
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Time->StartTime.MicrosecondsSince1970.QuadPart = (
+        UInt32x32To64(
+            Time->StartTime.SecondsSince1970.LowPart,
+            SECONDS_TO_MICROSECONDS
+        )
+    );
+
+    return TRUE;
+}
 
 BOOL
 LoadNextTraceStoreAddress(
@@ -246,7 +314,7 @@ BOOL
 CallSystemTimer(
     _Out_       PFILETIME   SystemTime,
     _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
-)
+    )
 {
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction = NULL;
 
@@ -717,6 +785,10 @@ InitializeTraceStores(
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
         ULONG MappingSize = DefaultTraceStoreMappingSize;
+
+        if (StoreIndex == TraceStoreEventIndex) {
+            MappingSize = DefaultTraceStoreEventMappingSize;
+        }
 
         Result = StringCchCopyW(
             FileNameDest,
@@ -2918,7 +2990,9 @@ InitializeTraceContext(
         return FALSE;
     }
 
-    InitializeTraceStoreTime(&TraceContext->Time);
+    if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
+        return FALSE;
+    }
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
