@@ -44,9 +44,9 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 InitializeTraceStoreTime(
-    _In_    PRTL                Rtl,
-    _In_    PTRACE_STORE_TIME   Time
-    )
+_In_    PRTL                Rtl,
+_In_    PTRACE_STORE_TIME   Time
+)
 {
     BOOL Success;
 
@@ -61,14 +61,10 @@ InitializeTraceStoreTime(
     QueryPerformanceFrequency(&Time->Frequency);
     Time->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
 
-    Success = CallSystemTimer(&Time->StartTime.FileTimeUtc, NULL);
-    QueryPerformanceCounter(&Time->StartCounter);
+    QueryPerformanceCounter(&Time->StartTime.PerformanceCounter);
+    GetSystemTimeAsFileTime(&Time->StartTime.FileTimeUtc);
     GetSystemTime(&Time->StartTime.SystemTimeUtc);
     GetLocalTime(&Time->StartTime.SystemTimeLocal);
-
-    if (!Success) {
-        return FALSE;
-    }
 
     Success = FileTimeToLocalFileTime(
         &Time->StartTime.FileTimeUtc,
@@ -665,10 +661,12 @@ InitializeTraceStores(
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly
+    _In_        BOOL            Readonly,
+    _In_        BOOL            Compress
 )
 {
     BOOL Success;
+    BOOL CreatedNewDirectory;
     HRESULT Result;
     DWORD Index;
     DWORD StoreIndex;
@@ -752,28 +750,69 @@ InitializeTraceStores(
     SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
     TraceStores->Size = (USHORT)TraceStoresAllocationSize;
 
+    if (Readonly) {
+        CreateFileDesiredAccess = GENERIC_READ;
+        CreateFileMappingProtectionFlags = PAGE_READONLY;
+        MapViewOfFileDesiredAccess = FILE_MAP_READ;
+    }
+    else {
+        CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
+        CreateFileMappingProtectionFlags = PAGE_READWRITE;
+        MapViewOfFileDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
+    }
+
+    CreatedNewDirectory = TRUE;
     Success = CreateDirectory(BaseDirectory, NULL);
     if (!Success) {
         LastError = GetLastError();
         if (LastError != ERROR_ALREADY_EXISTS) {
             return FALSE;
         }
+        CreatedNewDirectory = FALSE;
+    }
+
+    if (!Readonly && Compress && CreatedNewDirectory) {
+        HANDLE DirectoryHandle;
+        USHORT CompressionFormat = COMPRESSION_FORMAT_DEFAULT;
+        DWORD BytesReturned = 0;
+
+        DirectoryHandle = CreateFileW(
+            BaseDirectory,
+            CreateFileDesiredAccess,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            NULL,
+            OPEN_ALWAYS,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            NULL
+        );
+
+        if (DirectoryHandle == INVALID_HANDLE_VALUE) {
+            LastError = GetLastError();
+            return FALSE;
+        }
+
+        Success = DeviceIoControl(
+            DirectoryHandle,                // hDevice
+            FSCTL_SET_COMPRESSION,          // dwIoControlCode
+            &CompressionFormat,             // lpInBuffer
+            sizeof(CompressionFormat),      // nInBufferSize
+            NULL,                           // lpOutBuffer
+            0,                              // nOutBufferSize
+            &BytesReturned,                 // lpBytesReturned
+            NULL                            // lpOverlapped
+        );
+
+        if (!Success) {
+            OutputDebugStringA("Failed to enable compression.\n");
+        }
+
+        CloseHandle(DirectoryHandle);
     }
 
     TraceStores->Rtl = Rtl;
 
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
-
-    if (Readonly) {
-        CreateFileDesiredAccess = GENERIC_READ;
-        CreateFileMappingProtectionFlags = PAGE_READONLY;
-        MapViewOfFileDesiredAccess = FILE_MAP_READ;
-    } else {
-        CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-        CreateFileMappingProtectionFlags = PAGE_READWRITE;
-        MapViewOfFileDesiredAccess =  FILE_MAP_READ | FILE_MAP_WRITE;
-    }
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
@@ -2932,7 +2971,8 @@ InitializeTraceContext(
     _In_     PTRACE_STORES   TraceStores,
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID UserData,
-    _In_     BOOL Readonly
+    _In_     BOOL Readonly,
+    _In_     BOOL Compress
     )
 {
     USHORT Index;

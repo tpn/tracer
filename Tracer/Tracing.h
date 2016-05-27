@@ -148,6 +148,16 @@ typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
 } TRACE_STORE_EOF, *PTRACE_STORE_EOF, **PPTRACE_STORE_EOF;
 
+typedef struct _TRACE_STORE_START_TIME {
+    FILETIME        FileTimeUtc;
+    FILETIME        FileTimeLocal;
+    SYSTEMTIME      SystemTimeUtc;
+    SYSTEMTIME      SystemTimeLocal;
+    ULARGE_INTEGER  SecondsSince1970;
+    ULARGE_INTEGER  MicrosecondsSince1970;
+    LARGE_INTEGER   PerformanceCounter;
+} TRACE_STORE_START_TIME, *PTRACE_STORE_START_TIME;
+
 typedef struct _TRACE_STORE_TIME {
 
     //
@@ -165,23 +175,9 @@ typedef struct _TRACE_STORE_TIME {
     //
     //
 
-    LARGE_INTEGER   Multiplicand;
+    LARGE_INTEGER           Multiplicand;
 
-    //
-    // The time the store had its first record allocated, plus a corresponding
-    // performance counter taken just after the time is recorded.
-    //
-
-    struct {
-        FILETIME        FileTimeUtc;
-        FILETIME        FileTimeLocal;
-        SYSTEMTIME      SystemTimeUtc;
-        SYSTEMTIME      SystemTimeLocal;
-        ULARGE_INTEGER  SecondsSince1970;
-        ULARGE_INTEGER  MicrosecondsSince1970;
-    } StartTime;
-
-    LARGE_INTEGER   StartCounter;
+    TRACE_STORE_START_TIME  StartTime;
 
 } TRACE_STORE_TIME, *PTRACE_STORE_TIME, **PPTRACE_STORE_TIME;
 
@@ -192,48 +188,21 @@ typedef struct _TRACE_STORE_STATS {
     ULONG PreferredAddressUnavailable;
 } TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
 
+//
+// TRACE_STORE_INFO is intended for storage of single-instance structs of
+// various tracing-related information.  (Single-instance as in there's only
+// ever one global instance of the given record, i.e. the EndOfFile.  This is
+// in contrast to things like the allocation and address records, which by
+// nature, will usually have multiple occurrences/allocations.)
+//
+
 typedef struct _TRACE_STORE_INFO {
 
-    //
-    // Inline TRACE_STORE_EOF.
-    //
+    TRACE_STORE_EOF     Eof;
 
-    union {
-        TRACE_STORE_EOF Eof;
-        struct {
-            LARGE_INTEGER EndOfFile;
-        };
-    };
+    TRACE_STORE_TIME    Time;
 
-    //
-    // Inline TRACE_STORE_TIME.
-    //
-
-    union {
-        TRACE_STORE_TIME Time;
-        struct {
-            FILETIME        FileTimeUtc;
-            FILETIME        FileTimeLocal;
-            SYSTEMTIME      SystemTimeUtc;
-            SYSTEMTIME      SystemTimeLocal;
-            ULARGE_INTEGER  SecondsSince1970;
-            ULARGE_INTEGER  MicrosecondsSince1970;
-        };
-    };
-
-    //
-    // Inline TRACE_STORE_STATS.
-    //
-
-    union {
-        TRACE_STORE_STATS Stats;
-        struct {
-            ULONG DroppedRecords;
-            ULONG ExhaustedFreeMemoryMaps;
-            ULONG AllocationsOutpacingNextMemoryMapPreparation;
-            ULONG PreferredAddressUnavailable;
-        };
-    };
+    TRACE_STORE_STATS   Stats;
 
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 
@@ -530,6 +499,7 @@ typedef struct _TRACE_STORES {
     USHORT  ElementsPerTraceStore;
     USHORT  Reserved;
     PRTL    Rtl;
+    STRING  BaseDirectory;
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
@@ -693,36 +663,31 @@ typedef struct _TRACE_SESSION {
     FILETIME            SystemTime;
 } TRACE_SESSION, *PTRACE_SESSION;
 
+
+typedef struct _TRACE_CONTEXT_FLAGS {
+    union {
+        ULONG AsLong;
+        struct {
+            ULONG Readonly:1;
+            ULONG Compress:1;
+        };
+    };
+    ULONG Unused1;
+} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+
 typedef struct _TRACE_CONTEXT {
     ULONG                       Size;
     ULONG                       SequenceId;
+    TRACE_CONTEXT_FLAGS         Flags;
     PRTL                        Rtl;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
     PSYSTEM_TIMER_FUNCTION      SystemTimerFunction;
-    LARGE_INTEGER               PerformanceCounterFrequency;
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
     HANDLE                      HeapHandle;
-
-    //
-    // Inline TRACE_STORE_TIME.
-    //
-
-    union {
-
-        TRACE_STORE_TIME Time;
-
-        struct {
-            LARGE_INTEGER   Frequency;
-            LARGE_INTEGER   Multiplicand;
-            FILETIME        StartTime;
-            LARGE_INTEGER   StartCounter;
-        };
-
-    };
-
-
+    PSTRING                     BaseDirectory;
+    TRACE_STORE_TIME            Time;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 TRACER_API
@@ -733,7 +698,8 @@ InitializeTraceStores(
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly
+    _In_        BOOL            Readonly,
+    _In_        BOOL            Compress
 );
 
 typedef BOOL (*PINITIALIZE_TRACE_SESSION)(
@@ -771,7 +737,8 @@ typedef BOOL (*PINITIALIZE_TRACE_CONTEXT)(
     _In_     PTRACE_STORES   TraceStores,
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID UserData,
-    _In_     BOOL Readonly
+    _In_     BOOL Readonly,
+    _In_     BOOL Compress
     );
 
 _Success_(return != 0)
@@ -786,7 +753,8 @@ InitializeTraceContext(
     _In_     PTRACE_STORES   TraceStores,
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID UserData,
-    _In_     BOOL Readonly
+    _In_     BOOL Readonly,
+    _In_     BOOL Compress
     );
 
 typedef BOOL (*PFLUSH_TRACE_STORES)(_In_ PTRACE_CONTEXT TraceContext);
@@ -841,7 +809,7 @@ TraceTimeQueryPerformanceCounter(
     // Get the elapsed time since the start of the trace.
     //
 
-    Elapsed.QuadPart -= Time->StartCounter.QuadPart;
+    Elapsed.QuadPart -= Time->StartTime.PerformanceCounter.QuadPart;
 
     //
     // Convert to microseconds.
