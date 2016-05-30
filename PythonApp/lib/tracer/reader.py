@@ -322,28 +322,36 @@ AllocationDataType = np.dtype([
 
 InfoDataType = np.dtype([
     # TRACE_STORE_EOF
-    ('EndOfFile', np.uint64),
+    ('EndOfFile',                   np.uint64),
     # TRACE_STORE_TIME
-    ('Frequency', np.uint64),
-    ('Multiplicand', np.uint64),
-    ('StartFileTimeUtc', np.uint64),
-    ('StartFileTimeLocal', np.uint64),
-    ('SystemTimeUtc', np.uint64),
-    # SYSTEMTIME (local)
-    ('Year', np.uint16),
-    ('Month', np.uint16),
-    ('DayOfWeek', np.uint16),
-    ('Day', np.uint16),
-    ('Hour', np.uint16),
-    ('Minute', np.uint16),
-    ('Second', np.uint16),
-    ('Millisecond', np.uint16),
-    ('SecondsSince1970', np.uint64),
-    ('MicrosecondsSince1970', np.uint64),
-    ('StartCounter', np.uint64),
+    ('Frequency',                   np.uint64),
+    ('Multiplicand',                np.uint64),
+    ('StartFileTimeUtc',            np.uint64),
+    ('StartFileTimeLocal',          np.uint64),
+    # SYSTEMTIME Utc
+    ('StartTimeUtcYear',            np.int16),
+    ('StartTimeUtcMonth',           np.int16),
+    ('StartTimeUtcDayOfWeek',       np.int16),
+    ('StartTimeUtcDay',             np.int16),
+    ('StartTimeUtcHour',            np.int16),
+    ('StartTimeUtcMinute',          np.int16),
+    ('StartTimeUtcSecond',          np.int16),
+    ('StartTimeUtcMilliseconds',    np.int16),
+    # SYSTEMTIME Local
+    ('StartTimeLocalYear',          np.int16),
+    ('StartTimeLocalMonth',         np.int16),
+    ('StartTimeLocalDayOfWeek',     np.int16),
+    ('StartTimeLocalDay',           np.int16),
+    ('StartTimeLocalHour',          np.int16),
+    ('StartTimeLocalMinute',        np.int16),
+    ('StartTimeLocalSecond',        np.int16),
+    ('StartTimeLocalMilliseconds',  np.int16),
+    ('SecondsSince1970',            np.uint64),
+    ('MicrosecondsSince1970',       np.uint64),
+    ('PerformanceCount',            np.uint64),
     # TRACE_STORE_STATS
-    ('DroppedRecords', np.uint32),
-    ('ExhaustedFreeMemoryMaps', np.uint32),
+    ('DroppedRecords',              np.uint32),
+    ('ExhaustedFreeMemoryMaps',     np.uint32),
     ('AllocationsOutpacingNextMemoryMapPreparation', np.uint32),
     ('PreferredAddressUnavailable', np.uint32),
 ], align=True)
@@ -381,7 +389,9 @@ class TraceStore:
             self.address_np = np.fromfile(f, dtype=AddressDataType)
 
         with open(self.info_path, 'rb') as f:
-            self.info_np = np.fromfile(f, dtype=InfoDataType)
+            self.info_data = f.read()
+
+        self.info_np = np.fromstring(self.info_data, dtype=InfoDataType)
 
         self.allocation_df = pd.DataFrame(self.allocation_np)
         self.address_df = pd.DataFrame(self.address_np)
@@ -421,8 +431,8 @@ class PythonTraceEventStore(TraceStore):
 
     def load_data(self, slim=None):
         TraceStore.load_data(self, slim=slim)
-        elapsed = self.data_df['ElapsedMicroseconds'].astype('timedelta64[us]')
-        self.data_df['Elapsed'] = elapsed
+        #elapsed = self.data_df['ElapsedMicroseconds'].astype('timedelta64[us]')
+        #self.data_df['Elapsed'] = elapsed
 
 class PythonFunctionTableEntryStore(TraceStore):
     slim = SlimPythonFunctionTableEntryDataTypeColumns
@@ -467,5 +477,14 @@ class StringBufferStore(TraceStore):
 
 
         return (hashes, failed)
+
+    def merge(self, df, column_prefix):
+        hash_col = '%sHash' % column_prefix
+        string_col = '%sString' % column_prefix
+
+        columns = [ hash_col, string_col ]
+        strings_df = pd.DataFrame(self.string_items, columns=columns)
+
+        return df.merge(strings_df, on=hash_col, how='left')
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

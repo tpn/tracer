@@ -98,6 +98,56 @@ class TRACE_STORE(Structure):
     ]
 PTRACE_STORE = POINTER(TRACE_STORE)
 
+class TRACE_STORE_EOF(Structure):
+    _fields_ = [
+        ('EndOfFile', LARGE_INTEGER),
+    ]
+
+class SYSTEMTIME(Structure):
+    _fields_ = [
+        ('Year',            WORD),
+        ('Month',           WORD),
+        ('DayOfWeek',       WORD),
+        ('Day',             WORD),
+        ('Hour',            WORD),
+        ('Minute',          WORD),
+        ('Second',          WORD),
+        ('Milliseconds',    WORD),
+    ]
+
+class TRACE_STORE_START_TIME(Structure):
+    _fields_ = [
+        ('FileTimeUtc',             FILETIME),
+        ('FileTimeLocal',           FILETIME),
+        ('SystemTimeUtc',           SYSTEMTIME),
+        ('SystemTimeLocal',         SYSTEMTIME),
+        ('SecondsSince1970',        ULARGE_INTEGER),
+        ('MicrosecondsSince1970',   ULARGE_INTEGER),
+    ]
+
+class TRACE_STORE_TIME(Structure):
+    _fields_ = [
+        ('Frequency',       LARGE_INTEGER),
+        ('Multiplicand',    LARGE_INTEGER),
+        ('StartTime',       TRACE_STORE_START_TIME),
+        ('StartCounter',    LARGE_INTEGER),
+    ]
+
+class TRACE_STORE_STATS(Structure):
+    _fields_ = [
+        ('DroppedRecords', ULONG),
+        ('ExhaustedFreeMemoryMaps', ULONG),
+        ('AllocationsOutpacingNextMemoryMapPreparation', ULONG),
+        ('PreferredAddressUnavailable', ULONG),
+    ]
+
+class TRACE_STORE_INFO(Structure):
+    _fields_ = [
+        ('Eof',     TRACE_STORE_EOF),
+        ('Time',    TRACE_STORE_TIME),
+        ('Stats',   TRACE_STORE_STATS),
+    ]
+
 class TRACE_STORES_OLD(Structure):
     _fields_ = [
         ('Size',                USHORT),
@@ -257,18 +307,21 @@ def tracer(path=None, dll=None):
         PVOID,
         PDWORD,
         PDWORD,
-        PVOID,  # Readonly, should be BOOL
+        BOOL,  # Readonly, should be BOOL
+        BOOL,  # Compress, should be BOOL
     ]
 
     dll.InitializeTraceContext.restype = BOOL
     dll.InitializeTraceContext.argtypes = [
-        PVOID, #PRTL,
-        PVOID, #PTRACE_CONTEXT,
-        PDWORD,
-        PVOID, #PTRACE_SESSION,
-        PVOID, #PTRACE_STORES,
-        PVOID,
-        PVOID,
+        PVOID,  # Rtl
+        PVOID,  # TraceContext
+        PULONG, # SizeOfTraceContext
+        PVOID,  # TraceSession
+        PVOID,  # TraceStores
+        PVOID,  # ThreadpoolCallbackEnvironment
+        PVOID,  # UserData
+        BOOL,   # Readonly
+        BOOL,   # Compress
     ]
 
     dll.InitializeTraceSession.restype = BOOL
@@ -414,12 +467,14 @@ class Tracer:
                  tracer_tracersqlite_dll_path,
                  tracer_python_dll_path,
                  tracer_pythontracer_dll_path,
+                 compress=True,
                  threadpool=None,
                  threadpool_callback_environment=None):
 
         self.basedir = basedir
         self.system_dll = sys.dllhandle
         self.profile = False
+        self.compress = compress
 
         self.tracer_sqlitedb_path = join_path(basedir, "trace.db")
 
@@ -489,6 +544,8 @@ class Tracer:
         self.trace_stores = TRACE_STORES()
         self.trace_stores_size = ULONG(sizeof(self.trace_stores))
 
+        self.compress_bool = BOOL(self.compress)
+
         success = self.tracer_dll.InitializeTraceStores(
             self.rtl,
             self.basedir,
@@ -496,6 +553,7 @@ class Tracer:
             byref(self.trace_stores_size),
             None,
             None,   # readonly
+            self.compress_bool
         )
         if not success:
             if self.trace_stores_size.value != sizeof(self.trace_stores):
@@ -514,6 +572,7 @@ class Tracer:
                     byref(self.trace_stores_size),
                     None,
                     None,   # readonly
+                    self.compress_bool
                 )
 
             if not success:
@@ -550,6 +609,7 @@ class Tracer:
             byref(self.threadpool_callback_environment),
             None,
             None,
+            self.compress_bool
         )
         if not success:
             if self.trace_context_size.value != sizeof(self.trace_context):
@@ -570,6 +630,7 @@ class Tracer:
                     byref(self.threadpool_callback_environment),
                     None,
                     None,
+                    self.compress_bool
                 )
 
             if not success:
