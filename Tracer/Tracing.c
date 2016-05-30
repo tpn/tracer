@@ -44,9 +44,9 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 InitializeTraceStoreTime(
-_In_    PRTL                Rtl,
-_In_    PTRACE_STORE_TIME   Time
-)
+    _In_    PRTL                Rtl,
+    _In_    PTRACE_STORE_TIME   Time
+    )
 {
     BOOL Success;
 
@@ -155,7 +155,7 @@ FindLongestTraceStoreFileNameCallback(
     PINIT_ONCE InitOnce,
     PVOID Parameter,
     PVOID *lpContext
-)
+    )
 {
     DWORD Index;
     NTSTATUS Result;
@@ -230,7 +230,7 @@ GetSystemTimerFunctionCallback(
     _Inout_     PINIT_ONCE  InitOnce,
     _Inout_     PVOID       Parameter,
     _Inout_opt_ PVOID       *lpContext
-)
+    )
 {
     HMODULE Module;
     FARPROC Proc;
@@ -400,7 +400,7 @@ VOID
 PushTraceStoreMemoryMap(
     _Inout_ PSLIST_HEADER ListHead,
     _Inout_ PTRACE_STORE_MEMORY_MAP MemoryMap
-)
+    )
 {
     InterlockedPushEntrySList(ListHead, &MemoryMap->ListEntry);
 }
@@ -410,7 +410,7 @@ BOOL
 GetTraceStoreMemoryMapFileInfo(
     _In_    PTRACE_STORE_MEMORY_MAP MemoryMap,
     _Inout_ PFILE_STANDARD_INFO FileInfo
-)
+    )
 {
     return GetFileInformationByHandleEx(
         MemoryMap->FileHandle,
@@ -427,7 +427,7 @@ InitializeStore(
     _Inout_     PTRACE_STORE TraceStore,
     _In_opt_    ULONG InitialSize,
     _In_opt_    ULONG MappingSize
-)
+    )
 {
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
@@ -663,7 +663,7 @@ InitializeTraceStores(
     _In_opt_    PULONG          InitialFileSizes,
     _In_        BOOL            Readonly,
     _In_        BOOL            Compress
-)
+    )
 {
     BOOL Success;
     BOOL CreatedNewDirectory;
@@ -1050,7 +1050,7 @@ CloseStore(
 VOID
 CloseTraceStore(
     _In_ PTRACE_STORE TraceStore
-)
+    )
 {
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
@@ -1083,8 +1083,10 @@ CloseTraceStore(
 
 }
 
-void
-CloseTraceStores(PTRACE_STORES TraceStores)
+VOID
+CloseTraceStores(
+    _In_ PTRACE_STORES TraceStores
+    )
 {
     USHORT Index;
     USHORT StoreIndex;
@@ -1094,7 +1096,6 @@ CloseTraceStores(PTRACE_STORES TraceStores)
     }
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-
         CloseTraceStore(&TraceStores->Stores[StoreIndex]);
     }
 }
@@ -1150,7 +1151,7 @@ PrefaultFuturePageCallback(
     _Inout_     PTP_CALLBACK_INSTANCE   Instance,
     _Inout_opt_ PVOID                   Context,
     _Inout_     PTP_WORK                Work
-)
+    )
 {
     PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
 }
