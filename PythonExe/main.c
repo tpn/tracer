@@ -75,6 +75,15 @@ Our_Py_GetProgramFullPath(void)
 }
 */
 
+PPYGC_COLLECT Original_PyGC_Collect = NULL;
+
+SSIZE_T
+Our_PyGC_Collect(VOID)
+{
+    OutputDebugStringA("Entered Our_PyGC_Collect()\n");
+    return Original_PyGC_Collect();
+}
+
 VOID
 WINAPI
 mainCRTStartup()
@@ -96,6 +105,8 @@ mainCRTStartup()
     PPY_GET_PREFIX Py_GetPrefix;
     PPY_GET_EXEC_PREFIX Py_GetExecPrefix;
     PPY_GET_PROGRAM_FULL_PATH Py_GetProgramFullPath;
+
+    PPYGC_COLLECT PyGC_Collect;
 
     PWSTR CommandLine;
     LONG NumberOfArgs;
@@ -131,6 +142,7 @@ mainCRTStartup()
     RESOLVE(Python, PPY_GET_PREFIX, Py_GetPrefix);
     RESOLVE(Python, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
     RESOLVE(Python, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
+    RESOLVE(Python, PPYGC_COLLECT, PyGC_Collect);
 
     LOAD(HookModule, "Hook");
     RESOLVE(HookModule, PHOOK, Hook);
@@ -142,6 +154,7 @@ mainCRTStartup()
         goto End;
     }
 
+    //HOOK((PPVOID)&PyGC_Collect, Our_PyGC_Collect);
     //HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
     //Prefix = Py_GetPrefix();
 
