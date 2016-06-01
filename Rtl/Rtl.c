@@ -281,7 +281,10 @@ CallSystemTimer(
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
         SystemTimerFunction->GetSystemTimePreciseAsFileTime(SystemTime);
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        if (!SystemTimerFunction->NtQuerySystemTime((PLARGE_INTEGER)SystemTime)) {
+        Success = SystemTimerFunction->NtQuerySystemTime(
+            (PLARGE_INTEGER)SystemTime
+        );
+        if (!Success) {
             return FALSE;
         }
     } else {
