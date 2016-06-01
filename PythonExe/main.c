@@ -47,17 +47,17 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
     } \
 } while (0);
 
-/*
+
 PCHAR
 Our_Py_GetPath(void)
 {
-    return "";
+    return (PCHAR)"";
 }
 
-CHAR[]
+PCHAR
 Our_Py_GetPrefix(void)
 {
-    return PythonPrefix;
+    return (PCHAR)PythonPrefix;
 }
 
 CONST PCHAR
@@ -69,9 +69,8 @@ Our_Py_GetExecPrefix(void)
 PCHAR
 Our_Py_GetProgramFullPath(void)
 {
-    return PythonExePath;
+    return (PCHAR)PythonExePath;
 }
-*/
 
 PPYGC_COLLECT Original_PyGC_Collect = NULL;
 
@@ -113,7 +112,7 @@ mainCRTStartup()
     LONG Index;
     HANDLE HeapHandle;
     ULONG AllocSize;
-    //PCHAR Prefix;
+    PCHAR Prefix;
     //PCHAR ExecPrefix;
     PCHAR Path;
     USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
@@ -153,8 +152,9 @@ mainCRTStartup()
     }
 
     //HOOK((PPVOID)&PyGC_Collect, Our_PyGC_Collect);
-    //HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
-    //Prefix = Py_GetPrefix();
+    //Original_PyGC_Collect = Our_PyGC_Collect;
+    HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
+    Prefix = Py_GetPrefix();
 
     //HOOK((PPVOID)&Py_GetExecPrefix, Our_Py_GetExecPrefix);
     //ExecPrefix = Py_GetExecPrefix();

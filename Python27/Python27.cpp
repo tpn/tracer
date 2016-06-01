@@ -3,15 +3,57 @@
 
 #include "stdafx.h"
 
+static CONST CHAR PythonExePath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python.exe";
+static CONST CHAR PythonDllPath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python27.dll";
+static CONST CHAR PythonPrefix[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711";
+
+typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
+typedef PCHAR (*PPY_GET_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
+
+typedef PPY_MAIN *PPPY_MAIN;
+typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
+typedef PPY_GET_EXEC_PREFIX *PPPY_GET_EXEC_PREFIX;
+typedef PPY_GET_PROGRAM_NAME *PPPY_GET_PROGRAM_NAME;
+typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
+
 //typedef int (*PPY_MAIN)(_In_ int argc, _In_ wchar_t **argv);
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 
 typedef CHAR **PPSTR;
 
+#define LOAD(Module, Name) do {                      \
+    Module = LoadLibraryA(Name);                     \
+    if (!Module) {                                   \
+        OutputDebugStringA("Failed to load " #Name); \
+        goto End;                                    \
+    }                                                \
+} while (0)
+
+#define RESOLVE(Module, Type, Name) do {                             \
+    Name = (Type)GetProcAddress(Module, #Name);                      \
+    if (!Name) {                                                     \
+        OutputDebugStringA("Failed to resolve " #Module " !" #Name); \
+        goto End;                                                    \
+    }                                                                \
+} while (0)
+
+typedef struct _TYPE_OFFSET {
+    union {
+        USHORT Value;
+        struct {
+            USHORT Offset:12;
+            USHORT Type:4;
+        };
+    };
+} TYPE_OFFSET, *PTYPE_OFFSET, **PPTYPE_OFFSET;
+
 int
 main(int argc, char **argv)
 {
-    int retval;
+    int retval = 1;
     DWORD Flags;
     HMODULE Module;
     HMODULE Handle;
@@ -75,28 +117,48 @@ main(int argc, char **argv)
     ULONG_PTR BaseAddress;
     ULONG_PTR ImportAddress;
     ULONG_PTR ExportAddress;
+    ULONG_PTR NewBaseAddress = 0x3e000000;
 
     LONG NumberOfRvaAndSizes;
 
-    if (!(Module = LoadLibraryA("python27.dll"))) {
-        return 1;
-    };
+    HMODULE Kernel32;
+    HMODULE Shell32;
+    HMODULE Python;
+    HMODULE RtlModule;
+    HMODULE HookModule;
 
-    if (!(PyMain = (PPY_MAIN)GetProcAddress(Module, "Py_Main"))) {
-        return 1;
-    }
+    PPY_MAIN Py_Main;
+    PPY_GET_PREFIX Py_GetPrefix;
+    PPY_GET_EXEC_PREFIX Py_GetExecPrefix;
+    PPY_GET_PROGRAM_FULL_PATH Py_GetProgramFullPath;
+
+    PPYGC_COLLECT PyGC_Collect;
+    ULONG_PTR PyGC_Collect_Offset;
+
+    ULONG NumberOfRelocations = 0;
+    PIMAGE_BASE_RELOCATION EndRelocation;
+
+    LOAD(Python, PythonDllPath);
+    RESOLVE(Python, PPY_MAIN, Py_Main);
+    RESOLVE(Python, PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE(Python, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE(Python, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
+    RESOLVE(Python, PPYGC_COLLECT, PyGC_Collect);
 
     Flags = (
         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
         GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
     );
 
-    if (!GetModuleHandleEx(Flags, (LPCTSTR)PyMain, &Handle)) {
+    if (!GetModuleHandleEx(Flags, (LPCTSTR)Py_Main, &Handle)) {
         return 1;
     }
 
     DosHeader = (PIMAGE_DOS_HEADER)Handle;
     BaseAddress = (ULONG_PTR)DosHeader;
+
+
+    PyGC_Collect_Offset = ((ULONG_PTR)PyGC_Collect - BaseAddress);
 
     if (DosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
         return 1;
@@ -119,8 +181,107 @@ main(int argc, char **argv)
     Relocation = (PIMAGE_BASE_RELOCATION)(
         RelocationsAddress +
         BaseAddress
-        );
+    );
 
+    EndRelocation = (PIMAGE_BASE_RELOCATION)(
+        RelocationsAddress +
+        BaseAddress +
+        Directory->Size
+    );
+    EndRelocation++;
+
+    while (Relocation != EndRelocation) {
+        PUCHAR FixupVA;
+        PUCHAR FixupBytes;
+        ULONG_PTR NewVirtualAddress;
+        ULONG_PTR FixupVirtualAddress;
+        ULONG VirtualAddress = Relocation->VirtualAddress;
+        ULONG SizeOfBlock = Relocation->SizeOfBlock;
+        USHORT RemainingSizeOfBlock = SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION);
+        USHORT NumberOfTypeOffsets = RemainingSizeOfBlock / sizeof(USHORT);
+        USHORT Count = 0;
+        PTYPE_OFFSET BaseTypeOffset = (PTYPE_OFFSET)(
+            RtlOffsetToPointer(
+                Relocation,
+                sizeof(IMAGE_BASE_RELOCATION)
+            )
+        );
+        PUSHORT TypeOffsetPointer = (PUSHORT)BaseTypeOffset;
+        PTYPE_OFFSET TypeOffset;
+        USHORT RelocationType;
+        USHORT Offset;
+        ULONG_PTR Target = (ULONG_PTR)0x000000001E03D7B4;
+#define WithinTarget(Va) \
+        (((((ULONG_PTR)(Va))-16) <= Target) && ((((ULONG_PTR)(Va))+16) >= Target))
+
+        if (!RemainingSizeOfBlock) {
+            continue;
+        }
+
+        FixupVirtualAddress = (ULONG_PTR)BaseAddress + VirtualAddress;
+        //FixupBytes = (PUCHAR)(*((PUCHAR)FixupVirtualAddress));
+
+
+        do {
+
+            // Second relocation
+            // Offset = 72 -> 48h
+            // VirtualAddress = 0x1e163000
+            // FixupVA = VirtualAddress + Offset -> 0x1e163048
+            // Memory dump at address:
+            //      0x000000001E163048  000000001e06a510
+            // Dumpbin /relocations:
+            //
+            //          BASE RELOCATIONS #6
+            //151000 RVA,        C SizeOfBlock
+            //   998  DIR64      000000001E14FB3C
+            //     0  ABS
+            //163000 RVA,       1C SizeOfBlock
+            //    48  DIR64      000000001E06A510
+
+            TypeOffset = (PTYPE_OFFSET)TypeOffsetPointer++;
+            RelocationType = TypeOffset->Value >> 12;
+            Offset = TypeOffset->Value & 0xfff;
+            FixupVA = (PUCHAR)(FixupVirtualAddress + Offset);
+
+            if (FixupVA == (PUCHAR)0x000000001E03D7B4) {
+                __debugbreak();
+            } else if (FixupVirtualAddress == (ULONG_PTR)0x000000001E03D7B4) {
+                __debugbreak();
+            }
+
+            if (WithinTarget(FixupVA)) {
+                __debugbreak();
+            }
+            else if (WithinTarget(FixupVirtualAddress)) {
+                __debugbreak();
+            }
+
+            switch (TypeOffset->Type) {
+                case IMAGE_REL_BASED_ABSOLUTE:
+                    NULL;
+                    break;
+                case IMAGE_REL_BASED_DIR64:
+
+                    break;
+            }
+
+            RemainingSizeOfBlock -= sizeof(USHORT);
+
+            NumberOfRelocations++;
+
+        } while (RemainingSizeOfBlock);
+
+        Relocation = (PIMAGE_BASE_RELOCATION)(
+            RtlOffsetToPointer(
+                Relocation,
+                SizeOfBlock
+            )
+        );
+    }
+
+    Directory = &DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+    ImportAddress = Directory->VirtualAddress;
 
     DataDirectory = OptionalHeader->DataDirectory;
     Directory = &DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
@@ -242,7 +403,7 @@ main(int argc, char **argv)
     }
     */
 
-    retval = PyMain(argc, argv);
-
+    retval = Py_Main(argc, argv);
+End:
     return retval;
 }

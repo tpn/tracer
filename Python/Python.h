@@ -2514,7 +2514,7 @@ WrapPythonStringAsString(
     }
 
     String->MaximumLength = String->Length = (USHORT)Length;
-    String->Buffer = Buffer;
+    String->Buffer = (PCHAR)Buffer;
 
     return TRUE;
 }

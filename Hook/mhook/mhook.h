@@ -145,8 +145,21 @@ typedef struct _MHOOKS_TRAMPOLINE {
 // during hook placement
 typedef struct _MHOOKS_RIPINFO
 {
-    DWORD   dwOffset;
+    USHORT  InstructionLength;
+    USHORT  DisplacementLength;
+    USHORT  DisplacementOffset;
+    USHORT  OffsetOfRipRelativeInstructionFromFunctionAddress;
+    USHORT  OffsetOfDisp32AddressFromFunctionAddress;
+    USHORT  Unused1;
+    LONG    dwOffset;
     S64     nDisplacement;
+    LONG    DisplacementValue;
+    LONG    NewDisplacementValue;
+    PCHAR   FunctionAddress;
+    PCHAR   AddressOfRipRelativeInstruction;
+    PCHAR   AddressOfNextInstruction;
+    PCHAR   EffectiveRipRelativeAddress;
+    PCHAR   AddressOfDisp32Operand;
 } MHOOKS_RIPINFO, *PMHOOKS_RIPINFO;
 
 typedef struct _MHOOKS_PATCHDATA
