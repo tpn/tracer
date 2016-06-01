@@ -610,9 +610,74 @@ static BOOL SuspendOtherThreads(PRTL Rtl, PBYTE pbCode, DWORD cbBytes) {
 //=========================================================================
 // if IP-relative addressing has been detected, fix up the code so the
 // offset points to the original location
+
+static void FixupIPRelativeAddressingNew(PBYTE NewAddress, PBYTE OriginalAddress, PMHOOKS_PATCHDATA PatchData)
+{
+    USHORT Index;
+    LONG  Displacement;
+    PCHAR AddressOfRipRelativeInstruction;
+    PCHAR AddressOfNextInstruction;
+    PCHAR NewEffectiveRipRelativeAddress;
+    PCHAR AddressOfDisp32Operand;
+    PMHOOKS_RIPINFO RipInfo;
+    UNALIGNED PLONG Target;
+
+    for (Index = 0; Index < PatchData->nRipCnt; Index++) {
+        RipInfo = &PatchData->rips[Index];
+
+        if (RipInfo->FunctionAddress != OriginalAddress) {
+            __debugbreak();
+        }
+
+        AddressOfDisp32Operand = (PCHAR)(
+            (ULONG_PTR)NewAddress +
+            RipInfo->OffsetOfDisp32AddressFromFunctionAddress
+        );
+
+        AddressOfRipRelativeInstruction = (PCHAR)(
+            (ULONG_PTR)NewAddress +
+            RipInfo->OffsetOfRipRelativeInstructionFromFunctionAddress
+        );
+
+        AddressOfNextInstruction = (PCHAR)(
+            (ULONG_PTR)AddressOfRipRelativeInstruction +
+            RipInfo->DisplacementLength
+        );
+
+        //
+        // Calculate how AddressOfNextInstruction needs to be displaced in order
+        // for the resulting value to equal RipInfo->EffectiveRipRelativeAddress.
+        //
+
+        Displacement = (LONG)(
+            (LONG_PTR)RipInfo->EffectiveRipRelativeAddress -
+            (LONG_PTR)AddressOfNextInstruction
+        );
+
+        //
+        // Verify the logic.
+        //
+
+        NewEffectiveRipRelativeAddress = (PCHAR)(
+            (LONG_PTR)AddressOfNextInstruction + Displacement
+        );
+
+        if (RipInfo->EffectiveRipRelativeAddress != NewEffectiveRipRelativeAddress) {
+            __debugbreak();
+        }
+
+        Target = (UNALIGNED PLONG)AddressOfDisp32Operand;
+        *Target = Displacement;
+    }
+}
+
 static void FixupIPRelativeAddressing(PBYTE pbNew, PBYTE pbOriginal, MHOOKS_PATCHDATA* pdata)
 {
 #if defined _M_X64
+    if (pdata->rips[0].dwOffset == 0) {
+        FixupIPRelativeAddressingNew(pbNew, pbOriginal, pdata);
+        return;
+    }
     S64 diff = pbNew - pbOriginal;
     for (DWORD i = 0; i < pdata->nRipCnt; i++) {
         DWORD dwNewDisplacement = (DWORD)(pdata->rips[i].nDisplacement - diff);
@@ -625,6 +690,7 @@ static void FixupIPRelativeAddressing(PBYTE pbNew, PBYTE pbOriginal, MHOOKS_PATC
     }
 #endif
 }
+
 
 //=========================================================================
 // Examine the machine code at the target function's entry point, and
@@ -650,6 +716,7 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
         INSTRUCTION* pins = NULL;
         U8* pLoc = (U8*)pFunction;
         DWORD dwFlags = DISASM_DECODE | DISASM_DISASSEMBLE | DISASM_ALIGNOUTPUT;
+        S64 nAdjustedDisplacement;
 
         ODPRINTF((L"mhooks: DisassembleAndSkip: Disassembling %p", pLoc));
         while ( (dwRet < dwMinLen) && (pins = GetInstruction(Rtl, &dis, (ULONG_PTR)pLoc, pLoc, dwFlags)) ) {
@@ -680,8 +747,60 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
                     ODPRINTF((L"mhooks: DisassembleAndSkip: found OP_IPREL on operand %d with displacement 0x%x (in memory: 0x%x)", 0, pins->X86.Displacement, *(PDWORD)(pLoc+3)));
                     bProcessRip = TRUE;
                 }
-                else if ( (pins->OperandCount >= 1) && (pins->Operands[0].Flags & OP_IPREL) )
+                else if ( (pins->OperandCount == 2) && (pins->Operands[0].Flags & OP_IPREL) )
                 {
+                    PMHOOKS_RIPINFO RipInfo = &pdata->rips[pdata->nRipCnt++];
+                    LONG ExpectedDisplacement;
+                    UNALIGNED PLONG ActualDisplacement;
+                    RipInfo->dwOffset = 0;
+                    RipInfo->nDisplacement = 0;
+                    RipInfo->DisplacementOffset = 1;
+                    if (pins->X86.HasModRM) {
+                        RipInfo->DisplacementOffset++;
+                    }
+                    if (pins->PrefixCount) {
+                        RipInfo->DisplacementOffset += (USHORT)pins->PrefixCount;
+                    }
+                    RipInfo->DisplacementValue = (LONG)pins->X86.Displacement;
+                    RipInfo->DisplacementLength = (USHORT)pins->Operands[0].Length;
+                    RipInfo->InstructionLength = (USHORT)pins->Length;
+                    RipInfo->FunctionAddress = (PCHAR)pFunction;
+                    RipInfo->AddressOfRipRelativeInstruction = (PCHAR)(
+                        (ULONG_PTR)pFunction +
+                        dwRet
+                    );
+                    RipInfo->AddressOfNextInstruction = (PCHAR)(
+                        (ULONG_PTR)RipInfo->AddressOfRipRelativeInstruction +
+                        RipInfo->InstructionLength
+                    );
+                    RipInfo->AddressOfDisp32Operand = (PCHAR)(
+                        (ULONG_PTR)RipInfo->AddressOfRipRelativeInstruction +
+                        RipInfo->DisplacementOffset
+                    );
+                    RipInfo->EffectiveRipRelativeAddress = (PCHAR)(
+                        (ULONG_PTR)RipInfo->AddressOfNextInstruction +
+                        RipInfo->DisplacementValue
+                    );
+                    RipInfo->OffsetOfRipRelativeInstructionFromFunctionAddress = (USHORT)(
+                        (ULONG_PTR)RipInfo->AddressOfRipRelativeInstruction -
+                        (ULONG_PTR)RipInfo->FunctionAddress
+                    );
+                    RipInfo->OffsetOfDisp32AddressFromFunctionAddress = (USHORT)(
+                        (ULONG_PTR)RipInfo->AddressOfDisp32Operand -
+                        (ULONG_PTR)RipInfo->FunctionAddress
+                    );
+
+                    ExpectedDisplacement = (LONG)(
+                        (LONG_PTR)RipInfo->EffectiveRipRelativeAddress -
+                        (LONG_PTR)RipInfo->AddressOfNextInstruction
+                    );
+
+                    ActualDisplacement = (UNALIGNED PLONG)RipInfo->AddressOfDisp32Operand;
+                    if (ExpectedDisplacement != *ActualDisplacement) {
+                        __debugbreak();
+                    }
+
+                    /*
                     // unsupported rip-addressing
                     ODPRINTF((L"mhooks: DisassembleAndSkip: found unsupported OP_IPREL on operand %d", 0));
                     // dump instruction bytes to the debug output
@@ -689,9 +808,13 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
                         ODPRINTF((L"mhooks: DisassembleAndSkip: instr byte %2.2d: 0x%2.2x", i, pLoc[i]));
                     }
                     break;
+                    */
                 }
-                else if ( (pins->OperandCount >= 2) && (pins->Operands[1].Flags & OP_IPREL) )
+                else if ( (pins->OperandCount == 2) && (pins->Operands[1].Flags & OP_IPREL) )
                 {
+                    __debugbreak();
+                    bProcessRip = TRUE;
+                    /*
                     // unsupported rip-addressing
                     ODPRINTF((L"mhooks: DisassembleAndSkip: found unsupported OP_IPREL on operand %d", 1));
                     // dump instruction bytes to the debug output
@@ -699,9 +822,12 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
                         ODPRINTF((L"mhooks: DisassembleAndSkip: instr byte %2.2d: 0x%2.2x", i, pLoc[i]));
                     }
                     break;
+                    */
                 }
-                else if ( (pins->OperandCount >= 3) && (pins->Operands[2].Flags & OP_IPREL) )
+                else if ( (pins->OperandCount == 3) && (pins->Operands[2].Flags & OP_IPREL) )
                 {
+                    __debugbreak();
+                    /*
                     // unsupported rip-addressing
                     ODPRINTF((L"mhooks: DisassembleAndSkip: found unsupported OP_IPREL on operand %d", 2));
                     // dump instruction bytes to the debug output
@@ -709,11 +835,13 @@ static DWORD DisassembleAndSkip(PRTL Rtl, PVOID pFunction, DWORD dwMinLen, MHOOK
                         ODPRINTF((L"mhooks: DisassembleAndSkip: instr byte %2.2d: 0x%2.2x", i, pLoc[i]));
                     }
                     break;
+                    */
                 }
                 // follow through with RIP-processing if needed
                 if (bProcessRip) {
                     // calculate displacement relative to function start
-                    S64 nAdjustedDisplacement = pins->X86.Displacement + (pLoc - (U8*)pFunction);
+                    nAdjustedDisplacement = pins->X86.Displacement + (pLoc - (U8*)pFunction);
+
                     // store displacement values furthest from zero (both positive and negative)
                     if (nAdjustedDisplacement < pdata->nLimitDown)
                         pdata->nLimitDown = nAdjustedDisplacement;
@@ -916,7 +1044,7 @@ BOOL Mhook_ForceHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVO
     // mark our trampoline buffer to PAGE_EXECUTE_READWRITE
     if (!VirtualProtect(pTrampoline,
                         sizeof(MHOOKS_TRAMPOLINE),
-                        PAGE_EXECUTE_READWRITE, 
+                        PAGE_EXECUTE_READWRITE,
                         &dwOldProtectTrampolineFunction))
     {
         goto Error;
@@ -991,7 +1119,7 @@ BOOL Mhook_ForceHook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVO
     VirtualProtect(pSystemFunction, dwInstructionLength, dwOldProtectSystemFunction, &dwOldProtectSystemFunction);
 
     Success = TRUE;
-    
+
 Error:
     ResumeOtherThreads(Rtl);
     LeaveCritSec();
