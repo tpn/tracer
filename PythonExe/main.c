@@ -1,9 +1,8 @@
 #include "stdafx.h"
 
-static CONST CHAR PythonExePath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python.exe";
-static CONST CHAR PythonDllPath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python27.dll";
-static CONST CHAR PythonPrefix[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711";
+#include "PathHack.h"
 
+/*
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 typedef PCHAR (*PPY_GET_PREFIX)(VOID);
 typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
@@ -15,9 +14,8 @@ typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
 typedef PPY_GET_EXEC_PREFIX *PPPY_GET_EXEC_PREFIX;
 typedef PPY_GET_PROGRAM_NAME *PPPY_GET_PROGRAM_NAME;
 typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
+*/
 
-typedef CHAR **PPSTR;
-typedef WCHAR **PPWSTR;
 
 typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
   _In_  PWSTR  CommandLine,
