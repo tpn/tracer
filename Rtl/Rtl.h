@@ -1,8 +1,8 @@
-#pragma once
-
 #ifdef __cpplus
 extern "C" {
 #endif
+
+#pragma once
 
 #include <Windows.h>
 
