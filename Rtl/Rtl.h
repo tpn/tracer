@@ -26,6 +26,7 @@ typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
 typedef const PVOID CPVOID;
 typedef CHAR **PPCHAR;
+typedef WCHAR **PPWCHAR;
 
 typedef const SHORT CSHORT;
 
