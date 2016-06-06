@@ -127,17 +127,55 @@ typedef MHOOKS_TRAMPOLINE *PMHOOKS_TRAMPOLINE;
 //=========================================================================
 // The trampoline structure - stores every bit of info about a hook
 typedef struct _MHOOKS_TRAMPOLINE {
-    PBYTE   pSystemFunction;                                // the original system function
-    DWORD   cbOverwrittenCode;                              // number of bytes overwritten by the jump
-    PBYTE   pHookFunction;                                  // the hook function that we provide
-    BYTE    codeJumpToHookFunction[MHOOKS_MAX_CODE_BYTES];  // placeholder for code that jumps to the hook function
-    BYTE    codeTrampoline[MHOOKS_MAX_CODE_BYTES];          // placeholder for code that holds the first few
-                                                            //   bytes from the system function and a jump to the remainder
-                                                            //   in the original location
-    BYTE    codeUntouched[MHOOKS_MAX_CODE_BYTES];           // placeholder for unmodified original code
-                                                            //   (we patch IP-relative addressing)
-    PMHOOKS_TRAMPOLINE pPrevTrampoline;                     // When in the free list, thess are pointers to the prev and next entry.
-    PMHOOKS_TRAMPOLINE pNextTrampoline;                     // When not in the free list, this is a pointer to the prev and next trampoline in use.
+
+    // the original system function
+    union {
+        PBYTE   pSystemFunction;
+        PBYTE   SystemFunction;
+    };
+
+    // number of bytes overwritten by the jump
+    union {
+        DWORD   cbOverwrittenCode;
+        DWORD   OverwrittenCode;
+    };
+
+    // the hook function that we provide
+    union {
+        PBYTE   pHookFunction;
+        PBYTE   HookedFunction;
+    };
+
+    // placeholder for code that jumps to the hook function
+    union {
+        BYTE    codeJumpToHookFunction[MHOOKS_MAX_CODE_BYTES];
+        BYTE    CodeJumpToHookFunction[MHOOKS_MAX_CODE_BYTES];
+    };
+
+    // placeholder for code that holds the first few
+    union {
+        BYTE    codeTrampoline[MHOOKS_MAX_CODE_BYTES];
+        BYTE    CodeTrampoline[MHOOKS_MAX_CODE_BYTES];
+    };
+
+    // placeholder for unmodified original code
+    union {
+        BYTE    codeUntouched[MHOOKS_MAX_CODE_BYTES];
+        BYTE    CodeUntouched[MHOOKS_MAX_CODE_BYTES];
+    };
+
+    union {
+        PMHOOKS_TRAMPOLINE pPrevTrampoline;
+        PMHOOKS_TRAMPOLINE PrevTrampoline;
+    };
+
+    union {
+        // When not in the free list, this is a pointer to the
+        // prev and next trampoline in use.
+        PMHOOKS_TRAMPOLINE pNextTrampoline;
+        PMHOOKS_TRAMPOLINE NextTrampoline;
+    };
+
 } MHOOKS_TRAMPOLINE, *PMHOOKS_TRAMPOLINE, **PPMHOOKS_TRAMPOLINE;
 
 //=========================================================================
@@ -164,8 +202,25 @@ typedef struct _MHOOKS_RIPINFO
 
 typedef struct _MHOOKS_PATCHDATA
 {
-    S64             nLimitUp;
-    S64             nLimitDown;
-    DWORD           nRipCnt;
-    MHOOKS_RIPINFO  rips[MHOOKS_MAX_RIPS];
+    union {
+        S64             nLimitUp;
+        S64             LimitUp;
+    };
+
+    union {
+        S64             nLimitDown;
+        S64             LimitDown;
+    };
+
+    union {
+        DWORD           nRipCnt;
+        DWORD           NumberOfRipInfos;
+    };
+
+    union {
+        MHOOKS_RIPINFO  rips[MHOOKS_MAX_RIPS];
+        MHOOKS_RIPINFO  RipInfos[MHOOKS_MAX_RIPS];
+    };
+
 } MHOOKS_PATCHDATA, *PMHOOKS_PATCHDATA;
+

@@ -7,11 +7,13 @@ static CONST CHAR PythonExePath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\p
 static CONST CHAR PythonDllPath[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711\\python27.dll";
 static CONST CHAR PythonPrefix[] = "C:\\Users\\Trent\\Anaconda\\envs\\py2711";
 
+/*
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 typedef PCHAR (*PPY_GET_PREFIX)(VOID);
 typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
 typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
 typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
+
 
 typedef PPY_MAIN *PPPY_MAIN;
 typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
@@ -23,6 +25,7 @@ typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
 
 typedef CHAR **PPSTR;
+*/
 
 #define LOAD(Module, Name) do {                      \
     Module = LoadLibraryA(Name);                     \

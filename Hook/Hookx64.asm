@@ -16,27 +16,31 @@
 
 include ksamd64.inc
 
-        extern HookOverhead:qword
-        extern HookEntry:proc
-
 Function struct
+        Hash                dq      ?
+        AllocationRoutine   dq      ?
+        AllocationContext   dq      ?
         Rtl                 dq      ?
-        NumberOfParameters  dw      ?
-        Unused1             dw      ?
-        Key                 dd      ?
-        OldAddress          dq      ?
-        NewAddress          dq      ?
-        HookedEntry         dq      ?
+        OriginalAddress     dq      ?
+        ContinuationAddress dq      ?
         HookProlog          dq      ?
+        HookEntry           dq      ?
+        EntryContext        dq      ?
+        HookExit            dq      ?
+        ExitContext         dq      ?
         HookEpilog          dq      ?
-        HookedExit          dq      ?
-        TotalTime           dq      ?
-        CallCount           dq      ?
         Name                dq      ?
         Module              dq      ?
+        Signature           dq      ?
+        NtStyleSignature    dq      ?
+        Trampoline          dq      ?
+        NumberOfParameters  dw      ?
+        SizeOfReturnValue   dw      ?
+        Unused              dd      ?
 Function ends
 
 EntryFrame struct
+        ReturnValue     dq      ?       ; rax value after original func called
         ExitTimestamp   dq      ?       ; exit timestamp
         EntryTimestamp  dq      ?       ; entry timestamp
         Rflags          dq      ?       ; rflags
@@ -46,7 +50,6 @@ EntryFrame struct
         HomeRdx         dq      ?       ; home param 2
         HomeR8          dq      ?       ; home param 3
         HomeR9          dq      ?       ; home param 4
-        OtherParams     dq      ?       ; other
 EntryFrame ends
 
 ;++
@@ -56,25 +59,25 @@ EntryFrame ends
 ;
 ; Routine Description:
 ;
-;    This is the prolog routine.  It is jumped to by the patched function.
-;    The key for the patched function will be on the stack.
+;   This is the prolog routine.  It is jumped to by the patched function.
+;   The pointer for the HOOKED_FUNCTION struct (Function above) will be
+;   on the stack.
 ;
 ; Arguments:
 ;
-;    No arguments are passed in registers.
+;   No arguments are passed in registers.
 ;
 ; Return Value:
 ;
-;    XXX TODO.
+;   XXX TODO.
 ;
 ;--
 
         NESTED_ENTRY HookProlog, _TEXT$00
 
-        push_reg rax            ; save function pointer
         rex_push_eflags         ; push rflags
 
-        alloc_stack 8 + 8       ; for the two timestamp counters
+        alloc_stack 8 + 8 + 8   ; entry+exit timestamp, return value
 
         END_PROLOGUE
 
@@ -85,11 +88,6 @@ EntryFrame ends
         mov     EntryFrame.HomeRdx[rsp], rdx
         mov     EntryFrame.HomeR8[rsp], r8
         mov     EntryFrame.HomeR9[rsp], r9
-
-;
-; Move the entry frame pointer into rcx.
-;
-        mov     rcx, rsp
 
 ;
 ; Generate the entry timestamp.
@@ -103,7 +101,8 @@ EntryFrame ends
 ;
 ; Move the function pointer into r10.
 ;
-        mov     r10, EntryFrame.Function[rsp]
+
+        lea     r10, EntryFrame.Function[rsp]
 
 
 ;

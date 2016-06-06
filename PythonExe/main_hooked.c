@@ -628,7 +628,16 @@ _mainCRTStartupHooked()
         PSTR AnsiArg;
         INT Size;
 
-        Size = WideCharToMultiByte(CP_UTF8, 0, UnicodeArg, -1, NULL, 0, NULL, 0);
+        Size = WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            UnicodeArg,
+            -1,
+            NULL,
+            0,
+            NULL,
+            0
+        );
 
         if (Size <= 0) {
             goto End;
@@ -670,3 +679,5 @@ _mainCRTStartupHooked()
 End:
     ExitProcess(ExitCode);
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
