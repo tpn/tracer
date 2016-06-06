@@ -85,7 +85,8 @@ EntryFrame ends
 
         NESTED_ENTRY HookProlog, _TEXT$00
 
-        .allocstack     8       ; account for the function pointer
+        rex_push_reg    rax     ; function pointer
+        ;.allocstack     8       ; account for the function pointer
 
         rex_push_eflags         ; push rflags
 
@@ -128,8 +129,9 @@ EntryFrame ends
 ; the frame accordingly.
 ;
 
-        lea     r10, EntryFrame.HookedFunction[rbp]
-        mov qword ptr EntryFrame.HookedFunction[rbp], r10
+        mov     r10, EntryFrame.HookedFunction[rbp]
+        ;lea     r10, EntryFrame.HookedFunction[rbp]
+        ;mov qword ptr EntryFrame.HookedFunction[rbp], r10
 
 ;
 ; Load the pointer to the hook entry function.
@@ -167,10 +169,13 @@ EntryFrame ends
 ; will resume at the epilog once the target function returns.
 ;
 
-        lea     r10, EntryFrame.HookedFunction[rbp]
+        mov     r10, EntryFrame.HookedFunction[rbp]
         lea     r11, Function.ContinuationAddress[r10]
 
-        call qword ptr [r11]
+        ;lea     r10, EntryFrame.HookedFunction[rbp]
+        ;lea     r11, Function.ContinuationAddress[r10]
+
+        jmp qword ptr r11
 
 ;
 ; The pointer to the function struct will have been pushed to the stack via

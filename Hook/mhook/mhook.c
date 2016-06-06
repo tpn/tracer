@@ -1276,7 +1276,8 @@ Mhook_SetFunctionHook(
     //
 
     Code = Trampoline->CodeJumpToHookFunction;
-    Code = EmitPushRipRelativePointer(Code, Function);
+    Code = EmitMovRaxImm64(Code, (ULONGLONG)Function);
+    //Code = EmitPushRipRelativePointer(Code, Function);
     Code = EmitJump(Code, (PBYTE)HookedFunction);
 
     FlushInstructionCache(
