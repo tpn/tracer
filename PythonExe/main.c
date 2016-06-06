@@ -118,10 +118,10 @@ HookEntryCallback(
     ULONG Arg4 = (ULONG)Call->Param4.LowPart;
 
 
-    PrefaultPage(Arg1);
-    PrefaultPage(Arg2);
-    PrefaultPage(Arg3);
-    PrefaultPage(Arg4);
+    PrefaultPage(&Arg1);
+    PrefaultPage(&Arg2);
+    PrefaultPage(&Arg3);
+    PrefaultPage(&Arg4);
 
 }
 
