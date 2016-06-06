@@ -1364,7 +1364,25 @@ typedef struct _LINE_NUMBER_TABLE3 {
 
 } LINE_NUMBER_TABLE3, *PLINE_NUMBER_TABLE3;
 
-// Python functions
+typedef union _PYGC_HEAD PYGC_HEAD, *PPYGC_HEAD, **PPPYGC_HEAD;
+typedef union _PYGC_HEAD {
+    struct {
+        PPYGC_HEAD Next;
+        PPYGC_HEAD Prev;
+        PY_SSIZE ReferenceState;
+    } Gc;
+    long double Dummy;
+} PYGC_HEAD, *PPYGC_HEAD, **PPPYGC_HEAD;
+
+typedef enum _PYGILSTATE {
+    PyGILState_LOCKED,
+    PyGILState_UNLOCKED
+} PYGILSTATE, *PPYGILSTATE, PyGILState_STATE;
+
+//
+// Typedefs for Python function pointers.
+//
+
 typedef PCSTR (*PPY_GETVERSION)();
 typedef VOID (*PPY_INCREF)(PPYOBJECT);
 typedef VOID (*PPY_DECREF)(PPYOBJECT);
@@ -1375,10 +1393,6 @@ typedef SSIZE_T (*PPYUNICODE_GETLENGTH)(PPYOBJECT Object);
 typedef LONG (*PPYEVAL_SETTRACE)(PPYTRACEFUNC, PPYOBJECT);
 typedef LONG (*PPYEVAL_SETPROFILE)(PPYTRACEFUNC, PPYOBJECT);
 typedef PPYOBJECT (*PPYDICT_GETITEMSTRING)(PPYOBJECT, PCCH);
-typedef enum _PYGILSTATE {
-    PyGILState_LOCKED,
-    PyGILState_UNLOCKED
-} PYGILSTATE, *PPYGILSTATE, PyGILState_STATE;
 typedef PYGILSTATE (*PPYGILSTATE_ENSURE)();
 typedef VOID (*PPYGILSTATE_RELEASE)(PYGILSTATE);
 typedef LONG (*PPYOBJECT_HASH)(PPYOBJECT);
@@ -1402,38 +1416,51 @@ typedef PCHAR (*PPY_GET_PREFIX)(VOID);
 typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
 typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
 typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
+typedef PPYOBJECT (*PPYOBJECT_INIT)(PPYOBJECT, PPYTYPEOBJECT);
+typedef PPYVAROBJECT (*PPYOBJECT_INITVAR)(PPYVAROBJECT,
+                                          PPYTYPEOBJECT,
+                                          SSIZE_T);
+typedef PPYOBJECT (*PPYOBJECT_NEW)(PPYTYPEOBJECT);
+typedef PPYVAROBJECT (*PPYOBJECT_NEWVAR)(PPYTYPEOBJECT, PY_SSIZE);
 
-
-#define _PYTHONFUNCTIONS_HEAD                      \
-    PPY_GETVERSION          Py_GetVersion;         \
-    PPYDICT_GETITEMSTRING   PyDict_GetItemString;  \
-    PPYFRAME_GETLINENUMBER  PyFrame_GetLineNumber; \
-    PPYCODE_ADDR2LINE       PyCode_Addr2Line;      \
-    PPYEVAL_SETTRACE        PyEval_SetProfile;     \
-    PPYEVAL_SETTRACE        PyEval_SetTrace;       \
-    PPYUNICODE_ASUNICODE    PyUnicode_AsUnicode;   \
-    PPYUNICODE_GETLENGTH    PyUnicode_GetLength;   \
-    PPY_INCREF              Py_IncRef;             \
-    PPY_DECREF              Py_DecRef;             \
-    PPYGILSTATE_ENSURE      PyGILState_Ensure;     \
-    PPYGILSTATE_RELEASE     PyGILState_Release;    \
-    PPYOBJECT_HASH          PyObject_Hash;         \
-    PPYOBJECT_COMPARE       PyObject_Compare;      \
-    PPYMEM_MALLOC           PyMem_Malloc;          \
-    PPYMEM_REALLOC          PyMem_Realloc;         \
-    PPYMEM_FREE             PyMem_Free;            \
-    PPYOBJECT_MALLOC        PyObject_Malloc;       \
-    PPYOBJECT_REALLOC       PyObject_Realloc;      \
-    PPYOBJECT_FREE          PyObject_Free;         \
-    PPYGC_COLLECT           PyGC_Collect;          \
-    PPYOBJECT_GC_MALLOC     _PyObject_GC_Malloc;   \
-    PPYOBJECT_GC_NEW        _PyObject_GC_New;      \
-    PPYOBJECT_GC_NEWVAR     _PyObject_GC_NewVar;   \
-    PPYOBJECT_GC_RESIZE     _PyObject_GC_Resize;   \
-    PPYOBJECT_GC_TRACK      PyObject_GC_Track;     \
-    PPYOBJECT_GC_UNTRACK    PyObject_GC_UnTrack;   \
-    PPYOBJECT_GC_DEL        PyObject_GC_Del;
-
+#define _PYTHONFUNCTIONS_HEAD                              \
+    PPY_GETVERSION                  Py_GetVersion;         \
+    PPY_MAIN                        Py_Main;               \
+    PPY_GET_PREFIX                  Py_GetPrefix;          \
+    PPY_GET_EXEC_PREFIX             Py_GetExecPrefix;      \
+    PPY_GET_PROGRAM_NAME            Py_GetProgramName;     \
+    PPY_GET_PROGRAM_FULL_PATH       Py_GetProgramFullPath; \
+    PPYDICT_GETITEMSTRING           PyDict_GetItemString;  \
+    PPYFRAME_GETLINENUMBER          PyFrame_GetLineNumber; \
+    PPYCODE_ADDR2LINE               PyCode_Addr2Line;      \
+    PPYEVAL_SETTRACE                PyEval_SetProfile;     \
+    PPYEVAL_SETTRACE                PyEval_SetTrace;       \
+    PPYUNICODE_ASUNICODE            PyUnicode_AsUnicode;   \
+    PPYUNICODE_GETLENGTH            PyUnicode_GetLength;   \
+    PPY_INCREF                      Py_IncRef;             \
+    PPY_DECREF                      Py_DecRef;             \
+    PPYGILSTATE_ENSURE              PyGILState_Ensure;     \
+    PPYGILSTATE_RELEASE             PyGILState_Release;    \
+    PPYOBJECT_HASH                  PyObject_Hash;         \
+    PPYOBJECT_COMPARE               PyObject_Compare;      \
+    PPYMEM_MALLOC                   PyMem_Malloc;          \
+    PPYMEM_REALLOC                  PyMem_Realloc;         \
+    PPYMEM_FREE                     PyMem_Free;            \
+    PPYOBJECT_MALLOC                PyObject_Malloc;       \
+    PPYOBJECT_REALLOC               PyObject_Realloc;      \
+    PPYOBJECT_FREE                  PyObject_Free;         \
+    PPYGC_COLLECT                   PyGC_Collect;          \
+    PPYOBJECT_GC_MALLOC             _PyObject_GC_Malloc;   \
+    PPYOBJECT_GC_NEW                _PyObject_GC_New;      \
+    PPYOBJECT_GC_NEWVAR             _PyObject_GC_NewVar;   \
+    PPYOBJECT_GC_RESIZE             _PyObject_GC_Resize;   \
+    PPYOBJECT_GC_TRACK              PyObject_GC_Track;     \
+    PPYOBJECT_GC_UNTRACK            PyObject_GC_UnTrack;   \
+    PPYOBJECT_GC_DEL                PyObject_GC_Del;       \
+    PPYOBJECT_INIT                  PyObject_Init;         \
+    PPYOBJECT_INITVAR               PyObject_InitVar;      \
+    PPYOBJECT_NEW                   _PyObject_New;         \
+    PPYOBJECT_NEWVAR                _PyObject_NewVar;
 
 typedef struct _PYTHONFUNCTIONS {
     _PYTHONFUNCTIONS_HEAD

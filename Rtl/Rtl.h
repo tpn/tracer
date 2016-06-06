@@ -230,6 +230,29 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _Out_ PULONG Value
 );
 
+//
+// CRT functions.
+//
+
+typedef PVOID (__cdecl *PMALLOC)(
+    _In_ SIZE_T Size
+    );
+
+typedef PVOID (__cdecl *PCALLOC)(
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSizeInBytes
+    );
+
+typedef PVOID (__cdecl *PREALLOC)(
+    _In_ PVOID  Pointer,
+    _In_ SIZE_T NewSizeInBytes
+    );
+
+typedef VOID (__cdecl *PFREE)(
+    _In_ PVOID Pointer
+    );
+
+
 typedef INT (__cdecl *PCRTCOMPARE)(
     _In_    CONST PVOID Key,
     _In_    CONST PVOID Datum
@@ -249,6 +272,10 @@ typedef VOID (*PQSORT)(
     _In_ SIZE_T      WidthOfElement,
     _In_ PCRTCOMPARE Compare
     );
+
+//
+// End of CRT functions.
+//
 
 typedef NTSYSAPI SIZE_T (NTAPI RTL_COMPARE_MEMORY)(
     _In_ const VOID * Source1,
@@ -1337,6 +1364,7 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
     _Inout_ PRTL_SPLAY_LINKS ParentLinks,
     _Inout_ PRTL_SPLAY_LINKS ChildLinks
     );
+
 
 
 //

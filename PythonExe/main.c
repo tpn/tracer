@@ -81,15 +81,27 @@ Our_PyGC_Collect(VOID)
     return Original_PyGC_Collect();
 }
 
+PVOID
+HeapAllocationRoutine(
+    _In_ HANDLE HeapHandle,
+    _In_ ULONG ByteSize
+    )
+{
+    return HeapAlloc(HeapHandle, 0, ByteSize);
+}
+
+
 VOID
 WINAPI
 mainCRTStartup()
 {
+    BOOL Success;
     DWORD ExitCode = 1;
 
     HMODULE Kernel32;
     HMODULE Shell32;
-    HMODULE Python;
+    HMODULE PythonModule;
+    HMODULE PythonApiModule;
     HMODULE RtlModule;
     HMODULE HookModule;
 
@@ -97,6 +109,7 @@ mainCRTStartup()
     PUNHOOK Unhook;
 
     PINITIALIZE_RTL InitializeRtl;
+    PINITIALIZE_PYTHON InitializePython;
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
     PPY_MAIN Py_Main;
     PPY_GET_PREFIX Py_GetPrefix;
@@ -105,6 +118,25 @@ mainCRTStartup()
 
     PPYGC_COLLECT PyGC_Collect;
 
+    //PPYOBJECT_MALLOC PyObject_Malloc;
+
+    //PPYOBJECT_GC_TRACK PyObject_GC_Track;
+    //PPYOBJECT_GC_UNTRACK PyObject_GC_UnTrack;
+    //PPYOBJECT_GC_DEL PyObject_GC_Del;
+
+    PYTHON PythonRecord;
+    PPYTHON Python = &PythonRecord;
+    ULONG SizeOfPython = sizeof(*Python);
+
+    HOOKED_FUNCTION Function;
+    PHOOKED_FUNCTION HookedFunction;
+    PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
+    PHOOK_FUNCTION HookFunction;
+    PVOID Buffer;
+    PCHAR BaseAddress = NULL;
+    USHORT Attempts = 10;
+    LONG_PTR Offset = 10485760; // 10MB
+
     PWSTR CommandLine;
     LONG NumberOfArgs;
     PPWSTR UnicodeArgv;
@@ -112,7 +144,7 @@ mainCRTStartup()
     LONG Index;
     HANDLE HeapHandle;
     ULONG AllocSize;
-    PCHAR Prefix;
+    //PCHAR Prefix;
     //PCHAR ExecPrefix;
     PCHAR Path;
     USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
@@ -121,11 +153,25 @@ mainCRTStartup()
     PRTL Rtl = &RtlRecord;
     ULONG SizeOfRtl = sizeof(*Rtl);
 
+    LOAD(PythonModule, PythonDllPath);
+
     LOAD(RtlModule, "Rtl");
     RESOLVE(RtlModule, PINITIALIZE_RTL, InitializeRtl);
 
+    LOAD(PythonApiModule, "Python");
+    RESOLVE(PythonApiModule, PINITIALIZE_PYTHON, InitializePython);
+
     if (!InitializeRtl(Rtl, &SizeOfRtl)) {
         OutputDebugStringA("InitializeRtl() failed.");
+        goto End;
+    }
+
+    Success = InitializePython(Rtl,
+                               PythonModule,
+                               Python,
+                               &SizeOfPython);
+
+    if (!Success) {
         goto End;
     }
 
@@ -134,16 +180,17 @@ mainCRTStartup()
     LOAD(Shell32, "shell32");
     RESOLVE(Shell32, PCOMMAND_LINE_TO_ARGV, CommandLineToArgvW);
 
-    LOAD(Python, PythonDllPath);
-    RESOLVE(Python, PPY_MAIN, Py_Main);
-    RESOLVE(Python, PPY_GET_PREFIX, Py_GetPrefix);
-    RESOLVE(Python, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
-    RESOLVE(Python, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
-    RESOLVE(Python, PPYGC_COLLECT, PyGC_Collect);
+    RESOLVE(PythonModule, PPY_MAIN, Py_Main);
+    RESOLVE(PythonModule, PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE(PythonModule, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE(PythonModule, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
+    RESOLVE(PythonModule, PPYGC_COLLECT, PyGC_Collect);
 
     LOAD(HookModule, "Hook");
     RESOLVE(HookModule, PHOOK, Hook);
     RESOLVE(HookModule, PUNHOOK, Unhook);
+    RESOLVE(HookModule, PINITIALIZE_HOOKED_FUNCTION, InitializeHookedFunction);
+    RESOLVE(HookModule, PHOOK_FUNCTION, HookFunction);
 
     HeapHandle = GetProcessHeap();
     if (!HeapHandle) {
@@ -151,17 +198,121 @@ mainCRTStartup()
         goto End;
     }
 
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "PyObject_New";
+    Function.Module = "python27";
+    Function.Signature = "PPYOBJECT PyObject_New(PPYTYPEOBJECT)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 1;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = Python->_PyObject_New;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "Py_Main";
+    Function.Module = "python27";
+    Function.Signature = "int Py_Main(int argc, char **argv)";
+    Function.NtStyleSignature = "LONG Py_Main(LONG argc, PPCHAR argv)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 2;
+    Function.SizeOfReturnValueInBytes = 4;
+    Function.OriginalAddress = Python->Py_Main;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "Py_GetProgramFullPath";
+    Function.Module = "python27";
+    Function.Signature = "char* Py_GetProgramFullPath(void)";
+    Function.NtStyleSignature = "PSTR Py_GetProgramFullPath(VOID)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 0;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = Python->Py_GetProgramFullPath;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+
+    InitializeHookedFunction(Rtl, &Function);
+
+    BaseAddress = (PCHAR)PAGE_ALIGN(
+        ((ULONG_PTR)PythonModule) -
+        ((ULONG_PTR)Offset)
+    );
+
+    do {
+        Buffer = VirtualAlloc(BaseAddress,
+                              PAGE_SIZE,
+                              MEM_COMMIT | MEM_RESERVE,
+                              PAGE_READWRITE);
+
+        if (Buffer) {
+            break;
+        }
+
+        BaseAddress = (PCHAR)PAGE_ALIGN(
+            ((ULONG_PTR)BaseAddress) -
+            ((ULONG_PTR)Offset)
+        );
+
+    } while (--Attempts);
+
+    if (!Buffer) {
+        OutputDebugStringA("Failed to allocate buffer.\n");
+        goto End;
+    }
+
+    Rtl->RtlCopyMemory(Buffer, &Function, sizeof(Function));
+    HookedFunction = (PHOOKED_FUNCTION)Buffer;
+
+    //Success = HookFunction(Rtl, (PPVOID)&Python->Py_Main, HookedFunction);
+
+    Success = HookFunction(
+        Rtl,
+        (PPVOID)&Python->Py_GetProgramFullPath,
+        HookedFunction
+    );
+
+    if (!Success) {
+        OutputDebugStringA("HookFunction() failed.");
+        goto End;
+    }
+
+
     //HOOK((PPVOID)&PyGC_Collect, Our_PyGC_Collect);
     //Original_PyGC_Collect = Our_PyGC_Collect;
-    HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
-    Prefix = Py_GetPrefix();
+    //HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
+    //Prefix = Py_GetPrefix();
 
     //HOOK((PPVOID)&Py_GetExecPrefix, Our_Py_GetExecPrefix);
     //ExecPrefix = Py_GetExecPrefix();
 
     //HOOK((PPVOID)&Py_GetProgramFullPath, Our_Py_GetProgramFullPath);
     Path = Py_GetProgramFullPath();
-    Rtl->RtlCopyMemory(Path, PythonExePath, sizeof(PythonExePath));
+
+    //Rtl->RtlCopyMemory(Path, PythonExePath, sizeof(PythonExePath));
 
     //Prefix = Py_GetPrefix();
     //ExecPrefix = Py_GetExecPrefix();
@@ -234,3 +385,5 @@ mainCRTStartup()
 End:
     ExitProcess(ExitCode);
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

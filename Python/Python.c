@@ -726,6 +726,11 @@ LoadPythonFunctions(
     }
 
     RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
+    RESOLVE_FUNCTION(PPY_MAIN, Py_Main);
+    RESOLVE_FUNCTION(PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE_FUNCTION(PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE_FUNCTION(PPY_GET_PROGRAM_NAME, Py_GetProgramName);
+    RESOLVE_FUNCTION(PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
     RESOLVE_FUNCTION(PPYDICT_GETITEMSTRING, PyDict_GetItemString);
     RESOLVE_FUNCTION(PPYFRAME_GETLINENUMBER, PyFrame_GetLineNumber);
     RESOLVE_FUNCTION(PPYCODE_ADDR2LINE, PyCode_Addr2Line);
@@ -751,6 +756,10 @@ LoadPythonFunctions(
     RESOLVE_FUNCTION(PPYOBJECT_GC_TRACK, PyObject_GC_Track);
     RESOLVE_FUNCTION(PPYOBJECT_GC_UNTRACK, PyObject_GC_UnTrack);
     RESOLVE_FUNCTION(PPYOBJECT_GC_DEL, PyObject_GC_Del);
+    RESOLVE_FUNCTION(PPYOBJECT_INIT, PyObject_Init);
+    RESOLVE_FUNCTION(PPYOBJECT_INITVAR, PyObject_InitVar);
+    RESOLVE_FUNCTION(PPYOBJECT_NEW, _PyObject_New);
+    RESOLVE_FUNCTION(PPYOBJECT_NEWVAR, _PyObject_NewVar);
 
     TRY_RESOLVE_FUNCTION(PPYUNICODE_ASUNICODE, PyUnicode_AsUnicode);
     TRY_RESOLVE_FUNCTION(PPYUNICODE_GETLENGTH, PyUnicode_GetLength);
@@ -1319,7 +1328,7 @@ InitializePython(
     }
 
     if (!Rtl->LoadShlwapi(Rtl)) {
-        goto error;
+        goto Error;
     }
 
     SecureZeroMemory(Python, sizeof(*Python));
@@ -1327,15 +1336,15 @@ InitializePython(
     Python->Rtl = Rtl;
 
     if (!ResolveAndVerifyPythonVersion(PythonModule, Python)) {
-        goto error;
+        goto Error;
     }
 
     if (!LoadPythonSymbols(PythonModule, Python)) {
-        goto error;
+        goto Error;
     }
 
     if (!LoadPythonExSymbols(NULL, Python)) {
-        goto error;
+        goto Error;
     }
 
     Python->Size = *SizeOfPython;
@@ -1347,7 +1356,7 @@ InitializePython(
 
     return TRUE;
 
-error:
+Error:
     // Clear any partial state.
     SecureZeroMemory(Python, sizeof(*Python));
     return FALSE;
@@ -1388,6 +1397,7 @@ IsModuleDirectoryA(
 }
 
 
+_Success_(return != 0)
 BOOL
 RegisterDirectory(
     _In_      PPYTHON Python,
