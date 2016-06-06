@@ -25,10 +25,12 @@ Function struct
         ContinuationAddress dq      ?
         HookProlog          dq      ?
         HookEntry           dq      ?
+        EntryCallback       dq      ?
         EntryContext        dq      ?
-        HookExit            dq      ?
-        ExitContext         dq      ?
         HookEpilog          dq      ?
+        HookExit            dq      ?
+        ExitCallback        dq      ?
+        ExitContext         dq      ?
         Name                dq      ?
         Module              dq      ?
         Signature           dq      ?
@@ -39,12 +41,20 @@ Function struct
         Unused              dd      ?
 Function ends
 
+ExtraFrame struct
+        ReturnValue     dq      ?       ; rax value after original func called
+        ExitTimestamp   dq      ?       ; exit timestamp
+        EntryTimestamp  dq      ?       ; entry timestamp
+        Rflags          dq      ?       ; rflags
+        HookedFunction  dq      ?       ; saved function pointer
+ExtraFrame ends
+
 EntryFrame struct
         ReturnValue     dq      ?       ; rax value after original func called
         ExitTimestamp   dq      ?       ; exit timestamp
         EntryTimestamp  dq      ?       ; entry timestamp
         Rflags          dq      ?       ; rflags
-        Function        dq      ?       ; saved function pointer
+        HookedFunction  dq      ?       ; saved function pointer
         ReturnAddress   dq      ?       ; pushed onto the stack before the call
         HomeRcx         dq      ?       ; home param 1
         HomeRdx         dq      ?       ; home param 2
@@ -75,19 +85,28 @@ EntryFrame ends
 
         NESTED_ENTRY HookProlog, _TEXT$00
 
+        .allocstack     8       ; account for the function pointer
+
         rex_push_eflags         ; push rflags
 
         alloc_stack 8 + 8 + 8   ; entry+exit timestamp, return value
+
+        rex_push_reg rbp        ; save rbp before clobbering
+        lea rbp, [rsp+8]        ; load the base of our EntryFrame into rbp
+
+        ;.setframe rbp, sizeof(ExtraFrame) ; start of frame pointer
+
+        alloc_stack 4 * 8;      ; allocate space for additional home registers
 
         END_PROLOGUE
 
 ;
 ; Home parameter registers.
 ;
-        mov     EntryFrame.HomeRcx[rsp], rcx
-        mov     EntryFrame.HomeRdx[rsp], rdx
-        mov     EntryFrame.HomeR8[rsp], r8
-        mov     EntryFrame.HomeR9[rsp], r9
+        mov     EntryFrame.HomeRcx[rbp], rcx
+        mov     EntryFrame.HomeRdx[rbp], rdx
+        mov     EntryFrame.HomeR8[rbp], r8
+        mov     EntryFrame.HomeR9[rbp], r9
 
 ;
 ; Generate the entry timestamp.
@@ -96,19 +115,47 @@ EntryFrame ends
         rdtsc                   ; get timestamp counter
         shl     rdx, 32         ; low part -> high part
         or      rdx, rax        ; merge low part into rdx
-        mov     EntryFrame.EntryTimestamp[rsp], rdx  ; save counter
+        mov     EntryFrame.EntryTimestamp[rbp], rdx  ; save counter
 
 ;
-; Move the function pointer into r10.
+; Move the EntryFrame/HOOKED_FUNCTION_CALL struct into rcx as first parameter
+; to HookEntry.
+;
+        mov     rcx, rbp
+
+;
+; Load the effective address of the pointer to the HookedFunction, then update
+; the frame accordingly.
 ;
 
-        lea     r10, EntryFrame.Function[rsp]
+        lea     r10, EntryFrame.HookedFunction[rbp]
+        mov qword ptr EntryFrame.HookedFunction[rbp], r10
+
+;
+; Load the pointer to the hook entry function.
+;
+        lea     r11, Function.HookEntry[r10]
 
 
 ;
-; Reserve space for the home parameters for subsequent calls.
+; Call the hook entry point.
 ;
-        sub     rsp, 20h
+
+        call    qword ptr [r11]
+
+;
+; (Do a test here to see if the actual function needs to be called?)
+;
+
+
+;
+; Set up the parameter registers before calling the continuation point.
+;
+
+        mov     rcx, EntryFrame.HomeRcx[rbp]
+        mov     rdx, EntryFrame.HomeRdx[rbp]
+        mov     r8,  EntryFrame.HomeR8[rbp]
+        mov     r9,  EntryFrame.HomeR9[rbp]
 
 ;
 ; Push the epilog's return address onto the stack.
@@ -116,9 +163,14 @@ EntryFrame ends
         push    Function.HookEpilog[rsp]
 
 ;
-; Call the hook entry point.
+; Now complete the original function call at the continuation point.  Execution
+; will resume at the epilog once the target function returns.
 ;
-        jmp    Function.HookedEntry[r10]
+
+        lea     r10, EntryFrame.HookedFunction[rbp]
+        lea     r11, Function.ContinuationAddress[r10]
+
+        call qword ptr [r11]
 
 ;
 ; The pointer to the function struct will have been pushed to the stack via

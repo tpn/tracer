@@ -18,20 +18,34 @@ Unhook(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key)
 
 VOID
 WINAPI
-HookEntry(PHOOKED_FUNCTION_CALL Entry, LARGE_INTEGER Timestamp)
+HookEntry(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
 {
-    PHOOKED_FUNCTION Function = Entry->Function;
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
 
-    //DWORD64 HomeRcx = Entry->HomeRcx;
+    if (!Function->EntryCallback) {
+        return;
+    }
 
+    Function->EntryCallback(Call, Timestamp);
 }
 
 VOID
 WINAPI
-HookExit(PHOOKED_FUNCTION_CALL Entry, LARGE_INTEGER Timestamp)
+HookExit(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
 {
-    //PFUNCTION Function = Entry->Function;
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
 
+    if (!Function->ExitCallback) {
+        return;
+    }
+
+    Function->ExitCallback(Call, Timestamp);
 }
 
 
@@ -52,6 +66,8 @@ InitializeHookedFunction(
     Function->Rtl = Rtl;
     Function->HookProlog = (PROC)HookProlog;
     Function->HookEpilog = (PROC)HookEpilog;
+    Function->HookEntry = HookEntry;
+    Function->HookExit = HookExit;
 }
 
 BOOL

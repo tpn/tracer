@@ -21,15 +21,39 @@ typedef struct _LONG_JUMP {
 typedef struct _HOOKED_FUNCTION_CALL HOOKED_FUNCTION_CALL;
 typedef HOOKED_FUNCTION_CALL *PHOOKED_FUNCTION_CALL;
 
-typedef VOID (*PHOOK_ENTRY_CALLBACK)(
+typedef struct _INVERTED_HOOKED_FUNCTION_CALL INVERTED_HOOKED_FUNCTION_CALL;
+typedef INVERTED_HOOKED_FUNCTION_CALL *PINVERTED_HOOKED_FUNCTION_CALL;
+
+typedef VOID (CALLBACK *PHOOK_ENTRY)(
     _In_ PHOOKED_FUNCTION_CALL Call,
     _In_ LARGE_INTEGER Timestamp
     );
 
-typedef VOID (*PHOOK_EXIT_CALLBACK)(
+typedef VOID (CALLBACK *PHOOK_EXIT)(
     _In_ PHOOKED_FUNCTION_CALL Call,
     _In_ LARGE_INTEGER Timestamp
     );
+
+typedef VOID (CALLBACK *PHOOK_ENTRY_CALLBACK)(
+    _In_ PHOOKED_FUNCTION_CALL Call,
+    _In_ LARGE_INTEGER Timestamp
+    );
+
+typedef VOID (CALLBACK *PHOOK_EXIT_CALLBACK)(
+    _In_ PHOOKED_FUNCTION_CALL Call,
+    _In_ LARGE_INTEGER Timestamp
+    );
+/*
+typedef VOID (CALLBACK *PHOOK_ENTRY_CALLBACK)(
+    _In_ PINVERTED_HOOKED_FUNCTION_CALL Call,
+    _In_ LARGE_INTEGER Timestamp
+    );
+
+typedef VOID (CALLBACK *PHOOK_EXIT_CALLBACK)(
+    _In_ PINVERTED_HOOKED_FUNCTION_CALL Call,
+    _In_ LARGE_INTEGER Timestamp
+    );
+*/
 
 #pragma pack(push, 2)
 typedef struct _HOOKED_FUNCTION {
@@ -40,11 +64,11 @@ typedef struct _HOOKED_FUNCTION {
     PVOID OriginalAddress;
     PVOID ContinuationAddress;
     PROC HookProlog;
-    PROC HookEntry;
+    PHOOK_ENTRY HookEntry;
     PHOOK_ENTRY_CALLBACK EntryCallback;
     PVOID EntryContext;
     PROC HookEpilog;
-    PROC HookExit;
+    PHOOK_EXIT HookExit;
     PHOOK_EXIT_CALLBACK ExitCallback;
     PVOID ExitContext;
     PSTR Name;
@@ -79,12 +103,57 @@ typedef struct _HOOKED_FUNCTION_CALL {
     PHOOKED_FUNCTION    HookedFunction;
     PVOID               ReturnAddress;
 
-    LARGE_INTEGER   HomeRcx;
-    LARGE_INTEGER   HomeRdx;
-    LARGE_INTEGER   HomeR8;
-    LARGE_INTEGER   HomeR9;
+    union {
+        LARGE_INTEGER   HomeRcx;
+        LARGE_INTEGER   Param1;
+    };
+
+    union {
+        LARGE_INTEGER   HomeRdx;
+        LARGE_INTEGER   Param2;
+    };
+
+    union {
+        LARGE_INTEGER   HomeR8;
+        LARGE_INTEGER   Param3;
+    };
+
+    union {
+        LARGE_INTEGER   HomeR9;
+        LARGE_INTEGER   Param4;
+    };
 
 } HOOKED_FUNCTION_CALL, *PHOOKED_FUNCTION_CALL, **PPHOOKED_FUNCTION_CALL;
+
+typedef struct _INVERTED_HOOKED_FUNCTION_CALL {
+    LARGE_INTEGER       HomeR9;
+    LARGE_INTEGER       HomeR8;
+    LARGE_INTEGER       HomeRdx;
+    LARGE_INTEGER       HomeRcx;
+    PVOID               ReturnAddress;
+    PHOOKED_FUNCTION    HookedFunction;
+
+    union {
+        LARGE_INTEGER RFlags;
+        struct {
+            ULONG UnusedFlags;
+            ULONG EFlags;
+        };
+    };
+    // 8 + 8 + 8 + 8 = 32
+
+    LARGE_INTEGER EntryTimestamp;
+    LARGE_INTEGER ExitTimestamp;
+
+    union {
+        LARGE_INTEGER ReturnValue;
+        LARGE_INTEGER Rax;
+    };
+
+} INVERTED_HOOKED_FUNCTION_CALL;
+
+typedef INVERTED_HOOKED_FUNCTION_CALL *PINVERTED_HOOKED_FUNCTION_CALL;
+typedef INVERTED_HOOKED_FUNCTION_CALL **PPINVERTED_HOOKED_FUNCTION_CALL;
 
 
 typedef BOOL (*PHOOK)(
@@ -192,6 +261,7 @@ typedef struct _HOOKED_FUNCTION_ENTRY {
 } HOOKED_FUNCTION_ENTRY, *PHOOKED_FUNCTION_ENTRY;
 */
 
+/*
 VOID
 WINAPI
 HookEntry(PHOOKED_FUNCTION_CALL Entry);
@@ -199,6 +269,24 @@ HookEntry(PHOOKED_FUNCTION_CALL Entry);
 VOID
 WINAPI
 HookExit(PHOOKED_FUNCTION_CALL Entry);
+*/
+
+RTL_API
+VOID
+WINAPI
+HookExit(
+    _In_    PHOOKED_FUNCTION_CALL Entry,
+    _In_    LARGE_INTEGER Timestamp
+    );
+
+RTL_API
+VOID
+WINAPI
+HookExit(
+    _In_    PHOOKED_FUNCTION_CALL Entry,
+    _In_    LARGE_INTEGER Timestamp
+    );
+
 
 RTL_API
 VOID

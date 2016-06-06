@@ -90,6 +90,41 @@ HeapAllocationRoutine(
     return HeapAlloc(HeapHandle, 0, ByteSize);
 }
 
+typedef ULONG (*PTEST_FUNC)(
+    _In_    ULONG   Arg1,
+    _In_    ULONG   Arg2,
+    _In_    ULONG   Arg3,
+    _In_    ULONG   Arg4
+    );
+
+ULONG
+TestFunc(ULONG Arg1, ULONG Arg2, ULONG Arg3, ULONG Arg4)
+{
+    return Arg1 + Arg2 + Arg3 + Arg4;
+}
+
+VOID
+CALLBACK
+HookEntryCallback(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
+{
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
+
+    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
+    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
+    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
+    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
+
+
+    PrefaultPage(Arg1);
+    PrefaultPage(Arg2);
+    PrefaultPage(Arg3);
+    PrefaultPage(Arg4);
+
+}
+
 
 VOID
 WINAPI
@@ -146,12 +181,14 @@ mainCRTStartup()
     ULONG AllocSize;
     //PCHAR Prefix;
     //PCHAR ExecPrefix;
+    PTEST_FUNC TestFuncPointer = &TestFunc;
     PCHAR Path;
     USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
 
     RTL RtlRecord;
     PRTL Rtl = &RtlRecord;
     ULONG SizeOfRtl = sizeof(*Rtl);
+    ULONG Result;
 
     LOAD(PythonModule, PythonDllPath);
 
@@ -200,6 +237,29 @@ mainCRTStartup()
 
     SecureZeroMemory(&Function, sizeof(Function));
 
+    Function.Name = "TestFunc";
+    Function.Module = "PythonExe";
+    Function.Signature = "ULONG TestFunc(ULONG, ULONG, ULONG, ULONG)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 4;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = TestFuncPointer;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    Function.EntryCallback = HookEntryCallback;
+
+    goto DoInitialize;
+
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
     Function.Name = "PyObject_New";
     Function.Module = "python27";
     Function.Signature = "PPYOBJECT PyObject_New(PPYTYPEOBJECT)";
@@ -229,11 +289,14 @@ mainCRTStartup()
     Function.OriginalAddress = Python->Py_Main;
     Function.HookEntry = NULL;
     Function.EntryContext = NULL;
+
     Function.HookExit = NULL;
     Function.ExitContext = NULL;
 
     Function.Hash.HighPart = 0;
     Function.Hash.LowPart = 581891183;
+
+    goto DoInitialize;
 
     SecureZeroMemory(&Function, sizeof(Function));
 
@@ -254,11 +317,11 @@ mainCRTStartup()
     Function.Hash.HighPart = 0;
     Function.Hash.LowPart = 581891183;
 
-
+DoInitialize:
     InitializeHookedFunction(Rtl, &Function);
 
     BaseAddress = (PCHAR)PAGE_ALIGN(
-        ((ULONG_PTR)PythonModule) -
+        ((ULONG_PTR)Function.OriginalAddress) -
         ((ULONG_PTR)Offset)
     );
 
@@ -286,6 +349,19 @@ mainCRTStartup()
 
     Rtl->RtlCopyMemory(Buffer, &Function, sizeof(Function));
     HookedFunction = (PHOOKED_FUNCTION)Buffer;
+
+    Success = HookFunction(
+        Rtl,
+        (PPVOID)&TestFuncPointer,
+        HookedFunction
+    );
+
+    if (!Success) {
+        OutputDebugStringA("HookFunction() failed.");
+        goto End;
+    }
+
+    Result = TestFunc(1, 2, 4, 8);
 
     //Success = HookFunction(Rtl, (PPVOID)&Python->Py_Main, HookedFunction);
 
