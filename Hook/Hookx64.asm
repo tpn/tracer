@@ -85,29 +85,44 @@ EntryFrame ends
 
         NESTED_ENTRY HookProlog, _TEXT$00
 
+        rex_push_reg    rbp     ; push rbp before we clobber it
+        set_frame       rbp, 8  ; use rbp as our frame pointer
+;
+; The hooking machinery will have loaded the qword ptr to the Function struct
+; in rax.  Save it directly on the stack, then push flags and alloc space for
+; the remaining items in our frame (entry/exit timestamp, return value).
+;
         rex_push_reg    rax     ; function pointer
-        ;.allocstack     8       ; account for the function pointer
 
         rex_push_eflags         ; push rflags
 
         alloc_stack 8 + 8 + 8   ; entry+exit timestamp, return value
 
-        rex_push_reg rbp        ; save rbp before clobbering
-        lea rbp, [rsp+8]        ; load the base of our EntryFrame into rbp
+;
+; At this point, rsp points to the base of our EntryFrame.  We want to use
+; masm's struct notation (i.e. `mov EntryFrame.Param1[rsp]`), but we can't use
+; rsp (because we're about to allocate another 32 bytes for caller home params)
+; so we use a volatile register, r10, instead.
+;
+        mov r10, rsp
 
-        ;.setframe rbp, sizeof(ExtraFrame) ; start of frame pointer
+;
+; Now we can allocate space for caller home parameter registers.
+;
 
-        alloc_stack 4 * 8;      ; allocate space for additional home registers
+        alloc_stack 4 * 8       ; (20h)
+
+;
+; And finally, home our current parameter registers.
+;
+
+        mov     EntryFrame.HomeRcx[r10], rcx
+        mov     EntryFrame.HomeRdx[r10], rdx
+        mov     EntryFrame.HomeR8[r10], r8
+        mov     EntryFrame.HomeR9[r10], r9
 
         END_PROLOGUE
 
-;
-; Home parameter registers.
-;
-        mov     EntryFrame.HomeRcx[rbp], rcx
-        mov     EntryFrame.HomeRdx[rbp], rdx
-        mov     EntryFrame.HomeR8[rbp], r8
-        mov     EntryFrame.HomeR9[rbp], r9
 
 ;
 ; Generate the entry timestamp.
@@ -116,27 +131,34 @@ EntryFrame ends
         rdtsc                   ; get timestamp counter
         shl     rdx, 32         ; low part -> high part
         or      rdx, rax        ; merge low part into rdx
-        mov     EntryFrame.EntryTimestamp[rbp], rdx  ; save counter
+        mov     EntryFrame.EntryTimestamp[r10], rdx  ; save counter
 
 ;
-; Move the EntryFrame/HOOKED_FUNCTION_CALL struct into rcx as first parameter
-; to HookEntry.
+; Move the EntryFrame/HOOKED_FUNCTION_CALL struct into rcx as the first
+; parameter to HookEntry.
 ;
-        mov     rcx, rbp
+        mov     rcx, r10
 
 ;
-; Load the effective address of the pointer to the HookedFunction, then update
-; the frame accordingly.
+; Load the HookedFunction pointer, and then the HookEntry pointer.
 ;
 
-        mov     r10, EntryFrame.HookedFunction[rbp]
-        ;lea     r10, EntryFrame.HookedFunction[rbp]
-        ;mov qword ptr EntryFrame.HookedFunction[rbp], r10
+        mov     r11, EntryFrame.HookedFunction[r10]
+        lea     r11, Function.HookEntry[r11]
+
+;
+; Call HookEntry(PHOOKED_FUNCTION_CALL Call).
+;
+
+        call    qword ptr [r11]
+
+;
+; Now comes the fiddly part.  W
+;
 
 ;
 ; Load the pointer to the hook entry function.
 ;
-        lea     r11, Function.HookEntry[r10]
 
 
 ;
@@ -307,4 +329,5 @@ EntryFrame ends
 
 
 ; vim:set tw=80 ts=8 sw=8 sts=8 expandtab syntax=masm formatoptions=croql      :
+
 end

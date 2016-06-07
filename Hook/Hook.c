@@ -17,44 +17,25 @@ Unhook(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key)
 }
 
 VOID
-WINAPI
-HookEntry(
-    _In_    PHOOKED_FUNCTION_CALL Call,
-    _In_    LARGE_INTEGER Timestamp
-    )
+CALLBACK
+HookEntry(_In_ PHOOKED_FUNCTION_CALL Call)
 {
     PHOOKED_FUNCTION Function = Call->HookedFunction;
 
-    if (!Function->EntryCallback) {
-        return;
+    if (Function->EntryCallback) {
+        Function->EntryCallback(Call);
     }
-
-    Function->EntryCallback(Call, Timestamp);
 }
 
 VOID
-WINAPI
-HookExit(
-    _In_    PHOOKED_FUNCTION_CALL Call,
-    _In_    LARGE_INTEGER Timestamp
-    )
+CALLBACK
+HookExit(_In_ PHOOKED_FUNCTION_CALL Call)
 {
     PHOOKED_FUNCTION Function = Call->HookedFunction;
 
-    if (!Function->ExitCallback) {
-        return;
+    if (Function->ExitCallback) {
+        Function->ExitCallback(Call);
     }
-
-    Function->ExitCallback(Call, Timestamp);
-}
-
-
-VOID HookPush2(VOID);
-
-VOID
-HookPush(VOID)
-{
-    HookPush2();
 }
 
 VOID
