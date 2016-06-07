@@ -125,6 +125,31 @@ HookEntryCallback(
 
 }
 
+VOID
+CALLBACK
+HookExitCallback(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
+{
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
+    ULONG Result;
+
+    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
+    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
+    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
+    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
+
+    Result = (ULONG)Call->ReturnValue.LowPart;
+
+
+    PrefaultPage(&Arg1);
+    PrefaultPage(&Arg2);
+    PrefaultPage(&Arg3);
+    PrefaultPage(&Arg4);
+
+}
+
 
 VOID
 WINAPI
@@ -362,6 +387,7 @@ DoInitialize:
     }
 
     Result = TestFunc(1, 2, 4, 8);
+    goto End;
 
     //Success = HookFunction(Rtl, (PPVOID)&Python->Py_Main, HookedFunction);
 
