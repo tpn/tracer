@@ -140,17 +140,12 @@ TraceFrame struct
 
         TscAux          TSC_AUX         { }
 
-        Tsc             TSC             { }
+        Timestamp       TSC             { }
 
         ; 7     (+ 4)
 
-        union
-                ClientId                                dq      ?
-                struct
-                        ProcessId                       dw      ?
-                        ThreadId                        dw      ?
-                ends
-        ends
+        ProcessId                       dw      ?
+        ThreadId                        dw      ?
 
         ; 8     (+ 1)
 
@@ -162,7 +157,7 @@ TraceFrame struct
 
         ; 13    (+ 5)
 
-        Params                  PARAMS  {?}
+        Param                   PARAMS  {?}
 
         ; 18    (+ 5)
 
