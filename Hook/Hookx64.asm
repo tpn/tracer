@@ -183,6 +183,18 @@ Locals struct
 
 Locals ends
 
+TIMESTAMP_TRACEFRAME macro Reg, Name
+
+        cpuid
+        rdtscp
+        movzx   dword ptr TraceFrame.TscAux.Name[Reg], rcx
+
+        shl     rdx, 32         ; low part -> high part
+        or      rdx, rax        ; merge low part into rdx
+        mov     dword ptr TraceFrame.Timestamp.Name[Reg], rdx
+
+        endm
+
         NESTED_ENTRY HookFrame, _TEXT$00
 
 
@@ -243,11 +255,54 @@ Locals ends
 ;
 ; Generate the entry timestamp.
 ;
-        lfence                  ; stabilize rdtsc
-        rdtsc                   ; get timestamp counter
-        shl     rdx, 32         ; low part -> high part
-        or      rdx, rax        ; merge low part into rdx
-        mov     EntryFrame.EntryTimestamp[r10], rdx  ; save counter
+        ;lfence                  ; stabilize rdtsc
+        ;rdtsc                   ; get timestamp counter
+        ;shl     rdx, 32         ; low part -> high part
+        ;or      rdx, rax        ; merge low part into rdx
+        ;mov     EntryFrame.EntryTimestamp[r10], rdx  ; save counter
+
+        ;cpuid
+        ;rdtscp
+        ;movzx   dword ptr TraceFrame.TscAux.Entered[r10], rcx
+
+        ;shl     rdx, 32         ; low part -> high part
+        ;or      rdx, rax        ; merge low part into rdx
+        ;mov     dword ptr TraceFrame.Timestamp.Entered[r10], rdx
+
+        TIMESTAMP_TRACEFRAME Entered, r10
+
+        ;
+        ; Allocate record.
+        ;
+
+        ;
+        ; Timestamp again.
+        ;
+
+        TIMESTAMP_TRACEFRAME PreCall, r10
+
+        ; save timestamp
+        ; save tsc aux
+
+
+        ; call function
+        lea r11, TraceFrame.HookedFunction.ContinuationAddress[r10]
+        call qword ptr r11
+
+
+        TIMESTAMP_TRACEFRAME PostCall, r10
+
+        ; Save record.
+
+
+        TIMESTAMP_TRACEFRAME PreExit, r10
+
+        rdtscp
+        ; save timestamp
+        ; save tsc aux
+        cpuid
+
+
 
 ;
 ; Move the EntryFrame/HOOKED_FUNCTION_CALL struct into rcx as the first
