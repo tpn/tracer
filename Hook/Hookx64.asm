@@ -183,15 +183,15 @@ Locals struct
 
 Locals ends
 
-TIMESTAMP_TRACEFRAME macro Reg, Name
+TIMESTAMP_TRACEFRAME macro Name, Reg
 
         cpuid
         rdtscp
-        movzx   dword ptr TraceFrame.TscAux.Name[Reg], rcx
+        mov     dword ptr TraceFrame.TscAux.&Name&[&Reg&], ecx
 
         shl     rdx, 32         ; low part -> high part
         or      rdx, rax        ; merge low part into rdx
-        mov     dword ptr TraceFrame.Timestamp.Name[Reg], rdx
+        mov     qword ptr TraceFrame.Timestamp.&Name&[&Reg&], rdx
 
         endm
 
@@ -286,23 +286,16 @@ TIMESTAMP_TRACEFRAME macro Reg, Name
 
 
         ; call function
-        lea r11, TraceFrame.HookedFunction.ContinuationAddress[r10]
-        call qword ptr r11
-
+        ;mov r11, qword ptr TraceFrame.HookedFunction[r10]
+        ;lea r11, Function.ContinuationAddress[r11]
+        lea r11, (Function ptr TraceFrame.HookedFunction[r10]).ContinuationAddress
+        call r11
 
         TIMESTAMP_TRACEFRAME PostCall, r10
 
         ; Save record.
 
-
         TIMESTAMP_TRACEFRAME PreExit, r10
-
-        rdtscp
-        ; save timestamp
-        ; save tsc aux
-        cpuid
-
-
 
 ;
 ; Move the EntryFrame/HOOKED_FUNCTION_CALL struct into rcx as the first
