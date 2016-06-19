@@ -435,7 +435,6 @@ class SyncPythonExFunctions(InvariantAwareCommand):
 
         self._verbose("Synchronized file.")
 
-
 class FindMultilineMacros(InvariantAwareCommand):
     """
     Prints a list of all multi-line macros found in the incoming source file.

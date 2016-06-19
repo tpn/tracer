@@ -402,6 +402,40 @@ class TestTracer(InvariantAwareCommand):
         ipdb.set_trace()
         self.dll = dll
 
+class TracerDriverIoctlDeviceExtensionSize(InvariantAwareCommand):
+    """
+    Issues a IOCTL_TRACER_CONTROL_DEVEXT_SIZE and prints the response.
+    """
+
+    def run(self):
+        from tracer.device import TracerControlDevice
+
+        device = TracerControlDevice.create(
+            conf=self.conf,
+            options=self.options
+        )
+
+        with device:
+            self._out(str(device.device_extension_size))
+
+
+class TracerDriverIoctlReadCr3(InvariantAwareCommand):
+    """
+    Issues a IOCTL_TRACER_CONTROL_READ_CR3 and prints the response.
+    """
+
+    def run(self):
+        from tracer.device import TracerControlDevice
+
+        device = TracerControlDevice.create(
+            conf=self.conf,
+            options=self.options
+        )
+
+        with device:
+            self._out(str(device.cr3))
+
+
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
