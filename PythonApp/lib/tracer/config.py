@@ -562,4 +562,12 @@ class Config(RawConfigParser):
         exe = ProcessWrapper(self.sqllocaldb_exe_path)
         return exe
 
+    @property
+    @memoize
+    def tracer_control_device_win32_name(self):
+        from pywintypes import Unicode
+        name = self.get('tracer_control_driver', 'win32_device_name')
+        return Unicode(name)
+
+
 # vim:set ts=8 sw=4 sts=4 tw=78 et:
