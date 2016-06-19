@@ -253,16 +253,7 @@ RTL_API
 VOID
 WINAPI
 HookExit(
-    _In_    PHOOKED_FUNCTION_CALL Entry,
-    _In_    LARGE_INTEGER Timestamp
-    );
-
-RTL_API
-VOID
-WINAPI
-HookExit(
-    _In_    PHOOKED_FUNCTION_CALL Entry,
-    _In_    LARGE_INTEGER Timestamp
+    _In_    PHOOKED_FUNCTION_CALL Entry
     );
 
 

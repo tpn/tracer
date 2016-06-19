@@ -67,6 +67,19 @@ EntryHeader struct
         SavedRbp        dq      ?
 EntryHeader ends
 
+
+TIMESTAMP_TRACEFRAME macro Name, Reg
+
+        cpuid
+        rdtscp
+        mov     dword ptr TraceFrame.TscAux.&Name&[&Reg&], ecx
+
+        shl     rdx, 32         ; low part -> high part
+        or      rdx, rax        ; merge low part into rdx
+        mov     qword ptr TraceFrame.Timestamp.&Name&[&Reg&], rdx
+
+        endm
+
 ;++
 ;
 ; VOID
@@ -183,17 +196,6 @@ Locals struct
 
 Locals ends
 
-TIMESTAMP_TRACEFRAME macro Name, Reg
-
-        cpuid
-        rdtscp
-        mov     dword ptr TraceFrame.TscAux.&Name&[&Reg&], ecx
-
-        shl     rdx, 32         ; low part -> high part
-        or      rdx, rax        ; merge low part into rdx
-        mov     qword ptr TraceFrame.Timestamp.&Name&[&Reg&], rdx
-
-        endm
 
         NESTED_ENTRY HookFrame, _TEXT$00
 
