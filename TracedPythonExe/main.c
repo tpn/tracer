@@ -23,7 +23,7 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
     }                                                                \
 } while (0)
 
-typedef struct _PYTHON_TRACER_SESSION {
+typedef struct _TRACED_PYTHON_SESSION {
 
     //
     // Size of the entire structure, in bytes.
@@ -43,6 +43,10 @@ typedef struct _PYTHON_TRACER_SESSION {
     //
 
     LIST_ENTRY ListEntry;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Modules
+    ////////////////////////////////////////////////////////////////////////////
 
     //
     // System modules.
@@ -81,13 +85,13 @@ typedef struct _PYTHON_TRACER_SESSION {
     HMODULE PythonModule;
     HMODULE PythonTracerModule;
 
-    //
+    ////////////////////////////////////////////////////////////////////////////
     // End of modules.
-    //
+    ////////////////////////////////////////////////////////////////////////////
 
-    //
+    ////////////////////////////////////////////////////////////////////////////
     // Tracer control driver.
-    //
+    ////////////////////////////////////////////////////////////////////////////
 
     //
     // Name of the device.
@@ -100,6 +104,14 @@ typedef struct _PYTHON_TRACER_SESSION {
     //
 
     HANDLE TracerControlDevice;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // End of tracer control driver.
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Functions and data structure pointers.
+    ////////////////////////////////////////////////////////////////////////////
 
     //
     // Shell32's CommandLineToArgvW function.
@@ -153,13 +165,29 @@ typedef struct _PYTHON_TRACER_SESSION {
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
-} PYTHON_TRACER_SESSION, *PPYTHON_TRACER_SESSION;
+} TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION;
 
-BOOL
-InitializePythonTracerSession(
-    _Out_bytecap_(*Size) PPYTHON_TRACER_SESSION,
-    _Inout_ PULONG Size
+NTSTATUS
+InitializeTracedPythonSession(
+    _Out_   PTRACED_PYTHON_SESSION Session,
+    _In_    PALLOCATION_ROUTINE AllocationRoutine,
+    _Inopt_ PALLOCATION_CONTEXT AllocationContext,
+    _In_    PFREE_ROUTINE FreeRoutine,
+    _Inopt_ PFREE_CONTEXT FreeContext
     )
+/*--
+Routine Description:
+
+    This function initializes a TRACED_PYTHON_SESSION structure, using the
+    memory allocation functions passed in as parameters.  If any errors occur
+    during initialization after some memory has already been allocated, the
+    free routine will be called to clean it up.
+
+Arguments:
+
+    Session - Supplies the pointer to the TRACED_PYTHON_SESSION.
+
+--*/
 {
     BOOL Success;
 
