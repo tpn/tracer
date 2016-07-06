@@ -1,22 +1,5 @@
 #include "stdafx.h"
 
-#include "PathHack.h"
-
-/*
-typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
-typedef PCHAR (*PPY_GET_PREFIX)(VOID);
-typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
-typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
-typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
-
-typedef PPY_MAIN *PPPY_MAIN;
-typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
-typedef PPY_GET_EXEC_PREFIX *PPPY_GET_EXEC_PREFIX;
-typedef PPY_GET_PROGRAM_NAME *PPPY_GET_PROGRAM_NAME;
-typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
-*/
-
-
 typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
   _In_  PWSTR  CommandLine,
   _Out_ PLONG  NumberOfArgs
@@ -40,116 +23,157 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
     }                                                                \
 } while (0)
 
-#define HOOK(Source, Dest) do { \
-    if (!Hook(Rtl, Source, Dest, NULL)) { \
-        OutputDebugStringA("Failed to hook " #Source " ->" #Dest); \
-        goto End; \
-    } \
-} while (0);
+typedef struct _PYTHON_TRACER_SESSION {
 
+    //
+    // Size of the entire structure, in bytes.
+    //
 
-PCHAR
-Our_Py_GetPath(void)
-{
-    return (PCHAR)"";
-}
+    USHORT Size;
 
-PCHAR
-Our_Py_GetPrefix(void)
-{
-    return (PCHAR)PythonPrefix;
-}
+    //
+    // Padding out to 8 bytes.
+    //
 
-CONST PCHAR
-Our_Py_GetExecPrefix(void)
-{
-    return Our_Py_GetPrefix();
-}
+    USHORT Unused1;
+    ULONG  Unused2;
 
-PCHAR
-Our_Py_GetProgramFullPath(void)
-{
-    return (PCHAR)PythonExePath;
-}
+    //
+    // Linked-list entry.
+    //
 
-PPYGC_COLLECT Original_PyGC_Collect = NULL;
+    LIST_ENTRY ListEntry;
 
-SSIZE_T
-Our_PyGC_Collect(VOID)
-{
-    OutputDebugStringA("Entered Our_PyGC_Collect()\n");
-    return Original_PyGC_Collect();
-}
+    //
+    // System modules.
+    //
 
-PVOID
-HeapAllocationRoutine(
-    _In_ HANDLE HeapHandle,
-    _In_ ULONG ByteSize
+    HMODULE Kernel32Module;
+    HMODULE Shell32Module;
+    HMODULE User32Module;
+    HMODULE Advapi32Module;
+
+    //
+    // Msvc modules.
+    //
+
+    HMODULE Msvcr90Module;
+
+    //
+    // The target Python modules.
+    //
+
+    HMODULE Python2Module;
+    HMODULE Python3Module;
+
+    //
+    // Our core tracing/support modules.
+    //
+
+    HMODULE RtlModule;
+    HMODULE HookModule;
+    HMODULE TracerModule;
+
+    //
+    // Python-specific tracer modules.
+    //
+
+    HMODULE PythonModule;
+    HMODULE PythonTracerModule;
+
+    //
+    // End of modules.
+    //
+
+    //
+    // Tracer control driver.
+    //
+
+    //
+    // Name of the device.
+    //
+
+    PUNICODE_STRING TracerControlDeviceName;
+
+    //
+    // Handle to the device.
+    //
+
+    HANDLE TracerControlDevice;
+
+    //
+    // Shell32's CommandLineToArgvW function.
+    //
+
+    PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
+
+    //
+    // Rtl-specific functions/data.
+    //
+
+    PINITIALIZE_RTL InitializeRtl;
+    PRTL Rtl;
+
+    //
+    // Hook-specific functions.
+    //
+
+    PHOOK Hook;
+    PUNHOOK Unhook;
+    PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
+
+    //
+    // Tracer-specific initializers.
+    //
+
+    PINITIALIZE_TRACE_STORES InitializeTraceStores;
+    PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
+    PINITIALIZE_TRACE_SESSION InitializeTraceSession;
+
+    //
+    // Pointers to tracer-specific data structures initialized by the routines
+    // above.
+    //
+
+    PTRACE_STORES TraceStores;
+    PTRACE_SESSION TraceSession;
+    PTRACE_CONTEXT TraceContext;
+
+    //
+    // Python-specific initializers.
+    //
+
+    PINITIALIZE_PYTHON InitializePython;
+    PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+
+    //
+    // Pointers to Python-specific data structures initialized by the routines
+    // above.
+
+    PPYTHON Python;
+    PPYTHON_TRACE_CONTEXT PythonTraceContext;
+
+} PYTHON_TRACER_SESSION, *PPYTHON_TRACER_SESSION;
+
+BOOL
+InitializePythonTracerSession(
+    _Out_bytecap_(*Size) PPYTHON_TRACER_SESSION,
+    _Inout_ PULONG Size
     )
 {
-    return HeapAlloc(HeapHandle, 0, ByteSize);
+    BOOL Success;
+
+
+
+    Success = TRUE;
+    goto End;
+
+Error:
+    Success = FALSE;
+
+End:
+    return Success;
 }
-
-typedef ULONG (*PTEST_FUNC)(
-    _In_    ULONG   Arg1,
-    _In_    ULONG   Arg2,
-    _In_    ULONG   Arg3,
-    _In_    ULONG   Arg4
-    );
-
-ULONG
-TestFunc(ULONG Arg1, ULONG Arg2, ULONG Arg3, ULONG Arg4)
-{
-    return Arg1 + Arg2 + Arg3 + Arg4;
-}
-
-VOID
-CALLBACK
-HookEntryCallback(
-    _In_    PHOOKED_FUNCTION_CALL Call,
-    _In_    LARGE_INTEGER Timestamp
-    )
-{
-    PHOOKED_FUNCTION Function = Call->HookedFunction;
-
-    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
-    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
-    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
-    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
-
-
-    PrefaultPage(&Arg1);
-    PrefaultPage(&Arg2);
-    PrefaultPage(&Arg3);
-    PrefaultPage(&Arg4);
-
-}
-
-VOID
-CALLBACK
-HookExitCallback(
-    _In_    PHOOKED_FUNCTION_CALL Call,
-    _In_    LARGE_INTEGER Timestamp
-    )
-{
-    PHOOKED_FUNCTION Function = Call->HookedFunction;
-    ULONG Result;
-
-    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
-    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
-    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
-    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
-
-    Result = (ULONG)Call->ReturnValue.LowPart;
-
-
-    PrefaultPage(&Arg1);
-    PrefaultPage(&Arg2);
-    PrefaultPage(&Arg3);
-    PrefaultPage(&Arg4);
-
-}
-
 
 VOID
 WINAPI
@@ -158,12 +182,6 @@ mainCRTStartup()
     BOOL Success;
     DWORD ExitCode = 1;
 
-    HMODULE Kernel32;
-    HMODULE Shell32;
-    HMODULE PythonModule;
-    HMODULE PythonApiModule;
-    HMODULE RtlModule;
-    HMODULE HookModule;
 
     PHOOK Hook;
     PUNHOOK Unhook;

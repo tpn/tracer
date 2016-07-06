@@ -12,8 +12,15 @@ else:
         basedir = r'S:\trace'
     else:
         basedir = r'C:\Users\Trent\Home\data'
-    sys.path.insert(0, r'c:\users\trent\home\src\tpn\lib')
-    sys.path.insert(0, r'c:\users\trent\home\src\tracer\PythonApp\lib')
+    try:
+        import tpn
+    except ImportError:
+        sys.path.insert(0, r'c:\users\trent\home\src\tpn\lib')
+
+    try:
+        import tracer
+    except:
+        sys.path.insert(0, r'c:\users\trent\home\src\tracer\PythonApp\lib')
 
 import tpn
 
@@ -43,24 +50,27 @@ reload(tracer)
 
 use_debug = True
 
-#print("Press any key to continue.")
-#dummy = sys.stdin.read(1)
+def pause():
+    print("Press any key to continue.")
+    dummy = sys.stdin.read(1)
 
 if use_debug:
-    #print("using debug")
+    print("using debug")
     t = tracer.Tracer.create_debug(basedir, conf)
 else:
-    #print("not using debug")
+    print("not using debug")
     t = tracer.Tracer.create_release(basedir, conf)
 
-#print("Created tracer...")
-#print("Press any key to continue.")
-#dummy = sys.stdin.read(1)
+print("Created tracer...")
+print("Press any key to continue.")
+dummy = sys.stdin.read(1)
 
 #t.add_module('tpn')
 t.enable_memory_tracing()
 t.enable_io_counters_tracing()
 t.enable_handle_count_tracing()
+
+pause()
 
 with t:
     import numpy as np
@@ -68,6 +78,7 @@ with t:
     for i in range(1000):
         bits_table(output=null_writer)
 
+pause()
 #print("Press any key to continue.")
 #dummy = sys.stdin.read(1)
 

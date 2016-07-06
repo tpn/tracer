@@ -7,6 +7,14 @@ extern "C" {
 
 #include "PythonTracer.h"
 
+BOOL
+InitializePythonTraceSession(
+    _In_ PUNICODE_STRING BaseDirectory
+    )
+{
+    return FALSE;
+}
+
 PVOID
 TraceStoreAllocationRoutine(
     _In_opt_ PVOID AllocationContext,
