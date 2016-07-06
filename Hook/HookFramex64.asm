@@ -1,36 +1,36 @@
-        title "Hook Library AMD64 Assembly Support Routines"
+        title "Hook Frame AMD64 Assembly Support Routines"
+        option casemap:none
 ;++
 ;
 ; Copyright (c) Trent Nelson, 2016.
 ;
 ; Module Name:
 ;
-;   Hookx64.asm
+;   HookFramex64.asm
 ;
 ; Abstract:
 ;
-;   This module implements the hooking prolog and epilog functions.
+;   This module implements support for tracing a hooked C function call.
 ;
 ;--
 
 
 include ksamd64.inc
 
-Function struct
+PVOID typedef dq
+ULONG typedef dw
+ULONG64 typedef dq
+
+ALLOCATION_ROUTINE typedef proto far AllocationContext:PVOID, ByteSize:ULONG
+PALLOCATION_ROUTINE typedef far ptr ALLOCATION_ROUTINE
+
+FUNCTION struct
     Hash                dq      ?
-    AllocationRoutine   dq      ?
+    AllocationRoutine   PALLOCATION_ROUTINE ?
     AllocationContext   dq      ?
     Rtl                 dq      ?
     OriginalAddress     dq      ?
     ContinuationAddress dq      ?
-    HookProlog          dq      ?
-    HookEntry           dq      ?
-    EntryCallback       dq      ?
-    EntryContext        dq      ?
-    HookEpilog          dq      ?
-    HookExit            dq      ?
-    ExitCallback        dq      ?
-    ExitContext         dq      ?
     Name                dq      ?
     Module              dq      ?
     Signature           dq      ?
@@ -39,34 +39,9 @@ Function struct
     NumberOfParameters  dw      ?
     SizeOfReturnValue   dw      ?
     Unused              dd      ?
-Function ends
+FUNCTION ends
 
-FunctionPointer typedef far ptr Function
-
-EntryFrame struct
-    ReturnValue     dq      ?       ; rax value after original func called
-    ExitTimestamp   dq      ?       ; exit timestamp
-    EntryTimestamp  dq      ?       ; entry timestamp
-    Rflags          dq      ?       ; rflags
-    HookedFunction  dq      ?       ; function pointer from rax
-    SavedRbp        dq      ?       ; saved rbp
-    ReturnAddress   dq      ?       ; pushed onto the stack before the call
-    HomeRcx         dq      ?       ; home param 1
-    HomeRdx         dq      ?       ; home param 2
-    HomeR8          dq      ?       ; home param 3
-    HomeR9          dq      ?       ; home param 4
-EntryFrame ends
-
-EntryHeader struct
-    FrameRecord     dq      ?
-    ReturnValue     dq      ?
-    ExitTimestamp   dq      ?
-    EntryTimestamp  dq      ?
-    HookedFunction  dq      ?
-    Rflags          dq      ?
-    SavedRbp        dq      ?
-EntryHeader ends
-
+PFUNCTION typedef far ptr FUNCTION
 
 TIMESTAMP_TRACEFRAME macro Name, Reg
 
@@ -179,6 +154,8 @@ TraceFrame struct
 
 TraceFrame ends
 
+echo Size of TraceFrame: %(sizeof TraceFrame)
+
 HomeParams struct
 
         ReturnAddress           dq      ?       ; 8     32      40      (28h)
@@ -199,12 +176,6 @@ Locals struct
     CalleeHomeRdx   dq      ?       ; 8     16      24      (18h)
     CalleeHomeR8    dq      ?       ; 8     8       16      (10h)
     CalleeHomeR9    dq      ?       ; 8     0       8       (08h)
-
-    SavedRsi        dq      ?
-    SavedRdi        dq      ?
-    SavedRbx        dq      ?
-    SavedRbp        dq      ?
-    SavedR12        dq      ?
 
     ReturnValue dq  ?
     TscAux TSC_AUX { }
@@ -229,56 +200,30 @@ Locals struct
 Locals ends
 
 
-        NESTED_ENTRY HookFrame2, _TEXT$00, HookFrameHandler
+        NESTED_ENTRY HookedTraceFrame, _TEXT$00, HookedTraceFrameHandler
+
+        rex_push_reg rbp
+        set_frame rbp, 8
+
+        rex_push_eflags
+
+        rex_push_reg rsi
+        rex_push_reg rdi
+        rex_push_reg rbx
+        rex_push_reg r13
+
+        alloc_stack sizeof(Locals)
+
+        END_PROLOGUE
 
 ;
-; Home our parameter registers.  We do this before we fiddle with the stack
+; Home our parameter registers.
 ; pointer below.
 ;
-
         save_reg rcx, Params.HomeRcx[rsp]   ; home rcx (param 1)
         save_reg rdx, Params.HomeRdx[rsp]   ; home rdx (param 2)
         save_reg r8,  Params.HomeR8x[rsp]   ; home r8  (param 3)
         save_reg r9,  Params.HomeR9x[rsp]   ; home r9  (param 4)
-
-;
-; Save our flags to the stack first.  We don't use rex_push_eflags here, as
-; that includes an `.allocstack 8`, which is unnecessary as we factor the size
-; in below when we do the single alloc_stack for the entire frame.
-;
-
-        pushfq                              ; push rflags to stack
-
-;
-; Allocate stack space for our "locals", which is a struct that overlays our
-; stack at the base frame pointer and includes all tracing information, space
-; for non-volatile registers, and callee home parameter space.
-;
-
-        alloc_stack sizeof(Locals)
-
-;
-; Save the pointer to the Function struct (HOOKED_FUNCTION in C) that the
-; hooking machinery will have saved for us in rax.
-;
-
-        save_reg rax, Locals.HookedFunction[rsp]
-
-;
-; Save non-volatile registers.
-;
-
-        save_reg rsi, Locals.SavedRsi[rsp]
-        save_reg rdi, Locals.SavedRdi[rsp]
-        save_reg rbx, Locals.SavedRbx[rsp]
-        save_reg rbp, Locals.SavedRbp[rsp]
-        save_reg r12, Locals.SavedR12[rsp]
-        save_reg r13, Locals.SavedR13[rsp]
-        save_reg r14, Locals.SavedR14[rsp]
-        save_reg r15, Locals.SavedR15[rsp]
-
-        END_PROLOGUE
-
 ;
 ; Use rbp as the base frame pointer.
 ;
@@ -459,7 +404,7 @@ HfEnd:  BEGIN_EPILOGUE
 ;--
         LEAF_ENTRY HookFrameExceptionHandler, _TEXT$00
 
-        lea rax,
+        ;lea rax,
 
 
         LEAF_END HookFrameExceptionHandler, _TEXT$00

@@ -30,7 +30,7 @@ static CONST UNICODE_STRING Win32DeviceName = \
 #define LEAVE_STATUS(Name, Status)
 #define DEBUG(Message)
 #define DEBUG1(Message, Arg1)
-#define DEBUG1(Message, Arg1, Arg2)
+#define DEBUG2(Message, Arg1, Arg2)
 #endif
 
 _Use_decl_annotations_

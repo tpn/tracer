@@ -132,7 +132,8 @@
     <ClCompile Include="Hook.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="Hookx64.asm" Condition="'$(Platform)' == 'x64'" />
+    <MASM Include="HookFramex64.asm" />
+    <MASM Include="Hookx64.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
