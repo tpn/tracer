@@ -700,7 +700,7 @@ BOOL
 LoadPythonFunctions(
     _In_    HMODULE             PythonModule,
     _Inout_ PPYTHONFUNCTIONS    PythonFunctions
-)
+    )
 {
     if (!ARGUMENT_PRESENT(PythonModule)) {
         return FALSE;
