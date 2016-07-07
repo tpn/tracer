@@ -192,6 +192,7 @@ SetCSpecificHandler(_In_ HMODULE Module)
     return Status;
 }
 
+_Success_(return != 0)
 BOOL
 CALLBACK
 GetSystemTimerFunctionCallback(
@@ -1294,6 +1295,7 @@ Error:
     return Success;
 }
 
+_Success_(return != 0)
 _Check_return_
 BOOL
 FilesExistA(
@@ -1425,7 +1427,9 @@ FilesExistA(
     // Copy the volume prefix, then append the directory and joining backslash.
     //
 
-    CopyString(&Path, &ExtendedLengthVolumePrefixA);
+    if (!CopyString(&Path, &ExtendedLengthVolumePrefixA)) {
+        goto Error;
+    }
 
     if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
 	goto Error;
@@ -1524,6 +1528,7 @@ Error:
     return Success;
 }
 
+_Success_(return != 0)
 BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
@@ -3236,6 +3241,8 @@ CreateStringTable(
     StringTable->QuickSort = Rtl->qsort;
     StringTable->Compare = CompareStringCaseInsensitive;
 
+    *StringTablePointer = StringTable;
+
     return TRUE;
 }
 
@@ -3531,10 +3538,11 @@ LoadRtlExSymbols(
 
 }
 
+_Success_(return != 0)
 BOOL
 InitializeRtl(
-    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
-    _Inout_                   PULONG SizeOfRtl
+    _In_opt_bytecount_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_ PULONG SizeOfRtl
     )
 {
     HANDLE HeapHandle;
