@@ -7,6 +7,12 @@ extern "C" {
 
 #include "PythonTracer.h"
 
+//
+// Forward decls of DLL exports.
+//
+
+TRACER_API INITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+
 BOOL
 InitializePythonTraceSession(
     _In_ PUNICODE_STRING BaseDirectory

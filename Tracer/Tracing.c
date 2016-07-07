@@ -33,6 +33,8 @@ static const ULONG DefaultAddressTraceStoreMappingSize      = (1 << 16); // 64KB
 static const ULONG DefaultInfoTraceStoreSize                = (1 << 16); // 64KB
 static const ULONG DefaultInfoTraceStoreMappingSize         = (1 << 16); // 64KB
 
+TRACER_API INITIALIZE_TRACE_STORES InitializeTraceStores;
+
 _Check_return_
 BOOL
 CallSystemTimer(

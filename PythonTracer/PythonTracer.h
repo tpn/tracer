@@ -377,9 +377,7 @@ PyTraceReturn(
     );
 
 
-TRACER_API
-BOOL
-InitializePythonTraceContext(
+typedef BOOL (INITIALIZE_PYTHON_TRACE_CONTEXT)(
     _In_ PRTL Rtl,
     _Out_bytecap_(*SizeOfPythonTraceContext) PPYTHON_TRACE_CONTEXT
                                              PythonTraceContext,
@@ -389,6 +387,8 @@ InitializePythonTraceContext(
     _In_opt_ PPYTRACEFUNC PythonTraceFunction,
     _In_opt_ PVOID UserData
     );
+
+typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;
 
 TRACER_API
 VOID
