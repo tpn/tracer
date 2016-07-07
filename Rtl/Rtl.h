@@ -151,9 +151,8 @@ typedef union _LONG_INTEGER {
     LONG   LongPart;
 } LONG_INTEGER, *PLONG_INTEGER;
 
-
-typedef CHAR *PSZ;
-typedef const CHAR *PCSZ;
+typedef _Null_terminated_ CHAR *PSZ;
+//typedef const PSZ PCSZ;
 
 typedef struct _PROCESS_MEMORY_COUNTERS {
     DWORD  cb;
@@ -1898,7 +1897,7 @@ AppendCharAndStringAndCharToString(
     return TRUE;
 }
 
-
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 CreateUnicodeStringInline(
@@ -1946,18 +1945,23 @@ CopyUnicodeStringInline(
     Rtl->RtlCopyUnicodeString(Destination, Source);
 }
 
+_Success_(return != 0)
 FORCEINLINE
-VOID
+BOOL
 CopyString(
-    _Out_    PSTRING Destination,
+    _In_     PSTRING Destination,
     _In_opt_ PCSTRING Source
     )
 {
     USHORT Length;
 
-    if (!Source) {
+    if (!ARGUMENT_PRESENT(Destination)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Source)) {
         Destination->Length = 0;
-        return;
+        return FALSE;
     }
 
     Length = min(Destination->MaximumLength, Source->Length);
@@ -1968,6 +1972,7 @@ CopyString(
 
     Destination->Length = Length;
 
+    return TRUE;
 }
 
 

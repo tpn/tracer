@@ -217,7 +217,7 @@ typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    PULARGE_INTEGER NumberOfRecords
     );
 
-typedef _Check_return_ VOID (*PFREE_RECORDS)(
+typedef VOID (*PFREE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
     _In_    PVOID           Buffer

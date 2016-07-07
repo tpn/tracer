@@ -2508,6 +2508,7 @@ GetPythonStringInformation(
     return TRUE;
 }
 
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 WrapPythonStringAsString(
@@ -2639,6 +2640,7 @@ PythonAnsiHashInline(
     return TRUE;
 }
 
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 HashAndAtomizeAnsiInline(
