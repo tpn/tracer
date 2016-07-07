@@ -337,7 +337,7 @@ End:
 _Use_decl_annotations_
 VOID
 DestroyTracedPythonSession(
-    _Inout_ PPTRACED_PYTHON_SESSION SessionPointer
+    PPTRACED_PYTHON_SESSION SessionPointer
     )
 /*--
 Routine Description:
