@@ -8,3 +8,4 @@ Release
 *.opendb
 tags
 *.pyc
+Tracer.VC.db

@@ -53,7 +53,7 @@ CopyToMemoryMappedMemory(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
-)
+    )
 {
 
     //
@@ -2996,6 +2996,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+        GetProcAddress(Rtl->NtdllModule, "SearchPathW"))) {
+
+        if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+            GetProcAddress(Rtl->NtosKrnlModule, "SearchPathW"))) {
+
+            if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+                GetProcAddress(Rtl->Kernel32Module, "SearchPathW"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'SearchPathW'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
         GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
 
@@ -3578,3 +3593,5 @@ Debugbreak()
     __debugbreak();
 }
 
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

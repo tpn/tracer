@@ -2642,7 +2642,7 @@ InitializeTraceSession(
     _In_                                 PRTL           Rtl,
     _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
     _In_                                 PULONG         SizeOfTraceSession
-)
+    )
 {
     if (!TraceSession) {
         if (SizeOfTraceSession) {

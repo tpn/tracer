@@ -230,6 +230,23 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _Out_ PULONG Value
 );
 
+typedef DWORD (WINAPI *PSEARCHPATHW)(
+    _In_opt_    LPCWSTR     lpPath,
+    _In_        LPCWSTR     lpFileName,
+    _In_opt_    LPCWSTR     lpExtension,
+    _In_        DWORD       nBufferLength,
+    _Out_       LPWSTR      lpBuffer,
+    _Out_opt_   LPWSTR      lpFilePart
+    );
+
+typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
+  _In_  PWSTR  CommandLine,
+  _Out_ PLONG  NumberOfArgs
+);
+
+typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
+
+
 //
 // CRT functions.
 //
@@ -1278,6 +1295,7 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
     PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
+    PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
@@ -1503,15 +1521,19 @@ CreateBitmapIndexForString(
     _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
     );
 
+typedef VOID *PALLOCATION_CONTEXT;
+
 typedef PVOID (ALLOCATION_ROUTINE)(
-    _In_opt_ PVOID AllocationContext,
+    _In_opt_ PALLOCATION_CONTEXT AllocationContext,
     _In_ const ULONG ByteSize
     );
 
 typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
 
+typedef VOID *PFREE_CONTEXT;
+
 typedef VOID (FREE_ROUTINE)(
-    _In_opt_ PVOID Context,
+    _In_opt_ PFREE_CONTEXT Context,
     _In_ PVOID Buffer
     );
 

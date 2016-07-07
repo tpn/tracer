@@ -173,6 +173,11 @@ InitializeTracedPythonSession(
     _Inopt_ PFREE_CONTEXT FreeContext
     );
 
+VOID
+DestroyTracedPythonSession(
+    _Inout_ PPTRACED_PYTHON_SESSION Session
+    );
+
 #ifdef __cpp
 } // extern "C"
 #endif
