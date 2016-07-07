@@ -1,4 +1,11 @@
-#include "stdafx.h"
+#include "TracedPythonSession.h"
+
+//
+// Forward decls of DLL exports.
+//
+
+TRACER_API INITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
+TRACER_API DESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
 PVOID
 HeapAllocationRoutine(
@@ -21,11 +28,11 @@ HeapFreeRoutine(
 _Use_decl_annotations_
 BOOL
 InitializeTracedPythonSession(
-    _Out_   PPTRACED_PYTHON_SESSION SessionPointer,
-    _Inopt_ PALLOCATION_ROUTINE AllocationRoutine,
-    _Inopt_ PALLOCATION_CONTEXT AllocationContext,
-    _Inopt_ PFREE_ROUTINE FreeRoutine,
-    _Inopt_ PFREE_CONTEXT FreeContext
+    PPTRACED_PYTHON_SESSION SessionPointer,
+    PALLOCATION_ROUTINE AllocationRoutine,
+    PALLOCATION_CONTEXT AllocationContext,
+    PFREE_ROUTINE FreeRoutine,
+    PFREE_CONTEXT FreeContext
     )
 /*--
 Routine Description:
@@ -199,7 +206,7 @@ Returns:
 
 #define LOAD(Module, Name) do {                      \
     Session->Module = LoadLibraryA(Name);            \
-    if (!Module) {                                   \
+    if (!Session->Module) {                          \
         OutputDebugStringA("Failed to load " #Name); \
         goto Error;                                  \
     }                                                \
@@ -226,7 +233,7 @@ Returns:
 
 #define RESOLVE(Module, Type, Name) do {                                  \
     Session->Name = (Type)GetProcAddress(Session->Module, #Name);         \
-    if (!Name) {                                                          \
+    if (!Session->Name) {                                                 \
         OutputDebugStringA("Failed to resolve " #Module " !" #Name "\n"); \
         goto Error;                                                       \
     }                                                                     \
@@ -239,13 +246,11 @@ Returns:
     RESOLVE(TracerModule, PINITIALIZE_TRACE_CONTEXT, InitializeTraceContext);
     RESOLVE(TracerModule, PINITIALIZE_TRACE_SESSION, InitializeTraceSession);
 
-    RESOLVE(Python, PINITIALIZE_PYTHON, InitializePython);
+    RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);
 
-    RESOLVE(
-        PythonTracer,
-        PINITIALIZE_PYTHON_TRACE_CONTEXT,
-        InitializePythonTraceContext
-    );
+    RESOLVE(PythonTracerModule,
+            PINITIALIZE_PYTHON_TRACE_CONTEXT,
+            InitializePythonTraceContext);
 
     //
     // All of our modules modules use the same pattern for initialization
@@ -255,6 +260,7 @@ Returns:
     // macro glue.
     //
 
+#undef ALLOCATE
 #define ALLOCATE(Target, Type) do {                                        \
     Session->Target = (Type)(                                              \
         Session->AllocationRoutine(                                        \
@@ -320,6 +326,7 @@ End:
     //
     // Update the user's pointer if we were successful.
     //
+
     if (Success) {
         *SessionPointer = Session;
     }
@@ -330,7 +337,7 @@ End:
 _Use_decl_annotations_
 VOID
 DestroyTracedPythonSession(
-    _Inout_ PPTRACED_PYTHON_SESSION SessionPointer,
+    _Inout_ PPTRACED_PYTHON_SESSION SessionPointer
     )
 /*--
 Routine Description:

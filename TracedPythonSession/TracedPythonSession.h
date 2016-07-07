@@ -163,20 +163,26 @@ typedef struct _TRACED_PYTHON_SESSION {
 
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 
+typedef
 _Success_(return != 0)
-BOOL
-InitializeTracedPythonSession(
-    _Out_   PTRACED_PYTHON_SESSION Session,
-    _Inopt_ PALLOCATION_ROUTINE AllocationRoutine,
-    _Inopt_ PALLOCATION_CONTEXT AllocationContext,
-    _Inopt_ PFREE_ROUTINE FreeRoutine,
-    _Inopt_ PFREE_CONTEXT FreeContext
+BOOL (INITIALIZE_TRACED_PYTHON_SESSION)(
+    _Out_    PPTRACED_PYTHON_SESSION Session,
+    _In_opt_ PALLOCATION_ROUTINE AllocationRoutine,
+    _In_opt_ PALLOCATION_CONTEXT AllocationContext,
+    _In_opt_ PFREE_ROUTINE FreeRoutine,
+    _In_opt_ PFREE_CONTEXT FreeContext
     );
 
-VOID
-DestroyTracedPythonSession(
+typedef  INITIALIZE_TRACED_PYTHON_SESSION \
+        *PINITIALIZE_TRACED_PYTHON_SESSION;
+
+typedef
+VOID (DESTROY_TRACED_PYTHON_SESSION)(
     _Inout_ PPTRACED_PYTHON_SESSION Session
     );
+
+typedef  DESTROY_TRACED_PYTHON_SESSION \
+        *PDESTROY_TRACED_PYTHON_SESSION;
 
 #ifdef __cpp
 } // extern "C"
