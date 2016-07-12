@@ -46,6 +46,35 @@ include ksamd64.inc
 
         LEAF_END ReadCr3, _TEXT$00
 
+;++
+;
+; VOID
+; ReadDr7(_Out_ PULONGLONG Buffer)
+;
+; Routine Description:
+;
+;   This routine reads the Dr7 control register and writes the contents into
+;   the destination address pointed to by Buffer.
+;
+; Arguments:
+;
+;   Buffer - A pointer to the destination address.
+;
+; Return Value:
+;
+;   None
+;
+;--
+
+        LEAF_ENTRY ReadDr7, _TEXT$00
+
+        mov     rax, Dr7        ; Save Dr7 into rax.
+        mov     [rcx], rax      ; Write to user's buffer.
+        xor     rax, rax        ; Clear rax as we don't return a value.
+        ret
+
+        LEAF_END ReadDr7, _TEXT$00
+
 ; vim:set tw=80 ts=8 sw=8 sts=8 expandtab syntax=masm formatoptions=croql      :
 
 end

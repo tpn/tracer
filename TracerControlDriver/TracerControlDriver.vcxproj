@@ -156,6 +156,8 @@
   <ItemGroup>
     <ClInclude Include="DriverUtil.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="TracerControlConstants.h" />
+    <ClInclude Include="TracerControlDebug.h" />
     <ClInclude Include="TracerControlDriver.h" />
     <ClInclude Include="TracerControlDriverIoctl.h" />
   </ItemGroup>

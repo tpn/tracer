@@ -39,6 +39,12 @@
     <ClInclude Include="DriverUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TracerControlDebug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TracerControlConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="DriverUtil.asm">
