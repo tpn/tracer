@@ -9,3 +9,8 @@ Release
 tags
 *.pyc
 Tracer.VC.db
+build.err
+build.log
+msbuild.log
+sdv
+sdv.temp

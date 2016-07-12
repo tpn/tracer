@@ -1,41 +1,37 @@
+/*--
+
+
+--*/
+
 #pragma once
 
-#include "stdafx.h"
-#include <ntddk.h>
-#include "TracerControlDriverIoctl.h"
-
 //
-//
-typedef struct _TRACER_CONTROL_DEV_EXT {
-    USHORT Size;
-    USHORT Unused1;
-    ULONG Unused2;
-
-    HANDLE RegistryHandle;
-
-} TRACER_CONTROL_DEV_EXT, *PTRACER_CONTROL_DEV_EXT;
-
-//
-// Driver entry and dispatch declarations.
+// ReadCr3
 //
 
-DRIVER_INITIALIZE DriverEntry;
+typedef
+VOID
+(READ_CR3)(
+    _Out_ PULONGLONG Buffer
+    );
 
-__drv_dispatchType(IRP_MJ_DEVICE_CONTROL)
-DRIVER_DISPATCH TracerControlDeviceControl;
+typedef READ_CR3 *PREAD_CR3;
 
-__drv_dispatchType(IRP_MJ_CREATE)
-DRIVER_DISPATCH TracerControlCreate;
+extern READ_CR3 ReadCr3;
 
-__drv_dispatchType(IRP_MJ_CLOSE)
-DRIVER_DISPATCH TracerControlClose;
+//
+// ReadDr7
+//
 
-__drv_dispatchType(IRP_MJ_WRITE)
-DRIVER_DISPATCH TracerControlWrite;
+typedef
+VOID
+(READ_DR7)(
+    _Out_ PULONGLONG Buffer
+    );
 
-__drv_dispatchType(IRP_MJ_READ)
-DRIVER_DISPATCH TracerControlRead;
+typedef READ_DR7 *PREAD_DR7;
 
-DRIVER_UNLOAD TracerControlUnload;
+extern READ_DR7 ReadDr7;
+
 
 // vim: set ts=8 sw=4 sts=4 expandtab si ai                                    :
