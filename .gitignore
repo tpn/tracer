@@ -14,3 +14,4 @@ build.log
 msbuild.log
 sdv
 sdv.temp
+*.vcxproj.user

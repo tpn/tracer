@@ -184,6 +184,27 @@ VOID (DESTROY_TRACED_PYTHON_SESSION)(
 typedef  DESTROY_TRACED_PYTHON_SESSION \
         *PDESTROY_TRACED_PYTHON_SESSION;
 
+typedef
+_Success_(return != 0)
+_Check_return_
+__allocator
+PVOID
+(HEAP_ALLOCATION_ROUTINE)(
+    _In_ PALLOCATION_CONTEXT AllocationContext,
+    _In_ ULONG ByteSize
+    );
+
+typedef HEAP_ALLOCATION_ROUTINE *PHEAP_ALLOCATION_ROUTINE;
+
+typedef
+VOID
+(HEAP_FREE_ROUTINE)(
+    _In_ PFREE_CONTEXT FreeContext,
+    __deallocate(Mem) _In_ PVOID Buffer
+    );
+
+typedef HEAP_FREE_ROUTINE *PHEAP_FREE_ROUTINE;
+
 #ifdef __cpp
 } // extern "C"
 #endif
