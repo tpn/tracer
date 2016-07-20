@@ -15,30 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TracedPythonExe.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TracedPythonExe.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TraceStoreIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TracedPythonExe.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllmain.c">
+    <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
