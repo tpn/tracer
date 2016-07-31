@@ -1111,8 +1111,11 @@ FilesExistW(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
         //
+
         SanityCheck = (
             Filename &&
             Filename->Length > 0 &&
@@ -1122,6 +1125,10 @@ FilesExistW(
         if (!SanityCheck) {
             __debugbreak();
         }
+
+        //
+        // Update our local maximum filename length variable if applicable.
+        //
 
         if (Filename->Length > MaxFilenameLength) {
             MaxFilenameLength = Filename->Length;
@@ -1162,8 +1169,7 @@ FilesExistW(
 
         goto Error;
 
-    }
-    else {
+    } else {
 
         //
         // The combined size exceeds _MAX_PATH so allocate the required memory
@@ -1195,9 +1201,9 @@ FilesExistW(
     Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
 
     if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
-        !AppendUnicodeCharToUnicodeString(&Path, L'\\'))
-    {
-	goto Error;
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\')) {
+
+        goto Error;
     }
 
     //
@@ -1219,9 +1225,9 @@ FilesExistW(
         // We've already validated our lengths, so these should never fail.
         //
 
-	if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
-            !AppendUnicodeCharToUnicodeString(&Path, L'\0'))
-        {
+        if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0')) {
+
             goto Error;
         }
 
@@ -1233,8 +1239,7 @@ FilesExistW(
         Attributes = GetFileAttributesW(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
-            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
 
             //
             // File doesn't exist or is a directory.  Reset the path length
@@ -1346,8 +1351,11 @@ FilesExistA(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
         //
+
         SanityCheck = (
             Filename &&
             Filename->Length > 0 &&
@@ -1397,8 +1405,7 @@ FilesExistA(
 
         goto Error;
 
-    }
-    else {
+    } else {
 
         //
         // The combined size exceeds _MAX_PATH so allocate the required memory
@@ -1432,7 +1439,7 @@ FilesExistA(
     }
 
     if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
-	goto Error;
+        goto Error;
     }
 
     //
@@ -1466,8 +1473,7 @@ FilesExistA(
         Attributes = GetFileAttributesA(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
-            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
 
             //
             // File doesn't exist or is a directory.  Reset the path length
@@ -1561,8 +1567,6 @@ CreateUnicodeString(
                                      AllocationContext);
 
 }
-
-
 
 _Check_return_
 BOOL
