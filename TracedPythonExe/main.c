@@ -19,31 +19,8 @@ mainCRTStartup()
 
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
     PPY_MAIN Py_Main;
-    PPY_GET_PREFIX Py_GetPrefix;
-    PPY_GET_EXEC_PREFIX Py_GetExecPrefix;
-    PPY_GET_PROGRAM_FULL_PATH Py_GetProgramFullPath;
 
-    PPYGC_COLLECT PyGC_Collect;
-
-    //PPYOBJECT_MALLOC PyObject_Malloc;
-
-    //PPYOBJECT_GC_TRACK PyObject_GC_Track;
-    //PPYOBJECT_GC_UNTRACK PyObject_GC_UnTrack;
-    //PPYOBJECT_GC_DEL PyObject_GC_Del;
-
-    PYTHON PythonRecord;
-    PPYTHON Python = &PythonRecord;
-    ULONG SizeOfPython = sizeof(*Python);
-
-    HOOKED_FUNCTION Function;
-    PHOOKED_FUNCTION HookedFunction;
-    PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
-    PHOOK_FUNCTION HookFunction;
-    PVOID Buffer;
-    PCHAR BaseAddress = NULL;
-    USHORT Attempts = 10;
-    LONG_PTR Offset = 10485760; // 10MB
-
+    PCHAR PythonExePath;
     PWSTR CommandLine;
     LONG NumberOfArgs;
     PPWSTR UnicodeArgv;
@@ -51,16 +28,6 @@ mainCRTStartup()
     LONG Index;
     HANDLE HeapHandle;
     ULONG AllocSize;
-    //PCHAR Prefix;
-    //PCHAR ExecPrefix;
-    PTEST_FUNC TestFuncPointer = &TestFunc;
-    PCHAR Path;
-    USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
-
-    RTL RtlRecord;
-    PRTL Rtl = &RtlRecord;
-    ULONG SizeOfRtl = sizeof(*Rtl);
-    ULONG Result;
 
     CommandLine = GetCommandLineW();
     UnicodeArgv = CommandLineToArgvW(CommandLine, &NumberOfArgs);
