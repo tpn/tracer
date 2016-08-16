@@ -1,7 +1,6 @@
-#include "stdafx.h"
+#include <minwindef.h>
+#include <winnt.h>
 
-extern BOOL InitializeTracerConfig(VOID);
-extern VOID DestroyTracerConfig(VOID);
 
 BOOL
 APIENTRY
@@ -9,17 +8,16 @@ _DllMainCRTStartup(
     _In_    HMODULE     Module,
     _In_    DWORD       Reason,
     _In_    LPVOID      Reserved
-)
+    )
 {
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
-            return InitializeTracerConfig();
+            break;
         case DLL_THREAD_ATTACH:
             break;
         case DLL_THREAD_DETACH:
             break;
         case DLL_PROCESS_DETACH:
-            DestroyTracerConfig();
             break;
     }
 

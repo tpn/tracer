@@ -85,11 +85,5 @@
     <MASM Include="Hookx64.asm" Condition="'$(Platform)' == 'x64'">
       <Filter>Source Files</Filter>
     </MASM>
-    <MASM Include="Hookx64.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-    <MASM Include="HookFramex64.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
   </ItemGroup>
 </Project>

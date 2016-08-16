@@ -1100,6 +1100,26 @@ typedef ULONG (NTAPI *PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)(
     );
 
 //
+// Quad-word Bitmaps.  (Work in progress.)
+//
+
+typedef struct _RTL_BITMAP_EX {
+    ULONGLONG SizeOfBitMap; // Number of bits.
+    PULONGLONG Buffer;
+} RTL_BITMAP_EX, *PRTL_BITMAP_EX, **PPRTL_BITMAP_EX;
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP_EX)(
+    _Out_ PRTL_BITMAP_EX BitMapHeader,
+    _In_opt_ __drv_aliasesMem PULONGLONG BitMapBuffer,
+    _In_opt_ ULONGLONG SizeOfBitMap
+    );
+
+typedef VOID (NTAPI *PRTL_CLEAR_BIT_EX)(
+    _In_ PRTL_BITMAP_EX BitMapHeader,
+    _In_range_(<, BitMapHeader->SizeOfBitMap) ULONGLONG BitNumber
+    );
+
+//
 // CRC32 and CRC64
 //
 typedef ULONG (NTAPI *PRTLCRC32)(
@@ -1538,7 +1558,10 @@ typedef VOID (FREE_ROUTINE)(
 
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
-typedef BOOL (FILES_EXISTW)(
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL (FILES_EXISTW)(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1550,7 +1573,11 @@ typedef BOOL (FILES_EXISTW)(
 
 typedef FILES_EXISTW *PFILES_EXISTW;
 
-typedef BOOL (FILES_EXISTA)(
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FILES_EXISTA)(
     _In_      PRTL     Rtl,
     _In_      PSTRING  Directory,
     _In_      USHORT   NumberOfFilenames,
