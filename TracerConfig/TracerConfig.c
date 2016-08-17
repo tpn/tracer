@@ -1,4 +1,5 @@
 #include "TracerConfig.h"
+#include "TracerConfigPrivate.h"
 
 //__declspec(dllexport)
 //PINITIALIZE_TRACER_CONFIG InitializeTracerConfig;
@@ -8,13 +9,37 @@
 RTL_RUN_ONCE InitTracerConfigOnce = RTL_RUN_ONCE_INIT;
 
 __declspec(dllexport)
-PTRACER_CONFIG TracerConfig = NULL;
+PTRACER_CONFIG GlobalTracerConfig = NULL;
+
+BOOLEAN
+InitializeTracerConfigOnce(VOID)
+{
+    BOOLEAN Status;
+    PTRACER_CONFIG TracerConfig;
+
+    Status = CreateTracerConfig(&TracerConfig);
+    if (!Status) {
+        return Status;
+    }
+
+    Status = InitializeSimpleTracerConfigFields(TracerConfig);
+    if (!Status) {
+        return Status;
+    }
+
+    GlobalTracerConfig = TracerConfig;
+
+    return Status;
+}
 
 _Use_decl_annotations_
 __declspec(dllexport)
 BOOLEAN
 InitializeTracerConfig(VOID)
 {
+    if (!GlobalTracerConfig) {
+        return InitializeTracerConfigOnce();
+    }
 
-    return FALSE;
+    return TRUE;
 }

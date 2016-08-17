@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
+  <!-- Couldn't find where this is officially set for drivers, but eh, it's needed. -->
+  <PropertyGroup>
+    <DDKSpec>winV10.0</DDKSpec>
+    <DDKPlatform Condition="'$(Platform)' == 'x64'">x64</DDKPlatform>
+    <DDKPlatform Condition="'$(Platform)' == 'x86'">x86</DDKPlatform>
+  </PropertyGroup>
+
 	<!-- Derived from Program Files (x86)/MSBuild/Microsoft.Cpp/v4.0/V140/Platforms/x64/PlatformToolsets/WindowsKernelModeDriver10.0/Toolset.props -->
 	<PropertyGroup>
 		<!-- If MicrosoftKitRoot value is defined in the environment, then we define the WDKContentRoot based on that -->
@@ -55,7 +62,7 @@
       <PreprocessorDefinitions>_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ntdll.lib;ntoskrnl.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
     </Link>
     <Link Condition="'$(Platform)' == 'x64'">
       <TargetMachine>MachineX64</TargetMachine>
