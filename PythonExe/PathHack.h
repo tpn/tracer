@@ -24,13 +24,13 @@ static CONST CHAR PythonPrefix[] = \
 #else
 
 static CONST CHAR PythonExePath[] = \
-    "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python.exe";
+    "C:\\Users\\trent\\Anaconda2\\python.exe";
 
 static CONST CHAR PythonDllPath[] = \
-    "C:\\Users\\r541964\\Anaconda2\\envs\\py2711\\python27.dll";
+    "C:\\Users\\trent\\Anaconda2\\python27.dll";
 
 static CONST CHAR PythonPrefix[] = \
-    "C:\\Users\\r541964\\Anaconda2\\envs\\py2711";
+    "C:\\Users\\trent\\Anaconda2";
 
 #endif
 

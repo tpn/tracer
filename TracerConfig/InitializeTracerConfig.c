@@ -1,9 +1,9 @@
 #include "TracerConfig.h"
 
-_Success_(return !- 0)
+_Use_decl_annotations_
 BOOLEAN
 CreateTracerConfig(
-    _Out_ PPTRACER_CONFIG TracerConfigPointer
+    PPTRACER_CONFIG TracerConfigPointer
     )
 /*++
 
@@ -76,7 +76,20 @@ _Use_decl_annotations_
 BOOLEAN
 InitializeSimpleTracerConfigFields(
     PTRACER_CONFIG TracerConfig
-    );
+    )
+{
+    TracerConfig->Flags.EnableTraceSessionDirectoryCompression = TRUE;
+    TracerConfig->Flags.PrefaultPages = TRUE;
+
+#ifdef _DEBUG
+    TracerConfig->Flags.IsDebug = TRUE;
+#endif
+
+    TracerConfig->SupportedRuntimes.Python = TRUE;
+    TracerConfig->SupportedRuntimes.C = TRUE;
+
+    return TRUE;
+}
 
 
 
