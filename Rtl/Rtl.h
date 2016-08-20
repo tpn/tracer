@@ -250,6 +250,7 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
 // CRT functions.
 //
 
+#if 0
 typedef PVOID (__cdecl *PMALLOC)(
     _In_ SIZE_T Size
     );
@@ -267,7 +268,9 @@ typedef PVOID (__cdecl *PREALLOC)(
 typedef VOID (__cdecl *PFREE)(
     _In_ PVOID Pointer
     );
-
+#else
+#include "Memory.h"
+#endif
 
 typedef INT (__cdecl *PCRTCOMPARE)(
     _In_    CONST PVOID Key,
@@ -1801,6 +1804,36 @@ InitializeStringFromString(
 
 FORCEINLINE
 BOOL
+IsValidNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return (
+        String != NULL && 
+        String->Buffer != NULL &&
+        String->Length >= 1 &&
+        String->MaximumLength >= 2 &&
+        String->Length == String->MaximumLength-1 //&&
+        //((WCHAR)*(String->Buffer + String->Length)) == L"\0"
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return (
+        String != NULL && 
+        String->Buffer != NULL &&
+        String->Length >= 1 &&
+        String->MaximumLength >= 1
+    );
+}
+
+FORCEINLINE
+BOOL
 AppendUnicodeCharToUnicodeString(
     _Inout_ PUNICODE_STRING Destination,
     _In_    WCHAR           Char
@@ -2158,6 +2191,44 @@ InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 RTL_API
 BOOL
 LoadShlwapi(PRTL Rtl);
+
+#ifdef RTL_SECURE_ZERO_MEMORY
+FORCEINLINE
+PVOID
+RtlSecureZeroMemory(
+    _Out_writes_bytes_all_(cnt) PVOID ptr,
+    _In_ SIZE_T cnt
+    )
+{
+    volatile char *vptr = (volatile char *)ptr;
+
+#if defined(_M_AMD64)
+
+    __stosb((PUCHAR)((ULONG64)vptr), 0, cnt);
+
+#else
+
+    while (cnt) {
+
+#if !defined(_M_CEE) && (defined(_M_ARM) || defined(_M_ARM64))
+
+        __iso_volatile_store8(vptr, 0);
+
+#else
+
+        *vptr = 0;
+
+#endif
+
+        vptr++;
+        cnt--;
+    }
+
+#endif // _M_AMD64
+
+    return ptr;
+}
+#endif
 
 //
 // Verbatim copy of the doubly-linked list inline methods.

@@ -1,8 +1,9 @@
 #pragma once
 
 //#include "stdafx.h"
-#include <ntddk.h>
-
+//#include <ntddk.h>
+//#include <ntifs.h>
+#include "../Rtl/Rtl.h"
 
 //
 // Function typedefs.
@@ -12,10 +13,50 @@ typedef
 _Check_return_
 BOOLEAN
 (CREATE_TRACE_SESSION_DIRECTORY)(
-    _In_ PUNICODE_STRING Directory   
+    _In_ struct _TRACER_CONFIG *TracerConfig,
+    _Out_ PUNICODE_STRING Directory   
     );
 
 typedef CREATE_TRACE_SESSION_DIRECTORY *PCREATE_TRACE_SESSION_DIRECTORY;
+
+typedef
+_Check_return_
+BOOLEAN
+(CREATE_GLOBAL_TRACE_SESSION_DIRECTORY)(
+    _Out_ PUNICODE_STRING Directory   
+    );
+
+typedef CREATE_GLOBAL_TRACE_SESSION_DIRECTORY \
+    *PCREATE_GLOBAL_TRACE_SESSION_DIRECTORY;
+
+typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
+ 
+    //
+    // Size of the structure, in bytes.
+    //
+    
+    _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT Size;
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+    USHORT Padding[3];
+
+    //
+    // Fully-qualified UNICODE path names.  If the registry key
+    // "LoadDebugLibraries" was set, the DLL paths will represent
+    // debug versions of the libraries.
+    //
+    
+    UNICODE_STRING InstallationDirectory;
+    UNICODE_STRING BaseTraceDirectory;
+    UNICODE_STRING TracerDllPath;
+    UNICODE_STRING RtlDllPath;
+    UNICODE_STRING PythonDllPath;
+    UNICODE_STRING PythonTracerDllPath;
+
+} TRACER_PATHS, *PTRACER_PATHS;
 
 //
 // The tracer configuration structure.  The main purpose of this structure
@@ -64,19 +105,12 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     _Struct_size_bytes_(sizeof(ULONG)) struct {
 
         //
-        // When set, indicates that this structure is valid; a heap was
-        // created and all strings were successfully primed.
+        // When set, entry routines such as InitializeTracerConfig() and
+        // DestroyTracerConfig() should call __debugbreak() as soon as
+        // possible during startup.
         //
 
-        ULONG IsValid:1;
-
-        //
-        // When set, indicates we're a debug build.  This should be used
-        // to determine if the Debug versions of the DLLs should be loaded
-        // instead of the Release versions.
-        //
-
-        ULONG IsDebug:1;
+        ULONG DebugBreakOnEntry:1;
 
         //
         // N.B.: the remaining fields typically map 1-to-1 with corresponding
@@ -84,15 +118,22 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
         // 
 
         //
+        // When set, indicates that debug versions of the DLLs should be
+        // loaded instead of the release versions.  Defaults to FALSE.
+        //
+
+        ULONG LoadDebugLibraries:1;
+
+        //
         // When set, indicates that trace session directories will be created
-        // with compression enabled.
+        // with compression enabled.  Defaults to TRUE.
         //
 
         ULONG EnableTraceSessionDirectoryCompression:1;
 
         //
         // When set, indicates that the trace store mechanism should pre-fault
-        // pages ahead of time in a separate thread pool.
+        // pages ahead of time in a separate thread pool.  Defaults to TRUE.
         //
 
         ULONG PrefaultPages:1;
@@ -100,25 +141,23 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     } Flags;
 
     //
-    // Function pointer to the trace session directory initialization function.
+    // Function pointer to the allocator structure being used by this instance.
     //
 
-    PCREATE_TRACE_SESSION_DIRECTORY CreateTraceSessionDirectory;
+    PALLOCATOR Allocator;
 
     //
-    // Fully-qualified paths.
+    // Generic LIST_ENTRY that can be used to link multiple configs together.
+    // This is not used by the default global tracer configuration.
     //
 
-    UNICODE_STRING InstallationDir;
-    UNICODE_STRING BaseTraceDirectory;
-    UNICODE_STRING TracerDllPath;
-    UNICODE_STRING TracerDllDebugPath;
-    UNICODE_STRING RtlDllPath;
-    UNICODE_STRING RtlDllDebugPath;
-    UNICODE_STRING PythonDllPath;
-    UNICODE_STRING PythonDllDebugPath;
-    UNICODE_STRING PythonTracerDllPath;
-    UNICODE_STRING PythonTracerDllDebugPath;
+    LIST_ENTRY ListEntry;
+
+    //
+    // Paths loaded by the registry.
+    //
+
+    TRACER_PATHS Paths;
 
 } TRACER_CONFIG, *PTRACER_CONFIG, **PPTRACER_CONFIG;
 
@@ -127,13 +166,34 @@ typedef CONST PTRACER_CONFIG PCTRACER_CONFIG;
 typedef PCTRACER_CONFIG *PPCTRACER_CONFIG;
 
 typedef
+_Success_(return != 0)
+_Check_return_
+PTRACER_CONFIG
+(INITIALIZE_TRACER_CONFIG)(
+    _In_ PALLOCATOR Allocator,
+    _In_ PUNICODE_STRING RegistryPath
+    );
+typedef INITIALIZE_TRACER_CONFIG *PINITIALIZE_TRACER_CONFIG;
+
+typedef
+_Success_(return != 0)
 _Check_return_
 BOOLEAN
-(INITIALIZE_TRACER_CONFIG)(
-    _Out_ PPCTRACER_CONFIG TracerConfig
+(INITIALIZE_GLOBAL_TRACER_CONFIG)(VOID);
+typedef INITIALIZE_GLOBAL_TRACER_CONFIG *PINITIALIZE_GLOBAL_TRACER_CONFIG;
+
+typedef
+VOID
+(DESTROY_TRACER_CONFIG)(
+    _In_opt_ PTRACER_CONFIG TracerConfig
     );
+typedef DESTROY_TRACER_CONFIG *PDESTROY_TRACER_CONFIG;
+
+typedef
+VOID
+(DESTROY_GLOBAL_TRACER_CONFIG)(VOID);
+typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
+
 
 #define TRACER_CONFIG_POOL_TAG ((ULONG)'pCrT')
 #define TRACER_CONFIG_POOL_PRIORITY LowPoolPriority
-
-typedef INITIALIZE_TRACER_CONFIG *PINITIALIZE_TRACER_CONFIG;
