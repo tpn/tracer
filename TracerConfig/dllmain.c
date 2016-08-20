@@ -1,6 +1,7 @@
 #include <minwindef.h>
 #include <winnt.h>
 
+#include "TracerConfigPrivate.h"
 
 BOOL
 APIENTRY
@@ -12,12 +13,13 @@ _DllMainCRTStartup(
 {
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
-            break;
+            return InitializeGlobalTracerConfig();
         case DLL_THREAD_ATTACH:
             break;
         case DLL_THREAD_DETACH:
             break;
         case DLL_PROCESS_DETACH:
+            DestroyGlobalTracerConfig();
             break;
     }
 

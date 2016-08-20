@@ -2,14 +2,11 @@
 
 #include "TracerConfig.h"
 
-_Success_(return != 0)
-BOOLEAN
-CreateTracerConfig(
-    _Out_ PPTRACER_CONFIG TracerConfigPointer
-    );
+INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
+INITIALIZE_GLOBAL_TRACER_CONFIG InitializeGlobalTracerConfig;
 
-_Success_(return != 0)
-BOOLEAN
-InitializeSimpleTracerConfigFields(
-    _Out_ PTRACER_CONFIG TracerConfig
-    );
+DESTROY_TRACER_CONFIG DestroyTracerConfig;
+DESTROY_GLOBAL_TRACER_CONFIG DestroyGlobalTracerConfig;
+
+CREATE_TRACE_SESSION_DIRECTORY CreateTraceSessionDirectory;
+CREATE_GLOBAL_TRACE_SESSION_DIRECTORY CreateGlobalTraceSessionDirectory;
