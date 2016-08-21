@@ -1,5 +1,6 @@
 
 #include "TracerConfigPrivate.h"
+#include "TracerConfigConstants.h"
 #include "../Rtl/Rtl.h"
 
 VOID
