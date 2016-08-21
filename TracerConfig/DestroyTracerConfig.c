@@ -2,15 +2,15 @@
 #include "TracerConfigPrivate.h"
 #include "../Rtl/Rtl.h"
 
-#define FREE_UNICODE_BUFFER(Name) do { \
-    if (Paths->Name && Paths->Name.Buffer != NULL) { \
-        PVOID Buffer = Paths->Name.Buffer; \
-        __try { \
+#define FREE_UNICODE_BUFFER(Name) do {                   \
+    if (Paths->Name && Paths->Name.Buffer != NULL) {     \
+        PVOID Buffer = Paths->Name.Buffer;               \
+        __try {                                          \
             Allocator->Free(Allocator->Context, Buffer); \
-        } __except(EXCEPTION_EXECUTE_HANDLER) { \
-            NULL; \
-        } \
-    } \
+        } __except(EXCEPTION_EXECUTE_HANDLER) {          \
+            NULL;                                        \
+        }                                                \
+    }                                                    \
 } while (0)
 
 VOID
@@ -25,8 +25,9 @@ FreeUnicodeStringBuffer(
 
     __try {
         Allocator->Free(Allocator->Context, String->Buffer); 
+        String->Buffer = NULL;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        NULL;
+        String->Buffer = NULL;
     }
 
     return;

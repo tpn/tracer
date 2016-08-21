@@ -3,11 +3,12 @@
 
 #include <Windows.h>
 
-#pragma data_seg("Shared")
-__declspec(dllexport) PTRACER_CONFIG GlobalTracerConfig;
+#pragma data_seg(".shared")
+__declspec(dllexport)
+PTRACER_CONFIG GlobalTracerConfig = NULL;
 #pragma data_seg()
 
-#pragma comment(linker, "/section:Shared,rws")
+#pragma comment(linker, "/section:.shared,rws")
 
 MALLOC Malloc;
 CALLOC Calloc;
@@ -65,7 +66,10 @@ InitializeGlobalTracerConfig(VOID)
     Allocator.Free = Free;
     Allocator.Context = GetProcessHeap();
 
-    TracerConfig = InitializeTracerConfig(&Allocator, &RegistryPath);
+    TracerConfig = InitializeTracerConfig(
+        &Allocator,
+        (PUNICODE_STRING)&RegistryPath
+    );
 
     if (!TracerConfig) {
         return FALSE;
@@ -78,7 +82,7 @@ InitializeGlobalTracerConfig(VOID)
 
 _Use_decl_annotations_
 VOID
-DestroyGlobalTraceSession(VOID)
+DestroyGlobalTracerConfig(VOID)
 {
     DestroyTracerConfig(GlobalTracerConfig);
     return;

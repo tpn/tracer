@@ -9,4 +9,3 @@ DESTROY_TRACER_CONFIG DestroyTracerConfig;
 DESTROY_GLOBAL_TRACER_CONFIG DestroyGlobalTracerConfig;
 
 CREATE_TRACE_SESSION_DIRECTORY CreateTraceSessionDirectory;
-CREATE_GLOBAL_TRACE_SESSION_DIRECTORY CreateGlobalTraceSessionDirectory;
