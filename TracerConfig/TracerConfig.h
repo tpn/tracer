@@ -14,7 +14,7 @@ _Check_return_
 BOOLEAN
 (CREATE_TRACE_SESSION_DIRECTORY)(
     _In_ struct _TRACER_CONFIG *TracerConfig,
-    _Out_ PUNICODE_STRING Directory   
+    _Out_ PUNICODE_STRING Directory
     );
 
 typedef CREATE_TRACE_SESSION_DIRECTORY *PCREATE_TRACE_SESSION_DIRECTORY;
@@ -23,18 +23,18 @@ typedef
 _Check_return_
 BOOLEAN
 (CREATE_GLOBAL_TRACE_SESSION_DIRECTORY)(
-    _Out_ PUNICODE_STRING Directory   
+    _Out_ PUNICODE_STRING Directory
     );
 
 typedef CREATE_GLOBAL_TRACE_SESSION_DIRECTORY \
     *PCREATE_GLOBAL_TRACE_SESSION_DIRECTORY;
 
 typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
- 
+
     //
     // Size of the structure, in bytes.
     //
-    
+
     _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT Size;
 
     //
@@ -44,11 +44,11 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     USHORT Padding[3];
 
     //
-    // Installation directory and the base trace data directory 
+    // Installation directory and the base trace data directory
     // (where trace session directories are created).  These values
     // are read from the registry.
     //
-    
+
     UNICODE_STRING InstallationDirectory;
     UNICODE_STRING BaseTraceDirectory;
 
@@ -82,7 +82,7 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_SUPPORTED_RUNTIMES {
 
 //
 // Tracer configuration flags.  Map to REG_DWORD entries of the same name.
-// 
+//
 
 typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
@@ -159,11 +159,11 @@ typedef struct _TRACE_SESSION_DIRECTORIES {
 //
 
 typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
- 
+
     //
     // Size of the structure, in bytes.
     //
-    
+
     _Field_range_(==, sizeof(struct _TRACER_CONFIG)) USHORT Size;
 
     //
@@ -241,3 +241,5 @@ typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
 
 #define TRACER_CONFIG_POOL_TAG ((ULONG)'pCrT')
 #define TRACER_CONFIG_POOL_PRIORITY LowPoolPriority
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
