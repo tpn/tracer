@@ -2,17 +2,6 @@
 #include "TracerConfigPrivate.h"
 #include "../Rtl/Rtl.h"
 
-#define FREE_UNICODE_BUFFER(Name) do {                   \
-    if (Paths->Name && Paths->Name.Buffer != NULL) {     \
-        PVOID Buffer = Paths->Name.Buffer;               \
-        __try {                                          \
-            Allocator->Free(Allocator->Context, Buffer); \
-        } __except(EXCEPTION_EXECUTE_HANDLER) {          \
-            NULL;                                        \
-        }                                                \
-    }                                                    \
-} while (0)
-
 VOID
 FreeUnicodeStringBuffer(
     PALLOCATOR Allocator,
@@ -24,7 +13,7 @@ FreeUnicodeStringBuffer(
     }
 
     __try {
-        Allocator->Free(Allocator->Context, String->Buffer); 
+        Allocator->Free(Allocator->Context, String->Buffer);
         String->Buffer = NULL;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         String->Buffer = NULL;
@@ -39,26 +28,53 @@ DestroyTracerConfig(
     PTRACER_CONFIG TracerConfig
     )
 {
+    USHORT Index;
+    USHORT Offset;
     PALLOCATOR Allocator;
     PTRACER_PATHS Paths;
+    PUNICODE_STRING String;
+
+    //
+    // Validate arguments.
+    //
 
     if (!TracerConfig) {
         return;
     }
-    
+
+    //
+    // If there's no allocator, we can't free anything.
+    //
+
     if (!TracerConfig->Allocator) {
         return;
     }
 
+    //
+    // Initialize helper aliases.
+    //
+
     Allocator = TracerConfig->Allocator;
     Paths = &TracerConfig->Paths;
 
+    //
+    // Free the installation and base trace directory strings.
+    //
+
     FreeUnicodeStringBuffer(Allocator, &Paths->InstallationDirectory);
     FreeUnicodeStringBuffer(Allocator, &Paths->BaseTraceDirectory);
-    FreeUnicodeStringBuffer(Allocator, &Paths->RtlDllPath);
-    FreeUnicodeStringBuffer(Allocator, &Paths->TracerDllPath);
-    FreeUnicodeStringBuffer(Allocator, &Paths->PythonDllPath);
-    FreeUnicodeStringBuffer(Allocator, &Paths->PythonTracerDllPath);
+
+    //
+    // Enumerate over the PathOffsets[], freeing each path as we go.
+    //
+
+    for (Index = 0; Index < NumberOfPathOffsets; Index++) {
+        Offset = PathOffsets[Index].Offset;
+        String = (PUNICODE_STRING)((((ULONG_PTR)Paths) + Offset));
+        FreeUnicodeStringBuffer(Allocator, String);
+    }
 
     return;
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
