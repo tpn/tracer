@@ -1804,18 +1804,48 @@ InitializeStringFromString(
 
 FORCEINLINE
 BOOL
+IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    //
+    // Add 1 to account for the NULL.
+    //
+
+    USHORT Length = (MinimumLengthInChars + 1) * sizeof(WCHAR);
+    USHORT MaximumLength = Length + sizeof(WCHAR);
+
+    return (
+        String != NULL && 
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= MaximumLength &&
+        sizeof(WCHAR) == (String->MaximumLength - String->Length) &&
+        String->Buffer[String->Length >> 1] == L'\0'
+    );
+}
+
+FORCEINLINE
+BOOL
 IsValidNullTerminatedUnicodeString(
     _In_ PUNICODE_STRING String
     )
 {
-    return (
-        String != NULL && 
-        String->Buffer != NULL &&
-        String->Length >= 1 &&
-        String->MaximumLength >= 2 &&
-        String->Length == String->MaximumLength - 2 &&
-        String->Buffer[String->Length >> 1] == L'\0'
-    );
+    return IsValidNullTerminatedUnicodeStringWithMinimumLength(String, 1);
+}
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    //
+    // Minimum length: "C:\a".
+    //
+
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(String, 4);
 }
 
 FORCEINLINE
