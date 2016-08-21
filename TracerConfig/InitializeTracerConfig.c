@@ -1,62 +1,10 @@
 #include "TracerConfig.h"
 #include "TracerConfigPrivate.h"
+#include "TracerConfigConstants.h"
 
 #include "../Rtl/Rtl.h"
 
 #include <winreg.h>
-
-//
-// Static UNICODE_STRING instances for path constants.
-//
-
-static CONST UNICODE_STRING x64_Release = \
-    RTL_CONSTANT_STRING(L"\\x64\\Release\\");
-
-static CONST UNICODE_STRING x64_Debug = \
-    RTL_CONSTANT_STRING(L"\\x64\\Debug\\");
-
-static CONST UNICODE_STRING RtlDllPath = \
-    RTL_CONSTANT_STRING(L"Rtl.dll");
-
-static CONST UNICODE_STRING TracerDllPath = \
-    RTL_CONSTANT_STRING(L"Tracer.dll");
-
-static CONST UNICODE_STRING PythonDllPath = \
-    RTL_CONSTANT_STRING(L"Python.dll");
-
-static CONST UNICODE_STRING PythonTracerDllPath = \
-    RTL_CONSTANT_STRING(L"PythonTracer.dll");
-
-//
-// This array can be indexed by TracerConfig.Flags.LoadDebugLibraries
-// to obtain the appropriate intermediate path string for the given
-// setting.
-//
-
-static CONST PUNICODE_STRING IntermediatePaths[] = {
-    (CONST PUNICODE_STRING)&x64_Release,
-    (CONST PUNICODE_STRING)&x64_Debug
-};
-
-//
-// A helper offset table that can be enumerated over in order to ease
-// initialization of the various TRACER_PATHS DllPath strings.
-//
-
-static CONST struct {
-    USHORT Offset;
-    PCUNICODE_STRING DllPath;
-} PathOffsets[] = {
-    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath          },
-    { FIELD_OFFSET(TRACER_PATHS, TracerDllPath),        &TracerDllPath       },
-    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath       },
-    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath }
-};
-
-static CONST USHORT NumberOfPathOffsets = (
-    sizeof(PathOffsets) /
-    sizeof(PathOffsets[0])
-);
 
 /*--
 
@@ -355,11 +303,15 @@ InitializeTracerConfig(
 Routine Description:
 
     Initializes a TRACER_CONFIG structure based on the values in the registry
-    path pointed to by RegistryPath.  If the path doesn't exist, it is created,
-    and default values are set for all keys.  If any key is missing, it is also
-    created with a default value.
+    path pointed to by RegistryPath.  This defaults to Software\Tracer.  The
+    keys InstallationDirectory and BaseTraceDirectory (both REG_SZ) must be set
+    to fully-qualified path names.  All other keys are optional, and default
+    values are provided if they are not present.
 
-    The Allocator will be used for all memory allocations.  DestroyTracerConfig()
+    In general, the registry key names map 1:1 with the corresponding fields
+    in the TRACER_CONFIG structure.
+
+    The Allocator will be used for all memory allocations. DestroyTracerConfig()
     must be called against the returned PTRACER_CONFIG when the structure is no
     longer needed in order to ensure resources are released.
 
@@ -427,6 +379,12 @@ Return Value:
     if (Result != ERROR_SUCCESS) {
         return NULL;
     }
+
+    //
+    // N.B.: we've successfully opened a registry key, so all failures after
+    //       this point should `goto Error` to ensure the key is closed before
+    //       returning.
+    //
 
     //
     // See if the DebugBreakOnEntry flag is set first.
@@ -513,6 +471,10 @@ Return Value:
         }
     }
 
+    //
+    // That's it, we're done.
+    //
+
     goto End;
 
 Error:
@@ -546,7 +508,7 @@ _Use_decl_annotations_
 BOOLEAN
 InitializeTraceSessionDirectories(
     PTRACER_CONFIG TracerConfig
-)
+    )
 {
     //PALLOCATOR Allocator;
 
@@ -560,3 +522,5 @@ InitializeTraceSessionDirectories(
 
     return FALSE;
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
