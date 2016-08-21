@@ -3,12 +3,12 @@
 
 #include <Windows.h>
 
-#pragma data_seg(".shared")
+//#pragma data_seg(".shared")
 __declspec(dllexport)
 PTRACER_CONFIG GlobalTracerConfig = NULL;
-#pragma data_seg()
+//#pragma data_seg()
 
-#pragma comment(linker, "/section:.shared,rws")
+//#pragma comment(linker, "/section:.shared,rws")
 
 MALLOC Malloc;
 CALLOC Calloc;
@@ -59,6 +59,10 @@ BOOLEAN
 InitializeGlobalTracerConfig(VOID)
 {
     PTRACER_CONFIG TracerConfig;
+
+    if (GlobalTracerConfig) {
+        return TRUE;
+    }
 
     RtlSecureZeroMemory(&Allocator, sizeof(Allocator));
 
