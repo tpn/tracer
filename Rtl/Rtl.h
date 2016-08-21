@@ -1813,8 +1813,8 @@ IsValidNullTerminatedUnicodeString(
         String->Buffer != NULL &&
         String->Length >= 1 &&
         String->MaximumLength >= 2 &&
-        String->Length == String->MaximumLength-1 //&&
-        //((WCHAR)*(String->Buffer + String->Length)) == L"\0"
+        String->Length == String->MaximumLength - 2 &&
+        String->Buffer[String->Length >> 1] == L'\0'
     );
 }
 

@@ -44,19 +44,111 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     USHORT Padding[3];
 
     //
-    // Fully-qualified UNICODE path names.  If the registry key
-    // "LoadDebugLibraries" was set, the DLL paths will represent
-    // debug versions of the libraries.
+    // Installation directory and the base trace data directory 
+    // (where trace session directories are created).  These values
+    // are read from the registry.
     //
     
     UNICODE_STRING InstallationDirectory;
     UNICODE_STRING BaseTraceDirectory;
+
+    //
+    // Fully-qualified paths to relevant DLLs.  The paths are built
+    // relative to the InstallationDirectory above.  If the flag
+    // "LoadDebugLibraries" was set, the DLL paths will represent
+    // debug versions of the libraries.
+    //
+
     UNICODE_STRING TracerDllPath;
     UNICODE_STRING RtlDllPath;
     UNICODE_STRING PythonDllPath;
     UNICODE_STRING PythonTracerDllPath;
 
 } TRACER_PATHS, *PTRACER_PATHS;
+
+//
+// Bitmask of supported runtimes.  (Currently only Python and
+// C are supported.)
+//
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_SUPPORTED_RUNTIMES {
+    ULONG Python:1;
+    ULONG C:1;
+    ULONG CPlusPlus:1;
+    ULONG CSharp:1;
+    ULONG Ruby:1;
+} TRACER_SUPPORTED_RUNTIMES, *PTRACER_SUPPORTED_RUNTIMES;
+
+
+//
+// Tracer configuration flags.  Map to REG_DWORD entries of the same name.
+// 
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
+
+    //
+    // When set, entry routines such as InitializeTracerConfig() and
+    // DestroyTracerConfig() should call __debugbreak() as soon as
+    // possible during startup.
+    //
+
+    ULONG DebugBreakOnEntry:1;
+
+    //
+    // When set, indicates that debug versions of the DLLs should be
+    // loaded instead of the release versions.  Defaults to FALSE.
+    //
+
+    ULONG LoadDebugLibraries:1;
+
+    //
+    // When set, indicates that trace session directories will be created
+    // with compression enabled.  Defaults to TRUE.
+    //
+
+    ULONG EnableTraceSessionDirectoryCompression:1;
+
+    //
+    // When set, indicates that the trace store mechanism should pre-fault
+    // pages ahead of time in a separate thread pool.  Defaults to TRUE.
+    //
+
+    ULONG PrefaultPages:1;
+
+    //
+    // When set, virtual memory stats will be tracked during tracing.
+    // Defaults to FALSE.
+    //
+
+    ULONG EnableMemoryTracing:1;
+
+    //
+    // When set, I/O counters will be tracked during tracing.
+    // Defaults to FALSE.
+    //
+
+    ULONG EnableIoCounterTracing:1;
+
+    //
+    // When set, handle counts will be tracked during tracing.
+    // Defaults to FALSE.
+    //
+
+    ULONG EnableHandleCountTracing:1;
+
+} TRACER_FLAGS, *PTRACER_FLAGS;
+
+typedef struct _TRACE_SESSION_DIRECTORY {
+    RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+    UNICODE_STRING Directory;
+    PVOID Context;
+} TRACE_SESSION_DIRECTORY, *PTRACE_SESSION_DIRECTORY;
+
+typedef struct _TRACE_SESSION_DIRECTORIES {
+    LIST_ENTRY ListHead;
+    SRWLOCK Lock;
+    RTL_DYNAMIC_HASH_TABLE HashTable;
+} TRACE_SESSION_DIRECTORIES, *PTRACE_SESSION_DIRECTORIES;
 
 //
 // The tracer configuration structure.  The main purpose of this structure
@@ -75,70 +167,16 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     _Field_range_(==, sizeof(struct _TRACER_CONFIG)) USHORT Size;
 
     //
-    // The minimum Directory->Length value that should be passed to the
-    // CreateTraceSessionDirectory(_In_ PUNICODE_STRING Directory) function.
-    // (Note that this is a UNICODE_STRING, so Length represents number of
-    //  WCHAR characters; the number of bytes will be double this value.)
-    // This is provided as a convenience so that users can allocate correctly-
-    // sized UNICODE_STRING buffers before calling the creation function.
-    // 
-
-    USHORT TraceSessionDirectoryLength;
-
-    //
-    // Bitmask of supported runtimes.  (Currently only Python and
-    // C are supported.)
+    // Pad to ULONG.
     //
 
-    _Struct_size_bytes_(sizeof(ULONG)) struct {
-        ULONG Python:1;
-        ULONG C:1;
-        ULONG CPlusPlus:1;
-        ULONG CSharp:1;
-        ULONG Ruby:1;
-    } SupportedRuntimes;
+    USHORT Padding1;
 
     //
     // Global configuration flags.
     //
 
-    _Struct_size_bytes_(sizeof(ULONG)) struct {
-
-        //
-        // When set, entry routines such as InitializeTracerConfig() and
-        // DestroyTracerConfig() should call __debugbreak() as soon as
-        // possible during startup.
-        //
-
-        ULONG DebugBreakOnEntry:1;
-
-        //
-        // N.B.: the remaining fields typically map 1-to-1 with corresponding
-        // DWORD registry entries by the same name.
-        // 
-
-        //
-        // When set, indicates that debug versions of the DLLs should be
-        // loaded instead of the release versions.  Defaults to FALSE.
-        //
-
-        ULONG LoadDebugLibraries:1;
-
-        //
-        // When set, indicates that trace session directories will be created
-        // with compression enabled.  Defaults to TRUE.
-        //
-
-        ULONG EnableTraceSessionDirectoryCompression:1;
-
-        //
-        // When set, indicates that the trace store mechanism should pre-fault
-        // pages ahead of time in a separate thread pool.  Defaults to TRUE.
-        //
-
-        ULONG PrefaultPages:1;
-
-    } Flags;
+    TRACER_FLAGS Flags;
 
     //
     // Function pointer to the allocator structure being used by this instance.
@@ -158,6 +196,12 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     //
 
     TRACER_PATHS Paths;
+
+    //
+    // List of trace session directories created by this config instance.
+    //
+
+    PTRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
 } TRACER_CONFIG, *PTRACER_CONFIG, **PPTRACER_CONFIG;
 

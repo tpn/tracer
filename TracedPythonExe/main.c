@@ -14,7 +14,7 @@ VOID
 WINAPI
 mainCRTStartup()
 {
-    BOOL Success;
+    //BOOL Success;
     DWORD ExitCode = 1;
 
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;

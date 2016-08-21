@@ -66,6 +66,11 @@
       <PreserveSbr>true</PreserveSbr>
     </Bscmake>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -73,6 +78,7 @@
     <ClInclude Include="TracerConfigPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Allocation.c" />
     <ClCompile Include="CreateTraceSessionDirectory.c" />
     <ClCompile Include="DestroyTracerConfig.c" />
     <ClCompile Include="dllmain.c">

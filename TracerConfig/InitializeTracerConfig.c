@@ -6,51 +6,343 @@
 #include <winreg.h>
 
 //
-// The size of the `WCHAR Buffer[n]` buffer used to read REG_SZ registry
-// values during initialization.
+// Static UNICODE_STRING instances for path constants.
 //
 
-#define TEMP_STACK_BUFFER_LENGTH 1024
+static CONST UNICODE_STRING x64_Release = \
+    RTL_CONSTANT_STRING(L"\\x64\\Release\\");
+
+static CONST UNICODE_STRING x64_Debug = \
+    RTL_CONSTANT_STRING(L"\\x64\\Debug\\");
+
+static CONST UNICODE_STRING RtlDllPath = \
+    RTL_CONSTANT_STRING(L"Rtl.dll");
+
+static CONST UNICODE_STRING TracerDllPath = \
+    RTL_CONSTANT_STRING(L"Tracer.dll");
+
+static CONST UNICODE_STRING PythonDllPath = \
+    RTL_CONSTANT_STRING(L"Python.dll");
+
+static CONST UNICODE_STRING PythonTracerDllPath = \
+    RTL_CONSTANT_STRING(L"PythonTracer.dll");
 
 //
-// The size of the buffer, in bytes.
+// This array can be indexed by TracerConfig.Flags.LoadDebugLibraries
+// to obtain the appropriate intermediate path string for the given
+// setting.
 //
 
-#define TEMP_STACK_BUFFER_SIZE_IN_BYTES (TEMP_STACK_BUFFER_LENGTH << 1)
+static CONST PUNICODE_STRING IntermediatePaths[] = {
+    (CONST PUNICODE_STRING)&x64_Release,
+    (CONST PUNICODE_STRING)&x64_Debug
+};
 
+//
+// A helper offset table that can be enumerated over in order to ease
+// initialization of the various TRACER_PATHS DllPath strings.
+//
+
+static CONST struct {
+    USHORT Offset;
+    PCUNICODE_STRING DllPath;
+} PathOffsets[] = {
+    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath          },
+    { FIELD_OFFSET(TRACER_PATHS, TracerDllPath),        &TracerDllPath       },
+    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath       },
+    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath }
+};
+
+static CONST USHORT NumberOfPathOffsets = (
+    sizeof(PathOffsets) /
+    sizeof(PathOffsets[0])
+);
+
+/*--
+
+Routine Description:
+
+    A helper routine for initializing TRACER_CONFIG Path variables.  This
+    calculates the required UNICODE_STRING Buffer length to hold the full
+    DLL path, which will be a concatenation of the InstallationDirectory,
+    IntermediatePath (i.e. "x64\\Release") and the final DLL name, including
+    all joining slashes and trailing NULL.  The TracerConfig's Allocator is
+    used to allocate sufficient space, then the three strings are copied over.
+
+Arguments:
+
+    Index - Supplies the 0-based index into the PathOffsets[] array which
+        is used to resolve a pointer to the UNICODE_STRING variable in the
+        TRACER_PATHS structure, as well as a pointer to the UNICODE_STRING
+        for the relevant DLL suffix for that variable.
+
+Return Value:
+
+    TRUE on success, FALSE on FAILURE.
+
+--*/
 _Success_(return != 0)
 BOOLEAN
-AllocateAndCopyWideString(
-    _In_ PALLOCATOR Allocator,
-    _In_ SIZE_T SizeInBytes,
-    _In_ PWCHAR Buffer,
-    _In_ PUNICODE_STRING String
+LoadPath(
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ USHORT Index
     )
 {
-    SIZE_T AlignedSizeInBytes = ALIGN_UP(SizeInBytes, sizeof(ULONG_PTR));
+    USHORT Length;
+    USHORT MaximumLength;
+    USHORT SizeInBytes;
+    USHORT Offset;
+    ULONG Bytes;
+    ULONG Count;
+    TRACER_FLAGS Flags;
+    PWCHAR Dest;
+    PWCHAR Source;
+    PTRACER_PATHS Paths;
+    PALLOCATOR Allocator;
+    PCUNICODE_STRING DllPath;
+    PUNICODE_STRING TargetPath;
+    PUNICODE_STRING InstallationDir;
+    PUNICODE_STRING IntermediatePath;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    if (Index >= NumberOfPathOffsets) {
+        return FALSE;
+    }
+
+    //
+    // Initialize various local variables.
+    //
+
+    Flags = TracerConfig->Flags;
+    Paths = &TracerConfig->Paths;
+    Offset = PathOffsets[Index].Offset;
+    Allocator = TracerConfig->Allocator;
+
+    //
+    // Initialize paths.
+    //
+
+    DllPath = PathOffsets[Index].DllPath;
+    TargetPath = (PUNICODE_STRING)((((ULONG_PTR)Paths) + Offset));
+    InstallationDir = &Paths->InstallationDirectory;
+    IntermediatePath = IntermediatePaths[Flags.LoadDebugLibraries];
+
+    //
+    // Calculate the length of the final joined path.  IntermediatePath
+    // will have leading and trailing slashes.
+    //
+
+    Length = (
+        InstallationDir->Length +
+        IntermediatePath->Length +
+        DllPath->Length
+    );
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    MaximumLength = Length + sizeof(WCHAR);
+
+    //
+    // This is our allocation size in bytes.
+    //
+
+    SizeInBytes = (USHORT)MaximumLength;
+
+    //
+    // Allocate space for the buffer.
+    //
 
     __try {
-        String->Buffer = (PWCHAR)(
+        TargetPath->Buffer = (PWCHAR)(
             Allocator->Malloc(
                 Allocator->Context,
-                AlignedSizeInBytes
+                SizeInBytes
             )
         );
+        if (!TargetPath->Buffer) {
+            return FALSE;
+        }
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return FALSE;
     }
 
-    String->Length = ((SizeInBytes - 2) >> 1);
-    String->MaximumLength = (AlignedSizeInBytes >> 1);
+    //
+    // Copy the installation directory.  Note we track bytes and count
+    // (i.e. number of chars) separately; the lengths are in bytes but
+    // __movsw() works a WORD (WCHAR) at a time.
+    //
 
-    __movsb(
-        (PBYTE)String->Buffer,
-        (const PBYTE)Buffer,
-        SizeInBytes
-    );
+    Dest = TargetPath->Buffer;
+    Source = InstallationDir->Buffer;
+    Bytes = InstallationDir->Length;
+    Count = Bytes >> 1;
+    __movsw(Dest, Source, Count);
+
+    //
+    // Copy the intermediate bit of the path (e.g. "\\x64\\Debug\\").
+
+    Dest += Count;
+    Source = IntermediatePath->Buffer;
+    Bytes = IntermediatePath->Length;
+    Count = Bytes >> 1;
+    __movsw(Dest, Source, Count);
+
+    //
+    // Copy the final .dll path name (e.g. "Rtl.dll").
+    //
+
+    Dest += Count;
+    Source = DllPath->Buffer;
+    Bytes = DllPath->Length;
+    Count = Bytes >> 1;
+    __movsw(Dest, Source, Count);
+
+    //
+    // And set the final trailing NULL.
+    //
+
+    Dest += Count;
+    *Dest = L'\0';
+
+    //
+    // Update the lengths on the string and return success.
+    //
+
+    TargetPath->Length = Length;
+    TargetPath->MaximumLength = MaximumLength;
 
     return TRUE;
 }
+
+//
+// Helper macro for reading REG_DWORD values from the registry into a local
+// TRACER_FLAGS Flags structure.  Name is the name of the flag, and Default
+// is the name of the default value if the registry key couldn't be read.
+//
+
+#define READ_REG_DWORD_FLAG(Name, Default) do { \
+    ULONG Value;                                \
+    ULONG ValueLength = sizeof(Value);          \
+    Result = RegGetValueW(                      \
+        RegistryKey,                            \
+        NULL,                                   \
+        L#Name,                                 \
+        RRF_RT_REG_DWORD,                       \
+        NULL,                                   \
+        (PVOID)&Value,                          \
+        &ValueLength                            \
+    );                                          \
+    if (Result == ERROR_SUCCESS) {              \
+        Flags.Name = Value;                     \
+    } else {                                    \
+        Flags.Name = Default;                   \
+    }                                           \
+} while (0)
+
+//
+// The minimum number of bytes for a valid WCHAR path name, including
+// the terminating NULL, is 10:
+//      length of L"C:\a" (4 * 2 = 8) + NUL (1 * 2) = 10
+//
+
+#define MINIMUM_PATH_SIZE_IN_BYTES 10
+
+//
+// Set maximum path size at (a somewhat arbitrary) 2048 bytes.
+//
+
+#define MAXIMUM_PATH_SIZE_IN_BYTES 2048
+
+/*--
+
+Macro Description:
+
+    Helper macro for reading REG_SZ path values.  The size of the string
+    is obtained first, then an attempt is made to allocate a sufficiently-
+    sized buffer using the TracerConfig's Allocator.  If this succeeds,
+    a second call to RegGetValueW() is called with the new buffer, and
+    the rest of the UNICODE_STRING is initialized (i.e. MaximumLength and
+    Length are set).
+
+    If any errors occur, the Error handler is jumped to.
+
+Arguments:
+
+    Name - Name of the path in the TRACER_PATHS structure.
+
+Return Value:
+
+    N/A.
+
+--*/
+#define READ_REG_SZ_PATH(Name) do {                          \
+    BOOL IsValid;                                            \
+    ULONG SizeInBytes = 0;                                   \
+    PUNICODE_STRING String = &Paths->Name;                   \
+                                                             \
+    Result = RegGetValueW(                                   \
+        RegistryKey,                                         \
+        NULL,                                                \
+        L#Name,                                              \
+        RRF_RT_REG_SZ,                                       \
+        NULL,                                                \
+        NULL,                                                \
+        &SizeInBytes                                         \
+    );                                                       \
+                                                             \
+    IsValid = (                                              \
+        Result == ERROR_SUCCESS &&                           \
+        SizeInBytes >= MINIMUM_PATH_SIZE_IN_BYTES &&         \
+        SizeInBytes <= MAXIMUM_PATH_SIZE_IN_BYTES            \
+    );                                                       \
+                                                             \
+    if (!IsValid) {                                          \
+        goto Error;                                          \
+    }                                                        \
+                                                             \
+    __try {                                                  \
+        String->Buffer = (PWCHAR)(                           \
+            Allocator->Malloc(                               \
+                Allocator->Context,                          \
+                SizeInBytes                                  \
+            )                                                \
+        );                                                   \
+        if (!String->Buffer) {                               \
+            goto Error;                                      \
+        }                                                    \
+    } __except (EXCEPTION_EXECUTE_HANDLER) {                 \
+        goto Error;                                          \
+    }                                                        \
+                                                             \
+    Result = RegGetValueW(                                   \
+        RegistryKey,                                         \
+        NULL,                                                \
+        L#Name,                                              \
+        RRF_RT_REG_SZ,                                       \
+        NULL,                                                \
+        (PVOID)String->Buffer,                               \
+        &SizeInBytes                                         \
+    );                                                       \
+                                                             \
+    if (Result != ERROR_SUCCESS) {                           \
+        goto Error;                                          \
+    }                                                        \
+                                                             \
+    String->Length =  (USHORT)(SizeInBytes - sizeof(WCHAR)); \
+    String->MaximumLength = (USHORT)SizeInBytes;             \
+                                                             \
+} while (0)
+
+
 
 _Use_decl_annotations_
 PTRACER_CONFIG
@@ -80,8 +372,9 @@ Arguments:
 
     RegistryPath - Supplies a pointer to a fully-qualified UNICODE_STRING
         to the primary registry path that will be used to load tracer
-        configuration information.  Note that this string must be NULL
-        terminated.
+        configuration information.  (Note that this string must be NULL
+        terminated, as the underlying Buffer is passed directly to the
+        RegCreateKeyExW() function, which expects an LPWSTR.)
 
 Return Value:
 
@@ -91,18 +384,13 @@ Return Value:
 
 --*/
 {
-    BOOL Success;
-    BOOL DebugBreakOnEntry;
-    BOOL LoadDebugLibraries;
+    USHORT Index;
+    TRACER_FLAGS Flags;
     ULONG Result;
     ULONG Disposition;
-    ULONG Value;
-    ULONG ValueLength = sizeof(Value);
-    ULONG BufferLength;
     HKEY RegistryKey;
     PTRACER_CONFIG TracerConfig;
     PTRACER_PATHS Paths;
-    WCHAR Buffer[TEMP_STACK_BUFFER_LENGTH];
 
     //
     // Validate arguments.
@@ -144,21 +432,10 @@ Return Value:
     // See if the DebugBreakOnEntry flag is set first.
     //
 
-    Result = RegGetValueW(
-        RegistryKey,
-        NULL,       // lpSubKey
-        L"DebugBreakOnEntry",
-        RRF_RT_REG_DWORD,
-        NULL,
-        (PVOID)&Value,
-        &ValueLength
-    );
+    READ_REG_DWORD_FLAG(DebugBreakOnEntry, FALSE);
 
-    if (Result == ERROR_SUCCESS && Value != 0) {
-        DebugBreakOnEntry = TRUE;
+    if (Flags.DebugBreakOnEntry) {
         __debugbreak();
-    } else {
-        DebugBreakOnEntry = FALSE;
     }
 
     //
@@ -173,7 +450,6 @@ Return Value:
             )
         );
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-
         TracerConfig = NULL;
         goto Error;
     }
@@ -190,16 +466,28 @@ Return Value:
     // Zero the memory and begin initialization.
     //
 
-    RtlSecureZeroMemory(TracerConfig, sizeof(*TracerConfig));
+    SecureZeroMemory(TracerConfig, sizeof(*TracerConfig));
 
     TracerConfig->Size = sizeof(*TracerConfig);
 
-    TracerConfig->Flags.DebugBreakOnEntry = DebugBreakOnEntry;
-    TracerConfig->Flags.EnableTraceSessionDirectoryCompression = TRUE;
-    TracerConfig->Flags.PrefaultPages = TRUE;
+    TracerConfig->Allocator = Allocator;
 
-    TracerConfig->SupportedRuntimes.Python = TRUE;
-    TracerConfig->SupportedRuntimes.C = TRUE;
+    //
+    // Read the remaining flags.
+    //
+
+    READ_REG_DWORD_FLAG(LoadDebugLibraries, FALSE);
+    READ_REG_DWORD_FLAG(EnableTraceSessionDirectoryCompression, TRUE);
+    READ_REG_DWORD_FLAG(PrefaultPages, TRUE);
+    READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
+    READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
+    READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);
+
+    //
+    // Copy the flags over.
+    //
+
+    TracerConfig->Flags = Flags;
 
     //
     // Prep the TRACER_PATHS structure.
@@ -209,133 +497,21 @@ Return Value:
     Paths->Size = sizeof(*Paths);
 
     //
-    // Check for LoadDebugLibraries.
+    // Load InstallationDirectory and BaseTraceDirectory.
     //
 
-    Result = RegGetValueW(
-        RegistryKey,
-        NULL,       // lpSubKey
-        L"LoadDebugLibraries",
-        RRF_RT_REG_DWORD,
-        NULL,
-        (PVOID)&Value,
-        &ValueLength
-    );
+    READ_REG_SZ_PATH(InstallationDirectory);
+    READ_REG_SZ_PATH(BaseTraceDirectory);
 
-    if (Result == ERROR_SUCCESS && Value != 0) {
-        LoadDebugLibraries = TRUE;
-    } else {
-        LoadDebugLibraries = FALSE;
+    //
+    // Load fully-qualified DLL path names.
+    //
+
+    for (Index = 0; Index < NumberOfPathOffsets; Index++) {
+        if (!LoadPath(TracerConfig, Index)) {
+            goto Error;
+        }
     }
-
-    TracerConfig->Flags.LoadDebugLibraries = LoadDebugLibraries;
-
-    //
-    // See if InstallationDirectory has been set.
-    //
-
-    BufferLength = TEMP_STACK_BUFFER_SIZE_IN_BYTES;
-
-    Result = RegGetValueW(
-        RegistryKey,
-        NULL,
-        L"InstallationDirectory",
-        RRF_RT_REG_SZ,
-        NULL,
-        (PVOID)Buffer,
-        &BufferLength
-    );
-
-    if (Result != ERROR_SUCCESS) {
-
-        //
-        // XXX TODO: initialize buffer size from path of current module
-        // handle.
-        //
-
-        goto Error;
-    }
-
-    //
-    // Allocate and copy the string.
-    //
-
-    Success = AllocateAndCopyWideString(
-        Allocator,
-        BufferLength,
-        Buffer,
-        &Paths->InstallationDirectory
-    );
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Reset the buffer length and load BaseTraceDirectory.
-    //
-
-    BufferLength = TEMP_STACK_BUFFER_SIZE_IN_BYTES;
-
-    Result = RegGetValueW(
-        RegistryKey,
-        NULL,
-        L"BaseTraceDirectory",
-        RRF_RT_REG_SZ,
-        NULL,
-        (PVOID)Buffer,
-        &BufferLength
-    );
-
-    if (Result != ERROR_SUCCESS) {
-
-        //
-        // XXX TODO: initialize buffer size from path of current module
-        // handle.
-        //
-
-        goto Error;
-    }
-
-    //
-    // Allocate and copy the string.
-    //
-
-    Success = AllocateAndCopyWideString(
-        Allocator,
-        BufferLength,
-        Buffer,
-        &Paths->InstallationDirectory
-    );
-
-    if (!Success) {
-        goto Error;
-    }
-
-
-    //
-    // Allocate space for the UNICODE_STRING->Buffer.
-    //
-
-    __try {
-        Paths = (PTRACER_CONFIG)(
-            Allocator->Malloc(
-                Allocator->Context,
-                sizeof(*TracerConfig)
-            )
-        );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-
-        TracerConfig = NULL;
-        goto Error;
-    }
-
-
-
-
-
-
-    //Result = RegGetKey();
 
     goto End;
 
@@ -354,7 +530,7 @@ Error:
     //
 
     TracerConfig = NULL;
-    
+
     //
     // Intentional follow-on to End.
     //
@@ -366,6 +542,21 @@ End:
     return TracerConfig;
 }
 
+_Use_decl_annotations_
+BOOLEAN
+InitializeTraceSessionDirectories(
+    PTRACER_CONFIG TracerConfig
+)
+{
+    //PALLOCATOR Allocator;
 
+    //
+    // Validate arguments.
+    //
 
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
 
+    return FALSE;
+}
