@@ -4,8 +4,8 @@
 #include <Windows.h>
 
 //#pragma data_seg(".shared")
-__declspec(dllexport)
 PTRACER_CONFIG GlobalTracerConfig = NULL;
+PALLOCATOR GlobalTracerAllocator = NULL;
 //#pragma data_seg()
 
 //#pragma comment(linker, "/section:.shared,rws")
@@ -31,6 +31,22 @@ Malloc(
 }
 
 _Use_decl_annotations_
+void * __restrict
+Calloc(
+    PVOID Context,
+    SIZE_T NumberOfElements,
+    SIZE_T SizeOfElements
+    )
+{
+    return HeapAlloc(
+        (HANDLE)Context,
+        HEAP_ZERO_MEMORY,
+        NumberOfElements * SizeOfElements
+    );
+
+}
+
+_Use_decl_annotations_
 VOID
 Free(
     PVOID Context,
@@ -41,11 +57,10 @@ Free(
     return;
 }
 
-__declspec(dllexport)
 _Use_decl_annotations_
 BOOLEAN
 CreateGlobalTraceSessionDirectory(
-    PUNICODE_STRING Directory
+    PPUNICODE_STRING Directory
     )
 {
     return CreateTraceSessionDirectory(
@@ -67,6 +82,7 @@ InitializeGlobalTracerConfig(VOID)
     RtlSecureZeroMemory(&Allocator, sizeof(Allocator));
 
     Allocator.Malloc = Malloc;
+    Allocator.Calloc = Calloc;
     Allocator.Free = Free;
     Allocator.Context = GetProcessHeap();
 

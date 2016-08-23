@@ -402,8 +402,9 @@ Return Value:
 
     __try {
         TracerConfig = (PTRACER_CONFIG)(
-            Allocator->Malloc(
+            Allocator->Calloc(
                 Allocator->Context,
+                1,
                 sizeof(*TracerConfig)
             )
         );
@@ -419,12 +420,6 @@ Return Value:
     if (TracerConfig == NULL) {
         goto Error;
     }
-
-    //
-    // Zero the memory and begin initialization.
-    //
-
-    SecureZeroMemory(TracerConfig, sizeof(*TracerConfig));
 
     TracerConfig->Size = sizeof(*TracerConfig);
 
@@ -470,6 +465,12 @@ Return Value:
             goto Error;
         }
     }
+
+    //
+    // Initialize the trace session directories hash table.
+    //
+
+
 
     //
     // That's it, we're done.

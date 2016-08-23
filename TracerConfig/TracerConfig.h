@@ -14,7 +14,7 @@ _Check_return_
 BOOLEAN
 (CREATE_TRACE_SESSION_DIRECTORY)(
     _In_ struct _TRACER_CONFIG *TracerConfig,
-    _Out_ PUNICODE_STRING Directory
+    _Out_ PPUNICODE_STRING Directory
     );
 
 typedef CREATE_TRACE_SESSION_DIRECTORY *PCREATE_TRACE_SESSION_DIRECTORY;
@@ -23,7 +23,7 @@ typedef
 _Check_return_
 BOOLEAN
 (CREATE_GLOBAL_TRACE_SESSION_DIRECTORY)(
-    _Out_ PUNICODE_STRING Directory
+    _Out_ PPUNICODE_STRING Directory
     );
 
 typedef CREATE_GLOBAL_TRACE_SESSION_DIRECTORY \
@@ -201,7 +201,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     // List of trace session directories created by this config instance.
     //
 
-    PTRACE_SESSION_DIRECTORIES TraceSessionDirectories;
+    TRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
 } TRACER_CONFIG, *PTRACER_CONFIG, **PPTRACER_CONFIG;
 
