@@ -30,6 +30,12 @@
     <ClInclude Include="RtlString.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TracerConfigRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TracerBootstrap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

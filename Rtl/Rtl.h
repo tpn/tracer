@@ -53,6 +53,18 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 
 typedef CONST char *PCSZ;
 
+typedef LONG (MAINPROCA)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPSTR ArgvA
+    );
+typedef MAINPROCA *PMAINPROCA;
+
+typedef LONG (MAINPROCW)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPWSTR ArgvW
+    );
+typedef MAINPROCW *PMAINPROCW;
+
 typedef VOID (RTL_INIT_STRING)(
     _Out_       PSTRING     DestinationString,
     _In_opt_    PCSZ        SourceString
