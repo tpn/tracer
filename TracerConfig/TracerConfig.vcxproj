@@ -69,7 +69,8 @@
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
-      <ModuleDefinitionFile>TracerConfig.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Configuration)' != 'Debug'">TracerConfig.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Configuration)' == 'Debug'">TracerConfigDebug.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

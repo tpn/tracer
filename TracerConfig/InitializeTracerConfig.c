@@ -343,6 +343,7 @@ Return Value:
     HKEY RegistryKey;
     PTRACER_CONFIG TracerConfig;
     PTRACER_PATHS Paths;
+    PTRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
     //
     // Validate arguments.
@@ -421,6 +422,18 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Initialize trace session directories.
+    //
+
+    TraceSessionDirectories = &TracerConfig->TraceSessionDirectories;
+    InitializeListHead(&TraceSessionDirectories->ListHead);
+    InitializeSRWLock(&TraceSessionDirectories->Lock);
+
+    //
+    // Initialize size and allocator.
+    //
+
     TracerConfig->Size = sizeof(*TracerConfig);
 
     TracerConfig->Allocator = Allocator;
@@ -467,11 +480,6 @@ Return Value:
     }
 
     //
-    // Initialize the trace session directories hash table.
-    //
-
-
-    //
     // That's it, we're done.
     //
 
@@ -502,25 +510,6 @@ End:
     RegCloseKey(RegistryKey);
 
     return TracerConfig;
-}
-
-_Use_decl_annotations_
-BOOLEAN
-InitializeTraceSessionDirectories(
-    PTRACER_CONFIG TracerConfig
-    )
-{
-    //PALLOCATOR Allocator;
-
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(TracerConfig)) {
-        return FALSE;
-    }
-
-    return FALSE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
