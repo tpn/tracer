@@ -5,48 +5,6 @@
 #include "RtlString.h"
 
 //
-// We use RtlIntegerToUnicodeString() for converting the SYSTEMTIME
-// fields into string representations for the trace session directory.
-// RtlInsertEntryHashTable() is used for adding trace session directories
-// to the hash table maintained by tracer config.
-//
-
-__declspec(dllimport)
-NTSTATUS RtlInt64ToUnicodeString(
-    _In_     ULONGLONG       Value,
-    _In_opt_ ULONG           Base,
-    _Inout_  PUNICODE_STRING String
-);
-
-__declspec(dllimport)
-int __stdcall vswprintf_s(
-    wchar_t *buffer,
-    size_t numberOfElements,
-    const wchar_t *format,
-    ...
-);
-
-NTSTATUS 
-__stdcall
-RtlUnicodeStringPrintf(
-    _Out_ PUNICODE_STRING  DestinationString,
-    _In_  PCWSTR pszFormat,
-    ...
-);
-
-NTSTATUS
-__stdcall
-RtlStringCchVPrintfWorkerW(
-    _Out_ LPWSTR  pszDest,
-    _In_  size_t  cchDest,
-    _In_  LPCWSTR pszFormat,
-    ...
-);
-
-
-RTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable;
-
-//
 // We use a static, constant, initialized UNICODE_STRING to represent the
 // format of the trace session directory, where each character represents
 // a 1:1 map to the final string, solely for getting the required string
@@ -57,20 +15,6 @@ RTL_INSERT_ENTRY_HASH_TABLE RtlInsertEntryHashTable;
 
 static CONST UNICODE_STRING TraceSessionDirectoryExampleFormat = \
     RTL_CONSTANT_STRING(TRACE_SESSION_DIRECTORY_EXAMPLE_FORMAT);
-
-//
-// Field widths used to determine if values should be zero padded.
-//
-
-static const USHORT FieldWidths[] = {
-    4,  // YYYY
-    2,  // MM
-    2,  // DD
-    2,  // hh
-    2,  // mm
-    2,  // ss
-    3   // SSS
-};
 
 _Success_(return != 0)
 BOOLEAN
@@ -168,18 +112,12 @@ Return Value:
     return TRUE;
 }
 
-
-#define ConvertTimeFieldToString(Value, Trail) \
-    String->Length = 0; \
-    if (RtlIntegerToUnicodeString(Value, 0, String)) { \
-        goto Error; \
-    }
-    
-
+_Success_(return != 0)
 BOOLEAN
 CreateSystemTimeTraceSessionDirectoryName(
     _In_ PTRACER_CONFIG TracerConfig,
-    _In_ PUNICODE_STRING DirectoryName
+    _In_ PUNICODE_STRING DirectoryName,
+    _In_ PSYSTEMTIME SystemTime
     )
 /*++
 
@@ -197,7 +135,10 @@ Arguments:
 
     DirectoryName - Supplies a pointer to a UNICODE_STRING that has sufficient
         buffer space to store the directory name.
-    
+
+    SystemTime - Supplies a pointer to a SYSTEMTIME structure that is used to
+        build the directory name.
+
 Return Value:
 
     TRUE on success, FALSE on failure (invalid arguments or improperly sized
@@ -205,25 +146,21 @@ Return Value:
 
 --*/
 {
-    BOOL Separator;
-    LONG Result;
     USHORT BytesRemaining;
     USHORT BytesRequired;
-    NTSTATUS Status;
-    USHORT Bytes;
-    USHORT Count;
-    PWCHAR Dest;
-    PWCHAR Source;
+    ULONG Value;
     SYSTEMTIME SystemTime;
-    UNICODE_STRING Field = RTL_CONSTANT_STRING(L"\0\0\0\0");
-    UNICODE_STRING Name = \
-        RTL_CONSTANT_STRING(TRACE_SESSION_DIRECTORY_EXAMPLE_FORMAT);
+    PUNICODE_STRING Name;
 
     //
     // Validate arguments.
     //
 
     if (!ARGUMENT_PRESENT(DirectoryName)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(SystemTime)) {
         return FALSE;
     }
 
@@ -243,100 +180,31 @@ Return Value:
     }
 
     //
-    // Get the system time.
-    //
-
-    GetSystemTime(&SystemTime);
-
-    //
     // Convert each field into the corresponding string representation.
     //
 
-    Count = Name.Length >> 1;
+    Name = DirectoryName;
 
-    Status = RtlStringCchVPrintfWorkerW(
-        Name.Buffer,
-        Name.MaximumLength,
-        L"%04d-%02d-%02d_%02d%02d%02d%02d%02d.%03d",
-        SystemTime.wYear,
-        SystemTime.wMonth,
-        SystemTime.wDay,
-        SystemTime.wHour,
-        SystemTime.wMinute,
-        SystemTime.wSecond,
-        SystemTime.wMilliseconds
-    );
-
-    //Status = RtlUnicodeStringP
-
-    Result = 0;
-    if (Result != Count) {
-        return FALSE;
+#define AppendTimeField(Field, Digits, Trailer)                        \
+    Value = SystemTime->Field;                                         \
+    if (!AppendIntegerToUnicodeString(Name, Value, Digits, Trailer)) { \
+        goto Error;                                                    \
     }
 
-    //
-    // Copy the buffer over.
-    //
-
-    Dest = (PWCHAR)(
-        RtlOffsetToPointer(
-            DirectoryName->Buffer,
-            DirectoryName->Length
-        )
-    );
-    __movsw(Dest, Name.Buffer, Count);
-
-    //
-    // Update the length.
-    //
-
-    DirectoryName->Length += Count;
+    AppendTimeField(wYear,          4, L'-');
+    AppendTimeField(wMonth,         2, L'-');
+    AppendTimeField(wDay,           2, L'-');
+    AppendTimeField(wHour,          2,    0);
+    AppendTimeField(wMinute,        2,    0);
+    AppendTimeField(wSecond,        2, L'.');
+    AppendTimeField(wMilliseconds,  3,    0);
 
     return TRUE;
-
-
-    Name.Length = 0;
-    Dest = Name.Buffer;
-    Source = Field.Buffer;
-
-    //ConvertTimeFieldToString(SystemTime.wYear, DirectoryName);
-    Separator = TRUE;
-    Field.Length = 0;
-    if (!RtlInt64ToUnicodeString(SystemTime.wYear, 0, &Field)) {
-        goto Error;
-    }
-    Bytes = Field.Length;
-    Count = Bytes >> 1;
-    __movsw(Dest, Source, Count);
-    if (Separator) {
-        Bytes += 2;
-        Count++;
-    }
-    Dest += Count;
-    Name.Length += Bytes;
-    
-    Separator = TRUE;
-    Field.Length = 0;
-    if (!RtlInt64ToUnicodeString(SystemTime.wMonth, 0, &Field)) {
-        goto Error;
-    }
-    Bytes = Field.Length;
-    Count = Bytes >> 1;
-    __movsw(Dest, Source, Count);
-    if (Separator) {
-        Bytes += 2;
-        Count++;
-    }
-    Dest += Count;
-    Name.Length += Bytes;
-    
-    return FALSE;
 
 Error:
 
     return FALSE;
 }
-
 
 
 _Use_decl_annotations_
@@ -360,9 +228,6 @@ CreateTraceSessionDirectory(
     PUNICODE_STRING Directory;
     PUNICODE_STRING BaseDirectory;
     PTRACE_SESSION_DIRECTORY TraceSessionDirectory;
-    PRTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
-    PRTL_DYNAMIC_HASH_TABLE HashTable;
-    RTL_DYNAMIC_HASH_TABLE_CONTEXT HashTableContext;
 
     //
     // Validate arguments.
@@ -540,7 +405,7 @@ CreateTraceSessionDirectory(
         // Reset the Directory string back to the base trace directory in
         // preparation for CreateSystemTimeTraceSessionDirectoryName() being
         // called again at the top of the loop.
-        // 
+        //
 
         Directory->Length = BaseDirectory->Length;
 
@@ -551,6 +416,12 @@ CreateTraceSessionDirectory(
     // successfully created.  Add the directory to the hash table of trace
     // session directories.
     //
+
+    //
+    // Skip for now.
+    //
+
+    goto End;
 
     Signature = Directory->Hash = HashUnicodeStringToAtom(Directory);
     HashTableEntry = &TraceSessionDirectory->HashTableEntry;

@@ -1,4 +1,9 @@
+
+#include <ntstatus.h>
+#pragma warning(push)
+#pragma warning(disable: 4995)
 #include <ntstrsafe.h>
+
 
 /*++
 
@@ -57,43 +62,56 @@ return value of this function
 --*/
 
 NTSTATUS
+__stdcall
 UnicodeStringPrintf(
     _Inout_ PUNICODE_STRING DestinationString,
     _In_ _Printf_format_string_ NTSTRSAFE_PCWSTR pszFormat,
     ...)
 {
-    va_list Args;
-
-    return RtlUnicodeStringPrintf()
     NTSTATUS status;
     wchar_t* pszDest;
     size_t cchDest;
 
-    status = RtlUnicodeStringValidateDestWorker(DestinationString,
+    status = RtlUnicodeStringValidateDestWorker(
+        DestinationString,
         &pszDest,
         &cchDest,
         NULL,
         NTSTRSAFE_UNICODE_STRING_MAX_CCH,
-        0);
+        0
+    );
 
-    if (NT_SUCCESS(status))
-    {
+    if (NT_SUCCESS(status)) {
         va_list argList;
         size_t cchNewDestLength = 0;
 
         va_start(argList, pszFormat);
 
-        status = RtlWideCharArrayVPrintfWorker(pszDest,
+        status = RtlWideCharArrayVPrintfWorker(
+            pszDest,
             cchDest,
             &cchNewDestLength,
             pszFormat,
-            argList);
+            argList
+        );
 
         va_end(argList);
 
-        // safe to multiply cchNewDestLength * sizeof(wchar_t) since cchDest < NTSTRSAFE_UNICODE_STRING_MAX_CCH and sizeof(wchar_t) is 2
-        DestinationString->Length = (USHORT)(cchNewDestLength * sizeof(wchar_t));
+        //
+        // Safe to multiply cchNewDestLength * sizeof(wchar_t) since
+        // cchDest < NTSTRSAFE_UNICODE_STRING_MAX_CCH and sizeof(wchar_t) is 2.
+        //
+
+        DestinationString->Length = (USHORT)(
+            cchNewDestLength *
+            sizeof(wchar_t)
+        );
+
     }
 
     return status;
 }
+
+#pragma warning(pop)
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
