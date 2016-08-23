@@ -27,6 +27,9 @@
     <ClInclude Include="TracerConfigPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RtlString.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -50,5 +53,13 @@
     <ClCompile Include="Allocation.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RtlString.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TracerConfig.def">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

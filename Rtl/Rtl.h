@@ -657,29 +657,43 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE {
 
 } RTL_DYNAMIC_HASH_TABLE, *PRTL_DYNAMIC_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
+FORCEINLINE
+VOID
+RtlInitHashTableContext(
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    )
+{
+    Context->ChainHead = NULL;
+    Context->PrevLinkage = NULL;
+}
+
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE *PRTL_CREATE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE_EX)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG InitialSize,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE_EX *PRTL_CREATE_HASH_TABLE_EX;
 
-typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
+typedef VOID (NTAPI RTL_DELETE_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
     );
+typedef RTL_DELETE_HASH_TABLE *PRTL_DELETE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_INSERT_ENTRY_HASH_TABLE)(
+typedef BOOLEAN (NTAPI RTL_INSERT_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
     _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
     _In_ ULONG_PTR Signature,
     _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
     );
+typedef RTL_INSERT_ENTRY_HASH_TABLE *PRTL_INSERT_ENTRY_HASH_TABLE;
 
 typedef BOOLEAN (NTAPI *PRTL_REMOVE_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
@@ -1832,7 +1846,10 @@ IsValidNullTerminatedUnicodeString(
     _In_ PUNICODE_STRING String
     )
 {
-    return IsValidNullTerminatedUnicodeStringWithMinimumLength(String, 1);
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        1
+    );
 }
 
 FORCEINLINE
