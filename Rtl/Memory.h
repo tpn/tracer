@@ -46,9 +46,23 @@ VOID
     );
 typedef FREE *PFREE;
 
+typedef
+BOOLEAN
+(INITIALIZE_ALLOCATOR)(
+    _In_ struct _ALLOCATOR *Allocator
+    );
+typedef INITIALIZE_ALLOCATOR *PINITIALIZE_ALLOCATOR;
+
+typedef
+VOID
+(DESTROY_ALLOCATOR)(
+    _In_opt_ struct _ALLOCATOR *Allocator
+    );
+typedef DESTROY_ALLOCATOR *PDESTROY_ALLOCATOR;
+
 //
 // Allocator structure.  This intentionally mirrors the Python 3.5+
-// PyMemAllocatorEx structure;
+// PyMemAllocatorEx structure up to the Free pointer.
 //
 
 typedef struct _ALLOCATOR {
@@ -76,6 +90,15 @@ typedef struct _ALLOCATOR {
         PFREE Free;
         PFREE free;
     };
+
+    //
+    // Remaining fields are specific to us and have no
+    // PyMemAllocatorEx counterparts.
+    //
+
+    PVOID Context2;
+    PINITIALIZE_ALLOCATOR Initialize;
+    PDESTROY_ALLOCATOR Destroy;
 
 } ALLOCATOR, *PALLOCATOR;
 

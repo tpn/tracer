@@ -1,21 +1,29 @@
 #include "stdafx.h"
 
+#include "../Rtl/Commandline.h"
+#include "../Rtl/Memory.h"
+#include "../Rtl/DefaultHeapAllocator.h"
+#include "../TracerConfig/TracerConfig.h"
+
 #include "../Python/Python.h"
-
-typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
-  _In_  PWSTR  CommandLine,
-  _Out_ PLONG  NumberOfArgs
-);
-
-typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
-
 
 VOID
 WINAPI
 mainCRTStartup()
 {
-    //BOOL Success;
-    DWORD ExitCode = 1;
+    DWORD ExitCode;
+    ALLOCATOR Allocator;
+    PWSTR CommandLine;
+    PTRACER_CONFIG TracerConfig;
+
+    if (!DefaultHeapInitialize(&Allocator)) {
+        goto Error;
+    }
+
+    CommandLine = GetCommandLineW();
+    if (!CommandLine) {
+        goto Error;
+    }
 
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
     PPY_MAIN Py_Main;
@@ -92,6 +100,9 @@ mainCRTStartup()
     }
 
     HeapFree(HeapHandle, 0, AnsiArgv);
+
+Error:
+    ExitCode = 1;
 
 End:
     ExitProcess(ExitCode);

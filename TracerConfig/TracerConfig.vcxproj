@@ -77,8 +77,10 @@
     <ClInclude Include="RtlString.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TracerBootstrap.h" />
     <ClInclude Include="TracerConfig.h" />
     <ClInclude Include="TracerConfigPrivate.h" />
+    <ClInclude Include="TracerConfigRegistry.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Allocation.c" />
