@@ -149,7 +149,6 @@ Return Value:
     USHORT BytesRemaining;
     USHORT BytesRequired;
     ULONG Value;
-    SYSTEMTIME SystemTime;
     PUNICODE_STRING Name;
 
     //
@@ -220,11 +219,11 @@ CreateTraceSessionDirectory(
     ULONG Bytes;
     ULONG Count;
     ULONG LastError;
-    ULONG Signature;
     PWCHAR Dest;
     PWCHAR Source;
     ULONG_INTEGER AllocationSize;
     PALLOCATOR Allocator;
+    SYSTEMTIME SystemTime;
     PUNICODE_STRING Directory;
     PUNICODE_STRING BaseDirectory;
     PTRACE_SESSION_DIRECTORY TraceSessionDirectory;
@@ -368,13 +367,20 @@ CreateTraceSessionDirectory(
     do {
 
         //
-        // Get the trace session directory name, appending it to the existing
-        // base trace directory name.
+        // Get the system time.
+        //
+
+        GetSystemTime(&SystemTime);
+
+        //
+        // Get the trace session directory name using the system time we just
+        // obtained, appending it to the existing base trace directory name.
         //
 
         Success = CreateSystemTimeTraceSessionDirectoryName(
             TracerConfig,
-            Directory
+            Directory,
+            &SystemTime
         );
 
         if (!Success) {
@@ -413,7 +419,7 @@ CreateTraceSessionDirectory(
 
     //
     // The trace session directory name (and backing directory) were
-    // successfully created.  Add the directory to the hash table of trace
+    // successfully created.  Add the directory to the list of trace
     // session directories.
     //
 
@@ -422,25 +428,6 @@ CreateTraceSessionDirectory(
     //
 
     goto End;
-
-    Signature = Directory->Hash = HashUnicodeStringToAtom(Directory);
-    HashTableEntry = &TraceSessionDirectory->HashTableEntry;
-    HashTableEntry->Signature = Directory->Hash;
-    HashTable = &TracerConfig->TraceSessionDirectories.HashTable;
-
-    InitializeListHead(&HashTableEntry->Linkage);
-    RtlInitHashTableContext(&HashTableContext);
-
-    Success = RtlInsertEntryHashTable(
-        HashTable,
-        HashTableEntry,
-        (ULONG_PTR)&Signature,
-        &HashTableContext
-    );
-
-    if (!Success) {
-        goto Error;
-    }
 
     //
     // We're done, goto end.
