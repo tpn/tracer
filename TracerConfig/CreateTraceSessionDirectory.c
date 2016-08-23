@@ -227,6 +227,7 @@ CreateTraceSessionDirectory(
     PUNICODE_STRING Directory;
     PUNICODE_STRING BaseDirectory;
     PTRACE_SESSION_DIRECTORY TraceSessionDirectory;
+    PTRACE_SESSION_DIRECTORIES Directories;
 
     //
     // Validate arguments.
@@ -418,16 +419,18 @@ CreateTraceSessionDirectory(
     } while (--Attempts);
 
     //
-    // The trace session directory name (and backing directory) were
-    // successfully created.  Add the directory to the list of trace
-    // session directories.
+    // The trace session directory name and backing directory were created
+    // successfully.  Add to the trace session directories list.
     //
 
-    //
-    // Skip for now.
-    //
+    Directories = &TracerConfig->TraceSessionDirectories;
 
-    goto End;
+    InitializeListHead(&TraceSessionDirectory->ListEntry);
+
+    AcquireSRWLockExclusive(&Directories->Lock);
+    InterlockedIncrement(&Directories->Count);
+    AppendTailList(&Directories->ListHead, &TraceSessionDirectory->ListEntry);
+    ReleaseSRWLockExclusive(&Directories->Lock);
 
     //
     // We're done, goto end.

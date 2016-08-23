@@ -3,12 +3,8 @@
 
 #include <Windows.h>
 
-//#pragma data_seg(".shared")
 PTRACER_CONFIG GlobalTracerConfig = NULL;
 PALLOCATOR GlobalTracerAllocator = NULL;
-//#pragma data_seg()
-
-//#pragma comment(linker, "/section:.shared,rws")
 
 MALLOC Malloc;
 CALLOC Calloc;
@@ -107,3 +103,19 @@ DestroyGlobalTracerConfig(VOID)
     DestroyTracerConfig(GlobalTracerConfig);
     return;
 }
+
+#ifdef _DEBUG
+VOID
+DestroyTraceSessionDirectories(
+    _In_ PTRACER_CONFIG TracerConfig
+    );
+
+VOID
+DestroyGlobalTraceSessionDirectory(VOID)
+{
+    DestroyTraceSessionDirectories(GlobalTracerConfig);
+    return;
+}
+#endif
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -139,7 +139,7 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 } TRACER_FLAGS, *PTRACER_FLAGS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {
-    RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+    LIST_ENTRY ListEntry;
     UNICODE_STRING Directory;
     PVOID Context;
 } TRACE_SESSION_DIRECTORY, *PTRACE_SESSION_DIRECTORY;
@@ -147,7 +147,7 @@ typedef struct _TRACE_SESSION_DIRECTORY {
 typedef struct _TRACE_SESSION_DIRECTORIES {
     LIST_ENTRY ListHead;
     SRWLOCK Lock;
-    RTL_DYNAMIC_HASH_TABLE HashTable;
+    volatile ULONG Count;
 } TRACE_SESSION_DIRECTORIES, *PTRACE_SESSION_DIRECTORIES;
 
 //
