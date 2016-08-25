@@ -24,6 +24,18 @@ enum PythonVersion {
     PythonVersion_35 = 0x0305
 };
 
+typedef
+_Success_(return != 0)
+BOOL
+(FIND_PYTHON_DLL_AND_EXE)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PUNICODE_STRING Directory,
+    _Out_ PPUNICODE_STRING PythonDllPath,
+    _Out_ PPUNICODE_STRING PythonExePath
+    );
+typedef FIND_PYTHON_DLL_AND_EXE *PFIND_PYTHON_DLL_AND_EXE;
+
 #ifdef _M_AMD64
 typedef __int64 Py_ssize_t, PY_SSIZE;
 typedef __int64 Py_hash_t, PY_HASH;
@@ -1423,7 +1435,35 @@ typedef PPYVAROBJECT (*PPYOBJECT_INITVAR)(PPYVAROBJECT,
 typedef PPYOBJECT (*PPYOBJECT_NEW)(PPYTYPEOBJECT);
 typedef PPYVAROBJECT (*PPYOBJECT_NEWVAR)(PPYTYPEOBJECT, PY_SSIZE);
 
+typedef VOID (PY_INITIALIZE)(VOID);
+typedef PY_INITIALIZE *PPY_INITIALIZE;
+
+typedef VOID (PY_INITIALIZE_EX)(INT);
+typedef PY_INITIALIZE_EX *PPY_INITIALIZE_EX;
+
+typedef VOID (PY_FINALIZE)(VOID);
+typedef PY_FINALIZE *PPY_FINALIZE;
+
+typedef INT (PY_IS_INITIALIZED)(VOID);
+typedef PY_IS_INITIALIZED *PPY_IS_INITIALIZED;
+
+typedef VOID (PYSYS_SET_ARGV_EX)(INT, CHAR**, INT);
+typedef PYSYS_SET_ARGV_EX *PPYSYS_SET_ARGV_EX;
+
+typedef VOID (PY_SET_PROGRAM_NAME)(CHAR*);
+typedef PY_SET_PROGRAM_NAME *PPY_SET_PROGRAM_NAME;
+
+typedef VOID (PY_SET_PYTHON_HOME)(CHAR*);
+typedef PY_SET_PYTHON_HOME *PPY_SET_PYTHON_HOME;
+
 #define _PYTHONFUNCTIONS_HEAD                              \
+    PPYSYS_SET_ARGV_EX              PySys_SetArgvEx;       \
+    PPY_SET_PROGRAM_NAME            Py_SetProgramName;     \
+    PPY_SET_PYTHON_HOME             Py_SetPythonHome;      \
+    PPY_INITIALIZE                  Py_Initialize;         \
+    PPY_INITIALIZE_EX               Py_InitializeEx;       \
+    PPY_IS_INITIALIZED              Py_IsInitialized;      \
+    PPY_FINALIZE                    Py_Finalize;           \
     PPY_GETVERSION                  Py_GetVersion;         \
     PPY_MAIN                        Py_Main;               \
     PPY_GET_PREFIX                  Py_GetPrefix;          \
@@ -2254,6 +2294,8 @@ typedef struct _PYTHON {
     PPYOBJECT CodeObjectCache[32];
 } PYTHON, *PPYTHON, **PPPYTHON;
 
+TRACER_API FIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
+
 TRACER_API
 BOOL
 SetPythonAllocators(
@@ -2508,6 +2550,7 @@ GetPythonStringInformation(
     return TRUE;
 }
 
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 WrapPythonStringAsString(
@@ -2639,6 +2682,7 @@ PythonAnsiHashInline(
     return TRUE;
 }
 
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 HashAndAtomizeAnsiInline(

@@ -8,3 +8,10 @@ Release
 *.opendb
 tags
 *.pyc
+Tracer.VC.db
+build.err
+build.log
+msbuild.log
+sdv
+sdv.temp
+*.vcxproj.user

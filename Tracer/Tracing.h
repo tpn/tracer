@@ -217,7 +217,7 @@ typedef _Check_return_ PVOID (*PALLOCATE_RECORDS)(
     _In_    PULARGE_INTEGER NumberOfRecords
     );
 
-typedef _Check_return_ VOID (*PFREE_RECORDS)(
+typedef VOID (*PFREE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
     _In_    PVOID           Buffer
@@ -691,9 +691,7 @@ typedef struct _TRACE_CONTEXT {
     TRACE_STORE_TIME            Time;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-TRACER_API
-BOOL
-InitializeTraceStores(
+typedef BOOL (INITIALIZE_TRACE_STORES)(
     _In_        PRTL            Rtl,
     _In_        PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
@@ -702,6 +700,8 @@ InitializeTraceStores(
     _In_        BOOL            Readonly,
     _In_        BOOL            Compress
 );
+
+typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 
 typedef BOOL (*PINITIALIZE_TRACE_SESSION)(
     _In_                                 PRTL           Rtl,
@@ -757,6 +757,13 @@ InitializeTraceContext(
     _In_     BOOL Readonly,
     _In_     BOOL Compress
     );
+
+typedef
+VOID
+(CLOSE_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
 
 typedef BOOL (*PFLUSH_TRACE_STORES)(_In_ PTRACE_CONTEXT TraceContext);
 
@@ -861,10 +868,6 @@ InitializeTraceStoreTime(
     _In_    PTRACE_STORE_TIME   Time
     );
 
-
-TRACER_API
-BOOL
-FlushTraceStores(PTRACE_CONTEXT TraceContext);
 
 TRACER_API
 VOID

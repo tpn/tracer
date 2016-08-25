@@ -278,7 +278,7 @@ mainCRTStartup()
     Function.Hash.HighPart = 0;
     Function.Hash.LowPart = 581891183;
 
-    Function.EntryCallback = HookEntryCallback;
+    //Function.EntryCallback = HookEntryCallback;
 
     goto DoInitialize;
 

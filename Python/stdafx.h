@@ -4,3 +4,4 @@
 
 #include <Windows.h>
 #include "Python.h"
+#include "PythonDllFiles.h"

@@ -51,7 +51,22 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+#include "Memory.h"
+#include "Commandline.h"
+
 typedef CONST char *PCSZ;
+
+typedef LONG (MAINPROCA)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPSTR ArgvA
+    );
+typedef MAINPROCA *PMAINPROCA;
+
+typedef LONG (MAINPROCW)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPWSTR ArgvW
+    );
+typedef MAINPROCW *PMAINPROCW;
 
 typedef VOID (RTL_INIT_STRING)(
     _Out_       PSTRING     DestinationString,
@@ -115,6 +130,102 @@ typedef LONG (*PCOMPARE_STRING_CASE_INSENSITIVE)(
     _In_ PCSTRING String2
     );
 
+
+typedef struct _RTL_BITMAP {
+    ULONG SizeOfBitMap;     // Number of bits.
+    PULONG Buffer;
+} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
+
+typedef struct _RTL_BITMAP_RUN {
+    ULONG StartingIndex;
+    ULONG NumberOfBits;
+} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
+
+//
+// The various bitmap find functions return 0xFFFFFFFF
+// if they couldn't find the requested bit pattern.
+//
+
+#define BITS_NOT_FOUND 0xFFFFFFFF
+#pragma pack(push, 1)
+
+typedef _Struct_size_bytes_(StructSize) struct _PATH {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
+
+    //
+    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
+    // pointer.
+    //
+
+    WCHAR Drive;                                                    // 2    4
+
+    union {
+        struct {
+            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
+            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
+        };
+        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
+    };
+
+    //
+    // Total number of bytes allocated for the structure, including StructSize.
+    // This includes the bitmap buffers and unicode string buffer (all of which
+    // will typically trail this structure in memory).
+    //
+
+    USHORT AllocSize;                                               // 2    18
+
+    //
+    // Indicates whether or not the path is fully-qualified.
+    //
+
+    USHORT IsFullyQualified;                                        // 2    20
+
+    union {
+        struct {
+            ULONG SizeOfReversedDotsBitMap;                         // 4    24
+            PULONG ReversedDotsBitMapBuffer;                        // 8    32
+        };
+        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
+    };
+
+    UNICODE_STRING Full;
+    UNICODE_STRING Filename;
+    UNICODE_STRING Directory;
+    UNICODE_STRING Extension;
+} PATH, *PPATH, **PPPATH;
+
+#pragma pack(pop)
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
+
+RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_MODULE_PATH)(
+    _In_ PRTL Rtl,
+    _In_ HMODULE Module,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef GET_MODULE_PATH *PGET_MODULE_PATH;
+
 RTL_API
 LONG
 CompareStringCaseInsensitive(
@@ -151,9 +262,8 @@ typedef union _LONG_INTEGER {
     LONG   LongPart;
 } LONG_INTEGER, *PLONG_INTEGER;
 
-
-typedef CHAR *PSZ;
-typedef const CHAR *PCSZ;
+typedef _Null_terminated_ CHAR *PSZ;
+//typedef const PSZ PCSZ;
 
 typedef struct _PROCESS_MEMORY_COUNTERS {
     DWORD  cb;
@@ -230,28 +340,19 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _Out_ PULONG Value
 );
 
+typedef DWORD (WINAPI *PSEARCHPATHW)(
+    _In_opt_    LPCWSTR     lpPath,
+    _In_        LPCWSTR     lpFileName,
+    _In_opt_    LPCWSTR     lpExtension,
+    _In_        DWORD       nBufferLength,
+    _Out_       LPWSTR      lpBuffer,
+    _Out_opt_   LPWSTR      lpFilePart
+    );
+
+
 //
 // CRT functions.
 //
-
-typedef PVOID (__cdecl *PMALLOC)(
-    _In_ SIZE_T Size
-    );
-
-typedef PVOID (__cdecl *PCALLOC)(
-    _In_ SIZE_T NumberOfElements,
-    _In_ SIZE_T ElementSizeInBytes
-    );
-
-typedef PVOID (__cdecl *PREALLOC)(
-    _In_ PVOID  Pointer,
-    _In_ SIZE_T NewSizeInBytes
-    );
-
-typedef VOID (__cdecl *PFREE)(
-    _In_ PVOID Pointer
-    );
-
 
 typedef INT (__cdecl *PCRTCOMPARE)(
     _In_    CONST PVOID Key,
@@ -638,29 +739,43 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE {
 
 } RTL_DYNAMIC_HASH_TABLE, *PRTL_DYNAMIC_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
+FORCEINLINE
+VOID
+RtlInitHashTableContext(
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    )
+{
+    Context->ChainHead = NULL;
+    Context->PrevLinkage = NULL;
+}
+
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE *PRTL_CREATE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE_EX)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG InitialSize,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE_EX *PRTL_CREATE_HASH_TABLE_EX;
 
-typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
+typedef VOID (NTAPI RTL_DELETE_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
     );
+typedef RTL_DELETE_HASH_TABLE *PRTL_DELETE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_INSERT_ENTRY_HASH_TABLE)(
+typedef BOOLEAN (NTAPI RTL_INSERT_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
     _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
     _In_ ULONG_PTR Signature,
     _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
     );
+typedef RTL_INSERT_ENTRY_HASH_TABLE *PRTL_INSERT_ENTRY_HASH_TABLE;
 
 typedef BOOLEAN (NTAPI *PRTL_REMOVE_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
@@ -916,23 +1031,6 @@ typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
 // Bitmaps
 //
 
-typedef struct _RTL_BITMAP {
-    ULONG SizeOfBitMap;     // Number of bits.
-    PULONG Buffer;
-} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
-
-typedef struct _RTL_BITMAP_RUN {
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
-} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
-
-//
-// The various bitmap find functions return 0xFFFFFFFF
-// if they couldn't find the requested bit pattern.
-//
-
-#define BITS_NOT_FOUND 0xFFFFFFFF
-
 typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP)(
     _Out_ PRTL_BITMAP BitMapHeader,
     _In_opt_ PULONG BitMapBuffer,
@@ -1081,6 +1179,26 @@ typedef ULONG (NTAPI *PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)(
     _In_ PRTL_BITMAP BitMapHeader,
     _In_ ULONG FromIndex,
     _Out_ PULONG StartingRunIndex
+    );
+
+//
+// Quad-word Bitmaps.  (Work in progress.)
+//
+
+typedef struct _RTL_BITMAP_EX {
+    ULONGLONG SizeOfBitMap; // Number of bits.
+    PULONGLONG Buffer;
+} RTL_BITMAP_EX, *PRTL_BITMAP_EX, **PPRTL_BITMAP_EX;
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP_EX)(
+    _Out_ PRTL_BITMAP_EX BitMapHeader,
+    _In_opt_ __drv_aliasesMem PULONGLONG BitMapBuffer,
+    _In_opt_ ULONGLONG SizeOfBitMap
+    );
+
+typedef VOID (NTAPI *PRTL_CLEAR_BIT_EX)(
+    _In_ PRTL_BITMAP_EX BitMapHeader,
+    _In_range_(<, BitMapHeader->SizeOfBitMap) ULONGLONG BitNumber
     );
 
 //
@@ -1278,6 +1396,7 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
     PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
+    PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
@@ -1503,21 +1622,28 @@ CreateBitmapIndexForString(
     _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
     );
 
+typedef VOID *PALLOCATION_CONTEXT;
+
 typedef PVOID (ALLOCATION_ROUTINE)(
-    _In_opt_ PVOID AllocationContext,
+    _In_opt_ PALLOCATION_CONTEXT AllocationContext,
     _In_ const ULONG ByteSize
     );
 
 typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
 
+typedef VOID *PFREE_CONTEXT;
+
 typedef VOID (FREE_ROUTINE)(
-    _In_opt_ PVOID Context,
+    _In_opt_ PFREE_CONTEXT Context,
     _In_ PVOID Buffer
     );
 
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
-typedef BOOL (FILES_EXISTW)(
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL (FILES_EXISTW)(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1529,7 +1655,11 @@ typedef BOOL (FILES_EXISTW)(
 
 typedef FILES_EXISTW *PFILES_EXISTW;
 
-typedef BOOL (FILES_EXISTA)(
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FILES_EXISTA)(
     _In_      PRTL     Rtl,
     _In_      PSTRING  Directory,
     _In_      USHORT   NumberOfFilenames,
@@ -1590,6 +1720,9 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
     PFILES_EXISTW FilesExistW;                                                 \
     PFILES_EXISTA FilesExistA;                                                 \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
+    PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
+    PUNICODE_STRING_TO_PATH UnicodeStringToPath;                               \
+    PGET_MODULE_PATH GetModulePath;                                            \
     PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -1647,12 +1780,12 @@ typedef BOOL (*PINITIALIZE_RTL)(
     _Inout_                   PULONG SizeOfRtl
     );
 
-#define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-#define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseChar(C) (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseUnicodeChar(C) (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
-#define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
-#define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
-#define RtlPointerToOffset(B,P)    ((ULONG_PTR)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
+#define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
+#define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 #define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
@@ -1749,6 +1882,103 @@ InitializeStringFromString(
     Dest->Length = Source->Length;
     Dest->MaximumLength = Source->MaximumLength;
     Dest->Buffer = Source->Buffer;
+}
+
+FORCEINLINE
+BOOL
+IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    //
+    // Add 1 to account for the NULL.
+    //
+
+    USHORT Length = (MinimumLengthInChars + 1) * sizeof(WCHAR);
+    USHORT MaximumLength = Length + sizeof(WCHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= MaximumLength &&
+        sizeof(WCHAR) == (String->MaximumLength - String->Length) &&
+        String->Buffer[String->Length >> 1] == L'\0'
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    USHORT Length = MinimumLengthInChars * sizeof(WCHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= Length &&
+        String->MaximumLength >= String->Length
+    );
+}
+
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return IsValidUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        1
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    //
+    // Minimum length: "C:\a" -> 4.
+    //
+
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= 1 &&
+        String->MaximumLength >= 1
+    );
 }
 
 FORCEINLINE
@@ -1876,7 +2106,7 @@ AppendCharAndStringAndCharToString(
     return TRUE;
 }
 
-
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 CreateUnicodeStringInline(
@@ -1924,18 +2154,23 @@ CopyUnicodeStringInline(
     Rtl->RtlCopyUnicodeString(Destination, Source);
 }
 
+_Success_(return != 0)
 FORCEINLINE
-VOID
+BOOL
 CopyString(
-    _Out_    PSTRING Destination,
+    _In_     PSTRING Destination,
     _In_opt_ PCSTRING Source
     )
 {
     USHORT Length;
 
-    if (!Source) {
+    if (!ARGUMENT_PRESENT(Destination)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Source)) {
         Destination->Length = 0;
-        return;
+        return FALSE;
     }
 
     Length = min(Destination->MaximumLength, Source->Length);
@@ -1946,6 +2181,7 @@ CopyString(
 
     Destination->Length = Length;
 
+    return TRUE;
 }
 
 
@@ -2097,13 +2333,672 @@ InlineFindCharsInString(
     }
 }
 
+FORCEINLINE
+VOID
+InlineFindWideCharsInUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           CharToFind,
+    _In_ PRTL_BITMAP     Bitmap
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    WCHAR Char;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        if (Char == CharToFind) {
+            FastSetBit(Bitmap, Index);
+        }
+    }
+}
+
+FORCEINLINE
+VOID
+InlineFindTwoWideCharsInUnicodeStringReversed(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           Char1ToFind,
+    _In_ WCHAR           Char2ToFind,
+    _In_ PRTL_BITMAP     Bitmap1,
+    _In_ PRTL_BITMAP     Bitmap2
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length >> 1;
+    WCHAR  Char;
+    ULONG  Bit;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        Bit = NumberOfCharacters - Index;
+        if (Char == Char1ToFind) {
+            FastSetBit(Bitmap1, Bit);
+        }
+        if (Char == Char2ToFind) {
+            FastSetBit(Bitmap2, Bit);
+        }
+    }
+}
+
+
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
-RTL_API
+FORCEINLINE
 BOOL
-LoadShlwapi(PRTL Rtl);
+ConvertUtf16StringToUtf8StringSlow(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  The 'Slow' suffix on this function name indicates that the
+    WideCharToMultiByte() function is called first in order to get the required
+    buffer size prior to allocating the buffer.
+
+    (ConvertUtf16StringToUtf8String() is an alternate version of this method
+     that optimizes for the case where there are no multi-byte characters.)
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NewLength;
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    ULONG_INTEGER AllocSize;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    BufferSizeInBytes = WideCharToMultiByte(
+        CP_UTF8,                        // CodePage
+        0,                              // dwFlags
+        Utf16->Buffer,                  // lpWideCharStr
+        NumberOfCharacters,             // cchWideChar
+        NULL,                           // lpMultiByteStr
+        0,                              // cbMultiByte
+        NULL,                           // lpDefaultChar
+        NULL                            // lpUsedDefaultChar
+    );
+
+    if (BufferSizeInBytes <= 0) {
+        return FALSE;
+    }
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    NewLength = (USHORT)BufferSizeInBytes;
+    BufferSizeInBytes += 1;
+
+    //
+    // Align the buffer.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (ULONG)(
+        ALIGN_UP_POINTER(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    Utf8 = (PSTRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedBufferSizeInBytes.LowPart
+        )
+    );
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NewLength;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+
+        //
+        // Try free the underlying buffer.
+        //
+
+        Allocator->Free(Allocator->Context, Utf8);
+        Utf8 = NULL;
+    }
+
+    return FALSE;
+}
+
+FORCEINLINE
+BOOL
+ConvertUtf16StringToUtf8String(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  This method is optimized for the case where there are no
+    multi-byte characters in the unicode string, where the buffer size required
+    to hold the UTF-8 string is simply half the size of the UTF-16 buffer.  If
+    the first attempt at conversion (via WideCharToMultiByte()) indicates that
+    there are multibyte characters (ERROR_INSUFFICIENT_BUFFER is returned by
+    GetLastError()), the first allocated buffer will be freed and this routine
+    will call ConvertUtf16StringToUtf8StringSlow().
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AllocSize;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    BufferSizeInBytes = NumberOfCharacters + 1;
+
+    //
+    // Align the buffer size on a pointer boundary.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    Utf8 = (PSTRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LowPart
+        )
+    );
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NumberOfCharacters;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+        Allocator->Free(Allocator->Context, Utf8);
+        Utf8 = NULL;
+    }
+
+    return FALSE;
+}
+
+
+#ifdef RTL_SECURE_ZERO_MEMORY
+FORCEINLINE
+PVOID
+RtlSecureZeroMemory(
+    _Out_writes_bytes_all_(cnt) PVOID ptr,
+    _In_ SIZE_T cnt
+    )
+{
+    volatile char *vptr = (volatile char *)ptr;
+
+#if defined(_M_AMD64)
+
+    __stosb((PUCHAR)((ULONG64)vptr), 0, cnt);
+
+#else
+
+    while (cnt) {
+
+#if !defined(_M_CEE) && (defined(_M_ARM) || defined(_M_ARM64))
+
+        __iso_volatile_store8(vptr, 0);
+
+#else
+
+        *vptr = 0;
+
+#endif
+
+        vptr++;
+        cnt--;
+    }
+
+#endif // _M_AMD64
+
+    return ptr;
+}
+#endif
+
+static CONST WCHAR IntegerToWCharTable[] = {
+    L'0',
+    L'1',
+    L'2',
+    L'3',
+    L'4',
+    L'5',
+    L'6',
+    L'7',
+    L'8',
+    L'9',
+    L'A',
+    L'B',
+    L'C',
+    L'D',
+    L'E',
+    L'F'
+};
+
+FORCEINLINE
+USHORT
+CountNumberOfDigits(_In_ ULONG Value)
+{
+    USHORT Count = 0;
+
+    do {
+        Count++;
+        Value = Value / 10;
+    } while (Value != 0);
+
+    return Count;
+}
+
+FORCEINLINE
+BOOLEAN
+AppendIntegerToUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ ULONG Integer,
+    _In_ USHORT NumberOfDigits,
+    _In_opt_ WCHAR Trailer
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that allows construction of unicode strings out
+    of integer values.
+
+Arguments:
+
+    String - Supplies a pointer to a UNICODE_STRING that will be appended to.
+        Sufficient buffer space must exist for the entire string to be written.
+
+    Integer - The integer value to be appended to the string.
+
+    NumberOfDigits - The expected number of digits for the value.  If Integer
+        has less digits than this number, it will be left-padded with zeros.
+
+    Trailer - An optional trailing wide character to append.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT ActualNumberOfDigits;
+    USHORT BytesRequired;
+    USHORT BytesRemaining;
+    USHORT NumberOfZerosToPad;
+    const ULONG Base = 10;
+    ULONG Digit;
+    ULONG Value;
+    ULONG Count;
+    ULONG Bytes;
+    WCHAR Char;
+    PWCHAR Dest;
+
+    //
+    // Verify the unicode string has sufficient space.
+    //
+
+    BytesRequired = NumberOfDigits * sizeof(WCHAR);
+
+    if (Trailer) {
+        BytesRequired += (1 * sizeof(Trailer));
+    }
+
+    BytesRemaining = (
+        String->MaximumLength -
+        String->Length
+    );
+
+    if (BytesRemaining < BytesRequired) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the integer value doesn't have more digits than
+    // specified.
+    //
+
+    ActualNumberOfDigits = CountNumberOfDigits(Integer);
+
+    if (ActualNumberOfDigits > NumberOfDigits) {
+        return FALSE;
+    }
+
+    //
+    // Initialize our destination pointer to the last digit.  (We write
+    // back-to-front.)
+    //
+
+    Dest = (PWCHAR)(
+        RtlOffsetToPointer(
+            String->Buffer,
+            String->Length + (
+                (NumberOfDigits - 1) *
+                sizeof(WCHAR)
+            )
+        )
+    );
+    Count = 0;
+    Bytes = 0;
+
+    //
+    // Convert each digit into the corresponding character and copy to the
+    // string buffer, retreating the pointer as we go.
+    //
+
+    Value = Integer;
+
+    do {
+        Count++;
+        Bytes += 2;
+        Digit = Value % Base;
+        Value = Value / Base;
+        Char = IntegerToWCharTable[Digit];
+        *Dest-- = Char;
+    } while (Value != 0);
+
+    //
+    // Pad the string with zeros if necessary.
+    //
+
+    NumberOfZerosToPad = NumberOfDigits - ActualNumberOfDigits;
+
+    if (NumberOfZerosToPad) {
+        do {
+            Count++;
+            Bytes += 2;
+            *Dest-- = L'0';
+        } while (--NumberOfZerosToPad);
+    }
+
+    //
+    // Update the string with the new length.
+    //
+
+    String->Length += (USHORT)Bytes;
+
+    //
+    // Add the trailer if applicable.
+    //
+
+    if (Trailer) {
+        String->Length += sizeof(WCHAR);
+        String->Buffer[(String->Length - 1) >> 1] = Trailer;
+    }
+
+    return TRUE;
+}
+
 
 //
 // Verbatim copy of the doubly-linked list inline methods.

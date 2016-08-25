@@ -53,7 +53,7 @@ CopyToMemoryMappedMemory(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
-)
+    )
 {
 
     //
@@ -137,6 +137,7 @@ LoadShlwapiFunctions(
 
 }
 
+RTL_API
 BOOL
 LoadShlwapi(PRTL Rtl)
 {
@@ -192,6 +193,7 @@ SetCSpecificHandler(_In_ HMODULE Module)
     return Status;
 }
 
+_Success_(return != 0)
 BOOL
 CALLBACK
 GetSystemTimerFunctionCallback(
@@ -1110,8 +1112,11 @@ FilesExistW(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
         //
+
         SanityCheck = (
             Filename &&
             Filename->Length > 0 &&
@@ -1121,6 +1126,10 @@ FilesExistW(
         if (!SanityCheck) {
             __debugbreak();
         }
+
+        //
+        // Update our local maximum filename length variable if applicable.
+        //
 
         if (Filename->Length > MaxFilenameLength) {
             MaxFilenameLength = Filename->Length;
@@ -1161,8 +1170,7 @@ FilesExistW(
 
         goto Error;
 
-    }
-    else {
+    } else {
 
         //
         // The combined size exceeds _MAX_PATH so allocate the required memory
@@ -1194,9 +1202,9 @@ FilesExistW(
     Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
 
     if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
-        !AppendUnicodeCharToUnicodeString(&Path, L'\\'))
-    {
-	goto Error;
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\')) {
+
+        goto Error;
     }
 
     //
@@ -1218,9 +1226,9 @@ FilesExistW(
         // We've already validated our lengths, so these should never fail.
         //
 
-	if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
-            !AppendUnicodeCharToUnicodeString(&Path, L'\0'))
-        {
+        if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0')) {
+
             goto Error;
         }
 
@@ -1232,8 +1240,7 @@ FilesExistW(
         Attributes = GetFileAttributesW(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
-            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
 
             //
             // File doesn't exist or is a directory.  Reset the path length
@@ -1294,6 +1301,7 @@ Error:
     return Success;
 }
 
+_Success_(return != 0)
 _Check_return_
 BOOL
 FilesExistA(
@@ -1344,8 +1352,11 @@ FilesExistA(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
         //
+
         SanityCheck = (
             Filename &&
             Filename->Length > 0 &&
@@ -1395,8 +1406,7 @@ FilesExistA(
 
         goto Error;
 
-    }
-    else {
+    } else {
 
         //
         // The combined size exceeds _MAX_PATH so allocate the required memory
@@ -1425,10 +1435,12 @@ FilesExistA(
     // Copy the volume prefix, then append the directory and joining backslash.
     //
 
-    CopyString(&Path, &ExtendedLengthVolumePrefixA);
+    if (!CopyString(&Path, &ExtendedLengthVolumePrefixA)) {
+        goto Error;
+    }
 
     if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
-	goto Error;
+        goto Error;
     }
 
     //
@@ -1462,8 +1474,7 @@ FilesExistA(
         Attributes = GetFileAttributesA(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
-            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
 
             //
             // File doesn't exist or is a directory.  Reset the path length
@@ -1524,6 +1535,7 @@ Error:
     return Success;
 }
 
+_Success_(return != 0)
 BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
@@ -1556,8 +1568,6 @@ CreateUnicodeString(
                                      AllocationContext);
 
 }
-
-
 
 _Check_return_
 BOOL
@@ -2996,6 +3006,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+        GetProcAddress(Rtl->NtdllModule, "SearchPathW"))) {
+
+        if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+            GetProcAddress(Rtl->NtosKrnlModule, "SearchPathW"))) {
+
+            if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+                GetProcAddress(Rtl->Kernel32Module, "SearchPathW"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'SearchPathW'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->CreateToolhelp32Snapshot = (PCREATE_TOOLHELP32_SNAPSHOT)
         GetProcAddress(Rtl->NtdllModule, "CreateToolhelp32Snapshot"))) {
 
@@ -3220,6 +3245,8 @@ CreateStringTable(
     StringTable->BinarySearch = Rtl->bsearch;
     StringTable->QuickSort = Rtl->qsort;
     StringTable->Compare = CompareStringCaseInsensitive;
+
+    *StringTablePointer = StringTable;
 
     return TRUE;
 }
@@ -3462,6 +3489,27 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->ArgvWToArgvA = (PARGVW_TO_ARGVA)
+        GetProcAddress(RtlExModule, "ArgvWToArgvA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'ArgvWToArgvA'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnicodeStringToPath = (PUNICODE_STRING_TO_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
+        GetProcAddress(RtlExModule, "GetModulePath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'GetModulePath'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->LoadShlwapi = (PLOAD_SHLWAPI)
         GetProcAddress(RtlExModule, "LoadShlwapi"))) {
 
@@ -3516,10 +3564,11 @@ LoadRtlExSymbols(
 
 }
 
+_Success_(return != 0)
 BOOL
 InitializeRtl(
-    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
-    _Inout_                   PULONG SizeOfRtl
+    _In_opt_bytecount_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_ PULONG SizeOfRtl
     )
 {
     HANDLE HeapHandle;
@@ -3578,3 +3627,5 @@ Debugbreak()
     __debugbreak();
 }
 
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

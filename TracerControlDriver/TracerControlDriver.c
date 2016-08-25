@@ -3,35 +3,20 @@
 #include <ntddk.h>
 #include "TracerControlDriver.h"
 
-#include "DriverUtil.h"
+//
+// Forward declarations.
+//
 
-static CONST UNICODE_STRING DeviceName = \
-    RTL_CONSTANT_STRING(L"\\Device\\TracerControlDriver");
+/*
+TRACER_CONTROL_INITIALIZE DriverEntry;
+TRACER_CONTROL_UNLOAD TracerControlUnload;
 
-static CONST UNICODE_STRING Win32DeviceName = \
-    RTL_CONSTANT_STRING(L"\\Global??\\TracerControl");
-
-#if DBG
-#define ENTER(Name) DbgPrint("TracerControl!" Name ": Entered.\n")
-#define LEAVE(Name) DbgPrint("TracerControl!" Name ": Leaving.\n")
-#define LEAVE_STATUS(Name, Status) (                             \
-    DbgPrint(                                                    \
-        "TracerControl!" Name ": Leaving (NTSTATUS = 0x%0x).\n", \
-        Status                                                   \
-    )                                                            \
-)
-#define DEBUG(Message) DbgPrint("TracerControl!" Message)
-#define DEBUG1(Message, Arg1) DbgPrint("TracerControl!" Message, Arg1)
-#define DEBUG2(Message, Arg1, Arg2) \
-    DbgPrint("TracerControl!" Message, Arg1, Arg2)
-#else
-#define ENTER(Name)
-#define LEAVE(Name)
-#define LEAVE_STATUS(Name, Status)
-#define DEBUG(Message)
-#define DEBUG1(Message, Arg1)
-#define DEBUG1(Message, Arg1, Arg2)
-#endif
+TRACER_CONTROL_DEVICE_CONTROL TracerControlDeviceControl;
+TRACER_CONTROL_CREATE TracerControlCreate;
+TRACER_CONTROL_CLOSE TracerControlClose;
+TRACER_CONTROL_WRITE TracerControlWrite;
+TRACER_CONTROL_READ TracerControlRead;
+*/
 
 _Use_decl_annotations_
 NTSTATUS
@@ -71,7 +56,7 @@ DriverEntry(
     Status = IoCreateDevice(
         Driver,
         sizeof(TRACER_CONTROL_DEV_EXT),
-        (PUNICODE_STRING)&DeviceName,
+        (PUNICODE_STRING)&TracerControlDeviceName,
         FILE_DEVICE_TRACER_CONTROL,
         FILE_DEVICE_SECURE_OPEN,
         FALSE,
@@ -126,8 +111,8 @@ DriverEntry(
     //
 
     Status = IoCreateSymbolicLink(
-        (PUNICODE_STRING)&Win32DeviceName,
-        (PUNICODE_STRING)&DeviceName
+        (PUNICODE_STRING)&TracerControlWin32DeviceName,
+        (PUNICODE_STRING)&TracerControlDeviceName
     );
 
     if (!NT_SUCCESS(Status)) {
@@ -177,7 +162,7 @@ End:
 _Use_decl_annotations_
 VOID
 TracerControlUnload(
-    _In_ PDRIVER_OBJECT Driver
+    PDRIVER_OBJECT Driver
     )
 {
     PDEVICE_OBJECT Device;
@@ -185,13 +170,16 @@ TracerControlUnload(
 
     ENTER("Unload");
 
-
     Device = Driver->DeviceObject;
 
     if (!Device) {
 
         return;
     }
+
+    //
+    // Get our extension.
+    //
 
     DevExt = (PTRACER_CONTROL_DEV_EXT)Device->DeviceExtension;
 
@@ -211,7 +199,7 @@ TracerControlUnload(
     // Delete symbolic link.
     //
 
-    IoDeleteSymbolicLink((PUNICODE_STRING)&Win32DeviceName);
+    IoDeleteSymbolicLink((PUNICODE_STRING)&TracerControlWin32DeviceName);
 
     //
     // Delete the device.
@@ -394,6 +382,45 @@ TracerControlDeviceControl(
             //
 
             ReadCr3(OutputBuffer);
+
+            //
+            // Fill in Irp details indicating success.
+            //
+
+            Status = STATUS_SUCCESS;
+            Irp->IoStatus.Status = Status;
+            Irp->IoStatus.Information = sizeof(ULONGLONG);
+            break;
+
+        }
+
+        case IOCTL_TRACER_CONTROL_READ_DR7: {
+            PULONGLONG OutputBuffer;
+
+            //
+            // Validate output buffer length.
+            //
+
+            if (OutputBufferLength < sizeof(ULONGLONG)) {
+
+                Status = STATUS_INVALID_PARAMETER;
+                Irp->IoStatus.Status = Status;
+                Irp->IoStatus.Information = 0;
+                break;
+            }
+
+            //
+            // This is a METHOD_BUFFERED request, so the output buffer
+            // will be in the SystemBuffer field.
+            //
+
+            OutputBuffer = (PULONGLONG)Irp->AssociatedIrp.SystemBuffer;
+
+            //
+            // Read the value of Dr7 directly into the output buffer.
+            //
+
+            ReadDr7(OutputBuffer);
 
             //
             // Fill in Irp details indicating success.
