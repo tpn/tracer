@@ -43,10 +43,11 @@ Return Value:
     ULONG RequiredSize;
     HMODULE PythonDllModule;
     PRTL Rtl;
-    PTRACED_PYTHON_SESSION Session;
     PTRACER_PATHS Paths;
+    PTRACED_PYTHON_SESSION Session;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
+    PUNICODE_STRING PythonExePath;
 
     //
     // Verify arguments.
@@ -183,7 +184,7 @@ Return Value:
     RESOLVE(TracerModule, PINITIALIZE_TRACE_SESSION, InitializeTraceSession);
     RESOLVE(TracerModule, PCLOSE_TRACE_STORES, CloseTraceStores);
 
-    RESOLVE(PythonModule, PFIND_PYTHON_DLL, FindPythonDll);
+    RESOLVE(PythonModule, PFIND_PYTHON_DLL_AND_EXE, FindPythonDllAndExe);
     RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);
 
     RESOLVE(PythonTracerModule,
@@ -233,6 +234,121 @@ Return Value:
     Rtl = Session->Rtl;
 
     //
+    // Load our owning module name.
+    //
+
+    Success = Rtl->GetModulePath(
+        Rtl,
+        Session->OwningModule,
+        Allocator,
+        &Session->OwningModulePath
+    );
+
+    if (!Success) {
+        OutputDebugStringA("Rtl->GetModulePath() failed.\n");
+        goto Error;
+    }
+
+    //
+    // Attempt to load the relevant Python DLL for this session.  Look in our
+    // module's directory first, which will pick up the common case where we
+    // live in the same directory as python.exe, and thus, the relevant Python
+    // DLL (e.g. python27.dll, python35.dll etc).
+    //
+
+    Directory = &Session->OwningModulePath->Directory;
+    Success = Session->FindPythonDllAndExe(
+        Rtl,
+        Allocator,
+        Directory,
+        &PythonDllPath,
+        &PythonExePath
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    if (PythonDllPath) {
+        goto FoundPython;
+    }
+
+    //
+    // No Python DLL file was found next to us.  Try the DefaultPythonDirectory
+    // in the registry/TracerConfig.
+    //
+
+    Directory = &Paths->DefaultPythonDirectory;
+
+    if (Directory) {
+
+        Success = Session->FindPythonDllAndExe(
+            Rtl,
+            Allocator,
+            Directory,
+            &PythonDllPath,
+            &PythonExePath
+        );
+
+        if (!Success) {
+            goto Error;
+        }
+
+        if (PythonDllPath) {
+            goto FoundPython;
+        }
+
+        OutputDebugStringA("Failed to find a Python DLL to load.\n");
+
+        goto Error;
+    }
+
+FoundPython:
+    Session->PythonDllPath = PythonDllPath;
+    Session->PythonExePath = PythonExePath;
+
+    //
+    // Create a UTF-8 version of the fully-qualified python.exe path so that
+    // we can use it as argv[0].
+    //
+
+    Success = ConvertUtf16StringToUtf8String(
+        PythonExePath,
+        &Session->PythonExePathA,
+        Allocator
+    );
+
+    if (!Success) {
+        OutputDebugStringA("ConvertUtf16StringToUtf8String() failed.\n");
+        goto Error;
+    }
+
+    PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
+
+    if (!PythonDllModule) {
+        OutputDebugStringA("LoadLibraryW() of Python DLL failed.\n");
+        goto Error;
+    }
+
+    Session->PythonDllModule = PythonDllModule;
+
+    //
+    // Resolve some functions we need before InitializePython() gets called.
+    // (Ok, we don't need *all* these right now; we could probably get by with
+    //  just PySys_SetArgvEx(), Py_SetProgramName() and Py_Initialize().)
+    //
+
+    RESOLVE(PythonDllModule, PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
+    RESOLVE(PythonDllModule, PPY_SET_PROGRAM_NAME, Py_SetProgramName);
+    RESOLVE(PythonDllModule, PPY_INITIALIZE, Py_Initialize);
+    RESOLVE(PythonDllModule, PPY_INITIALIZE_EX, Py_InitializeEx);
+    RESOLVE(PythonDllModule, PPY_IS_INITIALIZED, Py_IsInitialized);
+    RESOLVE(PythonDllModule, PPY_FINALIZE, Py_Finalize);
+    RESOLVE(PythonDllModule, PPY_MAIN, Py_Main);
+    RESOLVE(PythonDllModule, PPYEVAL_SETTRACE, PyEval_SetProfile);
+    RESOLVE(PythonDllModule, PPYEVAL_SETTRACE, PyEval_SetTrace);
+
+    //
     // Get ascii and unicode versions of the command line.
     //
 
@@ -264,7 +380,7 @@ Return Value:
         Session->ArgvW,
         Session->NumberOfArguments,
         &Session->ArgvA,
-        NULL,
+        Session->PythonExePathA->Buffer,
         Allocator
     );
 
@@ -272,85 +388,38 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Skip the first argument (the executable name) for what we pass to Python.
+    //
+
+    Session->PythonNumberOfArguments = Session->NumberOfArguments - 1;
+    Session->PythonArgvA = Session->ArgvA + 1;
 
     //
-    // Load our owning module name.
+    // Set the Python program name to the "python.exe" path.
     //
 
-    Success = Rtl->GetModulePath(
-        Rtl,
-        Session->OwningModule,
-        Allocator,
-        &Session->OwningModulePath
+    Session->Py_SetProgramName(Session->PythonExePathA->Buffer);
+
+    //
+    // Initialize the interpreter.
+    //
+
+    Session->Py_Initialize();
+
+    //
+    // Set Argv.
+    //
+
+    Session->PySys_SetArgvEx(
+        Session->PythonNumberOfArguments,
+        Session->PythonArgvA,
+        0
     );
 
-    if (!Success) {
-        OutputDebugStringA("Rtl->GetModulePath() failed.\n");
-        goto Error;
-    }
-
     //
-    // Attempt to load the relevant Python DLL for this session.  Look in our
-    // module's directory first, which will pick up the common case where we
-    // live in the same directory as python.exe, and thus, the relevant Python
-    // DLL (e.g. python27.dll, python35.dll etc).
+    // Here's the point we'd fiddle with builtins/patching, probably.
     //
-
-    Directory = &Session->OwningModulePath->Directory;
-    Success = Session->FindPythonDll(Rtl, Allocator, Directory, &PythonDllPath);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    if (PythonDllPath) {
-        goto FoundPython;
-    }
-
-    //
-    // No Python DLL file was found next to us.  Try the DefaultPythonDirectory
-    // in the registry/TracerConfig.
-    //
-
-    Directory = &Paths->DefaultPythonDirectory;
-
-    if (Directory) {
-
-        Success = Session->FindPythonDll(
-            Rtl,
-            Allocator,
-            Directory,
-            &PythonDllPath
-        );
-
-        if (!Success) {
-            goto Error;
-        }
-
-        if (PythonDllPath) {
-            goto FoundPython;
-        }
-
-        OutputDebugStringA("Failed to find a Python DLL to load.\n");
-
-        goto Error;
-    }
-
-FoundPython:
-    Session->PythonDllPath = PythonDllPath;
-
-    //
-    // Need to adjust sys.argv if our exe is living out of the Python tree.
-    //
-
-    PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
-
-    if (!PythonDllModule) {
-        OutputDebugStringA("LoadLibraryW() of Python DLL failed.\n");
-        goto Error;
-    }
-
-    Session->PythonDllModule = PythonDllModule;
 
     //
     // Call InitializePython() now that we've loaded a Python DLL.

@@ -725,6 +725,8 @@ LoadPythonFunctions(
         return FALSE;                                               \
     }
 
+    RESOLVE_FUNCTION(PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
+    RESOLVE_FUNCTION(PPY_SET_PROGRAM_NAME, Py_SetProgramName);
     RESOLVE_FUNCTION(PPY_INITIALIZE, Py_Initialize);
     RESOLVE_FUNCTION(PPY_INITIALIZE_EX, Py_InitializeEx);
     RESOLVE_FUNCTION(PPY_IS_INITIALIZED, Py_IsInitialized);

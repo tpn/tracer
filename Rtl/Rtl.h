@@ -1779,12 +1779,12 @@ typedef BOOL (*PINITIALIZE_RTL)(
     _Inout_                   PULONG SizeOfRtl
     );
 
-#define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-#define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseChar(C) (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseUnicodeChar(C) (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
-#define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
-#define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
-#define RtlPointerToOffset(B,P)    ((ULONG_PTR)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
+#define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
+#define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 #define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
@@ -2383,6 +2383,439 @@ InlineFindTwoWideCharsInUnicodeStringReversed(
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
+
+FORCEINLINE
+BOOL
+ConvertUtf16StringToUtf8StringSlow(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  The 'Slow' suffix on this function name indicates that the
+    WideCharToMultiByte() function is called first in order to get the required
+    buffer size prior to allocating the buffer.
+
+    (ConvertUtf16StringToUtf8String() is an alternate version of this method
+     that optimizes for the case where there are no multi-byte characters.)
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NewLength;
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    ULONG_INTEGER AllocSize;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    BufferSizeInBytes = WideCharToMultiByte(
+        CP_UTF8,                        // CodePage
+        0,                              // dwFlags
+        Utf16->Buffer,                  // lpWideCharStr
+        NumberOfCharacters,             // cchWideChar
+        NULL,                           // lpMultiByteStr
+        0,                              // cbMultiByte
+        NULL,                           // lpDefaultChar
+        NULL                            // lpUsedDefaultChar
+    );
+
+    if (BufferSizeInBytes <= 0) {
+        return FALSE;
+    }
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    NewLength = (USHORT)BufferSizeInBytes;
+    BufferSizeInBytes += 1;
+
+    //
+    // Align the buffer.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (ULONG)(
+        ALIGN_UP_POINTER(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    __try {
+
+        Utf8 = (PSTRING)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                AlignedBufferSizeInBytes.LowPart
+            )
+        );
+
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+
+        Utf8 = NULL;
+
+    }
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NewLength;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+
+        //
+        // Try free the underlying buffer.
+        //
+
+        __try {
+            Allocator->Free(Allocator->Context, Utf8);
+            Utf8 = NULL;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Utf8 = NULL;
+        }
+
+    }
+
+    return FALSE;
+}
+
+FORCEINLINE
+BOOL
+ConvertUtf16StringToUtf8String(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  This method is optimized for the case where there are no
+    multi-byte characters in the unicode string, where the buffer size required
+    to hold the UTF-8 string is simply half the size of the UTF-16 buffer.  If
+    the first attempt at conversion (via WideCharToMultiByte()) indicates that
+    there are multibyte characters (ERROR_INSUFFICIENT_BUFFER is returned by
+    GetLastError()), the first allocated buffer will be freed and this routine
+    will call ConvertUtf16StringToUtf8StringSlow().
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AllocSize;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    BufferSizeInBytes = NumberOfCharacters + 1;
+
+    //
+    // Align the buffer size on a pointer boundary.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    __try {
+
+        Utf8 = (PSTRING)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                AlignedBufferSizeInBytes.LowPart
+            )
+        );
+
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+
+        Utf8 = NULL;
+
+    }
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NumberOfCharacters;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+
+        //
+        // Try free the underlying buffer.
+        //
+
+        __try {
+            Allocator->Free(Allocator->Context, Utf8);
+            Utf8 = NULL;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Utf8 = NULL;
+        }
+
+    }
+
+    return FALSE;
+}
 
 
 #ifdef RTL_SECURE_ZERO_MEMORY
