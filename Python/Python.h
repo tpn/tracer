@@ -24,6 +24,17 @@ enum PythonVersion {
     PythonVersion_35 = 0x0305
 };
 
+typedef
+_Success_(return != 0)
+BOOL
+(FIND_PYTHON_DLL)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PUNICODE_STRING Directory,
+    _Out_ PPUNICODE_STRING PythonDllPath
+    );
+typedef FIND_PYTHON_DLL *PFIND_PYTHON_DLL;
+
 #ifdef _M_AMD64
 typedef __int64 Py_ssize_t, PY_SSIZE;
 typedef __int64 Py_hash_t, PY_HASH;
@@ -1422,8 +1433,20 @@ typedef PPYVAROBJECT (*PPYOBJECT_INITVAR)(PPYVAROBJECT,
                                           SSIZE_T);
 typedef PPYOBJECT (*PPYOBJECT_NEW)(PPYTYPEOBJECT);
 typedef PPYVAROBJECT (*PPYOBJECT_NEWVAR)(PPYTYPEOBJECT, PY_SSIZE);
+typedef VOID (PY_INITIALIZE)(VOID);
+typedef PY_INITIALIZE *PPY_INITIALIZE;
+typedef VOID (PY_INITIALIZE_EX)(INT);
+typedef PY_INITIALIZE_EX *PPY_INITIALIZE_EX;
+typedef VOID (PY_FINALIZE)(VOID);
+typedef PY_FINALIZE *PPY_FINALIZE;
+typedef INT (PY_IS_INITIALIZED)(VOID);
+typedef PY_IS_INITIALIZED *PPY_IS_INITIALIZED;
 
 #define _PYTHONFUNCTIONS_HEAD                              \
+    PPY_INITIALIZE                  Py_Initialize;         \
+    PPY_INITIALIZE_EX               Py_InitializeEx;       \
+    PPY_IS_INITIALIZED              Py_IsInitialized;      \
+    PPY_FINALIZE                    Py_Finalize;           \
     PPY_GETVERSION                  Py_GetVersion;         \
     PPY_MAIN                        Py_Main;               \
     PPY_GET_PREFIX                  Py_GetPrefix;          \
@@ -2253,6 +2276,8 @@ typedef struct _PYTHON {
     USHORT NumberOfCacheElements;
     PPYOBJECT CodeObjectCache[32];
 } PYTHON, *PPYTHON, **PPPYTHON;
+
+TRACER_API FIND_PYTHON_DLL FindPythonDll;
 
 TRACER_API
 BOOL

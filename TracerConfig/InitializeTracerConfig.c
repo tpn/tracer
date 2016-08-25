@@ -212,6 +212,12 @@ LoadPath(
 
 /*--
 
+    VOID
+    READ_REG_SZ_PATH(
+        Name,
+        Optional
+        )
+
 Macro Description:
 
     Helper macro for reading REG_SZ path values.  The size of the string
@@ -227,12 +233,15 @@ Arguments:
 
     Name - Name of the path in the TRACER_PATHS structure.
 
+    Optional - If TRUE, silently ignore the condition where the key can't be
+        read from the registry.
+
 Return Value:
 
     N/A.
 
 --*/
-#define READ_REG_SZ_PATH(Name) do {                          \
+#define READ_REG_SZ_PATH(Name, Optional) do {                \
     BOOL IsValid;                                            \
     ULONG SizeInBytes = 0;                                   \
     PUNICODE_STRING String = &Paths->Name;                   \
@@ -254,7 +263,14 @@ Return Value:
     );                                                       \
                                                              \
     if (!IsValid) {                                          \
-        goto Error;                                          \
+        if (Optional) {                                      \
+            String->Length = 0;                              \
+            String->MaximumLength = 0;                       \
+            String->Buffer = NULL;                           \
+            break;                                           \
+        } else {                                             \
+            goto Error;                                      \
+        }                                                    \
     }                                                        \
                                                              \
     __try {                                                  \
@@ -336,6 +352,8 @@ Return Value:
 
 --*/
 {
+    const BOOL Mandatory = FALSE;
+    const BOOL Optional = TRUE;
     USHORT Index;
     TRACER_FLAGS Flags;
     ULONG Result;
@@ -443,8 +461,8 @@ Return Value:
     //
 
     READ_REG_DWORD_FLAG(LoadDebugLibraries, FALSE);
-    READ_REG_DWORD_FLAG(EnableTraceSessionDirectoryCompression, TRUE);
-    READ_REG_DWORD_FLAG(PrefaultPages, TRUE);
+    READ_REG_DWORD_FLAG(DisableTraceSessionDirectoryCompression, FALSE);
+    READ_REG_DWORD_FLAG(DisablePrefaultPages, FALSE);
     READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);
@@ -466,8 +484,9 @@ Return Value:
     // Load InstallationDirectory and BaseTraceDirectory.
     //
 
-    READ_REG_SZ_PATH(InstallationDirectory);
-    READ_REG_SZ_PATH(BaseTraceDirectory);
+    READ_REG_SZ_PATH(InstallationDirectory, Mandatory);
+    READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
+    READ_REG_SZ_PATH(DefaultPythonDirectory, Optional);
 
     //
     // Load fully-qualified DLL path names.

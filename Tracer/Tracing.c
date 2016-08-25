@@ -668,7 +668,6 @@ InitializeTraceStores(
     )
 {
     BOOL Success;
-    BOOL CreatedNewDirectory;
     HRESULT Result;
     DWORD Index;
     DWORD StoreIndex;
@@ -763,17 +762,15 @@ InitializeTraceStores(
         MapViewOfFileDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
     }
 
-    CreatedNewDirectory = TRUE;
     Success = CreateDirectory(BaseDirectory, NULL);
     if (!Success) {
         LastError = GetLastError();
         if (LastError != ERROR_ALREADY_EXISTS) {
             return FALSE;
         }
-        CreatedNewDirectory = FALSE;
     }
 
-    if (!Readonly && Compress && CreatedNewDirectory) {
+    if (!Readonly && Compress) {
         HANDLE DirectoryHandle;
         USHORT CompressionFormat = COMPRESSION_FORMAT_DEFAULT;
         DWORD BytesReturned = 0;
@@ -2981,10 +2978,6 @@ InitializeTraceContext(
     USHORT Index;
     USHORT StoreIndex;
 
-    if (!Rtl) {
-        return FALSE;
-    }
-
     if (!TraceContext) {
         if (SizeOfTraceContext) {
             *SizeOfTraceContext = sizeof(*TraceContext);
@@ -2998,6 +2991,10 @@ InitializeTraceContext(
 
     if (*SizeOfTraceContext < sizeof(*TraceContext)) {
         *SizeOfTraceContext = sizeof(*TraceContext);
+        return FALSE;
+    }
+
+    if (!Rtl) {
         return FALSE;
     }
 

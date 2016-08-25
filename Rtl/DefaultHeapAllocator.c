@@ -50,33 +50,6 @@ DefaultHeapFree(
 }
 
 _Use_decl_annotations_
-BOOLEAN
-DefaultHeapInitializeAllocator(
-    PALLOCATOR Allocator
-    )
-{
-
-    if (!Allocator) {
-        return FALSE;
-    }
-
-    if (!Allocator->Context) {
-        Allocator->Context = (HANDLE)GetProcessHeap();
-    }
-
-    Allocator->Malloc = DefaultHeapMalloc;
-    Allocator->Calloc = DefaultHeapCalloc;
-    Allocator->Realloc = DefaultHeapRealloc;
-    Allocator->Free = DefaultHeapFree;
-
-    Allocator->Initialize = DefaultHeapInitialize;
-    Allocator->Destroy = DefaultHeapDestroy;
-
-    return TRUE;
-
-}
-
-_Use_decl_annotations_
 VOID
 DefaultHeapDestroyAllocator(
     PALLOCATOR Allocator
@@ -96,6 +69,33 @@ DefaultHeapDestroyAllocator(
     SecureZeroMemory(Allocator, sizeof(*Allocator));
 
     return;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+DefaultHeapInitializeAllocator(
+    PALLOCATOR Allocator
+    )
+{
+
+    if (!Allocator) {
+        return FALSE;
+    }
+
+    if (!Allocator->Context) {
+        Allocator->Context = (HANDLE)GetProcessHeap();
+    }
+
+    Allocator->Malloc = DefaultHeapMalloc;
+    Allocator->Calloc = DefaultHeapCalloc;
+    Allocator->Realloc = DefaultHeapRealloc;
+    Allocator->Free = DefaultHeapFree;
+
+    Allocator->Initialize = DefaultHeapInitializeAllocator;
+    Allocator->Destroy = DefaultHeapDestroyAllocator;
+
+    return TRUE;
+
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

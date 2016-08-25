@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-#include "PythonTracer.h"
+#include "stdafx.h"
+#include "PythonTracerPrivate.h"
 
 //
 // Forward decls of DLL exports.
@@ -111,55 +112,55 @@ IsFunctionOfInterestBinarySearch(
 
 #define IsFunctionOfInterest IsFunctionOfInterestPrefixTree
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 EnableMemoryTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceMemory = TRUE;
 }
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 DisableMemoryTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceMemory = FALSE;
 }
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 EnableIoCountersTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceIoCounters = TRUE;
 }
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 DisableIoCountersTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceIoCounters = FALSE;
 }
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 EnableHandleCountTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceHandleCount = TRUE;
 }
 
-TRACER_API
+_Use_decl_annotations_
 VOID
 DisableHandleCountTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PythonTraceContext->TraceHandleCount = FALSE;
@@ -861,12 +862,30 @@ InitializePythonTraceContext(
 
     InitializeListHead(&Context->Functions);
 
+    Context->StartTracing = StartTracing;
+    Context->StopTracing = StopTracing;
+
+    Context->StartProfiling = StartProfiling;
+    Context->StopProfiling = StopProfiling;
+
+    Context->EnableMemoryTracing = EnableMemoryTracing;
+    Context->DisableMemoryTracing = DisableMemoryTracing;
+
+    Context->EnableIoCountersTracing = EnableIoCountersTracing;
+    Context->DisableIoCountersTracing = DisableIoCountersTracing;
+
+    Context->EnableHandleCountTracing = EnableHandleCountTracing;
+    Context->DisableHandleCountTracing = DisableHandleCountTracing;
+
+    Context->AddModuleName = AddModuleName;
+
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 StartTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PPYTHON Python;
@@ -900,9 +919,10 @@ StartTracing(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 StopTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PPYTHON Python;
@@ -924,9 +944,10 @@ StopTracing(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 StartProfiling(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+    PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
     PPYTHON Python;
@@ -958,9 +979,10 @@ StartProfiling(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 StopProfiling(
-    _In_    PPYTHON_TRACE_CONTEXT   Context
+    PPYTHON_TRACE_CONTEXT   Context
     )
 {
     PPYTHON Python;
@@ -1148,10 +1170,11 @@ AddPrefixTableEntry(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AddModuleName(
-    _In_    PPYTHON_TRACE_CONTEXT   Context,
-    _In_    PPYOBJECT               ModuleNameObject
+    PPYTHON_TRACE_CONTEXT   Context,
+    PPYOBJECT               ModuleNameObject
     )
 {
     BOOL Success;

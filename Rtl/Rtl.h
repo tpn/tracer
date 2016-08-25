@@ -51,6 +51,9 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+#include "Memory.h"
+#include "Commandline.h"
+
 typedef CONST char *PCSZ;
 
 typedef LONG (MAINPROCA)(
@@ -126,6 +129,102 @@ typedef LONG (*PCOMPARE_STRING_CASE_INSENSITIVE)(
     _In_ PCSTRING String1,
     _In_ PCSTRING String2
     );
+
+
+typedef struct _RTL_BITMAP {
+    ULONG SizeOfBitMap;     // Number of bits.
+    PULONG Buffer;
+} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
+
+typedef struct _RTL_BITMAP_RUN {
+    ULONG StartingIndex;
+    ULONG NumberOfBits;
+} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
+
+//
+// The various bitmap find functions return 0xFFFFFFFF
+// if they couldn't find the requested bit pattern.
+//
+
+#define BITS_NOT_FOUND 0xFFFFFFFF
+#pragma pack(push, 1)
+
+typedef _Struct_size_bytes_(StructSize) struct _PATH {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
+
+    //
+    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
+    // pointer.
+    //
+
+    WCHAR Drive;                                                    // 2    4
+
+    union {
+        struct {
+            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
+            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
+        };
+        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
+    };
+
+    //
+    // Total number of bytes allocated for the structure, including StructSize.
+    // This includes the bitmap buffers and unicode string buffer (all of which
+    // will typically trail this structure in memory).
+    //
+
+    USHORT AllocSize;                                               // 2    18
+
+    //
+    // Indicates whether or not the path is fully-qualified.
+    //
+
+    USHORT IsFullyQualified;                                        // 2    20
+
+    union {
+        struct {
+            ULONG SizeOfReversedDotsBitMap;                         // 4    24
+            PULONG ReversedDotsBitMapBuffer;                        // 8    32
+        };
+        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
+    };
+
+    UNICODE_STRING Full;
+    UNICODE_STRING Filename;
+    UNICODE_STRING Directory;
+    UNICODE_STRING Extension;
+} PATH, *PPATH, **PPPATH;
+
+#pragma pack(pop)
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
+
+RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_MODULE_PATH)(
+    _In_ PRTL Rtl,
+    _In_ HMODULE Module,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef GET_MODULE_PATH *PGET_MODULE_PATH;
 
 RTL_API
 LONG
@@ -250,39 +349,10 @@ typedef DWORD (WINAPI *PSEARCHPATHW)(
     _Out_opt_   LPWSTR      lpFilePart
     );
 
-typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
-  _In_  PWSTR  CommandLine,
-  _Out_ PLONG  NumberOfArgs
-);
-
-typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
-
 
 //
 // CRT functions.
 //
-
-#if 0
-typedef PVOID (__cdecl *PMALLOC)(
-    _In_ SIZE_T Size
-    );
-
-typedef PVOID (__cdecl *PCALLOC)(
-    _In_ SIZE_T NumberOfElements,
-    _In_ SIZE_T ElementSizeInBytes
-    );
-
-typedef PVOID (__cdecl *PREALLOC)(
-    _In_ PVOID  Pointer,
-    _In_ SIZE_T NewSizeInBytes
-    );
-
-typedef VOID (__cdecl *PFREE)(
-    _In_ PVOID Pointer
-    );
-#else
-#include "Memory.h"
-#endif
 
 typedef INT (__cdecl *PCRTCOMPARE)(
     _In_    CONST PVOID Key,
@@ -960,23 +1030,6 @@ typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
 //
 // Bitmaps
 //
-
-typedef struct _RTL_BITMAP {
-    ULONG SizeOfBitMap;     // Number of bits.
-    PULONG Buffer;
-} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
-
-typedef struct _RTL_BITMAP_RUN {
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
-} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
-
-//
-// The various bitmap find functions return 0xFFFFFFFF
-// if they couldn't find the requested bit pattern.
-//
-
-#define BITS_NOT_FOUND 0xFFFFFFFF
 
 typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP)(
     _Out_ PRTL_BITMAP BitMapHeader,
@@ -1667,6 +1720,8 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
     PFILES_EXISTW FilesExistW;                                                 \
     PFILES_EXISTA FilesExistA;                                                 \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
+    PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
+    PGET_MODULE_PATH GetModulePath;                                            \
     PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -1843,12 +1898,43 @@ IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
     USHORT MaximumLength = Length + sizeof(WCHAR);
 
     return (
-        String != NULL && 
+        String != NULL &&
         String->Buffer != NULL &&
         String->Length >= Length &&
         String->MaximumLength >= MaximumLength &&
         sizeof(WCHAR) == (String->MaximumLength - String->Length) &&
         String->Buffer[String->Length >> 1] == L'\0'
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    USHORT Length = MinimumLengthInChars * sizeof(WCHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= Length &&
+        String->MaximumLength >= String->Length
+    );
+}
+
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return IsValidUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
     );
 }
 
@@ -1871,10 +1957,13 @@ IsValidMinimumDirectoryNullTerminatedUnicodeString(
     )
 {
     //
-    // Minimum length: "C:\a".
+    // Minimum length: "C:\a" -> 4.
     //
 
-    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(String, 4);
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
+    );
 }
 
 FORCEINLINE
@@ -1884,7 +1973,7 @@ IsValidUnicodeString(
     )
 {
     return (
-        String != NULL && 
+        String != NULL &&
         String->Buffer != NULL &&
         String->Length >= 1 &&
         String->MaximumLength >= 1
@@ -2243,13 +2332,58 @@ InlineFindCharsInString(
     }
 }
 
+FORCEINLINE
+VOID
+InlineFindWideCharsInUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           CharToFind,
+    _In_ PRTL_BITMAP     Bitmap
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    WCHAR Char;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        if (Char == CharToFind) {
+            FastSetBit(Bitmap, Index);
+        }
+    }
+}
+
+FORCEINLINE
+VOID
+InlineFindTwoWideCharsInUnicodeStringReversed(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           Char1ToFind,
+    _In_ WCHAR           Char2ToFind,
+    _In_ PRTL_BITMAP     Bitmap1,
+    _In_ PRTL_BITMAP     Bitmap2
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length >> 1;
+    WCHAR  Char;
+    ULONG  Bit;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        Bit = NumberOfCharacters - Index;
+        if (Char == Char1ToFind) {
+            FastSetBit(Bitmap1, Bit);
+        }
+        if (Char == Char2ToFind) {
+            FastSetBit(Bitmap2, Bit);
+        }
+    }
+}
+
+
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
-RTL_API
-BOOL
-LoadShlwapi(PRTL Rtl);
 
 #ifdef RTL_SECURE_ZERO_MEMORY
 FORCEINLINE

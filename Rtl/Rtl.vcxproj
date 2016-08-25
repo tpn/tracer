@@ -61,10 +61,12 @@
     <ClInclude Include="Rtl.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Commandline.c" />
     <ClCompile Include="DefaultHeapAllocator.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="Path.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

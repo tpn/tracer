@@ -758,6 +758,13 @@ InitializeTraceContext(
     _In_     BOOL Compress
     );
 
+typedef
+VOID
+(CLOSE_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
+
 typedef BOOL (*PFLUSH_TRACE_STORES)(_In_ PTRACE_CONTEXT TraceContext);
 
 #ifdef _M_X64
@@ -861,10 +868,6 @@ InitializeTraceStoreTime(
     _In_    PTRACE_STORE_TIME   Time
     );
 
-
-TRACER_API
-BOOL
-FlushTraceStores(PTRACE_CONTEXT TraceContext);
 
 TRACER_API
 VOID

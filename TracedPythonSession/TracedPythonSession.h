@@ -25,13 +25,16 @@ typedef struct _TRACED_PYTHON_SESSION {
     ULONG  Unused2;
 
     //
-    // Memory allocation routines and contexts.
+    // TRACER_CONFIG structure.
     //
 
-    PALLOCATION_ROUTINE AllocationRoutine;
-    PALLOCATION_CONTEXT AllocationContext;
-    PFREE_ROUTINE FreeRoutine;
-    PFREE_CONTEXT FreeContext;
+    PTRACER_CONFIG TracerConfig;
+
+    //
+    // Memory allocator.
+    //
+
+    PALLOCATOR Allocator;
 
     //
     // Rundown list entry.
@@ -44,6 +47,13 @@ typedef struct _TRACED_PYTHON_SESSION {
     ////////////////////////////////////////////////////////////////////////////
 
     //
+    // Owning module.
+    //
+
+    HMODULE OwningModule;
+    PPATH OwningModulePath;
+
+    //
     // System modules.
     //
 
@@ -51,6 +61,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     HMODULE Shell32Module;
     HMODULE User32Module;
     HMODULE Advapi32Module;
+    HMODULE Winsock2Module;
 
     //
     // Msvc modules.
@@ -62,6 +73,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     // The target Python modules.
     //
 
+    HMODULE PythonDllModule;
     HMODULE Python2Module;
     HMODULE Python3Module;
 
@@ -109,10 +121,27 @@ typedef struct _TRACED_PYTHON_SESSION {
     ////////////////////////////////////////////////////////////////////////////
 
     //
-    // Shell32's CommandLineToArgvW function.
+    // Shell32's CommandLineToArgvW function and command line data.
     //
 
-    PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
+    PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
+    PSTR CommandLineA;
+    PWSTR CommandLineW;
+
+    union {
+        LONG NumberOfArguments;
+        LONG argc;
+    };
+
+    union {
+        PPWSTR ArgvW;
+        PPWSTR argvw;
+    };
+
+    union {
+        PPSTR ArgvA;
+        PPSTR argv;
+    };
 
     //
     // Rtl-specific functions/data.
@@ -136,6 +165,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     PINITIALIZE_TRACE_STORES InitializeTraceStores;
     PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
     PINITIALIZE_TRACE_SESSION InitializeTraceSession;
+    PCLOSE_TRACE_STORES CloseTraceStores;
 
     //
     // Pointers to tracer-specific data structures initialized by the routines
@@ -147,11 +177,32 @@ typedef struct _TRACED_PYTHON_SESSION {
     PTRACE_CONTEXT TraceContext;
 
     //
+    // Our trace directory.  The TracerConfig struct owns this.
+    //
+
+    PUNICODE_STRING TraceSessionDirectory;
+
+    //
+    // Threadpool and callback environment.
+    //
+
+    ULONG MaximumProcessorCount;
+    PTP_POOL Threadpool;
+    TP_CALLBACK_ENVIRON ThreadpoolCallbackEnviron;
+
+    //
     // Python-specific initializers.
     //
 
+    PFIND_PYTHON_DLL FindPythonDll;
     PINITIALIZE_PYTHON InitializePython;
     PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+
+    //
+    // Path to the Python DLL to load.
+    //
+
+    PUNICODE_STRING PythonDllPath;
 
     //
     // Pointers to Python-specific data structures initialized by the routines
@@ -161,28 +212,30 @@ typedef struct _TRACED_PYTHON_SESSION {
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
+    //
+    // Python's main() entry point.
+    //
+
+    PPY_MAIN Py_Main;
+
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 
 typedef
 _Success_(return != 0)
-BOOL (INITIALIZE_TRACED_PYTHON_SESSION)(
-    _Out_    PPTRACED_PYTHON_SESSION Session,
-    _In_opt_ PALLOCATION_ROUTINE AllocationRoutine,
-    _In_opt_ PALLOCATION_CONTEXT AllocationContext,
-    _In_opt_ PFREE_ROUTINE FreeRoutine,
-    _In_opt_ PFREE_CONTEXT FreeContext
+BOOL
+(INITIALIZE_TRACED_PYTHON_SESSION)(
+    _Out_       PPTRACED_PYTHON_SESSION Session,
+    _In_        PTRACER_CONFIG TracerConfig,
+    _In_opt_    PALLOCATOR Allocator,
+    _In_opt_    HMODULE OwningModule
     );
-
-typedef  INITIALIZE_TRACED_PYTHON_SESSION \
-        *PINITIALIZE_TRACED_PYTHON_SESSION;
+typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
 
 typedef
 VOID (DESTROY_TRACED_PYTHON_SESSION)(
     _Inout_ PPTRACED_PYTHON_SESSION Session
     );
-
-typedef  DESTROY_TRACED_PYTHON_SESSION \
-        *PDESTROY_TRACED_PYTHON_SESSION;
+typedef DESTROY_TRACED_PYTHON_SESSION *PDESTROY_TRACED_PYTHON_SESSION;
 
 typedef
 _Success_(return != 0)

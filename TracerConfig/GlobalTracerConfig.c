@@ -13,9 +13,6 @@ FREE Free;
 
 static ALLOCATOR Allocator;
 
-static CONST UNICODE_STRING RegistryPath = \
-    RTL_CONSTANT_STRING(L"Software\\Tracer");
-
 _Use_decl_annotations_
 void * __restrict
 Malloc(
@@ -84,7 +81,7 @@ InitializeGlobalTracerConfig(VOID)
 
     TracerConfig = InitializeTracerConfig(
         &Allocator,
-        (PUNICODE_STRING)&RegistryPath
+        (PUNICODE_STRING)&TracerRegistryPath
     );
 
     if (!TracerConfig) {
