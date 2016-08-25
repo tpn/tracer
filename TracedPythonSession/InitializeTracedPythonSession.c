@@ -339,6 +339,10 @@ Return Value:
 FoundPython:
     Session->PythonDllPath = PythonDllPath;
 
+    //
+    // Need to adjust sys.argv if our exe is living out of the Python tree.
+    //
+
     PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
 
     if (!PythonDllModule) {
