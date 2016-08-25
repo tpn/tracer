@@ -81,7 +81,9 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ExpandAttributedSource>true</ExpandAttributedSource>
       <CompileAs>CompileAsC</CompileAs>
+      <!--
       <CreateHotpatchableImage>true</CreateHotpatchableImage>
+      -->
     </ClCompile>
   </ItemDefinitionGroup>
 

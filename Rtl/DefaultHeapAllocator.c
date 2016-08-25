@@ -60,13 +60,8 @@ DefaultHeapDestroyAllocator(
     }
 
     if (Allocator->Context) {
-        HANDLE Handle = (HANDLE)Allocator->Context;
-        if (Handle != GetProcessHeap()) {
-            HeapDestroy(Handle);
-        }
+        HeapDestroy((HANDLE)Allocator->Context);
     }
-
-    SecureZeroMemory(Allocator, sizeof(*Allocator));
 
     return;
 }
@@ -77,14 +72,18 @@ DefaultHeapInitializeAllocator(
     PALLOCATOR Allocator
     )
 {
+    HANDLE HeapHandle;
 
     if (!Allocator) {
         return FALSE;
     }
 
-    if (!Allocator->Context) {
-        Allocator->Context = (HANDLE)GetProcessHeap();
+    HeapHandle = HeapCreate(0, 0, 0);
+    if (!HeapHandle) {
+        return FALSE;
     }
+
+    Allocator->Context = HeapHandle;
 
     Allocator->Malloc = DefaultHeapMalloc;
     Allocator->Calloc = DefaultHeapCalloc;

@@ -46,13 +46,15 @@ Main(VOID)
     // Do any hooking here.
     //
 
-    Python->Py_Initialize();
-
     PythonTraceContext->StartTracing(PythonTraceContext);
 
     ExitCode = Python->Py_Main(Session->NumberOfArguments, Session->ArgvA);
 
-    //PythonTraceContext->StopTracing(PythonTraceContext);
+    //
+    // N.B.: there's no `PythonTraceContext->StopTracing(PythonTraceContext)`
+    //       call here to match the StartTracing() one above because Py_Main()
+    //       tears down any attached tracers before it returns.
+    //
 
     //
     // Intentional follow-on to Error.

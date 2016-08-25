@@ -144,6 +144,13 @@ typedef struct _TRACED_PYTHON_SESSION {
     };
 
     //
+    // The argc/argv we pass to Python has the executable name skipped.
+    //
+
+    LONG PythonNumberOfArguments;
+    PPSTR PythonArgvA;
+
+    //
     // Rtl-specific functions/data.
     //
 
@@ -194,15 +201,36 @@ typedef struct _TRACED_PYTHON_SESSION {
     // Python-specific initializers.
     //
 
-    PFIND_PYTHON_DLL FindPythonDll;
+    PFIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
     PINITIALIZE_PYTHON InitializePython;
     PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
 
     //
-    // Path to the Python DLL to load.
+    // Python DLL helper functions we need before we call InitializePython.
+    //
+
+    PPYSYS_SET_ARGV_EX PySys_SetArgvEx;
+    PPY_SET_PROGRAM_NAME Py_SetProgramName;
+    PPY_INITIALIZE Py_Initialize;
+    PPY_INITIALIZE_EX Py_InitializeEx;
+    PPY_IS_INITIALIZED Py_IsInitialized;
+    PPY_FINALIZE Py_Finalize;
+    PPYEVAL_SETTRACE PyEval_SetProfile;
+    PPYEVAL_SETTRACE PyEval_SetTrace;
+
+    //
+    // Path to the Python DLL and .exe found by FindPythonDllAndExe.
     //
 
     PUNICODE_STRING PythonDllPath;
+    PUNICODE_STRING PythonExePath;
+
+    //
+    // A UTF-8 encoded version of the PythonExePath above (used for setting
+    // argv[0]).
+    //
+
+    PSTRING PythonExePathA;
 
     //
     // Pointers to Python-specific data structures initialized by the routines

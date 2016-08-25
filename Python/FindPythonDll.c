@@ -2,17 +2,21 @@
 
 _Use_decl_annotations_
 BOOL
-FindPythonDll(
+FindPythonDllAndExe(
     PRTL Rtl,
     PALLOCATOR Allocator,
     PUNICODE_STRING Directory,
-    PPUNICODE_STRING PythonDllPath
+    PPUNICODE_STRING PythonDllPath,
+    PPUNICODE_STRING PythonExePath
     )
 /*++
 
 Routine Description:
 
-    Finds the first Python DLL file in the given directory.
+    Finds the first Python DLL file in the given directory.  If a DLL can be
+    found, creates two new UNICODE_STRING string structures using the given
+    Allocator, one for the DLL Path (PythonDllPath) and one for the .exe in
+    that directory (PythonExePath).
 
 Arguments:
 
@@ -28,12 +32,19 @@ Arguments:
     PythonDllPath - Supplies a pointer that receives the address of a
         UNICODE_STRING representing the found Python DLL, if any.
 
+    PythonExePath - Supplies a pointer that receives the address of a
+        UNICODE_STRING representing "python.exe" in the same directory that
+        PythonDllPath was found (if at all).
+
 Return Value:
 
-    TRUE if no error occured, FALSE otherwise.  Note that TRUE does not
+    TRUE if no error occurred, FALSE otherwise.  Note that TRUE does not
     imply that a file was found, simply that no error occurred.  You should
     test PythonDllPath for a NULL pointer to discern whether or not a DLL
     file was successfully found.
+
+    PythonExePath will always be set if PythonDllPath is set, and it will
+    never be set if PythonDllPath is not set.
 
 --*/
 {
@@ -48,7 +59,8 @@ Return Value:
     PWCHAR Dest;
     PWCHAR Source;
     PUNICODE_STRING WhichFilename = NULL;
-    PUNICODE_STRING Path;
+    PUNICODE_STRING DllPath = NULL;
+    PUNICODE_STRING ExePath = NULL;
 
     //
     // Validate arguments.
@@ -66,11 +78,16 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(PythonExePath)) {
+        return FALSE;
+    }
+
     //
-    // Clear the pointer immediately.
+    // Clear the caller's pointers immediately.
     //
 
     *PythonDllPath = NULL;
+    *PythonExePath = NULL;
 
     //
     // Verify the path.
@@ -149,7 +166,7 @@ Return Value:
     //
 
     __try {
-        Path = (PUNICODE_STRING)(
+        DllPath = (PUNICODE_STRING)(
             Allocator->Calloc(
                 Allocator->Context,
                 1,
@@ -157,10 +174,10 @@ Return Value:
             )
         );
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        Path = NULL;
+        DllPath = NULL;
     }
 
-    if (!Path) {
+    if (!DllPath) {
         return FALSE;
     }
 
@@ -169,13 +186,13 @@ Return Value:
     // Buffer at the right place and initialize our Dest pointer.
     //
 
-    Path->Buffer = (PWSTR)(
+    DllPath->Buffer = (PWSTR)(
         RtlOffsetToPointer(
-            Path,
+            DllPath,
             sizeof(UNICODE_STRING)
         )
     );
-    Dest = Path->Buffer;
+    Dest = DllPath->Buffer;
 
     //
     // Copy the directory.
@@ -214,16 +231,160 @@ Return Value:
     // Update the string lengths.
     //
 
-    Path->Length = Length;
-    Path->MaximumLength = MaximumLength;
+    DllPath->Length = Length;
+    DllPath->MaximumLength = MaximumLength;
 
     //
-    // Update the caller's pointer.
+    // Now fill out the PythonExePath using the same directory.
     //
 
-    *PythonDllPath = Path;
+    Length = (
+
+        //
+        // Length (size in bytes) of the directory, excluding trailing NULL.
+        //
+
+        Directory->Length +
+
+        //
+        // Account for the joining slash.
+        //
+
+        sizeof(WCHAR) +
+
+        //
+        // And the Python DLL path.
+        //
+
+        PythonExeW.Length
+    );
+
+    //
+    // Account for the trailing NULL for MaximumLength;
+    //
+
+    MaximumLength = Length + sizeof(WCHAR);
+
+    //
+    // Calculate the allocation size, accounting for the size of
+    // the UNICODE_STRING structure.
+    //
+
+    AllocSize.LongPart = (sizeof(UNICODE_STRING) + MaximumLength);
+
+    //
+    // Sanity check of the size; should never exceed MAX_USHORT.
+    //
+
+    if (AllocSize.HighPart != 0) {
+        goto Error;
+    }
+
+    //
+    // Allocate the buffer.
+    //
+
+    __try {
+        ExePath = (PUNICODE_STRING)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                AllocSize.LowPart
+            )
+        );
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        ExePath = NULL;
+    }
+
+    if (!ExePath) {
+        goto Error;
+    }
+
+    //
+    // UNICODE_STRING+Buffer was successfully allocated.  Point the
+    // Buffer at the right place and initialize our Dest pointer.
+    //
+
+    ExePath->Buffer = (PWSTR)(
+        RtlOffsetToPointer(
+            ExePath,
+            sizeof(UNICODE_STRING)
+        )
+    );
+    Dest = ExePath->Buffer;
+
+    //
+    // Copy the directory.
+    //
+
+    Bytes = Directory->Length;
+    Count = Bytes >> 1;
+    Source = Directory->Buffer;
+    __movsw(Dest, Source, Count);
+
+    //
+    // Add the joining slash.
+    //
+
+    Dest += Count;
+    *Dest++ = L'\\';
+
+    //
+    // Copy the Python exe path name.
+    //
+
+    Bytes = PythonExeW.Length;
+    Count = Bytes >> 1;
+    Source = PythonExeW.Buffer;
+    __movsw(Dest, Source, Count);
+
+
+    //
+    // And set the final trailing NULL.
+    //
+
+    Dest += Count;
+    *Dest++ = L'\0';
+
+    //
+    // Update the string lengths.
+    //
+
+    ExePath->Length = Length;
+    ExePath->MaximumLength = MaximumLength;
+
+    //
+    // Update the caller's pointers and return success.
+    //
+
+    *PythonDllPath = DllPath;
+    *PythonExePath = ExePath;
 
     return TRUE;
+
+Error:
+
+    if (DllPath) {
+
+        __try {
+            Allocator->Free(Allocator->Context, DllPath);
+            DllPath = NULL;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            DllPath = NULL;
+        }
+    }
+
+    if (ExePath) {
+
+        __try {
+            Allocator->Free(Allocator->Context, ExePath);
+            ExePath = NULL;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            ExePath = NULL;
+        }
+    }
+
+    return FALSE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

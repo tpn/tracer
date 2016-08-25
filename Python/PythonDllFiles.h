@@ -5,6 +5,14 @@
 #define DLL(Name, Filename) \
     static CONST UNICODE_STRING Name = RTL_CONSTANT_STRING(Filename);
 
+#define EXE DLL
+
+//
+// Python executable.
+//
+
+EXE(PythonExeW, L"python.exe");
+
 //
 // Python DLLs.
 //
