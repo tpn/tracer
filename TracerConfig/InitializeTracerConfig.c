@@ -1,10 +1,4 @@
-#include "TracerConfig.h"
-#include "TracerConfigPrivate.h"
-#include "TracerConfigConstants.h"
-
-#include "../Rtl/Rtl.h"
-
-#include <winreg.h>
+#include "stdafx.h"
 
 /*--
 
@@ -109,17 +103,13 @@ LoadPath(
     // Allocate space for the buffer.
     //
 
-    __try {
-        TargetPath->Buffer = (PWCHAR)(
-            Allocator->Malloc(
-                Allocator->Context,
-                SizeInBytes
-            )
-        );
-        if (!TargetPath->Buffer) {
-            return FALSE;
-        }
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    TargetPath->Buffer = (PWCHAR)(
+        Allocator->Malloc(
+            Allocator->Context,
+            SizeInBytes
+        )
+    );
+    if (!TargetPath->Buffer) {
         return FALSE;
     }
 
@@ -273,17 +263,13 @@ Return Value:
         }                                                    \
     }                                                        \
                                                              \
-    __try {                                                  \
-        String->Buffer = (PWCHAR)(                           \
-            Allocator->Malloc(                               \
-                Allocator->Context,                          \
-                SizeInBytes                                  \
-            )                                                \
-        );                                                   \
-        if (!String->Buffer) {                               \
-            goto Error;                                      \
-        }                                                    \
-    } __except (EXCEPTION_EXECUTE_HANDLER) {                 \
+    String->Buffer = (PWCHAR)(                               \
+        Allocator->Malloc(                                   \
+            Allocator->Context,                              \
+            SizeInBytes                                      \
+        )                                                    \
+    );                                                       \
+    if (!String->Buffer) {                                   \
         goto Error;                                          \
     }                                                        \
                                                              \
@@ -419,18 +405,13 @@ Return Value:
     // Allocate space for the initial structure.
     //
 
-    __try {
-        TracerConfig = (PTRACER_CONFIG)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                sizeof(*TracerConfig)
-            )
-        );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        TracerConfig = NULL;
-        goto Error;
-    }
+    TracerConfig = (PTRACER_CONFIG)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            sizeof(*TracerConfig)
+        )
+    );
 
     //
     // Make sure we got back a non-NULL value.

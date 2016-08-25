@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Memory.h"
+#include "stdafx.h"
 
 MALLOC DefaultHeapMalloc;
 CALLOC DefaultHeapCalloc;

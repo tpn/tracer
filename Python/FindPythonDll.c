@@ -165,17 +165,13 @@ Return Value:
     // Allocate the buffer.
     //
 
-    __try {
-        DllPath = (PUNICODE_STRING)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                AllocSize.LowPart
-            )
-        );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        DllPath = NULL;
-    }
+    DllPath = (PUNICODE_STRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LowPart
+        )
+    );
 
     if (!DllPath) {
         return FALSE;
@@ -284,17 +280,13 @@ Return Value:
     // Allocate the buffer.
     //
 
-    __try {
-        ExePath = (PUNICODE_STRING)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                AllocSize.LowPart
-            )
-        );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        ExePath = NULL;
-    }
+    ExePath = (PUNICODE_STRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LowPart
+        )
+    );
 
     if (!ExePath) {
         goto Error;
@@ -365,23 +357,13 @@ Return Value:
 Error:
 
     if (DllPath) {
-
-        __try {
-            Allocator->Free(Allocator->Context, DllPath);
-            DllPath = NULL;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            DllPath = NULL;
-        }
+        Allocator->Free(Allocator->Context, DllPath);
+        DllPath = NULL;
     }
 
     if (ExePath) {
-
-        __try {
-            Allocator->Free(Allocator->Context, ExePath);
-            ExePath = NULL;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            ExePath = NULL;
-        }
+        Allocator->Free(Allocator->Context, ExePath);
+        ExePath = NULL;
     }
 
     return FALSE;

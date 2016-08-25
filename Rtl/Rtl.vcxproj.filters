@@ -30,9 +30,6 @@
     <ClInclude Include="Commandline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DefaultHeapAllocator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -42,9 +39,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DefaultHeapAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Path.c">

@@ -9,8 +9,8 @@
 //
 
 typedef
-VOID * __restrict
 _Must_inspect_result_
+PVOID
 (MALLOC)(
     _In_ PVOID Context,
     _In_ SIZE_T Size
@@ -18,8 +18,8 @@ _Must_inspect_result_
 typedef MALLOC *PMALLOC;
 
 typedef
-VOID * __restrict
 _Must_inspect_result_
+PVOID
 (CALLOC)(
     _In_ PVOID Context,
     _In_ SIZE_T NumberOfElements,
@@ -28,9 +28,9 @@ _Must_inspect_result_
 typedef CALLOC *PCALLOC;
 
 typedef
-VOID * __restrict
 _Must_inspect_result_
 _Ret_reallocated_bytes_(Buffer, NewSize)
+PVOID
 (REALLOC)(
     _In_ PVOID Context,
     _In_ PVOID Buffer,
