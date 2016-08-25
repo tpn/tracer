@@ -48,7 +48,7 @@
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\Wdk.props" />  
+  <Import Project="..\Wdk.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
@@ -75,9 +75,16 @@
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>      
+      <AdditionalDependencies>TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
     </Link>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ExpandAttributedSource>true</ExpandAttributedSource>
+      <CompileAs>CompileAsC</CompileAs>
+      <CreateHotpatchableImage>true</CreateHotpatchableImage>
+    </ClCompile>
   </ItemDefinitionGroup>
+
   <ItemGroup>
     <ClInclude Include="..\Rtl\DefaultHeapAllocator.h" />
     <ClInclude Include="targetver.h" />
@@ -85,6 +92,9 @@
   <ItemGroup>
     <ClCompile Include="..\Rtl\DefaultHeapAllocator.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="stdafx.c">
+        <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

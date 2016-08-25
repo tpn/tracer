@@ -22,12 +22,17 @@
       <CompileAs>Default</CompileAs>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <BrowseInformation>true</BrowseInformation>
+      <ExpandAttributedSource>true</ExpandAttributedSource>
       <AssemblerOutput>All</AssemblerOutput>
       <UseDebugLibraries>false</UseDebugLibraries>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <CompileAsManaged>false</CompileAsManaged>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <!--
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qpar-report:2;/Qvec-report:2;%(AdditionalOptions)</AdditionalOptions>
+    -->
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qpar-report:1 /Qvec-report:1 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
       <Optimization>Disabled</Optimization>

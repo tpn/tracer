@@ -1,9 +1,5 @@
 
-#include "../Rtl/Rtl.h"
-#include "../Rtl/DefaultHeapAllocator.h"
-#include "../Python/Python.h"
-#include "../TracerConfig/TracerConfig.h"
-#include "../TracedPythonSession/TracedPythonSession.h"
+#include "stdafx.h"
 
 INITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
 DESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
