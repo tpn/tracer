@@ -725,6 +725,10 @@ LoadPythonFunctions(
         return FALSE;                                               \
     }
 
+    RESOLVE_FUNCTION(PPY_INITIALIZE, Py_Initialize);
+    RESOLVE_FUNCTION(PPY_INITIALIZE_EX, Py_InitializeEx);
+    RESOLVE_FUNCTION(PPY_IS_INITIALIZED, Py_IsInitialized);
+    RESOLVE_FUNCTION(PPY_FINALIZE, Py_Finalize);
     RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
     RESOLVE_FUNCTION(PPY_MAIN, Py_Main);
     RESOLVE_FUNCTION(PPY_GET_PREFIX, Py_GetPrefix);

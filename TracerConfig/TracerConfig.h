@@ -1,9 +1,13 @@
 #pragma once
 
-//#include "stdafx.h"
-//#include <ntddk.h>
-//#include <ntifs.h>
 #include "../Rtl/Rtl.h"
+
+//
+// Constants.
+//
+
+static CONST UNICODE_STRING TracerRegistryPath = \
+    RTL_CONSTANT_STRING(L"Software\\Tracer");
 
 //
 // Function typedefs.
@@ -51,6 +55,14 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
 
     UNICODE_STRING InstallationDirectory;
     UNICODE_STRING BaseTraceDirectory;
+
+    //
+    // Default Python directory to use when initializing a traced Python
+    // session if the directory cannot be otherwise identified.  Also read
+    // from the registry.
+    //
+
+    UNICODE_STRING DefaultPythonDirectory;
 
     //
     // Fully-qualified paths to relevant DLLs.  The paths are built
@@ -102,18 +114,18 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG LoadDebugLibraries:1;
 
     //
-    // When set, indicates that trace session directories will be created
-    // with compression enabled.  Defaults to TRUE.
+    // When set, disable compression on trace session directories.
+    // Defaults to FALSE.
     //
 
-    ULONG EnableTraceSessionDirectoryCompression:1;
+    ULONG DisableTraceSessionDirectoryCompression:1;
 
     //
-    // When set, indicates that the trace store mechanism should pre-fault
-    // pages ahead of time in a separate thread pool.  Defaults to TRUE.
+    // When set, disable the trace store mechanism that pre-faults
+    // pages ahead of time in a separate thread pool.  Defaults to FALSE.
     //
 
-    ULONG PrefaultPages:1;
+    ULONG DisablePrefaultPages:1;
 
     //
     // When set, virtual memory stats will be tracked during tracing.

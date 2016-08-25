@@ -41,7 +41,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -68,15 +68,14 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TracedPythonSession.h" />
+    <ClInclude Include="TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dllmain.c">
-      <PrecompiledHeader />
-    </ClCompile>
+    <ClCompile Include="DestroyTracedPythonSession.c" />
+    <ClCompile Include="InitializeTracedPythonSession.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TracedPythonSession.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

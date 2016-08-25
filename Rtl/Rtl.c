@@ -137,6 +137,7 @@ LoadShlwapiFunctions(
 
 }
 
+RTL_API
 BOOL
 LoadShlwapi(PRTL Rtl)
 {
@@ -3485,6 +3486,20 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->ArgvWToArgvA = (PARGVW_TO_ARGVA)
+        GetProcAddress(RtlExModule, "ArgvWToArgvA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'ArgvWToArgvA'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
+        GetProcAddress(RtlExModule, "GetModulePath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'GetModulePath'");
         return FALSE;
     }
 

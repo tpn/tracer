@@ -27,15 +27,18 @@
     <ClInclude Include="TracedPythonSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TracedPythonSessionPrivate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TracedPythonSession.c">
+    <ClCompile Include="DestroyTracedPythonSession.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dllmain.c">
+    <ClCompile Include="InitializeTracedPythonSession.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

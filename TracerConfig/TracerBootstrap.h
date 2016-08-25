@@ -153,8 +153,8 @@ Return Value:
     //
 
     READ_REG_DWORD_FLAG(LoadDebugLibraries, FALSE);
-    READ_REG_DWORD_FLAG(EnableTraceSessionDirectoryCompression, TRUE);
-    READ_REG_DWORD_FLAG(PrefaultPages, TRUE);
+    READ_REG_DWORD_FLAG(DisableTraceSessionDirectoryCompression, TRUE);
+    READ_REG_DWORD_FLAG(DisablePrefaultPages, TRUE);
     READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);

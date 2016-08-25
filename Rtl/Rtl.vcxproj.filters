@@ -47,6 +47,12 @@
     <ClCompile Include="DefaultHeapAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Path.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Commandline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'">
