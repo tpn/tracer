@@ -700,7 +700,7 @@ BOOL
 LoadPythonFunctions(
     _In_    HMODULE             PythonModule,
     _Inout_ PPYTHONFUNCTIONS    PythonFunctions
-)
+    )
 {
     if (!ARGUMENT_PRESENT(PythonModule)) {
         return FALSE;
@@ -725,6 +725,13 @@ LoadPythonFunctions(
         return FALSE;                                               \
     }
 
+    RESOLVE_FUNCTION(PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
+    RESOLVE_FUNCTION(PPY_SET_PROGRAM_NAME, Py_SetProgramName);
+    RESOLVE_FUNCTION(PPY_SET_PYTHON_HOME, Py_SetPythonHome);
+    RESOLVE_FUNCTION(PPY_INITIALIZE, Py_Initialize);
+    RESOLVE_FUNCTION(PPY_INITIALIZE_EX, Py_InitializeEx);
+    RESOLVE_FUNCTION(PPY_IS_INITIALIZED, Py_IsInitialized);
+    RESOLVE_FUNCTION(PPY_FINALIZE, Py_Finalize);
     RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
     RESOLVE_FUNCTION(PPY_MAIN, Py_Main);
     RESOLVE_FUNCTION(PPY_GET_PREFIX, Py_GetPrefix);

@@ -7,11 +7,7 @@
 extern "C" {
 #endif
 
-#include <Windows.h>
-#include "../Rtl/Rtl.h"
-#include "../Tracer/Tracer.h"
-#include "../Tracer/Tracing.h"
-#include "../Python/Python.h"
+#include "stdafx.h"
 
 typedef enum _TraceEventType {
     // PyTrace_* constants.
@@ -245,6 +241,87 @@ typedef struct _EVENT_TYPE {
     };
 } EVENT_TYPE, *PEVENT_TYPE;
 
+typedef struct _PYTHON_TRACE_CONTEXT PYTHON_TRACE_CONTEXT;
+typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
+
+typedef
+VOID
+(ENABLE_MEMORY_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef ENABLE_MEMORY_TRACING *PENABLE_MEMORY_TRACING;
+
+typedef
+VOID
+(DISABLE_MEMORY_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef DISABLE_MEMORY_TRACING *PDISABLE_MEMORY_TRACING;
+
+typedef
+VOID
+(ENABLE_IO_COUNTERS_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef ENABLE_IO_COUNTERS_TRACING *PENABLE_IO_COUNTERS_TRACING;
+
+typedef
+VOID
+(DISABLE_IO_COUNTERS_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef DISABLE_IO_COUNTERS_TRACING *PDISABLE_IO_COUNTERS_TRACING;
+
+typedef
+VOID
+(ENABLE_HANDLE_COUNT_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef ENABLE_HANDLE_COUNT_TRACING *PENABLE_HANDLE_COUNT_TRACING;
+
+typedef
+VOID
+(DISABLE_HANDLE_COUNT_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef DISABLE_HANDLE_COUNT_TRACING *PDISABLE_HANDLE_COUNT_TRACING;
+
+typedef
+BOOL
+(START_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef START_TRACING *PSTART_TRACING;
+
+typedef
+BOOL
+(STOP_TRACING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef STOP_TRACING *PSTOP_TRACING;
+
+typedef
+BOOL
+(START_PROFILING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef START_PROFILING *PSTART_PROFILING;
+
+typedef
+BOOL
+(STOP_PROFILING)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef STOP_PROFILING *PSTOP_PROFILING;
+
+typedef
+BOOL
+(ADD_MODULE_NAME)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _In_ PPYOBJECT ModuleNameObject
+    );
+typedef ADD_MODULE_NAME *PADD_MODULE_NAME;
+
 typedef struct _PYTHON_TRACE_CONTEXT {
 
     ULONG             Size;                                 // 4    0   4
@@ -296,6 +373,23 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PPYTHON_TRACE_CALL TraceCall;
     PPYTHON_TRACE_LINE TraceLine;
     PPYTHON_TRACE_RETURN TraceReturn;
+
+    PSTART_TRACING StartTracing;
+    PSTOP_TRACING StopTracing;
+
+    PSTART_PROFILING StartProfiling;
+    PSTOP_PROFILING StopProfiling;
+
+    PENABLE_MEMORY_TRACING EnableMemoryTracing;
+    PDISABLE_MEMORY_TRACING DisableMemoryTracing;
+
+    PENABLE_IO_COUNTERS_TRACING EnableIoCountersTracing;
+    PDISABLE_IO_COUNTERS_TRACING DisableIoCountersTracing;
+
+    PENABLE_HANDLE_COUNT_TRACING EnableHandleCountTracing;
+    PDISABLE_HANDLE_COUNT_TRACING DisableHandleCountTracing;
+
+    PADD_MODULE_NAME AddModuleName;
 
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
@@ -377,9 +471,7 @@ PyTraceReturn(
     );
 
 
-TRACER_API
-BOOL
-InitializePythonTraceContext(
+typedef BOOL (INITIALIZE_PYTHON_TRACE_CONTEXT)(
     _In_ PRTL Rtl,
     _Out_bytecap_(*SizeOfPythonTraceContext) PPYTHON_TRACE_CONTEXT
                                              PythonTraceContext,
@@ -390,79 +482,13 @@ InitializePythonTraceContext(
     _In_opt_ PVOID UserData
     );
 
-TRACER_API
-VOID
-EnableMemoryTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-VOID
-DisableMemoryTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-VOID
-EnableIoCounterTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-VOID
-DisableIoCounterTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-VOID
-EnableHandleCountTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-VOID
-DisableHandleCountTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-
-TRACER_API
-BOOL
-StartTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-BOOL
-StopTracing(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-BOOL
-StartProfiling(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
-
-TRACER_API
-BOOL
-StopProfiling(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    );
+typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;
 
 TRACER_API
 BOOL
 AddFunction(
     _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
     _In_    PVOID                   FunctionObject
-    );
-
-TRACER_API
-BOOL
-AddModuleName(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
-    _In_    PPYOBJECT               ModuleNameObject
     );
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

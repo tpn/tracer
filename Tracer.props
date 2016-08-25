@@ -1,137 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <Platform Condition="'$(Platform)' == ''">x64</Platform>
-    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
-    <!--
-    Use the latest available version of Visual Studio to build. To override
-    this and build with an earlier version, pass "/p:PlatformToolset=v100"
-    (for example) when building.
-    -->
-    <PlatformToolset Condition="'$(PlatformToolset)' == '' and '$(VCTargetsPath14)' != ''">v140</PlatformToolset>
-    <PlatformToolset Condition="'$(PlatformToolset)' == '' and '$(VCTargetsPath12)' != ''">v120</PlatformToolset>
-    <PlatformToolset Condition="'$(PlatformToolset)' == '' and '$(VCTargetsPath11)' != ''">v110</PlatformToolset>
-    <PlatformToolset Condition="'$(PlatformToolset)' == '' and '$(VCTargetsPath10)' != ''">v100</PlatformToolset>
-    <LinkIncremental>false</LinkIncremental>
-    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Label="Globals">
-
-  </PropertyGroup>
+  <Import Project="TracerBase.props" />
+  
   <PropertyGroup Label="Configuration">
-    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset></PlatformToolset>
   </PropertyGroup>
+
+  <Choose>
+    <When Condition="'$(VCTargetsPath14)' != ''">
+      <PropertyGroup Label="Configuration">
+        <PlatformToolset>v140</PlatformToolset>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <Choose>
+        <When Condition="'$(VCTargetsPath12)' != ''">
+          <PropertyGroup Label="Configuration">
+            <PlatformToolset>v120</PlatformToolset>
+          </PropertyGroup>
+        </When>
+        <Otherwise>
+          <Choose>
+            <When Condition="'$(VCTargetsPath11)' != ''">
+              <PropertyGroup Label="Configuration">
+                <PlatformToolset>v110</PlatformToolset>
+              </PropertyGroup>
+            </When>
+            <Otherwise>
+              <Choose>
+                <When Condition="'$(VCTargetsPath10)' != ''">
+                  <PropertyGroup Label="Configuration">
+                    <PlatformToolset>v100</PlatformToolset>
+                  </PropertyGroup>
+                </When>
+              </Choose>
+            </Otherwise>
+          </Choose>
+        </Otherwise>
+      </Choose>
+    </Otherwise>
+  </Choose>
+
+  <Target Name="Validate">
+      <Warning
+          Text="PlatformToolset not detected."
+          Condition="'$(PlatformToolset)' == ''" />
+      <Warning
+          Text="PlatformToolset: $(PlatformToolset)."
+          Condition="'$(PlatformToolset)' != ''" />
+  </Target>  
+
+  <PropertyGroup Label="Globals">
+  </PropertyGroup>
+
   <ItemDefinitionGroup>
     <ClCompile>
-      <!--
-      <AdditionalIncludeDirectories>$(PySourcePath)Include;$(PySourcePath)PC;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;$(_PlatformPreprocessorDefinition)$(_DebugPreprocessorDefinition)$(_PydPreprocessorDefinition)%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      -->
-      <!--
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      -->
-      <SubSystem>Windows</SubSystem>
-      <!--
-      <SDLCheck>false</SDLCheck>
-      -->
-      <Optimization>MaxSpeed</Optimization>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <StringPooling>true</StringPooling>
-      <ExceptionHandling></ExceptionHandling>
+      <SubSystem>Console</SubSystem>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <TreatWarningAsError>true</TreatWarningAsError>
-      <WarningLevel>Level3</WarningLevel>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs>Default</CompileAs>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <!--
-      <CreateHotpatchableImage>true</CreateHotpatchableImage>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <EnableEnhancedInstructionSet Condition="'$(Platform)'=='Win32'">NoExtensions</EnableEnhancedInstructionSet>
-      -->
-      <BrowseInformation>true</BrowseInformation>
-      <AssemblerOutput>All</AssemblerOutput>
-      <UseDebugLibraries>false</UseDebugLibraries>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
       <PreprocessorDefinitions>_WINDOWS;_USRDLL;TRACER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAsManaged>false</CompileAsManaged>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
-      <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <UseDebugLibraries>true</UseDebugLibraries>
-      <EnableCOMDATFolding>false</EnableCOMDATFolding>
-      <OptimizeReferences>false</OptimizeReferences>
-      <!--
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      -->
     </ClCompile>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
     <Link>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <!--
-      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
-      -->
       <SubSystem>Windows</SubSystem>
-      <RandomizedBaseAddress>true</RandomizedBaseAddress>
-      <DataExecutionPrevention>true</DataExecutionPrevention>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-
-      <!--
-      <IgnoreSpecificDefaultLibraries>libc;vcruntime1400d;vcruntime1400;ucrtbased;msvcr100;msvcr100d%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      -->
-      <TargetMachine>MachineX86</TargetMachine>
-      <TargetMachine Condition="'$(Platform)' == 'x64'">MachineX64</TargetMachine>
-      <!--
-      <ProfileGuidedDatabase Condition="$(SupportPGO)">$(OutDir)$(TargetName).pgd</ProfileGuidedDatabase>
-      -->
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">PGInstrument</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">PGUpdate</LinkTimeCodeGeneration>
-      <BrowseInformation>true</BrowseInformation>
-      <AssemblerOutput>All</AssemblerOutput>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding Condition="$(Configuration) != 'Debug'">true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Link Condition="$(Configuration) == 'Debug'">
-      <EnableCOMDATFolding>false</EnableCOMDATFolding>
-      <OptimizeReferences>false</OptimizeReferences>
-    </Link>
-    <Link Condition="$(Configuration) != 'PGInstrument'">
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-    </Link>
-    <Lib>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">true</LinkTimeCodeGeneration>
-    </Lib>
-    <ResourceCompile>
-      <!--
-      <AdditionalIncludeDirectories>$(PySourcePath)PC;$(PySourcePath)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>$(_DebugPreprocessorDefinition)%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      -->
-      <Culture>0x0409</Culture>
-    </ResourceCompile>
     <Midl>
-      <!--
-      <PreprocessorDefinitions>$(_DebugPreprocessorDefinition)%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      -->
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
       <TargetEnvironment Condition="'$(Platform)' == 'x64'">X64</TargetEnvironment>
-      <!--
-      <TypeLibraryName>$(OutDir)wininst.tlb</TypeLibraryName>
-      -->
-      <HeaderFileName>
-      </HeaderFileName>
-    </Midl>
+   </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

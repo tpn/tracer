@@ -1,0 +1,4 @@
+LIBRARY TracerConfig
+EXPORTS
+    TracerConfig=GlobalTracerConfig @1 DATA
+    CreateTraceSessionDirectory=CreateGlobalTraceSessionDirectory @2
