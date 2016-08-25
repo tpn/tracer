@@ -185,20 +185,13 @@ Return Value:
     // Allocate the memory.
     //
 
-    __try {
-
-        Path = (PPATH)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                AllocSize.LowPart
-            )
-        );
-
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-
-        Path = NULL;
-    }
+    Path = (PPATH)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LowPart
+        )
+    );
 
     if (!Path) {
         return FALSE;
@@ -395,14 +388,8 @@ Return Value:
 Error:
 
     if (Path) {
-
-        __try {
-            Allocator->Free(Allocator->Context, Path);
-            Path = NULL;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            Path = NULL;
-        }
-
+        Allocator->Free(Allocator->Context, Path);
+        Path = NULL;
     }
 
     return FALSE;
@@ -473,20 +460,13 @@ Return Value:
     Bytes = MAX_PATH_ALLOC;
     Count = Bytes >> 1;
 
-    __try {
-
-        Buffer = (PWSTR)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                Bytes
-            )
-        );
-
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-
-        Buffer = NULL;
-    }
+    Buffer = (PWSTR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            Bytes
+        )
+    );
 
     if (!Buffer) {
         return FALSE;
@@ -523,14 +503,8 @@ Return Value:
 Error:
 
     if (Buffer) {
-
-        __try {
-            Allocator->Free(Allocator->Context, Buffer);
-            Buffer = NULL;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            Buffer = NULL;
-        }
-
+        Allocator->Free(Allocator->Context, Buffer);
+        Buffer = NULL;
     }
 
     return Success;

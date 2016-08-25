@@ -1453,9 +1453,13 @@ typedef PYSYS_SET_ARGV_EX *PPYSYS_SET_ARGV_EX;
 typedef VOID (PY_SET_PROGRAM_NAME)(CHAR*);
 typedef PY_SET_PROGRAM_NAME *PPY_SET_PROGRAM_NAME;
 
+typedef VOID (PY_SET_PYTHON_HOME)(CHAR*);
+typedef PY_SET_PYTHON_HOME *PPY_SET_PYTHON_HOME;
+
 #define _PYTHONFUNCTIONS_HEAD                              \
     PPYSYS_SET_ARGV_EX              PySys_SetArgvEx;       \
     PPY_SET_PROGRAM_NAME            Py_SetProgramName;     \
+    PPY_SET_PYTHON_HOME             Py_SetPythonHome;      \
     PPY_INITIALIZE                  Py_Initialize;         \
     PPY_INITIALIZE_EX               Py_InitializeEx;       \
     PPY_IS_INITIALIZED              Py_IsInitialized;      \

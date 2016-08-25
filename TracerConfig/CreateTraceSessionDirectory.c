@@ -1,8 +1,4 @@
-
-#include "TracerConfig.h"
-#include "TracerConfigPrivate.h"
-
-#include "RtlString.h"
+#include "stdafx.h"
 
 //
 // We use a static, constant, initialized UNICODE_STRING to represent the
@@ -103,11 +99,7 @@ Return Value:
     // Update the caller's pointer and return.
     //
 
-    __try {
-        *BufferSizeInBytes = Size;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return FALSE;
-    }
+    *BufferSizeInBytes = Size;
 
     return TRUE;
 }
@@ -295,17 +287,13 @@ CreateTraceSessionDirectory(
     // Allocate the buffer.
     //
 
-    __try {
-        TraceSessionDirectory = (PTRACE_SESSION_DIRECTORY)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                AllocationSize.LowPart
-            )
-        );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        TraceSessionDirectory = NULL;
-    }
+    TraceSessionDirectory = (PTRACE_SESSION_DIRECTORY)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocationSize.LowPart
+        )
+    );
 
     if (!TraceSessionDirectory) {
         return FALSE;

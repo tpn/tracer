@@ -1,9 +1,8 @@
+
 #include "stdafx.h"
-#include "Memory.h"
-#include "DefaultHeapAllocator.h"
 
 _Use_decl_annotations_
-void * __restrict
+PVOID
 DefaultHeapMalloc(
     PVOID Context,
     SIZE_T Size
@@ -13,22 +12,23 @@ DefaultHeapMalloc(
 }
 
 _Use_decl_annotations_
-void * __restrict
+PVOID
 DefaultHeapCalloc(
     PVOID Context,
     SIZE_T NumberOfElements,
     SIZE_T SizeOfElements
     )
 {
+    SIZE_T Size = NumberOfElements * SizeOfElements;
     return HeapAlloc(
         (HANDLE)Context,
         HEAP_ZERO_MEMORY,
-        NumberOfElements * SizeOfElements
+        Size
     );
 }
 
 _Use_decl_annotations_
-VOID * __restrict
+PVOID
 DefaultHeapRealloc(
     PVOID Context,
     PVOID Buffer,
@@ -78,7 +78,7 @@ DefaultHeapInitializeAllocator(
         return FALSE;
     }
 
-    HeapHandle = HeapCreate(0, 0, 0);
+    HeapHandle = HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 0);
     if (!HeapHandle) {
         return FALSE;
     }

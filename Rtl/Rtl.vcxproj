@@ -54,7 +54,6 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClInclude Include="Commandline.h" />
-    <ClInclude Include="DefaultHeapAllocator.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -62,7 +61,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Commandline.c" />
-    <ClCompile Include="DefaultHeapAllocator.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>

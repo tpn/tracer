@@ -1,7 +1,4 @@
-
-#include "TracerConfigPrivate.h"
-#include "TracerConfigConstants.h"
-#include "../Rtl/Rtl.h"
+#include "stdafx.h"
 
 //
 // Forward declarations.
@@ -81,19 +78,12 @@ DestroyTracerConfig(
     // Free the underlying TracerConfig structure.
     //
 
-    __try {
+    Allocator->Free(
+        Allocator->Context,
+        TracerConfig
+    );
 
-        Allocator->Free(
-            Allocator->Context,
-            TracerConfig
-        );
-
-        TracerConfig = NULL;
-
-    } __except(EXCEPTION_EXECUTE_HANDLER) {
-        TracerConfig = NULL;
-    }
-
+    TracerConfig = NULL;
 
     return;
 }
@@ -109,12 +99,7 @@ FreeUnicodeStringBuffer(
         return;
     }
 
-    __try {
-        Allocator->Free(Allocator->Context, String->Buffer);
-        String->Buffer = NULL;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        String->Buffer = NULL;
-    }
+    Allocator->Free(Allocator->Context, String->Buffer);
 
     return;
 }
@@ -165,15 +150,8 @@ DestroyTraceSessionDirectories(
 
         SecureZeroMemory(Directory, sizeof(*Directory));
 
-        __try {
-
-            Allocator->Free(Allocator->Context, Directory);
-
-        } __except(EXCEPTION_EXECUTE_HANDLER) {
-
-            Directory = NULL;
-        }
-
+        Allocator->Free(Allocator->Context, Directory);
+        Directory = NULL;
     }
 
     ReleaseSRWLockExclusive(&Directories->Lock);

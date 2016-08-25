@@ -27,13 +27,7 @@
     <ClInclude Include="TracerConfigPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RtlString.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TracerConfigRegistry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TracerBootstrap.h">
+    <ClInclude Include="TracerConfigConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,13 +35,7 @@
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dllmain.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="InitializeTracerConfig.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GlobalTracerConfig.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DestroyTracerConfig.c">
@@ -59,13 +47,5 @@
     <ClCompile Include="Allocation.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RtlString.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="TracerConfig.def">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

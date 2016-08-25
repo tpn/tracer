@@ -80,15 +80,13 @@ Return Value:
 
     }
 
-    __try {
-
-        Session = (PTRACED_PYTHON_SESSION)(
-            Allocator->Calloc(Allocator->Context, 1, sizeof(*Session))
-        );
-
-    } __except(EXCEPTION_EXECUTE_HANDLER) {
-        Session = NULL;
-    }
+    Session = (PTRACED_PYTHON_SESSION)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            sizeof(*Session)
+        )
+    );
 
     if (!Session) {
         return FALSE;
@@ -319,9 +317,40 @@ FoundPython:
     );
 
     if (!Success) {
-        OutputDebugStringA("ConvertUtf16StringToUtf8String() failed.\n");
+        OutputDebugStringA("Exe:ConvertUtf16StringToUtf8String() failed.\n");
         goto Error;
     }
+
+    //
+    // Create a UTF-8 version of the fully-qualified directory containing the
+    // python.exe and Python DLL so that we can set it as PYTHONHOME.
+    //
+
+    Success = ConvertUtf16StringToUtf8String(
+        Directory,
+        &Session->PythonHomePathA,
+        Allocator
+    );
+
+    if (!Success) {
+        OutputDebugStringA("Home:ConvertUtf16StringToUtf8String() failed.\n");
+        goto Error;
+    }
+
+    //
+    // Change our directory into the Python home directory.
+    //
+
+    Success = SetCurrentDirectoryW(Directory->Buffer);
+
+    if (!Success) {
+        OutputDebugStringA("Failed to change directory.\n");
+        goto Error;
+    }
+
+    //
+    // Load the library.
+    //
 
     PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
 
@@ -340,6 +369,7 @@ FoundPython:
 
     RESOLVE(PythonDllModule, PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
     RESOLVE(PythonDllModule, PPY_SET_PROGRAM_NAME, Py_SetProgramName);
+    RESOLVE(PythonDllModule, PPY_SET_PYTHON_HOME, Py_SetPythonHome);
     RESOLVE(PythonDllModule, PPY_INITIALIZE, Py_Initialize);
     RESOLVE(PythonDllModule, PPY_INITIALIZE_EX, Py_InitializeEx);
     RESOLVE(PythonDllModule, PPY_IS_INITIALIZED, Py_IsInitialized);
@@ -400,6 +430,12 @@ FoundPython:
     //
 
     Session->Py_SetProgramName(Session->PythonExePathA->Buffer);
+
+    //
+    // Set the PYTHONHOME to the containing directory.
+    //
+
+    Session->Py_SetPythonHome(Session->PythonHomePathA->Buffer);
 
     //
     // Initialize the interpreter.

@@ -76,18 +76,13 @@ Return Value:
     // terminating NULL pointer.
     //
 
-    __try {
-        AnsiArgv = (PPSTR)(
-            Allocator->Calloc(
-                Allocator->Context,
-                NumberOfArguments + 1,
-                sizeof(PSTR)
-            )
-        );
-    } __except(EXCEPTION_EXECUTE_HANDLER) {
-        AnsiArgv = NULL;
-        goto Error;
-    }
+    AnsiArgv = (PPSTR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            NumberOfArguments + 1,
+            sizeof(PSTR)
+        )
+    );
 
     if (!AnsiArgv) {
         goto Error;
@@ -132,14 +127,13 @@ Return Value:
         // Allocate zeroed memory.
         //
 
-        __try {
-            AnsiArg = (PSTR)(
-                Allocator->Calloc(Allocator->Context, 1, Size)
-            );
-        } __except(EXCEPTION_EXECUTE_HANDLER) {
-            AnsiArg = NULL;
-            goto Error;
-        }
+        AnsiArg = (PSTR)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                Size + 1
+            )
+        );
 
         if (!AnsiArg) {
             goto Error;
@@ -170,6 +164,12 @@ Return Value:
         if (Size <= 0) {
             goto Error;
         }
+
+        //
+        // NULL terminate the string.
+        //
+
+        AnsiArg[Size] = '\0';
 
     }
 
@@ -203,20 +203,13 @@ Error:
 
             AnsiArg = AnsiArgv[Index];
 
-            __try {
+            if (AnsiArg) {
                 Allocator->Free(Allocator->Context, AnsiArg);
-                AnsiArg = NULL;
-            } __except (EXCEPTION_EXECUTE_HANDLER) {
-                AnsiArg = NULL;
+                AnsiArgv[Index] = NULL;
             }
         }
 
-        __try {
-            Allocator->Free(Allocator->Context, AnsiArgv);
-            AnsiArgv = NULL;
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            AnsiArgv = NULL;
-        }
+        Allocator->Free(Allocator->Context, AnsiArgv);
     }
 
     return FALSE;

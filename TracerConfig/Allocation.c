@@ -1,5 +1,5 @@
-#include "../Rtl/Rtl.h"
-#include "TracerConfigPrivate.h"
+
+#include "stdafx.h"
 
 _Success_(return != 0)
 BOOLEAN
@@ -12,14 +12,15 @@ AllocateAndCopyWideString(
 {
     USHORT AlignedSizeInBytes = ALIGN_UP_USHORT_TO_POINTER_SIZE(SizeInBytes);
 
-    __try {
-        String->Buffer = (PWCHAR)(
-            Allocator->Malloc(
-                Allocator->Context,
-                AlignedSizeInBytes
-            )
-            );
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    String->Buffer = (PWCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedSizeInBytes
+        )
+    );
+
+    if (!String->Buffer) {
         return FALSE;
     }
 

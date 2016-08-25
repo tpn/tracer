@@ -1,5 +1,9 @@
 #pragma once
 
-#include <ntddk.h>
+#include "../Rtl/Rtl.h"
+#include "TracerConfig.h"
+#include "TracerConfigPrivate.h"
+#include "TracerConfigConstants.h"
+
 //#include "targetver.h"
 

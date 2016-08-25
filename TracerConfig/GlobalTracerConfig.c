@@ -6,16 +6,16 @@
 PTRACER_CONFIG GlobalTracerConfig = NULL;
 PALLOCATOR GlobalTracerAllocator = NULL;
 
-MALLOC Malloc;
-CALLOC Calloc;
-REALLOC Realloc;
-FREE Free;
+MALLOC __Malloc;
+CALLOC __Calloc;
+REALLOC __Realloc;
+FREE __Free;
 
-static ALLOCATOR Allocator;
+static ALLOCATOR __Allocator;
 
 _Use_decl_annotations_
-void * __restrict
-Malloc(
+PVOID
+__Malloc(
     PVOID Context,
     SIZE_T Size
     )
@@ -24,8 +24,8 @@ Malloc(
 }
 
 _Use_decl_annotations_
-void * __restrict
-Calloc(
+PVOID
+__Calloc(
     PVOID Context,
     SIZE_T NumberOfElements,
     SIZE_T SizeOfElements
@@ -41,7 +41,7 @@ Calloc(
 
 _Use_decl_annotations_
 VOID
-Free(
+__Free(
     PVOID Context,
     PVOID Buffer
     )
@@ -72,15 +72,15 @@ InitializeGlobalTracerConfig(VOID)
         return TRUE;
     }
 
-    RtlSecureZeroMemory(&Allocator, sizeof(Allocator));
+    RtlSecureZeroMemory(&__Allocator, sizeof(__Allocator));
 
-    Allocator.Malloc = Malloc;
-    Allocator.Calloc = Calloc;
-    Allocator.Free = Free;
-    Allocator.Context = GetProcessHeap();
+    __Allocator.Malloc = __Malloc;
+    __Allocator.Calloc = __Calloc;
+    __Allocator.Free = __Free;
+    __Allocator.Context = GetProcessHeap();
 
     TracerConfig = InitializeTracerConfig(
-        &Allocator,
+        &__Allocator,
         (PUNICODE_STRING)&TracerRegistryPath
     );
 

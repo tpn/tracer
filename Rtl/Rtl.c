@@ -3496,6 +3496,13 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->UnicodeStringToPath = (PUNICODE_STRING_TO_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToPath'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
         GetProcAddress(RtlExModule, "GetModulePath"))) {
 

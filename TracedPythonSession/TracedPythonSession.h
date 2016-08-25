@@ -211,6 +211,7 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     PPYSYS_SET_ARGV_EX PySys_SetArgvEx;
     PPY_SET_PROGRAM_NAME Py_SetProgramName;
+    PPY_SET_PYTHON_HOME Py_SetPythonHome;
     PPY_INITIALIZE Py_Initialize;
     PPY_INITIALIZE_EX Py_InitializeEx;
     PPY_IS_INITIALIZED Py_IsInitialized;
@@ -231,6 +232,14 @@ typedef struct _TRACED_PYTHON_SESSION {
     //
 
     PSTRING PythonExePathA;
+
+    //
+    // A UTF-8 encoded version of the directory containing Python DLL and the
+    // python.exe file.  This is used to set the Python HOME directory via
+    // Py_SetPythonHome
+    //
+
+    PSTRING PythonHomePathA;
 
     //
     // Pointers to Python-specific data structures initialized by the routines
