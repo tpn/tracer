@@ -8,7 +8,7 @@ AllocateAndCopyWideString(
     _In_ USHORT SizeInBytes,
     _In_ PWCHAR Buffer,
     _In_ PUNICODE_STRING String
-)
+    )
 {
     USHORT AlignedSizeInBytes = ALIGN_UP_USHORT_TO_POINTER_SIZE(SizeInBytes);
 
