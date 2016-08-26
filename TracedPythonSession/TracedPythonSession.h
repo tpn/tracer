@@ -18,11 +18,18 @@ typedef struct _TRACED_PYTHON_SESSION {
     USHORT Size;
 
     //
+    // Python major version ('2' or '3') and minor version, as derived from the
+    // DLL path name.
+    //
+
+    CHAR PythonMajorVersion;
+    CHAR PythonMinorVersion;
+
+    //
     // Padding out to 8 bytes.
     //
 
-    USHORT Unused1;
-    ULONG  Unused2;
+    ULONG   Unused2;
 
     //
     // TRACER_CONFIG structure.
@@ -134,13 +141,13 @@ typedef struct _TRACED_PYTHON_SESSION {
     };
 
     union {
-        PPWSTR ArgvW;
-        PPWSTR argvw;
+        PPSTR ArgvA;
+        PPSTR argv;
     };
 
     union {
-        PPSTR ArgvA;
-        PPSTR argv;
+        PPWSTR ArgvW;
+        PPWSTR argvw;
     };
 
     //
@@ -149,6 +156,7 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     LONG PythonNumberOfArguments;
     PPSTR PythonArgvA;
+    PPWSTR PythonArgvW;
 
     //
     // Rtl-specific functions/data.
@@ -206,25 +214,17 @@ typedef struct _TRACED_PYTHON_SESSION {
     PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
 
     //
-    // Python DLL helper functions we need before we call InitializePython.
-    //
-
-    PPYSYS_SET_ARGV_EX PySys_SetArgvEx;
-    PPY_SET_PROGRAM_NAME Py_SetProgramName;
-    PPY_SET_PYTHON_HOME Py_SetPythonHome;
-    PPY_INITIALIZE Py_Initialize;
-    PPY_INITIALIZE_EX Py_InitializeEx;
-    PPY_IS_INITIALIZED Py_IsInitialized;
-    PPY_FINALIZE Py_Finalize;
-    PPYEVAL_SETTRACE PyEval_SetProfile;
-    PPYEVAL_SETTRACE PyEval_SetTrace;
-
-    //
     // Path to the Python DLL and .exe found by FindPythonDllAndExe.
     //
 
     PUNICODE_STRING PythonDllPath;
     PUNICODE_STRING PythonExePath;
+
+    //
+    // Python home directory.  We don't own this.
+    //
+
+    PUNICODE_STRING PythonHomePath;
 
     //
     // A UTF-8 encoded version of the PythonExePath above (used for setting
@@ -248,12 +248,6 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
-
-    //
-    // Python's main() entry point.
-    //
-
-    PPY_MAIN Py_Main;
 
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 

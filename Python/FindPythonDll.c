@@ -7,7 +7,9 @@ FindPythonDllAndExe(
     PALLOCATOR Allocator,
     PUNICODE_STRING Directory,
     PPUNICODE_STRING PythonDllPath,
-    PPUNICODE_STRING PythonExePath
+    PPUNICODE_STRING PythonExePath,
+    PCHAR MajorVersionPointer,
+    PCHAR MinorVersionPointer
     )
 /*++
 
@@ -36,6 +38,15 @@ Arguments:
         UNICODE_STRING representing "python.exe" in the same directory that
         PythonDllPath was found (if at all).
 
+    MajorVersion - Supplies a pointer to a CHAR that will receive the
+        major version of the Python DLL based on the filename, e.g. 2 for
+        python26.dll and python27.dll, 3 for python34.dll, python35.dll etc.
+
+    MinorVersion - Supplies a pointer to a CHAR that will receive the
+        minor version of the Python DLL based on the filename, e.g. 7 for
+        python27.dll, 4 for python34.dll, etc.
+
+
 Return Value:
 
     TRUE if no error occurred, FALSE otherwise.  Note that TRUE does not
@@ -58,6 +69,8 @@ Return Value:
     LONG_INTEGER AllocSize;
     PWCHAR Dest;
     PWCHAR Source;
+    WIDE_CHARACTER MajorVersionChar;
+    WIDE_CHARACTER MinorVersionChar;
     PUNICODE_STRING WhichFilename = NULL;
     PUNICODE_STRING DllPath = NULL;
     PUNICODE_STRING ExePath = NULL;
@@ -82,12 +95,22 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(MajorVersionPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(MinorVersionPointer)) {
+        return FALSE;
+    }
+
     //
     // Clear the caller's pointers immediately.
     //
 
     *PythonDllPath = NULL;
     *PythonExePath = NULL;
+    *MajorVersionPointer = '\0';
+    *MinorVersionPointer = '\0';
 
     //
     // Verify the path.
@@ -215,6 +238,13 @@ Return Value:
     Source = WhichFilename->Buffer;
     __movsw(Dest, Source, Count);
 
+    //
+    // Abuse the fact that Dest points to the beginning of the Python DLL
+    // buffer at this point.
+    //
+
+    MajorVersionChar.WidePart = *(Dest + PYTHON_MAJOR_VERSION_CHAR_OFFSET);
+    MinorVersionChar.WidePart = *(Dest + PYTHON_MAJOR_VERSION_CHAR_OFFSET+1);
 
     //
     // And set the final trailing NULL.
@@ -351,6 +381,8 @@ Return Value:
 
     *PythonDllPath = DllPath;
     *PythonExePath = ExePath;
+    *MajorVersionPointer = MajorVersionChar.LowPart;
+    *MinorVersionPointer = MinorVersionChar.LowPart;
 
     return TRUE;
 

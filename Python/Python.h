@@ -32,7 +32,9 @@ BOOL
     _In_ PALLOCATOR Allocator,
     _In_ PUNICODE_STRING Directory,
     _Out_ PPUNICODE_STRING PythonDllPath,
-    _Out_ PPUNICODE_STRING PythonExePath
+    _Out_ PPUNICODE_STRING PythonExePath,
+    _Out_ PCHAR MajorVersion,
+    _Out_ PCHAR MinorVersion
     );
 typedef FIND_PYTHON_DLL_AND_EXE *PFIND_PYTHON_DLL_AND_EXE;
 
@@ -1423,11 +1425,6 @@ typedef PPYVAROBJECT (*PPYOBJECT_GC_RESIZE)(PPYVAROBJECT, SSIZE_T);
 typedef VOID (*PPYOBJECT_GC_TRACK)(PVOID);
 typedef VOID (*PPYOBJECT_GC_UNTRACK)(PVOID);
 typedef VOID (*PPYOBJECT_GC_DEL)(PVOID);
-typedef LONG (*PPY_MAIN)(_In_ LONG, _In_ PPCHAR);
-typedef PCHAR (*PPY_GET_PREFIX)(VOID);
-typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
-typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
-typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
 typedef PPYOBJECT (*PPYOBJECT_INIT)(PPYOBJECT, PPYTYPEOBJECT);
 typedef PPYVAROBJECT (*PPYOBJECT_INITVAR)(PPYVAROBJECT,
                                           PPYTYPEOBJECT,
@@ -1447,59 +1444,120 @@ typedef PY_FINALIZE *PPY_FINALIZE;
 typedef INT (PY_IS_INITIALIZED)(VOID);
 typedef PY_IS_INITIALIZED *PPY_IS_INITIALIZED;
 
-typedef VOID (PYSYS_SET_ARGV_EX)(INT, CHAR**, INT);
-typedef PYSYS_SET_ARGV_EX *PPYSYS_SET_ARGV_EX;
+typedef LONG (PY_MAINA)(_In_ LONG, _In_ PPCHAR);
+typedef PY_MAINA *PPY_MAINA;
 
-typedef VOID (PY_SET_PROGRAM_NAME)(CHAR*);
-typedef PY_SET_PROGRAM_NAME *PPY_SET_PROGRAM_NAME;
+typedef LONG (PY_MAINW)(_In_ LONG, _In_ PPWCHAR);
+typedef PY_MAINW *PPY_MAINW;
 
-typedef VOID (PY_SET_PYTHON_HOME)(CHAR*);
-typedef PY_SET_PYTHON_HOME *PPY_SET_PYTHON_HOME;
+typedef PCHAR (PY_GET_PREFIXA)(VOID);
+typedef PY_GET_PREFIXA *PPY_GET_PREFIXA;
 
-#define _PYTHONFUNCTIONS_HEAD                              \
-    PPYSYS_SET_ARGV_EX              PySys_SetArgvEx;       \
-    PPY_SET_PROGRAM_NAME            Py_SetProgramName;     \
-    PPY_SET_PYTHON_HOME             Py_SetPythonHome;      \
-    PPY_INITIALIZE                  Py_Initialize;         \
-    PPY_INITIALIZE_EX               Py_InitializeEx;       \
-    PPY_IS_INITIALIZED              Py_IsInitialized;      \
-    PPY_FINALIZE                    Py_Finalize;           \
-    PPY_GETVERSION                  Py_GetVersion;         \
-    PPY_MAIN                        Py_Main;               \
-    PPY_GET_PREFIX                  Py_GetPrefix;          \
-    PPY_GET_EXEC_PREFIX             Py_GetExecPrefix;      \
-    PPY_GET_PROGRAM_NAME            Py_GetProgramName;     \
-    PPY_GET_PROGRAM_FULL_PATH       Py_GetProgramFullPath; \
-    PPYDICT_GETITEMSTRING           PyDict_GetItemString;  \
-    PPYFRAME_GETLINENUMBER          PyFrame_GetLineNumber; \
-    PPYCODE_ADDR2LINE               PyCode_Addr2Line;      \
-    PPYEVAL_SETTRACE                PyEval_SetProfile;     \
-    PPYEVAL_SETTRACE                PyEval_SetTrace;       \
-    PPYUNICODE_ASUNICODE            PyUnicode_AsUnicode;   \
-    PPYUNICODE_GETLENGTH            PyUnicode_GetLength;   \
-    PPY_INCREF                      Py_IncRef;             \
-    PPY_DECREF                      Py_DecRef;             \
-    PPYGILSTATE_ENSURE              PyGILState_Ensure;     \
-    PPYGILSTATE_RELEASE             PyGILState_Release;    \
-    PPYOBJECT_HASH                  PyObject_Hash;         \
-    PPYOBJECT_COMPARE               PyObject_Compare;      \
-    PPYMEM_MALLOC                   PyMem_Malloc;          \
-    PPYMEM_REALLOC                  PyMem_Realloc;         \
-    PPYMEM_FREE                     PyMem_Free;            \
-    PPYOBJECT_MALLOC                PyObject_Malloc;       \
-    PPYOBJECT_REALLOC               PyObject_Realloc;      \
-    PPYOBJECT_FREE                  PyObject_Free;         \
-    PPYGC_COLLECT                   PyGC_Collect;          \
-    PPYOBJECT_GC_MALLOC             _PyObject_GC_Malloc;   \
-    PPYOBJECT_GC_NEW                _PyObject_GC_New;      \
-    PPYOBJECT_GC_NEWVAR             _PyObject_GC_NewVar;   \
-    PPYOBJECT_GC_RESIZE             _PyObject_GC_Resize;   \
-    PPYOBJECT_GC_TRACK              PyObject_GC_Track;     \
-    PPYOBJECT_GC_UNTRACK            PyObject_GC_UnTrack;   \
-    PPYOBJECT_GC_DEL                PyObject_GC_Del;       \
-    PPYOBJECT_INIT                  PyObject_Init;         \
-    PPYOBJECT_INITVAR               PyObject_InitVar;      \
-    PPYOBJECT_NEW                   _PyObject_New;         \
+typedef PWCHAR (PY_GET_PREFIXW)(VOID);
+typedef PY_GET_PREFIXW *PPY_GET_PREFIXW;
+
+typedef PCHAR (PY_GET_EXEC_PREFIXA)(VOID);
+typedef PY_GET_EXEC_PREFIXA *PPY_GET_EXEC_PREFIXA;
+
+typedef PWCHAR (PY_GET_EXEC_PREFIXW)(VOID);
+typedef PY_GET_EXEC_PREFIXW *PPY_GET_EXEC_PREFIXW;
+
+typedef PCHAR (PY_GET_PROGRAM_FULL_PATHA)(VOID);
+typedef PY_GET_PROGRAM_FULL_PATHA *PPY_GET_PROGRAM_FULL_PATHA;
+
+typedef PWCHAR (PY_GET_PROGRAM_FULL_PATHW)(VOID);
+typedef PY_GET_PROGRAM_FULL_PATHW *PPY_GET_PROGRAM_FULL_PATHW;
+
+typedef PCHAR (PY_GET_PROGRAM_NAMEA)(VOID);
+typedef PY_GET_PROGRAM_NAMEA *PPY_GET_PROGRAM_NAMEA;
+
+typedef PWCHAR (PY_GET_PROGRAM_NAMEW)(VOID);
+typedef PY_GET_PROGRAM_NAMEW *PPY_GET_PROGRAM_NAMEW;
+
+typedef VOID (PY_SET_PROGRAM_NAMEA)(PCHAR);
+typedef PY_SET_PROGRAM_NAMEA *PPY_SET_PROGRAM_NAMEA;
+
+typedef VOID (PY_SET_PROGRAM_NAMEW)(PWCHAR);
+typedef PY_SET_PROGRAM_NAMEW *PPY_SET_PROGRAM_NAMEW;
+
+typedef VOID (PY_SET_PYTHON_HOMEA)(PCHAR);
+typedef PY_SET_PYTHON_HOMEA *PPY_SET_PYTHON_HOMEA;
+
+typedef VOID (PY_SET_PYTHON_HOMEW)(PWCHAR);
+typedef PY_SET_PYTHON_HOMEW *PPY_SET_PYTHON_HOMEW;
+
+typedef PWCHAR (PY_GET_PYTHON_HOMEA)(VOID);
+typedef PY_GET_PYTHON_HOMEA *PPY_GET_PYTHON_HOMEA;
+
+typedef PWCHAR (PY_GET_PYTHON_HOMEW)(VOID);
+typedef PY_GET_PYTHON_HOMEW *PPY_GET_PYTHON_HOMEW;
+
+typedef VOID (PYSYS_SET_ARGVA)(INT, PPCHAR);
+typedef PYSYS_SET_ARGVA *PPYSYS_SET_ARGVA;
+
+typedef VOID (PYSYS_SET_ARGVW)(INT, PPWCHAR);
+typedef PYSYS_SET_ARGVW *PPYSYS_SET_ARGVW;
+
+typedef VOID (PYSYS_SET_ARGV_EXA)(INT, PPCHAR, INT);
+typedef PYSYS_SET_ARGV_EXA *PPYSYS_SET_ARGV_EXA;
+
+typedef VOID (PYSYS_SET_ARGV_EXW)(INT, PPWCHAR, INT);
+typedef PYSYS_SET_ARGV_EXW *PPYSYS_SET_ARGV_EXW;
+
+#define _PYTHONFUNCTIONS_HEAD                               \
+    PPYSYS_SET_ARGVA                PySys_SetArgvA;         \
+    PPYSYS_SET_ARGVW                PySys_SetArgvW;         \
+    PPYSYS_SET_ARGV_EXA             PySys_SetArgvExA;       \
+    PPYSYS_SET_ARGV_EXW             PySys_SetArgvExW;       \
+    PPY_SET_PROGRAM_NAMEA           Py_SetProgramNameA;     \
+    PPY_SET_PROGRAM_NAMEW           Py_SetProgramNameW;     \
+    PPY_GET_PROGRAM_NAMEA           Py_GetProgramNameA;     \
+    PPY_GET_PROGRAM_NAMEW           Py_GetProgramNameW;     \
+    PPY_SET_PYTHON_HOMEA            Py_SetPythonHomeA;      \
+    PPY_SET_PYTHON_HOMEW            Py_SetPythonHomeW;      \
+    PPY_MAINA                       Py_MainA;               \
+    PPY_MAINW                       Py_MainW;               \
+    PPY_GET_PREFIXA                 Py_GetPrefixA;          \
+    PPY_GET_PREFIXW                 Py_GetPrefixW;          \
+    PPY_GET_EXEC_PREFIXA            Py_GetExecPrefixA;      \
+    PPY_GET_EXEC_PREFIXW            Py_GetExecPrefixW;      \
+    PPY_GET_PROGRAM_FULL_PATHA      Py_GetProgramFullPathA; \
+    PPY_GET_PROGRAM_FULL_PATHW      Py_GetProgramFullPathW; \
+    PPY_INITIALIZE                  Py_Initialize;          \
+    PPY_INITIALIZE_EX               Py_InitializeEx;        \
+    PPY_IS_INITIALIZED              Py_IsInitialized;       \
+    PPY_FINALIZE                    Py_Finalize;            \
+    PPY_GETVERSION                  Py_GetVersion;          \
+    PPYDICT_GETITEMSTRING           PyDict_GetItemString;   \
+    PPYFRAME_GETLINENUMBER          PyFrame_GetLineNumber;  \
+    PPYCODE_ADDR2LINE               PyCode_Addr2Line;       \
+    PPYEVAL_SETTRACE                PyEval_SetProfile;      \
+    PPYEVAL_SETTRACE                PyEval_SetTrace;        \
+    PPYUNICODE_ASUNICODE            PyUnicode_AsUnicode;    \
+    PPYUNICODE_GETLENGTH            PyUnicode_GetLength;    \
+    PPY_INCREF                      Py_IncRef;              \
+    PPY_DECREF                      Py_DecRef;              \
+    PPYGILSTATE_ENSURE              PyGILState_Ensure;      \
+    PPYGILSTATE_RELEASE             PyGILState_Release;     \
+    PPYOBJECT_HASH                  PyObject_Hash;          \
+    PPYOBJECT_COMPARE               PyObject_Compare;       \
+    PPYMEM_MALLOC                   PyMem_Malloc;           \
+    PPYMEM_REALLOC                  PyMem_Realloc;          \
+    PPYMEM_FREE                     PyMem_Free;             \
+    PPYOBJECT_MALLOC                PyObject_Malloc;        \
+    PPYOBJECT_REALLOC               PyObject_Realloc;       \
+    PPYOBJECT_FREE                  PyObject_Free;          \
+    PPYGC_COLLECT                   PyGC_Collect;           \
+    PPYOBJECT_GC_MALLOC             _PyObject_GC_Malloc;    \
+    PPYOBJECT_GC_NEW                _PyObject_GC_New;       \
+    PPYOBJECT_GC_NEWVAR             _PyObject_GC_NewVar;    \
+    PPYOBJECT_GC_RESIZE             _PyObject_GC_Resize;    \
+    PPYOBJECT_GC_TRACK              PyObject_GC_Track;      \
+    PPYOBJECT_GC_UNTRACK            PyObject_GC_UnTrack;    \
+    PPYOBJECT_GC_DEL                PyObject_GC_Del;        \
+    PPYOBJECT_INIT                  PyObject_Init;          \
+    PPYOBJECT_INITVAR               PyObject_InitVar;       \
+    PPYOBJECT_NEW                   _PyObject_New;          \
     PPYOBJECT_NEWVAR                _PyObject_NewVar;
 
 typedef struct _PYTHONFUNCTIONS {

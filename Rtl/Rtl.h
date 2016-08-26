@@ -262,6 +262,33 @@ typedef union _LONG_INTEGER {
     LONG   LongPart;
 } LONG_INTEGER, *PLONG_INTEGER;
 
+typedef union _USHORT_INTEGER {
+    struct {
+        BYTE  LowPart;
+        BYTE  HighPart;
+    };
+    USHORT   ShortPart;
+
+} USHORT_INTEGER, *PUSHORT_INTEGER;
+
+typedef union _SHORT_INTEGER {
+    struct {
+        CHAR  LowPart;
+        CHAR  HighPart;
+    };
+    SHORT   ShortPart;
+
+} SHORT_INTEGER, *PSHORT_INTEGER;
+
+typedef union _WIDE_CHARACTER {
+    struct {
+        CHAR  LowPart;
+        CHAR  HighPart;
+    };
+    WCHAR WidePart;
+
+} WIDE_CHARACTER, *PWIDE_CHARACTER;
+
 typedef _Null_terminated_ CHAR *PSZ;
 //typedef const PSZ PCSZ;
 
