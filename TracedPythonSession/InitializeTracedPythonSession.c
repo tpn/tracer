@@ -2,7 +2,6 @@
 
 #include "TracedPythonSessionPrivate.h"
 
-
 _Use_decl_annotations_
 BOOL
 InitializeTracedPythonSession(
@@ -11,8 +10,8 @@ InitializeTracedPythonSession(
     PALLOCATOR Allocator,
     HMODULE OwningModule
     )
-/*--
- *
+/*++
+
 Routine Description:
 
     This function initializes a TRACED_PYTHON_SESSION structure.
@@ -212,7 +211,6 @@ Return Value:
         OutputDebugStringA("Allocation failed for " #Target " struct.\n"); \
         goto Error;                                                        \
     }
-
 
     //
     // Allocate and initialize Rtl.

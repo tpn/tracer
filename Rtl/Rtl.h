@@ -147,84 +147,6 @@ typedef struct _RTL_BITMAP_RUN {
 //
 
 #define BITS_NOT_FOUND 0xFFFFFFFF
-#pragma pack(push, 1)
-
-typedef _Struct_size_bytes_(StructSize) struct _PATH {
-
-    //
-    // Size of the structure, in bytes.
-    //
-
-    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
-
-    //
-    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
-    // pointer.
-    //
-
-    WCHAR Drive;                                                    // 2    4
-
-    union {
-        struct {
-            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
-            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
-        };
-        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
-    };
-
-    //
-    // Total number of bytes allocated for the structure, including StructSize.
-    // This includes the bitmap buffers and unicode string buffer (all of which
-    // will typically trail this structure in memory).
-    //
-
-    USHORT AllocSize;                                               // 2    18
-
-    //
-    // Indicates whether or not the path is fully-qualified.
-    //
-
-    USHORT IsFullyQualified;                                        // 2    20
-
-    union {
-        struct {
-            ULONG SizeOfReversedDotsBitMap;                         // 4    24
-            PULONG ReversedDotsBitMapBuffer;                        // 8    32
-        };
-        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
-    };
-
-    UNICODE_STRING Full;
-    UNICODE_STRING Filename;
-    UNICODE_STRING Directory;
-    UNICODE_STRING Extension;
-} PATH, *PPATH, **PPPATH;
-
-#pragma pack(pop)
-
-typedef
-_Success_(return != 0)
-BOOL
-(UNICODE_STRING_TO_PATH)(
-    _In_ PRTL Rtl,
-    _In_ PUNICODE_STRING String,
-    _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer
-    );
-typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
-
-RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
-
-typedef
-_Success_(return != 0)
-BOOL
-(GET_MODULE_PATH)(
-    _In_ PRTL Rtl,
-    _In_ HMODULE Module,
-    _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer
-    );
-typedef GET_MODULE_PATH *PGET_MODULE_PATH;
 
 RTL_API
 LONG
@@ -725,6 +647,7 @@ typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY_AVL)(
 //
 // Hash Tables
 //
+
 typedef struct _RTL_DYNAMIC_HASH_TABLE_ENTRY {
     LIST_ENTRY Linkage;
     ULONG_PTR Signature;
@@ -1307,6 +1230,166 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     _Out_   PULONG          ElapsedSeconds
     );
 
+#pragma pack(push, 1)
+
+typedef enum _PATH_LINK_TYPE {
+
+    //
+    // No linkage is being used.
+    //
+
+    PathLinkTypeNone = 0,
+    PathLinkTypeListEntry,
+    PathLinkTypePrefixTableEntry,
+    PathLinkHashTableEntry
+
+} PATH_LINK_TYPE, *PPATH_LINK_TYPE;
+
+typedef struct _PATH_LINK {
+
+    PATH_LINK_TYPE Type;
+
+    union {
+        LIST_ENTRY ListEntry;
+        struct _UNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
+        struct _RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+    };
+
+} PATH_LINK, *PPATH_LINK;
+
+typedef _Struct_size_bytes_(sizeof(USHORT)) struct _PATH_FLAGS {
+    USHORT IsFile:1;
+    USHORT IsDirectory:1;
+    USHORT IsSymlink:1;
+    USHORT IsFullyQualified:1;
+    USHORT HasParent:1;
+    USHORT HasChildren:1;
+} PATH_FLAGS, *PPATH_FLAGS;
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_CREATE_FLAGS {
+    ULONG CheckType:1;
+    ULONG EnsureQualified:1;
+} PATH_CREATE_FLAGS, *PPATH_CREATE_FLAGS;
+
+typedef enum _PATH_TYPE_INTENT {
+
+    PathTypeDontCare = 0,
+    PathTypeLookup,
+    PathTypeKnownFile,
+    PathTypeKnownSymlink,
+    PathTypeKnownDirectory
+
+} PATH_TYPE_INTENT;
+
+typedef _Struct_size_bytes_(StructSize) struct _PATH {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
+
+    //
+    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
+    // pointer.
+    //
+
+    WCHAR Drive;                                                    // 2    4
+
+    union {
+        struct {
+            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
+            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
+        };
+        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
+    };
+
+    //
+    // Total number of bytes allocated for the structure, including StructSize.
+    // This includes the bitmap buffers and unicode string buffer (all of which
+    // will typically trail this structure in memory).
+    //
+
+    USHORT AllocSize;                                               // 2    18
+
+    PATH_FLAGS Flags;                                               // 2    20
+
+    union {
+        struct {
+            ULONG SizeOfReversedDotsBitMap;                         // 4    24
+            PULONG ReversedDotsBitMapBuffer;                        // 8    32
+        };
+        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
+    };
+
+    //
+    // Allocator used to allocate this structure.
+    //
+
+    PALLOCATOR Allocator;                                           // 40   48
+
+    //
+    // Unicode strings for path details.
+    //
+
+    UNICODE_STRING Full;
+    UNICODE_STRING Name;
+    UNICODE_STRING Directory;
+    UNICODE_STRING Extension;
+
+    //
+    // Path linkage.
+    //
+
+    PATH_LINK Link;
+
+    //
+    // Number of slashes and dots.  Saves having to do RtlNumberOfSetBits().
+    //
+
+    USHORT NumberOfSlashes;
+
+    USHORT NumberOfDots;
+
+} PATH, *PPATH, **PPPATH;
+
+#pragma pack(pop)
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH_EX)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer,
+    _In_opt_ PPATH_CREATE_FLAGS CreateFlags
+    );
+typedef UNICODE_STRING_TO_PATH_EX *PUNICODE_STRING_TO_PATH_EX;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_MODULE_PATH)(
+    _In_ PRTL Rtl,
+    _In_ HMODULE Module,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef GET_MODULE_PATH *PGET_MODULE_PATH;
+
+
 #ifdef _M_X64
 
 #ifndef BitTestAndSet
@@ -1697,6 +1780,88 @@ BOOL
     );
 
 typedef FILES_EXISTA *PFILES_EXISTA;
+
+typedef _Struct_size_bytes_(Size) struct _DIRECTORY_CONTAINING_FILES {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DIRECTORY_CONTAINING_FILES)) USHORT Size;
+
+    //
+    // Number of child filenames that matched.
+    //
+
+    USHORT NumberOfFiles;
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+    USHORT Padding[2];
+
+    //
+    // The directory name.
+    //
+
+    UNICODE_STRING Directory;
+
+    //
+    // The allocator used to allocate this structure.
+    //
+
+    PALLOCATOR Allocator;
+
+    //
+    // List entry in DIRECTORIES_CONTAINING_FILES.ListHead.
+    //
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // List head of child entries.
+    //
+
+    LIST_ENTRY Children;
+
+} DIRECTORY_CONTAINING_FILE, *PDIRECTORY_CONTAINING_FILE;
+
+typedef _Struct_size_bytes_(Size) struct _DIRECTORIES_CONTAINING_FILES {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DIRECTORY_CONTAINING_FILES)) USHORT Size;
+
+    //
+    // Number of directory entries.
+    //
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+} DIRECTORIES_CONTAINING_FILES, *PDIRECTORIES_CONTAINING_FILES;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FILES_EXIST_IN_DIRECTORIESW)(
+    _In_ PRTL Rtl,
+    _In_ USHORT NumberOfDirectories,
+    _In_reads_bytes_(NumberOfDirectories * sizeof(PUNICODE_STRING))
+        PPUNICODE_STRING Directories,
+    _In_ USHORT NumberOfFilenames,
+    _In_reads_bytes_(NumberOfFilenames * sizeof(PUNICODE_STRING))
+        PPUNICODE_STRING Filenames,
+    _In_ PALLOCATOR Allocator
+    );
+
+typedef FILES_EXISTW *PFILES_EXISTW;
+
 
 typedef BOOL (*PCOPY_UNICODE_STRING)(
     _In_  PRTL                  Rtl,

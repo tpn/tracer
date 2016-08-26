@@ -7,6 +7,7 @@
 //
 
 RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
+RTL_API UNICODE_STRING_TO_PATH_EX UnicodeStringToPathEx;
 RTL_API GET_MODULE_PATH GetModulePath;
 
 _Use_decl_annotations_
@@ -122,7 +123,9 @@ Return Value:
     UnicodeBufferSizeInBytes = AlignedNumberOfCharacters << 1;
 
     //
-    // Calculate the individual bitmap buffer sizes.  One bit per character.
+    // Calculate the individual bitmap buffer sizes.  As there's one bit per
+    // character, we shift left 3 (divide by 8) to get the number of bytes
+    // required.
     //
 
     BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
@@ -163,7 +166,7 @@ Return Value:
         // Size of the underlying bitmap buffers (there are two of them).
         //
 
-        (BitmapAllocSizeInBytes << 1) +
+        (BitmapAllocSizeInBytes * 2) +
 
         //
         // Size of the unicode buffer.  Includes our trailing NULL.
@@ -269,6 +272,7 @@ Return Value:
     //
     // Copy the unicode string over.
     //
+
     Dest = Path->Full.Buffer;
     Source = String->Buffer;
     Count = String->Length >> 1;
@@ -314,6 +318,7 @@ Return Value:
     if (NumberOfSlashes == 0) {
         goto Error;
     }
+    Path->NumberOfSlashes = NumberOfSlashes;
 
     //
     // Extract the filename from the path by finding the last backslash
@@ -325,9 +330,9 @@ Return Value:
     Offset = NumberOfCharacters - ReversedSlashIndex + 1;
 
     LengthInBytes = (ReversedSlashIndex - 1) << 1;
-    Path->Filename.Length = LengthInBytes;
-    Path->Filename.MaximumLength = LengthInBytes + sizeof(WCHAR);
-    Path->Filename.Buffer = &Path->Full.Buffer[Offset];
+    Path->Name.Length = LengthInBytes;
+    Path->Name.MaximumLength = LengthInBytes + sizeof(WCHAR);
+    Path->Name.Buffer = &Path->Full.Buffer[Offset];
 
     //
     // The directory name length is easy to isolate now that we have the offset
@@ -358,6 +363,8 @@ Return Value:
         Path->Extension.Length = LengthInBytes;
         Path->Extension.MaximumLength = LengthInBytes + sizeof(WCHAR);
         Path->Extension.Buffer = &Path->Full.Buffer[Offset];
+
+        Path->NumberOfDots = NumberOfDots;
     }
 
     //
@@ -370,12 +377,18 @@ Return Value:
     if (Buf[1] == L':' && Buf[2] == L'\\') {
 
         Path->Drive = Buf[0];
-        Path->IsFullyQualified = TRUE;
+        Path->Flags.IsFullyQualified = TRUE;
 
     } else if (Buf[0] == L'\\' && Buf[1] == L'\\') {
 
-        Path->IsFullyQualified = TRUE;
+        Path->Flags.IsFullyQualified = TRUE;
     }
+
+    //
+    // Set the allocator.
+    //
+
+    Path->Allocator = Allocator;
 
     //
     // We're done, update the caller's path pointer and return success.
@@ -394,6 +407,42 @@ Error:
 
     return FALSE;
 
+}
+
+_Use_decl_annotations_
+BOOL
+DestroyPath(
+    PPPATH PathPointer
+    )
+{
+    PPATH Path;
+    PALLOCATOR Allocator;
+
+    //
+    // Validate argument.
+    //
+
+    if (!ARGUMENT_PRESENT(PathPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(*PathPointer)) {
+        return FALSE;
+    }
+
+    Path = *PathPointer;
+
+    if (!ARGUMENT_PRESENT(Path->Allocator)) {
+        return FALSE;
+    }
+
+    Allocator = Path->Allocator;
+
+    Allocator->Free(Allocator->Context, Path);
+
+    *PathPointer = NULL;
+
+    return TRUE;
 }
 
 _Use_decl_annotations_
@@ -509,5 +558,45 @@ Error:
 
     return Success;
 }
+
+/*
+_Use_decl_annotations_
+BOOL
+UnicodeStringToPathEx(
+    PRTL Rtl,
+    PUNICODE_STRING String,
+    PALLOCATOR Allocator,
+    PPPATH PathPointer,
+    PPATH_CREATE_FLAGS CreateFlags
+    );
+*/
+/*++
+
+Routine Description:
+
+    Converts a UNICODE_STRING representing a fully-qualified path into a
+    PATH structure, allocating memory from the provided Allocator.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL struct.
+
+    String - Supplies a pointer to a UNICODE_STRING structure that contains a
+        path name.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure that is used for
+        allocating the new PATH structure (and associated buffers).
+
+    PathPointer - Supplies a pointer to an address that receives the address
+        of the newly created PATH structure if the routine was successful.
+
+    CreateFlags - Optionally supplies a pointer to a PATH_CREATE_FLAGS struct
+        that controls specific details about how the path is created.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
