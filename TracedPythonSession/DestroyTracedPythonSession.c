@@ -11,9 +11,9 @@ Routine Description:
 
     This function destroys a TRACED_PYTHON_SESSION structure that was created
     by InitializeTracedPythonSession().  This routine can be safely called
-    regardless of the state of SessionPointer; that is, it will correctly handle
-    a partially-initialized session that may have failed half-way through
-    initialization.
+    regardless of the state of SessionPointer; that is, it will correctly
+    handle a partially-initialized session that may have failed half-way
+    through initialization.
 
 Arguments:
 
@@ -72,13 +72,9 @@ Returns:
     //
 
     if (Session->Threadpool) {
-
         CloseThreadpool(Session->Threadpool);
-
         DestroyThreadpoolEnvironment(&Session->ThreadpoolCallbackEnviron);
-
         Session->Threadpool = NULL;
-
     }
 
     //
