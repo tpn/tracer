@@ -40,9 +40,11 @@ Return Value:
 {
     BOOL Success;
     BOOL Compress;
+    CHAR MajorVersion;
     ULONG RequiredSize;
     HMODULE PythonDllModule;
     PRTL Rtl;
+    PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
     PUNICODE_STRING Directory;
@@ -260,7 +262,9 @@ Return Value:
         Allocator,
         Directory,
         &PythonDllPath,
-        &PythonExePath
+        &PythonExePath,
+        &Session->PythonMajorVersion,
+        &Session->PythonMinorVersion
     );
 
     if (!Success) {
@@ -285,7 +289,9 @@ Return Value:
             Allocator,
             Directory,
             &PythonDllPath,
-            &PythonExePath
+            &PythonExePath,
+            &Session->PythonMajorVersion,
+            &Session->PythonMinorVersion
         );
 
         if (!Success) {
@@ -302,8 +308,17 @@ Return Value:
     }
 
 FoundPython:
+
+    MajorVersion = Session->PythonMajorVersion;
+
+    if (MajorVersion != '2' && MajorVersion != '3') {
+        OutputDebugStringA("Invalid major version!\n");
+        goto Error;
+    }
+
     Session->PythonDllPath = PythonDllPath;
     Session->PythonExePath = PythonExePath;
+    Session->PythonHomePath = Directory;
 
     //
     // Create a UTF-8 version of the fully-qualified python.exe path so that
@@ -327,7 +342,7 @@ FoundPython:
     //
 
     Success = ConvertUtf16StringToUtf8String(
-        Directory,
+        Session->PythonHomePath,
         &Session->PythonHomePathA,
         Allocator
     );
@@ -341,7 +356,7 @@ FoundPython:
     // Change our directory into the Python home directory.
     //
 
-    Success = SetCurrentDirectoryW(Directory->Buffer);
+    Success = SetCurrentDirectoryW(Session->PythonHomePath->Buffer);
 
     if (!Success) {
         OutputDebugStringA("Failed to change directory.\n");
@@ -362,21 +377,35 @@ FoundPython:
     Session->PythonDllModule = PythonDllModule;
 
     //
-    // Resolve some functions we need before InitializePython() gets called.
-    // (Ok, we don't need *all* these right now; we could probably get by with
-    //  just PySys_SetArgvEx(), Py_SetProgramName() and Py_Initialize().)
+    // Call InitializePython() now that we've loaded a Python DLL.
     //
 
-    RESOLVE(PythonDllModule, PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
-    RESOLVE(PythonDllModule, PPY_SET_PROGRAM_NAME, Py_SetProgramName);
-    RESOLVE(PythonDllModule, PPY_SET_PYTHON_HOME, Py_SetPythonHome);
-    RESOLVE(PythonDllModule, PPY_INITIALIZE, Py_Initialize);
-    RESOLVE(PythonDllModule, PPY_INITIALIZE_EX, Py_InitializeEx);
-    RESOLVE(PythonDllModule, PPY_IS_INITIALIZED, Py_IsInitialized);
-    RESOLVE(PythonDllModule, PPY_FINALIZE, Py_Finalize);
-    RESOLVE(PythonDllModule, PPY_MAIN, Py_Main);
-    RESOLVE(PythonDllModule, PPYEVAL_SETTRACE, PyEval_SetProfile);
-    RESOLVE(PythonDllModule, PPYEVAL_SETTRACE, PyEval_SetTrace);
+    RequiredSize = 0;
+    Session->InitializePython(NULL, NULL, NULL, &RequiredSize);
+    ALLOCATE(Python, PPYTHON);
+    Success = Session->InitializePython(
+        Rtl,
+        PythonDllModule,
+        Session->Python,
+        &RequiredSize
+    );
+
+    if (!Success) {
+        OutputDebugStringA("InitializePython() failed.\n");
+        goto Error;
+    }
+
+    Python = Session->Python;
+
+    if (Python->VersionString[0] != MajorVersion) {
+
+        //
+        // The version derived from the DLL name did not match the version
+        // derived from Py_GetVersion().
+        //
+
+        goto Error;
+    }
 
     //
     // Get ascii and unicode versions of the command line.
@@ -402,6 +431,16 @@ FoundPython:
         goto Error;
     }
 
+    if (Session->NumberOfArguments == 0) {
+        goto Error;
+    }
+
+    //
+    // Replace argv[0] with the name of the Python executable.
+    //
+
+    Session->ArgvW[0] = PythonExePath->Buffer;
+
     //
     // Convert the unicode argv into an ansi argv.
     //
@@ -410,7 +449,7 @@ FoundPython:
         Session->ArgvW,
         Session->NumberOfArguments,
         &Session->ArgvA,
-        Session->PythonExePathA->Buffer,
+        NULL,
         Allocator
     );
 
@@ -424,56 +463,67 @@ FoundPython:
 
     Session->PythonNumberOfArguments = Session->NumberOfArguments - 1;
     Session->PythonArgvA = Session->ArgvA + 1;
+    Session->PythonArgvW = Session->ArgvW + 1;
 
     //
-    // Set the Python program name to the "python.exe" path.
+    // If we need to hook functions such that we've got hooks in place before
+    // anything is called, we'd do it here.
     //
 
-    Session->Py_SetProgramName(Session->PythonExePathA->Buffer);
 
     //
-    // Set the PYTHONHOME to the containing directory.
+    // Set the Python program name to the "python.exe" path, set PYTHONHOME
+    // to the containing directory, initialize the interpreter, then set args.
+    //
+    // Use the ANSI versions if we're Python 2, wide character versions if 3.
     //
 
-    Session->Py_SetPythonHome(Session->PythonHomePathA->Buffer);
+    if (MajorVersion == '2') {
+        LONG Argc = Session->PythonNumberOfArguments;
+        PPSTR Argv = Session->PythonArgvA;
 
-    //
-    // Initialize the interpreter.
-    //
+        Python->Py_SetProgramNameA(Session->PythonExePathA->Buffer);
+        Python->Py_SetPythonHomeA(Session->PythonHomePathA->Buffer);
 
-    Session->Py_Initialize();
+        Python->Py_Initialize();
 
-    //
-    // Set Argv.
-    //
+        if (Python->PySys_SetArgvExA) {
 
-    Session->PySys_SetArgvEx(
-        Session->PythonNumberOfArguments,
-        Session->PythonArgvA,
-        0
-    );
+            //
+            // Available since 2.6.6.
+            //
 
-    //
-    // Here's the point we'd fiddle with builtins/patching, probably.
-    //
+            Python->PySys_SetArgvExA(Argc, Argv, 0);
 
-    //
-    // Call InitializePython() now that we've loaded a Python DLL.
-    //
+        } else {
 
-    RequiredSize = 0;
-    Session->InitializePython(NULL, NULL, NULL, &RequiredSize);
-    ALLOCATE(Python, PPYTHON);
-    Success = Session->InitializePython(
-        Rtl,
-        PythonDllModule,
-        Session->Python,
-        &RequiredSize
-    );
+            Python->PySys_SetArgvA(Argc, Argv);
 
-    if (!Success) {
-        OutputDebugStringA("InitializePython() failed.\n");
-        goto Error;
+        }
+
+    } else {
+
+        LONG Argc = Session->PythonNumberOfArguments;
+        PPWSTR Argv = Session->PythonArgvW;
+
+        Python->Py_SetProgramNameW(Session->PythonExePath->Buffer);
+        Python->Py_SetPythonHomeW(Session->PythonHomePath->Buffer);
+
+        Python->Py_Initialize();
+
+        if (Python->PySys_SetArgvExW) {
+
+            //
+            // Available since 3.1.3.
+            //
+
+            Python->PySys_SetArgvExW(Argc, Argv, 0);
+
+        } else {
+
+            Python->PySys_SetArgvW(Argc, Argv);
+
+        }
     }
 
     //

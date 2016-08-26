@@ -671,8 +671,8 @@ LoadPythonData(
     RESOLVE_TYPE(PyFunction);
     RESOLVE_TYPE(PyUnicode);
     RESOLVE_TYPE(PyCFunction);
-    RESOLVE_TYPE(PyInstance);
     RESOLVE_TYPE(PyModule);
+    TRY_RESOLVE_TYPE(PyInstance);
 
     //
     // The hash secret is a little fiddly.
@@ -699,9 +699,12 @@ _Check_return_
 BOOL
 LoadPythonFunctions(
     _In_    HMODULE             PythonModule,
-    _Inout_ PPYTHONFUNCTIONS    PythonFunctions
+    _Inout_ PPYTHONFUNCTIONS    PythonFunctions,
+    _In_    BOOL                IsPython2
     )
 {
+    BOOL Resolved;
+
     if (!ARGUMENT_PRESENT(PythonModule)) {
         return FALSE;
     }
@@ -711,7 +714,7 @@ LoadPythonFunctions(
     }
 
 #define TRY_RESOLVE_FUNCTION(Type, Name) ( \
-    PythonFunctions->##Name = (Type)(      \
+    PythonFunctions->Name = (Type)(        \
         GetProcAddress(                    \
             PythonModule,                  \
             #Name                          \
@@ -725,19 +728,11 @@ LoadPythonFunctions(
         return FALSE;                                               \
     }
 
-    RESOLVE_FUNCTION(PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
-    RESOLVE_FUNCTION(PPY_SET_PROGRAM_NAME, Py_SetProgramName);
-    RESOLVE_FUNCTION(PPY_SET_PYTHON_HOME, Py_SetPythonHome);
     RESOLVE_FUNCTION(PPY_INITIALIZE, Py_Initialize);
     RESOLVE_FUNCTION(PPY_INITIALIZE_EX, Py_InitializeEx);
     RESOLVE_FUNCTION(PPY_IS_INITIALIZED, Py_IsInitialized);
     RESOLVE_FUNCTION(PPY_FINALIZE, Py_Finalize);
     RESOLVE_FUNCTION(PPY_GETVERSION, Py_GetVersion);
-    RESOLVE_FUNCTION(PPY_MAIN, Py_Main);
-    RESOLVE_FUNCTION(PPY_GET_PREFIX, Py_GetPrefix);
-    RESOLVE_FUNCTION(PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
-    RESOLVE_FUNCTION(PPY_GET_PROGRAM_NAME, Py_GetProgramName);
-    RESOLVE_FUNCTION(PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
     RESOLVE_FUNCTION(PPYDICT_GETITEMSTRING, PyDict_GetItemString);
     RESOLVE_FUNCTION(PPYFRAME_GETLINENUMBER, PyFrame_GetLineNumber);
     RESOLVE_FUNCTION(PPYCODE_ADDR2LINE, PyCode_Addr2Line);
@@ -748,7 +743,6 @@ LoadPythonFunctions(
     RESOLVE_FUNCTION(PPYGILSTATE_ENSURE, PyGILState_Ensure);
     RESOLVE_FUNCTION(PPYGILSTATE_RELEASE, PyGILState_Release);
     RESOLVE_FUNCTION(PPYOBJECT_HASH, PyObject_Hash);
-    RESOLVE_FUNCTION(PPYOBJECT_COMPARE, PyObject_Compare);
     RESOLVE_FUNCTION(PPYMEM_MALLOC, PyMem_Malloc);
     RESOLVE_FUNCTION(PPYMEM_REALLOC, PyMem_Realloc);
     RESOLVE_FUNCTION(PPYMEM_FREE, PyMem_Free);
@@ -768,8 +762,62 @@ LoadPythonFunctions(
     RESOLVE_FUNCTION(PPYOBJECT_NEW, _PyObject_New);
     RESOLVE_FUNCTION(PPYOBJECT_NEWVAR, _PyObject_NewVar);
 
+    TRY_RESOLVE_FUNCTION(PPYOBJECT_COMPARE, PyObject_Compare);
     TRY_RESOLVE_FUNCTION(PPYUNICODE_ASUNICODE, PyUnicode_AsUnicode);
     TRY_RESOLVE_FUNCTION(PPYUNICODE_GETLENGTH, PyUnicode_GetLength);
+
+    //
+    // The function signatures for these methods changed from taking
+    // 'char' to 'wchar_t' from 2.x to 3.x.  The _AW suffix in the
+    // following macro represents ascii/wide.  If we're version 2, we'll
+    // changed, so we just assign the resolved function address to both
+    // the A and W variants, casting the function pointer type where
+    // necessary.  It's up to the caller to call the correct one with
+    // the right character type.
+    //
+
+#define _TRY_RESOLVE_FUNCTION(Type, Name, Field) ( \
+    PythonFunctions->Field = (Type)(               \
+        GetProcAddress(                            \
+            PythonModule,                          \
+            #Name                                  \
+        )                                          \
+    )                                              \
+)
+
+#define TRY_RESOLVE_FUNCTION_AW(Type, Name) do {       \
+    if (IsPython2) {                                   \
+        _TRY_RESOLVE_FUNCTION(Type##A, Name, Name##A); \
+    } else {                                           \
+        _TRY_RESOLVE_FUNCTION(Type##W, Name, Name##W); \
+    }                                                  \
+} while (0)
+
+#define RESOLVE_FUNCTION_AW(Type, Name) do {                        \
+    Resolved = FALSE;                                               \
+    if (IsPython2) {                                                \
+        if (_TRY_RESOLVE_FUNCTION(Type##A, Name, Name##A)) {        \
+            Resolved = TRUE;                                        \
+        }                                                           \
+    } else {                                                        \
+        if (_TRY_RESOLVE_FUNCTION(Type##W, Name, Name##W)) {        \
+            Resolved = TRUE;                                        \
+        }                                                           \
+    }                                                               \
+    if (!Resolved) {                                                \
+        OutputDebugStringA("Failed to resolve Python!" #Name "\n"); \
+        return FALSE;                                               \
+    }                                                               \
+} while (0)
+
+    TRY_RESOLVE_FUNCTION_AW(PPYSYS_SET_ARGV_EX, PySys_SetArgvEx);
+    RESOLVE_FUNCTION_AW(PPY_SET_PROGRAM_NAME, Py_SetProgramName);
+    RESOLVE_FUNCTION_AW(PPY_SET_PYTHON_HOME, Py_SetPythonHome);
+    RESOLVE_FUNCTION_AW(PPY_MAIN, Py_Main);
+    RESOLVE_FUNCTION_AW(PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE_FUNCTION_AW(PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE_FUNCTION_AW(PPY_GET_PROGRAM_NAME, Py_GetProgramName);
+    RESOLVE_FUNCTION_AW(PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
 
     return TRUE;
 }
@@ -779,8 +827,11 @@ BOOL
 LoadPythonSymbols(
     _In_    HMODULE     PythonModule,
     _Out_   PPYTHON     Python
-)
+    )
 {
+    BOOL IsPython2;
+    PPYTHONFUNCTIONS PythonFunctions;
+
     if (!PythonModule) {
         return FALSE;
     }
@@ -793,7 +844,10 @@ LoadPythonSymbols(
         return FALSE;
     }
 
-    if (!LoadPythonFunctions(PythonModule, &Python->PythonFunctions)) {
+    IsPython2 = (Python->MajorVersion == 2);
+    PythonFunctions = &Python->PythonFunctions;
+
+    if (!LoadPythonFunctions(PythonModule, PythonFunctions, IsPython2)) {
         return FALSE;
     }
 
@@ -807,7 +861,7 @@ BOOL
 LoadPythonExData(
     _In_    HMODULE         PythonModule,
     _Out_   PPYTHONEXDATA   PythonExData
-)
+    )
 {
     if (!PythonModule) {
         return FALSE;
@@ -1189,6 +1243,7 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
                 default:
                     return FALSE;
             };
+            break;
         default:
             return FALSE;
     };
@@ -1216,6 +1271,7 @@ ResolvePythonOffsets(_In_ PPYTHON Python)
                 default:
                     return FALSE;
             };
+            break;
         default:
             return FALSE;
     };
@@ -1281,7 +1337,7 @@ ResolveAndVerifyPythonVersion(
             }
             Python->PatchLevel = (USHORT)PatchLevel;
             Version++;
-            if (*Version && *Version >= '0' || *Version <= '9') {
+            if (*Version && (*Version >= '0' && *Version <= '9')) {
                 PatchLevel = 0;
                 VersionString[0] = *Version;
                 if (FAILED(RtlCharToInteger(VersionString, 0, &PatchLevel))) {

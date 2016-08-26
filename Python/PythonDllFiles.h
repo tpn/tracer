@@ -26,6 +26,14 @@ DLL(Python34DllW, L"python34.dll");
 DLL(Python35DllW, L"python35.dll");
 DLL(Python36DllW, L"python36.dll");
 
+//
+// We index directly into the DLL character array using this next value, so be
+// extra careful we define it correctly with a C_ASSERT() + sizeof().
+//
+
+#define PYTHON_MAJOR_VERSION_CHAR_OFFSET (sizeof("python")-1)
+C_ASSERT(PYTHON_MAJOR_VERSION_CHAR_OFFSET == 6);
+
 static CONST PUNICODE_STRING PythonDllFilesW[] = {
     (PUNICODE_STRING)&Python27DllW,
     (PUNICODE_STRING)&Python30DllW,

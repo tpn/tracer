@@ -48,7 +48,21 @@ Main(VOID)
 
     PythonTraceContext->StartTracing(PythonTraceContext);
 
-    ExitCode = Python->Py_Main(Session->NumberOfArguments, Session->ArgvA);
+    if (Python->MajorVersion == 2) {
+
+        ExitCode = Python->Py_MainA(
+            Session->NumberOfArguments,
+            Session->ArgvA
+        );
+
+    } else {
+
+        ExitCode = Python->Py_MainW(
+            Session->NumberOfArguments,
+            Session->ArgvW
+        );
+
+    }
 
     //
     // N.B.: there's no `PythonTraceContext->StopTracing(PythonTraceContext)`
