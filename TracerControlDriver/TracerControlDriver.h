@@ -2,21 +2,26 @@
 
 #include "stdafx.h"
 #include <ntddk.h>
-#include "TracerControlDriverIoctl.h"
-#include "TracerControlDebug.h"
-#include "TracerControlConstants.h"
-#include "DriverUtil.h"
 
 //
 // TracerControl Driver's Device Extension Object.
 //
 
-typedef struct _TRACER_CONTROL_DEV_EXT {
-    USHORT Size;
-    USHORT Unused1;
-    ULONG Unused2;
+typedef _Struct_size_bytes_(Size) struct _TRACER_CONTROL_DEV_EXT {
 
-    HANDLE RegistryHandle;
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACER_CONTROL_DEV_EXT)) USHORT Size;
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+    USHORT Padding1;
+    ULONG Padding2;
+
 
 } TRACER_CONTROL_DEV_EXT, *PTRACER_CONTROL_DEV_EXT;
 
@@ -30,7 +35,7 @@ typedef DRIVER_UNLOAD TRACER_CONTROL_UNLOAD;
 DRIVER_INITIALIZE DriverEntry;
 DRIVER_UNLOAD TracerControlUnload;
 
-typedef 
+typedef
 _Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 DRIVER_DISPATCH
 TRACER_CONTROL_DEVICE_CONTROL, *PTRACER_CONTROL_DEVICE_CONTROL;
