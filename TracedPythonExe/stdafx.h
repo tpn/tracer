@@ -10,4 +10,6 @@
 #include "../TracerConfig/TracerConfig.h"
 #include "../TracedPythonSession/TracedPythonSession.h"
 #include "../TracerHeap/DefaultTracerHeap.h"
+#include "../TlsTracerHeap/TlsTracerHeap.h"
 
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

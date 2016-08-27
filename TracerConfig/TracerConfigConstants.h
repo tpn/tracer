@@ -28,6 +28,9 @@ static CONST UNICODE_STRING PythonDllPath = \
 static CONST UNICODE_STRING PythonTracerDllPath = \
     RTL_CONSTANT_STRING(L"PythonTracer.dll");
 
+static CONST UNICODE_STRING TlsTracerHeapDllPath = \
+    RTL_CONSTANT_STRING(L"TlsTracerHeap.dll");
+
 //
 // This array can be indexed by TracerConfig.Flags.LoadDebugLibraries
 // to obtain the appropriate intermediate path string for the given
@@ -48,10 +51,11 @@ static CONST struct {
     USHORT Offset;
     PCUNICODE_STRING DllPath;
 } PathOffsets[] = {
-    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath          },
-    { FIELD_OFFSET(TRACER_PATHS, TracerDllPath),        &TracerDllPath       },
-    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath       },
-    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath }
+    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
+    { FIELD_OFFSET(TRACER_PATHS, TracerDllPath),        &TracerDllPath        },
+    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
+    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
+    { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath }
 };
 
 static CONST USHORT NumberOfPathOffsets = (

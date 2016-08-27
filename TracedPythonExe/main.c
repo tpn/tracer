@@ -1,5 +1,6 @@
 
 #include "stdafx.h"
+#include "../TlsTracerHeap/TlsTracerHeap.h"
 
 INITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
 DESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
@@ -15,9 +16,18 @@ Main(VOID)
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
+    //
+    // Initialize the default heap allocator.  This is a thin wrapper around
+    // the generic Win32 Heap functions.
+    //
+
     if (!DefaultHeapInitializeAllocator(&Allocator)) {
         goto Error;
     }
+
+    //
+    // Initialize our TracerConfig from the given registry path.
+    //
 
     TracerConfig = InitializeTracerConfig(
         &Allocator,
@@ -27,6 +37,23 @@ Main(VOID)
     if (!TracerConfig) {
         goto Error;
     }
+
+    //
+    // Initialize the TlsHeap machinery, which attaches to the TracerConfig
+    // and allocator.
+    //
+
+    Success = LoadTlsTracerHeapAndSetTracerConfig(TracerConfig);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Initialize the TracedPythonSession.  This is the main workhorse that
+    // loads all the relevant libraries and preps our Python runtime environment
+    // with tracing stores created and enabled.
+    //
 
     Success = InitializeTracedPythonSession(
         &Session,
@@ -44,6 +71,10 @@ Main(VOID)
 
     //
     // Do any hooking here.
+    //
+
+    //
+    // Start tracing.
     //
 
     PythonTraceContext->StartTracing(PythonTraceContext);

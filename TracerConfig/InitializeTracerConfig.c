@@ -1,5 +1,11 @@
 #include "stdafx.h"
 
+_Success_(return != 0)
+BOOLEAN
+LoadPath(
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ USHORT Index
+    )
 /*--
 
 Routine Description:
@@ -23,12 +29,6 @@ Return Value:
     TRUE on success, FALSE on FAILURE.
 
 --*/
-_Success_(return != 0)
-BOOLEAN
-LoadPath(
-    _In_ PTRACER_CONFIG TracerConfig,
-    _In_ USHORT Index
-    )
 {
     USHORT Length;
     USHORT MaximumLength;

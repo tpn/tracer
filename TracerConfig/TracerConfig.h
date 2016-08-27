@@ -75,6 +75,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     UNICODE_STRING RtlDllPath;
     UNICODE_STRING PythonDllPath;
     UNICODE_STRING PythonTracerDllPath;
+    UNICODE_STRING TlsTracerHeapDllPath;
 
 } TRACER_PATHS, *PTRACER_PATHS;
 
@@ -195,6 +196,12 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     //
 
     PALLOCATOR Allocator;
+
+    //
+    // HMODULE for the TlsTracerHeap DLL, if it has been loaded.
+    //
+
+    HMODULE TlsTracerHeapModule;
 
     //
     // Generic LIST_ENTRY that can be used to link multiple configs together.

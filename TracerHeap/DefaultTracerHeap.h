@@ -6,6 +6,7 @@ MALLOC DefaultHeapMalloc;
 CALLOC DefaultHeapCalloc;
 REALLOC DefaultHeapRealloc;
 FREE DefaultHeapFree;
+FREE_POINTER DefaultHeapFreePointer;
 INITIALIZE_ALLOCATOR DefaultHeapInitializeAllocator;
 DESTROY_ALLOCATOR DefaultHeapDestroyAllocator;
 
