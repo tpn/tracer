@@ -767,23 +767,6 @@ typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
 
 typedef BOOL (*PFLUSH_TRACE_STORES)(_In_ PTRACE_CONTEXT TraceContext);
 
-#ifdef _M_X64
-#pragma intrinsic(__readgsdword)
-FORCEINLINE
-DWORD
-FastGetCurrentProcessId(VOID)
-{
-    return __readgsdword(0x40);
-}
-
-FORCEINLINE
-DWORD
-FastGetCurrentThreadId(VOID)
-{
-    return __readgsdword(0x48);
-}
-#endif
-
 FORCEINLINE
 BOOL
 HasVaryingRecordSizes(

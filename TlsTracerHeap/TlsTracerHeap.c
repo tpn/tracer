@@ -1,11 +1,11 @@
 #include "stdafx.h"
 
 #define ContextToHeapHandle(Context) \
-    (((PALLOCATOR)(Context))->HeapHandle)
+    (((PALLOCATOR)TlsGetValue(((PALLOCATOR)(Context))->TlsIndex))->HeapHandle)
 
 _Use_decl_annotations_
 PVOID
-DefaultHeapMalloc(
+TlsHeapMalloc(
     PVOID Context,
     SIZE_T Size
     )
@@ -15,7 +15,7 @@ DefaultHeapMalloc(
 
 _Use_decl_annotations_
 PVOID
-DefaultHeapCalloc(
+TlsHeapCalloc(
     PVOID Context,
     SIZE_T NumberOfElements,
     SIZE_T SizeOfElements
@@ -31,7 +31,7 @@ DefaultHeapCalloc(
 
 _Use_decl_annotations_
 PVOID
-DefaultHeapRealloc(
+TlsHeapRealloc(
     PVOID Context,
     PVOID Buffer,
     SIZE_T NewSize
@@ -42,7 +42,7 @@ DefaultHeapRealloc(
 
 _Use_decl_annotations_
 VOID
-DefaultHeapFree(
+TlsHeapFree(
     PVOID Context,
     PVOID Buffer
     )
@@ -53,7 +53,7 @@ DefaultHeapFree(
 
 _Use_decl_annotations_
 VOID
-DefaultHeapFreePointer(
+TlsHeapFreePointer(
     PVOID Context,
     PPVOID BufferPointer
     )
@@ -66,7 +66,7 @@ DefaultHeapFreePointer(
         return;
     }
 
-    DefaultHeapFree(Context, *BufferPointer);
+    TlsHeapFree(Context, *BufferPointer);
     *BufferPointer = NULL;
 
     return;
@@ -74,7 +74,7 @@ DefaultHeapFreePointer(
 
 _Use_decl_annotations_
 VOID
-DefaultHeapDestroyAllocator(
+TlsHeapDestroyAllocator(
     PALLOCATOR Allocator
     )
 {
@@ -92,33 +92,66 @@ DefaultHeapDestroyAllocator(
 
 _Use_decl_annotations_
 BOOLEAN
-DefaultHeapInitializeAllocator(
+TlsHeapInitializeAllocator(
     PALLOCATOR Allocator
     )
 {
-    HANDLE HeapHandle;
+    BOOL Success;
+    ULONG HeapFlags;
+    HANDLE TlsHeapHandle;
+
+    //
+    // Validate arguments.
+    //
 
     if (!Allocator) {
         return FALSE;
     }
 
-    HeapHandle = HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 0);
-    if (!HeapHandle) {
+    if (!TracerConfig) {
         return FALSE;
     }
 
-    InitializeAllocator(
+    if (TlsIndex == TLS_OUT_OF_INDEXES) {
+        return FALSE;
+    }
+
+    //
+    // Create a new thread-local heap.
+    //
+
+    HeapFlags = HEAP_GENERATE_EXCEPTIONS | HEAP_NO_SERIALIZE;
+
+    TlsHeapHandle = HeapCreate(HeapFlags, 0, 0);
+
+    if (!TlsHeapHandle) {
+        return FALSE;
+    }
+
+    InitializeTlsAllocator(
         Allocator,
         Allocator,
-        DefaultHeapMalloc,
-        DefaultHeapCalloc,
-        DefaultHeapRealloc,
-        DefaultHeapFree,
-        DefaultHeapFreePointer,
-        DefaultHeapInitializeAllocator,
-        DefaultHeapDestroyAllocator,
-        HeapHandle
+        TlsHeapMalloc,
+        TlsHeapCalloc,
+        TlsHeapRealloc,
+        TlsHeapFree,
+        TlsHeapFreePointer,
+        TlsHeapInitializeAllocator,
+        TlsHeapDestroyAllocator,
+        TlsHeapHandle,
+        TracerConfig->Allocator,
+        TlsIndex
     );
+
+    //
+    // Finally, set the Tls value for our slot to the newly-created allocator.
+    //
+
+    Success = TlsSetValue(TlsIndex, Allocator);
+    if (!Success) {
+        return FALSE;
+    }
+
 
     return TRUE;
 }

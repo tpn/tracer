@@ -56,6 +56,23 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 
 typedef CONST char *PCSZ;
 
+#ifdef _M_X64
+#pragma intrinsic(__readgsdword)
+FORCEINLINE
+DWORD
+FastGetCurrentProcessId(VOID)
+{
+    return __readgsdword(0x40);
+}
+
+FORCEINLINE
+DWORD
+FastGetCurrentThreadId(VOID)
+{
+    return __readgsdword(0x48);
+}
+#endif
+
 typedef LONG (MAINPROCA)(
     _In_ LONG NumberOfArguments,
     _In_ PPSTR ArgvA
