@@ -49,13 +49,17 @@ Return Value:
     }
 
     //
-    // Create a new ALLOCATOR struct using the existing TracerConfig->Allocator.
+    // Create a new ALLOCATOR struct using the original allocator's Calloc
+    // routine routine (which we saved earlier).
+    //
+    // (We can't use GlobalAllocator->Calloc as this may have already been
+    // replaced by the TLS-aware version.)
     //
 
     GlobalAllocator = TracerConfig->Allocator;
 
     TlsAllocator = (PALLOCATOR)(
-        GlobalAllocator->Calloc(
+        OriginalCalloc(
             GlobalAllocator->Context,
             1,
             sizeof(*TlsAllocator)
@@ -83,12 +87,6 @@ Return Value:
         // the TLS-aware allocation routines.
         //
 
-        OldMalloc = GlobalAllocator->Malloc;
-        OldCalloc = GlobalAllocator->Calloc;
-        OldRealloc = GlobalAllocator->Realloc;
-        OldFree = GlobalAllocator->Free;
-        OldFreePointer = GlobalAllocator->FreePointer;
-
         GlobalAllocator->Malloc = TlsAwareMalloc;
         GlobalAllocator->Calloc = TlsAwareCalloc;
         GlobalAllocator->Realloc = TlsAwareRealloc;
@@ -115,7 +113,7 @@ Error:
         // Free the allocated struct.
         //
 
-        GlobalAllocator->FreePointer(GlobalAllocator->Context, &TlsAllocator);
+        OriginalFreePointer(GlobalAllocator->Context, &TlsAllocator);
     }
 
     return FALSE;

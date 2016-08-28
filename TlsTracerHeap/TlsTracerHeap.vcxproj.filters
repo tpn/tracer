@@ -27,7 +27,7 @@
     <ClInclude Include="TlsTracerHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TraceStoreIndex.h">
+    <ClInclude Include="TlsTracerHeapPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,5 +41,31 @@
     <ClCompile Include="dllmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TlsAwareTracerHeap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapSetTracerConfig.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapProcessAttach.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapProcessDetach.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapThreadAttach.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapThreadDetach.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TlsTracerHeapGlobals.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TlsTracerHeap.def">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
