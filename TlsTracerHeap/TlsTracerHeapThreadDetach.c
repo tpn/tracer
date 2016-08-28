@@ -56,7 +56,7 @@ Return Value:
 
     TlsHeapDestroyAllocator(TlsAllocator);
 
-    OldFree(GlobalAllocator->Context, TlsAllocator);
+    OriginalFree(GlobalAllocator->Context, TlsAllocator);
 
     //
     // If this was the last thread attached to the allocator, disable TLS
@@ -65,11 +65,11 @@ Return Value:
 
     if (InterlockedDecrement(&GlobalAllocator->NumberOfThreads) == 0) {
 
-        GlobalAllocator->Malloc = OldMalloc;
-        GlobalAllocator->Calloc = OldCalloc;
-        GlobalAllocator->Realloc = OldRealloc;
-        GlobalAllocator->Free = OldFree;
-        GlobalAllocator->FreePointer = OldFreePointer;
+        GlobalAllocator->Malloc = OriginalMalloc;
+        GlobalAllocator->Calloc = OriginalCalloc;
+        GlobalAllocator->Realloc = OriginalRealloc;
+        GlobalAllocator->Free = OriginalFree;
+        GlobalAllocator->FreePointer = OriginalFreePointer;
 
         GlobalAllocator->Flags.IsTlsAware = FALSE;
         GlobalAllocator->Flags.IsTlsRedirectionEnabled = FALSE;

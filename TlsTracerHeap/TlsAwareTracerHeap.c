@@ -6,20 +6,6 @@
 #define ContextToTlsHeapHandle(Context) \
     (((PALLOCATOR)TlsGetValue(((PALLOCATOR)(Context))->TlsIndex))->HeapHandle)
 
-#define ContextToHeapHandleTlsAware(Context) (                          \
-    (((PALLOCATOR)(Context))->ThreadId != FastGetCurrentThreadId()) ? ( \
-        ContextToTlsHeapHandle(Context) :                               \
-        ContextToDefaultHeapHandle(Context)                             \
-    )                                                                   \
-)
-
-#define ContextToHeapHandle2(Context) (                           \
-    (((PALLOCATOR)(Context))->Flags.IsTlsRedirectionEnabled) ? ( \
-        (ContextToHeapHandleTlsAware(Context)) :                 \
-        (ContextToDefaultHeapHandle(Context))                    \
-    )                                                            \
-)
-
 FORCEINLINE
 HANDLE
 ContextToHeapHandle(_In_ PVOID Context)

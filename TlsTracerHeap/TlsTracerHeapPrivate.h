@@ -3,22 +3,22 @@
 #include "TlsTracerHeap.h"
 
 //
-// Static storage for globals.
+// TlsIndex and TracerConfig are both exported from this DLL.
 //
 
-static ULONG TlsIndex = TLS_OUT_OF_INDEXES;
-static PTRACER_CONFIG TracerConfig = NULL;
+extern ULONG TlsIndex;
+extern PTRACER_CONFIG TracerConfig;
 
 //
 // Copies of the old allocation routines that will be restored when the last
 // thread detaches.
 //
 
-static PMALLOC OldMalloc = NULL;
-static PCALLOC OldCalloc = NULL;
-static PREALLOC OldRealloc = NULL;
-static PFREE OldFree = NULL;
-static PFREE_POINTER OldFreePointer = NULL;
+extern PMALLOC OriginalMalloc;
+extern PCALLOC OriginalCalloc;
+extern PREALLOC OriginalRealloc;
+extern PFREE OriginalFree;
+extern PFREE_POINTER OriginalFreePointer;
 
 //
 // Typedefs for private functions.

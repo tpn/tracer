@@ -1,0 +1,5 @@
+LIBRARY TlsTracerHeap
+EXPORTS
+    TlsIndex @1 DATA
+    TlsTracerHeapSetTracerConfig @2
+    TracerConfig @3 DATA

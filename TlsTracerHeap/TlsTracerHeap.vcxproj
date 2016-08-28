@@ -60,6 +60,7 @@
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+      <ModuleDefinitionFile>TlsTracerHeap.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -75,11 +76,15 @@
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="TlsTracerHeap.c" />
     <ClCompile Include="TlsAwareTracerHeap.c" />
+    <ClCompile Include="TlsTracerHeapGlobals.c" />
     <ClCompile Include="TlsTracerHeapSetTracerConfig.c" />
     <ClCompile Include="TlsTracerHeapProcessAttach.c" />
     <ClCompile Include="TlsTracerHeapProcessDetach.c" />
     <ClCompile Include="TlsTracerHeapThreadAttach.c" />
     <ClCompile Include="TlsTracerHeapThreadDetach.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TlsTracerHeap.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
