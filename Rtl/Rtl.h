@@ -1758,6 +1758,16 @@ typedef PVOID (ALLOCATION_ROUTINE)(
 
 typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
 
+typedef
+_Must_inspect_result_
+PVOID
+(CALLOC_ROUTINE)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize
+    );
+typedef CALLOC_ROUTINE *PCALLOC_ROUTINE;
+
 typedef VOID *PFREE_CONTEXT;
 
 typedef VOID (FREE_ROUTINE)(

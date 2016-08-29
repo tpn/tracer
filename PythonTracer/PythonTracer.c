@@ -40,6 +40,29 @@ TraceStoreAllocationRoutine(
     );
 }
 
+PVOID
+TraceStoreCallocRoutine(
+    _In_opt_ PVOID AllocationContext,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize
+    )
+{
+    PTRACE_STORE TraceStore = (PTRACE_STORE)AllocationContext;
+    ULARGE_INTEGER NumberOfRecords;
+    ULARGE_INTEGER RecordSize;
+
+    NumberOfRecords.QuadPart = NumberOfElements;
+    RecordSize.QuadPart = ElementSize;
+
+    return TraceStore->AllocateRecords(
+        TraceStore->TraceContext,
+        TraceStore,
+        &RecordSize,
+        &NumberOfRecords
+    );
+}
+
+
 PPYTHON_TRACE_EVENT
 AllocatePythonTraceEvent(
     _In_ PTRACE_STORE TraceStore
@@ -324,7 +347,7 @@ PyTraceCallback(
     }
 
     if (!Function || Function->PathEntry.Path.Length == 0) {
-        __debugbreak();
+        //__debugbreak();
         return 0;
     }
 

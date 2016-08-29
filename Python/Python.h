@@ -2611,6 +2611,65 @@ GetPythonStringInformation(
 _Success_(return != 0)
 FORCEINLINE
 BOOL
+ConvertPythonUtf16StringToUtf8String(
+    _In_     PPYTHON    Python,
+    _In_     SIZE_T     Length,
+    _In_     PWCHAR     Buffer,
+    _Out_    PSTRING    String
+    )
+{
+    LONG BufferSizeInBytes;
+
+    BufferSizeInBytes = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        Buffer,
+        -1,
+        NULL,
+        0,
+        NULL,
+        NULL
+    );
+
+    if (BufferSizeInBytes <= 0) {
+        return FALSE;
+    }
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    String->Buffer = ALLOCATE(StringBuffer, BufferSizeInBytes);
+    if (!String->Buffer) {
+        return FALSE;
+    }
+
+    BufferSizeInBytes = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        Buffer,
+        -1,
+        String->Buffer,
+        BufferSizeInBytes,
+        NULL,
+        NULL
+    );
+
+    if (BufferSizeInBytes <= 0) {
+        FREE(String, String->Buffer);
+        return FALSE;
+    }
+
+    String->Length = (USHORT)BufferSizeInBytes - 1;
+    String->MaximumLength = (USHORT)BufferSizeInBytes;
+
+    return TRUE;
+}
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
 WrapPythonStringAsString(
     _In_     PPYTHON    Python,
     _In_     PPYOBJECT  StringishObject,
@@ -2636,7 +2695,60 @@ WrapPythonStringAsString(
     }
 
     if (Width == 2) {
-        Length = Length << 1;
+        return ConvertPythonUtf16StringToUtf8String(
+            Python,
+            Length,
+            Buffer,
+            String
+        );
+    } else if (Width != 1) {
+        __debugbreak();
+    }
+
+    String->MaximumLength = String->Length = (USHORT)Length;
+    String->Buffer = (PCHAR)Buffer;
+
+    return TRUE;
+}
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
+WrapPythonFilenameStringAsString(
+    _In_     PPYTHON    Python,
+    _In_     PPYOBJECT  StringishObject,
+    _Out_    PSTRING    String
+    )
+{
+    SIZE_T Length;
+    USHORT Width;
+    PVOID  Buffer;
+
+    BOOL Success;
+
+    Success = GetPythonStringInformation(
+        Python,
+        StringishObject,
+        &Length,
+        &Width,
+        &Buffer
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (*((PCHAR)Buffer) == '<') {
+        return FALSE;
+    }
+
+    if (Width == 2) {
+        return ConvertPythonUtf16StringToUtf8String(
+            Python,
+            Length,
+            Buffer,
+            String
+        );
     } else if (Width != 1) {
         __debugbreak();
     }
