@@ -2538,7 +2538,7 @@ GetPathEntryForDirectory(
     PrefixTable = &Python->PathTable->PrefixTable;
 
     //
-    // Seach for the directory in the prefix table.
+    // Search for the directory in the prefix table.
     //
 
     PrefixTableEntry = Rtl->PfxFindPrefix(PrefixTable, Directory);
