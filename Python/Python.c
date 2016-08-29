@@ -627,7 +627,6 @@ AllocatePythonPathTableEntryAndHashedStringWithBuffer(
     return FALSE;
 }
 
-
 _Check_return_
 BOOL
 LoadPythonData(
@@ -3227,7 +3226,7 @@ Routine Description:
         )
     );
 
-    Success = WrapPythonStringAsString(
+    Success = WrapPythonFilenameStringAsString(
         Python,
         FilenameObject,
         &PathString
@@ -3624,7 +3623,7 @@ GetPathEntryFromFrame(
 
     Path = &PathString;
 
-    Success = WrapPythonStringAsString(
+    Success = WrapPythonFilenameStringAsString(
         Python,
         FilenameObject,
         Path
@@ -3696,6 +3695,7 @@ Retry:
         }
 
     }
+
 
     Success = RegisterFile(Python,
                            Path,
