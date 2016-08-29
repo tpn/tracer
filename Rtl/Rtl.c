@@ -1301,6 +1301,246 @@ Error:
     return Success;
 }
 
+_Check_return_
+BOOL
+FilesExistExW(
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
+    _In_      PPUNICODE_STRING Filenames,
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
+    _Out_opt_ PPUNICODE_STRING WhichFilename,
+    _In_      PALLOCATOR       Allocator
+    )
+{
+    USHORT Index;
+    PWCHAR HeapBuffer;
+    ULONG CombinedSizeInBytes;
+    USHORT DirectoryLength;
+    USHORT MaxFilenameLength = 0;
+    UNICODE_STRING Path;
+    PUNICODE_STRING Filename;
+    DWORD Attributes;
+    BOOL Success = FALSE;
+    HANDLE HeapHandle = NULL;
+    WCHAR StackBuffer[_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Directory)) {
+        return FALSE;
+    }
+
+    if (NumberOfFilenames == 0) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Filenames) || !ARGUMENT_PRESENT(Filenames[0])) {
+        return FALSE;
+    }
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        BOOL SanityCheck;
+
+        Filename = Filenames[Index];
+
+        //
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
+        //
+
+        SanityCheck = (
+            Filename &&
+            Filename->Length > 0 &&
+            Filename->Buffer != NULL
+        );
+
+        if (!SanityCheck) {
+            __debugbreak();
+        }
+
+        //
+        // Update our local maximum filename length variable if applicable.
+        //
+
+        if (Filename->Length > MaxFilenameLength) {
+            MaxFilenameLength = Filename->Length;
+        }
+    }
+
+
+    //
+    // See if the combined size of the extended volume prefix ("\\?\"),
+    // directory, joining backslash, maximum filename length and terminating
+    // NUL is less than or equal to _MAX_PATH.  If it is, we can use the
+    // stack-allocated Path buffer above; if not, allocate a new buffer from
+    // the default heap.
+    //
+
+    CombinedSizeInBytes = (
+        ExtendedLengthVolumePrefixW.Length  +
+        Directory->Length                   +
+        sizeof(WCHAR)                       + // joining backslash
+        MaxFilenameLength                   +
+        sizeof(WCHAR)                         // terminating NUL
+    );
+
+    //
+    // Point Path->Buffer at the stack or heap buffer depending on the
+    // combined size.
+    //
+
+    if (CombinedSizeInBytes <= _MAX_PATH) {
+
+        //
+        // We can use our stack buffer.
+        //
+
+        Path.Buffer = &StackBuffer[0];
+
+    } else if (CombinedSizeInBytes > MAX_USTRING) {
+
+        goto Error;
+
+    } else {
+
+        //
+        // The combined size exceeds _MAX_PATH so allocate the required memory.
+        //
+
+        HeapBuffer = (PWCHAR)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                CombinedSizeInBytes
+            )
+        );
+
+        if (!HeapBuffer) {
+            return FALSE;
+        }
+
+        Path.Buffer = HeapBuffer;
+
+    }
+
+    Path.Length = 0;
+    Path.MaximumLength = (USHORT)CombinedSizeInBytes;
+
+    //
+    // Copy the volume prefix, then append the directory and joining backslash.
+    //
+
+    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
+
+    if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\')) {
+
+        goto Error;
+    }
+
+    //
+    // Make a note of the length at this point as we'll need to revert to it
+    // after each unsuccessful file test.
+    //
+
+    DirectoryLength = Path.Length;
+
+    //
+    // Enumerate over the array of filenames and look for the first one that
+    // exists.
+    //
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        Filename = Filenames[Index];
+
+        //
+        // We've already validated our lengths, so these should never fail.
+        //
+
+        if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0')) {
+
+            goto Error;
+        }
+
+        //
+        // We successfully constructed the path, so we can now look up the file
+        // attributes.
+        //
+
+        Attributes = GetFileAttributesW(Path.Buffer);
+
+        if (Attributes == INVALID_FILE_ATTRIBUTES ||
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+
+            //
+            // File doesn't exist or is a directory.  Reset the path length
+            // and continue.
+            //
+
+            Path.Length = DirectoryLength;
+
+            continue;
+        }
+
+        //
+        // Success!  File exists and *isn't* a directory.  We're done.
+        //
+
+        Success = TRUE;
+        break;
+    }
+
+    if (!Success) {
+
+        *Exists = FALSE;
+
+        //
+        // The files didn't exist, but no error occurred, so we return success.
+        //
+
+        Success = TRUE;
+
+    } else {
+
+        *Exists = TRUE;
+
+        //
+        // Update the user's pointers if applicable.
+        //
+
+        if (ARGUMENT_PRESENT(WhichIndex)) {
+            *WhichIndex = Index;
+        }
+
+        if (ARGUMENT_PRESENT(WhichFilename)) {
+            *WhichFilename = Filename;
+        }
+
+    }
+
+    //
+    // Intentional follow-on to "Error"; Success code will be set
+    // appropriately by this stage.
+    //
+
+Error:
+    if (HeapBuffer) {
+        Allocator->Free(Allocator->Context, HeapBuffer);
+    }
+
+    return Success;
+}
+
 _Success_(return != 0)
 _Check_return_
 BOOL
