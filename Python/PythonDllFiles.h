@@ -6,12 +6,32 @@
     static CONST UNICODE_STRING Name = RTL_CONSTANT_STRING(Filename);
 
 #define EXE DLL
+#define DIRECTORY DLL
 
 //
 // Python executable.
 //
 
 EXE(PythonExeW, L"python.exe");
+
+//
+// Python PATH directory suffixes (directories that are appended to PYTHONHOME)
+// and typically added to the PATH environment variable as part of environment
+// activation.
+//
+
+DIRECTORY(PythonScriptsDirectoryW,    L"\\Scripts");
+DIRECTORY(PythonLibraryBinDirectoryW, L"\\Library\\bin");
+
+static CONST PUNICODE_STRING PythonPathSuffixesW[] = {
+    (PUNICODE_STRING)&PythonScriptsDirectoryW,
+    (PUNICODE_STRING)&PythonLibraryBinDirectoryW
+};
+
+#define NUMBER_OF_PYTHON_PATH_SUFFIXES ( \
+    sizeof(PythonPathSuffixesW) /        \
+    sizeof(PythonPathSuffixesW[0])       \
+)
 
 //
 // Python DLLs.
