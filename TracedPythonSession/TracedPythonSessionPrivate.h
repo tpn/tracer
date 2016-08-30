@@ -9,6 +9,9 @@ extern "C" {
 INITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
 DESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
+REMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE \
+    RemoveConflictingPythonPathsFromPathEnvironmentVariable;
+
 #ifdef __cpp
 } // extern "C"
 #endif

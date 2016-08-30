@@ -70,6 +70,7 @@
   <ItemGroup>
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
+    <ClCompile Include="RemoveConflictingPythonPathsFromPathEnvironmentVariable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

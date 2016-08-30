@@ -33,6 +33,8 @@ BOOL
     _In_ PUNICODE_STRING Directory,
     _Out_ PPUNICODE_STRING PythonDllPath,
     _Out_ PPUNICODE_STRING PythonExePath,
+    _Out_ PUSHORT NumberOfPathEntries,
+    _Out_ PPUNICODE_STRING PathEntries,
     _Out_ PCHAR MajorVersion,
     _Out_ PCHAR MinorVersion
     );

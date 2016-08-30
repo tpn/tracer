@@ -26,10 +26,29 @@ typedef struct _TRACED_PYTHON_SESSION {
     CHAR PythonMinorVersion;
 
     //
+    // Number of paths pointed to by the PathEntries array below.
+    //
+
+    USHORT NumberOfPathEntries;
+
+    //
     // Padding out to 8 bytes.
     //
 
-    ULONG   Unused2;
+    USHORT   Unused1;
+
+    //
+    // Array of PUNICODE_STRING paths to add to the DLL path.  Size is governed
+    // by NumberOfPathEntries.
+    //
+
+    PUNICODE_STRING PathEntries;
+
+    //
+    // Array of DLL_DIRECTORY_COOKIE entries for each of the paths above.
+    //
+
+    PDLL_DIRECTORY_COOKIE PathDirectoryCookies;
 
     //
     // TRACER_CONFIG structure.
@@ -227,6 +246,12 @@ typedef struct _TRACED_PYTHON_SESSION {
     PUNICODE_STRING PythonHomePath;
 
     //
+    // Original directory we started out in.
+    //
+
+    PUNICODE_STRING OriginalDirectory;
+
+    //
     // A UTF-8 encoded version of the PythonExePath above (used for setting
     // argv[0]).
     //
@@ -261,6 +286,16 @@ BOOL
     _In_opt_    HMODULE OwningModule
     );
 typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
+
+typedef
+_Success_(return != 0)
+BOOL
+(REMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE)(
+    _In_ PTRACED_PYTHON_SESSION Session
+    );
+
+typedef  REMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE \
+        *PREMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE;
 
 typedef
 VOID (DESTROY_TRACED_PYTHON_SESSION)(

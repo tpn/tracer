@@ -2,6 +2,89 @@
 
 #include "TracedPythonSessionPrivate.h"
 
+PUNICODE_STRING
+CurrentDirectoryToUnicodeString(
+    PALLOCATOR Allocator
+    )
+{
+    LONG_INTEGER NumberOfChars;
+    LONG_INTEGER AllocSize;
+    LONG_INTEGER AlignedAllocSize;
+    PUNICODE_STRING String;
+
+    NumberOfChars.LongPart = GetCurrentDirectoryW(0, NULL);
+    if (NumberOfChars.LongPart <= 0) {
+        return NULL;
+    }
+
+    if (NumberOfChars.HighPart) {
+        return NULL;
+    }
+
+    AllocSize.LongPart = (
+        (NumberOfChars.LongPart << 1) +
+        sizeof(UNICODE_STRING)
+    );
+    AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
+
+    if (AlignedAllocSize.HighPart) {
+        return NULL;
+    }
+
+    String = (PUNICODE_STRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedAllocSize.LongPart
+        )
+    );
+
+    if (!String) {
+        return NULL;
+    }
+
+    String->Length = (USHORT)((NumberOfChars.LowPart - 1) << 1);
+    String->MaximumLength = String->Length + sizeof(WCHAR);
+
+    String->Buffer = (PWCHAR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+
+    if (GetCurrentDirectoryW(String->MaximumLength, String->Buffer) <= 0) {
+        Allocator->Free(Allocator->Context, String);
+        return NULL;
+    }
+
+    return String;
+}
+
+BOOL
+ChangeIntoPythonHomeDirectory(
+    PTRACED_PYTHON_SESSION Session
+    )
+{
+    PRTL Rtl;
+    PALLOCATOR Allocator;
+    PUNICODE_STRING TargetDirectory;
+    PUNICODE_STRING CurrentDirectory;
+
+    Allocator = Session->Allocator;
+    Rtl = Session->Rtl;
+
+    CurrentDirectory = CurrentDirectoryToUnicodeString(Allocator);
+    if (!CurrentDirectory) {
+        return FALSE;
+    }
+
+    TargetDirectory = Session->PythonHomePath;
+
+    if (!Rtl->RtlEqualUnicodeString(CurrentDirectory, TargetDirectory, TRUE)) {
+        SetCurrentDirectoryW(TargetDirectory->Buffer);
+    }
+
+    Session->OriginalDirectory = CurrentDirectory;
+
+    return TRUE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeTracedPythonSession(
@@ -40,15 +123,18 @@ Return Value:
     BOOL Success;
     BOOL Compress;
     CHAR MajorVersion;
+    USHORT Index;
     ULONG RequiredSize;
     HMODULE PythonDllModule;
     PRTL Rtl;
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
+    PUNICODE_STRING Path;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
     PUNICODE_STRING PythonExePath;
+    PDLL_DIRECTORY_COOKIE DirectoryCookie;
 
     //
     // Verify arguments.
@@ -261,6 +347,8 @@ Return Value:
         Directory,
         &PythonDllPath,
         &PythonExePath,
+        &Session->NumberOfPathEntries,
+        &Session->PathEntries,
         &Session->PythonMajorVersion,
         &Session->PythonMinorVersion
     );
@@ -288,6 +376,8 @@ Return Value:
             Directory,
             &PythonDllPath,
             &PythonExePath,
+            &Session->NumberOfPathEntries,
+            &Session->PathEntries,
             &Session->PythonMajorVersion,
             &Session->PythonMinorVersion
         );
@@ -317,6 +407,28 @@ FoundPython:
     Session->PythonDllPath = PythonDllPath;
     Session->PythonExePath = PythonExePath;
     Session->PythonHomePath = Directory;
+
+    if (Session->NumberOfPathEntries == 0) {
+        OutputDebugStringA("Session->NumberOfPathEntries invalid.\n");
+        goto Error;
+    }
+
+    //
+    // Allocate the array for DLL_DIRECTORY_COOKIE values.
+    //
+
+    Session->PathDirectoryCookies = (PDLL_DIRECTORY_COOKIE)(
+        Allocator->Calloc(
+            Allocator->Context,
+            Session->NumberOfPathEntries,
+            sizeof(DLL_DIRECTORY_COOKIE)
+        )
+    );
+
+    if (!Session->PathDirectoryCookies) {
+        OutputDebugStringA("Failed to allocate PathDirectoryCookies.\n");
+        goto Error;
+    }
 
     //
     // Create a UTF-8 version of the fully-qualified python.exe path so that
@@ -351,20 +463,47 @@ FoundPython:
     }
 
     //
-    // Change our directory into the Python home directory.
+    // Remove conflicting PATH entries from our environment variable.
     //
 
-    Success = SetCurrentDirectoryW(Session->PythonHomePath->Buffer);
-
+    Success = RemoveConflictingPythonPathsFromPathEnvironmentVariable(Session);
     if (!Success) {
-        OutputDebugStringA("Failed to change directory.\n");
+        OutputDebugStringA("Failed to remove conflicting Python PATHs.\n");
+    }
+
+    //
+    // Temporarily change into the Python HOME directory.
+    //
+
+    Success = ChangeIntoPythonHomeDirectory(Session);
+    if (!Success) {
         goto Error;
+    }
+
+    //
+    // Add the Python PATH entries to the list of DLL directories.
+    //
+
+    goto LoadPythonDll;
+    Path = Session->PathEntries;
+    DirectoryCookie = Session->PathDirectoryCookies;
+    for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
+        DLL_DIRECTORY_COOKIE Cookie = AddDllDirectory((PCWSTR)Path->Buffer);
+        if (!Cookie) {
+            OutputDebugStringA("AddDllDirectory() failed.\n");
+            OutputDebugStringW(Path->Buffer);
+            OutputDebugStringA("\n");
+            goto Error;
+        }
+        Path++;
+        *DirectoryCookie++ = Cookie;
     }
 
     //
     // Load the library.
     //
 
+LoadPythonDll:
     PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
 
     if (!PythonDllModule) {
@@ -523,6 +662,12 @@ FoundPython:
 
         }
     }
+
+    //
+    // Change back to the original directory.
+    //
+
+    SetCurrentDirectoryW(Session->OriginalDirectory->Buffer);
 
     //
     // Allocate and initialize TraceSession.

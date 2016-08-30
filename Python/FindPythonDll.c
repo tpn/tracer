@@ -8,6 +8,8 @@ FindPythonDllAndExe(
     PUNICODE_STRING Directory,
     PPUNICODE_STRING PythonDllPath,
     PPUNICODE_STRING PythonExePath,
+    PUSHORT NumberOfPathEntriesPointer,
+    PPUNICODE_STRING PathEntriesPointer,
     PCHAR MajorVersionPointer,
     PCHAR MinorVersionPointer
     )
@@ -38,6 +40,13 @@ Arguments:
         UNICODE_STRING representing "python.exe" in the same directory that
         PythonDllPath was found (if at all).
 
+    NumberOfPathEntriesPointer - Supplies a pointer to an address that
+        receives the number of PUNICODE_STRING pointers pointed to by the
+        PathEntriesPointer array.
+
+    PathEntriesPointer - Supplies a pointer that receives the address of an
+        array of PUNICODE_STRING structures.
+
     MajorVersion - Supplies a pointer to a CHAR that will receive the
         major version of the Python DLL based on the filename, e.g. 2 for
         python26.dll and python27.dll, 3 for python34.dll, python35.dll etc.
@@ -61,19 +70,28 @@ Return Value:
 {
     BOOL Exists;
     BOOL Success;
+    USHORT Index;
     USHORT Bytes;
     USHORT Count;
     USHORT WhichIndex;
     USHORT Length;
     USHORT MaximumLength;
+    USHORT NumberOfPathSuffixes;
+    USHORT NumberOfPathEntries;
+    USHORT PathsArraySize;
+    USHORT PathsUnicodeStringStructsSize;
     LONG_INTEGER AllocSize;
     PWCHAR Dest;
     PWCHAR Source;
+    PWCHAR ExpectedDest;
     WIDE_CHARACTER MajorVersionChar;
     WIDE_CHARACTER MinorVersionChar;
+    PCUNICODE_STRING Suffix;
+    PPUNICODE_STRING Paths;
     PUNICODE_STRING WhichFilename = NULL;
     PUNICODE_STRING DllPath = NULL;
     PUNICODE_STRING ExePath = NULL;
+    PUNICODE_STRING Path = NULL;
 
     //
     // Validate arguments.
@@ -92,6 +110,14 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(PythonExePath)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(NumberOfPathEntriesPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(PathEntriesPointer)) {
         return FALSE;
     }
 
@@ -376,11 +402,250 @@ Return Value:
     ExePath->MaximumLength = MaximumLength;
 
     //
+    // Construct the individual path entries and the containing array.
+    //
+
+    //
+    // Add 1 to the suffix count to account for the initial directory.
+    //
+
+    NumberOfPathSuffixes = NUMBER_OF_PYTHON_PATH_SUFFIXES;
+    NumberOfPathEntries = NumberOfPathSuffixes + 1;
+
+    PathsArraySize = sizeof(PUNICODE_STRING) * NumberOfPathEntries;
+
+    PathsUnicodeStringStructsSize = (
+        sizeof(UNICODE_STRING) *
+        NumberOfPathEntries
+    );
+
+    AllocSize.LongPart = (
+
+        //
+        // Account for the array.
+        //
+
+        PathsArraySize +
+
+        //
+        // Account for the underlying UNICODE_STRING structures.
+        //
+
+        PathsUnicodeStringStructsSize +
+
+        //
+        // Account for the first directory's buffer length, plus trailing NULL.
+        //
+
+        Directory->Length + sizeof(WCHAR)
+
+    );
+
+    //
+    // Add the remaining lengths in (including the directory length).
+    //
+
+    for (Index = 0; Index < NumberOfPathEntries-1; Index++) {
+
+        //
+        // Load the suffix.
+        //
+
+        Suffix = PythonPathSuffixesW[Index];
+
+        AllocSize.LongPart += (
+
+            //
+            // Account for the directory length.
+            //
+
+            Directory->Length +
+
+            //
+            // No need to account for the joining slash as the suffixes already
+            // have it in place.
+            //
+
+            Suffix->Length +
+
+            //
+            // Account for the trailing NULL.
+            //
+
+            sizeof(WCHAR)
+
+        );
+    }
+
+    //
+    // Allocate space to the array first, then carve out the remaining
+    // structures.
+    //
+
+    Paths = (PPUNICODE_STRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LongPart
+        )
+    );
+
+    if (!Paths) {
+        goto Error;
+    }
+
+    //
+    // Point the array pointers at the trailing UNICODE_STRING structures and
+    // initialize the Buffer pointers and lengths.
+    //
+
+    Paths[0] = Path = (PUNICODE_STRING)(
+        RtlOffsetToPointer(
+            Paths,
+            PathsArraySize
+        )
+    );
+
+    Path->Length = Directory->Length;
+    Path->MaximumLength = Directory->Length + sizeof(WCHAR);
+
+    Path->Buffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            Paths,
+            PathsArraySize + PathsUnicodeStringStructsSize
+        )
+    );
+
+    //
+    // Copy the directory into the first path.
+    //
+
+    Count = Path->Length >> 1;
+    Dest = Path->Buffer;
+    __movsw(Dest, Directory->Buffer, Path->Length >> 1);
+
+    Dest += Count;
+
+    //
+    // Add the trailing NULL and advance the destination pointer to the next
+    // buffer starting point.
+    //
+
+    *Dest++ = L'\0';
+
+    //
+    // Fill in the hash/atom value.
+    //
+
+    Path->Hash = HashUnicodeStringToAtom(Path);
+
+    //
+    // Fill out the suffixes.
+    //
+
+    for (Index = 0; Index < NumberOfPathSuffixes; Index++) {
+
+        //
+        // Load the suffix.
+        //
+
+        Suffix = PythonPathSuffixesW[Index];
+
+        //
+        // Carve out the next UNICODE_STRING structure.
+        //
+
+        Paths[Index+1] = Path = (PUNICODE_STRING)(
+            RtlOffsetToPointer(
+                Paths[Index],
+                sizeof(UNICODE_STRING)
+            )
+        );
+
+        Path->Length = (
+
+            //
+            // Account for the directory length.
+            //
+
+            Directory->Length +
+
+            //
+            // Add the length of the suffix.
+            //
+
+            Suffix->Length
+        );
+
+        //
+        // Add the trailing NULL.
+        //
+
+        Path->MaximumLength = Path->Length + sizeof(WCHAR);
+
+        //
+        // Carve out the buffer, using the previous Dest pointer.
+        //
+
+        Path->Buffer = Dest;
+
+        //
+        // Copy the directory over.
+        //
+
+        Count = Directory->Length >> 1;
+        __movsw(Dest, Directory->Buffer, Count);
+
+        //
+        // Update the Dest pointer and copy the suffix.
+        //
+
+        Dest += Count;
+        Count = Suffix->Length >> 1;
+        __movsw(Dest, Suffix->Buffer, Count);
+
+        //
+        // Add the trailing NULL and increment the Dest pointer so that it
+        // points at the next buffer space.
+        //
+
+        Dest += Count;
+        *Dest++ = L'\0';
+
+        //
+        // Set the hash value.
+        //
+
+        Path->Hash = HashUnicodeStringToAtom(Path);
+
+    }
+
+    //
+    // Sanity check our buffer carving logic is correct.
+    //
+
+    ExpectedDest = ((PWCHAR)(RtlOffsetToPointer(Paths, AllocSize.LongPart)));
+
+    if (ExpectedDest != Dest) {
+        __debugbreak();
+    }
+
+    //
+    // Update the hashes DllPath and ExePath.
+    //
+
+    DllPath->Hash = HashUnicodeStringToAtom(DllPath);
+    ExePath->Hash = HashUnicodeStringToAtom(ExePath);
+
+
+    //
     // Update the caller's pointers and return success.
     //
 
     *PythonDllPath = DllPath;
     *PythonExePath = ExePath;
+    *NumberOfPathEntriesPointer = NumberOfPathEntries;
+    *PathEntriesPointer = *Paths;
     *MajorVersionPointer = MajorVersionChar.LowPart;
     *MinorVersionPointer = MinorVersionChar.LowPart;
 
@@ -396,6 +661,11 @@ Error:
     if (ExePath) {
         Allocator->Free(Allocator->Context, ExePath);
         ExePath = NULL;
+    }
+
+    if (Paths) {
+        Allocator->Free(Allocator->Context, Paths);
+        Paths = NULL;
     }
 
     return FALSE;
