@@ -21,11 +21,11 @@ EXE(PythonExeW, L"python.exe");
 //
 
 DIRECTORY(PythonScriptsDirectoryW,    L"\\Scripts");
-DIRECTORY(PythonLibraryBinDirectoryW, L"\\Library\\bin");
+//DIRECTORY(PythonLibraryBinDirectoryW, L"\\Library\\bin");
 
 static CONST PUNICODE_STRING PythonPathSuffixesW[] = {
-    (PUNICODE_STRING)&PythonScriptsDirectoryW,
-    (PUNICODE_STRING)&PythonLibraryBinDirectoryW
+    (PUNICODE_STRING)&PythonScriptsDirectoryW //,
+    //(PUNICODE_STRING)&PythonLibraryBinDirectoryW
 };
 
 #define NUMBER_OF_PYTHON_PATH_SUFFIXES ( \

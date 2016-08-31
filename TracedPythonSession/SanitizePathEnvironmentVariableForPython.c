@@ -5,7 +5,7 @@
 
 _Use_decl_annotations_
 BOOL
-RemoveConflictingPythonPathsFromPathEnvironmentVariable(
+SanitizePathEnvironmentVariableForPython(
     PTRACED_PYTHON_SESSION Session
     )
 /*++

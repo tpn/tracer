@@ -43,8 +43,14 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
-  <Import Project="..\Tracer.props" />
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\Tracer.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
@@ -72,7 +78,7 @@
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
     <ClCompile Include="LoadPathEnvironmentVariable.c" />
-    <ClCompile Include="RemoveConflictingPythonPathsFromPathEnvironmentVariable.c" />
+    <ClCompile Include="SanitizePathEnvironmentVariableForPython.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
