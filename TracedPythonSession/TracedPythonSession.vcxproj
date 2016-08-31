@@ -68,8 +68,10 @@
     <ClInclude Include="TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DestroyPathEnvironmentVariable.c" />
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
+    <ClCompile Include="LoadPathEnvironmentVariable.c" />
     <ClCompile Include="RemoveConflictingPythonPathsFromPathEnvironmentVariable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>

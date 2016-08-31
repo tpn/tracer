@@ -1,185 +1,7 @@
 #include "stdafx.h"
 
 #include "TracedPythonSessionPrivate.h"
-
-static CONST WSTR PATH = L"Path";
-
-typedef struct _PATH_ENV_VAR {
-    USHORT Size;
-    USHORT NumberOfElements;
-    RTL_BITMAP Bitmap;
-    UNICODE_STRING Paths;
-    PULONG Hashes;
-} PATH_ENV_VAR, *PPATH_ENV_VAR;
-
-typedef struct _PYTHON_HOME {
-
-    //
-    // Size of the entire structure, in bytes.
-    //
-
-    USHORT Size;
-
-    //
-    // Python major version ('2' or '3') and minor version, as derived from the
-    // DLL path name.
-    //
-
-    CHAR PythonMajorVersion;
-    CHAR PythonMinorVersion;
-
-    //
-    // Number of paths pointed to by the PathEntries array below.
-    //
-
-    USHORT NumberOfPathEntries;
-
-    //
-    // Padding out to 8 bytes.
-    //
-
-    USHORT   Unused1;
-
-    //
-    // Array of PUNICODE_STRING paths to add to the DLL path.  Size is governed
-    // by NumberOfPathEntries.
-    //
-
-    PUNICODE_STRING PathEntries;
-
-    USHORT NumberOfPathEntries;
-
-    UNICODE_STRING Directory;
-
-    PUNICODE_STRING DllPath;
-    PUNICODE_STRING ExePath;
-
-} PYTHON_HOME, *PPYTHON_HOME;
-
-PPATH_ENV_VAR
-LoadPathEnvironmentVariable(
-    PALLOCATOR Allocator
-    )
-{
-    WCHAR Char;
-    USHORT Index;
-    USHORT Count;
-    USHORT BitmapBufferSizeInBytes;
-    USHORT AlignedBitmapBufferSizeInBytes;
-    USHORT AlignedNumberOfCharacters;
-    USHORT UnicodeBufferSizeInBytes;
-    USHORT BitmapBufferSizeInBytes;
-    LONG Length;
-    LONG_INTEGER NumberOfChars;
-    LONG_INTEGER AllocSize;
-    LONG_INTEGER AlignedAllocSize;
-    PPATH_ENV_VAR Path;
-    PUNICODE_STRING String;
-    PRTL_BITMAP Bitmap;
-
-    Length = GetEnvironmentVariableW(PATH, NULL, 0);
-    if (Length == 0) {
-        return NULL;
-    }
-
-    NumberOfChars.LongPart = Length;
-
-    if (NumberOfChars.HighPart) {
-        return NULL;
-    }
-
-    AlignedNumberOfCharacters = (
-        ALIGN_UP_USHORT_TO_POINTER_SIZE(
-            NumberOfChars.LowPart
-        )
-    );
-
-    UnicodeBufferSizeInBytes = AlignedNumberOfCharacters << 1;
-
-    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
-
-    AlignedBitmapBufferSizeInBytes = (
-        ALIGN_UP_USHORT_TO_POINTER_SIZE(
-            BitmapBufferSizeInBytes
-        )
-    );
-
-    AllocSize.LongPart = (
-
-        sizeof(PATH_ENV_VAR) +
-
-        BitmapBufferSizeInBytes +
-
-        UnicodeBufferSizeInBytes
-
-    );
-
-    AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
-
-    if (AlignedAllocSize.HighPart) {
-        return NULL;
-    }
-
-    Path = (PUNICODE_STRING)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AlignedAllocSize.LongPart
-        )
-    );
-
-    if (!Path) {
-        return NULL;
-    }
-
-    Bitmap->SizeOfBitMap = AlignedNumberOfCharacters;
-    Bitmap->Buffer = (PULONG)RtlOffsetToPointer(Path, sizeof(PATH_ENV_VAR));
-
-    String = &Path->String;
-
-    String->Length = (NumberOfChars.LowPart - 1) << 1;
-    String->MaximumLength = String->Length + sizeof(WCHAR);
-
-    String->Buffer = (PWCHAR)(
-        RtlOffsetToPointer(
-            Path,
-            sizeof(PATH_ENV_VAR) + AlignedBitmapBufferSizeInBytes
-        )
-    );
-
-    Length = GetEnvironmentVariableW(
-        PATH,
-        String->Buffer,
-        String->MaximumLength
-    );
-
-    for (Index = 0, Count = 0; Index < NumberOfChars.LowPart; Index++) {
-        Char = String->Buffer[Index];
-        if (Char == L';') {
-            Count++;
-            FastSetBit(Bitmap, Index+1);
-            String->Buffer[Index] = L'\0';
-        }
-    }
-
-    Path->Size = AlignedAllocSize.LowPart;
-    Path->NumberOfElements = Count;
-
-    Path->Hashes = (PULONG)(
-        Allocator->Calloc(
-            Allocator->Context,
-            sizeof(ULONG),
-            Count
-        )
-    );
-
-    if (!Path->Hashes) {
-        Allocator->Free(Allocator->Context, Path);
-        return NULL;
-    }
-
-    return Path;
-}
+#include "../Python/PythonDllFiles.h"
 
 _Use_decl_annotations_
 BOOL
@@ -191,9 +13,8 @@ RemoveConflictingPythonPathsFromPathEnvironmentVariable(
 Routine Description:
 
     This function checks every path in the current PATH environment variable
-    and removes any paths that are one of the Python library paths.  This
-    covers any directory that is found to be a Python home directory (has a
-    python[nn].dll file present), plus \Scripts and \Library\bin directories.
+    and removes any paths that are one of the Python library paths (or prefix
+    paths of said Python paths).
 
 Arguments:
 
@@ -212,31 +33,78 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL Exists;
+    USHORT Bytes;
+    USHORT Count;
+    USHORT WhichIndex;
+    USHORT ExpectedMaximumLength;
     ULONG PreviousIndex;
     ULONG Index;
     ULONG BitmapIndex;
-    ULONG NextIndex;
-    ULONG Hint;
+    LONG_INTEGER ReservedUnicodeBufferSizeInBytes;
+    PWCHAR Dest;
+    PWCHAR ExpectedDest;
     PRTL Rtl;
     PALLOCATOR Allocator;
+    PFILES_EXISTW FilesExistW;
     PRTL_FIND_SET_BITS RtlFindSetBits;
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
     PRTL_EQUAL_UNICODE_STRING RtlEqualUnicodeString;
-    PUNICODE_STRING PythonHome;
-    UNICODE_STRING Directory;
+    PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;
+    PRTL_INSERT_UNICODE_PREFIX RtlInsertUnicodePrefix;
+    PRTL_REMOVE_UNICODE_PREFIX RtlRemoveUnicodePrefix;
+    PUNICODE_STRING WhichFilename;
+    PUNICODE_STRING Directory;
     PUNICODE_STRING String;
+    PUNICODE_PREFIX_TABLE KeepPrefixTable;
+    PUNICODE_PREFIX_TABLE RemovePrefixTable;
+    PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
+    PUNICODE_PREFIX_TABLE_ENTRY RemovePrefixTableEntry;
     PPATH_ENV_VAR Path;
     PRTL_BITMAP Bitmap;
     PYTHON_HOME Home;
 
     Rtl = Session->Rtl;
+    FilesExistW = Rtl->FilesExistW;
     RtlFindSetBits = Rtl->RtlFindSetBits;
     RtlNumberOfSetBits = Rtl->RtlNumberOfSetBits;
     RtlEqualUnicodeString = Rtl->RtlEqualUnicodeString;
+    RtlFindUnicodePrefix = Rtl->RtlFindUnicodePrefix;
+    RtlInsertUnicodePrefix = Rtl->RtlInsertUnicodePrefix;
+    RtlRemoveUnicodePrefix = Rtl->RtlRemoveUnicodePrefix;
 
     Allocator = Session->Allocator;
 
-    Path = LoadPathEnvironmentVariable(Allocator);
+    //
+    // Calculate the length of the Python path entries we want to prefix the
+    // new path entry with.
+    //
+
+    String = Session->PathEntries;
+    ReservedUnicodeBufferSizeInBytes.LongPart = 0;
+    for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
+        ReservedUnicodeBufferSizeInBytes.LongPart += String->MaximumLength;
+        String++;
+    }
+
+    //
+    // Make sure we're under MAX_USHORT.
+    //
+
+    if (ReservedUnicodeBufferSizeInBytes.HighPart) {
+        return FALSE;
+    }
+
+    //
+    // Load the PATH_ENV_VAR struct.
+    //
+
+    Path = LoadPathEnvironmentVariable(
+        Rtl,
+        Allocator,
+        ReservedUnicodeBufferSizeInBytes.LowPart
+    );
+
     if (!Path) {
         return FALSE;
     }
@@ -244,72 +112,243 @@ Return Value:
     SecureZeroMemory(&Home, sizeof(Home));
 
     Bitmap = &Path->Bitmap;
-    String = &Path->String;
+    String = &Path->NewPaths;
 
     PreviousIndex = 0;
     BitmapIndex = 0;
 
+    //
+    // Set up some aliases.
+    //
+
+    Directory = Path->Directories;
+    RemovePrefixTable = &Path->PathsToRemovePrefixTable;
+    PrefixTableEntry = Path->PathsToRemovePrefixTableEntries;
+
     for (Index = 0; Index < Path->NumberOfElements; Index++) {
 
-        BitmapIndex = RtlFindSetBits(Bitmap, 1, Index);
-        if (BitmapIndex == BITS_NOT_FOUND) {
-            goto Error;
-        }
-
-        Directory.Length = (BitmapIndex - PreviousIndex);
-        Directory.MaximumLength = Directory->Length;
-        Directory.Buffer = String->Buffer + PreviousIndex;
-
-        Success = Session->FindPythonDllAndExe(
+        Success = Rtl->FilesExistW(
             Rtl,
-            Allocator,
-            &Directory,
-            &Home.PythonDllPath,
-            &Home.PythonExePath,
-            &Home.NumberOfPathEntries,
-            &Home.PathEntries,
-            &Home.PythonMajorVersion,
-            &Home.PythonMinorVersion
+            Directory,
+            NumberOfPythonDllFiles,
+            (PPUNICODE_STRING)PythonDllFilesW,
+            &Exists,
+            &WhichIndex,
+            &WhichFilename
         );
 
         if (!Success) {
             goto Error;
         }
 
-        if (!Home.PythonDllPath) {
+        if (Exists) {
 
             //
-            // No Python directory found here, go to next.
+            // This directory is a Python path, so add it to our prefix tree.
             //
 
+            RtlInsertUnicodePrefix(
+                RemovePrefixTable,
+                Directory,
+                PrefixTableEntry
+            );
+
+            //
+            // Advance our PrefixTableEntry pointer to the next allocated
+            // struct.
+            //
+
+            PrefixTableEntry++;
         }
 
         //
-        // Found Python directory.
+        // Advance our Directory pointer.
         //
+
+        Directory++;
 
     }
 
-    Success = TRUE;
+    //
+    // Enumerate over the directories again and remove any that have a prefix
+    // match against the list of Python home directories we found.
+    //
+
+    Directory = Path->Directories;
+    KeepPrefixTable = &Path->PathsPrefixTable;
+
+    for (Index = 0; Index < Path->NumberOfElements; Index++) {
+
+        //
+        // Search the PathsToRemove prefix table for this directory.
+        //
+
+        RemovePrefixTableEntry = RtlFindUnicodePrefix(
+            RemovePrefixTable,
+            Directory,
+            0
+        );
+
+        //
+        // We don't care if the match wasn't exact, as long as it's a prefix,
+        // let's remove it.
+        //
+
+        if (RemovePrefixTableEntry) {
+
+            //
+            // Find the corresponding prefix table entry in the "keep" table
+            // and remove it.
+            //
+
+            PrefixTableEntry = RtlFindUnicodePrefix(
+                KeepPrefixTable,
+                Directory,
+                0
+            );
+
+            if (!PrefixTableEntry) {
+                __debugbreak();
+                goto Error;
+            }
+
+            RtlRemoveUnicodePrefix(KeepPrefixTable, PrefixTableEntry);
+        }
+
+        //
+        // Advance to the next directory.
+        //
+
+        Directory++;
+    }
+
+    //
+    // Copy the Python path entries we want to the front of our final path
+    // environment string.
+    //
+
+    String = &Path->NewPaths;
+    Dest = String->Buffer;
+
+    //
+    // Point the directory pointer at the first of the Python home path entries
+    // we want to add.
+    //
+
+    Directory = Session->PathEntries;
+
+    for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
+
+        Bytes = Directory->Length;
+        Count = Bytes >> 1;
+        __movsw(Dest, Directory->Buffer, Count);
+
+        Dest += Count;
+        *Dest++ = L';';
+
+        Directory++;
+    }
+
+    //
+    // Sanity check: make sure our Dest pointer is where we expected.
+    //
+
+    ExpectedDest = (PWCHAR)(
+        RtlOffsetToPointer(
+            Path->NewPaths.Buffer,
+            ReservedUnicodeBufferSizeInBytes.LongPart
+        )
+    );
+
+    if (ExpectedDest != Dest) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Do a final enumeration of the directories, look for those that have an
+    // exact match in the "keep" prefix table, and copy them to the final path
+    // environment variable string.
+    //
+
+    Directory = Path->Directories;
+
+    for (Index = 0; Index < Path->NumberOfElements; Index++) {
+
+        PrefixTableEntry = RtlFindUnicodePrefix(
+            KeepPrefixTable,
+            Directory,
+            TRUE
+        );
+
+        if (!PrefixTableEntry) {
+            Directory++;
+            continue;
+        }
+
+        //
+        // Copy the directory.
+        //
+
+        Bytes = Directory->Length;
+        Count = Bytes >> 1;
+        __movsw(Dest, Directory->Buffer, Count);
+
+        //
+        // Add the path separator.
+        //
+
+        Dest += Count;
+        *Dest++ = L';';
+
+        //
+        // Advance the directory pointer.
+        //
+
+        Directory++;
+
+    }
+
+    //
+    // Change the final trailing character into a NULL and set the lengths.
+    //
+
+    --Dest;
+
+    if (*Dest != L';') {
+        __debugbreak();
+        goto Error;
+    }
+
+    *Dest-- = L'\0';
+
+    //
+    // Update the string length.  (MaximumLength will already be set.)
+    //
+
+    String->Length = (USHORT)(Dest - String->Buffer);
+
+    ExpectedMaximumLength = (
+        Path->Paths.MaximumLength +
+        ReservedUnicodeBufferSizeInBytes.LowPart
+    );
+    if (String->MaximumLength != ExpectedMaximumLength) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Finally, set the new path environment value.
+    //
+
+    Success = SetEnvironmentVariableW(PATH_ENV_NAME, String->Buffer);
 
     //
     // Intentional follow-on.
     //
 
-
 Error:
-
-    if (Path) {
-
-        if (Path->Hashes) {
-            Allocator->FreePointer(Allocator->Context, Path->Hashes);
-        }
-
-        Allocator->FreePointer(Allocator->Context, Path);
-    }
-
-
-End:
+    DestroyPathEnvironmentVariable(&Path);
 
     return Success;
 }

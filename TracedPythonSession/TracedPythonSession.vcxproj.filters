@@ -44,5 +44,11 @@
     <ClCompile Include="RemoveConflictingPythonPathsFromPathEnvironmentVariable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LoadPathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DestroyPathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
