@@ -32,6 +32,9 @@ Returns:
 
 --*/
 {
+    USHORT Index;
+    PALLOCATOR Allocator;
+    PUNICODE_STRING Directory;
     PTRACED_PYTHON_SESSION Session;
 
     //
@@ -77,6 +80,39 @@ Returns:
         Session->Threadpool = NULL;
     }
 
+    Allocator = Session->Allocator;
+
+    if (!Allocator) {
+        goto End;
+    }
+
+    //
+    // Free the Dll and Exe paths.
+    //
+
+    //
+    // Disable this for now as it clashes with the tls heap dealloc logic.
+    //
+    goto End;
+
+    if (Session->PythonDllPath) {
+        Allocator->FreePointer(Allocator->Context, &Session->PythonDllPath);
+    }
+
+    if (Session->PythonExePath) {
+        Allocator->FreePointer(Allocator->Context, &Session->PythonExePath);
+    }
+
+    //
+    // Enumerate the path entries and free them.
+    //
+
+    Directory = Session->PathEntries;
+    for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
+        Allocator->Free(Allocator->Context, Directory);
+        Directory += sizeof(UNICODE_STRING);
+    }
+
     //
     // XXX todo: remaining deallocation logic.
     //
@@ -84,6 +120,8 @@ Returns:
     //
     // XXX todo: FreeLibrary() on all modules we loaded.
     //
+End:
+    return;
 
 }
 

@@ -9,6 +9,8 @@ extern "C" {
 
 #include "stdafx.h"
 
+static CONST PWSTR PATH_ENV_NAME = L"Path";
+
 typedef struct _TRACED_PYTHON_SESSION {
 
     //
@@ -276,6 +278,104 @@ typedef struct _TRACED_PYTHON_SESSION {
 
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 
+typedef _Struct_size_bytes_(Size) struct _PATH_ENV_VAR {
+
+    _Field_range_(==, sizeof(struct _PATH_ENV_VAR)) USHORT StructSize;
+
+    USHORT FirstAlignedAllocSizeInBytes;
+    USHORT SecondAlignedAllocSizeInBytes;
+
+    USHORT NumberOfElements;
+    USHORT ReservedUnicodeBufferSizeInBytes;
+
+    //
+    // Pad out to an 8-byte boundary.
+    //
+
+    USHORT Padding[3];
+
+    //
+    // The allocator used to create this structure.
+    //
+
+    PALLOCATOR Allocator;
+
+    //
+    // Bitmap for directory end points.
+    //
+
+    RTL_BITMAP Bitmap;
+
+    UNICODE_STRING Paths;
+    UNICODE_STRING NewPaths;
+    UNICODE_PREFIX_TABLE PathsPrefixTable;
+    UNICODE_PREFIX_TABLE PathsToRemovePrefixTable;
+
+    //
+    // Pointer to the first element of an array of UNICODE_STRING structs used
+    // to capture each directory in the path.
+    //
+
+    PUNICODE_STRING Directories;
+
+    //
+    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
+    // structs used for the PathsPrefixTable.
+    //
+
+    PUNICODE_PREFIX_TABLE_ENTRY PathsPrefixTableEntries;
+
+    //
+    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
+    // structs used for the PathsToRemovePrefixTable.
+    //
+
+    PUNICODE_PREFIX_TABLE_ENTRY PathsToRemovePrefixTableEntries;
+
+} PATH_ENV_VAR, *PPATH_ENV_VAR, **PPPATH_ENV_VAR;
+
+typedef struct _PYTHON_HOME {
+
+    //
+    // Size of the entire structure, in bytes.
+    //
+
+    USHORT Size;
+
+    //
+    // Python major version ('2' or '3') and minor version, as derived from the
+    // DLL path name.
+    //
+
+    CHAR PythonMajorVersion;
+    CHAR PythonMinorVersion;
+
+    //
+    // Number of paths pointed to by the PathEntries array below.
+    //
+
+    USHORT NumberOfPathEntries;
+
+    //
+    // Padding out to 8 bytes.
+    //
+
+    USHORT   Unused1;
+
+    //
+    // Array of PUNICODE_STRING paths to add to the DLL path.  Size is governed
+    // by NumberOfPathEntries.
+    //
+
+    PUNICODE_STRING PathEntries;
+
+    UNICODE_STRING Directory;
+
+    PUNICODE_STRING DllPath;
+    PUNICODE_STRING ExePath;
+
+} PYTHON_HOME, *PPYTHON_HOME;
+
 typedef
 _Success_(return != 0)
 BOOL
@@ -305,24 +405,20 @@ typedef DESTROY_TRACED_PYTHON_SESSION *PDESTROY_TRACED_PYTHON_SESSION;
 
 typedef
 _Success_(return != 0)
-_Check_return_
-__allocator
-PVOID
-(HEAP_ALLOCATION_ROUTINE)(
-    _In_ PALLOCATION_CONTEXT AllocationContext,
-    _In_ ULONG ByteSize
+PPATH_ENV_VAR
+(LOAD_PATH_ENVIRONMENT_VARIABLE)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ USHORT ReservedUnicodeBufferSizeInBytes
     );
-
-typedef HEAP_ALLOCATION_ROUTINE *PHEAP_ALLOCATION_ROUTINE;
+typedef LOAD_PATH_ENVIRONMENT_VARIABLE *PLOAD_PATH_ENVIRONMENT_VARIABLE;
 
 typedef
 VOID
-(HEAP_FREE_ROUTINE)(
-    _In_ PFREE_CONTEXT FreeContext,
-    __deallocate(Mem) _In_ PVOID Buffer
+(DESTROY_PATH_ENVIRONMENT_VARIABLE)(
+    _Inout_ PPPATH_ENV_VAR PathPointer
     );
-
-typedef HEAP_FREE_ROUTINE *PHEAP_FREE_ROUTINE;
+typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
 
 #ifdef __cpp
 } // extern "C"
