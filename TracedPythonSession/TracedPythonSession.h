@@ -306,9 +306,21 @@ typedef _Struct_size_bytes_(Size) struct _PATH_ENV_VAR {
 
     RTL_BITMAP Bitmap;
 
+    //
+    // A UNICODE_STRING wrapping the PATH environment variable value.
+    //
+
     UNICODE_STRING Paths;
+
+    //
+    // A UNICODE_STRING that will wrap the new PATH environment variable to
+    // be set, if there is one.
+    //
+
     UNICODE_STRING NewPaths;
+
     UNICODE_PREFIX_TABLE PathsPrefixTable;
+    UNICODE_PREFIX_TABLE PathsToAddPrefixTable;
     UNICODE_PREFIX_TABLE PathsToRemovePrefixTable;
 
     //
@@ -390,12 +402,12 @@ typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
 typedef
 _Success_(return != 0)
 BOOL
-(REMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE)(
+(SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON)(
     _In_ PTRACED_PYTHON_SESSION Session
     );
 
-typedef  REMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE \
-        *PREMOVE_CONFLICTING_PYTHON_PATHS_FROM_PATH_ENVIRONMENT_VARIABLE;
+typedef  SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON \
+        *PSANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON;
 
 typedef
 VOID (DESTROY_TRACED_PYTHON_SESSION)(

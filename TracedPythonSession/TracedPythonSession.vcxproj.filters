@@ -41,13 +41,13 @@
     <ClCompile Include="InitializeTracedPythonSession.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RemoveConflictingPythonPathsFromPathEnvironmentVariable.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LoadPathEnvironmentVariable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DestroyPathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SanitizePathEnvironmentVariableForPython.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

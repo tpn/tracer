@@ -466,7 +466,7 @@ FoundPython:
     // Remove conflicting PATH entries from our environment variable.
     //
 
-    Success = RemoveConflictingPythonPathsFromPathEnvironmentVariable(Session);
+    Success = SanitizePathEnvironmentVariableForPython(Session);
     if (!Success) {
         OutputDebugStringA("Failed to remove conflicting Python PATHs.\n");
     }
@@ -474,6 +474,8 @@ FoundPython:
     //
     // Temporarily change into the Python HOME directory.
     //
+
+    AddDllDirectory(Directory->Buffer);
 
     Success = ChangeIntoPythonHomeDirectory(Session);
     if (!Success) {
@@ -622,6 +624,11 @@ LoadPythonDll:
         Python->Py_SetProgramNameA(Session->PythonExePathA->Buffer);
         Python->Py_SetPythonHomeA(Session->PythonHomePathA->Buffer);
 
+        SetEnvironmentVariableA(
+            "PYTHONHOME",
+            Session->PythonHomePathA->Buffer
+        );
+
         Python->Py_Initialize();
 
         if (Python->PySys_SetArgvExA) {
@@ -646,6 +653,11 @@ LoadPythonDll:
         Python->Py_SetProgramNameW(Session->PythonExePath->Buffer);
         Python->Py_SetPythonHomeW(Session->PythonHomePath->Buffer);
 
+        SetEnvironmentVariableW(
+            L"PYTHONHOME",
+            Session->PythonHomePath->Buffer
+        );
+
         Python->Py_Initialize();
 
         if (Python->PySys_SetArgvExW) {
@@ -667,7 +679,9 @@ LoadPythonDll:
     // Change back to the original directory.
     //
 
-    SetCurrentDirectoryW(Session->OriginalDirectory->Buffer);
+    if (Session->OriginalDirectory) {
+        SetCurrentDirectoryW(Session->OriginalDirectory->Buffer);
+    }
 
     //
     // Allocate and initialize TraceSession.

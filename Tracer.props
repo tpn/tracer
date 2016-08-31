@@ -4,6 +4,7 @@
   
   <PropertyGroup Label="Configuration">
     <PlatformToolset></PlatformToolset>
+    <DefaultPlatformToolset>v140</DefaultPlatformToolset>
   </PropertyGroup>
 
   <Choose>
