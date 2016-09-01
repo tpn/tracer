@@ -316,7 +316,7 @@ PyTraceCallback(
 
         } else if (IsReturn) {
 
-            Context->Depth++;
+            Context->Depth--;
 
         }
 
