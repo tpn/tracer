@@ -15,3 +15,4 @@ msbuild.log
 sdv
 sdv.temp
 *.vcxproj.user
+.ipynb_checkpoints
