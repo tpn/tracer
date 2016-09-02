@@ -17,6 +17,76 @@ Abstract:
 
 #include "stdafx.h"
 
+_Use_decl_annotations_
+BOOL
+CreateMemoryMapsForTraceStore(
+    PTRACE_STORE TraceStore,
+    PTRACE_CONTEXT TraceContext,
+    ULONG NumberOfItems
+    )
+/*--
+
+Routine Description:
+
+    This routine creates memory maps for a given trace store.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct that the memory
+        maps are created for.
+
+    TraceContext - Supplies a pointer to the TRACE_CONTEXT struct associated
+        with the trace store.
+
+    NumberOfItems - Supplies the number of memory maps to create.  If this
+        value is zero, the default value will be used.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE_MEMORY_MAP MemoryMaps;
+    SIZE_T AllocationSize;
+    ULONG Index;
+
+    if (!NumberOfItems) {
+        NumberOfItems = InitialFreeMemoryMaps;
+    }
+
+    AllocationSize = sizeof(TRACE_STORE_MEMORY_MAP) * NumberOfItems;
+
+    MemoryMaps = HeapAlloc(TraceContext->HeapHandle,
+                           HEAP_ZERO_MEMORY,
+                           AllocationSize);
+
+    if (!MemoryMaps) {
+        return FALSE;
+    }
+
+    //
+    // Carve the chunk of memory allocated above into list items, then push
+    // them onto the free list.
+    //
+
+    for (Index = 0; Index < NumberOfItems; Index++) {
+        PTRACE_STORE_MEMORY_MAP MemoryMap = &MemoryMaps[Index];
+
+        //
+        // Ensure the ListItem is aligned on the MEMORY_ALLOCATION_ALIGNMENT.
+        // This is a requirement for the underlying SLIST_ENTRY.
+        //
+        if (((ULONG_PTR)MemoryMap & (MEMORY_ALLOCATION_ALIGNMENT - 1)) != 0) {
+            __debugbreak();
+        }
+
+        PushTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, MemoryMap);
+    }
+
+    return TRUE;
+}
+
 
 _Use_decl_annotations_
 VOID
@@ -444,6 +514,175 @@ End:
 }
 
 _Use_decl_annotations_
+BOOL
+ReleasePrevTraceStoreMemoryMap(
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine closes a trace store memory map.  This flushes the view of
+    the file at the memory map's base address, then unmaps it and clears the
+    base address pointer, then closes the corresponding memory map handle
+    and clears that pointer.
+
+    This routine is forgiving: it can be called with a NULL pointer, a NULL
+    BaseAddress pointer, or a NULL MappingHandle, simplifying error handling
+    logic.
+
+    BaseAddress and MappingHandle will be cleared after the flushing/unmapping
+    and handle closing has been done, respectively.
+
+Arguments:
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PRTL Rtl;
+    HRESULT Result;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+    TRACE_STORE_ADDRESS Address;
+    LARGE_INTEGER PreviousTimestamp;
+    LARGE_INTEGER Elapsed;
+    PLARGE_INTEGER ElapsedPointer;
+
+    if (!PopTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, &MemoryMap)) {
+        return FALSE;
+    }
+
+    UnmapTraceStoreMemoryMap(MemoryMap);
+
+    if (!MemoryMap->pAddress) {
+        goto Finish;
+    }
+
+    Rtl = TraceStore->Rtl;
+
+    //
+    // Take a local copy of the address record, update timestamps and
+    // calculate elapsed time, then save the local record back to the
+    // backing TRACE_STORE_ADDRESS struct.
+    //
+
+    Result = Rtl->RtlCopyMappedMemory(
+        &Address,
+        MemoryMap->pAddress,
+        sizeof(Address)
+    );
+
+    if (FAILED(Result)) {
+
+        //
+        // Ignore and continue.
+        //
+
+        goto Finish;
+    }
+
+    //
+    // Get a local copy of the elapsed start time.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Copy it to the Released timestamp.
+    //
+
+    Address.Timestamp.Released.QuadPart = Elapsed.QuadPart;
+
+    //
+    // Determine what state this memory map was in at the time of being closed.
+    // For a memory map that has progressed through the normal lifecycle, it'll
+    // typically be in 'AwaitingRelease' at this point.  However, we could be
+    // getting called against an active memory map or prepared memory map if
+    // we're getting released as a result of closing the trace store.
+    //
+
+    if (Address.Timestamp.Retired.QuadPart != 0) {
+
+        //
+        // Normal memory map awaiting retirement.  Elapsed.AwaitingRelease
+        // will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Retired.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingRelease;
+
+    } else if (Address.Timestamp.Consumed.QuadPart != 0) {
+
+        //
+        // An active memory map.  Elapsed.Active will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Consumed.QuadPart;
+        ElapsedPointer = &Address.Elapsed.Active;
+
+    } else if (Address.Timestamp.Prepared.QuadPart != 0) {
+
+        //
+        // A prepared memory map awaiting consumption.
+        // Elapsed.AwaitingConsumption will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Prepared.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingConsumption;
+
+    } else {
+
+        //
+        // A memory map that wasn't even prepared.  Highly unlikely.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Requested.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingPreparation;
+    }
+
+    //
+    // Calculate the elapsed time.
+    //
+
+    Elapsed.QuadPart -= PreviousTimestamp.QuadPart;
+
+    //
+    // Update the target elapsed time.
+    //
+
+    ElapsedPointer->QuadPart = Elapsed.QuadPart;
+
+    //
+    // Copy the local record back to the backing store and ignore the
+    // return value.
+    //
+
+    Rtl->RtlCopyMappedMemory(MemoryMap->pAddress,
+                             &Address,
+                             sizeof(Address));
+
+Finish:
+    ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
+    return TRUE;
+}
+
+VOID
+CALLBACK
+ReleasePrevTraceStoreMemoryMapCallback(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    )
+{
+    ReleasePrevTraceStoreMemoryMap((PTRACE_STORE)Context);
+}
+
+
+_Use_decl_annotations_
 VOID
 CloseMemoryMap(
     PTRACE_STORE_MEMORY_MAP MemoryMap
@@ -503,6 +742,46 @@ Return Value:
         MemoryMap->MappingHandle = NULL;
     }
 }
+
+_Use_decl_annotations_
+BOOL
+UnmapTraceStoreMemoryMap(
+    PTRACE_STORE_MEMORY_MAP MemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine unmaps a trace store memory map's view and closes the memory
+    mapping handle.
+
+Arguments:
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    if (!MemoryMap) {
+        return FALSE;
+    }
+
+    if (MemoryMap->BaseAddress) {
+        UnmapViewOfFile(MemoryMap->BaseAddress);
+        MemoryMap->BaseAddress = NULL;
+    }
+
+    if (MemoryMap->MappingHandle) {
+        CloseHandle(MemoryMap->MappingHandle);
+        MemoryMap->MappingHandle = NULL;
+    }
+
+    return TRUE;
+}
+
 
 _Use_decl_annotations_
 VOID
