@@ -24,26 +24,6 @@ extern "C" {
 
 #include "stdafx.h"
 
-#ifdef _TRACE_STORE
-
-//
-// This is an internal build of the TraceStore component.
-//
-
-#define TRACE_STORE_API __declspec(dllexport)
-#define TRACE_STORE_DATA extern __declspec(dllexport)
-
-#else
-
-//
-// We're being included by an external component.
-//
-
-#define TRACE_STORE_API __declspec(dllimport)
-#define TRACE_STORE_DATA extern __declspec(dllimport)
-
-#endif
-
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
 
@@ -247,6 +227,8 @@ typedef struct _TRACE_STORE_STATS {
     // counter would indicate an anomalous condition as the number of possible
     // memory map structures kept "in flight" is relatively predictable for
     // a given set of trace stores: prev prev, prev, active, and then next.
+    // The solution would be to increase the default number of free memory
+    // maps.)
     //
 
     ULONG ExhaustedFreeMemoryMaps;
@@ -256,13 +238,18 @@ typedef struct _TRACE_STORE_STATS {
     // next memory map hadn't been prepared yet in the asynchronous thread
     // pool.  When a new memory map is "consumed", a threadpool work item is
     // submitted to prepare the next memory map for the trace store, such that
-    // there's always a ready memory map as soon as the current one is has been
+    // there's always a ready memory map as soon as the current one has been
     // exhausted.  A high value for this counter means that an entire memory
     // map section was consumed before the next memory map could be prepared;
     // this typically happens when there's a confluence of three things in
     // particular: a fast CPU, a tight loop being traced (i.e. a very high rate
     // of trace store allocations), and a memory map size being set too small.
-    // Bumping the size of each individual memory map should fix this.
+    // Bumping the size of each individual memory map should fix this because
+    // the time required to prepare a memory map isn't directly proportional
+    // to the size of the memory map -- that is, the kernel doesn't have to
+    // do that much more work to prepare a 10MB mapping versus a 2MB mapping,
+    // but a trace store consumer will take a lot longer to consume a 10MB
+    // chunk versus a 2MB chunk.
     //
 
     ULONG AllocationsOutpacingNextMemoryMapPreparation;
@@ -274,7 +261,8 @@ typedef struct _TRACE_STORE_STATS {
     // address.  This has performance implications for trace store readers that
     // need to remap trace stores at the same address but are unable, as they'll
     // have to do expensive on-the-fly remappings of any embedded pointers
-    // before the memory map can be used.
+    // before the memory map can be used.  (Similar to the cost incurred by
+    // the loader when a DLL can't be mapped at its preferred address.)
     //
 
     ULONG PreferredAddressUnavailable;
@@ -291,7 +279,6 @@ typedef struct _TRACE_SESSION {
     PCWSTR              DomainName;
     FILETIME            SystemTime;
 } TRACE_SESSION, *PTRACE_SESSION;
-
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -310,6 +297,15 @@ typedef struct _TRACE_STORE_INFO {
     TRACE_STORE_STATS   Stats;
 
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
+
+//
+// Forward definitions.
+//
+
+typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
+typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
+typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
+typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 typedef struct _TRACE_CONTEXT_FLAGS {
     union {
@@ -346,6 +342,13 @@ typedef struct _TRACE_STORE_THREADPOOL {
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
+//
+// This is the workhorse of the trace store machinery: the 64-byte (one cache
+// line) memory map struct that captures details about a given trace store
+// memory mapping section.  These are pushed and popped atomically off the
+// interlocked singly-linked list heads for each TRACE_STORE struct.
+//
+
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_MEMORY_MAP {
     union {
         DECLSPEC_ALIGN(16) SLIST_ENTRY              ListEntry;   // 8       8
@@ -369,6 +372,18 @@ typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_MEMORY_MAP {
 typedef volatile PTRACE_STORE_MEMORY_MAP VPTRACE_STORE_MEMORY_MAP;
 
 C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(ALLOCATE_RECORDS)(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords
+    );
+typedef ALLOCATE_RECORDS *PALLOCATE_RECORDS;
 
 typedef struct _TRACE_STORE {
     SLIST_HEADER            CloseMemoryMaps;
@@ -431,7 +446,6 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE            InfoStore;
 
     PALLOCATE_RECORDS       AllocateRecords;
-    PFREE_RECORDS           FreeRecords;
 
     //
     // Inline TRACE_STORE_ALLOCATION.
@@ -506,7 +520,7 @@ typedef struct _TRACE_STORE {
                     ULONG DroppedRecords;
                     ULONG ExhaustedFreeMemoryMaps;
                     ULONG AllocationsOutpacingNextMemoryMapPreparation;
-                    ULONG Unused1;
+                    ULONG PreferredAddressUnavailable;
                 };
 
             };
@@ -531,78 +545,6 @@ typedef struct _TRACE_STORE {
     WCHAR PathBuffer[_OUR_MAX_PATH];
 
 } TRACE_STORE, *PTRACE_STORE;
-
-
-static const LPCWSTR TraceStoreFileNames[] = {
-    L"TraceEvent.dat",
-    L"TraceString.dat",
-    L"TraceStringBuffer.dat",
-    L"TraceHashedString.dat",
-    L"TraceHashedStringBuffer.dat",
-    L"TraceBuffer.dat",
-    L"TraceFunctionTable.dat",
-    L"TraceFunctionTableEntry.dat",
-    L"TracePathTable.dat",
-    L"TracePathTableEntry.dat",
-    L"TraceSession.dat",
-    L"TraceFilenameString.dat",
-    L"TraceFilenameStringBuffer.dat",
-    L"TraceDirectoryString.dat",
-    L"TraceDirectoryStringBuffer.dat",
-};
-
-static const WCHAR TraceStoreAllocationSuffix[] = L":allocation";
-static const DWORD TraceStoreAllocationSuffixLength = (
-    sizeof(TraceStoreAllocationSuffix) /
-    sizeof(WCHAR)
-);
-
-static const WCHAR TraceStoreAddressSuffix[] = L":address";
-static const DWORD TraceStoreAddressSuffixLength = (
-    sizeof(TraceStoreAddressSuffix) /
-    sizeof(WCHAR)
-);
-
-static const WCHAR TraceStoreInfoSuffix[] = L":info";
-static const DWORD TraceStoreInfoSuffixLength = (
-    sizeof(TraceStoreInfoSuffix) /
-    sizeof(WCHAR)
-);
-
-static const USHORT LongestTraceStoreSuffixLength = (
-    sizeof(TraceStoreAllocationSuffix) /
-    sizeof(WCHAR)
-);
-
-static const USHORT NumberOfTraceStores = (
-    sizeof(TraceStoreFileNames) /
-    sizeof(LPCWSTR)
-);
-
-static const USHORT ElementsPerTraceStore = 4;
-
-//
-// The Event trace store gets an initial file size of 80MB,
-// everything else gets 10MB.
-//
-
-static const ULONG InitialTraceStoreFileSizes[] = {
-    10 << 23,   // Event
-    10 << 20,   // String
-    10 << 20,   // StringBuffer
-    10 << 20,   // HashedString
-    10 << 20,   // HashedStringBuffer
-    10 << 20,   // Buffer
-    10 << 20,   // FunctionTable
-    10 << 20,   // FunctionTableEntry
-    10 << 20,   // PathTable
-    10 << 20,   // PathTableEntry
-    10 << 20,   // TraceSession
-    10 << 20,   // TraceFilenameString
-    10 << 20,   // TraceFilenameStringBuffer
-    10 << 20,   // TraceDirectoryString
-    10 << 20    // TraceDirectoryStringBuffer
-};
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -630,9 +572,9 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_SESSION)(
-    _In_                              PRTL           Rtl,
-    _In_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
-    _In_                              PULONG         SizeOfTraceSession
+    _In_                                 PRTL           Rtl,
+    _Inout_bytecap_(*SizeOfTraceSession) PTRACE_SESSION TraceSession,
+    _In_                                 PULONG         SizeOfTraceSession
     );
 typedef INITIALIZE_TRACE_SESSION *PINITIALIZE_TRACE_SESSION;
 TRACE_STORE_API INITIALIZE_TRACE_SESSION InitializeTraceSession;
@@ -772,6 +714,14 @@ TraceStoreQueryPerformanceCounter(
     TraceTimeQueryPerformanceCounter(&TraceStore->TraceContext->Time,
                                      ElapsedPointer);
 }
+
+FORCEINLINE
+BOOL
+IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
+{
+    return TraceStore->IsMetadata;
+}
+
 
 #ifdef __cpp
 } // extern "C"
