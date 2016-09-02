@@ -45,6 +45,7 @@
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\Wdk.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
@@ -56,11 +57,19 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+ 
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TraceStoreConstants.h" />
     <ClInclude Include="TraceStoreIndex.h" />
     <ClInclude Include="TraceStore.h" />
+    <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c">
@@ -70,6 +79,13 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TraceStore.c" />
+    <ClCompile Include="TraceStoreAllocation.c" />
+    <ClCompile Include="TraceStoreContext.c" />
+    <ClCompile Include="TraceStoreMemoryMap.c" />
+    <ClCompile Include="TraceStorePath.c" />
+    <ClCompile Include="TraceStores.c" />
+    <ClCompile Include="TraceStoreSession.c" />
+    <ClCompile Include="TraceStoreTime.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
