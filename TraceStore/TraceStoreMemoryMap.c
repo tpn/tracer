@@ -443,31 +443,100 @@ End:
     return Success;
 }
 
+_Use_decl_annotations_
 VOID
-CloseMemoryMap(_In_ PTRACE_STORE_MEMORY_MAP MemoryMap)
+CloseMemoryMap(
+    PTRACE_STORE_MEMORY_MAP MemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine closes a trace store memory map.  This flushes the view of
+    the file at the memory map's base address, then unmaps it and clears the
+    base address pointer, then closes the corresponding memory map handle
+    and clears that pointer.
+
+    This routine is forgiving: it can be called with a NULL pointer, a NULL
+    BaseAddress pointer, or a NULL MappingHandle, simplifying error handling
+    logic.
+
+    BaseAddress and MappingHandle will be cleared after the flushing/unmapping
+    and handle closing has been done, respectively.
+
+Arguments:
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    None.
+
+--*/
 {
+    //
+    // Validate arguments.
+    //
+
     if (!MemoryMap) {
         return;
     }
 
     if (MemoryMap->BaseAddress) {
+
+        //
+        // Flush the view, unmap it, then clear the base address pointer.
+        //
+
         FlushViewOfFile(MemoryMap->BaseAddress, 0);
         UnmapViewOfFile(MemoryMap->BaseAddress);
         MemoryMap->BaseAddress = NULL;
     }
 
     if (MemoryMap->MappingHandle) {
+
+        //
+        // Close the memory mapping handle and clear the pointer.
+        //
+
         CloseHandle(MemoryMap->MappingHandle);
         MemoryMap->MappingHandle = NULL;
     }
 }
 
+_Use_decl_annotations_
 VOID
 SubmitCloseMemoryMapThreadpoolWork(
-    _In_ PTRACE_STORE TraceStore,
-    _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    PTRACE_STORE TraceStore,
+    PPTRACE_STORE_MEMORY_MAP MemoryMap
     )
+/*++
+
+Routine Description:
+
+    This routine submits a memory map to a trace store's close memory map
+    thread pool work routine.  It is used to asynchronously close trace store
+    memory maps.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+    MemoryMap - Supplies a pointer to an address that contains a pointer to the
+        trace store memory map to close.  The pointer will be cleared as the
+        last step of this routine.
+
+Return Value:
+
+    None.
+
+--*/
 {
+
+    //
+    // Validate arguments.
+    //
+
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
@@ -476,20 +545,65 @@ SubmitCloseMemoryMapThreadpoolWork(
         return;
     }
 
+    //
+    // Push the referenced memory map onto the trace store's close memory map
+    // list and submit a close memory map threadpool work item, then clear the
+    // memory map pointer.
+    //
+
     PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, *MemoryMap);
     SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
     *MemoryMap = NULL;
 }
 
+_Use_decl_annotations_
 BOOL
 ConsumeNextTraceStoreMemoryMap(
-    _Inout_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
+/*++
+
+Routine Description:
+
+    This routine consumes the next trace store memory map for a trace store.
+    It is called via two paths: a) once, by BindTraceStoreToTraceContext(),
+    when a trace store's first memory map needs to be activated, and b) by
+    a trace store's AllocateRecords() function, when the current memory map
+    has been exhausted and it needs the next one in order to satisfy the memory
+    allocation.
+
+    Consuming the next memory map involves: a) retiring the current memory map
+    (sending it to the "prev" list), b) popping the next memory map off the
+    "ready" list, and b) preparing a "next memory map" based off the ready one
+    for submission to the "prepare next memory map" threadpool.
+
+    A central design tenet of the tracing machinery is that it should be as
+    low-latency as possible, with a dropped trace record being preferable to
+    a thread stalled waiting for backing memory maps to be available.  Thus,
+    if this routine cannot immediately satisfy the steps required to perform
+    its duty without blocking, it will immediately return FALSE, indicating
+    that the next memory map is not yet ready.
+
+    Callers of this routine should always check the return value to ascertain
+    whether or not the next memory map could be activated.  They are free to
+    retry as often as they want.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure from which to
+        consume the next memory map.
+
+Return Value:
+
+    TRUE if the next memory map was successfully "consumed", FALSE otherwise.
+
+--*/
 {
     BOOL Success;
     BOOL IsMetadata;
     HRESULT Result;
     PRTL Rtl;
+    PTRACE_CONTEXT TraceContext;
     PTRACE_STORE_MEMORY_MAP PrevPrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     PTRACE_STORE_MEMORY_MAP PrepareMemoryMap;
@@ -499,21 +613,23 @@ ConsumeNextTraceStoreMemoryMap(
     LARGE_INTEGER Elapsed;
     PTRACE_STORE_STATS Stats;
     TRACE_STORE_STATS DummyStats = { 0 };
+    PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;
+
+    //
+    // Validate arguments.
+    //
+
+    if (TraceStore) {
+        return FALSE;
+    }
+
+    //
+    // Initialize aliases.
+    //
 
     Rtl = TraceStore->Rtl;
-
-    //
-    // We need to switch out the current memory map for a new one in order
-    // to satisfy this allocation.  This involves: a) retiring the current
-    // memory map (sending it to the "prev" list), b) popping an available
-    // one off the ready list, and c) preparing a "next memory map" based
-    // off the ready one for submission to the threadpool.
-    //
-    // Note: we want our allocator to be as low-latency as possible, so
-    // dropped trace records are preferable to indeterminate waits for
-    // resources to be available.
-    //
-
+    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
+    TraceContext = TraceStore->TraceContext;
 
     //
     // We may not have a stats struct available yet if this is the first
@@ -528,6 +644,10 @@ ConsumeNextTraceStoreMemoryMap(
         Stats = &DummyStats;
     }
 
+    //
+    // The previous memory map becomes the previous-previous memory map.
+    //
+
     PrevPrevMemoryMap = TraceStore->PrevMemoryMap;
 
     IsMetadata = IsMetadataTraceStore(TraceStore);
@@ -537,6 +657,12 @@ ConsumeNextTraceStoreMemoryMap(
     //
 
     if (!PrevPrevMemoryMap) {
+
+        //
+        // No previous previous memory map needs to be retired, so we can jump
+        // straight into preparation.
+        //
+
         goto StartPreparation;
     }
 
@@ -562,9 +688,7 @@ ConsumeNextTraceStoreMemoryMap(
     // Take a local copy of the address record.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(&Address,
-                                      AddressPointer,
-                                      sizeof(Address));
+    Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
 
     if (FAILED(Result)) {
 
@@ -596,9 +720,7 @@ ConsumeNextTraceStoreMemoryMap(
     // Copy back to the memory mapped backing store.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(AddressPointer,
-                                      &Address,
-                                      sizeof(Address));
+    Result = RtlCopyMappedMemory(AddressPointer, &Address, sizeof(Address));
 
     if (FAILED(Result)) {
 
@@ -614,26 +736,29 @@ RetireOldMemoryMap:
 
     SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
 
-    //
-    // Pop a memory map descriptor off the free list to use for the
-    // PrepareMemoryMap.
-    //
-
 StartPreparation:
 
-    Success = PopFreeTraceStoreMemoryMap(TraceStore,
-                                         &PrepareMemoryMap);
+    //
+    // Pop a memory map descriptor off the free list to use for the
+    // PrepareMemoryMap.  If there are no free memory maps, attempt to create
+    // a new set.  If this fails, increment the dropped record and exhausted
+    // free memory maps counter and return FALSE indicating that we failed to
+    // prepare the next memory map.
+    //
+
+    Success = PopFreeTraceStoreMemoryMap(TraceStore, &PrepareMemoryMap);
 
     if (!Success) {
 
-        Success = CreateMemoryMapsForTraceStore(TraceStore,
-                                                TraceStore->TraceContext,
-                                                0);
+        Success = CreateMemoryMapsForTraceStore(TraceStore, TraceContext, 0);
 
         if (Success) {
 
-            Success = PopFreeTraceStoreMemoryMap(TraceStore,
-                                                 &PrepareMemoryMap);
+            //
+            // Attempt to obtain a free memory map again.
+            //
+
+            Success = PopFreeTraceStoreMemoryMap(TraceStore, &PrepareMemoryMap);
         }
 
         if (!Success) {
@@ -702,9 +827,9 @@ StartPreparation:
     // backing TRACE_STORE_ADDRESS struct.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(&Address,
-                                      MemoryMap->pAddress,
-                                      sizeof(Address));
+    Result = RtlCopyMappedMemory(&Address,
+                                 MemoryMap->pAddress,
+                                 sizeof(Address));
 
     if (FAILED(Result)) {
 
@@ -753,9 +878,9 @@ StartPreparation:
     // return value.
     //
 
-    Rtl->RtlCopyMappedMemory(MemoryMap->pAddress,
-                             &Address,
-                             sizeof(Address));
+    RtlCopyMappedMemory(MemoryMap->pAddress,
+                        &Address,
+                        sizeof(Address));
 
 PrepareMemoryMap:
 
@@ -809,11 +934,7 @@ PrepareMemoryMap:
     // Take a local copy.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(
-        &Address,
-        AddressPointer,
-        sizeof(Address)
-    );
+    Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
 
     if (FAILED(Result)) {
 
@@ -834,9 +955,7 @@ PrepareMemoryMap:
     // Copy the local record back to the backing store.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(AddressPointer,
-                                      &Address,
-                                      sizeof(Address));
+    Result = RtlCopyMappedMemory(AddressPointer, &Address, sizeof(Address));
 
     if (SUCCEEDED(Result)) {
 
@@ -856,6 +975,12 @@ PrepareMemoryMap:
     }
 
 SubmitPreparedMemoryMap:
+
+    //
+    // Push the prepare memory map to the relevant list and submit a threadpool
+    // work item.
+    //
+
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, PrepareMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
 

@@ -45,6 +45,7 @@ _Success_(return != 0)
 ULONG
 (GET_LONGEST_TRACE_STORE_FILENAME)(VOID);
 typedef GET_LONGEST_TRACE_STORE_FILENAME *PGET_LONGEST_TRACE_STORE_FILENAME;
+GET_LONGEST_TRACE_STORE_FILENAME GetLongestTraceStoreFileName;
 
 typedef
 _Success_(return != 0)
@@ -76,6 +77,18 @@ INITIALIZE_TRACE_STORE_TIME InitializeTraceStoreTime;
 //
 
 typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(CREATE_MEMORY_MAPS_FOR_TRACE_STORE)(
+    _Inout_ PTRACE_STORE TraceStore,
+    _Inout_ PTRACE_CONTEXT TraceContext,
+    _In_ ULONG NumberOfItems
+    );
+typedef CREATE_MEMORY_MAPS_FOR_TRACE_STORE *PCREATE_MEMORY_MAPS_FOR_TRACE_STORE;
+CREATE_MEMORY_MAPS_FOR_TRACE_STORE CreateMemoryMapsForTraceStore;
+
+typedef
 VOID
 (CALLBACK PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK)(
     _In_ PTP_CALLBACK_INSTANCE Instance,
@@ -97,6 +110,57 @@ typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
        *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP;
 PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
     PrepareNextTraceStoreMemoryMap;
+
+typedef
+VOID
+(CALLBACK RELEASE_PREV_MEMORY_MAP_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef RELEASE_PREV_MEMORY_MAP_CALLBACK *PRELEASE_PREV_MEMORY_MAP_CALLBACK;
+RELEASE_PREV_MEMORY_MAP_CALLBACK ReleasePrevMemoryMapCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RELEASE_PREV_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef RELEASE_PREV_MEMORY_MAP_CALLBACK *PRELEASE_PREV_MEMORY_MAP_CALLBACK;
+RELEASE_PREV_MEMORY_MAP_CALLBACK ReleasePrevMemoryMapCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FLUSH_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    );
+typedef FLUSH_TRACE_STORE_MEMORY_MAP *PFLUSH_TRACE_STORE_MEMORY_MAP;
+FLUSH_TRACE_STORE_MEMORY_MAP FlushTraceStoreMemoryMap;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(UNMAP_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    );
+typedef UNMAP_TRACE_STORE_MEMORY_MAP *PUNMAP_TRACE_STORE_MEMORY_MAP;
+UNMAP_TRACE_STORE_MEMORY_MAP UnmapTraceStoreMemoryMap;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CONSUME_NEXT_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef  CONSUME_NEXT_TRACE_STORE_MEMORY_MAP \
+       *PCONSUME_NEXT_TRACE_STORE_MEMORY_MAP;
+CONSUME_NEXT_TRACE_STORE_MEMORY_MAP ConsumeNextTraceStoreMemoryMap;
 
 typedef
 VOID
@@ -208,6 +272,21 @@ GetTraceStoreMemoryMapFileInfo(
 }
 
 //
+// TraceStoreAddress-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(LOAD_NEXT_TRACE_STORE_ADDRESS)(
+    _In_    PTRACE_STORE TraceStore,
+    _Out_   PPTRACE_STORE_ADDRESS AddressPointer
+    );
+typedef LOAD_NEXT_TRACE_STORE_ADDRESS *PLOAD_NEXT_TRACE_STORE_ADDRESS;
+LOAD_NEXT_TRACE_STORE_ADDRESS LoadNextTraceStoreAddress;
+
+//
 // TraceStoreAllocation-related functions.
 //
 
@@ -253,6 +332,23 @@ INITIALIZE_TRACE_SESSION InitializeTraceSession;
 //
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORE)(
+    _In_        PRTL Rtl,
+    _In_        PCWSTR Path,
+    _Inout_     PTRACE_STORE TraceStore,
+    _Inout_     PTRACE_STORE AllocationStore,
+    _Inout_     PTRACE_STORE AddressStore,
+    _Inout_     PTRACE_STORE InfoStore,
+    _In_opt_    ULONG InitialSize,
+    _In_opt_    ULONG MappingSize
+    );
+typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
+INITIALIZE_TRACE_STORE InitializeTraceStore;
+
+typedef
 _Success_(return != 0)
 BOOL
 (TRUNCATE_STORE)(
@@ -277,14 +373,26 @@ VOID
 typedef CLOSE_TRACE_STORE *PCLOSE_TRACE_STORE;
 CLOSE_TRACE_STORE CloseTraceStore;
 
-typedef
-VOID
-(CLOSE_TRACE_STORES)(
-    _In_ PTRACE_STORES TraceStores
-    );
-typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
-CLOSE_TRACE_STORES CloseTraceStores;
+//
+// TraceStoreSystemTimer-related functions.
+//
 
+typedef
+_Success_(return != 0)
+PSYSTEM_TIMER_FUNCTION
+(GET_SYSTEM_TIMER_FUNCTION)(VOID);
+typedef GET_SYSTEM_TIMER_FUNCTION *PGET_SYSTEM_TIMER_FUNCTION;
+GET_SYSTEM_TIMER_FUNCTION GetSystemTimerFunction;
+
+typedef
+_Success_(return != 0)
+BOOL
+(CALL_SYSTEM_TIMER)(
+    _Out_       PFILETIME   SystemTime,
+    _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
+    );
+typedef CALL_SYSTEM_TIMER *PCALL_SYSTEM_TIMER;
+CALL_SYSTEM_TIMER CallSystemTimer;
 
 //
 // TraceStorePrefault-related functions.
@@ -358,7 +466,7 @@ Return Value:
     //
 
     PrefaultList = &TraceStore->PrefaultMemoryMaps;
-    Success = PopTraceStoreMemoryMap(&PrefaultList, &PrefaultMemoryMap);
+    Success = PopTraceStoreMemoryMap(PrefaultList, &PrefaultMemoryMap);
 
     if (!Success) {
         return;

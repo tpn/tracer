@@ -255,7 +255,7 @@ Return Value:
     }
 
     TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
-        &PrefaultFuturePageCallback,
+        &PrefaultFutureTraceStorePageCallback,
         TraceStore,
         TraceContext->ThreadpoolCallbackEnvironment
     );
