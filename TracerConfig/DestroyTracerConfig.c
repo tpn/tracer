@@ -21,6 +21,26 @@ VOID
 DestroyTracerConfig(
     PTRACER_CONFIG TracerConfig
     )
+/*++
+
+Routine Description:
+
+    Destroys a TracerConfig structure.  This method is as forgiving as it can
+    be with regards to the state of the TracerConfig instance passed in.  A
+    partially-initialized or even NULL pointer can be passed in safely.  The
+    routine will attempt to clean up as much as it can based on the fields
+    that have values set.
+
+Arguments:
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG struct to be
+        destroyed.  Can be partially-initialized or even NULL.
+
+Return Value:
+
+    None.
+
+--*/
 {
     USHORT Index;
     USHORT Offset;

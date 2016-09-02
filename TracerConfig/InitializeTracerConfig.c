@@ -127,6 +127,7 @@ Return Value:
 
     //
     // Copy the intermediate bit of the path (e.g. "\\x64\\Debug\\").
+    //
 
     Dest += Count;
     Source = IntermediatePath->Buffer;
@@ -161,12 +162,33 @@ Return Value:
     return TRUE;
 }
 
-//
-// Helper macro for reading REG_DWORD values from the registry into a local
-// TRACER_FLAGS Flags structure.  Name is the name of the flag, and Default
-// is the name of the default value if the registry key couldn't be read.
-//
+/*++
 
+    VOID
+    READ_REG_DWORD_FLAG(
+        Name,
+        Default
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry
+    into a local TRACER_FLAGS Flags structure.
+
+Arguments:
+
+    Name - Name of the flag to read (e.g. LoadDebugLibraries).  The macro
+        resolves this to Flags.Name (e.g. Flags.LoadDebugLibraries).
+
+    Default - Default value to assign to the flag (Flags.Name) if the
+        registry key couldn't be read successfully (because it was not
+        present, or was an incorrect type).
+
+Return Value:
+
+    None.
+
+--*/
 #define READ_REG_DWORD_FLAG(Name, Default) do { \
     ULONG Value;                                \
     ULONG ValueLength = sizeof(Value);          \
@@ -208,7 +230,7 @@ Return Value:
         Optional
         )
 
-Macro Description:
+Routine Description:
 
     Helper macro for reading REG_SZ path values.  The size of the string
     is obtained first, then an attempt is made to allocate a sufficiently-
@@ -219,6 +241,9 @@ Macro Description:
 
     If any errors occur, the Error handler is jumped to.
 
+    This macro is intended to be called from within the body of the
+    InitializeTracerConfig() routine.
+
 Arguments:
 
     Name - Name of the path in the TRACER_PATHS structure.
@@ -228,7 +253,7 @@ Arguments:
 
 Return Value:
 
-    N/A.
+    None.
 
 --*/
 #define READ_REG_SZ_PATH(Name, Optional) do {                \
@@ -467,6 +492,11 @@ Return Value:
 
     READ_REG_SZ_PATH(InstallationDirectory, Mandatory);
     READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
+
+    //
+    // Load the optional DefaultPythonDirectory.
+    //
+
     READ_REG_SZ_PATH(DefaultPythonDirectory, Optional);
 
     //
@@ -489,7 +519,7 @@ Error:
 
     //
     // DestroyTracerConfig() accepts a TracerConfig in a partially initialized
-    // state (or a completely NULL TracerConfig), so we're find to call it here
+    // state (or a completely NULL TracerConfig), so we're fine to call it here
     // regardless of the actual error.
     //
 
@@ -506,6 +536,11 @@ Error:
     //
 
 End:
+
+    //
+    // Close the registry key and return TracerConfig.  (If an error occurred,
+    // this will be NULL, see above.)
+    //
 
     RegCloseKey(RegistryKey);
 
