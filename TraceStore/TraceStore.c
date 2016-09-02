@@ -404,30 +404,6 @@ CloseTraceStore(
 }
 
 VOID
-PrefaultFutureTraceStorePage(_Inout_ PTRACE_STORE TraceStore)
-{
-    BOOL Success;
-    PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
-
-    if (!TraceStore) {
-        return;
-    }
-
-    Success = PopTraceStoreMemoryMap(
-        &TraceStore->PrefaultMemoryMaps,
-        &PrefaultMemoryMap
-    );
-
-    if (!Success) {
-        return;
-    }
-
-    PrefaultPage(PrefaultMemoryMap->NextAddress);
-
-    ReturnFreeTraceStoreMemoryMap(TraceStore, PrefaultMemoryMap);
-}
-
-VOID
 CALLBACK
 PrefaultFuturePageCallback(
     _Inout_     PTP_CALLBACK_INSTANCE   Instance,

@@ -715,6 +715,11 @@ TraceStoreQueryPerformanceCounter(
                                      ElapsedPointer);
 }
 
+//
+// Helper routines for determining if a trace store is a metadata trace store,
+// and whether or not a trace store has varying record sizes.
+//
+
 FORCEINLINE
 BOOL
 IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
@@ -722,6 +727,39 @@ IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
     return TraceStore->IsMetadata;
 }
 
+FORCEINLINE
+BOOL
+HasVaryingRecordSizes(
+    _In_    PTRACE_STORE    TraceStore
+    )
+/*--
+
+Routine Description:
+
+    This routine indicates whether or not a trace store has varying record
+    sizes.  That is, whether or not AllocateRecords() has been called with
+    identical record count + record size parameters every time.  This is
+    determined by simply comparing the trace store's end of file to the
+    current trace store allocation record's record size * number of records.
+    If they don't match, the trace store has varying record sizes.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct.
+
+Return Value:
+
+    TRUE if the trace store has varying record sizes, FALSE if not.
+
+--*/
+{
+    return (
+        TraceStore->pEof->EndOfFile.QuadPart != (
+            TraceStore->pAllocation->RecordSize.QuadPart *
+            TraceStore->pAllocation->NumberOfRecords.QuadPart
+        )
+    );
+}
 
 #ifdef __cpp
 } // extern "C"
