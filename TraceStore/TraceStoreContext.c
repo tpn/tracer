@@ -265,7 +265,7 @@ Return Value:
     }
 
     TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
-        &ReleasePrevMemoryMapCallback,
+        &ReleasePrevTraceStoreMemoryMapCallback,
         TraceStore,
         TraceContext->ThreadpoolCallbackEnvironment
     );

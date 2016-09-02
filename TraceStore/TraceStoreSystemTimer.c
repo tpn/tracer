@@ -35,22 +35,22 @@ GetSystemTimerFunctionCallback(
         return FALSE;
     }
 
-    Module = GetModuleHandleA("kernel32");
+    Module = GetModuleHandleW(L"kernel32");
     if (Module == INVALID_HANDLE_VALUE) {
         return FALSE;
     }
 
-    Proc = GetProcAddressA(Module, "GetSystemTimePreciseAsFileTime");
+    Proc = GetProcAddress(Module, "GetSystemTimePreciseAsFileTime");
     if (Proc) {
         SystemTimerFunction.GetSystemTimePreciseAsFileTime = (
             (PGETSYSTEMTIMEPRECISEASFILETIME)Proc
         );
     } else {
-        Module = LoadLibraryA("ntdll");
+        Module = LoadLibraryW(L"ntdll");
         if (!Module) {
             return FALSE;
         }
-        Proc = GetProcAddressA(Module, "NtQuerySystemTime");
+        Proc = GetProcAddress(Module, "NtQuerySystemTime");
         if (!Proc) {
             return FALSE;
         }

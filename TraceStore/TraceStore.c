@@ -405,7 +405,7 @@ CloseTraceStore(
 
 VOID
 CALLBACK
-PrefaultFuturePageCallback(
+PrefaultFutureTraceStorePageCallback(
     _Inout_     PTP_CALLBACK_INSTANCE   Instance,
     _Inout_opt_ PVOID                   Context,
     _Inout_     PTP_WORK                Work
