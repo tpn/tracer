@@ -14,26 +14,6 @@ Abstract:
 
 #pragma once
 
-#ifdef _TRACE_STORE_INTERNAL_BUILD
-
-//
-// This is an internal build of the TraceStore component.
-//
-
-#define TRACE_STORE_API __declspec(dllexport)
-#define TRACE_STORE_DATA extern __declspec(dllexport)
-
-#else
-
-//
-// We're being included by an external component.
-//
-
-#define TRACE_STORE_API __declspec(dllimport)
-#define TRACE_STORE_DATA extern __declspec(dllimport)
-
-#endif
-
 #include "targetver.h"
 
 #include <Windows.h>

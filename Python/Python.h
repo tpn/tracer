@@ -1,5 +1,21 @@
-// Copyright(c) Trent Nelson <trent@trent.me>
-// All rights reserved.
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Python.h
+
+Abstract:
+
+    This is the main header file for the Python component.
+
+    This component is responsible for providing a single facade, by way of the
+    PYTHON struct, to all supported versions of Python runtimes.  The component
+    also provides additional functionality to facilitate runtime tracing of the
+    interpreter via the standard line tracing and profiling hooks.
+
+--*/
 
 #pragma once
 
@@ -7,9 +23,23 @@
 extern "C" {
 #endif
 
+#ifdef _PYTHON_INTERNAL_BUILD
+
+#define PYTHON_API __declspec(dllexport)
+#define PYTHON_DATA extern __declspec(dllexport)
+
+#include "stdafx.h"
+
+#else
+
+#define PYTHON_API __declspec(dllimport)
+#define PYTHON_DATA extern __declspec(dllimport)
+
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-#include "../Tracer/Tracer.h"
+//#include "PythonDllFiles.h"
+
+#endif
 
 enum PythonVersion {
     PythonVersion_Unknown,
@@ -2354,23 +2384,23 @@ typedef struct _PYTHON {
     PPYOBJECT CodeObjectCache[32];
 } PYTHON, *PPYTHON, **PPPYTHON;
 
-TRACER_API FIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
+PYTHON_API FIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
 
-TRACER_API
+PYTHON_API
 BOOL
 SetPythonAllocators(
     _In_    PPYTHON             Python,
     _In_    PPYTHON_ALLOCATORS  Allocators
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateString(
     _In_  PPYTHON  Python,
     _Out_ PPSTRING StringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateStringAndBuffer(
     _In_  PPYTHON  Python,
@@ -2378,7 +2408,7 @@ AllocateStringAndBuffer(
     _Out_ PPSTRING StringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateStringBuffer(
     _In_  PPYTHON  Python,
@@ -2386,42 +2416,42 @@ AllocateStringBuffer(
     _In_  PSTRING  String
     );
 
-TRACER_API
+PYTHON_API
 VOID
 FreeString(
     _In_        PPYTHON Python,
     _In_opt_    PSTRING String
     );
 
-TRACER_API
+PYTHON_API
 VOID
 FreeStringAndBuffer(
     _In_        PPYTHON Python,
     _In_opt_    PSTRING String
     );
 
-TRACER_API
+PYTHON_API
 VOID
 FreeStringBuffer(
     _In_        PPYTHON Python,
     _In_opt_    PSTRING String
     );
 
-TRACER_API
+PYTHON_API
 VOID
 FreeStringBufferDirect(
     _In_        PPYTHON Python,
     _In_opt_    PVOID   Buffer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateHashedString(
     _In_  PPYTHON                   Python,
     _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateHashedStringAndBuffer(
     _In_  PPYTHON Python,
@@ -2429,7 +2459,7 @@ AllocateHashedStringAndBuffer(
     _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 FinalizeHashedString(
     _In_    PPYTHON                 Python,
@@ -2437,7 +2467,7 @@ FinalizeHashedString(
     _Out_   PPPYTHON_HASHED_STRING  UpdatedHashedStringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocateBuffer(
     _In_  PPYTHON Python,
@@ -2445,35 +2475,35 @@ AllocateBuffer(
     _Out_ PPVOID  BufferPointer
     );
 
-TRACER_API
+PYTHON_API
 VOID
 FreeBuffer(
     _In_        PPYTHON Python,
     _In_opt_    PVOID   Buffer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonFunctionTable(
     _In_ PPYTHON Python,
     _Out_ PPPYTHON_FUNCTION_TABLE FunctionTablePointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTable(
     _In_ PPYTHON Python,
     _Out_ PPPYTHON_PATH_TABLE PathTablePointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntry(
     _In_  PPYTHON Python,
     _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndString(
     _In_  PPYTHON                   Python,
@@ -2481,7 +2511,7 @@ AllocatePythonPathTableEntryAndString(
     _Out_ PPSTRING                  StringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndStringWithBuffer(
     _In_  PPYTHON                   Python,
@@ -2490,7 +2520,7 @@ AllocatePythonPathTableEntryAndStringWithBuffer(
     _Out_ PPSTRING                  StringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndHashedString(
     _In_  PPYTHON                   Python,
@@ -2498,7 +2528,7 @@ AllocatePythonPathTableEntryAndHashedString(
     _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndHashedStringWithBuffer(
     _In_  PPYTHON                   Python,
@@ -2507,7 +2537,7 @@ AllocatePythonPathTableEntryAndHashedStringWithBuffer(
     _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 HashAndAtomizeAnsi(
     _In_    PPYTHON Python,
@@ -2524,7 +2554,7 @@ typedef BOOL (*PINITIALIZE_PYTHON)(
     _Inout_                      PULONG              SizeOfPython
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 InitializePython(
     _In_                         PRTL                Rtl,
@@ -2533,7 +2563,7 @@ InitializePython(
     _Inout_                      PULONG              SizeOfPython
     );
 
-TRACER_API
+PYTHON_API
 VOID
 SetPythonThreadpoolCallbackEnvironment(
     _In_ PPYTHON              Python,
@@ -2541,13 +2571,13 @@ SetPythonThreadpoolCallbackEnvironment(
     );
 
 
-TRACER_API
+PYTHON_API
 BOOL
 InitializePythonRuntimeTables(
     _In_      PPYTHON             Python
     );
 
-TRACER_API
+PYTHON_API
 BOOL
 RegisterFrame(
     _In_      PPYTHON         Python,

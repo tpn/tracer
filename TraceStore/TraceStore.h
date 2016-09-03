@@ -11,9 +11,6 @@ Abstract:
     This is the main header file for the TraceStore component.  It defines
     structures and functions related to all aspects of TraceStore functionality.
 
-    External consumers include this file.  Internal modules include stdafx.h,
-    which includes this file and the declarations of all functions defined here.
-
 --*/
 
 #pragma once
@@ -22,7 +19,34 @@ Abstract:
 extern "C" {
 #endif
 
+#ifdef _TRACE_STORE_INTERNAL_BUILD
+
+//
+// This is an internal build of the TraceStore component.
+//
+
+#define TRACE_STORE_API __declspec(dllexport)
+#define TRACE_STORE_DATA extern __declspec(dllexport)
+
 #include "stdafx.h"
+
+#else
+
+//
+// We're being included by an external component.
+//
+
+#define TRACE_STORE_API __declspec(dllimport)
+#define TRACE_STORE_DATA extern __declspec(dllimport)
+
+#include <Windows.h>
+#include <sal.h>
+#include <Strsafe.h>
+#include "../Rtl/Rtl.h"
+#include "../TracerConfig/TracerConfig.h"
+#include "TraceStoreIndex.h"
+
+#endif
 
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
@@ -289,14 +313,33 @@ typedef struct _TRACE_SESSION {
 //
 
 typedef struct _TRACE_STORE_INFO {
-
     TRACE_STORE_EOF     Eof;
-
     TRACE_STORE_TIME    Time;
-
     TRACE_STORE_STATS   Stats;
-
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
+
+typedef
+VOID
+(WINAPI GET_SYSTEM_TIME_PRECISE_AS_FILETIME)(
+    _Out_ LPFILETIME lpSystemTimeAsFileTime
+    );
+typedef GET_SYSTEM_TIME_PRECISE_AS_FILETIME \
+    *PGET_SYSTEM_TIME_PRECISE_AS_FILETIME;
+
+typedef
+NTSTATUS
+(WINAPI NT_QUERY_SYSTEM_TIME)(
+    _Out_ PLARGE_INTEGER SystemTime
+    );
+typedef NT_QUERY_SYSTEM_TIME *PNT_QUERY_SYSTEM_TIME;
+
+typedef struct _TIMER_FUNCTION {
+    PGET_SYSTEM_TIME_PRECISE_AS_FILETIME GetSystemTimePreciseAsFileTime;
+    PNT_QUERY_SYSTEM_TIME NtQuerySystemTime;
+} TIMER_FUNCTION;
+
+typedef TIMER_FUNCTION *PTIMER_FUNCTION;
+typedef TIMER_FUNCTION **PPTIMER_FUNCTION;
 
 //
 // Forward definitions.
@@ -325,7 +368,7 @@ typedef struct _TRACE_CONTEXT {
     PRTL                        Rtl;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
-    PSYSTEM_TIMER_FUNCTION      SystemTimerFunction;
+    PTIMER_FUNCTION             TimerFunction;
     PVOID                       UserData;
     PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
     HANDLE                      HeapHandle;
@@ -618,6 +661,7 @@ VOID
     _In_ PTRACE_STORES TraceStores
     );
 typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
+TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
 
 
 ////////////////////////////////////////////////////////////////////////////////

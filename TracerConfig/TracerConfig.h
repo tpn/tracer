@@ -1,6 +1,53 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    TracerConfig.h
+
+Abstract:
+
+    This is the main header file for the TracerConfig component.  It provides
+    a runtime interface to tracer configuration settings mostly derived from
+    the registry.
+
+--*/
+
 #pragma once
 
+#ifdef __cpplus
+extern "C" {
+#endif
+
+#ifdef _TRACER_CONFIG_INTERNAL_BUILD
+
+//
+// This is an internal build of the TracerConfig component.
+//
+
+#define TRACER_CONFIG_API __declspec(dllexport)
+#define TRACER_CONFIG_DATA extern __declspec(dllexport)
+
+#include "stdafx.h"
+
+#else
+
+//
+// We're being included by an external component.
+//
+
+#ifdef _TRACER_CONFIG_DLL
+#define TRACER_CONFIG_API __declspec(dllimport)
+#define TRACER_CONFIG_DATA extern __declspec(dllimport)
+#else
+#define TRACER_CONFIG_API
+#define TRACER_CONFIG_DATA extern
+#endif
+
 #include "../Rtl/Rtl.h"
+
+#endif
 
 //
 // Constants.
@@ -22,6 +69,7 @@ BOOLEAN
     );
 
 typedef CREATE_TRACE_SESSION_DIRECTORY *PCREATE_TRACE_SESSION_DIRECTORY;
+TRACER_CONFIG_API CREATE_TRACE_SESSION_DIRECTORY CreateTraceSessionDirectory;
 
 typedef
 _Check_return_
@@ -71,9 +119,9 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     // debug versions of the libraries.
     //
 
-    UNICODE_STRING TracerDllPath;
     UNICODE_STRING RtlDllPath;
     UNICODE_STRING PythonDllPath;
+    UNICODE_STRING TraceStoreDllPath;
     UNICODE_STRING PythonTracerDllPath;
     UNICODE_STRING TlsTracerHeapDllPath;
 
@@ -237,6 +285,7 @@ PTRACER_CONFIG
     _In_ PUNICODE_STRING RegistryPath
     );
 typedef INITIALIZE_TRACER_CONFIG *PINITIALIZE_TRACER_CONFIG;
+TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
 
 typedef
 _Success_(return != 0)
@@ -251,6 +300,7 @@ VOID
     _In_opt_ PTRACER_CONFIG TracerConfig
     );
 typedef DESTROY_TRACER_CONFIG *PDESTROY_TRACER_CONFIG;
+TRACER_CONFIG_API DESTROY_TRACER_CONFIG DestroyTracerConfig;
 
 typedef
 VOID
@@ -260,5 +310,9 @@ typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
 
 #define TRACER_CONFIG_POOL_TAG ((ULONG)'pCrT')
 #define TRACER_CONFIG_POOL_PRIORITY LowPoolPriority
+
+#ifdef __cpplus
+} // extern "C" {
+#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

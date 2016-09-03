@@ -71,7 +71,7 @@
     <ClCompile Include="TraceStoreAddress.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TraceStoreSystemTimer.c">
+    <ClCompile Include="TraceStoreTimer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

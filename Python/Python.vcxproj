@@ -66,6 +66,11 @@
       -->
     </Link>
   </ItemDefinitionGroup>  
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_PYTHON_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="PythonDllFiles.h" />
     <ClInclude Include="stdafx.h" />

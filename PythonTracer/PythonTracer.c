@@ -1,18 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 // PythonTracer.c
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "stdafx.h"
-#include "PythonTracerPrivate.h"
-
-//
-// Forward decls of DLL exports.
-//
-
-TRACER_API INITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
 
 BOOL
 InitializePythonTraceSession(
@@ -24,7 +18,7 @@ InitializePythonTraceSession(
 
 PVOID
 TraceStoreAllocationRoutine(
-    _In_opt_ PVOID AllocationContext,
+    _In_ PVOID AllocationContext,
     _In_ const ULONG ByteSize
     )
 {
@@ -42,7 +36,7 @@ TraceStoreAllocationRoutine(
 
 PVOID
 TraceStoreCallocRoutine(
-    _In_opt_ PVOID AllocationContext,
+    _In_ PVOID AllocationContext,
     _In_ SIZE_T NumberOfElements,
     _In_ SIZE_T ElementSize
     )
@@ -61,7 +55,6 @@ TraceStoreCallocRoutine(
         &NumberOfRecords
     );
 }
-
 
 PPYTHON_TRACE_EVENT
 AllocatePythonTraceEvent(
@@ -87,11 +80,16 @@ TraceStoreFreeRoutine(
     _In_     PVOID Buffer
     )
 {
-    PTRACE_STORE TraceStore = (PTRACE_STORE)FreeContext;
+    return;
+    
+    /*
+    PTRACE_STORE TraceStore;
+    TraceStore = (PTRACE_STORE)FreeContext;
 
     TraceStore->FreeRecords(TraceStore->TraceContext,
                             TraceStore,
                             Buffer);
+    */
 }
 
 BOOL
@@ -1046,12 +1044,13 @@ AddFunction(
     return TRUE;
 }
 
+_Success_(return != 0)
 BOOL
 AddPrefixTableEntry(
-    _In_      PPYTHON_TRACE_CONTEXT   Context,
-    _In_      PPYOBJECT               StringObject,
-    _In_      PPREFIX_TABLE           PrefixTable,
-    _Out_opt_ PPPREFIX_TABLE_ENTRY    EntryPointer
+    _In_  PPYTHON_TRACE_CONTEXT Context,
+    _In_  PPYOBJECT             StringObject,
+    _In_  PPREFIX_TABLE         PrefixTable,
+    _Out_ PPPREFIX_TABLE_ENTRY  EntryPointer
     )
 {
     PRTL Rtl;
@@ -1178,9 +1177,7 @@ AddPrefixTableEntry(
     //
 
     if (Success) {
-        if (ARGUMENT_PRESENT(EntryPointer)) {
-            *EntryPointer = Entry;
-        }
+        *EntryPointer = Entry;
     } else {
 
         //
@@ -1188,6 +1185,7 @@ AddPrefixTableEntry(
         //
 
         __debugbreak();
+        return FALSE;
     }
 
     return TRUE;
@@ -1201,6 +1199,7 @@ AddModuleName(
     )
 {
     BOOL Success;
+    PPREFIX_TABLE_ENTRY PrefixTableEntry;
 
     if (!ARGUMENT_PRESENT(Context)) {
         return FALSE;
@@ -1213,7 +1212,7 @@ AddModuleName(
     Success = AddPrefixTableEntry(Context,
                                   ModuleNameObject,
                                   &Context->ModuleFilterTable,
-                                  NULL);
+                                  &PrefixTableEntry);
 
     if (Success) {
         Context->HasModuleFilter = TRUE;

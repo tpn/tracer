@@ -80,8 +80,8 @@ Return Value:
         return FALSE;
     }
 
-    TraceContext->SystemTimerFunction = GetSystemTimerFunction();
-    if (!TraceContext->SystemTimerFunction) {
+    TraceContext->TimerFunction = TraceStoreGetTimerFunction();
+    if (!TraceContext->TimerFunction) {
         return FALSE;
     }
 

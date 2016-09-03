@@ -1,4 +1,4 @@
-#include "Rtl.h"
+#include "stdafx.h"
 
 static PRTL_COMPARE_STRING _RtlCompareString = NULL;
 

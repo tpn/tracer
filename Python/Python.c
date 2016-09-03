@@ -1,8 +1,5 @@
 
 #include "stdafx.h"
-#include <Windows.h>
-#include "Python.h"
-#include "../Tracer/Tracing.h"
 
 #pragma intrinsic(strlen)
 
@@ -582,7 +579,7 @@ FreePythonPathTableEntry(
 
 }
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndString(
     _In_  PPYTHON                   Python,
@@ -604,7 +601,7 @@ AllocatePythonPathTableEntryAndStringWithBuffer(
     return FALSE;
 }
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndHashedString(
     _In_  PPYTHON                   Python,
@@ -615,7 +612,7 @@ AllocatePythonPathTableEntryAndHashedString(
     return FALSE;
 }
 
-TRACER_API
+PYTHON_API
 BOOL
 AllocatePythonPathTableEntryAndHashedStringWithBuffer(
     _In_  PPYTHON                   Python,
@@ -3803,7 +3800,7 @@ End:
     return IsValidFunction(Function);
 }
 
-TRACER_API
+PYTHON_API
 BOOL
 HashAndAtomizeAnsi(
     _In_    PPYTHON Python,

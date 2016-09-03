@@ -1,6 +1,24 @@
-#include "TracerConfigPrivate.h"
+/*++
 
-#include "../Rtl/Rtl.h"
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    TracerConfigConstants.h
+
+Abstract:
+
+    This module defines constants related to the TracerConfig component.
+
+--*/
+
+#pragma once
+
+#ifdef __cpplus
+extern "C" {
+#endif
+
+#include "stdafx.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // TracerConfig Paths
@@ -19,11 +37,11 @@ static CONST UNICODE_STRING x64_Debug = \
 static CONST UNICODE_STRING RtlDllPath = \
     RTL_CONSTANT_STRING(L"Rtl.dll");
 
-static CONST UNICODE_STRING TracerDllPath = \
-    RTL_CONSTANT_STRING(L"Tracer.dll");
-
 static CONST UNICODE_STRING PythonDllPath = \
     RTL_CONSTANT_STRING(L"Python.dll");
+
+static CONST UNICODE_STRING TraceStoreDllPath = \
+    RTL_CONSTANT_STRING(L"TraceStore.dll");
 
 static CONST UNICODE_STRING PythonTracerDllPath = \
     RTL_CONSTANT_STRING(L"PythonTracer.dll");
@@ -52,8 +70,8 @@ static CONST struct {
     PCUNICODE_STRING DllPath;
 } PathOffsets[] = {
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
-    { FIELD_OFFSET(TRACER_PATHS, TracerDllPath),        &TracerDllPath        },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
+    { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
     { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath }
 };
@@ -62,5 +80,9 @@ static CONST USHORT NumberOfPathOffsets = (
     sizeof(PathOffsets) /
     sizeof(PathOffsets[0])
 );
+
+#ifdef __cpplus
+} // extern "C" {
+#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

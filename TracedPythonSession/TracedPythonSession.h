@@ -1,5 +1,23 @@
-// Copyright(c) Trent Nelson <trent@trent.me>
-// All rights reserved.
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    TracedPythonSession.h
+
+Abstract:
+
+    This is the main header file for the TracedPythonSession component.  This
+    component is responsible for managing the runtime configuration required to
+    trace a Python interpreter using the trace store functionality.
+
+    It depends on the following components: Rtl, Python, PythonTracer,
+    TracerConfig, and TraceStore.
+
+    It is currently used by the TracedPythonExe component.
+
+--*/
 
 #pragma once
 
@@ -7,7 +25,35 @@
 extern "C" {
 #endif
 
+#ifdef _TRACED_PYTHON_SESSION_INTERNAL_BUILD
+
+//
+// This is an internal build of the TracedPythonSession component.
+//
+
+#define TRACED_PYTHON_SESSION_API __declspec(dllexport)
+#define TRACED_PYTHON_SESSION_DATA extern __declspec(dllexport)
+
 #include "stdafx.h"
+
+#else
+
+//
+// We're being included by an external component.
+//
+
+#define TRACED_PYTHON_SESSION_API __declspec(dllimport)
+#define TRACED_PYTHON_SESSION_DATA extern __declspec(dllimport)
+
+#include <Windows.h>
+#include "../Rtl/Rtl.h"
+#include "../Python/Python.h"
+#include "../TraceStore/TraceStore.h"
+#include "../PythonTracer/PythonTracer.h"
+#include "../TracerConfig/TracerConfig.h"
+
+#endif
+
 
 static CONST PWSTR PATH_ENV_NAME = L"Path";
 
@@ -111,7 +157,7 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     HMODULE RtlModule;
     HMODULE HookModule;
-    HMODULE TracerModule;
+    HMODULE TraceStoreModule;
 
     //
     // Python-specific tracer modules.
@@ -190,9 +236,9 @@ typedef struct _TRACED_PYTHON_SESSION {
     // Hook-specific functions.
     //
 
-    PHOOK Hook;
-    PUNHOOK Unhook;
-    PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
+    //PHOOK Hook;
+    //PUNHOOK Unhook;
+    //PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
 
     //
     // Tracer-specific initializers.
