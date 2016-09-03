@@ -93,8 +93,8 @@ VOID
 CALLBACK
 PrepareNextTraceStoreMemoryMapCallback(
     PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
+    PVOID                 Context,
+    PTP_WORK              Work
     )
 /*--
 
@@ -516,7 +516,7 @@ End:
 _Use_decl_annotations_
 BOOL
 ReleasePrevTraceStoreMemoryMap(
-    _In_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
 /*++
 
@@ -670,14 +670,22 @@ Finish:
     return TRUE;
 }
 
+_Use_decl_annotations_
 VOID
 CALLBACK
 ReleasePrevTraceStoreMemoryMapCallback(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
+    PTP_CALLBACK_INSTANCE   Instance,
+    PVOID                   Context,
+    PTP_WORK                Work
     )
 {
+    //
+    // Ensure Context is non-NULL.
+    //
+    if (!Context) {
+        return;
+    }
+
     ReleasePrevTraceStoreMemoryMap((PTRACE_STORE)Context);
 }
 
@@ -863,10 +871,6 @@ Routine Description:
     its duty without blocking, it will immediately return FALSE, indicating
     that the next memory map is not yet ready.
 
-    Callers of this routine should always check the return value to ascertain
-    whether or not the next memory map could be activated.  They are free to
-    retry as often as they want.
-
 Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE structure from which to
@@ -898,7 +902,7 @@ Return Value:
     // Validate arguments.
     //
 
-    if (TraceStore) {
+    if (!TraceStore) {
         return FALSE;
     }
 

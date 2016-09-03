@@ -124,7 +124,6 @@ RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
     ReleasePrevTraceStoreMemoryMapCallback;
 
 typedef
-_Check_return_
 _Success_(return != 0)
 BOOL
 (RELEASE_PREV_TRACE_STORE_MEMORY_MAP)(
@@ -145,7 +144,6 @@ typedef FLUSH_TRACE_STORE_MEMORY_MAP *PFLUSH_TRACE_STORE_MEMORY_MAP;
 FLUSH_TRACE_STORE_MEMORY_MAP FlushTraceStoreMemoryMap;
 
 typedef
-_Check_return_
 _Success_(return != 0)
 BOOL
 (UNMAP_TRACE_STORE_MEMORY_MAP)(
@@ -155,7 +153,6 @@ typedef UNMAP_TRACE_STORE_MEMORY_MAP *PUNMAP_TRACE_STORE_MEMORY_MAP;
 UNMAP_TRACE_STORE_MEMORY_MAP UnmapTraceStoreMemoryMap;
 
 typedef
-_Check_return_
 _Success_(return != 0)
 BOOL
 (CONSUME_NEXT_TRACE_STORE_MEMORY_MAP)(
@@ -192,8 +189,8 @@ SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
 FORCEINLINE
 VOID
 ReturnFreeTraceStoreMemoryMap(
-    _Inout_ PTRACE_STORE TraceStore,
-    _Inout_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 {
     SecureZeroMemory(MemoryMap, sizeof(*MemoryMap));
@@ -209,15 +206,32 @@ ReturnFreeTraceStoreMemoryMap(
 }
 
 FORCEINLINE
+_Check_return_
+_Success_(return != 0)
 BOOL
 PopFreeTraceStoreMemoryMap(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_MEMORY_MAP MemoryMap
     )
 {
-    PSLIST_HEADER ListHead = &TraceStore->FreeMemoryMaps;
+    PSLIST_HEADER ListHead;
+    PSLIST_ENTRY ListEntry;
 
-    PSLIST_ENTRY ListEntry = InterlockedPopEntrySList(ListHead);
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(MemoryMap)) {
+        return FALSE;
+    }
+
+    ListHead = &TraceStore->FreeMemoryMaps;
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
     if (!ListEntry) {
         return FALSE;
     }
@@ -232,13 +246,29 @@ PopFreeTraceStoreMemoryMap(
 }
 
 FORCEINLINE
+_Check_return_
+_Success_(return != 0)
 BOOL
 PopTraceStoreMemoryMap(
-    _In_ PSLIST_HEADER ListHead,
-    _In_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    _In_  PSLIST_HEADER ListHead,
+    _Out_ PPTRACE_STORE_MEMORY_MAP MemoryMap
     )
 {
-    PSLIST_ENTRY ListEntry = InterlockedPopEntrySList(ListHead);
+    PSLIST_ENTRY ListEntry;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(ListHead)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(MemoryMap)) {
+        return FALSE;
+    }
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
     if (!ListEntry) {
         return FALSE;
     }
@@ -263,8 +293,8 @@ PushTraceStoreMemoryMap(
 FORCEINLINE
 BOOL
 GetTraceStoreMemoryMapFileInfo(
-    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap,
-    _In_ PFILE_STANDARD_INFO FileInfo
+    _In_  PTRACE_STORE_MEMORY_MAP MemoryMap,
+    _Out_ PFILE_STANDARD_INFO FileInfo
     )
 {
     return GetFileInformationByHandleEx(
@@ -284,8 +314,8 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (LOAD_NEXT_TRACE_STORE_ADDRESS)(
-    _In_    PTRACE_STORE TraceStore,
-    _Out_   PPTRACE_STORE_ADDRESS AddressPointer
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_ADDRESS AddressPointer
     );
 typedef LOAD_NEXT_TRACE_STORE_ADDRESS *PLOAD_NEXT_TRACE_STORE_ADDRESS;
 LOAD_NEXT_TRACE_STORE_ADDRESS LoadNextTraceStoreAddress;
@@ -297,7 +327,6 @@ LOAD_NEXT_TRACE_STORE_ADDRESS LoadNextTraceStoreAddress;
 ALLOCATE_RECORDS TraceStoreAllocateRecords;
 
 typedef
-_Check_return_
 _Success_(return != 0)
 BOOL
 (RECORD_TRACE_STORE_ALLOCATION)(
@@ -319,8 +348,8 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (BIND_TRACE_STORE_TO_TRACE_CONTEXT)(
-    PTRACE_STORE TraceStore,
-    PTRACE_CONTEXT TraceContext
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_CONTEXT TraceContext
     );
 typedef BIND_TRACE_STORE_TO_TRACE_CONTEXT *PBIND_TRACE_STORE_TO_TRACE_CONTEXT;
 BIND_TRACE_STORE_TO_TRACE_CONTEXT BindTraceStoreToTraceContext;
@@ -340,14 +369,14 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORE)(
-    _In_        PRTL Rtl,
-    _In_        PCWSTR Path,
-    _Inout_     PTRACE_STORE TraceStore,
-    _Inout_     PTRACE_STORE AllocationStore,
-    _Inout_     PTRACE_STORE AddressStore,
-    _Inout_     PTRACE_STORE InfoStore,
-    _In_opt_    ULONG InitialSize,
-    _In_opt_    ULONG MappingSize
+    _In_ PRTL Rtl,
+    _In_ PCWSTR Path,
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE AllocationStore,
+    _In_ PTRACE_STORE AddressStore,
+    _In_ PTRACE_STORE InfoStore,
+    _In_ ULONG InitialSize,
+    _In_ ULONG MappingSize
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
@@ -383,20 +412,20 @@ CLOSE_TRACE_STORE CloseTraceStore;
 
 typedef
 _Success_(return != 0)
-PSYSTEM_TIMER_FUNCTION
-(GET_SYSTEM_TIMER_FUNCTION)(VOID);
-typedef GET_SYSTEM_TIMER_FUNCTION *PGET_SYSTEM_TIMER_FUNCTION;
-GET_SYSTEM_TIMER_FUNCTION GetSystemTimerFunction;
+PTIMER_FUNCTION
+(TRACE_STORE_GET_TIMER_FUNCTION)(VOID);
+typedef TRACE_STORE_GET_TIMER_FUNCTION *PTRACE_STORE_GET_TIMER_FUNCTION;
+TRACE_STORE_GET_TIMER_FUNCTION TraceStoreGetTimerFunction;
 
 typedef
 _Success_(return != 0)
 BOOL
-(CALL_SYSTEM_TIMER)(
+(TRACE_STORE_CALL_TIMER)(
     _Out_       PFILETIME   SystemTime,
-    _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
+    _Inout_opt_ PPTIMER_FUNCTION ppTimerFunction
     );
-typedef CALL_SYSTEM_TIMER *PCALL_SYSTEM_TIMER;
-CALL_SYSTEM_TIMER CallSystemTimer;
+typedef TRACE_STORE_CALL_TIMER *PTRACE_STORE_CALL_TIMER;
+TRACE_STORE_CALL_TIMER TraceStoreCallTimer;
 
 //
 // TraceStorePrefault-related functions.
@@ -405,9 +434,9 @@ CALL_SYSTEM_TIMER CallSystemTimer;
 typedef
 VOID
 (CALLBACK PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
+    _In_ PTP_CALLBACK_INSTANCE   Instance,
+    _In_ PVOID                   Context,
+    _In_ PTP_WORK                Work
     );
 typedef  PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
        *PPREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK;
@@ -428,12 +457,12 @@ PrefaultFutureTraceStorePage(
 Routine Description:
 
     This routine pops a memory map off the TraceStore's PrefaultMemoryMaps
-    list and reads a single byte from the memory map's NextAddress adddress.
+    list and reads a single byte from the memory map's NextAddress address.
     This has the effect of bringing the page into the process's memory if it
     isn't already in it -- either via a hard fault, soft fault, or simply
     priming the TLB with the mapping if the underlying page is already valid
     within our memory space (which is often the case because the cache manager
-    aggresively reads ahead when we start mapping views of the file).
+    aggressively reads ahead when we start mapping views of the file).
 
     Because a hard or soft fault can only by satisfied by blocking the thread
     (because the relevant page may need to be read off the backing disk/store),

@@ -18,7 +18,7 @@ Abstract:
 extern "C" {
 #endif
 
-#include "stdafx.h"
+#include "TraceStore.h"
 
 static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",

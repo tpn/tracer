@@ -245,7 +245,7 @@ Return Value:
     Paths = &TracerConfig->Paths;
 
     LOAD_DLL(Rtl);
-    LOAD_DLL(Tracer);
+    LOAD_DLL(TraceStore);
     LOAD_DLL(Python);
     LOAD_DLL(PythonTracer);
 
@@ -264,10 +264,17 @@ Return Value:
     RESOLVE(Shell32Module, PCOMMAND_LINE_TO_ARGVW, CommandLineToArgvW);
 
     RESOLVE(RtlModule, PINITIALIZE_RTL, InitializeRtl);
-    RESOLVE(TracerModule, PINITIALIZE_TRACE_STORES, InitializeTraceStores);
-    RESOLVE(TracerModule, PINITIALIZE_TRACE_CONTEXT, InitializeTraceContext);
-    RESOLVE(TracerModule, PINITIALIZE_TRACE_SESSION, InitializeTraceSession);
-    RESOLVE(TracerModule, PCLOSE_TRACE_STORES, CloseTraceStores);
+
+    RESOLVE(TraceStoreModule, PINITIALIZE_TRACE_STORES, InitializeTraceStores);
+    RESOLVE(TraceStoreModule,
+            PINITIALIZE_TRACE_CONTEXT,
+            InitializeTraceContext);
+    RESOLVE(TraceStoreModule,
+            PINITIALIZE_TRACE_SESSION,
+            InitializeTraceSession);
+    RESOLVE(TraceStoreModule,
+            PCLOSE_TRACE_STORES,
+            CloseTraceStores);
 
     RESOLVE(PythonModule, PFIND_PYTHON_DLL_AND_EXE, FindPythonDllAndExe);
     RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);

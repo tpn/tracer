@@ -4,7 +4,7 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    TraceStoreSystemTimer.c
+    TraceStoreTimer.c
 
 Abstract:
 
@@ -17,11 +17,11 @@ Abstract:
 
 #include "stdafx.h"
 
-INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
+INIT_ONCE InitOnceTimerFunction = INIT_ONCE_STATIC_INIT;
 
 BOOL
 CALLBACK
-GetSystemTimerFunctionCallback(
+TraceStoreGetTimerFunctionCallback(
     PINIT_ONCE  InitOnce,
     PVOID       Parameter,
     PVOID       *lpContext
@@ -29,20 +29,20 @@ GetSystemTimerFunctionCallback(
 {
     HMODULE Module;
     FARPROC Proc;
-    static SYSTEM_TIMER_FUNCTION SystemTimerFunction = { 0 };
+    static TIMER_FUNCTION TimerFunction = { 0 };
 
     if (!lpContext) {
         return FALSE;
     }
 
     Module = GetModuleHandleW(L"kernel32");
-    if (Module == INVALID_HANDLE_VALUE) {
+    if (!Module || Module == INVALID_HANDLE_VALUE) {
         return FALSE;
     }
 
     Proc = GetProcAddress(Module, "GetSystemTimePreciseAsFileTime");
     if (Proc) {
-        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (
+        TimerFunction.GetSystemTimePreciseAsFileTime = (
             (PGETSYSTEMTIMEPRECISEASFILETIME)Proc
         );
     } else {
@@ -54,71 +54,67 @@ GetSystemTimerFunctionCallback(
         if (!Proc) {
             return FALSE;
         }
-        SystemTimerFunction.NtQuerySystemTime = (PNTQUERYSYSTEMTIME)Proc;
+        TimerFunction.NtQuerySystemTime = (PNTQUERYSYSTEMTIME)Proc;
     }
 
-    *((PPSYSTEM_TIMER_FUNCTION)lpContext) = &SystemTimerFunction;
+    *((PPTIMER_FUNCTION)lpContext) = &TimerFunction;
     return TRUE;
 }
 
 
 _Use_decl_annotations_
-PSYSTEM_TIMER_FUNCTION
-GetSystemTimerFunction(VOID)
+PTIMER_FUNCTION
+TraceStoreGetTimerFunction(VOID)
 {
     BOOL Status;
-    PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
+    PTIMER_FUNCTION TimerFunction;
 
     Status = InitOnceExecuteOnce(
-        &InitOnceSystemTimerFunction,
-        GetSystemTimerFunctionCallback,
+        &InitOnceTimerFunction,
+        TraceStoreGetTimerFunctionCallback,
         NULL,
-        (LPVOID *)&SystemTimerFunction
+        (LPVOID *)&TimerFunction
     );
 
     if (!Status) {
         return NULL;
     } else {
-        return SystemTimerFunction;
+        return TimerFunction;
     }
 }
 
 _Use_decl_annotations_
 BOOL
-CallSystemTimer(
-    PFILETIME   SystemTime,
-    PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
+TraceStoreCallTimer(
+    PFILETIME SystemTime,
+    PPTIMER_FUNCTION ppTimerFunction
     )
 {
-    PSYSTEM_TIMER_FUNCTION SystemTimerFunction = NULL;
+    PTIMER_FUNCTION TimerFunction = NULL;
 
-    if (ppSystemTimerFunction) {
-        if (*ppSystemTimerFunction) {
-            SystemTimerFunction = *ppSystemTimerFunction;
+    if (ppTimerFunction) {
+        if (*ppTimerFunction) {
+            TimerFunction = *ppTimerFunction;
         } else {
-            SystemTimerFunction = GetSystemTimerFunction();
-            *ppSystemTimerFunction = SystemTimerFunction;
+            TimerFunction = TraceStoreGetTimerFunction();
+            *ppTimerFunction = TimerFunction;
         }
     } else {
-        SystemTimerFunction = GetSystemTimerFunction();
+        TimerFunction = TraceStoreGetTimerFunction();
     }
 
-    if (!SystemTimerFunction) {
+    if (!TimerFunction) {
         return FALSE;
     }
 
-    if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
+    if (TimerFunction->GetSystemTimePreciseAsFileTime) {
 
-        SystemTimerFunction->GetSystemTimePreciseAsFileTime(SystemTime);
+        TimerFunction->GetSystemTimePreciseAsFileTime(SystemTime);
 
-    } else if (SystemTimerFunction->NtQuerySystemTime) {
+    } else if (TimerFunction->NtQuerySystemTime) {
         BOOL Success;
 
-        Success = (
-            SystemTimerFunction->NtQuerySystemTime(
-                (PLARGE_INTEGER)SystemTime
-            )
-        );
+        Success = TimerFunction->NtQuerySystemTime((PLARGE_INTEGER)SystemTime);
 
         if (!Success) {
             return FALSE;

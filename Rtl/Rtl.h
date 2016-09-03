@@ -259,19 +259,19 @@ typedef struct _PROCESS_MEMORY_COUNTERS_EX {
 } PROCESS_MEMORY_COUNTERS_EX, *PPROCESS_MEMORY_COUNTERS_EX;
 
 typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
-    _In_    HANDLE                      Process,
-    _In_    PPROCESS_MEMORY_COUNTERS    ppsmemCounters,
-    _In_    DWORD                       cb
+    _In_  HANDLE                      Process,
+    _Out_ PPROCESS_MEMORY_COUNTERS    ppsmemCounters,
+    _In_  DWORD                       cb
     );
 
 typedef BOOL (WINAPI *PGET_PROCESS_IO_COUNTERS)(
-    _In_    HANDLE          Process,
-    _Out_   PIO_COUNTERS    lpIoCounters
+    _In_  HANDLE          Process,
+    _Out_ PIO_COUNTERS    lpIoCounters
     );
 
 typedef BOOL (WINAPI *PGET_PROCESS_HANDLE_COUNT)(
-    _In_        HANDLE      Process,
-    _Inout_     PDWORD      pdwHandleCount
+    _In_  HANDLE      Process,
+    _Out_ PDWORD      pdwHandleCount
     );
 
 typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(

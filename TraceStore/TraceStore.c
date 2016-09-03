@@ -81,16 +81,17 @@ error:
     return FALSE;
 }
 
+_Use_decl_annotations_
 BOOL
 InitializeTraceStore(
-    _In_        PRTL Rtl,
-    _In_        PCWSTR Path,
-    _Inout_     PTRACE_STORE TraceStore,
-    _Inout_     PTRACE_STORE AllocationStore,
-    _Inout_     PTRACE_STORE AddressStore,
-    _Inout_     PTRACE_STORE InfoStore,
-    _In_opt_    ULONG InitialSize,
-    _In_opt_    ULONG MappingSize
+    PRTL Rtl,
+    PCWSTR Path,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE AllocationStore,
+    PTRACE_STORE AddressStore,
+    PTRACE_STORE InfoStore,
+    ULONG InitialSize,
+    ULONG MappingSize
     )
 {
     BOOL Success;
@@ -403,14 +404,23 @@ CloseTraceStore(
 
 }
 
+_Use_decl_annotations_
 VOID
 CALLBACK
 PrefaultFutureTraceStorePageCallback(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
+    PTP_CALLBACK_INSTANCE Instance,
+    PVOID Context,
+    PTP_WORK Work
     )
 {
+    //
+    // Ensure Context has a value.
+    //
+
+    if (!Context) {
+        return;
+    }
+
     PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
 }
 

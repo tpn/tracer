@@ -64,6 +64,11 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
+      <PreprocessorDefinitions>_TRACED_PYTHON_SESSION_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>  
+  <ItemDefinitionGroup>
+    <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
     </ClCompile>
   </ItemDefinitionGroup>

@@ -84,7 +84,7 @@
     <ClCompile Include="TraceStorePath.c" />
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
-    <ClCompile Include="TraceStoreSystemTimer.c" />
+    <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
