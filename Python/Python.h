@@ -2770,17 +2770,30 @@ WrapPythonFilenameStringAsString(
         return FALSE;
     }
 
+    //
+    // Frozen modules will have names like <frozenlib ...> for filenames, we
+    // can't do anything with these, so return FALSE.
+    //
+
     if (*((PCHAR)Buffer) == '<') {
         return FALSE;
     }
 
     if (Width == 2) {
+
+        //
+        // Python 3.x will use PyUNICODE structs for paths, which will have wide
+        // characters, which we'll need to convert to a utf-8 string in order to
+        // put into our filename prefix tree.
+        //
+
         return ConvertPythonUtf16StringToUtf8String(
             Python,
             Length,
             Buffer,
             String
         );
+
     } else if (Width != 1) {
         __debugbreak();
     }
