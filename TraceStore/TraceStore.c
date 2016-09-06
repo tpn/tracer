@@ -8,22 +8,55 @@ Module Name:
 
 Abstract:
 
-    This module implements the main Trace Store functionality required by both
-    readers and writers.
+    This module implements generic Trace Store functionality unrelated to the
+    main memory map machinery.  Functions are provided for initializing and
+    closing trace stores.
 
 --*/
 
 #include "stdafx.h"
 
-_Success_(return != 0)
+_Use_decl_annotations_
 BOOL
 InitializeStore(
-    _In_        PCWSTR Path,
-    _Inout_     PTRACE_STORE TraceStore,
-    _In_opt_    ULONG InitialSize,
-    _In_opt_    ULONG MappingSize
+    PCWSTR       Path,
+    PTRACE_STORE TraceStore,
+    ULONG        InitialSize,
+    ULONG        MappingSize
     )
+/*++
+
+Routine Description:
+
+    This routine initializes a trace store at the given path.  It opens a handle
+    for the path if the handle hasn't already been opened, and initializes the
+    default values for the TRACE_STORE struct.
+
+Arguments:
+
+    Path - Supplies a pointer to a NULL-terminated wide string representing
+        the file name to pass to CreateFileW().
+
+    TraceStore - Supplies a pointer to the TRACE_STORE structure to be
+        initialized by this routine.
+
+    InitialSize - Supplies the initial size in bytes for the trace store.  If
+        zero, the default initial size is used.
+
+    MappingSize - Supplies the mapping size in bytes to be used for each trace
+        store memory map.  If zero, the default mapping size is used.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
 {
+
+    //
+    // Validate arguments.
+    //
+
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
     }
@@ -32,8 +65,17 @@ InitializeStore(
         return FALSE;
     }
 
+    //
+    // If the file handle hasn't been set, we're a metadata store.  So, open
+    // the underlying path.
+    //
+
     if (!TraceStore->FileHandle) {
+
+        //
         // We're a metadata store.
+        //
+
         TraceStore->FileHandle = CreateFileW(
             Path,
             TraceStore->CreateFileDesiredAccess,
@@ -45,9 +87,19 @@ InitializeStore(
         );
     }
 
-    if (TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-        goto error;
+    //
+    // Ensure we've got a valid handle.
+    //
+
+    if (!TraceStore->FileHandle ||
+        TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
+
+        goto Error;
     }
+
+    //
+    // Initialize default values.
+    //
 
     TraceStore->InitialSize.HighPart = 0;
     TraceStore->InitialSize.LowPart = InitialSize;
@@ -75,46 +127,47 @@ InitializeStore(
     TraceStore->NumberOfAllocations.QuadPart = 0;
     TraceStore->TotalAllocationSize.QuadPart = 0;
 
+    //
+    // Return success.
+    //
+
     return TRUE;
-error:
+
+Error:
+
+    //
+    // Attempt to close the trace store if an error occurs.
+    //
+
     CloseTraceStore(TraceStore);
+
     return FALSE;
 }
 
-_Use_decl_annotations_
-BOOL
-InitializeTraceStore(
-    PRTL Rtl,
-    PCWSTR Path,
-    PTRACE_STORE TraceStore,
-    PTRACE_STORE AllocationStore,
-    PTRACE_STORE AddressStore,
-    PTRACE_STORE InfoStore,
-    ULONG InitialSize,
-    ULONG MappingSize
-    )
-{
-    BOOL Success;
-    HRESULT Result;
-    WCHAR AllocationPath[_OUR_MAX_PATH];
-    WCHAR AddressPath[_OUR_MAX_PATH];
-    WCHAR InfoPath[_OUR_MAX_PATH];
-    PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
-    PCWSTR AddressSuffix = TraceStoreAddressSuffix;
-    PCWSTR InfoSuffix = TraceStoreInfoSuffix;
+/*++
 
-    if (!ARGUMENT_PRESENT(Path)) {
-        return FALSE;
-    }
+    VOID
+    INIT_METADATA_PATH(
+        Name
+        );
 
-    if (!ARGUMENT_PRESENT(TraceStore)) {
-        return FALSE;
-    }
+Routine Description:
 
-    if (!ARGUMENT_PRESENT(Rtl)) {
-        return FALSE;
-    }
+    This is a helper macro for initializing a trace store's metadata's path
+    name.  It copies the the trace store name and metadata suffix into the
+    relevant string buffer, then calls InitializeTraceStorePath().
 
+    This macro is used by InitializeTraceStore().
+
+Arguments:
+
+    Name - Name of the metadata store to initialized (e.g. 'Allocation').
+
+Return Value:
+
+    None.
+
+--*/
 #define INIT_METADATA_PATH(Name)                                      \
     SecureZeroMemory(&##Name##Path, sizeof(##Name##Path));            \
     Result = StringCchCopyW(                                          \
@@ -140,35 +193,29 @@ InitializeTraceStore(
         return FALSE;                                                 \
     }
 
-    INIT_METADATA_PATH(Allocation);
-    INIT_METADATA_PATH(Address);
-    INIT_METADATA_PATH(Info);
+/*++
 
-    TraceStore->Rtl = Rtl;
+    VOID
+    INIT_METADATA(
+        Name
+        );
 
-    if (!InitializeTraceStorePath(Path, TraceStore)) {
-        return FALSE;
-    }
+Routine Description:
 
-    //
-    // Create the data file first before the streams.
-    //
+    This is a helper macro for initializing a trace store's metadata store.
+    It initializes various fields and then calls InitializeStore().
 
-    TraceStore->FileHandle = CreateFileW(
-        Path,
-        TraceStore->CreateFileDesiredAccess,
-        FILE_SHARE_READ,
-        NULL,
-        OPEN_ALWAYS,
-        FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
-        NULL
-    );
+    This macro is used by InitializeTraceStore().
 
-    if (TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-        DWORD LastError = GetLastError();
-        goto Error;
-    }
+Arguments:
 
+    Name - Name of the metadata store to initialized (e.g. 'Allocation').
+
+Return Value:
+
+    None.
+
+--*/
 #define INIT_METADATA(Name)                                            \
     Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
@@ -202,9 +249,141 @@ InitializeTraceStore(
                                                                        \
     TraceStore->##Name##Store = ##Name##Store;
 
+
+_Use_decl_annotations_
+BOOL
+InitializeTraceStore(
+    PRTL Rtl,
+    PCWSTR Path,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE AllocationStore,
+    PTRACE_STORE AddressStore,
+    PTRACE_STORE InfoStore,
+    ULONG InitialSize,
+    ULONG MappingSize
+    )
+/*++
+
+Routine Description:
+
+    This routine initializes a trace store and its associated metadata stores.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL struct.
+
+    Path - Supplies a pointer to a NULL-terminated wide character array of the
+        fully-qualified trace store path.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct that will be
+        initialized by this routine.
+
+    AllocationStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the allocation metadata store for the given TraceStore being
+        initialized.
+
+    AddressStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the address metadata store for the given TraceStore being
+        initialized.
+
+    InfoStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the info metadata store for the given TraceStore being
+        initialized.
+
+    InitialSize - Supplies the initial size in bytes for the trace store.  If
+        zero, the default initial size is used.
+
+    MappingSize - Supplies the mapping size in bytes to be used for each trace
+        store memory map.  If zero, the default mapping size is used.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    HRESULT Result;
+    WCHAR AllocationPath[_OUR_MAX_PATH];
+    WCHAR AddressPath[_OUR_MAX_PATH];
+    WCHAR InfoPath[_OUR_MAX_PATH];
+    PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
+    PCWSTR AddressSuffix = TraceStoreAddressSuffix;
+    PCWSTR InfoSuffix = TraceStoreInfoSuffix;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Path)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize the paths of the metadata stores first.
+    //
+
+    INIT_METADATA_PATH(Allocation);
+    INIT_METADATA_PATH(Address);
+    INIT_METADATA_PATH(Info);
+
+    TraceStore->Rtl = Rtl;
+
+    //
+    // Initialize the TraceStore's path.
+    //
+
+    if (!InitializeTraceStorePath(Path, TraceStore)) {
+        return FALSE;
+    }
+
+    //
+    // Create the data file first before the streams.
+    //
+
+    TraceStore->FileHandle = CreateFileW(
+        Path,
+        TraceStore->CreateFileDesiredAccess,
+        FILE_SHARE_READ,
+        NULL,
+        OPEN_ALWAYS,
+        FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
+        NULL
+    );
+
+    if (!TraceStore->FileHandle ||
+        TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
+
+        //
+        // We weren't able to open the file handle successfully.  In lieu of
+        // better error logging, a breakpoint can be set here in a debug build
+        // to see what the last error was.
+        //
+
+        DWORD LastError = GetLastError();
+        goto Error;
+    }
+
+    //
+    // Now that we've created the trace store file, create the NTFS streams
+    // for the metadata trace store files.
+    //
+
     INIT_METADATA(Allocation);
     INIT_METADATA(Address);
     INIT_METADATA(Info);
+
+    //
+    // Now initialize the TraceStore itself.
+    //
 
     TraceStore->IsMetadata = FALSE;
 
@@ -212,16 +391,52 @@ InitializeTraceStore(
         goto Error;
     }
 
+    //
+    // Return success.
+    //
+
     return TRUE;
+
 Error:
+
+    //
+    // Attempt to close the trace store on any error.
+    //
+
     CloseTraceStore(TraceStore);
+
     return FALSE;
 }
 
+_Use_decl_annotations_
 BOOL
 TruncateStore(
-    _In_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
+/*++
+
+Routine Description:
+
+    This routine truncates a trace store.  When a trace store is initialized,
+    a default initial file size is used.  When the store is extended, it is
+    done in fixed sized blocks (that match the mapping size).
+
+    When a trace store is closed, this TruncateStore() routine is called, which
+    sets the file's end-of-file pointer back to the exact byte position that
+    was actually used during the trace session.  This allows the trace file
+    to be read in entirely until an EOS is read, which is useful for downstream
+    consumers.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to an initialized TRACE_STORE struct that
+        will be truncated.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
 {
     BOOL Success;
     BOOL IsMetadata;
@@ -229,9 +444,18 @@ TruncateStore(
     LARGE_INTEGER TotalAllocationSize;
     FILE_STANDARD_INFO FileInfo;
 
+    //
+    // Validate arguments.
+    //
+
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return FALSE;
     }
+
+    //
+    // Are we a metadata store?  Our truncation behavior is different if we are,
+    // so capture this state upfront.
+    //
 
     IsMetadata = IsMetadataTraceStore(TraceStore);
 
@@ -239,13 +463,29 @@ TruncateStore(
 
     if (!IsMetadata) {
 
+        //
+        // A metadata's end-of-file will be tracked directly in the pEof struct.
+        //
+
         EndOfFile.QuadPart = TraceStore->pEof->EndOfFile.QuadPart;
 
         if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
+
+            //
+            // This should never happen.
+            //
+
             __debugbreak();
         }
 
     } else {
+
+        //
+        // A trace store's end-of-file can be determined by from the total
+        // allocation size associated with the store.  If it is currently set
+        // to 0, we check the invariant that the trace store's number of allocs
+        // is not 1, and then use the record size instead.
+        //
 
         if (TotalAllocationSize.QuadPart == 0) {
 
@@ -274,10 +514,14 @@ TruncateStore(
         return FALSE;
     }
 
+    //
+    // Compare the current end of file with what we want to set it to.
+    //
+
     if (FileInfo.EndOfFile.QuadPart == EndOfFile.QuadPart) {
 
         //
-        // Nothing more to do.
+        // Both values already match (unlikely) -- there's nothing more to do.
         //
 
         return TRUE;
@@ -305,25 +549,75 @@ TruncateStore(
     return Success;
 }
 
+_Use_decl_annotations_
 VOID
 CloseStore(
-    _In_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
+/*++
+
+Routine Description:
+
+    This routine closes a trace store.  It can be called against both normal
+    trace stores and metadata trace stores.  It will close previous and next
+    memory maps if applicable, and cancel any in-flight "prepare memory map"
+    requests and wait for all memory maps associated with the trace store to
+    be free'd (indicating that no more threads are servicing trace store memory
+    map requests).
+
+    It will then truncate the trace store, flush file buffers and close the
+    underlying trace store's handle.
+
+    It then closes any outstanding threadpool work associated with the thread
+    pool.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
 {
     PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Validate arguments.
+    //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
 
+    //
+    // Close the previous and current memory maps in the threadpool.
+    //
+
     SubmitCloseMemoryMapThreadpoolWork(TraceStore, &TraceStore->PrevMemoryMap);
     SubmitCloseMemoryMapThreadpoolWork(TraceStore, &TraceStore->MemoryMap);
+
+    //
+    // Pop any prepared memory maps off the next memory map list and submit
+    // threadpool closes for them, too.
+    //
 
     while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
         SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
     }
 
+    //
+    // When all threadpool close work has completed, the 'all memory maps are
+    // free' event will be set, so we wait on this here.
+    //
+
     WaitForSingleObject(TraceStore->AllMemoryMapsAreFreeEvent, INFINITE);
+
+    //
+    // All threadpool work has completed, we can proceed with closing the file
+    // and associated events.
+    //
 
     if (TraceStore->FileHandle) {
         TruncateStore(TraceStore);
@@ -359,10 +653,28 @@ CloseStore(
 
 }
 
+_Use_decl_annotations_
 VOID
 CloseTraceStore(
-    _In_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
+/*++
+
+Routine Description:
+
+    This routine closes a normal trace store.  It is not intended to be called
+    against metadata trace stores.  It will close the trace store, then close
+    the meta data trace stores associated with that trace store.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
 {
 
     //
@@ -412,6 +724,29 @@ PrefaultFutureTraceStorePageCallback(
     PVOID Context,
     PTP_WORK Work
     )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the prefault future trace store
+    threadpool work.  It simply calls the PrefaultFutureTraceStorePage()
+    inline routine (which forces (via volatile machinery) a read of the memory
+    address we want to prefault, which will result in a hard or soft fault if
+    the page isn't resident).
+
+Arguments:
+
+    Instance - Not used.
+
+    Context - Supplies a pointer to a TRACE_STORE struct.
+
+    Work - Not used.
+
+Return Value:
+
+    None.
+
+--*/
 {
     //
     // Ensure Context has a value.
@@ -423,7 +758,6 @@ PrefaultFutureTraceStorePageCallback(
 
     PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
 }
-
 
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

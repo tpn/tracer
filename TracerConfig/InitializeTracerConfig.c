@@ -109,6 +109,7 @@ Return Value:
             SizeInBytes
         )
     );
+
     if (!TargetPath->Buffer) {
         return FALSE;
     }
