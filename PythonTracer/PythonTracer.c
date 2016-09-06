@@ -81,7 +81,7 @@ TraceStoreFreeRoutine(
     )
 {
     return;
-    
+
     /*
     PTRACE_STORE TraceStore;
     TraceStore = (PTRACE_STORE)FreeContext;

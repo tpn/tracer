@@ -6,7 +6,7 @@ _DllMainCRTStartup(
     _In_    HMODULE     Module,
     _In_    DWORD       Reason,
     _In_    LPVOID      Reserved
-)
+    )
 {
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
