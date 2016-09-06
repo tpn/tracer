@@ -368,6 +368,19 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(INITIALIZE_STORE)(
+    _In_     PCWSTR Path,
+    _In_     PTRACE_STORE TraceStore,
+    _In_opt_ ULONG InitialSize,
+    _In_opt_ ULONG MappingSize
+    );
+typedef INITIALIZE_STORE *PINITIALIZE_STORE;
+INITIALIZE_STORE InitializeStore;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (INITIALIZE_TRACE_STORE)(
     _In_ PRTL Rtl,
     _In_ PCWSTR Path,
