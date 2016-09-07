@@ -1,7 +1,22 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    DestroyTracerConfig.c
+
+Abstract:
+
+    This module implements the functionality to destroy a previously created
+    TRACER_CONFIG structure.
+
+--*/
+
 #include "stdafx.h"
 
 //
-// Forward declarations.
+// Forward declarations of internal helper functions used in this module.
 //
 
 VOID
