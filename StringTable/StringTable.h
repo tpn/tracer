@@ -11,6 +11,21 @@ Abstract:
     This is the main header file for the StringTable component.  It defines
     structures and functions related to the implementation of the component.
 
+    The main structures are the STRING_ARRAY structure, which is used by
+    callers of this component to indicate the set of strings they'd like to
+    add to the string table, and the STRING_TABLE structure, which is the main
+    data structure used by this component.
+
+    Functions are provided for creating, destroying and searching for whether
+    or not there's a prefix string for a given search string present within a
+    table.
+
+    The design is optimized for relatively short strings (less than or equal to
+    16 chars), and relatively few of them (less than or equal to 16).  These
+    restrictive size constraints facilitate aggresive SIMD optimizations when
+    searching for the strings within the table, with the goal to provide low
+    latency with very little jitter.
+
 --*/
 
 #pragma once
@@ -170,7 +185,8 @@ typedef struct _STRING_TABLE {
     //
 
     //
-    // Pad out to 64-bytes.
+    // Pad out to 64-bytes or potentially use this space for the first and
+    // second character of each string.
     //
 
     union {
@@ -192,6 +208,25 @@ typedef struct _STRING_TABLE {
 //
 
 C_ASSERT(FIELD_OFFSET(STRING_TABLE, StringArray) == 64);
+
+//
+// This structure is used to communicate matches back to the caller.  (Not yet
+// currently flushed out.)
+//
+
+typedef _Struct_size_bytes_(Size) struct _STRING_MATCH {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _STRING_ARRAY)) USHORT Size;
+
+    //
+    // Number of strings in the search array that matched.
+    //
+
+} STRING_MATCH, *PSTRING_MATCH, *PPSTRING_MATCH;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
@@ -218,13 +253,16 @@ STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
 
 typedef
 BOOL
-(IS_STRING_IN_TABLE)(
+(IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ PSTRING_TABLE StringTable,
-    _In_ PSTRING String
+    _In_ PSTRING String,
+    _Out_ PBOOL FoundMatch,
+    _Out_ USHORT WhichIndex,
+    _Out_ PSTRING WhichString
     );
-typedef IS_STRING_IN_TABLE *PIS_STRING_IN_TABLE;
-STRING_TABLE_API IS_STRING_IN_TABLE IsStringInTableC;
-STRING_TABLE_API IS_STRING_IN_TABLE IsStringInTablex64;
+typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
 
 #ifdef __cpp
 } // extern "C"
