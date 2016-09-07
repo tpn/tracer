@@ -171,28 +171,25 @@ typedef struct _STRING_TABLE {
     //
 
     //
-    // The first character of each string is stored in this array.  We can load
-    // it into an XMM register, fill a second XMM register with the search
-    // string's first character, and then do a `pand xmm1, xmm2` and popcnt
-    // to see if there were any matches.  This allows us to terminate the search
-    // early.
+    // The first two characters of each string is stored in this array.  We can
+    // load it into an XMM register, fill a second XMM register with the search
+    // string's first two characters also, and then do a `pand xmm1, xmm2` and
+    // popcnt to see if there were any matches.  This allows us to terminate
+    // the search early.
     //
 
-    CHAR FirstCharacter[16];
+    WIDE_CHARACTER FirstAndSecondCharacter[16];
 
     //
-    // (32-bytes aligned.)
+    // (48-bytes aligned; WIDE_CHARACTER is 16-bits.)
     //
 
     //
-    // Pad out to 64-bytes or potentially use this space for the first and
-    // second character of each string.
+    // Pad out to 64-bytes so that our string buffers start on a quadword
+    // boundary.
     //
 
-    union {
-        CHAR Padding[32];
-        CHAR FirstAndSecondCharacter[16][2];
-    };
+    CHAR Padding[16];
 
     //
     // Our 16-element array of 16-character arrays.  Occupied slots are governed
@@ -214,17 +211,32 @@ C_ASSERT(FIELD_OFFSET(STRING_TABLE, StringArray) == 64);
 // currently flushed out.)
 //
 
-typedef _Struct_size_bytes_(Size) struct _STRING_MATCH {
+typedef struct _STRING_MATCH {
 
     //
-    // Size of the structure, in bytes.
+    // Index of the match.  -1 if no match.
     //
 
-    _Field_range_(==, sizeof(struct _STRING_ARRAY)) USHORT Size;
+    LONG Index;
 
     //
-    // Number of strings in the search array that matched.
+    // Number of characters matched.
     //
+
+    USHORT NumberOfMatchedCharacters;
+
+    //
+    // Pad out to 8-bytes.
+    //
+
+    LONG Padding1;
+
+    //
+    // Pointer to the string that was matched.  The underlying buffer will
+    // stay valid for as long as the STRING_TABLE struct persists.
+    //
+
+    PSTRING String;
 
 } STRING_MATCH, *PSTRING_MATCH, *PPSTRING_MATCH;
 
@@ -256,9 +268,7 @@ BOOL
 (IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String,
-    _Out_ PBOOL FoundMatch,
-    _Out_ USHORT WhichIndex,
-    _Out_ PSTRING WhichString
+    _Out_ PPSTRING_MATCH StringMatch
     );
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
