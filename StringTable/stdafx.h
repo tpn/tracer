@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled header file for the TraceStore component.
+    This is the precompiled header file for the StringTable component.
 
 --*/
 
@@ -20,10 +20,9 @@ Abstract:
 #include <sal.h>
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
-#include "../TracerConfig/TracerConfig.h"
-#include "TraceStoreIndex.h"
-#include "TraceStore.h"
-#include "TraceStorePrivate.h"
-#include "TraceStoreConstants.h"
+#include "StringTableIndex.h"
+#include "StringTable.h"
+#include "StringTablePrivate.h"
+#include "StringTableConstants.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
