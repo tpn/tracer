@@ -229,7 +229,7 @@ typedef struct _STRING_MATCH {
     // Pad out to 8-bytes.
     //
 
-    LONG Padding1;
+    USHORT Padding1;
 
     //
     // Pointer to the string that was matched.  The underlying buffer will
@@ -268,7 +268,7 @@ BOOL
 (IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String,
-    _Out_ PPSTRING_MATCH StringMatch
+    _Out_ PSTRING_MATCH StringMatch
     );
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
