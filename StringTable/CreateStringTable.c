@@ -75,7 +75,9 @@ Return Value:
 
     NumberOfTables = GetNumberOfTablesRequiredForStringArray(StringArray);
 
-    LongestLengthPerTable = NULL;    
+    //
+    // I
+    LongestLengthPerTable = NULL;
 
     //
     // Determine the longest string present in the string table, as well as the
@@ -116,6 +118,60 @@ End:
 
     return StringTable;
 
+}
+
+_Use_decl_annotations_
+PSTRING_TABLE
+CreateSingleStringTable(
+    PALLOCATOR Allocator,
+    PSTRING_ARRAY StringArray
+    )
+/*++
+
+Routine Description:
+
+    This routine is an optimized version of CreateStringTable() when the
+    string array contains no more than 16 strings.  See the documentation
+    for CreateStringTable() for more information.
+
+--*/
+{
+    BOOL Success;
+    USHORT Index;
+    USHORT NumberOfStrings;
+    ULONG AllocSize;
+    ULONG StringBufferAllocSize;
+    PSTRING_TABLE StringTable;
+
+    NumberOfStrings = StringArray->NumberOfElements;
+
+    //
+    // Get the number of bytes required to copy all string buffers in the string
+    // array, factoring in alignment up to 16-bytes.
+    //
+
+    Success = GetStringArrayBuffersAllocationSize(
+        StringArray,
+        &StringBufferAllocSize
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size needed for the copy of the string
+    // array and aligned buffers.
+    //
+
+    for (Index = 0; Index < NumberOfStrings; Index++) {
+
+
+
+
+    }
+
+    return NULL;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
