@@ -68,7 +68,7 @@ typedef _Struct_size_bytes_(Size) struct _STRING_ARRAY {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _STRING_ARRAY)) USHORT Size;
+    USHORT Size;
 
     //
     // Number of elements in the array.
@@ -77,10 +77,11 @@ typedef _Struct_size_bytes_(Size) struct _STRING_ARRAY {
     USHORT NumberOfElements;
 
     //
-    // Pad out to 8-bytes.
+    // Minimum and maximum lengths for the String->Length fields.  Optional.
     //
 
-    ULONG Padding;
+    USHORT MinimumLength;
+    USHORT MaximumLength;
 
     //
     // The string array.  Number of elements in the array is governed by the
@@ -243,6 +244,17 @@ typedef struct _STRING_MATCH {
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PSTRING_ARRAY
+(COPY_STRING_ARRAY)(
+    _In_ PALLOCATOR Allocator,
+    _In_ PSTRING_ARRAY StringArray
+    );
+typedef COPY_STRING_TABLE *PCOPY_STRING_TABLE;
+STRING_TABLE_API COPY_STRING_TABLE CopyStringTable;
 
 typedef
 _Check_return_
