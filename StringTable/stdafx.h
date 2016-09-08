@@ -18,9 +18,7 @@ Abstract:
 
 #include <Windows.h>
 #include <sal.h>
-#include <Strsafe.h>
 #include "../Rtl/Rtl.h"
-#include "StringTableIndex.h"
 #include "StringTable.h"
 #include "StringTablePrivate.h"
 #include "StringTableConstants.h"

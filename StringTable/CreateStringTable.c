@@ -75,6 +75,8 @@ Return Value:
 
     NumberOfTables = GetNumberOfTablesRequiredForStringArray(StringArray);
 
+    LongestLengthPerTable = NULL;    
+
     //
     // Determine the longest string present in the string table, as well as the
     // longest string present in each 16
@@ -89,7 +91,11 @@ Return Value:
         }
     }
 
+    StringTable = NULL;
+
     goto End;
+
+    goto Error;
 
 Error:
 

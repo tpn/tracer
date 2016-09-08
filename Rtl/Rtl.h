@@ -855,6 +855,7 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
 // Our extended PREFIX_TABLE and STRING_TABLE functionality.
 //
 
+#ifndef _STRING_TABLE_INTERNAL_BUILD
 #define INITIAL_STRING_TABLE_NUM_ELEMENTS 7
 
 typedef struct _STRING_TABLE {
@@ -915,6 +916,7 @@ InsertStringTable(
     _Out_opt_   PBOOL           NewElement
     );
 
+
 typedef struct _PREFIX_TABLE_EX {
 
     //
@@ -945,6 +947,8 @@ typedef struct _PREFIX_TABLE_EX {
     };
 
 } PREFIX_TABLE_EX, *PPREFIX_TABLE_EX, **PPPREFIX_TABLE_EX;
+
+#endif
 
 //
 // Unicode Prefix Table

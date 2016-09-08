@@ -573,4 +573,120 @@ class SyncTraceStoreIndexHeader(InvariantAwareCommand):
                 f.write('\n')
             out("Updated header.")
 
+class ReplaceUuid(InvariantAwareCommand):
+    """
+    Replaces UUIDs in a file with new ones.
+    """
+
+    path = None
+    _path = None
+    class PathArg(PathInvariant):
+        _help = "path of file to replace UUIDs in"
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = self._path
+
+        import re
+        from uuid import uuid4
+        import linecache
+
+        regex = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){4}[0-9a-f]{8}', re.I)
+
+        with open(path, 'r', newline=None) as f:
+            text = f.read()
+
+        uuid_map = {
+            src_uuid: str(uuid4()).upper()
+                for src_uuid in regex.findall(text)
+        }
+
+        for (old_uuid, new_uuid) in uuid_map.items():
+            out("Replacing %s -> %s." % (old_uuid, new_uuid))
+            text = text.replace(old_uuid, new_uuid)
+
+        if 'vcxproj' in path:
+            newline = '\r\n'
+        else:
+            newline = '\n'
+
+        with open(path, 'w', newline=newline) as f:
+            f.write(text)
+
+class CreateNewProjectFromExisting(InvariantAwareCommand):
+    """
+    Creates a new Visual Studio project from a project in an existing directory.
+    """
+    _shortname_ = 'np'
+
+    src = None
+    class SrcArg(StringInvariant):
+        _help = "Source directory to copy."
+
+    dst = None
+    class DstArg(StringInvariant):
+        _help = "Destination directory."
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        src = self.src
+        dst = self.dst
+
+        from os import mkdir, listdir
+        from os.path import isdir
+
+        from tracer.path import join_path
+
+        if not isdir(dst):
+            mkdir(dst)
+
+        src_vcxproj = '%s/%s.vcxproj' % (src, src)
+        dst_vcxproj = '%s/%s.vcxproj' % (dst, dst)
+
+        endings = (
+            '.c',
+            '.h',
+            '.asm',
+            '.inc',
+            '.vcxproj',
+            '.vcxproj.filters',
+        )
+
+        src_files = [
+            '%s/%s' % (src, path)
+                for path in listdir(src)
+                    if path.endswith(endings)
+        ]
+
+        dst_files = {
+            src_path: src_path.replace(src, dst)
+                for src_path in src_files
+        }
+
+        import ipdb
+        ipdb.set_trace()
+
+
+        import re
+        from uuid import uuid4
+        import linecache
+
+        regex = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){4}[0-9a-f]{8}', re.I)
+
+        dst_path
+
+        lines = linecache.getlines(filename)
+        num_lines = len(lines)
+
+        i = 0
+        while i < num_lines:
+            line = lines[i]
+
+
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

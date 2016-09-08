@@ -27,6 +27,16 @@ extern "C" {
 // Function typedefs and inline functions for internal modules.
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma intrinsic(__popcnt16)
+
+FORCEINLINE
+USHORT
+GetNumberOfStringsInTable(
+    _In_ PSTRING_TABLE StringTable
+    )
+{
+    return (USHORT)__popcnt16(StringTable->OccupiedBitmap);
+}
 
 #ifdef __cpp
 } // extern "C"

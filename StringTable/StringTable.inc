@@ -14,10 +14,10 @@
 ;
 ;--
 
-
 include ksamd64.inc
 
 CHAR typedef byte
+PCHAR typedef ptr byte
 USHORT typedef word
 WCHAR typedef word
 PVOID typedef dq
@@ -27,11 +27,13 @@ ULONG64 typedef dq
 ULONGLONG typedef dq
 
 STRING struct
-    Length USHORT ?
+    Length_ USHORT ?
     MaximumLength USHORT ?
     Hash ULONG ?
-    Buffer ptr CHAR
+    Buffer PCHAR ?
 STRING ends
+
+PSTRING typedef ptr STRING
 
 ;
 ; WideChar structure definition.  Maps to WIDE_CHARACTER in C.
@@ -39,20 +41,19 @@ STRING ends
 
 WIDE_CHAR union
     struct
-        LowPart CHAR
-        HighPart CHAR
+        LowPart CHAR ?
+        HighPart CHAR ?
     ends
-    WidePart WCHAR
+    WidePart WCHAR ?
 WIDE_CHAR ends
 
-WIDE_CHAR typedef WideChar
 PWIDE_CHAR typedef ptr WIDE_CHAR
 
 ;
 ; String slot structure.
 ;
 
-STRING_SLOT typedef CHAR 16 dup ?
+;STRING_SLOT typedef CHAR 16 dup ?
 
 ;
 ; StringTable structure definition.  This maps to the STRING_TABLE structure
@@ -67,9 +68,10 @@ STRING_TABLE struct
     NextHorizontalOffsetInQuadwords BYTE ?
     NextVerticalOffsetInQuadwords BYTE ?
     StringSizes ULONGLONG ?
-    FirstAndSecondCharacter WIDE_CHAR 16 dup ?
-    Padding CHAR 16 dup ?
-    StringArray STRING_SLOT 16 dup ?
+    FirstAndSecondCharacter CHAR 32 dup (?)
+    Padding CHAR 16 dup (?)
+    ;StringArray STRING_SLOT 16 dup ?
+    StringArray CHAR 256 dup (?)
 STRING_TABLE ends
 
 echo Size of STRING_TABLE: %(sizeof STRING_TABLE)
@@ -85,7 +87,7 @@ STRING_MATCH struct
     Index LONG ?
     NumberOfMatchedCharacters USHORT ?
     Padding USHORT ?
-    String ptr STRING
+    String PSTRING ?
 STRING_MATCH ends
 
 PARAMS struct

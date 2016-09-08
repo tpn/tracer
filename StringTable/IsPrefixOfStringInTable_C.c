@@ -19,7 +19,7 @@ BOOL
 IsPrefixOfStringInTable_C(
     PSTRING_TABLE StringTable,
     PSTRING String,
-    PPSTRING_MATCH MatchPointer;
+    PPSTRING_MATCH MatchPointer
     )
 /*++
 
@@ -35,8 +35,8 @@ Arguments:
     String - Supplies a pointer to a STRING struct that contains the string to
         search for.
 
-    Match - Supplies a pointer to a variable that contains the address of a
-        STRING_MATCH structure.
+    MatchPointer - Supplies a pointer to a variable that contains the address
+        of a STRING_MATCH structure.
 
 Return Value:
 
@@ -45,11 +45,13 @@ Return Value:
 
 --*/
 {
-    BOOL Found;
-    WIDE_CHARACTER Char;
+    BOOL Found = FALSE;
+    WIDE_CHARACTER Char = { 0 };
     USHORT Index;
+    USHORT NumberOfElements;
     PSTRING_MATCH Match;
     PSTRING_TABLE Table;
+
 
     //
     // Validate arguments.
@@ -79,9 +81,13 @@ Return Value:
 
     Table = StringTable;
 
+    goto Start;
+
 Start:
 
-    for (Index = 0; Index < Table->NumberOfElements; Index++) {
+    NumberOfElements = GetNumberOfStringsInTable(Table);
+
+    for (Index = 0; Index < NumberOfElements; Index++) {
 
     }
 

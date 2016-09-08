@@ -35,7 +35,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6888049A-D0E5-406E-8403-4FB027D7E777}</ProjectGuid>
+    <ProjectGuid>{C6FBB103-535C-4BCD-A463-B60C09481854}</ProjectGuid>
     <RootNamespace>TraceStore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
