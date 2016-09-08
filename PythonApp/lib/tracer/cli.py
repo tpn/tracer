@@ -482,7 +482,7 @@ def run(*args_):
         args_ = args_[0].split(' ')
         INTERACTIVE = True
     (args, kwds) = extract_command_args_and_kwds(*args_)
-    tracer.config._clear_config_if_already_created()
+    _clear_config_if_already_created()
     cli = CLI(*args, **kwds)
     if INTERACTIVE:
         return cli.commandline.command

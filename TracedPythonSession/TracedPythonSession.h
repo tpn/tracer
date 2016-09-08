@@ -31,8 +31,26 @@ extern "C" {
 // This is an internal build of the TracedPythonSession component.
 //
 
+#ifdef _TRACED_PYTHON_SESSION_DLL_INTERNAL_BUILD
+
+//
+// This is the DLL build.
+//
+
 #define TRACED_PYTHON_SESSION_API __declspec(dllexport)
 #define TRACED_PYTHON_SESSION_DATA extern __declspec(dllexport)
+
+#else
+
+//
+// This is the static library build.
+//
+
+#define TRACED_PYTHON_SESSION_API
+#define TRACED_PYTHON_SESSION_DATA extern
+
+#endif
+
 
 #include "stdafx.h"
 
@@ -54,6 +72,18 @@ extern "C" {
 
 #endif
 
+//
+// Forward declaration of the destroy function such that it can be included
+// in the TRACED_PYTHON_SESSION struct.
+//
+
+typedef
+VOID
+(DESTROY_TRACED_PYTHON_SESSION)(
+    _Pre_notnull_ _Post_null_ struct _TRACED_PYTHON_SESSION **Session
+    );
+typedef DESTROY_TRACED_PYTHON_SESSION   *PDESTROY_TRACED_PYTHON_SESSION;
+typedef DESTROY_TRACED_PYTHON_SESSION **PPDESTROY_TRACED_PYTHON_SESSION;
 
 static CONST PWSTR PATH_ENV_NAME = L"Path";
 
@@ -165,6 +195,15 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     HMODULE PythonModule;
     HMODULE PythonTracerModule;
+
+    //
+    // If we've been built as a DLL and someone has loaded us via the inline
+    // LoadAndInitializeTracedPythonSession(), this will be set to the module
+    // representing the DLL.  If we've been built as a static lib, it won't
+    // have a value.
+    //
+
+    HMODULE TracedPythonSessionModule;
 
     ////////////////////////////////////////////////////////////////////////////
     // End of modules.
@@ -279,6 +318,13 @@ typedef struct _TRACED_PYTHON_SESSION {
     PFIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
     PINITIALIZE_PYTHON InitializePython;
     PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+
+    //
+    // Pointer to our own destroy function.  This will be filled out if we've
+    // been loaded via a DLL by LoadAndInitializeTracedPythonSession().
+    //
+
+    PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
     //
     // Path to the Python DLL and .exe found by FindPythonDllAndExe.
@@ -456,12 +502,6 @@ typedef  SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON \
         *PSANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON;
 
 typedef
-VOID (DESTROY_TRACED_PYTHON_SESSION)(
-    _Inout_ PPTRACED_PYTHON_SESSION Session
-    );
-typedef DESTROY_TRACED_PYTHON_SESSION *PDESTROY_TRACED_PYTHON_SESSION;
-
-typedef
 _Success_(return != 0)
 PPATH_ENV_VAR
 (LOAD_PATH_ENVIRONMENT_VARIABLE)(
@@ -477,6 +517,185 @@ VOID
     _Inout_ PPPATH_ENV_VAR PathPointer
     );
 typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+LoadAndInitializeTracedPythonSession(
+    _Out_ PPTRACED_PYTHON_SESSION Session,
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ PALLOCATOR Allocator,
+    _In_opt_ HMODULE OwningModule,
+    _Out_ PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine loads the TracedPythonSession DLL based on the path specified
+    by the TracerConfig->Paths.TracedPythonSessionDllPath variable, resolves
+    the InitializeTracedPythonSession() function, then calls it with the same
+    arguments as passed in.
+
+Arguments:
+
+    SessionPointer - Supplies a pointer that will receive the address of the
+        TRACED_PYTHON_SESSION structure allocated.  This pointer is immediately
+        cleared (that is, '*SessionPointer = NULL;' is performed once
+        SessionPointer is deemed non-NULL), and a value will only be set if
+        initialization was successful.
+
+    TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
+
+    Allocator - Optionally supplies a pointer to an alternate ALLOCATOR to use.
+        If not present, TracerConfig->Allocator will be used.
+
+    OwningModule - Optionally supplies the owning module handle.
+
+    DestroyTracedPythonSessionPointer - Supplies a pointer to the address of a
+        variable that will receive the address of the DLL export by the same
+        name.  This should be called in order to destroy a successfully
+        initialized session.
+
+Return Value:
+
+    TRUE on Success, FALSE if an error occurred.  *SessionPointer will be
+    updated with the value of the newly created TRACED_PYTHON_SESSION
+    structure.
+
+See Also:
+
+    InitializeTracedPythonSession().
+
+--*/
+{
+    BOOL Success;
+    HMODULE Module;
+    PINITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
+    PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Session)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(DestroyTracedPythonSessionPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Attempt to load the library.
+    //
+
+    Module = LoadLibraryW(
+        TracerConfig->Paths.TracedPythonSessionDllPath.Buffer
+    );
+
+    if (!Module) {
+        OutputDebugStringA("Failed to load TracedPythonSessionDllPath.\n");
+        return FALSE;
+    }
+
+    //
+    // Resolve the initialize and destroy functions.
+    //
+
+    InitializeTracedPythonSession = (PINITIALIZE_TRACED_PYTHON_SESSION)(
+        GetProcAddress(
+            Module,
+            "InitializeTracedPythonSession"
+        )
+    );
+
+    if (!InitializeTracedPythonSession) {
+        OutputDebugStringA("Failed to resolve InitializeTracedPythonSession\n");
+        goto Error;
+    }
+
+    DestroyTracedPythonSession = (PDESTROY_TRACED_PYTHON_SESSION)(
+        GetProcAddress(
+            Module,
+            "DestroyTracedPythonSession"
+        )
+    );
+
+    if (!DestroyTracedPythonSession) {
+        OutputDebugStringA("Failed to resolve DestroyTracedPythonSession\n");
+        goto Error;
+    }
+
+    //
+    // Call the initialization function with the same arguments we were passed.
+    //
+
+    Success = InitializeTracedPythonSession(
+        Session,
+        TracerConfig,
+        Allocator,
+        NULL
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Update the caller's DestroyTracedPythonSession function pointer and the
+    // session pointer to the same function.
+    //
+
+    *DestroyTracedPythonSessionPointer = DestroyTracedPythonSession;
+    (*Session)->DestroyTracedPythonSession = DestroyTracedPythonSession;
+
+    //
+    // Make a note of the session's own module.
+    //
+
+    (*Session)->TracedPythonSessionModule = Module;
+
+    //
+    // Return success.
+    //
+
+    return TRUE;
+
+Error:
+
+    //
+    // Attempt to destroy the session.
+    //
+
+    if (Session && *Session && DestroyTracedPythonSession) {
+
+        //
+        // This will also clear the caller's session pointer.
+        //
+
+        DestroyTracedPythonSession(Session);
+    }
+
+    //
+    // Attempt to free the module.
+    //
+
+    if (Module) {
+        FreeLibrary(Module);
+    }
+
+    return FALSE;
+}
 
 #ifdef __cpp
 } // extern "C"

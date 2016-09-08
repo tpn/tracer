@@ -81,7 +81,7 @@ Locals ends
 ;    Returns TRUE on sucess, FALSE on failure.
 ;
 ;--
-        NESTED_ENTRY IsPrefixOfStringInTable_x64_SSE42, _TEXT$00
+        NESTED_ENTRY IsPrefixOfStringInTable_x64_SSE42 PUBLIC, _TEXT$00
 
         rex_push_reg rbp
         set_frame rbp, 8
@@ -107,9 +107,8 @@ Locals ends
 ; can't be any prefix matches.
 ;
 
-
         popcnt StringTable.ContinuationBitmap[rcx]
-        lea r11, (String
+        ;lea r11, (String
 
 
 FxEnd:  BEGIN_EPILOGUE
@@ -125,7 +124,6 @@ FxEnd:  BEGIN_EPILOGUE
         ret
 
         NESTED_END IsPrefixOfStringInTable_x64_SSE42, _TEXT$00
-
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 expandtab syntax=masm formatoptions=croql      :
 

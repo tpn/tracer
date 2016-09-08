@@ -10,7 +10,7 @@ try:
     from tracer.cli import main
 except ImportError:
     path = os.path.abspath(__file__)
-    libdir = join_path(path, '../../lib')
+    libdir = join_path(path, '../lib')
     sys.path.insert(0, libdir)
 
     from tracer.cli import main

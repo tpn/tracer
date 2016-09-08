@@ -50,5 +50,8 @@
     <ClCompile Include="SanitizePathEnvironmentVariableForPython.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dllmain.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

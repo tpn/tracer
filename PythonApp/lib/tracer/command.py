@@ -9,8 +9,6 @@ from abc import (
     abstractmethod,
 )
 
-import tracer.util
-
 from .util import (
     iterable,
     add_linesep_if_missing,
@@ -36,9 +34,9 @@ def try_close_file(f):
     except IOError:
         pass
 
-def get_io_streams(add_linesep_if_missing=True):
-    if add_linesep_if_missing:
-        add = tracer.util.add_linesep_if_missing
+def get_io_streams(add_linesep_if_missing_arg=True):
+    if add_linesep_if_missing_arg:
+        add = add_linesep_if_missing
     else:
         add = lambda s: s
 

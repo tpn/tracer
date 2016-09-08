@@ -198,7 +198,7 @@ typedef struct _STRING_TABLE {
 
     CHAR StringArray[16][16];
 
-} STRING_TABLE, *PSTRING_TABLE;
+} STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
 
 //
 // Ensure the string array is aligned on a 64-byte boundary.
@@ -238,7 +238,7 @@ typedef struct _STRING_MATCH {
 
     PSTRING String;
 
-} STRING_MATCH, *PSTRING_MATCH, *PPSTRING_MATCH;
+} STRING_MATCH, *PSTRING_MATCH, **PPSTRING_MATCH;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
@@ -258,17 +258,19 @@ STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
 typedef
 VOID
 (DESTROY_STRING_TABLE)(
+    _In_ PALLOCATOR Allocator,
     _Pre_notnull_ _Post_null_ PPSTRING_TABLE
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
 
 typedef
+_Success_(return != 0)
 BOOL
 (IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String,
-    _Out_ PSTRING_MATCH StringMatch
+    _Outptr_opt_result_maybenull_ PPSTRING_MATCH StringMatch
     );
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;

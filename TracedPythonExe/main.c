@@ -1,9 +1,6 @@
 
 #include "stdafx.h"
-#include "../TlsTracerHeap/TlsTracerHeap.h"
 
-INITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
-DESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
 ULONG
 Main(VOID)
@@ -15,6 +12,7 @@ Main(VOID)
     PTRACED_PYTHON_SESSION Session;
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+    PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
     //
     // Initialize the default heap allocator.  This is a thin wrapper around
@@ -55,11 +53,12 @@ Main(VOID)
     // with tracing stores created and enabled.
     //
 
-    Success = InitializeTracedPythonSession(
+    Success = LoadAndInitializeTracedPythonSession(
         &Session,
         TracerConfig,
         &Allocator,
-        NULL
+        NULL,
+        &DestroyTracedPythonSession
     );
 
     if (!Success) {
