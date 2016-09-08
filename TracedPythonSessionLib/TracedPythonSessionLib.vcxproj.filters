@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{5DAE6570-765D-4026-A32B-6906A4970F55}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{86104C85-626D-426E-9164-03AEE5FA1DB4}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{5B242D69-B9CC-4960-BA19-B6D92B350DF5}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TracedPythonSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../TracedPythonSession/stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../TracedPythonSession/targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../TracedPythonSession/TracedPythonSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../TracedPythonSession/TracedPythonSessionPrivate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="../TracedPythonSession/DestroyPathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../TracedPythonSession/DestroyTracedPythonSession.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../TracedPythonSession/InitializeTracedPythonSession.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../TracedPythonSession/LoadPathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../TracedPythonSession/SanitizePathEnvironmentVariableForPython.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../TracedPythonSession/stdafx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
