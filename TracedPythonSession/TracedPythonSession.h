@@ -31,7 +31,7 @@ extern "C" {
 // This is an internal build of the TracedPythonSession component.
 //
 
-#ifdef _TRACED_PYTHON_SESSION_DLL_INTERNAL_BUILD
+#ifdef _TRACED_PYTHON_SESSION_DLL_BUILD
 
 //
 // This is the DLL build.
@@ -84,6 +84,8 @@ VOID
     );
 typedef DESTROY_TRACED_PYTHON_SESSION   *PDESTROY_TRACED_PYTHON_SESSION;
 typedef DESTROY_TRACED_PYTHON_SESSION **PPDESTROY_TRACED_PYTHON_SESSION;
+TRACED_PYTHON_SESSION_API DESTROY_TRACED_PYTHON_SESSION \
+                          DestroyTracedPythonSession;
 
 static CONST PWSTR PATH_ENV_NAME = L"Path";
 
@@ -490,6 +492,8 @@ BOOL
     _In_opt_    HMODULE OwningModule
     );
 typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
+TRACED_PYTHON_SESSION_API INITIALIZE_TRACED_PYTHON_SESSION \
+                          InitializeTracedPythonSession;
 
 typedef
 _Success_(return != 0)
@@ -500,6 +504,8 @@ BOOL
 
 typedef  SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON \
         *PSANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON;
+TRACED_PYTHON_SESSION_API SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON \
+                          SanitizePathEnvironmentVariableForPython;
 
 typedef
 _Success_(return != 0)
@@ -510,6 +516,8 @@ PPATH_ENV_VAR
     _In_ USHORT ReservedUnicodeBufferSizeInBytes
     );
 typedef LOAD_PATH_ENVIRONMENT_VARIABLE *PLOAD_PATH_ENVIRONMENT_VARIABLE;
+TRACED_PYTHON_SESSION_API LOAD_PATH_ENVIRONMENT_VARIABLE \
+                          LoadPathEnvironmentVariable;
 
 typedef
 VOID
@@ -517,6 +525,8 @@ VOID
     _Inout_ PPPATH_ENV_VAR PathPointer
     );
 typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
+TRACED_PYTHON_SESSION_API DESTROY_PATH_ENVIRONMENT_VARIABLE \
+                          DestroyPathEnvironmentVariable;
 
 FORCEINLINE
 _Check_return_
