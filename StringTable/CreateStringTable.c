@@ -50,10 +50,7 @@ Return Value:
 
 --*/
 {
-    USHORT Index;
     USHORT NumberOfTables;
-    USHORT LongestLength;
-    PUSHORT LongestLengthPerTable;
     PSTRING String;
     PSTRING_TABLE StringTable;
 
@@ -76,47 +73,14 @@ Return Value:
     NumberOfTables = GetNumberOfTablesRequiredForStringArray(StringArray);
 
     //
-    // I
-    LongestLengthPerTable = NULL;
-
-    //
-    // Determine the longest string present in the string table, as well as the
-    // longest string present in each 16
+    // (We only support a single table for now.)
     //
 
-    LongestLength = 0;
-
-    for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
-        String = &StringArray->Strings[Index];
-        if (String->Length > LongestLength) {
-            LongestLength = String->Length;
-        }
+    if (NumberOfTables == 1) {
+        return CreateSingleStringTable(Allocator, StringArray);
     }
 
-    StringTable = NULL;
-
-    goto End;
-
-    goto Error;
-
-Error:
-
-    if (StringTable) {
-
-        //
-        // Free the backing memory for the string table and clear the pointer.
-        //
-
-        Allocator->FreePointer(Allocator->Context, &StringTable);
-    }
-
-End:
-
-    if (LongestLengthPerTable) {
-        Allocator->FreePointer(Allocator->Context, &LongestLengthPerTable);
-    }
-
-    return StringTable;
+    return NULL;
 
 }
 
@@ -124,7 +88,7 @@ _Use_decl_annotations_
 PSTRING_TABLE
 CreateSingleStringTable(
     PALLOCATOR Allocator,
-    PSTRING_ARRAY StringArray
+    PSTRING_ARRAY SourceStringArray
     )
 /*++
 
@@ -138,40 +102,177 @@ Routine Description:
 {
     BOOL Success;
     USHORT Index;
+    USHORT Length;
     USHORT NumberOfStrings;
-    ULONG AllocSize;
     ULONG StringBufferAllocSize;
+    ULONG OccupiedBitmap;
+    ULONG ContinuationBitmap;
     PSTRING_TABLE StringTable;
-
-    NumberOfStrings = StringArray->NumberOfElements;
+    PSTRING_ARRAY StringArray;
+    PSTRING String;
+    PSTRING_SLOT Slot;
+    SLOT_LENGTHS Lengths = { 0 };
+    STRING_SLOT FirstChars = { 0 };
 
     //
-    // Get the number of bytes required to copy all string buffers in the string
-    // array, factoring in alignment up to 16-bytes.
+    // Validate arguments.
     //
 
-    Success = GetStringArrayBuffersAllocationSize(
-        StringArray,
-        &StringBufferAllocSize
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(SourceStringArray)) {
+        return NULL;
+    }
+
+    if (SourceStringArray->NumberOfElements == 0) {
+        return NULL;
+    }
+
+    //
+    // Copy the incoming string array.
+    //
+
+    StringArray = CopyStringArray(
+        Allocator,
+        SourceStringArray,
+        FIELD_OFFSET(STRING_TABLE, StringArray),
+        sizeof(STRING_TABLE),
+        &StringTable
     );
 
-    if (!Success) {
-        return FALSE;
+    if (!StringArray) {
+        return NULL;
     }
 
     //
-    // Calculate the total allocation size needed for the copy of the string
-    // array and aligned buffers.
+    // If StringTable has no value, CopyStringArray() wasn't able to allocate
+    // sufficient space for both the table and itself, so, we need to allocate
+    // new space ourselves.
     //
 
-    for (Index = 0; Index < NumberOfStrings; Index++) {
+    if (!StringTable) {
 
+        StringTable = (PSTRING_TABLE)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                sizeof(STRING_TABLE)
+            )
+        );
 
+        if (!StringTable) {
+            return NULL;
+        }
+    }
 
+    //
+    // At this point, we have copied the incoming StringArray, with each string
+    // buffer aligned to 16-bytes, and we've allocated sufficient space for the
+    // StringTable structure.  Enumerate over all of the strings, set the
+    // continuation bit if the length > 16, set the relevant slot length, set
+    // the relevant first character entry, then move the first 16-bytes of the
+    // string into the relevant slot via an aligned SSE mov.
+    //
+
+    //
+    // Set the pointers to one before their offset.  Initialize counters and
+    // clear stack-based structures.
+    //
+
+    Slot = StringTable->Slots-1;
+    String = StringArray->Strings-1;
+
+    OccupiedBitmap = 0;
+    ContinuationBitmap = 0;
+    NumberOfStrings = StringArray->NumberOfElements;
+
+    for (Index = 0, ++String, ++Slot; Index < NumberOfStrings; Index++) {
+        __m128i Octword;
+
+        //
+        // Set the occupied bit.
+        //
+
+        FastBitSet(&OccupiedBitmap, Index);
+
+        //
+        // Set the string length for the slot.
+        //
+
+        Length = Lengths.Slots[Index] = String->Length;
+
+        //
+        // If it's longer than 16 bytes, make a note of it in the
+        // continuation bitmap.
+        //
+
+        if (Length > 16) {
+            ContinuationBitmap |= (1 << Index);
+        }
+
+        //
+        // Save the first character of the string.
+        //
+
+        FirstChars.Char[Index] = String->Buffer[0];
+
+        //
+        // Copy the first 16-bytes of the string into the relevant slot.  We
+        // have taken care to ensure everything is 16-byte aligned by this
+        // stage, so we can use SSE intrinsics here.
+        //
+
+        Octword = _mm_load_si128((__m128i *)String->Buffer);
+        _mm_storeu_si128(&(*Slot).OctChars, Octword);
 
     }
 
-    return NULL;
+    //
+    // Store the slot lengths.
+    //
+
+    __try {
+
+        _mm256_storeu_si256(&(StringTable->Lengths.OctSlots), Lengths.OctSlots);
+
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+
+        //
+        // Presume the exception is an illegal instruction fault because we
+        // don't have AVX support, so just use two 128-bit moves.
+        //
+
+        _mm_storeu_si128(&(StringTable->Lengths.LowSlots), Lengths.LowSlots);
+        _mm_storeu_si128(&(StringTable->Lengths.HighSlots), Lengths.HighSlots);
+
+    }
+
+    //
+    // Store the first characters.
+    //
+
+    _mm_storeu_si128(&(StringTable->FirstChars.OctChars), FirstChars.OctChars);
+
+    //
+    // Store the occupied and continuation bitmaps.
+    //
+
+    StringTable->OccupiedBitmap = OccupiedBitmap;
+    StringTable->ContinuationBitmap = ContinuationBitmap;
+
+    //
+    // Wire up the string array to the table.
+    //
+
+    StringTable->pStringArray = StringArray;
+
+    //
+    // And we're done, return the table.
+    //
+
+    return StringTable;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

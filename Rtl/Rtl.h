@@ -1,10 +1,13 @@
-#ifdef __cpplus
-extern "C" {
-#endif
 
 #pragma once
 
 #include <Windows.h>
+#include <intrin.h>
+#include <mmintrin.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTL_API __declspec(dllexport)
 
@@ -227,6 +230,14 @@ typedef union _WIDE_CHARACTER {
     WCHAR WidePart;
 
 } WIDE_CHARACTER, *PWIDE_CHARACTER;
+
+typedef union _OCTWORD_INTEGER {
+    struct {
+        LARGE_INTEGER LowPart;
+        LARGE_INTEGER HighPart;
+    };
+    __m128 OctPart;
+} OCTWORD_INTEGER, *POCTWORD_INTEGER, **PPOCTWORD_INTEGER;
 
 typedef _Null_terminated_ CHAR *PSZ;
 //typedef const PSZ PCSZ;
@@ -855,7 +866,8 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
 // Our extended PREFIX_TABLE and STRING_TABLE functionality.
 //
 
-#ifndef _STRING_TABLE_INTERNAL_BUILD
+//#ifndef _STRING_TABLE_INTERNAL_BUILD
+#if 0
 #define INITIAL_STRING_TABLE_NUM_ELEMENTS 7
 
 typedef struct _STRING_TABLE {
@@ -3362,6 +3374,7 @@ AppendTailList(
     return;
 }
 
-#ifdef __cpp
+#ifdef __cplusplus
 } // extern "C"
 #endif
+

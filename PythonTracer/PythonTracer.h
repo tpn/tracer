@@ -16,7 +16,7 @@ Abstract:
 
 #pragma once
 
-#ifdef __cpplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 

@@ -21,7 +21,7 @@ Abstract:
 
 #pragma once
 
-#ifdef __cpplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -707,8 +707,8 @@ Error:
     return FALSE;
 }
 
-#ifdef __cpp
-} // extern "C"
+#ifdef __cplusplus
+}; // extern "C"
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

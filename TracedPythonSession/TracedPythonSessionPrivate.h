@@ -1,14 +1,14 @@
 #pragma once
 
-#ifdef __cpplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "TracedPythonSession.h"
 
 
-#ifdef __cpp
-} // extern "C"
+#ifdef __cplusplus
+}; // extern "C"
 #endif
 
 

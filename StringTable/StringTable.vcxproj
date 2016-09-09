@@ -89,6 +89,7 @@
     <ClInclude Include="StringTablePrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CopyStringArray.c" />
     <ClCompile Include="CreateStringTable.c" />
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
