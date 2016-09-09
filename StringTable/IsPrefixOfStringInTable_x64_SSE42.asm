@@ -125,6 +125,45 @@ FxEnd:  BEGIN_EPILOGUE
 
         NESTED_END IsPrefixOfStringInTable_x64_SSE42, _TEXT$00
 
+;++
+;
+; USHORT
+; IsFirstCharacterInStringTable_x64_SSE42(
+;     _In_ PSTRING_TABLE StringTable,
+;     _In_ CHAR FirstChar
+;     )
+;
+; Routine Description:
+;
+;     This routine tests whether or not any strings within a string table
+;     start with a given character.  It can be used to do a fast-path
+;     exit of a prefix match attempt without needing to search the slots.
+;
+; Arguments:
+;
+;     StringTable - Supplies a pointer to a STRING_TABLE structure to search.
+;
+;     FirstChar - Supplies the character to search for.
+;
+; Return Value:
+;
+;    Returns a USHORT bitmap where each bit reflects whether or not the
+;    corresponding slot started with FirstChar.  If the value is 0, no
+;    matches were found.
+;
+;--
+        NESTED_ENTRY IsFirstCharacterInStringTable_x64_SSE42 PUBLIC, _TEXT$00
+
+        END_PROLOGUE
+
+
+
+        BEGIN_EPILOG
+
+        ret
+
+        NESTED_END IsFirstCharacterInStringTable_x64_SSE42
+
 ; vim:set tw=80 ts=8 sw=4 sts=4 expandtab syntax=masm formatoptions=croql      :
 
 end

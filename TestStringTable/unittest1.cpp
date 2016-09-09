@@ -87,6 +87,7 @@ typedef struct _STRING_ARRAY33 {
 MAKE_STRING(falcon);
 MAKE_STRING(tomcat);
 MAKE_STRING(viper);
+MAKE_STRING(fox);
 MAKE_STRING(fox2);
 
 #define CONSTANT_STRING_ARRAY(Strings) { 0, 1, 0, 0, { Strings } }
@@ -141,7 +142,26 @@ namespace TestStringTable
 
             Found = IsPrefixOfStringInTable(StringTable, &tomcat, NULL);
 
-            Assert::IsFalse(Found);
+            Assert::AreEqual(Found, FALSE);
+
+        }
+
+        TEST_METHOD(TestMethod2)
+        {
+            USHORT Mask;
+            PSTRING_TABLE StringTable;
+            STRING_ARRAY StringArray1 = CONSTANT_STRING_ARRAY(fox);
+
+            StringTable = CreateStringTable(&Allocator, &StringArray1);
+
+            Mask = IsFirstCharacterInStringTable(StringTable, 'f');
+            Assert::AreEqual((ULONG)Mask, (ULONG)1);
+
+            Mask = IsFirstCharacterInStringTable(StringTable, 'F');
+            Assert::AreEqual((ULONG)Mask, (ULONG)0);
+
+            Mask = IsFirstCharacterInStringTable(StringTable, 'a');
+            Assert::AreEqual((ULONG)Mask, (ULONG)0);
 
         }
 
