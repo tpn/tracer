@@ -265,6 +265,12 @@ Routine Description:
     StringTable->pStringArray = StringArray;
 
     //
+    // Set the IsPrefixOfStringInTable function to our C function.
+    //
+
+    StringTable->IsPrefixOfStringInTable = IsPrefixOfStringInSingleTable_C;
+
+    //
     // And we're done, return the table.
     //
 

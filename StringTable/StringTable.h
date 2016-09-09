@@ -155,6 +155,24 @@ typedef union _SLOT_LENGTHS {
 C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
 //
+// Forward declaration of functions that we include in the STRING_TABLE
+// struct via function pointers.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(IS_PREFIX_OF_STRING_IN_TABLE)(
+    _In_ struct _STRING_TABLE *StringTable,
+    _In_ PSTRING String,
+    _In_opt_ struct _STRING_MATCH *StringMatch
+    );
+typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
+
+//
 // The STRING_TABLE struct is an optimized structure for testing whether a
 // prefix entry for a string is in a table, with the expectation that the
 // strings being compared will be relatively short (ideally <= 16 characters),
@@ -274,11 +292,17 @@ typedef struct _STRING_TABLE {
     //
 
     //
-    // Reserve 8-bytes for flags and another 8-bytes for future use.
+    // Function pointer to the function that tests whether or not a string has
+    // a prefix match with a string in the table.
+    //
+
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    //
+    // Reserve 8-bytes for flags.
     //
 
     ULONGLONG Flags;
-    ULONGLONG Reserved;
 
     //
     // (336-bytes consumed, aligned at 16-bytes.)
@@ -290,7 +314,7 @@ typedef struct _STRING_TABLE {
     // boundaries, which complicates SIMD boundary handling), so we have an
     // extra 176-bytes to play with here.  The CopyStringArray() routine is
     // special-cased to allocate the backing STRING_ARRAY structure plus the
-    // accomodating buffers in this space if it can fit.
+    // accommodating buffers in this space if it can fit.
     //
     // (You can test whether or not this occurred by checking the invariant
     //  `StringTable->pStringArray == &StringTable->StringArray`, if this
@@ -385,17 +409,6 @@ VOID
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
 
-typedef
-_Success_(return != 0)
-BOOL
-(IS_PREFIX_OF_STRING_IN_TABLE)(
-    _In_ PSTRING_TABLE StringTable,
-    _In_ PSTRING String,
-    _Outptr_opt_result_nullonfailure_ PPSTRING_MATCH StringMatch
-    );
-typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -750,6 +763,44 @@ ComputeCrc32ForString(
     }
 
     return Crc32;
+}
+
+FORCEINLINE
+LONG
+IsFirstCharacterInStringTable(
+    _In_ PSTRING_TABLE StringTable,
+    _In_ CHAR FirstChar
+    )
+{
+    LONG Index;
+    __m128i FirstCharAnd;
+    __m128i FirstCharMask;
+    __m128i FirstCharXmm;
+    __m128i StringTableFirstCharXmm;
+    __m128i ShuffleXmm = { 0 };
+    __m128i FirstCharShuffleXmm = { FirstChar };
+    __m128i PxorXmm = _mm_set_epi32(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
+
+    //
+    // Broadcast the character into the entire XMM register.
+    //
+
+    FirstCharXmm = _mm_shuffle_epi8(FirstCharShuffleXmm, ShuffleXmm);
+
+    //
+    // Load the string table's first character array into an XMM register.
+    //
+
+    StringTableFirstCharXmm = StringTable->FirstChars.OctChars;
+
+    FirstCharAnd = _mm_and_si128(FirstCharXmm, StringTableFirstCharXmm);
+    FirstCharAnd = _mm_and_si128(FirstCharXmm, FirstCharAnd);
+    FirstCharMask = _mm_xor_si128(FirstCharAnd, PxorXmm);
+
+    Index = _mm_movemask_epi8(FirstCharMask);
+
+    return Index;
+
 }
 
 #ifdef __cplusplus

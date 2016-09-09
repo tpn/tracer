@@ -28,7 +28,7 @@ GetNumberOfTablesRequiredForStringArray(
     _In_ PSTRING_ARRAY StringArray
     )
 {
-    return ALIGN_UP(StringArray->NumberOfElements / 16, 16);
+    return ALIGN_UP(StringArray->NumberOfElements, 16) / 16;
 }
 
 #ifdef __cplusplus
