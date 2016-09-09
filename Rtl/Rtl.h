@@ -2,8 +2,12 @@
 #pragma once
 
 #include <Windows.h>
+
+#pragma warning(push)
+#pragma warning(disable: 28251)
 #include <intrin.h>
 #include <mmintrin.h>
+#pragma warning(pop)
 
 #ifdef __cplusplus
 extern "C" {

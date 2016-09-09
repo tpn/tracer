@@ -380,7 +380,7 @@ typedef
 VOID
 (DESTROY_STRING_TABLE)(
     _In_ PALLOCATOR Allocator,
-    _Pre_notnull_ _Post_null_ PPSTRING_TABLE
+    _Outptr_opt_ PPSTRING_TABLE
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
@@ -391,7 +391,7 @@ BOOL
 (IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String,
-    _Outptr_opt_result_maybenull_ PPSTRING_MATCH StringMatch
+    _Outptr_opt_ PPSTRING_MATCH StringMatch
     );
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
@@ -402,6 +402,7 @@ STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
 ////////////////////////////////////////////////////////////////////////////////
 
 FORCEINLINE
+_Success_(return != 0)
 BOOL
 GetSlicedStringArrayBuffersAllocationSize(
     _In_        PSTRING_ARRAY   StringArray,
@@ -570,6 +571,8 @@ incoming arguments, or one of the following invariants being violated:
     return TRUE;
 }
 
+_Check_return_
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 GetStringArrayBuffersAllocationSize(
@@ -598,6 +601,8 @@ Routine Description:
     );
 }
 
+_Check_return_
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 GetStringArrayAllocationInfo(

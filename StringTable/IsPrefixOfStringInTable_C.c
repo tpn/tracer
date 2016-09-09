@@ -69,11 +69,11 @@ Return Value:
         return FALSE;
     }
 
-    Match = *MatchPointer;
-
-    if (!Match) {
+    if (!*MatchPointer) {
         return FALSE;
     }
+
+    Match = *MatchPointer;
 
     //
     // Arguments are valid, begin checking the table.
