@@ -16,10 +16,10 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-IsPrefixOfStringInTable_C(
+IsPrefixOfStringInSingleTable_C(
     PSTRING_TABLE StringTable,
     PSTRING String,
-    PPSTRING_MATCH MatchPointer
+    PSTRING_MATCH Match
     )
 /*++
 
@@ -31,12 +31,12 @@ Routine Description:
 Arguments:
 
     StringTable - Supplies a pointer to a STRING_TABLE struct.
-    
+
     String - Supplies a pointer to a STRING struct that contains the string to
         search for.
 
-    MatchPointer - Supplies a pointer to a variable that contains the address
-        of a STRING_MATCH structure.
+    Match - Optionally supplies a pointer to a variable that contains the
+        address of a STRING_MATCH structure.
 
 Return Value:
 
@@ -46,12 +46,9 @@ Return Value:
 --*/
 {
     BOOL Found = FALSE;
-    WIDE_CHARACTER Char = { 0 };
-    USHORT Index;
-    USHORT NumberOfElements;
-    PSTRING_MATCH Match;
-    PSTRING_TABLE Table;
-
+    CHAR FirstChar;
+    LONG Mask;
+    PSTRING_ARRAY StringArray;
 
     //
     // Validate arguments.
@@ -65,31 +62,37 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(MatchPointer)) {
+    StringArray = StringTable->pStringArray;
+
+    //
+    // If the minimum length of the string array is greater than the length of
+    // our search string, there can't be a prefix match.
+    //
+
+    if (StringArray->MinimumLength > String->Length) {
         return FALSE;
     }
 
-    if (!*MatchPointer) {
+    //
+    // See if the first character is in the table.
+    //
+
+    FirstChar = String->Buffer[0];
+    Mask = IsFirstCharacterInStringTable(StringTable, FirstChar);
+
+    if (Mask == 0) {
+
+        //
+        // The first character wasn't found anywhere in the table, so we can
+        // terminate our search early here.
+        //
+
         return FALSE;
     }
 
-    Match = *MatchPointer;
-
     //
-    // Arguments are valid, begin checking the table.
+    // XXX todo: finish implementation.
     //
-
-    Table = StringTable;
-
-    goto Start;
-
-Start:
-
-    NumberOfElements = GetNumberOfStringsInTable(Table);
-
-    for (Index = 0; Index < NumberOfElements; Index++) {
-
-    }
 
     return FALSE;
 }
