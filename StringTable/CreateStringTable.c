@@ -51,8 +51,6 @@ Return Value:
 --*/
 {
     USHORT NumberOfTables;
-    PSTRING String;
-    PSTRING_TABLE StringTable;
 
     //
     // Validate arguments.
@@ -100,11 +98,9 @@ Routine Description:
 
 --*/
 {
-    BOOL Success;
     USHORT Index;
     USHORT Length;
     USHORT NumberOfStrings;
-    ULONG StringBufferAllocSize;
     ULONG OccupiedBitmap;
     ULONG ContinuationBitmap;
     PSTRING_TABLE StringTable;
@@ -195,7 +191,7 @@ Routine Description:
         // Set the occupied bit.
         //
 
-        FastBitSet(&OccupiedBitmap, Index);
+        BitTestAndSet(&OccupiedBitmap, Index);
 
         //
         // Set the string length for the slot.
@@ -259,8 +255,8 @@ Routine Description:
     // Store the occupied and continuation bitmaps.
     //
 
-    StringTable->OccupiedBitmap = OccupiedBitmap;
-    StringTable->ContinuationBitmap = ContinuationBitmap;
+    StringTable->OccupiedBitmap = (USHORT)OccupiedBitmap;
+    StringTable->ContinuationBitmap = (USHORT)(ContinuationBitmap);
 
     //
     // Wire up the string array to the table.
