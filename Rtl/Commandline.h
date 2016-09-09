@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stdafx.h"
 #include "Memory.h"
 
@@ -28,7 +32,7 @@ typedef ARGVW_TO_ARGVA *PARGVW_TO_ARGVA;
 
 #define MAX_ARGV 100
 
-#ifdef __cpp
+#ifdef __cplusplus
 } // extern "C"
 #endif
 

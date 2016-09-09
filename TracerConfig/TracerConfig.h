@@ -16,7 +16,7 @@ Abstract:
 
 #pragma once
 
-#ifdef __cpplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -312,8 +312,8 @@ typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
 #define TRACER_CONFIG_POOL_TAG ((ULONG)'pCrT')
 #define TRACER_CONFIG_POOL_PRIORITY LowPoolPriority
 
-#ifdef __cpplus
-} // extern "C" {
+#ifdef __cplusplus
+}; // extern "C" {
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

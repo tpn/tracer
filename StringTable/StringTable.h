@@ -17,22 +17,21 @@ Abstract:
     data structure used by this component.
 
     Functions are provided for creating, destroying and searching for whether
-    or not there's a prefix string for a given search string present within a
+    or not there is a prefix string for a given search string present within a
     table.
 
     The design is optimized for relatively short strings (less than or equal to
     16 chars), and relatively few of them (less than or equal to 16).  These
-    restrictive size constraints facilitate aggresive SIMD optimizations when
-    searching for the strings within the table, with the goal to provide low
-    latency with very little jitter.
+    restrictive size constraints facilitate aggressive SIMD optimizations when
+    searching for the strings within the table, with the goal to minimize the
+    maximum possible latency incurred by the lookup mechanism.  The trade-off
+    is usability and flexibility -- two things which can be better served by
+    prefix trees if the pointer-chasing behavior of said data structures can
+    be tolerated.
 
 --*/
 
 #pragma once
-
-#ifdef __cpplus
-extern "C" {
-#endif
 
 #ifdef _STRING_TABLE_INTERNAL_BUILD
 
@@ -58,17 +57,35 @@ extern "C" {
 
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Structures
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef _Struct_size_bytes_(Size) struct _STRING_ARRAY {
+typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
 
     //
-    // Size of the structure, in bytes.
+    // Size of the structure, in quadwords.  Why quadwords?  It allows us to
+    // keep this size field to a USHORT, which helps with the rest of the
+    // alignment in this struct (we want the STRING Strings[] array to start
+    // on an 8-byte boundary).
+    //
+    // N.B.: We can't express the exact field size in the SAL annotation
+    //       below, because the array of buffer sizes are inexpressible;
+    //       however, we know the maximum length, so we can use the implicit
+    //       invariant that the total buffer size can't exceed whatever num
+    //       elements * max size is.
     //
 
-    USHORT Size;
+    _Field_range_(<=, (
+        sizeof(struct _STRING_ARRAY) +
+        ((NumberOfElements - 1) * sizeof(STRING)) +
+        (MaximumLength * NumberOfElements)
+    ) >> 3)
+    USHORT SizeInQuadwords;
 
     //
     // Number of elements in the array.
@@ -91,6 +108,51 @@ typedef _Struct_size_bytes_(Size) struct _STRING_ARRAY {
     STRING Strings[ANYSIZE_ARRAY];
 
 } STRING_ARRAY, *PSTRING_ARRAY, **PPSTRING_ARRAY;
+
+typedef union _STRING_SLOT {
+    CHAR Char[16];
+    WIDE_CHARACTER WideChar[8];
+    struct {
+        ULARGE_INTEGER LowChars;
+        ULARGE_INTEGER HighChars;
+    };
+    __m128i OctChars;
+} STRING_SLOT, *PSTRING_SLOT, **PPSTRING_SLOT;
+
+typedef union _SLOT_LENGTHS {
+    __m256i OctSlots;
+    USHORT Slots[16];
+    struct {
+        union {
+            struct {
+                USHORT Slot0;
+                USHORT Slot1;
+                USHORT Slot2;
+                USHORT Slot3;
+                USHORT Slot4;
+                USHORT Slot5;
+                USHORT Slot6;
+                USHORT Slot7;
+            };
+            __m128i LowSlots;
+        };
+        union {
+            struct {
+                USHORT Slot8;
+                USHORT Slot9;
+                USHORT Slot10;
+                USHORT Slot11;
+                USHORT Slot12;
+                USHORT Slot13;
+                USHORT Slot14;
+                USHORT Slot15;
+            };
+            __m128i HighSlots;
+        };
+    };
+} SLOT_LENGTHS, *PSLOT_LENGTHS, **PPSLOT_LENGTHS;
+
+C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
 //
 // The STRING_TABLE struct is an optimized structure for testing whether a
@@ -123,6 +185,10 @@ typedef struct _STRING_TABLE {
     //
 
     USHORT ContinuationBitmap;
+
+    //
+    // (4-bytes aligned.)
+    //
 
     //
     // Horizontal depth of the table; 0 translates to the first 16 characters,
@@ -159,53 +225,93 @@ typedef struct _STRING_TABLE {
     //
 
     //
-    // Each 4-bit nibble of this 64-byte long long field represents the length,
-    // in characters, not including the trailing null, of the string in the
-    // corresponding slot.  The lowest 4 bits map to slot 0, the next 4 bits
-    // map to slot 1, and so on.
+    // Pointer to the STRING_ARRAY associated with this table, which we own
+    // (we create it and copy the caller's contents at creation time and
+    // deallocate it when we get destroyed).
+    //
+    // N.B.: we use pStringArray here instead of StringArray because the
+    //       latter is a field name at the end of the struct.
+    //
     //
 
-    ULONGLONG StringSizes;
+    PSTRING_ARRAY pStringArray;
 
     //
     // (16-bytes aligned.)
     //
 
     //
-    // The first two characters of each string is stored in this array.  We can
-    // load it into an XMM register, fill a second XMM register with the search
-    // string's first two characters also, and then do a `pand xmm1, xmm2` and
-    // popcnt to see if there were any matches.  This allows us to terminate
-    // the search early.
+    // A slot where each individual element contains the first letter of
+    // each string in an occupied slot.
     //
 
-    WIDE_CHARACTER FirstAndSecondCharacter[16];
+    STRING_SLOT FirstChars;
 
     //
-    // (48-bytes aligned; WIDE_CHARACTER is 16-bits.)
+    // (32-bytes aligned.)
     //
 
     //
-    // Pad out to 64-bytes so that our string buffers start on a quadword
-    // boundary.
+    // Lengths of each slot (the String->Length value) compressed into a
+    // 256-bit, 32-byte struct.  This needs to be 32-byte aligned.
     //
 
-    CHAR Padding[16];
+    SLOT_LENGTHS Lengths;
 
     //
-    // Our 16-element array of 16-character arrays.  Occupied slots are governed
-    // by the OccupiedBitmap above.
+    // (64-bytes aligned.)
     //
 
-    CHAR StringArray[16][16];
+    //
+    // The 16-element array of STRING_SLOT structs.  We want this to be aligned
+    // on a 64-byte boundary, and it consumes 256-bytes of memory.
+    //
+
+    STRING_SLOT Slots[16];
+
+    //
+    // (320-bytes consumed, aligned at 64-bytes.)
+    //
+
+    //
+    // Reserve 8-bytes for flags and another 8-bytes for future use.
+    //
+
+    ULONGLONG Flags;
+    ULONGLONG Reserved;
+
+    //
+    // (336-bytes consumed, aligned at 16-bytes.)
+    //
+
+    //
+    // We want the structure size to be a power of 2 such that an even number
+    // can fit into a 4KB page (and reducing the likelihood of crossing page
+    // boundaries, which complicates SIMD boundary handling), so we have an
+    // extra 176-bytes to play with here.  The CopyStringArray() routine is
+    // special-cased to allocate the backing STRING_ARRAY structure plus the
+    // accomodating buffers in this space if it can fit.
+    //
+    // (You can test whether or not this occurred by checking the invariant
+    //  `StringTable->pStringArray == &StringTable->StringArray`, if this
+    //  is true, the array was allocated within this remaining padding space.)
+    //
+
+    union {
+        STRING_ARRAY StringArray;
+        CHAR Padding[172];
+    };
 
 } STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
 
 //
-// Ensure the string array is aligned on a 64-byte boundary.
+// Assert critical size and alignment invariants at compile time.
 //
 
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, StringArray) == 64);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE, Lengths) == 32);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE, Slots)   == 64);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE, Padding) == 336);
+C_ASSERT(sizeof(STRING_TABLE) == 512);
 
 //
 // This structure is used to communicate matches back to the caller.  (Not yet
@@ -251,10 +357,13 @@ _Success_(return != 0)
 PSTRING_ARRAY
 (COPY_STRING_ARRAY)(
     _In_ PALLOCATOR Allocator,
-    _In_ PSTRING_ARRAY StringArray
+    _In_ PSTRING_ARRAY StringArray,
+    _In_ USHORT StringTablePaddingOffset,
+    _In_ USHORT StringTableStructSize,
+    _Outptr_opt_result_maybenull_ PPSTRING_TABLE StringTablePointer
     );
-typedef COPY_STRING_TABLE *PCOPY_STRING_TABLE;
-STRING_TABLE_API COPY_STRING_TABLE CopyStringTable;
+typedef COPY_STRING_ARRAY *PCOPY_STRING_ARRAY;
+STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
 
 typedef
 _Check_return_
@@ -288,7 +397,357 @@ typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
 
-#ifdef __cpp
+////////////////////////////////////////////////////////////////////////////////
+// Inline functions.
+////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+BOOL
+GetSlicedStringArrayBuffersAllocationSize(
+    _In_        PSTRING_ARRAY   StringArray,
+    _In_opt_    USHORT          Start,
+    _In_opt_    USHORT          End,
+    _In_opt_    USHORT          Alignment,
+    _Out_       PULONG          AllocationSizePointer,
+    _Out_opt_   PUSHORT         MinimumLengthPointer,
+    _Out_opt_   PUSHORT         MaximumLengthPointer
+    )
+/*++
+
+Routine Description:
+
+    Calculates the total number of bytes required to copy all of the STRING
+    structs and their buffers in a given STRING_ARRAY struct, aligning each
+    string's maximum buffer length up to the given Alignment (or 16-bytes if
+    not provided).
+
+    The allocation size can be restricted to a subset of an array (i.e. a
+    slice) by specifying values for the 0-based Start and End parameters.
+
+Arguments:
+
+    StringArray - Supplies a pointer to a STRING_ARRAY structure to calculate
+        allocation space for.
+
+    Start - Optionally supplies a 0-based starting index into StringArray's
+        Strings array to start calculating length from.
+
+    End - Optionally supplies a 0-based ending index into StringArray's
+        Strings array to stop calculating length from.  This would typically
+        be used in conjunction with the Start parameter to limit allocation
+        size to a slice of the string array.
+
+    Alignment - Optionally supplies a MaximumLength size to align up to.
+        Defaults to 16-bytes.  (The individual String->Length field is
+        unaffected.)
+
+    AllocationSizePointer - Supplies a pointer to the address of a variable
+        that the allocation size in bytes will be written into.
+
+    MinimumLengthPointer - Optionally supplies a pointer to the address of a
+        variable that will receive the minimum String->Length seen whilst
+        calculating the size.
+
+    MaximumLengthPointer - Optionally supplies a pointer to the address of a
+        variable that will receive the maximum String->Length seen whilst
+        calculating the size.
+
+Return Value:
+
+TRUE on success, FALSE on failure.  Failure will be a result of invalid
+incoming arguments, or one of the following invariants being violated:
+
+- Start >= StringArray->NumberOfElements
+- End >= StringArray->NumberOfElements
+- Start > End
+
+--*/
+{
+    USHORT Index;
+    USHORT Length;
+    USHORT AlignedSize;
+    USHORT NumberOfElements;
+    USHORT MinimumLength;
+    USHORT MaximumLength;
+    ULONG AllocSize;
+    PSTRING String;
+
+#ifdef _DEBUG
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(StringArray)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AllocationSizePointer)) {
+        return FALSE;
+    }
+
+    NumberOfElements = StringArray->NumberOfElements;
+
+    //
+    // Check invariants.
+    //
+
+    if (NumberOfElements == 0) {
+        return FALSE;
+    }
+
+    if (Start >= NumberOfElements || End >= NumberOfElements) {
+        return FALSE;
+    }
+
+    if (Start > End) {
+        return FALSE;
+    }
+
+#else
+
+    NumberOfElements = StringArray->NumberOfElements;
+
+#endif
+
+    if (End == 0) {
+        End = NumberOfElements;
+    }
+
+    if (Alignment == 0) {
+        Alignment = 16;
+    }
+
+    //
+    // Initialize variables before the loop.
+    //
+
+    AllocSize = 0;
+    String = StringArray->Strings - 1;
+    MinimumLength = (USHORT)-1;
+    MaximumLength = 0;
+
+    for (Index = Start, ++String; Index < End; Index++) {
+
+        Length = String->Length;
+
+        //
+        // Align the string's length up to our alignment value.
+        //
+
+        AlignedSize = ALIGN_UP(Length, Alignment);
+        AllocSize += AlignedSize;
+
+        //
+        // Update minimum and maximum length if applicable.
+        //
+
+        if (Length < MinimumLength) {
+            MinimumLength = Length;
+        }
+
+        if (Length > MaximumLength) {
+            MaximumLength = Length;
+        }
+
+    }
+
+    //
+    // Update the caller's pointer, minimum and maximum length pointers if
+    // applicable, then return success.
+    //
+
+    *AllocationSizePointer = AllocSize;
+
+    if (ARGUMENT_PRESENT(MinimumLengthPointer)) {
+        *MinimumLengthPointer = MinimumLength;
+    }
+
+    if (ARGUMENT_PRESENT(MaximumLengthPointer)) {
+        *MaximumLengthPointer = MaximumLength;
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+GetStringArrayBuffersAllocationSize(
+    _In_        PSTRING_ARRAY   StringArray,
+    _Out_       PULONG          AllocationSizePointer,
+    _Out_opt_   PUSHORT         MinimumLengthPointer,
+    _Out_opt_   PUSHORT         MaximumLengthPointer
+)
+/*++
+
+Routine Description:
+
+    Helper routine that calls GetSlicedStringArrayBuffersAllocationSize() with
+    the Start, End and Alignment parameters set to their default.
+
+--*/
+{
+    return GetSlicedStringArrayBuffersAllocationSize(
+        StringArray,
+        0,
+        0,
+        0,
+        AllocationSizePointer,
+        MinimumLengthPointer,
+        MaximumLengthPointer
+    );
+}
+
+FORCEINLINE
+BOOL
+GetStringArrayAllocationInfo(
+    _In_  PSTRING_ARRAY   StringArray,
+    _Out_ PULONG          TotalAllocationSizePointer,
+    _Out_ PULONG          StructSizePointer,
+    _Out_ PULONG          StringElementsSizePointer,
+    _Out_ PULONG          BufferOffsetPointer,
+    _Out_ PUSHORT         MinimumLengthPointer,
+    _Out_ PUSHORT         MaximumLengthPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine calculates the total size, in bytes, required to copy the
+    entire StringArray table and all string buffers (aligned at 16-bytes).
+
+--*/
+{
+    BOOL Success;
+    ULONG BufferOffset;
+    ULONG AlignedBufferOffset;
+    ULONG AllocSize;
+    ULONG PaddingSize;
+    ULONG StringBufferAllocSize;
+    ULONG StringElementsSize;
+
+    //
+    // Get the number of bytes required to copy all string buffers in the string
+    // array, factoring in alignment up to 16-bytes.
+    //
+
+    Success = GetStringArrayBuffersAllocationSize(
+        StringArray,
+        &StringBufferAllocSize,
+        MinimumLengthPointer,
+        MaximumLengthPointer
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Account for (StringArray->NumberOfElements - 1) times size of a
+    // STRING struct.  The minus 1 is because the size of the STRING_ARRAY
+    // struct includes a single STRING struct at the end of it.
+    //
+
+    StringElementsSize = (StringArray->NumberOfElements - 1) * sizeof(STRING);
+
+    //
+    // Calculate the offset where the first string buffer will reside, and the
+    // aligned value of the offset.  Make sure the final buffer offset is
+    // 16-bytes aligned, adjusting padding as necessary.
+    //
+
+    BufferOffset = sizeof(STRING_ARRAY) + StringElementsSize;
+    AlignedBufferOffset = ALIGN_UP(BufferOffset, 16);
+    PaddingSize = (AlignedBufferOffset - BufferOffset);
+
+    //
+    // Calculate the final size.
+    //
+
+    AllocSize = (
+
+        //
+        // Account for the STRING_ARRAY structure.
+        //
+
+        sizeof(STRING_ARRAY) +
+
+        //
+        // Account for the array of STRING structures, minus 1.
+        //
+
+        StringElementsSize +
+
+        //
+        // Account for any alignment padding we needed to do.
+        //
+
+        PaddingSize +
+
+        //
+        // Account for the backing buffer sizes.
+        //
+
+        StringBufferAllocSize
+
+        );
+
+    //
+    // Update the caller's pointers and return success.
+    //
+
+    *TotalAllocationSizePointer = AllocSize;
+    *StructSizePointer = sizeof(STRING_ARRAY);
+    *StringElementsSizePointer = StringElementsSize;
+    *BufferOffsetPointer = AlignedBufferOffset;
+
+    return TRUE;
+
+}
+
+#pragma intrinsic(__popcnt16)
+
+FORCEINLINE
+USHORT
+GetNumberOfStringsInTable(
+    _In_ PSTRING_TABLE StringTable
+    )
+{
+    return (USHORT)__popcnt16(StringTable->OccupiedBitmap);
+}
+
+FORCEINLINE
+USHORT
+GetNumberOfOversizedStringsInTable(
+    _In_ PSTRING_TABLE StringTable
+    )
+{
+    return (USHORT)__popcnt16(StringTable->ContinuationBitmap);
+}
+
+FORCEINLINE
+ULONG
+ComputeCrc32ForString(
+    _In_ PSTRING String
+    )
+{
+    CHAR Char;
+    USHORT Index;
+    ULONG Crc32;
+    PCHAR Buffer;
+
+    Crc32 = 0;
+    Buffer = String->Buffer;
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = Buffer[Index];
+        Crc32 = _mm_crc32_u8(Crc32, Char);
+    }
+
+    return Crc32;
+}
+
+#ifdef __cplusplus
 } // extern "C"
 #endif
 

@@ -14,7 +14,7 @@ Abstract:
 
 #pragma once
 
-#ifdef __cpplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -116,8 +116,8 @@ static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16); // 64KB
 static const ULONG DefaultInfoTraceStoreSize = (1 << 16); // 64KB
 static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16); // 64KB
 
-#ifdef __cpp
-} // extern "C"
+#ifdef __cplusplus
+}; // extern "C"
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -17,6 +17,7 @@ Abstract:
 #include "targetver.h"
 
 #include <Windows.h>
+#include <intrin.h>
 #include <sal.h>
 #include "../Rtl/Rtl.h"
 #include "StringTable.h"
