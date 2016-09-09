@@ -766,20 +766,18 @@ ComputeCrc32ForString(
 }
 
 FORCEINLINE
-LONG
+USHORT
 IsFirstCharacterInStringTable(
     _In_ PSTRING_TABLE StringTable,
     _In_ CHAR FirstChar
     )
 {
-    LONG Index;
-    __m128i FirstCharAnd;
-    __m128i FirstCharMask;
+    ULONG_INTEGER Index;
+    __m128i EqualXmm;
     __m128i FirstCharXmm;
     __m128i StringTableFirstCharXmm;
     __m128i ShuffleXmm = { 0 };
     __m128i FirstCharShuffleXmm = { FirstChar };
-    __m128i PxorXmm = _mm_set_epi32(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
 
     //
     // Broadcast the character into the entire XMM register.
@@ -793,14 +791,10 @@ IsFirstCharacterInStringTable(
 
     StringTableFirstCharXmm = StringTable->FirstChars.OctChars;
 
-    FirstCharAnd = _mm_and_si128(FirstCharXmm, StringTableFirstCharXmm);
-    FirstCharAnd = _mm_and_si128(FirstCharXmm, FirstCharAnd);
-    FirstCharMask = _mm_xor_si128(FirstCharAnd, PxorXmm);
+    EqualXmm = _mm_cmpeq_epi8(FirstCharXmm, StringTableFirstCharXmm);
+    Index.LongPart = _mm_movemask_epi8(EqualXmm);
 
-    Index = _mm_movemask_epi8(FirstCharMask);
-
-    return Index;
-
+    return Index.LowPart;
 }
 
 #ifdef __cplusplus
