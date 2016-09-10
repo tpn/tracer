@@ -98,9 +98,9 @@ Routine Description:
 
 --*/
 {
+    USHORT Count;
     USHORT Index;
     USHORT Length;
-    USHORT NumberOfStrings;
     ULONG OccupiedBitmap;
     ULONG ContinuationBitmap;
     PSTRING_TABLE StringTable;
@@ -164,6 +164,16 @@ Routine Description:
     }
 
     //
+    // Make sure the fields that are sensitive to alignment are in fact aligned
+    // correctly.
+    //
+
+    if (!AssertStringTableFieldAlignment(StringTable)) {
+        DestroyStringTable(Allocator, StringTable);
+        return NULL;
+    }
+
+    //
     // At this point, we have copied the incoming StringArray, with each string
     // buffer aligned to 16-bytes, and we've allocated sufficient space for the
     // StringTable structure.  Enumerate over all of the strings, set the
@@ -180,12 +190,20 @@ Routine Description:
     Slot = StringTable->Slots-1;
     String = StringArray->Strings-1;
 
+    Index = 0;
     OccupiedBitmap = 0;
     ContinuationBitmap = 0;
-    NumberOfStrings = StringArray->NumberOfElements;
+    Count = StringArray->NumberOfElements;
 
-    for (Index = 0, ++String, ++Slot; Index < NumberOfStrings; Index++) {
+    do {
         __m128i Octword;
+
+        //
+        // Advance our pointers.
+        //
+
+        ++Slot;
+        ++String;
 
         //
         // Set the occupied bit.
@@ -205,7 +223,7 @@ Routine Description:
         //
 
         if (Length > 16) {
-            ContinuationBitmap |= (1 << Index);
+            ContinuationBitmap |= (1 << (Index+1));
         }
 
         //
@@ -223,22 +241,22 @@ Routine Description:
         Octword = _mm_load_si128((__m128i *)String->Buffer);
         _mm_storeu_si128(&(*Slot).OctChars, Octword);
 
-    }
+        ++Index;
+
+    } while (--Count);
 
     //
     // Store the slot lengths.
     //
 
-    __try {
+    TRY_AVX {
 
-        _mm256_storeu_si256(&(StringTable->Lengths.OctSlots), Lengths.OctSlots);
+        _mm256_storeu_si256(
+            &(StringTable->Lengths.Slots256),
+            Lengths.Slots256
+        );
 
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-
-        //
-        // Presume the exception is an illegal instruction fault because we
-        // don't have AVX support, so just use two 128-bit moves.
-        //
+    } SSE42_FALLBACK {
 
         _mm_storeu_si128(&(StringTable->Lengths.LowSlots), Lengths.LowSlots);
         _mm_storeu_si128(&(StringTable->Lengths.HighSlots), Lengths.HighSlots);

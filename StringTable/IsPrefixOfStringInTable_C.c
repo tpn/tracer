@@ -47,7 +47,8 @@ Return Value:
 {
     BOOL Found = FALSE;
     CHAR FirstChar;
-    LONG Mask;
+    USHORT Mask;
+    USHORT LengthsBitmap;
     PSTRING_ARRAY StringArray;
 
     //
@@ -91,8 +92,28 @@ Return Value:
     }
 
     //
-    // XXX todo: finish implementation.
+    // Get a bitmap where each bit corresponds to the index of a slot with a
+    // length no greater than our length, which is a requirement if we're going
+    // to prefix match against the search string.
     //
+
+    LengthsBitmap = GetBitmapForViablePrefixSlotsByLengths(StringTable, String);
+
+    if (Mask == 0) {
+
+        //
+        // No bits remaining in the mask, so there are no prefix matches.
+        //
+
+        return FALSE;
+
+    }
+
+    //
+    // For each indicated bit in the remaining mask, compare the string to the
+    // slot's value.
+    //
+
 
     return FALSE;
 }

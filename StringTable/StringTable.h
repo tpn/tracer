@@ -120,7 +120,7 @@ typedef union _STRING_SLOT {
 } STRING_SLOT, *PSTRING_SLOT, **PPSTRING_SLOT;
 
 typedef union _SLOT_LENGTHS {
-    __m256i OctSlots;
+    __m256i Slots256;
     USHORT Slots[16];
     struct {
         union {
@@ -404,7 +404,7 @@ typedef
 VOID
 (DESTROY_STRING_TABLE)(
     _In_ PALLOCATOR Allocator,
-    _Outptr_result_maybenull_ PPSTRING_TABLE
+    _In_opt_ PSTRING_TABLE StringTable
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
@@ -477,7 +477,7 @@ incoming arguments, or one of the following invariants being violated:
 
 --*/
 {
-    USHORT Index;
+    USHORT Count;
     USHORT Length;
     USHORT AlignedSize;
     USHORT NumberOfElements;
@@ -540,8 +540,10 @@ incoming arguments, or one of the following invariants being violated:
     String = StringArray->Strings - 1;
     MinimumLength = (USHORT)-1;
     MaximumLength = 0;
+    Count = NumberOfElements;
 
-    for (Index = Start, ++String; Index < End; Index++) {
+    do {
+        ++String;
 
         Length = String->Length;
 
@@ -564,7 +566,7 @@ incoming arguments, or one of the following invariants being violated:
             MaximumLength = Length;
         }
 
-    }
+    } while (--Count);
 
     //
     // Update the caller's pointer, minimum and maximum length pointers if
@@ -723,6 +725,17 @@ Routine Description:
 
 }
 
+FORCEINLINE
+BOOL
+HasEmbeddedStringArray(
+    _In_ PSTRING_TABLE StringTable
+    )
+{
+    return (StringTable->pStringArray == &StringTable->StringArray);
+}
+
+
+
 #pragma intrinsic(__popcnt16)
 
 FORCEINLINE
@@ -776,7 +789,7 @@ IsFirstCharacterInStringTable(
     __m128i EqualXmm;
     __m128i FirstCharXmm;
     __m128i StringTableFirstCharXmm;
-    __m128i ShuffleXmm = { 0 };
+    __m128i ShuffleXmm = _mm_setzero_si128();
     __m128i FirstCharShuffleXmm = { FirstChar };
 
     //
@@ -795,6 +808,170 @@ IsFirstCharacterInStringTable(
     Index.LongPart = _mm_movemask_epi8(EqualXmm);
 
     return Index.LowPart;
+}
+
+FORCEINLINE
+BOOL
+MaskedCompareStringToSlots(
+    _In_ PSTRING_TABLE StringTable,
+    _In_ PSTRING String
+    )
+{
+    return FALSE;
+}
+
+#define TRY_AVX __try
+
+#define SSE42_FALLBACK __except(                          \
+    GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ? \
+        EXCEPTION_EXECUTE_HANDLER :                       \
+        EXCEPTION_CONTINUE_SEARCH                         \
+    )
+
+FORCEINLINE
+USHORT
+GetBitmapForViablePrefixSlotsByLengths(
+    _In_ PSTRING_TABLE StringTable,
+    _In_ PSTRING String
+    )
+{
+    union {
+        USHORT_INTEGER Short;
+        WIDE_CHARACTER WideChar;
+    } Length;
+
+    Length.Short.ShortPart = String->Length;
+
+    TRY_AVX {
+
+        int Mask = 0;
+        //int Mask2;
+
+        __m256i PrefixLengths;
+        __m256i StringLength;
+        __m256i IgnoreSlots16;
+        //__m256i IgnoreSlots8;
+        //__m256i Shuffle = _MM2
+        //__m256i ViableSlots;
+
+        __m128i Xmm1 = {
+            Length.WideChar.LowPart,
+            Length.WideChar.HighPart
+        };
+
+        //
+        // Load the length array into a Ymm register.
+        //
+
+        PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.Slots256));
+
+        //
+        // Broadcast the 16-bit String->Length to all words in a 256-byte
+        // register.
+        //
+
+        StringLength = _mm256_broadcastw_epi16(Xmm1);
+
+        //
+        // Find all slots that are longer than the incoming string length.
+        //
+
+        IgnoreSlots16 = _mm256_cmpgt_epi16(PrefixLengths, StringLength);
+
+
+        //
+        // Mask them out and return the result.
+        //
+
+        return (USHORT)Mask;
+
+    } SSE42_FALLBACK {
+        //__m128i Xmm1;
+        //__m128i Xmm2;
+
+
+    }
+
+    return 0;
+}
+
+FORCEINLINE
+ULONGLONG
+TrailingZeros(
+    _In_ ULONGLONG Integer
+    )
+{
+    return _tzcnt_u64(Integer);
+}
+
+FORCEINLINE
+USHORT
+GetAddressAlignment(_In_ PVOID Address)
+{
+    ULONGLONG Integer = (ULONGLONG)Address;
+    ULONGLONG NumTrailingZeros = TrailingZeros(Integer);
+    return (1 << NumTrailingZeros);
+}
+
+FORCEINLINE
+ULONGLONG
+LeadingZeros(
+    _In_ ULONGLONG Integer
+    )
+{
+    return _lzcnt_u64(Integer);
+}
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
+AssertAligned(
+    _In_ PVOID Address,
+    _In_ USHORT Alignment
+    )
+{
+    ULONGLONG CurrentAlignment = GetAddressAlignment(Address);
+    ULONGLONG ExpectedAlignment = ALIGN_UP(CurrentAlignment, Alignment);
+    if (CurrentAlignment < ExpectedAlignment) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA("Alignment failed!\n");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+#define AssertAligned16(Address)    AssertAligned((PVOID)Address, 16)
+#define AssertAligned32(Address)    AssertAligned((PVOID)Address, 32)
+#define AssertAligned64(Address)    AssertAligned((PVOID)Address, 64)
+#define AssertAligned512(Address)   AssertAligned((PVOID)Address, 512)
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
+AssertStringTableFieldAlignment(
+    _In_ PSTRING_TABLE StringTable
+    )
+{
+    BOOL Success;
+
+    Success = AssertAligned512(StringTable);
+
+    if (!Success) {
+        return Success;
+    }
+
+    Success = AssertAligned16(&StringTable->FirstChars);
+
+    if (!Success) {
+        return Success;
+    }
+
+    Success = AssertAligned32(&StringTable->Lengths);
+
+    return Success;
+
 }
 
 #ifdef __cplusplus
