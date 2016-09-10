@@ -19,27 +19,20 @@ _Use_decl_annotations_
 VOID
 DestroyStringTable(
     PALLOCATOR Allocator,
-    PPSTRING_TABLE StringTablePointer
+    PSTRING_TABLE StringTable
     )
 /*++
 
 Routine Description:
 
-    Destroys a StringTable structure.  This method is as forgiving as it can
-    be with regards to the state of the StringTable pointed to by the first
-    argument.
-
-    If StringTablePointer is a valid non-NULL pointer, it will be cleared by
-    this method (i.e. set to NULL).
+    Destroys a StringTable structure.
 
 Arguments:
 
     Allocator - Supplies a pointer to the ALLOCATOR struct that was used to
         initialized the STRING_TABLE structure.
 
-    StringTablePointer - Supplies a pointer to a variable that contains the
-        address of the STRING_TABLE struct to be destroyed.  This pointer
-        will be cleared by this routine.
+    StringTable - Supplies a pointer to a STRING_TABLE struct to be destroyed.
 
 Return Value:
 
@@ -47,36 +40,31 @@ Return Value:
 
 --*/
 {
-    PSTRING_TABLE StringTable;
-
     //
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(StringTablePointer)) {
+    if (!ARGUMENT_PRESENT(StringTable)) {
         return;
     }
-
-    StringTable = *StringTablePointer;
-
-    //
-    // Clear the caller's pointer immediately.
-    //
-
-    *StringTablePointer = NULL;
-
-    if (!StringTable) {
-        return;
-    }
-
-    //
-    // If there's no allocator, we can't free anything.
-    //
 
     if (!ARGUMENT_PRESENT(Allocator)) {
+
+        //
+        // We can't do much without an allocator to free the underlying structs.
+        //
+
         return;
     }
 
+    //
+    // If the string array isn't embedded, free it first.
+    //
+
+    if (!HasEmbeddedStringArray(StringTable)) {
+        Allocator->Free(Allocator->Context, StringTable->pStringArray);
+        StringTable->pStringArray = NULL;
+    }
 
     //
     // Free the StringTable and return.
@@ -85,7 +73,6 @@ Return Value:
     Allocator->Free(Allocator->Context, StringTable);
 
     return;
-
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
