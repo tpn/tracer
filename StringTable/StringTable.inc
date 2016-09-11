@@ -25,6 +25,7 @@ LONG typedef dw
 ULONG typedef dw
 ULONG64 typedef dq
 ULONGLONG typedef dq
+PIS_PREFIX_OF_STRING_IN_TABLE typedef ptr dq
 
 STRING struct
     Length_ USHORT ?
@@ -36,29 +37,68 @@ STRING ends
 PSTRING typedef ptr STRING
 
 ;
-; WideChar structure definition.  Maps to WIDE_CHARACTER in C.
+; Structure definitions.  These generally map 1:1 with their StringTable.h
+; counterparts.
 ;
 
-WIDE_CHAR union
+WIDE_CHARACTER union
     struct
         LowPart CHAR ?
         HighPart CHAR ?
     ends
     WidePart WCHAR ?
-WIDE_CHAR ends
+WIDE_CHARACTER ends
+PWIDE_CHARACTER typedef ptr WIDE_CHARACTER
 
-PWIDE_CHAR typedef ptr WIDE_CHAR
+STRING_ARRAY struct
+    SizeInQuadwords USHORT ?
+    NumberOfElements USHORT ?
+    MinimumLength USHORT ?
+    MaximumLength USHORT ?
+    Strings STRING 1 dup ({?})
+STRING_ARRAY ends
+PSTRING_ARRAY typedef ptr STRING_ARRAY
 
-;
-; String slot structure.
-;
+STRING_SLOT union 16
+    Char CHAR 16 dup (?)
+    WideChar WIDE_CHARACTER 8 dup ({?})
+STRING_SLOT ends
+PSTRING_SLOT typedef ptr STRING_SLOT
 
-;STRING_SLOT typedef CHAR 16 dup ?
+SLOT_LENGTHS union 16
+    struct
+        Lengths USHORT 16 dup (?)
+    ends
+    struct
+        union
+            Slot0  USHORT ?
+            Slot1  USHORT ?
+            Slot2  USHORT ?
+            Slot3  USHORT ?
+            Slot4  USHORT ?
+            Slot5  USHORT ?
+            Slot6  USHORT ?
+            Slot7  USHORT ?
+        ends
+        union
+            Slot8  USHORT ?
+            Slot9  USHORT ?
+            Slot10 USHORT ?
+            Slot11 USHORT ?
+            Slot12 USHORT ?
+            Slot13 USHORT ?
+            Slot14 USHORT ?
+            Slot15 USHORT ?
+        ends
+    ends
+SLOT_LENGTHS ends
 
-;
-; StringTable structure definition.  This maps to the STRING_TABLE structure
-; defined in C in the StringTable.h module.
-;
+STRING_MATCH struct
+    Index LONG ?
+    NumberOfMatchedCharacters USHORT ?
+    Padding USHORT ?
+    String PSTRING ?
+STRING_MATCH ends
 
 STRING_TABLE struct
     OccupiedBitmap USHORT ?
@@ -67,28 +107,21 @@ STRING_TABLE struct
     VerticalDepth BYTE ?
     NextHorizontalOffsetInQuadwords BYTE ?
     NextVerticalOffsetInQuadwords BYTE ?
-    StringSizes ULONGLONG ?
-    FirstAndSecondCharacter CHAR 32 dup (?)
-    Padding CHAR 16 dup (?)
-    ;StringArray STRING_SLOT 16 dup ?
-    StringArray CHAR 256 dup (?)
+    pStringArray PSTRING_ARRAY ?
+    FirstChars STRING_SLOT { }
+    Lengths SLOT_LENGTHS { }
+    Slots STRING_SLOT 16 dup ({ })
+    IsPrefixOfStringInTable PIS_PREFIX_OF_STRING_IN_TABLE ?
+    Flags ULONGLONG ?
+    union
+        StringArray STRING_ARRAY {?}
+        Padding CHAR 172 dup (?)
+    ends
 STRING_TABLE ends
 
 echo Size of STRING_TABLE: %(sizeof STRING_TABLE)
 
 PSTRING_TABLE typedef ptr STRING_TABLE
-
-;
-; StringMatch structure.  This maps to the STRING_MATCH structure defined in
-; C in the StringTable.h module.
-;
-
-STRING_MATCH struct
-    Index LONG ?
-    NumberOfMatchedCharacters USHORT ?
-    Padding USHORT ?
-    String PSTRING ?
-STRING_MATCH ends
 
 PARAMS struct
     ReturnAddress dq ?

@@ -1,4 +1,4 @@
-        title "IsPrefixOfStringInTable_x64_SSE42"
+        title "StringTable_x64"
         option casemap:none
 ;++
 ;
@@ -6,50 +6,16 @@
 ;
 ; Module Name:
 ;
-;   IsPrefixOfStringInTable_x64_SSE42.asm
+;   StringTable_x64.asm.
 ;
 ; Abstract:
 ;
-;   This module implements an IsPrefixOfStringInTable function using SSE 4.2
-;   SIMD primitives.
+;   This module implements various StringTable routines in assembly.
 ;
 ;--
 
-
 include StringTable.inc
 
-
-Locals struct
-    ;
-    ; Callee register home space.
-    ;
-
-    CalleeHomeRcx   dq      ?       ; 8     24      32      (20h)
-    CalleeHomeRdx   dq      ?       ; 8     16      24      (18h)
-    CalleeHomeR8    dq      ?       ; 8     8       16      (10h)
-    CalleeHomeR9    dq      ?       ; 8     0       8       (08h)
-
-    ReturnValue dq  ?
-    TscAux TSC_AUX { }
-
-    Timestamp TSC { }
-
-    ; 7     (+ 4)
-
-    ProcessId dw ?
-    ThreadId dw ?
-
-    ; 8     (+ 1)
-
-    TraceFrameRecord        dq ?
-    union
-        HookedFunction  FunctionPointer ?
-        HookedFuncPtr   Function ptr ?
-    ends
-
-    Rflags  dq ?
-
-Locals ends
 
 
 ;++
