@@ -22,6 +22,7 @@ extern "C" {
 
 static CONST USHORT StringArraysPerTable = 16;
 
+
 FORCEINLINE
 USHORT
 GetNumberOfTablesRequiredForStringArray(

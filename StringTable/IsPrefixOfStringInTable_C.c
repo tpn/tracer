@@ -48,7 +48,8 @@ Return Value:
     BOOL Found = FALSE;
     CHAR FirstChar;
     USHORT Mask;
-    USHORT LengthsBitmap;
+    USHORT Bitmap;
+    USHORT Count;
     PSTRING_ARRAY StringArray;
 
     //
@@ -97,9 +98,15 @@ Return Value:
     // to prefix match against the search string.
     //
 
-    LengthsBitmap = GetBitmapForViablePrefixSlotsByLengths(StringTable, String);
+    Bitmap = GetBitmapForViablePrefixSlotsByLengths(StringTable, String);
 
-    if (Mask == 0) {
+    //
+    // Exclude any bits not present in the first character mask.
+    //
+
+    Bitmap &= Mask;
+
+    if (Bitmap == 0) {
 
         //
         // No bits remaining in the mask, so there are no prefix matches.
@@ -110,12 +117,46 @@ Return Value:
     }
 
     //
+    // Load the source string into an Xmm register.
+    //
+
+
+
+    //
+    // See how many comparisons we need to perform.
+    //
+
+    Count = __popcnt16(Bitmap);
+
+    switch (Count) {
+
+        case 16:
+        case 15:
+        case 14:
+        case 13:
+        case 12:
+        case 11:
+        case 10:
+        case  9:
+        case  8:
+        case  7:
+        case  6:
+        case  5:
+        case  4:
+        case  3:
+        case  2:
+        case  1: {
+
+
+        }
+    }
+
+    //
     // For each indicated bit in the remaining mask, compare the string to the
     // slot's value.
     //
 
-
-    return FALSE;
+    return Found;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

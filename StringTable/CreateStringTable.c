@@ -101,14 +101,15 @@ Routine Description:
     USHORT Count;
     USHORT Index;
     USHORT Length;
+    USHORT HighestBit;
     ULONG OccupiedBitmap;
     ULONG ContinuationBitmap;
     PSTRING_TABLE StringTable;
     PSTRING_ARRAY StringArray;
     PSTRING String;
     PSTRING_SLOT Slot;
-    SLOT_LENGTHS Lengths = { 0 };
-    STRING_SLOT FirstChars = { 0 };
+    STRING_SLOT FirstChars;
+    SLOT_LENGTHS Lengths;
 
     //
     // Validate arguments.
@@ -194,6 +195,23 @@ Routine Description:
     OccupiedBitmap = 0;
     ContinuationBitmap = 0;
     Count = StringArray->NumberOfElements;
+    FirstChars.OctChars = _mm_set1_epi32(0);
+
+    //
+    // Set all the slot lengths to 0x7ffff up front instead of defaulting
+    // to zero.  This allows for simpler logic when searching for a prefix
+    // string, which involves broadcasting a search string's length to a Ymm
+    // register, then doing _mm256_cmpgt_epi16() against the lengths array and
+    // the string length.  If we left the lengths as 0 for unused slots, they
+    // would get included in the resulting comparison register (i.e. the high
+    // bits would be set to 1), so we'd have to do a subsequent masking of
+    // the result at some point using the OccupiedBitmap.  By defaulting the
+    // lengths to MAX_SHORT (0x7ffff), we ensure they'll never get included in
+    // any cmpgt-type SIMD matches.  (We use 0x7fff instead of 0xffff because
+    // the _mm256_cmpgt_epi16() intrinsic assumes packed signed integers.)
+    //
+
+    Lengths.Slots256 = _mm256_set1_epi16(0x7fff);
 
     do {
         __m128i Octword;
@@ -206,20 +224,14 @@ Routine Description:
         ++String;
 
         //
-        // Set the occupied bit.
-        //
-
-        BitTestAndSet(&OccupiedBitmap, Index);
-
-        //
         // Set the string length for the slot.
         //
 
         Length = Lengths.Slots[Index] = String->Length;
 
         //
-        // If it's longer than 16 bytes, make a note of it in the
-        // continuation bitmap.
+        // Set the appropriate bit in the continuation bitmap if the string is
+        // longer than 16 bytes.
         //
 
         if (Length > 16) {
@@ -245,36 +257,11 @@ Routine Description:
 
     } while (--Count);
 
-    Store256Fallback128(
-        &(StringTable->Lengths.Slots256),
-        &(StringTable->Lengths.LowSlots),
-        &(StringTable->Lengths.HighSlots),
-        Lengths.Slots256,
-        Lengths.LowSlots,
-        Lengths.HighSlots
-    );
-
-    goto StoreBitmaps;
-
     //
     // Store the slot lengths.
     //
 
-    TRY_AVX {
-
-        _mm256_store_si256(
-            &(StringTable->Lengths.Slots256),
-            Lengths.Slots256
-        );
-
-    } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
-
-        _mm_store_si128(&(StringTable->Lengths.LowSlots), Lengths.LowSlots);
-        _mm_store_si128(&(StringTable->Lengths.HighSlots), Lengths.HighSlots);
-
-    }
-
-StoreBitmaps:
+    _mm256_store_si256(&(StringTable->Lengths.Slots256), Lengths.Slots256);
 
     //
     // Store the first characters.
@@ -283,10 +270,18 @@ StoreBitmaps:
     _mm_store_si128(&(StringTable->FirstChars.OctChars), FirstChars.OctChars);
 
     //
-    // Store the occupied and continuation bitmaps.
+    // Generate and store the occupied bitmap.  Each bit, from low to high,
+    // corresponds to the index of a slot.  When set, the slot is occupied.
+    // When clear, it is not.  So, fill bits from the highest bit set down.
     //
 
-    StringTable->OccupiedBitmap = (USHORT)OccupiedBitmap;
+    HighestBit = (1 << (Index-1));
+    StringTable->OccupiedBitmap = (USHORT)_blsmsk_u32(HighestBit);
+
+    //
+    // Store the continuation bitmap.
+    //
+
     StringTable->ContinuationBitmap = (USHORT)(ContinuationBitmap);
 
     //
