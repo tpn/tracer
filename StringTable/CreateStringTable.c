@@ -239,11 +239,22 @@ Routine Description:
         //
 
         Octword = _mm_load_si128((__m128i *)String->Buffer);
-        _mm_storeu_si128(&(*Slot).OctChars, Octword);
+        _mm_store_si128(&(*Slot).OctChars, Octword);
 
         ++Index;
 
     } while (--Count);
+
+    Store256Fallback128(
+        &(StringTable->Lengths.Slots256),
+        &(StringTable->Lengths.LowSlots),
+        &(StringTable->Lengths.HighSlots),
+        Lengths.Slots256,
+        Lengths.LowSlots,
+        Lengths.HighSlots
+    );
+
+    goto StoreBitmaps;
 
     //
     // Store the slot lengths.
@@ -251,23 +262,25 @@ Routine Description:
 
     TRY_AVX {
 
-        _mm256_storeu_si256(
+        _mm256_store_si256(
             &(StringTable->Lengths.Slots256),
             Lengths.Slots256
         );
 
-    } SSE42_FALLBACK {
+    } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
 
-        _mm_storeu_si128(&(StringTable->Lengths.LowSlots), Lengths.LowSlots);
-        _mm_storeu_si128(&(StringTable->Lengths.HighSlots), Lengths.HighSlots);
+        _mm_store_si128(&(StringTable->Lengths.LowSlots), Lengths.LowSlots);
+        _mm_store_si128(&(StringTable->Lengths.HighSlots), Lengths.HighSlots);
 
     }
+
+StoreBitmaps:
 
     //
     // Store the first characters.
     //
 
-    _mm_storeu_si128(&(StringTable->FirstChars.OctChars), FirstChars.OctChars);
+    _mm_store_si128(&(StringTable->FirstChars.OctChars), FirstChars.OctChars);
 
     //
     // Store the occupied and continuation bitmaps.

@@ -50,13 +50,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="IsPrefixOfStringInTable_x64_SSE42.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="StringTable.inc">
       <Filter>Header Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="StringTable_x64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>
