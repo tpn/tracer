@@ -154,6 +154,6 @@ HOME_PARAMS struct
     HomeR9                  dq      ?       ; 8     0       8       (08h)
 HOME_PARAMS ends
 
-; vim:set tw=80 ts=8 sw=4 sts=4 expandtab syntax=masm formatoptions=croql      :
+; vim:set tw=80 ts=8 sw=4 sts=4 expandtab syntax=masm                          :
 
 end

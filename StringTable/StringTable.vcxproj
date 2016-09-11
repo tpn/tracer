@@ -97,6 +97,7 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="StringTableConstants_C.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="StringTable_x64.asm" Condition="'$(Platform)' == 'x64'" />

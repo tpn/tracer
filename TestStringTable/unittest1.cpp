@@ -262,8 +262,8 @@ namespace TestStringTable
                 &fox2
             );
 
-            //Assert::AreEqual((ULONG)LengthsBitmap,
-            //                 (ULONG)ExpectedLengthsBitmap);
+            Assert::AreEqual((ULONG)LengthsBitmap,
+                             (ULONG)ExpectedLengthsBitmap);
 
         }
 
@@ -278,6 +278,7 @@ namespace TestStringTable
             ULONG Result1;
             ULONG Result2;
             ULONG Result3;
+            ULONG Result4;
             ULONG Bitmap1;
             //ULONG Bitmap2;
             ULONG Bitcount;
@@ -296,6 +297,10 @@ namespace TestStringTable
 
             CreateParallelSuffixMoveMask(Mask3, &Suffix);
             Result3 = CompressUlongParallelSuffix(3279, &Suffix);
+            Result4 = CompressUlongParallelSuffix(
+                3279,
+                &ParallelSuffix32HighBitFromEveryOtherByte
+            );
 
             Bitmap1 = Result3 ^ ~((1 << NumberOfElements) - 1);
 

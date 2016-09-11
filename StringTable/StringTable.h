@@ -134,6 +134,10 @@ typedef union _SLOT_LENGTHS {
                 USHORT Slot6;
                 USHORT Slot7;
             };
+            struct {
+                ULONGLONG LowSlots03;
+                ULONGLONG LowSlots47;
+            };
             __m128i LowSlots;
         };
         union {
@@ -146,6 +150,10 @@ typedef union _SLOT_LENGTHS {
                 USHORT Slot13;
                 USHORT Slot14;
                 USHORT Slot15;
+            };
+            struct {
+                ULONGLONG HighSlots811;
+                ULONGLONG HighSlots1215;
             };
             __m128i HighSlots;
         };
@@ -949,11 +957,6 @@ CompressUlongNaive(
 }
 
 typedef __declspec(align(32)) union _PARALLEL_SUFFIX_MOVE_MASK32 {
-    __m256i Move256;
-    struct {
-        __m128i MoveLow128;
-        __m128i MoveHigh128;
-    };
     struct {
         ULONG Mask;
         union {
@@ -969,7 +972,18 @@ typedef __declspec(align(32)) union _PARALLEL_SUFFIX_MOVE_MASK32 {
             ULONG Moves[7];
         };
     };
+    __m256i Move256;
+    struct {
+        __m128i MoveLow128;
+        __m128i MoveHigh128;
+    };
 } PARALLEL_SUFFIX_MOVE_MASK32, *PPARALLEL_SUFFIX_MOVE_MASK32;
+
+STRING_TABLE_DATA PARALLEL_SUFFIX_MOVE_MASK32 \
+                  ParallelSuffix32HighBitFromEveryOtherByte;
+
+#define LoadParallelSuffix32HighBitFromEveryOtherByte() \
+    _mm256_load_si256(&ParallelSuffix32HighBitFromEveryOtherByte.Move256);
 
 FORCEINLINE
 VOID
@@ -1148,70 +1162,96 @@ CompressUlongParallelSuffix(
 }
 
 FORCEINLINE
+ULONG
+CompressUlongHighBitFromEveryOtherByte(
+    _In_ ULONG Input
+    )
+{
+    ULONG Bit;
+    ULONG Mask;
+    __m256i Move;
+
+    Move = LoadParallelSuffix32HighBitFromEveryOtherByte();
+
+    Mask = ParallelSuffix32HighBitFromEveryOtherByte.Mask;
+
+    Input = Input & Mask;
+
+    Bit = Input & Move.m256i_u32[1]; Input = Input ^ Bit | (Bit >> 1);
+    Bit = Input & Move.m256i_u32[2]; Input = Input ^ Bit | (Bit >> 2);
+    Bit = Input & Move.m256i_u32[3]; Input = Input ^ Bit | (Bit >> 4);
+    Bit = Input & Move.m256i_u32[4]; Input = Input ^ Bit | (Bit >> 8);
+    Bit = Input & Move.m256i_u32[5]; Input = Input ^ Bit | (Bit >> 16);
+
+    return Input;
+}
+
+FORCEINLINE
 USHORT
 GetBitmapForViablePrefixSlotsByLengths(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String
     )
 {
-    union {
-        USHORT_INTEGER Short;
-        WIDE_CHARACTER WideChar;
-    } Length;
+    ULONG Mask;
+    ULONG Compressed;
+    ULONG InvertedMask;
 
-    Length.Short.ShortPart = String->Length;
+    __m128i LengthXmm;
+    __m256i PrefixLengths;
+    __m256i StringLength;
+    __m256i IgnoreSlots16;
 
-    TRY_AVX {
+    //
+    // Load the length array into a Ymm register.
+    //
 
-        int Mask = 0;
-        //int Mask2;
+    PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.Slots256));
 
-        __m256i PrefixLengths;
-        __m256i StringLength;
-        __m256i IgnoreSlots16;
-        //__m256i IgnoreSlots8;
-        //__m256i Shuffle = _MM2
-        //__m256i ViableSlots;
+    //
+    // Broadcast the 16-bit String->Length to all words in a 256-byte
+    // register.
+    //
 
-        __m128i Xmm1 = {
-            Length.WideChar.LowPart,
-            Length.WideChar.HighPart
-        };
+    LengthXmm = _mm_set1_epi32(0);
+    LengthXmm.m128i_u16[0] = String->Length;
+    StringLength = _mm256_broadcastw_epi16(LengthXmm);
 
-        //
-        // Load the length array into a Ymm register.
-        //
+    //
+    // Find all slots that are longer than the incoming string length, as these
+    // are the ones we're going to exclude from any prefix match.
+    //
+    // N.B.: because we default the length of empty slots to 0x7ffff, they will
+    //       handily be included in the ignored set (i.e. their words will also
+    //       be set to 0xffff), which means they'll also get filtered out when
+    //       we invert the mask shortly after.
+    //
 
-        PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.Slots256));
+    IgnoreSlots16 = _mm256_cmpgt_epi16(PrefixLengths, StringLength);
 
-        //
-        // Broadcast the 16-bit String->Length to all words in a 256-byte
-        // register.
-        //
+    //
+    // Generate a mask.  Bits set indicate invalid slots, bits cleared
+    // indicate valid slots (slot length is less than or equal to search
+    // string length).  Note that this mask is at the byte level; there's
+    // no _mm256_movemask_epi16(), so we have to use _mm256_movemask_epi8().
+    //
 
-        StringLength = _mm256_broadcastw_epi16(Xmm1);
+    Mask = _mm256_movemask_epi8(IgnoreSlots16);
 
-        //
-        // Find all slots that are longer than the incoming string length.
-        //
+    //
+    // Invert it such that bits set correspond to valid slots.
+    //
 
-        IgnoreSlots16 = _mm256_cmpgt_epi16(PrefixLengths, StringLength);
+    InvertedMask = ~Mask;
 
+    //
+    // Compress the mask -- we only want the high bit of each word, but the
+    // _mm256_movemask_epi8() will have given us the high bit for each byte.
+    //
 
-        //
-        // Mask.
-        //
+    Compressed = CompressUlongHighBitFromEveryOtherByte(InvertedMask);
 
-        Mask = _mm256_movemask_epi8(IgnoreSlots16);
-
-        return (USHORT)Mask;
-
-    } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
-
-
-    }
-
-    return 0;
+    return (USHORT)Compressed;
 }
 
 FORCEINLINE
