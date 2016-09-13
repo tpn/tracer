@@ -10,14 +10,17 @@ from ctypes.wintypes import *
 #===============================================================================
 # Globals/Aliases
 #===============================================================================
+BOOL = c_bool
+PBOOL = POINTER(BOOL)
+PBOOLEAN = POINTER(BOOL)
 VOID = None
 CLONG = c_long
 SIZE_T = c_size_t
 ULONG_PTR = SIZE_T
 LONG_PTR = SIZE_T
 DWORD_PTR = SIZE_T
+PLONG = POINTER(LONG)
 PULONG = POINTER(ULONG)
-PBOOLEAN = POINTER(c_bool)
 PVOID = c_void_p
 PPVOID = POINTER(PVOID)
 PWSTR = c_wchar_p

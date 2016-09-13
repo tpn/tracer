@@ -16,7 +16,7 @@ except ImportError:
             libdir = target[:-len('bin/tracer')-1]
             sys.path.insert(0, libdir)
     else:
-        libdir = join_path(path, '../../lib')
+        libdir = join_path(path, '../lib')
         sys.path.insert(0, libdir)
 
     from tracer.cli import main

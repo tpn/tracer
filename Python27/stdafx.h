@@ -12,4 +12,6 @@
 
 #include <Windows.h>
 
+#include "../Python/Python.h"
+
 // TODO: reference additional headers your program requires here

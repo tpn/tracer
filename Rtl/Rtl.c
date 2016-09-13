@@ -1,4 +1,6 @@
-#include "Rtl.h"
+#include "stdafx.h"
+
+static PRTL_COMPARE_STRING _RtlCompareString = NULL;
 
 INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
 
@@ -6,7 +8,11 @@ PVECTORED_EXCEPTION_HANDLER VectoredExceptionHandler = NULL;
 
 INIT_ONCE InitOnceCSpecificHandler = INIT_ONCE_STATIC_INIT;
 
-CONST static UNICODE_STRING ExtendedLengthVolumePrefix = RTL_CONSTANT_STRING(L"\\\\?\\");
+CONST static UNICODE_STRING ExtendedLengthVolumePrefixW = \
+    RTL_CONSTANT_STRING(L"\\\\?\\");
+
+CONST static STRING ExtendedLengthVolumePrefixA = \
+    RTL_CONSTANT_STRING("\\\\?\\");
 
 //
 // As we don't link to the CRT, we don't get a __C_specific_handler entry,
@@ -47,7 +53,7 @@ CopyToMemoryMappedMemory(
     PVOID Destination,
     LPCVOID Source,
     SIZE_T Size
-)
+    )
 {
 
     //
@@ -96,6 +102,61 @@ TestExceptionHandler(VOID)
 }
 
 BOOL
+LoadShlwapiFunctions(
+    _In_    HMODULE             ShlwapiModule,
+    _In_    PSHLWAPI_FUNCTIONS  ShlwapiFunctions
+    )
+{
+    if (!ARGUMENT_PRESENT(ShlwapiModule)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ShlwapiFunctions)) {
+        return FALSE;
+    }
+
+#define TRY_RESOLVE_SHLWAPI_FUNCTION(Type, Name) ( \
+    ShlwapiFunctions->##Name = (Type)(             \
+        GetProcAddress(                            \
+            ShlwapiModule,                         \
+            #Name                                  \
+        )                                          \
+    )                                              \
+)
+
+#define RESOLVE_SHLWAPI_FUNCTION(Type, Name)                         \
+    if (!TRY_RESOLVE_SHLWAPI_FUNCTION(Type, Name)) {                 \
+        OutputDebugStringA("Failed to resolve Shlwapi!" #Name "\n"); \
+        return FALSE;                                                \
+    }
+
+
+    RESOLVE_SHLWAPI_FUNCTION(PPATH_CANONICALIZEA, PathCanonicalizeA);
+
+    return TRUE;
+
+}
+
+RTL_API
+BOOL
+LoadShlwapi(PRTL Rtl)
+{
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (Rtl->ShlwapiModule) {
+        return TRUE;
+    }
+
+    if (!(Rtl->ShlwapiModule = LoadLibraryA("shlwapi"))) {
+        return FALSE;
+    }
+
+    return LoadShlwapiFunctions(Rtl->ShlwapiModule, &Rtl->ShlwapiFunctions);
+}
+
+BOOL
 CALLBACK
 SetCSpecificHandlerCallback(
     PINIT_ONCE InitOnce,
@@ -132,6 +193,7 @@ SetCSpecificHandler(_In_ HMODULE Module)
     return Status;
 }
 
+_Success_(return != 0)
 BOOL
 CALLBACK
 GetSystemTimerFunctionCallback(
@@ -155,7 +217,9 @@ GetSystemTimerFunctionCallback(
 
     Proc = GetProcAddress(Module, "GetSystemTimePreciseAsFileTime");
     if (Proc) {
-        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (PGETSYSTEMTIMEPRECISEASFILETIME)Proc;
+        SystemTimerFunction.GetSystemTimePreciseAsFileTime = (
+            (PGETSYSTEMTIMEPRECISEASFILETIME)Proc
+        );
     } else {
         Module = LoadLibrary(TEXT("ntdll"));
         if (!Module) {
@@ -219,7 +283,10 @@ CallSystemTimer(
     if (SystemTimerFunction->GetSystemTimePreciseAsFileTime) {
         SystemTimerFunction->GetSystemTimePreciseAsFileTime(SystemTime);
     } else if (SystemTimerFunction->NtQuerySystemTime) {
-        if (!SystemTimerFunction->NtQuerySystemTime((PLARGE_INTEGER)SystemTime)) {
+        BOOL Success = SystemTimerFunction->NtQuerySystemTime(
+            (PLARGE_INTEGER)SystemTime
+        );
+        if (!Success) {
             return FALSE;
         }
     } else {
@@ -243,6 +310,46 @@ FindCharsInUnicodeString(
     USHORT NumberOfCharacters = String->Length >> 1;
     ULONG  Bit;
     WCHAR  Char;
+
+    //
+    // We use two loop implementations in order to avoid an additional
+    // branch during the loop (after we find a character match).
+    //
+
+    if (Reverse) {
+        for (Index = 0; Index < NumberOfCharacters; Index++) {
+            Char = String->Buffer[Index];
+            if (Char == CharToFind) {
+                Bit = NumberOfCharacters - Index;
+                FastSetBit(Bitmap, Bit);
+            }
+        }
+    }
+    else {
+        for (Index = 0; Index < NumberOfCharacters; Index++) {
+            Char = String->Buffer[Index];
+            if (Char == CharToFind) {
+                FastSetBit(Bitmap, Index);
+            }
+        }
+    }
+
+    return TRUE;
+}
+
+BOOL
+FindCharsInString(
+    _In_     PRTL         Rtl,
+    _In_     PSTRING      String,
+    _In_     CHAR         CharToFind,
+    _Inout_  PRTL_BITMAP  Bitmap,
+    _In_     BOOL         Reverse
+)
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    ULONG  Bit;
+    CHAR Char;
     PRTL_SET_BIT RtlSetBit = Rtl->RtlSetBit;
 
     //
@@ -255,7 +362,7 @@ FindCharsInUnicodeString(
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
                 Bit = NumberOfCharacters - Index;
-                RtlSetBit(Bitmap, Bit);
+                FastSetBit(Bitmap, Bit);
             }
         }
     }
@@ -263,13 +370,14 @@ FindCharsInUnicodeString(
         for (Index = 0; Index < NumberOfCharacters; Index++) {
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
-                RtlSetBit(Bitmap, Index);
+                FastSetBit(Bitmap, Index);
             }
         }
     }
 
     return TRUE;
 }
+
 
 _Check_return_
 BOOL
@@ -279,7 +387,8 @@ CreateBitmapIndexForUnicodeString(
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
     )
 
 /*++
@@ -389,6 +498,7 @@ Error:
     BOOL Success;
     HANDLE HeapHandle = NULL;
     PRTL_BITMAP Bitmap = NULL;
+    PFIND_CHARS_IN_UNICODE_STRING FindChars;
 
     //
     // Verify arguments.
@@ -416,7 +526,11 @@ Error:
     //
 
     NumberOfCharacters = String->Length >> 1;
-    AlignedNumberOfCharacters = ALIGN_UP_USHORT_TO_POINTER_SIZE(NumberOfCharacters);
+    AlignedNumberOfCharacters = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            NumberOfCharacters
+        )
+    );
 
     BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
 
@@ -489,7 +603,12 @@ Error:
         // Point the bitmap buffer to the end of the RTL_BITMAP struct.
         //
 
-        Bitmap->Buffer = (PULONG)RtlOffsetToPointer(Bitmap, sizeof(RTL_BITMAP));
+        Bitmap->Buffer = (PULONG)(
+            RtlOffsetToPointer(
+                Bitmap,
+                sizeof(RTL_BITMAP)
+            )
+        );
 
         //
         // Make a note that we need to update the user's bitmap pointer.
@@ -508,7 +627,13 @@ Error:
 
         Bitmap = *BitmapPointer;
 
-        Bitmap->Buffer = (PULONG)HeapAlloc(HeapHandle, 0, BitmapBufferSizeInBytes);
+        Bitmap->Buffer = (PULONG)(
+            HeapAlloc(
+                HeapHandle,
+                0,
+                BitmapBufferSizeInBytes
+            )
+        );
 
         if (!Bitmap->Buffer) {
             return FALSE;
@@ -546,7 +671,12 @@ Start:
     // Fill in the bitmap index.
     //
 
-    Success = Rtl->FindCharsInUnicodeString(Rtl, String, Char, Bitmap, Reverse);
+    FindChars = FindCharsFunction;
+    if (!FindChars) {
+        FindChars = FindCharsInUnicodeString;
+    }
+
+    Success = FindChars(Rtl, String, Char, Bitmap, Reverse);
 
     if (!Success && HeapHandle) {
 
@@ -593,7 +723,348 @@ Start:
 
 _Check_return_
 BOOL
-FilesExist(
+CreateBitmapIndexForString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    )
+
+/*++
+
+Routine Description:
+
+    This is a helper function that simplifies creating bitmap indexes for
+    STRING structures.  The routine will use the user-supplied bitmap
+    if it is big enough (govered by the SizeOfBitMap field).  If it isn't,
+    a new buffer will be allocated.  If no bitmap is provided at all, the
+    entire structure plus the bitmap buffer space will be allocated from the
+    heap.
+
+    Typically, callers would provide their own pointer to a stack-allocated
+    RTL_BITMAP struct if they only need the bitmap for the scope of their
+    function call.  For longer-lived bitmaps, a pointer to a NULL pointer
+    would be provided, indicating that the entire structure should be heap
+    allocated.
+
+    Caller is responsible for freeing either the entire RTL_BITMAP or the
+    underlying Bitmap->Buffer if a heap allocation took place.
+
+Arguments:
+
+    Rtl - Supplies the pointer to the RTL structure (mandatory).
+
+    String - Supplies the STRING structure to create the bitmap index for.
+
+    Char - Supplies the character to create the bitmap index for.  This is
+        passed directly to FindCharsInString().
+
+    HeapHandlePointer - Supplies a pointer to the underlying heap handle
+        to use for allocation.  If a heap allocation is required and this
+        pointer points to a NULL value, the default process heap handle
+        will be used (obtained via GetProcessHeap()), and the pointed-to
+        location will be updated with the handle value.  (The caller will
+        need this in order to perform the subsequent HeapFree() of the
+        relevant structure.)
+
+    BitmapPointer - Supplies a pointer to a PRTL_BITMAP structure.  If the
+        pointed-to location is NULL, additional space for the RTL_BITMAP
+        structure will be allocated on top of the bitmap buffer space, and
+        the pointed-to location will be updated with the resulting address.
+        If the pointed-to location is non-NULL and the SizeOfBitMap field
+        is greater than or equal to the required bitmap size, the bitmap
+        will be used directly and no heap allocations will take place.
+        The SizeOfBitMap field in this example will be altered to match the
+        required size.  If a heap allocation takes place, user is responsible
+        for cleaning it up (i.e. either freeing the entire PRTL_BITMAP struct
+        returned, or just the Bitmap->Buffer, depending on usage).
+
+    Reverse - Supplies a boolean flag indicating the bitmap index should be
+        created in reverse.  This is passed to FindCharsInUnicodeString().
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+Examples:
+
+    A stack-allocated bitmap structure and buffer:
+
+        CHAR StackBuffer[_MAX_FNAME >> 3];
+        RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBuffer };
+        PRTL_BITMAP BitmapPointer = &Bitmap;
+        HANDLE HeapHandle;
+
+        BOOL Success = CreateBitmapIndexForString(Rtl,
+                                                  String,
+                                                  '\\',
+                                                  &HeapHandle,
+                                                  &BitmapPointer,
+                                                  FALSE);
+
+        ...
+
+Error:
+    if (HeapHandle) {
+
+        //
+        // HeapHandle will be set if a new bitmap had to be allocated
+        // because our stack-allocated one was too small.
+        //
+
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+
+            //
+            // This should never happen.  If HeapHandle is set, the buffers
+            // should differ.
+            //
+
+            __debugbreak();
+        }
+
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    }
+
+--*/
+
+{
+    USHORT NumberOfCharacters;
+    USHORT AlignedNumberOfCharacters;
+    SIZE_T BitmapBufferSizeInBytes;
+    BOOL UpdateBitmapPointer;
+    BOOL UpdateHeapHandlePointer;
+    BOOL Success;
+    HANDLE HeapHandle = NULL;
+    PRTL_BITMAP Bitmap = NULL;
+    PFIND_CHARS_IN_STRING FindChars;
+
+    //
+    // Verify arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(String)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(HeapHandlePointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BitmapPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Resolve the number of characters, then make sure it's aligned to the
+    // platform's pointer size.
+    //
+
+    NumberOfCharacters = String->Length;
+    AlignedNumberOfCharacters = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            NumberOfCharacters
+        )
+    );
+
+    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
+
+    //
+    // If *BitmapPointer is non-NULL, see if it's big enough to hold the bitmap.
+    //
+
+    if (*BitmapPointer) {
+
+        if ((*BitmapPointer)->SizeOfBitMap >= AlignedNumberOfCharacters) {
+
+            //
+            // The user-provided bitmap is big enough.  Jump straight to the
+            // starting point.
+            //
+
+            Bitmap = *BitmapPointer;
+            UpdateHeapHandlePointer = FALSE;
+            UpdateBitmapPointer = FALSE;
+
+            goto Start;
+        }
+    }
+
+    if (!*HeapHandlePointer) {
+
+        //
+        // If the pointer to the heap handle to use is NULL, default to using
+        // the default process heap via GetProcessHeap().  Note that we also
+        // assign back to the user's pointer, such that they get a copy of the
+        // heap handle that was used for allocation.
+        //
+
+        HeapHandle = GetProcessHeap();
+
+        if (!HeapHandle) {
+            return FALSE;
+        }
+
+        UpdateHeapHandlePointer = TRUE;
+    }
+    else {
+
+        //
+        // Use the handle the user provided.
+        //
+
+        HeapHandle = *HeapHandlePointer;
+        UpdateHeapHandlePointer = FALSE;
+    }
+
+    if (!*BitmapPointer) {
+
+        //
+        // If the pointer to the PRTL_BITMAP structure is NULL, the caller
+        // wants us to allocate the space for the RTL_BITMAP structure as
+        // well.
+        //
+
+        SIZE_T AllocationSize = BitmapBufferSizeInBytes + sizeof(RTL_BITMAP);
+
+        Bitmap = (PRTL_BITMAP)HeapAlloc(HeapHandle, 0, AllocationSize);
+
+        if (!Bitmap) {
+            return FALSE;
+        }
+
+        //
+        // Point the bitmap buffer to the end of the RTL_BITMAP struct.
+        //
+
+        Bitmap->Buffer = (PULONG)(
+            RtlOffsetToPointer(
+                Bitmap,
+                sizeof(RTL_BITMAP)
+            )
+        );
+
+        //
+        // Make a note that we need to update the user's bitmap pointer.
+        //
+
+        UpdateBitmapPointer = TRUE;
+
+    }
+    else {
+
+        //
+        // The user has provided an existing PRTL_BITMAP structure, so we
+        // only need to allocate memory for the actual underlying bitmap
+        // buffer.
+        //
+
+        Bitmap = *BitmapPointer;
+
+        Bitmap->Buffer = (PULONG)(
+            HeapAlloc(
+                HeapHandle,
+                0,
+                BitmapBufferSizeInBytes
+            )
+        );
+
+        if (!Bitmap->Buffer) {
+            return FALSE;
+        }
+
+        //
+        // Make a note that we do *not* need to update the user's bitmap
+        // pointer.
+        //
+
+        UpdateBitmapPointer = FALSE;
+
+    }
+
+Start:
+
+    //
+    // There will be one bit per character.
+    //
+
+    Bitmap->SizeOfBitMap = AlignedNumberOfCharacters;
+
+    if (!Bitmap->Buffer) {
+        __debugbreak();
+    }
+
+    //
+    // Clear all bits in the bitmap.
+    //
+
+    Rtl->RtlClearAllBits(Bitmap);
+
+
+    //
+    // Fill in the bitmap index.
+    //
+
+    FindChars = FindCharsFunction;
+    if (!FindChars) {
+        FindChars = FindCharsInString;
+    }
+
+    Success = FindChars(Rtl, String, Char, Bitmap, Reverse);
+
+    if (!Success && HeapHandle) {
+
+        //
+        // HeapHandle will only be set if we had to do heap allocations.
+        //
+
+        if (UpdateBitmapPointer) {
+
+            //
+            // Free the entire structure.
+            //
+
+            HeapFree(HeapHandle, 0, Bitmap);
+
+        }
+        else {
+
+            //
+            // Free just the buffer.
+            //
+
+            HeapFree(HeapHandle, 0, Bitmap->Buffer);
+
+        }
+
+        return FALSE;
+    }
+
+    //
+    // Update caller's pointers if applicable, then return successfully.
+    //
+
+    if (UpdateBitmapPointer) {
+        *BitmapPointer = Bitmap;
+    }
+
+    if (UpdateHeapHandlePointer) {
+        *HeapHandlePointer = HeapHandle;
+    }
+
+    return TRUE;
+}
+
+
+_Check_return_
+BOOL
+FilesExistW(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -641,8 +1112,11 @@ FilesExist(
         Filename = Filenames[Index];
 
         //
-        // Quick sanity check.
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
         //
+
         SanityCheck = (
             Filename &&
             Filename->Length > 0 &&
@@ -652,6 +1126,10 @@ FilesExist(
         if (!SanityCheck) {
             __debugbreak();
         }
+
+        //
+        // Update our local maximum filename length variable if applicable.
+        //
 
         if (Filename->Length > MaxFilenameLength) {
             MaxFilenameLength = Filename->Length;
@@ -668,11 +1146,11 @@ FilesExist(
     //
 
     CombinedSizeInBytes = (
-        ExtendedLengthVolumePrefix.Length +
-        Directory->Length                 +
-        sizeof(WCHAR)                     + // joining backslash
-        MaxFilenameLength                 +
-        sizeof(WCHAR)                       // terminating NUL
+        ExtendedLengthVolumePrefixW.Length  +
+        Directory->Length                   +
+        sizeof(WCHAR)                       + // joining backslash
+        MaxFilenameLength                   +
+        sizeof(WCHAR)                         // terminating NUL
     );
 
     //
@@ -688,13 +1166,11 @@ FilesExist(
 
         Path.Buffer = &StackBuffer[0];
 
-    }
-    else if (CombinedSizeInBytes > MAX_USTRING) {
+    } else if (CombinedSizeInBytes > MAX_USTRING) {
 
         goto Error;
 
-    }
-    else {
+    } else {
 
         //
         // The combined size exceeds _MAX_PATH so allocate the required memory
@@ -723,12 +1199,12 @@ FilesExist(
     // Copy the volume prefix, then append the directory and joining backslash.
     //
 
-    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefix);
+    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
 
     if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
-        !AppendUnicodeCharToUnicodeString(&Path, L'\\'))
-    {
-	goto Error;
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\')) {
+
+        goto Error;
     }
 
     //
@@ -750,9 +1226,9 @@ FilesExist(
         // We've already validated our lengths, so these should never fail.
         //
 
-	if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
-            !AppendUnicodeCharToUnicodeString(&Path, L'\0'))
-        {
+        if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0')) {
+
             goto Error;
         }
 
@@ -764,8 +1240,7 @@ FilesExist(
         Attributes = GetFileAttributesW(Path.Buffer);
 
         if (Attributes == INVALID_FILE_ATTRIBUTES ||
-            (Attributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
 
             //
             // File doesn't exist or is a directory.  Reset the path length
@@ -826,6 +1301,481 @@ Error:
     return Success;
 }
 
+_Check_return_
+BOOL
+FilesExistExW(
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
+    _In_      PPUNICODE_STRING Filenames,
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
+    _Out_opt_ PPUNICODE_STRING WhichFilename,
+    _In_      PALLOCATOR       Allocator
+    )
+{
+    USHORT Index;
+    PWCHAR HeapBuffer;
+    ULONG CombinedSizeInBytes;
+    USHORT DirectoryLength;
+    USHORT MaxFilenameLength = 0;
+    UNICODE_STRING Path;
+    PUNICODE_STRING Filename;
+    DWORD Attributes;
+    BOOL Success = FALSE;
+    HANDLE HeapHandle = NULL;
+    WCHAR StackBuffer[_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Directory)) {
+        return FALSE;
+    }
+
+    if (NumberOfFilenames == 0) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Filenames) || !ARGUMENT_PRESENT(Filenames[0])) {
+        return FALSE;
+    }
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        BOOL SanityCheck;
+
+        Filename = Filenames[Index];
+
+        //
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
+        //
+
+        SanityCheck = (
+            Filename &&
+            Filename->Length > 0 &&
+            Filename->Buffer != NULL
+        );
+
+        if (!SanityCheck) {
+            __debugbreak();
+        }
+
+        //
+        // Update our local maximum filename length variable if applicable.
+        //
+
+        if (Filename->Length > MaxFilenameLength) {
+            MaxFilenameLength = Filename->Length;
+        }
+    }
+
+
+    //
+    // See if the combined size of the extended volume prefix ("\\?\"),
+    // directory, joining backslash, maximum filename length and terminating
+    // NUL is less than or equal to _MAX_PATH.  If it is, we can use the
+    // stack-allocated Path buffer above; if not, allocate a new buffer from
+    // the default heap.
+    //
+
+    CombinedSizeInBytes = (
+        ExtendedLengthVolumePrefixW.Length  +
+        Directory->Length                   +
+        sizeof(WCHAR)                       + // joining backslash
+        MaxFilenameLength                   +
+        sizeof(WCHAR)                         // terminating NUL
+    );
+
+    //
+    // Point Path->Buffer at the stack or heap buffer depending on the
+    // combined size.
+    //
+
+    if (CombinedSizeInBytes <= _MAX_PATH) {
+
+        //
+        // We can use our stack buffer.
+        //
+
+        Path.Buffer = &StackBuffer[0];
+
+    } else if (CombinedSizeInBytes > MAX_USTRING) {
+
+        goto Error;
+
+    } else {
+
+        //
+        // The combined size exceeds _MAX_PATH so allocate the required memory.
+        //
+
+        HeapBuffer = (PWCHAR)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                CombinedSizeInBytes
+            )
+        );
+
+        if (!HeapBuffer) {
+            return FALSE;
+        }
+
+        Path.Buffer = HeapBuffer;
+
+    }
+
+    Path.Length = 0;
+    Path.MaximumLength = (USHORT)CombinedSizeInBytes;
+
+    //
+    // Copy the volume prefix, then append the directory and joining backslash.
+    //
+
+    Rtl->RtlCopyUnicodeString(&Path, &ExtendedLengthVolumePrefixW);
+
+    if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Directory)) ||
+        !AppendUnicodeCharToUnicodeString(&Path, L'\\')) {
+
+        goto Error;
+    }
+
+    //
+    // Make a note of the length at this point as we'll need to revert to it
+    // after each unsuccessful file test.
+    //
+
+    DirectoryLength = Path.Length;
+
+    //
+    // Enumerate over the array of filenames and look for the first one that
+    // exists.
+    //
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        Filename = Filenames[Index];
+
+        //
+        // We've already validated our lengths, so these should never fail.
+        //
+
+        if (FAILED(Rtl->RtlAppendUnicodeStringToString(&Path, Filename)) ||
+            !AppendUnicodeCharToUnicodeString(&Path, L'\0')) {
+
+            goto Error;
+        }
+
+        //
+        // We successfully constructed the path, so we can now look up the file
+        // attributes.
+        //
+
+        Attributes = GetFileAttributesW(Path.Buffer);
+
+        if (Attributes == INVALID_FILE_ATTRIBUTES ||
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+
+            //
+            // File doesn't exist or is a directory.  Reset the path length
+            // and continue.
+            //
+
+            Path.Length = DirectoryLength;
+
+            continue;
+        }
+
+        //
+        // Success!  File exists and *isn't* a directory.  We're done.
+        //
+
+        Success = TRUE;
+        break;
+    }
+
+    if (!Success) {
+
+        *Exists = FALSE;
+
+        //
+        // The files didn't exist, but no error occurred, so we return success.
+        //
+
+        Success = TRUE;
+
+    } else {
+
+        *Exists = TRUE;
+
+        //
+        // Update the user's pointers if applicable.
+        //
+
+        if (ARGUMENT_PRESENT(WhichIndex)) {
+            *WhichIndex = Index;
+        }
+
+        if (ARGUMENT_PRESENT(WhichFilename)) {
+            *WhichFilename = Filename;
+        }
+
+    }
+
+    //
+    // Intentional follow-on to "Error"; Success code will be set
+    // appropriately by this stage.
+    //
+
+Error:
+    if (HeapBuffer) {
+        Allocator->Free(Allocator->Context, HeapBuffer);
+    }
+
+    return Success;
+}
+
+_Success_(return != 0)
+_Check_return_
+BOOL
+FilesExistA(
+    _In_      PRTL      Rtl,
+    _In_      PSTRING   Directory,
+    _In_      USHORT    NumberOfFilenames,
+    _In_      PPSTRING  Filenames,
+    _Out_     PBOOL     Exists,
+    _Out_opt_ PUSHORT   WhichIndex,
+    _Out_opt_ PPSTRING  WhichFilename
+    )
+{
+    USHORT Index;
+    PCHAR HeapBuffer;
+    ULONG CombinedSizeInBytes;
+    USHORT DirectoryLength;
+    USHORT MaxFilenameLength = 0;
+    STRING Path;
+    PSTRING Filename;
+    DWORD Attributes;
+    BOOL Success = FALSE;
+    HANDLE HeapHandle = NULL;
+    CHAR StackBuffer[_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Directory)) {
+        return FALSE;
+    }
+
+    if (NumberOfFilenames == 0) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Filenames) || !ARGUMENT_PRESENT(Filenames[0])) {
+        return FALSE;
+    }
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        BOOL SanityCheck;
+
+        Filename = Filenames[Index];
+
+        //
+        // Quick sanity check that the Filename pointer in the array
+        // entry is non-NULL, the Length member is greater than 0,
+        // and the buffer has a non-NULL value.
+        //
+
+        SanityCheck = (
+            Filename &&
+            Filename->Length > 0 &&
+            Filename->Buffer != NULL
+        );
+
+        if (!SanityCheck) {
+            __debugbreak();
+        }
+
+        if (Filename->Length > MaxFilenameLength) {
+            MaxFilenameLength = Filename->Length;
+        }
+    }
+
+
+    //
+    // See if the combined size of the extended volume prefix ("\\?\"),
+    // directory, joining backslash, maximum filename length and terminating
+    // NUL is less than or equal to _MAX_PATH.  If it is, we can use the
+    // stack-allocated Path buffer above; if not, allocate a new buffer from
+    // the default heap.
+    //
+
+    CombinedSizeInBytes = (
+        ExtendedLengthVolumePrefixA.Length +
+        Directory->Length                  +
+        sizeof(CHAR)                       + // joining backslash
+        MaxFilenameLength                  +
+        sizeof(CHAR)                         // terminating NUL
+    );
+
+    //
+    // Point Path->Buffer at the stack or heap buffer depending on the
+    // combined size.
+    //
+
+    if (CombinedSizeInBytes <= _MAX_PATH) {
+
+        //
+        // We can use our stack buffer.
+        //
+
+        Path.Buffer = &StackBuffer[0];
+
+    } else if (CombinedSizeInBytes > MAX_STRING) {
+
+        goto Error;
+
+    } else {
+
+        //
+        // The combined size exceeds _MAX_PATH so allocate the required memory
+        // from the heap.
+        //
+
+        HeapHandle = GetProcessHeap();
+        if (!HeapHandle) {
+            return FALSE;
+        }
+
+        HeapBuffer = (PCHAR)HeapAlloc(HeapHandle, 0, CombinedSizeInBytes);
+
+        if (!HeapBuffer) {
+            return FALSE;
+        }
+
+        Path.Buffer = HeapBuffer;
+
+    }
+
+    Path.Length = 0;
+    Path.MaximumLength = (USHORT)CombinedSizeInBytes;
+
+    //
+    // Copy the volume prefix, then append the directory and joining backslash.
+    //
+
+    if (!CopyString(&Path, &ExtendedLengthVolumePrefixA)) {
+        goto Error;
+    }
+
+    if (!AppendStringAndCharToString(&Path, Directory, '\\')) {
+        goto Error;
+    }
+
+    //
+    // Make a note of the length at this point as we'll need to revert to it
+    // after each unsuccessful file test.
+    //
+
+    DirectoryLength = Path.Length;
+
+    //
+    // Enumerate over the array of filenames and look for the first one that
+    // exists.
+    //
+
+    for (Index = 0; Index < NumberOfFilenames; Index++) {
+        Filename = Filenames[Index];
+
+        //
+        // We've already validated our lengths, so these should never fail.
+        //
+
+        if (!AppendStringAndCharToString(&Path, Filename, '\0')) {
+            goto Error;
+        }
+
+        //
+        // We successfully constructed the path, so we can now look up the file
+        // attributes.
+        //
+
+        Attributes = GetFileAttributesA(Path.Buffer);
+
+        if (Attributes == INVALID_FILE_ATTRIBUTES ||
+            (Attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+
+            //
+            // File doesn't exist or is a directory.  Reset the path length
+            // and continue.
+            //
+
+            Path.Length = DirectoryLength;
+
+            continue;
+        }
+
+        //
+        // Success!  File exists and *isn't* a directory.  We're done.
+        //
+
+        Success = TRUE;
+        break;
+    }
+
+    if (!Success) {
+
+        *Exists = FALSE;
+
+        //
+        // The files didn't exist, but no error occurred, so we return success.
+        //
+
+        Success = TRUE;
+
+    } else {
+
+        *Exists = TRUE;
+
+        //
+        // Update the user's pointers if applicable.
+        //
+
+        if (ARGUMENT_PRESENT(WhichIndex)) {
+            *WhichIndex = Index;
+        }
+
+        if (ARGUMENT_PRESENT(WhichFilename)) {
+            *WhichFilename = Filename;
+        }
+
+    }
+
+    //
+    // Intentional follow-on to "Error"; Success code will be set
+    // appropriately by this stage.
+    //
+
+Error:
+    if (HeapHandle) {
+        HeapFree(HeapHandle, 0, Path.Buffer);
+    }
+
+    return Success;
+}
+
+_Success_(return != 0)
 BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
@@ -858,8 +1808,6 @@ CreateUnicodeString(
                                      AllocationContext);
 
 }
-
-
 
 _Check_return_
 BOOL
@@ -1333,6 +2281,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "PfxFindPrefix"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'PfxFindPrefix'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlPrefixString"))) {
+
+        if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlPrefixString"))) {
+
+            if (!(Rtl->RtlPrefixString = (PRTL_PREFIX_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlPrefixString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlPrefixString'");
                 return FALSE;
             }
         }
@@ -1953,6 +2916,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlInitString"))) {
+
+        if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlInitString"))) {
+
+            if (!(Rtl->RtlInitString = (PRTL_INIT_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlInitString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlInitString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyString"))) {
+
+        if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyString"))) {
+
+            if (!(Rtl->RtlCopyString = (PRTL_COPY_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyString'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->RtlAppendUnicodeToString = (PRTL_APPEND_UNICODE_TO_STRING)
         GetProcAddress(Rtl->NtdllModule, "RtlAppendUnicodeToString"))) {
 
@@ -2008,6 +3001,51 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "RtlUnicodeStringToAnsiString"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlUnicodeStringToAnsiString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlEqualString"))) {
+
+        if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEqualString"))) {
+
+            if (!(Rtl->RtlEqualString = (PRTL_EQUAL_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEqualString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEqualString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlEqualUnicodeString"))) {
+
+        if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlEqualUnicodeString"))) {
+
+            if (!(Rtl->RtlEqualUnicodeString = (PRTL_EQUAL_UNICODE_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlEqualUnicodeString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlEqualUnicodeString'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCompareString = (PRTL_COMPARE_STRING)
+        GetProcAddress(Rtl->NtdllModule, "RtlCompareString"))) {
+
+        if (!(Rtl->RtlCompareString = (PRTL_COMPARE_STRING)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCompareString"))) {
+
+            if (!(Rtl->RtlCompareString = (PRTL_COMPARE_STRING)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCompareString"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCompareString'");
                 return FALSE;
             }
         }
@@ -2073,6 +3111,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "RtlCopyMappedMemory"))) {
+
+        if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCopyMappedMemory"))) {
+
+            if (!(Rtl->RtlCopyMappedMemory = (PRTL_COPY_MAPPED_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCopyMappedMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCopyMappedMemory'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->RtlFillMemory = (PRTL_FILL_MEMORY)
         GetProcAddress(Rtl->NtdllModule, "RtlFillMemory"))) {
 
@@ -2083,6 +3136,126 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
                 GetProcAddress(Rtl->Kernel32Module, "RtlFillMemory"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlFillMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+        GetProcAddress(Rtl->NtdllModule, "RtlLocalTimeToSystemTime"))) {
+
+        if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlLocalTimeToSystemTime"))) {
+
+            if (!(Rtl->RtlLocalTimeToSystemTime = (PRTL_LOCAL_TIME_TO_SYSTEM_TIME)
+                GetProcAddress(Rtl->Kernel32Module, "RtlLocalTimeToSystemTime"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlLocalTimeToSystemTime'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+        GetProcAddress(Rtl->NtdllModule, "RtlTimeToSecondsSince1970"))) {
+
+        if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlTimeToSecondsSince1970"))) {
+
+            if (!(Rtl->RtlTimeToSecondsSince1970 = (PRTL_TIME_TO_SECONDS_SINCE_1970)
+                GetProcAddress(Rtl->Kernel32Module, "RtlTimeToSecondsSince1970"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlTimeToSecondsSince1970'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->bsearch = (PBSEARCH)
+        GetProcAddress(Rtl->NtdllModule, "bsearch"))) {
+
+        if (!(Rtl->bsearch = (PBSEARCH)
+            GetProcAddress(Rtl->NtosKrnlModule, "bsearch"))) {
+
+            if (!(Rtl->bsearch = (PBSEARCH)
+                GetProcAddress(Rtl->Kernel32Module, "bsearch"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'bsearch'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->qsort = (PQSORT)
+        GetProcAddress(Rtl->NtdllModule, "qsort"))) {
+
+        if (!(Rtl->qsort = (PQSORT)
+            GetProcAddress(Rtl->NtosKrnlModule, "qsort"))) {
+
+            if (!(Rtl->qsort = (PQSORT)
+                GetProcAddress(Rtl->Kernel32Module, "qsort"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'qsort'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+        GetProcAddress(Rtl->NtdllModule, "K32GetProcessMemoryInfo"))) {
+
+        if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32GetProcessMemoryInfo"))) {
+
+            if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
+                GetProcAddress(Rtl->Kernel32Module, "K32GetProcessMemoryInfo"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32GetProcessMemoryInfo'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+        GetProcAddress(Rtl->NtdllModule, "GetProcessIoCounters"))) {
+
+        if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+            GetProcAddress(Rtl->NtosKrnlModule, "GetProcessIoCounters"))) {
+
+            if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
+                GetProcAddress(Rtl->Kernel32Module, "GetProcessIoCounters"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'GetProcessIoCounters'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+        GetProcAddress(Rtl->NtdllModule, "GetProcessHandleCount"))) {
+
+        if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+            GetProcAddress(Rtl->NtosKrnlModule, "GetProcessHandleCount"))) {
+
+            if (!(Rtl->GetProcessHandleCount = (PGET_PROCESS_HANDLE_COUNT)
+                GetProcAddress(Rtl->Kernel32Module, "GetProcessHandleCount"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'GetProcessHandleCount'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+        GetProcAddress(Rtl->NtdllModule, "SearchPathW"))) {
+
+        if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+            GetProcAddress(Rtl->NtosKrnlModule, "SearchPathW"))) {
+
+            if (!(Rtl->SearchPathW = (PSEARCHPATHW)
+                GetProcAddress(Rtl->Kernel32Module, "SearchPathW"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'SearchPathW'");
                 return FALSE;
             }
         }
@@ -2136,6 +3309,13 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
     //
     // End of auto-generated function resolutions.
     //
+
+    //
+    // This is a hack; we need RtlCompareString() from within PCRTCOMPARE-type
+    // functions passed to bsearch/qsort.
+    //
+
+    _RtlCompareString = Rtl->RtlCompareString;
 
     return TRUE;
 }
@@ -2234,6 +3414,15 @@ RtlInsertAsRightChild (
     ChildLinks->Parent = ParentLinks;
 }
 
+RTL_API
+LONG
+CompareStringCaseInsensitive(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    )
+{
+    return _RtlCompareString(String1, String2, FALSE);
+}
 
 _Check_return_
 BOOL
@@ -2345,10 +3534,31 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->FilesExist = (PFILES_EXIST)
-        GetProcAddress(RtlExModule, "FilesExist"))) {
+    if (!(RtlExFunctions->FindCharsInString = (PFIND_CHARS_IN_STRING)
+        GetProcAddress(RtlExModule, "FindCharsInString"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'FilesExist'");
+        OutputDebugStringA("RtlEx: failed to resolve 'FindCharsInString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CreateBitmapIndexForString = (PCREATE_BITMAP_INDEX_FOR_STRING)
+        GetProcAddress(RtlExModule, "CreateBitmapIndexForString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CreateBitmapIndexForString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FilesExistW = (PFILES_EXISTW)
+        GetProcAddress(RtlExModule, "FilesExistW"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistW'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FilesExistA = (PFILES_EXISTA)
+        GetProcAddress(RtlExModule, "FilesExistA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistA'");
         return FALSE;
     }
 
@@ -2356,6 +3566,34 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->ArgvWToArgvA = (PARGVW_TO_ARGVA)
+        GetProcAddress(RtlExModule, "ArgvWToArgvA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'ArgvWToArgvA'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnicodeStringToPath = (PUNICODE_STRING_TO_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
+        GetProcAddress(RtlExModule, "GetModulePath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'GetModulePath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->LoadShlwapi = (PLOAD_SHLWAPI)
+        GetProcAddress(RtlExModule, "LoadShlwapi"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadShlwapi'");
         return FALSE;
     }
 
@@ -2406,10 +3644,11 @@ LoadRtlExSymbols(
 
 }
 
+_Success_(return != 0)
 BOOL
 InitializeRtl(
-    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
-    _Inout_                   PULONG SizeOfRtl
+    _In_opt_bytecount_(*SizeOfRtl) PRTL   Rtl,
+    _Inout_ PULONG SizeOfRtl
     )
 {
     HANDLE HeapHandle;
@@ -2468,3 +3707,5 @@ Debugbreak()
     __debugbreak();
 }
 
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

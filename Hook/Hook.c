@@ -5,6 +5,7 @@
 BOOL
 Hook(PRTL Rtl, PVOID *ppSystemFunction, PVOID pHookFunction, PVOID Key)
 {
+    //return Mhook_ForceHook(Rtl, ppSystemFunction, pHookFunction, Key);
     return Mhook_SetHook(Rtl, ppSystemFunction, pHookFunction, Key);
 }
 
@@ -16,53 +17,53 @@ Unhook(PRTL Rtl, PVOID *ppHookedFunction, PVOID Key)
 }
 
 VOID
-WINAPI
-HookEntry(PHOOKED_FUNCTION_ENTRY Entry)
+CALLBACK
+HookEntry(_In_ PHOOKED_FUNCTION_CALL Call)
 {
-    //
-    //
-    PFUNCTION Function = Entry->Function;
-    DWORD64 HomeRcx = Entry->HomeRcx;
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
 
+    if (Function->EntryCallback) {
+        Function->EntryCallback(Call);
+    }
 }
 
 VOID
-WINAPI
-HookExit(PHOOKED_FUNCTION_ENTRY Entry)
+CALLBACK
+HookExit(_In_ PHOOKED_FUNCTION_CALL Call)
 {
-    PFUNCTION Function = Entry->Function;
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
 
-}
-
-
-VOID HookPush2(VOID);
-
-VOID
-HookPush(VOID)
-{
-    HookPush2();
+    if (Function->ExitCallback) {
+        Function->ExitCallback(Call);
+    }
 }
 
 VOID
-InitializeFunction(
-    _In_     PRTL       Rtl,
-    _In_     PFUNCTION  Function
+InitializeHookedFunction(
+    _In_     PRTL               Rtl,
+    _In_     PHOOKED_FUNCTION   Function
 )
 {
     Function->Rtl = Rtl;
-    Function->HookProlog = HookProlog;
-    Function->HookEpilog = HookEpilog;
+    Function->HookProlog = (PROC)HookProlog;
+    Function->HookEpilog = (PROC)HookEpilog;
+    Function->HookEntry = HookEntry;
+    Function->HookExit = HookExit;
 }
 
 BOOL
-HookFunction(PRTL Rtl, PFUNCTION Function)
+HookFunction(
+    _In_ PRTL Rtl,
+    _In_ PPVOID SystemFunctionPointer,
+    _In_ PHOOKED_FUNCTION Function
+    )
 {
     BOOL Success;
-    Function->NewAddress = Function->OldAddress;
-    Success = Mhook_SetHook(Rtl,
-                            (PPVOID)&Function->NewAddress,
-                            (PVOID)Function->HookProlog,
-                            Function);
+    Function->ContinuationAddress = Function->OriginalAddress;
+
+    Success = Mhook_SetFunctionHook(Rtl,
+                                    SystemFunctionPointer,
+                                    Function);
 
     return Success;
 }

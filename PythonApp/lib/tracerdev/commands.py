@@ -435,7 +435,6 @@ class SyncPythonExFunctions(InvariantAwareCommand):
 
         self._verbose("Synchronized file.")
 
-
 class FindMultilineMacros(InvariantAwareCommand):
     """
     Prints a list of all multi-line macros found in the incoming source file.
@@ -511,6 +510,183 @@ class TrailingSlashesAlign(InvariantAwareCommand):
             with open(path, 'wb') as f:
                 f.write('\n'.join(lines))
                 f.write('\n')
+
+class SyncTraceStoreIndexHeader(InvariantAwareCommand):
+    """
+    Finds all multi-line macros and aligns trailing slashes where necessary.
+    """
+    _shortname_ = 'tsi'
+
+    path = None
+    _path = None
+    class PathArg(PathInvariant):
+        _help = "path of the TraceStoreIndex.h file [default: %default]"
+
+        def _default(self):
+            return join_path(
+                dirname(__file__),
+                "../../../Tracer/TraceStoreIndex.h"
+            )
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = self._path
+
+        from tracer.sourcefile import SourceFile
+
+        source = SourceFile(path)
+        orig_data = source.data
+        orig_lines = source.lines
+
+        lines = source.lines
+        dirty = False
+
+        new_lines = []
+
+        count = 0
+        digits = 1
+        for line in lines:
+            parts = line.split(' ')
+            if digits == 1:
+                parts[-1] = str(count)
+            else:
+                assert digits == 2, digits
+                parts = parts[:-2]
+                parts.append(str(count))
+
+            new_line = ' '.join(parts)
+            if new_line != line:
+                dirty = True
+
+            new_lines.append(new_line)
+
+            count += 1
+            if digits == 1 and count == 10:
+                digits = 2
+
+        if dirty:
+            with open(path, 'wb') as f:
+                f.write('\n'.join(new_lines))
+                f.write('\n')
+            out("Updated header.")
+
+class ReplaceUuid(InvariantAwareCommand):
+    """
+    Replaces UUIDs in a file with new ones.
+    """
+
+    path = None
+    _path = None
+    class PathArg(PathInvariant):
+        _help = "path of file to replace UUIDs in"
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = self._path
+
+        import re
+        from uuid import uuid4
+        import linecache
+
+        regex = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){4}[0-9a-f]{8}', re.I)
+
+        with open(path, 'r', newline=None) as f:
+            text = f.read()
+
+        uuid_map = {
+            src_uuid: str(uuid4()).upper()
+                for src_uuid in regex.findall(text)
+        }
+
+        for (old_uuid, new_uuid) in uuid_map.items():
+            out("Replacing %s -> %s." % (old_uuid, new_uuid))
+            text = text.replace(old_uuid, new_uuid)
+
+        if 'vcxproj' in path:
+            newline = '\r\n'
+        else:
+            newline = '\n'
+
+        with open(path, 'w', newline=newline) as f:
+            f.write(text)
+
+class CreateNewProjectFromExisting(InvariantAwareCommand):
+    """
+    Creates a new Visual Studio project from a project in an existing directory.
+    """
+    _shortname_ = 'np'
+
+    src = None
+    class SrcArg(StringInvariant):
+        _help = "Source directory to copy."
+
+    dst = None
+    class DstArg(StringInvariant):
+        _help = "Destination directory."
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        src = self.src
+        dst = self.dst
+
+        from os import mkdir, listdir
+        from os.path import isdir
+
+        from tracer.path import join_path
+
+        if not isdir(dst):
+            mkdir(dst)
+
+        src_vcxproj = '%s/%s.vcxproj' % (src, src)
+        dst_vcxproj = '%s/%s.vcxproj' % (dst, dst)
+
+        endings = (
+            '.c',
+            '.h',
+            '.asm',
+            '.inc',
+            '.vcxproj',
+            '.vcxproj.filters',
+        )
+
+        src_files = [
+            '%s/%s' % (src, path)
+                for path in listdir(src)
+                    if path.endswith(endings)
+        ]
+
+        dst_files = {
+            src_path: src_path.replace(src, dst)
+                for src_path in src_files
+        }
+
+        import ipdb
+        ipdb.set_trace()
+
+
+        import re
+        from uuid import uuid4
+        import linecache
+
+        regex = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){4}[0-9a-f]{8}', re.I)
+
+        dst_path
+
+        lines = linecache.getlines(filename)
+        num_lines = len(lines)
+
+        i = 0
+        while i < num_lines:
+            line = lines[i]
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
