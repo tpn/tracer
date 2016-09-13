@@ -195,7 +195,7 @@ Routine Description:
     OccupiedBitmap = 0;
     ContinuationBitmap = 0;
     Count = StringArray->NumberOfElements;
-    FirstChars.OctChars = _mm_set1_epi32(0);
+    FirstChars.Chars128 = _mm_setzero_si128();
 
     //
     // Set all the slot lengths to 0x7ffff up front instead of defaulting
@@ -251,7 +251,7 @@ Routine Description:
         //
 
         Octword = _mm_load_si128((__m128i *)String->Buffer);
-        _mm_store_si128(&(*Slot).OctChars, Octword);
+        _mm_store_si128(&(*Slot).Chars128, Octword);
 
         ++Index;
 
@@ -267,7 +267,7 @@ Routine Description:
     // Store the first characters.
     //
 
-    _mm_store_si128(&(StringTable->FirstChars.OctChars), FirstChars.OctChars);
+    _mm_store_si128(&(StringTable->FirstChars.Chars128), FirstChars.Chars128);
 
     //
     // Generate and store the occupied bitmap.  Each bit, from low to high,

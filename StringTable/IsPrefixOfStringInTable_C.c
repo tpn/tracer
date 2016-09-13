@@ -45,11 +45,10 @@ Return Value:
 
 --*/
 {
-    BOOL Found = FALSE;
     CHAR FirstChar;
+    SHORT Index;
     USHORT Mask;
     USHORT Bitmap;
-    USHORT Count;
     PSTRING_ARRAY StringArray;
 
     //
@@ -117,46 +116,18 @@ Return Value:
     }
 
     //
-    // Load the source string into an Xmm register.
+    // Search the string table using the given bitmap of slots to search.
     //
 
+    Index = SearchStringTableSlotsForFirstPrefixMatch(
+        StringTable,
+        String,
+        Bitmap,
+        Match
+    );
 
-
-    //
-    // See how many comparisons we need to perform.
-    //
-
-    Count = __popcnt16(Bitmap);
-
-    switch (Count) {
-
-        case 16:
-        case 15:
-        case 14:
-        case 13:
-        case 12:
-        case 11:
-        case 10:
-        case  9:
-        case  8:
-        case  7:
-        case  6:
-        case  5:
-        case  4:
-        case  3:
-        case  2:
-        case  1: {
-
-
-        }
-    }
-
-    //
-    // For each indicated bit in the remaining mask, compare the string to the
-    // slot's value.
-    //
-
-    return Found;
+    return (Index != NO_MATCH_FOUND);
 }
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

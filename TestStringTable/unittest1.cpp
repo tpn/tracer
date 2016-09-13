@@ -200,6 +200,7 @@ namespace TestStringTable
             USHORT ExpectedMask;
             USHORT LengthsBitmap;
             USHORT ExpectedLengthsBitmap;
+            STRING_MATCH Match;
             PSTRING_TABLE StringTable;
             PSTRING_ARRAY StringArray;
             PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
@@ -264,6 +265,14 @@ namespace TestStringTable
 
             Assert::AreEqual((ULONG)LengthsBitmap,
                              (ULONG)ExpectedLengthsBitmap);
+
+
+            Found = IsPrefixOfStringInTable(StringTable, &fox2, &Match);
+            Assert::AreEqual(Found, TRUE);
+
+            Assert::AreEqual(Match.Index, (LONG)4);
+            Assert::AreEqual((LONG)Match.NumberOfMatchedCharacters, (LONG)3);
+            Assert::AreEqual(strncmp(fox.Buffer, Match.String->Buffer, 3), 0);
 
         }
 

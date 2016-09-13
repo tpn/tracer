@@ -47,8 +47,12 @@ AlignedHeapCalloc(
     SIZE_T SizeOfElements
     )
 {
+    PVOID Buffer;
     SIZE_T Size = NumberOfElements * SizeOfElements;
-    return _aligned_malloc(Size, Align(Size));
+    SIZE_T AlignedSize = Align(Size);
+    Buffer = _aligned_malloc(Size, AlignedSize);
+    SecureZeroMemory(Buffer, AlignedSize);
+    return Buffer;
 }
 
 _Use_decl_annotations_
