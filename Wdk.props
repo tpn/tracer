@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Couldn't find where this is officially set for drivers, but eh, it's needed. -->
+  <PropertyGroup>
+    <DDKSpec>winV10.0</DDKSpec>
+    <DDKPlatform Condition="'$(Platform)' == 'x64'">x64</DDKPlatform>
+    <DDKPlatform Condition="'$(Platform)' == 'x86'">x86</DDKPlatform>
+  </PropertyGroup>
+
+	<!-- Derived from Program Files (x86)/MSBuild/Microsoft.Cpp/v4.0/V140/Platforms/x64/PlatformToolsets/WindowsKernelModeDriver10.0/Toolset.props -->
+	<PropertyGroup>
+		<!-- If MicrosoftKitRoot value is defined in the environment, then we define the WDKContentRoot based on that -->
+		<MicrosoftKitRoot  Condition=" '$(MicrosoftKitRoot)'!='' AND !HasTrailingSlash('$(MicrosoftKitRoot)') ">$(MicrosoftKitRoot)\</MicrosoftKitRoot>
+		<!-- Users can override the kit version by specifying it as an environment variable, by default use the current kit version -->
+		<WDKKitVersion Condition=" '$(WDKKitVersion)'==''">10.0</WDKKitVersion>
+		<!--WDKContentRoot value is derived from MicrosoftKitRoot, it is this sub-dir "Windows Kits\$(WDKKitVersion)\" under MicrosoftKitRoot. -->
+		<WDKContentRoot Condition=" '$(MicrosoftKitRoot)'!=''">$(MicrosoftKitRoot)windows kits\$(WDKKitVersion)</WDKContentRoot>
+
+		<WDKContentRoot Condition="'$(WDKContentRoot)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots@KitsRoot10)</WDKContentRoot>
+		<WDKContentRoot Condition="'$(WDKContentRoot)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows Kits\Installed Roots@KitsRoot10)</WDKContentRoot>
+
+		<!-- Check for Trailing Slash -->
+		<WDKContentRoot  Condition=" '$(WDKContentRoot)'!='' AND !HasTrailingSlash('$(WDKContentRoot)') ">$(WDKContentRoot)\</WDKContentRoot>
+	</PropertyGroup>
+
+	<!-- Derived from Program Files (x86)/Windows Kits/10/DesignTime/CommonConfiguration/Neutral/WDK/WDK.props -->
+	<PropertyGroup>
+    <UM_IncludePath Condition="'$(UM_IncludePath)' == ''">$(WDKContentRoot)Include\$(TargetPlatformVersion)\um</UM_IncludePath>
+    <MinWin_IncludePath Condition="'$(MinWin_IncludePath)' == ''">$(UM_IncludePath)\minwin</MinWin_IncludePath>
+    <KM_IncludePath Condition="'$(KM_IncludePath)' == ''">$(WDKContentRoot)Include\$(TargetPlatformVersion)\km</KM_IncludePath>
+    <CRT_IncludePath Condition="'$(CRT_IncludePath)' == ''">$(WDKContentRoot)Include\$(TargetPlatformVersion)\km\crt</CRT_IncludePath>
+
+    <KMDF_INC_PATH Condition="'$(KMDF_INC_PATH)' == ''">$(WDKContentRoot)Include\wdf\kmdf\</KMDF_INC_PATH>
+    <UMDF_INC_PATH Condition="'$(UMDF_INC_PATH)' == ''">$(WDKContentRoot)Include\wdf\umdf\</UMDF_INC_PATH>
+    <SDK_INC_PATH Condition="'$(SDK_INC_PATH)' == ''">$(UM_IncludePath)\</SDK_INC_PATH>
+    <KIT_SHARED_INC_PATH Condition="'$(KIT_SHARED_INC_PATH)' == ''">$(KIT_SHARED_IncludePath)\</KIT_SHARED_INC_PATH>
+    <DDK_INC_PATH Condition="'$(DDK_INC_PATH)' == ''">$(KM_IncludePath)\</DDK_INC_PATH>
+    <SPB_INC_PATH Condition="'$(SPB_INC_PATH)' == ''">$(KM_IncludePath)\spb\</SPB_INC_PATH>
+
+    <!-- lib paths -->
+    <SDK_LibraryPath_DDKPlatform Condition="'$(SDK_LibraryPath_DDKPlatform)' == ''">$(WindowsSDK_LibraryPath)\$(DDKPlatform)</SDK_LibraryPath_DDKPlatform>
+    <WindowsDDK_LibraryPath Condition="'$(WindowsDDK_LibraryPath)' == ''">$(WindowsSdkDir)lib\$(TargetPlatformVersion)\km</WindowsDDK_LibraryPath>
+    <DDK_LibraryPath_DDKPlatform Condition="'$(DDK_LibraryPath_DDKPlatform)' == ''">$(WindowsDDK_LibraryPath)\$(DDKPlatform)</DDK_LibraryPath_DDKPlatform>
+    <SDK_LIB_PATH Condition="'$(SDK_LIB_PATH)' == ''">$(SDK_LibraryPath_DDKPlatform)\</SDK_LIB_PATH>
+    <DDK_LIB_PATH Condition="'$(DDK_LIB_PATH)' == ''">$(DDK_LibraryPath_DDKPlatform)\</DDK_LIB_PATH>
+    <HALKIT_LIB_PATH Condition="'$(HALKIT_LIB_PATH)' == ''">$(DDK_LIB_PATH)</HALKIT_LIB_PATH>
+    <IFSKIT_LIB_PATH Condition="'$(IFSKIT_LIB_PATH)' == ''">$(DDK_LIB_PATH)</IFSKIT_LIB_PATH>
+    <KMDF_LIB_PATH Condition="'$(KMDF_LIB_PATH)' == ''">$(WindowsSdkDir)lib\wdf\kmdf\$(DDKPlatform)\</KMDF_LIB_PATH>
+    <UMDF_LIB_PATH Condition="'$(UMDF_LIB_PATH)' == ''">$(WindowsSdkDir)lib\wdf\umdf\$(DDKPlatform)\</UMDF_LIB_PATH>
+    <SPB_LIB_PATH Condition="'$(SPB_LIB_PATH)' == ''">$(DDK_LibraryPath_DDKPlatform)\spb\</SPB_LIB_PATH>
+	</PropertyGroup>
+
+  <!-- Derived from Program Files (x86)/Windows Kits/10/build/WindowsDriver.KernelMode.props -->
+  <PropertyGroup>
+    <IncludePath>$(UM_IncludePath);$(MinWin_IncludePath);$(CRT_IncludePath);$(KM_IncludePath);$(KIT_SHARED_IncludePath)</IncludePath>
+    <LibraryPath>$(DDK_LibraryPath_DDKPlatform);$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile Condition="'$(Platform)' == 'x64'">
+      <PreprocessorDefinitions>_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ntdll.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+    </Link>
+    <Link Condition="'$(Platform)' == 'x64'">
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+
+</Project>

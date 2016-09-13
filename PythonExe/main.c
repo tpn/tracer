@@ -1,18 +1,21 @@
 #include "stdafx.h"
 
-#pragma warning(push)
-#pragma warning(disable: 4091)  // warning C4091: 'typedef ': ignored on left of '' when no variable is declared
-#define _NO_CVCONST_H
-#include <DbgHelp.h>
-#pragma warning(pop)
-//#pragma comment(lib, "dbghelp")
+#include "PathHack.h"
 
+/*
 typedef int (*PPY_MAIN)(_In_ int argc, _In_ char **argv);
+typedef PCHAR (*PPY_GET_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_EXEC_PREFIX)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_FULL_PATH)(VOID);
+typedef PCHAR (*PPY_GET_PROGRAM_NAME)(VOID);
 
 typedef PPY_MAIN *PPPY_MAIN;
+typedef PPY_GET_PREFIX *PPPY_GET_PREFIX;
+typedef PPY_GET_EXEC_PREFIX *PPPY_GET_EXEC_PREFIX;
+typedef PPY_GET_PROGRAM_NAME *PPPY_GET_PROGRAM_NAME;
+typedef PPY_GET_PROGRAM_FULL_PATH *PPPY_GET_PROGRAM_FULL_PATH;
+*/
 
-typedef CHAR **PPSTR;
-typedef WCHAR **PPWSTR;
 
 typedef PPWSTR (*PCOMMAND_LINE_TO_ARGV)(
   _In_  PWSTR  CommandLine,
@@ -37,292 +40,114 @@ typedef PWSTR (WINAPI *PGET_COMMAND_LINE)(VOID);
     }                                                                \
 } while (0)
 
-typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
-    PEXCEPTION_RECORD ExceptionRecord,
-    ULONG_PTR Frame,
-    PCONTEXT Context,
-    struct _DISPATCHER_CONTEXT *Dispatch
-);
+#define HOOK(Source, Dest) do { \
+    if (!Hook(Rtl, Source, Dest, NULL)) { \
+        OutputDebugStringA("Failed to hook " #Source " ->" #Dest); \
+        goto End; \
+    } \
+} while (0);
 
-P__C_SPECIFIC_HANDLER __C_specific_handler_impl;
 
-#pragma warning(push)
-#pragma warning(disable: 4028 4273)
-
-EXCEPTION_DISPOSITION
-__cdecl
-__C_specific_handler(
-    PEXCEPTION_RECORD ExceptionRecord,
-    ULONG_PTR Frame,
-    PCONTEXT Context,
-    struct _DISPATCHER_CONTEXT *Dispatch
-)
+PCHAR
+Our_Py_GetPath(void)
 {
-    return __C_specific_handler_impl(ExceptionRecord,
-                                     Frame,
-                                     Context,
-                                     Dispatch);
+    return (PCHAR)"";
 }
 
-#pragma warning(pop)
-
-PPY_MAIN Original_Py_Main = NULL;
-
-INT
-OurPyMain(int argc, char **argv)
+PCHAR
+Our_Py_GetPrefix(void)
 {
-    OutputDebugStringA("Entered OurPyMain()!");
-    return Original_Py_Main(argc, argv);
+    return (PCHAR)PythonPrefix;
 }
 
-PVOID FuncPointer;
-
-ULONG
-Func(ULONG a, PCHAR b, CHAR c)
+CONST PCHAR
+Our_Py_GetExecPrefix(void)
 {
-    ULONG a2 = a * 2;
-    PCHAR b2 = b+1;
-    CHAR  c2 = c+1;
-
-    return a2;
+    return Our_Py_GetPrefix();
 }
 
-typedef ULONG (*PFUNC)(ULONG a, PCHAR b, CHAR c);
-
-ULONG
-HookedFunc(PHOOKED_FUNCTION_ENTRY Entry)
+PCHAR
+Our_Py_GetProgramFullPath(void)
 {
-    PFUNCTION Function = Entry->Function;
-    DWORD64 HomeRcx = Entry->HomeRcx;
-    DWORD64 HomeRdx = Entry->HomeRdx;
-    DWORD64 HomeR8 = Entry->HomeR8;
-    DWORD64 HomeR9 = Entry->HomeR9;
-
-    ULONG a2 = (ULONG)HomeRcx;
-    PCHAR b2 = (PCHAR)HomeRdx;
-    CHAR  c2 = (CHAR)HomeR8;
-
-    PFUNC FuncPtr = (PFUNC)Function->NewAddress;
-
-    ULONG Result = FuncPtr(a2+2, b2, c2+1);
-
-    return Result;
+    return (PCHAR)PythonExePath;
 }
 
-typedef enum SymTagEnum SYM_TAG_ENUM;
+PPYGC_COLLECT Original_PyGC_Collect = NULL;
 
-BOOL
-CALLBACK
-SymEnumSourceFilesCallback(
-    _In_     PSOURCEFILE     SourceFile,
-    _In_opt_ PVOID           UserContext
-)
+SSIZE_T
+Our_PyGC_Collect(VOID)
 {
-    OutputDebugStringA((PCHAR)SourceFile->FileName);
-    OutputDebugStringA("\n");
-    return TRUE;
+    OutputDebugStringA("Entered Our_PyGC_Collect()\n");
+    return Original_PyGC_Collect();
 }
-
-typedef BOOL (CALLBACK *PSYM_ENUMERATESYMBOLS_CALLBACKW)(
-    _In_     PSYMBOL_INFOW pSymInfo,
-    _In_     ULONG         SymbolSize,
-    _In_opt_ PVOID         UserContext
-);
 
 PVOID
-HeapAllocator(
-    HANDLE HeapHandle,
-    ULONG  Size
-)
-{
-    return HeapAlloc(HeapHandle, HEAP_ZERO_MEMORY, Size);
-}
-
-typedef TI_FINDCHILDREN_PARAMS *PTI_FINDCHILDREN_PARAMS;
-typedef SYMBOL_INFO **PPSYMBOL_INFO;
-
-typedef struct _SYMBOL_TYPE {
-    PSYMBOL_INFO    SymbolInfo;
-    DWORD           Tag;
-    PWSTR           Name;
-    PULONG64        Length;
-    DWORD           Type;
-    DWORD           TypeId;
-    DWORD           BaseType;
-    DWORD           DataKind;
-    DWORD           SymbolIndex;
-    DWORD           UdtKind;
-} SYMBOL_TYPE, *PSYMBOL_TYPE, **PPSYMBOL_TYPE;
-
-BOOL
-GetChildren(
-    _In_    HANDLE          ProcessHandle,
-    _In_    HANDLE          HeapHandle,
-    _In_    DWORD64         ModuleBase,
-    _In_    ULONG           TypeIndex,
-    _Out_   PPVOID          ChildrenPointer,
-    _Out_   PULONG          NumberOfChildren
+HeapAllocationRoutine(
+    _In_ HANDLE HeapHandle,
+    _In_ ULONG ByteSize
     )
 {
-    ULONG Count;
-    ULONG ChildrenCount;
-    ULONG Size;
-    ULONG Index;
-    //ULONG TypeId;
-    ULONG ChildId;
-    BOOL Success;
-    PTI_FINDCHILDREN_PARAMS Params = NULL;
-
-    ULONG SymbolInfoSize = sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(CHAR);
-    PPSYMBOL_INFO ChildSymbolInfo = NULL;
-    PSYMBOL_INFO SymbolInfo;
-    PPSYMBOL_TYPE ChildSymbolTypes = NULL;
-    PSYMBOL_TYPE SymbolType;
-
-    if (!ARGUMENT_PRESENT(NumberOfChildren)) {
-        return FALSE;
-    }
-
-    Success = SymGetTypeInfo(ProcessHandle,
-                             ModuleBase,
-                             TypeIndex,
-                             TI_GET_CHILDRENCOUNT,
-                             &Count);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    if (Count == 0) {
-        *NumberOfChildren = 0;
-        return TRUE;
-    }
-
-    Success = SymGetTypeInfo(ProcessHandle,
-                             ModuleBase,
-                             TypeIndex,
-                             TI_GET_CHILDRENCOUNT,
-                             &ChildrenCount);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-
-    Size = sizeof(TI_FINDCHILDREN_PARAMS) + (Count * sizeof(ULONG));
-
-    Params = (PTI_FINDCHILDREN_PARAMS)HeapAlloc(HeapHandle,
-                                                HEAP_ZERO_MEMORY,
-                                                Size);
-
-    if (!Params) {
-        return FALSE;
-    }
-
-    Params->Count = Count;
-
-    Success = SymGetTypeInfo(ProcessHandle,
-                             ModuleBase,
-                             TypeIndex,
-                             TI_FINDCHILDREN,
-                             Params);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    SymbolInfoSize *= Count;
-    ChildSymbolInfo = (PPSYMBOL_INFO)HeapAlloc(HeapHandle,
-                                               HEAP_ZERO_MEMORY,
-                                               SymbolInfoSize);
-
-    if (!ChildSymbolInfo) {
-        goto Error;
-    }
-
-    ChildSymbolTypes = (PPSYMBOL_TYPE)HeapAlloc(HeapHandle,
-                                                HEAP_ZERO_MEMORY,
-                                                sizeof(SYMBOL_TYPE) * Count);
-
-    for (Index = 0; Index < Count; Index++) {
-        ChildId = Params->ChildId[Index];
-        SymbolInfo = (PSYMBOL_INFO)&ChildSymbolInfo[Index];
-        SymbolType = (PSYMBOL_TYPE)&ChildSymbolTypes[Index];
-
-        SymbolInfo->SizeOfStruct = sizeof(SYMBOL_INFO);
-        SymbolInfo->MaxNameLen = MAX_SYM_NAME;
-        SymbolInfo->TypeIndex = ChildId;
-
-        SymbolType->SymbolInfo = SymbolInfo;
-
-        Success = SymGetTypeInfo(ProcessHandle,
-                                 ModuleBase,
-                                 SymbolInfo->TypeIndex,
-                                 TI_GET_SYMTAG,
-                                 &SymbolType->Tag);
-
-        if (SymbolType->Tag != SymTagFunctionArgType) {
-            continue;
-        }
-
-        Success = SymFromIndex(ProcessHandle,
-                               ModuleBase,
-                               ChildId,
-                               SymbolInfo);
-
-        if (!Success) {
-            goto Error;
-        }
-
-
-
-        Success = SymGetTypeInfo(ProcessHandle,
-                                 ModuleBase,
-                                 SymbolInfo->TypeIndex,
-                                 TI_GET_UDTKIND,
-                                 &SymbolType->UdtKind);
-
-    }
-
-    goto End;
-
-Error:
-    if (Params) {
-        HeapFree(HeapHandle, 0, Params);
-    }
-
-End:
-    return Success;
+    return HeapAlloc(HeapHandle, 0, ByteSize);
 }
 
-BOOL
-CALLBACK
-SymEnumSymbolsCallback(
-    _In_     PSYMBOL_INFO SymbolInfo,
-    _In_     ULONG        SymbolSize,
-    _In_opt_ PVOID        UserContext
-)
+typedef ULONG (*PTEST_FUNC)(
+    _In_    ULONG   Arg1,
+    _In_    ULONG   Arg2,
+    _In_    ULONG   Arg3,
+    _In_    ULONG   Arg4
+    );
+
+ULONG
+TestFunc(ULONG Arg1, ULONG Arg2, ULONG Arg3, ULONG Arg4)
 {
-    ULONG NumberOfChildren;
-    PVOID ChildrenBuffer;
+    return Arg1 + Arg2 + Arg3 + Arg4;
+}
 
-    if (strcmp(SymbolInfo->Name, "Py_Main")) {
-        return TRUE;
-    }
+VOID
+CALLBACK
+HookEntryCallback(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
+{
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
 
-    OutputDebugStringA((PCHAR)SymbolInfo->Name);
-    OutputDebugStringA("\n");
+    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
+    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
+    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
+    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
 
-    __debugbreak();
 
-    BOOL Success = GetChildren(GetCurrentProcess(),
-                               GetProcessHeap(),
-                               (DWORD64)0x1e000000,
-                               SymbolInfo->TypeIndex,
-                               &ChildrenBuffer,
-                               &NumberOfChildren);
+    PrefaultPage(&Arg1);
+    PrefaultPage(&Arg2);
+    PrefaultPage(&Arg3);
+    PrefaultPage(&Arg4);
 
-    return TRUE;
+}
+
+VOID
+CALLBACK
+HookExitCallback(
+    _In_    PHOOKED_FUNCTION_CALL Call,
+    _In_    LARGE_INTEGER Timestamp
+    )
+{
+    PHOOKED_FUNCTION Function = Call->HookedFunction;
+    ULONG Result;
+
+    ULONG Arg1 = (ULONG)Call->Param1.LowPart;
+    ULONG Arg2 = (ULONG)Call->Param2.LowPart;
+    ULONG Arg3 = (ULONG)Call->Param3.LowPart;
+    ULONG Arg4 = (ULONG)Call->Param4.LowPart;
+
+    Result = (ULONG)Call->ReturnValue.LowPart;
+
+
+    PrefaultPage(&Arg1);
+    PrefaultPage(&Arg2);
+    PrefaultPage(&Arg3);
+    PrefaultPage(&Arg4);
+
 }
 
 
@@ -330,17 +155,47 @@ VOID
 WINAPI
 mainCRTStartup()
 {
+    BOOL Success;
     DWORD ExitCode = 1;
 
     HMODULE Kernel32;
     HMODULE Shell32;
-    HMODULE Python;
+    HMODULE PythonModule;
+    HMODULE PythonApiModule;
     HMODULE RtlModule;
     HMODULE HookModule;
 
+    PHOOK Hook;
+    PUNHOOK Unhook;
+
     PINITIALIZE_RTL InitializeRtl;
+    PINITIALIZE_PYTHON InitializePython;
     PCOMMAND_LINE_TO_ARGV CommandLineToArgvW;
     PPY_MAIN Py_Main;
+    PPY_GET_PREFIX Py_GetPrefix;
+    PPY_GET_EXEC_PREFIX Py_GetExecPrefix;
+    PPY_GET_PROGRAM_FULL_PATH Py_GetProgramFullPath;
+
+    PPYGC_COLLECT PyGC_Collect;
+
+    //PPYOBJECT_MALLOC PyObject_Malloc;
+
+    //PPYOBJECT_GC_TRACK PyObject_GC_Track;
+    //PPYOBJECT_GC_UNTRACK PyObject_GC_UnTrack;
+    //PPYOBJECT_GC_DEL PyObject_GC_Del;
+
+    PYTHON PythonRecord;
+    PPYTHON Python = &PythonRecord;
+    ULONG SizeOfPython = sizeof(*Python);
+
+    HOOKED_FUNCTION Function;
+    PHOOKED_FUNCTION HookedFunction;
+    PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
+    PHOOK_FUNCTION HookFunction;
+    PVOID Buffer;
+    PCHAR BaseAddress = NULL;
+    USHORT Attempts = 10;
+    LONG_PTR Offset = 10485760; // 10MB
 
     PWSTR CommandLine;
     LONG NumberOfArgs;
@@ -349,268 +204,55 @@ mainCRTStartup()
     LONG Index;
     HANDLE HeapHandle;
     ULONG AllocSize;
-
-    PHOOK Hook;
-    PUNHOOK Unhook;
-
-    //PCONTEXT Context;
+    //PCHAR Prefix;
+    //PCHAR ExecPrefix;
+    PTEST_FUNC TestFuncPointer = &TestFunc;
+    PCHAR Path;
+    USHORT PathLen = sizeof(PythonExePath) / sizeof(PythonExePath[0]);
 
     RTL RtlRecord;
     PRTL Rtl = &RtlRecord;
     ULONG SizeOfRtl = sizeof(*Rtl);
-
     ULONG Result;
-    CHAR ArgB = 'B';
-    PCHAR CharPointer = &ArgB;
-    FUNCTION Function;
-    PINITIALIZE_FUNCTION InitializeFunction;
-    PHOOK_FUNCTION HookFunction;
-    HANDLE ProcessHandle;
-    DWORD64 Displacement = 0;
-    DWORD64 Address;
-    PVOID ChildrenPointer;
-    ULONG NumberOfChildren = 0;
-    DWORD TypeId;
-    DWORD Type;
 
-    BOOL Success;
-    SYM_TAG_ENUM Tag;
-
-    HeapHandle = GetProcessHeap();
-    if (!HeapHandle) {
-        goto End;
-    }
-
-    ULONG SymbolInfoSize = sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(CHAR);
-    PSYMBOL_INFO SymbolInfo = (PSYMBOL_INFO)HeapAlloc(HeapHandle,
-                                                      HEAP_ZERO_MEMORY,
-                                                      SymbolInfoSize);
-
-    if (!SymbolInfo) {
-        goto End;
-    }
-
-    //ULONG LineSize = sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(CHAR);
-    //PIMAGEHLP_LINE64 Line = (PIMAGEHLP_LINE64)HeapAlloc(HeapHandle,
-    //                                                    HEAP_ZERO_MEMORY,
-    //                                                    LineSize);
-
-    IMAGEHLP_LINE64 Line;
-    SecureZeroMemory(&Line, sizeof(Line));
-
-    //SymSetOptions(SYMOPT_UNDNAME |
-    //              SYMOPT_AUTO_PUBLICS |
-    //              SYMOPT_CASE_INSENSITIVE |
-    //              SYMOPT_LOAD_LINES);
-
-    SymSetOptions(SYMOPT_UNDNAME |
-                  SYMOPT_AUTO_PUBLICS |
-                  SYMOPT_CASE_INSENSITIVE |
-                  SYMOPT_LOAD_ANYTHING |
-                  SYMOPT_LOAD_LINES |
-                  SYMOPT_DEBUG);
-
-    ProcessHandle = GetCurrentProcess();
-    Success = SymInitialize(ProcessHandle, NULL, TRUE);
-    if (!Success) {
-        goto End;
-    }
-
+    LOAD(PythonModule, PythonDllPath);
 
     LOAD(RtlModule, "Rtl");
     RESOLVE(RtlModule, PINITIALIZE_RTL, InitializeRtl);
+
+    LOAD(PythonApiModule, "Python");
+    RESOLVE(PythonApiModule, PINITIALIZE_PYTHON, InitializePython);
 
     if (!InitializeRtl(Rtl, &SizeOfRtl)) {
         OutputDebugStringA("InitializeRtl() failed.");
         goto End;
     }
 
-    LOAD(Kernel32, "kernel32");
+    Success = InitializePython(Rtl,
+                               PythonModule,
+                               Python,
+                               &SizeOfPython);
 
-    __C_specific_handler_impl = (P__C_SPECIFIC_HANDLER)GetProcAddress(Kernel32, "__C_specific_handler");
-    //RESOLVE(Kernel32, P__C_SPECIFIC_HANDLER, __C_specific_handler);
+    if (!Success) {
+        goto End;
+    }
+
+    LOAD(Kernel32, "kernel32");
 
     LOAD(Shell32, "shell32");
     RESOLVE(Shell32, PCOMMAND_LINE_TO_ARGV, CommandLineToArgvW);
 
-    LOAD(Python, "python27");
-    RESOLVE(Python, PPY_MAIN, Py_Main);
-
-    Original_Py_Main = Py_Main;
-
-    Success = SymRefreshModuleList(ProcessHandle);
-    if (!Success) {
-        goto End;
-    }
-
-    Success = SymEnumSymbols(ProcessHandle,
-                             (ULONG64)Python,
-                             NULL,
-                             SymEnumSymbolsCallback,
-                             (PVOID)Rtl);
-
-
-    SymbolInfo->SizeOfStruct = sizeof(SYMBOL_INFO);
-    SymbolInfo->MaxNameLen = MAX_SYM_NAME;
-
-    Address = (DWORD64)Py_Main;
-
-    Success = SymFromAddr(ProcessHandle,
-                          Address,
-                          &Displacement,
-                          SymbolInfo);
-
-    if (!Success) {
-        goto End;
-    }
-
-    TypeId = 0;
-    Type = 0;
-
-    Success = SymGetTypeInfo(ProcessHandle,
-                             (DWORD64)Python,
-                             SymbolInfo->Index,
-                             TI_GET_TYPE,
-                             &Type);
-
-    Success = SymGetTypeInfo(ProcessHandle,
-                             (DWORD64)Python,
-                             Type,
-                             TI_GET_TYPEID,
-                             &TypeId);
-
-    Tag = SymbolInfo->Tag;
-
-    CHAR CurrentSearchPath[_MAX_PATH];
-    Success = SymGetSearchPath(ProcessHandle, &CurrentSearchPath[0], sizeof(CurrentSearchPath));
-
-    //CHAR SearchPath[] = "c:\\aroot\\work\\Python-2.7.11";
-    //Success = SymSetSearchPath(ProcessHandle, SearchPath);
-    DWORD LastError;
-
-    /*
-    Success = SymGetTypeFromName(ProcessHandle,
-                                 (ULONG64)Python,
-                                 "Py_Main",
-                                 SymbolInfo);
-                                 */
-
-    Tag = SymbolInfo->Tag;
-
-    Success = GetChildren(ProcessHandle,
-                          HeapHandle,
-                          (DWORD64)Python,
-                          TypeId,
-                          &ChildrenPointer,
-                          &NumberOfChildren);
-
-    Success = GetChildren(ProcessHandle,
-                          HeapHandle,
-                          (DWORD64)Python,
-                          TypeId,
-                          &ChildrenPointer,
-                          &NumberOfChildren);
-
-
-    LastError = GetLastError();
-
-    Success = SymEnumTypes(ProcessHandle,
-                           (ULONG64)Python,
-                           SymEnumSymbolsCallback,
-                           (PVOID)Rtl);
-
-    LastError = GetLastError();
-
-    Success = SymEnumSymbols(ProcessHandle,
-                             (ULONG64)Python,
-                             NULL,
-                             SymEnumSymbolsCallback,
-                             (PVOID)Rtl);
-
-    Success = SymEnumTypesByName(ProcessHandle,
-                                 (ULONG64)Python,
-                                 NULL,
-                                 SymEnumSymbolsCallback,
-                                 (PVOID)Rtl);
-
-    LastError = GetLastError();
-
-    Success = SymEnumSourceFiles(ProcessHandle,
-                                 (ULONG64)Python,
-                                 NULL,
-                                 SymEnumSourceFilesCallback,
-                                 (PVOID)Rtl);
-
-    if (!Success) {
-        goto End;
-    }
-
-    Line.SizeOfStruct = sizeof(Line);
-
-    DWORD LineDisplacement = 0;
-
-    Success = SymGetLineFromAddr64(ProcessHandle,
-                                   Address,
-                                   &LineDisplacement,
-                                   &Line);
-
-    if (!Success) {
-        goto End;
-    }
-
-
-    FuncPointer = (PVOID)&Func;
+    RESOLVE(PythonModule, PPY_MAIN, Py_Main);
+    RESOLVE(PythonModule, PPY_GET_PREFIX, Py_GetPrefix);
+    RESOLVE(PythonModule, PPY_GET_EXEC_PREFIX, Py_GetExecPrefix);
+    RESOLVE(PythonModule, PPY_GET_PROGRAM_FULL_PATH, Py_GetProgramFullPath);
+    RESOLVE(PythonModule, PPYGC_COLLECT, PyGC_Collect);
 
     LOAD(HookModule, "Hook");
     RESOLVE(HookModule, PHOOK, Hook);
     RESOLVE(HookModule, PUNHOOK, Unhook);
-    RESOLVE(HookModule, PINITIALIZE_FUNCTION, InitializeFunction);
+    RESOLVE(HookModule, PINITIALIZE_HOOKED_FUNCTION, InitializeHookedFunction);
     RESOLVE(HookModule, PHOOK_FUNCTION, HookFunction);
-
-    Function.Key = 1;
-    Function.OldAddress = FuncPointer;
-    Function.HookedEntry = (PVOIDFUNC)HookedFunc;
-    Function.NumberOfParameters = 3;
-    Function.Name = "Func";
-    Function.Module = "Hook";
-
-    InitializeFunction(Rtl, &Function);
-
-    if (!HookFunction(Rtl, &Function)) {
-        OutputDebugStringA("Hooking attempt failed.");
-        goto End;
-    }
-
-    /*
-    if (!Hook(Rtl, (PPVOID)&Function.OldAddress, HookProlog, &Function)) {
-        OutputDebugStringA("Hooking attempt 2 failed.");
-        goto End;
-    }
-
-    if (!Hook(Rtl, (PPVOID)&Function.OldAddress, HookProlog, &Function)) {
-        OutputDebugStringA("Hooking attempt 2 failed.");
-        goto End;
-    }
-    */
-
-    /*
-    HookPush();
-
-    if (!Hook(Rtl, (PPVOID)&FuncPointer, HookedFunc, (PVOID)0x12345678)) {
-        OutputDebugStringA("Hooking attempt 2 failed.");
-        goto End;
-    }
-    */
-
-    Result = Func(1234, &ArgB, 'C');
-    goto End;
-
-    /*
-    if (!Hook(Rtl, (PPVOID)&Original_Py_Main, OurPyMain, (PVOID)1)) {
-        OutputDebugStringA("Hooking attempt failed.");
-        goto End;
-    }
-    */
 
     HeapHandle = GetProcessHeap();
     if (!HeapHandle) {
@@ -618,17 +260,194 @@ mainCRTStartup()
         goto End;
     }
 
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "TestFunc";
+    Function.Module = "PythonExe";
+    Function.Signature = "ULONG TestFunc(ULONG, ULONG, ULONG, ULONG)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 4;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = TestFuncPointer;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    //Function.EntryCallback = HookEntryCallback;
+
+    goto DoInitialize;
+
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "PyObject_New";
+    Function.Module = "python27";
+    Function.Signature = "PPYOBJECT PyObject_New(PPYTYPEOBJECT)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 1;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = Python->_PyObject_New;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "Py_Main";
+    Function.Module = "python27";
+    Function.Signature = "int Py_Main(int argc, char **argv)";
+    Function.NtStyleSignature = "LONG Py_Main(LONG argc, PPCHAR argv)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 2;
+    Function.SizeOfReturnValueInBytes = 4;
+    Function.OriginalAddress = Python->Py_Main;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+    goto DoInitialize;
+
+    SecureZeroMemory(&Function, sizeof(Function));
+
+    Function.Name = "Py_GetProgramFullPath";
+    Function.Module = "python27";
+    Function.Signature = "char* Py_GetProgramFullPath(void)";
+    Function.NtStyleSignature = "PSTR Py_GetProgramFullPath(VOID)";
+    Function.AllocationRoutine = (PALLOCATION_ROUTINE)HeapAllocationRoutine;
+    Function.AllocationContext = HeapHandle;
+    Function.NumberOfParameters = 0;
+    Function.SizeOfReturnValueInBytes = 8;
+    Function.OriginalAddress = Python->Py_GetProgramFullPath;
+    Function.HookEntry = NULL;
+    Function.EntryContext = NULL;
+    Function.HookExit = NULL;
+    Function.ExitContext = NULL;
+
+    Function.Hash.HighPart = 0;
+    Function.Hash.LowPart = 581891183;
+
+DoInitialize:
+    InitializeHookedFunction(Rtl, &Function);
+
+    BaseAddress = (PCHAR)PAGE_ALIGN(
+        ((ULONG_PTR)Function.OriginalAddress) -
+        ((ULONG_PTR)Offset)
+    );
+
+    do {
+        Buffer = VirtualAlloc(BaseAddress,
+                              PAGE_SIZE,
+                              MEM_COMMIT | MEM_RESERVE,
+                              PAGE_READWRITE);
+
+        if (Buffer) {
+            break;
+        }
+
+        BaseAddress = (PCHAR)PAGE_ALIGN(
+            ((ULONG_PTR)BaseAddress) -
+            ((ULONG_PTR)Offset)
+        );
+
+    } while (--Attempts);
+
+    if (!Buffer) {
+        OutputDebugStringA("Failed to allocate buffer.\n");
+        goto End;
+    }
+
+    Rtl->RtlCopyMemory(Buffer, &Function, sizeof(Function));
+    HookedFunction = (PHOOKED_FUNCTION)Buffer;
+
+    Success = HookFunction(
+        Rtl,
+        (PPVOID)&TestFuncPointer,
+        HookedFunction
+    );
+
+    if (!Success) {
+        OutputDebugStringA("HookFunction() failed.");
+        goto End;
+    }
+
+    Result = TestFunc(1, 2, 4, 8);
+    goto End;
+
+    //Success = HookFunction(Rtl, (PPVOID)&Python->Py_Main, HookedFunction);
+
+    Success = HookFunction(
+        Rtl,
+        (PPVOID)&Python->Py_GetProgramFullPath,
+        HookedFunction
+    );
+
+    if (!Success) {
+        OutputDebugStringA("HookFunction() failed.");
+        goto End;
+    }
+
+
+    //HOOK((PPVOID)&PyGC_Collect, Our_PyGC_Collect);
+    //Original_PyGC_Collect = Our_PyGC_Collect;
+    //HOOK((PPVOID)&Py_GetPrefix, Our_Py_GetPrefix);
+    //Prefix = Py_GetPrefix();
+
+    //HOOK((PPVOID)&Py_GetExecPrefix, Our_Py_GetExecPrefix);
+    //ExecPrefix = Py_GetExecPrefix();
+
+    //HOOK((PPVOID)&Py_GetProgramFullPath, Our_Py_GetProgramFullPath);
+    Path = Py_GetProgramFullPath();
+
+    //Rtl->RtlCopyMemory(Path, PythonExePath, sizeof(PythonExePath));
+
+    //Prefix = Py_GetPrefix();
+    //ExecPrefix = Py_GetExecPrefix();
+    //Path = Py_GetProgramFullPath();
+
     CommandLine = GetCommandLineW();
     UnicodeArgv = CommandLineToArgvW(CommandLine, &NumberOfArgs);
     AllocSize = (sizeof(PSTR) * NumberOfArgs) + 1;
     AnsiArgv = (PPSTR)HeapAlloc(HeapHandle, HEAP_ZERO_MEMORY, AllocSize);
+    if (!AnsiArgv) {
+        goto End;
+    }
 
     for (Index = 0; Index < NumberOfArgs; Index++) {
         PWSTR UnicodeArg = UnicodeArgv[Index];
         PSTR AnsiArg;
         INT Size;
 
-        Size = WideCharToMultiByte(CP_UTF8, 0, UnicodeArg, -1, NULL, 0, NULL, 0);
+        if (Index == 0) {
+            AnsiArgv[Index] = (PCHAR)PythonExePath;
+            continue;
+        }
+
+        Size = WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            UnicodeArg,
+            -1,
+            NULL,
+            0,
+            NULL,
+            0
+        );
 
         if (Size <= 0) {
             goto End;
@@ -639,7 +458,17 @@ mainCRTStartup()
             goto End;
         }
 
-        Size = WideCharToMultiByte(CP_UTF8, 0, UnicodeArg, -1, AnsiArg, Size, NULL, 0);
+        Size = WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            UnicodeArg,
+            -1,
+            AnsiArg,
+            Size,
+            NULL,
+            0
+        );
+
         if (Size <= 0) {
             goto End;
         }
@@ -649,24 +478,14 @@ mainCRTStartup()
 
     ExitCode = Py_Main(NumberOfArgs, AnsiArgv);
 
-    for (Index = 0; Index < NumberOfArgs; Index++) {
+    for (Index = 1; Index < NumberOfArgs; Index++) {
         HeapFree(HeapHandle, 0, AnsiArgv[Index]);
     }
 
     HeapFree(HeapHandle, 0, AnsiArgv);
 
-    goto End;
-
-    __try {
-        (*(volatile *)(PCHAR)10) = '1';
-    }
-    __except (GetExceptionCode() == STATUS_ACCESS_VIOLATION ?
-              EXCEPTION_EXECUTE_HANDLER :
-              EXCEPTION_CONTINUE_SEARCH)
-    {
-        OutputDebugStringA("Access violation!");
-    }
-
 End:
     ExitProcess(ExitCode);
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

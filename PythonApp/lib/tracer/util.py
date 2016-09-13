@@ -87,6 +87,13 @@ is_darwin = (sys.platform == 'darwin')
 is_win32 = (sys.platform == 'win32')
 is_cygwin = (sys.platform == 'cygwin')
 
+is_py3 = sys.version_info.major == 3
+if is_py3:
+    unicode_class = str
+    unicode = str
+else:
+    unicode_class = unicode
+
 #===============================================================================
 # Helper Methods
 #===============================================================================

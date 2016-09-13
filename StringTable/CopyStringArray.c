@@ -1,0 +1,265 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    CopyStringArray.c
+
+Abstract:
+
+    This module implements the functionality to copy a STRING_ARRAY structure.
+    It is primarily used to make a local copy of a STRING_ARRAY in creation of
+    a STRING_TABLE.
+
+--*/
+
+#include "stdafx.h"
+
+_Use_decl_annotations_
+PSTRING_ARRAY
+CopyStringArray(
+    PALLOCATOR Allocator,
+    PSTRING_ARRAY StringArray,
+    USHORT StringTablePaddingOffset,
+    USHORT StringTableStructSize,
+    PPSTRING_TABLE StringTablePointer
+    )
+/*++
+
+Routine Description:
+
+    Performs a deep-copy of a STRING_ARRAY structure using the given Allocator.
+
+    N.B.: Strings in the new array will have their Hash field set to the CRC32
+          value of the character values (excluding any NULLs) of their buffer.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure which will
+        be used to allocate all memory required by the structure during its
+        creation.
+
+    StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
+        to be copied.
+
+Return Value:
+
+    A pointer to a valid PSTRING_ARRAY structure on success, NULL on failure.
+
+--*/
+{
+    BOOL Success;
+
+    USHORT Index;
+    USHORT MinimumLength;
+    USHORT MaximumLength;
+    USHORT AlignedMaxLength;
+    USHORT AlignedStringTablePaddingOffset;
+    USHORT StringTableRemainingSpace;
+
+    ULONG TotalAllocSize;
+    ULONG StructSize;
+    ULONG ElementsSize;
+    ULONG BufferOffset;
+
+    PCHAR DestBuffer;
+
+    PSTRING DestString;
+    PSTRING SourceString;
+
+    PSTRING_TABLE StringTable;
+    PSTRING_ARRAY NewArray;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArray)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTablePointer)) {
+        return NULL;
+    }
+
+    //
+    // Get the required allocation size and minimum/maximum lengths.
+    //
+
+    Success = GetStringArrayAllocationInfo(
+        StringArray,
+        &TotalAllocSize,
+        &StructSize,
+        &ElementsSize,
+        &BufferOffset,
+        &MinimumLength,
+        &MaximumLength
+    );
+
+    if (!Success) {
+        return NULL;
+    }
+
+    //
+    // Check to see if we can fit our entire allocation within the remaining
+    // space of the string table.
+    //
+
+    AlignedStringTablePaddingOffset = (
+        ALIGN_UP_POINTER(StringTablePaddingOffset)
+    );
+
+    StringTableRemainingSpace = (
+        StringTableStructSize -
+        AlignedStringTablePaddingOffset
+    );
+
+    if (StringTableRemainingSpace >= TotalAllocSize) {
+
+        //
+        // We can fit our copy of the STRING_ARRAY within the trailing padding
+        // bytes of the STRING_TABLE, so, allocate sufficient space for that
+        // struct, then carve out our table pointer.
+        //
+
+        StringTable = (PSTRING_TABLE)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                StringTableStructSize
+            )
+        );
+
+        if (!StringTable) {
+
+            //
+            // If we couldn't allocate 512-bytes for the table, I don't think
+            // there is much point trying to allocate <= 512-bytes for just
+            // the array if memory is that tight.
+            //
+
+            return NULL;
+
+        }
+
+        //
+        // Allocation was successful, carve out the pointer to the NewArray.
+        // (We use RtlOffsetToPointer() here instead of StringTable->StringArray
+        // as the former will be done against the aligned pading size and isn't
+        // dependent upon knowing anything about the STRING_TABLE struct other
+        // than the offset and struct size parameters passed in as arguments.)
+        //
+
+        NewArray = (PSTRING_ARRAY)(
+            RtlOffsetToPointer(
+                StringTable,
+                AlignedStringTablePaddingOffset
+            )
+        );
+
+    } else {
+
+        //
+        // We can't embed ourselves within the trailing STRING_TABLE padding.
+        // Clear the pointer to make it clear no StringTable was allocated,
+        // and then try allocating sufficient space just for the STRING_ARRAY.
+        //
+
+        StringTable = NULL;
+
+        NewArray = (PSTRING_ARRAY)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                TotalAllocSize
+            )
+        );
+
+    }
+
+    //
+    // Ensure we allocated sufficient space.
+    //
+
+    if (!NewArray) {
+        return NULL;
+    }
+
+    //
+    // Initialize the scalar fields.
+    //
+
+    NewArray->SizeInQuadwords = (USHORT)(TotalAllocSize >> 3);
+    NewArray->NumberOfElements = StringArray->NumberOfElements;
+
+    NewArray->MinimumLength = MinimumLength;
+    NewArray->MaximumLength = MaximumLength;
+
+    //
+    // Initialize string source and dest pointers to one before the starting
+    // positions.
+    //
+
+    SourceString = StringArray->Strings-1;
+    DestString = NewArray->Strings-1;
+
+    //
+    // Initialize the destination buffer to the point after the new STRING_ARRAY
+    // struct and trailing array of actual STRING structs.  We then carve out
+    // new buffer pointers for the destination strings as we loop through the
+    // source string array and copy strings over.
+    //
+
+    DestBuffer = (PCHAR)(RtlOffsetToPointer(NewArray, BufferOffset));
+
+    //
+    // Loop through the strings of the source string array and copy into the
+    // new array, including carving out the relevant buffer space.
+    //
+
+    for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
+
+        ++SourceString;
+        ++DestString;
+
+        AlignedMaxLength = ALIGN_UP(SourceString->Length, 16);
+
+        DestString->Length = SourceString->Length;
+        DestString->MaximumLength = AlignedMaxLength;
+        DestString->Buffer = DestBuffer;
+
+        //
+        // Copy the source string over.
+        //
+
+        __movsb(DestString->Buffer, SourceString->Buffer, SourceString->Length);
+
+        //
+        // Carve out the next destination buffer.
+        //
+
+        DestBuffer += AlignedMaxLength;
+
+        //
+        // Compute the CRC32 checksum and store in the hash field.
+        //
+
+        DestString->Hash = ComputeCrc32ForString(DestString);
+    }
+
+    //
+    // Update the caller's StringTablePointer (which may be NULL if we didn't
+    // allocate a StringTable) and return the StringArray.
+    //
+
+    *StringTablePointer = StringTable;
+
+    return NewArray;
+}
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

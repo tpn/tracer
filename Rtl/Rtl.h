@@ -1,10 +1,19 @@
+
 #pragma once
 
-#ifdef __cpplus
+#include <Windows.h>
+
+#pragma warning(push)
+#pragma warning(disable: 28251)
+#include <intrin.h>
+#include <mmintrin.h>
+#pragma warning(pop)
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <Windows.h>
+#define RTL_API __declspec(dllexport)
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -22,6 +31,11 @@ extern "C" {
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
+typedef const PVOID CPVOID;
+typedef CHAR **PPCHAR;
+typedef WCHAR **PPWCHAR;
+typedef CHAR **PPSTR;
+typedef WCHAR **PPWSTR;
 
 typedef const SHORT CSHORT;
 
@@ -30,22 +44,72 @@ typedef struct _RTL *PRTL;
 typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
+    LONG   Hash;
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
+typedef const STRING *PCSTRING;
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
+    LONG   Hash;
     PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING;
+} UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING, ***PPPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
+
+#include "Memory.h"
+#include "Commandline.h"
+
+typedef CONST char *PCSZ;
+
+#ifdef _M_X64
+#pragma intrinsic(__readgsdword)
+FORCEINLINE
+DWORD
+FastGetCurrentProcessId(VOID)
+{
+    return __readgsdword(0x40);
+}
+
+FORCEINLINE
+DWORD
+FastGetCurrentThreadId(VOID)
+{
+    return __readgsdword(0x48);
+}
+#endif
+
+typedef LONG (MAINPROCA)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPSTR ArgvA
+    );
+typedef MAINPROCA *PMAINPROCA;
+
+typedef LONG (MAINPROCW)(
+    _In_ LONG NumberOfArguments,
+    _In_ PPWSTR ArgvW
+    );
+typedef MAINPROCW *PMAINPROCW;
+
+typedef VOID (RTL_INIT_STRING)(
+    _Out_       PSTRING     DestinationString,
+    _In_opt_    PCSZ        SourceString
+    );
+
+typedef RTL_INIT_STRING *PRTL_INIT_STRING;
 
 typedef VOID (RTL_COPY_UNICODE_STRING)(
     _Inout_  PUNICODE_STRING  DestinationString,
     _In_opt_ PCUNICODE_STRING SourceString
     );
 typedef RTL_COPY_UNICODE_STRING *PRTL_COPY_UNICODE_STRING;
+
+typedef VOID (RTL_COPY_STRING)(
+    _Out_    PSTRING  DestinationString,
+    _In_opt_ PCSTRING SourceString
+    );
+typedef RTL_COPY_STRING *PRTL_COPY_STRING;
 
 typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
     _Inout_  PUNICODE_STRING Destination,
@@ -67,11 +131,65 @@ typedef ULONG (*PRTL_UNICODE_STRING_TO_ANSI_SIZE)(
     _In_ PUNICODE_STRING UnicodeString
     );
 
-// 65536
-#define MAX_STRING  (sizeof(CHAR)  * ((1 << (sizeof(USHORT) * 8)) / sizeof(CHAR)))
-#define MAX_USTRING (sizeof(WCHAR) * ((1 << (sizeof(USHORT) * 8)) / sizeof(WCHAR)))
+typedef BOOLEAN (*PRTL_EQUAL_STRING)(
+    _In_    PCSTRING    String1,
+    _In_    PCSTRING    String2,
+    _In_    BOOLEAN     CaseInSensitive
+    );
 
-#define RTL_CONSTANT_STRING(s) { sizeof( s ) - sizeof( (s)[0] ), sizeof( s ), s }
+typedef BOOLEAN (*PRTL_EQUAL_UNICODE_STRING)(
+    _In_    PCUNICODE_STRING    String1,
+    _In_    PCUNICODE_STRING    String2,
+    _In_    BOOLEAN             CaseInSensitive
+    );
+
+typedef LONG (*PRTL_COMPARE_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOL     CaseInSensitive
+    );
+
+typedef LONG (*PCOMPARE_STRING_CASE_INSENSITIVE)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    );
+
+
+typedef struct _RTL_BITMAP {
+    ULONG SizeOfBitMap;     // Number of bits.
+    PULONG Buffer;
+} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
+
+typedef struct _RTL_BITMAP_RUN {
+    ULONG StartingIndex;
+    ULONG NumberOfBits;
+} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
+
+//
+// The various bitmap find functions return 0xFFFFFFFF
+// if they couldn't find the requested bit pattern.
+//
+
+#define BITS_NOT_FOUND 0xFFFFFFFF
+
+RTL_API
+LONG
+CompareStringCaseInsensitive(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    );
+
+
+// 65535 (1 << 16)
+#define MAX_STRING  ((USHORT)0xffff)
+#define MAX_USTRING ((USHORT)0xffff)
+
+#define RTL_CONSTANT_STRING(s) { \
+    sizeof(s) - sizeof((s)[0]),  \
+    sizeof( s ),                 \
+    0,                           \
+    s                            \
+}
 
 typedef union _ULONG_INTEGER {
     struct {
@@ -90,12 +208,94 @@ typedef union _LONG_INTEGER {
     LONG   LongPart;
 } LONG_INTEGER, *PLONG_INTEGER;
 
+typedef union _USHORT_INTEGER {
+    struct {
+        BYTE  LowPart;
+        BYTE  HighPart;
+    };
+    USHORT   ShortPart;
 
-typedef CHAR *PSZ;
-typedef const CHAR *PCSZ;
+} USHORT_INTEGER, *PUSHORT_INTEGER;
 
-typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(_Out_ LPFILETIME lpSystemTimeAsFileTime);
-typedef LONG (WINAPI *PNTQUERYSYSTEMTIME)(_Out_ PLARGE_INTEGER SystemTime);
+typedef union _SHORT_INTEGER {
+    struct {
+        CHAR  LowPart;
+        CHAR  HighPart;
+    };
+    SHORT   ShortPart;
+
+} SHORT_INTEGER, *PSHORT_INTEGER;
+
+typedef union _WIDE_CHARACTER {
+    struct {
+        CHAR  LowPart;
+        CHAR  HighPart;
+    };
+    WCHAR WidePart;
+
+} WIDE_CHARACTER, *PWIDE_CHARACTER;
+
+typedef union _OCTWORD_INTEGER {
+    struct {
+        LARGE_INTEGER LowPart;
+        LARGE_INTEGER HighPart;
+    };
+    __m128 OctPart;
+} OCTWORD_INTEGER, *POCTWORD_INTEGER, **PPOCTWORD_INTEGER;
+
+typedef _Null_terminated_ CHAR *PSZ;
+//typedef const PSZ PCSZ;
+
+typedef struct _PROCESS_MEMORY_COUNTERS {
+    DWORD  cb;
+    DWORD  PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+} PROCESS_MEMORY_COUNTERS, *PPROCESS_MEMORY_COUNTERS;
+
+typedef struct _PROCESS_MEMORY_COUNTERS_EX {
+    DWORD  cb;
+    DWORD  PageFaultCount;
+    SIZE_T PeakWorkingSetSize;
+    SIZE_T WorkingSetSize;
+    SIZE_T QuotaPeakPagedPoolUsage;
+    SIZE_T QuotaPagedPoolUsage;
+    SIZE_T QuotaPeakNonPagedPoolUsage;
+    SIZE_T QuotaNonPagedPoolUsage;
+    SIZE_T PagefileUsage;
+    SIZE_T PeakPagefileUsage;
+    SIZE_T PrivateUsage;
+} PROCESS_MEMORY_COUNTERS_EX, *PPROCESS_MEMORY_COUNTERS_EX;
+
+typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
+    _In_  HANDLE                      Process,
+    _Out_ PPROCESS_MEMORY_COUNTERS    ppsmemCounters,
+    _In_  DWORD                       cb
+    );
+
+typedef BOOL (WINAPI *PGET_PROCESS_IO_COUNTERS)(
+    _In_  HANDLE          Process,
+    _Out_ PIO_COUNTERS    lpIoCounters
+    );
+
+typedef BOOL (WINAPI *PGET_PROCESS_HANDLE_COUNT)(
+    _In_  HANDLE      Process,
+    _Out_ PDWORD      pdwHandleCount
+    );
+
+typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(
+    _Out_ LPFILETIME lpSystemTimeAsFileTime
+);
+
+typedef NTSTATUS (WINAPI *PNTQUERYSYSTEMTIME)(
+    _Out_ PLARGE_INTEGER SystemTime
+    );
 
 typedef BOOL (*PGETSYSTEMTIMEPRECISEASLARGEINTEGER)(
     _Out_   PLARGE_INTEGER  SystemTime
@@ -121,15 +321,49 @@ typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
     _Out_ PULONG Value
 );
 
-typedef
-_Check_return_
-NTSYSAPI
-SIZE_T
-(NTAPI RTL_COMPARE_MEMORY)(
-_In_ const VOID * Source1,
-_In_ const VOID * Source2,
-_In_ SIZE_T Length
-);
+typedef DWORD (WINAPI *PSEARCHPATHW)(
+    _In_opt_    LPCWSTR     lpPath,
+    _In_        LPCWSTR     lpFileName,
+    _In_opt_    LPCWSTR     lpExtension,
+    _In_        DWORD       nBufferLength,
+    _Out_       LPWSTR      lpBuffer,
+    _Out_opt_   LPWSTR      lpFilePart
+    );
+
+
+//
+// CRT functions.
+//
+
+typedef INT (__cdecl *PCRTCOMPARE)(
+    _In_    CONST PVOID Key,
+    _In_    CONST PVOID Datum
+    );
+
+typedef PVOID (*PBSEARCH)(
+    _In_ CPVOID      Key,
+    _In_ CPVOID      Base,
+    _In_ SIZE_T      NumberOfElements,
+    _In_ SIZE_T      WidthOfElement,
+    _In_ PCRTCOMPARE Compare
+    );
+
+typedef VOID (*PQSORT)(
+    _In_ PVOID       Base,
+    _In_ SIZE_T      NumberOfElements,
+    _In_ SIZE_T      WidthOfElement,
+    _In_ PCRTCOMPARE Compare
+    );
+
+//
+// End of CRT functions.
+//
+
+typedef NTSYSAPI SIZE_T (NTAPI RTL_COMPARE_MEMORY)(
+    _In_ const VOID * Source1,
+    _In_ const VOID * Source2,
+    _In_ SIZE_T Length
+    );
 
 typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
@@ -143,6 +377,18 @@ typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
 //
 // Prefix Helpers
 //
+typedef BOOLEAN (NTAPI *PRTL_PREFIX_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOLEAN CaseInSensitive
+    );
+
+typedef BOOLEAN (NTAPI *PRTL_SUFFIX_STRING)(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2,
+    _In_ BOOLEAN CaseInSensitive
+    );
+
 typedef BOOLEAN (NTAPI *PRTL_PREFIX_UNICODE_STRING)(
     _In_ PCUNICODE_STRING String1,
     _In_ PCUNICODE_STRING String2,
@@ -173,6 +419,26 @@ typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
 //
 // Generic Tables
 //
+
+typedef struct _TABLE_ENTRY_HEADER {
+
+    RTL_SPLAY_LINKS SplayLinks;
+    LIST_ENTRY ListEntry;
+    LONGLONG UserData;
+
+} TABLE_ENTRY_HEADER, *PTABLE_ENTRY_HEADER;
+
+//
+// _HEADER_HEADER is a terrible name for something, unless you're dealing with
+// the header of a header, which is what we're dealing with here.
+//
+
+typedef struct _TABLE_ENTRY_HEADER_HEADER {
+
+    RTL_SPLAY_LINKS SplayLinks;
+    LIST_ENTRY ListEntry;
+
+} TABLE_ENTRY_HEADER_HEADER, *PTABLE_ENTRY_HEADER_HEADER;
 
 typedef enum _TABLE_SEARCH_RESULT {
     TableEmptyTree,
@@ -413,6 +679,7 @@ typedef BOOLEAN (NTAPI *PRTL_IS_GENERIC_TABLE_EMPTY_AVL)(
 //
 // Hash Tables
 //
+
 typedef struct _RTL_DYNAMIC_HASH_TABLE_ENTRY {
     LIST_ENTRY Linkage;
     ULONG_PTR Signature;
@@ -454,29 +721,43 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE {
 
 } RTL_DYNAMIC_HASH_TABLE, *PRTL_DYNAMIC_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE)(
+FORCEINLINE
+VOID
+RtlInitHashTableContext(
+    _Inout_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
+    )
+{
+    Context->ChainHead = NULL;
+    Context->PrevLinkage = NULL;
+}
+
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE *PRTL_CREATE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_CREATE_HASH_TABLE_EX)(
+typedef BOOLEAN (NTAPI RTL_CREATE_HASH_TABLE_EX)(
     _Inout_ PRTL_DYNAMIC_HASH_TABLE *HashTable,
     _In_ ULONG InitialSize,
     _In_ ULONG Shift,
     _In_ ULONG Flags
     );
+typedef RTL_CREATE_HASH_TABLE_EX *PRTL_CREATE_HASH_TABLE_EX;
 
-typedef VOID (NTAPI *PRTL_DELETE_HASH_TABLE)(
+typedef VOID (NTAPI RTL_DELETE_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable
     );
+typedef RTL_DELETE_HASH_TABLE *PRTL_DELETE_HASH_TABLE;
 
-typedef BOOLEAN (NTAPI *PRTL_INSERT_ENTRY_HASH_TABLE)(
+typedef BOOLEAN (NTAPI RTL_INSERT_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
     _In_ PRTL_DYNAMIC_HASH_TABLE_ENTRY Entry,
     _In_ ULONG_PTR Signature,
     _Inout_opt_ PRTL_DYNAMIC_HASH_TABLE_CONTEXT Context
     );
+typedef RTL_INSERT_ENTRY_HASH_TABLE *PRTL_INSERT_ENTRY_HASH_TABLE;
 
 typedef BOOLEAN (NTAPI *PRTL_REMOVE_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
@@ -557,15 +838,13 @@ typedef struct _PREFIX_TABLE_ENTRY {
     struct _PREFIX_TABLE_ENTRY *NextPrefixTree;
     RTL_SPLAY_LINKS Links;
     PSTRING Prefix;
-} PREFIX_TABLE_ENTRY;
-typedef PREFIX_TABLE_ENTRY *PPREFIX_TABLE_ENTRY;
+} PREFIX_TABLE_ENTRY, *PPREFIX_TABLE_ENTRY, **PPPREFIX_TABLE_ENTRY;
 
 typedef struct _PREFIX_TABLE {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
     PPREFIX_TABLE_ENTRY NextPrefixTree;
-} PREFIX_TABLE;
-typedef PREFIX_TABLE *PPREFIX_TABLE;
+} PREFIX_TABLE, *PPREFIX_TABLE, **PPPREFIX_TABLE;
 
 typedef VOID (NTAPI *PPFX_INITIALIZE)(
     _Out_ PPREFIX_TABLE PrefixTable
@@ -586,6 +865,106 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
     _In_ PPREFIX_TABLE PrefixTable,
     _In_ PSTRING FullName
     );
+
+//
+// Our extended PREFIX_TABLE and STRING_TABLE functionality.
+//
+
+//#ifndef _STRING_TABLE_INTERNAL_BUILD
+#if 0
+#define INITIAL_STRING_TABLE_NUM_ELEMENTS 7
+
+typedef struct _STRING_TABLE {
+    PRTL Rtl;
+    HANDLE HeapHandle;
+    USHORT NumberOfElements;
+    USHORT Available;
+    ULONG Unused1;
+
+    //
+    // Function pointers needed for searching and sorting.
+    //
+
+    PCRTCOMPARE Compare;
+    PBSEARCH BinarySearch;
+    PQSORT QuickSort;
+
+    //
+    // Base address of the underlying PSTRING array.
+    //
+
+    PPSTRING Table;
+
+} STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
+
+typedef BOOL (*PCREATE_STRING_TABLE)(
+    _In_        HANDLE          HeapHandle,
+    _In_opt_    USHORT          NumberOfElements,
+    _Out_       PPSTRING_TABLE  StringTablePointer
+    );
+
+typedef VOID (*PDESTROY_STRING_TABLE)(
+    _In_    PPSTRING_TABLE  StringTable
+    );
+
+RTL_API
+_Success_(return != 0)
+BOOL
+CreateStringTable(
+    _In_        PRTL            Rtl,
+    _In_        HANDLE          HeapHandle,
+    _In_opt_    PUSHORT         NumberOfElements,
+    _Out_       PPSTRING_TABLE  StringTablePointer
+    );
+
+typedef BOOL (*PINSERT_STRING_TABLE)(
+    _In_        PSTRING_TABLE   StringTable,
+    _In_        PSTRING         String,
+    _Out_opt_   PBOOL           NewElement
+    );
+
+RTL_API
+_Success_(return != 0)
+BOOL
+InsertStringTable(
+    _In_        PSTRING_TABLE   StringTable,
+    _In_        PSTRING         String,
+    _Out_opt_   PBOOL           NewElement
+    );
+
+
+typedef struct _PREFIX_TABLE_EX {
+
+    //
+    // Inline the PREFIX_TABLE struct.
+    //
+
+    union {
+        PREFIX_TABLE PrefixTable;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            PPREFIX_TABLE_ENTRY NextPrefixTree;
+        };
+    };
+
+    //
+    // Inline the STRING_TABLE struct.
+    //
+
+    union {
+        STRING_TABLE Strings;
+        struct {
+            HANDLE HeapHandle;
+            USHORT NumberOfElements;
+            USHORT Available;
+            PPSTRING Array;
+        };
+    };
+
+} PREFIX_TABLE_EX, *PPREFIX_TABLE_EX, **PPPREFIX_TABLE_EX;
+
+#endif
 
 //
 // Unicode Prefix Table
@@ -610,13 +989,13 @@ typedef struct _UNICODE_PREFIX_TABLE {
 typedef UNICODE_PREFIX_TABLE *PUNICODE_PREFIX_TABLE;
 
 typedef VOID (NTAPI *PRTL_INITIALIZE_UNICODE_PREFIX)(
-    _Out_ PUNICODE_PREFIX_TABLE PrefixTable
+    _In_ PUNICODE_PREFIX_TABLE PrefixTable
     );
 
 typedef BOOLEAN (NTAPI *PRTL_INSERT_UNICODE_PREFIX)(
     _In_ PUNICODE_PREFIX_TABLE PrefixTable,
     _In_ PUNICODE_STRING Prefix,
-    _Out_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
+    _In_ PUNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry
     );
 
 typedef VOID (NTAPI *PRTL_REMOVE_UNICODE_PREFIX)(
@@ -638,23 +1017,6 @@ typedef PUNICODE_PREFIX_TABLE_ENTRY (NTAPI *PRTL_NEXT_UNICODE_PREFIX)(
 //
 // Bitmaps
 //
-
-typedef struct _RTL_BITMAP {
-    ULONG SizeOfBitMap;     // Number of bits.
-    PULONG Buffer;
-} RTL_BITMAP, *PRTL_BITMAP, **PPRTL_BITMAP;
-
-typedef struct _RTL_BITMAP_RUN {
-    ULONG StartingIndex;
-    ULONG NumberOfBits;
-} RTL_BITMAP_RUN, *PRTL_BITMAP_RUN, **PPRTL_BITMAP_RUN;
-
-//
-// The various bitmap find functions return 0xFFFFFFFF
-// if they couldn't find the requested bit pattern.
-//
-
-#define BITS_NOT_FOUND 0xFFFFFFFF
 
 typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP)(
     _Out_ PRTL_BITMAP BitMapHeader,
@@ -807,6 +1169,26 @@ typedef ULONG (NTAPI *PRTL_FIND_LAST_BACKWARD_RUN_CLEAR)(
     );
 
 //
+// Quad-word Bitmaps.  (Work in progress.)
+//
+
+typedef struct _RTL_BITMAP_EX {
+    ULONGLONG SizeOfBitMap; // Number of bits.
+    PULONGLONG Buffer;
+} RTL_BITMAP_EX, *PRTL_BITMAP_EX, **PPRTL_BITMAP_EX;
+
+typedef VOID (NTAPI *PRTL_INITIALIZE_BITMAP_EX)(
+    _Out_ PRTL_BITMAP_EX BitMapHeader,
+    _In_opt_ __drv_aliasesMem PULONGLONG BitMapBuffer,
+    _In_opt_ ULONGLONG SizeOfBitMap
+    );
+
+typedef VOID (NTAPI *PRTL_CLEAR_BIT_EX)(
+    _In_ PRTL_BITMAP_EX BitMapHeader,
+    _In_range_(<, BitMapHeader->SizeOfBitMap) ULONGLONG BitNumber
+    );
+
+//
 // CRC32 and CRC64
 //
 typedef ULONG (NTAPI *PRTLCRC32)(
@@ -845,6 +1227,7 @@ typedef BOOL (WINAPI *PTHREAD32_NEXT)(
 //
 // Misc
 //
+
 typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     _In_ PVOID Source,
     _In_ SIZE_T Length
@@ -862,11 +1245,205 @@ typedef PVOID (__cdecl *PRTL_COPY_MEMORY)(
     _In_  SIZE_T  Size
     );
 
+typedef NTSTATUS (NTAPI *PRTL_COPY_MAPPED_MEMORY)(
+    _Out_ PVOID   Destination,
+    _In_  LPCVOID Source,
+    _In_  SIZE_T  Size
+    );
+
 typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     _Out_ PVOID  Destination,
     _In_  INT    Value,
     _In_  SIZE_T Size
     );
+
+typedef BOOLEAN (WINAPI *PRTL_LOCAL_TIME_TO_SYSTEM_TIME)(
+    _In_    PLARGE_INTEGER  LocalTime,
+    _In_    PLARGE_INTEGER  SystemTime
+    );
+
+typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
+    _In_    PLARGE_INTEGER  Time,
+    _Out_   PULONG          ElapsedSeconds
+    );
+
+#pragma pack(push, 1)
+
+typedef enum _PATH_LINK_TYPE {
+
+    //
+    // No linkage is being used.
+    //
+
+    PathLinkTypeNone = 0,
+    PathLinkTypeListEntry,
+    PathLinkTypePrefixTableEntry,
+    PathLinkHashTableEntry
+
+} PATH_LINK_TYPE, *PPATH_LINK_TYPE;
+
+typedef struct _PATH_LINK {
+
+    PATH_LINK_TYPE Type;
+
+    union {
+        LIST_ENTRY ListEntry;
+        struct _UNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
+        struct _RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+    };
+
+} PATH_LINK, *PPATH_LINK;
+
+typedef _Struct_size_bytes_(sizeof(USHORT)) struct _PATH_FLAGS {
+    USHORT IsFile:1;
+    USHORT IsDirectory:1;
+    USHORT IsSymlink:1;
+    USHORT IsFullyQualified:1;
+    USHORT HasParent:1;
+    USHORT HasChildren:1;
+} PATH_FLAGS, *PPATH_FLAGS;
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_CREATE_FLAGS {
+    ULONG CheckType:1;
+    ULONG EnsureQualified:1;
+} PATH_CREATE_FLAGS, *PPATH_CREATE_FLAGS;
+
+typedef enum _PATH_TYPE_INTENT {
+
+    PathTypeDontCare = 0,
+    PathTypeLookup,
+    PathTypeKnownFile,
+    PathTypeKnownSymlink,
+    PathTypeKnownDirectory
+
+} PATH_TYPE_INTENT;
+
+typedef _Struct_size_bytes_(StructSize) struct _PATH {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
+
+    //
+    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
+    // pointer.
+    //
+
+    WCHAR Drive;                                                    // 2    4
+
+    union {
+        struct {
+            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
+            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
+        };
+        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
+    };
+
+    //
+    // Total number of bytes allocated for the structure, including StructSize.
+    // This includes the bitmap buffers and unicode string buffer (all of which
+    // will typically trail this structure in memory).
+    //
+
+    USHORT AllocSize;                                               // 2    18
+
+    PATH_FLAGS Flags;                                               // 2    20
+
+    union {
+        struct {
+            ULONG SizeOfReversedDotsBitMap;                         // 4    24
+            PULONG ReversedDotsBitMapBuffer;                        // 8    32
+        };
+        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
+    };
+
+    //
+    // Allocator used to allocate this structure.
+    //
+
+    PALLOCATOR Allocator;                                           // 40   48
+
+    //
+    // Unicode strings for path details.
+    //
+
+    UNICODE_STRING Full;
+    UNICODE_STRING Name;
+    UNICODE_STRING Directory;
+    UNICODE_STRING Extension;
+
+    //
+    // Path linkage.
+    //
+
+    PATH_LINK Link;
+
+    //
+    // Number of slashes and dots.  Saves having to do RtlNumberOfSetBits().
+    //
+
+    USHORT NumberOfSlashes;
+
+    USHORT NumberOfDots;
+
+} PATH, *PPATH, **PPPATH;
+
+#pragma pack(pop)
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_PATH_EX)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING String,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer,
+    _In_opt_ PPATH_CREATE_FLAGS CreateFlags
+    );
+typedef UNICODE_STRING_TO_PATH_EX *PUNICODE_STRING_TO_PATH_EX;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_MODULE_PATH)(
+    _In_ PRTL Rtl,
+    _In_ HMODULE Module,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPPATH PathPointer
+    );
+typedef GET_MODULE_PATH *PGET_MODULE_PATH;
+
+
+#ifdef _M_X64
+
+#ifndef BitTestAndSet
+#define BitTestAndSet _bittestandset
+#endif
+
+#define FastSetBit(Bitmap, BitNumber) (             \
+    BitTestAndSet((PLONG)Bitmap->Buffer, BitNumber) \
+)
+
+#else
+
+#define FastSetBit(Bitmap, BitNumber) ( \
+    Rtl->RtlSetBit(Bitmap, BitNumber)   \
+)
+
+#endif
 
 #undef RtlFillMemory
 #undef RtlMoveMemory
@@ -902,6 +1479,7 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PPFX_INSERT_PREFIX PfxInsertPrefix;                                                                \
     PPFX_REMOVE_PREFIX PfxRemovePrefix;                                                                \
     PPFX_FIND_PREFIX PfxFindPrefix;                                                                    \
+    PRTL_PREFIX_STRING RtlPrefixString;                                                                \
     PRTL_PREFIX_UNICODE_STRING RtlPrefixUnicodeString;                                                 \
     PRTL_CREATE_HASH_TABLE RtlCreateHashTable;                                                         \
     PRTL_DELETE_HASH_TABLE RtlDeleteHashTable;                                                         \
@@ -943,20 +1521,34 @@ typedef PVOID (__cdecl *PRTL_FILL_MEMORY)(
     PRTL_FIND_UNICODE_PREFIX RtlFindUnicodePrefix;                                                     \
     PRTL_NEXT_UNICODE_PREFIX RtlNextUnicodePrefix;                                                     \
     PRTL_COPY_UNICODE_STRING RtlCopyUnicodeString;                                                     \
+    PRTL_INIT_STRING RtlInitString;                                                                    \
+    PRTL_COPY_STRING RtlCopyString;                                                                    \
     PRTL_APPEND_UNICODE_TO_STRING RtlAppendUnicodeToString;                                            \
     PRTL_APPEND_UNICODE_STRING_TO_STRING RtlAppendUnicodeStringToString;                               \
     PRTL_UNICODE_STRING_TO_ANSI_SIZE RtlUnicodeStringToAnsiSize;                                       \
     PRTL_UNICODE_STRING_TO_ANSI_STRING RtlUnicodeStringToAnsiString;                                   \
+    PRTL_EQUAL_STRING RtlEqualString;                                                                  \
+    PRTL_EQUAL_UNICODE_STRING RtlEqualUnicodeString;                                                   \
+    PRTL_COMPARE_STRING RtlCompareString;                                                              \
     PRTL_COMPARE_MEMORY RtlCompareMemory;                                                              \
     PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;                                    \
     PRTL_MOVE_MEMORY RtlMoveMemory;                                                                    \
     PRTL_COPY_MEMORY RtlCopyMemory;                                                                    \
+    PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;                                                       \
     PRTL_FILL_MEMORY RtlFillMemory;                                                                    \
+    PRTL_LOCAL_TIME_TO_SYSTEM_TIME RtlLocalTimeToSystemTime;                                           \
+    PRTL_TIME_TO_SECONDS_SINCE_1970 RtlTimeToSecondsSince1970;                                         \
+    PBSEARCH bsearch;                                                                                  \
+    PQSORT qsort;                                                                                      \
+    PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
+    PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
+    PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
+    PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
-typedef struct _RTLFUNCTIONS {
+typedef struct _RTLFUNCTIONSE {
     _RTLFUNCTIONS_HEAD
 } RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
 
@@ -1040,6 +1632,39 @@ typedef VOID (*PRTL_INSERT_AS_RIGHT_CHILD)(
     );
 
 
+
+//
+// Our types
+//
+
+typedef struct _BITMAP_INDEX {
+    USHORT NumberOfUniqueChars;
+    USHORT Alignment;
+    RTL_BITMAP Forward;
+    RTL_BITMAP Reverse;
+    CHAR Char[sizeof(ULONG_PTR)];
+} BITMAP_INDEX, *PBITMAP_INDEX, **PPBITMAP_INDEX;
+
+typedef struct _STRINGEX {
+    USHORT NumberOfBitmapIndexes;
+
+    //
+    // Inline STRING structure.
+    //
+
+    union {
+        STRING String;
+        struct {
+            USHORT Length;
+            USHORT MaximumLength;
+            PCHAR  Buffer;
+        };
+    };
+
+    BITMAP_INDEX BitmapIndexes[1];
+
+} STRINGEX, *PSTRINGEX, **PPSTRINGEX;
+
 //
 // Our functions
 //
@@ -1060,32 +1685,122 @@ typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
 
 typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
 
+RTL_API
+_Check_return_
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+    );
+
 typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
     _In_     PUNICODE_STRING     String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
     );
 
-typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PHANDLE             HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP        BitmapPointer,
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
+);
+
+typedef BOOL (FIND_CHARS_IN_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+FindCharsInString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
+
+typedef CREATE_BITMAP_INDEX_FOR_STRING \
+       *PCREATE_BITMAP_INDEX_FOR_STRING;
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
+
+typedef VOID *PALLOCATION_CONTEXT;
 
 typedef PVOID (ALLOCATION_ROUTINE)(
-    _In_opt_ PVOID AllocationContext,
+    _In_opt_ PALLOCATION_CONTEXT AllocationContext,
     _In_ const ULONG ByteSize
     );
 
 typedef ALLOCATION_ROUTINE *PALLOCATION_ROUTINE;
 
+typedef
+_Must_inspect_result_
+PVOID
+(CALLOC_ROUTINE)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize
+    );
+typedef CALLOC_ROUTINE *PCALLOC_ROUTINE;
+
+typedef VOID *PFREE_CONTEXT;
+
 typedef VOID (FREE_ROUTINE)(
-    _In_opt_ PVOID Context,
+    _In_opt_ PFREE_CONTEXT Context,
     _In_ PVOID Buffer
     );
 
 typedef FREE_ROUTINE *PFREE_ROUTINE;
 
-typedef BOOL (FILES_EXIST)(
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL (FILES_EXISTW)(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1095,12 +1810,118 @@ typedef BOOL (FILES_EXIST)(
     _Out_opt_ PPUNICODE_STRING WhichFilename
     );
 
-typedef FILES_EXIST *PFILES_EXIST;
+typedef FILES_EXISTW *PFILES_EXISTW;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FILES_EXISTA)(
+    _In_      PRTL     Rtl,
+    _In_      PSTRING  Directory,
+    _In_      USHORT   NumberOfFilenames,
+    _In_      PPSTRING Filenames,
+    _Out_     PBOOL    Exists,
+    _Out_opt_ PUSHORT  WhichIndex,
+    _Out_opt_ PPSTRING WhichFilename
+    );
+
+typedef FILES_EXISTA *PFILES_EXISTA;
+
+typedef _Struct_size_bytes_(Size) struct _DIRECTORY_CONTAINING_FILES {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DIRECTORY_CONTAINING_FILES)) USHORT Size;
+
+    //
+    // Number of child filenames that matched.
+    //
+
+    USHORT NumberOfFiles;
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+    USHORT Padding[2];
+
+    //
+    // The directory name.
+    //
+
+    UNICODE_STRING Directory;
+
+    //
+    // The allocator used to allocate this structure.
+    //
+
+    PALLOCATOR Allocator;
+
+    //
+    // List entry in DIRECTORIES_CONTAINING_FILES.ListHead.
+    //
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // List head of child entries.
+    //
+
+    LIST_ENTRY Children;
+
+} DIRECTORY_CONTAINING_FILE, *PDIRECTORY_CONTAINING_FILE;
+
+typedef _Struct_size_bytes_(Size) struct _DIRECTORIES_CONTAINING_FILES {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DIRECTORY_CONTAINING_FILES)) USHORT Size;
+
+    //
+    // Number of directory entries.
+    //
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+} DIRECTORIES_CONTAINING_FILES, *PDIRECTORIES_CONTAINING_FILES;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FILES_EXIST_IN_DIRECTORIESW)(
+    _In_ PRTL Rtl,
+    _In_ USHORT NumberOfDirectories,
+    _In_reads_bytes_(NumberOfDirectories * sizeof(PUNICODE_STRING))
+        PPUNICODE_STRING Directories,
+    _In_ USHORT NumberOfFilenames,
+    _In_reads_bytes_(NumberOfFilenames * sizeof(PUNICODE_STRING))
+        PPUNICODE_STRING Filenames,
+    _In_ PALLOCATOR Allocator
+    );
+
+typedef FILES_EXISTW *PFILES_EXISTW;
+
 
 typedef BOOL (*PCOPY_UNICODE_STRING)(
     _In_  PRTL                  Rtl,
     _In_  PCUNICODE_STRING      Source,
     _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    );
+
+typedef BOOL (*PCOPY_STRING)(
+    _In_  PRTL                  Rtl,
+    _In_  PCSTRING              Source,
+    _Out_ PPSTRING              Destination,
     _In_  PALLOCATION_ROUTINE   AllocationRoutine,
     _In_  PVOID                 AllocationContext
     );
@@ -1111,6 +1932,13 @@ typedef BOOL (*PHASH_UNICODE_STRING_TO_ATOM)(
     );
 
 typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
+
+typedef BOOL (*PLOAD_SHLWAPI)(PRTL Rtl);
+
+typedef BOOL (*PPATH_CANONICALIZEA)(
+        _Out_   LPSTR   Dest,
+        _In_    LPCSTR  Source
+    );
 
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
@@ -1126,18 +1954,33 @@ typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
     PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
-    PFILES_EXIST FilesExist;                                                   \
-    PTEST_EXCEPTION_HANDLER TestExceptionHandler;
+    PFIND_CHARS_IN_STRING FindCharsInString;                                   \
+    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                \
+    PFILES_EXISTW FilesExistW;                                                 \
+    PFILES_EXISTA FilesExistA;                                                 \
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
+    PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
+    PUNICODE_STRING_TO_PATH UnicodeStringToPath;                               \
+    PGET_MODULE_PATH GetModulePath;                                            \
+    PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
 } RTLEXFUNCTIONS, *PRTLEXFUNCTIONS, **PPRTLEXFUNCTIONS;
+
+#define _SHLWAPIFUNCTIONS_HEAD             \
+    PPATH_CANONICALIZEA PathCanonicalizeA;
+
+typedef struct _SHLWAPI_FUNCTIONS {
+    _SHLWAPIFUNCTIONS_HEAD
+} SHLWAPI_FUNCTIONS, *PSHLWAPI_FUNCTIONS, **PPSHLWAPI_FUNCTIONS;
 
 typedef struct _RTL {
     ULONG       Size;
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
+    HMODULE     ShlwapiModule;
 
     HANDLE      HeapHandle;
 
@@ -1162,6 +2005,13 @@ typedef struct _RTL {
         };
     };
 
+    union {
+        SHLWAPI_FUNCTIONS ShlwapiFunctions;
+        struct {
+            _SHLWAPIFUNCTIONS_HEAD
+        };
+    };
+
 } RTL, *PRTL, **PPRTL;
 
 typedef BOOL (*PINITIALIZE_RTL)(
@@ -1169,29 +2019,37 @@ typedef BOOL (*PINITIALIZE_RTL)(
     _Inout_                   PULONG SizeOfRtl
     );
 
-#define RtlUpcaseChar(C)         (CHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-#define RtlUpcaseUnicodeChar(C) (WCHAR )(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseChar(C) (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseUnicodeChar(C) (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
-#define RtlOffsetToPointer(B,O)    ((PCHAR)(     ((PCHAR)(B)) + ((ULONG_PTR)(O))  ))
-#define RtlOffsetFromPointer(B,O)  ((PCHAR)(     ((PCHAR)(B)) - ((ULONG_PTR)(O))  ))
-#define RtlPointerToOffset(B,P)    ((ULONG_PTR)( ((PCHAR)(P)) - ((PCHAR)(B))      ))
+#define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
+#define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 #define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
-#define ALIGN_DOWN(Address, Alignment)                   \
-    ((ULONG_PTR)(Address) & ~((ULONG_PTR)(Alignment)-1))
+#define ALIGN_DOWN(Address, Alignment)                     \
+    ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))
 
-#define ALIGN_UP(Address, Alignment)                         \
-    (ALIGN_DOWN((Address) + ((Alignment) - 1), (Alignment)))
+#define ALIGN_UP(Address, Alignment) (                        \
+    (((ULONG_PTR)(Address)) + (((ULONG_PTR)(Alignment))-1)) & \
+    ~(((ULONG_PTR)(Alignment))-1)                             \
+)
 
-#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                 \
-    (USHORT)((USHORT)(Value) & ~((USHORT)sizeof(ULONG_PTR) - 1))
+#define ALIGN_UP_POINTER(Address) (ALIGN_UP(Address, sizeof(ULONG_PTR)))
 
-#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                                           \
-    (USHORT)(ALIGN_DOWN_USHORT_TO_POINTER_SIZE((Value) + ((USHORT)sizeof(ULONG_PTR)-1)))
+#define ALIGN_DOWN_POINTER(Address) (ALIGN_DOWN(Address, sizeof(ULONG_PTR)))
 
-#define RTL_API __declspec(dllexport)
+#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
+
+#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_UP((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
+
+#define BITMAP_ALIGNMENT 128
+#define ALIGN_UP_BITMAP(Address)                  \
+    (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
 
 RTL_API
 VOID
@@ -1215,28 +2073,6 @@ CopyToMemoryMappedMemory(
 
 RTL_API
 BOOL
-FindCharsInUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PRTL_BITMAP         Bitmap,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-_Check_return_
-BOOL
-CreateBitmapIndexForUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PHANDLE             HeapHandlePointer,
-    _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse
-    );
-
-RTL_API
-BOOL
 CreateUnicodeString(
     _In_  PRTL                  Rtl,
     _In_  PCUNICODE_STRING      Source,
@@ -1245,11 +2081,10 @@ CreateUnicodeString(
     _In_  PVOID                 AllocationContext
     );
 
-
 RTL_API
 _Check_return_
 BOOL
-FilesExist(
+FilesExistW(
     _In_      PRTL             Rtl,
     _In_      PUNICODE_STRING  Directory,
     _In_      USHORT           NumberOfFilenames,
@@ -1260,8 +2095,130 @@ FilesExist(
     );
 
 RTL_API
+_Check_return_
+BOOL
+FilesExistA(
+    _In_      PRTL     Rtl,
+    _In_      PSTRING  Directory,
+    _In_      USHORT   NumberOfFilenames,
+    _In_      PPSTRING Filenames,
+    _Out_     PBOOL    Exists,
+    _Out_opt_ PUSHORT  WhichIndex,
+    _Out_opt_ PPSTRING WhichFilename
+    );
+
+RTL_API
 BOOL
 TestExceptionHandler(VOID);
+
+FORCEINLINE
+VOID
+InitializeStringFromString(
+    _Out_   PSTRING     Dest,
+    _In_    PCSTRING    Source
+    )
+{
+    Dest->Length = Source->Length;
+    Dest->MaximumLength = Source->MaximumLength;
+    Dest->Buffer = Source->Buffer;
+}
+
+FORCEINLINE
+BOOL
+IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    //
+    // Add 1 to account for the NULL.
+    //
+
+    USHORT Length = (MinimumLengthInChars + 1) * sizeof(WCHAR);
+    USHORT MaximumLength = Length + sizeof(WCHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= MaximumLength &&
+        sizeof(WCHAR) == (String->MaximumLength - String->Length) &&
+        String->Buffer[String->Length >> 1] == L'\0'
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeStringWithMinimumLengthInChars(
+    _In_ PUNICODE_STRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    USHORT Length = MinimumLengthInChars * sizeof(WCHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= Length &&
+        String->MaximumLength >= String->Length
+    );
+}
+
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return IsValidUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        1
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidMinimumDirectoryNullTerminatedUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    //
+    // Minimum length: "C:\a" -> 4.
+    //
+
+    return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
+        String,
+        4
+    );
+}
+
+FORCEINLINE
+BOOL
+IsValidUnicodeString(
+    _In_ PUNICODE_STRING String
+    )
+{
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= 1 &&
+        String->MaximumLength >= 1
+    );
+}
 
 FORCEINLINE
 BOOL
@@ -1283,6 +2240,112 @@ AppendUnicodeCharToUnicodeString(
     return TRUE;
 }
 
+FORCEINLINE
+BOOL
+AppendCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    Char
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = Destination->Length + sizeof(CHAR);
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendStringAndCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    PSTRING String,
+    _In_    CHAR    Char
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 1;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendCharAndStringToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    Char,
+    _In_    PSTRING String
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 1;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = Char;
+    NewOffset += 1;
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = Char;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AppendCharAndStringAndCharToString(
+    _Inout_ PSTRING Destination,
+    _In_    CHAR    FirstChar,
+    _In_    PSTRING String,
+    _In_    CHAR    SecondChar
+    )
+{
+    USHORT NewOffset = Destination->Length;
+    USHORT NewLength = NewOffset + String->Length + 2;
+
+    if (NewLength > Destination->MaximumLength) {
+        return FALSE;
+    }
+
+    Destination->Buffer[NewOffset] = FirstChar;
+    NewOffset += 1;
+
+    __movsb((PBYTE)&Destination->Buffer[NewOffset],
+            (PBYTE)String->Buffer,
+            String->Length);
+
+    NewOffset += String->Length;
+    Destination->Buffer[NewOffset] = SecondChar;
+    Destination->Length = NewLength;
+
+    return TRUE;
+}
+
+_Success_(return != 0)
 FORCEINLINE
 BOOL
 CreateUnicodeStringInline(
@@ -1329,6 +2392,37 @@ CopyUnicodeStringInline(
 
     Rtl->RtlCopyUnicodeString(Destination, Source);
 }
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
+CopyString(
+    _In_     PSTRING Destination,
+    _In_opt_ PCSTRING Source
+    )
+{
+    USHORT Length;
+
+    if (!ARGUMENT_PRESENT(Destination)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Source)) {
+        Destination->Length = 0;
+        return FALSE;
+    }
+
+    Length = min(Destination->MaximumLength, Source->Length);
+
+    __movsb((PBYTE)Destination->Buffer,
+            (PBYTE)Source->Buffer,
+            Length);
+
+    Destination->Length = Length;
+
+    return TRUE;
+}
+
 
 FORCEINLINE
 VOID
@@ -1434,6 +2528,11 @@ InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
     PINITIALIZE_RTL InitializeRtl;
 
     Module = LoadLibraryA("Rtl");
+
+    if (!Module) {
+        return FALSE;
+    }
+
     Proc = GetProcAddress(Module, "InitializeRtl");
     if (!Proc) {
         __debugbreak();
@@ -1452,9 +2551,693 @@ InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
     return TRUE;
 }
 
+
+FORCEINLINE
+VOID
+InlineFindCharsInString(
+    _In_     PSTRING      String,
+    _In_     CHAR         CharToFind,
+    _Inout_  PRTL_BITMAP  Bitmap
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    CHAR Char;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        if (Char == CharToFind) {
+            FastSetBit(Bitmap, Index);
+        }
+    }
+}
+
+FORCEINLINE
+VOID
+InlineFindWideCharsInUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           CharToFind,
+    _In_ PRTL_BITMAP     Bitmap
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length;
+    WCHAR Char;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        if (Char == CharToFind) {
+            FastSetBit(Bitmap, Index);
+        }
+    }
+}
+
+FORCEINLINE
+VOID
+InlineFindTwoWideCharsInUnicodeStringReversed(
+    _In_ PUNICODE_STRING String,
+    _In_ WCHAR           Char1ToFind,
+    _In_ WCHAR           Char2ToFind,
+    _In_ PRTL_BITMAP     Bitmap1,
+    _In_ PRTL_BITMAP     Bitmap2
+    )
+{
+    USHORT Index;
+    USHORT NumberOfCharacters = String->Length >> 1;
+    WCHAR  Char;
+    ULONG  Bit;
+
+    for (Index = 0; Index < NumberOfCharacters; Index++) {
+        Char = String->Buffer[Index];
+        Bit = NumberOfCharacters - Index;
+        if (Char == Char1ToFind) {
+            FastSetBit(Bitmap1, Bit);
+        }
+        if (Char == Char2ToFind) {
+            FastSetBit(Bitmap2, Bit);
+        }
+    }
+}
+
+
 RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
+
+FORCEINLINE
+BOOL
+ConvertUtf16StringToUtf8StringSlow(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  The 'Slow' suffix on this function name indicates that the
+    WideCharToMultiByte() function is called first in order to get the required
+    buffer size prior to allocating the buffer.
+
+    (ConvertUtf16StringToUtf8String() is an alternate version of this method
+     that optimizes for the case where there are no multi-byte characters.)
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NewLength;
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    ULONG_INTEGER AllocSize;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    BufferSizeInBytes = WideCharToMultiByte(
+        CP_UTF8,                        // CodePage
+        0,                              // dwFlags
+        Utf16->Buffer,                  // lpWideCharStr
+        NumberOfCharacters,             // cchWideChar
+        NULL,                           // lpMultiByteStr
+        0,                              // cbMultiByte
+        NULL,                           // lpDefaultChar
+        NULL                            // lpUsedDefaultChar
+    );
+
+    if (BufferSizeInBytes <= 0) {
+        return FALSE;
+    }
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    NewLength = (USHORT)BufferSizeInBytes;
+    BufferSizeInBytes += 1;
+
+    //
+    // Align the buffer.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (ULONG)(
+        ALIGN_UP_POINTER(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    Utf8 = (PSTRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedBufferSizeInBytes.LowPart
+        )
+    );
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NewLength;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+
+        //
+        // Try free the underlying buffer.
+        //
+
+        Allocator->Free(Allocator->Context, Utf8);
+        Utf8 = NULL;
+    }
+
+    return FALSE;
+}
+
+FORCEINLINE
+BOOL
+ConvertUtf16StringToUtf8String(
+    _In_ PUNICODE_STRING Utf16,
+    _Out_ PPSTRING Utf8Pointer,
+    _In_ PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-16 unicode string to a UTF-8 string using the provided
+    allocator.  This method is optimized for the case where there are no
+    multi-byte characters in the unicode string, where the buffer size required
+    to hold the UTF-8 string is simply half the size of the UTF-16 buffer.  If
+    the first attempt at conversion (via WideCharToMultiByte()) indicates that
+    there are multibyte characters (ERROR_INSUFFICIENT_BUFFER is returned by
+    GetLastError()), the first allocated buffer will be freed and this routine
+    will call ConvertUtf16StringToUtf8StringSlow().
+
+Arguments:
+
+    Utf16 - Supplies a pointer to a UNICODE_STRING structure to be converted.
+
+    Utf8Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-8 STRING version of the UTF-16 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NumberOfCharacters;
+    LONG BufferSizeInBytes;
+    LONG BytesCopied;
+    ULONG_INTEGER AllocSize;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    PSTRING Utf8;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf16)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf8Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf8Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-8 encoding of the
+    // UTF-16 input string.
+    //
+
+    NumberOfCharacters = Utf16->Length >> 1;
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    BufferSizeInBytes = NumberOfCharacters + 1;
+
+    //
+    // Align the buffer size on a pointer boundary.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the unicode buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart > Utf16->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    Utf8 = (PSTRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSize.LowPart
+        )
+    );
+
+    if (!Utf8) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the STRING buffer at the memory
+    // trailing the struct.
+    //
+
+    Utf8->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            Utf8,
+            sizeof(STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf8->Length = NumberOfCharacters;
+    Utf8->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    //
+    // Attempt the conversion.
+    //
+
+    BytesCopied = WideCharToMultiByte(
+        CP_UTF8,                // CodePage
+        0,                      // dwFlags
+        Utf16->Buffer,          // lpWideCharStr
+        NumberOfCharacters,     // cchWideChar
+        Utf8->Buffer,           // lpMultiByteStr
+        Utf8->Length,           // cbMultiByte
+        NULL,                   // lpDefaultChar
+        NULL                    // lpUsedDefaultChar
+    );
+
+    if (BytesCopied != Utf8->Length) {
+        goto Error;
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf8Pointer = Utf8;
+
+    return TRUE;
+
+Error:
+
+    if (Utf8) {
+        Allocator->Free(Allocator->Context, Utf8);
+        Utf8 = NULL;
+    }
+
+    return FALSE;
+}
+
+
+#ifdef RTL_SECURE_ZERO_MEMORY
+FORCEINLINE
+PVOID
+RtlSecureZeroMemory(
+    _Out_writes_bytes_all_(cnt) PVOID ptr,
+    _In_ SIZE_T cnt
+    )
+{
+    volatile char *vptr = (volatile char *)ptr;
+
+#if defined(_M_AMD64)
+
+    __stosb((PUCHAR)((ULONG64)vptr), 0, cnt);
+
+#else
+
+    while (cnt) {
+
+#if !defined(_M_CEE) && (defined(_M_ARM) || defined(_M_ARM64))
+
+        __iso_volatile_store8(vptr, 0);
+
+#else
+
+        *vptr = 0;
+
+#endif
+
+        vptr++;
+        cnt--;
+    }
+
+#endif // _M_AMD64
+
+    return ptr;
+}
+#endif
+
+static CONST WCHAR IntegerToWCharTable[] = {
+    L'0',
+    L'1',
+    L'2',
+    L'3',
+    L'4',
+    L'5',
+    L'6',
+    L'7',
+    L'8',
+    L'9',
+    L'A',
+    L'B',
+    L'C',
+    L'D',
+    L'E',
+    L'F'
+};
+
+FORCEINLINE
+USHORT
+CountNumberOfDigits(_In_ ULONG Value)
+{
+    USHORT Count = 0;
+
+    do {
+        Count++;
+        Value = Value / 10;
+    } while (Value != 0);
+
+    return Count;
+}
+
+FORCEINLINE
+BOOLEAN
+AppendIntegerToUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ ULONG Integer,
+    _In_ USHORT NumberOfDigits,
+    _In_opt_ WCHAR Trailer
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that allows construction of unicode strings out
+    of integer values.
+
+Arguments:
+
+    String - Supplies a pointer to a UNICODE_STRING that will be appended to.
+        Sufficient buffer space must exist for the entire string to be written.
+
+    Integer - The integer value to be appended to the string.
+
+    NumberOfDigits - The expected number of digits for the value.  If Integer
+        has less digits than this number, it will be left-padded with zeros.
+
+    Trailer - An optional trailing wide character to append.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT ActualNumberOfDigits;
+    USHORT BytesRequired;
+    USHORT BytesRemaining;
+    USHORT NumberOfZerosToPad;
+    const ULONG Base = 10;
+    ULONG Digit;
+    ULONG Value;
+    ULONG Count;
+    ULONG Bytes;
+    WCHAR Char;
+    PWCHAR Dest;
+
+    //
+    // Verify the unicode string has sufficient space.
+    //
+
+    BytesRequired = NumberOfDigits * sizeof(WCHAR);
+
+    if (Trailer) {
+        BytesRequired += (1 * sizeof(Trailer));
+    }
+
+    BytesRemaining = (
+        String->MaximumLength -
+        String->Length
+    );
+
+    if (BytesRemaining < BytesRequired) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the integer value doesn't have more digits than
+    // specified.
+    //
+
+    ActualNumberOfDigits = CountNumberOfDigits(Integer);
+
+    if (ActualNumberOfDigits > NumberOfDigits) {
+        return FALSE;
+    }
+
+    //
+    // Initialize our destination pointer to the last digit.  (We write
+    // back-to-front.)
+    //
+
+    Dest = (PWCHAR)(
+        RtlOffsetToPointer(
+            String->Buffer,
+            String->Length + (
+                (NumberOfDigits - 1) *
+                sizeof(WCHAR)
+            )
+        )
+    );
+    Count = 0;
+    Bytes = 0;
+
+    //
+    // Convert each digit into the corresponding character and copy to the
+    // string buffer, retreating the pointer as we go.
+    //
+
+    Value = Integer;
+
+    do {
+        Count++;
+        Bytes += 2;
+        Digit = Value % Base;
+        Value = Value / Base;
+        Char = IntegerToWCharTable[Digit];
+        *Dest-- = Char;
+    } while (Value != 0);
+
+    //
+    // Pad the string with zeros if necessary.
+    //
+
+    NumberOfZerosToPad = NumberOfDigits - ActualNumberOfDigits;
+
+    if (NumberOfZerosToPad) {
+        do {
+            Count++;
+            Bytes += 2;
+            *Dest-- = L'0';
+        } while (--NumberOfZerosToPad);
+    }
+
+    //
+    // Update the string with the new length.
+    //
+
+    String->Length += (USHORT)Bytes;
+
+    //
+    // Add the trailer if applicable.
+    //
+
+    if (Trailer) {
+        String->Length += sizeof(WCHAR);
+        String->Buffer[(String->Length - 1) >> 1] = Trailer;
+    }
+
+    return TRUE;
+}
+
 
 //
 // Verbatim copy of the doubly-linked list inline methods.
@@ -1595,6 +3378,7 @@ AppendTailList(
     return;
 }
 
-#ifdef __cpp
+#ifdef __cplusplus
 } // extern "C"
 #endif
+
