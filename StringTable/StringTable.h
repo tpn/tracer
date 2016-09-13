@@ -116,7 +116,7 @@ typedef __declspec(align(16)) union _STRING_SLOT {
         ULARGE_INTEGER LowChars;
         ULARGE_INTEGER HighChars;
     };
-    __m128i OctChars;
+    __m128i Chars128;
 } STRING_SLOT, *PSTRING_SLOT, **PPSTRING_SLOT;
 
 typedef union _SLOT_LENGTHS {
@@ -353,7 +353,7 @@ C_ASSERT(sizeof(STRING_TABLE) == 512);
 typedef struct _STRING_MATCH {
 
     //
-    // Index of the match.  -1 if no match.
+    // Index of the match.
     //
 
     LONG Index;
@@ -378,6 +378,8 @@ typedef struct _STRING_MATCH {
     PSTRING String;
 
 } STRING_MATCH, *PSTRING_MATCH, **PPSTRING_MATCH;
+
+#define NO_MATCH_FOUND (-1)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
@@ -417,6 +419,18 @@ VOID
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
 
+typedef
+SHORT
+(SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH)(
+    _In_ PSTRING_TABLE StringTable,
+    _In_ PSTRING String,
+    _In_ USHORT Index,
+    _In_opt_ PSTRING_MATCH StringMatch
+    );
+typedef   SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
+        *PSEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH;
+STRING_TABLE_API SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
+                 SearchStringTableSlotsForFirstPrefixMatch;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -673,7 +687,7 @@ Routine Description:
     //
     // Account for (StringArray->NumberOfElements - 1) times size of a
     // STRING struct.  The minus 1 is because the size of the STRING_ARRAY
-    // struct includes a single STRING struct at the end of it.
+    // struct includes a single STRING struct at the end of it (ANYSIZE_ARRAY).
     //
 
     StringElementsSize = (StringArray->NumberOfElements - 1) * sizeof(STRING);
@@ -810,7 +824,7 @@ IsFirstCharacterInStringTable(
     // Load the string table's first character array into an XMM register.
     //
 
-    StringTableFirstCharXmm = StringTable->FirstChars.OctChars;
+    StringTableFirstCharXmm = StringTable->FirstChars.Chars128;
 
     EqualXmm = _mm_cmpeq_epi8(FirstCharXmm, StringTableFirstCharXmm);
     Index.LongPart = _mm_movemask_epi8(EqualXmm);

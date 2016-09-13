@@ -94,6 +94,7 @@
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="IsPrefixOfStringInTable_C.c" />
+    <ClCompile Include="SearchStringTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
