@@ -103,8 +103,7 @@ Return Value:
         Shift = Index + 1;
 
         //
-        // Decrement the index to account for the 0-based array indexing versus
-        // 1-based bit masks, then load the slot and its length.
+        // Load the slot and its length.
         //
 
         Slot.Chars128 = _mm_load_si128(&StringTable->Slots[Index].Chars128);
