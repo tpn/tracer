@@ -92,21 +92,15 @@ typedef struct _STRING_ARRAY33 {
 
 #define MAKE_STRING(Name) STRING Name = RTL_CONSTANT_STRING(#Name)
 
-MAKE_STRING(falcon);
-MAKE_STRING(tomcat);
-MAKE_STRING(warthog);
-MAKE_STRING(viper);
-MAKE_STRING(fox);
-MAKE_STRING(fox1);
-MAKE_STRING(fox2);
-MAKE_STRING(lightning_storm);
-MAKE_STRING(really_bad_lightning_storm);
-
 #define PTR(p) ((ULONG_PTR)(p))
 #define LEN(String) ((LONG)((STRING)(String)).Length)
 
 #define CONSTANT_STRING_ARRAY(Strings) { \
     0, 1, 0, 0, { Strings } }
+
+#define CONSTANT_STRING_ARRAY2(S1, S2) { \
+    0, 2, 0, 0, { S1, S2 }               \
+}
 
 #define CONSTANT_STRING_ARRAY3(S1, S2, S3) { \
     0, 3, 0, 0, { S1, S2, S3 }               \
@@ -121,7 +115,91 @@ MAKE_STRING(really_bad_lightning_storm);
 }
 
 #define MAKE_TABLE(Array) \
-    CreateStringTable(&Allocator, reinterpret_cast<PSTRING_ARRAY>(Array))
+    CreateStringTable(&Allocator, (PSTRING_ARRAY)(Array))
+
+
+MAKE_STRING(falcon);
+MAKE_STRING(tomcat);
+MAKE_STRING(warthog);
+MAKE_STRING(viper);
+MAKE_STRING(fox);
+MAKE_STRING(fox1);
+MAKE_STRING(fox2);
+MAKE_STRING(lightning_storm);
+MAKE_STRING(really_bad_lightning_storm);
+
+MAKE_STRING(a);
+MAKE_STRING(ab);
+MAKE_STRING(abc);
+MAKE_STRING(abcd);
+MAKE_STRING(abcde);
+MAKE_STRING(abcdef);
+MAKE_STRING(abcdefg);
+MAKE_STRING(abcdefgh);
+MAKE_STRING(abcdefghi);
+MAKE_STRING(abcdefghij);
+MAKE_STRING(abcdefghijk);
+MAKE_STRING(abcdefghijkl);
+MAKE_STRING(abcdefghijklm);
+MAKE_STRING(abcdefghijklmn);
+MAKE_STRING(abcdefghijklmno);
+MAKE_STRING(abcdefghijklmnop);
+MAKE_STRING(abcdefghijklmnopq);
+MAKE_STRING(abcdefghijklmnopqr);
+MAKE_STRING(abcdefghijklmnopqrs);
+MAKE_STRING(abcdefghijklmnopqrst);
+MAKE_STRING(abcdefghijklmnopqrstu);
+MAKE_STRING(abcdefghijklmnopqrstuv);
+MAKE_STRING(abcdefghijklmnopqrstuvw);
+MAKE_STRING(abcdefghijklmnopqrstuvwy);
+MAKE_STRING(abcdefghijklmnopqrstuvwyx);
+MAKE_STRING(abcdefghijklmnopqrstuvwyxz);
+
+
+MAKE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij);
+MAKE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklm);
+MAKE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn);
+MAKE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij);
+MAKE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn);
+MAKE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmno);
+
+#define ABC_LONG \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij
+
+#define ABCD_LONG \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklm
+
+#define ABCD_LONGEST \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn
+
+#define BCD_LONG \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij
+
+#define BCDE_LONG \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn
+
+#define BCDE_LONGEST \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmno
+
+MAKE_STRING(bcdefgefh);
+MAKE_STRING(efghijklmn);
+MAKE_STRING(ghibdefjf);
+MAKE_STRING(jklmnopqrst);
+MAKE_STRING(klmn);
+MAKE_STRING(klmnopqrstu);
+MAKE_STRING(lmnopqrstuv);
+MAKE_STRING(lmnopqr);
+MAKE_STRING(lmno);
+MAKE_STRING(mnopqrstu);
+MAKE_STRING(mnopqrstuvw);
+MAKE_STRING(nop);
+MAKE_STRING(nopqrstuvwy);
+
+MAKE_STRING(fourteen141414);
+MAKE_STRING(fifteen15151515);
+MAKE_STRING(sixteen161616161);
+MAKE_STRING(seventeen17171717);
+MAKE_STRING(eighteen1818181818);
 
 namespace TestStringTable
 {
@@ -143,7 +221,7 @@ namespace TestStringTable
 
         TEST_METHOD(TestMethod1)
         {
-            BOOL Found;
+            STRING_TABLE_INDEX Index;
             PSTRING_TABLE StringTable;
             PSTRING_ARRAY StringArray;
             PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
@@ -168,9 +246,9 @@ namespace TestStringTable
 
             IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
 
-            Found = IsPrefixOfStringInTable(StringTable, &tomcat, NULL);
+            Index = IsPrefixOfStringInTable(StringTable, &tomcat, NULL);
 
-            Assert::AreEqual(Found, FALSE);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
 
         }
 
@@ -195,7 +273,7 @@ namespace TestStringTable
 
         TEST_METHOD(TestMethod3)
         {
-            BOOL Found;
+            STRING_TABLE_INDEX Index;
             USHORT Mask;
             USHORT ExpectedMask;
             USHORT LengthsBitmap;
@@ -236,14 +314,14 @@ namespace TestStringTable
                              LEN(really_bad_lightning_storm));
 
             IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
-            Found = IsPrefixOfStringInTable(StringTable, &tomcat, NULL);
-            Assert::AreEqual(Found, FALSE);
+            Index = IsPrefixOfStringInTable(StringTable, &tomcat, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
 
             Mask = IsFirstCharacterInStringTable(StringTable, 'F');
-            Assert::AreEqual((ULONG)Mask, (ULONG)0);
+            Assert::AreEqual((LONG)Mask, (LONG)0);
 
             Mask = IsFirstCharacterInStringTable(StringTable, 'a');
-            Assert::AreEqual((ULONG)Mask, (ULONG)0);
+            Assert::AreEqual((LONG)Mask, (LONG)0);
 
             //
             // Slots that start with f are in bitmap positions 1, 3 and 5.
@@ -267,8 +345,8 @@ namespace TestStringTable
                              (ULONG)ExpectedLengthsBitmap);
 
 
-            Found = IsPrefixOfStringInTable(StringTable, &fox2, &Match);
-            Assert::AreEqual(Found, TRUE);
+            Index = IsPrefixOfStringInTable(StringTable, &fox2, &Match);
+            Assert::AreEqual((LONG)Index, (LONG)4);
 
             Assert::AreEqual(Match.Index, (LONG)4);
             Assert::AreEqual((LONG)Match.NumberOfMatchedCharacters, (LONG)3);
@@ -325,12 +403,121 @@ namespace TestStringTable
             ExpectedLengthsBitmap2 = (1 << 3) | (1 << 5);
             ExpectedLengthsBitmap3 = 0x20;
             Assert::AreEqual(Bitmap1, ExpectedLengthsBitmap3);
+        }
 
+        TEST_METHOD(TestMethod5)
+        {
+            STRING_TABLE_INDEX Index;
+            PSTRING_TABLE StringTable;
+            PSTRING_ARRAY StringArray;
+            PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+            PSTRING_ARRAY6 pStringArray6;
+            STRING_ARRAY6 StringArray6 = CONSTANT_STRING_ARRAY6(
+                abcdefghijklmnopqrstuvw,
+                nop,
+                fox1,
+                klmnopqrstu,
+                abcdefghijk,
+                lmnopqr
+            );
+
+            StringTable = MAKE_TABLE(&StringArray6);
+
+            Assert::IsNotNull(StringTable);
+
+            StringArray = StringTable->pStringArray;
+            pStringArray6 = (PSTRING_ARRAY6)StringArray;
+
+            Assert::IsNotNull(StringArray);
+
+            Assert::AreNotEqual(PTR(StringArray),
+                                PTR(&StringTable->StringArray));
+
+            Assert::AreNotEqual(PTR(StringArray),
+                                PTR(&StringArray6));
+
+            Assert::AreEqual((LONG)StringArray->MinimumLength,
+                             LEN(nop));
+
+            Assert::AreEqual((LONG)StringArray->MaximumLength,
+                             LEN(abcdefghijklmnopqrstuvw));
+
+            IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+            Index = IsPrefixOfStringInTable(StringTable, &abcd, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
+
+            Index = IsPrefixOfStringInTable(StringTable, &abcdefghijklm, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)4);
+
+            Index = IsPrefixOfStringInTable(StringTable, &fox1, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)2);
+
+            Index = IsPrefixOfStringInTable(StringTable, &lmnopqrstuv, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)5);
+
+            Index = IsPrefixOfStringInTable(StringTable, &lmno, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
+
+            Index = IsPrefixOfStringInTable(StringTable,
+                                            &abcdefghijklmnopqrstu,
+                                            NULL);
+            Assert::AreEqual((LONG)Index, (LONG)4);
+
+            Index = IsPrefixOfStringInTable(StringTable,
+                                            &abcdefghijklmnopqrstuvwyxz,
+                                            NULL);
+            Assert::AreEqual((ULONG)Index, (ULONG)0);
+
+            Index = IsPrefixOfStringInTable(StringTable,
+                                            &abcdefghijklmnopqrstuvw,
+                                            NULL);
+            Assert::AreEqual((ULONG)Index, (ULONG)0);
+
+            Index = IsPrefixOfStringInTable(StringTable,
+                                            &nopqrstuvwy,
+                                            NULL);
+            Assert::AreEqual((ULONG)Index, (ULONG)1);
 
         }
 
+        TEST_METHOD(TestMethod6)
+        {
+            STRING_TABLE_INDEX Index;
+            PSTRING_TABLE StringTable;
+            PSTRING_ARRAY StringArray;
+            PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+            PSTRING_ARRAY2 pStringArray2;
+            STRING_ARRAY2 StringArray2 = CONSTANT_STRING_ARRAY2(
+                ABCD_LONG,
+                BCDE_LONGEST
+            );
+
+            StringTable = MAKE_TABLE(&StringArray2);
+
+            Assert::IsNotNull(StringTable);
+
+            StringArray = StringTable->pStringArray;
+            pStringArray2 = (PSTRING_ARRAY2)StringArray;
+
+            IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+
+            Index = IsPrefixOfStringInTable(StringTable, &ABCD_LONG, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)0);
+
+            Index = IsPrefixOfStringInTable(StringTable, &ABCD_LONGEST, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)0);
+
+            Index = IsPrefixOfStringInTable(StringTable, &ABC_LONG, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
+
+            Index = IsPrefixOfStringInTable(StringTable, &BCDE_LONG, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)NO_MATCH_FOUND);
+
+            Index = IsPrefixOfStringInTable(StringTable, &BCDE_LONGEST, NULL);
+            Assert::AreEqual((LONG)Index, (LONG)1);
+        }
 
     };
 }
 
-// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
+
