@@ -48,6 +48,10 @@
     </Bscmake>
     <Link>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGInstrument'">$(VC_LibraryPath_x64)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGUpdate'">$(VC_LibraryPath_x64)</AdditionalLibraryDirectories>
+      <AdditionalDependencies Condition="$(Configuration) == 'PGInstrument'">pgobootrun.lib</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(Configuration) == 'PGUpdate'">pgobootrun.lib</AdditionalDependencies>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -66,7 +70,7 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
-    <Link Condition="$(Configuration) != 'PGInstrument'">
+    <Link>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Link>
     <Lib>

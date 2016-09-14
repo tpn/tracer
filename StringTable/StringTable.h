@@ -162,6 +162,9 @@ typedef union _SLOT_LENGTHS {
 
 C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
+typedef SHORT STRING_TABLE_INDEX;
+#define NO_MATCH_FOUND (-1)
+
 //
 // Forward declaration of functions that we include in the STRING_TABLE
 // struct via function pointers.
@@ -169,7 +172,7 @@ C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
 typedef
 _Success_(return != 0)
-BOOL
+STRING_TABLE_INDEX
 (IS_PREFIX_OF_STRING_IN_TABLE)(
     _In_ struct _STRING_TABLE *StringTable,
     _In_ PSTRING String,
@@ -379,8 +382,6 @@ typedef struct _STRING_MATCH {
 
 } STRING_MATCH, *PSTRING_MATCH, **PPSTRING_MATCH;
 
-#define NO_MATCH_FOUND (-1)
-
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +421,7 @@ typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
 
 typedef
-SHORT
+STRING_TABLE_INDEX
 (SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH)(
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING String,
@@ -1287,12 +1288,310 @@ GetAddressAlignment(_In_ PVOID Address)
 }
 
 FORCEINLINE
+BOOL
+PointerOffsetCrossPageBoundary(
+    _In_ PVOID Pointer,
+    _In_ LONG Offset
+    )
+{
+    LONG_PTR ThisPage;
+    LONG_PTR NextPage;
+
+    ThisPage = ALIGN_DOWN(Pointer, PAGE_SIZE);
+    NextPage = ALIGN_DOWN(((ULONG_PTR)(Pointer)+Offset), PAGE_SIZE);
+
+    return (ThisPage != NextPage);
+}
+
+FORCEINLINE
 ULONGLONG
 LeadingZeros(
     _In_ ULONGLONG Integer
     )
 {
     return _lzcnt_u64(Integer);
+}
+
+FORCEINLINE
+USHORT
+IsPrefixMatch(
+    _In_ PSTRING SearchString,
+    _In_ PSTRING TargetString,
+    _In_ USHORT Offset
+    )
+{
+    USHORT SearchStringRemaining;
+    USHORT TargetStringRemaining;
+    USHORT SearchStringAlignment;
+    USHORT TargetStringAlignment;
+    USHORT CharactersMatched = Offset;
+
+    LONG Count;
+    LONG Mask;
+
+    PCHAR SearchBuffer;
+    PCHAR TargetBuffer;
+
+    STRING_SLOT SearchSlot;
+
+    __m128i Search128;
+    __m128i Target128;
+    __m128i Result128;
+
+    __m256i Search256;
+    __m256i Target256;
+    __m256i Result256;
+
+    SearchStringRemaining = SearchString->Length - Offset;
+    TargetStringRemaining = TargetString->Length - Offset;
+
+    SearchBuffer = (PCHAR)RtlOffsetToPointer(SearchString->Buffer, Offset);
+    TargetBuffer = (PCHAR)RtlOffsetToPointer(TargetString->Buffer, Offset);
+
+Start32:
+
+    SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+    TargetStringAlignment = GetAddressAlignment(TargetBuffer);
+
+    if (SearchStringRemaining >= 32 && TargetStringRemaining >= 32) {
+
+        //
+        // We have at least 32 bytes to compare for each string.  Check the
+        // alignment for each buffer and do an aligned streaming load (non-
+        // temporal hint) if our alignment is at a 32-byte boundary or better;
+        // reverting to an unaligned load when not.
+        //
+
+        if (SearchStringAlignment < 32) {
+            Search256 = _mm256_loadu_si256((__m256i *)SearchBuffer);
+        } else {
+            Search256 = _mm256_stream_load_si256((__m256i *)SearchBuffer);
+        }
+
+        if (TargetStringAlignment < 32) {
+            Target256 = _mm256_loadu_si256((__m256i *)TargetBuffer);
+        } else {
+            Target256 = _mm256_stream_load_si256((__m256i *)TargetBuffer);
+        }
+
+        //
+        // Compare the two vectors.
+        //
+
+        Result256 = _mm256_cmpeq_epi8(Search256, Target256);
+
+        //
+        // Generate a mask from the result of the comparison.
+        //
+
+        Mask = _mm256_movemask_epi8(Result256);
+
+        //
+        // There were at least 32 characters remaining in each string buffer,
+        // thus, every character needs to have matched in order for this search
+        // to continue.  If there were less than 32 characters, we can terminate
+        // this prefix search here.  (-1 == 0xffffffff == all bits set == all
+        // characters matched.)
+        //
+
+        if (Mask != -1) {
+
+            //
+            // Not all characters were matched, terminate the prefix search.
+            //
+
+            return NO_MATCH_FOUND;
+        }
+
+        //
+        // All 32 characters were matched.  Update counters and pointers
+        // accordingly and jump back to the start of the 32-byte processing.
+        //
+
+        SearchStringRemaining -= 32;
+        TargetStringRemaining -= 32;
+
+        CharactersMatched += 32;
+
+        SearchBuffer += 32;
+        TargetBuffer += 32;
+
+        goto Start32;
+    }
+
+    //
+    // Intentional follow-on to Start16.
+    //
+
+Start16:
+
+    //
+    // Update the search string's alignment.
+    //
+
+    SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+
+    if (SearchStringRemaining >= 16 && TargetStringRemaining >= 16) {
+
+        //
+        // We have at least 16 bytes to compare for each string.  Check the
+        // alignment for each buffer and do an aligned streaming load (non-
+        // temporal hint) if our alignment is at a 16-byte boundary or better;
+        // reverting to an unaligned load when not.
+        //
+
+        if (SearchStringAlignment < 16) {
+            Search128 = _mm_loadu_si128((__m128i *)SearchBuffer);
+        } else {
+            Search128 = _mm_stream_load_si128((__m128i *)SearchBuffer);
+        }
+
+        Target128 = _mm_stream_load_si128((__m128i *)TargetBuffer);
+
+        //
+        // Compare the two vectors.
+        //
+
+        Result128 = _mm_cmpeq_epi8(Search128, Target128);
+
+        //
+        // Generate a mask from the result of the comparison.
+        //
+
+        Mask = _mm_movemask_epi8(Result128);
+
+        //
+        // There were at least 16 characters remaining in each string buffer,
+        // thus, every character needs to have matched in order for this search
+        // to continue.  If there were less than 16 characters, we can terminate
+        // this prefix search here.  (-1 == 0xffff -> all bits set -> all chars
+        // matched.)
+        //
+
+        if ((SHORT)Mask != (SHORT)-1) {
+
+            //
+            // Not all characters were matched, terminate the prefix search.
+            //
+
+            return NO_MATCH_FOUND;
+        }
+
+        //
+        // All 16 characters were matched.  Update counters and pointers
+        // accordingly and jump back to the start of the 16-byte processing.
+        //
+
+        SearchStringRemaining -= 16;
+        TargetStringRemaining -= 16;
+
+        CharactersMatched += 16;
+
+        SearchBuffer += 16;
+        TargetBuffer += 16;
+
+        goto Start16;
+    }
+
+    if (TargetStringRemaining == 0) {
+
+        //
+        // We'll get here if we successfully prefix matched the search string
+        // and all our buffers were aligned (i.e. we don't have a trailing
+        // < 16 bytes comparison to perform).
+        //
+
+        return CharactersMatched;
+    }
+
+    //
+    // If we get here, we have less than 16 bytes to compare.  Our target
+    // strings are guaranteed to be 16-byte aligned, so we can load them
+    // using an aligned stream load as in the previous cases.
+    //
+
+    Target128 = _mm_stream_load_si128((__m128i *)TargetBuffer);
+
+    //
+    // Loading the remainder of our search string's buffer is a little more
+    // complicated.  It could reside within 15 bytes of the end of the page
+    // boundary, which would mean that a 128-bit load would cross a page
+    // boundary.
+    //
+    // At best, the page will belong to our process and we'll take a performance
+    // hit.  At worst, we won't own the page, and we'll end up triggering a hard
+    // page fault.
+    //
+    // So, see if the current search buffer address plus 16 bytes crosses a page
+    // boundary.  If it does, take the safe but slower approach of a ranged
+    // memcpy (movsb) into a local stack-allocated STRING_SLOT structure.
+    //
+
+    if (!PointerOffsetCrossPageBoundary(SearchBuffer, 16)) {
+
+        //
+        // No page boundary is crossed, so just do an unaligned 128-bit move
+        // into our Xmm register.  (We could do the aligned/unaligned dance
+        // here, but it's the last load we'll be doing (i.e. it's not
+        // potentially on a loop path), so I don't think it's worth the extra
+        // branch cost, although I haven't measured this empirically.)
+        //
+
+        Search128 = _mm_loadu_si128((__m128i *)SearchBuffer);
+
+    } else {
+
+        //
+        // We cross a page boundary, so only copy the the bytes we need via
+        // __movsb(), then do an aligned stream load into the Xmm register
+        // we'll use in the comparison.
+        //
+
+        __movsb((PBYTE)&SearchSlot.Char,
+                (PBYTE)SearchBuffer,
+                SearchStringRemaining);
+
+        Search128 = _mm_stream_load_si128(&SearchSlot.Chars128);
+    }
+
+    //
+    // Compare the final vectors.
+    //
+
+    Result128 = _mm_cmpeq_epi8(Search128, Target128);
+
+    //
+    // Generate a mask from the result of the comparison, but mask off (zero
+    // out) high bits from the target string's remaining length.
+    //
+
+    Mask = _bzhi_u32(_mm_movemask_epi8(Result128), TargetStringRemaining);
+
+    //
+    // Count how many characters were matched and determine if we were a
+    // successful prefix match or not.
+    //
+
+    Count = __popcnt(Mask);
+
+    if ((USHORT)Count == TargetStringRemaining) {
+
+        //
+        // If we matched the same amount of characters as remaining in the
+        // target string, we've successfully prefix matched the search string.
+        // Return the total number of characters we matched.
+        //
+
+        CharactersMatched += (USHORT)Count;
+        return CharactersMatched;
+    }
+
+    //
+    // After all that work, our string match failed at the final stage!  Return
+    // to the caller indicating we were unable to make a prefix match.
+    //
+
+    return NO_MATCH_FOUND;
 }
 
 _Success_(return != 0)
