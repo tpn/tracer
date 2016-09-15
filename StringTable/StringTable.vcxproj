@@ -39,6 +39,12 @@
     <RootNamespace>StringTable</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <LoadSearchStringStrategy>AlwaysMovsb</LoadSearchStringStrategy>
+    <!--
+    <LoadSearchStringStrategy>SEH</LoadSearchStringStrategy>
+    <LoadSearchStringStrategy>AlignmentCheck</LoadSearchStringStrategy>
+    <LoadSearchStringStrategy>AlwaysUnaligned</LoadSearchStringStrategy>
+    -->
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -75,7 +81,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_STRING_TABLE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_STRING_TABLE_INTERNAL_BUILD;LOAD_SEARCH_STRING_STRATEGY=$(LoadSearchStringStrategy);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -83,6 +89,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringLoadStoreOperations.h" />
     <ClInclude Include="StringTableConstants.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="StringTable.h" />
@@ -94,6 +101,7 @@
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="IsPrefixOfStringInTable_C.c" />
+    <ClCompile Include="PrefixSearchStringTable.c" />
     <ClCompile Include="SearchStringTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
