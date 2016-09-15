@@ -62,6 +62,7 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <PreprocessorDefinitions>_WINDOWS;_USRDLL;TRACER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAsManaged>false</CompileAsManaged>
+      <AdditionalIncludeDirectories>$(CRT_IncludePath)\km\crt</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
       <WholeProgramOptimization>false</WholeProgramOptimization>

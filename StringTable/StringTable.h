@@ -62,6 +62,13 @@ extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+// SSE/AVX Type Definitions
+////////////////////////////////////////////////////////////////////////////////
+
+typedef __m128i XMMWORD, *PXMMWORD, **PPXMMWORD;
+typedef __m256i YMMWORD, *PYMMWORD, **PPYMMWORD;
+
+////////////////////////////////////////////////////////////////////////////////
 // Structures
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,11 +123,11 @@ typedef __declspec(align(16)) union _STRING_SLOT {
         ULARGE_INTEGER LowChars;
         ULARGE_INTEGER HighChars;
     };
-    __m128i Chars128;
+    XMMWORD CharsXmm;
 } STRING_SLOT, *PSTRING_SLOT, **PPSTRING_SLOT;
 
 typedef union _SLOT_LENGTHS {
-    __m256i Slots256;
+    YMMWORD SlotsYmm;
     USHORT Slots[16];
     struct {
         union {
@@ -138,7 +145,7 @@ typedef union _SLOT_LENGTHS {
                 ULONGLONG LowSlots03;
                 ULONGLONG LowSlots47;
             };
-            __m128i LowSlots;
+            XMMWORD LowSlots;
         };
         union {
             struct {
@@ -155,7 +162,7 @@ typedef union _SLOT_LENGTHS {
                 ULONGLONG HighSlots811;
                 ULONGLONG HighSlots1215;
             };
-            __m128i HighSlots;
+            XMMWORD HighSlots;
         };
     };
 } SLOT_LENGTHS, *PSLOT_LENGTHS, **PPSLOT_LENGTHS;
@@ -494,9 +501,9 @@ Return Value:
 TRUE on success, FALSE on failure.  Failure will be a result of invalid
 incoming arguments, or one of the following invariants being violated:
 
-- Start >= StringArray->NumberOfElements
-- End >= StringArray->NumberOfElements
-- Start > End
+    - Start >= StringArray->NumberOfElements
+    - End >= StringArray->NumberOfElements
+    - Start > End
 
 --*/
 {
@@ -809,11 +816,11 @@ IsFirstCharacterInStringTable(
     )
 {
     ULONG_INTEGER Index;
-    __m128i EqualXmm;
-    __m128i FirstCharXmm;
-    __m128i StringTableFirstCharXmm;
-    __m128i ShuffleXmm = _mm_setzero_si128();
-    __m128i FirstCharShuffleXmm = { FirstChar };
+    XMMWORD EqualXmm;
+    XMMWORD FirstCharXmm;
+    XMMWORD StringTableFirstCharXmm;
+    XMMWORD ShuffleXmm = _mm_setzero_si128();
+    XMMWORD FirstCharShuffleXmm = { FirstChar };
 
     //
     // Broadcast the character into the entire XMM register.
@@ -825,7 +832,7 @@ IsFirstCharacterInStringTable(
     // Load the string table's first character array into an XMM register.
     //
 
-    StringTableFirstCharXmm = StringTable->FirstChars.Chars128;
+    StringTableFirstCharXmm = StringTable->FirstChars.CharsXmm;
 
     EqualXmm = _mm_cmpeq_epi8(FirstCharXmm, StringTableFirstCharXmm);
     Index.LongPart = _mm_movemask_epi8(EqualXmm);
@@ -866,9 +873,9 @@ MaskedCompareStringToSlots(
 
 FORCEINLINE
 VOID
-Store128(
-    _In_ __m128i *Destination,
-    _In_ __m128i  Source
+StoreXmm(
+    _In_ XMMWORD *Destination,
+    _In_ XMMWORD  Source
     )
 {
     TRY_SSE42_ALIGNED {
@@ -883,11 +890,11 @@ Store128(
 
 FORCEINLINE
 VOID
-Store2x128(
-    _In_ __m128i *Destination128Low,
-    _In_ __m128i *Destination128High,
-    _In_ __m128i  Source128Low,
-    _In_ __m128i  Source128High
+Store2Xmm(
+    _In_ XMMWORD *Destination128Low,
+    _In_ XMMWORD *Destination128High,
+    _In_ XMMWORD  Source128Low,
+    _In_ XMMWORD  Source128High
     )
 {
     TRY_SSE42_ALIGNED {
@@ -906,13 +913,13 @@ Store2x128(
 
 FORCEINLINE
 VOID
-Store256Fallback128(
-    _In_ __m256i *Destination,
-    _In_ __m128i *Destination128Low,
-    _In_ __m128i *Destination128High,
-    _In_ __m256i  Source,
-    _In_ __m128i  Source128Low,
-    _In_ __m128i  Source128High
+StoreYmmFallbackXmm(
+    _In_ PYMMWORD Destination,
+    _In_ PXMMWORD Destination128Low,
+    _In_ PXMMWORD Destination128High,
+    _In_ YMMWORD  Source,
+    _In_ XMMWORD  Source128Low,
+    _In_ XMMWORD  Source128High
     )
 {
     TRY_AVX {
@@ -923,7 +930,7 @@ Store256Fallback128(
 
         } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
 
-            Store2x128(
+            Store2Xmm(
                 Destination128Low,
                 Destination128High,
                 Source128Low,
@@ -936,14 +943,6 @@ Store256Fallback128(
 
         _mm256_storeu_si256(Destination, Source);
     }
-}
-
-
-FORCEINLINE
-USHORT
-CompressYmmToUShort(__m256i Ymm)
-{
-    return 0;
 }
 
 FORCEINLINE
@@ -987,10 +986,10 @@ typedef __declspec(align(32)) union _PARALLEL_SUFFIX_MOVE_MASK32 {
             ULONG Moves[7];
         };
     };
-    __m256i Move256;
+    YMMWORD Move256;
     struct {
-        __m128i MoveLow128;
-        __m128i MoveHigh128;
+        XMMWORD MoveLow128;
+        XMMWORD MoveHigh128;
     };
 } PARALLEL_SUFFIX_MOVE_MASK32, *PPARALLEL_SUFFIX_MOVE_MASK32;
 
@@ -1053,7 +1052,7 @@ CreateParallelSuffixMoveMask(
 
     Dest = ParallelSuffixPointer;
 
-    Store256Fallback128(
+    StoreYmmFallbackXmm(
         &(Dest->Move256),
         &(Dest->MoveLow128),
         &(Dest->MoveHigh128),
@@ -1159,7 +1158,7 @@ CompressUlongParallelSuffix(
 {
     ULONG Bit;
     ULONG Mask;
-    __m256i Move;
+    YMMWORD Move;
 
     Move = _mm256_load_si256(&SuffixPointer->Move256);
 
@@ -1184,7 +1183,7 @@ CompressUlongHighBitFromEveryOtherByte(
 {
     ULONG Bit;
     ULONG Mask;
-    __m256i Move;
+    YMMWORD Move;
 
     Move = LoadParallelSuffix32HighBitFromEveryOtherByte();
 
@@ -1212,16 +1211,16 @@ GetBitmapForViablePrefixSlotsByLengths(
     ULONG Compressed;
     ULONG InvertedMask;
 
-    __m128i LengthXmm;
-    __m256i PrefixLengths;
-    __m256i StringLength;
-    __m256i IgnoreSlots16;
+    XMMWORD LengthXmm;
+    YMMWORD PrefixLengths;
+    YMMWORD StringLength;
+    YMMWORD IgnoreSlots16;
 
     //
     // Load the length array into a Ymm register.
     //
 
-    PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.Slots256));
+    PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.SlotsYmm));
 
     //
     // Broadcast the 16-bit String->Length to all words in a 256-byte
@@ -1289,7 +1288,7 @@ GetAddressAlignment(_In_ PVOID Address)
 
 FORCEINLINE
 BOOL
-PointerOffsetCrossPageBoundary(
+PointerToOffsetCrossesPageBoundary(
     _In_ PVOID Pointer,
     _In_ LONG Offset
     )
@@ -1334,13 +1333,13 @@ IsPrefixMatch(
 
     STRING_SLOT SearchSlot;
 
-    __m128i Search128;
-    __m128i Target128;
-    __m128i Result128;
+    XMMWORD Search128;
+    XMMWORD Target128;
+    XMMWORD Result128;
 
-    __m256i Search256;
-    __m256i Target256;
-    __m256i Result256;
+    YMMWORD Search256;
+    YMMWORD Target256;
+    YMMWORD Result256;
 
     SearchStringRemaining = SearchString->Length - Offset;
     TargetStringRemaining = TargetString->Length - Offset;
@@ -1363,15 +1362,15 @@ Start32:
         //
 
         if (SearchStringAlignment < 32) {
-            Search256 = _mm256_loadu_si256((__m256i *)SearchBuffer);
+            Search256 = _mm256_loadu_si256((PYMMWORD)SearchBuffer);
         } else {
-            Search256 = _mm256_stream_load_si256((__m256i *)SearchBuffer);
+            Search256 = _mm256_stream_load_si256((PYMMWORD)SearchBuffer);
         }
 
         if (TargetStringAlignment < 32) {
-            Target256 = _mm256_loadu_si256((__m256i *)TargetBuffer);
+            Target256 = _mm256_loadu_si256((PYMMWORD)TargetBuffer);
         } else {
-            Target256 = _mm256_stream_load_si256((__m256i *)TargetBuffer);
+            Target256 = _mm256_stream_load_si256((PYMMWORD)TargetBuffer);
         }
 
         //
@@ -1441,12 +1440,12 @@ Start16:
         //
 
         if (SearchStringAlignment < 16) {
-            Search128 = _mm_loadu_si128((__m128i *)SearchBuffer);
+            Search128 = _mm_loadu_si128((XMMWORD *)SearchBuffer);
         } else {
-            Search128 = _mm_stream_load_si128((__m128i *)SearchBuffer);
+            Search128 = _mm_stream_load_si128((XMMWORD *)SearchBuffer);
         }
 
-        Target128 = _mm_stream_load_si128((__m128i *)TargetBuffer);
+        Target128 = _mm_stream_load_si128((XMMWORD *)TargetBuffer);
 
         //
         // Compare the two vectors.
@@ -1510,7 +1509,7 @@ Start16:
     // using an aligned stream load as in the previous cases.
     //
 
-    Target128 = _mm_stream_load_si128((__m128i *)TargetBuffer);
+    Target128 = _mm_stream_load_si128((XMMWORD *)TargetBuffer);
 
     //
     // Loading the remainder of our search string's buffer is a little more
@@ -1537,7 +1536,7 @@ Start16:
         // branch cost, although I haven't measured this empirically.)
         //
 
-        Search128 = _mm_loadu_si128((__m128i *)SearchBuffer);
+        Search128 = _mm_loadu_si128((XMMWORD *)SearchBuffer);
 
     } else {
 
@@ -1551,7 +1550,7 @@ Start16:
                 (PBYTE)SearchBuffer,
                 SearchStringRemaining);
 
-        Search128 = _mm_stream_load_si128(&SearchSlot.Chars128);
+        Search128 = _mm_stream_load_si128(&SearchSlot.CharsXmm);
     }
 
     //

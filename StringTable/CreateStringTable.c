@@ -195,7 +195,7 @@ Routine Description:
     OccupiedBitmap = 0;
     ContinuationBitmap = 0;
     Count = StringArray->NumberOfElements;
-    FirstChars.Chars128 = _mm_setzero_si128();
+    FirstChars.CharsXmm = _mm_setzero_si128();
 
     //
     // Set all the slot lengths to 0x7ffff up front instead of defaulting
@@ -211,7 +211,7 @@ Routine Description:
     // the _mm256_cmpgt_epi16() intrinsic assumes packed signed integers.)
     //
 
-    Lengths.Slots256 = _mm256_set1_epi16(0x7fff);
+    Lengths.SlotsYmm = _mm256_set1_epi16(0x7fff);
 
     do {
         __m128i Octword;
@@ -251,7 +251,7 @@ Routine Description:
         //
 
         Octword = _mm_load_si128((__m128i *)String->Buffer);
-        _mm_store_si128(&(*Slot).Chars128, Octword);
+        _mm_store_si128(&(*Slot).CharsXmm, Octword);
 
         ++Index;
 
@@ -261,13 +261,13 @@ Routine Description:
     // Store the slot lengths.
     //
 
-    _mm256_store_si256(&(StringTable->Lengths.Slots256), Lengths.Slots256);
+    _mm256_store_si256(&(StringTable->Lengths.SlotsYmm), Lengths.SlotsYmm);
 
     //
     // Store the first characters.
     //
 
-    _mm_store_si128(&(StringTable->FirstChars.Chars128), FirstChars.Chars128);
+    _mm_store_si128(&(StringTable->FirstChars.CharsXmm), FirstChars.CharsXmm);
 
     //
     // Generate and store the occupied bitmap.  Each bit, from low to high,
