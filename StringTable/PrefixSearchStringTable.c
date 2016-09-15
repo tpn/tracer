@@ -15,10 +15,6 @@ Abstract:
 
 #include "stdafx.h"
 
-#ifdef USE_SEH_FOR_UNALIGNED_STRING_LOADING
-
-#elif USE_ALIGNMENT_TESTF
-
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInSingleTableInline(
@@ -51,13 +47,10 @@ Return Value:
 
 --*/
 {
-    CHAR FirstChar;
-    USHORT Mask;
     USHORT Bitmap;
-    STRING_TABLE_INDEX Index = NO_MATCH_FOUND;
+    ULONG Mask;
     ULONG Count;
     ULONG Length;
-    ULONG Mask;
     ULONG Index;
     ULONG Shift = 0;
     ULONG CharactersMatched;
@@ -72,13 +65,16 @@ Return Value:
     XMMWORD LengthXmm;
     YMMWORD LengthYmm;
     XMMWORD FirstCharXmm;
-    XMMWORD FirstCharShuffleXmm;
-    YMMWORD FirstCharYmm;
-    YMMWORD SlotLengthsYmm;
-    XMMWORD IgnoreSlotsByFirstChar;
+    XMMWORD TableFirstChars;
+    XMMWORD IncludeSlotsByFirstCharXmm;
+    YMMWORD IncludeSlotsByFirstChar;
     YMMWORD IgnoreSlotsByLength;
-    const XMMWORD ZeroedXmm = _mm_setzero_si128();
-    const YMMWORD ZeroedYmm = _mm_setzero_si256();
+    YMMWORD IncludeSlotsByLength;
+    YMMWORD IncludeSlots;
+    YMMWORD IncludeSlotsShifted;
+    const YMMWORD AllOnesYmm = _mm256_set1_epi8(0xff);
+
+    StringArray = StringTable->pStringArray;
 
     //
     // If the minimum length of the string array is greater than the length of
@@ -104,8 +100,8 @@ Return Value:
     //
     //  4. Compare the first character from step 1 to the string table's first
     //     character array set up in step 2.  The result of this comparison
-    //     will produce an XMM register with each byte set to either 0x0 if
-    //     the first character was found, or 0xff if it wasn't.  We then sign-
+    //     will produce an XMM register with each byte set to either 0xff if
+    //     the first character was found, or 0x0 if it wasn't.  We then sign-
     //     extend this XMM register of 8-bit values into a YMM register of
     //     16-bit values, such that it can be subsequently compared to the YMM
     //     register generated in the next step.
@@ -126,25 +122,31 @@ Return Value:
     //
 
     //
-    // Load the first 16-bytes of the search string.
+    // Load the first 16-bytes of the search string into an XMM register.
     //
 
     LoadSearchStringIntoXmmRegister(Search, String, SearchLength);
 
     //
-    // Broadcast the search string's first character into an Xmm register.
+    // Broadcast the search string's first character into an XMM register.
     //
 
     FirstCharXmm = _mm_set1_epi8(String->Buffer[0]);
 
     //
-    // Load the slot length array into an Ymm register.
+    // Load the slot length array into a YMM register.
     //
 
     Lengths.SlotsYmm = _mm256_load_si256(&StringTable->Lengths.SlotsYmm);
 
     //
-    // Broadcast the search string's length into a Ymm register.
+    // Load the string table's first character array into an XMM register.
+    //
+
+    TableFirstChars = _mm_load_si128(&StringTable->FirstChars.CharsXmm);
+
+    //
+    // Broadcast the search string's length into a YMM register.
     //
 
     LengthXmm = _mm_setzero_si128();
@@ -152,43 +154,70 @@ Return Value:
     LengthYmm = _mm256_broadcastw_epi16(LengthXmm);
 
     //
-    // See if the first character is in the table.
+    // Compare the search string's first character with all of the first
+    // characters of strings in the table, saving the results into an XMM
+    // register.  This comparison will indicate which slots we can ignore
+    // because they don't start with the same character as the search string.
+    // Matched slots will be 0xff, unmatched slots will be 0x0.
     //
 
-    FirstChar = String->Buffer[0];
-
-
-    //
-    // Load the search string into a 128-byte register.  We can't assume
-    // anything about whether or not the search string has an optimal buffer
-    // alignment or length (such that a SIMD load could be satisfied), so we
-    // use a simple rep movsb intrinsic.
-    //
-
-    SearchLength = min(String->Length, 16);
-    SecureZeroMemory(&Source, sizeof(Source));
-    __movsb(Source.Char, String->Buffer, SearchLength);
+    IncludeSlotsByFirstCharXmm = _mm_cmpeq_epi8(FirstCharXmm, TableFirstChars);
 
     //
-    // Load the slot lengths.
+    // Sign-extend 16 x 8-bit results from the first character comparison into
+    // a 16 x 16-bit 256-bit YMM register.
     //
 
-    Lengths.Slots256 = _mm256_load_si256(&StringTable->Lengths.Slots256);
+    IncludeSlotsByFirstChar = _mm256_cvtepi8_epi16(IncludeSlotsByFirstCharXmm);
 
     //
-    // Get the number of bits set.
+    // Find all slots that are longer than the incoming string length, as these
+    // are the ones we're going to exclude from any prefix match.
+    //
+    // N.B.: because we default the length of empty slots to 0x7ffff, they will
+    //       handily be included in the ignored set (i.e. their words will also
+    //       be set to 0xffff), which means they'll also get filtered out when
+    //       we invert the mask shortly after.
     //
 
-    Count = __popcnt16(Bitmap);
+    IgnoreSlotsByLength = _mm256_cmpgt_epi16(Lengths.SlotsYmm, LengthYmm);
 
-    while (Count--) {
+    //
+    // Invert the result of the comparison; we want 0xffff for slots to include
+    // and 0x0 for slots to ignore (it's currently the other way around).  We
+    // can achieve this by XOR'ing the result against our all-ones YMM register.
+    //
+
+    IncludeSlotsByLength = _mm256_xor_si256(IgnoreSlotsByLength, AllOnesYmm);
+
+    //
+    // We're now ready to intersect the two YMM registers to determine which
+    // slots should still be included in the comparison (i.e. which slots have
+    // the exact same first character as the string and a length less than or
+    // equal to the length of the search string).
+    //
+
+    IncludeSlots = _mm256_and_si256(IncludeSlotsByFirstChar,
+                                    IncludeSlotsByLength);
+
+    IncludeSlotsShifted = _mm256_srli_epi16(IncludeSlots, 8);
+
+    Bitmap = (USHORT)_mm256_movemask_epi8(IncludeSlotsShifted);
+
+    Count = __popcnt(Bitmap);
+
+    if (!Count) {
+        return NO_MATCH_FOUND;
+    }
+
+    do {
 
         //
         // Extract the next index by counting the number of trailing zeros left
         // in the bitmap and adding the amount we've already shifted by.
         //
 
-        NumberOfTrailingZeros = _tzcnt_u32(Bitmap);
+        NumberOfTrailingZeros = _tzcnt_u32(Bitmap) >> 2;
         Index = NumberOfTrailingZeros + Shift;
 
         //
@@ -204,14 +233,14 @@ Return Value:
         // Load the slot and its length.
         //
 
-        Slot.Chars128 = _mm_load_si128(&StringTable->Slots[Index].Chars128);
+        Slot.CharsXmm = _mm_load_si128(&StringTable->Slots[Index].CharsXmm);
         Length = Lengths.Slots[Index];
 
         //
         // Compare the slot to the search string.
         //
 
-        Compare.Chars128 = _mm_cmpeq_epi8(Slot.Chars128, Source.Chars128);
+        Compare.CharsXmm = _mm_cmpeq_epi8(Slot.CharsXmm, Search.CharsXmm);
 
         //
         // Create a mask of the comparison, then filter out high bits from the
@@ -225,7 +254,7 @@ Return Value:
         // 128-bit loads.)
         //
 
-        Mask = _bzhi_u32(_mm_movemask_epi8(Compare.Chars128), SearchLength);
+        Mask = _bzhi_u32(_mm_movemask_epi8(Compare.CharsXmm), SearchLength);
 
         //
         // Count how many characters matched.

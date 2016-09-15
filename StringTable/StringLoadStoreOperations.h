@@ -16,13 +16,19 @@ Abstract:
 
 #pragma once
 
+#include "stdafx.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*++
 
     VOID
     LoadSearchStringIntoXmmRegister_SEH(
         _In_ STRING_SLOT Slot,
         _In_ PSTRING String,
-        _In_ USHORT Length
+        _In_ USHORT LengthVar
         );
 
 Routine Description:
@@ -45,7 +51,7 @@ Arguments:
     String - Supplies the name of the PSTRING variable that is to be loaded
         into the slot.  This will usually be one of the function parameters.
 
-    Length - Supplies the name of a USHORT local variable that will receive
+    LengthVar - Supplies the name of a USHORT local variable that will receive
         the value of min(String->Length, 16).
 
 Return Value:
@@ -53,17 +59,16 @@ Return Value:
     None.
 
 --*/
-#define LoadSearchStringIntoXmmRegister_SEH(Slot, String, Length)   \
-    Length = min(String->Length, 16);                               \
-    TRY_SSE42_ALIGNED {                                             \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);             \
-    } CATCH_EXCEPTION_ACCESS_VIOLATION {                            \
-        if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) { \
-            SecureZeroMemory(&Slot, sizeof(STRING_SLOT));           \
-            __movsb(Slot.Char, String->Buffer, Length);             \
-        } else {                                                    \
-            Slot.CharsXmm = _mm_loadu_si128(String->Buffer);        \
-        }                                                           \
+#define LoadSearchStringIntoXmmRegister_SEH(Slot, String, LengthVar) \
+    LengthVar = min(String->Length, 16);                             \
+    TRY_SSE42_ALIGNED {                                              \
+        Slot.CharsXmm = _mm_load_si128(String->Buffer);              \
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {                             \
+        if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {  \
+            __movsb(Slot.Char, String->Buffer, LengthVar);           \
+        } else {                                                     \
+            Slot.CharsXmm = _mm_loadu_si128(String->Buffer);         \
+        }                                                            \
     }
 
 /*++
@@ -72,7 +77,7 @@ Return Value:
     LoadSearchStringIntoXmmRegister_AlignmentCheck(
         _In_ STRING_SLOT Slot,
         _In_ PSTRING String,
-        _In_ USHORT Length
+        _In_ USHORT LengthVar
         );
 
 Routine Description:
@@ -96,7 +101,7 @@ Arguments:
     String - Supplies the name of the PSTRING variable that is to be loaded
         into the slot.  This will usually be one of the function parameters.
 
-    Length - Supplies the name of a USHORT local variable that will receive
+    LengthVar - Supplies the name of a USHORT local variable that will receive
         the value of min(String->Length, 16).
 
 Return Value:
@@ -104,15 +109,14 @@ Return Value:
     None.
 
 --*/
-#define LoadSearchStringIntoXmmRegister_AlignmentCheck(Slot, String, Length) \
-    Length = min(String->Length, 16);                                        \
-    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {              \
-        SecureZeroMemory(&Slot, sizeof(STRING_SLOT));                        \
-        __movsb(Slot.Char, String->Buffer, Length);                          \
-    } else if (GetAddressAlignment(String->Buffer) < 16) {                   \
-        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                     \
-    } else {                                                                 \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);                      \
+#define LoadSearchStringIntoXmmRegister_AlignmentCheck(Slot, String,LengthVar) \
+    LengthVar = min(String->Length, 16);                                       \
+    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {                \
+        __movsb(Slot.Char, String->Buffer, LengthVar);                         \
+    } else if (GetAddressAlignment(String->Buffer) < 16) {                     \
+        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                       \
+    } else {                                                                   \
+        Slot.CharsXmm = _mm_load_si128(String->Buffer);                        \
     }
 
 /*++
@@ -121,7 +125,7 @@ Return Value:
     LoadSearchStringIntoXmmRegister_AlwaysUnaligned(
         _In_ STRING_SLOT Slot,
         _In_ PSTRING String,
-        _In_ USHORT Length
+        _In_ USHORT LengthVar
         );
 
 Routine Description:
@@ -138,7 +142,7 @@ Arguments:
     String - Supplies the name of the PSTRING variable that is to be loaded
         into the slot.  This will usually be one of the function parameters.
 
-    Length - Supplies the name of a USHORT local variable that will receive
+    LengthVar - Supplies the name of a USHORT local variable that will receive
         the value of min(String->Length, 16).
 
 Return Value:
@@ -146,15 +150,14 @@ Return Value:
     None.
 
 --*/
-#define LoadSearchStringIntoXmmRegister_Unaligned(Slot, String, Length) \
-    Length = min(String->Length, 16);                                   \
-    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {         \
-        SecureZeroMemory(&Slot, sizeof(STRING_SLOT));                   \
-        __movsb(Slot.Char, String->Buffer, Length);                     \
-    } else if (GetAddressAlignment(String->Buffer) < 16) {              \
-        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                \
-    } else {                                                            \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);                 \
+#define LoadSearchStringIntoXmmRegister_Unaligned(Slot, String, LengthVar) \
+    LengthVar = min(String->Length, 16);                                   \
+    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {            \
+        __movsb(Slot.Char, String->Buffer, LengthVar);                     \
+    } else if (GetAddressAlignment(String->Buffer) < 16) {                 \
+        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                   \
+    } else {                                                               \
+        Slot.CharsXmm = _mm_load_si128(String->Buffer);                    \
     }
 
 /*++
@@ -163,7 +166,7 @@ Return Value:
     LoadSearchStringIntoXmmRegister_AlwaysMovsb(
         _In_ STRING_SLOT Slot,
         _In_ PSTRING String,
-        _In_ USHORT Length
+        _In_ USHORT LengthVar
         );
 
 Routine Description:
@@ -180,7 +183,7 @@ Arguments:
     String - Supplies the name of the PSTRING variable that is to be loaded
         into the slot.  This will usually be one of the function parameters.
 
-    Length - Supplies the name of a USHORT local variable that will receive
+    LengthVar - Supplies the name of a USHORT local variable that will receive
         the value of min(String->Length, 16).
 
 Return Value:
@@ -188,38 +191,43 @@ Return Value:
     None.
 
 --*/
-#define LoadSearchStringIntoXmmRegister_AlwaysMovsb(Slot, String, Length) \
-    Length = min(String->Length, 16);                                     \
-    __movsb(Slot.Char, String->Buffer, Length);
+#define LoadSearchStringIntoXmmRegister_AlwaysMovsb(Slot, String, LengthVar) \
+    LengthVar = min(String->Length, 16);                                     \
+    __movsb(Slot.Char, String->Buffer, LengthVar);
 
 //
 // Define the appropriate target for the LoadSearchStringIntoXmmRegister macro
 // based on the search string strategy defined.
 //
 
-#if LOAD_SEARCH_STRING_STRATEGY == SEH
+#if LOAD_SEARCH_STRING_STRATEGY_SEH
 
 #define LoadSearchStringIntoXmmRegister \
     LoadSearchStringIntoXmmRegister_SEH
 
-#elif LOAD_SEARCH_STRING_STRATEGY == AlignmentCheck
+#elif LOAD_SEARCH_STRING_STRATEGY_ALIGNMENT_CHECK
 
 #define LoadSearchStringIntoXmmRegister \
     LoadSearchStringIntoXmmRegister_AlignmentCheck
 
-#elif LOAD_SEARCH_STRING_STRATEGY == AlwaysUnaligned
+#elif LOAD_SEARCH_STRING_STRATEGY_ALWAYS_UNALIGNED
 
 #define LoadSearchStringIntoXmmRegister \
     LoadSearchStringIntoXmmRegister_AlwaysUnaligned
 
-#elif LOAD_SEARCH_STRING_STRATEGY == AlwaysMovsb
+#elif LOAD_SEARCH_STRING_STRATEGY_ALWAYS_MOVSB
 
 #define LoadSearchStringIntoXmmRegister \
     LoadSearchStringIntoXmmRegister_AlwaysMovsb
 
 #else
 
-#error Unknown value for LOAD_SEARCH_STRING_STRATEGY
+//
+// Default to AlwaysMovsb.
+//
+
+#define LoadSearchStringIntoXmmRegister         \
+    LoadSearchStringIntoXmmRegister_AlwaysMovsb
 
 #endif
 

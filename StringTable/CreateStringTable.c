@@ -214,7 +214,7 @@ Routine Description:
     Lengths.SlotsYmm = _mm256_set1_epi16(0x7fff);
 
     do {
-        __m128i Octword;
+        XMMWORD CharsXmm;
 
         //
         // Advance our pointers.
@@ -250,8 +250,8 @@ Routine Description:
         // stage, so we can use SSE intrinsics here.
         //
 
-        Octword = _mm_load_si128((__m128i *)String->Buffer);
-        _mm_store_si128(&(*Slot).CharsXmm, Octword);
+        CharsXmm = _mm_load_si128((__m128i *)String->Buffer);
+        _mm_store_si128(&(*Slot).CharsXmm, CharsXmm);
 
         ++Index;
 

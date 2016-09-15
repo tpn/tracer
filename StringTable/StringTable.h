@@ -188,7 +188,8 @@ STRING_TABLE_INDEX
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_SSE42;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE \
+    IsPrefixOfStringInSingleTableInline;
 
 //
 // The STRING_TABLE struct is an optimized structure for testing whether a
@@ -1526,7 +1527,7 @@ Start16:
     // memcpy (movsb) into a local stack-allocated STRING_SLOT structure.
     //
 
-    if (!PointerOffsetCrossPageBoundary(SearchBuffer, 16)) {
+    if (!PointerToOffsetCrossesPageBoundary(SearchBuffer, 16)) {
 
         //
         // No page boundary is crossed, so just do an unaligned 128-bit move
