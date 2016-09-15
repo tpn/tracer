@@ -204,21 +204,28 @@ Return Value:
 
     Bitmap = (USHORT)_mm256_movemask_epi8(IncludeSlotsShifted);
 
-    Count = __popcnt(Bitmap);
-
-    if (!Count) {
+    if (!Bitmap) {
         return NO_MATCH_FOUND;
     }
+
+    Count = __popcnt(Bitmap);
 
     do {
 
         //
         // Extract the next index by counting the number of trailing zeros left
-        // in the bitmap and adding the amount we've already shifted by.
+        // in the bitmap and adding the amount we've already shifted by.  We
+        // shift the trailing zero count right by 1 to compensate for the fact
+        // that _mm256_movemask_epi8() created our mask based on a vector of
+        // 8-bit elements rather than the 16-bit elements we actually had.
+        //
+        // (If there were an _mm256_movemask_epi16() AVX2 instruction, we
+        //  wouldn't have to do this.  (AVX512 has _mm256_move_pi16_mask()
+        //  intrinsic for vpmovw2m, which we could use in the future.).)
         //
 
-        NumberOfTrailingZeros = _tzcnt_u32(Bitmap) >> 2;
-        Index = NumberOfTrailingZeros + Shift;
+        NumberOfTrailingZeros = _tzcnt_u32(Bitmap);
+        Index = (NumberOfTrailingZeros >> 1) + Shift;
 
         //
         // Shift the bitmap right, past the zeros and the 1 that was just found,
