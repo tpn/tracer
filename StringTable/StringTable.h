@@ -65,8 +65,8 @@ extern "C" {
 // SSE/AVX Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef __m128i XMMWORD, *PXMMWORD, **PPXMMWORD;
-typedef __m256i YMMWORD, *PYMMWORD, **PPYMMWORD;
+typedef __m128i __declspec(align(16)) XMMWORD, *PXMMWORD, **PPXMMWORD;
+typedef __m256i __declspec(align(32)) YMMWORD, *PYMMWORD, **PPYMMWORD;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Structures
@@ -1334,13 +1334,13 @@ IsPrefixMatch(
 
     STRING_SLOT SearchSlot;
 
-    XMMWORD Search128;
-    XMMWORD Target128;
-    XMMWORD Result128;
+    XMMWORD SearchXmm;
+    XMMWORD TargetXmm;
+    XMMWORD ResultXmm;
 
-    YMMWORD Search256;
-    YMMWORD Target256;
-    YMMWORD Result256;
+    YMMWORD SearchYmm;
+    YMMWORD TargetYmm;
+    YMMWORD ResultYmm;
 
     SearchStringRemaining = SearchString->Length - Offset;
     TargetStringRemaining = TargetString->Length - Offset;
@@ -1348,10 +1348,19 @@ IsPrefixMatch(
     SearchBuffer = (PCHAR)RtlOffsetToPointer(SearchString->Buffer, Offset);
     TargetBuffer = (PCHAR)RtlOffsetToPointer(TargetString->Buffer, Offset);
 
-Start32:
+    //
+    // This routine is only called in the final stage of a prefix match when
+    // we've already verified the slot's corresponding original string length
+    // (referred in this routine as the target string) is less than or equal
+    // to the length of the search string.
+    //
+    // We attempt as many 32-byte comparisons as we can, then as many 16-byte
+    // comparisons as we can, then a final < 16-byte comparison if necessary.
+    //
+    // We use aligned loads if possible, falling back to unaligned if not.
+    //
 
-    SearchStringAlignment = GetAddressAlignment(SearchBuffer);
-    TargetStringAlignment = GetAddressAlignment(TargetBuffer);
+StartYmm:
 
     if (SearchStringRemaining >= 32 && TargetStringRemaining >= 32) {
 
@@ -1362,29 +1371,32 @@ Start32:
         // reverting to an unaligned load when not.
         //
 
+        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+        TargetStringAlignment = GetAddressAlignment(TargetBuffer);
+
         if (SearchStringAlignment < 32) {
-            Search256 = _mm256_loadu_si256((PYMMWORD)SearchBuffer);
+            SearchYmm = _mm256_loadu_si256((PYMMWORD)SearchBuffer);
         } else {
-            Search256 = _mm256_stream_load_si256((PYMMWORD)SearchBuffer);
+            SearchYmm = _mm256_stream_load_si256((PYMMWORD)SearchBuffer);
         }
 
         if (TargetStringAlignment < 32) {
-            Target256 = _mm256_loadu_si256((PYMMWORD)TargetBuffer);
+            TargetYmm = _mm256_loadu_si256((PYMMWORD)TargetBuffer);
         } else {
-            Target256 = _mm256_stream_load_si256((PYMMWORD)TargetBuffer);
+            TargetYmm = _mm256_stream_load_si256((PYMMWORD)TargetBuffer);
         }
 
         //
         // Compare the two vectors.
         //
 
-        Result256 = _mm256_cmpeq_epi8(Search256, Target256);
+        ResultYmm = _mm256_cmpeq_epi8(SearchYmm, TargetYmm);
 
         //
         // Generate a mask from the result of the comparison.
         //
 
-        Mask = _mm256_movemask_epi8(Result256);
+        Mask = _mm256_movemask_epi8(ResultYmm);
 
         //
         // There were at least 32 characters remaining in each string buffer,
@@ -1416,20 +1428,18 @@ Start32:
         SearchBuffer += 32;
         TargetBuffer += 32;
 
-        goto Start32;
+        goto StartYmm;
     }
 
     //
-    // Intentional follow-on to Start16.
+    // Intentional follow-on to StartXmm.
     //
 
-Start16:
+StartXmm:
 
     //
     // Update the search string's alignment.
     //
-
-    SearchStringAlignment = GetAddressAlignment(SearchBuffer);
 
     if (SearchStringRemaining >= 16 && TargetStringRemaining >= 16) {
 
@@ -1440,25 +1450,27 @@ Start16:
         // reverting to an unaligned load when not.
         //
 
+        SearchStringAlignment = GetAddressAlignment(SearchBuffer);
+
         if (SearchStringAlignment < 16) {
-            Search128 = _mm_loadu_si128((XMMWORD *)SearchBuffer);
+            SearchXmm = _mm_loadu_si128((XMMWORD *)SearchBuffer);
         } else {
-            Search128 = _mm_stream_load_si128((XMMWORD *)SearchBuffer);
+            SearchXmm = _mm_stream_load_si128((XMMWORD *)SearchBuffer);
         }
 
-        Target128 = _mm_stream_load_si128((XMMWORD *)TargetBuffer);
+        TargetXmm = _mm_stream_load_si128((XMMWORD *)TargetBuffer);
 
         //
         // Compare the two vectors.
         //
 
-        Result128 = _mm_cmpeq_epi8(Search128, Target128);
+        ResultXmm = _mm_cmpeq_epi8(SearchXmm, TargetXmm);
 
         //
         // Generate a mask from the result of the comparison.
         //
 
-        Mask = _mm_movemask_epi8(Result128);
+        Mask = _mm_movemask_epi8(ResultXmm);
 
         //
         // There were at least 16 characters remaining in each string buffer,
@@ -1490,7 +1502,7 @@ Start16:
         SearchBuffer += 16;
         TargetBuffer += 16;
 
-        goto Start16;
+        goto StartXmm;
     }
 
     if (TargetStringRemaining == 0) {
@@ -1510,7 +1522,7 @@ Start16:
     // using an aligned stream load as in the previous cases.
     //
 
-    Target128 = _mm_stream_load_si128((XMMWORD *)TargetBuffer);
+    TargetXmm = _mm_stream_load_si128((PXMMWORD)TargetBuffer);
 
     //
     // Loading the remainder of our search string's buffer is a little more
@@ -1537,7 +1549,7 @@ Start16:
         // branch cost, although I haven't measured this empirically.)
         //
 
-        Search128 = _mm_loadu_si128((XMMWORD *)SearchBuffer);
+        SearchXmm = _mm_loadu_si128((XMMWORD *)SearchBuffer);
 
     } else {
 
@@ -1551,21 +1563,21 @@ Start16:
                 (PBYTE)SearchBuffer,
                 SearchStringRemaining);
 
-        Search128 = _mm_stream_load_si128(&SearchSlot.CharsXmm);
+        SearchXmm = _mm_stream_load_si128(&SearchSlot.CharsXmm);
     }
 
     //
     // Compare the final vectors.
     //
 
-    Result128 = _mm_cmpeq_epi8(Search128, Target128);
+    ResultXmm = _mm_cmpeq_epi8(SearchXmm, TargetXmm);
 
     //
     // Generate a mask from the result of the comparison, but mask off (zero
     // out) high bits from the target string's remaining length.
     //
 
-    Mask = _bzhi_u32(_mm_movemask_epi8(Result128), TargetStringRemaining);
+    Mask = _bzhi_u32(_mm_movemask_epi8(ResultXmm), TargetStringRemaining);
 
     //
     // Count how many characters were matched and determine if we were a
