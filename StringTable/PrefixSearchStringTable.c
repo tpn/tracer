@@ -200,13 +200,36 @@ Return Value:
     IncludeSlots = _mm256_and_si256(IncludeSlotsByFirstChar,
                                     IncludeSlotsByLength);
 
+    //
+    // Shift each 16-bit element to the right by 8 bits, zero-filling the upper
+    // bits.  This will remove the leading high byte from coming up in the mask
+    // we generate below, allowing us to use popcount to get the number of slots
+    // to count in the subsequent step.
+    //
+
     IncludeSlotsShifted = _mm256_srli_epi16(IncludeSlots, 8);
+
+    //
+    // Generate a mask.  (Sure would be nice to have _mm256_movemask_epi16().)
+    //
 
     Bitmap = (USHORT)_mm256_movemask_epi8(IncludeSlotsShifted);
 
     if (!Bitmap) {
+
+        //
+        // No bits were set, so there are no strings in this table starting
+        // with the same character and are of a lesser or equal length as the
+        // search string.
+        //
+
         goto NoMatch;
     }
+
+    //
+    // A popcount against the mask will tell us how many slots we matched, and
+    // thus, compare.
+    //
 
     Count = __popcnt(Bitmap);
 
