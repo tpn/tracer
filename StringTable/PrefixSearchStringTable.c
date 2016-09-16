@@ -219,7 +219,7 @@ Return Value:
 
         //
         // No bits were set, so there are no strings in this table starting
-        // with the same character and are of a lesser or equal length as the
+        // with the same character and of a lesser or equal length as the
         // search string.
         //
 
