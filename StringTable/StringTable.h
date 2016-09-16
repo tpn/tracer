@@ -50,6 +50,7 @@ Abstract:
 // We're being included by someone who doesn't want dllexport or dllimport.
 // This is useful for creating new .exe-based projects for things like unit
 // testing or performance testing/profiling.
+//
 
 #define STRING_TABLE_API
 #define STRING_TABLE_DATA extern
@@ -74,6 +75,11 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // SSE/AVX Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+//
+// Use typedefs for XMM and YMM registers such that we're consistent with the
+// rest of the code base.  (MASM also uses XMMWORD and YMMWORD.)
+//
 
 typedef __m128i __declspec(align(16)) XMMWORD, *PXMMWORD, **PPXMMWORD;
 typedef __m256i __declspec(align(32)) YMMWORD, *PYMMWORD, **PPYMMWORD;

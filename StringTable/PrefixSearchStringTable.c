@@ -4,7 +4,7 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    SearchStringTable.c
+    PrefixSearchStringTable.c
 
 Abstract:
 
