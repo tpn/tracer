@@ -82,7 +82,7 @@ Return Value:
     //
 
     if (StringArray->MinimumLength > String->Length) {
-        return NO_MATCH_FOUND;
+        goto NoMatch;
     }
 
     //
@@ -205,7 +205,7 @@ Return Value:
     Bitmap = (USHORT)_mm256_movemask_epi8(IncludeSlotsShifted);
 
     if (!Bitmap) {
-        return NO_MATCH_FOUND;
+        goto NoMatch;
     }
 
     Count = __popcnt(Bitmap);
@@ -335,6 +335,8 @@ FoundMatch:
     //
     // If we get here, we didn't find a match.
     //
+
+NoMatch:
 
     return NO_MATCH_FOUND;
 }
