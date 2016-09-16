@@ -44,6 +44,16 @@ Abstract:
 
 #include "stdafx.h"
 
+#elif _STRING_TABLE_NO_API_EXPORT_IMPORT
+
+//
+// We're being included by someone who doesn't want dllexport or dllimport.
+// This is useful for creating new .exe-based projects for things like unit
+// testing or performance testing/profiling.
+
+#define STRING_TABLE_API
+#define STRING_TABLE_DATA extern
+
 #else
 
 //

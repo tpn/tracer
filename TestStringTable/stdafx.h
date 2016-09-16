@@ -10,4 +10,8 @@
 // Headers for CppUnitTest
 #include "CppUnitTest.h"
 
+#include "../StringTable/StringTable.h"
+#include "../StringTable/StringTableTestGlue.h"
+#include "../TracerHeap/AlignedTracerHeap.h"
+
 // TODO: reference additional headers your program requires here
