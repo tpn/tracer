@@ -49,6 +49,9 @@ static CONST UNICODE_STRING PythonDllPath = \
 static CONST UNICODE_STRING TraceStoreDllPath = \
     RTL_CONSTANT_STRING(L"TraceStore.dll");
 
+static CONST UNICODE_STRING StringTableDllPath = \
+    RTL_CONSTANT_STRING(L"StringTable.dll");
+
 static CONST UNICODE_STRING PythonTracerDllPath = \
     RTL_CONSTANT_STRING(L"PythonTracer.dll");
 
