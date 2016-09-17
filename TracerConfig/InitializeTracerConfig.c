@@ -1,3 +1,21 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    InitializeTracerConfig.c
+
+Abstract:
+
+    This module implements routines related to the initialization of a
+    TRACER_CONFIG structure.  Routines are provided for loading path names
+    from the registry, reading REG_SZ and REG_DWORD values from the registry,
+    and initializing a new TRACER_CONFIG structure based on the registry
+    configuration stored under HKCU\Software\Tracer.
+
+--*/
+
 #include "stdafx.h"
 
 _Success_(return != 0)
@@ -317,7 +335,6 @@ Return Value:
     String->MaximumLength = (USHORT)SizeInBytes;             \
                                                              \
 } while (0)
-
 
 
 _Use_decl_annotations_

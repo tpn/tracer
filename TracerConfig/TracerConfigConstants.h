@@ -8,7 +8,13 @@ Module Name:
 
 Abstract:
 
-    This module defines constants related to the TracerConfig component.
+    This module defines constants related to the TracerConfig component.  It
+    contains intermediate path strings (e.g. "x64\\Release", "x64\\Debug"),
+    DLL filename strings (e.g. "Rtl.dll"), and a path offset table that maps
+    an index offset of a field in the TRACER_CONFIG struct that represents a
+    path, to the corresponding path string variable.  This is used to simplify
+    loading paths during the creation and initialization of the TRACER_CONFIG
+    structure.
 
 --*/
 
@@ -75,10 +81,11 @@ static CONST struct {
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
     { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
+    { FIELD_OFFSET(TRACER_PATHS, StringTableDllPath),   &StringTableDllPath   },
     { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
     { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath },
     {
-        FIELD_OFFSET(TRACER_PATHS, TracedPythonSessionDllPath), 
+        FIELD_OFFSET(TRACER_PATHS, TracedPythonSessionDllPath),
         &TracedPythonSessionDllPath
     },
 };
