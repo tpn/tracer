@@ -29,18 +29,59 @@ MAKE_STRING(predefined);
 
 LARGE_INTEGER Frequency;
 
+typedef enum _IS_PREFIX_METHOD_ID {
+    Inline = 1,
+    Normal
+} IS_PREFIX_METHOD_ID;
+
+typedef struct _PREFIX_METHOD {
+    IS_PREFIX_METHOD_ID IsPrefixMethodId;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+    LPCSTR Name;
+} PREFIX_METHOD, *PPREFIX_METHOD, **PPPREFIX_METHOD;
+
+static PREFIX_METHOD PrefixMethods[] {
+    { Inline,   IsPrefixOfStringInSingleTableInline, "Inline" },
+    { Normal,   IsPrefixOfStringInSingleTable_C,     "Normal" }
+};
+
+static const ULONG NumberOfPrefixMethods = (
+    sizeof(PrefixMethods) /
+    sizeof(PREFIX_METHOD)
+);
+
+FORCEINLINE
+BOOL
+NameToPrefixMethod(
+    _In_ LPCSTR Name,
+    _Outptr_result_maybenull_ PPPREFIX_METHOD PrefixMethod
+    )
+{
+    USHORT Index;
+
+    for (Index = 0; Index < NumberOfPrefixMethods; Index++) {
+        if (!strcmp(Name, PrefixMethods[Index].Name)) {
+            *PrefixMethod = &PrefixMethods[Index];
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+
 VOID
 TestPrefixMatchInTable(
     _In_ ULONG RoundsPerIteration,
     _In_ ULONG BestOf,
     _In_ PSTRING_TABLE StringTable,
     _In_ PSTRING Search,
-    _In_ PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable,
-    _In_ PSTR Name
+    _In_ PPREFIX_METHOD PrefixMethod
     )
 {
     ULONG Index;
     ULONG Round;
+    LPCSTR Name = PrefixMethod->Name;
     ULONG64 Fastest = (ULONG64)-1LL;
     LARGE_INTEGER Start;
     LARGE_INTEGER End;
@@ -49,10 +90,13 @@ TestPrefixMatchInTable(
     ULONG64 Elapsed;
     ULONG64 TotalElapsed;
     ULONG64 TotalIterations;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
     double Duration;
     double TotalDuration;
     double Each;
     double Nanoseconds;
+
+    IsPrefixOfStringInTable = PrefixMethod->IsPrefixOfStringInTable;
 
     cout << "TestPrefixMatchInTable: " << Name << " " << Search->Buffer << endl;
 
@@ -65,6 +109,7 @@ TestPrefixMatchInTable(
         QueryPerformanceCounter(&Start);
 
         for (Index = 0; Index < RoundsPerIteration; Index++) {
+#pragma noinline
             IsPrefixOfStringInTable(StringTable, Search, NULL);
         }
 
@@ -113,18 +158,9 @@ TestPrefixMatchInTable(
 #define BEST_OF     100
 
 #define FUNC TestPrefixMatchInTable
-#define INLINE IsPrefixOfStringInSingleTableInline
-#define NORMAL IsPrefixOfStringInSingleTable_C
 
-#define TEST_INLINE(String) \
-    FUNC(ITERATIONS, BEST_OF, Table, String, INLINE, "Inline");
-
-#define TEST_NORMAL(String) \
-    FUNC(ITERATIONS, BEST_OF, Table, String, NORMAL, "Normal");
-
-#define TEST(String)     \
-    TEST_INLINE(String); \
-    TEST_NORMAL(String);
+#define TEST(String) \
+    FUNC(ITERATIONS, BEST_OF, Table, String, PrefixMethod);
 
 int main(int argc, char **argv)
 {
@@ -138,6 +174,19 @@ int main(int argc, char **argv)
         present,
         pre
     );
+
+    PPREFIX_METHOD PrefixMethod;
+
+    if (argc != 2) {
+        PrefixMethod = &PrefixMethods[0];
+    } else {
+        if (!NameToPrefixMethod(argv[1], &PrefixMethod)) {
+            cout << "Unknown prefix method: " << argv[1] << endl;
+            return 1;
+        }
+    }
+
+    cout << "Using prefix method: " << PrefixMethod->Name << endl;
 
     INIT_ALLOCATOR(&Allocator);
 
