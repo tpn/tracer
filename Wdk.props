@@ -62,7 +62,10 @@
       <PreprocessorDefinitions>_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
+      <!--
       <AdditionalDependencies>ntdll.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+      -->
+      <AdditionalDependencies>ntdll.lib</AdditionalDependencies>
     </Link>
     <Link Condition="'$(Platform)' == 'x64'">
       <TargetMachine>MachineX64</TargetMachine>
