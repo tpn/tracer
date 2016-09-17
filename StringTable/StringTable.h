@@ -584,14 +584,12 @@ incoming arguments, or one of the following invariants being violated:
     //
 
     AllocSize = 0;
-    String = StringArray->Strings - 1;
+    String = StringArray->Strings;
     MinimumLength = (USHORT)-1;
     MaximumLength = 0;
     Count = NumberOfElements;
 
     do {
-        ++String;
-
         Length = String->Length;
 
         //
@@ -612,6 +610,12 @@ incoming arguments, or one of the following invariants being violated:
         if (Length > MaximumLength) {
             MaximumLength = Length;
         }
+
+        //
+        // Advance the string pointer.
+        //
+
+        ++String;
 
     } while (--Count);
 
