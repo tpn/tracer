@@ -52,6 +52,7 @@ Return Value:
     BOOL Success;
 
     USHORT Index;
+    USHORT Count;
     USHORT MinimumLength;
     USHORT MaximumLength;
     USHORT AlignedMaxLength;
@@ -201,12 +202,13 @@ Return Value:
     NewArray->MaximumLength = MaximumLength;
 
     //
-    // Initialize string source and dest pointers to one before the starting
-    // positions.
+    // Initialize string source and destination string pointers and the count
+    // of elements.
     //
 
-    SourceString = StringArray->Strings-1;
-    DestString = NewArray->Strings-1;
+    SourceString = StringArray->Strings;
+    DestString = NewArray->Strings;
+    Count = StringArray->NumberOfElements;
 
     //
     // Initialize the destination buffer to the point after the new STRING_ARRAY
@@ -222,10 +224,7 @@ Return Value:
     // new array, including carving out the relevant buffer space.
     //
 
-    for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
-
-        ++SourceString;
-        ++DestString;
+    for (Index = 0; Index < Count; Index++, SourceString++, DestString++) {
 
         AlignedMaxLength = ALIGN_UP(SourceString->Length, 16);
 
