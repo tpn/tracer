@@ -188,8 +188,8 @@ Routine Description:
     // clear stack-based structures.
     //
 
-    Slot = StringTable->Slots-1;
-    String = StringArray->Strings-1;
+    Slot = StringTable->Slots;
+    String = StringArray->Strings;
 
     Index = 0;
     OccupiedBitmap = 0;
@@ -215,13 +215,6 @@ Routine Description:
 
     do {
         XMMWORD CharsXmm;
-
-        //
-        // Advance our pointers.
-        //
-
-        ++Slot;
-        ++String;
 
         //
         // Set the string length for the slot.
@@ -254,6 +247,13 @@ Routine Description:
         _mm_store_si128(&(*Slot).CharsXmm, CharsXmm);
 
         ++Index;
+
+        //
+        // Advance our pointers.
+        //
+
+        ++Slot;
+        ++String;
 
     } while (--Count);
 
