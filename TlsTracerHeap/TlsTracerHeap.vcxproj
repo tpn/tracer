@@ -61,7 +61,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
       <ModuleDefinitionFile>TlsTracerHeap.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
