@@ -861,16 +861,6 @@ IsFirstCharacterInStringTable(
     return Index.LowPart;
 }
 
-FORCEINLINE
-BOOL
-MaskedCompareStringToSlots(
-    _In_ PSTRING_TABLE StringTable,
-    _In_ PSTRING String
-    )
-{
-    return FALSE;
-}
-
 #define TRY_AVX __try
 #define TRY_AVX_ALIGNED __try
 #define TRY_AVX_UNALIGNED __try
