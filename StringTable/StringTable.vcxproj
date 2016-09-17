@@ -79,7 +79,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(KernelBufferOverflowLib);$(DDK_LIB_PATH)Ntstrsafe.lib;$(DDK_LIB_PATH)ntoskrnl.lib;pgobootrun.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
