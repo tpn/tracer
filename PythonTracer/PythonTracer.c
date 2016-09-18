@@ -114,24 +114,48 @@ IsFunctionOfInterestPrefixTree(
 
     ModuleName = &Function->PathEntry.ModuleName;
 
-    Table = &Context->ModuleFilterTable;
+    Table = &Context->ModuleFilterPrefixTree;
 
     Entry = Rtl->PfxFindPrefix(Table, ModuleName);
 
     return (Entry ? TRUE : FALSE);
 }
 
+FORCEINLINE
 BOOL
-IsFunctionOfInterestBinarySearch(
+IsFunctionOfInterestStringTable(
     _In_    PRTL                    Rtl,
     _In_    PPYTHON_TRACE_CONTEXT   Context,
     _In_    PPYTHON_FUNCTION        Function
     )
 {
-    return FALSE;
+    PSTRING ModuleName;
+    PSTRING_TABLE StringTable = Context->ModuleFilterStringTable;
+    STRING_TABLE_INDEX Index;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    if (!Context->HasModuleFilter) {
+
+        //
+        // Trace everything.
+        //
+
+        return TRUE;
+    }
+
+    ModuleName = &Function->PathEntry.ModuleName;
+
+    if (!StringTable || !ModuleName || ModuleName->Length == 0) {
+        return FALSE;
+    }
+
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    Index = IsPrefixOfStringInTable(StringTable, ModuleName, NULL);
+
+    return (Index != NO_MATCH_FOUND);
 }
 
-#define IsFunctionOfInterest IsFunctionOfInterestPrefixTree
+#define IsFunctionOfInterest IsFunctionOfInterestStringTable
 
 _Use_decl_annotations_
 VOID
@@ -879,7 +903,7 @@ InitializePythonTraceContext(
     Context->FirstFunction = NULL;
     QueryPerformanceFrequency(&Context->Frequency);
 
-    Rtl->PfxInitialize(&Context->ModuleFilterTable);
+    Rtl->PfxInitialize(&Context->ModuleFilterPrefixTree);
 
     InitializeListHead(&Context->Functions);
 
@@ -1211,7 +1235,7 @@ AddModuleName(
 
     Success = AddPrefixTableEntry(Context,
                                   ModuleNameObject,
-                                  &Context->ModuleFilterTable,
+                                  &Context->ModuleFilterPrefixTree,
                                   &PrefixTableEntry);
 
     if (Success) {
@@ -1219,6 +1243,40 @@ AddModuleName(
     }
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+SetModuleNamesStringTable(
+    PPYTHON_TRACE_CONTEXT Context,
+    PSTRING_TABLE StringTable
+    )
+{
+    PSTRING_TABLE ExistingTable;
+
+    if (!ARGUMENT_PRESENT(Context)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTable)) {
+        return FALSE;
+    }
+
+    ExistingTable = Context->ModuleFilterStringTable;
+
+    if (ExistingTable) {
+
+        //
+        // XXX todo: destroy existing table.
+        //
+
+    }
+
+    Context->ModuleFilterStringTable = StringTable;
+
+    Context->HasModuleFilter = TRUE;
+
+    return TRUE;
 }
 
 #ifdef __cplusplus

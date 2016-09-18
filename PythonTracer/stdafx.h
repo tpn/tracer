@@ -18,8 +18,9 @@ Abstract:
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-#include "../TraceStore/TraceStore.h"
 #include "../Python/Python.h"
+#include "../TraceStore/TraceStore.h"
+#include "../StringTable/StringTable.h"
 #include "PythonTracer.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
