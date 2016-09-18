@@ -42,9 +42,9 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-#include "../TraceStore/TraceStore.h"
 #include "../Python/Python.h"
-#include "PythonTracer.h"
+#include "../TraceStore/TraceStore.h"
+#include "../StringTable/StringTable.h"
 
 #endif
 
@@ -334,6 +334,17 @@ BOOL
 typedef ADD_MODULE_NAME *PADD_MODULE_NAME;
 PYTHON_TRACER_API ADD_MODULE_NAME AddModuleName;
 
+typedef
+_Success_(return != 0)
+BOOL
+(SET_MODULE_NAMES_STRING_TABLE)(
+    _In_ PPYTHON_TRACE_CONTEXT Context,
+    _In_ PSTRING_TABLE StringTable
+    );
+typedef SET_MODULE_NAMES_STRING_TABLE *PSET_MODULE_NAMES_STRING_TABLE;
+PYTHON_TRACER_API SET_MODULE_NAMES_STRING_TABLE \
+                  SetModuleNamesStringTable;
+
 typedef struct _PYTHON_TRACE_CONTEXT {
 
     ULONG             Size;                                 // 4    0   4
@@ -373,7 +384,9 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 
     PPYTHON_FUNCTION FirstFunction;
 
-    PREFIX_TABLE ModuleFilterTable;
+    PSTRING_TABLE ModuleFilterStringTable;
+
+    PREFIX_TABLE ModuleFilterPrefixTree;
 
     LIST_ENTRY Functions;
 
@@ -393,6 +406,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PDISABLE_HANDLE_COUNT_TRACING DisableHandleCountTracing;
 
     PADD_MODULE_NAME AddModuleName;
+    PSET_MODULE_NAMES_STRING_TABLE SetModuleNamesStringTable;
 
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
