@@ -23,6 +23,7 @@ Abstract:
 #include "../TracerConfig/TracerConfig.h"
 #include "../TracerConfig/TracerConfigPrivate.h"
 #include "../TraceStore/TraceStore.h"
+#include "../StringTable/StringTable.h"
 #include "../PythonTracer/PythonTracer.h"
 #include "TracedPythonSession.h"
 

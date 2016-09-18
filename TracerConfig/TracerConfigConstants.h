@@ -34,6 +34,9 @@ extern "C" {
 // Static UNICODE_STRING instances for path constants.
 //
 
+static CONST UNICODE_STRING DotTracerDirectory = \
+    RTL_CONSTANT_STRING(L".tracer");
+
 static CONST UNICODE_STRING x64_Release = \
     RTL_CONSTANT_STRING(L"\\x64\\Release\\");
 

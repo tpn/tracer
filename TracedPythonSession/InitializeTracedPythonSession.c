@@ -1,65 +1,48 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    InitializeTracedPythonSession.c
+
+Abstract:
+
+    This module implements routines related to the initialization of a
+    TRACED_PYTHON_SESSION structure.  Routines are provided for converting the
+    current directory into a unicode string, changing into the PYTHONHOME
+    directory, and initializing the TRACED_PYTHON_SESSION structure.
+
+--*/
+
 #include "stdafx.h"
 
 #include "TracedPythonSessionPrivate.h"
 
-PUNICODE_STRING
-CurrentDirectoryToUnicodeString(
-    PALLOCATOR Allocator
-    )
-{
-    LONG_INTEGER NumberOfChars;
-    LONG_INTEGER AllocSize;
-    LONG_INTEGER AlignedAllocSize;
-    PUNICODE_STRING String;
 
-    NumberOfChars.LongPart = GetCurrentDirectoryW(0, NULL);
-    if (NumberOfChars.LongPart <= 0) {
-        return NULL;
-    }
-
-    if (NumberOfChars.HighPart) {
-        return NULL;
-    }
-
-    AllocSize.LongPart = (
-        (NumberOfChars.LongPart << 1) +
-        sizeof(UNICODE_STRING)
-    );
-    AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
-
-    if (AlignedAllocSize.HighPart) {
-        return NULL;
-    }
-
-    String = (PUNICODE_STRING)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AlignedAllocSize.LongPart
-        )
-    );
-
-    if (!String) {
-        return NULL;
-    }
-
-    String->Length = (USHORT)((NumberOfChars.LowPart - 1) << 1);
-    String->MaximumLength = String->Length + sizeof(WCHAR);
-
-    String->Buffer = (PWCHAR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-
-    if (GetCurrentDirectoryW(String->MaximumLength, String->Buffer) <= 0) {
-        Allocator->Free(Allocator->Context, String);
-        return NULL;
-    }
-
-    return String;
-}
-
+_Use_decl_annotations_
 BOOL
 ChangeIntoPythonHomeDirectory(
     PTRACED_PYTHON_SESSION Session
     )
+/*++
+
+Routine Description:
+
+    This function takes a copy of the current working directory and saves it
+    into the Session->OriginalDirectory field, then changes into the directory
+    stored in Session->PythonHomePath.
+
+Arguments:
+
+    Session - Supplies a pointer to TRACED_PYTHON_SESSION structure that is
+        to be used to control the operation.
+
+Return Value:
+
+    TRUE if the directory was changed, FALSE if an error occurred.
+
+--*/
 {
     PRTL Rtl;
     PALLOCATOR Allocator;
@@ -69,7 +52,7 @@ ChangeIntoPythonHomeDirectory(
     Allocator = Session->Allocator;
     Rtl = Session->Rtl;
 
-    CurrentDirectory = CurrentDirectoryToUnicodeString(Allocator);
+    CurrentDirectory = Rtl->CurrentDirectoryToUnicodeString(Allocator);
     if (!CurrentDirectory) {
         return FALSE;
     }

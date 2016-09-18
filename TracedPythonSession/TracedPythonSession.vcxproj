@@ -44,9 +44,9 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
-  <Import Project="..\Tracer.props" />  
+  <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\Wdk.props" />  
+  <Import Project="..\Wdk.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
@@ -67,7 +67,7 @@
     <Link>
       <AdditionalDependencies>TracerConfig.lib;%(AdditionalDependencies);kernel32.lib</AdditionalDependencies>
     </Link>
-  </ItemDefinitionGroup>  
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -80,11 +80,9 @@
     <ClInclude Include="TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DestroyPathEnvironmentVariable.c" />
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
-    <ClCompile Include="LoadPathEnvironmentVariable.c" />
     <ClCompile Include="SanitizePathEnvironmentVariableForPython.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
