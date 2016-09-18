@@ -53,6 +53,11 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Commandline.h" />
     <ClInclude Include="Memory.h" />
@@ -61,15 +66,16 @@
     <ClInclude Include="Rtl.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Commandline.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
-    <ClCompile Include="Path.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Rtl.c" />
+    <ClCompile Include="PathEnvironmentVariable.c" />
+    <ClCompile Include="Commandline.c" />
+    <ClCompile Include="Path.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'" />

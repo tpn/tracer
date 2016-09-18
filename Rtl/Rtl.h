@@ -1,7 +1,75 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Rtl.h
+
+Abstract:
+
+    This is the main header file for the Rtl (Run-time Library) component.
+    It is named after the NT kernel's Rtl component.  It has two main roles:
+    provide an interface to useful NT kernel primitives (such as bitmaps,
+    prefix trees, hash tables, splay trees, AVL trees, etc) without the need
+    to include ntddk.h (which can't be done if also including Windows.h) or
+    link to ntdll.lib or ntoskrnl.lib (which requires the DDK to be installed).
+
+    Type definitions for the data structures (e.g. RTL_BITMAP) are mirrored,
+    and function type definitions and pointer types are provided for all NT
+    functions.  They are made accessible as function pointers through a
+    structure named RTL.
+
+    In addition to NT functionality, this module also defines structures and
+    functions for additional functionality we implement, such as convenience
+    functions for string and path handling.
+
+--*/
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef _RTL_INTERNAL_BUILD
+
+//
+// This is an internal build of the Rtl component.
+//
+
+#define RTL_API __declspec(dllexport)
+#define RTL_DATA extern __declspec(dllexport)
+
+#include "stdafx.h"
+
+#elif _RTL_NO_API_EXPORT_IMPORT
+
+//
+// We're being included by someone who doesn't want dllexport or dllimport.
+// This is useful for creating new .exe-based projects for things like unit
+// testing or performance testing/profiling.
+//
+
+#define RTL_API
+#define RTL_DATA extern
+
+#else
+
+//
+// We're being included by an external component.
+//
+
+#define RTL_API __declspec(dllimport)
+#define RTL_DATA extern __declspec(dllimport)
+
 #include <Windows.h>
+#include <sal.h>
+
+//
+// Disable inconsistent SAL annotation warnings before importing the
+// intrinsics headers.
+//
 
 #pragma warning(push)
 #pragma warning(disable: 28251)
@@ -9,11 +77,8 @@
 #include <mmintrin.h>
 #pragma warning(pop)
 
-#ifdef __cplusplus
-extern "C" {
 #endif
 
-#define RTL_API __declspec(dllexport)
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -367,16 +432,20 @@ typedef NTSYSAPI SIZE_T (NTAPI RTL_COMPARE_MEMORY)(
 
 typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
-typedef EXCEPTION_DISPOSITION (__cdecl *P__C_SPECIFIC_HANDLER)(
+typedef
+EXCEPTION_DISPOSITION
+(__cdecl __C_SPECIFIC_HANDLER)(
     PEXCEPTION_RECORD ExceptionRecord,
     ULONG_PTR Frame,
     PCONTEXT Context,
     struct _DISPATCHER_CONTEXT *Dispatch
-);
+    );
+typedef __C_SPECIFIC_HANDLER *P__C_SPECIFIC_HANDLER;
 
 //
 // Prefix Helpers
 //
+
 typedef BOOLEAN (NTAPI *PRTL_PREFIX_STRING)(
     _In_ PCSTRING String1,
     _In_ PCSTRING String2,
@@ -796,7 +865,9 @@ typedef BOOLEAN (NTAPI *PRTL_INIT_WEAK_ENUMERATION_HASH_TABLE)(
     _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
     );
 
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)(
+typedef
+PRTL_DYNAMIC_HASH_TABLE_ENTRY
+(NTAPI *PRTL_WEAKLY_ENUMERATE_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
     _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
     );
@@ -811,7 +882,9 @@ typedef BOOLEAN (NTAPI *PRTL_INIT_STRONG_ENUMERATION_HASH_TABLE)(
     _Out_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
     );
 
-typedef PRTL_DYNAMIC_HASH_TABLE_ENTRY (NTAPI *PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE)(
+typedef
+PRTL_DYNAMIC_HASH_TABLE_ENTRY
+(NTAPI *PRTL_STRONGLY_ENUMERATE_ENTRY_HASH_TABLE)(
     _In_ PRTL_DYNAMIC_HASH_TABLE HashTable,
     _Inout_ PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR Enumerator
     );
@@ -865,106 +938,6 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
     _In_ PPREFIX_TABLE PrefixTable,
     _In_ PSTRING FullName
     );
-
-//
-// Our extended PREFIX_TABLE and STRING_TABLE functionality.
-//
-
-//#ifndef _STRING_TABLE_INTERNAL_BUILD
-#if 0
-#define INITIAL_STRING_TABLE_NUM_ELEMENTS 7
-
-typedef struct _STRING_TABLE {
-    PRTL Rtl;
-    HANDLE HeapHandle;
-    USHORT NumberOfElements;
-    USHORT Available;
-    ULONG Unused1;
-
-    //
-    // Function pointers needed for searching and sorting.
-    //
-
-    PCRTCOMPARE Compare;
-    PBSEARCH BinarySearch;
-    PQSORT QuickSort;
-
-    //
-    // Base address of the underlying PSTRING array.
-    //
-
-    PPSTRING Table;
-
-} STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
-
-typedef BOOL (*PCREATE_STRING_TABLE)(
-    _In_        HANDLE          HeapHandle,
-    _In_opt_    USHORT          NumberOfElements,
-    _Out_       PPSTRING_TABLE  StringTablePointer
-    );
-
-typedef VOID (*PDESTROY_STRING_TABLE)(
-    _In_    PPSTRING_TABLE  StringTable
-    );
-
-RTL_API
-_Success_(return != 0)
-BOOL
-CreateStringTable(
-    _In_        PRTL            Rtl,
-    _In_        HANDLE          HeapHandle,
-    _In_opt_    PUSHORT         NumberOfElements,
-    _Out_       PPSTRING_TABLE  StringTablePointer
-    );
-
-typedef BOOL (*PINSERT_STRING_TABLE)(
-    _In_        PSTRING_TABLE   StringTable,
-    _In_        PSTRING         String,
-    _Out_opt_   PBOOL           NewElement
-    );
-
-RTL_API
-_Success_(return != 0)
-BOOL
-InsertStringTable(
-    _In_        PSTRING_TABLE   StringTable,
-    _In_        PSTRING         String,
-    _Out_opt_   PBOOL           NewElement
-    );
-
-
-typedef struct _PREFIX_TABLE_EX {
-
-    //
-    // Inline the PREFIX_TABLE struct.
-    //
-
-    union {
-        PREFIX_TABLE PrefixTable;
-        struct {
-            CSHORT NodeTypeCode;
-            CSHORT NameLength;
-            PPREFIX_TABLE_ENTRY NextPrefixTree;
-        };
-    };
-
-    //
-    // Inline the STRING_TABLE struct.
-    //
-
-    union {
-        STRING_TABLE Strings;
-        struct {
-            HANDLE HeapHandle;
-            USHORT NumberOfElements;
-            USHORT Available;
-            PPSTRING Array;
-        };
-    };
-
-} PREFIX_TABLE_EX, *PPREFIX_TABLE_EX, **PPPREFIX_TABLE_EX;
-
-#endif
 
 //
 // Unicode Prefix Table
@@ -1548,7 +1521,7 @@ typedef GET_MODULE_PATH *PGET_MODULE_PATH;
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
-typedef struct _RTLFUNCTIONSE {
+typedef struct _RTLFUNCTIONS {
     _RTLFUNCTIONS_HEAD
 } RTLFUNCTIONS, *PRTLFUNCTIONS, **PPRTLFUNCTIONS;
 
@@ -1668,12 +1641,17 @@ typedef struct _STRINGEX {
 //
 // Our functions
 //
-typedef PVOID (*PCOPY_TO_MEMORY_MAPPED_MEMORY)(
-    PRTL Rtl,
-    PVOID Destination,
-    LPCVOID Source,
-    SIZE_T Size
-);
+
+typedef
+PVOID
+(COPY_TO_MEMORY_MAPPED_MEMORY)(
+    _In_ PRTL Rtl,
+    _In_ PVOID Destination,
+    _In_ LPCVOID Source,
+    _In_ SIZE_T Size
+    );
+typedef COPY_TO_MEMORY_MAPPED_MEMORY *PCOPY_TO_MEMORY_MAPPED_MEMORY;
+RTL_API COPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;
 
 typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
     _In_     PRTL                Rtl,
@@ -1940,6 +1918,118 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
         _In_    LPCSTR  Source
     );
 
+#define PATH_ENV_NAME L"Path"
+
+typedef _Struct_size_bytes_(Size) struct _PATH_ENV_VAR {
+
+    _Field_range_(==, sizeof(struct _PATH_ENV_VAR)) USHORT StructSize;
+
+    USHORT FirstAlignedAllocSizeInBytes;
+    USHORT SecondAlignedAllocSizeInBytes;
+
+    USHORT NumberOfElements;
+    USHORT ReservedUnicodeBufferSizeInBytes;
+
+    //
+    // Pad out to an 8-byte boundary.
+    //
+
+    USHORT Padding[3];
+
+    //
+    // The allocator used to create this structure.
+    //
+
+    PALLOCATOR Allocator;
+
+    //
+    // Bitmap for directory end points.
+    //
+
+    RTL_BITMAP Bitmap;
+
+    //
+    // A UNICODE_STRING wrapping the PATH environment variable value.
+    //
+
+    UNICODE_STRING Paths;
+
+    //
+    // A UNICODE_STRING that will wrap the new PATH environment variable to
+    // be set, if there is one.
+    //
+
+    UNICODE_STRING NewPaths;
+
+    UNICODE_PREFIX_TABLE PathsPrefixTable;
+    UNICODE_PREFIX_TABLE PathsToAddPrefixTable;
+    UNICODE_PREFIX_TABLE PathsToRemovePrefixTable;
+
+    //
+    // Pointer to the first element of an array of UNICODE_STRING structs used
+    // to capture each directory in the path.
+    //
+
+    PUNICODE_STRING Directories;
+
+    //
+    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
+    // structs used for the PathsPrefixTable.
+    //
+
+    PUNICODE_PREFIX_TABLE_ENTRY PathsPrefixTableEntries;
+
+    //
+    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
+    // structs used for the PathsToRemovePrefixTable.
+    //
+
+    PUNICODE_PREFIX_TABLE_ENTRY PathsToRemovePrefixTableEntries;
+
+} PATH_ENV_VAR, *PPATH_ENV_VAR, **PPPATH_ENV_VAR;
+
+typedef
+_Success_(return != 0)
+PPATH_ENV_VAR
+(LOAD_PATH_ENVIRONMENT_VARIABLE)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ USHORT ReservedUnicodeBufferSizeInBytes
+    );
+typedef LOAD_PATH_ENVIRONMENT_VARIABLE *PLOAD_PATH_ENVIRONMENT_VARIABLE;
+RTL_API LOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;
+
+typedef
+VOID
+(DESTROY_PATH_ENVIRONMENT_VARIABLE)(
+    _Inout_ PPPATH_ENV_VAR PathPointer
+    );
+typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
+RTL_API DESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+PUNICODE_STRING
+(CURRENT_DIRECTORY_TO_UNICODE_STRING)(
+    _In_ PALLOCATOR Allocator
+    );
+typedef CURRENT_DIRECTORY_TO_UNICODE_STRING \
+      *PCURRENT_DIRECTORY_TO_UNICODE_STRING,\
+    **PPCURRENT_DIRECTORY_TO_UNICODE_STRING;
+RTL_API CURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+PPATH
+(CURRENT_DIRECTORY_TO_PATH)(
+    _In_ PALLOCATOR Allocator
+    );
+typedef CURRENT_DIRECTORY_TO_PATH \
+      *PCURRENT_DIRECTORY_TO_PATH,\
+    **PPCURRENT_DIRECTORY_TO_PATH;
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
@@ -1962,6 +2052,10 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
     PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
     PUNICODE_STRING_TO_PATH UnicodeStringToPath;                               \
     PGET_MODULE_PATH GetModulePath;                                            \
+    PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
+    PCURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;                         \
+    PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
+    PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;         \
     PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -2019,15 +2113,20 @@ typedef BOOL (*PINITIALIZE_RTL)(
     _Inout_                   PULONG SizeOfRtl
     );
 
-#define RtlUpcaseChar(C) (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-#define RtlUpcaseUnicodeChar(C) (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#define RtlUpcaseChar(C) \
+    (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+
+#define RtlUpcaseUnicodeChar(C) \
+    (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
 #define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
 #define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
 #define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
-#define PrefaultNextPage(Address) (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
+
+#define PrefaultNextPage(Address) \
+    (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
 #define ALIGN_DOWN(Address, Alignment)                     \
     ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))
@@ -2055,21 +2154,16 @@ RTL_API
 VOID
 Debugbreak();
 
-RTL_API
+typedef
+_Success_(return != 0)
+_Check_return_
 BOOL
-InitializeRtl(
+(INITIALIZE_RTL)(
     _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
     _Inout_                   PULONG SizeOfRtl
-);
-
-RTL_API
-PVOID
-CopyToMemoryMappedMemory(
-    PRTL Rtl,
-    PVOID Destination,
-    LPCVOID Source,
-    SIZE_T Size
     );
+typedef INITIALIZE_RTL *PINITIALIZE_RTL, **PPINTIALIZE_RTL;
+RTL_API INITIALIZE_RTL InitializeRtl;
 
 RTL_API
 BOOL
@@ -3242,6 +3336,7 @@ Return Value:
 //
 // Verbatim copy of the doubly-linked list inline methods.
 //
+
 #define RTL_STATIC_LIST_HEAD(x) LIST_ENTRY x = { &x, &x }
 
 FORCEINLINE

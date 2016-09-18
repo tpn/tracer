@@ -39,7 +39,7 @@
     <RootNamespace>StringTable</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>Intel C++ Compiler 17.0</PlatformToolset>
     <LoadSearchStringStrategy>AlwaysMovsb</LoadSearchStringStrategy>
     <!--
     <LoadSearchStringStrategy>SEH</LoadSearchStringStrategy>
