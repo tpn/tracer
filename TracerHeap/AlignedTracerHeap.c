@@ -51,7 +51,9 @@ AlignedHeapCalloc(
     SIZE_T Size = NumberOfElements * SizeOfElements;
     SIZE_T AlignedSize = Align(Size);
     Buffer = _aligned_malloc(Size, AlignedSize);
-    SecureZeroMemory(Buffer, AlignedSize);
+    if (Buffer) {
+        SecureZeroMemory(Buffer, AlignedSize);
+    }
     return Buffer;
 }
 
