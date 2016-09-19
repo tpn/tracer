@@ -81,6 +81,7 @@ Return Value:
 
     USHORT Index;
     USHORT Count;
+    USHORT BitsToSkip;
     USHORT StringLength;
     USHORT MinimumLength;
     USHORT MaximumLength;
@@ -100,8 +101,10 @@ Return Value:
 
     LONG_INTEGER Length;
 
+    ULONG ExtraBits;
     ULONG BitmapIndex;
     ULONG PreviousBitmapIndex;
+    ULONG ExpectedBitmapIndex;
 
     HANDLE HeapHandle = NULL;
 
@@ -116,8 +119,6 @@ Return Value:
     PRTL_BITMAP Bitmap;
     PRTL_FIND_SET_BITS RtlFindSetBits;
     PRTL_FIND_CLEAR_BITS RtlFindClearBits;
-    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
-    PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits;
 
     //
     // Set aside a 32-byte stack-allocated bitmap buffer.
@@ -172,17 +173,20 @@ Return Value:
 
     RtlFindSetBits = Rtl->RtlFindSetBits;
     RtlFindClearBits = Rtl->RtlFindClearBits;
-    RtlNumberOfSetBits = Rtl->RtlNumberOfSetBits;
-    RtlNumberOfClearBits = Rtl->RtlNumberOfClearBits;
 
     //
-    // Make sure there's at least one non-delimiter character in the input
-    // string.
+    // Find the first non-delimiter character.  If this returns either
+	// BITS_NOT_FOUND, or is equal to the length of the incoming string,
+	// we've been passed a string of all delimiters, so error out.
     //
 
-    if (RtlNumberOfClearBits(Bitmap) == 0) {
-        goto Error;
-    }
+    PreviousBitmapIndex = RtlFindClearBits(Bitmap, 1, 0);
+
+	if (PreviousBitmapIndex == BITS_NOT_FOUND ||
+		PreviousBitmapIndex >= String->Length) {
+
+		goto Error;
+	}
 
     //
     // Initialize variables before the loop.
@@ -192,14 +196,6 @@ Return Value:
     MinimumLength = (USHORT)-1;
     MaximumLength = 0;
     Count = 0;
-
-    //
-    // Find the first non-delimiter character.  We've already checked that
-    // there is at least one non-delimiter character via the NumberOfClearBits
-    // call above, so we don't need to test this result for BITS_NOT_FOUND.
-    //
-
-    PreviousBitmapIndex = RtlFindClearBits(Bitmap, 1, 0);
 
     //
     // Enumerate over the delimited string, using the bitmap to carve out each
@@ -220,6 +216,7 @@ Return Value:
             // If no delimiter was found (or the bitmap index has wrapped) we
             // are on the last element, so use the string length instead.
             //
+
 
             BitmapIndex = String->Length;
             Final = TRUE;
@@ -255,18 +252,14 @@ Return Value:
             MaximumLength = Length.LowPart;
         }
 
-        //
-        // Update our counter.
-        //
-
-        Count++;
-
         if (Final) {
 
             //
-            // This was the last element.
+            // This was the last element.  Update the counter and break out
+			// of the loop.
             //
 
+	        Count++;
             break;
 
         }
@@ -285,19 +278,21 @@ Return Value:
 
             break;
 
-        } else if (PreviousBitmapIndex == BITS_NOT_FOUND) {
+		} else if (PreviousBitmapIndex == String->Length) {
 
-            //
-            // No more clear bits, we're done.
-            //
+			//
+			// There are no more non-delimiter characters left in the string.
+			//
 
-            break;
-
-        }
+			Count++;
+			break;
+		}
 
         //
         // We've got another element to process, continue the loop.
         //
+
+		Count++;
 
     } while (1);
 
@@ -553,35 +548,53 @@ Return Value:
         }
 
         //
-        // Update the previous bitmap index to the next clear bit.
+        // We need to advance the source pointer at least the number of bytes
+        // matching the length of the string we just added, plus one to account
+        // for the separator.
         //
 
-        PreviousBitmapIndex = RtlFindClearBits(Bitmap, 1, BitmapIndex + 1);
+        BitsToSkip = StringLength + 1;
+        Source += BitsToSkip;
 
-        //
-        // Ensure our invariant loop logic is correct.
-        //
+        ExpectedBitmapIndex = BitmapIndex + 1;
+        PreviousBitmapIndex = RtlFindClearBits(Bitmap, 1, ExpectedBitmapIndex);
 
-        if (PreviousBitmapIndex < BitmapIndex ||
-            PreviousBitmapIndex == BITS_NOT_FOUND) {
-
-            goto Error;
-
-        } else {
-
-            ULONG Adjustment;
+        if (PreviousBitmapIndex < BitmapIndex) {
 
             //
-            // Point the string buffer at the next non-delimited character.
+            // The search has wrapped, indicating there are no more clear bits
+            // left in our incoming string.  This should only happen when we're
+            // on the last element -- assert this invariant now.
             //
 
-            Adjustment = (
-                PreviousBitmapIndex - 
-                (PreviousBitmapIndex - Length.LowPart)
-            ) + 1;
+            if (Index + 1 != NumberOfElements) {
+                __debugbreak();
+            }
 
-            Source += Adjustment;
+            break;
 
+		} else if (PreviousBitmapIndex == String->Length) {
+
+			//
+			// There are no more non-delimiter characters left in the string.
+			//
+
+			break;
+
+		} else {
+
+            //
+            // If there was more than one delimiter after the string just
+            // processed, extra bits will be greater than zero.  If this is
+            // the case, we'll need to adjust the source pointer by this amount
+            // as well to skip past the additional separators.
+            //
+
+            ExtraBits = PreviousBitmapIndex - ExpectedBitmapIndex;
+
+            if (ExtraBits > 0) {
+                Source += ExtraBits;
+            }
         }
     }
 
