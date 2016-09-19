@@ -30,6 +30,7 @@ Align(_In_ SIZE_T Size)
 }
 
 _Use_decl_annotations_
+static
 PVOID
 AlignedHeapMalloc(
     PVOID Context,
@@ -40,6 +41,7 @@ AlignedHeapMalloc(
 }
 
 _Use_decl_annotations_
+static
 PVOID
 AlignedHeapCalloc(
     PVOID Context,
@@ -58,6 +60,7 @@ AlignedHeapCalloc(
 }
 
 _Use_decl_annotations_
+static
 PVOID
 AlignedHeapRealloc(
     PVOID Context,
@@ -69,6 +72,7 @@ AlignedHeapRealloc(
 }
 
 _Use_decl_annotations_
+static
 VOID
 AlignedHeapFree(
     PVOID Context,
@@ -79,6 +83,7 @@ AlignedHeapFree(
 }
 
 _Use_decl_annotations_
+static
 VOID
 AlignedHeapFreePointer(
     PVOID Context,
@@ -100,6 +105,7 @@ AlignedHeapFreePointer(
 }
 
 _Use_decl_annotations_
+static
 VOID
 AlignedHeapDestroyAllocator(
     PALLOCATOR Allocator
@@ -109,6 +115,7 @@ AlignedHeapDestroyAllocator(
 }
 
 _Use_decl_annotations_
+static
 BOOLEAN
 AlignedHeapInitializeAllocator(
     PALLOCATOR Allocator

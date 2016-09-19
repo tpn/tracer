@@ -40,6 +40,9 @@
     <ClCompile Include="PrefixSearchStringTable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CreateStringArray.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringTable.h">
@@ -58,6 +61,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StringLoadStoreOperations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StringTableTestGlue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

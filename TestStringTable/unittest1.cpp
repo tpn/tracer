@@ -116,7 +116,7 @@ namespace TestStringTable
             PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
             STRING_ARRAY StringArray1 = CONSTANT_STRING_ARRAY(falcon);
 
-            StringTable = CreateStringTable(&Allocator, &StringArray1);
+            StringTable = CreateStringTable(&Allocator, &StringArray1, TRUE);
 
             Assert::IsNotNull(StringTable);
 
@@ -149,7 +149,7 @@ namespace TestStringTable
             PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
             STRING_ARRAY StringArray1 = CONSTANT_STRING_ARRAY(falcon);
 
-            StringTable = CreateStringTable(&Allocator, &StringArray1);
+            StringTable = CreateStringTable(&Allocator, &StringArray1, TRUE);
 
             Assert::IsNotNull(StringTable);
 
@@ -180,7 +180,7 @@ namespace TestStringTable
             PSTRING_TABLE StringTable;
             STRING_ARRAY StringArray1 = CONSTANT_STRING_ARRAY(fox);
 
-            StringTable = CreateStringTable(&Allocator, &StringArray1);
+            StringTable = CreateStringTable(&Allocator, &StringArray1, TRUE);
 
             Mask = IsFirstCharacterInStringTable(StringTable, 'f');
             Assert::AreEqual((ULONG)Mask, (ULONG)1);
@@ -679,7 +679,6 @@ namespace TestStringTable
             Assert::AreEqual((LONG)Match.NumberOfMatchedCharacters, (LONG)3);
             Assert::AreEqual(strncmp(fox.Buffer, Match.String->Buffer, 3), 0);
         }
-
 
     };
 }

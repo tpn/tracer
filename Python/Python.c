@@ -557,6 +557,12 @@ AllocatePythonPathTableEntry(
         return FALSE;
     }
 
+    //
+    // Clear the caller's pointer.
+    //
+
+    *PathTableEntryPointer = NULL;
+
     Buffer = ALLOCATE(PathTableEntry, sizeof(PYTHON_PATH_TABLE_ENTRY));
 
     if (!Buffer) {
@@ -3408,7 +3414,7 @@ Routine Description:
 
     Success = AllocatePythonPathTableEntry(Python, &PathEntry);
     if (!Success) {
-        return FALSE;
+        goto Error;
     }
 
     PathEntry->IsFile = TRUE;
@@ -3423,7 +3429,7 @@ Routine Description:
 
     if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
         FreePythonPathTableEntry(Python, PathEntry);
-        return FALSE;
+        goto Error;
     }
 
     if (!WeOwnPathBuffer) {
@@ -3431,7 +3437,7 @@ Routine Description:
         if (!AllocateStringBuffer(Python, PathAllocSize, Path)) {
             FreeStringBuffer(Python, FullName);
             FreePythonPathTableEntry(Python, PathEntry);
-            return FALSE;
+            goto Error;
         }
 
     } else {
@@ -3570,6 +3576,10 @@ Routine Description:
     //
 
 Error:
+
+    if (!Success) {
+        PathEntry = NULL;
+    }
 
     //
     // Update the caller's path entry pointer.

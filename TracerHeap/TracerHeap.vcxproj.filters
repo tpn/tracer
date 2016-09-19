@@ -24,12 +24,18 @@
     <ClInclude Include="DefaultTracerHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AlignedTracerHeap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DefaultTracerHeap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AlignedTracerHeap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

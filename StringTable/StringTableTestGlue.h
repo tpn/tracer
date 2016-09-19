@@ -38,6 +38,7 @@ typedef struct _STRING_ARRAY2 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[2];
 } STRING_ARRAY2, *PSTRING_ARRAY2, **PPSTRING_ARRAY2;
 
@@ -46,6 +47,7 @@ typedef struct _STRING_ARRAY3 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[3];
 } STRING_ARRAY3, *PSTRING_ARRAY3, **PPSTRING_ARRAY3;
 
@@ -54,6 +56,7 @@ typedef struct _STRING_ARRAY4 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[4];
 } STRING_ARRAY4, *PSTRING_ARRAY4, **PPSTRING_ARRAY4;
 
@@ -62,6 +65,7 @@ typedef struct _STRING_ARRAY5 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[5];
 } STRING_ARRAY5, *PSTRING_ARRAY5, **PPSTRING_ARRAY5;
 
@@ -70,6 +74,7 @@ typedef struct _STRING_ARRAY6 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[6];
 } STRING_ARRAY6, *PSTRING_ARRAY6, **PPSTRING_ARRAY6;
 
@@ -78,6 +83,7 @@ typedef struct _STRING_ARRAY7 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[7];
 } STRING_ARRAY7, *PSTRING_ARRAY7, **PPSTRING_ARRAY7;
 
@@ -86,6 +92,7 @@ typedef struct _STRING_ARRAY8 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[8];
 } STRING_ARRAY8, *PSTRING_ARRAY8, **PPSTRING_ARRAY8;
 
@@ -94,6 +101,7 @@ typedef struct _STRING_ARRAY9 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[9];
 } STRING_ARRAY9, *PSTRING_ARRAY9, **PPSTRING_ARRAY9;
 
@@ -102,6 +110,7 @@ typedef struct _STRING_ARRAY10 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[10];
 } STRING_ARRAY10, *PSTRING_ARRAY10, **PPSTRING_ARRAY10;
 
@@ -110,6 +119,7 @@ typedef struct _STRING_ARRAY11 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[11];
 } STRING_ARRAY11, *PSTRING_ARRAY11, **PPSTRING_ARRAY11;
 
@@ -118,6 +128,7 @@ typedef struct _STRING_ARRAY12 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[12];
 } STRING_ARRAY12, *PSTRING_ARRAY12, **PPSTRING_ARRAY12;
 
@@ -126,6 +137,7 @@ typedef struct _STRING_ARRAY13 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[13];
 } STRING_ARRAY13, *PSTRING_ARRAY13, **PPSTRING_ARRAY13;
 
@@ -134,6 +146,7 @@ typedef struct _STRING_ARRAY14 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[14];
 } STRING_ARRAY14, *PSTRING_ARRAY14, **PPSTRING_ARRAY14;
 
@@ -142,6 +155,7 @@ typedef struct _STRING_ARRAY15 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[15];
 } STRING_ARRAY15, *PSTRING_ARRAY15, **PPSTRING_ARRAY15;
 
@@ -150,6 +164,7 @@ typedef struct _STRING_ARRAY16 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[16];
 } STRING_ARRAY16, *PSTRING_ARRAY16, **PPSTRING_ARRAY16;
 
@@ -158,6 +173,7 @@ typedef struct _STRING_ARRAY17 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[17];
 } STRING_ARRAY17, *PSTRING_ARRAY17, **PPSTRING_ARRAY17;
 
@@ -166,6 +182,7 @@ typedef struct _STRING_ARRAY18 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[18];
 } STRING_ARRAY18, *PSTRING_ARRAY18, **PPSTRING_ARRAY18;
 
@@ -174,6 +191,7 @@ typedef struct _STRING_ARRAY19 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[19];
 } STRING_ARRAY19, *PSTRING_ARRAY19, **PPSTRING_ARRAY19;
 
@@ -182,6 +200,7 @@ typedef struct _STRING_ARRAY20 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[20];
 } STRING_ARRAY20, *PSTRING_ARRAY20, **PPSTRING_ARRAY20;
 
@@ -190,6 +209,7 @@ typedef struct _STRING_ARRAY21 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[21];
 } STRING_ARRAY21, *PSTRING_ARRAY21, **PPSTRING_ARRAY21;
 
@@ -198,6 +218,7 @@ typedef struct _STRING_ARRAY22 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[22];
 } STRING_ARRAY22, *PSTRING_ARRAY22, **PPSTRING_ARRAY22;
 
@@ -206,6 +227,7 @@ typedef struct _STRING_ARRAY23 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[23];
 } STRING_ARRAY23, *PSTRING_ARRAY23, **PPSTRING_ARRAY23;
 
@@ -214,6 +236,7 @@ typedef struct _STRING_ARRAY24 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[24];
 } STRING_ARRAY24, *PSTRING_ARRAY24, **PPSTRING_ARRAY24;
 
@@ -222,6 +245,7 @@ typedef struct _STRING_ARRAY25 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[25];
 } STRING_ARRAY25, *PSTRING_ARRAY25, **PPSTRING_ARRAY25;
 
@@ -230,6 +254,7 @@ typedef struct _STRING_ARRAY26 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[26];
 } STRING_ARRAY26, *PSTRING_ARRAY26, **PPSTRING_ARRAY26;
 
@@ -238,6 +263,7 @@ typedef struct _STRING_ARRAY27 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[27];
 } STRING_ARRAY27, *PSTRING_ARRAY27, **PPSTRING_ARRAY27;
 
@@ -246,6 +272,7 @@ typedef struct _STRING_ARRAY28 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[28];
 } STRING_ARRAY28, *PSTRING_ARRAY28, **PPSTRING_ARRAY28;
 
@@ -254,6 +281,7 @@ typedef struct _STRING_ARRAY29 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[29];
 } STRING_ARRAY29, *PSTRING_ARRAY29, **PPSTRING_ARRAY29;
 
@@ -262,6 +290,7 @@ typedef struct _STRING_ARRAY30 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[30];
 } STRING_ARRAY30, *PSTRING_ARRAY30, **PPSTRING_ARRAY30;
 
@@ -270,6 +299,7 @@ typedef struct _STRING_ARRAY31 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[31];
 } STRING_ARRAY31, *PSTRING_ARRAY31, **PPSTRING_ARRAY31;
 
@@ -278,16 +308,9 @@ typedef struct _STRING_ARRAY32 {
     USHORT NumberOfElements;
     USHORT MinimumLength;
     USHORT MaximumLength;
+    struct _STRING_TABLE *StringTable;
     STRING Strings[32];
 } STRING_ARRAY32, *PSTRING_ARRAY32, **PPSTRING_ARRAY32;
-
-typedef struct _STRING_ARRAY33 {
-    USHORT SizeInQuadwords;
-    USHORT NumberOfElements;
-    USHORT MinimumLength;
-    USHORT MaximumLength;
-    STRING Strings[33];
-} STRING_ARRAY33, *PSTRING_ARRAY33, **PPSTRING_ARRAY33;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Macros
@@ -296,37 +319,38 @@ typedef struct _STRING_ARRAY33 {
 #define INIT_ALLOCATOR(Allocator) AlignedHeapInitializeAllocator(Allocator)
 #define DESTROY_ALLOCATOR(Allocator) AlignedHeapDestroyAllocator(Allocator)
 
-#define MAKE_STRING(Name) STRING Name = RTL_CONSTANT_STRING(#Name)
+#define MAKE_STRING(Name) static STRING Name = RTL_CONSTANT_STRING(#Name)
 
 #define MAKE_TABLE(Array) \
-    CreateStringTable((PALLOCATOR)&Allocator, (PSTRING_ARRAY)(Array))
+    CreateStringTable((PALLOCATOR)&Allocator, (PSTRING_ARRAY)(Array), TRUE)
 
 #define CONSTANT_STRING_ARRAY(S1) { \
-    0, 1, 0, 0, { S1} }
+    0, 1, 0, 0, NULL, { S1 }        \
+}
 
 #define CONSTANT_STRING_ARRAY2(S1, S2) { \
-    0, 2, 0, 0, { S1, S2 }               \
+    0, 2, 0, 0, NULL, { S1, S2 }         \
 }
 
 #define CONSTANT_STRING_ARRAY3(S1, S2, S3) { \
-    0, 3, 0, 0, { S1, S2, S3 }               \
+    0, 3, 0, 0, NULL, { S1, S2, S3 }         \
 }
 
 #define CONSTANT_STRING_ARRAY5(S1, S2, S3, S4, S5) { \
-    0, 5, 0, 0, { S1, S2, S3, S4, S5 }               \
+    0, 5, 0, 0, NULL, { S1, S2, S3, S4, S5 }         \
 }
 
 #define CONSTANT_STRING_ARRAY6(S1, S2, S3, S4, S5, S6) { \
-    0, 6, 0, 0, { S1, S2, S3, S4, S5, S6 }               \
+    0, 6, 0, 0, NULL, { S1, S2, S3, S4, S5, S6 }         \
 }
 
 #define CONSTANT_STRING_ARRAY7(S1, S2, S3, S4, S5, S6, S7) { \
-    0, 7, 0, 0, { S1, S2, S3, S4, S5, S6, S7 }               \
+    0, 7, 0, 0, NULL, { S1, S2, S3, S4, S5, S6, S7 }         \
 }
 
 #define CONSTANT_STRING_ARRAY18(S1,  S2,  S3,  S4,  S5,  S6,  S7,  S8,  S9,    \
                                 S10, S11, S12, S13, S14, S15, S16, S17, S18) { \
-    0, 18, 0, 0, {                                                             \
+    0, 18, 0, 0, NULL, {                                                       \
         S1,  S2,  S3,  S4,  S5,  S6,  S7,  S8,  S9,                            \
         S10, S11, S12, S13, S14, S15, S16, S17, S18                            \
     }                                                                          \
