@@ -30,6 +30,8 @@ CopyStringArray(
 Routine Description:
 
     Performs a deep-copy of a STRING_ARRAY structure using the given Allocator.
+    If the array will fit within the trailing space of a STRING_TABLE structure,
+    the routine will allocate space for the STRING_TABLE instead.
 
     N.B.: Strings in the new array will have their Hash field set to the CRC32
           value of the character values (excluding any NULLs) of their buffer.
@@ -42,6 +44,19 @@ Arguments:
 
     StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
         to be copied.
+
+    StringTablePaddingOffset - Supplies a USHORT value indicating the number
+        of bytes from the STRING_TABLE structure where the padding begins.
+        This value is used in conjunction with StringTableStructSize below
+        to determine if the STRING_ARRAY will fit within the table.
+
+    StringTableStructSize - Supplies a USHORT value indicating the size of the
+        STRING_TABLE structure, in bytes.  This is used in conjunction with the
+        StringTablePaddingOffset parameter above.
+
+    StringTablePointer - Supplies a pointer to a variable that receives the
+        address of the STRING_TABLE structure if one could be allocated.  If
+        not, the pointer will be set to NULL.
 
 Return Value:
 
@@ -209,6 +224,12 @@ Return Value:
     SourceString = StringArray->Strings;
     DestString = NewArray->Strings;
     Count = StringArray->NumberOfElements;
+
+    //
+    // Initialize the StringTable field; if it's NULL at this point, that's ok.
+    //
+
+    NewArray->StringTable = StringTable;
 
     //
     // Initialize the destination buffer to the point after the new STRING_ARRAY

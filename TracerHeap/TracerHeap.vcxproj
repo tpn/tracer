@@ -59,11 +59,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClInclude Include="AlignedTracerHeap.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="DefaultTracerHeap.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AlignedTracerHeap.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

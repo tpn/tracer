@@ -159,6 +159,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringTable\CopyStringArray.c" />
+    <ClCompile Include="..\StringTable\CreateStringArray.c" />
     <ClCompile Include="..\StringTable\CreateStringTable.c" />
     <ClCompile Include="..\StringTable\DestroyStringTable.c" />
     <ClCompile Include="..\StringTable\IsPrefixOfStringInTable_C.c" />

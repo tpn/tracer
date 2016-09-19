@@ -94,12 +94,14 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StringLoadStoreOperations.h" />
     <ClInclude Include="StringTableConstants.h" />
+    <ClInclude Include="StringTableTestGlue.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="StringTable.h" />
     <ClInclude Include="StringTablePrivate.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CopyStringArray.c" />
+    <ClCompile Include="CreateStringArray.c" />
     <ClCompile Include="CreateStringTable.c" />
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />

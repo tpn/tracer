@@ -1375,18 +1375,16 @@ BOOL
     _Out_ PPPATH PathPointer
     );
 typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
+RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
 
 typedef
 _Success_(return != 0)
 BOOL
-(UNICODE_STRING_TO_PATH_EX)(
-    _In_ PRTL Rtl,
-    _In_ PUNICODE_STRING String,
-    _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer,
-    _In_opt_ PPATH_CREATE_FLAGS CreateFlags
+(DESTROY_PATH)(
+    _Inout_opt_ PPPATH PathPointer
     );
-typedef UNICODE_STRING_TO_PATH_EX *PUNICODE_STRING_TO_PATH_EX;
+typedef DESTROY_PATH *PDESTROY_PATH;
+RTL_API DESTROY_PATH DestroyPath;
 
 typedef
 _Success_(return != 0)
@@ -1398,6 +1396,7 @@ BOOL
     _Out_ PPPATH PathPointer
     );
 typedef GET_MODULE_PATH *PGET_MODULE_PATH;
+RTL_API GET_MODULE_PATH GetModulePath;
 
 
 #ifdef _M_X64
@@ -2029,8 +2028,18 @@ PPATH
 typedef CURRENT_DIRECTORY_TO_PATH \
       *PCURRENT_DIRECTORY_TO_PATH,\
     **PPCURRENT_DIRECTORY_TO_PATH;
+RTL_API CURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;
+
+typedef
+VOID
+(DESTROY_RTL)(
+    _In_opt_ struct _RTL **RtlPointer
+    );
+typedef DESTROY_RTL *PDESTROY_RTL, **PPDESTROY_RTL;
+RTL_API DESTROY_RTL DestroyRtl;
 
 #define _RTLEXFUNCTIONS_HEAD                                                   \
+    PDESTROY_RTL DestroyRtl;                                                   \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
     PRTL_PARENT RtlParent;                                                     \
@@ -2051,6 +2060,7 @@ typedef CURRENT_DIRECTORY_TO_PATH \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
     PUNICODE_STRING_TO_PATH UnicodeStringToPath;                               \
+    PDESTROY_PATH DestroyPath;                                                 \
     PGET_MODULE_PATH GetModulePath;                                            \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
     PCURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;                         \
@@ -2107,11 +2117,6 @@ typedef struct _RTL {
     };
 
 } RTL, *PRTL, **PPRTL;
-
-typedef BOOL (*PINITIALIZE_RTL)(
-    _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
-    _Inout_                   PULONG SizeOfRtl
-    );
 
 #define RtlUpcaseChar(C) \
     (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))

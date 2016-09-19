@@ -124,6 +124,12 @@ typedef _Struct_size_bytes_(SizeInQuadwords >> 3)struct _STRING_ARRAY {
     USHORT MaximumLength;
 
     //
+    // A pointer to the STRING_TABLE structure that "owns" us.
+    //
+
+    struct _STRING_TABLE *StringTable;
+
+    //
     // The string array.  Number of elements in the array is governed by the
     // NumberOfElements field above.
     //
@@ -131,6 +137,14 @@ typedef _Struct_size_bytes_(SizeInQuadwords >> 3)struct _STRING_ARRAY {
     STRING Strings[ANYSIZE_ARRAY];
 
 } STRING_ARRAY, *PSTRING_ARRAY, **PPSTRING_ARRAY;
+
+
+//
+// String tables are composed of a 16 element array of 16 byte string "slots",
+// which represent the first 16 characters of the string in a given slot index.
+// The STRING_SLOT structure provides a convenient wrapper around this
+// construct.
+//
 
 typedef __declspec(align(16)) union _STRING_SLOT {
     CHAR Char[16];
@@ -141,6 +155,11 @@ typedef __declspec(align(16)) union _STRING_SLOT {
     };
     XMMWORD CharsXmm;
 } STRING_SLOT, *PSTRING_SLOT, **PPSTRING_SLOT;
+
+//
+// A 16 element array of 16-bit USHORT elements, used to capture the length
+// of each string slot in a single YMM 256-bit register.
+//
 
 typedef union _SLOT_LENGTHS {
     YMMWORD SlotsYmm;
@@ -206,6 +225,43 @@ STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE \
     IsPrefixOfStringInSingleTableInline;
+
+typedef
+VOID
+(DESTROY_STRING_TABLE)(
+    _In_ PALLOCATOR Allocator,
+    _In_opt_ struct _STRING_TABLE *StringTable
+    );
+typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
+STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
+
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _STRING_TABLE_FLAGS {
+
+    //
+    // When set, indicates that the CopyArray flag was set to TRUE when the
+    // STRING_TABLE was created with CreateStringTable().  This implies the
+    // STRING_TABLE owns the STRING_ARRAY, and is responsible for its
+    // destruction.
+    //
+    // If the table does own the array, the destruction routine should still
+    // verify a separate allocation was performed for the string array by
+    // checking StringTable->pStringArray against &StringTable->StringArray;
+    // If the pointers point to the same location, the string array was able
+    // to fit in the trailing space of the STRING_TABLE structure, and thus,
+    // doesn't need to be deallocated separately (i.e. no separate call to
+    // Allocator->Free() is required).
+    //
+
+    ULONG CopiedArray:1;
+
+    //
+    // Remaining space.
+    //
+
+    ULONG Unused:31;
+
+} STRING_TABLE_FLAGS, *PSTRING_TABLE_FLAGS, **PPSTRING_TABLE_FLAGS;
 
 //
 // The STRING_TABLE struct is an optimized structure for testing whether a
@@ -334,20 +390,40 @@ typedef struct _STRING_TABLE {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
     //
-    // Reserve 8-bytes for flags.
+    // (328-bytes consumed, aligned at 8 bytes.)
     //
 
-    ULONGLONG Flags;
+    //
+    // Function pointer to the destruction function for the table.
+    //
+
+    PDESTROY_STRING_TABLE DestroyStringTable;
 
     //
     // (336-bytes consumed, aligned at 16-bytes.)
     //
 
     //
+    // String table flags.
+    //
+
+    STRING_TABLE_FLAGS Flags;
+
+    //
+    // Pad to a 16-byte boundary.
+    //
+
+    ULONG Padding1[3];
+
+    //
+    // (352-bytes consumed, aligned at 32-bytes.)
+    //
+
+    //
     // We want the structure size to be a power of 2 such that an even number
     // can fit into a 4KB page (and reducing the likelihood of crossing page
     // boundaries, which complicates SIMD boundary handling), so we have an
-    // extra 176-bytes to play with here.  The CopyStringArray() routine is
+    // extra 160-bytes to play with here.  The CopyStringArray() routine is
     // special-cased to allocate the backing STRING_ARRAY structure plus the
     // accommodating buffers in this space if it can fit.
     //
@@ -358,7 +434,7 @@ typedef struct _STRING_TABLE {
 
     union {
         STRING_ARRAY StringArray;
-        CHAR Padding[172];
+        CHAR Padding[160];
     };
 
 } STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
@@ -369,12 +445,11 @@ typedef struct _STRING_TABLE {
 
 C_ASSERT(FIELD_OFFSET(STRING_TABLE, Lengths) == 32);
 C_ASSERT(FIELD_OFFSET(STRING_TABLE, Slots)   == 64);
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, Padding) == 336);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE, Padding) == 352);
 C_ASSERT(sizeof(STRING_TABLE) == 512);
 
 //
-// This structure is used to communicate matches back to the caller.  (Not yet
-// currently flushed out.)
+// This structure is used to communicate matches back to the caller.
 //
 
 typedef struct _STRING_MATCH {
@@ -427,22 +502,65 @@ STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
 typedef
 _Check_return_
 _Success_(return != 0)
+PSTRING_ARRAY
+(CREATE_STRING_ARRAY_FROM_DELIMITED_STRING)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PSTRING String,
+    _In_ CHAR Delimiter,
+    _In_ USHORT StringTablePaddingOffset,
+    _In_ USHORT StringTableStructSize,
+    _Outptr_opt_result_maybenull_ PPSTRING_TABLE StringTablePointer
+    );
+typedef CREATE_STRING_ARRAY_FROM_DELIMITED_STRING  \
+      *PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING, \
+    **PPCREATE_STRING_ARRAY_FROM_DELIMITED_STRING;
+STRING_TABLE_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING \
+                 CreateStringArrayFromDelimitedString;
+
+typedef
+_Check_return_
+_Success_(return != 0)
 PSTRING_TABLE
 (CREATE_STRING_TABLE)(
     _In_ PALLOCATOR Allocator,
-    _In_ PSTRING_ARRAY StringArray
+    _In_ PSTRING_ARRAY StringArray,
+    _In_ BOOL CopyArray
     );
 typedef CREATE_STRING_TABLE *PCREATE_STRING_TABLE;
 STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
 
 typedef
-VOID
-(DESTROY_STRING_TABLE)(
+_Check_return_
+_Success_(return != 0)
+PSTRING_TABLE
+(CREATE_STRING_TABLE_FROM_DELIMITED_STRING)(
+    _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_opt_ PSTRING_TABLE StringTable
+    _In_ PSTRING String,
+    _In_ CHAR Delimiter
     );
-typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
-STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
+typedef CREATE_STRING_TABLE_FROM_DELIMITED_STRING  \
+      *PCREATE_STRING_TABLE_FROM_DELIMITED_STRING, \
+    **PPCREATE_STRING_TABLE_FROM_DELIMITED_STRING;
+STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_STRING \
+                 CreateStringTableFromDelimitedString;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PSTRING_TABLE
+(CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PSTR EnvironmentVariableName,
+    _In_ CHAR Delimiter
+    );
+typedef CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
+      *PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE, \
+    **PPCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE;
+STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE \
+                 CreateStringTableFromDelimitedEnvironmentVariable;
 
 typedef
 STRING_TABLE_INDEX
@@ -761,7 +879,7 @@ Routine Description:
 
         StringBufferAllocSize
 
-        );
+    );
 
     //
     // Update the caller's pointers and return success.

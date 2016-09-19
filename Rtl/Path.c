@@ -574,10 +574,9 @@ CurrentDirectoryToUnicodeString(
 Routine Description:
 
     This function gets the current working directory as a wide character string,
-    then allocates a new buffer to hold a UNICODE_STRING structure and a
-    copy of the string using the provided Allocator, then copies the string
-    details, initializes the struct's lengths, and returns a pointer to the
-    structure.
+    then allocates a new buffer to hold a UNICODE_STRING structure and a copy
+    of the string using the provided Allocator, then copies the string details,
+    initializes the struct's lengths, and returns a pointer to the structure.
 
     The size of the UNICODE_STRING structure plus the trailing WCHAR buffer
     is calculated up-front and satisfied with a single Allocator->Calloc()
@@ -643,6 +642,24 @@ Return Value:
     }
 
     return String;
+}
+
+_Use_decl_annotations_
+PPATH
+CurrentDirectoryToPath(
+    PALLOCATOR Allocator
+    )
+{
+
+    //
+    // XXX todo.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return NULL;
+    }
+
+    return NULL;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
