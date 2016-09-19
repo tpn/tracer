@@ -488,6 +488,26 @@ typedef struct _STRING_MATCH {
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
+(INITIALIZE_STRING_TABLE_ALLOCATOR)(
+    _In_ PALLOCATOR Allocator
+    );
+typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
+STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR \
+                 InitializeStringTableAllocator;
+
+typedef
+VOID
+(DESTROY_STRING_TABLE_ALLOCATOR)(
+    _In_ PALLOCATOR Allocator
+    );
+typedef DESTROY_STRING_TABLE_ALLOCATOR *PDESTROY_STRING_TABLE_ALLOCATOR;
+typedef DESTROY_STRING_TABLE_ALLOCATOR **PPDESTROY_STRING_TABLE_ALLOCATOR;
+STRING_TABLE_API DESTROY_STRING_TABLE_ALLOCATOR DestroyStringTableAllocator;
+
+typedef
+_Check_return_
+_Success_(return != 0)
 PSTRING_ARRAY
 (COPY_STRING_ARRAY)(
     _In_ PALLOCATOR Allocator,
@@ -553,6 +573,7 @@ PSTRING_TABLE
 (CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
     _In_ PSTR EnvironmentVariableName,
     _In_ CHAR Delimiter
     );

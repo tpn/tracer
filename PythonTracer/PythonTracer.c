@@ -814,6 +814,8 @@ InitializePythonTraceContext(
     PTRACE_STORE FilenameStringBufferStore;
     PTRACE_STORE DirectoryStringStore;
     PTRACE_STORE DirectoryStringBufferStore;
+    PTRACE_STORE StringArrayStore;
+    PTRACE_STORE StringTableStore;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     USHORT TraceStoreIndex;
@@ -886,6 +888,8 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(FilenameStringBuffer);
     INIT_STORE_ALLOCATOR(DirectoryString);
     INIT_STORE_ALLOCATOR(DirectoryStringBuffer);
+    INIT_STORE_ALLOCATOR(StringArrayStore);
+    INIT_STORE_ALLOCATOR(StringTableStore);
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
     EventStore->NoRetire = FALSE;
@@ -923,6 +927,7 @@ InitializePythonTraceContext(
     Context->DisableHandleCountTracing = DisableHandleCountTracing;
 
     Context->AddModuleName = AddModuleName;
+    Context->SetModuleNamesStringTable = SetModuleNamesStringTable;
 
     return TRUE;
 }

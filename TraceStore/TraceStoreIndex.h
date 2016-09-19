@@ -58,4 +58,12 @@
 #define TraceStoreDirectoryStringBufferAllocationIndex                        57
 #define TraceStoreDirectoryStringBufferAddressIndex                           58
 #define TraceStoreDirectoryStringBufferInfoIndex                              59
-#define MAX_TRACE_STORES                                                      60
+#define TraceStoreStringArrayIndex                                            60
+#define TraceStoreStringArrayAllocationIndex                                  61
+#define TraceStoreStringArrayAddressIndex                                     62
+#define TraceStoreStringArrayInfoIndex                                        63
+#define TraceStoreStringTableIndex                                            64
+#define TraceStoreStringTableAllocationIndex                                  65
+#define TraceStoreStringTableAddressIndex                                     66
+#define TraceStoreStringTableInfoIndex                                        67
+#define MAX_TRACE_STORES                                                      68

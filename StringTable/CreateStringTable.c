@@ -446,6 +446,7 @@ PSTRING_TABLE
 CreateStringTableFromDelimitedEnvironmentVariable(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
     PSTR EnvironmentVariableName,
     CHAR Delimiter
     )
@@ -461,9 +462,16 @@ Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    Allocator - Supplies a pointer to an ALLOCATOR structure which will
-        be used to allocate all memory required by the structure during its
-        creation.
+    Allocator - Supplies a pointer to an ALLOCATOR structure which will be used
+        to allocate temporary memory for reading the contents of the environment
+        variable.
+
+    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE (and backing STRING_ARRAY).
+        This allocator is kept separate from the one above due to the fact that
+        string tables have stringent alignment requirements and will be using
+        custom allocators that wouldn't necessarily be suitable for the temp
+        buffer created for the environment variable's value.
 
     EnvironmentVariableName - Supplies a pointer to a NULL-terminated string
         representing the name of the environment variable to create a string
@@ -492,6 +500,10 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(Allocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
         return NULL;
     }
 
@@ -573,7 +585,7 @@ Return Value:
 
     StringTable = CreateStringTableFromDelimitedString(
         Rtl,
-        Allocator,
+        StringTableAllocator,
         &String,
         Delimiter
     );

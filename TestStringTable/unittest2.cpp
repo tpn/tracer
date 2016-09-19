@@ -84,12 +84,12 @@ namespace TestStringTable
         {
             DESTROY_ALLOCATOR(&Allocator);
             Rtl->DestroyRtl(&Rtl);
+            FreeLibrary(RtlModule);
         }
 
         TEST_METHOD(TestCreateStringTableFromDelimitedString1)
         {
             MAKE_STRING(Foo);
-            STRING FooBar = RTL_CONSTANT_STRING("Foo;Bar");
             PSTRING_TABLE StringTable;
 
             StringTable = CreateStringTableFromDelimitedString(
