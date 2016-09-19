@@ -939,7 +939,7 @@ LoadPythonDll:
     if (Session->ModuleNamesStringTable) {
         PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;
         PPYTHON_TRACE_CONTEXT PythonTraceContext;
-        PSET_MODULE_NAMES_STRING_TABLE SetModuleNamesStringTable;
+        PSET_MODULE_NAMES_STRING_TABLE SetModuleNames;
 
         PythonTraceContext = Session->PythonTraceContext;
         SetModuleNames = PythonTraceContext->SetModuleNamesStringTable;
