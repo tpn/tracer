@@ -189,6 +189,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     HMODULE RtlModule;
     HMODULE HookModule;
     HMODULE TraceStoreModule;
+    HMODULE StringTableModule;
 
     //
     // Python-specific tracer modules.
@@ -279,6 +280,23 @@ typedef struct _TRACED_PYTHON_SESSION {
     //PHOOK Hook;
     //PUNHOOK Unhook;
     //PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
+
+    //
+    // StringTable-specific functions.
+    //
+
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+    PDESTROY_STRING_TABLE_ALLOCATOR DestroyStringTableAllocator;
+    PCREATE_STRING_TABLE CreateStringTable;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING \
+        CreateStringTableFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE \
+        CreateStringTableFromDelimitedEnvironmentVariable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
+
+    ALLOCATOR StringTableAllocator;
+    PALLOCATOR pStringTableAllocator;
+    PSTRING_TABLE ModuleNamesStringTable;
 
     //
     // Tracer-specific initializers.

@@ -113,6 +113,7 @@ Return Value:
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
+    PALLOCATOR StringTableAllocator;
     PUNICODE_STRING Path;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
@@ -228,8 +229,9 @@ Return Value:
     Paths = &TracerConfig->Paths;
 
     LOAD_DLL(Rtl);
-    LOAD_DLL(TraceStore);
     LOAD_DLL(Python);
+    LOAD_DLL(TraceStore);
+    LOAD_DLL(StringTable);
     LOAD_DLL(PythonTracer);
 
     //
@@ -246,25 +248,69 @@ Return Value:
 
     RESOLVE(Shell32Module, PCOMMAND_LINE_TO_ARGVW, CommandLineToArgvW);
 
+    //
+    // Rtl
+    //
+
     RESOLVE(RtlModule, PINITIALIZE_RTL, InitializeRtl);
 
+    //
+    // TraceStore
+    //
+
     RESOLVE(TraceStoreModule, PINITIALIZE_TRACE_STORES, InitializeTraceStores);
+
     RESOLVE(TraceStoreModule,
             PINITIALIZE_TRACE_CONTEXT,
             InitializeTraceContext);
+
     RESOLVE(TraceStoreModule,
             PINITIALIZE_TRACE_SESSION,
             InitializeTraceSession);
+
     RESOLVE(TraceStoreModule,
             PCLOSE_TRACE_STORES,
             CloseTraceStores);
 
+    //
+    // Python
+    //
+
     RESOLVE(PythonModule, PFIND_PYTHON_DLL_AND_EXE, FindPythonDllAndExe);
+
     RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);
+
+    //
+    // PythonTracer
+    //
 
     RESOLVE(PythonTracerModule,
         PINITIALIZE_PYTHON_TRACE_CONTEXT,
         InitializePythonTraceContext);
+
+    //
+    // StringTable
+    //
+
+    RESOLVE(StringTableModule,
+            PINITIALIZE_STRING_TABLE_ALLOCATOR,
+            InitializeStringTableAllocator);
+
+    RESOLVE(StringTableModule,
+            PDESTROY_STRING_TABLE_ALLOCATOR,
+            DestroyStringTableAllocator);
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE,
+            CreateStringTable);
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE_FROM_DELIMITED_STRING,
+            CreateStringTableFromDelimitedString);
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE,
+            CreateStringTableFromDelimitedEnvironmentVariable);
 
     //
     // All of our modules modules use the same pattern for initialization
@@ -306,6 +352,33 @@ Return Value:
     //
 
     Rtl = Session->Rtl;
+
+    //
+    // Create a StringTableAllocator.
+    //
+
+    Session->pStringTableAllocator = NULL;
+    StringTableAllocator = &Session->StringTableAllocator;
+    Success = Session->InitializeStringTableAllocator(StringTableAllocator);
+    if (!Success) {
+        OutputDebugStringA("Session->InitializeStringTableAllocator failed\n");
+        goto Error;
+    }
+
+    //
+    // Point the pStringTableAllocator at the initialized allocator.
+    //
+
+    Session->pStringTableAllocator = StringTableAllocator;
+
+    //
+    // Create a string table to use for the module names we're going to be
+    // tracing.
+    //
+
+    Session->ModuleNamesStringTable = (
+        CreateStringTableForTracerModuleNamesEnvironmentVariable(Session)
+    );
 
     //
     // Load our owning module name.
@@ -857,6 +930,24 @@ LoadPythonDll:
     if (!Success) {
         OutputDebugStringA("InitializePythonTraceContext() failed.\n");
         goto Error;
+    }
+
+    //
+    // If we created a module names string table, set it now.
+    //
+
+    if (Session->ModuleNamesStringTable) {
+        PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;
+        PPYTHON_TRACE_CONTEXT PythonTraceContext;
+        PSET_MODULE_NAMES_STRING_TABLE SetModuleNamesStringTable;
+
+        PythonTraceContext = Session->PythonTraceContext;
+        SetModuleNames = PythonTraceContext->SetModuleNamesStringTable;
+
+        if (!SetModuleNames(PythonTraceContext, ModuleNames)) {
+            OutputDebugStringA("SetModuleNamesStringTable() failed.\n");
+            goto Error;
+        }
     }
 
     //

@@ -3,10 +3,6 @@
 #define ContextToHeapHandle(Context) \
     (((PALLOCATOR)(Context))->HeapHandle)
 
-#define ALIGN(Size) (                    \
-    __popcnt64((ULONGLONG)(Size)) == 1 ? \
-        Size
-
 FORCEINLINE
 SIZE_T
 Align(_In_ SIZE_T Size)
