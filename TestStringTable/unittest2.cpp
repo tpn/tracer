@@ -77,6 +77,7 @@ namespace TestStringTable
 
             Success = InitializeRtl(Rtl, &RequiredSize);
             Assert::AreEqual(Success, TRUE);
+
         }
 
         TEST_METHOD_CLEANUP(Cleanup)
@@ -114,7 +115,6 @@ namespace TestStringTable
             STRING Test4 = RTL_CONSTANT_STRING("Foo;Bar;;;");
             STRING Test5 = RTL_CONSTANT_STRING(";;;;;Foo;B");
             STRING Test6 = RTL_CONSTANT_STRING("Foo;;;;;;;B;");
-            STRING Test7 = RTL_CONSTANT_STRING(";;;");
 
             DELIMITED_TABLE(&Test1);
             ASSERT_SIZE(2);
@@ -140,8 +140,15 @@ namespace TestStringTable
             ASSERT_SIZE(2);
             DESTROY_TABLE();
 
+        }
+
+        TEST_METHOD(TestCreateStringTableFromDelimitedString3)
+        {
+            PSTRING_TABLE StringTable;
+
+            STRING Test7 = RTL_CONSTANT_STRING(";;;");
+
             ASSERT_FAILED_DELIMITED_TABLE(&Test7);
-            DESTROY_TABLE();
         }
 
     };
