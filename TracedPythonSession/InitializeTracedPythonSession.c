@@ -230,6 +230,7 @@ Return Value:
 
     LOAD_DLL(Rtl);
     LOAD_DLL(Python);
+    LOAD_DLL(TracerHeap);
     LOAD_DLL(TraceStore);
     LOAD_DLL(StringTable);
     LOAD_DLL(PythonTracer);
@@ -285,20 +286,24 @@ Return Value:
     //
 
     RESOLVE(PythonTracerModule,
-        PINITIALIZE_PYTHON_TRACE_CONTEXT,
-        InitializePythonTraceContext);
+            PINITIALIZE_PYTHON_TRACE_CONTEXT,
+            InitializePythonTraceContext);
+
+    //
+    // TracerHeap
+    //
+
+    RESOLVE(TracerHeapModule,
+            PINITIALIZE_ALIGNED_ALLOCATOR,
+            InitializeAlignedAllocator);
+
+    RESOLVE(TracerHeapModule,
+            PDESTROY_ALIGNED_ALLOCATOR,
+            DestroyAlignedAllocator);
 
     //
     // StringTable
     //
-
-    RESOLVE(StringTableModule,
-            PINITIALIZE_STRING_TABLE_ALLOCATOR,
-            InitializeStringTableAllocator);
-
-    RESOLVE(StringTableModule,
-            PDESTROY_STRING_TABLE_ALLOCATOR,
-            DestroyStringTableAllocator);
 
     RESOLVE(StringTableModule,
             PCREATE_STRING_TABLE,
@@ -354,14 +359,14 @@ Return Value:
     Rtl = Session->Rtl;
 
     //
-    // Create a StringTableAllocator.
+    // Create an aligned allocator to use for string tables.
     //
 
     Session->pStringTableAllocator = NULL;
     StringTableAllocator = &Session->StringTableAllocator;
-    Success = Session->InitializeStringTableAllocator(StringTableAllocator);
+    Success = Session->InitializeAlignedAllocator(StringTableAllocator);
     if (!Success) {
-        OutputDebugStringA("Session->InitializeStringTableAllocator failed\n");
+        OutputDebugStringA("Session->InitializeAlignedAllocator failed\n");
         goto Error;
     }
 

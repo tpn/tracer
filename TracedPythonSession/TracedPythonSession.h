@@ -188,6 +188,7 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     HMODULE RtlModule;
     HMODULE HookModule;
+    HMODULE TracerHeapModule;
     HMODULE TraceStoreModule;
     HMODULE StringTableModule;
 
@@ -282,17 +283,29 @@ typedef struct _TRACED_PYTHON_SESSION {
     //PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
 
     //
+    // TracerHeap-specific functions.
+    //
+
+    PINITIALIZE_ALIGNED_ALLOCATOR InitializeAlignedAllocator;
+    PDESTROY_ALIGNED_ALLOCATOR DestroyAlignedAllocator;
+
+    //
     // StringTable-specific functions.
     //
 
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
-    PDESTROY_STRING_TABLE_ALLOCATOR DestroyStringTableAllocator;
     PCREATE_STRING_TABLE CreateStringTable;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING \
-        CreateStringTableFromDelimitedString;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE \
-        CreateStringTableFromDelimitedEnvironmentVariable;
     PDESTROY_STRING_TABLE DestroyStringTable;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+        CreateStringTableFromDelimitedEnvironmentVariable;
+
+    //
+    // The StringTable allocator will be initialized via the TracerHeap's
+    // InitializeAlignedAllocator() export.
+    //
 
     ALLOCATOR StringTableAllocator;
     PALLOCATOR pStringTableAllocator;

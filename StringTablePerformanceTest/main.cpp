@@ -15,6 +15,12 @@
 
 #include <iostream>
 
+#ifdef _INTEL_COMPILER
+#define NOINLINE #pragma noinline
+#else
+#define NOINLINE
+#endif
+
 using namespace std;
 
 MAKE_STRING(aardvark);
@@ -109,7 +115,7 @@ TestPrefixMatchInTable(
         QueryPerformanceCounter(&Start);
 
         for (Index = 0; Index < RoundsPerIteration; Index++) {
-#pragma noinline
+            NOINLINE
             IsPrefixOfStringInTable(StringTable, Search, NULL);
         }
 

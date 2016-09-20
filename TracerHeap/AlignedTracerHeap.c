@@ -1,7 +1,19 @@
-#include "stdafx.h"
+/*++
 
-#define ContextToHeapHandle(Context) \
-    (((PALLOCATOR)(Context))->HeapHandle)
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    AlignedTracerHeap.c
+
+Abstract:
+
+    This module implements an ALLOCATOR interface for performing aligned
+    memory allocations.
+
+--*/
+
+#include "stdafx.h"
 
 FORCEINLINE
 SIZE_T
@@ -26,7 +38,6 @@ Align(_In_ SIZE_T Size)
 }
 
 _Use_decl_annotations_
-static
 PVOID
 AlignedHeapMalloc(
     PVOID Context,
@@ -37,7 +48,6 @@ AlignedHeapMalloc(
 }
 
 _Use_decl_annotations_
-static
 PVOID
 AlignedHeapCalloc(
     PVOID Context,
@@ -56,7 +66,6 @@ AlignedHeapCalloc(
 }
 
 _Use_decl_annotations_
-static
 PVOID
 AlignedHeapRealloc(
     PVOID Context,
@@ -68,7 +77,6 @@ AlignedHeapRealloc(
 }
 
 _Use_decl_annotations_
-static
 VOID
 AlignedHeapFree(
     PVOID Context,
@@ -79,7 +87,6 @@ AlignedHeapFree(
 }
 
 _Use_decl_annotations_
-static
 VOID
 AlignedHeapFreePointer(
     PVOID Context,
@@ -101,7 +108,6 @@ AlignedHeapFreePointer(
 }
 
 _Use_decl_annotations_
-static
 VOID
 AlignedHeapDestroyAllocator(
     PALLOCATOR Allocator
@@ -111,7 +117,6 @@ AlignedHeapDestroyAllocator(
 }
 
 _Use_decl_annotations_
-static
 BOOLEAN
 AlignedHeapInitializeAllocator(
     PALLOCATOR Allocator
@@ -136,5 +141,74 @@ AlignedHeapInitializeAllocator(
 
     return TRUE;
 }
+
+_Use_decl_annotations_
+BOOL
+InitializeAlignedAllocator(
+    PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Initializes an ALLOCATOR structure such that it can be used for string
+    table allocations.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure to be initialized.
+
+Return Value:
+
+    TRUE if the allocator was successfully initialized, FALSE on failure.
+
+--*/
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    return AlignedHeapInitializeAllocator(Allocator);
+}
+
+_Use_decl_annotations_
+VOID
+DestroyAlignedAllocator(
+    PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Destroys an ALLOCATOR structure that was initialized by the routine
+    InitializeAlignedAllocator().
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure to be destroyed.
+        If this value is NULL, the routine returns immediately.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return;
+    }
+
+    AlignedHeapDestroyAllocator(Allocator);
+
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -888,8 +888,8 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(FilenameStringBuffer);
     INIT_STORE_ALLOCATOR(DirectoryString);
     INIT_STORE_ALLOCATOR(DirectoryStringBuffer);
-    INIT_STORE_ALLOCATOR(StringArrayStore);
-    INIT_STORE_ALLOCATOR(StringTableStore);
+    INIT_STORE_ALLOCATOR(StringArray);
+    INIT_STORE_ALLOCATOR(StringTable);
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
     EventStore->NoRetire = FALSE;
