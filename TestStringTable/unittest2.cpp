@@ -2,8 +2,6 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-#include "../TracerHeap/AlignedTracerHeap.c"
-
 #define PTR(p) ((ULONG_PTR)(p))
 #define LEN(String) ((LONG)((STRING)(String)).Length)
 

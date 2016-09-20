@@ -49,6 +49,9 @@ static CONST UNICODE_STRING RtlDllPath = \
 static CONST UNICODE_STRING PythonDllPath = \
     RTL_CONSTANT_STRING(L"Python.dll");
 
+static CONST UNICODE_STRING TracerHeapDllPath = \
+    RTL_CONSTANT_STRING(L"TracerHeap.dll");
+
 static CONST UNICODE_STRING TraceStoreDllPath = \
     RTL_CONSTANT_STRING(L"TraceStore.dll");
 
@@ -86,6 +89,7 @@ static CONST struct {
 } PathOffsets[] = {
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
+    { FIELD_OFFSET(TRACER_PATHS, TracerHeapDllPath),    &TracerHeapDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, StringTableDllPath),   &StringTableDllPath   },
     { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
