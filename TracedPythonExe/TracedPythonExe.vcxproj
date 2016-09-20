@@ -83,6 +83,14 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TracerConfig\TracerConfig.vcxproj">
+      <Project>{76f2056f-6a65-4ba3-a49f-3cbf5d1e2cdf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
