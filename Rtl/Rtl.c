@@ -69,7 +69,7 @@ CopyToMemoryMappedMemory(
 
     } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
                 EXCEPTION_EXECUTE_HANDLER :
-                EXCEPTION_CONTINUE_EXECUTION)
+                EXCEPTION_CONTINUE_SEARCH)
     {
         return NULL;
     }
@@ -99,6 +99,33 @@ TestExceptionHandler(VOID)
     //
 
     return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+PrefaultPages(
+    PVOID Address,
+    ULONG NumberOfPages
+    )
+{
+    ULONG Index;
+    PCHAR Pointer = Address;
+
+    __try {
+
+        for (Index = 0; Index < NumberOfPages; Index++) {
+            PrefaultPage(Pointer);
+            Pointer += PAGE_SIZE;
+        }
+
+    } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
+              EXCEPTION_EXECUTE_HANDLER :
+              EXCEPTION_CONTINUE_SEARCH) {
+
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 BOOL
@@ -3447,6 +3474,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "DestroyRtl"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'DestroyRtl'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->PrefaultPages = (PPREFAULT_PAGES)
+        GetProcAddress(RtlExModule, "PrefaultPages"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'PrefaultPages'");
         return FALSE;
     }
 

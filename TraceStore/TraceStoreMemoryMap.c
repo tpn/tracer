@@ -489,8 +489,10 @@ Finalize:
         // take care of prefaulting subsequent pages.
         //
 
-        PrefaultPage(BaseAddress);
-        PrefaultNextPage(BaseAddress);
+        if (!Rtl->PrefaultPages(BaseAddress, 2)) {
+            goto Error;
+        }
+
     }
 
     Success = TRUE;

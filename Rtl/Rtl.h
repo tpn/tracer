@@ -2038,8 +2038,24 @@ VOID
 typedef DESTROY_RTL *PDESTROY_RTL, **PPDESTROY_RTL;
 RTL_API DESTROY_RTL DestroyRtl;
 
+typedef
+BOOL
+(PREFAULT_PAGES)(
+    _In_ PVOID Address,
+    _In_ ULONG NumberOfPages
+    );
+typedef PREFAULT_PAGES *PPREFAULT_PAGES, **PPPREFAULT_PAGES;
+RTL_API PREFAULT_PAGES PrefaultPages;
+
+#define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
+
+#define PrefaultNextPage(Address) \
+    (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
+
+
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PDESTROY_RTL DestroyRtl;                                                   \
+    PPREFAULT_PAGES PrefaultPages;                                             \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
     PRTL_PARENT RtlParent;                                                     \
@@ -2127,11 +2143,6 @@ typedef struct _RTL {
 #define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
 #define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
 #define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
-
-#define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
-
-#define PrefaultNextPage(Address) \
-    (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
 #define ALIGN_DOWN(Address, Alignment)                     \
     ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))

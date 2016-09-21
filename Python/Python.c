@@ -3571,6 +3571,8 @@ Routine Description:
 
     Success = TRUE;
 
+    PathEntry->IsValid = TRUE;
+
     //
     // Intentional follow-on.
     //
