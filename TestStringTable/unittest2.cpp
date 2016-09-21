@@ -149,6 +149,17 @@ namespace TestStringTable
             ASSERT_FAILED_DELIMITED_TABLE(&Test7);
         }
 
+        TEST_METHOD(TestCreateStringTableFromDelimitedString4)
+        {
+            PSTRING_TABLE StringTable;
+
+            STRING Test8 = RTL_CONSTANT_STRING("foo");
+
+            DELIMITED_TABLE(&Test8);
+            ASSERT_SIZE(1);
+            DESTROY_TABLE();
+        }
+
     };
 }
 
