@@ -570,7 +570,12 @@ Return Value:
 
     Length = GetEnvironmentVariableA(Name, String.Buffer, String.MaximumLength);
 
-    if (Length != String.Length) {
+    //
+    // The length returned will not include the trailing NULL, so sub 1 from
+    // our String.Length here when verifying the copied bytes.
+    //
+
+    if (Length != String.Length - 1) {
 
         //
         // We failed to copy the expected number of bytes.

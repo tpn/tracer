@@ -176,17 +176,17 @@ Return Value:
 
     //
     // Find the first non-delimiter character.  If this returns either
-	// BITS_NOT_FOUND, or is equal to the length of the incoming string,
-	// we've been passed a string of all delimiters, so error out.
+    // BITS_NOT_FOUND, or is equal to the length of the incoming string,
+    // we've been passed a string of all delimiters, so error out.
     //
 
     PreviousBitmapIndex = RtlFindClearBits(Bitmap, 1, 0);
 
-	if (PreviousBitmapIndex == BITS_NOT_FOUND ||
-		PreviousBitmapIndex >= String->Length) {
+    if (PreviousBitmapIndex == BITS_NOT_FOUND ||
+        PreviousBitmapIndex >= String->Length) {
 
-		goto Error;
-	}
+        goto Error;
+    }
 
     //
     // Initialize variables before the loop.
@@ -256,10 +256,10 @@ Return Value:
 
             //
             // This was the last element.  Update the counter and break out
-			// of the loop.
+            // of the loop.
             //
 
-	        Count++;
+            Count++;
             break;
 
         }
@@ -278,21 +278,21 @@ Return Value:
 
             break;
 
-		} else if (PreviousBitmapIndex == String->Length) {
+        } else if (PreviousBitmapIndex == String->Length) {
 
-			//
-			// There are no more non-delimiter characters left in the string.
-			//
+            //
+            // There are no more non-delimiter characters left in the string.
+            //
 
-			Count++;
-			break;
-		}
+            Count++;
+            break;
+        }
 
         //
         // We've got another element to process, continue the loop.
         //
 
-		Count++;
+        Count++;
 
     } while (1);
 
@@ -573,15 +573,15 @@ Return Value:
 
             break;
 
-		} else if (PreviousBitmapIndex == String->Length) {
+        } else if (PreviousBitmapIndex == String->Length) {
 
-			//
-			// There are no more non-delimiter characters left in the string.
-			//
+            //
+            // There are no more non-delimiter characters left in the string.
+            //
 
-			break;
+            break;
 
-		} else {
+        } else {
 
             //
             // If there was more than one delimiter after the string just
