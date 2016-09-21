@@ -376,7 +376,7 @@ PyTraceCallback(
         return 0;
     }
 
-    if (!Function || !Function->PathEntry.IsValid == 0) {
+    if (!Function || !Function->PathEntry.IsValid) {
         return 0;
     }
 

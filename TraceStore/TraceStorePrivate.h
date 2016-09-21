@@ -523,7 +523,7 @@ Return Value:
     // Prefault the page.
     //
 
-    PrefaultPage(PrefaultMemoryMap->NextAddress);
+    TraceStore->Rtl->PrefaultPages(PrefaultMemoryMap->NextAddress, 1);
 
     //
     // Return the memory map to the free list.
