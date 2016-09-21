@@ -184,6 +184,26 @@ static const PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets = {
     FIELD_OFFSET(PYTHON_FUNCTION, Unused4),
 };
 
+#define ASSERT_SANE_STRING_LENGTH(String)                       \
+    if (String.Length > 200 || String.MaximumLength > 200) {    \
+        __debugbreak();                                         \
+    }                                                           \
+    OutputDebugStringA(String.Buffer);
+
+#define ASSERT_SANE_PSTRING_LENGTH(String)                      \
+    if (String->Length > 200 || String->MaximumLength > 200) {  \
+        __debugbreak();                                         \
+    }                                                           \
+    OutputDebugStringA(String->Buffer);
+
+#define DEBUG_ENTRY_PSTRING(Routine, String)                    \
+    OutputDebugStringA(#Routine " ");                           \
+    OutputDebugStringA(String->Buffer);                         \
+    OutputDebugStringA("\n");
+
+#define DEBUG(Message) \
+    OutputDebugStringA(Message);
+
 BOOL
 SetPythonAllocators(
     _In_    PPYTHON             Python,
@@ -1503,6 +1523,10 @@ RegisterDirectory(
         return FALSE;
     }
 
+    if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = NULL;
+    }
+
     //
     // Non-root nodes must have a name and ancestor provided.
     //
@@ -1523,6 +1547,8 @@ RegisterDirectory(
         }
 
         IsModule = TRUE;
+
+        ASSERT_SANE_PSTRING_LENGTH(DirectoryName);
 
         AncestorIsRoot = (BOOL)AncestorEntry->IsNonModuleDirectory;
 
@@ -1670,8 +1696,11 @@ RegisterDirectory(
     if (!Success) {
         FreeStringBuffer(Python, &Entry->ModuleName);
         FreePythonPathTableEntry(Python, Entry);
-    } else if (ARGUMENT_PRESENT(EntryPointer)) {
-        *EntryPointer = Entry;
+    } else {
+        Entry->IsValid = TRUE;
+        if (ARGUMENT_PRESENT(EntryPointer)) {
+            *EntryPointer = Entry;
+        }
     }
 
     return Success;
@@ -2532,6 +2561,8 @@ GetPathEntryForDirectory(
         return FALSE;
     }
 
+    DEBUG_ENTRY_PSTRING(GetPathEntryForDirectory, Directory);
+
     Rtl = Python->Rtl;
 
     //
@@ -2539,6 +2570,14 @@ GetPathEntryForDirectory(
     //
 
     PrefixTable = &Python->PathTable->PrefixTable;
+
+    //
+    // Clear NextName.
+    //
+
+    NextName.Length = 0;
+    NextName.MaximumLength = 0;
+    NextName.Buffer = NULL;
 
     //
     // Search for the directory in the prefix table.
@@ -2599,6 +2638,7 @@ GetPathEntryForDirectory(
         //
 
         Success = IsModuleDirectoryA(Rtl, Directory, &IsModule);
+        ASSERT_SANE_PSTRING_LENGTH(Directory);
 
         if (!Success) {
 
@@ -2670,7 +2710,8 @@ GetPathEntryForDirectory(
         )
     );
 
-    if (ReversedIndex == BITS_NOT_FOUND) {
+    if (ReversedIndex == BITS_NOT_FOUND ||
+        ReversedIndex < LastReversedIndex) {
 
         //
         // Should never happen.
@@ -2693,10 +2734,13 @@ GetPathEntryForDirectory(
     );
     DirectoryName.MaximumLength = DirectoryName.Length;
     DirectoryName.Buffer = &Directory->Buffer[Offset];
+    DEBUG("Python.c:2737");
+    ASSERT_SANE_STRING_LENGTH(DirectoryName);
 
     ParentDirectory.Length = Offset - 1;
     ParentDirectory.MaximumLength = Offset - 1;
     ParentDirectory.Buffer = Directory->Buffer;
+    ASSERT_SANE_STRING_LENGTH(ParentDirectory);
 
     //
     // Special-case fast-path: if ParentEntry is defined and the length matches
@@ -2737,18 +2781,23 @@ GetPathEntryForDirectory(
     PreviousDirectory.Length = ParentDirectory.Length;
     PreviousDirectory.MaximumLength = ParentDirectory.MaximumLength;
     PreviousDirectory.Buffer = ParentDirectory.Buffer;
+    DEBUG("Python.c:2784");
+    ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
 
     AncestorDirectory.Length = ParentDirectory.Length;
     AncestorDirectory.MaximumLength = ParentDirectory.MaximumLength;
     AncestorDirectory.Buffer = ParentDirectory.Buffer;
+    ASSERT_SANE_STRING_LENGTH(AncestorDirectory);
 
     PreviousName.Length = DirectoryName.Length;
     PreviousName.MaximumLength = DirectoryName.MaximumLength;
     PreviousName.Buffer = DirectoryName.Buffer;
+    ASSERT_SANE_STRING_LENGTH(PreviousName);
 
     AncestorName.Length = DirectoryName.Length;
     AncestorName.MaximumLength = DirectoryName.MaximumLength;
     AncestorName.Buffer = DirectoryName.Buffer;
+    ASSERT_SANE_STRING_LENGTH(AncestorName);
 
     do {
 
@@ -2772,6 +2821,8 @@ GetPathEntryForDirectory(
                 //
 
                 IsModule = FALSE;
+                DEBUG("Python.c:2824");
+                ASSERT_SANE_STRING_LENGTH(AncestorDirectory);
             }
         }
 
@@ -2782,16 +2833,22 @@ GetPathEntryForDirectory(
             // This becomes our root directory.
             //
 
+            ASSERT_SANE_STRING_LENGTH(AncestorDirectory);
             RootDirectory.Length = AncestorDirectory.Length;
             RootDirectory.MaximumLength = AncestorDirectory.MaximumLength;
             RootDirectory.Buffer = AncestorDirectory.Buffer;
             RootPrefix = &RootDirectory;
+            DEBUG("Python.c:2841");
+            ASSERT_SANE_STRING_LENGTH(RootDirectory);
 
             Success = RegisterRoot(Python, RootPrefix, &RootEntry);
 
             if (!Success) {
                 return FALSE;
             }
+
+            DEBUG("Python.c:2850");
+            ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
 
             if (PreviousDirectory.Length > RootDirectory.Length) {
 
@@ -2809,6 +2866,10 @@ GetPathEntryForDirectory(
                 if (!Success) {
                     return FALSE;
                 }
+
+                DEBUG("Python.c:2870");
+                ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
+                ASSERT_SANE_STRING_LENGTH(PreviousName);
 
                 //
                 // Determine if we need to process more ancestors, or if that
@@ -2865,17 +2926,21 @@ GetPathEntryForDirectory(
         PreviousDirectory.Length = AncestorDirectory.Length;
         PreviousDirectory.MaximumLength = AncestorDirectory.MaximumLength;
         PreviousDirectory.Buffer = AncestorDirectory.Buffer;
+        DEBUG("Python.c:2929");
+        ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
 
         PreviousName.Length = AncestorName.Length;
         PreviousName.MaximumLength = AncestorName.MaximumLength;
         PreviousName.Buffer = AncestorName.Buffer;
+        ASSERT_SANE_STRING_LENGTH(PreviousName);
 
         LastReversedIndex = (*BitmapHintIndex)++;
 
         ReversedIndex = (USHORT)Rtl->RtlFindSetBits(Backslashes, 1,
                                                     *BitmapHintIndex);
 
-        if (ReversedIndex == BITS_NOT_FOUND) {
+        if (ReversedIndex == BITS_NOT_FOUND ||
+            ReversedIndex < LastReversedIndex) {
 
             //
             // Should never happen.
@@ -2897,10 +2962,13 @@ GetPathEntryForDirectory(
         );
         AncestorName.MaximumLength = DirectoryName.Length;
         AncestorName.Buffer = &Directory->Buffer[Offset];
+        DEBUG("Python.c:2965");
+        ASSERT_SANE_STRING_LENGTH(AncestorName);
 
         AncestorDirectory.Length = Offset - 1;
         AncestorDirectory.MaximumLength = Offset - 1;
         AncestorDirectory.Buffer = Directory->Buffer;
+        ASSERT_SANE_STRING_LENGTH(AncestorDirectory);
 
         //
         // Continue the loop.
@@ -2926,6 +2994,8 @@ FoundAncestor:
     NextName.Length = ParentDirectory.Length - AncestorPrefix->Length - 1;
     NextName.MaximumLength = NextName.Length;
     NextName.Buffer = ParentDirectory.Buffer + AncestorPrefix->Length + 1;
+    DEBUG("Python.c:2997");
+    ASSERT_SANE_STRING_LENGTH(NextName);
 
     //
     // Truncate our existing bitmap to an aligned size matching the number of
@@ -2955,6 +3025,7 @@ FoundAncestor:
 
         NextDirectory.Length = AncestorPrefix->Length + NextName.Length + 1;
         NextDirectory.MaximumLength = NextDirectory.Length;
+        //ASSERT_SANE_STRING_LENGTH(NextDirectory);
 
     } else {
 
@@ -2978,9 +3049,12 @@ FoundAncestor:
 
         NextName.Length = ForwardIndex;
         NextName.MaximumLength = NextName.Length;
+        DEBUG("Python.c:3052");
+        ASSERT_SANE_STRING_LENGTH(NextName);
 
         NextDirectory.Length = AncestorPrefix->Length + ForwardIndex + 1;
         NextDirectory.MaximumLength = NextDirectory.Length;
+        //ASSERT_SANE_STRING_LENGTH(NextDirectory);
 
     }
 
@@ -2998,6 +3072,10 @@ FoundAncestor:
         if (!Success) {
             IsModule = FALSE;
         }
+
+        DEBUG("Python.c:3076");
+        ASSERT_SANE_STRING_LENGTH(NextDirectory);
+        ASSERT_SANE_STRING_LENGTH(NextName);
 
         if (!IsModule) {
 
@@ -3019,6 +3097,14 @@ FoundAncestor:
             return FALSE;
         }
 
+        DEBUG("Python.c:3100");
+        ASSERT_SANE_STRING_LENGTH(NextDirectory);
+        ASSERT_SANE_STRING_LENGTH(NextName);
+
+        if (!NextEntry) {
+            __debugbreak();
+        }
+
         //
         // See if that was the last ancestor directory we need to add.
         //
@@ -3031,6 +3117,7 @@ FoundAncestor:
             // directory.
             //
 
+            DEBUG("No ancestors remaining.");
             if (NextEntry->Prefix->Length != ParentDirectory.Length) {
                 __debugbreak();
             }
@@ -3051,17 +3138,38 @@ FoundAncestor:
 
         if (RemainingAncestors == 1) {
 
+            DEBUG("1 ancestor remaining.");
+
+            if (ParentDirectory.Length == NextDirectory.Length) {
+                __debugbreak();
+            }
+
+            if (ParentDirectory.Length < NextDirectory.Length) {
+
+                //
+                // XXX: review!
+                //
+
+                goto FoundParent;
+
+                __debugbreak();
+            }
+
             NextName.Length = (
                 ParentDirectory.Length -
                 NextDirectory.Length   -
                 1
             );
+            ASSERT_SANE_STRING_LENGTH(NextName);
 
             NextName.Buffer += (ForwardIndex + 1);
 
             NextDirectory.Length += (NextName.Length + 1);
+            ASSERT_SANE_STRING_LENGTH(NextDirectory);
 
         } else {
+
+            DEBUG("1> ancestor remaining.");
 
             LastForwardIndex = (*ForwardHintIndex)++;
 
@@ -3072,13 +3180,33 @@ FoundAncestor:
                                     *ForwardHintIndex)
             );
 
+            if (ForwardIndex == CumulativeForwardIndex + 1) {
+
+                //
+                // XXX: review this!
+                //
+
+                goto FoundParent;
+            }
+
+            if (ForwardIndex < LastForwardIndex ||
+                ForwardIndex > Directory->Length) {
+
+                __debugbreak();
+
+            }
+
             NextName.Length = CumulativeForwardIndex - ForwardIndex;
             NextName.Buffer += ForwardIndex;
+            DEBUG("Python.c:3201");
+            ASSERT_SANE_STRING_LENGTH(NextName);
+
             NextDirectory.Length += ForwardIndex;
+            ASSERT_SANE_STRING_LENGTH(NextDirectory);
         }
 
         if (ForwardIndex == BITS_NOT_FOUND ||
-            ForwardIndex == LastForwardIndex) {
+            ForwardIndex < LastForwardIndex) {
 
             //
             // Should never happen.
@@ -3118,6 +3246,10 @@ FoundParent:
     }
 
     IsRoot = (IsModule ? FALSE : TRUE);
+
+    DEBUG("Python.c:3250");
+    ASSERT_SANE_PSTRING_LENGTH(Directory);
+    ASSERT_SANE_STRING_LENGTH(DirectoryName);
 
     Success = RegisterDirectory(Python,
                                 Directory,
@@ -3238,6 +3370,8 @@ Routine Description:
     if (!Success) {
         return FALSE;
     }
+
+    DEBUG_ENTRY_PSTRING(RegisterFile, (&PathString));
 
     //
     // If the path was qualified, we will have already allocated new space for
@@ -3642,6 +3776,8 @@ GetPathEntryFromFrame(
         return FALSE;
     }
 
+    DEBUG_ENTRY_PSTRING(GetPathEntryFromFrame, Path);
+
     PrefixTable = &Python->PathTable->PrefixTable;
     Rtl = Python->Rtl;
 
@@ -3829,8 +3965,13 @@ Error:
     IsValid = Function->PathEntry.IsValid = FALSE;
 
 End:
-    if (IsValid && ARGUMENT_PRESENT(FunctionPointer)) {
-        *FunctionPointer = Function;
+    if (IsValid) {
+        if (!Function->PathEntry.IsValid) {
+            __debugbreak();
+        }
+        if (ARGUMENT_PRESENT(FunctionPointer)) {
+            *FunctionPointer = Function;
+        }
     }
 
     return IsValid;

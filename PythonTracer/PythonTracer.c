@@ -376,9 +376,10 @@ PyTraceCallback(
         return 0;
     }
 
-    if (!Function || !Function->PathEntry.IsValid) {
-        return 0;
-    }
+	if (!Function->PathEntry.IsValid) {
+		__debugbreak();
+		return 0;
+	}
 
     //
     // We obtained the PYTHON_FUNCTION for this frame, check to see if it's
