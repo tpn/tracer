@@ -509,7 +509,7 @@ Return Value:
 
     //
     // Get the number of characters required to store the environment variable's
-    // value.
+    // value, including the trailing NULL byte.
     //
 
     Name = EnvironmentVariableName;
@@ -519,7 +519,11 @@ Return Value:
         return NULL;
     }
 
-    NumberOfChars.LongPart = Length;
+    //
+    // Remove the trailing NULL.
+    //
+
+    NumberOfChars.LongPart = Length - 1;
 
     //
     // Sanity check it's not longer than MAX_USHORT.
@@ -570,12 +574,7 @@ Return Value:
 
     Length = GetEnvironmentVariableA(Name, String.Buffer, String.MaximumLength);
 
-    //
-    // The length returned will not include the trailing NULL, so sub 1 from
-    // our String.Length here when verifying the copied bytes.
-    //
-
-    if (Length != String.Length - 1) {
+    if (Length != String.Length) {
 
         //
         // We failed to copy the expected number of bytes.
