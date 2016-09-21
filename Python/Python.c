@@ -3736,6 +3736,9 @@ RegisterFrame(
     _Out_opt_ PPPYTHON_FUNCTION FunctionPointer
     )
 {
+    BOOL Success;
+    BOOL IsValid;
+
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
     PPYOBJECT CodeObject;
@@ -3745,7 +3748,14 @@ RegisterFrame(
     PPYTHON_FUNCTION_TABLE FunctionTable;
     BOOLEAN NewFunction;
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
-    BOOL Success;
+
+    //
+    // Clear the caller's function pointer up front if present.
+    //
+
+    if (ARGUMENT_PRESENT(FunctionPointer)) {
+        *FunctionPointer = NULL;
+    }
 
     CodeObject = Frame->Code;
 
@@ -3769,10 +3779,16 @@ RegisterFrame(
     if (!NewFunction) {
 
         //
-        // We've already seen this function.  Increment the reference count.
+        // We've already seen this function.  Increment the reference count if
+        // it's a valid function.
         //
 
-        Function->ReferenceCount++;
+        IsValid = IsValidFunction(Function);
+
+        if (IsValid) {
+            Function->ReferenceCount++;
+        }
+
         goto End;
     }
 
@@ -3787,8 +3803,8 @@ RegisterFrame(
                                     ArgObject,
                                     &ParentPathEntry);
 
-    if (!Success || !ParentPathEntry) {
-        return FALSE;
+    if (!Success || !ParentPathEntry || !ParentPathEntry->IsValid) {
+        goto Error;
     }
 
     Function->ParentPathEntry = ParentPathEntry;
@@ -3798,16 +3814,24 @@ RegisterFrame(
                                Function,
                                FrameObject);
 
-    if (!Success) {
-        return FALSE;
+    if (Success) {
+        IsValid = TRUE;
+        goto End;
     }
 
+    //
+    // Intentional follow-on to Error.
+    //
+
+Error:
+    IsValid = Function->PathEntry.IsValid = FALSE;
+
 End:
-    if (ARGUMENT_PRESENT(FunctionPointer)) {
+    if (IsValid && ARGUMENT_PRESENT(FunctionPointer)) {
         *FunctionPointer = Function;
     }
 
-    return IsValidFunction(Function);
+    return IsValid;
 }
 
 PYTHON_API

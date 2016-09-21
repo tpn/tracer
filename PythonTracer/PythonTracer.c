@@ -129,6 +129,7 @@ IsFunctionOfInterestStringTable(
     _In_    PPYTHON_FUNCTION        Function
     )
 {
+    STRING Name;
     PSTRING ModuleName;
     PSTRING_TABLE StringTable = Context->ModuleFilterStringTable;
     STRING_TABLE_INDEX Index;
@@ -145,8 +146,15 @@ IsFunctionOfInterestStringTable(
 
     ModuleName = &Function->PathEntry.ModuleName;
 
-    if (!StringTable || !ModuleName || ModuleName->Length == 0) {
+    if (!StringTable || !ModuleName || ModuleName->Length <= 1) {
         return FALSE;
+    }
+
+    if (ModuleName->Buffer[0] == '\\') {
+        Name.Length = ModuleName->Length - 1;
+        Name.MaximumLength = ModuleName->MaximumLength - 1;
+        Name.Buffer = ModuleName->Buffer + 1;
+        ModuleName = &Name;
     }
 
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
@@ -600,7 +608,7 @@ PyTraceCallback(
     if (Flags.TraceHandleCount) {
 
         //
-        // Calcualte handle count delta.
+        // Calculate handle count delta.
         //
 
         LastEvent.HandleDelta = (SHORT)(
