@@ -1568,11 +1568,20 @@ RegisterDirectory(
 
         IsModule = TRUE;
 
+        DEBUG("In RegisterDirectory... DirectoryName:");
         ASSERT_SANE_PSTRING_LENGTH(DirectoryName);
 
         AncestorIsRoot = (BOOL)AncestorEntry->IsNonModuleDirectory;
 
         AncestorModuleName = &AncestorEntry->ModuleName;
+
+        if (AncestorModuleName->Length > 0 &&
+            AncestorModuleName->Buffer) {
+
+            DEBUG_ENTRY_PSTRING(RegisterDirectory1, AncestorModuleName);
+        } else {
+            DEBUG("Empty ancestor module name!");
+        }
 
         NameLength = DirectoryName->Length;
 
@@ -1679,6 +1688,8 @@ RegisterDirectory(
 
             ModuleName->Buffer[Offset-1] = '\\';
 
+        } else {
+            DEBUG("Not copying module name!  !AncestorIsRoot");
         }
 
         //
@@ -3203,17 +3214,6 @@ FoundAncestor:
                 Rtl->RtlFindSetBits(Bitmap, 1,
                                     *ForwardHintIndex)
             );
-
-            if (ForwardIndex == CumulativeForwardIndex + 1) {
-
-                __debugbreak();
-
-                //
-                // XXX: review this!
-                //
-
-                //goto GetNextForwardIndex;
-            }
 
             if (ForwardIndex < LastForwardIndex ||
                 ForwardIndex > Directory->Length) {
