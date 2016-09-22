@@ -1,6 +1,45 @@
 
 #include "stdafx.h"
 
+#ifdef _DEBUG
+#define ASSERT_SANE_STRING_LENGTH(String) {                     \
+    CHAR Temp = String.Buffer[String.Length];                   \
+    if (String.Length > 200 || String.MaximumLength > 200) {    \
+        __debugbreak();                                         \
+    }                                                           \
+    OutputDebugStringA(#String);                                \
+    OutputDebugStringA(String.Buffer);                          \
+    String.Buffer[String.Length] = Temp;                        \
+}
+
+#define ASSERT_SANE_PSTRING_LENGTH(String) {                    \
+    CHAR Temp = String->Buffer[String->Length];                 \
+    String->Buffer[String->Length] = '\0';                      \
+    if (String->Length > 200 || String->MaximumLength > 200) {  \
+        __debugbreak();                                         \
+    }                                                           \
+    OutputDebugStringA(#String);                                \
+    OutputDebugStringA(String->Buffer);                         \
+    String->Buffer[String->Length] = Temp;                      \
+}
+
+#define DEBUG_ENTRY_PSTRING(Routine, String) {                  \
+    CHAR Temp = String->Buffer[String->Length];                 \
+    String->Buffer[String->Length] = '\0';                      \
+    OutputDebugStringA(#Routine " ");                           \
+    OutputDebugStringA(String->Buffer);                         \
+    String->Buffer[String->Length] = Temp;                      \
+}
+
+#define DEBUG(Message) \
+    OutputDebugStringA(Message);
+#else
+#define ASSERT_SANE_STRING_LENGTH(String)
+#define ASSERT_SANE_PSTRING_LENGTH(String)
+#define DEBUG_ENTRY_PSTRING(Routine, String)
+#define DEBUG(Message)
+#endif
+
 #pragma intrinsic(strlen)
 
 static CONST USHORT TargetSizeOfPythonPathTableEntry = 128;
@@ -184,25 +223,6 @@ static const PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets = {
     FIELD_OFFSET(PYTHON_FUNCTION, Unused4),
 };
 
-#define ASSERT_SANE_STRING_LENGTH(String)                       \
-    if (String.Length > 200 || String.MaximumLength > 200) {    \
-        __debugbreak();                                         \
-    }                                                           \
-    OutputDebugStringA(String.Buffer);
-
-#define ASSERT_SANE_PSTRING_LENGTH(String)                      \
-    if (String->Length > 200 || String->MaximumLength > 200) {  \
-        __debugbreak();                                         \
-    }                                                           \
-    OutputDebugStringA(String->Buffer);
-
-#define DEBUG_ENTRY_PSTRING(Routine, String)                    \
-    OutputDebugStringA(#Routine " ");                           \
-    OutputDebugStringA(String->Buffer);                         \
-    OutputDebugStringA("\n");
-
-#define DEBUG(Message) \
-    OutputDebugStringA(Message);
 
 BOOL
 SetPythonAllocators(
@@ -1714,6 +1734,7 @@ RegisterRoot(
     _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 {
+    DEBUG_ENTRY_PSTRING(RegisterRoot, Directory);
     return RegisterDirectory(Python,
                              Directory,
                              NULL,
@@ -1735,6 +1756,7 @@ RegisterNonModuleDirectory(
     _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 {
+    DEBUG_ENTRY_PSTRING(RegisterNonModuleDirectory, Directory);
     return RegisterDirectory(Python,
                              Directory,
                              NULL,
@@ -1753,6 +1775,7 @@ RegisterModuleDirectory(
     _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 {
+    DEBUG_ENTRY_PSTRING(RegisterModuleDirectory, Directory);
     return RegisterDirectory(Python,
                              Directory,
                              DirectoryName,
@@ -3150,9 +3173,10 @@ FoundAncestor:
                 // XXX: review!
                 //
 
-                goto FoundParent;
-
                 __debugbreak();
+
+                //goto FoundParent;
+
             }
 
             NextName.Length = (
@@ -3162,7 +3186,7 @@ FoundAncestor:
             );
             ASSERT_SANE_STRING_LENGTH(NextName);
 
-            NextName.Buffer += (ForwardIndex + 1);
+            NextName.Buffer += (LastForwardIndex + 1);
 
             NextDirectory.Length += (NextName.Length + 1);
             ASSERT_SANE_STRING_LENGTH(NextDirectory);
@@ -3182,11 +3206,13 @@ FoundAncestor:
 
             if (ForwardIndex == CumulativeForwardIndex + 1) {
 
+                __debugbreak();
+
                 //
                 // XXX: review this!
                 //
 
-                goto FoundParent;
+                //goto GetNextForwardIndex;
             }
 
             if (ForwardIndex < LastForwardIndex ||
@@ -3196,17 +3222,17 @@ FoundAncestor:
 
             }
 
-            NextName.Length = CumulativeForwardIndex - ForwardIndex;
-            NextName.Buffer += ForwardIndex;
+            NextName.Length = ForwardIndex - (LastForwardIndex + 1);
+            //NextName.Buffer += ForwardIndex;
+            NextName.Buffer += (LastForwardIndex + 1);
             DEBUG("Python.c:3201");
             ASSERT_SANE_STRING_LENGTH(NextName);
 
-            NextDirectory.Length += ForwardIndex;
+            NextDirectory.Length += (LastForwardIndex + 1);
             ASSERT_SANE_STRING_LENGTH(NextDirectory);
         }
 
-        if (ForwardIndex == BITS_NOT_FOUND ||
-            ForwardIndex < LastForwardIndex) {
+        if (ForwardIndex == BITS_NOT_FOUND) {
 
             //
             // Should never happen.
@@ -3840,7 +3866,6 @@ Retry:
         }
 
     }
-
 
     Success = RegisterFile(Python,
                            Path,
