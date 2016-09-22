@@ -7,6 +7,7 @@
     if (String.Length > 200 || String.MaximumLength > 200) {    \
         __debugbreak();                                         \
     }                                                           \
+    String.Buffer[String.Length] = '\0';                        \
     OutputDebugStringA(#String);                                \
     OutputDebugStringA(String.Buffer);                          \
     String.Buffer[String.Length] = Temp;                        \
@@ -31,13 +32,73 @@
     String->Buffer[String->Length] = Temp;                      \
 }
 
+#define DEBUG_ENTRY_STRING(Routine, String) {                   \
+    CHAR Temp = String.Buffer[String.Length];                   \
+    String.Buffer[String.Length] = '\0';                        \
+    OutputDebugStringA(#Routine " ");                           \
+    OutputDebugStringA(String.Buffer);                          \
+    String.Buffer[String.Length] = Temp;                        \
+}
+
 #define DEBUG(Message) \
     OutputDebugStringA(Message);
+
+#define DEBUG_USHORT(Name)      \
+    OutputDebugIntegerAsString( \
+        (ULONG)(Name),          \
+        5,                      \
+        #Name,                  \
+        NULL                    \
+    )
+
+#define DEBUG_PUSHORT(Name)     \
+    OutputDebugIntegerAsString( \
+        (ULONG)(*Name),         \
+        5,                      \
+        #Name,                  \
+        NULL                    \
+    )
+
+
+#define DEBUG_ULONG(Name)       \
+    OutputDebugIntegerAsString( \
+        (ULONG)(Name),          \
+        10,                     \
+        #Name,                  \
+        NULL                    \
+    )
+
+#define DEBUG_PULONG(Name)      \
+    OutputDebugIntegerAsString( \
+        (ULONG)(*Name),         \
+        10,                     \
+        #Name,                  \
+        NULL                    \
+    )
+
+
+static CONST STRING BreakPath = \
+    RTL_CONSTANT_STRING("C:\\Users\\Trent\\home\\src\\tcm\\statarb\\python\\source\\tzstatarb\\hilbert\\__init__.py");
+
+static CONST STRING BreakPath2 = \
+    RTL_CONSTANT_STRING("C:\\Users\\Trent\\home\\src\\tcm\\common\\python\\teza\\common\\tzlogging.py");
+
+#define CHECK_BREAK_PATH(Path)                          \
+    if (Rtl->RtlEqualString(&BreakPath, Path, TRUE)) {  \
+        __debugbreak();                                 \
+    }
+
 #else
 #define ASSERT_SANE_STRING_LENGTH(String)
 #define ASSERT_SANE_PSTRING_LENGTH(String)
+#define DEBUG_ENTRY_STRING(Routine, String)
 #define DEBUG_ENTRY_PSTRING(Routine, String)
 #define DEBUG(Message)
+#define DEBUG_USHORT(Name)
+#define DEBUG_PUSHORT(Name)
+#define DEBUG_ULONG(Name)
+#define DEBUG_PULONG(Name)
+#define CHECK_BREAK_PATH(Path)
 #endif
 
 #pragma intrinsic(strlen)
@@ -1517,9 +1578,11 @@ RegisterDirectory(
 
     PPREFIX_TABLE PrefixTable;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
+    PPREFIX_TABLE_ENTRY ExistingTableEntry;
 
     ULONG StringBufferSize;
     PPYTHON_PATH_TABLE_ENTRY Entry;
+    PPYTHON_PATH_TABLE_ENTRY ExistingEntry;
 
     PSTRING AncestorModuleName;
     PSTRING Name;
@@ -1625,7 +1688,16 @@ RegisterDirectory(
         Entry->IsNonModuleDirectory = TRUE;
     }
 
-    if (!IsRoot) {
+    if (IsRoot) {
+
+        ModuleName = &Entry->ModuleName;
+
+        if (ModuleName->Length != 0 ||
+            ModuleName->Buffer != NULL) {
+            __debugbreak();
+        }
+
+    } else {
 
         PSTR Dest;
         PSTR Source;
@@ -1674,6 +1746,11 @@ RegisterDirectory(
 
         if (!AncestorIsRoot) {
 
+            if (AncestorModuleName->Length == 0 ||
+                !AncestorModuleName->Buffer) {
+                __debugbreak();
+            }
+
             //
             // Copy the ModuleName over.
             //
@@ -1687,6 +1764,9 @@ RegisterDirectory(
             //
 
             ModuleName->Buffer[Offset-1] = '\\';
+
+            DEBUG_ENTRY_PSTRING(Directory_CopiedModuleName,
+                                ModuleName);
 
         } else {
             DEBUG("Not copying module name!  !AncestorIsRoot");
@@ -1720,9 +1800,41 @@ RegisterDirectory(
     PrefixTable = &Python->PathTable->PrefixTable;
     PrefixTableEntry = (PPREFIX_TABLE_ENTRY)Entry;
 
+    DEBUG_ENTRY_PSTRING(PreInsertDirectoryPrefix, DirectoryPrefix);
+    ExistingTableEntry = Rtl->PfxFindPrefix(PrefixTable, DirectoryPrefix);
+    ExistingEntry = (PPYTHON_PATH_TABLE_ENTRY)ExistingTableEntry;
+
+    if (ExistingEntry) {
+        PSTRING Existing = &ExistingEntry->Path;
+
+#ifdef _DEBUG
+        if (Existing->Length >= DirectoryPrefix->Length) {
+            __debugbreak();
+        }
+#endif
+
+        DEBUG("FOUND EXISTING ENTRY");
+        ASSERT_SANE_PSTRING_LENGTH(Existing);
+    }
+
     Success = Rtl->PfxInsertPrefix(PrefixTable,
                                    DirectoryPrefix,
                                    PrefixTableEntry);
+
+    DEBUG_ENTRY_PSTRING(INSERTED_DIRECTORY_PREFIX,
+                        DirectoryPrefix);
+
+    if (Entry->ModuleName.Length > 0) {
+        PSTRING TempString = &Entry->ModuleName;
+        DEBUG("New directory module name: ");
+        DEBUG_ENTRY_PSTRING(PostDirectoryInsert_ModuleName,
+                            TempString);
+    } else {
+        DEBUG_ENTRY_PSTRING(
+            PostDirectoryInsert_NOMODULENAME,
+            DirectoryPrefix);
+    }
+
 
     if (!Success) {
         FreeStringBuffer(Python, &Entry->ModuleName);
@@ -1786,13 +1898,16 @@ RegisterModuleDirectory(
     _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 {
+    BOOL Success;
     DEBUG_ENTRY_PSTRING(RegisterModuleDirectory, Directory);
-    return RegisterDirectory(Python,
-                             Directory,
-                             DirectoryName,
-                             AncestorEntry,
-                             PathEntryPointer,
-                             FALSE);
+
+    Success = RegisterDirectory(Python,
+                                Directory,
+                                DirectoryName,
+                                AncestorEntry,
+                                PathEntryPointer,
+                                FALSE);
+    return Success;
 }
 
 BOOL
@@ -2563,14 +2678,16 @@ GetPathEntryForDirectory(
     PUSHORT ForwardHintIndex;
 
     USHORT Offset;
+    USHORT Iteration;
     USHORT ForwardIndex;
     USHORT ReversedIndex;
     USHORT NumberOfChars;
-    USHORT LastForwardIndex;
+    USHORT LastForwardIndex = 0;
     USHORT LastReversedIndex;
     USHORT CumulativeForwardIndex;
     USHORT CumulativeReversedIndex;
     USHORT RemainingAncestors;
+    USHORT Length;
 
     BOOL IsModule = FALSE;
     BOOL IsRoot = FALSE;
@@ -2659,6 +2776,7 @@ GetPathEntryForDirectory(
         // parent directory, we may revise this to be an ancestor entry.
         //
 
+        DEBUG_ENTRY_PSTRING(GetPathEntryForDirectoryPrefixMatch, Match);
         ParentEntry = PathEntry;
         PathEntry = NULL;
 
@@ -2691,6 +2809,7 @@ GetPathEntryForDirectory(
             // Register this directory as the root and return.
             //
 
+            DEBUG_ENTRY_PSTRING(GetPathEntryForDirectory_NewRoot, Directory);
             return RegisterRoot(Python, Directory, PathEntryPointer);
 
         }
@@ -2735,6 +2854,7 @@ GetPathEntryForDirectory(
     //
 
     LastReversedIndex = (*BitmapHintIndex)++;
+    DEBUG_USHORT(LastReversedIndex);
 
     ReversedIndex = (USHORT)(
         Rtl->RtlFindSetBits(
@@ -2755,17 +2875,26 @@ GetPathEntryForDirectory(
     }
 
     NumberOfChars = Directory->Length;
+    DEBUG_USHORT(NumberOfChars);
+    DEBUG_USHORT(ReversedIndex);
+    DEBUG_USHORT(LastReversedIndex);
     Offset = NumberOfChars - ReversedIndex + LastReversedIndex + 1;
+    DEBUG_USHORT(Offset);
+
     CumulativeReversedIndex = LastReversedIndex;
+    DEBUG_USHORT(CumulativeReversedIndex);
 
     //
     // Extract the directory name, and the parent directory's full path.
     //
 
+    DEBUG("Extract directory name and parent's full path...");
     DirectoryName.Length = (
         (ReversedIndex - CumulativeReversedIndex) -
         sizeof(CHAR)
     );
+    Length = DirectoryName.Length;
+    DEBUG_USHORT(Length);
     DirectoryName.MaximumLength = DirectoryName.Length;
     DirectoryName.Buffer = &Directory->Buffer[Offset];
     DEBUG("Python.c:2737");
@@ -2790,9 +2919,16 @@ GetPathEntryForDirectory(
             // Parent has been added.
             //
 
+            DEBUG_ENTRY_PSTRING(GetPathEntryForDirectory_FoundParentFastPath,
+                                ParentPrefix);
+
             goto FoundParent;
 
         }
+
+        DEBUG_ENTRY_PSTRING(GetPathEntryForDirectory_ParentPrefixMatch,
+                            ParentPrefix);
+
 
         //
         // An ancestor, not our immediate parent, has been added.
@@ -2833,9 +2969,16 @@ GetPathEntryForDirectory(
     AncestorName.Buffer = DirectoryName.Buffer;
     ASSERT_SANE_STRING_LENGTH(AncestorName);
 
+    Iteration = 0;
+
     do {
+        USHORT TempShort;
+        DEBUG_ENTRY_STRING(TopOfLoop_AncestorDirectory, AncestorDirectory);
+        DEBUG_USHORT(Iteration);
 
         if (!*NumberOfBackslashesRemaining) {
+
+            DEBUG("No backslashes remaining!");
 
             IsModule = FALSE;
 
@@ -2867,12 +3010,13 @@ GetPathEntryForDirectory(
             // This becomes our root directory.
             //
 
+            DEBUG("Found non-module directory!:");
             ASSERT_SANE_STRING_LENGTH(AncestorDirectory);
             RootDirectory.Length = AncestorDirectory.Length;
             RootDirectory.MaximumLength = AncestorDirectory.MaximumLength;
             RootDirectory.Buffer = AncestorDirectory.Buffer;
             RootPrefix = &RootDirectory;
-            DEBUG("Python.c:2841");
+            DEBUG("Python.c:2841 -- RootDirectory");
             ASSERT_SANE_STRING_LENGTH(RootDirectory);
 
             Success = RegisterRoot(Python, RootPrefix, &RootEntry);
@@ -2881,14 +3025,23 @@ GetPathEntryForDirectory(
                 return FALSE;
             }
 
-            DEBUG("Python.c:2850");
+            DEBUG("Python.c:2850 - post RegisterRoot()");
             ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
 
             if (PreviousDirectory.Length > RootDirectory.Length) {
 
+                PSTRING AncestorPrefix;
+
                 //
                 // Add the previous directory as the first "module" directory.
                 //
+
+                DEBUG("PreviousDirectory.Length > RootDirectory.Length");
+                ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
+                DEBUG("Calling RegisterDirectory()");
+                ASSERT_SANE_STRING_LENGTH(PreviousName);
+                AncestorPrefix = AncestorEntry->Prefix;
+                ASSERT_SANE_PSTRING_LENGTH(AncestorPrefix);
 
                 Success = RegisterDirectory(Python,
                                             &PreviousDirectory,
@@ -2901,16 +3054,26 @@ GetPathEntryForDirectory(
                     return FALSE;
                 }
 
+                DEBUG("Post RegisterDirectory()");
+
                 DEBUG("Python.c:2870");
                 ASSERT_SANE_STRING_LENGTH(PreviousDirectory);
                 ASSERT_SANE_STRING_LENGTH(PreviousName);
+
+                AncestorPrefix = AncestorEntry->Prefix;
+                ASSERT_SANE_PSTRING_LENGTH(AncestorPrefix);
 
                 //
                 // Determine if we need to process more ancestors, or if that
                 // was actually the parent path.
                 //
 
-                if (AncestorEntry->Prefix->Length == ParentDirectory.Length) {
+                if (AncestorPrefix->Length == ParentDirectory.Length) {
+
+                    DEBUG("Found parent!");
+                    DEBUG_ENTRY_PSTRING(
+                        AncestorPrefxiLengthEqualsParentDirLength,
+                        AncestorPrefix);;
 
                     ParentPrefix = AncestorEntry->Prefix;
                     ParentEntry = AncestorEntry;
@@ -2918,6 +3081,16 @@ GetPathEntryForDirectory(
                     goto FoundParent;
 
                 } else {
+
+                    if (AncestorPrefix->Length > ParentDirectory.Length) {
+                        __debugbreak();
+                    }
+
+                    DEBUG("Found ancestor!");
+
+                    DEBUG_ENTRY_PSTRING(
+                        AncestorPrefixLengthLessThanParentDirLength,
+                        AncestorPrefix);
 
                     goto FoundAncestor;
 
@@ -2929,6 +3102,9 @@ GetPathEntryForDirectory(
                 // Our parent directory is the root directory.
                 //
 
+                DEBUG("Parent directory is root directory!");
+                DEBUG("Going to FoundParent.");
+
                 ParentPrefix = RootPrefix;
                 ParentEntry = RootEntry;
 
@@ -2938,6 +3114,8 @@ GetPathEntryForDirectory(
 
             break;
         }
+
+        DEBUG("Pre !--(*NumberOfBackslashesRemaining) check.");
 
         //
         // Parent directory is also a module.  Make sure we're not on the
@@ -2952,8 +3130,11 @@ GetPathEntryForDirectory(
             // causes the path to be added as a root, which is what we want.
             //
 
+            DEBUG("No backslashes left!");
             continue;
         }
+
+        DEBUG_ENTRY_STRING(PostIsModule, AncestorDirectory);
 
         PreviousPrefix = &PreviousDirectory;
 
@@ -2968,8 +3149,12 @@ GetPathEntryForDirectory(
         PreviousName.Buffer = AncestorName.Buffer;
         ASSERT_SANE_STRING_LENGTH(PreviousName);
 
+        DEBUG("Adjusting indexes...");
+        DEBUG_PUSHORT(BitmapHintIndex);
         LastReversedIndex = (*BitmapHintIndex)++;
+        DEBUG_USHORT(LastReversedIndex);
 
+        DEBUG_USHORT(ReversedIndex);
         ReversedIndex = (USHORT)Rtl->RtlFindSetBits(Backslashes, 1,
                                                     *BitmapHintIndex);
 
@@ -2983,8 +3168,13 @@ GetPathEntryForDirectory(
             __debugbreak();
         }
 
+        DEBUG("Pre: CumulativeReversedIndex += LastReversedIndex;");
+        DEBUG_USHORT(CumulativeReversedIndex);
         CumulativeReversedIndex += LastReversedIndex;
+        DEBUG("Post: CumulativeReversedIndex += LastReversedIndex;");
+        DEBUG_USHORT(CumulativeReversedIndex);
         Offset = NumberOfChars - ReversedIndex + CumulativeReversedIndex + 1;
+        DEBUG_USHORT(Offset);
 
         //
         // Extract the ancestor name and directory full path.
@@ -2994,6 +3184,8 @@ GetPathEntryForDirectory(
             (ReversedIndex - CumulativeReversedIndex) -
             sizeof(CHAR)
         );
+        TempShort = AncestorName.Length;
+        DEBUG_USHORT(TempShort);
         AncestorName.MaximumLength = DirectoryName.Length;
         AncestorName.Buffer = &Directory->Buffer[Offset];
         DEBUG("Python.c:2965");
@@ -3172,6 +3364,9 @@ FoundAncestor:
 
         if (RemainingAncestors == 1) {
 
+            //USHORT Distance;
+            //PCHAR Next = NextName.Buffer;
+
             DEBUG("1 ancestor remaining.");
 
             if (ParentDirectory.Length == NextDirectory.Length) {
@@ -3190,6 +3385,13 @@ FoundAncestor:
 
             }
 
+            //while (*(Next++) != '\\');
+
+            //Distance = (USHORT)(Next - NextName.Buffer);
+
+            //NextName.Buffer += (LastForwardIndex + 1);
+            NextName.Buffer += NextName.Length + 1;
+
             NextName.Length = (
                 ParentDirectory.Length -
                 NextDirectory.Length   -
@@ -3197,39 +3399,95 @@ FoundAncestor:
             );
             ASSERT_SANE_STRING_LENGTH(NextName);
 
-            NextName.Buffer += (LastForwardIndex + 1);
-
             NextDirectory.Length += (NextName.Length + 1);
             ASSERT_SANE_STRING_LENGTH(NextDirectory);
+            if (NextDirectory.Buffer[NextDirectory.Length - 1] == '\\') {
+                __debugbreak();
+            }
+
+            //NextName.Length = ForwardIndex - (LastForwardIndex + 1);
+
+            //NextName.Buffer += ForwardIndex;
+            //DEBUG("Python.c:3201");
+            //ASSERT_SANE_STRING_LENGTH(NextName);
+
+            //NextDirectory.Length += (NextName.Length + 1);
+            //ASSERT_SANE_STRING_LENGTH(NextDirectory);
+            //if (NextDirectory.Buffer[NextDirectory.Length - 1] == '\\') {
+            //    __debugbreak();
+            //}
+
+            //NextName.Length = (
+            //    ParentDirectory.Length -
+            //    NextDirectory.Length   -
+            //    1
+            //);
+            //ASSERT_SANE_STRING_LENGTH(NextName);
+
+            //NextName.Buffer += (LastForwardIndex + 1);
+
+            //NextDirectory.Length += (NextName.Length + 1);
+            //ASSERT_SANE_STRING_LENGTH(NextDirectory);
 
         } else {
+            static BOOL Break = FALSE;
+            USHORT Distance;
+            PCHAR Next = NextName.Buffer;
 
-            DEBUG("1> ancestor remaining.");
+            DEBUG("Xxxxxxxx");
 
+            DEBUG_USHORT(RemainingAncestors);
+            DEBUG_PUSHORT(ForwardHintIndex);
+
+            DEBUG_USHORT(LastForwardIndex);
             LastForwardIndex = (*ForwardHintIndex)++;
 
             CumulativeForwardIndex += LastForwardIndex;
+            DEBUG_USHORT(CumulativeForwardIndex);
+
+            DEBUG("BEFORE");
+            DEBUG_USHORT(ForwardIndex);
 
             ForwardIndex = (USHORT)(
                 Rtl->RtlFindSetBits(Bitmap, 1,
                                     *ForwardHintIndex)
             );
 
+            DEBUG("AFTER");
+            DEBUG_USHORT(ForwardIndex);
+
             if (ForwardIndex < LastForwardIndex ||
                 ForwardIndex > Directory->Length) {
 
                 __debugbreak();
+            }
 
+            if (Break) {
+                __debugbreak();
+            }
+
+            while (*(Next++) != '\\');
+
+            Distance = (USHORT)(Next - NextName.Buffer);
+
+            //NextName.Buffer += (LastForwardIndex + 1);
+            NextName.Buffer += NextName.Length + 1;
+
+            if (Next != NextName.Buffer) {
+                __debugbreak();
             }
 
             NextName.Length = ForwardIndex - (LastForwardIndex + 1);
+
             //NextName.Buffer += ForwardIndex;
-            NextName.Buffer += (LastForwardIndex + 1);
             DEBUG("Python.c:3201");
             ASSERT_SANE_STRING_LENGTH(NextName);
 
-            NextDirectory.Length += (LastForwardIndex + 1);
+            NextDirectory.Length += (NextName.Length + 1);
             ASSERT_SANE_STRING_LENGTH(NextDirectory);
+            if (NextDirectory.Buffer[NextDirectory.Length - 1] == '\\') {
+                __debugbreak();
+            }
         }
 
         if (ForwardIndex == BITS_NOT_FOUND) {
@@ -3462,6 +3720,10 @@ Routine Description:
     Directory.MaximumLength = Directory.Length;
     Directory.Buffer = Path->Buffer;
 
+    if (Directory.Length == 61) {
+        //__debugbreak();
+    }
+
     //
     // Get the module name from the directory.
     //
@@ -3664,32 +3926,6 @@ Routine Description:
     }
 
     //
-    // Add the newly created PathEntry to our path table prefix tree.
-    //
-
-    PrefixTable = &Python->PathTable->PrefixTable;
-    PrefixTableEntry = (PPREFIX_TABLE_ENTRY)PathEntry;
-
-    Success = Rtl->PfxInsertPrefix(PrefixTable,
-                                   Path,
-                                   PrefixTableEntry);
-
-    if (!Success) {
-
-        FreeStringBuffer(Python, FullName);
-        FreePythonPathTableEntry(Python, PathEntry);
-
-        if (WeOwnPathBuffer) {
-            FreeStringAndBuffer(Python, QualifiedPath);
-        } else {
-            FreeStringBuffer(Python, Path);
-        }
-
-        goto Error;
-    }
-
-
-    //
     // Construct the final full name.  After each part has been copied, update
     // the corresponding Buffer pointer to the relevant point within the newly-
     // allocated buffer for the full name.
@@ -3705,6 +3941,8 @@ Routine Description:
         __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
         Dest += ModuleName->Length;
         ModuleName->Buffer = FullName->Buffer;
+
+        DEBUG_ENTRY_PSTRING(CopyingModuleName, ModuleName);
 
         //
         // Add joining slash.
@@ -3723,13 +3961,40 @@ Routine Description:
     Name->Buffer = Start;
     Dest += Filename.Length;
 
+    DEBUG_ENTRY_PSTRING(CopiedFileName, Name);
+
     //
     // Add the trailing NUL.
     //
 
     *Dest++ = '\0';
 
-    Success = TRUE;
+    //
+    // Add the newly created PathEntry to our path table prefix tree.
+    //
+
+    PrefixTable = &Python->PathTable->PrefixTable;
+    PrefixTableEntry = (PPREFIX_TABLE_ENTRY)PathEntry;
+
+    Success = Rtl->PfxInsertPrefix(PrefixTable,
+                                   Path,
+                                   PrefixTableEntry);
+
+    DEBUG_ENTRY_PSTRING(INSERTED_FILENAME, Path);
+
+    if (!Success) {
+
+        FreeStringBuffer(Python, FullName);
+        FreePythonPathTableEntry(Python, PathEntry);
+
+        if (WeOwnPathBuffer) {
+            FreeStringAndBuffer(Python, QualifiedPath);
+        } else {
+            FreeStringBuffer(Python, Path);
+        }
+
+        goto Error;
+    }
 
     PathEntry->IsValid = TRUE;
 
@@ -3802,10 +4067,10 @@ GetPathEntryFromFrame(
         return FALSE;
     }
 
-    DEBUG_ENTRY_PSTRING(GetPathEntryFromFrame, Path);
-
     PrefixTable = &Python->PathTable->PrefixTable;
     Rtl = Python->Rtl;
+
+    //CHECK_BREAK_PATH(Path);
 
 Retry:
     PrefixTableEntry = Rtl->PfxFindPrefix(PrefixTable, Path);
@@ -3839,6 +4104,10 @@ Retry:
 
         }
 
+        DEBUG("PREFIX MATCH");
+        DEBUG_ENTRY_PSTRING(GetPathEntryFromFrame_Match, Match);
+        DEBUG_ENTRY_PSTRING(GetPathEntryFromFrame_Path, Path);
+
         //
         // A shorter entry was found.  Fall through to the following code which
         // will handle inserting a new prefix table entry for the file.
@@ -3857,6 +4126,8 @@ Retry:
 
             Success = QualifyPath(Python, Path, &Path);
 
+            DEBUG_ENTRY_PSTRING(GetPathEntryFromFramePostQualify, Path);
+
             if (!Success) {
                 goto End;
             }
@@ -3871,6 +4142,11 @@ Retry:
                            Path,
                            FrameObject,
                            &PathEntry);
+
+    {
+        PSTRING TempString = &PathEntry->Path;
+        DEBUG_ENTRY_PSTRING(POST_REGISTER_FILE, TempString);
+    }
 
     //
     // Intentional follow-on to End (i.e. we let the success indicator from

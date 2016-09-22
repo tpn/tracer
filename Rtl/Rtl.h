@@ -3194,6 +3194,25 @@ static CONST WCHAR IntegerToWCharTable[] = {
     L'F'
 };
 
+static CONST CHAR IntegerToCharTable[] = {
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    'A',
+    'B',
+    'C',
+    'D',
+    'E',
+    'F'
+};
+
 FORCEINLINE
 USHORT
 CountNumberOfDigits(_In_ ULONG Value)
@@ -3347,6 +3366,184 @@ Return Value:
 
     return TRUE;
 }
+
+FORCEINLINE
+BOOLEAN
+AppendIntegerToString(
+    _In_ PSTRING String,
+    _In_ ULONG Integer,
+    _In_ USHORT NumberOfDigits,
+    _In_opt_ PCHAR Trailer
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that allows construction of strings out of
+    integer values.
+
+Arguments:
+
+    String - Supplies a pointer to a STRING that will be appended to.
+        Sufficient buffer space must exist for the entire string to be
+        written.
+
+    Integer - The integer value to be appended to the string.
+
+    NumberOfDigits - The expected number of digits for the value.  If
+        Integer has less digits than this number, it will be left-padded
+        with zeros.
+
+    Trailer - An optional trailing character to append.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT ActualNumberOfDigits;
+    USHORT BytesRequired;
+    USHORT BytesRemaining;
+    USHORT NumberOfZerosToPad;
+    const ULONG Base = 10;
+    ULONG Digit;
+    ULONG Value;
+    ULONG Count;
+    ULONG Bytes;
+    CHAR Char;
+    PCHAR Dest;
+
+    //
+    // Verify the string has sufficient space.
+    //
+
+    BytesRequired = NumberOfDigits * sizeof(CHAR);
+
+    if (ARGUMENT_PRESENT(Trailer)) {
+        BytesRequired += (1 * sizeof(*Trailer));
+    }
+
+    BytesRemaining = (
+        String->MaximumLength -
+        String->Length
+    );
+
+    if (BytesRemaining < BytesRequired) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the integer value doesn't have more digits than
+    // specified.
+    //
+
+    ActualNumberOfDigits = CountNumberOfDigits(Integer);
+
+    if (ActualNumberOfDigits > NumberOfDigits) {
+        return FALSE;
+    }
+
+    //
+    // Initialize our destination pointer to the last digit.  (We write
+    // back-to-front.)
+    //
+
+    Dest = (PCHAR)(
+        RtlOffsetToPointer(
+            String->Buffer,
+            String->Length + (
+                (NumberOfDigits - 1) *
+                sizeof(CHAR)
+            )
+        )
+    );
+    Count = 0;
+    Bytes = 0;
+
+    //
+    // Convert each digit into the corresponding character and copy to the
+    // string buffer, retreating the pointer as we go.
+    //
+
+    Value = Integer;
+
+    do {
+        Count++;
+        Bytes++;
+        Digit = Value % Base;
+        Value = Value / Base;
+        Char = IntegerToCharTable[Digit];
+        *Dest-- = Char;
+    } while (Value != 0);
+
+    //
+    // Pad the string with zeros if necessary.
+    //
+
+    NumberOfZerosToPad = NumberOfDigits - ActualNumberOfDigits;
+
+    if (NumberOfZerosToPad) {
+        do {
+            Count++;
+            Bytes++;
+            *Dest-- = '0';
+        } while (--NumberOfZerosToPad);
+    }
+
+    //
+    // Update the string with the new length.
+    //
+
+    String->Length += (USHORT)Bytes;
+
+    //
+    // Add the trailer if applicable.
+    //
+
+    if (ARGUMENT_PRESENT(Trailer)) {
+        String->Length += sizeof(CHAR);
+        String->Buffer[(String->Length - 1)] = *Trailer;
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+VOID
+OutputDebugIntegerAsString(
+    _In_ ULONG Integer,
+    _In_ USHORT NumberOfDigits,
+    _In_opt_ PSTR Prefix,
+    _In_opt_ PSTR Suffix
+    )
+{
+    BOOL Success;
+    CHAR Buffer[40] = { 0 };
+    STRING String;
+    String.Length = 0;
+    String.MaximumLength = sizeof(Buffer);
+    String.Buffer = Buffer;
+    CHAR Trailer = '\0';
+
+    Success = AppendIntegerToString(&String, Integer, NumberOfDigits, &Trailer);
+
+    if (!Success) {
+        return;
+    }
+
+    if (Prefix) {
+        OutputDebugStringA(Prefix);
+    }
+
+    OutputDebugStringA(String.Buffer);
+
+    if (Suffix) {
+        OutputDebugStringA(Suffix);
+    }
+
+}
+
 
 
 //
