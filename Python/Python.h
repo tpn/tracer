@@ -37,9 +37,11 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-//#include "PythonDllFiles.h"
 
 #endif
+
+#define PYTHON_EX_API PYTHON_API
+#define PYTHON_EX_DATA PYTHON_DATA
 
 enum PythonVersion {
     PythonVersion_Unknown,
@@ -1749,39 +1751,234 @@ typedef struct _PYTHON_HASHED_STRING {
 
 } PYTHON_HASHED_STRING, *PPYTHON_HASHED_STRING, **PPPYTHON_HASHED_STRING;
 
-typedef BOOL (*PREGISTER_FRAME)(
+
+//
+// Constants
+//
+
+
+PYTHON_EX_DATA CONST USHORT TargetSizeOfPythonPathTableEntry;
+PYTHON_EX_DATA CONST USHORT TargetSizeOfPythonFunctionTableEntry;
+
+PYTHON_EX_DATA CONST UNICODE_STRING W__init__py;
+PYTHON_EX_DATA CONST UNICODE_STRING W__init__pyc;
+PYTHON_EX_DATA CONST UNICODE_STRING W__init__pyo;
+
+PYTHON_EX_DATA CONST PUNICODE_STRING InitPyFilesW[3];
+
+PYTHON_EX_DATA CONST STRING A__init__py;
+PYTHON_EX_DATA CONST STRING A__init__pyc;
+PYTHON_EX_DATA CONST STRING A__init__pyo;
+
+PYTHON_EX_DATA CONST PUNICODE_STRING InitPyFilesA[3];
+
+PYTHON_EX_DATA CONST USHORT NumberOfInitPyFiles;
+
+PYTHON_EX_DATA CONST STRING SELFA;
+
+PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27;
+PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets30_32;
+PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets33_35;
+
+PYTHON_EX_DATA CONST PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets25_33;
+PYTHON_EX_DATA CONST PYFRAMEOBJECTOFFSETS PyFrameObjectOffsets34_35;
+
+//
+// PythonAllocator-related functions.
+//
+
+typedef
+VOID
+(FREE_PYTHON_PATH_TABLE_ENTRY)(
+    _In_        PPYTHON                  Python,
+    _In_opt_    PPYTHON_PATH_TABLE_ENTRY PathTableEntry
+    );
+typedef FREE_PYTHON_PATH_TABLE_ENTRY *PFREE_PYTHON_PATH_TABLE_ENTRY;
+typedef FREE_PYTHON_PATH_TABLE_ENTRY **PPFREE_PYTHON_PATH_TABLE_ENTRY;
+
+//
+// PythonFunction-related functions.
+//
+
+typedef
+BOOL
+(REGISTER_FUNCTION)(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ PPYFRAMEOBJECT FrameObject
+    );
+typedef REGISTER_FUNCTION *PREGISTER_FUNCTION, **PPREGISTER_FUNCTION;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_SELF)(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ PPYFRAMEOBJECT FrameObject,
+    _Outptr_result_nullonfailure_ PPPYOBJECT SelfPointer
+    );
+typedef GET_SELF *PGET_SELF, **PPGET_SELF;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_CLASS_NAME_FROM_SELF)(
+    _In_    PPYTHON             Python,
+    _In_    PPYTHON_FUNCTION    Function,
+    _In_    PPYFRAMEOBJECT      FrameObject,
+    _In_    PPYOBJECT           Self,
+    _In_    PSTRING             FunctionName,
+    _Out_   PPCHAR              ClassNameBuffer
+    );
+typedef GET_CLASS_NAME_FROM_SELF *PGET_CLASS_NAME_FROM_SELF;
+typedef GET_CLASS_NAME_FROM_SELF **PPGET_CLASS_NAME_FROM_SELF;
+
+//
+// PythonLineNumbers-related functions.
+//
+
+typedef
+VOID
+(RESOLVE_LINE_NUMBERS)(
+    _In_ PPYTHON Python,
+    _In_ PPYTHON_FUNCTION Function
+    );
+typedef RESOLVE_LINE_NUMBERS *PRESOLVE_LINE_NUMBERS;
+typedef RESOLVE_LINE_NUMBERS **PPRESOLVE_LINE_NUMBERS;
+
+//
+// PythonPathTableEntry-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(REGISTER_FRAME)(
     _In_      PPYTHON         Python,
     _In_      PPYFRAMEOBJECT  FrameObject,
     _In_      LONG            EventType,
     _In_opt_  PPYOBJECT       ArgObject,
-    _Out_opt_ PVOID           Token
+    _Out_opt_ PPPYTHON_FUNCTION FunctionPointer
     );
+typedef REGISTER_FRAME *PREGISTER_FRAME;
+typedef REGISTER_FRAME *PPREGISTER_FRAME;
 
-typedef BOOL (*PINITIALIZE_PYTHON_RUNTIME_TABLES)(
-    _In_      PPYTHON             Python
+typedef
+_Success_(return != 0)
+BOOL
+(GET_PATH_ENTRY_FOR_DIRECTORY)(
+    _In_     PPYTHON             Python,
+    _In_     PSTRING             Directory,
+    _In_     PRTL_BITMAP         Backslashes,
+    _In_     PUSHORT             BitmapHintIndex,
+    _In_     PUSHORT             NumberOfBackslashesRemaining,
+    _Out_    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     );
+typedef GET_PATH_ENTRY_FOR_DIRECTORY *PGET_PATH_ENTRY_FOR_DIRECTORY;
+typedef GET_PATH_ENTRY_FOR_DIRECTORY **PPGET_PATH_ENTRY_FOR_DIRECTORY;
 
-typedef BOOL (*PALLOCATE_STRING)(
+typedef
+_Success_(return != 0)
+BOOL
+(REGISTER_FILE)(
+    _In_  PPYTHON Python,
+    _In_  PSTRING QualifiedPath,
+    _In_  PPYFRAMEOBJECT FrameObject,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    );
+typedef REGISTER_FILE *PREGISTER_FILE, **PPREGISTER_FILE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_PATH_ENTRY_FROM_FRAME)(
+    _In_      PPYTHON         Python,
+    _In_      PPYFRAMEOBJECT  FrameObject,
+    _In_      LONG            EventType,
+    _In_opt_  PPYOBJECT       ArgObject,
+    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    );
+typedef GET_PATH_ENTRY_FROM_FRAME *PGET_PATH_ENTRY_FROM_FRAME;
+typedef GET_PATH_ENTRY_FROM_FRAME **PPGET_PATH_ENTRY_FROM_FRAME;
+
+typedef
+_Success_(return != 0)
+BOOL
+(REGISTER_DIRECTORY)(
+    _In_      PPYTHON Python,
+    _In_      PSTRING Directory,
+    _In_opt_  PSTRING DirectoryName,
+    _In_opt_  PPYTHON_PATH_TABLE_ENTRY AncestorEntry,
+    _Out_opt_ PPPYTHON_PATH_TABLE_ENTRY EntryPointer,
+    _In_      BOOL IsRoot
+    );
+typedef REGISTER_DIRECTORY *PREGISTER_DIRECTORY;
+typedef REGISTER_DIRECTORY **PPREGISTER_DIRECTORY;
+
+typedef
+_Success_(return != 0)
+BOOL
+(QUALIFY_PATH)(
+        _In_ PPYTHON Python,
+        _In_ PSTRING SourcePath,
+        _Outptr_result_nullonfailure_ PPSTRING DestinationPathPointer
+    );
+typedef QUALIFY_PATH *PQUALIFY_PATH, **PPQUALIFY_PATH;
+
+//
+// Other functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_PYTHON_RUNTIME_TABLES)(
+    _In_ PPYTHON Python
+    );
+typedef INITIALIZE_PYTHON_RUNTIME_TABLES *PINITIALIZE_PYTHON_RUNTIME_TABLES;
+typedef INITIALIZE_PYTHON_RUNTIME_TABLES **PPINITIALIZE_PYTHON_RUNTIME_TABLES;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ALLOCATE_STRING)(
     _In_  PPYTHON  Python,
-    _Out_ PPSTRING StringPointer
+    _Outptr_result_nullonfailure_ PPSTRING StringPointer
     );
+typedef ALLOCATE_STRING *PALLOCATE_STRING;
+typedef ALLOCATE_STRING **PPALLOCATE_STRING;
 
-typedef VOID (*PFREE_STRING)(
+typedef
+VOID
+(FREE_STRING)(
     _In_        PPYTHON Python,
     _In_opt_    PSTRING String
     );
+typedef FREE_STRING *PFREE_STRING;
+typedef FREE_STRING **PPFREE_STRING;
 
-typedef BOOL (*PALLOCATE_STRING_BUFFER)(
+typedef
+_Success_(return != 0)
+BOOL
+(ALLOCATE_STRING_BUFFER)(
     _In_  PPYTHON  Python,
     _In_  USHORT   StringBufferSizeInBytes,
     _In_  PPSTRING StringPointer
     );
+typedef ALLOCATE_STRING_BUFFER *PALLOCATE_STRING_BUFFER;
+typedef ALLOCATE_STRING_BUFFER **PPALLOCATE_STRING_BUFFER;
 
-typedef BOOL (*PALLOCATE_STRING_AND_BUFFER)(
+typedef
+_Success_(return != 0)
+BOOL
+(ALLOCATE_STRING_AND_BUFFER)(
     _In_  PPYTHON  Python,
     _In_  USHORT   StringBufferSizeInBytes,
     _Out_ PPSTRING StringPointer
     );
+typedef ALLOCATE_STRING_AND_BUFFER *PALLOCATE_STRING_AND_BUFFER;
+typedef ALLOCATE_STRING_AND_BUFFER **PPALLOCATE_STRING_AND_BUFFER;
 
 typedef BOOL (*PALLOCATE_STRING_BUFFER)(
     _In_  PPYTHON  Python,
@@ -1915,6 +2112,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     union {                                                 //  e   t   d
         PREFIX_TABLE_ENTRY PrefixTableEntry;                //  ^   ^   ^
         struct {
+
             //
             // Stash our flags in here given that NextPrefixTree needs to be
             // 8-byte aligned and we're only 4-byte aligned at this point.
@@ -2243,6 +2441,14 @@ typedef struct _PYTHON_FUNCTION_OFFSETS {
 
 #pragma pack(pop)
 
+//
+// Offset table constants.
+//
+
+PYTHON_EX_DATA CONST PYTHON_PATH_TABLE_ENTRY_OFFSETS \
+                     PythonPathTableEntryOffsets;
+
+PYTHON_EX_DATA CONST PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets;
 
 typedef struct _PYTHON_FUNCTION_TABLE {
 
@@ -2268,8 +2474,6 @@ typedef struct _PYTHON_FUNCTION_TABLE {
         };
     };
 } PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE, **PPPYTHON_FUNCTION_TABLE;
-
-//#pragma pack(pop, DefaultAlignment)
 
 #define IsValidFunction(Function) (                 \
     (BOOL)(Function && Function->PathEntry.IsValid) \
@@ -2394,6 +2598,10 @@ typedef struct _PYTHON {
 } PYTHON, *PPYTHON, **PPPYTHON;
 
 PYTHON_API FIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
+
+//
+// Allocator functions.
+//
 
 PYTHON_API
 BOOL
@@ -2586,15 +2794,6 @@ InitializePythonRuntimeTables(
     _In_      PPYTHON             Python
     );
 
-PYTHON_API
-BOOL
-RegisterFrame(
-    _In_      PPYTHON         Python,
-    _In_      PPYFRAMEOBJECT  FrameObject,
-    _In_      LONG            EventType,
-    _In_opt_  PPYOBJECT       ArgObject,
-    _Out_opt_ PVOID           Token
-    );
 
 _Success_(return != 0)
 FORCEINLINE
