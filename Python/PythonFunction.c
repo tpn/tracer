@@ -21,14 +21,6 @@ Abstract:
 
 #include "stdafx.h"
 
-//
-// Forward definitions.
-//
-
-PYTHON_EX_API REGISTER_FRAME RegisterFrame;
-PYTHON_EX_API REGISTER_FUNCTION RegisterFunction;
-PYTHON_EX_API GET_PATH_ENTRY_FROM_FRAME GetPathEntryFromFrame;
-
 _Use_decl_annotations_
 BOOL
 RegisterFrame(
@@ -330,10 +322,18 @@ Return Value:
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
 
+    //
+    // Initialize aliases and set the PathEntry to invalid.
+    //
+
     PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Function;
     ParentPathEntry = Function->ParentPathEntry;
-
     PathEntry->IsValid = FALSE;
+
+    //
+    // Resolve the first line number and function name object using the code
+    // object offsets structure.
+    //
 
     Function->FirstLineNumber = (USHORT)*(
         (PULONG)RtlOffsetToPointer(
@@ -349,6 +349,10 @@ Return Value:
         )
     );
 
+    //
+    // Wrap the PyString/PyUnicode string in a STRING struct.
+    //
+
     Rtl = Python->Rtl;
     FunctionName = &PathEntry->Name;
 
@@ -360,16 +364,38 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Attempt to get the "self" object from the current frame, if present.
+    //
+
     Success = GetSelf(Python, Function, FrameObject, &Self);
 
     if (!Success) {
+
+        //
+        // The GetSelf() method failed.  Note that this indicates an actual
+        // failure -- not simply that we couldn't resolve the "self" object
+        // from the frame.  We test for that below.
+        //
+
         return FALSE;
     }
+
+    //
+    // Clear the class name string.
+    //
 
     ClassName = &PathEntry->ClassName;
     ClearString(ClassName);
 
     if (Self) {
+
+        //
+        // We found a "self" object within the frame, which means we're an
+        // instance object and we have a class.  So, let's try and extract
+        // the class name.
+        //
+
         USHORT ClassNameLength;
 
         Success = GetClassNameFromSelf(Python,
@@ -386,6 +412,13 @@ Return Value:
         if (!ClassNameBuffer) {
             return FALSE;
         }
+
+        //
+        // We were able to extract a class name.  The C Python API will have
+        // provided us with a pointer to a NULL-termianted C (char) string,
+        // which we'll need to take a copy of, so, record the relevant details
+        // here regarding length and buffer.
+        //
 
         ClassNameLength = (USHORT)strlen((PCSZ)ClassNameBuffer);
 
@@ -428,6 +461,10 @@ Return Value:
         FunctionName->Length                              +
         1
     );
+
+    //
+    // Ensure we don't exceed name lengths.
+    //
 
     if (FullNameLength > MAX_STRING) {
         return FALSE;
@@ -507,6 +544,11 @@ Return Value:
     Path->Buffer = ParentPathEntry->Path.Buffer;
 
     PathEntry->IsFunction = TRUE;
+
+    //
+    // Resolve line numbers.  This will set the FirstLineNumber and
+    // NumberOfCodeLines fields in the Function structure.
+    //
 
     ResolveLineNumbers(Python, Function);
 
@@ -603,7 +645,7 @@ Return Value:
     //
 
     if (Locals && Locals->Type == Python->PyDict.Type) {
-        if ((Self = Python->PyDict_GetItemString(Locals, "self"))) {
+        if ((Self = Python->PyDict_GetItemString(Locals, SELFA.Buffer))) {
             Success = TRUE;
             goto End;
         }
