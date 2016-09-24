@@ -57,6 +57,7 @@ PYTHON_EX_API RESOLVE_LINE_NUMBERS ResolveLineNumbersForPython3;
 
 PYTHON_EX_API GET_SELF GetSelf;
 PYTHON_EX_API GET_CLASS_NAME_FROM_SELF GetClassNameFromSelf;
+PYTHON_EX_API REGISTER_FRAME RegisterFrame;
 PYTHON_EX_API REGISTER_FUNCTION RegisterFunction;
 
 ////////////////////////////////////////////////////////////////////////////////
