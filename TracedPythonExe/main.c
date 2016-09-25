@@ -1,6 +1,6 @@
 
 #include "stdafx.h"
-
+#include "../Rtl/__C_specific_handler.h"
 
 ULONG
 Main(VOID)
@@ -69,6 +69,12 @@ Main(VOID)
     PythonTraceContext = Session->PythonTraceContext;
 
     //
+    // Initialize the __C_specific_handler from Rtl.
+    //
+
+    __C_specific_handler_impl = Session->Rtl->__C_specific_handler;
+
+    //
     // Do any hooking here.
     //
 
@@ -78,21 +84,30 @@ Main(VOID)
 
     PythonTraceContext->StartTracing(PythonTraceContext);
 
-    if (Python->MajorVersion == 2) {
+    __try {
 
-        ExitCode = Python->Py_MainA(
-            Session->NumberOfArguments,
-            Session->ArgvA
-        );
+        if (Python->MajorVersion == 2) {
 
-    } else {
+            ExitCode = Python->Py_MainA(
+                Session->NumberOfArguments,
+                Session->ArgvA
+            );
 
-        ExitCode = Python->Py_MainW(
-            Session->NumberOfArguments,
-            Session->ArgvW
-        );
+        } else {
+
+            ExitCode = Python->Py_MainW(
+                Session->NumberOfArguments,
+                Session->ArgvW
+            );
+
+        }
+
+    } __finally {
+
+        DestroyTracedPythonSession(&Session);
 
     }
+
 
     //
     // N.B.: there's no `PythonTraceContext->StopTracing(PythonTraceContext)`
