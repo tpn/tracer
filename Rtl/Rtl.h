@@ -2102,6 +2102,8 @@ typedef struct _RTL {
     HMODULE     NtosKrnlModule;
     HMODULE     ShlwapiModule;
 
+    P__C_SPECIFIC_HANDLER __C_specific_handler;
+
     HANDLE      HeapHandle;
 
     union {
