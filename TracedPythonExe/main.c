@@ -36,6 +36,7 @@ Main(VOID)
         goto Error;
     }
 
+#ifdef _USE_TLS_HEAP
     //
     // Initialize the TlsHeap machinery, which attaches to the TracerConfig
     // and allocator.
@@ -46,6 +47,7 @@ Main(VOID)
     if (!Success) {
         goto Error;
     }
+#endif
 
     //
     // Initialize the TracedPythonSession.  This is the main workhorse that
