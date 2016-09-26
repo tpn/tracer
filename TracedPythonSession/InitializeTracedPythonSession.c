@@ -119,6 +119,8 @@ Return Value:
     PUNICODE_STRING PythonDllPath;
     PUNICODE_STRING PythonExePath;
     PDLL_DIRECTORY_COOKIE DirectoryCookie;
+    TRACER_FLAGS TracerFlags;
+    PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
     //
     // Verify arguments.
@@ -784,10 +786,17 @@ LoadPythonDll:
     }
 
     //
+    // Take a local copy of the flags.
+    //
+
+    TracerFlags = TracerConfig->Flags;
+
+
+    //
     // See if we've been configured to compress trace store directories.
     //
 
-    Compress = !TracerConfig->Flags.DisableTraceSessionDirectoryCompression;
+    Compress = !TracerFlags.DisableTraceSessionDirectoryCompression;
 
     //
     // Get the required size of the TRACE_STORES structure.
@@ -938,21 +947,41 @@ LoadPythonDll:
     }
 
     //
+    // Initialize alias.
+    //
+
+    PythonTraceContext = Session->PythonTraceContext;
+
+    //
     // If we created a module names string table, set it now.
     //
 
     if (Session->ModuleNamesStringTable) {
         PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;
-        PPYTHON_TRACE_CONTEXT PythonTraceContext;
         PSET_MODULE_NAMES_STRING_TABLE SetModuleNames;
 
-        PythonTraceContext = Session->PythonTraceContext;
         SetModuleNames = PythonTraceContext->SetModuleNamesStringTable;
 
         if (!SetModuleNames(PythonTraceContext, ModuleNames)) {
             OutputDebugStringA("SetModuleNamesStringTable() failed.\n");
             goto Error;
         }
+    }
+
+    //
+    // Apply tracing flags from the TracerConfig structure.
+    //
+
+    if (TracerFlags.EnableMemoryTracing) {
+        PythonTraceContext->EnableMemoryTracing(PythonTraceContext);
+    }
+
+    if (TracerFlags.EnableIoCounterTracing) {
+        PythonTraceContext->EnableIoCountersTracing(PythonTraceContext);
+    }
+
+    if (TracerFlags.EnableHandleCountTracing) {
+        PythonTraceContext->EnableHandleCountTracing(PythonTraceContext);
     }
 
     //
