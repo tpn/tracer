@@ -1,10 +1,15 @@
 #===============================================================================
 # Imports
 #===============================================================================
+from __future__ import print_function
+
+import sys
 import numpy as np
 import pandas as pd
 
 from .path import join_path
+
+import struct
 
 #===============================================================================
 # Types
@@ -389,16 +394,21 @@ class TraceStore:
             self.address_np = np.fromfile(f, dtype=AddressDataType)
 
         with open(self.info_path, 'rb') as f:
-            self.info_data = f.read()
+            self.info_data = f.read(InfoDataType.itemsize)
 
-        self.info_np = np.fromstring(self.info_data, dtype=InfoDataType)
+        try:
+            self.info_np = np.fromstring(self.info_data, dtype=InfoDataType)
+            self.info_df = pd.DataFrame(self.info_np)
+        except Exception as e:
+            print(str(e))
+            self.info_np = None
 
         self.allocation_df = pd.DataFrame(self.allocation_np)
         self.address_df = pd.DataFrame(self.address_np)
-        self.info_df = pd.DataFrame(self.info_np)
         self.string_buffer_store = string_buffer_store
 
-        self.load_data(slim=slim)
+        if self.info_np:
+            self.load_data(slim=slim)
 
     def load_data(self, slim=None):
         with open(self.path, 'rb') as f:
