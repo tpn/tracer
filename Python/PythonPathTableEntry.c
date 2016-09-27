@@ -1591,6 +1591,12 @@ Return Value:
                 __debugbreak();
             }
 
+            //
+            // Use this existing entry as the entry we potentially write to
+            // the caller's EntryPointer pointer.
+            //
+
+            Entry = ExistingEntry;
             goto End;
 
         }
