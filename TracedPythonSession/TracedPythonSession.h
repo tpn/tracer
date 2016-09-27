@@ -465,7 +465,8 @@ BOOL
     _Outptr_opt_result_maybenull_ PPTRACED_PYTHON_SESSION Session,
     _In_     PTRACER_CONFIG TracerConfig,
     _In_opt_ PALLOCATOR Allocator,
-    _In_opt_ HMODULE OwningModule
+    _In_opt_ HMODULE OwningModule,
+    _Inout_  PPUNICODE_STRING TraceSessionDirectoryPointer
     );
 typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
 TRACED_PYTHON_SESSION_API INITIALIZE_TRACED_PYTHON_SESSION \
@@ -509,6 +510,7 @@ LoadAndInitializeTracedPythonSession(
     _In_ PTRACER_CONFIG TracerConfig,
     _In_ PALLOCATOR Allocator,
     _In_opt_ HMODULE OwningModule,
+    _Inout_ PPUNICODE_STRING TraceSessionDirectoryPointer,
     _Out_ PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
     )
 /*++
@@ -534,6 +536,12 @@ Arguments:
         If not present, TracerConfig->Allocator will be used.
 
     OwningModule - Optionally supplies the owning module handle.
+
+    TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
+        provides the address to a UNICODE_STRING structure that represents the
+        trace session directory to open in a read-only context, or, if the
+        pointer is NULL, this will receive the address of the newly-created
+        UNICODE_STRING structure that matches the trace session directory.
 
     DestroyTracedPythonSessionPointer - Supplies a pointer to the address of a
         variable that will receive the address of the DLL export by the same
@@ -570,6 +578,10 @@ See Also:
     }
 
     if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TraceSessionDirectoryPointer)) {
         return FALSE;
     }
 
@@ -626,7 +638,8 @@ See Also:
         Session,
         TracerConfig,
         Allocator,
-        NULL
+        NULL,
+        TraceSessionDirectoryPointer
     );
 
     if (!Success) {
