@@ -56,6 +56,7 @@ InitializeTraceStores(
     DWORD LastError;
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileMappingProtectionFlags;
+    DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
     TRACE_FLAGS Flags;
     LPWSTR FileNameDest;
@@ -158,6 +159,24 @@ InitializeTraceStores(
         MapViewOfFileDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
     }
 
+    //
+    // Create the appropriate dwFileAndAttributes mask based on the flags.
+    //
+
+    if (Flags.EnableFileFlagRandomAccess) {
+        CreateFileFlagsAndAttributes = FILE_FLAG_RANDOM_ACCESS;
+    } else if (!Flags.DisableFileFlagSequentialScan) {
+        CreateFileFlagsAndAttributes = FILE_FLAG_SEQUENTIAL_SCAN;
+    }
+
+    if (!Flags.DisableFileFlagOverlapped) {
+        CreateFileFlagsAndAttributes |= FILE_FLAG_OVERLAPPED;
+    }
+
+    if (Flags.EnableFileFlagWriteThrough) {
+        CreateFileFlagsAndAttributes |= FILE_FLAG_WRITE_THROUGH;
+    }
+
     Success = CreateDirectory(BaseDirectory, NULL);
     if (!Success) {
         LastError = GetLastError();
@@ -239,6 +258,9 @@ InitializeTraceStores(
         TraceStore->CreateFileDesiredAccess = CreateFileDesiredAccess;
         TraceStore->CreateFileMappingProtectionFlags = (
             CreateFileMappingProtectionFlags
+        );
+        TraceStore->CreateFileFlagsAndAttributes = (
+            CreateFileFlagsAndAttributes
         );
         TraceStore->MapViewOfFileDesiredAccess = (
             MapViewOfFileDesiredAccess

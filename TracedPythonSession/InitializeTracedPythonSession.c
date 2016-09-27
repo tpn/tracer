@@ -845,7 +845,14 @@ LoadPythonDll:
     TraceFlags.AsLong = 0;
     TraceFlags.Compress = Compress;
     TraceFlags.Readonly = IsReadonly;
-    TraceFlags.DisablePrefaultPages = TracerConfigFlags.DisablePrefaultPages;
+
+#define COPY_FLAG(Name) TraceFlags.##Name = TracerConfigFlags.##Name
+
+    COPY_FLAG(DisablePrefaultPages);
+    COPY_FLAG(DisableFileFlagOverlapped);
+    COPY_FLAG(DisableFileFlagSequentialScan);
+    COPY_FLAG(EnableFileFlagRandomAccess);
+    COPY_FLAG(EnableFileFlagWriteThrough);
 
     //
     // Get the required size of the TRACE_STORES structure.
