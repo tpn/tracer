@@ -217,8 +217,10 @@ Return Value:
 
 --*/
 #define INIT_METADATA(Name)                                            \
+    Name##Store->Flags = TraceStore->Flags;                            \
     Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
+    Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;            \
     Name##Store->SequenceId = TraceStore->SequenceId;                  \
     Name##Store->CreateFileDesiredAccess = (                           \
         TraceStore->CreateFileDesiredAccess                            \
@@ -260,7 +262,8 @@ InitializeTraceStore(
     PTRACE_STORE AddressStore,
     PTRACE_STORE InfoStore,
     ULONG InitialSize,
-    ULONG MappingSize
+    ULONG MappingSize,
+    PTRACE_FLAGS TraceFlags
     )
 /*++
 
@@ -296,6 +299,10 @@ Arguments:
     MappingSize - Supplies the mapping size in bytes to be used for each trace
         store memory map.  If zero, the default mapping size is used.
 
+    TraceFlags - Supplies a pointer to a TRACE_FLAGS structure to be used when
+        initializing the trace store.  This is used to control things like
+        whether or not the
+
 Return Value:
 
     TRUE on success, FALSE on failure.
@@ -310,6 +317,7 @@ Return Value:
     PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
     PCWSTR AddressSuffix = TraceStoreAddressSuffix;
     PCWSTR InfoSuffix = TraceStoreInfoSuffix;
+    TRACE_FLAGS Flags;
 
     //
     // Validate arguments.
@@ -326,6 +334,12 @@ Return Value:
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(TraceFlags)) {
+        return FALSE;
+    }
+
+    Flags = *TraceFlags;
 
     //
     // Initialize the paths of the metadata stores first.
@@ -371,6 +385,20 @@ Return Value:
         DWORD LastError = GetLastError();
         goto Error;
     }
+
+    //
+    // Initialize the relevant flags.
+    //
+
+    if (Flags.Readonly) {
+        TraceStore->IsReadonly = TRUE;
+    }
+
+    if (Flags.DisablePrefaultPages) {
+        TraceStore->NoPrefaulting = TRUE;
+    }
+
+    TraceStore->Flags = Flags;
 
     //
     // Now that we've created the trace store file, create the NTFS streams

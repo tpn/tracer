@@ -350,21 +350,21 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
 typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-typedef struct _TRACE_CONTEXT_FLAGS {
+typedef struct _TRACE_FLAGS {
     union {
         ULONG AsLong;
         struct {
             ULONG Readonly:1;
             ULONG Compress:1;
+            ULONG DisablePrefaultPages:1;
         };
     };
     ULONG Unused1;
-} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+} TRACE_FLAGS, *PTRACE_FLAGS;
 
 typedef struct _TRACE_CONTEXT {
     ULONG                       Size;
     ULONG                       SequenceId;
-    TRACE_CONTEXT_FLAGS         Flags;
     PRTL                        Rtl;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
@@ -464,8 +464,9 @@ typedef struct _TRACE_STORE {
     LARGE_INTEGER TotalNumberOfAllocations;
     LARGE_INTEGER TotalAllocationSize;
 
+    TRACE_FLAGS Flags;
+
     union {
-        ULONG Flags;
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
@@ -595,13 +596,15 @@ typedef struct _TRACE_STORE {
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
 
-typedef struct _TRACE_STORES {
-    USHORT  Size;
-    USHORT  NumberOfTraceStores;
-    USHORT  ElementsPerTraceStore;
-    USHORT  Reserved;
-    PRTL    Rtl;
-    STRING  BaseDirectory;
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
+    USHORT      SizeOfStruct;
+    USHORT      SizeOfAllocation;
+    USHORT      NumberOfTraceStores;
+    USHORT      ElementsPerTraceStore;
+    TRACE_FLAGS Flags;
+    ULONG       Reserved1;
+    PRTL        Rtl;
+    STRING      BaseDirectory;
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
@@ -609,7 +612,6 @@ typedef struct _TRACE_STORES {
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
-
 
 typedef
 _Success_(return != 0)
@@ -631,8 +633,7 @@ BOOL
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly,
-    _In_        BOOL            Compress
+    _In_        PTRACE_FLAGS    TraceFlags
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
@@ -648,9 +649,7 @@ BOOL
     _In_     PTRACE_SESSION  TraceSession,
     _In_     PTRACE_STORES   TraceStores,
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
-    _In_opt_ PVOID UserData,
-    _In_     BOOL Readonly,
-    _In_     BOOL Compress
+    _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;

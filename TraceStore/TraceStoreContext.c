@@ -25,9 +25,7 @@ InitializeTraceContext(
     PTRACE_SESSION TraceSession,
     PTRACE_STORES TraceStores,
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
-    PVOID UserData,
-    BOOL Readonly,
-    BOOL Compress
+    PVOID UserData
     )
 /*--
 

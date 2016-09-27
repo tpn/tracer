@@ -44,11 +44,12 @@ InitializeTraceStores(
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly,
-    _In_        BOOL            Compress
+    _In_        PTRACE_FLAGS    TraceFlags
     )
 {
     BOOL Success;
+    BOOL Readonly;
+    BOOL Compress;
     HRESULT Result;
     DWORD Index;
     DWORD StoreIndex;
@@ -56,7 +57,7 @@ InitializeTraceStores(
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileMappingProtectionFlags;
     DWORD MapViewOfFileDesiredAccess;
-    WCHAR Path[_OUR_MAX_PATH];
+    TRACE_FLAGS Flags;
     LPWSTR FileNameDest;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
     DWORD TraceStoresAllocationSize = (
@@ -74,6 +75,11 @@ InitializeTraceStores(
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
     PULONG Sizes = InitialFileSizes;
+    WCHAR Path[_OUR_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
 
     if (!SizeOfTraceStores) {
         return FALSE;
@@ -91,6 +97,14 @@ InitializeTraceStores(
     if (!BaseDirectory) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(TraceFlags)) {
+        return FALSE;
+    }
+
+    Flags = *TraceFlags;
+    Compress = Flags.Compress;
+    Readonly = Flags.Readonly;
 
     if (!Sizes) {
         Sizes = (PULONG)&InitialTraceStoreFileSizes[0];
@@ -130,7 +144,8 @@ InitializeTraceStores(
     );
 
     SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
-    TraceStores->Size = (USHORT)TraceStoresAllocationSize;
+    TraceStores->SizeOfStruct = (USHORT)sizeof(TRACE_STORES);
+    TraceStores->SizeOfAllocation = (USHORT)TraceStoresAllocationSize;
 
     if (Readonly) {
         CreateFileDesiredAccess = GENERIC_READ;
@@ -237,7 +252,8 @@ InitializeTraceStores(
             AddressStore,
             InfoStore,
             InitialSize,
-            MappingSize
+            MappingSize,
+            &Flags
         );
 
         if (!Success) {
