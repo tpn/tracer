@@ -12,6 +12,7 @@ Main(VOID)
     PTRACED_PYTHON_SESSION Session;
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+    PUNICODE_STRING TraceSessionDirectory = NULL;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
     //
@@ -60,6 +61,7 @@ Main(VOID)
         TracerConfig,
         &Allocator,
         NULL,
+        &TraceSessionDirectory,
         &DestroyTracedPythonSession
     );
 
