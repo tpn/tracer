@@ -478,7 +478,7 @@ BOOL
 LoadPythonExSymbols(
     _In_opt_    HMODULE             PythonExModule,
     _Inout_     PPYTHON             Python
-)
+    )
 {
     HMODULE Module;
 
