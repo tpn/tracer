@@ -243,6 +243,15 @@ Return Value:
 
     if (Success) {
         IsValid = TRUE;
+
+        //
+        // Increment the reference count of the code object so that
+        // we can keep it alive during tracing (given that it is our
+        // key into the FunctionTable).
+        //
+
+        CodeObject->ReferenceCount++;
+
         goto End;
     }
 
