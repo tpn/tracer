@@ -357,6 +357,38 @@ typedef struct _TRACE_FLAGS {
             ULONG Readonly:1;
             ULONG Compress:1;
             ULONG DisablePrefaultPages:1;
+
+            //
+            // The following flags relate to the dwFlagsAndAttributes parameter
+            // passed to CreateFile() when opening a trace store.
+            //
+
+            //
+            // When set, do not set the FILE_FLAG_OVERLAPPED flag.
+            //
+
+            ULONG DisableFileFlagOverlapped:1;
+
+            //
+            // When set, do not set the FILE_FLAG_SEQUENTIAL_SCAN flag.  This
+            // will automatically be set if EnableFileFlagRandomAccess is set.
+            //
+
+            ULONG DisableFileFlagSequentialScan:1;
+
+            //
+            // When set, sets the FILE_FLAG_RANDOM_ACCESS flag.  (This implies
+            // DisableFileFlagSequentialScan.)
+            //
+
+            ULONG EnableFileFlagRandomAccess:1;
+
+            //
+            // When set, sets the FILE_FLAG_WRITE_THROUGH flag.
+            //
+
+            ULONG EnableFileFlagWriteThrough:1;
+
         };
     };
     ULONG Unused1;
@@ -480,6 +512,7 @@ typedef struct _TRACE_STORE {
 
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileMappingProtectionFlags;
+    DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
 
     HANDLE FileHandle;

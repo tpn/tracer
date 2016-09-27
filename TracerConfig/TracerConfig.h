@@ -200,6 +200,38 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
     ULONG EnableHandleCountTracing:1;
 
+    //
+    // The following flags relate to the dwFlagsAndAttributes parameter passed
+    // to CreateFile() when opening a trace store.
+    //
+
+    //
+    // When set, do not set the FILE_FLAG_OVERLAPPED flag.
+    //
+
+    ULONG DisableFileFlagOverlapped:1;
+
+    //
+    // When set, do not set the FILE_FLAG_SEQUENTIAL_SCAN flag.  This will
+    // automatically be set if EnableFileFlagRandomAccess is set.
+    //
+
+    ULONG DisableFileFlagSequentialScan:1;
+
+    //
+    // When set, sets the FILE_FLAG_RANDOM_ACCESS flag.  This will also set
+    // DisableFileFlagSequentialScan (or rather, ensure that the final flags
+    // passed to CreateFile() do not contain FILE_FLAG_SEQUENTIAL_SCAN).
+    //
+
+    ULONG EnableFileFlagRandomAccess:1;
+
+    //
+    // When set, sets the FILE_FLAG_WRITE_THROUGH flag.
+    //
+
+    ULONG EnableFileFlagWriteThrough:1;
+
 } TRACER_FLAGS, *PTRACER_FLAGS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {

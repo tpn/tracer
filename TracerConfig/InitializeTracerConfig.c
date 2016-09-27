@@ -490,6 +490,19 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);
+    READ_REG_DWORD_FLAG(DisableFileFlagOverlapped, FALSE);
+    READ_REG_DWORD_FLAG(DisableFileFlagSequentialScan, FALSE);
+    READ_REG_DWORD_FLAG(EnableFileFlagRandomAccess, FALSE);
+    READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
+
+    //
+    // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has
+    // been requested, disable FILE_FLAG_SEQUENTIAL_SCAN.
+    //
+
+    if (Flags.EnableFileFlagRandomAccess) {
+        Flags.DisableFileFlagSequentialScan = TRUE;
+    }
 
     //
     // Copy the flags over.
