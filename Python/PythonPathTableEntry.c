@@ -1566,6 +1566,43 @@ Return Value:
 
     Rtl = Python->Rtl;
 
+    //
+    // Make sure there isn't already an entry for the directory in the path
+    // prefix table.
+    //
+
+    PrefixTable = &Python->PathTable->PrefixTable;
+    ExistingTableEntry = Rtl->PfxFindPrefix(PrefixTable, Directory);
+    ExistingEntry = (PPYTHON_PATH_TABLE_ENTRY)ExistingTableEntry;
+
+    if (ExistingEntry) {
+
+        PSTRING Existing = &ExistingEntry->Path;
+
+        if (Existing->Length == Directory->Length) {
+
+            //
+            // The directory already exists in the tree.
+            //
+
+            __debugbreak();
+
+            if (!ExistingEntry->IsValid) {
+                __debugbreak();
+            }
+
+            goto End;
+
+        }
+
+#ifdef _DEBUG
+        if (Existing->Length > Directory->Length) {
+            __debugbreak();
+        }
+#endif
+
+    }
+
     if (!AllocatePythonPathTableEntry(Python, &Entry)) {
         return FALSE;
     }
@@ -1683,19 +1720,6 @@ Return Value:
     PrefixTable = &Python->PathTable->PrefixTable;
     PrefixTableEntry = (PPREFIX_TABLE_ENTRY)Entry;
 
-    ExistingTableEntry = Rtl->PfxFindPrefix(PrefixTable, DirectoryPrefix);
-    ExistingEntry = (PPYTHON_PATH_TABLE_ENTRY)ExistingTableEntry;
-
-    if (ExistingEntry) {
-        PSTRING Existing = &ExistingEntry->Path;
-
-#ifdef _DEBUG
-        if (Existing->Length >= DirectoryPrefix->Length) {
-            __debugbreak();
-        }
-#endif
-    }
-
     Success = Rtl->PfxInsertPrefix(PrefixTable,
                                    DirectoryPrefix,
                                    PrefixTableEntry);
@@ -1703,11 +1727,16 @@ Return Value:
     if (!Success) {
         FreeStringBuffer(Python, &Entry->ModuleName);
         FreePythonPathTableEntry(Python, Entry);
+        return FALSE;
     } else {
         Entry->IsValid = TRUE;
-        if (ARGUMENT_PRESENT(EntryPointer)) {
-            *EntryPointer = Entry;
-        }
+    }
+
+End:
+    Success = TRUE;
+
+    if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = Entry;
     }
 
     return Success;
