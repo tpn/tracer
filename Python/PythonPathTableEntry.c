@@ -1585,8 +1585,6 @@ Return Value:
             // The directory already exists in the tree.
             //
 
-            __debugbreak();
-
             if (!ExistingEntry->IsValid) {
                 __debugbreak();
             }
