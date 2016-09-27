@@ -74,7 +74,8 @@ InitializeTracedPythonSession(
     PPTRACED_PYTHON_SESSION SessionPointer,
     PTRACER_CONFIG TracerConfig,
     PALLOCATOR Allocator,
-    HMODULE OwningModule
+    HMODULE OwningModule,
+    PPUNICODE_STRING TraceSessionDirectoryPointer
     )
 /*++
 
@@ -95,6 +96,12 @@ Arguments:
     Allocator - Optionally supplies a pointer to an alternate ALLOCATOR to use.
         If not present, TracerConfig->Allocator will be used.
 
+    TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
+        provides the address to a UNICODE_STRING structure that represents the
+        trace session directory to open in a read-only context, or, if the
+        pointer is NULL, this will receive the address of the newly-created
+        UNICODE_STRING structure that matches the trace session directory.
+
 Return Value:
 
     TRUE on Success, FALSE if an error occurred.  *SessionPointer will be
@@ -105,6 +112,7 @@ Return Value:
 {
     BOOL Success;
     BOOL Compress;
+    BOOL IsReadonly;
     CHAR MajorVersion;
     USHORT Index;
     ULONG RequiredSize;
@@ -118,8 +126,10 @@ Return Value:
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
     PUNICODE_STRING PythonExePath;
+    PUNICODE_STRING TraceSessionDirectory;
     PDLL_DIRECTORY_COOKIE DirectoryCookie;
-    TRACER_FLAGS TracerFlags;
+    TRACE_FLAGS TraceFlags;
+    TRACER_FLAGS TracerConfigFlags;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
     //
@@ -151,6 +161,23 @@ Return Value:
 
         Allocator = TracerConfig->Allocator;
 
+    }
+
+    //
+    // If the caller provides a valid trace session directory, it implies we're
+    // a readonly session.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceSessionDirectoryPointer)) {
+        return FALSE;
+    }
+
+    TraceSessionDirectory = *TraceSessionDirectoryPointer;
+
+    if (!TraceSessionDirectory) {
+        IsReadonly = FALSE;
+    } else {
+        IsReadonly = TRUE;
     }
 
     Session = (PTRACED_PYTHON_SESSION)(
@@ -772,31 +799,53 @@ LoadPythonDll:
     }
 
     //
-    // Create a trace session directory.
+    // Create a trace session directory if we're not readonly, otherwise, use
+    // the directory that the caller passed in.
     //
 
-    Success = CreateTraceSessionDirectory(
-        TracerConfig,
-        &Session->TraceSessionDirectory
-    );
+    if (IsReadonly) {
 
-    if (!Success) {
-        OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
-        goto Error;
+        Session->TraceSessionDirectory = TraceSessionDirectory;
+
+    } else {
+
+        Success = CreateTraceSessionDirectory(
+            TracerConfig,
+            &Session->TraceSessionDirectory
+        );
+
+        if (!Success) {
+            OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
+            goto Error;
+        }
+
+        //
+        // Update the caller's pointer.
+        //
+
+        *TraceSessionDirectoryPointer = Session->TraceSessionDirectory;
     }
 
     //
     // Take a local copy of the flags.
     //
 
-    TracerFlags = TracerConfig->Flags;
-
+    TracerConfigFlags = TracerConfig->Flags;
 
     //
     // See if we've been configured to compress trace store directories.
     //
 
-    Compress = !TracerFlags.DisableTraceSessionDirectoryCompression;
+    Compress = !TracerConfigFlags.DisableTraceSessionDirectoryCompression;
+
+    //
+    // Convert into a TRACE_FLAGS representation.
+    //
+
+    TraceFlags.AsLong = 0;
+    TraceFlags.Compress = Compress;
+    TraceFlags.Readonly = IsReadonly;
+    TraceFlags.DisablePrefaultPages = TracerConfigFlags.DisablePrefaultPages;
 
     //
     // Get the required size of the TRACE_STORES structure.
@@ -809,9 +858,16 @@ LoadPythonDll:
         NULL,
         &RequiredSize,
         NULL,
-        FALSE,
-        FALSE
+        &TraceFlags
     );
+
+    //
+    // Disable pre-faulting of pages if applicable.
+    //
+
+    if (TracerConfig->Flags.DisablePrefaultPages) {
+        TraceFlags.DisablePrefaultPages = TRUE;
+    }
 
     //
     // Allocate sufficient space, then initialize the stores.
@@ -824,8 +880,7 @@ LoadPythonDll:
         Session->TraceStores,
         &RequiredSize,
         NULL,
-        FALSE,
-        Compress
+        &TraceFlags
     );
 
     if (!Success) {
@@ -884,9 +939,7 @@ LoadPythonDll:
         NULL,
         NULL,
         NULL,
-        NULL,
-        FALSE,
-        FALSE
+        NULL
     );
 
     //
@@ -901,9 +954,7 @@ LoadPythonDll:
         Session->TraceSession,
         Session->TraceStores,
         &Session->ThreadpoolCallbackEnviron,
-        (PVOID)Session,
-        FALSE,
-        Compress
+        (PVOID)Session
     );
 
     if (!Success) {
@@ -972,15 +1023,15 @@ LoadPythonDll:
     // Apply tracing flags from the TracerConfig structure.
     //
 
-    if (TracerFlags.EnableMemoryTracing) {
+    if (TracerConfigFlags.EnableMemoryTracing) {
         PythonTraceContext->EnableMemoryTracing(PythonTraceContext);
     }
 
-    if (TracerFlags.EnableIoCounterTracing) {
+    if (TracerConfigFlags.EnableIoCounterTracing) {
         PythonTraceContext->EnableIoCountersTracing(PythonTraceContext);
     }
 
-    if (TracerFlags.EnableHandleCountTracing) {
+    if (TracerConfigFlags.EnableHandleCountTracing) {
         PythonTraceContext->EnableHandleCountTracing(PythonTraceContext);
     }
 
