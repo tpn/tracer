@@ -28,8 +28,39 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 //
+// Initializers
+//
+
+PYTHON_EX_API INITIALIZE_PYTHON InitializePython;
+PYTHON_EX_API INITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
+
+//
 // PythonAllocators
 //
+
+PYTHON_EX_API ALLOCATE_STRING AllocateString;
+PYTHON_EX_API ALLOCATE_BUFFER AllocateBuffer;
+PYTHON_EX_API ALLOCATE_STRING_BUFFER AllocateStringBuffer;
+PYTHON_EX_API ALLOCATE_STRING_AND_BUFFER AllocateStringAndBuffer;
+PYTHON_EX_API ALLOCATE_HASHED_STRING AllocateHashedString;
+PYTHON_EX_API ALLOCATE_HASHED_STRING_AND_BUFFER AllocateHashedStringAndBuffer;
+PYTHON_EX_API FINALIZE_HASHED_STRING FinalizeHashedString;
+
+PYTHON_EX_API ALLOCATE_PYTHON_PATH_TABLE AllocatePythonPathTable;
+PYTHON_EX_API ALLOCATE_PYTHON_PATH_TABLE_ENTRY AllocatePythonPathTableEntry;
+PYTHON_EX_API ALLOCATE_PYTHON_FUNCTION_TABLE AllocatePythonFunctionTable;
+PYTHON_EX_API ALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING \
+    AllocatePythonPathTableEntryAndString;
+PYTHON_EX_API ALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER \
+    AllocatePythonPathTableEntryAndStringWithBuffer;
+
+PYTHON_EX_API SET_PYTHON_ALLOCATORS SetPythonAllocators;
+
+PYTHON_EX_API FREE_STRING FreeString;
+PYTHON_EX_API FREE_BUFFER FreeBuffer;
+PYTHON_EX_API FREE_STRING_BUFFER FreeStringBuffer;
+PYTHON_EX_API FREE_STRING_AND_BUFFER FreeStringAndBuffer;
+PYTHON_EX_API FREE_STRING_BUFFER_DIRECT FreeStringBufferDirect;
 
 PYTHON_EX_API FREE_PYTHON_PATH_TABLE_ENTRY FreePythonPathTableEntry;
 
@@ -68,7 +99,7 @@ FORCEINLINE
 BOOL
 IsQualifiedPath(_In_ PSTRING Path)
 {
-    BOOL Qualified;
+    BOOL Qualified = FALSE;
     USHORT Length = Path->Length;
     PSTR Buf = Path->Buffer;
 
@@ -156,7 +187,6 @@ RegisterModuleDirectory(
                              PathEntryPointer,
                              FALSE);
 }
-
 
 #ifdef __cplusplus
 }; // extern "C"

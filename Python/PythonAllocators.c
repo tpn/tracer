@@ -18,48 +18,12 @@ Abstract:
 
 #include "stdafx.h"
 
-BOOL
-SetPythonAllocators(
-    _In_    PPYTHON             Python,
-    _In_    PPYTHON_ALLOCATORS  Allocators
-    )
-{
-    PRTL Rtl;
-    ULONG SizeOfAllocators = sizeof(*Allocators);
-    ULONG NumberOfAllocators = (
-        (SizeOfAllocators - (sizeof(ULONG) * 2)) /
-        sizeof(PYTHON_ALLOCATOR)
-    );
 
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Allocators)) {
-        return FALSE;
-    }
-
-    if (Allocators->SizeInBytes != SizeOfAllocators) {
-        return FALSE;
-    }
-
-    if (Allocators->NumberOfAllocators != NumberOfAllocators) {
-        return FALSE;
-    }
-
-    Rtl = Python->Rtl;
-
-    Rtl->RtlCopyMemory(&Python->Allocators,
-                       Allocators,
-                       SizeOfAllocators);
-
-    return TRUE;
-}
-
+_Use_decl_annotations_
 BOOL
 AllocateString(
-    _In_  PPYTHON  Python,
-    _Out_ PPSTRING StringPointer
+    PPYTHON  Python,
+    PPSTRING StringPointer
     )
 {
     PSTRING String;
@@ -87,11 +51,12 @@ AllocateString(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocateStringBuffer(
-    _In_  PPYTHON  Python,
-    _In_  USHORT   StringBufferSizeInBytes,
-    _In_  PSTRING  String
+    PPYTHON  Python,
+    USHORT   StringBufferSizeInBytes,
+    PSTRING  String
     )
 {
     PVOID Buffer;
@@ -123,11 +88,12 @@ AllocateStringBuffer(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocateStringAndBuffer(
-    _In_  PPYTHON  Python,
-    _In_  USHORT   StringBufferSizeInBytes,
-    _Out_ PPSTRING StringPointer
+    PPYTHON  Python,
+    USHORT   StringBufferSizeInBytes,
+    PPSTRING StringPointer
     )
 {
     PSTRING String;
@@ -146,52 +112,11 @@ AllocateStringAndBuffer(
     return TRUE;
 }
 
-
-VOID
-FreeString(
-    _In_        PPYTHON Python,
-    _In_opt_    PSTRING String
-    )
-{
-
-
-}
-
-VOID
-FreeStringAndBuffer(
-    _In_        PPYTHON Python,
-    _In_opt_    PSTRING String
-    )
-{
-
-
-}
-
-VOID
-FreeStringBuffer(
-    _In_        PPYTHON Python,
-    _In_opt_    PSTRING String
-    )
-{
-
-
-}
-
-VOID
-FreeStringBufferDirect(
-    _In_        PPYTHON Python,
-    _In_opt_    PVOID   Buffer
-    )
-{
-
-
-}
-
-
+_Use_decl_annotations_
 BOOL
 AllocateHashedString(
-    _In_  PPYTHON  Python,
-    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    PPYTHON  Python,
+    PPPYTHON_HASHED_STRING HashedStringPointer
     )
 {
     PPYTHON_HASHED_STRING HashedString;
@@ -219,11 +144,12 @@ AllocateHashedString(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocateHashedStringAndBuffer(
-    _In_  PPYTHON                Python,
-    _In_  USHORT                 StringBufferSizeInBytes,
-    _Out_ PPPYTHON_HASHED_STRING HashedStringPointer
+    PPYTHON                Python,
+    USHORT                 StringBufferSizeInBytes,
+    PPPYTHON_HASHED_STRING HashedStringPointer
     )
 {
     PVOID Buffer;
@@ -262,11 +188,12 @@ AllocateHashedStringAndBuffer(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 FinalizeHashedString(
-    _In_        PPYTHON                 Python,
-    _Inout_     PPYTHON_HASHED_STRING   HashedString,
-    _Out_opt_   PPPYTHON_HASHED_STRING  ExistingHashedStringPointer
+    PPYTHON                 Python,
+    PPYTHON_HASHED_STRING   HashedString,
+    PPPYTHON_HASHED_STRING  ExistingHashedStringPointer
     )
 {
     if (!ARGUMENT_PRESENT(Python)) {
@@ -283,11 +210,12 @@ FinalizeHashedString(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocateBuffer(
-    _In_  PPYTHON Python,
-    _In_  ULONG   SizeInBytes,
-    _Out_ PPVOID  BufferPointer
+    PPYTHON Python,
+    ULONG   SizeInBytes,
+    PPVOID  BufferPointer
     )
 {
     PVOID Buffer;
@@ -311,19 +239,11 @@ AllocateBuffer(
     return TRUE;
 }
 
-VOID
-FreeBuffer(
-    _In_        PPYTHON Python,
-    _In_opt_    PVOID   Buffer
-    )
-{
-
-}
-
+_Use_decl_annotations_
 BOOL
 AllocatePythonFunctionTable(
-    _In_    PPYTHON                 Python,
-    _Out_   PPPYTHON_FUNCTION_TABLE FunctionTablePointer
+    PPYTHON                 Python,
+    PPPYTHON_FUNCTION_TABLE FunctionTablePointer
     )
 {
     PVOID Buffer;
@@ -347,10 +267,11 @@ AllocatePythonFunctionTable(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTable(
-    _In_ PPYTHON Python,
-    _Out_ PPPYTHON_PATH_TABLE PathTablePointer
+    PPYTHON Python,
+    PPPYTHON_PATH_TABLE PathTablePointer
     )
 {
     PVOID Buffer;
@@ -375,10 +296,11 @@ AllocatePythonPathTable(
 
 }
 
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTableEntry(
-    _In_  PPYTHON Python,
-    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
+    PPYTHON Python,
+    PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer
     )
 {
     PVOID Buffer;
@@ -410,58 +332,153 @@ AllocatePythonPathTableEntry(
     return TRUE;
 }
 
-VOID
-FreePythonPathTableEntry(
-    _In_        PPYTHON                  Python,
-    _In_opt_    PPYTHON_PATH_TABLE_ENTRY PathTableEntry
-    )
-{
-
-}
-
-PYTHON_API
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTableEntryAndString(
-    _In_  PPYTHON                   Python,
-    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
-    _Out_ PPSTRING                  StringPointer
+    PPYTHON                   Python,
+    PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    PPSTRING                  StringPointer
     )
 {
     return FALSE;
 }
 
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTableEntryAndStringWithBuffer(
-    _In_  PPYTHON                   Python,
-    _In_  ULONG                     StringBufferSize,
-    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
-    _Out_ PPSTRING                  StringPointer
+    PPYTHON                   Python,
+    ULONG                     StringBufferSize,
+    PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    PPSTRING                  StringPointer
     )
 {
     return FALSE;
 }
 
-PYTHON_API
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTableEntryAndHashedString(
-    _In_  PPYTHON                   Python,
-    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
-    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    PPYTHON                   Python,
+    PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    PPPYTHON_HASHED_STRING    HashedStringPointer
     )
 {
     return FALSE;
 }
 
-PYTHON_API
+_Use_decl_annotations_
 BOOL
 AllocatePythonPathTableEntryAndHashedStringWithBuffer(
-    _In_  PPYTHON                   Python,
-    _In_  ULONG                     StringBufferSize,
-    _Out_ PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
-    _Out_ PPPYTHON_HASHED_STRING    HashedStringPointer
+    PPYTHON                   Python,
+    ULONG                     StringBufferSize,
+    PPPYTHON_PATH_TABLE_ENTRY PathTableEntryPointer,
+    PPPYTHON_HASHED_STRING    HashedStringPointer
     )
 {
     return FALSE;
+}
+
+_Use_decl_annotations_
+VOID
+FreePythonPathTableEntry(
+    PPYTHON                  Python,
+    PPYTHON_PATH_TABLE_ENTRY PathTableEntry
+    )
+{
+
+}
+
+_Use_decl_annotations_
+VOID
+FreeBuffer(
+    PPYTHON Python,
+    PVOID   Buffer
+    )
+{
+
+}
+
+_Use_decl_annotations_
+VOID
+FreeString(
+    PPYTHON Python,
+    PSTRING String
+    )
+{
+
+
+}
+
+_Use_decl_annotations_
+VOID
+FreeStringAndBuffer(
+    PPYTHON Python,
+    PSTRING String
+    )
+{
+
+
+}
+
+_Use_decl_annotations_
+VOID
+FreeStringBuffer(
+    PPYTHON Python,
+    PSTRING String
+    )
+{
+
+
+}
+
+_Use_decl_annotations_
+VOID
+FreeStringBufferDirect(
+    PPYTHON Python,
+    PVOID   Buffer
+    )
+{
+
+
+}
+
+
+_Use_decl_annotations_
+SetPythonAllocators(
+    PPYTHON             Python,
+    PPYTHON_ALLOCATORS  Allocators
+    )
+{
+    PRTL Rtl;
+    ULONG SizeOfAllocators = sizeof(*Allocators);
+    ULONG NumberOfAllocators = (
+        (SizeOfAllocators - (sizeof(ULONG) * 2)) /
+        sizeof(PYTHON_ALLOCATOR)
+    );
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocators)) {
+        return FALSE;
+    }
+
+    if (Allocators->SizeInBytes != SizeOfAllocators) {
+        return FALSE;
+    }
+
+    if (Allocators->NumberOfAllocators != NumberOfAllocators) {
+        return FALSE;
+    }
+
+    Rtl = Python->Rtl;
+
+    Rtl->RtlCopyMemory(&Python->Allocators,
+                       Allocators,
+                       SizeOfAllocators);
+
+    return TRUE;
 }
 
 #ifdef __cplusplus
