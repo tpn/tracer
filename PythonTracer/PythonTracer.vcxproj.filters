@@ -27,9 +27,6 @@
     <ClInclude Include="PythonTracerPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PythonTracerTraceStoreRelocations.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

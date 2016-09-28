@@ -2461,6 +2461,11 @@ typedef struct _PYTHON_FUNCTION_TABLE {
         struct {
             PRTL_SPLAY_LINKS              TableRoot;
 
+            //
+            // Inline the InsertOrderList LIST_ENTRY to ease the job of writing
+            // relocation structure definitions using FIELD_OFFSET().
+            //
+
             union {
                 LIST_ENTRY InsertOrderList;
                 struct {
