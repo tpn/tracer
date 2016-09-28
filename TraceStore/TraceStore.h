@@ -44,7 +44,6 @@ extern "C" {
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
-#include "TraceStoreIndex.h"
 
 #endif
 
@@ -68,6 +67,8 @@ typedef struct _TRACE_STORE_ALLOCATION {
         ULARGE_INTEGER  AllocationSize;
     };
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
+
+C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
 
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;                     // 8    0   8
@@ -623,11 +624,106 @@ typedef struct _TRACE_STORE {
 
 } TRACE_STORE, *PTRACE_STORE;
 
+typedef enum _TRACE_STORE_ID {
+    TraceStoreNullId = 0,
+    TraceStoreEventId = 1,
+    TraceStoreStringId,
+    TraceStoreStringBufferId,
+    TraceStoreHashedStringId,
+    TraceStoreHashedStringBufferId,
+    TraceStoreBufferId,
+    TraceStoreFunctionTableId,
+    TraceStoreFunctionTableEntryId,
+    TraceStorePathTableId,
+    TraceStorePathTableEntryId,
+    TraceStoreSessionId,
+    TraceStoreFilenameStringId,
+    TraceStoreFilenameStringBufferId,
+    TraceStoreDirectoryStringId,
+    TraceStoreDirectoryStringBufferId,
+    TraceStoreStringArrayId,
+    TraceStoreStringTableId,
+    TraceStoreInvalidId
+} TRACE_STORE_ID, *PTRACE_STORE_ID;
+
+typedef enum _TRACE_STORE_INDEX {
+    TraceStoreEventIndex = 0,
+    TraceStoreEventAllocationIndex,
+    TraceStoreEventAddressIndex,
+    TraceStoreEventInfoIndex,
+    TraceStoreStringIndex,
+    TraceStoreStringAllocationIndex,
+    TraceStoreStringAddressIndex,
+    TraceStoreStringInfoIndex,
+    TraceStoreStringBufferIndex,
+    TraceStoreStringBufferAllocationIndex,
+    TraceStoreStringBufferAddressIndex,
+    TraceStoreStringBufferInfoIndex,
+    TraceStoreHashedStringIndex,
+    TraceStoreHashedStringAllocationIndex,
+    TraceStoreHashedStringAddressIndex,
+    TraceStoreHashedStringInfoIndex,
+    TraceStoreHashedStringBufferIndex,
+    TraceStoreHashedStringBufferAllocationIndex,
+    TraceStoreHashedStringBufferAddressIndex,
+    TraceStoreHashedStringBufferInfoIndex,
+    TraceStoreBufferIndex,
+    TraceStoreBufferAllocationIndex,
+    TraceStoreBufferAddressIndex,
+    TraceStoreBufferInfoIndex,
+    TraceStoreFunctionTableIndex,
+    TraceStoreFunctionTableAllocationIndex,
+    TraceStoreFunctionTableAddressIndex,
+    TraceStoreFunctionTableInfoIndex,
+    TraceStoreFunctionTableEntryIndex,
+    TraceStoreFunctionTableEntryAllocationIndex,
+    TraceStoreFunctionTableEntryAddressIndex,
+    TraceStoreFunctionTableEntryInfoIndex,
+    TraceStorePathTableIndex,
+    TraceStorePathTableAllocationIndex,
+    TraceStorePathTableAddressIndex,
+    TraceStorePathTableInfoIndex,
+    TraceStorePathTableEntryIndex,
+    TraceStorePathTableEntryAllocationIndex,
+    TraceStorePathTableEntryAddressIndex,
+    TraceStorePathTableEntryInfoIndex,
+    TraceStoreSessionIndex,
+    TraceStoreSessionAllocationIndex,
+    TraceStoreSessionAddressIndex,
+    TraceStoreSessionInfoIndex,
+    TraceStoreFilenameStringIndex,
+    TraceStoreFilenameStringAllocationIndex,
+    TraceStoreFilenameStringAddressIndex,
+    TraceStoreFilenameStringInfoIndex,
+    TraceStoreFilenameStringBufferIndex,
+    TraceStoreFilenameStringBufferAllocationIndex,
+    TraceStoreFilenameStringBufferAddressIndex,
+    TraceStoreFilenameStringBufferInfoIndex,
+    TraceStoreDirectoryStringIndex,
+    TraceStoreDirectoryStringAllocationIndex,
+    TraceStoreDirectoryStringAddressIndex,
+    TraceStoreDirectoryStringInfoIndex,
+    TraceStoreDirectoryStringBufferIndex,
+    TraceStoreDirectoryStringBufferAllocationIndex,
+    TraceStoreDirectoryStringBufferAddressIndex,
+    TraceStoreDirectoryStringBufferInfoIndex,
+    TraceStoreStringArrayIndex,
+    TraceStoreStringArrayAllocationIndex,
+    TraceStoreStringArrayAddressIndex,
+    TraceStoreStringArrayInfoIndex,
+    TraceStoreStringTableIndex,
+    TraceStoreStringTableAllocationIndex,
+    TraceStoreStringTableAddressIndex,
+    TraceStoreStringTableInfoIndex,
+    TraceStoreInvalidIndex
+} TRACE_STORE_INDEX, *PTRACE_STORE_INDEX;
+
+#define MAX_TRACE_STORES TraceStoreStringTableInfoIndex + 1
+
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
-
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      SizeOfStruct;
@@ -641,6 +737,55 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
+
+typedef struct _TRACE_STORE_DESCRIPTOR {
+    TRACE_STORE_ID      TraceStoreId;
+    TRACE_STORE_INDEX   TraceStoreIndex;
+    LPCWSTR             TraceStoreName;
+} TRACE_STORE_DESCRIPTOR, *PTRACE_STORE_DESCRIPTOR;
+
+typedef struct _TRACE_STORE_FIELD_RELOC {
+
+    //
+    // Offset from the start of the struct in bytes.
+    //
+
+    ULONG Offset;
+
+    //
+    // Id of the trace store this field refers to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+} TRACE_STORE_FIELD_RELOC, *PTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC *PCTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC **PPCTRACE_STORE_FIELD_RELOC;
+
+C_ASSERT(sizeof(TRACE_STORE_FIELD_RELOC) == 8);
+
+#define LAST_TRACE_STORE_FIELD_RELOC { 0, 0 }
+
+
+typedef struct _TRACE_STORE_FIELD_RELOCS {
+
+    //
+    // Id of the trace store this relocation information applies to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+    //
+    // Pointer to an array of field relocation structures.
+    //
+
+    PTRACE_STORE_FIELD_RELOC Relocations;
+
+} TRACE_STORE_FIELD_RELOCS, *PTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS *PCTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS **PPCTRACE_STORE_FIELD_RELOCS;
+
+#define LAST_TRACE_STORE_FIELD_RELOCS { 0, NULL }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions

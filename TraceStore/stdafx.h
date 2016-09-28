@@ -21,7 +21,6 @@ Abstract:
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
-#include "TraceStoreIndex.h"
 #include "TraceStore.h"
 #include "TraceStorePrivate.h"
 #include "TraceStoreConstants.h"
