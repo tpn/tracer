@@ -27,9 +27,6 @@
     <ClInclude Include="TraceStore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TraceStoreIndex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="TraceStoreConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>

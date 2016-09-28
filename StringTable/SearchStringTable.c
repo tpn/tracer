@@ -16,7 +16,7 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
-SHORT
+STRING_TABLE_INDEX
 SearchStringTableSlotsForFirstPrefixMatch(
     PSTRING_TABLE StringTable,
     PSTRING String,
@@ -56,6 +56,8 @@ Return Value:
     ULONG Shift = 0;
     ULONG CharactersMatched;
     ULONG NumberOfTrailingZeros;
+    ULONG SearchLength;
+    PSTRING TargetString;
     STRING_SLOT Slot;
     STRING_SLOT Compare;
     STRING_SLOT Source;
@@ -68,14 +70,15 @@ Return Value:
     // use a simple rep movsb intrinsic.
     //
 
-    Source.Chars128 = _mm_setzero_si128();
-    __movsb(Source.Char, String->Buffer, String->Length);
+    SearchLength = min(String->Length, 16);
+    SecureZeroMemory(&Source, sizeof(Source));
+    __movsb(Source.Char, String->Buffer, SearchLength);
 
     //
     // Load the slot lengths.
     //
 
-    Lengths.Slots256 = _mm256_load_si256(&StringTable->Lengths.Slots256);
+    Lengths.SlotsYmm = _mm256_load_si256(&StringTable->Lengths.SlotsYmm);
 
     //
     // Get the number of bits set.
@@ -95,7 +98,7 @@ Return Value:
 
         //
         // Shift the bitmap right, past the zeros and the 1 that was just found,
-        // such that it's positioned correctly for the next loop's tzcnt.  Update
+        // such that it's positioned correctly for the next loop's tzcnt. Update
         // the shift count accordingly.
         //
 
@@ -106,21 +109,28 @@ Return Value:
         // Load the slot and its length.
         //
 
-        Slot.Chars128 = _mm_load_si128(&StringTable->Slots[Index].Chars128);
+        Slot.CharsXmm = _mm_load_si128(&StringTable->Slots[Index].CharsXmm);
         Length = Lengths.Slots[Index];
 
         //
         // Compare the slot to the search string.
         //
 
-        Compare.Chars128 = _mm_cmpeq_epi8(Slot.Chars128, Source.Chars128);
+        Compare.CharsXmm = _mm_cmpeq_epi8(Slot.CharsXmm, Source.CharsXmm);
 
         //
         // Create a mask of the comparison, then filter out high bits from the
-        // length onward.
+        // search string's length (which is capped at 16).  (This shouldn't be
+        // technically necessary as the string array buffers should have been
+        // calloc'd and zeroed, but optimizing compilers can often ignore the
+        // zeroing request -- which can produce some bizarre results where the
+        // debug build is correct (because the buffers were zeroed) but the
+        // release build fails because the zeroing got ignored and there are
+        // junk bytes past the NULL terminator, which get picked up in our
+        // 128-bit loads.)
         //
 
-        Mask = _bzhi_u32(_mm_movemask_epi8(Compare.Chars128), String->Length);
+        Mask = _bzhi_u32(_mm_movemask_epi8(Compare.CharsXmm), SearchLength);
 
         //
         // Count how many characters matched.
@@ -128,13 +138,50 @@ Return Value:
 
         CharactersMatched = __popcnt(Mask);
 
+        if ((USHORT)CharactersMatched == 16 && Length > 16) {
+
+            //
+            // The first 16 characters in the string matched against this
+            // slot, and the slot is oversized (longer than 16 characters),
+            // so do a direct comparison between the remaining buffers.
+            //
+
+            TargetString = &StringTable->pStringArray->Strings[Index];
+
+            CharactersMatched = IsPrefixMatch(String, TargetString, 16);
+
+            if (CharactersMatched == NO_MATCH_FOUND) {
+
+                //
+                // The prefix match failed, continue our search.
+                //
+
+                continue;
+
+            } else {
+
+                //
+                // We successfully prefix matched the search string against
+                // this slot.  The code immediately following us deals with
+                // handling a successful prefix match at the initial slot
+                // level; let's avoid an unnecessary branch and just jump
+                // directly into it.
+                //
+
+                goto FoundMatch;
+            }
+        }
+
         if ((USHORT)CharactersMatched == Length) {
+
+FoundMatch:
 
             //
             // This slot is a prefix match.  Fill out the Match structure if the
             // caller provided a non-NULL pointer, then return the index of the
             // match.
             //
+
 
             if (ARGUMENT_PRESENT(Match)) {
 

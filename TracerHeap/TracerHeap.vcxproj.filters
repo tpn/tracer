@@ -21,7 +21,7 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DefaultTracerHeap.h">
+    <ClInclude Include="TracerHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -30,6 +30,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DefaultTracerHeap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AlignedTracerHeap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

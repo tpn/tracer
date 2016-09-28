@@ -13,7 +13,7 @@ Abstract:
     trace a Python interpreter using the trace store functionality.
 
     It depends on the following components: Rtl, Python, PythonTracer,
-    TracerConfig, and TraceStore.
+    TracerConfig, StringTable and TraceStore.
 
     It is currently used by the TracedPythonExe component.
 
@@ -67,10 +67,21 @@ extern "C" {
 #include "../Rtl/Rtl.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
+#include "../StringTable/StringTable.h"
 #include "../PythonTracer/PythonTracer.h"
 #include "../TracerConfig/TracerConfig.h"
 
 #endif
+
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACED_PYTHON_SESSION_FLAGS {
+
+    //
+    // When set, indicates that this is a readonly trace session.
+    //
+
+    ULONG IsReadonly:1;
+
+} TRACED_PYTHON_SESSION_FLAGS, *PTRACED_PYTHON_SESSION_FLAGS;
 
 //
 // Forward declaration of the destroy function such that it can be included
@@ -86,8 +97,6 @@ typedef DESTROY_TRACED_PYTHON_SESSION   *PDESTROY_TRACED_PYTHON_SESSION;
 typedef DESTROY_TRACED_PYTHON_SESSION **PPDESTROY_TRACED_PYTHON_SESSION;
 TRACED_PYTHON_SESSION_API DESTROY_TRACED_PYTHON_SESSION \
                           DestroyTracedPythonSession;
-
-static CONST PWSTR PATH_ENV_NAME = L"Path";
 
 typedef struct _TRACED_PYTHON_SESSION {
 
@@ -189,7 +198,9 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     HMODULE RtlModule;
     HMODULE HookModule;
+    HMODULE TracerHeapModule;
     HMODULE TraceStoreModule;
+    HMODULE StringTableModule;
 
     //
     // Python-specific tracer modules.
@@ -282,6 +293,35 @@ typedef struct _TRACED_PYTHON_SESSION {
     //PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
 
     //
+    // TracerHeap-specific functions.
+    //
+
+    PINITIALIZE_ALIGNED_ALLOCATOR InitializeAlignedAllocator;
+    PDESTROY_ALIGNED_ALLOCATOR DestroyAlignedAllocator;
+
+    //
+    // StringTable-specific functions.
+    //
+
+    PCREATE_STRING_TABLE CreateStringTable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+        CreateStringTableFromDelimitedEnvironmentVariable;
+
+    //
+    // The StringTable allocator will be initialized via the TracerHeap's
+    // InitializeAlignedAllocator() export.
+    //
+
+    ALLOCATOR StringTableAllocator;
+    PALLOCATOR pStringTableAllocator;
+    PSTRING_TABLE ModuleNamesStringTable;
+
+    //
     // Tracer-specific initializers.
     //
 
@@ -372,74 +412,6 @@ typedef struct _TRACED_PYTHON_SESSION {
 
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 
-typedef _Struct_size_bytes_(Size) struct _PATH_ENV_VAR {
-
-    _Field_range_(==, sizeof(struct _PATH_ENV_VAR)) USHORT StructSize;
-
-    USHORT FirstAlignedAllocSizeInBytes;
-    USHORT SecondAlignedAllocSizeInBytes;
-
-    USHORT NumberOfElements;
-    USHORT ReservedUnicodeBufferSizeInBytes;
-
-    //
-    // Pad out to an 8-byte boundary.
-    //
-
-    USHORT Padding[3];
-
-    //
-    // The allocator used to create this structure.
-    //
-
-    PALLOCATOR Allocator;
-
-    //
-    // Bitmap for directory end points.
-    //
-
-    RTL_BITMAP Bitmap;
-
-    //
-    // A UNICODE_STRING wrapping the PATH environment variable value.
-    //
-
-    UNICODE_STRING Paths;
-
-    //
-    // A UNICODE_STRING that will wrap the new PATH environment variable to
-    // be set, if there is one.
-    //
-
-    UNICODE_STRING NewPaths;
-
-    UNICODE_PREFIX_TABLE PathsPrefixTable;
-    UNICODE_PREFIX_TABLE PathsToAddPrefixTable;
-    UNICODE_PREFIX_TABLE PathsToRemovePrefixTable;
-
-    //
-    // Pointer to the first element of an array of UNICODE_STRING structs used
-    // to capture each directory in the path.
-    //
-
-    PUNICODE_STRING Directories;
-
-    //
-    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
-    // structs used for the PathsPrefixTable.
-    //
-
-    PUNICODE_PREFIX_TABLE_ENTRY PathsPrefixTableEntries;
-
-    //
-    // Pointer to the first element of an array of UNICODE_PREFIX_TABLE_ENTRY
-    // structs used for the PathsToRemovePrefixTable.
-    //
-
-    PUNICODE_PREFIX_TABLE_ENTRY PathsToRemovePrefixTableEntries;
-
-} PATH_ENV_VAR, *PPATH_ENV_VAR, **PPPATH_ENV_VAR;
-
 typedef struct _PYTHON_HOME {
 
     //
@@ -482,14 +454,19 @@ typedef struct _PYTHON_HOME {
 
 } PYTHON_HOME, *PPYTHON_HOME;
 
+////////////////////////////////////////////////////////////////////////////////
+// Function Type Definitions
+////////////////////////////////////////////////////////////////////////////////
+
 typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACED_PYTHON_SESSION)(
-    _Out_       PPTRACED_PYTHON_SESSION Session,
-    _In_        PTRACER_CONFIG TracerConfig,
-    _In_opt_    PALLOCATOR Allocator,
-    _In_opt_    HMODULE OwningModule
+    _Outptr_opt_result_maybenull_ PPTRACED_PYTHON_SESSION Session,
+    _In_     PTRACER_CONFIG TracerConfig,
+    _In_opt_ PALLOCATOR Allocator,
+    _In_opt_ HMODULE OwningModule,
+    _Inout_  PPUNICODE_STRING TraceSessionDirectoryPointer
     );
 typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
 TRACED_PYTHON_SESSION_API INITIALIZE_TRACED_PYTHON_SESSION \
@@ -509,24 +486,20 @@ TRACED_PYTHON_SESSION_API SANITIZE_PATH_ENVIRONMENT_VARIABLE_FOR_PYTHON \
 
 typedef
 _Success_(return != 0)
-PPATH_ENV_VAR
-(LOAD_PATH_ENVIRONMENT_VARIABLE)(
-    _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ USHORT ReservedUnicodeBufferSizeInBytes
+BOOL
+(CHANGE_INTO_PYTHON_HOME_DIRECTORY)(
+    _In_ PTRACED_PYTHON_SESSION Session
     );
-typedef LOAD_PATH_ENVIRONMENT_VARIABLE *PLOAD_PATH_ENVIRONMENT_VARIABLE;
-TRACED_PYTHON_SESSION_API LOAD_PATH_ENVIRONMENT_VARIABLE \
-                          LoadPathEnvironmentVariable;
+typedef CHANGE_INTO_PYTHON_HOME_DIRECTORY  \
+      *PCHANGE_INTO_PYTHON_HOME_DIRECTORY, \
+    **PPCHANGE_INTO_PYTHON_HOME_DIRECTORY;
+TRACED_PYTHON_SESSION_API CHANGE_INTO_PYTHON_HOME_DIRECTORY \
+                          ChangeIntoPythonHomeDirectory;
 
-typedef
-VOID
-(DESTROY_PATH_ENVIRONMENT_VARIABLE)(
-    _Inout_ PPPATH_ENV_VAR PathPointer
-    );
-typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
-TRACED_PYTHON_SESSION_API DESTROY_PATH_ENVIRONMENT_VARIABLE \
-                          DestroyPathEnvironmentVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+// Inline Functions
+////////////////////////////////////////////////////////////////////////////////
 
 FORCEINLINE
 _Check_return_
@@ -537,6 +510,7 @@ LoadAndInitializeTracedPythonSession(
     _In_ PTRACER_CONFIG TracerConfig,
     _In_ PALLOCATOR Allocator,
     _In_opt_ HMODULE OwningModule,
+    _Inout_ PPUNICODE_STRING TraceSessionDirectoryPointer,
     _Out_ PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
     )
 /*++
@@ -562,6 +536,12 @@ Arguments:
         If not present, TracerConfig->Allocator will be used.
 
     OwningModule - Optionally supplies the owning module handle.
+
+    TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
+        provides the address to a UNICODE_STRING structure that represents the
+        trace session directory to open in a read-only context, or, if the
+        pointer is NULL, this will receive the address of the newly-created
+        UNICODE_STRING structure that matches the trace session directory.
 
     DestroyTracedPythonSessionPointer - Supplies a pointer to the address of a
         variable that will receive the address of the DLL export by the same
@@ -598,6 +578,10 @@ See Also:
     }
 
     if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TraceSessionDirectoryPointer)) {
         return FALSE;
     }
 
@@ -654,7 +638,8 @@ See Also:
         Session,
         TracerConfig,
         Allocator,
-        NULL
+        NULL,
+        TraceSessionDirectoryPointer
     );
 
     if (!Success) {

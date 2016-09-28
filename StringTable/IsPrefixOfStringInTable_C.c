@@ -15,7 +15,7 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
-BOOL
+STRING_TABLE_INDEX
 IsPrefixOfStringInSingleTable_C(
     PSTRING_TABLE StringTable,
     PSTRING String,
@@ -25,8 +25,9 @@ IsPrefixOfStringInSingleTable_C(
 
 Routine Description:
 
-    Searches a string table to see if any strings match the prefix of a search
-    string.
+    Searches a string table to see if any strings "prefix match" the given
+    search string.  That is, whether any string in the table "starts with
+    or is equal to" the search string.
 
 Arguments:
 
@@ -36,19 +37,19 @@ Arguments:
         search for.
 
     Match - Optionally supplies a pointer to a variable that contains the
-        address of a STRING_MATCH structure.
+        address of a STRING_MATCH structure.  This will be populated with
+        additional details about the match if a non-NULL pointer is supplied.
 
 Return Value:
 
-    TRUE if success, FALSE on failure.  TRUE does not indicate a match; check
-    the STRING_MATCH Match parameter's Index to see if a match occurred.
+    Index of the prefix match if one was found, NO_MATCH_FOUND if not.
 
 --*/
 {
     CHAR FirstChar;
-    SHORT Index;
     USHORT Mask;
     USHORT Bitmap;
+    STRING_TABLE_INDEX Index = NO_MATCH_FOUND;
     PSTRING_ARRAY StringArray;
 
     //
@@ -56,11 +57,11 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(StringTable)) {
-        return FALSE;
+        goto End;
     }
 
     if (!ARGUMENT_PRESENT(String)) {
-        return FALSE;
+        goto End;
     }
 
     StringArray = StringTable->pStringArray;
@@ -71,7 +72,7 @@ Return Value:
     //
 
     if (StringArray->MinimumLength > String->Length) {
-        return FALSE;
+        goto End;
     }
 
     //
@@ -88,7 +89,7 @@ Return Value:
         // terminate our search early here.
         //
 
-        return FALSE;
+        goto End;
     }
 
     //
@@ -111,7 +112,7 @@ Return Value:
         // No bits remaining in the mask, so there are no prefix matches.
         //
 
-        return FALSE;
+        goto End;
 
     }
 
@@ -126,7 +127,9 @@ Return Value:
         Match
     );
 
-    return (Index != NO_MATCH_FOUND);
+End:
+
+    return Index;
 }
 
 

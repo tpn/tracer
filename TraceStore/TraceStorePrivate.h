@@ -389,7 +389,8 @@ BOOL
     _In_ PTRACE_STORE AddressStore,
     _In_ PTRACE_STORE InfoStore,
     _In_ ULONG InitialSize,
-    _In_ ULONG MappingSize
+    _In_ ULONG MappingSize,
+    _In_ PTRACE_FLAGS TraceFlags
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
@@ -523,7 +524,7 @@ Return Value:
     // Prefault the page.
     //
 
-    PrefaultPage(PrefaultMemoryMap->NextAddress);
+    TraceStore->Rtl->PrefaultPages(PrefaultMemoryMap->NextAddress, 1);
 
     //
     // Return the memory map to the free list.

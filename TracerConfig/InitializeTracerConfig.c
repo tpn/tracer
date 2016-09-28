@@ -1,3 +1,21 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    InitializeTracerConfig.c
+
+Abstract:
+
+    This module implements routines related to the initialization of a
+    TRACER_CONFIG structure.  Routines are provided for loading path names
+    from the registry, reading REG_SZ and REG_DWORD values from the registry,
+    and initializing a new TRACER_CONFIG structure based on the registry
+    configuration stored under HKCU\Software\Tracer.
+
+--*/
+
 #include "stdafx.h"
 
 _Success_(return != 0)
@@ -319,7 +337,6 @@ Return Value:
 } while (0)
 
 
-
 _Use_decl_annotations_
 PTRACER_CONFIG
 InitializeTracerConfig(
@@ -473,6 +490,19 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
     READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);
+    READ_REG_DWORD_FLAG(DisableFileFlagOverlapped, FALSE);
+    READ_REG_DWORD_FLAG(DisableFileFlagSequentialScan, FALSE);
+    READ_REG_DWORD_FLAG(EnableFileFlagRandomAccess, FALSE);
+    READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
+
+    //
+    // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has
+    // been requested, disable FILE_FLAG_SEQUENTIAL_SCAN.
+    //
+
+    if (Flags.EnableFileFlagRandomAccess) {
+        Flags.DisableFileFlagSequentialScan = TRUE;
+    }
 
     //
     // Copy the flags over.

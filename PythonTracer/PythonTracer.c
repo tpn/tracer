@@ -114,24 +114,56 @@ IsFunctionOfInterestPrefixTree(
 
     ModuleName = &Function->PathEntry.ModuleName;
 
-    Table = &Context->ModuleFilterTable;
+    Table = &Context->ModuleFilterPrefixTree;
 
     Entry = Rtl->PfxFindPrefix(Table, ModuleName);
 
     return (Entry ? TRUE : FALSE);
 }
 
+FORCEINLINE
 BOOL
-IsFunctionOfInterestBinarySearch(
+IsFunctionOfInterestStringTable(
     _In_    PRTL                    Rtl,
     _In_    PPYTHON_TRACE_CONTEXT   Context,
     _In_    PPYTHON_FUNCTION        Function
     )
 {
-    return FALSE;
+    STRING Name;
+    PSTRING ModuleName;
+    PSTRING_TABLE StringTable = Context->ModuleFilterStringTable;
+    STRING_TABLE_INDEX Index;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    if (!Context->HasModuleFilter) {
+
+        //
+        // Trace everything.
+        //
+
+        return TRUE;
+    }
+
+    ModuleName = &Function->PathEntry.ModuleName;
+
+    if (!StringTable || !ModuleName || ModuleName->Length <= 1) {
+        return FALSE;
+    }
+
+    if (ModuleName->Buffer[0] == '\\') {
+        Name.Length = ModuleName->Length - 1;
+        Name.MaximumLength = ModuleName->MaximumLength - 1;
+        Name.Buffer = ModuleName->Buffer + 1;
+        ModuleName = &Name;
+    }
+
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    Index = IsPrefixOfStringInTable(StringTable, ModuleName, NULL);
+
+    return (Index != NO_MATCH_FOUND);
 }
 
-#define IsFunctionOfInterest IsFunctionOfInterestPrefixTree
+#define IsFunctionOfInterest IsFunctionOfInterestStringTable
 
 _Use_decl_annotations_
 VOID
@@ -344,8 +376,8 @@ PyTraceCallback(
         return 0;
     }
 
-    if (!Function || Function->PathEntry.Path.Length == 0) {
-        //__debugbreak();
+    if (!Function->PathEntry.IsValid) {
+        __debugbreak();
         return 0;
     }
 
@@ -576,7 +608,7 @@ PyTraceCallback(
     if (Flags.TraceHandleCount) {
 
         //
-        // Calcualte handle count delta.
+        // Calculate handle count delta.
         //
 
         LastEvent.HandleDelta = (SHORT)(
@@ -790,6 +822,8 @@ InitializePythonTraceContext(
     PTRACE_STORE FilenameStringBufferStore;
     PTRACE_STORE DirectoryStringStore;
     PTRACE_STORE DirectoryStringBufferStore;
+    PTRACE_STORE StringArrayStore;
+    PTRACE_STORE StringTableStore;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     USHORT TraceStoreIndex;
@@ -862,6 +896,8 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(FilenameStringBuffer);
     INIT_STORE_ALLOCATOR(DirectoryString);
     INIT_STORE_ALLOCATOR(DirectoryStringBuffer);
+    INIT_STORE_ALLOCATOR(StringArray);
+    INIT_STORE_ALLOCATOR(StringTable);
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
     EventStore->NoRetire = FALSE;
@@ -879,7 +915,7 @@ InitializePythonTraceContext(
     Context->FirstFunction = NULL;
     QueryPerformanceFrequency(&Context->Frequency);
 
-    Rtl->PfxInitialize(&Context->ModuleFilterTable);
+    Rtl->PfxInitialize(&Context->ModuleFilterPrefixTree);
 
     InitializeListHead(&Context->Functions);
 
@@ -899,6 +935,7 @@ InitializePythonTraceContext(
     Context->DisableHandleCountTracing = DisableHandleCountTracing;
 
     Context->AddModuleName = AddModuleName;
+    Context->SetModuleNamesStringTable = SetModuleNamesStringTable;
 
     return TRUE;
 }
@@ -1211,7 +1248,7 @@ AddModuleName(
 
     Success = AddPrefixTableEntry(Context,
                                   ModuleNameObject,
-                                  &Context->ModuleFilterTable,
+                                  &Context->ModuleFilterPrefixTree,
                                   &PrefixTableEntry);
 
     if (Success) {
@@ -1219,6 +1256,40 @@ AddModuleName(
     }
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+SetModuleNamesStringTable(
+    PPYTHON_TRACE_CONTEXT Context,
+    PSTRING_TABLE StringTable
+    )
+{
+    PSTRING_TABLE ExistingTable;
+
+    if (!ARGUMENT_PRESENT(Context)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTable)) {
+        return FALSE;
+    }
+
+    ExistingTable = Context->ModuleFilterStringTable;
+
+    if (ExistingTable) {
+
+        //
+        // XXX todo: destroy existing table.
+        //
+
+    }
+
+    Context->ModuleFilterStringTable = StringTable;
+
+    Context->HasModuleFilter = TRUE;
+
+    return TRUE;
 }
 
 #ifdef __cplusplus

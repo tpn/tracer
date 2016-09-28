@@ -80,6 +80,32 @@ Returns:
         Session->Threadpool = NULL;
     }
 
+    //
+    // If pStringTableAllocator points at something and we have a destructor
+    // loaded, destroy it.
+    //
+
+    if (Session->pStringTableAllocator &&
+        Session->DestroyAlignedAllocator) {
+
+
+        //
+        // If we created a ModuleNamesStringTable, destroy it.
+        //
+
+        if (Session->ModuleNamesStringTable) {
+            PSTRING_TABLE Table = Session->ModuleNamesStringTable;
+            Table->DestroyStringTable(
+                Session->pStringTableAllocator,
+                Session->ModuleNamesStringTable
+            );
+            Session->ModuleNamesStringTable = NULL;
+        }
+
+        Session->DestroyAlignedAllocator(Session->pStringTableAllocator);
+        Session->pStringTableAllocator = NULL;
+    }
+
     Allocator = Session->Allocator;
 
     if (!Allocator) {

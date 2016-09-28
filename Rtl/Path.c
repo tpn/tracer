@@ -1,14 +1,19 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Path.c
+
+Abstract:
+
+    This module implements routines related to path handling.
+
+--*/
 #include "stdafx.h"
 
 #define MAX_PATH_ALLOC 4000
-
-//
-// Forward declarations.
-//
-
-RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
-RTL_API UNICODE_STRING_TO_PATH_EX UnicodeStringToPathEx;
-RTL_API GET_MODULE_PATH GetModulePath;
 
 _Use_decl_annotations_
 BOOL
@@ -559,44 +564,102 @@ Error:
     return Success;
 }
 
-/*
 _Use_decl_annotations_
-BOOL
-UnicodeStringToPathEx(
-    PRTL Rtl,
-    PUNICODE_STRING String,
-    PALLOCATOR Allocator,
-    PPPATH PathPointer,
-    PPATH_CREATE_FLAGS CreateFlags
-    );
-*/
+PUNICODE_STRING
+CurrentDirectoryToUnicodeString(
+    PALLOCATOR Allocator
+    )
 /*++
 
 Routine Description:
 
-    Converts a UNICODE_STRING representing a fully-qualified path into a
-    PATH structure, allocating memory from the provided Allocator.
+    This function gets the current working directory as a wide character string,
+    then allocates a new buffer to hold a UNICODE_STRING structure and a copy
+    of the string using the provided Allocator, then copies the string details,
+    initializes the struct's lengths, and returns a pointer to the structure.
+
+    The size of the UNICODE_STRING structure plus the trailing WCHAR buffer
+    is calculated up-front and satisfied with a single Allocator->Calloc()
+    call.  The String->Buffer is then adjusted to the point past the structure.
+    Thus, the structure can be freed via a single Allocator->Free(String) call.
 
 Arguments:
 
-    Rtl - Supplies a pointer to an initialized RTL struct.
-
-    String - Supplies a pointer to a UNICODE_STRING structure that contains a
-        path name.
-
-    Allocator - Supplies a pointer to an ALLOCATOR structure that is used for
-        allocating the new PATH structure (and associated buffers).
-
-    PathPointer - Supplies a pointer to an address that receives the address
-        of the newly created PATH structure if the routine was successful.
-
-    CreateFlags - Optionally supplies a pointer to a PATH_CREATE_FLAGS struct
-        that controls specific details about how the path is created.
+    Allocator - Supplies a pointer to an ALLOCATOR structure that will be used
+        to perform allocations.
 
 Return Value:
 
-    TRUE on success, FALSE on failure.
+    A pointer to a UNICODE_STRING structure representing the current directory,
+    or NULL if an error occurred.
 
 --*/
+{
+    LONG_INTEGER NumberOfChars;
+    LONG_INTEGER AllocSize;
+    LONG_INTEGER AlignedAllocSize;
+    PUNICODE_STRING String;
+
+    NumberOfChars.LongPart = GetCurrentDirectoryW(0, NULL);
+    if (NumberOfChars.LongPart <= 0) {
+        return NULL;
+    }
+
+    if (NumberOfChars.HighPart) {
+        return NULL;
+    }
+
+    AllocSize.LongPart = (
+        (NumberOfChars.LongPart << 1) +
+        sizeof(UNICODE_STRING)
+    );
+    AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
+
+    if (AlignedAllocSize.HighPart) {
+        return NULL;
+    }
+
+    String = (PUNICODE_STRING)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedAllocSize.LongPart
+        )
+    );
+
+    if (!String) {
+        return NULL;
+    }
+
+    String->Length = (USHORT)((NumberOfChars.LowPart - 1) << 1);
+    String->MaximumLength = String->Length + sizeof(WCHAR);
+
+    String->Buffer = (PWCHAR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
+
+    if (GetCurrentDirectoryW(String->MaximumLength, String->Buffer) <= 0) {
+        Allocator->Free(Allocator->Context, String);
+        return NULL;
+    }
+
+    return String;
+}
+
+_Use_decl_annotations_
+PPATH
+CurrentDirectoryToPath(
+    PALLOCATOR Allocator
+    )
+{
+
+    //
+    // XXX todo.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return NULL;
+    }
+
+    return NULL;
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -99,7 +99,7 @@ Return Value:
     // Load the PATH_ENV_VAR struct.
     //
 
-    Path = LoadPathEnvironmentVariable(
+    Path = Rtl->LoadPathEnvironmentVariable(
         Rtl,
         Allocator,
         ReservedUnicodeBufferSizeInBytes.LowPart
@@ -348,7 +348,7 @@ Return Value:
     //
 
 Error:
-    DestroyPathEnvironmentVariable(&Path);
+    Rtl->DestroyPathEnvironmentVariable(&Path);
 
     return Success;
 }

@@ -1,11 +1,19 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    AlignedTracerHeap.c
+
+Abstract:
+
+    This module implements an ALLOCATOR interface for performing aligned
+    memory allocations.
+
+--*/
+
 #include "stdafx.h"
-
-#define ContextToHeapHandle(Context) \
-    (((PALLOCATOR)(Context))->HeapHandle)
-
-#define ALIGN(Size) (                    \
-    __popcnt64((ULONGLONG)(Size)) == 1 ? \
-        Size
 
 FORCEINLINE
 SIZE_T
@@ -51,7 +59,9 @@ AlignedHeapCalloc(
     SIZE_T Size = NumberOfElements * SizeOfElements;
     SIZE_T AlignedSize = Align(Size);
     Buffer = _aligned_malloc(Size, AlignedSize);
-    SecureZeroMemory(Buffer, AlignedSize);
+    if (Buffer) {
+        SecureZeroMemory(Buffer, AlignedSize);
+    }
     return Buffer;
 }
 
@@ -131,5 +141,74 @@ AlignedHeapInitializeAllocator(
 
     return TRUE;
 }
+
+_Use_decl_annotations_
+BOOL
+InitializeAlignedAllocator(
+    PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Initializes an ALLOCATOR structure such that it can be used for string
+    table allocations.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure to be initialized.
+
+Return Value:
+
+    TRUE if the allocator was successfully initialized, FALSE on failure.
+
+--*/
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    return AlignedHeapInitializeAllocator(Allocator);
+}
+
+_Use_decl_annotations_
+VOID
+DestroyAlignedAllocator(
+    PALLOCATOR Allocator
+    )
+/*++
+
+Routine Description:
+
+    Destroys an ALLOCATOR structure that was initialized by the routine
+    InitializeAlignedAllocator().
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure to be destroyed.
+        If this value is NULL, the routine returns immediately.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return;
+    }
+
+    AlignedHeapDestroyAllocator(Allocator);
+
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

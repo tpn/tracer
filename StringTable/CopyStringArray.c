@@ -30,6 +30,8 @@ CopyStringArray(
 Routine Description:
 
     Performs a deep-copy of a STRING_ARRAY structure using the given Allocator.
+    If the array will fit within the trailing space of a STRING_TABLE structure,
+    the routine will allocate space for the STRING_TABLE instead.
 
     N.B.: Strings in the new array will have their Hash field set to the CRC32
           value of the character values (excluding any NULLs) of their buffer.
@@ -43,6 +45,19 @@ Arguments:
     StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
         to be copied.
 
+    StringTablePaddingOffset - Supplies a USHORT value indicating the number
+        of bytes from the STRING_TABLE structure where the padding begins.
+        This value is used in conjunction with StringTableStructSize below
+        to determine if the STRING_ARRAY will fit within the table.
+
+    StringTableStructSize - Supplies a USHORT value indicating the size of the
+        STRING_TABLE structure, in bytes.  This is used in conjunction with the
+        StringTablePaddingOffset parameter above.
+
+    StringTablePointer - Supplies a pointer to a variable that receives the
+        address of the STRING_TABLE structure if one could be allocated.  If
+        not, the pointer will be set to NULL.
+
 Return Value:
 
     A pointer to a valid PSTRING_ARRAY structure on success, NULL on failure.
@@ -52,6 +67,7 @@ Return Value:
     BOOL Success;
 
     USHORT Index;
+    USHORT Count;
     USHORT MinimumLength;
     USHORT MaximumLength;
     USHORT AlignedMaxLength;
@@ -201,12 +217,19 @@ Return Value:
     NewArray->MaximumLength = MaximumLength;
 
     //
-    // Initialize string source and dest pointers to one before the starting
-    // positions.
+    // Initialize string source and destination string pointers and the count
+    // of elements.
     //
 
-    SourceString = StringArray->Strings-1;
-    DestString = NewArray->Strings-1;
+    SourceString = StringArray->Strings;
+    DestString = NewArray->Strings;
+    Count = StringArray->NumberOfElements;
+
+    //
+    // Initialize the StringTable field; if it's NULL at this point, that's ok.
+    //
+
+    NewArray->StringTable = StringTable;
 
     //
     // Initialize the destination buffer to the point after the new STRING_ARRAY
@@ -222,10 +245,7 @@ Return Value:
     // new array, including carving out the relevant buffer space.
     //
 
-    for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
-
-        ++SourceString;
-        ++DestString;
+    for (Index = 0; Index < Count; Index++, SourceString++, DestString++) {
 
         AlignedMaxLength = ALIGN_UP(SourceString->Length, 16);
 

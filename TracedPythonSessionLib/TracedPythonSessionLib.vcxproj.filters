@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TracedPythonSession.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="../TracedPythonSession/stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -32,16 +29,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="../TracedPythonSession/DestroyPathEnvironmentVariable.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="../TracedPythonSession/DestroyTracedPythonSession.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="../TracedPythonSession/InitializeTracedPythonSession.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="../TracedPythonSession/LoadPathEnvironmentVariable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="../TracedPythonSession/SanitizePathEnvironmentVariableForPython.c">
