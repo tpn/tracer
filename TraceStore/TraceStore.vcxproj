@@ -38,7 +38,7 @@
     <ProjectGuid>{C6FBB103-535C-4BCD-A463-B60C09481854}</ProjectGuid>
     <RootNamespace>TraceStore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
-    <PlatformToolset>v140</PlatformToolset>    
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -66,7 +66,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TraceStoreConstants.h" />
-    <ClInclude Include="TraceStoreIndex.h" />
     <ClInclude Include="TraceStore.h" />
     <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>

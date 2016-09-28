@@ -2393,8 +2393,8 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
         };
 
         //
-        // This is where we omit LONGLONG UserData in lie of the Function field
-        // below.
+        // This is where we omit LONGLONG UserData in lieu of the Function
+        // field below.
         //
         // LONGLONG UserData;
         //
@@ -2460,7 +2460,15 @@ typedef struct _PYTHON_FUNCTION_TABLE {
         RTL_GENERIC_TABLE GenericTable;
         struct {
             PRTL_SPLAY_LINKS              TableRoot;
-            LIST_ENTRY                    InsertOrderList;
+
+            union {
+                LIST_ENTRY InsertOrderList;
+                struct {
+                    PLIST_ENTRY InsertOrderFlink;
+                    PLIST_ENTRY InsertOrderBlink;
+                };
+            };
+
             PLIST_ENTRY                   OrderedPointer;
             ULONG                         WhichOrderedElement;
             ULONG                         NumberGenericTableElements;
@@ -2469,7 +2477,7 @@ typedef struct _PYTHON_FUNCTION_TABLE {
             PRTL_GENERIC_FREE_ROUTINE     FreeRoutine;
             union {
                 PVOID TableContext;
-                PPYTHON_FUNCTION PythonFunction;
+                PPYTHON Python;
             };
         };
     };
