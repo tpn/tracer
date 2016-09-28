@@ -51,11 +51,9 @@
           Condition="'$(PlatformToolset)' != ''" />
   </Target>
 
-  <PropertyGroup Label="Globals">
-  </PropertyGroup>
-
   <ItemDefinitionGroup>
     <ClCompile>
+      <AdditionalIncludeDirectories>$(VC_IncludePath)</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <SubSystem>Console</SubSystem>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>

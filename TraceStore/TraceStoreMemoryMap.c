@@ -224,7 +224,7 @@ Return Value:
     if (CurrentFileOffset.QuadPart != MemoryMap->FileOffset.QuadPart) {
 
         //
-        // This shouldn't occur if all our memory map machinery isn't working
+        // This shouldn't occur if all our memory map machinery is working
         // correctly.
         //
 
@@ -489,8 +489,10 @@ Finalize:
         // take care of prefaulting subsequent pages.
         //
 
-        PrefaultPage(BaseAddress);
-        PrefaultNextPage(BaseAddress);
+        if (!Rtl->PrefaultPages(BaseAddress, 2)) {
+            goto Error;
+        }
+
     }
 
     Success = TRUE;

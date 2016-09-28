@@ -1,3 +1,18 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    DefaultTracerHeap.c
+
+Abstract:
+
+    This module implements an ALLOCATOR interface around the standard Win32
+    heap functions (HeapCreate(), HeapAlloc() etc).
+
+--*/
+
 #include "stdafx.h"
 
 #define ContextToHeapHandle(Context) \

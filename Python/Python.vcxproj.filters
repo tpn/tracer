@@ -27,6 +27,9 @@
     <ClInclude Include="PythonDllFiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PythonPrivate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -39,6 +42,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FindPythonDll.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonPathTableEntry.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonFunction.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonAllocators.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonLineNumbers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonConstants.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

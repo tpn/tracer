@@ -69,7 +69,7 @@ CopyToMemoryMappedMemory(
 
     } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
                 EXCEPTION_EXECUTE_HANDLER :
-                EXCEPTION_CONTINUE_EXECUTION)
+                EXCEPTION_CONTINUE_SEARCH)
     {
         return NULL;
     }
@@ -99,6 +99,33 @@ TestExceptionHandler(VOID)
     //
 
     return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+PrefaultPages(
+    PVOID Address,
+    ULONG NumberOfPages
+    )
+{
+    ULONG Index;
+    PCHAR Pointer = Address;
+
+    __try {
+
+        for (Index = 0; Index < NumberOfPages; Index++) {
+            PrefaultPage(Pointer);
+            Pointer += PAGE_SIZE;
+        }
+
+    } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
+              EXCEPTION_EXECUTE_HANDLER :
+              EXCEPTION_CONTINUE_SEARCH) {
+
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 BOOL
@@ -3443,6 +3470,20 @@ LoadRtlExFunctions(
     // Start of auto-generated section.
     //
 
+    if (!(RtlExFunctions->DestroyRtl = (PDESTROY_RTL)
+        GetProcAddress(RtlExModule, "DestroyRtl"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyRtl'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->PrefaultPages = (PPREFAULT_PAGES)
+        GetProcAddress(RtlExModule, "PrefaultPages"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'PrefaultPages'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
         GetProcAddress(RtlExModule, "RtlCheckBit"))) {
 
@@ -3583,10 +3624,45 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->DestroyPath = (PDESTROY_PATH)
+        GetProcAddress(RtlExModule, "DestroyPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyPath'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
         GetProcAddress(RtlExModule, "GetModulePath"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'GetModulePath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CurrentDirectoryToUnicodeString = (PCURRENT_DIRECTORY_TO_UNICODE_STRING)
+        GetProcAddress(RtlExModule, "CurrentDirectoryToUnicodeString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToUnicodeString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CurrentDirectoryToPath = (PCURRENT_DIRECTORY_TO_PATH)
+        GetProcAddress(RtlExModule, "CurrentDirectoryToPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->LoadPathEnvironmentVariable = (PLOAD_PATH_ENVIRONMENT_VARIABLE)
+        GetProcAddress(RtlExModule, "LoadPathEnvironmentVariable"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadPathEnvironmentVariable'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DestroyPathEnvironmentVariable = (PDESTROY_PATH_ENVIRONMENT_VARIABLE)
+        GetProcAddress(RtlExModule, "DestroyPathEnvironmentVariable"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyPathEnvironmentVariable'");
         return FALSE;
     }
 
@@ -3644,11 +3720,11 @@ LoadRtlExSymbols(
 
 }
 
-_Success_(return != 0)
+_Use_decl_annotations_
 BOOL
 InitializeRtl(
-    _In_opt_bytecount_(*SizeOfRtl) PRTL   Rtl,
-    _Inout_ PULONG SizeOfRtl
+    PRTL   Rtl,
+    PULONG SizeOfRtl
     )
 {
     HANDLE HeapHandle;
@@ -3683,6 +3759,10 @@ InitializeRtl(
     }
 
     SetCSpecificHandler(Rtl->NtdllModule);
+    Rtl->__C_specific_handler = __C_specific_handler_impl;
+    if (!Rtl->__C_specific_handler) {
+        return FALSE;
+    }
 
     Rtl->HeapHandle = HeapHandle;
 
@@ -3700,6 +3780,47 @@ InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl)
     return InitializeRtlManuallyInline(Rtl, SizeOfRtl);
 }
 
+_Use_decl_annotations_
+VOID
+DestroyRtl(
+    PPRTL RtlPointer
+    )
+{
+    PRTL Rtl;
+
+    if (!ARGUMENT_PRESENT(RtlPointer)) {
+        return;
+    }
+
+    Rtl = *RtlPointer;
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *RtlPointer = NULL;
+
+    if (Rtl->NtdllModule) {
+        FreeLibrary(Rtl->NtdllModule);
+        Rtl->NtdllModule = NULL;
+    }
+
+    if (Rtl->Kernel32Module) {
+        FreeLibrary(Rtl->Kernel32Module);
+        Rtl->Kernel32Module = NULL;
+    }
+
+    if (Rtl->NtosKrnlModule) {
+        FreeLibrary(Rtl->NtosKrnlModule);
+        Rtl->NtosKrnlModule = NULL;
+    }
+
+    return;
+}
 
 VOID
 Debugbreak()

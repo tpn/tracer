@@ -38,13 +38,11 @@
     <ProjectGuid>{808CBEDF-507B-4E92-BB25-3A2DF2C8ECF4}</ProjectGuid>
     <RootNamespace>TracedPythonExe</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-  </PropertyGroup>
-  <PropertyGroup>
-    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -64,26 +62,15 @@
     <TargetName>tpython</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <BrowseInformation>true</BrowseInformation>
-    </ClCompile>
-    <Bscmake>
-      <PreserveSbr>true</PreserveSbr>
-    </Bscmake>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>TracerHeap.lib;TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib;$(DDK_LIB_PATH)ntoskrnl.lib</AdditionalDependencies>
+      <AdditionalDependencies>TracerHeapLib.lib;TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
     </Link>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ExpandAttributedSource>true</ExpandAttributedSource>
-      <CompileAs>CompileAsC</CompileAs>
-      <!--
-      <CreateHotpatchableImage>true</CreateHotpatchableImage>
-      -->
+      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -95,6 +82,14 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TracerConfig\TracerConfig.vcxproj">
+      <Project>{76f2056f-6a65-4ba3-a49f-3cbf5d1e2cdf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

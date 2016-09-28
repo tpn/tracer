@@ -1,65 +1,48 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    InitializeTracedPythonSession.c
+
+Abstract:
+
+    This module implements routines related to the initialization of a
+    TRACED_PYTHON_SESSION structure.  Routines are provided for converting the
+    current directory into a unicode string, changing into the PYTHONHOME
+    directory, and initializing the TRACED_PYTHON_SESSION structure.
+
+--*/
+
 #include "stdafx.h"
 
 #include "TracedPythonSessionPrivate.h"
 
-PUNICODE_STRING
-CurrentDirectoryToUnicodeString(
-    PALLOCATOR Allocator
-    )
-{
-    LONG_INTEGER NumberOfChars;
-    LONG_INTEGER AllocSize;
-    LONG_INTEGER AlignedAllocSize;
-    PUNICODE_STRING String;
 
-    NumberOfChars.LongPart = GetCurrentDirectoryW(0, NULL);
-    if (NumberOfChars.LongPart <= 0) {
-        return NULL;
-    }
-
-    if (NumberOfChars.HighPart) {
-        return NULL;
-    }
-
-    AllocSize.LongPart = (
-        (NumberOfChars.LongPart << 1) +
-        sizeof(UNICODE_STRING)
-    );
-    AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
-
-    if (AlignedAllocSize.HighPart) {
-        return NULL;
-    }
-
-    String = (PUNICODE_STRING)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AlignedAllocSize.LongPart
-        )
-    );
-
-    if (!String) {
-        return NULL;
-    }
-
-    String->Length = (USHORT)((NumberOfChars.LowPart - 1) << 1);
-    String->MaximumLength = String->Length + sizeof(WCHAR);
-
-    String->Buffer = (PWCHAR)RtlOffsetToPointer(String, sizeof(UNICODE_STRING));
-
-    if (GetCurrentDirectoryW(String->MaximumLength, String->Buffer) <= 0) {
-        Allocator->Free(Allocator->Context, String);
-        return NULL;
-    }
-
-    return String;
-}
-
+_Use_decl_annotations_
 BOOL
 ChangeIntoPythonHomeDirectory(
     PTRACED_PYTHON_SESSION Session
     )
+/*++
+
+Routine Description:
+
+    This function takes a copy of the current working directory and saves it
+    into the Session->OriginalDirectory field, then changes into the directory
+    stored in Session->PythonHomePath.
+
+Arguments:
+
+    Session - Supplies a pointer to TRACED_PYTHON_SESSION structure that is
+        to be used to control the operation.
+
+Return Value:
+
+    TRUE if the directory was changed, FALSE if an error occurred.
+
+--*/
 {
     PRTL Rtl;
     PALLOCATOR Allocator;
@@ -69,7 +52,7 @@ ChangeIntoPythonHomeDirectory(
     Allocator = Session->Allocator;
     Rtl = Session->Rtl;
 
-    CurrentDirectory = CurrentDirectoryToUnicodeString(Allocator);
+    CurrentDirectory = Rtl->CurrentDirectoryToUnicodeString(Allocator);
     if (!CurrentDirectory) {
         return FALSE;
     }
@@ -91,7 +74,8 @@ InitializeTracedPythonSession(
     PPTRACED_PYTHON_SESSION SessionPointer,
     PTRACER_CONFIG TracerConfig,
     PALLOCATOR Allocator,
-    HMODULE OwningModule
+    HMODULE OwningModule,
+    PPUNICODE_STRING TraceSessionDirectoryPointer
     )
 /*++
 
@@ -112,6 +96,12 @@ Arguments:
     Allocator - Optionally supplies a pointer to an alternate ALLOCATOR to use.
         If not present, TracerConfig->Allocator will be used.
 
+    TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
+        provides the address to a UNICODE_STRING structure that represents the
+        trace session directory to open in a read-only context, or, if the
+        pointer is NULL, this will receive the address of the newly-created
+        UNICODE_STRING structure that matches the trace session directory.
+
 Return Value:
 
     TRUE on Success, FALSE if an error occurred.  *SessionPointer will be
@@ -122,6 +112,7 @@ Return Value:
 {
     BOOL Success;
     BOOL Compress;
+    BOOL IsReadonly;
     CHAR MajorVersion;
     USHORT Index;
     ULONG RequiredSize;
@@ -130,11 +121,16 @@ Return Value:
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
+    PALLOCATOR StringTableAllocator;
     PUNICODE_STRING Path;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
     PUNICODE_STRING PythonExePath;
+    PUNICODE_STRING TraceSessionDirectory;
     PDLL_DIRECTORY_COOKIE DirectoryCookie;
+    TRACE_FLAGS TraceFlags;
+    TRACER_FLAGS TracerConfigFlags;
+    PPYTHON_TRACE_CONTEXT PythonTraceContext;
 
     //
     // Verify arguments.
@@ -165,6 +161,23 @@ Return Value:
 
         Allocator = TracerConfig->Allocator;
 
+    }
+
+    //
+    // If the caller provides a valid trace session directory, it implies we're
+    // a readonly session.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceSessionDirectoryPointer)) {
+        return FALSE;
+    }
+
+    TraceSessionDirectory = *TraceSessionDirectoryPointer;
+
+    if (!TraceSessionDirectory) {
+        IsReadonly = FALSE;
+    } else {
+        IsReadonly = TRUE;
     }
 
     Session = (PTRACED_PYTHON_SESSION)(
@@ -245,8 +258,10 @@ Return Value:
     Paths = &TracerConfig->Paths;
 
     LOAD_DLL(Rtl);
-    LOAD_DLL(TraceStore);
     LOAD_DLL(Python);
+    LOAD_DLL(TracerHeap);
+    LOAD_DLL(TraceStore);
+    LOAD_DLL(StringTable);
     LOAD_DLL(PythonTracer);
 
     //
@@ -263,25 +278,73 @@ Return Value:
 
     RESOLVE(Shell32Module, PCOMMAND_LINE_TO_ARGVW, CommandLineToArgvW);
 
+    //
+    // Rtl
+    //
+
     RESOLVE(RtlModule, PINITIALIZE_RTL, InitializeRtl);
 
+    //
+    // TraceStore
+    //
+
     RESOLVE(TraceStoreModule, PINITIALIZE_TRACE_STORES, InitializeTraceStores);
+
     RESOLVE(TraceStoreModule,
             PINITIALIZE_TRACE_CONTEXT,
             InitializeTraceContext);
+
     RESOLVE(TraceStoreModule,
             PINITIALIZE_TRACE_SESSION,
             InitializeTraceSession);
+
     RESOLVE(TraceStoreModule,
             PCLOSE_TRACE_STORES,
             CloseTraceStores);
 
+    //
+    // Python
+    //
+
     RESOLVE(PythonModule, PFIND_PYTHON_DLL_AND_EXE, FindPythonDllAndExe);
+
     RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);
 
+    //
+    // PythonTracer
+    //
+
     RESOLVE(PythonTracerModule,
-        PINITIALIZE_PYTHON_TRACE_CONTEXT,
-        InitializePythonTraceContext);
+            PINITIALIZE_PYTHON_TRACE_CONTEXT,
+            InitializePythonTraceContext);
+
+    //
+    // TracerHeap
+    //
+
+    RESOLVE(TracerHeapModule,
+            PINITIALIZE_ALIGNED_ALLOCATOR,
+            InitializeAlignedAllocator);
+
+    RESOLVE(TracerHeapModule,
+            PDESTROY_ALIGNED_ALLOCATOR,
+            DestroyAlignedAllocator);
+
+    //
+    // StringTable
+    //
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE,
+            CreateStringTable);
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE_FROM_DELIMITED_STRING,
+            CreateStringTableFromDelimitedString);
+
+    RESOLVE(StringTableModule,
+            PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE,
+            CreateStringTableFromDelimitedEnvironmentVariable);
 
     //
     // All of our modules modules use the same pattern for initialization
@@ -323,6 +386,33 @@ Return Value:
     //
 
     Rtl = Session->Rtl;
+
+    //
+    // Create an aligned allocator to use for string tables.
+    //
+
+    Session->pStringTableAllocator = NULL;
+    StringTableAllocator = &Session->StringTableAllocator;
+    Success = Session->InitializeAlignedAllocator(StringTableAllocator);
+    if (!Success) {
+        OutputDebugStringA("Session->InitializeAlignedAllocator failed\n");
+        goto Error;
+    }
+
+    //
+    // Point the pStringTableAllocator at the initialized allocator.
+    //
+
+    Session->pStringTableAllocator = StringTableAllocator;
+
+    //
+    // Create a string table to use for the module names we're going to be
+    // tracing.
+    //
+
+    Session->ModuleNamesStringTable = (
+        CreateStringTableForTracerModuleNamesEnvironmentVariable(Session)
+    );
 
     //
     // Load our owning module name.
@@ -709,24 +799,60 @@ LoadPythonDll:
     }
 
     //
-    // Create a trace session directory.
+    // Create a trace session directory if we're not readonly, otherwise, use
+    // the directory that the caller passed in.
     //
 
-    Success = CreateTraceSessionDirectory(
-        TracerConfig,
-        &Session->TraceSessionDirectory
-    );
+    if (IsReadonly) {
 
-    if (!Success) {
-        OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
-        goto Error;
+        Session->TraceSessionDirectory = TraceSessionDirectory;
+
+    } else {
+
+        Success = CreateTraceSessionDirectory(
+            TracerConfig,
+            &Session->TraceSessionDirectory
+        );
+
+        if (!Success) {
+            OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
+            goto Error;
+        }
+
+        //
+        // Update the caller's pointer.
+        //
+
+        *TraceSessionDirectoryPointer = Session->TraceSessionDirectory;
     }
+
+    //
+    // Take a local copy of the flags.
+    //
+
+    TracerConfigFlags = TracerConfig->Flags;
 
     //
     // See if we've been configured to compress trace store directories.
     //
 
-    Compress = !TracerConfig->Flags.DisableTraceSessionDirectoryCompression;
+    Compress = !TracerConfigFlags.DisableTraceSessionDirectoryCompression;
+
+    //
+    // Convert into a TRACE_FLAGS representation.
+    //
+
+    TraceFlags.AsLong = 0;
+    TraceFlags.Compress = Compress;
+    TraceFlags.Readonly = IsReadonly;
+
+#define COPY_FLAG(Name) TraceFlags.##Name = TracerConfigFlags.##Name
+
+    COPY_FLAG(DisablePrefaultPages);
+    COPY_FLAG(DisableFileFlagOverlapped);
+    COPY_FLAG(DisableFileFlagSequentialScan);
+    COPY_FLAG(EnableFileFlagRandomAccess);
+    COPY_FLAG(EnableFileFlagWriteThrough);
 
     //
     // Get the required size of the TRACE_STORES structure.
@@ -739,9 +865,16 @@ LoadPythonDll:
         NULL,
         &RequiredSize,
         NULL,
-        FALSE,
-        FALSE
+        &TraceFlags
     );
+
+    //
+    // Disable pre-faulting of pages if applicable.
+    //
+
+    if (TracerConfig->Flags.DisablePrefaultPages) {
+        TraceFlags.DisablePrefaultPages = TRUE;
+    }
 
     //
     // Allocate sufficient space, then initialize the stores.
@@ -754,8 +887,7 @@ LoadPythonDll:
         Session->TraceStores,
         &RequiredSize,
         NULL,
-        FALSE,
-        Compress
+        &TraceFlags
     );
 
     if (!Success) {
@@ -814,9 +946,7 @@ LoadPythonDll:
         NULL,
         NULL,
         NULL,
-        NULL,
-        FALSE,
-        FALSE
+        NULL
     );
 
     //
@@ -831,9 +961,7 @@ LoadPythonDll:
         Session->TraceSession,
         Session->TraceStores,
         &Session->ThreadpoolCallbackEnviron,
-        (PVOID)Session,
-        FALSE,
-        Compress
+        (PVOID)Session
     );
 
     if (!Success) {
@@ -874,6 +1002,44 @@ LoadPythonDll:
     if (!Success) {
         OutputDebugStringA("InitializePythonTraceContext() failed.\n");
         goto Error;
+    }
+
+    //
+    // Initialize alias.
+    //
+
+    PythonTraceContext = Session->PythonTraceContext;
+
+    //
+    // If we created a module names string table, set it now.
+    //
+
+    if (Session->ModuleNamesStringTable) {
+        PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;
+        PSET_MODULE_NAMES_STRING_TABLE SetModuleNames;
+
+        SetModuleNames = PythonTraceContext->SetModuleNamesStringTable;
+
+        if (!SetModuleNames(PythonTraceContext, ModuleNames)) {
+            OutputDebugStringA("SetModuleNamesStringTable() failed.\n");
+            goto Error;
+        }
+    }
+
+    //
+    // Apply tracing flags from the TracerConfig structure.
+    //
+
+    if (TracerConfigFlags.EnableMemoryTracing) {
+        PythonTraceContext->EnableMemoryTracing(PythonTraceContext);
+    }
+
+    if (TracerConfigFlags.EnableIoCounterTracing) {
+        PythonTraceContext->EnableIoCountersTracing(PythonTraceContext);
+    }
+
+    if (TracerConfigFlags.EnableHandleCountTracing) {
+        PythonTraceContext->EnableHandleCountTracing(PythonTraceContext);
     }
 
     //

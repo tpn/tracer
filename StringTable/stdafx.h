@@ -23,5 +23,6 @@ Abstract:
 #include "StringTable.h"
 #include "StringTablePrivate.h"
 #include "StringTableConstants.h"
+#include "StringLoadStoreOperations.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

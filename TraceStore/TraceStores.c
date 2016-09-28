@@ -44,19 +44,21 @@ InitializeTraceStores(
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly,
-    _In_        BOOL            Compress
+    _In_        PTRACE_FLAGS    TraceFlags
     )
 {
     BOOL Success;
+    BOOL Readonly;
+    BOOL Compress;
     HRESULT Result;
     DWORD Index;
     DWORD StoreIndex;
     DWORD LastError;
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileMappingProtectionFlags;
+    DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
-    WCHAR Path[_OUR_MAX_PATH];
+    TRACE_FLAGS Flags;
     LPWSTR FileNameDest;
     DWORD LongestFilename = GetLongestTraceStoreFileName();
     DWORD TraceStoresAllocationSize = (
@@ -74,6 +76,11 @@ InitializeTraceStores(
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
     PULONG Sizes = InitialFileSizes;
+    WCHAR Path[_OUR_MAX_PATH];
+
+    //
+    // Validate arguments.
+    //
 
     if (!SizeOfTraceStores) {
         return FALSE;
@@ -91,6 +98,14 @@ InitializeTraceStores(
     if (!BaseDirectory) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(TraceFlags)) {
+        return FALSE;
+    }
+
+    Flags = *TraceFlags;
+    Compress = Flags.Compress;
+    Readonly = Flags.Readonly;
 
     if (!Sizes) {
         Sizes = (PULONG)&InitialTraceStoreFileSizes[0];
@@ -130,7 +145,8 @@ InitializeTraceStores(
     );
 
     SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
-    TraceStores->Size = (USHORT)TraceStoresAllocationSize;
+    TraceStores->SizeOfStruct = (USHORT)sizeof(TRACE_STORES);
+    TraceStores->SizeOfAllocation = (USHORT)TraceStoresAllocationSize;
 
     if (Readonly) {
         CreateFileDesiredAccess = GENERIC_READ;
@@ -141,6 +157,24 @@ InitializeTraceStores(
         CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
         CreateFileMappingProtectionFlags = PAGE_READWRITE;
         MapViewOfFileDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
+    }
+
+    //
+    // Create the appropriate dwFileAndAttributes mask based on the flags.
+    //
+
+    if (Flags.EnableFileFlagRandomAccess) {
+        CreateFileFlagsAndAttributes = FILE_FLAG_RANDOM_ACCESS;
+    } else if (!Flags.DisableFileFlagSequentialScan) {
+        CreateFileFlagsAndAttributes = FILE_FLAG_SEQUENTIAL_SCAN;
+    }
+
+    if (!Flags.DisableFileFlagOverlapped) {
+        CreateFileFlagsAndAttributes |= FILE_FLAG_OVERLAPPED;
+    }
+
+    if (Flags.EnableFileFlagWriteThrough) {
+        CreateFileFlagsAndAttributes |= FILE_FLAG_WRITE_THROUGH;
     }
 
     Success = CreateDirectory(BaseDirectory, NULL);
@@ -225,6 +259,9 @@ InitializeTraceStores(
         TraceStore->CreateFileMappingProtectionFlags = (
             CreateFileMappingProtectionFlags
         );
+        TraceStore->CreateFileFlagsAndAttributes = (
+            CreateFileFlagsAndAttributes
+        );
         TraceStore->MapViewOfFileDesiredAccess = (
             MapViewOfFileDesiredAccess
         );
@@ -237,7 +274,8 @@ InitializeTraceStores(
             AddressStore,
             InfoStore,
             InitialSize,
-            MappingSize
+            MappingSize,
+            &Flags
         );
 
         if (!Success) {

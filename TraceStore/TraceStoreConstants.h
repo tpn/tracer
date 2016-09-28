@@ -36,6 +36,8 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceFilenameStringBuffer.dat",
     L"TraceDirectoryString.dat",
     L"TraceDirectoryStringBuffer.dat",
+    L"TraceStringArray.dat",
+    L"TraceStringTable.dat",
 };
 
 static const WCHAR TraceStoreAllocationSuffix[] = L":allocation";
@@ -88,7 +90,9 @@ static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // TraceFilenameString
     10 << 20,   // TraceFilenameStringBuffer
     10 << 20,   // TraceDirectoryString
-    10 << 20    // TraceDirectoryStringBuffer
+    10 << 20,   // TraceDirectoryStringBuffer
+    10 << 20,   // StringArray
+    10 << 20    // StringTable
 };
 
 static const LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
@@ -104,17 +108,17 @@ static const USHORT TraceStoreAllocationStructSize = (
 static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
 static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-static const ULONG DefaultTraceStoreMappingSize = (1 << 21); // 2MB
-static const ULONG DefaultTraceStoreEventMappingSize = (1 << 23); // 8MB
+static const ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
+static const ULONG DefaultTraceStoreEventMappingSize = (1 << 23);       // 16MB
 
-static const ULONG DefaultAllocationTraceStoreSize = (1 << 21); // 2MB
-static const ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16); // 64KB
+static const ULONG DefaultAllocationTraceStoreSize = (1 << 21);         //  4MB
+static const ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);  // 64KB
 
-static const ULONG DefaultAddressTraceStoreSize = (1 << 21); // 2MB
-static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16); // 64KB
+static const ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
+static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
 
-static const ULONG DefaultInfoTraceStoreSize = (1 << 16); // 64KB
-static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16); // 64KB
+static const ULONG DefaultInfoTraceStoreSize = (1 << 16);               // 64KB
+static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16);        // 64KB
 
 #ifdef __cplusplus
 }; // extern "C"

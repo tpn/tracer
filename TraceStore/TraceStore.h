@@ -44,7 +44,6 @@ extern "C" {
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
-#include "TraceStoreIndex.h"
 
 #endif
 
@@ -68,6 +67,8 @@ typedef struct _TRACE_STORE_ALLOCATION {
         ULARGE_INTEGER  AllocationSize;
     };
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
+
+C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
 
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;                     // 8    0   8
@@ -350,21 +351,53 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
 typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-typedef struct _TRACE_CONTEXT_FLAGS {
+typedef struct _TRACE_FLAGS {
     union {
         ULONG AsLong;
         struct {
             ULONG Readonly:1;
             ULONG Compress:1;
+            ULONG DisablePrefaultPages:1;
+
+            //
+            // The following flags relate to the dwFlagsAndAttributes parameter
+            // passed to CreateFile() when opening a trace store.
+            //
+
+            //
+            // When set, do not set the FILE_FLAG_OVERLAPPED flag.
+            //
+
+            ULONG DisableFileFlagOverlapped:1;
+
+            //
+            // When set, do not set the FILE_FLAG_SEQUENTIAL_SCAN flag.  This
+            // will automatically be set if EnableFileFlagRandomAccess is set.
+            //
+
+            ULONG DisableFileFlagSequentialScan:1;
+
+            //
+            // When set, sets the FILE_FLAG_RANDOM_ACCESS flag.  (This implies
+            // DisableFileFlagSequentialScan.)
+            //
+
+            ULONG EnableFileFlagRandomAccess:1;
+
+            //
+            // When set, sets the FILE_FLAG_WRITE_THROUGH flag.
+            //
+
+            ULONG EnableFileFlagWriteThrough:1;
+
         };
     };
     ULONG Unused1;
-} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+} TRACE_FLAGS, *PTRACE_FLAGS;
 
 typedef struct _TRACE_CONTEXT {
     ULONG                       Size;
     ULONG                       SequenceId;
-    TRACE_CONTEXT_FLAGS         Flags;
     PRTL                        Rtl;
     PTRACE_SESSION              TraceSession;
     PTRACE_STORES               TraceStores;
@@ -464,8 +497,9 @@ typedef struct _TRACE_STORE {
     LARGE_INTEGER TotalNumberOfAllocations;
     LARGE_INTEGER TotalAllocationSize;
 
+    TRACE_FLAGS Flags;
+
     union {
-        ULONG Flags;
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
@@ -479,6 +513,7 @@ typedef struct _TRACE_STORE {
 
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileMappingProtectionFlags;
+    DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
 
     HANDLE FileHandle;
@@ -589,27 +624,172 @@ typedef struct _TRACE_STORE {
 
 } TRACE_STORE, *PTRACE_STORE;
 
+typedef enum _TRACE_STORE_ID {
+    TraceStoreNullId = 0,
+    TraceStoreEventId = 1,
+    TraceStoreStringId,
+    TraceStoreStringBufferId,
+    TraceStoreHashedStringId,
+    TraceStoreHashedStringBufferId,
+    TraceStoreBufferId,
+    TraceStoreFunctionTableId,
+    TraceStoreFunctionTableEntryId,
+    TraceStorePathTableId,
+    TraceStorePathTableEntryId,
+    TraceStoreSessionId,
+    TraceStoreFilenameStringId,
+    TraceStoreFilenameStringBufferId,
+    TraceStoreDirectoryStringId,
+    TraceStoreDirectoryStringBufferId,
+    TraceStoreStringArrayId,
+    TraceStoreStringTableId,
+    TraceStoreInvalidId
+} TRACE_STORE_ID, *PTRACE_STORE_ID;
+
+typedef enum _TRACE_STORE_INDEX {
+    TraceStoreEventIndex = 0,
+    TraceStoreEventAllocationIndex,
+    TraceStoreEventAddressIndex,
+    TraceStoreEventInfoIndex,
+    TraceStoreStringIndex,
+    TraceStoreStringAllocationIndex,
+    TraceStoreStringAddressIndex,
+    TraceStoreStringInfoIndex,
+    TraceStoreStringBufferIndex,
+    TraceStoreStringBufferAllocationIndex,
+    TraceStoreStringBufferAddressIndex,
+    TraceStoreStringBufferInfoIndex,
+    TraceStoreHashedStringIndex,
+    TraceStoreHashedStringAllocationIndex,
+    TraceStoreHashedStringAddressIndex,
+    TraceStoreHashedStringInfoIndex,
+    TraceStoreHashedStringBufferIndex,
+    TraceStoreHashedStringBufferAllocationIndex,
+    TraceStoreHashedStringBufferAddressIndex,
+    TraceStoreHashedStringBufferInfoIndex,
+    TraceStoreBufferIndex,
+    TraceStoreBufferAllocationIndex,
+    TraceStoreBufferAddressIndex,
+    TraceStoreBufferInfoIndex,
+    TraceStoreFunctionTableIndex,
+    TraceStoreFunctionTableAllocationIndex,
+    TraceStoreFunctionTableAddressIndex,
+    TraceStoreFunctionTableInfoIndex,
+    TraceStoreFunctionTableEntryIndex,
+    TraceStoreFunctionTableEntryAllocationIndex,
+    TraceStoreFunctionTableEntryAddressIndex,
+    TraceStoreFunctionTableEntryInfoIndex,
+    TraceStorePathTableIndex,
+    TraceStorePathTableAllocationIndex,
+    TraceStorePathTableAddressIndex,
+    TraceStorePathTableInfoIndex,
+    TraceStorePathTableEntryIndex,
+    TraceStorePathTableEntryAllocationIndex,
+    TraceStorePathTableEntryAddressIndex,
+    TraceStorePathTableEntryInfoIndex,
+    TraceStoreSessionIndex,
+    TraceStoreSessionAllocationIndex,
+    TraceStoreSessionAddressIndex,
+    TraceStoreSessionInfoIndex,
+    TraceStoreFilenameStringIndex,
+    TraceStoreFilenameStringAllocationIndex,
+    TraceStoreFilenameStringAddressIndex,
+    TraceStoreFilenameStringInfoIndex,
+    TraceStoreFilenameStringBufferIndex,
+    TraceStoreFilenameStringBufferAllocationIndex,
+    TraceStoreFilenameStringBufferAddressIndex,
+    TraceStoreFilenameStringBufferInfoIndex,
+    TraceStoreDirectoryStringIndex,
+    TraceStoreDirectoryStringAllocationIndex,
+    TraceStoreDirectoryStringAddressIndex,
+    TraceStoreDirectoryStringInfoIndex,
+    TraceStoreDirectoryStringBufferIndex,
+    TraceStoreDirectoryStringBufferAllocationIndex,
+    TraceStoreDirectoryStringBufferAddressIndex,
+    TraceStoreDirectoryStringBufferInfoIndex,
+    TraceStoreStringArrayIndex,
+    TraceStoreStringArrayAllocationIndex,
+    TraceStoreStringArrayAddressIndex,
+    TraceStoreStringArrayInfoIndex,
+    TraceStoreStringTableIndex,
+    TraceStoreStringTableAllocationIndex,
+    TraceStoreStringTableAddressIndex,
+    TraceStoreStringTableInfoIndex,
+    TraceStoreInvalidIndex
+} TRACE_STORE_INDEX, *PTRACE_STORE_INDEX;
+
+#define MAX_TRACE_STORES TraceStoreStringTableInfoIndex + 1
+
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
-
-typedef struct _TRACE_STORES {
-    USHORT  Size;
-    USHORT  NumberOfTraceStores;
-    USHORT  ElementsPerTraceStore;
-    USHORT  Reserved;
-    PRTL    Rtl;
-    STRING  BaseDirectory;
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
+    USHORT      SizeOfStruct;
+    USHORT      SizeOfAllocation;
+    USHORT      NumberOfTraceStores;
+    USHORT      ElementsPerTraceStore;
+    TRACE_FLAGS Flags;
+    ULONG       Reserved1;
+    PRTL        Rtl;
+    STRING      BaseDirectory;
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
 
+typedef struct _TRACE_STORE_DESCRIPTOR {
+    TRACE_STORE_ID      TraceStoreId;
+    TRACE_STORE_INDEX   TraceStoreIndex;
+    LPCWSTR             TraceStoreName;
+} TRACE_STORE_DESCRIPTOR, *PTRACE_STORE_DESCRIPTOR;
+
+typedef struct _TRACE_STORE_FIELD_RELOC {
+
+    //
+    // Offset from the start of the struct in bytes.
+    //
+
+    ULONG Offset;
+
+    //
+    // Id of the trace store this field refers to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+} TRACE_STORE_FIELD_RELOC, *PTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC *PCTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC **PPCTRACE_STORE_FIELD_RELOC;
+
+C_ASSERT(sizeof(TRACE_STORE_FIELD_RELOC) == 8);
+
+#define LAST_TRACE_STORE_FIELD_RELOC { 0, 0 }
+
+
+typedef struct _TRACE_STORE_FIELD_RELOCS {
+
+    //
+    // Id of the trace store this relocation information applies to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+    //
+    // Pointer to an array of field relocation structures.
+    //
+
+    PTRACE_STORE_FIELD_RELOC Relocations;
+
+} TRACE_STORE_FIELD_RELOCS, *PTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS *PCTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS **PPCTRACE_STORE_FIELD_RELOCS;
+
+#define LAST_TRACE_STORE_FIELD_RELOCS { 0, NULL }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
-
 
 typedef
 _Success_(return != 0)
@@ -631,8 +811,7 @@ BOOL
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        BOOL            Readonly,
-    _In_        BOOL            Compress
+    _In_        PTRACE_FLAGS    TraceFlags
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
@@ -648,9 +827,7 @@ BOOL
     _In_     PTRACE_SESSION  TraceSession,
     _In_     PTRACE_STORES   TraceStores,
     _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
-    _In_opt_ PVOID UserData,
-    _In_     BOOL Readonly,
-    _In_     BOOL Compress
+    _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;

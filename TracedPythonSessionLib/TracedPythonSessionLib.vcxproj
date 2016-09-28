@@ -38,6 +38,7 @@
     <ProjectGuid>{15E4CDC4-C1D4-458A-A1A7-D220792AE53E}</ProjectGuid>
     <RootNamespace>TracedPythonSessionLib</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -80,10 +81,8 @@
     <ClInclude Include="../TracedPythonSession/TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="../TracedPythonSession/DestroyPathEnvironmentVariable.c" />
     <ClCompile Include="../TracedPythonSession/DestroyTracedPythonSession.c" />
     <ClCompile Include="../TracedPythonSession/InitializeTracedPythonSession.c" />
-    <ClCompile Include="../TracedPythonSession/LoadPathEnvironmentVariable.c" />
     <ClCompile Include="../TracedPythonSession/SanitizePathEnvironmentVariableForPython.c" />
     <ClCompile Include="../TracedPythonSession/stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
