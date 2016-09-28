@@ -22,7 +22,10 @@ Abstract:
 extern "C" {
 #endif
 
-PYTHON_TRACER_DATA
+//
+// PYTHON_FUNCTION_TABLE relocations.
+//
+
 TRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations[] = {
 
     {
@@ -74,7 +77,10 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations[] = {
 
 };
 
-PYTHON_TRACER_DATA
+//
+// PYTHON_FUNCTION_TABLE_ENTRY relocations.
+//
+
 TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
@@ -178,9 +184,89 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
 };
 
-#define FIELD_RELOC_SIZE(Name) (sizeof(Name) / sizeof(Name[0]))
+//
+// PYTHON_PATH_TABLE relocations.
+//
 
-PYTHON_TRACER_DATA
+TRACE_STORE_FIELD_RELOC PythonPathTableRelocations[] = {
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE, NextPrefixTree),
+        TraceStorePathTableEntryId
+    },
+
+    LAST_TRACE_STORE_FIELD_RELOC
+
+};
+
+//
+// PYTHON_PATH_TABLE_ENTRY relocations.
+//
+
+TRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations[] = {
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree),
+        TraceStorePathTableEntryId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Parent),
+        TraceStorePathTableEntryId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, LeftChild),
+        TraceStorePathTableEntryId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, RightChild),
+        TraceStorePathTableEntryId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Prefix),
+        TraceStorePathTableEntryId
+    },
+
+    //
+    // String buffer pointers.
+    //
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, PathBuffer),
+        TraceStoreStringBufferId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FullNameBuffer),
+        TraceStoreStringBufferId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ModuleNameBuffer),
+        TraceStoreStringBufferId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NameBuffer),
+        TraceStoreStringBufferId
+    },
+
+    {
+        FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, ClassNameBuffer),
+        TraceStoreStringBufferId
+    },
+
+    LAST_TRACE_STORE_FIELD_RELOC
+
+};
+
+//
+// Container structure for each individual relocation structure.
+//
+
 TRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations[] = {
 
     {
@@ -193,19 +279,15 @@ TRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations[] = {
         (PTRACE_STORE_FIELD_RELOC)&PythonFunctionTableEntryRelocations
     },
 
-    /*
     {
         TraceStorePathTableId,
-        PythonPathTableRelocations,
-        RTL_NUMBER_OF(PythonPathTableRelocations)
+        (PTRACE_STORE_FIELD_RELOC)&PythonPathTableRelocations
     },
 
     {
         TraceStorePathTableEntryId,
-        PythonPathTableEntryRelocations,
-        RTL_NUMBER_OF(PythonPathTableEntryRelocations)
-    }
-    */
+        (PTRACE_STORE_FIELD_RELOC)&PythonPathTableEntryRelocations
+    },
 
     LAST_TRACE_STORE_FIELD_RELOCS
 

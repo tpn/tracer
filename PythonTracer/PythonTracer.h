@@ -439,22 +439,24 @@ BOOL
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;
 PYTHON_TRACER_API INITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
 
-#ifndef _PYTHON_TRACER_INTERNAL_BUILD
-
 //
 // Trace Store relocation information.
 //
 
-PYTHON_TRACER_DATA PPCTRACE_STORE_FIELD_RELOCS \
-    PythonTracerTraceStoreRelocations;
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
+    PythonFunctionTableRelocations[];
 
-//PYTHON_TRACER_DATA PCTRACE_STORE_FIELD_RELOC PythonPathTableRelocations;
-//PYTHON_TRACER_DATA PCTRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations;
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
+    PythonFunctionTableEntryRelocations[];
 
-PYTHON_TRACER_DATA PPCTRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations;
-PYTHON_TRACER_DATA PPCTRACE_STORE_FIELD_RELOC \
-    PythonFunctionTableEntryRelocations;
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
+    PythonPathTableRelocations[];
 
-#endif
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
+    PythonPathTableEntryRelocations[];
+
+
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOCS \
+    PythonTracerTraceStoreRelocations[];
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
