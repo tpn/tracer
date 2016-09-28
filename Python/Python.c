@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This module defines constants used by the TraceStore component.
+    This is the main module for the Python component.
 
 --*/
 
@@ -330,7 +330,7 @@ VOID
 HeapFreeRoutine(
     _In_ HANDLE HeapHandle,
     _In_ PVOID Buffer
-)
+    )
 {
     HeapFree(HeapHandle, 0, Buffer);
 }
@@ -340,7 +340,7 @@ NTAPI
 FunctionTableAllocationRoutine(
     _In_ PRTL_GENERIC_TABLE Table,
     _In_ CLONG ByteSize
-)
+    )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
     if (ByteSize != TargetSizeOfPythonFunctionTableEntry) {
@@ -354,7 +354,7 @@ NTAPI
 FunctionTableFreeRoutine(
     _In_ PRTL_GENERIC_TABLE Table,
     _In_ PVOID Buffer
-)
+    )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
     FREE(FunctionTableEntry, Buffer);
@@ -384,7 +384,7 @@ FunctionTableCompareRoutine(
     _In_ PRTL_GENERIC_TABLE Table,
     _In_ PPYTHON_FUNCTION First,
     _In_ PPYTHON_FUNCTION Second
-)
+    )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
     return GenericComparePointer(Table,
@@ -397,7 +397,7 @@ BOOL
 LoadPythonExRuntime(
     _In_opt_    HMODULE PythonExModule,
     _Inout_     PPYTHONEXRUNTIME PythonExRuntime
-)
+    )
 {
     DWORD HeapFlags;
 
@@ -678,7 +678,7 @@ BOOL
 ResolveAndVerifyPythonVersion(
     _In_    HMODULE     PythonModule,
     _Inout_ PPYTHON     Python
-)
+    )
 {
     PCCH Version;
     ULONG MajorVersion;
