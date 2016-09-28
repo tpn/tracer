@@ -1919,7 +1919,7 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
 
 #define PATH_ENV_NAME L"Path"
 
-typedef _Struct_size_bytes_(Size) struct _PATH_ENV_VAR {
+typedef _Struct_size_bytes_(StructSize) struct _PATH_ENV_VAR {
 
     _Field_range_(==, sizeof(struct _PATH_ENV_VAR)) USHORT StructSize;
 
