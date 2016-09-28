@@ -442,6 +442,13 @@ EXCEPTION_DISPOSITION
     );
 typedef __C_SPECIFIC_HANDLER *P__C_SPECIFIC_HANDLER;
 
+typedef
+VOID
+(__cdelc __SECURITY_INIT_COOKIE)(
+    VOID
+    );
+typedef __SECURITY_INIT_COOKIE *P__SECURITY_INIT_COOKIE;
+
 //
 // Prefix Helpers
 //
@@ -2103,6 +2110,7 @@ typedef struct _RTL {
     HMODULE     ShlwapiModule;
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
+    P__SECURITY_INIT_COOKIE __security_init_cookie;
 
     HANDLE      HeapHandle;
 
