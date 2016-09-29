@@ -1,12 +1,27 @@
-////////////////////////////////////////////////////////////////////////////////
-// PythonTracer.c
-////////////////////////////////////////////////////////////////////////////////
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    PythonTracer.c
+
+Abstract:
+
+    This module implements functionality related to tracing an instance of a
+    Python interpreter using the trace store functionality.  It relies on the
+    Python and TraceStore components.
+
+    N.B.: The functionality in this file should be split up into smaller,
+          more self-contained modules.
+
+--*/
+
+#include "stdafx.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "stdafx.h"
 
 BOOL
 InitializePythonTraceSession(

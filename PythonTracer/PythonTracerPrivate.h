@@ -17,12 +17,11 @@ Abstract:
 
 #pragma once
 
+#include "stdafx.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "stdafx.h"
-
 
 #ifdef __cplusplus
 }; // extern "C"
