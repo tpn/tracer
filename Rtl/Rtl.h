@@ -93,6 +93,14 @@ extern "C" {
     (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL) )
 #endif
 
+#ifndef DECLSPEC_RESTRICT
+#define DECLSPEC_RESTRICT __declspec(restrict)
+#endif
+
+#ifndef DECLSPEC_NOALIAS
+#define DECLSPEC_NOALIAS __declspec(noalias)
+#endif
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
@@ -441,6 +449,13 @@ EXCEPTION_DISPOSITION
     struct _DISPATCHER_CONTEXT *Dispatch
     );
 typedef __C_SPECIFIC_HANDLER *P__C_SPECIFIC_HANDLER;
+
+typedef
+VOID
+(SET_C_SPECIFIC_HANDLER)(
+    _In_ P__C_SPECIFIC_HANDLER Handler
+    );
+typedef SET_C_SPECIFIC_HANDLER *PSET_C_SPECIFIC_HANDLER;
 
 typedef
 VOID
@@ -2175,6 +2190,428 @@ typedef struct _RTL {
 #define BITMAP_ALIGNMENT 128
 #define ALIGN_UP_BITMAP(Address)                  \
     (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
+
+FORCEINLINE
+ULONGLONG
+TrailingZeros(
+    _In_ ULONGLONG Integer
+    )
+{
+    return _tzcnt_u64(Integer);
+}
+
+FORCEINLINE
+USHORT
+GetAddressAlignment(_In_ PVOID Address)
+{
+    ULONGLONG Integer = (ULONGLONG)Address;
+    ULONGLONG NumTrailingZeros = TrailingZeros(Integer);
+    return (1 << NumTrailingZeros);
+}
+
+FORCEINLINE
+BOOL
+PointerToOffsetCrossesPageBoundary(
+    _In_ PVOID Pointer,
+    _In_ LONG Offset
+    )
+{
+    LONG_PTR ThisPage;
+    LONG_PTR NextPage;
+
+    ThisPage = ALIGN_DOWN(Pointer, PAGE_SIZE);
+    NextPage = ALIGN_DOWN(((ULONG_PTR)(Pointer)+Offset), PAGE_SIZE);
+
+    return (ThisPage != NextPage);
+}
+
+FORCEINLINE
+ULONGLONG
+LeadingZeros(
+    _In_ ULONGLONG Integer
+    )
+{
+    return _lzcnt_u64(Integer);
+}
+
+_Success_(return != 0)
+FORCEINLINE
+BOOL
+AssertAligned(
+    _In_ PVOID Address,
+    _In_ USHORT Alignment
+    )
+{
+    ULONGLONG CurrentAlignment = GetAddressAlignment(Address);
+    ULONGLONG ExpectedAlignment = ALIGN_UP(CurrentAlignment, Alignment);
+    if (CurrentAlignment < ExpectedAlignment) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA("Alignment failed!\n");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+#define AssertAligned8(Address)      AssertAligned((PVOID)Address, 8)
+#define AssertAligned16(Address)     AssertAligned((PVOID)Address, 16)
+#define AssertAligned32(Address)     AssertAligned((PVOID)Address, 32)
+#define AssertAligned64(Address)     AssertAligned((PVOID)Address, 64)
+#define AssertAligned512(Address)    AssertAligned((PVOID)Address, 512)
+#define AssertAligned1024(Address)   AssertAligned((PVOID)Address, 1024)
+#define AssertAligned2048(Address)   AssertAligned((PVOID)Address, 2048)
+#define AssertAligned4096(Address)   AssertAligned((PVOID)Address, 4096)
+#define AssertAligned8192(Address)   AssertAligned((PVOID)Address, 8192)
+
+FORCEINLINE
+_Success_(return != 0)
+BOOL
+IsAligned(
+    _In_ PVOID Address,
+    _In_ USHORT Alignment
+    )
+{
+    ULONGLONG CurrentAlignment = GetAddressAlignment(Address);
+    ULONGLONG ExpectedAlignment = ALIGN_UP(CurrentAlignment, Alignment);
+    return CurrentAlignment == ExpectedAlignment;
+}
+
+#define IsAligned8(Address)      IsAligned((PVOID)Address, 8)
+#define IsAligned16(Address)     IsAligned((PVOID)Address, 16)
+#define IsAligned32(Address)     IsAligned((PVOID)Address, 32)
+#define IsAligned64(Address)     IsAligned((PVOID)Address, 64)
+#define IsAligned512(Address)    IsAligned((PVOID)Address, 512)
+#define IsAligned1024(Address)   IsAligned((PVOID)Address, 1024)
+#define IsAligned2048(Address)   IsAligned((PVOID)Address, 2048)
+#define IsAligned4096(Address)   IsAligned((PVOID)Address, 4096)
+#define IsAligned8192(Address)   IsAligned((PVOID)Address, 8192)
+
+#define TRY_AVX __try
+#define TRY_AVX_ALIGNED __try
+#define TRY_AVX_UNALIGNED __try
+
+#define TRY_SSE42 __try
+#define TRY_SSE42_ALIGNED __try
+#define TRY_SSE42_UNALIGNED __try
+
+#define CATCH_EXCEPTION_ILLEGAL_INSTRUCTION __except(     \
+    GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ? \
+        EXCEPTION_EXECUTE_HANDLER :                       \
+        EXCEPTION_CONTINUE_SEARCH                         \
+    )
+
+#define CATCH_EXCEPTION_ACCESS_VIOLATION __except(        \
+    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?    \
+        EXCEPTION_EXECUTE_HANDLER :                       \
+        EXCEPTION_CONTINUE_SEARCH                         \
+    )
+
+////////////////////////////////////////////////////////////////////////////////
+// SIMD Utilities
+////////////////////////////////////////////////////////////////////////////////
+
+typedef __m128i DECLSPEC_ALIGN(16) XMMWORD, *PXMMWORD, **PPXMMWORD;
+typedef __m256i DECLSPEC_ALIGN(32) YMMWORD, *PYMMWORD, **PPYMMWORD;
+//typedef __m512i DECLSPEC_ALIGN(64) ZMMWORD, *PZMMWORD, **PPZMMWORD;
+
+FORCEINLINE
+VOID
+StoreXmm(
+    _In_ XMMWORD *Destination,
+    _In_ XMMWORD  Source
+    )
+{
+    TRY_SSE42_ALIGNED {
+
+        _mm_store_si128(Destination, Source);
+
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {
+
+        _mm_storeu_si128(Destination, Source);
+    }
+}
+
+FORCEINLINE
+VOID
+Store2Xmm(
+    _In_ XMMWORD *Destination128Low,
+    _In_ XMMWORD *Destination128High,
+    _In_ XMMWORD  Source128Low,
+    _In_ XMMWORD  Source128High
+    )
+{
+    TRY_SSE42_ALIGNED {
+
+        _mm_store_si128(Destination128Low, Source128Low);
+        _mm_store_si128(Destination128High, Source128High);
+
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {
+
+        _mm_storeu_si128(Destination128Low, Source128Low);
+        _mm_storeu_si128(Destination128High, Source128High);
+
+    }
+}
+
+
+FORCEINLINE
+VOID
+StoreYmmFallbackXmm(
+    _In_ PYMMWORD Destination,
+    _In_ PXMMWORD Destination128Low,
+    _In_ PXMMWORD Destination128High,
+    _In_ YMMWORD  Source,
+    _In_ XMMWORD  Source128Low,
+    _In_ XMMWORD  Source128High
+    )
+{
+    TRY_AVX {
+
+        TRY_AVX_ALIGNED {
+
+            _mm256_store_si256(Destination, Source);
+
+        } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
+
+            Store2Xmm(
+                Destination128Low,
+                Destination128High,
+                Source128Low,
+                Source128High
+            );
+
+        }
+
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {
+
+        _mm256_storeu_si256(Destination, Source);
+    }
+}
+
+FORCEINLINE
+ULONG
+CompressUlongNaive(
+    _In_ ULONG Input,
+    _In_ ULONG Mask
+    )
+{
+    ULONG Bit;
+    ULONG Shift;
+    ULONG Result;
+
+    Shift = 0;
+    Result = 0;
+
+    do {
+        Bit = Mask & 1;
+        Result = Result | ((Input & Bit) << Shift);
+        Shift = Shift + Bit;
+        Input = Input >> 1;
+        Mask = Mask >> 1;
+    } while (Mask != 0);
+
+    return Result;
+}
+
+typedef DECLSPEC_ALIGN(32) union _PARALLEL_SUFFIX_MOVE_MASK32 {
+    struct {
+        ULONG Mask;
+        union {
+            struct {
+                ULONG Move0;
+                ULONG Move1;
+                ULONG Move2;
+                ULONG Move3;
+                ULONG Move4;
+                ULONG Unused5;
+                ULONG Unused6;
+            };
+            ULONG Moves[7];
+        };
+    };
+    YMMWORD Move256;
+    struct {
+        XMMWORD MoveLow128;
+        XMMWORD MoveHigh128;
+    };
+} PARALLEL_SUFFIX_MOVE_MASK32, *PPARALLEL_SUFFIX_MOVE_MASK32;
+
+FORCEINLINE
+VOID
+CreateParallelSuffixMoveMask(
+    _In_ ULONG Mask,
+    _In_ PPARALLEL_SUFFIX_MOVE_MASK32 ParallelSuffixPointer
+    )
+{
+    BYTE Index;
+    ULONG Key;
+    ULONG Move;
+    ULONG Parallel;
+    PPARALLEL_SUFFIX_MOVE_MASK32 Dest;
+
+    PARALLEL_SUFFIX_MOVE_MASK32 Suffix;
+
+    Suffix.Mask = Mask;
+
+    //
+    // Count zeros to the right.
+    //
+
+    Key = ~Mask << 1;
+
+    for (Index = 0; Index < 5; Index++) {
+
+        //
+        // Compute the parallel suffix.
+        //
+
+        Parallel = Key ^ (Key << 1);
+
+        Parallel = Parallel ^ (Parallel << 2);
+        Parallel = Parallel ^ (Parallel << 4);
+        Parallel = Parallel ^ (Parallel << 8);
+        Parallel = Parallel ^ (Parallel << 16);
+
+        //
+        // Calculate how many bits to move.
+        //
+
+        Move = Suffix.Moves[Index] = Parallel & Mask;
+
+        //
+        // Compress the mask.
+        //
+
+        Mask = Mask ^ Move | (Move >> (1 << Index));
+
+        Key = Key & ~Parallel;
+    }
+
+    Dest = ParallelSuffixPointer;
+
+    StoreYmmFallbackXmm(
+        &(Dest->Move256),
+        &(Dest->MoveLow128),
+        &(Dest->MoveHigh128),
+        Suffix.Move256,
+        Suffix.MoveLow128,
+        Suffix.MoveHigh128
+    );
+
+    return;
+}
+
+FORCEINLINE
+ULONG
+CompressUlongParallelSuffixDynamicMask(
+    _In_ ULONG Input,
+    _In_ ULONG Mask
+    )
+{
+    BYTE Index;
+    ULONG Key;
+    ULONG Parallel;
+    ULONG Move;
+    ULONG Bit;
+
+    //
+    // Clear irrelevant bits.
+    //
+
+    Input = Input & Mask;
+
+    //
+    // Count zeros to the right.
+    //
+
+    Key = ~Mask << 1;
+
+    for (Index = 0; Index < 5; Index++) {
+
+        //
+        // Compute the parallel suffix.
+        //
+
+        Parallel = Key ^ (Key << 1);
+
+        Parallel = Parallel ^ (Parallel << 2);
+        Parallel = Parallel ^ (Parallel << 4);
+        Parallel = Parallel ^ (Parallel << 8);
+        Parallel = Parallel ^ (Parallel << 16);
+
+        //
+        // Calculate how many bits to move.
+        //
+
+        Move = Parallel & Mask;
+
+        //
+        // Compress the mask.
+        //
+
+        Mask = Mask ^ Move | (Move >> (1 << Index));
+
+        Bit = Input & Move;
+
+        //
+        // Compress input.
+        //
+
+        Input = Input ^ Bit | (Bit >> (1 << Index));
+
+        Key = Key & ~Parallel;
+    }
+
+    return Input;
+}
+
+FORCEINLINE
+ULONG
+CompressUlongParallelSuffixMem(
+    _In_ ULONG Input,
+    _In_ PPARALLEL_SUFFIX_MOVE_MASK32 Suffix
+    )
+{
+    ULONG Bit;
+    ULONG Mask = Suffix->Mask;
+
+    Input = Input & Mask;
+
+    Bit = Input & Suffix->Move0; Input = Input ^ Bit | (Bit >> 1);
+    Bit = Input & Suffix->Move1; Input = Input ^ Bit | (Bit >> 2);
+    Bit = Input & Suffix->Move2; Input = Input ^ Bit | (Bit >> 4);
+    Bit = Input & Suffix->Move3; Input = Input ^ Bit | (Bit >> 8);
+    Bit = Input & Suffix->Move4; Input = Input ^ Bit | (Bit >> 16);
+
+    return Input;
+}
+
+FORCEINLINE
+ULONG
+CompressUlongParallelSuffix(
+    _In_ ULONG Input,
+    _In_ PPARALLEL_SUFFIX_MOVE_MASK32 SuffixPointer
+    )
+{
+    ULONG Bit;
+    ULONG Mask;
+    YMMWORD Move;
+
+    Move = _mm256_load_si256(&SuffixPointer->Move256);
+
+    Mask = SuffixPointer->Mask;
+
+    Input = Input & Mask;
+
+    Bit = Input & Move.m256i_u32[1]; Input = Input ^ Bit | (Bit >> 1);
+    Bit = Input & Move.m256i_u32[2]; Input = Input ^ Bit | (Bit >> 2);
+    Bit = Input & Move.m256i_u32[3]; Input = Input ^ Bit | (Bit >> 4);
+    Bit = Input & Move.m256i_u32[4]; Input = Input ^ Bit | (Bit >> 8);
+    Bit = Input & Move.m256i_u32[5]; Input = Input ^ Bit | (Bit >> 16);
+
+    return Input;
+}
 
 RTL_API
 VOID

@@ -1,6 +1,5 @@
 
 #include "stdafx.h"
-#include "../Rtl/__C_specific_handler.h"
 
 ULONG
 Main(VOID)

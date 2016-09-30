@@ -58,6 +58,12 @@ static const DWORD TraceStoreAddressSuffixLength = (
     sizeof(WCHAR)
 );
 
+static const WCHAR TraceStoreBitmapSuffix[] = L":bitmap";
+static const DWORD TraceStoreBitmapSuffixLength = (
+    sizeof(TraceStoreBitmapSuffix) /
+    sizeof(WCHAR)
+);
+
 static const WCHAR TraceStoreInfoSuffix[] = L":info";
 static const DWORD TraceStoreInfoSuffixLength = (
     sizeof(TraceStoreInfoSuffix) /
@@ -74,11 +80,11 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const USHORT ElementsPerTraceStore = 5;
+static const USHORT ElementsPerTraceStore = 6;
 
 //
-// The Event trace store gets an initial file size of 16MB, everything else gets
-// 4MB.
+// The Event trace store gets an initial file size of 16MB, everything else
+// gets 4MB.
 //
 
 static const ULONG InitialTraceStoreFileSizes[] = {
@@ -106,12 +112,16 @@ static const LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 static const SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
 static const SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
-static const USHORT InitialFreeMemoryMaps = 32;
+static const USHORT InitialFreeMemoryMaps = 64;
 
 static const USHORT TraceStoreAllocationStructSize = (
     sizeof(TRACE_STORE_ALLOCATION)
 );
+static const USHORT TraceStoreRelocationStructSize = (
+    sizeof(TRACE_STORE_FIELD_RELOC)
+);
 static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
+static const USHORT TraceStoreBitmapStructSize = sizeof(RTL_BITMAP);
 static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
 static const ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
@@ -120,8 +130,14 @@ static const ULONG DefaultTraceStoreEventMappingSize = (1 << 23);       // 16MB
 static const ULONG DefaultAllocationTraceStoreSize = (1 << 21);         //  4MB
 static const ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);  // 64KB
 
+static const ULONG DefaultRelocationTraceStoreSize = (1 << 16);         // 64KB
+static const ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);  // 64KB
+
 static const ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
 static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
+
+static const ULONG DefaultBitmapTraceStoreSize = (1 << 21);             //  4MB
+static const ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);      // 64KB
 
 static const ULONG DefaultInfoTraceStoreSize = (1 << 16);               // 64KB
 static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16);        // 64KB
