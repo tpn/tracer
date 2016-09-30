@@ -1104,6 +1104,7 @@ Return Value:
 
 --*/
 {
+    BOOL Valid;
     BOOL FoundLastOuter;
     BOOL FoundLastInner;
     USHORT Outer;
@@ -1213,7 +1214,14 @@ Return Value:
                 // isn't larger than the known maximum ID.
                 //
 
-                if (Offset >= LastOffset || Id > MaxId) {
+                Valid = (
+                    Id <= MaxId && (
+                        Offset == 0 ||
+                        Offset >= LastOffset
+                    )
+                );
+
+                if (!Valid) {
                     return FALSE;
                 }
 
