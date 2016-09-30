@@ -14,11 +14,11 @@ Abstract:
 
 #pragma once
 
+#include "TraceStore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "TraceStore.h"
 
 static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
@@ -46,6 +46,12 @@ static const DWORD TraceStoreAllocationSuffixLength = (
     sizeof(WCHAR)
 );
 
+static const WCHAR TraceStoreRelocationSuffix[] = L":relocation";
+static const DWORD TraceStoreRelocationSuffixLength = (
+    sizeof(TraceStoreRelocationSuffix) /
+    sizeof(WCHAR)
+);
+
 static const WCHAR TraceStoreAddressSuffix[] = L":address";
 static const DWORD TraceStoreAddressSuffixLength = (
     sizeof(TraceStoreAddressSuffix) /
@@ -68,11 +74,11 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const USHORT ElementsPerTraceStore = 4;
+static const USHORT ElementsPerTraceStore = 5;
 
 //
-// The Event trace store gets an initial file size of 80MB,
-// everything else gets 10MB.
+// The Event trace store gets an initial file size of 16MB, everything else gets
+// 4MB.
 //
 
 static const ULONG InitialTraceStoreFileSizes[] = {

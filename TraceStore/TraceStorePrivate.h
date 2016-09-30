@@ -390,7 +390,8 @@ BOOL
     _In_ PTRACE_STORE InfoStore,
     _In_ ULONG InitialSize,
     _In_ ULONG MappingSize,
-    _In_ PTRACE_FLAGS TraceFlags
+    _In_ PTRACE_FLAGS TraceFlags,
+    _In_opt_ PTRACE_STORE_FIELD_RELOC FieldRelocation
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
@@ -419,6 +420,41 @@ VOID
     );
 typedef CLOSE_TRACE_STORE *PCLOSE_TRACE_STORE;
 CLOSE_TRACE_STORE CloseTraceStore;
+
+//
+// TraceStores-related functions.
+//
+
+typedef
+ULONG
+(GET_TRACE_STORES_ALLOCATION_SIZE)(
+    _In_ USHORT NumberOfTraceStores
+    );
+typedef GET_TRACE_STORES_ALLOCATION_SIZE *PGET_TRACE_STORES_ALLOCATION_SIZE;
+GET_TRACE_STORES_ALLOCATION_SIZE GetTraceStoresAllocationSize;
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORES)(
+    _In_        PRTL            Rtl,
+    _In_        PWSTR           BaseDirectory,
+    _Inout_opt_ PTRACE_STORES   TraceStores,
+    _Inout_     PULONG          SizeOfTraceStores,
+    _In_opt_    PULONG          InitialFileSizes,
+    _In_        PTRACE_FLAGS    TraceFlags,
+    _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations
+    );
+typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
+INITIALIZE_TRACE_STORES InitializeTraceStores;
+
+typedef
+VOID
+(CLOSE_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
+CLOSE_TRACE_STORES CloseTraceStores;
 
 //
 // TraceStoreSystemTimer-related functions.
