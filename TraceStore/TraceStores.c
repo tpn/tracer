@@ -171,26 +171,73 @@ Return Value:
     //
 
     if (ARGUMENT_PRESENT(FieldRelocations)) {
-        USHORT NumberOfFieldRelocationsElements;
-        PTRACE_STORE_FIELD_RELOCS Relocs;
+        USHORT Outer;
+        USHORT Inner;
+        USHORT MaxInner;
+        USHORT NumberOfElements;
+        TRACE_STORE_ID TraceStoreId;
 
-        Success = ValidateFieldRelocationsArray(FieldRelocations);
+        PTRACE_STORE_RELOC Reloc;
+        PTRACE_STORE_FIELD_RELOC FieldReloc;
+        PTRACE_STORE_FIELD_RELOC FirstFieldReloc;
+        PTRACE_STORE_FIELD_RELOCS FieldRelocs;
+
+        Success = ValidateFieldRelocationsArray(
+            FieldRelocations,
+            &NumberOfElements,
+            &MaxInner
+        );
 
         if (!Success) {
+            OutputDebugStringA("FieldRelocation validation failed.\n");
             return FALSE;
         }
 
+        TraceStores->NumberOfFieldRelocationsElements = NumberOfElements;
+
         //
-        // Enumerate through all of the trace store IDs and see if there's
-        // a corresponding entry in the relocation array for the corresponding
-        // trace store.
+        // Initialize each TraceStores->Relocations[Index] slot.  We loop
+        // through every slot, then loop through the caller's field relocations
+        // array and see if the trace store IDs match.  We could be fancier to
+        // avoid the n^2 loop overhead, but this isn't called frequently, and
+        // the array sizes shouldn't be particularly large.
         //
 
         for (Index = 0; Index < MAX_TRACE_STORE_IDS; Index++) {
-            BOOL Found = FALSE;
+            Reloc = &TraceStores->Relocations[Index];
+            Reloc->SizeOfStruct = sizeof(*Reloc);
+            TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
 
+            for (Outer = 0; Outer < NumberOfElements; Outer++) {
+                FieldRelocs = FieldRelocations + Outer;
+
+                if (FieldRelocs->TraceStoreId != TraceStoreId) {
+                    continue;
+                }
+
+                FirstFieldReloc = FieldRelocs->Relocations;
+                AssertAlignedTraceStoreFieldReloc(FirstFieldReloc);
+
+                //
+                // Loop through the array of inner fields in order to determine
+                // how many are present.
+                //
+
+                for (Inner = 0; Inner < MaxInner; Inner++) {
+                    FieldReloc = FirstFieldReloc + Inner;
+                    if (IsLastTraceStoreFieldRelocElement(FieldReloc)) {
+                        break;
+                    }
+                }
+
+                //
+                // Finalize the TRACE_STORE_RELOC structure.
+                //
+
+                Reloc->NumberOfRelocations = Inner;
+                Reloc->Relocations = FirstFieldReloc;
+            }
         }
-
     }
 
     Path[DirectoryLength.LowPart] = L'\\';
@@ -302,12 +349,14 @@ Return Value:
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        PTRACE_STORE_RELOC Reloc;
 
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
         PTRACE_STORE AllocationStore = TraceStore + 1;
         PTRACE_STORE RelocationStore = TraceStore + 2;
         PTRACE_STORE AddressStore = TraceStore + 3;
-        PTRACE_STORE InfoStore = TraceStore + 4;
+        PTRACE_STORE BitmapStore = TraceStore + 4;
+        PTRACE_STORE InfoStore = TraceStore + 5;
 
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
@@ -329,6 +378,8 @@ Return Value:
 
         TraceStore->IsReadonly = Readonly;
         TraceStore->SequenceId = Index;
+        TraceStore->TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
+        TraceStore->TraceStoreIndex = StoreIndex;
         TraceStore->CreateFileDesiredAccess = CreateFileDesiredAccess;
         TraceStore->CreateFileMappingProtectionFlags = (
             CreateFileMappingProtectionFlags
@@ -340,17 +391,21 @@ Return Value:
             MapViewOfFileDesiredAccess
         );
 
+        Reloc = &TraceStores->Relocations[Index];
+
         Success = InitializeTraceStore(
             Rtl,
             Path,
             TraceStore,
             AllocationStore,
+            RelocationStore,
             AddressStore,
+            BitmapStore,
             InfoStore,
             InitialSize,
             MappingSize,
             &Flags,
-            FieldRelocation
+            &TraceStores->Relocations[Index]
         );
 
         if (!Success) {

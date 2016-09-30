@@ -411,13 +411,9 @@ TryMapMemory:
     //
 
     Address.FulfillingThreadId = FastGetCurrentThreadId();
-
     GetCurrentProcessorNumberEx(&Address.FulfillingProcessor);
-
     Success = GetNumaProcessorNodeEx(&Address.FulfillingProcessor, &NumaNode);
-
     Address.FulfillingNumaNode = (Success ? (UCHAR)NumaNode : 0);
-
 
     //
     // Take a local copy of the timestamp.
@@ -436,7 +432,6 @@ TryMapMemory:
     //
 
     Elapsed.QuadPart -= Address.Timestamp.Requested.QuadPart;
-
     Address.Elapsed.AwaitingPreparation.QuadPart = Elapsed.QuadPart;
 
     //
@@ -444,11 +439,9 @@ TryMapMemory:
     // store.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(
-        AddressPointer,
-        &Address,
-        sizeof(Address)
-    );
+    Result = Rtl->RtlCopyMappedMemory(AddressPointer,
+                                      &Address,
+                                      sizeof(Address));
 
     if (FAILED(Result)) {
 

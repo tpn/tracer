@@ -30,6 +30,9 @@
     <ClInclude Include="Commandline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="__C_specific_handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

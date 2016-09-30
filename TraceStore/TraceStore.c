@@ -122,7 +122,10 @@ Return Value:
     }
 
     TraceStore->AllocateRecords = TraceStoreAllocateRecords;
-    //TraceStore->FreeRecords = FreeRecords;
+
+    //
+    // XXX TODO: initialize the aligned allocators.
+    //
 
     TraceStore->NumberOfAllocations.QuadPart = 0;
     TraceStore->TotalAllocationSize.QuadPart = 0;
@@ -259,11 +262,14 @@ InitializeTraceStore(
     PCWSTR Path,
     PTRACE_STORE TraceStore,
     PTRACE_STORE AllocationStore,
+    PTRACE_STORE RelocationStore,
     PTRACE_STORE AddressStore,
+    PTRACE_STORE BitmapStore,
     PTRACE_STORE InfoStore,
     ULONG InitialSize,
     ULONG MappingSize,
-    PTRACE_FLAGS TraceFlags
+    PTRACE_FLAGS TraceFlags,
+    PTRACE_STORE_RELOC Reloc
     )
 /*++
 
@@ -285,9 +291,19 @@ Arguments:
         used as the allocation metadata store for the given TraceStore being
         initialized.
 
+    RelocationStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the relocation metadata store for the given TraceStore being
+        initialized.
+
     AddressStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the address metadata store for the given TraceStore being
         initialized.
+
+    BitmapStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the free space bitmap metadata store for the given TraceStore
+        being initialized.
+
+            N.B.: Not yet implemented.
 
     InfoStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the info metadata store for the given TraceStore being
@@ -303,6 +319,12 @@ Arguments:
         initializing the trace store.  This is used to control things like
         whether or not the
 
+    Reloc - Supplies a pointer to a TRACE_STORE_RELOC structure that contains
+        field relocation information for this trace store.  If the store does
+        not use relocations, Reloc->NumberOfRelocations should be set to 0.
+        If present, this structure will be written to the RelocationStore when
+        the store is bound to a context.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
@@ -312,10 +334,14 @@ Return Value:
     BOOL Success;
     HRESULT Result;
     WCHAR AllocationPath[_OUR_MAX_PATH];
+    WCHAR RelocationPath[_OUR_MAX_PATH];
     WCHAR AddressPath[_OUR_MAX_PATH];
+    WCHAR BitmapPath[_OUR_MAX_PATH];
     WCHAR InfoPath[_OUR_MAX_PATH];
     PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
+    PCWSTR RelocationSuffix = TraceStoreRelocationSuffix;
     PCWSTR AddressSuffix = TraceStoreAddressSuffix;
+    PCWSTR BitmapSuffix = TraceStoreBitmapSuffix;
     PCWSTR InfoSuffix = TraceStoreInfoSuffix;
     TRACE_FLAGS Flags;
 
@@ -339,14 +365,22 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(Reloc)) {
+        return FALSE;
+    }
+
     Flags = *TraceFlags;
+
+    TraceStore->Reloc = Reloc;
 
     //
     // Initialize the paths of the metadata stores first.
     //
 
     INIT_METADATA_PATH(Allocation);
+    INIT_METADATA_PATH(Relocation);
     INIT_METADATA_PATH(Address);
+    INIT_METADATA_PATH(Bitmap);
     INIT_METADATA_PATH(Info);
 
     TraceStore->Rtl = Rtl;
@@ -398,6 +432,10 @@ Return Value:
         TraceStore->NoPrefaulting = TRUE;
     }
 
+    if (Reloc->NumberOfRelocations > 0) {
+        TraceStore->HasRelocations = TRUE;
+    }
+
     TraceStore->Flags = Flags;
 
     //
@@ -406,7 +444,9 @@ Return Value:
     //
 
     INIT_METADATA(Allocation);
+    INIT_METADATA(Relocation);
     INIT_METADATA(Address);
+    INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 
     //
@@ -732,9 +772,19 @@ Return Value:
         TraceStore->AllocationStore = NULL;
     }
 
+    if (TraceStore->RelocationStore) {
+        CloseStore(TraceStore->RelocationStore);
+        TraceStore->RelocationStore = NULL;
+    }
+
     if (TraceStore->AddressStore) {
         CloseStore(TraceStore->AddressStore);
         TraceStore->AddressStore = NULL;
+    }
+
+    if (TraceStore->BitmapStore) {
+        CloseStore(TraceStore->BitmapStore);
+        TraceStore->BitmapStore = NULL;
     }
 
     if (TraceStore->InfoStore) {

@@ -4,6 +4,7 @@
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
+#include "../Rtl/__C_specific_handler.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
 #include "../TracerHeap/TracerHeap.h"

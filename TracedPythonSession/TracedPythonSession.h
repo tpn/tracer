@@ -322,7 +322,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     PSTRING_TABLE ModuleNamesStringTable;
 
     //
-    // Tracer-specific initializers.
+    // TraceStore-specific initializers.
     //
 
     PINITIALIZE_TRACE_STORES InitializeTraceStores;
@@ -409,6 +409,12 @@ typedef struct _TRACED_PYTHON_SESSION {
 
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+
+    //
+    // Relocation information.
+    //
+
+    PTRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations;
 
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 

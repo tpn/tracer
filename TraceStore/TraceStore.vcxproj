@@ -70,6 +70,7 @@
     <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>

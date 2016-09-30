@@ -40,6 +40,7 @@ Abstract:
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "TraceStoreIndex.h"
 
 #endif
 
@@ -327,6 +328,19 @@ C_ASSERT(sizeof(TRACE_STORE_FIELD_RELOC) == 8);
 
 #define LAST_TRACE_STORE_FIELD_RELOC { 0, 0 }
 
+FORCEINLINE
+BOOL
+IsLastTraceStoreFieldRelocElement(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return (
+        FieldReloc &&
+        FieldReloc->Offset == 0 &&
+        FieldReloc->TraceStoreId == 0
+    );
+}
+
 //
 // Multiple trace store to relocation arrays can be defined by the following
 // structure.  Again, see the PythonTracer module for examples.
@@ -351,6 +365,57 @@ typedef CONST TRACE_STORE_FIELD_RELOCS *PCTRACE_STORE_FIELD_RELOCS;
 typedef CONST TRACE_STORE_FIELD_RELOCS **PPCTRACE_STORE_FIELD_RELOCS;
 
 #define LAST_TRACE_STORE_FIELD_RELOCS { 0, NULL }
+
+FORCEINLINE
+BOOL
+IsLastTraceStoreFieldRelocsElement(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return (
+        FieldRelocs &&
+        FieldRelocs->TraceStoreId == TraceStoreNullId &&
+        FieldRelocs->Relocations == 0
+    );
+}
+
+#define TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT 128
+FORCEINLINE
+BOOL
+IsAlignedTraceStoreFieldReloc(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return IsAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+}
+
+FORCEINLINE
+BOOL
+AssertAlignedTraceStoreFieldReloc(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return AssertAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+}
+
+#define TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT 128
+FORCEINLINE
+BOOL
+IsAlignedTraceStoreFieldRelocs(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return IsAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+}
+
+FORCEINLINE
+BOOL
+AssertAlignedTraceStoreFieldRelocs(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return AssertAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+}
 
 //
 // The following two structures, TRACE_STORE_RELOC and TRACE_STORE_RELOCS,
@@ -377,18 +442,10 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
     USHORT NumberOfRelocations;
 
     //
-    // Alignment of the address pointed to by the Relocations pointer below.
-    // This is used to determine the feasibility of using SIMD instructions
-    // when interacting with the array of relocations.
-    //
-
-    USHORT RelocationsAlignment;
-
-    //
     // Padding out to 8-bytes.
     //
 
-    USHORT Unused1;
+    ULONG Unused1;
 
     //
     // Pointer to the array of TRACE_STORE_FIELD_RELOC structures.
@@ -557,7 +614,6 @@ C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
 typedef
 _Check_return_
 _Success_(return != 0)
-DECLSPEC_RESTRICT
 PVOID
 (ALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
@@ -570,7 +626,6 @@ typedef ALLOCATE_RECORDS *PALLOCATE_RECORDS;
 typedef
 _Check_return_
 _Success_(return != 0)
-DECLSPEC_RESTRICT
 PVOID
 (ALLOCATE_ALIGNED_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
@@ -584,7 +639,6 @@ typedef ALLOCATE_ALIGNED_RECORDS *PALLOCATE_ALIGNED_RECORDS;
 typedef
 _Check_return_
 _Success_(return != 0)
-DECLSPEC_RESTRICT
 PVOID
 (ALLOCATE_ALIGNED_OFFSET_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
@@ -629,6 +683,14 @@ typedef struct _TRACE_STORE {
 
     ULONG SequenceId;
 
+    //
+    // The ID and Index of the trace stores.  These are statically defined
+    // up-front in C code.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_INDEX TraceStoreIndex;
+
     LARGE_INTEGER TotalNumberOfAllocations;
     LARGE_INTEGER TotalAllocationSize;
 
@@ -658,9 +720,10 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE            AllocationStore;
     PTRACE_STORE            RelocationStore;
     PTRACE_STORE            AddressStore;
+    PTRACE_STORE            BitmapStore;
     PTRACE_STORE            InfoStore;
 
-    PTRACE_STORE_RELOC      Relocation;
+    PTRACE_STORE_RELOC      Reloc;
 
     PALLOCATE_RECORDS                   AllocateRecords;
     PALLOCATE_ALIGNED_RECORDS           AllocateAlignedRecords;
@@ -777,17 +840,23 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      SizeOfAllocation;
     USHORT      NumberOfTraceStores;
     USHORT      ElementsPerTraceStore;
+    USHORT      NumberOfFieldRelocationsElements;
+    USHORT      Padding1;
+    ULONG       Padding2;
     TRACE_FLAGS Flags;
-    ULONG       Reserved1;
     PRTL        Rtl;
     STRING      BaseDirectory;
-    TRACE_STORE_RELOCS Relocations[MAX_TRACE_STORE_IDS];
+    TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+//
+// TraceStoreSession-related functions.
+//
 
 typedef _Success_(return != 0)
 BOOL
@@ -798,6 +867,18 @@ BOOL
     );
 typedef INITIALIZE_TRACE_SESSION *PINITIALIZE_TRACE_SESSION;
 TRACE_STORE_API INITIALIZE_TRACE_SESSION InitializeTraceSession;
+
+//
+// TraceStores-related functions.
+//
+
+typedef
+ULONG
+(GET_TRACE_STORES_ALLOCATION_SIZE)(
+    _In_ USHORT NumberOfTraceStores
+    );
+typedef GET_TRACE_STORES_ALLOCATION_SIZE *PGET_TRACE_STORES_ALLOCATION_SIZE;
+TRACE_STORE_API GET_TRACE_STORES_ALLOCATION_SIZE GetTraceStoresAllocationSize;
 
 typedef
 _Success_(return != 0)
@@ -815,6 +896,18 @@ typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
 
 typedef
+VOID
+(CLOSE_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
+TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
+
+//
+// TraceStoreContext-related functions.
+//
+
+typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_CONTEXT)(
@@ -829,14 +922,6 @@ BOOL
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
-
-typedef
-VOID
-(CLOSE_TRACE_STORES)(
-    _In_ PTRACE_STORES TraceStores
-    );
-typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
-TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -984,8 +1069,11 @@ FORCEINLINE
 _Success_(return != 0)
 BOOL
 ValidateFieldRelocationsArray(
-    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocations
-    _Out_ PUSHORT NumberOf
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocations,
+    _Outptr_result_nullonfailure_
+        PUSHORT NumberOfFieldRelocationsElements,
+    _Outptr_result_nullonfailure_
+        PUSHORT MaximumNumberOfInnerFieldRelocationElements
     )
 /*--
 
@@ -1000,13 +1088,24 @@ Arguments:
         TRACE_STORE_FIELD_RELOCS structures.  An empty element denotes the end
         of the array.
 
+    NumberOfFieldRelocationsElements - Supplies a pointer to an address of a
+        variable that will receive the number of elements in the
+        FieldRelocations array if it was successfully validated.
+
+    MaximumNumberOfInnerFieldRelocationElements - Supplies a pointer to an
+        address of a variable that will receive the maximum number of inner
+        TRACE_STORE_FIELD_RELOC elements seen whilst performing validation.
+        This allows a caller to subsequently cap loop indices to a more
+        sensible upper bound other than MAX_USHORT.
+
 Return Value:
 
     TRUE if the structure is valid, FALSE if not.
 
 --*/
 {
-    BOOL Valid;
+    BOOL FoundLastOuter;
+    BOOL FoundLastInner;
     USHORT Outer;
     USHORT Inner;
     USHORT MaxId;
@@ -1015,20 +1114,73 @@ Return Value:
     USHORT LastOffset;
     USHORT MinimumOffset;
     USHORT MaximumOffset;
+    USHORT MaxInnerElements;
+    ULONG_INTEGER LongOffset;
     TRACE_STORE_ID Id;
     PTRACE_STORE_FIELD_RELOC Reloc;
+    PTRACE_STORE_FIELD_RELOC FirstReloc;
     PTRACE_STORE_FIELD_RELOCS Relocs;
 
-    FoundTerminator = FALSE;
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(FieldRelocations)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(NumberOfFieldRelocationsElements)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(MaximumNumberOfInnerFieldRelocationElements)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *NumberOfFieldRelocationsElements = 0;
+    *MaximumNumberOfInnerFieldRelocationElements = 0;
+
+    //
+    // Verify alignment.
+    //
+
+    if (!IsAlignedTraceStoreFieldRelocs(FieldRelocations)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize variables.
+    //
+
     MaxId = (USHORT)MAX_TRACE_STORE_IDS;
     MaxRelocs = (USHORT)-1;
+    MaxInnerElements = 0;
+
+    FoundLastOuter = FALSE;
+    FoundLastInner = FALSE;
+
+    //
+    // Enclose all of logic in a __try/__except block that catches general
+    // protection faults, which can easily occur if the caller passes in
+    // malformed data.
+    //
 
     __try {
+
+        //
+        // Loop through the outer field relocations array, then loop through
+        // the inner field relocation array referenced by the outer element.
+        //
 
         for (Outer = 0; Outer < MaxId; Outer++) {
             Relocs = FieldRelocations + Outer;
 
-            if (Relocs->TraceStoreId == 0 && Relocs->Relocations == NULL) {
+            if (IsLastTraceStoreFieldRelocsElement(Relocs)) {
+                FoundLastOuter = TRUE;
                 break;
             }
 
@@ -1036,12 +1188,23 @@ Return Value:
             MaximumOffset = 0;
             MinimumOffset = (USHORT)-1;
 
+            FirstReloc = Relocs->Relocations;
+
+            if (!IsAlignedTraceStoreFieldReloc(FirstReloc)) {
+                return FALSE;
+            }
+
             for (Inner = 0; Inner < MaxRelocs; Inner++) {
-                Reloc = Relocs + Inner;
-                Offset = Reloc->Offset;
+                Reloc = FirstReloc + Inner;
+                LongOffset.LongPart = Reloc->Offset;
+                if (LongOffset.HighPart) {
+                    return FALSE;
+                }
+                Offset = LongOffset.LowPart;
                 Id = Reloc->TraceStoreId;
 
-                if (Offset == 0 && Id == 0) {
+                if (IsLastTraceStoreFieldRelocElement(Reloc)) {
+                    FoundLastInner = TRUE;
                     break;
                 }
 
@@ -1050,49 +1213,44 @@ Return Value:
                 // isn't larger than the known maximum ID.
                 //
 
-                if (Offset < LastOffset && Id <= MaxId) {
+                if (Offset >= LastOffset || Id > MaxId) {
                     return FALSE;
                 }
 
                 LastOffset = Offset;
             }
 
-            Reloc++;
-            Valid = (Reloc->Offset == 0 && Reloc->TraceStoreId == 0);
-
-            if (!Valid) {
+            if (!FoundLastInner) {
                 return FALSE;
             }
 
-            break;
-        }
+            //
+            // Did this array have the most elements of all the ones we've seen
+            // so far?  If so, update our counter.
+            //
 
-        Relocs++;
-
-
-                );
-                if (Offset < LastOffset) {
-                    return FALSE;
-                }
-
-
-
-                if (Offset > MaximumOffset) {
-                    MaximumOffset = Offset;
-                }
-
-                if (Offset < MinimumOffset) {
-                    MinimumOffset = Offset;
-                }
-
-
-
-
-                if (Reloc->Offset
-
+            if (Inner > MaxInnerElements) {
+                MaxInnerElements = Inner;
             }
 
         }
+
+        if (!FoundLastOuter) {
+            return FALSE;
+        }
+
+        //
+        // Update the caller's pointers.
+        //
+
+        *NumberOfFieldRelocationsElements = Outer;
+        *MaximumNumberOfInnerFieldRelocationElements = MaxInnerElements;
+
+        //
+        // Return success.
+        //
+
+        return TRUE;
 
     } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?
                 EXCEPTION_EXECUTE_HANDLER :
