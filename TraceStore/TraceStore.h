@@ -825,8 +825,10 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC  pReloc;
 
 
+#ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
+#endif
 
 } TRACE_STORE, *PTRACE_STORE;
 
@@ -834,6 +836,15 @@ typedef struct _TRACE_STORE {
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
+
+#define TRACE_STORE_DECLS()                                         \
+        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex]; \
+        PTRACE_STORE AllocationStore = TraceStore + 1;              \
+        PTRACE_STORE RelocationStore = TraceStore + 2;              \
+        PTRACE_STORE AddressStore = TraceStore + 3;                 \
+        PTRACE_STORE BitmapStore = TraceStore + 4;                  \
+        PTRACE_STORE InfoStore = TraceStore + 5
+
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      SizeOfStruct;

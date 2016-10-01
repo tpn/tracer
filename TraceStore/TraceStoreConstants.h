@@ -112,7 +112,7 @@ static const LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 static const SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
 static const SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
-static const USHORT InitialFreeMemoryMaps = 64;
+static const USHORT InitialFreeMemoryMaps = 32;
 
 static const USHORT TraceStoreAllocationStructSize = (
     sizeof(TRACE_STORE_ALLOCATION)
