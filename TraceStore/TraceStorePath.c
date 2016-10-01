@@ -78,6 +78,7 @@ InitializeTraceStorePath(
     PTRACE_STORE TraceStore
     )
 {
+#ifdef _TRACE_STORE_EMBED_PATH
     HRESULT Result;
     ULARGE_INTEGER Length;
     ULARGE_INTEGER MaximumLength;
@@ -101,6 +102,7 @@ InitializeTraceStorePath(
 
     TraceStore->PathBuffer[TraceStore->Path.Length >> 1] = L'\0';
 
+#endif
     return TRUE;
 }
 

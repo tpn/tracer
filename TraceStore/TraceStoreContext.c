@@ -103,28 +103,8 @@ Return Value:
     }
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-
-        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-        PTRACE_STORE AllocationStore = TraceStore + 1;
-        PTRACE_STORE AddressStore = TraceStore + 2;
-        PTRACE_STORE InfoStore = TraceStore + 3;
-
-#define BIND_STORE(Name)                                              \
-    if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
-        return FALSE;                                                 \
-    }
-
-        BIND_STORE(Allocation);
-        BIND_STORE(Address);
-        BIND_STORE(Info);
-
-        //
-        // The TraceStore needs to come last as it requires the metadata stores
-        // to be bound and mapped before it can finalize its own binding.
-        //
-
-        BIND_STORE(Trace);
-
+        TRACE_STORE_DECLS();
+        BIND_STORES();
     }
 
     return TRUE;

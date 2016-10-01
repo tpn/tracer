@@ -58,6 +58,29 @@ typedef INITIALIZE_TRACE_STORE_PATH *PINITIALIZE_TRACE_STORE_PATH;
 INITIALIZE_TRACE_STORE_PATH InitializeTraceStorePath;
 
 //
+// TraceStoreContext-related macros.
+//
+
+#define BIND_STORE(Name)                                              \
+    if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
+        return FALSE;                                                 \
+    }
+
+//
+// N.B. BIND_STORE(Trace) must always go last in the macro below as it requires
+//      the metadata stores to be bound and mapped before it can finalize its
+//      own binding.
+//
+
+#define BIND_STORES()       \
+    BIND_STORE(Allocation); \
+    BIND_STORE(Relocation); \
+    BIND_STORE(Address);    \
+    BIND_STORE(Bitmap);     \
+    BIND_STORE(Info);       \
+    BIND_STORE(Trace)
+
+//
 // TraceStoreTime-related functions.
 //
 

@@ -349,14 +349,8 @@ Return Value:
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        TRACE_STORE_DECLS();
         PTRACE_STORE_RELOC Reloc;
-
-        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-        PTRACE_STORE AllocationStore = TraceStore + 1;
-        PTRACE_STORE RelocationStore = TraceStore + 2;
-        PTRACE_STORE AddressStore = TraceStore + 3;
-        PTRACE_STORE BitmapStore = TraceStore + 4;
-        PTRACE_STORE InfoStore = TraceStore + 5;
 
         LPCWSTR FileName = TraceStoreFileNames[Index];
         DWORD InitialSize = Sizes[Index];
@@ -480,22 +474,13 @@ Return Value:
 --*/
 {
     SHORT Delta;
-    SHORT DeltaRelocs;
-    SHORT DeltaStores;
     USHORT ExtraSize;
-    USHORT DefaultNumberOfRelocs = (
-        RTL_FIELD_SIZE(TRACE_STORES, Relocations) /
-        sizeof(TRACE_STORE_RELOC)
-    );
     USHORT DefaultNumberOfTraceStores = (
         RTL_FIELD_SIZE(TRACE_STORES, Stores) /
         sizeof(TRACE_STORE)
     );
 
-    DeltaRelocs = (NumberOfTraceStores - DefaultNumberOfRelocs);
-    DeltaStores = (NumberOfTraceStores - DefaultNumberOfTraceStores);
-
-    Delta = DeltaRelocs + DeltaStores;
+    Delta = (NumberOfTraceStores - DefaultNumberOfTraceStores);
 
     if (Delta <= 0) {
         return sizeof(TRACE_STORES);
