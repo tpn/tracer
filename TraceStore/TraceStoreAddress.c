@@ -33,7 +33,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the address
         is to be loaded for.
 
-    AddressPointer - Supplies a pointer to a pointer that will receive the
+    AddressPointer - Supplies a pointer to a variable that will receive the
         address of the loaded TRACE_STORE_ADDRESS structure.
 
 Return Value:
