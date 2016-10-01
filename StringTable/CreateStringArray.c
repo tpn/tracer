@@ -397,7 +397,7 @@ Return Value:
         //
         // Allocation was successful, carve out the pointer to the NewArray.
         // (We use RtlOffsetToPointer() here instead of StringTable->StringArray
-        // as the former will be done against the aligned pading size and isn't
+        // as the former will be done against the aligned padding size and isn't
         // dependent upon knowing anything about the STRING_TABLE struct other
         // than the offset and struct size parameters passed in as arguments.)
         //
