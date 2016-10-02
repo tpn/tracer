@@ -106,7 +106,7 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!SizeOfTraceStores) {
+    if (!ARGUMENT_PRESENT(SizeOfTraceStores)) {
         return FALSE;
     }
 
