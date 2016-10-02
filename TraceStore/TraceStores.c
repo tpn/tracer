@@ -44,7 +44,8 @@ Arguments:
 
     TraceStores - Supplies a pointer to a TRACE_STORES structure to initialize.
         The caller is responsible for allocating a sufficiently-sized buffer,
-        and must provide the size of the buffer via the following parameter.
+        and must provide the size of the buffer via the SizeOfTraceStores
+        parameter.
 
     SizeOfTraceStores - Supplies a pointer to a ULONG that contains the size
         of the buffer pointed to by the TraceStores parameter, in bytes.  The
