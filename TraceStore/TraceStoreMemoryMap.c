@@ -475,17 +475,27 @@ Finalize:
 
     if (!TraceStore->NoPrefaulting) {
 
-        PVOID BaseAddress = MemoryMap->BaseAddress;
-
         //
-        // Prefault the first two pages.  The AllocateRecords function will
-        // take care of prefaulting subsequent pages.
+        // Make sure we don't prefault a page past the end of the file.
+        // This can happen with the smaller metadata stores that only memory
+        // map their exact structure size.
         //
 
-        if (!Rtl->PrefaultPages(BaseAddress, 2)) {
-            goto Error;
+        ULONG_PTR BaseAddress = (ULONG_PTR)MemoryMap->BaseAddress;
+        ULONG_PTR PrefaultPage = BaseAddress + (PAGE_SIZE << 1);
+        ULONG_PTR EndPage = BaseAddress + (ULONG_PTR)NewFileOffset.QuadPart;
+
+        if (PrefaultPage < EndPage) {
+
+            //
+            // Prefault the first two pages.  The AllocateRecords function will
+            // take care of prefaulting subsequent pages.
+            //
+
+            if (!Rtl->PrefaultPages((PVOID)BaseAddress, 2)) {
+                goto Error;
+            }
         }
-
     }
 
     Success = TRUE;

@@ -410,11 +410,12 @@ SubmitFirstMemoryMap:
     TraceStore->Allocation = Allocation;
     TraceStore->Bitmap = Bitmap;
     TraceStore->Reloc = Reloc;
+    TraceStore->Info = Info;
 
-    Eof = TraceStore->Eof = &TraceStore->Info->Eof;
-    Time = TraceStore->Time = &TraceStore->Info->Time;
-    Stats = TraceStore->Stats = &TraceStore->Info->Stats;
-    Totals = TraceStore->Totals = &TraceStore->Info->Totals;
+    Eof = TraceStore->Eof = &Info->Eof;
+    Time = TraceStore->Time = &Info->Time;
+    Stats = TraceStore->Stats = &Info->Stats;
+    Totals = TraceStore->Totals = &Info->Totals;
 
     if (IsMetadata) {
         PINITIALIZE_TRACE_STORE_METADATA Initializer;

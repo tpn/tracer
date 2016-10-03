@@ -86,7 +86,7 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const USHORT ElementsPerTraceStore = 6;
+static const USHORT ElementsPerTraceStore = 7;
 
 //
 // The Event trace store gets an initial file size of 16MB, everything else
