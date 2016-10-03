@@ -93,6 +93,10 @@ extern "C" {
     (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL) )
 #endif
 
+#ifndef NOTHING
+#define NOTHING
+#endif
+
 #ifndef DECLSPEC_RESTRICT
 #define DECLSPEC_RESTRICT __declspec(restrict)
 #endif

@@ -58,7 +58,47 @@ ArrayIndexToTraceStoreId(
     _In_ USHORT Index
     )
 {
-    return (TRACE_STORE_ID)Index + 1;
+    return (TRACE_STORE_ID)(Index + 1);
+}
+
+FORCEINLINE
+USHORT
+TraceStoreIdToArrayIndex(
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    return (USHORT)(TraceStoreId - 1);
+}
+
+typedef enum _TRACE_STORE_METADATA_ID {
+    TraceStoreMetadataNullId = 0,
+    TraceStoreMetadataMetadataInfoId = 1,
+    TraceStoreMetadataAllocationId,
+    TraceStoreMetadataRelocationId,
+    TraceStoreMetadataAddressId,
+    TraceStoreMetadataBitmapId,
+    TraceStoreMetadataInfoId,
+    TraceStoreMetadataInvalidId
+} TRACE_STORE_METADATA_ID, *PTRACE_STORE_METADATA_ID;
+
+#define MAX_TRACE_STORE_METADATA_IDS TraceStoreMetadataInvalidId
+
+FORCEINLINE
+TRACE_STORE_METADATA_ID
+ArrayIndexToTraceStoreMetadataId(
+    _In_ USHORT Index
+    )
+{
+    return (TRACE_STORE_METADATA_ID)(Index + 1);
+}
+
+FORCEINLINE
+USHORT
+TraceStoreMetadataIdToArrayIndex(
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    )
+{
+    return (USHORT)(TraceStoreMetadataId - 1);
 }
 
 //
@@ -73,102 +113,119 @@ ArrayIndexToTraceStoreId(
 
 typedef enum _TRACE_STORE_INDEX {
     TraceStoreEventIndex = 0,
+    TraceStoreEventMetadataInfoIndex,
     TraceStoreEventAllocationIndex,
     TraceStoreEventRelocationIndex,
     TraceStoreEventAddressIndex,
     TraceStoreEventBitmapIndex,
     TraceStoreEventInfoIndex,
     TraceStoreStringIndex,
+    TraceStoreStringMetadataInfoIndex,
     TraceStoreStringAllocationIndex,
     TraceStoreStringRelocationIndex,
     TraceStoreStringAddressIndex,
     TraceStoreStringBitmapIndex,
     TraceStoreStringInfoIndex,
     TraceStoreStringBufferIndex,
+    TraceStoreStringBufferMetadataInfoIndex,
     TraceStoreStringBufferAllocationIndex,
     TraceStoreStringBufferRelocationIndex,
     TraceStoreStringBufferAddressIndex,
     TraceStoreStringBufferBitmapIndex,
     TraceStoreStringBufferInfoIndex,
     TraceStoreHashedStringIndex,
+    TraceStoreHashedStringMetadataInfoIndex,
     TraceStoreHashedStringAllocationIndex,
     TraceStoreHashedStringRelocationIndex,
     TraceStoreHashedStringAddressIndex,
     TraceStoreHashedStringBitmapIndex,
     TraceStoreHashedStringInfoIndex,
     TraceStoreHashedStringBufferIndex,
+    TraceStoreHashedStringBufferMetadataInfoIndex,
     TraceStoreHashedStringBufferAllocationIndex,
     TraceStoreHashedStringBufferRelocationIndex,
     TraceStoreHashedStringBufferAddressIndex,
     TraceStoreHashedStringBufferBitmapIndex,
     TraceStoreHashedStringBufferInfoIndex,
     TraceStoreBufferIndex,
+    TraceStoreBufferMetadataInfoIndex,
     TraceStoreBufferAllocationIndex,
     TraceStoreBufferRelocationIndex,
     TraceStoreBufferAddressIndex,
     TraceStoreBufferBitmapIndex,
     TraceStoreBufferInfoIndex,
     TraceStoreFunctionTableIndex,
+    TraceStoreFunctionTableMetadataInfoIndex,
     TraceStoreFunctionTableAllocationIndex,
     TraceStoreFunctionTableRelocationIndex,
     TraceStoreFunctionTableAddressIndex,
     TraceStoreFunctionTableBitmapIndex,
     TraceStoreFunctionTableInfoIndex,
     TraceStoreFunctionTableEntryIndex,
+    TraceStoreFunctionTableEntryMetadataInfoIndex,
     TraceStoreFunctionTableEntryAllocationIndex,
     TraceStoreFunctionTableEntryRelocationIndex,
     TraceStoreFunctionTableEntryAddressIndex,
     TraceStoreFunctionTableEntryBitmapIndex,
     TraceStoreFunctionTableEntryInfoIndex,
     TraceStorePathTableIndex,
+    TraceStorePathTableMetadataInfoIndex,
     TraceStorePathTableAllocationIndex,
     TraceStorePathTableRelocationIndex,
     TraceStorePathTableAddressIndex,
     TraceStorePathTableBitmapIndex,
     TraceStorePathTableInfoIndex,
     TraceStorePathTableEntryIndex,
+    TraceStorePathTableEntryMetadataInfoIndex,
     TraceStorePathTableEntryAllocationIndex,
     TraceStorePathTableEntryRelocationIndex,
     TraceStorePathTableEntryAddressIndex,
     TraceStorePathTableEntryBitmapIndex,
     TraceStorePathTableEntryInfoIndex,
     TraceStoreSessionIndex,
+    TraceStoreSessionMetadataInfoIndex,
     TraceStoreSessionAllocationIndex,
     TraceStoreSessionRelocationIndex,
     TraceStoreSessionAddressIndex,
     TraceStoreSessionBitmapIndex,
     TraceStoreSessionInfoIndex,
     TraceStoreFilenameStringIndex,
+    TraceStoreFilenameStringMetadataInfoIndex,
     TraceStoreFilenameStringAllocationIndex,
     TraceStoreFilenameStringRelocationIndex,
     TraceStoreFilenameStringAddressIndex,
     TraceStoreFilenameStringBitmapIndex,
     TraceStoreFilenameStringInfoIndex,
     TraceStoreFilenameStringBufferIndex,
+    TraceStoreFilenameStringBufferMetadataInfoIndex,
     TraceStoreFilenameStringBufferAllocationIndex,
     TraceStoreFilenameStringBufferRelocationIndex,
     TraceStoreFilenameStringBufferAddressIndex,
     TraceStoreFilenameStringBufferBitmapIndex,
     TraceStoreFilenameStringBufferInfoIndex,
     TraceStoreDirectoryStringIndex,
+    TraceStoreDirectoryStringMetadataInfoIndex,
     TraceStoreDirectoryStringAllocationIndex,
     TraceStoreDirectoryStringRelocationIndex,
     TraceStoreDirectoryStringAddressIndex,
     TraceStoreDirectoryStringBitmapIndex,
     TraceStoreDirectoryStringInfoIndex,
     TraceStoreDirectoryStringBufferIndex,
+    TraceStoreDirectoryStringBufferMetadataInfoIndex,
     TraceStoreDirectoryStringBufferAllocationIndex,
     TraceStoreDirectoryStringBufferRelocationIndex,
     TraceStoreDirectoryStringBufferAddressIndex,
     TraceStoreDirectoryStringBufferBitmapIndex,
     TraceStoreDirectoryStringBufferInfoIndex,
     TraceStoreStringArrayIndex,
+    TraceStoreStringArrayMetadataInfoIndex,
     TraceStoreStringArrayAllocationIndex,
     TraceStoreStringArrayRelocationIndex,
     TraceStoreStringArrayAddressIndex,
     TraceStoreStringArrayBitmapIndex,
     TraceStoreStringArrayInfoIndex,
     TraceStoreStringTableIndex,
+    TraceStoreStringTableMetadataInfoIndex,
     TraceStoreStringTableAllocationIndex,
     TraceStoreStringTableRelocationIndex,
     TraceStoreStringTableAddressIndex,

@@ -391,6 +391,7 @@ Return Value:
             Rtl,
             Path,
             TraceStore,
+            MetadataInfoStore,
             AllocationStore,
             RelocationStore,
             AddressStore,

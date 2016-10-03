@@ -122,13 +122,8 @@ Return Value:
     }
 
     TraceStore->AllocateRecords = TraceStoreAllocateRecords;
-
-    //
-    // XXX TODO: initialize the aligned allocators.
-    //
-
-    TraceStore->NumberOfAllocations.QuadPart = 0;
-    TraceStore->TotalAllocationSize.QuadPart = 0;
+    TraceStore->AllocateAlignedRecords = NULL;
+    TraceStore->AllocateAlignedOffsetRecords = NULL;
 
     //
     // Return success.
@@ -220,22 +215,31 @@ Return Value:
 
 --*/
 #define INIT_METADATA(Name)                                            \
-    Name##Store->Flags = TraceStore->Flags;                            \
+    Name##Store->TraceFlags = TraceStore->TraceFlags;                  \
     Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;            \
     Name##Store->SequenceId = TraceStore->SequenceId;                  \
+    Name##Store->TraceStoreId = TraceStore->TraceStoreId;              \
+    Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;  \
+    Name##Store->TraceStore = TraceStore;                              \
+    Name##Store->MetadataInfoStore = MetadataInfoStore;                \
+    Name##Store->AllocationStore = AllocationStore;                    \
+    Name##Store->RelocationStore = RelocationStore;                    \
+    Name##Store->AddressStore = AddressStore;                          \
+    Name##Store->BitmapStore = BitmapStore;                            \
+    Name##Store->InfoStore = InfoStore;                                \
     Name##Store->CreateFileDesiredAccess = (                           \
         TraceStore->CreateFileDesiredAccess                            \
     );                                                                 \
     Name##Store->CreateFileMappingProtectionFlags = (                  \
         TraceStore->CreateFileMappingProtectionFlags                   \
     );                                                                 \
+    Name##Store->CreateFileFlagsAndAttributes = (                      \
+        TraceStore->CreateFileFlagsAndAttributes                       \
+    );                                                                 \
     Name##Store->MapViewOfFileDesiredAccess = (                        \
         TraceStore->MapViewOfFileDesiredAccess                         \
-    );                                                                 \
-    Name##Store->Frequency.QuadPart = (                                \
-        TraceStore->Frequency.QuadPart                                 \
     );                                                                 \
                                                                        \
     Success = InitializeStore(                                         \
@@ -249,10 +253,7 @@ Return Value:
         goto Error;                                                    \
     }                                                                  \
                                                                        \
-    ##Name##Store->NumberOfRecords.QuadPart = 1;                       \
-    ##Name##Store->RecordSize.QuadPart = TraceStore##Name##StructSize; \
-                                                                       \
-    TraceStore->##Name##Store = ##Name##Store;
+    TraceStore->##Name##Store = ##Name##Store
 
 
 _Use_decl_annotations_
@@ -261,6 +262,7 @@ InitializeTraceStore(
     PRTL Rtl,
     PCWSTR Path,
     PTRACE_STORE TraceStore,
+    PTRACE_STORE MetadataInfoStore,
     PTRACE_STORE AllocationStore,
     PTRACE_STORE RelocationStore,
     PTRACE_STORE AddressStore,
@@ -286,6 +288,10 @@ Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE struct that will be
         initialized by this routine.
+
+    MetadataInfoStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the metadata info metadata store for the given TraceStore being
+        initialized.
 
     AllocationStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the allocation metadata store for the given TraceStore being
@@ -332,22 +338,28 @@ Return Value:
 --*/
 {
     BOOL Success;
+    TRACE_FLAGS Flags;
     HRESULT Result;
+    WCHAR MetadataInfoPath[_OUR_MAX_PATH];
     WCHAR AllocationPath[_OUR_MAX_PATH];
     WCHAR RelocationPath[_OUR_MAX_PATH];
     WCHAR AddressPath[_OUR_MAX_PATH];
     WCHAR BitmapPath[_OUR_MAX_PATH];
     WCHAR InfoPath[_OUR_MAX_PATH];
+    PCWSTR MetadataInfoSuffix = TraceStoreMetadataInfoSuffix;
     PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
     PCWSTR RelocationSuffix = TraceStoreRelocationSuffix;
     PCWSTR AddressSuffix = TraceStoreAddressSuffix;
     PCWSTR BitmapSuffix = TraceStoreBitmapSuffix;
     PCWSTR InfoSuffix = TraceStoreInfoSuffix;
-    TRACE_FLAGS Flags;
 
     //
     // Validate arguments.
     //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
 
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
@@ -357,7 +369,27 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Rtl)) {
+    if (!ARGUMENT_PRESENT(MetadataInfoStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AllocationStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(RelocationStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AddressStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BitmapStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(InfoStore)) {
         return FALSE;
     }
 
@@ -377,6 +409,7 @@ Return Value:
     // Initialize the paths of the metadata stores first.
     //
 
+    INIT_METADATA_PATH(MetadataInfo);
     INIT_METADATA_PATH(Allocation);
     INIT_METADATA_PATH(Relocation);
     INIT_METADATA_PATH(Address);
@@ -403,7 +436,7 @@ Return Value:
         FILE_SHARE_READ,
         NULL,
         OPEN_ALWAYS,
-        FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
+        TraceStore->CreateFileFlagsAndAttributes,
         NULL
     );
 
@@ -436,13 +469,14 @@ Return Value:
         TraceStore->HasRelocations = TRUE;
     }
 
-    TraceStore->Flags = Flags;
+    TraceStore->TraceFlags = Flags;
 
     //
     // Now that we've created the trace store file, create the NTFS streams
     // for the metadata trace store files.
     //
 
+    INIT_METADATA(MetadataInfo);
     INIT_METADATA(Allocation);
     INIT_METADATA(Relocation);
     INIT_METADATA(Address);
@@ -520,51 +554,18 @@ Return Value:
         return FALSE;
     }
 
-    //
-    // Are we a metadata store?  Our truncation behavior is different if we are,
-    // so capture this state upfront.
-    //
-
     IsMetadata = IsMetadataTraceStore(TraceStore);
 
-    TotalAllocationSize.QuadPart = TraceStore->TotalAllocationSize.QuadPart;
+    EndOfFile.QuadPart = TraceStore->Eof->EndOfFile.QuadPart;
+    TotalAllocationSize.QuadPart = TraceStore->Totals->AllocationSize.QuadPart;
 
-    if (!IsMetadata) {
-
-        //
-        // A metadata's end-of-file will be tracked directly in the pEof struct.
-        //
-
-        EndOfFile.QuadPart = TraceStore->pEof->EndOfFile.QuadPart;
-
-        if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
-
-            //
-            // This should never happen.
-            //
-
-            __debugbreak();
-        }
-
-    } else {
+    if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
 
         //
-        // A trace store's end-of-file can be determined by from the total
-        // allocation size associated with the store.  If it is currently set
-        // to 0, we check the invariant that the trace store's number of allocs
-        // is not 1, and then use the record size instead.
+        // This should never happen.
         //
 
-        if (TotalAllocationSize.QuadPart == 0) {
-
-            if (TraceStore->NumberOfAllocations.QuadPart != 1) {
-                __debugbreak();
-            }
-
-            TotalAllocationSize.QuadPart = TraceStore->RecordSize.QuadPart;
-        }
-
-        EndOfFile.QuadPart = TotalAllocationSize.QuadPart;
+        __debugbreak();
     }
 
     //

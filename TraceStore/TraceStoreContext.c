@@ -140,11 +140,18 @@ Return Value:
     DWORD WaitResult;
     HRESULT Result;
     PRTL Rtl;
+    TRACE_STORE_METADATA_ID MetadataId;
     PTRACE_STORE_ADDRESS AddressPointer;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_EOF Eof;
     PTRACE_STORE_TIME Time;
     PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_TIME SourceTime;
     PLARGE_INTEGER Elapsed;
     TRACE_STORE_ADDRESS Address;
 
@@ -257,13 +264,17 @@ Return Value:
     FirstMemoryMap->FileHandle = TraceStore->FileHandle;
     FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
 
-    //
-    // If we're metadata, go straight to submission of the prepared memory map.
-    //
-
     IsMetadata = IsMetadataTraceStore(TraceStore);
 
     if (IsMetadata) {
+
+        MetadataId = TraceStore->TraceStoreMetadataId;
+
+        //
+        // If we're metadata, go straight to submission of the prepared
+        // memory map.
+        //
+
         goto SubmitFirstMemoryMap;
     }
 
@@ -346,7 +357,6 @@ Return Value:
         //
 
         FirstMemoryMap->pAddress = AddressPointer;
-
     }
 
 SubmitFirstMemoryMap:
@@ -369,53 +379,91 @@ SubmitFirstMemoryMap:
     if (IsMetadata) {
 
         //
-        // Metadata stores just use the TraceStore-backed, non-memory-mapped
-        // TRACE_STORE_INFO struct.
+        // Metadata stores only have Info filled out, and it's backed by the
+        // :metadatainfo store.
         //
 
-        TraceStore->pInfo = &TraceStore->Info;
+        Info = TraceStoreMetadataIdToInfo(TraceStore, MetadataId);
+        Allocation = NULL;
+        Bitmap = NULL;
+        Reloc = NULL;
 
     } else {
 
-        PTRACE_STORE AllocationStore;
-        PTRACE_STORE InfoStore;
-
-        AllocationStore = TraceStore->AllocationStore;
-        TraceStore->pAllocation = (
-            (PTRACE_STORE_ALLOCATION)AllocationStore->MemoryMap->BaseAddress
+        Allocation = (PTRACE_STORE_ALLOCATION)(
+            TraceStore->AllocationStore->MemoryMap->BaseAddress
         );
 
-        InfoStore = TraceStore->InfoStore;
-        TraceStore->pInfo = (
-            (PTRACE_STORE_INFO)InfoStore->MemoryMap->BaseAddress
+        Info = (PTRACE_STORE_INFO)(
+            TraceStore->InfoStore->MemoryMap->BaseAddress
         );
 
+        Bitmap = (PTRACE_STORE_BITMAP)(
+            TraceStore->BitmapStore->MemoryMap->BaseAddress
+        );
+
+        Reloc = (PTRACE_STORE_RELOC)(
+            TraceStore->RelocationStore->MemoryMap->BaseAddress
+        );
     }
 
-    Eof = TraceStore->pEof = &TraceStore->pInfo->Eof;
-    Time = TraceStore->pTime = &TraceStore->pInfo->Time;
-    Stats = TraceStore->pStats = &TraceStore->pInfo->Stats;
+    TraceStore->Allocation = Allocation;
+    TraceStore->Bitmap = Bitmap;
+    TraceStore->Reloc = Reloc;
+
+    Eof = TraceStore->Eof = &TraceStore->Info->Eof;
+    Time = TraceStore->Time = &TraceStore->Info->Time;
+    Stats = TraceStore->Stats = &TraceStore->Info->Stats;
+    Totals = TraceStore->Totals = &TraceStore->Info->Totals;
+
+    if (IsMetadata) {
+        PINITIALIZE_TRACE_STORE_METADATA Initializer;
+
+        //
+        // See if the metadata has a custom initializer.
+        //
+
+        Initializer = TraceStoreMetadataIdToInitializer(MetadataId);
+
+        if (Initializer) {
+            Initializer(TraceStore);
+        } else if (!TraceStore->IsReadonly) {
+            ULONG RecordSize;
+
+            //
+            // If no initializer was specified, the metadata store is only
+            // a single record, and the Eof can be set from the record size.
+            //
+
+            RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
+            Eof->EndOfFile.QuadPart = RecordSize;
+        }
+    }
 
     if (!TraceStore->IsReadonly) {
-        PTRACE_STORE_TIME SourceTime = &TraceContext->Time;
-
-        //
-        // Initialize Eof.
-        //
-
-        Eof->EndOfFile.QuadPart = 0;
 
         //
         // Copy time.
         //
 
+        SourceTime = &TraceContext->Time;
         Rtl->RtlCopyMappedMemory(Time, SourceTime, sizeof(*Time));
 
         //
-        // Zero out stats.
+        // Zero out stats and totals.
         //
 
         SecureZeroMemory(Stats, sizeof(*Stats));
+        SecureZeroMemory(Totals, sizeof(*Totals));
+
+        if (!IsMetadata) {
+
+            //
+            // Initialize Eof as long as we're not metadata.
+            //
+
+            Eof->EndOfFile.QuadPart = 0;
+        }
     }
 
     return TRUE;

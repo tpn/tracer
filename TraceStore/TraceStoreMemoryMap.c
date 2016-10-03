@@ -182,7 +182,7 @@ Return Value:
     // code in the function.
     //
 
-    Stats = TraceStore->pStats;
+    Stats = TraceStore->Stats;
 
     if (!Stats) {
         Stats = &DummyStats;
@@ -916,7 +916,7 @@ Return Value:
     // code in the function.
     //
 
-    Stats = TraceStore->pStats;
+    Stats = TraceStore->Stats;
 
     if (!Stats) {
         Stats = &DummyStats;
@@ -1072,7 +1072,6 @@ StartPreparation:
     //
 
     if (TraceStore->MemoryMap) {
-
         TraceStore->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         MemoryMap->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         TraceStore->PrevMemoryMap = TraceStore->MemoryMap;

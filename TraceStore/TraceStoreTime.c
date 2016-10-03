@@ -37,7 +37,6 @@ Arguments:
     Rtl - Supplies a pointer to an initialized RTL structure.  This routine
         uses the Rtl->RtlTimeToSecondsSince1970() routine.
 
-
     Time - Supplies a pointer to a TRACE_STORE_TIME structure that is
         initialized by this routine.
 

@@ -11,8 +11,9 @@ TlsTracerHeapThreadDetach(
 
 Routine Description:
 
-    Creates a new thread-local ALLOCATOR and associates it with the TlsIndex
-    slot obtained when the DLL was loaded.
+    Destroys the thread-local ALLOCATOR structure that was initialized when
+    the DLL was loaded.  Additionally, if this was the last thread attached
+    to the allocator, disable TLS awareness and restore the global allocator.
 
 Arguments:
 

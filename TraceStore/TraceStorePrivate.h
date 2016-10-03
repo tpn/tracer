@@ -57,6 +57,54 @@ BOOL
 typedef INITIALIZE_TRACE_STORE_PATH *PINITIALIZE_TRACE_STORE_PATH;
 INITIALIZE_TRACE_STORE_PATH InitializeTraceStorePath;
 
+
+//
+// TraceStoreMetadata-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORE_METADATA)(
+    _In_ PTRACE_STORE MetadataStore
+    );
+typedef INITIALIZE_TRACE_STORE_METADATA *PINITIALIZE_TRACE_STORE_METADATA;
+
+INITIALIZE_TRACE_STORE_METADATA InitializeMetadataInfoMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeAllocationMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeRelocationMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeAddressMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeBitmapMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeInfoMetadata;
+
+typedef
+PINITIALIZE_TRACE_STORE_METADATA
+(TRACE_STORE_METADATA_ID_TO_INITIALIZER)(
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_INITIALIZER \
+      *PTRACE_STORE_METADATA_ID_TO_INITIALIZER;
+TRACE_STORE_METADATA_ID_TO_INITIALIZER TraceStoreMetadataIdToInitializer;
+
+typedef
+ULONG
+(TRACE_STORE_METADATA_ID_TO_RECORD_SIZE)(
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_RECORD_SIZE \
+      *PTRACE_STORE_METADATA_ID_TO_RECORD_SIZE;
+TRACE_STORE_METADATA_ID_TO_RECORD_SIZE TraceStoreMetadataIdToRecordSize;
+
+typedef
+PTRACE_STORE_INFO
+(TRACE_STORE_METADATA_ID_TO_INFO)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_INFO \
+      *PTRACE_STORE_METADATA_ID_TO_INFO;
+TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
+
 //
 // TraceStoreContext-related macros.
 //
@@ -72,12 +120,13 @@ INITIALIZE_TRACE_STORE_PATH InitializeTraceStorePath;
 //      own binding.
 //
 
-#define BIND_STORES()       \
-    BIND_STORE(Allocation); \
-    BIND_STORE(Relocation); \
-    BIND_STORE(Address);    \
-    BIND_STORE(Bitmap);     \
-    BIND_STORE(Info);       \
+#define BIND_STORES()         \
+    BIND_STORE(MetadataInfo); \
+    BIND_STORE(Allocation);   \
+    BIND_STORE(Relocation);   \
+    BIND_STORE(Address);      \
+    BIND_STORE(Bitmap);       \
+    BIND_STORE(Info);         \
     BIND_STORE(Trace)
 
 //
@@ -408,6 +457,7 @@ BOOL
     _In_ PRTL Rtl,
     _In_ PCWSTR Path,
     _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE MetadataInfoStore,
     _In_ PTRACE_STORE AllocationStore,
     _In_ PTRACE_STORE RelocationStore,
     _In_ PTRACE_STORE AddressStore,
