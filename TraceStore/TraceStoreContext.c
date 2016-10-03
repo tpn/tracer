@@ -421,23 +421,14 @@ SubmitFirstMemoryMap:
         PINITIALIZE_TRACE_STORE_METADATA Initializer;
 
         //
-        // See if the metadata has a custom initializer.
+        // Call the metadata's custom initializer.
         //
 
         Initializer = TraceStoreMetadataIdToInitializer(MetadataId);
 
-        if (Initializer) {
-            Initializer(TraceStore);
-        } else if (!TraceStore->IsReadonly) {
-            ULONG RecordSize;
-
-            //
-            // If no initializer was specified, the metadata store is only
-            // a single record, and the Eof can be set from the record size.
-            //
-
-            RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
-            Eof->EndOfFile.QuadPart = RecordSize;
+        Success = Initializer(TraceStore);
+        if (!Success) {
+            return FALSE;
         }
     }
 

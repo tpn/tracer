@@ -397,6 +397,7 @@ Return Value:
     // code that uses __try/__except), they'll also export SetCSpecificHandler
     // which needs to be called now with the __C_specific_handler that Rtl will
     // have initialized.
+    //
 
 #define INIT_C_SPECIFIC_HANDLER(Name) do {                           \
     SetCSpecificHandler = (PSET_C_SPECIFIC_HANDLER)(                 \
