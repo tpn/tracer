@@ -25,12 +25,12 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
 };
 
 CONST PINITIALIZE_TRACE_STORE_METADATA TraceStoreMetadataInitializers[] = {
-    NULL,                           // MetadataInfo
-    NULL,                           // Allocation
-    InitializeRelocationMetadata,   // Relocation
-    NULL,                           // Address
-    InitializeBitmapMetadata,       // Bitmap
-    NULL                            // Info
+    InitializeMetadataInfoMetadata,     // MetadataInfo
+    NULL,                               // Allocation
+    InitializeRelocationMetadata,       // Relocation
+    NULL,                               // Address
+    InitializeBitmapMetadata,           // Bitmap
+    InitializeInfoMetadata              // Info
 };
 
 _Use_decl_annotations_
@@ -68,13 +68,25 @@ TraceStoreMetadataIdToInfo(
     PVOID BaseAddress;
     PTRACE_STORE MetadataInfoStore;
     PTRACE_STORE_INFO Info;
+    PTRACE_STORE_METADATA_INFO MetadataInfo;
 
     MetadataInfoStore = TraceStore->MetadataInfoStore;
     BaseAddress = MetadataInfoStore->MemoryMap->BaseAddress;
+    MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
     Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
 
-    Info = (PTRACE_STORE_INFO)BaseAddress;
-    return (Info + Index);
+    Info = (PTRACE_STORE_INFO)(MetadataInfo + Index);
+    return Info;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeMetadataInfoMetadata(
+    _In_ PTRACE_STORE MetadataStore
+    )
+{
+    MetadataStore->NoPrefaulting = TRUE;
+    return TRUE;
 }
 
 _Use_decl_annotations_
@@ -92,6 +104,16 @@ InitializeBitmapMetadata(
     _In_ PTRACE_STORE MetadataStore
     )
 {
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeInfoMetadata(
+    _In_ PTRACE_STORE MetadataStore
+    )
+{
+    MetadataStore->NoPrefaulting = TRUE;
     return TRUE;
 }
 
