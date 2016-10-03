@@ -113,7 +113,7 @@ InitializeMetadataFromRecordSize(
 
 _Use_decl_annotations_
 BOOL
-InitializeZeroMetadata(
+ZeroInitializeMetadata(
     PTRACE_STORE MetadataStore
     )
 {
@@ -148,7 +148,7 @@ InitializeAllocationMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    return InitializeZeroMetadata(MetadataStore);
+    return ZeroInitializeMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
@@ -157,7 +157,7 @@ InitializeRelocationMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    return InitializeZeroMetadata(MetadataStore);
+    return ZeroInitializeMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
@@ -166,7 +166,7 @@ InitializeAddressMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    return InitializeZeroMetadata(MetadataStore);
+    return ZeroInitializeMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
@@ -175,7 +175,7 @@ InitializeBitmapMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    return InitializeZeroMetadata(MetadataStore);
+    return ZeroInitializeMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_

@@ -442,19 +442,19 @@ SubmitFirstMemoryMap:
         Rtl->RtlCopyMappedMemory(Time, SourceTime, sizeof(*Time));
 
         //
-        // Zero out stats and totals.
+        // Zero out stats.
         //
 
         SecureZeroMemory(Stats, sizeof(*Stats));
-        SecureZeroMemory(Totals, sizeof(*Totals));
 
         if (!IsMetadata) {
 
             //
-            // Initialize Eof as long as we're not metadata.
+            // Initialize eof and zero totals as long as we're not metadata.
             //
 
             Eof->EndOfFile.QuadPart = 0;
+            SecureZeroMemory(Totals, sizeof(*Totals));
         }
     }
 
