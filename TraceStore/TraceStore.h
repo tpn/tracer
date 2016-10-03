@@ -59,14 +59,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct _TRACE_STORE_ALLOCATION {
-    union {
-        ULARGE_INTEGER  NumberOfRecords;
-        ULARGE_INTEGER  NumberOfAllocations;
-    };
-    union {
-        LARGE_INTEGER   RecordSize;
-        ULARGE_INTEGER  AllocationSize;
-    };
+    ULARGE_INTEGER  NumberOfRecords;
+    LARGE_INTEGER   RecordSize;
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
@@ -295,6 +289,40 @@ typedef struct _TRACE_STORE_STATS {
 
 } TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
 
+//
+// Track total number of allocations and total record size.
+//
+
+typedef struct _TRACE_STORE_TOTALS {
+    ULARGE_INTEGER NumberOfAllocations;
+    ULARGE_INTEGER AllocationSize;
+} TRACE_STORE_TOTALS, *PTRACE_STORE_TOTALS;
+
+//
+// TRACE_STORE_INFO is intended for storage of single-instance structs of
+// various tracing-related information.  (Single-instance as in there's only
+// ever one global instance of the given record, i.e. the EndOfFile.  This is
+// in contrast to things like the allocation and address records, which by
+// nature, will usually have multiple occurrences/allocations.)
+//
+
+typedef struct _TRACE_STORE_INFO {
+    TRACE_STORE_EOF     Eof;
+    TRACE_STORE_TIME    Time;
+    TRACE_STORE_STATS   Stats;
+    TRACE_STORE_TOTALS  Totals;
+} TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
+
+C_ASSERT(sizeof(TRACE_STORE_INFO) == 128);
+
+typedef struct _TRACE_STORE_METADATA_INFO {
+    TRACE_STORE_INFO MetadataInfo;
+    TRACE_STORE_INFO Allocation;
+    TRACE_STORE_INFO Relocation;
+    TRACE_STORE_INFO Address;
+    TRACE_STORE_INFO Bitmap;
+    TRACE_STORE_INFO Info;
+} TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 //
 // For trace stores that record instances of structures from a running program,
@@ -456,6 +484,48 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
 } TRACE_STORE_RELOC, *PTRACE_STORE_RELOC;
 
 
+//
+// Trace store free space is tracked in TRACE_STORE_BITMAP structure, which
+// mirrors the 64-bit memory layout of an RTL_BITMAP structure, such that
+// it can be cast to said structure and used with Rtl bitmap routines.
+//
+
+typedef struct _TRACE_STORE_BITMAP {
+    ULONG SizeOfBitMap;
+
+    //
+    // Leverage the fact that we get a free ULONG slot between 'SizeOfBitMap'
+    // and 'Buffer' on x64 (due to the latter needing to be 8-byte aligned)
+    // and stash two additional values:
+    //
+    //  Granularity - Represents the number of bytes each bit in the bitmap
+    //                represents.
+    //
+    //  Shift - How many bits to shift left to translate a bit position to the
+    //          corresponding byte offset.  That is, the base 2 exponent to
+    //          derive granularity.
+    //
+    // E.g. if Granularity were 8, Shift would be 3.
+    //
+    //      2 ** 3 = 8
+    //      1 << 3 = 8
+    //
+    // (Thus, Granularity will always be a power of 2.)
+    //
+
+    USHORT Granularity;
+    USHORT Shift;
+
+    PULONG Buffer;
+
+} TRACE_STORE_BITMAP, *PTRACE_STORE_BITMAP;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_BITMAP, Buffer) == 8);
+
+//
+// End of trace store metadata-related structures.
+//
+
 typedef struct _TRACE_SESSION {
     PRTL                Rtl;
     LARGE_INTEGER       SessionId;
@@ -466,20 +536,6 @@ typedef struct _TRACE_SESSION {
     PCWSTR              DomainName;
     FILETIME            SystemTime;
 } TRACE_SESSION, *PTRACE_SESSION;
-
-//
-// TRACE_STORE_INFO is intended for storage of single-instance structs of
-// various tracing-related information.  (Single-instance as in there's only
-// ever one global instance of the given record, i.e. the EndOfFile.  This is
-// in contrast to things like the allocation and address records, which by
-// nature, will usually have multiple occurrences/allocations.)
-//
-
-typedef struct _TRACE_STORE_INFO {
-    TRACE_STORE_EOF     Eof;
-    TRACE_STORE_TIME    Time;
-    TRACE_STORE_STATS   Stats;
-} TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 
 typedef
 VOID
@@ -684,23 +740,20 @@ typedef struct _TRACE_STORE {
     ULONG SequenceId;
 
     //
-    // The ID and Index of the trace stores.  These are statically defined
-    // up-front in C code.
+    // ID and Index values for the store and metadata, with the latter only
+    // being set if the store is actually a metadata store.
     //
 
     TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId;
     TRACE_STORE_INDEX TraceStoreIndex;
 
-    LARGE_INTEGER TotalNumberOfAllocations;
-    LARGE_INTEGER TotalAllocationSize;
-
-    TRACE_FLAGS Flags;
+    TRACE_FLAGS TraceFlags;
 
     union {
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
-            ULONG RecordSimpleAllocation:1;
             ULONG NoPreferredAddressReuse:1;
             ULONG IsReadonly:1;
             ULONG SetEndOfFileOnClose:1;
@@ -717,113 +770,60 @@ typedef struct _TRACE_STORE {
     HANDLE FileHandle;
     PVOID PrevAddress;
 
-    PTRACE_STORE            AllocationStore;
-    PTRACE_STORE            RelocationStore;
-    PTRACE_STORE            AddressStore;
-    PTRACE_STORE            BitmapStore;
-    PTRACE_STORE            InfoStore;
-
-    PTRACE_STORE_RELOC      Reloc;
-
-    PALLOCATE_RECORDS                   AllocateRecords;
-    PALLOCATE_ALIGNED_RECORDS           AllocateAlignedRecords;
-    PALLOCATE_ALIGNED_OFFSET_RECORDS    AllocateAlignedOffsetRecords;
-
     //
-    // Inline TRACE_STORE_ALLOCATION.
+    // The trace store pointers below will be valid for all trace and metadata
+    // stores, even if a store is pointing to itself.
     //
 
-    union {
-        TRACE_STORE_ALLOCATION Allocation;
-        struct {
-            union {
-                ULARGE_INTEGER  NumberOfRecords;
-                ULARGE_INTEGER  NumberOfAllocations;
-            };
-            union {
-                LARGE_INTEGER   RecordSize;
-                ULARGE_INTEGER  AllocationSize;
-            };
-        };
-    };
-    PTRACE_STORE_ALLOCATION pAllocation;
+    PTRACE_STORE TraceStore;
+
+    PTRACE_STORE MetadataInfoStore;
+    PTRACE_STORE AllocationStore;
+    PTRACE_STORE RelocationStore;
+    PTRACE_STORE AddressStore;
+    PTRACE_STORE BitmapStore;
+    PTRACE_STORE InfoStore;
 
     //
-    // Inline TRACE_STORE_INFO.
+    // Allocator functions.  (N.B.: only AllocateRecords() is currently
+    // implemented.)
     //
 
-    union {
-
-        TRACE_STORE_INFO Info;
-
-        struct {
-
-            //
-            // Inline TRACE_STORE_EOF.
-            //
-
-            union {
-
-                TRACE_STORE_EOF Eof;
-
-                struct {
-                    LARGE_INTEGER EndOfFile;
-                };
-
-            };
-
-
-            //
-            // Inline TRACE_STORE_TIME.
-            //
-
-            union {
-
-                TRACE_STORE_TIME Time;
-
-                struct {
-                    LARGE_INTEGER   Frequency;
-                    LARGE_INTEGER   Multiplicand;
-                    FILETIME        StartTime;
-                    LARGE_INTEGER   StartCounter;
-                };
-
-            };
-
-            //
-            // Inline TRACE_STORE_STATS.
-            //
-
-            union {
-
-                TRACE_STORE_STATS Stats;
-
-                struct {
-                    ULONG DroppedRecords;
-                    ULONG ExhaustedFreeMemoryMaps;
-                    ULONG AllocationsOutpacingNextMemoryMapPreparation;
-                    ULONG PreferredAddressUnavailable;
-                };
-
-            };
-        };
-    };
+    PALLOCATE_RECORDS AllocateRecords;
+    PALLOCATE_ALIGNED_RECORDS AllocateAlignedRecords;
+    PALLOCATE_ALIGNED_OFFSET_RECORDS AllocateAlignedOffsetRecords;
 
     //
-    // The metadata stores for a given trace store are mapped into the pointers
-    // below.  This is a somewhat quirky but convenient way of accessing the
-    // metadata struct from the trace store but also having any changes made
-    // to the struct be reflected in the backing file -- by virtue of the fact
-    // NT's virtual memory, file system and cache manager all play together
-    // nicely to give a single coherent view of memory/file contents.
+    // InitializeTraceStores() will point pReloc at the caller's relocation
+    // information if applicable.  The trace store is responsible for writing
+    // this information into the :relocation metadata store when being bound
+    // to a trace context.
     //
 
-    PTRACE_STORE_EOF    pEof;
-    PTRACE_STORE_TIME   pTime;
-    PTRACE_STORE_STATS  pStats;
-    PTRACE_STORE_INFO   pInfo;
-    PTRACE_STORE_RELOC  pReloc;
+    PTRACE_STORE_RELOC pReloc;
 
+    //
+    // For trace stores, the pointers below will point to the metadata trace
+    // store memory maps.  Eof, Time, Stats and Totals are convenience pointers
+    // into the Info struct.  For metadata stores, Info will be pointed to the
+    // relevant offset into the :metadatainfo store.
+    //
+
+    PTRACE_STORE_EOF    Eof;
+    PTRACE_STORE_TIME   Time;
+    PTRACE_STORE_STATS  Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO   Info;
+
+    //
+    // These will be NULL for metadata trace stores.  For trace stores, they
+    // will point to the base address of the metadata store's memory map (i.e.
+    // the metadata file content).
+    //
+
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_ALLOCATION Allocation;
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
@@ -837,14 +837,17 @@ typedef struct _TRACE_STORE {
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
+#define TRACE_STORE_METADATA_DECL(Name)                                  \
+    PTRACE_STORE Name##Store = TraceStore + TraceStoreMetadata##Name##Id
+
 #define TRACE_STORE_DECLS()                                         \
         PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex]; \
-        PTRACE_STORE AllocationStore = TraceStore + 1;              \
-        PTRACE_STORE RelocationStore = TraceStore + 2;              \
-        PTRACE_STORE AddressStore = TraceStore + 3;                 \
-        PTRACE_STORE BitmapStore = TraceStore + 4;                  \
-        PTRACE_STORE InfoStore = TraceStore + 5
-
+        TRACE_STORE_METADATA_DECL(MetadataInfo);                    \
+        TRACE_STORE_METADATA_DECL(Allocation);                      \
+        TRACE_STORE_METADATA_DECL(Relocation);                      \
+        TRACE_STORE_METADATA_DECL(Address);                         \
+        TRACE_STORE_METADATA_DECL(Bitmap);                          \
+        TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      SizeOfStruct;
@@ -1069,9 +1072,9 @@ Return Value:
 --*/
 {
     return (
-        TraceStore->pEof->EndOfFile.QuadPart != (
-            TraceStore->pAllocation->RecordSize.QuadPart *
-            TraceStore->pAllocation->NumberOfRecords.QuadPart
+        TraceStore->Eof->EndOfFile.QuadPart != (
+            TraceStore->Allocation->RecordSize.QuadPart *
+            TraceStore->Allocation->NumberOfRecords.QuadPart
         )
     );
 }

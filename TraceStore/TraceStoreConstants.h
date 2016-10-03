@@ -40,6 +40,12 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceStringTable.dat",
 };
 
+static const WCHAR TraceStoreMetadataInfoSuffix[] = L":metadatainfo";
+static const DWORD TraceStoreMetadataInfoSuffixLength = (
+    sizeof(TraceStoreMetadataInfoSuffix) /
+    sizeof(WCHAR)
+);
+
 static const WCHAR TraceStoreAllocationSuffix[] = L":allocation";
 static const DWORD TraceStoreAllocationSuffixLength = (
     sizeof(TraceStoreAllocationSuffix) /
@@ -71,7 +77,7 @@ static const DWORD TraceStoreInfoSuffixLength = (
 );
 
 static const USHORT LongestTraceStoreSuffixLength = (
-    sizeof(TraceStoreAllocationSuffix) /
+    sizeof(TraceStoreMetadataInfoSuffix) /
     sizeof(WCHAR)
 );
 
@@ -114,6 +120,9 @@ static const SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
 static const USHORT InitialFreeMemoryMaps = 32;
 
+static const USHORT TraceStoreMetadataInfoStructSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
 static const USHORT TraceStoreAllocationStructSize = (
     sizeof(TRACE_STORE_ALLOCATION)
 );
@@ -121,7 +130,7 @@ static const USHORT TraceStoreRelocationStructSize = (
     sizeof(TRACE_STORE_FIELD_RELOC)
 );
 static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
-static const USHORT TraceStoreBitmapStructSize = sizeof(RTL_BITMAP);
+static const USHORT TraceStoreBitmapStructSize = sizeof(TRACE_STORE_BITMAP);
 static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
 static const ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
@@ -136,11 +145,22 @@ static const ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);  // 64KB
 static const ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
 static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
 
-static const ULONG DefaultBitmapTraceStoreSize = (1 << 21);             //  4MB
+static const ULONG DefaultBitmapTraceStoreSize = (1 << 16);             // 64KB
 static const ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);      // 64KB
 
-static const ULONG DefaultInfoTraceStoreSize = (1 << 16);               // 64KB
-static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16);        // 64KB
+static const ULONG DefaultMetadataInfoTraceStoreSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
+static const ULONG DefaultMetadataInfoTraceStoreMappingSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
+
+static const ULONG DefaultInfoTraceStoreSize = (
+    sizeof(TRACE_STORE_INFO)
+);
+static const ULONG DefaultInfoTraceStoreMappingSize = (
+    sizeof(TRACE_STORE_INFO)
+);
 
 #ifdef __cplusplus
 }; // extern "C"
