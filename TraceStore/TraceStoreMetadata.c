@@ -26,9 +26,9 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
 
 CONST PINITIALIZE_TRACE_STORE_METADATA TraceStoreMetadataInitializers[] = {
     InitializeMetadataInfoMetadata,     // MetadataInfo
-    NULL,                               // Allocation
+    InitializeAllocationMetadata,       // Allocation
     InitializeRelocationMetadata,       // Relocation
-    NULL,                               // Address
+    InitializeAddressMetadata,          // Address
     InitializeBitmapMetadata,           // Bitmap
     InitializeInfoMetadata              // Info
 };
@@ -81,40 +81,111 @@ TraceStoreMetadataIdToInfo(
 
 _Use_decl_annotations_
 BOOL
+InitializeMetadataFromRecordSize(
+    PTRACE_STORE MetadataStore
+    )
+{
+    ULONG RecordSize;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TOTALS Totals;
+
+    if (!MetadataStore->IsReadonly) {
+
+        //
+        // Set Eof to the record size and fake a similarly-sized allocation
+        // in the totals struct.
+        //
+
+        MetadataId = MetadataStore->TraceStoreMetadataId;
+        RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
+
+        Eof = MetadataStore->Eof;
+        Totals = MetadataStore->Totals;
+
+        Eof->EndOfFile.QuadPart = RecordSize;
+        Totals->NumberOfAllocations.QuadPart = 1;
+        Totals->AllocationSize.QuadPart = RecordSize;
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeZeroMetadata(
+    PTRACE_STORE MetadataStore
+    )
+{
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TOTALS Totals;
+
+    if (!MetadataStore->IsReadonly) {
+        Eof = MetadataStore->Eof;
+        Totals = MetadataStore->Totals;
+
+        Eof->EndOfFile.QuadPart = 0;
+        Totals->NumberOfAllocations.QuadPart = 0;
+        Totals->AllocationSize.QuadPart = 0;
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
 InitializeMetadataInfoMetadata(
-    _In_ PTRACE_STORE MetadataStore
+    PTRACE_STORE MetadataStore
     )
 {
     MetadataStore->NoPrefaulting = TRUE;
-    return TRUE;
+    return InitializeMetadataFromRecordSize(MetadataStore);
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeAllocationMetadata(
+    PTRACE_STORE MetadataStore
+    )
+{
+    return InitializeZeroMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
 BOOL
 InitializeRelocationMetadata(
-    _In_ PTRACE_STORE MetadataStore
+    PTRACE_STORE MetadataStore
     )
 {
-    return TRUE;
+    return InitializeZeroMetadata(MetadataStore);
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeAddressMetadata(
+    PTRACE_STORE MetadataStore
+    )
+{
+    return InitializeZeroMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
 BOOL
 InitializeBitmapMetadata(
-    _In_ PTRACE_STORE MetadataStore
+    PTRACE_STORE MetadataStore
     )
 {
-    return TRUE;
+    return InitializeZeroMetadata(MetadataStore);
 }
 
 _Use_decl_annotations_
 BOOL
 InitializeInfoMetadata(
-    _In_ PTRACE_STORE MetadataStore
+    PTRACE_STORE MetadataStore
     )
 {
     MetadataStore->NoPrefaulting = TRUE;
-    return TRUE;
+    return InitializeMetadataFromRecordSize(MetadataStore);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

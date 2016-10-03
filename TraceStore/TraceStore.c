@@ -541,7 +541,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL IsMetadata;
     LARGE_INTEGER EndOfFile;
     LARGE_INTEGER TotalAllocationSize;
     FILE_STANDARD_INFO FileInfo;
@@ -553,8 +552,6 @@ Return Value:
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return FALSE;
     }
-
-    IsMetadata = IsMetadataTraceStore(TraceStore);
 
     EndOfFile.QuadPart = TraceStore->Eof->EndOfFile.QuadPart;
     TotalAllocationSize.QuadPart = TraceStore->Totals->AllocationSize.QuadPart;
