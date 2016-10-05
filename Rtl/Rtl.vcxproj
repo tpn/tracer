@@ -64,6 +64,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Rtl.h" />
+    <ClInclude Include="__C_specific_handler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c">

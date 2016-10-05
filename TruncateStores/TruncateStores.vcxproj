@@ -35,17 +35,18 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C6FBB103-535C-4BCD-A463-B60C09481854}</ProjectGuid>
-    <RootNamespace>TraceStore</RootNamespace>
+    <ProjectGuid>{E03C035D-BADA-4B5C-AC13-99DCD54D9EE1}</ProjectGuid>
+    <RootNamespace>TruncateStores</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\Wdk.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
@@ -58,42 +59,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>TracerHeapLib.lib;TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
+    </Link>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ExpandAttributedSource>true</ExpandAttributedSource>
+      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="TraceStoreConstants.h" />
-    <ClInclude Include="TraceStore.h" />
-    <ClInclude Include="TraceStoreIndex.h" />
-    <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <!--
-    <ClCompile Include="dllmain.c">
-      <PrecompiledHeader />
-    </ClCompile>
-    -->
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="main.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="dllmain.c" />
-    <ClCompile Include="TraceStore.c" />
-    <ClCompile Include="TraceStoreAddress.c" />
-    <ClCompile Include="TraceStoreAllocation.c" />
-    <ClCompile Include="TraceStoreContext.c" />
-    <ClCompile Include="TraceStoreMemoryMap.c" />
-    <ClCompile Include="TraceStoreMetadata.c" />
-    <ClCompile Include="TraceStorePath.c" />
-    <ClCompile Include="TraceStores.c" />
-    <ClCompile Include="TraceStoreSession.c" />
-    <ClCompile Include="TraceStoresGlobalRundown.c" />
-    <ClCompile Include="TraceStoresRundown.c" />
-    <ClCompile Include="TraceStoreTimer.c" />
-    <ClCompile Include="TraceStoreTime.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TracerConfig\TracerConfig.vcxproj">
+      <Project>{5D27D310-1F17-4D6D-BB35-89E9A7B5A9B3}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{4CB23C42-1DF7-4DE7-8045-A61786D81AFE}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
 </Project>

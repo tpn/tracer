@@ -15,10 +15,6 @@ Abstract:
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef _TRACE_STORE_INTERNAL_BUILD
 
 //
@@ -44,7 +40,12 @@ extern "C" {
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "TraceStoreIndex.h"
 
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define TIMESTAMP_TO_SECONDS    1000000
@@ -58,14 +59,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct _TRACE_STORE_ALLOCATION {
-    union {
-        ULARGE_INTEGER  NumberOfRecords;
-        ULARGE_INTEGER  NumberOfAllocations;
-    };
-    union {
-        LARGE_INTEGER   RecordSize;
-        ULARGE_INTEGER  AllocationSize;
-    };
+    ULARGE_INTEGER  NumberOfRecords;
+    LARGE_INTEGER   RecordSize;
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
@@ -87,8 +82,8 @@ typedef struct _TRACE_STORE_ADDRESS {
     struct {
 
         //
-        // The time where the new memory map was pushed onto the "prepare
-        // memory map" threadpool work queue.
+        // The time the new memory map was pushed onto the "prepare memory
+        // map" threadpool work queue.
         //
 
         LARGE_INTEGER Requested;                            // 8    40  48
@@ -294,16 +289,14 @@ typedef struct _TRACE_STORE_STATS {
 
 } TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
 
-typedef struct _TRACE_SESSION {
-    PRTL                Rtl;
-    LARGE_INTEGER       SessionId;
-    GUID                MachineGuid;
-    PISID               Sid;
-    PCWSTR              UserName;
-    PCWSTR              ComputerName;
-    PCWSTR              DomainName;
-    FILETIME            SystemTime;
-} TRACE_SESSION, *PTRACE_SESSION;
+//
+// Track total number of allocations and total record size.
+//
+
+typedef struct _TRACE_STORE_TOTALS {
+    ULARGE_INTEGER NumberOfAllocations;
+    ULARGE_INTEGER AllocationSize;
+} TRACE_STORE_TOTALS, *PTRACE_STORE_TOTALS;
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -317,7 +310,232 @@ typedef struct _TRACE_STORE_INFO {
     TRACE_STORE_EOF     Eof;
     TRACE_STORE_TIME    Time;
     TRACE_STORE_STATS   Stats;
+    TRACE_STORE_TOTALS  Totals;
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
+
+C_ASSERT(sizeof(TRACE_STORE_INFO) == 128);
+
+typedef struct _TRACE_STORE_METADATA_INFO {
+    TRACE_STORE_INFO MetadataInfo;
+    TRACE_STORE_INFO Allocation;
+    TRACE_STORE_INFO Relocation;
+    TRACE_STORE_INFO Address;
+    TRACE_STORE_INFO Bitmap;
+    TRACE_STORE_INFO Info;
+} TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
+
+//
+// For trace stores that record instances of structures from a running program,
+// a relocation facility is provided to adjust embedded pointers when loading a
+// store in read-only mode.  This is exposed via the TRACE_STORE_FIELD_RELOC
+// structure below.
+//
+// See PythonTraceTraceStoreRelocations.c module for an example of how an array
+// of field relocations can be specified statically.
+//
+
+typedef struct _TRACE_STORE_FIELD_RELOC {
+
+    //
+    // Offset from the start of the struct in bytes.
+    //
+
+    ULONG Offset;
+
+    //
+    // Id of the trace store this field refers to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+} TRACE_STORE_FIELD_RELOC, *PTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC *PCTRACE_STORE_FIELD_RELOC;
+typedef CONST TRACE_STORE_FIELD_RELOC **PPCTRACE_STORE_FIELD_RELOC;
+
+C_ASSERT(sizeof(TRACE_STORE_FIELD_RELOC) == 8);
+
+#define LAST_TRACE_STORE_FIELD_RELOC { 0, 0 }
+
+FORCEINLINE
+BOOL
+IsLastTraceStoreFieldRelocElement(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return (
+        FieldReloc &&
+        FieldReloc->Offset == 0 &&
+        FieldReloc->TraceStoreId == 0
+    );
+}
+
+//
+// Multiple trace store to relocation arrays can be defined by the following
+// structure.  Again, see the PythonTracer module for examples.
+//
+
+typedef struct _TRACE_STORE_FIELD_RELOCS {
+
+    //
+    // Id of the trace store this relocation information applies to.
+    //
+
+    TRACE_STORE_ID TraceStoreId;
+
+    //
+    // Pointer to an array of field relocation structures.
+    //
+
+    PTRACE_STORE_FIELD_RELOC Relocations;
+
+} TRACE_STORE_FIELD_RELOCS, *PTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS *PCTRACE_STORE_FIELD_RELOCS;
+typedef CONST TRACE_STORE_FIELD_RELOCS **PPCTRACE_STORE_FIELD_RELOCS;
+
+#define LAST_TRACE_STORE_FIELD_RELOCS { 0, NULL }
+
+FORCEINLINE
+BOOL
+IsLastTraceStoreFieldRelocsElement(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return (
+        FieldRelocs &&
+        FieldRelocs->TraceStoreId == TraceStoreNullId &&
+        FieldRelocs->Relocations == 0
+    );
+}
+
+#define TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT 128
+FORCEINLINE
+BOOL
+IsAlignedTraceStoreFieldReloc(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return IsAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+}
+
+FORCEINLINE
+BOOL
+AssertAlignedTraceStoreFieldReloc(
+    _In_ PTRACE_STORE_FIELD_RELOC FieldReloc
+    )
+{
+    return AssertAligned(FieldReloc, TRACE_STORE_FIELD_RELOC_ARRAY_ALIGNMENT);
+}
+
+#define TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT 128
+FORCEINLINE
+BOOL
+IsAlignedTraceStoreFieldRelocs(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return IsAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+}
+
+FORCEINLINE
+BOOL
+AssertAlignedTraceStoreFieldRelocs(
+    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocs
+    )
+{
+    return AssertAligned(FieldRelocs, TRACE_STORE_FIELD_RELOCS_ARRAY_ALIGNMENT);
+}
+
+//
+// The following two structures, TRACE_STORE_RELOC and TRACE_STORE_RELOCS,
+// are used to reflect in-memory relocation information for a given trace store.
+// This is done because TRACE_STORE_FIELD_RELOC and TRACE_STORE_FIELD_RELOCS
+// are optimized for ease of statically declaring in C (via FIELD_OFFSET()),
+// but at runtime, we'd like to track a little more information, such as number
+// of relocations instead of relying on the NULL element at the end of each
+// array, etc.
+//
+
+typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_STORE_RELOC)) USHORT SizeOfStruct;
+
+    //
+    // Number of fields in the relocation array.
+    //
+
+    USHORT NumberOfRelocations;
+
+    //
+    // Padding out to 8-bytes.
+    //
+
+    ULONG Unused1;
+
+    //
+    // Pointer to the array of TRACE_STORE_FIELD_RELOC structures.
+    //
+
+    PTRACE_STORE_FIELD_RELOC Relocations;
+
+} TRACE_STORE_RELOC, *PTRACE_STORE_RELOC;
+
+
+//
+// Trace store free space is tracked in TRACE_STORE_BITMAP structure, which
+// mirrors the 64-bit memory layout of an RTL_BITMAP structure, such that
+// it can be cast to said structure and used with Rtl bitmap routines.
+//
+
+typedef struct _TRACE_STORE_BITMAP {
+    ULONG SizeOfBitMap;
+
+    //
+    // Leverage the fact that we get a free ULONG slot between 'SizeOfBitMap'
+    // and 'Buffer' on x64 (due to the latter needing to be 8-byte aligned)
+    // and stash two additional values:
+    //
+    //  Granularity - Represents the number of bytes each bit in the bitmap
+    //                represents.
+    //
+    //  Shift - How many bits to shift left to translate a bit position to the
+    //          corresponding byte offset.  That is, the base 2 exponent to
+    //          derive granularity.
+    //
+    // E.g. if Granularity were 8, Shift would be 3.
+    //
+    //      2 ** 3 = 8
+    //      1 << 3 = 8
+    //
+    // (Thus, Granularity will always be a power of 2.)
+    //
+
+    USHORT Granularity;
+    USHORT Shift;
+
+    PULONG Buffer;
+
+} TRACE_STORE_BITMAP, *PTRACE_STORE_BITMAP;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_BITMAP, Buffer) == 8);
+
+//
+// End of trace store metadata-related structures.
+//
+
+typedef struct _TRACE_SESSION {
+    PRTL                Rtl;
+    LARGE_INTEGER       SessionId;
+    GUID                MachineGuid;
+    PISID               Sid;
+    PCWSTR              UserName;
+    PCWSTR              ComputerName;
+    PCWSTR              DomainName;
+    FILETIME            SystemTime;
+} TRACE_SESSION, *PTRACE_SESSION;
 
 typedef
 VOID
@@ -390,9 +608,27 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableFileFlagWriteThrough:1;
 
+            //
+            // (End of flags related to CreateFile().)
+            //
+
+            //
+            // When set, indicates the caller does not want to be automatically
+            // added to the global trace store rundown list.
+            //
+
+            ULONG NoGlobalRundown:1;
+
+            //
+            // When set, the trace store will not be truncated as part of
+            // close or rundown.  This is set internally by metadata stores
+            // that need it and should not be modified.
+            //
+
+            ULONG NoTruncate:1;
+
         };
     };
-    ULONG Unused1;
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
 typedef struct _TRACE_CONTEXT {
@@ -461,6 +697,33 @@ PVOID
     );
 typedef ALLOCATE_RECORDS *PALLOCATE_RECORDS;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(ALLOCATE_ALIGNED_RECORDS)(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords,
+    _In_    USHORT          Alignment
+    );
+typedef ALLOCATE_ALIGNED_RECORDS *PALLOCATE_ALIGNED_RECORDS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(ALLOCATE_ALIGNED_OFFSET_RECORDS)(
+    _In_    PTRACE_CONTEXT  TraceContext,
+    _In_    PTRACE_STORE    TraceStore,
+    _In_    PULARGE_INTEGER RecordSize,
+    _In_    PULARGE_INTEGER NumberOfRecords,
+    _In_    USHORT          Alignment,
+    _In_    USHORT          Offset
+    );
+typedef ALLOCATE_ALIGNED_OFFSET_RECORDS *PALLOCATE_ALIGNED_OFFSET_RECORDS;
+
 typedef struct _TRACE_STORE {
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
@@ -494,20 +757,27 @@ typedef struct _TRACE_STORE {
 
     ULONG SequenceId;
 
-    LARGE_INTEGER TotalNumberOfAllocations;
-    LARGE_INTEGER TotalAllocationSize;
+    //
+    // ID and Index values for the store and metadata, with the latter only
+    // being set if the store is actually a metadata store.
+    //
 
-    TRACE_FLAGS Flags;
+    TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId;
+    TRACE_STORE_INDEX TraceStoreIndex;
+
+    TRACE_FLAGS TraceFlags;
 
     union {
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
-            ULONG RecordSimpleAllocation:1;
             ULONG NoPreferredAddressReuse:1;
             ULONG IsReadonly:1;
             ULONG SetEndOfFileOnClose:1;
             ULONG IsMetadata:1;
+            ULONG HasRelocations:1;
+            ULONG NoTruncate:1;
         };
     };
 
@@ -519,277 +789,128 @@ typedef struct _TRACE_STORE {
     HANDLE FileHandle;
     PVOID PrevAddress;
 
-    PTRACE_STORE            AllocationStore;
-    PTRACE_STORE            AddressStore;
-    PTRACE_STORE            InfoStore;
-
-    PALLOCATE_RECORDS       AllocateRecords;
-
     //
-    // Inline TRACE_STORE_ALLOCATION.
+    // The first trace store will get initialized as the list head, subsequent
+    // stores will be appended via ListEntry.
     //
 
     union {
-        TRACE_STORE_ALLOCATION Allocation;
-        struct {
-            union {
-                ULARGE_INTEGER  NumberOfRecords;
-                ULARGE_INTEGER  NumberOfAllocations;
-            };
-            union {
-                LARGE_INTEGER   RecordSize;
-                ULARGE_INTEGER  AllocationSize;
-            };
-        };
-    };
-    PTRACE_STORE_ALLOCATION pAllocation;
-
-    //
-    // Inline TRACE_STORE_INFO.
-    //
-
-    union {
-
-        TRACE_STORE_INFO Info;
-
-        struct {
-
-            //
-            // Inline TRACE_STORE_EOF.
-            //
-
-            union {
-
-                TRACE_STORE_EOF Eof;
-
-                struct {
-                    LARGE_INTEGER EndOfFile;
-                };
-
-            };
-
-
-            //
-            // Inline TRACE_STORE_TIME.
-            //
-
-            union {
-
-                TRACE_STORE_TIME Time;
-
-                struct {
-                    LARGE_INTEGER   Frequency;
-                    LARGE_INTEGER   Multiplicand;
-                    FILETIME        StartTime;
-                    LARGE_INTEGER   StartCounter;
-                };
-
-            };
-
-            //
-            // Inline TRACE_STORE_STATS.
-            //
-
-            union {
-
-                TRACE_STORE_STATS Stats;
-
-                struct {
-                    ULONG DroppedRecords;
-                    ULONG ExhaustedFreeMemoryMaps;
-                    ULONG AllocationsOutpacingNextMemoryMapPreparation;
-                    ULONG PreferredAddressUnavailable;
-                };
-
-            };
-        };
+        LIST_ENTRY ListHead;
+        LIST_ENTRY ListEntry;
     };
 
     //
-    // The metadata stores for a given trace store are mapped into the pointers
-    // below.  This is a somewhat quirky but convenient way of accessing the
-    // metadata struct from the trace store but also having any changes made
-    // to the struct be reflected in the backing file -- by virtue of the fact
-    // NT's virtual memory, file system and cache manager all play together
-    // nicely to give a single coherent view of memory/file contents.
+    // The trace store pointers below will be valid for all trace and metadata
+    // stores, even if a store is pointing to itself.
     //
 
-    PTRACE_STORE_EOF    pEof;
-    PTRACE_STORE_TIME   pTime;
-    PTRACE_STORE_STATS  pStats;
-    PTRACE_STORE_INFO   pInfo;
+    PTRACE_STORE TraceStore;
 
+    PTRACE_STORE MetadataInfoStore;
+    PTRACE_STORE AllocationStore;
+    PTRACE_STORE RelocationStore;
+    PTRACE_STORE AddressStore;
+    PTRACE_STORE BitmapStore;
+    PTRACE_STORE InfoStore;
+
+    //
+    // Allocator functions.  (N.B.: only AllocateRecords() is currently
+    // implemented.)
+    //
+
+    PALLOCATE_RECORDS AllocateRecords;
+    PALLOCATE_ALIGNED_RECORDS AllocateAlignedRecords;
+    PALLOCATE_ALIGNED_OFFSET_RECORDS AllocateAlignedOffsetRecords;
+
+    //
+    // InitializeTraceStores() will point pReloc at the caller's relocation
+    // information if applicable.  The trace store is responsible for writing
+    // this information into the :relocation metadata store when being bound
+    // to a trace context.
+    //
+
+    PTRACE_STORE_RELOC pReloc;
+
+    //
+    // For trace stores, the pointers below will point to the metadata trace
+    // store memory maps.  Eof, Time, Stats and Totals are convenience pointers
+    // into the Info struct.  For metadata stores, Info will be pointed to the
+    // relevant offset into the :metadatainfo store.
+    //
+
+    PTRACE_STORE_EOF    Eof;
+    PTRACE_STORE_TIME   Time;
+    PTRACE_STORE_STATS  Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO   Info;
+
+    //
+    // These will be NULL for metadata trace stores.  For trace stores, they
+    // will point to the base address of the metadata store's memory map (i.e.
+    // the metadata file content).
+    //
+
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_ALLOCATION Allocation;
+
+#ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
+#endif
 
 } TRACE_STORE, *PTRACE_STORE;
-
-typedef enum _TRACE_STORE_ID {
-    TraceStoreNullId = 0,
-    TraceStoreEventId = 1,
-    TraceStoreStringId,
-    TraceStoreStringBufferId,
-    TraceStoreHashedStringId,
-    TraceStoreHashedStringBufferId,
-    TraceStoreBufferId,
-    TraceStoreFunctionTableId,
-    TraceStoreFunctionTableEntryId,
-    TraceStorePathTableId,
-    TraceStorePathTableEntryId,
-    TraceStoreSessionId,
-    TraceStoreFilenameStringId,
-    TraceStoreFilenameStringBufferId,
-    TraceStoreDirectoryStringId,
-    TraceStoreDirectoryStringBufferId,
-    TraceStoreStringArrayId,
-    TraceStoreStringTableId,
-    TraceStoreInvalidId
-} TRACE_STORE_ID, *PTRACE_STORE_ID;
-
-typedef enum _TRACE_STORE_INDEX {
-    TraceStoreEventIndex = 0,
-    TraceStoreEventAllocationIndex,
-    TraceStoreEventAddressIndex,
-    TraceStoreEventInfoIndex,
-    TraceStoreStringIndex,
-    TraceStoreStringAllocationIndex,
-    TraceStoreStringAddressIndex,
-    TraceStoreStringInfoIndex,
-    TraceStoreStringBufferIndex,
-    TraceStoreStringBufferAllocationIndex,
-    TraceStoreStringBufferAddressIndex,
-    TraceStoreStringBufferInfoIndex,
-    TraceStoreHashedStringIndex,
-    TraceStoreHashedStringAllocationIndex,
-    TraceStoreHashedStringAddressIndex,
-    TraceStoreHashedStringInfoIndex,
-    TraceStoreHashedStringBufferIndex,
-    TraceStoreHashedStringBufferAllocationIndex,
-    TraceStoreHashedStringBufferAddressIndex,
-    TraceStoreHashedStringBufferInfoIndex,
-    TraceStoreBufferIndex,
-    TraceStoreBufferAllocationIndex,
-    TraceStoreBufferAddressIndex,
-    TraceStoreBufferInfoIndex,
-    TraceStoreFunctionTableIndex,
-    TraceStoreFunctionTableAllocationIndex,
-    TraceStoreFunctionTableAddressIndex,
-    TraceStoreFunctionTableInfoIndex,
-    TraceStoreFunctionTableEntryIndex,
-    TraceStoreFunctionTableEntryAllocationIndex,
-    TraceStoreFunctionTableEntryAddressIndex,
-    TraceStoreFunctionTableEntryInfoIndex,
-    TraceStorePathTableIndex,
-    TraceStorePathTableAllocationIndex,
-    TraceStorePathTableAddressIndex,
-    TraceStorePathTableInfoIndex,
-    TraceStorePathTableEntryIndex,
-    TraceStorePathTableEntryAllocationIndex,
-    TraceStorePathTableEntryAddressIndex,
-    TraceStorePathTableEntryInfoIndex,
-    TraceStoreSessionIndex,
-    TraceStoreSessionAllocationIndex,
-    TraceStoreSessionAddressIndex,
-    TraceStoreSessionInfoIndex,
-    TraceStoreFilenameStringIndex,
-    TraceStoreFilenameStringAllocationIndex,
-    TraceStoreFilenameStringAddressIndex,
-    TraceStoreFilenameStringInfoIndex,
-    TraceStoreFilenameStringBufferIndex,
-    TraceStoreFilenameStringBufferAllocationIndex,
-    TraceStoreFilenameStringBufferAddressIndex,
-    TraceStoreFilenameStringBufferInfoIndex,
-    TraceStoreDirectoryStringIndex,
-    TraceStoreDirectoryStringAllocationIndex,
-    TraceStoreDirectoryStringAddressIndex,
-    TraceStoreDirectoryStringInfoIndex,
-    TraceStoreDirectoryStringBufferIndex,
-    TraceStoreDirectoryStringBufferAllocationIndex,
-    TraceStoreDirectoryStringBufferAddressIndex,
-    TraceStoreDirectoryStringBufferInfoIndex,
-    TraceStoreStringArrayIndex,
-    TraceStoreStringArrayAllocationIndex,
-    TraceStoreStringArrayAddressIndex,
-    TraceStoreStringArrayInfoIndex,
-    TraceStoreStringTableIndex,
-    TraceStoreStringTableAllocationIndex,
-    TraceStoreStringTableAddressIndex,
-    TraceStoreStringTableInfoIndex,
-    TraceStoreInvalidIndex
-} TRACE_STORE_INDEX, *PTRACE_STORE_INDEX;
-
-#define MAX_TRACE_STORES TraceStoreStringTableInfoIndex + 1
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
 
+#define TRACE_STORE_METADATA_DECL(Name)                                  \
+    PTRACE_STORE Name##Store = TraceStore + TraceStoreMetadata##Name##Id
+
+#define TRACE_STORE_DECLS()                                         \
+        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex]; \
+        TRACE_STORE_METADATA_DECL(MetadataInfo);                    \
+        TRACE_STORE_METADATA_DECL(Allocation);                      \
+        TRACE_STORE_METADATA_DECL(Relocation);                      \
+        TRACE_STORE_METADATA_DECL(Address);                         \
+        TRACE_STORE_METADATA_DECL(Bitmap);                          \
+        TRACE_STORE_METADATA_DECL(Info);
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      SizeOfStruct;
     USHORT      SizeOfAllocation;
     USHORT      NumberOfTraceStores;
     USHORT      ElementsPerTraceStore;
+    USHORT      NumberOfFieldRelocationsElements;
+    USHORT      Padding1;
+    ULONG       Padding2;
     TRACE_FLAGS Flags;
-    ULONG       Reserved1;
-    PRTL        Rtl;
     STRING      BaseDirectory;
+    PRTL        Rtl;
+    LIST_ENTRY  RundownListEntry;
+    struct _TRACE_STORES_RUNDOWN *Rundown;
+    TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
-
-typedef struct _TRACE_STORE_DESCRIPTOR {
-    TRACE_STORE_ID      TraceStoreId;
-    TRACE_STORE_INDEX   TraceStoreIndex;
-    LPCWSTR             TraceStoreName;
-} TRACE_STORE_DESCRIPTOR, *PTRACE_STORE_DESCRIPTOR;
-
-typedef struct _TRACE_STORE_FIELD_RELOC {
-
-    //
-    // Offset from the start of the struct in bytes.
-    //
-
-    ULONG Offset;
-
-    //
-    // Id of the trace store this field refers to.
-    //
-
-    TRACE_STORE_ID TraceStoreId;
-
-} TRACE_STORE_FIELD_RELOC, *PTRACE_STORE_FIELD_RELOC;
-typedef CONST TRACE_STORE_FIELD_RELOC *PCTRACE_STORE_FIELD_RELOC;
-typedef CONST TRACE_STORE_FIELD_RELOC **PPCTRACE_STORE_FIELD_RELOC;
-
-C_ASSERT(sizeof(TRACE_STORE_FIELD_RELOC) == 8);
-
-#define LAST_TRACE_STORE_FIELD_RELOC { 0, 0 }
-
-
-typedef struct _TRACE_STORE_FIELD_RELOCS {
-
-    //
-    // Id of the trace store this relocation information applies to.
-    //
-
-    TRACE_STORE_ID TraceStoreId;
-
-    //
-    // Pointer to an array of field relocation structures.
-    //
-
-    PTRACE_STORE_FIELD_RELOC Relocations;
-
-} TRACE_STORE_FIELD_RELOCS, *PTRACE_STORE_FIELD_RELOCS;
-typedef CONST TRACE_STORE_FIELD_RELOCS *PCTRACE_STORE_FIELD_RELOCS;
-typedef CONST TRACE_STORE_FIELD_RELOCS **PPCTRACE_STORE_FIELD_RELOCS;
-
-#define LAST_TRACE_STORE_FIELD_RELOCS { 0, NULL }
+typedef struct _TRACE_STORE_METADATA_STORES {
+    PTRACE_STORE MetadataInfoStore;
+    PTRACE_STORE AllocationStore;
+    PTRACE_STORE RelocationStore;
+    PTRACE_STORE AddressStore;
+    PTRACE_STORE BitmapStore;
+    PTRACE_STORE InfoStore;
+} TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+//
+// TraceStoreSession-related functions.
+//
 
 typedef
 _Success_(return != 0)
@@ -802,6 +923,18 @@ BOOL
 typedef INITIALIZE_TRACE_SESSION *PINITIALIZE_TRACE_SESSION;
 TRACE_STORE_API INITIALIZE_TRACE_SESSION InitializeTraceSession;
 
+//
+// TraceStores-related functions.
+//
+
+typedef
+ULONG
+(GET_TRACE_STORES_ALLOCATION_SIZE)(
+    _In_ USHORT NumberOfTraceStores
+    );
+typedef GET_TRACE_STORES_ALLOCATION_SIZE *PGET_TRACE_STORES_ALLOCATION_SIZE;
+TRACE_STORE_API GET_TRACE_STORES_ALLOCATION_SIZE GetTraceStoresAllocationSize;
+
 typedef
 _Success_(return != 0)
 BOOL
@@ -811,10 +944,68 @@ BOOL
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        PTRACE_FLAGS    TraceFlags
+    _In_        PTRACE_FLAGS    TraceFlags,
+    _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
+
+typedef
+_Success_(return != 0)
+BOOL
+(CLOSE_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
+TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
+
+//
+// TraceStoreGlobalRundown-related functions.
+//
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN)(
+    VOID
+    );
+typedef INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN \
+      *PINITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN;
+TRACE_STORE_API INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN \
+                InitializeGlobalTraceStoresRundown;
+
+typedef
+VOID
+(DESTROY_GLOBAL_TRACE_STORES_RUNDOWN)(
+    VOID
+    );
+typedef DESTROY_GLOBAL_TRACE_STORES_RUNDOWN \
+      *PDESTROY_GLOBAL_TRACE_STORES_RUNDOWN;
+TRACE_STORE_API DESTROY_GLOBAL_TRACE_STORES_RUNDOWN \
+                DestroyGlobalTraceStoresRundown;
+
+typedef
+VOID
+(RUNDOWN_GLOBAL_TRACE_STORES)(
+    VOID
+    );
+typedef RUNDOWN_GLOBAL_TRACE_STORES *PRUNDOWN_GLOBAL_TRACE_STORES;
+TRACE_STORE_API RUNDOWN_GLOBAL_TRACE_STORES RundownGlobalTraceStores;
+
+typedef
+BOOL
+(IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE)(
+    VOID
+    );
+typedef IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
+      *PIS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE;
+TRACE_STORE_API IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
+                IsGlobalTraceStoresRundownActive;
+
+//
+// TraceStoreContext-related functions.
+//
 
 typedef
 _Success_(return != 0)
@@ -832,18 +1023,22 @@ BOOL
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
 
-typedef
-VOID
-(CLOSE_TRACE_STORES)(
-    _In_ PTRACE_STORES TraceStores
-    );
-typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
-TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+PTRACE_STORE
+TraceStoreToMetadataStore(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ TRACE_STORE_METADATA_ID MetadataId
+    )
+{
+    USHORT Index;
+    Index = TraceStoreMetadataIdToArrayIndex(MetadataId);
+    return TraceStore + Index + 1;
+}
 
 FORCEINLINE
 VOID
@@ -975,11 +1170,212 @@ Return Value:
 --*/
 {
     return (
-        TraceStore->pEof->EndOfFile.QuadPart != (
-            TraceStore->pAllocation->RecordSize.QuadPart *
-            TraceStore->pAllocation->NumberOfRecords.QuadPart
+        TraceStore->Eof->EndOfFile.QuadPart != (
+            TraceStore->Allocation->RecordSize.QuadPart *
+            TraceStore->Allocation->NumberOfRecords.QuadPart
         )
     );
+}
+
+FORCEINLINE
+_Success_(return != 0)
+BOOL
+ValidateFieldRelocationsArray(
+    _In_  PTRACE_STORE_FIELD_RELOCS FieldRelocations,
+    _Out_ PUSHORT NumberOfFieldRelocationsElements,
+    _Out_ PUSHORT MaximumNumberOfInnerFieldRelocationElements
+    )
+/*--
+
+Routine Description:
+
+    This routine validates a TRACE_STORE_FIELD_RELOCS structure and all
+    containing TRACE_STORE_FIELD_RELOC structures embedded with it.
+
+Arguments:
+
+    FieldRelocations - Supplies a pointer to the first element of an array of
+        TRACE_STORE_FIELD_RELOCS structures.  An empty element denotes the end
+        of the array.
+
+    NumberOfFieldRelocationsElements - Supplies a pointer to an address of a
+        variable that will receive the number of elements in the
+        FieldRelocations array if it was successfully validated.
+
+    MaximumNumberOfInnerFieldRelocationElements - Supplies a pointer to an
+        address of a variable that will receive the maximum number of inner
+        TRACE_STORE_FIELD_RELOC elements seen whilst performing validation.
+        This allows a caller to subsequently cap loop indices to a more
+        sensible upper bound other than MAX_USHORT.
+
+Return Value:
+
+    TRUE if the structure is valid, FALSE if not.
+
+--*/
+{
+    BOOL Valid;
+    BOOL FoundLastOuter;
+    BOOL FoundLastInner;
+    USHORT Outer;
+    USHORT Inner;
+    USHORT MaxId;
+    USHORT Offset;
+    USHORT MaxRelocs;
+    USHORT LastOffset;
+    USHORT MinimumOffset;
+    USHORT MaximumOffset;
+    USHORT MaxInnerElements;
+    ULONG_INTEGER LongOffset;
+    TRACE_STORE_ID Id;
+    PTRACE_STORE_FIELD_RELOC Reloc;
+    PTRACE_STORE_FIELD_RELOC FirstReloc;
+    PTRACE_STORE_FIELD_RELOCS Relocs;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(FieldRelocations)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(NumberOfFieldRelocationsElements)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(MaximumNumberOfInnerFieldRelocationElements)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *NumberOfFieldRelocationsElements = 0;
+    *MaximumNumberOfInnerFieldRelocationElements = 0;
+
+    //
+    // Verify alignment.
+    //
+
+    if (!IsAlignedTraceStoreFieldRelocs(FieldRelocations)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize variables.
+    //
+
+    MaxId = (USHORT)MAX_TRACE_STORE_IDS;
+    MaxRelocs = (USHORT)-1;
+    MaxInnerElements = 0;
+
+    FoundLastOuter = FALSE;
+    FoundLastInner = FALSE;
+
+    //
+    // Enclose all of logic in a __try/__except block that catches general
+    // protection faults, which can easily occur if the caller passes in
+    // malformed data.
+    //
+
+    __try {
+
+        //
+        // Loop through the outer field relocations array, then loop through
+        // the inner field relocation array referenced by the outer element.
+        //
+
+        for (Outer = 0; Outer < MaxId; Outer++) {
+            Relocs = FieldRelocations + Outer;
+
+            if (IsLastTraceStoreFieldRelocsElement(Relocs)) {
+                FoundLastOuter = TRUE;
+                break;
+            }
+
+            LastOffset = 0;
+            MaximumOffset = 0;
+            MinimumOffset = (USHORT)-1;
+
+            FirstReloc = Relocs->Relocations;
+
+            if (!IsAlignedTraceStoreFieldReloc(FirstReloc)) {
+                return FALSE;
+            }
+
+            for (Inner = 0; Inner < MaxRelocs; Inner++) {
+                Reloc = FirstReloc + Inner;
+                LongOffset.LongPart = Reloc->Offset;
+                if (LongOffset.HighPart) {
+                    return FALSE;
+                }
+                Offset = LongOffset.LowPart;
+                Id = Reloc->TraceStoreId;
+
+                if (IsLastTraceStoreFieldRelocElement(Reloc)) {
+                    FoundLastInner = TRUE;
+                    break;
+                }
+
+                //
+                // Ensure offsets are sequential and that the trace store ID
+                // isn't larger than the known maximum ID.
+                //
+
+                Valid = (
+                    Id <= MaxId && (
+                        Offset == 0 ||
+                        Offset >= LastOffset
+                    )
+                );
+
+                if (!Valid) {
+                    return FALSE;
+                }
+
+                LastOffset = Offset;
+            }
+
+            if (!FoundLastInner) {
+                return FALSE;
+            }
+
+            //
+            // Did this array have the most elements of all the ones we've seen
+            // so far?  If so, update our counter.
+            //
+
+            if (Inner > MaxInnerElements) {
+                MaxInnerElements = Inner;
+            }
+
+        }
+
+        if (!FoundLastOuter) {
+            return FALSE;
+        }
+
+        //
+        // Update the caller's pointers.
+        //
+
+        *NumberOfFieldRelocationsElements = Outer;
+        *MaximumNumberOfInnerFieldRelocationElements = MaxInnerElements;
+
+        //
+        // Return success.
+        //
+
+        return TRUE;
+
+    } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?
+                EXCEPTION_EXECUTE_HANDLER :
+                EXCEPTION_CONTINUE_SEARCH) {
+
+        return FALSE;
+    }
 }
 
 #ifdef __cplusplus

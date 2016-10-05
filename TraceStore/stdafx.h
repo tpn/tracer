@@ -20,7 +20,9 @@ Abstract:
 #include <sal.h>
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
+#include "../Rtl/__C_specific_handler.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "TraceStoreIndex.h"
 #include "TraceStore.h"
 #include "TraceStorePrivate.h"
 #include "TraceStoreConstants.h"

@@ -131,6 +131,7 @@ Return Value:
     TRACE_FLAGS TraceFlags;
     TRACER_FLAGS TracerConfigFlags;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
     //
     // Verify arguments.
@@ -318,6 +319,10 @@ Return Value:
             PINITIALIZE_PYTHON_TRACE_CONTEXT,
             InitializePythonTraceContext);
 
+    RESOLVE(PythonTracerModule,
+            PTRACE_STORE_FIELD_RELOCS,
+            PythonTracerTraceStoreRelocations);
+
     //
     // TracerHeap
     //
@@ -388,6 +393,28 @@ Return Value:
     Rtl = Session->Rtl;
 
     //
+    // If any of our DLLs use structured exception handling (i.e. contain
+    // code that uses __try/__except), they'll also export SetCSpecificHandler
+    // which needs to be called now with the __C_specific_handler that Rtl will
+    // have initialized.
+    //
+
+#define INIT_C_SPECIFIC_HANDLER(Name) do {                           \
+    SetCSpecificHandler = (PSET_C_SPECIFIC_HANDLER)(                 \
+        GetProcAddress(Session->Name##Module, "SetCSpecificHandler") \
+    );                                                               \
+    if (SetCSpecificHandler) {                                       \
+        SetCSpecificHandler(Rtl->__C_specific_handler);              \
+    }                                                                \
+} while (0)
+
+    INIT_C_SPECIFIC_HANDLER(Python);
+    INIT_C_SPECIFIC_HANDLER(TracerHeap);
+    INIT_C_SPECIFIC_HANDLER(TraceStore);
+    INIT_C_SPECIFIC_HANDLER(StringTable);
+    INIT_C_SPECIFIC_HANDLER(PythonTracer);
+
+    //
     // Create an aligned allocator to use for string tables.
     //
 
@@ -418,12 +445,10 @@ Return Value:
     // Load our owning module name.
     //
 
-    Success = Rtl->GetModulePath(
-        Rtl,
-        Session->OwningModule,
-        Allocator,
-        &Session->OwningModulePath
-    );
+    Success = Rtl->GetModulePath(Rtl,
+                                 Session->OwningModule,
+                                 Allocator,
+                                 &Session->OwningModulePath);
 
     if (!Success) {
         OutputDebugStringA("Rtl->GetModulePath() failed.\n");
@@ -865,7 +890,8 @@ LoadPythonDll:
         NULL,
         &RequiredSize,
         NULL,
-        &TraceFlags
+        &TraceFlags,
+        NULL
     );
 
     //
@@ -876,7 +902,6 @@ LoadPythonDll:
         TraceFlags.DisablePrefaultPages = TRUE;
     }
 
-    //
     // Allocate sufficient space, then initialize the stores.
     //
 
@@ -887,7 +912,8 @@ LoadPythonDll:
         Session->TraceStores,
         &RequiredSize,
         NULL,
-        &TraceFlags
+        &TraceFlags,
+        Session->PythonTracerTraceStoreRelocations
     );
 
     if (!Success) {

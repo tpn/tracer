@@ -26,6 +26,7 @@ extern "C" {
 // PYTHON_FUNCTION_TABLE relocations.
 //
 
+DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations[] = {
 
     {
@@ -81,6 +82,7 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations[] = {
 // PYTHON_FUNCTION_TABLE_ENTRY relocations.
 //
 
+DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
@@ -188,6 +190,7 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 // PYTHON_PATH_TABLE relocations.
 //
 
+DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOC PythonPathTableRelocations[] = {
 
     {
@@ -203,6 +206,7 @@ TRACE_STORE_FIELD_RELOC PythonPathTableRelocations[] = {
 // PYTHON_PATH_TABLE_ENTRY relocations.
 //
 
+DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations[] = {
 
     {
@@ -267,6 +271,7 @@ TRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations[] = {
 // Container structure for each individual relocation structure.
 //
 
+DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations[] = {
 
     {

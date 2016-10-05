@@ -14,11 +14,11 @@ Abstract:
 
 #pragma once
 
+#include "TraceStore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "TraceStore.h"
 
 static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
@@ -40,15 +40,33 @@ static const LPCWSTR TraceStoreFileNames[] = {
     L"TraceStringTable.dat",
 };
 
+static const WCHAR TraceStoreMetadataInfoSuffix[] = L":metadatainfo";
+static const DWORD TraceStoreMetadataInfoSuffixLength = (
+    sizeof(TraceStoreMetadataInfoSuffix) /
+    sizeof(WCHAR)
+);
+
 static const WCHAR TraceStoreAllocationSuffix[] = L":allocation";
 static const DWORD TraceStoreAllocationSuffixLength = (
     sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
+static const WCHAR TraceStoreRelocationSuffix[] = L":relocation";
+static const DWORD TraceStoreRelocationSuffixLength = (
+    sizeof(TraceStoreRelocationSuffix) /
+    sizeof(WCHAR)
+);
+
 static const WCHAR TraceStoreAddressSuffix[] = L":address";
 static const DWORD TraceStoreAddressSuffixLength = (
     sizeof(TraceStoreAddressSuffix) /
+    sizeof(WCHAR)
+);
+
+static const WCHAR TraceStoreBitmapSuffix[] = L":bitmap";
+static const DWORD TraceStoreBitmapSuffixLength = (
+    sizeof(TraceStoreBitmapSuffix) /
     sizeof(WCHAR)
 );
 
@@ -59,7 +77,7 @@ static const DWORD TraceStoreInfoSuffixLength = (
 );
 
 static const USHORT LongestTraceStoreSuffixLength = (
-    sizeof(TraceStoreAllocationSuffix) /
+    sizeof(TraceStoreMetadataInfoSuffix) /
     sizeof(WCHAR)
 );
 
@@ -68,11 +86,11 @@ static const USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-static const USHORT ElementsPerTraceStore = 4;
+static const USHORT ElementsPerTraceStore = 7;
 
 //
-// The Event trace store gets an initial file size of 80MB,
-// everything else gets 10MB.
+// The Event trace store gets an initial file size of 16MB, everything else
+// gets 4MB.
 //
 
 static const ULONG InitialTraceStoreFileSizes[] = {
@@ -102,10 +120,17 @@ static const SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
 static const USHORT InitialFreeMemoryMaps = 32;
 
+static const USHORT TraceStoreMetadataInfoStructSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
 static const USHORT TraceStoreAllocationStructSize = (
     sizeof(TRACE_STORE_ALLOCATION)
 );
+static const USHORT TraceStoreRelocationStructSize = (
+    sizeof(TRACE_STORE_FIELD_RELOC)
+);
 static const USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
+static const USHORT TraceStoreBitmapStructSize = sizeof(TRACE_STORE_BITMAP);
 static const USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
 static const ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
@@ -114,11 +139,28 @@ static const ULONG DefaultTraceStoreEventMappingSize = (1 << 23);       // 16MB
 static const ULONG DefaultAllocationTraceStoreSize = (1 << 21);         //  4MB
 static const ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);  // 64KB
 
+static const ULONG DefaultRelocationTraceStoreSize = (1 << 16);         // 64KB
+static const ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);  // 64KB
+
 static const ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
 static const ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
 
-static const ULONG DefaultInfoTraceStoreSize = (1 << 16);               // 64KB
-static const ULONG DefaultInfoTraceStoreMappingSize = (1 << 16);        // 64KB
+static const ULONG DefaultBitmapTraceStoreSize = (1 << 16);             // 64KB
+static const ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);      // 64KB
+
+static const ULONG DefaultMetadataInfoTraceStoreSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
+static const ULONG DefaultMetadataInfoTraceStoreMappingSize = (
+    sizeof(TRACE_STORE_METADATA_INFO)
+);
+
+static const ULONG DefaultInfoTraceStoreSize = (
+    sizeof(TRACE_STORE_INFO)
+);
+static const ULONG DefaultInfoTraceStoreMappingSize = (
+    sizeof(TRACE_STORE_INFO)
+);
 
 #ifdef __cplusplus
 }; // extern "C"
