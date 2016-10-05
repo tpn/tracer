@@ -16,7 +16,6 @@ Abstract:
 
 #include "stdafx.h"
 
-_Use_decl_annotations_
 BOOL
 APIENTRY
 _DllMainCRTStartup(
@@ -27,7 +26,9 @@ _DllMainCRTStartup(
 {
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
-            InitializeGlobalTraceStoresRundown();
+            if (!InitializeGlobalTraceStoresRundown()) {
+                return FALSE;
+            }
             break;
         case DLL_THREAD_ATTACH:
             break;

@@ -1089,6 +1089,20 @@ StartPreparation:
 
     TraceStore->MemoryMap = MemoryMap;
 
+    //
+    // Take a local copy of the timestamp.  We'll use this for both the "next"
+    // memory map's Consumed timestamp and the "prepare" memory map's Requested
+    // timestamp.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Save the timestamp before we start fiddling with it.
+    //
+
+    RequestedTimestamp.QuadPart = Elapsed.QuadPart;
+
     if (IsMetadata) {
 
         //
@@ -1127,20 +1141,6 @@ StartPreparation:
         MemoryMap->pAddress = NULL;
         goto PrepareMemoryMap;
     }
-
-    //
-    // Take a local copy of the timestamp.  We'll use this for both the "next"
-    // memory map's Consumed timestamp and the "prepare" memory map's Requested
-    // timestamp.
-    //
-
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
-
-    //
-    // Save the timestamp before we start fiddling with it.
-    //
-
-    RequestedTimestamp.QuadPart = Elapsed.QuadPart;
 
     //
     // Update the Consumed timestamp.
