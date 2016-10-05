@@ -122,10 +122,8 @@ Return Value:
     }
 
     TraceStore->AllocateRecords = TraceStoreAllocateRecords;
-    //TraceStore->FreeRecords = FreeRecords;
-
-    TraceStore->NumberOfAllocations.QuadPart = 0;
-    TraceStore->TotalAllocationSize.QuadPart = 0;
+    TraceStore->AllocateAlignedRecords = NULL;
+    TraceStore->AllocateAlignedOffsetRecords = NULL;
 
     //
     // Return success.
@@ -217,22 +215,31 @@ Return Value:
 
 --*/
 #define INIT_METADATA(Name)                                            \
-    Name##Store->Flags = TraceStore->Flags;                            \
+    Name##Store->TraceFlags = TraceStore->TraceFlags;                  \
     Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;            \
     Name##Store->SequenceId = TraceStore->SequenceId;                  \
+    Name##Store->TraceStoreId = TraceStore->TraceStoreId;              \
+    Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;  \
+    Name##Store->TraceStore = TraceStore;                              \
+    Name##Store->MetadataInfoStore = MetadataInfoStore;                \
+    Name##Store->AllocationStore = AllocationStore;                    \
+    Name##Store->RelocationStore = RelocationStore;                    \
+    Name##Store->AddressStore = AddressStore;                          \
+    Name##Store->BitmapStore = BitmapStore;                            \
+    Name##Store->InfoStore = InfoStore;                                \
     Name##Store->CreateFileDesiredAccess = (                           \
         TraceStore->CreateFileDesiredAccess                            \
     );                                                                 \
     Name##Store->CreateFileMappingProtectionFlags = (                  \
         TraceStore->CreateFileMappingProtectionFlags                   \
     );                                                                 \
+    Name##Store->CreateFileFlagsAndAttributes = (                      \
+        TraceStore->CreateFileFlagsAndAttributes                       \
+    );                                                                 \
     Name##Store->MapViewOfFileDesiredAccess = (                        \
         TraceStore->MapViewOfFileDesiredAccess                         \
-    );                                                                 \
-    Name##Store->Frequency.QuadPart = (                                \
-        TraceStore->Frequency.QuadPart                                 \
     );                                                                 \
                                                                        \
     Success = InitializeStore(                                         \
@@ -246,10 +253,7 @@ Return Value:
         goto Error;                                                    \
     }                                                                  \
                                                                        \
-    ##Name##Store->NumberOfRecords.QuadPart = 1;                       \
-    ##Name##Store->RecordSize.QuadPart = TraceStore##Name##StructSize; \
-                                                                       \
-    TraceStore->##Name##Store = ##Name##Store;
+    TraceStore->##Name##Store = ##Name##Store
 
 
 _Use_decl_annotations_
@@ -258,12 +262,16 @@ InitializeTraceStore(
     PRTL Rtl,
     PCWSTR Path,
     PTRACE_STORE TraceStore,
+    PTRACE_STORE MetadataInfoStore,
     PTRACE_STORE AllocationStore,
+    PTRACE_STORE RelocationStore,
     PTRACE_STORE AddressStore,
+    PTRACE_STORE BitmapStore,
     PTRACE_STORE InfoStore,
     ULONG InitialSize,
     ULONG MappingSize,
-    PTRACE_FLAGS TraceFlags
+    PTRACE_FLAGS TraceFlags,
+    PTRACE_STORE_RELOC Reloc
     )
 /*++
 
@@ -281,13 +289,27 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE struct that will be
         initialized by this routine.
 
+    MetadataInfoStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the metadata info metadata store for the given TraceStore being
+        initialized.
+
     AllocationStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the allocation metadata store for the given TraceStore being
+        initialized.
+
+    RelocationStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the relocation metadata store for the given TraceStore being
         initialized.
 
     AddressStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the address metadata store for the given TraceStore being
         initialized.
+
+    BitmapStore - Supplies a pointer to a TRACE_STORE struct that will be
+        used as the free space bitmap metadata store for the given TraceStore
+        being initialized.
+
+            N.B.: Not yet implemented.
 
     InfoStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the info metadata store for the given TraceStore being
@@ -303,6 +325,12 @@ Arguments:
         initializing the trace store.  This is used to control things like
         whether or not the
 
+    Reloc - Supplies a pointer to a TRACE_STORE_RELOC structure that contains
+        field relocation information for this trace store.  If the store does
+        not use relocations, Reloc->NumberOfRelocations should be set to 0.
+        If present, this structure will be written to the RelocationStore when
+        the store is bound to a context.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
@@ -310,18 +338,28 @@ Return Value:
 --*/
 {
     BOOL Success;
-    HRESULT Result;
-    WCHAR AllocationPath[_OUR_MAX_PATH];
-    WCHAR AddressPath[_OUR_MAX_PATH];
-    WCHAR InfoPath[_OUR_MAX_PATH];
-    PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
-    PCWSTR AddressSuffix = TraceStoreAddressSuffix;
-    PCWSTR InfoSuffix = TraceStoreInfoSuffix;
     TRACE_FLAGS Flags;
+    HRESULT Result;
+    WCHAR MetadataInfoPath[_OUR_MAX_PATH];
+    WCHAR AllocationPath[_OUR_MAX_PATH];
+    WCHAR RelocationPath[_OUR_MAX_PATH];
+    WCHAR AddressPath[_OUR_MAX_PATH];
+    WCHAR BitmapPath[_OUR_MAX_PATH];
+    WCHAR InfoPath[_OUR_MAX_PATH];
+    PCWSTR MetadataInfoSuffix = TraceStoreMetadataInfoSuffix;
+    PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
+    PCWSTR RelocationSuffix = TraceStoreRelocationSuffix;
+    PCWSTR AddressSuffix = TraceStoreAddressSuffix;
+    PCWSTR BitmapSuffix = TraceStoreBitmapSuffix;
+    PCWSTR InfoSuffix = TraceStoreInfoSuffix;
 
     //
     // Validate arguments.
     //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
 
     if (!ARGUMENT_PRESENT(Path)) {
         return FALSE;
@@ -331,7 +369,27 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Rtl)) {
+    if (!ARGUMENT_PRESENT(MetadataInfoStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AllocationStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(RelocationStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AddressStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BitmapStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(InfoStore)) {
         return FALSE;
     }
 
@@ -339,14 +397,23 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(Reloc)) {
+        return FALSE;
+    }
+
     Flags = *TraceFlags;
+
+    TraceStore->Reloc = Reloc;
 
     //
     // Initialize the paths of the metadata stores first.
     //
 
+    INIT_METADATA_PATH(MetadataInfo);
     INIT_METADATA_PATH(Allocation);
+    INIT_METADATA_PATH(Relocation);
     INIT_METADATA_PATH(Address);
+    INIT_METADATA_PATH(Bitmap);
     INIT_METADATA_PATH(Info);
 
     TraceStore->Rtl = Rtl;
@@ -369,7 +436,7 @@ Return Value:
         FILE_SHARE_READ,
         NULL,
         OPEN_ALWAYS,
-        FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
+        TraceStore->CreateFileFlagsAndAttributes,
         NULL
     );
 
@@ -398,15 +465,26 @@ Return Value:
         TraceStore->NoPrefaulting = TRUE;
     }
 
-    TraceStore->Flags = Flags;
+    if (Reloc->NumberOfRelocations > 0) {
+        TraceStore->HasRelocations = TRUE;
+    }
+
+    if (Flags.NoTruncate) {
+        TraceStore->NoTruncate = TRUE;
+    }
+
+    TraceStore->TraceFlags = Flags;
 
     //
     // Now that we've created the trace store file, create the NTFS streams
     // for the metadata trace store files.
     //
 
+    INIT_METADATA(MetadataInfo);
     INIT_METADATA(Allocation);
+    INIT_METADATA(Relocation);
     INIT_METADATA(Address);
+    INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 
     //
@@ -467,7 +545,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL IsMetadata;
     LARGE_INTEGER EndOfFile;
     LARGE_INTEGER TotalAllocationSize;
     FILE_STANDARD_INFO FileInfo;
@@ -481,50 +558,23 @@ Return Value:
     }
 
     //
-    // Are we a metadata store?  Our truncation behavior is different if we are,
-    // so capture this state upfront.
+    // If the NoTruncate flag has been set on this store, exit.
     //
 
-    IsMetadata = IsMetadataTraceStore(TraceStore);
+    if (TraceStore->NoTruncate) {
+        return TRUE;
+    }
 
-    TotalAllocationSize.QuadPart = TraceStore->TotalAllocationSize.QuadPart;
+    EndOfFile.QuadPart = TraceStore->Eof->EndOfFile.QuadPart;
+    TotalAllocationSize.QuadPart = TraceStore->Totals->AllocationSize.QuadPart;
 
-    if (!IsMetadata) {
-
-        //
-        // A metadata's end-of-file will be tracked directly in the pEof struct.
-        //
-
-        EndOfFile.QuadPart = TraceStore->pEof->EndOfFile.QuadPart;
-
-        if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
-
-            //
-            // This should never happen.
-            //
-
-            __debugbreak();
-        }
-
-    } else {
+    if (EndOfFile.QuadPart != TotalAllocationSize.QuadPart) {
 
         //
-        // A trace store's end-of-file can be determined by from the total
-        // allocation size associated with the store.  If it is currently set
-        // to 0, we check the invariant that the trace store's number of allocs
-        // is not 1, and then use the record size instead.
+        // This should never happen.
         //
 
-        if (TotalAllocationSize.QuadPart == 0) {
-
-            if (TraceStore->NumberOfAllocations.QuadPart != 1) {
-                __debugbreak();
-            }
-
-            TotalAllocationSize.QuadPart = TraceStore->RecordSize.QuadPart;
-        }
-
-        EndOfFile.QuadPart = TotalAllocationSize.QuadPart;
+        __debugbreak();
     }
 
     //
@@ -609,6 +659,7 @@ Return Value:
 
 --*/
 {
+    BOOL IsRundown;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
@@ -616,6 +667,16 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    //
+    // Divert to the rundown function if a rundown is active.
+    //
+
+    IsRundown = IsGlobalTraceStoresRundownActive();
+    if (IsRundown) {
+        RundownStore(TraceStore);
         return;
     }
 
@@ -683,6 +744,69 @@ Return Value:
 
 _Use_decl_annotations_
 VOID
+RundownStore(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    Runs down a trace store.  This will synchronously close any open memory
+    maps, truncate the store and close the file handle.  It is intended to be
+    called during rundown, typically triggered by abnormal exit of a process
+    that has active trace stores that have been registered with the global
+    rundown list.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    //
+    // Rundown the previous and current memory maps synchronously.
+    //
+
+    RundownTraceStoreMemoryMap(TraceStore->PrevMemoryMap);
+    RundownTraceStoreMemoryMap(TraceStore->MemoryMap);
+
+    //
+    // Pop any prepared memory maps off the next memory map list and run those
+    // down synchronously too.
+    //
+
+    while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
+        RundownTraceStoreMemoryMap(MemoryMap);
+    }
+
+    //
+    // Truncate the store, flush file buffers and close the handle.
+    //
+
+    if (TraceStore->FileHandle) {
+        TruncateStore(TraceStore);
+        FlushFileBuffers(TraceStore->FileHandle);
+        CloseHandle(TraceStore->FileHandle);
+        TraceStore->FileHandle = NULL;
+    }
+}
+
+_Use_decl_annotations_
+VOID
 CloseTraceStore(
     PTRACE_STORE TraceStore
     )
@@ -714,6 +838,15 @@ Return Value:
     }
 
     //
+    // Ensure we haven't been called with a metadata store.
+    //
+
+    if (TraceStore->IsMetadata) {
+        __debugbreak();
+        return;
+    }
+
+    //
     // Close the trace store first before the metadata stores.  This is
     // important because closing the trace store will retire any active memory
     // maps, which will update the underlying MemoryMap->pAddress structures,
@@ -727,20 +860,66 @@ Return Value:
     // Close the metadata stores.
     //
 
-    if (TraceStore->AllocationStore) {
-        CloseStore(TraceStore->AllocationStore);
-        TraceStore->AllocationStore = NULL;
+    CLOSE_METADATA_STORES();
+
+}
+
+_Use_decl_annotations_
+VOID
+RundownTraceStore(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine runs down a normal trace store.  It is not intended to be
+    called against metadata trace stores.  It will run down the trace store,
+    then rundown the metadata trace stores associated with that trace store.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
     }
 
-    if (TraceStore->AddressStore) {
-        CloseStore(TraceStore->AddressStore);
-        TraceStore->AddressStore = NULL;
+    //
+    // Ensure we haven't been called with a metadata store.
+    //
+
+    if (TraceStore->IsMetadata) {
+        __debugbreak();
+        return;
     }
 
-    if (TraceStore->InfoStore) {
-        CloseStore(TraceStore->InfoStore);
-        TraceStore->InfoStore = NULL;
-    }
+    //
+    // Rundown the trace store first before the metadata stores.  This is
+    // important because closing the trace store will retire any active memory
+    // maps, which will update the underlying MemoryMap->pAddress structures,
+    // which will be backed by the AddressStore, which we can only access as
+    // long as we haven't closed it.
+    //
+
+    RundownStore(TraceStore);
+
+    //
+    // Rundown the metadata stores.
+    //
+
+    RUNDOWN_METADATA_STORES();
 
 }
 

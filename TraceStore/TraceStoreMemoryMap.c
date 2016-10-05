@@ -182,7 +182,7 @@ Return Value:
     // code in the function.
     //
 
-    Stats = TraceStore->pStats;
+    Stats = TraceStore->Stats;
 
     if (!Stats) {
         Stats = &DummyStats;
@@ -411,13 +411,9 @@ TryMapMemory:
     //
 
     Address.FulfillingThreadId = FastGetCurrentThreadId();
-
     GetCurrentProcessorNumberEx(&Address.FulfillingProcessor);
-
     Success = GetNumaProcessorNodeEx(&Address.FulfillingProcessor, &NumaNode);
-
     Address.FulfillingNumaNode = (Success ? (UCHAR)NumaNode : 0);
-
 
     //
     // Take a local copy of the timestamp.
@@ -436,7 +432,6 @@ TryMapMemory:
     //
 
     Elapsed.QuadPart -= Address.Timestamp.Requested.QuadPart;
-
     Address.Elapsed.AwaitingPreparation.QuadPart = Elapsed.QuadPart;
 
     //
@@ -444,11 +439,9 @@ TryMapMemory:
     // store.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(
-        AddressPointer,
-        &Address,
-        sizeof(Address)
-    );
+    Result = Rtl->RtlCopyMappedMemory(AddressPointer,
+                                      &Address,
+                                      sizeof(Address));
 
     if (FAILED(Result)) {
 
@@ -482,17 +475,27 @@ Finalize:
 
     if (!TraceStore->NoPrefaulting) {
 
-        PVOID BaseAddress = MemoryMap->BaseAddress;
-
         //
-        // Prefault the first two pages.  The AllocateRecords function will
-        // take care of prefaulting subsequent pages.
+        // Make sure we don't prefault a page past the end of the file.
+        // This can happen with the smaller metadata stores that only memory
+        // map their exact structure size.
         //
 
-        if (!Rtl->PrefaultPages(BaseAddress, 2)) {
-            goto Error;
+        ULONG_PTR BaseAddress = (ULONG_PTR)MemoryMap->BaseAddress;
+        ULONG_PTR PrefaultPage = BaseAddress + (PAGE_SIZE << 1);
+        ULONG_PTR EndPage = BaseAddress + (ULONG_PTR)NewFileOffset.QuadPart;
+
+        if (PrefaultPage < EndPage) {
+
+            //
+            // Prefault the first two pages.  The AllocateRecords function will
+            // take care of prefaulting subsequent pages.
+            //
+
+            if (!Rtl->PrefaultPages((PVOID)BaseAddress, 2)) {
+                goto Error;
+            }
         }
-
     }
 
     Success = TRUE;
@@ -694,14 +697,14 @@ ReleasePrevTraceStoreMemoryMapCallback(
 
 _Use_decl_annotations_
 VOID
-CloseMemoryMap(
+RundownTraceStoreMemoryMap(
     PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 /*++
 
 Routine Description:
 
-    This routine closes a trace store memory map.  This flushes the view of
+    This routine runs down a trace store memory map.  This flushes the view of
     the file at the memory map's base address, then unmaps it and clears the
     base address pointer, then closes the corresponding memory map handle
     and clears that pointer.
@@ -923,7 +926,7 @@ Return Value:
     // code in the function.
     //
 
-    Stats = TraceStore->pStats;
+    Stats = TraceStore->Stats;
 
     if (!Stats) {
         Stats = &DummyStats;
@@ -1079,13 +1082,26 @@ StartPreparation:
     //
 
     if (TraceStore->MemoryMap) {
-
         TraceStore->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         MemoryMap->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         TraceStore->PrevMemoryMap = TraceStore->MemoryMap;
     }
 
     TraceStore->MemoryMap = MemoryMap;
+
+    //
+    // Take a local copy of the timestamp.  We'll use this for both the "next"
+    // memory map's Consumed timestamp and the "prepare" memory map's Requested
+    // timestamp.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Save the timestamp before we start fiddling with it.
+    //
+
+    RequestedTimestamp.QuadPart = Elapsed.QuadPart;
 
     if (IsMetadata) {
 
@@ -1125,20 +1141,6 @@ StartPreparation:
         MemoryMap->pAddress = NULL;
         goto PrepareMemoryMap;
     }
-
-    //
-    // Take a local copy of the timestamp.  We'll use this for both the "next"
-    // memory map's Consumed timestamp and the "prepare" memory map's Requested
-    // timestamp.
-    //
-
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
-
-    //
-    // Save the timestamp before we start fiddling with it.
-    //
-
-    RequestedTimestamp.QuadPart = Elapsed.QuadPart;
 
     //
     // Update the Consumed timestamp.

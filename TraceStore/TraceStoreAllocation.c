@@ -94,8 +94,6 @@ Return Value:
         return NULL;
     }
 
-#ifdef _M_X64
-
     AllocationSize = (
         (ULONG_PTR)(
             RecordSize->QuadPart *
@@ -108,36 +106,6 @@ Return Value:
     if (AllocationSize > (ULONG_PTR)MemoryMap->MappingSize.QuadPart) {
         return NULL;
     }
-
-#else
-    {
-        ULARGE_INTEGER Size = { 0 };
-
-        //
-        // Ignore allocation attempts over 2GB on 32-bit.
-        //
-
-        if (RecordSize->HighPart != 0 || NumberOfRecords->HighPart != 0) {
-            return NULL;
-        }
-
-        Size->QuadPart = UInt32x32To64(RecordSize->LowPart,
-                                       NumberOfRecords->LowPart);
-
-        if (Size->HighPart != 0) {
-            return NULL;
-        }
-
-        AllocationSize = (ULONG_PTR)Size->LowPart;
-
-    }
-
-    AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
-
-    if (AllocationSize > MemoryMap->MappingSize.LowPart) {
-        return NULL;
-    }
-#endif
 
     NextAddress = (
         (PVOID)RtlOffsetToPointer(
@@ -285,7 +253,17 @@ Return Value:
 
         if (PrevPage != NextPage) {
 
+            //
+            // Allocation crosses a page boundary.
+            //
+
             if (PageAfterNextPage < EndAddress) {
+
+                //
+                // The page after the next page is still within our mapped
+                // chunk of memory, so submit an asynchronous prefault to the
+                // threadpool.
+                //
 
                 PTRACE_STORE_MEMORY_MAP PrefaultMemoryMap;
 
@@ -328,26 +306,56 @@ UpdateAddresses:
 
     }
 
-    if (!IsMetadataTraceStore(TraceStore) && !TraceStore->IsReadonly) {
-
-        if (!TraceStore->RecordSimpleAllocation) {
-
-            RecordTraceStoreAllocation(TraceStore,
-                                       RecordSize,
-                                       NumberOfRecords);
-
-        } else {
-
-            TraceStore->pAllocation->NumberOfAllocations.QuadPart += 1;
-            TraceStore->pAllocation->AllocationSize.QuadPart += AllocationSize;
-        }
-
-        TraceStore->pEof->EndOfFile.QuadPart += AllocationSize;
+    if (TraceStore->IsReadonly) {
+        goto End;
     }
 
-    TraceStore->TotalNumberOfAllocations.QuadPart += 1;
-    TraceStore->TotalAllocationSize.QuadPart += AllocationSize;
+    if (TraceStore->IsMetadata) {
+        goto UpdateTotals;
+    }
 
+    //
+    // Record the allocation.
+    //
+
+    Success = RecordTraceStoreAllocation(
+        TraceStore,
+        RecordSize,
+        NumberOfRecords
+    );
+
+    if (!Success) {
+
+        //
+        // It's not clear what the best course of action to take is if we were
+        // unable to record the allocation.  In normal operating conditions,
+        // this would only happen if we failed to extend the underlying metadata
+        // stores, which would be due to STATUS_IN_PAGE exceptions being caught,
+        // which will be triggered by no more space being left on the device or
+        // a network drive being lost.  If this happened on a metadata store,
+        // it will inevitably happen soon after on a normal store, in which
+        // case this routine would end up returning a NULL pointer.
+        //
+        // We can't return NULL here as we've already adjusted all the address
+        // mappings as if the allocation was satisfied.  And we don't currently
+        // have any infrastructure in place for rolling back such allocations,
+        // a feat which is further complicated by the fact we may have crossed
+        // page and mapping boundaries and kicked off asynchronous page prep
+        // work.
+        //
+        // So, for now, we do nothing if we couldn't record the allocation.
+        // (To keep SAL happy, we keep the test of Success though.)
+        //
+
+        NOTHING;
+    }
+
+UpdateTotals:
+    TraceStore->Totals->NumberOfAllocations.QuadPart += 1;
+    TraceStore->Totals->AllocationSize.QuadPart += AllocationSize;
+    TraceStore->Eof->EndOfFile.QuadPart += AllocationSize;
+
+End:
     if (MemoryMap->NextAddress == EndAddress) {
 
         //
@@ -356,7 +364,11 @@ UpdateAddresses:
         // if it fails.
         //
 
-        ConsumeNextTraceStoreMemoryMap(TraceStore);
+        Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
+
+        if (!Success) {
+            NOTHING;
+        }
     }
 
     return ReturnAddress;
@@ -395,7 +407,7 @@ Return Value:
 {
     PTRACE_STORE_ALLOCATION Allocation;
 
-    if (TraceStore->IsReadonly) {
+    if (TraceStore->IsReadonly || TraceStore->IsMetadata) {
 
         //
         // This should never happen.
@@ -404,49 +416,35 @@ Return Value:
         __debugbreak();
     }
 
-    if (IsMetadataTraceStore(TraceStore)) {
-        Allocation = &TraceStore->Allocation;
+    Allocation = TraceStore->Allocation;
+
+    if (Allocation->NumberOfRecords.QuadPart == 0 ||
+        Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
+
+        PVOID Address;
+        ULARGE_INTEGER AllocationRecordSize = { sizeof(*Allocation) };
+        ULARGE_INTEGER NumberOfAllocationRecords = { 1 };
 
         //
-        // Metadata trace stores should never have variable record sizes.
+        // Allocate a new metadata record.
         //
 
-        if (Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
+        Address = TraceStore->AllocationStore->AllocateRecords(
+            TraceStore->TraceContext,
+            TraceStore->AllocationStore,
+            &AllocationRecordSize,
+            &NumberOfAllocationRecords
+        );
+
+        if (!Address) {
             return FALSE;
         }
 
-    } else {
+        Allocation = (PTRACE_STORE_ALLOCATION)Address;
+        Allocation->RecordSize.QuadPart = RecordSize->QuadPart;
+        Allocation->NumberOfRecords.QuadPart = 0;
 
-        Allocation = TraceStore->pAllocation;
-
-        if (Allocation->NumberOfRecords.QuadPart == 0 ||
-            Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
-
-            PVOID Address;
-            ULARGE_INTEGER AllocationRecordSize = { sizeof(*Allocation) };
-            ULARGE_INTEGER NumberOfAllocationRecords = { 1 };
-
-            //
-            // Allocate a new metadata record.
-            //
-
-            Address = TraceStore->AllocationStore->AllocateRecords(
-                TraceStore->TraceContext,
-                TraceStore->AllocationStore,
-                &AllocationRecordSize,
-                &NumberOfAllocationRecords
-            );
-
-            if (!Address) {
-                return FALSE;
-            }
-
-            Allocation = (PTRACE_STORE_ALLOCATION)Address;
-            Allocation->RecordSize.QuadPart = RecordSize->QuadPart;
-            Allocation->NumberOfRecords.QuadPart = 0;
-
-            TraceStore->pAllocation = Allocation;
-        }
+        TraceStore->Allocation = Allocation;
     }
 
     //

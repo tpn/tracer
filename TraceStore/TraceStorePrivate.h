@@ -58,6 +58,252 @@ typedef INITIALIZE_TRACE_STORE_PATH *PINITIALIZE_TRACE_STORE_PATH;
 INITIALIZE_TRACE_STORE_PATH InitializeTraceStorePath;
 
 //
+// TraceStoresRundown-related data structures and functions.
+//
+
+typedef struct _TRACE_STORES_RUNDOWN_FLAGS {
+    ULONG IsActive:1;
+} TRACE_STORES_RUNDOWN_FLAGS, *PTRACE_STORES_RUNDOWN_FLAGS;
+
+typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORES_RUNDOWN {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_STORES_RUNDOWN)) USHORT SizeOfStruct;
+
+    //
+    // Pad out to 4-bytes.
+    //
+
+    USHORT Padding1;
+
+    //
+    // Flags.
+    //
+
+    TRACE_STORES_RUNDOWN_FLAGS Flags;
+
+    //
+    // Rundown list head.
+    //
+
+    _Guarded_by_(&CriticalSection)
+    LIST_ENTRY ListHead;
+
+    //
+    // Critical section protecting the structure.
+    //
+
+    _Has_lock_kind_(_Lock_kind_critical_section_)
+    CRITICAL_SECTION CriticalSection;
+
+} TRACE_STORES_RUNDOWN, *PTRACE_STORES_RUNDOWN;
+
+typedef
+_Requires_lock_not_held_(&Rundown->CriticalSection)
+VOID
+(RUNDOWN_TRACE_STORES)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef RUNDOWN_TRACE_STORES *PRUNDOWN_TRACE_STORES;
+RUNDOWN_TRACE_STORES RundownTraceStores;
+
+typedef
+BOOL
+(IS_TRACE_STORES_RUNDOWN_ACTIVE)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef IS_TRACE_STORES_RUNDOWN_ACTIVE *PIS_TRACE_STORES_RUNDOWN_ACTIVE;
+IS_TRACE_STORES_RUNDOWN_ACTIVE IsTraceStoresRundownActive;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(INITIALIZE_TRACE_STORES_RUNDOWN)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef INITIALIZE_TRACE_STORES_RUNDOWN \
+      *PINITIALIZE_TRACE_STORES_RUNDOWN;
+INITIALIZE_TRACE_STORES_RUNDOWN InitializeTraceStoresRundown;
+
+typedef
+VOID
+(DESTROY_TRACE_STORES_RUNDOWN)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef DESTROY_TRACE_STORES_RUNDOWN \
+      *PDESTROY_TRACE_STORES_RUNDOWN;
+DESTROY_TRACE_STORES_RUNDOWN DestroyTraceStoresRundown;
+
+typedef
+_Success_(return != 0)
+_Acquires_lock_(&Rundown->CriticalSection)
+BOOL
+(ACQUIRE_TRACE_STORES_RUNDOWN_LOCK)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef ACQUIRE_TRACE_STORES_RUNDOWN_LOCK *PACQUIRE_TRACE_STORES_RUNDOWN_LOCK;
+ACQUIRE_TRACE_STORES_RUNDOWN_LOCK AcquireTraceStoresRundownLock;
+
+typedef
+_Success_(return != 0)
+_Releases_lock_(&Rundown->CriticalSection)
+BOOL
+(RELEASE_TRACE_STORES_RUNDOWN_LOCK)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown
+    );
+typedef RELEASE_TRACE_STORES_RUNDOWN_LOCK *PRELEASE_TRACE_STORES_RUNDOWN_LOCK;
+RELEASE_TRACE_STORES_RUNDOWN_LOCK ReleaseTraceStoresRundownLock;
+
+typedef
+_Requires_lock_held_(&Rundown->CriticalSection)
+VOID
+(ADD_TRACE_STORES_TO_RUNDOWN)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown,
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef ADD_TRACE_STORES_TO_RUNDOWN *PADD_TRACE_STORES_TO_RUNDOWN;
+ADD_TRACE_STORES_TO_RUNDOWN AddTraceStoresToRundown;
+
+typedef
+_Requires_lock_held_(&TraceStores->Rundown->CriticalSection)
+VOID
+(REMOVE_TRACE_STORES_FROM_RUNDOWN)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef REMOVE_TRACE_STORES_FROM_RUNDOWN *PREMOVE_TRACE_STORES_FROM_RUNDOWN;
+REMOVE_TRACE_STORES_FROM_RUNDOWN RemoveTraceStoresFromRundown;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(REGISTER_TRACE_STORES)(
+    _In_ PTRACE_STORES_RUNDOWN Rundown,
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef REGISTER_TRACE_STORES *PREGISTER_TRACE_STORES;
+REGISTER_TRACE_STORES RegisterTraceStores;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(UNREGISTER_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef UNREGISTER_TRACE_STORES *PUNREGISTER_TRACE_STORES;
+UNREGISTER_TRACE_STORES UnregisterTraceStores;
+
+//
+// TraceStoreGlobalRundown-related functions.
+//
+
+typedef
+PTRACE_STORES_RUNDOWN
+(GET_GLOBAL_TRACE_STORES_RUNDOWN)(
+    VOID
+    );
+typedef GET_GLOBAL_TRACE_STORES_RUNDOWN *PGET_GLOBAL_TRACE_STORES_RUNDOWN;
+GET_GLOBAL_TRACE_STORES_RUNDOWN GetGlobalTraceStoresRundown;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(REGISTER_GLOBAL_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef REGISTER_GLOBAL_TRACE_STORES *PREGISTER_GLOBAL_TRACE_STORES;
+REGISTER_GLOBAL_TRACE_STORES RegisterGlobalTraceStores;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(UNREGISTER_GLOBAL_TRACE_STORES)(
+    _In_ PTRACE_STORES TraceStores
+    );
+typedef UNREGISTER_GLOBAL_TRACE_STORES *PUNREGISTER_GLOBAL_TRACE_STORES;
+UNREGISTER_GLOBAL_TRACE_STORES UnregisterGlobalTraceStores;
+
+//
+// TraceStoreMetadata-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORE_METADATA)(
+    _In_ PTRACE_STORE MetadataStore
+    );
+typedef INITIALIZE_TRACE_STORE_METADATA *PINITIALIZE_TRACE_STORE_METADATA;
+
+INITIALIZE_TRACE_STORE_METADATA InitializeMetadataInfoMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeAllocationMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeRelocationMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeAddressMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeBitmapMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeInfoMetadata;
+INITIALIZE_TRACE_STORE_METADATA InitializeMetadataFromRecordSize;
+INITIALIZE_TRACE_STORE_METADATA ZeroInitializeMetadata;
+
+typedef
+PINITIALIZE_TRACE_STORE_METADATA
+(TRACE_STORE_METADATA_ID_TO_INITIALIZER)(
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_INITIALIZER \
+      *PTRACE_STORE_METADATA_ID_TO_INITIALIZER;
+TRACE_STORE_METADATA_ID_TO_INITIALIZER TraceStoreMetadataIdToInitializer;
+
+typedef
+ULONG
+(TRACE_STORE_METADATA_ID_TO_RECORD_SIZE)(
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_RECORD_SIZE \
+      *PTRACE_STORE_METADATA_ID_TO_RECORD_SIZE;
+TRACE_STORE_METADATA_ID_TO_RECORD_SIZE TraceStoreMetadataIdToRecordSize;
+
+typedef
+PTRACE_STORE_INFO
+(TRACE_STORE_METADATA_ID_TO_INFO)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_INFO \
+      *PTRACE_STORE_METADATA_ID_TO_INFO;
+TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
+
+//
+// TraceStoreContext-related macros.
+//
+
+#define BIND_STORE(Name)                                              \
+    if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
+        return FALSE;                                                 \
+    }
+
+//
+// N.B. BIND_STORE(Trace) must always go last in the macro below as it requires
+//      the metadata stores to be bound and mapped before it can finalize its
+//      own binding.
+//
+
+#define BIND_STORES()         \
+    BIND_STORE(MetadataInfo); \
+    BIND_STORE(Allocation);   \
+    BIND_STORE(Relocation);   \
+    BIND_STORE(Address);      \
+    BIND_STORE(Bitmap);       \
+    BIND_STORE(Info);         \
+    BIND_STORE(Trace)
+
+//
 // TraceStoreTime-related functions.
 //
 
@@ -153,6 +399,14 @@ typedef UNMAP_TRACE_STORE_MEMORY_MAP *PUNMAP_TRACE_STORE_MEMORY_MAP;
 UNMAP_TRACE_STORE_MEMORY_MAP UnmapTraceStoreMemoryMap;
 
 typedef
+VOID
+(RUNDOWN_TRACE_STORE_MEMORY_MAP)(
+    _In_opt_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    );
+typedef RUNDOWN_TRACE_STORE_MEMORY_MAP *PRUNDOWN_TRACE_STORE_MEMORY_MAP;
+RUNDOWN_TRACE_STORE_MEMORY_MAP RundownTraceStoreMemoryMap;
+
+typedef
 _Success_(return != 0)
 BOOL
 (CONSUME_NEXT_TRACE_STORE_MEMORY_MAP)(
@@ -164,14 +418,6 @@ CONSUME_NEXT_TRACE_STORE_MEMORY_MAP ConsumeNextTraceStoreMemoryMap;
 
 typedef
 VOID
-(CLOSE_MEMORY_MAP)(
-    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
-    );
-typedef CLOSE_MEMORY_MAP *PCLOSE_MEMORY_MAP;
-CLOSE_MEMORY_MAP CloseMemoryMap;
-
-typedef
-VOID
 (SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK)(
     _In_ PTRACE_STORE TraceStore,
     _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
@@ -180,7 +426,6 @@ typedef  SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
        *PSUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK;
 SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
     SubmitCloseMemoryMapThreadpoolWork;
-
 
 //
 // TraceStoreMemory-map related inline functions.
@@ -385,12 +630,16 @@ BOOL
     _In_ PRTL Rtl,
     _In_ PCWSTR Path,
     _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE MetadataInfoStore,
     _In_ PTRACE_STORE AllocationStore,
+    _In_ PTRACE_STORE RelocationStore,
     _In_ PTRACE_STORE AddressStore,
+    _In_ PTRACE_STORE BitmapStore,
     _In_ PTRACE_STORE InfoStore,
     _In_ ULONG InitialSize,
     _In_ ULONG MappingSize,
-    _In_ PTRACE_FLAGS TraceFlags
+    _In_ PTRACE_FLAGS TraceFlags,
+    _In_ PTRACE_STORE_RELOC Reloc
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
@@ -419,6 +668,79 @@ VOID
     );
 typedef CLOSE_TRACE_STORE *PCLOSE_TRACE_STORE;
 CLOSE_TRACE_STORE CloseTraceStore;
+
+FORCEINLINE
+VOID
+CloseTraceStoresInline(
+    _In_ PTRACE_STORES TraceStores
+    )
+{
+    USHORT Index;
+    USHORT StoreIndex;
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        CloseTraceStore(&TraceStores->Stores[StoreIndex]);
+    }
+}
+
+typedef
+VOID
+(RUNDOWN_STORE)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef RUNDOWN_STORE *PRUNDOWN_STORE;
+RUNDOWN_STORE RundownStore;
+
+typedef
+VOID
+(RUNDOWN_TRACE_STORE)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef RUNDOWN_TRACE_STORE *PRUNDOWN_TRACE_STORE;
+RUNDOWN_TRACE_STORE RundownTraceStore;
+
+FORCEINLINE
+VOID
+RundownTraceStoresInline(
+    _In_ PTRACE_STORES TraceStores
+    )
+{
+    USHORT Index;
+    USHORT StoreIndex;
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        RundownTraceStore(&TraceStores->Stores[StoreIndex]);
+    }
+}
+
+#define CLOSE_METADATA_STORE(Name)             \
+    if (TraceStore->##Name##Store) {           \
+        CloseStore(TraceStore->##Name##Store); \
+        TraceStore->##Name##Store = NULL;      \
+    }
+
+#define CLOSE_METADATA_STORES()         \
+    CLOSE_METADATA_STORE(Allocation);   \
+    CLOSE_METADATA_STORE(Relocation);   \
+    CLOSE_METADATA_STORE(Address);      \
+    CLOSE_METADATA_STORE(Bitmap);       \
+    CLOSE_METADATA_STORE(Info);         \
+    CLOSE_METADATA_STORE(MetadataInfo);
+
+#define RUNDOWN_METADATA_STORE(Name)             \
+    if (TraceStore->##Name##Store) {             \
+        RundownStore(TraceStore->##Name##Store); \
+        TraceStore->##Name##Store = NULL;        \
+    }
+
+#define RUNDOWN_METADATA_STORES()         \
+    RUNDOWN_METADATA_STORE(Allocation);   \
+    RUNDOWN_METADATA_STORE(Relocation);   \
+    RUNDOWN_METADATA_STORE(Address);      \
+    RUNDOWN_METADATA_STORE(Bitmap);       \
+    RUNDOWN_METADATA_STORE(Info);         \
+    RUNDOWN_METADATA_STORE(MetadataInfo);
+
 
 //
 // TraceStoreSystemTimer-related functions.
