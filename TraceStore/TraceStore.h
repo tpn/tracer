@@ -608,6 +608,12 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableFileFlagWriteThrough:1;
 
+            //
+            // When set, indicates the caller does not want to be automatically
+            // added to the global trace store rundown list.
+            //
+
+            ULONG NoGlobalRundown:1;
         };
     };
     ULONG Unused1;
@@ -771,6 +777,16 @@ typedef struct _TRACE_STORE {
     PVOID PrevAddress;
 
     //
+    // The first trace store will get initialized as the list head, subsequent
+    // stores will be appended via ListEntry.
+    //
+
+    union {
+        LIST_ENTRY ListHead;
+        LIST_ENTRY ListEntry;
+    };
+
+    //
     // The trace store pointers below will be valid for all trace and metadata
     // stores, even if a store is pointing to itself.
     //
@@ -858,11 +874,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     USHORT      Padding1;
     ULONG       Padding2;
     TRACE_FLAGS Flags;
-    PRTL        Rtl;
     STRING      BaseDirectory;
+    PRTL        Rtl;
+    LIST_ENTRY  RundownListEntry;
+    struct _TRACE_STORES_RUNDOWN *Rundown;
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
+
+typedef struct _TRACE_STORE_METADATA_STORES {
+    PTRACE_STORE MetadataInfoStore;
+    PTRACE_STORE AllocationStore;
+    PTRACE_STORE RelocationStore;
+    PTRACE_STORE AddressStore;
+    PTRACE_STORE BitmapStore;
+    PTRACE_STORE InfoStore;
+} TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
@@ -910,12 +937,57 @@ typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
 
 typedef
-VOID
+_Success_(return != 0)
+BOOL
 (CLOSE_TRACE_STORES)(
     _In_ PTRACE_STORES TraceStores
     );
 typedef CLOSE_TRACE_STORES *PCLOSE_TRACE_STORES;
 TRACE_STORE_API CLOSE_TRACE_STORES CloseTraceStores;
+
+//
+// TraceStoreGlobalRundown-related functions.
+//
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN)(
+    VOID
+    );
+typedef INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN \
+      *PINITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN;
+TRACE_STORE_API INITIALIZE_GLOBAL_TRACE_STORES_RUNDOWN \
+                InitializeGlobalTraceStoresRundown;
+
+typedef
+VOID
+(DESTROY_GLOBAL_TRACE_STORES_RUNDOWN)(
+    VOID
+    );
+typedef DESTROY_GLOBAL_TRACE_STORES_RUNDOWN \
+      *PDESTROY_GLOBAL_TRACE_STORES_RUNDOWN;
+TRACE_STORE_API DESTROY_GLOBAL_TRACE_STORES_RUNDOWN \
+                DestroyGlobalTraceStoresRundown;
+
+typedef
+VOID
+(RUNDOWN_GLOBAL_TRACE_STORES)(
+    VOID
+    );
+typedef RUNDOWN_GLOBAL_TRACE_STORES *PRUNDOWN_GLOBAL_TRACE_STORES;
+TRACE_STORE_API RUNDOWN_GLOBAL_TRACE_STORES RundownGlobalTraceStores;
+
+typedef
+BOOL
+(IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE)(
+    VOID
+    );
+typedef IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
+      *PIS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE;
+TRACE_STORE_API IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
+                IsGlobalTraceStoresRundownActive;
 
 //
 // TraceStoreContext-related functions.
@@ -941,6 +1013,18 @@ TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+PTRACE_STORE
+TraceStoreToMetadataStore(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ TRACE_STORE_METADATA_ID MetadataId
+    )
+{
+    USHORT Index;
+    Index = TraceStoreMetadataIdToArrayIndex(MetadataId);
+    return TraceStore + Index + 1;
+}
 
 FORCEINLINE
 VOID

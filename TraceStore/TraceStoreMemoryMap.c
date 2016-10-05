@@ -697,14 +697,14 @@ ReleasePrevTraceStoreMemoryMapCallback(
 
 _Use_decl_annotations_
 VOID
-CloseMemoryMap(
+RundownTraceStoreMemoryMap(
     PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 /*++
 
 Routine Description:
 
-    This routine closes a trace store memory map.  This flushes the view of
+    This routine runs down a trace store memory map.  This flushes the view of
     the file at the memory map's base address, then unmaps it and clears the
     base address pointer, then closes the corresponding memory map handle
     and clears that pointer.

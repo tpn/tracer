@@ -77,5 +77,11 @@
     <ClCompile Include="TraceStoreMetadata.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoresRundown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceStoresGlobalRundown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

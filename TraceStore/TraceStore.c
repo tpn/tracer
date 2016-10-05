@@ -647,6 +647,7 @@ Return Value:
 
 --*/
 {
+    BOOL IsRundown;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
@@ -654,6 +655,16 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    //
+    // Divert to the rundown function if a rundown is active.
+    //
+
+    IsRundown = IsGlobalTraceStoresRundownActive();
+    if (IsRundown) {
+        RundownStore(TraceStore);
         return;
     }
 
@@ -721,6 +732,69 @@ Return Value:
 
 _Use_decl_annotations_
 VOID
+RundownStore(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    Runs down a trace store.  This will synchronously close any open memory
+    maps, truncate the store and close the file handle.  It is intended to be
+    called during rundown, typically triggered by abnormal exit of a process
+    that has active trace stores that have been registered with the global
+    rundown list.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    //
+    // Rundown the previous and current memory maps synchronously.
+    //
+
+    RundownTraceStoreMemoryMap(TraceStore->PrevMemoryMap);
+    RundownTraceStoreMemoryMap(TraceStore->MemoryMap);
+
+    //
+    // Pop any prepared memory maps off the next memory map list and run those
+    // down synchronously too.
+    //
+
+    while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
+        RundownTraceStoreMemoryMap(MemoryMap);
+    }
+
+    //
+    // Truncate the store, flush file buffers and close the handle.
+    //
+
+    if (TraceStore->FileHandle) {
+        TruncateStore(TraceStore);
+        FlushFileBuffers(TraceStore->FileHandle);
+        CloseHandle(TraceStore->FileHandle);
+        TraceStore->FileHandle = NULL;
+    }
+}
+
+_Use_decl_annotations_
+VOID
 CloseTraceStore(
     PTRACE_STORE TraceStore
     )
@@ -765,30 +839,7 @@ Return Value:
     // Close the metadata stores.
     //
 
-    if (TraceStore->AllocationStore) {
-        CloseStore(TraceStore->AllocationStore);
-        TraceStore->AllocationStore = NULL;
-    }
-
-    if (TraceStore->RelocationStore) {
-        CloseStore(TraceStore->RelocationStore);
-        TraceStore->RelocationStore = NULL;
-    }
-
-    if (TraceStore->AddressStore) {
-        CloseStore(TraceStore->AddressStore);
-        TraceStore->AddressStore = NULL;
-    }
-
-    if (TraceStore->BitmapStore) {
-        CloseStore(TraceStore->BitmapStore);
-        TraceStore->BitmapStore = NULL;
-    }
-
-    if (TraceStore->InfoStore) {
-        CloseStore(TraceStore->InfoStore);
-        TraceStore->InfoStore = NULL;
-    }
+    CLOSE_METADATA_STORES();
 
 }
 
