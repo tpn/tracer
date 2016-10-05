@@ -344,10 +344,15 @@ Return Value:
         CloseHandle(DirectoryHandle);
     }
 
-    TraceStores->Rtl = Rtl;
+    //
+    // Initialize final elements.
+    //
 
+    TraceStores->Rtl = Rtl;
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
+
+    InitializeListHead(&TraceStores->RundownListEntry);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TRACE_STORE_DECLS();
@@ -401,7 +406,7 @@ Return Value:
             InitialSize,
             MappingSize,
             &Flags,
-            &TraceStores->Relocations[Index]
+            Reloc
         );
 
         if (!Success) {
@@ -409,11 +414,15 @@ Return Value:
         }
     }
 
-    return TRUE;
+    if (!TraceFlags->NoGlobalRundown) {
+        Success = RegisterGlobalTraceStores(TraceStores);
+    }
+
+    return Success;
 }
 
 _Use_decl_annotations_
-VOID
+BOOL
 CloseTraceStores(
     PTRACE_STORES TraceStores
     )
@@ -431,24 +440,33 @@ Arguments:
 
 Return Value:
 
-    None.
+    TRUE on success, FALSE on error.
 
 --*/
 {
-    USHORT Index;
-    USHORT StoreIndex;
-
     //
     // Validate arguments.
     //
 
     if (!TraceStores) {
-        return;
+        return FALSE;
     }
 
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        CloseTraceStore(&TraceStores->Stores[StoreIndex]);
+    //
+    // If there's a rundown parameter set, we're still attached to a rundown,
+    // so unregister first.
+    //
+
+    if (TraceStores->Rundown != NULL) {
+        if (!UnregisterTraceStores(TraceStores)) {
+            __debugbreak();
+            return FALSE;
+        }
     }
+
+    CloseTraceStoresInline(TraceStores);
+
+    return TRUE;
 }
 
 _Use_decl_annotations_
@@ -492,7 +510,5 @@ Return Value:
 
     return sizeof(TRACE_STORES) + ExtraSize;
 }
-
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

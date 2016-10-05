@@ -3825,7 +3825,6 @@ IsListEmpty(
     )
 
 {
-
     return (BOOLEAN)(ListHead->Flink == ListHead);
 }
 
@@ -3834,7 +3833,6 @@ BOOLEAN
 RemoveEntryList(
     _In_ PLIST_ENTRY Entry
     )
-
 {
 
     PLIST_ENTRY Blink;
@@ -3852,7 +3850,6 @@ PLIST_ENTRY
 RemoveHeadList(
     _Inout_ PLIST_ENTRY ListHead
     )
-
 {
 
     PLIST_ENTRY Flink;

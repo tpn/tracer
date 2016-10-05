@@ -67,16 +67,20 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TraceStoreConstants.h" />
     <ClInclude Include="TraceStore.h" />
+    <ClInclude Include="TraceStoreIndex.h" />
     <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <!--
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    -->
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="dllmain.c" />
     <ClCompile Include="TraceStore.c" />
     <ClCompile Include="TraceStoreAddress.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
@@ -86,6 +90,8 @@
     <ClCompile Include="TraceStorePath.c" />
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
+    <ClCompile Include="TraceStoresGlobalRundown.c" />
+    <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
   </ItemGroup>
