@@ -139,6 +139,7 @@ InitializeMetadataInfoMetadata(
     )
 {
     MetadataStore->NoPrefaulting = TRUE;
+    MetadataStore->NoTruncate = TRUE;
     return InitializeMetadataFromRecordSize(MetadataStore);
 }
 
@@ -185,6 +186,7 @@ InitializeInfoMetadata(
     )
 {
     MetadataStore->NoPrefaulting = TRUE;
+    MetadataStore->NoTruncate = TRUE;
     return InitializeMetadataFromRecordSize(MetadataStore);
 }
 

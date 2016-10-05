@@ -435,7 +435,7 @@ Return Value:
                 __debugbreak();
             }
 
-            CloseTraceStoresInline(TraceStores);
+            RundownTraceStoresInline(TraceStores);
 
             TraceStores->Rundown = NULL;
         }
