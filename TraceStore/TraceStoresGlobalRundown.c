@@ -23,7 +23,6 @@ Abstract:
 
 TRACE_STORE_DATA TRACE_STORES_RUNDOWN GlobalTraceStoresRundown = { 0 };
 
-_Use_decl_annotations_
 PTRACE_STORES_RUNDOWN
 GetGlobalTraceStoresRundown(
     VOID
@@ -71,7 +70,6 @@ Return Value:
     return InitializeTraceStoresRundown(GetGlobalTraceStoresRundown());
 }
 
-_Use_decl_annotations_
 VOID
 DestroyGlobalTraceStoresRundown(
     VOID
@@ -119,7 +117,6 @@ Return Value:
     return RegisterTraceStores(GetGlobalTraceStoresRundown(), TraceStores);
 }
 
-_Use_decl_annotations_
 VOID
 RundownGlobalTraceStores(
     VOID
@@ -144,7 +141,6 @@ Return Value:
     RundownTraceStores(GetGlobalTraceStoresRundown());
 }
 
-_Use_decl_annotations_
 BOOL
 IsGlobalTraceStoresRundownActive(
     VOID

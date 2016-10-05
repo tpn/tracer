@@ -82,8 +82,8 @@ typedef struct _TRACE_STORE_ADDRESS {
     struct {
 
         //
-        // The time where the new memory map was pushed onto the "prepare
-        // memory map" threadpool work queue.
+        // The time the new memory map was pushed onto the "prepare memory
+        // map" threadpool work queue.
         //
 
         LARGE_INTEGER Requested;                            // 8    40  48
@@ -609,6 +609,10 @@ typedef struct _TRACE_FLAGS {
             ULONG EnableFileFlagWriteThrough:1;
 
             //
+            // (End of flags related to CreateFile().)
+            //
+
+            //
             // When set, indicates the caller does not want to be automatically
             // added to the global trace store rundown list.
             //
@@ -625,7 +629,6 @@ typedef struct _TRACE_FLAGS {
 
         };
     };
-    ULONG Unused1;
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
 typedef struct _TRACE_CONTEXT {
@@ -909,7 +912,8 @@ typedef struct _TRACE_STORE_METADATA_STORES {
 // TraceStoreSession-related functions.
 //
 
-typedef _Success_(return != 0)
+typedef
+_Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_SESSION)(
     _In_                                 PRTL           Rtl,
@@ -1177,11 +1181,9 @@ FORCEINLINE
 _Success_(return != 0)
 BOOL
 ValidateFieldRelocationsArray(
-    _In_ PTRACE_STORE_FIELD_RELOCS FieldRelocations,
-    _Outptr_result_nullonfailure_
-        PUSHORT NumberOfFieldRelocationsElements,
-    _Outptr_result_nullonfailure_
-        PUSHORT MaximumNumberOfInnerFieldRelocationElements
+    _In_  PTRACE_STORE_FIELD_RELOCS FieldRelocations,
+    _Out_ PUSHORT NumberOfFieldRelocationsElements,
+    _Out_ PUSHORT MaximumNumberOfInnerFieldRelocationElements
     )
 /*--
 
