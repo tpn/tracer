@@ -10,8 +10,8 @@ Abstract:
 
     This module implements functionality related to running down a trace stores
     structure.  Rundown refers to walking the doubly-linked list of all trace
-    stores structures and calling CloseTraceStores() on each one, ensuring the
-    truncation logic is applied.
+    stores structures and calling RundownTraceStores() on each one, ensuring the
+    truncation logic is applied where applicable.
 
 --*/
 
