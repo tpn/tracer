@@ -469,6 +469,10 @@ Return Value:
         TraceStore->HasRelocations = TRUE;
     }
 
+    if (Flags.NoTruncate) {
+        TraceStore->NoTruncate = TRUE;
+    }
+
     TraceStore->TraceFlags = Flags;
 
     //
@@ -551,6 +555,14 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return FALSE;
+    }
+
+    //
+    // If the NoTruncate flag has been set on this store, exit.
+    //
+
+    if (TraceStore->NoTruncate) {
+        return TRUE;
     }
 
     EndOfFile.QuadPart = TraceStore->Eof->EndOfFile.QuadPart;
@@ -826,6 +838,15 @@ Return Value:
     }
 
     //
+    // Ensure we haven't been called with a metadata store.
+    //
+
+    if (TraceStore->IsMetadata) {
+        __debugbreak();
+        return;
+    }
+
+    //
     // Close the trace store first before the metadata stores.  This is
     // important because closing the trace store will retire any active memory
     // maps, which will update the underlying MemoryMap->pAddress structures,
@@ -840,6 +861,65 @@ Return Value:
     //
 
     CLOSE_METADATA_STORES();
+
+}
+
+_Use_decl_annotations_
+VOID
+RundownTraceStore(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine runs down a normal trace store.  It is not intended to be
+    called against metadata trace stores.  It will run down the trace store,
+    then rundown the metadata trace stores associated with that trace store.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    //
+    // Ensure we haven't been called with a metadata store.
+    //
+
+    if (TraceStore->IsMetadata) {
+        __debugbreak();
+        return;
+    }
+
+    //
+    // Rundown the trace store first before the metadata stores.  This is
+    // important because closing the trace store will retire any active memory
+    // maps, which will update the underlying MemoryMap->pAddress structures,
+    // which will be backed by the AddressStore, which we can only access as
+    // long as we haven't closed it.
+    //
+
+    RundownStore(TraceStore);
+
+    //
+    // Rundown the metadata stores.
+    //
+
+    RUNDOWN_METADATA_STORES();
 
 }
 

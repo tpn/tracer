@@ -614,6 +614,15 @@ typedef struct _TRACE_FLAGS {
             //
 
             ULONG NoGlobalRundown:1;
+
+            //
+            // When set, the trace store will not be truncated as part of
+            // close or rundown.  This is set internally by metadata stores
+            // that need it and should not be modified.
+            //
+
+            ULONG NoTruncate:1;
+
         };
     };
     ULONG Unused1;
@@ -765,6 +774,7 @@ typedef struct _TRACE_STORE {
             ULONG SetEndOfFileOnClose:1;
             ULONG IsMetadata:1;
             ULONG HasRelocations:1;
+            ULONG NoTruncate:1;
         };
     };
 

@@ -720,12 +720,26 @@ RundownTraceStoresInline(
     }
 
 #define CLOSE_METADATA_STORES()         \
-    CLOSE_METADATA_STORE(MetadataInfo); \
     CLOSE_METADATA_STORE(Allocation);   \
     CLOSE_METADATA_STORE(Relocation);   \
     CLOSE_METADATA_STORE(Address);      \
     CLOSE_METADATA_STORE(Bitmap);       \
-    CLOSE_METADATA_STORE(Info)
+    CLOSE_METADATA_STORE(Info);         \
+    CLOSE_METADATA_STORE(MetadataInfo);
+
+#define RUNDOWN_METADATA_STORE(Name)             \
+    if (TraceStore->##Name##Store) {             \
+        RundownStore(TraceStore->##Name##Store); \
+        TraceStore->##Name##Store = NULL;        \
+    }
+
+#define RUNDOWN_METADATA_STORES()         \
+    RUNDOWN_METADATA_STORE(Allocation);   \
+    RUNDOWN_METADATA_STORE(Relocation);   \
+    RUNDOWN_METADATA_STORE(Address);      \
+    RUNDOWN_METADATA_STORE(Bitmap);       \
+    RUNDOWN_METADATA_STORE(Info);         \
+    RUNDOWN_METADATA_STORE(MetadataInfo);
 
 
 //
