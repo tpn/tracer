@@ -108,7 +108,7 @@ Arguments:
 
     Instance - Unused.
 
-    Context - Supplies a pointer to a PTRACE_STORE.
+    Context - Supplies a pointer to a TRACE_STORE structure.
 
     Work - Unused.
 
