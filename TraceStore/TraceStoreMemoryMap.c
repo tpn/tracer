@@ -135,7 +135,8 @@ Routine Description:
     the current file pointer is).  It is also called to initialize the first
     memory map used by a trace store.
 
-    The routine will query the current file offset
+    The routine will query the current file offset and adjust the file pointer
+    if necessary.
 
 Arguments:
 
@@ -144,9 +145,7 @@ Arguments:
 
 Return Value:
 
-    TRUE on success, FALSE on failure.  Failure can be caused by invalid
-    arugments, or failure of the FileTimeToLocalFileTime() function or
-    Rtl->RtlTimeToSecondsSince1970() function.
+    TRUE on success, FALSE on failure.
 
 --*/
 {
