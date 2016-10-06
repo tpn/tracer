@@ -178,7 +178,7 @@ Return Value:
     // We may not have a stats struct available yet if this is the first
     // call to PrepareNextTraceStoreMemoryMap().  If that's the case, just
     // point the pointer at a dummy one.  This simplifies the rest of the
-    // code in the function.
+    // code in this function.
     //
 
     Stats = TraceStore->Stats;
