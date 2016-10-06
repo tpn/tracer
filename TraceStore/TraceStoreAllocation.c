@@ -24,7 +24,7 @@ TraceStoreAllocateRecords(
     PULARGE_INTEGER RecordSize,
     PULARGE_INTEGER NumberOfRecords
     )
-/*--
+/*++
 
 Routine Description:
 
