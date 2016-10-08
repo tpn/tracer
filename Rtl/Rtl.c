@@ -46,7 +46,7 @@ __C_specific_handler(
 
 #pragma warning(pop)
 
-_Check_return_
+_Use_decl_annotations_
 PVOID
 CopyToMemoryMappedMemory(
     PRTL Rtl,
@@ -59,8 +59,9 @@ CopyToMemoryMappedMemory(
     //
     // Writing to memory mapped memory could raise a STATUS_IN_PAGE_ERROR
     // if there has been an issue with the backing store (such as memory
-    // mapping a file on a network drive, then having the network fail).
-    // Catch such exceptions and return NULL.
+    // mapping a file on a network drive, then having the network fail,
+    // or running out of disk space on the volume).  Catch such exceptions
+    // and return NULL.
     //
 
     __try {
@@ -238,7 +239,7 @@ GetSystemTimerFunctionCallback(
     }
 
     Module = GetModuleHandle(TEXT("kernel32"));
-    if (Module == INVALID_HANDLE_VALUE) {
+    if (!Module || Module == INVALID_HANDLE_VALUE) {
         return FALSE;
     }
 
@@ -249,7 +250,7 @@ GetSystemTimerFunctionCallback(
         );
     } else {
         Module = LoadLibrary(TEXT("ntdll"));
-        if (!Module) {
+        if (!Module || Module == INVALID_HANDLE_VALUE) {
             return FALSE;
         }
         Proc = GetProcAddress(Module, "NtQuerySystemTime");
