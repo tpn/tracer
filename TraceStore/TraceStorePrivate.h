@@ -596,6 +596,16 @@ typedef SAVE_TRACE_STORE_RELOCATION_INFO \
       *PSAVE_TRACE_STORE_RELOCATION_INFO;
 SAVE_TRACE_STORE_RELOCATION_INFO SaveTraceStoreRelocationInfo;
 
+typedef
+_Success_(return != 0)
+BOOL
+(LOAD_TRACE_STORE_RELOCATION_INFO)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef LOAD_TRACE_STORE_RELOCATION_INFO \
+      *PLOAD_TRACE_STORE_RELOCATION_INFO;
+LOAD_TRACE_STORE_RELOCATION_INFO LoadTraceStoreRelocationInfo;
+
 //
 // TraceStoreContext-related functions.
 //

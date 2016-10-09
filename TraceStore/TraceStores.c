@@ -169,9 +169,11 @@ Return Value:
 
     //
     // If field relocations have been provided, initialize them now.
+    // We only do this if we're not readonly; if we're readonly, relocation
+    // information is loaded from the :relocation metadata store.
     //
 
-    if (ARGUMENT_PRESENT(FieldRelocations)) {
+    if (!Readonly && ARGUMENT_PRESENT(FieldRelocations)) {
         USHORT Outer;
         USHORT Inner;
         USHORT MaxInner;
