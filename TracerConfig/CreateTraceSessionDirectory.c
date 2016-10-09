@@ -7,6 +7,7 @@
 // lengths.  (i.e. the format string is not used in any way other than
 // having its Length/MaximumLength fields queried.)
 //
+
 #define TRACE_SESSION_DIRECTORY_EXAMPLE_FORMAT L"YYYY-MM-DD_hhmmss.SSS"
 
 static CONST UNICODE_STRING TraceSessionDirectoryExampleFormat = \
