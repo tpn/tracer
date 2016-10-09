@@ -432,7 +432,21 @@ SubmitFirstMemoryMap:
         }
     }
 
-    if (!TraceStore->IsReadonly) {
+    if (TraceStore->IsReadonly) {
+
+        //
+        // TraceStore is readonly, try load relocation information.
+        //
+
+        if (!LoadTraceStoreRelocationInfo(TraceStore)) {
+            return FALSE;
+        }
+
+    } else {
+
+        //
+        // TraceStore is not readonly.
+        //
 
         //
         // Copy time.

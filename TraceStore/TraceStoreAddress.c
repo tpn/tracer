@@ -55,6 +55,10 @@ Return Value:
     ULARGE_INTEGER AddressRecordSize = { sizeof(Address) };
     ULARGE_INTEGER NumberOfAddressRecords = { 1 };
 
+    //
+    // Validate arguments.
+    //
+
     if (!ARGUMENT_PRESENT(TraceStore)) {
         return FALSE;
     }

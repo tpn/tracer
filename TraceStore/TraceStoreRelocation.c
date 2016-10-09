@@ -51,7 +51,6 @@ Return Value:
 --*/
 {
     USHORT Index;
-    PRTL Rtl;
     PTRACE_STORE_RELOC pReloc;
     PTRACE_STORE_RELOC Reloc;
     PTRACE_STORE_FIELD_RELOC DestFieldReloc;
@@ -105,8 +104,6 @@ Return Value:
         )
     );
 
-    Rtl = TraceStore->Rtl;
-
     BaseAddress = TraceStore->RelocationStore->AllocateRecords(
         TraceStore->TraceContext,
         TraceStore->RelocationStore,
@@ -155,6 +152,147 @@ Return Value:
         return FALSE;
     }
 
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+LoadTraceStoreRelocationInfo(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine loads any relocation information associated with the trace
+    store from the :relocation metadata store.  It is called in the final
+    stages of binding a trace store to a trace context.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  TRUE doesn't necessarily imply that
+    relocation information was loaded; check TraceStore->HasRelocations for
+    this information.
+
+--*/
+{
+    PTRACE_STORE_RELOC pReloc;
+    PTRACE_STORE_RELOC Reloc;
+    ULARGE_INTEGER AllocationSize;
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    PVOID BaseAddress;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    //
+    // Make sure we're not a metadata store.
+    //
+
+    if (TraceStore->IsMetadata) {
+        return FALSE;
+    }
+
+    //
+    // Make sure we're readonly and that a relocation store has been configured.
+    //
+
+    if (!TraceStore->IsReadonly) {
+        return FALSE;
+    }
+
+    if (!TraceStore->RelocationStore) {
+        return FALSE;
+    }
+
+    //
+    // TraceStore->Reloc will be initialized to point at the base address of
+    // the :relocation data.  This will be sufficient to check if the store has
+    // any field relocations.
+    //
+
+    pReloc = TraceStore->Reloc;
+    if (!pReloc) {
+        return FALSE;
+    }
+
+    if (pReloc->NumberOfRelocations == 0) {
+
+        //
+        // Invariant check: HasRelocations shouldn't be set here.
+        //
+
+        if (TraceStore->HasRelocations) {
+            __debugbreak();
+        }
+
+        return TRUE;
+    }
+
+    //
+    // Calculate the total size required for the TRACE_STORES_RELOC structure,
+    // plus a copy of the trailing TRACE_STORE_FIELD_RELOC array.
+    //
+
+    AllocationSize.QuadPart = (
+        sizeof(TRACE_STORE_RELOC) + (
+            pReloc->NumberOfRelocations *
+            sizeof(TRACE_STORE_FIELD_RELOC)
+        )
+    );
+
+    BaseAddress = TraceStore->RelocationStore->AllocateRecords(
+        TraceStore->TraceContext,
+        TraceStore->RelocationStore,
+        &AllocationSize,
+        &NumberOfRecords
+    );
+
+    if (!BaseAddress) {
+        return FALSE;
+    }
+
+    Reloc = (PTRACE_STORE_RELOC)BaseAddress;
+
+    //
+    // These two pointers should align.
+    //
+
+    if (Reloc != pReloc) {
+        __debugbreak();
+    }
+
+    //
+    // The only thing we need to do to complete the "loading" of relocation
+    // information is initialize the pointer to the first field relocations
+    // element.  We can't adjust pReloc->Relocations here as the backing memory
+    // map is read-only.
+    //
+
+    TraceStore->BaseFieldRelocations = (PTRACE_STORE_FIELD_RELOC)(
+        RtlOffsetToPointer(
+            BaseAddress,
+            sizeof(TRACE_STORE_RELOC)
+        )
+    );
+
+    //
+    // Update the pReloc pointer and indicate that we have field relocation
+    // information.
+    //
+
+    TraceStore->pReloc = Reloc;
+    TraceStore->HasRelocations = TRUE;
 
     return TRUE;
 }

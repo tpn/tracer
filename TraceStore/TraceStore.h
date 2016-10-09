@@ -832,6 +832,19 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC pReloc;
 
     //
+    // The actual underlying field relocations array is pointed to by the
+    // pReloc->Relocations field; however, this pointer will not be valid
+    // when re-loaded persisted :relocation metadata from the metadata store.
+    // As we can't write to the underlying memory map to adjust the pointer,
+    // we keep a separate pointer here to point to the field relocations array.
+    // This will only have a value when TraceStore->IsReadonly == TRUE and
+    // relocation information has been loaded (TraceStore->HasRelocations).
+    // The number of elements is governed by pReloc->NumberOfRelocations.
+    //
+
+    PTRACE_STORE_FIELD_RELOC BaseFieldRelocations;
+
+    //
     // For trace stores, the pointers below will point to the metadata trace
     // store memory maps.  Eof, Time, Stats and Totals are convenience pointers
     // into the Info struct.  For metadata stores, Info will be pointed to the
