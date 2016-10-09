@@ -686,6 +686,7 @@ ReleasePrevTraceStoreMemoryMapCallback(
     //
     // Ensure Context is non-NULL.
     //
+    
     if (!Context) {
         return;
     }
