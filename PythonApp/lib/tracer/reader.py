@@ -325,6 +325,11 @@ AllocationDataType = np.dtype([
     ('RecordSize', np.uint64),
 ], align=True)
 
+TotalsDataType = np.dtype([
+    ('NumberOfAllocations', np.uint64),
+    ('AllocationSize', np.uint64),
+], align=True)
+
 InfoDataType = np.dtype([
     # TRACE_STORE_EOF
     ('EndOfFile',                   np.uint64),
@@ -353,12 +358,17 @@ InfoDataType = np.dtype([
     ('StartTimeLocalMilliseconds',  np.int16),
     ('SecondsSince1970',            np.uint64),
     ('MicrosecondsSince1970',       np.uint64),
-    ('PerformanceCount',            np.uint64),
+    ('PerformanceCounter',          np.uint64),
     # TRACE_STORE_STATS
     ('DroppedRecords',              np.uint32),
     ('ExhaustedFreeMemoryMaps',     np.uint32),
     ('AllocationsOutpacingNextMemoryMapPreparation', np.uint32),
     ('PreferredAddressUnavailable', np.uint32),
+    # TRACE_STORE_TOTALS
+    ('TotalNumberOfAllocations',    np.uint64),
+    ('TotalAllocationSize',         np.uint64),
+], align=True)
+
 ], align=True)
 
 DefaultHashedStringColumns = [
