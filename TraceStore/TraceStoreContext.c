@@ -455,6 +455,16 @@ SubmitFirstMemoryMap:
 
             Eof->EndOfFile.QuadPart = 0;
             SecureZeroMemory(Totals, sizeof(*Totals));
+
+            //
+            // Initialize relocation information if present.
+            //
+
+            if (TraceStore->HasRelocations) {
+                if (!SaveTraceStoreRelocationInfo(TraceStore)) {
+                    return FALSE;
+                }
+            }
         }
     }
 
