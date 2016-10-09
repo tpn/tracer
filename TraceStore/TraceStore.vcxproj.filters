@@ -33,6 +33,9 @@
     <ClInclude Include="TraceStorePrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TraceStoreIndex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TraceStoresGlobalRundown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceStoreRelocation.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

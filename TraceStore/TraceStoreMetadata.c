@@ -158,7 +158,11 @@ InitializeRelocationMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    return ZeroInitializeMetadata(MetadataStore);
+    if (!MetadataStore->HasRelocations) {
+        return ZeroInitializeMetadata(MetadataStore);
+    } else {
+        return SaveTraceStoreRelocationInfo(MetadataStore->TraceStore);
+    }
 }
 
 _Use_decl_annotations_

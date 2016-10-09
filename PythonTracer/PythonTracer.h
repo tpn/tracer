@@ -455,8 +455,11 @@ PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
 PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
     PythonPathTableEntryRelocations[];
 
+PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOC \
+    PythonTraceEventRelocations[];
 
 PYTHON_TRACER_DATA TRACE_STORE_FIELD_RELOCS \
     PythonTracerTraceStoreRelocations[];
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

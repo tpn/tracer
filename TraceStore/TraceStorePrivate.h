@@ -583,6 +583,20 @@ typedef RECORD_TRACE_STORE_ALLOCATION *PRECORD_TRACE_STORE_ALLOCATION;
 RECORD_TRACE_STORE_ALLOCATION RecordTraceStoreAllocation;
 
 //
+// TraceStoreRelocation-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(SAVE_TRACE_STORE_RELOCATION_INFO)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef SAVE_TRACE_STORE_RELOCATION_INFO \
+      *PSAVE_TRACE_STORE_RELOCATION_INFO;
+SAVE_TRACE_STORE_RELOCATION_INFO SaveTraceStoreRelocationInfo;
+
+//
 // TraceStoreContext-related functions.
 //
 

@@ -2299,16 +2299,24 @@ IsAligned(
 #define TRY_SSE42_ALIGNED __try
 #define TRY_SSE42_UNALIGNED __try
 
+#define TRY_MAPPED_MEMORY_OP __try
+
 #define CATCH_EXCEPTION_ILLEGAL_INSTRUCTION __except(     \
     GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ? \
         EXCEPTION_EXECUTE_HANDLER :                       \
         EXCEPTION_CONTINUE_SEARCH                         \
     )
 
-#define CATCH_EXCEPTION_ACCESS_VIOLATION __except(        \
-    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?    \
-        EXCEPTION_EXECUTE_HANDLER :                       \
-        EXCEPTION_CONTINUE_SEARCH                         \
+#define CATCH_EXCEPTION_ACCESS_VIOLATION __except(     \
+    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? \
+        EXCEPTION_EXECUTE_HANDLER :                    \
+        EXCEPTION_CONTINUE_SEARCH                      \
+    )
+
+#define CATCH_STATUS_IN_PAGE_ERROR __except(     \
+    GetExceptionCode() == STATUS_IN_PAGE_ERROR ? \
+        EXCEPTION_EXECUTE_HANDLER :              \
+        EXCEPTION_CONTINUE_SEARCH                \
     )
 
 ////////////////////////////////////////////////////////////////////////////////

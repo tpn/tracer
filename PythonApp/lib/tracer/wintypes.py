@@ -19,10 +19,18 @@ SIZE_T = c_size_t
 ULONG_PTR = SIZE_T
 LONG_PTR = SIZE_T
 DWORD_PTR = SIZE_T
+PSHORT = POINTER(SHORT)
+PUSHORT = POINTER(USHORT)
 PLONG = POINTER(LONG)
 PULONG = POINTER(ULONG)
+LONGLONG = c_int64
+PLONGLONG = POINTER(LONGLONG)
+ULONGLONG = c_uint64
+PULONGLONG = POINTER(ULONGLONG)
 PVOID = c_void_p
 PPVOID = POINTER(PVOID)
+PSTR = c_char_p
+PCSTR = c_char_p
 PWSTR = c_wchar_p
 PCWSTR = c_wchar_p
 PDWORD = POINTER(DWORD)
@@ -105,6 +113,15 @@ class UNICODE_STRING(Structure):
     ]
 PUNICODE_STRING = POINTER(UNICODE_STRING)
 PPUNICODE_STRING = POINTER(PUNICODE_STRING)
+
+class STRING(Structure):
+    _fields_ = [
+        ('Length', USHORT),
+        ('MaximumLength', USHORT),
+        ('Buffer', PSTR),
+    ]
+PSTRING = POINTER(STRING)
+PPSTRING = POINTER(PSTRING)
 
 class _OVERLAPPED_INNER_STRUCT(Structure):
     _fields_ = [
@@ -261,6 +278,27 @@ class RTL_DYNAMIC_HASH_TABLE(Structure):
     ]
 PRTL_DYNAMIC_HASH_TABLE = POINTER(RTL_DYNAMIC_HASH_TABLE)
 
+class PREFIX_TABLE_ENTRY(Structure):
+    pass
+PPREFIX_TABLE_ENTRY = POINTER(PREFIX_TABLE_ENTRY)
+
+class PREFIX_TABLE(Structure):
+    pass
+PPREFIX_TABLE = POINTER(PREFIX_TABLE)
+
+PREFIX_TABLE_ENTRY._fields_ = [
+    ('NodeTypeCode', SHORT),
+    ('NameLength', SHORT),
+    ('NextPrefixTree', PPREFIX_TABLE_ENTRY),
+    ('Links', RTL_SPLAY_LINKS),
+    ('Prefix', PSTRING),
+]
+
+PREFIX_TABLE._fields_ = [
+    ('NodeTypeCode', SHORT),
+    ('NameLength', SHORT),
+    ('NextPrefixTree', PPREFIX_TABLE_ENTRY),
+]
 
 #===============================================================================
 # Kernel32

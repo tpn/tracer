@@ -323,7 +323,7 @@ Arguments:
 
     TraceFlags - Supplies a pointer to a TRACE_FLAGS structure to be used when
         initializing the trace store.  This is used to control things like
-        whether or not the
+        whether or not the trace stores are readonly or compressed.
 
     Reloc - Supplies a pointer to a TRACE_STORE_RELOC structure that contains
         field relocation information for this trace store.  If the store does
@@ -403,8 +403,6 @@ Return Value:
 
     Flags = *TraceFlags;
 
-    TraceStore->Reloc = Reloc;
-
     //
     // Initialize the paths of the metadata stores first.
     //
@@ -465,12 +463,13 @@ Return Value:
         TraceStore->NoPrefaulting = TRUE;
     }
 
-    if (Reloc->NumberOfRelocations > 0) {
-        TraceStore->HasRelocations = TRUE;
-    }
-
     if (Flags.NoTruncate) {
         TraceStore->NoTruncate = TRUE;
+    }
+
+    if (Reloc->NumberOfRelocations > 0) {
+        TraceStore->HasRelocations = TRUE;
+        TraceStore->pReloc = Reloc;
     }
 
     TraceStore->TraceFlags = Flags;

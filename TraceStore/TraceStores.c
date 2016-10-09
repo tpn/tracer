@@ -376,6 +376,8 @@ Return Value:
             return FALSE;
         }
 
+        TraceStore->TraceStore = TraceStore;
+
         TraceStore->IsReadonly = Readonly;
         TraceStore->SequenceId = Index;
         TraceStore->TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
