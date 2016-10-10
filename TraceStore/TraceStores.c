@@ -419,7 +419,7 @@ Return Value:
         }
     }
 
-    if (!TraceFlags->NoGlobalRundown) {
+    if (!Readonly && !TraceFlags->NoGlobalRundown) {
         Success = RegisterGlobalTraceStores(TraceStores);
     }
 
