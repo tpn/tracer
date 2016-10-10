@@ -11,7 +11,8 @@ Abstract:
     This module implements functionality related to a collection of trace
     store structures, referred to as "trace stores".  Routines are provided
     for getting the allocation size of a TRACE_STORES structure as well as
-    initializing and closing the structure.
+    initializing both normal and readonly versions, as well as closing the
+    structure.
 
 --*/
 
@@ -423,6 +424,68 @@ Return Value:
     }
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeTraceStoresReadonly(
+    PRTL Rtl,
+    PWSTR BaseDirectory,
+    PTRACE_STORES TraceStores,
+    PULONG SizeOfTraceStores,
+    PTRACE_FLAGS TraceFlags
+    )
+/*++
+
+Routine Description:
+
+    This routine initializes a readonly TRACE_STORES structure from an existing
+    base directory.  It is a convenience method that is equivalent to calling
+    InitializeTraceStores() with TraceFlags->Readonly set to TRUE and the
+    InitialFileSizes set to a NULL pointer.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    BaseDirectory - Supplies a pointer to a fully-qualified, NULL-terminated
+        wide character string representing the base directory to load the trace
+        stores from.  The directory must exist and all expected stores must also
+        exist.
+
+    TraceStores - Supplies a pointer to a TRACE_STORES structure to initialize.
+        The caller is responsible for allocating a sufficiently-sized buffer,
+        and must provide the size of the buffer via the SizeOfTraceStores
+        parameter.
+
+    SizeOfTraceStores - Supplies a pointer to a ULONG that contains the size
+        of the buffer pointed to by the TraceStores parameter, in bytes.  The
+        actual size of the buffer used will be written to this variable when
+        the routine completes.
+
+    TraceFlags - Supplies a pointer to a TRACE_FLAGS structure, which provides
+        additional information about how the trace stores are to be initialized.
+        The Readonly flag will automatically be set by this routine before the
+        flags are passed on to InitializeTraceStores().
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  The required size of the TraceStores
+    buffer can be obtained by passing in a NULL value for TraceStores.  The
+    size will be written to the SizeOfTraceStores variable and FALSE will be
+    returned.
+
+--*/
+{
+    TraceFlags->Readonly = TRUE;
+
+    return InitializeTraceStores(Rtl,
+                                 BaseDirectory,
+                                 TraceStores,
+                                 SizeOfTraceStores,
+                                 NULL,
+                                 TraceFlags,
+                                 NULL);
 }
 
 _Use_decl_annotations_
