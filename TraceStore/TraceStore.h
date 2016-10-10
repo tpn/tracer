@@ -966,6 +966,19 @@ TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
 typedef
 _Success_(return != 0)
 BOOL
+(INITIALIZE_TRACE_STORES_READONLY)(
+    _In_        PRTL            Rtl,
+    _In_        PWSTR           BaseDirectory,
+    _Inout_opt_ PTRACE_STORES   TraceStores,
+    _Inout_     PULONG          SizeOfTraceStores,
+    _In_        PTRACE_FLAGS    TraceFlags
+    );
+typedef INITIALIZE_TRACE_STORES_READONLY *PINITIALIZE_TRACE_STORES_READONLY;
+TRACE_STORE_API INITIALIZE_TRACE_STORES_READONLY InitializeTraceStoresReadonly;
+
+typedef
+_Success_(return != 0)
+BOOL
 (CLOSE_TRACE_STORES)(
     _In_ PTRACE_STORES TraceStores
     );
