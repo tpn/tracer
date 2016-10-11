@@ -20,13 +20,33 @@ Abstract:
 
 #include "stdafx.h"
 
-PALLOCATOR GlobalAllocator;
+PALLOCATOR GlobalAllocator = NULL;
 
 _Use_decl_annotations_
 BOOLEAN
 CreateAndInitializeDefaultHeapAllocator(
-    _Out_ PPALLOCATOR AllocatorPointer
+    PPALLOCATOR AllocatorPointer
     )
+/*++
+
+Routine Description:
+
+    This routine creates a new heap via HeapCreate(), allocates sufficient
+    space for an ALLOCATOR structure, then initializes the structure via the
+    default heap allocation methods (e.g. DefaultHeapMalloc, etc) from the
+    TracerHeap static library.
+
+Arguments:
+
+    AllocatorPointer - Supplies a pointer to a variable that will receive
+        the address of the newly-created and initialized ALLOCATOR structure
+        if the routine was successful, NULL otherwise.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
 {
     HANDLE HeapHandle;
     PALLOCATOR Allocator;
@@ -88,6 +108,63 @@ CreateAndInitializeDefaultHeapAllocator(
     *AllocatorPointer = Allocator;
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+GetOrCreateGlobalAllocator(
+    PPALLOCATOR AllocatorPointer
+    )
+/*++
+
+Routine Description:
+
+    Upon first invocation, this routine will create and initialize a new heap
+    allocator structure via CreateAndInitializeDefaultHeapAllocator() and then
+    return the value to the caller.
+
+    Subsequent invocations will return the same structure.
+
+    No synchronization is provided by this routine, so the caller must ensure
+    multiple threads aren't attempting to call this method simultaneously.
+
+Arguments:
+
+    AllocatorPointer - Supplies a pointer to a variable that will receive
+        the address of the global ALLOCATOR structure, or NULL if an error
+        has occurred.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(AllocatorPointer)) {
+        return FALSE;
+    }
+
+
+    //
+    // Create and initialize the global allocator if needed.
+    //
+
+    if (!GlobalAllocator) {
+        CreateAndInitializeDefaultHeapAllocator(&GlobalAllocator);
+    }
+
+    //
+    // Update the caller's pointer and return TRUE if the allocator is non-NULL.
+    //
+
+    *AllocatorPointer = GlobalAllocator;
+
+    return (GlobalAllocator != NULL);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
