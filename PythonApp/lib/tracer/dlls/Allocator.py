@@ -11,30 +11,30 @@ from ctypes import (
 )
 
 from ..wintypes import (
+    BOOL,
+    ULONG,
     PVOID,
     SIZE_T,
     HANDLE,
 )
 
-from .util import NullObject
-
 #===============================================================================
 # Function Prototypes
 #===============================================================================
 
-MALLOC = CFUNCTYPE(PVOID, [ PVOID, SIZE_T ])
+MALLOC = CFUNCTYPE(PVOID, PVOID, SIZE_T)
 PMALLOC = POINTER(MALLOC)
 
-CALLOC = CFUNCTYPE(PVOID, [ PVOID, SIZE_T, SIZE_T ])
+CALLOC = CFUNCTYPE(PVOID, PVOID, SIZE_T, SIZE_T)
 PCALLOC = POINTER(CALLOC)
 
-REALLOC = CFUNCTYPE(PVOID, [ PVOID, PVOID, SIZE_T ])
+REALLOC = CFUNCTYPE(PVOID, PVOID, PVOID, SIZE_T)
 PREALLOC = POINTER(REALLOC)
 
-FREE = CFUNCTYPE(None, [ PVOID, PVOID ])
+FREE = CFUNCTYPE(None, PVOID, PVOID)
 PFREE = POINTER(FREE)
 
-FREE_POINTER = CFUNCTYPE(None, [ PVOID, PVOID ])
+FREE_POINTER = CFUNCTYPE(None, PVOID, PVOID)
 PFREE_POINTER = POINTER(FREE_POINTER)
 
 class ALLOCATOR(Structure):
@@ -42,10 +42,10 @@ class ALLOCATOR(Structure):
 PALLOCATOR = POINTER(ALLOCATOR)
 PPALLOCATOR = POINTER(PALLOCATOR)
 
-INITIALIZE_ALLOCATOR = CFUNCTYPE(BOOL, [ PALLOCATOR ])
+INITIALIZE_ALLOCATOR = CFUNCTYPE(BOOL, PALLOCATOR)
 PINITIALIZE_ALLOCATOR = POINTER(INITIALIZE_ALLOCATOR)
 
-DESTROY_ALLOCATOR = CFUNCTYPE(None, [ PALLOCATOR ])
+DESTROY_ALLOCATOR = CFUNCTYPE(None, PALLOCATOR)
 PDESTROY_ALLOCATOR = POINTER(DESTROY_ALLOCATOR)
 
 class ALLOCATOR_FLAGS(Structure):
@@ -68,7 +68,7 @@ class _ALLOCATOR_CONTEXT2(Union):
     ]
 
 ALLOCATOR._fields_ = [
-    ('Context', _ALLOCATOR_CONTEXT),
+    ('Context', _ALLOCATOR_CONTEXT1),
     ('Malloc', PMALLOC),
     ('Calloc', PCALLOC),
     ('Realloc', PREALLOC),
@@ -83,5 +83,8 @@ ALLOCATOR._fields_ = [
     ('Flags', ALLOCATOR_FLAGS),
     ('NumberOfThreads', ULONG),
 ]
+
+GET_OR_CREATE_GLOBAL_ALLOCATOR = CFUNCTYPE(BOOL, PPALLOCATOR)
+
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :
