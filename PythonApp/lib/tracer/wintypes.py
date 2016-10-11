@@ -55,8 +55,17 @@ TP_CALLBACK_PRIORITY_INVALID = 3
 TP_CALLBACK_PRIORITY_COUNT = TP_CALLBACK_PRIORITY_INVALID
 
 #===============================================================================
-# Classes
+# Classes/Structures
 #===============================================================================
+
+class PROCESSOR_NUMBER(Structure):
+    _fields_ = [
+        ('Group', WORD),
+        ('Number', BYTE),
+        ('Reserved', BYTE),
+    ]
+PPROCESSOR_NUMBER = POINTER(PROCESSOR_NUMBER)
+
 class GUID(Structure):
     _fields_ = [
         ('Data1',   LONG),
