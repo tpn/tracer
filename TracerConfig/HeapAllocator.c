@@ -155,7 +155,16 @@ Return Value:
     //
 
     if (!GlobalAllocator) {
-        CreateAndInitializeDefaultHeapAllocator(&GlobalAllocator);
+
+        if (CreateAndInitializeDefaultHeapAllocator(&GlobalAllocator)) {
+
+            //
+            // If the call succeeded, disable the destroy allocator function
+            // pointer to prevent callers from destroying the global allocator.
+            //
+
+            GlobalAllocator->Destroy = NULL;
+        }
     }
 
     //

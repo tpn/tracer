@@ -2,15 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{B1FAB504-C337-4440-B0C8-01B4B736D7CC}</UniqueIdentifier>
+      <UniqueIdentifier>{60D1C3A6-9B4C-4BA5-B3AE-1BE53C04CAD2}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{A3DD3FD5-C7B0-44EA-BC78-54E1237732CF}</UniqueIdentifier>
+      <UniqueIdentifier>{C283F0D5-85F7-4E7E-BB55-24CAE4A67FA4}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
     <Filter Include="Resource Files">
-      <UniqueIdentifier>{655DD96C-4829-417C-BEA6-44E9F631B067}</UniqueIdentifier>
+      <UniqueIdentifier>{E0E75927-2AB8-4C05-BAFF-BCE6BA3BC170}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
@@ -48,9 +48,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HeapAllocator.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
