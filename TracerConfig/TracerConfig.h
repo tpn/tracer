@@ -16,38 +16,69 @@ Abstract:
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef _TRACER_CONFIG_INTERNAL_BUILD
 
 //
 // This is an internal build of the TracerConfig component.
 //
 
+#ifdef _TRACER_CONFIG_DLL_BUILD
+
+//
+// This is the DLL build.
+//
+
 #define TRACER_CONFIG_API __declspec(dllexport)
 #define TRACER_CONFIG_DATA extern __declspec(dllexport)
+
+#else
+
+//
+// This is the static library build.
+//
+
+#define TRACER_CONFIG_API
+#define TRACER_CONFIG_DATA extern
+
+#endif
 
 #include "stdafx.h"
 
 #else
 
 //
-// We're being included by an external component.
+// We're being included by another project.
 //
 
-#ifdef _TRACER_CONFIG_DLL
-#define TRACER_CONFIG_API __declspec(dllimport)
-#define TRACER_CONFIG_DATA extern __declspec(dllimport)
-#else
+#ifdef _TRACER_CONFIG_STATIC_LIB
+
+//
+// We're being included by another project as a static library.
+//
+
 #define TRACER_CONFIG_API
 #define TRACER_CONFIG_DATA extern
+
+#else
+
+//
+// We're being included by another project that wants to use us as a DLL.
+//
+
+#define TRACER_CONFIG_API __declspec(dllimport)
+#define TRACER_CONFIG_DATA extern __declspec(dllimport)
+
 #endif
 
 #include "../Rtl/Rtl.h"
 
 #endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#pragma once
 
 //
 // Constants.
