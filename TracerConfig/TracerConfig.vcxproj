@@ -68,14 +68,14 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>TracerHeapLib.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
       <ModuleDefinitionFile Condition="'$(Configuration)' != 'Debug'">TracerConfig.def</ModuleDefinitionFile>
       <ModuleDefinitionFile Condition="'$(Configuration)' == 'Debug'">TracerConfigDebug.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CONFIG_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_CONFIG_INTERNAL_BUILD;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -89,6 +89,7 @@
     <ClCompile Include="Allocation.c" />
     <ClCompile Include="CreateTraceSessionDirectory.c" />
     <ClCompile Include="DestroyTracerConfig.c" />
+    <ClCompile Include="HeapAllocator.c" />
     <ClCompile Include="InitializeTracerConfig.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>

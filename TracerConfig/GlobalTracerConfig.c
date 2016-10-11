@@ -51,7 +51,7 @@ __Free(
 }
 
 _Use_decl_annotations_
-BOOLEAN
+BOOL
 CreateGlobalTraceSessionDirectory(
     PPUNICODE_STRING Directory
     )
@@ -63,7 +63,7 @@ CreateGlobalTraceSessionDirectory(
 }
 
 _Use_decl_annotations_
-BOOLEAN
+BOOL
 InitializeGlobalTracerConfig(VOID)
 {
     PTRACER_CONFIG TracerConfig;
@@ -89,6 +89,40 @@ InitializeGlobalTracerConfig(VOID)
     }
 
     GlobalTracerConfig = TracerConfig;
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+GetGlobalTracerConfig(
+    PPTRACER_CONFIG TracerConfig
+    )
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer up front.
+    //
+
+    *TracerConfig = NULL;
+
+    //
+    // If GlobalTracerConfig hasn't been initialized, return FALSE.  Otherwise,
+    // update the caller's pointer and return TRUE for success.
+    //
+
+    if (!GlobalTracerConfig) {
+        return FALSE;
+    }
+
+    *TracerConfig = GlobalTracerConfig;
 
     return TRUE;
 }

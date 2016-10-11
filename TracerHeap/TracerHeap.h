@@ -4,30 +4,12 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    StringTable.h
+    TracerHeap.h
 
 Abstract:
 
-    This is the main header file for the StringTable component.  It defines
+    This is the main header file for the TracerHeap component.  It defines
     structures and functions related to the implementation of the component.
-
-    The main structures are the STRING_ARRAY structure, which is used by
-    callers of this component to indicate the set of strings they'd like to
-    add to the string table, and the STRING_TABLE structure, which is the main
-    data structure used by this component.
-
-    Functions are provided for creating, destroying and searching for whether
-    or not there is a prefix string for a given search string present within a
-    table.
-
-    The design is optimized for relatively short strings (less than or equal to
-    16 chars), and relatively few of them (less than or equal to 16).  These
-    restrictive size constraints facilitate aggressive SIMD optimizations when
-    searching for the strings within the table, with the goal to minimize the
-    maximum possible latency incurred by the lookup mechanism.  The trade-off
-    is usability and flexibility -- two things which can be better served by
-    prefix trees if the pointer-chasing behavior of said data structures can
-    be tolerated.
 
 --*/
 
@@ -36,7 +18,7 @@ Abstract:
 #ifdef _TRACER_HEAP_INTERNAL_BUILD
 
 //
-// This is an internal build of the StringTable component.
+// This is an internal build of the TracerHeap component.
 //
 
 #ifdef _TRACER_HEAP_DLL_BUILD
