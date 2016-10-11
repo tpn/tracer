@@ -25,6 +25,91 @@ from .commandinvariant import (
 )
 
 #===============================================================================
+# Imports
+#===============================================================================
+class TracerCommand(InvariantAwareCommand):
+
+    def prompt_for_directory(self, activity_name,
+                                   success_filename,
+                                   base_directory=None,
+                                   directory_option_name=None):
+
+        if self.has_parent:
+            raise CommandError(
+                "--directory argument needs to be provided when "
+                "--parent-pid is specified"
+            )
+
+        from .path import join, isdir, isfile, basename
+        from .util import is_win32, file_timestamps, yes_no_quit
+        from os import listdir
+
+        out = self._out
+        conf = self.conf
+        verbose = self._verbose
+
+        success = success_filename
+        base = base_directory
+        if not base:
+            base = conf.base_output_dir
+
+        optname = directory_option_name
+        if not optname:
+            optname = '--directory'
+
+        paths = [ join(base, p) for p in listdir(base) ]
+        dirs = [ d for d in paths if isdir(d) ]
+        dirs = [ d for d in dirs if not isfile(join(d, success)) ]
+        latest_dirs = file_timestamps(dirs)
+        if not latest_dirs:
+            fmt = (
+                "No suitable directories found within %s.  Try the %s "
+                "option to use a directory outside of the default area."
+            )
+            msg = fmt % (base, optname)
+            return
+
+        verbose("Found %d output directories." % len(latest_dirs))
+
+        ostream = self.ostream
+        estream = self.estream
+        istream = self.istream
+        fmt = "%s %s? [y/n/q] " % (activity_name, '%s')
+        errmsg = "\nSorry, I didn't get that.\n"
+
+        found = None
+        for latest_dir in latest_dirs:
+            path = latest_dir.path
+            name = basename(path)
+            prompt = fmt % name
+            while True:
+                ostream.write(prompt)
+                response = yes_no_quit(istream)
+                if response:
+                    break
+                estream.write(errmsg)
+
+            if response == 'y':
+                found = path
+                break
+            elif response == 'q':
+                out("Quitting.")
+                self.returncode = 1
+                return
+
+        if not found:
+            fmt = (
+                "Sorry, no more directories left.  Try the %s option to use "
+                "a directory outside of %s."
+            )
+            msg = fmt % (optname, base)
+            out(msg)
+            return
+
+        return path
+
+
+#===============================================================================
 # Commands
 #===============================================================================
 

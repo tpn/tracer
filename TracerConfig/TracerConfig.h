@@ -317,7 +317,7 @@ _Check_return_
 PTRACER_CONFIG
 (INITIALIZE_TRACER_CONFIG)(
     _In_ PALLOCATOR Allocator,
-    _In_ PUNICODE_STRING RegistryPath
+    _In_opt_ PUNICODE_STRING RegistryPath
     );
 typedef INITIALIZE_TRACER_CONFIG *PINITIALIZE_TRACER_CONFIG;
 TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
@@ -325,9 +325,17 @@ TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
 typedef
 _Success_(return != 0)
 _Check_return_
-BOOLEAN
+BOOL
 (INITIALIZE_GLOBAL_TRACER_CONFIG)(VOID);
 typedef INITIALIZE_GLOBAL_TRACER_CONFIG *PINITIALIZE_GLOBAL_TRACER_CONFIG;
+
+typedef
+_Success_(return != 0)
+BOOL
+(GET_GLOBAL_TRACER_CONFIG)(
+    _Out_ PPTRACER_CONFIG TracerConfig
+    );
+typedef GET_GLOBAL_TRACER_CONFIG *PGET_GLOBAL_TRACER_CONFIG;
 
 typedef
 VOID
@@ -342,9 +350,16 @@ VOID
 (DESTROY_GLOBAL_TRACER_CONFIG)(VOID);
 typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
 
+//
+// TracerHeap-related functions.  We export these so that modules don't have to
+// load TracerHeap first in order to create/initialize an allocator to pass to
+// InitializeTracerConfig().
+//
 
-#define TRACER_CONFIG_POOL_TAG ((ULONG)'pCrT')
-#define TRACER_CONFIG_POOL_PRIORITY LowPoolPriority
+TRACER_CONFIG_API CREATE_AND_INITIALIZE_ALLOCATOR \
+    CreateAndInitializeDefaultHeapAllocator;
+
+TRACER_CONFIG_API GET_OR_CREATE_GLOBAL_ALLOCATOR GetOrCreateGlobalAllocator;
 
 #ifdef __cplusplus
 }; // extern "C" {

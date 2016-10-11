@@ -47,5 +47,8 @@
     <ClCompile Include="Allocation.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HeapAllocator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

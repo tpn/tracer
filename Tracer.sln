@@ -55,6 +55,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracedPythonSessionLib", "T
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerConfig", "TracerConfig\TracerConfig.vcxproj", "{76F2056F-6A65-4BA3-A49F-3CBF5D1E2CDF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142} = {4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}
+		{91695EDE-DFC2-4364-A959-3C8A0870507A} = {91695EDE-DFC2-4364-A959-3C8A0870507A}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerHeap", "TracerHeap\TracerHeap.vcxproj", "{40A4B73F-F9AA-407A-91EB-5D2D092DCC30}"
 	ProjectSection(ProjectDependencies) = postProject
