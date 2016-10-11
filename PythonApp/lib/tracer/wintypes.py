@@ -43,6 +43,7 @@ PTP_CLEANUP_GROUP = PVOID
 PTP_CLEANUP_GROUP_CANCEL_CALLBACK = PVOID
 TP_CALLBACK_PRIORITY = DWORD
 PACTIVATION_CONTEXT = PVOID
+SRWLOCK = PVOID
 
 #===============================================================================
 # Enums
