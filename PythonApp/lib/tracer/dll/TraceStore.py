@@ -11,16 +11,35 @@ from ctypes import (
 )
 
 from ..wintypes import (
+    errcheck,
+
+    LONG,
+    GUID,
     DWORD,
     PVOID,
     ULONG,
     PISID,
+    USHORT,
     PCWSTR,
+    HANDLE,
+    STRING,
+    PSTRING,
     FILETIME,
+    ULONGLONG,
+    SYSTEMTIME,
+    LIST_ENTRY,
     LARGE_INTEGER,
     ULARGE_INTEGER,
     PROCESSOR_NUMBER,
     PTP_CALLBACK_ENVIRON,
+)
+
+from .Rtl import (
+    PRTL,
+)
+
+from .TracerConfig import (
+    PTRACER_CONFIG,
 )
 
 #===============================================================================
@@ -28,6 +47,7 @@ from ..wintypes import (
 #===============================================================================
 TRACE_FLAGS = ULONG
 TRACE_STORE_ID = ULONG
+TRACE_STORE_INDEX = ULONG
 PTIMER_FUNCTION = PVOID
 
 #===============================================================================
@@ -39,7 +59,7 @@ class TRACE_STORE_ALLOCATION(Structure):
         ('NumberOfRecords', ULARGE_INTEGER),
         ('RecordSize', LARGE_INTEGER),
     ]
-PTRACE_STORE_ALLOCATION = POINTER(PTRACE_STORE_ALLOCATION)
+PTRACE_STORE_ALLOCATION = POINTER(TRACE_STORE_ALLOCATION)
 
 class _TRACE_STORE_ADDRESS_TIMESTAMP(Structure):
     _fields_ = [
@@ -217,5 +237,14 @@ TRACE_STORES._fields_ = [
     ('Rundown', PTRACE_STORES_RUNDOWN),
 ]
 
+#===============================================================================
+# Function Types
+#===============================================================================
+
+UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO = CFUNCTYPE(
+    BOOL,
+    PTRACER_CONFIG
+)
+UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO.errcheck = errcheck
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :

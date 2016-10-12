@@ -1213,6 +1213,15 @@ class timer:
     def timeit(cls):
         return cls(verbose=True)
 
+if is_win32:
+    @memoized
+    def import_winreg():
+        try:
+            import _winreg as winreg
+        except ImportError:
+            import winreg
+        return winreg
+
 #===============================================================================
 # Helper Classes
 #===============================================================================

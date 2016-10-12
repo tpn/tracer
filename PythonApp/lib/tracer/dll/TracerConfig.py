@@ -3,14 +3,21 @@
 #===============================================================================
 
 from ctypes import (
+    cast,
+    byref,
+
     Union,
     Structure,
 
+    CDLL,
     POINTER,
     CFUNCTYPE,
 )
 
 from ..wintypes import (
+    errcheck,
+    create_unicode_string,
+
     BOOL,
     USHORT,
     ULONG,
@@ -33,6 +40,7 @@ from .Allocator import (
 #===============================================================================
 # Globals
 #===============================================================================
+TRACER_REGISTRY_KEY = 'Software\\Tracer'
 
 #===============================================================================
 # Aliases
@@ -41,6 +49,32 @@ from .Allocator import (
 #===============================================================================
 # Helpers
 #===============================================================================
+def get_tracer_config_dll_path():
+    from ..path import join_path
+    from ..util import import_winreg
+
+    winreg = import_winreg()
+    registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+    key = winreg.OpenKey(registry, TRACER_REGISTRY_KEY)
+
+    load_debug = bool(winreg.QueryValueEx(key, 'LoadDebugLibraries')[0])
+    if load_debug:
+        intermediate = 'x64\\Debug'
+    else:
+        intermediate = 'x64\\Release'
+
+    installation_dir = winreg.QueryValueEx(key, 'InstallationDirectory')[0]
+    winreg.CloseKey(key)
+
+    dll_base_directory = join_path(installation_dir, intermediate)
+
+    path = join_path(dll_base_directory, 'TracerConfig.dll')
+    return path
+
+def load_tracer_config_dll():
+    path = get_tracer_config_dll_path()
+    dll = CDLL(path)
+    return dll
 
 #===============================================================================
 # Structures
@@ -110,7 +144,7 @@ class TRACER_CONFIG(Structure):
 PTRACER_CONFIG = POINTER(TRACER_CONFIG)
 
 #===============================================================================
-# Function Prototypes
+# Function Types
 #===============================================================================
 
 INITIALIZE_TRACER_CONFIG = CFUNCTYPE(
@@ -118,5 +152,42 @@ INITIALIZE_TRACER_CONFIG = CFUNCTYPE(
     PALLOCATOR,
     PUNICODE_STRING
 )
+CREATE_AND_INITIALIZE_ALLOCATOR = CFUNCTYPE(BOOL, PPALLOCATOR)
+GET_OR_CREATE_GLOBAL_ALLOCATOR = CFUNCTYPE(BOOL, PPALLOCATOR)
+
+INITIALIZE_TRACER_CONFIG.errcheck = errcheck
+CREATE_AND_INITIALIZE_ALLOCATOR.errcheck = errcheck
+GET_OR_CREATE_GLOBAL_ALLOCATOR.errcheck = errcheck
+
+#===============================================================================
+# Binding
+#===============================================================================
+
+TracerConfigDll = load_tracer_config_dll()
+
+CreateAndInitializeAllocator = CREATE_AND_INITIALIZE_ALLOCATOR(
+    ('CreateAndInitializeDefaultHeapAllocator', TracerConfigDll),
+    ((1, 'Allocator'),),
+)
+
+GetOrCreateGlobalAllocator = GET_OR_CREATE_GLOBAL_ALLOCATOR(
+    ('GetOrCreateGlobalAllocator', TracerConfigDll),
+    ((1, 'Allocator'),),
+)
+
+InitializeTracerConfig = INITIALIZE_TRACER_CONFIG(
+    ('InitializeTracerConfig', TracerConfigDll),
+    (
+        (1, 'Allocator'),
+        (1, 'RegistryKey'),
+    ),
+)
+
+def load_tracer_config():
+    allocator = PALLOCATOR()
+    CreateAndInitializeAllocator(byref(allocator))
+    registry_key = create_unicode_string(TRACER_REGISTRY_KEY)
+
+    return InitializeTracerConfig(allocator, byref(registry_key)).contents
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :

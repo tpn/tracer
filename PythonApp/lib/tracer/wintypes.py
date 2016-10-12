@@ -29,6 +29,7 @@ ULONGLONG = c_uint64
 PULONGLONG = POINTER(ULONGLONG)
 PVOID = c_void_p
 PPVOID = POINTER(PVOID)
+PISID = PVOID
 PSTR = c_char_p
 PCSTR = c_char_p
 PWSTR = c_wchar_p
@@ -57,6 +58,19 @@ TP_CALLBACK_PRIORITY_COUNT = TP_CALLBACK_PRIORITY_INVALID
 #===============================================================================
 # Classes/Structures
 #===============================================================================
+
+class SYSTEMTIME(Structure):
+    _fields_ = [
+        ('wYear', WORD),
+        ('wMonth', WORD),
+        ('wDayOfWeek', WORD),
+        ('wDay', WORD),
+        ('wHour', WORD),
+        ('wMinute', WORD),
+        ('wSecond', WORD),
+        ('wMillisecond', WORD),
+    ]
+PSYSTEMTIME = POINTER(SYSTEMTIME)
 
 class PROCESSOR_NUMBER(Structure):
     _fields_ = [
@@ -426,5 +440,24 @@ def SetThreadpoolCallbackActivationContext(CallbackEnviron,
 
 def SetThreadpoolCallbackPool(CallbackEnviron, Threadpool):
     CallbackEnviron.Pool = Threadpool
+
+#===============================================================================
+# Helpers
+#===============================================================================
+
+def errcheck(result, func, args):
+    if not result:
+        raise RuntimeError("%s failed" % func.__name__)
+    return args
+
+def create_unicode_string(string):
+    unicode_string = UNICODE_STRING()
+    unicode_string.Length = len(string) << 1
+    unicode_string.MaximumLength = unicode_string.Length + 2
+    unicode_string.Buffer = cast(
+        pointer(create_unicode_buffer(string)),
+        PWSTR
+    )
+    return unicode_string
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

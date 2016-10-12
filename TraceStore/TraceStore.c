@@ -923,6 +923,45 @@ Return Value:
 }
 
 _Use_decl_annotations_
+BOOL
+UpdateTracerConfigWithTraceStoreInfo(
+    PTRACER_CONFIG TracerConfig
+    )
+/*++
+
+Routine Description:
+
+    This routine sets the number of trace store elements, maximum trace store
+    ID, and maximum trace store index values of the tracer configuration
+    structure.
+
+Arguments:
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure to be
+        updated.
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
+
+--*/
+{
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    TracerConfig->NumberOfElementsPerTraceStore = ElementsPerTraceStore;
+    TracerConfig->MaximumTraceStoreId = TraceStoreInvalidId;
+    TracerConfig->MaximumTraceStoreIndex = TraceStoreInvalidIndex;
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
 VOID
 CALLBACK
 PrefaultFutureTraceStorePageCallback(

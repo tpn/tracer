@@ -1032,6 +1032,18 @@ typedef IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
 TRACE_STORE_API IS_GLOBAL_TRACE_STORES_RUNDOWN_ACTIVE \
                 IsGlobalTraceStoresRundownActive;
 
+typedef
+_Success_(return != 0)
+BOOL
+(UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO)(
+    _In_ PTRACER_CONFIG TracerConfig
+    );
+typedef UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO \
+      *PUPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO;
+
+TRACE_STORE_API UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO \
+                UpdateTracerConfigWithTraceStoreInfo;
+
 //
 // TraceStoreContext-related functions.
 //
