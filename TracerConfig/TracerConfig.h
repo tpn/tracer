@@ -294,10 +294,25 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     _Field_range_(==, sizeof(struct _TRACER_CONFIG)) USHORT Size;
 
     //
-    // Pad to ULONG.
+    // Number of trace store elements per trace store.  That is, the count of
+    // both the trace store and all metadata stores.
     //
 
-    USHORT Padding1;
+    USHORT NumberOfElementsPerTraceStore;
+
+    //
+    // The maximum value of the TRACE_STORE_ID enum.
+    //
+
+    ULONG MaximumTraceStoreId;
+
+    //
+    // The maximum value of the TRACE_STORE_INDEX enum.  As indexes are
+    // contiguous, this also indicates the size of the TRACE_STORES Stores[]
+    // array.
+    //
+
+    ULONG MaximumTraceStoreIndex;
 
     //
     // Global configuration flags.

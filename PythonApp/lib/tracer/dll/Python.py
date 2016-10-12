@@ -3,6 +3,8 @@
 #===============================================================================
 
 from ctypes import (
+    sizeof,
+
     Union,
     Structure,
 
@@ -13,12 +15,14 @@ from ctypes import (
 from ..util import Constant
 
 from ..wintypes import (
+    BOOL,
     SHORT,
     USHORT,
     PUSHORT,
     LONG,
     ULONG,
     PULONG,
+    PVOID,
     STRING,
     PSTRING,
 
@@ -28,7 +32,10 @@ from ..wintypes import (
     LIST_ENTRY,
     RTL_SPLAY_LINKS,
     RTL_GENERIC_TABLE,
+)
 
+from Rtl import (
+    PRTL,
 )
 
 #===============================================================================
@@ -137,6 +144,10 @@ PYTHON_FUNCTION_TABLE_ENTRY._fields_ = [
 ]
 
 SizeOfPythonFunctionTableEntry = sizeof(PYTHON_FUNCTION_TABLE_ENTRY)
+
+class PYTHON(Structure):
+    pass
+PPYTHON = POINTER(PYTHON)
 
 #===============================================================================
 # Functions
