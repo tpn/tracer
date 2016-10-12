@@ -603,7 +603,8 @@ typedef struct _TRACE_FLAGS {
             ULONG EnableFileFlagRandomAccess:1;
 
             //
-            // When set, sets the FILE_FLAG_WRITE_THROUGH flag.
+            // When set, sets the FILE_FLAG_WRITE_THROUGH flag.  Ignored when
+            // readonly.
             //
 
             ULONG EnableFileFlagWriteThrough:1;
@@ -614,7 +615,8 @@ typedef struct _TRACE_FLAGS {
 
             //
             // When set, indicates the caller does not want to be automatically
-            // added to the global trace store rundown list.
+            // added to the global trace store rundown list.  Not applicable
+            // when readonly.
             //
 
             ULONG NoGlobalRundown:1;
@@ -622,7 +624,8 @@ typedef struct _TRACE_FLAGS {
             //
             // When set, the trace store will not be truncated as part of
             // close or rundown.  This is set internally by metadata stores
-            // that need it and should not be modified.
+            // that need it and should not be modified.  Not applicable when
+            // readonly.
             //
 
             ULONG NoTruncate:1;
@@ -834,7 +837,7 @@ typedef struct _TRACE_STORE {
     //
     // The actual underlying field relocations array is pointed to by the
     // pReloc->Relocations field; however, this pointer will not be valid
-    // when re-loaded persisted :relocation metadata from the metadata store.
+    // when re-loading persisted :relocation metadata from the metadata store.
     // As we can't write to the underlying memory map to adjust the pointer,
     // we keep a separate pointer here to point to the field relocations array.
     // This will only have a value when TraceStore->IsReadonly == TRUE and
