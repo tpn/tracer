@@ -735,7 +735,7 @@ Arguments:
         object containing the self object for which the class name will be
         extracted.
 
-    FrameObject - Supplies a pointer to the PYFRAMEOBJECT structure for which
+    FrameObject - Supplies a pointer to the PYFRAMEOBJECT structure where
         the "self" object resides.
 
     Self - Supplies a pointer to a PYOBJECT structure representing the self
