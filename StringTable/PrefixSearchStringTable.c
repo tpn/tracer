@@ -242,9 +242,9 @@ Return Value:
         // that _mm256_movemask_epi8() created our mask based on a vector of
         // 8-bit elements rather than the 16-bit elements we actually had.
         //
-        // (If there were an _mm256_movemask_epi16() AVX2 instruction, we
-        //  wouldn't have to do this.  (AVX512 has _mm256_move_pi16_mask()
-        //  intrinsic for vpmovw2m, which we could use in the future.).)
+        // (If there was an _mm256_movemask_epi16() AVX2 instruction, we
+        //  wouldn't have to do this.  AVX512 has _mm256_move_pi16_mask()
+        //  intrinsic for vpmovw2m, which we could use in the future.)
         //
 
         NumberOfTrailingZeros = _tzcnt_u32(Bitmap);
