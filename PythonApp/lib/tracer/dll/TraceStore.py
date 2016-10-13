@@ -13,6 +13,7 @@ from ctypes import (
 from ..wintypes import (
     errcheck,
 
+    BOOL,
     LONG,
     GUID,
     DWORD,
