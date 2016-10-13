@@ -2,20 +2,17 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
+from ..wintypes import (
     Union,
     Structure,
 
-    POINTER,
-    CFUNCTYPE,
-)
-
-from ..wintypes import (
     BOOL,
     ULONG,
     PVOID,
     SIZE_T,
     HANDLE,
+    POINTER,
+    CFUNCTYPE,
 )
 
 #===============================================================================

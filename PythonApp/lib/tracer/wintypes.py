@@ -59,6 +59,34 @@ TP_CALLBACK_PRIORITY_COUNT = TP_CALLBACK_PRIORITY_INVALID
 # Classes/Structures
 #===============================================================================
 
+class Structure(ctypes.Structure):
+    _exclude = ('Unused', 'Padding')
+
+    def _field_names(self):
+        return (f[0] for f in self._fields_)
+
+    def _to_dict(self):
+        return {
+            key: getattr(self, key)
+                for key in self._field_names()
+                    if not key.startswith(self._exclude)
+        }
+
+    def __repr__(self):
+        q = lambda v: v if (not v or isinstance(v, int)) else '"%s"' % v
+        return "<%s %s>" % (
+            self.__class__.__name__,
+            ', '.join(
+                '%s=%s' % (k, q(v))
+                    for (k, v) in (
+                        (k, getattr(self, k))
+                            for k in self._field_names()
+                                if not k.startswith(self._exclude)
+                    )
+                )
+        )
+
+
 class SYSTEMTIME(Structure):
     _fields_ = [
         ('wYear', WORD),
@@ -135,6 +163,10 @@ class UNICODE_STRING(Structure):
         ('MaximumLength', USHORT),
         ('Buffer', PWSTR),
     ]
+    def __str__(self):
+        return self.Buffer if self.Length > 0 else ''
+    def __repr__(self):
+        return repr(self.Buffer) if self.Length > 0 else "''"
 PUNICODE_STRING = POINTER(UNICODE_STRING)
 PPUNICODE_STRING = POINTER(PUNICODE_STRING)
 
@@ -144,6 +176,10 @@ class STRING(Structure):
         ('MaximumLength', USHORT),
         ('Buffer', PSTR),
     ]
+    def __str__(self):
+        return self.Buffer
+    def __repr__(self):
+        return self.Buffer
 PSTRING = POINTER(STRING)
 PPSTRING = POINTER(PSTRING)
 
