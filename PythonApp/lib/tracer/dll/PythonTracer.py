@@ -2,18 +2,15 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
+from ..wintypes import (
     Structure,
 
-    POINTER,
-    CFUNCTYPE,
-)
-
-from ..wintypes import (
     SHORT,
     USHORT,
     LONG,
     ULONG,
+    POINTER,
+    CFUNCTYPE,
     ULONGLONG,
 )
 

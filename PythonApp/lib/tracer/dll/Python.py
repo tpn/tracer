@@ -2,19 +2,14 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
-    sizeof,
-
-    Union,
-    Structure,
-
-    POINTER,
-    CFUNCTYPE,
-)
-
 from ..util import Constant
 
 from ..wintypes import (
+    sizeof,
+
+    Structure,
+    Union,
+
     BOOL,
     SHORT,
     USHORT,
@@ -25,6 +20,8 @@ from ..wintypes import (
     PVOID,
     STRING,
     PSTRING,
+    POINTER,
+    CFUNCTYPE,
 
     HMODULE,
     ULONGLONG,

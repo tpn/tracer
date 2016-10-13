@@ -2,16 +2,10 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
-    Union,
-    Structure,
-
-    POINTER,
-    CFUNCTYPE,
-)
-
 from ..wintypes import (
     errcheck,
+
+    Structure,
 
     BOOL,
     LONG,
@@ -25,7 +19,9 @@ from ..wintypes import (
     HANDLE,
     STRING,
     PSTRING,
+    POINTER,
     FILETIME,
+    CFUNCTYPE,
     ULONGLONG,
     SYSTEMTIME,
     LIST_ENTRY,

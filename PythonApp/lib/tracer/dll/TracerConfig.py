@@ -7,7 +7,6 @@ from ctypes import (
     byref,
 
     Union,
-    Structure,
 
     CDLL,
     POINTER,
@@ -17,6 +16,8 @@ from ctypes import (
 from ..wintypes import (
     errcheck,
     create_unicode_string,
+
+    Structure,
 
     BOOL,
     USHORT,

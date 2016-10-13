@@ -2,17 +2,14 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
+from ..wintypes import (
     Union,
     Structure,
 
+    BOOL,
+    PULONG,
     POINTER,
     CFUNCTYPE,
-)
-
-from ..wintypes import (
-    BOOL,
-    PULONG
 )
 
 #===============================================================================
