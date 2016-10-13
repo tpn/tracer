@@ -228,7 +228,7 @@ Return Value:
 
     //
     // A popcount against the mask will tell us how many slots we matched, and
-    // thus, compare.
+    // thus, need to compare.
     //
 
     Count = __popcnt(Bitmap);
