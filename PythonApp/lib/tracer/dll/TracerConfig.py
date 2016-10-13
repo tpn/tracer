@@ -133,7 +133,9 @@ PTRACE_SESSION_DIRECTORIES = POINTER(TRACE_SESSION_DIRECTORIES)
 class TRACER_CONFIG(Structure):
     _fields_ = [
         ('Size', USHORT),
-        ('Padding1', USHORT),
+        ('NumberOfElementsPerTraceStore', USHORT),
+        ('MaximumTraceStoreId', ULONG),
+        ('MaximumTraceStoreIndex', ULONG),
         ('Flags', TRACER_FLAGS),
         ('Allocator', PALLOCATOR),
         ('TlsTracerHeapModule', HMODULE),
