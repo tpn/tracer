@@ -65,7 +65,7 @@
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>TracerHeapLib.lib;TracerConfig.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>TracerHeapLib.lib;TracerConfigLib.lib;TracedPythonSession.lib;%(AdditionalDependencies);kernel32.lib;advapi32.lib</AdditionalDependencies>
     </Link>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -85,8 +85,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TracerConfig\TracerConfig.vcxproj">
-      <Project>{76f2056f-6a65-4ba3-a49f-3cbf5d1e2cdf}</Project>
+    <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
+      <Project>{8a5aaec6-fb14-49c3-8837-fe8a54d23c1d}</Project>
     </ProjectReference>
     <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
       <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
