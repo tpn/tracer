@@ -379,12 +379,16 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
 
 C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 
+//
+// This enum should be kept in sync with the TRACE_STORE_TRAITS bitflags struct.
+//
+
 typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
-    VaryingRecordSizeTrait              =      1,
-    RecordSizeIsAlwaysPowerOf2Trait     = 1 << 1,
-    MultipleRecordsTrait                = 1 << 2,
-    StreamingWriteTrait                 = 1 << 3,
-    StreamingReadTrait                  = 1 << 4,
+    VaryingRecordSizeTrait              =       1,
+    RecordSizeIsAlwaysPowerOf2Trait     =  1 << 1,
+    MultipleRecordsTrait                =  1 << 2,
+    StreamingWriteTrait                 =  1 << 3,
+    StreamingReadTrait                  =  1 << 4,
     InvalidTrait                        = (1 << 4) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
@@ -757,6 +761,136 @@ typedef struct _TRACE_CONTEXT {
     TRACE_STORE_TIME            Time;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
+typedef
+VOID
+(CALLBACK TRACE_STORES_LOADING_COMPLETE_CALLBACK)(
+    _In_ struct _READONLY_TRACE_CONTEXT *TraceContextReadonly,
+    _In_ PVOID UserContext
+    );
+typedef TRACE_STORES_LOADING_COMPLETE_CALLBACK \
+      *PTRACE_STORES_LOADING_COMPLETE_CALLBACK;
+
+typedef struct
+_Struct_size_bytes_(sizeof(ULONG))
+_READONLY_TRACE_CONTEXT_FLAGS {
+    ULONG Valid:1;
+    ULONG Unused:31;
+} READONLY_TRACE_CONTEXT_FLAGS, *PREADONLY_TRACE_CONTEXT_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _READONLY_TRACE_CONTEXT {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _READONLY_TRACE_CONTEXT))
+        USHORT SizeOfStruct;
+
+    //
+    // Pad out to 4 bytes.
+    //
+
+    USHORT Padding1;                                            // 4    0     4
+
+    READONLY_TRACE_CONTEXT_FLAGS Flags;                         // 4    4     8
+
+    PRTL Rtl;                                                   // 8    8    16
+    HANDLE HeapHandle;                                          // 8   16    24
+    PUNICODE_STRING Directory;                                  // 8   24    32
+    PVOID UserData;                                             // 8   32    40
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;         // 8   40    48
+    PTRACE_STORES TraceStores;                                  // 8   48    56
+
+    //
+    // This event is signaled when all trace stores have finished loading.
+    //
+
+    HANDLE LoadingCompleteEvent;                                // 8   56    64
+
+    //
+    // Second cache line.
+    //
+
+    //
+    // An optional callback that will be invoked when the trace stores have
+    // finished loading.
+    //
+                                                                // 8   64    72
+    PTRACE_STORES_LOADING_COMPLETE_CALLBACK TraceStoresLoadingCompleteCallback;
+
+    //
+    // Threadpool work items.
+    //
+
+    //
+    // This work item simply calls the TraceStoresLoadingCompleteCallback if
+    // set when the loading has completed.
+    //
+
+    PTP_WORK TraceStoresLoadingCompleteWork;                    // 8   72    80
+
+    //
+    // Our SLIST_HEADER for trace store load work items.
+    //
+
+    SLIST_HEADER LoadTraceStoreMaps;                            // 16  80    96
+
+    //
+    // This work item is used for loading all trace stores.
+    //
+
+    PTP_WORK LoadTraceStoreWork;                                // 8   96   104
+
+    //
+    // Pad out the rest of the second cache line.
+    //
+
+    CHAR Padding2[24];                                          // 24  104  128
+
+    //
+    // Third cache line.
+    //
+
+    //
+    // Make sure the volatile counter is on a separate cache line.  This will
+    // be incremented to match the number of concurrent loads in progress.  As
+    // each load completes, the counter will be decremented.  Once it reaches
+    // zero, the AllTraceStoresAreReadyEvent will be signaled and, if set, the
+    // TraceStoresLoadingCompleteCallback will be dispatched to the threadpool.
+    //
+
+    volatile ULONG ConcurrentLoadsInProgress;                   // 4 128    132
+
+    //
+    // Pad out the remaining third cache line.
+    //
+
+    CHAR Padding3[60];                                          // 60 132   192
+
+    //
+    // And reserve a forth cache line in order to ensure we're a power-of-2
+    // size.
+    //
+
+    ULONGLONG Padding4[8];                                      // 64 192   256
+
+} READONLY_TRACE_CONTEXT, *PREADONLY_TRACE_CONTEXT;
+
+//
+// Verify field alignments.  The FIELD_OFFSETS() are mainly there to provide
+// an easier way to track down why the final C_ASSERT(sizeof()) fails.  There
+// only field that has a strict alignment is the LoadsInProgress.
+//
+
+C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT,
+                      TraceStoresLoadingCompleteCallback) == 64);
+C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, LoadTraceStoreWork) == 96);
+C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, Padding2) == 104);
+C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT,
+                      ConcurrentLoadsInProgress) == 128);
+C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, Padding4) == 192);
+C_ASSERT(sizeof(READONLY_TRACE_CONTEXT) == 256);
+
 typedef struct _TRACE_STORE_THREADPOOL {
     PTP_POOL Threadpool;
     TP_CALLBACK_ENVIRON CallbackEnvironment;
@@ -1086,15 +1220,15 @@ TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
 typedef
 _Success_(return != 0)
 BOOL
-(INITIALIZE_TRACE_STORES_READONLY)(
+(INITIALIZE_READONLY_TRACE_STORES)(
     _In_opt_    PRTL            Rtl,
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PTRACE_FLAGS    TraceFlags
     );
-typedef INITIALIZE_TRACE_STORES_READONLY *PINITIALIZE_TRACE_STORES_READONLY;
-TRACE_STORE_API INITIALIZE_TRACE_STORES_READONLY InitializeTraceStoresReadonly;
+typedef INITIALIZE_READONLY_TRACE_STORES *PINITIALIZE_READONLY_TRACE_STORES;
+TRACE_STORE_API INITIALIZE_READONLY_TRACE_STORES InitializeReadonlyTraceStores;
 
 typedef
 _Success_(return != 0)
@@ -1169,14 +1303,33 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_CONTEXT)(
-    _In_     PRTL            Rtl,
+    _In_opt_ PRTL            Rtl,
     _Inout_bytecap_(*SizeOfTraceContext)
              PTRACE_CONTEXT  TraceContext,
     _In_     PULONG          SizeOfTraceContext,
-    _In_     PTRACE_SESSION  TraceSession,
-    _In_     PTRACE_STORES   TraceStores,
-    _In_     PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PTRACE_SESSION  TraceSession,
+    _In_opt_ PTRACE_STORES   TraceStores,
+    _In_opt_ PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID UserData
+    );
+typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
+TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
+
+//
+// TraceStoreReadonlyContext-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_READONLY_TRACE_CONTEXT)(
+    _In_opt_ PRTL                    Rtl,
+    _Inout_bytecap_(*SizeOfReadonlyTraceContext)
+             PREADONLY_TRACE_CONTEXT ReadonlyTraceContext,
+    _In_     PULONG                  SizeOfReadonlyTraceContext,
+    _In_opt_ PTRACE_STORES           TraceStores,
+    _In_opt_ PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
+    _In_opt_ PVOID                   UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;

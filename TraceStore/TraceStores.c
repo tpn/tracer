@@ -435,7 +435,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-InitializeTraceStoresReadonly(
+InitializeReadonlyTraceStores(
     PRTL Rtl,
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,

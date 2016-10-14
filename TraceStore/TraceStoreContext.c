@@ -31,20 +31,47 @@ InitializeTraceContext(
 
 Routine Description:
 
-    This routine initializes an allocated TRACE_CONTEXT record.
+    This routine initializes a TRACE_CONTEXT structure.  This involves setting
+    relevant fields in the structure then binding the context to the trace
+    stores.
 
 Arguments:
 
-    TBD.
+    Rtl - Supplies a pointer to an RTL structure.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    SizeOfTraceContext - Supplies a pointer to a variable that contains the
+        buffer size allocated for the TraceContext parameter.  The actual size
+        of the structure will be written to this variable.
+
+    TraceSession - Supplies a pointer to a TRACE_SESSION structure.
+
+    TraceStores - Supplies a pointer to a TRACE_STORES structure to bind the
+        trace context to.
+
+    ThreadpoolCallbackEnvironment - Supplies a pointer to a threadpool callback
+        environment to use for the trace context.  This threadpool will be used
+        to submit various asynchronous thread pool memory map operations.
+
+    UserData - Supplies an optional pointer to user data that can be used by
+        a caller to track additional context information per TRACE_CONTEXT
+        structure.
 
 Return Value:
 
-    TRUE on success, FALSE on failure.
+    TRUE on success, FALSE on failure.  The required buffer size for the
+    TRACE_CONTEXT structure can be obtained by passing in a valid pointer
+    for SizeOfTraceContext and NULL for the remaining parameters.
 
 --*/
 {
     USHORT Index;
     USHORT StoreIndex;
+
+    //
+    // Validate size parameters.
+    //
 
     if (!TraceContext) {
         if (SizeOfTraceContext) {
@@ -62,6 +89,10 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Validate arguments.
+    //
+
     if (!Rtl) {
         return FALSE;
     }
@@ -75,6 +106,14 @@ Return Value:
     }
 
     if (!ThreadpoolCallbackEnvironment) {
+        return FALSE;
+    }
+
+    //
+    // Make sure we haven't been called against a readonly trace store.
+    //
+
+    if (TraceStores->Flags.Readonly) {
         return FALSE;
     }
 

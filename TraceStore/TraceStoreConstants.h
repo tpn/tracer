@@ -338,6 +338,122 @@ static const TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
 };
 
+FORCEINLINE
+_Success_(return != 0)
+BOOL
+SetTraceStoreTraits(
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine sets the traits of a trace store if it is not readonly.
+    Specifically, the trace store ID is used to resolve the relevant
+    TRACE_STORE_TRAITS array element, and the address of this element is
+    assigned to the variable TraceStore->pTraits.
+
+    The trace store is expected to save this information into the Info->Traits
+    metadata store once it has been bound to a context.
+
+    Readonly trace stores load their traits from the persisted metadata via
+    the LoadTraceStoreTraits() routine.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that is not
+        readonly.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  Failure will be because the trace
+    store is marked readonly or the TraceStore was invalid.
+
+--*/
+{
+    USHORT Index;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (TraceStore->IsReadonly) {
+        return FALSE;
+    }
+
+    //
+    // Get the array index for this trace store, then load the traits from
+    // the static array.
+    //
+
+    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
+    TraceStore->pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+
+    return TRUE;
+}
+
+FORCEINLINE
+_Success_(return != 0)
+BOOL
+LoadTraceStoreTraits(
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine loads trace store traits from a trace store's :info metadata.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that is marked
+        as readonly.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  Failure will be because the trace
+    store is not marked as readonly or the TraceStore was invalid.
+
+--*/
+{
+    USHORT Index;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!TraceStore->IsReadonly) {
+        return FALSE;
+    }
+
+    //
+    // Compatibility shim: if the size of the TRACE_STORE_INFO structure is
+    // 128, it will not contain the TRACE_STORE_TRAITS field.  In this case,
+    // just load the traits from the TraceStoreTraits array.
+    //
+
+    if (sizeof(TRACE_STORE_INFO) == 128) {
+        Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
+        TraceStore->pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+        *TraceStore->Traits = *TraceStore->pTraits;
+    }
+
+    //
+    // Get the array index for this trace store, then load the traits from
+    // the static array.
+    //
+
+    return TRUE;
+}
+
 static const LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
 static const SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
