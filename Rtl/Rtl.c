@@ -3759,6 +3759,8 @@ InitializeRtl(
         return FALSE;
     }
 
+    Rtl->Size = sizeof(*Rtl);
+
     SetCSpecificHandler(Rtl->NtdllModule);
     Rtl->__C_specific_handler = __C_specific_handler_impl;
     if (!Rtl->__C_specific_handler) {

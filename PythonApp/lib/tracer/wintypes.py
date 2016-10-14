@@ -73,7 +73,7 @@ class Structure(ctypes.Structure):
         }
 
     def __repr__(self):
-        q = lambda v: v if (not v or isinstance(v, int)) else '"%s"' % v
+        q = lambda v: (v or '') if (not v or isinstance(v, int)) else '"%s"' % v
         return "<%s %s>" % (
             self.__class__.__name__,
             ', '.join(

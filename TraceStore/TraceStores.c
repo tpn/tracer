@@ -80,6 +80,7 @@ Return Value:
     DWORD StoreIndex;
     DWORD LastError;
     DWORD CreateFileDesiredAccess;
+    DWORD CreateFileCreationDisposition;
     DWORD CreateFileMappingProtectionFlags;
     DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
@@ -167,6 +168,7 @@ Return Value:
     //
 
     SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
+    SetCSpecificHandler(Rtl->__C_specific_handler);
 
     //
     // If field relocations have been provided, initialize them now.
@@ -265,10 +267,12 @@ Return Value:
 
     if (Readonly) {
         CreateFileDesiredAccess = GENERIC_READ;
-        CreateFileMappingProtectionFlags = PAGE_READONLY;
+        CreateFileCreationDisposition = OPEN_EXISTING;
+        CreateFileMappingProtectionFlags = PAGE_WRITECOPY;
         MapViewOfFileDesiredAccess = FILE_MAP_READ;
     } else {
         CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
+        CreateFileCreationDisposition = CREATE_NEW;
         CreateFileMappingProtectionFlags = PAGE_READWRITE;
         MapViewOfFileDesiredAccess = FILE_MAP_READ | FILE_MAP_WRITE;
     }
@@ -386,6 +390,9 @@ Return Value:
         TraceStore->TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
         TraceStore->TraceStoreIndex = StoreIndex;
         TraceStore->CreateFileDesiredAccess = CreateFileDesiredAccess;
+        TraceStore->CreateFileCreationDisposition = (
+            CreateFileCreationDisposition
+        );
         TraceStore->CreateFileMappingProtectionFlags = (
             CreateFileMappingProtectionFlags
         );
@@ -477,7 +484,14 @@ Return Value:
 
 --*/
 {
-    TraceFlags->Readonly = TRUE;
+
+    //
+    // Set the Readonly flag if TraceFlags is a non-NULL pointer.
+    //
+
+    if (ARGUMENT_PRESENT(TraceFlags)) {
+        TraceFlags->Readonly = TRUE;
+    }
 
     return InitializeTraceStores(Rtl,
                                  BaseDirectory,

@@ -108,6 +108,8 @@ class TracerCommand(InvariantAwareCommand):
 
         return path
 
+    def run(self):
+        raise NotImplementedError()
 
 #===============================================================================
 # Commands

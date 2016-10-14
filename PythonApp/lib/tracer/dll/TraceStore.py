@@ -3,18 +3,24 @@
 #===============================================================================
 
 from ..wintypes import (
+    cast,
+    byref,
     errcheck,
+    create_string_buffer,
 
     Structure,
 
+    CDLL,
     BOOL,
     LONG,
     GUID,
+    PWSTR,
     DWORD,
     PVOID,
     ULONG,
     PISID,
     USHORT,
+    PULONG,
     PCWSTR,
     HANDLE,
     STRING,
@@ -42,7 +48,6 @@ from .TracerConfig import (
 #===============================================================================
 # Globals
 #===============================================================================
-TRACE_FLAGS = ULONG
 TRACE_STORE_ID = ULONG
 TRACE_STORE_INDEX = ULONG
 PTIMER_FUNCTION = PVOID
@@ -50,6 +55,31 @@ PTIMER_FUNCTION = PVOID
 #===============================================================================
 # Structures
 #===============================================================================
+
+class TRACE_FLAGS(Structure):
+    _fields_ = [
+        ('Readonly', ULONG, 1),
+        ('Compress', ULONG, 1),
+        ('DisablePrefaultPages', ULONG, 1),
+        ('DisableFileFlagOverlapped', ULONG, 1),
+        ('DisableFileFlagSequentialScan', ULONG, 1),
+        ('EnableFileFlagRandomAccess', ULONG, 1),
+        ('EnableFileFlagWriteThrough', ULONG, 1),
+        ('NoGlobalRundown', ULONG, 1),
+        ('NoTruncate', ULONG, 1),
+    ]
+PTRACE_FLAGS = POINTER(TRACE_FLAGS)
+
+class TRACE_STORE_TRAITS(Structure):
+    _fields_ = [
+        ('VaryingRecordSize', ULONG, 1),
+        ('RecordSizeIsAlwaysPowerOf2', ULONG, 1),
+        ('MultipleRecords', ULONG, 1),
+        ('StreamingWrite', ULONG, 1),
+        ('StreamingRead', ULONG, 1),
+        ('Unused', ULONG, 28),
+    ]
+PTRACE_STORE_TRAITS = POINTER(TRACE_STORE_TRAITS)
 
 class TRACE_STORE_ALLOCATION(Structure):
     _fields_ = [
@@ -140,6 +170,8 @@ class TRACE_STORE_INFO(Structure):
         ('Time', TRACE_STORE_TIME),
         ('Stats', TRACE_STORE_STATS),
         ('Totals', TRACE_STORE_TOTALS),
+        ('Traits', TRACE_STORE_TRAITS),
+        ('Unused', CHAR * 124),
     ]
 PTRACE_STORE_INFO = POINTER(TRACE_STORE_INFO)
 
@@ -243,5 +275,78 @@ UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO = CFUNCTYPE(
     PTRACER_CONFIG
 )
 UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO.errcheck = errcheck
+
+INITIALIZE_TRACE_STORES_READONLY = CFUNCTYPE(
+    BOOL,
+    PRTL,
+    PWSTR,
+    PTRACE_STORES,
+    PULONG,
+    PTRACE_FLAGS,
+)
+
+#===============================================================================
+# Binding
+#===============================================================================
+
+TraceStoreDll = None
+InitializeTraceStoresReadonly = None
+
+def bind(path=None, dll=None):
+    global TraceStoreDll
+    global InitializeTraceStoresReadonly
+
+    assert path or dll
+    if not dll:
+        dll = TraceStoreDll
+        if not dll:
+            dll = CDLL(path)
+            TraceStoreDll = dll
+
+    InitializeTraceStoresReadonly = INITIALIZE_TRACE_STORES_READONLY(
+        ('InitializeTraceStoresReadonly', dll),
+        (
+            (1, 'Rtl'),
+            (1, 'BaseDirectory'),
+            (1, 'TraceStores'),
+            (1, 'SizeOfTraceStores'),
+            (1, 'TraceFlags'),
+        )
+    )
+
+#===============================================================================
+# Python Functions
+#===============================================================================
+
+def create_and_initialize_trace_stores_readonly(rtl, basedir):
+
+    size = ULONG()
+
+    success = InitializeTraceStoresReadonly(
+        cast(0, PRTL),
+        cast(0, PWSTR),
+        cast(0, PTRACE_STORES),
+        byref(size),
+        cast(0, PTRACE_FLAGS),
+    )
+
+    assert size.value > 0
+
+    buf = create_string_buffer(size.value)
+    ptrace_stores = cast(byref(buf), PTRACE_STORES)
+    flags = TRACE_FLAGS()
+
+    prtl = byref(rtl)
+
+    success = InitializeTraceStoresReadonly(
+        prtl,
+        basedir,
+        ptrace_stores,
+        byref(size),
+        byref(flags),
+    )
+    assert success
+
+    return ptrace_stores.contents
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :

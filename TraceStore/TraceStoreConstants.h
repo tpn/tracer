@@ -113,6 +113,231 @@ static const ULONG InitialTraceStoreFileSizes[] = {
     10 << 20    // StringTable
 };
 
+static const TRACE_STORE_TRAITS TraceStoreTraits[] = {
+
+    //
+    // Event
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // String
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // StringBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // HashedString
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // HashedStringBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // Buffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // FunctionTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // FunctionTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // PathTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // PathTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // TraceSession
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // TraceFilenameString
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // TraceFilenameStringBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // TraceDirectoryString
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // TraceDirectoryStringBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // StringArray
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    },
+
+    //
+    // StringTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0   // Unused
+    }
+
+};
+
 static const LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
 static const SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
@@ -161,6 +386,60 @@ static const ULONG DefaultInfoTraceStoreSize = (
 static const ULONG DefaultInfoTraceStoreMappingSize = (
     sizeof(TRACE_STORE_INFO)
 );
+
+static const TRACE_STORE_TRAITS AllocationStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
+static const TRACE_STORE_TRAITS RelocationStoreTraits = {
+    0,  // VaryingRecordSize
+    0,  // RecordSizeIsAlwaysPowerOf2
+    0,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
+static const TRACE_STORE_TRAITS AddressStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
+static const TRACE_STORE_TRAITS BitmapStoreTraits = {
+    1,  // VaryingRecordSize
+    0,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
+static const TRACE_STORE_TRAITS InfoStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    0,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
+static const TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    0,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
 
 #ifdef __cplusplus
 }; // extern "C"

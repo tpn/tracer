@@ -2,23 +2,21 @@
 # Imports
 #===============================================================================
 
-from ctypes import (
-    cast,
-    byref,
-
-    Union,
-
-    CDLL,
-    POINTER,
-    CFUNCTYPE,
+from ..util import (
+    prompt_for_directory,
+    list_directories_by_latest,
 )
 
 from ..wintypes import (
+    cast,
+    byref,
     errcheck,
     create_unicode_string,
 
+    Union,
     Structure,
 
+    CDLL,
     BOOL,
     USHORT,
     ULONG,
@@ -26,6 +24,8 @@ from ..wintypes import (
     SIZE_T,
     HMODULE,
     SRWLOCK,
+    POINTER,
+    CFUNCTYPE,
     LIST_ENTRY,
     UNICODE_STRING,
     PUNICODE_STRING,
@@ -144,6 +144,15 @@ class TRACER_CONFIG(Structure):
         ('Paths', TRACER_PATHS),
         ('TraceSessionDirectories', TRACE_SESSION_DIRECTORIES),
     ]
+
+    def trace_store_directories(self):
+        base = self.Paths.BaseTraceDirectory.Buffer
+        return list_directories_by_latest(base)
+
+    def choose_trace_store_directory(self):
+        base = self.Paths.BaseTraceDirectory.Buffer
+        return prompt_for_directory(base)
+
 PTRACER_CONFIG = POINTER(TRACER_CONFIG)
 
 #===============================================================================
