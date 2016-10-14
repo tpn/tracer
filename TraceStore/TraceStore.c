@@ -81,7 +81,7 @@ Return Value:
             TraceStore->CreateFileDesiredAccess,
             FILE_SHARE_READ,
             NULL,
-            OPEN_ALWAYS,
+            TraceStore->CreateFileCreationDisposition,
             FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
             NULL
         );
@@ -216,6 +216,7 @@ Return Value:
 --*/
 #define INIT_METADATA(Name)                                            \
     Name##Store->TraceFlags = TraceStore->TraceFlags;                  \
+    Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;  \
     Name##Store->IsMetadata = TRUE;                                    \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;            \
@@ -341,7 +342,10 @@ Return Value:
 --*/
 {
     BOOL Success;
+    USHORT Index;
     TRACE_FLAGS Flags;
+    TRACE_STORE_TRAITS Traits;
+    PTRACE_STORE_TRAITS pTraits;
     HRESULT Result;
     WCHAR MetadataInfoPath[_OUR_MAX_PATH];
     WCHAR AllocationPath[_OUR_MAX_PATH];
@@ -436,7 +440,7 @@ Return Value:
         TraceStore->CreateFileDesiredAccess,
         FILE_SHARE_READ,
         NULL,
-        OPEN_ALWAYS,
+        TraceStore->CreateFileCreationDisposition,
         TraceStore->CreateFileFlagsAndAttributes,
         NULL
     );
@@ -489,11 +493,35 @@ Return Value:
     INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 
+
+    TraceStore->IsMetadata = FALSE;
+
+    //
+    // Set trait information.
+    //
+
+    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
+    pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+    TraceStore->pTraits = pTraits;
+    Traits = *pTraits;
+
+    //
+    // Make sure the no retire flag matches the streaming trait.
+    //
+
+    if (TraceStore->IsReadonly) {
+        if (!Traits.StreamingRead) {
+            TraceStore->NoRetire = TRUE;
+        }
+    } else {
+        if (!Traits.StreamingWrite) {
+            TraceStore->NoRetire = TRUE;
+        }
+    }
+
     //
     // Now initialize the TraceStore itself.
     //
-
-    TraceStore->IsMetadata = FALSE;
 
     if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize)) {
         goto Error;
@@ -642,7 +670,7 @@ Routine Description:
     trace stores and metadata trace stores.  It will close previous and next
     memory maps if applicable, and cancel any in-flight "prepare memory map"
     requests and wait for all memory maps associated with the trace store to
-    be free'd (indicating that no more threads are servicing trace store memory
+    be freed (indicating that no more threads are servicing trace store memory
     map requests).
 
     It will then truncate the trace store, flush file buffers and close the

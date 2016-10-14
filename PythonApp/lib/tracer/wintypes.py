@@ -377,6 +377,9 @@ kernel32.SetThreadpoolThreadMaximum.argtypes = [ PTP_POOL, DWORD ]
 kernel32.CloseThreadpool.restype = VOID
 kernel32.CloseThreadpool.argtypes = [ PTP_POOL, ]
 
+kernel32.WaitForSingleObject.restype = DWORD
+kernel32.WaitForSingleObject.argtypes = [ HANDLE, DWORD ]
+
 #===============================================================================
 # NtDll
 #===============================================================================
@@ -495,5 +498,40 @@ def create_unicode_string(string):
         PWSTR
     )
     return unicode_string
+
+def create_threadpool(num_cpus=None):
+    if not num_cpus:
+        from multiprocessing import cpu_count
+        num_cpus = cpu_count()
+
+
+    threadpool = kernel32.CreateThreadpool(None)
+    if not threadpool:
+        raise RuntimeError("CreateThreadpool() failed")
+
+    kernel32.SetThreadpoolThreadMinimum(threadpool, num_cpus)
+    kernel32.SetThreadpoolThreadMaximum(threadpool, num_cpus)
+
+def create_threadpool_callback_environment(num_cpus=None, threadpool=None):
+    if not threadpool:
+        threadpool = create_threadpool(num_cpus=num_cpus)
+    threadpool_callback_environment = TP_CALLBACK_ENVIRON()
+    InitializeThreadpoolEnvironment(threadpool_callback_environment)
+    SetThreadpoolCallbackPool(
+        threadpool_callback_environment,
+        threadpool,
+    )
+    return threadpool_callback_environment
+
+def is_signaled(event):
+    result = kernel32.WaitForSingleObject(event, 0)
+    if result == WAIT_OBJECT_0:
+        return True
+    elif result == WAIT_TIMEOUT:
+        return False
+    elif result == WAIT_ABANDONED:
+        return False
+    elif result == WAIT_FAILED:
+        raise OSError("WaitForSingleObject: WAIT_FAILED")
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

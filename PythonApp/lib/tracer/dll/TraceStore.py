@@ -6,9 +6,14 @@ from ..wintypes import (
     cast,
     byref,
     errcheck,
+    create_threadpool,
     create_string_buffer,
+    create_threadpool_callback_environment,
 
     Structure,
+
+    SetThreadpoolCallbackPool,
+    InitializeThreadpoolEnvironment,
 
     CDLL,
     BOOL,
@@ -34,6 +39,7 @@ from ..wintypes import (
     LARGE_INTEGER,
     ULARGE_INTEGER,
     PROCESSOR_NUMBER,
+    TP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
 )
 
@@ -70,6 +76,13 @@ class TRACE_FLAGS(Structure):
     ]
 PTRACE_FLAGS = POINTER(TRACE_FLAGS)
 
+class READONLY_TRACE_CONTEXT_FLAGS(Structure):
+    _fields_ = [
+        ('Valid', ULONG, 1),
+        ('Unused', ULONG, 31),
+    ]
+PREADONLY_TRACE_CONTEXT_FLAGS = POINTER(READONLY_TRACE_CONTEXT_FLAGS)
+
 class TRACE_STORE_TRAITS(Structure):
     _fields_ = [
         ('VaryingRecordSize', ULONG, 1),
@@ -77,7 +90,7 @@ class TRACE_STORE_TRAITS(Structure):
         ('MultipleRecords', ULONG, 1),
         ('StreamingWrite', ULONG, 1),
         ('StreamingRead', ULONG, 1),
-        ('Unused', ULONG, 28),
+        ('Unused', ULONG, 27),
     ]
 PTRACE_STORE_TRAITS = POINTER(TRACE_STORE_TRAITS)
 
@@ -243,6 +256,29 @@ class TRACE_CONTEXT(Structure):
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
 
+class READONLY_TRACE_CONTEXT(Structure):
+    _fields_ = [
+        ('SizeOfStruct', USHORT),
+        ('Padding1', USHORT),
+        ('Flags', READONLY_TRACE_CONTEXT_FLAGS),
+        ('Rtl', PRTL),
+        ('HeapHandle', HANDLE),
+        ('Directory', PUNICODE_STRING),
+        ('UserData', PVOID),
+        ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
+        ('TraceStores', PTRACE_STORES),
+        ('LoadingCompleteEvent', HANDLE),
+        ('TraceStoresLoadingCompleteCallback', PVOID),
+        ('TraceStoresLoadingCompleteWork', PTP_WORK),
+        ('LoadTraceStoreMaps', SLIST_HEADER),
+        ('LoadTraceStoreWork', PTP_WORK),
+        ('Padding2', CHAR * 24),
+        ('ConcurrentLoadsInProgress', ULONG),
+        ('Padding3', CHAR * 60),
+        ('Padding4', ULONGLONG * 8),
+    ]
+PREADONLY_TRACE_CONTEXT = POINTER(READONLY_TRACE_CONTEXT)
+
 class TRACE_STORE(Structure):
     pass
 PTRACE_STORE = POINTER(TRACE_STORE)
@@ -276,7 +312,7 @@ UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO = CFUNCTYPE(
 )
 UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO.errcheck = errcheck
 
-INITIALIZE_TRACE_STORES_READONLY = CFUNCTYPE(
+INITIALIZE_READONLY_TRACE_STORES = CFUNCTYPE(
     BOOL,
     PRTL,
     PWSTR,
@@ -290,11 +326,11 @@ INITIALIZE_TRACE_STORES_READONLY = CFUNCTYPE(
 #===============================================================================
 
 TraceStoreDll = None
-InitializeTraceStoresReadonly = None
+InitializeReadonlyTraceStores = None
 
 def bind(path=None, dll=None):
     global TraceStoreDll
-    global InitializeTraceStoresReadonly
+    global InitializeReadonlyTraceStores
 
     assert path or dll
     if not dll:
@@ -303,8 +339,8 @@ def bind(path=None, dll=None):
             dll = CDLL(path)
             TraceStoreDll = dll
 
-    InitializeTraceStoresReadonly = INITIALIZE_TRACE_STORES_READONLY(
-        ('InitializeTraceStoresReadonly', dll),
+    InitializeReadonlyTraceStores = INITIALIZE_READONLY_TRACE_STORES(
+        ('InitializeReadonlyTraceStores', dll),
         (
             (1, 'Rtl'),
             (1, 'BaseDirectory'),
@@ -318,11 +354,11 @@ def bind(path=None, dll=None):
 # Python Functions
 #===============================================================================
 
-def create_and_initialize_trace_stores_readonly(rtl, basedir):
+def create_and_initialize_readonly_trace_stores(rtl, basedir):
 
     size = ULONG()
 
-    success = InitializeTraceStoresReadonly(
+    success = InitializeReadonlyTraceStores(
         cast(0, PRTL),
         cast(0, PWSTR),
         cast(0, PTRACE_STORES),
@@ -338,7 +374,7 @@ def create_and_initialize_trace_stores_readonly(rtl, basedir):
 
     prtl = byref(rtl)
 
-    success = InitializeTraceStoresReadonly(
+    success = InitializeReadonlyTraceStores(
         prtl,
         basedir,
         ptrace_stores,
@@ -348,5 +384,39 @@ def create_and_initialize_trace_stores_readonly(rtl, basedir):
     assert success
 
     return ptrace_stores.contents
+
+def create_and_initialize_readonly_trace_context(rtl, trace_stores,
+                                                 num_cpus=None,
+                                                 threadpool=None,
+                                                 tp_callback_env=None):
+    if not threadpool:
+        threadpool = create_threadpool(num_cpus=num_cpus)
+
+    if not tp_callback_env:
+        tp_callback_env = TP_CALLBACK_ENVIRON()
+        InitializeThreadpoolEnvironment(tp_callback_env)
+        SetThreadpoolCallbackPool(
+            threadpool_callback_environment,
+            threadpool,
+        )
+
+    readonly_trace_context = READONLY_TRACE_CONTEXT()
+    size = ULONG(sizeof(READONLY_TRACE_CONTEXT))
+
+    success = InitializeReadonlyTraceContext(
+        byref(rtl),
+        byref(readonly_trace_context),
+        byref(size),
+        byref(trace_stores),
+        byref(tp_callback_env),
+        cast(0, PVOID),
+    )
+
+    assert success
+
+    return readonly_trace_context
+
+def is_readonly_trace_context_ready(readonly_trace_context):
+    return is_signaled(readonly_trace_context.LoadingCompleteEvent)
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :
