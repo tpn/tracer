@@ -17,7 +17,6 @@ Abstract:
 
 P__C_SPECIFIC_HANDLER __C_specific_handler_impl = NULL;
 
-__declspec(dllexport)
 VOID
 SetCSpecificHandler(
     P__C_SPECIFIC_HANDLER Handler

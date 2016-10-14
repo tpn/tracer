@@ -60,12 +60,12 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACED_PYTHON_SESSION_INTERNAL_BUILD;_TRACED_PYTHON_SESSION_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACED_PYTHON_SESSION_INTERNAL_BUILD;_TRACED_PYTHON_SESSION_DLL_BUILD;_TRACER_CONFIG_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>TracerConfig.lib;%(AdditionalDependencies);kernel32.lib</AdditionalDependencies>
+      <AdditionalDependencies>TracerConfigLib.lib;%(AdditionalDependencies);kernel32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>

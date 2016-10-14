@@ -232,6 +232,9 @@ Return Value:
     Name##Store->CreateFileDesiredAccess = (                           \
         TraceStore->CreateFileDesiredAccess                            \
     );                                                                 \
+    Name##Store->CreateFileCreationDisposition = (                     \
+        TraceStore->CreateFileCreationDisposition                      \
+    );                                                                 \
     Name##Store->CreateFileMappingProtectionFlags = (                  \
         TraceStore->CreateFileMappingProtectionFlags                   \
     );                                                                 \

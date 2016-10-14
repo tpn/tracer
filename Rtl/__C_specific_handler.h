@@ -42,7 +42,7 @@ typedef SET_C_SPECIFIC_HANDLER *PSET_C_SPECIFIC_HANDLER;
 #endif
 
 extern P__C_SPECIFIC_HANDLER __C_specific_handler_impl;
-
+__declspec(dllexport) SET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
 #pragma warning(push)
 #pragma warning(disable: 4028 4273)
@@ -50,6 +50,5 @@ extern P__C_SPECIFIC_HANDLER __C_specific_handler_impl;
 __C_SPECIFIC_HANDLER __C_specific_handler;
 
 #pragma warning(pop)
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

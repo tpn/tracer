@@ -299,6 +299,96 @@ typedef struct _TRACE_STORE_TOTALS {
 } TRACE_STORE_TOTALS, *PTRACE_STORE_TOTALS;
 
 //
+// This structure contains bitfields that capture various traits of the trace
+// store.  It is used by the trace store machinery to pick optimal behavior
+// when working with a trace store.  It is used for both normal and metadata
+// trace stores.
+//
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
+
+    //
+    // When set, indicates records of different sizes may be allocated.  When
+    // clear, indicates records will always be of a fixed size.  That is, the
+    // AllocateRecords() routine will always be called with the same RecordSize
+    // parameter.
+    //
+    // Invariants:
+    //
+    //   - VaryingRecordSize && MultipleRecords
+    //
+
+    ULONG VaryingRecordSize:1;
+
+    //
+    // When set, indicates that the record size will always be a power of two.
+    //
+
+    ULONG RecordSizeIsAlwaysPowerOf2:1;
+
+    //
+    // When set, indicates the trace store may contain multiple records.  When
+    // clear, indicates there will always only ever be a single record.
+    //
+    // Invariants:
+    //
+    //   - MultipleRecords && !StreamingLoad
+    //
+
+    ULONG MultipleRecords:1;
+
+    //
+    // When set, indicates that the trace store should "stream" pages when
+    // writing data.  This results in pages being retired once they have been
+    // consumed (that is, they are unmapped from memory).  This is used for
+    // trace stores that contain event data, which can result in hundreds of
+    // millions of records.
+    //
+    // When clear, indicates memory maps should not be retired once they have
+    // been filled up.  This is used for reference data that needs to stay
+    // memory resident for the duration of the trace session.
+    //
+    // StreamingWrite usually implies StreamingRead, however, this not always
+    // the case.  The :address and :allocation metadata stores are configured
+    // to do streaming writes, but have streaming reads disabled.  This is
+    // because the trace store memory map reader algorithm needs to have all
+    // allocation and address information available in order to determine
+    // how to map/relocate data.
+    //
+
+    ULONG StreamingWrite:1;
+
+    //
+    // When set, indicates that streaming should be used when reading the trace
+    // store's contents.  This is identical to StreamingWrite in that pages
+    // are retired once they have been read (unmapped from memory).
+    //
+    // When clear, the entire contents of the trace store will be mapped
+    // up-front when the trace store is bound to a trace context.
+    //
+
+    ULONG StreamingRead:1;
+
+    //
+    // Mark the remaining bits as unused.
+    //
+
+    ULONG Unused:27;
+
+} TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
+
+C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
+
+typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
+    VaryingRecordSizeTrait              =      1,
+    RecordSizeIsAlwaysPowerOf2Trait     = 1 << 1,
+    MultipleRecordsTrait                = 1 << 2,
+    StreamingWriteTrait                 = 1 << 3,
+    StreamingReadTrait                  = 1 << 4,
+    InvalidTrait                        = (1 << 4) + 1
+} TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
+
+//
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
 // various tracing-related information.  (Single-instance as in there's only
 // ever one global instance of the given record, i.e. the EndOfFile.  This is
@@ -306,14 +396,33 @@ typedef struct _TRACE_STORE_TOTALS {
 // nature, will usually have multiple occurrences/allocations.)
 //
 
-typedef struct _TRACE_STORE_INFO {
+typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     TRACE_STORE_EOF     Eof;
     TRACE_STORE_TIME    Time;
     TRACE_STORE_STATS   Stats;
     TRACE_STORE_TOTALS  Totals;
+
+    //
+    // We're at 128 bytes here and consume two cache lines.  Traits pushes us
+    // over into a third cache line, and we want our size to be a power of 2
+    // (because these structures are packed successively in the struct below
+    // and we don't want two different metadata stores sharing a cache line),
+    // we have to pad out to a forth cache line.  So, plenty of space to grow
+    // down the track.
+    //
+
+    TRACE_STORE_TRAITS  Traits;
+
+    //
+    // We're at 132 bytes.  256 - 132 = 124 bytes of padding.
+    //
+
+    CHAR Unused[124];
+
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 
-C_ASSERT(sizeof(TRACE_STORE_INFO) == 128);
+C_ASSERT(sizeof(TRACE_STORE_INFO) == 256);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_INFO, Traits) == 128);
 
 typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO MetadataInfo;
@@ -785,6 +894,7 @@ typedef struct _TRACE_STORE {
     };
 
     DWORD CreateFileDesiredAccess;
+    DWORD CreateFileCreationDisposition;
     DWORD CreateFileMappingProtectionFlags;
     DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
@@ -835,6 +945,12 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC pReloc;
 
     //
+    // Likewise for pTraits.
+    //
+
+    PTRACE_STORE_TRAITS pTraits;
+
+    //
     // The actual underlying field relocations array is pointed to by the
     // pReloc->Relocations field; however, this pointer will not be valid
     // when re-loading persisted :relocation metadata from the metadata store.
@@ -849,15 +965,16 @@ typedef struct _TRACE_STORE {
 
     //
     // For trace stores, the pointers below will point to the metadata trace
-    // store memory maps.  Eof, Time, Stats and Totals are convenience pointers
-    // into the Info struct.  For metadata stores, Info will be pointed to the
-    // relevant offset into the :metadatainfo store.
+    // store memory maps.  Eof, Time, Stats, Totals and Traits are convenience
+    // pointers into the Info struct.  For metadata stores, Info will be pointed
+    // to the relevant offset into the :metadatainfo store.
     //
 
     PTRACE_STORE_EOF    Eof;
     PTRACE_STORE_TIME   Time;
     PTRACE_STORE_STATS  Stats;
     PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_TRAITS Traits;
     PTRACE_STORE_INFO   Info;
 
     //
@@ -955,12 +1072,12 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORES)(
-    _In_        PRTL            Rtl,
-    _In_        PWSTR           BaseDirectory,
+    _In_opt_    PRTL            Rtl,
+    _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
     _In_opt_    PULONG          InitialFileSizes,
-    _In_        PTRACE_FLAGS    TraceFlags,
+    _In_opt_    PTRACE_FLAGS    TraceFlags,
     _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
@@ -970,11 +1087,11 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORES_READONLY)(
-    _In_        PRTL            Rtl,
-    _In_        PWSTR           BaseDirectory,
+    _In_opt_    PRTL            Rtl,
+    _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
-    _In_        PTRACE_FLAGS    TraceFlags
+    _In_opt_    PTRACE_FLAGS    TraceFlags
     );
 typedef INITIALIZE_TRACE_STORES_READONLY *PINITIALIZE_TRACE_STORES_READONLY;
 TRACE_STORE_API INITIALIZE_TRACE_STORES_READONLY InitializeTraceStoresReadonly;

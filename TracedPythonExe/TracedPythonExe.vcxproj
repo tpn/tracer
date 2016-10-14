@@ -70,7 +70,7 @@
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ExpandAttributedSource>true</ExpandAttributedSource>
-      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

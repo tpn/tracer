@@ -978,6 +978,183 @@ def touch_file(path):
 
     assert os.path.exists(path)
 
+def file_timestamp(path):
+    """
+    Returns a datetime.datetime() object representing the given path's "latest"
+    timestamp, which is calculated via the maximum (newest/youngest) value
+    between ctime and mtime.  This accounts for platform variations in said
+    values.  If the path doesn't exist, the earliest timestamp supported by the
+    system is returned -- typically the epoch.
+    """
+    try:
+        st = os.stat(path)
+        timestamp = max(st.st_mtime, st.st_ctime)
+    except OSError:
+        timestamp = 0
+    return datetime.datetime.fromtimestamp(timestamp)
+
+FileTimestamp = namedtuple('FileTimestamp', ['path', 'timestamp'])
+def file_timestamps(paths):
+    """
+    Given a list of paths, returns a list of FileTimestamp named tuples, ordered
+    by the file with the "latest" change.  Any paths that don't exist are
+    discarded.
+    """
+    exists = os.path.exists
+    results = [
+        FileTimestamp(path=path, timestamp=file_timestamp(path))
+            for path in paths
+                if exists(path)
+    ]
+    results.sort(key=lambda ft: ft.timestamp, reverse=True)
+    return results
+
+def file_exists_and_not_empty(path):
+    """
+    Returns an os.path.abspath()-version of `path` if it exists, is a file,
+    and is not empty (i.e. has a size greater than zero bytes).  If the file
+    ends in .gz and is under 2GB, use the size extracted from the gzip header
+    instead of the st_size returned from os.stat().
+    """
+
+    if not path:
+        return
+
+    path = os.path.abspath(path)
+
+    if not os.path.isfile(path):
+        return
+
+    try:
+        with open(path, 'rb') as f:
+            f.read(1)
+
+        size = os.stat(path).st_size
+        two_gig = 1 << 31
+        if path.endswith('.gz') and size < two_gig:
+            if guess_gzip_filesize(path) > 0:
+                return path
+        else:
+            if size > 0:
+                return path
+    except:
+        return
+
+def find_nonexistent_or_unreadable_or_empty_files(paths):
+    """
+    For the given list of paths, returns a list of all paths that either didn't
+    exist, or did exist but either a) weren't readable, or b) were empty.
+
+    An empty list will be returned if all paths meet the constraints.
+    """
+    stat = os.stat
+    isfile = os.path.isfile
+
+    failed = []
+    for path in paths:
+        if not isfile(path):
+            failed.append(path)
+            continue
+
+        try:
+            with open(path, 'r') as f:
+                pass
+
+            if stat(path).st_size > 0:
+                continue
+        except:
+            pass
+
+        failed.append(path)
+
+    return failed
+
+def first_writable_file_that_preferably_exists(files):
+    """
+    Returns the first file in files (sequence of path names) that preferably
+    exists and is writable.  "Preferably exists" means that two loops are done
+    over the files -- the first loop returns the first file that exists and is
+    writable.  If no files are found, a second loop is performed and the first
+    file that can be opened for write is returned.  If that doesn't find
+    anything, a RuntimeError is raised.
+
+    Note that the "writability" test is literally conducted by attempting to
+    open the file for writing (versus just checking for write permissions).
+    """
+    # Explicitly coerce into a list as we may need to enumerate over the
+    # contents twice (which we couldn't do if we're passed a generator).
+    files = [ f for f in filter(None, files) ]
+
+    # First pass: look for files that exist and are writable.
+    for f in files:
+        if file_exists_and_not_empty(f):
+            try:
+                with open(f, 'ab'):
+                    return f
+            except (IOError, OSError):
+                pass
+
+    # Second pass: just pick the first file we can find that's writable.
+    for f in files:
+        try:
+            with open(f, 'ab'):
+                return f
+        except (IOError, OSError):
+            pass
+
+    raise RuntimeError("no writable files found")
+
+def list_directories_by_latest(base, directory_filter=None):
+    paths = [ join(base, p) for p in os.listdir(base) ]
+    dirs = [ d for d in paths if isdir(d) ]
+    if directory_filter:
+        dirs = [ d for d in dirs if directory_filter(d) ]
+    return [ d.path for d in file_timestamps(dirs) ]
+
+def prompt_for_directory(base_directory, ostream=None, istream=None,
+                         estream=None, activity_name='Load',
+                         directory_filter=None):
+
+    if not ostream:
+        ostream = sys.stdout
+    if not istream:
+        istream = sys.stdin
+    if not estream:
+        estream = sys.stderr
+
+    fmt = "%s %s? [y/n/q] " % (activity_name, '%s')
+    errmsg = "\nSorry, I didn't get that.\n"
+
+    latest_dirs = list_directories_by_latest(
+        base_directory,
+        directory_filter=directory_filter,
+    )
+
+    found = None
+    for path in latest_dirs:
+        name = basename(path)
+        prompt = fmt % name
+        while True:
+            ostream.write(prompt)
+            response = yes_no_quit(istream)
+            if response:
+                break
+            estream.write(errmsg)
+
+        if response == 'y':
+            found = path
+            break
+        elif response == 'q':
+            out("Quitting.")
+            return
+
+    if not found:
+        msg = "Sorry, no more directories left."
+        out(msg)
+        return
+
+    return path
+
 def try_remove_file(path):
     try:
         os.unlink(path)
@@ -1103,6 +1280,26 @@ def clear_screen():
         os.system('cls')
     else:
         sys.stdout.write(chr(27) + "[2J")
+
+def yes_no(istream):
+    r = istream.read(1)
+    istream.read(1)
+    if r in ('Y', 'y'):
+        return 'y'
+    elif r in ('N', 'n'):
+        return 'n'
+    return
+
+def yes_no_quit(istream):
+    r = istream.read(1)
+    istream.read(1)
+    if r in ('Y', 'y'):
+        return 'y'
+    elif r in ('N', 'n'):
+        return 'n'
+    elif r in ('Q', 'q'):
+        return 'q'
+    return
 
 # memoize/memoized lovingly stolen from conda.utils.
 class memoized(object):
