@@ -787,6 +787,9 @@ Routine Description:
     that has active trace stores that have been registered with the global
     rundown list.
 
+    The logic is similar to CloseTraceStore(), except no threadpool operations
+    are dispatched, as these can't be called during DLL_PROCESS_DETACH.
+
 Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE struct to close.
@@ -1006,9 +1009,9 @@ Routine Description:
 
     This routine is the callback target for the prefault future trace store
     threadpool work.  It simply calls the PrefaultFutureTraceStorePage()
-    inline routine (which forces (via volatile machinery) a read of the memory
-    address we want to prefault, which will result in a hard or soft fault if
-    the page isn't resident).
+    inline routine (which forces a read of the memory address we want to
+    prefault, which will result in a hard or soft fault if the page isn't
+    resident).
 
 Arguments:
 
