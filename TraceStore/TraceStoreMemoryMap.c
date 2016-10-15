@@ -195,6 +195,12 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // As we've taken ownership of a memory map, any erroneous conditions after
+    // this point must `goto Error` to ensure the memory map is placed back on
+    // the list when free.
+    //
+
     if (!MemoryMap->FileHandle) {
         goto Error;
     }

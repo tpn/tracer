@@ -315,7 +315,8 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     //
     // Invariants:
     //
-    //   - VaryingRecordSize && MultipleRecords
+    //   - If VaryingRecordSize == TRUE:
+    //          Assert MultipleRecords == TRUE
     //
 
     ULONG VaryingRecordSize:1;
@@ -332,7 +333,9 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     //
     // Invariants:
     //
-    //   - MultipleRecords && !StreamingLoad
+    //   - If MultipleRecords == FALSE:
+    //          Assert StreamingWrite == FALSE
+    //          Assert StreamingRead == FALSE
     //
 
     ULONG MultipleRecords:1;
@@ -361,7 +364,7 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     //
     // When set, indicates that streaming should be used when reading the trace
     // store's contents.  This is identical to StreamingWrite in that pages
-    // are retired once they have been read (unmapped from memory).
+    // are retired (unmapped from memory) once they have been read.
     //
     // When clear, the entire contents of the trace store will be mapped
     // up-front when the trace store is bound to a trace context.
@@ -411,8 +414,7 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     // over into a third cache line, and we want our size to be a power of 2
     // (because these structures are packed successively in the struct below
     // and we don't want two different metadata stores sharing a cache line),
-    // we have to pad out to a forth cache line.  So, plenty of space to grow
-    // down the track.
+    // so we have to pad out to a forth cache line.
     //
 
     TRACE_STORE_TRAITS  Traits;
@@ -604,6 +606,7 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
 //
 
 typedef struct _TRACE_STORE_BITMAP {
+
     ULONG SizeOfBitMap;
 
     //
@@ -1303,14 +1306,14 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_CONTEXT)(
-    _In_opt_ PRTL            Rtl,
+    _In_opt_ PRTL                  Rtl,
     _Inout_bytecap_(*SizeOfTraceContext)
-             PTRACE_CONTEXT  TraceContext,
-    _In_     PULONG          SizeOfTraceContext,
-    _In_opt_ PTRACE_SESSION  TraceSession,
-    _In_opt_ PTRACE_STORES   TraceStores,
+             PTRACE_CONTEXT        TraceContext,
+    _In_     PULONG                SizeOfTraceContext,
+    _In_opt_ PTRACE_SESSION        TraceSession,
+    _In_opt_ PTRACE_STORES         TraceStores,
     _In_opt_ PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
-    _In_opt_ PVOID UserData
+    _In_opt_ PVOID                 UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;

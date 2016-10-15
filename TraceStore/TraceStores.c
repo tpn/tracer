@@ -318,12 +318,18 @@ Return Value:
         USHORT CompressionFormat = COMPRESSION_FORMAT_DEFAULT;
         DWORD BytesReturned = 0;
 
+        //
+        // Obtain a directory handle with FILE_FLAG_BACKUP_SEMANTICS, which is
+        // required in order for us to call the FSCTL_SET_COMPRESSION IoControl
+        // below.
+        //
+
         DirectoryHandle = CreateFileW(
             BaseDirectory,
             CreateFileDesiredAccess,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             NULL,
-            OPEN_ALWAYS,
+            OPEN_EXISTING,
             FILE_FLAG_BACKUP_SEMANTICS,
             NULL
         );
@@ -332,6 +338,10 @@ Return Value:
             LastError = GetLastError();
             return FALSE;
         }
+
+        //
+        // Request compression on the directory.
+        //
 
         Success = DeviceIoControl(
             DirectoryHandle,                // hDevice
@@ -345,6 +355,11 @@ Return Value:
         );
 
         if (!Success) {
+
+            //
+            // We can't do anything useful here.
+            //
+
             OutputDebugStringA("Failed to enable compression.\n");
         }
 
@@ -360,6 +375,10 @@ Return Value:
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
 
     InitializeListHead(&TraceStores->RundownListEntry);
+
+    //
+    // Loop through each trace store in the array and initialize it.
+    //
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TRACE_STORE_DECLS();
@@ -425,6 +444,13 @@ Return Value:
             return FALSE;
         }
     }
+
+    //
+    // If we're not readonly, and global rundown hasn't been disabled, register
+    // this trace stores structure.  This will ensure it gets rundown when the
+    // process exits but the user hasn't explicitly stopped tracing.  This is
+    // common in Python if a module does sys.exit().
+    //
 
     if (!Readonly && !TraceFlags->NoGlobalRundown) {
         Success = RegisterGlobalTraceStores(TraceStores);
