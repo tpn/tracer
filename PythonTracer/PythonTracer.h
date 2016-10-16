@@ -370,11 +370,10 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PTRACE_CONTEXT    TraceContext;                         // 8    24  32
     PPYTRACEFUNC      PythonTraceFunction;                  // 8    32  40
     PVOID             UserData;                             // 8    40  48
+    PALLOCATOR        Allocator;
 
     ULONG             Depth;
     ULONG             SkipFrames;
-
-    ULONG Unused2;
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER StartTimestamp;
@@ -428,6 +427,7 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_PYTHON_TRACE_CONTEXT)(
     _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
     _Out_bytecap_(*SizeOfPythonTraceContext) PPYTHON_TRACE_CONTEXT
         PythonTraceContext,
     _Inout_ PULONG SizeOfPythonTraceContext,

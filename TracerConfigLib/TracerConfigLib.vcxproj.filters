@@ -15,39 +15,36 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="../TracerConfig/stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="targetver.h">
+    <ClInclude Include="../TracerConfig/targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracerConfig.h">
+    <ClInclude Include="../TracerConfig/TracerConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracerConfigPrivate.h">
+    <ClInclude Include="../TracerConfig/TracerConfigConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracerConfigConstants.h">
+    <ClInclude Include="../TracerConfig/TracerConfigPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.c">
+    <ClCompile Include="../TracerConfig/CreateTraceSessionDirectory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InitializeTracerConfig.c">
+    <ClCompile Include="../TracerConfig/DestroyTracerConfig.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DestroyTracerConfig.c">
+    <ClCompile Include="../TracerConfig/HeapAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CreateTraceSessionDirectory.c">
+    <ClCompile Include="../TracerConfig/InitializeTracerConfig.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Allocation.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HeapAllocator.c">
+    <ClCompile Include="../TracerConfig/stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

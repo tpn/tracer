@@ -84,10 +84,12 @@
     <ClCompile Include="TraceStore.c" />
     <ClCompile Include="TraceStoreAddress.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
+    <ClCompile Include="TraceStoreConstants.c" />
     <ClCompile Include="TraceStoreContext.c" />
     <ClCompile Include="TraceStoreMemoryMap.c" />
     <ClCompile Include="TraceStoreMetadata.c" />
     <ClCompile Include="TraceStorePath.c" />
+    <ClCompile Include="TraceStoreReadonlyContext.c" />
     <ClCompile Include="TraceStoreRelocation.c" />
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
@@ -95,6 +97,7 @@
     <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
+    <ClCompile Include="TraceStoreTraits.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
