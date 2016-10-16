@@ -251,7 +251,7 @@ class TRACE_CONTEXT(Structure):
         ('UserData', PVOID),
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('HeapHandle', HANDLE),
-        ('BaseDirectory', PSTRING),
+        ('BaseDirectory', PUNICODE_STRING),
         ('Time', TRACE_STORE_TIME),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
@@ -296,7 +296,7 @@ TRACE_STORES._fields_ = [
     ('Padding1', USHORT),
     ('Padding2', ULONG),
     ('Flags', TRACE_FLAGS),
-    ('BaseDirectory', STRING),
+    ('BaseDirectory', UNICODE_STRING),
     ('Rtl', PRTL),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),

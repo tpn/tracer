@@ -47,19 +47,23 @@ Return Value:
 
 --*/
 {
-    PTRACE_STORE_MEMORY_MAP MemoryMaps;
-    SIZE_T AllocationSize;
     ULONG Index;
+    PALLOCATOR Allocator;
+    PTRACE_STORE_MEMORY_MAP MemoryMaps;
 
     if (!NumberOfItems) {
         NumberOfItems = InitialFreeMemoryMaps;
     }
 
-    AllocationSize = sizeof(TRACE_STORE_MEMORY_MAP) * NumberOfItems;
+    Allocator = TraceStore->Allocator;
 
-    MemoryMaps = HeapAlloc(TraceContext->HeapHandle,
-                           HEAP_ZERO_MEMORY,
-                           AllocationSize);
+    MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
+        Allocator->Calloc(
+            Allocator->Context,
+            NumberOfItems,
+            sizeof(TRACE_STORE_MEMORY_MAP)
+        )
+    );
 
     if (!MemoryMaps) {
         return FALSE;
@@ -77,8 +81,10 @@ Return Value:
         // Ensure the ListItem is aligned on the MEMORY_ALLOCATION_ALIGNMENT.
         // This is a requirement for the underlying SLIST_ENTRY.
         //
-        if (((ULONG_PTR)MemoryMap & (MEMORY_ALLOCATION_ALIGNMENT - 1)) != 0) {
-            __debugbreak();
+
+        if (!AssertAligned16(MemoryMap)) {
+            Allocator->Free(Allocator->Context, MemoryMaps);
+            return FALSE;
         }
 
         PushTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, MemoryMap);

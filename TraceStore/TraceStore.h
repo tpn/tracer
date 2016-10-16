@@ -379,6 +379,7 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG Unused:27;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
+typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
 
 C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 
@@ -750,18 +751,24 @@ typedef struct _TRACE_FLAGS {
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
-typedef struct _TRACE_CONTEXT {
-    ULONG                       Size;
-    ULONG                       SequenceId;
-    PRTL                        Rtl;
-    PTRACE_SESSION              TraceSession;
-    PTRACE_STORES               TraceStores;
-    PTIMER_FUNCTION             TimerFunction;
-    PVOID                       UserData;
-    PTP_CALLBACK_ENVIRON        ThreadpoolCallbackEnvironment;
-    HANDLE                      HeapHandle;
-    PSTRING                     BaseDirectory;
-    TRACE_STORE_TIME            Time;
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) USHORT SizeOfStruct;
+
+    ULONG SequenceId;
+    PRTL Rtl;
+    PALLOCATOR Allocator;
+    PTRACE_SESSION TraceSession;
+    PTRACE_STORES TraceStores;
+    PTIMER_FUNCTION TimerFunction;
+    PVOID UserData;
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
+    PUNICODE_STRING BaseDirectory;
+    TRACE_STORE_TIME Time;
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 typedef
@@ -798,7 +805,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _READONLY_TRACE_CONTEXT {
     READONLY_TRACE_CONTEXT_FLAGS Flags;                         // 4    4     8
 
     PRTL Rtl;                                                   // 8    8    16
-    HANDLE HeapHandle;                                          // 8   16    24
+    PALLOCATOR Allocator;                                       // 8   16    24
     PUNICODE_STRING Directory;                                  // 8   24    32
     PVOID UserData;                                             // 8   32    40
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;         // 8   40    48
@@ -981,6 +988,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            PrefaultMemoryMaps;
 
     PRTL                    Rtl;
+    PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
@@ -1149,20 +1157,21 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
-    USHORT      SizeOfStruct;
-    USHORT      SizeOfAllocation;
-    USHORT      NumberOfTraceStores;
-    USHORT      ElementsPerTraceStore;
-    USHORT      NumberOfFieldRelocationsElements;
-    USHORT      Padding1;
-    ULONG       Padding2;
-    TRACE_FLAGS Flags;
-    STRING      BaseDirectory;
-    PRTL        Rtl;
-    LIST_ENTRY  RundownListEntry;
+    USHORT            SizeOfStruct;
+    USHORT            SizeOfAllocation;
+    USHORT            NumberOfTraceStores;
+    USHORT            ElementsPerTraceStore;
+    USHORT            NumberOfFieldRelocationsElements;
+    USHORT            Padding1;
+    ULONG             Padding2;
+    TRACE_FLAGS       Flags;
+    UNICODE_STRING    BaseDirectory;
+    PRTL              Rtl;
+    PALLOCATOR        Allocator;
+    LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
-    TRACE_STORE Stores[MAX_TRACE_STORES];
+    TRACE_STORE       Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
 
 typedef struct _TRACE_STORE_METADATA_STORES {
@@ -1210,6 +1219,7 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORES)(
     _In_opt_    PRTL            Rtl,
+    _In_opt_    PALLOCATOR      Allocator,
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
@@ -1225,6 +1235,7 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_READONLY_TRACE_STORES)(
     _In_opt_    PRTL            Rtl,
+    _In_opt_    PALLOCATOR      Allocator,
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
@@ -1307,6 +1318,7 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_CONTEXT)(
     _In_opt_ PRTL                  Rtl,
+    _In_opt_ PALLOCATOR            Allocator,
     _Inout_bytecap_(*SizeOfTraceContext)
              PTRACE_CONTEXT        TraceContext,
     _In_     PULONG                SizeOfTraceContext,

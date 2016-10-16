@@ -607,6 +607,40 @@ typedef LOAD_TRACE_STORE_RELOCATION_INFO \
 LOAD_TRACE_STORE_RELOCATION_INFO LoadTraceStoreRelocationInfo;
 
 //
+// TraceStoreTraits-related functions.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(SAVE_TRACE_STORE_TRAITS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef SAVE_TRACE_STORE_TRAITS \
+      *PSAVE_TRACE_STORE_TRAITS;
+SAVE_TRACE_STORE_TRAITS SaveTraceStoreTraits;
+
+typedef
+_Success_(return != 0)
+BOOL
+(LOAD_TRACE_STORE_TRAITS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef LOAD_TRACE_STORE_TRAITS \
+      *PLOAD_TRACE_STORE_TRAITS;
+LOAD_TRACE_STORE_TRAITS LoadTraceStoreTraits;
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORE_TRAITS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef INITIALIZE_TRACE_STORE_TRAITS \
+      *PINITIALIZE_TRACE_STORE_TRAITS;
+INITIALIZE_TRACE_STORE_TRAITS InitializeTraceStoreTraits;
+
+//
 // TraceStoreContext-related functions.
 //
 

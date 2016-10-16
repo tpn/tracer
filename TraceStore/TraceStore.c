@@ -76,6 +76,10 @@ Return Value:
         // We're a metadata store.
         //
 
+        if (!TraceStore->IsMetadata) {
+            __debugbreak();
+        }
+
         TraceStore->FileHandle = CreateFileW(
             Path,
             TraceStore->CreateFileDesiredAccess,
@@ -224,6 +228,7 @@ Return Value:
     Name##Store->TraceStoreId = TraceStore->TraceStoreId;              \
     Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;  \
     Name##Store->TraceStore = TraceStore;                              \
+    Name##Store->Allocator = Allocator;                                \
     Name##Store->MetadataInfoStore = MetadataInfoStore;                \
     Name##Store->AllocationStore = AllocationStore;                    \
     Name##Store->RelocationStore = RelocationStore;                    \
@@ -342,10 +347,9 @@ Return Value:
 --*/
 {
     BOOL Success;
-    USHORT Index;
     TRACE_FLAGS Flags;
     TRACE_STORE_TRAITS Traits;
-    PTRACE_STORE_TRAITS pTraits;
+    PALLOCATOR Allocator;
     HRESULT Result;
     WCHAR MetadataInfoPath[_OUR_MAX_PATH];
     WCHAR AllocationPath[_OUR_MAX_PATH];
@@ -405,6 +409,12 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(Reloc)) {
+        return FALSE;
+    }
+
+    Allocator = TraceStore->Allocator;
+
+    if (!Allocator) {
         return FALSE;
     }
 
@@ -497,13 +507,14 @@ Return Value:
     TraceStore->IsMetadata = FALSE;
 
     //
-    // Set trait information.
+    // Initialize trait information.
     //
 
-    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
-    pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
-    TraceStore->pTraits = pTraits;
-    Traits = *pTraits;
+    if (!InitializeTraceStoreTraits(TraceStore)) {
+        goto Error;
+    }
+
+    Traits = *TraceStore->pTraits;
 
     //
     // Make sure the no retire flag matches the streaming trait.
@@ -849,7 +860,7 @@ Routine Description:
 
     This routine closes a normal trace store.  It is not intended to be called
     against metadata trace stores.  It will close the trace store, then close
-    the meta data trace stores associated with that trace store.
+    the metadata trace stores associated with that trace store.
 
 Arguments:
 
