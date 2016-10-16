@@ -271,7 +271,7 @@ Routine Description:
         // stage, so we can use SSE intrinsics here.
         //
 
-        CharsXmm = _mm_load_si128((__m128i *)String->Buffer);
+        CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);
         _mm_store_si128(&(*Slot).CharsXmm, CharsXmm);
 
         ++Index;
