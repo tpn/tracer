@@ -934,14 +934,6 @@ Return Value:
     }
 
     //
-    // Initialize aliases.
-    //
-
-    Rtl = TraceStore->Rtl;
-    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
-    TraceContext = TraceStore->TraceContext;
-
-    //
     // We may not have a stats struct available yet if this is the first
     // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
     // point the pointer at a dummy one.  This simplifies the rest of the
@@ -953,6 +945,23 @@ Return Value:
     if (!Stats) {
         Stats = &DummyStats;
     }
+
+    //
+    // Fast-path for single record trace stores; go straight to memory
+    // map consumption.
+    //
+
+    if (!TraceStore->pTraits->MultipleRecords) {
+        goto ConsumeMap;
+    }
+
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = TraceStore->Rtl;
+    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
+    TraceContext = TraceStore->TraceContext;
 
     //
     // The previous memory map becomes the previous-previous memory map.
@@ -1078,6 +1087,8 @@ StartPreparation:
         }
     }
 
+ConsumeMap:
+
     if (!PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
 
         //
@@ -1115,6 +1126,14 @@ StartPreparation:
     }
 
     TraceStore->MemoryMap = MemoryMap;
+
+    //
+    // Fast-path exit if we're a single record trace store.
+    //
+
+    if (!TraceStore->pTraits->MultipleRecords) {
+        goto End;
+    }
 
     //
     // Take a local copy of the timestamp.  We'll use this for both the "next"
@@ -1297,6 +1316,8 @@ SubmitPreparedMemoryMap:
 
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, PrepareMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
+
+End:
 
     return TRUE;
 }

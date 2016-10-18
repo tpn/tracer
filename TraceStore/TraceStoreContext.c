@@ -124,12 +124,12 @@ Return Value:
         return FALSE;
     }
 
+    SecureZeroMemory(TraceContext, *SizeOfTraceContext);
+
     TraceContext->TimerFunction = TraceStoreGetTimerFunction();
     if (!TraceContext->TimerFunction) {
         return FALSE;
     }
-
-    SecureZeroMemory(TraceContext, *SizeOfTraceContext);
 
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
