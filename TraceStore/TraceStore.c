@@ -73,7 +73,7 @@ Return Value:
     if (!TraceStore->FileHandle) {
 
         //
-        // We're a metadata store.
+        // We're a metadata store.  (Break if we're not.)
         //
 
         if (!TraceStore->IsMetadata) {
@@ -100,6 +100,15 @@ Return Value:
 
         goto Error;
     }
+
+    //
+    // Initialize trait information.
+    //
+
+    if (!InitializeTraceStoreTraits(TraceStore)) {
+        goto Error;
+    }
+
 
     //
     // Initialize default values.
@@ -506,29 +515,8 @@ Return Value:
 
     TraceStore->IsMetadata = FALSE;
 
-    //
-    // Initialize trait information.
-    //
-
-    if (!InitializeTraceStoreTraits(TraceStore)) {
-        goto Error;
-    }
-
     Traits = *TraceStore->pTraits;
 
-    //
-    // Make sure the no retire flag matches the streaming trait.
-    //
-
-    if (TraceStore->IsReadonly) {
-        if (!Traits.StreamingRead) {
-            TraceStore->NoRetire = TRUE;
-        }
-    } else {
-        if (!Traits.StreamingWrite) {
-            TraceStore->NoRetire = TRUE;
-        }
-    }
 
     //
     // Now initialize the TraceStore itself.

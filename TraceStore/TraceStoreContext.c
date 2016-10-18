@@ -228,11 +228,7 @@ Return Value:
     // Create the initial set of memory map records.
     //
 
-    Success = CreateMemoryMapsForTraceStore(
-        TraceStore,
-        TraceContext,
-        InitialFreeMemoryMaps
-    );
+    Success = CreateMemoryMapsForTraceStore(TraceStore);
 
     if (!Success) {
         return FALSE;

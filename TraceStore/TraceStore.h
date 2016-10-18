@@ -383,6 +383,17 @@ typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
 
 C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 
+typedef
+_Success_(return != 0)
+BOOL
+(VALIDATE_TRACE_STORE_TRAITS_INVARIANTS)(
+    _In_ TRACE_STORE_TRAITS Traits
+    );
+typedef VALIDATE_TRACE_STORE_TRAITS_INVARIANTS \
+      *PVALIDATE_TRACE_STORE_TRAITS_INVARIANTS;
+TRACE_STORE_API VALIDATE_TRACE_STORE_TRAITS_INVARIANTS \
+                ValidateTraceStoreTraitsInvariants;
+
 //
 // This enum should be kept in sync with the TRACE_STORE_TRAITS bitflags struct.
 //
@@ -439,6 +450,9 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO Bitmap;
     TRACE_STORE_INFO Info;
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
+C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 1536);
 
 //
 // For trace stores that record instances of structures from a running program,
@@ -1002,6 +1016,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
+    volatile ULONG  TotalNumberOfMemoryMaps;
     volatile ULONG  NumberOfActiveMemoryMaps;
 
     volatile LONG   MappedSequenceId;

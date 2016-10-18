@@ -16,6 +16,45 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
+ValidateTraceStoreTraitsInvariants(
+    TRACE_STORE_TRAITS Traits
+    )
+/*++
+
+Routine Description:
+
+    This routine validates the trace store traits invariants.
+
+Arguments:
+
+    Traits - Supplies a TRAITS_STORE_TRAITS value to validate.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    if (Traits.VaryingRecordSize) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+    }
+
+    if (!Traits.MultipleRecords) {
+        if (!AssertFalse("StreamingWrite", Traits.StreamingWrite)) {
+            return FALSE;
+        }
+        if (!AssertFalse("StreamingRead", Traits.StreamingRead)) {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
 InitializeTraceStoreTraits(
     PTRACE_STORE TraceStore
     )
@@ -47,7 +86,8 @@ Return Value:
 
 --*/
 {
-    USHORT Index;
+    TRACE_STORE_TRAITS Traits;
+    PTRACE_STORE_TRAITS pTraits;
 
     //
     // Validate arguments.
@@ -58,21 +98,66 @@ Return Value:
     }
 
     //
-    // Make sure we're not a metadata store; they load traits via INIT_METADATA
-    // macro.
+    // Load the traits from the relevant location.
     //
 
     if (TraceStore->IsMetadata) {
+        TRACE_STORE_METADATA_ID MetadataId = TraceStore->TraceStoreMetadataId;
+        pTraits = TraceStoreMetadataIdToTraits(MetadataId);
+    } else {
+        USHORT Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
+        pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+    }
+
+    if (!pTraits) {
         return FALSE;
     }
 
     //
-    // Get the array index for this trace store, then load the traits from
-    // the static array.
+    // Dereference the pointer and take a local copy of the traits, which is
+    // nicer to work with.  (Also, force any traps related to dodgy pointers
+    // sooner rather than later.)
     //
 
-    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
-    TraceStore->pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+    Traits = *pTraits;
+
+    //
+    // Validate the trait invariants.
+    //
+
+    if (!ValidateTraceStoreTraitsInvariants(Traits)) {
+        return FALSE;
+    }
+
+    //
+    // Update the trace store's pTraits pointer.
+    //
+
+    TraceStore->pTraits = pTraits;
+
+    //
+    // Make sure the no retire flag matches the streaming trait.
+    //
+
+    if (TraceStore->IsReadonly) {
+        if (!Traits.StreamingRead) {
+            TraceStore->NoRetire = TRUE;
+        }
+    } else {
+        if (!Traits.StreamingWrite) {
+            TraceStore->NoRetire = TRUE;
+        }
+    }
+
+    if (!Traits.MultipleRecords) {
+
+        //
+        // Single record stores don't participate in pre-faulting.
+        //
+
+        TraceStore->NoPrefaulting = TRUE;
+        TraceStore->NoTruncate = TRUE;
+    }
 
     return TRUE;
 }

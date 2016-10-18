@@ -2238,6 +2238,40 @@ LeadingZeros(
     return _lzcnt_u64(Integer);
 }
 
+FORCEINLINE
+BOOL
+AssertTrue(
+    _In_ PSTR Expression,
+    _In_ BOOL Value
+    )
+{
+    if (!Value) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA(Expression);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AssertFalse(
+    _In_ PSTR Expression,
+    _In_ BOOL Value
+    )
+{
+    if (Value) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA(Expression);
+        return FALSE;
+    }
+    return TRUE;
+}
+
 _Success_(return != 0)
 FORCEINLINE
 BOOL
