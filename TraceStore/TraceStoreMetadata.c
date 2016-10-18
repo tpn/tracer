@@ -16,7 +16,7 @@ Abstract:
 #include "stdafx.h"
 
 CONST ULONG TraceStoreMetadataRecordSizes[] = {
-    sizeof(TRACE_STORE_METADATA_ID),
+    sizeof(TRACE_STORE_METADATA_INFO),
     sizeof(TRACE_STORE_ALLOCATION),
     sizeof(TRACE_STORE_RELOC),
     sizeof(TRACE_STORE_ADDRESS),
@@ -32,6 +32,27 @@ CONST PINITIALIZE_TRACE_STORE_METADATA TraceStoreMetadataInitializers[] = {
     InitializeBitmapMetadata,           // Bitmap
     InitializeInfoMetadata              // Info
 };
+
+PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
+    &MetadataInfoStoreTraits,
+    &AllocationStoreTraits,
+    &RelocationStoreTraits,
+    &AddressStoreTraits,
+    &BitmapStoreTraits,
+    &InfoStoreTraits
+};
+
+_Use_decl_annotations_
+PTRACE_STORE_TRAITS
+TraceStoreMetadataIdToTraits(
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    )
+{
+    USHORT Index;
+
+    Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
+    return MetadataStoreTraits[Index];
+}
 
 _Use_decl_annotations_
 ULONG
@@ -90,23 +111,25 @@ InitializeMetadataFromRecordSize(
     PTRACE_STORE_EOF Eof;
     PTRACE_STORE_TOTALS Totals;
 
-    if (!MetadataStore->IsReadonly) {
-
-        //
-        // Set Eof to the record size and fake a similarly-sized allocation
-        // in the totals struct.
-        //
-
-        MetadataId = MetadataStore->TraceStoreMetadataId;
-        RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
-
-        Eof = MetadataStore->Eof;
-        Totals = MetadataStore->Totals;
-
-        Eof->EndOfFile.QuadPart = RecordSize;
-        Totals->NumberOfAllocations.QuadPart = 1;
-        Totals->AllocationSize.QuadPart = RecordSize;
+    if (MetadataStore->IsReadonly) {
+        __debugbreak();
+        return FALSE;
     }
+
+    //
+    // Set Eof to the record size and fake a similarly-sized allocation
+    // in the totals struct.
+    //
+
+    MetadataId = MetadataStore->TraceStoreMetadataId;
+    RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
+
+    Eof = MetadataStore->Eof;
+    Totals = MetadataStore->Totals;
+
+    Eof->EndOfFile.QuadPart = RecordSize;
+    Totals->NumberOfAllocations.QuadPart = 1;
+    Totals->AllocationSize.QuadPart = RecordSize;
 
     return TRUE;
 }
@@ -120,14 +143,17 @@ ZeroInitializeMetadata(
     PTRACE_STORE_EOF Eof;
     PTRACE_STORE_TOTALS Totals;
 
-    if (!MetadataStore->IsReadonly) {
-        Eof = MetadataStore->Eof;
-        Totals = MetadataStore->Totals;
-
-        Eof->EndOfFile.QuadPart = 0;
-        Totals->NumberOfAllocations.QuadPart = 0;
-        Totals->AllocationSize.QuadPart = 0;
+    if (MetadataStore->IsReadonly) {
+        __debugbreak();
+        return FALSE;
     }
+
+    Eof = MetadataStore->Eof;
+    Totals = MetadataStore->Totals;
+
+    Eof->EndOfFile.QuadPart = 0;
+    Totals->NumberOfAllocations.QuadPart = 0;
+    Totals->AllocationSize.QuadPart = 0;
 
     return TRUE;
 }
@@ -138,8 +164,16 @@ InitializeMetadataInfoMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    MetadataStore->NoPrefaulting = TRUE;
-    MetadataStore->NoTruncate = TRUE;
+
+    if (!MetadataStore->NoPrefaulting) {
+        __debugbreak();
+        return FALSE;
+    }
+    if (!MetadataStore->NoTruncate) {
+        __debugbreak();
+        return FALSE;
+    }
+
     return InitializeMetadataFromRecordSize(MetadataStore);
 }
 
@@ -185,8 +219,16 @@ InitializeInfoMetadata(
     PTRACE_STORE MetadataStore
     )
 {
-    MetadataStore->NoPrefaulting = TRUE;
-    MetadataStore->NoTruncate = TRUE;
+
+    if (!MetadataStore->NoPrefaulting) {
+        __debugbreak();
+        return FALSE;
+    }
+    if (!MetadataStore->NoTruncate) {
+        __debugbreak();
+        return FALSE;
+    }
+
     return InitializeMetadataFromRecordSize(MetadataStore);
 }
 

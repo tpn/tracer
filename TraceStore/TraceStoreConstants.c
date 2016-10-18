@@ -381,6 +381,15 @@ ULONG DefaultInfoTraceStoreMappingSize = (
     sizeof(TRACE_STORE_INFO)
 );
 
+TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
+    0,  // VaryingRecordSize
+    0,  // RecordSizeIsAlwaysPowerOf2
+    0,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0   // Unused
+};
+
 TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
@@ -391,9 +400,9 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
 };
 
 TRACE_STORE_TRAITS RelocationStoreTraits = {
-    0,  // VaryingRecordSize
+    1,  // VaryingRecordSize
     0,  // RecordSizeIsAlwaysPowerOf2
-    0,  // MultipleRecords
+    1,  // MultipleRecords
     0,  // StreamingWrite
     0,  // StreamingRead
     0   // Unused
@@ -426,13 +435,5 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
-    0,  // VaryingRecordSize
-    1,  // RecordSizeIsAlwaysPowerOf2
-    0,  // MultipleRecords
-    0,  // StreamingWrite
-    0,  // StreamingRead
-    0   // Unused
-};
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
