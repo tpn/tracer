@@ -89,7 +89,7 @@ Return Value:
     DWORD MapViewOfFileDesiredAccess;
     TRACE_FLAGS Flags;
     LPWSTR FileNameDest;
-    DWORD LongestFilename = GetLongestTraceStoreFileName();
+    ULONG LongestFilename = GetLongestTraceStoreFileName();
     DWORD TraceStoresAllocationSize = (
         GetTraceStoresAllocationSize(
             NumberOfTraceStores *

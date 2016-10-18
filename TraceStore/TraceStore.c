@@ -357,7 +357,6 @@ Return Value:
 {
     BOOL Success;
     TRACE_FLAGS Flags;
-    TRACE_STORE_TRAITS Traits;
     PALLOCATOR Allocator;
     HRESULT Result;
     WCHAR MetadataInfoPath[_OUR_MAX_PATH];
@@ -512,11 +511,7 @@ Return Value:
     INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 
-
     TraceStore->IsMetadata = FALSE;
-
-    Traits = *TraceStore->pTraits;
-
 
     //
     // Now initialize the TraceStore itself.

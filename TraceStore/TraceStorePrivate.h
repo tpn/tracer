@@ -86,23 +86,22 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORES_RUNDOWN {
     TRACE_STORES_RUNDOWN_FLAGS Flags;
 
     //
+    // Critical section protecting the rundown list head.
+    //
+
+    CRITICAL_SECTION CriticalSection;
+
+    //
     // Rundown list head.
     //
 
-    _Guarded_by_(&CriticalSection)
+    _Guarded_by_(CriticalSection)
     LIST_ENTRY ListHead;
-
-    //
-    // Critical section protecting the structure.
-    //
-
-    _Has_lock_kind_(_Lock_kind_critical_section_)
-    CRITICAL_SECTION CriticalSection;
 
 } TRACE_STORES_RUNDOWN, *PTRACE_STORES_RUNDOWN;
 
 typedef
-_Requires_lock_not_held_(&Rundown->CriticalSection)
+_Requires_lock_not_held_(Rundown->CriticalSection)
 VOID
 (RUNDOWN_TRACE_STORES)(
     _In_ PTRACE_STORES_RUNDOWN Rundown
@@ -139,27 +138,7 @@ typedef DESTROY_TRACE_STORES_RUNDOWN \
 DESTROY_TRACE_STORES_RUNDOWN DestroyTraceStoresRundown;
 
 typedef
-_Success_(return != 0)
-_Acquires_lock_(&Rundown->CriticalSection)
-BOOL
-(ACQUIRE_TRACE_STORES_RUNDOWN_LOCK)(
-    _In_ PTRACE_STORES_RUNDOWN Rundown
-    );
-typedef ACQUIRE_TRACE_STORES_RUNDOWN_LOCK *PACQUIRE_TRACE_STORES_RUNDOWN_LOCK;
-ACQUIRE_TRACE_STORES_RUNDOWN_LOCK AcquireTraceStoresRundownLock;
-
-typedef
-_Success_(return != 0)
-_Releases_lock_(&Rundown->CriticalSection)
-BOOL
-(RELEASE_TRACE_STORES_RUNDOWN_LOCK)(
-    _In_ PTRACE_STORES_RUNDOWN Rundown
-    );
-typedef RELEASE_TRACE_STORES_RUNDOWN_LOCK *PRELEASE_TRACE_STORES_RUNDOWN_LOCK;
-RELEASE_TRACE_STORES_RUNDOWN_LOCK ReleaseTraceStoresRundownLock;
-
-typedef
-_Requires_lock_held_(&Rundown->CriticalSection)
+_Requires_lock_held_(Rundown->CriticalSection)
 VOID
 (ADD_TRACE_STORES_TO_RUNDOWN)(
     _In_ PTRACE_STORES_RUNDOWN Rundown,
@@ -169,7 +148,7 @@ typedef ADD_TRACE_STORES_TO_RUNDOWN *PADD_TRACE_STORES_TO_RUNDOWN;
 ADD_TRACE_STORES_TO_RUNDOWN AddTraceStoresToRundown;
 
 typedef
-_Requires_lock_held_(&TraceStores->Rundown->CriticalSection)
+_Requires_lock_held_(TraceStores->Rundown->CriticalSection)
 VOID
 (REMOVE_TRACE_STORES_FROM_RUNDOWN)(
     _In_ PTRACE_STORES TraceStores
@@ -651,8 +630,6 @@ INITIALIZE_TRACE_STORE_TRAITS InitializeTraceStoreTraits;
 //
 // TraceStoreContext-related functions.
 //
-
-INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
 
 typedef
 _Check_return_

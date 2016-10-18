@@ -1354,6 +1354,7 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_READONLY_TRACE_CONTEXT)(
     _In_opt_ PRTL                    Rtl,
+    _In_opt_ PALLOCATOR              Allocator,
     _Inout_bytecap_(*SizeOfReadonlyTraceContext)
              PREADONLY_TRACE_CONTEXT ReadonlyTraceContext,
     _In_     PULONG                  SizeOfReadonlyTraceContext,
@@ -1361,9 +1362,10 @@ BOOL
     _In_opt_ PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
     _In_opt_ PVOID                   UserData
     );
-typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
-TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
-
+typedef INITIALIZE_READONLY_TRACE_CONTEXT \
+      *PINITIALIZE_READONLY_TRACE_CONTEXT;
+TRACE_STORE_API INITIALIZE_READONLY_TRACE_CONTEXT \
+                InitializeReadonlyTraceContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions

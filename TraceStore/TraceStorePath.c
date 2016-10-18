@@ -56,8 +56,9 @@ FindLongestTraceStoreFileName(
     return TRUE;
 }
 
+_Use_decl_annotations_
 ULONG
-GetLongestTraceStoreFileName()
+GetLongestTraceStoreFileName(VOID)
 {
     BOOL Success;
     USHORT Length;
