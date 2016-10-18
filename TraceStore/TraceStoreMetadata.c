@@ -96,7 +96,7 @@ TraceStoreMetadataIdToInfo(
     MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
     Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
 
-    Info = (PTRACE_STORE_INFO)(MetadataInfo + Index);
+    Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);
     return Info;
 }
 
