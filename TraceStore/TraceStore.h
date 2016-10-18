@@ -773,6 +773,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) USHORT SizeOfStruct;
 
+    //
+    // Pad out to 4 bytes.
+    //
+
+    USHORT Padding;
+
     ULONG SequenceId;
     PRTL Rtl;
     PALLOCATOR Allocator;
