@@ -269,7 +269,7 @@ typedef TRACE_STORE_METADATA_ID_TO_INFO \
 TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
 
 //
-// TraceStoreContext-related macros.
+// TraceStoreContext-related macros and functions.
 //
 
 #define BIND_STORE(Name)                                              \
@@ -291,6 +291,64 @@ TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
     BIND_STORE(Bitmap);       \
     BIND_STORE(Info);         \
     BIND_STORE(Trace)
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_TRACE_STORE_TO_TRACE_CONTEXT)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef BIND_TRACE_STORE_TO_TRACE_CONTEXT *PBIND_TRACE_STORE_TO_TRACE_CONTEXT;
+BIND_TRACE_STORE_TO_TRACE_CONTEXT BindTraceStoreToTraceContext;
+
+typedef
+VOID
+(CALLBACK FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE Instance,
+    _In_ PVOID Context,
+    _In_ PTP_WORK Work
+    );
+typedef  FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK;
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    FinalizeFirstTraceStoreMemoryMapCallback;
+
+
+//
+// TraceStoreReadonlyContext-related functions and macros.
+//
+
+#define BIND_READONLY_STORE(Name)                                      \
+    if (!BindTraceStoreToReadonlyTraceContext(##Name##Store,           \
+                                              ReadonlyTraceContext)) { \
+        return FALSE;                                                  \
+    }
+
+#define BIND_READONLY_STORES()         \
+    BIND_READONLY_STORE(MetadataInfo); \
+    BIND_READONLY_STORE(Allocation);   \
+    BIND_READONLY_STORE(Relocation);   \
+    BIND_READONLY_STORE(Address);      \
+    BIND_READONLY_STORE(Bitmap);       \
+    BIND_READONLY_STORE(Info);         \
+    BIND_READONLY_STORE(Trace)
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PREADONLY_TRACE_CONTEXT ReadonlyTraceContext
+    );
+typedef BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT \
+      *PBIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT;
+BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT BindTraceStoreToReadonlyTraceContext;
+
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    FinalizeFirstTraceStoreReadonlyMemoryMapCallback;
 
 //
 // TraceStoreTime-related functions.
@@ -628,21 +686,6 @@ typedef INITIALIZE_TRACE_STORE_TRAITS \
 INITIALIZE_TRACE_STORE_TRAITS InitializeTraceStoreTraits;
 
 //
-// TraceStoreContext-related functions.
-//
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(BIND_TRACE_STORE_TO_TRACE_CONTEXT)(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PTRACE_CONTEXT TraceContext
-    );
-typedef BIND_TRACE_STORE_TO_TRACE_CONTEXT *PBIND_TRACE_STORE_TO_TRACE_CONTEXT;
-BIND_TRACE_STORE_TO_TRACE_CONTEXT BindTraceStoreToTraceContext;
-
-//
 // TraceStoreSession-related functions.
 //
 
@@ -686,6 +729,39 @@ BOOL
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+VOID
+(INITIALIZE_TRACE_STORE_SLIST_HEADERS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef INITIALIZE_TRACE_STORE_SLIST_HEADERS \
+      *PINITIALIZE_TRACE_STORE_SLIST_HEADERS;
+INITIALIZE_TRACE_STORE_SLIST_HEADERS InitializeTraceStoreSListHeaders;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_TRACE_STORE_EVENTS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef CREATE_TRACE_STORE_EVENTS *PCREATE_TRACE_STORE_EVENTS;
+CREATE_TRACE_STORE_EVENTS CreateTraceStoreEvents;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment
+    );
+typedef CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS \
+      *PCREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS;
+CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS CreateTraceStoreThreadpoolWorkItems;
 
 typedef
 _Success_(return != 0)

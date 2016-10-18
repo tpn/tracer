@@ -78,13 +78,13 @@ Return Value:
         return FALSE;
     }
 
-    if (PAGE_SIZE % AddressRecordSize.QuadPart) {
+    if (!AssertPageAligned(AddressRecordSize.QuadPart)) {
 
         //
         // The record isn't evenly divisible by PAGE_SIZE.
         //
 
-        __debugbreak();
+        return FALSE;
     }
 
     Rtl = TraceStore->Rtl;
