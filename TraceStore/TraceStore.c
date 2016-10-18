@@ -985,6 +985,7 @@ Return Value:
     TracerConfig->NumberOfElementsPerTraceStore = ElementsPerTraceStore;
     TracerConfig->MaximumTraceStoreId = TraceStoreInvalidId;
     TracerConfig->MaximumTraceStoreIndex = TraceStoreInvalidIndex;
+    TracerConfig->SizeOfTraceStoreStructure = sizeof(TRACE_STORE);
 
     return TRUE;
 }

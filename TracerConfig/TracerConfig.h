@@ -301,6 +301,18 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     USHORT NumberOfElementsPerTraceStore;
 
     //
+    // Size of the individual TRACE_STORE structure.
+    //
+
+    USHORT SizeOfTraceStoreStructure;
+
+    //
+    // Pad to 8 bytes.
+    //
+
+    USHORT Padding;
+
+    //
     // The maximum value of the TRACE_STORE_ID enum.
     //
 
