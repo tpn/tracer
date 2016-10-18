@@ -79,8 +79,8 @@ Return Value:
 
 --*/
 {
-    //USHORT Index;
-    //USHORT StoreIndex;
+    USHORT Index;
+    USHORT StoreIndex;
 
     //
     // Validate sizes.
@@ -139,7 +139,197 @@ Return Value:
     ReadonlyTraceContext->Rtl = Rtl;
     ReadonlyTraceContext->Allocator = Allocator;
     ReadonlyTraceContext->Directory = &TraceStores->BaseDirectory;
+    ReadonlyTraceContext->UserData = UserData;
+    ReadonlyTraceContext->TraceStores = TraceStores;
+    ReadonlyTraceContext->ThreadpoolCallbackEnvironment = (
+        ThreadpoolCallbackEnvironment
+    );
 
+    //
+    // Initialize singly-linked list heads.
+    //
+
+    InitializeSListHead(&ReadonlyTraceContext->LoadTraceStoreMaps);
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        TRACE_STORE_DECLS();
+        BIND_READONLY_STORES();
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+BindTraceStoreToReadonlyTraceContext(
+    PTRACE_STORE TraceStore,
+    PREADONLY_TRACE_CONTEXT ReadonlyTraceContext
+    )
+/*--
+
+Routine Description:
+
+    This routine binds a READONLY_TRACE_CONTEXT structure to a TRACE_STORE
+    structure.  It is required before a trace store can be used.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+    ReadonlyTraceContext - Supplies a pointer to a READONLY_TRACE_CONTEXT
+        structure to bind the store to.
+
+Return Value:
+
+    TRUE if successful, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsMetadata;
+    DWORD WaitResult;
+    PRTL Rtl;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTP_CALLBACK_ENVIRON TpCallbackEnviron;
+
+    //
+    // Verify arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ReadonlyTraceContext)) {
+        return FALSE;
+    }
+
+    if (!ReadonlyTraceContext->Allocator) {
+        return FALSE;
+    }
+
+    TpCallbackEnviron = ReadonlyTraceContext->ThreadpoolCallbackEnvironment;
+    if (!TpCallbackEnviron) {
+        return FALSE;
+    }
+
+    Rtl = TraceStore->Rtl;
+
+    InitializeTraceStoreSListHeaders(TraceStore);
+
+    //
+    // Create the initial set of memory map records and make sure we can pop
+    // one off to use for the first memory map.
+    //
+
+    if (!CreateMemoryMapsForTraceStore(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!PopFreeTraceStoreMemoryMap(TraceStore, &FirstMemoryMap)) {
+        return FALSE;
+    }
+
+    //
+    // Create events and threadpool work items.
+    //
+
+    if (!CreateTraceStoreEvents(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!CreateTraceStoreThreadpoolWorkItems(TraceStore, TpCallbackEnviron)) {
+        return FALSE;
+    }
+
+    //
+    // Update the readonly context field.
+    //
+
+    TraceStore->ReadonlyTraceContext = ReadonlyTraceContext;
+
+    //
+    // Prepare the first memory map.
+    //
+
+    FirstMemoryMap->FileHandle = TraceStore->FileHandle;
+    FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    if (IsMetadata) {
+        MetadataId = TraceStore->TraceStoreMetadataId;
+    }
+
+    PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, FirstMemoryMap);
+    SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
+
+    WaitResult = WaitForSingleObject(TraceStore->NextMemoryMapAvailableEvent,
+                                     INFINITE);
+
+    if (WaitResult != WAIT_OBJECT_0) {
+        return FALSE;
+    }
+
+    Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    if (IsMetadata) {
+
+        //
+        // Metadata stores only have Info filled out, and it's backed by the
+        // :metadatainfo store.
+        //
+
+        Info = TraceStoreMetadataIdToInfo(TraceStore, MetadataId);
+        Allocation = NULL;
+        Bitmap = NULL;
+        Reloc = NULL;
+
+    } else {
+
+        Allocation = (PTRACE_STORE_ALLOCATION)(
+            TraceStore->AllocationStore->MemoryMap->BaseAddress
+        );
+
+        Info = (PTRACE_STORE_INFO)(
+            TraceStore->InfoStore->MemoryMap->BaseAddress
+        );
+
+        Bitmap = (PTRACE_STORE_BITMAP)(
+            TraceStore->BitmapStore->MemoryMap->BaseAddress
+        );
+
+        Reloc = (PTRACE_STORE_RELOC)(
+            TraceStore->RelocationStore->MemoryMap->BaseAddress
+        );
+    }
+
+    TraceStore->Allocation = Allocation;
+    TraceStore->Bitmap = Bitmap;
+    TraceStore->Reloc = Reloc;
+    TraceStore->Info = Info;
+
+    Eof = TraceStore->Eof = &Info->Eof;
+    Time = TraceStore->Time = &Info->Time;
+    Stats = TraceStore->Stats = &Info->Stats;
+    Totals = TraceStore->Totals = &Info->Totals;
+
+    if (!LoadTraceStoreRelocationInfo(TraceStore)) {
+        return FALSE;
+    }
 
     return TRUE;
 }

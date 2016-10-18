@@ -1010,9 +1010,11 @@ typedef struct _TRACE_STORE {
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
+    PREADONLY_TRACE_CONTEXT ReadonlyTraceContext;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
     LARGE_INTEGER           MappingSize;
+    PTP_WORK                FinalizeFirstMemoryMapWork;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                PrepareNextMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
@@ -1021,6 +1023,8 @@ typedef struct _TRACE_STORE {
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    volatile PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
 
     volatile ULONG  TotalNumberOfMemoryMaps;
     volatile ULONG  NumberOfActiveMemoryMaps;
