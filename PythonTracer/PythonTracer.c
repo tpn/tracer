@@ -923,7 +923,7 @@ InitializePythonTraceContext(
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
 
-    if (!EventStore->NoRetire) {
+    if (EventStore->NoRetire) {
         __debugbreak();
         return FALSE;
     }
