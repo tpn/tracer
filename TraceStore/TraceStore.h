@@ -379,6 +379,7 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG Unused:27;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
+typedef const TRACE_STORE_TRAITS *PCTRACE_STORE_TRAITS;
 
 C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 
