@@ -539,6 +539,170 @@ Error:
 }
 
 _Use_decl_annotations_
+VOID
+InitializeTraceStoreSListHeaders(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine initializes the relevant SLIST_HEADER structures embedded
+    within the trace store structure.  It is called by InitializeTraceContext()
+    and InitializeReadonlyTraceContext() prior to creating events.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to an initialized TRACE_STORE structure
+        for which the SLIST_HEADER structures will be initialized.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    InitializeSListHead(&TraceStore->CloseMemoryMaps);
+    InitializeSListHead(&TraceStore->PrepareMemoryMaps);
+    InitializeSListHead(&TraceStore->FreeMemoryMaps);
+    InitializeSListHead(&TraceStore->NextMemoryMaps);
+    InitializeSListHead(&TraceStore->PrefaultMemoryMaps);
+}
+
+_Use_decl_annotations_
+BOOL
+CreateTraceStoreEvents(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine creates the necessary events for a given trace store.  It
+    is called by InitializeTraceContext() and InitializeReadonlyTraceContext()
+    prior to creating threadpool work.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to an initialized TRACE_STORE structure
+        for which events will be generated.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+
+    TraceStore->NextMemoryMapAvailableEvent = (
+        CreateEvent(
+            NULL,
+            FALSE,
+            FALSE,
+            NULL
+        )
+    );
+
+    if (!TraceStore->NextMemoryMapAvailableEvent) {
+        return FALSE;
+    }
+
+    TraceStore->AllMemoryMapsAreFreeEvent = (
+        CreateEvent(
+            NULL,
+            FALSE,
+            FALSE,
+            NULL
+        )
+    );
+
+    if (!TraceStore->AllMemoryMapsAreFreeEvent) {
+        return FALSE;
+    }
+
+    return FALSE;
+
+}
+
+_Use_decl_annotations_
+BOOL
+CreateTraceStoreThreadpoolWorkItems(
+    PTRACE_STORE TraceStore,
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
+        FinalizeFirstMemoryMapCallback
+    )
+/*++
+
+Routine Description:
+
+    This routine creates the necessary threadpool work items (e.g. TP_WORK)
+    for a given trace store.  It is called by InitializeTraceContext() and
+    InitializeReadonlyTraceContext() as part of binding a store to a context.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to an initialized TRACE_STORE structure
+        for which events will be generated.
+
+    ThreadpoolCallbackEnvironment - Supplies a pointer to a TP_CALLBACK_ENVIRON
+        structure to be used when creating threadpool work items.
+
+    FinalizeFirstMemoryMapCallback - Supplies a pointer to a function that
+        will be used to create a threadpool work item for processing the
+        first memory map of a trace store.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+
+    TraceStore->FinalizeFirstMemoryMapWork = CreateThreadpoolWork(
+        FinalizeFirstMemoryMapCallback,
+        TraceStore,
+        ThreadpoolCallbackEnvironment
+    );
+
+    if (!TraceStore->FinalizeFirstMemoryMapWork) {
+        return FALSE;
+    }
+
+    TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
+        &PrepareNextTraceStoreMemoryMapCallback,
+        TraceStore,
+        ThreadpoolCallbackEnvironment
+    );
+
+    if (!TraceStore->PrepareNextMemoryMapWork) {
+        return FALSE;
+    }
+
+    TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
+        &PrefaultFutureTraceStorePageCallback,
+        TraceStore,
+        ThreadpoolCallbackEnvironment
+    );
+
+    if (!TraceStore->PrefaultFuturePageWork) {
+        return FALSE;
+    }
+
+    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
+        &ReleasePrevTraceStoreMemoryMapCallback,
+        TraceStore,
+        ThreadpoolCallbackEnvironment
+    );
+
+    if (!TraceStore->CloseMemoryMapWork) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
 BOOL
 TruncateStore(
     PTRACE_STORE TraceStore

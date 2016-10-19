@@ -2302,6 +2302,8 @@ AssertAligned(
 #define AssertAligned4096(Address)   AssertAligned((PVOID)Address, 4096)
 #define AssertAligned8192(Address)   AssertAligned((PVOID)Address, 8192)
 
+#define AssertPageAligned(Address)  AssertAligned4096(Address)
+
 FORCEINLINE
 _Success_(return != 0)
 BOOL
@@ -2324,6 +2326,8 @@ IsAligned(
 #define IsAligned2048(Address)   IsAligned((PVOID)Address, 2048)
 #define IsAligned4096(Address)   IsAligned((PVOID)Address, 4096)
 #define IsAligned8192(Address)   IsAligned((PVOID)Address, 8192)
+
+#define IsPageAligned(Address)  IsAligned4096(Address)
 
 #define TRY_AVX __try
 #define TRY_AVX_ALIGNED __try

@@ -178,22 +178,13 @@ Return Value:
 {
     BOOL Success;
     BOOL IsMetadata;
-    DWORD WaitResult;
     HRESULT Result;
     PRTL Rtl;
     TRACE_STORE_METADATA_ID MetadataId;
     PTRACE_STORE_ADDRESS AddressPointer;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
-    PTRACE_STORE_EOF Eof;
-    PTRACE_STORE_TIME Time;
-    PTRACE_STORE_STATS Stats;
-    PTRACE_STORE_TOTALS Totals;
-    PTRACE_STORE_INFO Info;
-    PTRACE_STORE_RELOC Reloc;
-    PTRACE_STORE_ALLOCATION Allocation;
-    PTRACE_STORE_BITMAP Bitmap;
-    PTRACE_STORE_TIME SourceTime;
     PLARGE_INTEGER Elapsed;
+    PTP_CALLBACK_ENVIRON TpCallbackEnviron;
     TRACE_STORE_ADDRESS Address;
 
     //
@@ -212,87 +203,43 @@ Return Value:
         return FALSE;
     }
 
+    TpCallbackEnviron = TraceContext->ThreadpoolCallbackEnvironment;
+    if (!TpCallbackEnviron) {
+        return FALSE;
+    }
+
     Rtl = TraceStore->Rtl;
 
-    //
-    // Initialize all of our singly-linked list heads.
-    //
-
-    InitializeSListHead(&TraceStore->CloseMemoryMaps);
-    InitializeSListHead(&TraceStore->PrepareMemoryMaps);
-    InitializeSListHead(&TraceStore->FreeMemoryMaps);
-    InitializeSListHead(&TraceStore->NextMemoryMaps);
-    InitializeSListHead(&TraceStore->PrefaultMemoryMaps);
+    InitializeTraceStoreSListHeaders(TraceStore);
 
     //
-    // Create the initial set of memory map records.
+    // Create the initial set of memory map records and make sure we can pop
+    // one off to use for the first memory map.
     //
 
-    Success = CreateMemoryMapsForTraceStore(TraceStore);
+    if (!CreateMemoryMapsForTraceStore(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!PopFreeTraceStoreMemoryMap(TraceStore, &FirstMemoryMap)) {
+        return FALSE;
+    }
+
+    //
+    // Create events and threadpool work items.
+    //
+
+    if (!CreateTraceStoreEvents(TraceStore)) {
+        return FALSE;
+    }
+
+    Success = CreateTraceStoreThreadpoolWorkItems(
+        TraceStore,
+        TpCallbackEnviron,
+        FinalizeFirstTraceStoreMemoryMapCallback
+    );
 
     if (!Success) {
-        return FALSE;
-    }
-
-    Success = PopFreeTraceStoreMemoryMap(TraceStore, &FirstMemoryMap);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    TraceStore->NextMemoryMapAvailableEvent = (
-        CreateEvent(
-            NULL,
-            FALSE,
-            FALSE,
-            NULL
-        )
-    );
-
-    if (!TraceStore->NextMemoryMapAvailableEvent) {
-        return FALSE;
-    }
-
-    TraceStore->AllMemoryMapsAreFreeEvent = (
-        CreateEvent(
-            NULL,
-            FALSE,
-            FALSE,
-            NULL
-        )
-    );
-
-    if (!TraceStore->AllMemoryMapsAreFreeEvent) {
-        return FALSE;
-    }
-
-    TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
-        &PrepareNextTraceStoreMemoryMapCallback,
-        TraceStore,
-        TraceContext->ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->PrepareNextMemoryMapWork) {
-        return FALSE;
-    }
-
-    TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
-        &PrefaultFutureTraceStorePageCallback,
-        TraceStore,
-        TraceContext->ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->PrefaultFuturePageWork) {
-        return FALSE;
-    }
-
-    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
-        &ReleasePrevTraceStoreMemoryMapCallback,
-        TraceStore,
-        TraceContext->ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->CloseMemoryMapWork) {
         return FALSE;
     }
 
@@ -400,18 +347,61 @@ SubmitFirstMemoryMap:
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, FirstMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
 
-    WaitResult = WaitForSingleObject(TraceStore->NextMemoryMapAvailableEvent,
-                                     INFINITE);
+    return TRUE;
+}
 
-    if (WaitResult != WAIT_OBJECT_0) {
-        return FALSE;
-    }
+_Use_decl_annotations_
+BOOL
+FinalizeFirstTraceStoreMemoryMap(
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine finalizes the first memory map for a trace store.  It is
+    called as a callback in the threadpool environment.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure to for which
+        the first memory map is to be finalized.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsMetadata;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PRTL Rtl;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_TIME SourceTime;
+    PTRACE_CONTEXT TraceContext;
+
+    //
+    // Initialize aliases.
+    //
+
+    TraceContext = TraceStore->TraceContext;
+    Rtl = TraceContext->Rtl;
 
     Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
 
     if (!Success) {
         return FALSE;
     }
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
 
     if (IsMetadata) {
 
@@ -420,6 +410,7 @@ SubmitFirstMemoryMap:
         // :metadatainfo store.
         //
 
+        MetadataId = TraceStore->TraceStoreMetadataId;
         Info = TraceStoreMetadataIdToInfo(TraceStore, MetadataId);
         Allocation = NULL;
         Bitmap = NULL;
@@ -521,5 +512,59 @@ SubmitFirstMemoryMap:
 
     return TRUE;
 }
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+FinalizeFirstTraceStoreMemoryMapCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PVOID Context,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the finalize first trace store
+    memory map threadpool work.
+
+Arguments:
+
+    Instance - Not used.
+
+    Context - Supplies a pointer to a TRACE_STORE struct.
+
+    Work - Not used.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    //
+    // Ensure Context has a value.
+    //
+
+    if (!Context) {
+        return;
+    }
+
+    TraceStore = (PTRACE_STORE)Context;
+
+    Success = FinalizeFirstTraceStoreMemoryMap(TraceStore);
+    if (!Success) {
+
+        //
+        // XXX TODO: set some sort of a flag/event indicating
+        // failure.
+        //
+
+    }
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

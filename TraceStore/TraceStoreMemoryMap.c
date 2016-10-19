@@ -165,10 +165,11 @@ Return Value:
 
 --*/
 {
-    USHORT NumaNode;
     BOOL Success;
+    BOOL IsFirst;
     BOOL IsMetadata;
     BOOL HaveAddress;
+    USHORT NumaNode;
     PRTL Rtl;
     HRESULT Result;
     PVOID PreferredBaseAddress;
@@ -226,6 +227,7 @@ Return Value:
     }
 
     IsMetadata = IsMetadataTraceStore(TraceStore);
+    IsFirst = (MemoryMap->FileOffset.QuadPart == 0);
 
     //
     // Get the current file offset.
