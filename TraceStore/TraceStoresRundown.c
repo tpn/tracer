@@ -66,9 +66,9 @@ Return Value:
         return FALSE;
     }
 
-    AcquireTraceStoresRundownLock(Rundown);
+    EnterCriticalSection(&Rundown->CriticalSection);
     InitializeListHead(&Rundown->ListHead);
-    ReleaseTraceStoresRundownLock(Rundown);
+    LeaveCriticalSection(&Rundown->CriticalSection);
 
     return TRUE;
 }
@@ -110,67 +110,6 @@ Return Value:
 
     return;
 }
-
-_Use_decl_annotations_
-BOOL
-AcquireTraceStoresRundownLock(
-    PTRACE_STORES_RUNDOWN Rundown
-    )
-/*++
-
-Routine Description:
-
-    This routine acquires the lock for the rundown structure.
-
-Arguments:
-
-    Rundown - Supplies a pointer to a TRACE_STORES_RUNDOWN structure.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-    if (!ARGUMENT_PRESENT(Rundown)) {
-        return FALSE;
-    }
-
-    EnterCriticalSection(&Rundown->CriticalSection);
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-ReleaseTraceStoresRundownLock(
-    PTRACE_STORES_RUNDOWN Rundown
-    )
-/*++
-
-Routine Description:
-
-    This routine releases the lock for the rundown structure.
-
-Arguments:
-
-    Rundown - Supplies a pointer to a TRACE_STORES_RUNDOWN structure.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-    if (!ARGUMENT_PRESENT(Rundown)) {
-        return FALSE;
-    }
-
-    LeaveCriticalSection(&Rundown->CriticalSection);
-
-    return TRUE;
-}
-
 
 _Use_decl_annotations_
 VOID
@@ -283,9 +222,7 @@ Return Value:
 
     TraceStores->Rundown = Rundown;
 
-    if (!AcquireTraceStoresRundownLock(Rundown)) {
-        return FALSE;
-    }
+    EnterCriticalSection(&Rundown->CriticalSection);
 
     //
     // Add the trace stores to the list.
@@ -294,7 +231,7 @@ Return Value:
     __try {
         AddTraceStoresToRundown(Rundown, TraceStores);
     } __finally {
-        ReleaseTraceStoresRundownLock(Rundown);
+        LeaveCriticalSection(&Rundown->CriticalSection);
     }
 
     return TRUE;
@@ -353,9 +290,7 @@ Return Value:
 
     Rundown = TraceStores->Rundown;
 
-    if (!AcquireTraceStoresRundownLock(Rundown)) {
-        return FALSE;
-    }
+    EnterCriticalSection(&Rundown->CriticalSection);
 
     //
     // Remove the trace store from the list.
@@ -365,7 +300,7 @@ Return Value:
         RemoveTraceStoresFromRundown(TraceStores);
         TraceStores->Rundown = NULL;
     } __finally {
-        ReleaseTraceStoresRundownLock(Rundown);
+        LeaveCriticalSection(&Rundown->CriticalSection);
     }
 
     return TRUE;
@@ -411,9 +346,7 @@ Return Value:
     // Acquire the rundown lock for the duration of the routine.
     //
 
-    if (!AcquireTraceStoresRundownLock(Rundown)) {
-        return;
-    }
+    EnterCriticalSection(&Rundown->CriticalSection);
 
     Rundown->Flags.IsActive = TRUE;
 
@@ -442,7 +375,7 @@ Return Value:
 
     } __finally {
 
-        ReleaseTraceStoresRundownLock(Rundown);
+        LeaveCriticalSection(&Rundown->CriticalSection);
         Rundown->Flags.IsActive = FALSE;
     }
 

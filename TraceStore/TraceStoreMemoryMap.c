@@ -20,9 +20,7 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 CreateMemoryMapsForTraceStore(
-    PTRACE_STORE TraceStore,
-    PTRACE_CONTEXT TraceContext,
-    ULONG NumberOfItems
+    PTRACE_STORE TraceStore
     )
 /*--
 
@@ -35,31 +33,45 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE struct that the memory
         maps are created for.
 
-    TraceContext - Supplies a pointer to the TRACE_CONTEXT struct associated
-        with the trace store.
-
-    NumberOfItems - Supplies the number of memory maps to create.  If this
-        value is zero, the default value will be used.
-
 Return Value:
 
     TRUE on success, FALSE on failure.
 
 --*/
 {
-    PTRACE_STORE_MEMORY_MAP MemoryMaps;
-    SIZE_T AllocationSize;
+    USHORT NumberOfMaps;
     ULONG Index;
+    TRACE_STORE_TRAITS Traits;
+    PALLOCATOR Allocator;
+    PTRACE_STORE_MEMORY_MAP MemoryMaps;
 
-    if (!NumberOfItems) {
-        NumberOfItems = InitialFreeMemoryMaps;
+    Traits = *TraceStore->pTraits;
+
+    if (TraceStore->TotalNumberOfMemoryMaps > 0) {
+        if (!Traits.MultipleRecords) {
+            __debugbreak();
+            return FALSE;
+        }
+        NumberOfMaps = InitialFreeMemoryMaps;
+    } else {
+        if (!Traits.MultipleRecords) {
+            NumberOfMaps = 2;
+        } else if (!TraceStore->IsReadonly && Traits.StreamingWrite) {
+            NumberOfMaps = 16;
+        } else {
+            NumberOfMaps = InitialFreeMemoryMaps;
+        }
     }
 
-    AllocationSize = sizeof(TRACE_STORE_MEMORY_MAP) * NumberOfItems;
+    Allocator = TraceStore->Allocator;
 
-    MemoryMaps = HeapAlloc(TraceContext->HeapHandle,
-                           HEAP_ZERO_MEMORY,
-                           AllocationSize);
+    MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
+        Allocator->Calloc(
+            Allocator->Context,
+            NumberOfMaps,
+            sizeof(TRACE_STORE_MEMORY_MAP)
+        )
+    );
 
     if (!MemoryMaps) {
         return FALSE;
@@ -70,19 +82,23 @@ Return Value:
     // them onto the free list.
     //
 
-    for (Index = 0; Index < NumberOfItems; Index++) {
+    for (Index = 0; Index < NumberOfMaps; Index++) {
         PTRACE_STORE_MEMORY_MAP MemoryMap = &MemoryMaps[Index];
 
         //
         // Ensure the ListItem is aligned on the MEMORY_ALLOCATION_ALIGNMENT.
         // This is a requirement for the underlying SLIST_ENTRY.
         //
-        if (((ULONG_PTR)MemoryMap & (MEMORY_ALLOCATION_ALIGNMENT - 1)) != 0) {
-            __debugbreak();
+
+        if (!AssertAligned16(MemoryMap)) {
+            Allocator->Free(Allocator->Context, MemoryMaps);
+            return FALSE;
         }
 
         PushTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, MemoryMap);
     }
+
+    InterlockedAdd(&TraceStore->TotalNumberOfMemoryMaps, NumberOfMaps);
 
     return TRUE;
 }
@@ -692,8 +708,8 @@ ReleasePrevTraceStoreMemoryMapCallback(
     //
     // Ensure Context is non-NULL.
     //
-    
-    if (!Context) {
+
+    if (!ARGUMENT_PRESENT(Context)) {
         return;
     }
 
@@ -918,14 +934,6 @@ Return Value:
     }
 
     //
-    // Initialize aliases.
-    //
-
-    Rtl = TraceStore->Rtl;
-    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
-    TraceContext = TraceStore->TraceContext;
-
-    //
     // We may not have a stats struct available yet if this is the first
     // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
     // point the pointer at a dummy one.  This simplifies the rest of the
@@ -937,6 +945,23 @@ Return Value:
     if (!Stats) {
         Stats = &DummyStats;
     }
+
+    //
+    // Fast-path for single record trace stores; go straight to memory
+    // map consumption.
+    //
+
+    if (!TraceStore->pTraits->MultipleRecords) {
+        goto ConsumeMap;
+    }
+
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = TraceStore->Rtl;
+    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
+    TraceContext = TraceStore->TraceContext;
 
     //
     // The previous memory map becomes the previous-previous memory map.
@@ -1044,7 +1069,7 @@ StartPreparation:
 
     if (!Success) {
 
-        Success = CreateMemoryMapsForTraceStore(TraceStore, TraceContext, 0);
+        Success = CreateMemoryMapsForTraceStore(TraceStore);
 
         if (Success) {
 
@@ -1061,6 +1086,8 @@ StartPreparation:
             return FALSE;
         }
     }
+
+ConsumeMap:
 
     if (!PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
 
@@ -1088,12 +1115,25 @@ StartPreparation:
     //
 
     if (TraceStore->MemoryMap) {
+
+        //
+        // If there's an active memory map, it now becomes the previous one.
+        //
+
         TraceStore->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         MemoryMap->PrevAddress = TraceStore->MemoryMap->PrevAddress;
         TraceStore->PrevMemoryMap = TraceStore->MemoryMap;
     }
 
     TraceStore->MemoryMap = MemoryMap;
+
+    //
+    // Fast-path exit if we're a single record trace store.
+    //
+
+    if (!TraceStore->pTraits->MultipleRecords) {
+        goto End;
+    }
 
     //
     // Take a local copy of the timestamp.  We'll use this for both the "next"
@@ -1276,6 +1316,8 @@ SubmitPreparedMemoryMap:
 
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, PrepareMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
+
+End:
 
     return TRUE;
 }

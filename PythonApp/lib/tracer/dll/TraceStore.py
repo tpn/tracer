@@ -17,6 +17,7 @@ from ..wintypes import (
 
     CDLL,
     BOOL,
+    CHAR,
     LONG,
     GUID,
     PWSTR,
@@ -32,12 +33,16 @@ from ..wintypes import (
     PSTRING,
     POINTER,
     FILETIME,
+    PTP_WORK,
     CFUNCTYPE,
     ULONGLONG,
     SYSTEMTIME,
     LIST_ENTRY,
+    SLIST_HEADER,
     LARGE_INTEGER,
     ULARGE_INTEGER,
+    UNICODE_STRING,
+    PUNICODE_STRING,
     PROCESSOR_NUMBER,
     TP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
@@ -49,6 +54,10 @@ from .Rtl import (
 
 from .TracerConfig import (
     PTRACER_CONFIG,
+)
+
+from .Allocator import (
+    PALLOCATOR,
 )
 
 #===============================================================================
@@ -243,15 +252,17 @@ PTRACE_STORES = POINTER(TRACE_STORES)
 
 class TRACE_CONTEXT(Structure):
     _fields_ = [
-        ('Size', ULONG),
+        ('SizeOfStruct', USHORT),
+        ('Padding', USHORT),
         ('SequenceId', ULONG),
         ('Rtl', PRTL),
+        ('Allocator', PALLOCATOR),
         ('TraceSession', PTRACE_SESSION),
         ('TraceStores', PTRACE_STORES),
+        ('TimerFunction', PVOID),
         ('UserData', PVOID),
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
-        ('HeapHandle', HANDLE),
-        ('BaseDirectory', PSTRING),
+        ('BaseDirectory', PUNICODE_STRING),
         ('Time', TRACE_STORE_TIME),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
@@ -262,7 +273,7 @@ class READONLY_TRACE_CONTEXT(Structure):
         ('Padding1', USHORT),
         ('Flags', READONLY_TRACE_CONTEXT_FLAGS),
         ('Rtl', PRTL),
-        ('HeapHandle', HANDLE),
+        ('Allocator', PALLOCATOR),
         ('Directory', PUNICODE_STRING),
         ('UserData', PVOID),
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
@@ -296,8 +307,9 @@ TRACE_STORES._fields_ = [
     ('Padding1', USHORT),
     ('Padding2', ULONG),
     ('Flags', TRACE_FLAGS),
-    ('BaseDirectory', STRING),
+    ('BaseDirectory', UNICODE_STRING),
     ('Rtl', PRTL),
+    ('Allocator', PALLOCATOR),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
 ]
@@ -315,6 +327,7 @@ UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO.errcheck = errcheck
 INITIALIZE_READONLY_TRACE_STORES = CFUNCTYPE(
     BOOL,
     PRTL,
+    PALLOCATOR,
     PWSTR,
     PTRACE_STORES,
     PULONG,
@@ -325,12 +338,15 @@ INITIALIZE_READONLY_TRACE_STORES = CFUNCTYPE(
 # Binding
 #===============================================================================
 
+TracerConfig = None
 TraceStoreDll = None
 InitializeReadonlyTraceStores = None
+UpdateTracerConfigWithTraceStoreInfo = None
 
 def bind(path=None, dll=None):
     global TraceStoreDll
     global InitializeReadonlyTraceStores
+    global UpdateTracerConfigWithTraceStoreInfo
 
     assert path or dll
     if not dll:
@@ -343,6 +359,7 @@ def bind(path=None, dll=None):
         ('InitializeReadonlyTraceStores', dll),
         (
             (1, 'Rtl'),
+            (1, 'Allocator'),
             (1, 'BaseDirectory'),
             (1, 'TraceStores'),
             (1, 'SizeOfTraceStores'),
@@ -350,16 +367,35 @@ def bind(path=None, dll=None):
         )
     )
 
+    UpdateTracerConfigWithTraceStoreInfo = (
+        UPDATE_TRACER_CONFIG_WITH_TRACE_STORE_INFO(
+            ('UpdateTracerConfigWithTraceStoreInfo', dll),
+            (
+                (1, 'TracerConfig'),
+            )
+        )
+    )
+
 #===============================================================================
 # Python Functions
 #===============================================================================
 
-def create_and_initialize_readonly_trace_stores(rtl, basedir):
+def update_tracer_config_with_trace_store_info(tracer_config):
+    global TracerConfig
+    if not TracerConfig:
+        TracerConfig = tracer_config
+        UpdateTracerConfigWithTraceStoreInfo(tracer_config)
+
+def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
+                                                tracer_config):
+
+    update_tracer_config_with_trace_store_info(tracer_config)
 
     size = ULONG()
 
     success = InitializeReadonlyTraceStores(
         cast(0, PRTL),
+        cast(0, PALLOCATOR),
         cast(0, PWSTR),
         cast(0, PTRACE_STORES),
         byref(size),
@@ -369,13 +405,15 @@ def create_and_initialize_readonly_trace_stores(rtl, basedir):
     assert size.value > 0
 
     buf = create_string_buffer(size.value)
-    ptrace_stores = cast(byref(buf), PTRACE_STORES)
+    ptrace_stores = cast(buf, PTRACE_STORES)
     flags = TRACE_FLAGS()
 
     prtl = byref(rtl)
+    pallocator = byref(allocator)
 
     success = InitializeReadonlyTraceStores(
         prtl,
+        pallocator,
         basedir,
         ptrace_stores,
         byref(size),
@@ -383,9 +421,11 @@ def create_and_initialize_readonly_trace_stores(rtl, basedir):
     )
     assert success
 
-    return ptrace_stores.contents
+    ts = ptrace_stores.contents
+    return ts
 
-def create_and_initialize_readonly_trace_context(rtl, trace_stores,
+def create_and_initialize_readonly_trace_context(rtl, allocator,
+                                                 trace_stores,
                                                  num_cpus=None,
                                                  threadpool=None,
                                                  tp_callback_env=None):
@@ -405,6 +445,7 @@ def create_and_initialize_readonly_trace_context(rtl, trace_stores,
 
     success = InitializeReadonlyTraceContext(
         byref(rtl),
+        byref(allocator),
         byref(readonly_trace_context),
         byref(size),
         byref(trace_stores),
@@ -414,7 +455,7 @@ def create_and_initialize_readonly_trace_context(rtl, trace_stores,
 
     assert success
 
-    return readonly_trace_context
+    return readonly_trace_context.contents
 
 def is_readonly_trace_context_ready(readonly_trace_context):
     return is_signaled(readonly_trace_context.LoadingCompleteEvent)

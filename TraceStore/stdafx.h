@@ -16,8 +16,18 @@ Abstract:
 
 #include "targetver.h"
 
-#include <Windows.h>
+//
+// <concurrencysal.h> appears to need _PREFAST_ defined.
+//
+
+#ifndef _PREFAST_
+#define _PREFAST_
+#endif
+
 #include <sal.h>
+#include <concurrencysal.h>
+
+#include <Windows.h>
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../Rtl/__C_specific_handler.h"

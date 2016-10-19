@@ -885,13 +885,14 @@ LoadPythonDll:
 
     RequiredSize = 0;
     Session->InitializeTraceStores(
-        NULL,
-        NULL,
-        NULL,
-        &RequiredSize,
-        NULL,
-        &TraceFlags,
-        NULL
+        NULL,           // Rtl
+        NULL,           // Allocator
+        NULL,           // BaseDirectory
+        NULL,           // TraceStores
+        &RequiredSize,  // SizeOfTraceStores
+        NULL,           // InitialFileSizes
+        &TraceFlags,    // TraceFlags
+        NULL            // FieldRelocations
     );
 
     //
@@ -908,6 +909,7 @@ LoadPythonDll:
     ALLOCATE(TraceStores, PTRACE_STORES);
     Success = Session->InitializeTraceStores(
         Rtl,
+        Allocator,
         Session->TraceSessionDirectory->Buffer,
         Session->TraceStores,
         &RequiredSize,
@@ -966,13 +968,14 @@ LoadPythonDll:
 
     RequiredSize = 0;
     Session->InitializeTraceContext(
-        NULL,
-        NULL,
-        &RequiredSize,
-        NULL,
-        NULL,
-        NULL,
-        NULL
+        NULL,           // Rtl
+        NULL,           // Allocator
+        NULL,           // TraceContext
+        &RequiredSize,  // SizeOfTraceContext
+        NULL,           // TraceSession
+        NULL,           // TraceStores
+        NULL,           // ThreadpoolCallbackEnviron
+        NULL            // UserData
     );
 
     //
@@ -982,6 +985,7 @@ LoadPythonDll:
     ALLOCATE(TraceContext, PTRACE_CONTEXT);
     Success = Session->InitializeTraceContext(
         Rtl,
+        Allocator,
         Session->TraceContext,
         &RequiredSize,
         Session->TraceSession,
@@ -1001,13 +1005,14 @@ LoadPythonDll:
 
     RequiredSize = 0;
     Session->InitializePythonTraceContext(
-        NULL,
-        NULL,
-        &RequiredSize,
-        NULL,
-        NULL,
-        NULL,
-        NULL
+        NULL,           // Rtl
+        NULL,           // Allocator
+        NULL,           // PythonTraceContext
+        &RequiredSize,  // SizeOfPythonTraceContext
+        NULL,           // Python
+        NULL,           // TraceContext
+        NULL,           // PythonTraceFunction
+        NULL            // UserData
     );
 
     //
@@ -1017,6 +1022,7 @@ LoadPythonDll:
     ALLOCATE(PythonTraceContext, PPYTHON_TRACE_CONTEXT);
     Success = Session->InitializePythonTraceContext(
         Rtl,
+        Allocator,
         Session->PythonTraceContext,
         &RequiredSize,
         Session->Python,

@@ -22,6 +22,7 @@ _Use_decl_annotations_
 BOOL
 InitializeTraceStores(
     PRTL Rtl,
+    PALLOCATOR Allocator,
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
@@ -38,6 +39,8 @@ Routine Description:
 Arguments:
 
     Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
 
     BaseDirectory - Supplies a pointer to a fully-qualified, NULL-terminated
         wide character string representing the base directory to initialize
@@ -86,7 +89,7 @@ Return Value:
     DWORD MapViewOfFileDesiredAccess;
     TRACE_FLAGS Flags;
     LPWSTR FileNameDest;
-    DWORD LongestFilename = GetLongestTraceStoreFileName();
+    ULONG LongestFilename = GetLongestTraceStoreFileName();
     DWORD TraceStoresAllocationSize = (
         GetTraceStoresAllocationSize(
             NumberOfTraceStores *
@@ -101,6 +104,7 @@ Return Value:
     );
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
+    LONG_INTEGER DirectorySizeInBytes;
     PULONG Sizes = InitialFileSizes;
     WCHAR Path[_OUR_MAX_PATH];
 
@@ -117,11 +121,15 @@ Return Value:
         return FALSE;
     }
 
-    if (!Rtl) {
+    if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
-    if (!BaseDirectory) {
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BaseDirectory)) {
         return FALSE;
     }
 
@@ -158,6 +166,7 @@ Return Value:
         LongestPossibleDirectoryLength,
         BaseDirectory
     );
+
     if (FAILED(Result)) {
         return FALSE;
     }
@@ -168,7 +177,33 @@ Return Value:
     //
 
     SecureZeroMemory(TraceStores, TraceStoresAllocationSize);
+
+    //
+    // This could be our first C entry point, so set __C_specific_handler.
+    //
+
     SetCSpecificHandler(Rtl->__C_specific_handler);
+
+    //
+    // Sanity check the directory length in bytes, then copy to BaseDirectory.
+    //
+
+    DirectorySizeInBytes.LongPart = (DirectoryLength.LowPart + 1) << 1;
+
+    if (DirectorySizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    Success = AllocateAndCopyWideString(
+        Allocator,
+        DirectorySizeInBytes.LowPart,
+        BaseDirectory,
+        &TraceStores->BaseDirectory
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
 
     //
     // If field relocations have been provided, initialize them now.
@@ -299,7 +334,7 @@ Return Value:
     // Ensure the base directory exists.
     //
 
-    Success = CreateDirectory(BaseDirectory, NULL);
+    Success = CreateDirectoryW(BaseDirectory, NULL);
     if (!Success) {
         LastError = GetLastError();
         if (LastError != ERROR_ALREADY_EXISTS) {
@@ -373,6 +408,7 @@ Return Value:
     TraceStores->Rtl = Rtl;
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
+    TraceStores->Allocator = Allocator;
 
     InitializeListHead(&TraceStores->RundownListEntry);
 
@@ -421,6 +457,7 @@ Return Value:
         TraceStore->MapViewOfFileDesiredAccess = (
             MapViewOfFileDesiredAccess
         );
+        TraceStore->Allocator = Allocator;
 
         Reloc = &TraceStores->Relocations[Index];
 
@@ -447,9 +484,9 @@ Return Value:
 
     //
     // If we're not readonly, and global rundown hasn't been disabled, register
-    // this trace stores structure.  This will ensure it gets rundown when the
-    // process exits but the user hasn't explicitly stopped tracing.  This is
-    // common in Python if a module does sys.exit().
+    // this trace stores structure.  This will ensure it gets run down when the
+    // process exits but the user hasn't explicitly stopped tracing.  (This is
+    // common in Python if a module does sys.exit().)
     //
 
     if (!Readonly && !TraceFlags->NoGlobalRundown) {
@@ -463,6 +500,7 @@ _Use_decl_annotations_
 BOOL
 InitializeReadonlyTraceStores(
     PRTL Rtl,
+    PALLOCATOR Allocator,
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
@@ -480,6 +518,8 @@ Routine Description:
 Arguments:
 
     Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
 
     BaseDirectory - Supplies a pointer to a fully-qualified, NULL-terminated
         wide character string representing the base directory to load the trace
@@ -520,6 +560,7 @@ Return Value:
     }
 
     return InitializeTraceStores(Rtl,
+                                 Allocator,
                                  BaseDirectory,
                                  TraceStores,
                                  SizeOfTraceStores,
@@ -555,7 +596,7 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!TraceStores) {
+    if (!ARGUMENT_PRESENT(TraceStores)) {
         return FALSE;
     }
 

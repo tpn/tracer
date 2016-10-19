@@ -2238,6 +2238,40 @@ LeadingZeros(
     return _lzcnt_u64(Integer);
 }
 
+FORCEINLINE
+BOOL
+AssertTrue(
+    _In_ PSTR Expression,
+    _In_ BOOL Value
+    )
+{
+    if (!Value) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA(Expression);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+AssertFalse(
+    _In_ PSTR Expression,
+    _In_ BOOL Value
+    )
+{
+    if (Value) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        OutputDebugStringA(Expression);
+        return FALSE;
+    }
+    return TRUE;
+}
+
 _Success_(return != 0)
 FORCEINLINE
 BOOL
@@ -2992,6 +3026,131 @@ CopyString(
     return TRUE;
 }
 
+_Success_(return != 0)
+FORCEINLINE
+BOOLEAN
+AllocateAndCopyWideString(
+    _In_ PALLOCATOR Allocator,
+    _In_ USHORT SizeInBytes,
+    _In_reads_z_(SizeInBytes) PWCHAR Buffer,
+    _In_ PUNICODE_STRING String
+    )
+/*++
+
+Routine Description:
+
+    This routine creates a copy of a wide character string using an allocator.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    SizeInBytes - Supplies the length of the Buffer parameter, in bytes,
+        including the trailing NULL.
+
+    Buffer - Supplies a pointer to an array of wide characters to copy.
+
+    String - Supplies a pointer to a UNICODE_STRING structure that will be
+        configured to point at the newly-allocated wide string character
+        buffer.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT AlignedSizeInBytes;
+
+    AlignedSizeInBytes = ALIGN_UP_USHORT_TO_POINTER_SIZE(SizeInBytes);
+
+    String->Buffer = (PWCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedSizeInBytes
+        )
+    );
+
+    if (!String->Buffer) {
+        return FALSE;
+    }
+
+    //
+    // Length has 2 subtracted to account for the trailing NULL.
+    //
+
+    String->Length = (SizeInBytes - 2);
+    String->MaximumLength = AlignedSizeInBytes;
+
+    //
+    // Copy the string in WCHAR chunks.
+    //
+
+    __movsw((PWORD)String->Buffer, (PWORD)Buffer, SizeInBytes >> 1);
+
+    return TRUE;
+}
+
+_Success_(return != 0)
+FORCEINLINE
+BOOLEAN
+AllocateAndCopyUnicodeString(
+    _In_ PALLOCATOR Allocator,
+    _In_ PUNICODE_STRING SourceString,
+    _In_ PUNICODE_STRING DestString
+    )
+/*++
+
+Routine Description:
+
+    This routine creates a copy of a UNICODE_STRING.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    SourceString - Supplies a pointer to a UNICODE_STRING structure to copy.
+
+    DestString - Supplies a pointer to a UNICODE_STRING structure that will
+        have its Length, MaximumLength and Buffer fields updated to match the
+        newly-allocated buffer.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT AlignedSizeInBytes;
+
+    AlignedSizeInBytes = ALIGN_UP_USHORT_TO_POINTER_SIZE(SourceString->Length);
+
+    DestString->Buffer = (PWCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AlignedSizeInBytes
+        )
+    );
+
+    if (!DestString->Buffer) {
+        return FALSE;
+    }
+
+    DestString->Length = SourceString->Length;
+    DestString->MaximumLength = AlignedSizeInBytes;
+
+    //
+    // Copy the string in WCHAR chunks.
+    //
+
+    __movsw((PWORD)DestString->Buffer,
+            (PWORD)SourceString->Buffer,
+            DestString->Length >> 1);
+
+    return TRUE;
+}
 
 FORCEINLINE
 VOID
@@ -3949,3 +4108,4 @@ AppendTailList(
 } // extern "C"
 #endif
 
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
