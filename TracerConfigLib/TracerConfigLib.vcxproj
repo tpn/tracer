@@ -84,7 +84,6 @@
     <ClInclude Include="../TracerConfig/TracerConfigPrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="../TracerConfig/Allocation.c" />
     <ClCompile Include="../TracerConfig/CreateTraceSessionDirectory.c" />
     <ClCompile Include="../TracerConfig/DestroyTracerConfig.c" />
     <ClCompile Include="../TracerConfig/HeapAllocator.c" />

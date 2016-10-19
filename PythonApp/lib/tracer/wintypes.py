@@ -10,6 +10,7 @@ from ctypes.wintypes import *
 #===============================================================================
 # Globals/Aliases
 #===============================================================================
+CHAR = c_char
 BOOL = c_bool
 PBOOL = POINTER(BOOL)
 PBOOLEAN = POINTER(BOOL)
@@ -131,6 +132,26 @@ class LIST_ENTRY(Structure):
         ('Blink', PVOID),
     ]
 PLIST_ENTRY = POINTER(LIST_ENTRY)
+
+class _SLIST_HEADER_INNER1(Structure):
+    _fields_ = [
+        ('Alignment', ULONGLONG),
+        ('Region', ULONGLONG),
+    ]
+
+class _SLIST_HEADER_INNER2(Structure):
+    _fields_ = [
+        ('Depth', ULONGLONG, 16),
+        ('Sequence', ULONGLONG, 48),
+        ('Reserved', ULONGLONG, 4),
+        ('NextEntry', ULONGLONG, 60),
+    ]
+
+class SLIST_HEADER(Union):
+    _fields_ = [
+        ('u1', _SLIST_HEADER_INNER1),
+        ('u2', _SLIST_HEADER_INNER2),
+    ]
 
 class CRITICAL_SECTION_DEBUG(Structure):
     _fields_ = [

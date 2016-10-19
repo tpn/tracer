@@ -135,6 +135,8 @@ class TRACER_CONFIG(Structure):
     _fields_ = [
         ('Size', USHORT),
         ('NumberOfElementsPerTraceStore', USHORT),
+        ('SizeOfTraceStoreStructure', USHORT),
+        ('Padding', USHORT),
         ('MaximumTraceStoreId', ULONG),
         ('MaximumTraceStoreIndex', ULONG),
         ('Flags', TRACER_FLAGS),

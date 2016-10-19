@@ -73,8 +73,12 @@ Return Value:
     if (!TraceStore->FileHandle) {
 
         //
-        // We're a metadata store.
+        // We're a metadata store.  (Break if we're not.)
         //
+
+        if (!TraceStore->IsMetadata) {
+            __debugbreak();
+        }
 
         TraceStore->FileHandle = CreateFileW(
             Path,
@@ -96,6 +100,15 @@ Return Value:
 
         goto Error;
     }
+
+    //
+    // Initialize trait information.
+    //
+
+    if (!InitializeTraceStoreTraits(TraceStore)) {
+        goto Error;
+    }
+
 
     //
     // Initialize default values.
@@ -224,6 +237,7 @@ Return Value:
     Name##Store->TraceStoreId = TraceStore->TraceStoreId;              \
     Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;  \
     Name##Store->TraceStore = TraceStore;                              \
+    Name##Store->Allocator = Allocator;                                \
     Name##Store->MetadataInfoStore = MetadataInfoStore;                \
     Name##Store->AllocationStore = AllocationStore;                    \
     Name##Store->RelocationStore = RelocationStore;                    \
@@ -342,10 +356,8 @@ Return Value:
 --*/
 {
     BOOL Success;
-    USHORT Index;
     TRACE_FLAGS Flags;
-    TRACE_STORE_TRAITS Traits;
-    PTRACE_STORE_TRAITS pTraits;
+    PALLOCATOR Allocator;
     HRESULT Result;
     WCHAR MetadataInfoPath[_OUR_MAX_PATH];
     WCHAR AllocationPath[_OUR_MAX_PATH];
@@ -405,6 +417,12 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(Reloc)) {
+        return FALSE;
+    }
+
+    Allocator = TraceStore->Allocator;
+
+    if (!Allocator) {
         return FALSE;
     }
 
@@ -493,31 +511,7 @@ Return Value:
     INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 
-
     TraceStore->IsMetadata = FALSE;
-
-    //
-    // Set trait information.
-    //
-
-    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
-    pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
-    TraceStore->pTraits = pTraits;
-    Traits = *pTraits;
-
-    //
-    // Make sure the no retire flag matches the streaming trait.
-    //
-
-    if (TraceStore->IsReadonly) {
-        if (!Traits.StreamingRead) {
-            TraceStore->NoRetire = TRUE;
-        }
-    } else {
-        if (!Traits.StreamingWrite) {
-            TraceStore->NoRetire = TRUE;
-        }
-    }
 
     //
     // Now initialize the TraceStore itself.
@@ -849,7 +843,7 @@ Routine Description:
 
     This routine closes a normal trace store.  It is not intended to be called
     against metadata trace stores.  It will close the trace store, then close
-    the meta data trace stores associated with that trace store.
+    the metadata trace stores associated with that trace store.
 
 Arguments:
 
@@ -991,6 +985,7 @@ Return Value:
     TracerConfig->NumberOfElementsPerTraceStore = ElementsPerTraceStore;
     TracerConfig->MaximumTraceStoreId = TraceStoreInvalidId;
     TracerConfig->MaximumTraceStoreIndex = TraceStoreInvalidIndex;
+    TracerConfig->SizeOfTraceStoreStructure = sizeof(TRACE_STORE);
 
     return TRUE;
 }

@@ -20,6 +20,7 @@ _Use_decl_annotations_
 BOOL
 InitializeTraceContext(
     PRTL Rtl,
+    PALLOCATOR Allocator,
     PTRACE_CONTEXT TraceContext,
     PULONG SizeOfTraceContext,
     PTRACE_SESSION TraceSession,
@@ -38,6 +39,8 @@ Routine Description:
 Arguments:
 
     Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
 
@@ -93,19 +96,23 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!Rtl) {
+    if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
-    if (!TraceSession) {
+    if (!ARGUMENT_PRESENT(Allocator)) {
         return FALSE;
     }
 
-    if (!TraceStores) {
+    if (!ARGUMENT_PRESENT(TraceSession)) {
         return FALSE;
     }
 
-    if (!ThreadpoolCallbackEnvironment) {
+    if (!ARGUMENT_PRESENT(TraceStores)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ThreadpoolCallbackEnvironment)) {
         return FALSE;
     }
 
@@ -117,25 +124,20 @@ Return Value:
         return FALSE;
     }
 
+    SecureZeroMemory(TraceContext, *SizeOfTraceContext);
+
     TraceContext->TimerFunction = TraceStoreGetTimerFunction();
     if (!TraceContext->TimerFunction) {
         return FALSE;
     }
 
-    TraceContext->Size = *SizeOfTraceContext;
+    TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
     TraceContext->SequenceId = 1;
     TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
-
-    TraceContext->HeapHandle = HeapCreate(0,
-                                          InitialTraceContextHeapSize,
-                                          MaximumTraceContextHeapSize);
-
-    if (!TraceContext->HeapHandle) {
-        return FALSE;
-    }
+    TraceContext->Allocator = Allocator;
 
     if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
         return FALSE;
@@ -206,7 +208,7 @@ Return Value:
         return FALSE;
     }
 
-    if (!TraceContext->HeapHandle) {
+    if (!TraceContext->Allocator) {
         return FALSE;
     }
 
@@ -226,11 +228,7 @@ Return Value:
     // Create the initial set of memory map records.
     //
 
-    Success = CreateMemoryMapsForTraceStore(
-        TraceStore,
-        TraceContext,
-        InitialFreeMemoryMaps
-    );
+    Success = CreateMemoryMapsForTraceStore(TraceStore);
 
     if (!Success) {
         return FALSE;

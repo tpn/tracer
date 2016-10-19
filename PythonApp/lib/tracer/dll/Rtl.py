@@ -86,11 +86,11 @@ def create_and_initialize_rtl():
     assert size.value > 0
 
     buf = create_string_buffer(size.value)
-    prtl = cast(byref(buf), PRTL)
+    prtl = cast(buf, PRTL)
     success = InitializeRtl(prtl, byref(size))
     assert success
 
-    Rtl = cast(byref(buf), PRTL).contents
+    Rtl = cast(buf, PRTL).contents
     return Rtl
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :

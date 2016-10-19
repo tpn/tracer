@@ -20,6 +20,7 @@ _Use_decl_annotations_
 BOOL
 InitializeReadonlyTraceContext(
     PRTL Rtl,
+    PALLOCATOR Allocator,
     PREADONLY_TRACE_CONTEXT ReadonlyTraceContext,
     PULONG SizeOfReadonlyTraceContext,
     PTRACE_STORES TraceStores,
@@ -37,6 +38,8 @@ Routine Description:
 Arguments:
 
     Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
 
     TraceContext - Supplies a pointer to a READONLY_TRACE_CONTEXT structure.
 
@@ -76,8 +79,8 @@ Return Value:
 
 --*/
 {
-    USHORT Index;
-    USHORT StoreIndex;
+    //USHORT Index;
+    //USHORT StoreIndex;
 
     //
     // Validate sizes.
@@ -103,17 +106,40 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!Rtl) {
+    if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
-    if (!TraceStores) {
+    if (!ARGUMENT_PRESENT(Allocator)) {
         return FALSE;
     }
 
-    if (!ThreadpoolCallbackEnvironment) {
+    if (!ARGUMENT_PRESENT(TraceStores)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(ThreadpoolCallbackEnvironment)) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the trace stores is also readonly.
+    //
+
+    if (!TraceStores->Flags.Readonly) {
+        return FALSE;
+    }
+
+    //
+    // Zero memory and initialize fields.
+    //
+
+    SecureZeroMemory(ReadonlyTraceContext, sizeof(*ReadonlyTraceContext));
+    ReadonlyTraceContext->SizeOfStruct = sizeof(*ReadonlyTraceContext);
+    ReadonlyTraceContext->Rtl = Rtl;
+    ReadonlyTraceContext->Allocator = Allocator;
+    ReadonlyTraceContext->Directory = &TraceStores->BaseDirectory;
+
 
     return TRUE;
 }

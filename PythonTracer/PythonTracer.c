@@ -811,15 +811,17 @@ FunctionCompare(
 }
 
 
+_Use_decl_annotations_
 BOOL
 InitializePythonTraceContext(
-    _In_ PRTL Rtl,
-    _Out_bytecap_(*SizeOfContext) PPYTHON_TRACE_CONTEXT Context,
-    _Inout_ PULONG SizeOfContext,
-    _In_ PPYTHON Python,
-    _In_ PTRACE_CONTEXT TraceContext,
-    _In_opt_ PPYTRACEFUNC PythonTraceFunction,
-    _In_opt_ PVOID UserData
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PPYTHON_TRACE_CONTEXT Context,
+    PULONG SizeOfContext,
+    PPYTHON Python,
+    PTRACE_CONTEXT TraceContext,
+    PPYTRACEFUNC PythonTraceFunction,
+    PVOID UserData
     )
 {
     PTRACE_STORES TraceStores;
@@ -859,13 +861,17 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    };
-
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    };
 
     if (!ARGUMENT_PRESENT(TraceContext)) {
         return FALSE;
@@ -875,6 +881,7 @@ InitializePythonTraceContext(
 
     Context->Size = *SizeOfContext;
     Context->Rtl = Rtl;
+    Context->Allocator = Allocator;
     Context->Python = Python;
     Context->TraceContext = TraceContext;
     Context->PythonTraceFunction = PythonTraceFunction;
@@ -915,8 +922,11 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(StringTable);
 
     EventStore = &TraceStores->Stores[TraceStoreEventIndex];
-    EventStore->NoRetire = FALSE;
-    EventStore->NoPreferredAddressReuse = TRUE;
+
+    if (EventStore->NoRetire) {
+        __debugbreak();
+        return FALSE;
+    }
 
     Allocators.NumberOfAllocators = NumberOfAllocators;
     Allocators.SizeInBytes = sizeof(Allocators);

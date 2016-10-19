@@ -57,6 +57,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -84,10 +87,12 @@
     <ClCompile Include="TraceStore.c" />
     <ClCompile Include="TraceStoreAddress.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
+    <ClCompile Include="TraceStoreConstants.c" />
     <ClCompile Include="TraceStoreContext.c" />
     <ClCompile Include="TraceStoreMemoryMap.c" />
     <ClCompile Include="TraceStoreMetadata.c" />
     <ClCompile Include="TraceStorePath.c" />
+    <ClCompile Include="TraceStoreReadonlyContext.c" />
     <ClCompile Include="TraceStoreRelocation.c" />
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
@@ -95,6 +100,7 @@
     <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
+    <ClCompile Include="TraceStoreTraits.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
