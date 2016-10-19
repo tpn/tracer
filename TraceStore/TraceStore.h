@@ -765,6 +765,14 @@ typedef struct _TRACE_FLAGS {
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
+typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
+    USHORT Valid:1;
+    USHORT Readonly:1;
+    USHORT Unused:14;
+} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+
+C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     //
@@ -774,12 +782,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) USHORT SizeOfStruct;
 
     //
-    // Pad out to 4 bytes.
+    // Flags.
     //
 
-    USHORT Padding;
+    TRACE_CONTEXT_FLAGS Flags;
 
-    ULONG SequenceId;
+    volatile ULONG ConcurrentLoadsInProgress;
+
+    HANDLE LoadingCompleteEvent;
+
     PRTL Rtl;
     PALLOCATOR Allocator;
     PTRACE_SESSION TraceSession;

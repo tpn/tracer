@@ -315,6 +315,16 @@ typedef  FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
 FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
     FinalizeFirstTraceStoreMemoryMapCallback;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP \
+      *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP;
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP FinalizeFirstTraceStoreMemoryMap;
 
 //
 // TraceStoreReadonlyContext-related functions and macros.
@@ -348,7 +358,10 @@ typedef BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT \
 BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT BindTraceStoreToReadonlyTraceContext;
 
 FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstTraceStoreReadonlyMemoryMapCallback;
+    FinalizeFirstReadonlyTraceStoreMemoryMapCallback;
+
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP \
+    FinalizeFirstReadonlyTraceStoreMemoryMap;
 
 //
 // TraceStoreTime-related functions.
@@ -731,8 +744,6 @@ typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
 
 typedef
-_Check_return_
-_Success_(return != 0)
 VOID
 (INITIALIZE_TRACE_STORE_SLIST_HEADERS)(
     _In_ PTRACE_STORE TraceStore
@@ -757,7 +768,9 @@ _Success_(return != 0)
 BOOL
 (CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS)(
     _In_ PTRACE_STORE TraceStore,
-    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment
+    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    _In_ PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
+        FinalizeFirstMemoryMapCallback
     );
 typedef CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS \
       *PCREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS;

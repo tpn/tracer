@@ -247,7 +247,13 @@ Return Value:
         return FALSE;
     }
 
-    if (!CreateTraceStoreThreadpoolWorkItems(TraceStore, TpCallbackEnviron)) {
+    Success = CreateTraceStoreThreadpoolWorkItems(
+        TraceStore,
+        TpCallbackEnviron,
+        FinalizeFirstReadonlyTraceStoreMemoryMapCallback
+    );
+
+    if (!Success) {
         return FALSE;
     }
 
@@ -333,5 +339,223 @@ Return Value:
 
     return TRUE;
 }
+
+_Use_decl_annotations_
+BOOL
+FinalizeFirstReadonlyTraceStoreMemoryMap(
+    PTRACE_STORE TraceStore
+)
+/*++
+
+Routine Description:
+
+This routine finalizes the first memory map for a trace store.  It is
+called as a callback in the threadpool environment.
+
+Arguments:
+
+TraceStore - Supplies a pointer to a TRACE_STORE structure to for which
+the first memory map is to be finalized.
+
+Return Value:
+
+None.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsMetadata;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PRTL Rtl;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_TIME SourceTime;
+    PTRACE_CONTEXT TraceContext;
+
+    //
+    // Initialize aliases.
+    //
+
+    TraceContext = TraceStore->TraceContext;
+    Rtl = TraceContext->Rtl;
+
+    Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    if (IsMetadata) {
+
+        //
+        // Metadata stores only have Info filled out, and it's backed by the
+        // :metadatainfo store.
+        //
+
+        MetadataId = TraceStore->TraceStoreMetadataId;
+
+        Info = TraceStoreMetadataIdToInfo(TraceStore, MetadataId);
+        Allocation = NULL;
+        Bitmap = NULL;
+        Reloc = NULL;
+
+    } else {
+
+        Allocation = (PTRACE_STORE_ALLOCATION)(
+            TraceStore->AllocationStore->MemoryMap->BaseAddress
+            );
+
+        Info = (PTRACE_STORE_INFO)(
+            TraceStore->InfoStore->MemoryMap->BaseAddress
+            );
+
+        Bitmap = (PTRACE_STORE_BITMAP)(
+            TraceStore->BitmapStore->MemoryMap->BaseAddress
+            );
+
+        Reloc = (PTRACE_STORE_RELOC)(
+            TraceStore->RelocationStore->MemoryMap->BaseAddress
+            );
+    }
+
+    TraceStore->Allocation = Allocation;
+    TraceStore->Bitmap = Bitmap;
+    TraceStore->Reloc = Reloc;
+    TraceStore->Info = Info;
+
+    Eof = TraceStore->Eof = &Info->Eof;
+    Time = TraceStore->Time = &Info->Time;
+    Stats = TraceStore->Stats = &Info->Stats;
+    Totals = TraceStore->Totals = &Info->Totals;
+
+    if (IsMetadata) {
+        PINITIALIZE_TRACE_STORE_METADATA Initializer;
+
+        //
+        // Call the metadata's custom initializer.
+        //
+
+        Initializer = TraceStoreMetadataIdToInitializer(MetadataId);
+
+        Success = Initializer(TraceStore);
+        if (!Success) {
+            return FALSE;
+        }
+    }
+
+    if (TraceStore->IsReadonly) {
+
+        //
+        // TraceStore is readonly, try load relocation information.
+        //
+
+        if (!LoadTraceStoreRelocationInfo(TraceStore)) {
+            return FALSE;
+        }
+
+    } else {
+
+        //
+        // TraceStore is not readonly.
+        //
+
+        //
+        // Copy time.
+        //
+
+        SourceTime = &TraceContext->Time;
+        Rtl->RtlCopyMappedMemory(Time, SourceTime, sizeof(*Time));
+
+        //
+        // Zero out stats.
+        //
+
+        SecureZeroMemory(Stats, sizeof(*Stats));
+
+        if (!IsMetadata) {
+
+            //
+            // Initialize eof and zero totals as long as we're not metadata.
+            //
+
+            Eof->EndOfFile.QuadPart = 0;
+            SecureZeroMemory(Totals, sizeof(*Totals));
+
+            //
+            // Initialize relocation information if present.
+            //
+
+            if (TraceStore->HasRelocations) {
+                if (!SaveTraceStoreRelocationInfo(TraceStore)) {
+                    return FALSE;
+                }
+            }
+        }
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+FinalizeFirstReadonlyTraceStoreMemoryMapCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PVOID Context,
+    PTP_WORK Work
+)
+/*++
+
+Routine Description:
+
+This routine is the callback target for the finalize first trace store
+memory map threadpool work.
+
+Arguments:
+
+Instance - Not used.
+
+Context - Supplies a pointer to a TRACE_STORE struct.
+
+Work - Not used.
+
+Return Value:
+
+None.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    //
+    // Ensure Context has a value.
+    //
+
+    if (!Context) {
+        return;
+    }
+
+    TraceStore = (PTRACE_STORE)Context;
+
+    Success = FinalizeFirstReadonlyTraceStoreMemoryMap(TraceStore);
+    if (!Success) {
+
+        //
+        // XXX TODO: set some sort of a flag/event indicating
+        // failure.
+        //
+
+    }
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

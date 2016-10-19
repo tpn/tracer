@@ -44,6 +44,7 @@ Return Value:
 {
     PRTL Rtl;
     BOOL Success;
+    BOOL IsPageAligned;
     PVOID Buffer;
     HRESULT Result;
     USHORT NumaNode;
@@ -78,12 +79,12 @@ Return Value:
         return FALSE;
     }
 
-    if (!AssertPageAligned(AddressRecordSize.QuadPart)) {
+    IsPageAligned = (BOOL)(
+        AddressRecordSize.QuadPart & (PAGE_SIZE-1)
+    );
 
-        //
-        // The record isn't evenly divisible by PAGE_SIZE.
-        //
-
+    if (!IsPageAligned) {
+        __debugbreak();
         return FALSE;
     }
 
