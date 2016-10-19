@@ -348,7 +348,7 @@ typedef BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT \
 BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT BindTraceStoreToReadonlyTraceContext;
 
 FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstTraceStoreReadonlyMemoryMapCallback;
+    FinalizeFirstReadonlyTraceStoreMemoryMapCallback;
 
 //
 // TraceStoreTime-related functions.
@@ -757,7 +757,9 @@ _Success_(return != 0)
 BOOL
 (CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS)(
     _In_ PTRACE_STORE TraceStore,
-    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment
+    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    _In_ PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
+        FinalizeFirstMemoryMapCallback
     );
 typedef CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS \
       *PCREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS;
