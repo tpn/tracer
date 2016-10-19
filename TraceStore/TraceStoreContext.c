@@ -134,7 +134,6 @@ Return Value:
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
-    TraceContext->SequenceId = 1;
     TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
     TraceContext->Allocator = Allocator;
@@ -556,13 +555,14 @@ Return Value:
     TraceStore = (PTRACE_STORE)Context;
 
     Success = FinalizeFirstTraceStoreMemoryMap(TraceStore);
+
     if (!Success) {
 
         //
         // XXX TODO: set some sort of a flag/event indicating
         // failure.
         //
-
+        __debugbreak();
     }
 }
 
