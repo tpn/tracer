@@ -134,7 +134,6 @@ Return Value:
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
-    TraceContext->SequenceId = 1;
     TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
     TraceContext->Allocator = Allocator;
@@ -178,21 +177,11 @@ Return Value:
 {
     BOOL Success;
     BOOL IsMetadata;
-    DWORD WaitResult;
     HRESULT Result;
     PRTL Rtl;
     TRACE_STORE_METADATA_ID MetadataId;
     PTRACE_STORE_ADDRESS AddressPointer;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
-    PTRACE_STORE_EOF Eof;
-    PTRACE_STORE_TIME Time;
-    PTRACE_STORE_STATS Stats;
-    PTRACE_STORE_TOTALS Totals;
-    PTRACE_STORE_INFO Info;
-    PTRACE_STORE_RELOC Reloc;
-    PTRACE_STORE_ALLOCATION Allocation;
-    PTRACE_STORE_BITMAP Bitmap;
-    PTRACE_STORE_TIME SourceTime;
     PLARGE_INTEGER Elapsed;
     PTP_CALLBACK_ENVIRON TpCallbackEnviron;
     TRACE_STORE_ADDRESS Address;
@@ -243,7 +232,13 @@ Return Value:
         return FALSE;
     }
 
-    if (!CreateTraceStoreThreadpoolWorkItems(TraceStore, TpCallbackEnviron)) {
+    Success = CreateTraceStoreThreadpoolWorkItems(
+        TraceStore,
+        TpCallbackEnviron,
+        FinalizeFirstTraceStoreMemoryMapCallback
+    );
+
+    if (!Success) {
         return FALSE;
     }
 
@@ -355,7 +350,7 @@ SubmitFirstMemoryMap:
 }
 
 _Use_decl_annotations_
-VOID
+BOOL
 FinalizeFirstTraceStoreMemoryMap(
     PTRACE_STORE TraceStore
     )
@@ -377,19 +372,35 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    BOOL IsMetadata;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PRTL Rtl;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_RELOC Reloc;
+    PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_BITMAP Bitmap;
+    PTRACE_STORE_TIME SourceTime;
+    PTRACE_CONTEXT TraceContext;
 
-    WaitResult = WaitForSingleObject(TraceStore->NextMemoryMapAvailableEvent,
-                                     INFINITE);
+    //
+    // Initialize aliases.
+    //
 
-    if (WaitResult != WAIT_OBJECT_0) {
-        return FALSE;
-    }
+    TraceContext = TraceStore->TraceContext;
+    Rtl = TraceContext->Rtl;
 
     Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
 
     if (!Success) {
         return FALSE;
     }
+
+    IsMetadata = IsMetadataTraceStore(TraceStore);
 
     if (IsMetadata) {
 
@@ -398,6 +409,7 @@ Return Value:
         // :metadatainfo store.
         //
 
+        MetadataId = TraceStore->TraceStoreMetadataId;
         Info = TraceStoreMetadataIdToInfo(TraceStore, MetadataId);
         Allocation = NULL;
         Bitmap = NULL;
@@ -529,6 +541,9 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
     //
     // Ensure Context has a value.
     //
@@ -537,7 +552,18 @@ Return Value:
         return;
     }
 
-    FinalizeFirstTraceStoreMemoryMap((PTRACE_STORE)Context);
+    TraceStore = (PTRACE_STORE)Context;
+
+    Success = FinalizeFirstTraceStoreMemoryMap(TraceStore);
+
+    if (!Success) {
+
+        //
+        // XXX TODO: set some sort of a flag/event indicating
+        // failure.
+        //
+        __debugbreak();
+    }
 }
 
 

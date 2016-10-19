@@ -620,7 +620,7 @@ Return Value:
         return FALSE;
     }
 
-    return FALSE;
+    return TRUE;
 
 }
 
