@@ -521,10 +521,29 @@ Finalize:
         }
     }
 
-    Success = TRUE;
-    PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
-    SetEvent(TraceStore->NextMemoryMapAvailableEvent);
+    if (TraceStore->MappedSequenceId == 0) {
+        PTRACE_STORE_MEMORY_MAP OldFirstMemoryMap;
 
+        OldFirstMemoryMap = (PTRACE_STORE_MEMORY_MAP)(
+            InterlockedExchangePointer(
+                &TraceStore->FirstMemoryMap,
+                MemoryMap
+            )
+        );
+
+        if (OldFirstMemoryMap != NULL) {
+            __debugbreak();
+            goto Error;
+        }
+
+        SubmitThreadpoolWork(TraceStore->FinalizeFirstMemoryMapWork);
+
+    } else {
+        PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
+        SetEvent(TraceStore->NextMemoryMapAvailableEvent);
+    }
+
+    Success = TRUE;
     goto End;
 
 Error:
