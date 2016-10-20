@@ -773,6 +773,29 @@ typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
 
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
 
+typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
+    SLIST_HEADER ListHead;
+    PTP_WORK Work;
+    HANDLE WorkCompleteEvent;
+    PRTL_BITMAP Failed;
+
+    volatile ULONG NumberOfActiveItems;
+    volatile ULONG NumberOfFailedItems;
+    ULONG TotalNumberOfItems;
+    ULONG Unused1;
+
+    struct _TRACE_STORE_WORK *AllItemsCompleteWork;
+
+} TRACE_STORE_WORK, *PTRACE_STORE_WORK;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Work) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, WorkCompleteEvent) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Failed) == 32);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, AllItemsCompleteWork) == 56);
+C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     //
@@ -787,9 +810,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     TRACE_CONTEXT_FLAGS Flags;
 
-    volatile ULONG ConcurrentLoadsInProgress;
+    //
+    // Pad out to 8 bytes.
+    //
 
-    HANDLE LoadingCompleteEvent;
+    ULONG Padding;
 
     PRTL Rtl;
     PALLOCATOR Allocator;
@@ -798,9 +823,30 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
-    PUNICODE_STRING BaseDirectory;
+
+    //
+    // 64 bytes.  End of first cache line.
+    //
+
+    //
+    // Second cache line.
+    //
+
+    TRACE_STORE_WORK BindTraceStoreWork;
+    TRACE_STORE_WORK LoadMetadataInfoWork;
+    TRACE_STORE_WORK LoadRemainingMetadataWork;
+    TRACE_STORE_WORK LoadTraceStoreWork;
+
+    //
+    // Stash Time at the end as it's large and doesn't have any alignment
+    // requirements.
+    //
+
     TRACE_STORE_TIME Time;
+
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
+
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindTraceStoreWork) == 64);
 
 typedef
 VOID
@@ -1361,6 +1407,7 @@ BOOL
     _In_opt_ PTRACE_SESSION        TraceSession,
     _In_opt_ PTRACE_STORES         TraceStores,
     _In_opt_ PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PTRACE_CONTEXT_FLAGS  TraceContextFlags,
     _In_opt_ PVOID                 UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;

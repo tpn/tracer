@@ -26,6 +26,7 @@ InitializeTraceContext(
     PTRACE_SESSION TraceSession,
     PTRACE_STORES TraceStores,
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    PTRACE_CONTEXT_FLAGS TraceContextFlags,
     PVOID UserData
     )
 /*--
@@ -57,6 +58,9 @@ Arguments:
         environment to use for the trace context.  This threadpool will be used
         to submit various asynchronous thread pool memory map operations.
 
+    TraceContextFlags - Supplies a pointer to a TRACE_CONTEXT_FLAGS structure
+        to use for the trace context.
+
     UserData - Supplies an optional pointer to user data that can be used by
         a caller to track additional context information per TRACE_CONTEXT
         structure.
@@ -71,6 +75,7 @@ Return Value:
 {
     USHORT Index;
     USHORT StoreIndex;
+    TRACE_CONTEXT_FLAGS ContextFlags;
 
     //
     // Validate size parameters.
@@ -116,13 +121,30 @@ Return Value:
         return FALSE;
     }
 
-    //
-    // Make sure we haven't been called against a readonly trace store.
-    //
-
-    if (TraceStores->Flags.Readonly) {
+    if (!ARGUMENT_PRESENT(TraceContextFlags)) {
         return FALSE;
     }
+
+    ContextFlags = *TraceContextFlags;
+
+    //
+    // If the TraceContextFlags indicate readonly, make sure that matches the
+    // trace stores.
+    //
+
+    if (ContextFlags.Readonly) {
+        if (!TraceStores->Flags.Readonly) {
+            return FALSE;
+        }
+    } else {
+        if (TraceStores->Flags.Readonly) {
+            return FALSE;
+        }
+    }
+
+    //
+    // Zero the structure before we start using it.
+    //
 
     SecureZeroMemory(TraceContext, *SizeOfTraceContext);
 
@@ -141,6 +163,16 @@ Return Value:
     if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
         return FALSE;
     }
+
+    //
+    // XXX wip: continue intialization of TRACE_STORE_WORK items.
+    //  - Add callback functions that call their normal counterparts.
+    //
+
+    InitializeSListHead(&TraceContext->BindTraceStoreWork.ListHead);
+    InitializeSListHead(&TraceContext->LoadMetadataInfoWork.ListHead);
+    InitializeSListHead(&TraceContext->LoadRemainingMetadataWork.ListHead);
+    InitializeSListHead(&TraceContext->LoadTraceStoreWork.ListHead);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TRACE_STORE_DECLS();
