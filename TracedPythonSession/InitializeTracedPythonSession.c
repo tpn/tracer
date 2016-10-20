@@ -963,6 +963,10 @@ LoadPythonDll:
     );
 
     //
+    // Clear the trace context flags.
+    //
+
+    //
     // Get the required size of a TRACE_CONTEXT structure.
     //
 
@@ -975,6 +979,7 @@ LoadPythonDll:
         NULL,           // TraceSession
         NULL,           // TraceStores
         NULL,           // ThreadpoolCallbackEnviron
+        NULL,           // TraceContextFlags
         NULL            // UserData
     );
 
@@ -991,6 +996,7 @@ LoadPythonDll:
         Session->TraceSession,
         Session->TraceStores,
         &Session->ThreadpoolCallbackEnviron,
+        NULL,
         (PVOID)Session
     );
 

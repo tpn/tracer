@@ -777,7 +777,7 @@ typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
     SLIST_HEADER ListHead;
     PTP_WORK Work;
     HANDLE WorkCompleteEvent;
-    PRTL_BITMAP Failed;
+    PRTL_BITMAP FailedBitmap;
 
     volatile ULONG NumberOfActiveItems;
     volatile ULONG NumberOfFailedItems;
@@ -790,7 +790,7 @@ typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Work) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, WorkCompleteEvent) == 24);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Failed) == 32);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, FailedBitmap) == 32);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, AllItemsCompleteWork) == 56);

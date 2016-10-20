@@ -58,8 +58,8 @@ Arguments:
         environment to use for the trace context.  This threadpool will be used
         to submit various asynchronous thread pool memory map operations.
 
-    TraceContextFlags - Supplies a pointer to a TRACE_CONTEXT_FLAGS structure
-        to use for the trace context.
+    TraceContextFlags - Supplies an optional pointer to a TRACE_CONTEXT_FLAGS
+        structure to use for the trace context.
 
     UserData - Supplies an optional pointer to user data that can be used by
         a caller to track additional context information per TRACE_CONTEXT
@@ -75,6 +75,8 @@ Return Value:
 {
     USHORT Index;
     USHORT StoreIndex;
+    USHORT NumberOfTraceStores;
+    USHORT NumberOfRemainingMetadataStores;
     TRACE_CONTEXT_FLAGS ContextFlags;
 
     //
@@ -121,15 +123,15 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(TraceContextFlags)) {
-        return FALSE;
+    if (ARGUMENT_PRESENT(TraceContextFlags)) {
+        ContextFlags = *TraceContextFlags;
+    } else {
+        SecureZeroMemory(&ContextFlags, sizeof(ContextFlags));
     }
 
-    ContextFlags = *TraceContextFlags;
-
     //
-    // If the TraceContextFlags indicate readonly, make sure that matches the
-    // trace stores.
+    // If the TraceContextFlags indicates readonly, make sure that matches the
+    // trace stores, and vice versa.
     //
 
     if (ContextFlags.Readonly) {
@@ -164,22 +166,83 @@ Return Value:
         return FALSE;
     }
 
+    NumberOfTraceStores = TraceStores->NumberOfTraceStores;
+
     //
-    // XXX wip: continue intialization of TRACE_STORE_WORK items.
-    //  - Add callback functions that call their normal counterparts.
+    // We subtract 2 from ElementsPerTraceStore to account for the normal trace
+    // store and :metadatainfo trace store.
     //
 
-    InitializeSListHead(&TraceContext->BindTraceStoreWork.ListHead);
-    InitializeSListHead(&TraceContext->LoadMetadataInfoWork.ListHead);
-    InitializeSListHead(&TraceContext->LoadRemainingMetadataWork.ListHead);
-    InitializeSListHead(&TraceContext->LoadTraceStoreWork.ListHead);
+    NumberOfRemainingMetadataStores = (
+        (TraceStores->ElementsPerTraceStore - 2) *
+        NumberOfTraceStores
+    );
+
+#define INIT_WORK_FAILED_BITMAP(Work)
+
+#define INIT_WORK(Name, NumberOfItems)                               \
+    Work = &TraceContext->##Name##Work;                              \
+                                                                     \
+    InitializeSListHead(&Work->ListHead);                            \
+                                                                     \
+    Work->WorkCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL); \
+    if (!Work->CompleteEvent) {                                      \
+        goto Error;                                                  \
+    }                                                                \
+                                                                     \
+    Work->Work = CreateThreadpoolWork(                               \
+        Name##Callback,                                              \
+        TraceContext,                                                \
+        ThreadpoolCallbackEnvironment                                \
+    );                                                               \
+    if (!Work->Work) {                                               \
+        goto Error;                                                  \
+    }                                                                \
+                                                                     \
+    Work->TotalNumberOfItems = NumberOfItems;                        \
+    INIT_WORK_FAILED_BITMAP(Work);                                   \
+                                                                     \
+    Work->NumberOfActiveItems = NumberOfItems;                       \
+    Work->NumberOfFailedItems = 0
+
+    INIT_WORK(BindTraceStore, NumberOfTraceStores);
+    INIT_WORK(LoadMetadataInfo, NumberOfTraceStores);
+    INIT_WORK(LoadRemainingMetadata, NumberOfRemainingMetadataStores);
+    INIT_WORK(LoadTraceStore, NumberOfTraceStores);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        TRACE_STORE_DECLS();
-        BIND_STORES();
+        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
+
     }
 
     return TRUE;
+
+Error:
+
+#define CLEANUP_WORK(Name)                                       \
+    Work = &TraceContext->##Name##Work;                          \
+                                                                 \
+    if (Work->Work) {                                            \
+        CloseThreadpoolWork(Work->Work);                         \
+    }                                                            \
+                                                                 \
+    if (Work->WorkCompleteEvent) {                               \
+        CloseHandle(Work->WorkCompleteEvent);                    \
+    }                                                            \
+                                                                 \
+    if (Work->FailedBitmap) {                                    \
+        Allocator->Free(Allocator->Context, Work->FailedBitmap); \
+    }                                                            \
+                                                                 \
+    SecureZeroMemory(Work, sizeof(*Work));
+
+
+    CLEANUP_WORK(BindTraceStore);
+    CLEANUP_WORK(LoadMetadataInfo);
+    CLEANUP_WORK(LoadRemainingMetadata);
+    CLEANUP_WORK(LoadTraceStore);
+
+    return FALSE;
 }
 
 _Use_decl_annotations_
@@ -543,60 +606,5 @@ Return Value:
 
     return TRUE;
 }
-
-_Use_decl_annotations_
-VOID
-CALLBACK
-FinalizeFirstTraceStoreMemoryMapCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
-    )
-/*++
-
-Routine Description:
-
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
-
-Arguments:
-
-    Instance - Not used.
-
-    Context - Supplies a pointer to a TRACE_STORE struct.
-
-    Work - Not used.
-
-Return Value:
-
-    None.
-
---*/
-{
-    BOOL Success;
-    PTRACE_STORE TraceStore;
-
-    //
-    // Ensure Context has a value.
-    //
-
-    if (!Context) {
-        return;
-    }
-
-    TraceStore = (PTRACE_STORE)Context;
-
-    Success = FinalizeFirstTraceStoreMemoryMap(TraceStore);
-
-    if (!Success) {
-
-        //
-        // XXX TODO: set some sort of a flag/event indicating
-        // failure.
-        //
-        __debugbreak();
-    }
-}
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
