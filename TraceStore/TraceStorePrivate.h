@@ -304,18 +304,6 @@ typedef BIND_TRACE_STORE_TO_TRACE_CONTEXT *PBIND_TRACE_STORE_TO_TRACE_CONTEXT;
 BIND_TRACE_STORE_TO_TRACE_CONTEXT BindTraceStoreToTraceContext;
 
 typedef
-VOID
-(CALLBACK FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE Instance,
-    _In_ PVOID Context,
-    _In_ PTP_WORK Work
-    );
-typedef  FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-       *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK;
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstTraceStoreMemoryMapCallback;
-
-typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
@@ -357,9 +345,6 @@ typedef BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT \
       *PBIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT;
 BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT BindTraceStoreToReadonlyTraceContext;
 
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstReadonlyTraceStoreMemoryMapCallback;
-
 FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP \
     FinalizeFirstReadonlyTraceStoreMemoryMap;
 
@@ -393,18 +378,6 @@ typedef CREATE_MEMORY_MAPS_FOR_TRACE_STORE *PCREATE_MEMORY_MAPS_FOR_TRACE_STORE;
 CREATE_MEMORY_MAPS_FOR_TRACE_STORE CreateMemoryMapsForTraceStore;
 
 typedef
-VOID
-(CALLBACK PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE Instance,
-    _In_ PVOID Context,
-    _In_ PTP_WORK Work
-    );
-typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
-       *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK;
-PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    PrepareNextTraceStoreMemoryMapCallback;
-
-typedef
 _Success_(return != 0)
 BOOL
 (PREPARE_NEXT_TRACE_STORE_MEMORY_MAP)(
@@ -415,17 +388,6 @@ typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
 PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
     PrepareNextTraceStoreMemoryMap;
 
-typedef
-VOID
-(CALLBACK RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
-    );
-typedef  RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
-       *PRELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK;
-RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    ReleasePrevTraceStoreMemoryMapCallback;
 
 typedef
 _Success_(return != 0)
@@ -484,6 +446,101 @@ typedef  SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
        *PSUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK;
 SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
     SubmitCloseMemoryMapThreadpoolWork;
+
+//
+// TraceStoreCallback-related functions.
+//
+
+typedef
+VOID
+(CALLBACK FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE Instance,
+    _In_ PVOID Context,
+    _In_ PTP_WORK Work
+    );
+typedef  FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK;
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    FinalizeFirstTraceStoreMemoryMapCallback;
+
+FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    FinalizeFirstReadonlyTraceStoreMemoryMapCallback;
+
+typedef
+VOID
+(CALLBACK PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE   Instance,
+    _In_ PVOID                   Context,
+    _In_ PTP_WORK                Work
+    );
+typedef  PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
+       *PPREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK;
+PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
+    PrefaultFutureTraceStorePageCallback;
+
+typedef
+VOID
+(CALLBACK PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE Instance,
+    _In_ PVOID Context,
+    _In_ PTP_WORK Work
+    );
+typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK;
+PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    PrepareNextTraceStoreMemoryMapCallback;
+
+typedef
+VOID
+(CALLBACK RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef  RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PRELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK;
+RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    ReleasePrevTraceStoreMemoryMapCallback;
+
+typedef
+VOID
+(CALLBACK BIND_TRACE_STORE_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef BIND_TRACE_STORE_CALLBACK *PBIND_TRACE_STORE_CALLBACK;
+BIND_TRACE_STORE_CALLBACK BindTraceStoreCallback;
+
+typedef
+VOID
+(CALLBACK LOAD_METADATA_INFO_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef LOAD_METADATA_INFO_CALLBACK *PLOAD_METADATA_INFO_CALLBACK;
+LOAD_METADATA_INFO_CALLBACK LoadMetadataInfoCallback;
+
+typedef
+VOID
+(CALLBACK LOAD_REMAINING_METADATA_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef LOAD_REMAINING_METADATA_CALLBACK *PLOAD_REMAINING_METADATA_CALLBACK;
+LOAD_REMAINING_METADATA_CALLBACK LoadRemainingMetadataCallback;
+
+typedef
+VOID
+(CALLBACK LOAD_TRACE_STORE_CALLBACK)(
+    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
+    _Inout_opt_ PVOID                   Context,
+    _Inout_     PTP_WORK                Work
+    );
+typedef LOAD_TRACE_STORE_CALLBACK *PLOAD_TRACE_STORE_CALLBACK;
+LOAD_TRACE_STORE_CALLBACK LoadTraceStoreCallback;
 
 //
 // TraceStoreMemory-map related inline functions.
@@ -894,22 +951,6 @@ BOOL
     );
 typedef TRACE_STORE_CALL_TIMER *PTRACE_STORE_CALL_TIMER;
 TRACE_STORE_CALL_TIMER TraceStoreCallTimer;
-
-//
-// TraceStorePrefault-related functions.
-//
-
-typedef
-VOID
-(CALLBACK PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE   Instance,
-    _In_ PVOID                   Context,
-    _In_ PTP_WORK                Work
-    );
-typedef  PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
-       *PPREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK;
-PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
-    PrefaultFutureTraceStorePageCallback;
 
 //
 // TraceStorePrefault-related inline functions.

@@ -1154,48 +1154,5 @@ Return Value:
     return TRUE;
 }
 
-_Use_decl_annotations_
-VOID
-CALLBACK
-PrefaultFutureTraceStorePageCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
-    )
-/*++
-
-Routine Description:
-
-    This routine is the callback target for the prefault future trace store
-    threadpool work.  It simply calls the PrefaultFutureTraceStorePage()
-    inline routine (which forces a read of the memory address we want to
-    prefault, which will result in a hard or soft fault if the page isn't
-    resident).
-
-Arguments:
-
-    Instance - Not used.
-
-    Context - Supplies a pointer to a TRACE_STORE struct.
-
-    Work - Not used.
-
-Return Value:
-
-    None.
-
---*/
-{
-    //
-    // Ensure Context has a value.
-    //
-
-    if (!Context) {
-        return;
-    }
-
-    PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
-}
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
