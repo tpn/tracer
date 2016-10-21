@@ -182,6 +182,7 @@ Return Value:
         NumberOfTraceStores
     );
 
+
 #define INIT_WORK_FAILED_BITMAP(Work)
 
 #define INIT_WORK(Name, NumberOfItems)                               \
@@ -190,16 +191,16 @@ Return Value:
     InitializeSListHead(&Work->ListHead);                            \
                                                                      \
     Work->WorkCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL); \
-    if (!Work->CompleteEvent) {                                      \
+    if (!Work->WorkCompleteEvent) {                                  \
         goto Error;                                                  \
     }                                                                \
                                                                      \
-    Work->Work = CreateThreadpoolWork(                               \
+    Work->ThreadpoolWork = CreateThreadpoolWork(                     \
         Name##Callback,                                              \
         TraceContext,                                                \
         ThreadpoolCallbackEnvironment                                \
     );                                                               \
-    if (!Work->Work) {                                               \
+    if (!Work->ThreadpoolWork) {                                     \
         goto Error;                                                  \
     }                                                                \
                                                                      \
@@ -209,16 +210,15 @@ Return Value:
     Work->NumberOfActiveItems = NumberOfItems;                       \
     Work->NumberOfFailedItems = 0
 
-    INIT_WORK(BindTraceStore, NumberOfTraceStores);
-    INIT_WORK(LoadMetadataInfo, NumberOfTraceStores);
-    INIT_WORK(LoadRemainingMetadata, NumberOfRemainingMetadataStores);
-    INIT_WORK(LoadTraceStore, NumberOfTraceStores);
+    INIT_WORK(BindMetadataInfo, NumberOfTraceStores);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        PSLIST_HEADER ListHead;
         TraceStore = &TraceStores->Stores[StoreIndex];
         MetadataInfoStore = TraceStore->MetadataInfoMetadataTraceStore;
-        PushBindTraceStore(&BindTraceStoreWork->ListHead, MetadataInfoStore);
-        SubmitThreadpoolWork(BindTraceStoreWork->Work);
+        ListHead = &TraceContext->BindMetadataInfoWork.SListHead;
+        PushTraceStore(ListHead, MetadataInfoStore);
+        SubmitThreadpoolWork(BindMetadataInfoWork->ThreadpoolWork);
     }
 
     return TRUE;
@@ -242,11 +242,7 @@ Error:
                                                                  \
     SecureZeroMemory(Work, sizeof(*Work));
 
-
-    CLEANUP_WORK(BindTraceStore);
-    CLEANUP_WORK(LoadMetadataInfo);
-    CLEANUP_WORK(LoadRemainingMetadata);
-    CLEANUP_WORK(LoadTraceStore);
+    CLEANUP_WORK(BindMetadataInfo);
 
     return FALSE;
 }

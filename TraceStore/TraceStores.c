@@ -303,7 +303,7 @@ Return Value:
     if (Readonly) {
         CreateFileDesiredAccess = GENERIC_READ;
         CreateFileCreationDisposition = OPEN_EXISTING;
-        CreateFileMappingProtectionFlags = PAGE_WRITECOPY;
+        CreateFileMappingProtectionFlags = PAGE_READONLY;
         MapViewOfFileDesiredAccess = FILE_MAP_READ;
     } else {
         CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
