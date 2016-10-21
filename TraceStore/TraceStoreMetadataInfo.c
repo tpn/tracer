@@ -19,7 +19,7 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-BindMetadataInfo(
+BindMetadataInfoMetadataStore(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE MetadataInfoStore
     )
@@ -27,7 +27,7 @@ BindMetadataInfo(
 
 Routine Description:
 
-    This routine binds a metadata info trace store to a trace context.
+    This routine binds a metadata info metadata trace store to a trace context.
 
 Arguments:
 
@@ -44,11 +44,12 @@ Return Value:
 --*/
 {
     BOOL Readonly;
+    BOOL Success;
     USHORT Index;
     USHORT NumberOfMetadataStores;
-    PVOID BaseAddress;
-    TRACE_STORE_INFO Info;
     TRACE_STORE_METADATA_ID MetadataId;
+    PVOID BaseAddress;
+    PTRACE_STORE_INFO Info;
     PTRACE_STORE TraceStore;
     PTRACE_STORE MetadataStore;
     PPTRACE_STORE MetadataStorePointer;
@@ -59,18 +60,22 @@ Return Value:
     // Ensure we've been passed a metadata info metadata trace store.
     //
 
-    if (!IsMetadataTraceStore(MetadataStore)) {
+    if (!IsMetadataTraceStore(MetadataInfoStore)) {
         return FALSE;
     }
 
-    MetadataId = MetadataStore->TraceStoreMetadataId;
+    MetadataId = MetadataInfoStore->TraceStoreMetadataId;
     if (MetadataId != TraceStoreMetadataMetadataInfoId) {
         return FALSE;
     }
 
-    TraceStore = MetadataStore->TraceStore;
+    //
+    // Make sure the trace store linkage is correct.  The trace store we point
+    // to should have its MetadataInfoStore field point to us.
+    //
 
-    if (TraceStore->MetadataInfoStore != MetadataStore) {
+    TraceStore = MetadataInfoStore->TraceStore;
+    if (TraceStore->MetadataInfoStore != MetadataInfoStore) {
         return FALSE;
     }
 
@@ -80,19 +85,43 @@ Return Value:
     // Subtract one to account for the normal trace store.
     //
 
-    NumberOfMetadataStores = (USHORT)TraceStores->ElementsPerTraceStore - 1;
-
+    NumberOfMetadataStores = (USHORT)(
+        TraceContext->TraceStores->ElementsPerTraceStore - 1
+    );
 
     //
-    // MetadataInfo only uses a single memory map.
+    // Initialize the memory map.  As metadata info stores only have a
+    // single allocation, we don't need to create multiple memory maps.
     //
 
     MemoryMap = &TraceStore->SingleMemoryMap;
     TraceStore->MemoryMap = MemoryMap;
-
     MemoryMap->FileHandle = TraceStore->FileHandle;
     MemoryMap->FileOffset.QuadPart = 0;
     MemoryMap->MappingSize.QuadPart = sizeof(TRACE_STORE_METADATA_INFO);
+
+    //
+    // If we're not readonly, extend the file to the expected size.
+    //
+
+    if (!Readonly) {
+        Success = SetFilePointerEx(
+            MemoryMap->FileHandle,
+            MemoryMap->MappingSize,
+            NULL,
+            FILE_BEGIN
+        );
+
+        if (!Success) {
+            TraceStore->LastError = GetLastError();
+            return FALSE;
+        }
+
+        if (!SetEndOfFile(MemoryMap->FileHandle)) {
+            TraceStore->LastError = GetLastError();
+            return FALSE;
+        }
+    }
 
     //
     // Create the file mapping.
@@ -110,7 +139,7 @@ Return Value:
 
     if (MemoryMap->MappingHandle == NULL ||
         MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
-        DWORD LastError = GetLastError();
+        TraceStore->LastError = GetLastError();
         return FALSE;
     }
 
@@ -129,6 +158,7 @@ Return Value:
     );
 
     if (!MemoryMap->BaseAddress) {
+        TraceStore->LastError = GetLastError();
         goto Error;
     }
 
@@ -143,7 +173,6 @@ Return Value:
     //
 
     MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
-    MetadataInfoStore = TraceStore->MetadataInfoStore;
     MetadataStorePointer = &TraceStore->MetadataInfoStore;
 
     for (Index = 0; Index < NumberOfMetadataStores; Index++) {
@@ -165,7 +194,30 @@ Return Value:
         MetadataStore->Time = &Info->Time;
         MetadataStore->Stats = &Info->Stats;
         MetadataStore->Totals = &Info->Totals;
+        MetadataStore->Traits = &Info->Traits;
+
+        //
+        // As soon as the metadata store has had its backing info fields wired
+        // up, a threadpool work item can be submitted to bind it to the current
+        // context.
+        //
     }
+
+    //
+    // If we're not readonly, initialize end of file and time.  (Everything else
+    // is fine staying as zeros.)
+    //
+
+    if (!Readonly) {
+        Info = (PTRACE_STORE_INFO)MetadataInfo;
+        Info->Eof.EndOfFile.QuadPart = MemoryMap->MappingSize.QuadPart;
+        __movsb((PBYTE)&Info->Time,
+                (PBYTE)&TraceContext->Time,
+                sizeof(Info->Time));
+    }
+
+    Success = TRUE;
+    goto End;
 
 Error:
     Success = FALSE;
@@ -177,7 +229,6 @@ Error:
 
 End:
     return Success;
-
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

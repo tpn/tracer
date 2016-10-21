@@ -1131,6 +1131,12 @@ typedef struct _TRACE_STORE {
         };
     };
 
+    //
+    // This may be set if any system calls fail.
+    //
+
+    DWORD LastError;
+
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileCreationDisposition;
     DWORD CreateFileMappingProtectionFlags;
@@ -1230,7 +1236,7 @@ typedef struct _TRACE_STORE {
     WCHAR PathBuffer[_OUR_MAX_PATH];
 #endif
 
-} TRACE_STORE, *PTRACE_STORE;
+} TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
