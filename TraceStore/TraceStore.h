@@ -1064,6 +1064,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
+    SLIST_ENTRY             ContextSListEntry;
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
@@ -1088,6 +1089,8 @@ typedef struct _TRACE_STORE {
 
     volatile LONG   MappedSequenceId;
 
+    TRACE_STORE_MEMORY_MAP SingleMemoryMap;
+
     //
     // Each trace store, when initialized, is assigned a unique sequence
     // ID, starting at 1.  The trace store and all metadata stores share
@@ -1095,6 +1098,14 @@ typedef struct _TRACE_STORE {
     //
 
     ULONG SequenceId;
+
+    //
+    // NUMA node for this trace store.  This is passed to the various file
+    // and memory map system calls like CreateFileMappingNuma() and
+    // MapViewOfFileExNuma().
+    //
+
+    ULONG NumaNode;
 
     //
     // ID and Index values for the store and metadata, with the latter only

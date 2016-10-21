@@ -616,18 +616,6 @@ PopTraceStoreMemoryMap(
 {
     PSLIST_ENTRY ListEntry;
 
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(ListHead)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(MemoryMap)) {
-        return FALSE;
-    }
-
     ListEntry = InterlockedPopEntrySList(ListHead);
     if (!ListEntry) {
         return FALSE;
@@ -929,6 +917,60 @@ RundownTraceStoresInline(
     RUNDOWN_METADATA_STORE(Bitmap);       \
     RUNDOWN_METADATA_STORE(Info);         \
     RUNDOWN_METADATA_STORE(MetadataInfo);
+
+//
+// TraceStore-related inline functions.
+//
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PopTraceStore(
+    _In_  PSLIST_HEADER ListHead,
+    _In_  SHORT FieldOffset,
+    _Out_ PPTRACE_STORE TraceStore
+    )
+{
+    PSLIST_ENTRY ListEntry;
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
+        return FALSE;
+    }
+
+    *TraceStore = (PTRACE_STORE)RtlOffsetToPointer(ListEntry, -FieldOffset);
+
+    return TRUE;
+}
+
+FORCEINLINE
+VOID
+PushTraceStore(
+    _In_ PSLIST_HEADER ListHead,
+    _In_ USHORT FieldOffset,
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    PSLIST_ENTRY ListEntry;
+
+    ListEntry = (PSLIST_ENTRY)RtlOffsetToPointer(TraceStore, FieldOffset);
+    InterlockedPushEntrySList(ListHead, ListEntry);
+}
+
+#define PopBindTraceStore(TraceContext, TraceStorePointer) \
+    PopTraceStore(                                         \
+        &TraceContext->BindTraceStoreWork->ListHead,       \
+        TraceStorePointer,                                 \
+        FIELD_OFFSET(TRACE_STORE, BindTraceStoreListEntry) \
+    )
+
+#define PushBindTraceStore(TraceContext, TraceStorePointer) \
+    PushTraceStore(                                         \
+        &TraceContext->BindTraceStoreWork->ListHead,        \
+        TraceStorePointer,                                  \
+        FIELD_OFFSET(TRACE_STORE, BindTraceStoreListEntry)  \
+    )
 
 
 //

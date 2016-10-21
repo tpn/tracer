@@ -142,8 +142,30 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
 
+    //
+    // Validate arguments.
+    //
 
+    if (!ARGUMENT_PRESENT(Context)) {
+        return;
+    }
+
+    TraceContext = (PTRACE_CONTEXT)Context;
+    if (!PopBindTraceStore(TraceContext, &TraceStore)) {
+        return;
+    }
+
+    Success = BindTraceStoreToTraceContext(TraceStore, TraceContext);
+    if (!Success) {
+        __debugbreak();
+        return;
+    }
+
+    return;
 }
 
 _Use_decl_annotations_
