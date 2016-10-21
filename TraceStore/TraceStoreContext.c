@@ -8,9 +8,9 @@ Module Name:
 
 Abstract:
 
-    This module implements trace context functionality.  Functions
-    are provided for initializing a trace context record, as well as
-    binding a trace store to a trace context.
+    This module implements trace context functionality.  Functions are provided
+    for initializing a trace context record, as well as binding a trace store to
+    a trace context.
 
 --*/
 
@@ -78,6 +78,10 @@ Return Value:
     USHORT NumberOfTraceStores;
     USHORT NumberOfRemainingMetadataStores;
     TRACE_CONTEXT_FLAGS ContextFlags;
+    PTRACE_STORE_WORK Work;
+    PTRACE_STORE_WORK BindTraceStoreWork;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE MetadataInfoTraceStore;
 
     //
     // Validate size parameters.
@@ -211,8 +215,10 @@ Return Value:
     INIT_WORK(LoadTraceStore, NumberOfTraceStores);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        PTRACE_STORE TraceStore = &TraceStores->Stores[StoreIndex];
-
+        TraceStore = &TraceStores->Stores[StoreIndex];
+        MetadataInfoStore = TraceStore->MetadataInfoMetadataTraceStore;
+        PushBindTraceStore(&BindTraceStoreWork->ListHead, MetadataInfoStore);
+        SubmitThreadpoolWork(BindTraceStoreWork->Work);
     }
 
     return TRUE;
