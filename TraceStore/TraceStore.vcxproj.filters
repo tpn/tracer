@@ -98,5 +98,8 @@
     <ClCompile Include="TraceStoreTraits.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreMetadataInfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

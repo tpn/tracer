@@ -927,19 +927,20 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 PopTraceStore(
-    _In_  PSLIST_HEADER ListHead,
-    _In_  SHORT FieldOffset,
+    _In_  PSLIST_HEADER SListHead,
     _Out_ PPTRACE_STORE TraceStore
     )
 {
-    PSLIST_ENTRY ListEntry;
+    PSLIST_ENTRY SListEntry;
 
-    ListEntry = InterlockedPopEntrySList(ListHead);
-    if (!ListEntry) {
+    SListEntry = InterlockedPopEntrySList(SListHead);
+    if (!SListEntry) {
         return FALSE;
     }
 
-    *TraceStore = (PTRACE_STORE)RtlOffsetToPointer(ListEntry, -FieldOffset);
+    *TraceStore = CONTAINING_RECORD(SListEntry,
+                                    TRACE_STORE,
+                                    SListEntry);
 
     return TRUE;
 }
@@ -948,30 +949,11 @@ FORCEINLINE
 VOID
 PushTraceStore(
     _In_ PSLIST_HEADER ListHead,
-    _In_ USHORT FieldOffset,
     _In_ PTRACE_STORE TraceStore
     )
 {
-    PSLIST_ENTRY ListEntry;
-
-    ListEntry = (PSLIST_ENTRY)RtlOffsetToPointer(TraceStore, FieldOffset);
-    InterlockedPushEntrySList(ListHead, ListEntry);
+    InterlockedPushEntrySList(ListHead, &TraceStore->SListEntry);
 }
-
-#define PopBindTraceStore(TraceContext, TraceStorePointer) \
-    PopTraceStore(                                         \
-        &TraceContext->BindTraceStoreWork->ListHead,       \
-        TraceStorePointer,                                 \
-        FIELD_OFFSET(TRACE_STORE, BindTraceStoreListEntry) \
-    )
-
-#define PushBindTraceStore(TraceContext, TraceStorePointer) \
-    PushTraceStore(                                         \
-        &TraceContext->BindTraceStoreWork->ListHead,        \
-        TraceStorePointer,                                  \
-        FIELD_OFFSET(TRACE_STORE, BindTraceStoreListEntry)  \
-    )
-
 
 //
 // TraceStoreSystemTimer-related functions.

@@ -774,8 +774,8 @@ typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
-    SLIST_HEADER ListHead;
-    PTP_WORK Work;
+    SLIST_HEADER SListHead;
+    PTP_WORK ThreadpoolWork;
     HANDLE WorkCompleteEvent;
     PRTL_BITMAP FailedBitmap;
 
@@ -788,7 +788,7 @@ typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
 
 } TRACE_STORE_WORK, *PTRACE_STORE_WORK;
 
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Work) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, ThreadpoolWork) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, WorkCompleteEvent) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, FailedBitmap) == 32);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
@@ -832,10 +832,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     // Second cache line.
     //
 
-    TRACE_STORE_WORK BindTraceStoreWork;
-    TRACE_STORE_WORK LoadMetadataInfoWork;
-    TRACE_STORE_WORK LoadRemainingMetadataWork;
-    TRACE_STORE_WORK LoadTraceStoreWork;
+    TRACE_STORE_WORK BindMetadataInfoWork;
+
+    SLIST_HEADER FailedListHead;
+
+    volatile ULONG ActiveWorkItems;
 
     //
     // Stash Time at the end as it's large and doesn't have any alignment
@@ -846,7 +847,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindTraceStoreWork) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindMetadataInfoWork) == 64);
 
 typedef
 VOID
@@ -1064,7 +1065,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
-    SLIST_ENTRY             ContextSListEntry;
+    SLIST_ENTRY             SListEntry;
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;

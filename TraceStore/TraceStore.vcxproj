@@ -91,6 +91,7 @@
     <ClCompile Include="TraceStoreContext.c" />
     <ClCompile Include="TraceStoreMemoryMap.c" />
     <ClCompile Include="TraceStoreMetadata.c" />
+    <ClCompile Include="TraceStoreMetadataInfo.c" />
     <ClCompile Include="TraceStorePath.c" />
     <ClCompile Include="TraceStoreReadonlyContext.c" />
     <ClCompile Include="TraceStoreRelocation.c" />
