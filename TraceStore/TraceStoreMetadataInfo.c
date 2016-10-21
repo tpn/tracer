@@ -148,6 +148,17 @@ Return Value:
 
     for (Index = 0; Index < NumberOfMetadataStores; Index++) {
         Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);
+
+        //
+        // N.B.: We abuse the fact that the trace store's metadata store
+        //       pointers are laid out successively in the same order as
+        //       implied by their TraceStoreMetadataStoreId.  That allows
+        //       us to use (*MetadataStorePointer)++ below.  The alernate
+        //       approach would be to have a method that returns the field
+        //       offset within the TRACE_STORE struct for a given metadata
+        //       store ID.
+        //
+
         MetadataStore = (*MetadataStorePointer)++;
         MetadataStore->Info = Info;
         MetadataStore->Eof = &Info->Eof;
