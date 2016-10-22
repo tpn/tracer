@@ -232,4 +232,31 @@ InitializeInfoMetadata(
     return InitializeMetadataFromRecordSize(MetadataStore);
 }
 
+_Use_decl_annotations_
+BOOL
+BindMetadataStore(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE MetadataStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a metadata trace store to a trace context.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    MetadataStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return FALSE;
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -163,16 +163,27 @@ Return Value:
         return FALSE;
     }
 
+    TraceContext->ThreadpoolCleanupGroup = CreateThreadpoolCleanupGroup();
+    if (!TraceContext->ThreadpoolCleanupGroup) {
+        return FALSE;
+    }
+
+    SetThreadpoolCallbackCleanupGroup(
+        ThreadpoolCallbackEnvironment,
+        TraceContext->ThreadpoolCleanupGroup,
+        NULL
+    );
+
+    if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
+        return FALSE;
+    }
+
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
     TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
     TraceContext->Allocator = Allocator;
-
-    if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
-        return FALSE;
-    }
 
     TraceContext->Flags = ContextFlags;
 
@@ -213,6 +224,10 @@ Return Value:
     Work->NumberOfFailedItems = 0
 
     INIT_WORK(BindMetadataInfo, NumberOfTraceStores);
+    INIT_WORK(BindRemainingMetadata, NumberOfRemainingMetadataStores);
+    INIT_WORK(BindTraceStore, NumberOfTraceStores);
+
+    TraceContext->BindsInProgress = NumberOfTraceStores;
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TraceStore = &TraceStores->Stores[StoreIndex];

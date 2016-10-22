@@ -214,6 +214,17 @@ UNREGISTER_GLOBAL_TRACE_STORES UnregisterGlobalTraceStores;
 //
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_METADATA_STORE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE MetadataStore
+    );
+typedef BIND_METADATA_STORE *PBIND_METADATA_STORE;
+BIND_METADATA_STORE BindMetadataStore;
+
+typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORE_METADATA)(
@@ -476,6 +487,16 @@ VOID
     );
 typedef BIND_METADATA_INFO_CALLBACK *PBIND_METADATA_INFO_CALLBACK;
 BIND_METADATA_INFO_CALLBACK BindMetadataInfoCallback;
+
+typedef
+VOID
+(CALLBACK BIND_REMAINING_METADATA_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef BIND_REMAINING_METADATA_CALLBACK *PBIND_REMAINING_METADATA_CALLBACK;
+BIND_REMAINING_METADATA_CALLBACK BindRemainingMetadataCallback;
 
 typedef
 VOID
@@ -815,6 +836,17 @@ typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_TRACE_STORE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_TRACE_STORE *PBIND_TRACE_STORE;
+BIND_TRACE_STORE BindTraceStore;
+
+typedef
 VOID
 (INITIALIZE_TRACE_STORE_SLIST_HEADERS)(
     _In_ PTRACE_STORE TraceStore
@@ -981,6 +1013,59 @@ PushTraceStore(
     InterlockedPushEntrySList(ListHead, &TraceStore->SListEntry);
 }
 
+FORCEINLINE
+VOID
+PushFailedTraceStore(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine pushes a trace store that has encountered an unrecoverable
+    error (such as CreateFileMapping() failing) to the trace context's failure
+    list, atomically increments the context's failure count, and, if it is the
+    first failure, closes all outstanding threadpool work items and sets the
+    loading complete event.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    PushTraceStore(&TraceContext->FailedListHead, TraceStore);
+
+    if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
+        BOOL CancelPendingCallbacks = TRUE;
+
+        //
+        // This is the first failure.  Close all threadpool group items and
+        // set the failure event.
+        //
+
+        CloseThreadpoolCleanupGroupMembers(
+            TraceContext->ThreadpoolCleanupGroup,
+            CancelPendingCallbacks,
+            NULL
+        );
+
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
+}
+
+//
+// BindMetadataInfo-related macros.
+//
+
 #define PushBindMetadataInfoTraceStore(TraceContext, TraceStore) \
     PushTraceStore(                                              \
         &TraceContext->BindMetadataInfoWork.SListHead,           \
@@ -997,10 +1082,60 @@ PushTraceStore(
     PushBindMetadataInfoTraceStore(TraceContext, TraceStore);               \
     SubmitThreadpoolWork(TraceContext->BindMetadataInfoWork.ThreadpoolWork)
 
-#define PushFailedTraceStore(TraceContext, TraceStore)         \
-    PushTraceStore(&TraceContext->FailedListHead, TraceStore); \
-    InterlockedIncrement(&TraceContext->FailedCount);          \
-    SetEvent(TraceContext->LoadingCompleteEvent)
+//
+// BindRemainingMetadata-related macros.
+//
+
+#define PushBindRemainingMetadataTraceStore(TraceContext, MetadataStore) \
+    PushTraceStore(                                                      \
+        &TraceContext->BindRemainingMetadataWork.SListHead,              \
+        TraceStore->MetadataInfoStore                                    \
+    )
+
+#define PopBindRemainingMetadataTraceStore(TraceContext, MetadataStorePointer) \
+    PopTraceStore(                                                             \
+        &TraceContext->BindRemainingMetadataWork.SListHead,                    \
+        MetadataStorePointer                                                   \
+    )
+
+#define SubmitBindRemainingMetadataWork(TraceContext, MetadataStore)  \
+    PushBindRemainingMetadataTraceStore(TraceContext, MetadataStore); \
+    SubmitThreadpoolWork(                                             \
+        TraceContext->BindRemainingMetadataWork.ThreadpoolWork        \
+    )
+
+#define SUBMIT_METADATA_BIND(Name)   \
+    SubmitBindRemainingMetadataWork( \
+        TraceContext,                \
+        TraceStore->##Name##Store    \
+    )
+
+#define SUBMIT_BINDS_FOR_REMAINING_METADATA_STORES(TraceContext, TraceStore) \
+    SUBMIT_METADATA_BIND(Allocation);                                        \
+    SUBMIT_METADATA_BIND(Relocation);                                        \
+    SUBMIT_METADATA_BIND(Address);                                           \
+    SUBMIT_METADATA_BIND(Bitmap);                                            \
+    SUBMIT_METADATA_BIND(Info);
+
+//
+// BindTraceStore-related macros.
+//
+
+#define PushBindTraceStore(TraceContext, TraceStore) \
+    PushTraceStore(                                  \
+        &TraceContext->BindTraceStoreWork.SListHead, \
+        TraceStore                                   \
+    )
+
+#define PopBindTraceStore(TraceContext, TraceStorePointer) \
+    PopTraceStore(                                         \
+        &TraceContext->BindTraceStoreWork.SListHead,       \
+        TraceStorePointer                                  \
+    )
+
+#define SubmitBindTraceStoreWork(TraceContext, TraceStore)                \
+    PushBindTraceStore(TraceContext, TraceStore);                         \
+    SubmitThreadpoolWork(TraceContext->BindTraceStoreWork.ThreadpoolWork)
 
 //
 // TraceStoreSystemTimer-related functions.
