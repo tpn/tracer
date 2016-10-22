@@ -87,6 +87,7 @@
     <ClCompile Include="TraceStore.c" />
     <ClCompile Include="TraceStoreAddress.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
+    <ClCompile Include="TraceStoreCallbacks.c" />
     <ClCompile Include="TraceStoreConstants.c" />
     <ClCompile Include="TraceStoreContext.c" />
     <ClCompile Include="TraceStoreMemoryMap.c" />

@@ -364,12 +364,27 @@ typedef INITIALIZE_TRACE_STORE_TIME *PINITIALIZE_TRACE_STORE_TIME;
 INITIALIZE_TRACE_STORE_TIME InitializeTraceStoreTime;
 
 //
+// TraceStoreMetadataInfo-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_METADATA_INFO)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE MetadataInfoStore
+    );
+typedef BIND_METADATA_INFO *PBIND_METADATA_INFO;
+BIND_METADATA_INFO BindMetadataInfo;
+
+//
 // TraceStoreMemoryMap-related functions.
 //
 
 typedef
-_Success_(return != 0)
 _Check_return_
+_Success_(return != 0)
 BOOL
 (CREATE_MEMORY_MAPS_FOR_TRACE_STORE)(
     _In_ PTRACE_STORE TraceStore
@@ -378,6 +393,7 @@ typedef CREATE_MEMORY_MAPS_FOR_TRACE_STORE *PCREATE_MEMORY_MAPS_FOR_TRACE_STORE;
 CREATE_MEMORY_MAPS_FOR_TRACE_STORE CreateMemoryMapsForTraceStore;
 
 typedef
+_Check_return_
 _Success_(return != 0)
 BOOL
 (PREPARE_NEXT_TRACE_STORE_MEMORY_MAP)(
@@ -450,6 +466,16 @@ SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
 //
 // TraceStoreCallback-related functions.
 //
+
+typedef
+VOID
+(CALLBACK BIND_METADATA_INFO_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef BIND_METADATA_INFO_CALLBACK *PBIND_METADATA_INFO_CALLBACK;
+BIND_METADATA_INFO_CALLBACK BindMetadataInfoCallback;
 
 typedef
 VOID
@@ -954,6 +980,27 @@ PushTraceStore(
 {
     InterlockedPushEntrySList(ListHead, &TraceStore->SListEntry);
 }
+
+#define PushBindMetadataInfoTraceStore(TraceContext, TraceStore) \
+    PushTraceStore(                                              \
+        &TraceContext->BindMetadataInfoWork.SListHead,           \
+        TraceStore->MetadataInfoStore                            \
+    )
+
+#define PopBindMetadataInfoTraceStore(TraceContext, MetadataInfoStorePointer) \
+    PopTraceStore(                                                            \
+        &TraceContext->BindMetadataInfoWork.SListHead,                        \
+        MetadataInfoStorePointer                                              \
+    )
+
+#define SubmitBindMetadataInfoWork(TraceContext, TraceStore)                \
+    PushBindMetadataInfoTraceStore(TraceContext, TraceStore);               \
+    SubmitThreadpoolWork(TraceContext->BindMetadataInfoWork.ThreadpoolWork)
+
+#define PushFailedTraceStore(TraceContext, TraceStore)         \
+    PushTraceStore(&TraceContext->FailedListHead, TraceStore); \
+    InterlockedIncrement(&TraceContext->FailedCount);          \
+    SetEvent(TraceContext->LoadingCompleteEvent)
 
 //
 // TraceStoreSystemTimer-related functions.

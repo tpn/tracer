@@ -116,55 +116,64 @@ Return Value:
 _Use_decl_annotations_
 VOID
 CALLBACK
-BindTraceStoreCallback(
+BindMetadataInfoCallback(
     PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
+    PTRACE_CONTEXT TraceContext,
     PTP_WORK Work
     )
 /*++
 
 Routine Description:
 
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
+    This routine is the callback target for the bind metadata info threadpool
+    work item of a trace context.  It pops a metadata info store of the trace
+    context, calls the BindMetadataInfo() method, and, if successful, submits
+    threadpool work items for binding the rest of the metadata stores.
 
 Arguments:
 
     Instance - Not used.
 
-    Context - Supplies a pointer to a TRACE_CONTEXT structure.
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
 
     Work - Not used.
 
 Return Value:
 
-    None.
+    None.  If any operation fails, the metadata info trace store is pushed to
+    the trace context's failure list, the failure count is incremented, and
+    the failed event is set.
 
 --*/
 {
     BOOL Success;
-    PTRACE_STORE TraceStore;
-    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORE MetadataInfoStore;
 
     //
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(Context)) {
+    if (!ARGUMENT_PRESENT(TraceContext)) {
         return;
     }
 
-    TraceContext = (PTRACE_CONTEXT)Context;
-    if (!PopBindTraceStore(TraceContext, &TraceStore)) {
-        return;
+    if (!PopBindMetadataInfoTraceStore(TraceContext, &MetadataInfoStore)) {
+        goto Error;
     }
 
-    Success = BindTraceStoreToTraceContext(TraceStore, TraceContext);
+    Success = BindMetadataInfo(TraceContext, MetadataInfoStore);
     if (!Success) {
-        __debugbreak();
-        return;
+        goto Error;
     }
 
+    //
+    // xxx todo: submit binds for the remaining metadata info stores.
+    //
+
+    return;
+
+Error:
+    PushFailedTraceStore(TraceContext, MetadataInfoStore);
     return;
 }
 

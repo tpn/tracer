@@ -19,7 +19,7 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-BindMetadataInfoMetadataStore(
+BindMetadataInfo(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE MetadataInfoStore
     )
@@ -105,6 +105,7 @@ Return Value:
     //
 
     if (!Readonly) {
+
         Success = SetFilePointerEx(
             MemoryMap->FileHandle,
             MemoryMap->MappingSize,
@@ -180,32 +181,25 @@ Return Value:
 
         //
         // N.B.: We abuse the fact that the trace store's metadata store
-        //       pointers are laid out successively in the same order as
-        //       implied by their TraceStoreMetadataStoreId.  That allows
-        //       us to use (*MetadataStorePointer)++ below.  The alernate
-        //       approach would be to have a method that returns the field
-        //       offset within the TRACE_STORE struct for a given metadata
-        //       store ID.
+        //       pointers are laid out consecutively (and contiguously) in
+        //       the same order as implied by their TraceStoreMetadataStoreId.
+        //       That allows us to use (*MetadataStorePointer)++ below.  (The
+        //       alernate approach would be to have a method that returns the
+        //       field offset within the TRACE_STORE structure for a given
+        //       metadata store ID.)
         //
 
-        MetadataStore = (*MetadataStorePointer)++;
+        MetadataStore = *MetadataStorePointer++;
         MetadataStore->Info = Info;
         MetadataStore->Eof = &Info->Eof;
         MetadataStore->Time = &Info->Time;
         MetadataStore->Stats = &Info->Stats;
         MetadataStore->Totals = &Info->Totals;
         MetadataStore->Traits = &Info->Traits;
-
-        //
-        // As soon as the metadata store has had its backing info fields wired
-        // up, a threadpool work item can be submitted to bind it to the current
-        // context.
-        //
     }
 
     //
-    // If we're not readonly, initialize end of file and time.  (Everything else
-    // is fine staying as zeros.)
+    // If we're not readonly, initialize end of file and time.
     //
 
     if (!Readonly) {
@@ -230,5 +224,6 @@ Error:
 End:
     return Success;
 }
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

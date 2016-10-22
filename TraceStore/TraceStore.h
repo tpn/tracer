@@ -768,7 +768,8 @@ typedef struct _TRACE_FLAGS {
 typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
     USHORT Valid:1;
     USHORT Readonly:1;
-    USHORT Unused:14;
+    USHORT InitializeAsync:1;
+    USHORT Unused:13;
 } TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
 
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
@@ -777,23 +778,23 @@ typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
     SLIST_HEADER SListHead;
     PTP_WORK ThreadpoolWork;
     HANDLE WorkCompleteEvent;
-    PRTL_BITMAP FailedBitmap;
+    PVOID Unused1;
 
     volatile ULONG NumberOfActiveItems;
     volatile ULONG NumberOfFailedItems;
     ULONG TotalNumberOfItems;
-    ULONG Unused1;
+    ULONG Unused2;
 
-    struct _TRACE_STORE_WORK *AllItemsCompleteWork;
+    ULONGLONG Unused3;
 
 } TRACE_STORE_WORK, *PTRACE_STORE_WORK;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, ThreadpoolWork) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, WorkCompleteEvent) == 24);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, FailedBitmap) == 32);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused1) == 32);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, AllItemsCompleteWork) == 56);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused3) == 56);
 C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
@@ -811,10 +812,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_CONTEXT_FLAGS Flags;
 
     //
-    // Pad out to 8 bytes.
+    // If any threadpool work items fail, the affected trace store is pushed
+    // to the FailedListHead below, and the following counter is incremented
+    // atomically.
     //
 
-    ULONG Padding;
+    volatile ULONG FailedCount;
 
     PRTL Rtl;
     PALLOCATOR Allocator;
@@ -832,10 +835,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     // Second cache line.
     //
 
+    //
+    // This event is set when all trace stores have been initialized or an
+    // error has occurred during loading.
+    //
+
+    HANDLE LoadingCompleteEvent;
+
     TRACE_STORE_WORK BindMetadataInfoWork;
-
     SLIST_HEADER FailedListHead;
-
     volatile ULONG ActiveWorkItems;
 
     //
@@ -847,7 +855,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindMetadataInfoWork) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 8);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 48);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 64);
 
 typedef
 VOID

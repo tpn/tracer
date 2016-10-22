@@ -77,11 +77,10 @@ Return Value:
     USHORT StoreIndex;
     USHORT NumberOfTraceStores;
     USHORT NumberOfRemainingMetadataStores;
+    DWORD Result;
     TRACE_CONTEXT_FLAGS ContextFlags;
     PTRACE_STORE_WORK Work;
-    PTRACE_STORE_WORK BindTraceStoreWork;
     PTRACE_STORE TraceStore;
-    PTRACE_STORE MetadataInfoTraceStore;
 
     //
     // Validate size parameters.
@@ -159,6 +158,11 @@ Return Value:
         return FALSE;
     }
 
+    TraceContext->LoadingCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!TraceContext->LoadingCompleteEvent) {
+        return FALSE;
+    }
+
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
@@ -169,6 +173,8 @@ Return Value:
     if (!InitializeTraceStoreTime(Rtl, &TraceContext->Time)) {
         return FALSE;
     }
+
+    TraceContext->Flags = ContextFlags;
 
     NumberOfTraceStores = TraceStores->NumberOfTraceStores;
 
@@ -183,12 +189,10 @@ Return Value:
     );
 
 
-#define INIT_WORK_FAILED_BITMAP(Work)
-
 #define INIT_WORK(Name, NumberOfItems)                               \
     Work = &TraceContext->##Name##Work;                              \
                                                                      \
-    InitializeSListHead(&Work->ListHead);                            \
+    InitializeSListHead(&Work->SListHead);                           \
                                                                      \
     Work->WorkCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL); \
     if (!Work->WorkCompleteEvent) {                                  \
@@ -205,39 +209,60 @@ Return Value:
     }                                                                \
                                                                      \
     Work->TotalNumberOfItems = NumberOfItems;                        \
-    INIT_WORK_FAILED_BITMAP(Work);                                   \
-                                                                     \
     Work->NumberOfActiveItems = NumberOfItems;                       \
     Work->NumberOfFailedItems = 0
 
     INIT_WORK(BindMetadataInfo, NumberOfTraceStores);
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        PSLIST_HEADER ListHead;
         TraceStore = &TraceStores->Stores[StoreIndex];
-        MetadataInfoStore = TraceStore->MetadataInfoMetadataTraceStore;
-        ListHead = &TraceContext->BindMetadataInfoWork.SListHead;
-        PushTraceStore(ListHead, MetadataInfoStore);
-        SubmitThreadpoolWork(BindMetadataInfoWork->ThreadpoolWork);
+        SubmitBindMetadataInfoWork(TraceContext, TraceStore);
     }
 
-    return TRUE;
+    //
+    // If an async initialization has been requested, return now.  Otherwise,
+    // wait on the loading complete event.
+    //
+
+    if (ContextFlags.InitializeAsync) {
+        return TRUE;
+    }
+
+    Result = WaitForSingleObject(TraceContext->LoadingCompleteEvent, INFINITE);
+
+    if (Result != WAIT_OBJECT_0) {
+
+        //
+        // We don't `goto Error` here because the error handling attempts to
+        // close the threadpool work item.  If a wait fails, it may be because
+        // the process is being run down (user cancelled operation, something
+        // else failed, etc), in which case, we don't need to do any threadpool
+        // or event cleanup operations.
+        //
+
+        OutputDebugStringA("TraceContext: wait for LoadingComplete failed.\n");
+        return FALSE;
+    }
+
+    //
+    // If there were no failures, the result was successful.
+    //
+
+    if (TraceContext->FailedCount == 0) {
+        return TRUE;
+    }
 
 Error:
 
 #define CLEANUP_WORK(Name)                                       \
     Work = &TraceContext->##Name##Work;                          \
                                                                  \
-    if (Work->Work) {                                            \
-        CloseThreadpoolWork(Work->Work);                         \
+    if (Work->ThreadpoolWork) {                                  \
+        CloseThreadpoolWork(Work->ThreadpoolWork);               \
     }                                                            \
                                                                  \
     if (Work->WorkCompleteEvent) {                               \
         CloseHandle(Work->WorkCompleteEvent);                    \
-    }                                                            \
-                                                                 \
-    if (Work->FailedBitmap) {                                    \
-        Allocator->Free(Allocator->Context, Work->FailedBitmap); \
     }                                                            \
                                                                  \
     SecureZeroMemory(Work, sizeof(*Work));
