@@ -183,10 +183,10 @@ Return Value:
         // N.B.: We abuse the fact that the trace store's metadata store
         //       pointers are laid out consecutively (and contiguously) in
         //       the same order as implied by their TraceStoreMetadataStoreId.
-        //       That allows us to use (*MetadataStorePointer)++ below.  (The
-        //       alernate approach would be to have a method that returns the
+        //       That allows us to use *MetadataStorePointer++ below.  (The
+        //       alternate approach would be to have a method that returns the
         //       field offset within the TRACE_STORE structure for a given
-        //       metadata store ID.)
+        //       metadata store ID, which we should probably do down the track.)
         //
 
         MetadataStore = *MetadataStorePointer++;

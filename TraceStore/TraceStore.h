@@ -842,9 +842,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     HANDLE LoadingCompleteEvent;
 
+    PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
+
     TRACE_STORE_WORK BindMetadataInfoWork;
+    TRACE_STORE_WORK BindRemainingMetadataWork;
+    TRACE_STORE_WORK BindTraceStoreWork;
+
     SLIST_HEADER FailedListHead;
+
     volatile ULONG ActiveWorkItems;
+
+    //
+    // This represents the number of binds for main (not metadata) trace stores.
+    // When it hits zero, the LoadingCompleteEvent will be set.
+    //
+
+    volatile ULONG BindsInProgress;
 
     //
     // Stash Time at the end as it's large and doesn't have any alignment
@@ -1099,6 +1112,8 @@ typedef struct _TRACE_STORE {
     volatile ULONG  NumberOfActiveMemoryMaps;
 
     volatile LONG   MappedSequenceId;
+
+    volatile LONG   MetadataBindsInProgress;
 
     TRACE_STORE_MEMORY_MAP SingleMemoryMap;
 

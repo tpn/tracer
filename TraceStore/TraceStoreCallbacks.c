@@ -147,6 +147,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    PTRACE_STORE TraceStore;
     PTRACE_STORE MetadataInfoStore;
 
     //
@@ -167,13 +168,166 @@ Return Value:
     }
 
     //
-    // xxx todo: submit binds for the remaining metadata info stores.
+    // The binding was successful, submit binding work items for the remaining
+    // metadata stores to the threadpool.
     //
+
+    TraceStore = MetadataInfoStore->TraceStore;
+    TraceStore->MetadataBindsInProgress = 5;
+
+    SUBMIT_METADATA_BIND(Allocation);
+    SUBMIT_METADATA_BIND(Relocation);
+    SUBMIT_METADATA_BIND(Address);
+    SUBMIT_METADATA_BIND(Bitmap);
+    SUBMIT_METADATA_BIND(Info);
 
     return;
 
 Error:
     PushFailedTraceStore(TraceContext, MetadataInfoStore);
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+BindRemainingMetadataCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the bind remaining metadata
+    threadpool work item of a trace context.  It is submitted in parallel
+    for all metadata trace stores as soon as the :metadatainfo store has
+    been bound.  It pops a metadata store off the trace context, calls the
+    bind method, and, if successful, decrements the main trace store's count
+    of in-progress metadata bindings.  If this was the last metadata binding,
+    a bind of the main trace store is submitted to the threadpool.
+
+Arguments:
+
+    Instance - Not used.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Not used.
+
+Return Value:
+
+    None.  If an error occurs, PushFailedTraceStore() is called.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE MetadataStore;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    if (!PopBindRemainingMetadataTraceStore(TraceContext, &MetadataStore)) {
+        goto Error;
+    }
+
+    Success = BindMetadataStore(TraceContext, MetadataStore);
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // The metadata was bound successfully.  If this was the last metadata
+    // store being bound, submit a threadpool work item to bind the main trace
+    // store now that all the metadata stores are available.
+    //
+
+    TraceStore = MetadataStore->TraceStore;
+    if (InterlockedDecrement(&TraceStore->MetadataBindsInProgress) == 0) {
+        SubmitBindTraceStoreWork(TraceContext, TraceStore);
+    }
+
+    return;
+
+Error:
+    PushFailedTraceStore(TraceContext, MetadataStore);
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+BindTraceStoreCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the bind trace store threadpool
+    work item of a trace context.  It is submitted when all metadata stores
+    for a trace store have been bound successfully.  It pops the trace store
+    off the trace context's bind trace store interlocked list, calls the
+    BindTraceStore() method, and, if successful, decrements the trace context's
+    count of in-progress trace store binds.  If this was the last trace store
+    to be bound, the trace context's loading complete event is set.
+
+Arguments:
+
+    Instance - Not used.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Not used.
+
+Return Value:
+
+    None.  If an error occurs, PushFailedTraceStore() is called.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    if (!PopBindTraceStore(TraceContext, &TraceStore)) {
+        goto Error;
+    }
+
+    Success = BindTraceStore(TraceContext, TraceStore);
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // The trace store was bound successfully.  If this was the last trace
+    // store to be bound, set the trace context's loading complete event.
+    //
+
+    if (InterlockedDecrement(&TraceContext->BindsInProgress) == 0) {
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
+
+    return;
+
+Error:
+    PushFailedTraceStore(TraceContext, TraceStore);
     return;
 }
 

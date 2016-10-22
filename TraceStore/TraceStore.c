@@ -704,6 +704,33 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
+BindTraceStore(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a trace store to a trace context.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
 TruncateStore(
     PTRACE_STORE TraceStore
     )
