@@ -408,6 +408,40 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
+// The following macros provide a convenient way to work with a trait and a
+// trait's semantic inverse, e.g. instead of having to write:
+//
+//      Traits = TraceStore->pTraits;
+//      if (!Traits.MultipleRecords) {
+//
+//          //
+//          // Do some work specific to trace stores that only have a single
+//          // record.
+//          //
+//
+//          ...
+//
+//      }
+//
+// One can write:
+//
+//      if (IsSingleRecord(Traits)) {
+//
+//
+
+#define HasVaryingRecords(Traits) (Traits.VaryingRecordSize)
+#define IsFixedRecordSize(Traits) (!Traits.VaryingRecordSize)
+
+#define IsRecordSizeAlwaysPowerOf2(Traits) (Traits.RecordSizeIsAlwaysPowerOf2)
+
+#define HasMultipleRecords(Traits) (Traits.MultipleRecords)
+#define IsSingleRecord(Traits) (!Traits.MultipleRecords)
+
+#define IsStreamingWrite(Traits) (Traits.StreamingWrite)
+#define IsStreamingRead(Traits) (Traits.StreamingRead)
+#define IsFixedRead(Traits) (!Traits.StreamingRead)
+
+//
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
 // various tracing-related information.  (Single-instance as in there's only
 // ever one global instance of the given record, i.e. the EndOfFile.  This is
@@ -775,7 +809,7 @@ typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
-    SLIST_HEADER SListHead;
+    SLIST_HEADER ListHead;
     PTP_WORK ThreadpoolWork;
     HANDLE WorkCompleteEvent;
     PVOID Unused1;
@@ -1088,7 +1122,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
-    SLIST_ENTRY             SListEntry;
+    SLIST_ENTRY             ListEntry;
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
@@ -1171,16 +1205,6 @@ typedef struct _TRACE_STORE {
 
     HANDLE FileHandle;
     PVOID PrevAddress;
-
-    //
-    // The first trace store will get initialized as the list head, subsequent
-    // stores will be appended via ListEntry.
-    //
-
-    union {
-        LIST_ENTRY ListHead;
-        LIST_ENTRY ListEntry;
-    };
 
     //
     // The trace store pointers below will be valid for all trace and metadata
@@ -1587,14 +1611,35 @@ TraceStoreQueryPerformanceCounter(
 
 //
 // Helper routines for determining if a trace store is a metadata trace store,
-// and whether or not a trace store has varying record sizes.
+// whether a trace store is readonly, and whether or not a trace store has
+// varying record sizes.
 //
 
 FORCEINLINE
 BOOL
-IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
+IsMetadataTraceStore(
+    _In_ PTRACE_STORE TraceStore
+    )
 {
     return TraceStore->IsMetadata;
+}
+
+FORCEINLINE
+BOOL
+IsReadonlyTraceStore(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->IsReadonly;
+}
+
+FORCEINLINE
+BOOL
+TraceStoreHasRelocations(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->HasRelocations;
 }
 
 FORCEINLINE
@@ -1602,7 +1647,7 @@ BOOL
 HasVaryingRecordSizes(
     _In_    PTRACE_STORE    TraceStore
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -1639,7 +1684,7 @@ ValidateFieldRelocationsArray(
     _Out_ PUSHORT NumberOfFieldRelocationsElements,
     _Out_ PUSHORT MaximumNumberOfInnerFieldRelocationElements
     )
-/*--
+/*++
 
 Routine Description:
 

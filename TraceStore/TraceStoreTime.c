@@ -21,7 +21,7 @@ InitializeTraceStoreTime(
     PRTL Rtl,
     PTRACE_STORE_TIME Time
     )
-/*--
+/*++
 
 Routine Description:
 

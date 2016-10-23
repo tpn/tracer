@@ -2329,6 +2329,8 @@ IsAligned(
 
 #define IsPageAligned(Address)  IsAligned4096(Address)
 
+#define IsPowerOf2(X) (((X) & ((X)-1)) == 0)
+
 #define TRY_AVX __try
 #define TRY_AVX_ALIGNED __try
 #define TRY_AVX_UNALIGNED __try

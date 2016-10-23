@@ -27,7 +27,7 @@ InitializeReadonlyTraceContext(
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
     PVOID UserData
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -165,7 +165,7 @@ BindTraceStoreToReadonlyTraceContext(
     PTRACE_STORE TraceStore,
     PREADONLY_TRACE_CONTEXT ReadonlyTraceContext
     )
-/*--
+/*++
 
 Routine Description:
 

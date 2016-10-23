@@ -43,7 +43,9 @@ FIND_LONGEST_TRACE_STORE_FILENAME FindLongestTraceStoreFileName;
 typedef
 _Success_(return != 0)
 ULONG
-(GET_LONGEST_TRACE_STORE_FILENAME)(VOID);
+(GET_LONGEST_TRACE_STORE_FILENAME)(
+    VOID
+    );
 typedef GET_LONGEST_TRACE_STORE_FILENAME *PGET_LONGEST_TRACE_STORE_FILENAME;
 GET_LONGEST_TRACE_STORE_FILENAME GetLongestTraceStoreFileName;
 
@@ -214,6 +216,16 @@ UNREGISTER_GLOBAL_TRACE_STORES UnregisterGlobalTraceStores;
 //
 
 typedef
+_Success_(return != 0)
+PTRACE_STORE
+(TRACE_STORE_METADATA_ID_TO_STORE)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    );
+typedef TRACE_STORE_METADATA_ID_TO_STORE *PTRACE_STORE_METADATA_ID_TO_STORE;
+TRACE_STORE_METADATA_ID_TO_STORE TraceStoreMetadataIdToStore;
+
+typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
@@ -280,84 +292,9 @@ typedef TRACE_STORE_METADATA_ID_TO_INFO \
 TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
 
 //
-// TraceStoreContext-related macros and functions.
+// TraceStoreContext-related functions.
 //
 
-#define BIND_STORE(Name)                                              \
-    if (!BindTraceStoreToTraceContext(##Name##Store, TraceContext)) { \
-        return FALSE;                                                 \
-    }
-
-//
-// N.B. BIND_STORE(Trace) must always go last in the macro below as it requires
-//      the metadata stores to be bound and mapped before it can finalize its
-//      own binding.
-//
-
-#define BIND_STORES()         \
-    BIND_STORE(MetadataInfo); \
-    BIND_STORE(Allocation);   \
-    BIND_STORE(Relocation);   \
-    BIND_STORE(Address);      \
-    BIND_STORE(Bitmap);       \
-    BIND_STORE(Info);         \
-    BIND_STORE(Trace)
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(BIND_TRACE_STORE_TO_TRACE_CONTEXT)(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PTRACE_CONTEXT TraceContext
-    );
-typedef BIND_TRACE_STORE_TO_TRACE_CONTEXT *PBIND_TRACE_STORE_TO_TRACE_CONTEXT;
-BIND_TRACE_STORE_TO_TRACE_CONTEXT BindTraceStoreToTraceContext;
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP)(
-    _In_ PTRACE_STORE TraceStore
-    );
-typedef FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP \
-      *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP;
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP FinalizeFirstTraceStoreMemoryMap;
-
-//
-// TraceStoreReadonlyContext-related functions and macros.
-//
-
-#define BIND_READONLY_STORE(Name)                                      \
-    if (!BindTraceStoreToReadonlyTraceContext(##Name##Store,           \
-                                              ReadonlyTraceContext)) { \
-        return FALSE;                                                  \
-    }
-
-#define BIND_READONLY_STORES()         \
-    BIND_READONLY_STORE(MetadataInfo); \
-    BIND_READONLY_STORE(Allocation);   \
-    BIND_READONLY_STORE(Relocation);   \
-    BIND_READONLY_STORE(Address);      \
-    BIND_READONLY_STORE(Bitmap);       \
-    BIND_READONLY_STORE(Info);         \
-    BIND_READONLY_STORE(Trace)
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT)(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PREADONLY_TRACE_CONTEXT ReadonlyTraceContext
-    );
-typedef BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT \
-      *PBIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT;
-BIND_TRACE_STORE_TO_READONLY_TRACE_CONTEXT BindTraceStoreToReadonlyTraceContext;
-
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP \
-    FinalizeFirstReadonlyTraceStoreMemoryMap;
 
 //
 // TraceStoreTime-related functions.
@@ -368,8 +305,8 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACE_STORE_TIME)(
-    _In_    PRTL                Rtl,
-    _In_    PTRACE_STORE_TIME   Time
+    _In_ PRTL                Rtl,
+    _In_ PTRACE_STORE_TIME   Time
     );
 typedef INITIALIZE_TRACE_STORE_TIME *PINITIALIZE_TRACE_STORE_TIME;
 INITIALIZE_TRACE_STORE_TIME InitializeTraceStoreTime;
@@ -382,23 +319,36 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(BIND_METADATA_INFO)(
+(BIND_METADATA_INFO_STORE)(
     _In_ PTRACE_CONTEXT TraceContext,
     _In_ PTRACE_STORE MetadataInfoStore
     );
-typedef BIND_METADATA_INFO *PBIND_METADATA_INFO;
-BIND_METADATA_INFO BindMetadataInfo;
+typedef BIND_METADATA_INFO_STORE *PBIND_METADATA_INFO_STORE;
+BIND_METADATA_INFO_STORE BindMetadataInfoStore;
 
 //
 // TraceStoreMemoryMap-related functions.
 //
 
 typedef
+_Success_(return != 0)
+BOOL
+(GET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE)(
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PUSHORT NumberOfMapsPointer
+    );
+typedef GET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE \
+      *PGET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE;
+GET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE \
+    GetNumberOfMemoryMapsRequiredByTraceStore;
+
+typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
 (CREATE_MEMORY_MAPS_FOR_TRACE_STORE)(
-    _In_ PTRACE_STORE TraceStore
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_MEMORY_MAP FirstMemoryMapPointer
     );
 typedef CREATE_MEMORY_MAPS_FOR_TRACE_STORE *PCREATE_MEMORY_MAPS_FOR_TRACE_STORE;
 CREATE_MEMORY_MAPS_FOR_TRACE_STORE CreateMemoryMapsForTraceStore;
@@ -408,23 +358,23 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (PREPARE_NEXT_TRACE_STORE_MEMORY_MAP)(
-    _In_ PTRACE_STORE TraceStore
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
     );
 typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
        *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP;
-PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
-    PrepareNextTraceStoreMemoryMap;
-
+PREPARE_NEXT_TRACE_STORE_MEMORY_MAP PrepareNextTraceStoreMemoryMap;
 
 typedef
 _Success_(return != 0)
 BOOL
-(RELEASE_PREV_TRACE_STORE_MEMORY_MAP)(
-    _In_ PTRACE_STORE TraceStore
+(CLOSE_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
     );
-typedef  RELEASE_PREV_TRACE_STORE_MEMORY_MAP \
-       *PRELEASE_PREV_TRACE_STORE_MEMORY_MAP;
-RELEASE_PREV_TRACE_STORE_MEMORY_MAP ReleasePrevTraceStoreMemoryMap;
+typedef  CLOSE_TRACE_STORE_MEMORY_MAP \
+       *PCLOSE_TRACE_STORE_MEMORY_MAP;
+CLOSE_TRACE_STORE_MEMORY_MAP CloseTraceStoreMemoryMap;
 
 typedef
 _Check_return_
@@ -457,7 +407,8 @@ typedef
 _Success_(return != 0)
 BOOL
 (CONSUME_NEXT_TRACE_STORE_MEMORY_MAP)(
-    _In_ PTRACE_STORE TraceStore
+    _In_ PTRACE_STORE TraceStore,
+    _In_opt_ PTRACE_STORE_MEMORY_MAP MemoryMap
     );
 typedef  CONSUME_NEXT_TRACE_STORE_MEMORY_MAP \
        *PCONSUME_NEXT_TRACE_STORE_MEMORY_MAP;
@@ -466,8 +417,8 @@ CONSUME_NEXT_TRACE_STORE_MEMORY_MAP ConsumeNextTraceStoreMemoryMap;
 typedef
 VOID
 (SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK)(
-    _In_ PTRACE_STORE TraceStore,
-    _Inout_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_MEMORY_MAP MemoryMap
     );
 typedef  SUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK \
        *PSUBMIT_CLOSE_MEMORY_MAP_THREADPOOL_WORK;
@@ -500,25 +451,10 @@ BIND_REMAINING_METADATA_CALLBACK BindRemainingMetadataCallback;
 
 typedef
 VOID
-(CALLBACK FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE Instance,
-    _In_ PVOID Context,
-    _In_ PTP_WORK Work
-    );
-typedef  FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-       *PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK;
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstTraceStoreMemoryMapCallback;
-
-FINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    FinalizeFirstReadonlyTraceStoreMemoryMapCallback;
-
-typedef
-VOID
 (CALLBACK PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE   Instance,
-    _In_ PVOID                   Context,
-    _In_ PTP_WORK                Work
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_STORE TraceStore,
+    _In_     PTP_WORK Work
     );
 typedef  PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
        *PPREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK;
@@ -528,9 +464,9 @@ PREFAULT_FUTURE_TRACE_STORE_PAGE_CALLBACK \
 typedef
 VOID
 (CALLBACK PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _In_ PTP_CALLBACK_INSTANCE Instance,
-    _In_ PVOID Context,
-    _In_ PTP_WORK Work
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_STORE TraceStore,
+    _In_     PTP_WORK Work
     );
 typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
        *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK;
@@ -539,55 +475,25 @@ PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
 
 typedef
 VOID
-(CALLBACK RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
+(CALLBACK CLOSE_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_STORE TraceStore,
+    _In_     PTP_WORK Work
     );
-typedef  RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
-       *PRELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK;
-RELEASE_PREV_TRACE_STORE_MEMORY_MAP_CALLBACK \
-    ReleasePrevTraceStoreMemoryMapCallback;
+typedef  CLOSE_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PCLOSE_TRACE_STORE_MEMORY_MAP_CALLBACK;
+CLOSE_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    CloseTraceStoreMemoryMapCallback;
 
 typedef
 VOID
 (CALLBACK BIND_TRACE_STORE_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
     );
 typedef BIND_TRACE_STORE_CALLBACK *PBIND_TRACE_STORE_CALLBACK;
 BIND_TRACE_STORE_CALLBACK BindTraceStoreCallback;
-
-typedef
-VOID
-(CALLBACK LOAD_METADATA_INFO_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
-    );
-typedef LOAD_METADATA_INFO_CALLBACK *PLOAD_METADATA_INFO_CALLBACK;
-LOAD_METADATA_INFO_CALLBACK LoadMetadataInfoCallback;
-
-typedef
-VOID
-(CALLBACK LOAD_REMAINING_METADATA_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
-    );
-typedef LOAD_REMAINING_METADATA_CALLBACK *PLOAD_REMAINING_METADATA_CALLBACK;
-LOAD_REMAINING_METADATA_CALLBACK LoadRemainingMetadataCallback;
-
-typedef
-VOID
-(CALLBACK LOAD_TRACE_STORE_CALLBACK)(
-    _Inout_     PTP_CALLBACK_INSTANCE   Instance,
-    _Inout_opt_ PVOID                   Context,
-    _Inout_     PTP_WORK                Work
-    );
-typedef LOAD_TRACE_STORE_CALLBACK *PLOAD_TRACE_STORE_CALLBACK;
-LOAD_TRACE_STORE_CALLBACK LoadTraceStoreCallback;
 
 //
 // TraceStoreMemory-map related inline functions.
@@ -623,18 +529,6 @@ PopFreeTraceStoreMemoryMap(
 {
     PSLIST_HEADER ListHead;
     PSLIST_ENTRY ListEntry;
-
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(TraceStore)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(MemoryMap)) {
-        return FALSE;
-    }
 
     ListHead = &TraceStore->FreeMemoryMaps;
 
@@ -870,10 +764,8 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS)(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
-    _In_ PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
-        FinalizeFirstMemoryMapCallback
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
     );
 typedef CREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS \
       *PCREATE_TRACE_STORE_THREADPOOL_WORK_ITEMS;
@@ -985,20 +877,20 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 PopTraceStore(
-    _In_  PSLIST_HEADER SListHead,
+    _In_  PSLIST_HEADER ListHead,
     _Out_ PPTRACE_STORE TraceStore
     )
 {
-    PSLIST_ENTRY SListEntry;
+    PSLIST_ENTRY ListEntry;
 
-    SListEntry = InterlockedPopEntrySList(SListHead);
-    if (!SListEntry) {
+    ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
         return FALSE;
     }
 
-    *TraceStore = CONTAINING_RECORD(SListEntry,
+    *TraceStore = CONTAINING_RECORD(ListEntry,
                                     TRACE_STORE,
-                                    SListEntry);
+                                    ListEntry);
 
     return TRUE;
 }
@@ -1010,7 +902,7 @@ PushTraceStore(
     _In_ PTRACE_STORE TraceStore
     )
 {
-    InterlockedPushEntrySList(ListHead, &TraceStore->SListEntry);
+    InterlockedPushEntrySList(ListHead, &TraceStore->ListEntry);
 }
 
 FORCEINLINE
@@ -1063,18 +955,18 @@ Return Value:
 }
 
 //
-// BindMetadataInfo-related macros.
+// BindMetadataInfoStore-related macros.
 //
 
 #define PushBindMetadataInfoTraceStore(TraceContext, TraceStore) \
     PushTraceStore(                                              \
-        &TraceContext->BindMetadataInfoWork.SListHead,           \
+        &TraceContext->BindMetadataInfoWork.ListHead,            \
         TraceStore->MetadataInfoStore                            \
     )
 
 #define PopBindMetadataInfoTraceStore(TraceContext, MetadataInfoStorePointer) \
     PopTraceStore(                                                            \
-        &TraceContext->BindMetadataInfoWork.SListHead,                        \
+        &TraceContext->BindMetadataInfoWork.ListHead,                         \
         MetadataInfoStorePointer                                              \
     )
 
@@ -1088,13 +980,13 @@ Return Value:
 
 #define PushBindRemainingMetadataTraceStore(TraceContext, MetadataStore) \
     PushTraceStore(                                                      \
-        &TraceContext->BindRemainingMetadataWork.SListHead,              \
-        TraceStore->MetadataInfoStore                                    \
+        &TraceContext->BindRemainingMetadataWork.ListHead,               \
+        MetadataStore                                                    \
     )
 
 #define PopBindRemainingMetadataTraceStore(TraceContext, MetadataStorePointer) \
     PopTraceStore(                                                             \
-        &TraceContext->BindRemainingMetadataWork.SListHead,                    \
+        &TraceContext->BindRemainingMetadataWork.ListHead,                     \
         MetadataStorePointer                                                   \
     )
 
@@ -1123,13 +1015,13 @@ Return Value:
 
 #define PushBindTraceStore(TraceContext, TraceStore) \
     PushTraceStore(                                  \
-        &TraceContext->BindTraceStoreWork.SListHead, \
+        &TraceContext->BindTraceStoreWork.ListHead,  \
         TraceStore                                   \
     )
 
 #define PopBindTraceStore(TraceContext, TraceStorePointer) \
     PopTraceStore(                                         \
-        &TraceContext->BindTraceStoreWork.SListHead,       \
+        &TraceContext->BindTraceStoreWork.ListHead,        \
         TraceStorePointer                                  \
     )
 

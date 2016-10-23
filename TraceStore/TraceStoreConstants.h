@@ -50,10 +50,12 @@ TRACE_STORE_TRAITS TraceStoreTraits[];
 
 TRACE_STORE_DATA LARGE_INTEGER MaximumMappingSize;
 
-TRACE_STORE_DATA SIZE_T InitialTraceContextHeapSize;
-TRACE_STORE_DATA SIZE_T MaximumTraceContextHeapSize;
-
-TRACE_STORE_DATA USHORT InitialFreeMemoryMaps;
+TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForNonStreamingReaders;
+TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders;
+TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForNonStreamingWriters;
+TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters;
+TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForStreamingReaders;
+TRACE_STORE_DATA USHORT NumberOfMemoryMapsForStreamingWriters;
 
 TRACE_STORE_DATA USHORT TraceStoreMetadataInfoStructSize;
 TRACE_STORE_DATA USHORT TraceStoreAllocationStructSize;

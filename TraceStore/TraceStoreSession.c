@@ -22,7 +22,7 @@ InitializeTraceSession(
     PTRACE_SESSION TraceSession,
     PULONG SizeOfTraceSession
     )
-/*--
+/*++
 
 Routine Description:
 

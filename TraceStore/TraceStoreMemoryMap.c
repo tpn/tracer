@@ -19,19 +19,25 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-CreateMemoryMapsForTraceStore(
-    PTRACE_STORE TraceStore
+GetNumberOfMemoryMapsRequiredByTraceStore(
+    PTRACE_STORE TraceStore,
+    PUSHORT NumberOfMapsPointer
     )
-/*--
+/*++
 
 Routine Description:
 
-    This routine creates memory maps for a given trace store.
+    This routine calculates the number of memory maps required for a trace
+    store.  The trace store traits and whether or not it is readonly are used
+    to infer the number of trace stores to create.
 
 Arguments:
 
-    TraceStore - Supplies a pointer to a TRACE_STORE struct that the memory
-        maps are created for.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        number of memory maps required will be calculated.
+
+    NumberOfMapsPointer - Supplies the address of a USHORT variable that will
+        receive the number of maps to create.
 
 Return Value:
 
@@ -39,37 +45,185 @@ Return Value:
 
 --*/
 {
+    BOOL IsReadonly;
+    BOOL IsMetadata;
     USHORT NumberOfMaps;
-    ULONG Index;
+    TRACE_STORE_TRAITS Traits;
+
+    Traits = *TraceStore->pTraits;
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *NumberOfMapsPointer = 0;
+
+    if (IsSingleRecord(Traits)) {
+
+        //
+        // Make sure a memory map hasn't already been assigned.
+        //
+
+        if (TraceStore->TotalNumberOfMemoryMaps > 0) {
+            return FALSE;
+        }
+
+        NumberOfMaps = 1;
+        goto End;
+    }
+
+    IsReadonly = TraceStore->IsReadonly;
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    if (IsReadonly) {
+        if (IsStreamingRead(Traits)) {
+            if (IsMetadata) {
+
+                //
+                // Metadata should not have streaming read set.
+                //
+
+                __debugbreak();
+                return FALSE;
+            }
+            NumberOfMaps = InitialFreeMemoryMapsForStreamingReaders;
+            goto End;
+        }
+        if (IsMetadata) {
+            NumberOfMaps = InitialFreeMemoryMapsForNonStreamingMetadataReaders;
+        } else {
+            NumberOfMaps = InitialFreeMemoryMapsForNonStreamingReaders;
+        }
+    } else {
+        if (IsStreamingWrite(Traits)) {
+
+            //
+            // Streaming writers have a fixed number of memory maps, and should
+            // never need to call CreateMemoryMapsForTraceStore() once those
+            // maps have been allocated.  Check this invariant now.
+            //
+
+            if (TraceStore->TotalNumberOfMemoryMaps > 0) {
+                __debugbreak();
+                return FALSE;
+            }
+            NumberOfMaps = NumberOfMemoryMapsForStreamingWriters;
+            goto End;
+        }
+        if (IsMetadata) {
+            NumberOfMaps = InitialFreeMemoryMapsForNonStreamingMetadataWriters;
+        } else {
+            NumberOfMaps = InitialFreeMemoryMapsForNonStreamingWriters;
+        }
+    }
+
+    //
+    // Sanity check the final number.
+    //
+
+    if (NumberOfMaps == 0) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (!IsPowerOf2(NumberOfMaps)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+End:
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *NumberOfMapsPointer = NumberOfMaps;
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateMemoryMapsForTraceStore(
+    PTRACE_STORE TraceStore,
+    PPTRACE_STORE_MEMORY_MAP MemoryMapPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine creates memory maps for a given trace store.  It is
+    called at least once per trace store, during the initial binding.
+    Internally, GetNumberOfMemoryMapsRequiredByTraceStore() is called
+    to obtain the number of maps to create.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        memory maps are to be created.
+
+    MemoryMapPointer - Supplies the address of a variable that will receive
+        the address of a usable TRACE_STORE_MEMORY_MAP provided no errors were
+        encountered.  All callers of this routine will be in a position where
+        they need a memory map, so having this as an output parameter saves the
+        caller from popping a memory map off the free list once this routine
+        returns successfully.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  If TRUE, *MemoryMapPointer will be
+    non-NULL.  If FALSE, *MemoryMapPointer will be NULL.
+
+--*/
+{
+    USHORT NumberOfMaps;
+    USHORT Index;
     TRACE_STORE_TRAITS Traits;
     PALLOCATOR Allocator;
+    PTRACE_STORE_MEMORY_MAP MemoryMapToReturn;
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
+    PTRACE_STORE_MEMORY_MAP NextMemoryMap;
+    PTRACE_STORE_MEMORY_MAP LastMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMaps;
 
     Traits = *TraceStore->pTraits;
 
-    if (TraceStore->TotalNumberOfMemoryMaps > 0) {
-        if (!Traits.MultipleRecords) {
-            __debugbreak();
-            return FALSE;
-        }
-        NumberOfMaps = InitialFreeMemoryMaps;
-    } else {
-        if (!Traits.MultipleRecords) {
-            NumberOfMaps = 2;
-        } else if (!TraceStore->IsReadonly && Traits.StreamingWrite) {
-            NumberOfMaps = 16;
-        } else {
-            NumberOfMaps = InitialFreeMemoryMaps;
-        }
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *MemoryMapPointer = NULL;
+
+    //
+    // Obtain the number of maps to create.
+    //
+
+    if (!GetNumberOfMemoryMapsRequiredByTraceStore(TraceStore, &NumberOfMaps)) {
+        return FALSE;
     }
 
-    Allocator = TraceStore->Allocator;
+    //
+    // If only a single memory map is required, we can use the SingleMemoryMap
+    // structure embedded within every trace store, removing the need to call
+    // the allocator.
+    //
 
+    if (NumberOfMaps == 1) {
+        MemoryMapToReturn = &TraceStore->SingleMemoryMap;
+        goto End;
+    }
+
+    //
+    // Allocate space for an array of memory maps.  We add 8 bytes to the size
+    // as it will allow us to align on a 16 byte boundary if the address isn't
+    // already aligned.  This saves freeing and re-allocation.
+    //
+
+    Allocator = TraceStore->Allocator;
     MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
         Allocator->Calloc(
             Allocator->Context,
             NumberOfMaps,
-            sizeof(TRACE_STORE_MEMORY_MAP)
+            sizeof(TRACE_STORE_MEMORY_MAP) + 8
         )
     );
 
@@ -78,71 +232,93 @@ Return Value:
     }
 
     //
-    // Carve the chunk of memory allocated above into list items, then push
-    // them onto the free list.
+    // If the allocation isn't aligned on a 16 byte boundary, bump it forward
+    // 8 bytes.
     //
 
-    for (Index = 0; Index < NumberOfMaps; Index++) {
-        PTRACE_STORE_MEMORY_MAP MemoryMap = &MemoryMaps[Index];
+#define IS_ALIGNED(Address) (((ULONG_PTR)(Address) & 15) == 0)
+#define ALIGN_MEMORY_MAPS(Address) ((ULONG_PTR)Address + 8)
 
-        //
-        // Ensure the ListItem is aligned on the MEMORY_ALLOCATION_ALIGNMENT.
-        // This is a requirement for the underlying SLIST_ENTRY.
-        //
-
-        if (!AssertAligned16(MemoryMap)) {
-            Allocator->Free(Allocator->Context, MemoryMaps);
-            return FALSE;
-        }
-
-        PushTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, MemoryMap);
+    if (!IS_ALIGNED(MemoryMaps)) {
+        MemoryMaps = (PTRACE_STORE_MEMORY_MAP)ALIGN_MEMORY_MAPS(MemoryMaps);
     }
 
+    //
+    // Alignment sanity check.
+    //
+
+    if (!IS_ALIGNED(MemoryMaps)) {
+        __debugbreak();
+        Allocator->Free(Allocator->Context, MemoryMaps);
+        return FALSE;
+    }
+
+    //
+    // Reserve the first memory map in the array to return to the caller.
+    //
+
+    MemoryMapToReturn = MemoryMaps;
+
+    //
+    // The remaining maps need to be pushed onto the interlocked free list.
+    // If there is only one map remaining (i.e. the total number of maps was
+    // 2), we just do an interlocked push.  Otherwise, we loop through and wire
+    // up all the SLIST_ENTRY.Next pointers such that each one points to the
+    // element after it, then call InterlockedPushListSListEx() to push the
+    // entire list in one operation.
+    //
+
+    FirstMemoryMap = &MemoryMaps[1];
+
+    if (NumberOfMaps == 2) {
+        PushTraceStoreMemoryMap(&TraceStore->FreeMemoryMaps, FirstMemoryMap);
+        goto End;
+    }
+
+    //
+    // Enumerate the remaining maps, excluding the last one, linking each one
+    // to the one after it.
+    //
+
+    __debugbreak();
+    for (Index = 1; Index < (NumberOfMaps-1); Index++) {
+        NextMemoryMap = &MemoryMaps[Index];
+        NextMemoryMap->ListEntry.Next = &((NextMemoryMap + 1)->ListEntry);
+    }
+
+    LastMemoryMap = &MemoryMaps[NumberOfMaps-1];
+
+    //
+    // Push the singly-linked list onto the free list.
+    //
+
+    InterlockedPushListSListEx(&TraceStore->FreeMemoryMaps,
+                               &FirstMemoryMap->ListEntry,
+                               &LastMemoryMap->ListEntry,
+                               NumberOfMaps - 1);
+
+End:
+
+    //
+    // Because we return a free memory map to the caller, we need to manually
+    // increment the number of active memory maps in use.  (This is normally
+    // handled by PopFreeTraceStoreMemoryMap().)
+    //
+
+    InterlockedIncrement(&TraceStore->NumberOfActiveMemoryMaps);
     InterlockedAdd(&TraceStore->TotalNumberOfMemoryMaps, NumberOfMaps);
+    *MemoryMapPointer = MemoryMapToReturn;
 
     return TRUE;
-}
-
-
-_Use_decl_annotations_
-VOID
-CALLBACK
-PrepareNextTraceStoreMemoryMapCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID                 Context,
-    PTP_WORK              Work
-    )
-/*--
-
-Routine Description:
-
-    This routine is the threadpool callback target for a TraceStore's
-    PrepareNextMemoryMapWork function.  It simply calls the
-    PrepareNextTraceStoreMemoryMap function.
-
-Arguments:
-
-    Instance - Unused.
-
-    Context - Supplies a pointer to a TRACE_STORE structure.
-
-    Work - Unused.
-
-Return Value:
-
-    None.
-
---*/
-{
-    PrepareNextTraceStoreMemoryMap((PTRACE_STORE)Context);
 }
 
 _Use_decl_annotations_
 BOOL
 PrepareNextTraceStoreMemoryMap(
-    PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP MemoryMap
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -156,8 +332,11 @@ Routine Description:
 
 Arguments:
 
-    TraceStore - Supplies a pointer to a TRACE_STORE struct for which a new
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
         memory map is to be prepared.
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure to
+        be used for the memory map preparation.
 
 Return Value:
 
@@ -166,8 +345,9 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL IsFirst;
     BOOL IsMetadata;
+    BOOL HasRelocations;
+    BOOL NeedToRelocate = FALSE;
     BOOL HaveAddress;
     USHORT NumaNode;
     PRTL Rtl;
@@ -185,12 +365,6 @@ Return Value:
     PTRACE_STORE_STATS Stats;
     TRACE_STORE_STATS DummyStats = { 0 };
 
-    if (!ARGUMENT_PRESENT(TraceStore)) {
-        return FALSE;
-    }
-
-    Rtl = TraceStore->Rtl;
-
     //
     // We may not have a stats struct available yet if this is the first
     // call to PrepareNextTraceStoreMemoryMap().  If that's the case, just
@@ -204,30 +378,14 @@ Return Value:
         Stats = &DummyStats;
     }
 
-    if (!Rtl) {
-        return FALSE;
-    }
-
-    if (!PopTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, &MemoryMap)) {
-        return FALSE;
-    }
-
-    //
-    // As we've taken ownership of a memory map, any erroneous conditions after
-    // this point must `goto Error` to ensure the memory map is placed back on
-    // the list when free.
-    //
-
-    if (!MemoryMap->FileHandle) {
-        goto Error;
-    }
-
     if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
-        goto Error;
+        TraceStore->LastError = GetLastError();
+        return FALSE;
     }
 
+    IsReadonly = IsReadonlyTraceStore(TraceStore);
     IsMetadata = IsMetadataTraceStore(TraceStore);
-    IsFirst = (MemoryMap->FileOffset.QuadPart == 0);
+    HasRelocations = TraceStoreHasRelocations(TraceStore);
 
     //
     // Get the current file offset.
@@ -235,23 +393,24 @@ Return Value:
 
     DistanceToMove.QuadPart = 0;
 
-    Success = SetFilePointerEx(TraceStore->FileHandle,
+    Success = SetFilePointerEx(MemoryMap->FileHandle,
                                DistanceToMove,
                                &CurrentFileOffset,
                                FILE_CURRENT);
-
     if (!Success) {
-        goto Error;
+        TraceStore->LastError = GetLastError();
+        return FALSE;
     }
 
     if (CurrentFileOffset.QuadPart != MemoryMap->FileOffset.QuadPart) {
 
         //
         // This shouldn't occur if all our memory map machinery is working
-        // correctly.
+        // correctly as maps are prepared sequentially.
         //
 
         __debugbreak();
+        return FALSE;
     }
 
     //
@@ -271,9 +430,9 @@ Return Value:
                                DistanceToMove,
                                &NewFileOffset,
                                FILE_BEGIN);
-
     if (!Success) {
-        goto Error;
+        TraceStore->LastError = GetLastError();
+        return FALSE;
     }
 
     //
@@ -281,21 +440,18 @@ Return Value:
     //
 
     if (FileInfo.EndOfFile.QuadPart < NewFileOffset.QuadPart) {
-
-        if (TraceStore->IsReadonly) {
+        if (IsReadonly) {
 
             //
             // Something has gone wrong if we're extending a readonly store.
             //
 
             __debugbreak();
-
-            goto Error;
+            return FALSE;
         }
-
         if (!SetEndOfFile(MemoryMap->FileHandle)) {
-
-            goto Error;
+            TraceStore->LastError = GetLastError();
+            return FALSE;
         }
     }
 
@@ -303,27 +459,32 @@ Return Value:
     // Create a new file mapping for this memory map's slice of data.
     //
 
-    MemoryMap->MappingHandle = CreateFileMapping(
+    MemoryMap->MappingHandle = CreateFileMappingNuma(
         MemoryMap->FileHandle,
         NULL,
         TraceStore->CreateFileMappingProtectionFlags,
         NewFileOffset.HighPart,
         NewFileOffset.LowPart,
-        NULL
+        NULL,
+        TraceStore->NumaNode
     );
 
     if (MemoryMap->MappingHandle == NULL ||
         MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
-        DWORD LastError = GetLastError();
-        goto Error;
+        TraceStore->LastError = GetLastError();
+        return FALSE;
     }
 
     OriginalPreferredBaseAddress = NULL;
 
     //
     // MemoryMap->BaseAddress will be the next contiguous address for this
-    // mapping.  It is set by ConsumeNextTraceStoreMemoryMap().  We use it
-    // as our preferred base address if we can.
+    // mapping if we're in write mode.  If we're readonly and the value is
+    // non-NULL, it is the address we need to map the view at in order to
+    // avoid relocations.
+    //
+    // In both cases, our first call to MapViewOfFileExNuma() attempts to
+    // honor this preferred base address.
     //
 
     PreferredBaseAddress = MemoryMap->BaseAddress;
@@ -338,7 +499,6 @@ Return Value:
         //
 
         HaveAddress = FALSE;
-
         goto TryMapMemory;
     }
 
@@ -348,6 +508,7 @@ Return Value:
     // Take a local copy of the address.
     //
 
+    Rtl = TraceStore->Rtl;
     Result = Rtl->RtlCopyMappedMemory(&Address,
                                       AddressPointer,
                                       sizeof(Address));
@@ -355,29 +516,37 @@ Return Value:
     if (FAILED(Result)) {
 
         //
-        // Disable the address and go straight to preparation.
+        // If we're readonly and we have relocations, not being able to read
+        // the address record is actually fatal as we won't know what address
+        // to relocate to.
+        //
+
+        if (IsReadonly && HasRelocations) {
+            return FALSE;
+        }
+
+        //
+        // (Should we continue with preparation here?  Maybe not.)
         //
 
         HaveAddress = FALSE;
         AddressPointer = NULL;
         MemoryMap->pAddress = NULL;
-        goto TryMapMemory;
-
     }
 
 TryMapMemory:
 
-    MemoryMap->BaseAddress = MapViewOfFileEx(
+    MemoryMap->BaseAddress = MapViewOfFileExNuma(
         MemoryMap->MappingHandle,
         TraceStore->MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
         MemoryMap->MappingSize.LowPart,
-        PreferredBaseAddress
+        PreferredBaseAddress,
+        TraceStore->NumaNode
     );
 
     if (!MemoryMap->BaseAddress) {
-
         if (PreferredBaseAddress) {
 
             //
@@ -391,8 +560,13 @@ TryMapMemory:
             goto TryMapMemory;
         }
 
-        goto Error;
+        //
+        // The map view attempt failed for some reason other than the base
+        // address being unavailable.
+        //
 
+        TraceStore->LastError = GetLastError();
+        return FALSE;
     }
 
     if (IsMetadata) {
@@ -403,8 +577,13 @@ TryMapMemory:
 
         //
         // The mapping succeeded, but not at our original preferred address.
-        // When we implement relocation support, we'll need to do that here.
+        // If we're readonly and we have relocations, make a note that we need
+        // to relocate before the map can be consumed.
         //
+
+        if (IsReadonly && HasRelocations) {
+            NeedToRelocate = TRUE;
+        }
 
         //
         // We copy the original preferred base address back so that it can be
@@ -413,10 +592,9 @@ TryMapMemory:
         //
 
         PreferredBaseAddress = OriginalPreferredBaseAddress;
-
     }
 
-    if (!HaveAddress) {
+    if (!HaveAddress || IsReadonly) {
         goto Finalize;
     }
 
@@ -496,7 +674,12 @@ Finalize:
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
 
-    if (!TraceStore->NoPrefaulting) {
+    //
+    // XXX: extend this to do copy-on-write prefaulting if we're readonly and
+    // we have relocations.
+    //
+
+    if (!IsReadonly && !TraceStore->NoPrefaulting) {
 
         //
         // Make sure we don't prefault a page past the end of the file.
@@ -512,58 +695,29 @@ Finalize:
 
             //
             // Prefault the first two pages.  The AllocateRecords function will
-            // take care of prefaulting subsequent pages.
+            // take care of prefaulting subsequent pages.  This will be the
+            // first point of failure if we've run out of storage space on the
+            // device.
             //
 
             if (!Rtl->PrefaultPages((PVOID)BaseAddress, 2)) {
-                goto Error;
+                return FALSE;
             }
         }
     }
 
-    if (TraceStore->MappedSequenceId == 0) {
-        PTRACE_STORE_MEMORY_MAP OldFirstMemoryMap;
-
-        OldFirstMemoryMap = (PTRACE_STORE_MEMORY_MAP)(
-            InterlockedExchangePointer(
-                &TraceStore->FirstMemoryMap,
-                MemoryMap
-            )
-        );
-
-        if (OldFirstMemoryMap != NULL) {
-            __debugbreak();
-            goto Error;
-        }
-
-        SubmitThreadpoolWork(TraceStore->FinalizeFirstMemoryMapWork);
-
-    } else {
-        PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
-        SetEvent(TraceStore->NextMemoryMapAvailableEvent);
+    if (NeedToRelocate) {
+        __debugbreak();
     }
 
-    Success = TRUE;
-    goto End;
-
-Error:
-    Success = FALSE;
-
-    if (MemoryMap->MappingHandle) {
-        CloseHandle(MemoryMap->MappingHandle);
-        MemoryMap->MappingHandle = NULL;
-    }
-
-    ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
-
-End:
-    return Success;
+    return TRUE;
 }
 
 _Use_decl_annotations_
 BOOL
-ReleasePrevTraceStoreMemoryMap(
-    PTRACE_STORE TraceStore
+CloseTraceStoreMemoryMap(
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 /*++
 
@@ -598,10 +752,6 @@ Return Value:
     LARGE_INTEGER PreviousTimestamp;
     LARGE_INTEGER Elapsed;
     PLARGE_INTEGER ElapsedPointer;
-
-    if (!PopTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, &MemoryMap)) {
-        return FALSE;
-    }
 
     UnmapTraceStoreMemoryMap(MemoryMap);
 
@@ -717,26 +867,6 @@ Finish:
     return TRUE;
 }
 
-_Use_decl_annotations_
-VOID
-CALLBACK
-ReleasePrevTraceStoreMemoryMapCallback(
-    PTP_CALLBACK_INSTANCE   Instance,
-    PVOID                   Context,
-    PTP_WORK                Work
-    )
-{
-    //
-    // Ensure Context is non-NULL.
-    //
-
-    if (!ARGUMENT_PRESENT(Context)) {
-        return;
-    }
-
-    ReleasePrevTraceStoreMemoryMap((PTRACE_STORE)Context);
-}
-
 
 _Use_decl_annotations_
 VOID
@@ -821,10 +951,6 @@ Return Value:
 
 --*/
 {
-    if (!MemoryMap) {
-        return FALSE;
-    }
-
     if (MemoryMap->BaseAddress) {
         UnmapViewOfFile(MemoryMap->BaseAddress);
         MemoryMap->BaseAddress = NULL;
@@ -894,35 +1020,37 @@ Return Value:
 _Use_decl_annotations_
 BOOL
 ConsumeNextTraceStoreMemoryMap(
-    PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP NextMemoryMap
     )
 /*++
 
 Routine Description:
 
     This routine consumes the next trace store memory map for a trace store.
-    It is called via two paths: a) once, by BindTraceStoreToTraceContext(),
-    when a trace store's first memory map needs to be activated, and b) by
-    a trace store's AllocateRecords() function, when the current memory map
-    has been exhausted and it needs the next one in order to satisfy the memory
-    allocation.
 
-    Consuming the next memory map involves: a) retiring the current memory map
-    (sending it to the "prev" list), b) popping the next memory map off the
-    "ready" list, and b) preparing a "next memory map" based off the ready one
-    for submission to the "prepare next memory map" threadpool.
+    It is called via two paths: a) once, by BindStore(), when a trace store's
+    first memory map needs to be activated, and b) by a trace store's
+    AllocateRecords() function, when the current memory map has been exhausted
+    and it needs the next one in order to satisfy the memory allocation.
 
     A central design tenet of the tracing machinery is that it should be as
     low-latency as possible, with a dropped trace record being preferable to
     a thread stalled waiting for backing memory maps to be available.  Thus,
     if this routine cannot immediately satisfy the steps required to perform
-    its duty without blocking, it will immediately return FALSE, indicating
-    that the next memory map is not yet ready.
+    its duty without blocking and the Wait parameter is FALSE, it will
+    immediately return FALSE, indicating that the next memory map is not yet
+    ready.
 
 Arguments:
 
-    TraceStore - Supplies a pointer to a TRACE_STORE structure from which to
-        consume the next memory map.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+    NextMemoryMap - Supplies an optional pointer to an explicit memory map to
+        consume.  If NULL, the memory map will be obtained by popping the trace
+        store's NextMemoryMap list
+
+
 
 Return Value:
 
@@ -947,14 +1075,6 @@ Return Value:
     PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;
 
     //
-    // Validate arguments.
-    //
-
-    if (!TraceStore) {
-        return FALSE;
-    }
-
-    //
     // We may not have a stats struct available yet if this is the first
     // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
     // point the pointer at a dummy one.  This simplifies the rest of the
@@ -962,7 +1082,6 @@ Return Value:
     //
 
     Stats = TraceStore->Stats;
-
     if (!Stats) {
         Stats = &DummyStats;
     }
@@ -1053,27 +1172,20 @@ Return Value:
     //
 
     Elapsed.QuadPart -= Address.Timestamp.Consumed.QuadPart;
-
     Address.Elapsed.Active.QuadPart = Elapsed.QuadPart;
 
     //
-    // Copy back to the memory mapped backing store.
+    // Copy back to the memory mapped backing store.  If it fails, set the
+    // pAddress pointer to NULL and continue submitting the close operation.
     //
 
     Result = RtlCopyMappedMemory(AddressPointer, &Address, sizeof(Address));
-
     if (FAILED(Result)) {
-
         PrevPrevMemoryMap->pAddress = NULL;
     }
 
-RetireOldMemoryMap:
-
-    PushTraceStoreMemoryMap(
-        &TraceStore->CloseMemoryMaps,
-        PrevPrevMemoryMap
-    );
-
+CloseOldMemoryMap:
+    PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, PrevPrevMemoryMap);
     SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
 
 StartPreparation:
@@ -1087,20 +1199,8 @@ StartPreparation:
     //
 
     Success = PopFreeTraceStoreMemoryMap(TraceStore, &PrepareMemoryMap);
-
     if (!Success) {
-
-        Success = CreateMemoryMapsForTraceStore(TraceStore);
-
-        if (Success) {
-
-            //
-            // Attempt to obtain a free memory map again.
-            //
-
-            Success = PopFreeTraceStoreMemoryMap(TraceStore, &PrepareMemoryMap);
-        }
-
+        Success = CreateMemoryMapsForTraceStore(TraceStore, &PrepareMemoryMap);
         if (!Success) {
             Stats->DroppedRecords++;
             Stats->ExhaustedFreeMemoryMaps++;
