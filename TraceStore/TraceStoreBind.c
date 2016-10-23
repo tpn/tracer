@@ -73,14 +73,7 @@ Return Value:
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_ADDRESS AddressPointer;
-    PTRACE_STORE_STATS Stats;
     TRACE_STORE_ADDRESS Address;
-    TRACE_STORE_STATS DummyStats = { 0 };
-
-    Stats = TraceStore->Stats;
-    if (!Stats) {
-        Stats = &DummyStats;
-    }
 
     //
     // Create memory maps, events and threadpool work items.
@@ -97,6 +90,10 @@ Return Value:
     if (!CreateTraceStoreThreadpoolWorkItems(TraceContext, TraceStore)) {
         return FALSE;
     }
+
+    //
+    // Initialize aliases.
+    //
 
     IsReadonly = (BOOL)TraceContext->Flags.Readonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
@@ -215,12 +212,39 @@ PrepareFirstMemoryMap:
         return FALSE;
     }
 
-    //
-    // XXX WIP: review ConsumeNextTraceStoreMemoryMap().
-    //
-
     Success = ConsumeNextTraceStoreMemoryMap(TraceStore, FirstMemoryMap);
+    if (!Success) {
+        UnmapTraceStoreMemoryMap(FirstMemoryMap);
+        return FALSE;
+    }
 
+}
+
+_Use_decl_annotations_
+BOOL
+BindTraceStore(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a trace store to a trace context.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return FALSE;
 }
 
 _Use_decl_annotations_
@@ -290,6 +314,8 @@ Return Value:
     PPTRACE_STORE MetadataStorePointer;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     PTRACE_STORE_METADATA_INFO MetadataInfo;
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULARGE_INTEGER RecordSize = { sizeof(TRACE_STORE_METADATA_INFO) };
 
     //
     // Ensure we've been passed a metadata info metadata trace store.
@@ -314,10 +340,31 @@ Return Value:
         return FALSE;
     }
 
-    Success = BindStore(TraceContext, MetadataInfoStore);
+    Success = BindMetadataStore(TraceContext, MetadataInfoStore);
     if (!Success) {
         return FALSE;
     }
+
+    //
+    // Allocate space for a TRACE_STORE_METADATA_INFO structure.  Enumerate
+    // through the metadata stores (including this metadata info store) and
+    // wire up each store's TRACE_STORE_INFO-related pointers to be backed by
+    // their relevant offset in the TRACE_STORE_METADATA_INFO structure.
+    //
+
+    BaseAddress = MetadataInfoStore->AllocateRecords(
+        TraceContext,
+        TraceStore,
+        &RecordSize,
+        &NumberOfRecords
+    );
+
+    if (!BaseAddress) {
+        return FALSE;
+    }
+
+    MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
+    MetadataStorePointer = &TraceStore->MetadataInfoStore;
 
     //
     // Subtract one to account for the normal trace store.
@@ -327,22 +374,6 @@ Return Value:
         TraceContext->TraceStores->ElementsPerTraceStore - 1
     );
 
-    MetadataInfoStore->MemoryMap = MemoryMap;
-    MemoryMap->FileHandle = MetadataInfoStore->FileHandle;
-    MemoryMap->FileOffset.QuadPart = 0;
-    MemoryMap->MappingSize.QuadPart = sizeof(TRACE_STORE_METADATA_INFO);
-
-    //
-    // We successfully mapped the view.  The memory map's base address now
-    // points to an area of sufficient size to hold a TRACE_STORE_METADATA_INFO
-    // structure, which is essentially an array of TRACE_STORE_INFO structures.
-    // Enumerate through the metadata stores (including this one) and wire up
-    // the relevant pointers.
-    //
-
-    MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
-    MetadataStorePointer = &TraceStore->MetadataInfoStore;
-
     for (Index = 0; Index < NumberOfMetadataStores; Index++) {
         Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);
 
@@ -350,10 +381,7 @@ Return Value:
         // N.B.: We abuse the fact that the trace store's metadata store
         //       pointers are laid out consecutively (and contiguously) in
         //       the same order as implied by their TraceStoreMetadataStoreId.
-        //       That allows us to use *MetadataStorePointer++ below.  (The
-        //       alternate approach would be to have a method that returns the
-        //       field offset within the TRACE_STORE structure for a given
-        //       metadata store ID, which we should probably do down the track.)
+        //       That allows us to use *MetadataStorePointer++ below.
         //
 
         MetadataStore = *MetadataStorePointer++;
@@ -366,6 +394,9 @@ Return Value:
     }
 
     //
+    //
+
+    //
     // If we're not readonly, initialize end of file and time.
     //
 
@@ -373,6 +404,7 @@ Return Value:
 
     if (!IsReadonly) {
         Info = (PTRACE_STORE_INFO)MetadataInfo;
+        MemoryMap->
         Info->Eof.EndOfFile.QuadPart = MemoryMap->MappingSize.QuadPart;
         __movsb((PBYTE)&Info->Time,
                 (PBYTE)&TraceContext->Time,

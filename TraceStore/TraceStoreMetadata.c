@@ -42,6 +42,15 @@ PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &InfoStoreTraits
 };
 
+CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
+    TraceStoreMetadataMetadataInfoBindComplete,     // MetadataInfo
+    TraceStoreMetadataAllocationBindComplete,       // Allocation
+    TraceStoreMetadataRelocationBindComplete,       // Relocation
+    TraceStoreMetadataAddressBindComplete,          // Address
+    TraceStoreMetadataBitmapBindComplete,           // Bitmap
+    TraceStoreMetadataInfoBindComplete              // Info
+};
+
 _Use_decl_annotations_
 PTRACE_STORE_TRAITS
 TraceStoreMetadataIdToTraits(
@@ -76,6 +85,18 @@ TraceStoreMetadataIdToInitializer(
 
     Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
     return TraceStoreMetadataInitializers[Index];
+}
+
+_Use_decl_annotations_
+PBIND_COMPLETE
+TraceStoreMetadataIdToBindComplete(
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    )
+{
+    USHORT Index;
+
+    Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
+    return TraceStoreMetadataBindCompletes[Index];
 }
 
 _Use_decl_annotations_
@@ -312,6 +333,7 @@ Return Value:
     }
 
     Readonly = (BOOL)TraceContext->Flags.Readonly;
+
 
     return FALSE;
 }
