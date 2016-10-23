@@ -104,5 +104,8 @@
     <ClCompile Include="TraceStoreCallbacks.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreBind.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

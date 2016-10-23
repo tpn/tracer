@@ -19,11 +19,11 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-BindMetadataInfo(
+BindMetadataInfoStore(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE MetadataInfoStore
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -79,6 +79,33 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Use TraceStore instead of MetadataInfoStore going forward.
+    //
+
+    TraceStore = MetadataInfoStore;
+
+    if (!CreateMemoryMapsForTraceStore(TraceStore, &MemoryMap)) {
+        return FALSE;
+    }
+
+    //
+    // Invariant: the memory map should match &TraceStore->SingleMemoryMap;
+    //
+
+    if (MemoryMap != &TraceStore->SingleMemoryMap) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (!CreateTraceStoreEvents(TraceStore)) {
+        return FALSE;
+    }
+
+    if (!CreateTraceStoreThreadpoolWorkItems(TraceContext, TraceStore)) {
+        return FALSE;
+    }
+
     Readonly = (BOOL)TraceContext->Flags.Readonly;
 
     //
@@ -89,12 +116,6 @@ Return Value:
         TraceContext->TraceStores->ElementsPerTraceStore - 1
     );
 
-    //
-    // Initialize the memory map.  As metadata info stores only have a
-    // single allocation, we don't need to create multiple memory maps.
-    //
-
-    MemoryMap = &TraceStore->SingleMemoryMap;
     TraceStore->MemoryMap = MemoryMap;
     MemoryMap->FileHandle = TraceStore->FileHandle;
     MemoryMap->FileOffset.QuadPart = 0;

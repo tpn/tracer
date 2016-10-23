@@ -8,9 +8,9 @@ Module Name:
 
 Abstract:
 
-    This module implements generic Trace Store functionality unrelated to the
-    main memory map machinery.  Functions are provided for initializing and
-    closing trace stores.
+    This module implements generic trace store functionality unrelated to the
+    main memory map machinery.  Functions are provided to initialize, bind,
+    close, truncate and run down a trace store.
 
 --*/
 
@@ -627,84 +627,6 @@ Return Value:
 _Use_decl_annotations_
 BOOL
 CreateTraceStoreThreadpoolWorkItems(
-    PTRACE_STORE TraceStore,
-    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
-    PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
-        FinalizeFirstMemoryMapCallback
-    )
-/*++
-
-Routine Description:
-
-    This routine creates the necessary threadpool work items (e.g. TP_WORK)
-    for a given trace store.  It is called by InitializeTraceContext() and
-    InitializeReadonlyTraceContext() as part of binding a store to a context.
-
-Arguments:
-
-    TraceStore - Supplies a pointer to an initialized TRACE_STORE structure
-        for which events will be generated.
-
-    ThreadpoolCallbackEnvironment - Supplies a pointer to a TP_CALLBACK_ENVIRON
-        structure to be used when creating threadpool work items.
-
-    FinalizeFirstMemoryMapCallback - Supplies a pointer to a function that
-        will be used to create a threadpool work item for processing the
-        first memory map of a trace store.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-
-    TraceStore->FinalizeFirstMemoryMapWork = CreateThreadpoolWork(
-        FinalizeFirstMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->FinalizeFirstMemoryMapWork) {
-        return FALSE;
-    }
-
-    TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
-        &PrepareNextTraceStoreMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->PrepareNextMemoryMapWork) {
-        return FALSE;
-    }
-
-    TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
-        &PrefaultFutureTraceStorePageCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->PrefaultFuturePageWork) {
-        return FALSE;
-    }
-
-    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
-        &ReleasePrevTraceStoreMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
-    );
-
-    if (!TraceStore->CloseMemoryMapWork) {
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-BindTraceStore(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore
     )
@@ -712,13 +634,17 @@ BindTraceStore(
 
 Routine Description:
 
-    This routine binds a trace store to a trace context.
+    This routine creates the necessary threadpool work items (e.g. TP_WORK)
+    for a given trace store based on the trace store's traits.
 
 Arguments:
 
-    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.  The work
+        items will be bound to the ThreadpoolCallbackEnvironment specified by
+        this structure.
 
-    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which
+        threadpool work items will be created.
 
 Return Value:
 
@@ -726,7 +652,58 @@ Return Value:
 
 --*/
 {
-    return FALSE;
+    BOOL Readonly;
+    BOOL IsMetadata;
+    TRACE_STORE_TRAITS Traits;
+
+    //
+    // Ensure traits have been set.
+    //
+
+    if (!TraceStore->pTraits) {
+        return FALSE;
+    }
+
+    Traits = *TraceStore->pTraits;
+    Readonly = TraceStore->IsReadonly;
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    //
+    // The close memory map threadpool work item always gets created.
+    //
+
+    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
+        &CloseTraceStoreMemoryMapCallback,
+        TraceStore,
+        TraceContext->ThreadpoolCallbackEnvironment
+    );
+    if (!TraceStore->CloseMemoryMapWork) {
+        return FALSE;
+    }
+
+    if (HasMultipleRecords(Traits)) {
+        TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
+            &PrepareNextTraceStoreMemoryMapCallback,
+            TraceStore,
+            TraceContext->ThreadpoolCallbackEnvironment
+        );
+        if (!TraceStore->PrepareNextMemoryMapWork) {
+            return FALSE;
+        }
+    }
+
+    if (!Readonly && HasMultipleRecords(Traits)) {
+        TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
+            &PrefaultFutureTraceStorePageCallback,
+            TraceStore,
+            TraceContext->ThreadpoolCallbackEnvironment
+        );
+        if (!TraceStore->PrefaultFuturePageWork) {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 
 _Use_decl_annotations_

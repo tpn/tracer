@@ -7,7 +7,7 @@ TlsTracerHeapThreadAttach(
     ULONG   Reason,
     LPVOID  Reserved
     )
-/*--
+/*++
 
 Routine Description:
 

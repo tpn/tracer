@@ -101,6 +101,21 @@ TraceStoreMetadataIdToInfo(
 }
 
 _Use_decl_annotations_
+PTRACE_STORE
+TraceStoreMetadataIdToStore(
+    PTRACE_STORE TraceStore,
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    )
+{
+    USHORT Index;
+    PTRACE_STORE MetadataInfoStore;
+
+    MetadataInfoStore = TraceStore->MetadataInfoStore;
+    Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
+    return (MetadataInfoStore + Index);
+}
+
+_Use_decl_annotations_
 BOOL
 InitializeMetadataFromRecordSize(
     PTRACE_STORE MetadataStore
@@ -242,7 +257,15 @@ BindMetadataStore(
 
 Routine Description:
 
-    This routine binds a metadata trace store to a trace context.
+    This routine binds a metadata trace store to a trace context.  It is called
+    in parallel for all remaining metadata stores once :metadatainfo has been
+    bound successfully.  Thus, the metadata trace stores will have addresses
+    assigned for their backing TRACE_STORE_INFO elements like Eof, Time, Traits
+    etc.
+
+    This routine is responsible for creating events, memory maps and threadpool
+    work items as appropriate.  The metadata store's traits are used to guide
+    this process.
 
 Arguments:
 
@@ -256,6 +279,40 @@ Return Value:
 
 --*/
 {
+    BOOL Readonly;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE ExpectedMetadataStore;
+    PTRACE_STORE ActualMetadataStore;
+
+    //
+    // Invariant check: ensure we've been passed a metadata trace store, and
+    // that it is not of type metadata info.
+    //
+
+    if (!IsMetadataTraceStore(MetadataStore)) {
+        return FALSE;
+    }
+
+    MetadataId = MetadataStore->TraceStoreMetadataId;
+    if (MetadataId == TraceStoreMetadataMetadataInfoId) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the trace store linkage is correct.  The trace store we point
+    // to should have its relevant MetadataStore pointing at us.
+    //
+
+    ExpectedMetadataStore = MetadataStore;
+    TraceStore = MetadataStore->TraceStore;
+    ActualMetadataStore = TraceStoreMetadataIdToStore(TraceStore, MetadataId);
+    if (ExpectedMetadataStore != ActualMetadataStore) {
+        return FALSE;
+    }
+
+    Readonly = (BOOL)TraceContext->Flags.Readonly;
+
     return FALSE;
 }
 

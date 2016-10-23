@@ -21,7 +21,7 @@ LoadNextTraceStoreAddress(
     PTRACE_STORE TraceStore,
     PPTRACE_STORE_ADDRESS AddressPointer
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -80,7 +80,7 @@ Return Value:
     }
 
     IsPageAligned = (BOOL)(
-        AddressRecordSize.QuadPart & (PAGE_SIZE-1)
+        ((AddressRecordSize.QuadPart & (PAGE_SIZE-1)) == 0)
     );
 
     if (!IsPageAligned) {

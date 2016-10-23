@@ -303,7 +303,6 @@ UpdateAddresses:
         TraceStore->PrevAddress = MemoryMap->NextAddress;
 
         MemoryMap->NextAddress = NextAddress;
-
     }
 
     if (TraceStore->IsReadonly) {
@@ -381,7 +380,7 @@ RecordTraceStoreAllocation(
     PULARGE_INTEGER  RecordSize,
     PULARGE_INTEGER  NumberOfRecords
     )
-/*--
+/*++
 
 Routine Description:
 

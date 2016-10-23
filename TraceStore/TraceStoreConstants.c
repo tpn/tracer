@@ -337,7 +337,13 @@ LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
 SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
 
-USHORT InitialFreeMemoryMaps = 32;
+USHORT InitialFreeMemoryMapsForNonStreamingReaders = 128;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingWriters = 256;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 128;
+USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
+
+USHORT NumberOfMemoryMapsForStreamingWriters = 16;
 
 USHORT TraceStoreMetadataInfoStructSize = (
     sizeof(TRACE_STORE_METADATA_INFO)

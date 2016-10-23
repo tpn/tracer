@@ -58,61 +58,6 @@ Return Value:
     PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
 }
 
-
-_Use_decl_annotations_
-VOID
-CALLBACK
-FinalizeFirstTraceStoreMemoryMapCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
-    )
-/*++
-
-Routine Description:
-
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
-
-Arguments:
-
-    Instance - Not used.
-
-    Context - Supplies a pointer to a TRACE_STORE struct.
-
-    Work - Not used.
-
-Return Value:
-
-    None.
-
---*/
-{
-    BOOL Success;
-    PTRACE_STORE TraceStore;
-
-    //
-    // Ensure Context has a value.
-    //
-
-    if (!Context) {
-        return;
-    }
-
-    TraceStore = (PTRACE_STORE)Context;
-
-    Success = FinalizeFirstTraceStoreMemoryMap(TraceStore);
-
-    if (!Success) {
-
-        //
-        // XXX TODO: set some sort of a flag/event indicating
-        // failure.
-        //
-        __debugbreak();
-    }
-}
-
 _Use_decl_annotations_
 VOID
 CALLBACK
@@ -127,8 +72,8 @@ Routine Description:
 
     This routine is the callback target for the bind metadata info threadpool
     work item of a trace context.  It pops a metadata info store of the trace
-    context, calls the BindMetadataInfo() method, and, if successful, submits
-    threadpool work items for binding the rest of the metadata stores.
+    context, calls the BindMetadataInfoStore() method, and, if successful,
+    submits threadpool work items for binding the rest of the metadata stores.
 
 Arguments:
 
@@ -162,7 +107,7 @@ Return Value:
         goto Error;
     }
 
-    Success = BindMetadataInfo(TraceContext, MetadataInfoStore);
+    Success = BindMetadataInfoStore(TraceContext, MetadataInfoStore);
     if (!Success) {
         goto Error;
     }
@@ -334,25 +279,25 @@ Error:
 _Use_decl_annotations_
 VOID
 CALLBACK
-LoadMetadataInfoCallback(
+PrepareNextTraceStoreMemoryMapCallback(
     PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
+    PTRACE_STORE TraceStore,
     PTP_WORK Work
     )
 /*++
 
 Routine Description:
 
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
+    This routine is the threadpool callback target for a trace store's prepare
+    next memory map routine.
 
 Arguments:
 
-    Instance - Not used.
+    Instance - Unused.
 
-    Context - Supplies a pointer to a TRACE_CONTEXT structure.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
 
-    Work - Not used.
+    Work - Unused.
 
 Return Value:
 
@@ -360,32 +305,54 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
 
+    //
+    // Validate arguments.
+    //
 
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    if (!PopTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, &MemoryMap)) {
+        return;
+    }
+
+    Success = PrepareNextTraceStoreMemoryMap(TraceStore, MemoryMap);
+    if (Success) {
+        PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
+        SetEvent(TraceStore->NextMemoryMapAvailableEvent);
+    } else {
+        UnmapTraceStoreMemoryMap(MemoryMap);
+        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
+    }
+    return;
 }
 
 _Use_decl_annotations_
 VOID
 CALLBACK
-LoadRemainingMetadataCallback(
+CloseTraceStoreMemoryMapCallback(
     PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
+    PTRACE_STORE TraceStore,
     PTP_WORK Work
     )
 /*++
 
 Routine Description:
 
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
+    This routine is the threadpool callback target for a trace store's release
+    memory map routine.
 
 Arguments:
 
-    Instance - Not used.
+    Instance - Unused.
 
-    Context - Supplies a pointer to a TRACE_CONTEXT structure.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
 
-    Work - Not used.
+    Work - Unused.
 
 Return Value:
 
@@ -393,41 +360,28 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
 
+    //
+    // Validate arguments.
+    //
 
-}
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
 
-_Use_decl_annotations_
-VOID
-CALLBACK
-LoadTraceStoreCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
-    )
-/*++
+    if (!PopTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, &MemoryMap)) {
+        return;
+    }
 
-Routine Description:
+    //
+    // Ignore the return value, we can't do anything.
+    //
 
-    This routine is the callback target for the finalize first trace store
-    memory map threadpool work.
+    CloseTraceStoreMemoryMap(TraceStore, MemoryMap);
 
-Arguments:
-
-    Instance - Not used.
-
-    Context - Supplies a pointer to a TRACE_CONTEXT structure.
-
-    Work - Not used.
-
-Return Value:
-
-    None.
-
---*/
-{
-
-
+    return;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

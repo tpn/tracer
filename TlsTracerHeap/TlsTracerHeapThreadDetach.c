@@ -7,7 +7,7 @@ TlsTracerHeapThreadDetach(
     ULONG   Reason,
     LPVOID  Reserved
     )
-/*--
+/*++
 
 Routine Description:
 
