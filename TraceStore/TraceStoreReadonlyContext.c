@@ -153,7 +153,7 @@ Return Value:
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TRACE_STORE_DECLS();
-        BIND_READONLY_STORES();
+        //BIND_READONLY_STORES();
     }
 
     return TRUE;

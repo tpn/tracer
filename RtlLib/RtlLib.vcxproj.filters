@@ -32,5 +32,11 @@
     <ClCompile Include="../Rtl/Rtl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="../Rtl/Path.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../Rtl/Commandline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
