@@ -439,7 +439,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 
 #define IsStreamingWrite(Traits) (Traits.StreamingWrite)
 #define IsStreamingRead(Traits) (Traits.StreamingRead)
-#define IsFixedRead(Traits) (!Traits.StreamingRead)
+#define IsStreaming(Traits) (Traits.StreamingRead || Traits.StreamingWrite)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -459,8 +459,9 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     // We're at 128 bytes here and consume two cache lines.  Traits pushes us
     // over into a third cache line, and we want our size to be a power of 2
     // (because these structures are packed successively in the struct below
-    // and we don't want two different metadata stores sharing a cache line),
-    // so we have to pad out to a forth cache line.
+    // and we don't want two different metadata stores sharing a cache line,
+    // nor do we want to risk crossing a page boundary), so we pad out to a
+    // forth cache line.
     //
 
     TRACE_STORE_TRAITS  Traits;
@@ -1115,6 +1116,16 @@ PVOID
     );
 typedef ALLOCATE_ALIGNED_OFFSET_RECORDS *PALLOCATE_ALIGNED_OFFSET_RECORDS;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_COMPLETE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_COMPLETE *PBIND_COMPLETE;
+
 typedef struct _TRACE_STORE {
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
@@ -1228,6 +1239,15 @@ typedef struct _TRACE_STORE {
     PALLOCATE_RECORDS AllocateRecords;
     PALLOCATE_ALIGNED_RECORDS AllocateAlignedRecords;
     PALLOCATE_ALIGNED_OFFSET_RECORDS AllocateAlignedOffsetRecords;
+
+    //
+    // Bind complete callback.  This is called as the final step by BindStore()
+    // if the binding was successful.  It is an internal function and should
+    // not be overridden.  The metadata stores use it to finalize their state
+    // once the first memory map is available.
+    //
+
+    PBIND_COMPLETE BindComplete;
 
     //
     // InitializeTraceStores() will point pReloc at the caller's relocation

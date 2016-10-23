@@ -9,7 +9,6 @@ Module Name:
 Abstract:
 
     This module contains all callbacks used by the trace store component.
-    Callbacks are the targets of threadpool work submissions.
 
 --*/
 

@@ -142,7 +142,7 @@ Return Value:
             (ULONG_PTR)EndAddress
         );
 
-        if (!ConsumeNextTraceStoreMemoryMap(TraceStore)) {
+        if (!ConsumeNextTraceStoreMemoryMap(TraceStore, NULL)) {
             return NULL;
         }
 
@@ -363,7 +363,7 @@ End:
         // if it fails.
         //
 
-        Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
+        Success = ConsumeNextTraceStoreMemoryMap(TraceStore, NULL);
 
         if (!Success) {
             NOTHING;

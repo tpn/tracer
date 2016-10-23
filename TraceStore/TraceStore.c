@@ -594,6 +594,23 @@ Return Value:
 --*/
 {
 
+    if (IsSingleRecord(TraceStore)) {
+
+        //
+        // Single record trace stores are configured to use the trace store's
+        // embedded memory map (TraceStore->SingleMemoryMap), so we don't need
+        // to do anymore work in this case.
+        //
+
+        return TRUE;
+    }
+
+    //
+    // Create the next memory map available event.  This is signaled when
+    // PrepareNextTraceStoreMemoryMap() has finished preparing the next
+    // memory map for a trace store to consume.
+    //
+
     TraceStore->NextMemoryMapAvailableEvent = (
         CreateEvent(
             NULL,
@@ -606,6 +623,13 @@ Return Value:
     if (!TraceStore->NextMemoryMapAvailableEvent) {
         return FALSE;
     }
+
+    //
+    // Create the all memory maps are free event.  This event is signaled when
+    // the count of active memory maps reaches zero.  The counter is decremented
+    // atomically each time a memory map is pushed to the free list.  The event
+    // is waited on during CloseStore().
+    //
 
     TraceStore->AllMemoryMapsAreFreeEvent = (
         CreateEvent(

@@ -1021,7 +1021,7 @@ _Use_decl_annotations_
 BOOL
 ConsumeNextTraceStoreMemoryMap(
     PTRACE_STORE TraceStore,
-    PTRACE_STORE_MEMORY_MAP NextMemoryMap
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
     )
 /*++
 
@@ -1035,22 +1035,27 @@ Routine Description:
     and it needs the next one in order to satisfy the memory allocation.
 
     A central design tenet of the tracing machinery is that it should be as
-    low-latency as possible, with a dropped trace record being preferable to
-    a thread stalled waiting for backing memory maps to be available.  Thus,
-    if this routine cannot immediately satisfy the steps required to perform
-    its duty without blocking and the Wait parameter is FALSE, it will
-    immediately return FALSE, indicating that the next memory map is not yet
-    ready.
+    low-latency as possible, with a dropped trace record being preferable to a
+    thread stalled waiting for backing memory maps to be available.  Thus, if
+    this routine cannot immediately satisfy the steps required to perform its
+    duty without blocking, it will immediately return FALSE, indicating that
+    the next memory map is not yet ready.
 
 Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE structure.
 
-    NextMemoryMap - Supplies an optional pointer to an explicit memory map to
+    FirstMemoryMap - Supplies an optional pointer to an explicit memory map to
         consume.  If NULL, the memory map will be obtained by popping the trace
-        store's NextMemoryMap list
+        store's NextMemoryMap list.  FirstMemoryMap is currently only provided
+        via the BindStore() path when the first memory map is being consumed.
+        This is because some metadata trace stores have the "single record"
+        trait, which means they only need one memory map for the entire session,
+        and have no need for prefaulting or retiring machinery.
 
-
+        N.B.: There may be other uses for consuming an explicit memory map,
+              in which case, this parameter may be renamed to NextMemoryMap
+              to better reflect its purpose.
 
 Return Value:
 
@@ -1060,7 +1065,11 @@ Return Value:
 {
     BOOL Success;
     BOOL IsMetadata;
+    BOOL IsReadonly;
+    BOOL HasRelocations;
+    BOOL SingleRecord;
     HRESULT Result;
+    TRACE_STORE_TRAITS Traits;
     PRTL Rtl;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORE_MEMORY_MAP PrevPrevMemoryMap;
@@ -1075,6 +1084,34 @@ Return Value:
     PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;
 
     //
+    // Load traits and initialize aliases.
+    //
+
+    Traits = *TraceStore->pTraits;
+    IsReadonly = IsReadonlyTraceStore(TraceStore);
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+    HasRelocations = TraceStoreHasRelocations(TraceStore);
+
+    //
+    // Fast-path for first memory map; go straight to consumption.
+    //
+
+    if (FirstMemoryMap) {
+        MemoryMap = FirstMemoryMap;
+        goto ConsumeMap;
+    }
+
+    //
+    // Invariant check: all single record trace stores should be handled by the
+    // first memory map check above.
+    //
+
+    if (IsSingleRecord(Traits)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
     // We may not have a stats struct available yet if this is the first
     // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
     // point the pointer at a dummy one.  This simplifies the rest of the
@@ -1084,15 +1121,6 @@ Return Value:
     Stats = TraceStore->Stats;
     if (!Stats) {
         Stats = &DummyStats;
-    }
-
-    //
-    // Fast-path for single record trace stores; go straight to memory
-    // map consumption.
-    //
-
-    if (!TraceStore->pTraits->MultipleRecords) {
-        goto ConsumeMap;
     }
 
     //
@@ -1208,8 +1236,6 @@ StartPreparation:
         }
     }
 
-ConsumeMap:
-
     if (!PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
 
         //
@@ -1246,13 +1272,15 @@ ConsumeMap:
         TraceStore->PrevMemoryMap = TraceStore->MemoryMap;
     }
 
+ConsumeMap:
+
     TraceStore->MemoryMap = MemoryMap;
 
     //
     // Fast-path exit if we're a single record trace store.
     //
 
-    if (!TraceStore->pTraits->MultipleRecords) {
+    if (IsSingleRecord(Traits)) {
         goto End;
     }
 
@@ -1339,6 +1367,17 @@ ConsumeMap:
 PrepareMemoryMap:
 
     //
+    // Single record trace stores do not need the preparation machinery.
+    // If we've gotten to this point and we're still a single record,
+    // we've got a logic error somewhere.
+    //
+
+    if (IsSingleRecord(Traits)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
     // Prepare the next memory map with the relevant offset details based
     // on the new memory map and submit it to the threadpool.
     //
@@ -1381,6 +1420,7 @@ PrepareMemoryMap:
         // Ignore and go straight to submission.
         //
 
+        __debugbreak();
         goto SubmitPreparedMemoryMap;
     }
 
@@ -1396,6 +1436,7 @@ PrepareMemoryMap:
         // Ignore and go straight to submission.
         //
 
+        __debugbreak();
         goto SubmitPreparedMemoryMap;
     }
 
