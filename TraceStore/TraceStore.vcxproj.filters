@@ -89,16 +89,10 @@
     <ClCompile Include="TraceStoreRelocation.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TraceStoreReadonlyContext.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TraceStoreConstants.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TraceStoreTraits.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TraceStoreMetadataInfo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TraceStoreCallbacks.c">

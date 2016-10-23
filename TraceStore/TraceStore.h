@@ -429,17 +429,17 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 //
 //
 
-#define HasVaryingRecords(Traits) (Traits.VaryingRecordSize)
-#define IsFixedRecordSize(Traits) (!Traits.VaryingRecordSize)
+#define HasVaryingRecords(Traits) ((Traits).VaryingRecordSize)
+#define IsFixedRecordSize(Traits) (!(Traits).VaryingRecordSize)
 
-#define IsRecordSizeAlwaysPowerOf2(Traits) (Traits.RecordSizeIsAlwaysPowerOf2)
+#define IsRecordSizeAlwaysPowerOf2(Traits) ((Traits).RecordSizeIsAlwaysPowerOf2)
 
-#define HasMultipleRecords(Traits) (Traits.MultipleRecords)
-#define IsSingleRecord(Traits) (!Traits.MultipleRecords)
+#define HasMultipleRecords(Traits) ((Traits).MultipleRecords)
+#define IsSingleRecord(Traits) (!(Traits).MultipleRecords)
 
-#define IsStreamingWrite(Traits) (Traits.StreamingWrite)
-#define IsStreamingRead(Traits) (Traits.StreamingRead)
-#define IsStreaming(Traits) (Traits.StreamingRead || Traits.StreamingWrite)
+#define IsStreamingWrite(Traits) ((Traits).StreamingWrite)
+#define IsStreamingRead(Traits) ((Traits).StreamingRead)
+#define IsStreaming(Traits) ((Traits).StreamingRead || (Traits).StreamingWrite)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -879,8 +879,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
 
-    TRACE_STORE_WORK BindMetadataInfoWork;
-    TRACE_STORE_WORK BindRemainingMetadataWork;
+    TRACE_STORE_WORK BindMetadataInfoStoreWork;
+    TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
 
     SLIST_HEADER FailedListHead;
@@ -1122,7 +1122,8 @@ _Success_(return != 0)
 BOOL
 (BIND_COMPLETE)(
     _In_ PTRACE_CONTEXT TraceContext,
-    _In_ PTRACE_STORE TraceStore
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP FirstMemoryMap
     );
 typedef BIND_COMPLETE *PBIND_COMPLETE;
 
@@ -1150,8 +1151,6 @@ typedef struct _TRACE_STORE {
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
-
-    volatile PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
 
     volatile ULONG  TotalNumberOfMemoryMaps;
     volatile ULONG  NumberOfActiveMemoryMaps;

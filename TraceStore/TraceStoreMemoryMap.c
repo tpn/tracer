@@ -345,6 +345,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL IsReadonly;
     BOOL IsMetadata;
     BOOL HasRelocations;
     BOOL NeedToRelocate = FALSE;
@@ -357,7 +358,6 @@ Return Value:
     TRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS AddressPointer;
     FILE_STANDARD_INFO FileInfo;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
     LARGE_INTEGER DistanceToMove;
@@ -747,7 +747,6 @@ Return Value:
 {
     PRTL Rtl;
     HRESULT Result;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
     TRACE_STORE_ADDRESS Address;
     LARGE_INTEGER PreviousTimestamp;
     LARGE_INTEGER Elapsed;
@@ -1067,7 +1066,6 @@ Return Value:
     BOOL IsMetadata;
     BOOL IsReadonly;
     BOOL HasRelocations;
-    BOOL SingleRecord;
     HRESULT Result;
     TRACE_STORE_TRAITS Traits;
     PRTL Rtl;
@@ -1168,7 +1166,7 @@ Return Value:
     AddressPointer = PrevPrevMemoryMap->pAddress;
 
     if (IsMetadata || (AddressPointer == NULL)) {
-        goto RetireOldMemoryMap;
+        goto CloseOldMemoryMap;
     }
 
     //
@@ -1180,7 +1178,7 @@ Return Value:
     if (FAILED(Result)) {
 
         PrevPrevMemoryMap->pAddress = NULL;
-        goto RetireOldMemoryMap;
+        goto CloseOldMemoryMap;
     }
 
     //

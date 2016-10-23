@@ -19,7 +19,7 @@ VOID
 CALLBACK
 PrefaultFutureTraceStorePageCallback(
     PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
+    PTRACE_STORE TraceStore,
     PTP_WORK Work
     )
 /*++
@@ -47,20 +47,20 @@ Return Value:
 --*/
 {
     //
-    // Ensure Context has a value.
+    // Validate arguments.
     //
 
-    if (!Context) {
+    if (!ARGUMENT_PRESENT(TraceStore)) {
         return;
     }
 
-    PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
+    PrefaultFutureTraceStorePage(TraceStore);
 }
 
 _Use_decl_annotations_
 VOID
 CALLBACK
-BindMetadataInfoCallback(
+BindMetadataInfoStoreCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PTRACE_CONTEXT TraceContext,
     PTP_WORK Work
@@ -71,8 +71,8 @@ Routine Description:
 
     This routine is the callback target for the bind metadata info threadpool
     work item of a trace context.  It pops a metadata info store of the trace
-    context, calls the BindMetadataInfoStore() method, and, if successful,
-    submits threadpool work items for binding the rest of the metadata stores.
+    context, calls BindStore(), and, if successful, submits threadpool work
+    items for binding the rest of the metadata stores.
 
 Arguments:
 
@@ -106,7 +106,7 @@ Return Value:
         goto Error;
     }
 
-    Success = BindMetadataInfoStore(TraceContext, MetadataInfoStore);
+    Success = BindStore(TraceContext, MetadataInfoStore);
     if (!Success) {
         goto Error;
     }
@@ -117,7 +117,7 @@ Return Value:
     //
 
     TraceStore = MetadataInfoStore->TraceStore;
-    TraceStore->MetadataBindsInProgress = 5;
+    InterlockedExchange(&TraceStore->MetadataBindsInProgress, 5);
 
     SUBMIT_METADATA_BIND(Allocation);
     SUBMIT_METADATA_BIND(Relocation);
@@ -135,7 +135,7 @@ Error:
 _Use_decl_annotations_
 VOID
 CALLBACK
-BindRemainingMetadataCallback(
+BindRemainingMetadataStoresCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PTRACE_CONTEXT TraceContext,
     PTP_WORK Work
@@ -182,7 +182,7 @@ Return Value:
         goto Error;
     }
 
-    Success = BindMetadataStore(TraceContext, MetadataStore);
+    Success = BindStore(TraceContext, MetadataStore);
     if (!Success) {
         goto Error;
     }
@@ -221,7 +221,7 @@ Routine Description:
     work item of a trace context.  It is submitted when all metadata stores
     for a trace store have been bound successfully.  It pops the trace store
     off the trace context's bind trace store interlocked list, calls the
-    BindTraceStore() method, and, if successful, decrements the trace context's
+    BindStore() method, and, if successful, decrements the trace context's
     count of in-progress trace store binds.  If this was the last trace store
     to be bound, the trace context's loading complete event is set.
 
@@ -254,7 +254,7 @@ Return Value:
         goto Error;
     }
 
-    Success = BindTraceStore(TraceContext, TraceStore);
+    Success = BindStore(TraceContext, TraceStore);
     if (!Success) {
         goto Error;
     }
@@ -359,7 +359,6 @@ Return Value:
 
 --*/
 {
-    BOOL Success;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //

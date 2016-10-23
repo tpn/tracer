@@ -224,7 +224,7 @@ Return Value:
     Work->NumberOfFailedItems = 0
 
     INIT_WORK(BindMetadataInfoStore, NumberOfTraceStores);
-    INIT_WORK(BindRemainingMetadata, NumberOfRemainingMetadataStores);
+    INIT_WORK(BindRemainingMetadataStores, NumberOfRemainingMetadataStores);
     INIT_WORK(BindTraceStore, NumberOfTraceStores);
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
@@ -283,6 +283,8 @@ Error:
     SecureZeroMemory(Work, sizeof(*Work));
 
     CLEANUP_WORK(BindMetadataInfoStore);
+    CLEANUP_WORK(BindRemainingMetadataStores);
+    CLEANUP_WORK(BindTraceStore);
 
     return FALSE;
 }

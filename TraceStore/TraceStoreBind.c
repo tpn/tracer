@@ -30,7 +30,6 @@ BindStore(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore
     )
-{
 /*++
 
 Routine Description:
@@ -41,6 +40,10 @@ Routine Description:
     It is responsible for performing the common "binding" operations needed
     by all trace stores: creating memory maps, creating events, creating
     threadpool work items, creating file mappings and views, etc.
+
+    If a bind complete callback has been provided (TraceStore->BindComplete),
+    it will be called as the last step prior to returning if the trace store
+    has been successfully bound.
 
 Arguments:
 
@@ -60,20 +63,17 @@ Return Value:
     BOOL IsReadonly;
     BOOL IsMetadata;
     BOOL HasRelocations;
-    USHORT Index;
-    USHORT NumberOfMetadataStores;
+    TRACE_STORE_TRAITS Traits;
     TRACE_STORE_METADATA_ID MetadataId;
-    PVOID PreferredBaseAddress;
-    PVOID OriginalPreferredBaseAddress;
+    HRESULT Result;
+    PRTL Rtl;
     PVOID BaseAddress;
     PLARGE_INTEGER Requested;
-    PTRACE_STORE_INFO Info;
-    PTRACE_STORE TraceStore;
-    PTRACE_STORE MetadataStore;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_ADDRESS AddressPointer;
     TRACE_STORE_ADDRESS Address;
+    ULARGE_INTEGER RecordSize;
+    ULARGE_INTEGER NumberOfRecords = { 1 };
 
     //
     // Create memory maps, events and threadpool work items.
@@ -95,6 +95,7 @@ Return Value:
     // Initialize aliases.
     //
 
+    Traits = *TraceStore->pTraits;
     IsReadonly = (BOOL)TraceContext->Flags.Readonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
@@ -104,6 +105,7 @@ Return Value:
     //
 
     if (IsMetadata) {
+        MetadataId = TraceStore->TraceStoreMetadataId;
         goto PrepareFirstMemoryMap;
     }
 
@@ -146,6 +148,7 @@ Return Value:
     // Take a local copy.
     //
 
+    Rtl = TraceStore->Rtl;
     Result = Rtl->RtlCopyMappedMemory(&Address,
                                       AddressPointer,
                                       sizeof(Address));
@@ -206,224 +209,71 @@ Return Value:
 
 PrepareFirstMemoryMap:
 
+    //
+    // Prepare the first memory map, which will create the file mapping and
+    // map a view of it, then consume it, which activates the the memory map
+    // and allows it to be used by AllocateRecords().
+    //
+
     Success = PrepareNextTraceStoreMemoryMap(TraceStore, FirstMemoryMap);
     if (!Success) {
-        UnmapTraceStoreMemoryMap(FirstMemoryMap);
-        return FALSE;
+        goto Error;
     }
 
     Success = ConsumeNextTraceStoreMemoryMap(TraceStore, FirstMemoryMap);
     if (!Success) {
-        UnmapTraceStoreMemoryMap(FirstMemoryMap);
-        return FALSE;
+        goto Error;
     }
-
-}
-
-_Use_decl_annotations_
-BOOL
-BindTraceStore(
-    PTRACE_CONTEXT TraceContext,
-    PTRACE_STORE TraceStore
-    )
-/*++
-
-Routine Description:
-
-    This routine binds a trace store to a trace context.
-
-Arguments:
-
-    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
-
-    TraceStore - Supplies a pointer to a TRACE_STORE structure.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-    return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-BindTraceStore(
-    PTRACE_CONTEXT TraceContext,
-    PTRACE_STORE TraceStore
-    )
-/*++
-
-Routine Description:
-
-    This routine binds a trace store to a trace context.
-
-Arguments:
-
-    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
-
-    TraceStore - Supplies a pointer to a TRACE_STORE structure.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-    return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-BindMetadataInfoStore(
-    PTRACE_CONTEXT TraceContext,
-    PTRACE_STORE MetadataInfoStore
-    )
-/*++
-
-Routine Description:
-
-    This routine binds a metadata info metadata trace store to a trace context.
-    This metadata store acts as a backing for the other metadata store's static
-    TRACE_STORE_INFO structures, and thus, is called first when a main trace
-    store is being bound.
-
-Arguments:
-
-    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure to bind the
-        metadata info metadata store to.
-
-    MetadataInfoStore - Supplies a pointer to a metadata info trace store.
-
-Return Value:
-
-    TRUE on success, FALSE on failure.
-
---*/
-{
-    BOOL IsReadonly;
-    BOOL Success;
-    USHORT Index;
-    USHORT NumberOfMetadataStores;
-    TRACE_STORE_METADATA_ID MetadataId;
-    PVOID BaseAddress;
-    PTRACE_STORE_INFO Info;
-    PTRACE_STORE TraceStore;
-    PTRACE_STORE MetadataStore;
-    PPTRACE_STORE MetadataStorePointer;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
-    PTRACE_STORE_METADATA_INFO MetadataInfo;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(TRACE_STORE_METADATA_INFO) };
-
-    //
-    // Ensure we've been passed a metadata info metadata trace store.
-    //
-
-    if (!IsMetadataTraceStore(MetadataInfoStore)) {
-        return FALSE;
-    }
-
-    MetadataId = MetadataInfoStore->TraceStoreMetadataId;
-    if (MetadataId != TraceStoreMetadataMetadataInfoId) {
-        return FALSE;
-    }
-
-    //
-    // Make sure the trace store linkage is correct.  The trace store we point
-    // to should have its MetadataInfoStore field point to us.
-    //
-
-    TraceStore = MetadataInfoStore->TraceStore;
-    if (TraceStore->MetadataInfoStore != MetadataInfoStore) {
-        return FALSE;
-    }
-
-    Success = BindMetadataStore(TraceContext, MetadataInfoStore);
-    if (!Success) {
-        return FALSE;
-    }
-
-    //
-    // Allocate space for a TRACE_STORE_METADATA_INFO structure.  Enumerate
-    // through the metadata stores (including this metadata info store) and
-    // wire up each store's TRACE_STORE_INFO-related pointers to be backed by
-    // their relevant offset in the TRACE_STORE_METADATA_INFO structure.
-    //
-
-    BaseAddress = MetadataInfoStore->AllocateRecords(
-        TraceContext,
-        TraceStore,
-        &RecordSize,
-        &NumberOfRecords
-    );
-
-    if (!BaseAddress) {
-        return FALSE;
-    }
-
-    MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
-    MetadataStorePointer = &TraceStore->MetadataInfoStore;
-
-    //
-    // Subtract one to account for the normal trace store.
-    //
-
-    NumberOfMetadataStores = (USHORT)(
-        TraceContext->TraceStores->ElementsPerTraceStore - 1
-    );
-
-    for (Index = 0; Index < NumberOfMetadataStores; Index++) {
-        Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);
-
-        //
-        // N.B.: We abuse the fact that the trace store's metadata store
-        //       pointers are laid out consecutively (and contiguously) in
-        //       the same order as implied by their TraceStoreMetadataStoreId.
-        //       That allows us to use *MetadataStorePointer++ below.
-        //
-
-        MetadataStore = *MetadataStorePointer++;
-        MetadataStore->Info = Info;
-        MetadataStore->Eof = &Info->Eof;
-        MetadataStore->Time = &Info->Time;
-        MetadataStore->Stats = &Info->Stats;
-        MetadataStore->Totals = &Info->Totals;
-        MetadataStore->Traits = &Info->Traits;
-    }
-
-    //
-    //
-
-    //
-    // If we're not readonly, initialize end of file and time.
-    //
-
-    IsReadonly = (BOOL)TraceContext->Flags.Readonly;
 
     if (!IsReadonly) {
-        Info = (PTRACE_STORE_INFO)MetadataInfo;
-        MemoryMap->
-        Info->Eof.EndOfFile.QuadPart = MemoryMap->MappingSize.QuadPart;
-        __movsb((PBYTE)&Info->Time,
-                (PBYTE)&TraceContext->Time,
-                sizeof(Info->Time));
+        CopyTraceStoreTime(TraceContext, TraceStore);
+
+        if (IsMetadata) {
+            if (IsSingleRecord(Traits)) {
+
+                //
+                // Initialize single record metadata by doing a single
+                // allocation that matches the size of the metadata record.
+                // This ensures the Info->Eof (end of file) and Info->Totals
+                // metadata is correct.
+                //
+
+                RecordSize.QuadPart = (
+                    TraceStoreMetadataIdToRecordSize(MetadataId)
+                );
+                BaseAddress = TraceStore->AllocateRecords(
+                    TraceContext,
+                    TraceStore,
+                    &RecordSize,
+                    &NumberOfRecords
+                );
+                if (!BaseAddress) {
+                    goto Error;
+                }
+            }
+        }
     }
 
-    Success = TRUE;
-    goto End;
+    //
+    // If we have a bind complete callback, call it now.
+    //
+
+    if (TraceStore->BindComplete) {
+        Success = TraceStore->BindComplete(
+            TraceContext,
+            TraceStore,
+            FirstMemoryMap
+        );
+        if (!Success) {
+            goto Error;
+        }
+    }
+
+    return TRUE;
 
 Error:
-    Success = FALSE;
-
-    if (MemoryMap->MappingHandle) {
-        CloseHandle(MemoryMap->MappingHandle);
-        MemoryMap->MappingHandle = NULL;
-    }
-
-End:
-    return Success;
+    UnmapTraceStoreMemoryMap(FirstMemoryMap);
+    return FALSE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

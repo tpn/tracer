@@ -364,7 +364,6 @@ End:
         //
 
         Success = ConsumeNextTraceStoreMemoryMap(TraceStore, NULL);
-
         if (!Success) {
             NOTHING;
         }
