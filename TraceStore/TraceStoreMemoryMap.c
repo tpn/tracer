@@ -280,7 +280,6 @@ Return Value:
     // to the one after it.
     //
 
-    __debugbreak();
     for (Index = 1; Index < (NumberOfMaps-1); Index++) {
         NextMemoryMap = &MemoryMaps[Index];
         NextMemoryMap->ListEntry.Next = &((NextMemoryMap + 1)->ListEntry);
@@ -383,6 +382,11 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = TraceStore->Rtl;
     IsReadonly = IsReadonlyTraceStore(TraceStore);
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
@@ -508,7 +512,6 @@ Return Value:
     // Take a local copy of the address.
     //
 
-    Rtl = TraceStore->Rtl;
     Result = Rtl->RtlCopyMappedMemory(&Address,
                                       AddressPointer,
                                       sizeof(Address));
@@ -1071,8 +1074,8 @@ Return Value:
     PRTL Rtl;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORE_MEMORY_MAP PrevPrevMemoryMap;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
-    PTRACE_STORE_MEMORY_MAP PrepareMemoryMap;
+    PTRACE_STORE_MEMORY_MAP MemoryMap = NULL;
+    PTRACE_STORE_MEMORY_MAP PrepareMemoryMap = NULL;
     TRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS AddressPointer;
     LARGE_INTEGER RequestedTimestamp;
@@ -1090,13 +1093,22 @@ Return Value:
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
 
+    Rtl = TraceStore->Rtl;
+    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
+    TraceContext = TraceStore->TraceContext;
+
     //
-    // Fast-path for first memory map; go straight to consumption.
+    // Fast-path for first memory map; we can avoid the logic that checks to
+    // see if we need to close any existing maps.
     //
 
     if (FirstMemoryMap) {
         MemoryMap = FirstMemoryMap;
-        goto ConsumeMap;
+        if (IsSingleRecord(Traits)) {
+            goto ConsumeMap;
+        } else {
+            goto StartPreparation;
+        }
     }
 
     //
@@ -1122,20 +1134,10 @@ Return Value:
     }
 
     //
-    // Initialize aliases.
-    //
-
-    Rtl = TraceStore->Rtl;
-    RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
-    TraceContext = TraceStore->TraceContext;
-
-    //
     // The previous memory map becomes the previous-previous memory map.
     //
 
     PrevPrevMemoryMap = TraceStore->PrevMemoryMap;
-
-    IsMetadata = IsMetadataTraceStore(TraceStore);
 
     //
     // Retire the previous previous memory map if it exists.
@@ -1232,6 +1234,19 @@ StartPreparation:
             Stats->ExhaustedFreeMemoryMaps++;
             return FALSE;
         }
+    }
+
+    if (FirstMemoryMap) {
+        goto ConsumeMap;
+    }
+
+    //
+    // Invariant check: MemoryMap should be NULL here.
+    //
+
+    if (MemoryMap) {
+        __debugbreak();
+        return FALSE;
     }
 
     if (!PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
@@ -1473,6 +1488,14 @@ SubmitPreparedMemoryMap:
     // Push the prepare memory map to the relevant list and submit a threadpool
     // work item.
     //
+
+    if (!PrepareMemoryMap) {
+        __debugbreak();
+    }
+
+    if (!TraceStore->PrepareNextMemoryMapWork) {
+        __debugbreak();
+    }
 
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, PrepareMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);

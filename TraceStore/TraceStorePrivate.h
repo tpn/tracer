@@ -265,6 +265,15 @@ typedef TRACE_STORE_METADATA_ID_TO_INFO \
       *PTRACE_STORE_METADATA_ID_TO_INFO;
 TRACE_STORE_METADATA_ID_TO_INFO TraceStoreMetadataIdToInfo;
 
+typedef
+VOID
+(INITIALIZE_METADATA_FROM_RECORD_SIZE)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef INITIALIZE_METADATA_FROM_RECORD_SIZE \
+      *PINITIALIZE_METADATA_FROM_RECORD_SIZE;
+INITIALIZE_METADATA_FROM_RECORD_SIZE InitializeMetadataFromRecordSize;
+
 //
 // TraceStoreBind-related functions.
 //
@@ -684,6 +693,8 @@ INITIALIZE_TRACE_SESSION InitializeTraceSession;
 // TraceStore-related functions.
 //
 
+BIND_COMPLETE TraceStoreBindComplete;
+
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -924,21 +935,22 @@ Return Value:
 --*/
 {
 
+    __debugbreak();
     PushTraceStore(&TraceContext->FailedListHead, TraceStore);
 
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
-        BOOL CancelPendingCallbacks = TRUE;
+        //BOOL CancelPendingCallbacks = TRUE;
 
         //
         // This is the first failure.  Close all threadpool group items and
         // set the failure event.
         //
 
-        CloseThreadpoolCleanupGroupMembers(
-            TraceContext->ThreadpoolCleanupGroup,
-            CancelPendingCallbacks,
-            NULL
-        );
+        //CloseThreadpoolCleanupGroupMembers(
+        //    TraceContext->ThreadpoolCleanupGroup,
+        //    CancelPendingCallbacks,
+        //    NULL
+        //);
 
         SetEvent(TraceContext->LoadingCompleteEvent);
     }

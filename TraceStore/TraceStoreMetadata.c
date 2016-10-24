@@ -116,6 +116,37 @@ TraceStoreMetadataIdToStore(
 }
 
 _Use_decl_annotations_
+VOID
+InitializeMetadataFromRecordSize(
+    PTRACE_STORE MetadataStore
+    )
+{
+    ULONG RecordSize;
+    TRACE_STORE_METADATA_ID MetadataId;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TOTALS Totals;
+
+    if (MetadataStore->IsReadonly) {
+        __debugbreak();
+    }
+
+    //
+    // Set Eof to the record size and fake a similarly-sized allocation
+    // in the totals struct.
+    //
+
+    MetadataId = MetadataStore->TraceStoreMetadataId;
+    RecordSize = TraceStoreMetadataIdToRecordSize(MetadataId);
+
+    Eof = MetadataStore->Eof;
+    Totals = MetadataStore->Totals;
+
+    Eof->EndOfFile.QuadPart = RecordSize;
+    Totals->NumberOfAllocations.QuadPart = 1;
+    Totals->AllocationSize.QuadPart = RecordSize;
+}
+
+_Use_decl_annotations_
 BOOL
 MetadataInfoMetadataBindComplete(
     PTRACE_CONTEXT TraceContext,
@@ -220,7 +251,9 @@ Return Value:
     PTRACE_STORE TraceStore;
 
     TraceStore = RelocationStore->TraceStore;
-    if (TraceStore->IsReadonly) {
+    if (!TraceStore->HasRelocations) {
+        return TRUE;
+    } else if (TraceStore->IsReadonly) {
         return LoadTraceStoreRelocationInfo(TraceStore);
     } else {
         return SaveTraceStoreRelocationInfo(TraceStore);
