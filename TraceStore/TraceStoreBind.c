@@ -67,13 +67,13 @@ Return Value:
     TRACE_STORE_METADATA_ID MetadataId;
     HRESULT Result;
     PRTL Rtl;
-    PVOID BaseAddress;
+    PBIND_COMPLETE BindComplete;
     PLARGE_INTEGER Requested;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_ADDRESS AddressPointer;
     TRACE_STORE_ADDRESS Address;
-    ULARGE_INTEGER RecordSize;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
+
+    TraceStore->TraceContext = TraceContext;
 
     //
     // Create memory maps, events and threadpool work items.
@@ -99,6 +99,7 @@ Return Value:
     IsReadonly = (BOOL)TraceContext->Flags.Readonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
+    BindComplete = TraceStore->BindComplete;
 
     //
     // If we're metadata, go straight to preparation.
@@ -209,6 +210,9 @@ Return Value:
 
 PrepareFirstMemoryMap:
 
+    FirstMemoryMap->FileHandle = TraceStore->FileHandle;
+    FirstMemoryMap->MappingSize.QuadPart = TraceStore->MappingSize.QuadPart;
+
     //
     // Prepare the first memory map, which will create the file mapping and
     // map a view of it, then consume it, which activates the the memory map
@@ -225,40 +229,47 @@ PrepareFirstMemoryMap:
         goto Error;
     }
 
-    if (!IsReadonly) {
-        CopyTraceStoreTime(TraceContext, TraceStore);
+    if (IsMetadata && MetadataId == TraceStoreMetadataMetadataInfoId) {
 
-        if (IsMetadata) {
-            if (IsSingleRecord(Traits)) {
+        //
+        // MetadataInfo needs to be special-cased and have its BindComplete
+        // routine called straight after memory map consumption, as it is
+        // responsible for wiring up all the backing TRACE_STORE_INFO structs,
+        // including the one for itself, which needs to happen before any of
+        // the trace store's info fields (like end of file or allocation totals)
+        // can be written to.
+        //
 
-                //
-                // Initialize single record metadata by doing a single
-                // allocation that matches the size of the metadata record.
-                // This ensures the Info->Eof (end of file) and Info->Totals
-                // metadata is correct.
-                //
-
-                RecordSize.QuadPart = (
-                    TraceStoreMetadataIdToRecordSize(MetadataId)
-                );
-                BaseAddress = TraceStore->AllocateRecords(
-                    TraceContext,
-                    TraceStore,
-                    &RecordSize,
-                    &NumberOfRecords
-                );
-                if (!BaseAddress) {
-                    goto Error;
-                }
-            }
+        Success = BindComplete(TraceContext, TraceStore, FirstMemoryMap);
+        if (!Success) {
+            goto Error;
         }
+
+        //
+        // Clear the BindComplete pointer so we don't attempt to call it again
+        // below.
+        //
+
+        BindComplete = NULL;
+    }
+
+    if (!IsReadonly && IsMetadata && IsSingleRecord(Traits)) {
+
+        //
+        // This will fake a single record allocation by manually setting the
+        // trace store's end of file and totals to appropriate values.  (We
+        // can't use TraceStore->AllocateRecords() here because that routine
+        // doesn't support allocations against "single record" trace stores.)
+        //
+
+        InitializeMetadataFromRecordSize(TraceStore);
     }
 
     //
     // If we have a bind complete callback, call it now.
     //
 
-    if (TraceStore->BindComplete) {
+    if (BindComplete) {
         Success = TraceStore->BindComplete(
             TraceContext,
             TraceStore,
@@ -267,6 +278,10 @@ PrepareFirstMemoryMap:
         if (!Success) {
             goto Error;
         }
+    }
+
+    if (!IsReadonly) {
+        CopyTraceStoreTime(TraceContext, TraceStore);
     }
 
     return TRUE;

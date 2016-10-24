@@ -228,6 +228,7 @@ Return Value:
 
 --*/
 #define INIT_METADATA(Name)                                              \
+    Name##Store->Rtl = TraceStore->Rtl;                                  \
     Name##Store->TraceFlags = TraceStore->TraceFlags;                    \
     Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;    \
     Name##Store->IsMetadata = TRUE;                                      \
@@ -597,6 +598,27 @@ Return Value:
 --*/
 {
 
+    //
+    // Create the all memory maps are free event.  This event is signaled when
+    // the count of active memory maps reaches zero.  The counter is decremented
+    // atomically each time a memory map is pushed to the free list.  The event
+    // is waited on during CloseStore().
+    //
+
+    TraceStore->AllMemoryMapsAreFreeEvent = (
+        CreateEvent(
+            NULL,
+            FALSE,
+            FALSE,
+            NULL
+        )
+    );
+
+    if (!TraceStore->AllMemoryMapsAreFreeEvent) {
+        return FALSE;
+    }
+
+
     if (IsSingleRecord(*TraceStore->pTraits)) {
 
         //
@@ -624,26 +646,6 @@ Return Value:
     );
 
     if (!TraceStore->NextMemoryMapAvailableEvent) {
-        return FALSE;
-    }
-
-    //
-    // Create the all memory maps are free event.  This event is signaled when
-    // the count of active memory maps reaches zero.  The counter is decremented
-    // atomically each time a memory map is pushed to the free list.  The event
-    // is waited on during CloseStore().
-    //
-
-    TraceStore->AllMemoryMapsAreFreeEvent = (
-        CreateEvent(
-            NULL,
-            FALSE,
-            FALSE,
-            NULL
-        )
-    );
-
-    if (!TraceStore->AllMemoryMapsAreFreeEvent) {
         return FALSE;
     }
 
@@ -745,9 +747,8 @@ TraceStoreBindComplete(
 Routine Description:
 
     This routine is called by BindStore() once a normal (non-metadata) trace
-    store has been successfully bound to a context.
-
-    N.B.: This routine currently doesn't do anything.
+    store has been successfully bound to a context.  Is is responsible for
+    wiring up all of the metadata store base addresses to the relevant pointers.
 
 Arguments:
 
@@ -765,6 +766,28 @@ Return Value:
 
 --*/
 {
+
+    TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
+        TraceStore->AllocationStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->Info = (PTRACE_STORE_INFO)(
+        TraceStore->InfoStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->Bitmap = (PTRACE_STORE_BITMAP)(
+        TraceStore->BitmapStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->Reloc = (PTRACE_STORE_RELOC)(
+        TraceStore->RelocationStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->Eof = &TraceStore->Info->Eof;
+    TraceStore->Time = &TraceStore->Info->Time;
+    TraceStore->Stats = &TraceStore->Info->Stats;
+    TraceStore->Totals = &TraceStore->Info->Totals;
+
     return TRUE;
 }
 
