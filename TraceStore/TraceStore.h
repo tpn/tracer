@@ -373,10 +373,25 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG StreamingRead:1;
 
     //
+    // When set, indicates that the store will receive frequent allocations,
+    // which is usually the case for event trace stores.  Setting this flag
+    // will increase the number of initial memory maps prepared for the trace
+    // store, and increase the default file size and memory map size.
+    //
+    // Invariants:
+    //
+    //   - If FrequentAllocations == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //      Assert StreamingWrite == TRUE
+    //
+
+    ULONG FrequentAllocations:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:27;
+    ULONG Unused:26;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -404,7 +419,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     MultipleRecordsTrait                =  1 << 2,
     StreamingWriteTrait                 =  1 << 3,
     StreamingReadTrait                  =  1 << 4,
-    InvalidTrait                        = (1 << 4) + 1
+    FrequentAllocationsTrait            =  1 << 5,
+    InvalidTrait                        = (1 << 5) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -430,16 +446,18 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 //
 
 #define HasVaryingRecords(Traits) ((Traits).VaryingRecordSize)
-#define IsFixedRecordSize(Traits) (!(Traits).VaryingRecordSize)
+#define IsFixedRecordSize(Traits) (!((Traits).VaryingRecordSize))
 
 #define IsRecordSizeAlwaysPowerOf2(Traits) ((Traits).RecordSizeIsAlwaysPowerOf2)
 
 #define HasMultipleRecords(Traits) ((Traits).MultipleRecords)
-#define IsSingleRecord(Traits) (!(Traits).MultipleRecords)
+#define IsSingleRecord(Traits) (!((Traits).MultipleRecords))
 
 #define IsStreamingWrite(Traits) ((Traits).StreamingWrite)
 #define IsStreamingRead(Traits) ((Traits).StreamingRead)
 #define IsStreaming(Traits) ((Traits).StreamingRead || (Traits).StreamingWrite)
+
+#define IsFrequentAllocator(Traits) ((Traits).FrequentAllocations)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of

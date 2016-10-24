@@ -18,7 +18,6 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
-DECLSPEC_NOINLINE
 BOOL
 GetNumberOfMemoryMapsRequiredByTraceStore(
     PTRACE_STORE TraceStore,
@@ -49,6 +48,7 @@ Return Value:
     BOOL IsReadonly;
     BOOL IsMetadata;
     USHORT NumberOfMaps;
+    USHORT Multiplier;
     TRACE_STORE_TRAITS Traits;
 
     Traits = *TraceStore->pTraits;
@@ -59,6 +59,16 @@ Return Value:
 
     *NumberOfMapsPointer = 0;
 
+    //
+    // Initialize multiplier.
+    //
+
+    if (IsFrequentAllocator(Traits)) {
+        Multiplier = InitialFreeMemoryMapMultiplierForFrequentAllocators;
+    } else {
+        Multiplier = 0;
+    }
+
     if (IsSingleRecord(Traits)) {
 
         //
@@ -66,6 +76,7 @@ Return Value:
         //
 
         if (TraceStore->TotalNumberOfMemoryMaps > 0) {
+            __debugbreak();
             return FALSE;
         }
 
@@ -97,21 +108,8 @@ Return Value:
         }
     } else {
         if (IsStreamingWrite(Traits)) {
-
-            //
-            // Streaming writers have a fixed number of memory maps, and should
-            // never need to call CreateMemoryMapsForTraceStore() once those
-            // maps have been allocated.  Check this invariant now.
-            //
-
-            if (TraceStore->TotalNumberOfMemoryMaps > 0) {
-                __debugbreak();
-                return FALSE;
-            }
-            NumberOfMaps = NumberOfMemoryMapsForStreamingWriters;
-            goto End;
-        }
-        if (IsMetadata) {
+            NumberOfMaps = InitialFreeMemoryMapsForStreamingWriters;
+        } else if (IsMetadata) {
             NumberOfMaps = InitialFreeMemoryMapsForNonStreamingMetadataWriters;
         } else {
             NumberOfMaps = InitialFreeMemoryMapsForNonStreamingWriters;
@@ -119,7 +117,8 @@ Return Value:
     }
 
     //
-    // Sanity check the final number.
+    // Sanity check the final number isn't zero, apply the multiplier if
+    // applicable, then verify our final number is a power of two.
     //
 
     if (NumberOfMaps == 0) {
@@ -127,10 +126,15 @@ Return Value:
         return FALSE;
     }
 
+    if (Multiplier) {
+        NumberOfMaps *= Multiplier;
+    }
+
     if (!IsPowerOf2(NumberOfMaps)) {
         __debugbreak();
         return FALSE;
     }
+
 
 End:
     //
@@ -411,7 +415,7 @@ Return Value:
 
         //
         // This shouldn't occur if all our memory map machinery is working
-        // correctly as maps are prepared sequentially.
+        // correctly, as maps are prepared and consumed in-order.
         //
 
         __debugbreak();
