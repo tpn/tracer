@@ -1142,7 +1142,6 @@ typedef struct _TRACE_STORE {
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
     LARGE_INTEGER           MappingSize;
-    PTP_WORK                FinalizeFirstMemoryMapWork;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                PrepareNextMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
