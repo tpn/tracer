@@ -18,6 +18,7 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
+DECLSPEC_NOINLINE
 BOOL
 GetNumberOfMemoryMapsRequiredByTraceStore(
     PTRACE_STORE TraceStore,
@@ -971,7 +972,7 @@ _Use_decl_annotations_
 VOID
 SubmitCloseMemoryMapThreadpoolWork(
     PTRACE_STORE TraceStore,
-    PPTRACE_STORE_MEMORY_MAP MemoryMap
+    PPTRACE_STORE_MEMORY_MAP MemoryMapPointer
     )
 /*++
 
@@ -985,9 +986,9 @@ Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE structure.
 
-    MemoryMap - Supplies a pointer to an address that contains a pointer to the
-        trace store memory map to close.  The pointer will be cleared as the
-        last step of this routine.
+    MemoryMapPointer - Supplies a pointer to an address that contains a pointer
+        to the trace store memory map to close.  The pointer will be cleared as
+        the last step of this routine.
 
 Return Value:
 
@@ -995,6 +996,7 @@ Return Value:
 
 --*/
 {
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
     // Validate arguments.
@@ -1004,9 +1006,17 @@ Return Value:
         return;
     }
 
-    if (!ARGUMENT_PRESENT(MemoryMap) || !*MemoryMap) {
+    if (!ARGUMENT_PRESENT(MemoryMapPointer)) {
         return;
     }
+
+    MemoryMap = *MemoryMapPointer;
+
+    if (!MemoryMap) {
+        return;
+    }
+
+    *MemoryMapPointer = NULL;
 
     //
     // Push the referenced memory map onto the trace store's close memory map
@@ -1014,9 +1024,8 @@ Return Value:
     // memory map pointer.
     //
 
-    PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, *MemoryMap);
+    PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, MemoryMap);
     SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
-    *MemoryMap = NULL;
 }
 
 _Use_decl_annotations_
@@ -1098,6 +1107,18 @@ Return Value:
     TraceContext = TraceStore->TraceContext;
 
     //
+    // We may not have a stats struct available yet if this is the first
+    // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
+    // point the pointer at a dummy one.  This simplifies the rest of the
+    // code in the function.
+    //
+
+    Stats = TraceStore->Stats;
+    if (!Stats) {
+        Stats = &DummyStats;
+    }
+
+    //
     // Fast-path for first memory map; we can avoid the logic that checks to
     // see if we need to close any existing maps.
     //
@@ -1119,18 +1140,6 @@ Return Value:
     if (IsSingleRecord(Traits)) {
         __debugbreak();
         return FALSE;
-    }
-
-    //
-    // We may not have a stats struct available yet if this is the first
-    // call to ConsumeNextTraceStoreMemoryMap().  If that's the case, just
-    // point the pointer at a dummy one.  This simplifies the rest of the
-    // code in the function.
-    //
-
-    Stats = TraceStore->Stats;
-    if (!Stats) {
-        Stats = &DummyStats;
     }
 
     //
@@ -1160,13 +1169,13 @@ Return Value:
     }
 
     //
-    // We need to retire this memory map.  If we're metadata or there's no
-    // underlying address record for this memory map, we can go straight to the
-    // retire logic.  Otherwise, we need to update the various timestamps.
+    // We need to retire (close) this memory map.  If we're metadata or there's
+    // no underlying address record for this memory map, we can go straight to
+    // the logic that closes the map.  Otherwise, we need to update the various
+    // timestamps.
     //
 
     AddressPointer = PrevPrevMemoryMap->pAddress;
-
     if (IsMetadata || (AddressPointer == NULL)) {
         goto CloseOldMemoryMap;
     }

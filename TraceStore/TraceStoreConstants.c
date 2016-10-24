@@ -343,7 +343,7 @@ USHORT InitialFreeMemoryMapsForNonStreamingWriters = 256;
 USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 128;
 USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
 
-USHORT NumberOfMemoryMapsForStreamingWriters = 16;
+USHORT NumberOfMemoryMapsForStreamingWriters = 32;
 
 USHORT TraceStoreMetadataInfoStructSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
