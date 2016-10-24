@@ -105,6 +105,10 @@ extern "C" {
 #define DECLSPEC_NOALIAS __declspec(noalias)
 #endif
 
+#ifndef DECLSPEC_NOINLINE
+#define DECLSPEC_NOINLINE __declspec(noinline)
+#endif
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
