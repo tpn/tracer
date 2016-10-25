@@ -97,7 +97,7 @@ Return Value:
 
     if (!TraceStore->FileHandle ||
         TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-
+        TraceStore->LastError = GetLastError();
         goto Error;
     }
 
@@ -150,7 +150,7 @@ Error:
     // Attempt to close the trace store if an error occurs.
     //
 
-    CloseTraceStore(TraceStore);
+    CloseStore(TraceStore);
 
     return FALSE;
 }
@@ -469,14 +469,7 @@ Return Value:
 
     if (!TraceStore->FileHandle ||
         TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-
-        //
-        // We weren't able to open the file handle successfully.  In lieu of
-        // better error logging, a breakpoint can be set here in a debug build
-        // to see what the last error was.
-        //
-
-        DWORD LastError = GetLastError();
+        TraceStore->LastError = GetLastError();
         goto Error;
     }
 

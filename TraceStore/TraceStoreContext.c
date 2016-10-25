@@ -114,10 +114,6 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(TraceSession)) {
-        return FALSE;
-    }
-
     if (!ARGUMENT_PRESENT(TraceStores)) {
         return FALSE;
     }
@@ -128,6 +124,7 @@ Return Value:
 
     if (ARGUMENT_PRESENT(TraceContextFlags)) {
         ContextFlags = *TraceContextFlags;
+        ContextFlags.Valid = FALSE;
     } else {
         SecureZeroMemory(&ContextFlags, sizeof(ContextFlags));
     }
@@ -144,8 +141,14 @@ Return Value:
     } else {
         if (TraceStores->Flags.Readonly) {
             return FALSE;
+        } else if (!ARGUMENT_PRESENT(TraceSession)) {
+            return FALSE;
         }
     }
+
+    //
+    // If we're not readonly, make sure the user has provided a trace session.
+    //
 
     //
     // Zero the structure before we start using it.
@@ -287,6 +290,92 @@ Error:
     CLEANUP_WORK(BindTraceStore);
 
     return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializeReadonlyTraceContext(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACE_CONTEXT TraceContext,
+    PULONG SizeOfTraceContext,
+    PTRACE_SESSION TraceSession,
+    PTRACE_STORES TraceStores,
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    PTRACE_CONTEXT_FLAGS TraceContextFlags,
+    PVOID UserData
+    )
+/*++
+
+Routine Description:
+
+    This routine initializes a readonly TRACE_CONTEXT structure.  It is a
+    convenience method that is equivalent to calling InitializeTraceContext()
+    with TraceContextFlags->Readonly set to TRUE.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    SizeOfTraceContext - Supplies a pointer to a variable that contains the
+        buffer size allocated for the TraceContext parameter.  The actual size
+        of the structure will be written to this variable.
+
+    TraceSession - This parameter is ignored and a NULL value is passed to
+        InitializeTraceContext() instead.
+
+    TraceStores - Supplies a pointer to a TRACE_STORES structure to bind the
+        trace context to.
+
+    ThreadpoolCallbackEnvironment - Supplies a pointer to a threadpool callback
+        environment to use for the trace context.  This threadpool will be used
+        to submit various asynchronous thread pool memory map operations.
+
+    TraceContextFlags - Supplies an optional pointer to a TRACE_CONTEXT_FLAGS
+        structure to use for the trace context.  The Readonly flag will always
+        be set on the flags passed over to InitializeTraceContext().
+
+    UserData - Supplies an optional pointer to user data that can be used by
+        a caller to track additional context information per TRACE_CONTEXT
+        structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  The required buffer size for the
+    TRACE_CONTEXT structure can be obtained by passing in a valid pointer
+    for SizeOfTraceContext and NULL for the remaining parameters.
+
+--*/
+{
+    TRACE_CONTEXT_FLAGS Flags = { 0 };
+
+    //
+    // Load the caller's flags if the pointer is non-NULL.
+    //
+
+    if (ARGUMENT_PRESENT(TraceContextFlags)) {
+        Flags = *TraceContextFlags;
+    }
+
+    //
+    // Set the readonly flag.
+    //
+
+    Flags.Readonly = TRUE;
+
+    return InitializeTraceContext(Rtl,
+                                  Allocator,
+                                  TraceContext,
+                                  SizeOfTraceContext,
+                                  NULL,
+                                  TraceStores,
+                                  ThreadpoolCallbackEnvironment,
+                                  &Flags,
+                                  UserData);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

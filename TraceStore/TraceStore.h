@@ -181,8 +181,21 @@ typedef struct _TRACE_STORE_ADDRESS {
     DWORD FulfillingThreadId;                               // 4    124 128
 
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
-
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
+
+typedef struct _TRACE_STORE_ADDRESS_RANGE {
+    PVOID BaseAddress;
+    PVOID EndAddress;
+    PVOID PreferredBaseAddress;
+    union {
+        ULONG Id;
+        TRACE_STORE_ID TraceStoreId;
+    };
+    union {
+        ULONG Index;
+        TRACE_STORE_INDEX TraceStoreIndex;
+    };
+} TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -1515,28 +1528,7 @@ BOOL
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
-
-//
-// TraceStoreReadonlyContext-related functions.
-//
-
-typedef
-_Success_(return != 0)
-BOOL
-(INITIALIZE_READONLY_TRACE_CONTEXT)(
-    _In_opt_ PRTL                    Rtl,
-    _In_opt_ PALLOCATOR              Allocator,
-    _Inout_bytecap_(*SizeOfReadonlyTraceContext)
-             PREADONLY_TRACE_CONTEXT ReadonlyTraceContext,
-    _In_     PULONG                  SizeOfReadonlyTraceContext,
-    _In_opt_ PTRACE_STORES           TraceStores,
-    _In_opt_ PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_ PVOID                   UserData
-    );
-typedef INITIALIZE_READONLY_TRACE_CONTEXT \
-      *PINITIALIZE_READONLY_TRACE_CONTEXT;
-TRACE_STORE_API INITIALIZE_READONLY_TRACE_CONTEXT \
-                InitializeReadonlyTraceContext;
+TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeReadonlyTraceContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
