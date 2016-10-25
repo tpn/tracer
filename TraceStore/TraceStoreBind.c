@@ -13,12 +13,8 @@ Abstract:
     stores and metadata trace stores, as well as between tracing sessions
     and readonly ones.
 
-    Functions are provided to bind common trace store (BindStore()), bind
-    metadata info trace stores (BindMetadataInfoStore()), bind the remaining
-    metadata stores (BindRemainingMetadataStores()), and, finally, binding
-    the actual trace store (BindTraceStore()).
-
-    These routines are called via threadpool callbacks.
+    These routines are typically invoked via threadpool callbacks as part of
+    initializing a trace context.
 
 --*/
 
@@ -76,6 +72,25 @@ Return Value:
     TraceStore->TraceContext = TraceContext;
 
     //
+    // Initialize aliases.
+    //
+
+    IsReadonly = (BOOL)TraceContext->Flags.Readonly;
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    //
+    // If we're readonly, dispatch to the custom bind routines.
+    //
+
+    if (IsReadonly) {
+        if (IsMetadata) {
+            return BindMetadataStoreReadonly(TraceContext, TraceStore);
+        } else {
+            return BindStoreReadonly(TraceContext, TraceStore);
+        }
+    }
+
+    //
     // Create memory maps, events and threadpool work items.
     //
 
@@ -92,31 +107,20 @@ Return Value:
     }
 
     //
-    // Initialize aliases.
+    // Initialize remaining aliases.
     //
 
     Traits = *TraceStore->pTraits;
-    IsReadonly = (BOOL)TraceContext->Flags.Readonly;
-    IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
     BindComplete = TraceStore->BindComplete;
 
     //
-    // Check to see if we're metadata and dispatch to our custom binder if
-    // we're readonly, otherwise, jump straight to preparation of the first
-    // memory map.
+    // If we're metadata, jump straight to the preparation of the first map.
     //
 
     if (IsMetadata) {
-        if (IsReadonly) {
-            return BindMetadataStoreReadonly(TraceContext, TraceStore);
-        }
         MetadataId = TraceStore->TraceStoreMetadataId;
         goto PrepareFirstMemoryMap;
-    }
-
-    if (IsReadonly) {
-        __debugbreak();
     }
 
     //
@@ -125,26 +129,7 @@ Return Value:
 
     Success = LoadNextTraceStoreAddress(TraceStore, &AddressPointer);
     if (!Success) {
-        if (IsReadonly && HasRelocations) {
-
-            //
-            // Not being able to read the :address metadata store if we're
-            // readonly and have relocations is an unrecoverable error.
-            //
-
-            return FALSE;
-        }
-
-        //
-        // (Should we continue if we can't load the first :address?)
-        //
-
-        __debugbreak();
-        goto PrepareFirstMemoryMap;
-    }
-
-    if (IsReadonly) {
-        goto PrepareFirstMemoryMap;
+        return FALSE;
     }
 
     //
@@ -163,13 +148,7 @@ Return Value:
                                       AddressPointer,
                                       sizeof(Address));
     if (FAILED(Result)) {
-
-        //
-        // Ignore and go straight to submission.
-        //
-
-        __debugbreak();
-        goto PrepareFirstMemoryMap;
+        return FALSE;
     }
 
     //
@@ -200,22 +179,15 @@ Return Value:
     Result = Rtl->RtlCopyMappedMemory(AddressPointer,
                                       &Address,
                                       sizeof(Address));
-    if (SUCCEEDED(Result)) {
-
-        //
-        // Update the memory map to point at the address struct.
-        //
-
-        FirstMemoryMap->pAddress = AddressPointer;
-
-    } else {
-
-        //
-        // XXX: failure?
-        //
-
-        __debugbreak();
+    if (FAILED(Result)) {
+        return FALSE;
     }
+
+    //
+    // Update the memory map to point at the address struct.
+    //
+
+    FirstMemoryMap->pAddress = AddressPointer;
 
 PrepareFirstMemoryMap:
 
@@ -262,7 +234,7 @@ PrepareFirstMemoryMap:
         BindComplete = NULL;
     }
 
-    if (!IsReadonly && IsMetadata && IsSingleRecord(Traits)) {
+    if (IsMetadata && IsSingleRecord(Traits)) {
 
         //
         // This will fake a single record allocation by manually setting the
@@ -289,9 +261,11 @@ PrepareFirstMemoryMap:
         }
     }
 
-    if (!IsReadonly) {
-        CopyTraceStoreTime(TraceContext, TraceStore);
-    }
+    //
+    // Finally, copy over the time from the trace context.
+    //
+
+    CopyTraceStoreTime(TraceContext, TraceStore);
 
     return TRUE;
 
@@ -409,6 +383,146 @@ Return Value:
 
 Error:
     UnmapTraceStoreMemoryMap(MemoryMap);
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+BindTraceStoreReadonly(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a readonly trace store to a trace context.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
+        the given TraceStore is to be bound.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that will be
+        bound to the given TraceContext.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsMetadataInfo;
+    TRACE_STORE_TRAITS Traits;
+    PBIND_COMPLETE BindComplete;
+    FILE_STANDARD_INFO FileInfo;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Sanity check we're readonly and we're not a metadata store.
+    //
+
+    if (!TraceStore->IsReadonly || TraceStore->IsMetadata) {
+        return FALSE;
+    }
+
+    //
+    // Load the trace store's traits, which will have been saved in the store's
+    // metadata :info store.
+    //
+
+    Traits = *TraceStore->Traits;
+
+    //
+    // Dispatch to the relevant handler.
+    //
+
+    if (!IsStreamingRead(Traits)) {
+        return BindNonStreamingReadonlyTraceStore(TraceContext, TraceStore);
+    } else {
+        return BindStreamingReadonlyTraceStore(TraceContext, TraceStore);
+    }
+
+}
+
+_Use_decl_annotations_
+BOOL
+BindNonStreamingReadonlyTraceStore(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a non-streaming readonly trace store to a trace context.
+
+    Non-streaming implies that the entire trace store's contents is mapped into
+    memory up-front.  If no other trace stores refer to us, we can simply map
+    ourselves in 2GB chunks and be done.
+
+    If other trace stores refer to us, then they'll need to perform relocations
+    on any pointers embedded within their store that refer to us if either: a)
+    we can't be mapped at the original address we had (the "preferred base
+    address"), or b) we had an "preferred address unavailable" events occur when
+    we were being written to (indicated by Stats->PreferredAddressUnavailable).
+
+    We create 1 + Stats->PreferredAddressUnavailable maps.  The first map starts
+    at byte 0 and extends to the point where we encountered our first preferred
+    address unavailable event.  That gets carved off as memory map number one.
+    We then carve off the next map starting at the first byte of the new range,
+    and scan the :address metadata store looking for the next preferred address
+    unavailable event.  This continues until we have maps filled in for all of
+    the memory map ranges.
+
+    We then loop through the maps and actually attempt to map the addresses at
+    the preferred locations.  If we can't, we adjust the map such that the
+    preferred address and the new base address are both captured.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
+        the given TraceStore is to be bound.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that will be
+        bound to the given TraceContext.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+BindStreamingReadonlyTraceStore(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a streaming readonly trace store to a trace context.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
+        the given TraceStore is to be bound.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that will be
+        bound to the given TraceContext.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
     return FALSE;
 }
 
