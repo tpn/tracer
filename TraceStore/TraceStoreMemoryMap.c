@@ -60,6 +60,13 @@ Return Value:
     *NumberOfMapsPointer = 0;
 
     //
+    // Initialize aliases.
+    //
+
+    IsReadonly = TraceStore->IsReadonly;
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    //
     // Initialize multiplier.
     //
 
@@ -69,7 +76,7 @@ Return Value:
         Multiplier = 0;
     }
 
-    if (IsSingleRecord(Traits)) {
+    if (IsSingleRecord(Traits) || (IsReadonly && IsMetadata)) {
 
         //
         // Make sure a memory map hasn't already been assigned.
@@ -84,24 +91,10 @@ Return Value:
         goto End;
     }
 
-    IsReadonly = TraceStore->IsReadonly;
-    IsMetadata = IsMetadataTraceStore(TraceStore);
-
     if (IsReadonly) {
         if (IsStreamingRead(Traits)) {
-            if (IsMetadata) {
-
-                //
-                // Metadata should not have streaming read set.
-                //
-
-                __debugbreak();
-                return FALSE;
-            }
             NumberOfMaps = InitialFreeMemoryMapsForStreamingReaders;
-            goto End;
-        }
-        if (IsMetadata) {
+        } else if (IsMetadata) {
             NumberOfMaps = InitialFreeMemoryMapsForNonStreamingMetadataReaders;
         } else {
             NumberOfMaps = InitialFreeMemoryMapsForNonStreamingReaders;
@@ -137,6 +130,7 @@ Return Value:
 
 
 End:
+
     //
     // Update the caller's pointer and return success.
     //

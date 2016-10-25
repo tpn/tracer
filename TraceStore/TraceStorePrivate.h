@@ -289,6 +289,17 @@ BOOL
 typedef BIND_STORE *PBIND_STORE;
 BIND_STORE BindStore;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_METADATA_STORE_READONLY)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_METADATA_STORE_READONLY *PBIND_METADATA_STORE_READONLY;
+BIND_METADATA_STORE_READONLY BindMetadataStoreReadonly;
+
 //
 // TraceStoreTime-related functions.
 //

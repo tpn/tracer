@@ -102,12 +102,21 @@ Return Value:
     BindComplete = TraceStore->BindComplete;
 
     //
-    // If we're metadata, go straight to preparation.
+    // Check to see if we're metadata and dispatch to our custom binder if
+    // we're readonly, otherwise, jump straight to preparation of the first
+    // memory map.
     //
 
     if (IsMetadata) {
+        if (IsReadonly) {
+            return BindMetadataStoreReadonly(TraceContext, TraceStore);
+        }
         MetadataId = TraceStore->TraceStoreMetadataId;
         goto PrepareFirstMemoryMap;
+    }
+
+    if (IsReadonly) {
+        __debugbreak();
     }
 
     //
@@ -288,6 +297,118 @@ PrepareFirstMemoryMap:
 
 Error:
     UnmapTraceStoreMemoryMap(FirstMemoryMap);
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+BindMetadataStoreReadonly(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a readonly metadata trace store to a trace context.
+    This algorithm differs from normal "writable" trace session binding in
+    that metadata stores are mapped in their entirety up-front via a single
+    memory map operation.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
+        the given TraceStore is to be bound.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that will be
+        bound to the given TraceContext.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsMetadataInfo;
+    PBIND_COMPLETE BindComplete;
+    FILE_STANDARD_INFO FileInfo;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Sanity check we're readonly and we've been called with a metadata store.
+    //
+
+    if (!TraceStore->IsReadonly || !TraceStore->IsMetadata) {
+        return FALSE;
+    }
+
+    IsMetadataInfo = (
+        TraceStore->TraceStoreMetadataId == TraceStoreMetadataMetadataInfoId
+    );
+
+    MemoryMap = &TraceStore->SingleMemoryMap;
+    MemoryMap->FileHandle = TraceStore->FileHandle;
+
+    if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
+        TraceStore->LastError = GetLastError();
+        return FALSE;
+    }
+
+    MemoryMap->FileOffset.QuadPart = 0;
+    MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+
+    //
+    // Make sure the mapping size is under 2GB.
+    //
+
+    if (MemoryMap->MappingSize.HighPart != 0) {
+        return FALSE;
+    }
+
+    MemoryMap->MappingHandle = CreateFileMappingNuma(
+        MemoryMap->FileHandle,
+        NULL,
+        TraceStore->CreateFileMappingProtectionFlags,
+        MemoryMap->MappingSize.HighPart,
+        MemoryMap->MappingSize.LowPart,
+        NULL,
+        TraceStore->NumaNode
+    );
+
+    if (MemoryMap->MappingHandle == NULL ||
+        MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
+        TraceStore->LastError = GetLastError();
+        return FALSE;
+    }
+
+    MemoryMap->BaseAddress = MapViewOfFileExNuma(
+        MemoryMap->MappingHandle,
+        TraceStore->MapViewOfFileDesiredAccess,
+        MemoryMap->FileOffset.HighPart,
+        MemoryMap->FileOffset.LowPart,
+        MemoryMap->MappingSize.LowPart,
+        0,
+        TraceStore->NumaNode
+    );
+
+    if (!MemoryMap->BaseAddress) {
+        TraceStore->LastError = GetLastError();
+        goto Error;
+    }
+
+    BindComplete = TraceStore->BindComplete;
+    if (BindComplete) {
+        Success = BindComplete(TraceContext, TraceStore, MemoryMap);
+        if (!Success) {
+            goto Error;
+        }
+    }
+
+    return TRUE;
+
+Error:
+    UnmapTraceStoreMemoryMap(MemoryMap);
     return FALSE;
 }
 
