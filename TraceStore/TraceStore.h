@@ -1085,6 +1085,14 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 //
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_MEMORY_MAP {
+
+    //
+    // When we're on a list, ListEntry is live and can't be used.  However,
+    // when we're "active" (i.e. we're pointed to by one of the TraceStore
+    // memory map pointers, like TraceStore->MemoryMap), the ListEntry slot
+    // can be used for other purposes.
+    //
+
     union {
         DECLSPEC_ALIGN(16) SLIST_ENTRY              ListEntry;   // 8       8
         struct {

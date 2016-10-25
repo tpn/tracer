@@ -300,6 +300,41 @@ BOOL
 typedef BIND_METADATA_STORE_READONLY *PBIND_METADATA_STORE_READONLY;
 BIND_METADATA_STORE_READONLY BindMetadataStoreReadonly;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_TRACE_STORE_READONLY)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_TRACE_STORE_READONLY *PBIND_TRACE_STORE_READONLY;
+BIND_TRACE_STORE_READONLY BindTraceStoreReadonly;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_NON_STREAMING_READONLY_TRACE_STORE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_NON_STREAMING_READONLY_TRACE_STORE \
+      *PBIND_NON_STREAMING_READONLY_TRACE_STORE;
+BIND_NON_STREAMING_READONLY_TRACE_STORE BindNonStreamingReadonlyTraceStore;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_STREAMING_READONLY_TRACE_STORE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_STREAMING_READONLY_TRACE_STORE \
+      *PBIND_STREAMING_READONLY_TRACE_STORE;
+BIND_STREAMING_READONLY_TRACE_STORE BindStreamingReadonlyTraceStore;
+
 //
 // TraceStoreTime-related functions.
 //
