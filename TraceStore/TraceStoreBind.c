@@ -460,7 +460,7 @@ Routine Description:
     If other trace stores refer to us, then they'll need to perform relocations
     on any pointers embedded within their store that refer to us if either: a)
     we can't be mapped at the original address we had (the "preferred base
-    address"), or b) we had an "preferred address unavailable" events occur when
+    address"), or b) we had a "preferred address unavailable" events occur when
     we were being written to (indicated by Stats->PreferredAddressUnavailable).
 
     We create 1 + Stats->PreferredAddressUnavailable maps.  The first map starts
