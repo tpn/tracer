@@ -86,7 +86,7 @@ Return Value:
         if (IsMetadata) {
             return BindMetadataStoreReadonly(TraceContext, TraceStore);
         } else {
-            return BindStoreReadonly(TraceContext, TraceStore);
+            return BindTraceStoreReadonly(TraceContext, TraceStore);
         }
     }
 
@@ -412,12 +412,7 @@ Return Value:
 
 --*/
 {
-    BOOL Success;
-    BOOL IsMetadataInfo;
     TRACE_STORE_TRAITS Traits;
-    PBIND_COMPLETE BindComplete;
-    FILE_STANDARD_INFO FileInfo;
-    PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
     // Sanity check we're readonly and we're not a metadata store.
