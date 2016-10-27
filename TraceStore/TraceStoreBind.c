@@ -489,6 +489,30 @@ Return Value:
 
 --*/
 {
+    ULONG NumberOfMaps;
+    ULONG PreferredAddressUnavailable;
+    ULARGE_INTEGER TwoGigabytes = { 1 << 31 };
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    Stats = TraceStore->Stats;
+    Totals = TraceStore->Totals;
+
+    PreferredAddressUnavailable = Stats->PreferredAddressUnavailable;
+
+    if (PreferredAddressUnavailable == 0) {
+        if (Totals->AllocationSize.QuadPart > TwoGigabytes.QuadPart) {
+            __debugbreak();
+        } else {
+            NumberOfMaps = 1;
+        }
+    }
+
+    if (NumberOfMaps == 1) {
+        MemoryMap = &TraceStore->SingleMemoryMap;
+    }
+
     return FALSE;
 }
 

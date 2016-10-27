@@ -1236,6 +1236,7 @@ typedef struct _TRACE_STORE {
             ULONG IsMetadata:1;
             ULONG HasRelocations:1;
             ULONG NoTruncate:1;
+            ULONG IsRelocationTarget:1;
         };
     };
 
