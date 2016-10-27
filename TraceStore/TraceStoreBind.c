@@ -489,15 +489,23 @@ Return Value:
 
 --*/
 {
+    ULONG Index;
     ULONG NumberOfMaps;
+    ULONG NumberOfAddresses;
     ULONG PreferredAddressUnavailable;
     ULARGE_INTEGER TwoGigabytes = { 1 << 31 };
     PTRACE_STORE_STATS Stats;
     PTRACE_STORE_TOTALS Totals;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
+    PTRACE_STORE_ADDRESS Address;
+    PTRACE_STORE_ADDRESS FirstAddress;
+    PTRACE_STORE_ADDRESS PreviousAddress;
+    PTRACE_STORE AddressStore;
+    ULONG_PTR ExpectedNextAddress;
 
     Stats = TraceStore->Stats;
     Totals = TraceStore->Totals;
+    AddressStore = TraceStore->AddressStore;
 
     PreferredAddressUnavailable = Stats->PreferredAddressUnavailable;
 
@@ -512,6 +520,28 @@ Return Value:
     if (NumberOfMaps == 1) {
         MemoryMap = &TraceStore->SingleMemoryMap;
     }
+
+    NumberOfAddresses = AddressStore->Totals->NumberOfAllocations;
+
+    FirstAddress = (PTRACE_STORE_ADDRESS)AddressStore->MemoryMap->BaseAddress;
+    PreviousAddress = NULL;
+    Address = FirstAddress;
+
+    if (NumberOfAddresses == 1) {
+        goto CreateMaps;
+    }
+
+    ExpectedNextAddress = (
+        ((ULONG_PTR)Address) +
+        AddressStore->MemoryMap->MappingSize
+    );
+
+    for (Index = 0; Index < NumberOfAddresses; Index++) {
+
+
+    }
+
+CreateMaps:
 
     return FALSE;
 }
