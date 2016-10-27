@@ -251,7 +251,7 @@ Return Value:
     }
 
     if (!PopBindTraceStore(TraceContext, &TraceStore)) {
-        goto Error;
+        return;
     }
 
     Success = BindStore(TraceContext, TraceStore);
