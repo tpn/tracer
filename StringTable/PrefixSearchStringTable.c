@@ -204,7 +204,7 @@ Return Value:
     // Shift each 16-bit element to the right by 8 bits, zero-filling the upper
     // bits.  This will remove the leading high byte from coming up in the mask
     // we generate below, allowing us to use popcount to get the number of slots
-    // to count in the subsequent step.
+    // to compare in the subsequent step.
     //
 
     IncludeSlotsShifted = _mm256_srli_epi16(IncludeSlots, 8);
