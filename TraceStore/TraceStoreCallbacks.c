@@ -179,7 +179,7 @@ Return Value:
     }
 
     if (!PopBindRemainingMetadataTraceStore(TraceContext, &MetadataStore)) {
-        goto Error;
+        return;
     }
 
     Success = BindStore(TraceContext, MetadataStore);
