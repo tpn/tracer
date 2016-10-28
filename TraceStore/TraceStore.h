@@ -520,12 +520,13 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO Allocation;
     TRACE_STORE_INFO Relocation;
     TRACE_STORE_INFO Address;
+    TRACE_STORE_INFO AddressRange;
     TRACE_STORE_INFO Bitmap;
     TRACE_STORE_INFO Info;
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
-C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 1536);
+C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 2048);
 
 //
 // For trace stores that record instances of structures from a running program,

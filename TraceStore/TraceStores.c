@@ -471,6 +471,7 @@ Return Value:
             AllocationStore,
             RelocationStore,
             AddressStore,
+            AddressRangeStore,
             BitmapStore,
             InfoStore,
             InitialSize,

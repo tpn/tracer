@@ -243,6 +243,7 @@ Return Value:
     Name##Store->AllocationStore = AllocationStore;                      \
     Name##Store->RelocationStore = RelocationStore;                      \
     Name##Store->AddressStore = AddressStore;                            \
+    Name##Store->AddressRangeStore = AddressRangeStore;                  \
     Name##Store->BitmapStore = BitmapStore;                              \
     Name##Store->InfoStore = InfoStore;                                  \
     Name##Store->BindComplete = (                                        \
@@ -288,6 +289,7 @@ InitializeTraceStore(
     PTRACE_STORE AllocationStore,
     PTRACE_STORE RelocationStore,
     PTRACE_STORE AddressStore,
+    PTRACE_STORE AddressRangeStore,
     PTRACE_STORE BitmapStore,
     PTRACE_STORE InfoStore,
     ULONG InitialSize,
@@ -326,6 +328,10 @@ Arguments:
     AddressStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the address metadata store for the given TraceStore being
         initialized.
+
+    AddressRangeStore - Supplies a pointer to a TRACE_STORE struct that will
+        be used as the address range metadata store for the given TraceStore
+        being initialized.
 
     BitmapStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the free space bitmap metadata store for the given TraceStore
@@ -373,6 +379,7 @@ Return Value:
     PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
     PCWSTR RelocationSuffix = TraceStoreRelocationSuffix;
     PCWSTR AddressSuffix = TraceStoreAddressSuffix;
+    PCWSTR AddressRangeSuffix = TraceStoreAddressRangeSuffix;
     PCWSTR BitmapSuffix = TraceStoreBitmapSuffix;
     PCWSTR InfoSuffix = TraceStoreInfoSuffix;
 
@@ -408,6 +415,10 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(AddressRangeStore)) {
+        return FALSE;
+    }
+
     if (!ARGUMENT_PRESENT(BitmapStore)) {
         return FALSE;
     }
@@ -440,6 +451,7 @@ Return Value:
     INIT_METADATA_PATH(Allocation);
     INIT_METADATA_PATH(Relocation);
     INIT_METADATA_PATH(Address);
+    INIT_METADATA_PATH(AddressRange);
     INIT_METADATA_PATH(Bitmap);
     INIT_METADATA_PATH(Info);
 
@@ -505,6 +517,7 @@ Return Value:
     INIT_METADATA(Allocation);
     INIT_METADATA(Relocation);
     INIT_METADATA(Address);
+    INIT_METADATA(AddressRange);
     INIT_METADATA(Bitmap);
     INIT_METADATA(Info);
 

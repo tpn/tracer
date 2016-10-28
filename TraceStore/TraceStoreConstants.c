@@ -34,37 +34,43 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStringTable.dat",
 };
 
-WCHAR TraceStoreMetadataInfoSuffix[] = L":metadatainfo";
+WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
 DWORD TraceStoreMetadataInfoSuffixLength = (
     sizeof(TraceStoreMetadataInfoSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAllocationSuffix[] = L":allocation";
+WCHAR TraceStoreAllocationSuffix[] = L":Allocation";
 DWORD TraceStoreAllocationSuffixLength = (
     sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreRelocationSuffix[] = L":relocation";
+WCHAR TraceStoreRelocationSuffix[] = L":Relocation";
 DWORD TraceStoreRelocationSuffixLength = (
     sizeof(TraceStoreRelocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAddressSuffix[] = L":address";
+WCHAR TraceStoreAddressSuffix[] = L":Address";
 DWORD TraceStoreAddressSuffixLength = (
     sizeof(TraceStoreAddressSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreBitmapSuffix[] = L":bitmap";
+WCHAR TraceStoreAddressRangeSuffix[] = L":AddressRange";
+DWORD TraceStoreAddressRangeSuffixLength = (
+    sizeof(TraceStoreAddressRangeSuffix) /
+    sizeof(WCHAR)
+);
+
+WCHAR TraceStoreBitmapSuffix[] = L":Bitmap";
 DWORD TraceStoreBitmapSuffixLength = (
     sizeof(TraceStoreBitmapSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreInfoSuffix[] = L":info";
+WCHAR TraceStoreInfoSuffix[] = L":Info";
 DWORD TraceStoreInfoSuffixLength = (
     sizeof(TraceStoreInfoSuffix) /
     sizeof(WCHAR)
@@ -81,6 +87,7 @@ USHORT NumberOfTraceStores = (
 );
 
 USHORT ElementsPerTraceStore = 7;
+USHORT NumberOfMetadataStores = 6;
 
 //
 // The Event trace store gets an initial file size of 16MB, everything else
@@ -378,23 +385,27 @@ USHORT TraceStoreRelocationStructSize = (
     sizeof(TRACE_STORE_FIELD_RELOC)
 );
 USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
+USHORT TraceStoreAddressRangeStructSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
 USHORT TraceStoreBitmapStructSize = sizeof(TRACE_STORE_BITMAP);
 USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
-ULONG DefaultTraceStoreEventMappingSize = (1 << 23);       // 16MB
+ULONG DefaultTraceStoreMappingSize = (1 << 21);             //  4MB
+ULONG DefaultTraceStoreEventMappingSize = (1 << 23);        // 16MB
 
-ULONG DefaultAllocationTraceStoreSize = (1 << 21);         //  4MB
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);  // 64KB
+ULONG DefaultAllocationTraceStoreSize = (1 << 21);          //  4MB
+ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);   // 64KB
 
-ULONG DefaultRelocationTraceStoreSize = (1 << 16);         // 64KB
-ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);  // 64KB
+ULONG DefaultRelocationTraceStoreSize = (1 << 16);          // 64KB
+ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);   // 64KB
 
-ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
+ULONG DefaultAddressTraceStoreSize = (1 << 21);             //  4MB
+ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);      // 64KB
 
-ULONG DefaultBitmapTraceStoreSize = (1 << 16);             // 64KB
-ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);      // 64KB
+ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);        // 64KB
+ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16); // 64KB
+
+ULONG DefaultBitmapTraceStoreSize = (1 << 16);              // 64KB
+ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);       // 64KB
 
 ULONG DefaultMetadataInfoTraceStoreSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -450,6 +461,16 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
 };
 
 TRACE_STORE_TRAITS AddressStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    0,  // StreamingRead
+    0,  // FrequentAllocations
+    0   // Unused
+};
+
+TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
