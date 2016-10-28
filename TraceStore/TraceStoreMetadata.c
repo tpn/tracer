@@ -35,11 +35,11 @@ PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
 
 CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
     MetadataInfoMetadataBindComplete,       // MetadataInfo
-    NULL,                                   // Allocation
+    AllocationMetadataBindComplete,         // Allocation
     RelocationMetadataBindComplete,         // Relocation
     NULL,                                   // Address
     NULL,                                   // Bitmap
-    NULL                                    // Info
+    InfoMetadataBindComplete                // Info
 };
 
 _Use_decl_annotations_
@@ -248,16 +248,124 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     PTRACE_STORE TraceStore;
 
     TraceStore = RelocationStore->TraceStore;
+
+    //
+    // This needs to be fixed to not rely on HasRelocations.
+    //
+
     if (!TraceStore->HasRelocations) {
         return TRUE;
     } else if (TraceStore->IsReadonly) {
-        return LoadTraceStoreRelocationInfo(TraceStore);
+        Success = LoadTraceStoreRelocationInfo(TraceStore);
     } else {
-        return SaveTraceStoreRelocationInfo(TraceStore);
+        Success = SaveTraceStoreRelocationInfo(TraceStore);
     }
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+AllocationMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE AllocationStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :allocation metadata.
+    It initializes the TraceStore->Allocation pointer.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    AllocationStore - Supplies a pointer to the :allocation TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    TraceStore = AllocationStore->TraceStore;
+    TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
+        TraceStore->AllocationStore->MemoryMap->BaseAddress
+    );
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+InfoMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE InfoStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :info stores.
+
+    It calls LoadTraceStoreTInfo() if this is a readonly session,
+    or SaveTraceStoreRelocationInfo() if this is a normal writable session.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    InfoStore - Supplies a pointer to the :info metadata trace store.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    TraceStore = InfoStore->TraceStore;
+
+    //
+    // Wire up the convenience pointers.
+    //
+
+    TraceStore->Info = (PTRACE_STORE_INFO)(
+        TraceStore->InfoStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->Eof = &TraceStore->Info->Eof;
+    TraceStore->Time = &TraceStore->Info->Time;
+    TraceStore->Stats = &TraceStore->Info->Stats;
+    TraceStore->Totals = &TraceStore->Info->Totals;
+    TraceStore->Traits = &TraceStore->Info->Traits;
+
+    //
+    // Load traits if we're readonly, save traits if not.
+    //
+
+    if (TraceStore->IsReadonly) {
+        Success = LoadTraceStoreTraits(TraceStore);
+    } else {
+        Success = SaveTraceStoreTraits(TraceStore);
+    }
+
+    return Success;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

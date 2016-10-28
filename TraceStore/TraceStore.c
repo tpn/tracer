@@ -760,26 +760,9 @@ Return Value:
 --*/
 {
 
-    TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
-        TraceStore->AllocationStore->MemoryMap->BaseAddress
-    );
-
-    TraceStore->Info = (PTRACE_STORE_INFO)(
-        TraceStore->InfoStore->MemoryMap->BaseAddress
-    );
-
     TraceStore->Bitmap = (PTRACE_STORE_BITMAP)(
         TraceStore->BitmapStore->MemoryMap->BaseAddress
     );
-
-    TraceStore->Reloc = (PTRACE_STORE_RELOC)(
-        TraceStore->RelocationStore->MemoryMap->BaseAddress
-    );
-
-    TraceStore->Eof = &TraceStore->Info->Eof;
-    TraceStore->Time = &TraceStore->Info->Time;
-    TraceStore->Stats = &TraceStore->Info->Stats;
-    TraceStore->Totals = &TraceStore->Info->Totals;
 
     return TRUE;
 }
@@ -831,7 +814,7 @@ Return Value:
     // If the NoTruncate flag has been set on this store, exit.
     //
 
-    if (TraceStore->NoTruncate) {
+    if (TraceStore->IsMetadata && TraceStore->NoTruncate) {
         return TRUE;
     }
 

@@ -152,6 +152,7 @@ Return Value:
         return FALSE;
     }
 
+    TraceStore->Reloc = Reloc;
 
     return TRUE;
 }

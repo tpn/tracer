@@ -140,16 +140,16 @@ Return Value:
     //
 
     if (TraceStore->IsReadonly) {
-        if (!Traits.StreamingRead) {
+        if (!IsStreamingRead(Traits)) {
             TraceStore->NoRetire = TRUE;
         }
     } else {
-        if (!Traits.StreamingWrite) {
+        if (!IsStreamingWrite(Traits)) {
             TraceStore->NoRetire = TRUE;
         }
     }
 
-    if (!Traits.MultipleRecords) {
+    if (IsSingleRecord(Traits)) {
 
         //
         // Single record stores don't participate in pre-faulting.
@@ -188,6 +188,7 @@ Return Value:
 --*/
 {
     USHORT Index;
+    PTRACE_STORE_TRAITS pTraits;
 
     //
     // Validate arguments.
@@ -202,12 +203,39 @@ Return Value:
     }
 
     //
+    // The TraceStore->Traits and pTraits fields should be set for us by this
+    // point.  Verify that now.
+    //
+
+    if (!TraceStore->pTraits) {
+        return FALSE;
+    }
+
+    if (!TraceStore->Traits) {
+        return FALSE;
+    }
+
+    //
     // Get the array index for this trace store, then load the traits from
-    // the static array.
+    // the static array.  Compare these traits to the ones we're saving and
+    // break if they differ.
     //
 
     Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
-    TraceStore->pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+    pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+
+    if (*((PULONG)pTraits) != *((PULONG)TraceStore->pTraits)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Save the traits.  We can just write to the underlying pointer; we don't
+    // need to go through InfoStore->AllocateRecords() as the backing structure
+    // is "single instance" and allocated up-front.
+    //
+
+    *TraceStore->Traits = *TraceStore->pTraits;
 
     return TRUE;
 }
@@ -236,6 +264,7 @@ Return Value:
 --*/
 {
     USHORT Index;
+    PTRACE_STORE_TRAITS pTraits;
 
     //
     // Validate arguments.
@@ -250,21 +279,40 @@ Return Value:
     }
 
     //
-    // Compatibility shim: if the size of the TRACE_STORE_INFO structure is
-    // 128, it will not contain the TRACE_STORE_TRAITS field.  In this case,
-    // just load the traits from the TraceStoreTraits array.
+    // TraceStore->Traits should be non-NULL here and pTraits should be NULL.
     //
 
-    if (sizeof(TRACE_STORE_INFO) == 128) {
-        Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
-        TraceStore->pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
-        *TraceStore->Traits = *TraceStore->pTraits;
+    if (!TraceStore->Traits) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (TraceStore->pTraits) {
+        __debugbreak();
+        return FALSE;
     }
 
     //
     // Get the array index for this trace store, then load the traits from
-    // the static array.
+    // the static array.  Compare these traits to the ones we're loading and
+    // break if they differ.  (This test will eventually go away as we want
+    // the reader to be independent.)
     //
+
+    Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
+    pTraits = (PTRACE_STORE_TRAITS)&TraceStoreTraits[Index];
+
+    if (*((PULONG)pTraits) != *((PULONG)TraceStore->Traits)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Load the traits.  In this case, loading simply means pointing pTraits
+    // at TraceStore->Traits.
+    //
+
+    TraceStore->pTraits = TraceStore->Traits;
 
     return TRUE;
 }

@@ -226,7 +226,9 @@ typedef TRACE_STORE_METADATA_ID_TO_STORE *PTRACE_STORE_METADATA_ID_TO_STORE;
 TRACE_STORE_METADATA_ID_TO_STORE TraceStoreMetadataIdToStore;
 
 BIND_COMPLETE MetadataInfoMetadataBindComplete;
+BIND_COMPLETE AllocationMetadataBindComplete;
 BIND_COMPLETE RelocationMetadataBindComplete;
+BIND_COMPLETE InfoMetadataBindComplete;
 
 typedef
 PBIND_COMPLETE
