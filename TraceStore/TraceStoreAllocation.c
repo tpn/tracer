@@ -142,7 +142,7 @@ Return Value:
             (ULONG_PTR)EndAddress
         );
 
-        if (!ConsumeNextTraceStoreMemoryMap(TraceStore)) {
+        if (!ConsumeNextTraceStoreMemoryMap(TraceStore, NULL)) {
             return NULL;
         }
 
@@ -303,7 +303,6 @@ UpdateAddresses:
         TraceStore->PrevAddress = MemoryMap->NextAddress;
 
         MemoryMap->NextAddress = NextAddress;
-
     }
 
     if (TraceStore->IsReadonly) {
@@ -364,8 +363,7 @@ End:
         // if it fails.
         //
 
-        Success = ConsumeNextTraceStoreMemoryMap(TraceStore);
-
+        Success = ConsumeNextTraceStoreMemoryMap(TraceStore, NULL);
         if (!Success) {
             NOTHING;
         }
@@ -381,7 +379,7 @@ RecordTraceStoreAllocation(
     PULARGE_INTEGER  RecordSize,
     PULARGE_INTEGER  NumberOfRecords
     )
-/*--
+/*++
 
 Routine Description:
 

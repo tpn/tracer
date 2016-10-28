@@ -107,6 +107,16 @@ ULONG InitialTraceStoreFileSizes[] = {
     10 << 20    // StringTable
 };
 
+
+//
+// N.B. To add a new flag to each store in vim, mark the brace boundaries with
+//      ma and mb, and then run the command:
+//
+//          :'a,'b s:0   // Unused$:0,  // NewFlag\r        0   // Unused:
+//
+//      Where NewFlag is the name of the new flag to add.
+//
+
 TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
     //
@@ -119,6 +129,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         1,  // StreamingWrite
         1,  // StreamingRead
+        1,  // FrequentAllocations
         0   // Unused
     },
 
@@ -132,6 +143,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -145,6 +157,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -158,6 +171,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -171,6 +185,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -184,6 +199,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -197,6 +213,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -210,6 +227,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -223,6 +241,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -236,6 +255,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -249,6 +269,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -262,6 +283,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -275,6 +297,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -288,6 +311,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -301,6 +325,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -314,6 +339,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     },
 
@@ -327,17 +353,20 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
+        0,  // FrequentAllocations
         0   // Unused
     }
-
 };
 
 LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
-SIZE_T InitialTraceContextHeapSize = (1 << 21); // 2MB
-SIZE_T MaximumTraceContextHeapSize = (1 << 26); // 64MB
-
-USHORT InitialFreeMemoryMaps = 32;
+USHORT InitialFreeMemoryMapsForNonStreamingReaders = 128;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingWriters = 256;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 128;
+USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
+USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
+USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 8;
 
 USHORT TraceStoreMetadataInfoStructSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -381,12 +410,22 @@ ULONG DefaultInfoTraceStoreMappingSize = (
     sizeof(TRACE_STORE_INFO)
 );
 
+//
+// N.B. To add a new flag to each store in vim, mark the brace boundaries with
+//      ma and mb, and then run the command:
+//
+//          'a,'b s:0   // Unused$:0,  // NewFlag\r    0   // Unused:
+//
+//      Where NewFlag is the name of the new flag to add.
+//
+
 TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // VaryingRecordSize
     0,  // RecordSizeIsAlwaysPowerOf2
     0,  // MultipleRecords
     0,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
 
@@ -396,6 +435,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     1,  // MultipleRecords
     1,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
 
@@ -405,6 +445,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     1,  // MultipleRecords
     0,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
 
@@ -414,6 +455,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     1,  // MultipleRecords
     1,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
 
@@ -423,6 +465,7 @@ TRACE_STORE_TRAITS BitmapStoreTraits = {
     1,  // MultipleRecords
     0,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
 
@@ -432,8 +475,8 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // MultipleRecords
     0,  // StreamingWrite
     0,  // StreamingRead
+    0,  // FrequentAllocations
     0   // Unused
 };
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

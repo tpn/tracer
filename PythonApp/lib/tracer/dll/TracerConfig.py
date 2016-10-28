@@ -173,6 +173,8 @@ INITIALIZE_TRACER_CONFIG.errcheck = errcheck
 CREATE_AND_INITIALIZE_ALLOCATOR.errcheck = errcheck
 GET_OR_CREATE_GLOBAL_ALLOCATOR.errcheck = errcheck
 
+DEBUG_BREAK = CFUNCTYPE(None)
+
 #===============================================================================
 # Binding
 #===============================================================================
@@ -197,11 +199,18 @@ InitializeTracerConfig = INITIALIZE_TRACER_CONFIG(
     ),
 )
 
+_DebugBreak = DEBUG_BREAK(
+    ('_DebugBreak', TracerConfigDll),
+)
+
 def load_tracer_config():
     allocator = PALLOCATOR()
     CreateAndInitializeAllocator(byref(allocator))
     registry_key = create_unicode_string(TRACER_REGISTRY_KEY)
 
     return InitializeTracerConfig(allocator, byref(registry_key)).contents
+
+def debugbreak():
+    _DebugBreak()
 
 # vim:set ts=8 sw=4 sts=4 tw=80 ai et                                          :

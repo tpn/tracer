@@ -8,9 +8,9 @@ Module Name:
 
 Abstract:
 
-    This module implements generic Trace Store functionality unrelated to the
-    main memory map machinery.  Functions are provided for initializing and
-    closing trace stores.
+    This module implements generic trace store functionality unrelated to the
+    main memory map machinery.  Functions are provided to initialize, bind,
+    close, truncate and run down a trace store.
 
 --*/
 
@@ -97,7 +97,7 @@ Return Value:
 
     if (!TraceStore->FileHandle ||
         TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-
+        TraceStore->LastError = GetLastError();
         goto Error;
     }
 
@@ -150,17 +150,17 @@ Error:
     // Attempt to close the trace store if an error occurs.
     //
 
-    CloseTraceStore(TraceStore);
+    CloseStore(TraceStore);
 
     return FALSE;
 }
 
 /*++
 
-    VOID
-    INIT_METADATA_PATH(
-        Name
-        );
+VOID
+INIT_METADATA_PATH(
+    Name
+    );
 
 Routine Description:
 
@@ -206,10 +206,10 @@ Return Value:
 
 /*++
 
-    VOID
-    INIT_METADATA(
-        Name
-        );
+VOID
+INIT_METADATA(
+    Name
+    );
 
 Routine Description:
 
@@ -227,50 +227,54 @@ Return Value:
     None.
 
 --*/
-#define INIT_METADATA(Name)                                            \
-    Name##Store->TraceFlags = TraceStore->TraceFlags;                  \
-    Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;  \
-    Name##Store->IsMetadata = TRUE;                                    \
-    Name##Store->IsReadonly = TraceStore->IsReadonly;                  \
-    Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;            \
-    Name##Store->SequenceId = TraceStore->SequenceId;                  \
-    Name##Store->TraceStoreId = TraceStore->TraceStoreId;              \
-    Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;  \
-    Name##Store->TraceStore = TraceStore;                              \
-    Name##Store->Allocator = Allocator;                                \
-    Name##Store->MetadataInfoStore = MetadataInfoStore;                \
-    Name##Store->AllocationStore = AllocationStore;                    \
-    Name##Store->RelocationStore = RelocationStore;                    \
-    Name##Store->AddressStore = AddressStore;                          \
-    Name##Store->BitmapStore = BitmapStore;                            \
-    Name##Store->InfoStore = InfoStore;                                \
-    Name##Store->CreateFileDesiredAccess = (                           \
-        TraceStore->CreateFileDesiredAccess                            \
-    );                                                                 \
-    Name##Store->CreateFileCreationDisposition = (                     \
-        TraceStore->CreateFileCreationDisposition                      \
-    );                                                                 \
-    Name##Store->CreateFileMappingProtectionFlags = (                  \
-        TraceStore->CreateFileMappingProtectionFlags                   \
-    );                                                                 \
-    Name##Store->CreateFileFlagsAndAttributes = (                      \
-        TraceStore->CreateFileFlagsAndAttributes                       \
-    );                                                                 \
-    Name##Store->MapViewOfFileDesiredAccess = (                        \
-        TraceStore->MapViewOfFileDesiredAccess                         \
-    );                                                                 \
-                                                                       \
-    Success = InitializeStore(                                         \
-        &##Name##Path[0],                                              \
-        ##Name##Store,                                                 \
-        Default##Name##TraceStoreSize,                                 \
-        Default##Name##TraceStoreMappingSize                           \
-    );                                                                 \
-                                                                       \
-    if (!Success) {                                                    \
-        goto Error;                                                    \
-    }                                                                  \
-                                                                       \
+#define INIT_METADATA(Name)                                              \
+    Name##Store->Rtl = TraceStore->Rtl;                                  \
+    Name##Store->TraceFlags = TraceStore->TraceFlags;                    \
+    Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;    \
+    Name##Store->IsMetadata = TRUE;                                      \
+    Name##Store->IsReadonly = TraceStore->IsReadonly;                    \
+    Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;              \
+    Name##Store->SequenceId = TraceStore->SequenceId;                    \
+    Name##Store->TraceStoreId = TraceStore->TraceStoreId;                \
+    Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;    \
+    Name##Store->TraceStore = TraceStore;                                \
+    Name##Store->Allocator = Allocator;                                  \
+    Name##Store->MetadataInfoStore = MetadataInfoStore;                  \
+    Name##Store->AllocationStore = AllocationStore;                      \
+    Name##Store->RelocationStore = RelocationStore;                      \
+    Name##Store->AddressStore = AddressStore;                            \
+    Name##Store->BitmapStore = BitmapStore;                              \
+    Name##Store->InfoStore = InfoStore;                                  \
+    Name##Store->BindComplete = (                                        \
+        TraceStoreMetadataIdToBindComplete(TraceStoreMetadata##Name##Id) \
+    );                                                                   \
+    Name##Store->CreateFileDesiredAccess = (                             \
+        TraceStore->CreateFileDesiredAccess                              \
+    );                                                                   \
+    Name##Store->CreateFileCreationDisposition = (                       \
+        TraceStore->CreateFileCreationDisposition                        \
+    );                                                                   \
+    Name##Store->CreateFileMappingProtectionFlags = (                    \
+        TraceStore->CreateFileMappingProtectionFlags                     \
+    );                                                                   \
+    Name##Store->CreateFileFlagsAndAttributes = (                        \
+        TraceStore->CreateFileFlagsAndAttributes                         \
+    );                                                                   \
+    Name##Store->MapViewOfFileDesiredAccess = (                          \
+        TraceStore->MapViewOfFileDesiredAccess                           \
+    );                                                                   \
+                                                                         \
+    Success = InitializeStore(                                           \
+        &##Name##Path[0],                                                \
+        ##Name##Store,                                                   \
+        Default##Name##TraceStoreSize,                                   \
+        Default##Name##TraceStoreMappingSize                             \
+    );                                                                   \
+                                                                         \
+    if (!Success) {                                                      \
+        goto Error;                                                      \
+    }                                                                    \
+                                                                         \
     TraceStore->##Name##Store = ##Name##Store
 
 
@@ -465,14 +469,7 @@ Return Value:
 
     if (!TraceStore->FileHandle ||
         TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
-
-        //
-        // We weren't able to open the file handle successfully.  In lieu of
-        // better error logging, a breakpoint can be set here in a debug build
-        // to see what the last error was.
-        //
-
-        DWORD LastError = GetLastError();
+        TraceStore->LastError = GetLastError();
         goto Error;
     }
 
@@ -594,18 +591,12 @@ Return Value:
 --*/
 {
 
-    TraceStore->NextMemoryMapAvailableEvent = (
-        CreateEvent(
-            NULL,
-            FALSE,
-            FALSE,
-            NULL
-        )
-    );
-
-    if (!TraceStore->NextMemoryMapAvailableEvent) {
-        return FALSE;
-    }
+    //
+    // Create the all memory maps are free event.  This event is signaled when
+    // the count of active memory maps reaches zero.  The counter is decremented
+    // atomically each time a memory map is pushed to the free list.  The event
+    // is waited on during CloseStore().
+    //
 
     TraceStore->AllMemoryMapsAreFreeEvent = (
         CreateEvent(
@@ -620,37 +611,147 @@ Return Value:
         return FALSE;
     }
 
-    return FALSE;
+
+    if (IsSingleRecord(*TraceStore->pTraits)) {
+
+        //
+        // Single record trace stores are configured to use the trace store's
+        // embedded memory map (TraceStore->SingleMemoryMap), so we don't need
+        // to do any more work in this case.
+        //
+
+        return TRUE;
+    }
+
+    //
+    // Create the next memory map available event.  This is signaled when
+    // PrepareNextTraceStoreMemoryMap() has finished preparing the next
+    // memory map for a trace store to consume.
+    //
+
+    TraceStore->NextMemoryMapAvailableEvent = (
+        CreateEvent(
+            NULL,
+            FALSE,
+            FALSE,
+            NULL
+        )
+    );
+
+    if (!TraceStore->NextMemoryMapAvailableEvent) {
+        return FALSE;
+    }
+
+    return TRUE;
 
 }
 
 _Use_decl_annotations_
 BOOL
 CreateTraceStoreThreadpoolWorkItems(
-    PTRACE_STORE TraceStore,
-    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
-    PFINALIZE_FIRST_TRACE_STORE_MEMORY_MAP_CALLBACK
-        FinalizeFirstMemoryMapCallback
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
     )
 /*++
 
 Routine Description:
 
     This routine creates the necessary threadpool work items (e.g. TP_WORK)
-    for a given trace store.  It is called by InitializeTraceContext() and
-    InitializeReadonlyTraceContext() as part of binding a store to a context.
+    for a given trace store based on the trace store's traits.
 
 Arguments:
 
-    TraceStore - Supplies a pointer to an initialized TRACE_STORE structure
-        for which events will be generated.
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.  The work
+        items will be bound to the ThreadpoolCallbackEnvironment specified by
+        this structure.
 
-    ThreadpoolCallbackEnvironment - Supplies a pointer to a TP_CALLBACK_ENVIRON
-        structure to be used when creating threadpool work items.
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which
+        threadpool work items will be created.
 
-    FinalizeFirstMemoryMapCallback - Supplies a pointer to a function that
-        will be used to create a threadpool work item for processing the
-        first memory map of a trace store.
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Readonly;
+    BOOL IsMetadata;
+    TRACE_STORE_TRAITS Traits;
+
+    //
+    // Ensure traits have been set.
+    //
+
+    if (!TraceStore->pTraits) {
+        return FALSE;
+    }
+
+    Traits = *TraceStore->pTraits;
+    Readonly = TraceStore->IsReadonly;
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    //
+    // The close memory map threadpool work item always gets created.
+    //
+
+    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
+        &CloseTraceStoreMemoryMapCallback,
+        TraceStore,
+        TraceContext->ThreadpoolCallbackEnvironment
+    );
+    if (!TraceStore->CloseMemoryMapWork) {
+        return FALSE;
+    }
+
+    if (HasMultipleRecords(Traits)) {
+        TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
+            &PrepareNextTraceStoreMemoryMapCallback,
+            TraceStore,
+            TraceContext->ThreadpoolCallbackEnvironment
+        );
+        if (!TraceStore->PrepareNextMemoryMapWork) {
+            return FALSE;
+        }
+    }
+
+    if (!Readonly && HasMultipleRecords(Traits)) {
+        TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
+            &PrefaultFutureTraceStorePageCallback,
+            TraceStore,
+            TraceContext->ThreadpoolCallbackEnvironment
+        );
+        if (!TraceStore->PrefaultFuturePageWork) {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+TraceStoreBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine is called by BindStore() once a normal (non-metadata) trace
+    store has been successfully bound to a context.  Is is responsible for
+    wiring up all of the metadata store base addresses to the relevant pointers.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to the TRACE_CONTEXT structure to which
+        the trace store was bound.
+
+    TraceStore - Supplies a pointer to the bound TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to the first TRACE_STORE_MEMORY_MAP
+        used by the trace store.
 
 Return Value:
 
@@ -659,45 +760,26 @@ Return Value:
 --*/
 {
 
-    TraceStore->FinalizeFirstMemoryMapWork = CreateThreadpoolWork(
-        FinalizeFirstMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
+    TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
+        TraceStore->AllocationStore->MemoryMap->BaseAddress
     );
 
-    if (!TraceStore->FinalizeFirstMemoryMapWork) {
-        return FALSE;
-    }
-
-    TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
-        &PrepareNextTraceStoreMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
+    TraceStore->Info = (PTRACE_STORE_INFO)(
+        TraceStore->InfoStore->MemoryMap->BaseAddress
     );
 
-    if (!TraceStore->PrepareNextMemoryMapWork) {
-        return FALSE;
-    }
-
-    TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
-        &PrefaultFutureTraceStorePageCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
+    TraceStore->Bitmap = (PTRACE_STORE_BITMAP)(
+        TraceStore->BitmapStore->MemoryMap->BaseAddress
     );
 
-    if (!TraceStore->PrefaultFuturePageWork) {
-        return FALSE;
-    }
-
-    TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
-        &ReleasePrevTraceStoreMemoryMapCallback,
-        TraceStore,
-        ThreadpoolCallbackEnvironment
+    TraceStore->Reloc = (PTRACE_STORE_RELOC)(
+        TraceStore->RelocationStore->MemoryMap->BaseAddress
     );
 
-    if (!TraceStore->CloseMemoryMapWork) {
-        return FALSE;
-    }
+    TraceStore->Eof = &TraceStore->Info->Eof;
+    TraceStore->Time = &TraceStore->Info->Time;
+    TraceStore->Stats = &TraceStore->Info->Stats;
+    TraceStore->Totals = &TraceStore->Info->Totals;
 
     return TRUE;
 }
@@ -715,11 +797,11 @@ Routine Description:
     a default initial file size is used.  When the store is extended, it is
     done in fixed sized blocks (that match the mapping size).
 
-    When a trace store is closed, this TruncateStore() routine is called, which
+    When a trace store is closed, this TruncateStore() routine is called.  This
     sets the file's end-of-file pointer back to the exact byte position that
-    was actually used during the trace session.  This allows the trace file
-    to be read in entirely until an EOS is read, which is useful for downstream
-    consumers.
+    was actually used during the trace session.  Without this, life would be
+    complicated for downstream readers as they'd have to be able to determine
+    where a trace store's contents actually ends versus where the file ends.
 
 Arguments:
 
@@ -1152,49 +1234,6 @@ Return Value:
     TracerConfig->SizeOfTraceStoreStructure = sizeof(TRACE_STORE);
 
     return TRUE;
-}
-
-_Use_decl_annotations_
-VOID
-CALLBACK
-PrefaultFutureTraceStorePageCallback(
-    PTP_CALLBACK_INSTANCE Instance,
-    PVOID Context,
-    PTP_WORK Work
-    )
-/*++
-
-Routine Description:
-
-    This routine is the callback target for the prefault future trace store
-    threadpool work.  It simply calls the PrefaultFutureTraceStorePage()
-    inline routine (which forces a read of the memory address we want to
-    prefault, which will result in a hard or soft fault if the page isn't
-    resident).
-
-Arguments:
-
-    Instance - Not used.
-
-    Context - Supplies a pointer to a TRACE_STORE struct.
-
-    Work - Not used.
-
-Return Value:
-
-    None.
-
---*/
-{
-    //
-    // Ensure Context has a value.
-    //
-
-    if (!Context) {
-        return;
-    }
-
-    PrefaultFutureTraceStorePage((PTRACE_STORE)Context);
 }
 
 

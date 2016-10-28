@@ -290,11 +290,12 @@ Return Value:
     );
 
     //
-    // Initialize struct size fields.
+    // Initialize struct size fields and flags.
     //
 
     TraceStores->SizeOfStruct = (USHORT)sizeof(TRACE_STORES);
     TraceStores->SizeOfAllocation = (USHORT)TraceStoresAllocationSize;
+    TraceStores->Flags = Flags;
 
     //
     // Initialize create file and map view flags.
@@ -303,7 +304,7 @@ Return Value:
     if (Readonly) {
         CreateFileDesiredAccess = GENERIC_READ;
         CreateFileCreationDisposition = OPEN_EXISTING;
-        CreateFileMappingProtectionFlags = PAGE_WRITECOPY;
+        CreateFileMappingProtectionFlags = PAGE_READONLY;
         MapViewOfFileDesiredAccess = FILE_MAP_READ;
     } else {
         CreateFileDesiredAccess = GENERIC_READ | GENERIC_WRITE;
@@ -458,6 +459,7 @@ Return Value:
             MapViewOfFileDesiredAccess
         );
         TraceStore->Allocator = Allocator;
+        TraceStore->BindComplete = TraceStoreBindComplete;
 
         Reloc = &TraceStores->Relocations[Index];
 
@@ -550,14 +552,21 @@ Return Value:
 
 --*/
 {
+    TRACE_FLAGS Flags = { 0 };
 
     //
-    // Set the Readonly flag if TraceFlags is a non-NULL pointer.
+    // Load the caller's flags if the pointer is non-NULL.
     //
 
     if (ARGUMENT_PRESENT(TraceFlags)) {
-        TraceFlags->Readonly = TRUE;
+        Flags = *TraceFlags;
     }
+
+    //
+    // Set the readonly flag.
+    //
+
+    Flags.Readonly = TRUE;
 
     return InitializeTraceStores(Rtl,
                                  Allocator,
@@ -565,7 +574,7 @@ Return Value:
                                  TraceStores,
                                  SizeOfTraceStores,
                                  NULL,
-                                 TraceFlags,
+                                 &Flags,
                                  NULL);
 }
 

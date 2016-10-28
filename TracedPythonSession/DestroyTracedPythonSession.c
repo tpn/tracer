@@ -5,7 +5,7 @@ VOID
 DestroyTracedPythonSession(
     PPTRACED_PYTHON_SESSION SessionPointer
     )
-/*--
+/*++
 
 Routine Description:
 

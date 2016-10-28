@@ -112,29 +112,36 @@
   <PropertyGroup />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <CodeAnalysisRuleSet>..\DriverMinimumRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
