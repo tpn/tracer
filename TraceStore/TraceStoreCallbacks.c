@@ -117,11 +117,13 @@ Return Value:
     //
 
     TraceStore = MetadataInfoStore->TraceStore;
-    InterlockedExchange(&TraceStore->MetadataBindsInProgress, 5);
+    InterlockedExchange(&TraceStore->MetadataBindsInProgress,
+                        NumberOfMetadataStores);
 
     SUBMIT_METADATA_BIND(Allocation);
     SUBMIT_METADATA_BIND(Relocation);
     SUBMIT_METADATA_BIND(Address);
+    SUBMIT_METADATA_BIND(AddressRange);
     SUBMIT_METADATA_BIND(Bitmap);
     SUBMIT_METADATA_BIND(Info);
 

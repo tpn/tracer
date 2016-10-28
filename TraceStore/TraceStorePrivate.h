@@ -783,6 +783,7 @@ BOOL
     _In_ PTRACE_STORE AllocationStore,
     _In_ PTRACE_STORE RelocationStore,
     _In_ PTRACE_STORE AddressStore,
+    _In_ PTRACE_STORE AddressRangeStore,
     _In_ PTRACE_STORE BitmapStore,
     _In_ PTRACE_STORE InfoStore,
     _In_ ULONG InitialSize,
@@ -914,6 +915,7 @@ RundownTraceStoresInline(
     CLOSE_METADATA_STORE(Allocation);   \
     CLOSE_METADATA_STORE(Relocation);   \
     CLOSE_METADATA_STORE(Address);      \
+    CLOSE_METADATA_STORE(AddressRange); \
     CLOSE_METADATA_STORE(Bitmap);       \
     CLOSE_METADATA_STORE(Info);         \
     CLOSE_METADATA_STORE(MetadataInfo);
@@ -928,6 +930,7 @@ RundownTraceStoresInline(
     RUNDOWN_METADATA_STORE(Allocation);   \
     RUNDOWN_METADATA_STORE(Relocation);   \
     RUNDOWN_METADATA_STORE(Address);      \
+    RUNDOWN_METADATA_STORE(AddressRange); \
     RUNDOWN_METADATA_STORE(Bitmap);       \
     RUNDOWN_METADATA_STORE(Info);         \
     RUNDOWN_METADATA_STORE(MetadataInfo);
@@ -1073,6 +1076,7 @@ Return Value:
     SUBMIT_METADATA_BIND(Allocation);                                        \
     SUBMIT_METADATA_BIND(Relocation);                                        \
     SUBMIT_METADATA_BIND(Address);                                           \
+    SUBMIT_METADATA_BIND(AddressRange);                                      \
     SUBMIT_METADATA_BIND(Bitmap);                                            \
     SUBMIT_METADATA_BIND(Info);
 

@@ -43,6 +43,7 @@ TRACE_STORE_DATA DWORD TraceStoreInfoSuffixLength;
 TRACE_STORE_DATA USHORT LongestTraceStoreSuffixLength;
 TRACE_STORE_DATA USHORT NumberOfTraceStores;
 TRACE_STORE_DATA USHORT ElementsPerTraceStore;
+TRACE_STORE_DATA USHORT NumberOfMetadataStores;
 
 TRACE_STORE_DATA ULONG InitialTraceStoreFileSizes[];
 
