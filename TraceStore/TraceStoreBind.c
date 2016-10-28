@@ -305,6 +305,7 @@ Return Value:
 {
     BOOL Success;
     BOOL IsMetadataInfo;
+    TRACE_STORE_METADATA_ID MetadataId;
     PBIND_COMPLETE BindComplete;
     FILE_STANDARD_INFO FileInfo;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -317,16 +318,39 @@ Return Value:
         return FALSE;
     }
 
-    IsMetadataInfo = (
-        TraceStore->TraceStoreMetadataId == TraceStoreMetadataMetadataInfoId
-    );
+    MetadataId = TraceStore->TraceStoreMetadataId;
+    IsMetadataInfo = (MetadataId == TraceStoreMetadataMetadataInfoId);
+
+    //
+    // Wire up the embedded memory map such that TraceStore->MemoryMap always
+    // points to a valid structure.
+    //
 
     MemoryMap = &TraceStore->SingleMemoryMap;
     MemoryMap->FileHandle = TraceStore->FileHandle;
+    TraceStore->MemoryMap = MemoryMap;
 
     if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
         TraceStore->LastError = GetLastError();
         return FALSE;
+    }
+
+    //
+    // If nothing was written to the metadata, there's no more to do.
+    //
+
+    if (FileInfo.EndOfFile.QuadPart == 0) {
+        if (MetadataId == TraceStoreMetadataMetadataInfoId ||
+            MetadataId == TraceStoreMetadataInfoId) {
+
+            //
+            // MetadataInfo and Info should always have a value.
+            //
+            __debugbreak();
+            return FALSE;
+        }
+
+        return TRUE;
     }
 
     MemoryMap->FileOffset.QuadPart = 0;
@@ -427,6 +451,13 @@ Return Value:
     // metadata :info store.
     //
 
+    //
+    // XXX: this is a temporary hack: we should be writing traits.
+    //
+
+    if (!TraceStore->Traits) {
+        TraceStore->Traits = TraceStore->pTraits;
+    }
     Traits = *TraceStore->Traits;
 
     //
@@ -489,11 +520,15 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     ULONG Index;
     ULONG NumberOfMaps;
-    ULONG NumberOfAddresses;
+    ULONG MaximumNumberOfMaps;
     ULONG PreferredAddressUnavailable;
+    ULONGLONG NumberOfAddresses;
+    PVOID ExpectedNextAddress;
     ULARGE_INTEGER TwoGigabytes = { 1 << 31 };
+    LARGE_INTEGER MappingSize;
     PTRACE_STORE_STATS Stats;
     PTRACE_STORE_TOTALS Totals;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -501,14 +536,64 @@ Return Value:
     PTRACE_STORE_ADDRESS FirstAddress;
     PTRACE_STORE_ADDRESS PreviousAddress;
     PTRACE_STORE AddressStore;
-    ULONG_PTR ExpectedNextAddress;
+    FILE_STANDARD_INFO FileInfo;
+
+    //
+    // Wire up the embedded memory map such that TraceStore->MemoryMap always
+    // points to a valid structure.
+    //
+
+    MemoryMap = &TraceStore->SingleMemoryMap;
+    MemoryMap->FileHandle = TraceStore->FileHandle;
+    TraceStore->MemoryMap = MemoryMap;
+
+    //
+    // Call TraceStoreBindComplete() in order to wire up the pointers to info
+    // fields (like Totals, Stats etc).
+    //
+
+    Success = TraceStoreBindComplete(TraceContext, TraceStore, MemoryMap);
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Check the file size; if it's empty, we don't need to do anything else.
+    //
+
+    if (!GetTraceStoreFileInfo(TraceStore, &FileInfo)) {
+        TraceStore->LastError = GetLastError();
+        return FALSE;
+    }
+
+    if (FileInfo.EndOfFile.QuadPart == 0) {
+        return TRUE;
+    }
+
+    //
+    // Initialize aliases.
+    //
 
     Stats = TraceStore->Stats;
     Totals = TraceStore->Totals;
     AddressStore = TraceStore->AddressStore;
-
     PreferredAddressUnavailable = Stats->PreferredAddressUnavailable;
 
+    //
+    // Calculate the maximum number of possible memory maps.
+    //
+
+    MaximumNumberOfMaps = (ULONG)(
+        PreferredAddressUnavailable +
+        ((Totals->AllocationSize.QuadPart / TwoGigabytes.QuadPart) + 1)
+    );
+
+    //
+    // XXX todo: create maximum number of memory maps up front.  Add something
+    // to TRACE_STORE to track the maximum number plus number we actually use.
+    //
+
+    NumberOfMaps = 0;
     if (PreferredAddressUnavailable == 0) {
         if (Totals->AllocationSize.QuadPart > TwoGigabytes.QuadPart) {
             __debugbreak();
@@ -521,20 +606,18 @@ Return Value:
         MemoryMap = &TraceStore->SingleMemoryMap;
     }
 
-    NumberOfAddresses = AddressStore->Totals->NumberOfAllocations;
+    NumberOfAddresses = AddressStore->Totals->NumberOfAllocations.QuadPart;
 
     FirstAddress = (PTRACE_STORE_ADDRESS)AddressStore->MemoryMap->BaseAddress;
     PreviousAddress = NULL;
     Address = FirstAddress;
+    MappingSize.QuadPart = FirstAddress->MappedSize.QuadPart;
 
     if (NumberOfAddresses == 1) {
         goto CreateMaps;
     }
 
-    ExpectedNextAddress = (
-        ((ULONG_PTR)Address) +
-        AddressStore->MemoryMap->MappingSize
-    );
+    ExpectedNextAddress = (PVOID)(((ULONG_PTR)Address) + MappingSize.QuadPart);
 
     for (Index = 0; Index < NumberOfAddresses; Index++) {
 
@@ -572,7 +655,12 @@ Return Value:
 
 --*/
 {
-    return FALSE;
+
+    //
+    // XXX todo: not yet implemented.
+    //
+
+    return TRUE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
