@@ -408,6 +408,14 @@ VOID
 (DESTROY_GLOBAL_TRACER_CONFIG)(VOID);
 typedef DESTROY_GLOBAL_TRACER_CONFIG *PDESTROY_GLOBAL_TRACER_CONFIG;
 
+typedef
+VOID
+(DEBUG_BREAK)(
+    VOID
+    );
+typedef DEBUG_BREAK *PDEBUG_BREAK;
+TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
+
 //
 // TracerHeap-related functions.  We export these so that modules don't have to
 // load TracerHeap first in order to create/initialize an allocator to pass to

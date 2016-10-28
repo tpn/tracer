@@ -181,8 +181,21 @@ typedef struct _TRACE_STORE_ADDRESS {
     DWORD FulfillingThreadId;                               // 4    124 128
 
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
-
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
+
+typedef struct _TRACE_STORE_ADDRESS_RANGE {
+    PVOID BaseAddress;
+    PVOID EndAddress;
+    PVOID PreferredBaseAddress;
+    union {
+        ULONG Id;
+        TRACE_STORE_ID TraceStoreId;
+    };
+    union {
+        ULONG Index;
+        TRACE_STORE_INDEX TraceStoreIndex;
+    };
+} TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -373,10 +386,25 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG StreamingRead:1;
 
     //
+    // When set, indicates that the store will receive frequent allocations,
+    // which is usually the case for event trace stores.  Setting this flag
+    // will increase the number of initial memory maps prepared for the trace
+    // store, and increase the default file size and memory map size.
+    //
+    // Invariants:
+    //
+    //   - If FrequentAllocations == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //      Assert StreamingWrite == TRUE
+    //
+
+    ULONG FrequentAllocations:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:27;
+    ULONG Unused:26;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -404,8 +432,45 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     MultipleRecordsTrait                =  1 << 2,
     StreamingWriteTrait                 =  1 << 3,
     StreamingReadTrait                  =  1 << 4,
-    InvalidTrait                        = (1 << 4) + 1
+    FrequentAllocationsTrait            =  1 << 5,
+    InvalidTrait                        = (1 << 5) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
+
+//
+// The following macros provide a convenient way to work with a trait and a
+// trait's semantic inverse, e.g. instead of having to write:
+//
+//      Traits = TraceStore->pTraits;
+//      if (!Traits.MultipleRecords) {
+//
+//          //
+//          // Do some work specific to trace stores that only have a single
+//          // record.
+//          //
+//
+//          ...
+//
+//      }
+//
+// One can write:
+//
+//      if (IsSingleRecord(Traits)) {
+//
+//
+
+#define HasVaryingRecords(Traits) ((Traits).VaryingRecordSize)
+#define IsFixedRecordSize(Traits) (!((Traits).VaryingRecordSize))
+
+#define IsRecordSizeAlwaysPowerOf2(Traits) ((Traits).RecordSizeIsAlwaysPowerOf2)
+
+#define HasMultipleRecords(Traits) ((Traits).MultipleRecords)
+#define IsSingleRecord(Traits) (!((Traits).MultipleRecords))
+
+#define IsStreamingWrite(Traits) ((Traits).StreamingWrite)
+#define IsStreamingRead(Traits) ((Traits).StreamingRead)
+#define IsStreaming(Traits) ((Traits).StreamingRead || (Traits).StreamingWrite)
+
+#define IsFrequentAllocator(Traits) ((Traits).FrequentAllocations)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -425,8 +490,9 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     // We're at 128 bytes here and consume two cache lines.  Traits pushes us
     // over into a third cache line, and we want our size to be a power of 2
     // (because these structures are packed successively in the struct below
-    // and we don't want two different metadata stores sharing a cache line),
-    // so we have to pad out to a forth cache line.
+    // and we don't want two different metadata stores sharing a cache line,
+    // nor do we want to risk crossing a page boundary), so we pad out to a
+    // forth cache line.
     //
 
     TRACE_STORE_TRAITS  Traits;
@@ -765,6 +831,38 @@ typedef struct _TRACE_FLAGS {
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
+typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
+    USHORT Valid:1;
+    USHORT Readonly:1;
+    USHORT InitializeAsync:1;
+    USHORT Unused:13;
+} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+
+C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
+
+typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
+    SLIST_HEADER ListHead;
+    PTP_WORK ThreadpoolWork;
+    HANDLE WorkCompleteEvent;
+    PVOID Unused1;
+
+    volatile ULONG NumberOfActiveItems;
+    volatile ULONG NumberOfFailedItems;
+    ULONG TotalNumberOfItems;
+    ULONG Unused2;
+
+    ULONGLONG Unused3;
+
+} TRACE_STORE_WORK, *PTRACE_STORE_WORK;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, ThreadpoolWork) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, WorkCompleteEvent) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused1) == 32);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused3) == 56);
+C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     //
@@ -774,12 +872,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) USHORT SizeOfStruct;
 
     //
-    // Pad out to 4 bytes.
+    // Flags.
     //
 
-    USHORT Padding;
+    TRACE_CONTEXT_FLAGS Flags;
 
-    ULONG SequenceId;
+    //
+    // If any threadpool work items fail, the affected trace store is pushed
+    // to the FailedListHead below, and the following counter is incremented
+    // atomically.
+    //
+
+    volatile ULONG FailedCount;
+
     PRTL Rtl;
     PALLOCATOR Allocator;
     PTRACE_SESSION TraceSession;
@@ -787,9 +892,51 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
-    PUNICODE_STRING BaseDirectory;
+
+    //
+    // 64 bytes.  End of first cache line.
+    //
+
+    //
+    // Second cache line.
+    //
+
+    //
+    // This event is set when all trace stores have been initialized or an
+    // error has occurred during loading.
+    //
+
+    HANDLE LoadingCompleteEvent;
+
+    PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
+
+    TRACE_STORE_WORK BindMetadataInfoStoreWork;
+    TRACE_STORE_WORK BindRemainingMetadataStoresWork;
+    TRACE_STORE_WORK BindTraceStoreWork;
+
+    SLIST_HEADER FailedListHead;
+
+    volatile ULONG ActiveWorkItems;
+
+    //
+    // This represents the number of binds for main (not metadata) trace stores.
+    // When it hits zero, the LoadingCompleteEvent will be set.
+    //
+
+    volatile ULONG BindsInProgress;
+
+    //
+    // Stash Time at the end as it's large and doesn't have any alignment
+    // requirements.
+    //
+
     TRACE_STORE_TIME Time;
+
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
+
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 8);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 48);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 64);
 
 typedef
 VOID
@@ -938,6 +1085,14 @@ typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 //
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_MEMORY_MAP {
+
+    //
+    // When we're on a list, ListEntry is live and can't be used.  However,
+    // when we're "active" (i.e. we're pointed to by one of the TraceStore
+    // memory map pointers, like TraceStore->MemoryMap), the ListEntry slot
+    // can be used for other purposes.
+    //
+
     union {
         DECLSPEC_ALIGN(16) SLIST_ENTRY              ListEntry;   // 8       8
         struct {
@@ -1000,6 +1155,17 @@ PVOID
     );
 typedef ALLOCATE_ALIGNED_OFFSET_RECORDS *PALLOCATE_ALIGNED_OFFSET_RECORDS;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_COMPLETE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    );
+typedef BIND_COMPLETE *PBIND_COMPLETE;
+
 typedef struct _TRACE_STORE {
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
@@ -1007,6 +1173,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
+    SLIST_ENTRY             ListEntry;
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
@@ -1014,7 +1181,6 @@ typedef struct _TRACE_STORE {
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
     LARGE_INTEGER           MappingSize;
-    PTP_WORK                FinalizeFirstMemoryMapWork;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                PrepareNextMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
@@ -1024,12 +1190,14 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    volatile PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
-
     volatile ULONG  TotalNumberOfMemoryMaps;
     volatile ULONG  NumberOfActiveMemoryMaps;
 
     volatile LONG   MappedSequenceId;
+
+    volatile LONG   MetadataBindsInProgress;
+
+    TRACE_STORE_MEMORY_MAP SingleMemoryMap;
 
     //
     // Each trace store, when initialized, is assigned a unique sequence
@@ -1038,6 +1206,14 @@ typedef struct _TRACE_STORE {
     //
 
     ULONG SequenceId;
+
+    //
+    // NUMA node for this trace store.  This is passed to the various file
+    // and memory map system calls like CreateFileMappingNuma() and
+    // MapViewOfFileExNuma().
+    //
+
+    ULONG NumaNode;
 
     //
     // ID and Index values for the store and metadata, with the latter only
@@ -1060,8 +1236,15 @@ typedef struct _TRACE_STORE {
             ULONG IsMetadata:1;
             ULONG HasRelocations:1;
             ULONG NoTruncate:1;
+            ULONG IsRelocationTarget:1;
         };
     };
+
+    //
+    // This may be set if any system calls fail.
+    //
+
+    DWORD LastError;
 
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileCreationDisposition;
@@ -1071,16 +1254,6 @@ typedef struct _TRACE_STORE {
 
     HANDLE FileHandle;
     PVOID PrevAddress;
-
-    //
-    // The first trace store will get initialized as the list head, subsequent
-    // stores will be appended via ListEntry.
-    //
-
-    union {
-        LIST_ENTRY ListHead;
-        LIST_ENTRY ListEntry;
-    };
 
     //
     // The trace store pointers below will be valid for all trace and metadata
@@ -1104,6 +1277,15 @@ typedef struct _TRACE_STORE {
     PALLOCATE_RECORDS AllocateRecords;
     PALLOCATE_ALIGNED_RECORDS AllocateAlignedRecords;
     PALLOCATE_ALIGNED_OFFSET_RECORDS AllocateAlignedOffsetRecords;
+
+    //
+    // Bind complete callback.  This is called as the final step by BindStore()
+    // if the binding was successful.  It is an internal function and should
+    // not be overridden.  The metadata stores use it to finalize their state
+    // once the first memory map is available.
+    //
+
+    PBIND_COMPLETE BindComplete;
 
     //
     // InitializeTraceStores() will point pReloc at the caller's relocation
@@ -1162,7 +1344,7 @@ typedef struct _TRACE_STORE {
     WCHAR PathBuffer[_OUR_MAX_PATH];
 #endif
 
-} TRACE_STORE, *PTRACE_STORE;
+} TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -1350,32 +1532,12 @@ BOOL
     _In_opt_ PTRACE_SESSION        TraceSession,
     _In_opt_ PTRACE_STORES         TraceStores,
     _In_opt_ PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PTRACE_CONTEXT_FLAGS  TraceContextFlags,
     _In_opt_ PVOID                 UserData
     );
 typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
-
-//
-// TraceStoreReadonlyContext-related functions.
-//
-
-typedef
-_Success_(return != 0)
-BOOL
-(INITIALIZE_READONLY_TRACE_CONTEXT)(
-    _In_opt_ PRTL                    Rtl,
-    _In_opt_ PALLOCATOR              Allocator,
-    _Inout_bytecap_(*SizeOfReadonlyTraceContext)
-             PREADONLY_TRACE_CONTEXT ReadonlyTraceContext,
-    _In_     PULONG                  SizeOfReadonlyTraceContext,
-    _In_opt_ PTRACE_STORES           TraceStores,
-    _In_opt_ PTP_CALLBACK_ENVIRON    ThreadpoolCallbackEnvironment,
-    _In_opt_ PVOID                   UserData
-    );
-typedef INITIALIZE_READONLY_TRACE_CONTEXT \
-      *PINITIALIZE_READONLY_TRACE_CONTEXT;
-TRACE_STORE_API INITIALIZE_READONLY_TRACE_CONTEXT \
-                InitializeReadonlyTraceContext;
+TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeReadonlyTraceContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
@@ -1486,14 +1648,35 @@ TraceStoreQueryPerformanceCounter(
 
 //
 // Helper routines for determining if a trace store is a metadata trace store,
-// and whether or not a trace store has varying record sizes.
+// whether a trace store is readonly, and whether or not a trace store has
+// varying record sizes.
 //
 
 FORCEINLINE
 BOOL
-IsMetadataTraceStore(_In_ PTRACE_STORE TraceStore)
+IsMetadataTraceStore(
+    _In_ PTRACE_STORE TraceStore
+    )
 {
     return TraceStore->IsMetadata;
+}
+
+FORCEINLINE
+BOOL
+IsReadonlyTraceStore(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->IsReadonly;
+}
+
+FORCEINLINE
+BOOL
+TraceStoreHasRelocations(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->HasRelocations;
 }
 
 FORCEINLINE
@@ -1501,7 +1684,7 @@ BOOL
 HasVaryingRecordSizes(
     _In_    PTRACE_STORE    TraceStore
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -1538,7 +1721,7 @@ ValidateFieldRelocationsArray(
     _Out_ PUSHORT NumberOfFieldRelocationsElements,
     _Out_ PUSHORT MaximumNumberOfInnerFieldRelocationElements
     )
-/*--
+/*++
 
 Routine Description:
 

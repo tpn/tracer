@@ -21,7 +21,7 @@ LoadNextTraceStoreAddress(
     PTRACE_STORE TraceStore,
     PPTRACE_STORE_ADDRESS AddressPointer
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -67,6 +67,12 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Clear the caller's pointer up front.
+    //
+
+    *AddressPointer = NULL;
+
     if (IsMetadataTraceStore(TraceStore)) {
 
         //
@@ -78,12 +84,13 @@ Return Value:
         return FALSE;
     }
 
-    if (!AssertPageAligned(AddressRecordSize.QuadPart)) {
+    if (PAGE_SIZE % AddressRecordSize.QuadPart) {
 
         //
         // The record isn't evenly divisible by PAGE_SIZE.
         //
 
+        __debugbreak();
         return FALSE;
     }
 
@@ -99,6 +106,10 @@ Return Value:
 
     if (!Buffer) {
         return FALSE;
+    }
+
+    if (TraceStore->IsReadonly) {
+        goto End;
     }
 
     SecureZeroMemory(&Address, sizeof(Address));
@@ -125,12 +136,13 @@ Return Value:
                                       &Address,
                                       sizeof(Address));
 
-    if (SUCCEEDED(Result)) {
-        *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
-        return TRUE;
+    if (FAILED(Result)) {
+        return FALSE;
     }
 
-    return FALSE;
+End:
+    *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
+    return TRUE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

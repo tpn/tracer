@@ -5,7 +5,7 @@ BOOL
 TlsTracerHeapSetTracerConfig(
     PTRACER_CONFIG TracerConfigPointer
     )
-/*--
+/*++
 
 Routine Description:
 

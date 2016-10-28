@@ -24,15 +24,6 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
     sizeof(TRACE_STORE_INFO)
 };
 
-CONST PINITIALIZE_TRACE_STORE_METADATA TraceStoreMetadataInitializers[] = {
-    InitializeMetadataInfoMetadata,     // MetadataInfo
-    InitializeAllocationMetadata,       // Allocation
-    InitializeRelocationMetadata,       // Relocation
-    InitializeAddressMetadata,          // Address
-    InitializeBitmapMetadata,           // Bitmap
-    InitializeInfoMetadata              // Info
-};
-
 PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &MetadataInfoStoreTraits,
     &AllocationStoreTraits,
@@ -40,6 +31,15 @@ PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &AddressStoreTraits,
     &BitmapStoreTraits,
     &InfoStoreTraits
+};
+
+CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
+    MetadataInfoMetadataBindComplete,       // MetadataInfo
+    NULL,                                   // Allocation
+    RelocationMetadataBindComplete,         // Relocation
+    NULL,                                   // Address
+    NULL,                                   // Bitmap
+    NULL                                    // Info
 };
 
 _Use_decl_annotations_
@@ -67,15 +67,15 @@ TraceStoreMetadataIdToRecordSize(
 }
 
 _Use_decl_annotations_
-PINITIALIZE_TRACE_STORE_METADATA
-TraceStoreMetadataIdToInitializer(
+PBIND_COMPLETE
+TraceStoreMetadataIdToBindComplete(
     TRACE_STORE_METADATA_ID TraceStoreMetadataId
     )
 {
     USHORT Index;
 
     Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
-    return TraceStoreMetadataInitializers[Index];
+    return TraceStoreMetadataBindCompletes[Index];
 }
 
 _Use_decl_annotations_
@@ -101,7 +101,22 @@ TraceStoreMetadataIdToInfo(
 }
 
 _Use_decl_annotations_
-BOOL
+PTRACE_STORE
+TraceStoreMetadataIdToStore(
+    PTRACE_STORE TraceStore,
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId
+    )
+{
+    USHORT Index;
+    PTRACE_STORE MetadataInfoStore;
+
+    MetadataInfoStore = TraceStore->MetadataInfoStore;
+    Index = TraceStoreMetadataIdToArrayIndex(TraceStoreMetadataId);
+    return (MetadataInfoStore + Index);
+}
+
+_Use_decl_annotations_
+VOID
 InitializeMetadataFromRecordSize(
     PTRACE_STORE MetadataStore
     )
@@ -113,7 +128,6 @@ InitializeMetadataFromRecordSize(
 
     if (MetadataStore->IsReadonly) {
         __debugbreak();
-        return FALSE;
     }
 
     //
@@ -130,106 +144,120 @@ InitializeMetadataFromRecordSize(
     Eof->EndOfFile.QuadPart = RecordSize;
     Totals->NumberOfAllocations.QuadPart = 1;
     Totals->AllocationSize.QuadPart = RecordSize;
+}
+
+_Use_decl_annotations_
+BOOL
+MetadataInfoMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE MetadataInfoStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :metadatainfo stores.  It
+    is responsible for wiring up the TRACE_STORE_INFO structures for the other
+    metadata stores.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    MetadataInfoStore - Supplies a pointer to the :metadatainfo TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT Index;
+    USHORT NumberOfMetadataStores;
+    PVOID BaseAddress;
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE MetadataStore;
+    PPTRACE_STORE MetadataStorePointer;
+    PTRACE_STORE_METADATA_INFO MetadataInfo;
+
+    BaseAddress = FirstMemoryMap->BaseAddress;
+    TraceStore = MetadataInfoStore->TraceStore;
+    MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
+    MetadataStorePointer = &TraceStore->MetadataInfoStore;
+
+    //
+    // Subtract one to account for the normal trace store.
+    //
+
+    NumberOfMetadataStores = (USHORT)(
+        TraceContext->TraceStores->ElementsPerTraceStore - 1
+    );
+
+    for (Index = 0; Index < NumberOfMetadataStores; Index++) {
+        Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);
+
+        //
+        // N.B.: We abuse the fact that the trace store's metadata store
+        //       pointers are laid out consecutively (and contiguously) in
+        //       the same order as implied by their TraceStoreMetadataStoreId.
+        //       That allows us to use *MetadataStorePointer++ below.
+        //
+
+        MetadataStore = *MetadataStorePointer++;
+        MetadataStore->Info = Info;
+        MetadataStore->Eof = &Info->Eof;
+        MetadataStore->Time = &Info->Time;
+        MetadataStore->Stats = &Info->Stats;
+        MetadataStore->Totals = &Info->Totals;
+        MetadataStore->Traits = &Info->Traits;
+    }
 
     return TRUE;
 }
 
 _Use_decl_annotations_
 BOOL
-ZeroInitializeMetadata(
-    PTRACE_STORE MetadataStore
+RelocationMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE RelocationStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
     )
-{
-    PTRACE_STORE_EOF Eof;
-    PTRACE_STORE_TOTALS Totals;
+/*++
 
-    if (MetadataStore->IsReadonly) {
-        __debugbreak();
-        return FALSE;
+Routine Description:
+
+    This is the bind complete callback routine for :relocation stores.
+    It calls LoadTraceStoreRelocationInfo() if this is a readonly session,
+    or SaveTraceStoreRelocationInfo() if this is a normal writable session.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    RelocationStore - Supplies a pointer to the :relocation TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    TraceStore = RelocationStore->TraceStore;
+    if (!TraceStore->HasRelocations) {
+        return TRUE;
+    } else if (TraceStore->IsReadonly) {
+        return LoadTraceStoreRelocationInfo(TraceStore);
+    } else {
+        return SaveTraceStoreRelocationInfo(TraceStore);
     }
-
-    Eof = MetadataStore->Eof;
-    Totals = MetadataStore->Totals;
-
-    Eof->EndOfFile.QuadPart = 0;
-    Totals->NumberOfAllocations.QuadPart = 0;
-    Totals->AllocationSize.QuadPart = 0;
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeMetadataInfoMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-
-    if (!MetadataStore->NoPrefaulting) {
-        __debugbreak();
-        return FALSE;
-    }
-    if (!MetadataStore->NoTruncate) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    return InitializeMetadataFromRecordSize(MetadataStore);
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeAllocationMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-    return ZeroInitializeMetadata(MetadataStore);
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeRelocationMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-    return ZeroInitializeMetadata(MetadataStore);
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeAddressMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-    return ZeroInitializeMetadata(MetadataStore);
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeBitmapMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-    return ZeroInitializeMetadata(MetadataStore);
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeInfoMetadata(
-    PTRACE_STORE MetadataStore
-    )
-{
-
-    if (!MetadataStore->NoPrefaulting) {
-        __debugbreak();
-        return FALSE;
-    }
-    if (!MetadataStore->NoTruncate) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    return InitializeMetadataFromRecordSize(MetadataStore);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -24,7 +24,7 @@ LoadPath(
     _In_ PTRACER_CONFIG TracerConfig,
     _In_ USHORT Index
     )
-/*--
+/*++
 
 Routine Description:
 
@@ -241,7 +241,7 @@ Return Value:
 
 #define MAXIMUM_PATH_SIZE_IN_BYTES 2048
 
-/*--
+/*++
 
     VOID
     READ_REG_SZ_PATH(

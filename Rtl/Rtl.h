@@ -105,6 +105,10 @@ extern "C" {
 #define DECLSPEC_NOALIAS __declspec(noalias)
 #endif
 
+#ifndef DECLSPEC_NOINLINE
+#define DECLSPEC_NOINLINE __declspec(noinline)
+#endif
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
@@ -2328,6 +2332,8 @@ IsAligned(
 #define IsAligned8192(Address)   IsAligned((PVOID)Address, 8192)
 
 #define IsPageAligned(Address)  IsAligned4096(Address)
+
+#define IsPowerOf2(X) (((X) & ((X)-1)) == 0)
 
 #define TRY_AVX __try
 #define TRY_AVX_ALIGNED __try
