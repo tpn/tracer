@@ -14,6 +14,15 @@ Abstract:
 
 #include "stdafx.h"
 
+_Use_decl_annotations_
+VOID
+_DebugBreak(
+    VOID
+    )
+{
+    __debugbreak();
+}
+
 BOOL
 APIENTRY
 _DllMainCRTStartup(
