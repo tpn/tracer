@@ -185,8 +185,9 @@ C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 
 typedef struct _TRACE_STORE_ADDRESS_RANGE {
     PVOID BaseAddress;
-    PVOID EndAddress;
     PVOID PreferredBaseAddress;
+    ULARGE_INTEGER NumberOfAllocations;
+    ULARGE_INTEGER AllocationSize;
     union {
         ULONG Id;
         TRACE_STORE_ID TraceStoreId;
@@ -195,7 +196,13 @@ typedef struct _TRACE_STORE_ADDRESS_RANGE {
         ULONG Index;
         TRACE_STORE_INDEX TraceStoreIndex;
     };
+    ULONG AddressLeadingZeros;
+    ULONG AddressTrailingZeros;
+
+    ULONGLONG Unused1;
 } TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
+
+C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 64);
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -1266,6 +1273,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE AllocationStore;
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
+    PTRACE_STORE AddressRangeStore;
     PTRACE_STORE BitmapStore;
     PTRACE_STORE InfoStore;
 
@@ -1338,6 +1346,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC Reloc;
     PTRACE_STORE_BITMAP Bitmap;
     PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_ADDRESS_RANGE AddressRange;
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
@@ -1360,6 +1369,7 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(Allocation);                      \
         TRACE_STORE_METADATA_DECL(Relocation);                      \
         TRACE_STORE_METADATA_DECL(Address);                         \
+        TRACE_STORE_METADATA_DECL(AddressRange);                    \
         TRACE_STORE_METADATA_DECL(Bitmap);                          \
         TRACE_STORE_METADATA_DECL(Info);
 
@@ -1386,6 +1396,7 @@ typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE AllocationStore;
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
+    PTRACE_STORE AddressRangeStore;
     PTRACE_STORE BitmapStore;
     PTRACE_STORE InfoStore;
 } TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
