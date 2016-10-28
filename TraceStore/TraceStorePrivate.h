@@ -639,6 +639,21 @@ GetTraceStoreMemoryMapFileInfo(
     );
 }
 
+FORCEINLINE
+BOOL
+GetTraceStoreFileInfo(
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PFILE_STANDARD_INFO FileInfo
+    )
+{
+    return GetFileInformationByHandleEx(
+        TraceStore->FileHandle,
+        (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo,
+        FileInfo,
+        sizeof(*FileInfo)
+    );
+}
+
 //
 // TraceStoreAddress-related functions.
 //
