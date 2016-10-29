@@ -85,6 +85,9 @@
     <ClCompile>
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -102,6 +105,7 @@
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="TraceStore.c" />
     <ClCompile Include="TraceStoreAddress.c" />
+    <ClCompile Include="TraceStoreAddressRange.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
     <ClCompile Include="TraceStoreBind.c" />
     <ClCompile Include="TraceStoreCallbacks.c" />
@@ -119,9 +123,11 @@
     <ClCompile Include="TraceStoreTime.c" />
     <ClCompile Include="TraceStoreTraits.c" />
   </ItemGroup>
+  <!--
   <ItemGroup>
     <MASM Include="..\Rtl\__chkstk.s" Condition="'$(Platform)' == 'x64'" />
   </ItemGroup>
+  -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

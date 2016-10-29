@@ -186,8 +186,8 @@ C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 typedef struct _TRACE_STORE_ADDRESS_RANGE {
     PVOID PreferredBaseAddress;
     PVOID ActualBaseAddress;
-    ULARGE_INTEGER MappingSize;
-    ULARGE_INTEGER AllocationSize;
+    PVOID EndAddress;
+    ULONGLONG Unused1;
 } TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
 
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 32);

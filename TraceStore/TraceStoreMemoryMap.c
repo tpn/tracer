@@ -353,7 +353,9 @@ Return Value:
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
     TRACE_STORE_ADDRESS Address;
+    TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
+    PTRACE_STORE_ADDRESS_RANGE AddressRangePointer;
     FILE_STANDARD_INFO FileInfo;
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
@@ -593,6 +595,34 @@ TryMapMemory:
         //
 
         PreferredBaseAddress = OriginalPreferredBaseAddress;
+
+        AddressRange.PreferredBaseAddress = PreferredBaseAddress;
+        AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+        AddressRange.EndAddress = (PVOID)(
+            RtlOffsetToPointer(
+                MemoryMap->BaseAddress,
+                MemoryMap->MappingSize
+            )
+        );
+        AddressRange.Unused1 = 0;
+
+        Success = RecordPreferredAddressUnavailable(TraceStore, &AddressRange);
+        if (!Success) {
+            NOTHING;
+        }
+
+    } else {
+
+        //
+        // Update the existing address range with the new map sizes.
+        //
+
+        TraceStore->AddressRange->EndAddress = (PVOID)(
+            RtlOffsetToPointer(
+                TraceStore->AddressRange->EndAddress,
+                MemoryMap->MappingSize
+            )
+        );
     }
 
     if (!HaveAddress || IsReadonly) {
