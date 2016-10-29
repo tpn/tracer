@@ -672,6 +672,21 @@ typedef LOAD_NEXT_TRACE_STORE_ADDRESS *PLOAD_NEXT_TRACE_STORE_ADDRESS;
 LOAD_NEXT_TRACE_STORE_ADDRESS LoadNextTraceStoreAddress;
 
 //
+// TraceStoreAddressRange-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(UPDATE_TRACE_STORE_ADDRESS_RANGE)(
+    _In_  PTRACE_STORE TraceStore,
+    _In_  PTRACE_STORE_MEMORY_MAP MemoryMap
+    );
+typedef UPDATE_TRACE_STORE_ADDRESS_RANGE *PUPDATE_TRACE_STORE_ADDRESS_RANGE;
+UPDATE_TRACE_STORE_ADDRESS_RANGE UpdateTraceStoreAddressRange;
+
+//
 // TraceStoreAllocation-related functions.
 //
 

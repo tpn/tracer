@@ -16,20 +16,12 @@ Abstract:
 
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
-    L"TraceString.dat",
     L"TraceStringBuffer.dat",
-    L"TraceHashedString.dat",
-    L"TraceHashedStringBuffer.dat",
-    L"TraceBuffer.dat",
     L"TraceFunctionTable.dat",
     L"TraceFunctionTableEntry.dat",
     L"TracePathTable.dat",
     L"TracePathTableEntry.dat",
     L"TraceSession.dat",
-    L"TraceFilenameString.dat",
-    L"TraceFilenameStringBuffer.dat",
-    L"TraceDirectoryString.dat",
-    L"TraceDirectoryStringBuffer.dat",
     L"TraceStringArray.dat",
     L"TraceStringTable.dat",
 };
@@ -96,20 +88,12 @@ USHORT NumberOfMetadataStores = 7;
 
 ULONG InitialTraceStoreFileSizes[] = {
     10 << 23,   // Event
-    10 << 20,   // String
     10 << 20,   // StringBuffer
-    10 << 20,   // HashedString
-    10 << 20,   // HashedStringBuffer
-    10 << 20,   // Buffer
     10 << 20,   // FunctionTable
     10 << 20,   // FunctionTableEntry
     10 << 20,   // PathTable
     10 << 20,   // PathTableEntry
     10 << 20,   // TraceSession
-    10 << 20,   // TraceFilenameString
-    10 << 20,   // TraceFilenameStringBuffer
-    10 << 20,   // TraceDirectoryString
-    10 << 20,   // TraceDirectoryStringBuffer
     10 << 20,   // StringArray
     10 << 20    // StringTable
 };
@@ -141,63 +125,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // String
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
     // StringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // HashedString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // HashedStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // Buffer
     //
 
     {
@@ -274,62 +202,6 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // VaryingRecordSize
         0,  // RecordSizeIsAlwaysPowerOf2
         0,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceFilenameString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceFilenameStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceDirectoryString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceDirectoryStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
