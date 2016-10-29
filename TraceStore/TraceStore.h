@@ -184,25 +184,13 @@ typedef struct _TRACE_STORE_ADDRESS {
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 
 typedef struct _TRACE_STORE_ADDRESS_RANGE {
-    PVOID BaseAddress;
     PVOID PreferredBaseAddress;
-    ULARGE_INTEGER NumberOfAllocations;
+    PVOID ActualBaseAddress;
+    ULARGE_INTEGER MappingSize;
     ULARGE_INTEGER AllocationSize;
-    union {
-        ULONG Id;
-        TRACE_STORE_ID TraceStoreId;
-    };
-    union {
-        ULONG Index;
-        TRACE_STORE_INDEX TraceStoreIndex;
-    };
-    ULONG AddressLeadingZeros;
-    ULONG AddressTrailingZeros;
-
-    ULONGLONG Unused1;
 } TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
 
-C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 64);
+C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 32);
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -523,6 +511,7 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO AddressRange;
     TRACE_STORE_INFO Bitmap;
     TRACE_STORE_INFO Info;
+    TRACE_STORE_INFO Unused;
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
@@ -1375,8 +1364,8 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
-    USHORT            SizeOfStruct;
-    USHORT            SizeOfAllocation;
+    ULONG             SizeOfStruct;
+    ULONG             SizeOfAllocation;
     USHORT            NumberOfTraceStores;
     USHORT            ElementsPerTraceStore;
     USHORT            NumberOfFieldRelocationsElements;

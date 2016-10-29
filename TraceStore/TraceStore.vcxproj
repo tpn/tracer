@@ -95,11 +95,6 @@
     <ClInclude Include="TraceStorePrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <!--
-    <ClCompile Include="dllmain.c">
-      <PrecompiledHeader />
-    </ClCompile>
-    -->
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -124,5 +119,11 @@
     <ClCompile Include="TraceStoreTime.c" />
     <ClCompile Include="TraceStoreTraits.c" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\Rtl\__chkstk.s" Condition="'$(Platform)' == 'x64'" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
 </Project>

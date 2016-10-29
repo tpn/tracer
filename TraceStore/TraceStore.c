@@ -373,6 +373,7 @@ Return Value:
     WCHAR AllocationPath[_OUR_MAX_PATH];
     WCHAR RelocationPath[_OUR_MAX_PATH];
     WCHAR AddressPath[_OUR_MAX_PATH];
+    WCHAR AddressRangePath[_OUR_MAX_PATH];
     WCHAR BitmapPath[_OUR_MAX_PATH];
     WCHAR InfoPath[_OUR_MAX_PATH];
     PCWSTR MetadataInfoSuffix = TraceStoreMetadataInfoSuffix;

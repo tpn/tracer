@@ -23,9 +23,6 @@
   <ItemGroup>
     <Compile Include="bin\tracer.py" />
     <Compile Include="ez_setup.py" />
-    <Compile Include="fc.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="lib\tracerdev\commands.py" />
     <Compile Include="lib\tracerdev\config.py" />
     <Compile Include="lib\tracerdev\rtl.py" />
@@ -42,6 +39,13 @@
     <Compile Include="lib\tracer\convert.py" />
     <Compile Include="lib\tracer\debug.py" />
     <Compile Include="lib\tracer\dll.py" />
+    <Compile Include="lib\tracer\dll\Allocator.py" />
+    <Compile Include="lib\tracer\dll\Python.py" />
+    <Compile Include="lib\tracer\dll\PythonTracer.py" />
+    <Compile Include="lib\tracer\dll\Rtl.py" />
+    <Compile Include="lib\tracer\dll\TracerConfig.py" />
+    <Compile Include="lib\tracer\dll\TraceStore.py" />
+    <Compile Include="lib\tracer\dll\__init__.py" />
     <Compile Include="lib\tracer\example_commands.py" />
     <Compile Include="lib\tracer\exe.py" />
     <Compile Include="lib\tracer\invariant.py" />
@@ -67,27 +71,20 @@
     <Compile Include="lib\tracer\wintypes.py" />
     <Compile Include="lib\tracer\_version.py" />
     <Compile Include="lib\tracer\__init__.py" />
-    <Compile Include="pt.py" />
-    <Compile Include="ptd.py" />
-    <Compile Include="py27test.py" />
     <Compile Include="setup.py" />
     <Compile Include="versioneer.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="bin" />
-    <Folder Include="lib\" />
+    <Folder Include="lib" />
     <Folder Include="lib\tracer" />
-    <Folder Include="lib\tracerdev\" />
+    <Folder Include="lib\tracerdev" />
     <Folder Include="lib\tracer\clipboard" />
+    <Folder Include="lib\tracer\dll" />
     <Folder Include="lib\tracer\visualstudio" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="{4834cefa-adfb-472c-9b6f-696afefc7b58}\2.7" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="lib\tracerdev\commands.pyc" />
-    <Content Include="lib\tracerdev\config.pyc" />
-    <Content Include="lib\tracerdev\__init__.pyc" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
