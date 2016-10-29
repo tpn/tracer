@@ -117,8 +117,14 @@ Return Value:
     //
 
     TraceStore = MetadataInfoStore->TraceStore;
+
+    //
+    // Subtract one from NumberOfMetadataStores to account for the fact that
+    // we just bound MetadataInfo.
+    //
+
     InterlockedExchange(&TraceStore->MetadataBindsInProgress,
-                        NumberOfMetadataStores);
+                        NumberOfMetadataStores - 1);
 
     SUBMIT_METADATA_BIND(Allocation);
     SUBMIT_METADATA_BIND(Relocation);

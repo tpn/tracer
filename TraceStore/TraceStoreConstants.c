@@ -86,8 +86,8 @@ USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-USHORT ElementsPerTraceStore = 7;
-USHORT NumberOfMetadataStores = 6;
+USHORT ElementsPerTraceStore = 8;
+USHORT NumberOfMetadataStores = 7;
 
 //
 // The Event trace store gets an initial file size of 16MB, everything else
