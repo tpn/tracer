@@ -14,6 +14,10 @@ Abstract:
 
 #include "stdafx.h"
 
+volatile BOOL PauseBeforeBindMetadataInfo = TRUE;
+volatile BOOL PauseBeforeBindRemainingMetadata = TRUE;
+volatile BOOL PauseBeforeBindTraceStore = TRUE;
+
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
     L"TraceStringBuffer.dat",
@@ -237,14 +241,15 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     }
 };
 
+LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
 LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
-USHORT InitialFreeMemoryMapsForNonStreamingReaders = 128;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
-USHORT InitialFreeMemoryMapsForNonStreamingWriters = 256;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 128;
-USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
-USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingReaders = 16;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 8;
+USHORT InitialFreeMemoryMapsForNonStreamingWriters = 16;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 8;
+USHORT InitialFreeMemoryMapsForStreamingReaders = 32;
+USHORT InitialFreeMemoryMapsForStreamingWriters = 32;
 USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 8;
 
 USHORT TraceStoreMetadataInfoStructSize = (
