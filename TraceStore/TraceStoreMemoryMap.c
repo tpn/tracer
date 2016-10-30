@@ -665,7 +665,7 @@ TryMapMemory:
     // Update the address range details.  If this is the first map, or the
     // preferred address wasn't available, fill out a new local address range
     // structure and load it.  Otherwise, update the existing address range's
-    // number of maps counter.
+    // number of maps counter and the bit counts for the end address.
     //
 
     EndAddress = (PVOID)(
