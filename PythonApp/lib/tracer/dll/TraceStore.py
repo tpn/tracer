@@ -169,6 +169,31 @@ class TRACE_STORE_ADDRESS(Structure):
     ]
 PTRACE_STORE_ADDRESS = POINTER(TRACE_STORE_ADDRESS)
 
+class ADDRESS_BIT_COUNTS(Structure):
+    _fields_ = [
+        ('RightShift', ULONG, 6),
+        ('PopulationCount', ULONG, 6),
+        ('LeadingZeros', ULONG, 5),
+        ('TrailingZeros', ULONG, 5),
+    ]
+PADDRESS_BIT_COUNTS = POINTER(ADDRESS_BIT_COUNTS)
+
+class _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER(Structure):
+    _fields_ = [
+        ('Preferred', ADDRESS_BIT_COUNTS),
+        ('Actual', ADDRESS_BIT_COUNTS),
+        ('End', ADDRESS_BIT_COUNTS),
+    ]
+
+class TRACE_STORE_ADDRESS_RANGE(Structure):
+    _fields_ = [
+        ('PreferredBaseAddress', PVOID),
+        ('ActualBaseAddress', PVOID),
+        ('NumberOfMaps', ULONG),
+        ('BitCounts', _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER)
+    ]
+PTRACE_STORE_ADDRESS_RANGE = POINTER(TRACE_STORE_ADDRESS_RANGE)
+
 class TRACE_STORE_EOF(Structure):
     _fields_ = [
         ('EndOfFile', LARGE_INTEGER),
