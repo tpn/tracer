@@ -24,6 +24,38 @@ extern "C" {
 #include "stdafx.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+// Debugging Helpers
+////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PreThreadpoolWorkSubmission(
+    _In_ BOOL volatile *Pause,
+    _In_ ULONG volatile *FailedCount
+    )
+{
+    BOOL Success = TRUE;
+
+#ifdef _DEBUG
+    if (IsDebuggerPresent()) {
+        while (*Pause && *FailedCount == 0) {
+            Sleep(1000);
+        }
+    }
+#endif
+
+    Success = (*FailedCount == 0);
+    return Success;
+}
+
+#define PRE_THREADPOOL_WORK_SUBMISSION(Pause)                              \
+    if (!PreThreadpoolWorkSubmission(Pause, &TraceContext->FailedCount)) { \
+        goto Error;                                                        \
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 // Function typedefs and inline functions for internal modules.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -679,12 +711,54 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(UPDATE_TRACE_STORE_ADDRESS_RANGE)(
+(REGISTER_NEW_TRACE_STORE_ADDRESS_RANGE)(
     _In_  PTRACE_STORE TraceStore,
-    _In_  PTRACE_STORE_MEMORY_MAP MemoryMap
+    _In_  PTRACE_STORE_ADDRESS_RANGE AddressRange
     );
-typedef UPDATE_TRACE_STORE_ADDRESS_RANGE *PUPDATE_TRACE_STORE_ADDRESS_RANGE;
-UPDATE_TRACE_STORE_ADDRESS_RANGE UpdateTraceStoreAddressRange;
+typedef REGISTER_NEW_TRACE_STORE_ADDRESS_RANGE \
+      *PREGISTER_NEW_TRACE_STORE_ADDRESS_RANGE;
+REGISTER_NEW_TRACE_STORE_ADDRESS_RANGE RegisterNewTraceStoreAddressRange;
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+CopyTraceStoreAddressRange(
+    _Out_ PTRACE_STORE_ADDRESS_RANGE DestAddressRange,
+    _In_ _Const_ PTRACE_STORE_ADDRESS_RANGE SourceAddressRange
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that can be used to safely copy an address range
+    structure when either the source or destination is backed by memory mapped
+    memory.  Internally, it is simply a __movsb() wrapped in a __try/__except
+    block that catches STATUS_IN_PAGE_ERROR exceptions.
+
+Arguments:
+
+    DestAddressRange - Supplies a pointer to the TRACE_STORE_ADDRESS_RANGE to
+        which the source address range will be copied.
+
+    SourceAddressRange - Supplies a pointer to the TRACE_STORE_ADDRESS_RANGE to
+        copy into the destination address range.
+
+Return Value:
+
+    TRUE on success, FALSE if a STATUS_IN_PAGE_ERROR occurred.
+
+--*/
+{
+    TRY_MAPPED_MEMORY_OP {
+        __movsb((PBYTE)DestAddressRange,
+                (PBYTE)SourceAddressRange,
+                sizeof(*DestAddressRange));
+        return TRUE;
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+}
 
 //
 // TraceStoreAllocation-related functions.
@@ -1053,10 +1127,11 @@ Return Value:
         MetadataInfoStorePointer                                              \
     )
 
-#define SubmitBindMetadataInfoWork(TraceContext, TraceStore)   \
-    PushBindMetadataInfoTraceStore(TraceContext, TraceStore);  \
-    SubmitThreadpoolWork(                                      \
-        TraceContext->BindMetadataInfoStoreWork.ThreadpoolWork \
+#define SubmitBindMetadataInfoWork(TraceContext, TraceStore)      \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforeBindMetadataInfo); \
+    PushBindMetadataInfoTraceStore(TraceContext, TraceStore);     \
+    SubmitThreadpoolWork(                                         \
+        TraceContext->BindMetadataInfoStoreWork.ThreadpoolWork    \
     )
 
 //
@@ -1075,10 +1150,11 @@ Return Value:
         MetadataStorePointer                                                   \
     )
 
-#define SubmitBindRemainingMetadataWork(TraceContext, MetadataStore)  \
-    PushBindRemainingMetadataTraceStore(TraceContext, MetadataStore); \
-    SubmitThreadpoolWork(                                             \
-        TraceContext->BindRemainingMetadataStoresWork.ThreadpoolWork  \
+#define SubmitBindRemainingMetadataWork(TraceContext, MetadataStore)   \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforeBindRemainingMetadata); \
+    PushBindRemainingMetadataTraceStore(TraceContext, MetadataStore);  \
+    SubmitThreadpoolWork(                                              \
+        TraceContext->BindRemainingMetadataStoresWork.ThreadpoolWork   \
     )
 
 #define SUBMIT_METADATA_BIND(Name)   \
@@ -1112,6 +1188,7 @@ Return Value:
     )
 
 #define SubmitBindTraceStoreWork(TraceContext, TraceStore)                \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforeBindTraceStore);           \
     PushBindTraceStore(TraceContext, TraceStore);                         \
     SubmitThreadpoolWork(TraceContext->BindTraceStoreWork.ThreadpoolWork)
 

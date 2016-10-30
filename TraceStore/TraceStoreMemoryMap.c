@@ -342,20 +342,22 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL IsFirstMap;
     BOOL IsReadonly;
     BOOL IsMetadata;
     BOOL HasRelocations;
-    BOOL NeedToRelocate = FALSE;
     BOOL HaveAddress;
+    BOOL PreferredAddressUnavailable;
     USHORT NumaNode;
     PRTL Rtl;
     HRESULT Result;
+    PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
+    ADDRESS_BIT_COUNTS EndAddressBitCounts;
     TRACE_STORE_ADDRESS Address;
     TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
-    PTRACE_STORE_ADDRESS_RANGE AddressRangePointer;
     FILE_STANDARD_INFO FileInfo;
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
@@ -416,6 +418,14 @@ Return Value:
         __debugbreak();
         return FALSE;
     }
+
+    //
+    // Make a note if this is the first memory map we've been requested to
+    // prepare.  We use this information down the track with regards to the
+    // preparation of the address range structure.
+    //
+
+    IsFirstMap = (CurrentFileOffset.QuadPart == 0);
 
     //
     // Determine the distance we need to move the file pointer.
@@ -480,6 +490,7 @@ Return Value:
     }
 
     OriginalPreferredBaseAddress = NULL;
+    PreferredAddressUnavailable = FALSE;
 
     //
     // MemoryMap->BaseAddress will be the next contiguous address for this
@@ -492,7 +503,6 @@ Return Value:
     //
 
     PreferredBaseAddress = MemoryMap->BaseAddress;
-
     AddressPointer = MemoryMap->pAddress;
 
     if (IsMetadata || (AddressPointer == NULL)) {
@@ -559,6 +569,7 @@ TryMapMemory:
 
             OriginalPreferredBaseAddress = PreferredBaseAddress;
             PreferredBaseAddress = NULL;
+            PreferredAddressUnavailable = TRUE;
             Stats->PreferredAddressUnavailable++;
             goto TryMapMemory;
         }
@@ -576,57 +587,14 @@ TryMapMemory:
         goto Finalize;
     }
 
-    if (!PreferredBaseAddress && OriginalPreferredBaseAddress) {
-
-        //
-        // The mapping succeeded, but not at our original preferred address.
-        // If we're readonly and we have relocations, make a note that we need
-        // to relocate before the map can be consumed.
-        //
-
-        if (IsReadonly && HasRelocations) {
-            NeedToRelocate = TRUE;
-        }
-
-        //
-        // We copy the original preferred base address back so that it can be
-        // picked up in the section below where it is saved to the address
-        // struct.
-        //
-
-        PreferredBaseAddress = OriginalPreferredBaseAddress;
-
-        AddressRange.PreferredBaseAddress = PreferredBaseAddress;
-        AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
-        AddressRange.EndAddress = (PVOID)(
-            RtlOffsetToPointer(
-                MemoryMap->BaseAddress,
-                MemoryMap->MappingSize
-            )
-        );
-        AddressRange.Unused1 = 0;
-
-        Success = RecordPreferredAddressUnavailable(TraceStore, &AddressRange);
-        if (!Success) {
-            NOTHING;
-        }
-
-    } else {
-
-        //
-        // Update the existing address range with the new map sizes.
-        //
-
-        TraceStore->AddressRange->EndAddress = (PVOID)(
-            RtlOffsetToPointer(
-                TraceStore->AddressRange->EndAddress,
-                MemoryMap->MappingSize
-            )
-        );
-    }
-
     if (!HaveAddress || IsReadonly) {
         goto Finalize;
+    }
+
+    if (!PreferredBaseAddress) {
+        PreferredBaseAddress = MemoryMap->BaseAddress;
+    } else if (OriginalPreferredBaseAddress) {
+        PreferredBaseAddress = OriginalPreferredBaseAddress;
     }
 
     //
@@ -694,6 +662,61 @@ TryMapMemory:
     }
 
     //
+    // Update the address range details.  If this is the first map, or the
+    // preferred address wasn't available, fill out a new local address range
+    // structure and load it.  Otherwise, update the existing address range's
+    // number of maps counter.
+    //
+
+    EndAddress = (PVOID)(
+        RtlOffsetToPointer(
+            MemoryMap->BaseAddress,
+            MemoryMap->MappingSize.QuadPart
+        )
+    );
+
+    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
+
+    if (IsFirstMap || PreferredAddressUnavailable) {
+
+        AddressRange.PreferredBaseAddress = PreferredBaseAddress;
+        AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+        AddressRange.NumberOfMaps = 1;
+
+        //
+        // Update the bit counts.
+        //
+
+        AddressRange.BitCounts.Preferred = (
+            GetTraceStoreAddressBitCounts(AddressRange.PreferredBaseAddress)
+        );
+        AddressRange.BitCounts.Actual = (
+            GetTraceStoreAddressBitCounts(AddressRange.ActualBaseAddress)
+        );
+        AddressRange.BitCounts.End = EndAddressBitCounts;
+
+        //
+        // Register this new address range.
+        //
+
+        if (!RegisterNewTraceStoreAddressRange(TraceStore, &AddressRange)) {
+            return FALSE;
+        }
+
+    } else {
+
+        TRY_MAPPED_MEMORY_OP {
+
+            TraceStore->AddressRange->NumberOfMaps += 1;
+            TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
+
+        } CATCH_STATUS_IN_PAGE_ERROR {
+
+            return FALSE;
+        }
+    }
+
+    //
     // Intentional follow-on.
     //
 
@@ -704,11 +727,6 @@ Finalize:
     //
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
-
-    //
-    // XXX: extend this to do copy-on-write prefaulting if we're readonly and
-    // we have relocations.
-    //
 
     if (!IsReadonly && !TraceStore->NoPrefaulting) {
 
@@ -735,10 +753,6 @@ Finalize:
                 return FALSE;
             }
         }
-    }
-
-    if (NeedToRelocate) {
-        __debugbreak();
     }
 
     return TRUE;

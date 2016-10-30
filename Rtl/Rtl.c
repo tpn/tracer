@@ -3229,6 +3229,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->MmHighestUserAddress = (PVOID)
+        GetProcAddress(Rtl->NtdllModule, "MmHighestUserAddress"))) {
+
+        if (!(Rtl->MmHighestUserAddress = (PVOID)
+            GetProcAddress(Rtl->NtosKrnlModule, "MmHighestUserAddress"))) {
+
+            if (!(Rtl->MmHighestUserAddress = (PVOID)
+                GetProcAddress(Rtl->Kernel32Module, "MmHighestUserAddress"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'MmHighestUserAddress'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->MmGetMaximumFileSectionSize = (PMM_GET_MAXIMUM_FILE_SECTION_SIZE)
+        GetProcAddress(Rtl->NtdllModule, "MmGetMaximumFileSectionSize"))) {
+
+        if (!(Rtl->MmGetMaximumFileSectionSize = (PMM_GET_MAXIMUM_FILE_SECTION_SIZE)
+            GetProcAddress(Rtl->NtosKrnlModule, "MmGetMaximumFileSectionSize"))) {
+
+            if (!(Rtl->MmGetMaximumFileSectionSize = (PMM_GET_MAXIMUM_FILE_SECTION_SIZE)
+                GetProcAddress(Rtl->Kernel32Module, "MmGetMaximumFileSectionSize"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'MmGetMaximumFileSectionSize'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->K32GetProcessMemoryInfo = (PGET_PROCESS_MEMORY_INFO)
         GetProcAddress(Rtl->NtdllModule, "K32GetProcessMemoryInfo"))) {
 
@@ -3772,6 +3802,8 @@ InitializeRtl(
     if (!LoadRtlExSymbols(NULL, Rtl)) {
         return FALSE;
     }
+
+    Rtl->MaximumFileSectionSize = Rtl->MmGetMaximumFileSectionSize();
 
     return TRUE;
 }

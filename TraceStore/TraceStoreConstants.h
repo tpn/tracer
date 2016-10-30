@@ -52,6 +52,7 @@ TRACE_STORE_DATA ULONG InitialTraceStoreFileSizes[];
 
 TRACE_STORE_TRAITS TraceStoreTraits[];
 
+TRACE_STORE_DATA LARGE_INTEGER MinimumMappingSize;
 TRACE_STORE_DATA LARGE_INTEGER MaximumMappingSize;
 
 TRACE_STORE_DATA USHORT InitialFreeMemoryMapsForNonStreamingReaders;
@@ -101,6 +102,10 @@ TRACE_STORE_DATA TRACE_STORE_TRAITS AddressRangeStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS BitmapStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS InfoStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS MetadataInfoStoreTraits;
+
+TRACE_STORE_DATA volatile BOOL PauseBeforeBindMetadataInfo;
+TRACE_STORE_DATA volatile BOOL PauseBeforeBindRemainingMetadata;
+TRACE_STORE_DATA volatile BOOL PauseBeforeBindTraceStore;
 
 #ifdef __cplusplus
 }; // extern "C"
