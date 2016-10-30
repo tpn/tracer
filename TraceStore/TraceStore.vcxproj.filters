@@ -102,4 +102,11 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <!--
+  <ItemGroup>
+    <MASM Include="..\Rtl\__chkstk.s" Condition="'$(Platform)' == 'x64'">
+      <Filter>Source Files</Filter>
+    </MASM>
+  </ItemGroup>
+  -->
 </Project>

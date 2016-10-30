@@ -50,6 +50,16 @@ TraceStoreAllocationRoutine(
 }
 
 PVOID
+TraceStoreNullAllocationRoutine(
+    _In_ PVOID AllocationContext,
+    _In_ const ULONG ByteSize
+    )
+{
+    __debugbreak();
+    return NULL;
+}
+
+PVOID
 TraceStoreCallocRoutine(
     _In_ PVOID AllocationContext,
     _In_ SIZE_T NumberOfElements,
@@ -91,6 +101,24 @@ AllocatePythonTraceEvent(
 
 VOID
 TraceStoreFreeRoutine(
+    _In_opt_ PVOID FreeContext,
+    _In_     PVOID Buffer
+    )
+{
+    return;
+
+    /*
+    PTRACE_STORE TraceStore;
+    TraceStore = (PTRACE_STORE)FreeContext;
+
+    TraceStore->FreeRecords(TraceStore->TraceContext,
+                            TraceStore,
+                            Buffer);
+    */
+}
+
+VOID
+TraceStoreNullFreeRoutine(
     _In_opt_ PVOID FreeContext,
     _In_     PVOID Buffer
     )
@@ -826,19 +854,11 @@ InitializePythonTraceContext(
 {
     PTRACE_STORES TraceStores;
     PTRACE_STORE EventStore;
-    PTRACE_STORE StringStore;
     PTRACE_STORE StringBufferStore;
-    PTRACE_STORE HashedStringStore;
-    PTRACE_STORE HashedStringBufferStore;
-    PTRACE_STORE BufferStore;
     PTRACE_STORE FunctionTableStore;
     PTRACE_STORE FunctionTableEntryStore;
     PTRACE_STORE PathTableStore;
     PTRACE_STORE PathTableEntryStore;
-    PTRACE_STORE FilenameStringStore;
-    PTRACE_STORE FilenameStringBufferStore;
-    PTRACE_STORE DirectoryStringStore;
-    PTRACE_STORE DirectoryStringBufferStore;
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
     PYTHON_ALLOCATORS Allocators;
@@ -905,19 +925,31 @@ InitializePythonTraceContext(
     Allocators.##Name##.FreeContext = ##Name##Store;                     \
     NumberOfAllocators++;
 
-    INIT_STORE_ALLOCATOR(String);
+#define INIT_NULL_ALLOCATOR(Name)                                            \
+    Allocators.##Name##.AllocationRoutine = TraceStoreNullAllocationRoutine; \
+    Allocators.##Name##.AllocationContext = NULL;                            \
+    Allocators.##Name##.FreeRoutine = TraceStoreNullFreeRoutine;             \
+    Allocators.##Name##.FreeContext = NULL;                                  \
+    NumberOfAllocators++;
+
+    //
+    // Temporary hack: disable the stores we don't use.
+    //
+
+    INIT_NULL_ALLOCATOR(String);
+    INIT_NULL_ALLOCATOR(HashedString);
+    INIT_NULL_ALLOCATOR(Buffer);
+    INIT_NULL_ALLOCATOR(HashedStringBuffer);
+    INIT_NULL_ALLOCATOR(FilenameString);
+    INIT_NULL_ALLOCATOR(FilenameStringBuffer);
+    INIT_NULL_ALLOCATOR(DirectoryString);
+    INIT_NULL_ALLOCATOR(DirectoryStringBuffer);
+
     INIT_STORE_ALLOCATOR(StringBuffer);
-    INIT_STORE_ALLOCATOR(HashedString);
-    INIT_STORE_ALLOCATOR(HashedStringBuffer);
-    INIT_STORE_ALLOCATOR(Buffer);
     INIT_STORE_ALLOCATOR(FunctionTable);
     INIT_STORE_ALLOCATOR(FunctionTableEntry);
     INIT_STORE_ALLOCATOR(PathTable);
     INIT_STORE_ALLOCATOR(PathTableEntry);
-    INIT_STORE_ALLOCATOR(FilenameString);
-    INIT_STORE_ALLOCATOR(FilenameStringBuffer);
-    INIT_STORE_ALLOCATOR(DirectoryString);
-    INIT_STORE_ALLOCATOR(DirectoryStringBuffer);
     INIT_STORE_ALLOCATOR(StringArray);
     INIT_STORE_ALLOCATOR(StringTable);
 

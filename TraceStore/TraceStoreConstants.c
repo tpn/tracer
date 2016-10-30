@@ -14,57 +14,59 @@ Abstract:
 
 #include "stdafx.h"
 
+volatile BOOL PauseBeforeBindMetadataInfo = TRUE;
+volatile BOOL PauseBeforeBindRemainingMetadata = TRUE;
+volatile BOOL PauseBeforeBindTraceStore = TRUE;
+
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
-    L"TraceString.dat",
     L"TraceStringBuffer.dat",
-    L"TraceHashedString.dat",
-    L"TraceHashedStringBuffer.dat",
-    L"TraceBuffer.dat",
     L"TraceFunctionTable.dat",
     L"TraceFunctionTableEntry.dat",
     L"TracePathTable.dat",
     L"TracePathTableEntry.dat",
     L"TraceSession.dat",
-    L"TraceFilenameString.dat",
-    L"TraceFilenameStringBuffer.dat",
-    L"TraceDirectoryString.dat",
-    L"TraceDirectoryStringBuffer.dat",
     L"TraceStringArray.dat",
     L"TraceStringTable.dat",
 };
 
-WCHAR TraceStoreMetadataInfoSuffix[] = L":metadatainfo";
+WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
 DWORD TraceStoreMetadataInfoSuffixLength = (
     sizeof(TraceStoreMetadataInfoSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAllocationSuffix[] = L":allocation";
+WCHAR TraceStoreAllocationSuffix[] = L":Allocation";
 DWORD TraceStoreAllocationSuffixLength = (
     sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreRelocationSuffix[] = L":relocation";
+WCHAR TraceStoreRelocationSuffix[] = L":Relocation";
 DWORD TraceStoreRelocationSuffixLength = (
     sizeof(TraceStoreRelocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAddressSuffix[] = L":address";
+WCHAR TraceStoreAddressSuffix[] = L":Address";
 DWORD TraceStoreAddressSuffixLength = (
     sizeof(TraceStoreAddressSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreBitmapSuffix[] = L":bitmap";
+WCHAR TraceStoreAddressRangeSuffix[] = L":AddressRange";
+DWORD TraceStoreAddressRangeSuffixLength = (
+    sizeof(TraceStoreAddressRangeSuffix) /
+    sizeof(WCHAR)
+);
+
+WCHAR TraceStoreBitmapSuffix[] = L":Bitmap";
 DWORD TraceStoreBitmapSuffixLength = (
     sizeof(TraceStoreBitmapSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreInfoSuffix[] = L":info";
+WCHAR TraceStoreInfoSuffix[] = L":Info";
 DWORD TraceStoreInfoSuffixLength = (
     sizeof(TraceStoreInfoSuffix) /
     sizeof(WCHAR)
@@ -80,7 +82,8 @@ USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-USHORT ElementsPerTraceStore = 7;
+USHORT ElementsPerTraceStore = 8;
+USHORT NumberOfMetadataStores = 7;
 
 //
 // The Event trace store gets an initial file size of 16MB, everything else
@@ -89,20 +92,12 @@ USHORT ElementsPerTraceStore = 7;
 
 ULONG InitialTraceStoreFileSizes[] = {
     10 << 23,   // Event
-    10 << 20,   // String
     10 << 20,   // StringBuffer
-    10 << 20,   // HashedString
-    10 << 20,   // HashedStringBuffer
-    10 << 20,   // Buffer
     10 << 20,   // FunctionTable
     10 << 20,   // FunctionTableEntry
     10 << 20,   // PathTable
     10 << 20,   // PathTableEntry
     10 << 20,   // TraceSession
-    10 << 20,   // TraceFilenameString
-    10 << 20,   // TraceFilenameStringBuffer
-    10 << 20,   // TraceDirectoryString
-    10 << 20,   // TraceDirectoryStringBuffer
     10 << 20,   // StringArray
     10 << 20    // StringTable
 };
@@ -134,63 +129,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // String
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
     // StringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // HashedString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // HashedStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // Buffer
     //
 
     {
@@ -274,62 +213,6 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // TraceFilenameString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceFilenameStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceDirectoryString
-    //
-
-    {
-        0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
-    // TraceDirectoryStringBuffer
-    //
-
-    {
-        1,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
-        0,  // FrequentAllocations
-        0   // Unused
-    },
-
-    //
     // StringArray
     //
 
@@ -358,14 +241,15 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     }
 };
 
+LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
 LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
-USHORT InitialFreeMemoryMapsForNonStreamingReaders = 128;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
-USHORT InitialFreeMemoryMapsForNonStreamingWriters = 256;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 128;
-USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
-USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingReaders = 16;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 8;
+USHORT InitialFreeMemoryMapsForNonStreamingWriters = 16;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 8;
+USHORT InitialFreeMemoryMapsForStreamingReaders = 32;
+USHORT InitialFreeMemoryMapsForStreamingWriters = 32;
 USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 8;
 
 USHORT TraceStoreMetadataInfoStructSize = (
@@ -378,23 +262,27 @@ USHORT TraceStoreRelocationStructSize = (
     sizeof(TRACE_STORE_FIELD_RELOC)
 );
 USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
+USHORT TraceStoreAddressRangeStructSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
 USHORT TraceStoreBitmapStructSize = sizeof(TRACE_STORE_BITMAP);
 USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-ULONG DefaultTraceStoreMappingSize = (1 << 21);            //  4MB
-ULONG DefaultTraceStoreEventMappingSize = (1 << 23);       // 16MB
+ULONG DefaultTraceStoreMappingSize = (1 << 21);             //  4MB
+ULONG DefaultTraceStoreEventMappingSize = (1 << 23);        // 16MB
 
-ULONG DefaultAllocationTraceStoreSize = (1 << 21);         //  4MB
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);  // 64KB
+ULONG DefaultAllocationTraceStoreSize = (1 << 21);          //  4MB
+ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);   // 64KB
 
-ULONG DefaultRelocationTraceStoreSize = (1 << 16);         // 64KB
-ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);  // 64KB
+ULONG DefaultRelocationTraceStoreSize = (1 << 16);          // 64KB
+ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);   // 64KB
 
-ULONG DefaultAddressTraceStoreSize = (1 << 21);            //  4MB
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);     // 64KB
+ULONG DefaultAddressTraceStoreSize = (1 << 21);             //  4MB
+ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);      // 64KB
 
-ULONG DefaultBitmapTraceStoreSize = (1 << 16);             // 64KB
-ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);      // 64KB
+ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);        // 64KB
+ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16); // 64KB
+
+ULONG DefaultBitmapTraceStoreSize = (1 << 16);              // 64KB
+ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);       // 64KB
 
 ULONG DefaultMetadataInfoTraceStoreSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -450,6 +338,16 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
 };
 
 TRACE_STORE_TRAITS AddressStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    0,  // StreamingRead
+    0,  // FrequentAllocations
+    0   // Unused
+};
+
+TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords

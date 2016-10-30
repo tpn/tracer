@@ -109,6 +109,10 @@ extern "C" {
 #define DECLSPEC_NOINLINE __declspec(noinline)
 #endif
 
+#ifndef DECLSPEC_THREAD
+#define DECLSPEC_THREAD __declspec(thread)
+#endif
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
@@ -1428,6 +1432,10 @@ BOOL
 typedef GET_MODULE_PATH *PGET_MODULE_PATH;
 RTL_API GET_MODULE_PATH GetModulePath;
 
+typedef
+PVOID
+(MM_GET_MAXIMUM_FILE_SECTION_SIZE)(VOID);
+typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
 
 #ifdef _M_X64
 
@@ -1542,6 +1550,8 @@ RTL_API GET_MODULE_PATH GetModulePath;
     PRTL_TIME_TO_SECONDS_SINCE_1970 RtlTimeToSecondsSince1970;                                         \
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
+    PVOID MmHighestUserAddress;                                                                        \
+    PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
     PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
@@ -2079,9 +2089,8 @@ RTL_API PREFAULT_PAGES PrefaultPages;
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 
-#define PrefaultNextPage(Address) \
+#define PrefaultNextPage(Address)                          \
     (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
-
 
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PDESTROY_RTL DestroyRtl;                                                   \
@@ -2134,6 +2143,7 @@ typedef struct _RTL {
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
+    PVOID MaximumFileSectionSize;
 
     HANDLE      HeapHandle;
 
@@ -2167,10 +2177,10 @@ typedef struct _RTL {
 
 } RTL, *PRTL, **PPRTL;
 
-#define RtlUpcaseChar(C) \
+#define RtlUpcaseChar(C)                                         \
     (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
-#define RtlUpcaseUnicodeChar(C) \
+#define RtlUpcaseUnicodeChar(C)                                   \
     (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
 
 #define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
