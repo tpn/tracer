@@ -20,15 +20,17 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
     sizeof(TRACE_STORE_ALLOCATION),
     sizeof(TRACE_STORE_RELOC),
     sizeof(TRACE_STORE_ADDRESS),
+    sizeof(TRACE_STORE_ADDRESS_RANGE),
     sizeof(TRACE_STORE_BITMAP),
     sizeof(TRACE_STORE_INFO)
 };
 
-PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
+CONST  PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &MetadataInfoStoreTraits,
     &AllocationStoreTraits,
     &RelocationStoreTraits,
     &AddressStoreTraits,
+    &AddressRangeStoreTraits,
     &BitmapStoreTraits,
     &InfoStoreTraits
 };
@@ -38,6 +40,7 @@ CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
     AllocationMetadataBindComplete,         // Allocation
     RelocationMetadataBindComplete,         // Relocation
     NULL,                                   // Address
+    NULL,                                   // AddressRange
     NULL,                                   // Bitmap
     InfoMetadataBindComplete                // Info
 };
@@ -176,7 +179,6 @@ Return Value:
 --*/
 {
     USHORT Index;
-    USHORT NumberOfMetadataStores;
     PVOID BaseAddress;
     PTRACE_STORE_INFO Info;
     PTRACE_STORE TraceStore;
@@ -188,14 +190,6 @@ Return Value:
     TraceStore = MetadataInfoStore->TraceStore;
     MetadataInfo = (PTRACE_STORE_METADATA_INFO)BaseAddress;
     MetadataStorePointer = &TraceStore->MetadataInfoStore;
-
-    //
-    // Subtract one to account for the normal trace store.
-    //
-
-    NumberOfMetadataStores = (USHORT)(
-        TraceContext->TraceStores->ElementsPerTraceStore - 1
-    );
 
     for (Index = 0; Index < NumberOfMetadataStores; Index++) {
         Info = (((PTRACE_STORE_INFO)MetadataInfo) + Index);

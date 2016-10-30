@@ -183,19 +183,29 @@ typedef struct _TRACE_STORE_ADDRESS {
 } TRACE_STORE_ADDRESS, *PTRACE_STORE_ADDRESS, **PPTRACE_STORE_ADDRESS;
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 
+typedef union _ADDRESS_BIT_COUNTS {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG RightShift:6;
+        ULONG PopulationCount:6;
+        ULONG LeadingZeros:5;
+        ULONG TrailingZeros:5;
+    };
+} ADDRESS_BIT_COUNTS, *PADDRESS_BIT_COUNTS;
+C_ASSERT(sizeof(ADDRESS_BIT_COUNTS) == sizeof(ULONG));
+
 typedef struct _TRACE_STORE_ADDRESS_RANGE {
-    PVOID BaseAddress;
-    PVOID EndAddress;
     PVOID PreferredBaseAddress;
-    union {
-        ULONG Id;
-        TRACE_STORE_ID TraceStoreId;
-    };
-    union {
-        ULONG Index;
-        TRACE_STORE_INDEX TraceStoreIndex;
-    };
-} TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE;
+    PVOID ActualBaseAddress;
+    ULONG NumberOfMaps;
+    struct {
+        ADDRESS_BIT_COUNTS Preferred;
+        ADDRESS_BIT_COUNTS Actual;
+        ADDRESS_BIT_COUNTS End;
+    } BitCounts;
+} TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE, \
+                           **PPTRACE_STORE_ADDRESS_RANGE;
+C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 32);
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -513,12 +523,14 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO Allocation;
     TRACE_STORE_INFO Relocation;
     TRACE_STORE_INFO Address;
+    TRACE_STORE_INFO AddressRange;
     TRACE_STORE_INFO Bitmap;
     TRACE_STORE_INFO Info;
+    TRACE_STORE_INFO Unused;
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
-C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 1536);
+C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 2048);
 
 //
 // For trace stores that record instances of structures from a running program,
@@ -1266,6 +1278,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE AllocationStore;
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
+    PTRACE_STORE AddressRangeStore;
     PTRACE_STORE BitmapStore;
     PTRACE_STORE InfoStore;
 
@@ -1338,6 +1351,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC Reloc;
     PTRACE_STORE_BITMAP Bitmap;
     PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_ADDRESS_RANGE AddressRange;
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
@@ -1360,12 +1374,13 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(Allocation);                      \
         TRACE_STORE_METADATA_DECL(Relocation);                      \
         TRACE_STORE_METADATA_DECL(Address);                         \
+        TRACE_STORE_METADATA_DECL(AddressRange);                    \
         TRACE_STORE_METADATA_DECL(Bitmap);                          \
         TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
-    USHORT            SizeOfStruct;
-    USHORT            SizeOfAllocation;
+    ULONG             SizeOfStruct;
+    ULONG             SizeOfAllocation;
     USHORT            NumberOfTraceStores;
     USHORT            ElementsPerTraceStore;
     USHORT            NumberOfFieldRelocationsElements;
@@ -1386,6 +1401,7 @@ typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE AllocationStore;
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
+    PTRACE_STORE AddressRangeStore;
     PTRACE_STORE BitmapStore;
     PTRACE_STORE InfoStore;
 } TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
@@ -1542,6 +1558,80 @@ TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeReadonlyTraceContext;
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+ADDRESS_BIT_COUNTS
+GetAddressBitCounts(
+    _In_ PVOID BaseAddress,
+    _In_range_(3,  43) USHORT RightShift,
+    _In_range_(17, 61) USHORT LeftShift
+    )
+/*++
+
+Routine Description:
+
+    This routine fills out an ADDRESS_BIT_COUNTS structure for a given 64-bit
+    address (pointer).
+
+Arguments:
+
+    BaseAddress - Supplies the address for which the bits are to be calculated.
+
+    RightShift - Supplies a USHORT value indicating how many bits address
+        should be right shifted before counting trailing zeros.  This implies
+        the address has a minimum granularity, e.g. a right shift value of 16
+        implies that the allocations are 64KB in granularity.  This value will
+        also be set in the BitCounts->RightShift field.  Common values are 16
+        (64KB) and 22 (4MB).
+
+    LeftShift - Supplies a USHORT value indicating how many bits address
+        should be left shifted before counting leading zeros.  This implies
+        the address has a maximum upper bound, e.g. a left shift value of
+        21 would imply an address cap of 8TB (which happens to be the user
+        address limit on Windows 10 at the time of writing).  Unlike the
+        RightShift parameter, this field isn't represented in the BitCounts
+        structure.
+
+        N.B.: LeftShift isn't a good parameter name as the address isn't
+              actually shifted left; the leading zeros are computed and
+              then the LeftShift number is subtracted from this.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    ULONGLONG Address;
+    ULONGLONG ShiftedRight;
+    ULONGLONG Leading;
+    ADDRESS_BIT_COUNTS BitCounts;
+
+    Address = (ULONGLONG)BaseAddress;
+    if (!Address) {
+        BitCounts.AsLong = 0;
+        return BitCounts;
+    }
+
+#ifdef _DEBUG
+    if ((Address & ((1 << RightShift) - 1)) != 0) {
+        __debugbreak();
+    }
+#endif
+    ShiftedRight = Address >> RightShift;
+    Leading = LeadingZeros(Address);
+    Leading -= LeftShift;
+
+    BitCounts.RightShift = RightShift;
+    BitCounts.TrailingZeros = (ULONG)TrailingZeros(ShiftedRight);
+    BitCounts.LeadingZeros = (ULONG)Leading;
+    BitCounts.PopulationCount = (ULONG)PopulationCount64(Address);
+
+    return BitCounts;
+}
+
+#define GetTraceStoreAddressBitCounts(Address) \
+    GetAddressBitCounts(Address, 16, 21)
 
 FORCEINLINE
 PTRACE_STORE
