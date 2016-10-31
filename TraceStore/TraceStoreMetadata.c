@@ -40,7 +40,7 @@ CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
     AllocationMetadataBindComplete,         // Allocation
     RelocationMetadataBindComplete,         // Relocation
     NULL,                                   // Address
-    NULL,                                   // AddressRange
+    AddressRangeMetadataBindComplete,       // AddressRange
     NULL,                                   // Bitmap
     InfoMetadataBindComplete                // Info
 };
@@ -295,6 +295,67 @@ Return Value:
     TraceStore = AllocationStore->TraceStore;
     TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
         TraceStore->AllocationStore->MemoryMap->BaseAddress
+    );
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+AddressRangeMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE AddressRangeStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :AddressRange metadata.
+    In normal tracing mode, this routine has no effect.  In readonly mode,
+    it is responsible for wiring up the TraceStore->AddressRange pointer
+    to the base memory map address of the :AddressRange metadata store.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    AddressRangeStore - Supplies a pointer to the :AddressRange TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    //
+    // Initialize trace store alias.
+    //
+
+    TraceStore = AddressRangeStore->TraceStore;
+
+    //
+    // If we're writable (non-readonly), the initialization of the first
+    // address range structure occurs when PrepareNextTraceStoreMemoryMap()
+    // calls RegisterNewTraceStoreAddressRange(), so we don't have to do
+    // anything here in this bind complete method.
+    //
+
+    if (!TraceStore->IsReadonly) {
+        return TRUE;
+    }
+
+    //
+    // Wire up the TraceStore->AddressRange pointer to the base address of the
+    // address range store's memory map.
+    //
+
+    TraceStore->AddressRange = (PTRACE_STORE_ADDRESS_RANGE)(
+        TraceStore->AddressRangeStore->MemoryMap->BaseAddress
     );
 
     return TRUE;

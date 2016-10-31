@@ -50,6 +50,8 @@ extern "C" {
 
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
+#define SECONDS_TO_NANOSECONDS  1000000000
+//#define SECONDS_TO_TIMESTAMP    SECONDS_TO_NANOSECONDS
 
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
@@ -938,6 +940,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     volatile ULONG BindsInProgress;
 
     //
+    // This represents the number of readonly prepares for main (not metadata)
+    // trace stores.
+    //
+
+    volatile ULONG PrepareReadonlyMapsInProgress;
+
+    //
     // Stash Time at the end as it's large and doesn't have any alignment
     // requirements.
     //
@@ -949,6 +958,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 8);
 C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 48);
 C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 64);
+
+typedef struct _TRACE_STORE_STRUCTURE_SIZES {
+    ULONG TraceStore;
+    ULONG TraceStores;
+    ULONG TraceContext;
+    ULONG TraceStoreStartTime;
+    ULONG TraceStoreInfo;
+    ULONG TraceStoreMetadataInfo;
+    ULONG TraceStoreReloc;
+} TRACE_STORE_STRUCTURE_SIZES, *PTRACE_STORE_STRUCTURE_SIZES;
 
 typedef
 VOID
@@ -1181,23 +1200,34 @@ typedef BIND_COMPLETE *PBIND_COMPLETE;
 typedef struct _TRACE_STORE {
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
+    SLIST_HEADER            PrepareReadonlyMemoryMaps;
     SLIST_HEADER            NextMemoryMaps;
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
 
-    SLIST_ENTRY             ListEntry;
+    TRACE_STORE_MEMORY_MAP  SingleMemoryMap;
+
+    union {
+        SLIST_ENTRY ListEntry;
+        struct {
+            PSLIST_ENTRY Next;
+            PVOID Unused;
+        };
+    };
+
     PRTL                    Rtl;
     PALLOCATOR              Allocator;
     PTRACE_CONTEXT          TraceContext;
-    PREADONLY_TRACE_CONTEXT ReadonlyTraceContext;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
     LARGE_INTEGER           MappingSize;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                PrepareNextMemoryMapWork;
+    PTP_WORK                PrepareReadonlyMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
     HANDLE                  NextMemoryMapAvailableEvent;
     HANDLE                  AllMemoryMapsAreFreeEvent;
+    HANDLE                  ReadonlyMappingCompleteEvent;
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -1208,8 +1238,7 @@ typedef struct _TRACE_STORE {
     volatile LONG   MappedSequenceId;
 
     volatile LONG   MetadataBindsInProgress;
-
-    TRACE_STORE_MEMORY_MAP SingleMemoryMap;
+    volatile LONG   PrepareReadonlyMapsInProgress;
 
     //
     // Each trace store, when initialized, is assigned a unique sequence
@@ -1239,6 +1268,7 @@ typedef struct _TRACE_STORE {
     TRACE_FLAGS TraceFlags;
 
     union {
+        ULONG StoreFlags;
         struct {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
@@ -1264,6 +1294,11 @@ typedef struct _TRACE_STORE {
     DWORD CreateFileFlagsAndAttributes;
     DWORD MapViewOfFileDesiredAccess;
 
+    //
+    // Mapping handle will only have a value if we're readonly.
+    //
+
+    HANDLE MappingHandle;
     HANDLE FileHandle;
     PVOID PrevAddress;
 
@@ -1353,12 +1388,45 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_ALLOCATION Allocation;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
 
+    //
+    // The following values will be filled out for normal trace stores that
+    // have been loaded as readonly.
+    //
+
+    ULARGE_INTEGER NumberOfAllocations;
+    ULARGE_INTEGER NumberOfAddresses;
+    ULARGE_INTEGER NumberOfAddressRanges;
+
+    //
+    // The following pointer will point to the base address of an array of
+    // address structures of size NumberOfAddresses.
+    //
+
+    PTRACE_STORE_ADDRESS ReadonlyAddresses;
+
+    //
+    // The following pointer will point to the base address of an array of
+    // address ranges of size NumberOfAddressRanges.
+    //
+
+    PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
+    volatile ULONGLONG ReadonlyAddressRangesConsumed;
+
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
 #endif
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
+
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareMemoryMaps) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareReadonlyMemoryMaps) == 32);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, NextMemoryMaps) == 48);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, FreeMemoryMaps) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -1630,8 +1698,11 @@ Return Value:
     return BitCounts;
 }
 
-#define GetTraceStoreAddressBitCounts(Address) \
-    GetAddressBitCounts(Address, 16, 21)
+#define GetTraceStoreAddressBitCounts(RightShift, Address) \
+    GetAddressBitCounts(Address, RightShift, 21)
+
+#define CalculateRightShiftFromMemoryMap(MemoryMap) \
+    (USHORT)TrailingZeros(MemoryMap->MappingSize.QuadPart)
 
 FORCEINLINE
 PTRACE_STORE
@@ -1643,6 +1714,33 @@ TraceStoreToMetadataStore(
     USHORT Index;
     Index = TraceStoreMetadataIdToArrayIndex(MetadataId);
     return TraceStore + Index + 1;
+}
+
+FORCEINLINE
+ULONGLONG
+NumberOfTraceStoreAllocations(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->AllocationStore->Totals->NumberOfAllocations.QuadPart;
+}
+
+FORCEINLINE
+ULONGLONG
+NumberOfTraceStoreAddresses(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->AddressStore->Totals->NumberOfAllocations.QuadPart;
+}
+
+FORCEINLINE
+ULONGLONG
+NumberOfTraceStoreAddressRanges(
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return TraceStore->AddressRangeStore->Totals->NumberOfAllocations.QuadPart;
 }
 
 FORCEINLINE

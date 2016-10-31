@@ -11,6 +11,7 @@ from ..wintypes import (
     create_string_buffer,
     create_threadpool_callback_environment,
 
+    Union,
     Structure,
 
     SetThreadpoolCallbackPool,
@@ -39,6 +40,7 @@ from ..wintypes import (
     ULONGLONG,
     SYSTEMTIME,
     LIST_ENTRY,
+    SLIST_ENTRY,
     SLIST_HEADER,
     LARGE_INTEGER,
     ULARGE_INTEGER,
@@ -66,8 +68,17 @@ from .Allocator import (
 # Globals
 #===============================================================================
 TRACE_STORE_ID = ULONG
+TRACE_STORE_METADATA_ID = ULONG
 TRACE_STORE_INDEX = ULONG
 PTIMER_FUNCTION = PVOID
+
+# These should be done as CFUNCTYPE prototypes, but they all take pointers
+# to structures we define later, and I can't be bothered figuring out the
+# ctypes-fu required to get the forward definitions working at the moment.
+PALLOCATE_RECORDS = PVOID
+PALLOCATE_ALIGNED_RECORDS = PVOID
+PALLOCATE_ALIGNED_OFFSET_RECORDS = PVOID
+PBIND_COMPLETE = PVOID
 
 #===============================================================================
 # Structures
@@ -247,6 +258,19 @@ class TRACE_STORE_INFO(Structure):
     ]
 PTRACE_STORE_INFO = POINTER(TRACE_STORE_INFO)
 
+class TRACE_STORE_METADATA_INFO(Structure):
+    _fields_ = [
+        ('MetadataInfo', TRACE_STORE_INFO),
+        ('Allocation', TRACE_STORE_INFO),
+        ('Relocation', TRACE_STORE_INFO),
+        ('Address', TRACE_STORE_INFO),
+        ('AddressRange', TRACE_STORE_INFO),
+        ('Bitmap', TRACE_STORE_INFO),
+        ('Info', TRACE_STORE_INFO),
+        ('Unused', TRACE_STORE_INFO),
+    ]
+PTRACE_STORE_METADATA_INFO = POINTER(TRACE_STORE_METADATA_INFO)
+
 class TRACE_STORE_FIELD_RELOC(Structure):
     _fields_ = [
         ('Offset', ULONG),
@@ -277,7 +301,7 @@ class TRACE_STORE_BITMAP(Structure):
         ('Shift', USHORT),
         ('Buffer', PVOID),
     ]
-PTRACE_STORE_BITMAP = TRACE_STORE_BITMAP
+PTRACE_STORE_BITMAP = POINTER(TRACE_STORE_BITMAP)
 
 class TRACE_SESSION(Structure):
     _fields_ = [
@@ -292,8 +316,34 @@ class TRACE_SESSION(Structure):
     ]
 PTRACE_SESSION = POINTER(TRACE_SESSION)
 
+class _TRACE_STORE_MEMORY_MAP_OVERLAY(Structure):
+    _fields_ = [
+        ('PrevAddress', PVOID),
+        ('pAddress', PTRACE_STORE_ADDRESS),
+    ]
+
+class _TRACE_STORE_MEMORY_MAP_INNER1(Union):
+    _fields_ = [
+        ('ListEntry', SLIST_ENTRY),
+        ('Overlay', _TRACE_STORE_MEMORY_MAP_OVERLAY),
+    ]
+
+class _TRACE_STORE_MEMORY_MAP_INNER2(Union):
+    _fields_ = [
+        ('PreferredBaseAddress', PVOID),
+        ('NextAddress', PVOID),
+    ]
+
 class TRACE_STORE_MEMORY_MAP(Structure):
-    pass
+    _fields_ = [
+        ('u1', _TRACE_STORE_MEMORY_MAP_INNER1),
+        ('FileHandle', HANDLE),
+        ('MappingHandle', HANDLE),
+        ('FileOffset', LARGE_INTEGER),
+        ('MappingSize', LARGE_INTEGER),
+        ('BaseAddress', PVOID),
+        ('u2', _TRACE_STORE_MEMORY_MAP_INNER2),
+    ]
 PTRACE_STORE_MEMORY_MAP = POINTER(TRACE_STORE_MEMORY_MAP)
 
 class TRACE_STORES(Structure):
@@ -320,6 +370,7 @@ class TRACE_CONTEXT(Structure):
         ('FailedListHead', SLIST_HEADER),
         ('ActiveWorkItems', ULONG),
         ('BindsInProgress', ULONG),
+        ('PrepareReadonlyMapsInProgress', ULONG),
         ('Time', TRACE_STORE_TIME),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
@@ -347,17 +398,109 @@ class READONLY_TRACE_CONTEXT(Structure):
     ]
 PREADONLY_TRACE_CONTEXT = POINTER(READONLY_TRACE_CONTEXT)
 
+class _TRACE_STORE_INNER_FLAGS(Structure):
+    _fields_ = [
+        ('NoRetire', ULONG, 1),
+        ('NoPrefaulting', ULONG, 1),
+        ('NoPreferredAddressReuse', ULONG, 1),
+        ('IsReadonly', ULONG, 1),
+        ('SetEndOfFileOnClose', ULONG, 1),
+        ('IsMetadata', ULONG, 1),
+        ('HasRelocations', ULONG, 1),
+        ('NoTruncate', ULONG, 1),
+        ('IsRelocationTarget', ULONG, 1),
+    ]
+
 class TRACE_STORE(Structure):
     pass
 PTRACE_STORE = POINTER(TRACE_STORE)
+
+TRACE_STORE._fields_ = [
+    ('CloseMemoryMaps', SLIST_HEADER),
+    ('PrepareMemoryMaps', SLIST_HEADER),
+    ('PrepareReadonlyMemoryMaps', SLIST_HEADER),
+    ('NextMemoryMaps', SLIST_HEADER),
+    ('FreeMemoryMaps', SLIST_HEADER),
+    ('PrefaultMemoryMaps', SLIST_HEADER),
+    ('SingleMemoryMap', TRACE_STORE_MEMORY_MAP),
+    ('ListEntry', SLIST_ENTRY),
+    ('Unused', PVOID),
+    ('Rtl', PRTL),
+    ('Allocator', PALLOCATOR),
+    ('TraceContext', PTRACE_CONTEXT),
+    ('InitialSize', LARGE_INTEGER),
+    ('ExtensionSize', LARGE_INTEGER),
+    ('MappingSize', LARGE_INTEGER),
+    ('PrefaultFuturePageWork', PTP_WORK),
+    ('PrepareNextMemoryMapWork', PTP_WORK),
+    ('PrepareReadonlyMemoryMapWork', PTP_WORK),
+    ('CloseMemoryMapWork', PTP_WORK),
+    ('NextMemoryMapAvailableEvent', HANDLE),
+    ('AllMemoryMapsAreFreeEvent', HANDLE),
+    ('ReadonlyMappingCompleteEvent', HANDLE),
+    ('PrevMemoryMap', PTRACE_STORE_MEMORY_MAP),
+    ('MemoryMap', PTRACE_STORE_MEMORY_MAP),
+    ('TotalNumberOfMemoryMaps', ULONG),
+    ('NumberOfActiveMemoryMaps', ULONG),
+    ('MappedSequenceId', LONG),
+    ('MetadataBindsInProgress', LONG),
+    ('PrepareReadonlyMapsInProgress', LONG),
+    ('SequenceId', ULONG),
+    ('NumaNode', ULONG),
+    ('TraceStoreId', TRACE_STORE_ID),
+    ('TraceStoreMetadataId', TRACE_STORE_METADATA_ID),
+    ('TraceStoreIndex', TRACE_STORE_INDEX),
+    ('TraceFlags', TRACE_FLAGS),
+    ('StoreFlags', _TRACE_STORE_INNER_FLAGS),
+    ('LastError', DWORD),
+    ('CreateFileDesiredAccess', DWORD),
+    ('CreateFileCreationDisposition', DWORD),
+    ('CreateFileMappingProtectionFlags', DWORD),
+    ('CreateFileFlagsAndAttributes', DWORD),
+    ('MapViewOfFileDesiredAccess', DWORD),
+    ('MappingHandle', HANDLE),
+    ('FileHandle', HANDLE),
+    ('PrevAddress', PVOID),
+    ('TraceStore', PTRACE_STORE),
+    ('MetadataInfoStore', PTRACE_STORE),
+    ('AllocationStore', PTRACE_STORE),
+    ('RelocationStore', PTRACE_STORE),
+    ('AddressStore', PTRACE_STORE),
+    ('AddressRangeStore', PTRACE_STORE),
+    ('BitmapStore', PTRACE_STORE),
+    ('InfoStore', PTRACE_STORE),
+    ('AllocateRecords', PALLOCATE_RECORDS),
+    ('AllocateAlignedRecords', PALLOCATE_ALIGNED_RECORDS),
+    ('AllocateAlignedOffsetRecords', PALLOCATE_ALIGNED_OFFSET_RECORDS),
+    ('BindComplete', PBIND_COMPLETE),
+    ('pReloc', PTRACE_STORE_RELOC),
+    ('pTraits', PTRACE_STORE_TRAITS),
+    ('BaseFieldRelocations', PTRACE_STORE_FIELD_RELOC),
+    ('Eof', PTRACE_STORE_EOF),
+    ('Time', PTRACE_STORE_TIME),
+    ('Stats', PTRACE_STORE_STATS),
+    ('Totals', PTRACE_STORE_TOTALS),
+    ('Traits', PTRACE_STORE_TRAITS),
+    ('Info', PTRACE_STORE_INFO),
+    ('Reloc', PTRACE_STORE_RELOC),
+    ('Bitmap', PTRACE_STORE_BITMAP),
+    ('Allocation', PTRACE_STORE_ALLOCATION),
+    ('AddressRange', PTRACE_STORE_ADDRESS_RANGE),
+    ('NumberOfAllocations', ULARGE_INTEGER),
+    ('NumberOfAddresses', ULARGE_INTEGER),
+    ('NumberOfAddressRanges', ULARGE_INTEGER),
+    ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
+    ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
+    ('ReadonlyAddressRangesConsumed', ULONGLONG),
+]
 
 class TRACE_STORES_RUNDOWN(Structure):
     pass
 PTRACE_STORES_RUNDOWN = POINTER(TRACE_STORES_RUNDOWN)
 
 TRACE_STORES._fields_ = [
-    ('SizeOfStruct', USHORT),
-    ('SizeOfAllocation', USHORT),
+    ('SizeOfStruct', ULONG),
+    ('SizeOfAllocation', ULONG),
     ('NumberOfTraceStore', USHORT),
     ('ElementsPerTraceStore', USHORT),
     ('NumberOfFieldRelocationsElements', USHORT),
@@ -369,7 +512,112 @@ TRACE_STORES._fields_ = [
     ('Allocator', PALLOCATOR),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
+    # Start of Relocations[MAX_TRACE_STORE_IDS].
+    ('EventReloc', TRACE_STORE_RELOC),
+    ('StringBufferReloc', TRACE_STORE_RELOC),
+    ('FunctionTableReloc', TRACE_STORE_RELOC),
+    ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+    ('PathTableReloc', TRACE_STORE_RELOC),
+    ('PathTableEntryReloc', TRACE_STORE_RELOC),
+    ('SessionReloc', TRACE_STORE_RELOC),
+    ('StringArrayReloc', TRACE_STORE_RELOC),
+    ('StringTableReloc', TRACE_STORE_RELOC),
+    # Start of Stores[MAX_TRACE_STORES].
+    ('EventStore', TRACE_STORE),
+    ('EventMetadataInfoStore', TRACE_STORE),
+    ('EventAllocationStore', TRACE_STORE),
+    ('EventRelocationStore', TRACE_STORE),
+    ('EventAddressStore', TRACE_STORE),
+    ('EventAddressRangeStore', TRACE_STORE),
+    ('EventBitmapStore', TRACE_STORE),
+    ('EventInfoStore', TRACE_STORE),
+    ('StringBufferStore', TRACE_STORE),
+    ('StringBufferMetadataInfoStore', TRACE_STORE),
+    ('StringBufferAllocationStore', TRACE_STORE),
+    ('StringBufferRelocationStore', TRACE_STORE),
+    ('StringBufferAddressStore', TRACE_STORE),
+    ('StringBufferAddressRangeStore', TRACE_STORE),
+    ('StringBufferBitmapStore', TRACE_STORE),
+    ('StringBufferInfoStore', TRACE_STORE),
+    ('FunctionTableStore', TRACE_STORE),
+    ('FunctionTableMetadataInfoStore', TRACE_STORE),
+    ('FunctionTableAllocationStore', TRACE_STORE),
+    ('FunctionTableRelocationStore', TRACE_STORE),
+    ('FunctionTableAddressStore', TRACE_STORE),
+    ('FunctionTableAddressRangeStore', TRACE_STORE),
+    ('FunctionTableBitmapStore', TRACE_STORE),
+    ('FunctionTableInfoStore', TRACE_STORE),
+    ('FunctionTableEntryStore', TRACE_STORE),
+    ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
+    ('FunctionTableEntryAllocationStore', TRACE_STORE),
+    ('FunctionTableEntryRelocationStore', TRACE_STORE),
+    ('FunctionTableEntryAddressStore', TRACE_STORE),
+    ('FunctionTableEntryAddressRangeStore', TRACE_STORE),
+    ('FunctionTableEntryBitmapStore', TRACE_STORE),
+    ('FunctionTableEntryInfoStore', TRACE_STORE),
+    ('PathTableStore', TRACE_STORE),
+    ('PathTableMetadataInfoStore', TRACE_STORE),
+    ('PathTableAllocationStore', TRACE_STORE),
+    ('PathTableRelocationStore', TRACE_STORE),
+    ('PathTableAddressStore', TRACE_STORE),
+    ('PathTableAddressRangeStore', TRACE_STORE),
+    ('PathTableBitmapStore', TRACE_STORE),
+    ('PathTableInfoStore', TRACE_STORE),
+    ('PathTableEntryStore', TRACE_STORE),
+    ('PathTableEntryMetadataInfoStore', TRACE_STORE),
+    ('PathTableEntryAllocationStore', TRACE_STORE),
+    ('PathTableEntryRelocationStore', TRACE_STORE),
+    ('PathTableEntryAddressStore', TRACE_STORE),
+    ('PathTableEntryAddressRangeStore', TRACE_STORE),
+    ('PathTableEntryBitmapStore', TRACE_STORE),
+    ('PathTableEntryInfoStore', TRACE_STORE),
+    ('SessionStore', TRACE_STORE),
+    ('SessionMetadataInfoStore', TRACE_STORE),
+    ('SessionAllocationStore', TRACE_STORE),
+    ('SessionRelocationStore', TRACE_STORE),
+    ('SessionAddressStore', TRACE_STORE),
+    ('SessionAddressRangeStore', TRACE_STORE),
+    ('SessionBitmapStore', TRACE_STORE),
+    ('SessionInfoStore', TRACE_STORE),
+    ('StringArrayStore', TRACE_STORE),
+    ('StringArrayMetadataInfoStore', TRACE_STORE),
+    ('StringArrayAllocationStore', TRACE_STORE),
+    ('StringArrayRelocationStore', TRACE_STORE),
+    ('StringArrayAddressStore', TRACE_STORE),
+    ('StringArrayAddressRangeStore', TRACE_STORE),
+    ('StringArrayBitmapStore', TRACE_STORE),
+    ('StringArrayInfoStore', TRACE_STORE),
+    ('StringTableStore', TRACE_STORE),
+    ('StringTableMetadataInfoStore', TRACE_STORE),
+    ('StringTableAllocationStore', TRACE_STORE),
+    ('StringTableRelocationStore', TRACE_STORE),
+    ('StringTableAddressStore', TRACE_STORE),
+    ('StringTableAddressRangeStore', TRACE_STORE),
+    ('StringTableBitmapStore', TRACE_STORE),
+    ('StringTableInfoStore', TRACE_STORE),
 ]
+
+class TRACE_STORE_STRUCTURE_SIZES(Structure):
+    _fields_ = [
+        ('TraceStore', ULONG),
+        ('TraceStores', ULONG),
+        ('TraceContext', ULONG),
+        ('TraceStoreStartTime', ULONG),
+        ('TraceStoreInfo', ULONG),
+        ('TraceStoreMetadataInfo', ULONG),
+        ('TraceStoreReloc', ULONG),
+    ]
+PTRACE_STORE_STRUCTURE_SIZES = POINTER(TRACE_STORE_STRUCTURE_SIZES);
+
+OurTraceStoreStructureSizes = {
+    'TraceStore': sizeof(TRACE_STORE),
+    'TraceStores': sizeof(TRACE_STORES),
+    'TraceContext': sizeof(TRACE_CONTEXT),
+    'TraceStoreStartTime': sizeof(TRACE_STORE_START_TIME),
+    'TraceStoreInfo': sizeof(TRACE_STORE_INFO),
+    'TraceStoreMetadataInfo': sizeof(TRACE_STORE_METADATA_INFO),
+    'TraceStoreReloc': sizeof(TRACE_STORE_RELOC),
+}
 
 #===============================================================================
 # Function Types
@@ -410,12 +658,15 @@ INITIALIZE_TRACE_CONTEXT = CFUNCTYPE(
 
 TracerConfig = None
 TraceStoreDll = None
+TraceStoreStructureSizesRaw = None
 InitializeReadonlyTraceStores = None
 InitializeReadonlyTraceContext = None
 UpdateTracerConfigWithTraceStoreInfo = None
 
 def bind(path=None, dll=None):
     global TraceStoreDll
+    global TraceStoreStructureSizes
+    global TraceStoreStructureSizesRaw
     global InitializeReadonlyTraceStores
     global InitializeReadonlyTraceContext
     global UpdateTracerConfigWithTraceStoreInfo
@@ -463,6 +714,12 @@ def bind(path=None, dll=None):
         )
     )
 
+    TraceStoreStructureSizesRaw = dll.TraceStoreStructureSizes
+    TraceStoreStructureSizes = cast(
+        TraceStoreStructureSizesRaw,
+        PTRACE_STORE_STRUCTURE_SIZES
+    ).contents
+
 #===============================================================================
 # Python Functions
 #===============================================================================
@@ -489,12 +746,15 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
         cast(0, PTRACE_FLAGS),
     )
 
-    assert size.value > 0
+    expected = sizeof(TRACE_STORES)
+    assert size.value == expected, (size.value, expected)
 
-    buf = create_string_buffer(size.value)
-    ptrace_stores = cast(buf, PTRACE_STORES)
+    #buf = create_string_buffer(size.value)
+    #ptrace_stores = cast(buf, PTRACE_STORES)
+
+    trace_stores = TRACE_STORES()
+    ptrace_stores = byref(trace_stores)
     flags = TRACE_FLAGS()
-
     prtl = byref(rtl)
     pallocator = byref(allocator)
 
@@ -508,8 +768,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
     )
     assert success
 
-    ts = ptrace_stores.contents
-    return ts
+    return trace_stores
 
 def create_and_initialize_readonly_trace_context(rtl, allocator,
                                                  trace_stores,

@@ -21,7 +21,7 @@ _Use_decl_annotations_
 BOOL
 GetNumberOfMemoryMapsRequiredByTraceStore(
     PTRACE_STORE TraceStore,
-    PUSHORT NumberOfMapsPointer
+    PULONG NumberOfMapsPointer
     )
 /*++
 
@@ -36,7 +36,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
         number of memory maps required will be calculated.
 
-    NumberOfMapsPointer - Supplies the address of a USHORT variable that will
+    NumberOfMapsPointer - Supplies the address of a ULONG variable that will
         receive the number of maps to create.
 
 Return Value:
@@ -47,8 +47,8 @@ Return Value:
 {
     BOOL IsReadonly;
     BOOL IsMetadata;
-    USHORT NumberOfMaps;
-    USHORT Multiplier;
+    ULONG NumberOfMaps;
+    ULONG Multiplier;
     TRACE_STORE_TRAITS Traits;
 
     Traits = *TraceStore->pTraits;
@@ -143,7 +143,8 @@ _Use_decl_annotations_
 BOOL
 CreateMemoryMapsForTraceStore(
     PTRACE_STORE TraceStore,
-    PPTRACE_STORE_MEMORY_MAP MemoryMapPointer
+    PPTRACE_STORE_MEMORY_MAP MemoryMapPointer,
+    PULONG NumberOfMemoryMapsPointer
     )
 /*++
 
@@ -151,8 +152,9 @@ Routine Description:
 
     This routine creates memory maps for a given trace store.  It is
     called at least once per trace store, during the initial binding.
-    Internally, GetNumberOfMemoryMapsRequiredByTraceStore() is called
-    to obtain the number of maps to create.
+    If the value pointed to by NumberOfMemoryMapsPointer is 0, the
+    routine will call GetNumberOfMemoryMapsRequiredByTraceStore() to
+    obtain the number of maps to create.
 
 Arguments:
 
@@ -166,6 +168,12 @@ Arguments:
         caller from popping a memory map off the free list once this routine
         returns successfully.
 
+    NumberOfMemoryMapsPointer - Supplies a pointer to a ULONG variable that
+        that indicates the desired number of memory maps to create.  If 0,
+        the GetNumberOfMemoryMapsRequiredByTraceStore() method will be called
+        to obtain the number of memory maps to create.  The pointer is updated
+        with the actual number of maps created.
+
 Return Value:
 
     TRUE on success, FALSE on failure.  If TRUE, *MemoryMapPointer will be
@@ -173,8 +181,9 @@ Return Value:
 
 --*/
 {
-    USHORT NumberOfMaps;
-    USHORT Index;
+    BOOL Success;
+    ULONG NumberOfMaps;
+    ULONG Index;
     TRACE_STORE_TRAITS Traits;
     PALLOCATOR Allocator;
     PTRACE_STORE_MEMORY_MAP MemoryMapToReturn;
@@ -192,11 +201,16 @@ Return Value:
     *MemoryMapPointer = NULL;
 
     //
-    // Obtain the number of maps to create.
+    // If the caller hasn't specified the number of memory maps to create,
+    // call GetNumberOfMemoryMapsRequiredByTraceStore() to obtain the number.
     //
 
-    if (!GetNumberOfMemoryMapsRequiredByTraceStore(TraceStore, &NumberOfMaps)) {
-        return FALSE;
+    NumberOfMaps = *NumberOfMemoryMapsPointer;
+    if (!NumberOfMaps) {
+        Success = GetNumberOfMemoryMapsRequiredByTraceStore(
+            TraceStore,
+            NumberOfMemoryMapsPointer
+        );
     }
 
     //
@@ -311,6 +325,120 @@ End:
 
 _Use_decl_annotations_
 BOOL
+CreateMemoryMapsForReadonlyTraceStore(
+    PTRACE_STORE TraceStore,
+    PPTRACE_STORE_MEMORY_MAP MemoryMapPointer,
+    PULONG NumberOfMemoryMapsPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine creates memory maps for readonly trace stores.  This is a
+    specialized version of CreateMemoryMapsForTraceStore() that does not push
+    the memory maps to the trace store's free list or adjust the relevant
+    counters.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        memory maps are to be created.
+
+    MemoryMapPointer - Supplies the address of a variable that will receive
+        the address of the first memory map in the array of memory maps
+        created by this routine.
+
+    NumberOfMemoryMapsPointer - Supplies a pointer to a ULONG variable that
+        that indicates the desired number of memory maps to create.  This value
+        cannot be 0.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.  If TRUE, *MemoryMapPointer will be
+    non-NULL.  If FALSE, *MemoryMapPointer will be NULL.
+
+--*/
+{
+    ULONG NumberOfMaps;
+    TRACE_STORE_TRAITS Traits;
+    PALLOCATOR Allocator;
+    PTRACE_STORE_MEMORY_MAP MemoryMaps;
+
+    Traits = *TraceStore->pTraits;
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *MemoryMapPointer = NULL;
+
+    //
+    // Verify number of maps is non-zero.
+    //
+
+    NumberOfMaps = *NumberOfMemoryMapsPointer;
+    if (!NumberOfMaps) {
+        return FALSE;
+    }
+
+    //
+    // If only a single memory map is required, we can use the SingleMemoryMap
+    // structure embedded within every trace store, removing the need to call
+    // the allocator.
+    //
+
+    if (NumberOfMaps == 1) {
+        *MemoryMapPointer = &TraceStore->SingleMemoryMap;
+        return TRUE;
+    }
+
+    //
+    // Allocate space for an array of memory maps.  We add 8 bytes to the size
+    // as it will allow us to align on a 16 byte boundary if the address isn't
+    // already aligned.  This saves freeing and re-allocation.
+    //
+
+    Allocator = TraceStore->Allocator;
+    MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
+        Allocator->Calloc(
+            Allocator->Context,
+            NumberOfMaps,
+            sizeof(TRACE_STORE_MEMORY_MAP) + 8
+        )
+    );
+
+    if (!MemoryMaps) {
+        return FALSE;
+    }
+
+    //
+    // If the allocation isn't aligned on a 16 byte boundary, bump it forward
+    // 8 bytes.
+    //
+
+#define IS_ALIGNED(Address) (((ULONG_PTR)(Address) & 15) == 0)
+#define ALIGN_MEMORY_MAPS(Address) ((ULONG_PTR)Address + 8)
+
+    if (!IS_ALIGNED(MemoryMaps)) {
+        MemoryMaps = (PTRACE_STORE_MEMORY_MAP)ALIGN_MEMORY_MAPS(MemoryMaps);
+    }
+
+    //
+    // Alignment sanity check.
+    //
+
+    if (!IS_ALIGNED(MemoryMaps)) {
+        __debugbreak();
+        Allocator->Free(Allocator->Context, MemoryMaps);
+        return FALSE;
+    }
+
+    *MemoryMapPointer = MemoryMaps;
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
 PrepareNextTraceStoreMemoryMap(
     PTRACE_STORE TraceStore,
     PTRACE_STORE_MEMORY_MAP MemoryMap
@@ -349,8 +477,7 @@ Return Value:
     BOOL HaveAddress;
     BOOL PreferredAddressUnavailable;
     USHORT NumaNode;
-    PRTL Rtl;
-    HRESULT Result;
+    USHORT RightShift;
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
@@ -379,19 +506,39 @@ Return Value:
         Stats = &DummyStats;
     }
 
-    if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
-        TraceStore->LastError = GetLastError();
-        return FALSE;
-    }
-
     //
     // Initialize aliases.
     //
 
-    Rtl = TraceStore->Rtl;
     IsReadonly = IsReadonlyTraceStore(TraceStore);
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
+
+    //
+    // Make a note if this is the first memory map we've been requested to
+    // prepare.  We use this information down the track with regards to the
+    // preparation of the address range structure.
+    //
+
+    IsFirstMap = (MemoryMap->FileOffset.QuadPart == 0);
+
+    //
+    // If we're readonly, the file mapping will have already been created, so
+    // we can go straight to the point after it where we begin preparation of
+    // the mapped view.
+    //
+
+    if (IsReadonly) {
+        if (!MemoryMap->MappingHandle) {
+            __debugbreak();
+        }
+        goto PostFileMapping;
+    }
+
+    if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
+        TraceStore->LastError = GetLastError();
+        return FALSE;
+    }
 
     //
     // Get the current file offset.
@@ -420,14 +567,6 @@ Return Value:
     }
 
     //
-    // Make a note if this is the first memory map we've been requested to
-    // prepare.  We use this information down the track with regards to the
-    // preparation of the address range structure.
-    //
-
-    IsFirstMap = (CurrentFileOffset.QuadPart == 0);
-
-    //
     // Determine the distance we need to move the file pointer.
     //
 
@@ -454,15 +593,6 @@ Return Value:
     //
 
     if (FileInfo.EndOfFile.QuadPart < NewFileOffset.QuadPart) {
-        if (IsReadonly) {
-
-            //
-            // Something has gone wrong if we're extending a readonly store.
-            //
-
-            __debugbreak();
-            return FALSE;
-        }
         if (!SetEndOfFile(MemoryMap->FileHandle)) {
             TraceStore->LastError = GetLastError();
             return FALSE;
@@ -488,6 +618,8 @@ Return Value:
         TraceStore->LastError = GetLastError();
         return FALSE;
     }
+
+PostFileMapping:
 
     OriginalPreferredBaseAddress = NULL;
     PreferredAddressUnavailable = FALSE;
@@ -522,29 +654,8 @@ Return Value:
     // Take a local copy of the address.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(&Address,
-                                      AddressPointer,
-                                      sizeof(Address));
-
-    if (FAILED(Result)) {
-
-        //
-        // If we're readonly and we have relocations, not being able to read
-        // the address record is actually fatal as we won't know what address
-        // to relocate to.
-        //
-
-        if (IsReadonly && HasRelocations) {
-            return FALSE;
-        }
-
-        //
-        // (Should we continue with preparation here?  Maybe not.)
-        //
-
-        HaveAddress = FALSE;
-        AddressPointer = NULL;
-        MemoryMap->pAddress = NULL;
+    if (!CopyTraceStoreAddress(&Address, AddressPointer)) {
+        return FALSE;
     }
 
 TryMapMemory:
@@ -587,8 +698,8 @@ TryMapMemory:
         goto Finalize;
     }
 
-    if (!HaveAddress || IsReadonly) {
-        goto Finalize;
+    if (!HaveAddress) {
+        __debugbreak();
     }
 
     if (!PreferredBaseAddress) {
@@ -639,33 +750,15 @@ TryMapMemory:
     // store.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(AddressPointer,
-                                      &Address,
-                                      sizeof(Address));
-
-    if (FAILED(Result)) {
-
-        //
-        // Disable the address struct.
-        //
-
-        MemoryMap->pAddress = NULL;
-
-    } else if (MemoryMap->pAddress != AddressPointer) {
-
-        //
-        // Invariant check: this should never get hit.
-        //
-
-        __debugbreak();
-
+    if (!CopyTraceStoreAddress(AddressPointer, &Address)) {
+        return FALSE;
     }
 
     //
     // Update the address range details.  If this is the first map, or the
     // preferred address wasn't available, fill out a new local address range
-    // structure and load it.  Otherwise, update the existing address range's
-    // number of maps counter and the bit counts for the end address.
+    // structure and register it.  Otherwise, update the existing address
+    // range's number of maps counter and the bit counts for the end address.
     //
 
     EndAddress = (PVOID)(
@@ -675,7 +768,13 @@ TryMapMemory:
         )
     );
 
-    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
+    RightShift = CalculateRightShiftFromMemoryMap(MemoryMap);
+    EndAddressBitCounts = (
+        GetTraceStoreAddressBitCounts(
+            RightShift,
+            EndAddress
+        )
+    );
 
     if (IsFirstMap || PreferredAddressUnavailable) {
 
@@ -688,11 +787,19 @@ TryMapMemory:
         //
 
         AddressRange.BitCounts.Preferred = (
-            GetTraceStoreAddressBitCounts(AddressRange.PreferredBaseAddress)
+            GetTraceStoreAddressBitCounts(
+                RightShift,
+                AddressRange.PreferredBaseAddress
+            )
         );
+
         AddressRange.BitCounts.Actual = (
-            GetTraceStoreAddressBitCounts(AddressRange.ActualBaseAddress)
+            GetTraceStoreAddressBitCounts(
+                RightShift,
+                AddressRange.ActualBaseAddress
+            )
         );
+
         AddressRange.BitCounts.End = EndAddressBitCounts;
 
         //
@@ -722,13 +829,19 @@ TryMapMemory:
 
 Finalize:
 
+    if (IsReadonly) {
+        return TRUE;
+    }
+
     //
-    // Initialize the next address to the base address.
+    // Initialize the next address to the base address.  We don't do this for
+    // readonly maps as we need to retain the PreferredBaseAddress value,
+    // which participates in the union with NextAddress;
     //
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
 
-    if (!IsReadonly && !TraceStore->NoPrefaulting) {
+    if (!TraceStore->NoPrefaulting) {
 
         //
         // Make sure we don't prefault a page past the end of the file.
@@ -749,9 +862,265 @@ Finalize:
             // device.
             //
 
-            if (!Rtl->PrefaultPages((PVOID)BaseAddress, 2)) {
+            if (!TraceStore->Rtl->PrefaultPages((PVOID)BaseAddress, 2)) {
                 return FALSE;
             }
+        }
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+PrepareReadonlyTraceStoreMemoryMap(
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP MemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for preparing a readonly memory map for a trace
+    store.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        memory map is to be prepared.
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure to
+        be used for the memory map preparation.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    BOOL IsFirstMap;
+    BOOL IsReadonly;
+    BOOL IsMetadata;
+    BOOL HasRelocations;
+    BOOL PreferredAddressUnavailable;
+    USHORT NumaNode;
+    USHORT RightShift;
+    PVOID EndAddress;
+    PVOID PreferredBaseAddress;
+    PVOID OriginalPreferredBaseAddress;
+    ADDRESS_BIT_COUNTS EndAddressBitCounts;
+    TRACE_STORE_ADDRESS Address;
+    TRACE_STORE_ADDRESS_RANGE AddressRange;
+    PTRACE_STORE_ADDRESS AddressPointer;
+    LARGE_INTEGER Elapsed;
+
+    //
+    // Initialize aliases.
+    //
+
+    IsReadonly = IsReadonlyTraceStore(TraceStore);
+    IsMetadata = IsMetadataTraceStore(TraceStore);
+    HasRelocations = TraceStoreHasRelocations(TraceStore);
+
+    //
+    // Ensure we're readonly.
+    //
+
+    if (!IsReadonly) {
+        return FALSE;
+    }
+
+    //
+    // Make a note if this is the first memory map we've been requested to
+    // prepare.  We use this information down the track with regards to the
+    // preparation of the address range structure.
+    //
+
+    IsFirstMap = (MemoryMap->FileOffset.QuadPart == 0);
+
+    if (!MemoryMap->MappingHandle) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    OriginalPreferredBaseAddress = NULL;
+    PreferredAddressUnavailable = FALSE;
+
+    PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+    AddressPointer = MemoryMap->pAddress;
+
+    if (!AddressPointer) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Take a local copy of the address.
+    //
+
+    if (!CopyTraceStoreAddress(&Address, AddressPointer)) {
+        return FALSE;
+    }
+
+TryMapMemory:
+
+    MemoryMap->BaseAddress = MapViewOfFileExNuma(
+        MemoryMap->MappingHandle,
+        TraceStore->MapViewOfFileDesiredAccess,
+        MemoryMap->FileOffset.HighPart,
+        MemoryMap->FileOffset.LowPart,
+        MemoryMap->MappingSize.LowPart,
+        PreferredBaseAddress,
+        TraceStore->NumaNode
+    );
+
+    if (!MemoryMap->BaseAddress) {
+        if (PreferredBaseAddress) {
+
+            //
+            // Make a note of the original preferred base address, clear it,
+            // then attempt the mapping again.
+            //
+
+            OriginalPreferredBaseAddress = PreferredBaseAddress;
+            PreferredBaseAddress = NULL;
+            PreferredAddressUnavailable = TRUE;
+            goto TryMapMemory;
+        }
+
+        //
+        // The map view attempt failed for some reason other than the base
+        // address being unavailable.
+        //
+
+        TraceStore->LastError = GetLastError();
+        return FALSE;
+    }
+
+    if (!PreferredBaseAddress) {
+        PreferredBaseAddress = MemoryMap->BaseAddress;
+    } else if (OriginalPreferredBaseAddress) {
+        PreferredBaseAddress = OriginalPreferredBaseAddress;
+    }
+
+    //
+    // Record all of the mapping information in our address record.
+    //
+
+    Address.PreferredBaseAddress = PreferredBaseAddress;
+    Address.BaseAddress = MemoryMap->BaseAddress;
+    Address.FileOffset.QuadPart = MemoryMap->FileOffset.QuadPart;
+    Address.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+
+    //
+    // Fill in the thread and processor information.
+    //
+
+    Address.FulfillingThreadId = FastGetCurrentThreadId();
+    GetCurrentProcessorNumberEx(&Address.FulfillingProcessor);
+    Success = GetNumaProcessorNodeEx(&Address.FulfillingProcessor, &NumaNode);
+    Address.FulfillingNumaNode = (Success ? (UCHAR)NumaNode : 0);
+
+    //
+    // Take a local copy of the timestamp.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Copy it to the Prepared timestamp.
+    //
+
+    Address.Timestamp.Prepared.QuadPart = Elapsed.QuadPart;
+
+    //
+    // Calculate the elapsed time spent awaiting preparation.
+    //
+
+    Elapsed.QuadPart -= Address.Timestamp.Requested.QuadPart;
+    Address.Elapsed.AwaitingPreparation.QuadPart = Elapsed.QuadPart;
+
+    //
+    // Finally, copy the updated record back to the memory-mapped backing
+    // store.
+    //
+
+    if (!CopyTraceStoreAddress(AddressPointer, &Address)) {
+        return FALSE;
+    }
+
+    //
+    // Update the address range details.  If this is the first map, or the
+    // preferred address wasn't available, fill out a new local address range
+    // structure and register it.  Otherwise, update the existing address
+    // range's number of maps counter and the bit counts for the end address.
+    //
+
+    EndAddress = (PVOID)(
+        RtlOffsetToPointer(
+            MemoryMap->BaseAddress,
+            MemoryMap->MappingSize.QuadPart
+        )
+    );
+
+    RightShift = CalculateRightShiftFromMemoryMap(MemoryMap);
+    EndAddressBitCounts = (
+        GetTraceStoreAddressBitCounts(
+            RightShift,
+            EndAddress
+        )
+    );
+
+    if (IsFirstMap || PreferredAddressUnavailable) {
+
+        AddressRange.PreferredBaseAddress = PreferredBaseAddress;
+        AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+        AddressRange.NumberOfMaps = 1;
+
+        //
+        // Update the bit counts.
+        //
+
+        AddressRange.BitCounts.Preferred = (
+            GetTraceStoreAddressBitCounts(
+                RightShift,
+                AddressRange.PreferredBaseAddress
+            )
+        );
+
+        AddressRange.BitCounts.Actual = (
+            GetTraceStoreAddressBitCounts(
+                RightShift,
+                AddressRange.ActualBaseAddress
+            )
+        );
+
+        AddressRange.BitCounts.End = EndAddressBitCounts;
+
+        //
+        // Register this new address range.
+        //
+
+        Success = RegisterNewReadonlyTraceStoreAddressRange(
+            TraceStore,
+            &AddressRange
+        );
+
+        if (!Success) {
+            return FALSE;
+        }
+
+    } else {
+
+        TRY_MAPPED_MEMORY_OP {
+
+            TraceStore->AddressRange->NumberOfMaps += 1;
+            TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
+
+        } CATCH_STATUS_IN_PAGE_ERROR {
+
+            return FALSE;
         }
     }
 
@@ -1278,7 +1647,10 @@ StartPreparation:
 
     Success = PopFreeTraceStoreMemoryMap(TraceStore, &PrepareMemoryMap);
     if (!Success) {
-        Success = CreateMemoryMapsForTraceStore(TraceStore, &PrepareMemoryMap);
+        ULONG NumberOfMaps = 0;
+        Success = CreateMemoryMapsForTraceStore(TraceStore,
+                                                &PrepareMemoryMap,
+                                                &NumberOfMaps);
         if (!Success) {
             Stats->DroppedRecords++;
             Stats->ExhaustedFreeMemoryMaps++;

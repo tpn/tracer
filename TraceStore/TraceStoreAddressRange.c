@@ -35,7 +35,7 @@ Arguments:
 
     TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
         next address range is to be loaded.  This must be a normal trace store
-        (e.g. non-metadata) that is not readonly.
+        (e.g. non-metadata).
 
     AddressRange - Supplies a pointer to a TRACE_STORE_ADDRESS_RANGE structure
         that will be used to initialized the newly allocated address range.
@@ -62,7 +62,13 @@ Return Value:
     }
 
     if (TraceStore->IsReadonly) {
-        return FALSE;
+
+        //
+        // Redirect to the readonly version.
+        //
+
+        return RegisterNewReadonlyTraceStoreAddressRange(TraceStore,
+                                                         AddressRange);
     }
 
     //
@@ -108,6 +114,66 @@ Return Value:
     //
     // Update the trace store's address range pointer and return success.
     //
+
+    TraceStore->AddressRange = NewAddressRange;
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+RegisterNewReadonlyTraceStoreAddressRange(
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_ADDRESS_RANGE AddressRange
+    )
+/*++
+
+Routine Description:
+
+    This routine is called during readonly trace store memory map preparation
+    if the preferred base address is unavailable.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        next address range is to be loaded.  This must be a normal trace store
+        (e.g. non-metadata) that is readonly.
+
+    AddressRange - Supplies a pointer to a TRACE_STORE_ADDRESS_RANGE structure
+        that will be used to initialized the newly allocated address range.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    ULONGLONG Count;
+    PTRACE_STORE_ADDRESS_RANGE NewAddressRange;
+
+    //
+    // Validate arguments.
+    //
+
+    if (TraceStore->IsMetadata) {
+        return FALSE;
+    }
+
+    if (!TraceStore->IsReadonly) {
+        return FALSE;
+    }
+
+    Count = InterlockedIncrement64(&TraceStore->ReadonlyAddressRangesConsumed);
+    if (Count > TraceStore->NumberOfAddressRanges.QuadPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    NewAddressRange = &TraceStore->ReadonlyAddressRanges[Count-1];
+    if (!CopyTraceStoreAddressRange(NewAddressRange, AddressRange)) {
+        InterlockedDecrement64(&TraceStore->ReadonlyAddressRangesConsumed);
+        return FALSE;
+    }
 
     TraceStore->AddressRange = NewAddressRange;
 

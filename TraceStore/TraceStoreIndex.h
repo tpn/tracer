@@ -42,7 +42,7 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreInvalidId
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 
-#define MAX_TRACE_STORE_IDS TraceStoreInvalidId
+#define MAX_TRACE_STORE_IDS TraceStoreInvalidId-1
 
 FORCEINLINE
 TRACE_STORE_ID

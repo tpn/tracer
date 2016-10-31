@@ -153,6 +153,14 @@ class SLIST_HEADER(Union):
         ('u2', _SLIST_HEADER_INNER2),
     ]
 
+class SLIST_ENTRY(Structure):
+    pass
+PSLIST_ENTRY = POINTER(SLIST_ENTRY)
+
+SLIST_ENTRY._fields_ = [
+    ('Next', PSLIST_ENTRY),
+]
+
 class CRITICAL_SECTION_DEBUG(Structure):
     _fields_ = [
         ('Type', WORD),
