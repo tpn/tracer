@@ -341,6 +341,78 @@ Return Value:
 _Use_decl_annotations_
 VOID
 CALLBACK
+PrepareReadonlyTraceStoreMemoryMapCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_STORE TraceStore,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the threadpool callback target for a trace store's prepare
+    next memory map routine.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+    PTRACE_CONTEXT TraceContext;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return;
+    }
+
+    Success = PopTraceStoreMemoryMap(
+        &TraceStore->PrepareReadonlyMemoryMaps,
+        &MemoryMap
+    );
+
+    if (!Success) {
+        return;
+    }
+
+    TraceContext = TraceStore->TraceContext;
+
+    Success = PrepareReadonlyTraceStoreMemoryMap(TraceStore, MemoryMap);
+    if (!Success) {
+        goto Error;
+    }
+
+    if (InterlockedDecrement(&TraceStore->PrepareReadonlyMapsInProgress)) {
+        return;
+    }
+
+    if (!InterlockedDecrement(&TraceContext->PrepareReadonlyMapsInProgress)) {
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
+
+    return;
+
+Error:
+    PushFailedTraceStore(TraceContext, TraceStore);
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
 CloseTraceStoreMemoryMapCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PTRACE_STORE TraceStore,

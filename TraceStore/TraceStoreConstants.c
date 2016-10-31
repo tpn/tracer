@@ -14,9 +14,11 @@ Abstract:
 
 #include "stdafx.h"
 
+volatile BOOL PauseBeforeThreadpoolWorkEnabled = FALSE;
 volatile BOOL PauseBeforeBindMetadataInfo = TRUE;
 volatile BOOL PauseBeforeBindRemainingMetadata = TRUE;
 volatile BOOL PauseBeforeBindTraceStore = TRUE;
+volatile BOOL PauseBeforePrepareReadonlyMap = TRUE;
 
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
@@ -239,6 +241,16 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0   // Unused
     }
+};
+
+TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
+    sizeof(TRACE_STORE),
+    sizeof(TRACE_STORES),
+    sizeof(TRACE_CONTEXT),
+    sizeof(TRACE_STORE_START_TIME),
+    sizeof(TRACE_STORE_INFO),
+    sizeof(TRACE_STORE_METADATA_INFO),
+    sizeof(TRACE_STORE_RELOC)
 };
 
 LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB

@@ -27,6 +27,8 @@ extern "C" {
 // Debugging Helpers
 ////////////////////////////////////////////////////////////////////////////////
 
+TRACE_STORE_DATA volatile BOOL PauseBeforeThreadpoolWorkEnabled;
+
 FORCEINLINE
 _Check_return_
 _Success_(return != 0)
@@ -39,7 +41,7 @@ PreThreadpoolWorkSubmission(
     BOOL Success = TRUE;
 
 #ifdef _DEBUG
-    if (IsDebuggerPresent()) {
+    if (IsDebuggerPresent() && PauseBeforeThreadpoolWorkEnabled) {
         while (*Pause && *FailedCount == 0) {
             Sleep(1000);
         }
@@ -260,6 +262,7 @@ TRACE_STORE_METADATA_ID_TO_STORE TraceStoreMetadataIdToStore;
 BIND_COMPLETE MetadataInfoMetadataBindComplete;
 BIND_COMPLETE AllocationMetadataBindComplete;
 BIND_COMPLETE RelocationMetadataBindComplete;
+BIND_COMPLETE AddressRangeMetadataBindComplete;
 BIND_COMPLETE InfoMetadataBindComplete;
 
 typedef
@@ -406,7 +409,7 @@ _Success_(return != 0)
 BOOL
 (GET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE)(
     _In_  PTRACE_STORE TraceStore,
-    _Out_ PUSHORT NumberOfMapsPointer
+    _Out_ PULONG NumberOfMapsPointer
     );
 typedef GET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE \
       *PGET_NUMBER_OF_MEMORY_MAPS_REQUIRED_BY_TRACE_STORE;
@@ -419,10 +422,25 @@ _Success_(return != 0)
 BOOL
 (CREATE_MEMORY_MAPS_FOR_TRACE_STORE)(
     _In_  PTRACE_STORE TraceStore,
-    _Out_ PPTRACE_STORE_MEMORY_MAP FirstMemoryMapPointer
+    _Out_ PPTRACE_STORE_MEMORY_MAP FirstMemoryMapPointer,
+    _Inout_ PULONG NumberOfMapsPointer
     );
 typedef CREATE_MEMORY_MAPS_FOR_TRACE_STORE *PCREATE_MEMORY_MAPS_FOR_TRACE_STORE;
 CREATE_MEMORY_MAPS_FOR_TRACE_STORE CreateMemoryMapsForTraceStore;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_MEMORY_MAPS_FOR_READONLY_TRACE_STORE)(
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_MEMORY_MAP FirstMemoryMapPointer,
+    _In_  PULONG NumberOfMemoryMapsPointer
+    );
+typedef CREATE_MEMORY_MAPS_FOR_READONLY_TRACE_STORE \
+      *PCREATE_MEMORY_MAPS_FOR_READONLY_TRACE_STORE;
+CREATE_MEMORY_MAPS_FOR_READONLY_TRACE_STORE \
+    CreateMemoryMapsForReadonlyTraceStore;
 
 typedef
 _Check_return_
@@ -435,6 +453,18 @@ BOOL
 typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP \
        *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP;
 PREPARE_NEXT_TRACE_STORE_MEMORY_MAP PrepareNextTraceStoreMemoryMap;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(PREPARE_READONLY_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    );
+typedef  PREPARE_READONLY_TRACE_STORE_MEMORY_MAP \
+       *PPREPARE_READONLY_TRACE_STORE_MEMORY_MAP;
+PREPARE_READONLY_TRACE_STORE_MEMORY_MAP PrepareReadonlyTraceStoreMemoryMap;
 
 typedef
 _Success_(return != 0)
@@ -544,6 +574,18 @@ typedef  PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
        *PPREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK;
 PREPARE_NEXT_TRACE_STORE_MEMORY_MAP_CALLBACK \
     PrepareNextTraceStoreMemoryMapCallback;
+
+typedef
+VOID
+(CALLBACK PREPARE_READONLY_TRACE_STORE_MEMORY_MAP_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_STORE TraceStore,
+    _In_     PTP_WORK Work
+    );
+typedef  PREPARE_READONLY_TRACE_STORE_MEMORY_MAP_CALLBACK \
+       *PPREPARE_READONLY_TRACE_STORE_MEMORY_MAP_CALLBACK;
+PREPARE_READONLY_TRACE_STORE_MEMORY_MAP_CALLBACK \
+    PrepareReadonlyTraceStoreMemoryMapCallback;
 
 typedef
 VOID
@@ -688,6 +730,18 @@ GetTraceStoreFileInfo(
     );
 }
 
+#define PushPrepareReadonlyMap(TraceStore, MemoryMap) \
+    PushTraceStoreMemoryMap(                          \
+        &TraceStore->PrepareReadonlyMemoryMaps,       \
+        MemoryMap                                     \
+    )
+
+#define SubmitPrepareReadonlyMap(TraceContext, TraceStore, MemoryMap)   \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforePrepareReadonlyMap);     \
+    InterlockedIncrement(&TraceStore->PrepareReadonlyMapsInProgress);   \
+    PushPrepareReadonlyMap(TraceStore, MemoryMap);                      \
+    SubmitThreadpoolWork(TraceStore->PrepareReadonlyMemoryMapWork)
+
 //
 // TraceStoreAddress-related functions.
 //
@@ -702,6 +756,47 @@ BOOL
     );
 typedef LOAD_NEXT_TRACE_STORE_ADDRESS *PLOAD_NEXT_TRACE_STORE_ADDRESS;
 LOAD_NEXT_TRACE_STORE_ADDRESS LoadNextTraceStoreAddress;
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+CopyTraceStoreAddress(
+    _Out_ PTRACE_STORE_ADDRESS DestAddress,
+    _In_ _Const_ PTRACE_STORE_ADDRESS SourceAddress
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that can be used to safely copy an address
+    structure when either the source or destination is backed by memory
+    mapped memory.  Internally, it is simply a __movsb() wrapped in a
+    __try/__except block that catches STATUS_IN_PAGE_ERROR exceptions.
+
+Arguments:
+
+    DestAddress - Supplies a pointer to the TRACE_STORE_ADDRESS to which the
+        source address range will be copied.
+
+    SourceAddress - Supplies a pointer to the TRACE_STORE_ADDRESS to copy into
+        the destination address range.
+
+Return Value:
+
+    TRUE on success, FALSE if a STATUS_IN_PAGE_ERROR occurred.
+
+--*/
+{
+    TRY_MAPPED_MEMORY_OP {
+        __movsb((PBYTE)DestAddress,
+                (PBYTE)SourceAddress,
+                sizeof(*DestAddress));
+        return TRUE;
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+}
 
 //
 // TraceStoreAddressRange-related functions.
@@ -718,6 +813,19 @@ BOOL
 typedef REGISTER_NEW_TRACE_STORE_ADDRESS_RANGE \
       *PREGISTER_NEW_TRACE_STORE_ADDRESS_RANGE;
 REGISTER_NEW_TRACE_STORE_ADDRESS_RANGE RegisterNewTraceStoreAddressRange;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE)(
+    _In_  PTRACE_STORE TraceStore,
+    _In_  PTRACE_STORE_ADDRESS_RANGE AddressRange
+    );
+typedef REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE \
+      *PREGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE;
+REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE \
+    RegisterNewReadonlyTraceStoreAddressRange;
 
 FORCEINLINE
 _Check_return_
@@ -1094,6 +1202,13 @@ Return Value:
     PushTraceStore(&TraceContext->FailedListHead, TraceStore);
 
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
+
+        //
+        // XXX: we can't call CloseThreadpoolCleanupGroupMembers() from within
+        // the same threadpool without running into all sorts of havoc; this
+        // needs to be dispatched to an alternate threadpool.
+        //
+
         //BOOL CancelPendingCallbacks = TRUE;
 
         //

@@ -48,6 +48,8 @@ TRACE_STORE_DATA USHORT NumberOfTraceStores;
 TRACE_STORE_DATA USHORT ElementsPerTraceStore;
 TRACE_STORE_DATA USHORT NumberOfMetadataStores;
 
+TRACE_STORE_DATA TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes;
+
 TRACE_STORE_DATA ULONG InitialTraceStoreFileSizes[];
 
 TRACE_STORE_TRAITS TraceStoreTraits[];
@@ -106,6 +108,7 @@ TRACE_STORE_DATA TRACE_STORE_TRAITS MetadataInfoStoreTraits;
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindMetadataInfo;
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindRemainingMetadata;
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindTraceStore;
+TRACE_STORE_DATA volatile BOOL PauseBeforePrepareReadonlyMap;
 
 #ifdef __cplusplus
 }; // extern "C"

@@ -604,7 +604,6 @@ Return Value:
 
 --*/
 {
-
     //
     // Create the all memory maps are free event.  This event is signaled when
     // the count of active memory maps reaches zero.  The counter is decremented
@@ -637,27 +636,44 @@ Return Value:
         return TRUE;
     }
 
-    //
-    // Create the next memory map available event.  This is signaled when
-    // PrepareNextTraceStoreMemoryMap() has finished preparing the next
-    // memory map for a trace store to consume.
-    //
+    if (!TraceStore->IsReadonly) {
 
-    TraceStore->NextMemoryMapAvailableEvent = (
-        CreateEvent(
-            NULL,
-            FALSE,
-            FALSE,
-            NULL
-        )
-    );
+        //
+        // Create the next memory map available event.  This is signaled when
+        // PrepareNextTraceStoreMemoryMap() has finished preparing the next
+        // memory map for a trace store to consume.
+        //
 
-    if (!TraceStore->NextMemoryMapAvailableEvent) {
-        return FALSE;
+        TraceStore->NextMemoryMapAvailableEvent = (
+            CreateEvent(
+                NULL,
+                FALSE,
+                FALSE,
+                NULL
+            )
+        );
+
+        if (!TraceStore->NextMemoryMapAvailableEvent) {
+            return FALSE;
+        }
+
+    } else {
+
+        TraceStore->ReadonlyMappingCompleteEvent = (
+            CreateEvent(
+                NULL,
+                FALSE,
+                FALSE,
+                NULL
+            )
+        );
+
+        if (!TraceStore->ReadonlyMappingCompleteEvent) {
+            return FALSE;
+        }
     }
 
     return TRUE;
-
 }
 
 _Use_decl_annotations_
@@ -688,7 +704,7 @@ Return Value:
 
 --*/
 {
-    BOOL Readonly;
+    BOOL IsReadonly;
     BOOL IsMetadata;
     TRACE_STORE_TRAITS Traits;
 
@@ -697,11 +713,12 @@ Return Value:
     //
 
     if (!TraceStore->pTraits) {
+        __debugbreak();
         return FALSE;
     }
 
     Traits = *TraceStore->pTraits;
-    Readonly = TraceStore->IsReadonly;
+    IsReadonly = TraceStore->IsReadonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
 
     //
@@ -717,24 +734,33 @@ Return Value:
         return FALSE;
     }
 
-    if (HasMultipleRecords(Traits)) {
-        TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
-            &PrepareNextTraceStoreMemoryMapCallback,
-            TraceStore,
-            TraceContext->ThreadpoolCallbackEnvironment
-        );
-        if (!TraceStore->PrepareNextMemoryMapWork) {
-            return FALSE;
-        }
-    }
+    if (!IsReadonly) {
+        if (HasMultipleRecords(Traits)) {
+            TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
+                &PrepareNextTraceStoreMemoryMapCallback,
+                TraceStore,
+                TraceContext->ThreadpoolCallbackEnvironment
+            );
+            if (!TraceStore->PrepareNextMemoryMapWork) {
+                return FALSE;
+            }
 
-    if (!Readonly && HasMultipleRecords(Traits)) {
-        TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
-            &PrefaultFutureTraceStorePageCallback,
+            TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
+                &PrefaultFutureTraceStorePageCallback,
+                TraceStore,
+                TraceContext->ThreadpoolCallbackEnvironment
+            );
+            if (!TraceStore->PrefaultFuturePageWork) {
+                return FALSE;
+            }
+        }
+    } else {
+        TraceStore->PrepareReadonlyMemoryMapWork = CreateThreadpoolWork(
+            &PrepareReadonlyTraceStoreMemoryMapCallback,
             TraceStore,
             TraceContext->ThreadpoolCallbackEnvironment
         );
-        if (!TraceStore->PrefaultFuturePageWork) {
+        if (!TraceStore->PrepareReadonlyMemoryMapWork) {
             return FALSE;
         }
     }

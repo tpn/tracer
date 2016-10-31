@@ -279,15 +279,10 @@ Return Value:
     }
 
     //
-    // TraceStore->Traits should be non-NULL here and pTraits should be NULL.
+    // TraceStore->Traits should be non-NULL here.
     //
 
     if (!TraceStore->Traits) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (TraceStore->pTraits) {
         __debugbreak();
         return FALSE;
     }
