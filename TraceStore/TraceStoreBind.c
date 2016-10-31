@@ -678,7 +678,12 @@ Return Value:
 
     //
     // The RightShift element of the ADDRESS_BIT_COUNTS structure indicates
-    // how many trailing zeros an address first had before being shifted right.
+    // how many trailing zeros an address first had before being shifted right
+    // and having its trailing zeros counted.  (We do this to reduce the number
+    // of bits required to express the maximum possible number of trailing bits;
+    // with a minimum mapping size of 64KB (2 ** 16 -> 16 right shift), with 5
+    // bits we can capture the range 0-32.)
+    //
     // If we left shift by the same amount, we can derive the mapping size.  We
     // don't adjust mapping sizes mid-trace, so it's fine calculating this value
     // from the first address range's bit counts.  (It also doesn't matter if
