@@ -211,6 +211,7 @@ Return Value:
             TraceStore,
             NumberOfMemoryMapsPointer
         );
+        NumberOfMaps = *NumberOfMemoryMapsPointer;
     }
 
     //
