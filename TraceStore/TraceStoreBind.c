@@ -521,6 +521,8 @@ Return Value:
     HANDLE MappingHandle;
     DWORD ProcessId;
     DWORD ThreadId;
+    PVOID ActualEndAddress;
+    PVOID ExpectedEndAddress;
     LARGE_INTEGER FileOffset;
     ULARGE_INTEGER NumberOfAddressRanges;
     PLARGE_INTEGER Requested;
@@ -726,8 +728,22 @@ Return Value:
         MemoryMap->BaseAddress = AddressRange->PreferredBaseAddress;
 
         //
-        // XXX todo: verify EndAddresses match.
+        // Invariant test: the base address + mapping size should match the
+        // end address pointer.
         //
+
+        ExpectedEndAddress = (PVOID)(
+            RtlOffsetToPointer(
+                MemoryMap->BaseAddress,
+                MemoryMap->MappingSize.QuadPart
+            )
+        );
+
+        ActualEndAddress = AddressRange->EndAddress;
+
+        if (ExpectedEndAddress != ActualEndAddress) {
+            __debugbreak();
+        }
 
         //
         // Update the file offset.
