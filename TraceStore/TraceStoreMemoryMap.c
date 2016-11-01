@@ -211,6 +211,11 @@ Return Value:
             TraceStore,
             NumberOfMemoryMapsPointer
         );
+
+        //
+        // Update our local copy of the number of maps.
+        //
+
         NumberOfMaps = *NumberOfMemoryMapsPointer;
     }
 
@@ -472,13 +477,9 @@ Return Value:
 {
     BOOL Success;
     BOOL IsFirstMap;
-    BOOL IsReadonly;
     BOOL IsMetadata;
-    BOOL HasRelocations;
-    BOOL HaveAddress;
     BOOL PreferredAddressUnavailable;
     USHORT NumaNode;
-    USHORT RightShift;
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
@@ -495,25 +496,25 @@ Return Value:
     TRACE_STORE_STATS DummyStats = { 0 };
 
     //
-    // We may not have a stats struct available yet if this is the first
-    // call to PrepareNextTraceStoreMemoryMap().  If that's the case, just
-    // point the pointer at a dummy one.  This simplifies the rest of the
-    // code in this function.
+    // Readonly trace stores are handled by a separate routine.  Ensure
+    // we're not readonly now.
     //
 
-    Stats = TraceStore->Stats;
-
-    if (!Stats) {
-        Stats = &DummyStats;
+    if (TraceStore->IsReadonly) {
+        __debugbreak();
+        return FALSE;
     }
 
     //
     // Initialize aliases.
     //
 
-    IsReadonly = IsReadonlyTraceStore(TraceStore);
     IsMetadata = IsMetadataTraceStore(TraceStore);
-    HasRelocations = TraceStoreHasRelocations(TraceStore);
+    Stats = TraceStore->Stats;
+
+    if (!Stats) {
+        Stats = &DummyStats;
+    }
 
     //
     // Make a note if this is the first memory map we've been requested to
@@ -524,17 +525,8 @@ Return Value:
     IsFirstMap = (MemoryMap->FileOffset.QuadPart == 0);
 
     //
-    // If we're readonly, the file mapping will have already been created, so
-    // we can go straight to the point after it where we begin preparation of
-    // the mapped view.
+    // Get the size of the file from the memory map.
     //
-
-    if (IsReadonly) {
-        if (!MemoryMap->MappingHandle) {
-            __debugbreak();
-        }
-        goto PostFileMapping;
-    }
 
     if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
         TraceStore->LastError = GetLastError();
@@ -592,6 +584,8 @@ Return Value:
     //
     // If the new file offset is past the end of the file, extend it.
     //
+    // N.B.: This will be a synchronous (blocking) I/O call.
+    //
 
     if (FileInfo.EndOfFile.QuadPart < NewFileOffset.QuadPart) {
         if (!SetEndOfFile(MemoryMap->FileHandle)) {
@@ -620,8 +614,6 @@ Return Value:
         return FALSE;
     }
 
-PostFileMapping:
-
     OriginalPreferredBaseAddress = NULL;
     PreferredAddressUnavailable = FALSE;
 
@@ -638,18 +630,9 @@ PostFileMapping:
     PreferredBaseAddress = MemoryMap->BaseAddress;
     AddressPointer = MemoryMap->pAddress;
 
-    if (IsMetadata || (AddressPointer == NULL)) {
-
-        //
-        // We don't attempt to re-use addresses if we're metadata, and we can't
-        // attempt re-use if there is no backing address struct.
-        //
-
-        HaveAddress = FALSE;
+    if (IsMetadata) {
         goto TryMapMemory;
     }
-
-    HaveAddress = TRUE;
 
     //
     // Take a local copy of the address.
@@ -697,10 +680,6 @@ TryMapMemory:
 
     if (IsMetadata) {
         goto Finalize;
-    }
-
-    if (!HaveAddress) {
-        __debugbreak();
     }
 
     if (!PreferredBaseAddress) {
@@ -769,19 +748,15 @@ TryMapMemory:
         )
     );
 
-    RightShift = CalculateRightShiftFromMemoryMap(MemoryMap);
-    EndAddressBitCounts = (
-        GetTraceStoreAddressBitCounts(
-            RightShift,
-            EndAddress
-        )
-    );
+    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
 
     if (IsFirstMap || PreferredAddressUnavailable) {
 
         AddressRange.PreferredBaseAddress = PreferredBaseAddress;
         AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+        AddressRange.EndAddress = EndAddress;
         AddressRange.NumberOfMaps = 1;
+        AddressRange.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
 
         //
         // Update the bit counts.
@@ -789,14 +764,12 @@ TryMapMemory:
 
         AddressRange.BitCounts.Preferred = (
             GetTraceStoreAddressBitCounts(
-                RightShift,
                 AddressRange.PreferredBaseAddress
             )
         );
 
         AddressRange.BitCounts.Actual = (
             GetTraceStoreAddressBitCounts(
-                RightShift,
                 AddressRange.ActualBaseAddress
             )
         );
@@ -807,7 +780,9 @@ TryMapMemory:
         // Register this new address range.
         //
 
-        if (!RegisterNewTraceStoreAddressRange(TraceStore, &AddressRange)) {
+        Success = RegisterNewTraceStoreAddressRange(TraceStore, &AddressRange);
+
+        if (!Success) {
             return FALSE;
         }
 
@@ -816,7 +791,11 @@ TryMapMemory:
         TRY_MAPPED_MEMORY_OP {
 
             TraceStore->AddressRange->NumberOfMaps += 1;
+            TraceStore->AddressRange->EndAddress = EndAddress;
             TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
+            TraceStore->AddressRange->MappedSize.QuadPart += (
+                MemoryMap->MappingSize.QuadPart
+            );
 
         } CATCH_STATUS_IN_PAGE_ERROR {
 
@@ -830,14 +809,8 @@ TryMapMemory:
 
 Finalize:
 
-    if (IsReadonly) {
-        return TRUE;
-    }
-
     //
-    // Initialize the next address to the base address.  We don't do this for
-    // readonly maps as we need to retain the PreferredBaseAddress value,
-    // which participates in the union with NextAddress;
+    // Initialize the next address to the base address.
     //
 
     MemoryMap->NextAddress = MemoryMap->BaseAddress;
@@ -906,7 +879,6 @@ Return Value:
     BOOL HasRelocations;
     BOOL PreferredAddressUnavailable;
     USHORT NumaNode;
-    USHORT RightShift;
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
@@ -929,6 +901,7 @@ Return Value:
     //
 
     if (!IsReadonly) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -1065,19 +1038,15 @@ TryMapMemory:
         )
     );
 
-    RightShift = CalculateRightShiftFromMemoryMap(MemoryMap);
-    EndAddressBitCounts = (
-        GetTraceStoreAddressBitCounts(
-            RightShift,
-            EndAddress
-        )
-    );
+    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
 
     if (IsFirstMap || PreferredAddressUnavailable) {
 
         AddressRange.PreferredBaseAddress = PreferredBaseAddress;
         AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+        AddressRange.EndAddress = EndAddress;
         AddressRange.NumberOfMaps = 1;
+        AddressRange.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
 
         //
         // Update the bit counts.
@@ -1085,14 +1054,12 @@ TryMapMemory:
 
         AddressRange.BitCounts.Preferred = (
             GetTraceStoreAddressBitCounts(
-                RightShift,
                 AddressRange.PreferredBaseAddress
             )
         );
 
         AddressRange.BitCounts.Actual = (
             GetTraceStoreAddressBitCounts(
-                RightShift,
                 AddressRange.ActualBaseAddress
             )
         );
@@ -1117,7 +1084,11 @@ TryMapMemory:
         TRY_MAPPED_MEMORY_OP {
 
             TraceStore->AddressRange->NumberOfMaps += 1;
+            TraceStore->AddressRange->EndAddress = EndAddress;
             TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
+            TraceStore->AddressRange->MappedSize.QuadPart += (
+                MemoryMap->MappingSize.QuadPart
+            );
 
         } CATCH_STATUS_IN_PAGE_ERROR {
 

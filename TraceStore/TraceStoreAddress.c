@@ -45,9 +45,9 @@ Return Value:
     PRTL Rtl;
     BOOL Success;
     PVOID Buffer;
-    HRESULT Result;
     USHORT NumaNode;
     TRACE_STORE_ADDRESS Address;
+    PTRACE_STORE_ADDRESS pAddress;
     PALLOCATE_RECORDS AllocateRecords;
     PTRACE_STORE AddressStore;
     PTRACE_CONTEXT Context;
@@ -64,6 +64,11 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(AddressPointer)) {
+        return FALSE;
+    }
+
+    if (TraceStore->IsReadonly) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -108,9 +113,7 @@ Return Value:
         return FALSE;
     }
 
-    if (TraceStore->IsReadonly) {
-        goto End;
-    }
+    pAddress = (PTRACE_STORE_ADDRESS)Buffer;
 
     SecureZeroMemory(&Address, sizeof(Address));
 
@@ -131,16 +134,12 @@ Return Value:
         Address.RequestingNumaNode = 0;
     }
 
-
-    Result = Rtl->RtlCopyMappedMemory(Buffer,
-                                      &Address,
-                                      sizeof(Address));
-
-    if (FAILED(Result)) {
+    if (!CopyTraceStoreAddress(pAddress, &Address)) {
         return FALSE;
     }
 
-End:
+    TraceStore->Address = pAddress;
+
     *AddressPointer = (PTRACE_STORE_ADDRESS)Buffer;
     return TRUE;
 }

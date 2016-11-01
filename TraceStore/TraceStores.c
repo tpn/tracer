@@ -218,7 +218,9 @@ Return Value:
         USHORT NumberOfElements;
         TRACE_STORE_ID TraceStoreId;
 
+        PTRACE_STORE TraceStore;
         PTRACE_STORE_RELOC Reloc;
+        PTRACE_STORE_RELOC RelocTarget;
         PTRACE_STORE_FIELD_RELOC FieldReloc;
         PTRACE_STORE_FIELD_RELOC FirstFieldReloc;
         PTRACE_STORE_FIELD_RELOCS FieldRelocs;
@@ -248,6 +250,7 @@ Return Value:
             Reloc = &TraceStores->Relocations[Index];
             Reloc->SizeOfStruct = sizeof(*Reloc);
             TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
+            TraceStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);
 
             for (Outer = 0; Outer < NumberOfElements; Outer++) {
                 FieldRelocs = FieldRelocations + Outer;
@@ -260,15 +263,45 @@ Return Value:
                 AssertAlignedTraceStoreFieldReloc(FirstFieldReloc);
 
                 //
-                // Loop through the array of inner fields in order to determine
-                // how many are present.
+                // Loop through the array of inner fields.  This serves two
+                // purposes: a) tracking how many references are present, and
+                // b) allowing us to register as a backref with the target.
                 //
 
                 for (Inner = 0; Inner < MaxInner; Inner++) {
+                    USHORT TargetIndex;
+                    TRACE_STORE_ID TargetId;
+                    PTRACE_STORE Target;
+                    PRTL_BITMAP Bitmap;
+
                     FieldReloc = FirstFieldReloc + Inner;
                     if (IsLastTraceStoreFieldRelocElement(FieldReloc)) {
                         break;
                     }
+
+                    TargetId = FieldReloc->TraceStoreId;
+
+                    if (TargetId == TraceStoreNullId) {
+                        continue;
+                    }
+
+                    TargetIndex = TraceStoreIdToArrayIndex(TargetId);
+                    Target = TraceStoreIdToTraceStore(TraceStores, TargetId);
+                    RelocTarget = &TraceStores->Relocations[TargetIndex];
+                    Bitmap = &RelocTarget->Bitmap;
+
+                    if (++RelocTarget->NumberOfRelocationBackReferences == 1) {
+                        PULONG Buffer;
+                        Buffer = (PULONG)&RelocTarget->BitmapBuffer[0];
+                        Target->IsRelocationTarget = TRUE;
+                        Bitmap->SizeOfBitMap = MAX_TRACE_STORE_IDS;
+                        Bitmap->Buffer = Buffer;
+                        RelocTarget->BitmapBufferSizeInQuadwords = (
+                            TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
+                        );
+                    }
+
+                    Rtl->RtlSetBit(Bitmap, TraceStoreId);
                 }
 
                 //
@@ -666,7 +699,7 @@ Return Value:
 
     ExtraSize = sizeof(TRACE_STORE) * Delta * ElementsPerTraceStore;
 
-    return sizeof(TRACE_STORES) + ExtraSize;
+    return (sizeof(TRACE_STORES) + ExtraSize);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

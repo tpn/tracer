@@ -2211,7 +2211,7 @@ typedef struct _RTL {
 
 FORCEINLINE
 ULONGLONG
-TrailingZeros(
+TrailingZeros64(
     _In_ ULONGLONG Integer
     )
 {
@@ -2219,11 +2219,29 @@ TrailingZeros(
 }
 
 FORCEINLINE
+ULONGLONG
+LeadingZeros64(
+    _In_ ULONGLONG Integer
+    )
+{
+    return _lzcnt_u64(Integer);
+}
+
+FORCEINLINE
+ULONG
+PopulationCount32(
+    _In_ ULONG Integer
+    )
+{
+    return __popcnt(Integer);
+}
+
+FORCEINLINE
 USHORT
 GetAddressAlignment(_In_ PVOID Address)
 {
     ULONGLONG Integer = (ULONGLONG)Address;
-    ULONGLONG NumTrailingZeros = TrailingZeros(Integer);
+    ULONGLONG NumTrailingZeros = TrailingZeros64(Integer);
     return (1 << NumTrailingZeros);
 }
 
@@ -2241,15 +2259,6 @@ PointerToOffsetCrossesPageBoundary(
     NextPage = ALIGN_DOWN(((ULONG_PTR)(Pointer)+Offset), PAGE_SIZE);
 
     return (ThisPage != NextPage);
-}
-
-FORCEINLINE
-ULONGLONG
-LeadingZeros(
-    _In_ ULONGLONG Integer
-    )
-{
-    return _lzcnt_u64(Integer);
 }
 
 FORCEINLINE
