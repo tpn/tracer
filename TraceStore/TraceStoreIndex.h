@@ -29,20 +29,23 @@ extern "C" {
 #endif
 
 typedef enum _TRACE_STORE_ID {
-    TraceStoreNullId = 0,
-    TraceStoreEventId = 1,
-    TraceStoreStringBufferId,
-    TraceStoreFunctionTableId,
-    TraceStoreFunctionTableEntryId,
-    TraceStorePathTableId,
-    TraceStorePathTableEntryId,
-    TraceStoreSessionId,
-    TraceStoreStringArrayId,
-    TraceStoreStringTableId,
-    TraceStoreInvalidId
+    TraceStoreNullId                    =   0,
+    TraceStoreEventId                   =   1,
+    TraceStoreStringBufferId            =   2,
+    TraceStoreFunctionTableId           =   3,
+    TraceStoreFunctionTableEntryId      =   4,
+    TraceStorePathTableId               =   5,
+    TraceStorePathTableEntryId          =   6,
+    TraceStoreSessionId                 =   7,
+    TraceStoreStringArrayId             =   8,
+    TraceStoreStringTableId             =   9,
+    TraceStoreInvalidId                 =  10
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 
 #define MAX_TRACE_STORE_IDS TraceStoreInvalidId-1
+
+#define TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS 1
+C_ASSERT(MAX_TRACE_STORE_IDS <= (TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS * 64));
 
 FORCEINLINE
 TRACE_STORE_ID

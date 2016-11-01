@@ -232,7 +232,7 @@ Arguments:
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
 
-    RelocationStore - Supplies a pointer to the :relocation TRACE_STORE.
+    RelocationStore - Supplies a pointer to the :Relocation TRACE_STORE.
 
     FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
 
@@ -247,13 +247,7 @@ Return Value:
 
     TraceStore = RelocationStore->TraceStore;
 
-    //
-    // This needs to be fixed to not rely on HasRelocations.
-    //
-
-    if (!TraceStore->HasRelocations) {
-        return TRUE;
-    } else if (TraceStore->IsReadonly) {
+    if (TraceStore->IsReadonly) {
         Success = LoadTraceStoreRelocationInfo(TraceStore);
     } else {
         Success = SaveTraceStoreRelocationInfo(TraceStore);

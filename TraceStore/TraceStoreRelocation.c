@@ -38,7 +38,7 @@ SaveTraceStoreRelocationInfo(
 Routine Description:
 
     This routine saves the relocation information associated with a TRACE_STORE
-    into the :relocation metadata store.
+    into the :Relocation metadata store.
 
 Arguments:
 
@@ -50,6 +50,8 @@ Return Value:
 
 --*/
 {
+    BOOL HasRelocations;
+    BOOL HasRelocationBackRefs;
     USHORT Index;
     PTRACE_STORE_RELOC pReloc;
     PTRACE_STORE_RELOC Reloc;
@@ -70,39 +72,43 @@ Return Value:
     }
 
     //
-    // Make sure we're not readonly, that the trace store has relocation info,
-    // the relocation info is non-NULL, and the relocation metadata store has
-    // been initialized.
+    // Make sure we're not readonly, the relocation info is non-NULL, and the
+    // relocation metadata store has been initialized.
     //
 
     if (TraceStore->IsReadonly) {
-        return FALSE;
-    }
-
-    if (!TraceStore->HasRelocations) {
+        __debugbreak();
         return FALSE;
     }
 
     if (!TraceStore->RelocationStore) {
+        __debugbreak();
         return FALSE;
     }
 
     pReloc = TraceStore->pReloc;
-    if (!pReloc || pReloc->NumberOfRelocations == 0) {
-        return FALSE;
+
+    if (!pReloc) {
+        HasRelocations = FALSE;
+        HasRelocationBackRefs = FALSE;
+    } else {
+        HasRelocations = (pReloc->NumberOfRelocations > 0);
+        HasRelocationBackRefs = (pReloc->NumberOfRelocationBackReferences > 0);
     }
 
     //
     // Calculate the total size required for the TRACE_STORES_RELOC structure,
-    // plus a copy of the trailing TRACE_STORE_FIELD_RELOC array.
+    // plus a copy of the trailing TRACE_STORE_FIELD_RELOC array if we have
+    // relocations.
     //
 
-    AllocationSize.QuadPart = (
-        sizeof(TRACE_STORE_RELOC) + (
+    AllocationSize.QuadPart = sizeof(TRACE_STORE_RELOC);
+    if (HasRelocations) {
+        AllocationSize.QuadPart += (
             pReloc->NumberOfRelocations *
             sizeof(TRACE_STORE_FIELD_RELOC)
-        )
-    );
+        );
+    }
 
     BaseAddress = TraceStore->RelocationStore->AllocateRecords(
         TraceStore->TraceContext,
@@ -112,6 +118,7 @@ Return Value:
     );
 
     if (!BaseAddress) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -123,15 +130,46 @@ Return Value:
         // Copy the initial relocation information over.
         //
 
-        Reloc->SizeOfStruct = pReloc->SizeOfStruct;
-        Reloc->NumberOfRelocations = pReloc->NumberOfRelocations;
-        Reloc->Unused1 = pReloc->Unused1;
-        Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
-            RtlOffsetToPointer(
-                BaseAddress,
-                sizeof(TRACE_STORE_RELOC)
-            )
+        Reloc->SizeOfStruct = sizeof(*Reloc);
+
+        if (HasRelocations) {
+            Reloc->NumberOfRelocations = pReloc->NumberOfRelocations;
+            Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
+                RtlOffsetToPointer(
+                    BaseAddress,
+                    sizeof(TRACE_STORE_RELOC)
+                )
+            );
+        }
+
+        Reloc->BitmapBufferSizeInQuadwords = (
+            TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
         );
+
+        Reloc->Bitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS;
+        Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
+
+        if (HasRelocationBackRefs) {
+            Reloc->NumberOfRelocationBackReferences = (
+                pReloc->NumberOfRelocationBackReferences
+            );
+            if (Reloc->BitmapBufferSizeInQuadwords !=
+                pReloc->BitmapBufferSizeInQuadwords) {
+                __debugbreak();
+                return FALSE;
+            }
+            if (Reloc->Bitmap.SizeOfBitMap != pReloc->Bitmap.SizeOfBitMap) {
+                __debugbreak();
+                return FALSE;
+            }
+            __movsq((PDWORD64)Reloc->Bitmap.Buffer,
+                    (PDWORD64)pReloc->Bitmap.Buffer,
+                    Reloc->BitmapBufferSizeInQuadwords);
+        }
+
+        if (!HasRelocations) {
+            goto End;
+        }
 
         FirstDestFieldReloc = Reloc->Relocations;
         FirstSourceFieldReloc = pReloc->Relocations;
@@ -152,6 +190,7 @@ Return Value:
         return FALSE;
     }
 
+End:
     TraceStore->Reloc = Reloc;
 
     return TRUE;
@@ -167,7 +206,7 @@ LoadTraceStoreRelocationInfo(
 Routine Description:
 
     This routine loads any relocation information associated with the trace
-    store from the :relocation metadata store.  It is called in the final
+    store from the :Relocation metadata store.  It is called in the final
     stages of binding a trace store to a trace context.
 
 Arguments:
@@ -182,11 +221,9 @@ Return Value:
 
 --*/
 {
-    PTRACE_STORE_RELOC pReloc;
+    BOOL HasRelocations;
+    BOOL HasRelocationBackRefs;
     PTRACE_STORE_RELOC Reloc;
-    ULARGE_INTEGER AllocationSize;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    PVOID BaseAddress;
 
     //
     // Validate arguments.
@@ -217,83 +254,42 @@ Return Value:
     }
 
     //
-    // TraceStore->Reloc will be initialized to point at the base address of
-    // the :relocation data.  This will be sufficient to check if the store has
-    // any field relocations.
+    // Point TraceStore->Reloc at the base of the :Relocation trace store's
+    // memory map.
     //
 
-    pReloc = TraceStore->Reloc;
-    if (!pReloc) {
-        return FALSE;
-    }
-
-    if (pReloc->NumberOfRelocations == 0) {
-
-        //
-        // Invariant check: HasRelocations shouldn't be set here.
-        //
-
-        if (TraceStore->HasRelocations) {
-            __debugbreak();
-        }
-
-        return TRUE;
-    }
-
-    //
-    // Calculate the total size required for the TRACE_STORES_RELOC structure,
-    // plus a copy of the trailing TRACE_STORE_FIELD_RELOC array.
-    //
-
-    AllocationSize.QuadPart = (
-        sizeof(TRACE_STORE_RELOC) + (
-            pReloc->NumberOfRelocations *
-            sizeof(TRACE_STORE_FIELD_RELOC)
-        )
+    Reloc = TraceStore->Reloc = (PTRACE_STORE_RELOC)(
+        TraceStore->RelocationStore->MemoryMap->BaseAddress
     );
 
-    BaseAddress = TraceStore->RelocationStore->AllocateRecords(
-        TraceStore->TraceContext,
-        TraceStore->RelocationStore,
-        &AllocationSize,
-        &NumberOfRecords
-    );
-
-    if (!BaseAddress) {
-        return FALSE;
-    }
-
-    Reloc = (PTRACE_STORE_RELOC)BaseAddress;
-
-    //
-    // These two pointers should align.
-    //
-
-    if (Reloc != pReloc) {
+    if (!Reloc) {
         __debugbreak();
+        return FALSE;
     }
 
-    //
-    // The only thing we need to do to complete the "loading" of relocation
-    // information is initialize the pointer to the first field relocations
-    // element.  We can't adjust pReloc->Relocations here as the backing memory
-    // map is read-only.
-    //
-
-    TraceStore->BaseFieldRelocations = (PTRACE_STORE_FIELD_RELOC)(
-        RtlOffsetToPointer(
-            BaseAddress,
-            sizeof(TRACE_STORE_RELOC)
-        )
-    );
+    HasRelocations = (Reloc->NumberOfRelocations > 0);
+    HasRelocationBackRefs = (Reloc->NumberOfRelocationBackReferences > 0);
 
     //
-    // Update the pReloc pointer and indicate that we have field relocation
-    // information.
+    // Adjust the two pointers embedded within the relocation structure.  We
+    // can do this because we get special-cased with copy-on-write semantics
+    // during readonly binding.
     //
 
-    TraceStore->pReloc = Reloc;
-    TraceStore->HasRelocations = TRUE;
+    if (HasRelocations) {
+        TraceStore->HasRelocations = TRUE;
+        Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
+            RtlOffsetToPointer(
+                Reloc,
+                sizeof(TRACE_STORE_RELOC)
+            )
+        );
+    }
+
+    if (HasRelocationBackRefs) {
+        TraceStore->IsRelocationTarget = TRUE;
+        Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
+    }
 
     return TRUE;
 }

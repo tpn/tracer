@@ -50,8 +50,6 @@ extern "C" {
 
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
-#define SECONDS_TO_NANOSECONDS  1000000000
-//#define SECONDS_TO_TIMESTAMP    SECONDS_TO_NANOSECONDS
 
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
@@ -186,20 +184,32 @@ typedef struct _TRACE_STORE_ADDRESS {
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS) == 128);
 
 typedef union _ADDRESS_BIT_COUNTS {
-    ULONG AsLong;
-    struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG RightShift:6;
-        ULONG PopulationCount:6;
-        ULONG LeadingZeros:5;
-        ULONG TrailingZeros:5;
+    ULONGLONG AsLongLong;
+    struct {
+        struct _Struct_size_bytes_(sizeof(ULONG)) {
+            ULONG Width:6;
+            ULONG PopulationCount:6;
+            ULONG LeadingZeros:5;
+            ULONG TrailingZeros:5;
+        };
+        struct _Struct_size_bytes_(sizeof(ULONG)) {
+            ULONG HighPopulationCount:5;
+            ULONG LowPopulationCount:5;
+            ULONG HighParity:1;
+            ULONG LowParity:1;
+            ULONG Parity:1;
+            ULONG Unused:19;
+        };
     };
 } ADDRESS_BIT_COUNTS, *PADDRESS_BIT_COUNTS;
-C_ASSERT(sizeof(ADDRESS_BIT_COUNTS) == sizeof(ULONG));
+C_ASSERT(sizeof(ADDRESS_BIT_COUNTS) == sizeof(ULONGLONG));
 
 typedef struct _TRACE_STORE_ADDRESS_RANGE {
     PVOID PreferredBaseAddress;
     PVOID ActualBaseAddress;
-    ULONG NumberOfMaps;
+    PVOID EndAddress;
+    ULARGE_INTEGER MappedSize;
+    ULONGLONG NumberOfMaps;
     struct {
         ADDRESS_BIT_COUNTS Preferred;
         ADDRESS_BIT_COUNTS Actual;
@@ -207,7 +217,7 @@ typedef struct _TRACE_STORE_ADDRESS_RANGE {
     } BitCounts;
 } TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE, \
                            **PPTRACE_STORE_ADDRESS_RANGE;
-C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 32);
+C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 64);
 
 typedef struct _TRACE_STORE_EOF {
     LARGE_INTEGER EndOfFile;
@@ -510,7 +520,7 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     TRACE_STORE_TRAITS  Traits;
 
     //
-    // We're at 132 bytes.  256 - 132 = 124 bytes of padding.
+    // We're at 132 bytes.  256 - 136 = 124 bytes of padding.
     //
 
     CHAR Unused[124];
@@ -528,7 +538,13 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO AddressRange;
     TRACE_STORE_INFO Bitmap;
     TRACE_STORE_INFO Info;
+
+    //
+    // Pad out to 2048 bytes.
+    //
+
     TRACE_STORE_INFO Unused;
+
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
@@ -671,19 +687,26 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _TRACE_STORE_RELOC)) USHORT SizeOfStruct;
+    _Field_range_(==, sizeof(struct _TRACE_STORE_RELOC)) ULONG SizeOfStruct;
 
     //
     // Number of fields in the relocation array.
     //
 
-    USHORT NumberOfRelocations;
+    ULONG NumberOfRelocations;
 
     //
-    // Padding out to 8-bytes.
+    // Number of trace store relocation back references.  That is, the number
+    // of stores that have us as a relocation target.
     //
 
-    ULONG Unused1;
+    ULONG NumberOfRelocationBackReferences;
+
+    //
+    // Number of quadwords our bitmap buffer provides.
+    //
+
+    ULONG BitmapBufferSizeInQuadwords;
 
     //
     // Pointer to the array of TRACE_STORE_FIELD_RELOC structures.
@@ -691,8 +714,18 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
 
     PTRACE_STORE_FIELD_RELOC Relocations;
 
+    //
+    // Static bitmap used to track relocation back references.
+    //
+
+    RTL_BITMAP Bitmap;
+
+    ULONGLONG BitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
+
 } TRACE_STORE_RELOC, *PTRACE_STORE_RELOC;
 
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, Bitmap) == 24);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, BitmapBuffer) == );
 
 //
 // Trace store free space is tracked in TRACE_STORE_BITMAP structure, which
@@ -1235,6 +1268,22 @@ typedef struct _TRACE_STORE {
     volatile ULONG  TotalNumberOfMemoryMaps;
     volatile ULONG  NumberOfActiveMemoryMaps;
 
+    //
+    // Number of trace stores that have us as a relocation target.
+    //
+
+    volatile ULONG  NumberOfRelocationBackReferences;
+
+    //
+    // Number of relocation targets still being bound.  As each back-referenced
+    // relocation target trace store completes its binding, it walks its bitmap
+    // of dependent stores and does an interlocked decrement on this variable.
+    // When it hits zero, the trace store has a relocation work item submitted
+    // to the trace context's threadpool.
+    //
+
+    volatile ULONG  OutstandingRelocationBinds;
+
     volatile LONG   MappedSequenceId;
 
     volatile LONG   MetadataBindsInProgress;
@@ -1351,19 +1400,6 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_TRAITS pTraits;
 
     //
-    // The actual underlying field relocations array is pointed to by the
-    // pReloc->Relocations field; however, this pointer will not be valid
-    // when re-loading persisted :relocation metadata from the metadata store.
-    // As we can't write to the underlying memory map to adjust the pointer,
-    // we keep a separate pointer here to point to the field relocations array.
-    // This will only have a value when TraceStore->IsReadonly == TRUE and
-    // relocation information has been loaded (TraceStore->HasRelocations).
-    // The number of elements is governed by pReloc->NumberOfRelocations.
-    //
-
-    PTRACE_STORE_FIELD_RELOC BaseFieldRelocations;
-
-    //
     // For trace stores, the pointers below will point to the metadata trace
     // store memory maps.  Eof, Time, Stats, Totals and Traits are convenience
     // pointers into the Info struct.  For metadata stores, Info will be pointed
@@ -1386,6 +1422,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_RELOC Reloc;
     PTRACE_STORE_BITMAP Bitmap;
     PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
 
     //
@@ -1670,39 +1707,90 @@ Return Value:
 
 --*/
 {
-    ULONGLONG Address;
+    ULONG LowParity;
+    ULONG HighParity;
     ULONGLONG ShiftedRight;
     ULONGLONG Leading;
+    ULARGE_INTEGER Address;
     ADDRESS_BIT_COUNTS BitCounts;
 
-    Address = (ULONGLONG)BaseAddress;
-    if (!Address) {
-        BitCounts.AsLong = 0;
+    Address.QuadPart = (ULONGLONG)BaseAddress;
+    if (!Address.QuadPart) {
+        BitCounts.AsLongLong = 0;
         return BitCounts;
     }
 
 #ifdef _DEBUG
-    if ((Address & ((1 << RightShift) - 1)) != 0) {
+    if ((Address.QuadPart & ((1 << RightShift) - 1)) != 0) {
         __debugbreak();
     }
 #endif
-    ShiftedRight = Address >> RightShift;
-    Leading = LeadingZeros(Address);
+    ShiftedRight = Address.QuadPart >> RightShift;
+    Leading = LeadingZeros64(Address.QuadPart);
     Leading -= LeftShift;
 
-    BitCounts.RightShift = RightShift;
-    BitCounts.TrailingZeros = (ULONG)TrailingZeros(ShiftedRight);
+    BitCounts.TrailingZeros = (ULONG)TrailingZeros64(ShiftedRight);
     BitCounts.LeadingZeros = (ULONG)Leading;
-    BitCounts.PopulationCount = (ULONG)PopulationCount64(Address);
+    BitCounts.PopulationCount = (ULONG)PopulationCount64(Address.QuadPart);
+
+    BitCounts.LowPopulationCount = (ULONG)PopulationCount32(Address.LowPart);
+    BitCounts.HighPopulationCount = (ULONG)PopulationCount32(Address.HighPart);
+
+    LowParity = Address.LowPart;
+    LowParity ^= LowParity >> 16;
+    LowParity ^= LowParity >> 8;
+    LowParity ^= LowParity >> 4;
+    LowParity &= 0xf;
+    BitCounts.LowParity = ((0x6996 >> LowParity) & 1);
+
+    HighParity = Address.HighPart;
+    HighParity ^= HighParity >> 16;
+    HighParity ^= HighParity >> 8;
+    HighParity ^= HighParity >> 4;
+    HighParity &= 0xf;
+    BitCounts.HighParity = ((0x6996 >> HighParity) & 1);
+
+    BitCounts.Parity = BitCounts.LowParity ^ BitCounts.HighParity;
+
+    BitCounts.Width = (
+        64 -
+        (BitCounts.LeadingZeros + LeftShift) -
+        (BitCounts.TrailingZeros + RightShift)
+    );
 
     return BitCounts;
 }
 
-#define GetTraceStoreAddressBitCounts(RightShift, Address) \
-    GetAddressBitCounts(Address, RightShift, 21)
+#define GetTraceStoreAddressBitCounts(Address) \
+    GetAddressBitCounts(Address, 16, 21)
 
 #define CalculateRightShiftFromMemoryMap(MemoryMap) \
-    (USHORT)TrailingZeros(MemoryMap->MappingSize.QuadPart)
+    (USHORT)TrailingZeros64(MemoryMap->MappingSize.QuadPart)
+
+FORCEINLINE
+TRACE_STORE_INDEX
+TraceStoreIdToTraceStoreIndex(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    return (TRACE_STORE_INDEX)(
+        (ULONG)TraceStoreId * (ULONG)TraceStores->NumberOfTraceStores
+    );
+}
+
+FORCEINLINE
+PTRACE_STORE
+TraceStoreIdToTraceStore(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    TRACE_STORE_INDEX TraceStoreIndex;
+
+    TraceStoreIndex = TraceStoreIdToTraceStoreIndex(TraceStores, TraceStoreId);
+    return &TraceStores->Stores[TraceStoreIndex];
+}
 
 FORCEINLINE
 PTRACE_STORE

@@ -180,12 +180,34 @@ class TRACE_STORE_ADDRESS(Structure):
     ]
 PTRACE_STORE_ADDRESS = POINTER(TRACE_STORE_ADDRESS)
 
-class ADDRESS_BIT_COUNTS(Structure):
+class _ADDRESS_BIT_COUNTS_LOW(Structure):
     _fields_ = [
-        ('RightShift', ULONG, 6),
+        ('Width', ULONG, 6),
         ('PopulationCount', ULONG, 6),
         ('LeadingZeros', ULONG, 5),
         ('TrailingZeros', ULONG, 5),
+    ]
+
+class _ADDRESS_BIT_COUNTS_HIGH(Structure):
+    _fields_ = [
+        ('HighPopulationCount', ULONG, 5),
+        ('LowPopulationCount', ULONG, 5),
+        ('HighParity', ULONG, 1),
+        ('LowParity', ULONG, 1),
+        ('Parity', ULONG, 1),
+        ('Unused', ULONG, 19),
+    ]
+
+class _ADDRESS_BIT_COUNTS(Structure):
+    _fields_ = [
+        ('l', _ADDRESS_BIT_COUNTS_LOW),
+        ('h', _ADDRESS_BIT_COUNTS_HIGH),
+    ]
+
+class ADDRESS_BIT_COUNTS(Union):
+    _fields_ = [
+        ('AsLongLong', ULONGLONG),
+        ('s', _ADDRESS_BIT_COUNTS),
     ]
 PADDRESS_BIT_COUNTS = POINTER(ADDRESS_BIT_COUNTS)
 
@@ -442,6 +464,7 @@ TRACE_STORE._fields_ = [
     ('MemoryMap', PTRACE_STORE_MEMORY_MAP),
     ('TotalNumberOfMemoryMaps', ULONG),
     ('NumberOfActiveMemoryMaps', ULONG),
+    ('RelocationReferenceCount', ULONG),
     ('MappedSequenceId', LONG),
     ('MetadataBindsInProgress', LONG),
     ('PrepareReadonlyMapsInProgress', LONG),

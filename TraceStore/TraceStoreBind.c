@@ -308,6 +308,8 @@ Return Value:
 {
     BOOL Success;
     BOOL IsMetadataInfo;
+    DWORD CreateFileMappingProtectionFlags;
+    DWORD MapViewOfFileDesiredAccess;
     TRACE_STORE_METADATA_ID MetadataId;
     PBIND_COMPLETE BindComplete;
     FILE_STANDARD_INFO FileInfo;
@@ -367,10 +369,25 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Relocation stores get special-cased: we need to adjust a couple of
+    // pointers once mapped (Reloc->Relocations and Reloc->Bitmap.Buffer)
+    // and it's vastly easier to just leverage copy-on-write here than any
+    // other approach.
+    //
+
+    if (MetadataId == TraceStoreMetadataRelocationId) {
+        CreateFileMappingProtectionFlags = PAGE_WRITECOPY;
+        MapViewOfFileDesiredAccess = FILE_MAP_COPY;
+    } else {
+        CreateFileMappingProtectionFlags = PAGE_READONLY;
+        MapViewOfFileDesiredAccess = FILE_MAP_COPY;
+    }
+
     MemoryMap->MappingHandle = CreateFileMappingNuma(
         MemoryMap->FileHandle,
         NULL,
-        TraceStore->CreateFileMappingProtectionFlags,
+        CreateFileMappingProtectionFlags,
         MemoryMap->MappingSize.HighPart,
         MemoryMap->MappingSize.LowPart,
         NULL,
@@ -385,7 +402,7 @@ Return Value:
 
     MemoryMap->BaseAddress = MapViewOfFileExNuma(
         MemoryMap->MappingHandle,
-        TraceStore->MapViewOfFileDesiredAccess,
+        MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
         MemoryMap->MappingSize.LowPart,
@@ -505,8 +522,6 @@ Return Value:
     DWORD ProcessId;
     DWORD ThreadId;
     LARGE_INTEGER FileOffset;
-    LARGE_INTEGER MappingSize;
-    LARGE_INTEGER AddressRangeMappingSize;
     ULARGE_INTEGER NumberOfAddressRanges;
     PLARGE_INTEGER Requested;
     FILE_STANDARD_INFO FileInfo;
@@ -541,6 +556,14 @@ Return Value:
 
     NumberOfAddressRanges.QuadPart = (
         NumberOfTraceStoreAddressRanges(TraceStore)
+    );
+
+    //
+    // (These should probably be elsewhere.)
+    //
+
+    TraceStore->Address = (PTRACE_STORE_ADDRESS)(
+        TraceStore->AddressStore->MemoryMap->BaseAddress
     );
 
     TraceStore->NumberOfAllocations.QuadPart = (
@@ -677,25 +700,6 @@ Return Value:
     GetNumaProcessorNodeEx(&ProcessorNumber, &NumaNode);
 
     //
-    // The RightShift element of the ADDRESS_BIT_COUNTS structure indicates
-    // how many trailing zeros an address first had before being shifted right
-    // and having its trailing zeros counted.  (We do this to reduce the number
-    // of bits required to express the maximum possible number of trailing bits;
-    // with a minimum mapping size of 64KB (2 ** 16 -> 16 right shift), with 5
-    // bits we can capture the range 0-32.)
-    //
-    // If we left shift by the same amount, we can derive the mapping size.  We
-    // don't adjust mapping sizes mid-trace, so it's fine calculating this value
-    // from the first address range's bit counts.  (It also doesn't matter if
-    // we use BitCounts->Preferred, BitCounts->Actual or Bitcounts->End; they'll
-    // all have the same value for RightShift.)
-    //
-
-    MappingSize.QuadPart = (
-        1ULL << (ULONGLONG)AddressRanges->BitCounts.Preferred.RightShift
-    );
-
-    //
     // Enumerate the address range records, fill in a memory map and address
     // for each one, then submit a threadpool work item to prepare it.
     //
@@ -711,26 +715,19 @@ Return Value:
         AddressRange = &AddressRanges[Index];
 
         //
-        // Calculate the mapping size for this address range by multiplying the
-        // number of maps with the individual mapping size we calculated prior
-        // to entering the loop.
-        //
-
-        AddressRangeMappingSize.QuadPart = (
-            AddressRange->NumberOfMaps *
-            MappingSize.QuadPart
-        );
-
-        //
         // Fill in the rest of the memory map's details.
         //
 
         MemoryMap->FileHandle = TraceStore->FileHandle;
         MemoryMap->MappingHandle = MappingHandle;
         MemoryMap->FileOffset.QuadPart = FileOffset.QuadPart;
-        MemoryMap->MappingSize.QuadPart = AddressRangeMappingSize.QuadPart;
+        MemoryMap->MappingSize.QuadPart = AddressRange->MappedSize.QuadPart;
         MemoryMap->PreferredBaseAddress = AddressRange->PreferredBaseAddress;
         MemoryMap->BaseAddress = AddressRange->PreferredBaseAddress;
+
+        //
+        // XXX todo: verify EndAddresses match.
+        //
 
         //
         // Update the file offset.
