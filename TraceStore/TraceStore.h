@@ -1736,6 +1736,10 @@ Return Value:
     BitCounts.LowPopulationCount = (ULONG)PopulationCount32(Address.LowPart);
     BitCounts.HighPopulationCount = (ULONG)PopulationCount32(Address.HighPart);
 
+    //
+    // Parallel parity calculation lovingly lifted from Hacker's Delight.
+    //
+
     LowParity = Address.LowPart;
     LowParity ^= LowParity >> 16;
     LowParity ^= LowParity >> 8;
