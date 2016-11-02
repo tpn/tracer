@@ -392,10 +392,12 @@ class TRACE_CONTEXT(Structure):
         ('BindMetadataInfoStoreWork', TRACE_STORE_WORK),
         ('BindRemainingMetadataStoresWork', TRACE_STORE_WORK),
         ('BindTraceStoreWork', TRACE_STORE_WORK),
+        ('ReadonlyNonStreamingBindCompleteWork', TRACE_STORE_WORK),
         ('FailedListHead', SLIST_HEADER),
         ('ActiveWorkItems', ULONG),
         ('BindsInProgress', ULONG),
-        ('PrepareReadonlyMapsInProgress', ULONG),
+        ('PrepareReadonlyNonStreamingMapsInProgress', ULONG),
+        ('ReadonlyNonStreamingBindCompletesInProgress', ULONG),
         ('Time', TRACE_STORE_TIME),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
@@ -471,7 +473,8 @@ TRACE_STORE._fields_ = [
     ('OutstandingRelocationBinds', ULONG),
     ('MappedSequenceId', LONG),
     ('MetadataBindsInProgress', LONG),
-    ('PrepareReadonlyMapsInProgress', LONG),
+    ('PrepareReadonlyNonStreamingMapsInProgress', LONG),
+    ('ReadonlyNonStreamingBindCompletes', LONG),
     ('SequenceId', ULONG),
     ('NumaNode', ULONG),
     ('TraceStoreId', TRACE_STORE_ID),

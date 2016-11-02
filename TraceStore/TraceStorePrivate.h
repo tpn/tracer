@@ -589,6 +589,18 @@ PREPARE_READONLY_TRACE_STORE_MEMORY_MAP_CALLBACK \
 
 typedef
 VOID
+(CALLBACK READONLY_NON_STREAMING_BIND_COMPLETE_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef  READONLY_NON_STREAMING_BIND_COMPLETE_CALLBACK \
+       *PREADONLY_NON_STREAMING_BIND_COMPLETE_CALLBACK;
+READONLY_NON_STREAMING_BIND_COMPLETE_CALLBACK \
+    ReadonlyNonStreamingBindCompleteCallback;
+
+typedef
+VOID
 (CALLBACK CLOSE_TRACE_STORE_MEMORY_MAP_CALLBACK)(
     _In_     PTP_CALLBACK_INSTANCE Instance,
     _In_opt_ PTRACE_STORE TraceStore,
@@ -730,17 +742,66 @@ GetTraceStoreFileInfo(
     );
 }
 
-#define PushPrepareReadonlyMap(TraceStore, MemoryMap) \
-    PushTraceStoreMemoryMap(                          \
-        &TraceStore->PrepareReadonlyMemoryMaps,       \
-        MemoryMap                                     \
+#define PushPrepareReadonlyNonStreamingMap(TraceStore, MemoryMap) \
+    PushTraceStoreMemoryMap(                                      \
+        &TraceStore->PrepareReadonlyMemoryMaps,                   \
+        MemoryMap                                                 \
     )
 
-#define SubmitPrepareReadonlyMap(TraceContext, TraceStore, MemoryMap)   \
-    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforePrepareReadonlyMap);     \
-    InterlockedIncrement(&TraceStore->PrepareReadonlyMapsInProgress);   \
-    PushPrepareReadonlyMap(TraceStore, MemoryMap);                      \
-    SubmitThreadpoolWork(TraceStore->PrepareReadonlyMemoryMapWork)
+#define SubmitPrepareReadonlyNonStreamingMap(TraceContext, TraceStore, MemMap) \
+    PRE_THREADPOOL_WORK_SUBMISSION(                                            \
+        &PauseBeforePrepareReadonlyNonStreamingMap                             \
+    );                                                                         \
+    InterlockedIncrement(                                                      \
+        &TraceStore->PrepareReadonlyNonStreamingMapsInProgress                 \
+    );                                                                         \
+    InterlockedIncrement(                                                      \
+        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress               \
+    );                                                                         \
+    PushPrepareReadonlyNonStreamingMap(TraceStore, MemMap);                    \
+    SubmitThreadpoolWork(TraceStore->PrepareReadonlyNonStreamingMemoryMapWork)
+
+#define PushReadonlyNonStreamingBindComplete(TraceContext, TraceStore) \
+    PushTraceStore(                                                    \
+        &TraceContext->ReadonlyNonStreamingBindCompleteWork.ListHead,  \
+        TraceStore                                                     \
+    )
+
+#define PopReadonlyNonStreamingBindComplete(TraceContext, TraceStore) \
+    PopTraceStore(                                                    \
+        &TraceContext->ReadonlyNonStreamingBindCompleteWork.ListHead, \
+        TraceStore                                                    \
+    )
+
+#define SubmitReadonlyNonStreamingBindComplete(TraceContext, TraceStore)  \
+    PRE_THREADPOOL_WORK_SUBMISSION(                                       \
+        &PauseBeforeReadonlyNonStreamingBindComplete                      \
+    );                                                                    \
+    InterlockedIncrement(                                                 \
+        &TraceStore->ReadonlyNonStreamingBindCompletesInProgress          \
+    );                                                                    \
+    InterlockedIncrement(                                                 \
+        &TraceContext->ReadonlyNonStreamingBindCompletesInProgress        \
+    );                                                                    \
+    PushReadonlyNonStreamingBindComplete(TraceContext, TraceStore);       \
+    SubmitThreadpoolWork(                                                 \
+        TraceContext->ReadonlyNonStreamingBindCompleteWork.ThreadpoolWork \
+    )
+
+#define PushRelocateTraceStore(TraceContext, TraceStore) \
+    PushTraceStore(                                      \
+        &TraceContext->RelocateWork.ListHead,            \
+        TraceStore                                       \
+    )
+
+#define SubmitRelocateWork(TraceContext, TraceStore)          \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforeRelocate);     \
+    InterlockedIncrement(&TraceStore->RelocatesInProgress);   \
+    InterlockedIncrement(&TraceContext->RelocatesInProgress); \
+    PushRelocateTraceStore(TraceContext, TraceStore);         \
+    SubmitThreadpoolWork(                                     \
+        TraceContext->RelocateWork.ThreadpoolWork             \
+    )
 
 //
 // TraceStoreAddress-related functions.

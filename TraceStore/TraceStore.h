@@ -960,6 +960,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK BindMetadataInfoStoreWork;
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
+    TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
 
     SLIST_HEADER FailedListHead;
 
@@ -977,7 +978,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     // trace stores.
     //
 
-    volatile ULONG PrepareReadonlyMapsInProgress;
+    volatile ULONG PrepareReadonlyNonStreamingMapsInProgress;
+
+    volatile ULONG ReadonlyNonStreamingBindCompletesInProgress;
 
     //
     // Stash Time at the end as it's large and doesn't have any alignment
@@ -1256,7 +1259,7 @@ typedef struct _TRACE_STORE {
     LARGE_INTEGER           MappingSize;
     PTP_WORK                PrefaultFuturePageWork;
     PTP_WORK                PrepareNextMemoryMapWork;
-    PTP_WORK                PrepareReadonlyMemoryMapWork;
+    PTP_WORK                PrepareReadonlyNonStreamingMemoryMapWork;
     PTP_WORK                CloseMemoryMapWork;
     HANDLE                  NextMemoryMapAvailableEvent;
     HANDLE                  AllMemoryMapsAreFreeEvent;
@@ -1287,7 +1290,8 @@ typedef struct _TRACE_STORE {
     volatile LONG   MappedSequenceId;
 
     volatile LONG   MetadataBindsInProgress;
-    volatile LONG   PrepareReadonlyMapsInProgress;
+    volatile LONG   PrepareReadonlyNonStreamingMapsInProgress;
+    volatile LONG   ReadonlyNonStreamingBindCompletesInProgress;
 
     //
     // Each trace store, when initialized, is assigned a unique sequence
@@ -1464,7 +1468,6 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, ReadonlyAddressRanges) == 632);
 C_ASSERT(sizeof(TRACE_STORE) == 656);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
@@ -1722,12 +1725,6 @@ Return Value:
         return BitCounts;
     }
 
-//#ifdef _DEBUG
-//    if ((Address.QuadPart & ((1 << RightShift) - 1)) != 0) {
-//        __debugbreak();
-//    }
-//#endif
-
     ShiftedRight = Address.QuadPart >> RightShift;
     Leading = LeadingZeros64(Address.QuadPart);
     Leading -= LeftShift;
@@ -1817,7 +1814,7 @@ NumberOfTraceStoreAllocations(
     _In_ PTRACE_STORE TraceStore
     )
 {
-    return TraceStore->AllocationStore->Totals->NumberOfAllocations.QuadPart;
+    return TraceStore->Totals->NumberOfAllocations.QuadPart;
 }
 
 FORCEINLINE

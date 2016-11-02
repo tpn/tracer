@@ -395,15 +395,15 @@ Return Value:
         goto Error;
     }
 
-    if (InterlockedDecrement(&TraceStore->PrepareReadonlyMapsInProgress)) {
+    if (InterlockedDecrement(
+        &TraceStore->PrepareReadonlyNonStreamingMapsInProgress)) {
         return;
     }
 
-    //
-    // We need to do the relocation stuff before loading completes.
-    //if (!InterlockedDecrement(&TraceContext->PrepareReadonlyMapsInProgress)) {
-    //    SetEvent(TraceContext->LoadingCompleteEvent);
-    //}
+    if (!InterlockedDecrement(
+        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress)) {
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
 
     return;
 
@@ -411,6 +411,78 @@ Error:
     PushFailedTraceStore(TraceContext, TraceStore);
     return;
 }
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+ReadonlyNonStreamingBindCompleteCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the threadpool callback target for a trace store's prepare
+    next memory map routine.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    Success = PopReadonlyNonStreamingBindComplete(TraceContext, &TraceStore);
+    if (!Success) {
+        return;
+    }
+
+    /*
+    Success = ReadonlyNonStreamingBindComplete(TraceStore);
+    if (!Success) {
+        goto Error;
+    }
+
+    if (InterlockedDecrement(
+        &TraceStore->PrepareReadonlyNonStreamingMapsInProgress)) {
+        return;
+    }
+
+    if (!InterlockedDecrement(
+        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress)) {
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
+    */
+
+    return;
+
+    /*
+Error:
+    PushFailedTraceStore(TraceContext, TraceStore);
+    return;
+    */
+}
+
 
 _Use_decl_annotations_
 VOID
