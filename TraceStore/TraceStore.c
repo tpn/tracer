@@ -755,12 +755,14 @@ Return Value:
             }
         }
     } else {
-        TraceStore->PrepareReadonlyMemoryMapWork = CreateThreadpoolWork(
-            &PrepareReadonlyTraceStoreMemoryMapCallback,
-            TraceStore,
-            TraceContext->ThreadpoolCallbackEnvironment
+        TraceStore->PrepareReadonlyNonStreamingMemoryMapWork = (
+            CreateThreadpoolWork(
+                &PrepareReadonlyTraceStoreMemoryMapCallback,
+                TraceStore,
+                TraceContext->ThreadpoolCallbackEnvironment
+            )
         );
-        if (!TraceStore->PrepareReadonlyMemoryMapWork) {
+        if (!TraceStore->PrepareReadonlyNonStreamingMemoryMapWork) {
             return FALSE;
         }
     }

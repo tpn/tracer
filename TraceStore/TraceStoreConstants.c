@@ -15,10 +15,13 @@ Abstract:
 #include "stdafx.h"
 
 volatile BOOL PauseBeforeThreadpoolWorkEnabled = FALSE;
+
 volatile BOOL PauseBeforeBindMetadataInfo = TRUE;
 volatile BOOL PauseBeforeBindRemainingMetadata = TRUE;
 volatile BOOL PauseBeforeBindTraceStore = TRUE;
-volatile BOOL PauseBeforePrepareReadonlyMap = TRUE;
+volatile BOOL PauseBeforePrepareReadonlyNonStreamingMap = TRUE;
+volatile BOOL PauseBeforeReadonlyNonStreamingBindComplete = TRUE;
+volatile BOOL PauseBeforeRelocate = TRUE;
 
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",

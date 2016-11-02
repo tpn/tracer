@@ -467,11 +467,28 @@ Return Value:
     }
 
     //
+    // (These should probably be elsewhere.)
+    //
+
+    TraceStore->Address = (PTRACE_STORE_ADDRESS)(
+        TraceStore->AddressStore->MemoryMap->BaseAddress
+    );
+
+    TraceStore->NumberOfAllocations.QuadPart = (
+        NumberOfTraceStoreAllocations(TraceStore)
+    );
+
+    TraceStore->NumberOfAddressRanges.QuadPart = (
+        NumberOfTraceStoreAddressRanges(TraceStore)
+    );
+
+    //
     // Load the trace store's traits, which will have been saved in the store's
     // metadata :info store.
     //
 
     Traits = *TraceStore->Traits;
+
 
     //
     // Dispatch to the relevant handler.
@@ -540,11 +557,8 @@ Return Value:
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges = NULL;
 
     //
-    // Check the file size; if it's empty, we don't need to do anything else.
-    //
-
-    //
-    // XXX: need to do the relocation stuff if we have dependents.
+    // Check the file size; if it's empty, we don't need to do any binding,
+    // so go straight to submitting a bind complete work item to the threadpool.
     //
 
     if (!GetTraceStoreFileInfo(TraceStore, &FileInfo)) {
@@ -553,6 +567,7 @@ Return Value:
     }
 
     if (FileInfo.EndOfFile.QuadPart == 0) {
+        SubmitReadonlyNonStreamingBindComplete(TraceContext, TraceStore);
         return TRUE;
     }
 
@@ -562,22 +577,6 @@ Return Value:
     //
 
     NumberOfAddressRanges.QuadPart = (
-        NumberOfTraceStoreAddressRanges(TraceStore)
-    );
-
-    //
-    // (These should probably be elsewhere.)
-    //
-
-    TraceStore->Address = (PTRACE_STORE_ADDRESS)(
-        TraceStore->AddressStore->MemoryMap->BaseAddress
-    );
-
-    TraceStore->NumberOfAllocations.QuadPart = (
-        NumberOfTraceStoreAllocations(TraceStore)
-    );
-
-    TraceStore->NumberOfAddressRanges.QuadPart = (
         NumberOfTraceStoreAddressRanges(TraceStore)
     );
 
@@ -699,12 +698,6 @@ Return Value:
     //
 
     //
-    // Increment the context's prepare counter.
-    //
-
-    InterlockedIncrement(&TraceContext->PrepareReadonlyMapsInProgress);
-
-    //
     // Initialize remaining loop constants.
     //
 
@@ -795,7 +788,9 @@ Return Value:
         // Submit the threadpool prepare.
         //
 
-        SubmitPrepareReadonlyMap(TraceContext, TraceStore, MemoryMap);
+        SubmitPrepareReadonlyNonStreamingMap(TraceContext,
+                                             TraceStore,
+                                             MemoryMap);
 
     }
 

@@ -105,10 +105,14 @@ TRACE_STORE_DATA TRACE_STORE_TRAITS BitmapStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS InfoStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS MetadataInfoStoreTraits;
 
+TRACE_STORE_DATA volatile BOOL PauseBeforeThreadpoolWorkEnabled;
+
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindMetadataInfo;
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindRemainingMetadata;
 TRACE_STORE_DATA volatile BOOL PauseBeforeBindTraceStore;
-TRACE_STORE_DATA volatile BOOL PauseBeforePrepareReadonlyMap;
+TRACE_STORE_DATA volatile BOOL PauseBeforePrepareReadonlyNonStreamingMap;
+TRACE_STORE_DATA volatile BOOL PauseBeforeReadonlyNonStreamingBindComplete;
+TRACE_STORE_DATA volatile BOOL PauseBeforeRelocate;
 
 #ifdef __cplusplus
 }; // extern "C"

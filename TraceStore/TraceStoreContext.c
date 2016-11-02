@@ -229,6 +229,7 @@ Return Value:
     INIT_WORK(BindMetadataInfoStore, NumberOfTraceStores);
     INIT_WORK(BindRemainingMetadataStores, NumberOfRemainingMetadataStores);
     INIT_WORK(BindTraceStore, NumberOfTraceStores);
+    INIT_WORK(ReadonlyNonStreamingBindComplete, NumberOfTraceStores);
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
@@ -253,7 +254,7 @@ Return Value:
         //
         // We don't `goto Error` here because the error handling attempts to
         // close the threadpool work item.  If a wait fails, it may be because
-        // the process is being run down (user cancelled operation, something
+        // the process is being run down (user canceled operation, something
         // else failed, etc), in which case, we don't need to do any threadpool
         // or event cleanup operations.
         //
@@ -288,6 +289,7 @@ Error:
     CLEANUP_WORK(BindMetadataInfoStore);
     CLEANUP_WORK(BindRemainingMetadataStores);
     CLEANUP_WORK(BindTraceStore);
+    CLEANUP_WORK(ReadonlyNonStreamingBindComplete);
 
     return FALSE;
 }
