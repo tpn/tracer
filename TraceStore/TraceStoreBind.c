@@ -381,7 +381,7 @@ Return Value:
         MapViewOfFileDesiredAccess = FILE_MAP_COPY;
     } else {
         CreateFileMappingProtectionFlags = PAGE_READONLY;
-        MapViewOfFileDesiredAccess = FILE_MAP_COPY;
+        MapViewOfFileDesiredAccess = FILE_MAP_READ;
     }
 
     MemoryMap->MappingHandle = CreateFileMappingNuma(
@@ -524,6 +524,7 @@ Return Value:
     PVOID ActualEndAddress;
     PVOID ExpectedEndAddress;
     LARGE_INTEGER FileOffset;
+    LARGE_INTEGER MappingSize;
     ULARGE_INTEGER NumberOfAddressRanges;
     PLARGE_INTEGER Requested;
     FILE_STANDARD_INFO FileInfo;
@@ -540,6 +541,10 @@ Return Value:
 
     //
     // Check the file size; if it's empty, we don't need to do anything else.
+    //
+
+    //
+    // XXX: need to do the relocation stuff if we have dependents.
     //
 
     if (!GetTraceStoreFileInfo(TraceStore, &FileInfo)) {
@@ -585,6 +590,17 @@ Return Value:
     }
 
     NumberOfMaps = NumberOfAddressRanges.LowPart;
+    AddressRanges = TraceStore->AddressRange;
+    MappingSize.QuadPart = AddressRanges->MappedSize.QuadPart;
+
+    if (MappingSize.QuadPart > FileInfo.EndOfFile.QuadPart) {
+        NumberOfMaps = 1;
+        MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+    } else {
+        NumberOfMaps = (ULONG)(
+            (MappingSize.QuadPart / FileInfo.EndOfFile.QuadPart) + 1
+        );
+    }
 
     //
     // Create a file mapping for the entire file's contents up front.  Use
@@ -697,7 +713,6 @@ Return Value:
     ThreadId = FastGetCurrentThreadId();
     ProcessId = FastGetCurrentProcessId();
     MemoryMaps = FirstMemoryMap;
-    AddressRanges = TraceStore->AddressRange;
     GetCurrentProcessorNumberEx(&ProcessorNumber);
     GetNumaProcessorNodeEx(&ProcessorNumber, &NumaNode);
 
@@ -723,26 +738,31 @@ Return Value:
         MemoryMap->FileHandle = TraceStore->FileHandle;
         MemoryMap->MappingHandle = MappingHandle;
         MemoryMap->FileOffset.QuadPart = FileOffset.QuadPart;
-        MemoryMap->MappingSize.QuadPart = AddressRange->MappedSize.QuadPart;
         MemoryMap->PreferredBaseAddress = AddressRange->PreferredBaseAddress;
         MemoryMap->BaseAddress = AddressRange->PreferredBaseAddress;
 
-        //
-        // Invariant test: the base address + mapping size should match the
-        // end address pointer.
-        //
+        if ((Index + 1) == NumberOfMaps) {
+            MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+        } else {
+            MemoryMap->MappingSize.QuadPart = AddressRange->MappedSize.QuadPart;
 
-        ExpectedEndAddress = (PVOID)(
-            RtlOffsetToPointer(
-                MemoryMap->BaseAddress,
-                MemoryMap->MappingSize.QuadPart
-            )
-        );
+            //
+            // Invariant test: the base address + mapping size should match the
+            // end address pointer.
+            //
 
-        ActualEndAddress = AddressRange->EndAddress;
+            ExpectedEndAddress = (PVOID)(
+                RtlOffsetToPointer(
+                    MemoryMap->BaseAddress,
+                    MemoryMap->MappingSize.QuadPart
+                )
+            );
 
-        if (ExpectedEndAddress != ActualEndAddress) {
-            __debugbreak();
+            ActualEndAddress = AddressRange->EndAddress;
+
+            if (ExpectedEndAddress != ActualEndAddress) {
+                __debugbreak();
+            }
         }
 
         //

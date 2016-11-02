@@ -286,9 +286,9 @@ Return Value:
         );
     }
 
+    Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
     if (HasRelocationBackRefs) {
         TraceStore->IsRelocationTarget = TRUE;
-        Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
     }
 
     return TRUE;

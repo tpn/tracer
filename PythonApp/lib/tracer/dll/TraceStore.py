@@ -307,15 +307,6 @@ class TRACE_STORE_FIELD_RELOCS(Structure):
     ]
 PTRACE_STORE_FIELD_RELOCS = POINTER(TRACE_STORE_FIELD_RELOCS)
 
-class TRACE_STORE_RELOC(Structure):
-    _fields_ = [
-        ('SizeOfStruct', USHORT),
-        ('NumberOfRelocations', USHORT),
-        ('Unused1', ULONG),
-        ('Relocations', PTRACE_STORE_FIELD_RELOC),
-    ]
-PTRACE_STORE_RELOC = POINTER(TRACE_STORE_RELOC)
-
 class TRACE_STORE_BITMAP(Structure):
     _fields_ = [
         ('SizeOfBitMap', ULONG),
@@ -324,6 +315,18 @@ class TRACE_STORE_BITMAP(Structure):
         ('Buffer', PVOID),
     ]
 PTRACE_STORE_BITMAP = POINTER(TRACE_STORE_BITMAP)
+
+class TRACE_STORE_RELOC(Structure):
+    _fields_ = [
+        ('SizeOfStruct', ULONG),
+        ('NumberOfRelocations', ULONG),
+        ('NumberOfRelocationBackReferences', ULONG),
+        ('BitmapBufferSizeInQuadwords', ULONG),
+        ('Relocations', PTRACE_STORE_FIELD_RELOC),
+        ('Bitmap', TRACE_STORE_BITMAP),
+        ('BitmapBuffer', ULONGLONG * 1),
+    ]
+PTRACE_STORE_RELOC = POINTER(TRACE_STORE_RELOC)
 
 class TRACE_SESSION(Structure):
     _fields_ = [
@@ -464,7 +467,8 @@ TRACE_STORE._fields_ = [
     ('MemoryMap', PTRACE_STORE_MEMORY_MAP),
     ('TotalNumberOfMemoryMaps', ULONG),
     ('NumberOfActiveMemoryMaps', ULONG),
-    ('RelocationReferenceCount', ULONG),
+    ('NumberOfRelocationBackReferences', ULONG),
+    ('OutstandingRelocationBinds', ULONG),
     ('MappedSequenceId', LONG),
     ('MetadataBindsInProgress', LONG),
     ('PrepareReadonlyMapsInProgress', LONG),
@@ -498,7 +502,6 @@ TRACE_STORE._fields_ = [
     ('BindComplete', PBIND_COMPLETE),
     ('pReloc', PTRACE_STORE_RELOC),
     ('pTraits', PTRACE_STORE_TRAITS),
-    ('BaseFieldRelocations', PTRACE_STORE_FIELD_RELOC),
     ('Eof', PTRACE_STORE_EOF),
     ('Time', PTRACE_STORE_TIME),
     ('Stats', PTRACE_STORE_STATS),
@@ -508,6 +511,7 @@ TRACE_STORE._fields_ = [
     ('Reloc', PTRACE_STORE_RELOC),
     ('Bitmap', PTRACE_STORE_BITMAP),
     ('Allocation', PTRACE_STORE_ALLOCATION),
+    ('Address', PTRACE_STORE_ADDRESS),
     ('AddressRange', PTRACE_STORE_ADDRESS_RANGE),
     ('NumberOfAllocations', ULARGE_INTEGER),
     ('NumberOfAddresses', ULARGE_INTEGER),
@@ -515,6 +519,7 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyAddressRangesConsumed', ULONGLONG),
+    ('Dummy', PVOID),
 ]
 
 class TRACE_STORES_RUNDOWN(Structure):
@@ -827,7 +832,7 @@ def create_and_initialize_readonly_trace_context(rtl, allocator,
 
     assert success
 
-    return trace_context.contents
+    return trace_context
 
 def is_readonly_trace_context_ready(readonly_trace_context):
     return is_signaled(readonly_trace_context.LoadingCompleteEvent)
