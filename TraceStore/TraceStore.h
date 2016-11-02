@@ -1464,6 +1464,8 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, ReadonlyAddressRanges) == 632);
+C_ASSERT(sizeof(TRACE_STORE) == 656);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -1720,11 +1722,12 @@ Return Value:
         return BitCounts;
     }
 
-#ifdef _DEBUG
-    if ((Address.QuadPart & ((1 << RightShift) - 1)) != 0) {
-        __debugbreak();
-    }
-#endif
+//#ifdef _DEBUG
+//    if ((Address.QuadPart & ((1 << RightShift) - 1)) != 0) {
+//        __debugbreak();
+//    }
+//#endif
+
     ShiftedRight = Address.QuadPart >> RightShift;
     Leading = LeadingZeros64(Address.QuadPart);
     Leading -= LeftShift;

@@ -399,9 +399,11 @@ Return Value:
         return;
     }
 
-    if (!InterlockedDecrement(&TraceContext->PrepareReadonlyMapsInProgress)) {
-        SetEvent(TraceContext->LoadingCompleteEvent);
-    }
+    //
+    // We need to do the relocation stuff before loading completes.
+    //if (!InterlockedDecrement(&TraceContext->PrepareReadonlyMapsInProgress)) {
+    //    SetEvent(TraceContext->LoadingCompleteEvent);
+    //}
 
     return;
 
