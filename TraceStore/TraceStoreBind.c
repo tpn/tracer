@@ -735,8 +735,22 @@ Return Value:
         MemoryMap->BaseAddress = AddressRange->PreferredBaseAddress;
 
         if ((Index + 1) == NumberOfMaps) {
+
+            //
+            // This is the last memory map, so we use the end of file instead
+            // of the address range's mapping size.  The former will almost
+            // always be smaller than the latter.  If we didn't do this, the
+            // MapViewOfFile() call we do down the track would fail because
+            // we'd be trying to map past the current end of file.
+            //
+
             MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
         } else {
+
+            //
+            // Use the same mapping size recorded by the address range.
+            //
+
             MemoryMap->MappingSize.QuadPart = AddressRange->MappedSize.QuadPart;
 
             //
