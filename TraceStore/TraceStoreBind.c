@@ -851,10 +851,13 @@ Return Value:
 
 --*/
 {
+    if (TraceStore->HasRelocationBackRefs) {
 
-    //
-    // XXX todo: not yet implemented.
-    //
+        //
+        // Walk bitmap...
+        //
+
+    }
 
     return TRUE;
 }

@@ -715,17 +715,22 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
     PTRACE_STORE_FIELD_RELOC Relocations;
 
     //
+    // Static bitmap used to track relocations.
+    //
+
+    RTL_BITMAP ForwardRefBitmap;
+    ULONGLONG ForwardRefBitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
+
+    //
     // Static bitmap used to track relocation back references.
     //
 
-    RTL_BITMAP Bitmap;
-
-    ULONGLONG BitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
+    RTL_BITMAP BackRefBitmap;
+    ULONGLONG BackRefBitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
 
 } TRACE_STORE_RELOC, *PTRACE_STORE_RELOC;
 
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, Bitmap) == 24);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, BitmapBuffer) == );
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, ForwardRefBitmap) == 24);
 
 //
 // Trace store free space is tracked in TRACE_STORE_BITMAP structure, which
