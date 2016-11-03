@@ -851,7 +851,7 @@ Return Value:
 
 --*/
 {
-    if (TraceStore->HasRelocationBackRefs) {
+    if (TraceStore->Reloc->NumberOfRelocationBackReferences) {
 
         //
         // Walk bitmap...
