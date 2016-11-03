@@ -216,8 +216,10 @@ Return Value:
         USHORT Inner;
         USHORT MaxInner;
         USHORT NumberOfElements;
+        USHORT ForwardRefBitsSet;
         TRACE_STORE_ID TraceStoreId;
 
+        PRTL_BITMAP ForwardRefBitmap;
         PTRACE_STORE TraceStore;
         PTRACE_STORE_RELOC Reloc;
         PTRACE_STORE_RELOC RelocTarget;
@@ -251,6 +253,11 @@ Return Value:
             Reloc->SizeOfStruct = sizeof(*Reloc);
             TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
             TraceStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);
+            ForwardRefBitmap = &Reloc->ForwardRefBitmap;
+            ForwardRefBitmap->SizeOfBitMap = MAX_TRACE_STORE_IDS;
+            ForwardRefBitmap->Buffer = (PULONG)(
+                &Reloc->ForwardRefBitmapBuffer[0]
+            );
 
             for (Outer = 0; Outer < NumberOfElements; Outer++) {
                 FieldRelocs = FieldRelocations + Outer;
@@ -272,7 +279,7 @@ Return Value:
                     USHORT TargetIndex;
                     TRACE_STORE_ID TargetId;
                     PTRACE_STORE Target;
-                    PRTL_BITMAP Bitmap;
+                    PRTL_BITMAP BackRefBitmap;
 
                     FieldReloc = FirstFieldReloc + Inner;
                     if (IsLastTraceStoreFieldRelocElement(FieldReloc)) {
@@ -285,23 +292,25 @@ Return Value:
                         continue;
                     }
 
+                    Rtl->RtlSetBit(ForwardRefBitmap, TargetId);
+
                     TargetIndex = TraceStoreIdToArrayIndex(TargetId);
                     Target = TraceStoreIdToTraceStore(TraceStores, TargetId);
                     RelocTarget = &TraceStores->Relocations[TargetIndex];
-                    Bitmap = &RelocTarget->Bitmap;
+                    BackRefBitmap = &RelocTarget->BackRefBitmap;
 
                     if (++RelocTarget->NumberOfRelocationBackReferences == 1) {
                         PULONG Buffer;
-                        Buffer = (PULONG)&RelocTarget->BitmapBuffer[0];
+                        Buffer = (PULONG)&RelocTarget->BackRefBitmapBuffer[0];
                         Target->IsRelocationTarget = TRUE;
-                        Bitmap->SizeOfBitMap = MAX_TRACE_STORE_IDS;
-                        Bitmap->Buffer = Buffer;
+                        BackRefBitmap->SizeOfBitMap = MAX_TRACE_STORE_IDS;
+                        BackRefBitmap->Buffer = Buffer;
                         RelocTarget->BitmapBufferSizeInQuadwords = (
                             TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
                         );
                     }
 
-                    Rtl->RtlSetBit(Bitmap, TraceStoreId);
+                    Rtl->RtlSetBit(BackRefBitmap, TraceStoreId);
                 }
 
                 //
@@ -310,6 +319,18 @@ Return Value:
 
                 Reloc->NumberOfRelocations = Inner;
                 Reloc->Relocations = FirstFieldReloc;
+
+                //
+                // Invariant test: number of relocations should match the
+                // number of bits set in our forward reference bitmap.
+                //
+
+                ForwardRefBitsSet = (USHORT)(
+                    Rtl->RtlNumberOfSetBits(ForwardRefBitmap)
+                );
+                if (Reloc->NumberOfRelocations != ForwardRefBitsSet) {
+                    __debugbreak();
+                }
             }
         }
     }

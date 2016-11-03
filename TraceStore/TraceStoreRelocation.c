@@ -146,8 +146,13 @@ Return Value:
             TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
         );
 
-        Reloc->Bitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS;
-        Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
+        Reloc->ForwardRefBitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS;
+        Reloc->ForwardRefBitmap.Buffer = (PULONG)(
+            &Reloc->ForwardRefBitmapBuffer[0]
+        );
+
+        Reloc->BackRefBitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS;
+        Reloc->BackRefBitmap.Buffer = (PULONG)&Reloc->BackRefBitmapBuffer[0];
 
         if (HasRelocationBackRefs) {
             Reloc->NumberOfRelocationBackReferences = (
@@ -158,12 +163,13 @@ Return Value:
                 __debugbreak();
                 return FALSE;
             }
-            if (Reloc->Bitmap.SizeOfBitMap != pReloc->Bitmap.SizeOfBitMap) {
+            if (Reloc->BackRefBitmap.SizeOfBitMap !=
+                pReloc->BackRefBitmap.SizeOfBitMap) {
                 __debugbreak();
                 return FALSE;
             }
-            __movsq((PDWORD64)Reloc->Bitmap.Buffer,
-                    (PDWORD64)pReloc->Bitmap.Buffer,
+            __movsq((PDWORD64)Reloc->BackRefBitmap.Buffer,
+                    (PDWORD64)pReloc->BackRefBitmap.Buffer,
                     Reloc->BitmapBufferSizeInQuadwords);
         }
 
@@ -271,10 +277,13 @@ Return Value:
     HasRelocationBackRefs = (Reloc->NumberOfRelocationBackReferences > 0);
 
     //
-    // Adjust the two pointers embedded within the relocation structure.  We
-    // can do this because we get special-cased with copy-on-write semantics
+    // Adjust the pointers embedded within the relocation structure.  We can
+    // do this because we get special-cased with copy-on-write semantics
     // during readonly binding.
     //
+
+    Reloc->ForwardRefBitmap.Buffer = (PULONG)&Reloc->ForwardRefBitmapBuffer[0];
+    Reloc->BackRefBitmap.Buffer = (PULONG)&Reloc->BackRefBitmapBuffer[0];
 
     if (HasRelocations) {
         TraceStore->HasRelocations = TRUE;
@@ -286,7 +295,6 @@ Return Value:
         );
     }
 
-    Reloc->Bitmap.Buffer = (PULONG)&Reloc->BitmapBuffer[0];
     if (HasRelocationBackRefs) {
         TraceStore->IsRelocationTarget = TRUE;
     }
