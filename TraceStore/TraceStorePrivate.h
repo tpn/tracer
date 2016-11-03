@@ -364,6 +364,19 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(BIND_NON_STREAMING_READONLY_TRACE_STORE_COMPLETE)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef BIND_NON_STREAMING_READONLY_TRACE_STORE_COMPLETE \
+      *PBIND_NON_STREAMING_READONLY_TRACE_STORE_COMPLETE;
+BIND_NON_STREAMING_READONLY_TRACE_STORE_COMPLETE \
+    BindNonStreamingReadonlyTraceStoreComplete;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (BIND_STREAMING_READONLY_TRACE_STORE)(
     _In_ PTRACE_CONTEXT TraceContext,
     _In_ PTRACE_STORE TraceStore

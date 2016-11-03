@@ -822,6 +822,45 @@ Error:
 
 _Use_decl_annotations_
 BOOL
+BindNonStreamingReadonlyTraceStoreComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine is called when a non-streaming readonly trace store has
+    completed its binding.  That is, all memory maps for the address ranges
+    that were used during the trace session have been created and mapped.
+
+    If the trace store requires relocation, this is kicked off now.  Once
+    relocation completes (or if no relocation needed to be done), the trace
+    store walks its relocation back reference bitmap and isolates dependent
+    trace stores.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+
+    //
+    // XXX todo: not yet implemented.
+    //
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
 BindStreamingReadonlyTraceStore(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore

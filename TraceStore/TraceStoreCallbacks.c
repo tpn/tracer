@@ -457,12 +457,13 @@ Return Value:
         return;
     }
 
-    /*
-    Success = ReadonlyNonStreamingBindComplete(TraceStore);
+    Success = BindNonStreamingReadonlyTraceStoreComplete(TraceContext,
+                                                         TraceStore);
     if (!Success) {
         goto Error;
     }
 
+    /*
     if (InterlockedDecrement(
         &TraceStore->PrepareReadonlyNonStreamingMapsInProgress)) {
         return;
@@ -476,11 +477,9 @@ Return Value:
 
     return;
 
-    /*
 Error:
     PushFailedTraceStore(TraceContext, TraceStore);
     return;
-    */
 }
 
 
