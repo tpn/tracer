@@ -768,9 +768,6 @@ GetTraceStoreFileInfo(
     InterlockedIncrement(                                                      \
         &TraceStore->PrepareReadonlyNonStreamingMapsInProgress                 \
     );                                                                         \
-    InterlockedIncrement(                                                      \
-        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress               \
-    );                                                                         \
     PushPrepareReadonlyNonStreamingMap(TraceStore, MemMap);                    \
     SubmitThreadpoolWork(TraceStore->PrepareReadonlyNonStreamingMemoryMapWork)
 

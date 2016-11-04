@@ -851,12 +851,117 @@ Return Value:
 
 --*/
 {
-    if (TraceStore->Reloc->NumberOfRelocationBackReferences) {
+    BOOL HasSelfBackReferences;
+    ULONG Index;
+    ULONG HintIndex;
+    ULONG PreviousIndex;
+    ULONG volatile *Outstanding;
+    TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_ID TargetStoreId;
+    PRTL Rtl;
+    PTRACE_STORE TargetStore;
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE_RELOC Reloc;
+    PRTL_BITMAP ForwardRefBitmap;
+    PRTL_BITMAP BackRefBitmap;
+
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = TraceStore->Rtl;
+    Reloc = TraceStore->Reloc;
+    TraceStores = TraceContext->TraceStores;
+    ForwardRefBitmap = &Reloc->ForwardRefBitmap;
+    BackRefBitmap = &Reloc->BackRefBitmap;
+    TraceStoreId = TraceStore->TraceStoreId;
+
+    if (Reloc->NumberOfRelocationBackReferences) {
+
+        Index = 0;
+        HintIndex = 0;
+        PreviousIndex = 0;
 
         //
-        // Walk bitmap...
+        // Walk the back reference bitmap.
         //
 
+
+        do {
+
+            //
+            // Extract the next bit from the bitmap.
+            //
+
+            Index = Rtl->RtlFindSetBits(BackRefBitmap, 1, HintIndex);
+
+            //
+            // Verify we got a sane index back.
+            //
+
+            if (Index == BITS_NOT_FOUND) {
+
+                //
+                // This should never happen.
+                //
+
+                __debugbreak();
+            }
+
+            if (Index <= PreviousIndex) {
+
+                //
+                // Our search has wrapped, so exit the loop.
+                //
+
+                break;
+            }
+
+            //
+            // Update the previous index and resolve the trace store ID.
+            //
+
+            PreviousIndex = Index;
+            TargetStoreId = (TRACE_STORE_ID)Index;
+
+            //
+            // If the target store is us, make a note that we have "self back
+            // references" and continue the loop.
+            //
+
+            if (TargetStoreId == TraceStoreId) {
+                HasSelfBackReferences = TRUE;
+                continue;
+            }
+
+            //
+            // Resolve the store the target ID is pointing at.
+            //
+
+            TargetStore = TraceStoreIdToTraceStore(TraceStores, TargetStoreId);
+
+            //
+            // Decrement the store's outstanding relocation bind counter.
+            //
+
+            Outstanding = &TargetStore->OutstandingRelocationBinds;
+            if (!InterlockedDecrement(Outstanding)) {
+
+                //
+                // This was the last relocation dependency for the store.
+                // Acquire the store's relocation lock and check to see if
+                // mapping has completed.  If it has, relocation can begin.
+                // Submit that work to the threadpool, make a note that it
+                // has been submitted in the store's flags, then release the
+                // lock.
+                //
+
+                //
+                // xxx todo
+                //
+            }
+
+        } while (1);
     }
 
     return TRUE;
