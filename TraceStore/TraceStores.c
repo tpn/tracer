@@ -319,18 +319,25 @@ Return Value:
 
                 Reloc->NumberOfRelocations = Inner;
                 Reloc->Relocations = FirstFieldReloc;
+            }
 
-                //
-                // Invariant test: number of relocations should match the
-                // number of bits set in our forward reference bitmap.
-                //
+            //
+            // Invariant test: if there were relocations, at least one bit
+            // should be set in the forward reference bitmap.  (The number
+            // relocations could be much larger than the number of set bits
+            // because all relocations could be referring to a single store.)
+            //
 
-                ForwardRefBitsSet = (USHORT)(
-                    Rtl->RtlNumberOfSetBits(ForwardRefBitmap)
-                );
-                if (Reloc->NumberOfRelocations != ForwardRefBitsSet) {
+            ForwardRefBitsSet = (USHORT)(
+                Rtl->RtlNumberOfSetBits(ForwardRefBitmap)
+            );
+
+            if (Reloc->NumberOfRelocations) {
+                if (!ForwardRefBitsSet) {
                     __debugbreak();
                 }
+            } else if (ForwardRefBitsSet) {
+                __debugbreak();
             }
         }
     }
