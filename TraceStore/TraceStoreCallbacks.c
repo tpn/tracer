@@ -368,6 +368,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    ULONG volatile *TraceStoreCounter;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     PTRACE_CONTEXT TraceContext;
 
@@ -395,17 +396,32 @@ Return Value:
         goto Error;
     }
 
-    if (InterlockedDecrement(
-        &TraceStore->PrepareReadonlyNonStreamingMapsInProgress)) {
+    TraceStoreCounter = &TraceStore->PrepareReadonlyNonStreamingMapsInProgress;
+    if (InterlockedDecrement(TraceStoreCounter) > 0) {
         return;
     }
 
-    if (!InterlockedDecrement(
-        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress)) {
-        SetEvent(TraceContext->LoadingCompleteEvent);
+    //
+    // This was the last memory map to be prepared for the trace store.
+    //
+
+    Success = BindNonStreamingReadonlyTraceStoreComplete(
+        TraceContext,
+        TraceStore
+    );
+
+    if (Success) {
+
+        //
+        // Decrement counter here and potentially set trace context event?
+        //
+
+        return;
     }
 
-    return;
+    //
+    // Intentional follow-on to Error.
+    //
 
 Error:
     PushFailedTraceStore(TraceContext, TraceStore);

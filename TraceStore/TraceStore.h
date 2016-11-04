@@ -983,7 +983,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     // trace stores.
     //
 
-    volatile ULONG PrepareReadonlyNonStreamingMapsInProgress;
+    volatile ULONG PrepareReadonlyNonStreamingTraceStoresInProgress;
 
     volatile ULONG ReadonlyNonStreamingBindCompletesInProgress;
 
@@ -1457,6 +1457,24 @@ typedef struct _TRACE_STORE {
 
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
     volatile ULONGLONG ReadonlyAddressRangesConsumed;
+
+    //
+    // A slim read/write lock.
+    //
+
+    SRWLOCK Lock;
+
+    //
+    // Volatile state protected by the lock.
+    //
+
+    union {
+        ULONG VolatileFlagsAsLong;
+        struct {
+            ULONG TraitsLoaded:1;
+            ULONG AllMemoryMapsLoaded:1;
+        };
+    };
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
