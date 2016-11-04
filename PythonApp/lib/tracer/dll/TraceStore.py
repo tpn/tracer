@@ -80,6 +80,8 @@ PALLOCATE_ALIGNED_RECORDS = PVOID
 PALLOCATE_ALIGNED_OFFSET_RECORDS = PVOID
 PBIND_COMPLETE = PVOID
 
+TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
+
 #===============================================================================
 # Structures
 #===============================================================================
@@ -323,8 +325,14 @@ class TRACE_STORE_RELOC(Structure):
         ('NumberOfRelocationBackReferences', ULONG),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('Relocations', PTRACE_STORE_FIELD_RELOC),
-        ('Bitmap', TRACE_STORE_BITMAP),
-        ('BitmapBuffer', ULONGLONG * 1),
+        ('ForwardRefBitmap', TRACE_STORE_BITMAP),
+        ('ForwardRefBitmapBuffer',
+            ULONGLONG * TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
+        ),
+        ('BackwardRefBitmap', TRACE_STORE_BITMAP),
+        ('BackwardRefBitmapBuffer',
+            ULONGLONG * TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
+        ),
     ]
 PTRACE_STORE_RELOC = POINTER(TRACE_STORE_RELOC)
 
@@ -474,7 +482,7 @@ TRACE_STORE._fields_ = [
     ('MappedSequenceId', LONG),
     ('MetadataBindsInProgress', LONG),
     ('PrepareReadonlyNonStreamingMapsInProgress', LONG),
-    ('ReadonlyNonStreamingBindCompletes', LONG),
+    ('ReadonlyNonStreamingBindCompletesInProgress', LONG),
     ('SequenceId', ULONG),
     ('NumaNode', ULONG),
     ('TraceStoreId', TRACE_STORE_ID),
@@ -522,7 +530,6 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyAddressRangesConsumed', ULONGLONG),
-    ('Dummy', PVOID),
 ]
 
 class TRACE_STORES_RUNDOWN(Structure):
@@ -626,6 +633,7 @@ TRACE_STORES._fields_ = [
     ('StringTableAddressRangeStore', TRACE_STORE),
     ('StringTableBitmapStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
+    ('Dummy', ULONGLONG),
 ]
 
 class TRACE_STORE_STRUCTURE_SIZES(Structure):
