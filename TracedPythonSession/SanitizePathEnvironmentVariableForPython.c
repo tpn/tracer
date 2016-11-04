@@ -208,11 +208,16 @@ Return Value:
             );
 
             if (!PrefixTableEntry) {
-                __debugbreak();
-                goto Error;
-            }
 
-            RtlRemoveUnicodePrefix(KeepPrefixTable, PrefixTableEntry);
+                //
+                // This may get hit if a path occurs twice.  Just ignore it
+                // if so.
+                //
+
+                NOTHING;
+            } else {
+                RtlRemoveUnicodePrefix(KeepPrefixTable, PrefixTableEntry);
+            }
         }
 
         //
