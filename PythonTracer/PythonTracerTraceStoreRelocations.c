@@ -276,7 +276,7 @@ TRACE_STORE_FIELD_RELOC PythonTraceEventRelocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_TRACE_EVENT, Function),
-        TraceStoreFunctionTableId
+        TraceStoreFunctionTableEntryId
     },
 
     LAST_TRACE_STORE_FIELD_RELOC
