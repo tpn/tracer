@@ -179,7 +179,7 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
         OFFSET_THROUGH_FUNCTION(ParentPathEntry),
-        TraceStorePathTableId
+        TraceStorePathTableEntryId
     },
 
     LAST_TRACE_STORE_FIELD_RELOC

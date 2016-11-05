@@ -251,6 +251,9 @@ Return Value:
         for (Index = 0; Index < MAX_TRACE_STORE_IDS; Index++) {
             Reloc = &TraceStores->Relocations[Index];
             Reloc->SizeOfStruct = sizeof(*Reloc);
+            Reloc->BitmapBufferSizeInQuadwords = (
+                TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
+            );
             TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
             TraceStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);
             ForwardRefBitmap = &Reloc->ForwardRefBitmap;
@@ -287,6 +290,10 @@ Return Value:
                     }
 
                     TargetId = FieldReloc->TraceStoreId;
+
+                    //
+                    // Skip null trace store IDs.
+                    //
 
                     if (TargetId == TraceStoreNullId) {
                         continue;

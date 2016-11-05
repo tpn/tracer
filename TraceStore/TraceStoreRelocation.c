@@ -53,12 +53,14 @@ Return Value:
     BOOL HasRelocations;
     BOOL HasRelocationBackRefs;
     USHORT Index;
+    PTRACE_STORE RelocationStore;
     PTRACE_STORE_RELOC pReloc;
     PTRACE_STORE_RELOC Reloc;
     PTRACE_STORE_FIELD_RELOC DestFieldReloc;
     PTRACE_STORE_FIELD_RELOC SourceFieldReloc;
     PTRACE_STORE_FIELD_RELOC FirstDestFieldReloc;
     PTRACE_STORE_FIELD_RELOC FirstSourceFieldReloc;
+    PALLOCATE_RECORDS AllocateRecords;
     ULARGE_INTEGER AllocationSize;
     ULARGE_INTEGER NumberOfRecords = { 1 };
     PVOID BaseAddress;
@@ -81,7 +83,8 @@ Return Value:
         return FALSE;
     }
 
-    if (!TraceStore->RelocationStore) {
+    RelocationStore = TraceStore->RelocationStore;
+    if (!RelocationStore) {
         __debugbreak();
         return FALSE;
     }
@@ -110,12 +113,12 @@ Return Value:
         );
     }
 
-    BaseAddress = TraceStore->RelocationStore->AllocateRecords(
-        TraceStore->TraceContext,
-        TraceStore->RelocationStore,
-        &AllocationSize,
-        &NumberOfRecords
-    );
+    AllocateRecords = RelocationStore->AllocateRecords;
+
+    BaseAddress = AllocateRecords(TraceStore->TraceContext,
+                                  RelocationStore,
+                                  &AllocationSize,
+                                  &NumberOfRecords);
 
     if (!BaseAddress) {
         __debugbreak();
@@ -127,20 +130,11 @@ Return Value:
     TRY_MAPPED_MEMORY_OP {
 
         //
-        // Copy the initial relocation information over.
+        // Initialize the constant fields that are filled out regardless of
+        // whether or not we have any relocations or back references.
         //
 
         Reloc->SizeOfStruct = sizeof(*Reloc);
-
-        if (HasRelocations) {
-            Reloc->NumberOfRelocations = pReloc->NumberOfRelocations;
-            Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
-                RtlOffsetToPointer(
-                    BaseAddress,
-                    sizeof(TRACE_STORE_RELOC)
-                )
-            );
-        }
 
         Reloc->BitmapBufferSizeInQuadwords = (
             TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
@@ -154,15 +148,44 @@ Return Value:
         Reloc->BackRefBitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS;
         Reloc->BackRefBitmap.Buffer = (PULONG)&Reloc->BackRefBitmapBuffer[0];
 
-        if (HasRelocationBackRefs) {
-            Reloc->NumberOfRelocationBackReferences = (
-                pReloc->NumberOfRelocationBackReferences
-            );
+        //
+        // If we have either, verify that the bitmap buffer size is as expected.
+        //
+
+        if (HasRelocations || HasRelocationBackRefs) {
             if (Reloc->BitmapBufferSizeInQuadwords !=
                 pReloc->BitmapBufferSizeInQuadwords) {
                 __debugbreak();
                 return FALSE;
             }
+        }
+
+        //
+        // Verify and copy bitmap buffers, set counters.
+        //
+
+        if (HasRelocations) {
+            Reloc->NumberOfRelocations = pReloc->NumberOfRelocations;
+            Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
+                RtlOffsetToPointer(
+                    BaseAddress,
+                    sizeof(TRACE_STORE_RELOC)
+                )
+            );
+            if (Reloc->ForwardRefBitmap.SizeOfBitMap !=
+                pReloc->ForwardRefBitmap.SizeOfBitMap) {
+                __debugbreak();
+                return FALSE;
+            }
+            __movsq((PDWORD64)Reloc->ForwardRefBitmap.Buffer,
+                    (PDWORD64)pReloc->ForwardRefBitmap.Buffer,
+                    Reloc->BitmapBufferSizeInQuadwords);
+        }
+
+        if (HasRelocationBackRefs) {
+            Reloc->NumberOfRelocationBackReferences = (
+                pReloc->NumberOfRelocationBackReferences
+            );
             if (Reloc->BackRefBitmap.SizeOfBitMap !=
                 pReloc->BackRefBitmap.SizeOfBitMap) {
                 __debugbreak();
@@ -236,19 +259,20 @@ Return Value:
     ULONG Index;
     ULONG HintIndex;
     ULONG PreviousIndex;
-    ULONG volatile *Outstanding;
     TRACE_STORE_ID TraceStoreId;
     TRACE_STORE_ID TargetStoreId;
+    TRACE_STORE_ID LastTargetStoreId;
     PRTL Rtl;
     PHANDLE Event;
     PHANDLE Events;
     PALLOCATOR Allocator;
-    PTRACE_STORE TargetStore;
+    PTRACE_STORE RelocationStore;
+    PPTRACE_STORE DependencyStore;
+    PPTRACE_STORE DependencyStores;
     PTRACE_STORES TraceStores;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORE_RELOC Reloc;
     PRTL_BITMAP ForwardRefBitmap;
-    PRTL_BITMAP BackRefBitmap;
 
     //
     // Validate arguments.
@@ -274,7 +298,9 @@ Return Value:
         return FALSE;
     }
 
-    if (!TraceStore->RelocationStore) {
+    RelocationStore = TraceStore->RelocationStore;
+
+    if (!RelocationStore) {
         return FALSE;
     }
 
@@ -284,7 +310,7 @@ Return Value:
     //
 
     Reloc = TraceStore->Reloc = (PTRACE_STORE_RELOC)(
-        TraceStore->RelocationStore->MemoryMap->BaseAddress
+        RelocationStore->MemoryMap->BaseAddress
     );
 
     if (!Reloc) {
@@ -296,8 +322,8 @@ Return Value:
     // Initialize aliases.
     //
 
-    Rtl = TraceStore->Rtl;
-    TraceContext = TraceStore->TraceContext;
+    Rtl = RelocationStore->Rtl;
+    TraceContext = RelocationStore->TraceContext;
     TraceStores = TraceContext->TraceStores;
     TraceStoreId = TraceStore->TraceStoreId;
 
@@ -318,7 +344,13 @@ Return Value:
     Reloc->BackRefBitmap.Buffer = (PULONG)&Reloc->BackRefBitmapBuffer[0];
 
     if (HasRelocations) {
+
         TraceStore->HasRelocations = TRUE;
+
+        //
+        // Point the Relocations pointer at the end of our structure.
+        //
+
         Reloc->Relocations = (PTRACE_STORE_FIELD_RELOC)(
             RtlOffsetToPointer(
                 Reloc,
@@ -332,9 +364,9 @@ Return Value:
 
         Index = 0;
         HintIndex = 0;
-        LastIndex = 0;
         PreviousIndex = 0;
         NumberOfRelocationDependencies = 0;
+        LastTargetStoreId = TraceStoreNullId;
 
         //
         // Initialize our bitmap alias.
@@ -398,10 +430,19 @@ Return Value:
             }
 
             //
-            // Increment the number of dependencies counter and continue the
+            // If this is the null store ID, continue.
+            //
+
+            if (TargetStoreId == TraceStoreNullId) {
+                continue;
+            }
+
+            //
+            // Make a note of this ID, increment our counter, and continue the
             // loop.
             //
 
+            LastTargetStoreId = TargetStoreId;
             NumberOfRelocationDependencies++;
 
         } while (1);
@@ -422,30 +463,36 @@ Return Value:
         );
 
         if (NumberOfRelocationDependencies == 1) {
-            HANDLE Handle;
 
             //
-            // If we only have a single dependency, abuse two things:
-            // a) the pointer-sized (read: HANDLE-sized) storage availabe at
-            // TraceStore->RelocationCompleteWaitEvents, and b) the fact that
-            // PreviousIndex will conveniently be castable to the trace store
-            // ID of the single store we're dependent upon, allowing us to go
-            // straight to resolution of the corresponding store's relocation
-            // complete event.
+            // If we only have a single dependency, the LastTargetStoreId will
+            // have the trace store ID of the store we want.  Use this to look
+            // up the store's wait handle.
             //
 
-            TargetStoreId = (TRACE_STORE_ID)PreviousIndex;
-            Handle = TraceStoreIdToRelocationCompleteEvent(TraceStores,
-                                                           TargetStoreId);
-            TraceStore->RelocationCompleteWaitEvents = (PHANDLE)Event;
+            TraceStore->RelocationCompleteWaitEvent = (
+                TraceStoreIdToRelocationCompleteEvent(
+                    TraceStores,
+                    LastTargetStoreId
+                )
+            );
+
+            //
+            // Point the relocation dependency pointer at the target store.
+            //
+
+            TraceStore->RelocationDependencyStore = (
+                TraceStoreIdToTraceStore(TraceStores, LastTargetStoreId)
+            );
+
             return TRUE;
-
         }
 
         //
         // We are dependent upon more than one trace store, so we need to
         // create an array of relocation handles that can be waited on.  This
-        // happens once we've finished loading all of our memory maps.
+        // happens once we've finished loading all of our memory maps.  We use
+        // this opportunity to create an array of trace store pointers, too.
         //
 
         TraceStore->HasMultipleRelocationWaits = TRUE;
@@ -453,11 +500,24 @@ Return Value:
             &TraceContext->NumberOfStoresWithMultipleRelocationDependencies
         );
 
+        Allocator = TraceStore->Allocator;
         Events = (PHANDLE)(
             Allocator->Calloc(
                 Allocator->Context,
                 NumberOfRelocationDependencies,
-                sizeof(HANDLE)
+
+                //
+                // Account for the size of the event we want to wait for.
+                //
+
+                sizeof(HANDLE) +
+
+                //
+                // Account for the size of a pointer to the trace store we're
+                // dependent upon for relocations.
+                //
+
+                sizeof(PTRACE_STORE)
             )
         );
 
@@ -468,10 +528,20 @@ Return Value:
         TraceStore->RelocationCompleteWaitEvents = Events;
 
         //
-        // Reset the bitmap index variables and walk the bitmap again,
-        // filling in the event array with the relevant handle from the
-        // array of "relocation complete" handles reserved in the trace
-        // stores structure.
+        // Carve out the pointer to the array of dependent trace stores.
+        //
+
+        DependencyStores = (PPTRACE_STORE)(
+            RtlOffsetToPointer(
+                Events,
+                sizeof(HANDLE) * NumberOfRelocationDependencies
+            )
+        );
+
+        TraceStore->RelocationDependencyStores = DependencyStores;
+
+        //
+        // Reset the bitmap index variables used in the loop.
         //
 
         Index = 0;
@@ -479,10 +549,17 @@ Return Value:
         PreviousIndex = 0;
 
         //
-        // Point the Event pointer at the base of the allocated array.
+        // Point the Event and DependecyStore pointers at the base of their
+        // respective arrays.
         //
 
-        Event = (PHANDLE)Events;
+        Event = Events;
+        DependencyStore = DependencyStores;
+
+        //
+        // Walk the bitmap again, filling in the arrays of events and trace
+        // store pointers.
+        //
 
         do {
 
@@ -495,11 +572,32 @@ Return Value:
             HintIndex = Index + 1;
             TargetStoreId = (TRACE_STORE_ID)Index;
 
-            if (TargetStoreId == TraceStoreId) {
+            if (TargetStoreId == TraceStoreId ||
+                TargetStoreId == TraceStoreNullId) {
                 continue;
             }
 
-            *Event++ = TraceStoreIdToRelocationCompleteEvent(TargetStoreId);
+            //
+            // Save the event to the array and bump the pointer.
+            //
+
+            *Event++ = (
+                TraceStoreIdToRelocationCompleteEvent(
+                    TraceStores,
+                    TargetStoreId
+                )
+            );
+
+            //
+            // Save the trace store to the array and bump the pointer.
+            //
+
+            *DependencyStore++ = (
+                TraceStoreIdToTraceStore(
+                    TraceStores,
+                    TargetStoreId
+                )
+            );
 
         } while (1);
     }
@@ -509,6 +607,109 @@ Return Value:
     //
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+ReadonlyNonStreamingTraceStoreCompleteRelocation(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine is called when a non-streaming readonly trace store has
+    completed its relocation step.  This is also called for trace stores
+    that do not require any relocation.  This is because this routine will
+    signal the relocation complete event for the given trace store, which
+    other stores may also be waiting on.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    HANDLE Event;
+    PTRACE_STORES TraceStores;
+    TRACE_STORE_ID TraceStoreId;
+
+    //
+    // Initialize aliases.
+    //
+
+    TraceStores = TraceContext->TraceStores;
+    TraceStoreId = TraceStore->TraceStoreId;
+
+    //
+    // Get the relocation complete event handle for this trace store.
+    //
+
+    Event = TraceStoreIdToRelocationCompleteEvent(TraceStores,
+                                                  TraceStoreId);
+
+    //
+    // Signal it.  This will satisfy the waits of any other trace stores
+    // that are dependent upon us.
+    //
+
+    if (!SetEvent(Event)) {
+        return FALSE;
+    }
+
+    //
+    // Complete the binding.
+    //
+
+    return BindNonStreamingReadonlyTraceStoreComplete(TraceContext,
+                                                      TraceStore);
+}
+
+_Use_decl_annotations_
+BOOL
+ReadonlyNonStreamingTraceStoreReadyForRelocation(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine is called when a non-streaming readonly trace store receives
+    notification that all of its dependent trace stores have completed their
+    relocation.  It is responsible for initiating the relocation of the trace
+    store.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+
+    //
+    // For now, just complete the relocation.
+    //
+
+    __debugbreak();
+
+    Success = ReadonlyNonStreamingTraceStoreCompleteRelocation(TraceContext,
+                                                               TraceStore);
+    return Success;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

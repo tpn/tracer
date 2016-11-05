@@ -960,6 +960,7 @@ TryMapMemory:
             OriginalPreferredBaseAddress = PreferredBaseAddress;
             PreferredBaseAddress = NULL;
             PreferredAddressUnavailable = TRUE;
+            TraceStore->ReadonlyPreferredAddressUnavailable++;
             goto TryMapMemory;
         }
 
