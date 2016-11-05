@@ -816,7 +816,7 @@ typedef TIMER_FUNCTION **PPTIMER_FUNCTION;
 // Forward definitions.
 //
 
-typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE;
+typedef struct _TRACE_STORE TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 typedef struct _TRACE_SESSION TRACE_SESSION, *PTRACE_SESSION;
 typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
@@ -886,14 +886,13 @@ typedef struct _TRACE_FLAGS {
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
 
-typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
-    USHORT Valid:1;
-    USHORT Readonly:1;
-    USHORT DisableAsyncInitialization:1;
-    USHORT Unused:13;
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_CONTEXT_FLAGS {
+    ULONG Valid:1;
+    ULONG Readonly:1;
+    ULONG AsyncInitialization:1;
+    ULONG Unused:13;
 } TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
-
-C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(USHORT));
+C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(ULONG));
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
     SLIST_HEADER ListHead;
@@ -924,7 +923,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) USHORT SizeOfStruct;
+    _Field_range_(==, sizeof(struct _TRACE_CONTEXT)) ULONG SizeOfStruct;
 
     //
     // Flags.
@@ -940,6 +939,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     volatile ULONG FailedCount;
 
+    ULONG Padding1;
+
     PRTL Rtl;
     PALLOCATOR Allocator;
     PTRACE_SESSION TraceSession;
@@ -947,14 +948,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
-
-    //
-    // 64 bytes.  End of first cache line.
-    //
-
-    //
-    // Second cache line.
-    //
 
     //
     // This event is set when all trace stores have been initialized or an
@@ -965,6 +958,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
 
+    PVOID Padding2;
     TRACE_STORE_WORK BindMetadataInfoStoreWork;
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
@@ -1001,9 +995,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 8);
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 48);
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 56);
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 72);
 
 typedef struct _TRACE_STORE_STRUCTURE_SIZES {
     ULONG TraceStore;
@@ -1244,6 +1238,41 @@ BOOL
 typedef BIND_COMPLETE *PBIND_COMPLETE;
 
 typedef struct _TRACE_STORE {
+
+    TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_METADATA_ID TraceStoreMetadataId;
+    TRACE_STORE_INDEX TraceStoreIndex;
+
+    union {
+        ULONG StoreFlags;
+        struct {
+            ULONG NoRetire:1;
+            ULONG NoPrefaulting:1;
+            ULONG NoPreferredAddressReuse:1;
+            ULONG IsReadonly:1;
+            ULONG SetEndOfFileOnClose:1;
+            ULONG IsMetadata:1;
+            ULONG HasRelocations:1;
+            ULONG NoTruncate:1;
+            ULONG IsRelocationTarget:1;
+            ULONG HasSelfRelocations:1;
+            ULONG OnlyRelocationIsToSelf:1;
+            ULONG HasMultipleRelocationWaits:1;
+            ULONG RequiresSelfRelocation:1;
+        };
+    };
+
+    TRACE_FLAGS TraceFlags;
+
+    //
+    // This may be set if any system calls fail.
+    //
+
+    DWORD LastError;
+
+    volatile ULONG  TotalNumberOfMemoryMaps;
+    volatile ULONG  NumberOfActiveMemoryMaps;
+
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
     SLIST_HEADER            PrepareReadonlyMemoryMaps;
@@ -1274,13 +1303,12 @@ typedef struct _TRACE_STORE {
     HANDLE                  NextMemoryMapAvailableEvent;
     HANDLE                  AllMemoryMapsAreFreeEvent;
     HANDLE                  ReadonlyMappingCompleteEvent;
+    HANDLE                  RelocationCompleteWaitEvent;
     PHANDLE                 RelocationCompleteWaitEvents;
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
-    volatile ULONG  TotalNumberOfMemoryMaps;
-    volatile ULONG  NumberOfActiveMemoryMaps;
 
     //
     // Number of trace stores that have us as a relocation target.
@@ -1304,7 +1332,22 @@ typedef struct _TRACE_STORE {
     volatile LONG   PrepareReadonlyNonStreamingMapsInProgress;
     volatile LONG   ReadonlyNonStreamingBindCompletesInProgress;
 
+    //
+    // When readonly, indicates the number of other trace stores we're dependent
+    // upon for relocation.
+    //
+
     ULONG NumberOfRelocationDependencies;
+
+    //
+    // When readonly, indicates the number of relocations we actually need to
+    // perform based on whether or not other dependent trace stores needed
+    // relocation.  If we have self references and any of our preferred base
+    // addresses couldn't be satisified, this will also be represented in this
+    // count.
+    //
+
+    ULONG NumberOfRelocationsRequired;
 
     //
     // Each trace store, when initialized, is assigned a unique sequence
@@ -1327,35 +1370,6 @@ typedef struct _TRACE_STORE {
     // being set if the store is actually a metadata store.
     //
 
-    TRACE_STORE_ID TraceStoreId;
-    TRACE_STORE_METADATA_ID TraceStoreMetadataId;
-    TRACE_STORE_INDEX TraceStoreIndex;
-
-    TRACE_FLAGS TraceFlags;
-
-    union {
-        ULONG StoreFlags;
-        struct {
-            ULONG NoRetire:1;
-            ULONG NoPrefaulting:1;
-            ULONG NoPreferredAddressReuse:1;
-            ULONG IsReadonly:1;
-            ULONG SetEndOfFileOnClose:1;
-            ULONG IsMetadata:1;
-            ULONG HasRelocations:1;
-            ULONG NoTruncate:1;
-            ULONG IsRelocationTarget:1;
-            ULONG HasSelfRelocations:1;
-            ULONG OnlyRelocationIsToSelf:1;
-            ULONG HasMultipleRelocationWaits:1;
-        };
-    };
-
-    //
-    // This may be set if any system calls fail.
-    //
-
-    DWORD LastError;
 
     DWORD CreateFileDesiredAccess;
     DWORD CreateFileCreationDisposition;
@@ -1385,6 +1399,24 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE AddressRangeStore;
     PTRACE_STORE BitmapStore;
     PTRACE_STORE InfoStore;
+
+    //
+    // If we're readonly, and we have relocations, this will point to the base
+    // of an array of pointers to our dependent trace stores.  The size of the
+    // array is governed by NumberOfRelocationDependencies.
+    //
+    // N.B.: dependent trace stores exclude TraceStoreNullId and references
+    //       to ourself.
+    //
+    // If we only have a single relocation, we just store the trace store
+    // pointer directly instead of going through the indirection of an array
+    // of pointers.
+    //
+
+    union {
+        PPTRACE_STORE RelocationDependencyStores;
+        PTRACE_STORE RelocationDependencyStore;
+    };
 
     //
     // Allocator functions.  (N.B.: only AllocateRecords() is currently
@@ -1469,6 +1501,13 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
     volatile ULONGLONG ReadonlyAddressRangesConsumed;
 
+    //
+    // This counter will reflect the number of times a memory mapping couldn't
+    // be satisfied at the desired address when readonly.
+    //
+
+    ULONG ReadonlyPreferredAddressUnavailable;
+
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
@@ -1476,14 +1515,14 @@ typedef struct _TRACE_STORE {
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareMemoryMaps) == 16);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareReadonlyMemoryMaps) == 32);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, NextMemoryMaps) == 48);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, FreeMemoryMaps) == 64);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareMemoryMaps) == 16);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareReadonlyMemoryMaps) == 32);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, NextMemoryMaps) == 48);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, FreeMemoryMaps) == 64);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
 //C_ASSERT(sizeof(TRACE_STORE) == 656);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
@@ -1795,9 +1834,11 @@ TraceStoreIdToTraceStoreIndex(
     _In_ TRACE_STORE_ID TraceStoreId
     )
 {
-    return (TRACE_STORE_INDEX)(
-        (ULONG)TraceStoreId * (ULONG)TraceStores->NumberOfTraceStores
-    );
+    ULONG Base = (ULONG)(TraceStoreId - 1);
+    ULONG Multiplier = (ULONG)TraceStores->ElementsPerTraceStore;
+    ULONG Index = Base * Multiplier;
+    TRACE_STORE_INDEX TraceStoreIndex = (TRACE_STORE_INDEX)Index;
+    return TraceStoreIndex;
 }
 
 FORCEINLINE
@@ -1820,10 +1861,10 @@ TraceStoreIdToRelocationCompleteEvent(
     _In_ TRACE_STORE_ID TraceStoreId
     )
 {
-    TRACE_STORE_INDEX TraceStoreIndex;
+    USHORT Index;
 
-    TraceStoreIndex = TraceStoreIdToTraceStoreIndex(TraceStores, TraceStoreId);
-    return &TraceStores->RelocationCompleteEvents[TraceStoreIndex];
+    Index = TraceStoreIdToArrayIndex(TraceStoreId);
+    return TraceStores->RelocationCompleteEvents[Index];
 }
 
 FORCEINLINE

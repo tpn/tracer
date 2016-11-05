@@ -24,6 +24,7 @@ PSHORT = POINTER(SHORT)
 PUSHORT = POINTER(USHORT)
 PLONG = POINTER(LONG)
 PULONG = POINTER(ULONG)
+PHANDLE = POINTER(HANDLE)
 LONGLONG = c_int64
 PLONGLONG = POINTER(LONGLONG)
 ULONGLONG = c_uint64
@@ -562,5 +563,11 @@ def is_signaled(event):
         return False
     elif result == WAIT_FAILED:
         raise OSError("WaitForSingleObject: WAIT_FAILED")
+
+def field_to_offset(struct):
+    return [
+        (hex(getattr(struct, name[0]).offset), name)
+            for name in struct._fields_
+    ]
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

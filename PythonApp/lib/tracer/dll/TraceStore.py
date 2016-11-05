@@ -34,6 +34,7 @@ from ..wintypes import (
     STRING,
     PSTRING,
     POINTER,
+    PHANDLE,
     FILETIME,
     PTP_WORK,
     CFUNCTYPE,
@@ -385,9 +386,10 @@ PTRACE_STORES = POINTER(TRACE_STORES)
 
 class TRACE_CONTEXT(Structure):
     _fields_ = [
-        ('SizeOfStruct', USHORT),
+        ('SizeOfStruct', ULONG),
         ('Flags', TRACE_CONTEXT_FLAGS),
         ('FailedCount', ULONG),
+        ('Padding1', ULONG),
         ('Rtl', PRTL),
         ('Allocator', PALLOCATOR),
         ('TraceSession', PTRACE_SESSION),
@@ -397,6 +399,7 @@ class TRACE_CONTEXT(Structure):
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('LoadingCompleteEvent', HANDLE),
         ('ThreadpoolCleanupGroup', PTP_CLEANUP_GROUP),
+        ('Padding2', PVOID),
         ('BindMetadataInfoStoreWork', TRACE_STORE_WORK),
         ('BindRemainingMetadataStoresWork', TRACE_STORE_WORK),
         ('BindTraceStoreWork', TRACE_STORE_WORK),
@@ -406,6 +409,7 @@ class TRACE_CONTEXT(Structure):
         ('BindsInProgress', ULONG),
         ('PrepareReadonlyNonStreamingMapsInProgress', ULONG),
         ('ReadonlyNonStreamingBindCompletesInProgress', ULONG),
+        ('NumberOfStoresWithMultipleRelocationDependencies', ULONG),
         ('Time', TRACE_STORE_TIME),
     ]
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
@@ -444,13 +448,32 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
         ('HasRelocations', ULONG, 1),
         ('NoTruncate', ULONG, 1),
         ('IsRelocationTarget', ULONG, 1),
+        ('HasSelfRelocations', ULONG, 1),
+        ('OnlyRelocationIsToSelf', ULONG, 1),
+        ('HasMultipleRelocationWaits', ULONG, 1),
+        ('RequiresSelfRelocation', ULONG, 1),
     ]
 
 class TRACE_STORE(Structure):
     pass
 PTRACE_STORE = POINTER(TRACE_STORE)
+PPTRACE_STORE = POINTER(PTRACE_STORE)
+
+class _TRACE_STORE_RELOC_DEP(Union):
+    _fields_ = [
+        ('Stores', PPTRACE_STORE),
+        ('Store', PTRACE_STORE),
+    ]
 
 TRACE_STORE._fields_ = [
+    ('TraceStoreId', TRACE_STORE_ID),
+    ('TraceStoreMetadataId', TRACE_STORE_METADATA_ID),
+    ('TraceStoreIndex', TRACE_STORE_INDEX),
+    ('StoreFlags', _TRACE_STORE_INNER_FLAGS),
+    ('TraceFlags', TRACE_FLAGS),
+    ('LastError', DWORD),
+    ('TotalNumberOfMemoryMaps', ULONG),
+    ('NumberOfActiveMemoryMaps', ULONG),
     ('CloseMemoryMaps', SLIST_HEADER),
     ('PrepareMemoryMaps', SLIST_HEADER),
     ('PrepareReadonlyMemoryMaps', SLIST_HEADER),
@@ -473,24 +496,20 @@ TRACE_STORE._fields_ = [
     ('NextMemoryMapAvailableEvent', HANDLE),
     ('AllMemoryMapsAreFreeEvent', HANDLE),
     ('ReadonlyMappingCompleteEvent', HANDLE),
+    ('RelocationCompleteWaitEvent', HANDLE),
+    ('RelocationCompleteWaitEvents', PHANDLE),
     ('PrevMemoryMap', PTRACE_STORE_MEMORY_MAP),
     ('MemoryMap', PTRACE_STORE_MEMORY_MAP),
-    ('TotalNumberOfMemoryMaps', ULONG),
-    ('NumberOfActiveMemoryMaps', ULONG),
     ('NumberOfRelocationBackReferences', ULONG),
     ('OutstandingRelocationBinds', ULONG),
     ('MappedSequenceId', LONG),
     ('MetadataBindsInProgress', LONG),
     ('PrepareReadonlyNonStreamingMapsInProgress', LONG),
     ('ReadonlyNonStreamingBindCompletesInProgress', LONG),
+    ('NumberOfRelocationDependencies', ULONG),
+    ('NumberOfRelocationsRequired', ULONG),
     ('SequenceId', ULONG),
     ('NumaNode', ULONG),
-    ('TraceStoreId', TRACE_STORE_ID),
-    ('TraceStoreMetadataId', TRACE_STORE_METADATA_ID),
-    ('TraceStoreIndex', TRACE_STORE_INDEX),
-    ('TraceFlags', TRACE_FLAGS),
-    ('StoreFlags', _TRACE_STORE_INNER_FLAGS),
-    ('LastError', DWORD),
     ('CreateFileDesiredAccess', DWORD),
     ('CreateFileCreationDisposition', DWORD),
     ('CreateFileMappingProtectionFlags', DWORD),
@@ -507,6 +526,7 @@ TRACE_STORE._fields_ = [
     ('AddressRangeStore', PTRACE_STORE),
     ('BitmapStore', PTRACE_STORE),
     ('InfoStore', PTRACE_STORE),
+    ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
     ('AllocateAlignedRecords', PALLOCATE_ALIGNED_RECORDS),
     ('AllocateAlignedOffsetRecords', PALLOCATE_ALIGNED_OFFSET_RECORDS),
@@ -530,6 +550,8 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyAddressRangesConsumed', ULONGLONG),
+    ('ReadonlyPreferredAddressUnavailable', ULONG),
+    ('Dummy', PVOID),
 ]
 
 class TRACE_STORES_RUNDOWN(Structure):
@@ -550,6 +572,16 @@ TRACE_STORES._fields_ = [
     ('Allocator', PALLOCATOR),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
+    # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
+    ('EventRelocationCompleteEvent', HANDLE),
+    ('StringBufferRelocationCompleteEvent', HANDLE),
+    ('FunctionTableRelocationCompleteEvent', HANDLE),
+    ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+    ('PathTableRelocationCompleteEvent', HANDLE),
+    ('PathTableEntryRelocationCompleteEvent', HANDLE),
+    ('SessionRelocationCompleteEvent', HANDLE),
+    ('StringArrayRelocationCompleteEvent', HANDLE),
+    ('StringTableRelocationCompleteEvent', HANDLE),
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -633,7 +665,6 @@ TRACE_STORES._fields_ = [
     ('StringTableAddressRangeStore', TRACE_STORE),
     ('StringTableBitmapStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
-    ('Dummy', ULONGLONG),
 ]
 
 class TRACE_STORE_STRUCTURE_SIZES(Structure):

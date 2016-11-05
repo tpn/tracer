@@ -73,6 +73,7 @@ Return Value:
 
 --*/
 {
+    BOOL IsReadonly;
     USHORT Index;
     USHORT StoreIndex;
     USHORT NumberOfTraceStores;
@@ -139,12 +140,14 @@ Return Value:
         if (!TraceStores->Flags.Readonly) {
             return FALSE;
         }
+        IsReadonly = TRUE;
     } else {
         if (TraceStores->Flags.Readonly) {
             return FALSE;
         } else if (!ARGUMENT_PRESENT(TraceSession)) {
             return FALSE;
         }
+        IsReadonly = FALSE;
     }
 
     //
@@ -234,30 +237,33 @@ Return Value:
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
-    //
-    // Enumerate the trace stores and create the relocation complete events
-    // first before any threadpool work is submitted.  These are used for
-    // coordinating relocation synchronization between stores and must be
-    // available for all stores as soon as the binding has been kicked off
-    // for one store.
-    //
-
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        BOOL ManualReset = TRUE;
+    if (IsReadonly) {
 
         //
-        // N.B.: We use ManualReset == TRUE because we want the event to stay
-        //       signaled once relocation has been complete.  This ensures that
-        //       multiple stores can have their WaitForMultipleObjects() calls
-        //       satisfied by the event once set, regardless of timing issues.
+        // Enumerate the trace stores and create the relocation complete events
+        // first before any threadpool work is submitted.  These are used for
+        // coordinating relocation synchronization between stores and must be
+        // available for all stores as soon as the binding has been kicked off
+        // for one store.
         //
 
-        Event = CreateEvent(NULL, ManualReset, FALSE, NULL);
-        if (!Event) {
-            goto Error;
+        FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+            BOOL ManualReset = TRUE;
+
+            //
+            // N.B.: We use ManualReset == TRUE because we want the event to
+            //       stay signaled once relocation has been complete.  This
+            //       ensures that other stores can call WaitForMultipleObjects
+            //       at any time and pick up the signaled event.
+            //
+
+            Event = CreateEvent(NULL, ManualReset, FALSE, NULL);
+            if (!Event) {
+                goto Error;
+            }
+
+            TraceStores->RelocationCompleteEvents[Index] = Event;
         }
-
-        TraceStores->RelocationCompleteEvents[StoreIndex] = Event;
     }
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
@@ -266,11 +272,11 @@ Return Value:
     }
 
     //
-    // If an async initialization has been requested, return now.  Otherwise,
-    // wait on the loading complete event.
+    // If an async initialization has been requested, return now.
+    // Otherwise, wait on the loading complete event.
     //
 
-    if (!ContextFlags.DisableAsyncInitialization) {
+    if (ContextFlags.AsyncInitialization) {
         return TRUE;
     }
 

@@ -679,6 +679,7 @@ Return Value:
 
     TraceStore->ReadonlyAddressRanges = ReadonlyAddressRanges;
     TraceStore->ReadonlyAddressRangesConsumed = 0;
+    TraceStore->ReadonlyPreferredAddressUnavailable = 0;
 
     //
     // Create events and threadpool work items.
@@ -852,18 +853,19 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    ULONG Index;
     ULONG WaitResult;
     ULONG NumberOfWaits;
+    ULONG NumberOfRelocationsRequired;
     TRACE_STORE_ID TraceStoreId;
-    TRACE_STORE_ID TargetStoreId;
     PRTL Rtl;
     HANDLE Event;
     PHANDLE Events;
     PTRACE_STORE TargetStore;
     PTRACE_STORES TraceStores;
     PTRACE_STORE_RELOC Reloc;
-    PRTL_BITMAP ForwardRefBitmap;
-    PRTL_BITMAP BackRefBitmap;
+    PPTRACE_STORE DependencyStore;
 
     //
     // Initialize aliases.
@@ -877,37 +879,44 @@ Return Value:
     if (!TraceStore->HasRelocations) {
 
         //
-        // Get the relocation complete event handle for this trace store and
-        // set it.
+        // If the trace store does not have any relocations, we still "complete"
+        // the relocation process, as this signals our relocation complete event
+        // and satisfies the wait of other trace stores dependent upon us before
+        // they can start their relocation.
         //
 
-        Event = TraceStoreIdToRelocationCompleteEvent(TraceStores,
-                                                      TraceStoreId);
+        goto CompleteRelocation;
+    }
 
-        if (!SetEvent(Event)) {
-            return FALSE;
+    if (TraceStore->OnlyRelocationIsToSelf) {
+
+        if (TraceStore->ReadonlyPreferredAddressUnavailable == 0) {
+
+            //
+            // If the only relocations we had were self-referencing, and we
+            // didn't have any preferred address unavailable events, we don't
+            // need to do any relocation.
+            //
+
+            goto CompleteRelocation;
         }
 
         //
-        // Decrement the trace context's number of binds in progress, and, if
-        // this was the last bind, set the loading complete event.
+        // We have self-references, and we had one or more preferred address
+        // unavailable events, so we'll have to relocate.
         //
 
-        if (!InterlockedDecrement(&TraceContext->BindsInProgress)) {
-            if (!SetEvent(TraceContext->LoadingCompleteEvent)) {
-                return FALSE;
-            }
-        }
-
-        return TRUE;
+        TraceStore->RequiresSelfRelocation = TRUE;
+        TraceStore->NumberOfRelocationsRequired = 1;
+        goto ReadyForRelocation;
     }
 
     //
-    // Invariant check: number of relocations should be greater than or equal
-    // to one.
+    // Invariant check: number of relocation dependencies should be greater
+    // than or equal to one.
     //
 
-    if (Reloc->NumberOfRelocations == 0) {
+    if (TraceStore->NumberOfRelocationDependencies == 0) {
         __debugbreak();
         return FALSE;
     }
@@ -945,58 +954,154 @@ Return Value:
         WaitResult = WaitForMultipleObjects(NumberOfWaits,
                                             Events,
                                             WaitAll,
-                                            INFINITE,
-                                            FALSE);
+                                            INFINITE);
 
         //
-        // Verify all waits were satisfied.  (We subtract 1 from NumberOfWaits
-        // to account for WAIT_OBJECT_0-n being indexed from 0.)
+        // Verify all waits were satisfied.
         //
 
-        if (WaitResult != NumberOfWaits-1) {
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
             return FALSE;
         }
 
         //
-        // All of the trace stores we depend on have been relocated, so we can
-        // begin our relocation.
+        // Initialize variables before the loop.
         //
 
-        SubmitRelocateWork(TraceContext, TraceStore);
+        NumberOfRelocationsRequired = 0;
+        DependencyStore = TraceStore->RelocationDependencyStores;
 
-        return TRUE;
+        //
+        // Enumerate each dependent store and check to see if it actually
+        // needed to be relocated.  If it did, increment our counter.  If
+        // not, clear that pointer in the dependency array.
+        //
+
+        for (Index = 0; Index < NumberOfWaits; Index++) {
+
+            if ((*DependencyStore)->ReadonlyPreferredAddressUnavailable > 0) {
+
+                //
+                // Increment our counter and advance the store pointer.
+                //
+
+                NumberOfRelocationsRequired++;
+                DependencyStore++;
+
+            } else {
+
+                //
+                // Clear this store's pointer in the relocation array.
+                //
+
+                *DependencyStore++ = NULL;
+            }
+        }
+
+        if (NumberOfRelocationsRequired == 0) {
+
+            //
+            // None of the other trace stores we're dependent upon needed
+            // relocation.  Check to see if we have any self references and
+            // whether or not we had any preferred address unavailable events.
+            //
+
+            if (TraceStore->HasSelfRelocations) {
+                if (TraceStore->ReadonlyPreferredAddressUnavailable > 0) {
+                    TraceStore->RequiresSelfRelocation = TRUE;
+                    NumberOfRelocationsRequired++;
+                }
+            }
+        }
+
+        if (NumberOfRelocationsRequired == 0) {
+
+            //
+            // If we still have no relocations required, we can complete
+            // early at this point.
+            //
+
+            goto CompleteRelocation;
+        }
+
+        //
+        // If we get here, we need to perform relocations.
+        //
+
+        TraceStore->NumberOfRelocationsRequired = NumberOfRelocationsRequired;
+        goto ReadyForRelocation;
     }
 
     //
-    // Invariant check: number of relocations should be 1 here.
+    // Invariant check: number of relocation dependencies should be 1 here.
     //
 
-    if (Reloc->NumberOfRelocations != 1) {
+    if (TraceStore->NumberOfRelocationDependencies != 1) {
         __debugbreak();
         return FALSE;
     }
 
     //
-    // Wait for the dependent trace store to complete its relocation.  We can
-    // obtain the relevant handle from the RelocationCompleteEvents field that
-    // we abused in LoadTraceStoreRelocationInfo().
+    // Wait for the dependent trace store to complete its relocation.
     //
 
-    Event = (HANDLE)TraceStore->RelocationCompleteEvents;
+    Event = TraceStore->RelocationCompleteWaitEvent;
 
     WaitResult = WaitForSingleObject(Event, INFINITE);
 
     if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
         return FALSE;
     }
 
     //
-    // Our dependent trace store has completed, so we can begin our relocation.
+    // If our single dependent trace store didn't need to be relocated, then we
+    // don't need to do any relocation and can complete the relocation here.
     //
 
-    SubmitRelocateWork(TraceContext, TraceStore);
+    TargetStore = TraceStore->RelocationDependencyStore;
+    if (TargetStore->ReadonlyPreferredAddressUnavailable > 0) {
+        goto ReadyForRelocation;
+    }
 
-    return TRUE;
+    //
+    // Intentional follow-on to CompleteRelocation.
+    //
+
+CompleteRelocation:
+
+    Success = ReadonlyNonStreamingTraceStoreCompleteRelocation(
+        TraceContext,
+        TraceStore
+    );
+
+    goto End;
+
+ReadyForRelocation:
+
+    //
+    // Invariant check: number of relocations required should be greater than
+    // or equal to one at this point.
+    //
+
+    if (TraceStore->NumberOfRelocationsRequired == 0) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Success = ReadonlyNonStreamingTraceStoreReadyForRelocation(
+        TraceContext,
+        TraceStore
+    );
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
 }
 
 _Use_decl_annotations_
