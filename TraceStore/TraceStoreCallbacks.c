@@ -405,17 +405,9 @@ Return Value:
     // This was the last memory map to be prepared for the trace store.
     //
 
-    Success = BindNonStreamingReadonlyTraceStoreComplete(
-        TraceContext,
-        TraceStore
-    );
-
+    Success = PrepareNonStreamingReadonlyTraceStoreMapsComplete(TraceContext,
+                                                                TraceStore);
     if (Success) {
-
-        //
-        // Decrement counter here and potentially set trace context event?
-        //
-
         return;
     }
 

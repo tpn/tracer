@@ -79,6 +79,7 @@ Return Value:
     USHORT NumberOfRemainingMetadataStores;
     DWORD Result;
     TRACE_CONTEXT_FLAGS ContextFlags;
+    HANDLE Event;
     PTRACE_STORE_WORK Work;
     PTRACE_STORE TraceStore;
 
@@ -194,7 +195,7 @@ Return Value:
 
     //
     // We subtract 2 from ElementsPerTraceStore to account for the normal trace
-    // store and :metadatainfo trace store.
+    // store and :MetadataInfo trace store.
     //
 
     NumberOfRemainingMetadataStores = (
@@ -233,6 +234,32 @@ Return Value:
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
+    //
+    // Enumerate the trace stores and create the relocation complete events
+    // first before any threadpool work is submitted.  These are used for
+    // coordinating relocation synchronization between stores and must be
+    // available for all stores as soon as the binding has been kicked off
+    // for one store.
+    //
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        BOOL ManualReset = TRUE;
+
+        //
+        // N.B.: We use ManualReset == TRUE because we want the event to stay
+        //       signaled once relocation has been complete.  This ensures that
+        //       multiple stores can have their WaitForMultipleObjects() calls
+        //       satisfied by the event once set, regardless of timing issues.
+        //
+
+        Event = CreateEvent(NULL, ManualReset, FALSE, NULL);
+        if (!Event) {
+            goto Error;
+        }
+
+        TraceStores->RelocationCompleteEvents[StoreIndex] = Event;
+    }
+
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TraceStore = &TraceStores->Stores[StoreIndex];
         SubmitBindMetadataInfoWork(TraceContext, TraceStore);
@@ -243,7 +270,7 @@ Return Value:
     // wait on the loading complete event.
     //
 
-    if (ContextFlags.InitializeAsync) {
+    if (!ContextFlags.DisableAsyncInitialization) {
         return TRUE;
     }
 
