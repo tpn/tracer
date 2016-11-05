@@ -745,6 +745,7 @@ Return Value:
             //
 
             MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+
         } else {
 
             //
@@ -822,7 +823,7 @@ Error:
 
 _Use_decl_annotations_
 BOOL
-BindNonStreamingReadonlyTraceStoreComplete(
+PrepareNonStreamingReadonlyTraceStoreMapsComplete(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore
     )
@@ -831,13 +832,13 @@ BindNonStreamingReadonlyTraceStoreComplete(
 Routine Description:
 
     This routine is called when a non-streaming readonly trace store has
-    completed its binding.  That is, all memory maps for the address ranges
-    that were used during the trace session have been created and mapped.
+    completed memory mapping its contents.  If the trace store requires
+    no relocation, it sets its relocation complete event and decrements the
+    trace context's binds in progress counter.
 
-    If the trace store requires relocation, this is kicked off now.  Once
-    relocation completes (or if no relocation needed to be done), the trace
-    store walks its relocation back reference bitmap and isolates dependent
-    trace stores.
+    If the trace store has relocations, it will wait on the relocation complete
+    events of dependent trace stores.  Once satisfied, it will submit threadpool
+    relocation work items for each of its memory maps.
 
 Arguments:
 
@@ -851,14 +852,13 @@ Return Value:
 
 --*/
 {
-    BOOL HasSelfBackReferences;
-    ULONG Index;
-    ULONG HintIndex;
-    ULONG PreviousIndex;
-    ULONG volatile *Outstanding;
+    ULONG WaitResult;
+    ULONG NumberOfWaits;
     TRACE_STORE_ID TraceStoreId;
     TRACE_STORE_ID TargetStoreId;
     PRTL Rtl;
+    HANDLE Event;
+    PHANDLE Events;
     PTRACE_STORE TargetStore;
     PTRACE_STORES TraceStores;
     PTRACE_STORE_RELOC Reloc;
@@ -872,98 +872,160 @@ Return Value:
     Rtl = TraceStore->Rtl;
     Reloc = TraceStore->Reloc;
     TraceStores = TraceContext->TraceStores;
-    ForwardRefBitmap = &Reloc->ForwardRefBitmap;
-    BackRefBitmap = &Reloc->BackRefBitmap;
     TraceStoreId = TraceStore->TraceStoreId;
 
-    if (Reloc->NumberOfRelocationBackReferences) {
-
-        Index = 0;
-        HintIndex = 0;
-        PreviousIndex = 0;
+    if (!TraceStore->HasRelocations) {
 
         //
-        // Walk the back reference bitmap.
+        // Get the relocation complete event handle for this trace store and
+        // set it.
         //
 
+        Event = TraceStoreIdToRelocationCompleteEvent(TraceStores,
+                                                      TraceStoreId);
 
-        do {
+        if (!SetEvent(Event)) {
+            return FALSE;
+        }
 
-            //
-            // Extract the next bit from the bitmap.
-            //
+        //
+        // Decrement the trace context's number of binds in progress, and, if
+        // this was the last bind, set the loading complete event.
+        //
 
-            Index = Rtl->RtlFindSetBits(BackRefBitmap, 1, HintIndex);
-
-            //
-            // Verify we got a sane index back.
-            //
-
-            if (Index == BITS_NOT_FOUND) {
-
-                //
-                // This should never happen.
-                //
-
-                __debugbreak();
+        if (!InterlockedDecrement(&TraceContext->BindsInProgress)) {
+            if (!SetEvent(TraceContext->LoadingCompleteEvent)) {
+                return FALSE;
             }
+        }
 
-            if (Index <= PreviousIndex) {
-
-                //
-                // Our search has wrapped, so exit the loop.
-                //
-
-                break;
-            }
-
-            //
-            // Update the previous index and resolve the trace store ID.
-            //
-
-            PreviousIndex = Index;
-            TargetStoreId = (TRACE_STORE_ID)Index;
-
-            //
-            // If the target store is us, make a note that we have "self back
-            // references" and continue the loop.
-            //
-
-            if (TargetStoreId == TraceStoreId) {
-                HasSelfBackReferences = TRUE;
-                continue;
-            }
-
-            //
-            // Resolve the store the target ID is pointing at.
-            //
-
-            TargetStore = TraceStoreIdToTraceStore(TraceStores, TargetStoreId);
-
-            //
-            // Decrement the store's outstanding relocation bind counter.
-            //
-
-            Outstanding = &TargetStore->OutstandingRelocationBinds;
-            if (!InterlockedDecrement(Outstanding)) {
-
-                //
-                // This was the last relocation dependency for the store.
-                // Acquire the store's relocation lock and check to see if
-                // mapping has completed.  If it has, relocation can begin.
-                // Submit that work to the threadpool, make a note that it
-                // has been submitted in the store's flags, then release the
-                // lock.
-                //
-
-                //
-                // xxx todo
-                //
-            }
-
-        } while (1);
+        return TRUE;
     }
 
+    //
+    // Invariant check: number of relocations should be greater than or equal
+    // to one.
+    //
+
+    if (Reloc->NumberOfRelocations == 0) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // If we reach this point, we have relocations.  What we do next depends
+    // on whether we're dependent upon multiple stores or just one.
+    //
+
+    if (TraceStore->HasMultipleRelocationWaits) {
+        BOOL WaitAll = TRUE;
+
+        //
+        // We depend on more than one store, so we need to wait on multiple
+        // event handles.  These were prepared for us in advance by the
+        // LoadTraceStoreRelocationInfo() routine.
+        //
+
+        Events = TraceStore->RelocationCompleteWaitEvents;
+        NumberOfWaits = TraceStore->NumberOfRelocationDependencies;
+
+        //
+        // Sanity check that we're waiting on a valid number of events.
+        //
+
+        if (NumberOfWaits > MAXIMUM_WAIT_OBJECTS) {
+            __debugbreak();
+            return FALSE;
+        }
+
+        //
+        // Wait for all of the other stores to complete their relocation.
+        //
+
+        WaitResult = WaitForMultipleObjects(NumberOfWaits,
+                                            Events,
+                                            WaitAll,
+                                            INFINITE,
+                                            FALSE);
+
+        //
+        // Verify all waits were satisfied.  (We subtract 1 from NumberOfWaits
+        // to account for WAIT_OBJECT_0-n being indexed from 0.)
+        //
+
+        if (WaitResult != NumberOfWaits-1) {
+            return FALSE;
+        }
+
+        //
+        // All of the trace stores we depend on have been relocated, so we can
+        // begin our relocation.
+        //
+
+        SubmitRelocateWork(TraceContext, TraceStore);
+
+        return TRUE;
+    }
+
+    //
+    // Invariant check: number of relocations should be 1 here.
+    //
+
+    if (Reloc->NumberOfRelocations != 1) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Wait for the dependent trace store to complete its relocation.  We can
+    // obtain the relevant handle from the RelocationCompleteEvents field that
+    // we abused in LoadTraceStoreRelocationInfo().
+    //
+
+    Event = (HANDLE)TraceStore->RelocationCompleteEvents;
+
+    WaitResult = WaitForSingleObject(Event, INFINITE);
+
+    if (WaitResult != WAIT_OBJECT_0) {
+        return FALSE;
+    }
+
+    //
+    // Our dependent trace store has completed, so we can begin our relocation.
+    //
+
+    SubmitRelocateWork(TraceContext, TraceStore);
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+BindNonStreamingReadonlyTraceStoreComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine is called when a non-streaming readonly trace store has
+    completed its binding.  That is, all memory maps for the address ranges
+    that were used during the trace session have been created and mapped and
+    any relocation required has been performed.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
     return TRUE;
 }
 

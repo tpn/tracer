@@ -212,8 +212,11 @@ LoadTraceStoreRelocationInfo(
 Routine Description:
 
     This routine loads any relocation information associated with the trace
-    store from the :Relocation metadata store.  It is called in the final
-    stages of binding a trace store to a trace context.
+    store from the :Relocation metadata store.  If a trace store has multiple
+    relocations (excluding itself), an array will be allocated to hold
+    references to all the relocation complete events of the referenced trace
+    stores.  This will be waited on via WaitForMultipleObjects() once the trace
+    store's memory maps have been loaded.
 
 Arguments:
 
@@ -229,7 +232,23 @@ Return Value:
 {
     BOOL HasRelocations;
     BOOL HasRelocationBackRefs;
+    ULONG NumberOfRelocationDependencies;
+    ULONG Index;
+    ULONG HintIndex;
+    ULONG PreviousIndex;
+    ULONG volatile *Outstanding;
+    TRACE_STORE_ID TraceStoreId;
+    TRACE_STORE_ID TargetStoreId;
+    PRTL Rtl;
+    PHANDLE Event;
+    PHANDLE Events;
+    PALLOCATOR Allocator;
+    PTRACE_STORE TargetStore;
+    PTRACE_STORES TraceStores;
+    PTRACE_CONTEXT TraceContext;
     PTRACE_STORE_RELOC Reloc;
+    PRTL_BITMAP ForwardRefBitmap;
+    PRTL_BITMAP BackRefBitmap;
 
     //
     // Validate arguments.
@@ -273,8 +292,21 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = TraceStore->Rtl;
+    TraceContext = TraceStore->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    TraceStoreId = TraceStore->TraceStoreId;
+
     HasRelocations = (Reloc->NumberOfRelocations > 0);
     HasRelocationBackRefs = (Reloc->NumberOfRelocationBackReferences > 0);
+
+    if (HasRelocationBackRefs) {
+        TraceStore->IsRelocationTarget = TRUE;
+    }
 
     //
     // Adjust the pointers embedded within the relocation structure.  We can
@@ -293,11 +325,188 @@ Return Value:
                 sizeof(TRACE_STORE_RELOC)
             )
         );
+
+        //
+        // Clear counters before the loop.
+        //
+
+        Index = 0;
+        HintIndex = 0;
+        LastIndex = 0;
+        PreviousIndex = 0;
+        NumberOfRelocationDependencies = 0;
+
+        //
+        // Initialize our bitmap alias.
+        //
+
+        ForwardRefBitmap = &Reloc->ForwardRefBitmap;
+
+        //
+        // Walk the "forward reference" bitmap and count how many trace stores
+        // we depend upon, excluding ourselves.
+        //
+
+        do {
+
+            //
+            // Extract the next bit from the bitmap.
+            //
+
+            Index = Rtl->RtlFindSetBits(ForwardRefBitmap, 1, HintIndex);
+
+            //
+            // Verify we got a sane index back.
+            //
+
+            if (Index == BITS_NOT_FOUND) {
+
+                //
+                // This should never happen.
+                //
+
+                __debugbreak();
+                return FALSE;
+            }
+
+            if (Index <= PreviousIndex) {
+
+                //
+                // Our search has wrapped, so exit the loop.
+                //
+
+                break;
+            }
+
+            //
+            // Update the previous index and hint index and resolve the trace
+            // store ID.
+            //
+
+            PreviousIndex = Index;
+            HintIndex = Index + 1;
+            TargetStoreId = (TRACE_STORE_ID)Index;
+
+            //
+            // If the target store is us, make a note that we have self
+            // relocation references and continue the loop.
+            //
+
+            if (TargetStoreId == TraceStoreId) {
+                TraceStore->HasSelfRelocations = TRUE;
+                continue;
+            }
+
+            //
+            // Increment the number of dependencies counter and continue the
+            // loop.
+            //
+
+            NumberOfRelocationDependencies++;
+
+        } while (1);
+
+        //
+        // If we didn't see any other relocation dependencies, make a note in
+        // the relevant trace store flag that the only relocations required are
+        // dependent upon ourselves, and then return success.
+        //
+
+        if (NumberOfRelocationDependencies == 0) {
+            TraceStore->OnlyRelocationIsToSelf = TRUE;
+            return TRUE;
+        }
+
+        TraceStore->NumberOfRelocationDependencies = (
+            NumberOfRelocationDependencies
+        );
+
+        if (NumberOfRelocationDependencies == 1) {
+            HANDLE Handle;
+
+            //
+            // If we only have a single dependency, abuse two things:
+            // a) the pointer-sized (read: HANDLE-sized) storage availabe at
+            // TraceStore->RelocationCompleteWaitEvents, and b) the fact that
+            // PreviousIndex will conveniently be castable to the trace store
+            // ID of the single store we're dependent upon, allowing us to go
+            // straight to resolution of the corresponding store's relocation
+            // complete event.
+            //
+
+            TargetStoreId = (TRACE_STORE_ID)PreviousIndex;
+            Handle = TraceStoreIdToRelocationCompleteEvent(TraceStores,
+                                                           TargetStoreId);
+            TraceStore->RelocationCompleteWaitEvents = (PHANDLE)Event;
+            return TRUE;
+
+        }
+
+        //
+        // We are dependent upon more than one trace store, so we need to
+        // create an array of relocation handles that can be waited on.  This
+        // happens once we've finished loading all of our memory maps.
+        //
+
+        TraceStore->HasMultipleRelocationWaits = TRUE;
+        InterlockedIncrement(
+            &TraceContext->NumberOfStoresWithMultipleRelocationDependencies
+        );
+
+        Events = (PHANDLE)(
+            Allocator->Calloc(
+                Allocator->Context,
+                NumberOfRelocationDependencies,
+                sizeof(HANDLE)
+            )
+        );
+
+        if (!Events) {
+            return FALSE;
+        }
+
+        TraceStore->RelocationCompleteWaitEvents = Events;
+
+        //
+        // Reset the bitmap index variables and walk the bitmap again,
+        // filling in the event array with the relevant handle from the
+        // array of "relocation complete" handles reserved in the trace
+        // stores structure.
+        //
+
+        Index = 0;
+        HintIndex = 0;
+        PreviousIndex = 0;
+
+        //
+        // Point the Event pointer at the base of the allocated array.
+        //
+
+        Event = (PHANDLE)Events;
+
+        do {
+
+            Index = Rtl->RtlFindSetBits(ForwardRefBitmap, 1, HintIndex);
+            if (Index <= PreviousIndex) {
+                break;
+            }
+
+            PreviousIndex = Index;
+            HintIndex = Index + 1;
+            TargetStoreId = (TRACE_STORE_ID)Index;
+
+            if (TargetStoreId == TraceStoreId) {
+                continue;
+            }
+
+            *Event++ = TraceStoreIdToRelocationCompleteEvent(TargetStoreId);
+
+        } while (1);
     }
 
-    if (HasRelocationBackRefs) {
-        TraceStore->IsRelocationTarget = TRUE;
-    }
+    //
+    // We're done, return success.
+    //
 
     return TRUE;
 }

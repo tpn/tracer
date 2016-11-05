@@ -462,7 +462,6 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 // The following macros provide a convenient way to work with a trait and a
 // trait's semantic inverse, e.g. instead of having to write:
 //
-//      Traits = TraceStore->pTraits;
 //      if (!Traits.MultipleRecords) {
 //
 //          //
@@ -478,6 +477,10 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 //
 //      if (IsSingleRecord(Traits)) {
 //
+// N.B.: Example assumes Traits has been loaded as follows:
+//
+//      TRACE_STORE_TRAITS Traits;
+//      Traits = *TraceStore->pTraits;
 //
 
 #define HasVaryingRecords(Traits) ((Traits).VaryingRecordSize)
@@ -886,7 +889,7 @@ typedef struct _TRACE_FLAGS {
 typedef struct _Struct_size_bytes_(sizeof(USHORT)) _TRACE_CONTEXT_FLAGS {
     USHORT Valid:1;
     USHORT Readonly:1;
-    USHORT InitializeAsync:1;
+    USHORT DisableAsyncInitialization:1;
     USHORT Unused:13;
 } TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
 
@@ -986,6 +989,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     volatile ULONG PrepareReadonlyNonStreamingTraceStoresInProgress;
 
     volatile ULONG ReadonlyNonStreamingBindCompletesInProgress;
+
+    volatile ULONG NumberOfStoresWithMultipleRelocationDependencies;
 
     //
     // Stash Time at the end as it's large and doesn't have any alignment
@@ -1269,6 +1274,7 @@ typedef struct _TRACE_STORE {
     HANDLE                  NextMemoryMapAvailableEvent;
     HANDLE                  AllMemoryMapsAreFreeEvent;
     HANDLE                  ReadonlyMappingCompleteEvent;
+    PHANDLE                 RelocationCompleteWaitEvents;
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -1297,6 +1303,8 @@ typedef struct _TRACE_STORE {
     volatile LONG   MetadataBindsInProgress;
     volatile LONG   PrepareReadonlyNonStreamingMapsInProgress;
     volatile LONG   ReadonlyNonStreamingBindCompletesInProgress;
+
+    ULONG NumberOfRelocationDependencies;
 
     //
     // Each trace store, when initialized, is assigned a unique sequence
@@ -1337,6 +1345,9 @@ typedef struct _TRACE_STORE {
             ULONG HasRelocations:1;
             ULONG NoTruncate:1;
             ULONG IsRelocationTarget:1;
+            ULONG HasSelfRelocations:1;
+            ULONG OnlyRelocationIsToSelf:1;
+            ULONG HasMultipleRelocationWaits:1;
         };
     };
 
@@ -1458,24 +1469,6 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
     volatile ULONGLONG ReadonlyAddressRangesConsumed;
 
-    //
-    // A slim read/write lock.
-    //
-
-    SRWLOCK Lock;
-
-    //
-    // Volatile state protected by the lock.
-    //
-
-    union {
-        ULONG VolatileFlagsAsLong;
-        struct {
-            ULONG TraitsLoaded:1;
-            ULONG AllMemoryMapsLoaded:1;
-        };
-    };
-
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;
     WCHAR PathBuffer[_OUR_MAX_PATH];
@@ -1491,7 +1484,7 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
-C_ASSERT(sizeof(TRACE_STORE) == 656);
+//C_ASSERT(sizeof(TRACE_STORE) == 656);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -1525,6 +1518,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     PALLOCATOR        Allocator;
     LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
+    HANDLE            RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE       Stores[MAX_TRACE_STORES];
 } TRACE_STORES, *PTRACE_STORES;
@@ -1817,6 +1811,19 @@ TraceStoreIdToTraceStore(
 
     TraceStoreIndex = TraceStoreIdToTraceStoreIndex(TraceStores, TraceStoreId);
     return &TraceStores->Stores[TraceStoreIndex];
+}
+
+FORCEINLINE
+HANDLE
+TraceStoreIdToRelocationCompleteEvent(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    TRACE_STORE_INDEX TraceStoreIndex;
+
+    TraceStoreIndex = TraceStoreIdToTraceStoreIndex(TraceStores, TraceStoreId);
+    return &TraceStores->RelocationCompleteEvents[TraceStoreIndex];
 }
 
 FORCEINLINE
