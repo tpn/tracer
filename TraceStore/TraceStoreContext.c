@@ -244,7 +244,13 @@ Return Value:
         // first before any threadpool work is submitted.  These are used for
         // coordinating relocation synchronization between stores and must be
         // available for all stores as soon as the binding has been kicked off
-        // for one store.
+        // for one store.  This is because a store could finish mapping itself
+        // and be ready to process any relocations before the stores it is
+        // dependent upon have finished loading themselves.  By using explicit
+        // events and WaitForSingleObject/WaitForMultipleObjects (depending on
+        // whether or not we dependent on one or multiple stores), we avoid any
+        // race conditions with regards to trace stores not being ready when we
+        // want them.
         //
 
         FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
@@ -272,11 +278,23 @@ Return Value:
     }
 
     //
-    // If an async initialization has been requested, return now.
-    // Otherwise, wait on the loading complete event.
+    // If an async initialization has been requested, return now.  Otherwise,
+    // wait on the loading complete event.
     //
 
     if (ContextFlags.AsyncInitialization) {
+
+        //
+        // N.B.: We should replace all of the allocator functions at this point
+        //       (e.g. AllocateRecords) with a placeholder function that simply
+        //       does a WaitForSingleObject() on the trace store's BindComplete
+        //       event.  When the binding actually has been completed, we would
+        //       set this event but also do an interlocked exchange pointer on
+        //       the underlying function and swap in the "live" AllocateRecords.
+        //       This would remove the need for callers to check for the state
+        //       of the context before attempting to dispatch allocations.
+        //
+
         return TRUE;
     }
 
