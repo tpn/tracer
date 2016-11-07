@@ -208,7 +208,7 @@ Return Value:
     //
     // If field relocations have been provided, initialize them now.
     // We only do this if we're not readonly; if we're readonly, relocation
-    // information is loaded from the :relocation metadata store.
+    // information is loaded from the :Relocation metadata store.
     //
 
     if (!Readonly && ARGUMENT_PRESENT(FieldRelocations)) {
@@ -243,9 +243,7 @@ Return Value:
         //
         // Initialize each TraceStores->Relocations[Index] slot.  We loop
         // through every slot, then loop through the caller's field relocations
-        // array and see if the trace store IDs match.  We could be fancier to
-        // avoid the n^2 loop overhead, but this isn't called frequently, and
-        // the array sizes shouldn't be particularly large.
+        // array and see if the trace store IDs match.
         //
 
         for (Index = 0; Index < MAX_TRACE_STORE_IDS; Index++) {
