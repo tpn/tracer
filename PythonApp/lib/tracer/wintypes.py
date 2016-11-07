@@ -390,6 +390,13 @@ PREFIX_TABLE._fields_ = [
     ('NextPrefixTree', PPREFIX_TABLE_ENTRY),
 ]
 
+class RTL_BITMAP(Structure):
+    _fields_ = [
+        ('SizeOfBitMap', ULONG),
+        ('Buffer', PVOID),
+    ]
+PRTL_BITMAP = POINTER(RTL_BITMAP)
+
 #===============================================================================
 # Kernel32
 #===============================================================================

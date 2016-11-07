@@ -74,10 +74,12 @@ Return Value:
 --*/
 {
     BOOL IsReadonly;
+    BOOL ManualReset;
     USHORT Index;
     USHORT StoreIndex;
     USHORT NumberOfTraceStores;
     USHORT NumberOfRemainingMetadataStores;
+    ULONG NumberOfBytesToZero;
     DWORD Result;
     TRACE_CONTEXT_FLAGS ContextFlags;
     HANDLE Event;
@@ -132,22 +134,188 @@ Return Value:
     }
 
     //
-    // If the TraceContextFlags indicates readonly, make sure that matches the
-    // trace stores, and vice versa.
+    // We zero the entire trace context structure, unless the caller has set the
+    // IgnorePreferredAddresses context flag, in which case, we zero up to but
+    // not including the first field related to the ignore bitmap.
+    //
+
+    NumberOfBytesToZero = sizeof(*TraceContext);
+
+    //
+    // Test the following invariants of the context flags:
+    //  - If TraceContextFlags indicates readonly, TraceStores should as well.
+    //  - If not readonly:
+    //      - Ensure InitializeAsync is not set.
+    //      - Ensure IgnorePreferredAddresses is not set.
+    //      - Ensure TraceSession is not NULL.
+    //  - Else:
+    //      - If IgnorePreferredAddresses is set, ensure the bitmap is valid.
     //
 
     if (ContextFlags.Readonly) {
+
+        IsReadonly = TRUE;
+
+        //
+        // Verify TraceStores is also readonly.
+        //
+
         if (!TraceStores->Flags.Readonly) {
             return FALSE;
         }
-        IsReadonly = TRUE;
+
+        //
+        // Verify the ignore bitmap if applicable.
+        //
+
+        if (ContextFlags.IgnorePreferredAddresses) {
+            ULONG Index;
+            ULONG HintIndex;
+            ULONG PreviousIndex;
+            ULONG NumberOfSetBits;
+            TRACE_STORE_ID TraceStoreId;
+            PTRACE_STORE TraceStore;
+            PRTL_BITMAP Bitmap;
+
+            //
+            // Initialize bitmap alias.
+            //
+
+            Bitmap = &TraceContext->IgnorePreferredAddressesBitmap;
+
+            //
+            // The caller is responsible for initializing SizeOfBitMap.  Verify
+            // it matches what we expect.
+            //
+
+            if (Bitmap->SizeOfBitMap != MAX_TRACE_STORE_IDS) {
+                return FALSE;
+            }
+
+            //
+            // Ensure the bitmap's buffer field is NULL; we set this ourselves.
+            //
+
+            if (Bitmap->Buffer) {
+                return FALSE;
+            }
+
+            //
+            // Initialize buffer pointer.
+            //
+
+            Bitmap->Buffer = (PULONG)&TraceContext->BitmapBuffer[0];
+
+            //
+            // Zero variables before loop.
+            //
+
+            Index = 0;
+            HintIndex = 0;
+            PreviousIndex = 0;
+            NumberOfSetBits = 0;
+
+            //
+            // Walk the bitmap and extract each bit, validate it is within
+            // range, convert into a trace store ID, resolve the corresponding
+            // trace store pointer, and set the store's IgnorePreferredAddresses
+            // flag.  Fail early by returning FALSE on any erroneous conditions.
+            //
+
+            do {
+
+                //
+                // Extract the next bit from the bitmap.
+                //
+
+                Index = Rtl->RtlFindSetBits(Bitmap, 1, HintIndex);
+
+                //
+                // Verify we got a sane index back.
+                //
+
+                if (Index == BITS_NOT_FOUND || Index >= TraceStoreInvalidId) {
+                    return FALSE;
+                }
+
+                if (Index <= PreviousIndex) {
+
+                    //
+                    // The search has wrapped, so exit the loop.
+                    //
+
+                    break;
+                }
+
+                //
+                // The index is valid.  Convert to trace store ID, then resolve
+                // the store's pointer and set the flag.  Update previous index
+                // and hint index.
+                //
+
+                TraceStoreId = (TRACE_STORE_ID)Index;
+                TraceStore = TraceStoreIdToTraceStore(TraceStores,
+                                                      TraceStoreId);
+                TraceStore->IgnorePreferredAddresses = TRUE;
+
+                PreviousIndex = Index;
+                HintIndex = Index + 1;
+                NumberOfSetBits++;
+
+            } while (1);
+
+            //
+            // Sanity check that we saw at least one bit.
+            //
+
+            if (!NumberOfSetBits) {
+                __debugbreak();
+                return FALSE;
+            }
+
+            //
+            // Adjust the number of bytes to zero such that we exclude the first
+            // bitmap related field onward.
+            //
+
+            NumberOfBytesToZero = (
+                FIELD_OFFSET(
+                    TRACE_CONTEXT,
+                    BitmapBufferSizeInQuadwords
+                )
+            );
+
+        }
+
     } else {
+
+        IsReadonly = FALSE;
+
         if (TraceStores->Flags.Readonly) {
+
+            //
+            // TraceStore is set readonly but context indicates otherwise.
+            //
+
             return FALSE;
+
         } else if (!ARGUMENT_PRESENT(TraceSession)) {
+
+            //
+            // If we're not readonly, TraceSession must be provided.
+            //
+
             return FALSE;
         }
-        IsReadonly = FALSE;
+
+        if (ContextFlags.IgnorePreferredAddresses) {
+
+            //
+            // IgnorePreferredAddresses only valid when readonly.
+            //
+
+            return FALSE;
+        }
     }
 
     //
@@ -158,14 +326,21 @@ Return Value:
     // Zero the structure before we start using it.
     //
 
-    SecureZeroMemory(TraceContext, *SizeOfTraceContext);
+    SecureZeroMemory(TraceContext, NumberOfBytesToZero);
 
     TraceContext->TimerFunction = TraceStoreGetTimerFunction();
     if (!TraceContext->TimerFunction) {
         return FALSE;
     }
 
-    TraceContext->LoadingCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    //
+    // Create a manual reset event for the loading complete state.
+    //
+    ManualReset = TRUE;
+    TraceContext->LoadingCompleteEvent = CreateEvent(NULL,
+                                                     ManualReset,
+                                                     FALSE,
+                                                     NULL);
     if (!TraceContext->LoadingCompleteEvent) {
         return FALSE;
     }

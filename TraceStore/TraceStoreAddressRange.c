@@ -50,6 +50,7 @@ Return Value:
     PTRACE_STORE AddressRangeStore;
     PTRACE_STORE_ADDRESS_RANGE NewAddressRange;
     PTRACE_CONTEXT TraceContext;
+    LARGE_INTEGER Timestamp;
     ULARGE_INTEGER RecordSize = { 1 };
     ULARGE_INTEGER AllocationSize = { sizeof(TRACE_STORE_ADDRESS_RANGE) };
 
@@ -62,13 +63,7 @@ Return Value:
     }
 
     if (TraceStore->IsReadonly) {
-
-        //
-        // Redirect to the readonly version.
-        //
-
-        return RegisterNewReadonlyTraceStoreAddressRange(TraceStore,
-                                                         AddressRange);
+        return FALSE;
     }
 
     //
@@ -96,10 +91,41 @@ Return Value:
     NewAddressRange = (PTRACE_STORE_ADDRESS_RANGE)BaseAddress;
 
     //
-    // Copy the caller's address range structure over.
+    // Query the performance counter.  This becomes our ValidFrom time, and,
+    // if there was a previous address range, its ValidTo time.
     //
 
-    if (!CopyTraceStoreAddressRange(NewAddressRange, AddressRange)) {
+    QueryPerformanceCounter(&Timestamp);
+    AddressRange->Timestamp.ValidFrom.QuadPart = Timestamp.QuadPart;
+
+    TRY_MAPPED_MEMORY_OP {
+
+        //
+        // Copy the caller's address range structure over.
+        //
+
+        __movsq((PDWORD64)NewAddressRange,
+                (PDWORD64)AddressRange,
+                sizeof(*NewAddressRange) >> 3);
+
+        //
+        // If there's an existing address range set, update its ValidTo
+        // timestamp.
+        //
+
+        if (TraceStore->AddressRange) {
+            TraceStore->AddressRange->Timestamp.ValidTo.QuadPart = (
+                Timestamp.QuadPart
+            );
+        }
+
+        //
+        // Update the trace store's address range pointer.
+        //
+
+        TraceStore->AddressRange = NewAddressRange;
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
 
         //
         // We'll leak the address range we just allocated here, but a copy
@@ -111,11 +137,6 @@ Return Value:
         return FALSE;
     }
 
-    //
-    // Update the trace store's address range pointer and return success.
-    //
-
-    TraceStore->AddressRange = NewAddressRange;
 
     return TRUE;
 }
@@ -124,7 +145,8 @@ _Use_decl_annotations_
 BOOL
 RegisterNewReadonlyTraceStoreAddressRange(
     PTRACE_STORE TraceStore,
-    PTRACE_STORE_ADDRESS_RANGE AddressRange
+    PTRACE_STORE_ADDRESS_RANGE AddressRange,
+    PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 /*++
 
@@ -142,13 +164,16 @@ Arguments:
     AddressRange - Supplies a pointer to a TRACE_STORE_ADDRESS_RANGE structure
         that will be used to initialized the newly allocated address range.
 
+    MemoryMap - Supplies a pointer to the memory map associated with this
+        address range.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
 
 --*/
 {
-    ULONGLONG Count;
+    PTRACE_STORE_ADDRESS_RANGE OriginalAddressRange;
     PTRACE_STORE_ADDRESS_RANGE NewAddressRange;
 
     //
@@ -163,19 +188,34 @@ Return Value:
         return FALSE;
     }
 
-    Count = InterlockedIncrement64(&TraceStore->ReadonlyAddressRangesConsumed);
-    if (Count > TraceStore->NumberOfAddressRanges.QuadPart) {
-        __debugbreak();
+    NewAddressRange = TraceStoreReadonlyAddressRangeFromMemoryMap(TraceStore,
+                                                                  MemoryMap);
+
+    if (!NewAddressRange) {
         return FALSE;
     }
 
-    NewAddressRange = &TraceStore->ReadonlyAddressRanges[Count-1];
+    //
+    // Save a copy of the original address range.
+    //
+
+    OriginalAddressRange = NewAddressRange->OriginalAddressRange;
+
     if (!CopyTraceStoreAddressRange(NewAddressRange, AddressRange)) {
-        InterlockedDecrement64(&TraceStore->ReadonlyAddressRangesConsumed);
         return FALSE;
     }
 
-    TraceStore->AddressRange = NewAddressRange;
+    //
+    // Copy the original valid from and valid to timestamps back.
+    //
+
+    NewAddressRange->Timestamp.ValidFrom.QuadPart = (
+        OriginalAddressRange->Timestamp.ValidFrom.QuadPart
+    );
+
+    NewAddressRange->Timestamp.ValidTo.QuadPart = (
+        OriginalAddressRange->Timestamp.ValidTo.QuadPart
+    );
 
     return TRUE;
 }

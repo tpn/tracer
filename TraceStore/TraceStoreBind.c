@@ -553,6 +553,7 @@ Return Value:
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMaps = NULL;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
+    PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRange;
     PTRACE_STORE_ADDRESS_RANGE AddressRanges = NULL;
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges = NULL;
 
@@ -600,6 +601,12 @@ Return Value:
             (MappingSize.QuadPart / FileInfo.EndOfFile.QuadPart) + 1
         );
     }
+
+    //
+    // Save a copy of the number of address ranges.
+    //
+
+    TraceStore->NumberOfAddressRanges.QuadPart = NumberOfMaps;
 
     //
     // Create a file mapping for the entire file's contents up front.  Use
@@ -677,8 +684,8 @@ Return Value:
         goto Error;
     }
 
+    TraceStore->ReadonlyMemoryMaps = FirstMemoryMap;
     TraceStore->ReadonlyAddressRanges = ReadonlyAddressRanges;
-    TraceStore->ReadonlyAddressRangesConsumed = 0;
     TraceStore->ReadonlyPreferredAddressUnavailable = 0;
 
     //
@@ -724,6 +731,7 @@ Return Value:
         Address = &Addresses[Index];
         MemoryMap = &MemoryMaps[Index];
         AddressRange = &AddressRanges[Index];
+        ReadonlyAddressRange = &ReadonlyAddressRanges[Index];
 
         //
         // Fill in the rest of the memory map's details.
@@ -793,6 +801,14 @@ Return Value:
         Address->MappedSequenceId = (
             InterlockedIncrement(&TraceStore->MappedSequenceId)
         );
+
+        //
+        // Point the corresponding readonly address range record at this
+        // original address range.  The rest of the readonly address range
+        // details are filled in via PrepareReadonlyTraceStoreMemoryMap().
+        //
+
+        ReadonlyAddressRange->OriginalAddressRange = AddressRange;
 
         //
         // Wire up the address to the memory map.
@@ -888,7 +904,26 @@ Return Value:
         goto CompleteRelocation;
     }
 
-    if (TraceStore->OnlyRelocationIsToSelf) {
+    if (TraceStore->OnlyRelocationIsToNull) {
+
+        //
+        // A fast-path for trace stores that only have null relocations.  These
+        // stores require various field offsets to be zeroed, but don't actually
+        // need to do any relocation with regards to other stores.
+        //
+
+        goto ReadyForRelocation;
+
+    } else if (TraceStore->OnlyRelocationIsToSelf) {
+
+        //
+        // Invariant check: HasNullStoreRelocations should be false here.
+        //
+
+        if (TraceStore->HasNullStoreRelocations) {
+            __debugbreak();
+            return FALSE;
+        }
 
         if (TraceStore->ReadonlyPreferredAddressUnavailable == 0) {
 
@@ -1051,14 +1086,8 @@ Return Value:
     WaitResult = WaitForSingleObject(Event, INFINITE);
 
     if (WaitResult != WAIT_OBJECT_0) {
-        __debugbreak();
         return FALSE;
     }
-
-    //
-    // If our single dependent trace store didn't need to be relocated, then we
-    // don't need to do any relocation and can complete the relocation here.
-    //
 
     TargetStore = TraceStore->RelocationDependencyStore;
     if (TargetStore->ReadonlyPreferredAddressUnavailable > 0) {
@@ -1071,6 +1100,10 @@ Return Value:
 
 CompleteRelocation:
 
+    if (TraceStore->HasNullStoreRelocations) {
+        goto ReadyForRelocation;
+    }
+
     Success = ReadonlyNonStreamingTraceStoreCompleteRelocation(
         TraceContext,
         TraceStore
@@ -1082,12 +1115,14 @@ ReadyForRelocation:
 
     //
     // Invariant check: number of relocations required should be greater than
-    // or equal to one at this point.
+    // or equal to one, or has null relocations should be set.
     //
 
     if (TraceStore->NumberOfRelocationsRequired == 0) {
-        __debugbreak();
-        return FALSE;
+        if (!TraceStore->HasNullStoreRelocations) {
+            __debugbreak();
+            return FALSE;
+        }
     }
 
     Success = ReadonlyNonStreamingTraceStoreReadyForRelocation(

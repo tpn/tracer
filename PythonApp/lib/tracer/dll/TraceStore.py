@@ -39,6 +39,7 @@ from ..wintypes import (
     PTP_WORK,
     CFUNCTYPE,
     ULONGLONG,
+    RTL_BITMAP,
     SYSTEMTIME,
     LIST_ENTRY,
     SLIST_ENTRY,
@@ -81,7 +82,42 @@ PALLOCATE_ALIGNED_RECORDS = PVOID
 PALLOCATE_ALIGNED_OFFSET_RECORDS = PVOID
 PBIND_COMPLETE = PVOID
 
+IS_BOUND = False
+
+#===============================================================================
+# Enums/Indexes/Constants
+#===============================================================================
+
+TraceStoreNullId                    =   0
+TraceStoreEventId                   =   1
+TraceStoreStringBufferId            =   2
+TraceStoreFunctionTableId           =   3
+TraceStoreFunctionTableEntryId      =   4
+TraceStorePathTableId               =   5
+TraceStorePathTableEntryId          =   6
+TraceStoreSessionId                 =   7
+TraceStoreStringArrayId             =   8
+TraceStoreStringTableId             =   9
+TraceStoreInvalidId                 =  10
+
+MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
+
+#===============================================================================
+# Helpers
+#===============================================================================
+
+class NotBoundError(BaseException):
+    pass
+
+class ensure_bound(object):
+    def __init__(self, func):
+        self.func = func
+    def __call__(self, *args, **kwds):
+        global IS_BOUND
+        if not IS_BOUND:
+            raise NotBoundError()
+        return self.func(*args, **kwds)
 
 #===============================================================================
 # Structures
@@ -106,7 +142,7 @@ class TRACE_CONTEXT_FLAGS(Structure):
         ('Valid', ULONG, 1),
         ('Readonly', ULONG, 1),
         ('InitializeAsync', ULONG, 1),
-        ('Unused', ULONG, 29),
+        ('IgnorePreferredAddresses', ULONG, 1),
     ]
 PTRACE_CONTEXT_FLAGS = POINTER(TRACE_CONTEXT_FLAGS)
 
@@ -384,6 +420,33 @@ class TRACE_STORES(Structure):
     pass
 PTRACE_STORES = POINTER(TRACE_STORES)
 
+class _TRACE_STORE_BITMAP(Structure):
+    _fields_ = [
+        ('TraceStoreNullId', ULONG, 1),
+        ('TraceStoreEventId', ULONG, 1),
+        ('TraceStoreStringBufferId', ULONG, 1),
+        ('TraceStoreFunctionTableId', ULONG, 1),
+        ('TraceStoreFunctionTableEntryId', ULONG, 1),
+        ('TraceStorePathTableId', ULONG, 1),
+        ('TraceStorePathTableEntryId', ULONG, 1),
+        ('TraceStoreSessionId', ULONG, 1),
+        ('TraceStoreStringArrayId', ULONG, 1),
+        ('TraceStoreStringTableId', ULONG, 1),
+    ]
+
+class TRACE_STORE_BITMAP(Union):
+    _fields_ = [
+        ('Raw', ULONGLONG),
+        ('BitFields', _TRACE_STORE_BITMAP),
+    ]
+PTRACE_STORE_BITMAP = POINTER(TRACE_STORE_BITMAP)
+
+class _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP(Union):
+    _fields_ = [
+        ('Buffer', ULONGLONG * TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS),
+        ('TraceStoreBitmap', TRACE_STORE_BITMAP),
+    ]
+
 class TRACE_CONTEXT(Structure):
     _fields_ = [
         ('SizeOfStruct', ULONG),
@@ -410,8 +473,20 @@ class TRACE_CONTEXT(Structure):
         ('PrepareReadonlyNonStreamingMapsInProgress', ULONG),
         ('ReadonlyNonStreamingBindCompletesInProgress', ULONG),
         ('NumberOfStoresWithMultipleRelocationDependencies', ULONG),
+        ('Padding3', ULONG),
         ('Time', TRACE_STORE_TIME),
+        ('BitmapBufferSizeInQuadwords', ULONG),
+        ('Padding4', ULONG),
+        ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
+        ('BitmapBuffer', _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP),
     ]
+
+    def set_ignore_preferred_addresses_bitmap(self, ignore):
+        self.BitmapBufferSizeInQuadwords = TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS
+        bitmap = self.IgnorePreferredAddressesBitmap
+        bitmap.SizeOfBitMap = MAX_TRACE_STORE_IDS
+        self.BitmapBuffer.TraceStoreBitmap.Raw = ignore.Raw
+
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
 
 class READONLY_TRACE_CONTEXT(Structure):
@@ -441,7 +516,7 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
     _fields_ = [
         ('NoRetire', ULONG, 1),
         ('NoPrefaulting', ULONG, 1),
-        ('NoPreferredAddressReuse', ULONG, 1),
+        ('IgnorePreferredAddresses', ULONG, 1),
         ('IsReadonly', ULONG, 1),
         ('SetEndOfFileOnClose', ULONG, 1),
         ('IsMetadata', ULONG, 1),
@@ -452,6 +527,8 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
         ('OnlyRelocationIsToSelf', ULONG, 1),
         ('HasMultipleRelocationWaits', ULONG, 1),
         ('RequiresSelfRelocation', ULONG, 1),
+        ('HasNullStoreRelocations', ULONG, 1),
+        ('IgnorePreferredAddresses', ULONG, 1),
     ]
 
 class TRACE_STORE(Structure):
@@ -734,6 +811,7 @@ InitializeReadonlyTraceContext = None
 UpdateTracerConfigWithTraceStoreInfo = None
 
 def bind(path=None, dll=None):
+    global IS_BOUND
     global TraceStoreDll
     global TraceStoreStructureSizes
     global TraceStoreStructureSizesRaw
@@ -790,6 +868,9 @@ def bind(path=None, dll=None):
         PTRACE_STORE_STRUCTURE_SIZES
     ).contents
 
+    IS_BOUND = True
+
+
 #===============================================================================
 # Python Functions
 #===============================================================================
@@ -840,12 +921,17 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
 
     return trace_stores
 
-def create_and_initialize_readonly_trace_context(rtl, allocator,
-                                                 trace_stores,
-                                                 trace_context_flags,
-                                                 num_cpus=None,
-                                                 threadpool=None,
-                                                 tp_callback_env=None):
+def create_and_initialize_readonly_trace_context(
+        rtl,
+        allocator,
+        trace_stores,
+        trace_context=None,
+        trace_context_flags=None,
+        ignore_preferred_addresses_bitmap=None,
+        num_cpus=None,
+        threadpool=None,
+        tp_callback_env=None):
+
     if not threadpool:
         threadpool = create_threadpool(num_cpus=num_cpus)
 
@@ -854,11 +940,19 @@ def create_and_initialize_readonly_trace_context(rtl, allocator,
         InitializeThreadpoolEnvironment(tp_callback_env)
         SetThreadpoolCallbackPool(tp_callback_env, threadpool)
 
-    if not trace_context_flags:
+    if trace_context_flags is not None:
         trace_context_flags = TRACE_CONTEXT_FLAGS()
 
-    trace_context = TRACE_CONTEXT()
+    if not trace_context:
+        trace_context = TRACE_CONTEXT()
+
     size = ULONG(sizeof(TRACE_CONTEXT))
+
+    if ignore_preferred_addresses_bitmap is not None:
+        trace_context_flags.IgnorePreferredAddressesBitmap = True
+        trace_context.set_ignore_preferred_addresses_bitmap(
+            ignore_preferred_addresses_bitmap
+        )
 
     success = InitializeReadonlyTraceContext(
         byref(rtl),
