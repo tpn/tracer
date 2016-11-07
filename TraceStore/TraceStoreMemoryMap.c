@@ -483,7 +483,6 @@ Return Value:
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
-    //ADDRESS_BIT_COUNTS EndAddressBitCounts;
     TRACE_STORE_ADDRESS Address;
     TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
