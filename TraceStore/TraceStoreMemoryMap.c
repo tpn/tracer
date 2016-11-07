@@ -483,7 +483,7 @@ Return Value:
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
-    ADDRESS_BIT_COUNTS EndAddressBitCounts;
+    //ADDRESS_BIT_COUNTS EndAddressBitCounts;
     TRACE_STORE_ADDRESS Address;
     TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
@@ -748,14 +748,11 @@ TryMapMemory:
         )
     );
 
-    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
-
     if (IsFirstMap || PreferredAddressUnavailable) {
 
         AddressRange.PreferredBaseAddress = PreferredBaseAddress;
         AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
         AddressRange.EndAddress = EndAddress;
-        AddressRange.NumberOfMaps = 1;
         AddressRange.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
 
         //
@@ -774,8 +771,6 @@ TryMapMemory:
             )
         );
 
-        AddressRange.BitCounts.End = EndAddressBitCounts;
-
         //
         // Register this new address range.
         //
@@ -790,9 +785,7 @@ TryMapMemory:
 
         TRY_MAPPED_MEMORY_OP {
 
-            TraceStore->AddressRange->NumberOfMaps += 1;
             TraceStore->AddressRange->EndAddress = EndAddress;
-            TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
             TraceStore->AddressRange->MappedSize.QuadPart += (
                 MemoryMap->MappingSize.QuadPart
             );
@@ -873,16 +866,13 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL IsFirstMap;
     BOOL IsReadonly;
-    BOOL IsMetadata;
-    BOOL HasRelocations;
     BOOL PreferredAddressUnavailable;
+    BOOL IgnorePreferredAddresses;
     USHORT NumaNode;
     PVOID EndAddress;
     PVOID PreferredBaseAddress;
     PVOID OriginalPreferredBaseAddress;
-    ADDRESS_BIT_COUNTS EndAddressBitCounts;
     TRACE_STORE_ADDRESS Address;
     TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
@@ -893,8 +883,7 @@ Return Value:
     //
 
     IsReadonly = IsReadonlyTraceStore(TraceStore);
-    IsMetadata = IsMetadataTraceStore(TraceStore);
-    HasRelocations = TraceStoreHasRelocations(TraceStore);
+    IgnorePreferredAddresses = TraceStore->IgnorePreferredAddresses;
 
     //
     // Ensure we're readonly.
@@ -906,22 +895,36 @@ Return Value:
     }
 
     //
-    // Make a note if this is the first memory map we've been requested to
-    // prepare.  We use this information down the track with regards to the
-    // preparation of the address range structure.
+    // Ensure we've got a mapping handle.
     //
-
-    IsFirstMap = (MemoryMap->FileOffset.QuadPart == 0);
 
     if (!MemoryMap->MappingHandle) {
         __debugbreak();
         return FALSE;
     }
 
-    OriginalPreferredBaseAddress = NULL;
-    PreferredAddressUnavailable = FALSE;
+    //
+    // If we're configured to ignore preferred base addresses, capture the
+    // original preferred base address now, and clear the preferred base
+    // address pointer we pass to MapViewOfFileExNuma().  Otherwise, use
+    // the preferred base address stored in the memory map.
+    //
 
-    PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+    if (IgnorePreferredAddresses) {
+        OriginalPreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+        PreferredBaseAddress = NULL;
+        PreferredAddressUnavailable = TRUE;
+        TraceStore->ReadonlyPreferredAddressUnavailable++;
+    } else {
+        OriginalPreferredBaseAddress = NULL;
+        PreferredBaseAddress = MemoryMap->PreferredBaseAddress;
+        PreferredAddressUnavailable = FALSE;
+    }
+
+    //
+    // Initialize the address pointer alias and make sure it has a value.
+    //
+
     AddressPointer = MemoryMap->pAddress;
 
     if (!AddressPointer) {
@@ -949,7 +952,26 @@ TryMapMemory:
         TraceStore->NumaNode
     );
 
-    if (!MemoryMap->BaseAddress) {
+    //
+    // Verify the base address and potentially retry mapping again if it looks
+    // like the mapping failed because the address couldn't be assigned.
+    //
+
+    if (IgnorePreferredAddresses) {
+
+        if (!MemoryMap->BaseAddress) {
+            TraceStore->LastError = GetLastError();
+            return FALSE;
+        }
+
+        //
+        // Restore the original preferred base address.
+        //
+
+        PreferredBaseAddress = OriginalPreferredBaseAddress;
+
+    } else if (!MemoryMap->BaseAddress) {
+
         if (PreferredBaseAddress) {
 
             //
@@ -971,12 +993,20 @@ TryMapMemory:
 
         TraceStore->LastError = GetLastError();
         return FALSE;
-    }
 
-    if (!PreferredBaseAddress) {
-        PreferredBaseAddress = MemoryMap->BaseAddress;
-    } else if (OriginalPreferredBaseAddress) {
-        PreferredBaseAddress = OriginalPreferredBaseAddress;
+    } else {
+
+        //
+        // The mapping was successful and we weren't ignoring preferred
+        // addresses.  Restore the original preferred address from either
+        // the memory map or the original value.
+        //
+
+        if (!PreferredBaseAddress) {
+            PreferredBaseAddress = MemoryMap->BaseAddress;
+        } else if (OriginalPreferredBaseAddress) {
+            PreferredBaseAddress = OriginalPreferredBaseAddress;
+        }
     }
 
     //
@@ -1026,10 +1056,9 @@ TryMapMemory:
     }
 
     //
-    // Update the address range details.  If this is the first map, or the
-    // preferred address wasn't available, fill out a new local address range
-    // structure and register it.  Otherwise, update the existing address
-    // range's number of maps counter and the bit counts for the end address.
+    // Update the address range details.  When we're readonly, there's a 1:1
+    // map between memory maps and address ranges, so we record the address
+    // range details for every succesful memory map that's been prepared.
     //
 
     EndAddress = (PVOID)(
@@ -1039,65 +1068,40 @@ TryMapMemory:
         )
     );
 
-    EndAddressBitCounts = GetTraceStoreAddressBitCounts(EndAddress);
+    AddressRange.PreferredBaseAddress = PreferredBaseAddress;
+    AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
+    AddressRange.EndAddress = EndAddress;
+    AddressRange.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
 
-    if (IsFirstMap || PreferredAddressUnavailable) {
+    //
+    // Update the bit counts.
+    //
 
-        AddressRange.PreferredBaseAddress = PreferredBaseAddress;
-        AddressRange.ActualBaseAddress = MemoryMap->BaseAddress;
-        AddressRange.EndAddress = EndAddress;
-        AddressRange.NumberOfMaps = 1;
-        AddressRange.MappedSize.QuadPart = MemoryMap->MappingSize.QuadPart;
+    AddressRange.BitCounts.Preferred = (
+        GetTraceStoreAddressBitCounts(
+            AddressRange.PreferredBaseAddress
+        )
+    );
 
-        //
-        // Update the bit counts.
-        //
+    AddressRange.BitCounts.Actual = (
+        GetTraceStoreAddressBitCounts(
+            AddressRange.ActualBaseAddress
+        )
+    );
 
-        AddressRange.BitCounts.Preferred = (
-            GetTraceStoreAddressBitCounts(
-                AddressRange.PreferredBaseAddress
-            )
-        );
+    //
+    // Register this new address range.
+    //
 
-        AddressRange.BitCounts.Actual = (
-            GetTraceStoreAddressBitCounts(
-                AddressRange.ActualBaseAddress
-            )
-        );
-
-        AddressRange.BitCounts.End = EndAddressBitCounts;
-
-        //
-        // Register this new address range.
-        //
-
-        Success = RegisterNewReadonlyTraceStoreAddressRange(
+    Success = (
+        RegisterNewReadonlyTraceStoreAddressRange(
             TraceStore,
-            &AddressRange
-        );
+            &AddressRange,
+            MemoryMap
+        )
+    );
 
-        if (!Success) {
-            return FALSE;
-        }
-
-    } else {
-
-        TRY_MAPPED_MEMORY_OP {
-
-            TraceStore->AddressRange->NumberOfMaps += 1;
-            TraceStore->AddressRange->EndAddress = EndAddress;
-            TraceStore->AddressRange->BitCounts.End = EndAddressBitCounts;
-            TraceStore->AddressRange->MappedSize.QuadPart += (
-                MemoryMap->MappingSize.QuadPart
-            );
-
-        } CATCH_STATUS_IN_PAGE_ERROR {
-
-            return FALSE;
-        }
-    }
-
-    return TRUE;
+    return Success;
 }
 
 _Use_decl_annotations_

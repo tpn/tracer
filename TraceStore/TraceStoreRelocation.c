@@ -430,10 +430,13 @@ Return Value:
             }
 
             //
-            // If this is the null store ID, continue.
+            // If this is the null store ID, make a note that we have null
+            // store relocations and continue the loop.  (A null store ID
+            // indicates the field needs to be zeroed during relocation.)
             //
 
             if (TargetStoreId == TraceStoreNullId) {
+                TraceStore->HasNullStoreRelocations = TRUE;
                 continue;
             }
 
@@ -447,14 +450,19 @@ Return Value:
 
         } while (1);
 
-        //
-        // If we didn't see any other relocation dependencies, make a note in
-        // the relevant trace store flag that the only relocations required are
-        // dependent upon ourselves, and then return success.
-        //
-
         if (NumberOfRelocationDependencies == 0) {
-            TraceStore->OnlyRelocationIsToSelf = TRUE;
+
+            //
+            // We weren't dependent on any other stores.  Set the relevant
+            // flag depending on whether or not we saw the null store.
+            //
+
+            if (TraceStore->HasNullStoreRelocations) {
+                TraceStore->OnlyRelocationIsToNull = TRUE;
+            } else {
+                TraceStore->OnlyRelocationIsToSelf = TRUE;
+            }
+
             return TRUE;
         }
 
@@ -637,6 +645,7 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     HANDLE Event;
     PTRACE_STORES TraceStores;
     TRACE_STORE_ID TraceStoreId;
@@ -652,8 +661,12 @@ Return Value:
     // Get the relocation complete event handle for this trace store.
     //
 
-    Event = TraceStoreIdToRelocationCompleteEvent(TraceStores,
-                                                  TraceStoreId);
+    Event = (
+        TraceStoreIdToRelocationCompleteEvent(
+            TraceStores,
+            TraceStoreId
+        )
+    );
 
     //
     // Signal it.  This will satisfy the waits of any other trace stores
@@ -668,8 +681,14 @@ Return Value:
     // Complete the binding.
     //
 
-    return BindNonStreamingReadonlyTraceStoreComplete(TraceContext,
-                                                      TraceStore);
+    Success = (
+        BindNonStreamingReadonlyTraceStoreComplete(
+            TraceContext,
+            TraceStore
+        )
+    );
+
+    return Success;
 }
 
 _Use_decl_annotations_
@@ -701,14 +720,22 @@ Return Value:
 {
     BOOL Success;
 
+
+    if (!TraceStore->OnlyRelocationIsToNull) {
+        __debugbreak();
+    }
+
     //
     // For now, just complete the relocation.
     //
 
-    __debugbreak();
+    Success = (
+        ReadonlyNonStreamingTraceStoreCompleteRelocation(
+            TraceContext,
+            TraceStore
+        )
+    );
 
-    Success = ReadonlyNonStreamingTraceStoreCompleteRelocation(TraceContext,
-                                                               TraceStore);
     return Success;
 }
 

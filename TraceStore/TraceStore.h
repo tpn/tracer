@@ -208,15 +208,35 @@ typedef struct _TRACE_STORE_ADDRESS_RANGE {
     PVOID PreferredBaseAddress;
     PVOID ActualBaseAddress;
     PVOID EndAddress;
-    ULARGE_INTEGER MappedSize;
-    ULONGLONG NumberOfMaps;
+    // 8    24  32
+
     struct {
         ADDRESS_BIT_COUNTS Preferred;
         ADDRESS_BIT_COUNTS Actual;
-        ADDRESS_BIT_COUNTS End;
     } BitCounts;
+    // 32   16  48
+
+    ULARGE_INTEGER MappedSize;
+
+    union {
+
+        //
+        // When readonly, the OriginalAddressRange member will be used, and will
+        // point at the address range structure used when in tracing/write mode.
+        // This is used primarily to get access to the ValidFrom and ValidTo
+        // fields of the original record, which we share this union with.
+        //
+
+        struct _TRACE_STORE_ADDRESS_RANGE *OriginalAddressRange;
+        struct {
+            LARGE_INTEGER ValidFrom;
+            LARGE_INTEGER ValidTo;
+        } Timestamp;
+    };
+
 } TRACE_STORE_ADDRESS_RANGE, *PTRACE_STORE_ADDRESS_RANGE, \
                            **PPTRACE_STORE_ADDRESS_RANGE;
+
 C_ASSERT(sizeof(TRACE_STORE_ADDRESS_RANGE) == 64);
 
 typedef struct _TRACE_STORE_EOF {
@@ -890,7 +910,17 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_CONTEXT_FLAGS {
     ULONG Valid:1;
     ULONG Readonly:1;
     ULONG AsyncInitialization:1;
-    ULONG Unused:13;
+
+    //
+    // When set, indicates that the caller has set the relevant bits in the
+    // trace context's IgnorePreferredAddressesBitmap corresponding to the
+    // trace store IDs for which they want to ignore the preferred address.
+    // Only applicable when readonly, and typically only useful for testing
+    // the relocation logic.
+    //
+
+    ULONG IgnorePreferredAddresses:1;
+
 } TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(ULONG));
 
@@ -986,12 +1016,44 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     volatile ULONG NumberOfStoresWithMultipleRelocationDependencies;
 
-    //
-    // Stash Time at the end as it's large and doesn't have any alignment
-    // requirements.
-    //
+    ULONG Padding3;
 
     TRACE_STORE_TIME Time;
+
+    //
+    // Number of quadwords our bitmap buffer provides.
+    //
+
+    ULONG BitmapBufferSizeInQuadwords;
+
+    ULONG Padding4;
+
+    //
+    // Bitmap of trace store IDs for which the caller wishes to ignore the
+    // initial preferred address when attempting to load the trace files in
+    // readonly mode.  (This is currently only really useful for testing the
+    // relocation facility.  With address space randomization, we see good
+    // distribution in initial base addresses of memory mappings that are easy
+    // to satisfy in subsequent loadings (due to the unlikelihood of a similar
+    // address being reused by the kernel).)
+    //
+
+    RTL_BITMAP IgnorePreferredAddressesBitmap;
+    union {
+        ULONGLONG BitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
+        struct _Struct_size_bytes_(sizeof(ULONG)) {
+            ULONG TraceStoreNullId:1;
+            ULONG TraceStoreEventId:1;
+            ULONG TraceStoreStringBufferId:1;
+            ULONG TraceStoreFunctionTableId:1;
+            ULONG TraceStoreFunctionTableEntryId:1;
+            ULONG TraceStorePathTableId:1;
+            ULONG TraceStorePathTableEntryId:1;
+            ULONG TraceStoreSessionId:1;
+            ULONG TraceStoreStringArrayId:1;
+            ULONG TraceStoreStringTableId:1;
+        };
+    };
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
 
@@ -1245,10 +1307,10 @@ typedef struct _TRACE_STORE {
 
     union {
         ULONG StoreFlags;
-        struct {
+        struct _Struct_size_bytes_(sizeof(ULONG)) {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
-            ULONG NoPreferredAddressReuse:1;
+            ULONG IgnorePreferredAddresses:1;
             ULONG IsReadonly:1;
             ULONG SetEndOfFileOnClose:1;
             ULONG IsMetadata:1;
@@ -1257,8 +1319,10 @@ typedef struct _TRACE_STORE {
             ULONG IsRelocationTarget:1;
             ULONG HasSelfRelocations:1;
             ULONG OnlyRelocationIsToSelf:1;
+            ULONG OnlyRelocationIsToNull:1;
             ULONG HasMultipleRelocationWaits:1;
             ULONG RequiresSelfRelocation:1;
+            ULONG HasNullStoreRelocations:1;
         };
     };
 
@@ -1495,18 +1559,25 @@ typedef struct _TRACE_STORE {
 
     //
     // The following pointer will point to the base address of an array of
+    // memory map structures of size NumberOfAddressRanges.
+    //
+
+    PTRACE_STORE_MEMORY_MAP ReadonlyMemoryMaps;
+
+    //
+    // The following pointer will point to the base address of an array of
     // address ranges of size NumberOfAddressRanges.
     //
 
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
-    volatile ULONGLONG ReadonlyAddressRangesConsumed;
 
     //
     // This counter will reflect the number of times a memory mapping couldn't
     // be satisfied at the desired address when readonly.
     //
 
-    ULONG ReadonlyPreferredAddressUnavailable;
+    volatile ULONG ReadonlyPreferredAddressUnavailable;
+    ULONG Padding;
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;

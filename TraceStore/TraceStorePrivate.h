@@ -873,9 +873,9 @@ Return Value:
 --*/
 {
     TRY_MAPPED_MEMORY_OP {
-        __movsb((PBYTE)DestAddress,
-                (PBYTE)SourceAddress,
-                sizeof(*DestAddress));
+        __movsq((PDWORD64)DestAddress,
+                (PDWORD64)SourceAddress,
+                sizeof(*DestAddress) >> 3);
         return TRUE;
     } CATCH_STATUS_IN_PAGE_ERROR {
         return FALSE;
@@ -904,12 +904,67 @@ _Success_(return != 0)
 BOOL
 (REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE)(
     _In_  PTRACE_STORE TraceStore,
-    _In_  PTRACE_STORE_ADDRESS_RANGE AddressRange
+    _In_  PTRACE_STORE_ADDRESS_RANGE AddressRange,
+    _In_  PTRACE_STORE_MEMORY_MAP MemoryMap
     );
 typedef REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE \
       *PREGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE;
 REGISTER_NEW_READONLY_TRACE_STORE_ADDRESS_RANGE \
     RegisterNewReadonlyTraceStoreAddressRange;
+
+FORCEINLINE
+PTRACE_STORE_ADDRESS_RANGE
+TraceStoreReadonlyAddressRangeFromMemoryMap(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PTRACE_STORE_MEMORY_MAP MemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that can be used to obtain the relevant readonly
+    trace store address record from just the memory map.  This is done by using
+    known pointer offsets from base arrays.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.  The trace
+        store must be readonly.
+
+    MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    A pointer to the relevant TRACE_STORE_ADDRESS_RANGE structure for this
+    memory map, NULL if an error occured.
+
+--*/
+{
+    ULONG Index;
+    ULONG_PTR Distance;
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
+    PTRACE_STORE_ADDRESS_RANGE FirstAddressRange;
+    PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRange;
+
+    FirstMemoryMap = TraceStore->ReadonlyMemoryMaps;
+    FirstAddressRange = TraceStore->ReadonlyAddressRanges;
+
+    Distance = ((ULONG_PTR)MemoryMap - (ULONG_PTR)FirstMemoryMap);
+    Index = (ULONG)(Distance >> 3);
+
+    ReadonlyAddressRange = &FirstAddressRange[Index];
+
+#ifdef _DEBUG
+    if (ReadonlyAddressRange->OriginalAddressRange->PreferredBaseAddress !=
+        ReadonlyAddressRange->PreferredBaseAddress) {
+        __debugbreak();
+        return FALSE;
+    }
+#endif
+
+    return ReadonlyAddressRange;
+}
+
 
 FORCEINLINE
 _Check_return_
@@ -943,9 +998,9 @@ Return Value:
 --*/
 {
     TRY_MAPPED_MEMORY_OP {
-        __movsb((PBYTE)DestAddressRange,
-                (PBYTE)SourceAddressRange,
-                sizeof(*DestAddressRange));
+        __movsq((PDWORD64)DestAddressRange,
+                (PDWORD64)SourceAddressRange,
+                sizeof(*DestAddressRange) >> 3);
         return TRUE;
     } CATCH_STATUS_IN_PAGE_ERROR {
         return FALSE;
