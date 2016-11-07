@@ -169,12 +169,11 @@ Return Value:
         //
 
         if (ContextFlags.IgnorePreferredAddresses) {
-            ULONG Index;
+            ULONG BitmapIndex;
             ULONG HintIndex;
             ULONG PreviousIndex;
             ULONG NumberOfSetBits;
             TRACE_STORE_ID TraceStoreId;
-            PTRACE_STORE TraceStore;
             PRTL_BITMAP Bitmap;
 
             //
@@ -210,7 +209,7 @@ Return Value:
             // Zero variables before loop.
             //
 
-            Index = 0;
+            BitmapIndex = 0;
             HintIndex = 0;
             PreviousIndex = 0;
             NumberOfSetBits = 0;
@@ -228,17 +227,18 @@ Return Value:
                 // Extract the next bit from the bitmap.
                 //
 
-                Index = Rtl->RtlFindSetBits(Bitmap, 1, HintIndex);
+                BitmapIndex = Rtl->RtlFindSetBits(Bitmap, 1, HintIndex);
 
                 //
                 // Verify we got a sane index back.
                 //
 
-                if (Index == BITS_NOT_FOUND || Index >= TraceStoreInvalidId) {
+                if (BitmapIndex == BITS_NOT_FOUND ||
+                    BitmapIndex >= TraceStoreInvalidId) {
                     return FALSE;
                 }
 
-                if (Index <= PreviousIndex) {
+                if (BitmapIndex <= PreviousIndex) {
 
                     //
                     // The search has wrapped, so exit the loop.
@@ -253,13 +253,13 @@ Return Value:
                 // and hint index.
                 //
 
-                TraceStoreId = (TRACE_STORE_ID)Index;
+                TraceStoreId = (TRACE_STORE_ID)BitmapIndex;
                 TraceStore = TraceStoreIdToTraceStore(TraceStores,
                                                       TraceStoreId);
                 TraceStore->IgnorePreferredAddresses = TRUE;
 
-                PreviousIndex = Index;
-                HintIndex = Index + 1;
+                PreviousIndex = BitmapIndex;
+                HintIndex = BitmapIndex + 1;
                 NumberOfSetBits++;
 
             } while (1);
@@ -336,6 +336,7 @@ Return Value:
     //
     // Create a manual reset event for the loading complete state.
     //
+
     ManualReset = TRUE;
     TraceContext->LoadingCompleteEvent = CreateEvent(NULL,
                                                      ManualReset,
@@ -429,7 +430,6 @@ Return Value:
         //
 
         FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-            BOOL ManualReset = TRUE;
 
             //
             // N.B.: We use ManualReset == TRUE because we want the event to
