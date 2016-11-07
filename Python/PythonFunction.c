@@ -424,7 +424,7 @@ Return Value:
 
         //
         // We were able to extract a class name.  The C Python API will have
-        // provided us with a pointer to a NULL-termianted C (char) string,
+        // provided us with a pointer to a NULL-terminated C (char) string,
         // which we'll need to take a copy of, so, record the relevant details
         // here regarding length and buffer.
         //
