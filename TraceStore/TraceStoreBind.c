@@ -351,6 +351,7 @@ Return Value:
             //
             // MetadataInfo and Info should always have a value.
             //
+
             __debugbreak();
             return FALSE;
         }
@@ -371,9 +372,8 @@ Return Value:
 
     //
     // Relocation stores get special-cased: we need to adjust a couple of
-    // pointers once mapped (Reloc->Relocations and Reloc->Bitmap.Buffer)
-    // and it's vastly easier to just leverage copy-on-write here than any
-    // other approach.
+    // pointers once mapped (Reloc->Relocations and bitmap buffer pointers)
+    // and it's vastly easier to just leverage copy-on-write here.
     //
 
     if (MetadataId == TraceStoreMetadataRelocationId) {
@@ -489,17 +489,25 @@ Return Value:
 
     Traits = *TraceStore->Traits;
 
-
     //
-    // Dispatch to the relevant handler.
+    // Default to readonly mapping, unless we're non-streaming and we have
+    // relocations.
     //
 
-    if (!IsStreamingRead(Traits)) {
-        return BindNonStreamingReadonlyTraceStore(TraceContext, TraceStore);
-    } else {
-        return BindStreamingReadonlyTraceStore(TraceContext, TraceStore);
+    TraceStore->CreateFileMappingProtectionFlags = PAGE_READONLY;
+    TraceStore->MapViewOfFileDesiredAccess = FILE_MAP_READ;
+
+    if (!IsStreamingRead(Traits) && TraceStore->HasRelocations) {
+        TraceStore->CreateFileMappingProtectionFlags = PAGE_WRITECOPY;
+        TraceStore->MapViewOfFileDesiredAccess = FILE_MAP_COPY;
     }
 
+    //
+    // (Ignore the "non-streaming" part of this name for now.  We're trialling
+    //  it with normal streaming trace stores too.)
+    //
+
+    return BindNonStreamingReadonlyTraceStore(TraceContext, TraceStore);
 }
 
 _Use_decl_annotations_
@@ -589,6 +597,13 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // This logic needs to be adjusted to account for streaming trace stores,
+    // and also factor in whether or not the trace store has relocation back
+    // references.  (If it doesn't, we can use a single map for the entire
+    // range.)
+    //
+
     NumberOfMaps = NumberOfAddressRanges.LowPart;
     AddressRanges = TraceStore->AddressRange;
     MappingSize.QuadPart = AddressRanges->MappedSize.QuadPart;
@@ -608,17 +623,10 @@ Return Value:
 
     TraceStore->NumberOfAddressRanges.QuadPart = NumberOfMaps;
 
-    //
-    // Create a file mapping for the entire file's contents up front.  Use
-    // PAGE_WRITECOPY in order to get copy-on-write semantics, which will be
-    // needed if we need to alter any of the pages for relocation purposes.
-    //
-
-    TraceStore->MapViewOfFileDesiredAccess = FILE_MAP_COPY;
     MappingHandle = CreateFileMappingNuma(
         TraceStore->FileHandle,
         NULL,
-        PAGE_WRITECOPY,
+        TraceStore->CreateFileMappingProtectionFlags,
         FileInfo.EndOfFile.HighPart,
         FileInfo.EndOfFile.LowPart,
         NULL,
