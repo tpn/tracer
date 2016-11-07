@@ -936,7 +936,7 @@ Arguments:
 Return Value:
 
     A pointer to the relevant TRACE_STORE_ADDRESS_RANGE structure for this
-    memory map, NULL if an error occured.
+    memory map, NULL if an error occurred.
 
 --*/
 {
@@ -954,13 +954,11 @@ Return Value:
 
     ReadonlyAddressRange = &FirstAddressRange[Index];
 
-#ifdef _DEBUG
     if (ReadonlyAddressRange->OriginalAddressRange->PreferredBaseAddress !=
-        ReadonlyAddressRange->PreferredBaseAddress) {
+        MemoryMap->PreferredBaseAddress) {
         __debugbreak();
         return FALSE;
     }
-#endif
 
     return ReadonlyAddressRange;
 }

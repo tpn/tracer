@@ -1057,7 +1057,7 @@ TryMapMemory:
     //
     // Update the address range details.  When we're readonly, there's a 1:1
     // map between memory maps and address ranges, so we record the address
-    // range details for every succesful memory map that's been prepared.
+    // range details for every successful memory map that's been prepared.
     //
 
     EndAddress = (PVOID)(

@@ -254,17 +254,32 @@ class _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER(Structure):
     _fields_ = [
         ('Preferred', ADDRESS_BIT_COUNTS),
         ('Actual', ADDRESS_BIT_COUNTS),
-        ('End', ADDRESS_BIT_COUNTS),
     ]
 
 class TRACE_STORE_ADDRESS_RANGE(Structure):
+    pass
+PTRACE_STORE_ADDRESS_RANGE = POINTER(TRACE_STORE_ADDRESS_RANGE)
+
+class _TRACE_STORE_ADDRESS_RANGE_TIMESTAMP_INNER(Union):
     _fields_ = [
+        ('ValidFrom', LARGE_INTEGER),
+        ('ValidTo', LARGE_INTEGER),
+    ]
+
+class _TRACE_STORE_ADDRESS_RANGE_UNION1(Union):
+    _fields_ = [
+        ('OriginalAddressRange', PTRACE_STORE_ADDRESS_RANGE),
+        ('Timestamp', _TRACE_STORE_ADDRESS_TIMESTAMP),
+    ]
+
+TRACE_STORE_ADDRESS_RANGE._fields_ = [
         ('PreferredBaseAddress', PVOID),
         ('ActualBaseAddress', PVOID),
-        ('NumberOfMaps', ULONG),
-        ('BitCounts', _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER)
+        ('EndAddress', PVOID),
+        ('BitCounts', _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER),
+        ('MappedSize', ULARGE_INTEGER),
+        ('u1', _TRACE_STORE_ADDRESS_RANGE_UNION1),
     ]
-PTRACE_STORE_ADDRESS_RANGE = POINTER(TRACE_STORE_ADDRESS_RANGE)
 
 class TRACE_STORE_EOF(Structure):
     _fields_ = [
@@ -528,7 +543,6 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
         ('HasMultipleRelocationWaits', ULONG, 1),
         ('RequiresSelfRelocation', ULONG, 1),
         ('HasNullStoreRelocations', ULONG, 1),
-        ('IgnorePreferredAddresses', ULONG, 1),
     ]
 
 class TRACE_STORE(Structure):
@@ -625,10 +639,10 @@ TRACE_STORE._fields_ = [
     ('NumberOfAddresses', ULARGE_INTEGER),
     ('NumberOfAddressRanges', ULARGE_INTEGER),
     ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
+    ('ReadonlyMemoryMaps', PTRACE_STORE_MEMORY_MAP),
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
-    ('ReadonlyAddressRangesConsumed', ULONGLONG),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('Dummy', PVOID),
+    ('Padding', ULONGLONG),
 ]
 
 class TRACE_STORES_RUNDOWN(Structure):
@@ -753,6 +767,9 @@ class TRACE_STORE_STRUCTURE_SIZES(Structure):
         ('TraceStoreInfo', ULONG),
         ('TraceStoreMetadataInfo', ULONG),
         ('TraceStoreReloc', ULONG),
+        ('TraceStoreAddress', ULONG),
+        ('TraceStoreAddressRange', ULONG),
+        ('AddressBitCounts', ULONG),
     ]
 PTRACE_STORE_STRUCTURE_SIZES = POINTER(TRACE_STORE_STRUCTURE_SIZES);
 
@@ -764,6 +781,9 @@ OurTraceStoreStructureSizes = {
     'TraceStoreInfo': sizeof(TRACE_STORE_INFO),
     'TraceStoreMetadataInfo': sizeof(TRACE_STORE_METADATA_INFO),
     'TraceStoreReloc': sizeof(TRACE_STORE_RELOC),
+    'TraceStoreAddress': sizeof(TRACE_STORE_ADDRESS),
+    'TraceStoreAddressRange': sizeof(TRACE_STORE_ADDRESS_RANGE),
+    'AddressBitCounts': sizeof(ADDRESS_BIT_COUNTS),
 }
 
 #===============================================================================

@@ -1069,6 +1069,9 @@ typedef struct _TRACE_STORE_STRUCTURE_SIZES {
     ULONG TraceStoreInfo;
     ULONG TraceStoreMetadataInfo;
     ULONG TraceStoreReloc;
+    ULONG TraceStoreAddress;
+    ULONG TraceStoreAddressRange;
+    ULONG AddressBitCounts;
 } TRACE_STORE_STRUCTURE_SIZES, *PTRACE_STORE_STRUCTURE_SIZES;
 
 typedef
@@ -1577,7 +1580,6 @@ typedef struct _TRACE_STORE {
     //
 
     volatile ULONG ReadonlyPreferredAddressUnavailable;
-    ULONG Padding;
 
 #ifdef _TRACE_STORE_EMBED_PATH
     UNICODE_STRING Path;

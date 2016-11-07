@@ -253,7 +253,10 @@ TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
     sizeof(TRACE_STORE_START_TIME),
     sizeof(TRACE_STORE_INFO),
     sizeof(TRACE_STORE_METADATA_INFO),
-    sizeof(TRACE_STORE_RELOC)
+    sizeof(TRACE_STORE_RELOC),
+    sizeof(TRACE_STORE_ADDRESS),
+    sizeof(TRACE_STORE_ADDRESS_RANGE),
+    sizeof(ADDRESS_BIT_COUNTS),
 };
 
 LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
