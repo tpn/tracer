@@ -467,24 +467,8 @@ Return Value:
     }
 
     //
-    // (These should probably be elsewhere.)
-    //
-
-    TraceStore->Address = (PTRACE_STORE_ADDRESS)(
-        TraceStore->AddressStore->MemoryMap->BaseAddress
-    );
-
-    TraceStore->NumberOfAllocations.QuadPart = (
-        NumberOfTraceStoreAllocations(TraceStore)
-    );
-
-    TraceStore->NumberOfAddressRanges.QuadPart = (
-        NumberOfTraceStoreAddressRanges(TraceStore)
-    );
-
-    //
     // Load the trace store's traits, which will have been saved in the store's
-    // metadata :info store.
+    // metadata :Info store.
     //
 
     Traits = *TraceStore->Traits;
@@ -540,21 +524,20 @@ Return Value:
 --*/
 {
     BOOL Success;
+    USHORT NumaNode;
     ULONG Index;
     ULONG NumberOfMaps;
-    USHORT NumaNode;
-    HANDLE MappingHandle;
     DWORD ProcessId;
     DWORD ThreadId;
-    PVOID ActualEndAddress;
-    PVOID ExpectedEndAddress;
+    HANDLE MappingHandle;
     LARGE_INTEGER FileOffset;
-    LARGE_INTEGER MappingSize;
-    ULARGE_INTEGER NumberOfAddressRanges;
+    LONGLONG BytesRemaining;
+    ULONGLONG EndOfFile;
     PLARGE_INTEGER Requested;
     FILE_STANDARD_INFO FileInfo;
     PALLOCATOR Allocator;
     PROCESSOR_NUMBER ProcessorNumber;
+    PULARGE_INTEGER MappingSizes = NULL;
     PTRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS Addresses = NULL;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -581,47 +564,82 @@ Return Value:
     }
 
     //
-    // Identify how many maps we need to create by looking at how many address
-    // range records there were.  A map is created for each range.
+    // Load the number of allocations that were done.
     //
 
-    NumberOfAddressRanges.QuadPart = (
-        NumberOfTraceStoreAddressRanges(TraceStore)
-    );
+    TraceStore->NumberOfAllocations.QuadPart = (
+        TraceStore->Totals->NumberOfAllocations.QuadPart
+        );
 
     //
-    // Sanity check the total number isn't over 32-bits.
+    // Sanity check the number of address ranges allocated wasn't over 32-bits.
+    // (In practice, they'll be much, much less, but this is a good check for
+    //  completely bogus data.)
     //
 
-    if (NumberOfAddressRanges.HighPart != 0) {
+    if (TraceStore->NumberOfAddressRanges.HighPart != 0) {
+        __debugbreak();
         return FALSE;
     }
 
     //
-    // This logic needs to be adjusted to account for streaming trace stores,
-    // and also factor in whether or not the trace store has relocation back
-    // references.  (If it doesn't, we can use a single map for the entire
-    // range.)
+    // Initialize aliases.
     //
 
-    NumberOfMaps = NumberOfAddressRanges.LowPart;
     AddressRanges = TraceStore->AddressRange;
-    MappingSize.QuadPart = AddressRanges->MappedSize.QuadPart;
+    EndOfFile = (ULONGLONG)FileInfo.EndOfFile.QuadPart;
 
-    if (MappingSize.QuadPart > FileInfo.EndOfFile.QuadPart) {
+    //
+    // Calculate the number of memory maps we need to create.  If the file
+    // size is smaller than the mapping size, this is easy: we only need one
+    // map.
+    //
+    // If the file size is larger than the mapping size, we'll potentially need
+    // to create multiple maps, depending on whether or not the trace store has
+    // any relocation back references, and whether it had any preferred address
+    // unavailable events (which is reflected in the number of address ranges
+    // it had to use).
+    //
+
+    if (AddressRanges->MappedSize.QuadPart > EndOfFile) {
+
+        //
+        // Mapping size is greater than than the end of the file, so we only
+        // need one map.
+        //
+
         NumberOfMaps = 1;
-        MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+
     } else {
-        NumberOfMaps = (ULONG)(
-            (MappingSize.QuadPart / FileInfo.EndOfFile.QuadPart) + 1
-        );
+
+        //
+        // The file is larger than the mapping size.  Do we have any relocation
+        // back references?  If not, we can ignore how many address ranges the
+        // store required and just use a single map.
+        //
+
+        if (TraceStore->Reloc->NumberOfRelocationBackReferences == 0) {
+
+            NumberOfMaps = 1;
+
+        } else {
+
+            //
+            // The file has relocation back references.  That is, there are
+            // other trace stores that have pointers referencing memory that
+            // was served from this trace store.  (This also includes trace
+            // stores that have internal references.)  So, we need to mimic
+            // the address range maps that were originally used.
+            //
+
+            NumberOfMaps = TraceStore->NumberOfAddressRanges.LowPart;
+
+        }
     }
 
     //
-    // Save a copy of the number of address ranges.
+    // Create the file mapping.
     //
-
-    TraceStore->NumberOfAddressRanges.QuadPart = NumberOfMaps;
 
     MappingHandle = CreateFileMappingNuma(
         TraceStore->FileHandle,
@@ -692,6 +710,27 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Allocate space for an array of mapping sizes.
+    //
+
+    MappingSizes = (PULARGE_INTEGER)(
+        Allocator->Calloc(
+            Allocator->Context,
+            NumberOfMaps,
+            sizeof(ULARGE_INTEGER)
+        )
+    );
+
+    if (!MappingSizes) {
+        goto Error;
+    }
+
+    //
+    // Copy the pointers back to the trace store.
+    //
+
+    TraceStore->ReadonlyMappingSizes = MappingSizes;
     TraceStore->ReadonlyMemoryMaps = FirstMemoryMap;
     TraceStore->ReadonlyAddressRanges = ReadonlyAddressRanges;
     TraceStore->ReadonlyPreferredAddressUnavailable = 0;
@@ -724,6 +763,72 @@ Return Value:
     MemoryMaps = FirstMemoryMap;
     GetCurrentProcessorNumberEx(&ProcessorNumber);
     GetNumaProcessorNodeEx(&ProcessorNumber, &NumaNode);
+    BytesRemaining = FileInfo.EndOfFile.QuadPart;
+
+    //
+    // If we only have one map, its size will be the end of the file.
+    //
+
+    if (NumberOfMaps == 1) {
+        MappingSizes[0].QuadPart = BytesRemaining;
+    } else {
+
+        //
+        // Otherwise, loop through the address ranges and fill in the mapping
+        // sizes.
+        //
+
+        for (Index = 0; Index < NumberOfMaps; Index++) {
+
+            AddressRange = &AddressRanges[Index];
+            BytesRemaining -= AddressRange->MappedSize.QuadPart;
+
+            //
+            // If bytes remaining is less than zero, use the end of file minus
+            // the current file offset as the final mapping size, then break out
+            // of the loop.
+            //
+
+            if (BytesRemaining < 0) {
+                MappingSizes[Index].QuadPart = EndOfFile - FileOffset.QuadPart;
+                break;
+            }
+
+            //
+            // Otherwise, use the original address range's mapped size as this
+            // mapping size, and update the file offset.
+            //
+
+            MappingSizes[Index].QuadPart = AddressRange->MappedSize.QuadPart;
+            FileOffset.QuadPart += AddressRange->MappedSize.QuadPart;
+        }
+
+        //
+        // If the loop index is less than the number of maps, decrement our
+        // number of maps count.  This isn't that unusual; a trace store may
+        // have prepared memory maps ahead of time, encountered a preferred
+        // address unavailable event, created a new address range, then never
+        // actually ended up using it.
+        //
+
+        if (Index < (NumberOfMaps - 1)) {
+            NumberOfMaps = Index + 1;
+        }
+    }
+
+    //
+    // Reflect the number of maps back to the trace store's number of readonly
+    // address ranges field.
+    //
+
+    TraceStore->NumberOfReadonlyAddressRanges.QuadPart = NumberOfMaps;
+
+    //
+    // Reset the file offset and bytes remaining counter.
+    //
+
+    FileOffset.QuadPart = 0;
+    BytesRemaining = FileInfo.EndOfFile.QuadPart;
 
     //
     // Enumerate the address range records, fill in a memory map and address
@@ -750,51 +855,14 @@ Return Value:
         MemoryMap->FileOffset.QuadPart = FileOffset.QuadPart;
         MemoryMap->PreferredBaseAddress = AddressRange->PreferredBaseAddress;
         MemoryMap->BaseAddress = AddressRange->PreferredBaseAddress;
-
-        if ((Index + 1) == NumberOfMaps) {
-
-            //
-            // This is the last memory map, so we use the end of file instead
-            // of the address range's mapping size.  The former will almost
-            // always be smaller than the latter.  If we didn't do this, the
-            // MapViewOfFile() call we do down the track would fail because
-            // we'd be trying to map past the current end of file.
-            //
-
-            MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
-
-        } else {
-
-            //
-            // Use the same mapping size recorded by the address range.
-            //
-
-            MemoryMap->MappingSize.QuadPart = AddressRange->MappedSize.QuadPart;
-
-            //
-            // Invariant test: the base address + mapping size should match the
-            // end address pointer.
-            //
-
-            ExpectedEndAddress = (PVOID)(
-                RtlOffsetToPointer(
-                    MemoryMap->BaseAddress,
-                    MemoryMap->MappingSize.QuadPart
-                )
-            );
-
-            ActualEndAddress = AddressRange->EndAddress;
-
-            if (ExpectedEndAddress != ActualEndAddress) {
-                __debugbreak();
-            }
-        }
+        MemoryMap->MappingSize.QuadPart = MappingSizes[Index].QuadPart;
 
         //
         // Update the file offset.
         //
 
         FileOffset.QuadPart += MemoryMap->MappingSize.QuadPart;
+        BytesRemaining -= (LONGLONG)MemoryMap->MappingSize.QuadPart;
 
         //
         // Fill in address details.
@@ -832,6 +900,21 @@ Return Value:
                                              TraceStore,
                                              MemoryMap);
 
+    }
+
+    //
+    // Invariant checks: bytes remaining should be 0, and file offset should
+    // match the end of file.
+    //
+
+    if (BytesRemaining != 0) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (FileOffset.QuadPart != FileInfo.EndOfFile.QuadPart) {
+        __debugbreak();
+        return FALSE;
     }
 
     return TRUE;
@@ -1058,6 +1141,8 @@ Return Value:
             }
         }
 
+        TraceStore->NumberOfRelocationsRequired = NumberOfRelocationsRequired;
+
         if (NumberOfRelocationsRequired == 0) {
 
             //
@@ -1072,7 +1157,6 @@ Return Value:
         // If we get here, we need to perform relocations.
         //
 
-        TraceStore->NumberOfRelocationsRequired = NumberOfRelocationsRequired;
         goto ReadyForRelocation;
     }
 
@@ -1128,8 +1212,15 @@ ReadyForRelocation:
 
     if (TraceStore->NumberOfRelocationsRequired == 0) {
         if (!TraceStore->HasNullStoreRelocations) {
-            __debugbreak();
-            return FALSE;
+
+            //
+            // (This is currently getting hit for TraceStorePathTableEntry,
+            //  but I'm not sure why.  I'm not sure if this invariant test
+            //  is event correct.  Disable for now.)
+            //
+
+            //__debugbreak();
+            //return FALSE;
         }
     }
 

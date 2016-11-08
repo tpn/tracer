@@ -47,6 +47,7 @@ from ..wintypes import (
     LARGE_INTEGER,
     ULARGE_INTEGER,
     UNICODE_STRING,
+    PULARGE_INTEGER,
     PUNICODE_STRING,
     PROCESSOR_NUMBER,
     PTP_CLEANUP_GROUP,
@@ -638,11 +639,13 @@ TRACE_STORE._fields_ = [
     ('NumberOfAllocations', ULARGE_INTEGER),
     ('NumberOfAddresses', ULARGE_INTEGER),
     ('NumberOfAddressRanges', ULARGE_INTEGER),
+    ('NumberOfReadonlyAddressRanges', ULARGE_INTEGER),
     ('ReadonlyAddresses', PTRACE_STORE_ADDRESS),
     ('ReadonlyMemoryMaps', PTRACE_STORE_MEMORY_MAP),
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
+    ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('Padding', ULONGLONG),
+    ('Dummy', PVOID),
 ]
 
 class TRACE_STORES_RUNDOWN(Structure):

@@ -39,7 +39,7 @@ CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
     MetadataInfoMetadataBindComplete,       // MetadataInfo
     AllocationMetadataBindComplete,         // Allocation
     RelocationMetadataBindComplete,         // Relocation
-    NULL,                                   // Address
+    AddressMetadataBindComplete,            // Address
     AddressRangeMetadataBindComplete,       // AddressRange
     NULL,                                   // Bitmap
     InfoMetadataBindComplete                // Info
@@ -267,7 +267,7 @@ AllocationMetadataBindComplete(
 
 Routine Description:
 
-    This is the bind complete callback routine for :allocation metadata.
+    This is the bind complete callback routine for :Allocation metadata.
     It initializes the TraceStore->Allocation pointer.
 
 Arguments:
@@ -290,6 +290,63 @@ Return Value:
     TraceStore->Allocation = (PTRACE_STORE_ALLOCATION)(
         TraceStore->AllocationStore->MemoryMap->BaseAddress
     );
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+AddressMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE AddressStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :Address metadata.  When
+    readonly, it initializes the TraceStore->Address pointer to the base
+    address of the first memory map.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    AddressStore - Supplies a pointer to the :Address TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    TraceStore = AddressStore->TraceStore;
+
+    if (!TraceStore->IsReadonly) {
+        return TRUE;
+    }
+
+    //
+    // Point TraceStore->Address at the base of the address store's memory map.
+    //
+
+    TraceStore->Address = (PTRACE_STORE_ADDRESS)(
+        TraceStore->AddressStore->MemoryMap->BaseAddress
+    );
+
+    //
+    // Load the number of addresses that were allocated.
+    //
+
+    TraceStore->NumberOfAddresses.QuadPart = (
+        AddressStore->Totals->NumberOfAllocations.QuadPart
+    );
+
 
     return TRUE;
 }
@@ -352,6 +409,15 @@ Return Value:
         TraceStore->AddressRangeStore->MemoryMap->BaseAddress
     );
 
+    //
+    // Load the number of address ranges that were originally allocated by the
+    // trace store.
+    //
+
+    TraceStore->NumberOfAddressRanges.QuadPart = (
+        TraceStore->AddressRangeStore->Totals->NumberOfAllocations.QuadPart
+    );
+
     return TRUE;
 }
 
@@ -366,7 +432,7 @@ InfoMetadataBindComplete(
 
 Routine Description:
 
-    This is the bind complete callback routine for :info stores.
+    This is the bind complete callback routine for :Info stores.
 
     It calls LoadTraceStoreTInfo() if this is a readonly session,
     or SaveTraceStoreRelocationInfo() if this is a normal writable session.
