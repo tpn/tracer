@@ -569,7 +569,7 @@ Return Value:
 
     TraceStore->NumberOfAllocations.QuadPart = (
         TraceStore->Totals->NumberOfAllocations.QuadPart
-        );
+    );
 
     //
     // Sanity check the number of address ranges allocated wasn't over 32-bits.
