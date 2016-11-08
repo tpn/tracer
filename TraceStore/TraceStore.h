@@ -1552,27 +1552,35 @@ typedef struct _TRACE_STORE {
     ULARGE_INTEGER NumberOfAllocations;
     ULARGE_INTEGER NumberOfAddresses;
     ULARGE_INTEGER NumberOfAddressRanges;
+    ULARGE_INTEGER NumberOfReadonlyAddressRanges;
 
     //
     // The following pointer will point to the base address of an array of
-    // address structures of size NumberOfAddresses.
+    // address structures of size NumberOfReadonlyAddressRanges.
     //
 
     PTRACE_STORE_ADDRESS ReadonlyAddresses;
 
     //
     // The following pointer will point to the base address of an array of
-    // memory map structures of size NumberOfAddressRanges.
+    // memory map structures of size NumberOfReadonlyAddressRanges.
     //
 
     PTRACE_STORE_MEMORY_MAP ReadonlyMemoryMaps;
 
     //
     // The following pointer will point to the base address of an array of
-    // address ranges of size NumberOfAddressRanges.
+    // address ranges of size NumberOfReadonlyAddressRanges.
     //
 
     PTRACE_STORE_ADDRESS_RANGE ReadonlyAddressRanges;
+
+    //
+    // The following pointer will point to the base address of an array of
+    // mapping sizes of size NumberOfReadonlyAddressRanges.
+    //
+
+    PULARGE_INTEGER ReadonlyMappingSizes;
 
     //
     // This counter will reflect the number of times a memory mapping couldn't

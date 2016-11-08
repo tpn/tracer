@@ -262,6 +262,7 @@ TRACE_STORE_METADATA_ID_TO_STORE TraceStoreMetadataIdToStore;
 BIND_COMPLETE MetadataInfoMetadataBindComplete;
 BIND_COMPLETE AllocationMetadataBindComplete;
 BIND_COMPLETE RelocationMetadataBindComplete;
+BIND_COMPLETE AddressMetadataBindComplete;
 BIND_COMPLETE AddressRangeMetadataBindComplete;
 BIND_COMPLETE InfoMetadataBindComplete;
 
@@ -950,14 +951,16 @@ Return Value:
     FirstAddressRange = TraceStore->ReadonlyAddressRanges;
 
     Distance = ((ULONG_PTR)MemoryMap - (ULONG_PTR)FirstMemoryMap);
-    Index = (ULONG)(Distance >> 3);
+    Index = (ULONG)(Distance / sizeof(*MemoryMap));
 
     ReadonlyAddressRange = &FirstAddressRange[Index];
 
-    if (ReadonlyAddressRange->OriginalAddressRange->PreferredBaseAddress !=
-        MemoryMap->PreferredBaseAddress) {
-        __debugbreak();
-        return FALSE;
+    if ((Index + 1) < TraceStore->NumberOfReadonlyAddressRanges.LowPart) {
+        if (ReadonlyAddressRange->OriginalAddressRange->PreferredBaseAddress !=
+            MemoryMap->PreferredBaseAddress) {
+            __debugbreak();
+            return FALSE;
+        }
     }
 
     return ReadonlyAddressRange;
