@@ -526,6 +526,7 @@ UNMAP_TRACE_STORE_MEMORY_MAP UnmapTraceStoreMemoryMap;
 typedef
 VOID
 (RUNDOWN_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore,
     _In_opt_ PTRACE_STORE_MEMORY_MAP MemoryMap
     );
 typedef RUNDOWN_TRACE_STORE_MEMORY_MAP *PRUNDOWN_TRACE_STORE_MEMORY_MAP;
@@ -1580,6 +1581,145 @@ Return Value:
     //
 
     ReturnFreeTraceStoreMemoryMap(TraceStore, PrefaultMemoryMap);
+}
+
+//
+// TraceStoreMemoryMap-related inline functions.
+//
+
+FORCEINLINE
+VOID
+FinalizeTraceStoreAddressTimes(
+    _In_ PTRACE_STORE TraceStore,
+    _In_opt_ PTRACE_STORE_ADDRESS AddressPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for updating the final timestamps of a trace
+    store address record.  It is called when a memory map is being closed or
+    rundown.
+
+Arguments:
+
+    TraceStore - Supplies a pointer to a trace store structure.  This is used
+        to call TraceStoreQueryPerformanceCounter() in order to calculate the
+        final elapsed times.
+
+    AddressPointer - Supplies an optional pointer to the trace store address
+        structure to rundown.  If NULL, this routine returns immediately.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    LARGE_INTEGER PreviousTimestamp;
+    LARGE_INTEGER Elapsed;
+    PLARGE_INTEGER ElapsedPointer;
+    TRACE_STORE_ADDRESS Address;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(AddressPointer)) {
+        return;
+    }
+
+    //
+    // Take a local copy of the address record, update timestamps and
+    // calculate elapsed time, then save the local record back to the
+    // backing TRACE_STORE_ADDRESS struct.
+    //
+
+    if (!CopyTraceStoreAddress(&Address, AddressPointer)) {
+        return;
+    }
+
+    //
+    // Get a local copy of the elapsed start time.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+
+    //
+    // Copy it to the Released timestamp.
+    //
+
+    Address.Timestamp.Released.QuadPart = Elapsed.QuadPart;
+
+    //
+    // Determine what state this memory map was in at the time of being closed.
+    // For a memory map that has progressed through the normal lifecycle, it'll
+    // typically be in 'AwaitingRelease' at this point.  However, we could be
+    // getting called against an active memory map or prepared memory map if
+    // we're getting released as a result of closing the trace store.
+    //
+
+    if (Address.Timestamp.Retired.QuadPart != 0) {
+
+        //
+        // Normal memory map awaiting retirement.  Elapsed.AwaitingRelease
+        // will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Retired.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingRelease;
+
+    } else if (Address.Timestamp.Consumed.QuadPart != 0) {
+
+        //
+        // An active memory map.  Elapsed.Active will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Consumed.QuadPart;
+        ElapsedPointer = &Address.Elapsed.Active;
+
+    } else if (Address.Timestamp.Prepared.QuadPart != 0) {
+
+        //
+        // A prepared memory map awaiting consumption.
+        // Elapsed.AwaitingConsumption will receive our elapsed time.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Prepared.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingConsumption;
+
+    } else {
+
+        //
+        // A memory map that wasn't even prepared.  Highly unlikely.
+        //
+
+        PreviousTimestamp.QuadPart = Address.Timestamp.Requested.QuadPart;
+        ElapsedPointer = &Address.Elapsed.AwaitingPreparation;
+    }
+
+    //
+    // Calculate the elapsed time.
+    //
+
+    Elapsed.QuadPart -= PreviousTimestamp.QuadPart;
+
+    //
+    // Update the target elapsed time.
+    //
+
+    ElapsedPointer->QuadPart = Elapsed.QuadPart;
+
+    //
+    // Copy the local record back to the backing store and ignore the return
+    // value.
+    //
+
+    if (!CopyTraceStoreAddress(AddressPointer, &Address)) {
+        NOTHING;
+    }
+
+    return;
 }
 
 

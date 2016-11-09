@@ -1079,8 +1079,8 @@ Return Value:
     // Rundown the previous and current memory maps synchronously.
     //
 
-    RundownTraceStoreMemoryMap(TraceStore->PrevMemoryMap);
-    RundownTraceStoreMemoryMap(TraceStore->MemoryMap);
+    RundownTraceStoreMemoryMap(TraceStore, TraceStore->PrevMemoryMap);
+    RundownTraceStoreMemoryMap(TraceStore, TraceStore->MemoryMap);
 
     //
     // Pop any prepared memory maps off the next memory map list and run those
@@ -1088,7 +1088,7 @@ Return Value:
     //
 
     while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
-        RundownTraceStoreMemoryMap(MemoryMap);
+        RundownTraceStoreMemoryMap(TraceStore, MemoryMap);
     }
 
     //
