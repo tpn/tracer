@@ -38,7 +38,7 @@ Arguments:
         (e.g. non-metadata).
 
     AddressRange - Supplies a pointer to a TRACE_STORE_ADDRESS_RANGE structure
-        that will be used to initialized the newly allocated address range.
+        that will be used to initialize the newly allocated address range.
 
 Return Value:
 
