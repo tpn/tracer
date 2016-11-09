@@ -57,30 +57,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PGUpdate|Win32'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PGUpdate|x64'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PGInstrument|Win32'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PGInstrument|x64'">
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -107,6 +83,7 @@
     <ClCompile Include="TraceStoreAddress.c" />
     <ClCompile Include="TraceStoreAddressRange.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
+    <ClCompile Include="TraceStoreAllocator.c" />
     <ClCompile Include="TraceStoreBind.c" />
     <ClCompile Include="TraceStoreCallbacks.c" />
     <ClCompile Include="TraceStoreConstants.c" />
@@ -123,13 +100,7 @@
     <ClCompile Include="TraceStoreTime.c" />
     <ClCompile Include="TraceStoreTraits.c" />
   </ItemGroup>
-  <!--
-  <ItemGroup>
-    <MASM Include="..\Rtl\__chkstk.s" Condition="'$(Platform)' == 'x64'" />
-  </ItemGroup>
-  -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

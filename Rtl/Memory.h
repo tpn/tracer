@@ -128,6 +128,7 @@ typedef struct _ALLOCATOR {
     union {
         PVOID Context2;
         HANDLE HeapHandle;
+        struct _TRACE_STORE *TraceStore;
     };
 
     //

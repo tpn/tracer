@@ -494,6 +494,7 @@ Return Value:
     READ_REG_DWORD_FLAG(DisableFileFlagSequentialScan, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagRandomAccess, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
+    READ_REG_DWORD_FLAG(ProfileOnly, FALSE);
 
     //
     // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has

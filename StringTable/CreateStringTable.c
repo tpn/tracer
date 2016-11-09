@@ -17,7 +17,8 @@ Abstract:
 _Use_decl_annotations_
 PSTRING_TABLE
 CreateStringTable(
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY StringArray,
     BOOL CopyArray
     )
@@ -25,7 +26,7 @@ CreateStringTable(
 
 Routine Description:
 
-    Allocates space for a STRING_TABLE structure using the provided Allocator,
+    Allocates space for a STRING_TABLE structure using the provided allocators,
     then initializes it using the provided STRING_ARRAY.  If CopyArray is set
     to TRUE, the routine will copy the string array such that the caller is
     free to destroy it after the table has been successfully created.  If it
@@ -39,9 +40,14 @@ Routine Description:
 
 Arguments:
 
-    Allocator - Supplies a pointer to an ALLOCATOR structure which will
-        be used to allocate all memory required by the structure during its
-        creation.
+    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
+        may be used to create the STRING_ARRAY if it cannot fit within the
+        padding of the STRING_TABLE structure.  This is kept separate from the
+        StringTableAllocator due to the stringent alignment requirements of the
+        string table.
 
     StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
         that contains the STRING structures that are to be added to the table.
@@ -66,7 +72,11 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -85,7 +95,11 @@ Return Value:
     //
 
     if (NumberOfTables == 1) {
-        return CreateSingleStringTable(Allocator, StringArray, CopyArray);
+
+        return CreateSingleStringTable(StringTableAllocator,
+                                       StringArrayAllocator,
+                                       StringArray,
+                                       CopyArray);
     }
 
     return NULL;
@@ -95,7 +109,8 @@ Return Value:
 _Use_decl_annotations_
 PSTRING_TABLE
 CreateSingleStringTable(
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY SourceStringArray,
     BOOL CopyArray
     )
@@ -126,7 +141,11 @@ Routine Description:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -145,7 +164,8 @@ Routine Description:
     if (CopyArray) {
 
         StringArray = CopyStringArray(
-            Allocator,
+            StringTableAllocator,
+            StringArrayAllocator,
             SourceStringArray,
             FIELD_OFFSET(STRING_TABLE, StringArray),
             sizeof(STRING_TABLE),
@@ -180,8 +200,8 @@ Routine Description:
     if (!StringTable) {
 
         StringTable = (PSTRING_TABLE)(
-            Allocator->Calloc(
-                Allocator->Context,
+            StringTableAllocator->Calloc(
+                StringTableAllocator->Context,
                 1,
                 sizeof(STRING_TABLE)
             )
@@ -198,7 +218,9 @@ Routine Description:
     //
 
     if (!AssertStringTableFieldAlignment(StringTable)) {
-        DestroyStringTable(Allocator, StringTable);
+        DestroyStringTable(StringTableAllocator,
+                           StringArrayAllocator,
+                           StringTable);
         return NULL;
     }
 
@@ -337,7 +359,8 @@ _Use_decl_annotations_
 PSTRING_TABLE
 CreateStringTableFromDelimitedString(
     PRTL Rtl,
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING String,
     CHAR Delimiter
     )
@@ -358,9 +381,14 @@ Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    Allocator - Supplies a pointer to an ALLOCATOR structure which will
-        be used to allocate all memory required by the structure during its
-        creation.
+    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
+        may be used to create the STRING_ARRAY if it cannot fit within the
+        padding of the STRING_TABLE structure.  This is kept separate from the
+        StringTableAllocator due to the stringent alignment requirements of the
+        string table.
 
     String - Supplies a pointer to a STRING structure that represents the
         delimited string to construct a STRING_ARRAY and then subsequent
@@ -377,6 +405,7 @@ Return Value:
 
 --*/
 {
+    PVOID Address;
     PSTRING_ARRAY StringArray;
     PSTRING_TABLE StringTable;
     PSTRING_TABLE NewTable;
@@ -389,7 +418,11 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -403,7 +436,8 @@ Return Value:
 
     StringArray = CreateStringArrayFromDelimitedString(
         Rtl,
-        Allocator,
+        StringTableAllocator,
+        StringArrayAllocator,
         String,
         Delimiter,
         FIELD_OFFSET(STRING_TABLE, StringArray),
@@ -419,11 +453,12 @@ Return Value:
     // Create the string table from the newly-created string array.
     //
 
-    NewTable = CreateStringTable(Allocator, StringArray, FALSE);
+    NewTable = CreateStringTable(StringTableAllocator,
+                                 StringArrayAllocator,
+                                 StringArray,
+                                 FALSE);
 
     if (!NewTable) {
-
-        PVOID Address;
 
         //
         // If StringTable has a value here, it is the address that should be
@@ -431,11 +466,12 @@ Return Value:
         //
 
         Address = (PVOID)StringTable;
-        if (!Address) {
+        if (Address) {
+            StringTableAllocator->Free(StringTableAllocator->Context, Address);
+        } else {
             Address = (PVOID)StringArray;
+            StringArrayAllocator->Free(StringArrayAllocator->Context, Address);
         }
-
-        Allocator->Free(Allocator->Context, Address);
     }
 
     return NewTable;
@@ -447,6 +483,7 @@ CreateStringTableFromDelimitedEnvironmentVariable(
     PRTL Rtl,
     PALLOCATOR Allocator,
     PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTR EnvironmentVariableName,
     CHAR Delimiter
     )
@@ -467,11 +504,17 @@ Arguments:
         variable.
 
     StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
-        will be used for creating the STRING_TABLE (and backing STRING_ARRAY).
-        This allocator is kept separate from the one above due to the fact that
-        string tables have stringent alignment requirements and will be using
-        custom allocators that wouldn't necessarily be suitable for the temp
-        buffer created for the environment variable's value.
+        will be used for creating the STRING_TABLE.  This allocator is kept
+        separate from the one above due to the fact that string tables have
+        stringent alignment requirements and will be using custom allocators
+        that wouldn't necessarily be suitable for the temp buffer created for
+        the environment variable's value.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
+        may be used to create the STRING_ARRAY if it cannot fit within the
+        padding of the STRING_TABLE structure.  This is kept separate from the
+        StringTableAllocator due to the stringent alignment requirements of the
+        string table.
 
     EnvironmentVariableName - Supplies a pointer to a NULL-terminated string
         representing the name of the environment variable to create a string
@@ -504,6 +547,10 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -590,6 +637,7 @@ Return Value:
     StringTable = CreateStringTableFromDelimitedString(
         Rtl,
         StringTableAllocator,
+        StringArrayAllocator,
         &String,
         Delimiter
     );

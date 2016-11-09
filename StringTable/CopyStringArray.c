@@ -19,7 +19,8 @@ Abstract:
 _Use_decl_annotations_
 PSTRING_ARRAY
 CopyStringArray(
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY StringArray,
     USHORT StringTablePaddingOffset,
     USHORT StringTableStructSize,
@@ -38,9 +39,14 @@ Routine Description:
 
 Arguments:
 
-    Allocator - Supplies a pointer to an ALLOCATOR structure which will
-        be used to allocate all memory required by the structure during its
-        creation.
+    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
+        may be used to create the STRING_ARRAY if it cannot fit within the
+        padding of the STRING_TABLE structure.  This is kept separate from the
+        StringTableAllocator due to the stringent alignment requirements of the
+        string table.
 
     StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
         to be copied.
@@ -91,7 +97,11 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -144,8 +154,8 @@ Return Value:
         //
 
         StringTable = (PSTRING_TABLE)(
-            Allocator->Calloc(
-                Allocator->Context,
+            StringTableAllocator->Calloc(
+                StringTableAllocator->Context,
                 1,
                 StringTableStructSize
             )
@@ -189,8 +199,8 @@ Return Value:
         StringTable = NULL;
 
         NewArray = (PSTRING_ARRAY)(
-            Allocator->Calloc(
-                Allocator->Context,
+            StringArrayAllocator->Calloc(
+                StringArrayAllocator->Context,
                 1,
                 TotalAllocSize
             )

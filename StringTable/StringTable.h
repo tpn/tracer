@@ -217,7 +217,8 @@ STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE \
 typedef
 VOID
 (DESTROY_STRING_TABLE)(
-    _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_opt_ struct _STRING_TABLE *StringTable
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
@@ -478,7 +479,8 @@ _Check_return_
 _Success_(return != 0)
 PSTRING_ARRAY
 (COPY_STRING_ARRAY)(
-    _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING_ARRAY StringArray,
     _In_ USHORT StringTablePaddingOffset,
     _In_ USHORT StringTableStructSize,
@@ -493,7 +495,8 @@ _Success_(return != 0)
 PSTRING_ARRAY
 (CREATE_STRING_ARRAY_FROM_DELIMITED_STRING)(
     _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING String,
     _In_ CHAR Delimiter,
     _In_ USHORT StringTablePaddingOffset,
@@ -511,7 +514,8 @@ _Check_return_
 _Success_(return != 0)
 PSTRING_TABLE
 (CREATE_STRING_TABLE)(
-    _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING_ARRAY StringArray,
     _In_ BOOL CopyArray
     );
@@ -524,7 +528,8 @@ _Success_(return != 0)
 PSTRING_TABLE
 (CREATE_STRING_TABLE_FROM_DELIMITED_STRING)(
     _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING String,
     _In_ CHAR Delimiter
     );
@@ -542,6 +547,7 @@ PSTRING_TABLE
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTR EnvironmentVariableName,
     _In_ CHAR Delimiter
     );

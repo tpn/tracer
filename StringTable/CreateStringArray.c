@@ -21,7 +21,8 @@ _Use_decl_annotations_
 PSTRING_ARRAY
 CreateStringArrayFromDelimitedString(
     PRTL Rtl,
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING String,
     CHAR Delimiter,
     USHORT StringTablePaddingOffset,
@@ -46,9 +47,14 @@ Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    Allocator - Supplies a pointer to an ALLOCATOR structure which will
-        be used to allocate all memory required by the structure during its
-        creation.
+    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
+        may be used to create the STRING_ARRAY if it cannot fit within the
+        padding of the STRING_TABLE structure.  This is kept separate from the
+        StringTableAllocator due to the stringent alignment requirements of the
+        string table.
 
     String - Supplies a pointer to a STRING structure that represents the
         delimited string to construct the STRING_ARRAY from.
@@ -68,7 +74,6 @@ Arguments:
     StringTablePointer - Supplies a pointer to a variable that receives the
         address of the STRING_TABLE structure if one could be allocated.  If
         not, the pointer will be set to NULL.
-
 
 Return Value:
 
@@ -121,11 +126,11 @@ Return Value:
     PRTL_FIND_CLEAR_BITS RtlFindClearBits;
 
     //
-    // Set aside a 32-byte stack-allocated bitmap buffer.
+    // Set aside a 32-byte/256-bit stack-allocated bitmap buffer.
     //
 
-    CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
-    RTL_BITMAP StackBitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
+    CHAR StackBitmapBuffer[32];
+    RTL_BITMAP StackBitmap = { 256, (PULONG)&StackBitmapBuffer };
     Bitmap = &StackBitmap;
 
     //
@@ -136,7 +141,11 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return NULL;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return NULL;
     }
 
@@ -261,7 +270,6 @@ Return Value:
 
             Count++;
             break;
-
         }
 
         //
@@ -375,8 +383,8 @@ Return Value:
         //
 
         StringTable = (PSTRING_TABLE)(
-            Allocator->Calloc(
-                Allocator->Context,
+            StringTableAllocator->Calloc(
+                StringTableAllocator->Context,
                 1,
                 StringTableStructSize
             )
@@ -420,8 +428,8 @@ Return Value:
         StringTable = NULL;
 
         NewArray = (PSTRING_ARRAY)(
-            Allocator->Calloc(
-                Allocator->Context,
+            StringArrayAllocator->Calloc(
+                StringArrayAllocator->Context,
                 1,
                 TotalAllocSize
             )
@@ -616,11 +624,12 @@ Error:
         //
 
         Address = (PVOID)StringTable;
-        if (!Address) {
+        if (Address) {
+            StringTableAllocator->Free(StringTableAllocator->Context, Address);
+        } else {
             Address = (PVOID)NewArray;
+            StringArrayAllocator->Free(StringArrayAllocator->Context, Address);
         }
-
-        Allocator->Free(Allocator->Context, Address);
 
         //
         // Clear both pointers.
@@ -628,7 +637,6 @@ Error:
 
         StringTable = NULL;
         NewArray = NULL;
-
     }
 
     //
@@ -639,11 +647,14 @@ End:
 
     //
     // Update the caller's StringTablePointer (which may be NULL if we didn't
-    // allocate a StringTable) and return the StringArray.
+    // allocate a StringTable or encountered an error).
     //
 
     *StringTablePointer = StringTable;
 
+    //
+    // Potentially free the bitmap buffer.
+    //
 
     if ((ULONG_PTR)StackBitmap.Buffer != (ULONG_PTR)Bitmap->Buffer) {
 
@@ -654,6 +665,10 @@ End:
 
         HeapFree(HeapHandle, 0, Bitmap->Buffer);
     }
+
+    //
+    // Return the new string array.
+    //
 
     return NewArray;
 }

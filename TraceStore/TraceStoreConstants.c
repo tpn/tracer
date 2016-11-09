@@ -237,7 +237,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
     {
         0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
