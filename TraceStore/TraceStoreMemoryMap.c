@@ -1127,6 +1127,8 @@ Routine Description:
 
 Arguments:
 
+    TraceStore - Supplies a pointer to a TRACE_STORE structure.
+
     MemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
 
 Return Value:
@@ -1135,123 +1137,8 @@ Return Value:
 
 --*/
 {
-    PRTL Rtl;
-    HRESULT Result;
-    TRACE_STORE_ADDRESS Address;
-    LARGE_INTEGER PreviousTimestamp;
-    LARGE_INTEGER Elapsed;
-    PLARGE_INTEGER ElapsedPointer;
-
     UnmapTraceStoreMemoryMap(MemoryMap);
-
-    if (!MemoryMap->pAddress) {
-        goto Finish;
-    }
-
-    Rtl = TraceStore->Rtl;
-
-    //
-    // Take a local copy of the address record, update timestamps and
-    // calculate elapsed time, then save the local record back to the
-    // backing TRACE_STORE_ADDRESS struct.
-    //
-
-    Result = Rtl->RtlCopyMappedMemory(
-        &Address,
-        MemoryMap->pAddress,
-        sizeof(Address)
-    );
-
-    if (FAILED(Result)) {
-
-        //
-        // Ignore and continue.
-        //
-
-        goto Finish;
-    }
-
-    //
-    // Get a local copy of the elapsed start time.
-    //
-
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
-
-    //
-    // Copy it to the Released timestamp.
-    //
-
-    Address.Timestamp.Released.QuadPart = Elapsed.QuadPart;
-
-    //
-    // Determine what state this memory map was in at the time of being closed.
-    // For a memory map that has progressed through the normal lifecycle, it'll
-    // typically be in 'AwaitingRelease' at this point.  However, we could be
-    // getting called against an active memory map or prepared memory map if
-    // we're getting released as a result of closing the trace store.
-    //
-
-    if (Address.Timestamp.Retired.QuadPart != 0) {
-
-        //
-        // Normal memory map awaiting retirement.  Elapsed.AwaitingRelease
-        // will receive our elapsed time.
-        //
-
-        PreviousTimestamp.QuadPart = Address.Timestamp.Retired.QuadPart;
-        ElapsedPointer = &Address.Elapsed.AwaitingRelease;
-
-    } else if (Address.Timestamp.Consumed.QuadPart != 0) {
-
-        //
-        // An active memory map.  Elapsed.Active will receive our elapsed time.
-        //
-
-        PreviousTimestamp.QuadPart = Address.Timestamp.Consumed.QuadPart;
-        ElapsedPointer = &Address.Elapsed.Active;
-
-    } else if (Address.Timestamp.Prepared.QuadPart != 0) {
-
-        //
-        // A prepared memory map awaiting consumption.
-        // Elapsed.AwaitingConsumption will receive our elapsed time.
-        //
-
-        PreviousTimestamp.QuadPart = Address.Timestamp.Prepared.QuadPart;
-        ElapsedPointer = &Address.Elapsed.AwaitingConsumption;
-
-    } else {
-
-        //
-        // A memory map that wasn't even prepared.  Highly unlikely.
-        //
-
-        PreviousTimestamp.QuadPart = Address.Timestamp.Requested.QuadPart;
-        ElapsedPointer = &Address.Elapsed.AwaitingPreparation;
-    }
-
-    //
-    // Calculate the elapsed time.
-    //
-
-    Elapsed.QuadPart -= PreviousTimestamp.QuadPart;
-
-    //
-    // Update the target elapsed time.
-    //
-
-    ElapsedPointer->QuadPart = Elapsed.QuadPart;
-
-    //
-    // Copy the local record back to the backing store and ignore the
-    // return value.
-    //
-
-    Rtl->RtlCopyMappedMemory(MemoryMap->pAddress,
-                             &Address,
-                             sizeof(Address));
-
-Finish:
+    FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress);
     ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
     return TRUE;
 }
@@ -1260,6 +1147,7 @@ Finish:
 _Use_decl_annotations_
 VOID
 RundownTraceStoreMemoryMap(
+    PTRACE_STORE TraceStore,
     PTRACE_STORE_MEMORY_MAP MemoryMap
     )
 /*++
@@ -1295,6 +1183,8 @@ Return Value:
     if (!MemoryMap) {
         return;
     }
+
+    FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress);
 
     if (MemoryMap->BaseAddress) {
 

@@ -103,8 +103,10 @@ typedef struct _TRACE_STORE_ADDRESS {
         LARGE_INTEGER Consumed;                             // 8    56  64
 
         //
-        // The time the memory map was pushed onto the "release memory map"
-        // queue.
+        // The time the memory map was pushed onto the "close memory map" queue
+        // If this is the same as the Released time below, it usually indicates
+        // the memory map was active right up until process exit, at which point
+        // it was closed via the rundown machinery versus an explicit retire.
         //
 
         LARGE_INTEGER Retired;                              // 8    64  72
