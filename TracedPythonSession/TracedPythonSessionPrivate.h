@@ -1,17 +1,34 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    TracedPythonSessionPrivate.h
+
+Abstract:
+
+    This is the private header file for the TracedPythonSession component.
+    It defines function typedefs and function declarations for all major
+    (i.e. not local to the module) functions available for use by individual
+    modules within this component.
+
+--*/
+
 #pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "TracedPythonSession.h"
+#include "stdafx.h"
 
 #define TRACER_MODULE_NAMES_ENV_VAR "TRACER_MODULE_NAMES"
 #define TRACER_MODULE_NAMES_DELIM ';'
 
 FORCEINLINE
 _Success_(return != 0)
-PSTRING_TABLE
+BOOL
 CreateStringTableForTracerModuleNamesEnvironmentVariable(
     _In_ PTRACED_PYTHON_SESSION Session
     )
@@ -35,57 +52,22 @@ Return Value:
 
 --*/
 {
-    PSTRING_TABLE StringTable;
-    PALLOCATOR StringTableAllocator;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE \
-        CreateStringTableFromDelimitedEnvironmentVariable;
-
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(Session)) {
-        return NULL;
-    }
-
-    //
-    // Make sure we've got a string table allocator initialized.
-    //
-
-    StringTableAllocator = Session->pStringTableAllocator;
-
-    if (!StringTableAllocator) {
-        return NULL;
-    }
-
-    //
-    // Make sure we've got the function available.
-    //
-
-    CreateStringTableFromDelimitedEnvironmentVariable = (
-        Session->CreateStringTableFromDelimitedEnvironmentVariable
+    Session->ModuleNamesStringTable = (
+        Session->CreateStringTableFromDelimitedEnvironmentVariable(
+            Session->Rtl,
+            Session->Allocator,
+            &Session->StringTableAllocator,
+            &Session->StringArrayAllocator,
+            TRACER_MODULE_NAMES_ENV_VAR,
+            TRACER_MODULE_NAMES_DELIM
+        )
     );
 
-    if (!CreateStringTableFromDelimitedEnvironmentVariable) {
-        return NULL;
-    }
-
-    StringTable = CreateStringTableFromDelimitedEnvironmentVariable(
-        Session->Rtl,
-        Session->Allocator,
-        StringTableAllocator,
-        TRACER_MODULE_NAMES_ENV_VAR,
-        TRACER_MODULE_NAMES_DELIM
-    );
-
-    return StringTable;
+    return (Session->ModuleNamesStringTable != NULL);
 }
-
-
 
 #ifdef __cplusplus
 }; // extern "C"
 #endif
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -281,7 +281,6 @@ PyTraceCallback(
 
     PRTL Rtl;
     PPYTHON Python;
-    HRESULT Result;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     PTRACE_STORE EventStore;
@@ -570,16 +569,7 @@ PyTraceCallback(
     // Take a local copy of the last event.
     //
 
-    Result = Rtl->RtlCopyMappedMemory(&LastEvent,
-                                      LastEventPointer,
-                                      sizeof(LastEvent));
-
-    if (FAILED(Result)) {
-
-        //
-        // STATUS_IN_PAGE_ERROR occurred whilst copying the last event.
-        //
-
+    if (!CopyPythonTraceEvent(&LastEvent, LastEventPointer)) {
         goto Finalize;
     }
 
@@ -665,9 +655,9 @@ PyTraceCallback(
     // Copy the last event back, ignoring the return value.
     //
 
-    Rtl->RtlCopyMappedMemory(LastEventPointer,
-                             &LastEvent,
-                             sizeof(LastEvent));
+    if (!CopyPythonTraceEvent(LastEventPointer, &LastEvent)) {
+        NOTHING;
+    }
 
 Finalize:
 
@@ -676,14 +666,13 @@ Finalize:
     //
 
     ThisEvent = AllocatePythonTraceEvent(EventStore);
-
     if (!ThisEvent) {
         return 0;
     }
 
-    Rtl->RtlCopyMappedMemory(ThisEvent,
-                             &Event,
-                             sizeof(Event));
+    if (!CopyPythonTraceEvent(ThisEvent, &Event)) {
+        NOTHING;
+    }
 
     return 0;
 }
@@ -911,6 +900,7 @@ InitializePythonTraceContext(
         Context->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallback;
     }
 
+    Context->Depth = 0;
     Context->SkipFrames = 1;
 
     TraceStores = TraceContext->TraceStores;
@@ -981,6 +971,9 @@ InitializePythonTraceContext(
 
     Context->StartProfiling = StartProfiling;
     Context->StopProfiling = StopProfiling;
+
+    Context->Start = Start;
+    Context->Stop = Stop;
 
     Context->EnableMemoryTracing = EnableMemoryTracing;
     Context->DisableMemoryTracing = DisableMemoryTracing;
@@ -1117,6 +1110,32 @@ StopProfiling(
     Python->PyEval_SetProfile(NULL, NULL);
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+Start(
+    PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    if (Context->IsProfile) {
+        return StartProfiling(Context);
+    } else {
+        return StartTracing(Context);
+    }
+}
+
+_Use_decl_annotations_
+BOOL
+Stop(
+    PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    if (Context->IsProfile) {
+        return StopProfiling(Context);
+    } else {
+        return StopTracing(Context);
+    }
 }
 
 BOOL

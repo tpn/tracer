@@ -51,6 +51,10 @@
           Condition="'$(PlatformToolset)' != ''" />
   </Target>
 
+  <PropertyGroup>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(VC_IncludePath)</AdditionalIncludeDirectories>

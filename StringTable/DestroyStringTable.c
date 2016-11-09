@@ -18,7 +18,8 @@ Abstract:
 _Use_decl_annotations_
 VOID
 DestroyStringTable(
-    PALLOCATOR Allocator,
+    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringArrayAllocator,
     PSTRING_TABLE StringTable
     )
 /*++
@@ -29,8 +30,11 @@ Routine Description:
 
 Arguments:
 
-    Allocator - Supplies a pointer to the ALLOCATOR struct that was used to
-        initialized the STRING_TABLE structure.
+    StringTableAllocator - Supplies a pointer to the ALLOCATOR structure that
+        was used to create the STRING_TABLE.
+
+    StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure that
+        may have been used to create the STRING_ARRAY.
 
     StringTable - Supplies a pointer to a STRING_TABLE struct to be destroyed.
 
@@ -48,12 +52,11 @@ Return Value:
         return;
     }
 
-    if (!ARGUMENT_PRESENT(Allocator)) {
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return;
+    }
 
-        //
-        // We can't do much without an allocator to free the underlying structs.
-        //
-
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
         return;
     }
 
@@ -62,7 +65,10 @@ Return Value:
     //
 
     if (!HasEmbeddedStringArray(StringTable)) {
-        Allocator->Free(Allocator->Context, StringTable->pStringArray);
+        StringArrayAllocator->Free(
+            StringArrayAllocator->Context,
+            StringTable->pStringArray
+        );
         StringTable->pStringArray = NULL;
     }
 
@@ -70,7 +76,7 @@ Return Value:
     // Free the StringTable and return.
     //
 
-    Allocator->Free(Allocator->Context, StringTable);
+    StringTableAllocator->Free(StringTableAllocator->Context, StringTable);
 
     return;
 }

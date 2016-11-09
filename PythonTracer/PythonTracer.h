@@ -327,6 +327,22 @@ PYTHON_TRACER_API STOP_PROFILING StopProfiling;
 
 typedef
 BOOL
+(START)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef START *PSTART;
+PYTHON_TRACER_API START Start;
+
+typedef
+BOOL
+(STOP)(
+    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    );
+typedef STOP *PSTOP;
+PYTHON_TRACER_API STOP Stop;
+
+typedef
+BOOL
 (ADD_MODULE_NAME)(
     _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
     _In_ PPYOBJECT ModuleNameObject
@@ -394,6 +410,9 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 
     PSTART_PROFILING StartProfiling;
     PSTOP_PROFILING StopProfiling;
+
+    PSTART Start;
+    PSTOP Stop;
 
     PENABLE_MEMORY_TRACING EnableMemoryTracing;
     PDISABLE_MEMORY_TRACING DisableMemoryTracing;

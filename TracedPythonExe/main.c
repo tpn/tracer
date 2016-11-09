@@ -1,3 +1,18 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    main.c
+
+Abstract:
+
+    This is the main module for the TracedPythonExe component.  It implements
+    a Main() function and provides a mainCRTStartup() entry point which calls
+    Main().
+
+--*/
 
 #include "stdafx.h"
 
@@ -37,6 +52,7 @@ Main(VOID)
     }
 
 #ifdef _USE_TLS_HEAP
+
     //
     // Initialize the TlsHeap machinery, which attaches to the TracerConfig
     // and allocator.
@@ -47,6 +63,7 @@ Main(VOID)
     if (!Success) {
         goto Error;
     }
+
 #endif
 
     //
@@ -82,10 +99,10 @@ Main(VOID)
     //
 
     //
-    // Start tracing.
+    // Start tracing/profiling.
     //
 
-    PythonTraceContext->StartTracing(PythonTraceContext);
+    PythonTraceContext->Start(PythonTraceContext);
 
     __try {
 
@@ -111,11 +128,10 @@ Main(VOID)
 
     }
 
-
     //
-    // N.B.: there's no `PythonTraceContext->StopTracing(PythonTraceContext)`
-    //       call here to match the StartTracing() one above because Py_Main()
-    //       tears down any attached tracers before it returns.
+    // N.B.: there's no `PythonTraceContext->Stop(PythonTraceContext)` call
+    //       here to match the Start() one above because Py_Main() tears down
+    //       any attached tracers before it returns.
     //
 
     //

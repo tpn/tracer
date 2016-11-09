@@ -263,6 +263,12 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
     ULONG EnableFileFlagWriteThrough:1;
 
+    //
+    // When set, the tracer will start off profiling instead of tracing.
+    //
+
+    ULONG ProfileOnly:1;
+
 } TRACER_FLAGS, *PTRACER_FLAGS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {

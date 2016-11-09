@@ -285,21 +285,6 @@ typedef struct _TRACED_PYTHON_SESSION {
     PRTL Rtl;
 
     //
-    // Hook-specific functions.
-    //
-
-    //PHOOK Hook;
-    //PUNHOOK Unhook;
-    //PINITIALIZE_HOOKED_FUNCTION InitializeHookedFunction;
-
-    //
-    // TracerHeap-specific functions.
-    //
-
-    PINITIALIZE_ALIGNED_ALLOCATOR InitializeAlignedAllocator;
-    PDESTROY_ALIGNED_ALLOCATOR DestroyAlignedAllocator;
-
-    //
     // StringTable-specific functions.
     //
 
@@ -313,12 +298,12 @@ typedef struct _TRACED_PYTHON_SESSION {
         CreateStringTableFromDelimitedEnvironmentVariable;
 
     //
-    // The StringTable allocator will be initialized via the TracerHeap's
-    // InitializeAlignedAllocator() export.
+    // The StringTable and StringArray allocators will be initialized via the
+    // trace store InitializeAllocatorFromTraceStore() export.
     //
 
     ALLOCATOR StringTableAllocator;
-    PALLOCATOR pStringTableAllocator;
+    ALLOCATOR StringArrayAllocator;
     PSTRING_TABLE ModuleNamesStringTable;
 
     //
@@ -329,6 +314,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
     PINITIALIZE_TRACE_SESSION InitializeTraceSession;
     PCLOSE_TRACE_STORES CloseTraceStores;
+    PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
 
     //
     // Pointers to tracer-specific data structures initialized by the routines

@@ -121,7 +121,6 @@ Return Value:
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
-    PALLOCATOR StringTableAllocator;
     PUNICODE_STRING Path;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
@@ -260,7 +259,6 @@ Return Value:
 
     LOAD_DLL(Rtl);
     LOAD_DLL(Python);
-    LOAD_DLL(TracerHeap);
     LOAD_DLL(TraceStore);
     LOAD_DLL(StringTable);
     LOAD_DLL(PythonTracer);
@@ -303,6 +301,10 @@ Return Value:
             PCLOSE_TRACE_STORES,
             CloseTraceStores);
 
+    RESOLVE(TraceStoreModule,
+            PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE,
+            InitializeAllocatorFromTraceStore);
+
     //
     // Python
     //
@@ -322,18 +324,6 @@ Return Value:
     RESOLVE(PythonTracerModule,
             PTRACE_STORE_FIELD_RELOCS,
             PythonTracerTraceStoreRelocations);
-
-    //
-    // TracerHeap
-    //
-
-    RESOLVE(TracerHeapModule,
-            PINITIALIZE_ALIGNED_ALLOCATOR,
-            InitializeAlignedAllocator);
-
-    RESOLVE(TracerHeapModule,
-            PDESTROY_ALIGNED_ALLOCATOR,
-            DestroyAlignedAllocator);
 
     //
     // StringTable
@@ -413,33 +403,6 @@ Return Value:
     INIT_C_SPECIFIC_HANDLER(TraceStore);
     INIT_C_SPECIFIC_HANDLER(StringTable);
     INIT_C_SPECIFIC_HANDLER(PythonTracer);
-
-    //
-    // Create an aligned allocator to use for string tables.
-    //
-
-    Session->pStringTableAllocator = NULL;
-    StringTableAllocator = &Session->StringTableAllocator;
-    Success = Session->InitializeAlignedAllocator(StringTableAllocator);
-    if (!Success) {
-        OutputDebugStringA("Session->InitializeAlignedAllocator failed\n");
-        goto Error;
-    }
-
-    //
-    // Point the pStringTableAllocator at the initialized allocator.
-    //
-
-    Session->pStringTableAllocator = StringTableAllocator;
-
-    //
-    // Create a string table to use for the module names we're going to be
-    // tracing.
-    //
-
-    Session->ModuleNamesStringTable = (
-        CreateStringTableForTracerModuleNamesEnvironmentVariable(Session)
-    );
 
     //
     // Load our owning module name.
@@ -1049,10 +1012,30 @@ LoadPythonDll:
     PythonTraceContext = Session->PythonTraceContext;
 
     //
-    // If we created a module names string table, set it now.
+    // Initialize the string table and string array allocators.
     //
 
-    if (Session->ModuleNamesStringTable) {
+    Success = Session->InitializeAllocatorFromTraceStore(
+        &Session->TraceStores->Stores[TraceStoreStringTableId],
+        &Session->StringTableAllocator
+    );
+
+    if (!Success) {
+        OutputDebugStringA("InitializeAllocatorFromTraceStore(Table) failed\n");
+        goto Error;
+    }
+
+    Success = Session->InitializeAllocatorFromTraceStore(
+        &Session->TraceStores->Stores[TraceStoreStringArrayId],
+        &Session->StringArrayAllocator
+    );
+
+    if (!Success) {
+        OutputDebugStringA("InitializeAllocatorFromTraceStore(Array) failed\n");
+        goto Error;
+    }
+
+    if (CreateStringTableForTracerModuleNamesEnvironmentVariable(Session)) {
         PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;
         PSET_MODULE_NAMES_STRING_TABLE SetModuleNames;
 
@@ -1078,6 +1061,10 @@ LoadPythonDll:
 
     if (TracerConfigFlags.EnableHandleCountTracing) {
         PythonTraceContext->EnableHandleCountTracing(PythonTraceContext);
+    }
+
+    if (TracerConfigFlags.ProfileOnly) {
+        PythonTraceContext->IsProfile = TRUE;
     }
 
     //

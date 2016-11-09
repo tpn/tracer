@@ -856,7 +856,7 @@ Routine Description:
 
     This is a helper routine that can be used to safely copy an address
     structure when either the source or destination is backed by memory
-    mapped memory.  Internally, it is simply a __movsb() wrapped in a
+    mapped memory.  Internally, it is simply a __movsq() wrapped in a
     __try/__except block that catches STATUS_IN_PAGE_ERROR exceptions.
 
 Arguments:
@@ -981,7 +981,7 @@ Routine Description:
 
     This is a helper routine that can be used to safely copy an address range
     structure when either the source or destination is backed by memory mapped
-    memory.  Internally, it is simply a __movsb() wrapped in a __try/__except
+    memory.  Internally, it is simply a __movsq() wrapped in a __try/__except
     block that catches STATUS_IN_PAGE_ERROR exceptions.
 
 Arguments:
@@ -1024,6 +1024,18 @@ BOOL
     );
 typedef RECORD_TRACE_STORE_ALLOCATION *PRECORD_TRACE_STORE_ALLOCATION;
 RECORD_TRACE_STORE_ALLOCATION RecordTraceStoreAllocation;
+
+//
+// TraceStoreAllocator-related function declarations.
+//
+
+MALLOC TraceStoreAllocatorMalloc;
+CALLOC TraceStoreAllocatorCalloc;
+REALLOC TraceStoreAllocatorRealloc;
+FREE TraceStoreAllocatorFree;
+FREE_POINTER TraceStoreAllocatorFreePointer;
+INITIALIZE_ALLOCATOR TraceStoreInitializeAllocator;
+DESTROY_ALLOCATOR TraceStoreDestroyAllocator;
 
 //
 // TraceStoreRelocation-related functions.
