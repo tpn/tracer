@@ -424,9 +424,9 @@ Return Value:
         // and be ready to process any relocations before the stores it is
         // dependent upon have finished loading themselves.  By using explicit
         // events and WaitForSingleObject/WaitForMultipleObjects (depending on
-        // whether or not we dependent on one or multiple stores), we avoid any
-        // race conditions with regards to trace stores not being ready when we
-        // want them.
+        // whether or not we're dependent on one or multiple stores), we avoid
+        // any race conditions with regards to trace stores not being ready when
+        // we want them.
         //
 
         FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
