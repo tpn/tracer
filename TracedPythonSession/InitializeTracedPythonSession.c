@@ -1016,7 +1016,7 @@ LoadPythonDll:
     //
 
     Success = Session->InitializeAllocatorFromTraceStore(
-        &Session->TraceStores->Stores[TraceStoreStringTableId],
+        &Session->TraceStores->Stores[TraceStoreStringTableIndex],
         &Session->StringTableAllocator
     );
 
@@ -1026,7 +1026,7 @@ LoadPythonDll:
     }
 
     Success = Session->InitializeAllocatorFromTraceStore(
-        &Session->TraceStores->Stores[TraceStoreStringArrayId],
+        &Session->TraceStores->Stores[TraceStoreStringArrayIndex],
         &Session->StringArrayAllocator
     );
 
