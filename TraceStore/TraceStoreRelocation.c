@@ -557,7 +557,7 @@ Return Value:
         PreviousIndex = 0;
 
         //
-        // Point the Event and DependecyStore pointers at the base of their
+        // Point the Event and DependencyStore pointers at the base of their
         // respective arrays.
         //
 
