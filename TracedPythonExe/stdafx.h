@@ -1,4 +1,20 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    stdafx.h
+
+Abstract:
+
+    This is the precompiled header file for the TracedPythonExe component.
+
+--*/
+
 #pragma once
+
+#define _USE_TLS_HEAP
 
 #include "targetver.h"
 
