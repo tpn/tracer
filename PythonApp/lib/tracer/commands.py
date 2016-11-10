@@ -523,6 +523,58 @@ class TracerDriverIoctlReadCr3(InvariantAwareCommand):
             self._out(str(device.cr3))
 
 
+class ListTraceSessions(InvariantAwareCommand):
+    """
+    Lists trace session directories in the base trace directory.
+    """
+
+    def run(self):
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        self._out('\n'.join(tc.trace_store_directories()))
+
+class LoadTrace(InvariantAwareCommand):
+    def run(self):
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        basedir = tc.choose_trace_store_directory()
+        self._out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Allocator,
+            TraceStore,
+        )
+
+        Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+        rtl = Rtl.create_and_initialize_rtl()
+
+        TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+        allocator = tc.Allocator.contents
+
+        from .dll.TraceStore import (
+            create_and_initialize_readonly_trace_stores,
+            create_and_initialize_readonly_trace_context,
+        )
+
+        ts = create_and_initialize_readonly_trace_stores(
+            rtl,
+            allocator,
+            basedir,
+            tc
+        )
+
+        ctx = create_and_initialize_readonly_trace_context(
+            rtl,
+            allocator,
+            ts,
+        )
+
+        import IPython
+        IPython.embed()
+
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
