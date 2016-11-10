@@ -391,7 +391,6 @@ PyTraceCallback(
             Context->Depth--;
 
         }
-
     }
 
     //
@@ -436,6 +435,12 @@ PyTraceCallback(
 
         return 0;
     }
+
+    //
+    // Mark our 'seen' bit in the frame's code object.
+    //
+
+    FrameObject->Code->RefCountEx.Seen = TRUE;
 
     if (!Function->PathEntry.IsValid) {
         __debugbreak();
