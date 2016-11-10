@@ -220,7 +220,7 @@ InitializeTlsAllocator(
     _In_ PFREE_POINTER FreePointer,
     _In_ PINITIALIZE_ALLOCATOR Initialize,
     _In_ PDESTROY_ALLOCATOR Destroy,
-    _In_ PVOID Context2,
+    _In_opt_ PVOID Context2,
     _In_ PALLOCATOR Parent,
     _In_ ULONG TlsIndex
     )
