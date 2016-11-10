@@ -395,12 +395,31 @@ PyTraceCallback(
     }
 
     //
+    // If we've been configured to track maximum reference counts, do that now.
+    //
+
+    if (Context->TrackMaxRefCounts) {
+        UpdateMaxRefCounts(Context);
+    }
+
+
+    //
+    // Update our maximum depth, if applicable.
+    //
+
+    if (Context->Depth > Context->MaxDepth.QuadPart) {
+        Context->MaxDepth.QuadPart = Context->Depth;
+        if (Context->MaxDepth.HighPart) {
+            __debugbreak();
+        }
+    }
+
+    //
     // Attempt to register the frame and get the underlying function object.
     //
 
     Rtl = Context->Rtl;
     Python = Context->Python;
-
 
     Success = Python->RegisterFrame(Python,
                                     FrameObject,

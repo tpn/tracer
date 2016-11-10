@@ -68,6 +68,26 @@ LoadPythonData(
     RESOLVE_TYPE(PyModule);
     TRY_RESOLVE_TYPE(PyInstance);
 
+#define TRY_RESOLVE_STRUCT(Name) (                   \
+    PythonData->##Name##Struct.Object = (PPYOBJECT)( \
+        GetProcAddress(                              \
+            PythonModule,                            \
+            #Name "Struct"                           \
+        )                                            \
+    )                                                \
+)
+
+#define RESOLVE_STRUCT(Name)                                        \
+    if (!TRY_RESOLVE_STRUCT(Name)) {                                \
+        OutputDebugStringA("Failed to resolve Python!" #Name "\n"); \
+        return FALSE;                                               \
+    }
+
+    RESOLVE_STRUCT(_Py_None);
+    RESOLVE_STRUCT(_Py_True);
+    RESOLVE_STRUCT(_Py_Zero);
+    TRY_RESOLVE_STRUCT(_Py_False);
+
     //
     // The hash secret is a little fiddly.
     //

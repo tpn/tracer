@@ -84,14 +84,29 @@ typedef _W64 int Py_hash_t, PY_HASH;
 
 typedef struct _PYTYPEOBJECT PYTYPEOBJECT, *PPYTYPEOBJECT, PyTypeObject;
 
-#define _PYOBJECT_HEAD              \
-    union {                         \
-        Py_ssize_t  ob_refcnt;      \
-        SSIZE_T     ReferenceCount; \
-    };                              \
-    union {                         \
-        PyTypeObject *ob_type;      \
-        PPYTYPEOBJECT Type;         \
+typedef union _PY_OBJECT_REFCOUNTEX {
+    Py_ssize_t ob_refcnt;
+    SSIZE_T ReferenceCount;
+    struct {
+        ULONG LowPart;
+        struct {
+            ULONG UpperBits:28;
+            ULONG Seen:1;
+            ULONG Unused:2;
+        };
+    };
+} PY_OBJECT_REFCOUNTEX, *PPY_OBJECT_REFCOUNTEX;
+
+
+#define _PYOBJECT_HEAD                   \
+    union {                              \
+        Py_ssize_t  ob_refcnt;           \
+        SSIZE_T     ReferenceCount;      \
+        PY_OBJECT_REFCOUNTEX RefCountEx; \
+    };                                   \
+    union {                              \
+        PyTypeObject *ob_type;           \
+        PPYTYPEOBJECT Type;              \
     };
 
 #define _PYVAROBJECT_HEAD    \
@@ -1427,7 +1442,7 @@ typedef enum _PYGILSTATE {
     PyGILState_UNLOCKED
 } PYGILSTATE, *PPYGILSTATE, PyGILState_STATE;
 
-//
+
 // Typedefs for Python function pointers.
 //
 
@@ -1599,6 +1614,10 @@ typedef struct _PYTHONFUNCTIONS {
 } PYTHONFUNCTIONS, *PPYTHONFUNCTIONS;
 
 #define _PYTHONDATA_HEAD           \
+    PYOBJECTEX _Py_NoneStruct;     \
+    PYOBJECTEX _Py_TrueStruct;     \
+    PYOBJECTEX _Py_FalseStruct;    \
+    PYOBJECTEX _Py_ZeroStruct;     \
     PY_HASH_SECRET _Py_HashSecret; \
     PYTYPEOBJECTEX PyString;       \
     PYTYPEOBJECTEX PyBytes;        \

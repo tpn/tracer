@@ -378,6 +378,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
             ULONG TraceIoCounters:1;
             ULONG TraceHandleCount:1;
             ULONG HasModuleFilter:1;
+            ULONG TrackMaxRefCounts:1;
         };
     };
 
@@ -388,14 +389,22 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PVOID             UserData;                             // 8    40  48
     PALLOCATOR        Allocator;
 
-    ULONG             Depth;
+    ULONGLONG         Depth;
+    ULARGE_INTEGER    MaxDepth;
+
     ULONG             SkipFrames;
+    ULONG             Padding;
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER StartTimestamp;
     LARGE_INTEGER StopTimestamp;
     LARGE_INTEGER LastTimestamp;
     LARGE_INTEGER ThisTimestamp;
+
+    LARGE_INTEGER MaxNoneRefCount;
+    LARGE_INTEGER MaxTrueRefCount;
+    LARGE_INTEGER MaxZeroRefCount;
+    LARGE_INTEGER MaxFalseRefCount;
 
     PPYTHON_FUNCTION FirstFunction;
 
@@ -457,6 +466,58 @@ BOOL
     );
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;
 PYTHON_TRACER_API INITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+
+FORCEINLINE
+VOID
+UpdateMaxRefCounts(
+    _In_ PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    PPYTHON Python;
+    PPYOBJECT _Py_NoneStruct;
+    PPYOBJECT _Py_TrueStruct;
+    PPYOBJECT _Py_ZeroStruct;
+    PPYOBJECT _Py_FalseStruct;
+
+    Python = Context->Python;
+    _Py_NoneStruct = Python->_Py_NoneStruct.Object;
+    _Py_TrueStruct = Python->_Py_TrueStruct.Object;
+    _Py_ZeroStruct = Python->_Py_ZeroStruct.Object;
+    _Py_FalseStruct = Python->_Py_FalseStruct.Object;
+
+    if (_Py_NoneStruct->ReferenceCount > Context->MaxNoneRefCount.QuadPart) {
+        Context->MaxNoneRefCount.QuadPart = _Py_NoneStruct->ReferenceCount;
+        if (Context->MaxNoneRefCount.HighPart) {
+            __debugbreak();
+        }
+    }
+
+    if (_Py_TrueStruct->ReferenceCount > Context->MaxTrueRefCount.QuadPart) {
+        Context->MaxTrueRefCount.QuadPart = _Py_TrueStruct->ReferenceCount;
+        if (Context->MaxTrueRefCount.HighPart) {
+            __debugbreak();
+        }
+    }
+
+    if (_Py_ZeroStruct->ReferenceCount > Context->MaxZeroRefCount.QuadPart) {
+        Context->MaxZeroRefCount.QuadPart = _Py_ZeroStruct->ReferenceCount;
+        if (Context->MaxZeroRefCount.HighPart) {
+            __debugbreak();
+        }
+    }
+
+    if (!_Py_FalseStruct) {
+        return;
+    }
+
+    if (_Py_FalseStruct->ReferenceCount > Context->MaxFalseRefCount.QuadPart) {
+        Context->MaxFalseRefCount.QuadPart = _Py_FalseStruct->ReferenceCount;
+        if (Context->MaxFalseRefCount.HighPart) {
+            __debugbreak();
+        }
+    }
+
+}
 
 //
 // Trace Store relocation information.

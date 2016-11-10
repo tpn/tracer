@@ -1067,6 +1067,10 @@ LoadPythonDll:
         PythonTraceContext->IsProfile = TRUE;
     }
 
+    if (TracerConfigFlags.TrackMaxRefCounts) {
+        PythonTraceContext->TrackMaxRefCounts = TRUE;
+    }
+
     //
     // We're finally done.
     //
