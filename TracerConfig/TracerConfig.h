@@ -269,6 +269,14 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
     ULONG ProfileOnly:1;
 
+    //
+    // When set, tracks the maximum reference count values observed for
+    // _Py_NoneStruct, _Py_TrueStruct, _Py_ZeroStruct, and _Py_FalseStruct if
+    // it's available.
+    //
+
+    ULONG TrackMaxRefCounts:1;
+
 } TRACER_FLAGS, *PTRACER_FLAGS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {
