@@ -963,8 +963,9 @@ def create_and_initialize_readonly_trace_context(
         InitializeThreadpoolEnvironment(tp_callback_env)
         SetThreadpoolCallbackPool(tp_callback_env, threadpool)
 
-    if trace_context_flags is not None:
+    if trace_context_flags is None:
         trace_context_flags = TRACE_CONTEXT_FLAGS()
+        trace_context_flags.AsyncInitialization = True
 
     if not trace_context:
         trace_context = TRACE_CONTEXT()
