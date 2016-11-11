@@ -89,6 +89,20 @@ class Structure(ctypes.Structure):
                 )
         )
 
+    @classmethod
+    def _get_numpy_dtype(cls):
+        from .util import ctypes_to_numpy
+        import numpy as np
+
+        try:
+            type_map = ctypes_to_numpy()
+            return np.dtype([
+                (f[0], type_map[f[1]])
+                    for f in cls._fields_
+                        if f[1] in type_map
+            ], align=True)
+        except KeyError:
+            pass
 
 class SYSTEMTIME(Structure):
     _fields_ = [
