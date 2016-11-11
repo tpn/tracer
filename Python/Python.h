@@ -759,7 +759,13 @@ typedef struct _PYBUFFER {
 } PYBUFFER, *PPYBUFFER, Py_buffer;
 
 typedef LONG (*PPYGETBUFFERPROC)(PPYOBJECT, PPYBUFFER, LONG), (*getbufferproc);
-typedef VOID (*PPYRELEASEBUFFERPROC)(PPYOBJECT, PPYBUFFER), (*releasebufferproc);
+typedef
+VOID (PYRELEASEBUFFERPROC)(
+    PPYOBJECT,
+    PPYBUFFER
+    ); (*releasebufferproc);
+typedef PYRELEASEBUFFERPROC *PPYRELEASEBUFFERPROC;
+typedef PYRELEASEBUFFERPROC *releasebufferproc;
 
 typedef struct _PYBUFFERPROCS {
     union {
