@@ -369,8 +369,6 @@ InfoDataType = np.dtype([
     ('TotalAllocationSize',         np.uint64),
 ], align=True)
 
-], align=True)
-
 DefaultHashedStringColumns = [
     'Path',
     'FullName',
