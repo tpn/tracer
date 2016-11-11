@@ -2065,6 +2065,24 @@ def download_url(url):
 def create_namedtuple_from_csv_url(name, url):
     return create_namedtuple_from_csv(name, download_url(url))
 
+@memoized
+def ctypes_to_numpy():
+    import ctypes
+    import numpy as np
+    results = {}
+    for name in dir(ctypes):
+        if not name.startswith('c_'):
+            continue
+        numpy_name = name[2:]
+        try:
+            numpy_type = getattr(np, numpy_name)
+        except AttributeError:
+            continue
+
+        ctype = getattr(ctypes, name)
+        results[ctype] = numpy_type
+    return results
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
