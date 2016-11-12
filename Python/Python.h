@@ -763,7 +763,7 @@ typedef
 VOID (PYRELEASEBUFFERPROC)(
     PPYOBJECT,
     PPYBUFFER
-    ); (*releasebufferproc);
+    );
 typedef PYRELEASEBUFFERPROC *PPYRELEASEBUFFERPROC;
 typedef PYRELEASEBUFFERPROC *releasebufferproc;
 
