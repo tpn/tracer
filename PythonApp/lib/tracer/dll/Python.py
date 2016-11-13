@@ -2,7 +2,11 @@
 # Imports
 #===============================================================================
 
-from ..util import Constant
+from ..util import (
+    classproperty,
+
+    Constant,
+)
 
 from ..wintypes import (
     sizeof,
@@ -64,7 +68,48 @@ class PYTHON_PATH_ENTRY_TYPE(Structure):
 #===============================================================================
 
 class PYTHON_PATH_TABLE_ENTRY(Structure):
-    pass
+    @classproperty
+    def dtype(cls):
+        import numpy as np
+        return np.dtype([
+            # PATH_TABLE_ENTRY
+            # PREFIX_TABLE_ENTRY
+            ('PrefixTreeNodeTypeCode', np.int16),       #   2       40      42
+            ('PrefixTreeNameLength', np.int16),         #   2       42      44
+            ('PathEntryType', np.uint32),               #   4       44      48
+            ('NextPrefixTree', np.uint64),              #   8       48      56
+            # RTL_SPLAY_LINKS
+            ('SplayParent', np.uint64),                 #   8       16      24
+            ('SplayLeftChild', np.uint64),              #   8       24      32
+            ('SplayRightChild', np.uint64),             #   8       32      40
+            ('Prefix', np.uint64),                      #   8       40      48
+
+            ('PathLength', np.uint16),
+            ('PathMaximumLength', np.uint16),
+            ('PathHash', np.uint32),
+            ('PathBuffer', np.uint64),
+
+            ('FullNameLength', np.uint16),
+            ('FullNameMaximumLength', np.uint16),
+            ('FullNameHash', np.uint32),
+            ('FullNameBuffer', np.uint64),
+
+            ('ModuleNameLength', np.uint16),
+            ('ModuleNameMaximumLength', np.uint16),
+            ('ModuleNameHash', np.uint32),
+            ('ModuleNameBuffer', np.uint64),
+
+            ('NameLength', np.uint16),
+            ('NameMaximumLength', np.uint16),
+            ('NameHash', np.uint32),
+            ('NameBuffer', np.uint64),
+
+            ('ClassNameLength', np.uint16),
+            ('ClassNameMaximumLength', np.uint16),
+            ('ClassNameHash', np.uint32),
+            ('ClassNameBuffer', np.uint64),
+        ])
+
 PPYTHON_PATH_TABLE_ENTRY = POINTER(PYTHON_PATH_TABLE_ENTRY)
 
 class PYTHON_PATH_TABLE(Structure):
@@ -79,11 +124,139 @@ class PYTHON_PATH_TABLE_ENTRY(Structure):
 PPYTHON_PATH_TABLE_ENTRY = POINTER(PYTHON_PATH_TABLE_ENTRY)
 
 class PYTHON_FUNCTION(Structure):
-    pass
+    @classproperty
+    def dtype(cls):
+        import numpy as np
+        return np.dtype([
+            # PATH_TABLE_ENTRY
+            # PREFIX_TABLE_ENTRY
+            ('PrefixTreeNodeTypeCode', np.int16),       #   2       40      42
+            ('PrefixTreeNameLength', np.int16),         #   2       42      44
+            ('PathEntryType', np.uint32),               #   4       44      48
+            ('NextPrefixTree', np.uint64),              #   8       48      56
+            # RTL_SPLAY_LINKS
+            ('SplayParent', np.uint64),                 #   8       16      24
+            ('SplayLeftChild', np.uint64),              #   8       24      32
+            ('SplayRightChild', np.uint64),             #   8       32      40
+            ('Prefix', np.uint64),                      #   8       40      48
+
+            ('PathLength', np.uint16),
+            ('PathMaximumLength', np.uint16),
+            ('PathHash', np.int32),
+            ('PathBuffer', np.uint64),
+
+            ('FullNameLength', np.uint16),
+            ('FullNameMaximumLength', np.uint16),
+            ('FullNameHash', np.int32),
+            ('FullNameBuffer', np.uint64),
+
+            ('ModuleNameLength', np.uint16),
+            ('ModuleNameMaximumLength', np.uint16),
+            ('ModuleNameHash', np.int32),
+            ('ModuleNameBuffer', np.uint64),
+
+            ('NameLength', np.uint16),
+            ('NameMaximumLength', np.uint16),
+            ('NameHash', np.int32),
+            ('NameBuffer', np.uint64),
+
+            ('ClassNameLength', np.uint16),
+            ('ClassNameMaximumLength', np.uint16),
+            ('ClassNameHash', np.int32),
+            ('ClassNameBuffer', np.uint64),
+            # End of PYTHON_PATH_TABLE_ENTRY
+
+            ('ParentPathEntry', np.uint64),
+            ('CodeObject', np.uint64),
+            ('LineNumbersBitmap', np.uint64),
+            ('Histogram', np.uint64),
+            ('CodeLineNumbers', np.uint64),
+
+            ('ReferenceCount', np.uint32),
+            ('CodeObjectHash', np.uint32),
+            ('FunctionHash', np.uint32),
+            ('Unused1', np.uint32),
+
+            ('FirstLineNumber', np.uint16),
+            ('NumberOfLines', np.uint16),
+            ('NumberOfCodeLines', np.uint16),
+            ('SizeOfByteCode', np.uint16),
+
+            ('Unused2', np.uint64),
+            ('Unused3', np.uint64),
+            ('Unused4', np.uint64),
+        ])
 PPYTHON_FUNCTION = POINTER(PYTHON_FUNCTION)
 
 class PYTHON_FUNCTION_TABLE_ENTRY(Structure):
-    pass
+    @classproperty
+    def dtype(cls):
+        import numpy as np
+        return np.dtype([
+            # TABLE_ENTRY_HEADER
+            ('HeaderSplayParent', np.uint64),           #   8       0       8
+            ('HeaderSplayLeftChild', np.uint64),        #   8       8       16
+            ('HeaderSplayRightChild', np.uint64),       #   8       16      24
+            ('HeaderFlink', np.uint64),                 #   8       24      32
+            ('HeaderBlink', np.uint64),                 #   8       32      40
+            # PATH_TABLE_ENTRY
+            # PREFIX_TABLE_ENTRY
+            ('PrefixTreeNodeTypeCode', np.int16),       #   2       40      42
+            ('PrefixTreeNameLength', np.int16),         #   2       42      44
+            ('PathEntryType', np.uint32),               #   4       44      48
+            ('NextPrefixTree', np.uint64),              #   8       48      56
+            # RTL_SPLAY_LINKS
+            ('SplayParent', np.uint64),                 #   8       16      24
+            ('SplayLeftChild', np.uint64),              #   8       24      32
+            ('SplayRightChild', np.uint64),             #   8       32      40
+            ('Prefix', np.uint64),                      #   8       40      48
+
+            ('PathLength', np.uint16),
+            ('PathMaximumLength', np.uint16),
+            ('PathHash', np.int32),
+            ('PathBuffer', np.uint64),
+
+            ('FullNameLength', np.uint16),
+            ('FullNameMaximumLength', np.uint16),
+            ('FullNameHash', np.int32),
+            ('FullNameBuffer', np.uint64),
+
+            ('ModuleNameLength', np.uint16),
+            ('ModuleNameMaximumLength', np.uint16),
+            ('ModuleNameHash', np.int32),
+            ('ModuleNameBuffer', np.uint64),
+
+            ('NameLength', np.uint16),
+            ('NameMaximumLength', np.uint16),
+            ('NameHash', np.int32),
+            ('NameBuffer', np.uint64),
+
+            ('ClassNameLength', np.uint16),
+            ('ClassNameMaximumLength', np.uint16),
+            ('ClassNameHash', np.int32),
+            ('ClassNameBuffer', np.uint64),
+            # End of PYTHON_PATH_TABLE_ENTRY
+
+            ('ParentPathEntry', np.uint64),
+            ('CodeObject', np.uint64),
+            ('LineNumbersBitmap', np.uint64),
+            ('Histogram', np.uint64),
+            ('CodeLineNumbers', np.uint64),
+
+            ('ReferenceCount', np.uint32),
+            ('CodeObjectHash', np.int32),
+            ('FunctionHash', np.uint32),
+            ('Unused1', np.uint32),
+
+            ('FirstLineNumber', np.uint16),
+            ('NumberOfLines', np.uint16),
+            ('NumberOfCodeLines', np.uint16),
+            ('SizeOfByteCode', np.uint16),
+
+            ('Unused2', np.uint64),
+            ('Unused3', np.uint64),
+            ('Unused4', np.uint64),
+        ])
 PPYTHON_FUNCTION_TABLE_ENTRY = POINTER(PYTHON_FUNCTION)
 
 class PYTHON_FUNCTION_TABLE(Structure):
