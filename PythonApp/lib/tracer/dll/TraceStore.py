@@ -2,6 +2,10 @@
 # Imports
 #===============================================================================
 
+from itertools import chain
+
+from ..util import memoize
+
 from ..wintypes import (
     cast,
     byref,
@@ -65,6 +69,15 @@ from .TracerConfig import (
 
 from .Allocator import (
     PALLOCATOR,
+)
+
+from .Python import (
+    PYTHON_PATH_TABLE_ENTRY,
+    PYTHON_FUNCTION_TABLE_ENTRY,
+)
+
+from .PythonTracer import (
+    PYTHON_TRACE_EVENT,
 )
 
 #===============================================================================
@@ -547,7 +560,46 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
     ]
 
 class TRACE_STORE(Structure):
-    pass
+    __array = None
+    struct_type = None
+
+    @property
+    def base_address(self):
+        return self.ReadonlyMemoryMaps.contents.BaseAddress
+
+    def __len__(self):
+        return self.Totals.contents.NumberOfAllocations
+
+    def address_range_to_array(self, address_range):
+        if not self.struct_type:
+            return
+
+        base_address = address_range.ActualBaseAddress
+        record_size = sizeof(self.struct_type)
+        number_of_records = address_range.MappedSize / record_size
+
+        return cast(
+            base_address,
+            POINTER(self.struct_type * number_of_records),
+        ).contents
+
+    @property
+    def arrays(self):
+        return chain(
+            self.address_range_to_array(address_range)
+                for address_range in self.address_ranges
+        )
+
+    @property
+    def address_ranges(self):
+        return cast(
+            self.ReadonlyAddressRanges,
+            POINTER(
+                TRACE_STORE_ADDRESS_RANGE *
+                self.NumberOfReadonlyAddressRanges
+            )
+        ).contents
+
 PTRACE_STORE = POINTER(TRACE_STORE)
 PPTRACE_STORE = POINTER(PTRACE_STORE)
 
@@ -648,6 +700,46 @@ TRACE_STORE._fields_ = [
     ('Dummy', PVOID),
 ]
 
+class METADATA_STORE(TRACE_STORE):
+    @property
+    def base_address(self):
+        return self.MemoryMap.contents.BaseAddress
+
+    @property
+    def end_address(self):
+        return (
+            self.MemoryMap.contents.BaseAddress +
+            self.MemoryMap.contents.MappingSize.QuadPart
+        )
+
+class ADDRESS_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_ADDRESS
+
+class ADDRESS_RANGE_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_ADDRESS_RANGE
+
+class ALLOCATION_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_ALLOCATION
+
+class PYTHON_TRACE_EVENT_STORE(TRACE_STORE):
+    struct_type = PYTHON_TRACE_EVENT
+
+class PYTHON_PATH_TABLE_ENTRY_STORE(TRACE_STORE):
+    struct_type = PYTHON_PATH_TABLE_ENTRY
+
+class PYTHON_FUNCTION_TABLE_ENTRY_STORE(TRACE_STORE):
+    struct_type = PYTHON_FUNCTION_TABLE_ENTRY
+
+    def get_valid_functions(self):
+        funcs = []
+        for array in self.arrays:
+            for func in array:
+                if not func.is_valid:
+                    continue
+                funcs.append(func)
+        return funcs
+
+
 class TRACE_STORES_RUNDOWN(Structure):
     pass
 PTRACE_STORES_RUNDOWN = POINTER(TRACE_STORES_RUNDOWN)
@@ -687,76 +779,76 @@ TRACE_STORES._fields_ = [
     ('StringArrayReloc', TRACE_STORE_RELOC),
     ('StringTableReloc', TRACE_STORE_RELOC),
     # Start of Stores[MAX_TRACE_STORES].
-    ('EventStore', TRACE_STORE),
+    ('EventStore', PYTHON_TRACE_EVENT_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
-    ('EventAllocationStore', TRACE_STORE),
+    ('EventAllocationStore', ALLOCATION_STORE),
     ('EventRelocationStore', TRACE_STORE),
-    ('EventAddressStore', TRACE_STORE),
-    ('EventAddressRangeStore', TRACE_STORE),
+    ('EventAddressStore', ADDRESS_STORE),
+    ('EventAddressRangeStore', ADDRESS_RANGE_STORE),
     ('EventBitmapStore', TRACE_STORE),
     ('EventInfoStore', TRACE_STORE),
     ('StringBufferStore', TRACE_STORE),
     ('StringBufferMetadataInfoStore', TRACE_STORE),
-    ('StringBufferAllocationStore', TRACE_STORE),
+    ('StringBufferAllocationStore', ALLOCATION_STORE),
     ('StringBufferRelocationStore', TRACE_STORE),
-    ('StringBufferAddressStore', TRACE_STORE),
-    ('StringBufferAddressRangeStore', TRACE_STORE),
+    ('StringBufferAddressStore', ADDRESS_STORE),
+    ('StringBufferAddressRangeStore', ADDRESS_RANGE_STORE),
     ('StringBufferBitmapStore', TRACE_STORE),
     ('StringBufferInfoStore', TRACE_STORE),
     ('FunctionTableStore', TRACE_STORE),
     ('FunctionTableMetadataInfoStore', TRACE_STORE),
-    ('FunctionTableAllocationStore', TRACE_STORE),
+    ('FunctionTableAllocationStore', ALLOCATION_STORE),
     ('FunctionTableRelocationStore', TRACE_STORE),
-    ('FunctionTableAddressStore', TRACE_STORE),
-    ('FunctionTableAddressRangeStore', TRACE_STORE),
+    ('FunctionTableAddressStore', ADDRESS_STORE),
+    ('FunctionTableAddressRangeStore', ADDRESS_RANGE_STORE),
     ('FunctionTableBitmapStore', TRACE_STORE),
     ('FunctionTableInfoStore', TRACE_STORE),
-    ('FunctionTableEntryStore', TRACE_STORE),
+    ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
     ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
-    ('FunctionTableEntryAllocationStore', TRACE_STORE),
+    ('FunctionTableEntryAllocationStore', ALLOCATION_STORE),
     ('FunctionTableEntryRelocationStore', TRACE_STORE),
-    ('FunctionTableEntryAddressStore', TRACE_STORE),
-    ('FunctionTableEntryAddressRangeStore', TRACE_STORE),
+    ('FunctionTableEntryAddressStore', ADDRESS_STORE),
+    ('FunctionTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
     ('FunctionTableEntryBitmapStore', TRACE_STORE),
     ('FunctionTableEntryInfoStore', TRACE_STORE),
     ('PathTableStore', TRACE_STORE),
     ('PathTableMetadataInfoStore', TRACE_STORE),
-    ('PathTableAllocationStore', TRACE_STORE),
+    ('PathTableAllocationStore', ALLOCATION_STORE),
     ('PathTableRelocationStore', TRACE_STORE),
-    ('PathTableAddressStore', TRACE_STORE),
-    ('PathTableAddressRangeStore', TRACE_STORE),
+    ('PathTableAddressStore', ADDRESS_STORE),
+    ('PathTableAddressRangeStore', ADDRESS_RANGE_STORE),
     ('PathTableBitmapStore', TRACE_STORE),
     ('PathTableInfoStore', TRACE_STORE),
-    ('PathTableEntryStore', TRACE_STORE),
+    ('PathTableEntryStore', PYTHON_PATH_TABLE_ENTRY_STORE),
     ('PathTableEntryMetadataInfoStore', TRACE_STORE),
-    ('PathTableEntryAllocationStore', TRACE_STORE),
+    ('PathTableEntryAllocationStore', ALLOCATION_STORE),
     ('PathTableEntryRelocationStore', TRACE_STORE),
-    ('PathTableEntryAddressStore', TRACE_STORE),
-    ('PathTableEntryAddressRangeStore', TRACE_STORE),
+    ('PathTableEntryAddressStore', ADDRESS_STORE),
+    ('PathTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
     ('PathTableEntryBitmapStore', TRACE_STORE),
     ('PathTableEntryInfoStore', TRACE_STORE),
     ('SessionStore', TRACE_STORE),
     ('SessionMetadataInfoStore', TRACE_STORE),
-    ('SessionAllocationStore', TRACE_STORE),
+    ('SessionAllocationStore', ALLOCATION_STORE),
     ('SessionRelocationStore', TRACE_STORE),
-    ('SessionAddressStore', TRACE_STORE),
-    ('SessionAddressRangeStore', TRACE_STORE),
+    ('SessionAddressStore', ADDRESS_STORE),
+    ('SessionAddressRangeStore', ADDRESS_RANGE_STORE),
     ('SessionBitmapStore', TRACE_STORE),
     ('SessionInfoStore', TRACE_STORE),
     ('StringArrayStore', TRACE_STORE),
     ('StringArrayMetadataInfoStore', TRACE_STORE),
-    ('StringArrayAllocationStore', TRACE_STORE),
+    ('StringArrayAllocationStore', ALLOCATION_STORE),
     ('StringArrayRelocationStore', TRACE_STORE),
-    ('StringArrayAddressStore', TRACE_STORE),
-    ('StringArrayAddressRangeStore', TRACE_STORE),
+    ('StringArrayAddressStore', ADDRESS_STORE),
+    ('StringArrayAddressRangeStore', ADDRESS_RANGE_STORE),
     ('StringArrayBitmapStore', TRACE_STORE),
     ('StringArrayInfoStore', TRACE_STORE),
     ('StringTableStore', TRACE_STORE),
     ('StringTableMetadataInfoStore', TRACE_STORE),
-    ('StringTableAllocationStore', TRACE_STORE),
+    ('StringTableAllocationStore', ALLOCATION_STORE),
     ('StringTableRelocationStore', TRACE_STORE),
-    ('StringTableAddressStore', TRACE_STORE),
-    ('StringTableAddressRangeStore', TRACE_STORE),
+    ('StringTableAddressStore', ADDRESS_STORE),
+    ('StringTableAddressRangeStore', ADDRESS_RANGE_STORE),
     ('StringTableBitmapStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
 ]
