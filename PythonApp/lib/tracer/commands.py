@@ -536,11 +536,12 @@ class ListTraceSessions(InvariantAwareCommand):
 
 class LoadTrace(InvariantAwareCommand):
     def run(self):
+        out = self._out
         from .dll.TracerConfig import load_tracer_config
         tc = load_tracer_config()
 
         basedir = tc.choose_trace_store_directory()
-        self._out("Selected: %s." % basedir)
+        out("Selected: %s." % basedir)
 
         from .dll import (
             Rtl,
@@ -572,9 +573,31 @@ class LoadTrace(InvariantAwareCommand):
             ts,
         )
 
+        from .util import (
+            Dict,
+            render_text_table,
+        )
+
+        totals = ts.FunctionTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of function table allocations: %d." % total_allocs)
+
+        address_ranges = ts.FunctionTableEntryStore.address_ranges
+
+        funcs = ts.FunctionTableEntryStore.get_valid_functions()
+
+        for i in range(len(funcs)):
+            f = funcs[i].Function
+
+            name = f.PathEntry.FullName
+            if not name.Length:
+                out("[%d]: skipping." % i)
+                continue
+            buf = name.Buffer[:name.Length]
+            out("[%d]: Full Name: %s." % (i, buf))
+
         import IPython
         IPython.embed()
-
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

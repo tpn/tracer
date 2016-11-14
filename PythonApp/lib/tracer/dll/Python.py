@@ -122,6 +122,15 @@ class PYTHON_PATH_TABLE_ENTRY(Structure):
 PPYTHON_PATH_TABLE_ENTRY = POINTER(PYTHON_PATH_TABLE_ENTRY)
 
 class PYTHON_FUNCTION(Structure):
+
+    _exclude = (
+        'Unused',
+        'CodeObject',
+        'CodeLineNumbers',
+        'Histogram',
+        'LineNumbersBitmap',
+    )
+
     @classmethod
     def _get_dtype(cls):
         import numpy as np
@@ -184,9 +193,18 @@ class PYTHON_FUNCTION(Structure):
             ('Unused3', np.uint64),
             ('Unused4', np.uint64),
         ])
+
+    @property
+    def is_valid(self):
+        return self.PathEntry.PrefixTableEntry.PathEntryType.IsValid
+
 PPYTHON_FUNCTION = POINTER(PYTHON_FUNCTION)
 
 class PYTHON_FUNCTION_TABLE_ENTRY(Structure):
+    _exclude = (
+        'Unused',
+        'NextPrefixTree',
+    )
     @classmethod
     def _get_dtype(cls):
         import numpy as np
@@ -255,6 +273,11 @@ class PYTHON_FUNCTION_TABLE_ENTRY(Structure):
             ('Unused3', np.uint64),
             ('Unused4', np.uint64),
         ])
+
+    @property
+    def is_valid(self):
+        return self.Function.PathEntry.PrefixTableEntry.PathEntryType.IsValid
+
 PPYTHON_FUNCTION_TABLE_ENTRY = POINTER(PYTHON_FUNCTION)
 
 class PYTHON_FUNCTION_TABLE(Structure):
