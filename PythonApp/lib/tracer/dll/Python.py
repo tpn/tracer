@@ -3,8 +3,6 @@
 #===============================================================================
 
 from ..util import (
-    classproperty,
-
     Constant,
 )
 
@@ -68,8 +66,8 @@ class PYTHON_PATH_ENTRY_TYPE(Structure):
 #===============================================================================
 
 class PYTHON_PATH_TABLE_ENTRY(Structure):
-    @classproperty
-    def dtype(cls):
+    @classmethod
+    def _get_dtype(cls):
         import numpy as np
         return np.dtype([
             # PATH_TABLE_ENTRY
@@ -124,8 +122,8 @@ class PYTHON_PATH_TABLE_ENTRY(Structure):
 PPYTHON_PATH_TABLE_ENTRY = POINTER(PYTHON_PATH_TABLE_ENTRY)
 
 class PYTHON_FUNCTION(Structure):
-    @classproperty
-    def dtype(cls):
+    @classmethod
+    def _get_dtype(cls):
         import numpy as np
         return np.dtype([
             # PATH_TABLE_ENTRY
@@ -189,8 +187,8 @@ class PYTHON_FUNCTION(Structure):
 PPYTHON_FUNCTION = POINTER(PYTHON_FUNCTION)
 
 class PYTHON_FUNCTION_TABLE_ENTRY(Structure):
-    @classproperty
-    def dtype(cls):
+    @classmethod
+    def _get_dtype(cls):
         import numpy as np
         return np.dtype([
             # TABLE_ENTRY_HEADER

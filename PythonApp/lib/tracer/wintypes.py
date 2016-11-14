@@ -222,9 +222,9 @@ class STRING(Structure):
         ('Buffer', PSTR),
     ]
     def __str__(self):
-        return self.Buffer
+        return self.Buffer if self.Length > 0 else ''
     def __repr__(self):
-        return self.Buffer
+        return repr(self.Buffer) if self.Length > 0 else "''"
 PSTRING = POINTER(STRING)
 PPSTRING = POINTER(PSTRING)
 
