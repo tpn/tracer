@@ -77,6 +77,7 @@ Return Value:
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     BOOL TriedQualified = FALSE;
     BOOL Success;
+    BOOL IsSpecialName;
 
     FilenameObject = *(
         (PPPYOBJECT)RtlOffsetToPointer(
@@ -90,7 +91,8 @@ Return Value:
     Success = WrapPythonFilenameStringAsString(
         Python,
         FilenameObject,
-        Path
+        Path,
+        &IsSpecialName
     );
 
     if (!Success) {
@@ -137,7 +139,7 @@ Retry:
         // will handle inserting a new prefix table entry for the file.
         //
 
-    } else if (!TriedQualified) {
+    } else if (!TriedQualified && !IsSpecialName) {
 
         //
         // See if we need to qualify the path and potentially do another prefix
@@ -245,6 +247,7 @@ Return Value:
     BOOL CaseSensitive = TRUE;
     BOOL Reversed = TRUE;
     BOOL WeOwnPathBuffer;
+    BOOL IsSpecialName;
 
     HANDLE HeapHandle = NULL;
 
@@ -276,8 +279,8 @@ Return Value:
     USHORT FullNameAllocSize;
     USHORT ExpectedMaximumLength;
 
-    CHAR StackBitmapBuffer[_MAX_FNAME >> 3];
-    RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBitmapBuffer };
+    CHAR StackBitmapBuffer[256 >> 3];
+    RTL_BITMAP Bitmap = { 256, (PULONG)&StackBitmapBuffer };
     BitmapPointer = &Bitmap;
 
     if (!ARGUMENT_PRESENT(Python)) {
@@ -308,7 +311,8 @@ Return Value:
     Success = WrapPythonFilenameStringAsString(
         Python,
         FilenameObject,
-        &PathString
+        &PathString,
+        &IsSpecialName
     );
 
     if (!Success) {
@@ -322,6 +326,97 @@ Return Value:
     //
 
     WeOwnPathBuffer = (Path->Buffer != PathString.Buffer);
+
+    //
+    // If the filename was special (started with a "<" character), we fill
+    // out a very simple path table entry structure and return.
+    //
+
+    if (IsSpecialName) {
+
+        //
+        // Invariant check: we shouldn't own the path buffer here as special
+        // names don't go through the qualified path check.
+        //
+
+        if (WeOwnPathBuffer) {
+            __debugbreak();
+            return FALSE;
+        }
+
+        //
+        // Allocate a new path table entry structure.
+        //
+
+        Success = AllocatePythonPathTableEntry(Python, &PathEntry);
+        if (!Success) {
+            goto End;
+        }
+
+        //
+        // Set the path entry to special.
+        //
+
+        PathEntry->IsSpecial = TRUE;
+
+        //
+        // Initialize alias.
+        //
+
+        FullName = &PathEntry->FullName;
+
+        //
+        // Initialize the length and allocation size.  The latter includes a +1
+        // to account for the trailing NUL.
+        //
+
+        FullNameLength = PathString.Length;
+        FullNameAllocSize = (
+            ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength + 1)
+        );
+
+        //
+        // Allocate a new string buffer.
+        //
+
+        if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
+            FreePythonPathTableEntry(Python, PathEntry);
+            Success = FALSE;
+            goto End;
+        }
+
+        //
+        // Set the length.  Excludes the trailing NUL.
+        //
+
+        FullName->Length = FullNameLength;
+
+        if (FullName->MaximumLength <= FullName->Length) {
+            __debugbreak();
+        }
+
+        //
+        // Copy the string over.
+        //
+
+        __movsb((PBYTE)FullName->Buffer,
+                (PBYTE)PathString.Buffer,
+                FullName->Length);
+
+        //
+        // Sanity check: we should be NUL terminated at this point.
+        //
+
+        if (FullName->Buffer[FullName->Length] != '\0') {
+            __debugbreak();
+        }
+
+        //
+        // Jump to the finalization logic.
+        //
+
+        goto End;
+    }
 
     //
     // Initialize Rtl and character length variables.
@@ -355,7 +450,7 @@ Return Value:
 
     NumberOfBackslashes = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
     if (NumberOfBackslashes == 0) {
-        goto Error;
+        goto End;
     }
 
     //
@@ -401,7 +496,7 @@ Return Value:
                                        &DirectoryEntry);
 
     if (!Success) {
-        goto Error;
+        goto End;
     }
 
     if (!DirectoryEntry) {
@@ -490,7 +585,7 @@ Return Value:
 
     Success = AllocatePythonPathTableEntry(Python, &PathEntry);
     if (!Success) {
-        goto Error;
+        goto End;
     }
 
     PathEntry->IsFile = TRUE;
@@ -505,7 +600,7 @@ Return Value:
 
     if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
         FreePythonPathTableEntry(Python, PathEntry);
-        goto Error;
+        goto End;
     }
 
     if (!WeOwnPathBuffer) {
@@ -513,7 +608,7 @@ Return Value:
         if (!AllocateStringBuffer(Python, PathAllocSize, Path)) {
             FreeStringBuffer(Python, FullName);
             FreePythonPathTableEntry(Python, PathEntry);
-            goto Error;
+            goto End;
         }
 
     } else {
@@ -641,19 +736,24 @@ Return Value:
             FreeStringBuffer(Python, Path);
         }
 
-        goto Error;
+        goto End;
     }
-
-    PathEntry->IsValid = TRUE;
 
     //
     // Intentional follow-on.
     //
 
-Error:
+End:
+
+    //
+    // Clear the PathEntry pointer if we've encountered an error.  Set the
+    // valid flag otherwise.
+    //
 
     if (!Success) {
         PathEntry = NULL;
+    } else {
+        PathEntry->IsValid = TRUE;
     }
 
     //

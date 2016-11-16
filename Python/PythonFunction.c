@@ -192,6 +192,11 @@ Return Value:
 
     Rtl = Python->Rtl;
 
+    //
+    // Clear the function record.
+    //
+
+    SecureZeroMemory(&FunctionRecord, sizeof(FunctionRecord));
     FunctionRecord.CodeObject = CodeObject;
 
     FunctionTable = Python->FunctionTable;
@@ -418,30 +423,29 @@ Return Value:
             return FALSE;
         }
 
-        if (!ClassNameBuffer) {
-            return FALSE;
+        if (ClassNameBuffer) {
+
+            //
+            // We were able to extract a class name.  The C Python API will have
+            // provided us with a pointer to a NULL-terminated C (char) string,
+            // which we'll need to take a copy of, so, record the relevant
+            // details here regarding length and buffer.
+            //
+
+            ClassNameLength = (USHORT)strlen((PCSZ)ClassNameBuffer);
+
+            //
+            // Ensure we've got a NUL-terminated string.
+            //
+
+            if (ClassNameBuffer[ClassNameLength] != '\0') {
+                __debugbreak();
+            }
+
+            ClassName->Length = ClassNameLength;
+            ClassName->MaximumLength = ClassNameLength;
+            ClassName->Buffer = ClassNameBuffer;
         }
-
-        //
-        // We were able to extract a class name.  The C Python API will have
-        // provided us with a pointer to a NULL-terminated C (char) string,
-        // which we'll need to take a copy of, so, record the relevant details
-        // here regarding length and buffer.
-        //
-
-        ClassNameLength = (USHORT)strlen((PCSZ)ClassNameBuffer);
-
-        //
-        // Ensure we've got a NUL-terminated string.
-        //
-
-        if (ClassNameBuffer[ClassNameLength] != '\0') {
-            __debugbreak();
-        }
-
-        ClassName->Length = ClassNameLength;
-        ClassName->MaximumLength = ClassNameLength;
-        ClassName->Buffer = ClassNameBuffer;
     }
 
     //
@@ -463,10 +467,9 @@ Return Value:
     //
 
     FullNameLength = (
-        ModuleName->Length                                +
-        1                                                 +
+        (ModuleName->Length ? ModuleName->Length + 1 : 0) +
         (ParentName->Length ? ParentName->Length + 1 : 0) +
-        (ClassName->Length ? ClassName->Length + 1 : 0)   +
+        (ClassName->Length  ? ClassName->Length  + 1 : 0) +
         FunctionName->Length                              +
         1
     );
@@ -500,11 +503,13 @@ Return Value:
 
     Dest = FullName->Buffer;
 
-    __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
-    Dest += ModuleName->Length;
-    ModuleName->Buffer = FullName->Buffer;
+    if (ModuleName->Length) {
+        __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
+        Dest += ModuleName->Length;
+        *Dest++ = '\\';
+    }
 
-    *Dest++ = '\\';
+    ModuleName->Buffer = FullName->Buffer;
 
     if (ParentName->Length) {
         __movsb(Dest, (PBYTE)ParentName->Buffer, ParentName->Length);
@@ -750,7 +755,8 @@ Arguments:
 
 Return Value:
 
-    TRUE on success, FALSE on failure.
+    TRUE on success, FALSE on failure.  Note that TRUE doesn't necessarily mean
+    the class name was found, check the value of ClassNameBuffer for that.
 
 --*/
 {
@@ -828,7 +834,12 @@ Return Value:
         return TRUE;
     }
 
-    return FALSE;
+    //
+    // We walked the MRO but couldn't find our method.  Clear the caller's
+    // class name buffer pointer and return TRUE.
+
+    *ClassNameBuffer = NULL;
+    return TRUE;
 }
 
 #ifdef __cplusplus
