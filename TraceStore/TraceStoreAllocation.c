@@ -80,6 +80,7 @@ Return Value:
     PVOID NextPage;
     PVOID PageAfterNextPage;
     LARGE_INTEGER Timestamp;
+    TRACE_STORE_TRAITS Traits;
 
     //
     // Validate arguments.
@@ -102,7 +103,15 @@ Return Value:
         )
     );
 
-    AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
+    //
+    // If the record size for the trace store isn't fixed, align the allocation
+    // size up to the size of a pointer.
+    //
+
+    Traits = *TraceStore->pTraits;
+    if (!IsFixedRecordSize(Traits)) {
+        AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
+    }
 
     if (AllocationSize > (ULONG_PTR)MemoryMap->MappingSize.QuadPart) {
         return NULL;

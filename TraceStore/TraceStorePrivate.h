@@ -1040,14 +1040,15 @@ RecordTraceStoreAllocationTimestamp(
     PLONG DeltaPointer;
     PLARGE_INTEGER PreviousTimestamp;
     PLARGE_INTEGER TimestampPointer;
-    ULARGE_INTEGER RecordSize = { sizeof(Timestamp) };
+    ULARGE_INTEGER DeltaRecordSize = { sizeof(Delta) };
+    ULARGE_INTEGER TimestampRecordSize = { sizeof(Timestamp) };
     ULARGE_INTEGER NumberOfRecords = { 1 };
 
     TimestampPointer = (PLARGE_INTEGER)(
         TraceStore->AllocationTimestampStore->AllocateRecords(
             TraceStore->TraceContext,
             TraceStore->AllocationTimestampStore,
-            &RecordSize,
+            &TimestampRecordSize,
             &NumberOfRecords
         )
     );
@@ -1070,7 +1071,7 @@ RecordTraceStoreAllocationTimestamp(
                 TraceStore->AllocationTimestampDeltaStore->AllocateRecords(
                     TraceStore->TraceContext,
                     TraceStore->AllocationTimestampDeltaStore,
-                    &RecordSize,
+                    &DeltaRecordSize,
                     &NumberOfRecords
                 )
             );
