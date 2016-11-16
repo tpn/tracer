@@ -79,6 +79,7 @@ Return Value:
     PVOID PrevPage;
     PVOID NextPage;
     PVOID PageAfterNextPage;
+    LARGE_INTEGER Timestamp;
 
     //
     // Validate arguments.
@@ -106,6 +107,8 @@ Return Value:
     if (AllocationSize > (ULONG_PTR)MemoryMap->MappingSize.QuadPart) {
         return NULL;
     }
+
+    QueryPerformanceCounter(&Timestamp);
 
     NextAddress = (
         (PVOID)RtlOffsetToPointer(
@@ -231,7 +234,6 @@ Return Value:
                     __debugbreak();
                 }
             }
-
         }
 
     } else {
@@ -317,11 +319,10 @@ UpdateAddresses:
     // Record the allocation.
     //
 
-    Success = RecordTraceStoreAllocation(
-        TraceStore,
-        RecordSize,
-        NumberOfRecords
-    );
+    Success = RecordTraceStoreAllocation(TraceStore,
+                                         RecordSize,
+                                         NumberOfRecords,
+                                         Timestamp);
 
     if (!Success) {
 
@@ -377,7 +378,8 @@ BOOL
 RecordTraceStoreAllocation(
     PTRACE_STORE     TraceStore,
     PULARGE_INTEGER  RecordSize,
-    PULARGE_INTEGER  NumberOfRecords
+    PULARGE_INTEGER  NumberOfRecords,
+    LARGE_INTEGER    Timestamp
     )
 /*++
 
@@ -397,6 +399,9 @@ Arguments:
     NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
         that contains the number of records that were allocated.
 
+    Timestamp - Supplies the value of the performance counter that will be
+        saved to the allocation timestamp store.
+
 Return Value:
 
     TRUE if the allocation could be recorded successfully, FALSE otherwise.
@@ -412,6 +417,10 @@ Return Value:
         //
 
         __debugbreak();
+    }
+
+    if (!RecordTraceStoreAllocationTimestamp(TraceStore, Timestamp)) {
+        return FALSE;
     }
 
     Allocation = TraceStore->Allocation;

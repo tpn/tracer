@@ -21,17 +21,19 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
     sizeof(TRACE_STORE_RELOC),
     sizeof(TRACE_STORE_ADDRESS),
     sizeof(TRACE_STORE_ADDRESS_RANGE),
-    sizeof(TRACE_STORE_BITMAP),
+    sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP),
+    sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA),
     sizeof(TRACE_STORE_INFO)
 };
 
-CONST  PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
+CONST PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &MetadataInfoStoreTraits,
     &AllocationStoreTraits,
     &RelocationStoreTraits,
     &AddressStoreTraits,
     &AddressRangeStoreTraits,
-    &BitmapStoreTraits,
+    &AllocationTimestampStoreTraits,
+    &AllocationTimestampDeltaStoreTraits,
     &InfoStoreTraits
 };
 
@@ -41,7 +43,8 @@ CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
     RelocationMetadataBindComplete,         // Relocation
     AddressMetadataBindComplete,            // Address
     AddressRangeMetadataBindComplete,       // AddressRange
-    NULL,                                   // Bitmap
+    AllocationTimestampBindComplete,        // AllocationTimestamp
+    AllocationTimestampDeltaBindComplete,   // AllocationTimestampDelta
     InfoMetadataBindComplete                // Info
 };
 
@@ -347,6 +350,107 @@ Return Value:
         AddressStore->Totals->NumberOfAllocations.QuadPart
     );
 
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+AllocationTimestampBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE AllocationTimestampStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    When readonly, this routine initializes TraceStore->AllocationTimestamp
+    to point at the base address of the :AllocationTimestamp metadata store.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    AllocationTimestampStore - Supplies a pointer to the allocation timestamp
+        metadata store.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    TraceStore = AllocationTimestampStore->TraceStore;
+
+    if (!TraceStore->IsReadonly) {
+        return TRUE;
+    }
+
+    //
+    // Point TraceStore->AllocationTimestamp at the base of the allocation
+    // timestamp store's memory map.
+    //
+
+    TraceStore->AllocationTimestamp = (PTRACE_STORE_ALLOCATION_TIMESTAMP)(
+        TraceStore->AllocationTimestampStore->MemoryMap->BaseAddress
+    );
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+AllocationTimestampDeltaBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE AllocationTimestampDeltaStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    When readonly, this routine initializes TraceStore->AllocationTimestampDelta
+    to point at the base address of the :AllocationTimestampDelta metadata
+    store's base address.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    AllocationTimestampDeltaStore - Supplies a pointer to the allocation
+        timestamp delta metadata store.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PTRACE_STORE TraceStore;
+
+    TraceStore = AllocationTimestampDeltaStore->TraceStore;
+
+    if (!TraceStore->IsReadonly) {
+        return TRUE;
+    }
+
+    //
+    // Point TraceStore->AllocationTimestampDelta at the base of the allocation
+    // timestamp delta store's memory map.
+    //
+
+    TraceStore->AllocationTimestampDelta = (
+        (PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA)(
+            TraceStore->AllocationTimestampDeltaStore->MemoryMap->BaseAddress
+        )
+    );
 
     return TRUE;
 }

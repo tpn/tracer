@@ -112,17 +112,14 @@ PrefaultPages(
     ULONG Index;
     PCHAR Pointer = Address;
 
-    __try {
+    TRY_MAPPED_MEMORY_OP {
 
         for (Index = 0; Index < NumberOfPages; Index++) {
             PrefaultPage(Pointer);
             Pointer += PAGE_SIZE;
         }
 
-    } __except (GetExceptionCode() == STATUS_IN_PAGE_ERROR ?
-              EXCEPTION_EXECUTE_HANDLER :
-              EXCEPTION_CONTINUE_SEARCH) {
-
+    } CATCH_STATUS_IN_PAGE_ERROR {
         return FALSE;
     }
 
