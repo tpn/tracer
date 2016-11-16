@@ -47,7 +47,7 @@ class PythonPathEntryType(Constant):
     IsFile                  = (1 << 2)
     IsClass                 = (1 << 3)
     IsFunction              = (1 << 4)
-    IsBuiltin               = (1 << 5)
+    IsSpecial               = (1 << 5)
     IsValid                 = (1 << 6)
 
 class PYTHON_PATH_ENTRY_TYPE(Structure):
@@ -57,7 +57,7 @@ class PYTHON_PATH_ENTRY_TYPE(Structure):
         ('IsFile', ULONG, 1),
         ('IsClass', ULONG, 1),
         ('IsFunction', ULONG, 1),
-        ('IsBuiltin', ULONG, 1),
+        ('IsSpecial', ULONG, 1),
         ('IsValid', ULONG, 1),
     ]
 
@@ -278,7 +278,7 @@ class PYTHON_FUNCTION_TABLE_ENTRY(Structure):
     def is_valid(self):
         return self.Function.PathEntry.PrefixTableEntry.PathEntryType.IsValid
 
-PPYTHON_FUNCTION_TABLE_ENTRY = POINTER(PYTHON_FUNCTION)
+PPYTHON_FUNCTION_TABLE_ENTRY = POINTER(PYTHON_FUNCTION_TABLE_ENTRY)
 
 class PYTHON_FUNCTION_TABLE(Structure):
     _fields_ = [

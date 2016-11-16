@@ -586,6 +586,11 @@ class LoadTrace(InvariantAwareCommand):
 
         funcs = ts.FunctionTableEntryStore.get_valid_functions()
 
+        events = [ a for a in ts.EventStore.arrays ][0]
+
+        import IPython
+        IPython.embed()
+
         for i in range(len(funcs)):
             f = funcs[i].Function
 
@@ -596,8 +601,6 @@ class LoadTrace(InvariantAwareCommand):
             buf = name.Buffer[:name.Length]
             out("[%d]: Full Name: %s." % (i, buf))
 
-        import IPython
-        IPython.embed()
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

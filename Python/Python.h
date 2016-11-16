@@ -2260,7 +2260,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
                     ULONG IsFile : 1;               // 4
                     ULONG IsClass : 1;              // 8
                     ULONG IsFunction : 1;           // 16
-                    ULONG IsBuiltin : 1;            // 32
+                    ULONG IsSpecial : 1;            // 32
                     ULONG IsValid : 1;              // 64
                 };
             };
@@ -2915,7 +2915,8 @@ BOOL
 WrapPythonFilenameStringAsString(
     _In_     PPYTHON    Python,
     _In_     PPYOBJECT  StringishObject,
-    _Out_    PSTRING    String
+    _Out_    PSTRING    String,
+    _Out_    PBOOL      IsSpecialName
     )
 {
     SIZE_T Length;
@@ -2937,12 +2938,14 @@ WrapPythonFilenameStringAsString(
     }
 
     //
-    // Frozen modules will have names like <frozenlib ...> for filenames, we
-    // can't do anything with these, so return FALSE.
+    // If the name starts with a '<', it's a special name.  Examples are things
+    // like <string> and <frozenlib>.
     //
 
     if (*((PCHAR)Buffer) == '<') {
-        return FALSE;
+        *IsSpecialName = TRUE;
+    } else {
+        *IsSpecialName = FALSE;
     }
 
     if (Width == 2) {
