@@ -264,6 +264,8 @@ BIND_COMPLETE AllocationMetadataBindComplete;
 BIND_COMPLETE RelocationMetadataBindComplete;
 BIND_COMPLETE AddressMetadataBindComplete;
 BIND_COMPLETE AddressRangeMetadataBindComplete;
+BIND_COMPLETE AllocationTimestampBindComplete;
+BIND_COMPLETE AllocationTimestampDeltaBindComplete;
 BIND_COMPLETE InfoMetadataBindComplete;
 
 typedef
@@ -1021,10 +1023,76 @@ BOOL
 (RECORD_TRACE_STORE_ALLOCATION)(
     _In_ PTRACE_STORE     TraceStore,
     _In_ PULARGE_INTEGER  RecordSize,
-    _In_ PULARGE_INTEGER  NumberOfRecords
+    _In_ PULARGE_INTEGER  NumberOfRecords,
+    _In_ LARGE_INTEGER    Timestamp
     );
 typedef RECORD_TRACE_STORE_ALLOCATION *PRECORD_TRACE_STORE_ALLOCATION;
 RECORD_TRACE_STORE_ALLOCATION RecordTraceStoreAllocation;
+
+FORCEINLINE
+_Success_(return != 0)
+RecordTraceStoreAllocationTimestamp(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ LARGE_INTEGER Timestamp
+    )
+{
+    LONG Delta;
+    PLONG DeltaPointer;
+    PLARGE_INTEGER PreviousTimestamp;
+    PLARGE_INTEGER TimestampPointer;
+    ULARGE_INTEGER RecordSize = { sizeof(Timestamp) };
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+
+    TimestampPointer = (PLARGE_INTEGER)(
+        TraceStore->AllocationTimestampStore->AllocateRecords(
+            TraceStore->TraceContext,
+            TraceStore->AllocationTimestampStore,
+            &RecordSize,
+            &NumberOfRecords
+        )
+    );
+
+    if (!TimestampPointer) {
+        return FALSE;
+    }
+
+    TRY_MAPPED_MEMORY_OP {
+        TimestampPointer->QuadPart = Timestamp.QuadPart;
+
+        PreviousTimestamp = (PLARGE_INTEGER)TraceStore->AllocationTimestamp;
+        if (PreviousTimestamp) {
+            Delta = (LONG)(
+                Timestamp.QuadPart -
+                PreviousTimestamp->QuadPart
+            );
+
+            DeltaPointer = (PLONG)(
+                TraceStore->AllocationTimestampDeltaStore->AllocateRecords(
+                    TraceStore->TraceContext,
+                    TraceStore->AllocationTimestampDeltaStore,
+                    &RecordSize,
+                    &NumberOfRecords
+                )
+            );
+
+            if (!DeltaPointer) {
+                return FALSE;
+            }
+
+            *DeltaPointer = Delta;
+        }
+
+        TraceStore->AllocationTimestamp = (PTRACE_STORE_ALLOCATION_TIMESTAMP)(
+            TimestampPointer
+        );
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 
 //
 // TraceStoreAllocator-related function declarations.
@@ -1160,7 +1228,8 @@ BOOL
     _In_ PTRACE_STORE RelocationStore,
     _In_ PTRACE_STORE AddressStore,
     _In_ PTRACE_STORE AddressRangeStore,
-    _In_ PTRACE_STORE BitmapStore,
+    _In_ PTRACE_STORE AllocationTimestampStore,
+    _In_ PTRACE_STORE AllocationTimestampDeltaStore,
     _In_ PTRACE_STORE InfoStore,
     _In_ ULONG InitialSize,
     _In_ ULONG MappingSize,
@@ -1287,13 +1356,14 @@ RundownTraceStoresInline(
         TraceStore->##Name##Store = NULL;      \
     }
 
-#define CLOSE_METADATA_STORES()         \
-    CLOSE_METADATA_STORE(Allocation);   \
-    CLOSE_METADATA_STORE(Relocation);   \
-    CLOSE_METADATA_STORE(Address);      \
-    CLOSE_METADATA_STORE(AddressRange); \
-    CLOSE_METADATA_STORE(Bitmap);       \
-    CLOSE_METADATA_STORE(Info);         \
+#define CLOSE_METADATA_STORES()                     \
+    CLOSE_METADATA_STORE(Allocation);               \
+    CLOSE_METADATA_STORE(Relocation);               \
+    CLOSE_METADATA_STORE(Address);                  \
+    CLOSE_METADATA_STORE(AddressRange);             \
+    CLOSE_METADATA_STORE(AllocationTimestamp);      \
+    CLOSE_METADATA_STORE(AllocationTimestampDelta); \
+    CLOSE_METADATA_STORE(Info);                     \
     CLOSE_METADATA_STORE(MetadataInfo);
 
 #define RUNDOWN_METADATA_STORE(Name)             \
@@ -1302,13 +1372,14 @@ RundownTraceStoresInline(
         TraceStore->##Name##Store = NULL;        \
     }
 
-#define RUNDOWN_METADATA_STORES()         \
-    RUNDOWN_METADATA_STORE(Allocation);   \
-    RUNDOWN_METADATA_STORE(Relocation);   \
-    RUNDOWN_METADATA_STORE(Address);      \
-    RUNDOWN_METADATA_STORE(AddressRange); \
-    RUNDOWN_METADATA_STORE(Bitmap);       \
-    RUNDOWN_METADATA_STORE(Info);         \
+#define RUNDOWN_METADATA_STORES()                     \
+    RUNDOWN_METADATA_STORE(Allocation);               \
+    RUNDOWN_METADATA_STORE(Relocation);               \
+    RUNDOWN_METADATA_STORE(Address);                  \
+    RUNDOWN_METADATA_STORE(AddressRange);             \
+    RUNDOWN_METADATA_STORE(AllocationTimestamp);      \
+    RUNDOWN_METADATA_STORE(AllocationTimestampDelta); \
+    RUNDOWN_METADATA_STORE(Info);                     \
     RUNDOWN_METADATA_STORE(MetadataInfo);
 
 //
@@ -1462,7 +1533,8 @@ Return Value:
     SUBMIT_METADATA_BIND(Relocation);                                        \
     SUBMIT_METADATA_BIND(Address);                                           \
     SUBMIT_METADATA_BIND(AddressRange);                                      \
-    SUBMIT_METADATA_BIND(Bitmap);                                            \
+    SUBMIT_METADATA_BIND(AllocationTimestamp);                               \
+    SUBMIT_METADATA_BIND(AllocationTimestampDelta);                          \
     SUBMIT_METADATA_BIND(Info);
 
 //

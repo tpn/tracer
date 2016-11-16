@@ -194,6 +194,14 @@ typedef struct _PYTHON_TRACE_EVENT {
 
 C_ASSERT(sizeof(PYTHON_TRACE_EVENT) == 128);
 
+typedef struct _PYTHON_TRACE_EVENT_SLIM {
+    PPYTHON_FUNCTION Function;          // 8        16
+    USHORT CallStackDepth;
+    USHORT LineNumber;
+    TraceEventType EventType;
+
+} PYTHON_TRACE_EVENT_SLIM, *PPYTHON_TRACE_EVENT_SLIM;
+
 typedef struct _PYTHON_TRACE_CALL_EVENT {
     LIST_ENTRY ListEntry;
     union {

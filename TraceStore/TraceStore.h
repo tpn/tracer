@@ -62,8 +62,17 @@ typedef struct _TRACE_STORE_ALLOCATION {
     ULARGE_INTEGER  NumberOfRecords;
     LARGE_INTEGER   RecordSize;
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
-
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
+
+typedef struct _TRACE_STORE_ALLOCATION_TIMESTAMP {
+    LARGE_INTEGER Timestamp;
+} TRACE_STORE_ALLOCATION_TIMESTAMP, *PTRACE_STORE_ALLOCATION_TIMESTAMP;
+
+typedef struct _TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA {
+    LONG Delta;
+} TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA;
+typedef TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA \
+       *PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA;
 
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;                     // 8    0   8
@@ -561,15 +570,9 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO Relocation;
     TRACE_STORE_INFO Address;
     TRACE_STORE_INFO AddressRange;
-    TRACE_STORE_INFO Bitmap;
+    TRACE_STORE_INFO AllocationTimestamp;
+    TRACE_STORE_INFO AllocationTimestampDelta;
     TRACE_STORE_INFO Info;
-
-    //
-    // Pad out to 2048 bytes.
-    //
-
-    TRACE_STORE_INFO Unused;
-
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
@@ -1466,7 +1469,8 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
     PTRACE_STORE AddressRangeStore;
-    PTRACE_STORE BitmapStore;
+    PTRACE_STORE AllocationTimestampStore;
+    PTRACE_STORE AllocationTimestampDeltaStore;
     PTRACE_STORE InfoStore;
 
     //
@@ -1541,8 +1545,9 @@ typedef struct _TRACE_STORE {
     //
 
     PTRACE_STORE_RELOC Reloc;
-    PTRACE_STORE_BITMAP Bitmap;
     PTRACE_STORE_ALLOCATION Allocation;
+    PTRACE_STORE_ALLOCATION_TIMESTAMP AllocationTimestamp;
+    PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA AllocationTimestampDelta;
     PTRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
 
@@ -1623,7 +1628,8 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(Relocation);                      \
         TRACE_STORE_METADATA_DECL(Address);                         \
         TRACE_STORE_METADATA_DECL(AddressRange);                    \
-        TRACE_STORE_METADATA_DECL(Bitmap);                          \
+        TRACE_STORE_METADATA_DECL(AllocationTimestamp);             \
+        TRACE_STORE_METADATA_DECL(AllocationTimestampDelta);        \
         TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
@@ -1651,7 +1657,8 @@ typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE RelocationStore;
     PTRACE_STORE AddressStore;
     PTRACE_STORE AddressRangeStore;
-    PTRACE_STORE BitmapStore;
+    PTRACE_STORE AllocationTimestampStore;
+    PTRACE_STORE AllocationTimestampDeltaStore;
     PTRACE_STORE InfoStore;
 } TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
 
@@ -1924,7 +1931,7 @@ Return Value:
 #define GetTraceStoreAddressBitCounts(Address) \
     GetAddressBitCounts(Address, 16, 21)
 
-#define CalculateRightShiftFromMemoryMap(MemoryMap) \
+#define CalculateRightShiftFromMemoryMap(MemoryMap)          \
     (USHORT)TrailingZeros64(MemoryMap->MappingSize.QuadPart)
 
 FORCEINLINE

@@ -37,8 +37,11 @@ TRACE_STORE_DATA DWORD TraceStoreAddressSuffixLength;
 TRACE_STORE_DATA WCHAR TraceStoreAddressRangeSuffix[];
 TRACE_STORE_DATA DWORD TraceStoreAddressRangeSuffixLength;
 
-TRACE_STORE_DATA WCHAR TraceStoreBitmapSuffix[];
-TRACE_STORE_DATA DWORD TraceStoreBitmapSuffixLength;
+TRACE_STORE_DATA WCHAR TraceStoreAllocationTimestampSuffix[];
+TRACE_STORE_DATA DWORD TraceStoreAllocationTimestampSuffixLength;
+
+TRACE_STORE_DATA WCHAR TraceStoreAllocationTimestampDeltaSuffix[];
+TRACE_STORE_DATA DWORD TraceStoreAllocationTimestampDeltaSuffixLength;
 
 TRACE_STORE_DATA WCHAR TraceStoreInfoSuffix[];
 TRACE_STORE_DATA DWORD TraceStoreInfoSuffixLength;
@@ -88,8 +91,11 @@ TRACE_STORE_DATA ULONG DefaultAddressTraceStoreMappingSize;
 TRACE_STORE_DATA ULONG DefaultAddressRangeTraceStoreSize;
 TRACE_STORE_DATA ULONG DefaultAddressRangeTraceStoreMappingSize;
 
-TRACE_STORE_DATA ULONG DefaultBitmapTraceStoreSize;
-TRACE_STORE_DATA ULONG DefaultBitmapTraceStoreMappingSize;
+TRACE_STORE_DATA ULONG DefaultAllocationTimestampTraceStoreSize;
+TRACE_STORE_DATA ULONG DefaultAllocationTimestampTraceStoreMappingSize;
+
+TRACE_STORE_DATA ULONG DefaultAllocationTimestampDeltaTraceStoreSize;
+TRACE_STORE_DATA ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize;
 
 TRACE_STORE_DATA ULONG DefaultMetadataInfoTraceStoreSize;
 TRACE_STORE_DATA ULONG DefaultMetadataInfoTraceStoreMappingSize;
@@ -101,7 +107,8 @@ TRACE_STORE_DATA TRACE_STORE_TRAITS AllocationStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS RelocationStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS AddressStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS AddressRangeStoreTraits;
-TRACE_STORE_DATA TRACE_STORE_TRAITS BitmapStoreTraits;
+TRACE_STORE_DATA TRACE_STORE_TRAITS AllocationTimestampStoreTraits;
+TRACE_STORE_DATA TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS InfoStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS MetadataInfoStoreTraits;
 

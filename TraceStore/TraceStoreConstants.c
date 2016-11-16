@@ -65,9 +65,18 @@ DWORD TraceStoreAddressRangeSuffixLength = (
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreBitmapSuffix[] = L":Bitmap";
-DWORD TraceStoreBitmapSuffixLength = (
-    sizeof(TraceStoreBitmapSuffix) /
+WCHAR TraceStoreAllocationTimestampSuffix[] = L":AllocationTimestamp";
+DWORD TraceStoreAllocationTimestampSuffixLength = (
+    sizeof(TraceStoreAllocationTimestampSuffix) /
+    sizeof(WCHAR)
+);
+
+WCHAR TraceStoreAllocationTimestampDeltaSuffix[] = (
+    L":AllocationTimestampDelta"
+);
+
+DWORD TraceStoreAllocationTimestampDeltaSuffixLength = (
+    sizeof(TraceStoreAllocationTimestampDeltaSuffix) /
     sizeof(WCHAR)
 );
 
@@ -78,7 +87,7 @@ DWORD TraceStoreInfoSuffixLength = (
 );
 
 USHORT LongestTraceStoreSuffixLength = (
-    sizeof(TraceStoreMetadataInfoSuffix) /
+    sizeof(TraceStoreAllocationTimestampDeltaSuffixLength) /
     sizeof(WCHAR)
 );
 
@@ -87,8 +96,8 @@ USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-USHORT ElementsPerTraceStore = 8;
-USHORT NumberOfMetadataStores = 7;
+USHORT ElementsPerTraceStore = 9;
+USHORT NumberOfMetadataStores = 8;
 
 //
 // The Event trace store gets an initial file size of 16MB, everything else
@@ -281,26 +290,34 @@ USHORT TraceStoreRelocationStructSize = (
 );
 USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
 USHORT TraceStoreAddressRangeStructSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
-USHORT TraceStoreBitmapStructSize = sizeof(TRACE_STORE_BITMAP);
+USHORT TraceStoreAllocationTimestampStructSize = (
+    sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP)
+);
+USHORT TraceStoreAllocationTimestampDeltaStructSize = (
+    sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA)
+);
 USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-ULONG DefaultTraceStoreMappingSize = (1 << 21);             //  4MB
-ULONG DefaultTraceStoreEventMappingSize = (1 << 23);        // 16MB
+ULONG DefaultTraceStoreMappingSize = (1 << 21);                     //  2MB
+ULONG DefaultTraceStoreEventMappingSize = (1 << 23);                // 16MB
 
-ULONG DefaultAllocationTraceStoreSize = (1 << 21);          //  4MB
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);   // 64KB
+ULONG DefaultAllocationTraceStoreSize = (1 << 21);                  //  2MB
+ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);           // 64KB
 
-ULONG DefaultRelocationTraceStoreSize = (1 << 16);          // 64KB
-ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);   // 64KB
+ULONG DefaultRelocationTraceStoreSize = (1 << 16);                  // 64KB
+ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);           // 64KB
 
-ULONG DefaultAddressTraceStoreSize = (1 << 21);             //  4MB
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);      // 64KB
+ULONG DefaultAddressTraceStoreSize = (1 << 21);                     //  2MB
+ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);              // 64KB
 
-ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);        // 64KB
-ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16); // 64KB
+ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);                // 64KB
+ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16);         // 64KB
 
-ULONG DefaultBitmapTraceStoreSize = (1 << 16);              // 64KB
-ULONG DefaultBitmapTraceStoreMappingSize = (1 << 16);       // 64KB
+ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 23);         //  2MB
+ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 16);  // 64KB
+
+ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 23);        //  2MB
+ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 16); // 64KB
 
 ULONG DefaultMetadataInfoTraceStoreSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -375,13 +392,23 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS BitmapStoreTraits = {
-    1,  // VaryingRecordSize
-    0,  // RecordSizeIsAlwaysPowerOf2
+TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    0,  // StreamingWrite
-    0,  // StreamingRead
-    0,  // FrequentAllocations
+    1,  // StreamingWrite
+    1,  // StreamingRead
+    1,  // FrequentAllocations
+    0   // Unused
+};
+
+TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    1,  // StreamingRead
+    1,  // FrequentAllocations
     0   // Unused
 };
 

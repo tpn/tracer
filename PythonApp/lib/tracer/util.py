@@ -1122,6 +1122,7 @@ def prompt_for_directory(base_directory, ostream=None, istream=None,
     if not estream:
         estream = sys.stderr
 
+    out = lambda m: ostream.write(m)
     fmt = "%s %s? [y/n/q] " % (activity_name, '%s')
     errmsg = "\nSorry, I didn't get that.\n"
 

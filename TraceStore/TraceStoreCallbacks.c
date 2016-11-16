@@ -130,7 +130,8 @@ Return Value:
     SUBMIT_METADATA_BIND(Relocation);
     SUBMIT_METADATA_BIND(Address);
     SUBMIT_METADATA_BIND(AddressRange);
-    SUBMIT_METADATA_BIND(Bitmap);
+    SUBMIT_METADATA_BIND(AllocationTimestamp);
+    SUBMIT_METADATA_BIND(AllocationTimestampDelta);
     SUBMIT_METADATA_BIND(Info);
 
     return;

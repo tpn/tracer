@@ -199,6 +199,20 @@ class TRACE_STORE_ALLOCATION(Structure):
     ]
 PTRACE_STORE_ALLOCATION = POINTER(TRACE_STORE_ALLOCATION)
 
+class TRACE_STORE_ALLOCATION_TIMESTAMP(Structure):
+    _fields_ = [
+        ('Timestamp', LARGE_INTEGER),
+    ]
+PTRACE_STORE_ALLOCATION_TIMESTAMP = POINTER(TRACE_STORE_ALLOCATION_TIMESTAMP)
+
+class TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA(Structure):
+    _fields_ = [
+        ('Delta', LONG),
+    ]
+PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA = (
+    POINTER(TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA)
+)
+
 class _TRACE_STORE_ADDRESS_TIMESTAMP(Structure):
     _fields_ = [
         ('Requested', LARGE_INTEGER),
@@ -668,7 +682,8 @@ TRACE_STORE._fields_ = [
     ('RelocationStore', PTRACE_STORE),
     ('AddressStore', PTRACE_STORE),
     ('AddressRangeStore', PTRACE_STORE),
-    ('BitmapStore', PTRACE_STORE),
+    ('AllocationTimestampStore', PTRACE_STORE),
+    ('AllocationTimestampDeltaStore', PTRACE_STORE),
     ('InfoStore', PTRACE_STORE),
     ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
@@ -684,8 +699,9 @@ TRACE_STORE._fields_ = [
     ('Traits', PTRACE_STORE_TRAITS),
     ('Info', PTRACE_STORE_INFO),
     ('Reloc', PTRACE_STORE_RELOC),
-    ('Bitmap', PTRACE_STORE_BITMAP),
     ('Allocation', PTRACE_STORE_ALLOCATION),
+    ('AllocationTimestamp', PTRACE_STORE_ALLOCATION_TIMESTAMP),
+    ('AllocationTimestampDelta', PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA),
     ('Address', PTRACE_STORE_ADDRESS),
     ('AddressRange', PTRACE_STORE_ADDRESS_RANGE),
     ('NumberOfAllocations', ULARGE_INTEGER),
@@ -744,6 +760,14 @@ class TRACE_STORES_RUNDOWN(Structure):
     pass
 PTRACE_STORES_RUNDOWN = POINTER(TRACE_STORES_RUNDOWN)
 
+#
+# To add new metadata stores:
+#
+# :'a,'b s/('\(.\+\)InfoStore', TRACE_STORE),/('\1AllocationTimestampDeltaStore', TRACE_STORE),\r    ('\1InfoStore', TRACE_STORE),/g
+#
+# ^ Adds AllocationTimestampDeltaStore before InfoStore.
+#
+
 TRACE_STORES._fields_ = [
     ('SizeOfStruct', ULONG),
     ('SizeOfAllocation', ULONG),
@@ -785,7 +809,8 @@ TRACE_STORES._fields_ = [
     ('EventRelocationStore', TRACE_STORE),
     ('EventAddressStore', ADDRESS_STORE),
     ('EventAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('EventBitmapStore', TRACE_STORE),
+    ('EventAllocationTimestampStore', TRACE_STORE),
+    ('EventAllocationTimestampDeltaStore', TRACE_STORE),
     ('EventInfoStore', TRACE_STORE),
     ('StringBufferStore', TRACE_STORE),
     ('StringBufferMetadataInfoStore', TRACE_STORE),
@@ -793,7 +818,8 @@ TRACE_STORES._fields_ = [
     ('StringBufferRelocationStore', TRACE_STORE),
     ('StringBufferAddressStore', ADDRESS_STORE),
     ('StringBufferAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringBufferBitmapStore', TRACE_STORE),
+    ('StringBufferAllocationTimestampStore', TRACE_STORE),
+    ('StringBufferAllocationTimestampDeltaStore', TRACE_STORE),
     ('StringBufferInfoStore', TRACE_STORE),
     ('FunctionTableStore', TRACE_STORE),
     ('FunctionTableMetadataInfoStore', TRACE_STORE),
@@ -801,7 +827,8 @@ TRACE_STORES._fields_ = [
     ('FunctionTableRelocationStore', TRACE_STORE),
     ('FunctionTableAddressStore', ADDRESS_STORE),
     ('FunctionTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableBitmapStore', TRACE_STORE),
+    ('FunctionTableAllocationTimestampStore', TRACE_STORE),
+    ('FunctionTableAllocationTimestampDeltaStore', TRACE_STORE),
     ('FunctionTableInfoStore', TRACE_STORE),
     ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
     ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
@@ -809,7 +836,8 @@ TRACE_STORES._fields_ = [
     ('FunctionTableEntryRelocationStore', TRACE_STORE),
     ('FunctionTableEntryAddressStore', ADDRESS_STORE),
     ('FunctionTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableEntryBitmapStore', TRACE_STORE),
+    ('FunctionTableEntryAllocationTimestampStore', TRACE_STORE),
+    ('FunctionTableEntryAllocationTimestampDeltaStore', TRACE_STORE),
     ('FunctionTableEntryInfoStore', TRACE_STORE),
     ('PathTableStore', TRACE_STORE),
     ('PathTableMetadataInfoStore', TRACE_STORE),
@@ -817,7 +845,8 @@ TRACE_STORES._fields_ = [
     ('PathTableRelocationStore', TRACE_STORE),
     ('PathTableAddressStore', ADDRESS_STORE),
     ('PathTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('PathTableBitmapStore', TRACE_STORE),
+    ('PathTableAllocationTimestampStore', TRACE_STORE),
+    ('PathTableAllocationTimestampDeltaStore', TRACE_STORE),
     ('PathTableInfoStore', TRACE_STORE),
     ('PathTableEntryStore', PYTHON_PATH_TABLE_ENTRY_STORE),
     ('PathTableEntryMetadataInfoStore', TRACE_STORE),
@@ -825,7 +854,8 @@ TRACE_STORES._fields_ = [
     ('PathTableEntryRelocationStore', TRACE_STORE),
     ('PathTableEntryAddressStore', ADDRESS_STORE),
     ('PathTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('PathTableEntryBitmapStore', TRACE_STORE),
+    ('PathTableEntryAllocationTimestampStore', TRACE_STORE),
+    ('PathTableEntryAllocationTimestampDeltaStore', TRACE_STORE),
     ('PathTableEntryInfoStore', TRACE_STORE),
     ('SessionStore', TRACE_STORE),
     ('SessionMetadataInfoStore', TRACE_STORE),
@@ -833,7 +863,8 @@ TRACE_STORES._fields_ = [
     ('SessionRelocationStore', TRACE_STORE),
     ('SessionAddressStore', ADDRESS_STORE),
     ('SessionAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('SessionBitmapStore', TRACE_STORE),
+    ('SessionAllocationTimestampStore', TRACE_STORE),
+    ('SessionAllocationTimestampDeltaStore', TRACE_STORE),
     ('SessionInfoStore', TRACE_STORE),
     ('StringArrayStore', TRACE_STORE),
     ('StringArrayMetadataInfoStore', TRACE_STORE),
@@ -841,7 +872,8 @@ TRACE_STORES._fields_ = [
     ('StringArrayRelocationStore', TRACE_STORE),
     ('StringArrayAddressStore', ADDRESS_STORE),
     ('StringArrayAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringArrayBitmapStore', TRACE_STORE),
+    ('StringArrayAllocationTimestampStore', TRACE_STORE),
+    ('StringArrayAllocationTimestampDeltaStore', TRACE_STORE),
     ('StringArrayInfoStore', TRACE_STORE),
     ('StringTableStore', TRACE_STORE),
     ('StringTableMetadataInfoStore', TRACE_STORE),
@@ -849,7 +881,8 @@ TRACE_STORES._fields_ = [
     ('StringTableRelocationStore', TRACE_STORE),
     ('StringTableAddressStore', ADDRESS_STORE),
     ('StringTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringTableBitmapStore', TRACE_STORE),
+    ('StringTableAllocationTimestampStore', TRACE_STORE),
+    ('StringTableAllocationTimestampDeltaStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
 ]
 
