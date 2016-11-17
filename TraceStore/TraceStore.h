@@ -354,15 +354,16 @@ typedef struct _TRACE_STORE_STATS {
     ULONG PreferredAddressUnavailable;
 
     //
-    // Tracks how many times a access violation was encountered whilst servicing
-    // a prefault page request.  This would happen if the underlying section has
-    // already been retired and unmapped before the prefault request could be
-    // serviced by the threadpool -- which can happen under extreme allocation
-    // pressure if the trace store's mapping sizes are too small.  Even small
-    // values for this counter indicate pathological performance issues; the
-    // AllocationsOutpacingNextMemoryMapPreparation counter will usually be
-    // abnormally high before this counter starts getting hit.  The solution is
-    // to increase the memory map size and underlying trace store size.
+    // Tracks how many times an access violation was encountered whilst we were
+    // servicing a prefault page request.  This would happen if the underlying
+    // section has already been retired and unmapped before the prefault request
+    // could be serviced by the threadpool -- which can happen under extreme
+    // allocation pressure if the trace store's mapping sizes are too small.
+    // Even small values for this counter indicate pathological performance
+    // issues; the AllocationsOutpacingNextMemoryMapPreparation counter will
+    // usually be abnormally high before this counter starts getting hit.  The
+    // solution is to increase the memory map size and underlying trace store
+    // size.
     //
 
     ULONG AccessViolationsEncounteredDuringAsyncPrefault;
