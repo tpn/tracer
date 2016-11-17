@@ -1326,7 +1326,9 @@ Routine Description:
     thread stalled waiting for backing memory maps to be available.  Thus, if
     this routine cannot immediately satisfy the steps required to perform its
     duty without blocking, it will immediately return FALSE, indicating that
-    the next memory map is not yet ready.
+    the next memory map is not yet ready.  If a trace store's traits indicate
+    BlockingAllocations, though, this routine will block until the next memory
+    map is available.
 
 Arguments:
 
