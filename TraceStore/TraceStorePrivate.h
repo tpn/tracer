@@ -1647,7 +1647,21 @@ Return Value:
     // Prefault the page.
     //
 
-    TraceStore->Rtl->PrefaultPages(PrefaultMemoryMap->NextAddress, 1);
+    TRY_MAPPED_MEMORY_OP {
+        TraceStore->Rtl->PrefaultPages(PrefaultMemoryMap->NextAddress, 1);
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {
+
+        //
+        // This will happen if servicing the prefault off-core has taken longer
+        // for the originating core (the one that submitted the prefault work)
+        // to consume the entire memory map, then *another* memory map, which
+        // will retire the memory map backing this prefault address, which
+        // results in the address being invalidated, which results in an access
+        // violation when we try and read/prefault it from the thread pool.
+        //
+
+        TraceStore->Stats->AccessViolationsEncounteredDuringAsyncPrefault++;
+    }
 
     //
     // Return the memory map to the free list.
