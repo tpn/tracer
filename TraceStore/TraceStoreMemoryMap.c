@@ -1537,20 +1537,52 @@ StartPreparation:
         return FALSE;
     }
 
+PopNextMap:
+
     if (!PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
 
         //
         // Our allocations are outpacing the next memory map preparation
-        // being done asynchronously in the threadpool, so drop the record.
+        // being done asynchronously in the threadpool.  If the trace store
+        // has the BlockingAllocations trait set, wait on the next memory map
+        // available event -- otherwise, increment the dropped record counter
+        // and return immediately.
         //
 
         Stats->AllocationsOutpacingNextMemoryMapPreparation++;
+
+        if (IsBlockingAllocator(Traits)) {
+            HANDLE Event;
+            HRESULT WaitResult;
+
+            //
+            // Increment the blocked allocations counter and wait on the next
+            // memory map available event.  If the wait is satisfied, jump back
+            // and attempt to pop the next memory map again.  If it fails, fall
+            // through to the dropping logic.
+            //
+
+            Stats->BlockedAllocations++;
+            Event = TraceStore->NextMemoryMapAvailableEvent;
+            WaitResult = WaitForSingleObject(Event, INFINITE);
+            if (WaitResult == WAIT_OBJECT_0) {
+                goto PopNextMap;
+            }
+
+            //
+            // Intentional fall-through to non-blocking logic.  (If the wait
+            // result is anything other than WAIT_OBJECT_0, it indicates an
+            // error condition -- and is usually catastrophic (i.e. wait
+            // abandoned as part of process/thread rundown).)
+            //
+        }
+
+        //
+        // Increment the dropped record counter, return the PrepareMemoryMap
+        // back to the free list, and return failure to the caller.
+        //
+
         Stats->DroppedRecords++;
-
-        //
-        // Return the PrepareMemoryMap back to the free list.
-        //
-
         ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
         return FALSE;
     }

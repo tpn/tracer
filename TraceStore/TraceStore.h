@@ -353,7 +353,37 @@ typedef struct _TRACE_STORE_STATS {
 
     ULONG PreferredAddressUnavailable;
 
+    //
+    // Tracks how many times a access violation was encountered whilst servicing
+    // a prefault page request.  This would happen if the underlying section has
+    // already been retired and unmapped before the prefault request could be
+    // serviced by the threadpool -- which can happen under extreme allocation
+    // pressure if the trace store's mapping sizes are too small.  Even small
+    // values for this counter indicate pathological performance issues; the
+    // AllocationsOutpacingNextMemoryMapPreparation counter will usually be
+    // abnormally high before this counter starts getting hit.  The solution is
+    // to increase the memory map size and underlying trace store size.
+    //
+
+    ULONG AccessViolationsEncounteredDuringAsyncPrefault;
+
+    //
+    // If a trace store's traits indicates BlockingAllocations, this counter
+    // will reflect how many times an allocation was blocked because the next
+    // memory map wasn't prepared in time.
+    //
+
+    ULONG BlockedAllocations;
+
+    //
+    // Pad out to 32 bytes.
+    //
+
+    ULONG Unused[2];
+
 } TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
+
+C_ASSERT(sizeof(TRACE_STORE_STATS) == 32);
 
 //
 // Track total number of allocations and total record size.
@@ -454,10 +484,21 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG FrequentAllocations:1;
 
     //
+    // When set, indicates that trace store allocations should block until they
+    // can be satisfied instead of being dropped.  This is typically set for
+    // metadata stores that have frequent allocations and are also written to
+    // as part of other trace store functionality (e.g. allocation timestamps
+    // and deltas are allocated for every trace store record allocation, and
+    // can't be dropped because they're used to index other event logs).
+    //
+
+    ULONG BlockingAllocations:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:26;
+    ULONG Unused:25;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -486,7 +527,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     StreamingWriteTrait                 =  1 << 3,
     StreamingReadTrait                  =  1 << 4,
     FrequentAllocationsTrait            =  1 << 5,
-    InvalidTrait                        = (1 << 5) + 1
+    BlockingAllocationsTrait            =  1 << 6,
+    InvalidTrait                        = (1 << 6) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -527,6 +569,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define IsStreaming(Traits) ((Traits).StreamingRead || (Traits).StreamingWrite)
 
 #define IsFrequentAllocator(Traits) ((Traits).FrequentAllocations)
+#define IsBlockingAllocator(Traits) ((Traits).BlockingAllocations)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -540,10 +583,9 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     TRACE_STORE_EOF     Eof;
     TRACE_STORE_TIME    Time;
     TRACE_STORE_STATS   Stats;
-    TRACE_STORE_TOTALS  Totals;
 
     //
-    // We're at 128 bytes here and consume two cache lines.  Traits pushes us
+    // We're at 128 bytes here and consume two cache lines.  Totals pushes us
     // over into a third cache line, and we want our size to be a power of 2
     // (because these structures are packed successively in the struct below
     // and we don't want two different metadata stores sharing a cache line,
@@ -551,18 +593,19 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     // forth cache line.
     //
 
+    TRACE_STORE_TOTALS  Totals;
     TRACE_STORE_TRAITS  Traits;
 
     //
-    // We're at 132 bytes.  256 - 136 = 124 bytes of padding.
+    // We're at 148 bytes.  256 - 148 = 108 bytes of padding.
     //
 
-    CHAR Unused[124];
+    CHAR Unused[108];
 
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 
 C_ASSERT(sizeof(TRACE_STORE_INFO) == 256);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_INFO, Traits) == 128);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_INFO, Totals) == 128);
 
 typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO MetadataInfo;
@@ -1380,7 +1423,6 @@ typedef struct _TRACE_STORE {
 
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
-
 
     //
     // Number of trace stores that have us as a relocation target.

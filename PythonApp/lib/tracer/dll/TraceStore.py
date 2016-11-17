@@ -188,7 +188,9 @@ class TRACE_STORE_TRAITS(Structure):
         ('MultipleRecords', ULONG, 1),
         ('StreamingWrite', ULONG, 1),
         ('StreamingRead', ULONG, 1),
-        ('Unused', ULONG, 27),
+        ('FrequentAllocations', ULONG, 1),
+        ('BlockingAllocations', ULONG, 1),
+        ('Unused', ULONG, 25),
     ]
 PTRACE_STORE_TRAITS = POINTER(TRACE_STORE_TRAITS)
 
@@ -341,6 +343,9 @@ class TRACE_STORE_STATS(Structure):
         ('ExhaustedFreeMemoryMaps', ULONG),
         ('AllocationsOutpacingNextMemoryMapPreparation', ULONG),
         ('PreferredAddressUnavailable', ULONG),
+        ('AccessViolationsEncounteredDuringAsyncPrefault', ULONG),
+        ('BlockedAllocations', ULONG),
+        ('Unused', ULONG * 3),
     ]
 PTRACE_STORE_STATS = POINTER(TRACE_STORE_STATS)
 
@@ -358,7 +363,7 @@ class TRACE_STORE_INFO(Structure):
         ('Stats', TRACE_STORE_STATS),
         ('Totals', TRACE_STORE_TOTALS),
         ('Traits', TRACE_STORE_TRAITS),
-        ('Unused', CHAR * 124),
+        ('Unused', CHAR * 108),
     ]
 PTRACE_STORE_INFO = POINTER(TRACE_STORE_INFO)
 
@@ -369,9 +374,9 @@ class TRACE_STORE_METADATA_INFO(Structure):
         ('Relocation', TRACE_STORE_INFO),
         ('Address', TRACE_STORE_INFO),
         ('AddressRange', TRACE_STORE_INFO),
-        ('Bitmap', TRACE_STORE_INFO),
+        ('AllocationTimestamp', TRACE_STORE_INFO),
+        ('AllocationTimestampDelta', TRACE_STORE_INFO),
         ('Info', TRACE_STORE_INFO),
-        ('Unused', TRACE_STORE_INFO),
     ]
 PTRACE_STORE_METADATA_INFO = POINTER(TRACE_STORE_METADATA_INFO)
 

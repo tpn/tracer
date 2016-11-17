@@ -139,6 +139,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // StreamingWrite
         1,  // StreamingRead
         1,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -153,6 +154,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -167,6 +169,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -181,6 +184,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -195,6 +199,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -209,6 +214,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -223,6 +229,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -237,6 +244,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     },
 
@@ -251,6 +259,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
+        0,  // BlockingAllocations
         0   // Unused
     }
 };
@@ -298,26 +307,37 @@ USHORT TraceStoreAllocationTimestampDeltaStructSize = (
 );
 USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
-ULONG DefaultTraceStoreMappingSize = (1 << 21);                     //  2MB
-ULONG DefaultTraceStoreEventMappingSize = (1 << 23);                // 16MB
+//
+// Size key:
+//      1 << 16 == 64KB
+//      1 << 21 == 2MB
+//      1 << 22 == 4MB
+//      1 << 23 == 8MB
+//
+// N.B.: the trace store size should always be greater than or equal to the
+//       mapping size.
+//
 
-ULONG DefaultAllocationTraceStoreSize = (1 << 21);                  //  2MB
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);           // 64KB
+ULONG DefaultTraceStoreMappingSize = (1 << 21);
+ULONG DefaultTraceStoreEventMappingSize = (1 << 23);
 
-ULONG DefaultRelocationTraceStoreSize = (1 << 16);                  // 64KB
-ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);           // 64KB
+ULONG DefaultAllocationTraceStoreSize = (1 << 21);
+ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);
 
-ULONG DefaultAddressTraceStoreSize = (1 << 21);                     //  2MB
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);              // 64KB
+ULONG DefaultRelocationTraceStoreSize = (1 << 16);
+ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);
 
-ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);                // 64KB
-ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16);         // 64KB
+ULONG DefaultAddressTraceStoreSize = (1 << 21);
+ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);
 
-ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 23);         //  2MB
-ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 16);  // 64KB
+ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);
+ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16);
 
-ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 23);        //  2MB
-ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 16); // 64KB
+ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 23);
+ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 23);
+
+ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 23);
+ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 23);
 
 ULONG DefaultMetadataInfoTraceStoreSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -349,6 +369,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
@@ -359,6 +380,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     1,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
@@ -369,6 +391,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
@@ -379,6 +402,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     1,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
@@ -389,6 +413,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     1,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
@@ -399,6 +424,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     1,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
+    1,  // BlockingAllocations
     0   // Unused
 };
 
@@ -409,6 +435,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     1,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
+    1,  // BlockingAllocations
     0   // Unused
 };
 
@@ -419,6 +446,7 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0   // Unused
 };
 
