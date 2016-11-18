@@ -29,6 +29,8 @@ GetPathEntryFromFrame(
     PPYFRAMEOBJECT  FrameObject,
     LONG            EventType,
     PPYOBJECT       ArgObject,
+    PSTRING         FilenameString,
+    PFILENAME_FLAGS FilenameFlags,
     PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 /*++
@@ -56,6 +58,14 @@ Arguments:
     ArgObject - Supplies a pointer to a PYOBJECT structure that was provided as
         a parameter to the trace function.  Currently unused.
 
+    FilenameString - Supplies a pointer to a PSTRING structure that has been
+        initialized with the filename for this frame.
+
+    FilenameFlags - Supplies a pointer to a FILENAME_FLAGS structure that
+        captures attributes about the FilenameString parameter, such as
+        whether or not the filename is a special name (starts with '<'),
+        whether it's already been qualified, etc.
+
     PathEntryPointer - Supplies a pointer to a variable that will receive the
         address of a PYTHON_PATH_TABLE_ENTRY structure for the frame object's
         code object's filename.
@@ -68,39 +78,21 @@ Return Value:
 {
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
-    PPYOBJECT FilenameObject;
     PSTRING Match;
-    STRING PathString;
-    PSTRING Path;
+    PSTRING Path = FilenameString;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
     PPREFIX_TABLE PrefixTable;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     BOOL TriedQualified = FALSE;
+    BOOL DontTryQualifyPath = FALSE;
     BOOL Success;
-    BOOL IsSpecialName;
-
-    FilenameObject = *(
-        (PPPYOBJECT)RtlOffsetToPointer(
-            FrameObject->Code,
-            Python->PyCodeObjectOffsets->Filename
-        )
-    );
-
-    Path = &PathString;
-
-    Success = WrapPythonFilenameStringAsString(
-        Python,
-        FilenameObject,
-        Path,
-        &IsSpecialName
-    );
-
-    if (!Success) {
-        return FALSE;
-    }
 
     PrefixTable = &Python->PathTable->PrefixTable;
     Rtl = Python->Rtl;
+
+    if (FilenameFlags->IsFullyQualified || FilenameFlags->IsSpecialName) {
+        DontTryQualifyPath = TRUE;
+    }
 
 Retry:
     PrefixTableEntry = Rtl->PfxFindPrefix(PrefixTable, Path);
@@ -139,7 +131,7 @@ Retry:
         // will handle inserting a new prefix table entry for the file.
         //
 
-    } else if (!TriedQualified && !IsSpecialName) {
+    } else if (!TriedQualified && !DontTryQualifyPath) {
 
         //
         // See if we need to qualify the path and potentially do another prefix
@@ -157,14 +149,18 @@ Retry:
             }
 
             TriedQualified = TRUE;
+            FilenameFlags->IsFullyQualified = TRUE;
+            FilenameFlags->WeOwnPathBuffer = TRUE;
+
             goto Retry;
         }
 
     }
 
     Success = RegisterFile(Python,
-                           Path,
                            FrameObject,
+                           FilenameString,
+                           FilenameFlags,
                            &PathEntry);
 
     //
@@ -189,8 +185,9 @@ _Use_decl_annotations_
 BOOL
 RegisterFile(
     PPYTHON Python,
-    PSTRING QualifiedPath,
     PPYFRAMEOBJECT FrameObject,
+    PSTRING FilenameString,
+    PFILENAME_FLAGS FilenameFlags,
     PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
 /*++
@@ -205,19 +202,16 @@ Arguments:
     Python - Supplies a pointer to a PYTHON structure that contains the runtime
         tables that will be used to build up the path table entry.
 
-    Directory - Supplies a pointer to a STRING structure that represents the
-        fully-qualified directory name to create a path table entry for.
+    FrameObject - Supplies a pointer to a PYFRAMEOBJECT structure, provided by
+        the C Python tracing machinery.
 
-    Backslashes - Supplies a pointer to an RTL_BITMAP structure that represents
-        a reversed bitmap index of all of the backslashes in the Directory
-        parameter.
+    FilenameString - Supplies a pointer to a PSTRING structure that has been
+        initialized with the filename for this frame.
 
-    BitmapHintIndex - Supplies a pointer to a USHORT that indicates the bitmap
-        hint index that should be passed to Rtl->RtlFindSetBits() in order to
-        delineate the next path component offset within the directory string.
-
-    NumberOfBackslashesRemaining - Supplies a pointer to a USHORT that tracks
-        the number of backslashes remaining in the directory.
+    FilenameFlags - Supplies a pointer to a FILENAME_FLAGS structure that
+        captures attributes about the FilenameString parameter, such as
+        whether or not the filename is a special name (starts with '<'),
+        whether it's already been qualified, etc.
 
     PathEntryPointer - Supplies a pointer to a variable that will receive the
         address of a newly-allocated PYTHON_PATH_TABLE_ENTRY structure.
@@ -225,7 +219,6 @@ Arguments:
 Return Value:
 
     TRUE on success, FALSE on failure.
-
 
 --*/
 {
@@ -246,20 +239,18 @@ Return Value:
     BOOL IsInitPy = FALSE;
     BOOL CaseSensitive = TRUE;
     BOOL Reversed = TRUE;
-    BOOL WeOwnPathBuffer;
-    BOOL IsSpecialName;
+    BOOL IsSpecialName = FilenameFlags->IsSpecialName;
+    BOOL WeOwnPathBuffer = FilenameFlags->WeOwnPathBuffer;
 
     HANDLE HeapHandle = NULL;
 
     PRTL Rtl;
-    PPYOBJECT CodeObject;
-    PPYOBJECT FilenameObject;
     PPREFIX_TABLE PrefixTable;
     PPREFIX_TABLE_ENTRY PrefixTableEntry;
     PPYTHON_PATH_TABLE_ENTRY PathEntry;
     PPYTHON_PATH_TABLE_ENTRY DirectoryEntry;
     PSTR ModuleBuffer;
-    PSTRING Path = QualifiedPath;
+    PSTRING Path = FilenameString;
     PSTRING Name;
     PSTRING FullName;
     PSTRING ModuleName;
@@ -267,7 +258,6 @@ Return Value:
     PSTRING DirectoryModuleName;
     PRTL_BITMAP BitmapPointer;
 
-    STRING PathString;
     STRING Filename;
     STRING Directory;
 
@@ -279,53 +269,13 @@ Return Value:
     USHORT FullNameAllocSize;
     USHORT ExpectedMaximumLength;
 
+    //
+    // Reserve a 32 byte (256 >> 3), 256 bit stack-allocated bitmap buffer.
+    //
+
     CHAR StackBitmapBuffer[256 >> 3];
     RTL_BITMAP Bitmap = { 256, (PULONG)&StackBitmapBuffer };
     BitmapPointer = &Bitmap;
-
-    if (!ARGUMENT_PRESENT(Python)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(QualifiedPath)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(FrameObject)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(PathEntryPointer)) {
-        return FALSE;
-    }
-
-    CodeObject = FrameObject->Code;
-
-    FilenameObject = *(
-        (PPPYOBJECT)RtlOffsetToPointer(
-            CodeObject,
-            Python->PyCodeObjectOffsets->Filename
-        )
-    );
-
-    Success = WrapPythonFilenameStringAsString(
-        Python,
-        FilenameObject,
-        &PathString,
-        &IsSpecialName
-    );
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    //
-    // If the path was qualified, we will have already allocated new space for
-    // it.  If not, we'll need to account for additional space to store a copy
-    // of the string later on in this method.
-    //
-
-    WeOwnPathBuffer = (Path->Buffer != PathString.Buffer);
 
     //
     // If the filename was special (started with a "<" character), we fill
@@ -370,7 +320,7 @@ Return Value:
         // to account for the trailing NUL.
         //
 
-        FullNameLength = PathString.Length;
+        FullNameLength = Path->Length;
         FullNameAllocSize = (
             ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength + 1)
         );
@@ -400,7 +350,7 @@ Return Value:
         //
 
         __movsb((PBYTE)FullName->Buffer,
-                (PBYTE)PathString.Buffer,
+                (PBYTE)Path->Buffer,
                 FullName->Length);
 
         //
@@ -590,6 +540,10 @@ Return Value:
 
     PathEntry->IsFile = TRUE;
 
+    if (FilenameFlags->IsDll) {
+        PathEntry->IsDll = TRUE;
+    }
+
     Path = &PathEntry->Path;
     FullName = &PathEntry->FullName;
 
@@ -617,15 +571,15 @@ Return Value:
         // Re-use the qualified path's details.
         //
 
-        Path->MaximumLength = QualifiedPath->MaximumLength;
-        Path->Buffer = QualifiedPath->Buffer;
+        Path->MaximumLength = FilenameString->MaximumLength;
+        Path->Buffer = FilenameString->Buffer;
     }
 
-    Path->Length = QualifiedPath->Length;
+    Path->Length = FilenameString->Length;
 
     ExpectedMaximumLength = (
         PathAllocSize ? PathAllocSize :
-                        QualifiedPath->MaximumLength
+                        FilenameString->MaximumLength
     );
 
     if (Path->MaximumLength < ExpectedMaximumLength) {
@@ -663,7 +617,7 @@ Return Value:
         //
 
         __movsb((PBYTE)Path->Buffer,
-                (PBYTE)QualifiedPath->Buffer,
+                (PBYTE)FilenameString->Buffer,
                 Path->Length);
 
         //
@@ -731,7 +685,7 @@ Return Value:
         FreePythonPathTableEntry(Python, PathEntry);
 
         if (WeOwnPathBuffer) {
-            FreeStringAndBuffer(Python, QualifiedPath);
+            FreeStringAndBuffer(Python, FilenameString);
         } else {
             FreeStringBuffer(Python, Path);
         }
@@ -966,7 +920,6 @@ Return Value:
             //
 
             IsModule = FALSE;
-
         }
 
         if (!IsModule) {
@@ -978,9 +931,7 @@ Return Value:
             return RegisterNonModuleDirectory(Python,
                                               Directory,
                                               PathEntryPointer);
-
         }
-
     }
 
     //

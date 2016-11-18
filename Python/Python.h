@@ -664,12 +664,67 @@ typedef struct _PYFRAMEOBJECTOFFSETS {
 typedef const PYFRAMEOBJECTOFFSETS CPYFRAMEOBJECTOFFSETS;
 typedef const PYFRAMEOBJECTOFFSETS *PCPYFRAMEOBJECTOFFSETS;
 
+typedef
+PPYOBJECT
+(PYCFUNCTION)(
+    _In_ PPYOBJECT Self,
+    _In_ PPYOBJECT Args
+    );
+typedef PYCFUNCTION *PPYCFUNCTION;
+
+typedef
+PPYOBJECT
+(PYCFUNCTIONWITHKEYWORDS)(
+    _In_ PPYOBJECT Self,
+    _In_ PPYOBJECT Args,
+    _In_ PPYOBJECT Keywords
+    );
+typedef PYCFUNCTIONWITHKEYWORDS *PPYCFUNCTIONWITHKEYWORDS;
+typedef PYCFUNCTIONWITHKEYWORDS *PyCFunctionWithKeywords;
+
+typedef
+PPYOBJECT
+(PYCFUNCTIONNOARGS)(
+    _In_ PPYOBJECT Self
+    );
+typedef PYCFUNCTIONNOARGS *PPYCFUNCTIONNOARGS;
+typedef PYCFUNCTIONNOARGS *PyCFunctionNoArgs;
+
 typedef struct _PYMETHODDEF {
+
     union {
         char *ml_name;
         PCHAR Name;
     };
+
+    union {
+        PPYCFUNCTION ml_meth;
+        PPYCFUNCTION Method;
+    };
+
+    union {
+        int ml_flags;
+        union {
+            LONG Flags;
+            struct {
+                LONG VarArgs:1;
+                LONG KeywordArgs:1;
+                LONG NoArgs:1;
+                LONG ObjectArg:1;
+                LONG ClassMethod:1;
+                LONG StaticMethod:1;
+                LONG CoexistMethod:1;
+            };
+        };
+    };
+
+    union {
+        const char *ml_doc;
+        PCCH Doc;
+    };
+
 } PYMETHODDEF, *PPYMETHODDEF, PyMethodDef;
+
 
 typedef PPYOBJECT (*PPYGETTER)(PPYOBJECT, PVOID), (*getter);
 typedef LONG (*PPYSETTER)(PPYOBJECT, PPYOBJECT, PVOID), (*setter);
@@ -1009,7 +1064,81 @@ typedef struct _PYTUPLEOBJECT {
     };
 } PYTUPLEOBJECT, *PPYTUPLEOBJECT, **PPPYTUPLEOBJECT;
 
-typedef struct _PYCFUNCTIONOBJECT {
+//
+// PyDictObject - 2.x to 3.2
+//
+
+#define PYDICT_MIN_SIZE 8
+
+typedef struct _PYDICTENTRY25_32 {
+
+    union {
+        Py_ssize_t me_hash;
+        SSIZE_T Hash;
+    };
+
+    union {
+        PyObject *me_key;
+        PPYOBJECT Key;
+    };
+
+    union {
+        PyObject *me_value;
+        PPYOBJECT Value;
+    };
+
+} PYDICTENTRY25_32, *PPYDICTENTRY25_32, PyDictEntry25_32;
+
+typedef
+PPYDICTENTRY25_32
+(PYDICTENTRY25_32_MA_LOOKUP)(
+    _In_ struct _PYDICTOBJECT25_32 *Dict,
+    _In_ PPYOBJECT Key,
+    _In_opt_ LONG Hash
+    );
+typedef PYDICTENTRY25_32_MA_LOOKUP *PPYDICTENTRY25_32_MA_LOOKUP;
+
+typedef struct _PYDICTOBJECT25_32 {
+    _PYOBJECT_HEAD
+
+    union {
+        Py_ssize_t  ma_fill;
+        SSIZE_T     Fill;
+    };
+
+    union {
+        Py_ssize_t ma_used;
+        SSIZE_T    Used;
+    };
+
+    union {
+        Py_ssize_t ma_mask;
+        SSIZE_T    Mask;
+    };
+
+    union {
+        PyDictEntry25_32 *ma_table;
+        PPYDICTENTRY25_32 Table;
+    };
+
+    union {
+        PPYDICTENTRY25_32 ma_lookup;
+        PPYDICTENTRY25_32 Lookup;
+    };
+
+    union {
+        PYDICTENTRY25_32 ma_smalltable[PYDICT_MIN_SIZE];
+        PYDICTENTRY25_32 SmallTable[PYDICT_MIN_SIZE];
+    };
+
+} PYDICTOBJECT25_32, *PPYDICTOBJECT25_32;
+
+//
+// PyCFunctionObject
+//
+
+typedef struct _PYCFUNCTIONOBJECT25_34 {
+    _PYOBJECT_HEAD
     union {
         PyMethodDef *m_ml;
         PPYMETHODDEF Method;
@@ -1022,7 +1151,30 @@ typedef struct _PYCFUNCTIONOBJECT {
         PyObject    *m_module;
         PPYOBJECT    Module;
     };
-} PYCFUNCTIONOBJECT, *PPYCFUNCTIONOBJECT, PyCFunctionObject;
+} PYCFUNCTIONOBJECT25_34, *PPYCFUNCTIONOBJECT25_34;
+
+typedef PYCFUNCTIONOBJECT25_34 PYCFUNCTIONOBJECT;
+typedef PYCFUNCTIONOBJECT25_34 *PPYCFUNCTIONOBJECT;
+
+typedef struct _PYCFUNCTIONOBJECT35_35 {
+    _PYOBJECT_HEAD
+    union {
+        PyMethodDef *m_ml;
+        PPYMETHODDEF Method;
+    };
+    union {
+        PyObject    *m_self;
+        PPYOBJECT    Self;
+    };
+    union {
+        PyObject    *m_module;
+        PPYOBJECT    Module;
+    };
+    union {
+        PyObject    *m_weakreflist;
+        PPYOBJECT    WeakRefList;
+    };
+} PYCFUNCTIONOBJECT35_35, *PPYCFUNCTIONOBJECT35_35;
 
 typedef struct _PYINTERPRETERSTATE PYINTERPRETERSTATE, *PPYINTERPRETERSTATE, PyInterpreterState;
 
@@ -1780,11 +1932,25 @@ typedef struct _PYTHON_HASHED_STRING {
 
 } PYTHON_HASHED_STRING, *PPYTHON_HASHED_STRING, **PPPYTHON_HASHED_STRING;
 
+//
+// This structure is used to communicate information about a filename path
+// between frame and path registration.
+//
+
+typedef union _FILENAME_FLAGS {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG IsSpecialName:1;
+        ULONG IsFullyQualified:1;
+        ULONG WeOwnPathBuffer:1;
+        ULONG IsDll:1;
+    };
+} FILENAME_FLAGS, *PFILENAME_FLAGS;
+C_ASSERT(sizeof(FILENAME_FLAGS) == sizeof(ULONG));
 
 //
 // Constants
 //
-
 
 PYTHON_EX_DATA CONST USHORT TargetSizeOfPythonPathTableEntry;
 PYTHON_EX_DATA CONST USHORT TargetSizeOfPythonFunctionTableEntry;
@@ -1830,6 +1996,7 @@ typedef FREE_PYTHON_PATH_TABLE_ENTRY **PPFREE_PYTHON_PATH_TABLE_ENTRY;
 //
 
 typedef
+_Success_(return != 0)
 BOOL
 (REGISTER_FUNCTION)(
     _In_ PPYTHON Python,
@@ -1912,8 +2079,9 @@ _Success_(return != 0)
 BOOL
 (REGISTER_FILE)(
     _In_  PPYTHON Python,
-    _In_  PSTRING QualifiedPath,
     _In_  PPYFRAMEOBJECT FrameObject,
+    _In_  PSTRING FilenameString,
+    _In_  PFILENAME_FLAGS FilenameFlags,
     _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     );
 typedef REGISTER_FILE *PREGISTER_FILE, **PPREGISTER_FILE;
@@ -1926,6 +2094,8 @@ BOOL
     _In_      PPYFRAMEOBJECT  FrameObject,
     _In_      LONG            EventType,
     _In_opt_  PPYOBJECT       ArgObject,
+    _In_      PSTRING         FilenameString,
+    _In_      PFILENAME_FLAGS FilenameFlags,
     _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     );
 typedef GET_PATH_ENTRY_FROM_FRAME *PGET_PATH_ENTRY_FROM_FRAME;
@@ -2255,13 +2425,15 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
                 ULONG Flags;                                //  4   4   8
                 PYTHON_PATH_ENTRY_TYPE PathEntryType;
                 struct {
-                    ULONG IsModuleDirectory : 1;    // 1
-                    ULONG IsNonModuleDirectory : 1; // 2
-                    ULONG IsFile : 1;               // 4
-                    ULONG IsClass : 1;              // 8
-                    ULONG IsFunction : 1;           // 16
-                    ULONG IsSpecial : 1;            // 32
-                    ULONG IsValid : 1;              // 64
+                    ULONG IsModuleDirectory:1;      // 1
+                    ULONG IsNonModuleDirectory:1;   // 2
+                    ULONG IsFile:1;                 // 4
+                    ULONG IsClass:1;                // 8
+                    ULONG IsFunction:1;             // 16
+                    ULONG IsSpecial:1;              // 32
+                    ULONG IsValid:1;                // 64
+                    ULONG IsDll:1;                  // 128
+                    ULONG IsBuiltin:1;              // 256
                 };
             };
 
@@ -2419,53 +2591,51 @@ typedef struct _PYTHON_FUNCTION {
 
     PYTHON_PATH_TABLE_ENTRY PathEntry;                      // 128  0   128
 
-    DECLSPEC_ALIGN(8)
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;               // 8    128 136
 
-    DECLSPEC_ALIGN(8)
     union {
-        PPYOBJECT          CodeObject;                      // 8    136 144
-        PPYCODEOBJECT25_27 Code25_27;
-        PPYCODEOBJECT30_32 Code30_32;
-        PPYCODEOBJECT33_35 Code33_35;
+        PPYOBJECT               CodeObject;                 // 8    136 144
+        PPYCODEOBJECT25_27      Code25_27;
+        PPYCODEOBJECT30_32      Code30_32;
+        PPYCODEOBJECT33_35      Code33_35;
+        PPYCFUNCTIONOBJECT      PyCFunctionObject;
+        PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
+        PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
     };
 
-    DECLSPEC_ALIGN(8)
-    PRTL_BITMAP LineNumbersBitmap;                          // 8    144 152
+    union {
 
-    DECLSPEC_ALIGN(8)
-    PVOID Histogram;                                        // 8    152 160
+        //
+        // PyCodeObject fields.
+        //
 
-    DECLSPEC_ALIGN(8)
-    PUSHORT CodeLineNumbers;                                // 8    160 168
+        struct {
+            PRTL_BITMAP LineNumbersBitmap;                  // 8    144 152
+            PVOID Histogram;                                // 8    152 160
+            PUSHORT CodeLineNumbers;                        // 8    160 168
 
-    ULONG ReferenceCount;                                   // 4    168 172
-    LONG  CodeObjectHash;                                   // 4    172 176
-    ULONG FunctionHash;                                     // 4    176 180
-    ULONG Unused1;                                          // 4    180 184
+            LONG  CodeObjectHash;                           // 4    168 172
+            ULONG FunctionHash;                             // 4    172 176
+            ULONGLONG Unused1;                              // 8    176 184
 
-    USHORT FirstLineNumber;                                 // 2    184 186
-    USHORT NumberOfLines;                                   // 2    186 188
-    USHORT NumberOfCodeLines;                               // 2    188 190
-    USHORT SizeOfByteCode;                                  // 2    190 192
+            USHORT FirstLineNumber;                         // 2    184 186
+            USHORT NumberOfLines;                           // 2    186 188
+            USHORT NumberOfCodeLines;                       // 2    188 190
+            USHORT SizeOfByteCode;                          // 2    190 192
+        };
 
-    //
-    // It's advantageous having this struct fitting neatly into a PAGE_SIZE,
-    // which in our case will be a 256-byte struct.  Add the necessary padding
-    // to fill it out.  Feel free to repurpose these bytes down the track.
-    //
+        //
+        // PyCFunction fields.
+        //
 
-    //
-    // We calculate the size by taking 192 above, subtracting it from 256,
-    // giving 64, then subtracting another 40 to account for the generic table
-    // header, giving 24 bytes remaining for a target size of 216 bytes.
-    //
-    // We fill this space with 3 x 8-byte ULONGLONGs.
-    //
+        struct {
+            HANDLE Module;
+        };
+    };
 
-    ULONGLONG Unused2;                                      // 8    192 200
-    ULONGLONG Unused3;                                      // 8    200 208
-    ULONGLONG Unused4;                                      // 8    208 216
+    ULONG       MaxCallStackDepth;                          // 4    192 196
+    ULONG       ReferenceCount;                             // 4    196 200
+    LIST_ENTRY  ListEntry;                                  // 16   200 216
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 

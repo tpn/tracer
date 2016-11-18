@@ -165,16 +165,21 @@ Return Value:
 {
     BOOL Success;
     BOOL IsValid;
+    BOOL IsCFunction = FALSE;
 
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
     PPYOBJECT CodeObject;
+    PPYCFUNCTIONOBJECT PyCFunctionObject;
+    PPYMETHODDEF MethodDef;
+    STRING FilenameString;
 
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
     BOOLEAN NewFunction;
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
+    FILENAME_FLAGS FilenameFlags;
 
     //
     // Clear the caller's function pointer up front if present.
@@ -184,22 +189,41 @@ Return Value:
         *FunctionPointer = NULL;
     }
 
-    CodeObject = Frame->Code;
+    //
+    // Verify the code object type is something sane.
+    //
 
-    if (CodeObject->Type != Python->PyCode.Type) {
+    CodeObject = Frame->Code;
+    if (CodeObject->Type == Python->PyCFunction.Type) {
+        PyCFunctionObject = (PPYCFUNCTIONOBJECT)Frame->Code;
+    } else if (CodeObject->Type != Python->PyCode.Type) {
+        __debugbreak();
         return FALSE;
     }
 
+    //
+    // Initialize aliases.
+    //
+
     Rtl = Python->Rtl;
+    FunctionTable = Python->FunctionTable;
 
     //
-    // Clear the function record.
+    // Clear the function record and set the code object.
     //
 
     SecureZeroMemory(&FunctionRecord, sizeof(FunctionRecord));
     FunctionRecord.CodeObject = CodeObject;
 
-    FunctionTable = Python->FunctionTable;
+    //
+    // Clear the filename flags.
+    //
+
+    FilenameFlags.AsLong = 0;
+
+    //
+    // Attempt to insert the function into the function table.
+    //
 
     Function = Rtl->RtlInsertElementGenericTable(
         &FunctionTable->GenericTable,
@@ -225,14 +249,100 @@ Return Value:
     }
 
     //
-    // This is a new function; attempt to register the underlying filename for
-    // this frame.
+    // This is a new function.  Get the filename.
+    //
+
+    if (CodeObject->Type == Python->PyCFunction.Type) {
+        CHAR Path[_MAX_PATH];
+        HMODULE Handle;
+        ULONG Flags;
+        DWORD BufferSizeInChars = sizeof(Path);
+        DWORD ActualSizeInChars;
+
+        IsCFunction = TRUE;
+
+        __debugbreak();
+
+        MethodDef = PyCFunctionObject->Method;
+
+        Flags = (
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+        );
+
+        if (!GetModuleHandleEx(Flags,
+                               (LPCTSTR)MethodDef->Method,
+                               &Handle))
+        {
+            return FALSE;
+        }
+
+        if (!Handle) {
+            return FALSE;
+        }
+
+        ActualSizeInChars = GetFinalPathNameByHandleA(Handle,
+                                                      (LPSTR)&Path,
+                                                      BufferSizeInChars,
+                                                      FILE_NAME_NORMALIZED);
+
+        if (ActualSizeInChars == 0 || ActualSizeInChars > BufferSizeInChars) {
+            DWORD LastError = GetLastError();
+            return FALSE;
+        }
+
+        FilenameString.Length = (USHORT)ActualSizeInChars - 1;
+        FilenameString.MaximumLength = (USHORT)BufferSizeInChars;
+        FilenameString.Buffer = Path;
+
+        FilenameFlags.IsFullyQualified = TRUE;
+        FilenameFlags.IsDll = TRUE;
+
+    } else if (CodeObject->Type == Python->PyCode.Type) {
+
+        BOOL IsSpecialName;
+        PSTRING Path;
+        PPYOBJECT FilenameObject;
+        PCPYCODEOBJECTOFFSETS CodeObjectOffsets;
+
+        IsCFunction = FALSE;
+        CodeObjectOffsets = Python->PyCodeObjectOffsets;
+
+        FilenameObject = *(
+            (PPPYOBJECT)RtlOffsetToPointer(
+                FrameObject->Code,
+                Python->PyCodeObjectOffsets->Filename
+            )
+        );
+
+        Path = &FilenameString;
+
+        Success = WrapPythonFilenameStringAsString(
+            Python,
+            FilenameObject,
+            Path,
+            &IsSpecialName
+        );
+
+        if (!Success) {
+            return FALSE;
+        }
+
+        if (IsSpecialName) {
+            FilenameFlags.IsSpecialName = TRUE;
+        }
+    }
+
+    //
+    // Attempt to get a path entry for this frame and filename object.
     //
 
     Success = GetPathEntryFromFrame(Python,
                                     FrameObject,
                                     EventType,
                                     ArgObject,
+                                    &FilenameString,
+                                    &FilenameFlags,
                                     &ParentPathEntry);
 
     if (!Success || !ParentPathEntry || !ParentPathEntry->IsValid) {
@@ -240,22 +350,31 @@ Return Value:
     }
 
     Function->ParentPathEntry = ParentPathEntry;
-    Function->CodeObject = CodeObject;
 
-    Success = RegisterFunction(Python,
-                               Function,
-                               FrameObject);
+    //
+    // Finish registration of the function.
+    //
+
+    if (IsCFunction) {
+        Function->PyCFunctionObject = PyCFunctionObject;
+        Success = RegisterPyCFunction(Python,
+                                      Function,
+                                      FrameObject);
+    } else {
+        Function->CodeObject = CodeObject;
+        Success = RegisterPythonFunction(Python,
+                                         Function,
+                                         FrameObject);
+    }
 
     if (Success) {
         IsValid = TRUE;
 
         //
-        // Increment the reference count of the code object so that
-        // we can keep it alive during tracing (given that it is our
-        // key into the FunctionTable).
+        // Mark our 'seen' bit in the frame's code object.
         //
 
-        CodeObject->ReferenceCount++;
+        FrameObject->Code->RefCountEx.Seen = TRUE;
 
         goto End;
     }
@@ -282,7 +401,7 @@ End:
 
 _Use_decl_annotations_
 BOOL
-RegisterFunction(
+RegisterPythonFunction(
     PPYTHON Python,
     PPYTHON_FUNCTION Function,
     PPYFRAMEOBJECT FrameObject
@@ -842,8 +961,47 @@ Return Value:
     return TRUE;
 }
 
-#ifdef __cplusplus
-}; // extern "C"
-#endif
+_Use_decl_annotations_
+BOOL
+RegisterPyCFunction(
+    PPYTHON Python,
+    PPYTHON_FUNCTION Function,
+    PPYFRAMEOBJECT FrameObject
+    )
+/*++
+
+Routine Description:
+
+    This method is responsible for finalizing details about a C function, such
+    as the function name and modulen name.  A frame object is provided to
+    assist with resolution of names.
+
+    It is called once per function after a new PYTHON_PATH_TABLE_ENTRY has been
+    inserted into the path prefix table.
+
+Arguments:
+
+    Python - Supplies a pointer to a PYTHON structure.
+
+    Function - Supplies a pointer to a PYTHON_FUNCTION structure to be
+        registered by this routine.
+
+    FrameObject - Supplies a pointer to the PYFRAMEOBJECT structure for which
+        this function is being registered.  This is required in order to assist
+        with the resolution of names.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+
+    //
+    // XXX todo.
+    //
+
+    return TRUE;
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
