@@ -48,17 +48,6 @@ extern "C" {
 
 #endif
 
-typedef enum _TraceEventType {
-    // PyTrace_* constants.
-    TraceEventType_PyTrace_CALL = 0,
-    TraceEventType_PyTrace_EXCEPTION = 1,
-    TraceEventType_PyTrace_LINE = 2,
-    TraceEventType_PyTrace_RETURN = 3,
-    TraceEventType_PyTrace_C_CALL = 4,
-    TraceEventType_PyTrace_C_EXCEPTION = 5,
-    TraceEventType_PyTrace_C_RETURN = 6,
-} TraceEventType;
-
 typedef struct _EVENT_TYPE_NAME {
     TraceEventType  Id;
     PCWSTR          Name;

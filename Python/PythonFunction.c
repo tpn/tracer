@@ -165,7 +165,7 @@ Return Value:
 {
     BOOL Success;
     BOOL IsValid;
-    BOOL IsCFunction = FALSE;
+    BOOL IsC;
 
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
@@ -194,12 +194,15 @@ Return Value:
     //
 
     CodeObject = Frame->Code;
-    if (CodeObject->Type == Python->PyCFunction.Type) {
-        PyCFunctionObject = (PPYCFUNCTIONOBJECT)Frame->Code;
-    } else if (CodeObject->Type != Python->PyCode.Type) {
-        __debugbreak();
+    if (CodeObject->Type != Python->PyCode.Type) {
         return FALSE;
     }
+
+    IsC = (
+        EventType == TraceEventType_PyTrace_C_CALL      ||
+        EventType == TraceEventType_PyTrace_C_RETURN    ||
+        EventType == TraceEventType_PyTrace_C_EXCEPTION
+    );
 
     //
     // Initialize aliases.
@@ -249,20 +252,21 @@ Return Value:
     }
 
     //
-    // This is a new function.  Get the filename.
+    // This is a new function.  Get the filename.  How we do this depends on
+    // whether or not this is normal Python user code, or a C function.
     //
 
-    if (CodeObject->Type == Python->PyCFunction.Type) {
+    if (IsC) {
         CHAR Path[_MAX_PATH];
         HMODULE Handle;
         ULONG Flags;
         DWORD BufferSizeInChars = sizeof(Path);
         DWORD ActualSizeInChars;
 
-        IsCFunction = TRUE;
-
         __debugbreak();
 
+        PyCFunctionObject = (PPYCFUNCTIONOBJECT)ArgObject;
+        Function->PyCFunctionObject = PyCFunctionObject;
         MethodDef = PyCFunctionObject->Method;
 
         Flags = (
@@ -298,14 +302,13 @@ Return Value:
         FilenameFlags.IsFullyQualified = TRUE;
         FilenameFlags.IsDll = TRUE;
 
-    } else if (CodeObject->Type == Python->PyCode.Type) {
+    } else {
 
         BOOL IsSpecialName;
         PSTRING Path;
         PPYOBJECT FilenameObject;
         PCPYCODEOBJECTOFFSETS CodeObjectOffsets;
 
-        IsCFunction = FALSE;
         CodeObjectOffsets = Python->PyCodeObjectOffsets;
 
         FilenameObject = *(
@@ -355,7 +358,7 @@ Return Value:
     // Finish registration of the function.
     //
 
-    if (IsCFunction) {
+    if (IsC) {
         Function->PyCFunctionObject = PyCFunctionObject;
         Success = RegisterPyCFunction(Python,
                                       Function,
