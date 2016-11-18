@@ -2433,7 +2433,8 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
                     ULONG IsSpecial:1;              // 32
                     ULONG IsValid:1;                // 64
                     ULONG IsDll:1;                  // 128
-                    ULONG IsBuiltin:1;              // 256
+                    ULONG IsC:1;                    // 256
+                    ULONG IsBuiltin:1;              // 512
                 };
             };
 
@@ -2598,6 +2599,9 @@ typedef struct _PYTHON_FUNCTION {
         PPYCODEOBJECT25_27      Code25_27;
         PPYCODEOBJECT30_32      Code30_32;
         PPYCODEOBJECT33_35      Code33_35;
+        PPYCFUNCTIONOBJECT      PyCFunctionObject;
+        PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
+        PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
     };
 
     union {
@@ -2629,12 +2633,7 @@ typedef struct _PYTHON_FUNCTION {
         };
     };
 
-    union {                                                 // 8    184 192
-        PPYCFUNCTIONOBJECT      PyCFunctionObject;
-        PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
-        PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
-    };
-
+    ULONGLONG   Unused;                                     // 8    184 192
     ULONG       MaxCallStackDepth;                          // 4    192 196
     ULONG       ReferenceCount;                             // 4    196 200
     LIST_ENTRY  ListEntry;                                  // 16   200 216

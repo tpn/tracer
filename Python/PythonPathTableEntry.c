@@ -621,11 +621,12 @@ Return Value:
                 Path->Length);
 
         //
-        // Add trailing NUL.
+        // Ensure the buffer is NUL terminated.
         //
 
-        Path->Buffer[Path->Length] = '\0';
-
+        if (Path->Buffer[Path->Length] != '\0') {
+            __debugbreak();
+        }
     }
 
     //

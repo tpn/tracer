@@ -219,6 +219,16 @@ Return Value:
     FunctionRecord.CodeObject = CodeObject;
 
     //
+    // If we're a C function, toggle the IsC flag and set the PyCFunctionObject
+    // member of the function record.
+    //
+
+    if (IsC) {
+        FunctionRecord.PathEntry.IsC = TRUE;
+        FunctionRecord.PyCFunctionObject = (PPYCFUNCTIONOBJECT)ArgObject;
+    }
+
+    //
     // Clear the filename flags.
     //
 
@@ -262,22 +272,18 @@ Return Value:
         ULONG Flags;
         DWORD BufferSizeInChars = sizeof(Path);
         DWORD ActualSizeInChars;
+        LPCTSTR Method;
 
-        __debugbreak();
-
-        PyCFunctionObject = (PPYCFUNCTIONOBJECT)ArgObject;
-        Function->PyCFunctionObject = PyCFunctionObject;
+        PyCFunctionObject = Function->PyCFunctionObject;
         MethodDef = PyCFunctionObject->Method;
+        Method = (LPCTSTR)MethodDef->Method;
 
         Flags = (
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
         );
 
-        if (!GetModuleHandleEx(Flags,
-                               (LPCTSTR)MethodDef->Method,
-                               &Handle))
-        {
+        if (!GetModuleHandleEx(Flags, Method, &Handle)) {
             return FALSE;
         }
 
@@ -285,13 +291,19 @@ Return Value:
             return FALSE;
         }
 
-        ActualSizeInChars = GetFinalPathNameByHandleA(Handle,
-                                                      (LPSTR)&Path,
-                                                      BufferSizeInChars,
-                                                      FILE_NAME_NORMALIZED);
+        ActualSizeInChars = GetModuleFileNameA(Handle,
+                                               (LPSTR)&Path,
+                                               BufferSizeInChars);
 
-        if (ActualSizeInChars == 0 || ActualSizeInChars > BufferSizeInChars) {
+        if (ActualSizeInChars == 0) {
             DWORD LastError = GetLastError();
+            if (LastError == ERROR_INSUFFICIENT_BUFFER) {
+
+                //
+                // XXX todo: allocate string buffer.
+                //
+            }
+
             return FALSE;
         }
 
@@ -392,7 +404,14 @@ Error:
 End:
     if (IsValid) {
         if (!Function->PathEntry.IsValid) {
-            __debugbreak();
+
+            //
+            // Temporary kludge whilst C-based resolution is being worked on.
+            //
+
+            if (!Function->PathEntry.IsC) {
+                __debugbreak();
+            }
         }
         if (ARGUMENT_PRESENT(FunctionPointer)) {
             *FunctionPointer = Function;
