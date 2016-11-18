@@ -407,9 +407,23 @@ FunctionTableCompareRoutine(
     )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
-    return GenericComparePointer(Table,
-                                 (ULONG_PTR)First->CodeObject,
-                                 (ULONG_PTR)Second->CodeObject);
+
+    ULONG_PTR FirstPointer;
+    ULONG_PTR SecondPointer;
+
+    if (First->PathEntry.IsC) {
+        FirstPointer = (ULONG_PTR)First->PyCFunctionObject->Method;
+    } else {
+        FirstPointer = (ULONG_PTR)First->CodeObject;
+    }
+
+    if (Second->PathEntry.IsC) {
+        SecondPointer = (ULONG_PTR)Second->PyCFunctionObject->Method;
+    } else {
+        SecondPointer = (ULONG_PTR)Second->CodeObject;
+    }
+
+    return GenericComparePointer(Table, FirstPointer, SecondPointer);
 }
 
 _Check_return_

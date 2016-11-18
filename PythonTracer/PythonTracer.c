@@ -146,7 +146,7 @@ IsFunctionOfInterestPrefixTree(
     PPREFIX_TABLE Table;
     PPREFIX_TABLE_ENTRY Entry;
 
-    if (!Context->HasModuleFilter) {
+    if (!Context->Flags.HasModuleFilter) {
 
         //
         // Trace everything.
@@ -178,7 +178,7 @@ IsFunctionOfInterestStringTable(
     STRING_TABLE_INDEX Index;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
-    if (!Context->HasModuleFilter) {
+    if (!Context->Flags.HasModuleFilter) {
 
         //
         // Trace everything.
@@ -214,7 +214,7 @@ EnableMemoryTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceMemory = TRUE;
+    PythonTraceContext->Flags.TraceMemory = TRUE;
 }
 
 _Use_decl_annotations_
@@ -223,7 +223,7 @@ DisableMemoryTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceMemory = FALSE;
+    PythonTraceContext->Flags.TraceMemory = FALSE;
 }
 
 _Use_decl_annotations_
@@ -232,7 +232,7 @@ EnableIoCountersTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceIoCounters = TRUE;
+    PythonTraceContext->Flags.TraceIoCounters = TRUE;
 }
 
 _Use_decl_annotations_
@@ -241,7 +241,7 @@ DisableIoCountersTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceIoCounters = FALSE;
+    PythonTraceContext->Flags.TraceIoCounters = FALSE;
 }
 
 _Use_decl_annotations_
@@ -250,7 +250,7 @@ EnableHandleCountTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceHandleCount = TRUE;
+    PythonTraceContext->Flags.TraceHandleCount = TRUE;
 }
 
 _Use_decl_annotations_
@@ -259,7 +259,7 @@ DisableHandleCountTracing(
     PPYTHON_TRACE_CONTEXT   PythonTraceContext
     )
 {
-    PythonTraceContext->TraceHandleCount = FALSE;
+    PythonTraceContext->Flags.TraceHandleCount = FALSE;
 }
 
 LONG
@@ -323,47 +323,16 @@ PyTraceCallback(
 
     if (!Flags.HasStarted) {
 
-        //
-        // We haven't started tracing/profiling yet.
-        //
-
-        if (Flags.IsProfile) {
+        if (!IsCall) {
 
             //
-            // We are in profile mode.
+            // If we haven't started profiling yet, we can ignore any
+            // event that isn't a call event.  (In practice, there will
+            // usually be one return event/frame before we get a call
+            // event we're interested in.)
             //
 
-            if (!IsCall) {
-
-                //
-                // If we haven't started profiling yet, we can ignore any
-                // event that isn't a call event.  (In practice, there will
-                // usually be one return event/frame before we get a call
-                // event we're interested in.)
-                //
-
-                return 0;
-
-            }
-
-        } else {
-
-            //
-            // We are in tracing mode.
-            //
-
-            if (!IsLine) {
-
-                //
-                // If we haven't started tracing yet, we can ignore any event
-                // that isn't a line event.  (In practice, there will usually
-                // be one return event/frame before we get a line event we're
-                // interested in.)
-                //
-
-                return 0;
-            }
-
+            return 0;
         }
 
         //
@@ -397,7 +366,7 @@ PyTraceCallback(
     // If we've been configured to track maximum reference counts, do that now.
     //
 
-    if (Context->TrackMaxRefCounts) {
+    if (Flags.TrackMaxRefCounts) {
         UpdateMaxRefCounts(Context);
     }
 
@@ -437,7 +406,9 @@ PyTraceCallback(
     }
 
     if (!Function->PathEntry.IsValid) {
-        __debugbreak();
+        if (!Function->PathEntry.IsC) {
+            __debugbreak();
+        }
         return 0;
     }
 
@@ -557,7 +528,6 @@ PyTraceCallback(
         //
 
         Event.LineNumber = (USHORT)Python->PyFrame_GetLineNumber(FrameObject);
-
     }
 
     //
@@ -982,14 +952,6 @@ InitializePythonTraceContext(
 
     Rtl->PfxInitialize(&Context->ModuleFilterPrefixTree);
 
-    InitializeListHead(&Context->Functions);
-
-    Context->StartTracing = StartTracing;
-    Context->StopTracing = StopTracing;
-
-    Context->StartProfiling = StartProfiling;
-    Context->StopProfiling = StopProfiling;
-
     Context->Start = Start;
     Context->Stop = Stop;
 
@@ -1010,108 +972,12 @@ InitializePythonTraceContext(
 
 _Use_decl_annotations_
 BOOL
-StartTracing(
-    PPYTHON_TRACE_CONTEXT   PythonTraceContext
+Start(
+    PPYTHON_TRACE_CONTEXT Context
     )
 {
     PPYTHON Python;
     PPYTRACEFUNC PythonTraceFunction;
-
-    if (!PythonTraceContext) {
-        return FALSE;
-    }
-
-    Python = PythonTraceContext->Python;
-
-    if (!Python) {
-        return FALSE;
-    }
-
-    PythonTraceFunction = PythonTraceContext->PythonTraceFunction;
-
-    if (!PythonTraceFunction) {
-        return FALSE;
-    }
-
-    QueryPerformanceCounter(&PythonTraceContext->StartTimestamp);
-
-    PythonTraceContext->IsProfile = FALSE;
-
-    Python->PyEval_SetTrace(
-        PythonTraceFunction,
-        (PPYOBJECT)PythonTraceContext
-    );
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-StopTracing(
-    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    )
-{
-    PPYTHON Python;
-
-    if (!PythonTraceContext) {
-        return FALSE;
-    }
-
-    Python = PythonTraceContext->Python;
-
-    if (!Python) {
-        return FALSE;
-    }
-
-    QueryPerformanceCounter(&PythonTraceContext->StopTimestamp);
-
-    Python->PyEval_SetTrace(NULL, NULL);
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-StartProfiling(
-    PPYTHON_TRACE_CONTEXT   PythonTraceContext
-    )
-{
-    PPYTHON Python;
-    PPYTRACEFUNC PythonTraceFunction;
-
-    if (!PythonTraceContext) {
-        return FALSE;
-    }
-
-    Python = PythonTraceContext->Python;
-
-    if (!Python) {
-        return FALSE;
-    }
-
-    PythonTraceFunction = PythonTraceContext->PythonTraceFunction;
-
-    if (!PythonTraceFunction) {
-        return FALSE;
-    }
-
-    PythonTraceContext->IsProfile = TRUE;
-
-    Python->PyEval_SetProfile(
-        PythonTraceFunction,
-        (PPYOBJECT)PythonTraceContext
-    );
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-StopProfiling(
-    PPYTHON_TRACE_CONTEXT   Context
-    )
-{
-    PPYTHON Python;
 
     if (!Context) {
         return FALSE;
@@ -1123,24 +989,21 @@ StopProfiling(
         return FALSE;
     }
 
-    Context->HasStarted = FALSE;
+    PythonTraceFunction = Context->PythonTraceFunction;
 
-    Python->PyEval_SetProfile(NULL, NULL);
+    if (!PythonTraceFunction) {
+        return FALSE;
+    }
+
+    if (!Context->Flags.ProfileOnly) {
+        Context->Flags.IsTracing = TRUE;
+        Python->PyEval_SetTrace(PythonTraceFunction, (PPYOBJECT)Context);
+    }
+
+    Context->Flags.IsProfiling = TRUE;
+    Python->PyEval_SetProfile(PythonTraceFunction, (PPYOBJECT)Context);
 
     return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-Start(
-    PPYTHON_TRACE_CONTEXT Context
-    )
-{
-    if (Context->IsProfile) {
-        return StartProfiling(Context);
-    } else {
-        return StartTracing(Context);
-    }
 }
 
 _Use_decl_annotations_
@@ -1149,28 +1012,30 @@ Stop(
     PPYTHON_TRACE_CONTEXT Context
     )
 {
-    if (Context->IsProfile) {
-        return StopProfiling(Context);
-    } else {
-        return StopTracing(Context);
-    }
-}
+    PPYTHON Python;
+    PPYTRACEFUNC PythonTraceFunction;
 
-BOOL
-AddFunction(
-    _In_    PPYTHON_TRACE_CONTEXT   PythonTraceContext,
-    _In_    PVOID                   FunctionObject
-    )
-{
-    if (!PythonTraceContext) {
+    if (!Context) {
         return FALSE;
     }
 
-    if (!FunctionObject) {
+    Python = Context->Python;
+
+    if (!Python) {
         return FALSE;
     }
 
-    //PythonTraceContext->FunctionObject = (PPYFUNCTIONOBJECT)FunctionObject;
+    PythonTraceFunction = Context->PythonTraceFunction;
+
+    if (!PythonTraceFunction) {
+        return FALSE;
+    }
+
+    Context->Flags.IsTracing = FALSE;
+    Context->Flags.IsProfiling = FALSE;
+
+    Python->PyEval_SetTrace(NULL, NULL);
+    Python->PyEval_SetProfile(NULL, NULL);
 
     return TRUE;
 }
@@ -1346,7 +1211,7 @@ AddModuleName(
                                   &PrefixTableEntry);
 
     if (Success) {
-        Context->HasModuleFilter = TRUE;
+        Context->Flags.HasModuleFilter = TRUE;
     }
 
     return Success;
@@ -1381,7 +1246,7 @@ SetModuleNamesStringTable(
 
     Context->ModuleFilterStringTable = StringTable;
 
-    Context->HasModuleFilter = TRUE;
+    Context->Flags.HasModuleFilter = TRUE;
 
     return TRUE;
 }

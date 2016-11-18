@@ -208,16 +208,18 @@ typedef struct _PYTHON_TRACE_CALL_EVENT {
 typedef struct _PYTHON_TRACE_CONTEXT PYTHON_TRACE_CONTEXT;
 typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
 
-typedef struct _PYTHON_TRACE_CONTEXT_FLAGS {
-    union {
-        ULONG Flags;
-        struct {
-            ULONG IsProfile:1;
-            ULONG HasStarted:1;
-            ULONG TraceMemory:1;
-            ULONG TraceIoCounters:1;
-            ULONG TraceHandleCount:1;
-        };
+typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
+    ULONG AsLong;
+    struct {
+        ULONG ProfileOnly:1;
+        ULONG IsProfiling:1;
+        ULONG IsTracing:1;
+        ULONG HasStarted:1;
+        ULONG TraceMemory:1;
+        ULONG TraceIoCounters:1;
+        ULONG TraceHandleCount:1;
+        ULONG TrackMaxRefCounts:1;
+        ULONG HasModuleFilter:1;
     };
 } PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
 
@@ -245,7 +247,7 @@ typedef GET_CURRENT_PYTHON_TRACE_CONTEXT *PGET_CURRENT_PYTHON_TRACE_CONTEXT;
 typedef
 VOID
 (ENABLE_MEMORY_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef ENABLE_MEMORY_TRACING *PENABLE_MEMORY_TRACING;
 PYTHON_TRACER_API ENABLE_MEMORY_TRACING EnableMemoryTracing;
@@ -253,7 +255,7 @@ PYTHON_TRACER_API ENABLE_MEMORY_TRACING EnableMemoryTracing;
 typedef
 VOID
 (DISABLE_MEMORY_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef DISABLE_MEMORY_TRACING *PDISABLE_MEMORY_TRACING;
 PYTHON_TRACER_API DISABLE_MEMORY_TRACING DisableMemoryTracing;
@@ -261,7 +263,7 @@ PYTHON_TRACER_API DISABLE_MEMORY_TRACING DisableMemoryTracing;
 typedef
 VOID
 (ENABLE_IO_COUNTERS_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef ENABLE_IO_COUNTERS_TRACING *PENABLE_IO_COUNTERS_TRACING;
 PYTHON_TRACER_API ENABLE_IO_COUNTERS_TRACING EnableIoCountersTracing;
@@ -269,7 +271,7 @@ PYTHON_TRACER_API ENABLE_IO_COUNTERS_TRACING EnableIoCountersTracing;
 typedef
 VOID
 (DISABLE_IO_COUNTERS_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef DISABLE_IO_COUNTERS_TRACING *PDISABLE_IO_COUNTERS_TRACING;
 PYTHON_TRACER_API DISABLE_IO_COUNTERS_TRACING DisableIoCountersTracing;
@@ -277,7 +279,7 @@ PYTHON_TRACER_API DISABLE_IO_COUNTERS_TRACING DisableIoCountersTracing;
 typedef
 VOID
 (ENABLE_HANDLE_COUNT_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef ENABLE_HANDLE_COUNT_TRACING *PENABLE_HANDLE_COUNT_TRACING;
 PYTHON_TRACER_API ENABLE_HANDLE_COUNT_TRACING EnableHandleCountTracing;
@@ -285,47 +287,15 @@ PYTHON_TRACER_API ENABLE_HANDLE_COUNT_TRACING EnableHandleCountTracing;
 typedef
 VOID
 (DISABLE_HANDLE_COUNT_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef DISABLE_HANDLE_COUNT_TRACING *PDISABLE_HANDLE_COUNT_TRACING;
 PYTHON_TRACER_API DISABLE_HANDLE_COUNT_TRACING DisableHandleCountTracing;
 
 typedef
 BOOL
-(START_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
-    );
-typedef START_TRACING *PSTART_TRACING;
-PYTHON_TRACER_API START_TRACING StartTracing;
-
-typedef
-BOOL
-(STOP_TRACING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
-    );
-typedef STOP_TRACING *PSTOP_TRACING;
-PYTHON_TRACER_API STOP_TRACING StopTracing;
-
-typedef
-BOOL
-(START_PROFILING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
-    );
-typedef START_PROFILING *PSTART_PROFILING;
-PYTHON_TRACER_API START_PROFILING StartProfiling;
-
-typedef
-BOOL
-(STOP_PROFILING)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
-    );
-typedef STOP_PROFILING *PSTOP_PROFILING;
-PYTHON_TRACER_API STOP_PROFILING StopProfiling;
-
-typedef
-BOOL
 (START)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef START *PSTART;
 PYTHON_TRACER_API START Start;
@@ -333,7 +303,7 @@ PYTHON_TRACER_API START Start;
 typedef
 BOOL
 (STOP)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext
+    _In_ PPYTHON_TRACE_CONTEXT Context
     );
 typedef STOP *PSTOP;
 PYTHON_TRACER_API STOP Stop;
@@ -341,7 +311,7 @@ PYTHON_TRACER_API STOP Stop;
 typedef
 BOOL
 (ADD_MODULE_NAME)(
-    _In_ PPYTHON_TRACE_CONTEXT PythonTraceContext,
+    _In_ PPYTHON_TRACE_CONTEXT Context,
     _In_ PPYOBJECT ModuleNameObject
     );
 typedef ADD_MODULE_NAME *PADD_MODULE_NAME;
@@ -362,22 +332,7 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 
     ULONG             Size;                                 // 4    0   4
 
-    //
-    // Inline PYTHON_TRACE_CONTEXT_FLAGS.
-    //
-
-    union {
-        PYTHON_TRACE_CONTEXT_FLAGS Flags;                   // 4    4   8
-        struct {
-            ULONG IsProfile:1;
-            ULONG HasStarted:1;
-            ULONG TraceMemory:1;
-            ULONG TraceIoCounters:1;
-            ULONG TraceHandleCount:1;
-            ULONG HasModuleFilter:1;
-            ULONG TrackMaxRefCounts:1;
-        };
-    };
+    PYTHON_TRACE_CONTEXT_FLAGS Flags;                       // 4    4   8
 
     PRTL              Rtl;                                  // 8    8   16
     PPYTHON           Python;                               // 8    16  24
@@ -408,14 +363,6 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     PSTRING_TABLE ModuleFilterStringTable;
 
     PREFIX_TABLE ModuleFilterPrefixTree;
-
-    LIST_ENTRY Functions;
-
-    PSTART_TRACING StartTracing;
-    PSTOP_TRACING StopTracing;
-
-    PSTART_PROFILING StartProfiling;
-    PSTOP_PROFILING StopProfiling;
 
     PSTART Start;
     PSTOP Stop;
