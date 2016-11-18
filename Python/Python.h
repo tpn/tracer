@@ -2598,9 +2598,6 @@ typedef struct _PYTHON_FUNCTION {
         PPYCODEOBJECT25_27      Code25_27;
         PPYCODEOBJECT30_32      Code30_32;
         PPYCODEOBJECT33_35      Code33_35;
-        PPYCFUNCTIONOBJECT      PyCFunctionObject;
-        PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
-        PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
     };
 
     union {
@@ -2616,12 +2613,11 @@ typedef struct _PYTHON_FUNCTION {
 
             LONG  CodeObjectHash;                           // 4    168 172
             ULONG FunctionHash;                             // 4    172 176
-            ULONGLONG Unused1;                              // 8    176 184
 
-            USHORT FirstLineNumber;                         // 2    184 186
-            USHORT NumberOfLines;                           // 2    186 188
-            USHORT NumberOfCodeLines;                       // 2    188 190
-            USHORT SizeOfByteCode;                          // 2    190 192
+            USHORT FirstLineNumber;                         // 2    176 178
+            USHORT NumberOfLines;                           // 2    178 180
+            USHORT NumberOfCodeLines;                       // 2    180 182
+            USHORT SizeOfByteCode;                          // 2    182 184
         };
 
         //
@@ -2631,6 +2627,12 @@ typedef struct _PYTHON_FUNCTION {
         struct {
             HANDLE Module;
         };
+    };
+
+    union {                                                 // 8    184 192
+        PPYCFUNCTIONOBJECT      PyCFunctionObject;
+        PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
+        PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
     };
 
     ULONG       MaxCallStackDepth;                          // 4    192 196
@@ -2914,6 +2916,16 @@ typedef struct _PYTHON {
 
 PYTHON_API FIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
 
+typedef enum _TraceEventType {
+    // PyTrace_* constants.
+    TraceEventType_PyTrace_CALL = 0,
+    TraceEventType_PyTrace_EXCEPTION = 1,
+    TraceEventType_PyTrace_LINE = 2,
+    TraceEventType_PyTrace_RETURN = 3,
+    TraceEventType_PyTrace_C_CALL = 4,
+    TraceEventType_PyTrace_C_EXCEPTION = 5,
+    TraceEventType_PyTrace_C_RETURN = 6,
+} TraceEventType;
 
 PYTHON_API
 VOID
