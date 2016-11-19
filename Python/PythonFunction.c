@@ -710,6 +710,15 @@ Return Value:
     PathEntry->IsValid = TRUE;
 
     //
+    // Initialize the reference count.
+    //
+
+    Function->ReferenceCount = 1;
+
+
+#ifdef _PYTHON_FUNCTION_HASHING
+
+    //
     // Calculate the code object's hash.
     //
 
@@ -742,11 +751,7 @@ Return Value:
         Function->NumberOfCodeLines
     );
 
-    //
-    // Initialize the reference count.
-    //
-
-    Function->ReferenceCount = 1;
+#endif
 
     return TRUE;
 }
@@ -995,7 +1000,7 @@ RegisterPyCFunction(
 Routine Description:
 
     This method is responsible for finalizing details about a C function, such
-    as the function name and modulen name.  A frame object is provided to
+    as the function name and module name.  A frame object is provided to
     assist with resolution of names.
 
     It is called once per function after a new PYTHON_PATH_TABLE_ENTRY has been
@@ -1018,6 +1023,250 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PRTL Rtl;
+    PCHAR Dest;
+    PCHAR Start;
+    PPYOBJECT Self = NULL;
+    PPYOBJECT FunctionNameObject;
+    PPYOBJECT CodeObject = Function->CodeObject;
+    PCPYCODEOBJECTOFFSETS CodeObjectOffsets = Python->PyCodeObjectOffsets;
+    PSTRING Path;
+    PSTRING FunctionName;
+    PSTRING ClassName;
+    PSTRING FullName;
+    PSTRING ModuleName;
+    PCHAR ClassNameBuffer = NULL;
+    USHORT FullNameAllocSize;
+    USHORT FullNameLength;
+    PSTRING ParentModuleName;
+    PSTRING ParentName;
+    PPYTHON_PATH_TABLE_ENTRY PathEntry;
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
+
+    //
+    // Initialize aliases and set the PathEntry to invalid.
+    //
+
+    PathEntry = (PPYTHON_PATH_TABLE_ENTRY)Function;
+    ParentPathEntry = Function->ParentPathEntry;
+    PathEntry->IsValid = FALSE;
+
+    //
+    // Resolve the first line number and function name object using the code
+    // object offsets structure.
+    //
+
+    Function->FirstLineNumber = (USHORT)*(
+        (PULONG)RtlOffsetToPointer(
+            CodeObject,
+            CodeObjectOffsets->FirstLineNumber
+        )
+    );
+
+    FunctionNameObject = *(
+        (PPPYOBJECT)RtlOffsetToPointer(
+            CodeObject,
+            CodeObjectOffsets->Name
+        )
+    );
+
+    //
+    // Wrap the PyString/PyUnicode string in a STRING struct.
+    //
+
+    Rtl = Python->Rtl;
+    FunctionName = &PathEntry->Name;
+
+    Success = WrapPythonStringAsString(Python,
+                                       FunctionNameObject,
+                                       FunctionName);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Attempt to get the "self" object from the current frame, if present.
+    //
+
+    Success = GetSelf(Python, Function, FrameObject, &Self);
+
+    if (!Success) {
+
+        //
+        // The GetSelf() method failed.  Note that this indicates an actual
+        // failure -- not simply that we couldn't resolve the "self" object
+        // from the frame.  We test for that below.
+        //
+
+        return FALSE;
+    }
+
+    //
+    // Clear the class name string.
+    //
+
+    ClassName = &PathEntry->ClassName;
+    ClearString(ClassName);
+
+    if (Self) {
+
+        //
+        // We found a "self" object within the frame, which means we're an
+        // instance object and we have a class.  So, let's try and extract
+        // the class name.
+        //
+
+        USHORT ClassNameLength;
+
+        Success = GetClassNameFromSelf(Python,
+                                       Function,
+                                       FrameObject,
+                                       Self,
+                                       FunctionName,
+                                       &ClassNameBuffer);
+
+        if (!Success) {
+            return FALSE;
+        }
+
+        if (ClassNameBuffer) {
+
+            //
+            // We were able to extract a class name.  The C Python API will have
+            // provided us with a pointer to a NULL-terminated C (char) string,
+            // which we'll need to take a copy of, so, record the relevant
+            // details here regarding length and buffer.
+            //
+
+            ClassNameLength = (USHORT)strlen((PCSZ)ClassNameBuffer);
+
+            //
+            // Ensure we've got a NUL-terminated string.
+            //
+
+            if (ClassNameBuffer[ClassNameLength] != '\0') {
+                __debugbreak();
+            }
+
+            ClassName->Length = ClassNameLength;
+            ClassName->MaximumLength = ClassNameLength;
+            ClassName->Buffer = ClassNameBuffer;
+        }
+    }
+
+    //
+    // Initialize the module name, initially pointing at our parent's
+    // buffer.
+    //
+
+    ParentModuleName = &ParentPathEntry->ModuleName;
+    ModuleName = &PathEntry->ModuleName;
+    ModuleName->Length = ParentModuleName->Length;
+    ModuleName->MaximumLength = ParentModuleName->Length;
+    ModuleName->Buffer = ParentModuleName->Buffer;
+
+    ParentName = &ParentPathEntry->Name;
+
+    //
+    // Calculate the length of the full name.  The extra +1s are accounting
+    // for joining slashes and the final trailing NUL.
+    //
+
+    FullNameLength = (
+        (ModuleName->Length ? ModuleName->Length + 1 : 0) +
+        (ParentName->Length ? ParentName->Length + 1 : 0) +
+        (ClassName->Length  ? ClassName->Length  + 1 : 0) +
+        FunctionName->Length                              +
+        1
+    );
+
+    //
+    // Ensure we don't exceed name lengths.
+    //
+
+    if (FullNameLength > MAX_STRING) {
+        return FALSE;
+    }
+
+    FullNameAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(FullNameLength);
+
+    if (FullNameAllocSize > MAX_STRING) {
+        FullNameAllocSize = (USHORT)MAX_STRING;
+    }
+
+    //
+    // Construct the final full name.  After each part has been copied, update
+    // the corresponding Buffer pointer to the relevant point within the newly-
+    // allocated buffer for the full name.
+    //
+
+    FullName = &PathEntry->FullName;
+
+    Success = AllocateStringBuffer(Python, FullNameAllocSize, FullName);
+    if (!Success) {
+        return FALSE;
+    }
+
+    Dest = FullName->Buffer;
+
+    if (ModuleName->Length) {
+        __movsb(Dest, (PBYTE)ModuleName->Buffer, ModuleName->Length);
+        Dest += ModuleName->Length;
+        *Dest++ = '\\';
+    }
+
+    ModuleName->Buffer = FullName->Buffer;
+
+    if (ParentName->Length) {
+        __movsb(Dest, (PBYTE)ParentName->Buffer, ParentName->Length);
+        Dest += ParentName->Length;
+        *Dest++ = '\\';
+
+        //
+        // If the parent is a file, update the module name to account
+        // for the parent's module name, plus the joining slash.
+        //
+
+        if (ParentPathEntry->IsFile) {
+            ModuleName->Length += ParentName->Length + 1;
+            ModuleName->MaximumLength = ModuleName->Length;
+        }
+    }
+
+    if (ClassName->Length) {
+        Start = Dest;
+        __movsb(Dest, (PBYTE)ClassName->Buffer, ClassName->Length);
+        ClassName->Buffer = Start;
+        Dest += ClassName->Length;
+        *Dest++ = '\\';
+    }
+
+    Start = Dest;
+    __movsb(Dest, (PBYTE)FunctionName->Buffer, FunctionName->Length);
+    FunctionName->Buffer = Start;
+    Dest += FunctionName->Length;
+    *Dest++ = '\0';
+
+    //
+    // Omit trailing NUL from Length.
+    //
+
+    FullName->Length = FullNameLength - 1;
+    FullName->MaximumLength = FullNameAllocSize;
+
+    //
+    // Point our path at our parent.
+    //
+
+    Path = &PathEntry->Path;
+    Path->Length = ParentPathEntry->Path.Length;
+    Path->MaximumLength = Path->Length;
+    Path->Buffer = ParentPathEntry->Path.Buffer;
+
+    PathEntry->IsFunction = TRUE;
+
 
     //
     // XXX todo.

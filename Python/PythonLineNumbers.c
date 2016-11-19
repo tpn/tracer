@@ -153,15 +153,8 @@ Return Value:
         PreviousLineNumber -
         FirstLineNumber
     );
-    Function->SizeOfByteCode = SizeOfByteCode;
+    Function->SizeOfByteCodeInBytes = SizeOfByteCode;
     Function->NumberOfCodeLines = NumberOfLines;
-
-    //
-    // Now that we know the total number of code lines and total number of
-    // lines, we have enough information to create a line number bitmap,
-    // a line-number-to-relative-index table, and a line-hit histogram.
-    // All of which are an XXX todo.
-    //
 
     return;
 }
@@ -199,7 +192,7 @@ Return Value:
     Function->FirstLineNumber = 0;
     Function->NumberOfLines = 0;
     Function->NumberOfCodeLines = 0;
-    Function->SizeOfByteCode = 0;
+    Function->SizeOfByteCodeInBytes = 0;
 }
 
 

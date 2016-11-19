@@ -2583,26 +2583,61 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
 
 #pragma pack(push, 8)
 
+//
+// This structure needs to be 216 bytes in size.  This is because it is created
+// indirectly as part of RtlInsertElementGenericTable(), and will always be
+// preceeded by TABLE_ENTRY_HEADER, which is 40 bytes in size.  We want our
+// total size, including the header, to be a power of 2, as this affords optimal
+// trace store allocation behavior.
+//
+
 typedef struct _PYTHON_FUNCTION {
 
+    PYTHON_PATH_TABLE_ENTRY PathEntry;
+    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
+
     //
-    // The PYTHON_PATH_TABLE_ENTRY leaves us conveniently aligned at 128-bytes,
-    // so stash all of our 8-byte pointers straight after it.
+    // This is used as the key for the generic table.  It will either be the
+    // value of the code object if we're a Python code object, or the method
+    // (the C function pointer residing in a DLL) if we're a Python C method.
     //
 
-    PYTHON_PATH_TABLE_ENTRY PathEntry;                      // 128  0   128
+    PVOID Key;
 
-    PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;               // 8    128 136
+    //
+    // The code object associated with this function.  This will be set for
+    // both Python and Python C functions.
+    //
 
     union {
-        PPYOBJECT               CodeObject;                 // 8    136 144
+        PPYOBJECT               CodeObject;
         PPYCODEOBJECT25_27      Code25_27;
         PPYCODEOBJECT30_32      Code30_32;
         PPYCODEOBJECT33_35      Code33_35;
+    };
+
+    //
+    // The PyCFunctionObject associated with this function.  This will only
+    // be set if we're a Python C function.
+    //
+
+    union {
         PPYCFUNCTIONOBJECT      PyCFunctionObject;
         PPYCFUNCTIONOBJECT25_34 PyCFunction25_34;
         PPYCFUNCTIONOBJECT35_35 PyCFunction35_35;
     };
+
+    //
+    // The maximum call stack depth observed during tracing for this function.
+    //
+
+    ULONGLONG MaxCallStackDepth;
+
+    //
+    // The number of times this function was seen during tracing.
+    //
+
+    ULONGLONG ReferenceCount;
 
     union {
 
@@ -2611,17 +2646,11 @@ typedef struct _PYTHON_FUNCTION {
         //
 
         struct {
-            PRTL_BITMAP LineNumbersBitmap;                  // 8    144 152
-            PVOID Histogram;                                // 8    152 160
-            PUSHORT CodeLineNumbers;                        // 8    160 168
-
-            LONG  CodeObjectHash;                           // 4    168 172
-            ULONG FunctionHash;                             // 4    172 176
-
-            USHORT FirstLineNumber;                         // 2    176 178
-            USHORT NumberOfLines;                           // 2    178 180
-            USHORT NumberOfCodeLines;                       // 2    180 182
-            USHORT SizeOfByteCode;                          // 2    182 184
+            PUSHORT CodeLineNumbers;
+            ULONG FirstLineNumber;
+            ULONG NumberOfLines;
+            ULONG NumberOfCodeLines;
+            ULONG SizeOfByteCodeInBytes;
         };
 
         //
@@ -2629,18 +2658,26 @@ typedef struct _PYTHON_FUNCTION {
         //
 
         struct {
-            HANDLE Module;
+
+            //
+            // The module handle.  This is the base address the
+            //
+
+            union {
+                HANDLE ModuleHandle;
+            };
         };
     };
 
-    ULONGLONG   Unused;                                     // 8    184 192
-    ULONG       MaxCallStackDepth;                          // 4    192 196
-    ULONG       ReferenceCount;                             // 4    196 200
-    LIST_ENTRY  ListEntry;                                  // 16   200 216
+    //
+    // Pad out to 216 bytes.
+    //
+
+    ULONGLONG   Unused;
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 
-C_ASSERT(sizeof(PYTHON_FUNCTION) == 216);
+//C_ASSERT(sizeof(PYTHON_FUNCTION) == 216);
 
 typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 
@@ -2705,14 +2742,9 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 
 } PYTHON_FUNCTION_TABLE_ENTRY, *PPYTHON_FUNCTION_TABLE_ENTRY;
 
-C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 256);
+//C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 256);
 
 typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
-
-#pragma pack(pop)
-
-
-#pragma pack(push, 2)
 
 typedef struct _PYTHON_FUNCTION_OFFSETS {
     USHORT Size;
@@ -2720,25 +2752,9 @@ typedef struct _PYTHON_FUNCTION_OFFSETS {
 
     USHORT PathEntryOffset;
     USHORT ParentPathEntryOffset;
+    USHORT KeyOffset;
     USHORT CodeObjectOffset;
-
-    USHORT LineNumbersBitmapOffset;
-    USHORT HistogramOffset;
-    USHORT LineNumberToIndexTableOffset;
-
-    USHORT ReferenceCountOffset;
-    USHORT CodeObjectHashOffset;
-    USHORT FunctionHashOffset;
-    USHORT Unused1Offset;
-
-    USHORT FirstLineNumberOffset;
-    USHORT NumberOfLinesOffset;
-    USHORT NumberOfCodeLinesOffset;
-    USHORT SizeOfByteCodeOffset;
-
-    USHORT Unused2Offset;
-    USHORT Unused3Offset;
-    USHORT Unused4Offset;
+    USHORT PyCFunctionObjectOffset;
 
 } PYTHON_FUNCTION_OFFSETS, *PPYTHON_FUNCTION_OFFSETS;
 

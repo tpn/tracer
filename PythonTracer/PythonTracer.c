@@ -491,17 +491,20 @@ PyTraceCallback(
     Event.Timestamp.QuadPart = Elapsed.QuadPart;
     Event.Function = Function;
     Event.IsC = IsC;
+    Event.FirstLineNumber = (USHORT)Function->FirstLineNumber;
+    Event.NumberOfLines = (USHORT)Function->NumberOfLines;
+    Event.NumberOfCodeLines = (USHORT)Function->NumberOfCodeLines;
+    Event.ThreadId = FastGetCurrentThreadId();
+
+#ifdef _PYTHON_FUNCTION_HASHING
     Event.CodeObjectHash = Function->CodeObjectHash;
     Event.FunctionHash = Function->FunctionHash;
-    Event.FirstLineNumber = Function->FirstLineNumber;
-    Event.NumberOfLines = Function->NumberOfLines;
-    Event.NumberOfCodeLines = Function->NumberOfCodeLines;
     Event.PathHash = Function->PathEntry.PathHash;
     Event.FullNameHash = Function->PathEntry.FullNameHash;
     Event.ModuleNameHash = Function->PathEntry.ModuleNameHash;
     Event.ClassNameHash = Function->PathEntry.ClassNameHash;
     Event.NameHash = Function->PathEntry.NameHash;
-    Event.ThreadId = FastGetCurrentThreadId();
+#endif
 
     if (IsException) {
 
