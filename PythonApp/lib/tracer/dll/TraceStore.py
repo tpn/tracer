@@ -4,7 +4,9 @@
 
 from itertools import chain
 
-from ..util import memoize
+from ..util import (
+    memoize,
+)
 
 from ..wintypes import (
     cast,
@@ -57,6 +59,7 @@ from ..wintypes import (
     PTP_CLEANUP_GROUP,
     TP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
+    FILE_COMPRESSION_INFO,
 )
 
 from .Rtl import (
@@ -116,6 +119,47 @@ TraceStoreInvalidId                 =  10
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
+ELEMENTS_PER_TRACE_STORE = 9
+NUMBER_OF_METADATA_STORES = 8
+MAX_TRACE_STORE_INDEX = MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
+
+TraceStoreIdToName = {
+    TraceStoreNullId: 'Null',
+    TraceStoreEventId: 'Event',
+    TraceStoreStringBufferId: 'StringBuffer',
+    TraceStoreFunctionTableId: 'FunctionTable',
+    TraceStoreFunctionTableEntryId: 'FunctionTableEntry',
+    TraceStorePathTableId: 'PathTable',
+    TraceStorePathTableEntryId: 'PathTableEntry',
+    TraceStoreSessionId: 'Session',
+    TraceStoreStringArrayId: 'StringArray',
+    TraceStoreStringTableId: 'StringTable',
+    TraceStoreInvalidId: 'Invalid',
+}
+
+TraceStoreMetadataNullId                        = 0
+TraceStoreMetadataMetadataInfoId                = 1
+TraceStoreMetadataAllocationId                  = 2
+TraceStoreMetadataRelocationId                  = 3
+TraceStoreMetadataAddressId                     = 4
+TraceStoreMetadataAddressRangeId                = 5
+TraceStoreMetadataAllocationTimestampId         = 6
+TraceStoreMetadataAllocationTimestampDeltaId    = 7
+TraceStoreMetadataInfoId                        = 8
+TraceStoreMetadataInvalidId                     = 9
+
+TraceStoreMetadataIdToName = {
+    TraceStoreMetadataNullId: 'Null',
+    TraceStoreMetadataMetadataInfoId: 'MetadataInfo',
+    TraceStoreMetadataAllocationId: 'Allocation',
+    TraceStoreMetadataRelocationId: 'Relocation',
+    TraceStoreMetadataAddressId: 'Address',
+    TraceStoreMetadataAddressRangeId: 'AddressRange',
+    TraceStoreMetadataAllocationTimestampId: 'AllocationTimestamp',
+    TraceStoreMetadataAllocationTimestampDeltaId: 'AllocationTimestampDelta',
+    TraceStoreMetadataInfoId: 'Info',
+    TraceStoreMetadataInvalidId: 'Invalid',
+}
 
 #===============================================================================
 # Helpers
@@ -465,7 +509,8 @@ class TRACE_STORE_MEMORY_MAP(Structure):
 PTRACE_STORE_MEMORY_MAP = POINTER(TRACE_STORE_MEMORY_MAP)
 
 class TRACE_STORES(Structure):
-    pass
+    def __iter__(self):
+        pass
 PTRACE_STORES = POINTER(TRACE_STORES)
 
 class _TRACE_STORE_BITMAP(Structure):
@@ -581,6 +626,114 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
 class TRACE_STORE(Structure):
     __array = None
     struct_type = None
+
+    @property
+    @memoize
+    def size(self):
+        return self.Totals.contents.AllocationSize
+
+    @property
+    @memoize
+    def num_allocations(self):
+        return self.Totals.contents.NumberOfAllocations
+
+    @property
+    @memoize
+    def file_compression_info(self):
+        return FILE_COMPRESSION_INFO.get(self.FileHandle)
+
+    @property
+    @memoize
+    def compressed_size(self):
+        return self.file_compression_info.CompressedFileSize
+
+    @property
+    @memoize
+    def compression_ratio(self):
+        try:
+            return float(self.size) / float(self.compressed_size)
+        except ZeroDivisionError:
+            return 0.0
+
+    @property
+    @memoize
+    def space_saved(self):
+        try:
+            return 1.0 - (float(self.compressed_size) / float(self.size))
+        except ZeroDivisionError:
+            return 0.0
+
+    @property
+    @memoize
+    def space_saved_percent(self):
+        return self.space_saved * 100.0
+
+    @property
+    @memoize
+    def num_addresses(self):
+        #return self.AddressStore.contents.Totals.contents.NumberOfAllocations
+        return self.AddressStore.contents.Totals.contents.NumberOfAllocations
+
+    @property
+    @memoize
+    def num_address_ranges(self):
+        return self.AddressRangeStore.contents.\
+                               Totals.contents.NumberOfAllocations
+
+    @property
+    @memoize
+    def stats(self):
+        return self.Stats.contents
+
+    @property
+    @memoize
+    def totals(self):
+        return self.Totals.contents
+
+    @property
+    @memoize
+    def info(self):
+        return self.Info.contents
+
+    @property
+    @memoize
+    def mapping_size(self):
+        return self.MappingSize
+
+    @property
+    @memoize
+    def dropped_records(self):
+        return self.stats.DroppedRecords
+
+    @property
+    @memoize
+    def exhausted_free_memory_maps(self):
+        return self.stats.ExhaustedFreeMemoryMaps
+
+    @property
+    @memoize
+    def allocations_outpacing_next_memory_map_preparation(self):
+        return self.stats.AllocationsOutpacingNextMemoryMapPreparation
+
+    @property
+    @memoize
+    def preferred_address_unavailable(self):
+        return self.stats.PreferredAddressUnavailable
+
+    @property
+    @memoize
+    def preferred_address_unavailable(self):
+        return self.stats.PreferredAddressUnavailable
+
+    @property
+    @memoize
+    def access_violations_encountered_during_async_prefault(self):
+        return self.stats.AccessViolationsEncounteredDuringAsyncPrefault
+
+    @property
+    @memoize
+    def blocked_allocations(self):
+        return self.stats.AccessViolationsEncounteredDuringAsyncPrefault
 
     @property
     def base_address(self):
@@ -776,7 +929,7 @@ PTRACE_STORES_RUNDOWN = POINTER(TRACE_STORES_RUNDOWN)
 TRACE_STORES._fields_ = [
     ('SizeOfStruct', ULONG),
     ('SizeOfAllocation', ULONG),
-    ('NumberOfTraceStore', USHORT),
+    ('NumberOfTraceStores', USHORT),
     ('ElementsPerTraceStore', USHORT),
     ('NumberOfFieldRelocationsElements', USHORT),
     ('Padding1', USHORT),
@@ -890,6 +1043,85 @@ TRACE_STORES._fields_ = [
     ('StringTableAllocationTimestampDeltaStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
 ]
+
+class TRACE_STORE_ARRAY(Structure):
+    _fields_ = [
+        ('SizeOfStruct', ULONG),
+        ('SizeOfAllocation', ULONG),
+        ('NumberOfTraceStores', USHORT),
+        ('ElementsPerTraceStore', USHORT),
+        ('NumberOfFieldRelocationsElements', USHORT),
+        ('Padding1', USHORT),
+        ('Padding2', ULONG),
+        ('Flags', TRACE_FLAGS),
+        ('BaseDirectory', UNICODE_STRING),
+        ('Rtl', PRTL),
+        ('Allocator', PALLOCATOR),
+        ('RundownListEntry', LIST_ENTRY),
+        ('Rundown', PTRACE_STORES_RUNDOWN),
+        # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
+        ('EventRelocationCompleteEvent', HANDLE),
+        ('StringBufferRelocationCompleteEvent', HANDLE),
+        ('FunctionTableRelocationCompleteEvent', HANDLE),
+        ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+        ('PathTableRelocationCompleteEvent', HANDLE),
+        ('PathTableEntryRelocationCompleteEvent', HANDLE),
+        ('SessionRelocationCompleteEvent', HANDLE),
+        ('StringArrayRelocationCompleteEvent', HANDLE),
+        ('StringTableRelocationCompleteEvent', HANDLE),
+        # Start of Relocations[MAX_TRACE_STORE_IDS].
+        ('EventReloc', TRACE_STORE_RELOC),
+        ('StringBufferReloc', TRACE_STORE_RELOC),
+        ('FunctionTableReloc', TRACE_STORE_RELOC),
+        ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+        ('PathTableReloc', TRACE_STORE_RELOC),
+        ('PathTableEntryReloc', TRACE_STORE_RELOC),
+        ('SessionReloc', TRACE_STORE_RELOC),
+        ('StringArrayReloc', TRACE_STORE_RELOC),
+        ('StringTableReloc', TRACE_STORE_RELOC),
+        ('TraceStores', TRACE_STORE * (
+            MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
+        )),
+    ]
+
+    def _indexes(self):
+
+        assert self.ElementsPerTraceStore == ELEMENTS_PER_TRACE_STORE, \
+              (self.ElementsPerTraceStore, ELEMENTS_PER_TRACE_STORE)
+
+        num_metadata_stores = NUMBER_OF_METADATA_STORES
+
+        return [
+            (index, [ index+i for i in range(1, num_metadata_stores+1) ])
+                for index in range(
+                    0,
+                    MAX_TRACE_STORE_INDEX,
+                    self.ElementsPerTraceStore
+                )
+        ]
+
+    def _stores(self):
+        results = []
+        base = self.TraceStores
+        for (index, store_indexes) in self._indexes():
+            metadata = []
+            for store_index in store_indexes:
+                store = base[store_index]
+                store_id = store.TraceStoreMetadataId
+                name = '    :%s' % TraceStoreMetadataIdToName[store_id]
+                metadata.append((name, store))
+
+            store = base[index]
+            store_id = store.TraceStoreId
+            name = TraceStoreIdToName[store.TraceStoreId]
+
+            pair = (name, store)
+            result = (pair, metadata)
+            results.append(result)
+        return results
+
+
+PTRACE_STORE_ARRAY = POINTER(TRACE_STORE_ARRAY)
 
 class TRACE_STORE_STRUCTURE_SIZES(Structure):
     _fields_ = [
