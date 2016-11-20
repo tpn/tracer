@@ -687,7 +687,8 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
                 fmt(store.blocked_allocations),
             ])
 
-        for ((name, store), metadata_stores) in tsa._stores():
+        trace_stores = tsa._stores()
+        for ((name, store), metadata_stores) in trace_stores:
             make_row((name, store))
             for metadata_store in metadata_stores:
                 make_row(metadata_store)
@@ -713,6 +714,11 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
 
         results_chain = chain((header,), rows)
         render_text_table(results_chain, **k)
+
+
+        import IPython
+        IPython.embed()
+
 
 class LoadTrace(InvariantAwareCommand):
     def run(self):

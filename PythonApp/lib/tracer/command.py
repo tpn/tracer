@@ -55,6 +55,49 @@ def get_io_streams(add_linesep_if_missing_arg=True):
             lambda: cmd.istream.read(),
         )
 
+class stream_silencer:
+    def __init__(self):
+        self.old_stdout = sys.stdout
+        self.old_stderr = sys.stderr
+        self.old_stdin = sys.stdin
+        self.dummy = DummyStream
+
+    def __enter__(self):
+        sys.stdout = self.dummy
+        sys.stderr = self.dummy
+        sys.stdin = self.dummy
+
+    def __exit__(self, *exc_info):
+        sys.stdout = self.old_stdout
+        sys.stderr = self.old_stderr
+        sys.stdin = self.old_stdin
+
+def silence_streams():
+    return stream_silencer()
+
+class command_silencer:
+    def __init__(self, cmd):
+        self.cmd = cmd
+        self.old_ostream = cmd.ostream
+        self.old_estream = cmd.estream
+        self.old_istream = cmd.istream
+        self.dummy = DummyStream
+
+    def __enter__(self):
+        cmd = self.cmd
+        cmd.ostream = self.dummy
+        cmd.estream = self.dummy
+        cmd.istream = self.dummy
+
+    def __exit__(self, *exc_info):
+        cmd = self.cmd
+        cmd.ostream = self.old_ostream
+        cmd.estream = self.old_estream
+        cmd.istream = self.old_istream
+
+def silence_command(cmd):
+    return command_silencer(cmd)
+
 #===============================================================================
 # Commands
 #===============================================================================
@@ -69,6 +112,22 @@ class ClashingCommandNames(CommandError):
         ) % (this, name, previous)
         BaseException.__init__(self, msg)
 
+class ClashingCommandShortNames(CommandError):
+    def __init__(self, shortname, previous_command, this_command):
+        fmt = (
+            "clashing command short names: command %s attempted to use short "
+            "name '%s', but this is already being used by command %s; "
+            "add a class attribute '_shortname_' to %s to use a different "
+            "short name."
+        )
+        args = (
+            this_command,
+            shortname,
+            previous_command,
+            this_command,
+        )
+        msg = fmt % args
+        BaseException.__init__(self, msg)
 
 class _DummyStream(object):
     def write(self, msg):

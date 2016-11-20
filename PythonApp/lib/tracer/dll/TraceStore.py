@@ -379,6 +379,19 @@ class TRACE_STORE_TIME(Structure):
         ('Multiplicand', LARGE_INTEGER),
         ('StartTime', TRACE_STORE_START_TIME),
     ]
+
+    @property
+    def frequency(self):
+        return self.Frequency
+
+    @property
+    def multiplicand(self):
+        return self.Multiplicand
+
+    @property
+    def start_time(self):
+        return self.StartTime
+
 PTRACE_STORE_TIME = POINTER(TRACE_STORE_TIME)
 
 class TRACE_STORE_STATS(Structure):
@@ -391,6 +404,35 @@ class TRACE_STORE_STATS(Structure):
         ('BlockedAllocations', ULONG),
         ('Unused', ULONG * 3),
     ]
+
+    @property
+    def dropped_records(self):
+        return self.DroppedRecords
+
+    @property
+    def exhausted_free_memory_maps(self):
+        return self.ExhaustedFreeMemoryMaps
+
+    @property
+    def allocations_outpacing_next_memory_map_preparation(self):
+        return self.AllocationsOutpacingNextMemoryMapPreparation
+
+    @property
+    def preferred_address_unavailable(self):
+        return self.PreferredAddressUnavailable
+
+    @property
+    def preferred_address_unavailable(self):
+        return self.PreferredAddressUnavailable
+
+    @property
+    def access_violations_encountered_during_async_prefault(self):
+        return self.AccessViolationsEncounteredDuringAsyncPrefault
+
+    @property
+    def blocked_allocations(self):
+        return self.AccessViolationsEncounteredDuringAsyncPrefault
+
 PTRACE_STORE_STATS = POINTER(TRACE_STORE_STATS)
 
 class TRACE_STORE_TOTALS(Structure):
@@ -398,6 +440,15 @@ class TRACE_STORE_TOTALS(Structure):
         ('NumberOfAllocations', ULARGE_INTEGER),
         ('AllocationSize', ULARGE_INTEGER),
     ]
+
+    @property
+    def num_allocations(self):
+        return self.NumberOfAllocations
+
+    @property
+    def allocation_size(self):
+        return self.AllocationSize
+
 PTRACE_STORE_TOTALS = POINTER(TRACE_STORE_TOTALS)
 
 class TRACE_STORE_INFO(Structure):
@@ -669,69 +720,107 @@ class TRACE_STORE(Structure):
         return self.space_saved * 100.0
 
     @property
-    @memoize
+    def address_store(self):
+        return self.AddressStore.contents
+
+    @property
     def num_addresses(self):
-        #return self.AddressStore.contents.Totals.contents.NumberOfAllocations
-        return self.AddressStore.contents.Totals.contents.NumberOfAllocations
+        return self.address_store.totals.NumberOfAllocations
+
+    @property
+    def address_range_store(self):
+        return self.AddressRangeStore.contents
 
     @property
     @memoize
     def num_address_ranges(self):
-        return self.AddressRangeStore.contents.\
-                               Totals.contents.NumberOfAllocations
+        return self.address_range_store.totals.NumberOfAllocations
 
     @property
-    @memoize
+    def allocation_timestamp_store(self):
+        return self.AllocationTimestampStore.contents
+
+    @property
+    def num_allocation_timestamps(self):
+        return self.allocation_timestamp_store.totals.NumberOfAllocations
+
+    @property
+    def allocation_timestamps(self):
+        return self.AllocationTimestamp
+
+    @property
+    def allocation_timestamps_array(self):
+        import numpy as np
+        from numpy.ctypeslib import as_array
+        ctypes_array = self.AllocationTimestamp
+        size = self.num_allocation_timestamps
+        numpy_array = as_array(ctypes_array, shape=(size,))
+        numpy_array.dtype = np.uint64
+        return numpy_array
+
+    @property
+    def allocation_timestamp_delta_store(self):
+        return self.AllocationTimestampStore.contents
+
+    @property
+    def num_allocation_timestamp_deltas(self):
+        return self.allocation_timestamp_delta_store.totals.NumberOfAllocations
+
+    @property
+    def allocation_timestamp_deltas(self):
+        return self.AllocationTimestamp
+
+    @property
+    def allocation_timestamp_deltas_array(self):
+        import numpy as np
+        from numpy.ctypeslib import as_array
+        ctypes_array = self.AllocationTimestampDelta
+        size = self.num_allocation_timestamp_deltas
+        numpy_array = as_array(ctypes_array, shape=(size,))
+        numpy_array.dtype = np.uint32
+        return numpy_array
+
+    @property
     def stats(self):
         return self.Stats.contents
 
     @property
-    @memoize
     def totals(self):
         return self.Totals.contents
 
     @property
-    @memoize
     def info(self):
         return self.Info.contents
 
     @property
-    @memoize
     def mapping_size(self):
         return self.MappingSize
 
     @property
-    @memoize
     def dropped_records(self):
         return self.stats.DroppedRecords
 
     @property
-    @memoize
     def exhausted_free_memory_maps(self):
         return self.stats.ExhaustedFreeMemoryMaps
 
     @property
-    @memoize
     def allocations_outpacing_next_memory_map_preparation(self):
         return self.stats.AllocationsOutpacingNextMemoryMapPreparation
 
     @property
-    @memoize
     def preferred_address_unavailable(self):
         return self.stats.PreferredAddressUnavailable
 
     @property
-    @memoize
     def preferred_address_unavailable(self):
         return self.stats.PreferredAddressUnavailable
 
     @property
-    @memoize
     def access_violations_encountered_during_async_prefault(self):
         return self.stats.AccessViolationsEncounteredDuringAsyncPrefault
 
     @property
-    @memoize
     def blocked_allocations(self):
         return self.stats.AccessViolationsEncounteredDuringAsyncPrefault
 
@@ -771,6 +860,7 @@ class TRACE_STORE(Structure):
                 self.NumberOfReadonlyAddressRanges
             )
         ).contents
+
 
 PTRACE_STORE = POINTER(TRACE_STORE)
 PPTRACE_STORE = POINTER(PTRACE_STORE)
