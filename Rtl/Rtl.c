@@ -422,7 +422,7 @@ Routine Description:
 
     This is a helper function that simplifies creating bitmap indexes for
     UNICODE_STRING structures.  The routine will use the user-supplied bitmap
-    if it is big enough (govered by the SizeOfBitMap field).  If it isn't,
+    if it is big enough (governed by the SizeOfBitMap field).  If it isn't,
     a new buffer will be allocated.  If no bitmap is provided at all, the
     entire structure plus the bitmap buffer space will be allocated from the
     heap.
@@ -764,7 +764,7 @@ Routine Description:
 
     This is a helper function that simplifies creating bitmap indexes for
     STRING structures.  The routine will use the user-supplied bitmap
-    if it is big enough (govered by the SizeOfBitMap field).  If it isn't,
+    if it is big enough (governed by the SizeOfBitMap field).  If it isn't,
     a new buffer will be allocated.  If no bitmap is provided at all, the
     entire structure plus the bitmap buffer space will be allocated from the
     heap.
@@ -995,7 +995,7 @@ Error:
         Bitmap->Buffer = (PULONG)(
             HeapAlloc(
                 HeapHandle,
-                0,
+                HEAP_ZERO_MEMORY,
                 BitmapBufferSizeInBytes
             )
         );
@@ -1015,22 +1015,27 @@ Error:
 
 Start:
 
-    //
-    // There will be one bit per character.
-    //
-
-    Bitmap->SizeOfBitMap = AlignedNumberOfCharacters;
-
     if (!Bitmap->Buffer) {
         __debugbreak();
     }
 
     //
-    // Clear all bits in the bitmap.
+    // Clear the bitmap.  We use SecureZeroMemory() instead of RtlClearAllBits()
+    // as the latter is dependent upon the SizeOfBitMap field, which a) isn't
+    // set here, and b) will be set to NumberOfCharacters when it is set, which
+    // may be less than AlignedNumberOfCharacters, which means some trailing
+    // bits could be non-zero if we are re-using the caller's stack-allocated
+    // bitmap buffer.
     //
 
-    Rtl->RtlClearAllBits(Bitmap);
+    SecureZeroMemory(Bitmap->Buffer, BitmapBufferSizeInBytes);
 
+    //
+    // There will be one bit per character.
+    //
+    //
+
+    Bitmap->SizeOfBitMap = NumberOfCharacters;
 
     //
     // Fill in the bitmap index.

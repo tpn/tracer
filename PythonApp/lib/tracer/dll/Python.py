@@ -27,6 +27,7 @@ from ..wintypes import (
 
     HMODULE,
     ULONGLONG,
+    ULONG_PTR,
 
     LIST_ENTRY,
     RTL_SPLAY_LINKS,
@@ -59,6 +60,9 @@ class PYTHON_PATH_ENTRY_TYPE(Structure):
         ('IsFunction', ULONG, 1),
         ('IsSpecial', ULONG, 1),
         ('IsValid', ULONG, 1),
+        ('IsDll', ULONG, 1),
+        ('IsC', ULONG, 1),
+        ('IsBuiltin', ULONG, 1),
     ]
 
 #===============================================================================
@@ -308,24 +312,38 @@ PYTHON_PATH_TABLE_ENTRY._fields_ = [
     ('ClassName', STRING),
 ]
 
+class _PYTHON_FUNCTION_CODEOBJECT_INNER(Structure):
+    _fields_ = [
+        ('CodeLineNumbers', PUSHORT),
+        ('FirstLineNumber', ULONG),
+        ('NumberOfLines', ULONG),
+        ('NumberOfCodeLines', ULONG),
+        ('SizeOfByteCode', ULONG),
+    ]
+
+class _PYTHON_FUNCTION_PYCFUNCTION_INNER(Structure):
+    _fields_ = [
+        ('ModuleHandle', HMODULE),
+    ]
+
+class _PYTHON_FUNCTION_INNER_UNION(Union):
+    _fields_ = [
+        ('PythonCodeObject', _PYTHON_FUNCTION_CODEOBJECT_INNER),
+        ('PyCFunction', _PYTHON_FUNCTION_PYCFUNCTION_INNER),
+    ]
+
+
 PYTHON_FUNCTION._fields_ = [
     ('PathEntry', PYTHON_PATH_TABLE_ENTRY),
     ('ParentPathEntry', PPYTHON_PATH_TABLE_ENTRY),
+    ('Key', ULONG_PTR),
+    ('Signature', ULONG_PTR),
     ('CodeObject', PVOID),
-    ('LineNumbersBitmap', PVOID),
-    ('Histogram', PVOID),
-    ('CodeLineNumbers', PUSHORT),
-    ('ReferenceCount', ULONG),
-    ('CodeObjectHash', LONG),
-    ('FunctionHash', ULONG),
-    ('Unused1', ULONG),
-    ('FirstLineNumber', USHORT),
-    ('NumberOfLines', USHORT),
-    ('NumberOfCodeLines', USHORT),
-    ('SizeOfByteCode', USHORT),
-    ('Unused2', ULONGLONG),
-    ('Unused3', ULONGLONG),
-    ('Unused4', ULONGLONG),
+    ('PyCFunctionObject', PVOID),
+    ('MaxCallStackDepth', ULONG),
+    ('CallCount', ULONG),
+    ('u', _PYTHON_FUNCTION_INNER_UNION),
+    ('ListEntry', LIST_ENTRY),
 ]
 
 PYTHON_FUNCTION_TABLE_ENTRY._fields_ = [
