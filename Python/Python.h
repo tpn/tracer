@@ -56,6 +56,18 @@ enum PythonVersion {
     PythonVersion_35 = 0x0305
 };
 
+typedef union _PYTHON_EVENT_TRAITS {
+    BYTE AsByte;
+    struct {
+        BYTE IsCall:1;
+        BYTE IsException:1;
+        BYTE IsLine:1;
+        BYTE IsReturn:1;
+        BYTE IsC:1;
+        BYTE AsEventType:3;
+    };
+} PYTHON_EVENT_TRAITS, *PPYTHON_EVENT_TRAITS;
+
 typedef
 _Success_(return != 0)
 BOOL
@@ -699,21 +711,21 @@ typedef struct _PYMETHODDEF {
 
     union {
         PPYCFUNCTION ml_meth;
-        PPYCFUNCTION Method;
+        PPYCFUNCTION FunctionPointer;
     };
 
     union {
         int ml_flags;
         union {
-            LONG Flags;
+            ULONG Flags;
             struct {
-                LONG VarArgs:1;
-                LONG KeywordArgs:1;
-                LONG NoArgs:1;
-                LONG ObjectArg:1;
-                LONG ClassMethod:1;
-                LONG StaticMethod:1;
-                LONG CoexistMethod:1;
+                ULONG VarArgs:1;
+                ULONG KeywordArgs:1;
+                ULONG NoArgs:1;
+                ULONG ObjectArg:1;
+                ULONG ClassMethod:1;
+                ULONG StaticMethod:1;
+                ULONG CoexistMethod:1;
             };
         };
     };
@@ -724,7 +736,6 @@ typedef struct _PYMETHODDEF {
     };
 
 } PYMETHODDEF, *PPYMETHODDEF, PyMethodDef;
-
 
 typedef PPYOBJECT (*PPYGETTER)(PPYOBJECT, PVOID), (*getter);
 typedef LONG (*PPYSETTER)(PPYOBJECT, PPYOBJECT, PVOID), (*setter);
@@ -1141,7 +1152,7 @@ typedef struct _PYCFUNCTIONOBJECT25_34 {
     _PYOBJECT_HEAD
     union {
         PyMethodDef *m_ml;
-        PPYMETHODDEF Method;
+        PPYMETHODDEF MethodDef;
     };
     union {
         PyObject    *m_self;
@@ -1160,7 +1171,7 @@ typedef struct _PYCFUNCTIONOBJECT35_35 {
     _PYOBJECT_HEAD
     union {
         PyMethodDef *m_ml;
-        PPYMETHODDEF Method;
+        PPYMETHODDEF MethodDef;
     };
     union {
         PyObject    *m_self;
@@ -1969,7 +1980,9 @@ PYTHON_EX_DATA CONST PUNICODE_STRING InitPyFilesA[3];
 
 PYTHON_EX_DATA CONST USHORT NumberOfInitPyFiles;
 
-PYTHON_EX_DATA CONST STRING SELFA;
+PYTHON_EX_DATA CONST STRING SELF_A;
+PYTHON_EX_DATA CONST STRING __BUILTIN__A;
+PYTHON_EX_DATA CONST STRING BUILTINS_A;
 
 PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets25_27;
 PYTHON_EX_DATA CONST PYCODEOBJECTOFFSETS PyCodeObjectOffsets30_32;
@@ -2051,10 +2064,10 @@ typedef
 _Success_(return != 0)
 BOOL
 (REGISTER_FRAME)(
-    _In_      PPYTHON         Python,
-    _In_      PPYFRAMEOBJECT  FrameObject,
-    _In_      LONG            EventType,
-    _In_opt_  PPYOBJECT       ArgObject,
+    _In_      PPYTHON             Python,
+    _In_      PPYFRAMEOBJECT      FrameObject,
+    _In_      PYTHON_EVENT_TRAITS EventTraits,
+    _In_opt_  PPYOBJECT           ArgObject,
     _Outptr_result_nullonfailure_ PPPYTHON_FUNCTION FunctionPointer
     );
 typedef REGISTER_FRAME *PREGISTER_FRAME;
@@ -2090,12 +2103,12 @@ typedef
 _Success_(return != 0)
 BOOL
 (GET_PATH_ENTRY_FROM_FRAME)(
-    _In_      PPYTHON         Python,
-    _In_      PPYFRAMEOBJECT  FrameObject,
-    _In_      LONG            EventType,
-    _In_opt_  PPYOBJECT       ArgObject,
-    _In_      PSTRING         FilenameString,
-    _In_      PFILENAME_FLAGS FilenameFlags,
+    _In_      PPYTHON             Python,
+    _In_      PPYFRAMEOBJECT      FrameObject,
+    _In_      PYTHON_EVENT_TRAITS EventTraits,
+    _In_opt_  PPYOBJECT           ArgObject,
+    _In_      PSTRING             FilenameString,
+    _In_      PFILENAME_FLAGS     FilenameFlags,
     _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     );
 typedef GET_PATH_ENTRY_FROM_FRAME *PGET_PATH_ENTRY_FROM_FRAME;
@@ -2584,16 +2597,26 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
 #pragma pack(push, 8)
 
 //
-// This structure needs to be 216 bytes in size.  This is because it is created
-// indirectly as part of RtlInsertElementGenericTable(), and will always be
-// preceeded by TABLE_ENTRY_HEADER, which is 40 bytes in size.  We want our
-// total size, including the header, to be a power of 2, as this affords optimal
-// trace store allocation behavior.
+// This structure needs to be 216 bytes in size.  This is because it is
+// created indirectly as part of RtlInsertElementGenericTable(), and will
+// always be preceded by TABLE_ENTRY_HEADER, which is 40 bytes in size.
+// We want our total size, including the header, to be a power of 2, as
+// this affords optimal trace store allocation behavior.
 //
 
 typedef struct _PYTHON_FUNCTION {
 
+    //
+    // The path entry for the function.  This captures naming details and
+    // consumes the first 128 bytes of this structure.
+    //
+
     PYTHON_PATH_TABLE_ENTRY PathEntry;
+
+    //
+    // A pointer to our parent path entry, if any.
+    //
+
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
 
     //
@@ -2602,7 +2625,14 @@ typedef struct _PYTHON_FUNCTION {
     // (the C function pointer residing in a DLL) if we're a Python C method.
     //
 
-    PVOID Key;
+    ULONG_PTR Key;
+
+    //
+    // A unique value for this function that is independent to the given trace
+    // session.  E.g. something that could be used as a repeatable hash key.
+    //
+
+    ULONG_PTR Signature;
 
     //
     // The code object associated with this function.  This will be set for
@@ -2631,13 +2661,13 @@ typedef struct _PYTHON_FUNCTION {
     // The maximum call stack depth observed during tracing for this function.
     //
 
-    ULONGLONG MaxCallStackDepth;
+    ULONG MaxCallStackDepth;
 
     //
     // The number of times this function was seen during tracing.
     //
 
-    ULONGLONG ReferenceCount;
+    ULONG CallCount;
 
     union {
 
@@ -2669,11 +2699,7 @@ typedef struct _PYTHON_FUNCTION {
         };
     };
 
-    //
-    // Pad out to 216 bytes.
-    //
-
-    ULONGLONG   Unused;
+    LIST_ENTRY ListEntry;
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 

@@ -123,16 +123,8 @@ TraceStoreNullFreeRoutine(
     _In_     PVOID Buffer
     )
 {
+    __debugbreak();
     return;
-
-    /*
-    PTRACE_STORE TraceStore;
-    TraceStore = (PTRACE_STORE)FreeContext;
-
-    TraceStore->FreeRecords(TraceStore->TraceContext,
-                            TraceStore,
-                            Buffer);
-    */
 }
 
 BOOL
@@ -278,6 +270,7 @@ PyTraceCallback(
     BOOL IsC;
 
     PYTHON_TRACE_CONTEXT_FLAGS Flags = Context->Flags;
+    PYTHON_EVENT_TRAITS EventTraits;
 
     PRTL Rtl;
     PPYTHON Python;
@@ -300,18 +293,18 @@ PyTraceCallback(
         EventType == TraceEventType_PyTrace_C_CALL
     );
 
-    IsReturn = (
-        EventType == TraceEventType_PyTrace_RETURN      ||
-        EventType == TraceEventType_PyTrace_C_RETURN
+    IsException = (
+        EventType == TraceEventType_PyTrace_EXCEPTION   ||
+        EventType == TraceEventType_PyTrace_C_EXCEPTION
     );
 
     IsLine = (
         EventType == TraceEventType_PyTrace_LINE
     );
 
-    IsException = (
-        EventType == TraceEventType_PyTrace_EXCEPTION   ||
-        EventType == TraceEventType_PyTrace_C_EXCEPTION
+    IsReturn = (
+        EventType == TraceEventType_PyTrace_RETURN      ||
+        EventType == TraceEventType_PyTrace_C_RETURN
     );
 
     IsC = (
@@ -320,6 +313,12 @@ PyTraceCallback(
         EventType == TraceEventType_PyTrace_C_EXCEPTION
     );
 
+    EventTraits.IsCall = IsCall;
+    EventTraits.IsException = IsException;
+    EventTraits.IsLine = IsLine;
+    EventTraits.IsReturn = IsReturn;
+    EventTraits.IsC = IsC;
+    EventTraits.AsEventType = (BYTE)EventType;
 
     if (!Flags.HasStarted) {
 
@@ -391,7 +390,7 @@ PyTraceCallback(
 
     Success = Python->RegisterFrame(Python,
                                     FrameObject,
-                                    EventType,
+                                    EventTraits,
                                     ArgObject,
                                     &Function);
 
@@ -402,14 +401,31 @@ PyTraceCallback(
         // function for this frame.
         //
 
+        __debugbreak();
         return 0;
     }
 
     if (!Function->PathEntry.IsValid) {
-        if (!Function->PathEntry.IsC) {
-            __debugbreak();
-        }
+
+        //
+        // The function's path entry should always be valid if RegisterFrame()
+        // succeeded.
+        //
+
+        __debugbreak();
         return 0;
+    }
+
+    if (!Function->PathEntry.FullName.Length) {
+        __debugbreak();
+    }
+
+    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
+        __debugbreak();
+    }
+
+    if (Context->Depth > Function->MaxCallStackDepth) {
+        Function->MaxCallStackDepth = (ULONG)Context->Depth;
     }
 
     //

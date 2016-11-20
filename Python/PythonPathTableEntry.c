@@ -25,11 +25,11 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 GetPathEntryFromFrame(
-    PPYTHON         Python,
-    PPYFRAMEOBJECT  FrameObject,
-    LONG            EventType,
-    PPYOBJECT       ArgObject,
-    PSTRING         FilenameString,
+    PPYTHON Python,
+    PPYFRAMEOBJECT FrameObject,
+    PYTHON_EVENT_TRAITS EventTraits,
+    PPYOBJECT ArgObject,
+    PSTRING FilenameString,
     PFILENAME_FLAGS FilenameFlags,
     PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
     )
@@ -52,8 +52,8 @@ Arguments:
     FrameObject - Supplies a pointer to a PYFRAMEOBJECT structure, provided by
         the C Python tracing machinery.
 
-    EventType - Supplies a LONG value representing the trace event type.
-        Currently unused.
+    EventTraits - Supplies a PYTHON_EVENT_TRAITS value describing the event
+        being traced.
 
     ArgObject - Supplies a pointer to a PYOBJECT structure that was provided as
         a parameter to the trace function.  Currently unused.
@@ -154,12 +154,21 @@ Retry:
 
             goto Retry;
         }
+    }
 
+    //
+    // Sanity check we've got a trailing NUL where we expect, and a non-NUL
+    // character before that.
+    //
+
+    if (Path->Buffer[Path->Length] != '\0' ||
+        Path->Buffer[Path->Length-1] == '\0') {
+        __debugbreak();
     }
 
     Success = RegisterFile(Python,
                            FrameObject,
-                           FilenameString,
+                           Path,
                            FilenameFlags,
                            &PathEntry);
 
@@ -411,9 +420,27 @@ Return Value:
     ReversedIndex = (USHORT)Rtl->RtlFindSetBits(BitmapPointer, 1, 0);
     Offset = NumberOfChars - ReversedIndex + 1;
 
-    Filename.Length = ReversedIndex;
-    Filename.MaximumLength = ReversedIndex + sizeof(CHAR);
+    if (Path->Buffer[Offset - 1] != '\\') {
+        __debugbreak();
+    }
+
     Filename.Buffer = &Path->Buffer[Offset];
+
+    if (Filename.Buffer[0] == '\\') {
+        __debugbreak();
+    }
+
+    Filename.Length = ReversedIndex;
+    if (Filename.Buffer[Filename.Length - 1] == '\0') {
+        Filename.Length--;
+    }
+
+    Filename.MaximumLength = Filename.Length;
+
+    if (Filename.Buffer[Filename.Length-1] == '\0' ||
+        Filename.Buffer[Filename.Length] != '\0') {
+        __debugbreak();
+    }
 
     //
     // Extract the directory name.
@@ -1841,6 +1868,7 @@ Return Value:
 
     ULONG Remaining;
     USHORT NewLength;
+    USHORT NewMaximumLength;
 
     CHAR Buffer[_MAX_PATH];
     CHAR CanonPath[_MAX_PATH];
@@ -1871,11 +1899,8 @@ Return Value:
     //
 
     if (CurDirLength == 0) {
-
         return FALSE;
-
     } else if (CurDirLength > MaxSize.LowPart) {
-
         return FALSE;
     }
 
@@ -1907,7 +1932,6 @@ Return Value:
         //
 
         return FALSE;
-
     }
 
     //
@@ -1944,10 +1968,16 @@ Return Value:
     NewLength = (USHORT)strlen((PCSTR)&CanonPath);
 
     //
+    // Add one for maximum length to account for the trailing NUL.
+    //
+
+    NewMaximumLength = NewLength + 1;
+
+    //
     // Sanity check that there is still a trailing NUL where we expect.
     //
 
-    if (CanonPath[NewLength] != '\0') {
+    if (CanonPath[NewLength] != '\0' || CanonPath[NewLength-1] == '\0') {
         __debugbreak();
     }
 
@@ -1955,29 +1985,32 @@ Return Value:
     // Now allocate the string.
     //
 
-    Success = AllocateStringAndBuffer(Python, NewLength, &String);
+    Success = AllocateStringAndBuffer(Python, NewMaximumLength, &String);
     if (!Success) {
         return FALSE;
     }
 
     //
-    // Initialize sizes.  NewLength includes trailing NUL, so omit it for
-    // String->Length.
+    // Initialize sizes.
     //
 
-    String->Length = NewLength-1;
+    String->Length = NewLength;
 
     if (String->MaximumLength <= String->Length) {
         __debugbreak();
     }
 
     //
-    // And finally, copy over the canonicalized path.  We've already verified
-    // that CanonPath is NUL terminated, so we can just use NewLength here to
-    // pick up the terminating NUL from CanonPath.
+    // Copy over the canonicalized path.
     //
 
     __movsb((PBYTE)String->Buffer, (LPCBYTE)&CanonPath[0], NewLength);
+
+    //
+    // Ensure there's a trailing NUL.
+    //
+
+    String->Buffer[String->Length] = '\0';
 
     //
     // Update the caller's pointer and return.
