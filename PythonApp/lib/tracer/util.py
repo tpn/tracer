@@ -116,7 +116,7 @@ def bytes_to_kb(b):
     return '%0.1f KB' % (float(b)/1024.0)
 
 def bytes_to_b(b):
-    return '%d B' % b
+    return '%0.1f  B' % float(b)
 
 bytes_conv_table = [
     bytes_to_b,

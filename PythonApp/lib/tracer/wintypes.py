@@ -11,6 +11,7 @@ from ctypes.wintypes import *
 # Globals/Aliases
 #===============================================================================
 CHAR = c_char
+UCHAR = c_ubyte
 BOOL = c_bool
 PBOOL = POINTER(BOOL)
 PBOOLEAN = POINTER(BOOL)
@@ -48,6 +49,10 @@ PTP_CLEANUP_GROUP_CANCEL_CALLBACK = PVOID
 TP_CALLBACK_PRIORITY = DWORD
 PACTIVATION_CONTEXT = PVOID
 SRWLOCK = PVOID
+INFINITE = 0xffffffff
+WAIT_FAILED = 0xffffffff
+WAIT_OBJECT_0 = 0
+WAIT_ABANDONED = 0x80
 
 #===============================================================================
 # Enums
@@ -57,6 +62,23 @@ TP_CALLBACK_PRIORITY_NORMAL = 1
 TP_CALLBACK_PRIORITY_LOW = 2
 TP_CALLBACK_PRIORITY_INVALID = 3
 TP_CALLBACK_PRIORITY_COUNT = TP_CALLBACK_PRIORITY_INVALID
+
+FileBasicInfo = 0
+FileStandardInfo = 1
+FileNameInfo = 2
+FileStreamInfo = 7
+FileCompressionInfo = 8
+FileAttributeTagInfo = 9
+FileIdBothDirectoryInfo = 0xa
+FileIdBothDirectoryRestartInfo = 0xb
+FileRemoteProtocolInfo = 0xd
+FileFullDirectoryInfo = 0xe
+FileFullDirectoryRestartInfo = 0xf
+FileStorageInfo = 0x10
+FileAlignmentInfo = 0x11
+FileIdInfo = 0x12
+FileIdExtdDirectoryInfo = 0x13
+FileIdExtdDirectoryRestartInfo = 0x14
 
 #===============================================================================
 # Classes/Structures
@@ -277,6 +299,41 @@ TP_CALLBACK_ENVIRON = TP_CALLBACK_ENVIRON_V3
 PTP_CALLBACK_ENVIRON_V3 = POINTER(TP_CALLBACK_ENVIRON_V3)
 PTP_CALLBACK_ENVIRON = POINTER(TP_CALLBACK_ENVIRON)
 
+class FILE_INFO(object):
+    @classmethod
+    def get(cls, handle, info_class, info_buffer, buffer_size):
+        success = kernel32.GetFileInformationByHandleEx(
+            handle,
+            info_class,
+            info_buffer,
+            buffer_size
+        )
+        assert success
+
+class FILE_COMPRESSION_INFO(Structure):
+    info_class = FileCompressionInfo
+    _fields_ = [
+        ('CompressedFileSize', LARGE_INTEGER),
+        ('CompressionFormat', WORD),
+        ('CompressionUnitShift', UCHAR),
+        ('ChunkShift', UCHAR),
+        ('ClusterShift', UCHAR),
+        ('Reserved', UCHAR * 3),
+    ]
+
+    @classmethod
+    def get(cls, handle):
+        buf = cls()
+        FILE_INFO.get(
+            handle,
+            cls.info_class,
+            byref(buf),
+            sizeof(cls)
+        )
+        return buf
+
+PFILE_COMPRESSION_INFO = POINTER(FILE_COMPRESSION_INFO)
+
 # Splay
 class RTL_SPLAY_LINKS(Structure):
     pass
@@ -432,6 +489,14 @@ kernel32.CloseThreadpool.argtypes = [ PTP_POOL, ]
 kernel32.WaitForSingleObject.restype = DWORD
 kernel32.WaitForSingleObject.argtypes = [ HANDLE, DWORD ]
 
+kernel32.GetFileInformationByHandleEx.restype = BOOL
+kernel32.GetFileInformationByHandleEx.argtypes = [
+    HANDLE,     # hFile
+    ULONG,      # FILE_INFO_BY_HANDLE_CLASS
+    PVOID,      # lpFileInformation
+    ULONG,      # dwBufferSize
+]
+
 #===============================================================================
 # NtDll
 #===============================================================================
@@ -585,6 +650,18 @@ def is_signaled(event):
         return False
     elif result == WAIT_FAILED:
         raise OSError("WaitForSingleObject: WAIT_FAILED")
+
+def wait(event, timeout=INFINITE):
+    result = kernel32.WaitForSingleObject(event, timeout)
+    if result == WAIT_OBJECT_0:
+        return True
+    elif result == WAIT_TIMEOUT:
+        return False
+    elif result == WAIT_ABANDONED:
+        return False
+    elif result == WAIT_FAILED:
+        raise OSError("WaitForSingleObject: WAIT_FAILED")
+
 
 def field_to_offset(struct):
     return [
