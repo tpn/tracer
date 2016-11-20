@@ -83,7 +83,7 @@ Return Value:
         TraceStore->FileHandle = CreateFileW(
             Path,
             TraceStore->CreateFileDesiredAccess,
-            FILE_SHARE_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             NULL,
             TraceStore->CreateFileCreationDisposition,
             FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_OVERLAPPED,
@@ -485,7 +485,7 @@ Return Value:
     TraceStore->FileHandle = CreateFileW(
         Path,
         TraceStore->CreateFileDesiredAccess,
-        FILE_SHARE_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         NULL,
         TraceStore->CreateFileCreationDisposition,
         TraceStore->CreateFileFlagsAndAttributes,
