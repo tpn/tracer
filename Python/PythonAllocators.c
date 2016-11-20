@@ -59,8 +59,8 @@ AllocateStringBuffer(
     PSTRING  String
     )
 {
-    PVOID Buffer;
     ULONG AlignedSize;
+    PVOID Buffer;
 
     if (!ARGUMENT_PRESENT(Python)) {
         return FALSE;
@@ -96,16 +96,26 @@ AllocateStringAndBuffer(
     PPSTRING StringPointer
     )
 {
+    ULONG AllocSize;
+    ULONG AlignedSize;
     PSTRING String;
 
-    if (!AllocateString(Python, &String)) {
+    if (StringBufferSizeInBytes == 0) {
         return FALSE;
     }
 
-    if (!AllocateStringBuffer(Python, StringBufferSizeInBytes, String)) {
-        FreeString(Python, String);
+    AlignedSize = ALIGN_UP(StringBufferSizeInBytes, sizeof(ULONG_PTR));
+
+    AllocSize = AlignedSize + sizeof(STRING);
+
+    String = ALLOCATE(StringBuffer, AllocSize);
+    if (!String) {
         return FALSE;
     }
+
+    String->Length = 0;
+    String->MaximumLength = (USHORT)AlignedSize;
+    String->Buffer = (PCHAR)RtlOffsetToPointer(String, sizeof(STRING));
 
     *StringPointer = String;
 

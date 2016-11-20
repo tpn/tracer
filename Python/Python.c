@@ -388,15 +388,12 @@ GenericComparePointer(
     _In_ ULONG_PTR Second
     )
 {
-    if (First < Second) {
+    if (First == Second) {
+        return GenericEqual;
+    } else if (First < Second) {
         return GenericLessThan;
     }
-    else if (First > Second) {
-        return GenericGreaterThan;
-    }
-    else {
-        return GenericEqual;
-    }
+    return GenericGreaterThan;
 }
 
 RTL_GENERIC_COMPARE_RESULTS
@@ -406,24 +403,7 @@ FunctionTableCompareRoutine(
     _In_ PPYTHON_FUNCTION Second
     )
 {
-    PPYTHON Python = (PPYTHON)Table->TableContext;
-
-    ULONG_PTR FirstPointer;
-    ULONG_PTR SecondPointer;
-
-    if (First->PathEntry.IsC) {
-        FirstPointer = (ULONG_PTR)First->PyCFunctionObject->Method;
-    } else {
-        FirstPointer = (ULONG_PTR)First->CodeObject;
-    }
-
-    if (Second->PathEntry.IsC) {
-        SecondPointer = (ULONG_PTR)Second->PyCFunctionObject->Method;
-    } else {
-        SecondPointer = (ULONG_PTR)Second->CodeObject;
-    }
-
-    return GenericComparePointer(Table, FirstPointer, SecondPointer);
+    return GenericComparePointer(Table, First->Key, Second->Key);
 }
 
 _Check_return_

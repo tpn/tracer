@@ -560,18 +560,28 @@ class LoadTrace(InvariantAwareCommand):
             create_and_initialize_readonly_trace_context,
         )
 
-        ts = create_and_initialize_readonly_trace_stores(
-            rtl,
-            allocator,
-            basedir,
-            tc
-        )
+        from .util import timer
 
-        ctx = create_and_initialize_readonly_trace_context(
-            rtl,
-            allocator,
-            ts,
-        )
+        t = timer(verbose=False)
+
+        with t:
+            ts = create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        with t:
+            ctx = create_and_initialize_readonly_trace_context(
+                rtl,
+                allocator,
+                ts,
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
 
         from .util import (
             Dict,
