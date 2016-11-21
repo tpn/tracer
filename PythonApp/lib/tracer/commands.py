@@ -827,20 +827,24 @@ class PrintAddressInfo(InvariantAwareCommand):
 
         header = [
             'Trace Store',
-            'Size (Bytes)',
-            'Size GB/MB/KB',
-            'Compressed (Bytes)',
-            'Compressed GB/MB/KB',
-            'Compression Ratio',
-            'Space Saved %',
-            '# Allocations',
-            'Mapping Size',
-            'Dropped Records',
-            'Exhausted Free Memory Maps',
-            'Allocations Outpaced Async Prep.',
-            'Preferred Address Unavailable',
-            'Access Violation During Async Prefault',
-            'Blocked Allocations',
+            'Preferred Base',
+            'Base Address',
+            'File Offset',
+            'Mapped Size',
+            'Awaiting Preparation',
+            'Awaiting Consumption',
+            'Active',
+            'Awaiting Release',
+            'Mapped Sequence ID',
+            'Process ID',
+            'Requesting Thread ID#',
+            'Requesting CPU Group#',
+            'Requesting CPU Number#',
+            'Requesting CPU Numa Node#',
+            'Fulfilling Thread ID#',
+            'Fulfilling CPU Group#',
+            'Fulfilling CPU Number#',
+            'Fulfilling CPU Numa Node#',
         ]
 
         tsa = cast(byref(ts), TraceStore.PTRACE_STORE_ARRAY).contents
@@ -853,29 +857,35 @@ class PrintAddressInfo(InvariantAwareCommand):
         def make_row(target):
 
             (name, store) = target
-            rows.append([
-                str(name),
-                fmt(store.size),
-                bytes_to_human(store.size),
-                fmt(store.compressed_size),
-                bytes_to_human(store.compressed_size),
-                drop('%0.2f', store.compression_ratio, 1.0),
-                drop('%0.2f %%', store.space_saved_percent, 0),
-                fmt(store.num_allocations),
-                bytes_to_human(store.mapping_size),
-                fmt(store.dropped_records),
-                fmt(store.exhausted_free_memory_maps),
-                fmt(store.allocations_outpacing_next_memory_map_preparation),
-                fmt(store.preferred_address_unavailable),
-                fmt(store.access_violations_encountered_during_async_prefault),
-                fmt(store.blocked_allocations),
-            ])
+            for address in store.addresses:
+                rows.append([
+                    str(name),
+                    address.PreferredBaseAddress,
+                    address.BaseAddress,
+                    address.FileOffset,
+                    address.MappedSize,
+                    address.Elapsed.AwaitingPreparation,
+                    address.Elapsed.AwaitingConsumption,
+                    address.Elapsed.Active,
+                    address.Elapsed.AwaitingRelease,
+                    address.MappedSequenceId,
+                    address.ProcessId,
+                    address.RequestingThreadId,
+                    address.RequestingProcessor.Group,
+                    address.RequestingProcessor.Number,
+                    address.RequestingProcessor.Reserved,
+                    address.FulfillingThreadId,
+                    address.FulfillingProcessor.Group,
+                    address.FulfillingProcessor.Number,
+                    address.FulfillingProcessor.Reserved,
+                ])
 
         trace_stores = tsa._stores()
+
         for ((name, store), metadata_stores) in trace_stores:
             make_row((name, store))
-            for metadata_store in metadata_stores:
-                make_row(metadata_store)
+            #for metadata_store in metadata_stores:
+            #    make_row(metadata_store)
 
 
         from itertools import chain, repeat

@@ -859,13 +859,22 @@ class TRACE_STORE(Structure):
     @property
     def address_ranges(self):
         return cast(
-            self.ReadonlyAddressRanges,
+            self.AddressRanges,
             POINTER(
                 TRACE_STORE_ADDRESS_RANGE *
-                self.NumberOfReadonlyAddressRanges
+                self.NumberOfAddressRanges
             )
         ).contents
 
+    @property
+    def addresses(self):
+        return cast(
+            self.Address,
+            POINTER(
+                TRACE_STORE_ADDRESS *
+                self.address_store.totals.NumberOfAllocations
+            )
+        ).contents
 
 PTRACE_STORE = POINTER(TRACE_STORE)
 PPTRACE_STORE = POINTER(PTRACE_STORE)
