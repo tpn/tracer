@@ -3306,6 +3306,81 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->K32InitializeProcessForWsWatch = (PINITIALIZE_PROCESS_FOR_WS_WATCH)
+        GetProcAddress(Rtl->NtdllModule, "K32InitializeProcessForWsWatch"))) {
+
+        if (!(Rtl->K32InitializeProcessForWsWatch = (PINITIALIZE_PROCESS_FOR_WS_WATCH)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32InitializeProcessForWsWatch"))) {
+
+            if (!(Rtl->K32InitializeProcessForWsWatch = (PINITIALIZE_PROCESS_FOR_WS_WATCH)
+                GetProcAddress(Rtl->Kernel32Module, "K32InitializeProcessForWsWatch"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32InitializeProcessForWsWatch'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->K32GetWsChanges = (PGET_WS_CHANGES)
+        GetProcAddress(Rtl->NtdllModule, "K32GetWsChanges"))) {
+
+        if (!(Rtl->K32GetWsChanges = (PGET_WS_CHANGES)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32GetWsChanges"))) {
+
+            if (!(Rtl->K32GetWsChanges = (PGET_WS_CHANGES)
+                GetProcAddress(Rtl->Kernel32Module, "K32GetWsChanges"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32GetWsChanges'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->K32GetWsChangesEx = (PGET_WS_CHANGES_EX)
+        GetProcAddress(Rtl->NtdllModule, "K32GetWsChangesEx"))) {
+
+        if (!(Rtl->K32GetWsChangesEx = (PGET_WS_CHANGES_EX)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32GetWsChangesEx"))) {
+
+            if (!(Rtl->K32GetWsChangesEx = (PGET_WS_CHANGES_EX)
+                GetProcAddress(Rtl->Kernel32Module, "K32GetWsChangesEx"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32GetWsChangesEx'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->K32QueryWorkingSet = (PQUERY_WORKING_SET)
+        GetProcAddress(Rtl->NtdllModule, "K32QueryWorkingSet"))) {
+
+        if (!(Rtl->K32QueryWorkingSet = (PQUERY_WORKING_SET)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32QueryWorkingSet"))) {
+
+            if (!(Rtl->K32QueryWorkingSet = (PQUERY_WORKING_SET)
+                GetProcAddress(Rtl->Kernel32Module, "K32QueryWorkingSet"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32QueryWorkingSet'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->K32QueryWorkingSetEx = (PQUERY_WORKING_SET_EX)
+        GetProcAddress(Rtl->NtdllModule, "K32QueryWorkingSetEx"))) {
+
+        if (!(Rtl->K32QueryWorkingSetEx = (PQUERY_WORKING_SET_EX)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32QueryWorkingSetEx"))) {
+
+            if (!(Rtl->K32QueryWorkingSetEx = (PQUERY_WORKING_SET_EX)
+                GetProcAddress(Rtl->Kernel32Module, "K32QueryWorkingSetEx"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32QueryWorkingSetEx'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->SearchPathW = (PSEARCHPATHW)
         GetProcAddress(Rtl->NtdllModule, "SearchPathW"))) {
 

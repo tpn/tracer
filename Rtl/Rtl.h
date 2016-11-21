@@ -331,33 +331,6 @@ typedef union _OCTWORD_INTEGER {
 typedef _Null_terminated_ CHAR *PSZ;
 //typedef const PSZ PCSZ;
 
-typedef struct _PROCESS_MEMORY_COUNTERS {
-    DWORD  cb;
-    DWORD  PageFaultCount;
-    SIZE_T PeakWorkingSetSize;
-    SIZE_T WorkingSetSize;
-    SIZE_T QuotaPeakPagedPoolUsage;
-    SIZE_T QuotaPagedPoolUsage;
-    SIZE_T QuotaPeakNonPagedPoolUsage;
-    SIZE_T QuotaNonPagedPoolUsage;
-    SIZE_T PagefileUsage;
-    SIZE_T PeakPagefileUsage;
-} PROCESS_MEMORY_COUNTERS, *PPROCESS_MEMORY_COUNTERS;
-
-typedef struct _PROCESS_MEMORY_COUNTERS_EX {
-    DWORD  cb;
-    DWORD  PageFaultCount;
-    SIZE_T PeakWorkingSetSize;
-    SIZE_T WorkingSetSize;
-    SIZE_T QuotaPeakPagedPoolUsage;
-    SIZE_T QuotaPagedPoolUsage;
-    SIZE_T QuotaPeakNonPagedPoolUsage;
-    SIZE_T QuotaNonPagedPoolUsage;
-    SIZE_T PagefileUsage;
-    SIZE_T PeakPagefileUsage;
-    SIZE_T PrivateUsage;
-} PROCESS_MEMORY_COUNTERS_EX, *PPROCESS_MEMORY_COUNTERS_EX;
-
 typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
     _In_  HANDLE                      Process,
     _Out_ PPROCESS_MEMORY_COUNTERS    ppsmemCounters,
@@ -373,6 +346,59 @@ typedef BOOL (WINAPI *PGET_PROCESS_HANDLE_COUNT)(
     _In_  HANDLE      Process,
     _Out_ PDWORD      pdwHandleCount
     );
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WINAPI INITIALIZE_PROCESS_FOR_WS_WATCH)(
+    _In_ HANDLE ProcessHandle
+    );
+typedef INITIALIZE_PROCESS_FOR_WS_WATCH *PINITIALIZE_PROCESS_FOR_WS_WATCH;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WINAPI GET_WS_CHANGES)(
+    _In_ HANDLE ProcessHandle,
+    _Out_ PPSAPI_WS_WATCH_INFORMATION WatchInfo,
+    _In_ ULONG SizeOfWatchInfoBufferInBytes
+    );
+typedef GET_WS_CHANGES *PGET_WS_CHANGES;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WINAPI GET_WS_CHANGES_EX)(
+    _In_ HANDLE ProcessHandle,
+    _Out_ PPSAPI_WS_WATCH_INFORMATION_EX WatchInfoEx,
+    _Inout_ PULONG SizeOfWatchInfoExBufferInBytes
+    );
+typedef GET_WS_CHANGES_EX *PGET_WS_CHANGES_EX;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WINAPI QUERY_WORKING_SET)(
+    _In_ HANDLE ProcessHandle,
+    _Out_ PPSAPI_WORKING_SET_INFORMATION WorkingSetInfo,
+    _In_ ULONG SizeOfWorkingSetInfoBufferInBytes
+    );
+typedef QUERY_WORKING_SET *PQUERY_WORKING_SET;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WINAPI QUERY_WORKING_SET_EX)(
+    _In_ HANDLE ProcessHandle,
+    _Out_ PPSAPI_WORKING_SET_EX_INFORMATION WorkingSetExInfo,
+    _In_ ULONG SizeOfWorkingSetExInfoBufferInBytes
+    );
+typedef QUERY_WORKING_SET_EX *PQUERY_WORKING_SET_EX;
 
 typedef VOID (WINAPI *PGETSYSTEMTIMEPRECISEASFILETIME)(
     _Out_ LPFILETIME lpSystemTimeAsFileTime
@@ -1555,6 +1581,11 @@ typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
     PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
+    PINITIALIZE_PROCESS_FOR_WS_WATCH K32InitializeProcessForWsWatch;                                   \
+    PGET_WS_CHANGES K32GetWsChanges;                                                                   \
+    PGET_WS_CHANGES_EX K32GetWsChangesEx;                                                              \
+    PQUERY_WORKING_SET K32QueryWorkingSet;                                                             \
+    PQUERY_WORKING_SET_EX K32QueryWorkingSetEx;                                                        \
     PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PTHREAD32_FIRST Thread32First;                                                                     \

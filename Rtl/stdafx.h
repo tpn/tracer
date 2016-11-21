@@ -18,6 +18,7 @@ Abstract:
 
 #include <Windows.h>
 #include <sal.h>
+#include <Psapi.h>
 
 //
 // Disable inconsistent SAL annotation warnings before importing the
