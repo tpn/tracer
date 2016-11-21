@@ -33,6 +33,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceSession.dat",
     L"TraceStringArray.dat",
     L"TraceStringTable.dat",
+    L"TraceEventTraitsEx.dat"
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -100,8 +101,8 @@ USHORT ElementsPerTraceStore = 9;
 USHORT NumberOfMetadataStores = 8;
 
 //
-// The Event trace store gets an initial file size of 16MB, everything else
-// gets 4MB.
+// The Event-type stores gets an initial file size of 8MB, everything else gets
+// 2MB.
 //
 
 ULONG InitialTraceStoreFileSizes[] = {
@@ -113,7 +114,8 @@ ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // PathTableEntry
     10 << 20,   // TraceSession
     10 << 20,   // StringArray
-    10 << 20    // StringTable
+    10 << 20,   // StringTable
+    10 << 23    // EventTraitsEx
 };
 
 
@@ -140,6 +142,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // StreamingRead
         1,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -155,6 +158,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -170,6 +174,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -185,6 +190,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -200,6 +206,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -215,6 +222,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -230,6 +238,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -245,6 +254,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     },
 
@@ -260,6 +270,23 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingRead
         0,  // FrequentAllocations
         0,  // BlockingAllocations
+        0,  // LinkedStore
+        0   // Unused
+    },
+
+    //
+    // EventTraitsEx
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        1,  // FrequentAllocations
+        1,  // BlockingAllocations
+        1,  // LinkedStore
         0   // Unused
     }
 };
@@ -370,6 +397,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -381,6 +409,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -392,6 +421,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -403,6 +433,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -414,6 +445,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -425,6 +457,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -436,6 +469,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 
@@ -447,6 +481,7 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
+    0,  // LinkedStore
     0   // Unused
 };
 

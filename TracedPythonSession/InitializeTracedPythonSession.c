@@ -129,6 +129,7 @@ Return Value:
     PDLL_DIRECTORY_COOKIE DirectoryCookie;
     TRACE_FLAGS TraceFlags;
     TRACER_FLAGS TracerConfigFlags;
+    PYTHON_TRACE_EVENT_TYPE EventType;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
@@ -152,6 +153,8 @@ Return Value:
     if (!ARGUMENT_PRESENT(TracerConfig)) {
         return FALSE;
     }
+
+    EventType = TracerConfig->Flags.TraceEventType;
 
     if (!ARGUMENT_PRESENT(Allocator)) {
 
@@ -980,7 +983,7 @@ LoadPythonDll:
         &RequiredSize,  // SizeOfPythonTraceContext
         NULL,           // Python
         NULL,           // TraceContext
-        NULL,           // PythonTraceFunction
+        EventType,      // TraceEventType
         NULL            // UserData
     );
 
@@ -996,7 +999,7 @@ LoadPythonDll:
         &RequiredSize,
         Session->Python,
         Session->TraceContext,
-        NULL,
+        EventType,
         (PVOID)Session
     );
 

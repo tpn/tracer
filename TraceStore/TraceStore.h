@@ -496,10 +496,27 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG BlockingAllocations:1;
 
     //
+    // When set, indicates that this trace store is a linked store, which means
+    // that record allocations are driven by another store's record allocations.
+    // That is, allocations against this trace store are only done in concert
+    // with allocations to a primary store.  The effect of setting this bit is
+    // that allocation timestamps for this store are disabled; instead, it is
+    // expected that the main store's allocation timestamp data will be used
+    // instead.  If this is set, BlockingAllocations must also be set.
+    //
+    // Invariants:
+    //
+    //   - If LinkedStore == TRUE:
+    //      Assert BlockingAllocations == TRUE
+    //
+
+    ULONG LinkedStore:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:25;
+    ULONG Unused:24;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -529,7 +546,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     StreamingReadTrait                  =  1 << 4,
     FrequentAllocationsTrait            =  1 << 5,
     BlockingAllocationsTrait            =  1 << 6,
-    InvalidTrait                        = (1 << 6) + 1
+    LinkedStoreTrait                    =  1 << 7,
+    InvalidTrait                        = (1 << 7) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -571,6 +589,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 
 #define IsFrequentAllocator(Traits) ((Traits).FrequentAllocations)
 #define IsBlockingAllocator(Traits) ((Traits).BlockingAllocations)
+#define IsLinkedStore(Traits) ((Traits).LinkedStore)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -1317,6 +1336,19 @@ typedef
 _Check_return_
 _Success_(return != 0)
 PVOID
+(ALLOCATE_RECORDS_WITH_TIMESTAMP)(
+    _In_     PTRACE_CONTEXT  TraceContext,
+    _In_     PTRACE_STORE    TraceStore,
+    _In_     PULARGE_INTEGER RecordSize,
+    _In_     PULARGE_INTEGER NumberOfRecords,
+    _In_opt_ PLARGE_INTEGER  TimestampPointer
+    );
+typedef ALLOCATE_RECORDS_WITH_TIMESTAMP *PALLOCATE_RECORDS_WITH_TIMESTAMP;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
 (ALLOCATE_ALIGNED_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
@@ -1535,13 +1567,12 @@ typedef struct _TRACE_STORE {
     };
 
     //
-    // Allocator functions.  (N.B.: only AllocateRecords() is currently
-    // implemented.)
+    // Allocator functions.
     //
 
     PALLOCATE_RECORDS AllocateRecords;
-    PALLOCATE_ALIGNED_RECORDS AllocateAlignedRecords;
-    PALLOCATE_ALIGNED_OFFSET_RECORDS AllocateAlignedOffsetRecords;
+    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestamp;
+    PVOID GetNextAlignmentUnimplemented;
 
     //
     // Bind complete callback.  This is called as the final step by BindStore()
@@ -2060,7 +2091,8 @@ FORCEINLINE
 VOID
 TraceTimeQueryPerformanceCounter(
     _In_    PTRACE_STORE_TIME   Time,
-    _Out_   PLARGE_INTEGER      ElapsedPointer
+    _Out_   PLARGE_INTEGER      ElapsedPointer,
+    _Out_   PLARGE_INTEGER      TimestampPointer
     )
 /*++
 
@@ -2079,6 +2111,9 @@ Arguments:
         elapsed time in microseconds relative to the start time of the
         TRACE_STORE_TIME struct.
 
+    TimestampPointer - Supplies a pointer to a variable that receives the
+        raw performance counter used to calculate the elapsed parameter.
+
 Return Value:
 
     None.
@@ -2091,7 +2126,13 @@ Return Value:
     // Query the performance counter.
     //
 
-    QueryPerformanceCounter(&Elapsed);
+    QueryPerformanceCounter(TimestampPointer);
+
+    //
+    // Copy the timestamp to the elapsed variable.
+    //
+
+    Elapsed.QuadPart = TimestampPointer->QuadPart;
 
     //
     // Get the elapsed time since the start of the trace.
@@ -2130,21 +2171,26 @@ FORCEINLINE
 VOID
 TraceContextQueryPerformanceCounter(
     _In_    PTRACE_CONTEXT  TraceContext,
-    _Out_   PLARGE_INTEGER  ElapsedPointer
+    _Out_   PLARGE_INTEGER  ElapsedPointer,
+    _Out_   PLARGE_INTEGER  TimestampPointer
     )
 {
-    TraceTimeQueryPerformanceCounter(&TraceContext->Time, ElapsedPointer);
+    TraceTimeQueryPerformanceCounter(&TraceContext->Time,
+                                     ElapsedPointer,
+                                     TimestampPointer);
 }
 
 FORCEINLINE
 VOID
 TraceStoreQueryPerformanceCounter(
     _In_    PTRACE_STORE    TraceStore,
-    _Out_   PLARGE_INTEGER  ElapsedPointer
+    _Out_   PLARGE_INTEGER  ElapsedPointer,
+    _Out_   PLARGE_INTEGER  TimestampPointer
     )
 {
     TraceTimeQueryPerformanceCounter(&TraceStore->TraceContext->Time,
-                                     ElapsedPointer);
+                                     ElapsedPointer,
+                                     TimestampPointer);
 }
 
 //

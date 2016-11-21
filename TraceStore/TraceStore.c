@@ -135,8 +135,9 @@ Return Value:
     }
 
     TraceStore->AllocateRecords = TraceStoreAllocateRecords;
-    TraceStore->AllocateAlignedRecords = NULL;
-    TraceStore->AllocateAlignedOffsetRecords = NULL;
+    TraceStore->AllocateRecordsWithTimestamp = (
+        TraceStoreAllocateRecordsWithTimestamp
+    );
 
     //
     // Return success.

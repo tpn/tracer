@@ -27,6 +27,9 @@
     <ClInclude Include="PythonTracerPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PythonTracerConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -42,6 +45,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PythonTracerConstants.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PyTraceEvent1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PyTraceEvent2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

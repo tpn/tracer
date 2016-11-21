@@ -98,13 +98,13 @@ typedef DESTROY_TRACED_PYTHON_SESSION **PPDESTROY_TRACED_PYTHON_SESSION;
 TRACED_PYTHON_SESSION_API DESTROY_TRACED_PYTHON_SESSION \
                           DestroyTracedPythonSession;
 
-typedef struct _TRACED_PYTHON_SESSION {
+typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
 
     //
     // Size of the entire structure, in bytes.
     //
 
-    USHORT Size;
+    _Field_range_(==, sizeof(struct _TRACED_PYTHON_SESSION)) USHORT Size;
 
     //
     // Python major version ('2' or '3') and minor version, as derived from the
@@ -124,7 +124,7 @@ typedef struct _TRACED_PYTHON_SESSION {
     // Padding out to 8 bytes.
     //
 
-    USHORT   Unused1;
+    USHORT Unused1;
 
     //
     // Array of PUNICODE_STRING paths to add to the DLL path.  Size is governed

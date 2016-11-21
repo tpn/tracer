@@ -65,6 +65,7 @@ Return Value:
     HRESULT Result;
     PRTL Rtl;
     PBIND_COMPLETE BindComplete;
+    LARGE_INTEGER Timestamp;
     PLARGE_INTEGER Requested;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_ADDRESS AddressPointer;
@@ -159,7 +160,7 @@ Return Value:
     //
 
     Requested = &Address.Timestamp.Requested;
-    TraceStoreQueryPerformanceCounter(TraceStore, Requested);
+    TraceStoreQueryPerformanceCounter(TraceStore, Requested, &Timestamp);
 
     //
     // Zero out everything else.
@@ -533,6 +534,7 @@ Return Value:
     LARGE_INTEGER FileOffset;
     LONGLONG BytesRemaining;
     ULONGLONG EndOfFile;
+    LARGE_INTEGER Timestamp;
     PLARGE_INTEGER Requested;
     FILE_STANDARD_INFO FileInfo;
     PALLOCATOR Allocator;
@@ -869,7 +871,7 @@ Return Value:
         //
 
         Requested = &Address->Timestamp.Requested;
-        TraceStoreQueryPerformanceCounter(TraceStore, Requested);
+        TraceStoreQueryPerformanceCounter(TraceStore, Requested, &Timestamp);
         Address->RequestingThreadId = ThreadId;
         Address->ProcessId = ProcessId;
         Address->RequestingProcessor = ProcessorNumber;

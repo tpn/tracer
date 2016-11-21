@@ -95,6 +95,7 @@ PTIMER_FUNCTION = PVOID
 # to structures we define later, and I can't be bothered figuring out the
 # ctypes-fu required to get the forward definitions working at the moment.
 PALLOCATE_RECORDS = PVOID
+PALLOCATE_RECORDS_WITH_TIMESTAMP = PVOID
 PALLOCATE_ALIGNED_RECORDS = PVOID
 PALLOCATE_ALIGNED_OFFSET_RECORDS = PVOID
 PBIND_COMPLETE = PVOID
@@ -115,7 +116,8 @@ TraceStorePathTableEntryId          =   6
 TraceStoreSessionId                 =   7
 TraceStoreStringArrayId             =   8
 TraceStoreStringTableId             =   9
-TraceStoreInvalidId                 =  10
+TraceStoreEventTraitsExId           =  10
+TraceStoreInvalidId                 =  11
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -134,6 +136,7 @@ TraceStoreIdToName = {
     TraceStoreSessionId: 'Session',
     TraceStoreStringArrayId: 'StringArray',
     TraceStoreStringTableId: 'StringTable',
+    TraceStoreEventTraitsExId: 'EventTraitsEx',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -234,7 +237,8 @@ class TRACE_STORE_TRAITS(Structure):
         ('StreamingRead', ULONG, 1),
         ('FrequentAllocations', ULONG, 1),
         ('BlockingAllocations', ULONG, 1),
-        ('Unused', ULONG, 25),
+        ('LinkedStore', ULONG, 1),
+        ('Unused', ULONG, 24),
     ]
 PTRACE_STORE_TRAITS = POINTER(TRACE_STORE_TRAITS)
 
@@ -576,6 +580,7 @@ class _TRACE_STORE_BITMAP(Structure):
         ('TraceStoreSessionId', ULONG, 1),
         ('TraceStoreStringArrayId', ULONG, 1),
         ('TraceStoreStringTableId', ULONG, 1),
+        ('TraceStoreEventTraitsExId', ULONG, 1),
     ]
 
 class TRACE_STORE_BITMAP(Union):
@@ -935,8 +940,8 @@ TRACE_STORE._fields_ = [
     ('InfoStore', PTRACE_STORE),
     ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
-    ('AllocateAlignedRecords', PALLOCATE_ALIGNED_RECORDS),
-    ('AllocateAlignedOffsetRecords', PALLOCATE_ALIGNED_OFFSET_RECORDS),
+    ('AllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
+    ('GetNextAlignmentUnimplemented', PVOID),
     ('BindComplete', PBIND_COMPLETE),
     ('pReloc', PTRACE_STORE_RELOC),
     ('pTraits', PTRACE_STORE_TRAITS),
@@ -1040,6 +1045,7 @@ TRACE_STORES._fields_ = [
     ('SessionRelocationCompleteEvent', HANDLE),
     ('StringArrayRelocationCompleteEvent', HANDLE),
     ('StringTableRelocationCompleteEvent', HANDLE),
+    ('EventTraitsExRelocationCompleteEvent', HANDLE),
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1050,6 +1056,7 @@ TRACE_STORES._fields_ = [
     ('SessionReloc', TRACE_STORE_RELOC),
     ('StringArrayReloc', TRACE_STORE_RELOC),
     ('StringTableReloc', TRACE_STORE_RELOC),
+    ('EventTraitsExReloc', TRACE_STORE_RELOC),
     # Start of Stores[MAX_TRACE_STORES].
     ('EventStore', PYTHON_TRACE_EVENT_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
@@ -1132,6 +1139,15 @@ TRACE_STORES._fields_ = [
     ('StringTableAllocationTimestampStore', TRACE_STORE),
     ('StringTableAllocationTimestampDeltaStore', TRACE_STORE),
     ('StringTableInfoStore', TRACE_STORE),
+    ('EventTraitsExStore', TRACE_STORE),
+    ('EventTraitsExMetadataInfoStore', TRACE_STORE),
+    ('EventTraitsExAllocationStore', ALLOCATION_STORE),
+    ('EventTraitsExRelocationStore', TRACE_STORE),
+    ('EventTraitsExAddressStore', ADDRESS_STORE),
+    ('EventTraitsExAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('EventTraitsExAllocationTimestampStore', TRACE_STORE),
+    ('EventTraitsExAllocationTimestampDeltaStore', TRACE_STORE),
+    ('EventTraitsExInfoStore', TRACE_STORE),
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1159,6 +1175,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('SessionRelocationCompleteEvent', HANDLE),
         ('StringArrayRelocationCompleteEvent', HANDLE),
         ('StringTableRelocationCompleteEvent', HANDLE),
+        ('EventTraitsExRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1169,6 +1186,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('SessionReloc', TRACE_STORE_RELOC),
         ('StringArrayReloc', TRACE_STORE_RELOC),
         ('StringTableReloc', TRACE_STORE_RELOC),
+        ('EventTraitsExReloc', TRACE_STORE_RELOC),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),

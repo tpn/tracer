@@ -272,10 +272,10 @@ TRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations[] = {
 //
 
 DECLSPEC_ALIGN(128)
-TRACE_STORE_FIELD_RELOC PythonTraceEventRelocations[] = {
+TRACE_STORE_FIELD_RELOC PythonTraceEvent1Relocations[] = {
 
     {
-        FIELD_OFFSET(PYTHON_TRACE_EVENT, Function),
+        FIELD_OFFSET(PYTHON_TRACE_EVENT1, Function),
         TraceStoreFunctionTableEntryId
     },
 
@@ -311,7 +311,7 @@ TRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations[] = {
 
     {
         TraceStoreEventId,
-        (PTRACE_STORE_FIELD_RELOC)&PythonTraceEventRelocations
+        (PTRACE_STORE_FIELD_RELOC)&PythonTraceEvent1Relocations
     },
 
     LAST_TRACE_STORE_FIELD_RELOCS

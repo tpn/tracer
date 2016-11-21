@@ -42,79 +42,47 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
+#include "../Rtl/__C_specific_handler.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
 #include "../StringTable/StringTable.h"
+#include "PythonTracer.h"
 
 #endif
 
-typedef struct _EVENT_TYPE_NAME {
-    TraceEventType  Id;
-    PCWSTR          Name;
-    PCSTR           NameA;
-} EVENT_TYPE_NAME, *PEVENT_TYPE_NAME;
-
-static const EVENT_TYPE_NAME EventTypeNames[] = {
-
-    {
-        TraceEventType_PyTrace_CALL,
-        L"PyTrace_CALL",
-        "PyTrace_CALL"
-    },
-
-    {
-        TraceEventType_PyTrace_EXCEPTION,
-        L"PyTrace_EXCEPTION",
-        "PyTrace_EXCEPTION"
-    },
-
-    {
-        TraceEventType_PyTrace_LINE,
-        L"PyTrace_LINE",
-        "PyTrace_LINE"
-    },
-
-    {
-        TraceEventType_PyTrace_RETURN,
-        L"PyTrace_RETURN",
-        "PyTrace_RETURN"
-    },
-
-    {
-        TraceEventType_PyTrace_C_CALL,
-        L"PyTrace_C_CALL",
-        "PyTrace_C_CALL"
-    },
-
-    {
-        TraceEventType_PyTrace_C_EXCEPTION,
-        L"PyTrace_C_EXCEPTION",
-        "PyTrace_C_EXCEPTION"
-    },
-
-    {
-        TraceEventType_PyTrace_C_RETURN,
-        L"PyTrace_C_RETURN",
-        "PyTrace_C_RETURN"
-    },
-};
-
-static const DWORD NumberOfTraceEventTypes = (
-    sizeof(EventTypeNames) /
-    sizeof(EVENT_TYPE_NAME)
-);
-
 typedef enum _PYTHON_TRACE_EVENT_TYPE {
-    Call        =         1,
-    Exception   =   1 <<  1, // 2
-    Line        =   1 <<  2, // 4
-    Return      =   1 <<  3, // 8
-    Invalid     =   1 << 31
+    PythonTraceEventNull = 0,
+    PythonTraceEvent1 = 1,
+    PythonTraceEvent2,
+    PythonTraceEventInvalid
 } PYTHON_TRACE_EVENT_TYPE, *PPYTHON_TRACE_EVENT_TYPE;
+
+#define MAX_PYTHON_TRACE_EVENT_TYPE PythonTraceEventInvalid - 1
+
+typedef union _PYTHON_EVENT_TRAITS_EX {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Inline the PYTHON_EVENT_TRAITS structure.
+        //
+
+        ULONG IsCall:1;
+        ULONG IsException:1;
+        ULONG IsLine:1;
+        ULONG IsReturn:1;
+        ULONG IsC:1;
+        ULONG AsEventType:3;
+        ULONG IsReverseJump:1;
+        ULONG LineNumberOrCallStackDepth:23;
+    };
+} PYTHON_EVENT_TRAITS_EX, *PPYTHON_EVENT_TRAITS_EX;
+
+C_ASSERT(sizeof(PYTHON_EVENT_TRAITS_EX) == sizeof(ULONG));
 
 #pragma pack(push, DefaultAlignment, 2)
 
-typedef struct _PYTHON_TRACE_EVENT {
+typedef struct _PYTHON_TRACE_EVENT1 {
     LARGE_INTEGER Timestamp;            // 8
     PPYTHON_FUNCTION Function;          // 8        16
 
@@ -143,31 +111,7 @@ typedef struct _PYTHON_TRACE_EVENT {
     ULONG ClassNameHash;                // 4        108
     ULONG NameHash;                     // 4        112
 
-    union {
-        ULONG Flags;                    // 4        116
-        PYTHON_TRACE_EVENT_TYPE Type;
-        struct {
-            ULONG IsCall:1;         // PyTrace_CALL
-            ULONG IsException:1;    // PyTrace_EXCEPTION
-            ULONG IsLine:1;         // PyTrace_LINE
-            ULONG IsReturn:1;       // PyTrace_RETURN
-            ULONG IsC:1;
-            ULONG IsReverseJump:1;
-            ULONG UnusedLow:2;      // 8 bits, 1 byte (24 bits, 3 bytes remain)
-
-            ULONG :24;  // Unused bits
-        };
-        struct {
-            BYTE FlagsByte1;
-            BYTE FlagsByte2;
-            BYTE FlagsByte3;
-            BYTE FlagsByte4;
-        };
-        struct {
-            USHORT FlagsLow;
-            USHORT FlagsHigh;
-        };
-    };
+    PYTHON_EVENT_TRAITS_EX EventTraitsEx; // 4      116
 
     SHORT HandleDelta;                  // 2        118
     USHORT PageFaultDelta;              // 2        120
@@ -177,29 +121,17 @@ typedef struct _PYTHON_TRACE_EVENT {
     USHORT NumberOfLines;               // 2        126
     USHORT NumberOfCodeLines;           // 2        128
 
-} PYTHON_TRACE_EVENT, *PPYTHON_TRACE_EVENT, **PPPYTHON_TRACE_EVENT;
+} PYTHON_TRACE_EVENT1, *PPYTHON_TRACE_EVENT1, **PPPYTHON_TRACE_EVENT1;
 
 #pragma pack(pop, DefaultAlignment)
 
-C_ASSERT(sizeof(PYTHON_TRACE_EVENT) == 128);
+C_ASSERT(sizeof(PYTHON_TRACE_EVENT1) == 128);
 
-typedef struct _PYTHON_TRACE_EVENT_SLIM {
-    PPYTHON_FUNCTION Function;          // 8        16
-    USHORT CallStackDepth;
-    USHORT LineNumber;
-    TraceEventType EventType;
+typedef struct _PYTHON_TRACE_EVENT2 {
+    PPYTHON_FUNCTION Function;
+} PYTHON_TRACE_EVENT2, *PPYTHON_TRACE_EVENT2;
 
-} PYTHON_TRACE_EVENT_SLIM, *PPYTHON_TRACE_EVENT_SLIM;
-
-typedef struct _PYTHON_TRACE_CALL_EVENT {
-    LIST_ENTRY ListEntry;
-    union {
-        LARGE_INTEGER Timestamp;
-        LARGE_INTEGER Elapsed;
-    };
-    PPYTHON_TRACE_EVENT CallEvent;
-    PPYTHON_TRACE_EVENT ReturnEvent;
-} PYTHON_TRACE_CALL_EVENT, *PPYTHON_TRACE_CALL_EVENT;
+C_ASSERT(sizeof(PYTHON_TRACE_EVENT2) == 8);
 
 //
 // Forward declarations.
@@ -328,24 +260,42 @@ typedef SET_MODULE_NAMES_STRING_TABLE *PSET_MODULE_NAMES_STRING_TABLE;
 PYTHON_TRACER_API SET_MODULE_NAMES_STRING_TABLE \
                   SetModuleNamesStringTable;
 
+typedef
+_Check_return_
+_Maybe_raises_SEH_exception_
+_Success_(return != 0)
+BOOL
+(PY_TRACE_CALLBACK)(
+    _In_        PPYTHON_TRACE_CONTEXT   Context,
+    _In_        PPYFRAMEOBJECT          FrameObject,
+    _In_opt_    LONG                    EventType,
+    _In_opt_    PPYOBJECT               ArgObject
+    );
+typedef PY_TRACE_CALLBACK *PPY_TRACE_CALLBACK;
+
+PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent1;
+PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent2;
+
 typedef struct _PYTHON_TRACE_CONTEXT {
 
-    ULONG             Size;                                 // 4    0   4
+    ULONG              Size;                                 // 4    0   4
 
-    PYTHON_TRACE_CONTEXT_FLAGS Flags;                       // 4    4   8
+    PYTHON_TRACE_CONTEXT_FLAGS Flags;                        // 4    4   8
 
-    PRTL              Rtl;                                  // 8    8   16
-    PPYTHON           Python;                               // 8    16  24
-    PTRACE_CONTEXT    TraceContext;                         // 8    24  32
-    PPYTRACEFUNC      PythonTraceFunction;                  // 8    32  40
-    PVOID             UserData;                             // 8    40  48
-    PALLOCATOR        Allocator;
+    PRTL               Rtl;                                  // 8    8   16
+    PPYTHON            Python;                               // 8    16  24
+    PTRACE_CONTEXT     TraceContext;                         // 8    24  32
+    PPY_TRACE_CALLBACK PythonTraceFunction;                  // 8    32  40
+    PVOID              UserData;                             // 8    40  48
+    PALLOCATOR         Allocator;
 
-    ULONGLONG         Depth;
-    ULARGE_INTEGER    MaxDepth;
+    ULONGLONG          Depth;
+    ULARGE_INTEGER     MaxDepth;
 
-    ULONG             SkipFrames;
-    ULONG             Padding;
+    ULONG              SkipFrames;
+    ULONG              Padding;
+
+    PYTHON_TRACE_EVENT_TYPE EventType;
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER StartTimestamp;
@@ -382,16 +332,38 @@ typedef struct _PYTHON_TRACE_CONTEXT {
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
 typedef
-_Success_(return == 0)
-LONG
-(PY_TRACE_CALLBACK)(
-    _In_        PPYTHON_TRACE_CONTEXT   Context,
-    _In_        PPYFRAMEOBJECT          FrameObject,
-    _In_opt_    LONG                    EventType,
-    _In_opt_    PPYOBJECT               ArgObject
+_Check_return_
+_Success_(return != 0)
+PPY_TRACE_CALLBACK
+(GET_CALLBACK_FOR_TRACE_EVENT_TYPE)(
+    _In_ PYTHON_TRACE_EVENT_TYPE TraceEventType
     );
-typedef PY_TRACE_CALLBACK *PPY_TRACE_CALLBACK;
-PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceCallback;
+typedef GET_CALLBACK_FOR_TRACE_EVENT_TYPE *PGET_CALLBACK_FOR_TRACE_EVENT_TYPE;
+PYTHON_TRACER_API GET_CALLBACK_FOR_TRACE_EVENT_TYPE \
+                  GetCallbackForTraceEventType;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PPYTHON_TRACE_EVENT1
+(ALLOCATE_PYTHON_TRACE_EVENT1)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PLARGE_INTEGER Timestamp
+    );
+typedef ALLOCATE_PYTHON_TRACE_EVENT1 *PALLOCATE_PYTHON_TRACE_EVENT1;
+PYTHON_TRACER_API ALLOCATE_PYTHON_TRACE_EVENT1 AllocatePythonTraceEvent1;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PPYTHON_TRACE_EVENT2
+(ALLOCATE_PYTHON_TRACE_EVENT2)(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PLARGE_INTEGER Timestamp
+    );
+typedef ALLOCATE_PYTHON_TRACE_EVENT2 *PALLOCATE_PYTHON_TRACE_EVENT2;
+PYTHON_TRACER_API ALLOCATE_PYTHON_TRACE_EVENT2 AllocatePythonTraceEvent2;
+
 
 typedef
 _Check_return_
@@ -405,7 +377,7 @@ BOOL
     _Inout_ PULONG SizeOfPythonTraceContext,
     _In_ PPYTHON Python,
     _In_ PTRACE_CONTEXT TraceContext,
-    _In_opt_ PPYTRACEFUNC PythonTraceFunction,
+    _In_ PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
     _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;

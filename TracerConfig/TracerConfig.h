@@ -277,7 +277,23 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
     ULONG TrackMaxRefCounts:1;
 
+    //
+    // Unused.  Use these before digging into TraceEventType's bits.
+    //
+
+    ULONG UnusedBits:3;
+
+    //
+    // The remaining bits are used for indicating which trace event type is
+    // being used.  To add a new bit flag, decrement this bit field width by
+    // one and add the flag *above* this flag.  That allows us to always keep
+    // the event type at the end of the bitmask.
+    //
+
+    ULONG TraceEventType:16;
+
 } TRACER_FLAGS, *PTRACER_FLAGS;
+C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
 
 typedef struct _TRACE_SESSION_DIRECTORY {
     LIST_ENTRY ListEntry;

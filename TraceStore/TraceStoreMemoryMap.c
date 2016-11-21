@@ -490,6 +490,7 @@ Return Value:
     LARGE_INTEGER CurrentFileOffset;
     LARGE_INTEGER NewFileOffset;
     LARGE_INTEGER DistanceToMove;
+    LARGE_INTEGER Timestamp;
     LARGE_INTEGER Elapsed;
     PTRACE_STORE_STATS Stats;
     TRACE_STORE_STATS DummyStats = { 0 };
@@ -709,7 +710,7 @@ TryMapMemory:
     // Take a local copy of the timestamp.
     //
 
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
 
     //
     // Copy it to the Prepared timestamp.
@@ -876,6 +877,7 @@ Return Value:
     TRACE_STORE_ADDRESS_RANGE AddressRange;
     PTRACE_STORE_ADDRESS AddressPointer;
     LARGE_INTEGER Elapsed;
+    LARGE_INTEGER Timestamp;
 
     //
     // Initialize aliases.
@@ -1030,7 +1032,7 @@ TryMapMemory:
     // Take a local copy of the timestamp.
     //
 
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
 
     //
     // Copy it to the Prepared timestamp.
@@ -1367,6 +1369,7 @@ Return Value:
     PTRACE_STORE_ADDRESS AddressPointer;
     LARGE_INTEGER RequestedTimestamp;
     LARGE_INTEGER Elapsed;
+    LARGE_INTEGER Timestamp;
     PTRACE_STORE_STATS Stats;
     TRACE_STORE_STATS DummyStats = { 0 };
     PRTL_COPY_MAPPED_MEMORY RtlCopyMappedMemory;
@@ -1474,7 +1477,7 @@ Return Value:
     // Take a local timestamp.
     //
 
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
 
     //
     // Copy to the Retired timestamp.
@@ -1625,7 +1628,7 @@ ConsumeMap:
     // timestamp.
     //
 
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
 
     //
     // Save the timestamp before we start fiddling with it.

@@ -1016,6 +1016,7 @@ Return Value:
 //
 
 ALLOCATE_RECORDS TraceStoreAllocateRecords;
+ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestamp;
 
 typedef
 _Success_(return != 0)
@@ -1040,9 +1041,17 @@ RecordTraceStoreAllocationTimestamp(
     PLONG DeltaPointer;
     PLARGE_INTEGER PreviousTimestamp;
     PLARGE_INTEGER TimestampPointer;
-    ULARGE_INTEGER DeltaRecordSize = { sizeof(Delta) };
-    ULARGE_INTEGER TimestampRecordSize = { sizeof(Timestamp) };
-    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULARGE_INTEGER DeltaRecordSize;
+    ULARGE_INTEGER TimestampRecordSize;
+    ULARGE_INTEGER NumberOfRecords;
+
+    if (Timestamp.QuadPart == 0) {
+        return TRUE;
+    }
+
+    DeltaRecordSize.QuadPart = sizeof(Delta);
+    TimestampRecordSize.QuadPart = sizeof(Timestamp);
+    NumberOfRecords.QuadPart = 1;
 
     TimestampPointer = (PLARGE_INTEGER)(
         TraceStore->AllocationTimestampStore->AllocateRecords(
@@ -1703,6 +1712,7 @@ Return Value:
 
 --*/
 {
+    LARGE_INTEGER Timestamp;
     LARGE_INTEGER PreviousTimestamp;
     LARGE_INTEGER Elapsed;
     PLARGE_INTEGER ElapsedPointer;
@@ -1730,7 +1740,7 @@ Return Value:
     // Get a local copy of the elapsed start time.
     //
 
-    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed);
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
 
     //
     // Copy it to the Released timestamp.

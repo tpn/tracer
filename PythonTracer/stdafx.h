@@ -23,6 +23,7 @@ Abstract:
 #include "../TraceStore/TraceStore.h"
 #include "../StringTable/StringTable.h"
 #include "PythonTracer.h"
+#include "PythonTracerConstants.h"
 #include "PythonTracerPrivate.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
