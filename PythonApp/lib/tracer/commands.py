@@ -715,9 +715,193 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
         results_chain = chain((header,), rows)
         render_text_table(results_chain, **k)
 
+        #import IPython
+        #IPython.embed()
 
-        import IPython
-        IPython.embed()
+class PrintAddressInfo(InvariantAwareCommand):
+    def run(self):
+        out = self._out
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        basedir = tc.choose_trace_store_directory()
+        #basedir = tc.trace_store_directories()[0]
+        out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Python,
+            Allocator,
+            TraceStore,
+            TracerConfig,
+        )
+
+        Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+        rtl = Rtl.create_and_initialize_rtl()
+
+        TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+        allocator = tc.Allocator.contents
+
+        from .dll.TraceStore import (
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
+        )
+
+        from .util import timer
+
+        t = timer(verbose=False)
+        with t:
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
+
+        from .util import (
+            Dict,
+            bytes_to_human,
+            render_text_table,
+        )
+
+        totals = ts.FunctionTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of function table allocations: %d." % total_allocs)
+
+        header = [
+            'Trace Store',
+            'Size (Bytes)',
+            'Size GB/MB/KB',
+            'Compressed (Bytes)',
+            'Compressed GB/MB/KB',
+            'Compression Ratio',
+            'Space Saved %',
+            '# Allocations',
+            'Mapping Size',
+            'Dropped Records',
+            'Exhausted Free Memory Maps',
+            'Allocations Outpaced Async Prep.',
+            'Preferred Address Unavailable',
+            'Access Violation During Async Prefault',
+            'Blocked Allocations',
+        ]
+
+        tsa = cast(byref(ts), TraceStore.PTRACE_STORE_ARRAY).contents
+
+        rows = []
+
+        fmt = lambda v: '{:,}'.format(v)
+        drop = lambda f, v, d: f % v if v > d else ''
+
+        def make_row(target):
+
+            (name, store) = target
+            rows.append([
+                str(name),
+                fmt(store.size),
+                bytes_to_human(store.size),
+                fmt(store.compressed_size),
+                bytes_to_human(store.compressed_size),
+                drop('%0.2f', store.compression_ratio, 1.0),
+                drop('%0.2f %%', store.space_saved_percent, 0),
+                fmt(store.num_allocations),
+                bytes_to_human(store.mapping_size),
+                fmt(store.dropped_records),
+                fmt(store.exhausted_free_memory_maps),
+                fmt(store.allocations_outpacing_next_memory_map_preparation),
+                fmt(store.preferred_address_unavailable),
+                fmt(store.access_violations_encountered_during_async_prefault),
+                fmt(store.blocked_allocations),
+            ])
+
+        trace_stores = tsa._stores()
+        for ((name, store), metadata_stores) in trace_stores:
+            make_row((name, store))
+            for metadata_store in metadata_stores:
+                make_row(metadata_store)
+
+
+        from itertools import chain, repeat
+
+        k = Dict()
+        k.output = self.ostream
+        k.banner = 'Trace Store Stats for %s' % str(ts.BaseDirectory.Buffer)
+        k.formats = lambda: chain(
+            (str.ljust,),           # Name
+            (str.rjust,),           # Size (Bytes)
+            (str.rjust,),           # Size GB/MB/KB
+            (str.rjust,),           # Compressed (Bytes)
+            (str.rjust,),           # Compressed GB/MB/KB
+            (str.center,),          # Compression Ratio
+            (str.center,),          # Space Saved
+            (str.rjust,),           # Allocations
+            (str.rjust,),           # Mapping Size
+            repeat(str.center,)
+        )
+
+        results_chain = chain((header,), rows)
+        render_text_table(results_chain, **k)
+
+        #import IPython
+        #IPython.embed()
+
 
 
 class LoadTrace(InvariantAwareCommand):

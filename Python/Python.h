@@ -1189,7 +1189,18 @@ typedef struct _PYCFUNCTIONOBJECT35_35 {
 
 typedef struct _PYINTERPRETERSTATE PYINTERPRETERSTATE, *PPYINTERPRETERSTATE, PyInterpreterState;
 
-typedef LONG (*PPYTRACEFUNC)(PPYOBJECT, PPYFRAMEOBJECT, LONG, PPYOBJECT), (*Py_tracefunc);
+typedef
+_Check_return_
+_Success_(return == 0)
+BOOL
+(PYTRACEFUNC)(
+    _In_        PVOID          Context,
+    _In_        PPYFRAMEOBJECT FrameObject,
+    _In_opt_    LONG           EventType,
+    _In_opt_    PPYOBJECT      ArgObject
+    );
+typedef PYTRACEFUNC *PPYTRACEFUNC;
+typedef PYTRACEFUNC *Py_tracefunc;
 
 typedef struct _PYTHREADSTATE25_27 PYTHREADSTATE25_27, *PPYTHREADSTATE25_27, PyThreadState25_27;
 
@@ -2677,10 +2688,11 @@ typedef struct _PYTHON_FUNCTION {
 
         struct {
             PUSHORT CodeLineNumbers;
-            ULONG FirstLineNumber;
-            ULONG NumberOfLines;
-            ULONG NumberOfCodeLines;
-            ULONG SizeOfByteCodeInBytes;
+            LONG CodeObjectHash;
+            USHORT FirstLineNumber;
+            USHORT NumberOfLines;
+            USHORT NumberOfCodeLines;
+            USHORT SizeOfByteCodeInBytes;
         };
 
         //
@@ -2690,7 +2702,9 @@ typedef struct _PYTHON_FUNCTION {
         struct {
 
             //
-            // The module handle.  This is the base address the
+            // The module handle, which will be the DLL's base load address.
+            // (This can be directly used as a pointer to the NT image header
+            //  structure.)
             //
 
             union {
@@ -2699,11 +2713,16 @@ typedef struct _PYTHON_FUNCTION {
         };
     };
 
+    //
+    // Include a generic list entry for general use (as either a list entry or
+    // a list head if callers wish to attach items to the function).
+    //
+
     LIST_ENTRY ListEntry;
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
 
-//C_ASSERT(sizeof(PYTHON_FUNCTION) == 216);
+C_ASSERT(sizeof(PYTHON_FUNCTION) == 216);
 
 typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 

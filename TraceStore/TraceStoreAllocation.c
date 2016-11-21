@@ -18,11 +18,12 @@ Abstract:
 
 _Use_decl_annotations_
 PVOID
-TraceStoreAllocateRecords(
+TraceStoreAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
     PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords
+    PULARGE_INTEGER NumberOfRecords,
+    PLARGE_INTEGER  TimestampPointer
     )
 /*++
 
@@ -61,6 +62,14 @@ Arguments:
     NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
         that contains the number of records to allocate.  The total size is
         derived by multiplying RecordSize with NumberOfRecords.
+
+    TimestampPointer - Optionally supplies a pointer to a timestamp value to
+        associate with the allocation.  When non-NULL, the 64-bit integer
+        pointed to by the variable will be written to the allocation timestamp
+        metadata store.  This should be NULL if the trace store is a metadata
+        store, or if the trace store's traits indicates that it is a linked
+        store (implying that allocation timestamp information will be provided
+        elsewhere).
 
 Return Value:
 
@@ -117,7 +126,20 @@ Return Value:
         return NULL;
     }
 
-    QueryPerformanceCounter(&Timestamp);
+    //
+    // If no timestamp has been provided and the trace store is not marked as
+    // linked, capture a timestamp.  Otherwise, use the caller's timestamp.
+    //
+
+    if (!ARGUMENT_PRESENT(TimestampPointer)) {
+        if (!IsLinkedStore(Traits)) {
+            QueryPerformanceCounter(&Timestamp);
+        } else {
+            Timestamp.QuadPart = 0;
+        }
+    } else {
+        Timestamp.QuadPart = TimestampPointer->QuadPart;
+    }
 
     NextAddress = (
         (PVOID)RtlOffsetToPointer(
@@ -380,6 +402,52 @@ End:
     }
 
     return ReturnAddress;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocateRecords(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords
+    )
+/*++
+
+Routine Description:
+
+    This routine allocates records from a trace store.  It is equivalent to
+    calling TraceStoreAllocateRecordsEx() with no timestamp parameter.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
+        contains the size of the record to allocate.
+
+    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
+        that contains the number of records to allocate.  The total size is
+        derived by multiplying RecordSize with NumberOfRecords.
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
+
+    AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestamp;
+    return AllocateWithTimestamp(TraceContext,
+                                 TraceStore,
+                                 RecordSize,
+                                 NumberOfRecords,
+                                 NULL);
 }
 
 _Use_decl_annotations_

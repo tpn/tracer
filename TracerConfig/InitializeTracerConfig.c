@@ -496,6 +496,7 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
     READ_REG_DWORD_FLAG(ProfileOnly, FALSE);
     READ_REG_DWORD_FLAG(TrackMaxRefCounts, FALSE);
+    READ_REG_DWORD_FLAG(TraceEventType, 1);
 
     //
     // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has
@@ -505,6 +506,12 @@ Return Value:
     if (Flags.EnableFileFlagRandomAccess) {
         Flags.DisableFileFlagSequentialScan = TRUE;
     }
+
+    //
+    // Clear the unused bits.
+    //
+
+    Flags.UnusedBits = 0;
 
     //
     // Copy the flags over.

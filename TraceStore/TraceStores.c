@@ -359,8 +359,8 @@ Return Value:
     // Initialize struct size fields and flags.
     //
 
-    TraceStores->SizeOfStruct = (USHORT)sizeof(TRACE_STORES);
-    TraceStores->SizeOfAllocation = (USHORT)TraceStoresAllocationSize;
+    TraceStores->SizeOfStruct = sizeof(TRACE_STORES);
+    TraceStores->SizeOfAllocation = TraceStoresAllocationSize;
     TraceStores->Flags = Flags;
 
     //
@@ -718,9 +718,9 @@ Return Value:
 
 --*/
 {
-    SHORT Delta;
-    USHORT ExtraSize;
-    USHORT DefaultNumberOfTraceStores = (
+    LONG Delta;
+    ULONG ExtraSize;
+    ULONG DefaultNumberOfTraceStores = (
         RTL_FIELD_SIZE(TRACE_STORES, Stores) /
         sizeof(TRACE_STORE)
     );

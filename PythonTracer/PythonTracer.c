@@ -81,24 +81,6 @@ TraceStoreCallocRoutine(
     );
 }
 
-PPYTHON_TRACE_EVENT
-AllocatePythonTraceEvent(
-    _In_ PTRACE_STORE TraceStore
-    )
-{
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_TRACE_EVENT) };
-
-    return (PPYTHON_TRACE_EVENT)(
-        TraceStore->AllocateRecords(
-            TraceStore->TraceContext,
-            TraceStore,
-            &RecordSize,
-            &NumberOfRecords
-        )
-    );
-}
-
 VOID
 TraceStoreFreeRoutine(
     _In_opt_ PVOID FreeContext,
@@ -154,48 +136,6 @@ IsFunctionOfInterestPrefixTree(
     Entry = Rtl->PfxFindPrefix(Table, ModuleName);
 
     return (Entry ? TRUE : FALSE);
-}
-
-FORCEINLINE
-BOOL
-IsFunctionOfInterestStringTable(
-    _In_    PRTL                    Rtl,
-    _In_    PPYTHON_TRACE_CONTEXT   Context,
-    _In_    PPYTHON_FUNCTION        Function
-    )
-{
-    STRING Name;
-    PSTRING ModuleName;
-    PSTRING_TABLE StringTable = Context->ModuleFilterStringTable;
-    STRING_TABLE_INDEX Index;
-    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
-
-    if (!Context->Flags.HasModuleFilter) {
-
-        //
-        // Trace everything.
-        //
-
-        return TRUE;
-    }
-
-    ModuleName = &Function->PathEntry.ModuleName;
-
-    if (!StringTable || !ModuleName || ModuleName->Length <= 1) {
-        return FALSE;
-    }
-
-    if (ModuleName->Buffer[0] == '\\') {
-        Name.Length = ModuleName->Length - 1;
-        Name.MaximumLength = ModuleName->MaximumLength - 1;
-        Name.Buffer = ModuleName->Buffer + 1;
-        ModuleName = &Name;
-    }
-
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
-    Index = IsPrefixOfStringInTable(StringTable, ModuleName, NULL);
-
-    return (Index != NO_MATCH_FOUND);
 }
 
 #define IsFunctionOfInterest IsFunctionOfInterestStringTable
@@ -254,431 +194,35 @@ DisableHandleCountTracing(
     PythonTraceContext->Flags.TraceHandleCount = FALSE;
 }
 
+
+_Use_decl_annotations_
 LONG
 PyTraceCallback(
-    _In_        PPYTHON_TRACE_CONTEXT   Context,
-    _In_        PPYFRAMEOBJECT          FrameObject,
-    _In_opt_    LONG                    EventType,
-    _In_opt_    PPYOBJECT               ArgObject
+    PVOID           UserContext,
+    PPYFRAMEOBJECT  FrameObject,
+    LONG            EventType,
+    PPYOBJECT       ArgObject
     )
 {
     BOOL Success;
-    BOOL IsCall;
-    BOOL IsReturn;
-    BOOL IsLine;
-    BOOL IsException;
-    BOOL IsC;
+    PPYTHON_TRACE_CONTEXT Context;
 
-    PYTHON_TRACE_CONTEXT_FLAGS Flags = Context->Flags;
-    PYTHON_EVENT_TRAITS EventTraits;
+    Context = (PPYTHON_TRACE_CONTEXT)UserContext;
 
-    PRTL Rtl;
-    PPYTHON Python;
-    PTRACE_CONTEXT TraceContext;
-    PTRACE_STORES TraceStores;
-    PTRACE_STORE EventStore;
-    PYTHON_TRACE_EVENT Event;
-    PYTHON_TRACE_EVENT LastEvent;
-    PPYTHON_TRACE_EVENT LastEventPointer;
-    PPYTHON_TRACE_EVENT ThisEvent;
-    PPYTHON_FUNCTION Function = NULL;
-    LARGE_INTEGER Elapsed;
-    PROCESS_MEMORY_COUNTERS_EX MemoryCounters;
-    IO_COUNTERS IoCounters;
-    DWORD HandleCount;
-    HANDLE CurrentProcess = (HANDLE)-1;
+    TRY_MAPPED_MEMORY_OP {
 
-    IsCall = (
-        EventType == TraceEventType_PyTrace_CALL        ||
-        EventType == TraceEventType_PyTrace_C_CALL
-    );
+        Success = Context->PythonTraceFunction(Context,
+                                               FrameObject,
+                                               EventType,
+                                               ArgObject);
 
-    IsException = (
-        EventType == TraceEventType_PyTrace_EXCEPTION   ||
-        EventType == TraceEventType_PyTrace_C_EXCEPTION
-    );
-
-    IsLine = (
-        EventType == TraceEventType_PyTrace_LINE
-    );
-
-    IsReturn = (
-        EventType == TraceEventType_PyTrace_RETURN      ||
-        EventType == TraceEventType_PyTrace_C_RETURN
-    );
-
-    IsC = (
-        EventType == TraceEventType_PyTrace_C_CALL      ||
-        EventType == TraceEventType_PyTrace_C_RETURN    ||
-        EventType == TraceEventType_PyTrace_C_EXCEPTION
-    );
-
-    EventTraits.IsCall = IsCall;
-    EventTraits.IsException = IsException;
-    EventTraits.IsLine = IsLine;
-    EventTraits.IsReturn = IsReturn;
-    EventTraits.IsC = IsC;
-    EventTraits.AsEventType = (BYTE)EventType;
-
-    if (!Flags.HasStarted) {
-
-        if (!IsCall) {
-
-            //
-            // If we haven't started profiling yet, we can ignore any
-            // event that isn't a call event.  (In practice, there will
-            // usually be one return event/frame before we get a call
-            // event we're interested in.)
-            //
-
-            return 0;
-        }
-
-        //
-        // We've received our first profile/trace event of interest.  Toggle
-        // our 'HasStarted' flag and set our context depth to 1.
-        //
-
-        Flags.HasStarted = Context->Flags.HasStarted = TRUE;
-
-        Context->Depth = 1;
-
-    } else {
-
-        //
-        // We're already tracing/profiling, so just update our depth counter
-        // accordingly if we're a call/return.
-        //
-
-        if (IsCall) {
-
-            Context->Depth++;
-
-        } else if (IsReturn) {
-
-            Context->Depth--;
-
-        }
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Success = FALSE;
     }
-
-    //
-    // If we've been configured to track maximum reference counts, do that now.
-    //
-
-    if (Flags.TrackMaxRefCounts) {
-        UpdateMaxRefCounts(Context);
-    }
-
-
-    //
-    // Update our maximum depth, if applicable.
-    //
-
-    if (Context->Depth > Context->MaxDepth.QuadPart) {
-        Context->MaxDepth.QuadPart = Context->Depth;
-        if (Context->MaxDepth.HighPart) {
-            __debugbreak();
-        }
-    }
-
-    //
-    // Attempt to register the frame and get the underlying function object.
-    //
-
-    Rtl = Context->Rtl;
-    Python = Context->Python;
-
-    Success = Python->RegisterFrame(Python,
-                                    FrameObject,
-                                    EventTraits,
-                                    ArgObject,
-                                    &Function);
 
     if (!Success) {
-
-        //
-        // We can't do anything more if we weren't able to resolve the
-        // function for this frame.
-        //
-
         __debugbreak();
-        return 0;
-    }
-
-    if (!Function->PathEntry.IsValid) {
-
-        //
-        // The function's path entry should always be valid if RegisterFrame()
-        // succeeded.
-        //
-
-        __debugbreak();
-        return 0;
-    }
-
-    if (!Function->PathEntry.FullName.Length) {
-        __debugbreak();
-    }
-
-    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
-        __debugbreak();
-    }
-
-    if (Context->Depth > Function->MaxCallStackDepth) {
-        Function->MaxCallStackDepth = (ULONG)Context->Depth;
-    }
-
-    //
-    // We obtained the PYTHON_FUNCTION for this frame, check to see if it's
-    // of interest to this tracing session.
-    //
-
-    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
-
-        //
-        // Function isn't of interest (i.e. doesn't reside in a module we're
-        // tracing), so return.
-        //
-
-        return 0;
-    }
-
-    //
-    // The function resides in a module (or submodule) we're tracing, continue.
-    //
-
-
-    //
-    // Load the events trace store and previous event record, if any.
-    //
-
-    TraceContext = Context->TraceContext;
-    TraceStores = TraceContext->TraceStores;
-    EventStore = &TraceStores->Stores[TraceStoreEventIndex];
-
-    LastEventPointer = (PPYTHON_TRACE_EVENT)EventStore->PrevAddress;
-
-    if (Flags.TraceMemory) {
-
-        Success = Rtl->K32GetProcessMemoryInfo(
-            CurrentProcess,
-            (PPROCESS_MEMORY_COUNTERS)&MemoryCounters,
-            sizeof(MemoryCounters)
-        );
-
-        if (!Success) {
-            Flags.TraceMemory = FALSE;
-        }
-
-    }
-
-    if (Flags.TraceIoCounters) {
-
-        Success = Rtl->GetProcessIoCounters(CurrentProcess,
-                                            &IoCounters);
-
-        if (!Success) {
-            Flags.TraceIoCounters = FALSE;
-        }
-    }
-
-    if (Flags.TraceHandleCount) {
-
-        Success = Rtl->GetProcessHandleCount(CurrentProcess,
-                                             &HandleCount);
-
-        if (!Success) {
-            Flags.TraceHandleCount = TRUE;
-        }
-    }
-
-    SecureZeroMemory(&Event, sizeof(Event));
-
-    //
-    // Save the timestamp for this event.
-    //
-
-    TraceContextQueryPerformanceCounter(TraceContext, &Elapsed);
-
-    //
-    // Fill out the function.
-    //
-
-    Event.Timestamp.QuadPart = Elapsed.QuadPart;
-    Event.Function = Function;
-    Event.IsC = IsC;
-    Event.FirstLineNumber = (USHORT)Function->FirstLineNumber;
-    Event.NumberOfLines = (USHORT)Function->NumberOfLines;
-    Event.NumberOfCodeLines = (USHORT)Function->NumberOfCodeLines;
-    Event.ThreadId = FastGetCurrentThreadId();
-
-#ifdef _PYTHON_FUNCTION_HASHING
-    Event.CodeObjectHash = Function->CodeObjectHash;
-    Event.FunctionHash = Function->FunctionHash;
-    Event.PathHash = Function->PathEntry.PathHash;
-    Event.FullNameHash = Function->PathEntry.FullNameHash;
-    Event.ModuleNameHash = Function->PathEntry.ModuleNameHash;
-    Event.ClassNameHash = Function->PathEntry.ClassNameHash;
-    Event.NameHash = Function->PathEntry.NameHash;
-#endif
-
-    if (IsException) {
-
-        //
-        // We don't do anything for exceptions at the moment.
-        //
-
-        Event.IsException = TRUE;
-
-    } else if (IsCall) {
-
-        Event.IsCall = TRUE;
-
-    } else if (IsReturn) {
-
-        Event.IsReturn = TRUE;
-
-    } else if (IsLine) {
-
-        Event.IsLine = TRUE;
-
-        //
-        // Update the line number for this event.
-        //
-
-        Event.LineNumber = (USHORT)Python->PyFrame_GetLineNumber(FrameObject);
-    }
-
-    //
-    // Save memory, I/O and handle counts if applicable.
-    //
-
-    if (Flags.TraceMemory) {
-        Event.WorkingSetSize = MemoryCounters.WorkingSetSize;
-        Event.PageFaultCount = MemoryCounters.PageFaultCount;
-        Event.CommittedSize  = MemoryCounters.PrivateUsage;
-    }
-
-    if (Flags.TraceIoCounters) {
-        Event.ReadTransferCount = IoCounters.ReadTransferCount;
-        Event.WriteTransferCount = IoCounters.WriteTransferCount;
-    }
-
-    if (Flags.TraceHandleCount) {
-        Event.HandleCount = HandleCount;
-    }
-
-    if (!LastEventPointer) {
-        goto Finalize;
-    }
-
-    //
-    // Take a local copy of the last event.
-    //
-
-    if (!CopyPythonTraceEvent(&LastEvent, LastEventPointer)) {
-        goto Finalize;
-    }
-
-    //
-    // Calculate the elapsed time relative to the last event's timestamp and
-    // then update its elapsed microsecond field.
-    //
-
-    Elapsed.QuadPart -= LastEvent.Timestamp.QuadPart;
-    LastEvent.ElapsedMicroseconds = Elapsed.LowPart;
-
-    if (LastEvent.IsLine) {
-
-        //
-        // If the last event's line number was greater than this line
-        // number, we've jumped backwards, presumably as part of a loop.
-        //
-
-        if (LastEvent.LineNumber > Event.LineNumber) {
-            Event.IsReverseJump = TRUE;
-        }
-    }
-
-    //
-    // Calculate deltas for memory, I/O and handle counts, if applicable.
-    //
-
-    if (Flags.TraceMemory) {
-
-        //
-        // Calculate memory counter deltas.
-        //
-
-        LastEvent.WorkingSetDelta = (LONG)(
-            Event.WorkingSetSize -
-            LastEvent.WorkingSetSize
-        );
-
-        LastEvent.PageFaultDelta = (USHORT)(
-            Event.PageFaultCount -
-            LastEvent.PageFaultCount
-        );
-
-        LastEvent.CommittedDelta = (LONG)(
-            Event.CommittedSize -
-            LastEvent.CommittedSize
-        );
-
-    }
-
-    if (Flags.TraceIoCounters) {
-
-        //
-        // Calculate IO counter deltas.
-        //
-
-        LastEvent.ReadTransferDelta = (ULONG)(
-            Event.ReadTransferCount -
-            LastEvent.ReadTransferCount
-        );
-
-        LastEvent.WriteTransferDelta = (ULONG)(
-            Event.WriteTransferCount -
-            LastEvent.WriteTransferCount
-        );
-
-    }
-
-    if (Flags.TraceHandleCount) {
-
-        //
-        // Calculate handle count delta.
-        //
-
-        LastEvent.HandleDelta = (SHORT)(
-            Event.HandleCount -
-            LastEvent.HandleDelta
-        );
-
-    }
-
-    //
-    // Copy the last event back, ignoring the return value.
-    //
-
-    if (!CopyPythonTraceEvent(LastEventPointer, &LastEvent)) {
-        NOTHING;
-    }
-
-Finalize:
-
-    //
-    // Allocate a new event record, then copy our temporary event over.
-    //
-
-    ThisEvent = AllocatePythonTraceEvent(EventStore);
-    if (!ThisEvent) {
-        return 0;
-    }
-
-    if (!CopyPythonTraceEvent(ThisEvent, &Event)) {
-        NOTHING;
+        Stop(Context);
     }
 
     return 0;
@@ -844,7 +388,7 @@ InitializePythonTraceContext(
     PULONG SizeOfContext,
     PPYTHON Python,
     PTRACE_CONTEXT TraceContext,
-    PPYTRACEFUNC PythonTraceFunction,
+    PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
     PVOID UserData
     )
 {
@@ -857,6 +401,7 @@ InitializePythonTraceContext(
     PTRACE_STORE PathTableEntryStore;
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
+    PPY_TRACE_CALLBACK Callback;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     USHORT TraceStoreIndex;
@@ -893,6 +438,11 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
+    Callback = GetCallbackForTraceEventType(PythonTraceEventType);
+    if (!Callback) {
+        return FALSE;
+    }
+
     SecureZeroMemory(Context, sizeof(*Context));
 
     Context->Size = *SizeOfContext;
@@ -900,12 +450,8 @@ InitializePythonTraceContext(
     Context->Allocator = Allocator;
     Context->Python = Python;
     Context->TraceContext = TraceContext;
-    Context->PythonTraceFunction = PythonTraceFunction;
+    Context->PythonTraceFunction = Callback;
     Context->UserData = UserData;
-
-    if (!Context->PythonTraceFunction) {
-        Context->PythonTraceFunction = (PPYTRACEFUNC)PyTraceCallback;
-    }
 
     Context->Depth = 0;
     Context->SkipFrames = 1;
@@ -1016,11 +562,11 @@ Start(
 
     if (!Context->Flags.ProfileOnly) {
         Context->Flags.IsTracing = TRUE;
-        Python->PyEval_SetTrace(PythonTraceFunction, (PPYOBJECT)Context);
+        Python->PyEval_SetTrace(PyTraceCallback, (PPYOBJECT)Context);
     }
 
     Context->Flags.IsProfiling = TRUE;
-    Python->PyEval_SetProfile(PythonTraceFunction, (PPYOBJECT)Context);
+    Python->PyEval_SetProfile(PyTraceCallback, (PPYOBJECT)Context);
 
     return TRUE;
 }

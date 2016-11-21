@@ -438,6 +438,12 @@ Return Value:
             CodeObject->RefCountEx.Seen = TRUE;
         }
 
+        //
+        // Initialize the linked-list head.
+        //
+
+        InitializeListHead(&Function->ListEntry);
+
         goto End;
     }
 
@@ -760,9 +766,6 @@ Return Value:
 
     Function->CallCount = 1;
 
-
-#ifdef _PYTHON_FUNCTION_HASHING
-
     //
     // Calculate the code object's hash.
     //
@@ -785,18 +788,16 @@ Return Value:
     }
 
     //
-    // Calculate a final hash value.
+    // Calculate a final hash value and use that as the function signature.
     //
 
-    Function->FunctionHash = (
+    Function->Signature = (ULONG_PTR)(
         PathEntry->PathEntryType    ^
         PathEntry->PathHash         ^
         PathEntry->FullNameHash     ^
         Function->CodeObjectHash    ^
         Function->NumberOfCodeLines
     );
-
-#endif
 
     return TRUE;
 }
