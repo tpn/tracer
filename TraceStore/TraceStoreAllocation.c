@@ -567,6 +567,15 @@ Return Value:
     Event = &TraceStore->ResumeAllocationsEvent;
     WaitResult = WaitForSingleObject(Event, INFINITE);
 
+    if (WaitResult != WAIT_OBJECT_0) {
+
+        //
+        // Wait wasn't successful, abort the allocation.
+        //
+
+        return NULL;
+    }
+
     //
     // Take another timestamp snapshot and calculate elapsed microseconds.
     //
@@ -587,14 +596,6 @@ Return Value:
     InterlockedAdd(&TraceStore->Stats->ElapsedSuspensionTimeInMicroseconds,
                    ElapsedMicroseconds);
 
-    if (WaitResult != WAIT_OBJECT_0) {
-
-        //
-        // Wait wasn't successful, abort the allocation.
-        //
-
-        return NULL;
-    }
 
     //
     // Wait was successful, allocations can resume.  Forward the request to the
