@@ -571,10 +571,12 @@ FoundPython:
     }
 
     //
-    // Add the Python PATH entries to the list of DLL directories.
+    // Add the Python PATH entries to the list of DLL directories.  (Currently
+    // disabled.)
     //
 
     goto LoadPythonDll;
+
     Path = Session->PathEntries;
     DirectoryCookie = Session->PathDirectoryCookies;
     for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
@@ -854,6 +856,7 @@ LoadPythonDll:
     Session->InitializeTraceStores(
         NULL,           // Rtl
         NULL,           // Allocator
+        NULL,           // TracerConfig
         NULL,           // BaseDirectory
         NULL,           // TraceStores
         &RequiredSize,  // SizeOfTraceStores
@@ -877,6 +880,7 @@ LoadPythonDll:
     Success = Session->InitializeTraceStores(
         Rtl,
         Allocator,
+        Session->TracerConfig,
         Session->TraceSessionDirectory->Buffer,
         Session->TraceStores,
         &RequiredSize,
@@ -957,6 +961,7 @@ LoadPythonDll:
     Session->InitializeTraceContext(
         NULL,           // Rtl
         NULL,           // Allocator
+        NULL,           // TracerConfig
         NULL,           // TraceContext
         &RequiredSize,  // SizeOfTraceContext
         NULL,           // TraceSession
@@ -975,6 +980,7 @@ LoadPythonDll:
     Success = Session->InitializeTraceContext(
         Rtl,
         Allocator,
+        Session->TracerConfig,
         Session->TraceContext,
         &RequiredSize,
         Session->TraceSession,

@@ -23,6 +23,7 @@ BOOL
 InitializeTraceStores(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
@@ -41,6 +42,8 @@ Arguments:
     Rtl - Supplies a pointer to an RTL structure.
 
     Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
 
     BaseDirectory - Supplies a pointer to a fully-qualified, NULL-terminated
         wide character string representing the base directory to initialize
@@ -476,6 +479,7 @@ Return Value:
     TraceStores->NumberOfTraceStores = NumberOfTraceStores;
     TraceStores->ElementsPerTraceStore = ElementsPerTraceStore;
     TraceStores->Allocator = Allocator;
+    TraceStores->TracerConfig = TracerConfig;
 
     InitializeListHead(&TraceStores->RundownListEntry);
 
@@ -571,6 +575,7 @@ BOOL
 InitializeReadonlyTraceStores(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
@@ -590,6 +595,8 @@ Arguments:
     Rtl - Supplies a pointer to an RTL structure.
 
     Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
 
     BaseDirectory - Supplies a pointer to a fully-qualified, NULL-terminated
         wide character string representing the base directory to load the trace
@@ -638,6 +645,7 @@ Return Value:
 
     return InitializeTraceStores(Rtl,
                                  Allocator,
+                                 TracerConfig,
                                  BaseDirectory,
                                  TraceStores,
                                  SizeOfTraceStores,

@@ -55,6 +55,8 @@ Return Value:
     ULONG WindowLength;
     PTP_TIMER Timer;
     FILETIME DueTime;
+    PTRACER_CONFIG TracerConfig;
+    PTRACER_RUNTIME_PARAMETERS RuntimeParameters;
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -66,13 +68,20 @@ Return Value:
     }
 
     //
+    // Resolve the runtime parameters.
+    //
+
+    TracerConfig = TraceContext->TracerConfig;
+    RuntimeParameters = &TracerConfig->RuntimeParameters;
+
+    //
     // Allocate a temporary buffer for the working set changes.
     //
 
     TraceContext->WsWatchInfoExBuffer = (PPSAPI_WS_WATCH_INFORMATION_EX)(
         TraceContext->Allocator->Calloc(
             TraceContext->Allocator,
-            TraceContext->WsWatchInfoExInitialBufferNumberOfElements,
+            RuntimeParameters->WsWatchInfoExInitialBufferNumberOfElements,
             sizeof(PSAPI_WS_WATCH_INFORMATION_EX)
         )
     );
@@ -94,7 +103,7 @@ Return Value:
         (PPSAPI_WORKING_SET_EX_INFORMATION)(
             TraceContext->Allocator->Calloc(
                 TraceContext->Allocator,
-                TraceContext->WsWatchInfoExInitialBufferNumberOfElements,
+                RuntimeParameters->WsWatchInfoExInitialBufferNumberOfElements,
                 sizeof(PSAPI_WORKING_SET_EX_INFORMATION)
             )
         )
@@ -123,8 +132,11 @@ Return Value:
     // interval.
     //
 
-    Interval = TraceContext->GetWorkingSetChangesIntervalInMilliseconds;
-    WindowLength = TraceContext->GetWorkingSetChangesWindowLengthInMilliseconds;
+    Interval = RuntimeParameters->GetWorkingSetChangesIntervalInMilliseconds;
+
+    WindowLength = (
+        RuntimeParameters->GetWorkingSetChangesWindowLengthInMilliseconds
+    );
 
     //
     // Start a timer that calls GetWorkingSetChanges() periodically.

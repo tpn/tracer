@@ -301,6 +301,51 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 } TRACER_FLAGS, *PTRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
 
+//
+// Tracer runtime parameters.  Map to REG_DWORD values of the same name.
+//
+
+typedef struct _TRACER_RUNTIME_PARAMETERS {
+
+    //
+    // The timer interval used by the GetWorkingSetChanges() routine, which is
+    // responsible for periodically calling GetWsChangesEx() and flushing the
+    // kernel working set changes buffer to our corresponding working set trace
+    // stores (assuming working set tracing has been enabled).
+    //
+    // This value is passed as the msPeriod parameter to SetThreadpoolTimer().
+    //
+
+    ULONG GetWorkingSetChangesIntervalInMilliseconds;
+
+    //
+    // This value is passed as the msWindowLength to SetThreadpoolTimer(), and
+    // indicates to the kernel the amount of slack we're willing to tolerate
+    // with regards to our GetWorkingSetChanges() timer callback being fired.
+    // This allows the kernel to potentially batch timer callbacks, improving
+    // efficiency.
+    //
+
+    ULONG GetWorkingSetChangesWindowLengthInMilliseconds;
+
+    //
+    // This value controls the number of elements we size our temporary working
+    // set buffers to accomodate.  It needs to be large enough to ensure records
+    // aren't dropped for a given timer interval.  (Interval, window length and
+    // number of elements are all related -- i.e. making interval or window
+    // length longer will require a greater number of elements and vice versa.)
+    //
+    // N.B. The trace store working set machinery will start out with buffers
+    //      sized based on this value.  If it receives an indication that the
+    //      buffer was too small and that records were dropped, it will double
+    //      the number of elements and runtime and then realloc appropriately
+    //      sized buffers based on the new number of elements.
+    //
+
+    ULONG WsWatchInfoExInitialBufferNumberOfElements;
+
+} TRACER_RUNTIME_PARAMETERS, *PTRACER_RUNTIME_PARAMETERS;
+
 typedef struct _TRACE_SESSION_DIRECTORY {
     LIST_ENTRY ListEntry;
     UNICODE_STRING Directory;
@@ -367,6 +412,12 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     //
 
     TRACER_FLAGS Flags;
+
+    //
+    // Runtime parameters.
+    //
+
+    TRACER_RUNTIME_PARAMETERS RuntimeParameters;
 
     //
     // Function pointer to the allocator structure being used by this instance.
