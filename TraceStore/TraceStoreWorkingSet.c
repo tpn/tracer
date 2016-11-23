@@ -91,7 +91,7 @@ Return Value:
     }
 
     TraceContext->WsWatchInfoExCurrentBufferNumberOfElements = (
-        TraceContext->WsWatchInfoExInitialBufferNumberOfElements
+        RuntimeParameters->WsWatchInfoExInitialBufferNumberOfElements
     );
 
     //
@@ -120,7 +120,11 @@ Return Value:
     //
 
     AcquireWorkingSetChangesLock(TraceContext);
-    Success = GetWorkingSetChanges(TraceContext);
+    TRY_MAPPED_MEMORY_OP{
+        Success = GetWorkingSetChanges(TraceContext);
+    } CATCH_STATUS_IN_PAGE_ERROR{
+        Success = FALSE;
+    }
     ReleaseWorkingSetChangesLock(TraceContext);
 
     if (!Success) {
@@ -137,6 +141,13 @@ Return Value:
     WindowLength = (
         RuntimeParameters->GetWorkingSetChangesWindowLengthInMilliseconds
     );
+
+    //
+    // Convert our interval into a relative threadpool time, and use this as
+    // the timer's due time.
+    //
+
+    MillisecondsToRelativeThreadpoolTime(Interval, &DueTime);
 
     //
     // Start a timer that calls GetWorkingSetChanges() periodically.
@@ -178,24 +189,25 @@ Return Value:
     ULONG LastError;
     ULONG Index;
     ULONG MaxCount;
+    ULONG BufferSizeInBytes;
     ULONGLONG RecordsLost;
     ULARGE_INTEGER BufferSize;
     ULARGE_INTEGER NumberOfElements;
     ULARGE_INTEGER WsWatchInfoExSize;
-    ULARGE_INTEGER WorkingSetExInfoSize;
+    ULARGE_INTEGER WsWorkingSetExInfoSize;
     ULARGE_INTEGER NumberOfActualElements;
-    ULARGE_INTEGER TempWorkingSetExBufferSizeInBytes;
+    ULARGE_INTEGER TempWsWorkingSetExBufferSizeInBytes;
     PPSAPI_WS_WATCH_INFORMATION_EX WsWatchInfoEx;
     PPSAPI_WS_WATCH_INFORMATION_EX DestWsWatchInfoEx;
     PPSAPI_WS_WATCH_INFORMATION_EX WsWatchInfoExBuffer;
     PPSAPI_WS_WATCH_INFORMATION_EX TempWsWatchInfoExBuffer;
-    PPSAPI_WORKING_SET_EX_INFORMATION WorkingSetExInfo;
-    PPSAPI_WORKING_SET_EX_INFORMATION DestWorkingSetExInfo;
-    PPSAPI_WORKING_SET_EX_INFORMATION WorkingSetExInfoBuffer;
-    PPSAPI_WORKING_SET_EX_INFORMATION TempWorkingSetExInfoBuffer;
+    PPSAPI_WORKING_SET_EX_INFORMATION WsWorkingSetExInfo;
+    PPSAPI_WORKING_SET_EX_INFORMATION DestWsWorkingSetExInfo;
+    PPSAPI_WORKING_SET_EX_INFORMATION WsWorkingSetExInfoBuffer;
+    PPSAPI_WORKING_SET_EX_INFORMATION TempWsWorkingSetExInfoBuffer;
     HANDLE CurrentProcess;
     PTRACE_STORE WsWatchInfoExStore;
-    PTRACE_STORE WorkingSetExInfoStore;
+    PTRACE_STORE WsWorkingSetExInfoStore;
     PTRACE_STORES TraceStores;
 
     //
@@ -205,9 +217,9 @@ Return Value:
     Rtl = TraceContext->Rtl;
     CurrentProcess = GetCurrentProcess();
     TempWsWatchInfoExBuffer = TraceContext->WsWatchInfoExBuffer;
-    TempWorkingSetExInfoBuffer = TraceContext->WsWorkingSetExInfoBuffer;
+    TempWsWorkingSetExInfoBuffer = TraceContext->WsWorkingSetExInfoBuffer;
     WsWatchInfoExSize.QuadPart = sizeof(PSAPI_WS_WATCH_INFORMATION_EX);
-    WorkingSetExInfoSize.QuadPart = sizeof(PSAPI_WORKING_SET_EX_INFORMATION);
+    WsWorkingSetExInfoSize.QuadPart = sizeof(PSAPI_WORKING_SET_EX_INFORMATION);
     NumberOfElements.QuadPart = (
         TraceContext->WsWatchInfoExCurrentBufferNumberOfElements
     );
@@ -222,9 +234,21 @@ Return Value:
 
 TryGetWsChangesEx:
 
+    if (BufferSize.HighPart) {
+
+        //
+        // A buffer size >= 8GB is going to be a logic error somewhere.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    BufferSizeInBytes = BufferSize.LowPart;
+
     Success = Rtl->K32GetWsChangesEx(CurrentProcess,
                                      TempWsWatchInfoExBuffer,
-                                     &BufferSize.LowPart);
+                                     &BufferSizeInBytes);
 
     if (!Success) {
         LastError = GetLastError();
@@ -286,8 +310,8 @@ TryGetWsChangesEx:
             (PPSAPI_WORKING_SET_EX_INFORMATION)(
                 TraceContext->Allocator->Realloc(
                     TraceContext->Allocator,
-                    TempWorkingSetExInfoBuffer,
-                    NumberOfElements.QuadPart * WorkingSetExInfoSize.QuadPart
+                    TraceContext->WsWorkingSetExInfoBuffer,
+                    NumberOfElements.QuadPart * WsWorkingSetExInfoSize.QuadPart
                 )
             )
         );
@@ -295,6 +319,8 @@ TryGetWsChangesEx:
         if (!TraceContext->WsWorkingSetExInfoBuffer) {
             return FALSE;
         }
+
+        TempWsWorkingSetExInfoBuffer = TraceContext->WsWorkingSetExInfoBuffer;
 
         //
         // Try the K32WsChangesEx() call again.
@@ -321,7 +347,7 @@ TryGetWsChangesEx:
 
     for (Index = 0; Index < MaxCount; Index++) {
         WsWatchInfoEx = &TempWsWatchInfoExBuffer[Index];
-        WorkingSetExInfo = &TempWorkingSetExInfoBuffer[Index];
+        WsWorkingSetExInfo = &TempWsWorkingSetExInfoBuffer[Index];
 
         if (!WsWatchInfoEx->BasicInfo.FaultingPc) {
 
@@ -341,7 +367,9 @@ TryGetWsChangesEx:
         // Copy the faulting address.
         //
 
-        WorkingSetExInfo->VirtualAddress = WsWatchInfoEx->BasicInfo.FaultingVa;
+        WsWorkingSetExInfo->VirtualAddress = (
+            WsWatchInfoEx->BasicInfo.FaultingVa
+        );
     }
 
     //
@@ -370,23 +398,23 @@ TryGetWsChangesEx:
     //
 
     NumberOfActualElements.QuadPart = Index - 1;
-    TempWorkingSetExBufferSizeInBytes.QuadPart = (
+    TempWsWorkingSetExBufferSizeInBytes.QuadPart = (
         NumberOfActualElements.QuadPart *
-        WorkingSetExInfoSize.QuadPart
+        WsWorkingSetExInfoSize.QuadPart
     );
 
     //
     // Ensure we've got a sane buffer size.
     //
 
-    if (TempWorkingSetExBufferSizeInBytes.HighPart) {
+    if (TempWsWorkingSetExBufferSizeInBytes.HighPart) {
         __debugbreak();
         return FALSE;
     }
 
     Success = QueryWorkingSetEx(CurrentProcess,
-                                TempWorkingSetExInfoBuffer,
-                                TempWorkingSetExBufferSizeInBytes.LowPart);
+                                TempWsWorkingSetExInfoBuffer,
+                                TempWsWorkingSetExBufferSizeInBytes.LowPart);
 
     if (Success) {
         TraceContext->LastError = GetLastError();
@@ -398,9 +426,19 @@ TryGetWsChangesEx:
     //
 
     TraceStores = TraceContext->TraceStores;
-    WsWatchInfoExStore = &TraceStores->Stores[TraceStoreWsWatchInfoExId];
-    WorkingSetExInfoStore = (
-        &TraceStores->Stores[TraceStoreWsWorkingSetExInfoId]
+
+    WsWatchInfoExStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreWsWatchInfoExIndex
+        )
+    );
+
+    WsWorkingSetExInfoStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreWsWorkingSetExInfoId
+        )
     );
 
     WsWatchInfoExBuffer = (PPSAPI_WS_WATCH_INFORMATION_EX)(
@@ -416,16 +454,16 @@ TryGetWsChangesEx:
         return FALSE;
     }
 
-    WorkingSetExInfoBuffer = (PPSAPI_WORKING_SET_EX_INFORMATION)(
-        WorkingSetExInfoStore->AllocateRecords(
+    WsWorkingSetExInfoBuffer = (PPSAPI_WORKING_SET_EX_INFORMATION)(
+        WsWorkingSetExInfoStore->AllocateRecords(
             TraceContext,
-            WorkingSetExInfoStore,
-            &WorkingSetExInfoSize,
+            WsWorkingSetExInfoStore,
+            &WsWorkingSetExInfoSize,
             &NumberOfActualElements
         )
     );
 
-    if (!WorkingSetExInfoBuffer) {
+    if (!WsWorkingSetExInfoBuffer) {
         return FALSE;
     }
 
@@ -436,11 +474,12 @@ TryGetWsChangesEx:
 
     for (Index = 0; Index < NumberOfActualElements.LowPart; Index++) {
 
-        WsWatchInfoEx = &TempWsWatchInfoExBuffer[Index];
-        WorkingSetExInfo = &TempWorkingSetExInfoBuffer[Index];
+        //
+        // Copy the working set watch information.
+        //
 
+        WsWatchInfoEx = &TempWsWatchInfoExBuffer[Index];
         DestWsWatchInfoEx = &WsWatchInfoExBuffer[Index];
-        DestWorkingSetExInfo = &WorkingSetExInfoBuffer[Index];
 
         DestWsWatchInfoEx->BasicInfo.FaultingPc = (
             WsWatchInfoEx->BasicInfo.FaultingPc
@@ -458,12 +497,19 @@ TryGetWsChangesEx:
             WsWatchInfoEx->Flags
         );
 
-        DestWorkingSetExInfo->VirtualAddress = (
-            WorkingSetExInfo->VirtualAddress
+        //
+        // Copy the working set extended information.
+        //
+
+        WsWorkingSetExInfo = &TempWsWorkingSetExInfoBuffer[Index];
+        DestWsWorkingSetExInfo = &WsWorkingSetExInfoBuffer[Index];
+
+        DestWsWorkingSetExInfo->VirtualAddress = (
+            WsWorkingSetExInfo->VirtualAddress
         );
 
-        DestWorkingSetExInfo->VirtualAttributes.Flags = (
-            WorkingSetExInfo->VirtualAttributes.Flags
+        DestWsWorkingSetExInfo->VirtualAttributes.Flags = (
+            WsWorkingSetExInfo->VirtualAttributes.Flags
         );
     }
 

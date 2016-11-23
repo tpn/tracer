@@ -448,7 +448,7 @@ Return Value:
         CancellationThreadpoolCallbackEnvironment
     );
 
-    if (TraceContext->CleanupThreadpoolMembersWork) {
+    if (!TraceContext->CleanupThreadpoolMembersWork) {
         goto Error;
     }
 
@@ -524,7 +524,7 @@ Return Value:
         // soon as the backing trace store is available.
         //
 
-        WsWatchInfoExStore = &TraceStores->Stores[TraceStoreWsWatchInfoExId];
+        WsWatchInfoExStore = &TraceStores->Stores[TraceStoreWsWatchInfoExIndex];
         WsWatchInfoExStore->BindComplete = WsWatchInfoExStoreBindComplete;
 
     }

@@ -593,6 +593,17 @@ Return Value:
     return;
 }
 
+//
+// Disable this:
+//
+//      warning C26135 : Missing annotation
+//        _Releases_lock_(TraceContext->WorkingSetChangesLock)
+//        at function 'GetWorkingSetChangesTimerCallback'.
+//
+
+#pragma warning(push)
+#pragma warning(disable: 26135)
+
 _Use_decl_annotations_
 VOID
 CALLBACK
@@ -665,5 +676,11 @@ Return Value:
 
     return;
 }
+
+//
+// Restore the disabled SAL warning.
+//
+
+#pragma warning(pop)
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

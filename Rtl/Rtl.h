@@ -363,7 +363,8 @@ _Success_(return != 0)
 BOOL
 (WINAPI GET_WS_CHANGES)(
     _In_ HANDLE ProcessHandle,
-    _Out_ PPSAPI_WS_WATCH_INFORMATION WatchInfo,
+    _Out_writes_bytes_(SizeOfWatchInfoBufferInBytes)
+         PPSAPI_WS_WATCH_INFORMATION WatchInfo,
     _In_ ULONG SizeOfWatchInfoBufferInBytes
     );
 typedef GET_WS_CHANGES *PGET_WS_CHANGES;
@@ -374,7 +375,11 @@ _Success_(return != 0)
 BOOL
 (WINAPI GET_WS_CHANGES_EX)(
     _In_ HANDLE ProcessHandle,
-    _Out_ PPSAPI_WS_WATCH_INFORMATION_EX WatchInfoEx,
+
+    _Out_writes_bytes_to_(*SizeOfWatchInfoExBufferInBytes,
+                          *SizeOfWatchInfoExBufferInBytes)
+         PPSAPI_WS_WATCH_INFORMATION_EX WatchInfoEx,
+
     _Inout_ PULONG SizeOfWatchInfoExBufferInBytes
     );
 typedef GET_WS_CHANGES_EX *PGET_WS_CHANGES_EX;
@@ -385,7 +390,10 @@ _Success_(return != 0)
 BOOL
 (WINAPI QUERY_WORKING_SET)(
     _In_ HANDLE ProcessHandle,
-    _Out_ PPSAPI_WORKING_SET_INFORMATION WorkingSetInfo,
+
+    _Out_writes_bytes_(SizeOfWorkingSetInfoBufferInBytes)
+         PPSAPI_WORKING_SET_INFORMATION WorkingSetInfo,
+
     _In_ ULONG SizeOfWorkingSetInfoBufferInBytes
     );
 typedef QUERY_WORKING_SET *PQUERY_WORKING_SET;
@@ -396,7 +404,10 @@ _Success_(return != 0)
 BOOL
 (WINAPI QUERY_WORKING_SET_EX)(
     _In_ HANDLE ProcessHandle,
-    _Out_ PPSAPI_WORKING_SET_EX_INFORMATION WorkingSetExInfo,
+
+    _Out_writes_bytes_(SizeOfWorkingSetExInfoBufferInBytes)
+         PPSAPI_WORKING_SET_EX_INFORMATION WorkingSetExInfo,
+
     _In_ ULONG SizeOfWorkingSetExInfoBufferInBytes
     );
 typedef QUERY_WORKING_SET_EX *PQUERY_WORKING_SET_EX;
