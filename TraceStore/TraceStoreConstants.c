@@ -33,7 +33,9 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceSession.dat",
     L"TraceStringArray.dat",
     L"TraceStringTable.dat",
-    L"TraceEventTraitsEx.dat"
+    L"TraceEventTraitsEx.dat",
+    L"TraceWsWatchInfoEx.dat",
+    L"TraceWorkingSetExInfo.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -115,7 +117,9 @@ ULONG InitialTraceStoreFileSizes[] = {
     10 << 20,   // TraceSession
     10 << 20,   // StringArray
     10 << 20,   // StringTable
-    10 << 23    // EventTraitsEx
+    10 << 23,   // EventTraitsEx
+    10 << 23,   // WsWatchInfoEx
+    10 << 23    // WorkingSetExInfo
 };
 
 
@@ -287,6 +291,38 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         1,  // BlockingAllocations
         1,  // LinkedStore
+        0   // Unused
+    },
+
+    //
+    // WsWatchInfoEx
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        1,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0   // Unused
+    },
+
+    //
+    // WorkingSetEx
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        1,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
         0   // Unused
     }
 };

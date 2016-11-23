@@ -496,6 +496,7 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
     READ_REG_DWORD_FLAG(ProfileOnly, FALSE);
     READ_REG_DWORD_FLAG(TrackMaxRefCounts, FALSE);
+    READ_REG_DWORD_FLAG(EnableWorkingSetTracing, FALSE);
     READ_REG_DWORD_FLAG(TraceEventType, 1);
 
     //

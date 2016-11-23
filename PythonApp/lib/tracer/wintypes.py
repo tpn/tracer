@@ -53,6 +53,7 @@ INFINITE = 0xffffffff
 WAIT_FAILED = 0xffffffff
 WAIT_OBJECT_0 = 0
 WAIT_ABANDONED = 0x80
+WAIT_TIMEOUT = 0x102
 
 #===============================================================================
 # Enums

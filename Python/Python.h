@@ -75,10 +75,10 @@ BOOL
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ PUNICODE_STRING Directory,
-    _Outptr_opt_ PPUNICODE_STRING PythonDllPath,
-    _Outptr_opt_ PPUNICODE_STRING PythonExePath,
-    _Outptr_opt_ PUSHORT NumberOfPathEntries,
-    _Outptr_opt_ PPUNICODE_STRING PathEntries,
+    _Out_opt_ PPUNICODE_STRING PythonDllPath,
+    _Out_opt_ PPUNICODE_STRING PythonExePath,
+    _Out_opt_ PUSHORT NumberOfPathEntries,
+    _Out_opt_ PPUNICODE_STRING PathEntries,
     _Out_opt_ PCHAR MajorVersion,
     _Out_opt_ PCHAR MinorVersion
     );

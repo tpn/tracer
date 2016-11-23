@@ -78,6 +78,46 @@ Return Value:
 
 --*/
 {
+    PVOID Address;
+
+    //
+    // Increment the active allocators count, call the underlying
+    // implementation method, decrement the counter and return the address.
+    //
+
+    InterlockedIncrement(&TraceStore->ActiveAllocators);
+
+    Address = TraceStoreAllocateRecordsWithTimestampWorker(
+        TraceContext,
+        TraceStore,
+        RecordSize,
+        NumberOfRecords,
+        TimestampPointer
+    );
+
+    InterlockedDecrement(&TraceStore->ActiveAllocators);
+
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocateRecordsWithTimestampWorker(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords,
+    PLARGE_INTEGER  TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    This is the main implementation body of the trace store allocation record.
+    See TraceStoreAllocateRecordsWithTimestamp() for method documentation.
+
+--*/
+{
     BOOL Success;
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
@@ -448,6 +488,121 @@ Return Value:
                                  RecordSize,
                                  NumberOfRecords,
                                  NULL);
+}
+
+_Use_decl_annotations_
+PVOID
+SuspendedTraceStoreAllocateRecordsWithTimestamp(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords,
+    PLARGE_INTEGER  TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine is a stand-in for the normal AllocateRecordsWithTimestamp()
+    method used to satisfy trace store allocations.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
+        contains the size of the record to allocate.
+
+    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
+        that contains the number of records to allocate.  The total size is
+        derived by multiplying RecordSize with NumberOfRecords.
+
+    TimestampPointer - Optionally supplies a pointer to a timestamp value to
+        associate with the allocation.  When non-NULL, the 64-bit integer
+        pointed to by the variable will be written to the allocation timestamp
+        metadata store.  This should be NULL if the trace store is a metadata
+        store, or if the trace store's traits indicates that it is a linked
+        store (implying that allocation timestamp information will be provided
+        elsewhere).
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    ULONG WaitResult;
+    HANDLE Event;
+    ULONG ElapsedMicroseconds;
+    LARGE_INTEGER BeforeTimestamp;
+    LARGE_INTEGER BeforeElapsed;
+    LARGE_INTEGER AfterTimestamp;
+    LARGE_INTEGER AfterElapsed;
+
+    //
+    // Increment the suspended allocations counter.
+    //
+
+    InterlockedIncrement(&TraceStore->Stats.SuspendedAllocations);
+
+    //
+    // Take a timestamp snapshot before waiting on the event.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore,
+                                      &BeforeElapsed,
+                                      &BeforeTimestamp);
+
+    //
+    // Wait on the resume allocations event.  This will be set when the trace
+    // store has completed binding, or when whatever requested for the allocator
+    // to be suspended has completed its work and signaled that allocations may
+    // resume.
+    //
+
+    Event = &TraceStore->ResumeAllocationsEvent;
+    WaitResult = WaitForSingleObject(Event, INFINITE);
+
+    //
+    // Take another timestamp snapshot and calculate elapsed microseconds.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore,
+                                      &AfterElapsed,
+                                      &AfterTimestamp);
+
+    ElapsedMicroseconds = (ULONG)AfterElapsed.QuadPart - BeforeElapsed.QuadPart;
+
+    //
+    // Update the count of elapsed microseconds we've spent suspended.
+    //
+
+    InterlockedAdd(&TraceStore->Stats.ElapsedSuspensionTimeInMicroseconds,
+                   ElapsedMicroseconds);
+
+    if (WaitResult != WAIT_OBJECT_0) {
+
+        //
+        // Wait wasn't successful, abort the allocation.
+        //
+
+        return NULL;
+    }
+
+    //
+    // Wait was successful, allocations can resume.  Forward the request to the
+    // original allocator.
+    //
+
+    return TraceStoreAllocateRecordsWithTimestamp(TraceContext,
+                                                  TraceStore,
+                                                  RecordSize,
+                                                  NumberOfRecords,
+                                                  TimestampPointer);
 }
 
 _Use_decl_annotations_

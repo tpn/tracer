@@ -278,10 +278,16 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG TrackMaxRefCounts:1;
 
     //
+    // When set, enables tracing of the process's working set.
+    //
+
+    ULONG EnableWorkingSetTracing:1;
+
+    //
     // Unused.  Use these before digging into TraceEventType's bits.
     //
 
-    ULONG UnusedBits:3;
+    ULONG UnusedBits:2;
 
     //
     // The remaining bits are used for indicating which trace event type is

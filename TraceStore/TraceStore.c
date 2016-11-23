@@ -618,6 +618,16 @@ Return Value:
 
 --*/
 {
+
+    //
+    // We use the following two bools to make it clearer what event
+    // type is being created in each CreateEvent() statement.  The
+    // values map to the `BOOL bManualReset` parameter of said routine.
+    //
+
+    BOOL AutoReset = FALSE;
+    BOOL ManualReset = TRUE;
+
     //
     // Create the all memory maps are free event.  This event is signaled when
     // the count of active memory maps reaches zero.  The counter is decremented
@@ -628,7 +638,7 @@ Return Value:
     TraceStore->AllMemoryMapsAreFreeEvent = (
         CreateEvent(
             NULL,
-            FALSE,
+            AutoReset,
             FALSE,
             NULL
         )
@@ -661,7 +671,7 @@ Return Value:
         TraceStore->NextMemoryMapAvailableEvent = (
             CreateEvent(
                 NULL,
-                FALSE,
+                AutoReset,
                 FALSE,
                 NULL
             )
@@ -671,12 +681,47 @@ Return Value:
             return FALSE;
         }
 
+        //
+        // Create the resume allocations event.
+        //
+
+        TraceStore->ResumeAllocationsEvent = (
+            CreateEvent(
+                NULL,
+                ManualReset,
+                FALSE,
+                NULL
+            )
+        );
+
+        if (!TraceStore->ResumeAllocationsEvent) {
+            return FALSE;
+        }
+
+        //
+        // Create the bind complete event.  This is set when allocations can
+        // start being serviced by the trace store.
+        //
+
+        TraceStore->BindCompleteEvent = (
+            CreateEvent(
+                NULL,
+                ManualReset,
+                FALSE,
+                NULL
+            )
+        );
+
+        if (!TraceStore->BindCompleteEvent) {
+            return FALSE;
+        }
+
     } else {
 
         TraceStore->ReadonlyMappingCompleteEvent = (
             CreateEvent(
                 NULL,
-                FALSE,
+                AutoReset,
                 FALSE,
                 NULL
             )
@@ -721,6 +766,7 @@ Return Value:
     BOOL IsReadonly;
     BOOL IsMetadata;
     TRACE_STORE_TRAITS Traits;
+    PTP_CALLBACK_ENVIRON CallbackEnd;
 
     //
     // Ensure traits have been set.
@@ -734,6 +780,7 @@ Return Value:
     Traits = *TraceStore->pTraits;
     IsReadonly = TraceStore->IsReadonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
+    CallbackEnv = TraceContext->ThreadpoolCallbackEnvironment;
 
     //
     // The close memory map threadpool work item always gets created.
@@ -742,19 +789,23 @@ Return Value:
     TraceStore->CloseMemoryMapWork = CreateThreadpoolWork(
         &CloseTraceStoreMemoryMapCallback,
         TraceStore,
-        TraceContext->ThreadpoolCallbackEnvironment
+        CallbackEnv
     );
+
     if (!TraceStore->CloseMemoryMapWork) {
         return FALSE;
     }
 
     if (!IsReadonly) {
+
         if (HasMultipleRecords(Traits)) {
+
             TraceStore->PrepareNextMemoryMapWork = CreateThreadpoolWork(
                 &PrepareNextTraceStoreMemoryMapCallback,
                 TraceStore,
-                TraceContext->ThreadpoolCallbackEnvironment
+                CallbackEnv
             );
+
             if (!TraceStore->PrepareNextMemoryMapWork) {
                 return FALSE;
             }
@@ -762,20 +813,24 @@ Return Value:
             TraceStore->PrefaultFuturePageWork = CreateThreadpoolWork(
                 &PrefaultFutureTraceStorePageCallback,
                 TraceStore,
-                TraceContext->ThreadpoolCallbackEnvironment
+                CallbackEnv
             );
+
             if (!TraceStore->PrefaultFuturePageWork) {
                 return FALSE;
             }
         }
+
     } else {
+
         TraceStore->PrepareReadonlyNonStreamingMemoryMapWork = (
             CreateThreadpoolWork(
                 &PrepareReadonlyTraceStoreMemoryMapCallback,
                 TraceStore,
-                TraceContext->ThreadpoolCallbackEnvironment
+                CallbackEnv
             )
         );
+
         if (!TraceStore->PrepareReadonlyNonStreamingMemoryMapWork) {
             return FALSE;
         }
@@ -797,7 +852,8 @@ Routine Description:
 
     This routine is called by BindStore() once a normal (non-metadata) trace
     store has been successfully bound to a context.  Is is responsible for
-    wiring up all of the metadata store base addresses to the relevant pointers.
+    setting the bind complete event and reverting the suspended allocation
+    methods into their working state.
 
 Arguments:
 
@@ -815,6 +871,9 @@ Return Value:
 
 --*/
 {
+
+    ResumeTraceStoreAllocations(TraceStore);
+    SetEvent(TraceStore->BindCompleteEvent);
 
     return TRUE;
 }
