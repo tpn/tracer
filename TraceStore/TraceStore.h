@@ -1100,6 +1100,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     SRWLOCK WorkingSetChangesLock;
     PTP_TIMER GetWorkingSetChangesTimer;
+    volatile ULONG WorkingSetTimerContention;
+
+    ULONG WsWatchInfoExInitialBufferNumberOfElements;
+    ULONG WsWatchInfoExCurrentBufferNumberOfElements;
+
+    ULONG GetWorkingSetChangesIntervalInMilliseconds;
+    ULONG GetWorkingSetChangesWindowLengthInMilliseconds;
+
+    PPSAPI_WS_WATCH_INFORMATION_EX WsWatchInfoExBuffer;
+    PPSAPI_WORKING_SET_EX_INFORMATION WsWorkingSetExInfoBuffer;
 
     volatile ULONG ActiveWorkItems;
 
@@ -1121,8 +1131,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     volatile ULONG NumberOfStoresWithMultipleRelocationDependencies;
 
-    ULONG Padding3;
-
     TRACE_STORE_TIME Time;
 
     //
@@ -1130,8 +1138,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     //
 
     ULONG BitmapBufferSizeInQuadwords;
-
-    ULONG Padding4;
 
     //
     // Bitmap of trace store IDs for which the caller wishes to ignore the

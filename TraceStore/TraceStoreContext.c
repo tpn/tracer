@@ -476,7 +476,7 @@ Return Value:
             TraceStores->RelocationCompleteEvents[Index] = Event;
         }
 
-    } else if (ContextFlags.EnableWorkingSetTracing) {
+    } else if (TraceStores->Flags.EnableWorkingSetTracing) {
 
         PTRACE_STORE WsWatchInfoExStore;
 
@@ -489,9 +489,9 @@ Return Value:
         InitializeSRWLock(&TraceContext->WorkingSetChangesLock);
         TraceContext->GetWorkingSetChangesTimer = (
             CreateThreadpoolTimer(
-                GetWorkingSetChangesTimerCallback,
-                TraceContext,
-                ThreadpoolCallbackEnvironment
+                (PTP_TIMER_CALLBACK)GetWorkingSetChangesTimerCallback,
+                (PVOID)TraceContext,
+                (PTP_CALLBACK_ENVIRON)ThreadpoolCallbackEnvironment
             )
         );
 
@@ -530,7 +530,7 @@ Return Value:
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TraceStore = &TraceStores->Stores[StoreIndex];
-        TraceStore-AllocateRecordsWithTimestamp = SuspendedAllocator;
+        TraceStore->AllocateRecordsWithTimestamp = SuspendedAllocator;
     }
 
     //

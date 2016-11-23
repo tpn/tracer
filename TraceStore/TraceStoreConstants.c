@@ -35,7 +35,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStringTable.dat",
     L"TraceEventTraitsEx.dat",
     L"TraceWsWatchInfoEx.dat",
-    L"TraceWorkingSetExInfo.dat",
+    L"TraceWsWorkingSetExInfo.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -311,7 +311,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // WorkingSetEx
+    // WsWorkingSetEx
     //
 
     {
