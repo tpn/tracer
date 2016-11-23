@@ -376,7 +376,7 @@ TryGetWsChangesEx:
     // Ensure we captured the expected number of events.
     //
 
-    if (Index != MaxCount) {
+    if (Index > MaxCount) {
         __debugbreak();
         return FALSE;
     } else {
@@ -416,8 +416,9 @@ TryGetWsChangesEx:
                                 TempWsWorkingSetExInfoBuffer,
                                 TempWsWorkingSetExBufferSizeInBytes.LowPart);
 
-    if (Success) {
+    if (!Success) {
         TraceContext->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -430,7 +431,7 @@ TryGetWsChangesEx:
     WsWatchInfoExStore = (
         TraceStoreIdToTraceStore(
             TraceStores,
-            TraceStoreWsWatchInfoExIndex
+            TraceStoreWsWatchInfoExId
         )
     );
 
@@ -451,6 +452,7 @@ TryGetWsChangesEx:
     );
 
     if (!WsWatchInfoExBuffer) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -464,6 +466,7 @@ TryGetWsChangesEx:
     );
 
     if (!WsWorkingSetExInfoBuffer) {
+        __debugbreak();
         return FALSE;
     }
 
