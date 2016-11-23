@@ -1039,6 +1039,8 @@ Return Value:
 
 ALLOCATE_RECORDS TraceStoreAllocateRecords;
 ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestamp;
+ALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedTraceStoreAllocateRecordsWithTimestamp;
+ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestampWorker;
 
 typedef
 _Success_(return != 0)
@@ -1125,6 +1127,7 @@ RecordTraceStoreAllocationTimestamp(
     return TRUE;
 }
 
+FORCEINLINE
 VOID
 SuspendTraceStoreAllocations(
     _In_ PTRACE_STORE TraceStore
@@ -1166,8 +1169,8 @@ Return Value:
     ResetEvent(TraceStore->ResumeAllocationsEvent);
 
     InterlockedExchangePointer(
-        &TraceStore->AllocateRecordsWithTimestamp,
-        SuspendedTraceStoreAllocateRecordsWithTimestamp
+        (volatile PVOID *)&TraceStore->AllocateRecordsWithTimestamp,
+        &SuspendedTraceStoreAllocateRecordsWithTimestamp
     );
 
     //
@@ -1189,6 +1192,7 @@ Return Value:
     }
 }
 
+FORCEINLINE
 VOID
 ResumeTraceStoreAllocations(
     _In_ PTRACE_STORE TraceStore
@@ -1223,8 +1227,8 @@ Return Value:
 {
 
     InterlockedExchangePointer(
-        &TraceStore->AllocateRecordsWithTimestamp,
-        SuspendedTraceStoreAllocateRecordsWithTimestamp
+        (volatile PVOID *)&TraceStore->AllocateRecordsWithTimestamp,
+        &TraceStoreAllocateRecordsWithTimestamp
     );
 
     //
@@ -1986,6 +1990,8 @@ BOOL
 typedef GET_WORKING_SET_CHANGES *PGET_WORKING_SET_CHANGES;
 GET_WORKING_SET_CHANGES GetWorkingSetChanges;
 
+BIND_COMPLETE WsWatchInfoExStoreBindComplete;
+
 //
 // TraceStoreWorkingSet-related macros.
 //
@@ -1998,12 +2004,6 @@ GET_WORKING_SET_CHANGES GetWorkingSetChanges;
 
 #define ReleaseWorkingSetChangesLock(TraceContext) \
     ReleaseSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
-
-//
-// TraceStoreWorkingSet-related inline functions.
-//
-
-
 
 #ifdef __cplusplus
 }; // extern "C"

@@ -588,7 +588,7 @@ Return Value:
     // Set the loading complete event.
     //
 
-    SetEvent(TraceContext->LoadingComplete);
+    SetEvent(TraceContext->LoadingCompleteEvent);
 
     return;
 }
@@ -638,7 +638,7 @@ Return Value:
     //
 
     if (!TryAcquireWorkingSetChangesLock(TraceContext)) {
-        InterlockedIncrement(&TraceContext->GetWorkingSetTimerContention);
+        InterlockedIncrement(&TraceContext->WorkingSetTimerContention);
         return;
     }
 

@@ -547,7 +547,7 @@ Return Value:
     // Increment the suspended allocations counter.
     //
 
-    InterlockedIncrement(&TraceStore->Stats.SuspendedAllocations);
+    InterlockedIncrement(&TraceStore->Stats->SuspendedAllocations);
 
     //
     // Take a timestamp snapshot before waiting on the event.
@@ -575,13 +575,16 @@ Return Value:
                                       &AfterElapsed,
                                       &AfterTimestamp);
 
-    ElapsedMicroseconds = (ULONG)AfterElapsed.QuadPart - BeforeElapsed.QuadPart;
+    ElapsedMicroseconds = (ULONG)(
+        AfterElapsed.QuadPart -
+        BeforeElapsed.QuadPart
+    );
 
     //
     // Update the count of elapsed microseconds we've spent suspended.
     //
 
-    InterlockedAdd(&TraceStore->Stats.ElapsedSuspensionTimeInMicroseconds,
+    InterlockedAdd(&TraceStore->Stats->ElapsedSuspensionTimeInMicroseconds,
                    ElapsedMicroseconds);
 
     if (WaitResult != WAIT_OBJECT_0) {

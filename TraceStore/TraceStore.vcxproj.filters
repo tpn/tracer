@@ -107,6 +107,9 @@
     <ClCompile Include="TraceStoreAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreWorkingSet.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <!--
   <ItemGroup>

@@ -40,8 +40,8 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreStringArrayId             =   8,
     TraceStoreStringTableId             =   9,
     TraceStoreEventTraitsExId           =  10,
-    TraceStoreWsWatchInfoExId             =  11,
-    TraceStoreWorkingSetExInfoId        =  12,
+    TraceStoreWsWatchInfoExId           =  11,
+    TraceStoreWsWorkingSetExInfoId      =  12,
     TraceStoreInvalidId                 =  13
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 

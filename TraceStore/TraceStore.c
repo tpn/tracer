@@ -766,7 +766,7 @@ Return Value:
     BOOL IsReadonly;
     BOOL IsMetadata;
     TRACE_STORE_TRAITS Traits;
-    PTP_CALLBACK_ENVIRON CallbackEnd;
+    PTP_CALLBACK_ENVIRON CallbackEnv;
 
     //
     // Ensure traits have been set.
