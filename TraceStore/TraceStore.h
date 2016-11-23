@@ -1064,6 +1064,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     PRTL Rtl;
     PALLOCATOR Allocator;
+    PTRACER_CONFIG TracerConfig;
     PTRACE_SESSION TraceSession;
     PTRACE_STORES TraceStores;
     PTIMER_FUNCTION TimerFunction;
@@ -1618,6 +1619,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     UNICODE_STRING    BaseDirectory;
     PRTL              Rtl;
     PALLOCATOR        Allocator;
+    PTRACER_CONFIG    TracerConfig;
     LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
     HANDLE            RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
@@ -1690,6 +1692,7 @@ BOOL
 (INITIALIZE_TRACE_STORES)(
     _In_opt_    PRTL            Rtl,
     _In_opt_    PALLOCATOR      Allocator,
+    _In_opt_    PTRACER_CONFIG  TracerConfig,
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
@@ -1706,6 +1709,7 @@ BOOL
 (INITIALIZE_READONLY_TRACE_STORES)(
     _In_opt_    PRTL            Rtl,
     _In_opt_    PALLOCATOR      Allocator,
+    _In_opt_    PTRACER_CONFIG  TracerConfig,
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
@@ -1789,6 +1793,7 @@ BOOL
 (INITIALIZE_TRACE_CONTEXT)(
     _In_opt_ PRTL                  Rtl,
     _In_opt_ PALLOCATOR            Allocator,
+    _In_opt_ PTRACER_CONFIG        TracerConfig,
     _Inout_bytecap_(*SizeOfTraceContext)
              PTRACE_CONTEXT        TraceContext,
     _In_     PULONG                SizeOfTraceContext,
@@ -2130,7 +2135,7 @@ TraceStoreHasRelocations(
 FORCEINLINE
 BOOL
 HasVaryingRecordSizes(
-    _In_    PTRACE_STORE    TraceStore
+    _In_ PTRACE_STORE TraceStore
     )
 /*++
 

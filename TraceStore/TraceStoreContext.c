@@ -21,6 +21,7 @@ BOOL
 InitializeTraceContext(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
     PTRACE_CONTEXT TraceContext,
     PULONG SizeOfTraceContext,
     PTRACE_SESSION TraceSession,
@@ -43,6 +44,9 @@ Arguments:
     Rtl - Supplies a pointer to an RTL structure.
 
     Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
+        This is used to obtain runtime parameter information.
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
 
@@ -136,6 +140,10 @@ Return Value:
     if (!ARGUMENT_PRESENT(CancellationThreadpoolCallbackEnvironment)) {
         return FALSE;
     }
+
+    //
+    // XXX todo: refactor to leverage TracerConfig.
+    //
 
     if (ARGUMENT_PRESENT(TraceContextFlags)) {
         ContextFlags = *TraceContextFlags;
@@ -379,6 +387,7 @@ Return Value:
     TraceContext->TraceStores = TraceStores;
     TraceContext->UserData = UserData;
     TraceContext->Allocator = Allocator;
+    TraceContext->TracerConfig = TracerConfig;
 
     TraceContext->Flags = ContextFlags;
 
@@ -618,6 +627,7 @@ BOOL
 InitializeReadonlyTraceContext(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
     PTRACE_CONTEXT TraceContext,
     PULONG SizeOfTraceContext,
     PTRACE_SESSION TraceSession,
@@ -696,6 +706,7 @@ Return Value:
 
     return InitializeTraceContext(Rtl,
                                   Allocator,
+                                  TracerConfig,
                                   TraceContext,
                                   SizeOfTraceContext,
                                   NULL,

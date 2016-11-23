@@ -227,6 +227,51 @@ Return Value:
     }                                           \
 } while (0)
 
+/*++
+
+    VOID
+    READ_REG_DWORD_RUNTIME_PARAM(
+        Name,
+        Default
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry
+    into a TRACER_RUNTIME_PARAMETERS structure.
+
+Arguments:
+
+    Name - Name of the parameter to read.
+
+    Default - Default value to assign to the parameter if the registry key
+        couldn't be read successfully (because it was not present, or was an
+        incorrect type).
+
+Return Value:
+
+    None.
+
+--*/
+#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do { \
+    ULONG Value;                                \
+    ULONG ValueLength = sizeof(Value);          \
+    Result = RegGetValueW(                      \
+        RegistryKey,                            \
+        NULL,                                   \
+        L#Name,                                 \
+        RRF_RT_REG_DWORD,                       \
+        NULL,                                   \
+        (PVOID)&Value,                          \
+        &ValueLength                            \
+    );                                          \
+    if (Result == ERROR_SUCCESS) {              \
+        TracerConfig->RuntimeParameters.Name = Value;  \
+    } else {                                    \
+        TracerConfig->RuntimeParameters.Name = Default;  \
+    }                                           \
+} while (0)
+
 //
 // The minimum number of bytes for a valid WCHAR path name, including
 // the terminating NULL, is 10:
@@ -519,6 +564,25 @@ Return Value:
     //
 
     TracerConfig->Flags = Flags;
+
+    //
+    // Read the runtime parameters.
+    //
+
+    READ_REG_DWORD_RUNTIME_PARAM(
+        GetWorkingSetChangesIntervalInMilliseconds,
+        500
+    );
+
+    READ_REG_DWORD_RUNTIME_PARAM(
+        GetWorkingSetChangesWindowLengthInMilliseconds,
+        1000
+    );
+
+    READ_REG_DWORD_RUNTIME_PARAM(
+        WsWatchInfoExInitialBufferNumberOfElements,
+        1024
+    );
 
     //
     // Prep the TRACER_PATHS structure.
