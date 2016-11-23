@@ -472,18 +472,6 @@ Return Value:
         goto Error;
     }
 
-    /*
-    if (InterlockedDecrement(
-        &TraceStore->PrepareReadonlyNonStreamingMapsInProgress)) {
-        return;
-    }
-
-    if (!InterlockedDecrement(
-        &TraceContext->PrepareReadonlyNonStreamingMapsInProgress)) {
-        SetEvent(TraceContext->LoadingCompleteEvent);
-    }
-    */
-
     return;
 
 Error:
@@ -540,6 +528,140 @@ Return Value:
     //
 
     CloseTraceStoreMemoryMap(TraceStore, MemoryMap);
+
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+CleanupThreadpoolMembersCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the cancellation threadpool callback target for cleaning up
+    all threadpool group members of the normal threadpool.  If a trace store
+    encounters a fatal error, it will call PushFailedTraceStore(), which will
+    trigger this callback in the cancellation threadpool.
+
+    This routine calls CloseThreadpoolCleanupGroupMembers() against the main
+    threadpool, then sets the LoadingComplete event.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL CancelPendingCallbacks = TRUE;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    //
+    // Close all items of the main threadpool.
+    //
+
+    CloseThreadpoolCleanupGroupMembers(TraceContext->ThreadpoolCleanupGroup,
+                                       CancelPendingCallbacks,
+                                       NULL);
+
+    //
+    // Set the loading complete event.
+    //
+
+    SetEvent(TraceContext->LoadingComplete);
+
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+GetWorkingSetChangesTimerCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the threadpool timer callback target for the get working
+    set info.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    //
+    // If the SRWLock is already acquired, the existing thread callback is
+    // still running.  Increment the contention counter and return.
+    //
+
+    if (!TryAcquireWorkingSetChangesLock(TraceContext)) {
+        InterlockedIncrement(&TraceContext->GetWorkingSetTimerContention);
+        return;
+    }
+
+    TRY_MAPPED_MEMORY_OP {
+        Success = GetWorkingSetChanges(TraceContext);
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Success = FALSE;
+    }
+
+    if (!Success) {
+
+        //
+        // GetWorkingSetChanges() failure is fatal.
+        //
+
+        TraceContextFailure(TraceContext);
+    }
+
+    //
+    // Release the lock and return.
+    //
+
+    ReleaseWorkingSetChangesLock(TraceContext);
 
     return;
 }

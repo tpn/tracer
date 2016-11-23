@@ -26,6 +26,7 @@ InitializeTraceContext(
     PTRACE_SESSION TraceSession,
     PTRACE_STORES TraceStores,
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment,
     PTRACE_CONTEXT_FLAGS TraceContextFlags,
     PVOID UserData
     )
@@ -58,6 +59,11 @@ Arguments:
         environment to use for the trace context.  This threadpool will be used
         to submit various asynchronous thread pool memory map operations.
 
+    CancellationThreadpoolCallbackEnvironment - Supplies a pointer to a
+        cancellation threadpool callback environment to use for the trace
+        context.  Threadpool worker threads can submit work to this pool that
+        trigger thread group cancellations safely.
+
     TraceContextFlags - Supplies an optional pointer to a TRACE_CONTEXT_FLAGS
         structure to use for the trace context.
 
@@ -85,6 +91,7 @@ Return Value:
     HANDLE Event;
     PTRACE_STORE_WORK Work;
     PTRACE_STORE TraceStore;
+    PALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedAllocator;
 
     //
     // Validate size parameters.
@@ -123,6 +130,10 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(ThreadpoolCallbackEnvironment)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(CancellationThreadpoolCallbackEnvironment)) {
         return FALSE;
     }
 
@@ -265,7 +276,7 @@ Return Value:
             } while (1);
 
             //
-            // Sanity check that we saw at least one bit.
+            // Sanity check that we saw at least one bit by this stage.
             //
 
             if (!NumberOfSetBits) {
@@ -319,10 +330,6 @@ Return Value:
     }
 
     //
-    // If we're not readonly, make sure the user has provided a trace session.
-    //
-
-    //
     // Zero the structure before we start using it.
     //
 
@@ -346,6 +353,12 @@ Return Value:
         return FALSE;
     }
 
+    TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
+
+    TraceContext->CancellationThreadpoolCallbackEnvironment = (
+        ThreadpoolCallbackEnvironment
+    );
+
     TraceContext->ThreadpoolCleanupGroup = CreateThreadpoolCleanupGroup();
     if (!TraceContext->ThreadpoolCleanupGroup) {
         return FALSE;
@@ -364,7 +377,6 @@ Return Value:
     TraceContext->SizeOfStruct = (USHORT)(*SizeOfTraceContext);
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
-    TraceContext->ThreadpoolCallbackEnvironment = ThreadpoolCallbackEnvironment;
     TraceContext->UserData = UserData;
     TraceContext->Allocator = Allocator;
 
@@ -413,6 +425,24 @@ Return Value:
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
+    //
+    // Initialize the failure singly-linked list head, and create a threadpool
+    // work item for the cleanup threadpool members routine.  This allows main
+    // threads to cleanly initiate threadpool cleanup without introducing any
+    // racing/blocking issues.
+    //
+
+    InitializeSListHead(&TraceContext->FailedListHead);
+    TraceContext->CleanupThreadpoolMembersWork = CreateThreadpoolWork(
+        CleanupThreadpoolMembersCallback,
+        TraceContext,
+        CancellationThreadpoolCallbackEnvironment
+    );
+
+    if (TraceContext->CleanupThreadpoolMembersWork) {
+        goto Error;
+    }
+
     if (IsReadonly) {
 
         //
@@ -445,7 +475,68 @@ Return Value:
 
             TraceStores->RelocationCompleteEvents[Index] = Event;
         }
+
+    } else if (ContextFlags.EnableWorkingSetTracing) {
+
+        PTRACE_STORE WsWatchInfoExStore;
+
+        //
+        // Working set tracing has been enabled.  Initialize the slim lock and
+        // create the threadpool timer that will be responsible for flushing
+        // the working set changes periodically.
+        //
+
+        InitializeSRWLock(&TraceContext->WorkingSetChangesLock);
+        TraceContext->GetWorkingSetChangesTimer = (
+            CreateThreadpoolTimer(
+                GetWorkingSetChangesTimerCallback,
+                TraceContext,
+                ThreadpoolCallbackEnvironment
+            )
+        );
+
+        if (!TraceContext->GetWorkingSetChangesTimer) {
+            goto Error;
+        }
+
+        //
+        // Initialize the process for working set monitoring.  We need to do
+        // this before GetWsChanges() or GetWsChangesEx() can be called.
+        //
+
+        if (!Rtl->K32InitializeProcessForWsWatch(GetCurrentProcess())) {
+            TraceContext->LastError = GetLastError();
+            goto Error;
+        }
+
+        //
+        // Override the BindComplete method of the working set watch information
+        // trace store such that the threadpool timer work can be kicked off as
+        // soon as the backing trace store is available.
+        //
+
+        WsWatchInfoExStore = &TraceStores->Stores[TraceStoreWsWatchInfoExId];
+        WsWatchInfoExStore->BindComplete = WsWatchInfoExStoreBindComplete;
+
     }
+
+    //
+    // Forcibly set all the trace stores' AllocateRecordsWithTimestamp function
+    // pointers to the suspended version.  The normal allocator will be restored
+    // once the bind complete successfully occurs.
+    //
+
+    SuspendedAllocator = SuspendedTraceStoreAllocateRecordsWithTimestamp;
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        TraceStore = &TraceStores->Stores[StoreIndex];
+        TraceStore-AllocateRecordsWithTimestamp = SuspendedAllocator;
+    }
+
+    //
+    // Submit the bind metadata info work items for each trace store to the
+    // threadpool.
+    //
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
         TraceStore = &TraceStores->Stores[StoreIndex];
@@ -458,18 +549,6 @@ Return Value:
     //
 
     if (ContextFlags.AsyncInitialization) {
-
-        //
-        // N.B.: We should replace all of the allocator functions at this point
-        //       (e.g. AllocateRecords) with a placeholder function that simply
-        //       does a WaitForSingleObject() on the trace store's BindComplete
-        //       event.  When the binding actually has been completed, we would
-        //       set this event but also do an interlocked exchange pointer on
-        //       the underlying function and swap in the "live" AllocateRecords.
-        //       This would remove the need for callers to check for the state
-        //       of the context before attempting to dispatch allocations.
-        //
-
         return TRUE;
     }
 
@@ -497,6 +576,10 @@ Return Value:
         return TRUE;
     }
 
+    //
+    // Intentional follow-on to error handling.
+    //
+
 Error:
 
 #define CLEANUP_WORK(Name)                                       \
@@ -517,6 +600,16 @@ Error:
     CLEANUP_WORK(BindTraceStore);
     CLEANUP_WORK(ReadonlyNonStreamingBindComplete);
 
+    if (TraceContext->CleanupThreadpoolMembersWork) {
+        CloseThreadpoolWork(TraceContext->CleanupThreadpoolMembersWork);
+        TraceContext->CleanupThreadpoolMembersWork = NULL;
+    }
+
+    if (TraceContext->GetWorkingSetChangesTimer) {
+        CloseThreadpoolTimer(TraceContext->GetWorkingSetChangesTimer);
+        TraceContext->GetWorkingSetChangesTimer = NULL;
+    }
+
     return FALSE;
 }
 
@@ -530,6 +623,7 @@ InitializeReadonlyTraceContext(
     PTRACE_SESSION TraceSession,
     PTRACE_STORES TraceStores,
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment,
+    PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment,
     PTRACE_CONTEXT_FLAGS TraceContextFlags,
     PVOID UserData
     )
@@ -562,6 +656,11 @@ Arguments:
     ThreadpoolCallbackEnvironment - Supplies a pointer to a threadpool callback
         environment to use for the trace context.  This threadpool will be used
         to submit various asynchronous thread pool memory map operations.
+
+    CancellationThreadpoolCallbackEnvironment - Supplies a pointer to a
+        cancellation threadpool callback environment to use for the trace
+        context.  Threadpool worker threads can submit work to this pool that
+        trigger thread group cancellations safely.
 
     TraceContextFlags - Supplies an optional pointer to a TRACE_CONTEXT_FLAGS
         structure to use for the trace context.  The Readonly flag will always
@@ -602,6 +701,7 @@ Return Value:
                                   NULL,
                                   TraceStores,
                                   ThreadpoolCallbackEnvironment,
+                                  CancellationThreadpoolCallbackEnvironment,
                                   &Flags,
                                   UserData);
 }

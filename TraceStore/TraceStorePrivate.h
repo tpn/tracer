@@ -651,6 +651,28 @@ VOID
 typedef BIND_TRACE_STORE_CALLBACK *PBIND_TRACE_STORE_CALLBACK;
 BIND_TRACE_STORE_CALLBACK BindTraceStoreCallback;
 
+typedef
+VOID
+(CALLBACK CLEANUP_THREADPOOL_MEMBERS_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef CLEANUP_THREADPOOL_MEMBERS_CALLBACK \
+      *PCLEANUP_THREADPOOL_MEMBERS_CALLBACK;
+CLEANUP_THREADPOOL_MEMBERS_CALLBACK CleanupThreadpoolMembersCallback;
+
+typedef
+VOID
+(CALLBACK GET_WORKING_SET_CHANGES_TIMER_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef GET_WORKING_SET_CHANGES_TIMER_CALLBACK \
+      *PGET_WORKING_SET_CHANGES_TIMER_CALLBACK;
+GET_WORKING_SET_CHANGES_TIMER_CALLBACK GetWorkingSetChangesTimerCallback;
+
 //
 // TraceStoreMemory-map related inline functions.
 //
@@ -1103,6 +1125,114 @@ RecordTraceStoreAllocationTimestamp(
     return TRUE;
 }
 
+VOID
+SuspendTraceStoreAllocations(
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine suspends trace store allocations for a given trace store.
+    This involves resetting the trace store's resume allocation event, then
+    doing an interlocked pointer exchange on the allocate records function
+    pointer; swapping the active one with the suspended one, such that future
+    allocations go through the suspension code path (and wait on the resume
+    event we just set).
+
+    N.B. Only the AllocateRecordsWithTimestamp function pointer needs to be
+         exchanged; the AllocateRecords function simply calls this one.
+
+    N.B. No validation is done with regards to the current state of the
+         trace store (i.e. ensuring allocations are currently active before
+         suspending).
+
+Arguments:
+
+    TraceStore - Supplies a pointer to the TRACE_STORE structure for which
+        allocations are to be suspended.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    //
+    // Reset *must* come before the interlocked exchange.
+    //
+
+    ResetEvent(TraceStore->ResumeAllocationsEvent);
+
+    InterlockedExchangePointer(
+        &TraceStore->AllocateRecordsWithTimestamp,
+        SuspendedTraceStoreAllocateRecordsWithTimestamp
+    );
+
+    //
+    // Poll the active allocator count.  We need to ensure no threads are
+    // within the allocator's body before we return to our caller.
+    //
+
+    while (TraceStore->ActiveAllocators > 0) {
+
+        //
+        // Give up our quantum and allow other runnable threads on this core
+        // to run.
+        //
+        // N.B. We may need to profile this and see if YieldProcessor() is more
+        //      appropriate.
+        //
+
+        SwitchToThread();
+    }
+}
+
+VOID
+ResumeTraceStoreAllocations(
+    _In_ PTRACE_STORE TraceStore
+    )
+/*++
+
+Routine Description:
+
+    This routine resumes trace store allocations for a given trace store.
+    This involves setting the trace store's resume allocation event, then
+    doing an interlocked pointer exchange on the allocate records function
+    pointer; swapping the active one (which will be the suspended allocator)
+    with the normal one, such that future allocations are satisfied normally.
+
+    N.B. Only the AllocateRecordsWithTimestamp function pointer needs to be
+         exchanged; the AllocateRecords function simply calls this one.
+
+    N.B. No validation is done with regards to the current state of the
+         trace store (i.e. ensuring allocations are currently suspended before
+         resuming).
+
+Arguments:
+
+    TraceStore - Supplies a pointer to the TRACE_STORE structure for which
+        allocations are to be resumed.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    InterlockedExchangePointer(
+        &TraceStore->AllocateRecordsWithTimestamp,
+        SuspendedTraceStoreAllocateRecordsWithTimestamp
+    );
+
+    //
+    // SetEvent *must* come after the interlocked exchange.
+    //
+
+    SetEvent(TraceStore->ResumeAllocationsEvent);
+}
 
 //
 // TraceStoreAllocator-related function declarations.
@@ -1442,8 +1572,9 @@ Routine Description:
     This routine pushes a trace store that has encountered an unrecoverable
     error (such as CreateFileMapping() failing) to the trace context's failure
     list, atomically increments the context's failure count, and, if it is the
-    first failure, closes all outstanding threadpool work items and sets the
-    loading complete event.
+    first failure, submits a context cleanup work item to the cancellation
+    threadpool, which will have the effect of terminating other threadpool
+    callbacks in progress and eventually set the loading complete event.
 
 Arguments:
 
@@ -1457,32 +1588,52 @@ Return Value:
 
 --*/
 {
-
-    __debugbreak();
     PushTraceStore(&TraceContext->FailedListHead, TraceStore);
 
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
 
         //
-        // XXX: we can't call CloseThreadpoolCleanupGroupMembers() from within
-        // the same threadpool without running into all sorts of havoc; this
-        // needs to be dispatched to an alternate threadpool.
+        // This is the first failure.  Submit a work item to close threadpool
+        // cleanup group members from the cancellation threadpool.
         //
 
-        //BOOL CancelPendingCallbacks = TRUE;
+        SubmitThreadpoolWork(TraceContext->CleanupThreadpoolMembersWork);
+    }
+}
+
+
+FORCEINLINE
+VOID
+TraceContextFailure(
+    _In_ PTRACE_CONTEXT TraceContext
+    )
+/*++
+
+Routine Description:
+
+    This routine atomically increments the context's failure count, and,
+    if it is the first failure, submits a context cleanup work item to the
+    cancellation threadpool, which will have the effect of terminating other
+    threadpool callbacks in progress.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
 
         //
-        // This is the first failure.  Close all threadpool group items and
-        // set the failure event.
+        // This is the first failure.  Submit a work item to close threadpool
+        // cleanup group members from the cancellation threadpool.
         //
 
-        //CloseThreadpoolCleanupGroupMembers(
-        //    TraceContext->ThreadpoolCleanupGroup,
-        //    CancelPendingCallbacks,
-        //    NULL
-        //);
-
-        SetEvent(TraceContext->LoadingCompleteEvent);
+        SubmitThreadpoolWork(TraceContext->CleanupThreadpoolMembersWork);
     }
 }
 
@@ -1818,6 +1969,40 @@ Return Value:
 
     return;
 }
+
+//
+// TraceStoreWorkingSet-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_held_(TraceContext->WorkingSetChangesLock)
+_Maybe_raises_SEH_exception_
+BOOL
+(GET_WORKING_SET_CHANGES)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef GET_WORKING_SET_CHANGES *PGET_WORKING_SET_CHANGES;
+GET_WORKING_SET_CHANGES GetWorkingSetChanges;
+
+//
+// TraceStoreWorkingSet-related macros.
+//
+
+#define AcquireWorkingSetChangesLock(TraceContext) \
+    AcquireSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
+
+#define TryAcquireWorkingSetChangesLock(TraceContext) \
+    TryAcquireSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
+
+#define ReleaseWorkingSetChangesLock(TraceContext) \
+    ReleaseSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
+
+//
+// TraceStoreWorkingSet-related inline functions.
+//
+
 
 
 #ifdef __cplusplus

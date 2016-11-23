@@ -276,17 +276,17 @@ typedef PY_TRACE_CALLBACK *PPY_TRACE_CALLBACK;
 PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent1;
 PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent2;
 
-typedef struct _PYTHON_TRACE_CONTEXT {
+typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
 
-    ULONG              Size;                                 // 4    0   4
+    _Field_range_(==, sizeof(struct _PYTHON_TRACE_CONTEXT)) ULONG Size;
 
-    PYTHON_TRACE_CONTEXT_FLAGS Flags;                        // 4    4   8
+    PYTHON_TRACE_CONTEXT_FLAGS Flags;
 
-    PRTL               Rtl;                                  // 8    8   16
-    PPYTHON            Python;                               // 8    16  24
-    PTRACE_CONTEXT     TraceContext;                         // 8    24  32
-    PPY_TRACE_CALLBACK PythonTraceFunction;                  // 8    32  40
-    PVOID              UserData;                             // 8    40  48
+    PRTL               Rtl;
+    PPYTHON            Python;
+    PTRACE_CONTEXT     TraceContext;
+    PPY_TRACE_CALLBACK PythonTraceFunction;
+    PVOID              UserData;
     PALLOCATOR         Allocator;
 
     ULONGLONG          Depth;
@@ -307,8 +307,6 @@ typedef struct _PYTHON_TRACE_CONTEXT {
     LARGE_INTEGER MaxTrueRefCount;
     LARGE_INTEGER MaxZeroRefCount;
     LARGE_INTEGER MaxFalseRefCount;
-
-    PPYTHON_FUNCTION FirstFunction;
 
     PSTRING_TABLE ModuleFilterStringTable;
 
@@ -370,14 +368,14 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (INITIALIZE_PYTHON_TRACE_CONTEXT)(
-    _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
-    _Out_bytecap_(*SizeOfPythonTraceContext) PPYTHON_TRACE_CONTEXT
-        PythonTraceContext,
+    _In_opt_ PRTL Rtl,
+    _In_opt_ PALLOCATOR Allocator,
+    _Out_bytecap_(*SizeOfPythonTraceContext)
+        PPYTHON_TRACE_CONTEXT PythonTraceContext,
     _Inout_ PULONG SizeOfPythonTraceContext,
-    _In_ PPYTHON Python,
-    _In_ PTRACE_CONTEXT TraceContext,
-    _In_ PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
+    _In_opt_ PPYTHON Python,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_opt_ PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
     _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;

@@ -40,10 +40,11 @@ AllocatePythonTraceEvent2(
     );
 }
 
-_Use_decl_annotations_
+_Check_return_
+_Success_(return != 0)
 PPYTHON_EVENT_TRAITS_EX
 AllocatePythonEventTraitsEx(
-    PTRACE_STORE TraceStore
+    _In_ PTRACE_STORE TraceStore
     )
 {
     ULARGE_INTEGER NumberOfRecords = { 1 };

@@ -340,6 +340,13 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     TP_CALLBACK_ENVIRON ThreadpoolCallbackEnviron;
 
     //
+    // A threadpool with 1 thread limited to cancellations.
+    //
+
+    PTP_POOL CancellationThreadpool;
+    TP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnviron;
+
+    //
     // Python-specific initializers.
     //
 

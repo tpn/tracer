@@ -377,10 +377,27 @@ typedef struct _TRACE_STORE_STATS {
     ULONG BlockedAllocations;
 
     //
-    // Pad out to 32 bytes.
+    // Tracks how many times an allocation was suspended.  That is, how many
+    // times the SuspendedAllocateRecordsWithTimestamp() was entered instead of
+    // the normal AllocateRecordsWithTimestamp() call.  Allocators are suspended
+    // whenever asynchronous trace store preparation has not completed (for
+    // either initialization, or consumption/activation of new memory maps) and
+    // the trace store cannot service allocation requests.  If the suspended
+    // allocator routine is entered, it means the underlying function pointer
+    // was not updated by the time a thread issued an allocation.  The suspended
+    // routine will increment this counter, take a timestamp snapshot, and then
+    // wait on the ResumeAllocationsEvent.
     //
 
-    ULONG Unused[2];
+    volatile ULONG SuspendedAllocations;
+
+    //
+    // This tracks the total number of microseconds calling code was suspended
+    // whilst waiting for the resume allocations event or the initial bind
+    // complete event to be set.
+    //
+
+    volatile ULONG ElapsedSuspensionTimeInMicroseconds;
 
 } TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
 
@@ -970,6 +987,12 @@ typedef struct _TRACE_FLAGS {
 
             ULONG NoTruncate:1;
 
+            //
+            // When set, enables tracing of the process's working set.
+            //
+
+            ULONG EnableWorkingSetTracing:1;
+
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
@@ -1037,7 +1060,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     volatile ULONG FailedCount;
 
-    ULONG Padding1;
+    ULONG LastError;
 
     PRTL Rtl;
     PALLOCATOR Allocator;
@@ -1046,6 +1069,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
+    PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment;
 
     //
     // This event is set when all trace stores have been initialized or an
@@ -1054,15 +1078,28 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     HANDLE LoadingCompleteEvent;
 
-    PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
-
-    PVOID Padding2;
     TRACE_STORE_WORK BindMetadataInfoStoreWork;
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
 
+    //
+    // These items are associated with the cancellation threadpool, not the
+    // normal one.  This allows normal worker threads that encounter an error
+    // to trigger a cleanup in a safe manner.
+    //
+
     SLIST_HEADER FailedListHead;
+    PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
+    PTP_WORK CleanupThreadpoolMembersWork;
+
+    //
+    // Working set tracing.  Only one thread is permitted to enter this
+    // callback at a time, which is controlled by the WorkingSetChangesLock.
+    //
+
+    SRWLOCK WorkingSetChangesLock;
+    PTP_TIMER GetWorkingSetChangesTimer;
 
     volatile ULONG ActiveWorkItems;
 
@@ -1120,14 +1157,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
             ULONG TraceStoreSessionId:1;
             ULONG TraceStoreStringArrayId:1;
             ULONG TraceStoreStringTableId:1;
+            ULONG TraceStoreEventTraitsExId:1;
+            ULONG TraceStoreWsWatchInfoExId:1;
+            ULONG TraceStoreWorkingSetExId:1;
         };
     };
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
-
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, Rtl) == 16);
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, UserData) == 56);
-C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, LoadingCompleteEvent) == 72);
 
 typedef struct _TRACE_STORE_STRUCTURE_SIZES {
     ULONG TraceStore;
@@ -1141,143 +1177,6 @@ typedef struct _TRACE_STORE_STRUCTURE_SIZES {
     ULONG TraceStoreAddressRange;
     ULONG AddressBitCounts;
 } TRACE_STORE_STRUCTURE_SIZES, *PTRACE_STORE_STRUCTURE_SIZES;
-
-typedef
-VOID
-(CALLBACK TRACE_STORES_LOADING_COMPLETE_CALLBACK)(
-    _In_ struct _READONLY_TRACE_CONTEXT *TraceContextReadonly,
-    _In_ PVOID UserContext
-    );
-typedef TRACE_STORES_LOADING_COMPLETE_CALLBACK \
-      *PTRACE_STORES_LOADING_COMPLETE_CALLBACK;
-
-typedef struct
-_Struct_size_bytes_(sizeof(ULONG))
-_READONLY_TRACE_CONTEXT_FLAGS {
-    ULONG Valid:1;
-    ULONG Unused:31;
-} READONLY_TRACE_CONTEXT_FLAGS, *PREADONLY_TRACE_CONTEXT_FLAGS;
-
-typedef struct _Struct_size_bytes_(SizeOfStruct) _READONLY_TRACE_CONTEXT {
-
-    //
-    // Size of the structure, in bytes.
-    //
-
-    _Field_range_(==, sizeof(struct _READONLY_TRACE_CONTEXT))
-        USHORT SizeOfStruct;
-
-    //
-    // Pad out to 4 bytes.
-    //
-
-    USHORT Padding1;                                            // 4    0     4
-
-    READONLY_TRACE_CONTEXT_FLAGS Flags;                         // 4    4     8
-
-    PRTL Rtl;                                                   // 8    8    16
-    PALLOCATOR Allocator;                                       // 8   16    24
-    PUNICODE_STRING Directory;                                  // 8   24    32
-    PVOID UserData;                                             // 8   32    40
-    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;         // 8   40    48
-    PTRACE_STORES TraceStores;                                  // 8   48    56
-
-    //
-    // This event is signaled when all trace stores have finished loading.
-    //
-
-    HANDLE LoadingCompleteEvent;                                // 8   56    64
-
-    //
-    // Second cache line.
-    //
-
-    //
-    // An optional callback that will be invoked when the trace stores have
-    // finished loading.
-    //
-                                                                // 8   64    72
-    PTRACE_STORES_LOADING_COMPLETE_CALLBACK TraceStoresLoadingCompleteCallback;
-
-    //
-    // Threadpool work items.
-    //
-
-    //
-    // This work item simply calls the TraceStoresLoadingCompleteCallback if
-    // set when the loading has completed.
-    //
-
-    PTP_WORK TraceStoresLoadingCompleteWork;                    // 8   72    80
-
-    //
-    // Our SLIST_HEADER for trace store load work items.
-    //
-
-    SLIST_HEADER LoadTraceStoreMaps;                            // 16  80    96
-
-    //
-    // This work item is used for loading all trace stores.
-    //
-
-    PTP_WORK LoadTraceStoreWork;                                // 8   96   104
-
-    //
-    // Pad out the rest of the second cache line.
-    //
-
-    CHAR Padding2[24];                                          // 24  104  128
-
-    //
-    // Third cache line.
-    //
-
-    //
-    // Make sure the volatile counter is on a separate cache line.  This will
-    // be incremented to match the number of concurrent loads in progress.  As
-    // each load completes, the counter will be decremented.  Once it reaches
-    // zero, the AllTraceStoresAreReadyEvent will be signaled and, if set, the
-    // TraceStoresLoadingCompleteCallback will be dispatched to the threadpool.
-    //
-
-    volatile ULONG ConcurrentLoadsInProgress;                   // 4 128    132
-
-    //
-    // Pad out the remaining third cache line.
-    //
-
-    CHAR Padding3[60];                                          // 60 132   192
-
-    //
-    // And reserve a forth cache line in order to ensure we're a power-of-2
-    // size.
-    //
-
-    ULONGLONG Padding4[8];                                      // 64 192   256
-
-} READONLY_TRACE_CONTEXT, *PREADONLY_TRACE_CONTEXT;
-
-//
-// Verify field alignments.  The FIELD_OFFSETS() are mainly there to provide
-// an easier way to track down why the final C_ASSERT(sizeof()) fails.  There
-// only field that has a strict alignment is the LoadsInProgress.
-//
-
-C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT,
-                      TraceStoresLoadingCompleteCallback) == 64);
-C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, LoadTraceStoreWork) == 96);
-C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, Padding2) == 104);
-C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT,
-                      ConcurrentLoadsInProgress) == 128);
-C_ASSERT(FIELD_OFFSET(READONLY_TRACE_CONTEXT, Padding4) == 192);
-C_ASSERT(sizeof(READONLY_TRACE_CONTEXT) == 256);
-
-typedef struct _TRACE_STORE_THREADPOOL {
-    PTP_POOL Threadpool;
-    TP_CALLBACK_ENVIRON CallbackEnvironment;
-    PTP_WORK ExtendTraceStoreCallback;
-    HANDLE ExtendTraceStoreEvent;
-} TRACE_STORE_THREADPOOL, *PTRACE_STORE_THREADPOOL;
 
 typedef struct _TRACE_STORES TRACE_STORES, *PTRACE_STORES;
 
@@ -1451,6 +1350,8 @@ typedef struct _TRACE_STORE {
     HANDLE                  NextMemoryMapAvailableEvent;
     HANDLE                  AllMemoryMapsAreFreeEvent;
     HANDLE                  ReadonlyMappingCompleteEvent;
+    HANDLE                  BindCompleteEvent;
+    HANDLE                  ResumeAllocationsEvent;
     HANDLE                  RelocationCompleteWaitEvent;
     PHANDLE                 RelocationCompleteWaitEvents;
 
@@ -1478,6 +1379,8 @@ typedef struct _TRACE_STORE {
     volatile LONG   MetadataBindsInProgress;
     volatile LONG   PrepareReadonlyNonStreamingMapsInProgress;
     volatile LONG   ReadonlyNonStreamingBindCompletesInProgress;
+
+    volatile LONG   ActiveAllocators;
 
     //
     // When readonly, indicates the number of other trace stores we're dependent
@@ -1570,9 +1473,10 @@ typedef struct _TRACE_STORE {
     // Allocator functions.
     //
 
-    PALLOCATE_RECORDS AllocateRecords;
-    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestamp;
-    PVOID GetNextAlignmentUnimplemented;
+    volatile PALLOCATE_RECORDS AllocateRecords;
+    volatile PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestamp;
+    volatile PALLOCATE_RECORDS_WITH_TIMESTAMP
+        SuspendedAllocateRecordsWithTimestamp;
 
     //
     // Bind complete callback.  This is called as the final step by BindStore()
@@ -1676,16 +1580,6 @@ typedef struct _TRACE_STORE {
 #endif
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
-
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareMemoryMaps) == 16);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrepareReadonlyMemoryMaps) == 32);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, NextMemoryMaps) == 48);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, FreeMemoryMaps) == 64);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, PrefaultMemoryMaps) == 80);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, SingleMemoryMap) == 96);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, ListEntry) == 160);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE, Rtl) == 176);
-//C_ASSERT(sizeof(TRACE_STORE) == 656);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -1895,6 +1789,7 @@ BOOL
     _In_opt_ PTRACE_SESSION        TraceSession,
     _In_opt_ PTRACE_STORES         TraceStores,
     _In_opt_ PTP_CALLBACK_ENVIRON  ThreadpoolCallbackEnvironment,
+    _In_opt_ PTP_CALLBACK_ENVIRON  CancellationThreadpoolCallbackEnvironment,
     _In_opt_ PTRACE_CONTEXT_FLAGS  TraceContextFlags,
     _In_opt_ PVOID                 UserData
     );

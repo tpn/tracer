@@ -143,6 +143,7 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+#include "Time.h"
 #include "Memory.h"
 #include "Commandline.h"
 

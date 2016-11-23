@@ -844,6 +844,7 @@ LoadPythonDll:
     COPY_FLAG(DisableFileFlagSequentialScan);
     COPY_FLAG(EnableFileFlagRandomAccess);
     COPY_FLAG(EnableFileFlagWriteThrough);
+    COPY_FLAG(EnableWorkingSetTracing);
 
     //
     // Get the required size of the TRACE_STORES structure.
@@ -929,6 +930,22 @@ LoadPythonDll:
     );
 
     //
+    // Create a cancellation threadpool with one thread.
+    //
+
+    Session->CancellationThreadpool = CreateThreadpool(NULL);
+    if (!Session->CancellationThreadpool) {
+        OutputDebugStringA("CreateThreadpool() failed for cancellation.\n");
+        goto Error;
+    }
+
+    SetThreadpoolThreadMinimum(Session->CancellationThreadpool, 1);
+    SetThreadpoolThreadMaximum(Session->CancellationThreadpool, 1);
+    InitializeThreadpoolEnvironment(
+        &Session->CancellationThreadpoolCallbackEnviron
+    );
+
+    //
     // Clear the trace context flags.
     //
 
@@ -945,6 +962,7 @@ LoadPythonDll:
         NULL,           // TraceSession
         NULL,           // TraceStores
         NULL,           // ThreadpoolCallbackEnviron
+        NULL,           // CancellationThreadpoolCallbackEnviron
         NULL,           // TraceContextFlags
         NULL            // UserData
     );
@@ -962,6 +980,7 @@ LoadPythonDll:
         Session->TraceSession,
         Session->TraceStores,
         &Session->ThreadpoolCallbackEnviron,
+        &Session->CancellationThreadpoolCallbackEnviron,
         NULL,
         (PVOID)Session
     );

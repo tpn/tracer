@@ -512,7 +512,6 @@ InitializePythonTraceContext(
 
     Python->InitializePythonRuntimeTables(Python);
 
-    Context->FirstFunction = NULL;
     QueryPerformanceFrequency(&Context->Frequency);
 
     Rtl->PfxInitialize(&Context->ModuleFilterPrefixTree);

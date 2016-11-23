@@ -115,7 +115,7 @@ BOOL
 InitializePythonTraceEvent(
     _In_ PPYTHON_TRACE_CONTEXT Context,
     _In_ LONG EventType,
-    _In_ PPYTHON_EVENT_TRAITS EventTraitsPointer
+    _Out_ PPYTHON_EVENT_TRAITS EventTraitsPointer
     )
 {
     PYTHON_EVENT_TRAITS EventTraits;
