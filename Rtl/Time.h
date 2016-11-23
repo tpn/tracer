@@ -50,7 +50,7 @@ FORCEINLINE
 VOID
 MicrosecondsToRelativeThreadpoolTime(
     _In_ ULONG Microseconds,
-    _IN_ PFILETIME Filetime
+    _In_ PFILETIME Filetime
     )
 /*++
 
@@ -64,7 +64,7 @@ Arguments:
     Microseconds - Supplies the number of microseconds to convert.
 
     Filetime - Supplies a pointer to a variable that will receive the number
-        of microseconds converted into a relative FILETIME represntation.
+        of microseconds converted into a relative FILETIME representation.
 
 Return Value:
 
@@ -88,7 +88,7 @@ FORCEINLINE
 VOID
 MillisecondsToRelativeThreadpoolTime(
     _In_ ULONG Milliseconds,
-    _IN_ PFILETIME Filetime
+    _In_ PFILETIME Filetime
     )
 /*++
 
@@ -102,7 +102,7 @@ Arguments:
     Milliseconds - Supplies the number of milliseconds to convert.
 
     Filetime - Supplies a pointer to a variable that will receive the number
-        of milliseconds converted into a relative FILETIME represntation.
+        of milliseconds converted into a relative FILETIME representation.
 
 Return Value:
 
@@ -124,9 +124,9 @@ Return Value:
 
 FORCEINLINE
 VOID
-SecondsRelativeThreadpoolTime(
+SecondsToRelativeThreadpoolTime(
     _In_ ULONG Seconds,
-    _IN_ PFILETIME Filetime
+    _In_ PFILETIME Filetime
     )
 /*++
 
@@ -140,7 +140,7 @@ Arguments:
     Seconds - Supplies the number of seconds to convert.
 
     Filetime - Supplies a pointer to a variable that will receive the number
-        of seconds converted into a relative FILETIME represntation.
+        of seconds converted into a relative FILETIME representation.
 
 Return Value:
 
