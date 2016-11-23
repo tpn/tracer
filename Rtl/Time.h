@@ -50,7 +50,7 @@ FORCEINLINE
 VOID
 MicrosecondsToRelativeThreadpoolTime(
     _In_ ULONG Microseconds,
-    _In_ PFILETIME Filetime
+    _Out_ PFILETIME FileTime
     )
 /*++
 
@@ -63,7 +63,7 @@ Arguments:
 
     Microseconds - Supplies the number of microseconds to convert.
 
-    Filetime - Supplies a pointer to a variable that will receive the number
+    FileTime - Supplies a pointer to a variable that will receive the number
         of microseconds converted into a relative FILETIME representation.
 
 Return Value:
@@ -78,8 +78,8 @@ Return Value:
     Micro.QuadPart = Microseconds;
     Relative.QuadPart = (_MICROSECOND_RELATIVE * Micro.QuadPart);
 
-    Filetime->dwLowDateTime = Relative.LowPart;
-    Filetime->dwHighDateTime = Relative.HighPart;
+    FileTime->dwLowDateTime = Relative.LowPart;
+    FileTime->dwHighDateTime = Relative.HighPart;
 
     return;
 }
@@ -88,7 +88,7 @@ FORCEINLINE
 VOID
 MillisecondsToRelativeThreadpoolTime(
     _In_ ULONG Milliseconds,
-    _In_ PFILETIME Filetime
+    _Out_ PFILETIME FileTime
     )
 /*++
 
@@ -101,7 +101,7 @@ Arguments:
 
     Milliseconds - Supplies the number of milliseconds to convert.
 
-    Filetime - Supplies a pointer to a variable that will receive the number
+    FileTime - Supplies a pointer to a variable that will receive the number
         of milliseconds converted into a relative FILETIME representation.
 
 Return Value:
@@ -116,8 +116,8 @@ Return Value:
     Milli.QuadPart = Milliseconds;
     Relative.QuadPart = (_MILLISECOND_RELATIVE * Milli.QuadPart);
 
-    Filetime->dwLowDateTime = Relative.LowPart;
-    Filetime->dwHighDateTime = Relative.HighPart;
+    FileTime->dwLowDateTime = Relative.LowPart;
+    FileTime->dwHighDateTime = Relative.HighPart;
 
     return;
 }
@@ -126,7 +126,7 @@ FORCEINLINE
 VOID
 SecondsToRelativeThreadpoolTime(
     _In_ ULONG Seconds,
-    _In_ PFILETIME Filetime
+    _Out_ PFILETIME FileTime
     )
 /*++
 
@@ -139,7 +139,7 @@ Arguments:
 
     Seconds - Supplies the number of seconds to convert.
 
-    Filetime - Supplies a pointer to a variable that will receive the number
+    FileTime - Supplies a pointer to a variable that will receive the number
         of seconds converted into a relative FILETIME representation.
 
 Return Value:
@@ -154,8 +154,8 @@ Return Value:
     Second.QuadPart = Seconds;
     Relative.QuadPart = (_SECOND_RELATIVE * Second.QuadPart);
 
-    Filetime->dwLowDateTime = Relative.LowPart;
-    Filetime->dwHighDateTime = Relative.HighPart;
+    FileTime->dwLowDateTime = Relative.LowPart;
+    FileTime->dwHighDateTime = Relative.HighPart;
 
     return;
 }
