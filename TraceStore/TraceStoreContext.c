@@ -129,6 +129,10 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
     if (!ARGUMENT_PRESENT(TraceStores)) {
         return FALSE;
     }
@@ -386,6 +390,7 @@ Return Value:
     TraceContext->TraceSession = TraceSession;
     TraceContext->TraceStores = TraceStores;
     TraceContext->UserData = UserData;
+    TraceContext->Rtl = Rtl;
     TraceContext->Allocator = Allocator;
     TraceContext->TracerConfig = TracerConfig;
 
