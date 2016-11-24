@@ -1592,6 +1592,8 @@ Return Value:
 
 --*/
 {
+    __debugbreak();
+
     PushTraceStore(&TraceContext->FailedListHead, TraceStore);
 
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
@@ -1630,6 +1632,8 @@ Return Value:
 
 --*/
 {
+    __debugbreak();
+
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
 
         //

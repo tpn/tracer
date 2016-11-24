@@ -44,6 +44,7 @@ SRWLOCK = PVOID
 TP_VERSION = DWORD
 PTP_WORK = PVOID
 PTP_POOL = PVOID
+PTP_TIMER = PVOID
 PTP_CLEANUP_GROUP = PVOID
 PTP_CLEANUP_GROUP_CANCEL_CALLBACK = PVOID
 TP_CALLBACK_PRIORITY = DWORD
@@ -334,6 +335,68 @@ class FILE_COMPRESSION_INFO(Structure):
         return buf
 
 PFILE_COMPRESSION_INFO = POINTER(FILE_COMPRESSION_INFO)
+
+class _PSAPI_WORKING_SET_EX_BLOCK_VALID(Structure):
+    _fields_ = [
+        ('Valid', ULONGLONG, 1),
+        ('ShareCount', ULONGLONG, 3),
+        ('Win32Protection', ULONGLONG, 11),
+        ('Shared', ULONGLONG, 1),
+        ('Node', ULONGLONG, 6),
+        ('Locked', ULONGLONG, 1),
+        ('LargePage', ULONGLONG, 1),
+        ('Reserved', ULONGLONG, 7),
+        ('Bad', ULONGLONG, 1),
+        ('ReservedUlong', ULONGLONG, 32),
+    ]
+
+#class _PSAPI_WORKING_SET_EX_BLOCK_INVALID(Structure):
+#    _fields_ = [
+#        ('Valid', ULONGLONG, 1),
+#        ('Reserved0', ULONGLONG, 14),
+#        ('Shared', 1),
+#        ('Reserved1', ULONGLONG, 15),
+#        ('Bad', ULONGLONG, 1),
+#        ('ReservedUlong', ULONGLONG, 32),
+#    ]
+
+#class PSAPI_WORKING_SET_EX_BLOCK(Union):
+#    _fields_ = [
+#        ('Flags', ULONGLONG),
+#        ('v', _PSAPI_WORKING_SET_EX_BLOCK_VALID),
+#        ('i', _PSAPI_WORKING_SET_EX_BLOCK_INVALID),
+#    ]
+PSAPI_WORKING_SET_EX_BLOCK = _PSAPI_WORKING_SET_EX_BLOCK_VALID
+PPSAPI_WORKING_SET_EX_BLOCK = POINTER(PSAPI_WORKING_SET_EX_BLOCK)
+
+class PSAPI_WORKING_SET_EX_INFORMATION(Structure):
+    _fields_ = [
+        ('VirtualAddress', PVOID),
+        ('VirtualAttributes', _PSAPI_WORKING_SET_EX_BLOCK_VALID),
+    ]
+
+    @property
+    def attributes(self):
+        return
+        if self.VirtualAttributes.v.Valid:
+            return self.VirtualAttributes.v
+        else:
+            return self.VirtualAttributes.i
+PPSAPI_WORKING_SET_EX_INFORMATION = POINTER(PSAPI_WORKING_SET_EX_INFORMATION)
+
+class PSAPI_WS_WATCH_INFORMATION(Structure):
+    _fields_ = [
+        ('FaultingPc', PVOID),
+        ('FaultingVa', PVOID),
+    ]
+
+class PSAPI_WS_WATCH_INFORMATION_EX(Structure):
+    _fields_ = [
+        ('BasicInfo', PSAPI_WS_WATCH_INFORMATION),
+        ('FaultingThreadId', ULONG_PTR),
+        ('Flags', ULONG_PTR),
+    ]
+PPSAPI_WS_WATCH_INFORMATION_EX = POINTER(PSAPI_WS_WATCH_INFORMATION_EX)
 
 # Splay
 class RTL_SPLAY_LINKS(Structure):

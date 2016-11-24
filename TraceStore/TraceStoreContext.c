@@ -93,6 +93,8 @@ Return Value:
     DWORD Result;
     TRACE_CONTEXT_FLAGS ContextFlags;
     HANDLE Event;
+    HANDLE ResumeAllocationEvent;
+    HANDLE BindCompleteEvent;
     PTRACE_STORE_WORK Work;
     PTRACE_STORE TraceStore;
     PALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedAllocator;
@@ -492,6 +494,7 @@ Return Value:
 
     } else if (TraceStores->Flags.EnableWorkingSetTracing) {
 
+
         PTRACE_STORE WsWatchInfoExStore;
 
         //
@@ -529,7 +532,13 @@ Return Value:
         // soon as the backing trace store is available.
         //
 
-        WsWatchInfoExStore = &TraceStores->Stores[TraceStoreWsWatchInfoExIndex];
+        WsWatchInfoExStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreWsWatchInfoExId
+            )
+        );
+
         WsWatchInfoExStore->BindComplete = WsWatchInfoExStoreBindComplete;
 
     }
@@ -537,13 +546,41 @@ Return Value:
     //
     // Forcibly set all the trace stores' AllocateRecordsWithTimestamp function
     // pointers to the suspended version.  The normal allocator will be restored
-    // once the bind complete successfully occurs.
+    // once the bind complete successfully occurs.  This also requires creating
+    // the resume allocations event now, as well as linking the trace store with
+    // the trace context so the TraceStoreQueryPerformanceCounter() call made
+    // within the suspended allocator will behave properly.
     //
 
     SuspendedAllocator = SuspendedTraceStoreAllocateRecordsWithTimestamp;
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+
+        //
+        // N.B.: We use ManualReset == TRUE here because we explicitly control
+        //       the state of the resume allocation event via SetEvent() and
+        //       ResetEvent().
+        //
+
+        ResumeAllocationEvent = CreateEvent(NULL, ManualReset, FALSE, NULL);
+        if (!ResumeAllocationEvent) {
+            goto Error;
+        }
+
+        //
+        // N.B.: We use ManualReset == TRUE for BindComplete because we always
+        //       want this to stay signaled once the binding has been complete.
+        //
+
+        BindCompleteEvent = CreateEvent(NULL, ManualReset, FALSE, NULL);
+        if (!BindCompleteEvent) {
+            goto Error;
+        }
+
         TraceStore = &TraceStores->Stores[StoreIndex];
+        TraceStore->TraceContext = TraceContext;
+        TraceStore->ResumeAllocationsEvent = ResumeAllocationEvent;
+        TraceStore->BindCompleteEvent = BindCompleteEvent;
         TraceStore->AllocateRecordsWithTimestamp = SuspendedAllocator;
     }
 

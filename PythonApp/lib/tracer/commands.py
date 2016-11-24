@@ -594,6 +594,9 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             tp_callback_env = TP_CALLBACK_ENVIRON()
             InitializeThreadpoolEnvironment(tp_callback_env)
             SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
             flags = TraceStore.TRACE_CONTEXT_FLAGS()
             flags.InitializeAsync = True
             ctx = TraceStore.TRACE_CONTEXT()
@@ -617,11 +620,13 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             success = TraceStore.InitializeReadonlyTraceContext(
                 byref(rtl),
                 byref(allocator),
+                tc,
                 byref(ctx),
                 byref(ctx_size),
                 cast(0, TraceStore.PTRACE_SESSION),
                 byref(ts),
                 byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
                 byref(flags),
                 cast(0, PVOID),
             )
@@ -778,6 +783,9 @@ class PrintAddressInfo(InvariantAwareCommand):
             tp_callback_env = TP_CALLBACK_ENVIRON()
             InitializeThreadpoolEnvironment(tp_callback_env)
             SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
             flags = TraceStore.TRACE_CONTEXT_FLAGS()
             flags.InitializeAsync = True
             ctx = TraceStore.TRACE_CONTEXT()
@@ -801,11 +809,13 @@ class PrintAddressInfo(InvariantAwareCommand):
             success = TraceStore.InitializeReadonlyTraceContext(
                 byref(rtl),
                 byref(allocator),
+                tc,
                 byref(ctx),
                 byref(ctx_size),
                 cast(0, TraceStore.PTRACE_SESSION),
                 byref(ts),
                 byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
                 byref(flags),
                 cast(0, PVOID),
             )
@@ -958,6 +968,7 @@ class LoadTrace(InvariantAwareCommand):
             ctx = create_and_initialize_readonly_trace_context(
                 rtl,
                 allocator,
+                tc,
                 ts,
             )
 

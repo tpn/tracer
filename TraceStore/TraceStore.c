@@ -648,7 +648,6 @@ Return Value:
         return FALSE;
     }
 
-
     if (IsSingleRecord(*TraceStore->pTraits)) {
 
         //
@@ -678,41 +677,6 @@ Return Value:
         );
 
         if (!TraceStore->NextMemoryMapAvailableEvent) {
-            return FALSE;
-        }
-
-        //
-        // Create the resume allocations event.
-        //
-
-        TraceStore->ResumeAllocationsEvent = (
-            CreateEvent(
-                NULL,
-                ManualReset,
-                FALSE,
-                NULL
-            )
-        );
-
-        if (!TraceStore->ResumeAllocationsEvent) {
-            return FALSE;
-        }
-
-        //
-        // Create the bind complete event.  This is set when allocations can
-        // start being serviced by the trace store.
-        //
-
-        TraceStore->BindCompleteEvent = (
-            CreateEvent(
-                NULL,
-                ManualReset,
-                FALSE,
-                NULL
-            )
-        );
-
-        if (!TraceStore->BindCompleteEvent) {
             return FALSE;
         }
 

@@ -41,8 +41,10 @@ from ..wintypes import (
     PSTRING,
     POINTER,
     PHANDLE,
+    SRWLOCK,
     FILETIME,
     PTP_WORK,
+    PTP_TIMER,
     CFUNCTYPE,
     ULONGLONG,
     RTL_BITMAP,
@@ -60,6 +62,8 @@ from ..wintypes import (
     TP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
     FILE_COMPRESSION_INFO,
+    PPSAPI_WS_WATCH_INFORMATION_EX,
+    PPSAPI_WORKING_SET_EX_INFORMATION,
 )
 
 from .Rtl import (
@@ -117,7 +121,9 @@ TraceStoreSessionId                 =   7
 TraceStoreStringArrayId             =   8
 TraceStoreStringTableId             =   9
 TraceStoreEventTraitsExId           =  10
-TraceStoreInvalidId                 =  11
+TraceStoreWsWatchInfoExId           =  11
+TraceStoreWsWorkingSetExInfoId      =  12
+TraceStoreInvalidId                 =  13
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -137,6 +143,8 @@ TraceStoreIdToName = {
     TraceStoreStringArrayId: 'StringArray',
     TraceStoreStringTableId: 'StringTable',
     TraceStoreEventTraitsExId: 'EventTraitsEx',
+    TraceStoreWsWatchInfoExId: 'WsWatchInfoEx',
+    TraceStoreWsWorkingSetExInfoId: 'WsWorkingSetExInfo',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -564,8 +572,7 @@ class TRACE_STORE_MEMORY_MAP(Structure):
 PTRACE_STORE_MEMORY_MAP = POINTER(TRACE_STORE_MEMORY_MAP)
 
 class TRACE_STORES(Structure):
-    def __iter__(self):
-        pass
+    pass
 PTRACE_STORES = POINTER(TRACE_STORES)
 
 class _TRACE_STORE_BITMAP(Structure):
@@ -581,6 +588,8 @@ class _TRACE_STORE_BITMAP(Structure):
         ('TraceStoreStringArrayId', ULONG, 1),
         ('TraceStoreStringTableId', ULONG, 1),
         ('TraceStoreEventTraitsExId', ULONG, 1),
+        ('TraceStoreWsWatchInfoExId', ULONG, 1),
+        ('TraceStoreWsWorkingSetExInfoId', ULONG, 1),
     ]
 
 class TRACE_STORE_BITMAP(Union):
@@ -601,33 +610,43 @@ class TRACE_CONTEXT(Structure):
         ('SizeOfStruct', ULONG),
         ('Flags', TRACE_CONTEXT_FLAGS),
         ('FailedCount', ULONG),
-        ('Padding1', ULONG),
+        ('LastError', ULONG),
         ('Rtl', PRTL),
         ('Allocator', PALLOCATOR),
+        ('TracerConfig', PTRACER_CONFIG),
         ('TraceSession', PTRACE_SESSION),
         ('TraceStores', PTRACE_STORES),
         ('TimerFunction', PVOID),
         ('UserData', PVOID),
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
+        ('CancellationThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('LoadingCompleteEvent', HANDLE),
-        ('ThreadpoolCleanupGroup', PTP_CLEANUP_GROUP),
-        ('Padding2', PVOID),
         ('BindMetadataInfoStoreWork', TRACE_STORE_WORK),
         ('BindRemainingMetadataStoresWork', TRACE_STORE_WORK),
         ('BindTraceStoreWork', TRACE_STORE_WORK),
         ('ReadonlyNonStreamingBindCompleteWork', TRACE_STORE_WORK),
         ('FailedListHead', SLIST_HEADER),
+        ('ThreadpoolCleanupGroup', PTP_CLEANUP_GROUP),
+        ('CleanupThreadpoolMembersWork', PTP_WORK),
+        ('WorkingSetChangesLock', SRWLOCK),
+        ('GetWorkingSetChangesTimer', PTP_TIMER),
+        ('WorkingSetTimerContention', ULONG),
+        ('WsWatchInfoExInitialBufferNumberOfElements', ULONG),
+        ('WsWatchInfoExCurrentBufferNumberOfElements', ULONG),
+        ('GetWorkingSetChangesIntervalInMilliseconds', ULONG),
+        ('GetWorkingSetChangesWindowLengthInMilliseconds', ULONG),
+        ('WsWatchInfoExBuffer', PPSAPI_WS_WATCH_INFORMATION_EX),
+        ('WsWorkingSetExInfoBuffer', PPSAPI_WORKING_SET_EX_INFORMATION),
         ('ActiveWorkItems', ULONG),
         ('BindsInProgress', ULONG),
         ('PrepareReadonlyNonStreamingMapsInProgress', ULONG),
         ('ReadonlyNonStreamingBindCompletesInProgress', ULONG),
         ('NumberOfStoresWithMultipleRelocationDependencies', ULONG),
-        ('Padding3', ULONG),
         ('Time', TRACE_STORE_TIME),
         ('BitmapBufferSizeInQuadwords', ULONG),
-        ('Padding4', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
         ('BitmapBuffer', _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP),
+        ('Dummy', PVOID),
     ]
 
     def set_ignore_preferred_addresses_bitmap(self, ignore):
@@ -916,6 +935,8 @@ TRACE_STORE._fields_ = [
     ('NextMemoryMapAvailableEvent', HANDLE),
     ('AllMemoryMapsAreFreeEvent', HANDLE),
     ('ReadonlyMappingCompleteEvent', HANDLE),
+    ('BindCompleteEvent', HANDLE),
+    ('ResumeAllocationsEvent', HANDLE),
     ('RelocationCompleteWaitEvent', HANDLE),
     ('RelocationCompleteWaitEvents', PHANDLE),
     ('PrevMemoryMap', PTRACE_STORE_MEMORY_MAP),
@@ -950,7 +971,7 @@ TRACE_STORE._fields_ = [
     ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
     ('AllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
-    ('GetNextAlignmentUnimplemented', PVOID),
+    ('SuspendedAllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
     ('BindComplete', PBIND_COMPLETE),
     ('pReloc', PTRACE_STORE_RELOC),
     ('pTraits', PTRACE_STORE_TRAITS),
@@ -1042,6 +1063,7 @@ TRACE_STORES._fields_ = [
     ('BaseDirectory', UNICODE_STRING),
     ('Rtl', PRTL),
     ('Allocator', PALLOCATOR),
+    ('TracerConfig', PTRACER_CONFIG),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
     # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
@@ -1055,6 +1077,8 @@ TRACE_STORES._fields_ = [
     ('StringArrayRelocationCompleteEvent', HANDLE),
     ('StringTableRelocationCompleteEvent', HANDLE),
     ('EventTraitsExRelocationCompleteEvent', HANDLE),
+    ('WsWatchInfoExRelocationCompleteEvent', HANDLE),
+    ('WsWorkingSetExInfoRelocationCompleteEvent', HANDLE),
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1066,6 +1090,9 @@ TRACE_STORES._fields_ = [
     ('StringArrayReloc', TRACE_STORE_RELOC),
     ('StringTableReloc', TRACE_STORE_RELOC),
     ('EventTraitsExReloc', TRACE_STORE_RELOC),
+    ('WsWatchInfoExReloc', TRACE_STORE_RELOC),
+    ('WsWorkingSetExInfoReloc', TRACE_STORE_RELOC),
+    ('Dummy1', PVOID),
     # Start of Stores[MAX_TRACE_STORES].
     ('EventStore', PYTHON_TRACE_EVENT_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
@@ -1157,6 +1184,24 @@ TRACE_STORES._fields_ = [
     ('EventTraitsExAllocationTimestampStore', TRACE_STORE),
     ('EventTraitsExAllocationTimestampDeltaStore', TRACE_STORE),
     ('EventTraitsExInfoStore', TRACE_STORE),
+    ('WsWatchInfoExStore', TRACE_STORE),
+    ('WsWatchInfoExMetadataInfoStore', TRACE_STORE),
+    ('WsWatchInfoExAllocationStore', ALLOCATION_STORE),
+    ('WsWatchInfoExRelocationStore', TRACE_STORE),
+    ('WsWatchInfoExAddressStore', ADDRESS_STORE),
+    ('WsWatchInfoExAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('WsWatchInfoExAllocationTimestampStore', TRACE_STORE),
+    ('WsWatchInfoExAllocationTimestampDeltaStore', TRACE_STORE),
+    ('WsWatchInfoExInfoStore', TRACE_STORE),
+    ('WsWorkingSetExInfoStore', TRACE_STORE),
+    ('WsWorkingSetExInfoMetadataInfoStore', TRACE_STORE),
+    ('WsWorkingSetExInfoAllocationStore', ALLOCATION_STORE),
+    ('WsWorkingSetExInfoRelocationStore', TRACE_STORE),
+    ('WsWorkingSetExInfoAddressStore', ADDRESS_STORE),
+    ('WsWorkingSetExInfoAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('WsWorkingSetExInfoAllocationTimestampStore', TRACE_STORE),
+    ('WsWorkingSetExInfoAllocationTimestampDeltaStore', TRACE_STORE),
+    ('WsWorkingSetExInfoInfoStore', TRACE_STORE),
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1172,6 +1217,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('BaseDirectory', UNICODE_STRING),
         ('Rtl', PRTL),
         ('Allocator', PALLOCATOR),
+        ('TracerConfig', PTRACER_CONFIG),
         ('RundownListEntry', LIST_ENTRY),
         ('Rundown', PTRACE_STORES_RUNDOWN),
         # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
@@ -1185,6 +1231,8 @@ class TRACE_STORE_ARRAY(Structure):
         ('StringArrayRelocationCompleteEvent', HANDLE),
         ('StringTableRelocationCompleteEvent', HANDLE),
         ('EventTraitsExRelocationCompleteEvent', HANDLE),
+        ('WsWatchInfoExRelocationCompleteEvent', HANDLE),
+        ('WsWorkingSetExInfoRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1196,6 +1244,9 @@ class TRACE_STORE_ARRAY(Structure):
         ('StringArrayReloc', TRACE_STORE_RELOC),
         ('StringTableReloc', TRACE_STORE_RELOC),
         ('EventTraitsExReloc', TRACE_STORE_RELOC),
+        ('WsWatchInfoExReloc', TRACE_STORE_RELOC),
+        ('WsWorkingSetExInfoReloc', TRACE_STORE_RELOC),
+        ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),
@@ -1282,6 +1333,7 @@ INITIALIZE_READONLY_TRACE_STORES = CFUNCTYPE(
     BOOL,
     PRTL,
     PALLOCATOR,
+    PTRACER_CONFIG,
     PWSTR,
     PTRACE_STORES,
     PULONG,
@@ -1292,10 +1344,12 @@ INITIALIZE_TRACE_CONTEXT = CFUNCTYPE(
     BOOL,
     PRTL,
     PALLOCATOR,
+    PTRACER_CONFIG,
     PTRACE_CONTEXT,
     PULONG,
     PTRACE_SESSION,
     PTRACE_STORES,
+    PTP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
     PTRACE_CONTEXT_FLAGS,
     PVOID,
@@ -1333,6 +1387,7 @@ def bind(path=None, dll=None):
         (
             (1, 'Rtl'),
             (1, 'Allocator'),
+            (1, 'TracerConfig'),
             (1, 'BaseDirectory'),
             (1, 'TraceStores'),
             (1, 'SizeOfTraceStores'),
@@ -1354,11 +1409,13 @@ def bind(path=None, dll=None):
         (
             (1, 'Rtl'),
             (1, 'Allocator'),
+            (1, 'TracerConfig'),
             (1, 'TraceContext'),
             (1, 'SizeOfTraceContext'),
             (1, 'TraceSession'),
             (1, 'TraceStores'),
             (1, 'ThreadpoolCallbackEnvironment'),
+            (1, 'CancellationThreadpoolCallbackEnvironment'),
             (1, 'TraceContextFlags'),
             (1, 'UserData'),
         )
@@ -1393,6 +1450,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
     success = InitializeReadonlyTraceStores(
         cast(0, PRTL),
         cast(0, PALLOCATOR),
+        cast(0, PTRACER_CONFIG),
         cast(0, PWSTR),
         cast(0, PTRACE_STORES),
         byref(size),
@@ -1414,6 +1472,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
     success = InitializeReadonlyTraceStores(
         prtl,
         pallocator,
+        byref(tracer_config),
         basedir,
         ptrace_stores,
         byref(size),
@@ -1426,6 +1485,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
 def create_and_initialize_readonly_trace_context(
         rtl,
         allocator,
+        tracer_config,
         trace_stores,
         trace_context=None,
         trace_context_flags=None,
@@ -1441,6 +1501,10 @@ def create_and_initialize_readonly_trace_context(
         tp_callback_env = TP_CALLBACK_ENVIRON()
         InitializeThreadpoolEnvironment(tp_callback_env)
         SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+
+    cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+    InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+    SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
 
     if trace_context_flags is None:
         trace_context_flags = TRACE_CONTEXT_FLAGS()
@@ -1460,11 +1524,13 @@ def create_and_initialize_readonly_trace_context(
     success = InitializeReadonlyTraceContext(
         byref(rtl),
         byref(allocator),
+        byref(tracer_config),
         byref(trace_context),
         byref(size),
         cast(0, PTRACE_SESSION),
         byref(trace_stores),
         byref(tp_callback_env),
+        byref(cancel_tp_callback_env),
         byref(trace_context_flags),
         cast(0, PVOID),
     )

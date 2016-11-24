@@ -65,6 +65,8 @@ Returns:
     // Close the trace stores.
     //
 
+    __debugbreak();
+
     if (Session->TraceStores) {
         Session->CloseTraceStores(Session->TraceStores);
         Session->TraceStores = NULL;

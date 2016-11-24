@@ -119,6 +119,13 @@ class TRACER_FLAGS(Structure):
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
 
+class TRACER_RUNTIME_PARAMETERS(Structure):
+    _fields_ = [
+        ('GetWorkingSetChangesIntervalInMilliseconds', ULONG),
+        ('GetWorkingSetChangesWindowLengthInMilliseconds', ULONG),
+        ('WsWatchInfoExInitialBufferNumberOfElements', ULONG),
+    ]
+
 class TRACE_SESSION_DIRECTORY(Structure):
     _fields_ = [
         ('ListEntry', LIST_ENTRY),
@@ -144,6 +151,7 @@ class TRACER_CONFIG(Structure):
         ('MaximumTraceStoreId', ULONG),
         ('MaximumTraceStoreIndex', ULONG),
         ('Flags', TRACER_FLAGS),
+        ('RuntimeParameters', TRACER_RUNTIME_PARAMETERS),
         ('Allocator', PALLOCATOR),
         ('TlsTracerHeapModule', HMODULE),
         ('ListEntry', LIST_ENTRY),
