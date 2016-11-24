@@ -662,6 +662,8 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             'Preferred Address Unavailable',
             'Access Violation During Async Prefault',
             'Blocked Allocations',
+            'Suspended Allocations',
+            'Elapsed Suspension Time (\xc2\xb5)'
         ]
 
         tsa = cast(byref(ts), TraceStore.PTRACE_STORE_ARRAY).contents
@@ -690,6 +692,8 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
                 fmt(store.preferred_address_unavailable),
                 fmt(store.access_violations_encountered_during_async_prefault),
                 fmt(store.blocked_allocations),
+                fmt(store.suspended_allocations),
+                fmt(store.elapsed_suspension_time),
             ])
 
         trace_stores = tsa._stores()
@@ -827,6 +831,7 @@ class PrintAddressInfo(InvariantAwareCommand):
 
         from .util import (
             Dict,
+            hex_zfill,
             bytes_to_human,
             render_text_table,
         )
@@ -861,7 +866,8 @@ class PrintAddressInfo(InvariantAwareCommand):
 
         rows = []
 
-        fmt = lambda v: '{:,}'.format(v)
+        fmt_num = lambda v: '{:,}'.format(v)
+        fmt_hex = lambda v: '0x{:02X}'.format(v)
         drop = lambda f, v, d: f % v if v > d else ''
 
         def make_row(target):
@@ -870,10 +876,10 @@ class PrintAddressInfo(InvariantAwareCommand):
             for address in store.addresses:
                 rows.append([
                     str(name),
-                    address.PreferredBaseAddress,
-                    address.BaseAddress,
-                    address.FileOffset,
-                    address.MappedSize,
+                    hex_zfill(address.PreferredBaseAddress),
+                    hex_zfill(address.BaseAddress),
+                    fmt_num(address.FileOffset),
+                    bytes_to_human(address.MappedSize),
                     address.Elapsed.AwaitingPreparation,
                     address.Elapsed.AwaitingConsumption,
                     address.Elapsed.Active,
@@ -922,7 +928,187 @@ class PrintAddressInfo(InvariantAwareCommand):
         #import IPython
         #IPython.embed()
 
+class PrintAddressRangeInfo(InvariantAwareCommand):
+    def run(self):
+        out = self._out
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
 
+        basedir = tc.choose_trace_store_directory()
+        #basedir = tc.trace_store_directories()[0]
+        out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Python,
+            Allocator,
+            TraceStore,
+            TracerConfig,
+        )
+
+        Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+        rtl = Rtl.create_and_initialize_rtl()
+
+        TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+        allocator = tc.Allocator.contents
+
+        from .dll.TraceStore import (
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
+        )
+
+        from .util import timer
+
+        t = timer(verbose=False)
+        with t:
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
+                tc,
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
+
+        from .util import (
+            Dict,
+            bin_zfill,
+            hex_zfill,
+            bytes_to_human,
+            render_text_table,
+        )
+
+        totals = ts.FunctionTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of function table allocations: %d." % total_allocs)
+
+        header = [
+            'Trace Store',
+            'Preferred Base Address',
+            'Actual Base Address',
+            'End Address',
+            'Preferred Address Bit Counts',
+            'Actual Address Bit Counts',
+            'Mapped Size',
+            'Valid From',
+            'Valid To',
+        ]
+
+        tsa = cast(byref(ts), TraceStore.PTRACE_STORE_ARRAY).contents
+
+        rows = []
+
+        fmt_num = lambda v: '{:,}'.format(v)
+        fmt_hex = lambda v: '0x{:02X}'.format(v)
+        drop = lambda f, v, d: f % v if v > d else ''
+
+        def make_row(target):
+
+            (name, store) = target
+            for address_range in store.address_ranges:
+                row = [
+                    str(name),
+                    hex_zfill(address_range.PreferredBaseAddress),
+                    hex_zfill(address_range.ActualBaseAddress),
+                    hex_zfill(address_range.EndAddress),
+                    repr(address_range.BitCounts.Preferred),
+                    repr(address_range.BitCounts.Actual),
+                    bytes_to_human(address_range.MappedSize),
+                    address_range.valid_from,
+                    address_range.valid_to,
+                ]
+                rows.append(row)
+
+        trace_stores = tsa._stores()
+
+        for ((name, store), metadata_stores) in trace_stores:
+            make_row((name, store))
+            #for metadata_store in metadata_stores:
+            #    make_row(metadata_store)
+
+
+        from itertools import chain, repeat
+
+        k = Dict()
+        k.output = self.ostream
+        k.banner = (
+            'Trace Store Address Ranges for %s' % str(ts.BaseDirectory.Buffer)
+        )
+
+        k.formats = lambda: chain(
+            (str.ljust,),           # Name
+            (str.rjust,),           # Preferred Base
+            (str.rjust,),           # Actual Base
+            (str.rjust,),           # End
+            (str.ljust,),           # BitCounts: Preferred
+            (str.ljust,),           # BitCounts: Actual
+            (str.rjust,),           # Mapped Size
+            (str.rjust,),           # Valid From
+            (str.rjust,),           # Valid To
+        )
+
+        results_chain = chain((header,), rows)
+        render_text_table(results_chain, **k)
 
 class LoadTrace(InvariantAwareCommand):
     def run(self):
@@ -935,27 +1121,61 @@ class LoadTrace(InvariantAwareCommand):
 
         from .dll import (
             Rtl,
+            Python,
             Allocator,
             TraceStore,
+            TracerConfig,
         )
 
-        Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
-        rtl = Rtl.create_and_initialize_rtl()
-
-        TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
-        allocator = tc.Allocator.contents
-
         from .dll.TraceStore import (
-            create_and_initialize_readonly_trace_stores,
-            create_and_initialize_readonly_trace_context,
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
         )
 
         from .util import timer
 
         t = timer(verbose=False)
-
         with t:
-            ts = create_and_initialize_readonly_trace_stores(
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
                 rtl,
                 allocator,
                 basedir,
@@ -964,20 +1184,34 @@ class LoadTrace(InvariantAwareCommand):
 
         out("Initialized readonly trace stores in %s." % t.fmt)
 
+        t = timer(verbose=False)
         with t:
-            ctx = create_and_initialize_readonly_trace_context(
-                rtl,
-                allocator,
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
                 tc,
-                ts,
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
             )
 
         out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
 
         from .util import (
             Dict,
             render_text_table,
         )
+
+        import ipdb
+        ipdb.set_trace()
 
         totals = ts.FunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
