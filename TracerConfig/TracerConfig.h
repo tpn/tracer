@@ -284,10 +284,23 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableWorkingSetTracing:1;
 
     //
+    // When set, disables asynchronous initialization of trace contexts.  This
+    // applies to the InitializeTraceContext() call.  When enabled, asynchronous
+    // initialization will submit the relevant preparation required to bind the
+    // trace stores to the trace context in a threadpool, and then return
+    // immediately.  If a caller attempts to allocate records against a store
+    // prior to that store being available, they will trigger the suspended
+    // allocation code path and will simply wait on the resume allocations
+    // event.
+    //
+
+    ULONG DisableAsynchronousInitialization:1;
+
+    //
     // Unused.  Use these before digging into TraceEventType's bits.
     //
 
-    ULONG UnusedBits:2;
+    ULONG UnusedBits:1;
 
     //
     // The remaining bits are used for indicating which trace event type is

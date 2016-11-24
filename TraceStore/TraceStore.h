@@ -1000,7 +1000,7 @@ typedef struct _TRACE_FLAGS {
 typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_CONTEXT_FLAGS {
     ULONG Valid:1;
     ULONG Readonly:1;
-    ULONG AsyncInitialization:1;
+    ULONG DisableAsynchronousInitialization:1;
 
     //
     // When set, indicates that the caller has set the relevant bits in the
