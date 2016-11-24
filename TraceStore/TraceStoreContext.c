@@ -170,7 +170,6 @@ Return Value:
     // Test the following invariants of the context flags:
     //  - If TraceContextFlags indicates readonly, TraceStores should as well.
     //  - If not readonly:
-    //      - Ensure InitializeAsync is not set.
     //      - Ensure IgnorePreferredAddresses is not set.
     //      - Ensure TraceSession is not NULL.
     //  - Else:
@@ -595,11 +594,11 @@ Return Value:
     }
 
     //
-    // If an async initialization has been requested, return now.  Otherwise,
+    // If async initialization hasn't been disabled, return now.  Otherwise,
     // wait on the loading complete event.
     //
 
-    if (ContextFlags.AsyncInitialization) {
+    if (!TracerConfig->Flags.DisableAsynchronousInitialization) {
         return TRUE;
     }
 

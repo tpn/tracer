@@ -422,6 +422,230 @@ Return Value:
     }
 
     //
+    // Allocate and initialize TraceSession.
+    //
+
+    RequiredSize = 0;
+    Session->InitializeTraceSession(Rtl, NULL, &RequiredSize);
+    ALLOCATE(TraceSession, PTRACE_SESSION);
+    Success = Session->InitializeTraceSession(
+        Rtl,
+        Session->TraceSession,
+        &RequiredSize
+    );
+
+    if (!Success) {
+        OutputDebugStringA("Session->InitializeTraceSession() failed.\n");
+        goto Error;
+    }
+
+    //
+    // Create a trace session directory if we're not readonly, otherwise, use
+    // the directory that the caller passed in.
+    //
+
+    if (IsReadonly) {
+
+        Session->TraceSessionDirectory = TraceSessionDirectory;
+
+    } else {
+
+        Success = CreateTraceSessionDirectory(
+            TracerConfig,
+            &Session->TraceSessionDirectory
+        );
+
+        if (!Success) {
+            OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
+            goto Error;
+        }
+
+        //
+        // Update the caller's pointer.
+        //
+
+        *TraceSessionDirectoryPointer = Session->TraceSessionDirectory;
+    }
+
+    //
+    // Take a local copy of the flags.
+    //
+
+    TracerConfigFlags = TracerConfig->Flags;
+
+    //
+    // See if we've been configured to compress trace store directories.
+    //
+
+    Compress = !TracerConfigFlags.DisableTraceSessionDirectoryCompression;
+
+    //
+    // Convert into a TRACE_FLAGS representation.
+    //
+
+    TraceFlags.AsLong = 0;
+    TraceFlags.Compress = Compress;
+    TraceFlags.Readonly = IsReadonly;
+
+#define COPY_FLAG(Name) TraceFlags.##Name = TracerConfigFlags.##Name
+
+    COPY_FLAG(DisablePrefaultPages);
+    COPY_FLAG(DisableFileFlagOverlapped);
+    COPY_FLAG(DisableFileFlagSequentialScan);
+    COPY_FLAG(EnableFileFlagRandomAccess);
+    COPY_FLAG(EnableFileFlagWriteThrough);
+    COPY_FLAG(EnableWorkingSetTracing);
+
+    //
+    // Get the required size of the TRACE_STORES structure.
+    //
+
+    RequiredSize = 0;
+    Session->InitializeTraceStores(
+        NULL,           // Rtl
+        NULL,           // Allocator
+        NULL,           // TracerConfig
+        NULL,           // BaseDirectory
+        NULL,           // TraceStores
+        &RequiredSize,  // SizeOfTraceStores
+        NULL,           // InitialFileSizes
+        &TraceFlags,    // TraceFlags
+        NULL            // FieldRelocations
+    );
+
+    //
+    // Disable pre-faulting of pages if applicable.
+    //
+
+    if (TracerConfig->Flags.DisablePrefaultPages) {
+        TraceFlags.DisablePrefaultPages = TRUE;
+    }
+
+    // Allocate sufficient space, then initialize the stores.
+    //
+
+    ALLOCATE(TraceStores, PTRACE_STORES);
+    Success = Session->InitializeTraceStores(
+        Rtl,
+        Allocator,
+        Session->TracerConfig,
+        Session->TraceSessionDirectory->Buffer,
+        Session->TraceStores,
+        &RequiredSize,
+        NULL,
+        &TraceFlags,
+        Session->PythonTracerTraceStoreRelocations
+    );
+
+    if (!Success) {
+        OutputDebugStringA("InitializeTraceStores() failed.\n");
+        goto Error;
+    }
+
+    //
+    // Get the maximum number of processors and create a threadpool
+    // and environment.
+    //
+
+    Session->MaximumProcessorCount = (
+        GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS)
+    );
+
+    Session->Threadpool = CreateThreadpool(NULL);
+    if (!Session->Threadpool) {
+        OutputDebugStringA("CreateThreadpool() failed.\n");
+        goto Error;
+    }
+
+    //
+    // Limit the threadpool to the number of processors in the system.
+    //
+
+    SetThreadpoolThreadMinimum(
+        Session->Threadpool,
+        Session->MaximumProcessorCount
+    );
+
+    SetThreadpoolThreadMaximum(
+        Session->Threadpool,
+        Session->MaximumProcessorCount
+    );
+
+    //
+    // Initialize the threadpool environment and bind it to the threadpool.
+    //
+
+    InitializeThreadpoolEnvironment(&Session->ThreadpoolCallbackEnviron);
+    SetThreadpoolCallbackPool(
+        &Session->ThreadpoolCallbackEnviron,
+        Session->Threadpool
+    );
+
+    //
+    // Create a cancellation threadpool with one thread.
+    //
+
+    Session->CancellationThreadpool = CreateThreadpool(NULL);
+    if (!Session->CancellationThreadpool) {
+        OutputDebugStringA("CreateThreadpool() failed for cancellation.\n");
+        goto Error;
+    }
+
+    SetThreadpoolThreadMinimum(Session->CancellationThreadpool, 1);
+    SetThreadpoolThreadMaximum(Session->CancellationThreadpool, 1);
+    InitializeThreadpoolEnvironment(
+        &Session->CancellationThreadpoolCallbackEnviron
+    );
+
+    //
+    // Clear the trace context flags.
+    //
+
+    //
+    // Get the required size of a TRACE_CONTEXT structure.
+    //
+
+    RequiredSize = 0;
+    Session->InitializeTraceContext(
+        NULL,           // Rtl
+        NULL,           // Allocator
+        NULL,           // TracerConfig
+        NULL,           // TraceContext
+        &RequiredSize,  // SizeOfTraceContext
+        NULL,           // TraceSession
+        NULL,           // TraceStores
+        NULL,           // ThreadpoolCallbackEnviron
+        NULL,           // CancellationThreadpoolCallbackEnviron
+        NULL,           // TraceContextFlags
+        NULL            // UserData
+    );
+
+    //
+    // Allocate sufficient space then initialize the trace context.
+    //
+
+    ALLOCATE(TraceContext, PTRACE_CONTEXT);
+    Success = Session->InitializeTraceContext(
+        Rtl,
+        Allocator,
+        Session->TracerConfig,
+        Session->TraceContext,
+        &RequiredSize,
+        Session->TraceSession,
+        Session->TraceStores,
+        &Session->ThreadpoolCallbackEnviron,
+        &Session->CancellationThreadpoolCallbackEnviron,
+        NULL,
+        (PVOID)Session
+    );
+
+    if (!Success) {
+        OutputDebugStringA("InitializeTraceContext() failed.\n");
+        goto Error;
+    }
+
+
+    //
     // Attempt to load the relevant Python DLL for this session.  Look in our
     // module's directory first, which will pick up the common case where we
     // live in the same directory as python.exe, and thus, the relevant Python
@@ -771,229 +995,6 @@ LoadPythonDll:
 
     if (Session->OriginalDirectory) {
         SetCurrentDirectoryW(Session->OriginalDirectory->Buffer);
-    }
-
-    //
-    // Allocate and initialize TraceSession.
-    //
-
-    RequiredSize = 0;
-    Session->InitializeTraceSession(Rtl, NULL, &RequiredSize);
-    ALLOCATE(TraceSession, PTRACE_SESSION);
-    Success = Session->InitializeTraceSession(
-        Rtl,
-        Session->TraceSession,
-        &RequiredSize
-    );
-
-    if (!Success) {
-        OutputDebugStringA("Session->InitializeTraceSession() failed.\n");
-        goto Error;
-    }
-
-    //
-    // Create a trace session directory if we're not readonly, otherwise, use
-    // the directory that the caller passed in.
-    //
-
-    if (IsReadonly) {
-
-        Session->TraceSessionDirectory = TraceSessionDirectory;
-
-    } else {
-
-        Success = CreateTraceSessionDirectory(
-            TracerConfig,
-            &Session->TraceSessionDirectory
-        );
-
-        if (!Success) {
-            OutputDebugStringA("CreateTraceSessionDirectory() failed.\n");
-            goto Error;
-        }
-
-        //
-        // Update the caller's pointer.
-        //
-
-        *TraceSessionDirectoryPointer = Session->TraceSessionDirectory;
-    }
-
-    //
-    // Take a local copy of the flags.
-    //
-
-    TracerConfigFlags = TracerConfig->Flags;
-
-    //
-    // See if we've been configured to compress trace store directories.
-    //
-
-    Compress = !TracerConfigFlags.DisableTraceSessionDirectoryCompression;
-
-    //
-    // Convert into a TRACE_FLAGS representation.
-    //
-
-    TraceFlags.AsLong = 0;
-    TraceFlags.Compress = Compress;
-    TraceFlags.Readonly = IsReadonly;
-
-#define COPY_FLAG(Name) TraceFlags.##Name = TracerConfigFlags.##Name
-
-    COPY_FLAG(DisablePrefaultPages);
-    COPY_FLAG(DisableFileFlagOverlapped);
-    COPY_FLAG(DisableFileFlagSequentialScan);
-    COPY_FLAG(EnableFileFlagRandomAccess);
-    COPY_FLAG(EnableFileFlagWriteThrough);
-    COPY_FLAG(EnableWorkingSetTracing);
-
-    //
-    // Get the required size of the TRACE_STORES structure.
-    //
-
-    RequiredSize = 0;
-    Session->InitializeTraceStores(
-        NULL,           // Rtl
-        NULL,           // Allocator
-        NULL,           // TracerConfig
-        NULL,           // BaseDirectory
-        NULL,           // TraceStores
-        &RequiredSize,  // SizeOfTraceStores
-        NULL,           // InitialFileSizes
-        &TraceFlags,    // TraceFlags
-        NULL            // FieldRelocations
-    );
-
-    //
-    // Disable pre-faulting of pages if applicable.
-    //
-
-    if (TracerConfig->Flags.DisablePrefaultPages) {
-        TraceFlags.DisablePrefaultPages = TRUE;
-    }
-
-    // Allocate sufficient space, then initialize the stores.
-    //
-
-    ALLOCATE(TraceStores, PTRACE_STORES);
-    Success = Session->InitializeTraceStores(
-        Rtl,
-        Allocator,
-        Session->TracerConfig,
-        Session->TraceSessionDirectory->Buffer,
-        Session->TraceStores,
-        &RequiredSize,
-        NULL,
-        &TraceFlags,
-        Session->PythonTracerTraceStoreRelocations
-    );
-
-    if (!Success) {
-        OutputDebugStringA("InitializeTraceStores() failed.\n");
-        goto Error;
-    }
-
-    //
-    // Get the maximum number of processors and create a threadpool
-    // and environment.
-    //
-
-    Session->MaximumProcessorCount = (
-        GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS)
-    );
-
-    Session->Threadpool = CreateThreadpool(NULL);
-    if (!Session->Threadpool) {
-        OutputDebugStringA("CreateThreadpool() failed.\n");
-        goto Error;
-    }
-
-    //
-    // Limit the threadpool to the number of processors in the system.
-    //
-
-    SetThreadpoolThreadMinimum(
-        Session->Threadpool,
-        Session->MaximumProcessorCount
-    );
-
-    SetThreadpoolThreadMaximum(
-        Session->Threadpool,
-        Session->MaximumProcessorCount
-    );
-
-    //
-    // Initialize the threadpool environment and bind it to the threadpool.
-    //
-
-    InitializeThreadpoolEnvironment(&Session->ThreadpoolCallbackEnviron);
-    SetThreadpoolCallbackPool(
-        &Session->ThreadpoolCallbackEnviron,
-        Session->Threadpool
-    );
-
-    //
-    // Create a cancellation threadpool with one thread.
-    //
-
-    Session->CancellationThreadpool = CreateThreadpool(NULL);
-    if (!Session->CancellationThreadpool) {
-        OutputDebugStringA("CreateThreadpool() failed for cancellation.\n");
-        goto Error;
-    }
-
-    SetThreadpoolThreadMinimum(Session->CancellationThreadpool, 1);
-    SetThreadpoolThreadMaximum(Session->CancellationThreadpool, 1);
-    InitializeThreadpoolEnvironment(
-        &Session->CancellationThreadpoolCallbackEnviron
-    );
-
-    //
-    // Clear the trace context flags.
-    //
-
-    //
-    // Get the required size of a TRACE_CONTEXT structure.
-    //
-
-    RequiredSize = 0;
-    Session->InitializeTraceContext(
-        NULL,           // Rtl
-        NULL,           // Allocator
-        NULL,           // TracerConfig
-        NULL,           // TraceContext
-        &RequiredSize,  // SizeOfTraceContext
-        NULL,           // TraceSession
-        NULL,           // TraceStores
-        NULL,           // ThreadpoolCallbackEnviron
-        NULL,           // CancellationThreadpoolCallbackEnviron
-        NULL,           // TraceContextFlags
-        NULL            // UserData
-    );
-
-    //
-    // Allocate sufficient space then initialize the trace context.
-    //
-
-    ALLOCATE(TraceContext, PTRACE_CONTEXT);
-    Success = Session->InitializeTraceContext(
-        Rtl,
-        Allocator,
-        Session->TracerConfig,
-        Session->TraceContext,
-        &RequiredSize,
-        Session->TraceSession,
-        Session->TraceStores,
-        &Session->ThreadpoolCallbackEnviron,
-        &Session->CancellationThreadpoolCallbackEnviron,
-        NULL,
-        (PVOID)Session
-    );
-
-    if (!Success) {
-        OutputDebugStringA("InitializeTraceContext() failed.\n");
-        goto Error;
     }
 
     //
