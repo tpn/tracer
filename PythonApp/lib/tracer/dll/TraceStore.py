@@ -312,6 +312,19 @@ class _ADDRESS_BIT_COUNTS_LOW(Structure):
         ('LeadingZeros', ULONG, 5),
         ('TrailingZeros', ULONG, 5),
     ]
+    def __repr__(self):
+        fmt = (
+            'W:   %s, '
+            'PC:  %s, '
+            'LZ:  %s, '
+            'TZ:  %s'
+        )
+        return fmt % (
+            str(self.Width).zfill(2),
+            str(self.PopulationCount).zfill(2),
+            str(self.LeadingZeros).zfill(2),
+            str(self.TrailingZeros).zfill(2)
+        )
 
 class _ADDRESS_BIT_COUNTS_HIGH(Structure):
     _fields_ = [
@@ -322,18 +335,37 @@ class _ADDRESS_BIT_COUNTS_HIGH(Structure):
         ('Parity', ULONG, 1),
         ('Unused', ULONG, 19),
     ]
+    def __repr__(self):
+        fmt = (
+            'HPC: %s, '
+            'LPC: %s, '
+            'HP:  %s, '
+            'LP:  %s, '
+            'P:   %s'
+        )
+        return fmt % (
+            str(self.HighPopulationCount).zfill(2),
+            str(self.LowPopulationCount).zfill(2),
+            str(self.HighParity).zfill(2),
+            str(self.LowParity).zfill(2),
+            str(self.Parity).zfill(2),
+        )
 
 class _ADDRESS_BIT_COUNTS(Structure):
     _fields_ = [
         ('l', _ADDRESS_BIT_COUNTS_LOW),
         ('h', _ADDRESS_BIT_COUNTS_HIGH),
     ]
+    def __repr__(self):
+        return ', '.join((repr(self.l), repr(self.h)))
 
 class ADDRESS_BIT_COUNTS(Union):
     _fields_ = [
         ('AsLongLong', ULONGLONG),
         ('s', _ADDRESS_BIT_COUNTS),
     ]
+    def __repr__(self):
+        return repr(self.s)
 PADDRESS_BIT_COUNTS = POINTER(ADDRESS_BIT_COUNTS)
 
 class _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER(Structure):
@@ -343,10 +375,16 @@ class _TRACE_STORE_ADDRESS_RANGE_BITCOUNTS_INNER(Structure):
     ]
 
 class TRACE_STORE_ADDRESS_RANGE(Structure):
-    pass
+    @property
+    def valid_from(self):
+        return self.u1.Timestamp.ValidFrom
+
+    @property
+    def valid_to(self):
+        return self.u1.Timestamp.ValidTo
 PTRACE_STORE_ADDRESS_RANGE = POINTER(TRACE_STORE_ADDRESS_RANGE)
 
-class _TRACE_STORE_ADDRESS_RANGE_TIMESTAMP_INNER(Union):
+class _TRACE_STORE_ADDRESS_RANGE_TIMESTAMP_INNER(Structure):
     _fields_ = [
         ('ValidFrom', LARGE_INTEGER),
         ('ValidTo', LARGE_INTEGER),
@@ -355,7 +393,7 @@ class _TRACE_STORE_ADDRESS_RANGE_TIMESTAMP_INNER(Union):
 class _TRACE_STORE_ADDRESS_RANGE_UNION1(Union):
     _fields_ = [
         ('OriginalAddressRange', PTRACE_STORE_ADDRESS_RANGE),
-        ('Timestamp', _TRACE_STORE_ADDRESS_TIMESTAMP),
+        ('Timestamp', _TRACE_STORE_ADDRESS_RANGE_TIMESTAMP_INNER),
     ]
 
 TRACE_STORE_ADDRESS_RANGE._fields_ = [
@@ -414,7 +452,8 @@ class TRACE_STORE_STATS(Structure):
         ('PreferredAddressUnavailable', ULONG),
         ('AccessViolationsEncounteredDuringAsyncPrefault', ULONG),
         ('BlockedAllocations', ULONG),
-        ('Unused', ULONG * 3),
+        ('SuspendedAllocations', ULONG),
+        ('ElapsedSuspensionTimeInMicroseconds', ULONG),
     ]
 
     @property
@@ -434,16 +473,20 @@ class TRACE_STORE_STATS(Structure):
         return self.PreferredAddressUnavailable
 
     @property
-    def preferred_address_unavailable(self):
-        return self.PreferredAddressUnavailable
-
-    @property
     def access_violations_encountered_during_async_prefault(self):
         return self.AccessViolationsEncounteredDuringAsyncPrefault
 
     @property
     def blocked_allocations(self):
-        return self.AccessViolationsEncounteredDuringAsyncPrefault
+        return self.BlockedAllocations
+
+    @property
+    def suspended_allocations(self):
+        return self.SuspendedAllocations
+
+    @property
+    def elapsed_suspension_time(self):
+        return self.ElapsedSuspensionTimeInMicroseconds
 
 PTRACE_STORE_STATS = POINTER(TRACE_STORE_STATS)
 
@@ -846,7 +889,15 @@ class TRACE_STORE(Structure):
 
     @property
     def blocked_allocations(self):
-        return self.stats.AccessViolationsEncounteredDuringAsyncPrefault
+        return self.stats.BlockedAllocations
+
+    @property
+    def suspended_allocations(self):
+        return self.stats.SuspendedAllocations
+
+    @property
+    def elapsed_suspension_time(self):
+        return self.stats.ElapsedSuspensionTimeInMicroseconds
 
     @property
     def base_address(self):
@@ -878,7 +929,7 @@ class TRACE_STORE(Structure):
     @property
     def address_ranges(self):
         return cast(
-            self.AddressRanges,
+            self.AddressRange,
             POINTER(
                 TRACE_STORE_ADDRESS_RANGE *
                 self.NumberOfAddressRanges

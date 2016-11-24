@@ -315,10 +315,11 @@ PYTHON_PATH_TABLE_ENTRY._fields_ = [
 class _PYTHON_FUNCTION_CODEOBJECT_INNER(Structure):
     _fields_ = [
         ('CodeLineNumbers', PUSHORT),
-        ('FirstLineNumber', ULONG),
-        ('NumberOfLines', ULONG),
-        ('NumberOfCodeLines', ULONG),
-        ('SizeOfByteCode', ULONG),
+        ('CodeObjectHash', LONG),
+        ('FirstLineNumber', USHORT),
+        ('NumberOfLines', USHORT),
+        ('NumberOfCodeLines', USHORT),
+        ('SizeOfByteCode', USHORT),
     ]
 
 class _PYTHON_FUNCTION_PYCFUNCTION_INNER(Structure):

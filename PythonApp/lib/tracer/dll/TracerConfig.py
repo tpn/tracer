@@ -114,7 +114,9 @@ class TRACER_FLAGS(Structure):
         ('EnableFileFlagWriteThrough', ULONG, 1),
         ('ProfileOnly', ULONG, 1),
         ('TrackMaxRefCounts', ULONG, 1),
-        ('UnusedBits', ULONG, 3),
+        ('EnableWorkingSetTracing', ULONG, 1),
+        ('DisableAsynchronousInitialization', ULONG, 1),
+        ('UnusedBits', ULONG, 1),
         ('TraceEventType', ULONG, 16),
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
