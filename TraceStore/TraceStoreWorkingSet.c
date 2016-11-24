@@ -253,12 +253,22 @@ TryGetWsChangesEx:
     if (!Success) {
         LastError = GetLastError();
 
+        if (LastError == ERROR_NO_MORE_ITEMS) {
+
+            //
+            // Nothing to do, return success.
+            //
+
+            return TRUE;
+        }
+
         if (LastError != ERROR_INSUFFICIENT_BUFFER) {
 
             //
             // Anything other than an insufficient buffer error is fatal.
             //
 
+            __debugbreak();
             TraceContext->LastError = LastError;
             return FALSE;
         }
@@ -398,6 +408,15 @@ TryGetWsChangesEx:
     //
 
     NumberOfActualElements.QuadPart = Index - 1;
+
+    //
+    // If there were no elements, we're done.
+    //
+
+    if (!NumberOfActualElements.QuadPart) {
+        return TRUE;
+    }
+
     TempWsWorkingSetExBufferSizeInBytes.QuadPart = (
         NumberOfActualElements.QuadPart *
         WsWorkingSetExInfoSize.QuadPart

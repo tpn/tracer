@@ -72,7 +72,7 @@ typedef struct _TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA {
     LONG Delta;
 } TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA;
 typedef TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA \
-       *PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA;
+      *PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA;
 
 typedef struct _TRACE_STORE_ADDRESS {
     PVOID         PreferredBaseAddress;                     // 8    0   8
@@ -2130,40 +2130,6 @@ TraceStoreHasRelocations(
     )
 {
     return TraceStore->HasRelocations;
-}
-
-FORCEINLINE
-BOOL
-HasVaryingRecordSizes(
-    _In_ PTRACE_STORE TraceStore
-    )
-/*++
-
-Routine Description:
-
-    This routine indicates whether or not a trace store has varying record
-    sizes.  That is, whether or not AllocateRecords() has been called with
-    identical record count + record size parameters every time.  This is
-    determined by simply comparing the trace store's end of file to the
-    current trace store allocation record's record size * number of records.
-    If they don't match, the trace store has varying record sizes.
-
-Arguments:
-
-    TraceStore - Supplies a pointer to a TRACE_STORE struct.
-
-Return Value:
-
-    TRUE if the trace store has varying record sizes, FALSE if not.
-
---*/
-{
-    return (
-        TraceStore->Eof->EndOfFile.QuadPart != (
-            TraceStore->Allocation->RecordSize.QuadPart *
-            TraceStore->Allocation->NumberOfRecords.QuadPart
-        )
-    );
 }
 
 FORCEINLINE

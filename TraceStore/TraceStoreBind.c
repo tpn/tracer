@@ -71,14 +71,28 @@ Return Value:
     PTRACE_STORE_ADDRESS AddressPointer;
     TRACE_STORE_ADDRESS Address;
 
-    TraceStore->TraceContext = TraceContext;
-
     //
     // Initialize aliases.
     //
 
     IsReadonly = (BOOL)TraceContext->Flags.Readonly;
     IsMetadata = IsMetadataTraceStore(TraceStore);
+
+    if (IsMetadata) {
+
+        TraceStore->TraceContext = TraceContext;
+
+    } else {
+
+        //
+        // Invariant check: TraceStore->TraceContext should already match
+        // TraceContext if we're not metadata.
+        //
+
+        if (TraceStore->TraceContext != TraceContext) {
+            __debugbreak();
+        }
+    }
 
     //
     // If we're readonly, dispatch to the custom bind routines.

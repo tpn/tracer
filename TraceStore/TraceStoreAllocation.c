@@ -241,22 +241,15 @@ Routine Description:
 
             //
             // The requested allocation will spill over into the next memory
-            // map.  This is fine as long as the next memory map is mapped at a
-            // contiguous address.
+            // map.  If we're non-contiguous, our return address has to be
+            // based on the new memory map's base address (potentially losing
+            // the remaining bytes on the existing one).
             //
 
             if (MemoryMap->BaseAddress != EndAddress) {
 
                 //
-                // Ugh, non-contiguous mapping.
-                //
-
-                if (!TraceStore->IsReadonly &&
-                    !IsMetadataTraceStore(TraceStore) &&
-                    !HasVaryingRecordSizes(TraceStore)) {
-
-                    __debugbreak();
-                }
+                // Non-contiguous mapping.
 
                 ReturnAddress = MemoryMap->BaseAddress;
 
@@ -544,12 +537,6 @@ Return Value:
     LARGE_INTEGER AfterElapsed;
 
     //
-    // Increment the suspended allocations counter.
-    //
-
-    InterlockedIncrement(&TraceStore->Stats->SuspendedAllocations);
-
-    //
     // Take a timestamp snapshot before waiting on the event.
     //
 
@@ -564,7 +551,7 @@ Return Value:
     // resume.
     //
 
-    Event = &TraceStore->ResumeAllocationsEvent;
+    Event = TraceStore->ResumeAllocationsEvent;
     WaitResult = WaitForSingleObject(Event, INFINITE);
 
     if (WaitResult != WAIT_OBJECT_0) {
@@ -573,8 +560,15 @@ Return Value:
         // Wait wasn't successful, abort the allocation.
         //
 
+        __debugbreak();
         return NULL;
     }
+
+    //
+    // Increment the suspended allocations counter.
+    //
+
+    InterlockedIncrement(&TraceStore->Stats->SuspendedAllocations);
 
     //
     // Take another timestamp snapshot and calculate elapsed microseconds.
