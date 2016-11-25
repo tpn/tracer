@@ -1,12 +1,22 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Commandline.c
+
+Abstract:
+
+    This module implements functionality related to command line handling.
+    Routines are provided to convert argument vectors from Unicode to ANSI.
+
+--*/
 
 #include "stdafx.h"
-#include "Commandline.h"
-
-__declspec(dllexport)
-ARGVW_TO_ARGVA ArgvWToArgvA;
 
 _Use_decl_annotations_
-BOOLEAN
+BOOL
 ArgvWToArgvA(
     PPWSTR ArgvW,
     ULONG NumberOfArguments,
@@ -214,3 +224,5 @@ Error:
 
     return FALSE;
 }
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
