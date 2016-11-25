@@ -7,6 +7,8 @@ import ctypes
 from ctypes import *
 from ctypes.wintypes import *
 
+from .util import Constant
+
 #===============================================================================
 # Globals/Aliases
 #===============================================================================
@@ -336,6 +338,33 @@ class FILE_COMPRESSION_INFO(Structure):
 
 PFILE_COMPRESSION_INFO = POINTER(FILE_COMPRESSION_INFO)
 
+class MEMORY_PROTECTION(Constant):
+    PAGE_NO_ACCESS          =   0x00000001
+    PAGE_READONLY           =   0x00000002
+    PAGE_READWRITE          =   0x00000004
+    PAGE_WRITECOPY          =   0x00000008
+    PAGE_EXECUTE            =   0x00000010
+    PAGE_EXECUTE_READ       =   0x00000020
+    PAGE_EXECUTE_READWRITE  =   0x00000040
+    PAGE_EXECUTE_WRITECOPY  =   0x00000080
+    PAGE_GUARD              =   0x00000100
+    PAGE_NOCACHE            =   0x00000200
+    PAGE_WRITECOMBINE       =   0x00000400
+    PAGE_TARGETS_INVALID    =   0x40000000
+
+    @classmethod
+    def _format(cls, val):
+        inverted = [
+            (value, key) for (key, value) in cls.__dict__.items()
+                if key.startswith('PAGE')
+        ]
+        inverted.sort()
+        parts = [
+            key for (value, key) in inverted
+                if (val & value != 0)
+        ]
+        return ' | '.join(parts)
+
 class _PSAPI_WORKING_SET_EX_BLOCK_VALID(Structure):
     _fields_ = [
         ('Valid', ULONGLONG, 1),
@@ -366,6 +395,7 @@ class _PSAPI_WORKING_SET_EX_BLOCK_VALID(Structure):
 #        ('v', _PSAPI_WORKING_SET_EX_BLOCK_VALID),
 #        ('i', _PSAPI_WORKING_SET_EX_BLOCK_INVALID),
 #    ]
+
 PSAPI_WORKING_SET_EX_BLOCK = _PSAPI_WORKING_SET_EX_BLOCK_VALID
 PPSAPI_WORKING_SET_EX_BLOCK = POINTER(PSAPI_WORKING_SET_EX_BLOCK)
 
