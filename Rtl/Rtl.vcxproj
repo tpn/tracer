@@ -95,6 +95,7 @@
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="Privilege.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
