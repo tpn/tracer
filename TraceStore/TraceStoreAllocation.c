@@ -81,19 +81,27 @@ Return Value:
     PVOID Address;
 
     //
-    // Increment the active allocators count, call the underlying
-    // implementation method, decrement the counter and return the address.
+    // Increment the active allocators count, call the underlying allocator's
+    // implementation method from within the confines of a SEH block that will
+    // suppress STATUS_IN_PAGE errors, decrement the counter and return the
+    // address.
     //
 
     InterlockedIncrement(&TraceStore->ActiveAllocators);
 
-    Address = TraceStoreAllocateRecordsWithTimestampWorker(
-        TraceContext,
-        TraceStore,
-        RecordSize,
-        NumberOfRecords,
-        TimestampPointer
-    );
+    TRY_MAPPED_MEMORY_OP {
+
+        Address = TraceStoreAllocateRecordsWithTimestampWorker(
+            TraceContext,
+            TraceStore,
+            RecordSize,
+            NumberOfRecords,
+            TimestampPointer
+        );
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Address = NULL;
+    }
 
     InterlockedDecrement(&TraceStore->ActiveAllocators);
 
@@ -616,7 +624,10 @@ RecordTraceStoreAllocation(
 Routine Description:
 
     This routine records a trace store allocation in a trace store's allocation
-    metadata trace store.
+    metadata trace store.  If the trace store's traits indicate coalesced
+    allocations and the previous allocation is of the same record size as this
+    allocation, the existing number of records count will be incremented
+    accordingly (instead of writing a new allocation record).
 
 Arguments:
 
@@ -638,6 +649,8 @@ Return Value:
 
 --*/
 {
+    BOOL RecordNewRecord;
+    TRACE_STORE_TRAITS Traits;
     PTRACE_STORE_ALLOCATION Allocation;
 
     if (TraceStore->IsReadonly || TraceStore->IsMetadata) {
@@ -649,14 +662,33 @@ Return Value:
         __debugbreak();
     }
 
+    //
+    // Record the allocation timestamp if applicable.
+    //
+
     if (!RecordTraceStoreAllocationTimestamp(TraceStore, Timestamp)) {
         return FALSE;
     }
 
+    Traits = *TraceStore->pTraits;
     Allocation = TraceStore->Allocation;
 
-    if (Allocation->NumberOfRecords.QuadPart == 0 ||
-        Allocation->RecordSize.QuadPart != RecordSize->QuadPart) {
+    //
+    // We record a new allocation record if:
+    //
+    //  A) The trace store has explicitly disabled coalesced allocations, or
+    //  B) This is the first allocation (number of records will be 0), or
+    //  C) The previous record size doesn't match the current record size.
+    //
+
+    RecordNewRecord = (
+        !WantsCoalescedAllocations(Traits) || (
+            Allocation->NumberOfRecords.QuadPart == 0 ||
+            Allocation->RecordSize.QuadPart != RecordSize->QuadPart
+        )
+    );
+
+    if (RecordNewRecord) {
 
         PVOID Address;
         ULARGE_INTEGER AllocationRecordSize = { sizeof(*Allocation) };
@@ -677,9 +709,17 @@ Return Value:
             return FALSE;
         }
 
+        //
+        // Initialize the allocation record with the new details.
+        //
+
         Allocation = (PTRACE_STORE_ALLOCATION)Address;
         Allocation->RecordSize.QuadPart = RecordSize->QuadPart;
         Allocation->NumberOfRecords.QuadPart = 0;
+
+        //
+        // Point the trace store's allocation pointer at this new allocation.
+        //
 
         TraceStore->Allocation = Allocation;
     }
@@ -689,6 +729,11 @@ Return Value:
     //
 
     Allocation->NumberOfRecords.QuadPart += NumberOfRecords->QuadPart;
+
+    //
+    // Return success to the caller.
+    //
+
     return TRUE;
 }
 

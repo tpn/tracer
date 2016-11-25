@@ -12,9 +12,6 @@ Abstract:
     Python interpreter using the trace store functionality.  It relies on the
     Python and TraceStore components.
 
-    N.B.: The functionality in this file should be split up into smaller,
-          more self-contained modules.
-
 --*/
 
 #include "stdafx.h"

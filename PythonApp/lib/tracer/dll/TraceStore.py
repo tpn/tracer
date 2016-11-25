@@ -62,7 +62,9 @@ from ..wintypes import (
     TP_CALLBACK_ENVIRON,
     PTP_CALLBACK_ENVIRON,
     FILE_COMPRESSION_INFO,
+    PSAPI_WS_WATCH_INFORMATION_EX,
     PPSAPI_WS_WATCH_INFORMATION_EX,
+    PSAPI_WORKING_SET_EX_INFORMATION,
     PPSAPI_WORKING_SET_EX_INFORMATION,
 )
 
@@ -246,7 +248,8 @@ class TRACE_STORE_TRAITS(Structure):
         ('FrequentAllocations', ULONG, 1),
         ('BlockingAllocations', ULONG, 1),
         ('LinkedStore', ULONG, 1),
-        ('Unused', ULONG, 24),
+        ('CoalesceAllocations', ULONG, 1),
+        ('Unused', ULONG, 23),
     ]
 PTRACE_STORE_TRAITS = POINTER(TRACE_STORE_TRAITS)
 
@@ -255,6 +258,15 @@ class TRACE_STORE_ALLOCATION(Structure):
         ('NumberOfRecords', ULARGE_INTEGER),
         ('RecordSize', LARGE_INTEGER),
     ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '<V16',
+        'descr': [
+            ('NumberOfRecords', '<u8'),
+            ('RecordSize', '<u8'),
+        ],
+    }
 PTRACE_STORE_ALLOCATION = POINTER(TRACE_STORE_ALLOCATION)
 
 class TRACE_STORE_ALLOCATION_TIMESTAMP(Structure):
@@ -744,6 +756,7 @@ class _TRACE_STORE_INNER_FLAGS(Structure):
 class TRACE_STORE(Structure):
     __array = None
     struct_type = None
+    is_metadata = False
 
     @property
     @memoize
@@ -927,12 +940,29 @@ class TRACE_STORE(Structure):
         )
 
     @property
+    def readonly_arrays(self):
+        return chain(
+            self.address_range_to_array(address_range)
+                for address_range in self.readonly_address_ranges
+        )
+
+    @property
     def address_ranges(self):
         return cast(
             self.AddressRange,
             POINTER(
                 TRACE_STORE_ADDRESS_RANGE *
                 self.NumberOfAddressRanges
+            )
+        ).contents
+
+    @property
+    def readonly_address_ranges(self):
+        return cast(
+            self.ReadonlyAddressRanges,
+            POINTER(
+                TRACE_STORE_ADDRESS_RANGE *
+                self.NumberOfReadonlyAddressRanges
             )
         ).contents
 
@@ -1051,16 +1081,57 @@ TRACE_STORE._fields_ = [
 ]
 
 class METADATA_STORE(TRACE_STORE):
+    is_metadata = True
+
     @property
     def base_address(self):
         return self.MemoryMap.contents.BaseAddress
 
     @property
+    def mapped_size(self):
+        return self.MemoryMap.contents.MappingSize
+
+    @property
     def end_address(self):
-        return (
-            self.MemoryMap.contents.BaseAddress +
-            self.MemoryMap.contents.MappingSize.QuadPart
-        )
+        return self.base_address + self.mapped_size
+
+    @property
+    def number_of_records(self):
+        assert self.struct_type
+        return self.mapped_size / sizeof(self.struct_type)
+
+    @property
+    def as_array(self):
+        assert self.struct_type
+
+        return cast(
+            self.base_address,
+            POINTER(self.struct_type * self.number_of_records),
+        ).contents
+
+    @property
+    def as_numpy_array(self):
+        import numpy as np
+        from numpy.ctypeslib import as_array
+        ctypes_array = self.as_array
+        size = self.number_of_records
+        numpy_array = as_array(ctypes_array, shape=(size,))
+        numpy_array.dtype = self.numpy_dtype
+        return numpy_array
+
+    @property
+    def as_numpy_array_old(self):
+        import numpy as np
+        from numpy.ctypeslib import as_array
+        ctypes_array = self.as_array
+        size = self.number_of_records
+        numpy_array = as_array(ctypes_array, shape=(size,))
+        numpy_array.dtype = self.numpy_dtype
+        return numpy_array
+
+
+class INFO_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_INFO
 
 class ADDRESS_STORE(METADATA_STORE):
     struct_type = TRACE_STORE_ADDRESS
@@ -1070,6 +1141,25 @@ class ADDRESS_RANGE_STORE(METADATA_STORE):
 
 class ALLOCATION_STORE(METADATA_STORE):
     struct_type = TRACE_STORE_ALLOCATION
+
+    @property
+    def numpy_dtype(self):
+        return self.struct_type._get_numpy_dtype()
+
+class RELOCATION_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_RELOC
+
+class ALLOCATION_TIMESTAMP_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_ALLOCATION_TIMESTAMP
+
+class ALLOCATION_TIMESTAMP_DELTA_STORE(METADATA_STORE):
+    struct_type = TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA
+
+class WS_WATCH_INFO_EX_STORE(TRACE_STORE):
+    struct_type = PSAPI_WS_WATCH_INFORMATION_EX
+
+class WS_WORKING_SET_EX_INFO_STORE(TRACE_STORE):
+    struct_type = PSAPI_WORKING_SET_EX_INFORMATION
 
 class PYTHON_TRACE_EVENT_STORE(TRACE_STORE):
     struct_type = PYTHON_TRACE_EVENT
@@ -1082,7 +1172,7 @@ class PYTHON_FUNCTION_TABLE_ENTRY_STORE(TRACE_STORE):
 
     def get_valid_functions(self):
         funcs = []
-        for array in self.arrays:
+        for array in self.readonly_arrays:
             for func in array:
                 if not func.is_valid:
                     continue
@@ -1148,111 +1238,123 @@ TRACE_STORES._fields_ = [
     ('EventStore', PYTHON_TRACE_EVENT_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
     ('EventAllocationStore', ALLOCATION_STORE),
-    ('EventRelocationStore', TRACE_STORE),
+    ('EventRelocationStore', RELOCATION_STORE),
     ('EventAddressStore', ADDRESS_STORE),
     ('EventAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('EventAllocationTimestampStore', TRACE_STORE),
-    ('EventAllocationTimestampDeltaStore', TRACE_STORE),
-    ('EventInfoStore', TRACE_STORE),
+    ('EventAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('EventAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('EventInfoStore', INFO_STORE),
     ('StringBufferStore', TRACE_STORE),
     ('StringBufferMetadataInfoStore', TRACE_STORE),
     ('StringBufferAllocationStore', ALLOCATION_STORE),
-    ('StringBufferRelocationStore', TRACE_STORE),
+    ('StringBufferRelocationStore', RELOCATION_STORE),
     ('StringBufferAddressStore', ADDRESS_STORE),
     ('StringBufferAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringBufferAllocationTimestampStore', TRACE_STORE),
-    ('StringBufferAllocationTimestampDeltaStore', TRACE_STORE),
-    ('StringBufferInfoStore', TRACE_STORE),
+    ('StringBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('StringBufferAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringBufferInfoStore', INFO_STORE),
     ('FunctionTableStore', TRACE_STORE),
     ('FunctionTableMetadataInfoStore', TRACE_STORE),
     ('FunctionTableAllocationStore', ALLOCATION_STORE),
-    ('FunctionTableRelocationStore', TRACE_STORE),
+    ('FunctionTableRelocationStore', RELOCATION_STORE),
     ('FunctionTableAddressStore', ADDRESS_STORE),
     ('FunctionTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableAllocationTimestampStore', TRACE_STORE),
-    ('FunctionTableAllocationTimestampDeltaStore', TRACE_STORE),
-    ('FunctionTableInfoStore', TRACE_STORE),
+    ('FunctionTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('FunctionTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('FunctionTableInfoStore', INFO_STORE),
     ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
     ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
     ('FunctionTableEntryAllocationStore', ALLOCATION_STORE),
-    ('FunctionTableEntryRelocationStore', TRACE_STORE),
+    ('FunctionTableEntryRelocationStore', RELOCATION_STORE),
     ('FunctionTableEntryAddressStore', ADDRESS_STORE),
     ('FunctionTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableEntryAllocationTimestampStore', TRACE_STORE),
-    ('FunctionTableEntryAllocationTimestampDeltaStore', TRACE_STORE),
-    ('FunctionTableEntryInfoStore', TRACE_STORE),
+    ('FunctionTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('FunctionTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('FunctionTableEntryInfoStore', INFO_STORE),
     ('PathTableStore', TRACE_STORE),
     ('PathTableMetadataInfoStore', TRACE_STORE),
     ('PathTableAllocationStore', ALLOCATION_STORE),
-    ('PathTableRelocationStore', TRACE_STORE),
+    ('PathTableRelocationStore', RELOCATION_STORE),
     ('PathTableAddressStore', ADDRESS_STORE),
     ('PathTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('PathTableAllocationTimestampStore', TRACE_STORE),
-    ('PathTableAllocationTimestampDeltaStore', TRACE_STORE),
-    ('PathTableInfoStore', TRACE_STORE),
+    ('PathTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PathTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PathTableInfoStore', INFO_STORE),
     ('PathTableEntryStore', PYTHON_PATH_TABLE_ENTRY_STORE),
     ('PathTableEntryMetadataInfoStore', TRACE_STORE),
     ('PathTableEntryAllocationStore', ALLOCATION_STORE),
-    ('PathTableEntryRelocationStore', TRACE_STORE),
+    ('PathTableEntryRelocationStore', RELOCATION_STORE),
     ('PathTableEntryAddressStore', ADDRESS_STORE),
     ('PathTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('PathTableEntryAllocationTimestampStore', TRACE_STORE),
-    ('PathTableEntryAllocationTimestampDeltaStore', TRACE_STORE),
-    ('PathTableEntryInfoStore', TRACE_STORE),
+    ('PathTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PathTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PathTableEntryInfoStore', INFO_STORE),
     ('SessionStore', TRACE_STORE),
     ('SessionMetadataInfoStore', TRACE_STORE),
     ('SessionAllocationStore', ALLOCATION_STORE),
-    ('SessionRelocationStore', TRACE_STORE),
+    ('SessionRelocationStore', RELOCATION_STORE),
     ('SessionAddressStore', ADDRESS_STORE),
     ('SessionAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('SessionAllocationTimestampStore', TRACE_STORE),
-    ('SessionAllocationTimestampDeltaStore', TRACE_STORE),
-    ('SessionInfoStore', TRACE_STORE),
+    ('SessionAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SessionAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SessionInfoStore', INFO_STORE),
     ('StringArrayStore', TRACE_STORE),
     ('StringArrayMetadataInfoStore', TRACE_STORE),
     ('StringArrayAllocationStore', ALLOCATION_STORE),
-    ('StringArrayRelocationStore', TRACE_STORE),
+    ('StringArrayRelocationStore', RELOCATION_STORE),
     ('StringArrayAddressStore', ADDRESS_STORE),
     ('StringArrayAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringArrayAllocationTimestampStore', TRACE_STORE),
-    ('StringArrayAllocationTimestampDeltaStore', TRACE_STORE),
-    ('StringArrayInfoStore', TRACE_STORE),
+    ('StringArrayAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('StringArrayAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringArrayInfoStore', INFO_STORE),
     ('StringTableStore', TRACE_STORE),
     ('StringTableMetadataInfoStore', TRACE_STORE),
     ('StringTableAllocationStore', ALLOCATION_STORE),
-    ('StringTableRelocationStore', TRACE_STORE),
+    ('StringTableRelocationStore', RELOCATION_STORE),
     ('StringTableAddressStore', ADDRESS_STORE),
     ('StringTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('StringTableAllocationTimestampStore', TRACE_STORE),
-    ('StringTableAllocationTimestampDeltaStore', TRACE_STORE),
-    ('StringTableInfoStore', TRACE_STORE),
+    ('StringTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('StringTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringTableInfoStore', INFO_STORE),
     ('EventTraitsExStore', TRACE_STORE),
     ('EventTraitsExMetadataInfoStore', TRACE_STORE),
     ('EventTraitsExAllocationStore', ALLOCATION_STORE),
-    ('EventTraitsExRelocationStore', TRACE_STORE),
+    ('EventTraitsExRelocationStore', RELOCATION_STORE),
     ('EventTraitsExAddressStore', ADDRESS_STORE),
     ('EventTraitsExAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('EventTraitsExAllocationTimestampStore', TRACE_STORE),
-    ('EventTraitsExAllocationTimestampDeltaStore', TRACE_STORE),
-    ('EventTraitsExInfoStore', TRACE_STORE),
-    ('WsWatchInfoExStore', TRACE_STORE),
+    ('EventTraitsExAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('EventTraitsExAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('EventTraitsExInfoStore', INFO_STORE),
+    ('WsWatchInfoExStore', WS_WATCH_INFO_EX_STORE),
     ('WsWatchInfoExMetadataInfoStore', TRACE_STORE),
     ('WsWatchInfoExAllocationStore', ALLOCATION_STORE),
-    ('WsWatchInfoExRelocationStore', TRACE_STORE),
+    ('WsWatchInfoExRelocationStore', RELOCATION_STORE),
     ('WsWatchInfoExAddressStore', ADDRESS_STORE),
     ('WsWatchInfoExAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('WsWatchInfoExAllocationTimestampStore', TRACE_STORE),
-    ('WsWatchInfoExAllocationTimestampDeltaStore', TRACE_STORE),
-    ('WsWatchInfoExInfoStore', TRACE_STORE),
-    ('WsWorkingSetExInfoStore', TRACE_STORE),
+    ('WsWatchInfoExAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('WsWatchInfoExAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('WsWatchInfoExInfoStore', INFO_STORE),
+    ('WsWorkingSetExInfoStore', WS_WORKING_SET_EX_INFO_STORE),
     ('WsWorkingSetExInfoMetadataInfoStore', TRACE_STORE),
     ('WsWorkingSetExInfoAllocationStore', ALLOCATION_STORE),
-    ('WsWorkingSetExInfoRelocationStore', TRACE_STORE),
+    ('WsWorkingSetExInfoRelocationStore', RELOCATION_STORE),
     ('WsWorkingSetExInfoAddressStore', ADDRESS_STORE),
     ('WsWorkingSetExInfoAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('WsWorkingSetExInfoAllocationTimestampStore', TRACE_STORE),
-    ('WsWorkingSetExInfoAllocationTimestampDeltaStore', TRACE_STORE),
-    ('WsWorkingSetExInfoInfoStore', TRACE_STORE),
+    ('WsWorkingSetExInfoAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('WsWorkingSetExInfoAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('WsWorkingSetExInfoInfoStore', INFO_STORE),
 ]
 
 class TRACE_STORE_ARRAY(Structure):

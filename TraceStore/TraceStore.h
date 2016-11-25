@@ -530,10 +530,38 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG LinkedStore:1;
 
     //
+    // When set, indicates that the trait store wishes to have its allocation
+    // records coalesced where possible.  When trace store allocations are
+    // performed, the number of records and record size parameters are saved
+    // to the :Allocation metadata store.  If the previous record size is the
+    // same as the new allocation's record size, the record will be coalesced
+    // if this bit is set, which means instead of writing a new 16 byte, two
+    // element <number of records, record size> tuple, the number of records
+    // value is incremented by the new number of records.  When this bit is
+    // clear, each allocation will be recorded separately, regardless of the
+    // previous allocation details.  Disabling coalescing is useful when exact
+    // allocation details need to be retained in order to rebuild the history
+    // of how a data structure was constructed.  The working set tracing uses
+    // this.
+    //
+    // N.B. This bit only applies to normal trace stores.  Metadata trace
+    //      stores do not record individual allocations (that is, they don't
+    //      have their own :Allocation metadata store to track allocations).
+    //
+    // Invariants:
+    //
+    //  - If CoalesceAllocations == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG CoalesceAllocations:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:24;
+    ULONG Unused:23;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -543,13 +571,12 @@ C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 typedef
 _Success_(return != 0)
 BOOL
-(VALIDATE_TRACE_STORE_TRAITS_INVARIANTS)(
+(VALIDATE_TRACE_STORE_TRAITS)(
+    _In_ struct _TRACE_STORE *TraceStore,
     _In_ TRACE_STORE_TRAITS Traits
     );
-typedef VALIDATE_TRACE_STORE_TRAITS_INVARIANTS \
-      *PVALIDATE_TRACE_STORE_TRAITS_INVARIANTS;
-TRACE_STORE_API VALIDATE_TRACE_STORE_TRAITS_INVARIANTS \
-                ValidateTraceStoreTraitsInvariants;
+typedef VALIDATE_TRACE_STORE_TRAITS *PVALIDATE_TRACE_STORE_TRAITS;
+TRACE_STORE_API VALIDATE_TRACE_STORE_TRAITS ValidateTraceStoreTraits;
 
 //
 // This enum should be kept in sync with the TRACE_STORE_TRAITS bitflags struct.
@@ -564,7 +591,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     FrequentAllocationsTrait            =  1 << 5,
     BlockingAllocationsTrait            =  1 << 6,
     LinkedStoreTrait                    =  1 << 7,
-    InvalidTrait                        = (1 << 7) + 1
+    CoalesceAllocationsTrait            =  1 << 8,
+    InvalidTrait                        = (1 << 8) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -607,6 +635,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define IsFrequentAllocator(Traits) ((Traits).FrequentAllocations)
 #define IsBlockingAllocator(Traits) ((Traits).BlockingAllocations)
 #define IsLinkedStore(Traits) ((Traits).LinkedStore)
+#define WantsCoalescedAllocations(Traits) ((Traits).CoalesceAllocations)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of

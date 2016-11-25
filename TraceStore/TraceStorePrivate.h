@@ -487,6 +487,17 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(PREPARE_FIRST_TRACE_STORE_MEMORY_MAP)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef  PREPARE_FIRST_TRACE_STORE_MEMORY_MAP \
+       *PPREPARE_FIRST_TRACE_STORE_MEMORY_MAP;
+PREPARE_FIRST_TRACE_STORE_MEMORY_MAP PrepareFirstTraceStoreMemoryMap;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (PREPARE_READONLY_TRACE_STORE_MEMORY_MAP)(
     _In_ PTRACE_STORE TraceStore,
     _In_ PTRACE_STORE_MEMORY_MAP MemoryMap

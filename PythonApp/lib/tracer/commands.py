@@ -671,6 +671,7 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
         rows = []
 
         fmt = lambda v: '{:,}'.format(v)
+        fmtz = lambda v: fmt(v) if v else ''
         drop = lambda f, v, d: f % v if v > d else ''
 
         def make_row(target):
@@ -686,14 +687,14 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
                 drop('%0.2f %%', store.space_saved_percent, 0),
                 fmt(store.num_allocations),
                 bytes_to_human(store.mapping_size),
-                fmt(store.dropped_records),
-                fmt(store.exhausted_free_memory_maps),
-                fmt(store.allocations_outpacing_next_memory_map_preparation),
-                fmt(store.preferred_address_unavailable),
-                fmt(store.access_violations_encountered_during_async_prefault),
-                fmt(store.blocked_allocations),
-                fmt(store.suspended_allocations),
-                fmt(store.elapsed_suspension_time),
+                fmtz(store.dropped_records),
+                fmtz(store.exhausted_free_memory_maps),
+                fmtz(store.allocations_outpacing_next_memory_map_preparation),
+                fmtz(store.preferred_address_unavailable),
+                fmtz(store.access_violations_encountered_during_async_prefault),
+                fmtz(store.blocked_allocations),
+                fmtz(store.suspended_allocations),
+                fmtz(store.elapsed_suspension_time),
             ])
 
         trace_stores = tsa._stores()
@@ -853,13 +854,13 @@ class PrintAddressInfo(InvariantAwareCommand):
             'Mapped Sequence ID',
             'Process ID',
             'Requesting Thread ID#',
-            'Requesting CPU Group#',
-            'Requesting CPU Number#',
-            'Requesting CPU Numa Node#',
             'Fulfilling Thread ID#',
+            'Requesting CPU Group#',
             'Fulfilling CPU Group#',
-            'Fulfilling CPU Number#',
+            'Requesting CPU Numa Node#',
             'Fulfilling CPU Numa Node#',
+            'Requesting CPU Number#',
+            'Fulfilling CPU Number#',
         ]
 
         tsa = cast(byref(ts), TraceStore.PTRACE_STORE_ARRAY).contents
@@ -887,13 +888,13 @@ class PrintAddressInfo(InvariantAwareCommand):
                     address.MappedSequenceId,
                     address.ProcessId,
                     address.RequestingThreadId,
-                    address.RequestingProcessor.Group,
-                    address.RequestingProcessor.Number,
-                    address.RequestingProcessor.Reserved,
                     address.FulfillingThreadId,
+                    address.RequestingProcessor.Group,
                     address.FulfillingProcessor.Group,
-                    address.FulfillingProcessor.Number,
+                    address.RequestingProcessor.Reserved,
                     address.FulfillingProcessor.Reserved,
+                    address.RequestingProcessor.Number,
+                    address.FulfillingProcessor.Number,
                 ])
 
         trace_stores = tsa._stores()
@@ -1110,6 +1111,248 @@ class PrintAddressRangeInfo(InvariantAwareCommand):
         results_chain = chain((header,), rows)
         render_text_table(results_chain, **k)
 
+class PrintWorkingSetInfo(InvariantAwareCommand):
+    def run(self):
+        out = self._out
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
+        out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Python,
+            Allocator,
+            TraceStore,
+            TracerConfig,
+        )
+
+        Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+        rtl = Rtl.create_and_initialize_rtl()
+
+        TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+        allocator = tc.Allocator.contents
+
+        from .dll.TraceStore import (
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
+        )
+
+        from .util import timer
+
+        t = timer(verbose=False)
+        with t:
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
+                tc,
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
+
+        from .util import (
+            Dict,
+            bin_zfill,
+            hex_zfill,
+            bytes_to_human,
+            render_text_table,
+        )
+
+        totals = ts.FunctionTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of function table allocations: %d." % total_allocs)
+
+        header = [
+            'Timestamp',
+            'Faulting IP',
+            'Faulting Address',
+            'Faulting Thread ID',
+            'NUMA Node',
+            'Protection',
+            'Valid?',
+            'Locked?',
+            'Large Page?',
+            'Bad?',
+            'Shared?',
+            'Share Count',
+        ]
+
+        watch_info_ex_store = ts.WsWatchInfoExStore
+        working_set_ex_info_store = ts.WsWorkingSetExInfoStore
+        allocation_timestamp_store = ts.WsWatchInfoExAllocationTimestampStore
+
+        watch_info_ex_arrays = list(
+            watch_info_ex_store.readonly_arrays
+        )
+
+        working_set_ex_info_arrays = list(
+            working_set_ex_info_store.readonly_arrays
+        )
+
+        from collections import defaultdict
+        lengths = defaultdict(list)
+
+        assert len(watch_info_ex_arrays) == 1
+        assert len(working_set_ex_info_arrays) == 1
+
+        watch_info_ex_array = watch_info_ex_arrays[0]
+        working_set_ex_info_array = working_set_ex_info_arrays[0]
+
+        array_len = len(watch_info_ex_array)
+
+        assert array_len == len(working_set_ex_info_array)
+
+        allocations = ts.WsWatchInfoExAllocationStore.as_array
+        timestamps = allocation_timestamp_store.as_array
+
+        assert len(allocations) == len(timestamps), (
+               len(allocations) == len(timestamps)
+        )
+
+        allocs = [
+            (a.NumberOfRecords, b.Timestamp)
+                for (a, b) in zip(allocations, timestamps)
+        ]
+
+        yes_or_drop = lambda v: 'Y' if v else ''
+        fmt_num = lambda v: '{:,}'.format(v)
+        fmt_hex = lambda v: '0x{:02X}'.format(v)
+        fmt_or_drop = lambda f, v, d: f % v if v > d else ''
+        drop_zero = lambda v: str(v) if v else ''
+
+        ix = 0
+        base_ix = 0
+        rows = []
+
+        from .wintypes import MEMORY_PROTECTION
+
+        from tqdm import tqdm
+        progressbar = tqdm(total=array_len)
+
+        for (num_records, timestamp) in allocs:
+
+            for i in range(num_records):
+                progressbar.update(1)
+                ix = base_ix = i
+                watch_info_ex = watch_info_ex_array[ix]
+                working_set_ex_info = working_set_ex_info_array[ix]
+
+                wi = watch_info_ex
+                bi = wi.BasicInfo
+                va = working_set_ex_info.VirtualAttributes
+
+                row = [
+                    timestamp,
+                    hex_zfill(bi.FaultingPc),
+                    hex_zfill(bi.FaultingVa),
+                    wi.FaultingThreadId,
+                    va.Node,
+                    MEMORY_PROTECTION._format(va.Win32Protection),
+                    yes_or_drop(va.Valid),
+                    yes_or_drop(va.Locked),
+                    yes_or_drop(va.LargePage),
+                    yes_or_drop(va.Bad),
+                    yes_or_drop(va.Shared),
+                    drop_zero(va.ShareCount),
+                ]
+                rows.append(row)
+
+            base_ix += num_records
+
+        from itertools import chain, repeat
+
+        k = Dict()
+        k.output = self.ostream
+        k.banner = (
+            'Trace Store Working Set Information for %s' % (
+                str(ts.BaseDirectory.Buffer)
+            )
+        )
+
+        k.formats = lambda: chain(
+            (str.ljust,),           # Name
+            (str.rjust,),           # Faulting IP
+            (str.rjust,),           # Faulting Address
+            (str.rjust,),           # Faulting Thread ID
+            (str.ljust,),           # Flags
+            (str.ljust,),           # NUMA Node
+            (str.center,),          # Valid?
+            (str.center,),          # Locked?
+            (str.center,),          # Large Page?
+            (str.center,),          # Bad?
+            (str.center,),          # Shared?
+            (str.center,),          # Share Count
+            (str.center,),          # Protection
+
+        )
+
+        results_chain = chain((header,), rows)
+        render_text_table(results_chain, **k)
+
+
 class LoadTrace(InvariantAwareCommand):
     def run(self):
         out = self._out
@@ -1210,18 +1453,20 @@ class LoadTrace(InvariantAwareCommand):
             render_text_table,
         )
 
-        import ipdb
-        ipdb.set_trace()
-
         totals = ts.FunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
         address_ranges = ts.FunctionTableEntryStore.address_ranges
 
+        #import IPython
+        #IPython.embed()
+
+        #return
+
         funcs = ts.FunctionTableEntryStore.get_valid_functions()
 
-        events = [ a for a in ts.EventStore.arrays ][0]
+        #events = [ a for a in ts.EventStore.arrays ][0]
 
         for i in range(len(funcs)):
             f = funcs[i].Function
@@ -1231,11 +1476,9 @@ class LoadTrace(InvariantAwareCommand):
                 out("[%d]: skipping." % i)
                 continue
             buf = name.Buffer[:name.Length]
-            out("[%d]: Full Name: %s." % (i, buf))
+            out("[%d]: Full Name: %s" % (i, buf))
 
 
-        import IPython
-        IPython.embed()
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
