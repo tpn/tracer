@@ -143,6 +143,10 @@ typedef struct _UNICODE_STRING {
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
 
+////////////////////////////////////////////////////////////////////////////////
+// Time
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Time.h"
 #include "Memory.h"
 #include "Commandline.h"
@@ -2130,6 +2134,70 @@ BOOL
 typedef PREFAULT_PAGES *PPREFAULT_PAGES, **PPPREFAULT_PAGES;
 RTL_API PREFAULT_PAGES PrefaultPages;
 
+typedef
+_Success_(return != 0)
+BOOL
+(SET_PRIVILEGE)(
+    _In_ PWSTR PrivilegeName,
+    _In_ BOOL Enable
+    );
+typedef SET_PRIVILEGE *PSET_PRIVILEGE;
+RTL_API SET_PRIVILEGE SetPrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_PRIVILEGE)(
+    _In_ PWSTR PrivilegeName
+    );
+typedef ENABLE_PRIVILEGE *PENABLE_PRIVILEGE;
+RTL_API ENABLE_PRIVILEGE EnablePrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_PRIVILEGE)(
+    _In_ PWSTR PrivilegeName
+    );
+typedef DISABLE_PRIVILEGE *PDISABLE_PRIVILEGE;
+RTL_API DISABLE_PRIVILEGE DisablePrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_MANAGE_VOLUME_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_MANAGE_VOLUME_PRIVILEGE *PENABLE_MANAGE_VOLUME_PRIVILEGE;
+RTL_API ENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_MANAGE_VOLUME_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_MANAGE_VOLUME_PRIVILEGE *PDISABLE_MANAGE_VOLUME_PRIVILEGE;
+RTL_API DISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_LOCK_MEMORY_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_LOCK_MEMORY_PRIVILEGE *PENABLE_LOCK_MEMORY_PRIVILEGE;
+RTL_API ENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_LOCK_MEMORY_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_LOCK_MEMORY_PRIVILEGE *PDISABLE_LOCK_MEMORY_PRIVILEGE;
+RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
+
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 
 #define PrefaultNextPage(Address)                          \
@@ -2138,6 +2206,13 @@ RTL_API PREFAULT_PAGES PrefaultPages;
 #define _RTLEXFUNCTIONS_HEAD                                                   \
     PDESTROY_RTL DestroyRtl;                                                   \
     PPREFAULT_PAGES PrefaultPages;                                             \
+    PSET_PRIVILEGE SetPrivilege;                                               \
+    PENABLE_PRIVILEGE EnablePrivilege;                                         \
+    PDISABLE_PRIVILEGE DisablePrivilege;                                       \
+    PENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;               \
+    PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;             \
+    PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                   \
+    PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                 \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
     PRTL_PARENT RtlParent;                                                     \

@@ -3592,6 +3592,55 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->SetPrivilege = (PSET_PRIVILEGE)
+        GetProcAddress(RtlExModule, "SetPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'SetPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnablePrivilege = (PENABLE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnablePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnablePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisablePrivilege = (PDISABLE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisablePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisablePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableManageVolumePrivilege = (PENABLE_MANAGE_VOLUME_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableManageVolumePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableManageVolumePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableManageVolumePrivilege = (PDISABLE_MANAGE_VOLUME_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableManageVolumePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableManageVolumePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableLockMemoryPrivilege = (PENABLE_LOCK_MEMORY_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableLockMemoryPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableLockMemoryPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableLockMemoryPrivilege = (PDISABLE_LOCK_MEMORY_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableLockMemoryPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableLockMemoryPrivilege'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
         GetProcAddress(RtlExModule, "RtlCheckBit"))) {
 
