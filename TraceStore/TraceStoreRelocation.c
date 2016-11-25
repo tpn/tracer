@@ -722,7 +722,7 @@ Return Value:
 
 
     if (!TraceStore->OnlyRelocationIsToNull) {
-        //__debugbreak();
+        __debugbreak();
     }
 
     //

@@ -54,6 +54,8 @@ typedef enum _PYTHON_TRACE_EVENT_TYPE {
     PythonTraceEventNull = 0,
     PythonTraceEvent1 = 1,
     PythonTraceEvent2,
+    PythonTraceEvent3,
+    PythonTraceEvent4,
     PythonTraceEventInvalid
 } PYTHON_TRACE_EVENT_TYPE, *PPYTHON_TRACE_EVENT_TYPE;
 
@@ -275,6 +277,8 @@ typedef PY_TRACE_CALLBACK *PPY_TRACE_CALLBACK;
 
 PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent1;
 PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent2;
+PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent3;
+PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceEvent4;
 
 typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
 

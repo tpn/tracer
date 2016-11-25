@@ -4,12 +4,12 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    PyTraceEvent1.c
+    PyTraceEvent2.c
 
 Abstract:
 
-    This module implements the tracing callback for the PYTHON_TRACE_EVENT2
-    structure.
+    This module implements the tracing callback PyTraceEvent2, which uses the
+    the PYTHON_TRACE_EVENT2 structure.
 
 --*/
 

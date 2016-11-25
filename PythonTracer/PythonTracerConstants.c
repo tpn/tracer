@@ -16,7 +16,9 @@ Abstract:
 
 PPY_TRACE_CALLBACK PythonTraceEventTypeToCallback[] = {
     PyTraceEvent1,
-    PyTraceEvent2
+    PyTraceEvent2,
+    PyTraceEvent3,
+    PyTraceEvent4
 };
 
 _Use_decl_annotations_

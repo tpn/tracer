@@ -16,7 +16,8 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-ValidateTraceStoreTraitsInvariants(
+ValidateTraceStoreTraits(
+    PTRACE_STORE TraceStore,
     TRACE_STORE_TRAITS Traits
     )
 /*++
@@ -26,6 +27,9 @@ Routine Description:
     This routine validates the trace store traits invariants.
 
 Arguments:
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure for which the
+        traits are to be validated.
 
     Traits - Supplies a TRAITS_STORE_TRAITS value to validate.
 
@@ -46,6 +50,30 @@ Return Value:
             return FALSE;
         }
         if (!AssertFalse("StreamingRead", Traits.StreamingRead)) {
+            return FALSE;
+        }
+    }
+
+    if (Traits.FrequentAllocations) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertTrue("StreamingWrite", Traits.StreamingWrite)) {
+            return FALSE;
+        }
+    }
+
+    if (Traits.LinkedStore) {
+        if (!AssertTrue("BlockingAllocations", Traits.BlockingAllocations)) {
+            return FALSE;
+        }
+    }
+
+    if (Traits.CoalesceAllocations) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
             return FALSE;
         }
     }
@@ -125,7 +153,7 @@ Return Value:
     // Validate the trait invariants.
     //
 
-    if (!ValidateTraceStoreTraitsInvariants(Traits)) {
+    if (!ValidateTraceStoreTraits(TraceStore, Traits)) {
         return FALSE;
     }
 

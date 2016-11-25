@@ -254,22 +254,22 @@ Return Value:
 
 --*/
 #define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do { \
-    ULONG Value;                                \
-    ULONG ValueLength = sizeof(Value);          \
-    Result = RegGetValueW(                      \
-        RegistryKey,                            \
-        NULL,                                   \
-        L#Name,                                 \
-        RRF_RT_REG_DWORD,                       \
-        NULL,                                   \
-        (PVOID)&Value,                          \
-        &ValueLength                            \
-    );                                          \
-    if (Result == ERROR_SUCCESS) {              \
-        TracerConfig->RuntimeParameters.Name = Value;  \
-    } else {                                    \
+    ULONG Value;                                         \
+    ULONG ValueLength = sizeof(Value);                   \
+    Result = RegGetValueW(                               \
+        RegistryKey,                                     \
+        NULL,                                            \
+        L#Name,                                          \
+        RRF_RT_REG_DWORD,                                \
+        NULL,                                            \
+        (PVOID)&Value,                                   \
+        &ValueLength                                     \
+    );                                                   \
+    if (Result == ERROR_SUCCESS) {                       \
+        TracerConfig->RuntimeParameters.Name = Value;    \
+    } else {                                             \
         TracerConfig->RuntimeParameters.Name = Default;  \
-    }                                           \
+    }                                                    \
 } while (0)
 
 //

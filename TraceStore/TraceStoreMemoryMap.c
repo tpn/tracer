@@ -17,6 +17,8 @@ Abstract:
 
 #include "stdafx.h"
 
+#define FIRST_BASE_ADDRESS 0x00000010000000000
+
 _Use_decl_annotations_
 BOOL
 GetNumberOfMemoryMapsRequiredByTraceStore(
@@ -582,9 +584,15 @@ Return Value:
     }
 
     //
+    // XXX: skip SetEndOfFile() whilst evaluating larger address ranges.
+    //
+
+    goto CreateSection;
+
+    //
     // If the new file offset is past the end of the file, extend it.
     //
-    // N.B.: This will be a synchronous (blocking) I/O call.
+    // N.B. This will be a synchronous (blocking) I/O call.
     //
 
     if (FileInfo.EndOfFile.QuadPart < NewFileOffset.QuadPart) {
@@ -597,6 +605,8 @@ Return Value:
     //
     // Create a new file mapping for this memory map's slice of data.
     //
+
+CreateSection:
 
     MemoryMap->MappingHandle = CreateFileMappingNuma(
         MemoryMap->FileHandle,

@@ -56,5 +56,11 @@
     <ClCompile Include="PyTraceEvent2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PyTraceEvent3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PyTraceEvent4.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

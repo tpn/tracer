@@ -98,6 +98,8 @@
     <ClCompile Include="PythonTracerTraceStoreRelocations.c" />
     <ClCompile Include="PyTraceEvent1.c" />
     <ClCompile Include="PyTraceEvent2.c" />
+    <ClCompile Include="PyTraceEvent3.c" />
+    <ClCompile Include="PyTraceEvent4.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

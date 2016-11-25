@@ -102,24 +102,19 @@ USHORT NumberOfTraceStores = (
 USHORT ElementsPerTraceStore = 9;
 USHORT NumberOfMetadataStores = 8;
 
-//
-// The Event-type stores gets an initial file size of 8MB, everything else gets
-// 2MB.
-//
-
 ULONG InitialTraceStoreFileSizes[] = {
-    10 << 23,   // Event
-    10 << 20,   // StringBuffer
+    10 << 30,   // Event
+    10 << 25,   // StringBuffer
     10 << 20,   // FunctionTable
-    10 << 20,   // FunctionTableEntry
+    10 << 25,   // FunctionTableEntry
     10 << 20,   // PathTable
-    10 << 20,   // PathTableEntry
+    10 << 25,   // PathTableEntry
     10 << 20,   // TraceSession
     10 << 20,   // StringArray
     10 << 20,   // StringTable
-    10 << 23,   // EventTraitsEx
-    10 << 23,   // WsWatchInfoEx
-    10 << 23    // WorkingSetExInfo
+    10 << 30,   // EventTraitsEx
+    10 << 24,   // WsWatchInfoEx
+    10 << 24,   // WorkingSetExInfo
 };
 
 
@@ -147,6 +142,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -163,6 +159,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -179,6 +176,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -195,6 +193,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -211,6 +210,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -227,6 +227,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -243,6 +244,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -259,6 +261,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -275,6 +278,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -291,6 +295,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         1,  // BlockingAllocations
         1,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -307,6 +312,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -321,8 +327,9 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // StreamingWrite
         1,  // StreamingRead
         1,  // FrequentAllocations
-        0,  // BlockingAllocations
-        0,  // LinkedStore
+        1,  // BlockingAllocations
+        1,  // LinkedStore (linked to WsWatchInfoEx)
+        0,  // CoalescedAllocations
         0   // Unused
     }
 };
@@ -376,31 +383,32 @@ USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 //      1 << 21 == 2MB
 //      1 << 22 == 4MB
 //      1 << 23 == 8MB
+//      1 << 25 ==
 //
 // N.B.: the trace store size should always be greater than or equal to the
 //       mapping size.
 //
 
-ULONG DefaultTraceStoreMappingSize = (1 << 21);
-ULONG DefaultTraceStoreEventMappingSize = (1 << 23);
+ULONG DefaultTraceStoreMappingSize = (1 << 26);
+ULONG DefaultTraceStoreEventMappingSize = (1 << 30);
 
 ULONG DefaultAllocationTraceStoreSize = (1 << 21);
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 16);
+ULONG DefaultAllocationTraceStoreMappingSize = (1 << 21);
 
 ULONG DefaultRelocationTraceStoreSize = (1 << 16);
 ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);
 
 ULONG DefaultAddressTraceStoreSize = (1 << 21);
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 16);
+ULONG DefaultAddressTraceStoreMappingSize = (1 << 21);
 
-ULONG DefaultAddressRangeTraceStoreSize = (1 << 16);
-ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 16);
+ULONG DefaultAddressRangeTraceStoreSize = (1 << 20);
+ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 20);
 
-ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 23);
-ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 23);
+ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 26);
+ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 26);
 
-ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 23);
-ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 23);
+ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 25);
+ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 25);
 
 ULONG DefaultMetadataInfoTraceStoreSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -434,6 +442,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -446,6 +455,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -458,6 +468,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -470,6 +481,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -482,6 +494,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -494,6 +507,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     1,  // FrequentAllocations
     1,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -506,6 +520,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     1,  // FrequentAllocations
     1,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 
@@ -518,6 +533,7 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // FrequentAllocations
     0,  // BlockingAllocations
     0,  // LinkedStore
+    0,  // CoalescedAllocations
     0   // Unused
 };
 

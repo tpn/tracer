@@ -492,12 +492,13 @@ Return Value:
         PTRACE_STORE_RELOC Reloc;
 
         LPCWSTR FileName = TraceStoreFileNames[Index];
-        DWORD InitialSize = Sizes[Index];
-        ULONG MappingSize = DefaultTraceStoreMappingSize;
+        ULONG InitialSize = Sizes[Index];
+        ULONG MappingSize = InitialSize;
 
-        if (StoreIndex == TraceStoreEventIndex) {
-            MappingSize = DefaultTraceStoreEventMappingSize;
-        }
+        //ULONG MappingSize = DefaultTraceStoreMappingSize;
+        //if (StoreIndex == TraceStoreEventIndex) {
+        //    MappingSize = DefaultTraceStoreEventMappingSize;
+        //}
 
         Result = StringCchCopyW(
             FileNameDest,

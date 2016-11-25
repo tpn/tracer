@@ -32,6 +32,7 @@ LONGLONG = c_int64
 PLONGLONG = POINTER(LONGLONG)
 ULONGLONG = c_uint64
 PULONGLONG = POINTER(ULONGLONG)
+PLARGE_INTEGER = POINTER(LARGE_INTEGER)
 PULARGE_INTEGER = POINTER(ULARGE_INTEGER)
 PVOID = c_void_p
 PPVOID = POINTER(PVOID)
@@ -129,6 +130,32 @@ class Structure(ctypes.Structure):
             ], align=True)
         except KeyError:
             pass
+
+class _ULARGE_INTEGER_INNER(Structure):
+    _fields_ = [
+        ('LowPart', ULONG),
+        ('HighPart', ULONG),
+    ]
+
+class _ULARGE_INTEGER(Union):
+    _fields_ = [
+        ('u', _ULARGE_INTEGER_INNER),
+        ('QuadPart', ULONGLONG),
+    ]
+_PULARGE_INTEGER = POINTER(_ULARGE_INTEGER)
+
+class _LARGE_INTEGER_INNER(Structure):
+    _fields_ = [
+        ('LowPart', LONG),
+        ('HighPart', LONG),
+    ]
+
+class _LARGE_INTEGER(Union):
+    _fields_ = [
+        ('u', _LARGE_INTEGER_INNER),
+        ('QuadPart', LONGLONG),
+    ]
+_PLARGE_INTEGER = POINTER(_LARGE_INTEGER)
 
 class SYSTEMTIME(Structure):
     _fields_ = [
@@ -378,23 +405,6 @@ class _PSAPI_WORKING_SET_EX_BLOCK_VALID(Structure):
         ('Bad', ULONGLONG, 1),
         ('ReservedUlong', ULONGLONG, 32),
     ]
-
-#class _PSAPI_WORKING_SET_EX_BLOCK_INVALID(Structure):
-#    _fields_ = [
-#        ('Valid', ULONGLONG, 1),
-#        ('Reserved0', ULONGLONG, 14),
-#        ('Shared', 1),
-#        ('Reserved1', ULONGLONG, 15),
-#        ('Bad', ULONGLONG, 1),
-#        ('ReservedUlong', ULONGLONG, 32),
-#    ]
-
-#class PSAPI_WORKING_SET_EX_BLOCK(Union):
-#    _fields_ = [
-#        ('Flags', ULONGLONG),
-#        ('v', _PSAPI_WORKING_SET_EX_BLOCK_VALID),
-#        ('i', _PSAPI_WORKING_SET_EX_BLOCK_INVALID),
-#    ]
 
 PSAPI_WORKING_SET_EX_BLOCK = _PSAPI_WORKING_SET_EX_BLOCK_VALID
 PPSAPI_WORKING_SET_EX_BLOCK = POINTER(PSAPI_WORKING_SET_EX_BLOCK)

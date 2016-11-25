@@ -113,6 +113,8 @@ Return Value:
     BOOL Success;
     BOOL Compress;
     BOOL IsReadonly;
+    BOOL LockMemoryEnabled;
+    BOOL ManageVolumeEnabled;
     CHAR MajorVersion;
     USHORT Index;
     ULONG RequiredSize;
@@ -521,6 +523,14 @@ Return Value:
         TraceFlags.DisablePrefaultPages = TRUE;
     }
 
+    //
+    // Attempt to get the SE_MANAGE_VOLUME privilege.
+    //
+
+    ManageVolumeEnabled = Rtl->EnableManageVolumePrivilege();
+    LockMemoryEnabled = Rtl->EnableLockMemoryPrivilege();
+
+    //
     // Allocate sufficient space, then initialize the stores.
     //
 
