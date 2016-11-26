@@ -86,7 +86,9 @@ from .Python import (
 )
 
 from .PythonTracer import (
-    PYTHON_TRACE_EVENT,
+    PYTHON_TRACE_EVENT1,
+    PYTHON_TRACE_EVENT2,
+    PYTHON_EVENT_TRAITS_EX,
 )
 
 #===============================================================================
@@ -861,6 +863,25 @@ class TRACE_STORE(Structure):
         return numpy_array
 
     @property
+    def as_numpy_array(self):
+        import numpy as np
+        from numpy.ctypeslib import as_array
+        ctypes_array = self.as_array
+        size = self.number_of_records
+        numpy_array = as_array(ctypes_array, shape=(size,))
+        numpy_array.dtype = self.numpy_dtype
+        return numpy_array
+
+    @property
+    def as_array(self):
+        assert self.struct_type
+
+        return cast(
+            self.base_address,
+            POINTER(self.struct_type * self.number_of_records),
+        ).contents
+
+    @property
     def stats(self):
         return self.Stats.contents
 
@@ -975,6 +996,29 @@ class TRACE_STORE(Structure):
                 self.address_store.totals.NumberOfAllocations
             )
         ).contents
+
+    @property
+    def mapped_size(self):
+        return self.MemoryMap.contents.MappingSize
+
+    @property
+    def end_address(self):
+        return self.base_address + self.mapped_size
+
+    @property
+    def number_of_records(self):
+        assert self.struct_type
+        return self.mapped_size / sizeof(self.struct_type)
+
+    @property
+    def as_array(self):
+        assert self.struct_type
+
+        return cast(
+            self.base_address,
+            POINTER(self.struct_type * self.number_of_records),
+        ).contents
+
 
 PTRACE_STORE = POINTER(TRACE_STORE)
 PPTRACE_STORE = POINTER(PTRACE_STORE)
@@ -1161,8 +1205,14 @@ class WS_WATCH_INFO_EX_STORE(TRACE_STORE):
 class WS_WORKING_SET_EX_INFO_STORE(TRACE_STORE):
     struct_type = PSAPI_WORKING_SET_EX_INFORMATION
 
-class PYTHON_TRACE_EVENT_STORE(TRACE_STORE):
-    struct_type = PYTHON_TRACE_EVENT
+class PYTHON_TRACE_EVENT1_STORE(TRACE_STORE):
+    struct_type = PYTHON_TRACE_EVENT1
+
+class PYTHON_TRACE_EVENT2_STORE(TRACE_STORE):
+    struct_type = PYTHON_TRACE_EVENT2
+
+class PYTHON_EVENT_TRAITS_EX_STORE(TRACE_STORE):
+    struct_type = PYTHON_EVENT_TRAITS_EX
 
 class PYTHON_PATH_TABLE_ENTRY_STORE(TRACE_STORE):
     struct_type = PYTHON_PATH_TABLE_ENTRY
@@ -1235,7 +1285,7 @@ TRACE_STORES._fields_ = [
     ('WsWorkingSetExInfoReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
     # Start of Stores[MAX_TRACE_STORES].
-    ('EventStore', PYTHON_TRACE_EVENT_STORE),
+    ('EventStore', PYTHON_TRACE_EVENT2_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
     ('EventAllocationStore', ALLOCATION_STORE),
     ('EventRelocationStore', RELOCATION_STORE),
@@ -1325,7 +1375,7 @@ TRACE_STORES._fields_ = [
     ('StringTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('StringTableInfoStore', INFO_STORE),
-    ('EventTraitsExStore', TRACE_STORE),
+    ('EventTraitsExStore', PYTHON_EVENT_TRAITS_EX_STORE),
     ('EventTraitsExMetadataInfoStore', TRACE_STORE),
     ('EventTraitsExAllocationStore', ALLOCATION_STORE),
     ('EventTraitsExRelocationStore', RELOCATION_STORE),

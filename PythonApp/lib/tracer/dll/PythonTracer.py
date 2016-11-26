@@ -22,11 +22,11 @@ from .Python import (
 # Classes
 #===============================================================================
 
-class PYTHON_TRACE_EVENT(Structure):
+class PYTHON_TRACE_EVENT1(Structure):
     pass
-PPYTHON_TRACE_EVENT = POINTER(PYTHON_TRACE_EVENT)
+PPYTHON_TRACE_EVENT1 = POINTER(PYTHON_TRACE_EVENT1)
 
-PYTHON_TRACE_EVENT._fields_ = [
+PYTHON_TRACE_EVENT1._fields_ = [
     ('Timestamp', ULONGLONG),
     ('Function', PPYTHON_FUNCTION),
 
@@ -65,6 +65,49 @@ PYTHON_TRACE_EVENT._fields_ = [
     ('NumberOfLines', USHORT),
     ('NumberOfCodeLines', USHORT),
 ]
+
+class PYTHON_TRACE_EVENT2(Structure):
+    _fields_ = [
+        ('Function', PPYTHON_FUNCTION),
+    ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '<u8',
+        'descr': [
+            ('Function', '<u8'),
+        ],
+    }
+PPYTHON_TRACE_EVENT2 = POINTER(PYTHON_TRACE_EVENT2)
+
+class PYTHON_EVENT_TRAITS_EX(Structure):
+    _fields_ = [
+        ('IsCall', ULONG, 1),
+        ('IsException', ULONG, 1),
+        ('IsLine', ULONG, 1),
+        ('IsReturn', ULONG, 1),
+        ('IsC', ULONG, 1),
+        ('AsEventType', ULONG, 3),
+        ('IsReverseJump', ULONG, 1),
+        ('LineNumberOrCallStackDepth', ULONG, 23),
+    ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '<u4',
+        'descr': [
+            ('IsCall', '|t1'),
+            ('IsException', '|t1'),
+            ('IsLine', '|t1'),
+            ('IsReturn', '|t1'),
+            ('IsC', '|t1'),
+            ('AsEventType', '|t3'),
+            ('IsReverseJump', '|t1'),
+            ('LineNumberOrCallStackDepth', '|t23'),
+        ],
+    }
+PPYTHON_EVENT_TRAITS_EX = POINTER(PYTHON_EVENT_TRAITS_EX)
+
 
 #===============================================================================
 # Functions
