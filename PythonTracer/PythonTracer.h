@@ -294,6 +294,7 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     PALLOCATOR         Allocator;
 
     ULONGLONG          Depth;
+    ULONGLONG          FramesIgnored;
     ULARGE_INTEGER     MaxDepth;
 
     ULONG              SkipFrames;
