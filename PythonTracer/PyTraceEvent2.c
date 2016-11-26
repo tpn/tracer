@@ -79,6 +79,7 @@ PyTraceEvent2(
 
     PRTL Rtl;
     PPYTHON Python;
+    //PPYOBJECT Target;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     PTRACE_STORE EventStore;
@@ -91,6 +92,28 @@ PyTraceEvent2(
     if (!InitializePythonTraceEvent(Context, EventType, &EventTraits)) {
         return TRUE;
     }
+
+#ifdef _IGNORE_TARGET
+
+    if (EventTraits.IsException) {
+        return TRUE;
+    } else if (EventTraits.IsC) {
+        Target = (PPYOBJECT)ArgObject;
+    } else {
+        Target = (PPYOBJECT)FrameObject->Code;
+    }
+
+    //
+    // If the ignore bit is set, we've already seen this target, and it wasn't
+    // of interest.  Fast-path exit.
+    //
+
+    if (Target->RefCountEx.Ignore) {
+        Context->FramesIgnored++;
+        return TRUE;
+    }
+
+#endif
 
     Flags = Context->Flags;
 
@@ -129,6 +152,7 @@ PyTraceEvent2(
         return FALSE;
     }
 
+#ifdef _DEBUG
     if (!Function->PathEntry.FullName.Length) {
         __debugbreak();
     }
@@ -136,6 +160,7 @@ PyTraceEvent2(
     if (Function->PathEntry.FullName.Buffer[0] == '\0') {
         __debugbreak();
     }
+#endif
 
     if (Context->Depth > Function->MaxCallStackDepth) {
         Function->MaxCallStackDepth = (ULONG)Context->Depth;
@@ -150,9 +175,14 @@ PyTraceEvent2(
 
         //
         // Function isn't of interest (i.e. doesn't reside in a module we're
-        // tracing), so return.
+        // tracing).  Set the ignore bit in this object's reference count and
+        // return.
         //
 
+#ifdef _IGNORE_TARGET
+        Target->RefCountEx.Ignore = TRUE;
+        Context->FramesIgnored++;
+#endif
         return TRUE;
     }
 
@@ -210,9 +240,6 @@ PyTraceEvent2(
     );
 
     EventTraitsExPointer->AsLong = EventTraitsEx.AsLong;
-
-    //InitializeListHead(&Event->ListEntry);
-    //AppendTailList(&Function->ListEntry, &Event->ListEntry);
 
     return TRUE;
 }
