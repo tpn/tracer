@@ -322,10 +322,6 @@ Return Value:
             return FALSE;
         }
 
-        if (0 && (ULONG_PTR)Handle != (ULONG_PTR)0x000000001e000000) {
-            __debugbreak();
-        }
-
         ActualSizeInChars = GetModuleFileNameA(Handle,
                                                (LPSTR)&Path,
                                                BufferSizeInChars);
