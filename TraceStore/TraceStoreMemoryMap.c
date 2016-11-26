@@ -17,8 +17,6 @@ Abstract:
 
 #include "stdafx.h"
 
-#define FIRST_BASE_ADDRESS 0x00000010000000000
-
 _Use_decl_annotations_
 BOOL
 GetNumberOfMemoryMapsRequiredByTraceStore(
