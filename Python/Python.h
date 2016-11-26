@@ -102,7 +102,8 @@ typedef union _PY_OBJECT_REFCOUNTEX {
     struct {
         ULONG LowPart;
         struct {
-            ULONG UpperBits:28;
+            ULONG UpperBits:27;
+            ULONG Ignore:1;
             ULONG Seen:1;
             ULONG Unused:2;
         };
