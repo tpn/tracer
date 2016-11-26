@@ -1450,6 +1450,8 @@ class LoadTrace(InvariantAwareCommand):
 
         from .util import (
             Dict,
+            timer,
+            bytes_to_human,
             render_text_table,
         )
 
@@ -1459,10 +1461,29 @@ class LoadTrace(InvariantAwareCommand):
 
         address_ranges = ts.FunctionTableEntryStore.address_ranges
 
-        #import IPython
-        #IPython.embed()
+        import numpy as np
+        import pandas as pd
 
-        #return
+
+        events = list(ts.EventStore.readonly_arrays)[0]
+        event_array = np.ctypeslib.as_array(events, shape=(len(events),))
+
+        event_series = pd.Series(event_array)
+
+        freq = pd.value_counts(event_series)
+
+        def make_uniq():
+            uniq = np.unique(
+                event_array,
+                return_index=True,
+                return_counts=True,
+                return_inverse=True
+            )
+
+        import IPython
+        IPython.embed()
+
+        return
 
         funcs = ts.FunctionTableEntryStore.get_valid_functions()
 
