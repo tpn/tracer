@@ -466,11 +466,11 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     // memory resident for the duration of the trace session.
     //
     // StreamingWrite usually implies StreamingRead, however, this not always
-    // the case.  The :address and :allocation metadata stores are configured
+    // the case.  The :Address and :Allocation metadata stores are configured
     // to do streaming writes, but have streaming reads disabled.  This is
     // because the trace store memory map reader algorithm needs to have all
-    // allocation and address information available in order to determine
-    // how to map/relocate data.
+    // allocation and address information available up front in order to
+    // determine how to map/relocate data.
     //
 
     ULONG StreamingWrite:1;
