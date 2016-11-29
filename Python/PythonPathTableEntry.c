@@ -437,7 +437,7 @@ Return Value:
 
     Filename.MaximumLength = Filename.Length;
 
-    if (Filename.Buffer[Filename.Length-1] == '\0' ||
+    if (Filename.Buffer[Filename.Length - 1] == '\0' ||
         Filename.Buffer[Filename.Length] != '\0') {
         __debugbreak();
     }
@@ -449,6 +449,10 @@ Return Value:
     Directory.Length = Offset - 1;
     Directory.MaximumLength = Directory.Length;
     Directory.Buffer = Path->Buffer;
+
+    if (Directory.Buffer[Directory.Length] != '\\') {
+        __debugbreak();
+    }
 
     //
     // Get the module name from the directory.
@@ -484,7 +488,7 @@ Return Value:
         //
 
         __debugbreak();
-
+        return FALSE;
     }
 
     //
@@ -510,6 +514,7 @@ Return Value:
     if (ModuleLength == 0) {
         if (!DirectoryEntry->IsNonModuleDirectory) {
             __debugbreak();
+            return FALSE;
         }
     }
 
@@ -708,7 +713,7 @@ Return Value:
                                    PrefixTableEntry);
 
     if (!Success) {
-
+        __debugbreak();
         FreeStringBuffer(Python, FullName);
         FreePythonPathTableEntry(Python, PathEntry);
 
