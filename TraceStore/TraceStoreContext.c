@@ -758,4 +758,32 @@ Return Value:
                                   UserData);
 }
 
+_Use_decl_annotations_
+VOID
+CloseTraceContext(
+    PTRACE_CONTEXT TraceContext
+    )
+/*++
+
+Routine Description:
+
+    This routine closes a previously initialized TRACE_CONTEXT structure.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure to close.
+
+Return Value:
+
+    None.
+
+--*/
+{
+
+    if (TraceContext->GetWorkingSetChangesTimer) {
+        CloseThreadpoolTimer(TraceContext->GetWorkingSetChangesTimer);
+    }
+
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

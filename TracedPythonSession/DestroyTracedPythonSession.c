@@ -48,7 +48,7 @@ Returns:
     //
     // Dereference the pointer so we can just work with Session for the bulk
     // of the method (instead of *SessionPointer->).  (This should be wrapped
-    // in a try/except ideally, however, we'd need to do some fidding to ensure
+    // in a try/except ideally, however, we'd need to do some fiddling to ensure
     // __C_specific_handler worked without relying on Session->Rtl, which may
     // not be available as *SessionPointer may fault.)
     //
@@ -62,10 +62,17 @@ Returns:
     *SessionPointer = NULL;
 
     //
-    // Close the trace stores.
+    // Close the context.
     //
 
-    __debugbreak();
+    if (Session->TraceContext) {
+        Session->CloseTraceContext(Session->TraceContext);
+        Session->TraceContext = NULL;
+    }
+
+    //
+    // Close the trace stores.
+    //
 
     if (Session->TraceStores) {
         Session->CloseTraceStores(Session->TraceStores);
