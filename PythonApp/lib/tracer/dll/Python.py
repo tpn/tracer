@@ -200,23 +200,32 @@ class PYTHON_FUNCTION(Structure):
 
     @property
     def path(self):
-        return self.PathEntry.PathBuffer[:self.PathEntry.PathLength]
+        return self.PathEntry.Path.Buffer[:
+            self.PathEntry.Path.Length
+        ] if self.PathEntry.Path.Buffer else ''
 
     @property
     def fullname(self):
-        return self.PathEntry.FullNameBuffer[:self.PathEntry.FullNameLength]
+        return self.PathEntry.FullName.Buffer[:
+            self.PathEntry.FullName.Length
+        ] if self.PathEntry.FullName.Buffer else ''
 
     @property
     def modulename(self):
-        return self.PathEntry.ModuleNameBuffer[:self.PathEntry.ModuleNameLength]
+        return self.PathEntry.ModuleName.Buffer[:
+            self.PathEntry.ModuleName.Length
+        ] if self.PathEntry.ModuleName.Buffer else ''
 
     @property
     def classname(self):
-        return self.PathEntry.ClassNameBuffer[:self.PathEntry.ClassNameLength]
+        return self.PathEntry.ClassName.Buffer[:
+            self.PathEntry.ClassName.Length
+        ] if self.PathEntry.ClassName.Buffer else ''
 
     @property
     def name(self):
-        return self.PathEntry.NameBuffer[:self.PathEntry.NameLength]
+        return self.PathEntry.Name.Buffer[:self.PathEntry.Name.Length] \
+            if self.PathEntry.Name.Buffer else ''
 
     @property
     def is_valid(self):

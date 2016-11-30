@@ -1460,21 +1460,21 @@ class PrintNames(InvariantAwareCommand):
         out("Total number of function table allocations: %d." % total_allocs)
 
         header = [
-            'Path',
             'Full Name',
+            'Name',
             'Module Name',
             'Class Name',
-            'Name',
+            'Path',
         ]
 
         funcs = ts.FunctionTableEntryStore.get_valid_functions()
 
         rows = [
-            (f.path,
-             f.fullname,
+            (f.fullname,
+             f.name,
              f.modulename,
              f.classname,
-             f.name) for f in funcs
+             f.path) for f in (f.Function for f in funcs)
         ]
 
         #import IPython
