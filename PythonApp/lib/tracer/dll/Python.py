@@ -199,6 +199,26 @@ class PYTHON_FUNCTION(Structure):
         ])
 
     @property
+    def path(self):
+        return self.PathEntry.PathBuffer[:self.PathEntry.PathLength]
+
+    @property
+    def fullname(self):
+        return self.PathEntry.FullNameBuffer[:self.PathEntry.FullNameLength]
+
+    @property
+    def modulename(self):
+        return self.PathEntry.ModuleNameBuffer[:self.PathEntry.ModuleNameLength]
+
+    @property
+    def classname(self):
+        return self.PathEntry.ClassNameBuffer[:self.PathEntry.ClassNameLength]
+
+    @property
+    def name(self):
+        return self.PathEntry.NameBuffer[:self.PathEntry.NameLength]
+
+    @property
     def is_valid(self):
         return self.PathEntry.PrefixTableEntry.PathEntryType.IsValid
 
