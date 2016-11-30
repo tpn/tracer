@@ -314,6 +314,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
     PINITIALIZE_TRACE_SESSION InitializeTraceSession;
     PCLOSE_TRACE_STORES CloseTraceStores;
+    PCLOSE_TRACE_CONTEXT CloseTraceContext;
     PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
 
     //

@@ -299,6 +299,10 @@ Return Value:
             InitializeTraceContext);
 
     RESOLVE(TraceStoreModule,
+            PCLOSE_TRACE_CONTEXT,
+            CloseTraceContext);
+
+    RESOLVE(TraceStoreModule,
             PINITIALIZE_TRACE_SESSION,
             InitializeTraceSession);
 

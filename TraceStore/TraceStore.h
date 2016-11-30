@@ -1837,6 +1837,14 @@ typedef INITIALIZE_TRACE_CONTEXT *PINITIALIZE_TRACE_CONTEXT;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeTraceContext;
 TRACE_STORE_API INITIALIZE_TRACE_CONTEXT InitializeReadonlyTraceContext;
 
+typedef
+VOID
+(CLOSE_TRACE_CONTEXT)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef CLOSE_TRACE_CONTEXT *PCLOSE_TRACE_CONTEXT;
+TRACE_STORE_API CLOSE_TRACE_CONTEXT CloseTraceContext;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
