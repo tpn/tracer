@@ -269,6 +269,7 @@ Return Value:
 
     STRING Filename;
     STRING Directory;
+    STRING TempPath;
 
     PSTR Dest;
     PSTR File;
@@ -443,12 +444,77 @@ Return Value:
     }
 
     //
+    // If we don't own the incoming path buffer, we need to allocate space for
+    // it and copy it now.  This is because we potentially add the Directory to
+    // the prefix tree below, and we can't do that if the underlying path buffer
+    // is stack-allocated or heap-allocated.
+    //
+    // N.B. "Own" in this context means that we've allocated the buffer from
+    //      a trace store buffer.
+    //
+
+    if (WeOwnPathBuffer) {
+
+        //
+        // Clear the path allocation length.
+        //
+
+        PathAllocSize = 0;
+
+        //
+        // Capture the incoming filename's details into our temporary path.
+        //
+
+        TempPath.Length = FilenameString->Length;
+        TempPath.MaximumLength = FilenameString->MaximumLength;
+        TempPath.Buffer = FilenameString->Buffer;
+
+    } else {
+
+
+        //
+        // Account for path length plus trailing NULL.
+        //
+
+        PathAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(Path->Length + 1);
+
+        //
+        // Allocate space for the underlying string buffer.
+        //
+
+        Success = AllocateStringBuffer(Python, PathAllocSize, &TempPath);
+
+        //
+        // Copy the underlying string.
+        //
+
+        __movsb((PBYTE)TempPath.Buffer,
+                (PBYTE)FilenameString->Buffer,
+                FilenameString->Length);
+
+        //
+        // Update the length.
+        //
+
+        TempPath.Length = FilenameString->Length;
+
+        //
+        // Ensure the buffer is NUL terminated.
+        //
+
+        if (TempPath.Buffer[TempPath.Length] != '\0') {
+            __debugbreak();
+        }
+    }
+
+
+    //
     // Extract the directory name.
     //
 
     Directory.Length = Offset - 1;
     Directory.MaximumLength = Directory.Length;
-    Directory.Buffer = Path->Buffer;
+    Directory.Buffer = TempPath.Buffer;
 
     if (Directory.Buffer[Directory.Length] != '\\') {
         __debugbreak();
@@ -518,19 +584,6 @@ Return Value:
         }
     }
 
-    if (!WeOwnPathBuffer) {
-
-        //
-        // Account for path length plus trailing NULL.
-        //
-
-        PathAllocSize = ALIGN_UP_USHORT_TO_POINTER_SIZE(Path->Length + 1);
-
-    } else {
-
-        PathAllocSize = 0;
-    }
-
     //
     // Determine the length of the file part (filename sans extension).
     //
@@ -576,12 +629,10 @@ Return Value:
         PathEntry->IsDll = TRUE;
     }
 
-    Path = &PathEntry->Path;
     FullName = &PathEntry->FullName;
 
     //
-    // Allocate the full name string and the path string if we don't already
-    // own it.
+    // Allocate the full name string if we don't already own it.
     //
 
     if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
@@ -589,26 +640,17 @@ Return Value:
         goto End;
     }
 
-    if (!WeOwnPathBuffer) {
+    //
+    // Initialize the Path entry.
+    //
 
-        if (!AllocateStringBuffer(Python, PathAllocSize, Path)) {
-            FreeStringBuffer(Python, FullName);
-            FreePythonPathTableEntry(Python, PathEntry);
-            goto End;
-        }
+    Path = &PathEntry->Path;
 
-    } else {
+    Path->Length = TempPath.Length;
+    Path->MaximumLength = TempPath.MaximumLength;
+    Path->Buffer = TempPath.Buffer;
 
-        //
-        // Re-use the qualified path's details.
-        //
-
-        Path->MaximumLength = FilenameString->MaximumLength;
-        Path->Buffer = FilenameString->Buffer;
-    }
-
-    Path->Length = FilenameString->Length;
-
+#ifdef _DEBUG
     ExpectedMaximumLength = (
         PathAllocSize ? PathAllocSize :
                         FilenameString->MaximumLength
@@ -617,6 +659,7 @@ Return Value:
     if (Path->MaximumLength < ExpectedMaximumLength) {
         __debugbreak();
     }
+#endif
 
     //
     // Initialize shortcut pointers.
@@ -641,25 +684,6 @@ Return Value:
     ModuleName->Length = ModuleLength;
     ModuleName->MaximumLength = ModuleLength;
     ModuleName->Buffer = ModuleBuffer;
-
-    if (!WeOwnPathBuffer) {
-
-        //
-        // If we didn't own the incoming path's buffer, copy it over.
-        //
-
-        __movsb((PBYTE)Path->Buffer,
-                (PBYTE)FilenameString->Buffer,
-                Path->Length);
-
-        //
-        // Ensure the buffer is NUL terminated.
-        //
-
-        if (Path->Buffer[Path->Length] != '\0') {
-            __debugbreak();
-        }
-    }
 
     //
     // Construct the final full name.  After each part has been copied, update
@@ -713,17 +737,13 @@ Return Value:
                                    PrefixTableEntry);
 
     if (!Success) {
+
+        //
+        // This should never get hit; it indicates the path was already in the
+        // prefix tree.
+        //
+
         __debugbreak();
-        FreeStringBuffer(Python, FullName);
-        FreePythonPathTableEntry(Python, PathEntry);
-
-        if (WeOwnPathBuffer) {
-            FreeStringAndBuffer(Python, FilenameString);
-        } else {
-            FreeStringBuffer(Python, Path);
-        }
-
-        goto End;
     }
 
     //
@@ -1813,6 +1833,7 @@ Return Value:
                                    PrefixTableEntry);
 
     if (!Success) {
+        __debugbreak();
         FreeStringBuffer(Python, &Entry->ModuleName);
         FreePythonPathTableEntry(Python, Entry);
         return FALSE;
@@ -1841,7 +1862,7 @@ QualifyPath(
 
 Routine Description:
 
-    This routine converts a relative path into a fully-qualifed one, using the
+    This routine converts a relative path into a fully-qualified one, using the
     current directory name to resolve the non-relative part of the path name.
 
 Arguments:
