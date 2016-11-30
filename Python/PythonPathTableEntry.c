@@ -277,7 +277,9 @@ Return Value:
     USHORT PathAllocSize;
     USHORT FullNameLength;
     USHORT FullNameAllocSize;
+#ifdef _DEBUG
     USHORT ExpectedMaximumLength;
+#endif
 
     //
     // Reserve a 32 byte (256 >> 3), 256 bit stack-allocated bitmap buffer.
