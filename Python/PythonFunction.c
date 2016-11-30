@@ -335,6 +335,8 @@ Return Value:
                 //
 
                 __debugbreak();
+
+                FilenameFlags.WeOwnPathBuffer = TRUE;
             }
 
             return FALSE;
