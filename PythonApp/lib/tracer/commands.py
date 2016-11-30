@@ -1352,6 +1352,150 @@ class PrintWorkingSetInfo(InvariantAwareCommand):
         results_chain = chain((header,), rows)
         render_text_table(results_chain, **k)
 
+class PrintNames(InvariantAwareCommand):
+    def run(self):
+        out = self._out
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
+        out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Python,
+            Allocator,
+            TraceStore,
+            TracerConfig,
+        )
+
+        from .dll.TraceStore import (
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
+        )
+
+        from .util import timer
+
+        t = timer(verbose=False)
+        with t:
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
+                tc,
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
+
+        from .util import (
+            Dict,
+            timer,
+            bytes_to_human,
+            render_text_table,
+        )
+
+        totals = ts.FunctionTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of function table allocations: %d." % total_allocs)
+
+        header = [
+            'Path',
+            'Full Name',
+            'Module Name',
+            'Class Name',
+            'Name',
+        ]
+
+        funcs = ts.FunctionTableEntryStore.get_valid_functions()
+
+        rows = [
+            (f.path,
+             f.fullname,
+             f.modulename,
+             f.classname,
+             f.name) for f in funcs
+        ]
+
+        #import IPython
+        #IPython.embed()
+
+        k = Dict()
+        k.output = self.ostream
+        k.banner = 'Trace Store Names for %s' % str(ts.BaseDirectory.Buffer)
+        k.formats = lambda: chain(
+            (str.ljust,),           # Path
+            (str.ljust,),           # Full Name
+            (str.ljust,),           # Module Name
+            (str.ljust,),           # Class Name
+            (str.ljust,),           # Name
+        )
+
+        from itertools import chain
+
+        results_chain = chain((header,), rows)
+        render_text_table(results_chain, **k)
+
 
 class LoadTrace(InvariantAwareCommand):
     def run(self):
@@ -1480,11 +1624,6 @@ class LoadTrace(InvariantAwareCommand):
                 return_inverse=True
             )
 
-        import IPython
-        IPython.embed()
-
-        return
-
         funcs = ts.FunctionTableEntryStore.get_valid_functions()
 
         #events = [ a for a in ts.EventStore.arrays ][0]
@@ -1498,6 +1637,9 @@ class LoadTrace(InvariantAwareCommand):
                 continue
             buf = name.Buffer[:name.Length]
             out("[%d]: Full Name: %s" % (i, buf))
+
+        import IPython
+        IPython.embed()
 
 
 
