@@ -122,7 +122,40 @@ class _PYTHON_PATH_TABLE_ENTRY(Structure):
     pass
 
 class PYTHON_PATH_TABLE_ENTRY(Structure):
-    pass
+
+    @property
+    def path(self):
+        return self.Path.Buffer[:
+            self.Path.Length
+        ] if self.Path.Buffer else ''
+
+    @property
+    def fullname(self):
+        return self.FullName.Buffer[:
+            self.FullName.Length
+        ] if self.FullName.Buffer else ''
+
+    @property
+    def modulename(self):
+        return self.ModuleName.Buffer[:
+            self.ModuleName.Length
+        ] if self.ModuleName.Buffer else ''
+
+    @property
+    def classname(self):
+        return self.ClassName.Buffer[:
+            self.ClassName.Length
+        ] if self.ClassName.Buffer else ''
+
+    @property
+    def name(self):
+        return self.Name.Buffer[:self.Name.Length] \
+            if self.Name.Buffer else ''
+
+    @property
+    def is_valid(self):
+        return self.PrefixTableEntry.PathEntryType.IsValid
+
 PPYTHON_PATH_TABLE_ENTRY = POINTER(PYTHON_PATH_TABLE_ENTRY)
 
 class PYTHON_FUNCTION(Structure):

@@ -1217,6 +1217,12 @@ class PYTHON_EVENT_TRAITS_EX_STORE(TRACE_STORE):
 class PYTHON_PATH_TABLE_ENTRY_STORE(TRACE_STORE):
     struct_type = PYTHON_PATH_TABLE_ENTRY
 
+    @property
+    def entries(self):
+        return [
+            pte for pte in (array for array in self.readonly_arrays)
+        ]
+
 class PYTHON_FUNCTION_TABLE_ENTRY_STORE(TRACE_STORE):
     struct_type = PYTHON_FUNCTION_TABLE_ENTRY
 
