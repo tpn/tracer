@@ -540,8 +540,8 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
         from .dll.TracerConfig import load_tracer_config
         tc = load_tracer_config()
 
-        basedir = tc.choose_trace_store_directory()
-        #basedir = tc.trace_store_directories()[0]
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
         out("Selected: %s." % basedir)
 
         from .dll import (
@@ -734,8 +734,8 @@ class PrintAddressInfo(InvariantAwareCommand):
         from .dll.TracerConfig import load_tracer_config
         tc = load_tracer_config()
 
-        basedir = tc.choose_trace_store_directory()
-        #basedir = tc.trace_store_directories()[0]
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
         out("Selected: %s." % basedir)
 
         from .dll import (
@@ -935,8 +935,8 @@ class PrintAddressRangeInfo(InvariantAwareCommand):
         from .dll.TracerConfig import load_tracer_config
         tc = load_tracer_config()
 
-        basedir = tc.choose_trace_store_directory()
-        #basedir = tc.trace_store_directories()[0]
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
         out("Selected: %s." % basedir)
 
         from .dll import (
