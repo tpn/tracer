@@ -556,11 +556,9 @@ class MSVCCompiler(CCompiler) :
                                    % (src, obj))
 
             output_opt = "/Fo" + obj
-            #pdb_opt = "/Fd" + obj.replace('.obj', '.pdb')
             command = (
                 [self.cc] + compile_opts + pp_opts +
                 [input_opt, output_opt] +
-                #pdb_opt
                 extra_postargs
             )
             try:
@@ -625,13 +623,8 @@ class MSVCCompiler(CCompiler) :
         lib_opts = gen_lib_options(self,
                                    library_dirs, runtime_library_dirs,
                                    libraries)
-
         if output_dir is not None:
             output_filename = os.path.join(output_dir, output_filename)
-
-        ix = output_filename.rfind('.')
-        assert ix != -1
-        pdb_filename = output_filename[:ix] + '.pdb'
 
         if self._need_link(objects, output_filename):
             if target_desc == CCompiler.EXECUTABLE:
@@ -649,8 +642,7 @@ class MSVCCompiler(CCompiler) :
             for sym in (export_symbols or []):
                 export_opts.append("/EXPORT:" + sym)
 
-            pdb_opts = ['/PDB:' + pdb_filename ]
-            ld_args = (ldflags + lib_opts + export_opts + pdb_opts +
+            ld_args = (ldflags + lib_opts + export_opts + ['/DEBUG'] +
                        objects + ['/OUT:' + output_filename])
 
             # The MSVC linker generates .lib and .exp files, which cannot be
