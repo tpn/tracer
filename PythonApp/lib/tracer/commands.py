@@ -1496,6 +1496,170 @@ class PrintNames(InvariantAwareCommand):
         results_chain = chain((header,), rows)
         render_text_table(results_chain, **k)
 
+class PrintPathTableEntries(InvariantAwareCommand):
+    def run(self):
+        out = self._out
+        from .dll.TracerConfig import load_tracer_config
+        tc = load_tracer_config()
+
+        #basedir = tc.choose_trace_store_directory()
+        basedir = tc.trace_store_directories()[0]
+        out("Selected: %s." % basedir)
+
+        from .dll import (
+            Rtl,
+            Python,
+            Allocator,
+            TraceStore,
+            TracerConfig,
+        )
+
+        from .dll.TraceStore import (
+            TP_CALLBACK_ENVIRON,
+
+            create_threadpool,
+
+            SetThreadpoolCallbackPool,
+            InitializeThreadpoolEnvironment,
+        )
+
+        from ctypes import (
+            cast,
+            byref,
+            sizeof,
+        )
+
+        from .wintypes import (
+            wait,
+            ULONG,
+            PVOID,
+        )
+
+        from .util import timer
+
+        t = timer(verbose=False)
+        with t:
+            tracer_config = TracerConfig.load_tracer_config()
+            tc = tracer_config
+            base = tc.trace_store_directories()[0]
+            Rtl.bind(path=tc.Paths.RtlDllPath.Buffer)
+            rtl = Rtl.create_and_initialize_rtl()
+            TraceStore.bind(path=tc.Paths.TraceStoreDllPath.Buffer)
+            allocator = tc.Allocator.contents
+            threadpool = create_threadpool()
+            tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(tp_callback_env)
+            SetThreadpoolCallbackPool(tp_callback_env, threadpool)
+            cancel_tp_callback_env = TP_CALLBACK_ENVIRON()
+            InitializeThreadpoolEnvironment(cancel_tp_callback_env)
+            SetThreadpoolCallbackPool(cancel_tp_callback_env, threadpool)
+            flags = TraceStore.TRACE_CONTEXT_FLAGS()
+            flags.InitializeAsync = True
+            ctx = TraceStore.TRACE_CONTEXT()
+            ctx_size = ULONG(sizeof(TraceStore.TRACE_CONTEXT))
+
+        out("Initialized libraries and threadpool in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            ts = TraceStore.create_and_initialize_readonly_trace_stores(
+                rtl,
+                allocator,
+                basedir,
+                tc
+            )
+
+        out("Initialized readonly trace stores in %s." % t.fmt)
+
+        t = timer(verbose=False)
+        with t:
+            success = TraceStore.InitializeReadonlyTraceContext(
+                byref(rtl),
+                byref(allocator),
+                tc,
+                byref(ctx),
+                byref(ctx_size),
+                cast(0, TraceStore.PTRACE_SESSION),
+                byref(ts),
+                byref(tp_callback_env),
+                byref(cancel_tp_callback_env),
+                byref(flags),
+                cast(0, PVOID),
+            )
+
+        out("Initialized readonly trace context in %s." % t.fmt)
+
+        if not wait(ctx.LoadingCompleteEvent):
+            raise CommandError("Context failed to load asynchronously.")
+
+        from .util import (
+            Dict,
+            timer,
+            bytes_to_human,
+            render_text_table,
+        )
+
+        totals = ts.PathTableEntryStore.Totals.contents
+        total_allocs = totals.NumberOfAllocations
+        out("Total number of path table entry allocations: %d." % total_allocs)
+
+        header = [
+            'Path',
+            'Type',
+            'Full Name',
+            'Name',
+            'Module Name',
+            'Class Name',
+        ]
+
+        #entries = ts.PathTableEntryStore.entries
+        entries = [ e for e in ts.PathTableEntryStore.readonly_arrays ]
+        assert len(entries) == 1, len(entries)
+        entries = entries[0]
+
+        def get_type(e):
+            pt = e.PrefixTableEntry.PathEntryType
+            if pt.IsModuleDirectory:
+                return 'Module Directory'
+            elif pt.IsNonModuleDirectory:
+                return 'Non-module Directory'
+            elif pt.IsFile:
+                return 'File'
+            else:
+                return 'Unknown?'
+
+        rows = [
+            (e.path,
+             get_type(e),
+             e.fullname,
+             e.name,
+             e.modulename,
+             e.classname) for e in entries
+        ]
+
+        #import IPython
+        #IPython.embed()
+
+        k = Dict()
+        k.output = self.ostream
+        k.banner = (
+            'Trace Store Path Table Entries for %s' % (
+                str(ts.BaseDirectory.Buffer)
+            )
+        )
+        k.formats = lambda: chain(
+            (str.ljust,),           # Path
+            (str.ljust,),           # Full Name
+            (str.ljust,),           # Module Name
+            (str.ljust,),           # Class Name
+            (str.ljust,),           # Name
+        )
+
+        from itertools import chain
+
+        results_chain = chain((header,), rows)
+        render_text_table(results_chain, **k)
+
 
 class LoadTrace(InvariantAwareCommand):
     def run(self):
