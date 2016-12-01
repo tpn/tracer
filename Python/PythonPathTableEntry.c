@@ -290,6 +290,12 @@ Return Value:
     BitmapPointer = &Bitmap;
 
     //
+    // Initialize Rtl variable.
+    //
+
+    Rtl = Python->Rtl;
+
+    //
     // If the filename was special (started with a "<" character), we fill
     // out a very simple path table entry structure and return.
     //
@@ -374,17 +380,23 @@ Return Value:
         }
 
         //
-        // Jump to the finalization logic.
+        // Initialize the PathEntry's Path pointer with the full name, so that
+        // it can be added to the prefix tree.
         //
 
-        goto End;
+        Path = &PathEntry->Path;
+
+        Path->Length = FullName->Length;
+        Path->MaximumLength = FullName->MaximumLength;
+        Path->Buffer = FullName->Buffer;
+
+        goto AddPrefix;
     }
 
     //
-    // Initialize Rtl and character length variables.
+    // Initialize local variables.
     //
 
-    Rtl = Python->Rtl;
     HeapHandle = Python->HeapHandle;
 
     NumberOfChars = Path->Length;
@@ -726,6 +738,8 @@ Return Value:
     //
 
     *Dest++ = '\0';
+
+AddPrefix:
 
     //
     // Add the newly created PathEntry to our path table prefix tree.
