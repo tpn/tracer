@@ -343,8 +343,8 @@ Return Value:
         }
 
         //
-        // N.B.: ActualSizeInChars includes the NUL-terminator, so we don't
-        //       need to subtract 1 from the length here.
+        // N.B. ActualSizeInChars includes the NUL-terminator, so we don't need
+        //      to subtract 1 from the length here.
         //
 
         FilenameString.Length = (USHORT)ActualSizeInChars;
