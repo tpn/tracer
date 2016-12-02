@@ -1,3 +1,18 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Rtl.c
+
+Abstract:
+
+    This module provides implementations for most Rtl (Run-time Library)
+    routines.
+
+--*/
+
 #include "stdafx.h"
 
 static PRTL_COMPARE_STRING _RtlCompareString = NULL;

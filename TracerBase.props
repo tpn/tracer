@@ -30,9 +30,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <CompileAsManaged>false</CompileAsManaged>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <!--
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qpar-report:2;/Qvec-report:2;%(AdditionalOptions)</AdditionalOptions>
-    -->
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/Qpar-report:1 /Qvec-report:1 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
@@ -48,10 +45,11 @@
     </Bscmake>
     <Link>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGInstrument'">$(VC_LibraryPath_x64)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGUpdate'">$(VC_LibraryPath_x64)</AdditionalLibraryDirectories>
-      <AdditionalDependencies Condition="$(Configuration) == 'PGInstrument'">pgobootrun.lib</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(Configuration) == 'PGUpdate'">pgobootrun.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGInstrument'">$(VC_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGUpdate'">$(VC_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(Configuration) == 'PGInstrument'">pgobootrun.lib;pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(Configuration) == 'PGUpdate'">pgobootrun.lib;pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -84,5 +82,5 @@
   </ItemDefinitionGroup>
   <ImportGroup Label="ExtensionSettings">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
-  </ImportGroup> 
+  </ImportGroup>
 </Project>

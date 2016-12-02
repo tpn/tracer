@@ -61,9 +61,11 @@
     <ClCompile>
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <!--
     <Link>
       <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    -->
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
