@@ -1,3 +1,19 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    TlsTracerHeapProcessDetach.c
+
+Abstract:
+
+    This module implements the TlsTracerHeapProcessDetach routine.  It is
+    called by the dllmain module when a DLL_PROCESS_DETACH indication is
+    received.
+
+--*/
+
 #include "stdafx.h"
 
 _Use_decl_annotations_
@@ -9,6 +25,12 @@ TlsTracerHeapProcessDetach(
     )
 {
     BOOL Success;
+    BOOL IsProcessTerminating;
+
+    IsProcessTerminating = (Reserved != NULL);
+    if (IsProcessTerminating) {
+        return TRUE;
+    }
 
     if (TlsIndex == TLS_OUT_OF_INDEXES) {
 
