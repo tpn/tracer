@@ -8,6 +8,10 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PGDDirectory>$(SolutionDir)$(Platform)\</PGDDirectory>
+  </PropertyGroup>
+
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -20,7 +24,7 @@
       <WarningLevel>Level3</WarningLevel>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs></CompileAs>
+      <CompileAs>CompileAsC</CompileAs>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <BrowseInformation>true</BrowseInformation>
       <ExpandAttributedSource>true</ExpandAttributedSource>
@@ -30,6 +34,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <CompileAsManaged>false</CompileAsManaged>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <SetChecksum>true</SetChecksum>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
       <Optimization>Disabled</Optimization>
@@ -59,11 +64,15 @@
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">PGInstrument</LinkTimeCodeGeneration>
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">PGUpdate</LinkTimeCodeGeneration>
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGOptimize'">PGOptimize</LinkTimeCodeGeneration>
+      <ProfileGuidedDatabase>$(PGDDirectory)$(TargetName).pgd</ProfileGuidedDatabase>
       <BrowseInformation>true</BrowseInformation>
       <AssemblerOutput>All</AssemblerOutput>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding Condition="$(Configuration) != 'Debug'">true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <Profile>true</Profile>
+      <CreateHotPatchableImage></CreateHotPatchableImage>
+      <AdditionalOptions>/HIGHENTROPYVA %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Link Condition="$(Configuration) == 'Debug'">
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
