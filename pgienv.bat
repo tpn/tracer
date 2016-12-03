@@ -3,7 +3,6 @@
 set PogoSafeMode=1
 set VCPROFILE_PATH=S:\Source\tracer\x64
 if not defined VC14 (
-    echo aaa
     setx VC14 "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\BIN\amd64"
     set VC14="C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\BIN\amd64"
 )
