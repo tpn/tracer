@@ -498,7 +498,7 @@ typedef
 _Success_(return == 0)
 INT
 (ATEXIT)(
-    _In_ PATEXITFUNC AtExitFunction
+    _In_ PATEXITFUNC AtExitFunc
     );
 typedef ATEXIT *PATEXIT;
 
@@ -1638,7 +1638,6 @@ typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
     PMEMSET memset;                                                                                    \
-    PWMEMSET wmemset;                                                                                  \
     PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \

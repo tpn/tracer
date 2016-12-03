@@ -20,6 +20,9 @@
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'PGOptimize' ">
+    <OutputPath>bin\PGOptimize\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="bin\tracer.py" />
     <Compile Include="ez_setup.py" />

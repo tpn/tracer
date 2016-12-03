@@ -33,4 +33,9 @@ Abstract:
 
 #include "Rtl.h"
 
+#ifdef _RTL_INTERNAL_BUILD
+#include "atexit.h"
+#include "RtlPrivate.h"
+#endif
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

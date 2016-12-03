@@ -5,6 +5,14 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="PGOptimize|Win32">
+      <Configuration>PGOptimize</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGOptimize|x64">
+      <Configuration>PGOptimize</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -61,6 +69,13 @@
     <ClCompile>
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/verbose %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Link>
+      <ProfileGuidedDatabase Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">$(OutDir)..\$(TargetName).pgd</ProfileGuidedDatabase>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">/GENPROFILE %(AdditionalOptions)</AdditionalOptions>
+    </Link>
     <!--
     <Link>
       <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>

@@ -3246,16 +3246,16 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
-    if (!(Rtl->MmHighestUserAddress = (PVOID)
-        GetProcAddress(Rtl->NtdllModule, "MmHighestUserAddress"))) {
+    if (!(Rtl->memset = (PMEMSET)
+        GetProcAddress(Rtl->NtdllModule, "memset"))) {
 
-        if (!(Rtl->MmHighestUserAddress = (PVOID)
-            GetProcAddress(Rtl->NtosKrnlModule, "MmHighestUserAddress"))) {
+        if (!(Rtl->memset = (PMEMSET)
+            GetProcAddress(Rtl->NtosKrnlModule, "memset"))) {
 
-            if (!(Rtl->MmHighestUserAddress = (PVOID)
-                GetProcAddress(Rtl->Kernel32Module, "MmHighestUserAddress"))) {
+            if (!(Rtl->memset = (PMEMSET)
+                GetProcAddress(Rtl->Kernel32Module, "memset"))) {
 
-                OutputDebugStringA("Rtl: failed to resolve 'MmHighestUserAddress'");
+                OutputDebugStringA("Rtl: failed to resolve 'memset'");
                 return FALSE;
             }
         }
@@ -3930,7 +3930,7 @@ InitializeRtl(
         return FALSE;
     }
 
-    Rtl->Size = sizeof(*Rtl);
+    Rtl->SizeOfStruct = sizeof(*Rtl);
 
     SetCSpecificHandler(Rtl->NtdllModule);
     Rtl->__C_specific_handler = __C_specific_handler_impl;

@@ -36,6 +36,12 @@
     <ClInclude Include="Time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RtlPrivate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="atexit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -57,6 +63,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Privilege.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RtlAtExitRundown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RtlGlobalAtExitRundown.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="atexit.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

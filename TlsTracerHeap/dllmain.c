@@ -1,3 +1,19 @@
+/*++
+
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    dllmain.c
+
+Abstract:
+
+    This is the DLL main entry point for the TlsTracerHeap component.  It
+    is responsible for hooking into the various process and thread attach and
+    detach methods (via _DllMainCRTStartup) and calling the relevant callback.
+
+--*/
+
 #include "stdafx.h"
 
 BOOL

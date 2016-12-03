@@ -4,19 +4,18 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    atexit.c
+    RtlAtExit.c
 
 Abstract:
 
-    This module implements the atexit endpoint.  Include this module as a
-    source file in any project that requires atexit() linkage.
-
-    N.B. This is currently done automatically for all projects when using PGO.
+    This module implements our custom atexit() support.  Functions are provided
+    for registering new functions to call at process exit.  The actual act of
+    calling registered functions at exit is done by hooking into dllmain.c's
+    _DllMainCRTStartup() function; specifically, the DLL_PROCESS_DETACH message.
 
 --*/
 
 #include "stdafx.h"
-#include "atexit.h"
 
 PATEXIT atexit_impl = NULL;
 
@@ -31,9 +30,6 @@ SetAtExit(
 #pragma warning(push)
 #pragma warning(disable: 4028 4273)
 
-typedef ATEXIT atexit;
-
-_Use_decl_annotations_
 INT
 atexit(
     PATEXITFUNC AtExitFunction

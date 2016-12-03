@@ -15,11 +15,6 @@ Abstract:
     components, after Rtl.h has been included.  After loading Rtl, set the
     atexit_impl to the value of Rtl->atexit.
 
-    N.B. The primary motivation for providing this scaffolding is to allow
-         profile-guided optimization (PGO) to be utilized with tracer components
-         without needing to break our no-CRT dependency.  No tracer components
-         currently use/call atexit() directly.
-
 --*/
 
 #ifdef _NO_RTL
