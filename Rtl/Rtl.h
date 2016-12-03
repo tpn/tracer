@@ -458,25 +458,74 @@ typedef DWORD (WINAPI *PSEARCHPATHW)(
 // CRT functions.
 //
 
-typedef INT (__cdecl *PCRTCOMPARE)(
+typedef
+INT
+(__cdecl CRTCOMPARE)(
     _In_    CONST PVOID Key,
     _In_    CONST PVOID Datum
     );
+typedef CRTCOMPARE *PCRTCOMPARE;
 
-typedef PVOID (*PBSEARCH)(
+typedef
+PVOID
+(BSEARCH)(
     _In_ CPVOID      Key,
     _In_ CPVOID      Base,
     _In_ SIZE_T      NumberOfElements,
     _In_ SIZE_T      WidthOfElement,
     _In_ PCRTCOMPARE Compare
     );
+typedef BSEARCH *PBSEARCH;
 
-typedef VOID (*PQSORT)(
+typedef
+VOID
+(QSORT)(
     _In_ PVOID       Base,
     _In_ SIZE_T      NumberOfElements,
     _In_ SIZE_T      WidthOfElement,
     _In_ PCRTCOMPARE Compare
     );
+typedef QSORT *PQSORT;
+
+typedef
+VOID
+(__cdecl ATEXITFUNC)(
+    VOID
+    );
+typedef ATEXITFUNC *PATEXITFUNC;
+
+typedef
+_Success_(return == 0)
+INT
+(ATEXIT)(
+    _In_ PATEXITFUNC AtExitFunc
+    );
+typedef ATEXIT *PATEXIT;
+
+typedef
+VOID
+(SET_ATEXIT)(
+    _In_ PATEXIT AtExit
+    );
+typedef SET_ATEXIT *PSET_ATEXIT;
+
+typedef
+PVOID
+(MEMSET)(
+    _In_ PVOID Destination,
+    _In_ INT Character,
+    _In_ SIZE_T Count
+    );
+typedef MEMSET *PMEMSET;
+
+typedef
+PWCHAR
+(WMEMSET)(
+    _In_ PWCHAR Destination,
+    _In_ WCHAR Character,
+    _In_ SIZE_T Count
+    );
+typedef WMEMSET *PWMEMSET;
 
 //
 // End of CRT functions.
@@ -1588,7 +1637,7 @@ typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
     PRTL_TIME_TO_SECONDS_SINCE_1970 RtlTimeToSecondsSince1970;                                         \
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
-    PVOID MmHighestUserAddress;                                                                        \
+    PMEMSET memset;                                                                                    \
     PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
@@ -2248,18 +2297,23 @@ typedef struct _SHLWAPI_FUNCTIONS {
     _SHLWAPIFUNCTIONS_HEAD
 } SHLWAPI_FUNCTIONS, *PSHLWAPI_FUNCTIONS, **PPSHLWAPI_FUNCTIONS;
 
-typedef struct _RTL {
-    ULONG       Size;
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
+
+    _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
+
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
     HMODULE     ShlwapiModule;
 
+    PATEXIT atexit;
+
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
+
     PVOID MaximumFileSectionSize;
 
-    HANDLE      HeapHandle;
+    HANDLE HeapHandle;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

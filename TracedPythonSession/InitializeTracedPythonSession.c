@@ -17,9 +17,6 @@ Abstract:
 
 #include "stdafx.h"
 
-#include "TracedPythonSessionPrivate.h"
-
-
 _Use_decl_annotations_
 BOOL
 ChangeIntoPythonHomeDirectory(
@@ -118,6 +115,7 @@ Return Value:
     CHAR MajorVersion;
     USHORT Index;
     ULONG RequiredSize;
+    HANDLE LoadingCompleteEvent = NULL;
     HMODULE PythonDllModule;
     PRTL Rtl;
     PPYTHON Python;
@@ -658,6 +656,13 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Make a note of the loading complete event.  If an error is encountered
+    // after this point, the error handling logic at the Error: label will wait
+    // for this event to be set first before destroying the trace context.
+    //
+
+    LoadingCompleteEvent = Session->TraceContext->LoadingCompleteEvent;
 
     //
     // Attempt to load the relevant Python DLL for this session.  Look in our
@@ -694,7 +699,7 @@ Return Value:
 
     Directory = &Paths->DefaultPythonDirectory;
 
-    if (Directory) {
+    if (Directory->Length > 0) {
 
         Success = Session->FindPythonDllAndExe(
             Rtl,
@@ -715,11 +720,10 @@ Return Value:
         if (PythonDllPath) {
             goto FoundPython;
         }
-
-        OutputDebugStringA("Failed to find a Python DLL to load.\n");
-
-        goto Error;
     }
+
+    OutputDebugStringA("Failed to find a Python DLL to load.\n");
+    goto Error;
 
 FoundPython:
 
@@ -1124,6 +1128,28 @@ LoadPythonDll:
 
 Error:
     Success = FALSE;
+
+    //
+    // If the loading complete event handle is non-NULL, we need to wait on
+    // this first before we can destroy the traced python session.
+    //
+
+    if (LoadingCompleteEvent) {
+        HRESULT WaitResult;
+
+        OutputDebugStringA("Destroy: waiting for LoadingCompleteEvent.\n");
+        WaitResult = WaitForSingleObject(LoadingCompleteEvent, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+
+            //
+            // The wait was abandoned or we encountered some other error.  Go
+            // straight to the end and skip the destroy step.
+            //
+
+            OutputDebugStringA("Wait failed, skipping destroy.\n");
+            goto End;
+        }
+    }
 
     DestroyTracedPythonSession(&Session);
 

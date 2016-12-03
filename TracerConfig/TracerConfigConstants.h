@@ -34,14 +34,17 @@ extern "C" {
 // Static UNICODE_STRING instances for path constants.
 //
 
-static CONST UNICODE_STRING DotTracerDirectory = \
-    RTL_CONSTANT_STRING(L".tracer");
-
 static CONST UNICODE_STRING x64_Release = \
     RTL_CONSTANT_STRING(L"\\x64\\Release\\");
 
 static CONST UNICODE_STRING x64_Debug = \
     RTL_CONSTANT_STRING(L"\\x64\\Debug\\");
+
+static CONST UNICODE_STRING x64_PGInstrument = \
+    RTL_CONSTANT_STRING(L"\\x64\\PGInstrument\\");
+
+static CONST UNICODE_STRING x64_PGOptimize = \
+    RTL_CONSTANT_STRING(L"\\x64\\PGOptimize\\");
 
 static CONST UNICODE_STRING RtlDllPath = \
     RTL_CONSTANT_STRING(L"Rtl.dll");
@@ -71,6 +74,8 @@ static CONST UNICODE_STRING TracedPythonSessionDllPath = \
 // This array can be indexed by TracerConfig.Flags.LoadDebugLibraries
 // to obtain the appropriate intermediate path string for the given
 // setting.
+//
+// XXX TODO: incorporate PGInstrument and PGOptimize.
 //
 
 static CONST PUNICODE_STRING IntermediatePaths[] = {
