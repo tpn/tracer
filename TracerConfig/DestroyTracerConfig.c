@@ -97,8 +97,8 @@ Return Value:
     // Enumerate over the PathOffsets[], freeing each path as we go.
     //
 
-    for (Index = 0; Index < NumberOfPathOffsets; Index++) {
-        Offset = PathOffsets[Index].Offset;
+    for (Index = 0; Index < NumberOfDllPathOffsets; Index++) {
+        Offset = DllPathOffsets[Index].Offset;
         String = (PUNICODE_STRING)((((ULONG_PTR)Paths) + Offset));
         FreeUnicodeStringBuffer(Allocator, String);
     }

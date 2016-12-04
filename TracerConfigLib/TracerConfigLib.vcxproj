@@ -90,6 +90,7 @@
     <ClCompile Include="../TracerConfig/stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\TracerConfig\TracerConfigConstants.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
