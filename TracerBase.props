@@ -50,11 +50,7 @@
     <Link>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGInstrument'">$(VC_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="$(Configuration) == 'PGUpdate'">$(VC_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(Configuration) == 'PGInstrument'">pgobootrun.lib;pgort.lib;libucrt.lib;libcmt.lib;libvcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(Configuration) == 'PGUpdate'">pgobootrun.lib;pgort.lib;libucrt.lib;libcmt.lib;libvcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -68,15 +64,22 @@
       <BrowseInformation>true</BrowseInformation>
       <AssemblerOutput>All</AssemblerOutput>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding Condition="$(Configuration) != 'Debug'">true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <Profile>true</Profile>
       <CreateHotPatchableImage></CreateHotPatchableImage>
       <AdditionalOptions>/HIGHENTROPYVA %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Link Condition="$(Configuration) == 'PGInstrument' or $(Configuration) == 'PGUpdate'">
+      <AdditionalDependencies>pgobootrun.lib;pgort.lib;libucrt.lib;libcmt.lib;libvcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VC_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/GENPROFILE:EXACT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Link Condition="$(Configuration) == 'Debug'">
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
+    </Link>
+    <Link Condition="$(Configuration) != 'Debug'">
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <Profile>true</Profile>
     </Link>
     <Lib>
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">true</LinkTimeCodeGeneration>
