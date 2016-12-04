@@ -1,0 +1,992 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DirectedGraph DataVirtualized="True" Layout="Sugiyama" ZoomLevel="-1" xmlns="http://schemas.microsoft.com/vs/2009/dgml">
+  <Nodes>
+    <Node Id="(Name=00007fff4c02e80d @1 @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="652.903333333334,691.77,130.856666666667,25.96" CodeSchemaProperty_IsExternal="True" Label="00007fff4c02e80d">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="ExternalCallStackEntry" />
+    </Node>
+    <Node Id="(Name=00007fff4c02e80f @1 @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="974.558333333333,691.77,127.546666666667,25.96" CodeSchemaProperty_IsExternal="True" Label="00007fff4c02e80f">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="ExternalCallStackEntry" />
+    </Node>
+    <Node Id="(Name=00007fff4c02e815 @1 @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="814.201666666667,691.77,130.26,25.96" CodeSchemaProperty_IsExternal="True" Label="00007fff4c02e815">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="ExternalCallStackEntry" />
+    </Node>
+    <Node Id="(Name=AppendTailList @32 @9 OverloadingParameters=[(Type=&quot;_LIST_ENTRY *&quot; Name=ListHead),(Type=&quot;_LIST_ENTRY *&quot; Name=ListToAppend)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1748.05333333333,691.77,112.556666666667,25.96" Label="AppendTailList" SourceLocation="(Assembly=file:///s:/source/tracer/rtl/rtl.h StartLineNumber=4127 StartCharacterOffset=0 EndLineNumber=4127 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=GetPathEntryForDirectory @47 @4 OverloadingParameters=[@48,(Type=&quot;_STRING *&quot; Name=Directory),(Type=&quot;_RTL_BITMAP *&quot; Name=Backslashes),(Type=&quot;unsigned short *&quot; Name=BitmapHintIndex),(Type=&quot;unsigned short *&quot; Name=NumberOfBackslashesRemaining),(Type=&quot;_PYTHON_PATH_TABLE_ENTRY * *&quot; Name=PathEntryPointer)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="668.226666666667,807.065000000001,170.21,25.96" Label="GetPathEntryForDirectory" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonpathtableentry.c StartLineNumber=765 StartCharacterOffset=0 EndLineNumber=765 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=GetTraceStoresAllocationSize @22 Type=&quot;unsigned long&quot; OverloadingParameters=[(Type=&quot;unsigned short&quot; Name=NumberOfTraceStores)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1954.05333333333,1095.3025,188.556666666667,25.96" Label="GetTraceStoresAllocationSize" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestores.c StartLineNumber=720 StartCharacterOffset=0 EndLineNumber=720 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=InitializePythonTraceContext @32 @4 OverloadingParameters=[(Type=&quot;_RTL *&quot; Name=Rtl),@44,@36,(Type=&quot;unsigned long *&quot; Name=SizeOfContext),@48,@52,(Type=_PYTHON_TRACE_EVENT_TYPE Name=PythonTraceEventType),(@33 Name=UserData)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2.73166666666702,288.2375,185.2,25.96" Label="InitializePythonTraceContext" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracer.c StartLineNumber=422 StartCharacterOffset=0 EndLineNumber=422 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=InitializePythonTraceEvent @32 @4 OverloadingParameters=[@36,(@59 Name=EventType),(Type=&quot;_PYTHON_EVENT_TRAITS *&quot; Name=EventTraitsPointer)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1544.84,691.77,172.983333333334,25.96" Label="InitializePythonTraceEvent" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracerprivate.h StartLineNumber=109 StartCharacterOffset=0 EndLineNumber=109 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=InitializePythonTraceEvent @32 @4 OverloadingParameters=[@36,(Type=&quot;_PYTHON_EVENT_TRAITS *&quot; Name=EventTraitsPointer)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1341.84,691.77,172.983333333333,25.96" Label="InitializePythonTraceEvent" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracerprivate.h StartLineNumber=122 StartCharacterOffset=0 EndLineNumber=122 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=InitializeTracerConfig @45 Type=&quot;_TRACER_CONFIG *&quot; OverloadingParameters=[@44,(Type=&quot;_UNICODE_STRING *&quot; Name=RegistryPath)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2173.34,980.007500000001,145.983333333334,25.96" Label="InitializeTracerConfig" SourceLocation="(Assembly=file:///s:/source/tracer/tracerconfig/initializetracerconfig.c StartLineNumber=443 StartCharacterOffset=0 EndLineNumber=443 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=InitializeTracerConfig @6 Type=&quot;_TRACER_CONFIG *&quot; OverloadingParameters=[@44,(Type=&quot;_UNICODE_STRING *&quot; Name=RegistryPath)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1496.34,172.9425,145.983333333334,25.96" Label="InitializeTracerConfig" SourceLocation="(Assembly=file:///s:/source/tracer/tracerconfig/initializetracerconfig.c StartLineNumber=443 StartCharacterOffset=0 EndLineNumber=443 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=LoadTraceStoreTraits @22 @4 OverloadingParameters=[@27] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1970.17172607422,-217.627463466351,144.32,25.96" Label="LoadTraceStoreTraits" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestoretraits.c StartLineNumber=300 StartCharacterOffset=0 EndLineNumber=300 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=RegisterPyCFunction @47 @4 OverloadingParameters=[@48,(Type=&quot;_PYTHON_FUNCTION *&quot; Name=Function),@63] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="478.121666666667,691.77,144.42,25.96" Label="RegisterPyCFunction" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonfunction.c StartLineNumber=1264 StartCharacterOffset=0 EndLineNumber=1264 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=TraceStoreAllocateRecordsWithTimestamp @22 @33 OverloadingParameters=[@52,@27,(Type=&quot;_ULARGE_INTEGER *&quot; Name=RecordSize),(Type=&quot;_ULARGE_INTEGER *&quot; Name=NumberOfRecords),(Type=&quot;_LARGE_INTEGER *&quot; Name=TimestampPointer)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1092.88166666667,749.4175,258.9,25.96" Label="TraceStoreAllocateRecordsWithTimestamp" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestoreallocation.c StartLineNumber=158 StartCharacterOffset=0 EndLineNumber=158 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="(Name=TraceStoreNullAllocationRoutine @32 @33 OverloadingParameters=[(@33 Name=AllocationContext),(Type=&quot;const unsigned long&quot; Name=ByteSize)] @2)" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="252.246666666667,922.360000000001,206.17,25.96" Label="TraceStoreNullAllocationRoutine" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracer.c StartLineNumber=57 StartCharacterOffset=0 EndLineNumber=57 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@10" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2122.475,922.360000000001,113.713333333333,25.96" Label="ffi_call_AMD64" SourceLocation="(Assembly=file:///C:/build27/cpython/Modules/_ctypes/libffi_msvc/win64.asm StartLineNumber=115 StartCharacterOffset=0 EndLineNumber=115 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@100" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2659.06166666667,345.885,72.54,25.96" Label="do_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4566 StartCharacterOffset=0 EndLineNumber=4566 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@101" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2899.88666666667,518.8275,84.8900000000003,25.96" Label="insertdict" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/dictobject.c StartLineNumber=556 StartCharacterOffset=0 EndLineNumber=556 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@102" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1180.02666666667,518.8275,84.6099999999999,25.96" Label="call_trace" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4021 StartCharacterOffset=0 EndLineNumber=4021 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@103" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1533.76,461.18,141.143333333333,25.96" Label="call_trace_protected" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=3997 StartCharacterOffset=0 EndLineNumber=3997 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@104" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="494.611666666667,634.1225,111.44,25.96" Label="RegisterFrame" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonfunction.c StartLineNumber=418 StartCharacterOffset=0 EndLineNumber=418 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@105" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="468.308333333333,864.712500000001,146.046666666667,25.96" Label="import_module_level" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2243 StartCharacterOffset=0 EndLineNumber=2243 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@106" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="444.873333333334,807.065000000001,192.916666666667,25.96" Label="PyImport_ImportModuleLevel" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2309 StartCharacterOffset=0 EndLineNumber=2309 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@107" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2349.64666666667,576.475,93.3700000000003,25.96" Label="ext_do_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4663 StartCharacterOffset=0 EndLineNumber=4663 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@108" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1751.49333333333,345.885,103.676666666667,25.96" Label="fast_function" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4435 StartCharacterOffset=0 EndLineNumber=4435 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@109" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="488.966666666667,922.360000000001,86.73,25.96" Label="load_next" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2534 StartCharacterOffset=0 EndLineNumber=2534 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@11" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1831.07839274089,118.133136533649,120.506666666667,25.96" Label="mainCRTStartup" SourceLocation="(Assembly=file:///s:/source/tracer/tracedpythonexe/main.c StartLineNumber=154 StartCharacterOffset=0 EndLineNumber=154 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@110" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="705.013333333333,749.4175,96.6366666666668,25.96" Label="RegisterFile" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonpathtableentry.c StartLineNumber=450 StartCharacterOffset=0 EndLineNumber=450 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@111" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="606.006666666667,922.360000000001,116.65,25.96" Label="ensure_fromlist" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2628 StartCharacterOffset=0 EndLineNumber=2628 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@113" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="0,230.59,190.663333333333,25.96" Label="InitializeTracedPythonSession" SourceLocation="(Assembly=file:///s:/source/tracer/tracedpythonsession/initializetracedpythonsession.c StartLineNumber=994 StartCharacterOffset=0 EndLineNumber=994 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@114" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2874.92,576.475,134.823333333334,25.96" Label="insertdict_by_entry" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/dictobject.c StartLineNumber=519 StartCharacterOffset=0 EndLineNumber=519 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@115" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2842.11,461.18,200.443333333334,25.96" Label="dict_set_item_by_hash_or_entry" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/dictobject.c StartLineNumber=794 StartCharacterOffset=0 EndLineNumber=794 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@116" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="472.748333333334,1152.95,83.1666666666667,25.96" Label="run_mod" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/pythonrun.c StartLineNumber=1376 StartCharacterOffset=0 EndLineNumber=1376 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@117" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1673.2749983724,230.053336533649,238.113333333333,25.96" Label="LoadAndInitializeTracedPythonSession" SourceLocation="(Assembly=file:///s:/source/tracer/tracedpythonsession/tracedpythonsession.h StartLineNumber=622 StartCharacterOffset=0 EndLineNumber=622 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@118" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1705.81666666667,461.18,149.03,25.96" Label="maybe_call_line_trace" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4068 StartCharacterOffset=0 EndLineNumber=4068 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@119" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1954.19833333333,980.007500000001,188.266666666666,25.96" Label="InitializeReadonlyTraceStores" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestores.c StartLineNumber=639 StartCharacterOffset=0 EndLineNumber=639 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@120" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2018.145,807.065000000001,150.373333333333,25.96" Label="_call_function_pointer" SourceLocation="(Assembly=file:///c:/build27/cpython/modules/_ctypes/callproc.c StartLineNumber=830 StartCharacterOffset=0 EndLineNumber=830 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@121" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="448.92,1095.3025,130.823333333333,25.96" Label="PyRun_FileExFlags" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/pythonrun.c StartLineNumber=1362 StartCharacterOffset=0 EndLineNumber=1362 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@122" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="251.876666666667,691.770000000001,164.91,25.96" Label="GetPathEntryFromFrame" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonpathtableentry.c StartLineNumber=166 StartCharacterOffset=0 EndLineNumber=166 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@123" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2174.8,749.4175,121.063333333334,25.96" Label="_ctypes_callproc" SourceLocation="(Assembly=file:///c:/build27/cpython/modules/_ctypes/callproc.c StartLineNumber=1177 StartCharacterOffset=0 EndLineNumber=1177 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@124" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1978.60333333333,1037.655,139.456666666667,25.96" Label="InitializeTraceStores" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestores.c StartLineNumber=92 StartCharacterOffset=0 EndLineNumber=92 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@125" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1774.05833333333,1268.245,134.546666666667,25.96" Label="PyEval_EvalCodeEx" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=3579 StartCharacterOffset=0 EndLineNumber=3579 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@13" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2012.98833170573,286.013436533649,92.6866666666665,25.96" Label="Py_Finalize" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/pythonrun.c StartLineNumber=458 StartCharacterOffset=0 EndLineNumber=458 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@14" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2012.97493733724,341.973536533649,132.713333333333,25.96" Label="PyImport_Cleanup" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=530 StartCharacterOffset=0 EndLineNumber=530 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@16" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2475.02833333333,864.712500000001,196.606666666667,25.96" Label="PyObject_CallFunctionObjArgs" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=2773 StartCharacterOffset=0 EndLineNumber=2773 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@17" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2881.13666666667,634.1225,122.39,25.96" Label="instance_dealloc" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/classobject.c StartLineNumber=680 StartCharacterOffset=0 EndLineNumber=680 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@18" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2018.31,864.7125,96.0433333333331,25.96" Label="PyIter_Next" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=3118 StartCharacterOffset=0 EndLineNumber=3118 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@19" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2762.21833333333,345.885,126.226666666666,25.96" Label="_PyModule_Clear" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/moduleobject.c StartLineNumber=138 StartCharacterOffset=0 EndLineNumber=138 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@20" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2610.725,461.18,125.213333333333,25.96" Label="PyImport_Import" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2903 StartCharacterOffset=0 EndLineNumber=2903 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@21" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2610.30166666667,403.5325,166.059999999999,25.96" Label="PyImport_ImportModule" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2151 StartCharacterOffset=0 EndLineNumber=2151 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@23" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2877.165,749.4175,166.333333333333,25.96" Label="PyObject_ClearWeakRefs" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/weakrefobject.c StartLineNumber=973 StartCharacterOffset=0 EndLineNumber=973 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@25" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2860.55166666667,691.77,103.56,25.96" Label="class_dealloc" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/classobject.c StartLineNumber=193 StartCharacterOffset=0 EndLineNumber=193 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@26" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2745.86666666667,749.4175,100.93,25.96" Label="tupledealloc" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/tupleobject.c StartLineNumber=221 StartCharacterOffset=0 EndLineNumber=221 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@29" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2537.79,576.475,123.083333333333,25.96" Label="call_function_tail" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=2578 StartCharacterOffset=0 EndLineNumber=2578 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@30" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1986.29166666667,749.4175,126.08,25.96" Label="builtin_issubclass" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/bltinmodule.c StartLineNumber=2488 StartCharacterOffset=0 EndLineNumber=2488 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@31" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1942.28833170573,230.053336533649,80.0866666666666,25.96" Label="Py_Main" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/modules/main.c StartLineNumber=644 StartCharacterOffset=0 EndLineNumber=644 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@34" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2900.80833333333,807.065,119.046666666667,25.96" Label="handle_callback" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/weakrefobject.c StartLineNumber=893 StartCharacterOffset=0 EndLineNumber=893 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@35" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2368.50833333333,807.065000000001,141.646666666667,25.96" Label="PyObject_IsSubclass" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=3054 StartCharacterOffset=0 EndLineNumber=3054 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@38" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2537.56833333333,518.8275,153.526666666667,25.96" Label="PyObject_CallFunction" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=2602 StartCharacterOffset=0 EndLineNumber=2602 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@40" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1835.27333333333,288.2375,102.116666666667,25.96" Label="call_function" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4371 StartCharacterOffset=0 EndLineNumber=4371 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@41" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2198.945,807.065,138.773333333333,25.96" Label="set_update_internal" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/setobject.c StartLineNumber=964 StartCharacterOffset=0 EndLineNumber=964 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@43" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="629.228333333333,1037.655,108.206666666667,25.96" Label="load_package" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=1182 StartCharacterOffset=0 EndLineNumber=1182 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@46" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2530.53,345.885,97.6033333333335,25.96" Label="RunModule" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/modules/main.c StartLineNumber=190 StartCharacterOffset=0 EndLineNumber=190 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@49" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="278.548333333334,864.712500000001,109.566666666667,25.96" Label="AllocateString" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonallocators.c StartLineNumber=36 StartCharacterOffset=0 EndLineNumber=36 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@5" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1915.0649983724,174.093236533649,134.533333333333,25.96" Label="__tmainCRTStartup" SourceLocation="(Assembly=file:///f:/dd/vctools/crt_bld/self_64_amd64/crt/src/crtexe.c StartLineNumber=585 StartCharacterOffset=0 EndLineNumber=585 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@50" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1917.58333333333,403.5325,139.496666666667,25.96" Label="PyEval_EvalFrameEx" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=2987 StartCharacterOffset=0 EndLineNumber=2987 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@51" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1133.06,691.77,178.543333333334,25.96" Label="AllocatePythonTraceEvent1" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pytraceevent1.c StartLineNumber=28 StartCharacterOffset=0 EndLineNumber=28 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@53" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1949.05178710938,-105.707263466351,186.56,25.96" Label="BindMetadataStoreReadonly" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestorebind.c StartLineNumber=420 StartCharacterOffset=0 EndLineNumber=420 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@54" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1998.74345377604,-49.7471634663509,87.1766666666665,25.96" Label="BindStore" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestorebind.c StartLineNumber=88 StartCharacterOffset=0 EndLineNumber=88 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@56" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2057.56,576.475,121.543333333333,25.96" Label="slot_sq_contains" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/typeobject.c StartLineNumber=5161 StartCharacterOffset=0 EndLineNumber=5161 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@57" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="286.035,749.4175,96.5933333333332,25.96" Label="QualifyPath" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonpathtableentry.c StartLineNumber=1968 StartCharacterOffset=0 EndLineNumber=1968 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@58" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2330.27833333333,461.18,218.106666666667,25.96" Label="_PyObject_GenericGetAttrWithDict" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/object.c StartLineNumber=1399 StartCharacterOffset=0 EndLineNumber=1399 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@60" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1954.78,922.36,103.103333333333,25.96" Label="gen_send_ex" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/genobject.c StartLineNumber=85 StartCharacterOffset=0 EndLineNumber=85 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@61" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1951.15005940755,-161.667363466351,182.363333333333,25.96" Label="InfoMetadataBindComplete" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestoremetadata.c StartLineNumber=581 StartCharacterOffset=0 EndLineNumber=581 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@62" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="611.14,1095.3025,144.383333333333,25.96" Label="load_source_module" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=1121 StartCharacterOffset=0 EndLineNumber=1121 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@64" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="596.386666666667,980.007500000001,135.89,25.96" Label="import_submodule" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=2717 StartCharacterOffset=0 EndLineNumber=2717 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@67" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1872.27333333333,1210.5975,102.116666666667,25.96" Label="function_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/funcobject.c StartLineNumber=519 StartCharacterOffset=0 EndLineNumber=519 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@68" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2686.54,691.77,143.583333333333,25.96" Label="instancemethod_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/classobject.c StartLineNumber=2602 StartCharacterOffset=0 EndLineNumber=2602 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@69" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1986.3,691.77,126.063333333334,25.96" Label="PyCFunction_Call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/methodobject.c StartLineNumber=81 StartCharacterOffset=0 EndLineNumber=81 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@7" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1822.04160400391,174.093236533649,62.5799999999999,25.96" Label="Main" SourceLocation="(Assembly=file:///s:/source/tracer/tracedpythonexe/main.c StartLineNumber=109 StartCharacterOffset=0 EndLineNumber=109 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@70" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2229.09333333333,518.8275,204.476666666667,25.96" Label="PyEval_CallObjectWithKeywords" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4219 StartCharacterOffset=0 EndLineNumber=4219 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@71" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2452.45666666667,634.1225,107.75,25.96" Label="PyObject_Call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/abstract.c StartLineNumber=2546 StartCharacterOffset=0 EndLineNumber=2546 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@73" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="544.388333333333,749.4175,129.886666666667,25.96" Label="builtin___import__" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/bltinmodule.c StartLineNumber=50 StartCharacterOffset=0 EndLineNumber=50 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@74" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2386.51166666667,691.77,93.6399999999999,25.96" Label="slot_tp_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/typeobject.c StartLineNumber=5518 StartCharacterOffset=0 EndLineNumber=5518 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@75" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2622.90833333333,749.4175,92.8466666666664,25.96" Label="slot_tp_init" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/typeobject.c StartLineNumber=5778 StartCharacterOffset=0 EndLineNumber=5778 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@76" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2358.78833333333,749.4175,73.0866666666661,25.96" Label="set_init" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/setobject.c StartLineNumber=2007 StartCharacterOffset=0 EndLineNumber=2007 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@77" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2494.37333333333,749.4175,97.9166666666665,25.96" Label="slot_tp_new" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/typeobject.c StartLineNumber=5821 StartCharacterOffset=0 EndLineNumber=5821 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@78" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2510.50833333333,691.77,81.646666666667,25.96" Label="type_call" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/typeobject.c StartLineNumber=761 StartCharacterOffset=0 EndLineNumber=761 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@79" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2206.16,691.77,118.343333333333,25.96" Label="PyCFuncPtr_call" SourceLocation="(Assembly=file:///c:/build27/cpython/modules/_ctypes/_ctypes.c StartLineNumber=3949 StartCharacterOffset=0 EndLineNumber=3949 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@82" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="653.846666666667,1210.5975,122.97,25.96" Label="PyEval_EvalCode" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=674 StartCharacterOffset=0 EndLineNumber=674 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@83" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2721.10833333333,518.8275,92.4466666666667,25.96" Label="build_class" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4963 StartCharacterOffset=0 EndLineNumber=4963 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@84" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="586.84,1152.95,192.983333333333,25.96" Label="PyImport_ExecCodeModuleEx" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/import.c StartLineNumber=729 StartCharacterOffset=0 EndLineNumber=729 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@85" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="251.933333333333,807.065000000001,162.796666666667,25.96" Label="AllocateStringAndBuffer" SourceLocation="(Assembly=file:///s:/source/tracer/python/pythonallocators.c StartLineNumber=89 StartCharacterOffset=0 EndLineNumber=89 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@87" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2114.53166666667,461.18,153.6,25.96" Label="instance_ass_subscript" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/classobject.c StartLineNumber=1144 StartCharacterOffset=0 EndLineNumber=1144 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@88" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2842.81833333333,403.5325,115.026666666667,25.96" Label="PyDict_SetItem" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/objects/dictobject.c StartLineNumber=848 StartCharacterOffset=0 EndLineNumber=848 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@89" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2056.83833333333,518.8275,110.986666666667,25.96" Label="cmp_outcome" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=4798 StartCharacterOffset=0 EndLineNumber=4798 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@90" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1920.89845377604,62.1730365336491,242.866666666667,25.96" Label="BindRemainingMetadataStoresCallback" SourceLocation="(Assembly=file:///s:/source/tracer/tracestore/tracestorecallbacks.c StartLineNumber=191 StartCharacterOffset=0 EndLineNumber=191 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@92" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1166.68666666667,634.1225,111.29,25.96" Label="PyTraceEvent1" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pytraceevent1.c StartLineNumber=335 StartCharacterOffset=0 EndLineNumber=335 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@93" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1308.68666666667,634.1225,111.29,25.96" Label="PyTraceEvent2" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pytraceevent2.c StartLineNumber=195 StartCharacterOffset=0 EndLineNumber=195 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@94" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1012.38833333333,576.475,119.886666666667,25.96" Label="PyTraceCallback" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracer.c StartLineNumber=389 StartCharacterOffset=0 EndLineNumber=389 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@95" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="1162.38833333333,576.475,119.886666666667,25.96" Label="PyTraceCallback" SourceLocation="(Assembly=file:///s:/source/tracer/pythontracer/pythontracer.c StartLineNumber=210 StartCharacterOffset=0 EndLineNumber=210 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@96" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="2144.9,864.712500000001,68.8633333333332,25.96" Label="ffi_call" SourceLocation="(Assembly=file:///c:/build27/cpython/modules/_ctypes/libffi_msvc/ffi.c StartLineNumber=234 StartCharacterOffset=0 EndLineNumber=234 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@97" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="220.751666666667,980.007500000001,151.16,25.96" Label="PyRun_AnyFileExFlags" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/pythonrun.c StartLineNumber=752 StartCharacterOffset=0 EndLineNumber=752 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@98" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="400.993333333334,1037.655,166.676666666667,25.96" Label="PyRun_SimpleFileExFlags" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/pythonrun.c StartLineNumber=947 StartCharacterOffset=0 EndLineNumber=947 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="@99" Category="CodeSchema_CallStackUnresolvedMethod" Bounds="810.5,1152.95,117.663333333333,25.96" Label="exec_statement" SourceLocation="(Assembly=file:///c:/minonda/conda-bld/work/python-2.7.12/python/ceval.c StartLineNumber=5046 StartCharacterOffset=0 EndLineNumber=5046 EndCharacterOffset=0)">
+      <Category Ref="CallStackEntry" />
+      <Category Ref="CodeSchema_SourceLocation" />
+    </Node>
+    <Node Id="ExternalCodeRootNode" Category="ExternalCallStackEntry" Bounds="1935.83839274089,6.21293653364912,92.9866666666667,25.96" Label="External Code">
+      <Category Ref="CallStackEntry" />
+    </Node>
+  </Nodes>
+  <Links>
+    <Link Source="@10" Target="(Name=InitializeTracerConfig @45 Type=&quot;_TRACER_CONFIG *&quot; OverloadingParameters=[@44,(Type=&quot;_UNICODE_STRING *&quot; Name=RegistryPath)] @2)" Category="CallStackDirectCall" Bounds="2194.41748046875,948.320007324219,30.006103515625,25.8175048828125" />
+    <Link Source="@10" Target="@119" Category="CallStackDirectCall" Bounds="2086.0654296875,948.320007324219,63.77001953125,28.0624389648438" />
+    <Link Source="@100" Target="@71" Category="CallStackDirectCall" Bounds="2569.17407226563,367.877380371094,260.12548828125,273.866088867188" />
+    <Link Source="@101" Target="@114" Category="CallStackDirectCall" Bounds="2942.33178710938,544.787475585938,0,22.6875" />
+    <Link Source="@102" Target="@94" Category="CallStackDirectCall" Bounds="1114.5068359375,544.787475585938,74.0506591796875,28.4589233398438" />
+    <Link Source="@102" Target="@95" Category="CallStackDirectCall" Bounds="1222.33166503906,544.787475585938,0,22.6875" />
+    <Link Source="@103" Target="@102" Category="CallStackDirectCall" Bounds="1273.53588867188,484.798889160156,260.29736328125,39.2813720703125" />
+    <Link Source="@104" Target="(Name=RegisterPyCFunction @47 @4 OverloadingParameters=[@48,(Type=&quot;_PYTHON_FUNCTION *&quot; Name=Function),@63] @2)" Category="CallStackDirectCall" Bounds="550.331665039063,660.08251953125,0,22.6875" />
+    <Link Source="@104" Target="@122" Category="CallStackDirectCall" Bounds="408.002960205078,660.08251953125,109.905426025391,29.9201049804688" />
+    <Link Source="@105" Target="@109" Category="CallStackDirectCall" Bounds="535.746398925781,890.672485351563,3.558837890625,22.7952270507813" />
+    <Link Source="@105" Target="@111" Category="CallStackDirectCall" Bounds="569.026550292969,890.672485351563,59.4608764648438,27.8681030273438" />
+    <Link Source="@106" Target="@105" Category="CallStackDirectCall" Bounds="541.331665039063,833.025024414063,0,22.6875" />
+    <Link Source="@107" Target="@71" Category="CallStackDirectCall" Bounds="2417.04663085938,602.434997558594,52.267822265625,27.9705200195313" />
+    <Link Source="@108" Target="@125" Category="CallStackDirectCall" Bounds="1803.86636354273,371.845005493164,36.5600676475656,887.407598393068" />
+    <Link Source="@108" Target="@50" Category="CallStackDirectCall" Bounds="1844.76136138257,371.845005493164,92.5522492311129,28.9967470492221" />
+    <Link Source="@109" Target="@64" Category="CallStackDirectCall" Bounds="562.052978515625,948.320007324219,64.3095703125,28.0855102539063" />
+    <Link Source="@11" Target="@7" Category="CallStackDirectCall" Bounds="1867.20175974894,144.093136533649,15.3158007953261,22.5544997592548" />
+    <Link Source="@110" Target="(Name=GetPathEntryForDirectory @47 @4 OverloadingParameters=[@48,(Type=&quot;_STRING *&quot; Name=Directory),(Type=&quot;_RTL_BITMAP *&quot; Name=Backslashes),(Type=&quot;unsigned short *&quot; Name=BitmapHintIndex),(Type=&quot;unsigned short *&quot; Name=NumberOfBackslashesRemaining),(Type=&quot;_PYTHON_PATH_TABLE_ENTRY * *&quot; Name=PathEntryPointer)] @2)" Category="CallStackDirectCall" Bounds="753.331665039063,775.377502441406,0,22.6875" />
+    <Link Source="@111" Target="@64" Category="CallStackDirectCall" Bounds="664.331665039063,948.320007324219,0,22.6875" />
+    <Link Source="@113" Target="(Name=InitializePythonTraceContext @32 @4 OverloadingParameters=[(Type=&quot;_RTL *&quot; Name=Rtl),@44,@36,(Type=&quot;unsigned long *&quot; Name=SizeOfContext),@48,@52,(Type=_PYTHON_TRACE_EVENT_TYPE Name=PythonTraceEventType),(@33 Name=UserData)] @2)" Category="CallStackDirectCall" Bounds="95.3316650390625,256.549987792969,0,22.6875" />
+    <Link Source="@114" Target="@17" Category="CallStackDirectCall" Bounds="2942.33178710938,602.434997558594,0,22.6875" />
+    <Link Source="@115" Target="@101" Category="CallStackDirectCall" Bounds="2942.33178710938,487.140014648438,0,22.6875" />
+    <Link Source="@116" Target="@82" Category="CallStackDirectCall" Bounds="555.330810546875,1177.68872070313,106.092163085938,30.4276123046875" />
+    <Link Source="@117" Target="@113" Category="CallStackDirectCall" Bounds="199.663331255701,243.070986750951,1473.61166711669,0.466011698794631" />
+    <Link Source="@118" Target="@102" Category="CallStackDirectCall" Bounds="1273.60083007813,485.791595458984,432.71142578125,41.4274597167969" />
+    <Link Source="@119" Target="@124" Category="CallStackDirectCall" Bounds="2048.33178710938,1005.96752929688,0,22.6875" />
+    <Link Source="@120" Target="@96" Category="CallStackDirectCall" Bounds="2112.69555664063,833.025024414063,39.79638671875,26.67626953125" />
+    <Link Source="@121" Target="@116" Category="CallStackDirectCall" Bounds="514.331665039063,1121.26245117188,0,22.6875" />
+    <Link Source="@122" Target="@110" Category="CallStackDirectCall" Bounds="416.786651611328,714.565246582031,279.391143798828,35.8851318359375" />
+    <Link Source="@122" Target="@57" Category="CallStackDirectCall" Bounds="334.331665039063,717.72998046875,0,22.6875" />
+    <Link Source="@123" Target="@120" Category="CallStackDirectCall" Bounds="2133.6435546875,775.377502441406,69.715087890625,28.3021240234375" />
+    <Link Source="@124" Target="(Name=GetTraceStoresAllocationSize @22 Type=&quot;unsigned long&quot; OverloadingParameters=[(Type=&quot;unsigned short&quot; Name=NumberOfTraceStores)] @2)" Category="CallStackDirectCall" Bounds="2048.33178710938,1063.61499023438,0,22.6875" />
+    <Link Source="@125" Target="@50" Category="CallStackDirectCall" Bounds="1842.52734375,434.203338623047,106.063354492188,834.041656494141" />
+    <Link Source="@13" Target="@14" Category="CallStackDirectCall" Bounds="2063.97067046907,311.973436533649,7.69299481615735,21.5251036499856" />
+    <Link Source="@14" Target="@19" Category="CallStackDirectCall" Bounds="2145.68823242188,357.677978515625,630.409912109375,17.9677429199219" />
+    <Link Source="@16" Target="@71" Category="CallStackDirectCall" Bounds="2355.33178710938,659.071105957031,212.752197265625,205.641418457031" />
+    <Link Source="@17" Target="@25" Category="CallStackDirectCall" Bounds="2923.2412109375,660.08251953125,12.335693359375,23.703857421875" />
+    <Link Source="@18" Target="@60" Category="CallStackDirectCall" Bounds="2026.33129882813,890.672485351563,26.49072265625,25.4520263671875" />
+    <Link Source="@19" Target="@88" Category="CallStackDirectCall" Bounds="2842.21875,371.845001220703,34.090087890625,26.2027893066406" />
+    <Link Source="@20" Target="@38" Category="CallStackDirectCall" Bounds="2634.05346679688,487.140014648438,25.99365234375,25.3977661132813" />
+    <Link Source="@21" Target="@20" Category="CallStackDirectCall" Bounds="2687.15502929688,429.492492675781,6.1767578125,24.0850219726563" />
+    <Link Source="@23" Target="@34" Category="CallStackDirectCall" Bounds="2960.33178710938,775.377502441406,0,22.6875" />
+    <Link Source="@25" Target="@23" Category="CallStackDirectCall" Bounds="2928.09301757813,717.72998046875,22.218994140625,23.7095336914063" />
+    <Link Source="@25" Target="@26" Category="CallStackDirectCall" Bounds="2854.4638671875,717.72998046875,57.867919921875,30.2227783203125" />
+    <Link Source="@26" Target="@25" Category="CallStackDirectCall" Bounds="2813.44384765625,720.872497558594,55.3291015625,28.5449829101563" />
+    <Link Source="@29" Target="@71" Category="CallStackDirectCall" Bounds="2534.92138671875,602.434997558594,43.47021484375,26.94580078125" />
+    <Link Source="@30" Target="@35" Category="CallStackDirectCall" Bounds="2112.37158203125,771.715698242188,247.272705078125,36.5503540039063" />
+    <Link Source="@31" Target="@13" Category="CallStackDirectCall" Bounds="2000.19189044967,256.013336533649,33.9991303134345,24.7090224967899" />
+    <Link Source="@31" Target="@46" Category="CallStackDirectCall" Bounds="2022.3749983724,250.802660035663,499.319764401284,96.8794667589154" />
+    <Link Source="@31" Target="@97" Category="CallStackDirectCall" Bounds="327.569702148438,251.78938293457,1614.71862792969,723.848251342773" />
+    <Link Source="@34" Target="@16" Category="CallStackDirectCall" Bounds="2669.37084960938,828.91162109375,231.4375,34.474853515625" />
+    <Link Source="@35" Target="@16" Category="CallStackDirectCall" Bounds="2469.50341796875,833.025024414063,65.38916015625,28.1307983398438" />
+    <Link Source="@38" Target="@29" Category="CallStackDirectCall" Bounds="2604.97534179688,544.787475585938,5.97900390625,22.9775390625" />
+    <Link Source="@40" Target="@100" Category="CallStackDirectCall" Bounds="1937.39001464844,307.019165039063,723.741088867188,35.7895812988281" />
+    <Link Source="@40" Target="@102" Category="CallStackDirectCall" Bounds="1267.24426269531,314.197479248047,579.36767578125,201.609710693359" />
+    <Link Source="@40" Target="@108" Category="CallStackDirectCall" Bounds="1829.41198984598,314.197483520508,38.2312605766276,26.5534435354205" />
+    <Link Source="@40" Target="@69" Category="CallStackDirectCall" Bounds="1889.3818359375,314.197479248047,148.394897460938,369.700408935547" />
+    <Link Source="@41" Target="@18" Category="CallStackDirectCall" Bounds="2120.38525390625,833.025024414063,102.4638671875,29.241455078125" />
+    <Link Source="@43" Target="@62" Category="CallStackDirectCall" Bounds="683.331665039063,1063.61499023438,0,22.6875" />
+    <Link Source="@46" Target="@21" Category="CallStackDirectCall" Bounds="2605,371.845001220703,54.6318359375,27.6261291503906" />
+    <Link Source="@46" Target="@71" Category="CallStackDirectCall" Bounds="2511.3525390625,371.845001220703,67.979248046875,253.508148193359" />
+    <Link Source="@49" Target="(Name=TraceStoreNullAllocationRoutine @32 @33 OverloadingParameters=[(@33 Name=AllocationContext),(Type=&quot;const unsigned long&quot; Name=ByteSize)] @2)" Category="CallStackDirectCall" Bounds="338.285217285156,890.672485351563,8.88397216796875,23.2789916992188" />
+    <Link Source="@5" Target="@31" Category="CallStackDirectCall" Bounds="1982.33166503906,200.053236533649,0,21.0001" />
+    <Link Source="@50" Target="@103" Category="CallStackDirectCall" Bounds="1683.73571777344,427.004089355469,233.8916015625,35.204345703125" />
+    <Link Source="@50" Target="@107" Category="CallStackDirectCall" Bounds="2030.56262207031,429.492492675781,310.177856445313,151.869873046875" />
+    <Link Source="@50" Target="@118" Category="CallStackDirectCall" Bounds="1822.05688476563,429.492492675781,105.3818359375,28.459716796875" />
+    <Link Source="@50" Target="@16" Category="CallStackDirectCall" Bounds="2001.74206542969,429.492492675781,555.677856445313,428.173400878906" />
+    <Link Source="@50" Target="@40" Category="CallStackDirectCall" Bounds="1903.6327573561,320.967270308385,72.3283052933941,82.5652266398575" />
+    <Link Source="@50" Target="@58" Category="CallStackDirectCall" Bounds="2057.080078125,422.373748779297,324.458984375,36.5302124023438" />
+    <Link Source="@50" Target="@60" Category="CallStackDirectCall" Bounds="1965.16296386719,429.492492675781,33.572998046875,484.383056640625" />
+    <Link Source="@50" Target="@70" Category="CallStackDirectCall" Bounds="2057.080078125,422.956115722656,266.324462890625,87.4308166503906" />
+    <Link Source="@50" Target="@83" Category="CallStackDirectCall" Bounds="2057.080078125,419.495300292969,710.251708984375,90.3322143554688" />
+    <Link Source="@50" Target="@87" Category="CallStackDirectCall" Bounds="2044.97302246094,429.492492675781,103.707153320313,28.5270080566406" />
+    <Link Source="@50" Target="@89" Category="CallStackDirectCall" Bounds="2016.15234375,429.492492675781,81.834716796875,81.9807434082031" />
+    <Link Source="@50" Target="@99" Category="CallStackDirectCall" Bounds="461.8173828125,429.492492675781,1470.33178710938,714.457458496094" />
+    <Link Source="@51" Target="(Name=TraceStoreAllocateRecordsWithTimestamp @22 @33 OverloadingParameters=[@52,@27,(Type=&quot;_ULARGE_INTEGER *&quot; Name=RecordSize),(Type=&quot;_ULARGE_INTEGER *&quot; Name=NumberOfRecords),(Type=&quot;_LARGE_INTEGER *&quot; Name=TimestampPointer)] @2)" Category="CallStackDirectCall" Bounds="1222.33166503906,717.72998046875,0,22.6875" />
+    <Link Source="@53" Target="@61" Category="CallStackDirectCall" Bounds="2042.3317500476,-126.707363466356,2.29046120239218E-05,21.0001000000053" />
+    <Link Source="@54" Target="@53" Category="CallStackDirectCall" Bounds="2042.33178710938,-70.7472634663509,0,21.0001" />
+    <Link Source="@56" Target="@71" Category="CallStackDirectCall" Bounds="2179.10327148438,598.484191894531,264.451171875,39.2911376953125" />
+    <Link Source="@57" Target="@85" Category="CallStackDirectCall" Bounds="333.366149902344,775.377502441406,0.51519775390625,22.6875610351563" />
+    <Link Source="@58" Target="@38" Category="CallStackDirectCall" Bounds="2478.73486328125,487.140014648438,87.6455078125,28.87158203125" />
+    <Link Source="@60" Target="@50" Category="CallStackDirectCall" Bounds="1941.39965820313,438.364013671875,57.4566650390625,483.995971679688" />
+    <Link Source="@61" Target="(Name=LoadTraceStoreTraits @22 @4 OverloadingParameters=[@27] @2)" Category="CallStackDirectCall" Bounds="2042.33172607422,-182.667463466351,0,21.0001" />
+    <Link Source="@62" Target="@84" Category="CallStackDirectCall" Bounds="683.331665039063,1121.26245117188,0,22.6875" />
+    <Link Source="@64" Target="@43" Category="CallStackDirectCall" Bounds="668.609741210938,1005.96752929688,7.62664794921875,23.1397705078125" />
+    <Link Source="@64" Target="@62" Category="CallStackDirectCall" Bounds="598.331665039063,1005.96752929688,38.222900390625,86.3758544921875" />
+    <Link Source="@67" Target="@125" Category="CallStackDirectCall" Bounds="1867.15759277344,1236.55749511719,37.7108154296875,26.511474609375" />
+    <Link Source="@68" Target="@71" Category="CallStackDirectCall" Bounds="2569.09814453125,656.934936523438,158.611572265625,34.8350830078125" />
+    <Link Source="@69" Target="@30" Category="CallStackDirectCall" Bounds="2049.33178710938,717.72998046875,0,22.6875" />
+    <Link Source="@69" Target="@73" Category="CallStackDirectCall" Bounds="670.161987304688,717.72998046875,1320.22045898438,30.4625244140625" />
+    <Link Source="@7" Target="(Name=InitializeTracerConfig @6 Type=&quot;_TRACER_CONFIG *&quot; OverloadingParameters=[@44,(Type=&quot;_UNICODE_STRING *&quot; Name=RegistryPath)] @2)" Category="CallStackDirectCall" Bounds="1651.32319679143,186.254721283693,170.718407212473,0.69173170404062" />
+    <Link Source="@7" Target="@117" Category="CallStackDirectCall" Bounds="1813.11269218875,200.053236533649,26.0699162314486,23.9160094921452" />
+    <Link Source="@7" Target="@31" Category="CallStackDirectCall" Bounds="1882.74764900459,199.833888014226,61.4057283003499,26.6377447319497" />
+    <Link Source="@70" Target="@71" Category="CallStackDirectCall" Bounds="2395.72778320313,544.787475585938,102.6767578125,80.8944702148438" />
+    <Link Source="@71" Target="@67" Category="CallStackDirectCall" Bounds="1923.33166503906,651.794006347656,529.125122070313,549.803527832031" />
+    <Link Source="@71" Target="@68" Category="CallStackDirectCall" Bounds="2560.20678710938,653.029541015625,202.325927734375,29.7455444335938" />
+    <Link Source="@71" Target="@69" Category="CallStackDirectCall" Bounds="2100.28466796875,651.380432128906,352.172119140625,37.8108520507813" />
+    <Link Source="@71" Target="@74" Category="CallStackDirectCall" Bounds="2476.88061523438,660.08251953125,32.101806640625,28.5189208984375" />
+    <Link Source="@71" Target="@78" Category="CallStackDirectCall" Bounds="2524.34448242188,660.08251953125,22.1513671875,23.0664672851563" />
+    <Link Source="@71" Target="@79" Category="CallStackDirectCall" Bounds="2299.59399414063,655.588195800781,152.86279296875,32.35009765625" />
+    <Link Source="@73" Target="@106" Category="CallStackDirectCall" Bounds="563.507690429688,775.377502441406,30.5130004882813,25.8676147460938" />
+    <Link Source="@74" Target="@71" Category="CallStackDirectCall" Bounds="2433.33178710938,663.443542480469,31.77734375,28.3264770507813" />
+    <Link Source="@75" Target="@71" Category="CallStackDirectCall" Bounds="2569.01098632813,659.227722167969,98.21923828125,90.1897583007813" />
+    <Link Source="@76" Target="@41" Category="CallStackDirectCall" Bounds="2305.12231445313,775.377502441406,61.61376953125,27.967529296875" />
+    <Link Source="@77" Target="@71" Category="CallStackDirectCall" Bounds="2566.98999023438,662.056091308594,56.341796875,87.3613891601563" />
+    <Link Source="@78" Target="@75" Category="CallStackDirectCall" Bounds="2569.794921875,717.72998046875,56.441162109375,28.5106811523438" />
+    <Link Source="@78" Target="@76" Category="CallStackDirectCall" Bounds="2438.37622070313,717.72998046875,77.830322265625,28.7610473632813" />
+    <Link Source="@78" Target="@77" Category="CallStackDirectCall" Bounds="2546.3701171875,717.72998046875,3.16015625,22.77294921875" />
+    <Link Source="@79" Target="@123" Category="CallStackDirectCall" Bounds="2246.2412109375,717.72998046875,12.335693359375,23.7039184570313" />
+    <Link Source="@82" Target="@125" Category="CallStackDirectCall" Bounds="776.816650390625,1226.72534179688,988.25341796875,50.5953369140625" />
+    <Link Source="@83" Target="@16" Category="CallStackDirectCall" Bounds="2680.6201171875,544.787475585938,393.711669921875,326.732482910156" />
+    <Link Source="@84" Target="@82" Category="CallStackDirectCall" Bounds="690.536865234375,1178.91003417969,13.2216186523438,23.8184814453125" />
+    <Link Source="@85" Target="@49" Category="CallStackDirectCall" Bounds="333.331665039063,833.025024414063,0,22.6875" />
+    <Link Source="@87" Target="@70" Category="CallStackDirectCall" Bounds="2222.85424804688,487.140014648438,68.6328125,28.2607421875" />
+    <Link Source="@88" Target="@115" Category="CallStackDirectCall" Bounds="2909.78833007813,429.492492675781,17.786865234375,24.4133605957031" />
+    <Link Source="@89" Target="@56" Category="CallStackDirectCall" Bounds="2113.6826171875,544.787475585938,2.366455078125,22.7359008789063" />
+    <Link Source="@90" Target="@54" Category="CallStackDirectCall" Bounds="2042.33178710938,-14.7871634663509,0,76.9602" />
+    <Link Source="@92" Target="(Name=00007fff4c02e80d @1 @2)" Category="CallStackDirectCall" Bounds="792.314514160156,653.467163085938,374.372131347656,38.5911254882813" />
+    <Link Source="@92" Target="(Name=00007fff4c02e80f @1 @2)" Category="CallStackDirectCall" Bounds="1088.34973144531,660.08251953125,92.55224609375,28.9967041015625" />
+    <Link Source="@92" Target="(Name=00007fff4c02e815 @1 @2)" Category="CallStackDirectCall" Bounds="953.185852050781,656.454650878906,213.500793457031,35.8828125" />
+    <Link Source="@92" Target="(Name=InitializePythonTraceEvent @32 @4 OverloadingParameters=[@36,(@59 Name=EventType),(Type=&quot;_PYTHON_EVENT_TRAITS *&quot; Name=EventTraitsPointer)] @2)" Category="CallStackDirectCall" Bounds="1277.97326660156,657.225891113281,258.183227539063,35.20849609375" />
+    <Link Source="@92" Target="(Name=InitializePythonTraceEvent @32 @4 OverloadingParameters=[@36,(Type=&quot;_PYTHON_EVENT_TRAITS *&quot; Name=EventTraitsPointer)] @2)" Category="CallStackDirectCall" Bounds="1268.71496582031,660.08251953125,104.56640625,29.2620849609375" />
+    <Link Source="@92" Target="@51" Category="CallStackDirectCall" Bounds="1222.33166503906,660.08251953125,0,22.6875" />
+    <Link Source="@93" Target="(Name=AppendTailList @32 @9 OverloadingParameters=[(Type=&quot;_LIST_ENTRY *&quot; Name=ListHead),(Type=&quot;_LIST_ENTRY *&quot; Name=ListToAppend)] @2)" Category="CallStackDirectCall" Bounds="1419.97668457031,653.544677734375,319.26904296875,39.120849609375" />
+    <Link Source="@94" Target="@104" Category="CallStackDirectCall" Bounds="614.997253417969,596.074890136719,397.391052246094,43.88623046875" />
+    <Link Source="@95" Target="@92" Category="CallStackDirectCall" Bounds="1222.33166503906,602.434997558594,0,22.6875" />
+    <Link Source="@95" Target="@93" Category="CallStackDirectCall" Bounds="1254.30456542969,602.434997558594,69.715087890625,28.3021240234375" />
+    <Link Source="@96" Target="@10" Category="CallStackDirectCall" Bounds="2179.33178710938,890.672485351563,0,22.6875" />
+    <Link Source="@97" Target="@98" Category="CallStackDirectCall" Bounds="338.662048339844,1005.96752929688,94.7346801757813,29.0489501953125" />
+    <Link Source="@98" Target="@121" Category="CallStackDirectCall" Bounds="491.086517333984,1063.61499023438,12.3356018066406,23.703857421875" />
+    <Link Source="@99" Target="@82" Category="CallStackDirectCall" Bounds="758.435363769531,1178.91003417969,76.221435546875,28.5322265625" />
+    <Link Source="ExternalCodeRootNode" Target="@11" Category="CallStackIndirectCall" Bounds="1896.66943359375,32.1729354858398,57.38037109375,77.2202453613281" />
+    <Link Source="ExternalCodeRootNode" Target="@5" Category="CallStackIndirectCall" Bounds="1910.76428222656,32.1729354858398,65.830322265625,133.23348236084" />
+    <Link Source="ExternalCodeRootNode" Target="@90" Category="CallStackIndirectCall" Bounds="1996.24879899289,32.1729365336491,25.5842318742395,23.8615786285074" />
+  </Links>
+  <Categories>
+    <Category Id="CallStackDirectCall" Label="Call Stack direct call" CanBeDataDriven="True" CanLinkedNodesBeDataDriven="True" IncomingActionLabel="Call Stack direct call" OutgoingActionLabel="Call Stack direct call" />
+    <Category Id="CallStackEntry" Label="Call Stack Entry" CanBeDataDriven="True" IsProviderRoot="False" NavigationActionLabel="Call Stack Entry" />
+    <Category Id="CallStackIndirectCall" Label="Call Stack indirect call" CanBeDataDriven="True" CanLinkedNodesBeDataDriven="True" IncomingActionLabel="Call Stack indirect call" OutgoingActionLabel="Call Stack indirect call" />
+    <Category Id="CodeSchema_CallStackUnresolvedMethod" Label="Unresolved Method" CanBeDataDriven="True" DefaultAction="Microsoft.AllOutBoundLinks" IsProviderRoot="False" NavigationActionLabel="Unresolved Method" />
+    <Category Id="CodeSchema_SourceLocation" Label="Source Location" Icon="File" />
+    <Category Id="ExternalCallStackEntry" Label="External Call Stack Entry" CanBeDataDriven="True" IsProviderRoot="False" NavigationActionLabel="External Call Stack Entry" />
+  </Categories>
+  <Properties>
+    <Property Id="Bounds" DataType="System.Windows.Rect" />
+    <Property Id="CanBeDataDriven" Label="CanBeDataDriven" Description="CanBeDataDriven" DataType="System.Boolean" />
+    <Property Id="CanLinkedNodesBeDataDriven" Label="CanLinkedNodesBeDataDriven" Description="CanLinkedNodesBeDataDriven" DataType="System.Boolean" />
+    <Property Id="CodeSchemaProperty_IsExternal" Label="Is External" Description="Flag indicating whether this node is considered external" DataType="System.Boolean" />
+    <Property Id="DataVirtualized" Label="Data Virtualized" Description="If true, the graph can contain nodes and links that represent data for virtualized nodes/links (i.e. not actually created in the graph)." DataType="System.Boolean" />
+    <Property Id="DefaultAction" Label="DefaultAction" Description="DefaultAction" DataType="System.String" />
+    <Property Id="Expression" DataType="System.String" />
+    <Property Id="GroupLabel" DataType="System.String" />
+    <Property Id="Icon" DataType="System.String" />
+    <Property Id="IncomingActionLabel" Label="IncomingActionLabel" Description="IncomingActionLabel" DataType="System.String" />
+    <Property Id="IsEnabled" DataType="System.Boolean" />
+    <Property Id="IsProviderRoot" Label="IsProviderRoot" Description="IsProviderRoot" DataType="System.Boolean" />
+    <Property Id="Label" Label="Label" Description="Displayable label of an Annotatable object" DataType="System.String" />
+    <Property Id="Layout" DataType="System.String" />
+    <Property Id="NavigationActionLabel" Label="NavigationActionLabel" Description="NavigationActionLabel" DataType="System.String" />
+    <Property Id="OutgoingActionLabel" Label="OutgoingActionLabel" Description="OutgoingActionLabel" DataType="System.String" />
+    <Property Id="SourceLocation" Label="Start Line Number" DataType="Microsoft.VisualStudio.GraphModel.CodeSchema.SourceLocation" />
+    <Property Id="TargetType" DataType="System.Type" />
+    <Property Id="Value" DataType="System.String" />
+    <Property Id="ValueLabel" DataType="System.String" />
+    <Property Id="Visibility" Label="Visibility" Description="Defines whether a node in the graph is visible or not" DataType="System.Windows.Visibility" />
+    <Property Id="ZoomLevel" DataType="System.String" />
+  </Properties>
+  <QualifiedNames>
+    <Name Id="Assembly" Label="Assembly" ValueType="Uri" />
+    <Name Id="IsUnresolved" Label="Is Unresolved" ValueType="System.String" />
+    <Name Id="Name" Label="Name" ValueType="System.String" />
+    <Name Id="OverloadingParameters" Label="Parameter" ValueType="Microsoft.VisualStudio.GraphModel.GraphNodeIdCollection" Formatter="NameValueNoEscape" />
+    <Name Id="Type" Label="Type" ValueType="System.Object" />
+  </QualifiedNames>
+  <IdentifierAliases>
+    <Alias n="1" Uri="Assembly=kernel32.dll" />
+    <Alias n="2" Id="IsUnresolved=True" />
+    <Alias n="3" Uri="Assembly=python.exe" />
+    <Alias n="4" Id="Type=int" />
+    <Alias n="5" Id="(Name=__tmainCRTStartup @3 @4 @2)" />
+    <Alias n="6" Uri="Assembly=tpython.exe" />
+    <Alias n="7" Id="(Name=Main @6 Type=&quot;unsigned long&quot; @2)" />
+    <Alias n="8" Uri="Assembly=_ctypes.pyd" />
+    <Alias n="9" Id="Type=void" />
+    <Alias n="10" Id="(Name=ffi_call_AMD64 @8 @9 @2)" />
+    <Alias n="11" Id="(Name=mainCRTStartup @6 @9 @2)" />
+    <Alias n="12" Uri="Assembly=python27.dll" />
+    <Alias n="13" Id="(Name=Py_Finalize @12 @9 @2)" />
+    <Alias n="14" Id="(Name=PyImport_Cleanup @12 @9 @2)" />
+    <Alias n="15" Id="Type=&quot;_object *&quot;" />
+    <Alias n="16" Id="(Name=PyObject_CallFunctionObjArgs @12 @15 OverloadingParameters=[(@15 Name=callable)] @2)" />
+    <Alias n="17" Id="(Name=instance_dealloc @12 @9 OverloadingParameters=[(Type=&quot;PyInstanceObject *&quot; Name=inst)] @2)" />
+    <Alias n="18" Id="(Name=PyIter_Next @12 @15 OverloadingParameters=[(@15 Name=iter)] @2)" />
+    <Alias n="19" Id="(Name=_PyModule_Clear @12 @9 OverloadingParameters=[(@15 Name=m)] @2)" />
+    <Alias n="20" Id="(Name=PyImport_Import @12 @15 OverloadingParameters=[(@15 Name=module_name)] @2)" />
+    <Alias n="21" Id="(Name=PyImport_ImportModule @12 @15 OverloadingParameters=[(Type=&quot;const char *&quot; Name=name)] @2)" />
+    <Alias n="22" Uri="Assembly=TraceStore.dll" />
+    <Alias n="23" Id="(Name=PyObject_ClearWeakRefs @12 @9 OverloadingParameters=[(@15 Name=object)] @2)" />
+    <Alias n="24" Id="Name=op" />
+    <Alias n="25" Id="(Name=class_dealloc @12 @9 OverloadingParameters=[(Type=&quot;PyClassObject *&quot; @24)] @2)" />
+    <Alias n="26" Id="(Name=tupledealloc @12 @9 OverloadingParameters=[(Type=&quot;PyTupleObject *&quot; @24)] @2)" />
+    <Alias n="27" Id="(Type=&quot;_TRACE_STORE *&quot; Name=TraceStore)" />
+    <Alias n="28" Id="(@15 Name=args)" />
+    <Alias n="29" Id="(Name=call_function_tail @12 @15 OverloadingParameters=[(@15 Name=callable),@28] @2)" />
+    <Alias n="30" Id="(Name=builtin_issubclass @12 @15 OverloadingParameters=[(@15 Name=self),@28] @2)" />
+    <Alias n="31" Id="(Name=Py_Main @12 @4 OverloadingParameters=[(@4 Name=argc),(Type=&quot;char * *&quot; Name=argv)] @2)" />
+    <Alias n="32" Uri="Assembly=PythonTracer.dll" />
+    <Alias n="33" Id="Type=&quot;void *&quot;" />
+    <Alias n="34" Id="(Name=handle_callback @12 @9 OverloadingParameters=[(Type=&quot;_PyWeakReference *&quot; Name=ref),(@15 Name=callback)] @2)" />
+    <Alias n="35" Id="(Name=PyObject_IsSubclass @12 @4 OverloadingParameters=[(@15 Name=derived),(@15 Name=cls)] @2)" />
+    <Alias n="36" Id="(Type=&quot;_PYTHON_TRACE_CONTEXT *&quot; Name=Context)" />
+    <Alias n="37" Id="Type=&quot;char *&quot;" />
+    <Alias n="38" Id="(Name=PyObject_CallFunction @12 @15 OverloadingParameters=[(@15 Name=callable),(@37 Name=format)] @2)" />
+    <Alias n="39" Id="(Type=&quot;_object * * *&quot; Name=pp_stack)" />
+    <Alias n="40" Id="(Name=call_function @12 @15 OverloadingParameters=[@39,(@4 Name=oparg)] @2)" />
+    <Alias n="41" Id="(Name=set_update_internal @12 @4 OverloadingParameters=[(Type=&quot;_setobject *&quot; Name=so),(@15 Name=other)] @2)" />
+    <Alias n="42" Id="(@37 Name=name)" />
+    <Alias n="43" Id="(Name=load_package @12 @15 OverloadingParameters=[@42,(@37 Name=pathname)] @2)" />
+    <Alias n="44" Id="(Type=&quot;_ALLOCATOR *&quot; Name=Allocator)" />
+    <Alias n="45" Uri="Assembly=TracerConfig.dll" />
+    <Alias n="46" Id="(Name=RunModule @12 @4 OverloadingParameters=[(@37 Name=module),(@4 Name=set_argv0)] @2)" />
+    <Alias n="47" Uri="Assembly=Python.dll" />
+    <Alias n="48" Id="(Type=&quot;_PYTHON *&quot; Name=Python)" />
+    <Alias n="49" Id="(Name=AllocateString @47 @4 OverloadingParameters=[@48,(Type=&quot;_STRING * *&quot; Name=StringPointer)] @2)" />
+    <Alias n="50" Id="(Name=PyEval_EvalFrameEx @12 @15 OverloadingParameters=[(Type=&quot;_frame *&quot; Name=f),(@4 Name=throwflag)] @2)" />
+    <Alias n="51" Id="(Name=AllocatePythonTraceEvent1 @32 Type=&quot;_PYTHON_TRACE_EVENT1 *&quot; OverloadingParameters=[@27,(Type=&quot;_LARGE_INTEGER *&quot; Name=Timestamp)] @2)" />
+    <Alias n="52" Id="(Type=&quot;_TRACE_CONTEXT *&quot; Name=TraceContext)" />
+    <Alias n="53" Id="(Name=BindMetadataStoreReadonly @22 @4 OverloadingParameters=[@52,@27] @2)" />
+    <Alias n="54" Id="(Name=BindStore @22 @4 OverloadingParameters=[@52,@27] @2)" />
+    <Alias n="55" Id="(@15 Name=value)" />
+    <Alias n="56" Id="(Name=slot_sq_contains @12 @4 OverloadingParameters=[(@15 Name=self),@55] @2)" />
+    <Alias n="57" Id="(Name=QualifyPath @47 @4 OverloadingParameters=[@48,(Type=&quot;_STRING *&quot; Name=SourcePath),(Type=&quot;_STRING * *&quot; Name=DestinationPathPointer)] @2)" />
+    <Alias n="58" Id="(Name=_PyObject_GenericGetAttrWithDict @12 @15 OverloadingParameters=[(@15 Name=obj),(@15 Name=name),(@15 Name=dict)] @2)" />
+    <Alias n="59" Id="Type=long" />
+    <Alias n="60" Id="(Name=gen_send_ex @12 @15 OverloadingParameters=[(Type=&quot;PyGenObject *&quot; Name=gen),(@15 Name=arg),(@4 Name=exc)] @2)" />
+    <Alias n="61" Id="(Name=InfoMetadataBindComplete @22 @4 OverloadingParameters=[@52,(Type=&quot;_TRACE_STORE *&quot; Name=InfoStore),(Type=&quot;_TRACE_STORE_MEMORY_MAP *&quot; Name=FirstMemoryMap)] @2)" />
+    <Alias n="62" Id="(Name=load_source_module @12 @15 OverloadingParameters=[@42,(@37 Name=pathname),(Type=&quot;_iobuf *&quot; Name=fp)] @2)" />
+    <Alias n="63" Id="(Type=&quot;_PYFRAMEOBJECT *&quot; Name=FrameObject)" />
+    <Alias n="64" Id="(Name=import_submodule @12 @15 OverloadingParameters=[(@15 Name=mod),(@37 Name=subname),(@37 Name=fullname)] @2)" />
+    <Alias n="65" Id="(@15 Name=func)" />
+    <Alias n="66" Id="OverloadingParameters=[@65,(@15 Name=arg),(@15 Name=kw)]" />
+    <Alias n="67" Id="(Name=function_call @12 @15 @66 @2)" />
+    <Alias n="68" Id="(Name=instancemethod_call @12 @15 @66 @2)" />
+    <Alias n="69" Id="(Name=PyCFunction_Call @12 @15 @66 @2)" />
+    <Alias n="70" Id="(Name=PyEval_CallObjectWithKeywords @12 @15 @66 @2)" />
+    <Alias n="71" Id="(Name=PyObject_Call @12 @15 @66 @2)" />
+    <Alias n="72" Id="(@15 Name=kwds)" />
+    <Alias n="73" Id="(Name=builtin___import__ @12 @15 OverloadingParameters=[(@15 Name=self),@28,@72] @2)" />
+    <Alias n="74" Id="(Name=slot_tp_call @12 @15 OverloadingParameters=[(@15 Name=self),@28,@72] @2)" />
+    <Alias n="75" Id="(Name=slot_tp_init @12 @4 OverloadingParameters=[(@15 Name=self),@28,@72] @2)" />
+    <Alias n="76" Id="(Name=set_init @12 @4 OverloadingParameters=[(Type=&quot;_setobject *&quot; Name=self),@28,@72] @2)" />
+    <Alias n="77" Id="(Name=slot_tp_new @12 @15 OverloadingParameters=[(Type=&quot;_typeobject *&quot; Name=type),@28,@72] @2)" />
+    <Alias n="78" Id="(Name=type_call @12 @15 OverloadingParameters=[(Type=&quot;_typeobject *&quot; Name=type),@28,@72] @2)" />
+    <Alias n="79" Id="(Name=PyCFuncPtr_call @8 @15 OverloadingParameters=[(Type=&quot;PyCFuncPtrObject *&quot; Name=self),(@15 Name=inargs),@72] @2)" />
+    <Alias n="80" Id="(@15 Name=globals)" />
+    <Alias n="81" Id="(@15 Name=locals)" />
+    <Alias n="82" Id="(Name=PyEval_EvalCode @12 @15 OverloadingParameters=[(Type=&quot;PyCodeObject *&quot; Name=co),@80,@81] @2)" />
+    <Alias n="83" Id="(Name=build_class @12 @15 OverloadingParameters=[(@15 Name=methods),(@15 Name=bases),(@15 Name=name)] @2)" />
+    <Alias n="84" Id="(Name=PyImport_ExecCodeModuleEx @12 @15 OverloadingParameters=[@42,(@15 Name=co),(@37 Name=pathname)] @2)" />
+    <Alias n="85" Id="(Name=AllocateStringAndBuffer @47 @4 OverloadingParameters=[@48,(Type=&quot;unsigned short&quot; Name=StringBufferSizeInBytes),(Type=&quot;_STRING * *&quot; Name=StringPointer)] @2)" />
+    <Alias n="86" Id="(@15 Name=key)" />
+    <Alias n="87" Id="(Name=instance_ass_subscript @12 @4 OverloadingParameters=[(Type=&quot;PyInstanceObject *&quot; Name=inst),@86,@55] @2)" />
+    <Alias n="88" Id="(Name=PyDict_SetItem @12 @4 OverloadingParameters=[(@15 @24),@86,@55] @2)" />
+    <Alias n="89" Id="(Name=cmp_outcome @12 @15 OverloadingParameters=[(@4 @24),(@15 Name=v),(@15 Name=w)] @2)" />
+    <Alias n="90" Id="(Name=BindRemainingMetadataStoresCallback @22 @9 OverloadingParameters=[(Type=&quot;_TP_CALLBACK_INSTANCE *&quot; Name=Instance),@52,(Type=&quot;_TP_WORK *&quot; Name=Work)] @2)" />
+    <Alias n="91" Id="(Type=&quot;_PYOBJECT *&quot; Name=ArgObject)" />
+    <Alias n="92" Id="(Name=PyTraceEvent1 @32 @4 OverloadingParameters=[@36,@63,(@59 Name=EventType),@91] @2)" />
+    <Alias n="93" Id="(Name=PyTraceEvent2 @32 @4 OverloadingParameters=[@36,@63,(@59 Name=EventType),@91] @2)" />
+    <Alias n="94" Id="(Name=PyTraceCallback @32 @59 OverloadingParameters=[@36,@63,(@59 Name=EventType),@91] @2)" />
+    <Alias n="95" Id="(Name=PyTraceCallback @32 @59 OverloadingParameters=[(@33 Name=UserContext),@63,(@59 Name=EventType),@91] @2)" />
+    <Alias n="96" Id="(Name=ffi_call @8 @4 OverloadingParameters=[(Type=&quot;ffi_cif *&quot; Name=cif),(Type=&quot;void(*)()&quot; Name=fn),(@33 Name=rvalue),(Type=&quot;void * *&quot; Name=avalue)] @2)" />
+    <Alias n="97" Id="(Name=PyRun_AnyFileExFlags @12 @4 OverloadingParameters=[(Type=&quot;_iobuf *&quot; Name=fp),(Type=&quot;const char *&quot; Name=filename),(@4 Name=closeit),(Type=&quot;PyCompilerFlags *&quot; Name=flags)] @2)" />
+    <Alias n="98" Id="(Name=PyRun_SimpleFileExFlags @12 @4 OverloadingParameters=[(Type=&quot;_iobuf *&quot; Name=fp),(Type=&quot;const char *&quot; Name=filename),(@4 Name=closeit),(Type=&quot;PyCompilerFlags *&quot; Name=flags)] @2)" />
+    <Alias n="99" Id="(Name=exec_statement @12 @4 OverloadingParameters=[(Type=&quot;_frame *&quot; Name=f),(@15 Name=prog),@80,@81] @2)" />
+    <Alias n="100" Id="(Name=do_call @12 @15 OverloadingParameters=[@65,@39,(@4 Name=na),(@4 Name=nk)] @2)" />
+    <Alias n="101" Id="(Name=insertdict @12 @4 OverloadingParameters=[(Type=&quot;_dictobject *&quot; Name=mp),@86,(@59 Name=hash),@55] @2)" />
+    <Alias n="102" Id="(Name=call_trace @12 @4 OverloadingParameters=[(Type=&quot;int(*)(_object *, _frame *, int, _object *)&quot; Name=func),(@15 Name=obj),(Type=&quot;_frame *&quot; Name=frame),(@4 Name=what),(@15 Name=arg)] @2)" />
+    <Alias n="103" Id="(Name=call_trace_protected @12 @4 OverloadingParameters=[(Type=&quot;int(*)(_object *, _frame *, int, _object *)&quot; Name=func),(@15 Name=obj),(Type=&quot;_frame *&quot; Name=frame),(@4 Name=what),(@15 Name=arg)] @2)" />
+    <Alias n="104" Id="(Name=RegisterFrame @47 @4 OverloadingParameters=[@48,@63,(Type=_PYTHON_EVENT_TRAITS Name=EventTraits),@91,(Type=&quot;_PYTHON_FUNCTION * *&quot; Name=FunctionPointer)] @2)" />
+    <Alias n="105" Id="(Name=import_module_level @12 @15 OverloadingParameters=[@42,@80,@81,(@15 Name=fromlist),(@4 Name=level)] @2)" />
+    <Alias n="106" Id="(Name=PyImport_ImportModuleLevel @12 @15 OverloadingParameters=[@42,@80,@81,(@15 Name=fromlist),(@4 Name=level)] @2)" />
+    <Alias n="107" Id="(Name=ext_do_call @12 @15 OverloadingParameters=[@65,@39,(@4 Name=flags),(@4 Name=na),(@4 Name=nk)] @2)" />
+    <Alias n="108" Id="(Name=fast_function @12 @15 OverloadingParameters=[@65,@39,(@4 Name=n),(@4 Name=na),(@4 Name=nk)] @2)" />
+    <Alias n="109" Id="(Name=load_next @12 @15 OverloadingParameters=[(@15 Name=mod),(@15 Name=altmod),(Type=&quot;char * *&quot; Name=p_name),(@37 Name=buf),(Type=&quot;__int64 *&quot; Name=p_buflen)] @2)" />
+    <Alias n="110" Id="(Name=RegisterFile @47 @4 OverloadingParameters=[@48,@63,(Type=&quot;_STRING *&quot; Name=FilenameString),(Type=&quot;_FILENAME_FLAGS *&quot; Name=FilenameFlags),(Type=&quot;_PYTHON_PATH_TABLE_ENTRY * *&quot; Name=PathEntryPointer)] @2)" />
+    <Alias n="111" Id="(Name=ensure_fromlist @12 @4 OverloadingParameters=[(@15 Name=mod),(@15 Name=fromlist),(@37 Name=buf),(Type=__int64 Name=buflen),(@4 Name=recursive)] @2)" />
+    <Alias n="112" Uri="Assembly=TracedPythonSession.dll" />
+    <Alias n="113" Id="(Name=InitializeTracedPythonSession @112 @4 OverloadingParameters=[(Type=&quot;_TRACED_PYTHON_SESSION * *&quot; Name=SessionPointer),(Type=&quot;_TRACER_CONFIG *&quot; Name=TracerConfig),@44,(Type=&quot;HINSTANCE__ *&quot; Name=OwningModule),(Type=&quot;_UNICODE_STRING * *&quot; Name=TraceSessionDirectoryPointer)] @2)" />
+    <Alias n="114" Id="(Name=insertdict_by_entry @12 @4 OverloadingParameters=[(Type=&quot;_dictobject *&quot; Name=mp),@86,(@59 Name=hash),(Type=&quot;PyDictEntry *&quot; Name=ep),@55] @2)" />
+    <Alias n="115" Id="(Name=dict_set_item_by_hash_or_entry @12 @4 OverloadingParameters=[(@15 @24),@86,(@59 Name=hash),(Type=&quot;PyDictEntry *&quot; Name=ep),@55] @2)" />
+    <Alias n="116" Id="(Name=run_mod @12 @15 OverloadingParameters=[(Type=&quot;_mod *&quot; Name=mod),(Type=&quot;const char *&quot; Name=filename),@80,@81,(Type=&quot;PyCompilerFlags *&quot; Name=flags),(Type=&quot;_arena *&quot; Name=arena)] @2)" />
+    <Alias n="117" Id="(Name=LoadAndInitializeTracedPythonSession @6 @4 OverloadingParameters=[(Type=&quot;_TRACED_PYTHON_SESSION * *&quot; Name=Session),(Type=&quot;_TRACER_CONFIG *&quot; Name=TracerConfig),@44,(Type=&quot;HINSTANCE__ *&quot; Name=OwningModule),(Type=&quot;_UNICODE_STRING * *&quot; Name=TraceSessionDirectoryPointer),(Type=&quot;void(*)(_TRACED_PYTHON_SESSION * *) *&quot; Name=DestroyTracedPythonSessionPointer)] @2)" />
+    <Alias n="118" Id="(Name=maybe_call_line_trace @12 @4 OverloadingParameters=[(Type=&quot;int(*)(_object *, _frame *, int, _object *)&quot; Name=func),(@15 Name=obj),(Type=&quot;_frame *&quot; Name=frame),(Type=&quot;int *&quot; Name=instr_lb),(Type=&quot;int *&quot; Name=instr_ub),(Type=&quot;int *&quot; Name=instr_prev)] @2)" />
+    <Alias n="119" Id="(Name=InitializeReadonlyTraceStores @22 @4 OverloadingParameters=[(Type=&quot;_RTL *&quot; Name=Rtl),@44,(Type=&quot;wchar_t *&quot; Name=BaseDirectory),(Type=&quot;_TRACE_STORES *&quot; Name=TraceStores),(Type=&quot;unsigned long *&quot; Name=SizeOfTraceStores),(Type=&quot;_TRACE_FLAGS *&quot; Name=TraceFlags)] @2)" />
+    <Alias n="120" Id="(Name=_call_function_pointer @8 @4 OverloadingParameters=[(@4 Name=flags),(Type=&quot;int(*)()&quot; Name=pProc),(Type=&quot;void * *&quot; Name=avalues),(Type=&quot;_ffi_type * *&quot; Name=atypes),(Type=&quot;_ffi_type *&quot; Name=restype),(@33 Name=resmem),(@4 Name=argcount)] @2)" />
+    <Alias n="121" Id="(Name=PyRun_FileExFlags @12 @15 OverloadingParameters=[(Type=&quot;_iobuf *&quot; Name=fp),(Type=&quot;const char *&quot; Name=filename),(@4 Name=start),@80,@81,(@4 Name=closeit),(Type=&quot;PyCompilerFlags *&quot; Name=flags)] @2)" />
+    <Alias n="122" Id="(Name=GetPathEntryFromFrame @47 @4 OverloadingParameters=[@48,@63,(Type=_PYTHON_EVENT_TRAITS Name=EventTraits),@91,(Type=&quot;_STRING *&quot; Name=FilenameString),(Type=&quot;_FILENAME_FLAGS *&quot; Name=FilenameFlags),(Type=&quot;_PYTHON_PATH_TABLE_ENTRY * *&quot; Name=PathEntryPointer)] @2)" />
+    <Alias n="123" Id="(Name=_ctypes_callproc @8 @15 OverloadingParameters=[(Type=&quot;int(*)()&quot; Name=pProc),(@15 Name=argtuple),(Type=&quot;IUnknown *&quot; Name=pIunk),(Type=&quot;_GUID *&quot; Name=iid),(@4 Name=flags),(@15 Name=argtypes),(@15 Name=restype),(@15 Name=checker)] @2)" />
+    <Alias n="124" Id="(Name=InitializeTraceStores @22 @4 OverloadingParameters=[(Type=&quot;_RTL *&quot; Name=Rtl),@44,(Type=&quot;wchar_t *&quot; Name=BaseDirectory),(Type=&quot;_TRACE_STORES *&quot; Name=TraceStores),(Type=&quot;unsigned long *&quot; Name=SizeOfTraceStores),(Type=&quot;unsigned long *&quot; Name=InitialFileSizes),(Type=&quot;_TRACE_FLAGS *&quot; Name=TraceFlags),(Type=&quot;_TRACE_STORE_FIELD_RELOCS *&quot; Name=FieldRelocations)] @2)" />
+    <Alias n="125" Id="(Name=PyEval_EvalCodeEx @12 @15 OverloadingParameters=[(Type=&quot;PyCodeObject *&quot; Name=co),@80,@81,(Type=&quot;_object * *&quot; Name=args),(@4 Name=argcount),(Type=&quot;_object * *&quot; Name=kws),(@4 Name=kwcount),(Type=&quot;_object * *&quot; Name=defs),(@4 Name=defcount),(@15 Name=closure)] @2)" />
+  </IdentifierAliases>
+  <Styles>
+    <Style TargetType="Link" GroupLabel="Current Call Stack Link" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CurrentCallStackCall')" />
+      <Setter Property="Stroke" Value="#FFD93701" />
+      <Setter Property="Weight" Value="1" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Call Stack Indirect Link" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CallStackIndirectCall')" />
+      <Setter Property="Stroke" Value="#FFB8B8B8" />
+      <Setter Property="StrokeDashArray" Value="4 1" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Call Stack Direct Link" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CallStackDirectCall')" />
+      <Setter Property="Stroke" Value="#FFB8B8B8" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Current Call Stack (no source)" ValueLabel="True">
+      <Condition Expression="HasCategory('CurrentCallStackEntry') And !HasCategory('CodeSchema_SourceLocation')" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="#FFA5A5A5" />
+      <Setter Property="Stroke" Value="#FF0072C6" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="External And Current" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('ExternalCallStackEntry') And HasCategory('CurrentCallStackEntry')" />
+      <Setter Property="Background" Value="#FFFFF8F0" />
+      <Setter Property="Stroke" Value="#FFCE5100" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Current Call Stack (source)" ValueLabel="True">
+      <Condition Expression="HasCategory('CurrentCallStackEntry') And !HasCategory('QueryResult')" />
+      <Setter Property="Background" Value="#FFFFE3C6" />
+      <Setter Property="Stroke" Value="#FFD93701" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="External Call Stack" ValueLabel="True">
+      <Condition Expression="HasCategory('ExternalCallStackEntry')" />
+      <Setter Property="Background" Value="#FFF7F7F7" />
+      <Setter Property="StrokeDashArray" Value="1 3" />
+      <Setter Property="Foreground" Value="#FFA5A5A5" />
+      <Setter Property="Stroke" Value="#FFA5A5A5" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Results" ValueLabel="True">
+      <Condition Expression="HasCategory('QueryResult')" />
+      <Setter Property="Background" Value="#FFBCFFBE" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Test Project" ValueLabel="Test Project">
+      <Condition Expression="HasCategory('CodeMap_TestProject')" />
+      <Setter Property="Icon" Value="CodeMap_TestProject" />
+      <Setter Property="Background" Value="#FF307A69" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Web Project" ValueLabel="Web Project">
+      <Condition Expression="HasCategory('CodeMap_WebProject')" />
+      <Setter Property="Icon" Value="CodeMap_WebProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Windows Store Project" ValueLabel="Windows Store Project">
+      <Condition Expression="HasCategory('CodeMap_WindowsStoreProject')" />
+      <Setter Property="Icon" Value="CodeMap_WindowsStoreProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Phone Project" ValueLabel="Phone Project">
+      <Condition Expression="HasCategory('CodeMap_PhoneProject')" />
+      <Setter Property="Icon" Value="CodeMap_PhoneProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Portable Library" ValueLabel="Portable Library">
+      <Condition Expression="HasCategory('CodeMap_PortableLibraryProject')" />
+      <Setter Property="Icon" Value="CodeMap_PortableLibraryProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="WPF Project" ValueLabel="WPF Project">
+      <Condition Expression="HasCategory('CodeMap_WpfProject')" />
+      <Setter Property="Icon" Value="CodeMap_WpfProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="VSIX Project" ValueLabel="VSIX Project">
+      <Condition Expression="HasCategory('CodeMap_VsixProject')" />
+      <Setter Property="Icon" Value="CodeMap_VsixProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Modeling Project" ValueLabel="Modeling Project">
+      <Condition Expression="HasCategory('CodeMap_ModelingProject')" />
+      <Setter Property="Icon" Value="CodeMap_ModelingProject" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Assembly" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Assembly')" />
+      <Setter Property="Background" Value="#FF094167" />
+      <Setter Property="Stroke" Value="#FF094167" />
+      <Setter Property="Icon" Value="CodeSchema_Assembly" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Namespace" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Namespace')" />
+      <Setter Property="Background" Value="#FF0E619A" />
+      <Setter Property="Stroke" Value="#FF0E619A" />
+      <Setter Property="Icon" Value="CodeSchema_Namespace" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Interface" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Interface')" />
+      <Setter Property="Background" Value="#FF1382CE" />
+      <Setter Property="Stroke" Value="#FF1382CE" />
+      <Setter Property="Icon" Value="CodeSchema_Interface" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Struct" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Struct')" />
+      <Setter Property="Background" Value="#FF1382CE" />
+      <Setter Property="Stroke" Value="#FF1382CE" />
+      <Setter Property="Icon" Value="CodeSchema_Struct" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Enumeration" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Enum')" />
+      <Setter Property="Background" Value="#FF1382CE" />
+      <Setter Property="Stroke" Value="#FF1382CE" />
+      <Setter Property="Icon" Value="CodeSchema_Enum" />
+      <Setter Property="LayoutSettings" Value="List" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Delegate" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Delegate')" />
+      <Setter Property="Background" Value="#FF1382CE" />
+      <Setter Property="Stroke" Value="#FF1382CE" />
+      <Setter Property="Icon" Value="CodeSchema_Delegate" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Class" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Type')" />
+      <Setter Property="Background" Value="#FF1382CE" />
+      <Setter Property="Stroke" Value="#FF1382CE" />
+      <Setter Property="Icon" Value="CodeSchema_Class" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Property" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Property')" />
+      <Setter Property="Background" Value="#FFE0E0E0" />
+      <Setter Property="Stroke" Value="#FFE0E0E0" />
+      <Setter Property="Icon" Value="CodeSchema_Property" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Method" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Method') Or HasCategory('CodeSchema_CallStackUnresolvedMethod')" />
+      <Setter Property="Background" Value="#FFE0E0E0" />
+      <Setter Property="Stroke" Value="#FFE0E0E0" />
+      <Setter Property="Icon" Value="CodeSchema_Method" />
+      <Setter Property="LayoutSettings" Value="List" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Event" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Event')" />
+      <Setter Property="Background" Value="#FFE0E0E0" />
+      <Setter Property="Stroke" Value="#FFE0E0E0" />
+      <Setter Property="Icon" Value="CodeSchema_Event" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Field" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Field')" />
+      <Setter Property="Background" Value="#FFE0E0E0" />
+      <Setter Property="Stroke" Value="#FFE0E0E0" />
+      <Setter Property="Icon" Value="CodeSchema_Field" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Out Parameter" ValueLabel="Has category">
+      <Condition Expression="CodeSchemaProperty_IsOut = 'True'" />
+      <Setter Property="Icon" Value="CodeSchema_OutParameter" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Parameter" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_Parameter')" />
+      <Setter Property="Icon" Value="CodeSchema_Parameter" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Local Variable" ValueLabel="Has category">
+      <Condition Expression="HasCategory('CodeSchema_LocalExpression')" />
+      <Setter Property="Icon" Value="CodeSchema_LocalExpression" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Externals" ValueLabel="Has category">
+      <Condition Expression="HasCategory('Externals')" />
+      <Setter Property="Background" Value="#FF424242" />
+      <Setter Property="Stroke" Value="#FF424242" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Inherits From" ValueLabel="True">
+      <Condition Expression="HasCategory('InheritsFrom')" />
+      <Setter Property="Stroke" Value="#FF00A600" />
+      <Setter Property="StrokeDashArray" Value="2 0" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Implements" ValueLabel="True">
+      <Condition Expression="HasCategory('Implements')" />
+      <Setter Property="Stroke" Value="#8000A600" />
+      <Setter Property="StrokeDashArray" Value="2 2" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Calls" ValueLabel="True">
+      <Condition Expression="HasCategory('CodeSchema_Calls')" />
+      <Setter Property="Stroke" Value="#FFFF00FF" />
+      <Setter Property="StrokeDashArray" Value="2 0" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Function Pointer" ValueLabel="True">
+      <Condition Expression="HasCategory('CodeSchema_FunctionPointer')" />
+      <Setter Property="Stroke" Value="#FFFF00FF" />
+      <Setter Property="StrokeDashArray" Value="2 2" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Field Read" ValueLabel="True">
+      <Condition Expression="HasCategory('CodeSchema_FieldRead')" />
+      <Setter Property="Stroke" Value="#FF00AEEF" />
+      <Setter Property="StrokeDashArray" Value="2 2" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Field Write" ValueLabel="True">
+      <Condition Expression="HasCategory('CodeSchema_FieldWrite')" />
+      <Setter Property="Stroke" Value="#FF00AEEF" />
+      <Setter Property="DrawArrow" Value="true" />
+      <Setter Property="IsHidden" Value="false" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Inherits From" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('InheritsFrom') And Target.HasCategory('CodeSchema_Class')" />
+      <Setter Property="TargetDecorator" Value="OpenArrow" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Implements" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('Implements') And Target.HasCategory('CodeSchema_Interface')" />
+      <Setter Property="TargetDecorator" Value="OpenArrow" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Comment Link" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="Source.HasCategory('Comment')" />
+      <Setter Property="Stroke" Value="#FFE5C365" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Cursor Location Changed" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="IsCursorLocation" />
+      <Setter Property="IndicatorWest" Value="WestIndicator" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Disabled Breakpoint Location Changed" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="DisabledBreakpointCount" />
+      <Setter Property="IndicatorWest" Value="WestIndicator" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Enabled Breakpoint Location Changed" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="EnabledBreakpointCount" />
+      <Setter Property="IndicatorWest" Value="WestIndicator" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Instruction Pointer Location Changed" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="IsInstructionPointerLocation" />
+      <Setter Property="IndicatorWest" Value="WestIndicator" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Current Callstack Changed" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="IsCurrentCallstackFrame" />
+      <Setter Property="IndicatorWest" Value="WestIndicator" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Return" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CodeSchema_ReturnTypeLink')" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="References" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('References')" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Uses Attribute" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CodeSchema_AttributeUse')" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Solution Folder" ValueLabel="True" Visibility="Hidden">
+      <Condition Expression="HasCategory('CodeMap_SolutionFolder')" />
+      <Setter Property="Background" Value="#FFDEBA83" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="Project Reference" ValueLabel="Project Reference">
+      <Condition Expression="HasCategory('CodeMap_ProjectReference')" />
+      <Setter Property="Stroke" Value="#9A9A9A" />
+      <Setter Property="StrokeDashArray" Value="2 2" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Link" GroupLabel="External Reference" ValueLabel="External Reference">
+      <Condition Expression="HasCategory('CodeMap_ExternalReference')" />
+      <Setter Property="Stroke" Value="#9A9A9A" />
+      <Setter Property="StrokeDashArray" Value="2 2" />
+      <Setter Property="DrawArrow" Value="true" />
+    </Style>
+    <Style TargetType="Node" GroupLabel="Comment" ValueLabel="Has comment">
+      <Condition Expression="HasCategory('Comment')" />
+      <Setter Property="Background" Value="#FFFFFACD" />
+      <Setter Property="Stroke" Value="#FFE5C365" />
+      <Setter Property="StrokeThickness" Value="1" />
+      <Setter Property="NodeRadius" Value="2" />
+      <Setter Property="MaxWidth" Value="250" />
+    </Style>
+  </Styles>
+</DirectedGraph>

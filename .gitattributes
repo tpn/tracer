@@ -6,3 +6,4 @@
 *.sln* eol=crlf
 *.vcxproj* eol=crlf
 *.pyproj* eol=crlf
+*.dgml eol=crlf
