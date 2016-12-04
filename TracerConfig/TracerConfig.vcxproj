@@ -68,10 +68,14 @@
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>TracerHeapLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <!--
-      <ModuleDefinitionFile Condition="'$(Configuration)' != 'Debug'">TracerConfig.def</ModuleDefinitionFile>
-      <ModuleDefinitionFile Condition="'$(Configuration)' == 'Debug'">TracerConfigDebug.def</ModuleDefinitionFile>
-      -->
+    </Link>
+    <Link Condition="$(Configuration) == 'PGInstrument' or $(Configuration) == 'PGUpdate'">
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalOptions>/HIGHENTROPYVA</AdditionalOptions>
+    </Link>
+    <Link Condition="$(Configuration) == 'PGOptimize'">
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalOptions>/HIGHENTROPYVA</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>

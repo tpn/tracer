@@ -35,6 +35,7 @@
       <CompileAsManaged>false</CompileAsManaged>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <SetChecksum>true</SetChecksum>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
       <Optimization>Disabled</Optimization>
@@ -54,19 +55,18 @@
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetMachine>MachineX86</TargetMachine>
-      <TargetMachine Condition="'$(Platform)' == 'x64'">MachineX64</TargetMachine>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">PGInstrument</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">PGUpdate</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGOptimize'">PGOptimize</LinkTimeCodeGeneration>
-      <ProfileGuidedDatabase>$(PGDDirectory)$(TargetName).pgd</ProfileGuidedDatabase>
+      <TargetMachine>MachineX64</TargetMachine>
       <BrowseInformation>true</BrowseInformation>
       <AssemblerOutput>All</AssemblerOutput>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <CreateHotPatchableImage></CreateHotPatchableImage>
       <AdditionalOptions>/HIGHENTROPYVA %(AdditionalOptions)</AdditionalOptions>
+      <ProfileGuidedDatabase>$(PGDDirectory)$(TargetName).pgd</ProfileGuidedDatabase>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">PGInstrument</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">PGUpdate</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGOptimize'">PGOptimization</LinkTimeCodeGeneration>
     </Link>
     <Link Condition="$(Configuration) == 'PGInstrument' or $(Configuration) == 'PGUpdate'">
       <AdditionalDependencies>pgobootrun.lib;pgort.lib;libucrt.lib;libcmt.lib;libvcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -81,11 +81,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <Profile>true</Profile>
     </Link>
-    <Lib>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGInstrument'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGUpdate'">true</LinkTimeCodeGeneration>
-      <LinkTimeCodeGeneration Condition="$(Configuration) == 'PGOptimize'">true</LinkTimeCodeGeneration>
+    <Link Condition="$(Configuration) == 'PGOptimize'">
+      <AdditionalOptions>/USEPROFILE %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Lib Condition="$(Configuration) != 'Debug'">
+      <LinkTimeCodeGeneration>true</LinkTimeCodeGeneration>
     </Lib>
     <ResourceCompile>
       <Culture>0x0409</Culture>
