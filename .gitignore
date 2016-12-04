@@ -1,6 +1,7 @@
 *.sdf
 *.opensdf
 .vs
+x64
 ipch
 Debug
 Release
