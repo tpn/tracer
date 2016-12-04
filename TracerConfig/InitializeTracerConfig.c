@@ -63,6 +63,7 @@ Return Value:
     PUNICODE_STRING TargetPath;
     PUNICODE_STRING InstallationDir;
     PUNICODE_STRING IntermediatePath;
+    TRACER_BINARY_TYPE_INDEX BinaryTypeIndex;
 
     //
     // Validate arguments.
@@ -72,7 +73,7 @@ Return Value:
         return FALSE;
     }
 
-    if (Index >= NumberOfPathOffsets) {
+    if (Index >= NumberOfDllPathOffsets) {
         return FALSE;
     }
 
@@ -82,17 +83,18 @@ Return Value:
 
     Flags = TracerConfig->Flags;
     Paths = &TracerConfig->Paths;
-    Offset = PathOffsets[Index].Offset;
+    Offset = DllPathOffsets[Index].Offset;
     Allocator = TracerConfig->Allocator;
+    BinaryTypeIndex = ExtractTracerBinaryTypeIndexFromFlags(Flags);
 
     //
     // Initialize paths.
     //
 
-    DllPath = PathOffsets[Index].DllPath;
+    DllPath = DllPathOffsets[Index].DllPath;
     TargetPath = (PUNICODE_STRING)((((ULONG_PTR)Paths) + Offset));
     InstallationDir = &Paths->InstallationDirectory;
-    IntermediatePath = IntermediatePaths[Flags.LoadDebugLibraries];
+    IntermediatePath = IntermediatePaths[BinaryTypeIndex];
 
     //
     // Calculate the length of the final joined path.  IntermediatePath
@@ -492,9 +494,9 @@ Return Value:
     }
 
     //
-    // N.B.: we've successfully opened a registry key, so all failures after
-    //       this point should `goto Error` to ensure the key is closed before
-    //       returning.
+    // N.B. We've successfully opened a registry key, so all failures after
+    //      this point should `goto Error` to ensure the key is closed before
+    //      returning.
     //
 
     //
@@ -548,6 +550,8 @@ Return Value:
     //
 
     READ_REG_DWORD_FLAG(LoadDebugLibraries, FALSE);
+    READ_REG_DWORD_FLAG(LoadPGInstrumentedLibraries, FALSE);
+    READ_REG_DWORD_FLAG(LoadPGOptimizedLibraries, FALSE);
     READ_REG_DWORD_FLAG(DisableTraceSessionDirectoryCompression, FALSE);
     READ_REG_DWORD_FLAG(DisablePrefaultPages, FALSE);
     READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
@@ -573,12 +577,6 @@ Return Value:
     }
 
     //
-    // Clear the unused bits.
-    //
-
-    Flags.UnusedBits = 0;
-
-    //
     // Copy the flags over.
     //
 
@@ -590,17 +588,17 @@ Return Value:
 
     READ_REG_DWORD_RUNTIME_PARAM(
         GetWorkingSetChangesIntervalInMilliseconds,
-        500
+        100
     );
 
     READ_REG_DWORD_RUNTIME_PARAM(
         GetWorkingSetChangesWindowLengthInMilliseconds,
-        1000
+        200
     );
 
     READ_REG_DWORD_RUNTIME_PARAM(
         WsWatchInfoExInitialBufferNumberOfElements,
-        1024
+        8192
     );
 
     //
@@ -627,7 +625,7 @@ Return Value:
     // Load fully-qualified DLL path names.
     //
 
-    for (Index = 0; Index < NumberOfPathOffsets; Index++) {
+    for (Index = 0; Index < NumberOfDllPathOffsets; Index++) {
         if (!LoadPath(TracerConfig, Index)) {
             goto Error;
         }

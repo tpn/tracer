@@ -197,6 +197,21 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG LoadDebugLibraries:1;
 
     //
+    // When set, indicates that the PGInstrument versions of binaries should
+    // be loaded instead of the release or debug versions.  Defaults to FALSE.
+    //
+
+    ULONG LoadPGInstrumentedLibraries:1;
+
+    //
+    // When set, indicates that the PGOptimize versions of binaries should
+    // be loaded instead of the release, debug or PGInstrument versions.
+    // Defaults to FALSE.
+    //
+
+    ULONG LoadPGOptimizedLibraries:1;
+
+    //
     // When set, disable compression on trace session directories.
     // Defaults to FALSE.
     //
@@ -297,22 +312,45 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG DisableAsynchronousInitialization:1;
 
     //
-    // Unused.  Use these before digging into TraceEventType's bits.
-    //
-
-    ULONG UnusedBits:1;
-
-    //
     // The remaining bits are used for indicating which trace event type is
     // being used.  To add a new bit flag, decrement this bit field width by
     // one and add the flag *above* this flag.  That allows us to always keep
     // the event type at the end of the bitmask.
     //
 
-    ULONG TraceEventType:16;
+    ULONG TraceEventType:15;
 
 } TRACER_FLAGS, *PTRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
+
+//
+// This enum can be used as an array index for the IntermediatePaths[] array
+// defined in TraceConfigConstants.h.
+//
+
+typedef enum _TRACER_BINARY_TYPE_INDEX {
+    TracerReleaseBinaries = 0,
+    TracerDebugBinaries,
+    TracerPGInstrumentedBinaries,
+    TracerPGOptimizedBinaries,
+} TRACER_BINARY_TYPE_INDEX, *PTRACER_BINARY_TYPE_INDEX;
+
+FORCEINLINE
+TRACER_BINARY_TYPE_INDEX
+ExtractTracerBinaryTypeIndexFromFlags(
+    _In_ TRACER_FLAGS Flags
+    )
+{
+    if (Flags.LoadPGOptimizedLibraries) {
+        return TracerPGOptimizedBinaries;
+    } else if (Flags.LoadPGInstrumentedLibraries) {
+        return TracerPGInstrumentedBinaries;
+    } else if (Flags.LoadDebugLibraries) {
+        return TracerDebugBinaries;
+    } else {
+        return TracerReleaseBinaries;
+    }
+}
 
 //
 // Tracer runtime parameters.  Map to REG_DWORD values of the same name.
@@ -343,7 +381,7 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
 
     //
     // This value controls the number of elements we size our temporary working
-    // set buffers to accomodate.  It needs to be large enough to ensure records
+    // set buffers to accommodate. It needs to be large enough to ensure records
     // aren't dropped for a given timer interval.  (Interval, window length and
     // number of elements are all related -- i.e. making interval or window
     // length longer will require a greater number of elements and vice versa.)
@@ -351,7 +389,7 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
     // N.B. The trace store working set machinery will start out with buffers
     //      sized based on this value.  If it receives an indication that the
     //      buffer was too small and that records were dropped, it will double
-    //      the number of elements and runtime and then realloc appropriately
+    //      the number of elements at runtime and then realloc appropriately
     //      sized buffers based on the new number of elements.
     //
 

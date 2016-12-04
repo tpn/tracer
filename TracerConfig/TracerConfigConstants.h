@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This module defines constants related to the TracerConfig component.  It
+    This module declares constants related to the TracerConfig component.  It
     contains intermediate path strings (e.g. "x64\\Release", "x64\\Debug"),
     DLL filename strings (e.g. "Rtl.dll"), and a path offset table that maps
     an index offset of a field in the TRACER_CONFIG struct that represents a
@@ -31,84 +31,72 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 //
-// Static UNICODE_STRING instances for path constants.
+// Intermediate paths.
 //
 
-static CONST UNICODE_STRING x64_Release = \
-    RTL_CONSTANT_STRING(L"\\x64\\Release\\");
-
-static CONST UNICODE_STRING x64_Debug = \
-    RTL_CONSTANT_STRING(L"\\x64\\Debug\\");
-
-static CONST UNICODE_STRING x64_PGInstrument = \
-    RTL_CONSTANT_STRING(L"\\x64\\PGInstrument\\");
-
-static CONST UNICODE_STRING x64_PGOptimize = \
-    RTL_CONSTANT_STRING(L"\\x64\\PGOptimize\\");
-
-static CONST UNICODE_STRING RtlDllPath = \
-    RTL_CONSTANT_STRING(L"Rtl.dll");
-
-static CONST UNICODE_STRING PythonDllPath = \
-    RTL_CONSTANT_STRING(L"Python.dll");
-
-static CONST UNICODE_STRING TracerHeapDllPath = \
-    RTL_CONSTANT_STRING(L"TracerHeap.dll");
-
-static CONST UNICODE_STRING TraceStoreDllPath = \
-    RTL_CONSTANT_STRING(L"TraceStore.dll");
-
-static CONST UNICODE_STRING StringTableDllPath = \
-    RTL_CONSTANT_STRING(L"StringTable.dll");
-
-static CONST UNICODE_STRING PythonTracerDllPath = \
-    RTL_CONSTANT_STRING(L"PythonTracer.dll");
-
-static CONST UNICODE_STRING TlsTracerHeapDllPath = \
-    RTL_CONSTANT_STRING(L"TlsTracerHeap.dll");
-
-static CONST UNICODE_STRING TracedPythonSessionDllPath = \
-    RTL_CONSTANT_STRING(L"TracedPythonSession.dll");
+TRACER_CONFIG_DATA CONST UNICODE_STRING x64_Release;
+TRACER_CONFIG_DATA CONST UNICODE_STRING x64_Debug;
+TRACER_CONFIG_DATA CONST UNICODE_STRING x64_PGInstrument;
+TRACER_CONFIG_DATA CONST UNICODE_STRING x64_PGOptimize;
 
 //
-// This array can be indexed by TracerConfig.Flags.LoadDebugLibraries
-// to obtain the appropriate intermediate path string for the given
-// setting.
-//
-// XXX TODO: incorporate PGInstrument and PGOptimize.
+// Fully-qualified paths.
 //
 
-static CONST PUNICODE_STRING IntermediatePaths[] = {
-    (CONST PUNICODE_STRING)&x64_Release,
-    (CONST PUNICODE_STRING)&x64_Debug
-};
+TRACER_CONFIG_DATA CONST UNICODE_STRING RtlDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING PythonDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING TracerHeapDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING TraceStoreDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING StringTableDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING PythonTracerDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING TlsTracerHeapDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING TracedPythonSessionDllPath;
+
+//
+// This array can be indexed by the TRACER_BINARY_TYPE_INDEX enum.
+//
+
+TRACER_CONFIG_DATA CONST PUNICODE_STRING IntermediatePaths[];
 
 //
 // A helper offset table that can be enumerated over in order to ease
 // initialization of the various TRACER_PATHS DllPath strings.
 //
 
-static CONST struct {
-    USHORT Offset;
+typedef struct _TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY {
+    SHORT Offset;
     PCUNICODE_STRING DllPath;
-} PathOffsets[] = {
-    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
-    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
-    { FIELD_OFFSET(TRACER_PATHS, TracerHeapDllPath),    &TracerHeapDllPath    },
-    { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
-    { FIELD_OFFSET(TRACER_PATHS, StringTableDllPath),   &StringTableDllPath   },
-    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
-    { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath },
-    {
-        FIELD_OFFSET(TRACER_PATHS, TracedPythonSessionDllPath),
-        &TracedPythonSessionDllPath
-    },
-};
+} TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY, *PTRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY;
+typedef TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY CONST \
+     *PCTRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY;
 
-static CONST USHORT NumberOfPathOffsets = (
-    sizeof(PathOffsets) /
-    sizeof(PathOffsets[0])
-);
+TRACER_CONFIG_DATA CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY \
+                         DllPathOffsets[];
+
+TRACER_CONFIG_DATA CONST USHORT NumberOfDllPathOffsets;
+
+#define LAST_DLL_OFFSET_ENTRY { -1, NULL }
+
+typedef
+BOOL
+(IS_LAST_PATH_OFFSET)(
+    _In_ PCTRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY Entry
+    );
+typedef IS_LAST_PATH_OFFSET *PIS_LAST_PATH_OFFSET;
+TRACER_CONFIG_API IS_LAST_PATH_OFFSET IsLastPathOffset;
+
+FORCEINLINE
+BOOL
+IsLastPathOffsetInline(
+    _In_ PCTRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY Entry
+    )
+{
+    return (
+        Entry &&
+        Entry->Offset == -1 &&
+        Entry->DllPath == NULL
+    );
+}
 
 #ifdef __cplusplus
 }; // extern "C" {
