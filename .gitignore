@@ -1,5 +1,4 @@
 *.sdf
-x64
 *.opensdf
 .vs
 ipch
