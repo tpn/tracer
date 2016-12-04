@@ -70,17 +70,9 @@
       <PreprocessorDefinitions>_TRACE_STORE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/verbose %(AdditionalOptions)</AdditionalOptions>
-    </Link>
-    <Link>
       <ProfileGuidedDatabase Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">$(OutDir)..\$(TargetName).pgd</ProfileGuidedDatabase>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">/GENPROFILE %(AdditionalOptions)</AdditionalOptions>
     </Link>
-    <!--
-    <Link>
-      <AdditionalDependencies>chkstk.obj;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    -->
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
