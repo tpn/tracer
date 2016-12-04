@@ -192,7 +192,8 @@ Return Value:
 Routine Description:
 
     This is a helper macro for reading REG_DWORD values from the registry
-    into a local TRACER_FLAGS Flags structure.
+    into a local TRACER_FLAGS Flags structure.  If the registry key isn't
+    present, an attempt will be made to write the default value.
 
 Arguments:
 
@@ -223,7 +224,15 @@ Return Value:
     if (Result == ERROR_SUCCESS) {              \
         Flags.Name = Value;                     \
     } else {                                    \
-        Flags.Name = Default;                   \
+        Value = Flags.Name = Default;           \
+        RegSetValueExW(                         \
+            RegistryKey,                        \
+            L#Name,                             \
+            0,                                  \
+            REG_DWORD,                          \
+            (const BYTE*)&Value,                \
+            ValueLength                         \
+        );                                      \
     }                                           \
 } while (0)
 
@@ -238,7 +247,8 @@ Return Value:
 Routine Description:
 
     This is a helper macro for reading REG_DWORD values from the registry
-    into a TRACER_RUNTIME_PARAMETERS structure.
+    into a TRACER_RUNTIME_PARAMETERS structure.  If the registry key isn't
+    present, an attempt will be made to write the default value.
 
 Arguments:
 
@@ -253,23 +263,31 @@ Return Value:
     None.
 
 --*/
-#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do { \
-    ULONG Value;                                         \
-    ULONG ValueLength = sizeof(Value);                   \
-    Result = RegGetValueW(                               \
-        RegistryKey,                                     \
-        NULL,                                            \
-        L#Name,                                          \
-        RRF_RT_REG_DWORD,                                \
-        NULL,                                            \
-        (PVOID)&Value,                                   \
-        &ValueLength                                     \
-    );                                                   \
-    if (Result == ERROR_SUCCESS) {                       \
-        TracerConfig->RuntimeParameters.Name = Value;    \
-    } else {                                             \
-        TracerConfig->RuntimeParameters.Name = Default;  \
-    }                                                    \
+#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do {        \
+    ULONG Value;                                                \
+    ULONG ValueLength = sizeof(Value);                          \
+    Result = RegGetValueW(                                      \
+        RegistryKey,                                            \
+        NULL,                                                   \
+        L#Name,                                                 \
+        RRF_RT_REG_DWORD,                                       \
+        NULL,                                                   \
+        (PVOID)&Value,                                          \
+        &ValueLength                                            \
+    );                                                          \
+    if (Result == ERROR_SUCCESS) {                              \
+        TracerConfig->RuntimeParameters.Name = Value;           \
+    } else {                                                    \
+        Value = TracerConfig->RuntimeParameters.Name = Default; \
+        RegSetValueExW(                                         \
+            RegistryKey,                                        \
+            L#Name,                                             \
+            0,                                                  \
+            REG_DWORD,                                          \
+            (const BYTE*)&Value,                                \
+            ValueLength                                         \
+        );                                                      \
+    }                                                           \
 } while (0)
 
 //
