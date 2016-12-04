@@ -307,14 +307,14 @@ Return Value:
         ULONG Flags;
         DWORD BufferSizeInChars = sizeof(Path);
         DWORD ActualSizeInChars;
-        LPCTSTR Method = (LPCTSTR)PyCFunctionPointer;
+        LPCWSTR Method = (LPCWSTR)PyCFunctionPointer;
 
         Flags = (
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
         );
 
-        if (!GetModuleHandleEx(Flags, Method, &Handle)) {
+        if (!GetModuleHandleExW(Flags, Method, &Handle)) {
             return FALSE;
         }
 
