@@ -610,7 +610,7 @@ Return Value:
     }
 
     AllocSize.LongPart = (
-        (NumberOfChars.LongPart << 1) +
+        (NumberOfChars.LowPart << 1) +
         sizeof(UNICODE_STRING)
     );
     AlignedAllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);

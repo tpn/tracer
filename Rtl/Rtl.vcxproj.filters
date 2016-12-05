@@ -42,6 +42,9 @@
     <ClInclude Include="atexit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AtExitEx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -72,6 +75,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="atexit.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AtExitEx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

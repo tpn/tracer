@@ -64,7 +64,8 @@ Return Value:
 
 --*/
 {
-    SetAtExit(RegisterGlobalAtExitFunc);
+    SetAtExit(&RegisterGlobalAtExitFunc);
+    SetAtExitEx(&RegisterGlobalAtExitExCallback);
     return InitializeRtlAtExitRundown(GetGlobalRtlAtExitRundown());
 }
 
@@ -106,7 +107,7 @@ Routine Description:
 
 Arguments:
 
-    PATEXITFUNC - Supplies a pointer to an ATEXITFUNC to call at rundown.
+    AtExitFunc - Supplies a pointer to an ATEXITFUNC to call at rundown.
 
 Return Value:
 
@@ -115,6 +116,50 @@ Return Value:
 --*/
 {
     return RegisterAtExitFunc(GetGlobalRtlAtExitRundown(), AtExitFunc);
+}
+
+_Use_decl_annotations_
+BOOL
+RegisterGlobalAtExitExCallback(
+    _In_ PATEXITEX_CALLBACK Callback,
+    _In_opt_ PATEXITEX_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_opt_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine registers an extended atexit callback.  It is called when
+    downstream callers call AtExitEx().
+
+Arguments:
+
+    Callback - Supplies a pointer to an ATEXITEX_CALLBACK function pointer to
+        to be called at rundown.
+
+    Flags - Optionally supplies a pointer to an ATEXITEX_FLAGS structure that
+        can be used to customize properties of the entry.
+
+    Context - Optionally supplies an opaque pointer that will be passed to the
+        exit function when invoked.
+
+    EntryPointer - Optionally supplies a pointer to an address that will receive
+        the address of the RTL_ATEXIT_ENTRY structure created for this request.
+        This allows the caller to subsequently unregister the function via the
+        UnregisterRtlAtExitEntry() routine.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return RegisterAtExitExCallback(GetGlobalRtlAtExitRundown(),
+                                    Callback,
+                                    Flags,
+                                    Context,
+                                    EntryPointer);
 }
 
 _Use_decl_annotations_
@@ -145,7 +190,6 @@ Return Value:
     RundownAtExitFunctions(GetGlobalRtlAtExitRundown(), IsProcessTerminating);
 }
 
-_Use_decl_annotations_
 BOOL
 IsGlobalRtlAtExitRundownActive(
     VOID

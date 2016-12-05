@@ -56,7 +56,7 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _RTL_ATEXIT_RUNDOWN {
     RTL_ATEXIT_RUNDOWN_FLAGS Flags;
 
     //
-    // Critical section protecting the rundown list head.
+    // Critical section protecting the rundown list head and heap handle.
     //
 
     CRITICAL_SECTION CriticalSection;
@@ -68,10 +68,40 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _RTL_ATEXIT_RUNDOWN {
     _Guarded_by_(CriticalSection)
     LIST_ENTRY ListHead;
 
+    //
+    // Heap handle used for allocating RTL_ATEXIT_ENTRY structures.
+    //
+
+    HANDLE HeapHandle;
 
 } RTL_ATEXIT_RUNDOWN, *PRTL_ATEXIT_RUNDOWN;
 
+//
+// Define entry bitmap flags.
+//
+// N.B. This bitmap is intentionally different from (and cannot be used
+//      interchangeably with) the public ATEXITEX_FLAGS type.
+//
+
 typedef struct _Struct_size_bytes_(sizeof(ULONG)) _RTL_ATEXIT_ENTRY_FLAGS {
+
+    //
+    // When set, indicates this is an extended atexit entry.  That is, the
+    // entry was registered via Rtl->RegisterAtExitEx() instead of atexit().
+    //
+
+    ULONG IsExtended:1;
+
+    //
+    // The following flags are only applicable if IsExtended is set.
+    //
+
+    //
+    // When set, indicates the caller provided a Context to be included in
+    // the callback invocation.
+    //
+
+    ULONG HasContext:1;
 
     //
     // When set, indicates that the caller's atexit() function will be wrapped
@@ -104,16 +134,21 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_ATEXIT_ENTRY {
     USHORT Padding1;
 
     //
-    // Flags.
+    // Flags for this entry.
     //
 
     RTL_ATEXIT_ENTRY_FLAGS Flags;
 
     //
-    // Pointer to the caller's function to be called at exit.
+    // Pointer to the caller's function to be called at exit.  If IsExtended
+    // flag is set, the function pointer will be treated as an ATEXITEX_CALLBACK
+    // function, ATEXITFUNC otherwise.
     //
 
-    PATEXITFUNC AtExitFunc;
+    union {
+        PATEXITFUNC AtExitFunc;
+        PATEXITEX_CALLBACK AtExitExCallback;
+    };
 
     //
     // List entry to allow the structure to be registered with the ListHead
@@ -129,10 +164,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_ATEXIT_ENTRY {
     PRTL_ATEXIT_RUNDOWN Rundown;
 
     //
-    // Pad out to 64 bytes.  (Currently at 40 bytes after Rundown.)
+    // Optional context to be passed back to the extended version of the atexit
+    // function.
     //
 
-    ULONGLONG Padding2[3];
+    PVOID Context;
+
+    //
+    // Pad out to 64 bytes.  (Currently at 48 bytes after Context.)
+    //
+
+    ULONGLONG Padding2[2];
 
 } RTL_ATEXIT_ENTRY, *PRTL_ATEXIT_ENTRY, **PPRTL_ATEXIT_ENTRY;
 C_ASSERT(sizeof(RTL_ATEXIT_ENTRY) == 64);
@@ -144,87 +186,30 @@ C_ASSERT(sizeof(RTL_ATEXIT_ENTRY) == 64);
 typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_lock_held_(Rundown->CriticalSection)
 BOOL
 (CREATE_RTL_ATEXIT_ENTRY)(
+    _In_ PRTL_ATEXIT_RUNDOWN Rundown,
     _In_ PATEXITFUNC AtExitFunc,
     _Outptr_result_nullonfailure_ PPRTL_ATEXIT_ENTRY AtExitEntryPointer
     );
 typedef CREATE_RTL_ATEXIT_ENTRY *PCREATE_RTL_ATEXIT_ENTRY;
 CREATE_RTL_ATEXIT_ENTRY CreateRtlAtExitEntry;
 
-FORCEINLINE
+typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_lock_held_(Rundown->CriticalSection)
 BOOL
-CreateRtlAtExitEntryInline(
-    _In_ PATEXITFUNC AtExitFunc,
-    _Outptr_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
-    )
-/*++
-
-Routine Description:
-
-    This routine creates an RTL_ATEXIT_ENTRY structure for a given ATEXITFUNC
-    function pointer.  Memory is allocated from the default process heap.
-
-Arguments:
-
-    AtExitFunc - Supplies a pointer to an ATEXITFUNC function pointer.  This
-        will be the value of whatever the caller originally called atexit()
-        with.
-
-    EntryPointer - Supplies the address of a variable that will receive the
-        address of the newly allocated RTL_ATEXIT_ENTRY structure on success,
-        or a NULL value on failure.
-
-Return Value:
-
-    TRUE on success, FALSE otherwise.
-
---*/
-{
-    DWORD Flags;
-    HANDLE HeapHandle;
-    PRTL_ATEXIT_ENTRY Entry;
-
-    //
-    // Clear the caller's pointer.
-    //
-
-    *EntryPointer = NULL;
-
-    //
-    // Initialize local variables;
-    //
-
-    Flags = HEAP_ZERO_MEMORY;
-    HeapHandle = GetProcessHeap();
-
-    //
-    // Attempt to allocate memory for the entry.
-    //
-
-    Entry = (PRTL_ATEXIT_ENTRY)HeapAlloc(HeapHandle, Flags, sizeof(*Entry));
-    if (!Entry) {
-        return FALSE;
-    }
-
-    //
-    // Allocation succeeded.  Complete initialization of the structure.
-    //
-
-    Entry->SizeOfStruct = sizeof(*Entry);
-    Entry->AtExitFunc = AtExitFunc;
-    InitializeListHead(&Entry->ListEntry);
-
-    //
-    // Update the caller's pointer.
-    //
-
-    *EntryPointer = Entry;
-
-    return TRUE;
-}
+(CREATE_RTL_ATEXITEX_ENTRY)(
+    _In_ PRTL_ATEXIT_RUNDOWN Rundown,
+    _In_ PATEXITEX_CALLBACK Callback,
+    _In_opt_ PATEXITEX_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_result_nullonfailure_ PPRTL_ATEXIT_ENTRY AtExitEntryPointer
+    );
+typedef CREATE_RTL_ATEXITEX_ENTRY *PCREATE_RTL_ATEXITEX_ENTRY;
+CREATE_RTL_ATEXITEX_ENTRY CreateRtlAtExitExEntry;
 
 typedef
 _Requires_lock_not_held_(Rundown->CriticalSection)
@@ -275,10 +260,10 @@ typedef ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN *PADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN;
 ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN AddRtlAtExitEntryToRundown;
 
 typedef
-_Requires_lock_held_(AtExitFunc->Rundown->CriticalSection)
+_Requires_lock_held_(AtExitEntry->Rundown->CriticalSection)
 VOID
 (REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN)(
-    _In_ PATEXITFUNC AtExitFunc
+    _In_ PRTL_ATEXIT_ENTRY AtExitEntry
     );
 typedef REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN \
       *PREMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN;
@@ -287,6 +272,7 @@ REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN RemoveRtlAtExitEntryFromRundown;
 typedef
 _Success_(return != 0)
 _Check_return_
+_Requires_lock_not_held_(Rundown->CriticalSection)
 BOOL
 (REGISTER_ATEXITFUNC)(
     _In_ PRTL_ATEXIT_RUNDOWN Rundown,
@@ -294,6 +280,21 @@ BOOL
     );
 typedef REGISTER_ATEXITFUNC *PREGISTER_ATEXITFUNC;
 REGISTER_ATEXITFUNC RegisterAtExitFunc;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+_Requires_lock_not_held_(Rundown->CriticalSection)
+BOOL
+(REGISTER_ATEXITEX_CALLBACK)(
+    _In_ PRTL_ATEXIT_RUNDOWN Rundown,
+    _In_ PATEXITEX_CALLBACK Callback,
+    _In_opt_ PATEXITEX_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_opt_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
+    );
+typedef REGISTER_ATEXITEX_CALLBACK *PREGISTER_ATEXITEX_CALLBACK;
+REGISTER_ATEXITEX_CALLBACK RegisterAtExitExCallback;
 
 //
 // RtlGlobalAtExitRundown-related functions.
@@ -316,6 +317,11 @@ typedef IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE \
       *PIS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE;
 IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE IsGlobalRtlAtExitRundownActive;
 
+
+//
+// N.B. RegisterGlobalAtExitFunc will be the atexit() endpoint at runtime.
+//
+
 typedef
 _Success_(return != 0)
 _Check_return_
@@ -325,6 +331,25 @@ BOOL
     );
 typedef REGISTER_GLOBAL_ATEXITFUNC *PREGISTER_GLOBAL_ATEXITFUNC;
 REGISTER_GLOBAL_ATEXITFUNC RegisterGlobalAtExitFunc;
+
+
+//
+// N.B. RegisterGlobalAtExitExCallback function will be the AtExitEx() endpoint
+//      at runtime.
+//
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(REGISTER_GLOBAL_ATEXITEX_CALLBACK)(
+    _In_ PATEXITEX_CALLBACK Callback,
+    _In_opt_ PATEXITEX_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_opt_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
+    );
+typedef REGISTER_GLOBAL_ATEXITEX_CALLBACK *PREGISTER_GLOBAL_ATEXIT_CALLBACK;
+REGISTER_GLOBAL_ATEXITEX_CALLBACK RegisterGlobalAtExitExCallback;
 
 typedef
 VOID

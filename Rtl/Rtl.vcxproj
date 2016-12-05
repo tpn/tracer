@@ -68,6 +68,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="atexit.h" />
+    <ClInclude Include="AtExitEx.h" />
     <ClInclude Include="Commandline.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlPrivate.h" />
@@ -79,6 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="atexit.c" />
+    <ClCompile Include="AtExitEx.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>

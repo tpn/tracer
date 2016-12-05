@@ -38,5 +38,11 @@
     <ClCompile Include="../Rtl/Commandline.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Rtl\PathEnvironmentVariable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Rtl\Privilege.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
