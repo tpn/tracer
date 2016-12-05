@@ -39,9 +39,25 @@ from .Allocator import (
 )
 
 #===============================================================================
+# Enums
+#===============================================================================
+
+TracerReleaseBinaries = 0
+TracerDebugBinaries = 1
+TracerPGInstrumentedBinaries = 3
+TracerPGOptimizedBinaries = 4
+
+#===============================================================================
 # Globals
 #===============================================================================
 TRACER_REGISTRY_KEY = 'Software\\Tracer'
+
+INTERMEDIATE_PATH = {
+    TracerReleaseBinaries: 'x64\\Release',
+    TracerDebugBinaries: 'x64\\Debug',
+    TracerPGInstrumentedBinaries: 'x64\\PGInstrument',
+    TracerPGOptimizedBinaries: 'x64\\PGOptimize',
+}
 
 #===============================================================================
 # Aliases
@@ -50,6 +66,23 @@ TRACER_REGISTRY_KEY = 'Software\\Tracer'
 #===============================================================================
 # Helpers
 #===============================================================================
+def get_intermediate_path(winreg, key):
+
+    load_debug = bool(winreg.QueryValueEx(key, 'LoadDebugLibraries')[0])
+    load_pgi = bool(winreg.QueryValueEx(key, 'LoadPGInstrumentedLibraries')[0])
+    load_pgo = bool(winreg.QueryValueEx(key, 'LoadPGOptimizedLibraries')[0])
+
+    if load_pgo:
+        index = TracerPGOptimizedBinaries
+    elif load_pgi:
+        index = TracerPGInstrumentedBinaries
+    elif load_debug:
+        index = TracerDebugBinaries
+    else:
+        index = TracerReleaseBinaries
+
+    return INTERMEDIATE_PATH[index]
+
 def get_tracer_config_dll_path():
     from ..path import join_path
     from ..util import import_winreg
@@ -58,16 +91,12 @@ def get_tracer_config_dll_path():
     registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
     key = winreg.OpenKey(registry, TRACER_REGISTRY_KEY)
 
-    load_debug = bool(winreg.QueryValueEx(key, 'LoadDebugLibraries')[0])
-    if load_debug:
-        intermediate = 'x64\\Debug'
-    else:
-        intermediate = 'x64\\Release'
+    intermediate_path = get_intermediate_path(winreg, key)
 
     installation_dir = winreg.QueryValueEx(key, 'InstallationDirectory')[0]
     winreg.CloseKey(key)
 
-    dll_base_directory = join_path(installation_dir, intermediate)
+    dll_base_directory = join_path(installation_dir, intermediate_path)
 
     path = join_path(dll_base_directory, 'TracerConfig.dll')
     return path
@@ -103,6 +132,8 @@ class TRACER_FLAGS(Structure):
     _fields_ = [
         ('DebugBreakOnEntry', ULONG, 1),
         ('LoadDebugLibraries', ULONG, 1),
+        ('LoadPGInstrumentedLibraries', ULONG, 1),
+        ('LoadPGOptimizedLibraries', ULONG, 1),
         ('DisableTraceSessionDirectoryCompression', ULONG, 1),
         ('DisablePrefaultPages', ULONG, 1),
         ('EnableMemoryTracing', ULONG, 1),
@@ -116,8 +147,7 @@ class TRACER_FLAGS(Structure):
         ('TrackMaxRefCounts', ULONG, 1),
         ('EnableWorkingSetTracing', ULONG, 1),
         ('DisableAsynchronousInitialization', ULONG, 1),
-        ('UnusedBits', ULONG, 1),
-        ('TraceEventType', ULONG, 16),
+        ('TraceEventType', ULONG, 15),
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
 
