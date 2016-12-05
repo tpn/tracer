@@ -87,7 +87,7 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _RTL_ATEXIT_ENTRY_FLAGS {
 
     //
     // When set, indicates this is an extended atexit entry.  That is, the
-    // entry was registered via Rtl->RegisterAtExitEx() instead of atexit().
+    // entry was registered via AtExitEx() instead of atexit().
     //
 
     ULONG IsExtended:1;
