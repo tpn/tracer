@@ -114,6 +114,7 @@ Return Value:
 _Use_decl_annotations_
 BOOL
 CreateRtlAtExitEntry(
+    PRTL_ATEXIT_RUNDOWN Rundown,
     PATEXITFUNC AtExitFunc,
     PPRTL_ATEXIT_ENTRY EntryPointer
     )
@@ -121,11 +122,28 @@ CreateRtlAtExitEntry(
 
 Routine Description:
 
-    This routine calls CreateRtlAtExitEntryInline().  See documentation for
-    that routine for more information.
+    This routine creates an RTL_ATEXIT_ENTRY structure for a given ATEXITFUNC
+    function pointer.  Memory is allocated from the default process heap.
+
+Arguments:
+
+    Rundown - Supplies a pointer to an RTL_ATEXIT_RUNDOWN structure.
+
+    AtExitFunc - Supplies a pointer to an ATEXITFUNC function pointer.  This
+        will be the value of whatever the caller originally called atexit()
+        with.
+
+    EntryPointer - Supplies the address of a variable that will receive the
+        address of the newly allocated RTL_ATEXIT_ENTRY structure on success,
+        or a NULL value on failure.
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
 
 --*/
 {
+    PRTL_ATEXIT_ENTRY Entry;
 
     //
     // Validate arguments.
@@ -139,7 +157,147 @@ Routine Description:
         return FALSE;
     }
 
-    return CreateRtlAtExitEntryInline(AtExitFunc, EntryPointer);
+    //
+    // Clear the caller's pointer.
+    //
+
+    *EntryPointer = NULL;
+
+    //
+    // If we haven't created a heap yet, do it now.
+    //
+
+    if (!Rundown->HeapHandle) {
+        Rundown->HeapHandle = HeapCreate(HEAP_NO_SERIALIZE, 0, 0);
+        if (!Rundown->HeapHandle) {
+            return FALSE;
+        }
+    }
+
+    //
+    // Attempt to allocate memory for the entry.
+    //
+
+    Entry = (PRTL_ATEXIT_ENTRY)(
+        HeapAlloc(
+            Rundown->HeapHandle,
+            HEAP_ZERO_MEMORY,
+            sizeof(*Entry)
+        )
+    );
+
+    if (!Entry) {
+        return FALSE;
+    }
+
+    //
+    // Allocation succeeded.  Complete initialization of the structure.
+    //
+
+    Entry->SizeOfStruct = sizeof(*Entry);
+    Entry->AtExitFunc = AtExitFunc;
+    InitializeListHead(&Entry->ListEntry);
+
+    //
+    // Update the caller's pointer.
+    //
+
+    *EntryPointer = Entry;
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateRtlAtExitExEntry(
+    PRTL_ATEXIT_RUNDOWN Rundown,
+    PATEXITEX_CALLBACK Callback,
+    PATEXITEX_FLAGS AtExitExFlags,
+    PVOID Context,
+    PPRTL_ATEXIT_ENTRY EntryPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine creates an RTL_ATEXITEX_ENTRY structure for a given callback,
+    context and set of flags.  Memory is allocated from the default process
+    heap.
+
+Arguments:
+
+    Rundown - Supplies a pointer to an RTL_ATEXIT_RUNDOWN structure.
+
+    Callback - Supplies a pointer to an ATEXITEX_CALLBACK function pointer.
+
+    AtExitExFlags - Optionally supplies a pointer to an ATEXITEX_FLAGS structure
+        that can be used to customize properties of the entry.
+
+    Context - Optionally supplies an opaque pointer that will be passed to the
+        exit function when invoked.
+
+    EntryPointer - Supplies the address of a variable that will receive the
+        address of the newly allocated RTL_ATEXITEX_ENTRY structure on success,
+        or a NULL value on failure.
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
+
+--*/
+{
+    PRTL_ATEXIT_ENTRY Entry;
+    PATEXITFUNC AtExitFunc;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Callback)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(EntryPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Create an entry using the normal creation routine.  We can cast the
+    // callback to PATEXITFUNC as they are collocated at the same address in
+    // the structure via the anonymous union.
+    //
+
+    AtExitFunc = (PATEXITFUNC)Callback;
+    if (!CreateRtlAtExitEntry(Rundown, AtExitFunc, &Entry)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize flags and context if applicable.
+    //
+
+    Entry->Flags.IsExtended = TRUE;
+
+    if (ARGUMENT_PRESENT(AtExitExFlags)) {
+        Entry->Flags.SuppressExceptions = AtExitExFlags->SuppressExceptions;
+    }
+
+    if (ARGUMENT_PRESENT(Context)) {
+        Entry->Flags.HasContext = TRUE;
+        Entry->Context = Context;
+    }
+
+    //
+    // Update the caller's entry pointer.
+    //
+
+    *EntryPointer = Entry;
+
+    //
+    // Return success.
+    //
+
+    return TRUE;
 }
 
 _Use_decl_annotations_
@@ -174,6 +332,31 @@ Return Value:
 }
 
 _Use_decl_annotations_
+VOID
+RemoveRtlAtExitEntryFromRundown(
+    PRTL_ATEXIT_ENTRY AtExitEntry
+    )
+/*++
+
+Routine Description:
+
+    This routine removes an entry from the rundown list.  The rundown lock must
+    have been acquired before this routine is called.
+
+Arguments:
+
+    AtExitEntry - Supplies a pointer to an RTL_ATEXIT_ENTRY structure.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    RemoveEntryList(&AtExitEntry->ListEntry);
+}
+
+_Use_decl_annotations_
 BOOL
 RegisterAtExitFunc(
     PRTL_ATEXIT_RUNDOWN Rundown,
@@ -199,7 +382,8 @@ Return Value:
 
 --*/
 {
-    PRTL_ATEXIT_ENTRY Entry;
+    BOOL Success;
+    PRTL_ATEXIT_ENTRY Entry = NULL;
 
     //
     // Validate arguments.
@@ -214,11 +398,18 @@ Return Value:
     }
 
     //
+    // Acquire the rundown lock.
+    //
+
+    EnterCriticalSection(&Rundown->CriticalSection);
+
+    //
     // Attempt to create a new entry to add to the rundown list.
     //
 
-    if (!CreateRtlAtExitEntry(AtExitFunc, &Entry)) {
-        return FALSE;
+    Success = CreateRtlAtExitEntry(Rundown, AtExitFunc, &Entry);
+    if (!Success) {
+        goto End;
     }
 
     //
@@ -228,20 +419,204 @@ Return Value:
     Entry->Rundown = Rundown;
 
     //
-    // Acquire the rundown lock, add the entry, release the lock.
+    // Add the entry to the rundown list.
+    //
+
+    AddRtlAtExitEntryToRundown(Rundown, Entry);
+
+    //
+    // Indicate success.
+    //
+
+    Success = TRUE;
+
+End:
+    LeaveCriticalSection(&Rundown->CriticalSection);
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+RegisterAtExitExCallback(
+    PRTL_ATEXIT_RUNDOWN Rundown,
+    PATEXITEX_CALLBACK Callback,
+    PATEXITEX_FLAGS Flags,
+    PVOID Context,
+    PPRTL_ATEXIT_ENTRY EntryPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine creates a new RTL_ATEXIT_ENTRY structure for the given function
+    pointer callback, flags and optional context, acquires the rundown critical
+    section, adds the entry to the list and then releases the critical section.
+
+Arguments:
+
+    Rundown - Supplies a pointer to an RTL_ATEXIT_RUNDOWN structure.
+
+    Callback - Supplies a pointer to an ATEXITEX_CALLBACK function pointer to
+        to be called at rundown.
+
+    Flags - Optionally supplies a pointer to an ATEXITEX_FLAGS structure that
+        can be used to customize properties of the entry.
+
+    Context - Optionally supplies an opaque pointer that will be passed to the
+        exit function when invoked.
+
+    EntryPointer - Optionally supplies a pointer to an address that will receive
+        the address of the RTL_ATEXIT_ENTRY structure created for this request.
+        This allows the caller to subsequently unregister the function via the
+        UnregisterRtlAtExitEntry() routine.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    PRTL_ATEXIT_ENTRY Entry = NULL;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rundown)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Callback)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's entry pointer if present.
+    //
+
+    if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = NULL;
+    }
+
+    //
+    // Acquire the rundown lock.
     //
 
     EnterCriticalSection(&Rundown->CriticalSection);
 
-    __try {
-        AddRtlAtExitEntryToRundown(Rundown, Entry);
-    } __finally {
-        LeaveCriticalSection(&Rundown->CriticalSection);
+    //
+    // Attempt to create a new entry to add to the rundown list.
+    //
+
+    Success = CreateRtlAtExitExEntry(Rundown, Callback, Flags, Context, &Entry);
+    if (!Success) {
+        goto End;
     }
 
     //
-    // Return success.
+    // Point the entry at its parent.
     //
+
+    Entry->Rundown = Rundown;
+
+    //
+    // Add the entry to the rundown list.
+    //
+
+    AddRtlAtExitEntryToRundown(Rundown, Entry);
+
+    //
+    // Update the caller's entry pointer if applicable.
+    //
+
+    if (ARGUMENT_PRESENT(EntryPointer)) {
+        *EntryPointer = Entry;
+    }
+
+    //
+    // Indicate success.
+    //
+
+    Success = TRUE;
+
+End:
+    LeaveCriticalSection(&Rundown->CriticalSection);
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+UnregisterRtlAtExitEntry(
+    PRTL_ATEXIT_ENTRY Entry
+    )
+/*++
+
+Routine Description:
+
+    This routine acquires the lock for the rundown structure, removes the entry
+    from the rundown list (without calling the atexit callback function pointer)
+    and frees the backing memory (thus invaliding the pointer) and then releases
+    the lock.
+
+    The rundown structure is derived from the Entry->Rundown field.
+
+Arguments:
+
+    Entry - Supplies a pointer to an RTL_ATEXIT_ENTRY structure to remove from
+        its rundown list.  This backing memory will be freed by this routine,
+        so the pointer should not be accessed after this routine returns.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PRTL_ATEXIT_RUNDOWN Rundown;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Entry)) {
+        return FALSE;
+    }
+
+    //
+    // Ensure the entry is linked to something.
+    //
+
+    if (IsListEmpty(&Entry->ListEntry)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Ensure there's a valid rundown pointer.
+    //
+
+    if (Entry->Rundown == NULL) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rundown = Entry->Rundown;
+
+    //
+    // Acquire the rundown lock, remove the entry, free the backing heap memory,
+    // release the lock, return success.
+    //
+
+    EnterCriticalSection(&Rundown->CriticalSection);
+    __try {
+        RemoveRtlAtExitEntryFromRundown(Entry);
+        HeapFree(Rundown->HeapHandle, 0, Entry);
+    } __finally {
+        LeaveCriticalSection(&Rundown->CriticalSection);
+    }
 
     return TRUE;
 }
@@ -276,10 +651,15 @@ Return Value:
 
 --*/
 {
+    BOOL IsExtended;
+    BOOL HasContext;
+    BOOL SuppressExceptions;
     HANDLE HeapHandle;
+    PVOID Context;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     PATEXITFUNC AtExitFunc;
+    PATEXITEX_CALLBACK AtExitExCallback;
     PRTL_ATEXIT_ENTRY AtExitEntry;
 
     //
@@ -298,7 +678,9 @@ Return Value:
     //
 
     if (!IsProcessTerminating) {
-        HeapHandle = GetProcessHeap();
+        HeapHandle = Rundown->HeapHandle;
+    } else {
+        HeapHandle = NULL;
     }
 
     //
@@ -330,8 +712,6 @@ Return Value:
                                             RTL_ATEXIT_ENTRY,
                                             ListEntry);
 
-            AtExitFunc = AtExitEntry->AtExitFunc;
-
             //
             // Invariant check: entry's rundown should match the rundown we're
             // enumerating.
@@ -342,26 +722,81 @@ Return Value:
             }
 
             //
-            // If the entry's suppress exceptions bit is set, wrap invocation
-            // of the caller's atexit function in an exception handler.
+            // Initialize local variables/aliases for this entry.
             //
 
-            if (AtExitEntry->Flags.SuppressExceptions) {
+            AtExitFunc = AtExitEntry->AtExitFunc;
+            AtExitExCallback = AtExitEntry->AtExitExCallback;
+            IsExtended = AtExitEntry->Flags.IsExtended;
+            HasContext = AtExitEntry->Flags.HasContext;
+            SuppressExceptions = AtExitEntry->Flags.SuppressExceptions;
 
-                __try {
-                    AtExitFunc();
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    NOTHING;
-                }
+            //
+            // Initialize context only if the HasContext bit was set.
+            //
 
-            } else {
+            Context = (HasContext ? AtExitEntry->Context : NULL);
+
+            if (!IsExtended) {
 
                 //
-                // Call the function normally.
+                // This isn't an extended entry, so call the function normally.
                 //
 
                 AtExitFunc();
+
+            } else {
+
+                ULONG Flags;
+                LPCWSTR Method;
+                HMODULE Handle;
+
+                //
+                // This is an extended entry.  Check to see if the module is
+                // still loaded.
+                //
+
+                Method = (LPCWSTR)AtExitExCallback;
+
+                Flags = (
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+                );
+
+                if (!GetModuleHandleEx(Flags, Method, &Handle)) {
+
+                    //
+                    // The module isn't loaded anymore, ignore this entry.
+                    //
+
+                    goto AfterCallback;
+                }
+
+                //
+                // If the entry's suppress exceptions bit is set, wrap the
+                // callback in a __try/__except "catch-all" handler and ignore
+                // any exceptions.
+                //
+
+                if (SuppressExceptions) {
+
+                    __try {
+                        AtExitExCallback(IsProcessTerminating, Context);
+                    } __except (EXCEPTION_EXECUTE_HANDLER) {
+                        NOTHING;
+                    }
+
+                } else {
+
+                    //
+                    // Call the function normally.
+                    //
+
+                    AtExitExCallback(IsProcessTerminating, Context);
+                }
             }
+
+AfterCallback:
 
             //
             // If we're not terminating, free the memory backing the entry.

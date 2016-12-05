@@ -332,6 +332,8 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     PADD_MODULE_NAME AddModuleName;
     PSET_MODULE_NAMES_STRING_TABLE SetModuleNamesStringTable;
 
+    struct _RTL_ATEXIT_ENTRY *AtExitEntry;
+
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 
 typedef

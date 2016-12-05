@@ -389,8 +389,8 @@ InitializePythonTraceContext(
     PVOID UserData
     )
 {
+    BOOL Success;
     PTRACE_STORES TraceStores;
-    PTRACE_STORE EventStore;
     PTRACE_STORE StringBufferStore;
     PTRACE_STORE FunctionTableStore;
     PTRACE_STORE FunctionTableEntryStore;
@@ -401,7 +401,11 @@ InitializePythonTraceContext(
     PPY_TRACE_CALLBACK Callback;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
-    USHORT TraceStoreIndex;
+    TRACE_STORE_ID TraceStoreId;
+
+    //
+    // Validate arguments.
+    //
 
     if (!Context) {
         if (SizeOfContext) {
@@ -440,6 +444,10 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
+    //
+    // Arguments are valid, continue with initialization.
+    //
+
     SecureZeroMemory(Context, sizeof(*Context));
 
     Context->Size = *SizeOfContext;
@@ -456,9 +464,8 @@ InitializePythonTraceContext(
     TraceStores = TraceContext->TraceStores;
 
 #define INIT_STORE_ALLOCATOR(Name)                                       \
-    TraceStoreIndex = TraceStore##Name##Index;                           \
-    Name##Store = &TraceStores->Stores[TraceStore##Name##Index];         \
-    Name##Store->NoRetire = TRUE;                                        \
+    TraceStoreId = TraceStore##Name##Id;                                 \
+    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);   \
     Allocators.##Name##.AllocationRoutine = TraceStoreAllocationRoutine; \
     Allocators.##Name##.AllocationContext = ##Name##Store;               \
     Allocators.##Name##.FreeRoutine = TraceStoreFreeRoutine;             \
@@ -493,13 +500,6 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(StringArray);
     INIT_STORE_ALLOCATOR(StringTable);
 
-    EventStore = &TraceStores->Stores[TraceStoreEventIndex];
-
-    if (EventStore->NoRetire) {
-        __debugbreak();
-        return FALSE;
-    }
-
     Allocators.NumberOfAllocators = NumberOfAllocators;
     Allocators.SizeInBytes = sizeof(Allocators);
 
@@ -528,7 +528,102 @@ InitializePythonTraceContext(
     Context->AddModuleName = AddModuleName;
     Context->SetModuleNamesStringTable = SetModuleNamesStringTable;
 
+    //
+    // If we've been configured to track maximum reference counts, register an
+    // extended atexit function that will reflect the maximum values we saw
+    // in the registry on exit (if they exceed previously set maximums).
+    //
+    // (This is also a good test that our SetAtExitEx() machinery is working
+    //  properly, which is why we call the global version instead of going
+    //  through Rtl->RegisterAtExitEx().)
+    //
+    // N.B. Slight quirk: we can't use Context->Flags yet as they won't be set
+    //      correctly until after this call returns to TracedPythonSession, so,
+    //      we have to use to config's flags.
+    //
+
+    if (TraceContext->TracerConfig->Flags.TrackMaxRefCounts) {
+        Success = AtExitEx(SaveMaxRefCountsAtExit,
+                           NULL,
+                           Context,
+                           &Context->AtExitEntry);
+        if (!Success) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
+}
+
+_Use_decl_annotations_
+VOID
+SaveMaxRefCountsAtExit(
+    BOOL IsProcessTerminating,
+    PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    ULONG Result;
+    ULONG Disposition;
+    HKEY RegistryKey;
+    CONST UNICODE_STRING RegistryPath = \
+        RTL_CONSTANT_STRING(L"Software\\PythonTracer");
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Context)) {
+        return;
+    }
+
+    //
+    // Arguments are valid, open or create the registry path.
+    //
+
+    Result = RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        RegistryPath.Buffer,
+        0,          // Reserved
+        NULL,       // Class
+        REG_OPTION_NON_VOLATILE,
+        KEY_ALL_ACCESS,
+        NULL,
+        &RegistryKey,
+        &Disposition
+    );
+
+    if (Result != ERROR_SUCCESS) {
+        OutputDebugStringA("RegCreateKeyExW() failed for: ");
+        OutputDebugStringW(RegistryPath.Buffer);
+        return;
+    }
+
+    //
+    // Write the max ref counts to the registry if they're greater than the
+    // current version.
+    //
+
+#define UPDATE_COUNT(Name)                                      \
+    UPDATE_MAX_REG_QWORD(RegistryKey,                           \
+                         Name,                                  \
+                         (ULONGLONG)Context->##Name##.QuadPart)
+
+    UPDATE_COUNT(MaxNoneRefCount);
+    UPDATE_COUNT(MaxTrueRefCount);
+    UPDATE_COUNT(MaxZeroRefCount);
+    UPDATE_COUNT(MaxFalseRefCount);
+
+    //
+    // Capture MaxDepth as well.
+    //
+
+    UPDATE_COUNT(MaxDepth);
+
+    //
+    // Close the registry key.
+    //
+
+    RegCloseKey(RegistryKey);
 }
 
 _Use_decl_annotations_

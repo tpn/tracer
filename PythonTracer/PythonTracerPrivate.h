@@ -15,6 +15,11 @@ Abstract:
 
 --*/
 
+#ifndef _PYTHON_TRACER_INTERNAL_BUILD
+#error PythonTracerPrivate.h being included but _PYTHON_TRACER_INTERNAL_BUILD
+#error not set.
+#endif
+
 #pragma once
 
 #include "stdafx.h"
@@ -22,6 +27,16 @@ Abstract:
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//
+// AtExitEx-related definitions.
+//
+
+ATEXITEX_CALLBACK SaveMaxRefCountsAtExit;
+
+////////////////////////////////////////////////////////////////////////////////
+// Inline functions.
+////////////////////////////////////////////////////////////////////////////////
 
 FORCEINLINE
 BOOL

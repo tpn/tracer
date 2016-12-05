@@ -42,7 +42,7 @@ CONST static STRING ExtendedLengthVolumePrefixA = \
 static P__C_SPECIFIC_HANDLER __C_specific_handler_impl = NULL;
 
 #pragma warning(push)
-#pragma warning(disable: 4028 4273)
+#pragma warning(disable: 4028 4273 28251)
 
 EXCEPTION_DISPOSITION
 __cdecl
@@ -3857,7 +3857,7 @@ BOOL
 LoadRtlExSymbols(
     _In_opt_ HMODULE RtlExModule,
     _Inout_  PRTL    Rtl
-)
+    )
 {
     HMODULE Module;
 
@@ -3943,6 +3943,9 @@ InitializeRtl(
     if (!LoadRtlExSymbols(NULL, Rtl)) {
         return FALSE;
     }
+
+    Rtl->atexit = atexit_impl;
+    Rtl->AtExitEx = AtExitExImpl;
 
     Rtl->MaximumFileSectionSize = Rtl->MmGetMaximumFileSectionSize();
 

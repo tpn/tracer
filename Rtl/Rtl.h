@@ -487,6 +487,10 @@ VOID
     );
 typedef QSORT *PQSORT;
 
+//
+// atexit-related functions and structures.
+//
+
 typedef
 VOID
 (__cdecl ATEXITFUNC)(
@@ -508,6 +512,64 @@ VOID
     _In_ PATEXIT AtExit
     );
 typedef SET_ATEXIT *PSET_ATEXIT;
+
+//
+// Our extended version of CRT atexit() functionality.  Callers can indicate
+// if they wish to suppress exceptions during callback, and additionally provide
+// a context parameter passed to the callback function when invoked.
+//
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _ATEXITEX_FLAGS {
+
+    //
+    // When set, indicates that the caller's atexit function will be wrapped
+    // in a __try/__except SEH block that suppresses all exceptions.
+    //
+
+    ULONG SuppressExceptions:1;
+
+} ATEXITEX_FLAGS, *PATEXITEX_FLAGS;
+C_ASSERT(sizeof(ATEXITEX_FLAGS) == sizeof(ULONG));
+
+typedef
+VOID
+(CALLBACK ATEXITEX_CALLBACK)(
+    _In_ BOOL IsProcessTerminating,
+    _In_opt_ PVOID Context
+    );
+typedef ATEXITEX_CALLBACK *PATEXITEX_CALLBACK;
+
+typedef
+_Success_(return == 0)
+BOOL
+(ATEXITEX)(
+    _In_ PATEXITEX_CALLBACK Callback,
+    _In_opt_ PATEXITEX_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_opt_result_nullonfailure_ struct _RTL_ATEXIT_ENTRY **EntryPointer
+    );
+typedef ATEXITEX *PATEXITEX;
+
+typedef
+VOID
+(SET_ATEXITEX)(
+    _In_ PATEXITEX AtExitEx
+    );
+typedef SET_ATEXITEX *PSET_ATEXITEX;
+
+typedef
+_Success_(return != 0)
+_Check_return_
+BOOL
+(UNREGISTER_RTL_ATEXIT_ENTRY)(
+    _In_ _Post_invalid_ struct _RTL_ATEXIT_ENTRY *Entry
+    );
+typedef UNREGISTER_RTL_ATEXIT_ENTRY *PUNREGISTER_RTL_ATEXIT_ENTRY;
+RTL_API UNREGISTER_RTL_ATEXIT_ENTRY UnregisterRtlAtExitEntry;
+
+//
+// End of atexit-related functionality.
+//
 
 typedef
 PVOID
@@ -2307,6 +2369,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     ShlwapiModule;
 
     PATEXIT atexit;
+    PATEXITEX AtExitEx;
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
@@ -4163,6 +4226,142 @@ Return Value:
     return TRUE;
 }
 
+//
+// Registry helper macros.
+//
+
+/*++
+
+    VOID
+    READ_REG_QWORD(
+        _In_ HKEY Key,
+        _In_ LITERAL Name,
+        _In_ PULONGLONG QwordPointer
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_QWORD values from the registry.
+
+Arguments:
+
+    Key - Supplies an HKEY handle that represents an open registry key with
+        appropriate read access.
+
+    Name - Name of the registry key to read.  This is converted into a literal
+        wide character string by the macro (e.g. MaxNoneRefCount will become
+        L"MaxNoneRefCount").
+
+    QwordPointer - Supplies a pointer to a ULONGLONG that will receive the
+        registry key value.
+
+Return Value:
+
+    None.
+
+    N.B. If an error occurs, 0 will be written to QwordPointer.
+
+--*/
+
+#define READ_REG_QWORD(Key, Name, QwordPointer) do { \
+    ULONG QwordLength = sizeof(*QwordPointer);       \
+    Result = RegGetValueW(                           \
+        Key,                                         \
+        NULL,                                        \
+        L#Name,                                      \
+        RRF_RT_REG_QWORD,                            \
+        NULL,                                        \
+        (PVOID)QwordPointer,                         \
+        &QwordLength                                 \
+    );                                               \
+    if (Result != ERROR_SUCCESS) {                   \
+        *QwordPointer = 0;                           \
+    }                                                \
+} while (0)
+
+
+/*++
+
+    VOID
+    WRITE_REG_QWORD(
+        _In_ HKEY Key,
+        _In_ LITERAL Name,
+        _In_ ULONGLONG Value
+        );
+
+Routine Description:
+
+    This is a helper macro for writing REG_QWORD values to the registry.
+
+Arguments:
+
+    Key - Supplies an HKEY handle that represents an open registry key with
+        appropriate write access.
+
+    Name - Name of the registry key to write.  This is converted into a literal
+        wide character string by the macro (e.g. MaxNoneRefCount will become
+        L"MaxNoneRefCount").
+
+    Value - Supplies a ULONGLONG value to write.
+
+Return Value:
+
+    None.
+
+--*/
+
+#define WRITE_REG_QWORD(Key, Name, Value) do { \
+    ULONGLONG Qword = Value;                   \
+    ULONG QwordLength = sizeof(Qword);         \
+    RegSetValueExW(                            \
+        Key,                                   \
+        L#Name,                                \
+        0,                                     \
+        REG_QWORD,                             \
+        (const BYTE*)&Qword,                   \
+        QwordLength                            \
+    );                                         \
+} while (0)
+
+
+/*++
+
+    VOID
+    UPDATE_MAX_REG_QWORD(
+        _In_ HKEY Key,
+        _In_ LITERAL Name,
+        _In_ ULONGLONG Value
+        );
+
+Routine Description:
+
+    This is a helper macro for writing REG_QWORD values to the registry if they
+    exceed the value already present.
+
+Arguments:
+
+    Key - Supplies an HKEY handle that represents an open registry key with
+        appropriate read/write access.
+
+    Name - Name of the registry key to write.  This is converted into a literal
+        wide character string by the macro (e.g. MaxNoneRefCount will become
+        L"MaxNoneRefCount").
+
+    Value - Supplies a ULONGLONG value to potentially write.
+
+Return Value:
+
+    None.
+
+--*/
+
+#define UPDATE_MAX_REG_QWORD(Key, Name, Value) do { \
+    ULONGLONG Existing;                             \
+    READ_REG_QWORD(Key, Name, &Existing);           \
+    if (Value > Existing) {                         \
+        WRITE_REG_QWORD(Key, Name, Value);          \
+    }                                               \
+} while (0)
 
 //
 // Verbatim copy of the doubly-linked list inline methods.

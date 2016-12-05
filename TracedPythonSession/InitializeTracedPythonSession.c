@@ -131,6 +131,7 @@ Return Value:
     TRACER_FLAGS TracerConfigFlags;
     PYTHON_TRACE_EVENT_TYPE EventType;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+    PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
     //
@@ -410,6 +411,26 @@ Return Value:
     INIT_C_SPECIFIC_HANDLER(TraceStore);
     INIT_C_SPECIFIC_HANDLER(StringTable);
     INIT_C_SPECIFIC_HANDLER(PythonTracer);
+
+    //
+    // Use the same approach for any DLLs that require extended atexit support.
+    //
+
+#define INIT_ATEXITEX(Name) do {                             \
+    SetAtExitEx = (PSET_ATEXITEX)(                           \
+        GetProcAddress(Session->Name##Module, "SetAtExitEx") \
+    );                                                       \
+    if (SetAtExitEx) {                                       \
+        SetAtExitEx(Rtl->AtExitEx);                          \
+    }                                                        \
+} while (0)
+
+    INIT_ATEXITEX(Python);
+    INIT_ATEXITEX(TracerHeap);
+    INIT_ATEXITEX(TraceStore);
+    INIT_ATEXITEX(StringTable);
+    INIT_ATEXITEX(PythonTracer);
+
 
     //
     // Load our owning module name.
