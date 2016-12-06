@@ -40,16 +40,16 @@ AllocatePythonTraceEvent1(
 _Use_decl_annotations_
 BOOL
 PyTraceEvent1(
-    PPYTHON_TRACE_CONTEXT   Context,
-    PPYFRAMEOBJECT          FrameObject,
-    LONG                    EventType,
-    PPYOBJECT               ArgObject
+    PPYTHON_TRACE_CONTEXT Context,
+    PPYTHON_FUNCTION Function,
+    PPYTHON_EVENT_TRAITS EventTraits,
+    PPYFRAMEOBJECT FrameObject,
+    PPYOBJECT ArgObject
     )
 {
     BOOL Success;
 
     PYTHON_TRACE_CONTEXT_FLAGS Flags;
-    PYTHON_EVENT_TRAITS EventTraits;
 
     PRTL Rtl;
     PPYTHON Python;
@@ -60,7 +60,6 @@ PyTraceEvent1(
     PYTHON_TRACE_EVENT1 LastEvent;
     PPYTHON_TRACE_EVENT1 LastEventPointer;
     PPYTHON_TRACE_EVENT1 ThisEvent;
-    PPYTHON_FUNCTION Function = NULL;
     LARGE_INTEGER Elapsed;
     LARGE_INTEGER Timestamp;
     PROCESS_MEMORY_COUNTERS_EX MemoryCounters;
@@ -68,78 +67,13 @@ PyTraceEvent1(
     DWORD HandleCount;
     HANDLE CurrentProcess = (HANDLE)-1;
 
-    if (!InitializePythonTraceEvent(Context, EventType, &EventTraits)) {
-        return TRUE;
-    }
-
-    Flags = Context->Flags;
-
     //
-    // Attempt to register the frame and get the underlying function object.
+    // Initialize local variables/aliases.
     //
 
     Rtl = Context->Rtl;
     Python = Context->Python;
-
-    Success = Python->RegisterFrame(Python,
-                                    FrameObject,
-                                    EventTraits,
-                                    ArgObject,
-                                    &Function);
-
-    if (!Success) {
-
-        //
-        // We can't do anything more if we weren't able to resolve the
-        // function for this frame.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (!Function->PathEntry.IsValid) {
-
-        //
-        // The function's path entry should always be valid if RegisterFrame()
-        // succeeded.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (!Function->PathEntry.FullName.Length) {
-        __debugbreak();
-    }
-
-    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
-        __debugbreak();
-    }
-
-    if (Context->Depth > Function->MaxCallStackDepth) {
-        Function->MaxCallStackDepth = (ULONG)Context->Depth;
-    }
-
-    //
-    // We obtained the PYTHON_FUNCTION for this frame, check to see if it's
-    // of interest to this tracing session.
-    //
-
-    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
-
-        //
-        // Function isn't of interest (i.e. doesn't reside in a module we're
-        // tracing), so return.
-        //
-
-        return TRUE;
-    }
-
-    //
-    // The function resides in a module (or submodule) we're tracing, continue.
-    //
-
+    Flags = Context->Flags;
 
     //
     // Load the events trace store and previous event record, if any.
@@ -211,9 +145,9 @@ PyTraceEvent1(
     Event.ClassNameHash = Function->PathEntry.ClassNameHash;
     Event.NameHash = Function->PathEntry.NameHash;
 
-    Event.EventTraitsEx.AsLong = (ULONG)EventTraits.AsByte;
+    Event.EventTraitsEx.AsLong = (ULONG)EventTraits->AsByte;
     Event.EventTraitsEx.LineNumberOrCallStackDepth = (ULONG)(
-        EventTraits.IsLine ?
+        EventTraits->IsLine ?
             Python->PyFrame_GetLineNumber(FrameObject) :
             Context->Depth
     );

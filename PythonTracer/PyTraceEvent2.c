@@ -64,141 +64,36 @@ AllocatePythonEventTraitsEx(
 _Use_decl_annotations_
 BOOL
 PyTraceEvent2(
-    PPYTHON_TRACE_CONTEXT   Context,
-    PPYFRAMEOBJECT          FrameObject,
-    LONG                    EventType,
-    PPYOBJECT               ArgObject
+    PPYTHON_TRACE_CONTEXT Context,
+    PPYTHON_FUNCTION Function,
+    PPYTHON_EVENT_TRAITS EventTraits,
+    PPYFRAMEOBJECT FrameObject,
+    PPYOBJECT ArgObject
     )
 {
-    BOOL Success;
-
-    PYTHON_TRACE_CONTEXT_FLAGS Flags;
-    PYTHON_EVENT_TRAITS EventTraits;
     PYTHON_EVENT_TRAITS_EX EventTraitsEx;
     PPYTHON_EVENT_TRAITS_EX EventTraitsExPointer;
 
-    PRTL Rtl;
     PPYTHON Python;
-    //PPYOBJECT Target;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     PTRACE_STORE EventStore;
     PTRACE_STORE EventTraitsExStore;
     PPYTHON_TRACE_EVENT2 Event;
-    PPYTHON_FUNCTION Function = NULL;
     LARGE_INTEGER Elapsed;
     LARGE_INTEGER Timestamp;
 
-    if (!InitializePythonTraceEvent(Context, EventType, &EventTraits)) {
-        return TRUE;
-    }
-
-#ifdef _IGNORE_TARGET
-
-    if (EventTraits.IsException) {
-        return TRUE;
-    } else if (EventTraits.IsC) {
-        Target = (PPYOBJECT)ArgObject;
-    } else {
-        Target = (PPYOBJECT)FrameObject->Code;
-    }
-
-    //
-    // If the ignore bit is set, we've already seen this target, and it wasn't
-    // of interest.  Fast-path exit.
-    //
-
-    if (Target->RefCountEx.Ignore) {
-        Context->FramesIgnored++;
-        return TRUE;
-    }
-
-#endif
-
-    Flags = Context->Flags;
-
-    //
-    // Attempt to register the frame and get the underlying function object.
-    //
-
-    Rtl = Context->Rtl;
     Python = Context->Python;
 
-    Success = Python->RegisterFrame(Python,
-                                    FrameObject,
-                                    EventTraits,
-                                    ArgObject,
-                                    &Function);
-
-    if (!Success) {
-
-        //
-        // We can't do anything more if we weren't able to resolve the
-        // function for this frame.
-        //
-
-        __debugbreak();
-        return 0;
-    }
-
-    if (!Function->PathEntry.IsValid) {
-
-        //
-        // The function's path entry should always be valid if RegisterFrame()
-        // succeeded.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-#ifdef _DEBUG
-    if (!Function->PathEntry.FullName.Length) {
-        __debugbreak();
-    }
-
-    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
-        __debugbreak();
-    }
-#endif
-
-    if (Context->Depth > Function->MaxCallStackDepth) {
-        Function->MaxCallStackDepth = (ULONG)Context->Depth;
-    }
-
     //
-    // We obtained the PYTHON_FUNCTION for this frame, check to see if it's
-    // of interest to this tracing session.
-    //
-
-    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
-
-        //
-        // Function isn't of interest (i.e. doesn't reside in a module we're
-        // tracing).  Set the ignore bit in this object's reference count and
-        // return.
-        //
-
-#ifdef _IGNORE_TARGET
-        Target->RefCountEx.Ignore = TRUE;
-        Context->FramesIgnored++;
-#endif
-        return TRUE;
-    }
-
-    //
-    // The function resides in a module (or submodule) we're tracing, continue.
-    //
-
-
-    //
-    // Load the events trace store.
+    // Load the event and event traits ex trace stores.
     //
 
     TraceContext = Context->TraceContext;
     TraceStores = TraceContext->TraceStores;
-    EventStore = &TraceStores->Stores[TraceStoreEventIndex];
-    EventTraitsExStore = &TraceStores->Stores[TraceStoreEventTraitsExIndex];
+    EventStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreEventId);
+    EventTraitsExStore = TraceStoreIdToTraceStore(TraceStores,
+                                                  TraceStoreEventTraitsExId);
 
     //
     // Save the timestamp for this event.
@@ -232,9 +127,9 @@ PyTraceEvent2(
 
     Event->Function = Function;
 
-    EventTraitsEx.AsLong = (ULONG)EventTraits.AsByte;
+    EventTraitsEx.AsLong = (ULONG)EventTraits->AsByte;
     EventTraitsEx.LineNumberOrCallStackDepth = (ULONG)(
-        EventTraits.IsLine ?
+        EventTraits->IsLine ?
             Python->PyFrame_GetLineNumber(FrameObject) :
             Context->Depth
     );
