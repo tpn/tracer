@@ -53,7 +53,8 @@ enum PythonVersion {
     PythonVersion_32 = 0x0302,
     PythonVersion_33 = 0x0303,
     PythonVersion_34 = 0x0304,
-    PythonVersion_35 = 0x0305
+    PythonVersion_35 = 0x0305,
+    PythonVersion_36 = 0x0306,
 };
 
 typedef union _PYTHON_EVENT_TRAITS {
@@ -2787,8 +2788,8 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
     PYTHON_FUNCTION Function;
 
 } PYTHON_FUNCTION_TABLE_ENTRY, *PPYTHON_FUNCTION_TABLE_ENTRY;
-
-//C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 256);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Function) == 40);
+C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 256);
 
 typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
 
