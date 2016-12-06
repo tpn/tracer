@@ -237,6 +237,7 @@ Return Value:
     USHORT Limit = 0;
     USHORT Offset = 0;
     USHORT ReversedIndex;
+    USHORT ExtensionLength;
     USHORT BitmapHintIndex;
     USHORT NumberOfChars;
     USHORT InitPyNumberOfChars;
@@ -601,21 +602,32 @@ Return Value:
     //
     // Determine the length of the file part (filename sans extension).
     //
+    // N.B. We can re-use the Filename STRING here to truncate the length such
+    //      that the extension is omitted (i.e. there's no need to allocate a
+    //      new string as we're going to be copying into a new string buffer
+    //      shortly).
+    //
 
-    for (Index = Filename.Length - 1; Index > 0; Index--) {
-        Char = Filename.Buffer[Index];
-        if (Char == '.') {
-
-            //
-            // We can re-use the Filename STRING here to truncate the length
-            // such that the extension is omitted (i.e. there's no need to
-            // allocate a new string as we're going to be copying into a new
-            // string buffer shortly).
-            //
-
-            Filename.Length = Index;
-            break;
+    ExtensionLength = 3;
+    if (Filename.Buffer[Filename.Length - ExtensionLength] != '.') {
+        if (Filename.Buffer[Filename.Length - ++ExtensionLength] != '.') {
+            ExtensionLength = 0;
+            for (Index = Filename.Length - 1; Index > 0; Index--) {
+                Char = Filename.Buffer[Index];
+                if (Char == '.') {
+                    ExtensionLength = Filename.Length - Index - 1;
+                    Filename.Length = Index;
+                    break;
+                }
+            }
+        } else {
+            goto FastPathUpdateLength;
         }
+    } else {
+
+FastPathUpdateLength:
+
+        Filename.Length = Filename.Length - --ExtensionLength - 1;
     }
 
     //
