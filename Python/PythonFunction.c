@@ -382,6 +382,7 @@ Return Value:
         );
 
         if (!Success) {
+            __debugbreak();
             return FALSE;
         }
 
@@ -706,14 +707,29 @@ Return Value:
         Dest += ParentName->Length;
         *Dest++ = '\\';
 
-        //
-        // If the parent is a file, update the module name to account
-        // for the parent's module name, plus the joining slash.
-        //
+        if (!ModuleName->Length) {
 
-        if (ParentPathEntry->IsFile) {
-            ModuleName->Length += ParentName->Length + 1;
-            ModuleName->MaximumLength = ModuleName->Length;
+            //
+            // There's no module name currently set, so the parent name
+            // becomes our module name.  Inherit the length.
+            //
+
+            ModuleName->Length = ParentName->Length;
+            ModuleName->MaximumLength = ParentName->Length;
+
+        } else if (ParentPathEntry->IsFile) {
+
+            //
+            // The parent is a file, so the module name will be a concatenation
+            // of the parent name plus the module name.  Update the module name
+            // length to account for the parent name, plus one for the joining
+            // slash.
+            //
+
+            if (ParentPathEntry->IsFile) {
+                ModuleName->Length += ParentName->Length + 1;
+                ModuleName->MaximumLength = ModuleName->Length;
+            }
         }
     }
 
