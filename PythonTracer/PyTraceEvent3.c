@@ -23,10 +23,11 @@ extern "C" {
 _Use_decl_annotations_
 BOOL
 PyTraceEvent3(
-    PPYTHON_TRACE_CONTEXT   Context,
-    PPYFRAMEOBJECT          FrameObject,
-    LONG                    EventType,
-    PPYOBJECT               ArgObject
+    PPYTHON_TRACE_CONTEXT Context,
+    PPYTHON_FUNCTION Function,
+    PPYTHON_EVENT_TRAITS EventTraits,
+    PPYFRAMEOBJECT FrameObject,
+    PPYOBJECT ArgObject
     )
 {
     return TRUE;

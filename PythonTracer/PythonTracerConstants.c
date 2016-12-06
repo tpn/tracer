@@ -14,7 +14,7 @@ Abstract:
 
 #include "stdafx.h"
 
-PPY_TRACE_CALLBACK PythonTraceEventTypeToCallback[] = {
+PPY_TRACE_EVENT PythonTraceEventTypeToFunctionPointer[] = {
     PyTraceEvent1,
     PyTraceEvent2,
     PyTraceEvent3,
@@ -22,8 +22,8 @@ PPY_TRACE_CALLBACK PythonTraceEventTypeToCallback[] = {
 };
 
 _Use_decl_annotations_
-PPY_TRACE_CALLBACK
-GetCallbackForTraceEventType(
+PPY_TRACE_EVENT
+GetFunctionPointerForTraceEventType(
     PYTHON_TRACE_EVENT_TYPE TraceEventType
     )
 {
@@ -32,7 +32,7 @@ GetCallbackForTraceEventType(
         return NULL;
     }
 
-    return PythonTraceEventTypeToCallback[TraceEventType-1];
+    return PythonTraceEventTypeToFunctionPointer[TraceEventType-1];
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -191,6 +191,119 @@ DisableHandleCountTracing(
     PythonTraceContext->Flags.TraceHandleCount = FALSE;
 }
 
+_Use_decl_annotations_
+BOOL
+PyTraceCallbackWorker(
+    PPYTHON_TRACE_CONTEXT Context,
+    PPYFRAMEOBJECT FrameObject,
+    LONG EventType,
+    PPYOBJECT ArgObject
+    )
+{
+    BOOL Success;
+
+    PYTHON_TRACE_CONTEXT_FLAGS Flags;
+    PYTHON_EVENT_TRAITS EventTraits;
+
+    PRTL Rtl;
+    PPYTHON Python;
+    PPYTHON_FUNCTION Function = NULL;
+
+    if (!InitializePythonTraceEvent(Context, EventType, &EventTraits)) {
+        return TRUE;
+    }
+
+    Flags = Context->Flags;
+
+    //
+    // Attempt to register the frame and get the underlying function object.
+    //
+
+    Rtl = Context->Rtl;
+    Python = Context->Python;
+
+    Success = Python->RegisterFrame(Python,
+                                    FrameObject,
+                                    EventTraits,
+                                    ArgObject,
+                                    &Function);
+
+    if (!Success) {
+
+        //
+        // We can't do anything more if we weren't able to resolve the
+        // function for this frame.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (!Function->PathEntry.IsValid) {
+
+        //
+        // The function's path entry should always be valid if RegisterFrame()
+        // succeeded.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+#ifdef _DEBUG
+    if (!Function->PathEntry.FullName.Length) {
+        __debugbreak();
+    }
+
+    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
+        __debugbreak();
+    }
+#endif
+
+    if (Context->Depth > Function->MaxCallStackDepth) {
+        Function->MaxCallStackDepth = (ULONG)Context->Depth;
+    }
+
+    //
+    // We obtained the PYTHON_FUNCTION for this frame.
+    //
+
+    //
+    // Check to see if the function is of interest to this session.
+    //
+
+    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
+
+        //
+        // Function isn't of interest (i.e. doesn't reside in a module we're
+        // tracing).  Set the ignore bit in this object's reference count and
+        // return.
+        //
+
+        Context->FramesSkipped++;
+        return TRUE;
+    }
+
+    //
+    // The function resides in a module (or submodule) we're tracing, call the
+    // actual trace function.
+    //
+
+    Context->FramesTraced++;
+
+    Success = Context->TraceEventFunction(Context,
+                                          Function,
+                                          &EventTraits,
+                                          FrameObject,
+                                          ArgObject);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    return Success;
+
+}
 
 _Use_decl_annotations_
 LONG
@@ -202,23 +315,33 @@ PyTraceCallback(
     )
 {
     BOOL Success;
+    BOOL InPageError;
     PPYTHON_TRACE_CONTEXT Context;
 
     Context = (PPYTHON_TRACE_CONTEXT)UserContext;
+    InPageError = FALSE;
 
     TRY_MAPPED_MEMORY_OP {
 
-        Success = Context->PythonTraceFunction(Context,
-                                               FrameObject,
-                                               EventType,
-                                               ArgObject);
+        Success = Context->CallbackWorker(Context,
+                                          FrameObject,
+                                          EventType,
+                                          ArgObject);
 
     } CATCH_STATUS_IN_PAGE_ERROR {
-        Success = FALSE;
+        InPageError = TRUE;
     }
 
     if (!Success) {
         __debugbreak();
+    }
+
+    if (InPageError) {
+        OutputDebugStringA("PythonTracer: STATUS_IN_PAGE_ERROR, disabling.\n");
+        Success = FALSE;
+    }
+
+    if (!Success) {
         Stop(Context);
     }
 
@@ -398,7 +521,7 @@ InitializePythonTraceContext(
     PTRACE_STORE PathTableEntryStore;
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
-    PPY_TRACE_CALLBACK Callback;
+    PPY_TRACE_EVENT TraceEvent;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     TRACE_STORE_ID TraceStoreId;
@@ -439,8 +562,8 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
-    Callback = GetCallbackForTraceEventType(PythonTraceEventType);
-    if (!Callback) {
+    TraceEvent = GetFunctionPointerForTraceEventType(PythonTraceEventType);
+    if (!TraceEvent) {
         return FALSE;
     }
 
@@ -455,7 +578,8 @@ InitializePythonTraceContext(
     Context->Allocator = Allocator;
     Context->Python = Python;
     Context->TraceContext = TraceContext;
-    Context->PythonTraceFunction = Callback;
+    Context->CallbackWorker = PyTraceCallbackWorker;
+    Context->TraceEventFunction = TraceEvent;
     Context->UserData = UserData;
 
     Context->Depth = 0;
@@ -546,13 +670,23 @@ InitializePythonTraceContext(
         Success = AtExitEx(SaveMaxRefCountsAtExit,
                            NULL,
                            Context,
-                           &Context->AtExitEntry);
+                           &Context->SaveMaxCountsAtExitEntry);
         if (!Success) {
             return FALSE;
         }
     }
 
-    return TRUE;
+    //
+    // Register an AtExitEx callback that will save general counters to the
+    // LastRun section in the registry (Software\PythonTracer\LastRun).
+    //
+
+    Success = AtExitEx(SaveCountsToLastRunAtExit,
+                       NULL,
+                       Context,
+                       &Context->SaveCountsToLastRunAtExitEntry);
+
+    return Success;
 }
 
 _Use_decl_annotations_
@@ -561,6 +695,29 @@ SaveMaxRefCountsAtExit(
     BOOL IsProcessTerminating,
     PPYTHON_TRACE_CONTEXT Context
     )
+/*++
+
+Routine Description:
+
+    This routine is responsible for writing the maximum reference count values
+    observed during a run to the registry on process exit.  It is called by the
+    Rtl AtExitEx rundown functionality.  This routine is only called if the
+    TrackMaxRefCounts flag has been set.
+
+Arguments:
+
+    IsProcessTerminating - Supplies a boolean value that indicates whether or
+        not the process is terminating.  If FALSE, indicates that the library
+        has been unloaded via FreeLibrary().
+
+    Context - Supplies a pointer to the PYTHON_TRACE_CONTEXT structure that was
+        registered when AtExitEx() was called.
+
+Return Value:
+
+    None.
+
+--*/
 {
     ULONG Result;
     ULONG Disposition;
@@ -568,17 +725,6 @@ SaveMaxRefCountsAtExit(
     CONST UNICODE_STRING RegistryPath = \
         RTL_CONSTANT_STRING(L"Software\\PythonTracer");
 
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(Context)) {
-        return;
-    }
-
-    //
-    // Arguments are valid, open or create the registry path.
-    //
 
     Result = RegCreateKeyExW(
         HKEY_CURRENT_USER,
@@ -593,7 +739,7 @@ SaveMaxRefCountsAtExit(
     );
 
     if (Result != ERROR_SUCCESS) {
-        OutputDebugStringA("RegCreateKeyExW() failed for: ");
+        OutputDebugStringW(L"PythonTracer!RegCreateKeyExW() failed for: ");
         OutputDebugStringW(RegistryPath.Buffer);
         return;
     }
@@ -614,13 +760,121 @@ SaveMaxRefCountsAtExit(
     UPDATE_COUNT(MaxFalseRefCount);
 
     //
-    // Capture MaxDepth as well.
+    // Capture MaxDepth as well (despite it not technically being a reference
+    // count; it's still useful to track).
     //
 
     UPDATE_COUNT(MaxDepth);
 
     //
     // Close the registry key.
+    //
+
+    RegCloseKey(RegistryKey);
+
+}
+
+_Use_decl_annotations_
+VOID
+SaveCountsToLastRunAtExit(
+    BOOL IsProcessTerminating,
+    PPYTHON_TRACE_CONTEXT Context
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for writing various counters pertaining to an
+    active trace session to the registry on process exit.  It is called by the
+    Rtl AtExitEx rundown functionality.
+
+Arguments:
+
+    IsProcessTerminating - Supplies a boolean value that indicates whether or
+        not the process is terminating.  If FALSE, indicates that the library
+        has been unloaded via FreeLibrary().
+
+    Context - Supplies a pointer to the PYTHON_TRACE_CONTEXT structure that was
+        registered when AtExitEx() was called.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    ULONG Result;
+    ULONG Disposition;
+    HKEY RegistryKey;
+    CONST UNICODE_STRING RegistryPath = \
+        RTL_CONSTANT_STRING(L"Software\\PythonTracer\\LastRun");
+
+
+    Result = RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        RegistryPath.Buffer,
+        0,          // Reserved
+        NULL,       // Class
+        REG_OPTION_NON_VOLATILE,
+        KEY_ALL_ACCESS,
+        NULL,
+        &RegistryKey,
+        &Disposition
+    );
+
+    if (Result != ERROR_SUCCESS) {
+        OutputDebugStringW(L"RegCreateKeyExW() failed for: ");
+        OutputDebugStringW(RegistryPath.Buffer);
+        return;
+    }
+
+    //
+    // Define some convenience macros.
+    //
+
+#define WRITE_LARGE_INTEGER(Name)                          \
+    WRITE_REG_QWORD(RegistryKey,                           \
+                    Name,                                  \
+                    (ULONGLONG)Context->##Name##.QuadPart)
+
+#define WRITE_ULONGLONG(Name)          \
+    WRITE_REG_QWORD(RegistryKey,       \
+                    Name,              \
+                    Context->##Name##)
+
+    //
+    // If we've been tracking max ref counts, write those values now.
+    //
+    // N.B. This differs slightly from SaveMaxRefCountsAtExit() in that we don't
+    //      do the "max" check; as we're writing to LastRun, we just write the
+    //      value directly without checking the existing value.
+    //
+
+    if (Context->Flags.TrackMaxRefCounts) {
+        WRITE_LARGE_INTEGER(MaxNoneRefCount);
+        WRITE_LARGE_INTEGER(MaxTrueRefCount);
+        WRITE_LARGE_INTEGER(MaxZeroRefCount);
+        WRITE_LARGE_INTEGER(MaxFalseRefCount);
+    }
+
+    WRITE_LARGE_INTEGER(MaxDepth);
+
+    //
+    // Write the remaining counters.
+    //
+
+    WRITE_ULONGLONG(FramesTraced);
+    WRITE_ULONGLONG(FramesSkipped);
+    WRITE_ULONGLONG(NumberOfPythonCalls);
+    WRITE_ULONGLONG(NumberOfPythonReturns);
+    WRITE_ULONGLONG(NumberOfPythonExceptions);
+    WRITE_ULONGLONG(NumberOfPythonLines);
+    WRITE_ULONGLONG(NumberOfCCalls);
+    WRITE_ULONGLONG(NumberOfCReturns);
+    WRITE_ULONGLONG(NumberOfCExceptions);
+
+    //
+    // Close the registry key and return.
     //
 
     RegCloseKey(RegistryKey);
@@ -633,7 +887,6 @@ Start(
     )
 {
     PPYTHON Python;
-    PPYTRACEFUNC PythonTraceFunction;
 
     if (!Context) {
         return FALSE;
@@ -642,12 +895,6 @@ Start(
     Python = Context->Python;
 
     if (!Python) {
-        return FALSE;
-    }
-
-    PythonTraceFunction = Context->PythonTraceFunction;
-
-    if (!PythonTraceFunction) {
         return FALSE;
     }
 
@@ -669,7 +916,6 @@ Stop(
     )
 {
     PPYTHON Python;
-    PPYTRACEFUNC PythonTraceFunction;
 
     if (!Context) {
         return FALSE;
@@ -678,12 +924,6 @@ Stop(
     Python = Context->Python;
 
     if (!Python) {
-        return FALSE;
-    }
-
-    PythonTraceFunction = Context->PythonTraceFunction;
-
-    if (!PythonTraceFunction) {
         return FALSE;
     }
 

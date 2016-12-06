@@ -33,6 +33,7 @@ extern "C" {
 //
 
 ATEXITEX_CALLBACK SaveMaxRefCountsAtExit;
+ATEXITEX_CALLBACK SaveCountsToLastRunAtExit;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -173,6 +174,41 @@ InitializePythonTraceEvent(
             Context->Depth--;
         }
     }
+
+#if 0
+    switch (EventTraits.AsEventType) {
+        case TraceEventType_PyTrace_CALL:
+            Context->NumberOfPythonCalls++;
+            break;
+        case TraceEventType_PyTrace_RETURN:
+            Context->NumberOfPythonReturns++;
+            break;
+        case TraceEventType_PyTrace_EXCEPTION:
+            Context->NumberOfPythonExceptions++;
+            break;
+        case TraceEventType_PyTrace_LINE:
+            Context->NumberOfPythonLines++;
+            break;
+        case TraceEventType_PyTrace_C_CALL:
+            Context->NumberOfCCalls++;
+            break;
+        case TraceEventType_PyTrace_C_RETURN:
+            Context->NumberOfCReturns++;
+            break;
+        case TraceEventType_PyTrace_C_EXCEPTION:
+            Context->NumberOfCExceptions++;
+            break;
+    }
+#else
+
+    //
+    // Abuse the fact we can index into our counter array using the event type
+    // directly.
+    //
+
+    ++(Context->Counters[EventTraits.AsEventType]);
+
+#endif
 
     //
     // If we've been configured to track maximum reference counts, do that now.
