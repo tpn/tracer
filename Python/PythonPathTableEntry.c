@@ -231,6 +231,15 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    BOOL IsInitPy;
+    BOOL CaseSensitive = TRUE;
+    BOOL Reversed = TRUE;
+    BOOL IsSpecialName = FilenameFlags->IsSpecialName;
+    BOOL WeOwnPathBuffer = FilenameFlags->WeOwnPathBuffer;
+    BOOL ForceModuleDirectory = FALSE;
+    BOOL IsFileSystemDirectory = TRUE;
+
     CHAR Char;
 
     USHORT Index;
@@ -240,17 +249,11 @@ Return Value:
     USHORT ExtensionLength;
     USHORT BitmapHintIndex;
     USHORT NumberOfChars;
-    USHORT InitPyNumberOfChars;
     USHORT NumberOfBackslashes;
     USHORT NumberOfBackslashesRemaining;
     USHORT ModuleLength;
 
-    BOOL Success;
-    BOOL IsInitPy = FALSE;
-    BOOL CaseSensitive = TRUE;
-    BOOL Reversed = TRUE;
-    BOOL IsSpecialName = FilenameFlags->IsSpecialName;
-    BOOL WeOwnPathBuffer = FilenameFlags->WeOwnPathBuffer;
+    ULONG FileAttributes;
 
     HANDLE HeapHandle = NULL;
 
@@ -401,7 +404,6 @@ Return Value:
     HeapHandle = Python->HeapHandle;
 
     NumberOfChars = Path->Length;
-    InitPyNumberOfChars = A__init__py.Length;
 
     //
     // Create a reversed bitmap for the backslashes in the path.
@@ -522,7 +524,6 @@ Return Value:
         }
     }
 
-
     //
     // Extract the directory name.
     //
@@ -536,11 +537,56 @@ Return Value:
     }
 
     //
-    // Get the module name from the directory.
+    // Prepare variables prior to a possible GetPathEntryForDirectory() call.
     //
 
+    DirectoryEntry = NULL;
     BitmapHintIndex = ReversedIndex;
     NumberOfBackslashesRemaining = NumberOfBackslashes - 1;
+
+    //
+    // Check to see if our filename is __init__.py.  If it is, check to see if
+    // directory is actually a file system directory.  If it's not, we need to
+    // force the module directory.
+    //
+
+    IsInitPy = Rtl->RtlEqualString(&A__init__py, &Filename, FALSE);
+
+    if (IsInitPy) {
+
+        //
+        // Temporarily make the directory buffer NUL-terminated in order to pass
+        // it to GetFileAttributesA(), which expects a NUL-terminated string.
+        //
+
+        Directory.Buffer[Directory.Length] = '\0';
+
+        //
+        // Get the attributes for the directory.
+        //
+
+        FileAttributes = GetFileAttributesA(Directory.Buffer);
+
+        //
+        // Restore the trailing slash.
+        //
+
+        Directory.Buffer[Directory.Length] = '\\';
+
+        IsFileSystemDirectory = (
+            FileAttributes != INVALID_FILE_ATTRIBUTES &&
+            FileAttributes & FILE_ATTRIBUTE_DIRECTORY
+        );
+
+        if (!IsFileSystemDirectory) {
+
+            //
+            // The directory isn't a file system directory (as we might be in
+            // a .zip or .egg file), so toggle the force module directory flag.
+
+            ForceModuleDirectory = TRUE;
+        }
+    }
 
     //
     // Get the PathEntry for the directory.  This will build up the path table
@@ -549,13 +595,13 @@ Return Value:
     // an __init__.py file).
     //
 
-    DirectoryEntry = NULL;
     Success = GetPathEntryForDirectory(Python,
                                        &Directory,
                                        BitmapPointer,
                                        &BitmapHintIndex,
                                        &NumberOfBackslashesRemaining,
-                                       &DirectoryEntry);
+                                       &DirectoryEntry,
+                                       ForceModuleDirectory);
 
     if (!Success) {
         goto End;
@@ -577,6 +623,8 @@ Return Value:
     // continue creating a PathEntry for this filename and filling in the
     // relevant details.
     //
+
+    DirectoryEntry->IsFileSystemDirectory = IsFileSystemDirectory;
 
     //
     // Initialize convenience pointers.
@@ -650,6 +698,7 @@ FastPathUpdateLength:
     }
 
     PathEntry->IsFile = TRUE;
+    PathEntry->IsInitPy = IsInitPy;
 
     if (FilenameFlags->IsDll) {
         PathEntry->IsDll = TRUE;
@@ -751,6 +800,25 @@ FastPathUpdateLength:
 
     *Dest++ = '\0';
 
+    //
+    // Copy up to the first three bytes of the filename extension if one was
+    // present.
+    //
+
+    if (ExtensionLength) {
+        PCHAR Char = &File[Filename.Length+1];
+        Dest = (PCHAR)&Path->Hash;
+        for (Index = 0; Index < ExtensionLength && Index < 3; Index++) {
+            *Dest++ = *Char++;
+        }
+
+        //
+        // Add a trailing NUL.
+        //
+
+        ((PCHAR)&Path->Hash)[Index] = '\0';
+    }
+
 AddPrefix:
 
     //
@@ -818,7 +886,8 @@ GetPathEntryForDirectory(
     PRTL_BITMAP Backslashes,
     PUSHORT BitmapHintIndex,
     PUSHORT NumberOfBackslashesRemaining,
-    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    BOOL ForceModuleDirectory
     )
 /*++
 
@@ -849,6 +918,11 @@ Arguments:
 
     PathEntryPointer - Supplies a pointer to a variable that will receive the
         address of a newly-allocated PYTHON_PATH_TABLE_ENTRY structure.
+
+    ForceModuleDirectory - Supplies a boolean value that, when set, indicates
+        that the directory should be considered a module directory.  This will
+        disable the normal logic that walks ancestor directories looking for
+        __init__.py files.  It is used to handle things like .egg files.
 
 Return Value:
 
@@ -982,7 +1056,7 @@ Return Value:
         ParentEntry = PathEntry;
         PathEntry = NULL;
 
-    } else {
+    } else if (!ForceModuleDirectory) {
 
         //
         // No path entry was present.  If the directory *isn't* a module, it
@@ -1022,7 +1096,8 @@ Return Value:
     //      in the prefix tree.
     //
     //  2.  No common ancestor exists, and the Directory has an __init__.py
-    //      file, indicating that it is a module.
+    //      file or the ForceModuleDirectory flag was set, indicating that it
+    //      is a module.
     //
     // In either case, we need to ensure the relevant ancestor directories
     // have been added, up to the "root" directory (i.e. the first directory
@@ -1530,12 +1605,16 @@ FoundAncestor:
 FoundParent:
 
     //
-    // Add a new entry for the parent directory.
+    // Add a new entry for the directory.
     //
 
-    Success = IsModuleDirectoryA(Rtl, Directory, &IsModule);
-    if (!Success) {
-        IsModule = FALSE;
+    if (ForceModuleDirectory) {
+        IsModule = TRUE;
+    } else {
+        Success = IsModuleDirectoryA(Rtl, Directory, &IsModule);
+        if (!Success) {
+            IsModule = FALSE;
+        }
     }
 
     IsRoot = (IsModule ? FALSE : TRUE);

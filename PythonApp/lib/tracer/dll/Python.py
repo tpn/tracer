@@ -43,18 +43,24 @@ from Rtl import (
 #===============================================================================
 
 class PythonPathEntryType(Constant):
-    IsModuleDirectory       =       1
-    IsNonModuleDirectory    = (1 << 1)
-    IsFile                  = (1 << 2)
-    IsClass                 = (1 << 3)
-    IsFunction              = (1 << 4)
-    IsSpecial               = (1 << 5)
-    IsValid                 = (1 << 6)
+    IsModuleDirectory       =        1
+    IsNonModuleDirectory    = (1 <<  1)
+    IsFileSystemDirectory   = (1 <<  2)
+    IsFile                  = (1 <<  3)
+    IsClass                 = (1 <<  4)
+    IsFunction              = (1 <<  5)
+    IsSpecial               = (1 <<  6)
+    IsValid                 = (1 <<  7)
+    IsDll                   = (1 <<  8)
+    IsC                     = (1 <<  9)
+    IsBuiltin               = (1 << 10)
+    IsInitPy                = (1 << 11)
 
 class PYTHON_PATH_ENTRY_TYPE(Structure):
     _fields_ = [
         ('IsModuleDirectory', ULONG, 1),
         ('IsNonModuleDirectory', ULONG, 1),
+        ('IsFileSystemDirectory', ULONG, 1),
         ('IsFile', ULONG, 1),
         ('IsClass', ULONG, 1),
         ('IsFunction', ULONG, 1),
@@ -63,6 +69,7 @@ class PYTHON_PATH_ENTRY_TYPE(Structure):
         ('IsDll', ULONG, 1),
         ('IsC', ULONG, 1),
         ('IsBuiltin', ULONG, 1),
+        ('IsInitPy', ULONG, 1),
     ]
 
 #===============================================================================
