@@ -102,21 +102,24 @@ USHORT NumberOfTraceStores = (
 USHORT ElementsPerTraceStore = 9;
 USHORT NumberOfMetadataStores = 8;
 
-LARGE_INTEGER InitialTraceStoreFileSizes[] = {
-    10 << 30,   // Event
-    10 << 25,   // StringBuffer
-    10 << 20,   // FunctionTable
-    10 << 25,   // FunctionTableEntry
-    10 << 20,   // PathTable
-    10 << 25,   // PathTableEntry
-    10 << 20,   // TraceSession
-    10 << 20,   // StringArray
-    10 << 20,   // StringTable
-    10 << 30,   // EventTraitsEx
-    10 << 24,   // WsWatchInfoEx
-    10 << 24,   // WorkingSetExInfo
+LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
+     1 << 30,   // Event
+     1 << 25,   // StringBuffer
+     1 << 16,   // FunctionTable
+     1 << 26,   // FunctionTableEntry
+     1 << 16,   // PathTable
+     1 << 26,   // PathTableEntry
+     1 << 18,   // TraceSession
+     1 << 21,   // StringArray
+     1 << 21,   // StringTable
+     1 << 30,   // EventTraitsEx
+     1 << 27,   // WsWatchInfoEx
+     1 << 26,   // WorkingSetExInfo
 };
 
+CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
+    InitialTraceStoreFileSizesAsLongLong
+);
 
 //
 // N.B. To add a new flag to each store in vim, mark the brace boundaries with
