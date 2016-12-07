@@ -655,7 +655,6 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             'Compression Ratio',
             'Space Saved %',
             '# Allocations',
-            'Mapping Size',
             'Dropped Records',
             'Exhausted Free Memory Maps',
             'Allocations Outpaced Async Prep.',
@@ -686,7 +685,6 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
                 drop('%0.2f', store.compression_ratio, 1.0),
                 drop('%0.2f %%', store.space_saved_percent, 0),
                 fmt(store.num_allocations),
-                bytes_to_human(store.mapping_size),
                 fmtz(store.dropped_records),
                 fmtz(store.exhausted_free_memory_maps),
                 fmtz(store.allocations_outpacing_next_memory_map_preparation),
@@ -702,7 +700,6 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             make_row((name, store))
             for metadata_store in metadata_stores:
                 make_row(metadata_store)
-
 
         from itertools import chain, repeat
 

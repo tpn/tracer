@@ -27,7 +27,8 @@ InitializeTraceStores(
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
-    PULONG InitialFileSizes,
+    PLARGE_INTEGER InitialFileSizes,
+    PLARGE_INTEGER MappingSizes,
     PTRACE_FLAGS TraceFlags,
     PTRACE_STORE_FIELD_RELOCS FieldRelocations
     )
@@ -108,7 +109,7 @@ Return Value:
     LARGE_INTEGER DirectoryLength;
     LARGE_INTEGER RemainingChars;
     LONG_INTEGER DirectorySizeInBytes;
-    PULONG Sizes = InitialFileSizes;
+    PLARGE_INTEGER Sizes = InitialFileSizes;
     WCHAR Path[_OUR_MAX_PATH];
 
     //
@@ -145,7 +146,7 @@ Return Value:
     Readonly = Flags.Readonly;
 
     if (!Sizes) {
-        Sizes = (PULONG)&InitialTraceStoreFileSizes[0];
+        Sizes = InitialTraceStoreFileSizes;
     }
 
     Result = StringCchLengthW(
@@ -492,8 +493,11 @@ Return Value:
         PTRACE_STORE_RELOC Reloc;
 
         LPCWSTR FileName = TraceStoreFileNames[Index];
-        ULONG InitialSize = Sizes[Index];
-        ULONG MappingSize = InitialSize;
+        LARGE_INTEGER InitialSize;
+        LARGE_INTEGER MappingSize;
+
+        InitialSize.QuadPart = Sizes[Index].QuadPart;
+        MappingSize.QuadPart = InitialSize.QuadPart;
 
         //ULONG MappingSize = DefaultTraceStoreMappingSize;
         //if (StoreIndex == TraceStoreEventIndex) {
@@ -650,6 +654,7 @@ Return Value:
                                  BaseDirectory,
                                  TraceStores,
                                  SizeOfTraceStores,
+                                 NULL,
                                  NULL,
                                  &Flags,
                                  NULL);
