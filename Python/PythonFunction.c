@@ -702,7 +702,11 @@ Return Value:
 
     ModuleName->Buffer = FullName->Buffer;
 
-    if (ParentName->Length) {
+    //
+    // Copy the parent's name if it exists and is not __init__.
+    //
+
+    if (ParentName->Length && !ParentPathEntry->IsInitPy) {
         __movsb(Dest, (PBYTE)ParentName->Buffer, ParentName->Length);
         Dest += ParentName->Length;
         *Dest++ = '\\';
@@ -806,10 +810,10 @@ Return Value:
     //
 
     Function->Signature = (ULONG_PTR)(
-        PathEntry->PathEntryType    ^
-        PathEntry->PathHash         ^
-        PathEntry->FullNameHash     ^
-        Function->CodeObjectHash    ^
+        PathEntry->PathEntryTypeFlags ^
+        PathEntry->PathHash           ^
+        PathEntry->FullNameHash       ^
+        Function->CodeObjectHash      ^
         Function->NumberOfCodeLines
     );
 

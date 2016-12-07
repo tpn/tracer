@@ -2095,7 +2095,8 @@ BOOL
     _In_     PRTL_BITMAP         Backslashes,
     _In_     PUSHORT             BitmapHintIndex,
     _In_     PUSHORT             NumberOfBackslashesRemaining,
-    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    _In_     BOOL                ForceModuleDirectory
     );
 typedef GET_PATH_ENTRY_FOR_DIRECTORY *PGET_PATH_ENTRY_FOR_DIRECTORY;
 typedef GET_PATH_ENTRY_FOR_DIRECTORY **PPGET_PATH_ENTRY_FOR_DIRECTORY;
@@ -2418,17 +2419,6 @@ typedef struct _PYTHON_PATH_TABLE {
 
 } PYTHON_PATH_TABLE, *PPYTHON_PATH_TABLE;
 
-typedef enum _PYTHON_PATH_ENTRY_TYPE {
-    ModuleDirectory     =        1,
-    NonModuleDirectory  =   1 << 1, // 2
-    File                =   1 << 2, // 4
-    Class               =   1 << 3, // 8
-    Function            =   1 << 4, // 16
-    Builtin             =   1 << 5, // 32
-    CFunction           =   1 << 6, // 64
-    PythonLine          =   1 << 7  // 128
-} PYTHON_PATH_ENTRY_TYPE, *PPYTHON_PATH_ENTRY_TYPE;
-
 typedef struct _PYTHON_PATH_TABLE_ENTRY {
 
     //                                                      //      s
@@ -2439,28 +2429,29 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         PREFIX_TABLE_ENTRY PrefixTableEntry;                //  ^   ^   ^
         struct {
 
+            CSHORT NodeTypeCode;                            //  2   0   2
+            CSHORT PrefixNameLength;                        //  2   2   4
+
             //
             // Stash our flags in here given that NextPrefixTree needs to be
             // 8-byte aligned and we're only 4-byte aligned at this point.
             //
 
-            CSHORT NodeTypeCode;                            //  2   0   2
-            CSHORT PrefixNameLength;                        //  2   2   4
-
             union {
-                ULONG Flags;                                //  4   4   8
-                PYTHON_PATH_ENTRY_TYPE PathEntryType;
+                ULONG PathEntryTypeFlags;                   //  4   4   8
                 struct {
                     ULONG IsModuleDirectory:1;      // 1
                     ULONG IsNonModuleDirectory:1;   // 2
-                    ULONG IsFile:1;                 // 4
-                    ULONG IsClass:1;                // 8
-                    ULONG IsFunction:1;             // 16
-                    ULONG IsSpecial:1;              // 32
-                    ULONG IsValid:1;                // 64
-                    ULONG IsDll:1;                  // 128
-                    ULONG IsC:1;                    // 256
-                    ULONG IsBuiltin:1;              // 512
+                    ULONG IsFileSystemDirectory:1;  // 4
+                    ULONG IsFile:1;                 // 8
+                    ULONG IsClass:1;                // 16
+                    ULONG IsFunction:1;             // 32
+                    ULONG IsSpecial:1;              // 64
+                    ULONG IsValid:1;                // 128
+                    ULONG IsDll:1;                  // 256
+                    ULONG IsC:1;                    // 512
+                    ULONG IsBuiltin:1;              // 1024
+                    ULONG IsInitPy:1;               // 2048
                 };
             };
 
@@ -2486,7 +2477,10 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         struct {
             USHORT PathLength;                              // 2    48  50
             USHORT PathMaximumLength;                       // 2    50  52
-            LONG   PathHash;                                // 4    52  56
+            union {
+                CHAR   Extension[4];                        // 4    52  56
+                LONG   PathHash;                            // 4    52  56
+            };
             PCHAR  PathBuffer;                              // 8    56  64
         };
     };
