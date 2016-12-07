@@ -1725,7 +1725,8 @@ BOOL
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
-    _In_opt_    PULONG          InitialFileSizes,
+    _In_opt_    PLARGE_INTEGER  InitialFileSizes,
+    _In_opt_    PLARGE_INTEGER  MappingSizes,
     _In_opt_    PTRACE_FLAGS    TraceFlags,
     _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations
     );

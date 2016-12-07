@@ -657,7 +657,7 @@ TryMapMemory:
         TraceStore->MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
-        MemoryMap->MappingSize.LowPart,
+        MemoryMap->MappingSize.QuadPart,
         PreferredBaseAddress,
         TraceStore->NumaNode
     );
@@ -956,7 +956,7 @@ TryMapMemory:
         TraceStore->MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
-        MemoryMap->MappingSize.LowPart,
+        MemoryMap->MappingSize.QuadPart,
         PreferredBaseAddress,
         TraceStore->NumaNode
     );

@@ -102,7 +102,7 @@ USHORT NumberOfTraceStores = (
 USHORT ElementsPerTraceStore = 9;
 USHORT NumberOfMetadataStores = 8;
 
-ULONG InitialTraceStoreFileSizes[] = {
+LARGE_INTEGER InitialTraceStoreFileSizes[] = {
     10 << 30,   // Event
     10 << 25,   // StringBuffer
     10 << 20,   // FunctionTable
@@ -389,40 +389,44 @@ USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 //       mapping size.
 //
 
-ULONG DefaultTraceStoreMappingSize = (1 << 26);
-ULONG DefaultTraceStoreEventMappingSize = (1 << 30);
+LARGE_INTEGER DefaultTraceStoreMappingSize = { 1 << 26 };
+LARGE_INTEGER DefaultTraceStoreEventMappingSize = { 1 << 30 };
 
-ULONG DefaultAllocationTraceStoreSize = (1 << 21);
-ULONG DefaultAllocationTraceStoreMappingSize = (1 << 21);
+LARGE_INTEGER DefaultAllocationTraceStoreSize = { 1 << 21 };
+LARGE_INTEGER DefaultAllocationTraceStoreMappingSize = { 1 << 21 };
 
-ULONG DefaultRelocationTraceStoreSize = (1 << 16);
-ULONG DefaultRelocationTraceStoreMappingSize = (1 << 16);
+LARGE_INTEGER DefaultRelocationTraceStoreSize = { 1 << 16 };
+LARGE_INTEGER DefaultRelocationTraceStoreMappingSize = { 1 << 16 };
 
-ULONG DefaultAddressTraceStoreSize = (1 << 21);
-ULONG DefaultAddressTraceStoreMappingSize = (1 << 21);
+LARGE_INTEGER DefaultAddressTraceStoreSize = { 1 << 21 };
+LARGE_INTEGER DefaultAddressTraceStoreMappingSize = { 1 << 21 };
 
-ULONG DefaultAddressRangeTraceStoreSize = (1 << 20);
-ULONG DefaultAddressRangeTraceStoreMappingSize = (1 << 20);
+LARGE_INTEGER DefaultAddressRangeTraceStoreSize = { 1 << 20 };
+LARGE_INTEGER DefaultAddressRangeTraceStoreMappingSize = { 1 << 20 };
 
-ULONG DefaultAllocationTimestampTraceStoreSize = (1 << 26);
-ULONG DefaultAllocationTimestampTraceStoreMappingSize = (1 << 26);
+LARGE_INTEGER DefaultAllocationTimestampTraceStoreSize = { 1 << 26 };
+LARGE_INTEGER DefaultAllocationTimestampTraceStoreMappingSize = { 1 << 26 };
 
-ULONG DefaultAllocationTimestampDeltaTraceStoreSize = (1 << 25);
-ULONG DefaultAllocationTimestampDeltaTraceStoreMappingSize = (1 << 25);
+LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreSize = { 1 << 25 };
+LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreMappingSize = {
+    1 << 25
+};
 
-ULONG DefaultMetadataInfoTraceStoreSize = (
+LARGE_INTEGER DefaultMetadataInfoTraceStoreSize = {
     sizeof(TRACE_STORE_METADATA_INFO)
-);
-ULONG DefaultMetadataInfoTraceStoreMappingSize = (
-    sizeof(TRACE_STORE_METADATA_INFO)
-);
+};
 
-ULONG DefaultInfoTraceStoreSize = (
+LARGE_INTEGER DefaultMetadataInfoTraceStoreMappingSize = {
+    sizeof(TRACE_STORE_METADATA_INFO)
+};
+
+LARGE_INTEGER DefaultInfoTraceStoreSize = {
     sizeof(TRACE_STORE_INFO)
-);
-ULONG DefaultInfoTraceStoreMappingSize = (
+};
+
+LARGE_INTEGER DefaultInfoTraceStoreMappingSize = {
     sizeof(TRACE_STORE_INFO)
-);
+};
 
 //
 // N.B. To add a new flag to each store in vim, mark the brace boundaries with

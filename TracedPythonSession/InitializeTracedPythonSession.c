@@ -534,6 +534,7 @@ Return Value:
         NULL,           // TraceStores
         &RequiredSize,  // SizeOfTraceStores
         NULL,           // InitialFileSizes
+        NULL,           // MappingSizes
         &TraceFlags,    // TraceFlags
         NULL            // FieldRelocations
     );
@@ -565,6 +566,7 @@ Return Value:
         Session->TraceSessionDirectory->Buffer,
         Session->TraceStores,
         &RequiredSize,
+        NULL,
         NULL,
         &TraceFlags,
         Session->PythonTracerTraceStoreRelocations

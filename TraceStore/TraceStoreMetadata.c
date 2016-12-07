@@ -163,7 +163,7 @@ MetadataInfoMetadataBindComplete(
 
 Routine Description:
 
-    This is the bind complete callback routine for :metadatainfo stores.  It
+    This is the bind complete callback routine for :MetadataInfo stores.  It
     is responsible for wiring up the TRACE_STORE_INFO structures for the other
     metadata stores.
 
@@ -349,7 +349,6 @@ Return Value:
     TraceStore->NumberOfAddresses.QuadPart = (
         AddressStore->Totals->NumberOfAllocations.QuadPart
     );
-
 
     return TRUE;
 }

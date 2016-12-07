@@ -378,14 +378,6 @@ Return Value:
     MemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
 
     //
-    // Make sure the mapping size is under 2GB.
-    //
-
-    if (MemoryMap->MappingSize.HighPart != 0) {
-        return FALSE;
-    }
-
-    //
     // Relocation stores get special-cased: we need to adjust a couple of
     // pointers once mapped (Reloc->Relocations and bitmap buffer pointers)
     // and it's vastly easier to just leverage copy-on-write here.
@@ -420,7 +412,7 @@ Return Value:
         MapViewOfFileDesiredAccess,
         MemoryMap->FileOffset.HighPart,
         MemoryMap->FileOffset.LowPart,
-        MemoryMap->MappingSize.LowPart,
+        MemoryMap->MappingSize.QuadPart,
         0,
         TraceStore->NumaNode
     );
@@ -649,7 +641,6 @@ Return Value:
             //
 
             NumberOfMaps = TraceStore->NumberOfAddressRanges.LowPart;
-
         }
     }
 

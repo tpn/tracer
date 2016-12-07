@@ -19,10 +19,10 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 InitializeStore(
-    PCWSTR       Path,
-    PTRACE_STORE TraceStore,
-    ULONG        InitialSize,
-    ULONG        MappingSize
+    PCWSTR        Path,
+    PTRACE_STORE  TraceStore,
+    LARGE_INTEGER InitialSize,
+    LARGE_INTEGER MappingSize
     )
 /*++
 
@@ -114,25 +114,14 @@ Return Value:
     // Initialize default values.
     //
 
-    TraceStore->InitialSize.HighPart = 0;
-    TraceStore->InitialSize.LowPart = InitialSize;
-    TraceStore->ExtensionSize.HighPart = 0;
-    TraceStore->ExtensionSize.LowPart = InitialSize;
+    TraceStore->InitialSize.QuadPart = InitialSize.QuadPart;
+    TraceStore->ExtensionSize.QuadPart = InitialSize.QuadPart;
 
-    if (!MappingSize) {
-        MappingSize = DefaultTraceStoreMappingSize;
+    if (!MappingSize.QuadPart) {
+        MappingSize.QuadPart = DefaultTraceStoreMappingSize.QuadPart;
     }
 
-    TraceStore->MappingSize.HighPart = 0;
-    TraceStore->MappingSize.LowPart = MappingSize;
-
-    //
-    // Cap the mapping size to the maximum if necessary.
-    //
-
-    if (TraceStore->MappingSize.QuadPart > MaximumMappingSize.QuadPart) {
-        TraceStore->MappingSize.QuadPart = MaximumMappingSize.QuadPart;
-    }
+    TraceStore->MappingSize.QuadPart = MappingSize.QuadPart;
 
     TraceStore->AllocateRecords = TraceStoreAllocateRecords;
     TraceStore->AllocateRecordsWithTimestamp = (
@@ -295,8 +284,8 @@ InitializeTraceStore(
     PTRACE_STORE AllocationTimestampStore,
     PTRACE_STORE AllocationTimestampDeltaStore,
     PTRACE_STORE InfoStore,
-    ULONG InitialSize,
-    ULONG MappingSize,
+    LARGE_INTEGER InitialSize,
+    LARGE_INTEGER MappingSize,
     PTRACE_FLAGS TraceFlags,
     PTRACE_STORE_RELOC Reloc
     )

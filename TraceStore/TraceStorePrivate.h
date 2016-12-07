@@ -1364,8 +1364,8 @@ BOOL
 (INITIALIZE_STORE)(
     _In_     PCWSTR Path,
     _In_     PTRACE_STORE TraceStore,
-    _In_opt_ ULONG InitialSize,
-    _In_opt_ ULONG MappingSize
+    _In_opt_ LARGE_INTEGER InitialSize,
+    _In_opt_ LARGE_INTEGER MappingSize
     );
 typedef INITIALIZE_STORE *PINITIALIZE_STORE;
 INITIALIZE_STORE InitializeStore;
@@ -1386,8 +1386,8 @@ BOOL
     _In_ PTRACE_STORE AllocationTimestampStore,
     _In_ PTRACE_STORE AllocationTimestampDeltaStore,
     _In_ PTRACE_STORE InfoStore,
-    _In_ ULONG InitialSize,
-    _In_ ULONG MappingSize,
+    _In_ LARGE_INTEGER InitialSize,
+    _In_ LARGE_INTEGER MappingSize,
     _In_ PTRACE_FLAGS TraceFlags,
     _In_ PTRACE_STORE_RELOC Reloc
     );
