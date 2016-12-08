@@ -135,25 +135,15 @@ typedef struct _PYTHON_TRACE_EVENT2 {
 
 C_ASSERT(sizeof(PYTHON_TRACE_EVENT2) == 8);
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) _PYTHON_CALL_STACK_ENTRY {
-
-    _Field_range_(==, sizeof(struct _PYTHON_CALL_STACK_ENTRY))
-    USHORT SizeOfStruct;
-
-    //
-    // Pad out to 8 bytes.
-    //
-
-    USHORT Padding[3];
-
-    //
-    // The function for the current frame.
-    //
-
+typedef struct _PYTHON_CALL_STACK_ENTRY {
+    LIST_ENTRY ListEntry;
+    LARGE_INTEGER EnterTimestamp;
+    LARGE_INTEGER ReturnTimestamp;
+    LARGE_INTEGER RecursionCount;
     PPYTHON_FUNCTION Function;
-
-
+    ULONGLONG Padding[2];
 } PYTHON_CALL_STACK_ENTRY, *PPYTHON_CALL_STACK_ENTRY;
+C_ASSERT(sizeof(PYTHON_CALL_STACK_ENTRY) == 64);
 
 //
 // Forward declarations.
