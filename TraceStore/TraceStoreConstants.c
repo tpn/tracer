@@ -36,6 +36,17 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceEventTraitsEx.dat",
     L"TraceWsWatchInfoEx.dat",
     L"TraceWsWorkingSetExInfo.dat",
+    L"TraceStoreCCallStackTable.dat",
+    L"TraceStoreCCallStackTableEntry.dat",
+    L"TraceStoreCModuleTable.dat",
+    L"TraceStoreCModuleTableEntry.dat",
+    L"TraceStorePythonCallStackTable.dat",
+    L"TraceStorePythonCallStackTableEntry.dat",
+    L"TraceStorePythonModuleTable.dat",
+    L"TraceStorePythonModuleTableEntry.dat",
+    L"TraceStoreLineTable.dat",
+    L"TraceStoreLineTableEntry.dat",
+    L"TraceStoreLineStringBuffer.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -115,6 +126,17 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 30,   // EventTraitsEx
      1 << 27,   // WsWatchInfoEx
      1 << 26,   // WorkingSetExInfo
+     1 << 16,   // CCallStackTable
+     1 << 25,   // CCallStackTableEntry
+     1 << 16,   // CModuleTable
+     1 << 25,   // CModuleTableEntry
+     1 << 16,   // PythonCallStackTable
+     1 << 25,   // PythonCallStackTableEntry
+     1 << 16,   // PythonModuleTable
+     1 << 25,   // PythonModuleTableEntry
+     1 << 16,   // LineTable
+     1 << 25,   // LineTableEntry
+     1 << 25    // LineStringBuffer
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -332,6 +354,193 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         1,  // BlockingAllocations
         1,  // LinkedStore (linked to WsWatchInfoEx)
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // CCallStackTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // CCallStackTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // CModuleTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // CModuleTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // PythonCallStackTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // PythonCallStackTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // PythonoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // PythonModuleTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // PythonModuleTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // LineTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // LineTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // LineStringBuffer
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
         0,  // CoalescedAllocations
         0   // Unused
     }
