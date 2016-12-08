@@ -135,6 +135,26 @@ typedef struct _PYTHON_TRACE_EVENT2 {
 
 C_ASSERT(sizeof(PYTHON_TRACE_EVENT2) == 8);
 
+typedef struct _Struct_size_bytes_(SizeOfStruct) _PYTHON_CALL_STACK_ENTRY {
+
+    _Field_range_(==, sizeof(struct _PYTHON_CALL_STACK_ENTRY))
+    USHORT SizeOfStruct;
+
+    //
+    // Pad out to 8 bytes.
+    //
+
+    USHORT Padding[3];
+
+    //
+    // The function for the current frame.
+    //
+
+    PPYTHON_FUNCTION Function;
+
+
+} PYTHON_CALL_STACK_ENTRY, *PPYTHON_CALL_STACK_ENTRY;
+
 //
 // Forward declarations.
 //
@@ -142,20 +162,109 @@ C_ASSERT(sizeof(PYTHON_TRACE_EVENT2) == 8);
 typedef struct _PYTHON_TRACE_CONTEXT PYTHON_TRACE_CONTEXT;
 typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
 
+//
+// Trace context flags.
+//
+
 typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
     ULONG AsLong;
-    struct {
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, the tracer will start off profiling instead of tracing.
+        //
+
         ULONG ProfileOnly:1;
+
+        //
+        // When set, the tracer will *only* register for Python trace events,
+        // which means it won't get called for C events.
+        //
+
+        ULONG TraceOnly:1;
+
+        //
+        // When set, tracks the maximum reference count values observed for
+        // _Py_NoneStruct, _Py_TrueStruct, _Py_ZeroStruct, and _Py_FalseStruct
+        // if it's available.  These values are saved to the LastRun registry
+        // key at exit.
+        //
+
+        ULONG TrackMaxRefCounts:1;
+
+        //
+        // When set, a counter is incremented for every trace event type and
+        // saved to the LastRun registry key at exit.
+        //
+
+        ULONG CountEvents:1;
+
+        //
+        // The following three flags only apply when using event type 1.
+        //
+
+        //
+        // When set, virtual memory stats will be tracked during tracing.
+        // Defaults to FALSE.
+        //
+
+        ULONG TraceMemory:1;
+
+        //
+        // When set, I/O counters will be tracked during tracing.
+        // Defaults to FALSE.
+        //
+
+        ULONG TraceIoCounters:1;
+
+        //
+        // When set, handle counts will be tracked during tracing.
+        // Defaults to FALSE.
+        //
+
+        ULONG TraceHandleCount:1;
+
+        //
+        // End of event type 1 flags.
+        //
+
+        //
+        // The following three flags control the logic that determines whether
+        // a function is of interest for tracing.  The precendence is the same
+        // order as the flags (i.e. TraceEverything > TraceNothing > ...).
+        //
+
+        ULONG TraceEverything:1;
+        ULONG TraceNothing:1;
+        ULONG TraceEverythingWhenNoModuleFilterSet:1;
+    };
+
+} PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
+C_ASSERT(sizeof(PYTHON_TRACE_CONTEXT_FLAGS) == sizeof(ULONG));
+
+//
+// Runtime Parameters.
+//
+
+typedef struct _PYTHON_TRACER_RUNTIME_PARAMETERS {
+    ULONG TraceEventType;
+    ULONG CallbackWorkerType;
+} PYTHON_TRACER_RUNTIME_PARAMETERS, *PPYTHON_TRACER_RUNTIME_PARAMETERS;
+
+//
+// Runtime State.
+//
+
+typedef union _PYTHON_TRACER_RUNTIME_STATE {
+    ULONG AsLong;
+    struct {
         ULONG IsProfiling:1;
         ULONG IsTracing:1;
         ULONG HasStarted:1;
-        ULONG TraceMemory:1;
-        ULONG TraceIoCounters:1;
-        ULONG TraceHandleCount:1;
-        ULONG TrackMaxRefCounts:1;
         ULONG HasModuleFilter:1;
     };
-} PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
+} PYTHON_TRACER_RUNTIME_STATE, *PPYTHON_TRACER_RUNTIME_STATE;
 
 typedef struct _EVENT_TYPE {
     union {
@@ -274,7 +383,6 @@ BOOL
     _In_opt_    PPYOBJECT               ArgObject
     );
 typedef PY_TRACE_CALLBACK *PPY_TRACE_CALLBACK;
-PYTHON_TRACER_API PY_TRACE_CALLBACK PyTraceCallbackWorker;
 
 typedef
 _Check_return_
@@ -300,6 +408,8 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     _Field_range_(==, sizeof(struct _PYTHON_TRACE_CONTEXT)) ULONG Size;
 
     PYTHON_TRACE_CONTEXT_FLAGS Flags;
+    PYTHON_TRACER_RUNTIME_PARAMETERS RuntimeParameters;
+    PYTHON_TRACER_RUNTIME_STATE RuntimeState;
 
     PRTL               Rtl;
     PPYTHON            Python;
@@ -370,18 +480,6 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
 typedef
 _Check_return_
 _Success_(return != 0)
-PPY_TRACE_EVENT
-(GET_FUNCTION_POINTER_FOR_TRACE_EVENT_TYPE)(
-    _In_ PYTHON_TRACE_EVENT_TYPE TraceEventType
-    );
-typedef GET_FUNCTION_POINTER_FOR_TRACE_EVENT_TYPE \
-      *PGET_FUNCTION_POINTER_FOR_TRACE_EVENT_TYPE;
-PYTHON_TRACER_API GET_FUNCTION_POINTER_FOR_TRACE_EVENT_TYPE \
-                  GetFunctionPointerForTraceEventType;
-
-typedef
-_Check_return_
-_Success_(return != 0)
 PPYTHON_TRACE_EVENT1
 (ALLOCATE_PYTHON_TRACE_EVENT1)(
     _In_ PTRACE_STORE TraceStore,
@@ -414,7 +512,6 @@ BOOL
     _Inout_ PULONG SizeOfPythonTraceContext,
     _In_opt_ PPYTHON Python,
     _In_opt_ PTRACE_CONTEXT TraceContext,
-    _In_opt_ PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
     _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;

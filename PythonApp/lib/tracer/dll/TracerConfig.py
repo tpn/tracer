@@ -136,18 +136,12 @@ class TRACER_FLAGS(Structure):
         ('LoadPGOptimizedLibraries', ULONG, 1),
         ('DisableTraceSessionDirectoryCompression', ULONG, 1),
         ('DisablePrefaultPages', ULONG, 1),
-        ('EnableMemoryTracing', ULONG, 1),
-        ('EnableIoCounterTracing', ULONG, 1),
-        ('EnableHandleCountTracing', ULONG, 1),
         ('DisableFileFlagOverlapped', ULONG, 1),
         ('DisableFileFlagSequentialScan', ULONG, 1),
         ('EnableFileFlagRandomAccess', ULONG, 1),
         ('EnableFileFlagWriteThrough', ULONG, 1),
-        ('ProfileOnly', ULONG, 1),
-        ('TrackMaxRefCounts', ULONG, 1),
         ('EnableWorkingSetTracing', ULONG, 1),
         ('DisableAsynchronousInitialization', ULONG, 1),
-        ('TraceEventType', ULONG, 15),
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
 

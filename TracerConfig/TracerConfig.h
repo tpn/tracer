@@ -226,32 +226,6 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG DisablePrefaultPages:1;
 
     //
-    // When set, virtual memory stats will be tracked during tracing.
-    // Defaults to FALSE.
-    //
-
-    ULONG EnableMemoryTracing:1;
-
-    //
-    // When set, I/O counters will be tracked during tracing.
-    // Defaults to FALSE.
-    //
-
-    ULONG EnableIoCounterTracing:1;
-
-    //
-    // When set, handle counts will be tracked during tracing.
-    // Defaults to FALSE.
-    //
-
-    ULONG EnableHandleCountTracing:1;
-
-    //
-    // The following flags relate to the dwFlagsAndAttributes parameter passed
-    // to CreateFile() when opening a trace store.
-    //
-
-    //
     // When set, do not set the FILE_FLAG_OVERLAPPED flag.
     //
 
@@ -279,20 +253,6 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableFileFlagWriteThrough:1;
 
     //
-    // When set, the tracer will start off profiling instead of tracing.
-    //
-
-    ULONG ProfileOnly:1;
-
-    //
-    // When set, tracks the maximum reference count values observed for
-    // _Py_NoneStruct, _Py_TrueStruct, _Py_ZeroStruct, and _Py_FalseStruct if
-    // it's available.
-    //
-
-    ULONG TrackMaxRefCounts:1;
-
-    //
     // When set, enables tracing of the process's working set.
     //
 
@@ -310,15 +270,6 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     //
 
     ULONG DisableAsynchronousInitialization:1;
-
-    //
-    // The remaining bits are used for indicating which trace event type is
-    // being used.  To add a new bit flag, decrement this bit field width by
-    // one and add the flag *above* this flag.  That allows us to always keep
-    // the event type at the end of the bitmask.
-    //
-
-    ULONG TraceEventType:15;
 
 } TRACER_FLAGS, *PTRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));

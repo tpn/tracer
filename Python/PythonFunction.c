@@ -767,7 +767,18 @@ Return Value:
     Path->MaximumLength = Path->Length;
     Path->Buffer = ParentPathEntry->Path.Buffer;
 
+    //
+    // Initialize the call count.
+    //
+
+    Function->CallCount = 1;
+
+    //
+    // Indicate that the path entry is a) valid, and b) a function.
+    //
+
     PathEntry->IsFunction = TRUE;
+    PathEntry->IsValid = TRUE;
 
     //
     // Resolve line numbers.  This will set the FirstLineNumber and
@@ -775,14 +786,6 @@ Return Value:
     //
 
     ResolveLineNumbers(Python, Function);
-
-    PathEntry->IsValid = TRUE;
-
-    //
-    // Initialize the call count.
-    //
-
-    Function->CallCount = 1;
 
     //
     // Calculate the code object's hash.

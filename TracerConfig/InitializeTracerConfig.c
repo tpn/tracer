@@ -554,18 +554,12 @@ Return Value:
     READ_REG_DWORD_FLAG(LoadPGOptimizedLibraries, FALSE);
     READ_REG_DWORD_FLAG(DisableTraceSessionDirectoryCompression, FALSE);
     READ_REG_DWORD_FLAG(DisablePrefaultPages, FALSE);
-    READ_REG_DWORD_FLAG(EnableMemoryTracing, FALSE);
-    READ_REG_DWORD_FLAG(EnableIoCounterTracing, FALSE);
-    READ_REG_DWORD_FLAG(EnableHandleCountTracing, FALSE);
     READ_REG_DWORD_FLAG(DisableFileFlagOverlapped, FALSE);
     READ_REG_DWORD_FLAG(DisableFileFlagSequentialScan, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagRandomAccess, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
-    READ_REG_DWORD_FLAG(ProfileOnly, FALSE);
-    READ_REG_DWORD_FLAG(TrackMaxRefCounts, FALSE);
     READ_REG_DWORD_FLAG(EnableWorkingSetTracing, FALSE);
     READ_REG_DWORD_FLAG(DisableAsynchronousInitialization, FALSE);
-    READ_REG_DWORD_FLAG(TraceEventType, 1);
 
     //
     // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has

@@ -110,6 +110,7 @@
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="PythonTracerCallbackWorkers.c" />
     <ClCompile Include="PythonTracerConstants.c" />
     <ClCompile Include="PythonTracerTraceStoreRelocations.c" />
     <ClCompile Include="PyTraceEvent1.c" />

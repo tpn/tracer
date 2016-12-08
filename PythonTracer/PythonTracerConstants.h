@@ -20,7 +20,11 @@ Abstract:
 extern "C" {
 #endif
 
-PPY_TRACE_CALLBACK PythonTraceEventTypeToCallback[];
+CONST UNICODE_STRING RootRegistryPath;
+CONST UNICODE_STRING LastRunRegistryPath;
+
+CONST PPY_TRACE_EVENT PythonTraceEventTypeToFunctionPointer[];
+CONST PPY_TRACE_CALLBACK PythonTraceCallbackWorkerTypeToFunctionPointer[];
 
 #ifdef __cplusplus
 }; // extern "C"
