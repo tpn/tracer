@@ -18,16 +18,12 @@ Abstract:
     flexibility for experimenting with new tracing approaches without losing
     past "working" functionality.
 
+    The routine that is picked is determined at runtime via the registry key
+    HKLM\Software\Tracer\PythonTracer\CallbackWorkerType.
+
 --*/
 
 #include "stdafx.h"
-
-//
-// Change this definition to alter the callback function (until we have
-// something more sophisticated in place; ideally reading from the registry).
-//
-
-PPY_TRACE_CALLBACK PyTraceCallbackWorker = PyTraceCallbackWorker1;
 
 _Use_decl_annotations_
 BOOL
