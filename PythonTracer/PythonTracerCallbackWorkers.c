@@ -171,6 +171,40 @@ Return Value:
 
 }
 
+
+_Check_return_
+_Success_(return != 0)
+PPYTHON_CALL_STACK_ENTRY
+AllocatePythonCallStackEntry(
+    _In_ PPYTHON_TRACE_CONTEXT Context,
+    _In_ PLARGE_INTEGER Timestamp
+    )
+{
+    TRACE_STORE_ID TraceStoreId;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE TraceStore;
+
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_CALL_STACK_ENTRY) };
+
+    TraceContext = Context->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    TraceStoreId = TraceStorePythonCallStackTableEntryId;
+    TraceStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);
+
+    return (PPYTHON_CALL_STACK_ENTRY)(
+        TraceStore->AllocateRecordsWithTimestamp(
+            TraceStore->TraceContext,
+            TraceStore,
+            &RecordSize,
+            &NumberOfRecords,
+            Timestamp
+        )
+    );
+}
+
+
 _Use_decl_annotations_
 BOOL
 PyTraceCallbackWorker2(
@@ -213,6 +247,11 @@ Return Value:
     PPYTHON Python;
     PPYTHON_FUNCTION Function;
     PPYTHON_CALL_STACK_ENTRY CallStackEntry;
+
+    PTRACE_CONTEXT TraceContext;
+
+    LARGE_INTEGER Elapsed;
+    LARGE_INTEGER Timestamp;
 
     //
     // Initialize the event traits.
@@ -259,11 +298,13 @@ Return Value:
 
     Rtl = Context->Rtl;
     Python = Context->Python;
+    TraceContext = Context->TraceContext;
 
     Function = NULL;
     CallStackEntry = NULL;
 
     if (EventTraits.IsCall) {
+
 
         Context->Depth++;
 
@@ -293,6 +334,25 @@ Return Value:
         // As this is a call event, we need to create a new call stack entry.
         //
 
+        //
+        // Save the timestamp for this event.
+        //
+
+        TraceContextQueryPerformanceCounter(TraceContext, &Elapsed, &Timestamp);
+
+        //
+        // Allocate a call stack entry.
+        //
+
+        CallStackEntry = AllocatePythonCallStackEntry(Context, &Timestamp);
+
+        if (!CallStackEntry) {
+            return FALSE;
+        }
+
+        CallStackEntry->EnterTimestamp.QuadPart = Timestamp.QuadPart;
+        InitializeListHead(&CallStackEntry->ListEntry);
+
 
     } else if (EventTraits.IsReturn) {
 
@@ -300,7 +360,7 @@ Return Value:
 
     }
 
-    Success = FALSE;
+    Success = TRUE;
     return Success;
 }
 
