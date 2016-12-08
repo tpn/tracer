@@ -114,20 +114,31 @@ IS_BOUND = False
 # Enums/Indexes/Constants
 #===============================================================================
 
-TraceStoreNullId                    =   0
-TraceStoreEventId                   =   1
-TraceStoreStringBufferId            =   2
-TraceStoreFunctionTableId           =   3
-TraceStoreFunctionTableEntryId      =   4
-TraceStorePathTableId               =   5
-TraceStorePathTableEntryId          =   6
-TraceStoreSessionId                 =   7
-TraceStoreStringArrayId             =   8
-TraceStoreStringTableId             =   9
-TraceStoreEventTraitsExId           =  10
-TraceStoreWsWatchInfoExId           =  11
-TraceStoreWsWorkingSetExInfoId      =  12
-TraceStoreInvalidId                 =  13
+TraceStoreNullId                        =   0
+TraceStoreEventId                       =   1
+TraceStoreStringBufferId                =   2
+TraceStoreFunctionTableId               =   3
+TraceStoreFunctionTableEntryId          =   4
+TraceStorePathTableId                   =   5
+TraceStorePathTableEntryId              =   6
+TraceStoreSessionId                     =   7
+TraceStoreStringArrayId                 =   8
+TraceStoreStringTableId                 =   9
+TraceStoreEventTraitsExId               =  10
+TraceStoreWsWatchInfoExId               =  11
+TraceStoreWsWorkingSetExInfoId          =  12
+TraceStoreCCallStackTableId             =  13
+TraceStoreCCallStackTableEntryId        =  14
+TraceStoreCModuleTableId                =  15
+TraceStoreCModuleTableEntryId           =  16
+TraceStorePythonCallStackTableId        =  17
+TraceStorePythonCallStackTableEntryId   =  18
+TraceStorePythonModuleTableId           =  19
+TraceStorePythonModuleTableEntryId      =  20
+TraceStoreLineTableId                   =  21
+TraceStoreLineTableEntryId              =  22
+TraceStoreLineStringBufferId            =  23
+TraceStoreInvalidId                     =  24
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -149,6 +160,17 @@ TraceStoreIdToName = {
     TraceStoreEventTraitsExId: 'EventTraitsEx',
     TraceStoreWsWatchInfoExId: 'WsWatchInfoEx',
     TraceStoreWsWorkingSetExInfoId: 'WsWorkingSetExInfo',
+    TraceStoreCCallStackTableId: 'CCallStackTable',
+    TraceStoreCCallStackTableEntryId: 'CCallStackTableEntry',
+    TraceStoreCModuleTableId: 'CModuleTable',
+    TraceStoreCModuleTableEntryId: 'CModuleTableEntry',
+    TraceStorePythonCallStackTableId: 'PythonCallStackTable',
+    TraceStorePythonCallStackTableEntryId: 'PythonCallStackTableEntry',
+    TraceStorePythonModuleTableId: 'PythonModuleTable',
+    TraceStorePythonModuleTableEntryId: 'PythonModuleTableEntry',
+    TraceStoreLineTableId: 'LineTable',
+    TraceStoreLineTableEntryId: 'LineTableEntry',
+    TraceStoreLineStringBufferId: 'LineStringBuffer',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -1263,6 +1285,7 @@ TRACE_STORES._fields_ = [
     ('TracerConfig', PTRACER_CONFIG),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
+
     # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
     ('EventRelocationCompleteEvent', HANDLE),
     ('StringBufferRelocationCompleteEvent', HANDLE),
@@ -1276,6 +1299,18 @@ TRACE_STORES._fields_ = [
     ('EventTraitsExRelocationCompleteEvent', HANDLE),
     ('WsWatchInfoExRelocationCompleteEvent', HANDLE),
     ('WsWorkingSetExInfoRelocationCompleteEvent', HANDLE),
+    ('CCallStackTableRelocationCompleteEvent', HANDLE),
+    ('CCallStackTableEntryRelocationCompleteEvent', HANDLE),
+    ('CModuleTableRelocationCompleteEvent', HANDLE),
+    ('CModuleTableEntryRelocationCompleteEvent', HANDLE),
+    ('PythonCallStackTableRelocationCompleteEvent', HANDLE),
+    ('PythonCallStackTableEntryRelocationCompleteEvent', HANDLE),
+    ('PythonModuleTableRelocationCompleteEvent', HANDLE),
+    ('PythonModuleTableEntryRelocationCompleteEvent', HANDLE),
+    ('LineTableRelocationCompleteEvent', HANDLE),
+    ('LineTableEntryRelocationCompleteEvent', HANDLE),
+    ('LineStringBufferRelocationCompleteEvent', HANDLE),
+
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1289,7 +1324,19 @@ TRACE_STORES._fields_ = [
     ('EventTraitsExReloc', TRACE_STORE_RELOC),
     ('WsWatchInfoExReloc', TRACE_STORE_RELOC),
     ('WsWorkingSetExInfoReloc', TRACE_STORE_RELOC),
+    ('CCallStackTableReloc', TRACE_STORE_RELOC),
+    ('CCallStackTableEntryReloc', TRACE_STORE_RELOC),
+    ('CModuleTableReloc', TRACE_STORE_RELOC),
+    ('CModuleTableEntryReloc', TRACE_STORE_RELOC),
+    ('PythonCallStackTableReloc', TRACE_STORE_RELOC),
+    ('PythonCallStackTableEntryReloc', TRACE_STORE_RELOC),
+    ('PythonModuleTableReloc', TRACE_STORE_RELOC),
+    ('PythonModuleTableEntryReloc', TRACE_STORE_RELOC),
+    ('LineTableReloc', TRACE_STORE_RELOC),
+    ('LineTableEntryReloc', TRACE_STORE_RELOC),
+    ('LineStringBufferReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
+
     # Start of Stores[MAX_TRACE_STORES].
     ('EventStore', PYTHON_TRACE_EVENT2_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
@@ -1301,6 +1348,7 @@ TRACE_STORES._fields_ = [
     ('EventAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('EventInfoStore', INFO_STORE),
+
     ('StringBufferStore', TRACE_STORE),
     ('StringBufferMetadataInfoStore', TRACE_STORE),
     ('StringBufferAllocationStore', ALLOCATION_STORE),
@@ -1311,6 +1359,7 @@ TRACE_STORES._fields_ = [
     ('StringBufferAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('StringBufferInfoStore', INFO_STORE),
+
     ('FunctionTableStore', TRACE_STORE),
     ('FunctionTableMetadataInfoStore', TRACE_STORE),
     ('FunctionTableAllocationStore', ALLOCATION_STORE),
@@ -1321,6 +1370,7 @@ TRACE_STORES._fields_ = [
     ('FunctionTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('FunctionTableInfoStore', INFO_STORE),
+
     ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
     ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
     ('FunctionTableEntryAllocationStore', ALLOCATION_STORE),
@@ -1331,6 +1381,7 @@ TRACE_STORES._fields_ = [
     ('FunctionTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('FunctionTableEntryInfoStore', INFO_STORE),
+
     ('PathTableStore', TRACE_STORE),
     ('PathTableMetadataInfoStore', TRACE_STORE),
     ('PathTableAllocationStore', ALLOCATION_STORE),
@@ -1341,6 +1392,7 @@ TRACE_STORES._fields_ = [
     ('PathTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('PathTableInfoStore', INFO_STORE),
+
     ('PathTableEntryStore', PYTHON_PATH_TABLE_ENTRY_STORE),
     ('PathTableEntryMetadataInfoStore', TRACE_STORE),
     ('PathTableEntryAllocationStore', ALLOCATION_STORE),
@@ -1351,6 +1403,7 @@ TRACE_STORES._fields_ = [
     ('PathTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('PathTableEntryInfoStore', INFO_STORE),
+
     ('SessionStore', TRACE_STORE),
     ('SessionMetadataInfoStore', TRACE_STORE),
     ('SessionAllocationStore', ALLOCATION_STORE),
@@ -1361,6 +1414,7 @@ TRACE_STORES._fields_ = [
     ('SessionAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('SessionInfoStore', INFO_STORE),
+
     ('StringArrayStore', TRACE_STORE),
     ('StringArrayMetadataInfoStore', TRACE_STORE),
     ('StringArrayAllocationStore', ALLOCATION_STORE),
@@ -1371,6 +1425,7 @@ TRACE_STORES._fields_ = [
     ('StringArrayAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('StringArrayInfoStore', INFO_STORE),
+
     ('StringTableStore', TRACE_STORE),
     ('StringTableMetadataInfoStore', TRACE_STORE),
     ('StringTableAllocationStore', ALLOCATION_STORE),
@@ -1381,6 +1436,7 @@ TRACE_STORES._fields_ = [
     ('StringTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('StringTableInfoStore', INFO_STORE),
+
     ('EventTraitsExStore', PYTHON_EVENT_TRAITS_EX_STORE),
     ('EventTraitsExMetadataInfoStore', TRACE_STORE),
     ('EventTraitsExAllocationStore', ALLOCATION_STORE),
@@ -1391,6 +1447,7 @@ TRACE_STORES._fields_ = [
     ('EventTraitsExAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('EventTraitsExInfoStore', INFO_STORE),
+
     ('WsWatchInfoExStore', WS_WATCH_INFO_EX_STORE),
     ('WsWatchInfoExMetadataInfoStore', TRACE_STORE),
     ('WsWatchInfoExAllocationStore', ALLOCATION_STORE),
@@ -1401,6 +1458,7 @@ TRACE_STORES._fields_ = [
     ('WsWatchInfoExAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('WsWatchInfoExInfoStore', INFO_STORE),
+
     ('WsWorkingSetExInfoStore', WS_WORKING_SET_EX_INFO_STORE),
     ('WsWorkingSetExInfoMetadataInfoStore', TRACE_STORE),
     ('WsWorkingSetExInfoAllocationStore', ALLOCATION_STORE),
@@ -1411,6 +1469,132 @@ TRACE_STORES._fields_ = [
     ('WsWorkingSetExInfoAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('WsWorkingSetExInfoInfoStore', INFO_STORE),
+
+    ('CCallStackTableStore', TRACE_STORE),
+    ('CCallStackTableMetadataInfoStore', TRACE_STORE),
+    ('CCallStackTableAllocationStore', ALLOCATION_STORE),
+    ('CCallStackTableRelocationStore', RELOCATION_STORE),
+    ('CCallStackTableAddressStore', ADDRESS_STORE),
+    ('CCallStackTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('CCallStackTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('CCallStackTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CCallStackTableInfoStore', INFO_STORE),
+
+    ('CCallStackTableEntryStore', TRACE_STORE),
+    ('CCallStackTableEntryMetadataInfoStore', TRACE_STORE),
+    ('CCallStackTableEntryAllocationStore', ALLOCATION_STORE),
+    ('CCallStackTableEntryRelocationStore', RELOCATION_STORE),
+    ('CCallStackTableEntryAddressStore', ADDRESS_STORE),
+    ('CCallStackTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('CCallStackTableEntryAllocationTimestampStore',
+     ALLOCATION_TIMESTAMP_STORE),
+    ('CCallStackTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CCallStackTableEntryInfoStore', INFO_STORE),
+
+    ('CModuleTableStore', TRACE_STORE),
+    ('CModuleTableMetadataInfoStore', TRACE_STORE),
+    ('CModuleTableAllocationStore', ALLOCATION_STORE),
+    ('CModuleTableRelocationStore', RELOCATION_STORE),
+    ('CModuleTableAddressStore', ADDRESS_STORE),
+    ('CModuleTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('CModuleTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('CModuleTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CModuleTableInfoStore', INFO_STORE),
+
+    ('CModuleTableEntryStore', TRACE_STORE),
+    ('CModuleTableEntryMetadataInfoStore', TRACE_STORE),
+    ('CModuleTableEntryAllocationStore', ALLOCATION_STORE),
+    ('CModuleTableEntryRelocationStore', RELOCATION_STORE),
+    ('CModuleTableEntryAddressStore', ADDRESS_STORE),
+    ('CModuleTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('CModuleTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('CModuleTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CModuleTableEntryInfoStore', INFO_STORE),
+
+    ('PythonCallStackTableStore', TRACE_STORE),
+    ('PythonCallStackTableMetadataInfoStore', TRACE_STORE),
+    ('PythonCallStackTableAllocationStore', ALLOCATION_STORE),
+    ('PythonCallStackTableRelocationStore', RELOCATION_STORE),
+    ('PythonCallStackTableAddressStore', ADDRESS_STORE),
+    ('PythonCallStackTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonCallStackTableAllocationTimestampStore',
+     ALLOCATION_TIMESTAMP_STORE),
+    ('PythonCallStackTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonCallStackTableInfoStore', INFO_STORE),
+
+    ('PythonCallStackTableEntryStore', TRACE_STORE),
+    ('PythonCallStackTableEntryMetadataInfoStore', TRACE_STORE),
+    ('PythonCallStackTableEntryAllocationStore', ALLOCATION_STORE),
+    ('PythonCallStackTableEntryRelocationStore', RELOCATION_STORE),
+    ('PythonCallStackTableEntryAddressStore', ADDRESS_STORE),
+    ('PythonCallStackTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonCallStackTableEntryAllocationTimestampStore',
+     ALLOCATION_TIMESTAMP_STORE),
+    ('PythonCallStackTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonCallStackTableEntryInfoStore', INFO_STORE),
+
+    ('PythonModuleTableStore', TRACE_STORE),
+    ('PythonModuleTableMetadataInfoStore', TRACE_STORE),
+    ('PythonModuleTableAllocationStore', ALLOCATION_STORE),
+    ('PythonModuleTableRelocationStore', RELOCATION_STORE),
+    ('PythonModuleTableAddressStore', ADDRESS_STORE),
+    ('PythonModuleTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonModuleTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PythonModuleTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonModuleTableInfoStore', INFO_STORE),
+
+    ('PythonModuleTableEntryStore', TRACE_STORE),
+    ('PythonModuleTableEntryMetadataInfoStore', TRACE_STORE),
+    ('PythonModuleTableEntryAllocationStore', ALLOCATION_STORE),
+    ('PythonModuleTableEntryRelocationStore', RELOCATION_STORE),
+    ('PythonModuleTableEntryAddressStore', ADDRESS_STORE),
+    ('PythonModuleTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonModuleTableEntryAllocationTimestampStore',
+     ALLOCATION_TIMESTAMP_STORE),
+    ('PythonModuleTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonModuleTableEntryInfoStore', INFO_STORE),
+
+    ('LineTableStore', TRACE_STORE),
+    ('LineTableMetadataInfoStore', TRACE_STORE),
+    ('LineTableAllocationStore', ALLOCATION_STORE),
+    ('LineTableRelocationStore', RELOCATION_STORE),
+    ('LineTableAddressStore', ADDRESS_STORE),
+    ('LineTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('LineTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('LineTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineTableInfoStore', INFO_STORE),
+
+    ('LineTableEntryStore', TRACE_STORE),
+    ('LineTableEntryMetadataInfoStore', TRACE_STORE),
+    ('LineTableEntryAllocationStore', ALLOCATION_STORE),
+    ('LineTableEntryRelocationStore', RELOCATION_STORE),
+    ('LineTableEntryAddressStore', ADDRESS_STORE),
+    ('LineTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('LineTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('LineTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineTableEntryInfoStore', INFO_STORE),
+
+    ('LineStringBufferStore', TRACE_STORE),
+    ('LineStringBufferMetadataInfoStore', TRACE_STORE),
+    ('LineStringBufferAllocationStore', ALLOCATION_STORE),
+    ('LineStringBufferRelocationStore', RELOCATION_STORE),
+    ('LineStringBufferAddressStore', ADDRESS_STORE),
+    ('LineStringBufferAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('LineStringBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('LineStringBufferAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineStringBufferInfoStore', INFO_STORE),
+
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1442,6 +1626,18 @@ class TRACE_STORE_ARRAY(Structure):
         ('EventTraitsExRelocationCompleteEvent', HANDLE),
         ('WsWatchInfoExRelocationCompleteEvent', HANDLE),
         ('WsWorkingSetExInfoRelocationCompleteEvent', HANDLE),
+        ('CCallStackTableRelocationCompleteEvent', HANDLE),
+        ('CCallStackTableEntryRelocationCompleteEvent', HANDLE),
+        ('CModuleTableRelocationCompleteEvent', HANDLE),
+        ('CModuleTableEntryRelocationCompleteEvent', HANDLE),
+        ('PythonCallStackTableRelocationCompleteEvent', HANDLE),
+        ('PythonCallStackTableEntryRelocationCompleteEvent', HANDLE),
+        ('PythonModuleTableRelocationCompleteEvent', HANDLE),
+        ('PythonModuleTableEntryRelocationCompleteEvent', HANDLE),
+        ('LineTableRelocationCompleteEvent', HANDLE),
+        ('LineTableEntryRelocationCompleteEvent', HANDLE),
+        ('LineStringBufferRelocationCompleteEvent', HANDLE),
+        ('Dummy1', PVOID),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1455,7 +1651,17 @@ class TRACE_STORE_ARRAY(Structure):
         ('EventTraitsExReloc', TRACE_STORE_RELOC),
         ('WsWatchInfoExReloc', TRACE_STORE_RELOC),
         ('WsWorkingSetExInfoReloc', TRACE_STORE_RELOC),
-        ('Dummy1', PVOID),
+        ('CCallStackTableReloc', TRACE_STORE_RELOC),
+        ('CCallStackTableEntryReloc', TRACE_STORE_RELOC),
+        ('CModuleTableReloc', TRACE_STORE_RELOC),
+        ('CModuleTableEntryReloc', TRACE_STORE_RELOC),
+        ('PythonCallStackTableReloc', TRACE_STORE_RELOC),
+        ('PythonCallStackTableEntryReloc', TRACE_STORE_RELOC),
+        ('PythonModuleTableReloc', TRACE_STORE_RELOC),
+        ('PythonModuleTableEntryReloc', TRACE_STORE_RELOC),
+        ('LineTableReloc', TRACE_STORE_RELOC),
+        ('LineTableEntryReloc', TRACE_STORE_RELOC),
+        ('LineStringBufferReloc', TRACE_STORE_RELOC),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),
