@@ -68,5 +68,8 @@
     <ClCompile Include="..\Rtl\AtExitEx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PythonTracerCallbackWorkers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

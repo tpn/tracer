@@ -59,16 +59,16 @@ Return Value:
     None.
 
 --*/
-#define LoadSearchStringIntoXmmRegister_SEH(Slot, String, LengthVar) \
-    LengthVar = min(String->Length, 16);                             \
-    TRY_SSE42_ALIGNED {                                              \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);              \
-    } CATCH_EXCEPTION_ACCESS_VIOLATION {                             \
-        if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {  \
-            __movsb(Slot.Char, String->Buffer, LengthVar);           \
-        } else {                                                     \
-            Slot.CharsXmm = _mm_loadu_si128(String->Buffer);         \
-        }                                                            \
+#define LoadSearchStringIntoXmmRegister_SEH(Slot, String, LengthVar)  \
+    LengthVar = min(String->Length, 16);                              \
+    TRY_SSE42_ALIGNED {                                               \
+        Slot.CharsXmm = _mm_load_si128(String->Buffer);               \
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {                              \
+        if (PointerToOffsetCrossesPageBoundary(String->Buffer, 16)) { \
+            __movsb(Slot.Char, String->Buffer, LengthVar);            \
+        } else {                                                      \
+            Slot.CharsXmm = _mm_loadu_si128(String->Buffer);          \
+        }                                                             \
     }
 
 /*++
@@ -111,12 +111,12 @@ Return Value:
 --*/
 #define LoadSearchStringIntoXmmRegister_AlignmentCheck(Slot, String,LengthVar) \
     LengthVar = min(String->Length, 16);                                       \
-    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {                \
+    if (PointerToOffsetCrossesPageBoundary(String->Buffer, 16)) {              \
         __movsb(Slot.Char, String->Buffer, LengthVar);                         \
     } else if (GetAddressAlignment(String->Buffer) < 16) {                     \
-        Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                       \
+        Slot.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);             \
     } else {                                                                   \
-        Slot.CharsXmm = _mm_load_si128(String->Buffer);                        \
+        Slot.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);              \
     }
 
 /*++
@@ -152,7 +152,7 @@ Return Value:
 --*/
 #define LoadSearchStringIntoXmmRegister_Unaligned(Slot, String, LengthVar) \
     LengthVar = min(String->Length, 16);                                   \
-    if (PointerToOffsetCrossPageBoundary(String->Buffer, 16)) {            \
+    if (PointerToOffsetCrossesPageBoundary(String->Buffer, 16)) {          \
         __movsb(Slot.Char, String->Buffer, LengthVar);                     \
     } else if (GetAddressAlignment(String->Buffer) < 16) {                 \
         Slot.CharsXmm = _mm_loadu_si128(String->Buffer);                   \
@@ -223,11 +223,11 @@ Return Value:
 #else
 
 //
-// Default to AlwaysMovsb.
+// Default setting.
 //
 
-#define LoadSearchStringIntoXmmRegister         \
-    LoadSearchStringIntoXmmRegister_AlwaysMovsb
+#define LoadSearchStringIntoXmmRegister            \
+    LoadSearchStringIntoXmmRegister_AlignmentCheck
 
 #endif
 

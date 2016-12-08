@@ -117,13 +117,16 @@ IsFunctionOfInterestPrefixTree(
     PPREFIX_TABLE Table;
     PPREFIX_TABLE_ENTRY Entry;
 
-    if (!Context->Flags.HasModuleFilter) {
-
-        //
-        // Trace everything.
-        //
-
+    if (Context->Flags.TraceEverything) {
         return TRUE;
+    }
+
+    if (Context->Flags.TraceNothing) {
+        return FALSE;
+    }
+
+    if (!Context->RuntimeState.HasModuleFilter) {
+        return Context->Flags.TraceEverythingWhenNoModuleFilterSet;
     }
 
     ModuleName = &Function->PathEntry.ModuleName;
@@ -189,120 +192,6 @@ DisableHandleCountTracing(
     )
 {
     PythonTraceContext->Flags.TraceHandleCount = FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-PyTraceCallbackWorker(
-    PPYTHON_TRACE_CONTEXT Context,
-    PPYFRAMEOBJECT FrameObject,
-    LONG EventType,
-    PPYOBJECT ArgObject
-    )
-{
-    BOOL Success;
-
-    PYTHON_TRACE_CONTEXT_FLAGS Flags;
-    PYTHON_EVENT_TRAITS EventTraits;
-
-    PRTL Rtl;
-    PPYTHON Python;
-    PPYTHON_FUNCTION Function = NULL;
-
-    if (!InitializePythonTraceEvent(Context, EventType, &EventTraits)) {
-        return TRUE;
-    }
-
-    Flags = Context->Flags;
-
-    //
-    // Attempt to register the frame and get the underlying function object.
-    //
-
-    Rtl = Context->Rtl;
-    Python = Context->Python;
-
-    Success = Python->RegisterFrame(Python,
-                                    FrameObject,
-                                    EventTraits,
-                                    ArgObject,
-                                    &Function);
-
-    if (!Success) {
-
-        //
-        // We can't do anything more if we weren't able to resolve the
-        // function for this frame.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (!Function->PathEntry.IsValid) {
-
-        //
-        // The function's path entry should always be valid if RegisterFrame()
-        // succeeded.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-#ifdef _DEBUG
-    if (!Function->PathEntry.FullName.Length) {
-        __debugbreak();
-    }
-
-    if (Function->PathEntry.FullName.Buffer[0] == '\0') {
-        __debugbreak();
-    }
-#endif
-
-    if (Context->Depth > Function->MaxCallStackDepth) {
-        Function->MaxCallStackDepth = (ULONG)Context->Depth;
-    }
-
-    //
-    // We obtained the PYTHON_FUNCTION for this frame.
-    //
-
-    //
-    // Check to see if the function is of interest to this session.
-    //
-
-    if (!IsFunctionOfInterest(Rtl, Context, Function)) {
-
-        //
-        // Function isn't of interest (i.e. doesn't reside in a module we're
-        // tracing).  Set the ignore bit in this object's reference count and
-        // return.
-        //
-
-        Context->FramesSkipped++;
-        return TRUE;
-    }
-
-    //
-    // The function resides in a module (or submodule) we're tracing, call the
-    // actual trace function.
-    //
-
-    Context->FramesTraced++;
-
-    Success = Context->TraceEventFunction(Context,
-                                          Function,
-                                          &EventTraits,
-                                          FrameObject,
-                                          ArgObject);
-
-    if (!Success) {
-        __debugbreak();
-    }
-
-    return Success;
-
 }
 
 _Use_decl_annotations_
@@ -508,7 +397,6 @@ InitializePythonTraceContext(
     PULONG SizeOfContext,
     PPYTHON Python,
     PTRACE_CONTEXT TraceContext,
-    PYTHON_TRACE_EVENT_TYPE PythonTraceEventType,
     PVOID UserData
     )
 {
@@ -522,9 +410,12 @@ InitializePythonTraceContext(
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
     PPY_TRACE_EVENT TraceEvent;
+    PPY_TRACE_CALLBACK CallbackWorker;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     TRACE_STORE_ID TraceStoreId;
+    ULONG Result;
+    HKEY RegistryKey;
 
     //
     // Validate arguments.
@@ -562,23 +453,63 @@ InitializePythonTraceContext(
         return FALSE;
     }
 
-    TraceEvent = GetFunctionPointerForTraceEventType(PythonTraceEventType);
-    if (!TraceEvent) {
-        return FALSE;
-    }
-
     //
     // Arguments are valid, continue with initialization.
     //
 
     SecureZeroMemory(Context, sizeof(*Context));
 
+    //
+    // Open the root registry key.
+    //
+
+    if (!OpenRootRegistryKey(&RegistryKey)) {
+        return FALSE;
+    }
+
+    //
+    // Read flags.
+    //
+
+    READ_REG_DWORD_FLAG(TraceMemory, FALSE);
+    READ_REG_DWORD_FLAG(TraceIoCounters, FALSE);
+    READ_REG_DWORD_FLAG(TraceHandleCount, FALSE);
+    READ_REG_DWORD_FLAG(ProfileOnly, FALSE);
+    READ_REG_DWORD_FLAG(TraceOnly, FALSE);
+    READ_REG_DWORD_FLAG(TrackMaxRefCounts, FALSE);
+    READ_REG_DWORD_FLAG(TraceEverything, FALSE);
+    READ_REG_DWORD_FLAG(TraceNothing, FALSE);
+    READ_REG_DWORD_FLAG(TraceEverythingWhenNoModuleFilterSet, FALSE);
+
+    //
+    // Read runtime parameters.
+    //
+
+    READ_REG_DWORD_RUNTIME_PARAM(TraceEventType, 2);
+    READ_REG_DWORD_RUNTIME_PARAM(CallbackWorkerType, 1);
+
+    RegCloseKey(RegistryKey);
+
+    TraceEvent = GetFunctionPointerForTraceEventType(Context);
+    if (!TraceEvent) {
+        return FALSE;
+    }
+
+    CallbackWorker = GetFunctionPointerForCallbackWorkerType(Context);
+    if (!CallbackWorker) {
+        return FALSE;
+    }
+
+    //
+    // Continue initialization.
+    //
+
     Context->Size = *SizeOfContext;
     Context->Rtl = Rtl;
     Context->Allocator = Allocator;
     Context->Python = Python;
     Context->TraceContext = TraceContext;
-    Context->CallbackWorker = PyTraceCallbackWorker;
+    Context->CallbackWorker = CallbackWorker;
     Context->TraceEventFunction = TraceEvent;
     Context->UserData = UserData;
 
@@ -661,12 +592,8 @@ InitializePythonTraceContext(
     //  properly, which is why we call the global version instead of going
     //  through Rtl->RegisterAtExitEx().)
     //
-    // N.B. Slight quirk: we can't use Context->Flags yet as they won't be set
-    //      correctly until after this call returns to TracedPythonSession, so,
-    //      we have to use to config's flags.
-    //
 
-    if (TraceContext->TracerConfig->Flags.TrackMaxRefCounts) {
+    if (Context->Flags.TrackMaxRefCounts) {
         Success = AtExitEx(SaveMaxRefCountsAtExit,
                            NULL,
                            Context,
@@ -677,14 +604,17 @@ InitializePythonTraceContext(
     }
 
     //
-    // Register an AtExitEx callback that will save general counters to the
-    // LastRun section in the registry (Software\PythonTracer\LastRun).
+    // Do the same for general counters if applicable.
     //
 
-    Success = AtExitEx(SaveCountsToLastRunAtExit,
-                       NULL,
-                       Context,
-                       &Context->SaveCountsToLastRunAtExitEntry);
+    if (Context->Flags.CountEvents) {
+        Success = AtExitEx(SaveCountsToLastRunAtExit,
+                           NULL,
+                           Context,
+                           &Context->SaveCountsToLastRunAtExitEntry);
+    } else {
+        Success = TRUE;
+    }
 
     return Success;
 }
@@ -720,27 +650,17 @@ Return Value:
 --*/
 {
     ULONG Result;
-    ULONG Disposition;
     HKEY RegistryKey;
-    CONST UNICODE_STRING RegistryPath = \
-        RTL_CONSTANT_STRING(L"Software\\PythonTracer");
 
+    //
+    // Validate arguments.
+    //
 
-    Result = RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        RegistryPath.Buffer,
-        0,          // Reserved
-        NULL,       // Class
-        REG_OPTION_NON_VOLATILE,
-        KEY_ALL_ACCESS,
-        NULL,
-        &RegistryKey,
-        &Disposition
-    );
+    if (!Context) {
+        return;
+    }
 
-    if (Result != ERROR_SUCCESS) {
-        OutputDebugStringW(L"PythonTracer!RegCreateKeyExW() failed for: ");
-        OutputDebugStringW(RegistryPath.Buffer);
+    if (!OpenRootRegistryKey(&RegistryKey)) {
         return;
     }
 
@@ -803,28 +723,17 @@ Return Value:
 
 --*/
 {
-    ULONG Result;
-    ULONG Disposition;
     HKEY RegistryKey;
-    CONST UNICODE_STRING RegistryPath = \
-        RTL_CONSTANT_STRING(L"Software\\PythonTracer\\LastRun");
 
+    //
+    // Validate arguments.
+    //
 
-    Result = RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        RegistryPath.Buffer,
-        0,          // Reserved
-        NULL,       // Class
-        REG_OPTION_NON_VOLATILE,
-        KEY_ALL_ACCESS,
-        NULL,
-        &RegistryKey,
-        &Disposition
-    );
+    if (!Context) {
+        return;
+    }
 
-    if (Result != ERROR_SUCCESS) {
-        OutputDebugStringW(L"RegCreateKeyExW() failed for: ");
-        OutputDebugStringW(RegistryPath.Buffer);
+    if (!OpenLastRunRegistryKey(&RegistryKey)) {
         return;
     }
 
@@ -860,7 +769,7 @@ Return Value:
     WRITE_LARGE_INTEGER(MaxDepth);
 
     //
-    // Write the remaining counters.
+    // Write the counters.
     //
 
     WRITE_ULONGLONG(FramesTraced);
@@ -899,12 +808,14 @@ Start(
     }
 
     if (!Context->Flags.ProfileOnly) {
-        Context->Flags.IsTracing = TRUE;
+        Context->RuntimeState.IsTracing = TRUE;
         Python->PyEval_SetTrace(PyTraceCallback, (PPYOBJECT)Context);
     }
 
-    Context->Flags.IsProfiling = TRUE;
-    Python->PyEval_SetProfile(PyTraceCallback, (PPYOBJECT)Context);
+    if (!Context->Flags.TraceOnly) {
+        Context->RuntimeState.IsProfiling = TRUE;
+        Python->PyEval_SetProfile(PyTraceCallback, (PPYOBJECT)Context);
+    }
 
     return TRUE;
 }
@@ -927,8 +838,8 @@ Stop(
         return FALSE;
     }
 
-    Context->Flags.IsTracing = FALSE;
-    Context->Flags.IsProfiling = FALSE;
+    Context->RuntimeState.IsTracing = FALSE;
+    Context->RuntimeState.IsProfiling = FALSE;
 
     Python->PyEval_SetTrace(NULL, NULL);
     Python->PyEval_SetProfile(NULL, NULL);
@@ -942,7 +853,7 @@ AddPrefixTableEntry(
     _In_  PPYTHON_TRACE_CONTEXT Context,
     _In_  PPYOBJECT             StringObject,
     _In_  PPREFIX_TABLE         PrefixTable,
-    _Out_ PPPREFIX_TABLE_ENTRY  EntryPointer
+    _Outptr_opt_result_nullonfailure_ PPPREFIX_TABLE_ENTRY  EntryPointer
     )
 {
     PRTL Rtl;
@@ -1107,7 +1018,7 @@ AddModuleName(
                                   &PrefixTableEntry);
 
     if (Success) {
-        Context->Flags.HasModuleFilter = TRUE;
+        Context->RuntimeState.HasModuleFilter = TRUE;
     }
 
     return Success;
@@ -1142,7 +1053,7 @@ SetModuleNamesStringTable(
 
     Context->ModuleFilterStringTable = StringTable;
 
-    Context->Flags.HasModuleFilter = TRUE;
+    Context->RuntimeState.HasModuleFilter = TRUE;
 
     return TRUE;
 }

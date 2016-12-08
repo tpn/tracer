@@ -196,7 +196,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
-        1,  // CoalescedAllocations
+        0,  // CoalescedAllocations
         0   // Unused
     },
 
@@ -230,7 +230,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
-        1,  // CoalescedAllocations
+        0,  // CoalescedAllocations
         0   // Unused
     },
 

@@ -129,7 +129,6 @@ Return Value:
     PDLL_DIRECTORY_COOKIE DirectoryCookie;
     TRACE_FLAGS TraceFlags;
     TRACER_FLAGS TracerConfigFlags;
-    PYTHON_TRACE_EVENT_TYPE EventType;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
@@ -154,8 +153,6 @@ Return Value:
     if (!ARGUMENT_PRESENT(TracerConfig)) {
         return FALSE;
     }
-
-    EventType = TracerConfig->Flags.TraceEventType;
 
     if (!ARGUMENT_PRESENT(Allocator)) {
 
@@ -1050,7 +1047,6 @@ LoadPythonDll:
         &RequiredSize,  // SizeOfPythonTraceContext
         NULL,           // Python
         NULL,           // TraceContext
-        EventType,      // TraceEventType
         NULL            // UserData
     );
 
@@ -1066,7 +1062,6 @@ LoadPythonDll:
         &RequiredSize,
         Session->Python,
         Session->TraceContext,
-        EventType,
         (PVOID)Session
     );
 
@@ -1115,30 +1110,6 @@ LoadPythonDll:
             OutputDebugStringA("SetModuleNamesStringTable() failed.\n");
             goto Error;
         }
-    }
-
-    //
-    // Apply tracing flags from the TracerConfig structure.
-    //
-
-    if (TracerConfigFlags.EnableMemoryTracing) {
-        PythonTraceContext->EnableMemoryTracing(PythonTraceContext);
-    }
-
-    if (TracerConfigFlags.EnableIoCounterTracing) {
-        PythonTraceContext->EnableIoCountersTracing(PythonTraceContext);
-    }
-
-    if (TracerConfigFlags.EnableHandleCountTracing) {
-        PythonTraceContext->EnableHandleCountTracing(PythonTraceContext);
-    }
-
-    if (TracerConfigFlags.ProfileOnly) {
-        PythonTraceContext->Flags.ProfileOnly = TRUE;
-    }
-
-    if (TracerConfigFlags.TrackMaxRefCounts) {
-        PythonTraceContext->Flags.TrackMaxRefCounts = TRUE;
     }
 
     //

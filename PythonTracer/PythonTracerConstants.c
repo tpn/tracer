@@ -14,25 +14,39 @@ Abstract:
 
 #include "stdafx.h"
 
-PPY_TRACE_EVENT PythonTraceEventTypeToFunctionPointer[] = {
+//
+// Constant unicode strings.
+//
+
+#define ROOT_REGISTRY_PATH L"Software\\Tracer\\PythonTracer"
+#define LAST_RUN_REGISTRY_PATH L"Software\\Tracer\\PythonTracer\\LastRun"
+
+CONST UNICODE_STRING RootRegistryPath = \
+    RTL_CONSTANT_STRING(ROOT_REGISTRY_PATH);
+
+CONST UNICODE_STRING LastRunRegistryPath = \
+    RTL_CONSTANT_STRING(LAST_RUN_REGISTRY_PATH);
+
+//
+// Trace event types.
+//
+
+CONST PPY_TRACE_EVENT PythonTraceEventTypeToFunctionPointer[] = {
     PyTraceEvent1,
     PyTraceEvent2,
     PyTraceEvent3,
     PyTraceEvent4
 };
 
-_Use_decl_annotations_
-PPY_TRACE_EVENT
-GetFunctionPointerForTraceEventType(
-    PYTHON_TRACE_EVENT_TYPE TraceEventType
-    )
-{
-    if (TraceEventType == PythonTraceEventNull ||
-        TraceEventType >= PythonTraceEventInvalid) {
-        return NULL;
-    }
 
-    return PythonTraceEventTypeToFunctionPointer[TraceEventType-1];
-}
+//
+// CallbackWorker types.
+//
+//
+
+CONST PPY_TRACE_CALLBACK PythonTraceCallbackWorkerTypeToFunctionPointer[] = {
+    PyTraceCallbackWorker1,
+    PyTraceCallbackWorker2
+};
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

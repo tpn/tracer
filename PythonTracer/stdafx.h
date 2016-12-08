@@ -24,9 +24,9 @@ Abstract:
 #include "../TraceStore/TraceStore.h"
 #include "../StringTable/StringTable.h"
 #include "PythonTracer.h"
-#include "PythonTracerConstants.h"
 
 #ifdef _PYTHON_TRACER_INTERNAL_BUILD
+#include "PythonTracerConstants.h"
 #include "PythonTracerPrivate.h"
 #endif
 

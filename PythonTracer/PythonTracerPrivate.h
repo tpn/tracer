@@ -35,6 +35,62 @@ extern "C" {
 ATEXITEX_CALLBACK SaveMaxRefCountsAtExit;
 ATEXITEX_CALLBACK SaveCountsToLastRunAtExit;
 
+//
+// CallbackWorker-related functions.
+//
+
+typedef enum _PYTHON_TRACE_CALLBACK_WORKER_TYPE {
+    PythonTraceCallbackWorkerNull = 0,
+    PythonTraceCallbackWorker1 = 1,
+    PythonTraceCallbackWorker2,
+    PythonTraceCallbackWorkerInvalid
+} PYTHON_TRACE_CALLBACK_WORKER_TYPE, *PPYTHON_TRACE_CALLBACK_WORKER_TYPE;
+
+PY_TRACE_CALLBACK PyTraceCallbackWorker1;
+PY_TRACE_CALLBACK PyTraceCallbackWorker2;
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+PPY_TRACE_EVENT
+GetFunctionPointerForTraceEventType(
+    _In_ PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    PYTHON_TRACE_EVENT_TYPE TraceEventType;
+
+    TraceEventType = Context->RuntimeParameters.TraceEventType;
+
+    if (TraceEventType == PythonTraceEventNull ||
+        TraceEventType >= PythonTraceEventInvalid) {
+        OutputDebugStringA("Invalid PYTHON_TRACE_EVENT_TYPE.\n");
+        return NULL;
+    }
+
+    return PythonTraceEventTypeToFunctionPointer[TraceEventType-1];
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+PPY_TRACE_CALLBACK
+GetFunctionPointerForCallbackWorkerType(
+    _In_ PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    PYTHON_TRACE_CALLBACK_WORKER_TYPE WorkerType;
+
+    WorkerType = Context->RuntimeParameters.CallbackWorkerType;
+
+    if (WorkerType == PythonTraceCallbackWorkerNull ||
+        WorkerType >= PythonTraceCallbackWorkerInvalid) {
+        OutputDebugStringA("Invalid PYTHON_TRACE_CALLBACK_WORKER_TYPE.\n");
+        return NULL;
+    }
+
+    return PythonTraceCallbackWorkerTypeToFunctionPointer[WorkerType-1];
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,13 +108,16 @@ IsFunctionOfInterestStringTable(
     STRING_TABLE_INDEX Index;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
-    if (!Context->Flags.HasModuleFilter) {
-
-        //
-        // Trace everything.
-        //
-
+    if (Context->Flags.TraceEverything) {
         return TRUE;
+    }
+
+    if (Context->Flags.TraceNothing) {
+        return FALSE;
+    }
+
+    if (!Context->RuntimeState.HasModuleFilter) {
+        return Context->Flags.TraceEverythingWhenNoModuleFilterSet;
     }
 
     ModuleName = &Function->PathEntry.ModuleName;
@@ -139,18 +198,18 @@ InitializePythonTraceEvent(
     InitializeEventTraits(EventType, EventTraitsPointer);
     EventTraits.AsByte = EventTraitsPointer->AsByte;
 
-    if (!Context->Flags.HasStarted) {
+    if (!Context->RuntimeState.HasStarted) {
 
         if (!EventTraits.IsCall) {
 
             //
-            // If we haven't started profiling yet, we can ignore any
-            // event that isn't a call event.  (In practice, there will
-            // usually be one return event/frame before we get a call
-            // event we're interested in.)
+            // If we haven't started profiling yet, we can ignore any event that
+            // isn't a call event.  (In practice, there will usually be one
+            // return event/frame before we get a call event we're interested
+            // in.)
             //
 
-            return FALSE;
+            return TRUE;
         }
 
         //
@@ -158,7 +217,7 @@ InitializePythonTraceEvent(
         // our 'HasStarted' flag and set our context depth to 1.
         //
 
-        Context->Flags.HasStarted = TRUE;
+        Context->RuntimeState.HasStarted = TRUE;
         Context->Depth = 1;
 
     } else {
@@ -175,40 +234,14 @@ InitializePythonTraceEvent(
         }
     }
 
-#if 0
-    switch (EventTraits.AsEventType) {
-        case TraceEventType_PyTrace_CALL:
-            Context->NumberOfPythonCalls++;
-            break;
-        case TraceEventType_PyTrace_RETURN:
-            Context->NumberOfPythonReturns++;
-            break;
-        case TraceEventType_PyTrace_EXCEPTION:
-            Context->NumberOfPythonExceptions++;
-            break;
-        case TraceEventType_PyTrace_LINE:
-            Context->NumberOfPythonLines++;
-            break;
-        case TraceEventType_PyTrace_C_CALL:
-            Context->NumberOfCCalls++;
-            break;
-        case TraceEventType_PyTrace_C_RETURN:
-            Context->NumberOfCReturns++;
-            break;
-        case TraceEventType_PyTrace_C_EXCEPTION:
-            Context->NumberOfCExceptions++;
-            break;
-    }
-#else
-
     //
     // Abuse the fact we can index into our counter array using the event type
     // directly.
     //
 
-    ++(Context->Counters[EventTraits.AsEventType]);
-
-#endif
+    if (Context->Flags.CountEvents) {
+        ++(Context->Counters[EventTraits.AsEventType]);
+    }
 
     //
     // If we've been configured to track maximum reference counts, do that now.
@@ -272,6 +305,180 @@ Return Value:
         return FALSE;
     }
 }
+
+//
+// Registry-related typedefs and inline functions.
+//
+
+typedef enum _PYTHON_TRACER_REGISTRY_KEY_TYPE {
+    RootRegistryKey = 0,
+    LastRunRegistryKey,
+    InvalidRegistryKey
+} PYTHON_TRACER_REGISTRY_KEY_TYPE;
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+OpenRegistryKey(
+    _In_ PCUNICODE_STRING RegistryPath,
+    _Out_ PHKEY RegistryKey
+    )
+{
+    ULONG Result;
+
+    Result = RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        RegistryPath->Buffer,
+        0,          // Reserved
+        NULL,       // Class
+        REG_OPTION_NON_VOLATILE,
+        KEY_ALL_ACCESS,
+        NULL,
+        RegistryKey,
+        NULL
+    );
+
+    if (Result != ERROR_SUCCESS) {
+        OutputDebugStringW(L"PythonTracer!RegCreateKeyExW() failed for: ");
+        OutputDebugStringW(RegistryPath->Buffer);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+OpenRootRegistryKey(
+    _Out_ PHKEY RegistryKey
+    )
+{
+    return OpenRegistryKey(&RootRegistryPath, RegistryKey);
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+OpenLastRunRegistryKey(
+    _Out_ PHKEY RegistryKey
+    )
+{
+    return OpenRegistryKey(&LastRunRegistryPath, RegistryKey);
+}
+
+/*++
+
+    VOID
+    READ_REG_DWORD_FLAG(
+        Name,
+        Default
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry
+    into a PYTHON_TRACE_CONTEXT structure (implicitly referred to as 'Context').
+    If the registry key isn't present, an attempt will be made to write the
+    default value.
+
+Arguments:
+
+    Name - Name of the flag to read (e.g. ProfileOnly).  The macro
+        resolves this to Context->Flags.Name (e.g. Context->Flags.ProfileOnly).
+
+    Default - Default value to assign to the flag (Context->Flags.Name) if the
+        registry key couldn't be read successfully (because it was not present,
+        or was an incorrect type).
+
+Return Value:
+
+    None.
+
+--*/
+#define READ_REG_DWORD_FLAG(Name, Default) do { \
+    ULONG Value;                                \
+    ULONG ValueLength = sizeof(Value);          \
+    Result = RegGetValueW(                      \
+        RegistryKey,                            \
+        NULL,                                   \
+        L#Name,                                 \
+        RRF_RT_REG_DWORD,                       \
+        NULL,                                   \
+        (PVOID)&Value,                          \
+        &ValueLength                            \
+    );                                          \
+    if (Result == ERROR_SUCCESS) {              \
+        Context->Flags.Name = Value;            \
+    } else {                                    \
+        Value = Context->Flags.Name = Default;  \
+        RegSetValueExW(                         \
+            RegistryKey,                        \
+            L#Name,                             \
+            0,                                  \
+            REG_DWORD,                          \
+            (const BYTE*)&Value,                \
+            ValueLength                         \
+        );                                      \
+    }                                           \
+} while (0)
+
+/*++
+
+    VOID
+    READ_REG_DWORD_RUNTIME_PARAM(
+        Name,
+        Default
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry
+    into a PYTHON_TRACER_RUNTIME_PARAMETERS structure.  If the registry key
+    isn't present, an attempt will be made to write the default value.
+
+Arguments:
+
+    Name - Name of the parameter to read.
+
+    Default - Default value to assign to the parameter if the registry key
+        couldn't be read successfully (because it was not present, or was an
+        incorrect type).
+
+Return Value:
+
+    None.
+
+--*/
+#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do {        \
+    ULONG Value;                                                \
+    ULONG ValueLength = sizeof(Value);                          \
+    Result = RegGetValueW(                                      \
+        RegistryKey,                                            \
+        NULL,                                                   \
+        L#Name,                                                 \
+        RRF_RT_REG_DWORD,                                       \
+        NULL,                                                   \
+        (PVOID)&Value,                                          \
+        &ValueLength                                            \
+    );                                                          \
+    if (Result == ERROR_SUCCESS) {                              \
+        Context->RuntimeParameters.Name = Value;                \
+    } else {                                                    \
+        Value = Context->RuntimeParameters.Name = Default;      \
+        RegSetValueExW(                                         \
+            RegistryKey,                                        \
+            L#Name,                                             \
+            0,                                                  \
+            REG_DWORD,                                          \
+            (const BYTE*)&Value,                                \
+            ValueLength                                         \
+        );                                                      \
+    }                                                           \
+} while (0)
 
 #ifdef __cplusplus
 }; // extern "C"
