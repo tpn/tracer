@@ -460,7 +460,7 @@ InitializePythonRuntimeTables(
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
     Rtl->PfxInitialize(PrefixTable);
 
-    PrefixTable = &Python->ModuleNameTable;
+    PrefixTable = &Python->ModuleTable->PrefixTable;
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
     Rtl->PfxInitialize(PrefixTable);
 
