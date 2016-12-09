@@ -136,14 +136,16 @@ typedef struct _PYTHON_TRACE_EVENT2 {
 C_ASSERT(sizeof(PYTHON_TRACE_EVENT2) == 8);
 
 typedef struct _PYTHON_CALL_STACK_ENTRY {
-    LIST_ENTRY ListEntry;
-    LARGE_INTEGER EnterTimestamp;
-    LARGE_INTEGER ReturnTimestamp;
-    LARGE_INTEGER RecursionCount;
-    PPYTHON_FUNCTION Function;
-    ULONGLONG Padding[2];
+    LIST_ENTRY CallStackListEntry;      // 16
+    LIST_ENTRY FunctionListEntry;       // 16   32
+    PPYTHON_FUNCTION Function;          //  8   40
+    LARGE_INTEGER EnterTimestamp;       //  8   48
+    LARGE_INTEGER ReturnTimestamp;      //  8   56
+    ULONGLONG Padding1;                 //  8   64
+    ULONGLONG Padding2[8];              // 64  128
+    ULONGLONG Padding3[16];             // 128 256
 } PYTHON_CALL_STACK_ENTRY, *PPYTHON_CALL_STACK_ENTRY;
-C_ASSERT(sizeof(PYTHON_CALL_STACK_ENTRY) == 64);
+C_ASSERT(sizeof(PYTHON_CALL_STACK_ENTRY) == 256);
 
 //
 // Forward declarations.
@@ -464,6 +466,12 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
 
     struct _RTL_ATEXIT_ENTRY *SaveMaxCountsAtExitEntry;
     struct _RTL_ATEXIT_ENTRY *SaveCountsToLastRunAtExitEntry;
+
+    //
+    // List head for calls stacks.
+    //
+
+    LIST_ENTRY CallStackListHead;
 
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 

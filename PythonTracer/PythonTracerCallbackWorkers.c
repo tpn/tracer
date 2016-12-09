@@ -235,7 +235,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL IsRecursiveCall;
 
     PYTHON_EVENT_TRAITS EventTraits;
 
@@ -301,7 +300,6 @@ Return Value:
 
     if (EventTraits.IsCall) {
 
-
         Context->Depth++;
 
         //
@@ -324,30 +322,25 @@ Return Value:
             }
         }
 
-        IsRecursiveCall = FALSE;
-
         //
         // As this is a call event, we need to create a new call stack entry.
-        //
-
-        //
-        // Save the timestamp for this event.
+        // Capture a timestamp, then create a new call stack entry.
         //
 
         TraceContextQueryPerformanceCounter(TraceContext, &Elapsed, &Timestamp);
-
-        //
-        // Allocate a call stack entry.
-        //
-
         CallStackEntry = AllocatePythonCallStackEntry(Context, &Timestamp);
 
         if (!CallStackEntry) {
             return FALSE;
         }
 
+        //
+        // Initialize the entry.
+        //
+
         CallStackEntry->EnterTimestamp.QuadPart = Timestamp.QuadPart;
-        InitializeListHead(&CallStackEntry->ListEntry);
+        InitializeListHead(&CallStackEntry->CallStackListEntry);
+        InitializeListHead(&CallStackEntry->FunctionListEntry);
 
 
     } else if (EventTraits.IsReturn) {
