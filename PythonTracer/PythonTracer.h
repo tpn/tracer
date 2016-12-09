@@ -418,12 +418,12 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
         ULONGLONG Counters[7];
         struct {
             ULONGLONG          NumberOfPythonCalls;
-            ULONGLONG          NumberOfPythonReturns;
             ULONGLONG          NumberOfPythonExceptions;
             ULONGLONG          NumberOfPythonLines;
+            ULONGLONG          NumberOfPythonReturns;
             ULONGLONG          NumberOfCCalls;
-            ULONGLONG          NumberOfCReturns;
             ULONGLONG          NumberOfCExceptions;
+            ULONGLONG          NumberOfCReturns;
         };
     };
 
