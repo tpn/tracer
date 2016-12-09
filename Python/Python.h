@@ -2846,19 +2846,106 @@ typedef struct _PYTHON_FUNCTION_TABLE {
             };
         };
     };
+
 } PYTHON_FUNCTION_TABLE, *PPYTHON_FUNCTION_TABLE, **PPPYTHON_FUNCTION_TABLE;
 
 #define IsValidFunction(Function) (                 \
     (BOOL)(Function && Function->PathEntry.IsValid) \
 )
 
+typedef struct _PYTHON_MODULE_TABLE {
 
-typedef PREFIX_TABLE MODULE_NAME_TABLE;
-typedef MODULE_NAME_TABLE *PMODULE_NAME_TABLE, **PPMODULE_NAME_TABLE;
+    //
+    // Inline the PREFIX_TABLE structure.
+    //
+
+    union {
+        PREFIX_TABLE PrefixTable;
+        struct {
+            CSHORT NodeTypeCode;
+            CSHORT NameLength;
+            struct _PYTHON_MODULE_TABLE_ENTRY *NextPrefixTree;
+        };
+    };
+
+} PYTHON_MODULE_TABLE, *PPYTHON_MODULE_TABLE;
+
+typedef struct _PYTHON_MODULE_TABLE_ENTRY {
+
+    //                                                          //      s
+    // Inline the PREFIX_TABLE_ENTRY struct.                    //  s   t
+    //                                                          //  i   a   e
+                                                                //  z   r   n
+    union {                                                     //  e   t   d
+        PREFIX_TABLE_ENTRY PrefixTableEntry;                    //  ^   ^   ^
+        struct {
+
+            CSHORT NodeTypeCode;                                // 2   0   2
+            CSHORT PrefixNameLength;                            // 2   2   4
+
+            ULONG Padding1;                                     // 4   4   8
+
+            struct _PYTHON_MODULE_TABLE_ENTRY *NextPrefixTree;  // 8    8   16
+
+            union {
+                RTL_SPLAY_LINKS Links;                          // 24   16  40
+                struct {
+                    PRTL_SPLAY_LINKS    Parent;                 // 8    16  24
+                    PRTL_SPLAY_LINKS    LeftChild;              // 8    24  32
+                    PRTL_SPLAY_LINKS    RightChild;             // 8    32  40
+                };
+            };
+            PSTRING Prefix;                                     // 8    40  48
+        };
+    };
+
+    //
+    // End of inline PREFIX_TABLE_ENTRY structure.
+    //
+
+    //
+    // Inline RTL_DYNAMIC_HASH_TABLE_ENTRY structure.
+    //
+
+    union {
+        RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;            // 24   48  72
+        struct {
+            LIST_ENTRY Linkage;                                 // 16   48  64
+            ULONG_PTR Signature;                                // 8    64  72
+
+            //
+            // Pointer to our parent module.
+            //
+
+            struct _PYTHON_MODULE_TABLE_ENTRY *ParentModuleEntry; // 8  72  80
+        };
+    };
+
+    //
+    // List head for all functions defined in this module.
+    //
+
+    LIST_ENTRY FunctionListHead;                                // 16   80  96
+
+    //
+    // List head for all sub-modules from this module.
+    //
+
+    LIST_ENTRY SubmoduleListHead;                               // 16   96  112
+
+    //
+    // List entry for chaining this module to a parent's SubmoduleListHead.
+    //
+
+    LIST_ENTRY SubmoduleListEntry;                              // 16   112 128
+
+} PYTHON_MODULE_TABLE_ENTRY, *PPYTHON_MODULE_TABLE_ENTRY;
+C_ASSERT(sizeof(PYTHON_MODULE_TABLE_ENTRY) == 128);
+
 
 #define _PYTHONEXRUNTIME_HEAD                                   \
     HANDLE HeapHandle;                                          \
-    PREFIX_TABLE ModuleNameTable;                               \
+    PPYTHON_MODULE_TABLE ModuleTable;                           \
     PPYTHON_PATH_TABLE PathTable;                               \
     PPYTHON_FUNCTION_TABLE FunctionTable;                       \
     PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;   \
