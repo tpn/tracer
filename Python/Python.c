@@ -460,9 +460,9 @@ InitializePythonRuntimeTables(
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
     Rtl->PfxInitialize(PrefixTable);
 
-    PrefixTable = &Python->ModuleTable->PrefixTable;
-    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
-    Rtl->PfxInitialize(PrefixTable);
+    //PrefixTable = &Python->ModuleTable->PrefixTable;
+    //SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+    //Rtl->PfxInitialize(PrefixTable);
 
     Python->FunctionTableCompareRoutine = FunctionTableCompareRoutine;
     Python->FunctionTableAllocateRoutine = FunctionTableAllocationRoutine;

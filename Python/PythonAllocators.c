@@ -36,7 +36,7 @@ AllocateString(
         return FALSE;
     }
 
-    String = (PSTRING)ALLOCATE(String, sizeof(STRING));
+    String = (PSTRING)ALLOCATE(StringBuffer, sizeof(STRING));
 
     if (!String) {
         return FALSE;
@@ -140,7 +140,7 @@ AllocateHashedString(
     }
 
     HashedString = (PPYTHON_HASHED_STRING)(
-        ALLOCATE(HashedString, sizeof(PYTHON_HASHED_STRING))
+        ALLOCATE(StringBuffer, sizeof(PYTHON_HASHED_STRING))
     );
 
     if (!HashedString) {
@@ -174,7 +174,7 @@ AllocateHashedStringAndBuffer(
     }
 
     HashedString = (PPYTHON_HASHED_STRING)(
-        ALLOCATE(HashedString, sizeof(*HashedString))
+        ALLOCATE(StringBuffer, sizeof(*HashedString))
     );
 
     if (!HashedString) {
@@ -183,10 +183,10 @@ AllocateHashedStringAndBuffer(
 
     SecureZeroMemory(HashedString, sizeof(*HashedString));
 
-    Buffer = ALLOCATE(Buffer, StringBufferSizeInBytes);
+    Buffer = ALLOCATE(StringBuffer, StringBufferSizeInBytes);
 
     if (!Buffer) {
-        FREE(HashedString, HashedString);
+        FREE(StringBuffer, HashedString);
         return FALSE;
     }
 
@@ -238,7 +238,7 @@ AllocateBuffer(
         return FALSE;
     }
 
-    Buffer = ALLOCATE(Buffer, SizeInBytes);
+    Buffer = ALLOCATE(StringBuffer, SizeInBytes);
 
     if (!Buffer) {
         return FALSE;
@@ -389,6 +389,72 @@ AllocatePythonPathTableEntryAndHashedStringWithBuffer(
 }
 
 _Use_decl_annotations_
+BOOL
+AllocatePythonModuleTable(
+    PPYTHON Python,
+    PPPYTHON_MODULE_TABLE ModuleTablePointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ModuleTablePointer)) {
+        return FALSE;
+    }
+
+    Buffer = ALLOCATE(ModuleTable, sizeof(PYTHON_MODULE_TABLE));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    *ModuleTablePointer = (PPYTHON_MODULE_TABLE)Buffer;
+
+    return TRUE;
+
+}
+
+_Use_decl_annotations_
+BOOL
+AllocatePythonModuleTableEntry(
+    PPYTHON Python,
+    PPPYTHON_MODULE_TABLE_ENTRY ModuleTableEntryPointer
+    )
+{
+    PVOID Buffer;
+
+    if (!ARGUMENT_PRESENT(Python)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ModuleTableEntryPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer.
+    //
+
+    *ModuleTableEntryPointer = NULL;
+
+    Buffer = ALLOCATE(ModuleTableEntry, sizeof(PYTHON_MODULE_TABLE_ENTRY));
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    SecureZeroMemory(Buffer, sizeof(PYTHON_MODULE_TABLE_ENTRY));
+
+    *ModuleTableEntryPointer = (PPYTHON_MODULE_TABLE_ENTRY)Buffer;
+
+    return TRUE;
+}
+
+
+_Use_decl_annotations_
 VOID
 FreePythonPathTableEntry(
     PPYTHON                  Python,
@@ -463,7 +529,7 @@ SetPythonAllocators(
     ULONG SizeOfAllocators = sizeof(*Allocators);
     ULONG NumberOfAllocators = (
         (SizeOfAllocators - (sizeof(ULONG) * 2)) /
-        sizeof(PYTHON_ALLOCATOR)
+        sizeof(ALLOCATOR)
     );
 
     if (!ARGUMENT_PRESENT(Python)) {

@@ -409,8 +409,14 @@ InitializePythonTraceContext(
     PTRACE_STORE PathTableEntryStore;
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
+    PTRACE_STORE ModuleTableStore;
+    PTRACE_STORE ModuleTableEntryStore;
+    PTRACE_STORE LineTableStore;
+    PTRACE_STORE LineTableEntryStore;
+    PTRACE_STORE LineStringBufferStore;
     PPY_TRACE_EVENT TraceEvent;
     PPY_TRACE_CALLBACK CallbackWorker;
+    PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
     PYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     TRACE_STORE_ID TraceStoreId;
@@ -518,35 +524,17 @@ InitializePythonTraceContext(
     Context->SkipFrames = 1;
 
     TraceStores = TraceContext->TraceStores;
+    InitializeAllocatorFromTraceStore = (
+        TraceContext->InitializeAllocatorFromTraceStore
+    );
 
-#define INIT_STORE_ALLOCATOR(Name)                                       \
-    TraceStoreId = TraceStore##Name##Id;                                 \
-    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);   \
-    Allocators.##Name##.AllocationRoutine = TraceStoreAllocationRoutine; \
-    Allocators.##Name##.AllocationContext = ##Name##Store;               \
-    Allocators.##Name##.FreeRoutine = TraceStoreFreeRoutine;             \
-    Allocators.##Name##.FreeContext = ##Name##Store;                     \
+#define INIT_STORE_ALLOCATOR(Name)                                             \
+    TraceStoreId = TraceStore##Name##Id;                                       \
+    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);         \
+    if (!InitializeAllocatorFromTraceStore(Name##Store, &Allocators.##Name)) { \
+        return FALSE;                                                          \
+    }                                                                          \
     NumberOfAllocators++;
-
-#define INIT_NULL_ALLOCATOR(Name)                                            \
-    Allocators.##Name##.AllocationRoutine = TraceStoreNullAllocationRoutine; \
-    Allocators.##Name##.AllocationContext = NULL;                            \
-    Allocators.##Name##.FreeRoutine = TraceStoreNullFreeRoutine;             \
-    Allocators.##Name##.FreeContext = NULL;                                  \
-    NumberOfAllocators++;
-
-    //
-    // Temporary hack: disable the stores we don't use.
-    //
-
-    INIT_NULL_ALLOCATOR(String);
-    INIT_NULL_ALLOCATOR(HashedString);
-    INIT_NULL_ALLOCATOR(Buffer);
-    INIT_NULL_ALLOCATOR(HashedStringBuffer);
-    INIT_NULL_ALLOCATOR(FilenameString);
-    INIT_NULL_ALLOCATOR(FilenameStringBuffer);
-    INIT_NULL_ALLOCATOR(DirectoryString);
-    INIT_NULL_ALLOCATOR(DirectoryStringBuffer);
 
     INIT_STORE_ALLOCATOR(StringBuffer);
     INIT_STORE_ALLOCATOR(FunctionTable);
@@ -555,11 +543,40 @@ InitializePythonTraceContext(
     INIT_STORE_ALLOCATOR(PathTableEntry);
     INIT_STORE_ALLOCATOR(StringArray);
     INIT_STORE_ALLOCATOR(StringTable);
+    INIT_STORE_ALLOCATOR(LineTable);
+    INIT_STORE_ALLOCATOR(LineTableEntry);
+    INIT_STORE_ALLOCATOR(LineStringBuffer);
+
+    //
+    // ModuleTable and ModuleTableEntry have "Python" prefixed to their trace
+    // store names.  So initialize them manually.
+    //
+
+    ModuleTableStore = TraceStoreIdToTraceStore(
+        TraceStores,
+        TraceStorePythonModuleTableId
+    );
+    if (!InitializeAllocatorFromTraceStore(ModuleTableStore,
+                                           &Allocators.ModuleTable)) {
+        return FALSE;
+    }
+    NumberOfAllocators++;
+
+    ModuleTableEntryStore = TraceStoreIdToTraceStore(
+        TraceStores,
+        TraceStorePythonModuleTableEntryId
+    );
+    if (!InitializeAllocatorFromTraceStore(ModuleTableEntryStore,
+                                           &Allocators.ModuleTableEntry)) {
+        return FALSE;
+    }
+    NumberOfAllocators++;
 
     Allocators.NumberOfAllocators = NumberOfAllocators;
     Allocators.SizeInBytes = sizeof(Allocators);
 
     if (!Python->SetPythonAllocators(Python, &Allocators)) {
+        __debugbreak();
         return FALSE;
     }
 
