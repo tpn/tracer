@@ -417,7 +417,7 @@ InitializePythonTraceContext(
     PPY_TRACE_EVENT TraceEvent;
     PPY_TRACE_CALLBACK CallbackWorker;
     PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
-    PYTHON_ALLOCATORS Allocators;
+    PPYTHON_ALLOCATORS Allocators;
     ULONG NumberOfAllocators = 0;
     TRACE_STORE_ID TraceStoreId;
     ULONG Result;
@@ -528,12 +528,19 @@ InitializePythonTraceContext(
         TraceContext->InitializeAllocatorFromTraceStore
     );
 
-#define INIT_STORE_ALLOCATOR(Name)                                             \
-    TraceStoreId = TraceStore##Name##Id;                                       \
-    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId);         \
-    if (!InitializeAllocatorFromTraceStore(Name##Store, &Allocators.##Name)) { \
-        return FALSE;                                                          \
-    }                                                                          \
+    //
+    // N.B. This allocator initialization stuff is horrendous.
+    //
+
+    Allocators = &Python->Allocators;
+
+#define INIT_STORE_ALLOCATOR(Name)                                     \
+    TraceStoreId = TraceStore##Name##Id;                               \
+    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId); \
+    if (!InitializeAllocatorFromTraceStore(Name##Store,                \
+                                           &Allocators->##Name)) {     \
+        return FALSE;                                                  \
+    }                                                                  \
     NumberOfAllocators++;
 
     INIT_STORE_ALLOCATOR(StringBuffer);
@@ -557,7 +564,7 @@ InitializePythonTraceContext(
         TraceStorePythonModuleTableId
     );
     if (!InitializeAllocatorFromTraceStore(ModuleTableStore,
-                                           &Allocators.ModuleTable)) {
+                                           &Allocators->ModuleTable)) {
         return FALSE;
     }
     NumberOfAllocators++;
@@ -567,18 +574,13 @@ InitializePythonTraceContext(
         TraceStorePythonModuleTableEntryId
     );
     if (!InitializeAllocatorFromTraceStore(ModuleTableEntryStore,
-                                           &Allocators.ModuleTableEntry)) {
+                                           &Allocators->ModuleTableEntry)) {
         return FALSE;
     }
     NumberOfAllocators++;
 
-    Allocators.NumberOfAllocators = NumberOfAllocators;
-    Allocators.SizeInBytes = sizeof(Allocators);
-
-    if (!Python->SetPythonAllocators(Python, &Allocators)) {
-        __debugbreak();
-        return FALSE;
-    }
+    Allocators->NumberOfAllocators = NumberOfAllocators;
+    Allocators->SizeInBytes = sizeof(*Allocators);
 
     Python->InitializePythonRuntimeTables(Python);
 

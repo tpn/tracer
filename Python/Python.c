@@ -444,9 +444,14 @@ InitializePythonRuntimeTables(
     PPREFIX_TABLE PrefixTable;
     PRTL_GENERIC_TABLE GenericTable;
     PPYTHON_PATH_TABLE PathTable;
+    PPYTHON_MODULE_TABLE ModuleTable;
     PPYTHON_FUNCTION_TABLE FunctionTable;
 
     Rtl = Python->Rtl;
+
+    //
+    // Initialize the path prefix table.
+    //
 
     Success = AllocatePythonPathTable(Python, &PathTable);
 
@@ -460,9 +465,25 @@ InitializePythonRuntimeTables(
     SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
     Rtl->PfxInitialize(PrefixTable);
 
-    //PrefixTable = &Python->ModuleTable->PrefixTable;
-    //SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
-    //Rtl->PfxInitialize(PrefixTable);
+    //
+    // Initialize the module prefix table.
+    //
+
+    Success = AllocatePythonModuleTable(Python, &ModuleTable);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Python->ModuleTable = ModuleTable;
+
+    PrefixTable = &Python->ModuleTable->PrefixTable;
+    SecureZeroMemory(PrefixTable, sizeof(*PrefixTable));
+    Rtl->PfxInitialize(PrefixTable);
+
+    //
+    // Initialize the function generic table.
+    //
 
     Python->FunctionTableCompareRoutine = FunctionTableCompareRoutine;
     Python->FunctionTableAllocateRoutine = FunctionTableAllocationRoutine;
