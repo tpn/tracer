@@ -397,6 +397,10 @@ Return Value:
 
     TraceContext->Flags = ContextFlags;
 
+    TraceContext->InitializeAllocatorFromTraceStore = (
+        InitializeAllocatorFromTraceStore
+    );
+
     NumberOfTraceStores = TraceStores->NumberOfTraceStores;
 
     //

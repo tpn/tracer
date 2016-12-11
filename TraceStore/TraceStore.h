@@ -1067,6 +1067,17 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused3) == 56);
 C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_ALLOCATOR_FROM_TRACE_STORE)(
+    _In_ struct _TRACE_STORE *TraceStore,
+    _In_ PALLOCATOR Allocator
+    );
+typedef INITIALIZE_ALLOCATOR_FROM_TRACE_STORE \
+      *PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     //
@@ -1098,6 +1109,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTRACE_STORES TraceStores;
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
+    PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
     PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment;
 
@@ -1675,16 +1687,6 @@ typedef struct _TRACE_STORE_METADATA_STORES {
 // TraceStoreAllocator-related functions.
 //
 
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(INITIALIZE_ALLOCATOR_FROM_TRACE_STORE)(
-    _In_ PTRACE_STORE TraceStore,
-    _In_ PALLOCATOR Allocator
-    );
-typedef INITIALIZE_ALLOCATOR_FROM_TRACE_STORE \
-      *PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE;
 TRACE_STORE_API INITIALIZE_ALLOCATOR_FROM_TRACE_STORE \
                 InitializeAllocatorFromTraceStore;
 
