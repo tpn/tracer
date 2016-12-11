@@ -1850,91 +1850,48 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY PYTHON_FUNCTION_TABLE_ENTRY;
 typedef PYTHON_FUNCTION_TABLE_ENTRY *PPYTHON_FUNCTION_TABLE_ENTRY;
 typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
 
-typedef struct _PYTHON_ALLOCATOR {
-    PALLOCATION_ROUTINE AllocationRoutine;
-    PVOID AllocationContext;
-    PFREE_ROUTINE FreeRoutine;
-    PVOID FreeContext;
-} PYTHON_ALLOCATOR, *PPYTHON_ALLOCATOR, **PPPYTHON_ALLOCATOR;
+typedef struct _PYTHON_MODULE PYTHON_MODULE;
+typedef PYTHON_MODULE *PPYTHON_MODULE;
+typedef PYTHON_MODULE **PPPYTHON_MODULE;
 
-typedef PYTHON_ALLOCATOR PYTHON_STRING_ALLOCATOR;
-typedef PYTHON_STRING_ALLOCATOR *PPYTHON_STRING_ALLOCATOR;
-typedef PYTHON_STRING_ALLOCATOR **PPPYTHON_STRING_ALLOCATOR;
+typedef struct _PYTHON_MODULE_TABLE PYTHON_MODULE_TABLE;
+typedef PYTHON_MODULE_TABLE *PPYTHON_MODULE_TABLE;
+typedef PYTHON_MODULE_TABLE **PPPYTHON_MODULE_TABLE;
 
-typedef PYTHON_ALLOCATOR PYTHON_HASHED_STRING_ALLOCATOR;
-typedef PYTHON_HASHED_STRING_ALLOCATOR *PPYTHON_HASHED_STRING_ALLOCATOR;
-typedef PYTHON_HASHED_STRING_ALLOCATOR **PPPYTHON_HASHED_STRING_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_BUFFER_ALLOCATOR;
-typedef PYTHON_BUFFER_ALLOCATOR *PPYTHON_BUFFER_ALLOCATOR;
-typedef PYTHON_BUFFER_ALLOCATOR **PPPYTHON_BUFFER_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_FUNCTION_TABLE_ALLOCATOR;
-typedef PYTHON_FUNCTION_TABLE_ALLOCATOR *PPYTHON_FUNCTION_TABLE_ALLOCATOR;
-typedef PYTHON_FUNCTION_TABLE_ALLOCATOR **PPPYTHON_FUNCTION_TABLE_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
-typedef PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR \
-       *PPYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
-typedef PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR \
-      **PPPYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_PATH_TABLE_ALLOCATOR;
-typedef PYTHON_PATH_TABLE_ALLOCATOR *PPYTHON_PATH_TABLE_ALLOCATOR;
-typedef PYTHON_PATH_TABLE_ALLOCATOR **PPPYTHON_PATH_TABLE_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
-typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR *PPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
-typedef PYTHON_PATH_TABLE_ENTRY_ALLOCATOR **PPPYTHON_PATH_TABLE_ENTRY_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_FILENAME_STRING_ALLOCATOR;
-typedef PYTHON_FILENAME_STRING_ALLOCATOR *PPYTHON_FILENAME_STRING_ALLOCATOR;
-typedef PYTHON_FILENAME_STRING_ALLOCATOR **PPPYTHON_FILENAME_STRING_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_DIRECTORY_STRING_ALLOCATOR;
-typedef PYTHON_DIRECTORY_STRING_ALLOCATOR *PPYTHON_DIRECTORY_STRING_ALLOCATOR;
-typedef PYTHON_DIRECTORY_STRING_ALLOCATOR **PPPYTHON_DIRECTORY_STRING_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_STRING_ARRAY_ALLOCATOR;
-typedef PYTHON_STRING_ARRAY_ALLOCATOR *PPYTHON_STRING_ARRAY_ALLOCATOR;
-typedef PYTHON_STRING_ARRAY_ALLOCATOR **PPPYTHON_STRING_ARRAY_ALLOCATOR;
-
-typedef PYTHON_ALLOCATOR PYTHON_STRING_TABLE_ALLOCATOR;
-typedef PYTHON_STRING_TABLE_ALLOCATOR *PPYTHON_STRING_TABLE_ALLOCATOR;
-typedef PYTHON_STRING_TABLE_ALLOCATOR **PPPYTHON_STRING_TABLE_ALLOCATOR;
+typedef struct _PYTHON_MODULE_TABLE_ENTRY PYTHON_MODULE_TABLE_ENTRY;
+typedef PYTHON_MODULE_TABLE_ENTRY *PPYTHON_MODULE_TABLE_ENTRY;
+typedef PYTHON_MODULE_TABLE_ENTRY **PPPYTHON_MODULE_TABLE_ENTRY;
 
 typedef struct _PYTHON_ALLOCATORS {
     ULONG SizeInBytes;
     ULONG NumberOfAllocators;
 
-    PYTHON_STRING_ALLOCATOR               String;
-    PYTHON_BUFFER_ALLOCATOR               StringBuffer;
-    PYTHON_HASHED_STRING_ALLOCATOR        HashedString;
-    PYTHON_BUFFER_ALLOCATOR               HashedStringBuffer;
-    PYTHON_BUFFER_ALLOCATOR               Buffer;
-    PYTHON_FUNCTION_TABLE_ALLOCATOR       FunctionTable;
-    PYTHON_FUNCTION_TABLE_ENTRY_ALLOCATOR FunctionTableEntry;
-    PYTHON_PATH_TABLE_ALLOCATOR           PathTable;
-    PYTHON_PATH_TABLE_ENTRY_ALLOCATOR     PathTableEntry;
-    PYTHON_FILENAME_STRING_ALLOCATOR      FilenameString;
-    PYTHON_BUFFER_ALLOCATOR               FilenameStringBuffer;
-    PYTHON_DIRECTORY_STRING_ALLOCATOR     DirectoryString;
-    PYTHON_BUFFER_ALLOCATOR               DirectoryStringBuffer;
-    PYTHON_STRING_ARRAY_ALLOCATOR         StringArray;
-    PYTHON_STRING_TABLE_ALLOCATOR         StringTable;
+    ALLOCATOR  StringBuffer;
+    ALLOCATOR  FunctionTable;
+    ALLOCATOR  FunctionTableEntry;
+    ALLOCATOR  PathTable;
+    ALLOCATOR  PathTableEntry;
+    ALLOCATOR  StringArray;
+    ALLOCATOR  StringTable;
+    ALLOCATOR  ModuleTable;
+    ALLOCATOR  ModuleTableEntry;
+    ALLOCATOR  LineTable;
+    ALLOCATOR  LineTableEntry;
+    ALLOCATOR  LineStringBuffer;
 
 } PYTHON_ALLOCATORS, *PPYTHON_ALLOCATORS, **PPPYTHON_ALLOCATORS;
 
-#define ALLOCATE(Name, Size)                           \
-    Python->Allocators.##Name##.AllocationRoutine(     \
-        Python->Allocators.##Name##.AllocationContext, \
-        Size                                           \
+#define ALLOCATE(Name, Size)                 \
+    Python->Allocators.##Name##.Calloc(      \
+        Python->Allocators.##Name##.Context, \
+        1,                                   \
+        Size                                 \
     )
 
-#define FREE(Name, Pointer)                      \
-    Python->Allocators.##Name##.FreeRoutine(     \
-        Python->Allocators.##Name##.FreeContext, \
-        Pointer                                  \
+#define FREE(Name, Pointer)                  \
+    Python->Allocators.##Name##.Free(        \
+        Python->Allocators.##Name##.Context, \
+        Pointer                              \
     )
 
 typedef struct _PYTHON_HASHED_STRING {
@@ -2315,6 +2272,25 @@ BOOL
     );
 typedef ALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER \
       *PALLOCATE_PYTHON_PATH_TABLE_ENTRY_AND_STRING_WITH_BUFFER;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ALLOCATE_PYTHON_MODULE_TABLE)(
+    _In_  PPYTHON Python,
+    _Outptr_result_nullonfailure_ PPPYTHON_MODULE_TABLE ModuleTablePointer
+    );
+typedef ALLOCATE_PYTHON_MODULE_TABLE *PALLOCATE_PYTHON_MODULE_TABLE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ALLOCATE_PYTHON_MODULE_TABLE_ENTRY)(
+    _In_  PPYTHON Python,
+    _Outptr_result_nullonfailure_ PPPYTHON_MODULE_TABLE_ENTRY
+                                  ModuleTableEntryPointer
+    );
+typedef ALLOCATE_PYTHON_MODULE_TABLE_ENTRY *PALLOCATE_PYTHON_MODULE_TABLE_ENTRY;
 
 typedef
 _Success_(return != 0)
@@ -2943,15 +2919,16 @@ typedef struct _PYTHON_MODULE_TABLE_ENTRY {
 C_ASSERT(sizeof(PYTHON_MODULE_TABLE_ENTRY) == 128);
 
 
-#define _PYTHONEXRUNTIME_HEAD                                   \
-    HANDLE HeapHandle;                                          \
-    PPYTHON_MODULE_TABLE ModuleTable;                           \
-    PPYTHON_PATH_TABLE PathTable;                               \
-    PPYTHON_FUNCTION_TABLE FunctionTable;                       \
-    PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;   \
-    PRTL_GENERIC_ALLOCATE_ROUTINE FunctionTableAllocateRoutine; \
-    PRTL_GENERIC_FREE_ROUTINE FunctionTableFreeRoutine;         \
-    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;         \
+#define _PYTHONEXRUNTIME_HEAD                                       \
+    HANDLE HeapHandle;                                              \
+    PPYTHON_MODULE_TABLE ModuleTable;                               \
+    PPYTHON_PATH_TABLE PathTable;                                   \
+    PPYTHON_FUNCTION_TABLE FunctionTable;                           \
+    PRTL_GENERIC_COMPARE_ROUTINE FunctionTableCompareRoutine;       \
+    PRTL_GENERIC_ALLOCATE_ROUTINE FunctionTableAllocateRoutine;     \
+    PRTL_GENERIC_FREE_ROUTINE FunctionTableFreeRoutine;             \
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;             \
+    PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment; \
     PYTHON_ALLOCATORS Allocators;
 
 
@@ -3180,7 +3157,7 @@ ConvertPythonUtf16StringToUtf8String(
     );
 
     if (BufferSizeInBytes <= 0) {
-        FREE(String, String->Buffer);
+        FREE(StringBuffer, String->Buffer);
         return FALSE;
     }
 
