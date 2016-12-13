@@ -697,6 +697,7 @@ class TRACE_CONTEXT(Structure):
         ('TraceStores', PTRACE_STORES),
         ('TimerFunction', PVOID),
         ('UserData', PVOID),
+        ('InitializeAllocatorFromTraceStore', PVOID),
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('CancellationThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('LoadingCompleteEvent', HANDLE),
@@ -725,7 +726,8 @@ class TRACE_CONTEXT(Structure):
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
         ('BitmapBuffer', _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP),
-        ('Dummy', PVOID),
+        ('Dummy1', PVOID),
+        ('Dummy2', PVOID),
     ]
 
     def set_ignore_preferred_addresses_bitmap(self, ignore):
