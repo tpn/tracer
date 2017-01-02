@@ -174,10 +174,10 @@ Return Value:
     // Find all slots that are longer than the incoming string length, as these
     // are the ones we're going to exclude from any prefix match.
     //
-    // N.B.: because we default the length of empty slots to 0x7ffff, they will
-    //       handily be included in the ignored set (i.e. their words will also
-    //       be set to 0xffff), which means they'll also get filtered out when
-    //       we invert the mask shortly after.
+    // N.B. Because we default the length of empty slots to 0x7ffff, they will
+    //      handily be included in the ignored set (i.e. their words will also
+    //      be set to 0xffff), which means they'll also get filtered out when
+    //      we invert the mask shortly after.
     //
 
     IgnoreSlotsByLength = _mm256_cmpgt_epi16(Lengths.SlotsYmm, LengthYmm);
