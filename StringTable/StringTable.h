@@ -76,7 +76,7 @@ extern "C" {
 // Structures
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef _Struct_size_bytes_(SizeInQuadwords >> 3)struct _STRING_ARRAY {
+typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
 
     //
     // Size of the structure, in quadwords.  Why quadwords?  It allows us to
