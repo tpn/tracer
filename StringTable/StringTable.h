@@ -251,6 +251,7 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _STRING_TABLE_FLAGS {
     ULONG Unused:31;
 
 } STRING_TABLE_FLAGS, *PSTRING_TABLE_FLAGS, **PPSTRING_TABLE_FLAGS;
+C_ASSERT(sizeof(STRING_TABLE_FLAGS) == sizeof(ULONG));
 
 //
 // The STRING_TABLE struct is an optimized structure for testing whether a
