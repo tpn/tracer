@@ -279,8 +279,8 @@ typedef struct _STRING_TABLE {
     // A bitmap indicating whether or not the given string at the index given
     // by the bit in the bitmap is continued in the next string table block.
     //
-    // N.B.: this implies a table invariant that a bit cannot be set in this
-    //       bitmap unless the corresponding bit is set in the OccupiedBitmap.
+    // N.B. This implies a table invariant that a bit cannot be set in this
+    //      bitmap unless the corresponding bit is set in the OccupiedBitmap.
     //
 
     USHORT ContinuationBitmap;
