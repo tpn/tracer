@@ -689,22 +689,22 @@ Return Value:
     // current version.
     //
 
-#define UPDATE_COUNT(Name)                                      \
+#define UPDATE_MAX_COUNT(Name)                                  \
     UPDATE_MAX_REG_QWORD(RegistryKey,                           \
                          Name,                                  \
                          (ULONGLONG)Context->##Name##.QuadPart)
 
-    UPDATE_COUNT(MaxNoneRefCount);
-    UPDATE_COUNT(MaxTrueRefCount);
-    UPDATE_COUNT(MaxZeroRefCount);
-    UPDATE_COUNT(MaxFalseRefCount);
+    UPDATE_MAX_COUNT(MaxNoneRefCount);
+    UPDATE_MAX_COUNT(MaxTrueRefCount);
+    UPDATE_MAX_COUNT(MaxZeroRefCount);
+    UPDATE_MAX_COUNT(MaxFalseRefCount);
 
     //
     // Capture MaxDepth as well (despite it not technically being a reference
     // count; it's still useful to track).
     //
 
-    UPDATE_COUNT(MaxDepth);
+    UPDATE_MAX_COUNT(MaxDepth);
 
     //
     // Close the registry key.
