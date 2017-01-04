@@ -115,9 +115,13 @@ Return Value:
     CHAR MajorVersion;
     USHORT Index;
     ULONG RequiredSize;
+    ULONG BufferAllocationFlags;
+    SIZE_T BufferSize;
+    SIZE_T LargePageMinimum;
     HANDLE LoadingCompleteEvent = NULL;
     HMODULE PythonDllModule;
     PRTL Rtl;
+    PVOID Buffer;
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
@@ -544,12 +548,40 @@ Return Value:
         TraceFlags.DisablePrefaultPages = TRUE;
     }
 
+    Session->NumberOfBuffers = 0;
+
     //
     // Attempt to get the SE_MANAGE_VOLUME privilege.
     //
 
     ManageVolumeEnabled = Rtl->EnableManageVolumePrivilege();
     LockMemoryEnabled = Rtl->EnableLockMemoryPrivilege();
+
+    LargePageMinimum = GetLargePageMinimum();
+    BufferSize = max(1 << 21, LargePageMinimum);
+    BufferAllocationFlags = MEM_COMMIT;
+
+    if (LockMemoryEnabled) {
+        BufferAllocationFlags |= MEM_LARGE_PAGES;
+    }
+
+    Buffer = VirtualAlloc(NULL,
+                          BufferSize,
+                          BufferAllocationFlags,
+                          PAGE_READWRITE);
+
+    if (Buffer) {
+        Session->Buffers[Session->NumberOfBuffers++] = Buffer;
+
+        Buffer = VirtualAlloc(NULL,
+                              BufferSize,
+                              BufferAllocationFlags,
+                              PAGE_READWRITE);
+
+        if (Buffer) {
+            Session->Buffers[Session->NumberOfBuffers++] = Buffer;
+        }
+    }
 
     //
     // Allocate sufficient space, then initialize the stores.

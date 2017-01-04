@@ -410,6 +410,13 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
 
     PTRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations;
 
+    //
+    // Buffers for general purpose use.
+    //
+
+    ULONGLONG NumberOfBuffers;
+    PVOID Buffers[2];
+
 } TRACED_PYTHON_SESSION, *PTRACED_PYTHON_SESSION, **PPTRACED_PYTHON_SESSION;
 
 typedef struct _PYTHON_HOME {
