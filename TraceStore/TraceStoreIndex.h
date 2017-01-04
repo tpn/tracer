@@ -53,7 +53,8 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreLineTableId                   =  21,
     TraceStoreLineTableEntryId              =  22,
     TraceStoreLineStringBufferId            =  23,
-    TraceStoreInvalidId                     =  24
+    TraceStoreCallStackId                   =  24,
+    TraceStoreInvalidId                     =  25
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 
 #define MAX_TRACE_STORE_IDS TraceStoreInvalidId-1
@@ -330,6 +331,15 @@ typedef enum _TRACE_STORE_INDEX {
     TraceStoreLineStringBufferAllocationTimestampIndex,
     TraceStoreLineStringBufferAllocationTimestampDeltaIndex,
     TraceStoreLineStringBufferInfoIndex,
+    TraceStoreCallStackIndex,
+    TraceStoreCallStackMetadataInfoIndex,
+    TraceStoreCallStackAllocationIndex,
+    TraceStoreCallStackRelocationIndex,
+    TraceStoreCallStackAddressIndex,
+    TraceStoreCallStackAddressRangeIndex,
+    TraceStoreCallStackAllocationTimestampIndex,
+    TraceStoreCallStackAllocationTimestampDeltaIndex,
+    TraceStoreCallStackInfoIndex,
     TraceStoreInvalidIndex
 } TRACE_STORE_INDEX, *PTRACE_STORE_INDEX;
 

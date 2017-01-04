@@ -138,7 +138,8 @@ TraceStorePythonModuleTableEntryId      =  20
 TraceStoreLineTableId                   =  21
 TraceStoreLineTableEntryId              =  22
 TraceStoreLineStringBufferId            =  23
-TraceStoreInvalidId                     =  24
+TraceStoreCallStackId                   =  24
+TraceStoreInvalidId                     =  25
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -171,6 +172,7 @@ TraceStoreIdToName = {
     TraceStoreLineTableId: 'LineTable',
     TraceStoreLineTableEntryId: 'LineTableEntry',
     TraceStoreLineStringBufferId: 'LineStringBuffer',
+    TraceStoreCallStackId: 'CallStack',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -1312,6 +1314,7 @@ TRACE_STORES._fields_ = [
     ('LineTableRelocationCompleteEvent', HANDLE),
     ('LineTableEntryRelocationCompleteEvent', HANDLE),
     ('LineStringBufferRelocationCompleteEvent', HANDLE),
+    ('CallStackRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1337,6 +1340,7 @@ TRACE_STORES._fields_ = [
     ('LineTableReloc', TRACE_STORE_RELOC),
     ('LineTableEntryReloc', TRACE_STORE_RELOC),
     ('LineStringBufferReloc', TRACE_STORE_RELOC),
+    ('CallStackReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1597,6 +1601,17 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('LineStringBufferInfoStore', INFO_STORE),
 
+    ('CallStackStore', TRACE_STORE),
+    ('CallStackMetadataInfoStore', TRACE_STORE),
+    ('CallStackAllocationStore', ALLOCATION_STORE),
+    ('CallStackRelocationStore', RELOCATION_STORE),
+    ('CallStackAddressStore', ADDRESS_STORE),
+    ('CallStackAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('CallStackAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('CallStackAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CallStackInfoStore', INFO_STORE),
+
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1639,7 +1654,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('LineTableRelocationCompleteEvent', HANDLE),
         ('LineTableEntryRelocationCompleteEvent', HANDLE),
         ('LineStringBufferRelocationCompleteEvent', HANDLE),
-        ('Dummy1', PVOID),
+        ('CallStackRelocationCompleteEvent', PVOID),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1664,6 +1679,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('LineTableReloc', TRACE_STORE_RELOC),
         ('LineTableEntryReloc', TRACE_STORE_RELOC),
         ('LineStringBufferReloc', TRACE_STORE_RELOC),
+        ('CallStackReloc', TRACE_STORE_RELOC),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),
