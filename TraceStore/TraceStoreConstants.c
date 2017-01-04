@@ -47,6 +47,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreLineTable.dat",
     L"TraceStoreLineTableEntry.dat",
     L"TraceStoreLineStringBuffer.dat",
+    L"TraceStoreCallStack.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -136,7 +137,8 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // PythonModuleTableEntry
      1 << 16,   // LineTable
      1 << 25,   // LineTableEntry
-     1 << 25    // LineStringBuffer
+     1 << 25,   // LineStringBuffer
+     1 << 27    // CallStack
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -542,6 +544,23 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // BlockingAllocations
         0,  // LinkedStore
         0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // CallStack
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        1,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        1,  // CoalescedAllocations
         0   // Unused
     }
 };
