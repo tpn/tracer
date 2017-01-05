@@ -478,7 +478,8 @@ Return Value:
 
         Success = CreateTraceSessionDirectory(
             TracerConfig,
-            &Session->TraceSessionDirectory
+            &Session->TraceSessionDirectory,
+            &Session->SystemTime
         );
 
         if (!Success) {
@@ -1107,6 +1108,20 @@ LoadPythonDll:
     //
 
     PythonTraceContext = Session->PythonTraceContext;
+
+    //
+    // Set the trace context's system time.
+    //
+
+    Success = PythonTraceContext->SetSystemTimeForRunHistory(
+        PythonTraceContext,
+        &Session->SystemTime
+    );
+
+    if (!Success) {
+        OutputDebugStringA("SetSystemTimeForRunHistory() failed.\n");
+        goto Error;
+    }
 
     //
     // Initialize the string table and string array allocators.

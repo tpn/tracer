@@ -21,7 +21,9 @@ extern "C" {
 #endif
 
 CONST UNICODE_STRING RootRegistryPath;
-CONST UNICODE_STRING LastRunRegistryPath;
+CONST UNICODE_STRING RunHistoryDateFormat;
+CONST UNICODE_STRING RunHistoryRegistryPathPrefix;
+CONST UNICODE_STRING RunHistoryRegistryPathFormat;
 
 CONST PPY_TRACE_EVENT PythonTraceEventTypeToFunctionPointer[];
 CONST PPY_TRACE_CALLBACK PythonTraceCallbackWorkerTypeToFunctionPointer[];

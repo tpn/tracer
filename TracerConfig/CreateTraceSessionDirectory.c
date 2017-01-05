@@ -203,7 +203,8 @@ _Use_decl_annotations_
 BOOLEAN
 CreateTraceSessionDirectory(
     PTRACER_CONFIG TracerConfig,
-    PPUNICODE_STRING DirectoryPointer
+    PPUNICODE_STRING DirectoryPointer,
+    PSYSTEMTIME SystemTime
     )
 {
     BOOL Success;
@@ -216,7 +217,6 @@ CreateTraceSessionDirectory(
     PWCHAR Source;
     ULONG_INTEGER AllocationSize;
     PALLOCATOR Allocator;
-    SYSTEMTIME SystemTime;
     PUNICODE_STRING Directory;
     PUNICODE_STRING BaseDirectory;
     PTRACE_SESSION_DIRECTORY TraceSessionDirectory;
@@ -360,7 +360,7 @@ CreateTraceSessionDirectory(
         // Get the system time.
         //
 
-        GetSystemTime(&SystemTime);
+        GetSystemTime(SystemTime);
 
         //
         // Get the trace session directory name using the system time we just
@@ -370,7 +370,7 @@ CreateTraceSessionDirectory(
         Success = CreateSystemTimeTraceSessionDirectoryName(
             TracerConfig,
             Directory,
-            &SystemTime
+            SystemTime
         );
 
         if (!Success) {

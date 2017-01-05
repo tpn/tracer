@@ -29,6 +29,23 @@ extern "C" {
 #endif
 
 //
+// Registry-related strings.
+//
+
+#define ROOT_REGISTRY_PATH L"Software\\Tracer\\PythonTracer"
+
+#define RUN_HISTORY_DATE_FORMAT L"YYYY-MM-DD_hhmmss.SSS"
+
+#define RUN_HISTORY_REGISTRY_PATH_PREFIX \
+    L"Software\\Tracer\\PythonTracer\\RunHistory"
+
+#define RUN_HISTORY_REGISTRY_PATH_FORMAT \
+    RUN_HISTORY_REGISTRY_PATH_PREFIX     \
+    L"\\"                                \
+    RUN_HISTORY_DATE_FORMAT
+
+
+//
 // AtExitEx-related definitions.
 //
 
@@ -357,17 +374,6 @@ OpenRootRegistryKey(
     )
 {
     return OpenRegistryKey(&RootRegistryPath, RegistryKey);
-}
-
-FORCEINLINE
-_Check_return_
-_Success_(return != 0)
-BOOL
-OpenLastRunRegistryKey(
-    _Out_ PHKEY RegistryKey
-    )
-{
-    return OpenRegistryKey(&LastRunRegistryPath, RegistryKey);
 }
 
 /*++

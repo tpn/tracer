@@ -127,6 +127,13 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     USHORT Unused1;
 
     //
+    // This will be set to the system time used in order to create the trace
+    // session directory.
+    //
+
+    SYSTEMTIME SystemTime;
+
+    //
     // Array of PUNICODE_STRING paths to add to the DLL path.  Size is governed
     // by NumberOfPathEntries.
     //
