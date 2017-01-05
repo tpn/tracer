@@ -80,6 +80,9 @@
     <ClCompile Include="AtExitEx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Registry.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'">

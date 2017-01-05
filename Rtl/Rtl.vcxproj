@@ -85,6 +85,7 @@
       <PrecompiledHeader />
     </ClCompile>
     <ClCompile Include="Privilege.c" />
+    <ClCompile Include="Registry.c" />
     <ClCompile Include="RtlAtExitRundown.c" />
     <ClCompile Include="RtlGlobalAtExitRundown.c" />
     <ClCompile Include="stdafx.c">
