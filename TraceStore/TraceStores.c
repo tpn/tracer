@@ -499,11 +499,6 @@ Return Value:
         InitialSize.QuadPart = Sizes[Index].QuadPart;
         MappingSize.QuadPart = InitialSize.QuadPart;
 
-        //ULONG MappingSize = DefaultTraceStoreMappingSize;
-        //if (StoreIndex == TraceStoreEventIndex) {
-        //    MappingSize = DefaultTraceStoreEventMappingSize;
-        //}
-
         Result = StringCchCopyW(
             FileNameDest,
             (SIZE_T)RemainingChars.QuadPart,
