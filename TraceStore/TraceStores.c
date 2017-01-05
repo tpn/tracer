@@ -110,6 +110,7 @@ Return Value:
     LARGE_INTEGER RemainingChars;
     LONG_INTEGER DirectorySizeInBytes;
     PLARGE_INTEGER Sizes = InitialFileSizes;
+    PLIST_ENTRY StoresListHead;
     WCHAR Path[_OUR_MAX_PATH];
 
     //
@@ -484,6 +485,9 @@ Return Value:
 
     InitializeListHead(&TraceStores->RundownListEntry);
 
+    StoresListHead = &TraceStores->StoresListHead;
+    InitializeListHead(StoresListHead);
+
     //
     // Loop through each trace store in the array and initialize it.
     //
@@ -532,6 +536,10 @@ Return Value:
         TraceStore->BindComplete = TraceStoreBindComplete;
 
         Reloc = &TraceStores->Relocations[Index];
+
+        InitializeListHead(&TraceStore->MetadataListHead);
+        InitializeListHead(&TraceStore->StoresListEntry);
+        AppendTailList(StoresListHead, &TraceStore->StoresListEntry);
 
         Success = InitializeTraceStore(
             Rtl,

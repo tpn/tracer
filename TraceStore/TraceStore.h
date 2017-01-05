@@ -1377,6 +1377,29 @@ typedef struct _TRACE_STORE {
 
     TRACE_STORE_MEMORY_MAP  SingleMemoryMap;
 
+    //
+    // This will be linked to the parent TRACE_STORES StoresListHead list.  It
+    // is only used for normal trace stores, not metadata ones.
+    //
+
+    LIST_ENTRY StoresListEntry;
+
+    //
+    // This field is used to link a trace store's metadata stores together.  If
+    // this is a normal trace store, the field represents the list head.  For
+    // metadata stores it represents a list entry.
+    //
+
+    union {
+        LIST_ENTRY MetadataListHead;
+        LIST_ENTRY MetadataListEntry;
+    };
+
+    //
+    // This field is used for pushing and popping trace stores on and off the
+    // interlocked slist structures within a trace context.
+    //
+
     union {
         SLIST_ENTRY ListEntry;
         struct {
@@ -1663,6 +1686,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     PTRACER_CONFIG    TracerConfig;
     LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
+    LIST_ENTRY        StoresListHead;
     HANDLE            RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE       Stores[MAX_TRACE_STORES];
