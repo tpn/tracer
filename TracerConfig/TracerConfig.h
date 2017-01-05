@@ -96,7 +96,8 @@ _Check_return_
 BOOLEAN
 (CREATE_TRACE_SESSION_DIRECTORY)(
     _In_ struct _TRACER_CONFIG *TracerConfig,
-    _Out_ PPUNICODE_STRING Directory
+    _Out_ PPUNICODE_STRING Directory,
+    _In_ PSYSTEMTIME SystemTime
     );
 
 typedef CREATE_TRACE_SESSION_DIRECTORY *PCREATE_TRACE_SESSION_DIRECTORY;

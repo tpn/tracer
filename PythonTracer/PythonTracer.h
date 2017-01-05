@@ -281,6 +281,17 @@ typedef struct _PYTHON_TRACE_CONTEXT PYTHON_TRACE_CONTEXT;
 typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(SET_SYSTEM_TIME_FOR_RUN_HISTORY)(
+    _In_ PPYTHON_TRACE_CONTEXT Context,
+    _In_ PSYSTEMTIME SystemTime
+    );
+typedef SET_SYSTEM_TIME_FOR_RUN_HISTORY *PSET_SYSTEM_TIME_FOR_RUN_HISTORY;
+PYTHON_TRACER_API SET_SYSTEM_TIME_FOR_RUN_HISTORY SetSystemTimeForRunHistory;
+
+typedef
 PPYTHON_TRACE_CONTEXT
 (GET_CURRENT_PYTHON_TRACE_CONTEXT)(VOID);
 typedef GET_CURRENT_PYTHON_TRACE_CONTEXT *PGET_CURRENT_PYTHON_TRACE_CONTEXT;
@@ -416,6 +427,8 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     PPY_TRACE_EVENT    TraceEventFunction;
     PVOID              UserData;
     PALLOCATOR         Allocator;
+    SYSTEMTIME         SystemTime;
+    HKEY               RunHistoryRegistryKey;
 
     ULONGLONG          Depth;
     ULARGE_INTEGER     MaxDepth;
@@ -469,6 +482,7 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
 
     PADD_MODULE_NAME AddModuleName;
     PSET_MODULE_NAMES_STRING_TABLE SetModuleNamesStringTable;
+    PSET_SYSTEM_TIME_FOR_RUN_HISTORY SetSystemTimeForRunHistory;
 
     struct _RTL_ATEXIT_ENTRY *SaveMaxCountsAtExitEntry;
     struct _RTL_ATEXIT_ENTRY *SaveCountsToLastRunAtExitEntry;

@@ -18,14 +18,17 @@ Abstract:
 // Constant unicode strings.
 //
 
-#define ROOT_REGISTRY_PATH L"Software\\Tracer\\PythonTracer"
-#define LAST_RUN_REGISTRY_PATH L"Software\\Tracer\\PythonTracer\\LastRun"
-
 CONST UNICODE_STRING RootRegistryPath = \
     RTL_CONSTANT_STRING(ROOT_REGISTRY_PATH);
 
-CONST UNICODE_STRING LastRunRegistryPath = \
-    RTL_CONSTANT_STRING(LAST_RUN_REGISTRY_PATH);
+CONST UNICODE_STRING RunHistoryDateFormat = \
+    RTL_CONSTANT_STRING(RUN_HISTORY_DATE_FORMAT);
+
+CONST UNICODE_STRING RunHistoryRegistryPathPrefix = \
+    RTL_CONSTANT_STRING(RUN_HISTORY_REGISTRY_PATH_PREFIX);
+
+CONST UNICODE_STRING RunHistoryRegistryPathFormat = \
+    RTL_CONSTANT_STRING(RUN_HISTORY_REGISTRY_PATH_FORMAT);
 
 //
 // Trace event types.

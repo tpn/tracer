@@ -603,6 +603,7 @@ InitializePythonTraceContext(
 
     Context->AddModuleName = AddModuleName;
     Context->SetModuleNamesStringTable = SetModuleNamesStringTable;
+    Context->SetSystemTimeForRunHistory = SetSystemTimeForRunHistory;
 
     //
     // If we've been configured to track maximum reference counts, register an
@@ -716,6 +717,78 @@ Return Value:
 }
 
 _Use_decl_annotations_
+BOOL
+SetSystemTimeForRunHistory(
+    PPYTHON_TRACE_CONTEXT Context,
+    PSYSTEMTIME SystemTime
+    )
+{
+    USHORT Offset;
+    ULONG Value;
+    UNICODE_STRING Date;
+    UNICODE_STRING RegistryPath = \
+        RTL_CONSTANT_STRING(RUN_HISTORY_REGISTRY_PATH_FORMAT);
+    WCHAR RegistryPathBuffer[sizeof(RUN_HISTORY_REGISTRY_PATH_FORMAT) >> 1];
+
+    //
+    // Swap the buffers out.
+    //
+
+    RegistryPath.Buffer = (PWCHAR)RegistryPathBuffer;
+
+    //
+    // Copy the format string over.
+    //
+
+    __movsw(RegistryPathBuffer,
+            RunHistoryRegistryPathFormat.Buffer,
+            sizeof(RegistryPathBuffer) >> 1);
+
+    //
+    // Copy the system time over.
+    //
+
+    CopySystemTime(&Context->SystemTime, SystemTime);
+
+    //
+    // Get the byte offset into the registry string where we should start
+    // writing, which corresponds to the maximum length of the run history
+    // path prefix.  The joining slash is accounted for by virtue of maximum
+    // length including the NUL terminator.
+    //
+
+    Offset = RunHistoryRegistryPathPrefix.MaximumLength;
+
+    //
+    // Initialize the date string to point to the relevant subset.
+    //
+
+    Date.Length = 0;
+    Date.MaximumLength = RunHistoryDateFormat.MaximumLength;
+    Date.Buffer = (PWCHAR)RtlOffsetToPointer(RegistryPath.Buffer, Offset);
+
+#define AppendTimeField(Field, Digits, Trailer)                         \
+    Value = SystemTime->Field;                                          \
+    if (!AppendIntegerToUnicodeString(&Date, Value, Digits, Trailer)) { \
+        goto Error;                                                     \
+    }
+
+    AppendTimeField(wYear,          4, L'-');
+    AppendTimeField(wMonth,         2, L'-');
+    AppendTimeField(wDay,           2, L'-');
+    AppendTimeField(wHour,          2,    0);
+    AppendTimeField(wMinute,        2,    0);
+    AppendTimeField(wSecond,        2, L'.');
+    AppendTimeField(wMilliseconds,  3,    0);
+
+    return OpenRegistryKey(&RegistryPath, &Context->RunHistoryRegistryKey);
+
+Error:
+
+    return FALSE;
+}
+
+_Use_decl_annotations_
 VOID
 SaveCountsToLastRunAtExit(
     BOOL IsProcessTerminating,
@@ -754,7 +827,8 @@ Return Value:
         return;
     }
 
-    if (!OpenLastRunRegistryKey(&RegistryKey)) {
+    RegistryKey = Context->RunHistoryRegistryKey;
+    if (!RegistryKey) {
         return;
     }
 
