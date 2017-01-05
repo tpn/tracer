@@ -2235,6 +2235,20 @@ typedef CURRENT_DIRECTORY_TO_PATH \
 RTL_API CURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WRITE_REGISTRY_STRING)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HKEY RegistryKey,
+    _In_ PWSTR Name,
+    _In_ PUNICODE_STRING Value
+    );
+typedef WRITE_REGISTRY_STRING *PWRITE_REGISTRY_STRING;
+RTL_API WRITE_REGISTRY_STRING WriteRegistryString;
+
+typedef
 VOID
 (DESTROY_RTL)(
     _In_opt_ struct _RTL **RtlPointer
@@ -2330,6 +2344,7 @@ RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
     PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;             \
     PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                   \
     PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                 \
+    PWRITE_REGISTRY_STRING WriteRegistryString;                                \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
     PRTL_PARENT RtlParent;                                                     \

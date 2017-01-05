@@ -3656,6 +3656,13 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->WriteRegistryString = (PWRITE_REGISTRY_STRING)
+        GetProcAddress(RtlExModule, "WriteRegistryString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'WriteRegistryString'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
         GetProcAddress(RtlExModule, "RtlCheckBit"))) {
 

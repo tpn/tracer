@@ -1124,6 +1124,30 @@ LoadPythonDll:
     }
 
     //
+    // Define a helper macro for writing strings to the run history.
+    //
+
+#define WRITE_REG_SZ(Name)                                           \
+    Success = Rtl->WriteRegistryString(                              \
+        Rtl,                                                         \
+        Allocator,                                                   \
+        PythonTraceContext->RunHistoryRegistryKey,                   \
+        L#Name,                                                      \
+        Session->##Name                                              \
+    );                                                               \
+    if (!Success) {                                                  \
+        OutputDebugStringA("WriteRegistryString() failed.\nName: "); \
+        OutputDebugStringA(#Name);                                   \
+        OutputDebugStringA("\nValue: ");                             \
+        OutputDebugStringW(Session->##Name##->Buffer);               \
+        goto Error;                                                  \
+    }
+
+    WRITE_REG_SZ(PythonExePath);
+    WRITE_REG_SZ(PythonHomePath);
+    WRITE_REG_SZ(OriginalDirectory);
+
+    //
     // Initialize the string table and string array allocators.
     //
 
