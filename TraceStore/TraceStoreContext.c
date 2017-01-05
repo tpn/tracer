@@ -481,10 +481,10 @@ Return Value:
         FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
             //
-            // N.B.: We use ManualReset == TRUE because we want the event to
-            //       stay signaled once relocation has been complete.  This
-            //       ensures that other stores can call WaitForMultipleObjects
-            //       at any time and pick up the signaled event.
+            // N.B. We use ManualReset == TRUE because we want the event to
+            //      stay signaled once relocation has been complete.  This
+            //      ensures that other stores can call WaitForMultipleObjects
+            //      at any time and pick up the signaled event.
             //
 
             Event = CreateEvent(NULL, ManualReset, FALSE, NULL);
