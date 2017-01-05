@@ -1049,6 +1049,13 @@ class TRACE_STORE(Structure):
 PTRACE_STORE = POINTER(TRACE_STORE)
 PPTRACE_STORE = POINTER(PTRACE_STORE)
 
+class TRACE_STORE_LIST_ENTRY(Structure):
+    _fields_ = [
+        ('Flink', PTRACE_STORE),
+        ('Blink', PTRACE_STORE),
+    ]
+PTRACE_STORE_LIST_ENTRY = POINTER(TRACE_STORE_LIST_ENTRY)
+
 class _TRACE_STORE_RELOC_DEP(Union):
     _fields_ = [
         ('Stores', PPTRACE_STORE),
@@ -1071,6 +1078,8 @@ TRACE_STORE._fields_ = [
     ('FreeMemoryMaps', SLIST_HEADER),
     ('PrefaultMemoryMaps', SLIST_HEADER),
     ('SingleMemoryMap', TRACE_STORE_MEMORY_MAP),
+    ('StoresListEntry', TRACE_STORE_LIST_ENTRY),
+    ('MetadataListHeadOrEntry', TRACE_STORE_LIST_ENTRY),
     ('ListEntry', SLIST_ENTRY),
     ('Unused', PVOID),
     ('Rtl', PRTL),
@@ -1289,6 +1298,7 @@ TRACE_STORES._fields_ = [
     ('TracerConfig', PTRACER_CONFIG),
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
+    ('StoresListHead', TRACE_STORE_LIST_ENTRY),
 
     # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
     ('EventRelocationCompleteEvent', HANDLE),
@@ -1630,6 +1640,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('TracerConfig', PTRACER_CONFIG),
         ('RundownListEntry', LIST_ENTRY),
         ('Rundown', PTRACE_STORES_RUNDOWN),
+        ('StoresListHead', TRACE_STORE_LIST_ENTRY),
         # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
         ('EventRelocationCompleteEvent', HANDLE),
         ('StringBufferRelocationCompleteEvent', HANDLE),

@@ -208,6 +208,11 @@ Routine Description:
 
     This macro is used by InitializeTraceStore().
 
+    N.B. When this macro was first written, there were only a couple of metadata
+         stores per trace store.  As the number has grown, keeping this as a
+         macro makes less and less sense given the amount of instruction bloat
+         it adds to the caller.  It should be refactored into a normal function.
+
 Arguments:
 
     Name - Name of the metadata store to initialized (e.g. 'Allocation').
@@ -255,6 +260,10 @@ Return Value:
     Name##Store->MapViewOfFileDesiredAccess = (                                \
         TraceStore->MapViewOfFileDesiredAccess                                 \
     );                                                                         \
+                                                                               \
+    InitializeListHead(&Name##Store->MetadataListEntry);                       \
+    AppendTailList(&TraceStore->MetadataListHead,                              \
+                   &Name##Store->MetadataListEntry);                           \
                                                                                \
     Success = InitializeStore(                                                 \
         &##Name##Path[0],                                                      \
