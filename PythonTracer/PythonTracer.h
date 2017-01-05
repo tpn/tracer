@@ -517,6 +517,85 @@ PPYTHON_TRACE_EVENT2
 typedef ALLOCATE_PYTHON_TRACE_EVENT2 *PALLOCATE_PYTHON_TRACE_EVENT2;
 PYTHON_TRACER_API ALLOCATE_PYTHON_TRACE_EVENT2 AllocatePythonTraceEvent2;
 
+typedef union _CALL_STACK_ENTRY {
+    PPYTHON_FUNCTION Function;
+    struct {
+        union {
+            struct {
+                ULONG IsCall:1;
+                ULONG IsReturn:1;
+                ULONG LowPartUnused:30;
+            };
+            struct {
+                ULONG TaggedBits:2;
+            };
+        };
+        ULONG HighPart;
+    };
+    ULONGLONG AsULongLong;
+} CALL_STACK_ENTRY, *PCALL_STACK_ENTRY, **PPCALL_STACK_ENTRY;
+
+FORCEINLINE
+PPYTHON_FUNCTION
+CallStackEntryToPythonFunction(
+    _In_ PCALL_STACK_ENTRY CallStackEntry
+    )
+{
+    CALL_STACK_ENTRY NewEntry;
+
+    NewEntry.AsULongLong = CallStackEntry->AsULongLong;
+    NewEntry.TaggedBits = 0;
+    return NewEntry.Function;
+}
+
+FORCEINLINE
+VOID
+WriteCallStackEntry(
+    _In_ PCALL_STACK_ENTRY Entry,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ BOOL IsCall
+    )
+{
+    Entry->Function = Function;
+    Entry->IsCall = (IsCall == TRUE);
+    Entry->IsReturn = (IsCall != TRUE);
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+AllocateAndWriteCallStackEntry(
+    _In_ PTRACE_STORE TraceStore,
+    _In_ PLARGE_INTEGER Timestamp,
+    _Out_ PPCALL_STACK_ENTRY EntryPointer,
+    _In_ PPYTHON_FUNCTION Function,
+    _In_ BOOL IsCall
+    )
+{
+    PCALL_STACK_ENTRY Entry;
+    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULARGE_INTEGER RecordSize = { sizeof(CALL_STACK_ENTRY) };
+
+    Entry = (PCALL_STACK_ENTRY)(
+        TraceStore->AllocateRecordsWithTimestamp(
+            TraceStore->TraceContext,
+            TraceStore,
+            &RecordSize,
+            &NumberOfRecords,
+            Timestamp
+        )
+    );
+
+    if (!Entry) {
+        return FALSE;
+    }
+
+    WriteCallStackEntry(Entry, Function, IsCall);
+    *EntryPointer = Entry;
+
+    return TRUE;
+}
 
 typedef
 _Check_return_
