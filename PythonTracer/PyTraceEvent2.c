@@ -71,6 +71,8 @@ PyTraceEvent2(
     PPYOBJECT ArgObject
     )
 {
+    BOOL Success;
+    BOOL TraceCallStack;
     PYTHON_EVENT_TRAITS_EX EventTraitsEx;
     PPYTHON_EVENT_TRAITS_EX EventTraitsExPointer;
 
@@ -79,6 +81,7 @@ PyTraceEvent2(
     PTRACE_STORES TraceStores;
     PTRACE_STORE EventStore;
     PTRACE_STORE EventTraitsExStore;
+    PCALL_STACK_ENTRY Entry = NULL;
     PPYTHON_TRACE_EVENT2 Event;
     LARGE_INTEGER Elapsed;
     LARGE_INTEGER Timestamp;
@@ -100,6 +103,39 @@ PyTraceEvent2(
     //
 
     TraceContextQueryPerformanceCounter(TraceContext, &Elapsed, &Timestamp);
+
+    //
+    // If we're doing call stack tracing and this is an appropriate event, write
+    // it now.
+    //
+
+    TraceCallStack = (
+        Context->Flags.TraceCallStack && (
+            EventTraits->IsCall ||
+            EventTraits->IsReturn
+        )
+    );
+
+    if (TraceCallStack) {
+        PTRACE_STORE CallStackStore;
+
+        CallStackStore = TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreCallStackId
+        );
+
+        Success = AllocateAndWriteCallStackEntry(
+            CallStackStore,
+            &Timestamp,
+            &Entry,
+            Function,
+            EventTraits->IsCall
+        );
+
+        if (!Success) {
+            return FALSE;
+        }
+    }
 
     //
     // Allocate an event.
