@@ -17,6 +17,8 @@ Abstract:
 
 #include "stdafx.h"
 
+#pragma intrinsic(wcslen)
+
 _Use_decl_annotations_
 BOOL
 ChangeIntoPythonHomeDirectory(
@@ -125,6 +127,7 @@ Return Value:
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
+    UNICODE_STRING CommandLine;
     PUNICODE_STRING Path;
     PUNICODE_STRING Directory;
     PUNICODE_STRING PythonDllPath;
@@ -1127,25 +1130,42 @@ LoadPythonDll:
     // Define a helper macro for writing strings to the run history.
     //
 
-#define WRITE_REG_SZ(Name)                                           \
+#define WRITE_REG_SZ(Name, Value)                                    \
     Success = Rtl->WriteRegistryString(                              \
         Rtl,                                                         \
         Allocator,                                                   \
         PythonTraceContext->RunHistoryRegistryKey,                   \
         L#Name,                                                      \
-        Session->##Name                                              \
+        Value                                                        \
     );                                                               \
     if (!Success) {                                                  \
         OutputDebugStringA("WriteRegistryString() failed.\nName: "); \
         OutputDebugStringA(#Name);                                   \
         OutputDebugStringA("\nValue: ");                             \
-        OutputDebugStringW(Session->##Name##->Buffer);               \
+        OutputDebugStringW((Value)->Buffer);                         \
         goto Error;                                                  \
     }
 
-    WRITE_REG_SZ(PythonExePath);
-    WRITE_REG_SZ(PythonHomePath);
-    WRITE_REG_SZ(OriginalDirectory);
+#define WRITE_SESSION_REG_SZ(Name) WRITE_REG_SZ(Name, Session->##Name)
+
+    WRITE_SESSION_REG_SZ(PythonExePath);
+    WRITE_SESSION_REG_SZ(PythonHomePath);
+    WRITE_SESSION_REG_SZ(OriginalDirectory);
+
+    //
+    // Write the command line to the run history, wrapping it in a Unicode
+    // string structure first.
+    //
+
+    CommandLine.Length = (USHORT)(wcslen(Session->CommandLineW) << 1);
+    CommandLine.MaximumLength = CommandLine.Length + sizeof(WCHAR);
+    CommandLine.Buffer = Session->CommandLineW;
+    if (CommandLine.Buffer[CommandLine.Length >> 1] != L'\0') {
+        __debugbreak();
+        goto Error;
+    }
+
+    WRITE_REG_SZ(CommandLine, &CommandLine);
 
     //
     // Initialize the string table and string array allocators.
