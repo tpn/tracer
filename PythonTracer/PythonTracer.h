@@ -193,6 +193,12 @@ typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
         ULONG CountEvents:1;
 
         //
+        // When set, enable call stack tracing for applicable event types.
+        //
+
+        ULONG TraceCallStack:1;
+
+        //
         // The following three flags only apply when using event type 1.
         //
 

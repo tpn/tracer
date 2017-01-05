@@ -484,6 +484,7 @@ InitializePythonTraceContext(
     READ_REG_DWORD_FLAG(TraceOnly, FALSE);
     READ_REG_DWORD_FLAG(TrackMaxRefCounts, FALSE);
     READ_REG_DWORD_FLAG(CountEvents, FALSE);
+    READ_REG_DWORD_FLAG(TraceCallStack, FALSE);
     READ_REG_DWORD_FLAG(TraceEverything, FALSE);
     READ_REG_DWORD_FLAG(TraceNothing, FALSE);
     READ_REG_DWORD_FLAG(TraceEverythingWhenNoModuleFilterSet, FALSE);
