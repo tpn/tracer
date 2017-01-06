@@ -48,6 +48,8 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreLineTableEntry.dat",
     L"TraceStoreLineStringBuffer.dat",
     L"TraceStoreCallStack.dat",
+    L"TraceStorePerformance.dat",
+    L"TraceStorePerformanceDelta.dat"
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -138,7 +140,9 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 16,   // LineTable
      1 << 25,   // LineTableEntry
      1 << 25,   // LineStringBuffer
-     1 << 27    // CallStack
+     1 << 27,   // CallStack
+     1 << 25,   // Performance
+     1 << 25    // PerformanceDelta
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -560,6 +564,40 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // FrequentAllocations
         0,  // BlockingAllocations
         0,  // LinkedStore
+        1,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // Performance
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0   // Unused
+    },
+
+    //
+    // PerformanceDelta
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        1,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        1,  // LinkedStore
         1,  // CoalescedAllocations
         0   // Unused
     }

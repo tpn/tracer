@@ -139,7 +139,9 @@ TraceStoreLineTableId                   =  21
 TraceStoreLineTableEntryId              =  22
 TraceStoreLineStringBufferId            =  23
 TraceStoreCallStackId                   =  24
-TraceStoreInvalidId                     =  25
+TraceStorePerformanceId                 =  25
+TraceStorePerformanceDeltaId            =  26
+TraceStoreInvalidId                     =  27
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -173,6 +175,8 @@ TraceStoreIdToName = {
     TraceStoreLineTableEntryId: 'LineTableEntry',
     TraceStoreLineStringBufferId: 'LineStringBuffer',
     TraceStoreCallStackId: 'CallStack',
+    TraceStorePerformanceId: 'Performance',
+    TraceStorePerformanceDeltaId: 'PerformanceDelta',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -231,6 +235,8 @@ class TRACE_FLAGS(Structure):
         ('EnableFileFlagWriteThrough', ULONG, 1),
         ('NoGlobalRundown', ULONG, 1),
         ('NoTruncate', ULONG, 1),
+        ('EnableWorkingSetTracing', ULONG, 1),
+        ('EnablePerformanceTracing', ULONG, 1),
     ]
 PTRACE_FLAGS = POINTER(TRACE_FLAGS)
 
@@ -238,17 +244,10 @@ class TRACE_CONTEXT_FLAGS(Structure):
     _fields_ = [
         ('Valid', ULONG, 1),
         ('Readonly', ULONG, 1),
-        ('InitializeAsync', ULONG, 1),
+        ('DisableAsynchronousInitialization', ULONG, 1),
         ('IgnorePreferredAddresses', ULONG, 1),
     ]
 PTRACE_CONTEXT_FLAGS = POINTER(TRACE_CONTEXT_FLAGS)
-
-class READONLY_TRACE_CONTEXT_FLAGS(Structure):
-    _fields_ = [
-        ('Valid', ULONG, 1),
-        ('Unused', ULONG, 31),
-    ]
-PREADONLY_TRACE_CONTEXT_FLAGS = POINTER(READONLY_TRACE_CONTEXT_FLAGS)
 
 class TRACE_STORE_WORK(Structure):
     _fields_ = [
@@ -719,6 +718,11 @@ class TRACE_CONTEXT(Structure):
         ('GetWorkingSetChangesWindowLengthInMilliseconds', ULONG),
         ('WsWatchInfoExBuffer', PPSAPI_WS_WATCH_INFORMATION_EX),
         ('WsWorkingSetExInfoBuffer', PPSAPI_WORKING_SET_EX_INFORMATION),
+        ('CapturePerformanceMetricsLock', SRWLOCK),
+        ('CapturePerformanceMetricsTimer', PTP_TIMER),
+        ('CapturePerformanceMetricsTimerContention', ULONG),
+        ('CapturePerformanceMetricsIntervalInMilliseconds', ULONG),
+        ('CapturePerformanceMetricsWindowLengthInMilliseconds', ULONG),
         ('ActiveWorkItems', ULONG),
         ('BindsInProgress', ULONG),
         ('PrepareReadonlyNonStreamingMapsInProgress', ULONG),
@@ -739,29 +743,6 @@ class TRACE_CONTEXT(Structure):
         self.BitmapBuffer.TraceStoreBitmap.Raw = ignore.Raw
 
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
-
-class READONLY_TRACE_CONTEXT(Structure):
-    _fields_ = [
-        ('SizeOfStruct', USHORT),
-        ('Padding1', USHORT),
-        ('Flags', READONLY_TRACE_CONTEXT_FLAGS),
-        ('Rtl', PRTL),
-        ('Allocator', PALLOCATOR),
-        ('Directory', PUNICODE_STRING),
-        ('UserData', PVOID),
-        ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
-        ('TraceStores', PTRACE_STORES),
-        ('LoadingCompleteEvent', HANDLE),
-        ('TraceStoresLoadingCompleteCallback', PVOID),
-        ('TraceStoresLoadingCompleteWork', PTP_WORK),
-        ('LoadTraceStoreMaps', SLIST_HEADER),
-        ('LoadTraceStoreWork', PTP_WORK),
-        ('Padding2', CHAR * 24),
-        ('ConcurrentLoadsInProgress', ULONG),
-        ('Padding3', CHAR * 60),
-        ('Padding4', ULONGLONG * 8),
-    ]
-PREADONLY_TRACE_CONTEXT = POINTER(READONLY_TRACE_CONTEXT)
 
 class _TRACE_STORE_INNER_FLAGS(Structure):
     _fields_ = [
@@ -1325,6 +1306,8 @@ TRACE_STORES._fields_ = [
     ('LineTableEntryRelocationCompleteEvent', HANDLE),
     ('LineStringBufferRelocationCompleteEvent', HANDLE),
     ('CallStackRelocationCompleteEvent', HANDLE),
+    ('PerformanceRelocationCompleteEvent', HANDLE),
+    ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1351,6 +1334,8 @@ TRACE_STORES._fields_ = [
     ('LineTableEntryReloc', TRACE_STORE_RELOC),
     ('LineStringBufferReloc', TRACE_STORE_RELOC),
     ('CallStackReloc', TRACE_STORE_RELOC),
+    ('PerformanceReloc', TRACE_STORE_RELOC),
+    ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1622,6 +1607,28 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('CallStackInfoStore', INFO_STORE),
 
+    ('PerformanceStore', TRACE_STORE),
+    ('PerformanceMetadataInfoStore', TRACE_STORE),
+    ('PerformanceAllocationStore', ALLOCATION_STORE),
+    ('PerformanceRelocationStore', RELOCATION_STORE),
+    ('PerformanceAddressStore', ADDRESS_STORE),
+    ('PerformanceAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PerformanceAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PerformanceAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PerformanceInfoStore', INFO_STORE),
+
+    ('PerformanceDeltaStore', TRACE_STORE),
+    ('PerformanceDeltaMetadataInfoStore', TRACE_STORE),
+    ('PerformanceDeltaAllocationStore', ALLOCATION_STORE),
+    ('PerformanceDeltaRelocationStore', RELOCATION_STORE),
+    ('PerformanceDeltaAddressStore', ADDRESS_STORE),
+    ('PerformanceDeltaAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PerformanceDeltaAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PerformanceDeltaAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PerformanceDeltaInfoStore', INFO_STORE),
+
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1666,6 +1673,8 @@ class TRACE_STORE_ARRAY(Structure):
         ('LineTableEntryRelocationCompleteEvent', HANDLE),
         ('LineStringBufferRelocationCompleteEvent', HANDLE),
         ('CallStackRelocationCompleteEvent', HANDLE),
+        ('PerformanceRelocationCompleteEvent', HANDLE),
+        ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1691,6 +1700,8 @@ class TRACE_STORE_ARRAY(Structure):
         ('LineTableEntryReloc', TRACE_STORE_RELOC),
         ('LineStringBufferReloc', TRACE_STORE_RELOC),
         ('CallStackReloc', TRACE_STORE_RELOC),
+        ('PerformanceReloc', TRACE_STORE_RELOC),
+        ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
         ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE

@@ -260,6 +260,13 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableWorkingSetTracing:1;
 
     //
+    // When set, enables tracing of performance information related to the
+    // process.  This covers memory, I/O and handle counts.
+    //
+
+    ULONG EnablePerformanceTracing:1;
+
+    //
     // When set, disables asynchronous initialization of trace contexts.  This
     // applies to the InitializeTraceContext() call.  When enabled, asynchronous
     // initialization will submit the relevant preparation required to bind the
@@ -346,6 +353,19 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
     //
 
     ULONG WsWatchInfoExInitialBufferNumberOfElements;
+
+    //
+    // The interval used for the threadpool timer that captures performance
+    // information, if applicable.
+    //
+
+    ULONG CapturePerformanceMetricsIntervalInMilliseconds;
+
+    //
+    // The window length for the timer above.
+    //
+
+    ULONG CapturePerformanceMetricsWindowLengthInMilliseconds;
 
 } TRACER_RUNTIME_PARAMETERS, *PTRACER_RUNTIME_PARAMETERS;
 

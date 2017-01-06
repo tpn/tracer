@@ -141,6 +141,7 @@ class TRACER_FLAGS(Structure):
         ('EnableFileFlagRandomAccess', ULONG, 1),
         ('EnableFileFlagWriteThrough', ULONG, 1),
         ('EnableWorkingSetTracing', ULONG, 1),
+        ('EnablePerformanceTracing', ULONG, 1),
         ('DisableAsynchronousInitialization', ULONG, 1),
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
@@ -150,6 +151,8 @@ class TRACER_RUNTIME_PARAMETERS(Structure):
         ('GetWorkingSetChangesIntervalInMilliseconds', ULONG),
         ('GetWorkingSetChangesWindowLengthInMilliseconds', ULONG),
         ('WsWatchInfoExInitialBufferNumberOfElements', ULONG),
+        ('CapturePerformanceMetricsIntervalInMilliseconds', ULONG),
+        ('CapturePerformanceMetricsWindowLengthInMilliseconds', ULONG),
     ]
 
 class TRACE_SESSION_DIRECTORY(Structure):

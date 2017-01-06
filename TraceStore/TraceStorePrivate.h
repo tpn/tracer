@@ -685,6 +685,18 @@ typedef GET_WORKING_SET_CHANGES_TIMER_CALLBACK \
       *PGET_WORKING_SET_CHANGES_TIMER_CALLBACK;
 GET_WORKING_SET_CHANGES_TIMER_CALLBACK GetWorkingSetChangesTimerCallback;
 
+typedef
+VOID
+(CALLBACK CAPTURE_PERFORMANCE_METRICS_TIMER_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef CAPTURE_PERFORMANCE_METRICS_TIMER_CALLBACK \
+      *PCAPTURE_PERFORMANCE_METRICS_TIMER_CALLBACK;
+CAPTURE_PERFORMANCE_METRICS_TIMER_CALLBACK \
+    CapturePerformanceMetricsTimerCallback;
+
 //
 // TraceStoreMemory-map related inline functions.
 //
@@ -2020,6 +2032,37 @@ BIND_COMPLETE WsWatchInfoExStoreBindComplete;
 
 #define ReleaseWorkingSetChangesLock(TraceContext) \
     ReleaseSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
+
+//
+// TraceStorePerformance-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_held_(TraceContext->CapturePerformanceMetricsLock)
+_Maybe_raises_SEH_exception_
+BOOL
+(CAPTURE_PERFORMANCE_METRICS)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef CAPTURE_PERFORMANCE_METRICS *PCAPTURE_PERFORMANCE_METRICS;
+CAPTURE_PERFORMANCE_METRICS CapturePerformanceMetrics;
+
+BIND_COMPLETE PerformanceStoreBindComplete;
+
+//
+// TraceStorePerformance-related macros.
+//
+
+#define AcquireCapturePerformanceMetricsLock(TraceContext) \
+    AcquireSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
+
+#define TryAcquireCapturePerformanceMetricsLock(TraceContext) \
+    TryAcquireSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
+
+#define ReleaseCapturePerformanceMetricsLock(TraceContext) \
+    ReleaseSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
 
 #ifdef __cplusplus
 }; // extern "C"
