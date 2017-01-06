@@ -677,6 +677,81 @@ Return Value:
     return;
 }
 
+_Use_decl_annotations_
+VOID
+CALLBACK
+CapturePerformanceMetricsTimerCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the threadpool timer callback target for the performance
+    metrics timer.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    //
+    // If the SRWLock is already acquired, the existing thread callback is
+    // still running.  Increment the contention counter and return.
+    //
+
+    if (!TryAcquireCapturePerformanceMetricsLock(TraceContext)) {
+        InterlockedIncrement(
+            &TraceContext->CapturePerformanceMetricsTimerContention
+        );
+        return;
+    }
+
+    TRY_MAPPED_MEMORY_OP {
+        Success = CapturePerformanceMetrics(TraceContext);
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Success = FALSE;
+    }
+
+    if (!Success) {
+
+        //
+        // CapturePerformanceMetrics() failure is fatal.
+        //
+
+        TraceContextFailure(TraceContext);
+    }
+
+    //
+    // Release the lock and return.
+    //
+
+    ReleaseCapturePerformanceMetricsLock(TraceContext);
+
+    return;
+}
+
 //
 // Restore the disabled SAL warning.
 //

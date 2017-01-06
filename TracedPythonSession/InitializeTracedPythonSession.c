@@ -525,6 +525,7 @@ Return Value:
     COPY_FLAG(EnableFileFlagRandomAccess);
     COPY_FLAG(EnableFileFlagWriteThrough);
     COPY_FLAG(EnableWorkingSetTracing);
+    COPY_FLAG(EnablePerformanceTracing);
 
     //
     // Get the required size of the TRACE_STORES structure.

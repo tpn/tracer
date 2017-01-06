@@ -96,6 +96,7 @@
     <ClCompile Include="TraceStoreMemoryMap.c" />
     <ClCompile Include="TraceStoreMetadata.c" />
     <ClCompile Include="TraceStorePath.c" />
+    <ClCompile Include="TraceStorePerformance.c" />
     <ClCompile Include="TraceStoreRelocation.c" />
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />

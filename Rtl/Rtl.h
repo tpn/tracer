@@ -338,6 +338,14 @@ typedef BOOL (WINAPI *PGET_PROCESS_MEMORY_INFO)(
     _In_  DWORD                       cb
     );
 
+typedef
+BOOL
+(WINAPI GET_PERFORMANCE_INFO)(
+    _Out_writes_bytes_all_(cb) PPERFORMANCE_INFORMATION PerfInfo,
+    _In_ DWORD cb
+    );
+typedef GET_PERFORMANCE_INFO *PGET_PERFORMANCE_INFO;
+
 typedef BOOL (WINAPI *PGET_PROCESS_IO_COUNTERS)(
     _In_  HANDLE          Process,
     _Out_ PIO_COUNTERS    lpIoCounters
@@ -1712,6 +1720,7 @@ typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
     PMEMSET memset;                                                                                    \
     PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
+    PGET_PERFORMANCE_INFO K32GetPerformanceInfo;                                                       \
     PGET_PROCESS_IO_COUNTERS GetProcessIoCounters;                                                     \
     PGET_PROCESS_HANDLE_COUNT GetProcessHandleCount;                                                   \
     PINITIALIZE_PROCESS_FOR_WS_WATCH K32InitializeProcessForWsWatch;                                   \

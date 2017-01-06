@@ -1022,6 +1022,13 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableWorkingSetTracing:1;
 
+            //
+            // When set, enables periodic capture of performance metrics whilst
+            // a process is being traced.
+            //
+
+            ULONG EnablePerformanceTracing:1;
+
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
@@ -1066,6 +1073,202 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfActiveItems) == 40);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, NumberOfFailedItems) == 44);
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused3) == 56);
 C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
+
+//
+// This structure is used to capture performance metrics (and deltas between
+// calls) when performance tracing has been enabled.
+//
+
+typedef struct
+DECLSPEC_ALIGN(128)
+_Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_PERFORMANCE)) ULONG SizeOfStruct;
+
+    //
+    // Pad out to 8 bytes.
+    //
+
+    ULONG Padding1;
+
+    //
+    // Interval and window length being used.
+    //
+
+    ULONG IntervalInMilliseconds;
+    ULONG WindowLengthInMilliseconds;
+
+    //
+    // Timestamp for this event.
+    //
+
+    ULARGE_INTEGER Timestamp;
+
+    //
+    // Process times.
+    //
+
+    FILETIME UserTime;
+    FILETIME KernelTime;
+
+    //
+    // Process cycles.
+    //
+
+    ULONGLONG ProcessCycles;
+
+    //
+    // Handle count.
+    //
+
+    union {
+        ULONG ProcessHandleCount;
+        LONG ProcessHandleCountDelta;
+    };
+
+    //
+    // Inline PROCESS_MEMORY_COUNTERS_EX.
+    //
+
+    union {
+        struct {
+            DWORD ProcessMemoryCountersExSize;
+            DWORD PageFaultCount;
+            SIZE_T PeakWorkingSetSize;
+            SIZE_T WorkingSetSize;
+            SIZE_T QuotaPeakPagedPoolUsage;
+            SIZE_T QuotaPagedPoolUsage;
+            SIZE_T QuotaPeakNonPagedPoolUsage;
+            SIZE_T QuotaNonPagedPoolUsage;
+            SIZE_T PagefileUsage;
+            SIZE_T PeakPagefileUsage;
+            SIZE_T PrivateUsage;
+        };
+        struct {
+            DWORD _ProcessMemoryCountersExSize;
+            LONG PageFaultCountDelta;
+            SSIZE_T PeakWorkingSetSizeDelta;
+            SSIZE_T WorkingSetSizeDelta;
+            SSIZE_T QuotaPeakPagedPoolUsageDelta;
+            SSIZE_T QuotaPagedPoolUsageDelta;
+            SSIZE_T QuotaPeakNonPagedPoolUsageDelta;
+            SSIZE_T QuotaNonPagedPoolUsageDelta;
+            SSIZE_T PagefileUsageDelta;
+            SSIZE_T PeakPagefileUsageDelta;
+            SSIZE_T PrivateUsageDelta;
+        };
+        union {
+            PROCESS_MEMORY_COUNTERS    MemoryCounters;
+            PROCESS_MEMORY_COUNTERS_EX MemoryCountersEx;
+        };
+    };
+
+    //
+    // Inline MEMORYSTATUSEX.
+    //
+
+    union {
+        struct {
+            DWORD MemoryStatusExLength;
+            DWORD dwMemoryLoad;
+            DWORDLONG ullTotalPhys;
+            DWORDLONG ullAvailPhys;
+            DWORDLONG ullTotalPageFile;
+            DWORDLONG ullAvailPageFile;
+            DWORDLONG ullTotalVirtual;
+            DWORDLONG ullAvailVirtual;
+            DWORDLONG ullAvailExtendedVirtual;
+        };
+        struct {
+            DWORD _MemoryStatusExLength;
+            LONG dwMemoryLoadDelta;
+            LONGLONG ullTotalPhysDelta;
+            LONGLONG ullAvailPhysDelta;
+            LONGLONG ullTotalPageFileDelta;
+            LONGLONG ullAvailPageFileDelta;
+            LONGLONG ullTotalVirtualDelta;
+            LONGLONG ullAvailVirtualDelta;
+            LONGLONG ullAvailExtendedVirtualDelta;
+        };
+        MEMORYSTATUSEX MemoryStatusEx;
+    };
+
+    //
+    // Inline IO_COUNTERS.
+    //
+
+    union {
+        struct {
+            ULONGLONG ReadOperationCount;
+            ULONGLONG WriteOperationCount;
+            ULONGLONG OtherOperationCount;
+            ULONGLONG ReadTransferCount;
+            ULONGLONG WriteTransferCount;
+            ULONGLONG OtherTransferCount;
+        };
+        struct {
+            LONGLONG ReadOperationCountDelta;
+            LONGLONG WriteOperationCountDelta;
+            LONGLONG OtherOperationCountDelta;
+            LONGLONG ReadTransferCountDelta;
+            LONGLONG WriteTransferCountDelta;
+            LONGLONG OtherTransferCountDelta;
+        };
+        IO_COUNTERS IoCounters;
+    };
+
+    //
+    // Inline PERFORMANCE_INFORMATION.
+    //
+
+    union {
+        struct {
+            DWORD PerformanceInfoSize;
+            SIZE_T CommitTotal;
+            SIZE_T CommitLimit;
+            SIZE_T CommitPeak;
+            SIZE_T PhysicalTotal;
+            SIZE_T PhysicalAvailable;
+            SIZE_T SystemCache;
+            SIZE_T KernelTotal;
+            SIZE_T KernelPaged;
+            SIZE_T KernelNonpaged;
+            SIZE_T PageSize;
+            DWORD HandleCount;
+            DWORD ProcessCount;
+            DWORD ThreadCount;
+        };
+        struct {
+            DWORD _PerformanceInfoSize;
+            SSIZE_T CommitTotalDelta;
+            SSIZE_T CommitLimitDelta;
+            SSIZE_T CommitPeakDelta;
+            SSIZE_T PhysicalTotalDelta;
+            SSIZE_T PhysicalAvailableDelta;
+            SSIZE_T SystemCacheDelta;
+            SSIZE_T KernelTotalDelta;
+            SSIZE_T KernelPagedDelta;
+            SSIZE_T KernelNonpagedDelta;
+            SSIZE_T PageSizeDelta;
+            LONG HandleCountDelta;
+            LONG ProcessCountDelta;
+            LONG ThreadCountDelta;
+        };
+        PERFORMANCE_INFORMATION PerformanceInfo;
+    };
+
+    //
+    // Pad out to 512 bytes.
+    //
+
+    BYTE Padding2[156];
+
+} TRACE_PERFORMANCE, *PTRACE_PERFORMANCE, *PPTRACE_PERFORMANCE;
+C_ASSERT(sizeof(TRACE_PERFORMANCE) == 512);
 
 typedef
 _Check_return_
@@ -1152,6 +1355,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     PPSAPI_WS_WATCH_INFORMATION_EX WsWatchInfoExBuffer;
     PPSAPI_WORKING_SET_EX_INFORMATION WsWorkingSetExInfoBuffer;
+
+    //
+    // Performance tracing.  Only one thread is permitted to enter this
+    // callback at a time, which is controlled by the slim read/write lock
+    // CapturePerformanceMetricsLock.
+    //
+
+    SRWLOCK CapturePerformanceMetricsLock;
+    PTP_TIMER CapturePerformanceMetricsTimer;
+    volatile ULONG CapturePerformanceMetricsTimerContention;
+
+    ULONG CapturePerformanceMetricsIntervalInMilliseconds;
+    ULONG CapturePerformanceMetricsWindowLengthInMilliseconds;
 
     volatile ULONG ActiveWorkItems;
 

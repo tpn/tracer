@@ -558,7 +558,8 @@ Return Value:
     READ_REG_DWORD_FLAG(DisableFileFlagSequentialScan, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagRandomAccess, FALSE);
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
-    READ_REG_DWORD_FLAG(EnableWorkingSetTracing, FALSE);
+    READ_REG_DWORD_FLAG(EnableWorkingSetTracing, TRUE);
+    READ_REG_DWORD_FLAG(EnablePerformanceTracing, TRUE);
     READ_REG_DWORD_FLAG(DisableAsynchronousInitialization, FALSE);
 
     //
@@ -593,6 +594,16 @@ Return Value:
     READ_REG_DWORD_RUNTIME_PARAM(
         WsWatchInfoExInitialBufferNumberOfElements,
         8192
+    );
+
+    READ_REG_DWORD_RUNTIME_PARAM(
+        CapturePerformanceMetricsIntervalInMilliseconds,
+        100
+    );
+
+    READ_REG_DWORD_RUNTIME_PARAM(
+        CapturePerformanceMetricsWindowLengthInMilliseconds,
+        200
     );
 
     //

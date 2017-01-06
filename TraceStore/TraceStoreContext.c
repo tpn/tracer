@@ -495,9 +495,16 @@ Return Value:
             TraceStores->RelocationCompleteEvents[Index] = Event;
         }
 
-    } else if (TraceStores->Flags.EnableWorkingSetTracing) {
+        goto InitializeAllocators;
 
+    }
 
+    //
+    // This is where we check any flags that correspond to threadpool timers
+    // we need to initialize.
+    //
+
+    if (TraceStores->Flags.EnableWorkingSetTracing) {
         PTRACE_STORE WsWatchInfoExStore;
 
         //
@@ -543,8 +550,51 @@ Return Value:
         );
 
         WsWatchInfoExStore->BindComplete = WsWatchInfoExStoreBindComplete;
-
     }
+
+    if (TraceStores->Flags.EnablePerformanceTracing) {
+        PTRACE_STORE PerformanceStore;
+
+        //
+        // Performance tracing has been enabled.  Initialize the slim lock and
+        // create the threadpool timer that will be responsible for periodically
+        // capturing system performance information.
+        //
+
+        InitializeSRWLock(&TraceContext->CapturePerformanceMetricsLock);
+        TraceContext->CapturePerformanceMetricsTimer = (
+            CreateThreadpoolTimer(
+                (PTP_TIMER_CALLBACK)CapturePerformanceMetricsTimerCallback,
+                (PVOID)TraceContext,
+                (PTP_CALLBACK_ENVIRON)ThreadpoolCallbackEnvironment
+            )
+        );
+
+        if (!TraceContext->CapturePerformanceMetricsTimer) {
+            goto Error;
+        }
+
+        //
+        // Override the BindComplete method of the performance trace store such
+        // that the threadpool timer work can be kicked off as soon as the trace
+        // store is available.
+        //
+
+        PerformanceStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStorePerformanceId
+            )
+        );
+
+        PerformanceStore->BindComplete = PerformanceStoreBindComplete;
+    }
+
+    //
+    // Intentional follow-on to InitializeAllocators.
+    //
+
+InitializeAllocators:
 
     //
     // Forcibly set all the trace stores' AllocateRecordsWithTimestamp function

@@ -3291,6 +3291,21 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->K32GetPerformanceInfo = (PGET_PERFORMANCE_INFO)
+        GetProcAddress(Rtl->NtdllModule, "K32GetPerformanceInfo"))) {
+
+        if (!(Rtl->K32GetPerformanceInfo = (PGET_PERFORMANCE_INFO)
+            GetProcAddress(Rtl->NtosKrnlModule, "K32GetPerformanceInfo"))) {
+
+            if (!(Rtl->K32GetPerformanceInfo = (PGET_PERFORMANCE_INFO)
+                GetProcAddress(Rtl->Kernel32Module, "K32GetPerformanceInfo"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'K32GetPerformanceInfo'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->GetProcessIoCounters = (PGET_PROCESS_IO_COUNTERS)
         GetProcAddress(Rtl->NtdllModule, "GetProcessIoCounters"))) {
 
