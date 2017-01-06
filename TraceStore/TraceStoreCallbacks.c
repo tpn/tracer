@@ -668,10 +668,12 @@ Return Value:
     if (!Success) {
 
         //
-        // GetWorkingSetChanges() failure is fatal.
+        // If we get here, a hard page fault was encountered or the process is
+        // potentially shutting down, either way, as we're a threadpool callback
+        // there isn't much we can do.
         //
 
-        TraceContextFailure(TraceContext);
+        NOTHING;
     }
 
     return;
@@ -743,10 +745,12 @@ Return Value:
     if (!Success) {
 
         //
-        // CapturePerformanceMetrics() failure is fatal.
+        // If we get here, a hard page fault was encountered or the process is
+        // potentially shutting down, either way, as we're a threadpool callback
+        // there isn't much we can do.
         //
 
-        TraceContextFailure(TraceContext);
+        NOTHING;
     }
 
     return;
