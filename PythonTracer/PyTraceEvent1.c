@@ -115,7 +115,7 @@ PyTraceEvent1(
                                              &HandleCount);
 
         if (!Success) {
-            Flags.TraceHandleCount = TRUE;
+            Flags.TraceHandleCount = FALSE;
         }
     }
 
