@@ -560,9 +560,9 @@ Return Value:
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         //
-        // N.B.: We use ManualReset == TRUE here because we explicitly control
-        //       the state of the resume allocation event via SetEvent() and
-        //       ResetEvent().
+        // N.B. We use ManualReset == TRUE here because we explicitly control
+        //      the state of the resume allocation event via SetEvent() and
+        //      ResetEvent().
         //
 
         ResumeAllocationEvent = CreateEvent(NULL, ManualReset, FALSE, NULL);
@@ -571,8 +571,8 @@ Return Value:
         }
 
         //
-        // N.B.: We use ManualReset == TRUE for BindComplete because we always
-        //       want this to stay signaled once the binding has been complete.
+        // N.B. We use ManualReset == TRUE for BindComplete because we always
+        //      want this to stay signaled once the binding has been complete.
         //
 
         BindCompleteEvent = CreateEvent(NULL, ManualReset, FALSE, NULL);
@@ -636,17 +636,17 @@ Return Value:
 
 Error:
 
-#define CLEANUP_WORK(Name)                                       \
-    Work = &TraceContext->##Name##Work;                          \
-                                                                 \
-    if (Work->ThreadpoolWork) {                                  \
-        CloseThreadpoolWork(Work->ThreadpoolWork);               \
-    }                                                            \
-                                                                 \
-    if (Work->WorkCompleteEvent) {                               \
-        CloseHandle(Work->WorkCompleteEvent);                    \
-    }                                                            \
-                                                                 \
+#define CLEANUP_WORK(Name)                         \
+    Work = &TraceContext->##Name##Work;            \
+                                                   \
+    if (Work->ThreadpoolWork) {                    \
+        CloseThreadpoolWork(Work->ThreadpoolWork); \
+    }                                              \
+                                                   \
+    if (Work->WorkCompleteEvent) {                 \
+        CloseHandle(Work->WorkCompleteEvent);      \
+    }                                              \
+                                                   \
     SecureZeroMemory(Work, sizeof(*Work));
 
     CLEANUP_WORK(BindMetadataInfoStore);
