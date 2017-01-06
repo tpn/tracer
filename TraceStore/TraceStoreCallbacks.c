@@ -659,6 +659,12 @@ Return Value:
         Success = FALSE;
     }
 
+    //
+    // Release the lock.
+    //
+
+    ReleaseWorkingSetChangesLock(TraceContext);
+
     if (!Success) {
 
         //
@@ -667,12 +673,6 @@ Return Value:
 
         TraceContextFailure(TraceContext);
     }
-
-    //
-    // Release the lock and return.
-    //
-
-    ReleaseWorkingSetChangesLock(TraceContext);
 
     return;
 }
@@ -734,6 +734,12 @@ Return Value:
         Success = FALSE;
     }
 
+    //
+    // Release the lock.
+    //
+
+    ReleaseCapturePerformanceMetricsLock(TraceContext);
+
     if (!Success) {
 
         //
@@ -742,12 +748,6 @@ Return Value:
 
         TraceContextFailure(TraceContext);
     }
-
-    //
-    // Release the lock and return.
-    //
-
-    ReleaseCapturePerformanceMetricsLock(TraceContext);
 
     return;
 }
