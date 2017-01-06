@@ -165,6 +165,7 @@ typedef INITIALIZE_TRACE_STORES_RUNDOWN \
 INITIALIZE_TRACE_STORES_RUNDOWN InitializeTraceStoresRundown;
 
 typedef
+_No_competing_thread_
 VOID
 (DESTROY_TRACE_STORES_RUNDOWN)(
     _In_ PTRACE_STORES_RUNDOWN Rundown
