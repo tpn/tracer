@@ -722,8 +722,7 @@ Return Value:
 
 
     if (!TraceStore->OnlyRelocationIsToNull) {
-        //__debugbreak();
-        OutputDebugStringA("XXX Ignoring Relocation!");
+        __debugbreak();
     }
 
     //
