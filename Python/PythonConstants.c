@@ -18,8 +18,8 @@ Abstract:
 extern "C" {
 #endif
 
-CONST USHORT TargetSizeOfPythonPathTableEntry = 128;
-CONST USHORT TargetSizeOfPythonFunctionTableEntry = 256;
+CONST USHORT TargetSizeOfPythonPathTableEntry = 512;
+CONST USHORT TargetSizeOfPythonFunctionTableEntry = 2048;
 
 CONST UNICODE_STRING W__init__py  = RTL_CONSTANT_STRING(L"__init__.py");
 CONST UNICODE_STRING W__init__pyc = RTL_CONSTANT_STRING(L"__init__.pyc");

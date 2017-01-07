@@ -13,6 +13,7 @@ from ..wintypes import (
     Union,
 
     BOOL,
+    BYTE,
     SHORT,
     USHORT,
     PUSHORT,
@@ -32,6 +33,7 @@ from ..wintypes import (
     LIST_ENTRY,
     RTL_SPLAY_LINKS,
     RTL_GENERIC_TABLE,
+    RTL_DYNAMIC_HASH_TABLE_ENTRY,
 )
 
 from Rtl import (
@@ -379,6 +381,7 @@ PYTHON_PATH_TABLE_ENTRY._fields_ = [
     ('ModuleName', STRING),
     ('Name', STRING),
     ('ClassName', STRING),
+    ('Reserved', BYTE * 384),
 ]
 
 class _PYTHON_FUNCTION_CODEOBJECT_INNER(Structure):
@@ -407,13 +410,15 @@ PYTHON_FUNCTION._fields_ = [
     ('PathEntry', PYTHON_PATH_TABLE_ENTRY),
     ('ParentPathEntry', PPYTHON_PATH_TABLE_ENTRY),
     ('Key', ULONG_PTR),
-    ('Signature', ULONG_PTR),
     ('CodeObject', PVOID),
     ('PyCFunctionObject', PVOID),
     ('MaxCallStackDepth', ULONG),
     ('CallCount', ULONG),
     ('u', _PYTHON_FUNCTION_INNER_UNION),
     ('ListEntry', LIST_ENTRY),
+    ('Signature', ULONG_PTR),
+    ('HashEntry', RTL_DYNAMIC_HASH_TABLE_ENTRY),
+    ('Reserved', BYTE * 1384),
 ]
 
 PYTHON_FUNCTION_TABLE_ENTRY._fields_ = [
