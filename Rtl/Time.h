@@ -21,6 +21,19 @@ extern "C" {
 #include "stdafx.h"
 
 //
+// FILETIMEEX is a convenience wrapper around FILETIME and ULARGE_INTEGER that
+// allows easy extraction of the underlying ULONGLONG.
+//
+
+typedef union _FILETIMEEX {
+    ULONGLONG AsULongLong;
+    LONGLONG AsLongLong;
+    FILETIME AsFiletime;
+    ULARGE_INTEGER AsULargeIntger;
+    LARGE_INTEGER AsLargeIntger;
+} FILETIMEEX, *PFILETIMEEX;
+
+//
 // Define multiplicands for absolute FILETIME time offsets.
 //
 

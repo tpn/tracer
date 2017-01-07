@@ -630,13 +630,22 @@ InitializePythonTraceContext(
     //
 
     if (Context->Flags.CountEvents) {
-        Success = AtExitEx(SaveCountsToLastRunAtExit,
+        Success = AtExitEx(SaveCountsToRunHistoryAtExit,
                            NULL,
                            Context,
-                           &Context->SaveCountsToLastRunAtExitEntry);
+                           &Context->SaveCountsToRunHistoryAtExitEntry);
     } else {
         Success = TRUE;
     }
+
+    //
+    // Always save performance metrics.
+    //
+
+    Success = AtExitEx(SavePerformanceMetricsAtExit,
+                       NULL,
+                       Context,
+                       &Context->SavePerformanceMetricsAtExitEntry);
 
     return Success;
 }
@@ -790,7 +799,7 @@ Error:
 
 _Use_decl_annotations_
 VOID
-SaveCountsToLastRunAtExit(
+SaveCountsToRunHistoryAtExit(
     BOOL IsProcessTerminating,
     PPYTHON_TRACE_CONTEXT Context
     )
@@ -877,11 +886,169 @@ Return Value:
     WRITE_ULONGLONG(NumberOfCReturns);
     WRITE_ULONGLONG(NumberOfCExceptions);
 
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+SavePerformanceMetricsAtExit(
+    BOOL IsProcessTerminating,
+    PPYTHON_TRACE_CONTEXT Context
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for writing various performance related metrics
+    to the registry on process exit.  It is called by the Rtl AtExitEx rundown
+    functionality.
+
+Arguments:
+
+    IsProcessTerminating - Supplies a boolean value that indicates whether or
+        not the process is terminating.  If FALSE, indicates that the library
+        has been unloaded via FreeLibrary().
+
+    Context - Supplies a pointer to the PYTHON_TRACE_CONTEXT structure that was
+        registered when AtExitEx() was called.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PRTL Rtl;
+    BOOL Success;
+    HKEY RegistryKey;
+    FILETIMEEX Dummy;
+    FILETIMEEX Duration;
+    FILETIMEEX UserTime;
+    FILETIMEEX ExitTime;
+    FILETIMEEX KernelTime;
+    FILETIMEEX CreationTime;
+    HANDLE CurrentProcess;
+
     //
-    // Close the registry key and return.
+    // We use the TRACE_PERFORMANCE structure here instead of local variables
+    // for each individual struct as it's more convenient (and lends itself to
+    // clean macros for writing values).
     //
 
-    RegCloseKey(RegistryKey);
+    TRACE_PERFORMANCE Perf;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!Context) {
+        return;
+    }
+
+    //
+    // Initialize aliases.
+    //
+
+    CurrentProcess = GetCurrentProcess();
+
+    RegistryKey = Context->RunHistoryRegistryKey;
+    if (!RegistryKey) {
+        return;
+    }
+
+    Rtl = Context->Rtl;
+    if (!Rtl) {
+        return;
+    }
+
+    //
+    // Define convenience macros.
+    //
+
+#define WRITE_NAMED_QWORD(Name, Value) \
+    WRITE_REG_QWORD(RegistryKey,       \
+                    Name,              \
+                    Value)
+
+#define WRITE_PERF_QWORD(Name)   \
+    WRITE_REG_QWORD(RegistryKey, \
+                    Name,        \
+                    Perf.##Name)
+
+#define WRITE_FILETIMEEX(Name)        \
+    WRITE_REG_QWORD(RegistryKey,      \
+                    Name,             \
+                    Name.AsULongLong)
+
+    //
+    // Get memory information.
+    //
+
+    Perf.ProcessMemoryCountersExSize = sizeof(Perf.MemoryCountersEx);
+    Success = Rtl->K32GetProcessMemoryInfo(CurrentProcess,
+                                           &Perf.MemoryCounters,
+                                           Perf.ProcessMemoryCountersExSize);
+    if (Success) {
+        WRITE_PERF_QWORD(PageFaultCount);
+        WRITE_PERF_QWORD(WorkingSetSize);
+        WRITE_PERF_QWORD(QuotaPeakPagedPoolUsage);
+        WRITE_PERF_QWORD(QuotaPagedPoolUsage);
+        WRITE_PERF_QWORD(QuotaPeakNonPagedPoolUsage);
+        WRITE_PERF_QWORD(QuotaNonPagedPoolUsage);
+        WRITE_PERF_QWORD(PagefileUsage);
+        WRITE_PERF_QWORD(PeakPagefileUsage);
+        WRITE_PERF_QWORD(PrivateUsage);
+    }
+
+    //
+    // Get I/O counter information.
+    //
+
+    Success = Rtl->GetProcessIoCounters(CurrentProcess, &Perf.IoCounters);
+    if (Success) {
+        WRITE_PERF_QWORD(ReadOperationCount);
+        WRITE_PERF_QWORD(WriteOperationCount);
+        WRITE_PERF_QWORD(OtherOperationCount);
+        WRITE_PERF_QWORD(ReadTransferCount);
+        WRITE_PERF_QWORD(WriteTransferCount);
+        WRITE_PERF_QWORD(OtherTransferCount);
+    }
+
+    //
+    // We capture exit time manually here, as it won't be set when
+    // GetProcessTimes() is called below (as we're still running).
+    //
+
+    GetSystemTimeAsFileTime(&ExitTime.AsFiletime);
+    WRITE_FILETIMEEX(ExitTime);
+
+    //
+    // Get process times.
+    //
+
+    Success = GetProcessTimes(CurrentProcess,
+                              &CreationTime.AsFiletime,
+                              &Dummy.AsFiletime,
+                              &KernelTime.AsFiletime,
+                              &UserTime.AsFiletime);
+    if (Success) {
+        WRITE_FILETIMEEX(UserTime);
+        WRITE_FILETIMEEX(KernelTime);
+        WRITE_FILETIMEEX(CreationTime);
+        Duration.AsULongLong = ExitTime.AsULongLong - CreationTime.AsULongLong;
+        WRITE_FILETIMEEX(Duration);
+    }
+
+    //
+    // Query cycle time.
+    //
+
+    Success = QueryProcessCycleTime(CurrentProcess, &Perf.ProcessCycles);
+    if (Success) {
+        WRITE_PERF_QWORD(ProcessCycles);
+    }
+
+    return;
 }
 
 _Use_decl_annotations_
