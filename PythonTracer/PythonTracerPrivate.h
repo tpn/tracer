@@ -50,7 +50,8 @@ extern "C" {
 //
 
 ATEXITEX_CALLBACK SaveMaxRefCountsAtExit;
-ATEXITEX_CALLBACK SaveCountsToLastRunAtExit;
+ATEXITEX_CALLBACK SaveCountsToRunHistoryAtExit;
+ATEXITEX_CALLBACK SavePerformanceMetricsAtExit;
 
 //
 // CallbackWorker-related functions.

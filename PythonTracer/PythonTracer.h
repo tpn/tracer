@@ -485,7 +485,8 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     PSET_SYSTEM_TIME_FOR_RUN_HISTORY SetSystemTimeForRunHistory;
 
     struct _RTL_ATEXIT_ENTRY *SaveMaxCountsAtExitEntry;
-    struct _RTL_ATEXIT_ENTRY *SaveCountsToLastRunAtExitEntry;
+    struct _RTL_ATEXIT_ENTRY *SaveCountsToRunHistoryAtExitEntry;
+    struct _RTL_ATEXIT_ENTRY *SavePerformanceMetricsAtExitEntry;
 
     //
     // List head for calls stacks.
