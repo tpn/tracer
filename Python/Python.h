@@ -2533,12 +2533,108 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     BYTE SHA1[20];
 
     //
+    // Number of lines in the file.  This also serves to pad out the next field
+    // to an 8 byte boundary.
+    //
+
+    ULONG NumberOfLines;
+
+    //
+    // An array of STRING structures, one for each line in the file.  Number of
+    // elements in the array is governed by NumberOfLines.
+    //
+
+    PSTRING Lines;
+
+    //
+    // Line ending bitmaps.
+    //
+
+    PRTL_BITMAP CarriageReturnBitmap;
+    PRTL_BITMAP LineFeedBitmap;
+
+    //
+    // The two bitmaps above are combined (literally AND'd together) to create
+    // the following line ending bitmap, where each set bit indicates a line
+    // ending character.
+    //
+
+    PRTL_BITMAP LineEndingBitmap;
+
+    //
+    // This bitmap is then inverted, such that each set bit indicates a normal
+    // non-line-ending character.
+    //
+
+    PRTL_BITMAP LineBitmap;
+
+    //
+    // Bitmaps for capturing whitespace/tabs.
+    //
+
+    PRTL_BITMAP WhitespaceBitmap;
+    PRTL_BITMAP TabBitmap;
+
+    //
+    // Set bits correlate to whitespace/tabs that indicate indentation; i.e.
+    // longest run of space/tab after the last line-ending bit.
+    //
+
+    PRTL_BITMAP IndentBitmap;
+
+    //
+    // (232 bytes consumed.)
+    //
+
+    //
+    // File information.
+    //
+
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+
+    //
+    // (280 bytes consumed.)
+    //
+
+    //
+    // File ID related information.
+    //
+
+    LARGE_INTEGER FileId;
+
+    //
+    // Inline FILE_ID_INFO.
+    //
+
+    union {
+        FILE_ID_INFO FileIdInfo;
+        struct {
+            ULONGLONG VolumeSerialNumber;
+            FILE_ID_128 FileId128;
+        };
+    };
+
+    //
     // Pad out to 512 bytes.
     //
 
-    BYTE Reserved[348];
+    BYTE Reserved[200];
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, MD5) == 128);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, SHA1) == 144);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NumberOfLines) == 164);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Lines) == 168);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, CarriageReturnBitmap) == 176);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, CreationTime) == 232);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FileId) == 280);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, VolumeSerialNumber) == 288);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Reserved) == 312);
 C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 512);
 
 #pragma pack(pop)
