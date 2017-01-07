@@ -2526,10 +2526,17 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     };
 
     //
-    // Reserve another 384-bytes.
+    // Checksums.
     //
 
-    BYTE Reserved[384];
+    BYTE MD5[16];
+    BYTE SHA1[20];
+
+    //
+    // Pad out to 512 bytes.
+    //
+
+    BYTE Reserved[348];
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
 C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 512);
