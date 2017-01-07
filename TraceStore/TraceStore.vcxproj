@@ -89,6 +89,7 @@
     <ClCompile Include="TraceStoreAddressRange.c" />
     <ClCompile Include="TraceStoreAllocation.c" />
     <ClCompile Include="TraceStoreAllocator.c" />
+    <ClCompile Include="TraceStoreAtExitEx.c" />
     <ClCompile Include="TraceStoreBind.c" />
     <ClCompile Include="TraceStoreCallbacks.c" />
     <ClCompile Include="TraceStoreConstants.c" />

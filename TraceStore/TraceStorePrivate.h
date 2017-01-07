@@ -62,6 +62,12 @@ PreThreadpoolWorkSubmission(
 ////////////////////////////////////////////////////////////////////////////////
 
 //
+// TraceStoreAtExitEx-related functions.
+//
+
+ATEXITEX_CALLBACK TraceStoreAtExitEx;
+
+//
 // TraceStorePath-related functions.
 //
 

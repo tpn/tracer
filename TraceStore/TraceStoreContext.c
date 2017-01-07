@@ -83,6 +83,7 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     BOOL IsReadonly;
     BOOL ManualReset;
     USHORT Index;
@@ -413,7 +414,6 @@ Return Value:
         NumberOfTraceStores
     );
 
-
 #define INIT_WORK(Name, NumberOfItems)                               \
     Work = &TraceContext->##Name##Work;                              \
                                                                      \
@@ -496,7 +496,18 @@ Return Value:
         }
 
         goto InitializeAllocators;
+    }
 
+    //
+    // Register the AtExitEx callback.
+    //
+
+    Success = Rtl->AtExitEx(TraceStoreAtExitEx,
+                            NULL,
+                            TraceContext,
+                            &TraceContext->AtExitExEntry);
+    if (!Success) {
+        goto Error;
     }
 
     //
@@ -535,6 +546,7 @@ Return Value:
             TraceContext->LastError = GetLastError();
             goto Error;
         }
+
 
         //
         // Override the BindComplete method of the working set watch information

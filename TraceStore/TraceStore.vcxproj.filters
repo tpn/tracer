@@ -113,6 +113,9 @@
     <ClCompile Include="TraceStorePerformance.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreAtExitEx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <!--
   <ItemGroup>
