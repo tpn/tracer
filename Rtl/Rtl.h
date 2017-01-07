@@ -2529,7 +2529,7 @@ FORCEINLINE
 BOOL
 PointerToOffsetCrossesPageBoundary(
     _In_ PVOID Pointer,
-    _In_ LONG Offset
+    _In_ SIZE_T Offset
     )
 {
     LONG_PTR ThisPage;
