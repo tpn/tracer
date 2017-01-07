@@ -602,11 +602,8 @@ Return Value:
     // size is smaller than the mapping size, this is easy: we only need one
     // map.
     //
-    // If the file size is larger than the mapping size, we'll potentially need
-    // to create multiple maps, depending on whether or not the trace store has
-    // any relocation back references, and whether it had any preferred address
-    // unavailable events (which is reflected in the number of address ranges
-    // it had to use).
+    // If the file size is larger than the mapping size, we mimic the original
+    // memory map address ranges exactly.
     //
 
     if (AddressRanges->MappedSize.QuadPart > EndOfFile) {
@@ -620,28 +617,7 @@ Return Value:
 
     } else {
 
-        //
-        // The file is larger than the mapping size.  Do we have any relocation
-        // back references?  If not, we can ignore how many address ranges the
-        // store required and just use a single map.
-        //
-
-        if (TraceStore->Reloc->NumberOfRelocationBackReferences == 0) {
-
-            NumberOfMaps = 1;
-
-        } else {
-
-            //
-            // The file has relocation back references.  That is, there are
-            // other trace stores that have pointers referencing memory that
-            // was served from this trace store.  (This also includes trace
-            // stores that have internal references.)  So, we need to mimic
-            // the address range maps that were originally used.
-            //
-
-            NumberOfMaps = TraceStore->NumberOfAddressRanges.LowPart;
-        }
+        NumberOfMaps = TraceStore->NumberOfAddressRanges.LowPart;
     }
 
     //
