@@ -90,6 +90,22 @@ Return Value:
         return FALSE;
     }
 
+    //
+    // Copy runtime parameters.
+    //
+
+    TraceContext->GetWorkingSetChangesIntervalInMilliseconds = (
+        RuntimeParameters->GetWorkingSetChangesIntervalInMilliseconds
+    );
+
+    TraceContext->GetWorkingSetChangesWindowLengthInMilliseconds = (
+        RuntimeParameters->GetWorkingSetChangesWindowLengthInMilliseconds
+    );
+
+    TraceContext->WsWatchInfoExInitialBufferNumberOfElements = (
+        RuntimeParameters->WsWatchInfoExInitialBufferNumberOfElements
+    );
+
     TraceContext->WsWatchInfoExCurrentBufferNumberOfElements = (
         RuntimeParameters->WsWatchInfoExInitialBufferNumberOfElements
     );

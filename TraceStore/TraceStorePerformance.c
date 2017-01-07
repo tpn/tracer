@@ -67,11 +67,19 @@ Return Value:
     }
 
     //
-    // Resolve the runtime parameters.
+    // Resolve the runtime parameters and copy locally.
     //
 
     TracerConfig = TraceContext->TracerConfig;
     RuntimeParameters = &TracerConfig->RuntimeParameters;
+
+    TraceContext->CapturePerformanceMetricsIntervalInMilliseconds = (
+        RuntimeParameters->CapturePerformanceMetricsIntervalInMilliseconds
+    );
+
+    TraceContext->CapturePerformanceMetricsWindowLengthInMilliseconds = (
+        RuntimeParameters->CapturePerformanceMetricsWindowLengthInMilliseconds
+    );
 
     //
     // Drive one iteration of the CapturePerformanceMetrics() routine to verify

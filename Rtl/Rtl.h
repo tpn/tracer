@@ -4372,6 +4372,49 @@ Return Value:
     );                                         \
 } while (0)
 
+/*++
+
+    VOID
+    WRITE_REG_DWORD(
+        _In_ HKEY Key,
+        _In_ LITERAL Name,
+        _In_ ULONG Value
+        );
+
+Routine Description:
+
+    This is a helper macro for writing REG_DWORD values to the registry.
+
+Arguments:
+
+    Key - Supplies an HKEY handle that represents an open registry key with
+        appropriate write access.
+
+    Name - Name of the registry key to write.  This is converted into a literal
+        wide character string by the macro (e.g. MaxNoneRefCount will become
+        L"MaxNoneRefCount").
+
+    Value - Supplies a ULONG value to write.
+
+Return Value:
+
+    None.
+
+--*/
+
+#define WRITE_REG_DWORD(Key, Name, Value) do { \
+    ULONG Dword = Value;                       \
+    ULONG DwordLength = sizeof(Dword);         \
+    RegSetValueExW(                            \
+        Key,                                   \
+        L#Name,                                \
+        0,                                     \
+        REG_DWORD,                             \
+        (const BYTE*)&Dword,                   \
+        DwordLength                            \
+    );                                         \
+} while (0)
+
 
 /*++
 

@@ -1128,6 +1128,14 @@ LoadPythonDll:
     }
 
     //
+    // Save the run history registry key to the trace context as well.
+    //
+
+    Session->TraceContext->RunHistoryRegistryKey = (
+        PythonTraceContext->RunHistoryRegistryKey
+    );
+
+    //
     // Define a helper macro for writing strings to the run history.
     //
 

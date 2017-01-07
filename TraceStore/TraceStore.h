@@ -1392,6 +1392,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_TIME Time;
 
     //
+    // A handle to a registry key that, when set, will be used to write various
+    // metrics about the trace session (e.g. the current buffer size used by
+    // the working set machinery).
+    //
+
+    HKEY RunHistoryRegistryKey;
+
+    //
+    // Pointer to our AtExitEx entry.
+    //
+
+    struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
+
+    //
     // Number of quadwords our bitmap buffer provides.
     //
 

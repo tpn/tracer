@@ -729,6 +729,8 @@ class TRACE_CONTEXT(Structure):
         ('ReadonlyNonStreamingBindCompletesInProgress', ULONG),
         ('NumberOfStoresWithMultipleRelocationDependencies', ULONG),
         ('Time', TRACE_STORE_TIME),
+        ('RunHistoryRegistryKey', PVOID),
+        ('AtExitExEntry', PVOID),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
         ('BitmapBuffer', _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP),
