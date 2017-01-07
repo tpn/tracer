@@ -2525,9 +2525,14 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
         };
     };
 
-} PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
+    //
+    // Reserve another 384-bytes.
+    //
 
-C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 128);
+    BYTE Reserved[384];
+
+} PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
+C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 512);
 
 #pragma pack(pop)
 
@@ -2580,7 +2585,7 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
 #pragma pack(push, 8)
 
 //
-// This structure needs to be 216 bytes in size.  This is because it is
+// This structure needs to be 2008 bytes in size.  This is because it is
 // created indirectly as part of RtlInsertElementGenericTable(), and will
 // always be preceded by TABLE_ENTRY_HEADER, which is 40 bytes in size.
 // We want our total size, including the header, to be a power of 2, as
@@ -2591,7 +2596,7 @@ typedef struct _PYTHON_FUNCTION {
 
     //
     // The path entry for the function.  This captures naming details and
-    // consumes the first 128 bytes of this structure.
+    // consumes the first 512 bytes of this structure.
     //
 
     PYTHON_PATH_TABLE_ENTRY PathEntry;
@@ -2609,13 +2614,6 @@ typedef struct _PYTHON_FUNCTION {
     //
 
     ULONG_PTR Key;
-
-    //
-    // A unique value for this function that is independent to the given trace
-    // session.  E.g. something that could be used as a repeatable hash key.
-    //
-
-    ULONG_PTR Signature;
 
     //
     // The code object associated with this function.  This will be set for
@@ -2692,9 +2690,27 @@ typedef struct _PYTHON_FUNCTION {
 
     LIST_ENTRY ListEntry;
 
-} PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
+    //
+    // A unique value for this function that is independent to the given trace
+    // session.  E.g. something that could be used as a repeatable hash key.
+    //
 
-C_ASSERT(sizeof(PYTHON_FUNCTION) == 216);
+    ULONG_PTR Signature;
+
+    //
+    // Generic hash entry.
+    //
+
+    RTL_DYNAMIC_HASH_TABLE_ENTRY HashEntry;
+
+    //
+    // (624 bytes consumed.)
+    //
+
+    BYTE Reserved[1384];
+
+} PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
+C_ASSERT(sizeof(PYTHON_FUNCTION) == 2008);
 
 typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 
@@ -2759,7 +2775,7 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 
 } PYTHON_FUNCTION_TABLE_ENTRY, *PPYTHON_FUNCTION_TABLE_ENTRY;
 C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Function) == 40);
-C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 256);
+C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 2048);
 
 typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
 

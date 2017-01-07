@@ -630,9 +630,9 @@ ResolvePythonExOffsets(_In_ PPYTHON Python)
     Python->PythonPathTableEntryOffsets = &PythonPathTableEntryOffsets;
     Python->PythonFunctionOffsets = &PythonFunctionOffsets;
 
-    ASSERT_EQUAL(PythonPathTableEntryOffsets.Size, 128);
-    ASSERT_EQUAL(SizeOfPythonFunctionTableEntry, 256);
-    ASSERT_EQUAL(PythonFunctionOffsets.Size, 256-SizeOfTableEntryHeaderHeader);
+    ASSERT_EQUAL(PythonPathTableEntryOffsets.Size, 512);
+    ASSERT_EQUAL(SizeOfPythonFunctionTableEntry, 2048);
+    ASSERT_EQUAL(PythonFunctionOffsets.Size, 2048-SizeOfTableEntryHeaderHeader);
 
     return TRUE;
 }
