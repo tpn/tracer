@@ -23,7 +23,8 @@ extern "C" {
 
 #include "stdafx.h"
 
-#define TRACER_MODULE_NAMES_ENV_VAR "TRACER_MODULE_NAMES"
+#define TRACER_MODULE_NAMES_ENV_VAR_A  "TRACER_MODULE_NAMES"
+#define TRACER_MODULE_NAMES_ENV_VAR_W L"TRACER_MODULE_NAMES"
 #define TRACER_MODULE_NAMES_DELIM ';'
 
 FORCEINLINE
@@ -58,7 +59,7 @@ Return Value:
             Session->Allocator,
             &Session->StringTableAllocator,
             &Session->StringArrayAllocator,
-            TRACER_MODULE_NAMES_ENV_VAR,
+            TRACER_MODULE_NAMES_ENV_VAR_A,
             TRACER_MODULE_NAMES_DELIM
         )
     );

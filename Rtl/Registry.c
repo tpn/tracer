@@ -277,4 +277,205 @@ End:
     return Success;
 }
 
+_Use_decl_annotations_
+BOOL
+WriteEnvVarToRegistry(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    HKEY RegistryKey,
+    PWSTR EnvironmentVariableName,
+    PWSTR RegistryKeyName
+    )
+/*++
+
+Routine Description:
+
+    Writes the value of an environment variable as a Unicode string to the
+    given registry key.  Once the environment variable is extracted, the
+    WriteRegistryString() routine is used to write the value.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure to be used for all
+        allocations performed by this routine.
+
+    RegistryKey - Supplies a handle to an open registry key where the value will
+        be written.
+
+    EnvironmentVariableName - Supplies a pointer to a NULL-terminated string
+        representing the name of the environment variable to capture the value
+        of and write to the registry.
+
+    RegistryKeyName - Optionally supplies a pointer to a NULL-terminated string
+        to use as the registry key name when writing the value.  If NULL, the
+        value of EnvironmentVariableName is used instead.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    PWSTR Name;
+    LONG Length;
+    UNICODE_STRING String;
+    LONG_INTEGER NumberOfChars;
+    LONG_INTEGER AllocSizeInBytes;
+    USHORT AlignedNumberOfCharacters;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(RegistryKey)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(EnvironmentVariableName)) {
+        return FALSE;
+    }
+
+    if (wcslen(EnvironmentVariableName) == 0) {
+        return FALSE;
+    }
+
+    //
+    // Get the number of characters required to store the environment variable's
+    // value, including the trailing NULL byte.
+    //
+
+    Name = EnvironmentVariableName;
+    Length = GetEnvironmentVariableW(Name, NULL, 0);
+
+    if (Length == 0) {
+        return FALSE;
+    }
+
+    //
+    // Remove the trailing NULL.
+    //
+
+    NumberOfChars.LongPart = Length - 1;
+
+    //
+    // Sanity check it's not longer than MAX_USHORT.
+    //
+
+    if (NumberOfChars.HighPart) {
+        return FALSE;
+    }
+
+    //
+    // Align number of characters to a pointer boundary and account for the
+    // additional byte required for the trailing NULL.
+    //
+
+    AlignedNumberOfCharacters = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            NumberOfChars.LowPart + 1
+        )
+    );
+
+    //
+    // Calculate the number of bytes required.
+    //
+
+    AllocSizeInBytes.LongPart = AlignedNumberOfCharacters << 1;
+
+    //
+    // Sanity check we've got a size under MAX_USHORT.
+    //
+
+    if (AllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate a buffer.
+    //
+
+    String.Buffer = (PWCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!String.Buffer) {
+        return FALSE;
+    }
+
+    //
+    // Initialize the string lengths.
+    //
+
+    String.Length = NumberOfChars.LowPart << 1;
+    String.MaximumLength = AllocSizeInBytes.LowPart;
+
+    //
+    // Call GetEnvironmentVariableA() again with the buffer to retrieve the
+    // contents.
+    //
+
+    Length = GetEnvironmentVariableW(Name,
+                                     String.Buffer,
+                                     AlignedNumberOfCharacters);
+
+    if (Length != (String.Length >> 1)) {
+
+        //
+        // We failed to copy the expected number of bytes.
+        //
+
+        Success = FALSE;
+        goto End;
+    }
+
+    //
+    // We extracted the environment variable value successfully.  Determine
+    // which name to write it under, then write it to the registry.
+    //
+
+    if (ARGUMENT_PRESENT(RegistryKeyName)) {
+        Name = RegistryKeyName;
+    } else {
+        Name = EnvironmentVariableName;
+    }
+
+    Success = Rtl->WriteRegistryString(Rtl,
+                                       Allocator,
+                                       RegistryKey,
+                                       Name,
+                                       &String);
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Free our temporary string buffer that captured the environment variable
+    // value.
+    //
+
+    Allocator->Free(Allocator->Context, String.Buffer);
+
+    return Success;
+}
+
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -3678,6 +3678,13 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->WriteEnvVarToRegistry = (PWRITE_ENV_VAR_TO_REGISTRY)
+        GetProcAddress(RtlExModule, "WriteEnvVarToRegistry"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'WriteEnvVarToRegistry'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
         GetProcAddress(RtlExModule, "RtlCheckBit"))) {
 
