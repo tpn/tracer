@@ -1144,10 +1144,26 @@ LoadPythonDll:
         OutputDebugStringA(#Name);                                   \
         OutputDebugStringA("\nValue: ");                             \
         OutputDebugStringW((Value)->Buffer);                         \
-        goto Error;                                                  \
     }
 
 #define WRITE_SESSION_REG_SZ(Name) WRITE_REG_SZ(Name, Session->##Name)
+
+#define WRITE_ENV_VAR_REG_SZ(EnvVarName, RegName)                      \
+    Success = Rtl->WriteEnvVarToRegistry(                              \
+        Rtl,                                                           \
+        Allocator,                                                     \
+        PythonTraceContext->RunHistoryRegistryKey,                     \
+        EnvVarName,                                                    \
+        RegName                                                        \
+    );                                                                 \
+    if (!Success) {                                                    \
+        OutputDebugStringA("WriteEnvVarToRegistry() failed.\nName: "); \
+        OutputDebugStringW(EnvVarName);                                \
+        OutputDebugStringA("\nRegName: ");                             \
+        OutputDebugStringW(RegName);                                   \
+    }
+
+#define WRITE_ENV_VAR(Name) WRITE_ENV_VAR_REG_SZ(L#Name, L#Name)
 
     WRITE_SESSION_REG_SZ(PythonExePath);
     WRITE_SESSION_REG_SZ(PythonHomePath);
@@ -1167,6 +1183,16 @@ LoadPythonDll:
     }
 
     WRITE_REG_SZ(CommandLine, &CommandLine);
+    WRITE_REG_SZ(TraceDirectory, &Session->TraceStores->BaseDirectory);
+
+    WRITE_ENV_VAR(PATH);
+    WRITE_ENV_VAR(USERNAME);
+    WRITE_ENV_VAR(USERDOMAIN);
+    WRITE_ENV_VAR(COMPUTERNAME);
+    WRITE_ENV_VAR(NUMBER_OF_PROCESSORS);
+    WRITE_ENV_VAR(PROCESSOR_IDENTIFIER);
+    WRITE_ENV_VAR(PROCESSOR_LEVEL);
+    WRITE_ENV_VAR(PROCESSOR_REVISION);
 
     //
     // Initialize the string table and string array allocators.
@@ -1202,6 +1228,10 @@ LoadPythonDll:
             OutputDebugStringA("SetModuleNamesStringTable() failed.\n");
             goto Error;
         }
+
+        WRITE_ENV_VAR_REG_SZ(TRACER_MODULE_NAMES_ENV_VAR_W,
+                             TRACER_MODULE_NAMES_ENV_VAR_W);
+
     }
 
     //

@@ -2258,6 +2258,20 @@ typedef WRITE_REGISTRY_STRING *PWRITE_REGISTRY_STRING;
 RTL_API WRITE_REGISTRY_STRING WriteRegistryString;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(WRITE_ENV_VAR_TO_REGISTRY)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HKEY RegistryKey,
+    _In_ PWSTR EnvironmentVariableName,
+    _In_opt_ PWSTR RegistryKeyName
+    );
+typedef WRITE_ENV_VAR_TO_REGISTRY *PWRITE_ENV_VAR_TO_REGISTRY;
+RTL_API WRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;
+
+typedef
 VOID
 (DESTROY_RTL)(
     _In_opt_ struct _RTL **RtlPointer
@@ -2354,6 +2368,7 @@ RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
     PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                   \
     PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                 \
     PWRITE_REGISTRY_STRING WriteRegistryString;                                \
+    PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                          \
     PRTL_CHECK_BIT RtlCheckBit;                                                \
     PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
     PRTL_PARENT RtlParent;                                                     \
