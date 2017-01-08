@@ -56,7 +56,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.  The total
+    NumberOfRecords - Supplies the number of records to allocate.  The total
         size is derived by multiplying RecordSize with NumberOfRecords.
 
     RecordSize - Supplies the size of the record to allocate.
@@ -510,7 +510,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
@@ -895,7 +895,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
@@ -1014,7 +1014,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
@@ -1080,7 +1080,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
@@ -1181,7 +1181,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
@@ -1223,7 +1223,7 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the
         allocation is to be recorded against.
 
-    NumberOfRecords - Supplies the number of records to allocation.
+    NumberOfRecords - Supplies the number of records to allocate.
 
     RecordSize - Supplies the size of the record to allocate.
 
