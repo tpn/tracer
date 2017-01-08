@@ -659,14 +659,28 @@ InitializeAllocators:
         TraceStore->TraceContext = TraceContext;
         TraceStore->ResumeAllocationsEvent = ResumeAllocationEvent;
         TraceStore->BindCompleteEvent = BindCompleteEvent;
+
         TraceStore->AllocateRecords = TraceStoreAllocateRecords;
         TraceStore->AllocateRecordsWithTimestamp = SuspendedAllocator;
-        TraceStore->AllocateRecordsWithTimestampImpl1 = (
-            TraceStoreAllocateRecordsWithTimestampImpl
-        );
         TraceStore->SuspendedAllocateRecordsWithTimestamp = (
             SuspendedAllocator
         );
+
+        //
+        // Determine which allocator implementation to use based on the
+        // page alignment trait.
+        //
+
+        Traits = *TraceStore->pTraits;
+        if (WantsPageAlignment(Traits)) {
+            TraceStore->AllocateRecordsWithTimestampImpl1 = (
+                TraceStoreAllocatePageAlignedRecordsWithTimestampImpl
+            );
+        } else {
+            TraceStore->AllocateRecordsWithTimestampImpl1 = (
+                TraceStoreAllocateRecordsWithTimestampImpl
+            );
+        }
 
         //
         // If the trace store has the concurrent allocations trait set, we need
@@ -674,7 +688,6 @@ InitializeAllocators:
         // allocators.
         //
 
-        Traits = *TraceStore->pTraits;
         if (!HasConcurrentAllocations(Traits)) {
             continue;
         }
@@ -683,6 +696,7 @@ InitializeAllocators:
         if (!InitializeCriticalSectionAndSpinCount(CriticalSection, SpinCount)){
             goto Error;
         }
+
         TraceStore->TryAllocateRecords = TraceStoreTryAllocateRecords;
         TraceStore->TryAllocateRecordsWithTimestamp = (
             TraceStoreTryAllocateRecordsWithTimestamp

@@ -630,10 +630,26 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG AllowPageSpill:1;
 
     //
+    // When set, indicates that every allocation should a) start on a new page,
+    // and b) be rounded up to a multiple of the page size.  This is used for
+    // trace stores that are used to capture file contents.  The page size is
+    // always 4K.
+    //
+    // Invariants:
+    //
+    //  - If PageAligned == TRUE:
+    //      Assert AllowPageSpill == FALSE
+    //      Assert MultipleRecords == TRUE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG PageAligned:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:21;
+    ULONG Unused:20;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -666,7 +682,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     CoalesceAllocationsTrait            =  1 << 8,
     ConcurrentAllocationsTrait          =  1 << 9,
     AllowPageSpillTrait                 =  1 << 10,
-    InvalidTrait                        = (1 << 10) + 1
+    PageAlignedTrait                    =  1 << 11,
+    InvalidTrait                        = (1 << 11) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -713,6 +730,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define HasConcurrentAllocations(Traits) ((Traits).ConcurrentAllocations)
 #define AllowPageSpill(Traits) ((Traits).AllowPageSpill)
 #define PreventPageSpill(Traits) (!((Traits).AllowPageSpill))
+#define WantsPageAlignment(Traits) ((Traits).PageAligned)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of

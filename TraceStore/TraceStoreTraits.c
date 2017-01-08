@@ -100,6 +100,18 @@ Return Value:
         }
     }
 
+    if (Traits.PageAligned) {
+        if (!AssertFalse("AllowPageSpill", Traits.AllowPageSpill)) {
+            return FALSE;
+        }
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
 }
 

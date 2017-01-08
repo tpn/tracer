@@ -1076,7 +1076,11 @@ ALLOCATE_RECORDS_WITH_TIMESTAMP
 ALLOCATE_RECORDS_WITH_TIMESTAMP
     ConcurrentTraceStoreAllocateRecordsWithTimestamp;
 
-ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestampImpl;
+ALLOCATE_RECORDS_WITH_TIMESTAMP
+    TraceStoreAllocateRecordsWithTimestampImpl;
+
+ALLOCATE_RECORDS_WITH_TIMESTAMP
+    TraceStoreAllocatePageAlignedRecordsWithTimestampImpl;
 
 TRY_ALLOCATE_RECORDS TraceStoreTryAllocateRecords;
 TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreTryAllocateRecordsWithTimestamp;

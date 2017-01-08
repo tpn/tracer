@@ -530,6 +530,350 @@ Return Value:
 
 _Use_decl_annotations_
 PVOID
+TraceStoreAllocatePageAlignedRecordsWithTimestampImpl(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
+    PLARGE_INTEGER  TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine allocates records from a trace store in multiples of the page
+    size (4K).  The allocated memory is guaranteed to begin on a new page, and,
+    if the allocation consumes multiple pages, is also guaranteed that the final
+    page will belong to the allocation exclusively, even if the total allocation
+    size does not consume the entire contents of the final page.  That is, the
+    remaining bytes at the end of the final page will not be allocated to any
+    other subsequent allocation.  The unused trailing bytes will always be zero.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    NumberOfRecords - Supplies the number of records to allocate.
+
+    RecordSize - Supplies the size of the record to allocate.
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+    ULONG_PTR RequestedSize;
+    ULONG_PTR AllocationSize;
+    ULONG_PTR WastedBytes = 0;
+    PVOID ReturnAddress = NULL;
+    PVOID NextAddress;
+    PVOID EndAddress;
+    PVOID ThisPage;
+    PVOID NextPage;
+    PVOID EndPage;
+    LARGE_INTEGER Timestamp;
+    TRACE_STORE_TRAITS Traits;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceStore)) {
+        return NULL;
+    }
+
+    MemoryMap = TraceStore->MemoryMap;
+
+    if (!MemoryMap) {
+        return NULL;
+    }
+
+    //
+    // Load the traits.
+    //
+
+    Traits = *TraceStore->pTraits;
+
+    //
+    // If no timestamp has been provided and the trace store is not marked as
+    // linked, capture a timestamp.  Otherwise, use the caller's timestamp.
+    //
+
+    if (!ARGUMENT_PRESENT(TimestampPointer)) {
+        if (!IsLinkedStore(Traits)) {
+            QueryPerformanceCounter(&Timestamp);
+        } else {
+            Timestamp.QuadPart = 0;
+        }
+    } else {
+        Timestamp.QuadPart = TimestampPointer->QuadPart;
+    }
+
+#ifdef _DEBUG
+
+    //
+    // Ensure the traits indicate page alignment.
+    //
+
+    if (!AssertTrue("WantsPageAlignment", WantsPageAlignment(Traits))) {
+        return NULL;
+    }
+
+    //
+    // Ensure we're not metadata.
+    //
+
+    if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+        return NULL;
+    }
+
+#endif
+
+    //
+    // Calculate the requested size, and then round up to the nearest page
+    // multiple.
+    //
+
+    RequestedSize = NumberOfRecords * RecordSize;
+    AllocationSize = ROUND_TO_PAGES(RequestedSize);
+
+    //
+    // Resolve page addresses.
+    //
+
+    ThisPage = PAGE_ALIGN(MemoryMap->NextAddress);
+    EndPage = PAGE_ALIGN(((ULONG_PTR)MemoryMap->NextAddress) + RequestedSize);
+
+    //
+    // Ensure our next ("current") address is page aligned.
+    //
+
+    if (!AssertTrue("MemoryMap->NextAddress is not page aligned",
+                    MemoryMap->NextAddress == ThisPage)) {
+        return NULL;
+    }
+
+    //
+    // Calculate the next address for the memory map if we fulfil this
+    // allocation, as well as the memory map's end address.
+    //
+
+    NextAddress = (
+        (PVOID)RtlOffsetToPointer(
+            MemoryMap->NextAddress,
+            AllocationSize
+        )
+    );
+
+    EndAddress = (
+        (PVOID)RtlOffsetToPointer(
+            MemoryMap->BaseAddress,
+            MemoryMap->MappingSize.LowPart
+        )
+    );
+
+    //
+    // Ensure the next address is page aligned, and that it doesn't share the
+    // same page as our final page.
+    //
+
+    NextPage = PAGE_ALIGN(NextAddress);
+
+    if (!AssertTrue("NextAddress is not page aligned",
+                    NextAddress == NextPage)) {
+        return NULL;
+    }
+
+    if (!AssertTrue("EndPage <= EndPage",
+                    ((ULONG_PTR)EndPage) < ((ULONG_PTR)NextPage))) {
+        return NULL;
+    }
+
+    //
+    // If the next address exceeds the limits of our current memory map, we
+    // can't satisfy this allocation within the remaining space.  Thus, we
+    // need to retire the active map and consume a new one.
+    //
+
+    if (NextAddress > EndAddress) {
+
+        ULONG_PTR PrevMemoryMapAllocSize;
+        ULONG_PTR NextMemoryMapAllocSize;
+
+        PrevMemoryMap = MemoryMap;
+
+        PrevMemoryMapAllocSize = (
+            (ULONG_PTR)EndAddress -
+            (ULONG_PTR)PrevMemoryMap->NextAddress
+        );
+
+        NextMemoryMapAllocSize = (
+            (ULONG_PTR)NextAddress -
+            (ULONG_PTR)EndAddress
+        );
+
+        if (!ConsumeNextTraceStoreMemoryMap(TraceStore, NULL)) {
+            return NULL;
+        }
+
+        MemoryMap = TraceStore->MemoryMap;
+
+        if (PrevMemoryMapAllocSize == 0) {
+
+            //
+            // No memory map spill necessary.
+            //
+
+            ReturnAddress = MemoryMap->BaseAddress;
+
+            MemoryMap->NextAddress = (
+                (PVOID)RtlOffsetToPointer(
+                    MemoryMap->BaseAddress,
+                    AllocationSize
+                )
+            );
+
+        } else {
+
+            //
+            // The requested allocation will spill over into the next memory
+            // map.  If we're non-contiguous, our return address has to be
+            // based on the new memory map's base address (potentially losing
+            // the remaining bytes on the existing one).
+            //
+
+            if (MemoryMap->BaseAddress != EndAddress) {
+
+                //
+                // Non-contiguous mapping.
+
+                ReturnAddress = MemoryMap->BaseAddress;
+
+                MemoryMap->NextAddress = (
+                    (PVOID)RtlOffsetToPointer(
+                        MemoryMap->BaseAddress,
+                        AllocationSize
+                    )
+                );
+
+            } else {
+
+                //
+                // The mapping is contiguous.
+                //
+
+
+                //
+                // Our return address will be the value of the previous memory
+                // map's next address.
+                //
+
+                ReturnAddress = PrevMemoryMap->NextAddress;
+
+                //
+                // Update the previous address fields.
+                //
+
+                PrevMemoryMap->PrevAddress = PrevMemoryMap->NextAddress;
+                TraceStore->PrevAddress = PrevMemoryMap->NextAddress;
+                MemoryMap->PrevAddress = PrevMemoryMap->NextAddress;
+
+                //
+                // Adjust the new memory map's NextAddress to account for the
+                // bytes we had to spill over.
+                //
+
+                MemoryMap->NextAddress = (
+                    (PVOID)RtlOffsetToPointer(
+                        MemoryMap->BaseAddress,
+                        NextMemoryMapAllocSize
+                    )
+                );
+
+                if (MemoryMap->NextAddress != NextAddress) {
+                    __debugbreak();
+                }
+            }
+        }
+    } else {
+
+        //
+        // The allocation can be satisfied by the existing memory map.  Update
+        // addresses accordingly.  (We don't currently prefault page aligned
+        // allocations.)
+        //
+
+        ReturnAddress           = MemoryMap->NextAddress;
+        MemoryMap->PrevAddress  = MemoryMap->NextAddress;
+        TraceStore->PrevAddress = MemoryMap->NextAddress;
+
+        MemoryMap->NextAddress = NextAddress;
+    }
+
+    if (TraceStore->IsReadonly) {
+        goto End;
+    }
+
+    //
+    // Record the allocation.
+    //
+
+    Success = RecordTraceStoreAllocation(TraceStore,
+                                         NumberOfRecords,
+                                         RecordSize,
+                                         0,
+                                         Timestamp);
+
+    if (!Success) {
+
+        //
+        // See comment in TraceStoreAllocateRecordsWithTimestampImpl() regarding
+        // the NOTHING below.
+        //
+
+        NOTHING;
+    }
+
+    //
+    // Update totals and end of file.
+    //
+
+    TraceStore->Totals->NumberOfAllocations.QuadPart += 1;
+    TraceStore->Totals->AllocationSize.QuadPart += AllocationSize;
+    TraceStore->Eof->EndOfFile.QuadPart += AllocationSize;
+
+    //
+    // Consume the next memory map if applicable.
+    //
+
+End:
+    if (MemoryMap->NextAddress == EndAddress) {
+
+        //
+        // This memory map has been filled entirely; attempt to consume the
+        // next one.  Ignore the return code; we can't do much at this point
+        // if it fails.
+        //
+
+        Success = ConsumeNextTraceStoreMemoryMap(TraceStore, NULL);
+        if (!Success) {
+            NOTHING;
+        }
+    }
+
+    return ReturnAddress;
+}
+
+_Use_decl_annotations_
+PVOID
 SuspendedTraceStoreAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
