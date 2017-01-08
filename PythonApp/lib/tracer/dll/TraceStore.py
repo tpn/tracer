@@ -57,6 +57,7 @@ from ..wintypes import (
     UNICODE_STRING,
     PULARGE_INTEGER,
     PUNICODE_STRING,
+    CRITICAL_SECTION,
     PROCESSOR_NUMBER,
     PTP_CLEANUP_GROUP,
     TP_CALLBACK_ENVIRON,
@@ -104,8 +105,6 @@ PTIMER_FUNCTION = PVOID
 # ctypes-fu required to get the forward definitions working at the moment.
 PALLOCATE_RECORDS = PVOID
 PALLOCATE_RECORDS_WITH_TIMESTAMP = PVOID
-PALLOCATE_ALIGNED_RECORDS = PVOID
-PALLOCATE_ALIGNED_OFFSET_RECORDS = PVOID
 PBIND_COMPLETE = PVOID
 
 IS_BOUND = False
@@ -141,7 +140,8 @@ TraceStoreLineStringBufferId            =  23
 TraceStoreCallStackId                   =  24
 TraceStorePerformanceId                 =  25
 TraceStorePerformanceDeltaId            =  26
-TraceStoreInvalidId                     =  27
+TraceStoreSourceCodeId                  =  27
+TraceStoreInvalidId                     =  28
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -177,6 +177,7 @@ TraceStoreIdToName = {
     TraceStoreCallStackId: 'CallStack',
     TraceStorePerformanceId: 'Performance',
     TraceStorePerformanceDeltaId: 'PerformanceDelta',
+    TraceStoreSourceCodeId: 'SourceCode',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -491,6 +492,9 @@ class TRACE_STORE_STATS(Structure):
         ('BlockedAllocations', ULONG),
         ('SuspendedAllocations', ULONG),
         ('ElapsedSuspensionTimeInMicroseconds', ULONG),
+        ('WastedBytes', ULONGLONG),
+        ('PaddedAllocations', ULONG),
+        ('Reserved', ULONG * 5),
     ]
 
     @property
@@ -550,7 +554,7 @@ class TRACE_STORE_INFO(Structure):
         ('Stats', TRACE_STORE_STATS),
         ('Totals', TRACE_STORE_TOTALS),
         ('Traits', TRACE_STORE_TRAITS),
-        ('Unused', CHAR * 108),
+        ('Reserved', CHAR * 76),
     ]
 PTRACE_STORE_INFO = POINTER(TRACE_STORE_INFO)
 
@@ -1114,7 +1118,12 @@ TRACE_STORE._fields_ = [
     ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
     ('AllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
+    ('TryAllocateRecords', PVOID),
+    ('TryAllocateRecordsWithTimestamp', PVOID),
     ('SuspendedAllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
+    ('AllocateRecordsWithTimestampImpl1', PALLOCATE_RECORDS_WITH_TIMESTAMP),
+    ('AllocateRecordsWithTimestampImpl2', PALLOCATE_RECORDS_WITH_TIMESTAMP),
+    ('CriticalSection', CRITICAL_SECTION),
     ('BindComplete', PBIND_COMPLETE),
     ('pReloc', PTRACE_STORE_RELOC),
     ('pTraits', PTRACE_STORE_TRAITS),
@@ -1139,7 +1148,6 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('Dummy', PVOID),
 ]
 
 class METADATA_STORE(TRACE_STORE):
@@ -1310,6 +1318,7 @@ TRACE_STORES._fields_ = [
     ('CallStackRelocationCompleteEvent', HANDLE),
     ('PerformanceRelocationCompleteEvent', HANDLE),
     ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
+    ('SourceCodeRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1338,6 +1347,7 @@ TRACE_STORES._fields_ = [
     ('CallStackReloc', TRACE_STORE_RELOC),
     ('PerformanceReloc', TRACE_STORE_RELOC),
     ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
+    ('SourceCodeReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1631,6 +1641,16 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('PerformanceDeltaInfoStore', INFO_STORE),
 
+    ('SourceCodeStore', TRACE_STORE),
+    ('SourceCodeMetadataInfoStore', TRACE_STORE),
+    ('SourceCodeAllocationStore', ALLOCATION_STORE),
+    ('SourceCodeRelocationStore', RELOCATION_STORE),
+    ('SourceCodeAddressStore', ADDRESS_STORE),
+    ('SourceCodeAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SourceCodeAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SourceCodeAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SourceCodeInfoStore', INFO_STORE),
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1677,6 +1697,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('CallStackRelocationCompleteEvent', HANDLE),
         ('PerformanceRelocationCompleteEvent', HANDLE),
         ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
+        ('SourceCodeRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1704,7 +1725,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('CallStackReloc', TRACE_STORE_RELOC),
         ('PerformanceReloc', TRACE_STORE_RELOC),
         ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
-        ('Dummy1', PVOID),
+        ('SourceCodeReloc', TRACE_STORE_RELOC),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),

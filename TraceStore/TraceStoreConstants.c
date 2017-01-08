@@ -49,7 +49,13 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreLineStringBuffer.dat",
     L"TraceStoreCallStack.dat",
     L"TraceStorePerformance.dat",
-    L"TraceStorePerformanceDelta.dat"
+    L"TraceStorePerformanceDelta.dat",
+    L"TraceStoreSourceCode.dat",
+    L"TraceStoreBitmap.dat",
+    L"TraceStoreImageFile.dat",
+    L"TraceStoreFile.dat",
+    L"TraceStoreLine.dat",
+    L"TraceStoreObject.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -142,7 +148,13 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // LineStringBuffer
      1 << 27,   // CallStack
      1 << 25,   // Performance
-     1 << 25    // PerformanceDelta
+     1 << 25,   // PerformanceDelta
+     1 << 25,   // SourceCode
+     1 << 24,   // Bitmap
+     1 << 25,   // ImageFile
+     1 << 24,   // File
+     1 << 24,   // Line
+     1 << 23,   // Object
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -652,7 +664,121 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
         0   // Unused
-    }
+    },
+
+    //
+    // SourceCode
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        1,  // AllowPageSpill
+        0   // Unused
+    },
+
+    //
+    // Bitmap
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        1,  // AllowPageSpill
+        0   // Unused
+    },
+
+    //
+    // ImageFile
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0   // Unused
+    },
+
+    //
+    // File
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0   // Unused
+    },
+
+    //
+    // Line
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0   // Unused
+    },
+
+    //
+    // Object
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0   // Unused
+    },
 };
 
 TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {

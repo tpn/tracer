@@ -153,6 +153,7 @@ class TRACER_RUNTIME_PARAMETERS(Structure):
         ('WsWatchInfoExInitialBufferNumberOfElements', ULONG),
         ('CapturePerformanceMetricsIntervalInMilliseconds', ULONG),
         ('CapturePerformanceMetricsWindowLengthInMilliseconds', ULONG),
+        ('ConcurrentAllocationsCriticalSectionSpinCount', ULONG),
     ]
 
 class TRACE_SESSION_DIRECTORY(Structure):
