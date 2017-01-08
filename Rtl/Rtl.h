@@ -1532,6 +1532,37 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     _Out_   PULONG          ElapsedSeconds
     );
 
+typedef
+PVOID
+(MM_GET_MAXIMUM_FILE_SECTION_SIZE)(VOID);
+typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
+
+#ifdef _M_X64
+
+#ifndef BitTestAndSet
+#define BitTestAndSet _bittestandset
+#endif
+
+#define FastSetBit(Bitmap, BitNumber) (             \
+    BitTestAndSet((PLONG)Bitmap->Buffer, BitNumber) \
+)
+
+#else
+
+#define FastSetBit(Bitmap, BitNumber) ( \
+    Rtl->RtlSetBit(Bitmap, BitNumber)   \
+)
+
+#endif
+
+#undef RtlFillMemory
+#undef RtlMoveMemory
+#undef RtlCopyMemory
+
+//
+// Our RTL_PATH structure.
+//
+
 typedef enum _RTL_PATH_LINK_TYPE {
 
     //
@@ -1740,32 +1771,238 @@ BOOL
 typedef GET_MODULE_RTL_PATH *PGET_MODULE_RTL_PATH;
 RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
 
-typedef
-PVOID
-(MM_GET_MAXIMUM_FILE_SECTION_SIZE)(VOID);
-typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
+//
+// Our RTL_FILE structure.
+//
 
-#ifdef _M_X64
+//
+// Flags for the RTL_FILE structure.
+//
 
-#ifndef BitTestAndSet
-#define BitTestAndSet _bittestandset
-#endif
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _RTL_FILE_FLAGS {
+    ULONG Valid:1;
+} RTL_FILE_FLAGS, *PRTL_FILE_FLAGS;
 
-#define FastSetBit(Bitmap, BitNumber) (             \
-    BitTestAndSet((PLONG)Bitmap->Buffer, BitNumber) \
-)
+typedef enum _RTL_FILE_TYPE {
+    RtlFileNullType = 0,
+    RtlFileTextFileType = 1,
+    RtlFileImageFileType,
+    RtlFileInvalidType
+} RTL_FILE_TYPE, *PRTL_FILE_TYPE;
 
-#else
+//
+// A structure for capturing details about a text file.  This is used for source
+// code files.
+//
 
-#define FastSetBit(Bitmap, BitNumber) ( \
-    Rtl->RtlSetBit(Bitmap, BitNumber)   \
-)
+typedef struct _Struct_size_bytes_(StructSizeInBytes) _RTL_TEXT_FILE {
 
-#endif
+    //
+    // Size of the structure, in bytes.
+    //
 
-#undef RtlFillMemory
-#undef RtlMoveMemory
-#undef RtlCopyMemory
+    _Field_range_(==, sizeof(struct _RTL_TEXT_FILE)) ULONG StructSizeInBytes;
+
+    //
+    // Number of lines in the file.
+    //
+
+    ULONG NumberOfLines;
+
+    //
+    // An array of STRING structures, one for each line in the file.
+    // Number of elements in the array is governed by NumberOfLines.
+    //
+
+    PSTRING Lines;
+
+    //
+    // Line ending bitmaps.
+    //
+
+    PRTL_BITMAP CarriageReturnBitmap;
+    PRTL_BITMAP LineFeedBitmap;
+
+    //
+    // The two bitmaps above are combined (literally AND'd together) to
+    // create the following line ending bitmap, where each set bit
+    // indicates a line ending character.
+    //
+
+    PRTL_BITMAP LineEndingBitmap;
+
+    //
+    // This bitmap is then inverted, such that each set bit indicates a
+    // normal non-line-ending character.
+    //
+
+    PRTL_BITMAP LineBitmap;
+
+    //
+    // Bitmaps for capturing whitespace/tabs.
+    //
+
+    PRTL_BITMAP WhitespaceBitmap;
+    PRTL_BITMAP TabBitmap;
+
+    //
+    // Set bits correlate to whitespace/tabs that indicate indentation;
+    // i.e.  longest run of space/tab after the last line-ending bit.
+    //
+
+    PRTL_BITMAP IndentBitmap;
+
+    //
+    // Set bits correlate to trailing whitespace.
+    //
+
+    PRTL_BITMAP TrailingWhitespaceBitmap;
+
+    //
+    // (80 bytes consumed.)
+    //
+
+} RTL_TEXT_FILE, *PRTL_TEXT_FILE;
+C_ASSERT(sizeof(RTL_TEXT_FILE) == 80);
+
+//
+// This structure is used to capture information about image files (e.g. dll,
+// exe).
+
+typedef struct _RTL_IMAGE_FILE {
+    PRTL_PATH PdbPath;
+} RTL_IMAGE_FILE, *PRTL_IMAGE_FILE;
+
+//
+// This structure is used to capture information about a file that participates
+// in a trace session some how (e.g. text source code, binary image, etc).
+//
+
+typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
+
+    //
+    // Singly-linked list entry allowing the record to be pushed and popped
+    // onto interlocked lists.
+    //
+
+    union {
+        SLIST_ENTRY ListEntry;
+        struct {
+            PSLIST_ENTRY Next;
+            PVOID Unused;
+        };
+    };
+
+    //
+    // File information.
+    //
+
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+
+    //
+    // (48 bytes consumed.)
+    //
+
+    //
+    // File ID related information.
+    //
+
+    LARGE_INTEGER FileId;
+
+    //
+    // Inline FILE_ID_INFO.
+    //
+
+    union {
+        FILE_ID_INFO FileIdInfo;
+        struct {
+            ULONGLONG VolumeSerialNumber;
+            FILE_ID_128 FileId128;
+        };
+    };
+
+    //
+    // (96 bytes consumed.)
+    //
+
+    //
+    // Checksums.
+    //
+
+    BYTE MD5[16];
+    BYTE SHA1[20];
+
+    //
+    // (116 bytes consumed.)
+    //
+
+    //
+    // Define type and flags.
+    //
+
+    RTL_FILE_TYPE Type;
+    RTL_FILE_FLAGS Flags;
+
+    //
+    // Pad to an 8 byte boundary.
+    //
+
+    ULONG Padding1;
+
+    //
+    // Capture all path related information via Rtl's RTL_PATH structure.
+    //
+
+    RTL_PATH Path;
+
+    //
+    // A pointer to the first byte of data for the file, once it has been
+    // loaded.
+    //
+
+    PCHAR Content;
+
+    //
+    // (344 bytes consumed.)
+    //
+
+    union {
+
+        //
+        // Source code specific structure.
+        //
+
+        RTL_TEXT_FILE SourceCode;
+
+        //
+        // Image file specific structure.
+        //
+
+        RTL_IMAGE_FILE ImageFile;
+
+        //
+        // Pad out to 512 bytes.
+        //
+
+        BYTE Reserved[168];
+    };
+
+} RTL_FILE, *PRTL_FILE, **PPRTL_FILE;
+C_ASSERT(FIELD_OFFSET(RTL_FILE, CreationTime) == 16);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, FileId) == 64);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, FileIdInfo) == 72);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, MD5) == 96);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, SHA1) == 112);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Type) == 132);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 144);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Content) == 336);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 344);
+C_ASSERT(sizeof(RTL_FILE) == 512);
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \

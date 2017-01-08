@@ -1355,185 +1355,6 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
 C_ASSERT(sizeof(TRACE_PERFORMANCE) == 512);
 
 //
-// Flags for the TRACE_FILE structure.
-//
-
-typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_FILE_FLAGS {
-    ULONG Valid:1;
-} TRACE_FILE_FLAGS, *PTRACE_FILE_FLAGS;
-
-typedef enum _TRACE_FILE_TYPE {
-    TraceFileNullType = 0,
-    TraceFileSourceCodeType = 1,
-    TraceFileImageFileType,
-    TraceFileInvalidType
-} TRACE_FILE_TYPE, *PTRACE_FILE_TYPE;
-
-//
-// This structure is used to capture information about a file that participates
-// in a trace session some how (e.g. text source code, binary image, etc).
-//
-
-typedef struct _TRACE_FILE {
-
-    //
-    // Singly-linked list entry allowing the record to be pushed and popped
-    // onto interlocked lists.
-    //
-
-    SLIST_ENTRY ListEntry;
-
-    //
-    // File information.
-    //
-
-    LARGE_INTEGER CreationTime;
-    LARGE_INTEGER LastAccessTime;
-    LARGE_INTEGER LastWriteTime;
-    LARGE_INTEGER ChangeTime;
-    LARGE_INTEGER EndOfFile;
-    LARGE_INTEGER AllocationSize;
-
-    //
-    // (48 bytes consumed.)
-    //
-
-    //
-    // File ID related information.
-    //
-
-    LARGE_INTEGER FileId;
-
-    //
-    // Inline FILE_ID_INFO.
-    //
-
-    union {
-        FILE_ID_INFO FileIdInfo;
-        struct {
-            ULONGLONG VolumeSerialNumber;
-            FILE_ID_128 FileId128;
-        };
-    };
-
-    //
-    // (80 bytes consumed.)
-    //
-
-    //
-    // Checksums.
-    //
-
-    BYTE MD5[16];
-    BYTE SHA1[20];
-
-    //
-    // (116 bytes consumed.)
-    //
-
-    //
-    // Define type and flags.
-    //
-
-    TRACE_FILE_TYPE Type;
-    TRACE_FILE_FLAGS Flags;
-
-    //
-    // Pad to an 8 byte boundary.
-    //
-
-    ULONG Padding1;
-
-    //
-    // Capture all path related information via Rtl's RTL_PATH structure.
-    //
-
-    RTL_PATH Path;
-
-    //
-    // A pointer to the first byte of data for the file, once it has been
-    // loaded.
-    //
-
-    PCHAR Content;
-
-    union {
-
-        //
-        // Source code specific structure.
-        //
-
-        struct {
-
-            //
-            // Number of lines in the file.
-            //
-
-            ULONG NumberOfLines;
-            ULONG Padding2;
-
-            //
-            // An array of STRING structures, one for each line in the file.
-            // Number of elements in the array is governed by NumberOfLines.
-            //
-
-            PSTRING Lines;
-
-            //
-            // Line ending bitmaps.
-            //
-
-            PRTL_BITMAP CarriageReturnBitmap;
-            PRTL_BITMAP LineFeedBitmap;
-
-            //
-            // The two bitmaps above are combined (literally AND'd together) to
-            // create the following line ending bitmap, where each set bit
-            // indicates a line ending character.
-            //
-
-            PRTL_BITMAP LineEndingBitmap;
-
-            //
-            // This bitmap is then inverted, such that each set bit indicates a
-            // normal non-line-ending character.
-            //
-
-            PRTL_BITMAP LineBitmap;
-
-            //
-            // Bitmaps for capturing whitespace/tabs.
-            //
-
-            PRTL_BITMAP WhitespaceBitmap;
-            PRTL_BITMAP TabBitmap;
-
-            //
-            // Set bits correlate to whitespace/tabs that indicate indentation;
-            // i.e.  longest run of space/tab after the last line-ending bit.
-            //
-
-            PRTL_BITMAP IndentBitmap;
-
-            //
-            // Set bits correlate to trailing whitespace.
-            //
-
-            PRTL_BITMAP TrailingWhitespaceBitmap;
-        } Source;
-
-        //
-        // Image file specific structure.
-        //
-
-        struct {
-            BOOL HasPdb;
-        } Image;
-    };
-
-} TRACE_FILE, *PTRACE_FILE;
-
-//
 // Forward definitions of function pointers we include in the trace context.
 //
 
@@ -1548,13 +1369,15 @@ BOOL
 typedef INITIALIZE_ALLOCATOR_FROM_TRACE_STORE \
       *PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE;
 
+typedef RTL_FILE TRACE_FILE, *PTRACE_FILE;
+
 typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
 (REGISTER_TRACE_FILE)(
     _In_ struct _TRACE_CONTEXT *TraceContext,
-    _In_ struct _TRACE_FILE *TraceFile
+    _In_ PTRACE_FILE TraceFile
     );
 typedef REGISTER_TRACE_FILE *PREGISTER_TRACE_FILE;
 TRACE_STORE_API REGISTER_TRACE_FILE RegisterTraceFile;
