@@ -655,7 +655,7 @@ Return Value:
 
     TRY_MAPPED_MEMORY_OP {
         Success = GetWorkingSetChanges(TraceContext);
-    } CATCH_STATUS_IN_PAGE_ERROR {
+    } CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION {
         Success = FALSE;
     }
 
@@ -732,7 +732,7 @@ Return Value:
 
     TRY_MAPPED_MEMORY_OP {
         Success = CapturePerformanceMetrics(TraceContext);
-    } CATCH_STATUS_IN_PAGE_ERROR {
+    } CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION {
         Success = FALSE;
     }
 
