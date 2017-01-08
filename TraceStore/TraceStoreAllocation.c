@@ -501,8 +501,8 @@ TraceStoreAllocateRecords(
 Routine Description:
 
     This routine allocates records from a trace store.  It is equivalent to
-    calling TraceStoreAllocateRecordsEx() with no timestamp parameter.
-
+    calling TraceStoreAllocateRecordsWithTimestamp() with a NULL timestamp.
+    
 Arguments:
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
