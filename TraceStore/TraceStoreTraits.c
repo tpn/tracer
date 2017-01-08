@@ -92,7 +92,7 @@ Return Value:
             return FALSE;
         }
         if (!AssertFalse("RecordSizeIsAlwaysPowerOf2",
-                         TraceStore->RecordSizeIsAlwaysPowerOf2)) {
+                         Traits.RecordSizeIsAlwaysPowerOf2)) {
             return FALSE;
         }
         if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {

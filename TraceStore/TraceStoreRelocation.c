@@ -61,8 +61,8 @@ Return Value:
     PTRACE_STORE_FIELD_RELOC FirstDestFieldReloc;
     PTRACE_STORE_FIELD_RELOC FirstSourceFieldReloc;
     PALLOCATE_RECORDS AllocateRecords;
-    ULARGE_INTEGER AllocationSize;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULONG_PTR RecordSize;
+    ULONG_PTR NumberOfRecords = 1;
     PVOID BaseAddress;
 
     //
@@ -105,9 +105,9 @@ Return Value:
     // relocations.
     //
 
-    AllocationSize.QuadPart = sizeof(TRACE_STORE_RELOC);
+    RecordSize = sizeof(TRACE_STORE_RELOC);
     if (HasRelocations) {
-        AllocationSize.QuadPart += (
+        RecordSize += (
             pReloc->NumberOfRelocations *
             sizeof(TRACE_STORE_FIELD_RELOC)
         );
@@ -117,8 +117,8 @@ Return Value:
 
     BaseAddress = AllocateRecords(TraceStore->TraceContext,
                                   RelocationStore,
-                                  &AllocationSize,
-                                  &NumberOfRecords);
+                                  NumberOfRecords,
+                                  RecordSize);
 
     if (!BaseAddress) {
         __debugbreak();

@@ -22,20 +22,19 @@ AllocatePythonTraceEvent1(
     _In_ PLARGE_INTEGER Timestamp
     )
 {
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_TRACE_EVENT1) };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = sizeof(PYTHON_TRACE_EVENT1);
 
     return (PPYTHON_TRACE_EVENT1)(
         TraceStore->AllocateRecordsWithTimestamp(
             TraceStore->TraceContext,
             TraceStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             Timestamp
         )
     );
 }
-
 
 _Use_decl_annotations_
 BOOL

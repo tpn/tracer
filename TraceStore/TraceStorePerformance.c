@@ -159,8 +159,8 @@ Return Value:
     LARGE_INTEGER Elapsed;
     LARGE_INTEGER Timestamp;
     PTRACE_STORES TraceStores;
-    ULARGE_INTEGER RecordSize;
-    ULARGE_INTEGER NumberOfRecords;
+    ULONG_PTR RecordSize;
+    ULONG_PTR NumberOfRecords;
     PTRACE_STORE PerformanceStore;
     PTRACE_STORE PerformanceDeltaStore;
     PTRACE_PERFORMANCE Last;
@@ -209,15 +209,15 @@ Return Value:
     // Allocate a new TRACE_PERFORMANCE record from the performance store.
     //
 
-    RecordSize.QuadPart = sizeof(*Perf);
-    NumberOfRecords.QuadPart = 1;
+    RecordSize = sizeof(*Perf);
+    NumberOfRecords = 1;
 
     Perf = (PTRACE_PERFORMANCE)(
         PerformanceStore->AllocateRecordsWithTimestamp(
             TraceContext,
             PerformanceStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             &Timestamp
         )
     );
@@ -239,8 +239,8 @@ Return Value:
         PerformanceDeltaStore->AllocateRecordsWithTimestamp(
             TraceContext,
             PerformanceDeltaStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             &Timestamp
         )
     );

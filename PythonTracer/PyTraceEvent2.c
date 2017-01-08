@@ -26,36 +26,35 @@ AllocatePythonTraceEvent2(
     PLARGE_INTEGER Timestamp
     )
 {
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_TRACE_EVENT2) };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = sizeof(PYTHON_TRACE_EVENT2);
 
     return (PPYTHON_TRACE_EVENT2)(
         TraceStore->AllocateRecordsWithTimestamp(
             TraceStore->TraceContext,
             TraceStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             Timestamp
         )
     );
 }
 
-_Check_return_
-_Success_(return != 0)
+_Use_decl_annotations_
 PPYTHON_EVENT_TRAITS_EX
 AllocatePythonEventTraitsEx(
-    _In_ PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore
     )
 {
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_EVENT_TRAITS_EX) };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = sizeof(PYTHON_EVENT_TRAITS_EX);
 
     return (PPYTHON_EVENT_TRAITS_EX)(
         TraceStore->AllocateRecordsWithTimestamp(
             TraceStore->TraceContext,
             TraceStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             NULL
         )
     );

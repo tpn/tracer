@@ -554,7 +554,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // BlockingAllocations
         0,  // LinkedStore
         0,  // CoalescedAllocations
-        1,  // ConcurrentAllocations
+        0,  // ConcurrentAllocations
         0,  // AllowPageSpill
         0   // Unused
     },

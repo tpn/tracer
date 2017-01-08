@@ -31,17 +31,15 @@ TraceStoreAllocatorMalloc(
     PVOID Address;
     PTRACE_STORE TraceStore;
     PTRACE_CONTEXT TraceContext;
-    ULARGE_INTEGER RecordSize;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
+    ULONG_PTR NumberOfRecords = 1;
 
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
-    RecordSize.QuadPart = Size;
 
     Address = TraceStore->AllocateRecords(TraceContext,
                                           TraceStore,
-                                          &RecordSize,
-                                          &NumberOfRecords);
+                                          NumberOfRecords,
+                                          Size);
 
     return Address;
 }
@@ -57,18 +55,14 @@ TraceStoreAllocatorCalloc(
     PVOID Address;
     PTRACE_STORE TraceStore;
     PTRACE_CONTEXT TraceContext;
-    ULARGE_INTEGER RecordSize;
-    ULARGE_INTEGER NumberOfRecords;
 
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
-    RecordSize.QuadPart = ElementSize;
-    NumberOfRecords.QuadPart = NumberOfElements;
 
     Address = TraceStore->AllocateRecords(TraceContext,
                                           TraceStore,
-                                          &RecordSize,
-                                          &NumberOfRecords);
+                                          NumberOfElements,
+                                          ElementSize);
 
     return Address;
 }

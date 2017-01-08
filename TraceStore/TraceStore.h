@@ -1549,8 +1549,8 @@ PVOID
 (ALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
-    _In_    PULARGE_INTEGER RecordSize,
-    _In_    PULARGE_INTEGER NumberOfRecords
+    _In_    ULONG_PTR       NumberOfRecords,
+    _In_    ULONG_PTR       RecordSize
     );
 typedef ALLOCATE_RECORDS *PALLOCATE_RECORDS;
 typedef PALLOCATE_RECORDS volatile VPALLOCATE_RECORDS;
@@ -1562,8 +1562,8 @@ PVOID
 (ALLOCATE_RECORDS_WITH_TIMESTAMP)(
     _In_     PTRACE_CONTEXT  TraceContext,
     _In_     PTRACE_STORE    TraceStore,
-    _In_     PULARGE_INTEGER RecordSize,
-    _In_     PULARGE_INTEGER NumberOfRecords,
+    _In_     ULONG_PTR       NumberOfRecords,
+    _In_     ULONG_PTR       RecordSize,
     _In_opt_ PLARGE_INTEGER  TimestampPointer
     );
 typedef ALLOCATE_RECORDS_WITH_TIMESTAMP *PALLOCATE_RECORDS_WITH_TIMESTAMP;
@@ -1584,8 +1584,8 @@ PVOID
 (TRY_ALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
-    _In_    PULARGE_INTEGER RecordSize,
-    _In_    PULARGE_INTEGER NumberOfRecords
+    _In_    ULONG_PTR       NumberOfRecords,
+    _In_    ULONG_PTR       RecordSize
     );
 typedef TRY_ALLOCATE_RECORDS *PTRY_ALLOCATE_RECORDS;
 typedef PTRY_ALLOCATE_RECORDS volatile VPTRY_ALLOCATE_RECORDS;
@@ -1597,8 +1597,8 @@ PVOID
 (TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP)(
     _In_     PTRACE_CONTEXT  TraceContext,
     _In_     PTRACE_STORE    TraceStore,
-    _In_     PULARGE_INTEGER RecordSize,
-    _In_     PULARGE_INTEGER NumberOfRecords,
+    _In_     ULONG_PTR       NumberOfRecords,
+    _In_     ULONG_PTR       RecordSize,
     _In_opt_ PLARGE_INTEGER  TimestampPointer
     );
 typedef TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP \
