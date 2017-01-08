@@ -2772,6 +2772,13 @@ IsAligned(
         EXCEPTION_CONTINUE_SEARCH                \
     )
 
+#define CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION __except( \
+    GetExceptionCode() == STATUS_IN_PAGE_ERROR ||                \
+    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?           \
+        EXCEPTION_EXECUTE_HANDLER :                              \
+        EXCEPTION_CONTINUE_SEARCH                                \
+    )
+
 ////////////////////////////////////////////////////////////////////////////////
 // SIMD Utilities
 ////////////////////////////////////////////////////////////////////////////////
