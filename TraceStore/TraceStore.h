@@ -59,7 +59,19 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct _TRACE_STORE_ALLOCATION {
-    ULARGE_INTEGER  NumberOfRecords;
+    union {
+        struct {
+            ULONG LowPart;
+            struct {
+                ULONG HighPart:31;
+                ULONG DummyAllocation1:1;
+            };
+        };
+        struct {
+            ULONGLONG QuadPart:63;
+            ULONGLONG DummyAllocation2:1;
+        };
+    } NumberOfRecords;
     LARGE_INTEGER   RecordSize;
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
@@ -399,9 +411,33 @@ typedef struct _TRACE_STORE_STATS {
 
     volatile ULONG ElapsedSuspensionTimeInMicroseconds;
 
-} TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
+    //
+    // The total number of bytes wasted due to padding in order to prevent
+    // things like allocation page spilling or to maintain alignment.
+    //
 
-C_ASSERT(sizeof(TRACE_STORE_STATS) == 32);
+    ULONGLONG WastedBytes;
+
+    //
+    // The number of times an allocation had to be padded in order to prevent
+    // spilling over another page.
+    //
+
+    ULONG PaddedAllocations;
+
+    //
+    // (44 bytes consumed.)
+    //
+
+    //
+    // Pad out to 64 bytes.
+    //
+
+    ULONG Reserved[5];
+
+} TRACE_STORE_STATS, *PTRACE_STORE_STATS, **PPTRACE_STORE_STATS;
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_STATS, Reserved) == 44);
+C_ASSERT(sizeof(TRACE_STORE_STATS) == 64);
 
 //
 // Track total number of allocations and total record size.
@@ -690,29 +726,18 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     TRACE_STORE_EOF     Eof;
     TRACE_STORE_TIME    Time;
     TRACE_STORE_STATS   Stats;
-
-    //
-    // We're at 128 bytes here and consume two cache lines.  Totals pushes us
-    // over into a third cache line, and we want our size to be a power of 2
-    // (because these structures are packed successively in the struct below
-    // and we don't want two different metadata stores sharing a cache line,
-    // nor do we want to risk crossing a page boundary), so we pad out to a
-    // forth cache line.
-    //
-
     TRACE_STORE_TOTALS  Totals;
     TRACE_STORE_TRAITS  Traits;
 
     //
-    // We're at 148 bytes.  256 - 148 = 108 bytes of padding.
+    // Pad out to 256 bytes.
     //
 
-    CHAR Unused[108];
+    BYTE Reserved[76];
 
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
-
 C_ASSERT(sizeof(TRACE_STORE_INFO) == 256);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_INFO, Totals) == 128);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_INFO, Totals) == 160);
 
 typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO MetadataInfo;

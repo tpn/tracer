@@ -1088,6 +1088,7 @@ BOOL
     _In_ PTRACE_STORE     TraceStore,
     _In_ ULONG_PTR        NumberOfRecords,
     _In_ ULONG_PTR        RecordSize,
+    _In_opt_ ULONG_PTR    WastedBytes,
     _In_ LARGE_INTEGER    Timestamp
     );
 typedef RECORD_TRACE_STORE_ALLOCATION *PRECORD_TRACE_STORE_ALLOCATION;
