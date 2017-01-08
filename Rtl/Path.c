@@ -416,6 +416,59 @@ Error:
 
 _Use_decl_annotations_
 BOOL
+StringToPath(
+    PRTL Rtl,
+    PSTRING String,
+    PALLOCATOR Allocator,
+    PPPATH PathPointer
+    )
+/*++
+
+Routine Description:
+
+    Converts a STRING representing a fully-qualified path into a UNICODE_STRING,
+    then calls UnicodeStringToPath().
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL struct.
+
+    String - Supplies a pointer to a STRING structure that contains a path name.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure that is used for
+        allocating the new PATH structure (and associated buffers).
+
+    PathPointer - Supplies a pointer to an address that receives the address
+        of the newly created PATH structure if the routine was successful.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    PUNICODE_STRING UnicodeString;
+
+    Success = ConvertUtf8StringToUtf16StringSlow(
+        String,
+        &UnicodeString,
+        Allocator
+    );
+    if (!Success) {
+        return FALSE;
+    }
+
+    Success = UnicodeStringToPath(Rtl, UnicodeString, Allocator, PathPointer);
+    if (!Success) {
+        Allocator->Free(Allocator->Context, UnicodeString);
+    }
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
 DestroyPath(
     PPPATH PathPointer
     )
