@@ -115,8 +115,8 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
     // through one or more embedded structures.
     //
 
-#define PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(Name)    \
-    FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Function) + \
+#define PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(Name)          \
+    FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, PythonFunction) + \
     FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Name)
 
     {
@@ -173,8 +173,8 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
         TraceStoreStringBufferId
     },
 
-#define OFFSET_THROUGH_FUNCTION(Name)                     \
-    FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Function) + \
+#define OFFSET_THROUGH_FUNCTION(Name)                           \
+    FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, PythonFunction) + \
     FIELD_OFFSET(PYTHON_FUNCTION, Name)
 
     {
