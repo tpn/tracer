@@ -177,7 +177,12 @@ Routine Description:
         return NULL;
     }
 
-    CheckPageSpill = PreventPageSpill(Traits);
+    CheckPageSpill = (
+        HasVaryingRecords(Traits) &&
+        HasMultipleRecords(Traits) &&
+        !IsRecordSizeAlwaysPowerOf2(Traits) &&
+        PreventPageSpill(Traits)
+    );
 
     //
     // If no timestamp has been provided and the trace store is not marked as
@@ -222,9 +227,18 @@ CalculateAddresses:
         // accordingly.
         //
 
-        OriginalAllocationSize = AllocationSize;
-        ExtraBytes = RtlPointerToOffset(NextPage, MemoryMap->NextAddress);
-        AllocationSize += ExtraBytes;
+        ExtraBytes = (
+            ((ULONG_PTR)NextPage) -
+            ((ULONG_PTR)MemoryMap->NextAddress)
+        );
+        if (AllocationSize < ExtraBytes) {
+            __debugbreak();
+        } else if (AllocationSize == ExtraBytes) {
+            ExtraBytes = 0;
+        } else {
+            OriginalAllocationSize = AllocationSize;
+            AllocationSize += ExtraBytes;
+        }
         CheckPageSpill = FALSE;
         goto CalculateAddresses;
     }
