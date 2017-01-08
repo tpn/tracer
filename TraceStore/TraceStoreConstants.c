@@ -188,6 +188,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -207,6 +208,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -226,6 +228,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -245,6 +248,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -264,6 +268,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -283,6 +288,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -302,6 +308,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -321,6 +328,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -340,6 +348,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -359,6 +368,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -378,6 +388,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -397,6 +408,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -416,6 +428,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -435,6 +448,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -454,6 +468,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -473,6 +488,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -492,6 +508,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -511,6 +528,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // PythonoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -530,6 +548,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -549,6 +568,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -568,6 +588,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -587,6 +608,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -606,6 +628,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -625,6 +648,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -644,6 +668,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -663,6 +688,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -681,7 +707,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // LinkedStore
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
-        1,  // AllowPageSpill
+        0,  // AllowPageSpill
+        1,  // PageAligned
         0   // Unused
     },
 
@@ -700,7 +727,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // LinkedStore
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
-        1,  // AllowPageSpill
+        0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -720,6 +748,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        1,  // PageAligned
         0   // Unused
     },
 
@@ -739,6 +768,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -758,6 +788,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 
@@ -777,6 +808,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
+        0,  // PageAligned
         0   // Unused
     },
 };
@@ -896,6 +928,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -911,6 +944,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -926,6 +960,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -941,6 +976,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -956,6 +992,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -971,6 +1008,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -986,6 +1024,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 
@@ -1001,6 +1040,7 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations
     0,  // AllowPageSpill
+    0,  // PageAligned
     0   // Unused
 };
 

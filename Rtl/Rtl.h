@@ -96,8 +96,8 @@ extern "C" {
 #endif
 
 #ifndef ROUND_TO_PAGES
-#define ROUND_TO_PAGES(Size) (                              \
-    (((ULONG_PTR)(Size) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1) \
+#define ROUND_TO_PAGES(Size) (                             \
+    ((ULONG_PTR)(Size) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1) \
 )
 #endif
 
@@ -2659,10 +2659,10 @@ AssertTrue(
     )
 {
     if (!Value) {
+        OutputDebugStringA(Expression);
 #ifdef _DEBUG
         __debugbreak();
 #endif
-        OutputDebugStringA(Expression);
         return FALSE;
     }
     return TRUE;
@@ -2676,10 +2676,10 @@ AssertFalse(
     )
 {
     if (Value) {
+        OutputDebugStringA(Expression);
 #ifdef _DEBUG
         __debugbreak();
 #endif
-        OutputDebugStringA(Expression);
         return FALSE;
     }
     return TRUE;
