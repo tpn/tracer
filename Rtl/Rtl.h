@@ -79,18 +79,77 @@ extern "C" {
 
 #endif
 
+//
+// Define useful WDM macros if they're not already defined.
+//
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
+#endif
+
+#ifndef PAGE_SHIFT
+#define PAGE_SHIFT 12L
 #endif
 
 #ifndef PAGE_ALIGN
 #define PAGE_ALIGN(Va) ((PVOID)((ULONG_PTR)(Va) & ~(PAGE_SIZE - 1)))
 #endif
 
+#ifndef ROUND_TO_PAGES
+#define ROUND_TO_PAGES(Size) ( \
+    (((ULONG_PTR)(Size) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1) \
+)
+#endif
+
+#ifndef BYTES_TO_PAGES
+#define BYTES_TO_PAGES(Size) ( \
+    (((Size) >> PAGE_SHIFT) + (((Size) & (PAGE_SIZE - 1)) != 0) \
+)
+#endif
+
+#ifndef ADDRESS_AND_SIZE_TO_SPAN_PAGES
+#define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Va,Size) \
+    ((BYTE_OFFSET (Va) + ((SIZE_T) (Size)) + (PAGE_SIZE - 1)) >> PAGE_SHIFT
+#endif
+
+#ifndef ALIGN_DOWN
+#define ALIGN_DOWN(Address, Alignment)                     \
+    ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))
+#endif
+
+#ifndef ALIGN_UP
+#define ALIGN_UP(Address, Alignment) (                        \
+    (((ULONG_PTR)(Address)) + (((ULONG_PTR)(Alignment))-1)) & \
+    ~(((ULONG_PTR)(Alignment))-1)                             \
+)
+#endif
+
+#ifndef ALIGN_UP_POINTER
+#define ALIGN_UP_POINTER(Address) (ALIGN_UP(Address, sizeof(ULONG_PTR)))
+#endif
+
+#ifndef ALIGN_DOWN_POINTER
+#define ALIGN_DOWN_POINTER(Address) (ALIGN_DOWN(Address, sizeof(ULONG_PTR)))
+#endif
+
+#ifndef ALIGN_DOWN_USHORT_TO_POINTER_SIZE
+#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
+#endif
+
+#ifndef ALIGN_UP_USHORT_TO_POINTER_SIZE
+#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                   \
+    (USHORT)(ALIGN_UP((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
+#endif
+
+#define BITMAP_ALIGNMENT 128
+#define ALIGN_UP_BITMAP(Address)                  \
+    (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
+
 #ifndef ARGUMENT_PRESENT
-#define ARGUMENT_PRESENT(ArgumentPointer)    (                 \
-    (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL) )
+#define ARGUMENT_PRESENT(ArgumentPointer) (                 \
+    (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL)   \
+)
 #endif
 
 #ifndef NOTHING
@@ -112,6 +171,29 @@ extern "C" {
 #ifndef DECLSPEC_THREAD
 #define DECLSPEC_THREAD __declspec(thread)
 #endif
+
+#ifndef RtlUpcaseChar
+#define RtlUpcaseChar(C)                                         \
+    (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#endif
+
+#ifndef RtlUpcaseUnicodeChar
+#define RtlUpcaseUnicodeChar(C)                                   \
+    (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#endif
+
+#ifndef RtlOffsetToPointer
+#define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
+#endif
+
+#ifndef RtlOffsetFromPointer
+#define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
+#endif
+
+#ifndef RtlPointerToOffset
+#define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
+#endif
+
 
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
@@ -680,6 +762,7 @@ typedef struct _RTL_SPLAY_LINKS {
     struct _RTL_SPLAY_LINKS *LeftChild;
     struct _RTL_SPLAY_LINKS *RightChild;
 } RTL_SPLAY_LINKS, *PRTL_SPLAY_LINKS;
+C_ASSERT(sizeof(RTL_SPLAY_LINKS) == 24);
 
 typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
     _Inout_ PRTL_SPLAY_LINKS Links
@@ -691,12 +774,11 @@ typedef PRTL_SPLAY_LINKS (NTAPI PRTL_SPLAY)(
 //
 
 typedef struct _TABLE_ENTRY_HEADER {
-
     RTL_SPLAY_LINKS SplayLinks;
     LIST_ENTRY ListEntry;
     LONGLONG UserData;
-
 } TABLE_ENTRY_HEADER, *PTABLE_ENTRY_HEADER;
+C_ASSERT(sizeof(TABLE_ENTRY_HEADER) == 48);
 
 //
 // _HEADER_HEADER is a terrible name for something, unless you're dealing with
@@ -954,12 +1036,14 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE_ENTRY {
     LIST_ENTRY Linkage;
     ULONG_PTR Signature;
 } RTL_DYNAMIC_HASH_TABLE_ENTRY, *PRTL_DYNAMIC_HASH_TABLE_ENTRY;
+C_ASSERT(sizeof(RTL_DYNAMIC_HASH_TABLE_ENTRY) == 24);
 
 typedef struct _RTL_DYNAMIC_HASH_TABLE_CONTEXT {
     PLIST_ENTRY ChainHead;
     PLIST_ENTRY PrevLinkage;
     ULONG_PTR Signature;
 } RTL_DYNAMIC_HASH_TABLE_CONTEXT, *PRTL_DYNAMIC_HASH_TABLE_CONTEXT;
+C_ASSERT(sizeof(RTL_DYNAMIC_HASH_TABLE_CONTEXT) == 24);
 
 typedef struct _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR {
     union {
@@ -968,7 +1052,9 @@ typedef struct _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR {
     };
     PLIST_ENTRY ChainHead;
     ULONG BucketIndex;
+    ULONG Padding1;
 } RTL_DYNAMIC_HASH_TABLE_ENUMERATOR, *PRTL_DYNAMIC_HASH_TABLE_ENUMERATOR;
+C_ASSERT(sizeof(RTL_DYNAMIC_HASH_TABLE_ENUMERATOR) == 40);
 
 typedef struct _RTL_DYNAMIC_HASH_TABLE {
 
@@ -1147,11 +1233,16 @@ typedef PPREFIX_TABLE_ENTRY (NTAPI *PPFX_FIND_PREFIX)(
 typedef struct _UNICODE_PREFIX_TABLE_ENTRY {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
+    ULONG Unused1;
     struct _UNICODE_PREFIX_TABLE_ENTRY *NextPrefixTree;
     struct _UNICODE_PREFIX_TABLE_ENTRY *CaseMatch;
     RTL_SPLAY_LINKS Links;
     PUNICODE_STRING Prefix;
 } UNICODE_PREFIX_TABLE_ENTRY;
+C_ASSERT(FIELD_OFFSET(UNICODE_PREFIX_TABLE_ENTRY, NextPrefixTree) == 8);
+C_ASSERT(FIELD_OFFSET(UNICODE_PREFIX_TABLE_ENTRY, Links) == 24);
+C_ASSERT(FIELD_OFFSET(UNICODE_PREFIX_TABLE_ENTRY, Prefix) == 48);
+C_ASSERT(sizeof(UNICODE_PREFIX_TABLE_ENTRY) == 56);
 typedef UNICODE_PREFIX_TABLE_ENTRY *PUNICODE_PREFIX_TABLE_ENTRY;
 
 typedef struct _UNICODE_PREFIX_TABLE {
@@ -1441,8 +1532,6 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     _Out_   PULONG          ElapsedSeconds
     );
 
-#pragma pack(push, 1)
-
 typedef enum _PATH_LINK_TYPE {
 
     //
@@ -1451,6 +1540,7 @@ typedef enum _PATH_LINK_TYPE {
 
     PathLinkTypeNone = 0,
     PathLinkTypeListEntry,
+    PathLinkTypeSListEntry,
     PathLinkTypePrefixTableEntry,
     PathLinkHashTableEntry
 
@@ -1458,23 +1548,33 @@ typedef enum _PATH_LINK_TYPE {
 
 typedef struct _PATH_LINK {
 
-    PATH_LINK_TYPE Type;
+    PATH_LINK_TYPE Type;                                        // 0    4   4
+
+    //
+    // Pad to an 16 byte boundary in order to ensure SLIST_ENTRY is aligned
+    // properly.
+    //
+
+    ULONG Padding1[3];                                          // 4    12  16
 
     union {
-        LIST_ENTRY ListEntry;
-        struct _UNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;
-        struct _RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;
+        LIST_ENTRY ListEntry;                                   // 16   16  32
+        DECLSPEC_ALIGN(16) SLIST_ENTRY SListEntry;              // 16   8   24
+        struct _UNICODE_PREFIX_TABLE_ENTRY PrefixTableEntry;    // 16   56  72
+        struct _RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;    // 16   24  40
     };
 
 } PATH_LINK, *PPATH_LINK;
+C_ASSERT(FIELD_OFFSET(PATH_LINK, SListEntry) == 16);
+C_ASSERT(sizeof(PATH_LINK) == 80);
 
-typedef _Struct_size_bytes_(sizeof(USHORT)) struct _PATH_FLAGS {
-    USHORT IsFile:1;
-    USHORT IsDirectory:1;
-    USHORT IsSymlink:1;
-    USHORT IsFullyQualified:1;
-    USHORT HasParent:1;
-    USHORT HasChildren:1;
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_FLAGS {
+    ULONG IsFile:1;
+    ULONG IsDirectory:1;
+    ULONG IsSymlink:1;
+    ULONG IsFullyQualified:1;
+    ULONG HasParent:1;
+    ULONG HasChildren:1;
 } PATH_FLAGS, *PPATH_FLAGS;
 
 typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_CREATE_FLAGS {
@@ -1498,73 +1598,82 @@ typedef _Struct_size_bytes_(StructSize) struct _PATH {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;      // 0    2
+    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;  // 0    2   2
 
     //
-    // Pad out to 4-bytes in order to get the bitmap buffer aligned on a
-    // pointer.
+    // Drive letter.
     //
 
-    WCHAR Drive;                                                    // 2    4
+    WCHAR Drive;                                                // 2    2   4
+
+    //
+    // Number of slashes and dots.  Saves having to do RtlNumberOfSetBits().
+    //
+
+    USHORT NumberOfSlashes;                                     // 4    2   6
+    USHORT NumberOfDots;                                        // 6    2   8
+
+    //
+    // We get a free ULONG slot in each RTL_BITMAP structure due to the buffer
+    // pointer needing to be 8 bytes aligned.  Leverage these to store AllocSize
+    // and Flags.
+    //
 
     union {
         struct {
-            ULONG SizeOfReversedSlashesBitMap;                      // 4    8
-            PULONG ReversedSlashesBitMapBuffer;                     // 8    16
+            ULONG SizeOfReversedSlashesBitMap;                  // 8    4   12
+
+            //
+            // Total number of bytes allocated for the structure, including
+            // StructSize.  This includes the bitmap buffers and Unicode string
+            // buffer (all of which will typically trail this structure in
+            // memory).
+            //
+
+            ULONG AllocSize;                                    // 12   4   16
+            PULONG ReversedSlashesBitMapBuffer;                 // 16   8   24
         };
-        RTL_BITMAP ReversedSlashesBitmap;                           // 8    16
+        RTL_BITMAP ReversedSlashesBitmap;                       // 8    16  24
     };
 
-    //
-    // Total number of bytes allocated for the structure, including StructSize.
-    // This includes the bitmap buffers and unicode string buffer (all of which
-    // will typically trail this structure in memory).
-    //
-
-    USHORT AllocSize;                                               // 2    18
-
-    PATH_FLAGS Flags;                                               // 2    20
-
     union {
         struct {
-            ULONG SizeOfReversedDotsBitMap;                         // 4    24
-            PULONG ReversedDotsBitMapBuffer;                        // 8    32
+            ULONG SizeOfReversedDotsBitMap;                     // 24   4   28
+            PATH_FLAGS Flags;                                   // 28   4   32
+            PULONG ReversedDotsBitMapBuffer;                    // 32   8   40
         };
-        RTL_BITMAP ReversedDotsBitmap;                              // 8    32
+        RTL_BITMAP ReversedDotsBitmap;                          // 24   16  40
     };
 
     //
     // Allocator used to allocate this structure.
     //
 
-    PALLOCATOR Allocator;                                           // 40   48
+    PALLOCATOR Allocator;                                       // 40   8   48
 
     //
     // Unicode strings for path details.
     //
 
-    UNICODE_STRING Full;
-    UNICODE_STRING Name;
-    UNICODE_STRING Directory;
-    UNICODE_STRING Extension;
+    UNICODE_STRING Full;                                        // 48   16  64
+    UNICODE_STRING Name;                                        // 64   16  80
+    UNICODE_STRING Directory;                                   // 80   16  96
+    UNICODE_STRING Extension;                                   // 96   16  112
 
     //
     // Path linkage.
     //
 
-    PATH_LINK Link;
-
-    //
-    // Number of slashes and dots.  Saves having to do RtlNumberOfSetBits().
-    //
-
-    USHORT NumberOfSlashes;
-
-    USHORT NumberOfDots;
+    PATH_LINK Link;                                             // 112  80  192
 
 } PATH, *PPATH, **PPPATH;
-
-#pragma pack(pop)
+C_ASSERT(FIELD_OFFSET(PATH, ReversedSlashesBitmap) == 8);
+C_ASSERT(FIELD_OFFSET(PATH, ReversedDotsBitmap) == 24);
+C_ASSERT(FIELD_OFFSET(PATH, Allocator) == 40);
+C_ASSERT(FIELD_OFFSET(PATH, Full) == 48);
+C_ASSERT(FIELD_OFFSET(PATH, Name) == 64);
+C_ASSERT(FIELD_OFFSET(PATH, Link) == 112);
+C_ASSERT(sizeof(PATH) == 192);
 
 typedef
 _Success_(return != 0)
@@ -2469,38 +2578,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     };
 
 } RTL, *PRTL, **PPRTL;
-
-#define RtlUpcaseChar(C)                                         \
-    (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-
-#define RtlUpcaseUnicodeChar(C)                                   \
-    (WCHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
-
-#define RtlOffsetToPointer(B,O)    ((PCHAR)(((PCHAR)(B)) + ((ULONG_PTR)(O))))
-#define RtlOffsetFromPointer(B,O)  ((PCHAR)(((PCHAR)(B)) - ((ULONG_PTR)(O))))
-#define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
-
-#define ALIGN_DOWN(Address, Alignment)                     \
-    ((ULONG_PTR)(Address) & (~((ULONG_PTR)(Alignment)-1)))
-
-#define ALIGN_UP(Address, Alignment) (                        \
-    (((ULONG_PTR)(Address)) + (((ULONG_PTR)(Alignment))-1)) & \
-    ~(((ULONG_PTR)(Alignment))-1)                             \
-)
-
-#define ALIGN_UP_POINTER(Address) (ALIGN_UP(Address, sizeof(ULONG_PTR)))
-
-#define ALIGN_DOWN_POINTER(Address) (ALIGN_DOWN(Address, sizeof(ULONG_PTR)))
-
-#define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
-    (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
-
-#define ALIGN_UP_USHORT_TO_POINTER_SIZE(Value)                   \
-    (USHORT)(ALIGN_UP((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
-
-#define BITMAP_ALIGNMENT 128
-#define ALIGN_UP_BITMAP(Address)                  \
-    (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
 
 FORCEINLINE
 ULONGLONG
