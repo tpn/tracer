@@ -3818,24 +3818,31 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->UnicodeStringToPath = (PUNICODE_STRING_TO_PATH)
-        GetProcAddress(RtlExModule, "UnicodeStringToPath"))) {
+    if (!(RtlExFunctions->UnicodeStringToRtlPath = (PUNICODE_STRING_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToRtlPath"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToRtlPath'");
         return FALSE;
     }
 
-    if (!(RtlExFunctions->DestroyPath = (PDESTROY_PATH)
-        GetProcAddress(RtlExModule, "DestroyPath"))) {
+    if (!(RtlExFunctions->StringToRtlPath = (PSTRING_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "StringToRtlPath"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'DestroyPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'StringToRtlPath'");
         return FALSE;
     }
 
-    if (!(RtlExFunctions->GetModulePath = (PGET_MODULE_PATH)
-        GetProcAddress(RtlExModule, "GetModulePath"))) {
+    if (!(RtlExFunctions->DestroyRtlPath = (PDESTROY_RTL_PATH)
+        GetProcAddress(RtlExModule, "DestroyRtlPath"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'GetModulePath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->GetModuleRtlPath = (PGET_MODULE_RTL_PATH)
+        GetProcAddress(RtlExModule, "GetModuleRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'GetModuleRtlPath'");
         return FALSE;
     }
 
@@ -3846,10 +3853,10 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CurrentDirectoryToPath = (PCURRENT_DIRECTORY_TO_PATH)
-        GetProcAddress(RtlExModule, "CurrentDirectoryToPath"))) {
+    if (!(RtlExFunctions->CurrentDirectoryToRtlPath = (PCURRENT_DIRECTORY_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "CurrentDirectoryToRtlPath"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToRtlPath'");
         return FALSE;
     }
 

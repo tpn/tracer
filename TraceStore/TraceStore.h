@@ -1427,10 +1427,10 @@ typedef struct _TRACE_FILE {
     ULONG Padding1;
 
     //
-    // Capture all path related information via Rtl's PATH structure.
+    // Capture all path related information via Rtl's RTL_PATH structure.
     //
 
-    PATH Path;
+    RTL_PATH Path;
 
     //
     // A pointer to the first byte of data for the file, once it has been

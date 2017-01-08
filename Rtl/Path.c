@@ -13,22 +13,22 @@ Abstract:
 --*/
 #include "stdafx.h"
 
-#define MAX_PATH_ALLOC 4000
+#define MAX_RTL_PATH_ALLOC 4000
 
 _Use_decl_annotations_
 BOOL
-UnicodeStringToPath(
+UnicodeStringToRtlPath(
     PRTL Rtl,
     PUNICODE_STRING String,
     PALLOCATOR Allocator,
-    PPPATH PathPointer
+    PPRTL_PATH PathPointer
     )
 /*++
 
 Routine Description:
 
     Converts a UNICODE_STRING representing a fully-qualified path into a
-    PATH structure, allocating memory from the provided Allocator.
+    RTL_PATH structure, allocating memory from the provided Allocator.
 
 Arguments:
 
@@ -38,10 +38,10 @@ Arguments:
         path name.
 
     Allocator - Supplies a pointer to an ALLOCATOR structure that is used for
-        allocating the new PATH structure (and associated buffers).
+        allocating the new RTL_PATH structure (and associated buffers).
 
     PathPointer - Supplies a pointer to an address that receives the address
-        of the newly created PATH structure if the routine was successful.
+        of the newly created RTL_PATH structure if the routine was successful.
 
 Return Value:
 
@@ -64,7 +64,7 @@ Return Value:
     USHORT ReversedDotIndex;
     USHORT LengthInBytes;
     LONG_INTEGER AllocSize;
-    PPATH Path;
+    PRTL_PATH Path;
     PWCHAR Buf;
     PWCHAR Dest;
     PWCHAR Source;
@@ -95,9 +95,9 @@ Return Value:
 
     //
     // N.B. The vast majority of this function's code deals with calculating
-    //      the total number of bytes we need to furnish a new PATH object
+    //      the total number of bytes we need to furnish a new RTL_PATH object
     //      from the incoming string, such that we only need a single alloc
-    //      call.  This requires accounting for the PATH structure itself,
+    //      call.  This requires accounting for the RTL_PATH structure itself,
     //      space for two RTL_BITMAP buffers (where there is one bit per
     //      character), and then space for a copy of the NULL-terminated
     //      unicode string buffer.
@@ -156,16 +156,16 @@ Return Value:
 
     //
     // Calculate the total allocation size in bytes required for the
-    // PATH structure and trailing bitmap buffers and unicode buffer.
+    // RTL_PATH structure and trailing bitmap buffers and unicode buffer.
     //
 
     AllocSize.LongPart = (
 
         //
-        // Size of the PATH structure.
+        // Size of the RTL_PATH structure.
         //
 
-        sizeof(PATH) +
+        sizeof(RTL_PATH) +
 
         //
         // Size of the underlying bitmap buffers (there are two of them).
@@ -193,7 +193,7 @@ Return Value:
     // Allocate the memory.
     //
 
-    Path = (PPATH)(
+    Path = (PRTL_PATH)(
         Allocator->Calloc(
             Allocator->Context,
             1,
@@ -213,14 +213,14 @@ Return Value:
     Path->AllocSize = AllocSize.LowPart;
 
     //
-    // Carve up the rest of the allocated buffer past the PATH struct
+    // Carve up the rest of the allocated buffer past the RTL_PATH struct
     // into the two bitmap buffers and then the final unicode string buffer.
     //
 
     ReversedSlashesBitmap = &Path->ReversedSlashesBitmap;
     ReversedDotsBitmap = &Path->ReversedDotsBitmap;
 
-    Offset = sizeof(PATH);
+    Offset = sizeof(RTL_PATH);
 
     //
     // Carve out ReversedSlashesBitmap.
@@ -416,18 +416,18 @@ Error:
 
 _Use_decl_annotations_
 BOOL
-StringToPath(
+StringToRtlPath(
     PRTL Rtl,
     PSTRING String,
     PALLOCATOR Allocator,
-    PPPATH PathPointer
+    PPRTL_PATH PathPointer
     )
 /*++
 
 Routine Description:
 
     Converts a STRING representing a fully-qualified path into a UNICODE_STRING,
-    then calls UnicodeStringToPath().
+    then calls UnicodeStringToRtlPath().
 
 Arguments:
 
@@ -436,10 +436,10 @@ Arguments:
     String - Supplies a pointer to a STRING structure that contains a path name.
 
     Allocator - Supplies a pointer to an ALLOCATOR structure that is used for
-        allocating the new PATH structure (and associated buffers).
+        allocating the new RTL_PATH structure (and associated buffers).
 
     PathPointer - Supplies a pointer to an address that receives the address
-        of the newly created PATH structure if the routine was successful.
+        of the newly created RTL_PATH structure if the routine was successful.
 
 Return Value:
 
@@ -459,7 +459,10 @@ Return Value:
         return FALSE;
     }
 
-    Success = UnicodeStringToPath(Rtl, UnicodeString, Allocator, PathPointer);
+    Success = UnicodeStringToRtlPath(Rtl,
+                                     UnicodeString,
+                                     Allocator,
+                                     PathPointer);
     if (!Success) {
         Allocator->Free(Allocator->Context, UnicodeString);
     }
@@ -469,11 +472,11 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-DestroyPath(
-    PPPATH PathPointer
+DestroyRtlPath(
+    PPRTL_PATH PathPointer
     )
 {
-    PPATH Path;
+    PRTL_PATH Path;
     PALLOCATOR Allocator;
 
     //
@@ -505,17 +508,17 @@ DestroyPath(
 
 _Use_decl_annotations_
 BOOL
-GetModulePath(
+GetModuleRtlPath(
     PRTL Rtl,
     HMODULE Module,
     PALLOCATOR Allocator,
-    PPPATH PathPointer
+    PPRTL_PATH PathPointer
     )
 /*++
 
 Routine Description:
 
-    Allocates and initializes a new PATH structure from Allocator, based on the
+    Allocates and initializes a new RTL_PATH structure from Allocator, based on the
     unicode string path name returned as the filename for Module.
 
 Arguments:
@@ -528,7 +531,7 @@ Arguments:
         will be used for all memory allocations.
 
     PathPointer - Supplies a pointer to an address that receives the address
-        of the newly created PATH structure if the routine was successful.
+        of the newly created RTL_PATH structure if the routine was successful.
 
 Return Value:
 
@@ -564,7 +567,7 @@ Return Value:
     // Attempt to allocate a buffer.
     //
 
-    Bytes = MAX_PATH_ALLOC;
+    Bytes = MAX_RTL_PATH_ALLOC;
     Count = Bytes >> 1;
 
     Buffer = (PWSTR)(
@@ -600,7 +603,7 @@ Return Value:
     String.MaximumLength = String.Length + sizeof(WCHAR);
     String.Buffer = Buffer;
 
-    Success = UnicodeStringToPath(Rtl, &String, Allocator, PathPointer);
+    Success = UnicodeStringToRtlPath(Rtl, &String, Allocator, PathPointer);
 
     //
     // Intentional follow-on to Error as we need to free Buffer regardless of
@@ -698,8 +701,8 @@ Return Value:
 }
 
 _Use_decl_annotations_
-PPATH
-CurrentDirectoryToPath(
+PRTL_PATH
+CurrentDirectoryToRtlPath(
     PALLOCATOR Allocator
     )
 {

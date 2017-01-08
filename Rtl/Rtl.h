@@ -96,19 +96,19 @@ extern "C" {
 #endif
 
 #ifndef ROUND_TO_PAGES
-#define ROUND_TO_PAGES(Size) ( \
+#define ROUND_TO_PAGES(Size) (                              \
     (((ULONG_PTR)(Size) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1) \
 )
 #endif
 
 #ifndef BYTES_TO_PAGES
-#define BYTES_TO_PAGES(Size) ( \
+#define BYTES_TO_PAGES(Size) (                                  \
     (((Size) >> PAGE_SHIFT) + (((Size) & (PAGE_SIZE - 1)) != 0) \
 )
 #endif
 
 #ifndef ADDRESS_AND_SIZE_TO_SPAN_PAGES
-#define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Va,Size) \
+#define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Va,Size)                             \
     ((BYTE_OFFSET (Va) + ((SIZE_T) (Size)) + (PAGE_SIZE - 1)) >> PAGE_SHIFT
 #endif
 
@@ -147,8 +147,8 @@ extern "C" {
     (USHORT)(ALIGN_UP(Address, BITMAP_ALIGNMENT))
 
 #ifndef ARGUMENT_PRESENT
-#define ARGUMENT_PRESENT(ArgumentPointer) (                 \
-    (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL)   \
+#define ARGUMENT_PRESENT(ArgumentPointer) (                  \
+    (CHAR *)((ULONG_PTR)(ArgumentPointer)) != (CHAR *)(NULL) \
 )
 #endif
 
@@ -1532,23 +1532,43 @@ typedef BOOLEAN (WINAPI *PRTL_TIME_TO_SECONDS_SINCE_1970)(
     _Out_   PULONG          ElapsedSeconds
     );
 
-typedef enum _PATH_LINK_TYPE {
+typedef enum _RTL_PATH_LINK_TYPE {
 
     //
     // No linkage is being used.
     //
 
     PathLinkTypeNone = 0,
+
+    //
+    // Linkage type is LIST_ENTRY.
+    //
+
     PathLinkTypeListEntry,
+
+    //
+    // Linkage type is SLIST_ENTRY.
+    //
+
     PathLinkTypeSListEntry,
+
+    //
+    // Linkage type is UNICODE_PREFIX_TABLE_ENTRY.
+    //
+
     PathLinkTypePrefixTableEntry,
+
+    //
+    // Linkage type is RTL_DYNAMIC_HASH_TABLE_ENTRY.
+    //
+
     PathLinkHashTableEntry
 
-} PATH_LINK_TYPE, *PPATH_LINK_TYPE;
+} RTL_PATH_LINK_TYPE, *PRTL_PATH_LINK_TYPE;
 
-typedef struct _PATH_LINK {
+typedef struct _RTL_PATH_LINK {
 
-    PATH_LINK_TYPE Type;                                        // 0    4   4
+    RTL_PATH_LINK_TYPE Type;                                    // 0    4   4
 
     //
     // Pad to an 16 byte boundary in order to ensure SLIST_ENTRY is aligned
@@ -1564,25 +1584,25 @@ typedef struct _PATH_LINK {
         struct _RTL_DYNAMIC_HASH_TABLE_ENTRY HashTableEntry;    // 16   24  40
     };
 
-} PATH_LINK, *PPATH_LINK;
-C_ASSERT(FIELD_OFFSET(PATH_LINK, SListEntry) == 16);
-C_ASSERT(sizeof(PATH_LINK) == 80);
+} RTL_PATH_LINK, *PRTL_PATH_LINK;
+C_ASSERT(FIELD_OFFSET(RTL_PATH_LINK, SListEntry) == 16);
+C_ASSERT(sizeof(RTL_PATH_LINK) == 80);
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_FLAGS {
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _RTL_PATH_FLAGS {
     ULONG IsFile:1;
     ULONG IsDirectory:1;
     ULONG IsSymlink:1;
     ULONG IsFullyQualified:1;
     ULONG HasParent:1;
     ULONG HasChildren:1;
-} PATH_FLAGS, *PPATH_FLAGS;
+} RTL_PATH_FLAGS, *PRTL_PATH_FLAGS;
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _PATH_CREATE_FLAGS {
+typedef _Struct_size_bytes_(sizeof(ULONG)) struct _RTL_PATH_CREATE_FLAGS {
     ULONG CheckType:1;
     ULONG EnsureQualified:1;
-} PATH_CREATE_FLAGS, *PPATH_CREATE_FLAGS;
+} RTL_PATH_CREATE_FLAGS, *PRTL_PATH_CREATE_FLAGS;
 
-typedef enum _PATH_TYPE_INTENT {
+typedef enum _RTL_PATH_TYPE_INTENT {
 
     PathTypeDontCare = 0,
     PathTypeLookup,
@@ -1590,15 +1610,15 @@ typedef enum _PATH_TYPE_INTENT {
     PathTypeKnownSymlink,
     PathTypeKnownDirectory
 
-} PATH_TYPE_INTENT;
+} RTL_PATH_TYPE_INTENT;
 
-typedef _Struct_size_bytes_(StructSize) struct _PATH {
+typedef _Struct_size_bytes_(StructSize) struct _RTL_PATH {
 
     //
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _PATH)) USHORT StructSize;  // 0    2   2
+    _Field_range_(==, sizeof(struct _RTL_PATH)) USHORT StructSize; // 0    2   2
 
     //
     // Drive letter.
@@ -1639,7 +1659,7 @@ typedef _Struct_size_bytes_(StructSize) struct _PATH {
     union {
         struct {
             ULONG SizeOfReversedDotsBitMap;                     // 24   4   28
-            PATH_FLAGS Flags;                                   // 28   4   32
+            RTL_PATH_FLAGS Flags;                               // 28   4   32
             PULONG ReversedDotsBitMapBuffer;                    // 32   8   40
         };
         RTL_BITMAP ReversedDotsBitmap;                          // 24   16  40
@@ -1664,61 +1684,61 @@ typedef _Struct_size_bytes_(StructSize) struct _PATH {
     // Path linkage.
     //
 
-    PATH_LINK Link;                                             // 112  80  192
+    RTL_PATH_LINK Link;                                         // 112  80  192
 
-} PATH, *PPATH, **PPPATH;
-C_ASSERT(FIELD_OFFSET(PATH, ReversedSlashesBitmap) == 8);
-C_ASSERT(FIELD_OFFSET(PATH, ReversedDotsBitmap) == 24);
-C_ASSERT(FIELD_OFFSET(PATH, Allocator) == 40);
-C_ASSERT(FIELD_OFFSET(PATH, Full) == 48);
-C_ASSERT(FIELD_OFFSET(PATH, Name) == 64);
-C_ASSERT(FIELD_OFFSET(PATH, Link) == 112);
-C_ASSERT(sizeof(PATH) == 192);
+} RTL_PATH, *PRTL_PATH, **PPRTL_PATH;
+C_ASSERT(FIELD_OFFSET(RTL_PATH, ReversedSlashesBitmap) == 8);
+C_ASSERT(FIELD_OFFSET(RTL_PATH, ReversedDotsBitmap) == 24);
+C_ASSERT(FIELD_OFFSET(RTL_PATH, Allocator) == 40);
+C_ASSERT(FIELD_OFFSET(RTL_PATH, Full) == 48);
+C_ASSERT(FIELD_OFFSET(RTL_PATH, Name) == 64);
+C_ASSERT(FIELD_OFFSET(RTL_PATH, Link) == 112);
+C_ASSERT(sizeof(RTL_PATH) == 192);
 
 typedef
 _Success_(return != 0)
 BOOL
-(UNICODE_STRING_TO_PATH)(
+(UNICODE_STRING_TO_RTL_PATH)(
     _In_ PRTL Rtl,
     _In_ PUNICODE_STRING String,
     _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer
+    _Out_ PPRTL_PATH PathPointer
     );
-typedef UNICODE_STRING_TO_PATH *PUNICODE_STRING_TO_PATH;
-RTL_API UNICODE_STRING_TO_PATH UnicodeStringToPath;
+typedef UNICODE_STRING_TO_RTL_PATH *PUNICODE_STRING_TO_RTL_PATH;
+RTL_API UNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;
 
 typedef
 _Success_(return != 0)
 BOOL
-(STRING_TO_PATH)(
+(STRING_TO_RTL_PATH)(
     _In_ PRTL Rtl,
     _In_ PSTRING String,
     _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer
+    _Out_ PPRTL_PATH PathPointer
     );
-typedef STRING_TO_PATH *PSTRING_TO_PATH;
-RTL_API STRING_TO_PATH StringToPath;
+typedef STRING_TO_RTL_PATH *PSTRING_TO_RTL_PATH;
+RTL_API STRING_TO_RTL_PATH StringToRtlPath;
 
 typedef
 _Success_(return != 0)
 BOOL
-(DESTROY_PATH)(
-    _Inout_opt_ PPPATH PathPointer
+(DESTROY_RTL_PATH)(
+    _Inout_opt_ PPRTL_PATH PathPointer
     );
-typedef DESTROY_PATH *PDESTROY_PATH;
-RTL_API DESTROY_PATH DestroyPath;
+typedef DESTROY_RTL_PATH *PDESTROY_RTL_PATH;
+RTL_API DESTROY_RTL_PATH DestroyRtlPath;
 
 typedef
 _Success_(return != 0)
 BOOL
-(GET_MODULE_PATH)(
+(GET_MODULE_RTL_PATH)(
     _In_ PRTL Rtl,
     _In_ HMODULE Module,
     _In_ PALLOCATOR Allocator,
-    _Out_ PPPATH PathPointer
+    _Out_ PPRTL_PATH PathPointer
     );
-typedef GET_MODULE_PATH *PGET_MODULE_PATH;
-RTL_API GET_MODULE_PATH GetModulePath;
+typedef GET_MODULE_RTL_PATH *PGET_MODULE_RTL_PATH;
+RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
 
 typedef
 PVOID
@@ -2355,14 +2375,14 @@ RTL_API CURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;
 typedef
 _Success_(return != 0)
 _Check_return_
-PPATH
-(CURRENT_DIRECTORY_TO_PATH)(
+PRTL_PATH
+(CURRENT_DIRECTORY_TO_RTL_PATH)(
     _In_ PALLOCATOR Allocator
     );
-typedef CURRENT_DIRECTORY_TO_PATH \
-      *PCURRENT_DIRECTORY_TO_PATH,\
-    **PPCURRENT_DIRECTORY_TO_PATH;
-RTL_API CURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;
+typedef CURRENT_DIRECTORY_TO_RTL_PATH \
+      *PCURRENT_DIRECTORY_TO_RTL_PATH,\
+    **PPCURRENT_DIRECTORY_TO_RTL_PATH;
+RTL_API CURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;
 
 typedef
 _Check_return_
@@ -2509,12 +2529,12 @@ RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
     PFILES_EXISTA FilesExistA;                                                 \
     PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
-    PUNICODE_STRING_TO_PATH UnicodeStringToPath;                               \
-    PSTRING_TO_PATH StringToPath;                                              \
-    PDESTROY_PATH DestroyPath;                                                 \
-    PGET_MODULE_PATH GetModulePath;                                            \
+    PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                        \
+    PSTRING_TO_RTL_PATH StringToRtlPath;                                       \
+    PDESTROY_RTL_PATH DestroyRtlPath;                                          \
+    PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
-    PCURRENT_DIRECTORY_TO_PATH CurrentDirectoryToPath;                         \
+    PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
     PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;         \
     PLOAD_SHLWAPI LoadShlwapi;
