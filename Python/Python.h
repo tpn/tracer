@@ -2526,6 +2526,10 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     };
 
     //
+    // (128 bytes consumed.)
+    //
+
+    //
     // Checksums.
     //
 
