@@ -957,7 +957,7 @@ Return Value:
         Allocation->NumberOfRecords.QuadPart = 1;
 
         //
-        // Set the dummy bit to indicate that this was a dummy allocation.
+        // Set the highest bit to indicate that this was a dummy allocation.
         //
 
         Allocation->NumberOfRecords.DummyAllocation1 = TRUE;
