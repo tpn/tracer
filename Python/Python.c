@@ -363,10 +363,10 @@ FunctionTableAllocationRoutine(
     )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
-    if (ByteSize != TargetSizeOfPythonFunctionTableEntry) {
+    if (ByteSize != TargetSizeOfPythonFunctionTableEntry-8) {
         __debugbreak();
     }
-    return ALLOCATE(FunctionTableEntry, ByteSize);
+    return ALLOCATE(FunctionTableEntry, ByteSize+8);
 }
 
 VOID
@@ -630,9 +630,10 @@ ResolvePythonExOffsets(_In_ PPYTHON Python)
     Python->PythonPathTableEntryOffsets = &PythonPathTableEntryOffsets;
     Python->PythonFunctionOffsets = &PythonFunctionOffsets;
 
-    ASSERT_EQUAL(PythonPathTableEntryOffsets.Size, 512);
+    ASSERT_EQUAL(PythonPathTableEntryOffsets.Size, 1024);
     ASSERT_EQUAL(SizeOfPythonFunctionTableEntry, 2048);
-    ASSERT_EQUAL(PythonFunctionOffsets.Size, 2048-SizeOfTableEntryHeaderHeader);
+    ASSERT_EQUAL(PythonFunctionOffsets.Size + 8,
+                 2048-SizeOfTableEntryHeaderHeader);
 
     return TRUE;
 }

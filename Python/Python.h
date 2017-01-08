@@ -2376,8 +2376,6 @@ typedef struct _PYTHONEXFUNCTIONS {
     _PYTHONEXFUNCTIONS_HEAD
 } PYTHONEXFUNCTIONS, *PPYTHONEXFUNCTIONS;
 
-#pragma pack(push, 8)
-
 typedef struct _PYTHON_PATH_TABLE {
 
     //
@@ -2529,167 +2527,23 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY {
     // (128 bytes consumed.)
     //
 
-    //
-    // Checksums.
-    //
-
-    BYTE MD5[16];
-    BYTE SHA1[20];
+    RTL_FILE File;
 
     //
-    // Number of lines in the file.  This also serves to pad out the next field
-    // to an 8 byte boundary.
-    //
-
-    ULONG NumberOfLines;
-
-    //
-    // An array of STRING structures, one for each line in the file.  Number of
-    // elements in the array is governed by NumberOfLines.
-    //
-
-    PSTRING Lines;
-
-    //
-    // Line ending bitmaps.
-    //
-
-    PRTL_BITMAP CarriageReturnBitmap;
-    PRTL_BITMAP LineFeedBitmap;
-
-    //
-    // The two bitmaps above are combined (literally AND'd together) to create
-    // the following line ending bitmap, where each set bit indicates a line
-    // ending character.
-    //
-
-    PRTL_BITMAP LineEndingBitmap;
-
-    //
-    // This bitmap is then inverted, such that each set bit indicates a normal
-    // non-line-ending character.
-    //
-
-    PRTL_BITMAP LineBitmap;
-
-    //
-    // Bitmaps for capturing whitespace/tabs.
-    //
-
-    PRTL_BITMAP WhitespaceBitmap;
-    PRTL_BITMAP TabBitmap;
-
-    //
-    // Set bits correlate to whitespace/tabs that indicate indentation; i.e.
-    // longest run of space/tab after the last line-ending bit.
-    //
-
-    PRTL_BITMAP IndentBitmap;
-
-    //
-    // (232 bytes consumed.)
+    // (640 bytes consumed.)
     //
 
     //
-    // File information.
+    // Pad out to 1024 bytes.
     //
 
-    LARGE_INTEGER CreationTime;
-    LARGE_INTEGER LastAccessTime;
-    LARGE_INTEGER LastWriteTime;
-    LARGE_INTEGER ChangeTime;
-    LARGE_INTEGER EndOfFile;
-    LARGE_INTEGER AllocationSize;
-
-    //
-    // (280 bytes consumed.)
-    //
-
-    //
-    // File ID related information.
-    //
-
-    LARGE_INTEGER FileId;
-
-    //
-    // Inline FILE_ID_INFO.
-    //
-
-    union {
-        FILE_ID_INFO FileIdInfo;
-        struct {
-            ULONGLONG VolumeSerialNumber;
-            FILE_ID_128 FileId128;
-        };
-    };
-
-    //
-    // Pad out to 512 bytes.
-    //
-
-    BYTE Reserved[200];
+    BYTE Reserved[384];
 
 } PYTHON_PATH_TABLE_ENTRY, *PPYTHON_PATH_TABLE_ENTRY;
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, MD5) == 128);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, SHA1) == 144);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NumberOfLines) == 164);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Lines) == 168);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, CarriageReturnBitmap) == 176);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, CreationTime) == 232);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, FileId) == 280);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, VolumeSerialNumber) == 288);
-C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Reserved) == 312);
-C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 512);
-
-#pragma pack(pop)
-
-typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
-    USHORT Size;
-    USHORT NumberOfFields;
-
-    USHORT NodeTypeCodeOffset;
-    USHORT PrefixNameLengthOffset;
-    USHORT PathEntryTypeOffset;
-    USHORT NextPrefixTreeOffset;
-    USHORT LinksOffset;
-    USHORT LinksParentOffset;
-    USHORT LinksLeftChildOffset;
-    USHORT LinksRightChildOffset;
-    USHORT PrefixOffset;
-
-    USHORT PathOffset;
-    USHORT PathLengthOffset;
-    USHORT PathMaximumLengthOffset;
-    USHORT PathAtomOffset;
-    USHORT PathBufferOffset;
-
-    USHORT FullNameOffset;
-    USHORT FullNameLengthOffset;
-    USHORT FullNameMaximumLengthOffset;
-    USHORT FullNameAtomOffset;
-    USHORT FullNameBufferOffset;
-
-    USHORT ModuleNameOffset;
-    USHORT ModuleNameLengthOffset;
-    USHORT ModuleNameMaximumLengthOffset;
-    USHORT ModuleNameAtomOffset;
-    USHORT ModuleNameBufferOffset;
-
-    USHORT NameOffset;
-    USHORT NameLengthOffset;
-    USHORT NameMaximumLengthOffset;
-    USHORT NameAtomOffset;
-    USHORT NameBufferOffset;
-
-    USHORT ClassNameOffset;
-    USHORT ClassNameLengthOffset;
-    USHORT ClassNameMaximumLengthOffset;
-    USHORT ClassNameAtomOffset;
-    USHORT ClassNameBufferOffset;
-
-} PYTHON_PATH_TABLE_ENTRY_OFFSETS, *PPYTHON_PATH_TABLE_ENTRY_OFFSETS;
-
-#pragma pack(push, 8)
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, File) == 128);
+C_ASSERT(RTL_FIELD_SIZE(PYTHON_PATH_TABLE_ENTRY, File) == 512);
+C_ASSERT(FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Reserved) == 640);
+C_ASSERT(sizeof(PYTHON_PATH_TABLE_ENTRY) == 1024);
 
 //
 // This structure needs to be 2008 bytes in size.  This is because it is
@@ -2698,12 +2552,21 @@ typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
 // We want our total size, including the header, to be a power of 2, as
 // this affords optimal trace store allocation behavior.
 //
+// Now, with that being said, getting PYTHON_FUNCTION to align at byte 40
+// (0x28) instead of 48 (0x30) is painful at best, impossible at worst.
+// Additionally, even getting this structure to exactly 2008 bytes with
+// padding is hard or impossible depending on the layout -- 2000 or 2016
+// are the only options.  So, we go for 2000, and basically just live with
+// having a spare 8 bytes at the end of every structure (the function table
+// allocator adds this in automatically; i.e. it receives an allocation request
+// for 2040 bytes and dispatches 2048 to our underlying allocator).
+//
 
 typedef struct _PYTHON_FUNCTION {
 
     //
     // The path entry for the function.  This captures naming details and
-    // consumes the first 512 bytes of this structure.
+    // consumes the first 1024 bytes of this structure.
     //
 
     PYTHON_PATH_TABLE_ENTRY PathEntry;
@@ -2811,13 +2674,21 @@ typedef struct _PYTHON_FUNCTION {
     RTL_DYNAMIC_HASH_TABLE_ENTRY HashEntry;
 
     //
-    // (624 bytes consumed.)
+    // (1112 bytes consumed.)
     //
 
-    BYTE Reserved[1384];
+    //
+    // Pad out to 2000 bytes.
+    //
+
+    BYTE Reserved[864];
 
 } PYTHON_FUNCTION, *PPYTHON_FUNCTION, **PPPYTHON_FUNCTION;
-C_ASSERT(sizeof(PYTHON_FUNCTION) == 2008);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION, ParentPathEntry) == 1024);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION, Signature) == 1104);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION, HashEntry) == 1112);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION, Reserved) == 1136);
+C_ASSERT(sizeof(PYTHON_FUNCTION) == 2000);
 
 typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
 
@@ -2878,36 +2749,19 @@ typedef struct _PYTHON_FUNCTION_TABLE_ENTRY {
         //
     };
 
-    PYTHON_FUNCTION Function;
+    //
+    // It's painful trying to get a PYTHON_FUNCTION to align on the 40 byte
+    // boundary; so just reserve the required space and handle the casting
+    // later.
+    //
+
+    BYTE PythonFunction[2008];
 
 } PYTHON_FUNCTION_TABLE_ENTRY, *PPYTHON_FUNCTION_TABLE_ENTRY;
-C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Function) == 40);
+C_ASSERT(FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, PythonFunction) == 40);
 C_ASSERT(sizeof(PYTHON_FUNCTION_TABLE_ENTRY) == 2048);
 
 typedef PYTHON_FUNCTION_TABLE_ENTRY **PPPYTHON_FUNCTION_TABLE_ENTRY;
-
-typedef struct _PYTHON_FUNCTION_OFFSETS {
-    USHORT Size;
-    USHORT NumberOfFields;
-
-    USHORT PathEntryOffset;
-    USHORT ParentPathEntryOffset;
-    USHORT KeyOffset;
-    USHORT CodeObjectOffset;
-    USHORT PyCFunctionObjectOffset;
-
-} PYTHON_FUNCTION_OFFSETS, *PPYTHON_FUNCTION_OFFSETS;
-
-#pragma pack(pop)
-
-//
-// Offset table constants.
-//
-
-PYTHON_EX_DATA CONST PYTHON_PATH_TABLE_ENTRY_OFFSETS \
-                     PythonPathTableEntryOffsets;
-
-PYTHON_EX_DATA CONST PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets;
 
 typedef struct _PYTHON_FUNCTION_TABLE {
 
@@ -3041,6 +2895,7 @@ typedef struct _PYTHON_MODULE_TABLE_ENTRY {
 } PYTHON_MODULE_TABLE_ENTRY, *PPYTHON_MODULE_TABLE_ENTRY;
 C_ASSERT(sizeof(PYTHON_MODULE_TABLE_ENTRY) == 128);
 
+#pragma warning(pop)
 
 #define _PYTHONEXRUNTIME_HEAD                                       \
     HANDLE HeapHandle;                                              \
@@ -3058,6 +2913,75 @@ C_ASSERT(sizeof(PYTHON_MODULE_TABLE_ENTRY) == 128);
 typedef struct _PYTHONEXRUNTIME {
     _PYTHONEXRUNTIME_HEAD
 } PYTHONEXRUNTIME, *PPYTHONEXRUNTIME;
+
+
+typedef struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS {
+    USHORT Size;
+    USHORT NumberOfFields;
+
+    USHORT NodeTypeCodeOffset;
+    USHORT PrefixNameLengthOffset;
+    USHORT PathEntryTypeOffset;
+    USHORT NextPrefixTreeOffset;
+    USHORT LinksOffset;
+    USHORT LinksParentOffset;
+    USHORT LinksLeftChildOffset;
+    USHORT LinksRightChildOffset;
+    USHORT PrefixOffset;
+
+    USHORT PathOffset;
+    USHORT PathLengthOffset;
+    USHORT PathMaximumLengthOffset;
+    USHORT PathAtomOffset;
+    USHORT PathBufferOffset;
+
+    USHORT FullNameOffset;
+    USHORT FullNameLengthOffset;
+    USHORT FullNameMaximumLengthOffset;
+    USHORT FullNameAtomOffset;
+    USHORT FullNameBufferOffset;
+
+    USHORT ModuleNameOffset;
+    USHORT ModuleNameLengthOffset;
+    USHORT ModuleNameMaximumLengthOffset;
+    USHORT ModuleNameAtomOffset;
+    USHORT ModuleNameBufferOffset;
+
+    USHORT NameOffset;
+    USHORT NameLengthOffset;
+    USHORT NameMaximumLengthOffset;
+    USHORT NameAtomOffset;
+    USHORT NameBufferOffset;
+
+    USHORT ClassNameOffset;
+    USHORT ClassNameLengthOffset;
+    USHORT ClassNameMaximumLengthOffset;
+    USHORT ClassNameAtomOffset;
+    USHORT ClassNameBufferOffset;
+
+} PYTHON_PATH_TABLE_ENTRY_OFFSETS, *PPYTHON_PATH_TABLE_ENTRY_OFFSETS;
+
+typedef struct _PYTHON_FUNCTION_OFFSETS {
+    USHORT Size;
+    USHORT NumberOfFields;
+
+    USHORT PathEntryOffset;
+    USHORT ParentPathEntryOffset;
+    USHORT KeyOffset;
+    USHORT CodeObjectOffset;
+    USHORT PyCFunctionObjectOffset;
+
+} PYTHON_FUNCTION_OFFSETS, *PPYTHON_FUNCTION_OFFSETS;
+
+//
+// Offset table constants.
+//
+
+PYTHON_EX_DATA CONST PYTHON_PATH_TABLE_ENTRY_OFFSETS \
+                     PythonPathTableEntryOffsets;
+
+PYTHON_EX_DATA CONST PYTHON_FUNCTION_OFFSETS PythonFunctionOffsets;
+
 
 #define _PYTHONOBJECTOFFSETS_HEAD                 \
     PCPYCODEOBJECTOFFSETS   PyCodeObjectOffsets;  \
