@@ -707,7 +707,7 @@ FastPathUpdateLength:
     FullName = &PathEntry->FullName;
 
     //
-    // Allocate the full name string if we don't already own it.
+    // Allocate the full name string.
     //
 
     if (!AllocateStringBuffer(Python, FullNameAllocSize, FullName)) {
