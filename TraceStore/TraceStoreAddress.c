@@ -52,8 +52,8 @@ Return Value:
     PTRACE_STORE AddressStore;
     PTRACE_CONTEXT Context;
 
-    ULARGE_INTEGER AddressRecordSize = { sizeof(Address) };
-    ULARGE_INTEGER NumberOfAddressRecords = { 1 };
+    ULONG_PTR AddressRecordSize = sizeof(Address);
+    ULONG_PTR NumberOfAddressRecords = 1;
 
     //
     // Validate arguments.
@@ -89,7 +89,7 @@ Return Value:
         return FALSE;
     }
 
-    if (PAGE_SIZE % AddressRecordSize.QuadPart) {
+    if (PAGE_SIZE % AddressRecordSize) {
 
         //
         // The record isn't evenly divisible by PAGE_SIZE.
@@ -106,8 +106,8 @@ Return Value:
 
     Buffer = AllocateRecords(Context,
                              AddressStore,
-                             &AddressRecordSize,
-                             &NumberOfAddressRecords);
+                             NumberOfAddressRecords,
+                             AddressRecordSize);
 
     if (!Buffer) {
         return FALSE;

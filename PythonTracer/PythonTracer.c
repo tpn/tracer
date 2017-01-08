@@ -35,14 +35,15 @@ TraceStoreAllocationRoutine(
     )
 {
     PTRACE_STORE TraceStore = (PTRACE_STORE)AllocationContext;
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { ByteSize };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = ByteSize;
 
-    return TraceStore->AllocateRecords(
+    return TraceStore->AllocateRecordsWithTimestamp(
         TraceStore->TraceContext,
         TraceStore,
-        &RecordSize,
-        &NumberOfRecords
+        NumberOfRecords,
+        RecordSize,
+        NULL
     );
 }
 
@@ -64,17 +65,13 @@ TraceStoreCallocRoutine(
     )
 {
     PTRACE_STORE TraceStore = (PTRACE_STORE)AllocationContext;
-    ULARGE_INTEGER NumberOfRecords;
-    ULARGE_INTEGER RecordSize;
 
-    NumberOfRecords.QuadPart = NumberOfElements;
-    RecordSize.QuadPart = ElementSize;
-
-    return TraceStore->AllocateRecords(
+    return TraceStore->AllocateRecordsWithTimestamp(
         TraceStore->TraceContext,
         TraceStore,
-        &RecordSize,
-        &NumberOfRecords
+        NumberOfElements,
+        ElementSize,
+        NULL
     );
 }
 
@@ -84,16 +81,8 @@ TraceStoreFreeRoutine(
     _In_     PVOID Buffer
     )
 {
+    __debugbreak();
     return;
-
-    /*
-    PTRACE_STORE TraceStore;
-    TraceStore = (PTRACE_STORE)FreeContext;
-
-    TraceStore->FreeRecords(TraceStore->TraceContext,
-                            TraceStore,
-                            Buffer);
-    */
 }
 
 VOID

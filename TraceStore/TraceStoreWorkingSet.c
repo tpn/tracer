@@ -208,10 +208,10 @@ Return Value:
     ULONG BufferSizeInBytes;
     ULONGLONG RecordsLost;
     ULARGE_INTEGER BufferSize;
-    ULARGE_INTEGER NumberOfElements;
-    ULARGE_INTEGER WsWatchInfoExSize;
-    ULARGE_INTEGER WsWorkingSetExInfoSize;
-    ULARGE_INTEGER NumberOfActualElements;
+    ULONG_PTR NumberOfElements;
+    ULONG_PTR WsWatchInfoExSize;
+    ULONG_PTR WsWorkingSetExInfoSize;
+    ULONG_PTR NumberOfActualElements;
     ULARGE_INTEGER TempWsWorkingSetExBufferSizeInBytes;
     PPSAPI_WS_WATCH_INFORMATION_EX WsWatchInfoEx;
     PPSAPI_WS_WATCH_INFORMATION_EX DestWsWatchInfoEx;
@@ -234,15 +234,12 @@ Return Value:
     CurrentProcess = GetCurrentProcess();
     TempWsWatchInfoExBuffer = TraceContext->WsWatchInfoExBuffer;
     TempWsWorkingSetExInfoBuffer = TraceContext->WsWorkingSetExInfoBuffer;
-    WsWatchInfoExSize.QuadPart = sizeof(PSAPI_WS_WATCH_INFORMATION_EX);
-    WsWorkingSetExInfoSize.QuadPart = sizeof(PSAPI_WORKING_SET_EX_INFORMATION);
-    NumberOfElements.QuadPart = (
+    WsWatchInfoExSize = sizeof(PSAPI_WS_WATCH_INFORMATION_EX);
+    WsWorkingSetExInfoSize = sizeof(PSAPI_WORKING_SET_EX_INFORMATION);
+    NumberOfElements = (
         TraceContext->WsWatchInfoExCurrentBufferNumberOfElements
     );
-    BufferSize.QuadPart = (
-        NumberOfElements.QuadPart *
-        WsWatchInfoExSize.QuadPart
-    );
+    BufferSize.QuadPart = NumberOfElements * WsWatchInfoExSize;
 
     //
     // Get the working set changes into our temporary heap allocated buffer.
@@ -294,11 +291,8 @@ TryGetWsChangesEx:
         // new buffer size is sane, then reallocate the buffer.
         //
 
-        NumberOfElements.QuadPart = NumberOfElements.QuadPart << 1;
-        BufferSize.QuadPart = (
-            NumberOfElements.QuadPart *
-            WsWatchInfoExSize.QuadPart
-        );
+        NumberOfElements = NumberOfElements << 1;
+        BufferSize.QuadPart = NumberOfElements * WsWatchInfoExSize;
 
         if (BufferSize.HighPart) {
 
@@ -324,7 +318,7 @@ TryGetWsChangesEx:
 
         TempWsWatchInfoExBuffer = TraceContext->WsWatchInfoExBuffer;
         TraceContext->WsWatchInfoExCurrentBufferNumberOfElements = (ULONG)(
-            NumberOfElements.QuadPart
+            NumberOfElements
         );
 
         //
@@ -337,7 +331,7 @@ TryGetWsChangesEx:
                 TraceContext->Allocator->Realloc(
                     TraceContext->Allocator,
                     TraceContext->WsWorkingSetExInfoBuffer,
-                    NumberOfElements.QuadPart * WsWorkingSetExInfoSize.QuadPart
+                    NumberOfElements * WsWorkingSetExInfoSize
                 )
             )
         );
@@ -423,19 +417,19 @@ TryGetWsChangesEx:
     // of faulting virtual addresses.
     //
 
-    NumberOfActualElements.QuadPart = Index - 1;
+    NumberOfActualElements = Index - 1;
 
     //
     // If there were no elements, we're done.
     //
 
-    if (!NumberOfActualElements.QuadPart) {
+    if (!NumberOfActualElements) {
         return TRUE;
     }
 
     TempWsWorkingSetExBufferSizeInBytes.QuadPart = (
-        NumberOfActualElements.QuadPart *
-        WsWorkingSetExInfoSize.QuadPart
+        NumberOfActualElements *
+        WsWorkingSetExInfoSize
     );
 
     //
@@ -481,8 +475,8 @@ TryGetWsChangesEx:
         WsWatchInfoExStore->AllocateRecords(
             TraceContext,
             WsWatchInfoExStore,
-            &WsWatchInfoExSize,
-            &NumberOfActualElements
+            NumberOfActualElements,
+            WsWatchInfoExSize
         )
     );
 
@@ -495,8 +489,8 @@ TryGetWsChangesEx:
         WsWorkingSetExInfoStore->AllocateRecords(
             TraceContext,
             WsWorkingSetExInfoStore,
-            &WsWorkingSetExInfoSize,
-            &NumberOfActualElements
+            NumberOfActualElements,
+            WsWorkingSetExInfoSize
         )
     );
 
@@ -510,7 +504,7 @@ TryGetWsChangesEx:
     // trace store buffers.
     //
 
-    for (Index = 0; Index < NumberOfActualElements.LowPart; Index++) {
+    for (Index = 0; Index < NumberOfActualElements; Index++) {
 
         //
         // Copy the working set watch information.

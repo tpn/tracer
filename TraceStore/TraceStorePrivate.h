@@ -1086,8 +1086,8 @@ _Success_(return != 0)
 BOOL
 (RECORD_TRACE_STORE_ALLOCATION)(
     _In_ PTRACE_STORE     TraceStore,
-    _In_ PULARGE_INTEGER  RecordSize,
-    _In_ PULARGE_INTEGER  NumberOfRecords,
+    _In_ ULONG_PTR        NumberOfRecords,
+    _In_ ULONG_PTR        RecordSize,
     _In_ LARGE_INTEGER    Timestamp
     );
 typedef RECORD_TRACE_STORE_ALLOCATION *PRECORD_TRACE_STORE_ALLOCATION;
@@ -1104,24 +1104,24 @@ RecordTraceStoreAllocationTimestamp(
     PLONG DeltaPointer;
     PLARGE_INTEGER PreviousTimestamp;
     PLARGE_INTEGER TimestampPointer;
-    ULARGE_INTEGER DeltaRecordSize;
-    ULARGE_INTEGER TimestampRecordSize;
-    ULARGE_INTEGER NumberOfRecords;
+    ULONG_PTR DeltaRecordSize;
+    ULONG_PTR TimestampRecordSize;
+    ULONG_PTR NumberOfRecords;
 
     if (Timestamp.QuadPart == 0) {
         return TRUE;
     }
 
-    DeltaRecordSize.QuadPart = sizeof(Delta);
-    TimestampRecordSize.QuadPart = sizeof(Timestamp);
-    NumberOfRecords.QuadPart = 1;
+    DeltaRecordSize = sizeof(Delta);
+    TimestampRecordSize = sizeof(Timestamp);
+    NumberOfRecords = 1;
 
     TimestampPointer = (PLARGE_INTEGER)(
         TraceStore->AllocationTimestampStore->AllocateRecords(
             TraceStore->TraceContext,
             TraceStore->AllocationTimestampStore,
-            &TimestampRecordSize,
-            &NumberOfRecords
+            NumberOfRecords,
+            TimestampRecordSize
         )
     );
 
@@ -1143,8 +1143,8 @@ RecordTraceStoreAllocationTimestamp(
                 TraceStore->AllocationTimestampDeltaStore->AllocateRecords(
                     TraceStore->TraceContext,
                     TraceStore->AllocationTimestampDeltaStore,
-                    &DeltaRecordSize,
-                    &NumberOfRecords
+                    NumberOfRecords,
+                    DeltaRecordSize
                 )
             );
 

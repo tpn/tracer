@@ -21,8 +21,8 @@ PVOID
 TraceStoreAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
     PLARGE_INTEGER  TimestampPointer
     )
 /*++
@@ -56,12 +56,10 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.  The total
+        size is derived by multiplying RecordSize with NumberOfRecords.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
     TimestampPointer - Optionally supplies a pointer to a timestamp value to
         associate with the allocation.  When non-NULL, the 64-bit integer
@@ -94,8 +92,8 @@ Return Value:
         Address = TraceStoreAllocateRecordsWithTimestampImpl(
             TraceContext,
             TraceStore,
-            RecordSize,
             NumberOfRecords,
+            RecordSize,
             TimestampPointer
         );
 
@@ -113,8 +111,8 @@ PVOID
 TraceStoreAllocateRecordsWithTimestampImpl(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
     PLARGE_INTEGER  TimestampPointer
     )
 /*++
@@ -156,12 +154,7 @@ Routine Description:
         return NULL;
     }
 
-    AllocationSize = (
-        (ULONG_PTR)(
-            RecordSize->QuadPart *
-            NumberOfRecords->QuadPart
-        )
-    );
+    AllocationSize = RecordSize * NumberOfRecords;
 
     //
     // If the record size for the trace store isn't fixed, align the allocation
@@ -442,8 +435,8 @@ UpdateAddresses:
     //
 
     Success = RecordTraceStoreAllocation(TraceStore,
-                                         RecordSize,
                                          NumberOfRecords,
+                                         RecordSize,
                                          Timestamp);
 
     if (!Success) {
@@ -500,8 +493,8 @@ PVOID
 TraceStoreAllocateRecords(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize
     )
 /*++
 
@@ -517,12 +510,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
 Return Value:
 
@@ -531,14 +521,11 @@ Return Value:
 
 --*/
 {
-    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
-
-    AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestamp;
-    return AllocateWithTimestamp(TraceContext,
-                                 TraceStore,
-                                 RecordSize,
-                                 NumberOfRecords,
-                                 NULL);
+    return TraceStore->AllocateRecordsWithTimestamp(TraceContext,
+                                                    TraceStore,
+                                                    NumberOfRecords,
+                                                    RecordSize,
+                                                    NULL);
 }
 
 _Use_decl_annotations_
@@ -546,8 +533,8 @@ PVOID
 SuspendedTraceStoreAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
     PLARGE_INTEGER  TimestampPointer
     )
 /*++
@@ -564,12 +551,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
     TimestampPointer - Optionally supplies a pointer to a timestamp value to
         associate with the allocation.  When non-NULL, the 64-bit integer
@@ -618,7 +602,6 @@ Return Value:
         // Wait wasn't successful, abort the allocation.
         //
 
-        __debugbreak();
         return NULL;
     }
 
@@ -656,8 +639,8 @@ Return Value:
 
     return TraceStoreAllocateRecordsWithTimestamp(TraceContext,
                                                   TraceStore,
-                                                  RecordSize,
                                                   NumberOfRecords,
+                                                  RecordSize,
                                                   TimestampPointer);
 }
 
@@ -666,8 +649,8 @@ PVOID
 ConcurrentTraceStoreAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
     PLARGE_INTEGER  TimestampPointer
     )
 /*++
@@ -687,12 +670,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
     TimestampPointer - Optionally supplies a pointer to a timestamp value to
         associate with the allocation.  When non-NULL, the 64-bit integer
@@ -716,8 +696,8 @@ Return Value:
     EnterCriticalSection(&TraceStore->CriticalSection);
     Address = AllocateWithTimestamp(TraceContext,
                                     TraceStore,
-                                    RecordSize,
                                     NumberOfRecords,
+                                    RecordSize,
                                     TimestampPointer);
     LeaveCriticalSection(&TraceStore->CriticalSection);
     return Address;
@@ -728,8 +708,8 @@ PVOID
 TraceStoreTryAllocateRecordsWithTimestamp(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords,
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize,
     PLARGE_INTEGER  TimestampPointer
     )
 /*++
@@ -756,12 +736,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
     TimestampPointer - Optionally supplies a pointer to a timestamp value to
         associate with the allocation.  When non-NULL, the 64-bit integer
@@ -843,8 +820,8 @@ PVOID
 TraceStoreTryAllocateRecords(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
-    PULARGE_INTEGER RecordSize,
-    PULARGE_INTEGER NumberOfRecords
+    ULONG_PTR       NumberOfRecords,
+    ULONG_PTR       RecordSize
     )
 /*++
 
@@ -860,12 +837,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
         is to be allocated from.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the record to allocate.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records to allocate.  The total size is
-        derived by multiplying RecordSize with NumberOfRecords.
+    RecordSize - Supplies the size of the record to allocate.
 
 Return Value:
 
@@ -876,8 +850,8 @@ Return Value:
 {
     return TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
                                                        TraceStore,
-                                                       RecordSize,
                                                        NumberOfRecords,
+                                                       RecordSize,
                                                        NULL);
 }
 
@@ -885,8 +859,8 @@ _Use_decl_annotations_
 BOOL
 RecordTraceStoreAllocation(
     PTRACE_STORE     TraceStore,
-    PULARGE_INTEGER  RecordSize,
-    PULARGE_INTEGER  NumberOfRecords,
+    ULONG_PTR        NumberOfRecords,
+    ULONG_PTR        RecordSize,
     LARGE_INTEGER    Timestamp
     )
 /*++
@@ -904,11 +878,9 @@ Arguments:
     TraceStore - Supplies a pointer to a TRACE_STORE structure that the
         allocation is to be recorded against.
 
-    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
-        contains the size of the records that were allocated.
+    NumberOfRecords - Supplies the number of records to allocation.
 
-    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
-        that contains the number of records that were allocated.
+    RecordSize - Supplies the size of the record to allocate.
 
     Timestamp - Supplies the value of the performance counter that will be
         saved to the allocation timestamp store.
@@ -954,15 +926,13 @@ Return Value:
     RecordNewRecord = (
         !WantsCoalescedAllocations(Traits) || (
             Allocation->NumberOfRecords.QuadPart == 0 ||
-            Allocation->RecordSize.QuadPart != RecordSize->QuadPart
+            Allocation->RecordSize.QuadPart != RecordSize
         )
     );
 
     if (RecordNewRecord) {
 
         PVOID Address;
-        ULARGE_INTEGER AllocationRecordSize = { sizeof(*Allocation) };
-        ULARGE_INTEGER NumberOfAllocationRecords = { 1 };
 
         //
         // Allocate a new metadata record.
@@ -971,8 +941,8 @@ Return Value:
         Address = TraceStore->AllocationStore->AllocateRecords(
             TraceStore->TraceContext,
             TraceStore->AllocationStore,
-            &AllocationRecordSize,
-            &NumberOfAllocationRecords
+            1,
+            sizeof(*Allocation)
         );
 
         if (!Address) {
@@ -984,7 +954,7 @@ Return Value:
         //
 
         Allocation = (PTRACE_STORE_ALLOCATION)Address;
-        Allocation->RecordSize.QuadPart = RecordSize->QuadPart;
+        Allocation->RecordSize.QuadPart = RecordSize;
         Allocation->NumberOfRecords.QuadPart = 0;
 
         //
@@ -998,7 +968,7 @@ Return Value:
     // Update the record count.
     //
 
-    Allocation->NumberOfRecords.QuadPart += NumberOfRecords->QuadPart;
+    Allocation->NumberOfRecords.QuadPart += NumberOfRecords;
 
     //
     // Return success to the caller.

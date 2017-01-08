@@ -51,8 +51,8 @@ Return Value:
     PTRACE_STORE_ADDRESS_RANGE NewAddressRange;
     PTRACE_CONTEXT TraceContext;
     LARGE_INTEGER Timestamp;
-    ULARGE_INTEGER RecordSize = { 1 };
-    ULARGE_INTEGER AllocationSize = { sizeof(TRACE_STORE_ADDRESS_RANGE) };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
 
     //
     // Validate arguments.
@@ -80,8 +80,8 @@ Return Value:
     BaseAddress = AddressRangeStore->AllocateRecords(
         TraceContext,
         AddressRangeStore,
-        &AllocationSize,
-        &RecordSize
+        NumberOfRecords,
+        RecordSize
     );
 
     if (!BaseAddress) {

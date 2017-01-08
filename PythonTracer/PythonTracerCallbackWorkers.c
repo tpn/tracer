@@ -181,8 +181,8 @@ AllocatePythonCallStackEntry(
     PTRACE_STORES TraceStores;
     PTRACE_STORE TraceStore;
 
-    ULARGE_INTEGER NumberOfRecords = { 1 };
-    ULARGE_INTEGER RecordSize = { sizeof(PYTHON_CALL_STACK_ENTRY) };
+    ULONG_PTR NumberOfRecords = 1;
+    ULONG_PTR RecordSize = sizeof(PYTHON_CALL_STACK_ENTRY);
 
     TraceContext = Context->TraceContext;
     TraceStores = TraceContext->TraceStores;
@@ -193,8 +193,8 @@ AllocatePythonCallStackEntry(
         TraceStore->AllocateRecordsWithTimestamp(
             TraceStore->TraceContext,
             TraceStore,
-            &RecordSize,
-            &NumberOfRecords,
+            NumberOfRecords,
+            RecordSize,
             Timestamp
         )
     );
