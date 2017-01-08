@@ -129,7 +129,7 @@ Routine Description:
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     ULONG_PTR AllocationSize;
-    ULONG_PTR ExtraBytes = 0;
+    ULONG_PTR WastedBytes = 0;
     ULONG_PTR OriginalAllocationSize;
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
@@ -154,7 +154,7 @@ Routine Description:
         return NULL;
     }
 
-    AllocationSize = RecordSize * NumberOfRecords;
+    OriginalAllocationSize = AllocationSize = RecordSize * NumberOfRecords;
 
     //
     // If the record size for the trace store isn't fixed, align the allocation
@@ -220,17 +220,17 @@ CalculateAddresses:
         // accordingly.
         //
 
-        ExtraBytes = (
+        WastedBytes = (
             ((ULONG_PTR)NextPage) -
             ((ULONG_PTR)MemoryMap->NextAddress)
         );
-        if (AllocationSize < ExtraBytes) {
+        if (AllocationSize < WastedBytes) {
             __debugbreak();
-        } else if (AllocationSize == ExtraBytes) {
-            ExtraBytes = 0;
+        } else if (AllocationSize == WastedBytes) {
+            WastedBytes = 0;
         } else {
             OriginalAllocationSize = AllocationSize;
-            AllocationSize += ExtraBytes;
+            AllocationSize += WastedBytes;
         }
         CheckPageSpill = FALSE;
         goto CalculateAddresses;
@@ -412,7 +412,7 @@ UpdateAddresses:
         goto End;
     }
 
-    if (ExtraBytes) {
+    if (WastedBytes) {
 
         //
         // Extra bytes were added to the allocation size in order to prevent
@@ -420,11 +420,10 @@ UpdateAddresses:
         // page boundary).  Adjust the pointers by this amount now.
         //
 
-        ReturnAddress           = RtlOffsetToPointer(ReturnAddress, ExtraBytes);
+        ReturnAddress = RtlOffsetToPointer(ReturnAddress, WastedBytes);
         MemoryMap->PrevAddress  = ReturnAddress;
         TraceStore->PrevAddress = ReturnAddress;
     }
-
 
     if (TraceStore->IsMetadata) {
         goto UpdateTotals;
@@ -437,6 +436,7 @@ UpdateAddresses:
     Success = RecordTraceStoreAllocation(TraceStore,
                                          NumberOfRecords,
                                          RecordSize,
+                                         WastedBytes,
                                          Timestamp);
 
     if (!Success) {
@@ -861,6 +861,7 @@ RecordTraceStoreAllocation(
     PTRACE_STORE     TraceStore,
     ULONG_PTR        NumberOfRecords,
     ULONG_PTR        RecordSize,
+    ULONG_PTR        WastedBytes,
     LARGE_INTEGER    Timestamp
     )
 /*++
@@ -882,6 +883,11 @@ Arguments:
 
     RecordSize - Supplies the size of the record to allocate.
 
+    WastedBytes - Optionally supplies the number of extra bytes the caller's
+        allocation request had to be padded by in order to prevent a page
+        spill.  If present, an extra allocation record will be written with
+        the highest bit of the NumberOfRecords field set to 1.
+
     Timestamp - Supplies the value of the performance counter that will be
         saved to the allocation timestamp store.
 
@@ -892,6 +898,7 @@ Return Value:
 --*/
 {
     BOOL RecordNewRecord;
+    PVOID Address;
     TRACE_STORE_TRAITS Traits;
     PTRACE_STORE_ALLOCATION Allocation;
 
@@ -915,34 +922,90 @@ Return Value:
     Traits = *TraceStore->pTraits;
     Allocation = TraceStore->Allocation;
 
-    //
-    // We record a new allocation record if:
-    //
-    //  A) The trace store has explicitly disabled coalesced allocations, or
-    //  B) This is the first allocation (number of records will be 0), or
-    //  C) The previous record size doesn't match the current record size.
-    //
+    if (WastedBytes) {
 
-    RecordNewRecord = (
-        !WantsCoalescedAllocations(Traits) || (
-            Allocation->NumberOfRecords.QuadPart == 0 ||
-            Allocation->RecordSize.QuadPart != RecordSize
-        )
-    );
+        if (Allocation->NumberOfRecords.QuadPart == 0) {
 
-    if (RecordNewRecord) {
+            //
+            // WastedBytes should only happen because of a page spill; page
+            // spills shouldn't happen if we haven't allocated any records yet.
+            // Assert this invariant now.
+            //
 
-        PVOID Address;
+            __debugbreak();
+            return FALSE;
+        }
 
         //
-        // Allocate a new metadata record.
+        // Record a new dummy allocation record for the extra bytes.
         //
 
-        Address = TraceStore->AllocationStore->AllocateRecords(
+        Address = TraceStore->AllocationStore->AllocateRecordsWithTimestamp(
             TraceStore->TraceContext,
             TraceStore->AllocationStore,
             1,
-            sizeof(*Allocation)
+            WastedBytes,
+            NULL
+        );
+
+        if (!Address) {
+            return FALSE;
+        }
+
+        Allocation = (PTRACE_STORE_ALLOCATION)Address;
+        Allocation->RecordSize.QuadPart = RecordSize;
+        Allocation->NumberOfRecords.QuadPart = 1;
+
+        //
+        // Set the dummy bit to indicate that this was a dummy allocation.
+        //
+
+        Allocation->NumberOfRecords.DummyAllocation1 = TRUE;
+
+        //
+        // Record the padding in the trace store's stats.
+        //
+
+        TraceStore->Stats->WastedBytes += WastedBytes;
+        TraceStore->Stats->PaddedAllocations += 1;
+
+        //
+        // Force a new record to be recorded.
+        //
+
+        RecordNewRecord = TRUE;
+
+    } else {
+
+        //
+        // We record a new allocation record if:
+        //
+        //  A) The trace store has explicitly disabled coalesced allocations, or
+        //  B) This is the first allocation (number of records will be 0), or
+        //  C) The previous record size doesn't match the current record size.
+        //
+
+        RecordNewRecord = (
+            !WantsCoalescedAllocations(Traits) || (
+                Allocation->NumberOfRecords.QuadPart == 0 ||
+                Allocation->RecordSize.QuadPart != RecordSize
+            )
+        );
+
+    }
+
+    if (RecordNewRecord) {
+
+        //
+        // Allocate a new allocation record.
+        //
+
+        Address = TraceStore->AllocationStore->AllocateRecordsWithTimestamp(
+            TraceStore->TraceContext,
+            TraceStore->AllocationStore,
+            1,
+            sizeof(*Allocation),
+            NULL
         );
 
         if (!Address) {
