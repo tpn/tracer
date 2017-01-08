@@ -116,6 +116,15 @@
     <ClCompile Include="TraceStoreAtExitEx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreFile.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceStoreImageFile.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TraceStoreSourceCode.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <!--
   <ItemGroup>

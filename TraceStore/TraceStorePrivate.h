@@ -1381,6 +1381,38 @@ INITIALIZE_TRACE_STORE_TRAITS InitializeTraceStoreTraits;
 INITIALIZE_TRACE_SESSION InitializeTraceSession;
 
 //
+// TraceStoreFile-related functions.
+//
+
+//
+// TraceStoreSourceCode-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(REGISTER_SOURCE_CODE)(
+    _In_ struct _TRACE_CONTEXT *TraceContext,
+    _In_ PTRACE_FILE SourceCode
+    );
+typedef REGISTER_SOURCE_CODE *PREGISTER_SOURCE_CODE;
+
+//
+// TraceStoreImageFile-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(REGISTER_IMAGE_FILE)(
+    _In_ struct _TRACE_CONTEXT *TraceContext,
+    _In_ PTRACE_FILE ImageFile
+    );
+typedef REGISTER_IMAGE_FILE *PREGISTER_IMAGE_FILE;
+
+//
 // TraceStore-related functions.
 //
 
