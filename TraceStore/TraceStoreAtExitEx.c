@@ -21,7 +21,7 @@ _Use_decl_annotations_
 VOID
 TraceStoreAtExitEx(
     BOOL IsProcessTerminating,
-    PTRACE_CONTEXT Context
+    PVOID ContextPointer
     )
 /*++
 
@@ -39,8 +39,8 @@ Arguments:
         not the process is terminating.  If FALSE, indicates that the library
         has been unloaded via FreeLibrary().
 
-    Context - Supplies a pointer to the PTRACE_CONTEXT structure that was
-        registered when AtExitEx() was called.
+    ContextPointer - Supplies a pointer to the PTRACE_CONTEXT structure that
+        was registered when AtExitEx() was called.
 
 Return Value:
 
@@ -49,6 +49,7 @@ Return Value:
 --*/
 {
     HKEY RegistryKey;
+    PTRACE_CONTEXT Context = (PTRACE_CONTEXT)ContextPointer;
 
     //
     // Validate arguments.

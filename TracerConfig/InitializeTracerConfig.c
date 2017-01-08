@@ -606,6 +606,11 @@ Return Value:
         200
     );
 
+    READ_REG_DWORD_RUNTIME_PARAM(
+        ConcurrentAllocationsCriticalSectionSpinCount,
+        4000
+    );
+
     //
     // Prep the TRACER_PATHS structure.
     //

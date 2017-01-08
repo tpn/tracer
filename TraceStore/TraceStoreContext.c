@@ -92,12 +92,16 @@ Return Value:
     USHORT NumberOfRemainingMetadataStores;
     ULONG NumberOfBytesToZero;
     DWORD Result;
+    DWORD SpinCount;
+    TRACE_STORE_TRAITS Traits;
     TRACE_CONTEXT_FLAGS ContextFlags;
     HANDLE Event;
     HANDLE ResumeAllocationEvent;
     HANDLE BindCompleteEvent;
     PTRACE_STORE_WORK Work;
     PTRACE_STORE TraceStore;
+    PTRACER_RUNTIME_PARAMETERS RuntimeParameters;
+    PCRITICAL_SECTION CriticalSection;
     PALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedAllocator;
 
     //
@@ -609,6 +613,15 @@ Return Value:
 InitializeAllocators:
 
     //
+    // Load the critical section spin count from runtime parameters.
+    //
+
+    RuntimeParameters = &TracerConfig->RuntimeParameters;
+    SpinCount = (
+        RuntimeParameters->ConcurrentAllocationsCriticalSectionSpinCount
+    );
+
+    //
     // Forcibly set all the trace stores' AllocateRecordsWithTimestamp function
     // pointers to the suspended version.  The normal allocator will be restored
     // once the bind complete successfully occurs.  This also requires creating
@@ -646,7 +659,47 @@ InitializeAllocators:
         TraceStore->TraceContext = TraceContext;
         TraceStore->ResumeAllocationsEvent = ResumeAllocationEvent;
         TraceStore->BindCompleteEvent = BindCompleteEvent;
+        TraceStore->AllocateRecords = TraceStoreAllocateRecords;
         TraceStore->AllocateRecordsWithTimestamp = SuspendedAllocator;
+        TraceStore->AllocateRecordsWithTimestampImpl1 = (
+            TraceStoreAllocateRecordsWithTimestampImpl
+        );
+        TraceStore->SuspendedAllocateRecordsWithTimestamp = (
+            SuspendedAllocator
+        );
+
+        //
+        // If the trace store has the concurrent allocations trait set, we need
+        // to initialize the critical section and set the Try* version of the
+        // allocators.
+        //
+
+        Traits = *TraceStore->pTraits;
+        if (!HasConcurrentAllocations(Traits)) {
+            continue;
+        }
+
+        CriticalSection = &TraceStore->CriticalSection;
+        if (!InitializeCriticalSectionAndSpinCount(CriticalSection, SpinCount)){
+            goto Error;
+        }
+        TraceStore->TryAllocateRecords = TraceStoreTryAllocateRecords;
+        TraceStore->TryAllocateRecordsWithTimestamp = (
+            TraceStoreTryAllocateRecordsWithTimestamp
+        );
+
+        //
+        // Adjust the allocators such that the concurrent one sits in front of
+        // the standard Impl worker routine.
+        //
+
+        TraceStore->AllocateRecordsWithTimestampImpl2 = (
+            TraceStore->AllocateRecordsWithTimestampImpl1
+        );
+        TraceStore->AllocateRecordsWithTimestampImpl1 = (
+            ConcurrentTraceStoreAllocateRecordsWithTimestamp
+        );
+
     }
 
     //

@@ -227,7 +227,7 @@ RelocationMetadataBindComplete(
 
 Routine Description:
 
-    This is the bind complete callback routine for :relocation stores.
+    This is the bind complete callback routine for :Relocation stores.
     It calls LoadTraceStoreRelocationInfo() if this is a readonly session,
     or SaveTraceStoreRelocationInfo() if this is a normal writable session.
 

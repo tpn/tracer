@@ -78,6 +78,28 @@ Return Value:
         }
     }
 
+    if (Traits.ConcurrentAllocations) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+            return FALSE;
+        }
+    }
+
+    if (Traits.AllowPageSpill) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertFalse("RecordSizeIsAlwaysPowerOf2",
+                         TraceStore->RecordSizeIsAlwaysPowerOf2)) {
+            return FALSE;
+        }
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
 }
 

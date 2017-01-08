@@ -367,6 +367,16 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
 
     ULONG CapturePerformanceMetricsWindowLengthInMilliseconds;
 
+    //
+    // If a trace store indicates concurrent allocations via traits, a critical
+    // section will be used to serialize access to allocations.  The following
+    // field determines the spin count used to initialize the critical section;
+    // after this count, the thread stops spinning and goes into an alertable
+    // wait state.
+    //
+
+    ULONG ConcurrentAllocationsCriticalSectionSpinCount;
+
 } TRACER_RUNTIME_PARAMETERS, *PTRACER_RUNTIME_PARAMETERS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {
