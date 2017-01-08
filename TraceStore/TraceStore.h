@@ -1588,8 +1588,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
-    TRACE_STORE_WORK RegisterSourceCodeWork;
-    TRACE_STORE_WORK RegisterImageFileWork;
+    TRACE_STORE_WORK RegisterTraceFileWork;
 
     //
     // These items are associated with the cancellation threadpool, not the
