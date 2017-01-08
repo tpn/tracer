@@ -173,7 +173,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     //
 
     HMODULE OwningModule;
-    PPATH OwningModulePath;
+    PRTL_PATH OwningModulePath;
 
     //
     // System modules.

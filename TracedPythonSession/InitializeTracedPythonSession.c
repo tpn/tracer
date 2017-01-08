@@ -440,13 +440,13 @@ Return Value:
     // Load our owning module name.
     //
 
-    Success = Rtl->GetModulePath(Rtl,
-                                 Session->OwningModule,
-                                 Allocator,
-                                 &Session->OwningModulePath);
+    Success = Rtl->GetModuleRtlPath(Rtl,
+                                    Session->OwningModule,
+                                    Allocator,
+                                    &Session->OwningModulePath);
 
     if (!Success) {
-        OutputDebugStringA("Rtl->GetModulePath() failed.\n");
+        OutputDebugStringA("Rtl->GetModuleRtlPath() failed.\n");
         goto Error;
     }
 
