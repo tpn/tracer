@@ -123,10 +123,19 @@ Return Value:
 
     TraceStore->MappingSize.QuadPart = MappingSize.QuadPart;
 
-    TraceStore->AllocateRecords = TraceStoreAllocateRecords;
-    TraceStore->AllocateRecordsWithTimestamp = (
-        TraceStoreAllocateRecordsWithTimestamp
-    );
+    //
+    // Initialize allocators now for metadata.  They don't participate in the
+    // suspended allocation machinery as we control them entirely.  Normal
+    // trace stores have their allocators initialized when bound to a trace
+    // context.
+    //
+
+    if (TraceStore->IsMetadata) {
+        TraceStore->AllocateRecords = TraceStoreAllocateRecords;
+        TraceStore->AllocateRecordsWithTimestamp = (
+            TraceStoreAllocateRecordsWithTimestamp
+        );
+    }
 
     //
     // Return success.

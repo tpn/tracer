@@ -91,7 +91,7 @@ Return Value:
 
     TRY_MAPPED_MEMORY_OP {
 
-        Address = TraceStoreAllocateRecordsWithTimestampWorker(
+        Address = TraceStoreAllocateRecordsWithTimestampImpl(
             TraceContext,
             TraceStore,
             RecordSize,
@@ -110,7 +110,7 @@ Return Value:
 
 _Use_decl_annotations_
 PVOID
-TraceStoreAllocateRecordsWithTimestampWorker(
+TraceStoreAllocateRecordsWithTimestampImpl(
     PTRACE_CONTEXT  TraceContext,
     PTRACE_STORE    TraceStore,
     PULARGE_INTEGER RecordSize,
@@ -127,13 +127,16 @@ Routine Description:
 --*/
 {
     BOOL Success;
+    BOOL CheckPageSpill = FALSE;
     PTRACE_STORE_MEMORY_MAP PrevMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
     ULONG_PTR AllocationSize;
+    ULONG_PTR ExtraBytes = 0;
+    ULONG_PTR OriginalAllocationSize;
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
     PVOID EndAddress;
-    PVOID PrevPage;
+    PVOID ThisPage;
     PVOID NextPage;
     PVOID PageAfterNextPage;
     LARGE_INTEGER Timestamp;
@@ -174,6 +177,8 @@ Routine Description:
         return NULL;
     }
 
+    CheckPageSpill = PreventPageSpill(Traits);
+
     //
     // If no timestamp has been provided and the trace store is not marked as
     // linked, capture a timestamp.  Otherwise, use the caller's timestamp.
@@ -189,6 +194,7 @@ Routine Description:
         Timestamp.QuadPart = TimestampPointer->QuadPart;
     }
 
+CalculateAddresses:
     NextAddress = (
         (PVOID)RtlOffsetToPointer(
             MemoryMap->NextAddress,
@@ -203,9 +209,25 @@ Routine Description:
         )
     );
 
-    PrevPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
+    ThisPage = (PVOID)ALIGN_DOWN(MemoryMap->NextAddress, PAGE_SIZE);
     NextPage = (PVOID)ALIGN_DOWN(NextAddress, PAGE_SIZE);
     PageAfterNextPage = (PVOID)((ULONG_PTR)NextPage + PAGE_SIZE);
+
+    if (CheckPageSpill && ThisPage != NextPage) {
+
+        //
+        // The allocation will spill over a page boundary and the caller has
+        // requested we prevent this, so, calculate the amount of space
+        // remaining in the current page and adjust the allocation size
+        // accordingly.
+        //
+
+        OriginalAllocationSize = AllocationSize;
+        ExtraBytes = RtlPointerToOffset(NextPage, MemoryMap->NextAddress);
+        AllocationSize += ExtraBytes;
+        CheckPageSpill = FALSE;
+        goto CalculateAddresses;
+    }
 
     if (NextAddress > EndAddress) {
 
@@ -233,7 +255,7 @@ Routine Description:
         if (PrevMemoryMapAllocSize == 0) {
 
             //
-            // No spill necessary.
+            // No memory map spill necessary.
             //
 
             ReturnAddress = MemoryMap->BaseAddress;
@@ -325,7 +347,7 @@ Routine Description:
         // allocations are done quite frequently.)
         //
 
-        if (PrevPage != NextPage) {
+        if (ThisPage != NextPage) {
 
             //
             // Allocation crosses a page boundary.
@@ -382,6 +404,20 @@ UpdateAddresses:
     if (TraceStore->IsReadonly) {
         goto End;
     }
+
+    if (ExtraBytes) {
+
+        //
+        // Extra bytes were added to the allocation size in order to prevent
+        // a page spill (by forward-padding the allocation out to the next
+        // page boundary).  Adjust the pointers by this amount now.
+        //
+
+        ReturnAddress           = RtlOffsetToPointer(ReturnAddress, ExtraBytes);
+        MemoryMap->PrevAddress  = ReturnAddress;
+        TraceStore->PrevAddress = ReturnAddress;
+    }
+
 
     if (TraceStore->IsMetadata) {
         goto UpdateTotals;
@@ -609,6 +645,226 @@ Return Value:
                                                   RecordSize,
                                                   NumberOfRecords,
                                                   TimestampPointer);
+}
+
+_Use_decl_annotations_
+PVOID
+ConcurrentTraceStoreAllocateRecordsWithTimestamp(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords,
+    PLARGE_INTEGER  TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine serializes trace store allocations in a multithreaded
+    environment by acquiring the trace store's critical section before
+    dispatching the allocation request.  It is enabled automatically if
+    the trace store was configured with the concurrent allocations trait
+    set.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
+        contains the size of the record to allocate.
+
+    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
+        that contains the number of records to allocate.  The total size is
+        derived by multiplying RecordSize with NumberOfRecords.
+
+    TimestampPointer - Optionally supplies a pointer to a timestamp value to
+        associate with the allocation.  When non-NULL, the 64-bit integer
+        pointed to by the variable will be written to the allocation timestamp
+        metadata store.  This should be NULL if the trace store is a metadata
+        store, or if the trace store's traits indicates that it is a linked
+        store (implying that allocation timestamp information will be provided
+        elsewhere).
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    PVOID Address;
+    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
+
+    AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestampImpl2;
+    EnterCriticalSection(&TraceStore->CriticalSection);
+    Address = AllocateWithTimestamp(TraceContext,
+                                    TraceStore,
+                                    RecordSize,
+                                    NumberOfRecords,
+                                    TimestampPointer);
+    LeaveCriticalSection(&TraceStore->CriticalSection);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreTryAllocateRecordsWithTimestamp(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords,
+    PLARGE_INTEGER  TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine attempts to acquire the trace store's critical section lock
+    before dispatching the allocation request.  If the lock is contended, or
+    allocations have been suspended, this routine returns immediately with a
+    NULL pointer.
+
+    N.B. There is no way to distinguish between a contended lock, suspended
+         allocations and a failed allocation attempt due to some underlying
+         error.  Callers should structure their code such that the number of
+         times TryAllocateRecordsWithTimestamp() is called is limited to a
+         certain number, and after which point, a normal call is made to the
+         AllocateRecordsWithTimestamp() routine.  If NULL is still returned
+         by that call, there has been an underlying error with the trace store.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
+        contains the size of the record to allocate.
+
+    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
+        that contains the number of records to allocate.  The total size is
+        derived by multiplying RecordSize with NumberOfRecords.
+
+    TimestampPointer - Optionally supplies a pointer to a timestamp value to
+        associate with the allocation.  When non-NULL, the 64-bit integer
+        pointed to by the variable will be written to the allocation timestamp
+        metadata store.  This should be NULL if the trace store is a metadata
+        store, or if the trace store's traits indicates that it is a linked
+        store (implying that allocation timestamp information will be provided
+        elsewhere).
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    PVOID Address = NULL;
+    HANDLE Event;
+    ULONG WaitResult;
+    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
+
+    //
+    // Immediately increment the active allocator count before we see if the
+    // resume allocations event is signalled.
+    //
+
+    InterlockedIncrement(&TraceStore->ActiveAllocators);
+
+    //
+    // Ensure allocations aren't currently suspended.
+    //
+
+    Event = TraceStore->ResumeAllocationsEvent;
+    WaitResult = WaitForSingleObject(Event, 0);
+
+    if (WaitResult != WAIT_OBJECT_0) {
+
+        //
+        // The wait wasn't successful or allocations are currently suspended.
+        //
+
+        goto End;
+    }
+
+    //
+    // Allocations aren't suspended.  Attempt to acquire the critical section.
+    //
+
+    if (!TryEnterCriticalSection(&TraceStore->CriticalSection)) {
+        goto End;
+    }
+
+    //
+    // Continue with allocation.  We now own the critical section.
+    //
+
+    AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestampImpl2;
+    Address = AllocateWithTimestamp(TraceContext,
+                                    TraceStore,
+                                    RecordSize,
+                                    NumberOfRecords,
+                                    TimestampPointer);
+
+    //
+    // Leave the critical section and decrement the active allocator count, then
+    // return the address to the caller.
+    //
+
+    LeaveCriticalSection(&TraceStore->CriticalSection);
+
+End:
+    InterlockedDecrement(&TraceStore->ActiveAllocators);
+
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreTryAllocateRecords(
+    PTRACE_CONTEXT  TraceContext,
+    PTRACE_STORE    TraceStore,
+    PULARGE_INTEGER RecordSize,
+    PULARGE_INTEGER NumberOfRecords
+    )
+/*++
+
+Routine Description:
+
+    This routine is equivalent to calling TryAllocateRecordsWithTimestamp()
+    with a NULL timestamp parameter.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    TraceStore - Supplies a pointer to a TRACE_STORE structure that the memory
+        is to be allocated from.
+
+    RecordSize - Supplies a pointer to the address of a ULARGE_INTEGER that
+        contains the size of the record to allocate.
+
+    NumberOfRecords - Supplies a pointer to the address of a ULARGE_INTEGER
+        that contains the number of records to allocate.  The total size is
+        derived by multiplying RecordSize with NumberOfRecords.
+
+Return Value:
+
+    A pointer to the base memory address satisfying the total requested size
+    if the memory could be obtained successfully, NULL otherwise.
+
+--*/
+{
+    return TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
+                                                       TraceStore,
+                                                       RecordSize,
+                                                       NumberOfRecords,
+                                                       NULL);
 }
 
 _Use_decl_annotations_

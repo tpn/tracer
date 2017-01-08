@@ -1069,8 +1069,17 @@ Return Value:
 
 ALLOCATE_RECORDS TraceStoreAllocateRecords;
 ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestamp;
-ALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedTraceStoreAllocateRecordsWithTimestamp;
-ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestampWorker;
+
+ALLOCATE_RECORDS_WITH_TIMESTAMP
+    SuspendedTraceStoreAllocateRecordsWithTimestamp;
+
+ALLOCATE_RECORDS_WITH_TIMESTAMP
+    ConcurrentTraceStoreAllocateRecordsWithTimestamp;
+
+ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreAllocateRecordsWithTimestampImpl;
+
+TRY_ALLOCATE_RECORDS TraceStoreTryAllocateRecords;
+TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP TraceStoreTryAllocateRecordsWithTimestamp;
 
 typedef
 _Success_(return != 0)
@@ -1200,7 +1209,7 @@ Return Value:
 
     InterlockedExchangePointer(
         (volatile PVOID *)&TraceStore->AllocateRecordsWithTimestamp,
-        &SuspendedTraceStoreAllocateRecordsWithTimestamp
+        TraceStore->SuspendedAllocateRecordsWithTimestamp
     );
 
     //
@@ -1258,7 +1267,7 @@ Return Value:
 
     InterlockedExchangePointer(
         (volatile PVOID *)&TraceStore->AllocateRecordsWithTimestamp,
-        &TraceStoreAllocateRecordsWithTimestamp
+        TraceStore->AllocateRecordsWithTimestampImpl1
     );
 
     //

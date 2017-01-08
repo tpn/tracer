@@ -558,10 +558,46 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG CoalesceAllocations:1;
 
     //
+    // When set, indicates that multiple threads will be allocating from the
+    // trace store concurrently, and thus, the trace store should serialize
+    // access.  This is done via a critical section.
+    //
+    // Invariants:
+    //
+    //  - If ConcurrentAllocations == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG ConcurrentAllocations:1;
+
+    //
+    // When set, indicates that allocations are allowed to spill over a page
+    // boundary (4K).  When clear, if the trace store does not have enough
+    // space in the current memory map to prevent the allocation spilling over
+    // into another page, the space will be allocated from the base address of
+    // the next page.
+    //
+    // N.B. If the allocation size is <= PAGE_SIZE (4K), clearing this bit only
+    //      ensures the base address begins on a new page -- however, the
+    //      allocation will still technically spill into another page (assuming
+    //      it's not an exact multiple of PAGE_SIZE).
+    //
+    // Invariants:
+    //
+    //  - If AllowPageSpill == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //      Assert RecordSizeIsAlwaysPowerOf2 == FALSE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG AllowPageSpill:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:23;
+    ULONG Unused:21;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -592,7 +628,9 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     BlockingAllocationsTrait            =  1 << 6,
     LinkedStoreTrait                    =  1 << 7,
     CoalesceAllocationsTrait            =  1 << 8,
-    InvalidTrait                        = (1 << 8) + 1
+    ConcurrentAllocationsTrait          =  1 << 9,
+    AllowPageSpillTrait                 =  1 << 10,
+    InvalidTrait                        = (1 << 10) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -636,6 +674,9 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define IsBlockingAllocator(Traits) ((Traits).BlockingAllocations)
 #define IsLinkedStore(Traits) ((Traits).LinkedStore)
 #define WantsCoalescedAllocations(Traits) ((Traits).CoalesceAllocations)
+#define HasConcurrentAllocations(Traits) ((Traits).ConcurrentAllocations)
+#define AllowPageSpill(Traits) ((Traits).AllowPageSpill)
+#define PreventPageSpill(Traits) (!((Traits).AllowPageSpill))
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -1497,6 +1538,10 @@ typedef volatile PTRACE_STORE_MEMORY_MAP VPTRACE_STORE_MEMORY_MAP;
 
 C_ASSERT(sizeof(TRACE_STORE_MEMORY_MAP) == 64);
 
+//
+// Define the normal trace store allocation function pointer interfaces.
+//
+
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -1508,6 +1553,7 @@ PVOID
     _In_    PULARGE_INTEGER NumberOfRecords
     );
 typedef ALLOCATE_RECORDS *PALLOCATE_RECORDS;
+typedef PALLOCATE_RECORDS volatile VPALLOCATE_RECORDS;
 
 typedef
 _Check_return_
@@ -1521,33 +1567,44 @@ PVOID
     _In_opt_ PLARGE_INTEGER  TimestampPointer
     );
 typedef ALLOCATE_RECORDS_WITH_TIMESTAMP *PALLOCATE_RECORDS_WITH_TIMESTAMP;
+typedef PALLOCATE_RECORDS_WITH_TIMESTAMP \
+    volatile VPALLOCATE_RECORDS_WITH_TIMESTAMP;
+
+//
+// If a trace store has been configured with the concurrent allocations trait
+// set, two additional methods may be used for allocation: TryAllocateRecords
+// and TryAllocateRecordsWithTimestamp.  If the critical section protecting
+// the trace store could not be entered, these methods will return immediately.
+//
 
 typedef
 _Check_return_
 _Success_(return != 0)
 PVOID
-(ALLOCATE_ALIGNED_RECORDS)(
+(TRY_ALLOCATE_RECORDS)(
     _In_    PTRACE_CONTEXT  TraceContext,
     _In_    PTRACE_STORE    TraceStore,
     _In_    PULARGE_INTEGER RecordSize,
-    _In_    PULARGE_INTEGER NumberOfRecords,
-    _In_    USHORT          Alignment
+    _In_    PULARGE_INTEGER NumberOfRecords
     );
-typedef ALLOCATE_ALIGNED_RECORDS *PALLOCATE_ALIGNED_RECORDS;
+typedef TRY_ALLOCATE_RECORDS *PTRY_ALLOCATE_RECORDS;
+typedef PTRY_ALLOCATE_RECORDS volatile VPTRY_ALLOCATE_RECORDS;
 
 typedef
 _Check_return_
 _Success_(return != 0)
 PVOID
-(ALLOCATE_ALIGNED_OFFSET_RECORDS)(
-    _In_    PTRACE_CONTEXT  TraceContext,
-    _In_    PTRACE_STORE    TraceStore,
-    _In_    PULARGE_INTEGER RecordSize,
-    _In_    PULARGE_INTEGER NumberOfRecords,
-    _In_    USHORT          Alignment,
-    _In_    USHORT          Offset
+(TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP)(
+    _In_     PTRACE_CONTEXT  TraceContext,
+    _In_     PTRACE_STORE    TraceStore,
+    _In_     PULARGE_INTEGER RecordSize,
+    _In_     PULARGE_INTEGER NumberOfRecords,
+    _In_opt_ PLARGE_INTEGER  TimestampPointer
     );
-typedef ALLOCATE_ALIGNED_OFFSET_RECORDS *PALLOCATE_ALIGNED_OFFSET_RECORDS;
+typedef TRY_ALLOCATE_RECORDS_WITH_TIMESTAMP \
+      *PTRY_ALLOCATE_RECORDS_WITH_TIMESTAMP;
+typedef PTRY_ALLOCATE_RECORDS_WITH_TIMESTAMP \
+    volatile VPTRY_ALLOCATE_RECORDS_WITH_TIMESTAMP;
 
 typedef
 _Check_return_
@@ -1771,13 +1828,43 @@ typedef struct _TRACE_STORE {
     };
 
     //
-    // Allocator functions.
+    // Public allocator functions.
     //
 
-    volatile PALLOCATE_RECORDS AllocateRecords;
-    volatile PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestamp;
-    volatile PALLOCATE_RECORDS_WITH_TIMESTAMP
-        SuspendedAllocateRecordsWithTimestamp;
+    VPALLOCATE_RECORDS AllocateRecords;
+    VPALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestamp;
+
+    //
+    // Allocator functions only available if the trace store was initialized
+    // with the concurrent allocations trait.
+    //
+
+    VPTRY_ALLOCATE_RECORDS TryAllocateRecords;
+    VPTRY_ALLOCATE_RECORDS_WITH_TIMESTAMP TryAllocateRecordsWithTimestamp;
+
+    //
+    // Private allocator functions.  The suspended allocator is exchanged with
+    // the normal allocator when required.  Two implementation pointers are
+    // provided; if the trace store hasn't indicated concurrent allocations in
+    // its traits, Impl1 will be the final allocator method.  Otherwise, Impl1
+    // will be an intermediate function that serializes allocations through a
+    // critical section, and Impl2 will be the final allocator method.
+    //
+    // Thus, the public AllocateRecordsWithTimestamp function pointer above
+    // will either point to SuspendedAllocateRecordsWithTimestamp or the Impl1
+    // pointer at any given time.
+    //
+
+    VPALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedAllocateRecordsWithTimestamp;
+    VPALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestampImpl1;
+    VPALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestampImpl2;
+
+    //
+    // If concurrent allocations have been enabled, this critical section will
+    // be used to protect the allocator functions, as described above.
+    //
+
+    CRITICAL_SECTION CriticalSection;
 
     //
     // Bind complete callback.  This is called as the final step by BindStore()
