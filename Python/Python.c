@@ -330,6 +330,10 @@ LoadPythonExFunctions(
     RESOLVE_FUNCTIONEX(PHASH_AND_ATOMIZE_ANSI, HashAndAtomizeAnsi);
     RESOLVE_FUNCTIONEX(PSET_PYTHON_ALLOCATORS, SetPythonAllocators);
     RESOLVE_FUNCTIONEX(
+        PSET_REGISTER_NEW_PATH_ENTRY_CALLBACK,
+        SetRegisterNewPathEntryCallback
+    );
+    RESOLVE_FUNCTIONEX(
         PINITIALIZE_PYTHON_RUNTIME_TABLES,
         InitializePythonRuntimeTables
     );
@@ -430,6 +434,19 @@ LoadPythonExRuntime(
         return FALSE;
     }
 
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+SetRegisterNewPathEntryCallback(
+    PPYTHON Python,
+    PREGISTER_NEW_PATH_ENTRY RegisterNewPathEntry,
+    PVOID Context
+    )
+{
+    Python->RegisterNewPathEntry = RegisterNewPathEntry;
+    Python->RegisterNewPathEntryContext = Context;
     return TRUE;
 }
 

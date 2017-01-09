@@ -71,5 +71,8 @@
     <ClCompile Include="PythonTracerCallbackWorkers.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PythonTracerCallbacks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

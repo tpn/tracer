@@ -166,6 +166,9 @@ Return Value:
     BOOL IsValid;
     BOOL IsC;
     BOOL IsCall;
+    BOOL NewPathEntry;
+
+    BOOLEAN NewFunction;
 
     PRTL Rtl;
     PPYFRAMEOBJECT Frame = (PPYFRAMEOBJECT)FrameObject;
@@ -178,7 +181,6 @@ Return Value:
     PYTHON_FUNCTION FunctionRecord;
     PPYTHON_FUNCTION Function;
     PPYTHON_FUNCTION_TABLE FunctionTable;
-    BOOLEAN NewFunction;
     PPYTHON_PATH_TABLE_ENTRY ParentPathEntry;
     FILENAME_FLAGS FilenameFlags;
 
@@ -401,7 +403,8 @@ Return Value:
                                     ArgObject,
                                     &FilenameString,
                                     &FilenameFlags,
-                                    &ParentPathEntry);
+                                    &ParentPathEntry,
+                                    &NewPathEntry);
 
     if (!Success || !ParentPathEntry || !ParentPathEntry->IsValid) {
         goto Error;
@@ -422,6 +425,23 @@ Return Value:
         Success = RegisterPythonFunction(Python,
                                          Function,
                                          FrameObject);
+    }
+
+    if (!Success) {
+        goto Error;
+    }
+
+
+    //
+    // If this was the first time we saw the filename (represented by the
+    // parent path entry), invoke the callback now if one is present.
+    //
+
+    if (NewPathEntry && Python->RegisterNewPathEntry) {
+        Success = Python->RegisterNewPathEntry(
+            Python->RegisterNewPathEntryContext,
+            ParentPathEntry
+        );
     }
 
     if (Success) {

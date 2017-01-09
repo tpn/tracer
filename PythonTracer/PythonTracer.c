@@ -376,6 +376,23 @@ FunctionCompare(
                                  Second->CodeObject);
 }
 
+_Use_decl_annotations_
+BOOL
+PyTraceRegisterNewPathEntry(
+    PVOID IncomingContext,
+    PPYTHON_PATH_TABLE_ENTRY Entry
+    )
+{
+    PPYTHON_TRACE_CONTEXT Context = (PPYTHON_TRACE_CONTEXT)IncomingContext;
+
+    if (!Entry->IsFile) {
+        return TRUE;
+    }
+
+    SubmitNewPythonPathTableEntryWork(Context, Entry);
+
+    return TRUE;
+}
 
 _Use_decl_annotations_
 BOOL
@@ -513,6 +530,32 @@ InitializePythonTraceContext(
     Context->Depth = 0;
     Context->SkipFrames = 1;
 
+    //
+    // Initialize threadpool related members.
+    //
+
+    Context->ThreadpoolCallbackEnvironment = (
+        TraceContext->ThreadpoolCallbackEnvironment
+    );
+
+    Context->CancellationThreadpoolCallbackEnvironment = (
+        TraceContext->CancellationThreadpoolCallbackEnvironment
+    );
+
+    Context->ThreadpoolCleanupGroup = (
+        TraceContext->ThreadpoolCleanupGroup
+    );
+
+    Context->NewPythonPathTableEntryWork = CreateThreadpoolWork(
+        NewPythonPathTableEntryCallback,
+        Context,
+        Context->ThreadpoolCallbackEnvironment
+    );
+
+    if (!Context->NewPythonPathTableEntryWork) {
+        return FALSE;
+    }
+
     TraceStores = TraceContext->TraceStores;
     InitializeAllocatorFromTraceStore = (
         TraceContext->InitializeAllocatorFromTraceStore
@@ -572,7 +615,20 @@ InitializePythonTraceContext(
     Allocators->NumberOfAllocators = NumberOfAllocators;
     Allocators->SizeInBytes = sizeof(*Allocators);
 
+    //
+    // Initialize runtime tables and set the register path entry callback.
+    //
+
     Python->InitializePythonRuntimeTables(Python);
+
+    Success = Python->SetRegisterNewPathEntryCallback(
+        Python,
+        PyTraceRegisterNewPathEntry,
+        Context
+    );
+    if (!Success) {
+        return FALSE;
+    }
 
     QueryPerformanceFrequency(&Context->Frequency);
 

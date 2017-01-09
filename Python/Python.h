@@ -2066,7 +2066,8 @@ BOOL
     _In_  PPYFRAMEOBJECT FrameObject,
     _In_  PSTRING FilenameString,
     _In_  PFILENAME_FLAGS FilenameFlags,
-    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    _Out_ PBOOL NewPathEntry
     );
 typedef REGISTER_FILE *PREGISTER_FILE, **PPREGISTER_FILE;
 
@@ -2080,7 +2081,8 @@ BOOL
     _In_opt_  PPYOBJECT           ArgObject,
     _In_      PSTRING             FilenameString,
     _In_      PFILENAME_FLAGS     FilenameFlags,
-    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    _Outptr_result_nullonfailure_ PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    _Out_     PBOOL               NewPathEntry
     );
 typedef GET_PATH_ENTRY_FROM_FRAME *PGET_PATH_ENTRY_FROM_FRAME;
 typedef GET_PATH_ENTRY_FROM_FRAME **PPGET_PATH_ENTRY_FROM_FRAME;
@@ -2357,19 +2359,44 @@ typedef HASH_AND_ATOMIZE_ANSI *PHASH_AND_ATOMIZE_ANSI;
 // End of allocator function type definitions.
 //
 
-#define _PYTHONEXFUNCTIONS_HEAD                                      \
-    PALLOCATE_STRING AllocateString;                                 \
-    PALLOCATE_STRING_BUFFER AllocateStringBuffer;                    \
-    PALLOCATE_STRING_AND_BUFFER AllocateStringAndBuffer;             \
-    PFREE_STRING FreeString;                                         \
-    PFREE_STRING_AND_BUFFER FreeStringAndBuffer;                     \
-    PFREE_STRING_BUFFER FreeStringBuffer;                            \
-    PFREE_STRING_BUFFER_DIRECT FreeStringBufferDirect;               \
-    PALLOCATE_BUFFER AllocateBuffer;                                 \
-    PFREE_BUFFER FreeBuffer;                                         \
-    PREGISTER_FRAME RegisterFrame;                                   \
-    PSET_PYTHON_ALLOCATORS SetPythonAllocators;                      \
-    PHASH_AND_ATOMIZE_ANSI HashAndAtomizeAnsi;                       \
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(REGISTER_NEW_PATH_ENTRY)(
+    _In_ PVOID Context,
+    _In_ struct _PYTHON_PATH_TABLE_ENTRY *PathTableEntry
+    );
+typedef REGISTER_NEW_PATH_ENTRY *PREGISTER_NEW_PATH_ENTRY;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(SET_REGISTER_NEW_PATH_ENTRY_CALLBACK)(
+    _In_ PPYTHON Python,
+    _In_ PREGISTER_NEW_PATH_ENTRY RegisterNewPathEntry,
+    _In_ PVOID Context
+    );
+typedef SET_REGISTER_NEW_PATH_ENTRY_CALLBACK \
+      *PSET_REGISTER_NEW_PATH_ENTRY_CALLBACK;
+PYTHON_API SET_REGISTER_NEW_PATH_ENTRY_CALLBACK \
+    SetRegisterNewPathEntryCallback;
+
+#define _PYTHONEXFUNCTIONS_HEAD                                            \
+    PALLOCATE_STRING AllocateString;                                       \
+    PALLOCATE_STRING_BUFFER AllocateStringBuffer;                          \
+    PALLOCATE_STRING_AND_BUFFER AllocateStringAndBuffer;                   \
+    PFREE_STRING FreeString;                                               \
+    PFREE_STRING_AND_BUFFER FreeStringAndBuffer;                           \
+    PFREE_STRING_BUFFER FreeStringBuffer;                                  \
+    PFREE_STRING_BUFFER_DIRECT FreeStringBufferDirect;                     \
+    PALLOCATE_BUFFER AllocateBuffer;                                       \
+    PFREE_BUFFER FreeBuffer;                                               \
+    PREGISTER_FRAME RegisterFrame;                                         \
+    PSET_PYTHON_ALLOCATORS SetPythonAllocators;                            \
+    PSET_REGISTER_NEW_PATH_ENTRY_CALLBACK SetRegisterNewPathEntryCallback; \
+    PHASH_AND_ATOMIZE_ANSI HashAndAtomizeAnsi;                             \
     PINITIALIZE_PYTHON_RUNTIME_TABLES InitializePythonRuntimeTables;
 
 typedef struct _PYTHONEXFUNCTIONS {
@@ -2895,8 +2922,6 @@ typedef struct _PYTHON_MODULE_TABLE_ENTRY {
 } PYTHON_MODULE_TABLE_ENTRY, *PPYTHON_MODULE_TABLE_ENTRY;
 C_ASSERT(sizeof(PYTHON_MODULE_TABLE_ENTRY) == 128);
 
-#pragma warning(pop)
-
 #define _PYTHONEXRUNTIME_HEAD                                       \
     HANDLE HeapHandle;                                              \
     PPYTHON_MODULE_TABLE ModuleTable;                               \
@@ -3020,6 +3045,9 @@ typedef struct _PYTHON {
     HMODULE PythonModule;
     HMODULE PythonExModule;
     PRTL Rtl;
+
+    PREGISTER_NEW_PATH_ENTRY RegisterNewPathEntry;
+    PVOID RegisterNewPathEntryContext;
 
     union {
         PYTHONFUNCTIONS PythonFunctions;
