@@ -138,6 +138,12 @@ TlsHeapInitializeAllocator(
         TlsHeapFreePointer,
         TlsHeapInitializeAllocator,
         TlsHeapDestroyAllocator,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         TlsHeapHandle,
         TracerConfig->Allocator,
         TlsIndex

@@ -20,12 +20,73 @@ typedef MALLOC *PMALLOC;
 typedef
 _Must_inspect_result_
 PVOID
+(TRY_MALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size
+    );
+typedef TRY_MALLOC *PTRY_MALLOC;
+
+typedef
+_Must_inspect_result_
+PVOID
+(MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef MALLOC_WITH_TIMESTAMP *PMALLOC_WITH_TIMESTAMP;
+
+typedef
+_Must_inspect_result_
+PVOID
+(TRY_MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_MALLOC_WITH_TIMESTAMP *PTRY_MALLOC_WITH_TIMESTAMP;
+
+typedef
+_Must_inspect_result_
+PVOID
 (CALLOC)(
     _In_ PVOID Context,
     _In_ SIZE_T NumberOfElements,
     _In_ SIZE_T ElementSize
     );
 typedef CALLOC *PCALLOC;
+
+typedef
+_Must_inspect_result_
+PVOID
+(TRY_CALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize
+    );
+typedef TRY_CALLOC *PTRY_CALLOC;
+
+typedef
+_Must_inspect_result_
+PVOID
+(CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef CALLOC_WITH_TIMESTAMP *PCALLOC_WITH_TIMESTAMP;
+
+typedef
+_Must_inspect_result_
+PVOID
+(TRY_CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_CALLOC_WITH_TIMESTAMP *PTRY_CALLOC_WITH_TIMESTAMP;
 
 typedef
 _Must_inspect_result_
@@ -139,6 +200,19 @@ typedef struct _ALLOCATOR {
     struct _ALLOCATOR *Parent;
 
     //
+    // These will be set if a non-blocking malloc/calloc interface is available.
+    //
+
+    PTRY_MALLOC TryMalloc;
+    PTRY_CALLOC TryCalloc;
+
+    PMALLOC_WITH_TIMESTAMP MallocWithTimestamp;
+    PCALLOC_WITH_TIMESTAMP CallocWithTimestamp;
+
+    PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp;
+    PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp;
+
+    //
     // Id of the thread that created this structure.
     //
 
@@ -187,6 +261,12 @@ InitializeAllocator(
     _In_ PFREE_POINTER FreePointer,
     _In_ PINITIALIZE_ALLOCATOR Initialize,
     _In_ PDESTROY_ALLOCATOR Destroy,
+    _In_ PTRY_MALLOC TryMalloc,
+    _In_ PTRY_CALLOC TryCalloc,
+    _In_ PMALLOC_WITH_TIMESTAMP MallocWithTimestamp,
+    _In_ PCALLOC_WITH_TIMESTAMP CallocWithTimestamp,
+    _In_ PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp,
+    _In_ PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp,
     _In_opt_ PVOID Context2
     )
 {
@@ -202,6 +282,15 @@ InitializeAllocator(
     Allocator->Destroy = Destroy;
 
     Allocator->Context2 = Context2;
+
+    Allocator->TryMalloc = TryMalloc;
+    Allocator->TryCalloc = TryCalloc;
+
+    Allocator->MallocWithTimestamp = MallocWithTimestamp;
+    Allocator->CallocWithTimestamp = CallocWithTimestamp;
+
+    Allocator->TryMallocWithTimestamp = TryMallocWithTimestamp;
+    Allocator->TryCallocWithTimestamp = TryCallocWithTimestamp;
 
     Allocator->TlsIndex = TLS_OUT_OF_INDEXES;
     Allocator->ThreadId = GetCurrentThreadId();
@@ -220,6 +309,12 @@ InitializeTlsAllocator(
     _In_ PFREE_POINTER FreePointer,
     _In_ PINITIALIZE_ALLOCATOR Initialize,
     _In_ PDESTROY_ALLOCATOR Destroy,
+    _In_ PTRY_MALLOC TryMalloc,
+    _In_ PTRY_CALLOC TryCalloc,
+    _In_ PMALLOC_WITH_TIMESTAMP MallocWithTimestamp,
+    _In_ PCALLOC_WITH_TIMESTAMP CallocWithTimestamp,
+    _In_ PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp,
+    _In_ PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp,
     _In_opt_ PVOID Context2,
     _In_ PALLOCATOR Parent,
     _In_ ULONG TlsIndex
@@ -235,6 +330,12 @@ InitializeTlsAllocator(
         FreePointer,
         Initialize,
         Destroy,
+        TryMalloc,
+        TryCalloc,
+        MallocWithTimestamp,
+        CallocWithTimestamp,
+        TryMallocWithTimestamp,
+        TryCallocWithTimestamp,
         Context2
     );
 

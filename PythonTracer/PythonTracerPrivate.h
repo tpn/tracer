@@ -110,7 +110,7 @@ GetFunctionPointerForCallbackWorkerType(
 }
 
 //
-// RegisterPathEntry-related functions.
+// PythonPathEntry-related functions.
 //
 
 REGISTER_NEW_PATH_ENTRY PyTraceRegisterNewPathEntry;
@@ -165,6 +165,28 @@ PopPythonPathTableEntry(
         &Context->NewPythonPathTableEntryListHead, \
         Entry                                      \
     )
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(NEW_PYTHON_PATH_TABLE_ENTRY)(
+    _In_ PPYTHON_TRACE_CONTEXT Context,
+    _In_ PPYTHON_PATH_TABLE_ENTRY Entry
+    );
+typedef NEW_PYTHON_PATH_TABLE_ENTRY *PNEW_PYTHON_PATH_TABLE_ENTRY;
+NEW_PYTHON_PATH_TABLE_ENTRY NewPythonPathTableEntry;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(UPDATE_RTL_PATH_FROM_PATH_ENTRY)(
+    _In_ PPYTHON_TRACE_CONTEXT Context,
+    _In_ PPYTHON_PATH_TABLE_ENTRY Entry
+    );
+typedef UPDATE_RTL_PATH_FROM_PATH_ENTRY *PUPDATE_RTL_PATH_FROM_PATH_ENTRY;
+UPDATE_RTL_PATH_FROM_PATH_ENTRY UpdateRtlPathFromPathEntry;
 
 //
 // PythonTracerCallback-related functions.

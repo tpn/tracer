@@ -488,6 +488,18 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *SaveCountsToRunHistoryAtExitEntry;
     struct _RTL_ATEXIT_ENTRY *SavePerformanceMetricsAtExitEntry;
 
+    //
+    // Custom allocators.  These are all backed by trace stores with the
+    // concurrent allocations trait.
+    //
+
+    ALLOCATOR BitmapAllocator;
+    ALLOCATOR UnicodeStringBufferAllocator;
+
+    //
+    // Threadpool callback environments.
+    //
+
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
     PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment;
 

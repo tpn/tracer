@@ -3832,6 +3832,13 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->StringToExistingRtlPath = (PSTRING_TO_EXISTING_RTL_PATH)
+        GetProcAddress(RtlExModule, "StringToExistingRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'StringToExistingRtlPath'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->DestroyRtlPath = (PDESTROY_RTL_PATH)
         GetProcAddress(RtlExModule, "DestroyRtlPath"))) {
 
