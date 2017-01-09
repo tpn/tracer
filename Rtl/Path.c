@@ -518,8 +518,8 @@ GetModuleRtlPath(
 
 Routine Description:
 
-    Allocates and initializes a new RTL_PATH structure from Allocator, based on the
-    unicode string path name returned as the filename for Module.
+    Allocates and initializes a new RTL_PATH structure from Allocator, based on
+    the unicode string path name returned as the filename for Module.
 
 Arguments:
 
