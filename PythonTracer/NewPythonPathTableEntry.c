@@ -367,7 +367,7 @@ Return Value:
 
     __movsq((PDWORD64)DestContent,
             (PDWORD64)SourceContent,
-            File->AllocationSize.QuadPart);
+            File->AllocationSize.QuadPart >> 3);
 
     goto CopyComplete;
 
