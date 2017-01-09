@@ -31,7 +31,8 @@ GetPathEntryFromFrame(
     PPYOBJECT ArgObject,
     PSTRING FilenameString,
     PFILENAME_FLAGS FilenameFlags,
-    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    PBOOL NewPathEntry
     )
 /*++
 
@@ -70,6 +71,10 @@ Arguments:
         address of a PYTHON_PATH_TABLE_ENTRY structure for the frame object's
         code object's filename.
 
+    NewPathEntry - Supplies a pointer to a BOOL variable that will receive a
+        TRUE value if a new path entry was created as part of processing this
+        request, FALSE if the underlying file was already seen.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
@@ -86,6 +91,12 @@ Return Value:
     BOOL TriedQualified = FALSE;
     BOOL DontTryQualifyPath = FALSE;
     BOOL Success;
+
+    //
+    // Clear the caller's NewPathEntry variable up-front.
+    //
+
+    *NewPathEntry = FALSE;
 
     PrefixTable = &Python->PathTable->PrefixTable;
     Rtl = Python->Rtl;
@@ -170,7 +181,8 @@ Retry:
                            FrameObject,
                            Path,
                            FilenameFlags,
-                           &PathEntry);
+                           &PathEntry,
+                           NewPathEntry);
 
     //
     // Intentional follow-on to End (i.e. we let the success indicator from
@@ -197,7 +209,8 @@ RegisterFile(
     PPYFRAMEOBJECT FrameObject,
     PSTRING FilenameString,
     PFILENAME_FLAGS FilenameFlags,
-    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer
+    PPPYTHON_PATH_TABLE_ENTRY PathEntryPointer,
+    PBOOL NewPathEntry
     )
 /*++
 
@@ -224,6 +237,10 @@ Arguments:
 
     PathEntryPointer - Supplies a pointer to a variable that will receive the
         address of a newly-allocated PYTHON_PATH_TABLE_ENTRY structure.
+
+    NewPathEntry - Supplies a pointer to a BOOL variable that will receive a
+        TRUE value if a new path entry was created as part of processing this
+        request, FALSE if the underlying file was already seen.
 
 Return Value:
 
@@ -840,10 +857,17 @@ AddPrefix:
         //
 
         __debugbreak();
+        goto End;
     }
 
     //
-    // Intentional follow-on.
+    // Indicate we created a new path entry.
+    //
+
+    *NewPathEntry = TRUE;
+
+    //
+    // Intentional follow-on to End.
     //
 
 End:

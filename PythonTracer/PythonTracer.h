@@ -488,11 +488,34 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *SaveCountsToRunHistoryAtExitEntry;
     struct _RTL_ATEXIT_ENTRY *SavePerformanceMetricsAtExitEntry;
 
+    PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
+    PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment;
+
     //
     // List head for calls stacks.
     //
 
     LIST_ENTRY CallStackListHead;
+
+    //
+    // Interlocked list heads.
+    //
+
+    SLIST_HEADER NewPythonPathTableEntryListHead;
+
+    //
+    // Threadpool work.
+    //
+
+    PTP_WORK NewPythonPathTableEntryWork;
+
+    volatile ULONG ActiveNewPythonPathTableEntryCallbacks;
+
+    //
+    // Cleanup group.
+    //
+
+    PTP_CLEANUP_GROUP ThreadpoolCleanupGroup;
 
 } PYTHON_TRACE_CONTEXT, *PPYTHON_TRACE_CONTEXT;
 

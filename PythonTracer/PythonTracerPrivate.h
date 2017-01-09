@@ -36,7 +36,7 @@ extern "C" {
 
 #define RUN_HISTORY_DATE_FORMAT L"YYYY-MM-DD_hhmmss.SSS"
 
-#define RUN_HISTORY_REGISTRY_PATH_PREFIX \
+#define RUN_HISTORY_REGISTRY_PATH_PREFIX          \
     L"Software\\Tracer\\PythonTracer\\RunHistory"
 
 #define RUN_HISTORY_REGISTRY_PATH_FORMAT \
@@ -108,6 +108,78 @@ GetFunctionPointerForCallbackWorkerType(
 
     return PythonTraceCallbackWorkerTypeToFunctionPointer[WorkerType-1];
 }
+
+//
+// RegisterPathEntry-related functions.
+//
+
+REGISTER_NEW_PATH_ENTRY PyTraceRegisterNewPathEntry;
+
+FORCEINLINE
+VOID
+PushPythonPathTableEntry(
+    _In_ PSLIST_HEADER ListHead,
+    _In_ PPYTHON_PATH_TABLE_ENTRY Entry
+    )
+{
+    InterlockedPushEntrySList(ListHead, &Entry->File.ListEntry);
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PopPythonPathTableEntry(
+    _In_ PSLIST_HEADER ListHead,
+    _Out_ PPPYTHON_PATH_TABLE_ENTRY EntryPointer
+    )
+{
+    PSLIST_ENTRY ListEntry;
+    PPYTHON_PATH_TABLE_ENTRY PathTableEntry;
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
+        return FALSE;
+    }
+
+    PathTableEntry = CONTAINING_RECORD(ListEntry,
+                                       PYTHON_PATH_TABLE_ENTRY,
+                                       File.ListEntry);
+
+    *EntryPointer = PathTableEntry;
+    return TRUE;
+}
+
+#define PushNewPythonPathTableEntry(Context, Entry) \
+    PushPythonPathTableEntry(                       \
+        &Context->NewPythonPathTableEntryListHead,  \
+        Entry                                       \
+    )
+
+#define SubmitNewPythonPathTableEntryWork(Context, Entry)       \
+    PushNewPythonPathTableEntry(Context, Entry);                \
+    SubmitThreadpoolWork(Context->NewPythonPathTableEntryWork);
+
+#define PopNewPathTableEntry(Context, Entry)       \
+    PopPythonPathTableEntry(                       \
+        &Context->NewPythonPathTableEntryListHead, \
+        Entry                                      \
+    )
+
+//
+// PythonTracerCallback-related functions.
+//
+
+typedef
+VOID
+(CALLBACK NEW_PYTHON_PATH_TABLE_ENTRY_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PPYTHON_TRACE_CONTEXT Context,
+    _In_     PTP_WORK Work
+    );
+typedef NEW_PYTHON_PATH_TABLE_ENTRY_CALLBACK \
+      *PNEW_PYTHON_PATH_TABLE_ENTRY_CALLBACK;
+NEW_PYTHON_PATH_TABLE_ENTRY_CALLBACK NewPythonPathTableEntryCallback;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -460,31 +532,31 @@ Return Value:
     None.
 
 --*/
-#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do {        \
-    ULONG Value;                                                \
-    ULONG ValueLength = sizeof(Value);                          \
-    Result = RegGetValueW(                                      \
-        RegistryKey,                                            \
-        NULL,                                                   \
-        L#Name,                                                 \
-        RRF_RT_REG_DWORD,                                       \
-        NULL,                                                   \
-        (PVOID)&Value,                                          \
-        &ValueLength                                            \
-    );                                                          \
-    if (Result == ERROR_SUCCESS) {                              \
-        Context->RuntimeParameters.Name = Value;                \
-    } else {                                                    \
-        Value = Context->RuntimeParameters.Name = Default;      \
-        RegSetValueExW(                                         \
-            RegistryKey,                                        \
-            L#Name,                                             \
-            0,                                                  \
-            REG_DWORD,                                          \
-            (const BYTE*)&Value,                                \
-            ValueLength                                         \
-        );                                                      \
-    }                                                           \
+#define READ_REG_DWORD_RUNTIME_PARAM(Name, Default) do {   \
+    ULONG Value;                                           \
+    ULONG ValueLength = sizeof(Value);                     \
+    Result = RegGetValueW(                                 \
+        RegistryKey,                                       \
+        NULL,                                              \
+        L#Name,                                            \
+        RRF_RT_REG_DWORD,                                  \
+        NULL,                                              \
+        (PVOID)&Value,                                     \
+        &ValueLength                                       \
+    );                                                     \
+    if (Result == ERROR_SUCCESS) {                         \
+        Context->RuntimeParameters.Name = Value;           \
+    } else {                                               \
+        Value = Context->RuntimeParameters.Name = Default; \
+        RegSetValueExW(                                    \
+            RegistryKey,                                   \
+            L#Name,                                        \
+            0,                                             \
+            REG_DWORD,                                     \
+            (const BYTE*)&Value,                           \
+            ValueLength                                    \
+        );                                                 \
+    }                                                      \
 } while (0)
 
 #ifdef __cplusplus
