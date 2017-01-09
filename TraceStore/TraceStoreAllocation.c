@@ -573,6 +573,7 @@ Return Value:
     ULONG_PTR RequestedSize;
     ULONG_PTR AllocationSize;
     ULONG_PTR WastedBytes = 0;
+    ULONG_PTR NumberOfPages;
     PVOID ReturnAddress = NULL;
     PVOID NextAddress;
     PVOID EndAddress;
@@ -651,6 +652,7 @@ Return Value:
 
     ThisPage = PAGE_ALIGN(MemoryMap->NextAddress);
     EndPage = PAGE_ALIGN(((ULONG_PTR)MemoryMap->NextAddress) + RequestedSize);
+    NumberOfPages = RequestedSize >> PAGE_SHIFT;
 
     //
     // Ensure our next ("current") address is page aligned.
@@ -692,8 +694,8 @@ Return Value:
         return NULL;
     }
 
-    if (!AssertTrue("EndPage <= EndPage",
-                    ((ULONG_PTR)EndPage) < ((ULONG_PTR)NextPage))) {
+    if (!AssertTrue("EndPage <= NextPage",
+                    ((ULONG_PTR)EndPage) <= ((ULONG_PTR)NextPage))) {
         return NULL;
     }
 
