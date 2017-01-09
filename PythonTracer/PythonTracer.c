@@ -420,6 +420,8 @@ InitializePythonTraceContext(
     PTRACE_STORE LineTableStore;
     PTRACE_STORE LineTableEntryStore;
     PTRACE_STORE LineStringBufferStore;
+    PTRACE_STORE BitmapStore;
+    PTRACE_STORE UnicodeStringBufferStore;
     PPY_TRACE_EVENT TraceEvent;
     PPY_TRACE_CALLBACK CallbackWorker;
     PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
@@ -614,6 +616,28 @@ InitializePythonTraceContext(
 
     Allocators->NumberOfAllocators = NumberOfAllocators;
     Allocators->SizeInBytes = sizeof(*Allocators);
+
+    //
+    // Initialize allocators we use.
+    //
+
+    BitmapStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreBitmapId);
+    if (!InitializeAllocatorFromTraceStore(BitmapStore,
+                                           &Context->BitmapAllocator)) {
+        return FALSE;
+    }
+
+    UnicodeStringBufferStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreUnicodeStringBufferId
+        )
+    );
+    if (!InitializeAllocatorFromTraceStore(
+            UnicodeStringBufferStore,
+            &Context->UnicodeStringBufferAllocator)) {
+        return FALSE;
+    }
 
     //
     // Initialize runtime tables and set the register path entry callback.

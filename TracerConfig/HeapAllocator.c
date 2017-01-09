@@ -98,6 +98,12 @@ Return Value:
         DefaultHeapFreePointer,
         DefaultHeapInitializeAllocator,
         DefaultHeapDestroyAllocator,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         HeapHandle
     );
 

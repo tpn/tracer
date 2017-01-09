@@ -43,6 +43,7 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     PPYTHON_PATH_TABLE_ENTRY Entry;
 
     //
@@ -60,12 +61,19 @@ Return Value:
 
     InterlockedIncrement(&Context->ActiveNewPythonPathTableEntryCallbacks);
 
-#ifdef _DEBUG
-    OutputDebugStringA("NewPythonPathTableEntryCallback");
-    OutputDebugStringA(Entry->Path.Buffer);
-#endif
+    TRY_MAPPED_MEMORY_OP {
+        Success = NewPythonPathTableEntry(Context, Entry);
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Success = FALSE;
+        NOTHING;
+    }
 
     InterlockedDecrement(&Context->ActiveNewPythonPathTableEntryCallbacks);
+
+    if (!Success) {
+        OutputDebugStringA("NewPythonPathTableEntryCallback failed for: ");
+        OutputDebugStringA(Entry->Path.Buffer);
+    }
 
     return;
 }

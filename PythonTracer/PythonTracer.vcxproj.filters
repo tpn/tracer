@@ -74,5 +74,8 @@
     <ClCompile Include="PythonTracerCallbacks.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NewPythonPathTableEntry.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -53,7 +53,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreSourceCode.dat",
     L"TraceStoreBitmap.dat",
     L"TraceStoreImageFile.dat",
-    L"TraceStoreFile.dat",
+    L"TraceStoreUnicodeStringBuffer.dat",
     L"TraceStoreLine.dat",
     L"TraceStoreObject.dat",
 };
@@ -152,7 +152,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // SourceCode
      1 << 24,   // Bitmap
      1 << 25,   // ImageFile
-     1 << 24,   // File
+     1 << 23,   // UnicodeStringBuffer
      1 << 24,   // Line
      1 << 23,   // Object
 };
@@ -727,7 +727,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // LinkedStore
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
-        0,  // AllowPageSpill
+        1,  // AllowPageSpill
         0,  // PageAligned
         0   // Unused
     },
@@ -753,12 +753,12 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // File
+    // UnicodeStringBuffer
     //
 
     {
-        0,  // VaryingRecordSize
-        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead

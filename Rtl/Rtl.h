@@ -1753,6 +1753,20 @@ RTL_API STRING_TO_RTL_PATH StringToRtlPath;
 typedef
 _Success_(return != 0)
 BOOL
+(STRING_TO_EXISTING_RTL_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PSTRING AnsiString,
+    _In_ PALLOCATOR BitmapAllocator,
+    _In_ PALLOCATOR UnicodeStringBufferAllocator,
+    _In_ PRTL_PATH Path,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef STRING_TO_EXISTING_RTL_PATH *PSTRING_TO_EXISTING_RTL_PATH;
+RTL_API STRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;
+
+typedef
+_Success_(return != 0)
+BOOL
 (DESTROY_RTL_PATH)(
     _Inout_opt_ PPRTL_PATH PathPointer
     );
@@ -1865,6 +1879,8 @@ typedef struct _Struct_size_bytes_(StructSizeInBytes) _RTL_TEXT_FILE {
 } RTL_TEXT_FILE, *PRTL_TEXT_FILE;
 C_ASSERT(sizeof(RTL_TEXT_FILE) == 80);
 
+#define NUMBER_OF_RTL_TEXT_FILE_BITMAPS 8
+
 //
 // This structure is used to capture information about image files (e.g. dll,
 // exe).
@@ -1897,15 +1913,26 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
     // File information.
     //
 
-    LARGE_INTEGER CreationTime;
-    LARGE_INTEGER LastAccessTime;
-    LARGE_INTEGER LastWriteTime;
-    LARGE_INTEGER ChangeTime;
+    //
+    // Inline FILE_BASIC_INFO.
+    //
+
+    union {
+        FILE_BASIC_INFO BasicInfo;
+        struct {
+            LARGE_INTEGER CreationTime;
+            LARGE_INTEGER LastAccessTime;
+            LARGE_INTEGER LastWriteTime;
+            LARGE_INTEGER ChangeTime;
+            DWORD FileAttributes;
+            DWORD Dummy;
+        };
+    };
     LARGE_INTEGER EndOfFile;
     LARGE_INTEGER AllocationSize;
 
     //
-    // (48 bytes consumed.)
+    // (72 bytes consumed.)
     //
 
     //
@@ -1927,7 +1954,7 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
     };
 
     //
-    // (96 bytes consumed.)
+    // (104 bytes consumed.)
     //
 
     //
@@ -1949,16 +1976,11 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
     RTL_FILE_FLAGS Flags;
 
     //
-    // Pad to an 8 byte boundary.
+    // Pad to 8 byte boundary with an elapsed field that captures ticks required
+    // to copy the file from the memory mapping to our allocated memory.
     //
 
-    ULONG Padding1;
-
-    //
-    // Capture all path related information via Rtl's RTL_PATH structure.
-    //
-
-    RTL_PATH Path;
+    ULONG Elapsed;
 
     //
     // A pointer to the first byte of data for the file, once it has been
@@ -1968,7 +1990,13 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
     PCHAR Content;
 
     //
-    // (344 bytes consumed.)
+    // Capture all path related information via Rtl's RTL_PATH structure.
+    //
+
+    RTL_PATH Path;
+
+    //
+    // (360 bytes consumed.)
     //
 
     union {
@@ -1989,19 +2017,22 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
         // Pad out to 512 bytes.
         //
 
-        BYTE Reserved[168];
+        BYTE Reserved[160];
     };
 
 } RTL_FILE, *PRTL_FILE, **PPRTL_FILE;
 C_ASSERT(FIELD_OFFSET(RTL_FILE, CreationTime) == 16);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, FileId) == 64);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, FileIdInfo) == 72);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, MD5) == 96);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, SHA1) == 112);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, Type) == 132);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 144);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, Content) == 336);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 344);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, EndOfFile) == 56);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, FileId) == 72);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, FileIdInfo) == 80);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, MD5) == 104);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, SHA1) == 120);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Type) == 140);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Flags) == 144);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Elapsed) == 148);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Content) == 152);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 160);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 352);
 C_ASSERT(sizeof(RTL_FILE) == 512);
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
@@ -2768,6 +2799,7 @@ RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
     PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
     PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                        \
     PSTRING_TO_RTL_PATH StringToRtlPath;                                       \
+    PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                      \
     PDESTROY_RTL_PATH DestroyRtlPath;                                          \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
@@ -4020,7 +4052,8 @@ BOOL
 ConvertUtf16StringToUtf8StringSlow(
     _In_ PUNICODE_STRING Utf16,
     _Out_ PPSTRING Utf8Pointer,
-    _In_ PALLOCATOR Allocator
+    _In_ PALLOCATOR Allocator,
+    _In_ PLARGE_INTEGER TimestampPointer
     )
 /*++
 
@@ -4150,10 +4183,11 @@ Return Value:
     //
 
     Utf8 = (PSTRING)(
-        Allocator->Calloc(
+        Allocator->CallocWithTimestamp(
             Allocator->Context,
             1,
-            AlignedBufferSizeInBytes.LowPart
+            AlignedBufferSizeInBytes.LowPart,
+            TimestampPointer
         )
     );
 
@@ -4421,13 +4455,14 @@ BOOL
 ConvertUtf8StringToUtf16StringSlow(
     _In_ PSTRING Utf8,
     _Out_ PPUNICODE_STRING Utf16Pointer,
-    _In_ PALLOCATOR Allocator
+    _In_ PALLOCATOR Allocator,
+    _In_ PLARGE_INTEGER TimestampPointer
     )
 /*++
 
 Routine Description:
 
-    Converts a UTF-8 unicode string to a UTF-16 string using the provided
+    Converts a UTF-8 Unicode string to a UTF-16 string using the provided
     allocator.  The 'Slow' suffix on this function name indicates that the
     MultiByteToWideChar() function is called first in order to get the required
     buffer size prior to allocating the buffer.
@@ -4444,6 +4479,8 @@ Arguments:
 
     Allocator - Supplies a pointer to the memory allocator that will be used
         for all allocations.
+
+    TimestampPointer - Supplies a timestamp to associate with allocations.
 
 Return Value:
 
@@ -4531,7 +4568,7 @@ Return Value:
         return FALSE;
     }
 
-    if (AlignedBufferSizeInBytes.LowPart > Utf8->Length) {
+    if (AlignedBufferSizeInBytes.LowPart < Utf8->Length) {
         return FALSE;
     }
 
@@ -4553,10 +4590,11 @@ Return Value:
     //
 
     Utf16 = (PUNICODE_STRING)(
-        Allocator->Calloc(
+        Allocator->CallocWithTimestamp(
             Allocator->Context,
             1,
-            AlignedBufferSizeInBytes.LowPart
+            AlignedBufferSizeInBytes.LowPart,
+            TimestampPointer
         )
     );
 
@@ -4598,7 +4636,7 @@ Return Value:
         MaximumBufferSizeInChars    // cchWideChar
     );
 
-    if (CharsCopied != NewLengthInChars) {
+    if (CharsCopied != NewLengthInChars-1) {
         goto Error;
     }
 

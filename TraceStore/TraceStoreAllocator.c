@@ -69,6 +69,148 @@ TraceStoreAllocatorCalloc(
 
 _Use_decl_annotations_
 PVOID
+TraceStoreAllocatorTryMalloc(
+    PVOID Context,
+    SIZE_T Size
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+    ULONG_PTR NumberOfRecords = 1;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
+                                                          TraceStore,
+                                                          1,
+                                                          Size,
+                                                          NULL);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocatorTryCalloc(
+    PVOID Context,
+    SIZE_T NumberOfElements,
+    SIZE_T ElementSize
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
+                                                          TraceStore,
+                                                          NumberOfElements,
+                                                          ElementSize,
+                                                          NULL);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocatorMallocWithTimestamp(
+    PVOID Context,
+    SIZE_T Size,
+    PLARGE_INTEGER TimestampPointer
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+    ULONG_PTR NumberOfRecords = 1;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->AllocateRecordsWithTimestamp(TraceContext,
+                                                       TraceStore,
+                                                       1,
+                                                       Size,
+                                                       TimestampPointer);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocatorCallocWithTimestamp(
+    PVOID Context,
+    SIZE_T NumberOfElements,
+    SIZE_T ElementSize,
+    PLARGE_INTEGER TimestampPointer
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->AllocateRecordsWithTimestamp(TraceContext,
+                                                       TraceStore,
+                                                       NumberOfElements,
+                                                       ElementSize,
+                                                       TimestampPointer);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocatorTryMallocWithTimestamp(
+    PVOID Context,
+    SIZE_T Size,
+    PLARGE_INTEGER TimestampPointer
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+    ULONG_PTR NumberOfRecords = 1;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
+                                                          TraceStore,
+                                                          1,
+                                                          Size,
+                                                          TimestampPointer);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
+TraceStoreAllocatorTryCallocWithTimestamp(
+    PVOID Context,
+    SIZE_T NumberOfElements,
+    SIZE_T ElementSize,
+    PLARGE_INTEGER TimestampPointer
+    )
+{
+    PVOID Address;
+    PTRACE_STORE TraceStore;
+    PTRACE_CONTEXT TraceContext;
+
+    TraceStore = ContextToTraceStore(Context);
+    TraceContext = TraceStore->TraceContext;
+
+    Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
+                                                          TraceStore,
+                                                          NumberOfElements,
+                                                          ElementSize,
+                                                          TimestampPointer);
+    return Address;
+}
+
+_Use_decl_annotations_
+PVOID
 TraceStoreAllocatorRealloc(
     PVOID Context,
     PVOID Buffer,
@@ -125,6 +267,12 @@ TraceStoreInitializeAllocator(
         TraceStoreAllocatorFreePointer,
         TraceStoreInitializeAllocator,
         TraceStoreDestroyAllocator,
+        TraceStoreAllocatorTryMalloc,
+        TraceStoreAllocatorTryCalloc,
+        TraceStoreAllocatorMallocWithTimestamp,
+        TraceStoreAllocatorCallocWithTimestamp,
+        TraceStoreAllocatorTryMallocWithTimestamp,
+        TraceStoreAllocatorTryCallocWithTimestamp,
         NULL
     );
 
@@ -138,8 +286,21 @@ InitializeAllocatorFromTraceStore(
     PALLOCATOR Allocator
     )
 {
+    TRACE_STORE_TRAITS Traits;
     TraceStoreInitializeAllocator(Allocator);
     Allocator->TraceStore = TraceStore;
+
+    //
+    // Clear the Try* allocators if the concurrent trait isn't set.
+    //
+
+    Traits = *TraceStore->pTraits;
+    if (!Traits.ConcurrentAllocations) {
+        Allocator->TryMalloc = NULL;
+        Allocator->TryCalloc = NULL;
+        Allocator->TryMallocWithTimestamp = NULL;
+        Allocator->TryCallocWithTimestamp = NULL;
+    }
 
     return TRUE;
 }

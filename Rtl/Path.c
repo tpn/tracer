@@ -416,6 +416,305 @@ Error:
 
 _Use_decl_annotations_
 BOOL
+StringToExistingRtlPath(
+    PRTL Rtl,
+    PSTRING AnsiString,
+    PALLOCATOR BitmapAllocator,
+    PALLOCATOR UnicodeStringBufferAllocator,
+    PRTL_PATH Path,
+    PLARGE_INTEGER TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    Converts a STRING representing a fully-qualified path into an existing
+    RTL_PATH structure.  Bitmaps are allocated from the bitmap allocator,
+    Unicode string buffers are allocated from the Unicode string buffer.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL struct.
+
+    AnsiString - Supplies a pointer to a STRING structure that contains a
+        path name.
+
+    BitmapAllocator - Supplies a pointer to an ALLOCATOR structure that is
+        used for allocating all bitmaps.
+
+    UnicodeStringBufferAllocator - Supplies a pointer to an ALLOCATOR structure
+        that is used for allocating any Unicode string buffers.
+
+    Path - Supplies a pointer to an existing RTL_PATH structure.
+
+    TimestampPointer - Supplies a pointer to a timestamp to use for allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    const BOOL Reverse = TRUE;
+    USHORT Offset;
+    USHORT NumberOfCharacters;
+    USHORT AlignedNumberOfCharacters;
+    USHORT BitmapBufferSizeInBytes;
+    USHORT AlignedBitmapBufferSizeInBytes;
+    USHORT NumberOfSlashes;
+    USHORT NumberOfDots;
+    USHORT ReversedSlashIndex;
+    USHORT ReversedDotIndex;
+    USHORT LengthInBytes;
+    PWCHAR Buf;
+    PUNICODE_STRING String;
+    PULONG BitmapBuffers;
+    PRTL_BITMAP ReversedSlashesBitmap;
+    PRTL_BITMAP ReversedDotsBitmap;
+    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
+    PRTL_FIND_SET_BITS RtlFindSetBits;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BitmapAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(UnicodeStringBufferAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Path)) {
+        return FALSE;
+    }
+
+    //
+    // Convert the ANSI string to a Unicode string.
+    //
+
+    Success = ConvertUtf8StringToUtf16StringSlow(AnsiString,
+                                                 &String,
+                                                 UnicodeStringBufferAllocator,
+                                                 TimestampPointer);
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Get the number of characters, plus +1 for the trailing NULL.
+    //
+
+    NumberOfCharacters = (String->Length + 1) >> 1;
+
+    //
+    // Calculate the aligned number of characters.  We do the alignment
+    // in order for the bitmap buffers to have a pointer-aligned size.
+    //
+
+    AlignedNumberOfCharacters = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            NumberOfCharacters
+        )
+    );
+
+    //
+    // Calculate the individual bitmap buffer sizes.  As there's one bit per
+    // character, we shift left 3 (divide by 8) to get the number of bytes
+    // required.
+    //
+
+    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
+
+    //
+    // Align to a pointer boundary.
+    //
+
+    AlignedBitmapBufferSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            BitmapBufferSizeInBytes
+        )
+    );
+
+    //
+    // Allocate the bitmap buffers.
+    //
+
+    BitmapBuffers = (PULONG)BitmapAllocator->CallocWithTimestamp(
+        BitmapAllocator->Context,
+        2,
+        AlignedBitmapBufferSizeInBytes,
+        TimestampPointer
+    );
+
+    if (!BitmapBuffers) {
+        return FALSE;
+    }
+
+    //
+    // The allocation was successful.  Fill in the size fields.
+    //
+
+    Path->StructSize = sizeof(*Path);
+    Path->AllocSize = (
+        String->MaximumLength +
+        (AlignedBitmapBufferSizeInBytes * 2)
+    );
+
+    ReversedSlashesBitmap = &Path->ReversedSlashesBitmap;
+    ReversedDotsBitmap = &Path->ReversedDotsBitmap;
+
+    //
+    // Carve out the bitmap buffers.
+    //
+
+    ReversedSlashesBitmap->Buffer = BitmapBuffers;
+    ReversedDotsBitmap->Buffer = (PULONG)(
+        RtlOffsetToPointer(
+            BitmapBuffers,
+            AlignedBitmapBufferSizeInBytes
+        )
+    );
+
+    //
+    // Point the full path string at the newly created string buffer.
+    //
+
+    Path->Full.Buffer = String->Buffer;
+
+    //
+    // Initialize the bitmap sizes.
+    //
+
+    ReversedSlashesBitmap->SizeOfBitMap = NumberOfCharacters;
+    ReversedDotsBitmap->SizeOfBitMap = NumberOfCharacters;
+
+    //
+    // Initialize the lengths of the full path.  Note that we don't use the
+    // aligned sizes; they were simply for ensuring pointer-aligned buffers.
+    //
+
+    Path->Full.Length = String->Length;
+    Path->Full.MaximumLength = String->MaximumLength;
+
+    //
+    // Directory points at the same buffer as Full.
+    //
+
+    Path->Directory.Buffer = Path->Full.Buffer;
+
+    //
+    // Find slashes and dots in reverse.
+    //
+
+    InlineFindTwoWideCharsInUnicodeStringReversed(
+        &Path->Full,
+        L'\\',
+        L'.',
+        ReversedSlashesBitmap,
+        ReversedDotsBitmap
+    );
+
+    //
+    // Initialize our bitmap function aliases.
+    //
+
+    RtlNumberOfSetBits = Rtl->RtlNumberOfSetBits;
+    RtlFindSetBits = Rtl->RtlFindSetBits;
+
+    //
+    // Make sure there is at least one slash in the path.
+    //
+
+    NumberOfSlashes = (USHORT)RtlNumberOfSetBits(ReversedSlashesBitmap);
+    if (NumberOfSlashes == 0) {
+        goto Error;
+    }
+    Path->NumberOfSlashes = NumberOfSlashes;
+
+    //
+    // Extract the filename from the path by finding the last backslash
+    // (which will be the first bit set in the bitmap) and calculating the
+    // offset into the string buffer.
+    //
+
+    ReversedSlashIndex = (USHORT)RtlFindSetBits(ReversedSlashesBitmap, 1, 0);
+    Offset = NumberOfCharacters - ReversedSlashIndex + 1;
+
+    LengthInBytes = (ReversedSlashIndex - 1) << 1;
+    Path->Name.Length = LengthInBytes;
+    Path->Name.MaximumLength = LengthInBytes + sizeof(WCHAR);
+    Path->Name.Buffer = &Path->Full.Buffer[Offset];
+
+    //
+    // The directory name length is easy to isolate now that we have the offset
+    // of the first slash; it's simply the character before.
+    //
+
+    LengthInBytes = (Offset - 1) << 1;
+    Path->Directory.Length = LengthInBytes;
+    Path->Directory.MaximumLength = LengthInBytes;
+
+    //
+    // Get the number of dots.
+    //
+
+    NumberOfDots = (USHORT)RtlNumberOfSetBits(ReversedDotsBitmap);
+
+    //
+    // Extract the extension from the path by finding the last dot (which will
+    // be the first bit set in the bitmap) and calculating the offset into the
+    // string buffer.
+    //
+
+    if (NumberOfDots) {
+        ReversedDotIndex = (USHORT)RtlFindSetBits(ReversedDotsBitmap, 1, 0);
+        Offset = NumberOfCharacters - ReversedDotIndex + 1;
+
+        LengthInBytes = (ReversedDotIndex - 1) << 1;
+        Path->Extension.Length = LengthInBytes;
+        Path->Extension.MaximumLength = LengthInBytes + sizeof(WCHAR);
+        Path->Extension.Buffer = &Path->Full.Buffer[Offset];
+
+        Path->NumberOfDots = NumberOfDots;
+    }
+
+    //
+    // Set whether or not the path is qualified and potentially set the drive
+    // letter if available.
+    //
+
+    Buf = Path->Full.Buffer;
+
+    if (Buf[1] == L':' && Buf[2] == L'\\') {
+
+        Path->Drive = Buf[0];
+        Path->Flags.IsFullyQualified = TRUE;
+
+    } else if (Buf[0] == L'\\' && Buf[1] == L'\\') {
+
+        Path->Flags.IsFullyQualified = TRUE;
+    }
+
+    //
+    // We're done, update the caller's path pointer and return success.
+    //
+
+    return TRUE;
+
+Error:
+
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
 StringToRtlPath(
     PRTL Rtl,
     PSTRING String,
@@ -453,7 +752,8 @@ Return Value:
     Success = ConvertUtf8StringToUtf16StringSlow(
         String,
         &UnicodeString,
-        Allocator
+        Allocator,
+        NULL
     );
     if (!Success) {
         return FALSE;
