@@ -2958,9 +2958,7 @@ AssertTrue(
 {
     if (!Value) {
         OutputDebugStringA(Expression);
-#ifdef _DEBUG
         __debugbreak();
-#endif
         return FALSE;
     }
     return TRUE;
@@ -2975,9 +2973,7 @@ AssertFalse(
 {
     if (Value) {
         OutputDebugStringA(Expression);
-#ifdef _DEBUG
         __debugbreak();
-#endif
         return FALSE;
     }
     return TRUE;
