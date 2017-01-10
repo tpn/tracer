@@ -275,6 +275,8 @@ InitializePerf:
                                            &Perf->MemoryCounters,
                                            Perf->ProcessMemoryCountersExSize);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -284,6 +286,8 @@ InitializePerf:
 
     Success = GlobalMemoryStatusEx(&Perf->MemoryStatusEx);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -294,6 +298,8 @@ InitializePerf:
     Success = Rtl->K32GetPerformanceInfo(&Perf->PerformanceInfo,
                                          Perf->PerformanceInfoSize);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -307,6 +313,8 @@ InitializePerf:
                               &Perf->KernelTime,
                               &Perf->UserTime);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -316,6 +324,8 @@ InitializePerf:
 
     Success = Rtl->GetProcessIoCounters(CurrentProcess, &Perf->IoCounters);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -325,6 +335,8 @@ InitializePerf:
 
     Success = Rtl->GetProcessHandleCount(CurrentProcess, &Perf->HandleCount);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -334,6 +346,8 @@ InitializePerf:
 
     Success = QueryProcessCycleTime(CurrentProcess, &Perf->ProcessCycles);
     if (!Success) {
+        TraceContext->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 

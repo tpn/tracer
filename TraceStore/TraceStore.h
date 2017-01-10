@@ -1780,6 +1780,8 @@ typedef struct _TRACE_STORE {
             ULONG HasMultipleRelocationWaits:1;
             ULONG RequiresSelfRelocation:1;
             ULONG HasNullStoreRelocations:1;
+            ULONG BeginningRundown:1;
+            ULONG RundownComplete:1;
         };
     };
 
@@ -1802,6 +1804,12 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            PrefaultMemoryMaps;
 
     TRACE_STORE_MEMORY_MAP  SingleMemoryMap;
+
+    //
+    // Base address of the array of memory maps allocated for this store.
+    //
+
+    PTRACE_STORE_MEMORY_MAP MemoryMaps;
 
     //
     // This will be linked to the parent TRACE_STORES StoresListHead list.  It

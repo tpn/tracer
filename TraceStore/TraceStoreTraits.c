@@ -58,9 +58,9 @@ Return Value:
         if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
             return FALSE;
         }
-        if (!AssertTrue("StreamingWrite", Traits.StreamingWrite)) {
-            return FALSE;
-        }
+        // if (!AssertTrue("StreamingWrite", Traits.StreamingWrite)) {
+        //    return FALSE;
+        //}
     }
 
     if (Traits.LinkedStore) {
