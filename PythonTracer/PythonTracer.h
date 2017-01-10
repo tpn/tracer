@@ -455,8 +455,8 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
         };
     };
 
-    ULONG              SkipFrames;
-    ULONG              Padding;
+    ULONG SkipFrames;
+    ULONG LastError;
 
     PYTHON_TRACE_EVENT_TYPE EventType;
 
