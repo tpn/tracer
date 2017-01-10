@@ -545,7 +545,7 @@ CopyComplete:
             if (BitIndex == BITS_NOT_FOUND || BitIndex < LastBitIndex) {
                 break;
             }
-            Line->Length = (USHORT)(BitIndex - LastBitIndex);
+            Line->Length = (USHORT)(BitIndex - (LastBitIndex-1));
             Line->MaximumLength = Line->Length;
             Line->Buffer = (PCHAR)(DestContent + LastBitIndex);
             LastBitIndex = BitIndex + 1;
