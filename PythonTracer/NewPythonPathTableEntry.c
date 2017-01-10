@@ -69,6 +69,11 @@ Return Value:
     PRTL_PATH Path;
     HANDLE FileHandle = NULL;
     HANDLE MappingHandle = NULL;
+    HCRYPTPROV CryptProv = 0;
+    HCRYPTHASH CryptHashMD5 = 0;
+    HCRYPTHASH CryptHashSHA1 = 0;
+    DWORD SizeOfMD5InBytes;
+    DWORD SizeOfSHA1InBytes;
     LARGE_INTEGER Timestamp;
     LARGE_INTEGER StartCopy;
     LARGE_INTEGER EndCopy;
@@ -170,6 +175,15 @@ Return Value:
 
     File->EndOfFile.QuadPart = FileInfo.EndOfFile.QuadPart;
     File->AllocationSize.QuadPart = FileInfo.AllocationSize.QuadPart;
+
+    //
+    // Break if we encounter a file above 4GB for now.
+    //
+
+    if (File->EndOfFile.HighPart) {
+        __debugbreak();
+        goto Error;
+    }
 
     //
     // Calculate bitmap allocation size required.  This includes the RTL_BITMAP
@@ -453,6 +467,103 @@ CopyComplete:
     MappingHandle = NULL;
     FileHandle = NULL;
 
+    //
+    // Initialize the crypt provider for generating MD5/SHA1 hashes.
+    //
+
+    Success = CryptAcquireContextW(&CryptProv,
+                                   NULL,
+                                   NULL,
+                                   PROV_RSA_FULL,
+                                   CRYPT_VERIFYCONTEXT);
+
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Create the MD5 and SHA1 hashes.
+    //
+
+    Success = CryptCreateHash(CryptProv, CALG_MD5, 0, 0, &CryptHashMD5);
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    Success = CryptCreateHash(CryptProv, CALG_SHA1, 0, 0, &CryptHashSHA1);
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Hash the data.
+    //
+
+    Success = CryptHashData(CryptHashMD5,
+                            DestContent,
+                            File->EndOfFile.LowPart,
+                            0);
+
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    Success = CryptHashData(CryptHashSHA1,
+                            DestContent,
+                            File->EndOfFile.LowPart,
+                            0);
+
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Write the hash value into our buffer.
+    //
+
+    SizeOfMD5InBytes = sizeof(File->MD5);
+    Success = CryptGetHashParam(CryptHashMD5,
+                                HP_HASHVAL,
+                                (PBYTE)&File->MD5,
+                                &SizeOfMD5InBytes,
+                                0);
+
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
+    SizeOfSHA1InBytes = sizeof(File->SHA1);
+    Success = CryptGetHashParam(CryptHashSHA1,
+                                HP_HASHVAL,
+                                (PBYTE)&File->SHA1,
+                                &SizeOfSHA1InBytes,
+                                0);
+
+    if (!Success) {
+        LastError = GetLastError();
+        Context->LastError = LastError;
+        __debugbreak();
+        goto Error;
+    }
+
     if (IsSourceCode) {
         ULONG NumberOfLines;
         ULONG SizeOfBitMap;
@@ -579,6 +690,21 @@ Error:
     Success = FALSE;
 
 End:
+    if (CryptProv) {
+        CryptReleaseContext(CryptProv, 0);
+        CryptProv = 0;
+    }
+
+    if (CryptHashMD5) {
+        CryptDestroyHash(CryptHashMD5);
+        CryptHashMD5 = 0;
+    }
+
+    if (CryptHashSHA1) {
+        CryptDestroyHash(CryptHashSHA1);
+        CryptHashSHA1 = 0;
+    }
+
     if (SourceContent) {
         UnmapViewOfFile(SourceContent);
         SourceContent = NULL;

@@ -17,6 +17,7 @@ Abstract:
 #include "targetver.h"
 
 #include <Windows.h>
+#include <wincrypt.h>
 #include "../Rtl/Rtl.h"
 #include "../Rtl/__C_specific_handler.h"
 #include "../Rtl/AtExitEx.h"
