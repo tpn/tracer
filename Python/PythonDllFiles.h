@@ -1,6 +1,24 @@
+/*++
+
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    PythonDllFiles.h
+
+Abstract:
+
+    This module defines filename constants used by the Python component.
+
+--*/
+
 #pragma once
 
 #include "stdafx.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define DLL(Name, Filename) \
     static CONST UNICODE_STRING Name = RTL_CONSTANT_STRING(Filename);
@@ -316,5 +334,8 @@ static CONST USHORT NumberOfApiSetFiles = (
     sizeof(ApiSetFilesW[0])
 );
 
+#ifdef __cplusplus
+}; // extern "C"
+#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
