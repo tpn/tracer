@@ -1493,7 +1493,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     PTIMER_FUNCTION TimerFunction;
     PVOID UserData;
     PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
-    PREGISTER_TRACE_FILE RegisterTraceFile;
     PTP_CALLBACK_ENVIRON ThreadpoolCallbackEnvironment;
     PTP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnvironment;
 
@@ -1508,7 +1507,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
-    TRACE_STORE_WORK RegisterTraceFileWork;
 
     //
     // These items are associated with the cancellation threadpool, not the
@@ -2013,7 +2011,7 @@ typedef struct _TRACE_STORE {
     //
     // InitializeTraceStores() will point pReloc at the caller's relocation
     // information if applicable.  The trace store is responsible for writing
-    // this information into the :relocation metadata store when being bound
+    // this information into the :Relocation metadata store when being bound
     // to a trace context.
     //
 
@@ -2029,7 +2027,7 @@ typedef struct _TRACE_STORE {
     // For trace stores, the pointers below will point to the metadata trace
     // store memory maps.  Eof, Time, Stats, Totals and Traits are convenience
     // pointers into the Info struct.  For metadata stores, Info will be pointed
-    // to the relevant offset into the :metadatainfo store.
+    // to the relevant offset into the :MetadataInfo store.
     //
 
     PTRACE_STORE_EOF    Eof;
@@ -2058,7 +2056,7 @@ typedef struct _TRACE_STORE {
     // have been configured).
     //
 
-    PTRACE_STORE_SYNC   Sync;
+    PTRACE_STORE_SYNC Sync;
 
     //
     // The following values will be filled out for normal trace stores that
@@ -2151,6 +2149,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     HANDLE            RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
     TRACE_STORE       Stores[MAX_TRACE_STORES];
+    ULONGLONG         Padding3;
 } TRACE_STORES, *PTRACE_STORES;
 
 typedef struct _TRACE_STORE_METADATA_STORES {
