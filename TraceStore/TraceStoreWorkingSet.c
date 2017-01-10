@@ -298,8 +298,8 @@ TryGetWsChangesEx:
                 // Anything else is fatal.
                 //
 
-                __debugbreak();
                 TraceContext->LastError = LastError;
+                __debugbreak();
                 return FALSE;
         }
 
