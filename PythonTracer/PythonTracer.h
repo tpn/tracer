@@ -236,6 +236,13 @@ typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
         ULONG TraceEverything:1;
         ULONG TraceNothing:1;
         ULONG TraceEverythingWhenNoModuleFilterSet:1;
+
+        //
+        // Disables the asynchronous threadpool processing of new Python path
+        // table entries.
+        //
+
+        ULONG DisablePathTableEntryProcessing:1;
     };
 
 } PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
