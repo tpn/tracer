@@ -496,6 +496,7 @@ InitializePythonTraceContext(
     READ_REG_DWORD_FLAG(TraceEverything, FALSE);
     READ_REG_DWORD_FLAG(TraceNothing, FALSE);
     READ_REG_DWORD_FLAG(TraceEverythingWhenNoModuleFilterSet, FALSE);
+    READ_REG_DWORD_FLAG(DisablePathTableEntryProcessing, FALSE);
 
     //
     // Read runtime parameters.
@@ -533,8 +534,12 @@ InitializePythonTraceContext(
     Context->SkipFrames = 1;
 
     //
-    // Initialize threadpool related members.
+    // Initialize threadpool related members if applicable.
     //
+
+    if (Context->Flags.DisablePathTableEntryProcessing) {
+        goto InitializeAllocators;
+    }
 
     Context->ThreadpoolCallbackEnvironment = (
         TraceContext->ThreadpoolCallbackEnvironment
@@ -557,6 +562,18 @@ InitializePythonTraceContext(
     if (!Context->NewPythonPathTableEntryWork) {
         return FALSE;
     }
+
+    Success = Python->SetRegisterNewPathEntryCallback(
+        Python,
+        PyTraceRegisterNewPathEntry,
+        Context
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+InitializeAllocators:
 
     TraceStores = TraceContext->TraceStores;
     InitializeAllocatorFromTraceStore = (
@@ -644,15 +661,6 @@ InitializePythonTraceContext(
     //
 
     Python->InitializePythonRuntimeTables(Python);
-
-    Success = Python->SetRegisterNewPathEntryCallback(
-        Python,
-        PyTraceRegisterNewPathEntry,
-        Context
-    );
-    if (!Success) {
-        return FALSE;
-    }
 
     QueryPerformanceFrequency(&Context->Frequency);
 
