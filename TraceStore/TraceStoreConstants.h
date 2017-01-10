@@ -43,13 +43,18 @@ TRACE_STORE_DATA DWORD TraceStoreAllocationTimestampSuffixLength;
 TRACE_STORE_DATA WCHAR TraceStoreAllocationTimestampDeltaSuffix[];
 TRACE_STORE_DATA DWORD TraceStoreAllocationTimestampDeltaSuffixLength;
 
+TRACE_STORE_DATA WCHAR TraceStoreSynchronizationSuffix[];
+TRACE_STORE_DATA DWORD TraceStoreSynchronizationSuffixLength;
+
 TRACE_STORE_DATA WCHAR TraceStoreInfoSuffix[];
 TRACE_STORE_DATA DWORD TraceStoreInfoSuffixLength;
 
+TRACE_STORE_DATA PWCHAR TraceStoreMetadataSuffixes[];
+
 TRACE_STORE_DATA USHORT LongestTraceStoreSuffixLength;
 TRACE_STORE_DATA USHORT NumberOfTraceStores;
-TRACE_STORE_DATA USHORT ElementsPerTraceStore;
 TRACE_STORE_DATA USHORT NumberOfMetadataStores;
+TRACE_STORE_DATA USHORT ElementsPerTraceStore;
 
 TRACE_STORE_DATA TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes;
 
@@ -74,6 +79,7 @@ TRACE_STORE_DATA USHORT TraceStoreRelocationStructSize;
 TRACE_STORE_DATA USHORT TraceStoreAddressStructSize;
 TRACE_STORE_DATA USHORT TraceStoreAddressRangeStructSize;
 TRACE_STORE_DATA USHORT TraceStoreBitmapStructSize;
+TRACE_STORE_DATA USHORT TraceStoreSynchronizationStructSize;
 TRACE_STORE_DATA USHORT TraceStoreInfoStructSize;
 
 TRACE_STORE_DATA LARGE_INTEGER DefaultTraceStoreMappingSize;
@@ -97,6 +103,9 @@ TRACE_STORE_DATA LARGE_INTEGER DefaultAllocationTimestampTraceStoreMappingSize;
 TRACE_STORE_DATA LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreSize;
 TRACE_STORE_DATA LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreMappingSize;
 
+TRACE_STORE_DATA LARGE_INTEGER DefaultSynchronizationTraceStoreSize;
+TRACE_STORE_DATA LARGE_INTEGER DefaultSynchronizationTraceStoreMappingSize;
+
 TRACE_STORE_DATA LARGE_INTEGER DefaultMetadataInfoTraceStoreSize;
 TRACE_STORE_DATA LARGE_INTEGER DefaultMetadataInfoTraceStoreMappingSize;
 
@@ -109,6 +118,7 @@ TRACE_STORE_DATA TRACE_STORE_TRAITS AddressStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS AddressRangeStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS AllocationTimestampStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits;
+TRACE_STORE_DATA TRACE_STORE_TRAITS SynchronizationStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS InfoStoreTraits;
 TRACE_STORE_DATA TRACE_STORE_TRAITS MetadataInfoStoreTraits;
 

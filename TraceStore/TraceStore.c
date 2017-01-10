@@ -301,6 +301,7 @@ InitializeTraceStore(
     PTRACE_STORE AddressRangeStore,
     PTRACE_STORE AllocationTimestampStore,
     PTRACE_STORE AllocationTimestampDeltaStore,
+    PTRACE_STORE SynchronizationStore,
     PTRACE_STORE InfoStore,
     LARGE_INTEGER InitialSize,
     LARGE_INTEGER MappingSize,
@@ -350,6 +351,9 @@ Arguments:
     AllocationTimestampDeltaStore - Supplies a pointer to a TRACE_STORE struct
         that will be used to record the delta between two allocation timestamps.
 
+    SynchronizationStore - Supplies a pointer to a TRACE_STORE struct that will
+        be used as the synchronization metadata trace store.
+
     InfoStore - Supplies a pointer to a TRACE_STORE struct that will be
         used as the info metadata store for the given TraceStore being
         initialized.
@@ -387,6 +391,7 @@ Return Value:
     WCHAR AddressRangePath[_OUR_MAX_PATH];
     WCHAR AllocationTimestampPath[_OUR_MAX_PATH];
     WCHAR AllocationTimestampDeltaPath[_OUR_MAX_PATH];
+    WCHAR SynchronizationPath[_OUR_MAX_PATH];
     WCHAR InfoPath[_OUR_MAX_PATH];
     PCWSTR MetadataInfoSuffix = TraceStoreMetadataInfoSuffix;
     PCWSTR AllocationSuffix = TraceStoreAllocationSuffix;
@@ -397,6 +402,7 @@ Return Value:
     PCWSTR AllocationTimestampDeltaSuffix = (
         TraceStoreAllocationTimestampDeltaSuffix
     );
+    PCWSTR SynchronizationSuffix = TraceStoreSynchronizationSuffix;
     PCWSTR InfoSuffix = TraceStoreInfoSuffix;
 
     //
@@ -443,6 +449,10 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(SynchronizationStore)) {
+        return FALSE;
+    }
+
     if (!ARGUMENT_PRESENT(InfoStore)) {
         return FALSE;
     }
@@ -474,6 +484,7 @@ Return Value:
     INIT_METADATA_PATH(AddressRange);
     INIT_METADATA_PATH(AllocationTimestamp);
     INIT_METADATA_PATH(AllocationTimestampDelta);
+    INIT_METADATA_PATH(Synchronization);
     INIT_METADATA_PATH(Info);
 
     TraceStore->Rtl = Rtl;
@@ -541,6 +552,7 @@ Return Value:
     INIT_METADATA(AddressRange);
     INIT_METADATA(AllocationTimestamp);
     INIT_METADATA(AllocationTimestampDelta);
+    INIT_METADATA(Synchronization);
     INIT_METADATA(Info);
 
     TraceStore->IsMetadata = FALSE;

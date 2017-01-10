@@ -552,6 +552,7 @@ Return Value:
             AddressRangeStore,
             AllocationTimestampStore,
             AllocationTimestampDeltaStore,
+            SynchronizationStore,
             InfoStore,
             InitialSize,
             MappingSize,

@@ -103,6 +103,12 @@ DWORD TraceStoreAllocationTimestampDeltaSuffixLength = (
     sizeof(WCHAR)
 );
 
+WCHAR TraceStoreSynchronizationSuffix[] = L":Synchronization";
+DWORD TraceStoreSynchronizationSuffixLength = (
+    sizeof(TraceStoreSynchronizationSuffix) /
+    sizeof(WCHAR)
+);
+
 WCHAR TraceStoreInfoSuffix[] = L":Info";
 DWORD TraceStoreInfoSuffixLength = (
     sizeof(TraceStoreInfoSuffix) /
@@ -119,8 +125,25 @@ USHORT NumberOfTraceStores = (
     sizeof(LPCWSTR)
 );
 
-USHORT ElementsPerTraceStore = 9;
-USHORT NumberOfMetadataStores = 8;
+PWCHAR TraceStoreMetadataSuffixes[] = {
+    TraceStoreMetadataInfoSuffix,
+    TraceStoreAllocationSuffix,
+    TraceStoreRelocationSuffix,
+    TraceStoreAddressSuffix,
+    TraceStoreAddressRangeSuffix,
+    TraceStoreAllocationTimestampSuffix,
+    TraceStoreAllocationTimestampDeltaSuffix,
+    TraceStoreSynchronizationSuffix,
+    TraceStoreInfoSuffix,
+};
+
+#define NUMBER_OF_METADATA_STORES (       \
+    sizeof(TraceStoreMetadataSuffixes) /  \
+    sizeof(TraceStoreMetadataSuffixes[0]) \
+)
+
+USHORT NumberOfMetadataStores = NUMBER_OF_METADATA_STORES;
+USHORT ElementsPerTraceStore = NUMBER_OF_METADATA_STORES + 1;
 
 LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 30,   // Event
@@ -907,6 +930,15 @@ LARGE_INTEGER DefaultInfoTraceStoreMappingSize = {
     sizeof(TRACE_STORE_INFO)
 };
 
+LARGE_INTEGER DefaultSynchronizationTraceStoreSize = {
+    sizeof(TRACE_STORE_SYNC)
+};
+
+LARGE_INTEGER DefaultSynchronizationTraceStoreMappingSize = {
+    sizeof(TRACE_STORE_SYNC)
+};
+
+
 //
 // N.B. To add a new flag to each store in vim, mark the brace boundaries with
 //      ma and mb, and then run the command:
@@ -1020,6 +1052,22 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
+    0,  // LinkedStore
+    0,  // CoalescedAllocations
+    0,  // ConcurrentAllocations
+    0,  // AllowPageSpill
+    0,  // PageAligned
+    0   // Unused
+};
+
+TRACE_STORE_TRAITS SynchronizationStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    0,  // MultipleRecords
+    0,  // StreamingWrite
+    0,  // StreamingRead
+    0,  // FrequentAllocations
+    0,  // BlockingAllocations
     0,  // LinkedStore
     0,  // CoalescedAllocations
     0,  // ConcurrentAllocations

@@ -771,6 +771,77 @@ typedef struct _TRACE_STORE_METADATA_INFO {
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
 C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 2048);
 
+
+//
+// Flags for the synchronization structure.
+//
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_SYNC_FLAGS {
+
+    //
+    // When set, indicates the synchronization structure has been initialized.
+    //
+
+    ULONG Initialized:1;
+
+    //
+    // When set, indicates the primary synchronization mechanism is the
+    // critical section.  (Currently the only synchronization mechanism.)
+    //
+
+    ULONG CriticalSection:1;
+
+} TRACE_STORE_SYNC_FLAGS, *PTRACE_STORE_SYNC_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_SYNC_FLAGS) == sizeof(ULONG));
+
+//
+// This structure is used to capture synchronization structures for a trace
+// store.
+//
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
+
+    //
+    // Structure size, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_STORE_SYNC)) USHORT SizeOfStruct;
+
+    //
+    // Pad out to 4 bytes.
+    //
+
+    USHORT Padding1;
+
+    //
+    // Flags.
+    //
+
+    TRACE_STORE_SYNC_FLAGS Flags;
+
+    //
+    // Pad to 16 bytes.
+    //
+
+    ULONG Padding2[2];
+
+    //
+    // Critical section.
+    //
+
+    DECLSPEC_ALIGN(16) CRITICAL_SECTION CriticalSection;
+
+    //
+    // Pad out to 256 bytes.
+    //
+
+    DECLSPEC_ALIGN(64) BYTE Padding3[192];
+
+} TRACE_STORE_SYNC, *PTRACE_STORE_SYNC;
+C_ASSERT(sizeof(CRITICAL_SECTION) == 40);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CriticalSection) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 64);
+
 //
 // For trace stores that record instances of structures from a running program,
 // a relocation facility is provided to adjust embedded pointers when loading a
@@ -1869,6 +1940,7 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE AddressRangeStore;
     PTRACE_STORE AllocationTimestampStore;
     PTRACE_STORE AllocationTimestampDeltaStore;
+    PTRACE_STORE SynchronizationStore;
     PTRACE_STORE InfoStore;
 
     //
@@ -1922,13 +1994,6 @@ typedef struct _TRACE_STORE {
     VPALLOCATE_RECORDS_WITH_TIMESTAMP AllocateRecordsWithTimestampImpl2;
 
     //
-    // If concurrent allocations have been enabled, this critical section will
-    // be used to protect the allocator functions, as described above.
-    //
-
-    CRITICAL_SECTION CriticalSection;
-
-    //
     // Bind complete callback.  This is called as the final step by BindStore()
     // if the binding was successful.  It is an internal function and should
     // not be overridden.  The metadata stores use it to finalize their state
@@ -1978,6 +2043,14 @@ typedef struct _TRACE_STORE {
     PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA AllocationTimestampDelta;
     PTRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
+
+    //
+    // The synchronization store will contain the synchronization objects for
+    // the trace store (e.g. the critical section if concurrent allocations
+    // have been configured).
+    //
+
+    PTRACE_STORE_SYNC   Sync;
 
     //
     // The following values will be filled out for normal trace stores that
@@ -2048,6 +2121,7 @@ typedef struct _TRACE_STORE {
         TRACE_STORE_METADATA_DECL(AddressRange);                    \
         TRACE_STORE_METADATA_DECL(AllocationTimestamp);             \
         TRACE_STORE_METADATA_DECL(AllocationTimestampDelta);        \
+        TRACE_STORE_METADATA_DECL(Synchronization);                 \
         TRACE_STORE_METADATA_DECL(Info);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
@@ -2079,6 +2153,7 @@ typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE AddressRangeStore;
     PTRACE_STORE AllocationTimestampStore;
     PTRACE_STORE AllocationTimestampDeltaStore;
+    PTRACE_STORE SynchronizationStore;
     PTRACE_STORE InfoStore;
 } TRACE_STORE_METADATA_STORES, *PTRACE_STORE_METADATA_STORES;
 

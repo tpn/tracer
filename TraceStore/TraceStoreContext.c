@@ -101,7 +101,6 @@ Return Value:
     PTRACE_STORE_WORK Work;
     PTRACE_STORE TraceStore;
     PTRACER_RUNTIME_PARAMETERS RuntimeParameters;
-    PCRITICAL_SECTION CriticalSection;
     PALLOCATE_RECORDS_WITH_TIMESTAMP SuspendedAllocator;
 
     //
@@ -684,17 +683,11 @@ InitializeAllocators:
 
         //
         // If the trace store has the concurrent allocations trait set, we need
-        // to initialize the critical section and set the Try* version of the
-        // allocators.
+        // to set the Try* version of the allocators.
         //
 
         if (!HasConcurrentAllocations(Traits)) {
             continue;
-        }
-
-        CriticalSection = &TraceStore->CriticalSection;
-        if (!InitializeCriticalSectionAndSpinCount(CriticalSection, SpinCount)){
-            goto Error;
         }
 
         TraceStore->TryAllocateRecords = TraceStoreTryAllocateRecords;
