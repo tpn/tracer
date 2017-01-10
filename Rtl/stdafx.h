@@ -34,6 +34,7 @@ Abstract:
 #include "Rtl.h"
 
 #ifdef _RTL_INTERNAL_BUILD
+#include "sha1.h"
 #include "atexit.h"
 #include "AtExitEx.h"
 #include "RtlPrivate.h"

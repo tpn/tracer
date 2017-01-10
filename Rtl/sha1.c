@@ -6,10 +6,9 @@
  * none of the original Mozilla code remains.
  */
 
-/* this is only to get definitions for memcpy(), ntohl() and htonl() */
-#include "../git-compat-util.h"
+#include "stdafx.h"
 
-#include "sha1.h"
+typedef unsigned int uint32_t;
 
 #define SHA_ROT(X,l,r)	(((X) << (l)) | ((X) >> (r)))
 #define SHA_ROL(X,n)	SHA_ROT(X,n,32-(n))
@@ -37,16 +36,24 @@
  * the stack frame size simply explode and performance goes down the drain.
  */
 
-#if defined(__i386__) || defined(__x86_64__)
-  #define setW(x, val) (*(volatile unsigned int *)&W(x) = (val))
-#elif defined(__GNUC__) && defined(__arm__)
-  #define setW(x, val) do { W(x) = (val); __asm__("":::"memory"); } while (0)
-#else
-  #define setW(x, val) (W(x) = (val))
-#endif
+#define setW(x, val) (*(volatile unsigned int *)&W(x) = (val))
 
 /* This "rolls" over the 512-bit array */
 #define W(x) (array[(x)&15])
+
+#define get_be32(p)	( \
+	(*((unsigned char *)(p) + 0) << 24) | \
+	(*((unsigned char *)(p) + 1) << 16) | \
+	(*((unsigned char *)(p) + 2) <<  8) | \
+	(*((unsigned char *)(p) + 3) <<  0) )
+#define put_be32(p, v)	do { \
+	unsigned int __v = (v); \
+	*((unsigned char *)(p) + 0) = __v >> 24; \
+	*((unsigned char *)(p) + 1) = __v >> 16; \
+	*((unsigned char *)(p) + 2) = __v >>  8; \
+	*((unsigned char *)(p) + 3) = __v >>  0; } while (0)
+
+#define htonl(v) _byteswap_ulong(v);
 
 /*
  * Where do we get the source from? The first 16 iterations get it from
@@ -66,7 +73,8 @@
 #define T_40_59(t, A, B, C, D, E) SHA_ROUND(t, SHA_MIX, ((B&C)+(D&(B^C))) , 0x8f1bbcdc, A, B, C, D, E )
 #define T_60_79(t, A, B, C, D, E) SHA_ROUND(t, SHA_MIX, (B^C^D) ,  0xca62c1d6, A, B, C, D, E )
 
-static void blk_SHA1_Block(blk_SHA_CTX *ctx, const void *block)
+void
+blk_SHA1_Block(blk_SHA_CTX *ctx, const void *block)
 {
 	unsigned int A,B,C,D,E;
 	unsigned int array[16];
@@ -182,7 +190,7 @@ void blk_SHA1_Init(blk_SHA_CTX *ctx)
 	ctx->H[0] = 0x67452301;
 	ctx->H[1] = 0xefcdab89;
 	ctx->H[2] = 0x98badcfe;
-	ctx->H[3] = 0x10325476;
+	ctx->H[3] = 0x10325476; 
 	ctx->H[4] = 0xc3d2e1f0;
 }
 
@@ -197,7 +205,7 @@ void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *data, unsigned long len)
 		unsigned int left = 64 - lenW;
 		if (len < left)
 			left = len;
-		memcpy(lenW + (char *)ctx->W, data, left);
+		__movsb(lenW + (char *)ctx->W, data, left);
 		lenW = (lenW + left) & 63;
 		len -= left;
 		data = ((const char *)data + left);
@@ -210,8 +218,9 @@ void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *data, unsigned long len)
 		data = ((const char *)data + 64);
 		len -= 64;
 	}
-	if (len)
-		memcpy(ctx->W, data, len);
+        if (len) {
+                __movsb((PBYTE)ctx->W, data, len);
+        }
 }
 
 void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
@@ -221,8 +230,8 @@ void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
 	int i;
 
 	/* Pad with a binary 1 (ie 0x80), then zeroes, then length */
-	padlen[0] = htonl((uint32_t)(ctx->size >> 29));
-	padlen[1] = htonl((uint32_t)(ctx->size << 3));
+	padlen[0] = htonl((unsigned long)(ctx->size >> 29));
+	padlen[1] = htonl((unsigned long)(ctx->size << 3));
 
 	i = ctx->size & 63;
 	blk_SHA1_Update(ctx, pad, 1 + (63 & (55 - i)));
