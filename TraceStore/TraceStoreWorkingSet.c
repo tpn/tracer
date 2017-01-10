@@ -266,24 +266,41 @@ TryGetWsChangesEx:
     if (!Success) {
         LastError = GetLastError();
 
-        if (LastError == ERROR_NO_MORE_ITEMS) {
+        switch (LastError) {
+            case ERROR_NO_MORE_ITEMS:
 
-            //
-            // Nothing to do, return success.
-            //
+                //
+                // Nothing to do, return success.
+                //
 
-            return TRUE;
-        }
+                return TRUE;
 
-        if (LastError != ERROR_INSUFFICIENT_BUFFER) {
+            case ERROR_NOACCESS:
 
-            //
-            // Anything other than an insufficient buffer error is fatal.
-            //
+                //
+                // I've seen this happen in rare circumstances.  Assume it's
+                // only an intermittent thing, so return success.
+                //
 
-            __debugbreak();
-            TraceContext->LastError = LastError;
-            return FALSE;
+                return TRUE;
+
+            case ERROR_INSUFFICIENT_BUFFER:
+
+                //
+                // We need to resize our buffers.
+                //
+
+                break;
+
+            default:
+
+                //
+                // Anything else is fatal.
+                //
+
+                __debugbreak();
+                TraceContext->LastError = LastError;
+                return FALSE;
         }
 
         //
