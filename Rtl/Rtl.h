@@ -3895,7 +3895,7 @@ HashUnicodeStringToAtom(_In_ PUNICODE_STRING String)
     Hash = 0;
     Buffer = String->Buffer;
 
-    for (Index = 0; Index < String->Length; Index++) {
+    for (Index = 0; Index < String->Length >> 1; Index++) {
         Char = RtlUpcaseUnicodeChar(Buffer[Index]);
         Hash = Hash + (Char << 1) + (Char >> 1) + Char;
     }
