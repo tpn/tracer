@@ -765,11 +765,19 @@ typedef struct _TRACE_STORE_METADATA_INFO {
     TRACE_STORE_INFO AddressRange;
     TRACE_STORE_INFO AllocationTimestamp;
     TRACE_STORE_INFO AllocationTimestampDelta;
+    TRACE_STORE_INFO Synchronization;
     TRACE_STORE_INFO Info;
+
+    //
+    // Pad out to 4096 bytes.
+    //
+
+    TRACE_STORE_INFO Reserved[7];
+
 } TRACE_STORE_METADATA_INFO, *PTRACE_STORE_METADATA_INFO;
 
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_METADATA_INFO, Allocation) == 256);
-C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 2048);
+C_ASSERT(sizeof(TRACE_STORE_METADATA_INFO) == 4096);
 
 
 //
