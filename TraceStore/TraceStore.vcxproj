@@ -94,8 +94,6 @@
     <ClCompile Include="TraceStoreCallbacks.c" />
     <ClCompile Include="TraceStoreConstants.c" />
     <ClCompile Include="TraceStoreContext.c" />
-    <ClCompile Include="TraceStoreFile.c" />
-    <ClCompile Include="TraceStoreImageFile.c" />
     <ClCompile Include="TraceStoreMemoryMap.c" />
     <ClCompile Include="TraceStoreMetadata.c" />
     <ClCompile Include="TraceStorePath.c" />
@@ -104,7 +102,6 @@
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
     <ClCompile Include="TraceStoresGlobalRundown.c" />
-    <ClCompile Include="TraceStoreSourceCode.c" />
     <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
