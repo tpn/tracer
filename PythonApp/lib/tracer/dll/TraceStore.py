@@ -141,12 +141,17 @@ TraceStoreCallStackId                   =  24
 TraceStorePerformanceId                 =  25
 TraceStorePerformanceDeltaId            =  26
 TraceStoreSourceCodeId                  =  27
-TraceStoreInvalidId                     =  28
+TraceStoreBitmapId                      =  28
+TraceStoreImageFileId                   =  29
+TraceStoreUnicodeStringBufferId         =  30
+TraceStoreLineId                        =  31
+TraceStoreObjectId                      =  32
+TraceStoreInvalidId                     =  33
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
-ELEMENTS_PER_TRACE_STORE = 9
-NUMBER_OF_METADATA_STORES = 8
+NUMBER_OF_METADATA_STORES = 9
+ELEMENTS_PER_TRACE_STORE = NUMBER_OF_METADATA_STORES + 1
 MAX_TRACE_STORE_INDEX = MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
 
 TraceStoreIdToName = {
@@ -178,6 +183,11 @@ TraceStoreIdToName = {
     TraceStorePerformanceId: 'Performance',
     TraceStorePerformanceDeltaId: 'PerformanceDelta',
     TraceStoreSourceCodeId: 'SourceCode',
+    TraceStoreBitmapId: 'Bitmap',
+    TraceStoreImageFileId: 'ImageFile',
+    TraceStoreUnicodeStringBufferId: 'UnicodeStringBuffer',
+    TraceStoreLineId: 'Line',
+    TraceStoreObjectId: 'Object',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -189,8 +199,9 @@ TraceStoreMetadataAddressId                     = 4
 TraceStoreMetadataAddressRangeId                = 5
 TraceStoreMetadataAllocationTimestampId         = 6
 TraceStoreMetadataAllocationTimestampDeltaId    = 7
-TraceStoreMetadataInfoId                        = 8
-TraceStoreMetadataInvalidId                     = 9
+TraceStoreMetadataSynchronizationId             = 8
+TraceStoreMetadataInfoId                        = 9
+TraceStoreMetadataInvalidId                     = 10
 
 TraceStoreMetadataIdToName = {
     TraceStoreMetadataNullId: 'Null',
@@ -201,6 +212,7 @@ TraceStoreMetadataIdToName = {
     TraceStoreMetadataAddressRangeId: 'AddressRange',
     TraceStoreMetadataAllocationTimestampId: 'AllocationTimestamp',
     TraceStoreMetadataAllocationTimestampDeltaId: 'AllocationTimestampDelta',
+    TraceStoreMetadataSynchronizationId: 'Synchronization',
     TraceStoreMetadataInfoId: 'Info',
     TraceStoreMetadataInvalidId: 'Invalid',
 }
@@ -567,7 +579,9 @@ class TRACE_STORE_METADATA_INFO(Structure):
         ('AddressRange', TRACE_STORE_INFO),
         ('AllocationTimestamp', TRACE_STORE_INFO),
         ('AllocationTimestampDelta', TRACE_STORE_INFO),
+        ('Synchronization', TRACE_STORE_INFO),
         ('Info', TRACE_STORE_INFO),
+        ('Reserved', TRACE_STORE_INFO * 7),
     ]
 PTRACE_STORE_METADATA_INFO = POINTER(TRACE_STORE_METADATA_INFO)
 
@@ -1114,6 +1128,7 @@ TRACE_STORE._fields_ = [
     ('AddressRangeStore', PTRACE_STORE),
     ('AllocationTimestampStore', PTRACE_STORE),
     ('AllocationTimestampDeltaStore', PTRACE_STORE),
+    ('SynchronizationStore', PTRACE_STORE),
     ('InfoStore', PTRACE_STORE),
     ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
@@ -1132,13 +1147,13 @@ TRACE_STORE._fields_ = [
     ('Totals', PTRACE_STORE_TOTALS),
     ('Traits', PTRACE_STORE_TRAITS),
     ('Info', PTRACE_STORE_INFO),
-    ('Sync', PVOID),
     ('Reloc', PTRACE_STORE_RELOC),
     ('Allocation', PTRACE_STORE_ALLOCATION),
     ('AllocationTimestamp', PTRACE_STORE_ALLOCATION_TIMESTAMP),
     ('AllocationTimestampDelta', PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA),
     ('Address', PTRACE_STORE_ADDRESS),
     ('AddressRange', PTRACE_STORE_ADDRESS_RANGE),
+    ('Sync', PVOID),
     ('NumberOfAllocations', ULARGE_INTEGER),
     ('NumberOfAddresses', ULARGE_INTEGER),
     ('NumberOfAddressRanges', ULARGE_INTEGER),
@@ -1148,6 +1163,7 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
+    ('Padding2', ULONGLONG),
 ]
 
 class METADATA_STORE(TRACE_STORE):
@@ -1748,6 +1764,8 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_DELTA_STORE),
     ('ObjectSynchronizationStore', TRACE_STORE),
     ('ObjectInfoStore', INFO_STORE),
+
+    ('Padding3', ULONGLONG * 2),
 ]
 
 class TRACE_STORE_ARRAY(Structure):
@@ -1795,6 +1813,11 @@ class TRACE_STORE_ARRAY(Structure):
         ('PerformanceRelocationCompleteEvent', HANDLE),
         ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
         ('SourceCodeRelocationCompleteEvent', HANDLE),
+        ('BitmapRelocationCompleteEvent', HANDLE),
+        ('ImageFileRelocationCompleteEvent', HANDLE),
+        ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
+        ('LineRelocationCompleteEvent', HANDLE),
+        ('ObjectRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1823,9 +1846,16 @@ class TRACE_STORE_ARRAY(Structure):
         ('PerformanceReloc', TRACE_STORE_RELOC),
         ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
         ('SourceCodeReloc', TRACE_STORE_RELOC),
+        ('BitmapReloc', TRACE_STORE_RELOC),
+        ('ImageFileReloc', TRACE_STORE_RELOC),
+        ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
+        ('LineReloc', TRACE_STORE_RELOC),
+        ('ObjectReloc', TRACE_STORE_RELOC),
+        ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
         )),
+        ('Padding3', ULONGLONG),
     ]
 
     def _indexes(self):
