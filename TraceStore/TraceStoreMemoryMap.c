@@ -272,6 +272,12 @@ Return Value:
     }
 
     //
+    // Save the base memory map address to the trace store.
+    //
+
+    TraceStore->MemoryMaps = MemoryMaps;
+
+    //
     // Reserve the first memory map in the array to return to the caller.
     //
 
@@ -1194,6 +1200,8 @@ Return Value:
         return;
     }
 
+    TraceStore->BeginningRundown = TRUE;
+
     FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress);
 
     if (MemoryMap->BaseAddress) {
@@ -1216,6 +1224,8 @@ Return Value:
         CloseHandle(MemoryMap->MappingHandle);
         MemoryMap->MappingHandle = NULL;
     }
+
+    TraceStore->RundownComplete = TRUE;
 }
 
 _Use_decl_annotations_

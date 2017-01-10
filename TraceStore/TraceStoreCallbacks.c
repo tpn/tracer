@@ -775,7 +775,7 @@ Return Value:
             TraceStorePerformanceId
         );
 
-        RundownTraceStore(TraceStore);
+        //RundownTraceStore(TraceStore);
     }
 
     //

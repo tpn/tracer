@@ -683,8 +683,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // VaryingRecordSize
         1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
-        1,  // StreamingWrite
-        1,  // StreamingRead
+        0,  // StreamingWrite
+        0,  // StreamingRead
         0,  // FrequentAllocations
         1,  // BlockingAllocations
         0,  // LinkedStore
@@ -703,8 +703,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // VaryingRecordSize
         1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
-        1,  // StreamingWrite
-        1,  // StreamingRead
+        0,  // StreamingWrite
+        0,  // StreamingRead
         0,  // FrequentAllocations
         1,  // BlockingAllocations
         1,  // LinkedStore
@@ -1000,7 +1000,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    1,  // StreamingWrite
+    0,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
@@ -1016,7 +1016,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    1,  // StreamingWrite
+    0,  // StreamingWrite
     0,  // StreamingRead
     0,  // FrequentAllocations
     0,  // BlockingAllocations
@@ -1032,7 +1032,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    1,  // StreamingWrite
+    0,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
@@ -1048,7 +1048,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    1,  // StreamingWrite
+    0,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
