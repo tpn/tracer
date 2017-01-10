@@ -51,6 +51,7 @@ Return Value:
     PRTL Rtl;
     BOOL Success;
     BOOL IsSourceCode;
+    BYTE Inner;
     ULONG Index;
     PCHAR SourceContent;
     PCHAR DestContent;
@@ -94,15 +95,8 @@ Return Value:
     YMMWORD Ymm7;
     YMMWORD Ymm8;
 
-    YMMWORD Ymm9;
-    YMMWORD Ymm10;
-    YMMWORD Ymm11;
-    YMMWORD Ymm12;
-
-    YMMWORD Ymm13;
-    YMMWORD Ymm14;
-    YMMWORD Ymm15;
-    YMMWORD Ymm16;
+    PYMMWORD DestYmm;
+    PYMMWORD SourceYmm;
 
     //
     // Initialize aliases.
@@ -365,84 +359,58 @@ Return Value:
     Source = SourceContent;
     QueryPerformanceCounter(&StartCopy);
 
+    goto AvxCopy;
+
     __movsq((PDWORD64)DestContent,
             (PDWORD64)SourceContent,
             File->AllocationSize.QuadPart >> 3);
 
     goto CopyComplete;
 
-    for (Index = 0; Index < NumberOfPages-1; Index++) {
-        USHORT Inner;
+AvxCopy:
+
+    DestYmm = (PYMMWORD)Dest;
+    SourceYmm = (PYMMWORD)Source;
+
+    for (Index = 0; Index < NumberOfPages; Index++) {
 
         //
-        // Each loop iteration copies 512 bytes.  We repeat it 8 times to copy
+        // Each loop iteration copies 256 bytes.  We repeat it 16 times to copy
         // the entire 4096 byte page.
         //
 
-        for (Inner = 0; Inner < 8; Inner++) {
+        for (Inner = 0; Inner < 16; Inner++) {
 
-            Ymm1 = _mm256_stream_load_si256((PYMMWORD)Source);
-            Ymm2 = _mm256_stream_load_si256((PYMMWORD)Source+32);
-            Ymm3 = _mm256_stream_load_si256((PYMMWORD)Source+64);
-            Ymm4 = _mm256_stream_load_si256((PYMMWORD)Source+96);
-            Source += 128;
+            Ymm1 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+            Ymm2 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
 
-            _mm256_store_si256((PYMMWORD)Dest,    Ymm1);
-            _mm256_store_si256((PYMMWORD)Dest+32, Ymm2);
-            _mm256_store_si256((PYMMWORD)Dest+64, Ymm3);
-            _mm256_store_si256((PYMMWORD)Dest+96, Ymm4);
-            Dest += 128;
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm1);
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm2);
+
+            Ymm3 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+            Ymm4 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm3);
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm4);
 
             //
             // (128 bytes copied.)
             //
 
-            Ymm5 = _mm256_stream_load_si256((PYMMWORD)Source);
-            Ymm6 = _mm256_stream_load_si256((PYMMWORD)Source+32);
-            Ymm7 = _mm256_stream_load_si256((PYMMWORD)Source+64);
-            Ymm8 = _mm256_stream_load_si256((PYMMWORD)Source+96);
-            Source += 128;
+            Ymm5 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+            Ymm6 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
 
-            _mm256_store_si256((PYMMWORD)Dest,    Ymm5);
-            _mm256_store_si256((PYMMWORD)Dest+32, Ymm6);
-            _mm256_store_si256((PYMMWORD)Dest+64, Ymm7);
-            _mm256_store_si256((PYMMWORD)Dest+96, Ymm8);
-            Dest += 128;
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm5);
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm6);
+
+            Ymm7 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+            Ymm8 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
+
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm7);
+            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm8);
 
             //
             // (256 bytes copied.)
-            //
-
-            Ymm9  = _mm256_stream_load_si256((PYMMWORD)Source);
-            Ymm10 = _mm256_stream_load_si256((PYMMWORD)Source+32);
-            Ymm11 = _mm256_stream_load_si256((PYMMWORD)Source+64);
-            Ymm12 = _mm256_stream_load_si256((PYMMWORD)Source+96);
-            Source += 128;
-
-            _mm256_store_si256((PYMMWORD)Dest,    Ymm9);
-            _mm256_store_si256((PYMMWORD)Dest+32, Ymm10);
-            _mm256_store_si256((PYMMWORD)Dest+64, Ymm11);
-            _mm256_store_si256((PYMMWORD)Dest+96, Ymm12);
-            Dest += 128;
-
-            //
-            // (384 bytes copied.)
-            //
-
-            Ymm13 = _mm256_stream_load_si256((PYMMWORD)Source);
-            Ymm14 = _mm256_stream_load_si256((PYMMWORD)Source+32);
-            Ymm15 = _mm256_stream_load_si256((PYMMWORD)Source+64);
-            Ymm16 = _mm256_stream_load_si256((PYMMWORD)Source+96);
-            Source += 128;
-
-            _mm256_store_si256((PYMMWORD)Dest,    Ymm13);
-            _mm256_store_si256((PYMMWORD)Dest+32, Ymm14);
-            _mm256_store_si256((PYMMWORD)Dest+64, Ymm15);
-            _mm256_store_si256((PYMMWORD)Dest+96, Ymm16);
-            Dest += 128;
-
-            //
-            // (512 bytes copied.)
             //
         }
     }
