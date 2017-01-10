@@ -445,7 +445,7 @@ Return Value:
     // Add the remaining lengths in (including the directory length).
     //
 
-    for (Index = 0; Index < NumberOfPathEntries-1; Index++) {
+    for (Index = 0; Index < NumberOfPathSuffixes; Index++) {
 
         //
         // Load the suffix.
