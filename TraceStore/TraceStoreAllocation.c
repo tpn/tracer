@@ -1039,13 +1039,13 @@ Return Value:
     PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
 
     AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestampImpl2;
-    EnterCriticalSection(&TraceStore->CriticalSection);
+    EnterCriticalSection(&TraceStore->Sync->CriticalSection);
     Address = AllocateWithTimestamp(TraceContext,
                                     TraceStore,
                                     NumberOfRecords,
                                     RecordSize,
                                     TimestampPointer);
-    LeaveCriticalSection(&TraceStore->CriticalSection);
+    LeaveCriticalSection(&TraceStore->Sync->CriticalSection);
     return Address;
 }
 
@@ -1108,7 +1108,7 @@ Return Value:
 
     //
     // Immediately increment the active allocator count before we see if the
-    // resume allocations event is signalled.
+    // resume allocations event is signaled.
     //
 
     InterlockedIncrement(&TraceStore->ActiveAllocators);
@@ -1133,7 +1133,7 @@ Return Value:
     // Allocations aren't suspended.  Attempt to acquire the critical section.
     //
 
-    if (!TryEnterCriticalSection(&TraceStore->CriticalSection)) {
+    if (!TryEnterCriticalSection(&TraceStore->Sync->CriticalSection)) {
         goto End;
     }
 
@@ -1153,7 +1153,7 @@ Return Value:
     // return the address to the caller.
     //
 
-    LeaveCriticalSection(&TraceStore->CriticalSection);
+    LeaveCriticalSection(&TraceStore->Sync->CriticalSection);
 
 End:
     InterlockedDecrement(&TraceStore->ActiveAllocators);

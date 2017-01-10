@@ -93,6 +93,7 @@ Return Value:
     BOOL Success;
     PTRACE_STORE TraceStore;
     PTRACE_STORE MetadataInfoStore;
+    ULONG MetadataBindsSubmitted;
 
     //
     // Validate arguments.
@@ -126,13 +127,26 @@ Return Value:
     InterlockedExchange(&TraceStore->MetadataBindsInProgress,
                         NumberOfMetadataStores - 1);
 
+    MetadataBindsSubmitted = 0;
+
     SUBMIT_METADATA_BIND(Allocation);
     SUBMIT_METADATA_BIND(Relocation);
     SUBMIT_METADATA_BIND(Address);
     SUBMIT_METADATA_BIND(AddressRange);
     SUBMIT_METADATA_BIND(AllocationTimestamp);
     SUBMIT_METADATA_BIND(AllocationTimestampDelta);
+    SUBMIT_METADATA_BIND(Synchronization);
     SUBMIT_METADATA_BIND(Info);
+
+    //
+    // Invariant check that we've submitted the expected number of metadata
+    // trace store binds.  We subtract 1 to account for the fact that we've
+    // just bound the :MetadataInfo store.
+    //
+
+    if (MetadataBindsSubmitted != NumberOfMetadataStores-1) {
+        __debugbreak();
+    }
 
     return;
 
@@ -634,6 +648,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    PTRACE_STORE TraceStore;
 
     //
     // Validate arguments.
@@ -659,22 +674,33 @@ Return Value:
         Success = FALSE;
     }
 
+    if (!Success) {
+
+        //
+        // If we get here, a hard page fault was encountered or the process is
+        // potentially shutting down.  Rundown the stores now.
+        //
+
+        TraceStore = TraceStoreIdToTraceStore(
+            TraceContext->TraceStores,
+            TraceStoreWsWatchInfoExId
+        );
+
+        RundownTraceStore(TraceStore);
+
+        TraceStore = TraceStoreIdToTraceStore(
+            TraceContext->TraceStores,
+            TraceStoreWsWorkingSetExInfoId
+        );
+
+        RundownTraceStore(TraceStore);
+    }
+
     //
     // Release the lock.
     //
 
     ReleaseWorkingSetChangesLock(TraceContext);
-
-    if (!Success) {
-
-        //
-        // If we get here, a hard page fault was encountered or the process is
-        // potentially shutting down, either way, as we're a threadpool callback
-        // there isn't much we can do.
-        //
-
-        NOTHING;
-    }
 
     return;
 }
@@ -709,6 +735,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    PTRACE_STORE TraceStore;
 
     //
     // Validate arguments.
@@ -736,22 +763,26 @@ Return Value:
         Success = FALSE;
     }
 
+    if (!Success) {
+
+        //
+        // If we get here, a hard page fault was encountered or the process is
+        // potentially shutting down.  Rundown the store now.
+        //
+
+        TraceStore = TraceStoreIdToTraceStore(
+            TraceContext->TraceStores,
+            TraceStorePerformanceId
+        );
+
+        RundownTraceStore(TraceStore);
+    }
+
     //
     // Release the lock.
     //
 
     ReleaseCapturePerformanceMetricsLock(TraceContext);
-
-    if (!Success) {
-
-        //
-        // If we get here, a hard page fault was encountered or the process is
-        // potentially shutting down, either way, as we're a threadpool callback
-        // there isn't much we can do.
-        //
-
-        NOTHING;
-    }
 
     return;
 }

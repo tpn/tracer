@@ -23,6 +23,7 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
     sizeof(TRACE_STORE_ADDRESS_RANGE),
     sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP),
     sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA),
+    sizeof(TRACE_STORE_SYNC),
     sizeof(TRACE_STORE_INFO)
 };
 
@@ -34,18 +35,20 @@ CONST PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &AddressRangeStoreTraits,
     &AllocationTimestampStoreTraits,
     &AllocationTimestampDeltaStoreTraits,
+    &SynchronizationStoreTraits,
     &InfoStoreTraits
 };
 
 CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
-    MetadataInfoMetadataBindComplete,       // MetadataInfo
-    AllocationMetadataBindComplete,         // Allocation
-    RelocationMetadataBindComplete,         // Relocation
-    AddressMetadataBindComplete,            // Address
-    AddressRangeMetadataBindComplete,       // AddressRange
-    AllocationTimestampBindComplete,        // AllocationTimestamp
-    AllocationTimestampDeltaBindComplete,   // AllocationTimestampDelta
-    InfoMetadataBindComplete                // Info
+    MetadataInfoMetadataBindComplete,
+    AllocationMetadataBindComplete,
+    RelocationMetadataBindComplete,
+    AddressMetadataBindComplete,
+    AddressRangeMetadataBindComplete,
+    AllocationTimestampMetadataBindComplete,
+    AllocationTimestampDeltaMetadataBindComplete,
+    SynchronizationMetadataBindComplete,
+    InfoMetadataBindComplete
 };
 
 _Use_decl_annotations_
@@ -355,7 +358,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-AllocationTimestampBindComplete(
+AllocationTimestampMetadataBindComplete(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE AllocationTimestampStore,
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap
@@ -404,7 +407,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-AllocationTimestampDeltaBindComplete(
+AllocationTimestampDeltaMetadataBindComplete(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE AllocationTimestampDeltaStore,
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap
@@ -522,6 +525,98 @@ Return Value:
     );
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+SynchronizationMetadataBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE SynchronizationStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This is the bind complete callback routine for :Synchronization metadata.
+    In normal tracing mode, this routine has no effect.  In readonly mode, it is
+    responsible for wiring up the TraceStore->Sync pointer to the base memory
+    map address of the :Synchronization metadata store.  It then initializes the
+    critical section associated with the TRACE_STORE_SYNC structure.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    SynchronizationStore - Supplies a pointer to the synchronization trace
+        store.
+
+    FirstMemoryMap - Supplies a pointer to a TRACE_STORE_MEMORY_MAP structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    DWORD SpinCount;
+    TRACE_STORE_TRAITS Traits;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE_SYNC Sync;
+    PTRACER_CONFIG TracerConfig;
+    PTRACER_RUNTIME_PARAMETERS RuntimeParameters;
+
+    //
+    // Initialize trace store alias.
+    //
+
+    TraceStore = SynchronizationStore->TraceStore;
+
+    //
+    // Wire up the TraceStore->Sync pointer to the base address of the trace
+    // store.
+    //
+
+    Sync = TraceStore->Sync = (PTRACE_STORE_SYNC)(
+        TraceStore->SynchronizationStore->MemoryMap->BaseAddress
+    );
+
+    //
+    // If we're readonly, or the trace store doesn't have the concurrent
+    // allocations trait set, or we've already been initialized, we're done.
+    //
+
+    Traits = *TraceStore->pTraits;
+
+    if (TraceStore->IsReadonly ||
+        !HasConcurrentAllocations(Traits) ||
+        Sync->Flags.Initialized) {
+
+        return TRUE;
+    }
+
+    //
+    // Initialize the critical section.
+    //
+
+    TracerConfig = TraceContext->TracerConfig;
+    RuntimeParameters = &TracerConfig->RuntimeParameters;
+    SpinCount = (
+        RuntimeParameters->ConcurrentAllocationsCriticalSectionSpinCount
+    );
+
+    Success = InitializeCriticalSectionAndSpinCount(
+        &Sync->CriticalSection,
+        SpinCount
+    );
+
+    if (Success) {
+        Sync->Flags.Initialized = TRUE;
+        Sync->Flags.CriticalSection = TRUE;
+    }
+
+    return Success;
 }
 
 _Use_decl_annotations_

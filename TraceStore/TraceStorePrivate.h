@@ -271,8 +271,9 @@ BIND_COMPLETE AllocationMetadataBindComplete;
 BIND_COMPLETE RelocationMetadataBindComplete;
 BIND_COMPLETE AddressMetadataBindComplete;
 BIND_COMPLETE AddressRangeMetadataBindComplete;
-BIND_COMPLETE AllocationTimestampBindComplete;
-BIND_COMPLETE AllocationTimestampDeltaBindComplete;
+BIND_COMPLETE AllocationTimestampMetadataBindComplete;
+BIND_COMPLETE AllocationTimestampDeltaMetadataBindComplete;
+BIND_COMPLETE SynchronizationMetadataBindComplete;
 BIND_COMPLETE InfoMetadataBindComplete;
 
 typedef
@@ -1288,6 +1289,12 @@ Return Value:
 
 MALLOC TraceStoreAllocatorMalloc;
 CALLOC TraceStoreAllocatorCalloc;
+TRY_MALLOC TraceStoreAllocatorTryMalloc;
+TRY_CALLOC TraceStoreAllocatorTryCalloc;
+MALLOC_WITH_TIMESTAMP TraceStoreAllocatorMallocWithTimestamp;
+CALLOC_WITH_TIMESTAMP TraceStoreAllocatorCallocWithTimestamp;
+TRY_MALLOC_WITH_TIMESTAMP TraceStoreAllocatorTryMallocWithTimestamp;
+TRY_CALLOC_WITH_TIMESTAMP TraceStoreAllocatorTryCallocWithTimestamp;
 REALLOC TraceStoreAllocatorRealloc;
 FREE TraceStoreAllocatorFree;
 FREE_POINTER TraceStoreAllocatorFreePointer;
@@ -1385,38 +1392,6 @@ INITIALIZE_TRACE_STORE_TRAITS InitializeTraceStoreTraits;
 INITIALIZE_TRACE_SESSION InitializeTraceSession;
 
 //
-// TraceStoreFile-related functions.
-//
-
-//
-// TraceStoreSourceCode-related functions.
-//
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(REGISTER_SOURCE_CODE)(
-    _In_ struct _TRACE_CONTEXT *TraceContext,
-    _In_ PTRACE_FILE SourceCode
-    );
-typedef REGISTER_SOURCE_CODE *PREGISTER_SOURCE_CODE;
-
-//
-// TraceStoreImageFile-related functions.
-//
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(REGISTER_IMAGE_FILE)(
-    _In_ struct _TRACE_CONTEXT *TraceContext,
-    _In_ PTRACE_FILE ImageFile
-    );
-typedef REGISTER_IMAGE_FILE *PREGISTER_IMAGE_FILE;
-
-//
 // TraceStore-related functions.
 //
 
@@ -1450,6 +1425,7 @@ BOOL
     _In_ PTRACE_STORE AddressRangeStore,
     _In_ PTRACE_STORE AllocationTimestampStore,
     _In_ PTRACE_STORE AllocationTimestampDeltaStore,
+    _In_ PTRACE_STORE SynchronizationStore,
     _In_ PTRACE_STORE InfoStore,
     _In_ LARGE_INTEGER InitialSize,
     _In_ LARGE_INTEGER MappingSize,
@@ -1583,6 +1559,7 @@ RundownTraceStoresInline(
     CLOSE_METADATA_STORE(AddressRange);             \
     CLOSE_METADATA_STORE(AllocationTimestamp);      \
     CLOSE_METADATA_STORE(AllocationTimestampDelta); \
+    CLOSE_METADATA_STORE(Synchronization);          \
     CLOSE_METADATA_STORE(Info);                     \
     CLOSE_METADATA_STORE(MetadataInfo);
 
@@ -1599,6 +1576,7 @@ RundownTraceStoresInline(
     RUNDOWN_METADATA_STORE(AddressRange);             \
     RUNDOWN_METADATA_STORE(AllocationTimestamp);      \
     RUNDOWN_METADATA_STORE(AllocationTimestampDelta); \
+    RUNDOWN_METADATA_STORE(Synchronization);          \
     RUNDOWN_METADATA_STORE(Info);                     \
     RUNDOWN_METADATA_STORE(MetadataInfo);
 
@@ -1669,7 +1647,6 @@ Return Value:
 --*/
 {
     __debugbreak();
-
     PushTraceStore(&TraceContext->FailedListHead, TraceStore);
 
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
@@ -1709,7 +1686,6 @@ Return Value:
 --*/
 {
     __debugbreak();
-
     if (InterlockedIncrement(&TraceContext->FailedCount) == 1) {
 
         //
@@ -1768,6 +1744,7 @@ Return Value:
     )
 
 #define SUBMIT_METADATA_BIND(Name)   \
+    MetadataBindsSubmitted++;        \
     SubmitBindRemainingMetadataWork( \
         TraceContext,                \
         TraceStore->##Name##Store    \
@@ -1780,6 +1757,7 @@ Return Value:
     SUBMIT_METADATA_BIND(AddressRange);                                      \
     SUBMIT_METADATA_BIND(AllocationTimestamp);                               \
     SUBMIT_METADATA_BIND(AllocationTimestampDelta);                          \
+    SUBMIT_METADATA_BIND(Synchronization);                                   \
     SUBMIT_METADATA_BIND(Info);
 
 //

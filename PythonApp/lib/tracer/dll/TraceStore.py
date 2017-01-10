@@ -1123,7 +1123,6 @@ TRACE_STORE._fields_ = [
     ('SuspendedAllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
     ('AllocateRecordsWithTimestampImpl1', PALLOCATE_RECORDS_WITH_TIMESTAMP),
     ('AllocateRecordsWithTimestampImpl2', PALLOCATE_RECORDS_WITH_TIMESTAMP),
-    ('CriticalSection', CRITICAL_SECTION),
     ('BindComplete', PBIND_COMPLETE),
     ('pReloc', PTRACE_STORE_RELOC),
     ('pTraits', PTRACE_STORE_TRAITS),
@@ -1133,6 +1132,7 @@ TRACE_STORE._fields_ = [
     ('Totals', PTRACE_STORE_TOTALS),
     ('Traits', PTRACE_STORE_TRAITS),
     ('Info', PTRACE_STORE_INFO),
+    ('Sync', PVOID),
     ('Reloc', PTRACE_STORE_RELOC),
     ('Allocation', PTRACE_STORE_ALLOCATION),
     ('AllocationTimestamp', PTRACE_STORE_ALLOCATION_TIMESTAMP),
@@ -1269,9 +1269,9 @@ PTRACE_STORES_RUNDOWN = POINTER(TRACE_STORES_RUNDOWN)
 #
 # To add new metadata stores:
 #
-# :'a,'b s/('\(.\+\)InfoStore', TRACE_STORE),/('\1AllocationTimestampDeltaStore', TRACE_STORE),\r    ('\1InfoStore', TRACE_STORE),/g
+# :'a,'b s/('\(.\+\)InfoStore', INFO_STORE),/('\1SynchronizationStore', TRACE_STORE),\r    ('\1InfoStore', INFO_STORE),/g
 #
-# ^ Adds AllocationTimestampDeltaStore before InfoStore.
+# ^ Adds SynchronizationStore before InfoStore.
 #
 
 TRACE_STORES._fields_ = [
@@ -1319,6 +1319,11 @@ TRACE_STORES._fields_ = [
     ('PerformanceRelocationCompleteEvent', HANDLE),
     ('PerformanceDeltaRelocationCompleteEvent', HANDLE),
     ('SourceCodeRelocationCompleteEvent', HANDLE),
+    ('BitmapRelocationCompleteEvent', HANDLE),
+    ('ImageFileRelocationCompleteEvent', HANDLE),
+    ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
+    ('LineRelocationCompleteEvent', HANDLE),
+    ('ObjectRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1348,6 +1353,11 @@ TRACE_STORES._fields_ = [
     ('PerformanceReloc', TRACE_STORE_RELOC),
     ('PerformanceDeltaReloc', TRACE_STORE_RELOC),
     ('SourceCodeReloc', TRACE_STORE_RELOC),
+    ('BitmapReloc', TRACE_STORE_RELOC),
+    ('ImageFileReloc', TRACE_STORE_RELOC),
+    ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
+    ('LineReloc', TRACE_STORE_RELOC),
+    ('ObjectReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1360,6 +1370,7 @@ TRACE_STORES._fields_ = [
     ('EventAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('EventAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('EventSynchronizationStore', TRACE_STORE),
     ('EventInfoStore', INFO_STORE),
 
     ('StringBufferStore', TRACE_STORE),
@@ -1371,6 +1382,7 @@ TRACE_STORES._fields_ = [
     ('StringBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('StringBufferAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringBufferSynchronizationStore', TRACE_STORE),
     ('StringBufferInfoStore', INFO_STORE),
 
     ('FunctionTableStore', TRACE_STORE),
@@ -1382,6 +1394,7 @@ TRACE_STORES._fields_ = [
     ('FunctionTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('FunctionTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('FunctionTableSynchronizationStore', TRACE_STORE),
     ('FunctionTableInfoStore', INFO_STORE),
 
     ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
@@ -1393,6 +1406,7 @@ TRACE_STORES._fields_ = [
     ('FunctionTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('FunctionTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('FunctionTableEntrySynchronizationStore', TRACE_STORE),
     ('FunctionTableEntryInfoStore', INFO_STORE),
 
     ('PathTableStore', TRACE_STORE),
@@ -1404,6 +1418,7 @@ TRACE_STORES._fields_ = [
     ('PathTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('PathTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PathTableSynchronizationStore', TRACE_STORE),
     ('PathTableInfoStore', INFO_STORE),
 
     ('PathTableEntryStore', PYTHON_PATH_TABLE_ENTRY_STORE),
@@ -1415,6 +1430,7 @@ TRACE_STORES._fields_ = [
     ('PathTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('PathTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PathTableEntrySynchronizationStore', TRACE_STORE),
     ('PathTableEntryInfoStore', INFO_STORE),
 
     ('SessionStore', TRACE_STORE),
@@ -1426,6 +1442,7 @@ TRACE_STORES._fields_ = [
     ('SessionAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('SessionAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SessionSynchronizationStore', TRACE_STORE),
     ('SessionInfoStore', INFO_STORE),
 
     ('StringArrayStore', TRACE_STORE),
@@ -1437,6 +1454,7 @@ TRACE_STORES._fields_ = [
     ('StringArrayAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('StringArrayAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringArraySynchronizationStore', TRACE_STORE),
     ('StringArrayInfoStore', INFO_STORE),
 
     ('StringTableStore', TRACE_STORE),
@@ -1448,6 +1466,7 @@ TRACE_STORES._fields_ = [
     ('StringTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('StringTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StringTableSynchronizationStore', TRACE_STORE),
     ('StringTableInfoStore', INFO_STORE),
 
     ('EventTraitsExStore', PYTHON_EVENT_TRAITS_EX_STORE),
@@ -1459,6 +1478,7 @@ TRACE_STORES._fields_ = [
     ('EventTraitsExAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('EventTraitsExAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('EventTraitsExSynchronizationStore', TRACE_STORE),
     ('EventTraitsExInfoStore', INFO_STORE),
 
     ('WsWatchInfoExStore', WS_WATCH_INFO_EX_STORE),
@@ -1470,6 +1490,7 @@ TRACE_STORES._fields_ = [
     ('WsWatchInfoExAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('WsWatchInfoExAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('WsWatchInfoExSynchronizationStore', TRACE_STORE),
     ('WsWatchInfoExInfoStore', INFO_STORE),
 
     ('WsWorkingSetExInfoStore', WS_WORKING_SET_EX_INFO_STORE),
@@ -1481,6 +1502,7 @@ TRACE_STORES._fields_ = [
     ('WsWorkingSetExInfoAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('WsWorkingSetExInfoAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('WsWorkingSetExInfoSynchronizationStore', TRACE_STORE),
     ('WsWorkingSetExInfoInfoStore', INFO_STORE),
 
     ('CCallStackTableStore', TRACE_STORE),
@@ -1492,6 +1514,7 @@ TRACE_STORES._fields_ = [
     ('CCallStackTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('CCallStackTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CCallStackTableSynchronizationStore', TRACE_STORE),
     ('CCallStackTableInfoStore', INFO_STORE),
 
     ('CCallStackTableEntryStore', TRACE_STORE),
@@ -1504,6 +1527,7 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_STORE),
     ('CCallStackTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CCallStackTableEntrySynchronizationStore', TRACE_STORE),
     ('CCallStackTableEntryInfoStore', INFO_STORE),
 
     ('CModuleTableStore', TRACE_STORE),
@@ -1515,6 +1539,7 @@ TRACE_STORES._fields_ = [
     ('CModuleTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('CModuleTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CModuleTableSynchronizationStore', TRACE_STORE),
     ('CModuleTableInfoStore', INFO_STORE),
 
     ('CModuleTableEntryStore', TRACE_STORE),
@@ -1526,6 +1551,7 @@ TRACE_STORES._fields_ = [
     ('CModuleTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('CModuleTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CModuleTableEntrySynchronizationStore', TRACE_STORE),
     ('CModuleTableEntryInfoStore', INFO_STORE),
 
     ('PythonCallStackTableStore', TRACE_STORE),
@@ -1538,6 +1564,7 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_STORE),
     ('PythonCallStackTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonCallStackTableSynchronizationStore', TRACE_STORE),
     ('PythonCallStackTableInfoStore', INFO_STORE),
 
     ('PythonCallStackTableEntryStore', TRACE_STORE),
@@ -1550,6 +1577,7 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_STORE),
     ('PythonCallStackTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonCallStackTableEntrySynchronizationStore', TRACE_STORE),
     ('PythonCallStackTableEntryInfoStore', INFO_STORE),
 
     ('PythonModuleTableStore', TRACE_STORE),
@@ -1561,6 +1589,7 @@ TRACE_STORES._fields_ = [
     ('PythonModuleTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('PythonModuleTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonModuleTableSynchronizationStore', TRACE_STORE),
     ('PythonModuleTableInfoStore', INFO_STORE),
 
     ('PythonModuleTableEntryStore', TRACE_STORE),
@@ -1573,6 +1602,7 @@ TRACE_STORES._fields_ = [
      ALLOCATION_TIMESTAMP_STORE),
     ('PythonModuleTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PythonModuleTableEntrySynchronizationStore', TRACE_STORE),
     ('PythonModuleTableEntryInfoStore', INFO_STORE),
 
     ('LineTableStore', TRACE_STORE),
@@ -1584,6 +1614,7 @@ TRACE_STORES._fields_ = [
     ('LineTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('LineTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineTableSynchronizationStore', TRACE_STORE),
     ('LineTableInfoStore', INFO_STORE),
 
     ('LineTableEntryStore', TRACE_STORE),
@@ -1595,6 +1626,7 @@ TRACE_STORES._fields_ = [
     ('LineTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('LineTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineTableEntrySynchronizationStore', TRACE_STORE),
     ('LineTableEntryInfoStore', INFO_STORE),
 
     ('LineStringBufferStore', TRACE_STORE),
@@ -1606,6 +1638,7 @@ TRACE_STORES._fields_ = [
     ('LineStringBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('LineStringBufferAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineStringBufferSynchronizationStore', TRACE_STORE),
     ('LineStringBufferInfoStore', INFO_STORE),
 
     ('CallStackStore', TRACE_STORE),
@@ -1617,6 +1650,7 @@ TRACE_STORES._fields_ = [
     ('CallStackAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('CallStackAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('CallStackSynchronizationStore', TRACE_STORE),
     ('CallStackInfoStore', INFO_STORE),
 
     ('PerformanceStore', TRACE_STORE),
@@ -1628,6 +1662,7 @@ TRACE_STORES._fields_ = [
     ('PerformanceAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('PerformanceAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PerformanceSynchronizationStore', TRACE_STORE),
     ('PerformanceInfoStore', INFO_STORE),
 
     ('PerformanceDeltaStore', TRACE_STORE),
@@ -1639,6 +1674,7 @@ TRACE_STORES._fields_ = [
     ('PerformanceDeltaAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('PerformanceDeltaAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('PerformanceDeltaSynchronizationStore', TRACE_STORE),
     ('PerformanceDeltaInfoStore', INFO_STORE),
 
     ('SourceCodeStore', TRACE_STORE),
@@ -1650,7 +1686,68 @@ TRACE_STORES._fields_ = [
     ('SourceCodeAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
     ('SourceCodeAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SourceCodeSynchronizationStore', TRACE_STORE),
     ('SourceCodeInfoStore', INFO_STORE),
+
+    ('BitmapStore', TRACE_STORE),
+    ('BitmapMetadataInfoStore', TRACE_STORE),
+    ('BitmapAllocationStore', ALLOCATION_STORE),
+    ('BitmapRelocationStore', RELOCATION_STORE),
+    ('BitmapAddressStore', ADDRESS_STORE),
+    ('BitmapAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('BitmapAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('BitmapAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('BitmapSynchronizationStore', TRACE_STORE),
+    ('BitmapInfoStore', INFO_STORE),
+
+    ('ImageFileStore', TRACE_STORE),
+    ('ImageFileMetadataInfoStore', TRACE_STORE),
+    ('ImageFileAllocationStore', ALLOCATION_STORE),
+    ('ImageFileRelocationStore', RELOCATION_STORE),
+    ('ImageFileAddressStore', ADDRESS_STORE),
+    ('ImageFileAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('ImageFileAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('ImageFileAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('ImageFileSynchronizationStore', TRACE_STORE),
+    ('ImageFileInfoStore', INFO_STORE),
+
+    ('UnicodeStringBufferStore', TRACE_STORE),
+    ('UnicodeStringBufferMetadataInfoStore', TRACE_STORE),
+    ('UnicodeStringBufferAllocationStore', ALLOCATION_STORE),
+    ('UnicodeStringBufferRelocationStore', RELOCATION_STORE),
+    ('UnicodeStringBufferAddressStore', ADDRESS_STORE),
+    ('UnicodeStringBufferAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('UnicodeStringBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('UnicodeStringBufferAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('UnicodeStringBufferSynchronizationStore', TRACE_STORE),
+    ('UnicodeStringBufferInfoStore', INFO_STORE),
+
+    ('LineStore', TRACE_STORE),
+    ('LineMetadataInfoStore', TRACE_STORE),
+    ('LineAllocationStore', ALLOCATION_STORE),
+    ('LineRelocationStore', RELOCATION_STORE),
+    ('LineAddressStore', ADDRESS_STORE),
+    ('LineAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('LineAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('LineAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LineSynchronizationStore', TRACE_STORE),
+    ('LineInfoStore', INFO_STORE),
+
+    ('ObjectStore', TRACE_STORE),
+    ('ObjectMetadataInfoStore', TRACE_STORE),
+    ('ObjectAllocationStore', ALLOCATION_STORE),
+    ('ObjectRelocationStore', RELOCATION_STORE),
+    ('ObjectAddressStore', ADDRESS_STORE),
+    ('ObjectAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('ObjectAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('ObjectAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('ObjectSynchronizationStore', TRACE_STORE),
+    ('ObjectInfoStore', INFO_STORE),
 ]
 
 class TRACE_STORE_ARRAY(Structure):

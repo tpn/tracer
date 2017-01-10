@@ -60,7 +60,6 @@ Return Value:
     PCHAR BitmapBuffers;
     DWORD LastError;
     ULONG BitmapAllocationAttempt;
-    ULONG NumberOfPages;
     ULONG NumberOfBitmaps;
     ULONG_PTR BitmapBufferSize;
     ULONG_PTR AlignedBitmapBufferSize;
@@ -349,7 +348,9 @@ Return Value:
     // Get the number of pages for the contents.
     //
 
-    NumberOfPages = ROUND_TO_PAGES(File->EndOfFile.QuadPart) >> PAGE_SHIFT;
+    File->NumberOfPages = (
+        ROUND_TO_PAGES(File->EndOfFile.QuadPart) >> PAGE_SHIFT
+    );
 
     //
     // Copy a page at a time using streaming loads.
@@ -361,6 +362,8 @@ Return Value:
 
     goto AvxCopy;
 
+    File->Flags.MovsqCopy = TRUE;
+
     __movsq((PDWORD64)DestContent,
             (PDWORD64)SourceContent,
             File->AllocationSize.QuadPart >> 3);
@@ -371,8 +374,9 @@ AvxCopy:
 
     DestYmm = (PYMMWORD)Dest;
     SourceYmm = (PYMMWORD)Source;
+    File->Flags.Avx2Copy = TRUE;
 
-    for (Index = 0; Index < NumberOfPages; Index++) {
+    for (Index = 0; Index < File->NumberOfPages; Index++) {
 
         //
         // Each loop iteration copies 256 bytes.  We repeat it 16 times to copy
@@ -422,6 +426,20 @@ CopyComplete:
     Elapsed.QuadPart = EndCopy.QuadPart - StartCopy.QuadPart;
     File->Elapsed = Elapsed.LowPart;
     File->Content = DestContent;
+
+    //
+    // Convert to microseconds and then calculate bytes per second.
+    //
+
+    Elapsed.QuadPart *= Context->Multiplicand.QuadPart;
+    Elapsed.QuadPart /= Context->Frequency.QuadPart;
+    File->CopyTimeInMicroseconds.QuadPart = Elapsed.QuadPart;
+    if (Elapsed.QuadPart > 0) {
+        File->CopiedBytesPerSecond.QuadPart = (
+            (File->AllocationSize.QuadPart /
+             Elapsed.QuadPart) * SECONDS_TO_MICROSECONDS
+        );
+    }
 
     //
     // We can unmap the file and close all handles now.

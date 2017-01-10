@@ -1794,7 +1794,17 @@ RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
 //
 
 typedef struct _Struct_size_bytes_(sizeof(ULONG)) _RTL_FILE_FLAGS {
+
     ULONG Valid:1;
+
+    //
+    // Which copy method was used to copy the source file contents into the
+    // destination.
+    //
+
+    ULONG Avx2Copy:1;
+    ULONG MovsqCopy:1;
+
 } RTL_FILE_FLAGS, *PRTL_FILE_FLAGS;
 
 typedef enum _RTL_FILE_TYPE {
@@ -1925,7 +1935,14 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
             LARGE_INTEGER LastWriteTime;
             LARGE_INTEGER ChangeTime;
             DWORD FileAttributes;
-            DWORD Dummy;
+
+            //
+            // Stash the number of pages here as we get a free DWORD/ULONG in
+            // order to maintain alignment.  Note that this isn't part of the
+            // FILE_BASIC_INFO structure.
+            //
+
+            ULONG NumberOfPages;
         };
     };
     LARGE_INTEGER EndOfFile;
@@ -1999,6 +2016,17 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
     // (360 bytes consumed.)
     //
 
+    //
+    // Additional information about the loading speed.
+    //
+
+    LARGE_INTEGER CopyTimeInMicroseconds;
+    LARGE_INTEGER CopiedBytesPerSecond;
+
+    //
+    // (376 bytes consumed.)
+    //
+
     union {
 
         //
@@ -2017,7 +2045,7 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
         // Pad out to 512 bytes.
         //
 
-        BYTE Reserved[160];
+        BYTE Reserved[144];
     };
 
 } RTL_FILE, *PRTL_FILE, **PPRTL_FILE;
@@ -2032,7 +2060,8 @@ C_ASSERT(FIELD_OFFSET(RTL_FILE, Flags) == 144);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, Elapsed) == 148);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, Content) == 152);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 160);
-C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 352);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, CopyTimeInMicroseconds) == 352);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 368);
 C_ASSERT(sizeof(RTL_FILE) == 512);
 
 #define _RTLFUNCTIONS_HEAD                                                                             \

@@ -663,6 +663,7 @@ InitializeAllocators:
     Python->InitializePythonRuntimeTables(Python);
 
     QueryPerformanceFrequency(&Context->Frequency);
+    Context->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
 
     Rtl->PfxInitialize(&Context->ModuleFilterPrefixTree);
 

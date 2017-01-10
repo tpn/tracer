@@ -461,6 +461,7 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     PYTHON_TRACE_EVENT_TYPE EventType;
 
     LARGE_INTEGER Frequency;
+    LARGE_INTEGER Multiplicand;
     LARGE_INTEGER StartTimestamp;
     LARGE_INTEGER StopTimestamp;
     LARGE_INTEGER LastTimestamp;
