@@ -4618,7 +4618,7 @@ Return Value:
     // Initialize the lengths.
     //
 
-    Utf16->Length = NewLengthInChars << 1;
+    Utf16->Length = (NewLengthInChars-1) << 1;
     Utf16->MaximumLength = AlignedBufferSizeInBytes.LowPart;
 
     MaximumBufferSizeInChars = Utf16->MaximumLength >> 1;
