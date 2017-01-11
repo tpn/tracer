@@ -38,6 +38,8 @@ from ..wintypes import (
 
 from Rtl import (
     PRTL,
+    RTL_FILE,
+    PRTL_FILE
 )
 
 #===============================================================================
@@ -419,7 +421,7 @@ PYTHON_FUNCTION._fields_ = [
     ('ListEntry', LIST_ENTRY),
     ('Signature', ULONG_PTR),
     ('HashEntry', RTL_DYNAMIC_HASH_TABLE_ENTRY),
-    ('Reserved', BYTE * 1384),
+    ('Reserved', BYTE * 864),
 ]
 
 PYTHON_FUNCTION_TABLE_ENTRY._fields_ = [

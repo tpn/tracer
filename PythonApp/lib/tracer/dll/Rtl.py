@@ -10,6 +10,7 @@ from ..wintypes import (
     Structure,
 
     BOOL,
+    BYTE,
     CDLL,
     ULONG,
     PVOID,
@@ -36,6 +37,12 @@ class RTL(Structure):
         ('HeapHandle', HANDLE),
     ]
 PRTL = POINTER(RTL)
+
+class RTL_FILE(Structure):
+    _fields_ = [
+        ('Reserved', BYTE * 512),
+    ]
+PRTL_FILE = POINTER(RTL_FILE)
 
 #===============================================================================
 # Functions
