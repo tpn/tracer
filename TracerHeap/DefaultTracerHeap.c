@@ -25,7 +25,11 @@ DefaultHeapMalloc(
     SIZE_T Size
     )
 {
-    return HeapAlloc(ContextToHeapHandle(Context), 0, Size);
+    return HeapAlloc(
+        ContextToHeapHandle(Context),
+        HEAP_ZERO_MEMORY,
+        Size
+    );
 }
 
 _Use_decl_annotations_
@@ -117,7 +121,7 @@ DefaultHeapInitializeAllocator(
         return FALSE;
     }
 
-    HeapHandle = HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 0);
+    HeapHandle = HeapCreate(0, 0, 0);
     if (!HeapHandle) {
         return FALSE;
     }
