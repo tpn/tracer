@@ -53,7 +53,7 @@ Return Value:
     BOOL IsSourceCode;
     BYTE Inner;
     ULONG Index;
-    PCHAR SourceContent;
+    PCHAR SourceContent = NULL;
     PCHAR DestContent;
     PCHAR Dest;
     PCHAR Source;
@@ -150,6 +150,10 @@ Return Value:
 
     if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
         LastError = GetLastError();
+        if (LastError == ERROR_FILE_NOT_FOUND || ERROR_PATH_NOT_FOUND) {
+            Success = TRUE;
+            goto End;
+        }
         goto Error;
     }
 
@@ -183,6 +187,15 @@ Return Value:
     if (File->EndOfFile.HighPart) {
         __debugbreak();
         goto Error;
+    }
+
+    //
+    // If we're an empty file, return now.
+    //
+
+    if (!File->EndOfFile.LowPart) {
+        Success = TRUE;
+        goto End;
     }
 
     //
