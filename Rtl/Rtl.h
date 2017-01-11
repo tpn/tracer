@@ -5311,7 +5311,7 @@ Error:
 
 FORCEINLINE
 BOOL
-ConvertUtf8StringToUtf16String(
+ConvertUtf8StringToUtf16StringFast(
     _In_ PSTRING Utf8,
     _Out_ PPUNICODE_STRING Utf16Pointer,
     _In_ PALLOCATOR Allocator
