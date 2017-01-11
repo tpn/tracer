@@ -414,6 +414,228 @@ Error:
 
 }
 
+BOOL
+ConvertUtf8StringToUtf16String(
+    _In_ PSTRING Utf8,
+    _Out_ PPUNICODE_STRING Utf16Pointer,
+    _In_ PALLOCATOR Allocator,
+    _In_ PLARGE_INTEGER TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    Converts a UTF-8 Unicode string to a UTF-16 string using the provided
+    allocator.  The 'Slow' suffix on this function name indicates that the
+    MultiByteToWideChar() function is called first in order to get the required
+    buffer size prior to allocating the buffer.
+
+    (ConvertUtf8StringToUtf16String() is an alternate version of this method
+     that optimizes for the case where there are no multi-byte characters.)
+
+Arguments:
+
+    Utf8 - Supplies a pointer to a STRING structure to be converted.
+
+    Utf16Pointer - Supplies a pointer that receives the address of the newly
+        allocated and converted UTF-16 STRING version of the UTF-8 input string.
+
+    Allocator - Supplies a pointer to the memory allocator that will be used
+        for all allocations.
+
+    TimestampPointer - Supplies a timestamp to associate with allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NewLengthInChars;
+    LONG CharsCopied;
+    LONG BufferSizeInBytes;
+    LONG BufferSizeInChars;
+    LONG MaximumBufferSizeInChars;
+    ULONG_INTEGER AllocSize;
+    ULONG_INTEGER AlignedBufferSizeInBytes;
+    PUNICODE_STRING Utf16;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Utf8)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Utf16Pointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointer straight away.
+    //
+
+    *Utf16Pointer = NULL;
+
+    //
+    // Calculate the number of bytes required to hold a UTF-16 encoding of the
+    // UTF-8 input string.
+    //
+
+    BufferSizeInChars = MultiByteToWideChar(
+        CP_UTF8,                        // CodePage
+        0,                              // dwFlags
+        Utf8->Buffer,                   // lpMultiByteStr
+        Utf8->Length,                   // cbMultiByte
+        NULL,                           // lpWideCharStr
+        0                               // cchWideChar
+    );
+
+    if (BufferSizeInChars <= 0) {
+        return FALSE;
+    }
+
+    //
+    // Account for the trailing NULL.
+    //
+
+    NewLengthInChars = (USHORT)BufferSizeInChars + 1;
+
+    //
+    // Convert character buffer size into bytes.
+    //
+
+    BufferSizeInBytes = NewLengthInChars << 1;
+
+    //
+    // Align the buffer.
+    //
+
+    AlignedBufferSizeInBytes.LongPart = (ULONG)(
+        ALIGN_UP_POINTER(
+            BufferSizeInBytes
+        )
+    );
+
+    //
+    // Sanity check the buffer size isn't over MAX_USHORT or under the number
+    // of bytes for the input UTF-8 buffer.
+    //
+
+    if (AlignedBufferSizeInBytes.HighPart != 0) {
+        return FALSE;
+    }
+
+    if (AlignedBufferSizeInBytes.LowPart < Utf8->Length) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required, factoring in the overhead
+    // of the UNICODE_STRING struct.
+    //
+
+    AllocSize.LongPart = (
+
+        sizeof(UNICODE_STRING) +
+
+        AlignedBufferSizeInBytes.LowPart
+
+    );
+
+    //
+    // Try allocate space for the buffer.
+    //
+
+    Utf16 = (PUNICODE_STRING)(
+        Allocator->CallocWithTimestamp(
+            Allocator->Context,
+            1,
+            AlignedBufferSizeInBytes.LowPart,
+            TimestampPointer
+        )
+    );
+
+    if (!Utf16) {
+        return FALSE;
+    }
+
+    //
+    // Successfully allocated space.  Point the UNICODE_STRING buffer at the
+    // memory trailing the struct.
+    //
+
+    Utf16->Buffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            Utf16,
+            sizeof(UNICODE_STRING)
+        )
+    );
+
+    //
+    // Initialize the lengths.
+    //
+
+    Utf16->Length = (USHORT)(BufferSizeInChars << 1);
+    Utf16->MaximumLength = AlignedBufferSizeInBytes.LowPart;
+
+    MaximumBufferSizeInChars = Utf16->MaximumLength >> 1;
+
+    //
+    // Attempt the conversion.
+    //
+
+    CharsCopied = MultiByteToWideChar(
+        CP_UTF8,                    // CodePage
+        0,                          // dwFlags
+        Utf8->Buffer,               // lpMultiByteStr
+        Utf8->Length,               // cbMultiByte
+        Utf16->Buffer,              // lpWideCharStr
+        Utf8->Length                // cchWideChar
+    );
+
+    if (CharsCopied != NewLengthInChars-1) {
+        __debugbreak();
+        goto Error;
+    }
+
+    if (Utf16->Buffer[Utf16->Length] != L'\0') {
+        __debugbreak();
+    }
+
+    //
+    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
+    //
+
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    *Utf16Pointer = Utf16;
+
+    return TRUE;
+
+Error:
+
+    if (Utf16) {
+
+        //
+        // Try free the underlying buffer.
+        //
+
+        Allocator->Free(Allocator->Context, Utf16);
+        Utf16 = NULL;
+    }
+
+    return FALSE;
+}
+
+
 _Use_decl_annotations_
 BOOL
 StringToExistingRtlPath(
@@ -475,6 +697,10 @@ Return Value:
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
     PRTL_FIND_SET_BITS RtlFindSetBits;
 
+#ifdef _DEBUG
+    SIZE_T UnicodeLength;
+#endif
+
     //
     // Validate arguments.
     //
@@ -495,23 +721,57 @@ Return Value:
         return FALSE;
     }
 
+    if (AnsiString->Length > AnsiString->MaximumLength) {
+        __debugbreak();
+    }
+
+#ifdef _DEBUG
+    OutputDebugStringA("ANSI\n");
+    OutputDebugStringA(AnsiString->Buffer);
+    OutputDebugStringA("\n");
+#endif
+
     //
     // Convert the ANSI string to a Unicode string.
     //
 
-    Success = ConvertUtf8StringToUtf16StringSlow(AnsiString,
-                                                 &String,
-                                                 UnicodeStringBufferAllocator,
-                                                 TimestampPointer);
+    Success = ConvertUtf8StringToUtf16String(AnsiString,
+                                             &String,
+                                             UnicodeStringBufferAllocator,
+                                             TimestampPointer);
     if (!Success) {
+        __debugbreak();
         return FALSE;
     }
 
+#ifdef _DEBUG
+    if (String->Length > String->MaximumLength) {
+        __debugbreak();
+    }
+
+    if (AnsiString->Length != (String->Length >> 1)) {
+        __debugbreak();
+    }
+
+    if (String->Buffer[String->Length] != L'\0') {
+        __debugbreak();
+    }
+
+    OutputDebugStringA("UNICODE\n");
+    OutputDebugStringW(String->Buffer);
+    OutputDebugStringA("\n");
+
+    UnicodeLength = wcslen(String->Buffer);
+    if (UnicodeLength != AnsiString->Length) {
+        __debugbreak();
+    }
+#endif
+
     //
-    // Get the number of characters, plus +1 for the trailing NULL.
+    // Get the number of characters.
     //
 
-    NumberOfCharacters = (String->Length + 1) >> 1;
+    NumberOfCharacters = String->Length >> 1;
 
     //
     // Calculate the aligned number of characters.  We do the alignment
@@ -613,13 +873,30 @@ Return Value:
     // Find slashes and dots in reverse.
     //
 
-    InlineFindTwoWideCharsInUnicodeStringReversed(
-        &Path->Full,
-        L'\\',
-        L'.',
-        ReversedSlashesBitmap,
-        ReversedDotsBitmap
-    );
+    if (TRUE) {
+        USHORT Index;
+        USHORT NumberOfCharacters = String->Length >> 1;
+        WCHAR  Char;
+        ULONG  Bit;
+
+        for (Index = 0; Index < NumberOfCharacters; Index++) {
+            Char = String->Buffer[Index];
+            Bit = NumberOfCharacters - Index;
+            if (Char == L'\\') {
+                FastSetBit(ReversedSlashesBitmap, Bit);
+            } else if (Char == L'.') {
+                FastSetBit(ReversedDotsBitmap, Bit);
+            }
+        }
+    } else {
+        InlineFindTwoWideCharsInUnicodeStringReversed(
+            &Path->Full,
+            L'\\',
+            L'.',
+            ReversedSlashesBitmap,
+            ReversedDotsBitmap
+        );
+    }
 
     //
     // Initialize our bitmap function aliases.
