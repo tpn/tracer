@@ -664,7 +664,7 @@ Return Value:
     }
 
     //
-    // Calculate the next address for the memory map if we fulfil this
+    // Calculate the next address for the memory map if we fulfill this
     // allocation, as well as the memory map's end address.
     //
 
