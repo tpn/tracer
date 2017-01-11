@@ -170,6 +170,15 @@ Routine Description:
         return NULL;
     }
 
+    //
+    // Ensure the traits don't indicate page alignment; that should be handled
+    // by the page allocator.
+    //
+
+    if (!AssertFalse("WantsPageAlignment", WantsPageAlignment(Traits))) {
+        return NULL;
+    }
+
     CheckPageSpill = (
         HasVaryingRecords(Traits) &&
         HasMultipleRecords(Traits) &&
@@ -254,6 +263,7 @@ CalculateAddresses:
         );
 
         if (!ConsumeNextTraceStoreMemoryMap(TraceStore, NULL)) {
+            __debugbreak();
             return NULL;
         }
 
@@ -923,6 +933,7 @@ Return Value:
     LARGE_INTEGER BeforeElapsed;
     LARGE_INTEGER AfterTimestamp;
     LARGE_INTEGER AfterElapsed;
+    PALLOCATE_RECORDS_WITH_TIMESTAMP AllocateWithTimestamp;
 
     //
     // Take a timestamp snapshot before waiting on the event.
@@ -983,11 +994,14 @@ Return Value:
     // original allocator.
     //
 
-    return TraceStoreAllocateRecordsWithTimestamp(TraceContext,
-                                                  TraceStore,
-                                                  NumberOfRecords,
-                                                  RecordSize,
-                                                  TimestampPointer);
+    AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestampImpl1;
+    TraceContext = TraceStore->TraceContext;
+
+    return AllocateWithTimestamp(TraceContext,
+                                 TraceStore,
+                                 NumberOfRecords,
+                                 RecordSize,
+                                 TimestampPointer);
 }
 
 _Use_decl_annotations_

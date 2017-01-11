@@ -200,6 +200,10 @@ Return Value:
 
     *MemoryMapPointer = NULL;
 
+    if (TraceStore->TotalNumberOfMemoryMaps > 0) {
+        __debugbreak();
+    }
+
     //
     // If the caller hasn't specified the number of memory maps to create,
     // call GetNumberOfMemoryMapsRequiredByTraceStore() to obtain the number.
@@ -241,25 +245,16 @@ Return Value:
         Allocator->Calloc(
             Allocator->Context,
             NumberOfMaps,
-            sizeof(TRACE_STORE_MEMORY_MAP) + 8
+            sizeof(TRACE_STORE_MEMORY_MAP)
         )
     );
 
     if (!MemoryMaps) {
+        __debugbreak();
         return FALSE;
     }
 
-    //
-    // If the allocation isn't aligned on a 16 byte boundary, bump it forward
-    // 8 bytes.
-    //
-
 #define IS_ALIGNED(Address) (((ULONG_PTR)(Address) & 15) == 0)
-#define ALIGN_MEMORY_MAPS(Address) ((ULONG_PTR)Address + 8)
-
-    if (!IS_ALIGNED(MemoryMaps)) {
-        MemoryMaps = (PTRACE_STORE_MEMORY_MAP)ALIGN_MEMORY_MAPS(MemoryMaps);
-    }
 
     //
     // Alignment sanity check.
@@ -270,12 +265,6 @@ Return Value:
         Allocator->Free(Allocator->Context, MemoryMaps);
         return FALSE;
     }
-
-    //
-    // Save the base memory map address to the trace store.
-    //
-
-    TraceStore->MemoryMaps = MemoryMaps;
 
     //
     // Reserve the first memory map in the array to return to the caller.
@@ -415,7 +404,7 @@ Return Value:
         Allocator->Calloc(
             Allocator->Context,
             NumberOfMaps,
-            sizeof(TRACE_STORE_MEMORY_MAP) + 8
+            sizeof(TRACE_STORE_MEMORY_MAP)
         )
     );
 
@@ -429,11 +418,6 @@ Return Value:
     //
 
 #define IS_ALIGNED(Address) (((ULONG_PTR)(Address) & 15) == 0)
-#define ALIGN_MEMORY_MAPS(Address) ((ULONG_PTR)Address + 8)
-
-    if (!IS_ALIGNED(MemoryMaps)) {
-        MemoryMaps = (PTRACE_STORE_MEMORY_MAP)ALIGN_MEMORY_MAPS(MemoryMaps);
-    }
 
     //
     // Alignment sanity check.
@@ -1552,10 +1536,11 @@ StartPreparation:
     }
 
     //
-    // Invariant check: MemoryMap should be NULL here.
+    // Invariant check: MemoryMap should be NULL here and PrepareMemoryMap
+    // should be non-NULL;
     //
 
-    if (MemoryMap) {
+    if (MemoryMap || !PrepareMemoryMap) {
         __debugbreak();
         return FALSE;
     }
@@ -1684,13 +1669,10 @@ ConsumeMap:
                                  sizeof(Address));
 
     if (FAILED(Result)) {
-
-        //
-        // Ignore and continue.
-        //
-
-        MemoryMap->pAddress = NULL;
-        goto PrepareMemoryMap;
+        __debugbreak();
+        ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
+        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
+        return FALSE;
     }
 
     //
@@ -1712,13 +1694,20 @@ ConsumeMap:
     Address.Elapsed.AwaitingConsumption.QuadPart = Elapsed.QuadPart;
 
     //
-    // Copy the local record back to the backing store and ignore the
-    // return value.
+    // Copy the local record back to the backing store.
     //
 
     RtlCopyMappedMemory(MemoryMap->pAddress,
                         &Address,
                         sizeof(Address));
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
+        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
+        return FALSE;
+    }
+
 
 PrepareMemoryMap:
 

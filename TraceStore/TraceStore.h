@@ -1806,12 +1806,6 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_MEMORY_MAP  SingleMemoryMap;
 
     //
-    // Base address of the array of memory maps allocated for this store.
-    //
-
-    PTRACE_STORE_MEMORY_MAP MemoryMaps;
-
-    //
     // This will be linked to the parent TRACE_STORES StoresListHead list.  It
     // is only used for normal trace stores, not metadata ones.
     //
