@@ -852,13 +852,13 @@ TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
 LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
 LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
-USHORT InitialFreeMemoryMapsForNonStreamingReaders = 16;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 8;
-USHORT InitialFreeMemoryMapsForNonStreamingWriters = 16;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 8;
-USHORT InitialFreeMemoryMapsForStreamingReaders = 32;
-USHORT InitialFreeMemoryMapsForStreamingWriters = 32;
-USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 8;
+USHORT InitialFreeMemoryMapsForNonStreamingReaders = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingWriters = 64;
+USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 64;
+USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
+USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
+USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 1;
 
 USHORT TraceStoreMetadataInfoStructSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
@@ -1032,7 +1032,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    0,  // StreamingWrite
+    1,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
@@ -1048,7 +1048,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
-    0,  // StreamingWrite
+    1,  // StreamingWrite
     1,  // StreamingRead
     1,  // FrequentAllocations
     1,  // BlockingAllocations
