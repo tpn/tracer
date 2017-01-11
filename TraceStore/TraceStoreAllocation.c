@@ -502,7 +502,7 @@ Routine Description:
 
     This routine allocates records from a trace store.  It is equivalent to
     calling TraceStoreAllocateRecordsWithTimestamp() with a NULL timestamp.
-    
+
 Arguments:
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
