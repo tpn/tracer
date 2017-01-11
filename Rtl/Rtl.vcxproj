@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClCompile Include="atexit.c" />
     <ClCompile Include="AtExitEx.c" />
+    <ClCompile Include="CopyPages.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>

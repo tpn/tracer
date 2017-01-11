@@ -3411,6 +3411,171 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->ZwQueryInformationProcess = (PZW_QUERY_INFORMATION_PROCESS)
+        GetProcAddress(Rtl->NtdllModule, "ZwQueryInformationProcess"))) {
+
+        if (!(Rtl->ZwQueryInformationProcess = (PZW_QUERY_INFORMATION_PROCESS)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwQueryInformationProcess"))) {
+
+            if (!(Rtl->ZwQueryInformationProcess = (PZW_QUERY_INFORMATION_PROCESS)
+                GetProcAddress(Rtl->Kernel32Module, "ZwQueryInformationProcess"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwQueryInformationProcess'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->LdrRegisterDllNotification = (PLDR_REGISTER_DLL_NOTIFICATION)
+        GetProcAddress(Rtl->NtdllModule, "LdrRegisterDllNotification"))) {
+
+        if (!(Rtl->LdrRegisterDllNotification = (PLDR_REGISTER_DLL_NOTIFICATION)
+            GetProcAddress(Rtl->NtosKrnlModule, "LdrRegisterDllNotification"))) {
+
+            if (!(Rtl->LdrRegisterDllNotification = (PLDR_REGISTER_DLL_NOTIFICATION)
+                GetProcAddress(Rtl->Kernel32Module, "LdrRegisterDllNotification"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'LdrRegisterDllNotification'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->LdrUnregisterDllNotification = (PLDR_UNREGISTER_DLL_NOTIFICATION)
+        GetProcAddress(Rtl->NtdllModule, "LdrUnregisterDllNotification"))) {
+
+        if (!(Rtl->LdrUnregisterDllNotification = (PLDR_UNREGISTER_DLL_NOTIFICATION)
+            GetProcAddress(Rtl->NtosKrnlModule, "LdrUnregisterDllNotification"))) {
+
+            if (!(Rtl->LdrUnregisterDllNotification = (PLDR_UNREGISTER_DLL_NOTIFICATION)
+                GetProcAddress(Rtl->Kernel32Module, "LdrUnregisterDllNotification"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'LdrUnregisterDllNotification'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwCreateSection = (PZW_CREATE_SECTION)
+        GetProcAddress(Rtl->NtdllModule, "ZwCreateSection"))) {
+
+        if (!(Rtl->ZwCreateSection = (PZW_CREATE_SECTION)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwCreateSection"))) {
+
+            if (!(Rtl->ZwCreateSection = (PZW_CREATE_SECTION)
+                GetProcAddress(Rtl->Kernel32Module, "ZwCreateSection"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwCreateSection'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwMapViewOfSection = (PZW_MAP_VIEW_OF_SECTION)
+        GetProcAddress(Rtl->NtdllModule, "ZwMapViewOfSection"))) {
+
+        if (!(Rtl->ZwMapViewOfSection = (PZW_MAP_VIEW_OF_SECTION)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwMapViewOfSection"))) {
+
+            if (!(Rtl->ZwMapViewOfSection = (PZW_MAP_VIEW_OF_SECTION)
+                GetProcAddress(Rtl->Kernel32Module, "ZwMapViewOfSection"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwMapViewOfSection'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwUnmapViewOfSection = (PZW_UNMAP_VIEW_OF_SECTION)
+        GetProcAddress(Rtl->NtdllModule, "ZwUnmapViewOfSection"))) {
+
+        if (!(Rtl->ZwUnmapViewOfSection = (PZW_UNMAP_VIEW_OF_SECTION)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwUnmapViewOfSection"))) {
+
+            if (!(Rtl->ZwUnmapViewOfSection = (PZW_UNMAP_VIEW_OF_SECTION)
+                GetProcAddress(Rtl->Kernel32Module, "ZwUnmapViewOfSection"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwUnmapViewOfSection'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwCreateProcess = (PZW_CREATE_PROCESS)
+        GetProcAddress(Rtl->NtdllModule, "ZwCreateProcess"))) {
+
+        if (!(Rtl->ZwCreateProcess = (PZW_CREATE_PROCESS)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwCreateProcess"))) {
+
+            if (!(Rtl->ZwCreateProcess = (PZW_CREATE_PROCESS)
+                GetProcAddress(Rtl->Kernel32Module, "ZwCreateProcess"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwCreateProcess'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwCreateProcessEx = (PZW_CREATE_PROCESS_EX)
+        GetProcAddress(Rtl->NtdllModule, "ZwCreateProcessEx"))) {
+
+        if (!(Rtl->ZwCreateProcessEx = (PZW_CREATE_PROCESS_EX)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwCreateProcessEx"))) {
+
+            if (!(Rtl->ZwCreateProcessEx = (PZW_CREATE_PROCESS_EX)
+                GetProcAddress(Rtl->Kernel32Module, "ZwCreateProcessEx"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwCreateProcessEx'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwCreateThread = (PZW_CREATE_THREAD)
+        GetProcAddress(Rtl->NtdllModule, "ZwCreateThread"))) {
+
+        if (!(Rtl->ZwCreateThread = (PZW_CREATE_THREAD)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwCreateThread"))) {
+
+            if (!(Rtl->ZwCreateThread = (PZW_CREATE_THREAD)
+                GetProcAddress(Rtl->Kernel32Module, "ZwCreateThread"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwCreateThread'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwOpenThread = (PZW_OPEN_THREAD)
+        GetProcAddress(Rtl->NtdllModule, "ZwOpenThread"))) {
+
+        if (!(Rtl->ZwOpenThread = (PZW_OPEN_THREAD)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwOpenThread"))) {
+
+            if (!(Rtl->ZwOpenThread = (PZW_OPEN_THREAD)
+                GetProcAddress(Rtl->Kernel32Module, "ZwOpenThread"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwOpenThread'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwTerminateThread = (PZW_TERMINATE_THREAD)
+        GetProcAddress(Rtl->NtdllModule, "ZwTerminateThread"))) {
+
+        if (!(Rtl->ZwTerminateThread = (PZW_TERMINATE_THREAD)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwTerminateThread"))) {
+
+            if (!(Rtl->ZwTerminateThread = (PZW_TERMINATE_THREAD)
+                GetProcAddress(Rtl->Kernel32Module, "ZwTerminateThread"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwTerminateThread'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->SearchPathW = (PSEARCHPATHW)
         GetProcAddress(Rtl->NtdllModule, "SearchPathW"))) {
 
@@ -3801,6 +3966,20 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "FilesExistA"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'FilesExistA'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CopyPagesMovsq = (PCOPY_PAGES)
+        GetProcAddress(RtlExModule, "CopyPagesMovsq"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyPagesMovsq'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CopyPagesAvx2 = (PCOPY_PAGES)
+        GetProcAddress(RtlExModule, "CopyPagesAvx2"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyPagesAvx2'");
         return FALSE;
     }
 
