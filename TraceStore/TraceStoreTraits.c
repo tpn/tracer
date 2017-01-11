@@ -112,6 +112,12 @@ Return Value:
         }
     }
 
+    if (Traits.Periodic) {
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
 }
 
