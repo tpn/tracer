@@ -646,10 +646,23 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG PageAligned:1;
 
     //
+    // When set, indicates the trace store is written to by a periodic timer of
+    // some sort, typically via a threadpool.  This alters the logic used when
+    // closing or running down the trace store.
+    //
+    // Invariants:
+    //
+    //  - If Periodic == TRUE:
+    //      Assert MultipleRecords == TRUE
+    //
+
+    ULONG Periodic:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:20;
+    ULONG Unused:19;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -683,7 +696,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     ConcurrentAllocationsTrait          =  1 << 9,
     AllowPageSpillTrait                 =  1 << 10,
     PageAlignedTrait                    =  1 << 11,
-    InvalidTrait                        = (1 << 11) + 1
+    PeriodicTrait                       =  1 << 12,
+    InvalidTrait                        = (1 << 12) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -731,6 +745,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define AllowPageSpill(Traits) ((Traits).AllowPageSpill)
 #define PreventPageSpill(Traits) (!((Traits).AllowPageSpill))
 #define WantsPageAlignment(Traits) ((Traits).PageAligned)
+#define IsPeriodic(Traits) ((Traits).Periodic)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
