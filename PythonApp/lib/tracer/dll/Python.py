@@ -381,6 +381,7 @@ PYTHON_PATH_TABLE_ENTRY._fields_ = [
     ('ModuleName', STRING),
     ('Name', STRING),
     ('ClassName', STRING),
+    ('File', RTL_FILE),
     ('Reserved', BYTE * 384),
 ]
 
