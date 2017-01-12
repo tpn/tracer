@@ -730,6 +730,21 @@ InitializeAllocators:
 
 _Use_decl_annotations_
 VOID
+ClosePythonTraceContext(
+    PPYTHON_TRACE_CONTEXT Context
+    )
+{
+    BOOL CancelPendingCallbacks = TRUE;
+    PTP_WORK Work = Context->NewPythonPathTableEntryWork;
+    if (Work) {
+        WaitForThreadpoolWorkCallbacks(Work, CancelPendingCallbacks);
+        CloseThreadpoolWork(Work);
+        Context->NewPythonPathTableEntryWork = NULL;
+    }
+}
+
+_Use_decl_annotations_
+VOID
 SaveMaxRefCountsAtExit(
     BOOL IsProcessTerminating,
     PPYTHON_TRACE_CONTEXT Context
