@@ -905,11 +905,34 @@ Return Value:
 
 --*/
 {
+    BOOL CancelPendingCallbacks = TRUE;
 
-    if (TraceContext->GetWorkingSetChangesTimer) {
-        CloseThreadpoolTimer(TraceContext->GetWorkingSetChangesTimer);
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
     }
 
+    //
+    // Define a helper macro.
+    //
+
+#define CLOSE_THREADPOOL_TIMER(Name)                                    \
+    if (TraceContext->##Name) {                                         \
+        PTP_TIMER Timer = TraceContext->##Name;                         \
+        BOOL CancelPendingCallbacks = TRUE;                             \
+        SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
+        WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
+        CloseThreadpoolTimer(Timer);                                    \
+        TraceContext->##Name = NULL;                                    \
+    }
+
+    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer);
+    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer);
+
+    return;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

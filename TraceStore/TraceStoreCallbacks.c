@@ -648,7 +648,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    PTRACE_STORE TraceStore;
 
     //
     // Validate arguments.
@@ -675,25 +674,7 @@ Return Value:
     }
 
     if (!Success) {
-
-        //
-        // If we get here, a hard page fault was encountered or the process is
-        // potentially shutting down.  Rundown the stores now.
-        //
-
-        TraceStore = TraceStoreIdToTraceStore(
-            TraceContext->TraceStores,
-            TraceStoreWsWatchInfoExId
-        );
-
-        RundownTraceStore(TraceStore);
-
-        TraceStore = TraceStoreIdToTraceStore(
-            TraceContext->TraceStores,
-            TraceStoreWsWorkingSetExInfoId
-        );
-
-        RundownTraceStore(TraceStore);
+        NOTHING;
     }
 
     //
@@ -735,7 +716,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    PTRACE_STORE TraceStore;
 
     //
     // Validate arguments.
@@ -764,18 +744,7 @@ Return Value:
     }
 
     if (!Success) {
-
-        //
-        // If we get here, a hard page fault was encountered or the process is
-        // potentially shutting down.  Rundown the store now.
-        //
-
-        TraceStore = TraceStoreIdToTraceStore(
-            TraceContext->TraceStores,
-            TraceStorePerformanceId
-        );
-
-        //RundownTraceStore(TraceStore);
+        NOTHING;
     }
 
     //
