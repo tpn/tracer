@@ -334,6 +334,10 @@ Return Value:
             InitializePythonTraceContext);
 
     RESOLVE(PythonTracerModule,
+            PCLOSE_PYTHON_TRACE_CONTEXT,
+            ClosePythonTraceContext);
+
+    RESOLVE(PythonTracerModule,
             PTRACE_STORE_FIELD_RELOCS,
             PythonTracerTraceStoreRelocations);
 

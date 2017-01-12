@@ -361,6 +361,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     PFIND_PYTHON_DLL_AND_EXE FindPythonDllAndExe;
     PINITIALIZE_PYTHON InitializePython;
     PINITIALIZE_PYTHON_TRACE_CONTEXT InitializePythonTraceContext;
+    PCLOSE_PYTHON_TRACE_CONTEXT ClosePythonTraceContext;
 
     //
     // Pointer to our own destroy function.  This will be filled out if we've

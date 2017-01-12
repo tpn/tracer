@@ -62,7 +62,17 @@ Returns:
     *SessionPointer = NULL;
 
     //
-    // Close the context.
+    // Close the Python trace context.
+    //
+
+    if (Session->PythonTraceContext) {
+        Session->ClosePythonTraceContext(Session->PythonTraceContext);
+        Session->PythonTraceContext = NULL;
+    }
+
+
+    //
+    // Close the trace context.
     //
 
     if (Session->TraceContext) {
@@ -87,6 +97,18 @@ Returns:
         CloseThreadpool(Session->Threadpool);
         DestroyThreadpoolEnvironment(&Session->ThreadpoolCallbackEnviron);
         Session->Threadpool = NULL;
+    }
+
+    //
+    // Close the cancellation threadpool.
+    //
+
+    if (Session->CancellationThreadpool) {
+        CloseThreadpool(Session->CancellationThreadpool);
+        DestroyThreadpoolEnvironment(
+            &Session->CancellationThreadpoolCallbackEnviron
+        );
+        Session->CancellationThreadpool = NULL;
     }
 
     Allocator = Session->Allocator;
