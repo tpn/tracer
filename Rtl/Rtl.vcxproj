@@ -85,6 +85,7 @@
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>
+    <ClCompile Include="Loader.c" />
     <ClCompile Include="Privilege.c" />
     <ClCompile Include="Registry.c" />
     <ClCompile Include="RtlAtExitRundown.c" />
