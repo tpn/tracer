@@ -3456,6 +3456,111 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->ZwAllocateVirtualMemory = (PZW_ALLOCATE_VIRTUAL_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "ZwAllocateVirtualMemory"))) {
+
+        if (!(Rtl->ZwAllocateVirtualMemory = (PZW_ALLOCATE_VIRTUAL_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwAllocateVirtualMemory"))) {
+
+            if (!(Rtl->ZwAllocateVirtualMemory = (PZW_ALLOCATE_VIRTUAL_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "ZwAllocateVirtualMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwAllocateVirtualMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->ZwFreeVirtualMemory = (PZW_FREE_VIRTUAL_MEMORY)
+        GetProcAddress(Rtl->NtdllModule, "ZwFreeVirtualMemory"))) {
+
+        if (!(Rtl->ZwFreeVirtualMemory = (PZW_FREE_VIRTUAL_MEMORY)
+            GetProcAddress(Rtl->NtosKrnlModule, "ZwFreeVirtualMemory"))) {
+
+            if (!(Rtl->ZwFreeVirtualMemory = (PZW_FREE_VIRTUAL_MEMORY)
+                GetProcAddress(Rtl->Kernel32Module, "ZwFreeVirtualMemory"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'ZwFreeVirtualMemory'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCreateHeap = (PRTL_CREATE_HEAP)
+        GetProcAddress(Rtl->NtdllModule, "RtlCreateHeap"))) {
+
+        if (!(Rtl->RtlCreateHeap = (PRTL_CREATE_HEAP)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCreateHeap"))) {
+
+            if (!(Rtl->RtlCreateHeap = (PRTL_CREATE_HEAP)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCreateHeap"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCreateHeap'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlDestroyHeap = (PRTL_DESTROY_HEAP)
+        GetProcAddress(Rtl->NtdllModule, "RtlDestroyHeap"))) {
+
+        if (!(Rtl->RtlDestroyHeap = (PRTL_DESTROY_HEAP)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlDestroyHeap"))) {
+
+            if (!(Rtl->RtlDestroyHeap = (PRTL_DESTROY_HEAP)
+                GetProcAddress(Rtl->Kernel32Module, "RtlDestroyHeap"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlDestroyHeap'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlAllocateHeap = (PRTL_ALLOCATE_HEAP)
+        GetProcAddress(Rtl->NtdllModule, "RtlAllocateHeap"))) {
+
+        if (!(Rtl->RtlAllocateHeap = (PRTL_ALLOCATE_HEAP)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlAllocateHeap"))) {
+
+            if (!(Rtl->RtlAllocateHeap = (PRTL_ALLOCATE_HEAP)
+                GetProcAddress(Rtl->Kernel32Module, "RtlAllocateHeap"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlAllocateHeap'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlFreeHeap = (PRTL_FREE_HEAP)
+        GetProcAddress(Rtl->NtdllModule, "RtlFreeHeap"))) {
+
+        if (!(Rtl->RtlFreeHeap = (PRTL_FREE_HEAP)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlFreeHeap"))) {
+
+            if (!(Rtl->RtlFreeHeap = (PRTL_FREE_HEAP)
+                GetProcAddress(Rtl->Kernel32Module, "RtlFreeHeap"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlFreeHeap'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->RtlCaptureStackBackTrace = (PRTL_CAPTURE_STACK_BACK_TRACE)
+        GetProcAddress(Rtl->NtdllModule, "RtlCaptureStackBackTrace"))) {
+
+        if (!(Rtl->RtlCaptureStackBackTrace = (PRTL_CAPTURE_STACK_BACK_TRACE)
+            GetProcAddress(Rtl->NtosKrnlModule, "RtlCaptureStackBackTrace"))) {
+
+            if (!(Rtl->RtlCaptureStackBackTrace = (PRTL_CAPTURE_STACK_BACK_TRACE)
+                GetProcAddress(Rtl->Kernel32Module, "RtlCaptureStackBackTrace"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'RtlCaptureStackBackTrace'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->ZwCreateSection = (PZW_CREATE_SECTION)
         GetProcAddress(Rtl->NtdllModule, "ZwCreateSection"))) {
 

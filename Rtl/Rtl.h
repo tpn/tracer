@@ -502,6 +502,110 @@ BOOL
     );
 typedef QUERY_WORKING_SET_EX *PQUERY_WORKING_SET_EX;
 
+//
+// Rtl Heap related functions.
+//
+
+typedef
+NTSTATUS
+(NTAPI RTL_HEAP_COMMIT_ROUTINE)(
+    _In_    PVOID    Base,
+    _Inout_ PVOID   *CommitAddress,
+    _Inout_ PSIZE_T  CommitSize
+    );
+typedef RTL_HEAP_COMMIT_ROUTINE *PRTL_HEAP_COMMIT_ROUTINE;
+
+typedef struct _RTL_HEAP_PARAMETERS {
+    ULONG Length;
+    SIZE_T SegmentReserve;
+    SIZE_T SegmentCommit;
+    SIZE_T DeCommitFreeBlockThreshold;
+    SIZE_T DeCommitTotalFreeThreshold;
+    SIZE_T MaximumAllocationSize;
+    SIZE_T VirtualMemoryThreshold;
+    SIZE_T InitialCommit;
+    SIZE_T InitialReserve;
+    PRTL_HEAP_COMMIT_ROUTINE CommitRoutine;
+    SIZE_T Reserved[2];
+} RTL_HEAP_PARAMETERS, *PRTL_HEAP_PARAMETERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(NTAPI RTL_ALLOCATE_HEAP)(
+    _In_        PVOID   HeapHandle,
+    _In_opt_    ULONG   Flags,
+    _In_        SIZE_T  SizeInBytes
+    );
+typedef RTL_ALLOCATE_HEAP *PRTL_ALLOCATE_HEAP;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(NTAPI RTL_CREATE_HEAP)(
+    _In_     ULONG                Flags,
+    _In_opt_ PVOID                HeapBase,
+    _In_opt_ SIZE_T               ReserveSize,
+    _In_opt_ SIZE_T               CommitSize,
+    _In_opt_ PVOID                Lock,
+    _In_opt_ PRTL_HEAP_PARAMETERS Parameters
+    );
+typedef RTL_CREATE_HEAP *PRTL_CREATE_HEAP;
+
+typedef
+_Check_return_
+(NTAPI RTL_DESTROY_HEAP)(
+    _In_ PVOID HeapHandle
+    );
+typedef RTL_DESTROY_HEAP *PRTL_DESTROY_HEAP;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI RTL_FREE_HEAP)(
+    _In_     PVOID HeapHandle,
+    _In_opt_ ULONG Flags,
+    _In_     PVOID HeapBase
+    );
+typedef RTL_FREE_HEAP *PRTL_FREE_HEAP;
+
+typedef
+_Check_return_
+NTSTATUS
+(NTAPI ZW_ALLOCATE_VIRTUAL_MEMORY)(
+    _In_    HANDLE    ProcessHandle,
+    _Inout_ PVOID     *BaseAddress,
+    _In_    ULONG_PTR ZeroBits,
+    _Inout_ PSIZE_T   RegionSize,
+    _In_    ULONG     AllocationType,
+    _In_    ULONG     Protect
+    );
+typedef ZW_ALLOCATE_VIRTUAL_MEMORY *PZW_ALLOCATE_VIRTUAL_MEMORY;
+
+typedef
+_Check_return_
+NTSTATUS
+(NTAPI ZW_FREE_VIRTUAL_MEMORY)(
+    _In_    HANDLE  ProcessHandle,
+    _Inout_ PVOID   *BaseAddress,
+    _Inout_ PSIZE_T RegionSize,
+    _In_    ULONG   FreeType
+    );
+typedef ZW_FREE_VIRTUAL_MEMORY *PZW_FREE_VIRTUAL_MEMORY;
+
+typedef
+USHORT
+(NTAPI RTL_CAPTURE_STACK_BACK_TRACE)(
+    _In_      ULONG  FramesToSkip,
+    _In_      ULONG  FramesToCapture,
+    _Out_     PVOID  *BackTrace,
+    _Out_opt_ PULONG BackTraceHash
+    );
+typedef RTL_CAPTURE_STACK_BACK_TRACE *PRTL_CAPTURE_STACK_BACK_TRACE;
+
 typedef enum _PROCESSINFOCLASS {
     ProcessBasicInformation = 0x0,
     ProcessQuotaLimits = 0x1,
@@ -2754,6 +2858,13 @@ C_ASSERT(sizeof(RTL_FILE) == 512);
     PZW_QUERY_INFORMATION_PROCESS ZwQueryInformationProcess;                                           \
     PLDR_REGISTER_DLL_NOTIFICATION LdrRegisterDllNotification;                                         \
     PLDR_UNREGISTER_DLL_NOTIFICATION LdrUnregisterDllNotification;                                     \
+    PZW_ALLOCATE_VIRTUAL_MEMORY ZwAllocateVirtualMemory;                                               \
+    PZW_FREE_VIRTUAL_MEMORY ZwFreeVirtualMemory;                                                       \
+    PRTL_CREATE_HEAP RtlCreateHeap;                                                                    \
+    PRTL_DESTROY_HEAP RtlDestroyHeap;                                                                  \
+    PRTL_ALLOCATE_HEAP RtlAllocateHeap;                                                                \
+    PRTL_FREE_HEAP RtlFreeHeap;                                                                        \
+    PRTL_CAPTURE_STACK_BACK_TRACE RtlCaptureStackBackTrace;                                            \
     PZW_CREATE_SECTION ZwCreateSection;                                                                \
     PZW_MAP_VIEW_OF_SECTION ZwMapViewOfSection;                                                        \
     PZW_UNMAP_VIEW_OF_SECTION ZwUnmapViewOfSection;                                                    \
