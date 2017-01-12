@@ -267,6 +267,12 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnablePerformanceTracing:1;
 
     //
+    // When set, enables tracing of process DLL load/unload activity.
+    //
+
+    ULONG EnableLoaderTracing:1;
+
+    //
     // When set, disables asynchronous initialization of trace contexts.  This
     // applies to the InitializeTraceContext() call.  When enabled, asynchronous
     // initialization will submit the relevant preparation required to bind the

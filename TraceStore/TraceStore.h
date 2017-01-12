@@ -1207,6 +1207,12 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnablePerformanceTracing:1;
 
+            //
+            // When set, enable process loader activity tracing.
+            //
+
+            ULONG EnableLoaderTracing:1;
+
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;

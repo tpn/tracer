@@ -560,6 +560,7 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableFileFlagWriteThrough, FALSE);
     READ_REG_DWORD_FLAG(EnableWorkingSetTracing, TRUE);
     READ_REG_DWORD_FLAG(EnablePerformanceTracing, TRUE);
+    READ_REG_DWORD_FLAG(EnableLoaderTracing, TRUE);
     READ_REG_DWORD_FLAG(DisableAsynchronousInitialization, FALSE);
 
     //
