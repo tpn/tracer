@@ -518,6 +518,9 @@ InitializePythonTraceContext(
     }
 
     Success = Rtl->TestWalkLoader(Rtl);
+    if (!Success) {
+        return FALSE;
+    }
 
     //
     // Continue initialization.

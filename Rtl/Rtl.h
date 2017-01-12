@@ -777,6 +777,29 @@ typedef struct _LDR_DATA_TABLE_ENTRY {
 #define LDR_DLL_NOTIFICATION_REASON_UNLOADED 2
 #endif
 
+//
+// The following notification reason is custom to us.
+//
+
+#define LDR_DLL_NOTIFICATION_REASON_LOADED_INITIAL 5
+
+#define IsLoadedNotification(Reason) (                     \
+    (Reason == LDR_DLL_NOTIFICATION_REASON_LOADED ||       \
+     Reason == LDR_DLL_NOTIFICATION_REASON_LOADED_INITIAL) \
+)
+
+//
+// This is a custom structure we use to overlay the DLL notification reasons
+// above.  Bit 1 indicates both LOADED and LOADED_INITIAL.
+//
+
+typedef struct _LDR_DLL_NOTIFICATION_REASON {
+    ULONG Loaded:1;
+    ULONG Unloaded:1;
+    ULONG _Unused:1;
+    ULONG LoadedInitial:1;
+} LDR_DLL_NOTIFICATION_REASON; *PLDR_DLL_NOTIFICATION_REASON;
+
 typedef struct _LDR_DLL_LOADED_NOTIFICATION_DATA {
     ULONG Flags;
     PCUNICODE_STRING FullDllName;
@@ -955,6 +978,37 @@ typedef struct _PEB {
     ULONG FlsBitmapBits[FLS_MAXIMUM_AVAILABLE / (sizeof(ULONG) * 8)];
     ULONG FlsHighIndex;
 } PEB, *PPEB;
+
+typedef
+VOID
+(LDR_DLL_NOTIFICATION_CALLBACK)(
+    _In_ LDR_DLL_NOTIFICATION_REASON NotificationReason,
+    _In_ PCLDR_DLL_NOTIFICATION_DATA NotificationData,
+    _In_ PVOID Context
+    );
+typedef LDR_DLL_NOTIFICATION_CALLBACK *PLDR_DLL_NOTIFICATION_CALLBACK;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTL_REGISTER_LDR_DLL_NOTIFICATION)(
+    _In_ struct _RTL *Rtl,
+    _In_ PVOID Context,
+    _In_ PLDR_DLL_NOTIFICATION_CALLBACK DllNotificationCallback,
+    _Outptr_opt_result_nullonfailure_ PPVOID Cookie
+    );
+typedef RTL_REGISTER_LDR_DLL_NOTIFICATION *PRTL_REGISTER_LDR_DLL_NOTIFICATION;
+RTL_API RTL_REGISTER_LDR_DLL_NOTIFICATION RtlRegisterLdrDllNotification;
+
+typedef
+VOID
+(RTL_UNREGISTER_LDR_DLL_NOTIFICATION)(
+    _In_ PVOID Cookie
+    );
+typedef RTL_UNREGISTER_LDR_DLL_NOTIFICATION \
+      *PRTL_UNREGISTER_LDR_DLL_NOTIFICATION;
+RTL_API RTL_UNREGISTER_LDR_DLL_NOTIFICATION RtlUnregisterLdrDllNotification;
 
 typedef struct _ACTIVATION_CONTEXT_STACK {
     struct _RTL_ACTIVATION_CONTEXT_STACK_FRAME *ActiveFrame;
@@ -3659,6 +3713,8 @@ RTL_API TEST_WALK_LOADER TestWalkLoader;
     PDESTROY_RTL_PATH DestroyRtlPath;                                          \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
     PTEST_WALK_LOADER TestWalkLoader;                                          \
+    PRTL_REGISTER_LDR_DLL_NOTIFICATION RtlRegisterLdrDllNotification;          \
+    PRTL_UNREGISTER_LDR_DLL_NOTIFICATION RtlUnregisterLdrDllNotification;      \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \

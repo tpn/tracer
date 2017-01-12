@@ -4174,6 +4174,20 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->RtlRegisterLdrDllNotification = (PRTL_REGISTER_LDR_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "RtlRegisterLdrDllNotification"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlRegisterLdrDllNotification'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlUnregisterLdrDllNotification = (PRTL_UNREGISTER_LDR_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "RtlUnregisterLdrDllNotification"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlUnregisterLdrDllNotification'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->CurrentDirectoryToUnicodeString = (PCURRENT_DIRECTORY_TO_UNICODE_STRING)
         GetProcAddress(RtlExModule, "CurrentDirectoryToUnicodeString"))) {
 

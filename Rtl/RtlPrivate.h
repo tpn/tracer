@@ -379,6 +379,175 @@ typedef DESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN \
       *PDESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN;
 DESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN DestroyGlobalRtlAtExitRundown;
 
+//
+// Loader-related structures and functions.
+//
+
+typedef struct _RTL_LDR_NOTIFICATION_FLAGS {
+    ULONG IsActive:1;
+} RTL_LDR_NOTIFICATION_FLAGS, *PRTL_LDR_NOTIFICATION_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_LDR_NOTIFICATION_TABLE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _RTL_LDR_NOTIFICATION_TABLE))
+        USHORT SizeOfStruct;
+
+    //
+    // Number of loader notifications registered.  When this hits 0, our thunk
+    // loader notification callback will be unregistered.
+    //
+
+    _Guarded_by_(CriticalSection)
+    USHORT NumberOfEntries;
+
+    //
+    // Flags.
+    //
+
+    RTL_LDR_NOTIFICATION_FLAGS Flags;
+
+    //
+    // Critical section protecting the rundown list head and heap handle.
+    //
+
+    CRITICAL_SECTION CriticalSection;
+
+    //
+    // Rundown list head.
+    //
+
+    _Guarded_by_(CriticalSection)
+    LIST_ENTRY ListHead;
+
+    //
+    // Heap handle used for allocating RTL_LDR_NOTIFICATION_ENTRY structures.
+    //
+
+    HANDLE HeapHandle;
+
+    //
+    // Pointer to our thunk loader notification callback that is used to drive
+    // registered callbacks.
+    //
+
+    PLDR_DLL_NOTIFICATION_FUNCTION NotificationFunction;
+
+    //
+    // Cookie provided to us by LdrRegisterDllNotification().
+    //
+
+    PVOID Cookie;
+
+} RTL_LDR_NOTIFICATION_TABLE, *PRTL_LDR_NOTIFICATION_TABLE;
+
+typedef
+struct
+_Struct_size_bytes_(sizeof(ULONG))
+_RTL_LDR_NOTIFICATION_ENTRY_FLAGS {
+    ULONG Unused:1;
+} RTL_LDR_NOTIFICATION_ENTRY_FLAGS, *PRTL_LDR_NOTIFICATION_ENTRY_FLAGS;
+C_ASSERT(sizeof(RTL_LDR_NOTIFICATION_ENTRY_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_LDR_NOTIFICATION_ENTRY {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _RTL_LDR_NOTIFICATION_ENTRY))
+        USHORT SizeOfStruct;
+
+    //
+    // Pad out to 4 bytes.
+    //
+
+    USHORT Padding1;
+
+    //
+    // Flags for this entry.
+    //
+
+    RTL_LDR_NOTIFICATION_ENTRY_FLAGS Flags;
+
+    //
+    // Pointer to the caller's loader DLL notification callback routine.
+    //
+
+    PLDR_DLL_NOTIFICATION_CALLBACK NotificationCallback;
+
+    //
+    // List entry to allow the structure to be registered with the ListHead
+    // field of the RTL_LDR_NOTIFICATION_ENTRY structure.
+    //
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // Pointer to the rundown structure we were added to.
+    //
+
+    PRTL_LDR_NOTIFICATION_TABLE NotificationTable;
+
+    //
+    // Optional context to be passed back to the caller when invoking their
+    // callback.
+    //
+
+    PVOID Context;
+
+    //
+    // Pad out to 64 bytes.  (Currently at 48 bytes after Context.)
+    //
+
+    ULONGLONG Padding2[2];
+
+} RTL_LDR_NOTIFICATION_ENTRY, *PRTL_LDR_NOTIFICATION_ENTRY;
+typedef RTL_LDR_NOTIFICATION_ENTRY **PPRTL_LDR_NOTIFICATION_ENTRY;
+C_ASSERT(sizeof(RTL_LDR_NOTIFICATION_ENTRY) == 64);
+
+typedef
+BOOL
+(INITIALIZE_RTL_LDR_NOTIFICATION_TABLE)(
+    _In_ PRTL Rtl,
+    _In_ PRTL_LDR_NOTIFICATION_TABLE NotificationTable
+    );
+typedef INITIALIZE_RTL_LDR_NOTIFICATION_TABLE \
+      *PINITIALIZE_RTL_LDR_NOTIFICATION_TABLE;
+INITIALIZE_RTL_LDR_NOTIFICATION_TABLE InitializeRtlLdrNotificationTable;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_held_(NotificationTable->CriticalSection)
+BOOL
+(CREATE_RTL_LDR_NOTIFICATION_ENTRY)(
+    _In_ PRTL_LDR_NOTIFICATION_TABLE NotificationTable,
+    _In_ PLDR_DLL_NOTIFICATION_CALLBACK NotificationCallback,
+    _In_opt_ PRTL_LDR_NOTIFICATION_FLAGS Flags,
+    _In_opt_ PVOID Context,
+    _Outptr_result_nullonfailure_
+        PPRTL_LDR_NOTIFICATION_ENTRY NotificationEntryPointer
+    );
+typedef CREATE_RTL_LDR_NOTIFICATION_ENTRY \
+      *PCREATE_RTL_LDR_NOTIFICATION_ENTRY;
+CREATE_RTL_LDR_NOTIFICATION_ENTRY CreateRtlLdrNotificationEntry;
+
+typedef
+_Requires_lock_held_(NotificationTable->CriticalSection)
+BOOL
+(REMOVE_RTL_LDR_NOTIFICATION_ENTRY)(
+    _In_ PRTL_LDR_NOTIFICATION_ENTRY NotificationEntry
+    );
+typedef REMOVE_RTL_LDR_NOTIFICATION_ENTRY \
+      *PREMOVE_RTL_LDR_NOTIFICATION_ENTRY;
+REMOVE_RTL_LDR_NOTIFICATION_ENTRY RemoveRtlLdrNotificationEntry;
+
+LDR_DLL_NOTIFICATION_FUNCTION RtlLdrDllNotificationFunction;
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

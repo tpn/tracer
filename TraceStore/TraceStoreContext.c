@@ -510,8 +510,7 @@ Return Value:
     }
 
     //
-    // This is where we check any flags that correspond to threadpool timers
-    // we need to initialize.
+    // Process additional customizations like timers and loader tracing.
     //
 
     if (TraceStores->Flags.EnableWorkingSetTracing) {
@@ -601,6 +600,25 @@ Return Value:
         PerformanceStore->BindComplete = PerformanceStoreBindComplete;
     }
 
+    if (TraceStores->Flags.EnableLoaderTracing) {
+        PTRACE_STORE LoaderStore;
+
+        //
+        // Override the BindComplete method of the loader trace store such that
+        // DLL load/unload events can be captured as soon as the trace store is
+        // available.
+        //
+
+        LoaderStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreLoaderId
+            )
+        );
+
+        LoaderStore->BindComplete = LoaderStoreBindComplete;
+    }
+
     //
     // Intentional follow-on to InitializeAllocators.
     //
@@ -676,6 +694,8 @@ InitializeAllocators:
                 TraceStoreAllocateRecordsWithTimestampImpl
             );
         }
+
+        //
 
         //
         // If the trace store has the concurrent allocations trait set, we need
@@ -915,18 +935,23 @@ Return Value:
     // Define a helper macro.
     //
 
-#define CLOSE_THREADPOOL_TIMER(Name)                                    \
+#define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
     if (TraceContext->##Name) {                                         \
         PTP_TIMER Timer = TraceContext->##Name;                         \
         BOOL CancelPendingCallbacks = TRUE;                             \
+        AcquireSRWLockExclusive(&TraceContext->##Lock);                 \
         SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
         WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
         CloseThreadpoolTimer(Timer);                                    \
         TraceContext->##Name = NULL;                                    \
+        ReleaseSRWLockExclusive(&TraceContext->##Lock);                 \
     }
 
-    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer);
-    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer);
+    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer,
+                           WorkingSetChangesLock);
+
+    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer,
+                           CapturePerformanceMetricsLock);
 
     return;
 }

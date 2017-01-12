@@ -112,4 +112,116 @@ Return Value:
     return TRUE;
 }
 
+_Use_decl_annotations_
+BOOL
+RtlRegisterLdrDllNotification(
+    PRTL Rtl,
+    PVOID Context,
+    PLDR_DLL_NOTIFICATION_CALLBACK Callback,
+    PPVOID CookiePointer
+    )
+/*++
+
+Routine Description:
+
+    This routine acquires the loader lock, walks the current list of loaded
+    modules and invokes the given callback, registers our thunk callback for
+    subsequent DLL notifications (which will call the caller's callback),
+    releases the loader lock and returns.
+
+Arguments:
+
+    TBD.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    HRESULT Result;
+    ULONG Length;
+    ULONG FramesToSkip;
+    ULONG FramesToCapture;
+    ULONG Disposition;
+    PROCESS_BASIC_INFORMATION ProcessBasicInfo;
+    PPEB Peb;
+    PPEB Peb1;
+    PPEB Peb2;
+    PCRITICAL_SECTION LoaderLock;
+    HANDLE CurrentProcess;
+    HANDLE CurrentThread;
+    USHORT FramesCaptured;
+    PVOID BackTrace;
+    ULONG BackTraceHash;
+    PLIST_ENTRY ListEntry;
+    PLIST_ENTRY ListHead;
+    PLDR_DATA_TABLE_ENTRY Module;
+
+    CurrentProcess = GetCurrentProcess();
+    CurrentThread = GetCurrentThread();
+
+    Result = Rtl->ZwQueryInformationProcess(CurrentProcess,
+                                            ProcessBasicInformation,
+                                            &ProcessBasicInfo,
+                                            sizeof(ProcessBasicInfo),
+                                            &Length);
+
+    if (FAILED(Result)) {
+        return TRUE;
+    }
+
+    Peb1 = ProcessBasicInfo.PebBaseAddress;
+    Peb2 = NtCurrentPeb();
+    Peb = Peb1;
+
+    if (Peb1 != Peb2) {
+        __debugbreak();
+    }
+
+    LoaderLock = Peb->LoaderLock;
+
+    FramesToSkip = 0;
+    FramesToCapture = 32;
+    FramesCaptured = Rtl->RtlCaptureStackBackTrace(FramesToSkip,
+                                                   FramesToCapture,
+                                                   &BackTrace,
+                                                   &BackTraceHash);
+
+    if (FramesCaptured == 0) {
+        __debugbreak();
+    }
+
+    Result = Rtl->LdrLockLoaderLock(0, &Disposition, CookiePointer);
+    if (Disposition != LDR_LOCK_LOADER_LOCK_DISPOSITION_LOCK_ACQUIRED) {
+        __debugbreak();
+    }
+
+    ListHead = &Peb->Ldr->InLoadOrderModuleList;
+    ListEntry = ListHead->Flink;
+
+    while (ListEntry != ListHead) {
+        Module = CONTAINING_RECORD(ListEntry,
+                                   LDR_DATA_TABLE_ENTRY,
+                                   InLoadOrderModuleList);
+
+        OutputDebugStringW(Module->FullDllName.Buffer);
+
+        ListEntry = ListEntry->Flink;
+    }
+
+    Result = Rtl->LdrUnlockLoaderLock(0, *CookiePointer);
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+VOID
+RtlUnregisterLdrDllNotification(
+    PVOID Cookie
+    )
+{
+    return;
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -17,10 +17,71 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
+BOOL
+LoaderStoreBindComplete(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_MEMORY_MAP FirstMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine overrides the normal trace store bind complete routine for
+    the Loader trace store.  It calls the normal trace store bind complete
+    routine, then initializes loader tracing via Rtl.  This acquires the loader
+    lock, walks the current list of loaded modules and invokes our callback,
+    registers our callback and the subsequent DLL load/unload notification
+    routine, releases the lock, and then returns.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to the TRACE_CONTEXT structure to which
+        the trace store was bound.
+
+    TraceStore - Supplies a pointer to the bound TRACE_STORE.
+
+    FirstMemoryMap - Supplies a pointer to the first TRACE_STORE_MEMORY_MAP
+        used by the trace store.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    PRTL Rtl;
+    PVOID Cookie;
+
+    //
+    // Complete the normal bind complete routine for the trace store.  This
+    // will resume allocations and set the bind complete event.
+    //
+
+    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize loader notifications.
+    //
+
+    Rtl = TraceContext->Rtl;
+
+    Success = Rtl->RtlRegisterLdrDllNotification(Rtl,
+                                                 TraceContext,
+                                                 LdrDllNotificationCallback,
+                                                 &Cookie);
+
+    return Success;
+}
+
+_Use_decl_annotations_
 VOID
 CALLBACK
-TraceStoreLoaderDllNotification(
-    ULONG NotificationReason,
+LdrDllNotificationCallback(
+    LDR_DLL_NOTIFICATION_REASON NotificationReason,
     PCLDR_DLL_NOTIFICATION_DATA NotificationData,
     PVOID IncomingContext
     )
