@@ -279,6 +279,14 @@ typedef VOID (RTL_COPY_STRING)(
     );
 typedef RTL_COPY_STRING *PRTL_COPY_STRING;
 
+typedef
+NTSTATUS
+(NTAPI RTL_APPEND_STRING_TO_STRING)(
+    _Inout_       PSTRING Destination,
+    _In_    const STRING  *Source
+    );
+typedef RTL_APPEND_STRING_TO_STRING *PRTL_APPEND_STRING_TO_STRING;
+
 typedef NTSTATUS (*PRTL_APPEND_UNICODE_TO_STRING)(
     _Inout_  PUNICODE_STRING Destination,
     _In_opt_ PCWSTR          Source
@@ -606,6 +614,19 @@ USHORT
     );
 typedef RTL_CAPTURE_STACK_BACK_TRACE *PRTL_CAPTURE_STACK_BACK_TRACE;
 
+typedef
+PRUNTIME_FUNCTION
+(WINAPI RTL_LOOKUP_FUNCTION_ENTRY)(
+    _In_  ULONGLONG  ControlPc,
+    _Out_ PULONGLONG ImageBase,
+    _Inout_opt_ PUNWIND_HISTORY_TABLE HistoryTable
+    );
+typedef RTL_LOOKUP_FUNCTION_ENTRY *PRTL_LOOKUP_FUNCTION_ENTRY;
+
+//
+// Process and Thread support.
+//
+
 typedef enum _PROCESSINFOCLASS {
     ProcessBasicInformation = 0x0,
     ProcessQuotaLimits = 0x1,
@@ -724,16 +745,28 @@ typedef struct _LDR_DATA_TABLE_ENTRY {
     PVOID EntryPoint;
     union {
         ULONG SizeOfImage;
-        PVOID Reserved3;
+        PVOID _Padding;
     };
     UNICODE_STRING FullDllName;
-    BYTE Reserved4[8];
-    PVOID Reserved5[3];
+    UNICODE_STRING BaseDllName;
+    ULONG Flags;
+    USHORT LoadCount;
+    USHORT TlsIndex;
     union {
-        ULONG CheckSum;
-        PVOID Reserved6;
+        LIST_ENTRY HashLinks;
+        struct {
+            PVOID SectionPointer;
+            ULONG CheckSum;
+        };
     };
-    ULONG TimeDateStamp;
+    union {
+        struct {
+            ULONG TimeDateStamp;
+        };
+        struct {
+            PVOID LoadedImports;
+        };
+    };
 } LDR_DATA_TABLE_ENTRY, *PLDR_DATA_TABLE_ENTRY;
 
 #ifndef LDR_DLL_NOTIFICATION_REASON_LOADED
@@ -791,6 +824,32 @@ NTSTATUS
     _In_ PVOID Cookie
     );
 typedef LDR_UNREGISTER_DLL_NOTIFICATION *PLDR_UNREGISTER_DLL_NOTIFICATION;
+
+#define LDR_LOCK_LOADER_LOCK_FLAG_RAISE_ON_ERRORS (0x00000001)
+#define LDR_LOCK_LOADER_LOCK_FLAG_TRY_ONLY (0x00000002)
+
+#define LDR_LOCK_LOADER_LOCK_DISPOSITION_INVALID (0)
+#define LDR_LOCK_LOADER_LOCK_DISPOSITION_LOCK_ACQUIRED (1)
+#define LDR_LOCK_LOADER_LOCK_DISPOSITION_LOCK_NOT_ACQUIRED (2)
+
+typedef
+NTSTATUS
+(NTAPI LDR_LOCK_LOADER_LOCK)(
+    _In_ ULONG Flags,
+    _Inout_opt_ PULONG Disposition,
+    _Out_ PVOID *Cookie
+    );
+typedef LDR_LOCK_LOADER_LOCK *PLDR_LOCK_LOADER_LOCK;
+
+#define LDR_UNLOCK_LOADER_LOCK_FLAG_RAISE_ON_ERRORS (0x00000001)
+
+typedef
+NTSTATUS
+(NTAPI LDR_UNLOCK_LOADER_LOCK)(
+    _In_ ULONG Flags,
+    _Inout_ PVOID Cookie
+    );
+typedef LDR_UNLOCK_LOADER_LOCK *PLDR_UNLOCK_LOADER_LOCK;
 
 typedef struct _RTL_USER_PROCESS_PARAMETERS {
     BYTE           Reserved1[16];
@@ -895,7 +954,7 @@ typedef struct _PEB {
     PVOID FlsBitmap;
     ULONG FlsBitmapBits[FLS_MAXIMUM_AVAILABLE / (sizeof(ULONG) * 8)];
     ULONG FlsHighIndex;
-} PEB, **PPEB;
+} PEB, *PPEB;
 
 typedef struct _ACTIVATION_CONTEXT_STACK {
     struct _RTL_ACTIVATION_CONTEXT_STACK_FRAME *ActiveFrame;
@@ -1039,6 +1098,8 @@ typedef struct _INITIAL_TEB {
 } INITIAL_TEB, *PINITIAL_TEB;
 
 typedef LONG KPRIORITY;
+
+#define NtCurrentPeb() (NtCurrentTeb()->ProcessEnvironmentBlock)
 
 typedef struct _THREAD_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
@@ -1186,6 +1247,33 @@ NTSTATUS
 typedef NT_TERMINATE_THREAD *PNT_TERMINATE_THREAD;
 typedef NT_TERMINATE_THREAD   ZW_TERMINATE_THREAD;
 typedef ZW_TERMINATE_THREAD *PZW_TERMINATE_THREAD;
+
+typedef
+VOID
+(APC_ROUTINE) (
+    _In_opt_ PVOID ApcArgument1,
+    _In_opt_ PVOID ApcArgument2,
+    _In_opt_ PVOID ApcArgument3
+    );
+typedef APC_ROUTINE *PAPC_ROUTINE;
+
+typedef
+NTSTATUS
+(NTAPI NT_QUEUE_APC_THREAD)(
+    _In_ HANDLE ThreadHandle,
+    _In_ PAPC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcArgument1,
+    _In_opt_ PVOID ApcArgument2,
+    _In_opt_ PVOID ApcArgument3
+    );
+typedef NT_QUEUE_APC_THREAD *PNT_QUEUE_APC_THREAD;
+
+typedef
+NTSTATUS
+(NTAPI NT_TEST_ALERT)(
+    VOID
+    );
+typedef NT_TEST_ALERT *PNT_TEST_ALERT;
 
 //
 // SystemTime-related functions.
@@ -2858,6 +2946,8 @@ C_ASSERT(sizeof(RTL_FILE) == 512);
     PZW_QUERY_INFORMATION_PROCESS ZwQueryInformationProcess;                                           \
     PLDR_REGISTER_DLL_NOTIFICATION LdrRegisterDllNotification;                                         \
     PLDR_UNREGISTER_DLL_NOTIFICATION LdrUnregisterDllNotification;                                     \
+    PLDR_LOCK_LOADER_LOCK LdrLockLoaderLock;                                                           \
+    PLDR_UNLOCK_LOADER_LOCK LdrUnlockLoaderLock;                                                       \
     PZW_ALLOCATE_VIRTUAL_MEMORY ZwAllocateVirtualMemory;                                               \
     PZW_FREE_VIRTUAL_MEMORY ZwFreeVirtualMemory;                                                       \
     PRTL_CREATE_HEAP RtlCreateHeap;                                                                    \
@@ -3516,6 +3606,15 @@ BOOL
 typedef DISABLE_LOCK_MEMORY_PRIVILEGE *PDISABLE_LOCK_MEMORY_PRIVILEGE;
 RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
 
+typedef
+_Success_(return != 0)
+BOOL
+(TEST_WALK_LOADER)(
+    _In_ struct _RTL *Rtl
+    );
+typedef TEST_WALK_LOADER *PTEST_WALK_LOADER;
+RTL_API TEST_WALK_LOADER TestWalkLoader;
+
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 
 #define PrefaultNextPage(Address)                          \
@@ -3559,6 +3658,7 @@ RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                      \
     PDESTROY_RTL_PATH DestroyRtlPath;                                          \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
+    PTEST_WALK_LOADER TestWalkLoader;                                          \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \

@@ -3456,6 +3456,36 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         }
     }
 
+    if (!(Rtl->LdrLockLoaderLock = (PLDR_LOCK_LOADER_LOCK)
+        GetProcAddress(Rtl->NtdllModule, "LdrLockLoaderLock"))) {
+
+        if (!(Rtl->LdrLockLoaderLock = (PLDR_LOCK_LOADER_LOCK)
+            GetProcAddress(Rtl->NtosKrnlModule, "LdrLockLoaderLock"))) {
+
+            if (!(Rtl->LdrLockLoaderLock = (PLDR_LOCK_LOADER_LOCK)
+                GetProcAddress(Rtl->Kernel32Module, "LdrLockLoaderLock"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'LdrLockLoaderLock'");
+                return FALSE;
+            }
+        }
+    }
+
+    if (!(Rtl->LdrUnlockLoaderLock = (PLDR_UNLOCK_LOADER_LOCK)
+        GetProcAddress(Rtl->NtdllModule, "LdrUnlockLoaderLock"))) {
+
+        if (!(Rtl->LdrUnlockLoaderLock = (PLDR_UNLOCK_LOADER_LOCK)
+            GetProcAddress(Rtl->NtosKrnlModule, "LdrUnlockLoaderLock"))) {
+
+            if (!(Rtl->LdrUnlockLoaderLock = (PLDR_UNLOCK_LOADER_LOCK)
+                GetProcAddress(Rtl->Kernel32Module, "LdrUnlockLoaderLock"))) {
+
+                OutputDebugStringA("Rtl: failed to resolve 'LdrUnlockLoaderLock'");
+                return FALSE;
+            }
+        }
+    }
+
     if (!(Rtl->ZwAllocateVirtualMemory = (PZW_ALLOCATE_VIRTUAL_MEMORY)
         GetProcAddress(Rtl->NtdllModule, "ZwAllocateVirtualMemory"))) {
 
@@ -4134,6 +4164,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "GetModuleRtlPath"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'GetModuleRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->TestWalkLoader = (PTEST_WALK_LOADER)
+        GetProcAddress(RtlExModule, "TestWalkLoader"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'TestWalkLoader'");
         return FALSE;
     }
 
