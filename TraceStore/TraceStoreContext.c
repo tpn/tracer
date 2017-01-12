@@ -151,10 +151,6 @@ Return Value:
         return FALSE;
     }
 
-    //
-    // XXX todo: refactor to leverage TracerConfig.
-    //
-
     if (ARGUMENT_PRESENT(TraceContextFlags)) {
         ContextFlags = *TraceContextFlags;
         ContextFlags.Valid = FALSE;
