@@ -299,7 +299,6 @@ InitializePerf:
                                          Perf->PerformanceInfoSize);
     if (!Success) {
         TraceContext->LastError = GetLastError();
-        __debugbreak();
         goto Error;
     }
 
@@ -314,7 +313,6 @@ InitializePerf:
                               &Perf->UserTime);
     if (!Success) {
         TraceContext->LastError = GetLastError();
-        __debugbreak();
         goto Error;
     }
 
@@ -325,7 +323,6 @@ InitializePerf:
     Success = Rtl->GetProcessIoCounters(CurrentProcess, &Perf->IoCounters);
     if (!Success) {
         TraceContext->LastError = GetLastError();
-        __debugbreak();
         goto Error;
     }
 
@@ -336,7 +333,6 @@ InitializePerf:
     Success = Rtl->GetProcessHandleCount(CurrentProcess, &Perf->HandleCount);
     if (!Success) {
         TraceContext->LastError = GetLastError();
-        __debugbreak();
         goto Error;
     }
 
@@ -347,7 +343,6 @@ InitializePerf:
     Success = QueryProcessCycleTime(CurrentProcess, &Perf->ProcessCycles);
     if (!Success) {
         TraceContext->LastError = GetLastError();
-        __debugbreak();
         goto Error;
     }
 
