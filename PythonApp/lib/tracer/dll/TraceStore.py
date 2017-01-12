@@ -146,7 +146,8 @@ TraceStoreImageFileId                   =  29
 TraceStoreUnicodeStringBufferId         =  30
 TraceStoreLineId                        =  31
 TraceStoreObjectId                      =  32
-TraceStoreInvalidId                     =  33
+TraceStoreLoaderId                      =  33
+TraceStoreInvalidId                     =  34
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -188,6 +189,7 @@ TraceStoreIdToName = {
     TraceStoreUnicodeStringBufferId: 'UnicodeStringBuffer',
     TraceStoreLineId: 'Line',
     TraceStoreObjectId: 'Object',
+    TraceStoreLoaderId: 'Loader',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -1340,6 +1342,7 @@ TRACE_STORES._fields_ = [
     ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
     ('LineRelocationCompleteEvent', HANDLE),
     ('ObjectRelocationCompleteEvent', HANDLE),
+    ('LoaderRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1374,6 +1377,7 @@ TRACE_STORES._fields_ = [
     ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
     ('LineReloc', TRACE_STORE_RELOC),
     ('ObjectReloc', TRACE_STORE_RELOC),
+    ('LoaderReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1765,6 +1769,18 @@ TRACE_STORES._fields_ = [
     ('ObjectSynchronizationStore', TRACE_STORE),
     ('ObjectInfoStore', INFO_STORE),
 
+    ('LoaderStore', TRACE_STORE),
+    ('LoaderMetadataInfoStore', TRACE_STORE),
+    ('LoaderAllocationStore', ALLOCATION_STORE),
+    ('LoaderRelocationStore', RELOCATION_STORE),
+    ('LoaderAddressStore', ADDRESS_STORE),
+    ('LoaderAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('LoaderAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('LoaderAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('LoaderSynchronizationStore', TRACE_STORE),
+    ('LoaderInfoStore', INFO_STORE),
+
     ('Padding3', ULONGLONG * 2),
 ]
 
@@ -1818,6 +1834,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
         ('LineRelocationCompleteEvent', HANDLE),
         ('ObjectRelocationCompleteEvent', HANDLE),
+        ('LoaderRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1851,6 +1868,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
         ('LineReloc', TRACE_STORE_RELOC),
         ('ObjectReloc', TRACE_STORE_RELOC),
+        ('LoaderReloc', TRACE_STORE_RELOC),
         ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE

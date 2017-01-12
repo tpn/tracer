@@ -56,6 +56,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreUnicodeStringBuffer.dat",
     L"TraceStoreLine.dat",
     L"TraceStoreObject.dat",
+    L"TraceStoreLoader.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -178,6 +179,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 23,   // UnicodeStringBuffer
      1 << 24,   // Line
      1 << 23,   // Object
+     1 << 23,   // Loader
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -853,6 +855,27 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     {
         1,  // VaryingRecordSize
         0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0   // Unused
+    },
+
+    //
+    // Loader
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
         0,  // StreamingWrite
         0,  // StreamingRead
