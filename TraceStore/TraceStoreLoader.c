@@ -10,7 +10,7 @@ Abstract:
 
     This module implements functionality related to capturing library loading
     information whilst a process is being traced.  This is done by hooking into
-    loader's DLL notification callbacks.
+    loader's DLL notification callbacks via the facilities provided by Rtl.
 
 --*/
 
