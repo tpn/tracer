@@ -915,18 +915,23 @@ Return Value:
     // Define a helper macro.
     //
 
-#define CLOSE_THREADPOOL_TIMER(Name)                                    \
+#define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
     if (TraceContext->##Name) {                                         \
         PTP_TIMER Timer = TraceContext->##Name;                         \
         BOOL CancelPendingCallbacks = TRUE;                             \
+        AcquireSRWLockExclusive(&TraceContext->##Lock);                 \
         SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
         WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
         CloseThreadpoolTimer(Timer);                                    \
         TraceContext->##Name = NULL;                                    \
+        ReleaseSRWLockExclusive(&TraceContext->##Lock);                 \
     }
 
-    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer);
-    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer);
+    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer,
+                           WorkingSetChangesLock);
+
+    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer,
+                           CapturePerformanceMetricsLock);
 
     return;
 }
