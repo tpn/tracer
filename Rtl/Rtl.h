@@ -3606,14 +3606,75 @@ BOOL
 typedef DISABLE_LOCK_MEMORY_PRIVILEGE *PDISABLE_LOCK_MEMORY_PRIVILEGE;
 RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
 
+//
+// Loader hooking.
+//
+
+#define LDR_DLL_NOTIFICATION_REASON_LOADED_INITIAL 5
+
+//
+// This is a custom structure we use to overlay the DLL notification reasons
+// above.  Bit 1 indicates both LOADED and LOADED_INITIAL.
+//
+
+typedef union _DLL_NOTIFICATION_REASON {
+    ULONG AsLong;
+    struct {
+        ULONG Loaded:1;
+        ULONG Unloaded:1;
+        ULONG LoadedInitial:1;
+    };
+} DLL_NOTIFICATION_REASON; *PDLL_NOTIFICATION_REASON;
+
+typedef struct _DLL_NOTIFICATION_DATA {
+    PLDR_DATA_TABLE_ENTRY LoaderDataTableEntry;
+
+    //
+    // The following entries are only filled in when the notification reason is
+    // LDR_DLL_NOTIFICATION_REASON_LOADED (i.e. not LOADED_INITIAL).
+    //
+
+    PCLDR_DLL_NOTIFICATION_DATA NotificationData;
+    ULONG NumberOfStackBackTraceFrames;
+    ULONG StackBackTraceHash;
+    PVOID StackBackTrace;
+} DLL_NOTIFICATION_DATA, *PDLL_NOTIFICATION_DATA;
+
+typedef
+VOID
+(DLL_NOTIFICATION_CALLBACK)(
+    _In_ DLL_NOTIFICATION_REASON NotificationReason,
+    _In_ PDLL_NOTIFICATION_DATA NotificationData,
+    _In_ PVOID Context
+    );
+typedef DLL_NOTIFICATION_CALLBACK *PDLL_NOTIFICATION_CALLBACK;
+
+typedef struct _DLL_NOTIFICATION_FLAGS {
+    ULONG Unused:1;
+} DLL_NOTIFICATION_FLAGS, *PDLL_NOTIFICATION_FLAGS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(REGISTER_DLL_NOTIFICATION)(
+    _In_ struct _RTL *Rtl,
+    _In_ PDLL_NOTIFICATION_CALLBACK NotificationCallback,
+    _In_opt_ PDLL_NOTIFICATION_FLAGS NotificationFlags,
+    _In_opt_ PVOID Context,
+    _Outptr_opt_result_nullonfailure_ PPVOID Cookie
+    );
+typedef REGISTER_DLL_NOTIFICATION *PREGISTER_DLL_NOTIFICATION;
+RTL_API REGISTER_DLL_NOTIFICATION RegisterDllNotification;
+
 typedef
 _Success_(return != 0)
 BOOL
-(TEST_WALK_LOADER)(
-    _In_ struct _RTL *Rtl
+(UNREGISTER_DLL_NOTIFICATION)(
+    _In_ PVOID Cookie
     );
-typedef TEST_WALK_LOADER *PTEST_WALK_LOADER;
-RTL_API TEST_WALK_LOADER TestWalkLoader;
+typedef UNREGISTER_DLL_NOTIFICATION *PUNREGISTER_DLL_NOTIFICATION;
+RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 
@@ -3658,7 +3719,8 @@ RTL_API TEST_WALK_LOADER TestWalkLoader;
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                      \
     PDESTROY_RTL_PATH DestroyRtlPath;                                          \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
-    PTEST_WALK_LOADER TestWalkLoader;                                          \
+    PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                        \
+    PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                    \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
@@ -3692,6 +3754,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     P__SECURITY_INIT_COOKIE __security_init_cookie;
 
     PVOID MaximumFileSectionSize;
+    struct _RTL_LDR_NOTIFICATION_TABLE *LoaderNotificationTable;
 
     HANDLE HeapHandle;
 
@@ -6246,6 +6309,16 @@ AppendTailList(
     ListToAppend->Blink = ListEnd;
     return;
 }
+
+#define FOR_EACH_LIST_ENTRY(Head, Entry) \
+    for (Entry = Head->Flink;            \
+         Entry != Head;                  \
+         Entry = Entry->Flink)
+
+#define FOR_EACH_LIST_ENTRY_REVERSE(Head, Entry) \
+    for (Entry = Head->Blink;                    \
+         Entry != Head;                          \
+         Entry = Entry->Blink)
 
 #ifdef __cplusplus
 } // extern "C"

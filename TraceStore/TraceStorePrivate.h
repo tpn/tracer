@@ -2033,6 +2033,13 @@ Return Value:
 }
 
 //
+// TraceStoreLoader-related functions.
+//
+
+BIND_COMPLETE LoaderStoreBindComplete;
+DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallback;
+
+//
 // TraceStoreWorkingSet-related functions.
 //
 
