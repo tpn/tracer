@@ -118,6 +118,12 @@ Return Value:
         }
     }
 
+    if (Traits.ConcurrentDataStructure) {
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
 }
 

@@ -2036,7 +2036,8 @@ Return Value:
 // TraceStoreLoader-related functions.
 //
 
-BIND_COMPLETE LoaderStoreBindComplete;
+BIND_COMPLETE ModuleTableStoreBindComplete;
+BIND_COMPLETE ModuleLoadEventStoreBindComplete;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallback;
 
 //

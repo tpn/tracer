@@ -601,22 +601,30 @@ Return Value:
     }
 
     if (TraceStores->Flags.EnableLoaderTracing) {
-        PTRACE_STORE LoaderStore;
+        PTRACE_STORE ModuleTableStore;
+        PTRACE_STORE ModuleLoadEventStore;
 
         //
-        // Override the BindComplete method of the loader trace store such that
-        // DLL load/unload events can be captured as soon as the trace store is
-        // available.
+        // Override the BindComplete methods for the ModuleTable store and the
+        // ModuleLoadEvent store.
         //
 
-        LoaderStore = (
+        ModuleTableStore = (
             TraceStoreIdToTraceStore(
                 TraceStores,
-                TraceStoreLoaderId
+                TraceStoreModuleTableId
             )
         );
 
-        LoaderStore->BindComplete = LoaderStoreBindComplete;
+        ModuleLoadEventStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreModuleLoadEventId
+            )
+        );
+
+        ModuleTableStore->BindComplete = ModuleTableStoreBindComplete;
+        ModuleLoadEventStore->BindComplete = ModuleLoadEventStoreBindComplete;
     }
 
     //
