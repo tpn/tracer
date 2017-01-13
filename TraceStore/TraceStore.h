@@ -659,10 +659,25 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG Periodic:1;
 
     //
+    // When set, indicates that the trace store is being used for a data
+    // structure that will be accessed concurrently in multiple threads.
+    // This will initialize a slim read/write lock in the TRACE_STORE_SYNC
+    // structure that can be used by threads to synchronize access to the
+    // store.
+    //
+    // Invariants:
+    //
+    //  - If ConcurrentDataStructure == TRUE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG ConcurrentDataStructure:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:19;
+    ULONG Unused:18;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -697,7 +712,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     AllowPageSpillTrait                 =  1 << 10,
     PageAlignedTrait                    =  1 << 11,
     PeriodicTrait                       =  1 << 12,
-    InvalidTrait                        = (1 << 12) + 1
+    ConcurrentDataStructureTrait        =  1 << 13,
+    InvalidTrait                        = (1 << 13) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -746,6 +762,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define PreventPageSpill(Traits) (!((Traits).AllowPageSpill))
 #define WantsPageAlignment(Traits) ((Traits).PageAligned)
 #define IsPeriodic(Traits) ((Traits).Periodic)
+#define IsConcurrentDataStructure(Traits) ((Traits).ConcurrentDataStructure)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -849,10 +866,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
     TRACE_STORE_SYNC_FLAGS Flags;
 
     //
+    // Slim read/write lock for stores with ConcurrentDataStructure trait set.
+    //
+
+    SRWLOCK SRWLock;
+
+    //
     // Pad to 16 bytes.
     //
 
-    ULONG Padding2[2];
+    ULONG Padding2;
 
     //
     // Allocator Critical section.
@@ -874,10 +897,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
 
 } TRACE_STORE_SYNC, *PTRACE_STORE_SYNC;
 C_ASSERT(sizeof(CRITICAL_SECTION) == 40);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, AllocationCriticalSection) == 16);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CallbackCriticalSection) == 64);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 128);
-C_ASSERT(sizeof(TRACE_STORE_SYNC) == 256);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, AllocationCriticalSection) == 16);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CallbackCriticalSection) == 64);
+//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 128);
+//C_ASSERT(sizeof(TRACE_STORE_SYNC) == 256);
 
 //
 // For trace stores that record instances of structures from a running program,
@@ -1467,6 +1490,256 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
 
 } TRACE_PERFORMANCE, *PTRACE_PERFORMANCE, *PPTRACE_PERFORMANCE;
 C_ASSERT(sizeof(TRACE_PERFORMANCE) == 512);
+
+//
+// This structure is used to capture module (DLL) information.
+//
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_MODULE_TABLE_FLAGS {
+    ULONG Initialized:1;
+} TRACE_MODULE_TABLE_FLAGS, *PTRACE_MODULE_TABLE_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_MODULE_TABLE)) ULONG SizeOfStruct;
+
+    //
+    // Module table flags.
+    //
+
+    TRACE_MODULE_TABLE_FLAGS Flags;
+
+    //
+    // Pad out to 16 bytes.
+    //
+
+    ULONGLONG Padding1;
+
+    //
+    // AVL table keyed by the loaded module's base address.
+    //
+
+    RTL_AVL_TABLE BaseAddressTable;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    //
+    // Unicode prefix table of fully qualified path names for each module.
+    //
+
+    UNICODE_PREFIX_TABLE ModuleNamePrefixTable;
+
+    //
+    // (144 bytes consumed.)
+    //
+
+    //
+    // Pad out to 4096 bytes.
+    //
+
+    BYTE Reserved[3952];
+
+} TRACE_MODULE_TABLE, *PTRACE_MODULE_TABLE;
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
+C_ASSERT(sizeof(UNICODE_PREFIX_TABLE) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, BaseAddressTable) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, ModuleNamePrefixTable) == 120);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, Reserved) == 144);
+C_ASSERT(sizeof(TRACE_MODULE_TABLE) == 4096);
+
+//
+// Module table entry structure.
+//
+
+typedef struct
+_Struct_size_bytes_(sizeof(ULONG))
+_TRACE_MODULE_TABLE_ENTRY_FLAGS {
+
+    //
+    // When set, this bit indicates that the module was already present in the
+    // process when we first registered for DLL loader notifications.
+    //
+
+    ULONG AlreadyPresent:1;
+
+    //
+    // When set, indicates that we were informed of the module being loaded
+    // after we registered for DLL loader notifications.
+    //
+
+    ULONG LoadedDuringTracing:1;
+
+} TRACE_MODULE_TABLE_ENTRY_FLAGS, *PTRACE_MODULE_TABLE_ENTRY_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
+
+    //
+    // DLL base address.
+    //
+
+    PVOID BaseAddress;
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_MODULE_TABLE_ENTRY))
+        ULONG SizeOfStruct;
+
+    //
+    // Module table entry flags.
+    //
+
+    TRACE_MODULE_TABLE_ENTRY_FLAGS Flags;
+
+    //
+    // Unicode prefix table entry; links to TRACE_MODULE_TABLE's
+    // ModuleNamePrefixTable.
+    //
+
+    UNICODE_PREFIX_TABLE_ENTRY ModuleNamePrefixTableEntry;
+
+    //
+    // (80 bytes consumed.)
+    //
+
+    //
+    // The RTL_FILE structure for the underlying module.
+    //
+
+    RTL_FILE File;
+
+    //
+    // (592 bytes consumed.)
+    //
+
+    //
+    // Number of frames captured by the stack back trace.
+    //
+
+    ULONG FramesCaptured;
+
+    //
+    // Hash of the stack back trace.
+    //
+
+    ULONG BackTraceHash;
+
+    //
+    // (600 bytes consumed.)
+    //
+
+    //
+    // List head used to link load events together.
+    //
+
+    LIST_ENTRY ListHead;
+
+    //
+    // (616 bytes consumed.)
+    //
+
+    //
+    // Pad out to 3584 bytes (4096 - 512 = 3584).
+    //
+
+    BYTE Reserved[2968];
+
+    //
+    // The back trace buffer consumes 512 bytes and lives at the end of the
+    // structure.
+    //
+
+    ULONGLONG BackTrace[64];
+
+} TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, FramesCaptured) == 592);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 616);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, BackTrace) == 3584);
+C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 4096);
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_MODULE_LOAD_EVENT))
+        ULONG SizeOfStruct;
+
+    //
+    // Loader notification flags.
+    //
+
+    ULONG Flags;
+
+    //
+    // Load/unload timestamps.
+    //
+
+    struct {
+        LARGE_INTEGER Loaded;
+        LARGE_INTEGER Unloaded;
+    } Timestamp;
+
+    //
+    // List entry linking to TRACE_MODULE_TABLE_ENTRY's ListHead field.
+    //
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // Pointer to the parent TRACE_MODULE_TABLE_ENTRY.
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    //
+    // Preferred base address, if any.
+    //
+
+    PVOID PreferredBaseAddress;
+
+    //
+    // Actual base address the module was loaded at.
+    //
+
+    PVOID BaseAddress;
+
+    //
+    // Entry point as reported during loading.
+    //
+
+    PVOID EntryPoint;
+
+    //
+    // Pointer to the content within the image file store.
+    //
+
+    PVOID Content;
+
+    //
+    // Size of the image, as reported during loader notification.
+    //
+
+    ULONG SizeOfImage;
+
+    //
+    // Pad out to 128 bytes.
+    //
+
+    BYTE Reserved[44];
+
+} TRACE_MODULE_LOAD_EVENT, *PTRACE_MODULE_LOAD_EVENT;
+C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 4+4+8+8+16+8+8+8+8+8+4+44);
+C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 128);
 
 //
 // Forward definitions of function pointers we include in the trace context.
@@ -2373,6 +2646,61 @@ TRACE_STORE_API CLOSE_TRACE_CONTEXT CloseTraceContext;
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+VOID
+TraceStoreAcquireLockExclusive(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    AcquireSRWLockExclusive(&TraceStore->Sync->SRWLock);
+}
+
+FORCEINLINE
+VOID
+TraceStoreAcquireLockShared(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    AcquireSRWLockShared(&TraceStore->Sync->SRWLock);
+}
+
+FORCEINLINE
+VOID
+TraceStoreReleaseLockExclusive(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    ReleaseSRWLockExclusive(&TraceStore->Sync->SRWLock);
+}
+
+FORCEINLINE
+VOID
+TraceStoreReleaseLockShared(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    ReleaseSRWLockShared(&TraceStore->Sync->SRWLock);
+}
+
+FORCEINLINE
+BOOLEAN
+TraceStoreTryAcquireLockExclusive(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    return TryAcquireSRWLockExclusive(&TraceStore->Sync->SRWLock);
+}
+
+FORCEINLINE
+BOOLEAN
+TraceStoreTryAcquireLockShared(
+    _In_ PTRACE_STORE TraceStore
+)
+{
+    return TryAcquireSRWLockShared(&TraceStore->Sync->SRWLock);
+}
+
 
 FORCEINLINE
 ADDRESS_BIT_COUNTS

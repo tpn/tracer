@@ -603,6 +603,10 @@ Return Value:
         RuntimeParameters->ConcurrentAllocationsCriticalSectionSpinCount
     );
 
+    if (IsConcurrentDataStructure(Traits)) {
+        InitializeSRWLock(&Sync->SRWLock);
+    }
+
     if (HasConcurrentAllocations(Traits)) {
 
         Success = InitializeCriticalSectionAndSpinCount(

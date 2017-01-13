@@ -1686,8 +1686,10 @@ typedef struct _RTL_BALANCED_LINKS {
     struct _RTL_BALANCED_LINKS *RightChild;
     CHAR Balance;
     UCHAR Reserved[3];
+    ULONG Padding;
 } RTL_BALANCED_LINKS;
 typedef RTL_BALANCED_LINKS *PRTL_BALANCED_LINKS;
+C_ASSERT(sizeof(RTL_BALANCED_LINKS) == 32);
 
 typedef RTL_GENERIC_COMPARE_RESULTS (NTAPI *PRTL_AVL_COMPARE_ROUTINE)(
     _In_ struct _RTL_AVL_TABLE *Table,
@@ -1711,13 +1713,18 @@ typedef struct _RTL_AVL_TABLE {
     ULONG WhichOrderedElement;
     ULONG NumberGenericTableElements;
     ULONG DepthOfTree;
+    ULONG Unused1;
     PRTL_BALANCED_LINKS RestartKey;
     ULONG DeleteCount;
+    ULONG Unused2;
     PRTL_AVL_COMPARE_ROUTINE CompareRoutine;
     PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine;
     PRTL_AVL_FREE_ROUTINE FreeRoutine;
     PVOID TableContext;
 } RTL_AVL_TABLE, *PRTL_AVL_TABLE;
+C_ASSERT(FIELD_OFFSET(RTL_AVL_TABLE, OrderedPointer) == 32);
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 32+8+4+4+4+4+8+4+4+8+8+8+8);
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
 
 typedef NTSTATUS (NTAPI *PRTL_AVL_MATCH_FUNCTION)(
     _In_ struct _RTL_AVL_TABLE *Table,
@@ -2025,10 +2032,13 @@ typedef UNICODE_PREFIX_TABLE_ENTRY *PUNICODE_PREFIX_TABLE_ENTRY;
 typedef struct _UNICODE_PREFIX_TABLE {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
+    ULONG Unused;
     PUNICODE_PREFIX_TABLE_ENTRY NextPrefixTree;
     PUNICODE_PREFIX_TABLE_ENTRY LastNextEntry;
 } UNICODE_PREFIX_TABLE;
 typedef UNICODE_PREFIX_TABLE *PUNICODE_PREFIX_TABLE;
+C_ASSERT(sizeof(UNICODE_PREFIX_TABLE) == 2+2+4+8+8);
+C_ASSERT(sizeof(UNICODE_PREFIX_TABLE) == 24);
 
 typedef VOID (NTAPI *PRTL_INITIALIZE_UNICODE_PREFIX)(
     _In_ PUNICODE_PREFIX_TABLE PrefixTable
@@ -2673,8 +2683,16 @@ C_ASSERT(sizeof(RTL_TEXT_FILE) == 80);
 // exe).
 
 typedef struct _RTL_IMAGE_FILE {
+    PVOID DllBase;
+    PVOID EntryPoint;
+    ULONG SizeOfImage;
+    ULONG CheckSum;
+    ULONG TimeDateStamp;
+    ULONG Padding1;
     PRTL_PATH PdbPath;
 } RTL_IMAGE_FILE, *PRTL_IMAGE_FILE;
+C_ASSERT(sizeof(RTL_IMAGE_FILE) == 8+8+4+4+4+4+8);
+C_ASSERT(sizeof(RTL_IMAGE_FILE) == 40);
 
 //
 // This structure is used to capture information about a file that participates
@@ -2722,6 +2740,7 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
             ULONG NumberOfPages;
         };
     };
+
     LARGE_INTEGER EndOfFile;
     LARGE_INTEGER AllocationSize;
 

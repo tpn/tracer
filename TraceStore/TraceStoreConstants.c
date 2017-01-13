@@ -38,8 +38,8 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceWsWorkingSetExInfo.dat",
     L"TraceStoreCCallStackTable.dat",
     L"TraceStoreCCallStackTableEntry.dat",
-    L"TraceStoreCModuleTable.dat",
-    L"TraceStoreCModuleTableEntry.dat",
+    L"TraceStoreModuleTable.dat",
+    L"TraceStoreModuleTableEntry.dat",
     L"TraceStorePythonCallStackTable.dat",
     L"TraceStorePythonCallStackTableEntry.dat",
     L"TraceStorePythonModuleTable.dat",
@@ -56,7 +56,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreUnicodeStringBuffer.dat",
     L"TraceStoreLine.dat",
     L"TraceStoreObject.dat",
-    L"TraceStoreLoader.dat",
+    L"TraceStoreModuleLoadEvent.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -161,8 +161,8 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 26,   // WorkingSetExInfo
      1 << 16,   // CCallStackTable
      1 << 25,   // CCallStackTableEntry
-     1 << 16,   // CModuleTable
-     1 << 25,   // CModuleTableEntry
+     1 << 16,   // ModuleTable
+     1 << 25,   // ModuleTableEntry
      1 << 16,   // PythonCallStackTable
      1 << 25,   // PythonCallStackTableEntry
      1 << 16,   // PythonModuleTable
@@ -179,7 +179,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 23,   // UnicodeStringBuffer
      1 << 24,   // Line
      1 << 23,   // Object
-     1 << 23,   // Loader
+     1 << 23,   // ModuleLoadEvent
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -215,6 +215,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -236,6 +237,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -257,6 +259,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -278,6 +281,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -299,6 +303,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -320,6 +325,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -341,6 +347,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -362,6 +369,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -383,6 +391,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -404,6 +413,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -425,6 +435,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         1,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -446,6 +457,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         1,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -467,6 +479,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -488,11 +501,12 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
     //
-    // CModuleTable
+    // ModuleTable
     //
 
     {
@@ -509,11 +523,12 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        1,  // ConcurrentDataStructure
         0   // Unused
     },
 
     //
-    // CModuleTableEntry
+    // ModuleTableEntry
     //
 
     {
@@ -530,6 +545,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -551,6 +567,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -572,6 +589,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -593,6 +611,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -614,6 +633,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -635,6 +655,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -656,6 +677,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -677,6 +699,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -698,6 +721,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -719,6 +743,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         1,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -740,6 +765,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         1,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -761,6 +787,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         1,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -782,6 +809,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -803,6 +831,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         1,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -824,6 +853,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -845,6 +875,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
@@ -866,11 +897,12 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 
     //
-    // Loader
+    // ModuleLoadEvent
     //
 
     {
@@ -887,6 +919,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
+        0,  // ConcurrentDataStructure
         0   // Unused
     },
 };
@@ -1017,6 +1050,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1034,6 +1068,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1051,6 +1086,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1068,6 +1104,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1085,6 +1122,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1102,6 +1140,7 @@ TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1119,6 +1158,7 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1136,6 +1176,7 @@ TRACE_STORE_TRAITS SynchronizationStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
@@ -1153,6 +1194,7 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // AllowPageSpill
     0,  // PageAligned
     0,  // Periodic
+    0,  // ConcurrentDataStructure
     0   // Unused
 };
 
