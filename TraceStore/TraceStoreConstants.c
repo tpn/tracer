@@ -709,8 +709,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // VaryingRecordSize
         1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
+        1,  // StreamingWrite
+        1,  // StreamingRead
         0,  // FrequentAllocations
         1,  // BlockingAllocations
         0,  // LinkedStore
@@ -730,8 +730,8 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // VaryingRecordSize
         1,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
-        0,  // StreamingWrite
-        0,  // StreamingRead
+        1,  // StreamingWrite
+        1,  // StreamingRead
         0,  // FrequentAllocations
         1,  // BlockingAllocations
         1,  // LinkedStore

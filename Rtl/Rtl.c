@@ -4167,10 +4167,17 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->TestWalkLoader = (PTEST_WALK_LOADER)
-        GetProcAddress(RtlExModule, "TestWalkLoader"))) {
+    if (!(RtlExFunctions->RegisterDllNotification = (PREGISTER_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "RegisterDllNotification"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'TestWalkLoader'");
+        OutputDebugStringA("RtlEx: failed to resolve 'RegisterDllNotification'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnregisterDllNotification = (PUNREGISTER_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "UnregisterDllNotification"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnregisterDllNotification'");
         return FALSE;
     }
 
@@ -4263,7 +4270,9 @@ InitializeRtl(
     PULONG SizeOfRtl
     )
 {
+    BOOL Success;
     HANDLE HeapHandle;
+    PRTL_LDR_NOTIFICATION_TABLE Table;
 
     if (!Rtl) {
         if (SizeOfRtl) {
@@ -4313,7 +4322,25 @@ InitializeRtl(
 
     Rtl->MaximumFileSectionSize = Rtl->MmGetMaximumFileSectionSize();
 
-    return TRUE;
+    Table = Rtl->LoaderNotificationTable = (PRTL_LDR_NOTIFICATION_TABLE)(
+        HeapAlloc(
+            HeapHandle,
+            HEAP_ZERO_MEMORY,
+            sizeof(*Rtl->LoaderNotificationTable)
+        )
+    );
+
+    if (!Table) {
+        return FALSE;
+    }
+
+    Success = InitializeRtlLdrNotificationTable(Rtl, Table);
+    if (!Success) {
+        HeapFree(HeapHandle, 0, Table);
+        Rtl->LoaderNotificationTable = NULL;
+    }
+
+    return Success;
 }
 
 RTL_API

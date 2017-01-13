@@ -556,7 +556,7 @@ Return Value:
         Allocator->CallocWithTimestamp(
             Allocator->Context,
             1,
-            AlignedBufferSizeInBytes.LowPart,
+            AllocSize.LowPart,
             TimestampPointer
         )
     );
@@ -603,14 +603,6 @@ Return Value:
         __debugbreak();
         goto Error;
     }
-
-    if (Utf16->Buffer[Utf16->Length] != L'\0') {
-        __debugbreak();
-    }
-
-    //
-    // We calloc'd the buffer, so no need for zeroing the trailing NULL(s).
-    //
 
     //
     // Update the caller's pointer and return success.
@@ -725,12 +717,6 @@ Return Value:
         __debugbreak();
     }
 
-#ifdef _DEBUG
-    OutputDebugStringA("ANSI\n");
-    OutputDebugStringA(AnsiString->Buffer);
-    OutputDebugStringA("\n");
-#endif
-
     //
     // Convert the ANSI string to a Unicode string.
     //
@@ -753,13 +739,9 @@ Return Value:
         __debugbreak();
     }
 
-    if (String->Buffer[String->Length] != L'\0') {
+    if (String->Buffer[String->Length >> 1] != L'\0') {
         __debugbreak();
     }
-
-    OutputDebugStringA("UNICODE\n");
-    OutputDebugStringW(String->Buffer);
-    OutputDebugStringA("\n");
 
     UnicodeLength = wcslen(String->Buffer);
     if (UnicodeLength != AnsiString->Length) {
