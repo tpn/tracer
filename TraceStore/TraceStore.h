@@ -808,11 +808,17 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_SYNC_FLAGS {
     ULONG Initialized:1;
 
     //
-    // When set, indicates the primary synchronization mechanism is the
-    // critical section.  (Currently the only synchronization mechanism.)
+    // When set, indicates the allocation critical section is active.
     //
 
-    ULONG CriticalSection:1;
+    ULONG AllocationCriticalSection:1;
+
+    //
+    // When set, indicates the callback critical section is active.
+    //
+
+    ULONG CallbackCriticalSection:1;
+
 
 } TRACE_STORE_SYNC_FLAGS, *PTRACE_STORE_SYNC_FLAGS;
 C_ASSERT(sizeof(TRACE_STORE_SYNC_FLAGS) == sizeof(ULONG));
@@ -849,21 +855,29 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
     ULONG Padding2[2];
 
     //
-    // Critical section.
+    // Allocator Critical section.
     //
 
-    DECLSPEC_ALIGN(16) CRITICAL_SECTION CriticalSection;
+    DECLSPEC_ALIGN(16) CRITICAL_SECTION AllocationCriticalSection;
+
+    //
+    // Callback Critical section.
+    //
+
+    DECLSPEC_ALIGN(64) CRITICAL_SECTION CallbackCriticalSection;
 
     //
     // Pad out to 256 bytes.
     //
 
-    DECLSPEC_ALIGN(64) BYTE Padding3[192];
+    DECLSPEC_ALIGN(64) BYTE Padding3[128];
 
 } TRACE_STORE_SYNC, *PTRACE_STORE_SYNC;
 C_ASSERT(sizeof(CRITICAL_SECTION) == 40);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CriticalSection) == 16);
-C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, AllocationCriticalSection) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CallbackCriticalSection) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 128);
+C_ASSERT(sizeof(TRACE_STORE_SYNC) == 256);
 
 //
 // For trace stores that record instances of structures from a running program,

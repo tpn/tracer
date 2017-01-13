@@ -539,10 +539,10 @@ SynchronizationMetadataBindComplete(
 Routine Description:
 
     This is the bind complete callback routine for :Synchronization metadata.
-    In normal tracing mode, this routine has no effect.  In readonly mode, it is
-    responsible for wiring up the TraceStore->Sync pointer to the base memory
-    map address of the :Synchronization metadata store.  It then initializes the
-    critical section associated with the TRACE_STORE_SYNC structure.
+    It is responsible for wiring up the TraceStore->Sync pointer to the base
+    memory map address of the :Synchronization metadata store.  It then
+    initializes applicable critical sections associated with the
+    TRACE_STORE_SYNC structure.
 
 Arguments:
 
@@ -583,21 +583,18 @@ Return Value:
     );
 
     //
-    // If we're readonly, or the trace store doesn't have the concurrent
-    // allocations trait set, or we've already been initialized, we're done.
+    // If we're readonly or the trace store has already been initialized, we're
+    // done.
     //
 
     Traits = *TraceStore->pTraits;
 
-    if (TraceStore->IsReadonly ||
-        !HasConcurrentAllocations(Traits) ||
-        Sync->Flags.Initialized) {
-
+    if (TraceStore->IsReadonly || Sync->Flags.Initialized) {
         return TRUE;
     }
 
     //
-    // Initialize the critical section.
+    // Initialize the applicable critical sections.
     //
 
     TracerConfig = TraceContext->TracerConfig;
@@ -606,14 +603,31 @@ Return Value:
         RuntimeParameters->ConcurrentAllocationsCriticalSectionSpinCount
     );
 
-    Success = InitializeCriticalSectionAndSpinCount(
-        &Sync->CriticalSection,
-        SpinCount
-    );
+    if (HasConcurrentAllocations(Traits)) {
+
+        Success = InitializeCriticalSectionAndSpinCount(
+            &Sync->AllocationCriticalSection,
+            SpinCount
+        );
+
+        if (Success) {
+            Sync->Flags.AllocationCriticalSection = TRUE;
+        }
+    }
+
+    if (IsPeriodic(Traits)) {
+        Success = InitializeCriticalSectionAndSpinCount(
+            &Sync->CallbackCriticalSection,
+            SpinCount
+        );
+
+        if (Success) {
+            Sync->Flags.CallbackCriticalSection = TRUE;
+        }
+    }
 
     if (Success) {
         Sync->Flags.Initialized = TRUE;
-        Sync->Flags.CriticalSection = TRUE;
     }
 
     return Success;
