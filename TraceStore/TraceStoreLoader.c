@@ -18,7 +18,7 @@ Abstract:
 
 RTL_GENERIC_COMPARE_RESULTS
 NTAPI
-ModuleTableCompareRoutine(
+ModuleTableEntryCompareRoutine(
     _In_ struct _RTL_AVL_TABLE *Table,
     _In_ PVOID FirstStruct,
     _In_ PVOID SecondStruct
@@ -37,7 +37,7 @@ ModuleTableCompareRoutine(
 
 PVOID
 NTAPI
-ModuleTableAllocateRoutine(
+ModuleTableEntryAllocateRoutine(
     _In_ struct _RTL_AVL_TABLE *Table,
     _In_ CLONG ByteSize
     )
@@ -51,7 +51,6 @@ ModuleTableAllocateRoutine(
     TraceStore = (PTRACE_STORE)Table->TableContext;
     TraceContext = TraceStore->TraceContext;
     Allocate = TraceStore->AllocateRecords;
-    __debugbreak();
     HeaderSize = ByteSize - 8;
     AllocSize = HeaderSize + sizeof(TRACE_MODULE_TABLE_ENTRY);
 
@@ -60,7 +59,7 @@ ModuleTableAllocateRoutine(
 
 VOID
 NTAPI
-ModuleTableFreeRoutine(
+ModuleTableEntryFreeRoutine(
     _In_ struct _RTL_AVL_TABLE *Table,
     _In_ __drv_freesMem(Mem) _Post_invalid_ PVOID Buffer
     )
@@ -101,6 +100,17 @@ Return Value:
 {
     PRTL Rtl;
     PTRACE_MODULE_TABLE ModuleTable;
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE ModuleTableEntryStore;
+
+    //
+    // Complete the normal bind complete routine for the trace store.  This
+    // will resume allocations and set the bind complete event.
+    //
+
+    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
+        return FALSE;
+    }
 
     //
     // Resolve aliases.
@@ -132,29 +142,32 @@ Return Value:
     ModuleTable->SizeOfStruct = sizeof(*ModuleTable);
 
     //
+    // Resolve the module table entry store.
+    //
+
+    TraceStores = TraceContext->TraceStores;
+    ModuleTableEntryStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreModuleTableEntryId
+        )
+    );
+
+    //
     // Initialize the AVL table.
     //
 
     Rtl->RtlInitializeGenericTableAvl(&ModuleTable->BaseAddressTable,
-                                      ModuleTableCompareRoutine,
-                                      ModuleTableAllocateRoutine,
-                                      ModuleTableFreeRoutine,
-                                      TraceStore);
+                                      ModuleTableEntryCompareRoutine,
+                                      ModuleTableEntryAllocateRoutine,
+                                      ModuleTableEntryFreeRoutine,
+                                      ModuleTableEntryStore);
 
     //
     // Initialize the Unicode prefix table.
     //
 
     Rtl->RtlInitializeUnicodePrefix(&ModuleTable->ModuleNamePrefixTable);
-
-    //
-    // Complete the normal bind complete routine for the trace store.  This
-    // will resume allocations and set the bind complete event.
-    //
-
-    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
-        return FALSE;
-    }
 
     return TRUE;
 }
@@ -202,7 +215,15 @@ Return Value:
     PTRACE_STORES TraceStores;
     HANDLE Events[2];
 
-    Rtl = TraceContext->Rtl;
+
+    //
+    // Complete the normal bind complete routine for the trace store.  This
+    // will resume allocations and set the bind complete event.
+    //
+
+    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
+        return FALSE;
+    }
 
     //
     // Wait on the module table and module table entry stores before we continue
@@ -215,17 +236,17 @@ Return Value:
     TraceStores = TraceContext->TraceStores;
 
     Events[0] = (
-        TraceStoreIdToRelocationCompleteEvent(
+        TraceStoreIdToTraceStore(
             TraceStores,
             TraceStoreModuleTableId
-        )
+        )->BindCompleteEvent
     );
 
     Events[1] = (
-        TraceStoreIdToRelocationCompleteEvent(
+        TraceStoreIdToTraceStore(
             TraceStores,
             TraceStoreModuleTableEntryId
-        )
+        )->BindCompleteEvent
     );
 
     NumberOfWaits = 2;
@@ -243,6 +264,7 @@ Return Value:
     // All waits were satisfied, continue with registration.
     //
 
+    Rtl = TraceContext->Rtl;
     Success = Rtl->RegisterDllNotification(Rtl,
                                            TraceStoreDllNotificationCallback,
                                            &NotificationFlags,
@@ -250,15 +272,6 @@ Return Value:
                                            &Cookie);
 
     if (!Success) {
-        return FALSE;
-    }
-
-    //
-    // Complete the normal bind complete routine for the trace store.  This
-    // will resume allocations and set the bind complete event.
-    //
-
-    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
         return FALSE;
     }
 
@@ -447,11 +460,7 @@ CreateLoadEvent:
         return;
     }
 
-    //
-    // LoadEvent->Flags.AsLong =  ... ?
-    //
-
-    LoadEvent->Flags = Loaded->Flags;
+    //LoadEvent->Flags = Loaded->Flags;
     LoadEvent->Timestamp.Loaded = Timestamp;
     LoadEvent->BaseAddress = BaseAddress;
     LoadEvent->ModuleTableEntry = ModuleEntry;

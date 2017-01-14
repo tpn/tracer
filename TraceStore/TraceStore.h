@@ -1620,50 +1620,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     //
 
     //
-    // Number of frames captured by the stack back trace.
-    //
-
-    ULONG FramesCaptured;
-
-    //
-    // Hash of the stack back trace.
-    //
-
-    ULONG BackTraceHash;
-
-    //
-    // (600 bytes consumed.)
-    //
-
-    //
     // List head used to link load events together.
     //
 
     LIST_ENTRY ListHead;
 
     //
-    // (616 bytes consumed.)
+    // Pad out to 992 bytes.
     //
 
-    //
-    // Pad out to 3584 bytes (4096 - 512 = 3584).
-    //
-
-    BYTE Reserved[2968];
-
-    //
-    // The back trace buffer consumes 512 bytes and lives at the end of the
-    // structure.
-    //
-
-    ULONGLONG BackTrace[64];
+    BYTE Reserved[384];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, FramesCaptured) == 592);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 616);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, BackTrace) == 3584);
-C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 4096);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, ListHead) == 592);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 608);
+C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
 
@@ -1732,14 +1704,35 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
     ULONG SizeOfImage;
 
     //
-    // Pad out to 128 bytes.
+    // (84 bytes consumed.)
     //
 
-    BYTE Reserved[44];
+    //
+    // Number of frames captured by the stack back trace.
+    //
+
+    ULONG FramesCaptured;
+
+    //
+    // Hash of the stack back trace.
+    //
+
+    ULONG BackTraceHash;
+
+    //
+    // Pad out to 96 bytes.
+    //
+
+    BYTE Reserved[4];
+
+    //
+    // Stack back trace buffer.
+    //
+
+    ULONGLONG BackTrace[52];
 
 } TRACE_MODULE_LOAD_EVENT, *PTRACE_MODULE_LOAD_EVENT;
-C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 4+4+8+8+16+8+8+8+8+8+4+44);
-C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 128);
+C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 512);
 
 //
 // Forward definitions of function pointers we include in the trace context.
