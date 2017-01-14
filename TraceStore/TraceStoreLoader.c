@@ -171,11 +171,10 @@ ModuleLoadEventStoreBindComplete(
 Routine Description:
 
     This routine overrides the normal trace store bind complete routine for
-    the Loader trace store.  It calls the normal trace store bind complete
-    routine, then initializes loader tracing via Rtl.  This acquires the loader
-    lock, walks the current list of loaded modules and invokes our callback,
-    registers our callback and the subsequent DLL load/unload notification
-    routine, releases the lock, and then returns.
+    the ModuleLoadEvent trace store.  It waits for both the ModuleTable and
+    ModuleTableEntry stores to be ready (i.e. have their relocation complete
+    events set), then registers a callback for DLL load/unload notification
+    via Rtl.
 
 Arguments:
 
