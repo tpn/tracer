@@ -1007,6 +1007,7 @@ Return Value:
 --*/
 {
     BOOL IsRundown;
+    DWORD LastError;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
@@ -1057,9 +1058,15 @@ Return Value:
 
     if (TraceStore->FileHandle) {
         TruncateStore(TraceStore);
-        FlushFileBuffers(TraceStore->FileHandle);
-        CloseHandle(TraceStore->FileHandle);
-        TraceStore->FileHandle = NULL;
+        if (!FlushFileBuffers(TraceStore->FileHandle)) {
+            LastError = GetLastError();
+            __debugbreak();
+        }
+        if (!CloseHandle(TraceStore->FileHandle)) {
+            LastError = GetLastError();
+            __debugbreak();
+        }
+        //TraceStore->FileHandle = NULL;
     }
 
     if (TraceStore->NextMemoryMapAvailableEvent) {

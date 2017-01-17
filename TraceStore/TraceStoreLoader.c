@@ -215,7 +215,7 @@ Return Value:
     ULONG WaitResult;
     ULONG NumberOfWaits;
     PRTL Rtl;
-    PVOID Cookie;
+    PPVOID Cookie;
     DLL_NOTIFICATION_FLAGS NotificationFlags = { 0 };
     PTRACE_STORES TraceStores;
     HANDLE Events[2];
@@ -270,11 +270,12 @@ Return Value:
     //
 
     Rtl = TraceContext->Rtl;
+    Cookie = &TraceContext->DllNotificationCookie;
     Success = Rtl->RegisterDllNotification(Rtl,
                                            TraceStoreDllNotificationCallback,
                                            &NotificationFlags,
                                            TraceContext,
-                                           &Cookie);
+                                           Cookie);
 
     if (!Success) {
         return FALSE;

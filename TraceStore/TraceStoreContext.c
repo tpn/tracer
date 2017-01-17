@@ -949,7 +949,6 @@ Return Value:
 
 --*/
 {
-    PTRACE_STORE_WORK Work;
 
     //
     // Validate arguments.
@@ -966,14 +965,37 @@ Return Value:
     CLOSE_ALL_THREADPOOL_TIMERS();
 
     //
-    // Close the NewModuleEntry work if applicable.
+    // Close threadpool work.
     //
 
-    CLEANUP_WORK(BindMetadataInfoStore);
-    CLEANUP_WORK(BindRemainingMetadataStores);
-    CLEANUP_WORK(BindTraceStore);
-    CLEANUP_WORK(ReadonlyNonStreamingBindComplete);
-    CLEANUP_WORK(NewModuleEntry);
+    CLOSE_WORK(BindMetadataInfoStore);
+    CLOSE_WORK(BindRemainingMetadataStores);
+    CLOSE_WORK(BindTraceStore);
+    CLOSE_WORK(ReadonlyNonStreamingBindComplete);
+
+    //
+    // Unregister DLL notifications then close the new module entry threadpool.
+    //
+
+    if (TraceContext->TraceStores->Flags.EnableLoaderTracing) {
+        BOOL Success;
+        PTRACE_STORE_WORK Work;
+        BOOL CancelPendingCallbacks = TRUE;
+        PRTL Rtl = TraceContext->Rtl;
+        PVOID Cookie = TraceContext->DllNotificationCookie;
+
+        Success = Rtl->UnregisterDllNotification(Cookie);
+        Work = &TraceContext->NewModuleEntryWork;
+
+        WaitForThreadpoolWorkCallbacks(Work->ThreadpoolWork,
+                                       CancelPendingCallbacks);
+
+        while (Work->NumberOfActiveItems > 0) {
+            SwitchToThread();
+        }
+
+        CLEANUP_WORK(NewModuleEntry);
+    }
 
     return;
 }
