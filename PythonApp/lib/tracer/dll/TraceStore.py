@@ -757,6 +757,7 @@ class TRACE_CONTEXT(Structure):
         ('UnicodeStringBufferAllocator', ALLOCATOR),
         ('ImageFileAllocator', ALLOCATOR),
         ('AtExitExEntry', PVOID),
+        ('DllNotificationCookie', PVOID),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
         ('BitmapBuffer', _TRACE_CONTEXT_IGNORE_PREFERRED_ADDRESS_BITMAP),

@@ -1230,19 +1230,26 @@ Return Value:
 
 --*/
 {
+    DWORD LastError;
+
     if (MemoryMap->BaseAddress) {
-        UnmapViewOfFile(MemoryMap->BaseAddress);
+        if (!UnmapViewOfFile(MemoryMap->BaseAddress)) {
+            LastError = GetLastError();
+            __debugbreak();
+        }
         MemoryMap->BaseAddress = NULL;
     }
 
     if (MemoryMap->MappingHandle) {
-        CloseHandle(MemoryMap->MappingHandle);
+        if (!CloseHandle(MemoryMap->MappingHandle)) {
+            LastError = GetLastError();
+            __debugbreak();
+        }
         MemoryMap->MappingHandle = NULL;
     }
 
     return TRUE;
 }
-
 
 _Use_decl_annotations_
 VOID

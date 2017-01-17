@@ -1937,6 +1937,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
 
     //
+    // Cookie used to deregister with UnregisterDllNotification().
+    //
+
+    PVOID DllNotificationCookie;
+
+    //
     // Number of quadwords our bitmap buffer provides.
     //
 

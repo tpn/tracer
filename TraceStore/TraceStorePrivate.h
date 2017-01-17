@@ -102,6 +102,24 @@ PreThreadpoolWorkSubmission(
                                                    \
     SecureZeroMemory(Work, sizeof(*Work));
 
+#define CLOSE_WORK(Name) do {                             \
+    BOOL CancelPendingCallbacks = TRUE;                   \
+    PTRACE_STORE_WORK Work = &TraceContext->##Name##Work; \
+                                                          \
+    if (Work->ThreadpoolWork) {                           \
+        WaitForThreadpoolWorkCallbacks(                   \
+            Work->ThreadpoolWork,                         \
+            CancelPendingCallbacks                        \
+        );                                                \
+        CloseThreadpoolWork(Work->ThreadpoolWork);        \
+    }                                                     \
+                                                          \
+    if (Work->WorkCompleteEvent) {                        \
+        CloseHandle(Work->WorkCompleteEvent);             \
+    }                                                     \
+                                                          \
+    SecureZeroMemory(Work, sizeof(*Work));                \
+} while (0)
 
 #define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
     if (TraceContext->##Name) {                                         \
