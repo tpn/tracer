@@ -422,6 +422,7 @@ PYTHON_FUNCTION._fields_ = [
     ('Signature', ULONG_PTR),
     ('HashEntry', RTL_DYNAMIC_HASH_TABLE_ENTRY),
     ('Reserved', BYTE * 864),
+    ('Dummy', ULONGLONG),
 ]
 
 PYTHON_FUNCTION_TABLE_ENTRY._fields_ = [
