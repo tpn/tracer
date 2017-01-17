@@ -65,6 +65,44 @@ PreThreadpoolWorkSubmission(
 // TraceStoreContext-related macros.
 //
 
+#define INIT_WORK(Name, NumberOfItems)                               \
+    Work = &TraceContext->##Name##Work;                              \
+                                                                     \
+    InitializeSListHead(&Work->ListHead);                            \
+                                                                     \
+    Work->WorkCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL); \
+    if (!Work->WorkCompleteEvent) {                                  \
+        goto Error;                                                  \
+    }                                                                \
+                                                                     \
+    Work->ThreadpoolWork = CreateThreadpoolWork(                     \
+        Name##Callback,                                              \
+        TraceContext,                                                \
+        ThreadpoolCallbackEnvironment                                \
+    );                                                               \
+    if (!Work->ThreadpoolWork) {                                     \
+        goto Error;                                                  \
+    }                                                                \
+                                                                     \
+    Work->TotalNumberOfItems = NumberOfItems;                        \
+    Work->NumberOfActiveItems = NumberOfItems;                       \
+    Work->NumberOfFailedItems = 0
+
+
+#define CLEANUP_WORK(Name)                         \
+    Work = &TraceContext->##Name##Work;            \
+                                                   \
+    if (Work->ThreadpoolWork) {                    \
+        CloseThreadpoolWork(Work->ThreadpoolWork); \
+    }                                              \
+                                                   \
+    if (Work->WorkCompleteEvent) {                 \
+        CloseHandle(Work->WorkCompleteEvent);      \
+    }                                              \
+                                                   \
+    SecureZeroMemory(Work, sizeof(*Work));
+
+
 #define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
     if (TraceContext->##Name) {                                         \
         PTP_TIMER Timer = TraceContext->##Name;                         \

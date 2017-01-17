@@ -413,29 +413,6 @@ Return Value:
         NumberOfTraceStores
     );
 
-#define INIT_WORK(Name, NumberOfItems)                               \
-    Work = &TraceContext->##Name##Work;                              \
-                                                                     \
-    InitializeSListHead(&Work->ListHead);                            \
-                                                                     \
-    Work->WorkCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL); \
-    if (!Work->WorkCompleteEvent) {                                  \
-        goto Error;                                                  \
-    }                                                                \
-                                                                     \
-    Work->ThreadpoolWork = CreateThreadpoolWork(                     \
-        Name##Callback,                                              \
-        TraceContext,                                                \
-        ThreadpoolCallbackEnvironment                                \
-    );                                                               \
-    if (!Work->ThreadpoolWork) {                                     \
-        goto Error;                                                  \
-    }                                                                \
-                                                                     \
-    Work->TotalNumberOfItems = NumberOfItems;                        \
-    Work->NumberOfActiveItems = NumberOfItems;                       \
-    Work->NumberOfFailedItems = 0
-
     INIT_WORK(BindMetadataInfoStore, NumberOfTraceStores);
     INIT_WORK(BindRemainingMetadataStores, NumberOfRemainingMetadataStores);
     INIT_WORK(BindTraceStore, NumberOfTraceStores);
@@ -840,19 +817,6 @@ InitializeAllocators:
 
 Error:
 
-#define CLEANUP_WORK(Name)                         \
-    Work = &TraceContext->##Name##Work;            \
-                                                   \
-    if (Work->ThreadpoolWork) {                    \
-        CloseThreadpoolWork(Work->ThreadpoolWork); \
-    }                                              \
-                                                   \
-    if (Work->WorkCompleteEvent) {                 \
-        CloseHandle(Work->WorkCompleteEvent);      \
-    }                                              \
-                                                   \
-    SecureZeroMemory(Work, sizeof(*Work));
-
     CLEANUP_WORK(BindMetadataInfoStore);
     CLEANUP_WORK(BindRemainingMetadataStores);
     CLEANUP_WORK(BindTraceStore);
@@ -985,7 +949,7 @@ Return Value:
 
 --*/
 {
-    BOOL CancelPendingCallbacks = TRUE;
+    PTRACE_STORE_WORK Work;
 
     //
     // Validate arguments.
@@ -1000,6 +964,16 @@ Return Value:
     //
 
     CLOSE_ALL_THREADPOOL_TIMERS();
+
+    //
+    // Close the NewModuleEntry work if applicable.
+    //
+
+    CLEANUP_WORK(BindMetadataInfoStore);
+    CLEANUP_WORK(BindRemainingMetadataStores);
+    CLEANUP_WORK(BindTraceStore);
+    CLEANUP_WORK(ReadonlyNonStreamingBindComplete);
+    CLEANUP_WORK(NewModuleEntry);
 
     return;
 }
