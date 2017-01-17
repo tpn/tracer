@@ -78,6 +78,7 @@ from .TracerConfig import (
 )
 
 from .Allocator import (
+    ALLOCATOR,
     PALLOCATOR,
 )
 
@@ -750,6 +751,9 @@ class TRACE_CONTEXT(Structure):
         ('NumberOfStoresWithMultipleRelocationDependencies', ULONG),
         ('Time', TRACE_STORE_TIME),
         ('RunHistoryRegistryKey', PVOID),
+        ('BitmapAllocator', ALLOCATOR),
+        ('UnicodeStringBufferAllocator', ALLOCATOR),
+        ('ImageFileAllocator', ALLOCATOR),
         ('AtExitExEntry', PVOID),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
