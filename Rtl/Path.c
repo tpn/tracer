@@ -53,6 +53,7 @@ Return Value:
     USHORT Offset;
     USHORT Count;
     USHORT NumberOfCharacters;
+    USHORT NumberOfCharactersExcludingNull;
     USHORT AlignedNumberOfCharacters;
     USHORT UnicodeBufferSizeInBytes;
     USHORT BitmapBufferSizeInBytes;
@@ -100,7 +101,7 @@ Return Value:
     //      call.  This requires accounting for the RTL_PATH structure itself,
     //      space for two RTL_BITMAP buffers (where there is one bit per
     //      character), and then space for a copy of the NULL-terminated
-    //      unicode string buffer.
+    //      Unicode string buffer.
     //
 
 
@@ -108,7 +109,8 @@ Return Value:
     // Get the number of characters, plus +1 for the trailing NULL.
     //
 
-    NumberOfCharacters = (String->Length + 1) >> 1;
+    NumberOfCharacters = (String->Length >> 1) + 1;
+    NumberOfCharactersExcludingNull = String->Length >> 1;
 
     //
     // Calculate the aligned number of characters.  We do the alignment
@@ -122,7 +124,7 @@ Return Value:
     );
 
     //
-    // Calculate the aligned unicode string buffer size in bytes.
+    // Calculate the aligned Unicode string buffer size in bytes.
     //
 
     UnicodeBufferSizeInBytes = AlignedNumberOfCharacters << 1;
@@ -156,7 +158,7 @@ Return Value:
 
     //
     // Calculate the total allocation size in bytes required for the
-    // RTL_PATH structure and trailing bitmap buffers and unicode buffer.
+    // RTL_PATH structure and trailing bitmap buffers and Unicode buffer.
     //
 
     AllocSize.LongPart = (
@@ -174,7 +176,7 @@ Return Value:
         (BitmapAllocSizeInBytes * 2) +
 
         //
-        // Size of the unicode buffer.  Includes our trailing NULL.
+        // Size of the Unicode buffer.  Includes our trailing NULL.
         //
 
         UnicodeBufferSizeInBytes
@@ -263,8 +265,8 @@ Return Value:
     // Initialize the bitmap sizes.
     //
 
-    ReversedSlashesBitmap->SizeOfBitMap = AlignedNumberOfCharacters;
-    ReversedDotsBitmap->SizeOfBitMap = AlignedNumberOfCharacters;
+    ReversedSlashesBitmap->SizeOfBitMap = NumberOfCharactersExcludingNull;
+    ReversedDotsBitmap->SizeOfBitMap = NumberOfCharactersExcludingNull;
 
     //
     // Initialize the lengths of the full path.  Note that we don't use the
@@ -332,7 +334,7 @@ Return Value:
     //
 
     ReversedSlashIndex = (USHORT)RtlFindSetBits(ReversedSlashesBitmap, 1, 0);
-    Offset = NumberOfCharacters - ReversedSlashIndex + 1;
+    Offset = NumberOfCharactersExcludingNull - ReversedSlashIndex + 1;
 
     LengthInBytes = (ReversedSlashIndex - 1) << 1;
     Path->Name.Length = LengthInBytes;
@@ -362,7 +364,7 @@ Return Value:
 
     if (NumberOfDots) {
         ReversedDotIndex = (USHORT)RtlFindSetBits(ReversedDotsBitmap, 1, 0);
-        Offset = NumberOfCharacters - ReversedDotIndex + 1;
+        Offset = NumberOfCharactersExcludingNull - ReversedDotIndex + 1;
 
         LengthInBytes = (ReversedDotIndex - 1) << 1;
         Path->Extension.Length = LengthInBytes;
@@ -626,7 +628,6 @@ Error:
 
     return FALSE;
 }
-
 
 _Use_decl_annotations_
 BOOL
@@ -1028,6 +1029,410 @@ Return Value:
 
     return Success;
 }
+
+_Use_decl_annotations_
+BOOL
+UnicodeStringToExistingRtlPath(
+    PRTL Rtl,
+    PUNICODE_STRING String,
+    PALLOCATOR BitmapAllocator,
+    PALLOCATOR UnicodeStringBufferAllocator,
+    PRTL_PATH Path,
+    PLARGE_INTEGER TimestampPointer
+    )
+/*++
+
+Routine Description:
+
+    Converts a UNICODE_STRING representing a fully-qualified path into an
+    existing RTL_PATH structure.  Bitmaps are allocated from the bitmap
+    allocator, Unicode string buffers are allocated from the Unicode string
+    buffer allocator.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL struct.
+
+    UnicodeString - Supplies a pointer to a UNICODE_STRING structure that
+        contains a fully-qualified path name.
+
+    BitmapAllocator - Supplies a pointer to an ALLOCATOR structure that is
+        used for allocating all bitmaps.
+
+    UnicodeStringBufferAllocator - Supplies a pointer to an ALLOCATOR structure
+        that is used for allocating any Unicode string buffers.
+
+    Path - Supplies a pointer to an existing RTL_PATH structure.
+
+    TimestampPointer - Supplies a pointer to a timestamp to use for allocations.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    const BOOL Reverse = TRUE;
+    USHORT Offset;
+    USHORT Count;
+    USHORT NumberOfCharacters;
+    USHORT NumberOfCharactersExcludingNull;
+    USHORT AlignedNumberOfCharacters;
+    USHORT UnicodeBufferSizeInBytes;
+    USHORT BitmapBufferSizeInBytes;
+    USHORT AlignedBitmapBufferSizeInBytes;
+    USHORT NumberOfSlashes;
+    USHORT NumberOfDots;
+    USHORT ReversedSlashIndex;
+    USHORT ReversedDotIndex;
+    USHORT LengthInBytes;
+    USHORT BitmapAllocationAttempt;
+    USHORT UnicodeStringBufferAttempt;
+    USHORT NumberOfBitmaps = 2;
+    PWCHAR Buf;
+    PWCHAR Dest;
+    PWCHAR Source;
+    PULONG BitmapBuffers;
+    PWCHAR UnicodeStringBuffer;
+    PRTL_BITMAP ReversedSlashesBitmap;
+    PRTL_BITMAP ReversedDotsBitmap;
+    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
+    PRTL_FIND_SET_BITS RtlFindSetBits;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(BitmapAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(UnicodeStringBufferAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Path)) {
+        return FALSE;
+    }
+
+    if (!IsValidMinimumDirectoryNullTerminatedUnicodeString(String)) {
+        return FALSE;
+    }
+
+    //
+    // Get the number of characters, plus +1 for the trailing NULL.
+    //
+
+    NumberOfCharacters = (String->Length >> 1) + 1;
+    NumberOfCharactersExcludingNull = String->Length >> 1;
+
+    //
+    // Calculate the aligned number of characters.  We do the alignment
+    // in order for the bitmap buffers to have a pointer-aligned size.
+    //
+
+    AlignedNumberOfCharacters = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            NumberOfCharacters
+        )
+    );
+
+    //
+    // Calculate the aligned Unicode string buffer size in bytes.
+    //
+
+    UnicodeBufferSizeInBytes = AlignedNumberOfCharacters << 1;
+
+    UnicodeStringBuffer = NULL;
+    UnicodeStringBufferAttempt = 0;
+
+#define TRY_ALLOC_UNICODE_BUFFER() do {                           \
+    if (!UnicodeStringBuffer) {                                   \
+        UnicodeStringBufferAttempt++;                             \
+        UnicodeStringBuffer = (PWCHAR)(                           \
+            UnicodeStringBufferAllocator->TryCallocWithTimestamp( \
+                UnicodeStringBufferAllocator->Context,            \
+                1,                                                \
+                UnicodeBufferSizeInBytes,                         \
+                TimestampPointer                                  \
+            )                                                     \
+        );                                                        \
+    }                                                             \
+} while (0)
+
+    TRY_ALLOC_UNICODE_BUFFER();
+
+    //
+    // Calculate the individual bitmap buffer sizes.  As there's one bit per
+    // character, we shift left 3 (divide by 8) to get the number of bytes
+    // required.
+    //
+
+    BitmapBufferSizeInBytes = AlignedNumberOfCharacters >> 3;
+
+    //
+    // Align to a pointer boundary.
+    //
+
+    AlignedBitmapBufferSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            BitmapBufferSizeInBytes
+        )
+    );
+
+    //
+    // Allocate memory for the bitmap buffers.
+    //
+
+    BitmapBuffers = NULL;
+    BitmapAllocationAttempt = 0;
+
+#define TRY_ALLOC_BITMAP_BUFFERS() do {              \
+    if (!BitmapBuffers) {                            \
+        BitmapAllocationAttempt++;                   \
+        BitmapBuffers = (PULONG)(                    \
+            BitmapAllocator->TryCallocWithTimestamp( \
+                BitmapAllocator->Context,            \
+                NumberOfBitmaps,                     \
+                AlignedBitmapBufferSizeInBytes,      \
+                TimestampPointer                     \
+            )                                        \
+        );                                           \
+    }                                                \
+} while (0)
+
+    TRY_ALLOC_BITMAP_BUFFERS();
+
+    TRY_ALLOC_UNICODE_BUFFER();
+
+    Path->StructSize = sizeof(*Path);
+    Path->AllocSize = (
+        UnicodeBufferSizeInBytes +
+        (AlignedBitmapBufferSizeInBytes * NumberOfBitmaps)
+    );
+
+    //
+    // Carve up the rest of the allocated buffer past the RTL_PATH struct
+    // into the two bitmap buffers and then the final Unicode string buffer.
+    //
+
+    ReversedSlashesBitmap = &Path->ReversedSlashesBitmap;
+    ReversedDotsBitmap = &Path->ReversedDotsBitmap;
+
+    if (!BitmapBuffers) {
+
+        //
+        // Final allocation attempt.
+        //
+
+        BitmapAllocationAttempt++;
+        BitmapBuffers = (PULONG)BitmapAllocator->CallocWithTimestamp(
+            BitmapAllocator->Context,
+            NumberOfBitmaps,
+            AlignedBitmapBufferSizeInBytes,
+            TimestampPointer
+        );
+
+        if (!BitmapBuffers) {
+            goto Error;
+        }
+    }
+
+    TRY_ALLOC_UNICODE_BUFFER();
+
+    //
+    // Point ReversedSlashesBitmap at the newly allocated buffer.
+    //
+
+    ReversedSlashesBitmap->Buffer = BitmapBuffers;
+
+    //
+    // Carve out ReversedDotsBitmap.
+    //
+
+    ReversedDotsBitmap->Buffer = (PULONG)(
+        RtlOffsetToPointer(
+            BitmapBuffers,
+            AlignedBitmapBufferSizeInBytes
+        )
+    );
+
+    //
+    // Initialize the bitmap sizes.
+    //
+
+    ReversedSlashesBitmap->SizeOfBitMap = NumberOfCharactersExcludingNull;
+    ReversedDotsBitmap->SizeOfBitMap = NumberOfCharactersExcludingNull;
+
+    //
+    // Final blocking attempt of the Unicode string buffer if it hasn't already
+    // been allocated.
+    //
+
+    if (!UnicodeStringBuffer) {
+        UnicodeStringBufferAttempt++;
+        UnicodeStringBuffer = (PWCHAR)(
+            UnicodeStringBufferAllocator->CallocWithTimestamp(
+                UnicodeStringBufferAllocator->Context,
+                1,
+                UnicodeBufferSizeInBytes,
+                TimestampPointer
+            )
+        );
+
+        if (!UnicodeStringBuffer) {
+            goto Error;
+        }
+    }
+
+    //
+    // Initialize the lengths of the full path.
+    //
+
+    Path->Full.Length = String->Length;
+    Path->Full.MaximumLength = UnicodeBufferSizeInBytes;
+
+    //
+    // Initialize the buffer, then copy the Unicode string over.
+    //
+
+    Dest = Path->Full.Buffer = UnicodeStringBuffer;
+    Source = String->Buffer;
+    Count = NumberOfCharactersExcludingNull;
+    __movsw(Dest, Source, Count);
+
+    //
+    // Add trailing NULL.
+    //
+
+    Dest += Count;
+    *Dest++ = L'\0';
+
+    //
+    // Directory points at the same buffer as Full.
+    //
+
+    Path->Directory.Buffer = Path->Full.Buffer;
+
+    //
+    // Find slashes and dots in reverse.
+    //
+
+    InlineFindTwoWideCharsInUnicodeStringReversed(
+        &Path->Full,
+        L'\\',
+        L'.',
+        ReversedSlashesBitmap,
+        ReversedDotsBitmap
+    );
+
+    //
+    // Initialize our bitmap function aliases.
+    //
+
+    RtlNumberOfSetBits = Rtl->RtlNumberOfSetBits;
+    RtlFindSetBits = Rtl->RtlFindSetBits;
+
+    //
+    // Make sure there is at least one slash in the path.
+    //
+
+    NumberOfSlashes = (USHORT)RtlNumberOfSetBits(ReversedSlashesBitmap);
+    if (NumberOfSlashes == 0) {
+        goto Error;
+    }
+    Path->NumberOfSlashes = NumberOfSlashes;
+
+    //
+    // Extract the filename from the path by finding the last backslash
+    // (which will be the first bit set in the bitmap) and calculating the
+    // offset into the string buffer.
+    //
+
+    ReversedSlashIndex = (USHORT)RtlFindSetBits(ReversedSlashesBitmap, 1, 0);
+    Offset = NumberOfCharactersExcludingNull - ReversedSlashIndex + 1;
+
+    LengthInBytes = (ReversedSlashIndex - 1) << 1;
+    Path->Name.Length = LengthInBytes;
+    Path->Name.MaximumLength = LengthInBytes + sizeof(WCHAR);
+    Path->Name.Buffer = &Path->Full.Buffer[Offset];
+
+    //
+    // The directory name length is easy to isolate now that we have the offset
+    // of the first slash; it's simply the character before.
+    //
+
+    LengthInBytes = (Offset - 1) << 1;
+    Path->Directory.Length = LengthInBytes;
+    Path->Directory.MaximumLength = LengthInBytes;
+
+    //
+    // Get the number of dots.
+    //
+
+    NumberOfDots = (USHORT)RtlNumberOfSetBits(ReversedDotsBitmap);
+
+    //
+    // Extract the extension from the path by finding the last dot (which will
+    // be the first bit set in the bitmap) and calculating the offset into the
+    // string buffer.
+    //
+
+    if (NumberOfDots) {
+        ReversedDotIndex = (USHORT)RtlFindSetBits(ReversedDotsBitmap, 1, 0);
+        Offset = NumberOfCharactersExcludingNull - ReversedDotIndex + 1;
+
+        LengthInBytes = (ReversedDotIndex - 1) << 1;
+        Path->Extension.Length = LengthInBytes;
+        Path->Extension.MaximumLength = LengthInBytes + sizeof(WCHAR);
+        Path->Extension.Buffer = &Path->Full.Buffer[Offset];
+
+        Path->NumberOfDots = NumberOfDots;
+    }
+
+    //
+    // Set whether or not the path is qualified and potentially set the drive
+    // letter if available.
+    //
+
+    Buf = Path->Full.Buffer;
+
+    if (Buf[1] == L':' && Buf[2] == L'\\') {
+
+        Path->Drive = Buf[0];
+        Path->Flags.IsFullyQualified = TRUE;
+
+    } else if (Buf[0] == L'\\' && Buf[1] == L'\\') {
+
+        Path->Flags.IsFullyQualified = TRUE;
+    }
+
+    //
+    // We're done, return success.
+    //
+
+    return TRUE;
+
+Error:
+
+    if (BitmapBuffers) {
+        BitmapAllocator->Free(BitmapAllocator->Context, BitmapBuffers);
+    }
+
+    if (UnicodeStringBuffer) {
+        UnicodeStringBufferAllocator->Free(
+            UnicodeStringBufferAllocator->Context,
+            UnicodeStringBuffer
+        );
+    }
+
+    return FALSE;
+}
+
 
 _Use_decl_annotations_
 BOOL

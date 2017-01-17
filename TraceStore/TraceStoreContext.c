@@ -461,6 +461,28 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Initialize custom allocators.
+    //
+
+#define INIT_ALLOCATOR(Name)                 \
+    Success = (                              \
+        InitializeAllocatorFromTraceStore(   \
+            TraceStoreIdToTraceStore(        \
+                TraceStores,                 \
+                TraceStore##Name##Id         \
+            ),                               \
+            &TraceContext->##Name##Allocator \
+        )                                    \
+    );                                       \
+    if (!Success) {                          \
+        goto Error;                          \
+    }
+
+    INIT_ALLOCATOR(Bitmap);
+    INIT_ALLOCATOR(UnicodeStringBuffer);
+    INIT_ALLOCATOR(ImageFile);
+
     if (IsReadonly) {
 
         //

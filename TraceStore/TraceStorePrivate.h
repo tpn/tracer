@@ -2039,6 +2039,7 @@ Return Value:
 BIND_COMPLETE ModuleTableStoreBindComplete;
 BIND_COMPLETE ModuleLoadEventStoreBindComplete;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallback;
+DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallbackImpl;
 
 //
 // TraceStoreWorkingSet-related functions.

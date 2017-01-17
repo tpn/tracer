@@ -48,9 +48,6 @@ Abstract:
 extern "C" {
 #endif
 
-#define TIMESTAMP_TO_SECONDS    1000000
-#define SECONDS_TO_MICROSECONDS 1000000
-
 #define MAX_UNICODE_STRING 255
 #define _OUR_MAX_PATH MAX_UNICODE_STRING
 
@@ -1580,7 +1577,10 @@ _TRACE_MODULE_TABLE_ENTRY_FLAGS {
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
 
     //
-    // DLL base address.
+    // DLL base address.  This is used as the key for the AVL table; putting it
+    // first in the structure allows us to minimize the number of bytes the
+    // Rtl AVL insertion routines have to memcpy after they've called our
+    // allocation routine.
     //
 
     PVOID BaseAddress;
@@ -1623,18 +1623,35 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     // List head used to link load events together.
     //
 
-    LIST_ENTRY ListHead;
+    LIST_ENTRY LoadEventsListHead;
+
+    //
+    // (608 bytes consumed.)
+    //
+
+    //
+    // List head used to link duplicate entries together.
+    //
+
+    union {
+        LIST_ENTRY DuplicateEntriesListHead;
+        LIST_ENTRY DuplicateEntriesListEntry;
+    };
+
+    //
+    // (624 bytes consumed.)
+    //
 
     //
     // Pad out to 992 bytes.
     //
 
-    BYTE Reserved[384];
+    BYTE Reserved[368];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, ListHead) == 592);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 608);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsListHead) == 592);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 624);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
@@ -1879,6 +1896,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     //
 
     HKEY RunHistoryRegistryKey;
+
+    //
+    // Custom allocators used for various Rtl methods.
+    //
+
+    ALLOCATOR BitmapAllocator;
+    ALLOCATOR UnicodeStringBufferAllocator;
+    ALLOCATOR ImageFileAllocator;
 
     //
     // Pointer to our AtExitEx entry.

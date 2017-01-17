@@ -1,15 +1,15 @@
 /*++
 
-Copyright (c) 2017 Trent Nelson <trent@trent.me>
+Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    NewPythonPathTableEntry.c
+    File.c
 
 Abstract:
 
-    This module implements routines related to processing new Python path table
-    entry structures.
+    This module implements functionality related to the RTL_FILE structure.
+    Routines are provided to initialize a new RTL_FILE structure.
 
 --*/
 
@@ -17,30 +17,67 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-NewPythonPathTableEntry(
-    PPYTHON_TRACE_CONTEXT Context,
-    PPYTHON_PATH_TABLE_ENTRY Entry
+InitializeRtlFile(
+    PRTL Rtl,
+    PUNICODE_STRING UnicodeStringPath,
+    PSTRING AnsiStringPath,
+    PALLOCATOR BitmapAllocator,
+    PALLOCATOR UnicodeStringBufferAllocator,
+    PALLOCATOR FileContentsAllocator,
+    PALLOCATOR LineAllocator,
+    PALLOCATOR RtlFileAllocator,
+    RTL_FILE_INIT_FLAGS InitFlags,
+    PPRTL_FILE FilePointer,
+    PLARGE_INTEGER Timestamp
     )
 /*++
 
 Routine Description:
 
-    This routine is responsible for handling new Python path table entry
-    structures.  It is called via threadpool worker threads.  It is responsible
-    for doing the following:
-
-        1.  Converting the STRING path to a UNICODE_STRING.
-        2.  Initializing the RTL_PATH structure.
-        3.  Loading the file and creating a memory map.
-        4.  Saving file details to the underlying RTL_PATH structure.
-        5.  Calculating MD5 and SHA1 checksums from the file contents.
-        6.  Dispatching either source code or image file specific processing.
+    Converts a UNICODE_STRING representing a fully-qualified path into a
+    RTL_FILE structure.
 
 Arguments:
 
-    Context - Supplies a pointer to a PYTHON_TRACE_CONTEXT structure.
+    Rtl - Supplies a pointer to an initialized RTL struct.
 
-    Entry - Supplies a pointer to the new PYTHON_PATH_TABLE_ENTRY structure.
+    UnicodeStringPath - Supplies a pointer to a UNICODE_STRING structure that
+        contains a fully-qualified path name.  If this parameter is provided,
+        AnsiStringPath must be NULL.
+
+    AnsiStringPath - Supplies a pointer to a STRING structure that contains a
+        fully-qualified path name.  If this parameter is provided, the
+        UnicodeStringPath parameter must be NULL.
+
+    BitmapAllocator - Supplies a pointer to an ALLOCATOR structure that is
+        used for allocating all bitmaps.
+
+    UnicodeStringBufferAllocator - Supplies a pointer to an ALLOCATOR structure
+        that is used for allocating any Unicode string buffers.
+
+    LineAllocator - Supplies a pointer to an ALLOCATOR structure that is used
+        for allocating an array of STRING structures corresponding to each line
+        if the incoming file is a text/source code file.  Can be NULL if the
+        InitFlags parameter indicate IsImageFile.
+
+    FileContentsAllocator - Supplies a pointer to an ALLOCATOR structure that is
+        used for allocating space for the file contents.
+
+    RtlFileAllocator - Optionally supplies a pointer to an ALLOCATOR structure
+        that will be used to allocate an RTL_FILE structure if the FilePointer
+        parameter is NULL.  (If FilePointer is NULL, this parameter can not be
+        NULL.)
+
+    InitFlags - Supplies a initialization flags that customize the behavior of
+        this routine.
+
+    FilePointer - Supplies the address of a variable that either points to an
+        existing RTL_FILE structure to be initialized, or alternatively, if the
+        pointed to address is NULL, receives the address of the newly allocated
+        RTL_FILE structure (allocated via RtlFileAllocator).
+
+    Timestamp - Supplies a pointer to a LARGE_INTEGER timestamp to use for all
+        allocations.
 
 Return Value:
 
@@ -48,10 +85,9 @@ Return Value:
 
 --*/
 {
-    PRTL Rtl;
     BOOL Success;
     BOOL IsSourceCode;
-    BYTE Inner;
+    BOOL IsAnsiString = FALSE;
     ULONG Index;
     PCHAR SourceContent = NULL;
     PCHAR DestContent;
@@ -59,6 +95,7 @@ Return Value:
     PCHAR Source;
     PCHAR BitmapBuffers;
     DWORD LastError;
+    ULONG AllocationPages;
     ULONG BitmapAllocationAttempt;
     ULONG NumberOfBitmaps;
     ULONG_PTR BitmapBufferSize;
@@ -74,68 +111,86 @@ Return Value:
     HCRYPTHASH CryptHashSHA1 = 0;
     DWORD SizeOfMD5InBytes;
     DWORD SizeOfSHA1InBytes;
-    LARGE_INTEGER Timestamp;
     LARGE_INTEGER StartCopy;
     LARGE_INTEGER EndCopy;
     LARGE_INTEGER Elapsed;
     PRTL_TEXT_FILE SourceCode;
-    PTRACE_STORE LineStore;
-    PTRACE_STORE ContentsStore;
-    PTRACE_STORE ImageFileStore;
-    PTRACE_STORE SourceCodeStore;
-    PTRACE_STORES TraceStores;
     FILE_STANDARD_INFO FileInfo;
-    PALLOCATOR BitmapAllocator;
-    PALLOCATOR UnicodeStringBufferAllocator;
     BY_HANDLE_FILE_INFORMATION HandleInfo;
 
-    YMMWORD Ymm1;
-    YMMWORD Ymm2;
-    YMMWORD Ymm3;
-    YMMWORD Ymm4;
+    //
+    // Validate arguments.
+    //
 
-    YMMWORD Ymm5;
-    YMMWORD Ymm6;
-    YMMWORD Ymm7;
-    YMMWORD Ymm8;
+    if (!ARGUMENT_PRESENT(UnicodeStringPath)) {
+        if (!ARGUMENT_PRESENT(AnsiStringPath)) {
+            return FALSE;
+        }
+        IsAnsiString = TRUE;
+    }
 
-    PYMMWORD DestYmm;
-    PYMMWORD SourceYmm;
+    if (!ARGUMENT_PRESENT(FilePointer)) {
+        return FALSE;
+    }
+
+    //
+    // If FilePointer points to a NULL address, make sure RtlFileAllocator is
+    // not NULL.
+    //
+
+    File = *FilePointer;
+    if (!ARGUMENT_PRESENT(File)) {
+        if (!ARGUMENT_PRESENT(RtlFileAllocator)) {
+            return FALSE;
+        }
+
+        File = (PRTL_FILE)(
+            RtlFileAllocator->CallocWithTimestamp(
+                RtlFileAllocator->Context,
+                1,
+                sizeof(*File),
+                Timestamp
+            )
+        );
+
+        if (!File) {
+            return FALSE;
+        }
+    }
 
     //
     // Initialize aliases.
     //
 
-    Rtl = Context->Rtl;
-    File = &Entry->File;
     Path = &File->Path;
-    IsSourceCode = !Entry->IsDll;
-    TraceStores = Context->TraceContext->TraceStores;
-    BitmapAllocator = &Context->BitmapAllocator;
-    UnicodeStringBufferAllocator = &Context->UnicodeStringBufferAllocator;
+    IsSourceCode = InitFlags.IsSourceCode;
 
     //
-    // Capture a timestamp.
+    // Initialize the RTL_PATH structure based on the incoming path.
     //
 
-    QueryPerformanceCounter(&Timestamp);
-
-    //
-    // Update the RTL_PATH structure.
-    //
-
-    Success = Rtl->StringToExistingRtlPath(Rtl,
-                                           &Entry->Path,
-                                           BitmapAllocator,
-                                           UnicodeStringBufferAllocator,
-                                           Path,
-                                           &Timestamp);
-    if (!Success) {
-        goto Error;
-    }
-
-    if (Entry->IsDll) {
-        return TRUE;
+    if (IsAnsiString) {
+        Success = (
+            Rtl->StringToExistingRtlPath(
+                Rtl,
+                AnsiStringPath,
+                BitmapAllocator,
+                UnicodeStringBufferAllocator,
+                Path,
+                Timestamp
+            )
+        );
+    } else {
+        Success = (
+            Rtl->UnicodeStringToExistingRtlPath(
+                Rtl,
+                UnicodeStringPath,
+                BitmapAllocator,
+                UnicodeStringBufferAllocator,
+                Path,
+                Timestamp
+            )
+        );
     }
 
     //
@@ -225,7 +280,7 @@ Return Value:
             BitmapAllocator->Context,                            \
             NumberOfBitmaps,                                     \
             SingleBitmapAllocSize,                               \
-            &Timestamp                                           \
+            Timestamp                                            \
         );                                                       \
     }                                                            \
 } while (0)
@@ -281,7 +336,6 @@ Return Value:
 
     File->FileId.LowPart = HandleInfo.nFileIndexLow;
     File->FileId.HighPart = HandleInfo.nFileIndexHigh;
-    //File->VolumeSerialNumber = HandleInfo.dwVolumeSerialNumber;
 
     //
     // Create a file mapping.
@@ -320,60 +374,7 @@ Return Value:
         goto Error;
     }
 
-    //
-    // Resolve the trace stores we need.
-    //
-
-    ImageFileStore = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreImageFileId
-        )
-    );
-
-    SourceCodeStore = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreSourceCodeId
-        )
-    );
-
-    LineStore = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreLineId
-        )
-    );
-
-    //
-    // Determine which store to use based on whether or not this is a DLL.
-    //
-
-    if (Entry->IsDll) {
-        ContentsStore = ImageFileStore;
-    } else {
-        ContentsStore = SourceCodeStore;
-    }
-
     TRY_ALLOC_BITMAP_BUFFERS();
-
-    //
-    // Allocate space for the file.
-    //
-
-    DestContent = (PCHAR)(
-        ContentsStore->AllocateRecordsWithTimestamp(
-            ContentsStore->TraceContext,
-            ContentsStore,
-            1,
-            File->EndOfFile.QuadPart,
-            &Timestamp
-        )
-    );
-
-    if (!DestContent) {
-        goto Error;
-    }
 
     //
     // Get the number of pages for the contents.
@@ -383,93 +384,75 @@ Return Value:
         ROUND_TO_PAGES(File->EndOfFile.QuadPart) >> PAGE_SHIFT
     );
 
-    //
-    // Copy a page at a time using streaming loads.
-    //
+    AllocationPages = (
+        ROUND_TO_PAGES(File->AllocationSize.QuadPart) >> PAGE_SHIFT
+    );
 
-    Dest = DestContent;
-    Source = SourceContent;
-    QueryPerformanceCounter(&StartCopy);
-
-    goto AvxCopy;
-
-    File->Flags.MovsqCopy = TRUE;
-
-    __movsq((PDWORD64)DestContent,
-            (PDWORD64)SourceContent,
-            File->AllocationSize.QuadPart >> 3);
-
-    goto CopyComplete;
-
-AvxCopy:
-
-    DestYmm = (PYMMWORD)Dest;
-    SourceYmm = (PYMMWORD)Source;
-    File->Flags.Avx2Copy = TRUE;
-
-    for (Index = 0; Index < File->NumberOfPages; Index++) {
-
-        //
-        // Each loop iteration copies 256 bytes.  We repeat it 16 times to copy
-        // the entire 4096 byte page.
-        //
-
-        for (Inner = 0; Inner < 16; Inner++) {
-
-            Ymm1 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm2 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm1);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm2);
-
-            Ymm3 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm4 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm3);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm4);
-
-            //
-            // (128 bytes copied.)
-            //
-
-            Ymm5 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm6 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm5);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm6);
-
-            Ymm7 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm8 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm7);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm8);
-
-            //
-            // (256 bytes copied.)
-            //
-        }
+    if (File->NumberOfPages != AllocationPages) {
+        __debugbreak();
     }
 
-CopyComplete:
+    if (InitFlags.CopyContents) {
 
-    QueryPerformanceCounter(&EndCopy);
+        //
+        // Allocate space for the file.
+        //
 
-    Elapsed.QuadPart = EndCopy.QuadPart - StartCopy.QuadPart;
-    File->Elapsed = Elapsed.LowPart;
-    File->Content = DestContent;
-
-    //
-    // Convert to microseconds and then calculate bytes per second.
-    //
-
-    Elapsed.QuadPart *= Context->Multiplicand.QuadPart;
-    Elapsed.QuadPart /= Context->Frequency.QuadPart;
-    File->CopyTimeInMicroseconds.QuadPart = Elapsed.QuadPart;
-    if (Elapsed.QuadPart > 0) {
-        File->CopiedBytesPerSecond.QuadPart = (
-            (File->AllocationSize.QuadPart /
-             Elapsed.QuadPart) * SECONDS_TO_MICROSECONDS
+        DestContent = (PCHAR)(
+            FileContentsAllocator->CallocWithTimestamp(
+                FileContentsAllocator->Context,
+                1,
+                File->EndOfFile.QuadPart,
+                Timestamp
+            )
         );
+
+        if (!DestContent) {
+            goto Error;
+        }
+
+        //
+        // Copy a page at a time using streaming loads.
+        //
+
+        Dest = DestContent;
+        Source = SourceContent;
+        QueryPerformanceCounter(&StartCopy);
+
+        if (InitFlags.CopyViaMovsq) {
+
+            Rtl->CopyPagesMovsq(DestContent,
+                                SourceContent,
+                                File->NumberOfPages,
+                                NULL);
+        } else {
+
+            Rtl->CopyPagesAvx2(DestContent,
+                               SourceContent,
+                               File->NumberOfPages,
+                               NULL);
+        }
+
+        QueryPerformanceCounter(&EndCopy);
+
+        Elapsed.QuadPart = EndCopy.QuadPart - StartCopy.QuadPart;
+        File->Elapsed = Elapsed.LowPart;
+        File->Content = DestContent;
+
+        //
+        // Convert to microseconds and then calculate bytes per second.
+        //
+
+        Elapsed.QuadPart *= Rtl->Multiplicand.QuadPart;
+        Elapsed.QuadPart /= Rtl->Frequency.QuadPart;
+        File->CopyTimeInMicroseconds.QuadPart = Elapsed.QuadPart;
+        if (Elapsed.QuadPart > 0) {
+            File->CopiedBytesPerSecond.QuadPart = (
+                (File->AllocationSize.QuadPart /
+                 Elapsed.QuadPart) * Rtl->Multiplicand.QuadPart
+            );
+        }
+
     }
 
     //
@@ -484,22 +467,12 @@ CopyComplete:
     MappingHandle = NULL;
     FileHandle = NULL;
 
-    //
-    // Initialize the crypt provider for generating MD5/SHA1 hashes.
-    //
-
-    Success = CryptAcquireContextW(&CryptProv,
-                                   NULL,
-                                   NULL,
-                                   PROV_RSA_FULL,
-                                   CRYPT_VERIFYCONTEXT);
-
-    if (!Success) {
-        LastError = GetLastError();
-        Context->LastError = LastError;
-        __debugbreak();
-        goto Error;
+    if (!InitFlags.CopyContents) {
+        Success = TRUE;
+        goto End;
     }
+
+    CryptProv = Rtl->CryptProv;
 
     //
     // Create the MD5 and SHA1 hashes.
@@ -508,7 +481,7 @@ CopyComplete:
     Success = CryptCreateHash(CryptProv, CALG_MD5, 0, 0, &CryptHashMD5);
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -516,7 +489,7 @@ CopyComplete:
     Success = CryptCreateHash(CryptProv, CALG_SHA1, 0, 0, &CryptHashSHA1);
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -532,7 +505,7 @@ CopyComplete:
 
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -544,7 +517,7 @@ CopyComplete:
 
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -562,7 +535,7 @@ CopyComplete:
 
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -576,7 +549,7 @@ CopyComplete:
 
     if (!Success) {
         LastError = GetLastError();
-        Context->LastError = LastError;
+        Rtl->LastError = LastError;
         __debugbreak();
         goto Error;
     }
@@ -606,7 +579,7 @@ CopyComplete:
                 BitmapAllocator->Context,
                 NumberOfBitmaps,
                 SingleBitmapAllocSize,
-                &Timestamp
+                Timestamp
             );
 
             if (!BitmapBuffers) {
@@ -668,12 +641,11 @@ CopyComplete:
         //
 
         SourceCode->Lines = (PSTRING)(
-            LineStore->AllocateRecordsWithTimestamp(
-                LineStore->TraceContext,
-                LineStore,
+            LineAllocator->CallocWithTimestamp(
+                LineAllocator->Context,
                 NumberOfLines,
                 sizeof(STRING),
-                &Timestamp
+                Timestamp
             )
         );
 
@@ -707,11 +679,6 @@ Error:
     Success = FALSE;
 
 End:
-    if (CryptProv) {
-        CryptReleaseContext(CryptProv, 0);
-        CryptProv = 0;
-    }
-
     if (CryptHashMD5) {
         CryptDestroyHash(CryptHashMD5);
         CryptHashMD5 = 0;

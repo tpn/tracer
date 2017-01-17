@@ -41,7 +41,7 @@ CopyPagesAvx2(
     PPAGE_COPY_TYPE PageCopyType
     )
 {
-    USHORT Outer;
+    ULONG Outer;
     USHORT Inner;
 
     YMMWORD Ymm1;
