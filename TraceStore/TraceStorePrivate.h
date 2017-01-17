@@ -2076,16 +2076,16 @@ BIND_COMPLETE ModuleLoadEventStoreBindComplete;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallback;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallbackImpl1;
 
-#define AcquireModuleNamePrefixTableLockExclusive(TraceContext) \
+#define AcquireModuleNamePrefixTableLockExclusive(TraceContext)        \
     AcquireSRWLockExclusive(&TraceContext->ModuleNamePrefixTableLock);
 
-#define ReleaseModuleNamePrefixTableLockExclusive(TraceContext) \
+#define ReleaseModuleNamePrefixTableLockExclusive(TraceContext)        \
     ReleaseSRWLockExclusive(&TraceContext->ModuleNamePrefixTableLock);
 
-#define AcquireModuleNamePrefixTableLockShared(TraceContext) \
+#define AcquireModuleNamePrefixTableLockShared(TraceContext)        \
     AcquireSRWLockShared(&TraceContext->ModuleNamePrefixTableLock);
 
-#define ReleaseModuleNamePrefixTableLockShared(TraceContext) \
+#define ReleaseModuleNamePrefixTableLockShared(TraceContext)        \
     ReleaseSRWLockShared(&TraceContext->ModuleNamePrefixTableLock);
 
 #define AcquireModuleTableEntryLoadEventsLockExclusive(Entry) \
@@ -2163,14 +2163,14 @@ BOOL
 typedef PROCESS_NEW_MODULE_TABLE_ENTRY *PPROCESS_NEW_MODULE_TABLE_ENTRY;
 PROCESS_NEW_MODULE_TABLE_ENTRY ProcessNewModuleTableEntry;
 
-#define EnterNewModuleTableCallback(TraceContext) \
+#define EnterNewModuleTableCallback(TraceContext)                                \
     InterlockedIncrement(&TraceContext->NewModuleEntryWork.NumberOfActiveItems);
 
-#define LeaveNewModuleTableCallback(TraceContext) \
+#define LeaveNewModuleTableCallback(TraceContext)                                \
     InterlockedDecrement(&TraceContext->NewModuleEntryWork.NumberOfActiveItems);
 
-#define SubmitNewModuleTableEntry(TraceContext, ModuleTableEntry) \
-    PushNewModuleTableEntry(TraceContext, ModuleTableEntry); \
+#define SubmitNewModuleTableEntry(TraceContext, ModuleTableEntry)          \
+    PushNewModuleTableEntry(TraceContext, ModuleTableEntry);               \
     SubmitThreadpoolWork(TraceContext->NewModuleEntryWork.ThreadpoolWork);
 
 FORCEINLINE
