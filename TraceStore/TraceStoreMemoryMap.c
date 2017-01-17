@@ -200,10 +200,6 @@ Return Value:
 
     *MemoryMapPointer = NULL;
 
-    if (TraceStore->TotalNumberOfMemoryMaps > 0) {
-        __debugbreak();
-    }
-
     //
     // If the caller hasn't specified the number of memory maps to create,
     // call GetNumberOfMemoryMapsRequiredByTraceStore() to obtain the number.
