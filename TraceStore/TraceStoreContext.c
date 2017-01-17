@@ -773,9 +773,11 @@ InitializeAllocators:
     //
 
 #define NEEDS_PRIORITY_BUMP(StoreIndex)                \
-    (StoreIndex == TraceStoreBitmapIndex ||            \
-     StoreIndex == TraceStoreImageFileIndex ||         \
-     StoreIndex == TraceStoreSourceCodeIndex ||        \
+    (StoreIndex == TraceStoreLineIndex              || \
+     StoreIndex == TraceStoreBitmapIndex            || \
+     StoreIndex == TraceStoreImageFileIndex         || \
+     StoreIndex == TraceStoreSourceCodeIndex        || \
+     StoreIndex == TraceStorePythonModuleTableIndex || \
      StoreIndex == TraceStoreUnicodeStringBufferIndex)
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
