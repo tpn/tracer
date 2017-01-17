@@ -26,8 +26,8 @@ ModuleTableEntryCompareRoutine(
     _In_ PVOID SecondStruct
     )
 {
-    ULONG_PTR First = (ULONG_PTR)FirstStruct;
-    ULONG_PTR Second = (ULONG_PTR)SecondStruct;
+    ULONG_PTR First = *((PULONG_PTR)FirstStruct);
+    ULONG_PTR Second = *((PULONG_PTR)SecondStruct);
 
     if (First == Second) {
         return GenericEqual;
@@ -317,7 +317,7 @@ Return Value:
 {
     TRY_MAPPED_MEMORY_OP {
 
-        TraceStoreDllNotificationCallbackImpl(Reason, Data, Context);
+        TraceStoreDllNotificationCallbackImpl1(Reason, Data, Context);
 
     } CATCH_STATUS_IN_PAGE_ERROR {
 
@@ -328,7 +328,7 @@ Return Value:
 _Use_decl_annotations_
 VOID
 CALLBACK
-TraceStoreDllNotificationCallbackImpl(
+TraceStoreDllNotificationCallbackImpl1(
     DLL_NOTIFICATION_REASON Reason,
     PDLL_NOTIFICATION_DATA Data,
     PVOID Context
@@ -472,7 +472,6 @@ Return Value:
     TraceStoreReleaseLockExclusive(ModuleTableStore);
 
     if (!NewRecord) {
-        __debugbreak();
         goto CreateLoadEvent;
     }
 
@@ -594,6 +593,14 @@ CreateLoadEvent:
     );
 
     //
+    // Return now if this wasn't already a new record.
+    //
+
+    if (!NewRecord) {
+        return;
+    }
+
+    //
     // Search for an entry in the Unicode prefix table for this module name.
     //
 
@@ -625,8 +632,6 @@ CreateLoadEvent:
         // There's already a prefix table entry with this name.  Check to see
         // if it's pointing at an identical module table entry.
         //
-
-        __debugbreak();
 
         ExistingModuleEntry = (
             CONTAINING_RECORD(
