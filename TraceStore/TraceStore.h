@@ -1623,6 +1623,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     // List head used to link load events together.
     //
 
+    _Guarded_by_(LoadEventsLock)
     LIST_ENTRY LoadEventsListHead;
 
     //
@@ -1633,6 +1634,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     // List head used to link duplicate entries together.
     //
 
+    _Guarded_by_(DuplicateEntriesLock)
     union {
         LIST_ENTRY DuplicateEntriesListHead;
         LIST_ENTRY DuplicateEntriesListEntry;
@@ -1643,15 +1645,26 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     //
 
     //
+    // Slim reader/writer locks protecting the linked list heads above.
+    //
+
+    SRWLOCK LoadEventsLock;
+
+    SRWLOCK DuplicateEntriesLock;
+
+    //
     // Pad out to 992 bytes.
     //
 
-    BYTE Reserved[368];
+    BYTE Reserved[352];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
+typedef TRACE_MODULE_TABLE_ENTRY **PPTRACE_MODULE_TABLE_ENTRY;
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsListHead) == 592);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 624);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsLock) == 624);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, DuplicateEntriesLock) == 632);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 640);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
@@ -1667,7 +1680,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
     // Loader notification flags.
     //
 
-    ULONG Flags;
+    union {
+        ULONG Flags;
+        DLL_NOTIFICATION_REASON Reason;
+    };
 
     //
     // Load/unload timestamps.
@@ -1749,6 +1765,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
     ULONGLONG BackTrace[52];
 
 } TRACE_MODULE_LOAD_EVENT, *PTRACE_MODULE_LOAD_EVENT;
+typedef TRACE_MODULE_LOAD_EVENT **PPTRACE_MODULE_LOAD_EVENT;
 C_ASSERT(sizeof(TRACE_MODULE_LOAD_EVENT) == 512);
 
 //
@@ -1825,6 +1842,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
+    TRACE_STORE_WORK NewModuleEntryWork;
 
     //
     // These items are associated with the cancellation threadpool, not the
@@ -1896,6 +1914,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     //
 
     HKEY RunHistoryRegistryKey;
+
+    //
+    // This SRWLock is for the UNICODE_PREFIX_TABLE structure embedded within
+    // the TRACE_MODULE_TABLE structure.
+    //
+
+    SRWLOCK ModuleNamePrefixTableLock;
 
     //
     // Custom allocators used for various Rtl methods.
