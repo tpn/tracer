@@ -194,6 +194,8 @@ extern "C" {
 #define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 #endif
 
+#define TIMESTAMP_TO_SECONDS    1000000
+#define SECONDS_TO_MICROSECONDS 1000000
 
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
@@ -2484,7 +2486,7 @@ typedef _Struct_size_bytes_(StructSize) struct _RTL_PATH {
     };
 
     //
-    // Allocator used to allocate this structure.
+    // Optional allocator used to allocate this structure.
     //
 
     PALLOCATOR Allocator;                                       // 40   8   48
@@ -2550,6 +2552,21 @@ BOOL
     );
 typedef STRING_TO_EXISTING_RTL_PATH *PSTRING_TO_EXISTING_RTL_PATH;
 RTL_API STRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;
+
+typedef
+_Success_(return != 0)
+BOOL
+(UNICODE_STRING_TO_EXISTING_RTL_PATH)(
+    _In_ PRTL Rtl,
+    _In_ PUNICODE_STRING UnicodeString,
+    _In_ PALLOCATOR BitmapAllocator,
+    _In_ PALLOCATOR UnicodeStringBufferAllocator,
+    _In_ PRTL_PATH Path,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef UNICODE_STRING_TO_EXISTING_RTL_PATH \
+      *PUNICODE_STRING_TO_EXISTING_RTL_PATH;
+RTL_API UNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2859,6 +2876,42 @@ C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 160);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, CopyTimeInMicroseconds) == 352);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 368);
 C_ASSERT(sizeof(RTL_FILE) == 512);
+
+//
+// This structure provides bitfields that customize the behavior of the routine
+// InitializeRtlFile().
+//
+
+typedef union _RTL_FILE_INIT_FLAGS {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG IsSourceCode:1;
+        ULONG IsImageFile:1;
+        ULONG CopyContents:1;
+        ULONG CopyViaMovsq:1;
+    };
+} RTL_FILE_INIT_FLAGS, *PRTL_FILE_INIT_FLAGS;
+C_ASSERT(sizeof(RTL_FILE_INIT_FLAGS) == sizeof(ULONG));
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_RTL_FILE)(
+    _In_ PRTL Rtl,
+    _In_opt_ PUNICODE_STRING UnicodeStringPath,
+    _In_opt_ PSTRING AnsiStringPath,
+    _In_ PALLOCATOR BitmapAllocator,
+    _In_ PALLOCATOR UnicodeStringBufferAllocator,
+    _In_ PALLOCATOR FileContentsAllocator,
+    _In_opt_ PALLOCATOR LineAllocator,
+    _In_opt_ PALLOCATOR RtlFileAllocator,
+    _In_ RTL_FILE_INIT_FLAGS InitFlags,
+    _Inout_opt_ PPRTL_FILE FilePointer,
+    _In_ PLARGE_INTEGER Timestamp
+    );
+typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
+RTL_API INITIALIZE_RTL_FILE InitializeRtlFile;
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
@@ -3736,8 +3789,10 @@ RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
     PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                        \
     PSTRING_TO_RTL_PATH StringToRtlPath;                                       \
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                      \
+    PUNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;       \
     PDESTROY_RTL_PATH DestroyRtlPath;                                          \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
+    PINITIALIZE_RTL_FILE InitializeRtlFile;                                    \
     PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                        \
     PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                    \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
@@ -3776,6 +3831,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     struct _RTL_LDR_NOTIFICATION_TABLE *LoaderNotificationTable;
 
     HANDLE HeapHandle;
+
+    DWORD LastError;
+
+    LARGE_INTEGER Frequency;
+    LARGE_INTEGER Multiplicand;
+
+    //
+    // Crypto Context.
+    //
+
+    HCRYPTPROV CryptProv;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

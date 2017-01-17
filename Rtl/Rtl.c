@@ -4153,6 +4153,13 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->UnicodeStringToExistingRtlPath = (PUNICODE_STRING_TO_EXISTING_RTL_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToExistingRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToExistingRtlPath'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->DestroyRtlPath = (PDESTROY_RTL_PATH)
         GetProcAddress(RtlExModule, "DestroyRtlPath"))) {
 
@@ -4164,6 +4171,13 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "GetModuleRtlPath"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'GetModuleRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->InitializeRtlFile = (PINITIALIZE_RTL_FILE)
+        GetProcAddress(RtlExModule, "InitializeRtlFile"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'InitializeRtlFile'");
         return FALSE;
     }
 
@@ -4338,6 +4352,19 @@ InitializeRtl(
     if (!Success) {
         HeapFree(HeapHandle, 0, Table);
         Rtl->LoaderNotificationTable = NULL;
+    }
+
+    Rtl->Multiplicand.QuadPart = TIMESTAMP_TO_SECONDS;
+    QueryPerformanceFrequency(&Rtl->Frequency);
+
+    Success = CryptAcquireContextW(&Rtl->CryptProv,
+                                   NULL,
+                                   NULL,
+                                   PROV_RSA_FULL,
+                                   CRYPT_VERIFYCONTEXT);
+
+    if (!Success) {
+        Rtl->LastError = GetLastError();
     }
 
     return Success;

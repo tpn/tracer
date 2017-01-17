@@ -16,6 +16,8 @@ Abstract:
 
 #include "stdafx.h"
 
+#define FRAMES_TO_SKIP 2
+
 RTL_GENERIC_COMPARE_RESULTS
 NTAPI
 ModuleTableEntryCompareRoutine(
@@ -104,13 +106,10 @@ Return Value:
     PTRACE_STORE ModuleTableEntryStore;
 
     //
-    // Complete the normal bind complete routine for the trace store.  This
-    // will resume allocations and set the bind complete event.
+    // Resume allocations but do not set the bind complete event yet.
     //
 
-    if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
-        return FALSE;
-    }
+    ResumeTraceStoreAllocations(TraceStore);
 
     //
     // Resolve aliases.
@@ -168,6 +167,12 @@ Return Value:
     //
 
     Rtl->RtlInitializeUnicodePrefix(&ModuleTable->ModuleNamePrefixTable);
+
+    //
+    // Set the bind complete event and return success.
+    //
+
+    SetEvent(TraceStore->BindCompleteEvent);
 
     return TRUE;
 }
@@ -292,8 +297,8 @@ Routine Description:
 
     This routine is the callback function invoked automatically by the loader
     when a DLL has been loaded or unloaded.  The loader lock will be held for
-    the duration of the call, and thus, this routine does not need to deal with
-    any re-entrancy issues.
+    the duration of the call.  It is responsible for calling the Impl worker
+    routine from within a try/except block that suppresses STATUS_IN_PAGE_ERROR.
 
 Arguments:
 
@@ -310,9 +315,53 @@ Return Value:
 
 --*/
 {
+    TRY_MAPPED_MEMORY_OP {
+
+        TraceStoreDllNotificationCallbackImpl(Reason, Data, Context);
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+
+        NOTHING;
+    }
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+TraceStoreDllNotificationCallbackImpl(
+    DLL_NOTIFICATION_REASON Reason,
+    PDLL_NOTIFICATION_DATA Data,
+    PVOID Context
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback function invoked automatically by the loader
+    when a DLL has been loaded or unloaded.  The loader lock will be held for
+    the duration of the call.
+
+Arguments:
+
+    Reason - Supplies the reason for the callback (DLL load or DLL unload).
+
+    Data - Supplies a pointer to notification data for this loader operation.
+
+    Context - Supplies a pointer to the TRACE_CONTEXT structure that registered
+        the loader DLL notifications.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
     PRTL Rtl;
     ULONG SizeOfImage;
+    ULONG NumberOfFramesToCapture;
     LARGE_INTEGER Timestamp;
+    PUNICODE_STRING FullDllPath;
     PTRACE_CONTEXT TraceContext;
     PLDR_DATA_TABLE_ENTRY Module;
     PLDR_DLL_LOADED_NOTIFICATION_DATA Loaded;
@@ -322,10 +371,15 @@ Return Value:
     PTRACE_STORE ModuleTableStore;
     PTRACE_STORE ModuleTableEntryStore;
     PTRACE_STORE ModuleLoadEventStore;
+    PUNICODE_PREFIX_TABLE_ENTRY UnicodePrefixTableEntry;
     PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL InsertEntryAvl;
     PTRACE_MODULE_TABLE ModuleTable;
     PTRACE_MODULE_TABLE_ENTRY ModuleEntry;
+    PTRACE_MODULE_TABLE_ENTRY ExistingModuleEntry;
     PTRACE_MODULE_LOAD_EVENT LoadEvent;
+    PRTL_FILE FilePointer;
+    PRTL_IMAGE_FILE ImageFile;
+    RTL_FILE_INIT_FLAGS InitFlags;
     PVOID EntryPoint;
     PVOID BaseAddress;
     BOOLEAN NewRecord;
@@ -398,10 +452,13 @@ Return Value:
     );
 
     if (Module) {
+        FullDllPath = &Module->FullDllName;
         EntryPoint = Module->EntryPoint;
         BaseAddress = Module->DllBase;
         SizeOfImage = Module->SizeOfImage;
     } else {
+        __debugbreak();
+        FullDllPath = (PUNICODE_STRING)Loaded->FullDllName;
         BaseAddress = Loaded->DllBase;
         SizeOfImage = Loaded->SizeOfImage;
         EntryPoint = NULL;
@@ -415,16 +472,8 @@ Return Value:
     TraceStoreReleaseLockExclusive(ModuleTableStore);
 
     if (!NewRecord) {
-        goto CreateLoadEvent;
-    }
-
-    if (Reason.Unloaded) {
-
-        //
-        // We should ever hit this.
-        //
-
         __debugbreak();
+        goto CreateLoadEvent;
     }
 
     //
@@ -432,17 +481,52 @@ Return Value:
     //
 
     //
-    // Initialize the list head.
+    // Initialize the load events and duplicate entries list heads.
     //
 
-    InitializeListHead(&ModuleEntry->ListHead);
+    InitializeListHead(&ModuleEntry->LoadEventsListHead);
+    InitializeListHead(&ModuleEntry->DuplicateEntriesListHead);
 
     //
-    // - Fill in the RTL_FILE details.
-    // - Fill in the RTL_IMAGE_FILE-specific details.
-    // - Copy the file contents to the image file store.
-    // - Capture a backtrace and fill that in.
+    // Prime our RTL_FILE structure for the given DLL.
     //
+
+    InitFlags.AsLong = 0;
+    InitFlags.IsImageFile = TRUE;
+    InitFlags.CopyContents = FALSE;
+    InitFlags.CopyViaMovsq = FALSE;
+    FilePointer = &ModuleEntry->File;
+
+    Success = (
+        Rtl->InitializeRtlFile(
+            Rtl,
+            FullDllPath,
+            NULL,
+            &TraceContext->BitmapAllocator,
+            &TraceContext->UnicodeStringBufferAllocator,
+            &TraceContext->ImageFileAllocator,
+            NULL,
+            NULL,
+            InitFlags,
+            &FilePointer,
+            &Timestamp
+        )
+    );
+
+    if (!Success) {
+        __debugbreak();
+        return;
+    }
+
+    //
+    // Initialize relevant RTL_IMAGE_FILE-specific details.
+    //
+
+    ImageFile = &ModuleEntry->File.ImageFile;
+
+    ImageFile->DllBase = BaseAddress;
+    ImageFile->EntryPoint = EntryPoint;
+    ImageFile->SizeOfImage = SizeOfImage;
 
 CreateLoadEvent:
 
@@ -460,8 +544,13 @@ CreateLoadEvent:
         return;
     }
 
-    //LoadEvent->Flags = Loaded->Flags;
-    LoadEvent->Timestamp.Loaded = Timestamp;
+    LoadEvent->Flags = Reason.AsLong;
+    if (Reason.Loaded) {
+        LoadEvent->Timestamp.Loaded.QuadPart = Timestamp.QuadPart;
+    } else {
+        LoadEvent->Timestamp.Unloaded.QuadPart = Timestamp.QuadPart;
+    }
+
     LoadEvent->BaseAddress = BaseAddress;
     LoadEvent->ModuleTableEntry = ModuleEntry;
     LoadEvent->SizeOfImage = SizeOfImage;
@@ -471,7 +560,7 @@ CreateLoadEvent:
     // Point this at the base of the image file once copied.
     //
 
-    LoadEvent->Content = NULL;
+    LoadEvent->Content = ModuleEntry->File.Content;
 
     //
     // Fill this in if possible.
@@ -484,12 +573,128 @@ CreateLoadEvent:
     //
 
     InitializeListHead(&LoadEvent->ListEntry);
-    AppendTailList(&ModuleEntry->ListHead, &LoadEvent->ListEntry);
-
+    AppendTailList(&ModuleEntry->LoadEventsListHead, &LoadEvent->ListEntry);
 
     //
-    // Add the entry to the Unicode prefix table.
+    // Capture a stack back trace.
     //
+
+    NumberOfFramesToCapture = (
+        sizeof(LoadEvent->BackTrace) /
+        sizeof(LoadEvent->BackTrace[0])
+    );
+
+    LoadEvent->FramesCaptured = (
+        Rtl->RtlCaptureStackBackTrace(
+            FRAMES_TO_SKIP,
+            NumberOfFramesToCapture,
+            (PVOID)&LoadEvent->BackTrace,
+            &LoadEvent->BackTraceHash
+        )
+    );
+
+    //
+    // Search for an entry in the Unicode prefix table for this module name.
+    //
+
+    TraceStoreAcquireLockShared(ModuleTableStore);
+    UnicodePrefixTableEntry = (
+        Rtl->RtlFindUnicodePrefix(
+            &ModuleTable->ModuleNamePrefixTable,
+            &ModuleEntry->File.Path.Full,
+            0
+        )
+    );
+    TraceStoreReleaseLockShared(ModuleTableStore);
+
+    if (UnicodePrefixTableEntry) {
+
+        BOOL Identical;
+        PUNICODE_STRING Match = UnicodePrefixTableEntry->Prefix;
+
+        if (Match->Length < ModuleEntry->File.Path.Full.Length) {
+
+            //
+            // The match was only a prefix match; insert the prefix.
+            //
+
+            goto InsertPrefix;
+        }
+
+        //
+        // There's already a prefix table entry with this name.  Check to see
+        // if it's pointing at an identical module table entry.
+        //
+
+        __debugbreak();
+
+        ExistingModuleEntry = (
+            CONTAINING_RECORD(
+                UnicodePrefixTableEntry,
+                TRACE_MODULE_TABLE_ENTRY,
+                ModuleNamePrefixTableEntry
+            )
+        );
+
+        Identical = (
+            ModuleEntry->File.EndOfFile.QuadPart ==
+            ExistingModuleEntry->File.EndOfFile.QuadPart && (
+                sizeof(ModuleEntry->File.MD5) == Rtl->RtlCompareMemory(
+                    (PVOID)&ModuleEntry->File.MD5,
+                    (PVOID)&ExistingModuleEntry->File.MD5,
+                    sizeof(ModuleEntry->File.MD5)
+                )
+            )
+        );
+
+        if (Identical) {
+
+            //
+            // The two files have identical sizes and MD5 checksums.
+            //
+
+            NOTHING;
+
+        } else {
+
+            //
+            // Two different files with the exact same name?
+            //
+
+            NOTHING;
+        }
+
+        //
+        // Just append this new module table entry to the duplicate list head
+        // for now.
+        //
+
+        AppendTailList(&ExistingModuleEntry->DuplicateEntriesListHead,
+                       &ModuleEntry->DuplicateEntriesListEntry);
+
+    } else {
+
+InsertPrefix:
+
+        TraceStoreAcquireLockExclusive(ModuleTableStore);
+        Success = (
+            Rtl->RtlInsertUnicodePrefix(
+                &ModuleTable->ModuleNamePrefixTable,
+                &ModuleEntry->File.Path.Full,
+                &ModuleEntry->ModuleNamePrefixTableEntry
+            )
+        );
+        TraceStoreReleaseLockExclusive(ModuleTableStore);
+
+        if (!Success) {
+
+            //
+            // Unicode prefix was already in the table.  This shouldn't happen.
+            //
+
+            __debugbreak();
+        }
+    }
 
     return;
 }
