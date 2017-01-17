@@ -44,8 +44,8 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreWsWorkingSetExInfoId          =  12,
     TraceStoreCCallStackTableId             =  13,
     TraceStoreCCallStackTableEntryId        =  14,
-    TraceStoreModuleTableId                =  15,
-    TraceStoreModuleTableEntryId           =  16,
+    TraceStoreModuleTableId                 =  15,
+    TraceStoreModuleTableEntryId            =  16,
     TraceStorePythonCallStackTableId        =  17,
     TraceStorePythonCallStackTableEntryId   =  18,
     TraceStorePythonModuleTableId           =  19,
@@ -62,7 +62,7 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreUnicodeStringBufferId         =  30,
     TraceStoreLineId                        =  31,
     TraceStoreObjectId                      =  32,
-    TraceStoreModuleLoadEventId                      =  33,
+    TraceStoreModuleLoadEventId             =  33,
     TraceStoreInvalidId                     =  34
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 

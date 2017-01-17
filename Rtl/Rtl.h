@@ -2878,6 +2878,44 @@ C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 368);
 C_ASSERT(sizeof(RTL_FILE) == 512);
 
 //
+// Inline functions for pushing/popping RTL_FILE structures to/from interlocked
+// singly-linked list heads.
+//
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PopRtlFile(
+    _In_  PSLIST_HEADER ListHead,
+    _Out_ PPRTL_FILE File
+    )
+{
+    PSLIST_ENTRY ListEntry;
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
+        return FALSE;
+    }
+
+    *File = CONTAINING_RECORD(ListEntry,
+                              RTL_FILE,
+                              ListEntry);
+
+    return TRUE;
+}
+
+FORCEINLINE
+VOID
+PushRtlFile(
+    _In_ PSLIST_HEADER ListHead,
+    _In_ PRTL_FILE File
+    )
+{
+    InterlockedPushEntrySList(ListHead, &File->ListEntry);
+}
+
+//
 // This structure provides bitfields that customize the behavior of the routine
 // InitializeRtlFile().
 //
@@ -2887,6 +2925,7 @@ typedef union _RTL_FILE_INIT_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG IsSourceCode:1;
         ULONG IsImageFile:1;
+        ULONG InitPath:1;
         ULONG CopyContents:1;
         ULONG CopyViaMovsq:1;
     };
@@ -2901,9 +2940,9 @@ BOOL
     _In_ PRTL Rtl,
     _In_opt_ PUNICODE_STRING UnicodeStringPath,
     _In_opt_ PSTRING AnsiStringPath,
-    _In_ PALLOCATOR BitmapAllocator,
-    _In_ PALLOCATOR UnicodeStringBufferAllocator,
-    _In_ PALLOCATOR FileContentsAllocator,
+    _In_opt_ PALLOCATOR BitmapAllocator,
+    _In_opt_ PALLOCATOR UnicodeStringBufferAllocator,
+    _In_opt_ PALLOCATOR FileContentsAllocator,
     _In_opt_ PALLOCATOR LineAllocator,
     _In_opt_ PALLOCATOR RtlFileAllocator,
     _In_ RTL_FILE_INIT_FLAGS InitFlags,

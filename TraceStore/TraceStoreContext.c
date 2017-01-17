@@ -647,6 +647,19 @@ Return Value:
 
         ModuleTableStore->BindComplete = ModuleTableStoreBindComplete;
         ModuleLoadEventStore->BindComplete = ModuleLoadEventStoreBindComplete;
+
+        //
+        // Initialize the NewModuleEntry threadpool worker structure.
+        //
+
+        INIT_WORK(NewModuleEntry, 0);
+
+        //
+        // Initialize the SRWLOCK specific to the TRACE_MODULE_TABLE's
+        // UNICODE_PREFIX_TABLE structure.
+        //
+
+        InitializeSRWLock(&TraceContext->ModuleNamePrefixTableLock);
     }
 
     //
@@ -756,11 +769,32 @@ InitializeAllocators:
     }
 
     //
+    // A handful of trace stores need a priority bump at the moment.
+    //
+
+#define NEEDS_PRIORITY_BUMP(StoreIndex)                \
+    (StoreIndex == TraceStoreBitmapIndex ||            \
+     StoreIndex == TraceStoreImageFileIndex ||         \
+     StoreIndex == TraceStoreSourceCodeIndex ||        \
+     StoreIndex == TraceStoreUnicodeStringBufferIndex)
+
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        if (!NEEDS_PRIORITY_BUMP(StoreIndex)) {
+            continue;
+        }
+        TraceStore = &TraceStores->Stores[StoreIndex];
+        SubmitBindMetadataInfoWork(TraceContext, TraceStore);
+    }
+
+    //
     // Submit the bind metadata info work items for each trace store to the
     // threadpool.
     //
 
     FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        if (NEEDS_PRIORITY_BUMP(StoreIndex)) {
+            continue;
+        }
         TraceStore = &TraceStores->Stores[StoreIndex];
         SubmitBindMetadataInfoWork(TraceContext, TraceStore);
     }
@@ -821,15 +855,13 @@ Error:
     CLEANUP_WORK(BindRemainingMetadataStores);
     CLEANUP_WORK(BindTraceStore);
     CLEANUP_WORK(ReadonlyNonStreamingBindComplete);
+    CLEANUP_WORK(NewModuleEntry);
+
+    CLOSE_ALL_THREADPOOL_TIMERS();
 
     if (TraceContext->CleanupThreadpoolMembersWork) {
         CloseThreadpoolWork(TraceContext->CleanupThreadpoolMembersWork);
         TraceContext->CleanupThreadpoolMembersWork = NULL;
-    }
-
-    if (TraceContext->GetWorkingSetChangesTimer) {
-        CloseThreadpoolTimer(TraceContext->GetWorkingSetChangesTimer);
-        TraceContext->GetWorkingSetChangesTimer = NULL;
     }
 
     return FALSE;
@@ -962,26 +994,10 @@ Return Value:
     }
 
     //
-    // Define a helper macro.
+    // Close all timers.
     //
 
-#define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
-    if (TraceContext->##Name) {                                         \
-        PTP_TIMER Timer = TraceContext->##Name;                         \
-        BOOL CancelPendingCallbacks = TRUE;                             \
-        AcquireSRWLockExclusive(&TraceContext->##Lock);                 \
-        SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
-        WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
-        CloseThreadpoolTimer(Timer);                                    \
-        TraceContext->##Name = NULL;                                    \
-        ReleaseSRWLockExclusive(&TraceContext->##Lock);                 \
-    }
-
-    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer,
-                           WorkingSetChangesLock);
-
-    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer,
-                           CapturePerformanceMetricsLock);
+    CLOSE_ALL_THREADPOOL_TIMERS();
 
     return;
 }

@@ -122,13 +122,6 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(UnicodeStringPath)) {
-        if (!ARGUMENT_PRESENT(AnsiStringPath)) {
-            return FALSE;
-        }
-        IsAnsiString = TRUE;
-    }
-
     if (!ARGUMENT_PRESENT(FilePointer)) {
         return FALSE;
     }
@@ -158,40 +151,56 @@ Return Value:
         }
     }
 
-    //
-    // Initialize aliases.
-    //
-
     Path = &File->Path;
-    IsSourceCode = InitFlags.IsSourceCode;
 
     //
-    // Initialize the RTL_PATH structure based on the incoming path.
+    // Initialize the RTL_PATH structure based on the incoming path if the
+    // InitPath init flag was specified.
     //
 
-    if (IsAnsiString) {
-        Success = (
-            Rtl->StringToExistingRtlPath(
-                Rtl,
-                AnsiStringPath,
-                BitmapAllocator,
-                UnicodeStringBufferAllocator,
-                Path,
-                Timestamp
-            )
-        );
+    if (!InitFlags.InitPath) {
+        if (!IsValidMinimumDirectoryUnicodeString(&Path->Full)) {
+            return FALSE;
+        }
     } else {
-        Success = (
-            Rtl->UnicodeStringToExistingRtlPath(
-                Rtl,
-                UnicodeStringPath,
-                BitmapAllocator,
-                UnicodeStringBufferAllocator,
-                Path,
-                Timestamp
-            )
-        );
+        if (!ARGUMENT_PRESENT(UnicodeStringPath)) {
+            if (!ARGUMENT_PRESENT(AnsiStringPath)) {
+                return FALSE;
+            }
+            IsAnsiString = TRUE;
+        }
+        if (!ARGUMENT_PRESENT(BitmapAllocator)) {
+            return FALSE;
+        }
+        if (!ARGUMENT_PRESENT(UnicodeStringBufferAllocator)) {
+            return FALSE;
+        }
+        if (IsAnsiString) {
+            Success = (
+                Rtl->StringToExistingRtlPath(
+                    Rtl,
+                    AnsiStringPath,
+                    BitmapAllocator,
+                    UnicodeStringBufferAllocator,
+                    Path,
+                    Timestamp
+                )
+            );
+        } else {
+            Success = (
+                Rtl->UnicodeStringToExistingRtlPath(
+                    Rtl,
+                    UnicodeStringPath,
+                    BitmapAllocator,
+                    UnicodeStringBufferAllocator,
+                    Path,
+                    Timestamp
+                )
+            );
+        }
     }
+
+    IsSourceCode = InitFlags.IsSourceCode;
 
     //
     // Open the file.
@@ -263,12 +272,14 @@ Return Value:
     // a 32 byte boundary.
     //
 
-    BitmapBufferSize = File->EndOfFile.QuadPart >> 3;
-    AlignedBitmapBufferSize = ALIGN_UP(BitmapBufferSize, 32);
-    NumberOfBitmaps = NUMBER_OF_RTL_TEXT_FILE_BITMAPS;
+    if (IsSourceCode) {
+        BitmapBufferSize = File->EndOfFile.QuadPart >> 3;
+        AlignedBitmapBufferSize = ALIGN_UP(BitmapBufferSize, 32);
+        NumberOfBitmaps = NUMBER_OF_RTL_TEXT_FILE_BITMAPS;
 
-    SingleBitmapAllocSize = sizeof(RTL_BITMAP) + AlignedBitmapBufferSize;
-    TotalBitmapAllocSize = SingleBitmapAllocSize * NumberOfBitmaps;
+        SingleBitmapAllocSize = sizeof(RTL_BITMAP) + AlignedBitmapBufferSize;
+        TotalBitmapAllocSize = SingleBitmapAllocSize * NumberOfBitmaps;
+    }
 
     BitmapBuffers = NULL;
     BitmapAllocationAttempt = 0;
@@ -425,6 +436,7 @@ Return Value:
                                 SourceContent,
                                 File->NumberOfPages,
                                 NULL);
+
         } else {
 
             Rtl->CopyPagesAvx2(DestContent,
@@ -452,7 +464,6 @@ Return Value:
                  Elapsed.QuadPart) * Rtl->Multiplicand.QuadPart
             );
         }
-
     }
 
     //

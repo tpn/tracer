@@ -367,19 +367,16 @@ Return Value:
     PLDR_DLL_LOADED_NOTIFICATION_DATA Loaded;
     PCLDR_DLL_NOTIFICATION_DATA NotificationData;
     PTRACE_STORES TraceStores;
-    PTRACE_STORE ImageFileStore;
     PTRACE_STORE ModuleTableStore;
     PTRACE_STORE ModuleTableEntryStore;
     PTRACE_STORE ModuleLoadEventStore;
-    PUNICODE_PREFIX_TABLE_ENTRY UnicodePrefixTableEntry;
+    PALLOCATOR BitmapAllocator;
+    PALLOCATOR UnicodeStringBufferAllocator;
     PRTL_INSERT_ELEMENT_GENERIC_TABLE_AVL InsertEntryAvl;
     PTRACE_MODULE_TABLE ModuleTable;
     PTRACE_MODULE_TABLE_ENTRY ModuleEntry;
-    PTRACE_MODULE_TABLE_ENTRY ExistingModuleEntry;
     PTRACE_MODULE_LOAD_EVENT LoadEvent;
-    PRTL_FILE FilePointer;
     PRTL_IMAGE_FILE ImageFile;
-    RTL_FILE_INIT_FLAGS InitFlags;
     PVOID EntryPoint;
     PVOID BaseAddress;
     BOOLEAN NewRecord;
@@ -397,6 +394,8 @@ Return Value:
     //
 
     TraceContext = (PTRACE_CONTEXT)Context;
+    BitmapAllocator = &TraceContext->BitmapAllocator;
+    UnicodeStringBufferAllocator = &TraceContext->UnicodeStringBufferAllocator;
     TraceStores = TraceContext->TraceStores;
     Rtl = TraceContext->Rtl;
     InsertEntryAvl = Rtl->RtlInsertElementGenericTableAvl;
@@ -414,13 +413,6 @@ Return Value:
     //
     // Resolve the trace stores.
     //
-
-    ImageFileStore = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreImageFileId
-        )
-    );
 
     ModuleTableStore = (
         TraceStoreIdToTraceStore(
@@ -476,47 +468,41 @@ Return Value:
     }
 
     //
-    // This is a new entry, so fill out the details.
+    // This is a new entry; fill in minimum details then submit a threadpool
+    // work item to continue processing.
     //
 
     //
-    // Initialize the load events and duplicate entries list heads.
+    // Initialize the load events and duplicate entries list heads and
+    // appropriate locks.
     //
 
+    InitializeSRWLock(&ModuleEntry->LoadEventsLock);
+    AcquireModuleTableEntryLoadEventsLockExclusive(ModuleEntry);
     InitializeListHead(&ModuleEntry->LoadEventsListHead);
+    ReleaseModuleTableEntryLoadEventsLockExclusive(ModuleEntry);
+
+    InitializeSRWLock(&ModuleEntry->DuplicateEntriesLock);
+    AcquireModuleTableEntryDuplicateEntriesLockExclusive(ModuleEntry);
     InitializeListHead(&ModuleEntry->DuplicateEntriesListHead);
+    ReleaseModuleTableEntryDuplicateEntriesLockExclusive(ModuleEntry);
 
     //
     // Prime our RTL_FILE structure for the given DLL.
     //
 
-    InitFlags.AsLong = 0;
-    InitFlags.IsImageFile = TRUE;
-    InitFlags.CopyContents = FALSE;
-    InitFlags.CopyViaMovsq = FALSE;
-    FilePointer = &ModuleEntry->File;
-
-    Success = (
-        Rtl->InitializeRtlFile(
-            Rtl,
-            FullDllPath,
-            NULL,
-            &TraceContext->BitmapAllocator,
-            &TraceContext->UnicodeStringBufferAllocator,
-            &TraceContext->ImageFileAllocator,
-            NULL,
-            NULL,
-            InitFlags,
-            &FilePointer,
-            &Timestamp
-        )
-    );
+    Success = Rtl->UnicodeStringToExistingRtlPath(Rtl,
+                                                  FullDllPath,
+                                                  BitmapAllocator,
+                                                  UnicodeStringBufferAllocator,
+                                                  &ModuleEntry->File.Path,
+                                                  &Timestamp);
 
     if (!Success) {
         __debugbreak();
         return;
     }
-
+    
     //
     // Initialize relevant RTL_IMAGE_FILE-specific details.
     //
@@ -554,11 +540,6 @@ CreateLoadEvent:
     LoadEvent->ModuleTableEntry = ModuleEntry;
     LoadEvent->SizeOfImage = SizeOfImage;
     LoadEvent->EntryPoint = EntryPoint;
-
-    //
-    // Point this at the base of the image file once copied.
-    //
-
     LoadEvent->Content = ModuleEntry->File.Content;
 
     //
@@ -572,7 +553,9 @@ CreateLoadEvent:
     //
 
     InitializeListHead(&LoadEvent->ListEntry);
+    AcquireModuleTableEntryLoadEventsLockExclusive(ModuleEntry);
     AppendTailList(&ModuleEntry->LoadEventsListHead, &LoadEvent->ListEntry);
+    ReleaseModuleTableEntryLoadEventsLockExclusive(ModuleEntry);
 
     //
     // Capture a stack back trace.
@@ -601,10 +584,144 @@ CreateLoadEvent:
     }
 
     //
+    // Submit a threadpool work item to continue processing the module.
+    //
+    
+    SubmitNewModuleTableEntry(TraceContext, ModuleEntry);
+
+    return;
+}
+
+_Use_decl_annotations_
+BOOL
+ProcessNewModuleTableEntry(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_MODULE_TABLE_ENTRY ModuleEntry
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for processing new TRACE_MODULE_TABLE_ENTRY
+    structures as they are created via the loader DLL tracing mechanisms.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    ModuleEntry - Supplies a pointer to a new TRACE_MODULE_TABLE_ENTRY
+        structure.
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
+
+--*/
+{
+    BOOL Success;
+    PRTL Rtl;
+    LARGE_INTEGER Timestamp;
+    PTRACE_STORES TraceStores;
+    PTRACE_STORE ImageFileStore;
+    PTRACE_STORE ModuleTableStore;
+    PTRACE_STORE ModuleTableEntryStore;
+    PUNICODE_PREFIX_TABLE_ENTRY UnicodePrefixTableEntry;
+    PTRACE_MODULE_TABLE ModuleTable;
+    PTRACE_MODULE_TABLE_ENTRY ExistingModuleEntry;
+    PTRACE_MODULE_LOAD_EVENT LoadEvent;
+    PRTL_FILE FilePointer;
+    RTL_FILE_INIT_FLAGS InitFlags;
+
+    //
+    // Initialize aliases/variables.
+    //
+
+    TraceStores = TraceContext->TraceStores;
+    Rtl = TraceContext->Rtl;
+
+    //
+    // Find the most recent load event.
+    //
+
+    Success = GetLastLoadEvent(ModuleEntry, &LoadEvent);
+    if (!Success) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Timestamp.QuadPart = LoadEvent->Timestamp.Loaded.QuadPart;
+
+    if (!Timestamp.QuadPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Resolve the trace stores.
+    //
+
+    ImageFileStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreImageFileId
+        )
+    );
+
+    ModuleTableStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreModuleTableId
+        )
+    );
+
+    ModuleTableEntryStore = (
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreModuleTableEntryId
+        )
+    );
+
+    //
+    // Resolve the module table.
+    //
+
+    ModuleTable = (PTRACE_MODULE_TABLE)(
+        ModuleTableStore->MemoryMap->BaseAddress
+    );
+
+    //
+    // Call the InitRtlFile method.
+    //
+
+   InitFlags.AsLong = 0;
+   InitFlags.IsImageFile = TRUE;
+   InitFlags.InitPath = FALSE;
+   InitFlags.CopyContents = TRUE;
+   InitFlags.CopyViaMovsq = FALSE;
+   FilePointer = &ModuleEntry->File;
+
+   Success = (
+       Rtl->InitializeRtlFile(
+           Rtl,
+           NULL,
+           NULL,
+           NULL,
+           NULL,
+           &TraceContext->ImageFileAllocator,
+           NULL,
+           NULL,
+           InitFlags,
+           &FilePointer,
+           &Timestamp
+       )
+   );
+
+    //
     // Search for an entry in the Unicode prefix table for this module name.
     //
 
-    TraceStoreAcquireLockShared(ModuleTableStore);
+RestartSearch:
+    AcquireModuleNamePrefixTableLockShared(TraceContext);
     UnicodePrefixTableEntry = (
         Rtl->RtlFindUnicodePrefix(
             &ModuleTable->ModuleNamePrefixTable,
@@ -612,7 +729,7 @@ CreateLoadEvent:
             0
         )
     );
-    TraceStoreReleaseLockShared(ModuleTableStore);
+    ReleaseModuleNamePrefixTableLockShared(TraceContext);
 
     if (UnicodePrefixTableEntry) {
 
@@ -674,14 +791,23 @@ CreateLoadEvent:
         // for now.
         //
 
+
+        AcquireModuleTableEntryDuplicateEntriesLockExclusive(
+            ExistingModuleEntry
+        );
+        AcquireModuleTableEntryDuplicateEntriesLockExclusive(ModuleEntry);
         AppendTailList(&ExistingModuleEntry->DuplicateEntriesListHead,
                        &ModuleEntry->DuplicateEntriesListEntry);
+        ReleaseModuleTableEntryDuplicateEntriesLockExclusive(
+            ExistingModuleEntry
+        );
+        ReleaseModuleTableEntryDuplicateEntriesLockExclusive(ModuleEntry);
 
     } else {
 
 InsertPrefix:
 
-        TraceStoreAcquireLockExclusive(ModuleTableStore);
+        AcquireModuleNamePrefixTableLockExclusive(TraceContext);
         Success = (
             Rtl->RtlInsertUnicodePrefix(
                 &ModuleTable->ModuleNamePrefixTable,
@@ -689,19 +815,21 @@ InsertPrefix:
                 &ModuleEntry->ModuleNamePrefixTableEntry
             )
         );
-        TraceStoreReleaseLockExclusive(ModuleTableStore);
+        ReleaseModuleNamePrefixTableLockExclusive(TraceContext);
 
         if (!Success) {
 
             //
-            // Unicode prefix was already in the table.  This shouldn't happen.
+            // Unicode prefix was already in the table.  This shouldn't happen
+            // very frequently.
             //
 
             __debugbreak();
+            goto RestartSearch;
         }
     }
 
-    return;
+    return TRUE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

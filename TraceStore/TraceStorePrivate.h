@@ -62,6 +62,31 @@ PreThreadpoolWorkSubmission(
 ////////////////////////////////////////////////////////////////////////////////
 
 //
+// TraceStoreContext-related macros.
+//
+
+#define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
+    if (TraceContext->##Name) {                                         \
+        PTP_TIMER Timer = TraceContext->##Name;                         \
+        BOOL CancelPendingCallbacks = TRUE;                             \
+        AcquireSRWLockExclusive(&TraceContext->##Lock);                 \
+        SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
+        WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
+        CloseThreadpoolTimer(Timer);                                    \
+        TraceContext->##Name = NULL;                                    \
+        ReleaseSRWLockExclusive(&TraceContext->##Lock);                 \
+    }
+
+#define CLOSE_ALL_THREADPOOL_TIMERS() do {                 \
+    CLOSE_THREADPOOL_TIMER(GetWorkingSetChangesTimer,      \
+                           WorkingSetChangesLock);         \
+                                                           \
+    CLOSE_THREADPOOL_TIMER(CapturePerformanceMetricsTimer, \
+                           CapturePerformanceMetricsLock); \
+} while (0)
+
+
+//
 // TraceStoreAtExitEx-related functions.
 //
 
@@ -669,6 +694,16 @@ VOID
     );
 typedef BIND_TRACE_STORE_CALLBACK *PBIND_TRACE_STORE_CALLBACK;
 BIND_TRACE_STORE_CALLBACK BindTraceStoreCallback;
+
+typedef
+VOID
+(CALLBACK NEW_MODULE_ENTRY_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef NEW_MODULE_ENTRY_CALLBACK *PNEW_MODULE_ENTRY_CALLBACK;
+NEW_MODULE_ENTRY_CALLBACK NewModuleEntryCallback;
 
 typedef
 VOID
@@ -2041,6 +2076,164 @@ BIND_COMPLETE ModuleLoadEventStoreBindComplete;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallback;
 DLL_NOTIFICATION_CALLBACK TraceStoreDllNotificationCallbackImpl1;
 
+#define AcquireModuleNamePrefixTableLockExclusive(TraceContext) \
+    AcquireSRWLockExclusive(&TraceContext->ModuleNamePrefixTableLock);
+
+#define ReleaseModuleNamePrefixTableLockExclusive(TraceContext) \
+    ReleaseSRWLockExclusive(&TraceContext->ModuleNamePrefixTableLock);
+
+#define AcquireModuleNamePrefixTableLockShared(TraceContext) \
+    AcquireSRWLockShared(&TraceContext->ModuleNamePrefixTableLock);
+
+#define ReleaseModuleNamePrefixTableLockShared(TraceContext) \
+    ReleaseSRWLockShared(&TraceContext->ModuleNamePrefixTableLock);
+
+#define AcquireModuleTableEntryLoadEventsLockExclusive(Entry) \
+    AcquireSRWLockExclusive(&Entry->LoadEventsLock);
+
+#define ReleaseModuleTableEntryLoadEventsLockExclusive(Entry) \
+    ReleaseSRWLockExclusive(&Entry->LoadEventsLock);
+
+#define AcquireModuleTableEntryLoadEventsLockShared(Entry) \
+    AcquireSRWLockShared(&Entry->LoadEventsLock);
+
+#define ReleaseModuleTableEntryLoadEventsLockShared(Entry) \
+    ReleaseSRWLockShared(&Entry->LoadEventsLock);
+
+#define AcquireModuleTableEntryDuplicateEntriesLockExclusive(Entry) \
+    AcquireSRWLockExclusive(&Entry->DuplicateEntriesLock);
+
+#define ReleaseModuleTableEntryDuplicateEntriesLockExclusive(Entry) \
+    ReleaseSRWLockExclusive(&Entry->DuplicateEntriesLock);
+
+#define AcquireModuleTableEntryDuplicateEntriesLockShared(Entry) \
+    AcquireSRWLockShared(&Entry->DuplicateEntriesLock);
+
+#define ReleaseModuleTableEntryDuplicateEntriesLockShared(Entry) \
+    ReleaseSRWLockShared(&Entry->DuplicateEntriesLock);
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PopNewModuleTableEntry(
+    _In_  PTRACE_CONTEXT TraceContext,
+    _Out_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PRTL_FILE File;
+    PSLIST_HEADER ListHead;
+
+    ListHead = &TraceContext->NewModuleEntryWork.ListHead;
+    if (!PopRtlFile(ListHead, &File)) {
+        return FALSE;
+    }
+
+    *ModuleTableEntry = CONTAINING_RECORD(File,
+                                          TRACE_MODULE_TABLE_ENTRY,
+                                          File);
+
+    return TRUE;
+}
+
+FORCEINLINE
+VOID
+PushNewModuleTableEntry(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PRTL_FILE File;
+    PSLIST_HEADER ListHead;
+
+    File = &ModuleTableEntry->File;
+    ListHead = &TraceContext->NewModuleEntryWork.ListHead;
+    PushRtlFile(ListHead, File);
+}
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Maybe_raises_SEH_exception_
+BOOL
+(PROCESS_NEW_MODULE_TABLE_ENTRY)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    );
+typedef PROCESS_NEW_MODULE_TABLE_ENTRY *PPROCESS_NEW_MODULE_TABLE_ENTRY;
+PROCESS_NEW_MODULE_TABLE_ENTRY ProcessNewModuleTableEntry;
+
+#define EnterNewModuleTableCallback(TraceContext) \
+    InterlockedIncrement(&TraceContext->NewModuleEntryWork.NumberOfActiveItems);
+
+#define LeaveNewModuleTableCallback(TraceContext) \
+    InterlockedDecrement(&TraceContext->NewModuleEntryWork.NumberOfActiveItems);
+
+#define SubmitNewModuleTableEntry(TraceContext, ModuleTableEntry) \
+    PushNewModuleTableEntry(TraceContext, ModuleTableEntry); \
+    SubmitThreadpoolWork(TraceContext->NewModuleEntryWork.ThreadpoolWork);
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+GetLastLoadEvent(
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry,
+    _Out_ PPTRACE_MODULE_LOAD_EVENT LoadEventPointer
+    )
+{
+    BOOL Found = FALSE;
+    PLIST_ENTRY ListHead;
+    PLIST_ENTRY ListEntry;
+    PTRACE_MODULE_LOAD_EVENT LoadEvent;
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *LoadEventPointer = NULL;
+
+    //
+    // Acquire the load events lock and Initialize the list head.
+    //
+
+    AcquireModuleTableEntryLoadEventsLockShared(ModuleTableEntry);
+
+    ListHead = &ModuleTableEntry->LoadEventsListHead;
+
+    //
+    // Enumerate entries in reverse and look for the first load event.
+    //
+
+    FOR_EACH_LIST_ENTRY_REVERSE(ListHead, ListEntry) {
+
+        LoadEvent = CONTAINING_RECORD(ListEntry,
+                                      TRACE_MODULE_LOAD_EVENT,
+                                      ListEntry);
+
+        if (LoadEvent->Reason.Loaded) {
+            Found = TRUE;
+            break;
+        }
+    }
+
+    //
+    // Release the load events lock.
+    //
+
+    ReleaseModuleTableEntryLoadEventsLockShared(ModuleTableEntry);
+
+    //
+    // If a record was found, update the caller's pointer.
+    //
+
+    if (Found) {
+        *LoadEventPointer = LoadEvent;
+    }
+
+    return Found;
+}
+
 //
 // TraceStoreWorkingSet-related functions.
 //
@@ -2063,13 +2256,13 @@ BIND_COMPLETE WsWatchInfoExStoreBindComplete;
 // TraceStoreWorkingSet-related macros.
 //
 
-#define AcquireWorkingSetChangesLock(TraceContext) \
+#define AcquireWorkingSetChangesLock(TraceContext)                \
     AcquireSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
 
-#define TryAcquireWorkingSetChangesLock(TraceContext) \
+#define TryAcquireWorkingSetChangesLock(TraceContext)                \
     TryAcquireSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
 
-#define ReleaseWorkingSetChangesLock(TraceContext) \
+#define ReleaseWorkingSetChangesLock(TraceContext)                \
     ReleaseSRWLockExclusive(&TraceContext->WorkingSetChangesLock)
 
 //
@@ -2094,13 +2287,13 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 // TraceStorePerformance-related macros.
 //
 
-#define AcquireCapturePerformanceMetricsLock(TraceContext) \
+#define AcquireCapturePerformanceMetricsLock(TraceContext)                \
     AcquireSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
 
-#define TryAcquireCapturePerformanceMetricsLock(TraceContext) \
+#define TryAcquireCapturePerformanceMetricsLock(TraceContext)                \
     TryAcquireSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
 
-#define ReleaseCapturePerformanceMetricsLock(TraceContext) \
+#define ReleaseCapturePerformanceMetricsLock(TraceContext)                \
     ReleaseSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
 
 #ifdef __cplusplus

@@ -493,6 +493,69 @@ Error:
     return;
 }
 
+_Use_decl_annotations_
+VOID
+CALLBACK
+NewModuleEntryCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the NewModuleEntry threadpool work
+    item of a trace context.  It is submitted when a TRACE_MODULE_TABLE_ENTRY
+    structure is created.
+
+Arguments:
+
+    Instance - Not used.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Not used.
+
+Return Value:
+
+    None.  If an error occurs, PushFailedTraceStore() is called.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    //
+    // Pop a new TRACE_MODULE_TABLE_ENTRY structure off the list.
+    //
+
+    if (!PopNewModuleTableEntry(TraceContext, &ModuleTableEntry)) {
+        return;
+    }
+
+    EnterNewModuleTableCallback(TraceContext);
+    TRY_MAPPED_MEMORY_OP {
+        Success = ProcessNewModuleTableEntry(TraceContext, ModuleTableEntry);
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        Success = FALSE;
+    }
+    LeaveNewModuleTableCallback(TraceContext);
+
+    if (!Success) {
+        NOTHING;
+    }
+
+    return;
+}
 
 _Use_decl_annotations_
 VOID
