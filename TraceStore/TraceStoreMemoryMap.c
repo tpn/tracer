@@ -1391,7 +1391,7 @@ Return Value:
 
 --*/
 {
-    BOOL Success;
+    BOOL Success = TRUE;
     BOOL IsMetadata;
     BOOL IsReadonly;
     BOOL HasRelocations;
@@ -1506,6 +1506,7 @@ Return Value:
     Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
 
     if (FAILED(Result)) {
+        __debugbreak();
         PrevPrevMemoryMap->pAddress = NULL;
         goto CloseOldMemoryMap;
     }
@@ -1536,7 +1537,9 @@ Return Value:
 
     Result = RtlCopyMappedMemory(AddressPointer, &Address, sizeof(Address));
     if (FAILED(Result)) {
+        __debugbreak();
         PrevPrevMemoryMap->pAddress = NULL;
+        goto Error;
     }
 
 CloseOldMemoryMap:
@@ -1560,6 +1563,7 @@ StartPreparation:
                                                 &PrepareMemoryMap,
                                                 &NumberOfMaps);
         if (!Success) {
+            __debugbreak();
             Stats->DroppedRecords++;
             Stats->ExhaustedFreeMemoryMaps++;
             return FALSE;
@@ -1625,6 +1629,7 @@ PopNextMap:
         // back to the free list, and return failure to the caller.
         //
 
+        __debugbreak();
         Stats->DroppedRecords++;
         ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
         return FALSE;
@@ -1684,6 +1689,7 @@ ConsumeMap:
     }
 
     if (!MemoryMap->pAddress) {
+        __debugbreak();
         goto Error;
     }
 
@@ -1698,6 +1704,7 @@ ConsumeMap:
                                  sizeof(Address));
 
     if (FAILED(Result)) {
+        __debugbreak();
         goto Error;
     }
 
@@ -1728,6 +1735,7 @@ ConsumeMap:
                         sizeof(Address));
 
     if (FAILED(Result)) {
+        __debugbreak();
         goto Error;
     }
 
@@ -1781,6 +1789,7 @@ PrepareMemoryMap:
 
     Success = LoadNextTraceStoreAddress(TraceStore, &AddressPointer);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -1790,6 +1799,7 @@ PrepareMemoryMap:
 
     Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
     if (FAILED(Result)) {
+        __debugbreak();
         goto Error;
     }
 

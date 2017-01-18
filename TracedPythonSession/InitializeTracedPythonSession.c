@@ -632,7 +632,7 @@ Return Value:
     }
 
     //
-    // Limit the threadpool to 8 times the number of processors in the system.
+    // Limit the threadpool to 2 times the number of processors in the system.
     //
 
     SetThreadpoolThreadMinimum(
@@ -642,7 +642,7 @@ Return Value:
 
     SetThreadpoolThreadMaximum(
         Session->Threadpool,
-        Session->MaximumProcessorCount * 8
+        Session->MaximumProcessorCount * 2
     );
 
     //

@@ -503,7 +503,7 @@ Return Value:
         __debugbreak();
         return;
     }
-    
+
     //
     // Initialize relevant RTL_IMAGE_FILE-specific details.
     //
@@ -587,7 +587,7 @@ CreateLoadEvent:
     //
     // Submit a threadpool work item to continue processing the module.
     //
-    
+
     SubmitNewModuleTableEntry(TraceContext, ModuleEntry);
 
     return;

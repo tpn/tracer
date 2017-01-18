@@ -494,6 +494,7 @@ Return Value:
     //
 
     if (!InitializeTraceStorePath(Path, TraceStore)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -514,6 +515,7 @@ Return Value:
     if (!TraceStore->FileHandle ||
         TraceStore->FileHandle == INVALID_HANDLE_VALUE) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         goto Error;
     }
 
@@ -562,6 +564,7 @@ Return Value:
     //
 
     if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize)) {
+        __debugbreak();
         goto Error;
     }
 
@@ -902,7 +905,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
-        __debugbreak();
+        //__debugbreak();
         return FALSE;
     }
 
@@ -939,7 +942,7 @@ Return Value:
 
     if (!Success) {
         TraceStore->LastError = GetLastError();
-        __debugbreak();
+        //__debugbreak();
         return FALSE;
     }
 
@@ -967,7 +970,7 @@ Return Value:
 
     if (!Success) {
         TraceStore->LastError = GetLastError();
-        __debugbreak();
+        //__debugbreak();
         return FALSE;
     }
 
@@ -979,7 +982,7 @@ Return Value:
 
     if (!Success) {
         TraceStore->LastError = GetLastError();
-        __debugbreak();
+        //__debugbreak();
     }
 
     return Success;
@@ -1201,10 +1204,10 @@ Return Value:
         TruncateStore(TraceStore);
         if (!FlushFileBuffers(TraceStore->FileHandle)) {
             TraceStore->LastError = GetLastError();
-            __debugbreak();
+            //__debugbreak();
         } else if (!CloseHandle(TraceStore->FileHandle)) {
             TraceStore->LastError = GetLastError();
-            __debugbreak();
+            //__debugbreak();
         } else {
             TraceStore->FileHandle = NULL;
         }
