@@ -151,7 +151,8 @@ TraceStoreModuleLoadEventId             =  33
 TraceStoreSymbolTableId                 =  34
 TraceStoreSymbolTableEntryId            =  35
 TraceStoreSymbolBufferId                =  36
-TraceStoreInvalidId                     =  37
+TraceStoreSymbolFileId                  =  37
+TraceStoreInvalidId                     =  38
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -197,6 +198,7 @@ TraceStoreIdToName = {
     TraceStoreSymbolTableId: 'SymbolTable',
     TraceStoreSymbolTableEntryId: 'SymbolTableEntry',
     TraceStoreSymbolBufferId: 'SymbolBuffer',
+    TraceStoreSymbolFileId: 'SymbolFile',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -1364,6 +1366,7 @@ TRACE_STORES._fields_ = [
     ('SymbolTableRelocationCompleteEvent', HANDLE),
     ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
     ('SymbolBufferRelocationCompleteEvent', HANDLE),
+    ('SymbolFileRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1402,6 +1405,7 @@ TRACE_STORES._fields_ = [
     ('SymbolTableReloc', TRACE_STORE_RELOC),
     ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
     ('SymbolBufferReloc', TRACE_STORE_RELOC),
+    ('SymbolFileReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1841,6 +1845,19 @@ TRACE_STORES._fields_ = [
     ('SymbolBufferSynchronizationStore', TRACE_STORE),
     ('SymbolBufferInfoStore', INFO_STORE),
 
+    ('SymbolFileStore', TRACE_STORE),
+    ('SymbolFileMetadataInfoStore', TRACE_STORE),
+    ('SymbolFileAllocationStore', ALLOCATION_STORE),
+    ('SymbolFileRelocationStore', RELOCATION_STORE),
+    ('SymbolFileAddressStore', ADDRESS_STORE),
+    ('SymbolFileAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolFileAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolFileAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolFileSynchronizationStore', TRACE_STORE),
+    ('SymbolFileInfoStore', INFO_STORE),
+
+
     ('Padding3', ULONGLONG * 2),
 ]
 
@@ -1898,6 +1915,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('SymbolTableRelocationCompleteEvent', HANDLE),
         ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
         ('SymbolBufferRelocationCompleteEvent', HANDLE),
+        ('SymbolFileRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1935,6 +1953,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('SymbolTableReloc', TRACE_STORE_RELOC),
         ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
         ('SymbolBufferReloc', TRACE_STORE_RELOC),
+        ('SymbolFileReloc', TRACE_STORE_RELOC),
         ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
