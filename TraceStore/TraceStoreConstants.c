@@ -60,6 +60,7 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreSymbolTable.dat",
     L"TraceStoreSymbolTableEntry.dat",
     L"TraceStoreSymbolBuffer.dat",
+    L"TraceStoreSymbolFile.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -176,7 +177,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 27,   // CallStack
      1 << 25,   // Performance
      1 << 25,   // PerformanceDelta
-     1 << 25,   // SourceCode
+     1 << 27,   // SourceCode
      1 << 24,   // Bitmap
      1 << 29,   // ImageFile
      1 << 23,   // UnicodeStringBuffer
@@ -186,6 +187,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 16,   // SymbolTable
      1 << 28,   // SymbolTableEntry
      1 << 27,   // SymbolBuffer
+     1 << 29,   // SymbolFile
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -995,6 +997,29 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // ConcurrentDataStructure
         0   // Unused
     },
+
+    //
+    // SymbolFile
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        1,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
 };
 
 TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
