@@ -531,6 +531,7 @@ Return Value:
     COPY_FLAG(EnableWorkingSetTracing);
     COPY_FLAG(EnablePerformanceTracing);
     COPY_FLAG(EnableLoaderTracing);
+    COPY_FLAG(EnableSymbolTracing);
 
     //
     // Get the required size of the TRACE_STORES structure.
