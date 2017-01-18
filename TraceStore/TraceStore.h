@@ -1247,6 +1247,12 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableLoaderTracing:1;
 
+            //
+            // When set, enables tracing of module (exe/DLL) symbol information.
+            //
+
+            ULONG EnableSymbolTracing:1;
+
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;

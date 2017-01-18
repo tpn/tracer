@@ -273,6 +273,12 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableLoaderTracing:1;
 
     //
+    // When set, enables tracing of module (exe/DLL) symbol information.
+    //
+
+    ULONG EnableSymbolTracing:1;
+
+    //
     // When set, disables asynchronous initialization of trace contexts.  This
     // applies to the InitializeTraceContext() call.  When enabled, asynchronous
     // initialization will submit the relevant preparation required to bind the
