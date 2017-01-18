@@ -980,7 +980,7 @@ Return Value:
     if (TraceContext->TraceStores->Flags.EnableLoaderTracing) {
         BOOL Success;
         PTRACE_STORE_WORK Work;
-        BOOL CancelPendingCallbacks = TRUE;
+        BOOL CancelPendingCallbacks = FALSE;
         PRTL Rtl = TraceContext->Rtl;
         PVOID Cookie = TraceContext->DllNotificationCookie;
 

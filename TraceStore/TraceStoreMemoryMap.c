@@ -375,6 +375,7 @@ Return Value:
 
     NumberOfMaps = *NumberOfMemoryMapsPointer;
     if (!NumberOfMaps) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -405,6 +406,7 @@ Return Value:
     );
 
     if (!MemoryMaps) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -516,6 +518,7 @@ Return Value:
 
     if (!GetTraceStoreMemoryMapFileInfo(MemoryMap, &FileInfo)) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -531,6 +534,7 @@ Return Value:
                                FILE_CURRENT);
     if (!Success) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -564,6 +568,7 @@ Return Value:
                                FILE_BEGIN);
     if (!Success) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -582,6 +587,7 @@ Return Value:
     if (FileInfo.EndOfFile.QuadPart < NewFileOffset.QuadPart) {
         if (!SetEndOfFile(MemoryMap->FileHandle)) {
             TraceStore->LastError = GetLastError();
+            __debugbreak();
             return FALSE;
         }
     }
@@ -605,6 +611,7 @@ CreateSection:
     if (MemoryMap->MappingHandle == NULL ||
         MemoryMap->MappingHandle == INVALID_HANDLE_VALUE) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -633,6 +640,7 @@ CreateSection:
     //
 
     if (!CopyTraceStoreAddress(&Address, AddressPointer)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -669,6 +677,7 @@ TryMapMemory:
         //
 
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -725,6 +734,7 @@ TryMapMemory:
     //
 
     if (!CopyTraceStoreAddress(AddressPointer, &Address)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -772,6 +782,7 @@ TryMapMemory:
         Success = RegisterNewTraceStoreAddressRange(TraceStore, &AddressRange);
 
         if (!Success) {
+            __debugbreak();
             return FALSE;
         }
 
@@ -786,6 +797,7 @@ TryMapMemory:
 
         } CATCH_STATUS_IN_PAGE_ERROR {
 
+            __debugbreak();
             return FALSE;
         }
     }
@@ -1133,7 +1145,9 @@ Return Value:
 
 --*/
 {
-    UnmapTraceStoreMemoryMap(MemoryMap);
+    if (!UnmapTraceStoreMemoryMap(MemoryMap)) {
+        __debugbreak();
+    }
     FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress);
     ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
     return TRUE;
@@ -1177,12 +1191,15 @@ Return Value:
     //
 
     if (!MemoryMap) {
+        __debugbreak();
         return;
     }
 
     TraceStore->BeginningRundown = TRUE;
 
-    FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress);
+    if (!FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress)) {
+        __debugbreak();
+    }
 
     if (MemoryMap->BaseAddress) {
 
@@ -1190,9 +1207,17 @@ Return Value:
         // Flush the view, unmap it, then clear the base address pointer.
         //
 
-        FlushViewOfFile(MemoryMap->BaseAddress, 0);
-        UnmapViewOfFile(MemoryMap->BaseAddress);
-        MemoryMap->BaseAddress = NULL;
+        if (!FlushViewOfFile(MemoryMap->BaseAddress, 0)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        }
+
+        if (!UnmapViewOfFile(MemoryMap->BaseAddress)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        }
+
+        //MemoryMap->BaseAddress = NULL;
     }
 
     if (MemoryMap->MappingHandle) {
@@ -1201,8 +1226,11 @@ Return Value:
         // Close the memory mapping handle and clear the pointer.
         //
 
-        CloseHandle(MemoryMap->MappingHandle);
-        MemoryMap->MappingHandle = NULL;
+        if (!CloseHandle(MemoryMap->MappingHandle)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        }
+        //MemoryMap->MappingHandle = NULL;
     }
 
     TraceStore->RundownComplete = TRUE;
@@ -1237,7 +1265,7 @@ Return Value:
             LastError = GetLastError();
             __debugbreak();
         }
-        MemoryMap->BaseAddress = NULL;
+        //MemoryMap->BaseAddress = NULL;
     }
 
     if (MemoryMap->MappingHandle) {
@@ -1245,7 +1273,7 @@ Return Value:
             LastError = GetLastError();
             __debugbreak();
         }
-        MemoryMap->MappingHandle = NULL;
+        //MemoryMap->MappingHandle = NULL;
     }
 
     return TRUE;
@@ -1299,7 +1327,7 @@ Return Value:
         return;
     }
 
-    *MemoryMapPointer = NULL;
+    //*MemoryMapPointer = NULL;
 
     //
     // Push the referenced memory map onto the trace store's close memory map
@@ -1307,8 +1335,12 @@ Return Value:
     // memory map pointer.
     //
 
-    PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, MemoryMap);
-    SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
+    if (TRUE) {
+        PushTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, MemoryMap);
+        SubmitThreadpoolWork(TraceStore->CloseMemoryMapWork);
+    } else {
+        CloseTraceStoreMemoryMap(TraceStore, MemoryMap);
+    }
 }
 
 _Use_decl_annotations_
@@ -1451,6 +1483,7 @@ Return Value:
     TraceStore->PrevMemoryMap = NULL;
 
     if (TraceStore->NoRetire) {
+        PushNonRetiredMemoryMap(TraceStore, PrevPrevMemoryMap);
         goto StartPreparation;
     }
 
@@ -1473,7 +1506,6 @@ Return Value:
     Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
 
     if (FAILED(Result)) {
-
         PrevPrevMemoryMap->pAddress = NULL;
         goto CloseOldMemoryMap;
     }
@@ -1652,13 +1684,7 @@ ConsumeMap:
     }
 
     if (!MemoryMap->pAddress) {
-
-        //
-        // There was a STATUS_IN_PAGE_ERROR preventing an address record for
-        // this memory map.
-        //
-
-        goto PrepareMemoryMap;
+        goto Error;
     }
 
     //
@@ -1672,10 +1698,7 @@ ConsumeMap:
                                  sizeof(Address));
 
     if (FAILED(Result)) {
-        __debugbreak();
-        ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
-        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
-        return FALSE;
+        goto Error;
     }
 
     //
@@ -1705,12 +1728,8 @@ ConsumeMap:
                         sizeof(Address));
 
     if (FAILED(Result)) {
-        __debugbreak();
-        ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
-        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
-        return FALSE;
+        goto Error;
     }
-
 
 PrepareMemoryMap:
 
@@ -1722,7 +1741,7 @@ PrepareMemoryMap:
 
     if (IsSingleRecord(Traits)) {
         __debugbreak();
-        return FALSE;
+        goto Error;
     }
 
     //
@@ -1761,15 +1780,8 @@ PrepareMemoryMap:
     //
 
     Success = LoadNextTraceStoreAddress(TraceStore, &AddressPointer);
-
     if (!Success) {
-
-        //
-        // Ignore and go straight to submission.
-        //
-
-        __debugbreak();
-        goto SubmitPreparedMemoryMap;
+        goto Error;
     }
 
     //
@@ -1777,15 +1789,8 @@ PrepareMemoryMap:
     //
 
     Result = RtlCopyMappedMemory(&Address, AddressPointer, sizeof(Address));
-
     if (FAILED(Result)) {
-
-        //
-        // Ignore and go straight to submission.
-        //
-
-        __debugbreak();
-        goto SubmitPreparedMemoryMap;
+        goto Error;
     }
 
     //
@@ -1815,6 +1820,7 @@ PrepareMemoryMap:
         //
 
         __debugbreak();
+        goto Error;
     }
 
 SubmitPreparedMemoryMap:
@@ -1828,16 +1834,26 @@ SubmitPreparedMemoryMap:
         __debugbreak();
     }
 
-    if (!TraceStore->PrepareNextMemoryMapWork) {
-        __debugbreak();
-    }
-
     PushTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, PrepareMemoryMap);
     SubmitThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
 
-End:
+    Success = TRUE;
+    goto End;
 
-    return TRUE;
+Error:
+
+    if (PrepareMemoryMap) {
+        ReturnFreeTraceStoreMemoryMap(TraceStore, PrepareMemoryMap);
+    }
+
+    if (MemoryMap) {
+        ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
+    }
+
+    Success = FALSE;
+
+End:
+    return Success;
 }
 
 

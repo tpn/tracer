@@ -734,7 +734,7 @@ ClosePythonTraceContext(
     PPYTHON_TRACE_CONTEXT Context
     )
 {
-    BOOL CancelPendingCallbacks = TRUE;
+    BOOL CancelPendingCallbacks = FALSE;
     PTP_WORK Work = Context->NewPythonPathTableEntryWork;
     if (Work) {
         WaitForThreadpoolWorkCallbacks(Work, CancelPendingCallbacks);
