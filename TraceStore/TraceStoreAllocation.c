@@ -656,6 +656,12 @@ Return Value:
     RequestedSize = NumberOfRecords * RecordSize;
     AllocationSize = ROUND_TO_PAGES(RequestedSize);
 
+    if (!AssertTrue("AllocationSize <= MemoryMap->MappingSize",
+                    (AllocationSize <=
+                     (ULONG_PTR)MemoryMap->MappingSize.QuadPart))) {
+        return NULL;
+    }
+
     //
     // Resolve page addresses.
     //
@@ -733,6 +739,7 @@ Return Value:
         );
 
         if (!ConsumeNextTraceStoreMemoryMap(TraceStore, NULL)) {
+            __debugbreak();
             return NULL;
         }
 

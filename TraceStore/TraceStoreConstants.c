@@ -175,7 +175,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // PerformanceDelta
      1 << 25,   // SourceCode
      1 << 24,   // Bitmap
-     1 << 25,   // ImageFile
+     1 << 29,   // ImageFile
      1 << 23,   // UnicodeStringBuffer
      1 << 24,   // Line
      1 << 23,   // Object

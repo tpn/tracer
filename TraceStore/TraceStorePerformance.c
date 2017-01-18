@@ -63,6 +63,7 @@ Return Value:
     //
 
     if (!TraceStoreBindComplete(TraceContext, TraceStore, FirstMemoryMap)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -96,6 +97,7 @@ Return Value:
     ReleaseCapturePerformanceMetricsLock(TraceContext);
 
     if (!Success) {
+        __debugbreak();
         return FALSE;
     }
 

@@ -113,14 +113,17 @@ Return Value:
     if (!CreateMemoryMapsForTraceStore(TraceStore,
                                        &FirstMemoryMap,
                                        &NumberOfMaps)) {
+        __debugbreak();
         return FALSE;
     }
 
     if (!CreateTraceStoreEvents(TraceStore)) {
+        __debugbreak();
         return FALSE;
     }
 
     if (!CreateTraceStoreThreadpoolWorkItems(TraceContext, TraceStore)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -147,6 +150,7 @@ Return Value:
 
     Success = LoadNextTraceStoreAddress(TraceStore, &AddressPointer);
     if (!Success) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -166,6 +170,7 @@ Return Value:
                                       AddressPointer,
                                       sizeof(Address));
     if (FAILED(Result)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -198,6 +203,7 @@ Return Value:
                                       &Address,
                                       sizeof(Address));
     if (FAILED(Result)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -220,11 +226,13 @@ PrepareFirstMemoryMap:
 
     Success = PrepareNextTraceStoreMemoryMap(TraceStore, FirstMemoryMap);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
     Success = ConsumeNextTraceStoreMemoryMap(TraceStore, FirstMemoryMap);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -241,6 +249,7 @@ PrepareFirstMemoryMap:
 
         Success = BindComplete(TraceContext, TraceStore, FirstMemoryMap);
         if (!Success) {
+            __debugbreak();
             goto Error;
         }
 
@@ -275,6 +284,7 @@ PrepareFirstMemoryMap:
             FirstMemoryMap
         );
         if (!Success) {
+            __debugbreak();
             goto Error;
         }
     }
@@ -636,6 +646,7 @@ Return Value:
 
     if (MappingHandle == NULL || MappingHandle == INVALID_HANDLE_VALUE) {
         TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -650,6 +661,7 @@ Return Value:
                                                     &NumberOfMaps);
 
     if (!Success) {
+        __debugbreak();
         CloseHandle(MappingHandle);
         return FALSE;
     }
@@ -723,10 +735,12 @@ Return Value:
     //
 
     if (!CreateTraceStoreEvents(TraceStore)) {
+        __debugbreak();
         goto Error;
     }
 
     if (!CreateTraceStoreThreadpoolWorkItems(TraceContext, TraceStore)) {
+        __debugbreak();
         goto Error;
     }
 
