@@ -411,6 +411,14 @@ Return Value:
     Success = TRUE;
 
     //
+    // Update the caller's cookie pointer if applicable.
+    //
+
+    if (ARGUMENT_PRESENT(Cookie)) {
+        *Cookie = (PVOID)Entry;
+    }
+
+    //
     // Intentional follow-on to End.
     //
 

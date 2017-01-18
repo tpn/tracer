@@ -51,6 +51,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
@@ -104,11 +105,13 @@ Return Value:
     }
 
     if (!PopBindMetadataInfoTraceStore(TraceContext, &MetadataInfoStore)) {
+        __debugbreak();
         return;
     }
 
     Success = BindStore(TraceContext, MetadataInfoStore);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -202,11 +205,13 @@ Return Value:
     }
 
     if (!PopBindRemainingMetadataTraceStore(TraceContext, &MetadataStore)) {
+        __debugbreak();
         return;
     }
 
     Success = BindStore(TraceContext, MetadataStore);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -274,11 +279,13 @@ Return Value:
     }
 
     if (!PopBindTraceStore(TraceContext, &TraceStore)) {
+        __debugbreak();
         return;
     }
 
     Success = BindStore(TraceContext, TraceStore);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -335,10 +342,12 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
     if (!PopTraceStoreMemoryMap(&TraceStore->PrepareMemoryMaps, &MemoryMap)) {
+        __debugbreak();
         return;
     }
 
@@ -347,6 +356,7 @@ Return Value:
         PushTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, MemoryMap);
         SetEvent(TraceStore->NextMemoryMapAvailableEvent);
     } else {
+        __debugbreak();
         UnmapTraceStoreMemoryMap(MemoryMap);
         ReturnFreeTraceStoreMemoryMap(TraceStore, MemoryMap);
     }
@@ -401,6 +411,7 @@ Return Value:
     );
 
     if (!Success) {
+        __debugbreak();
         return;
     }
 
@@ -408,6 +419,7 @@ Return Value:
 
     Success = PrepareReadonlyTraceStoreMemoryMap(TraceStore, MemoryMap);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -423,6 +435,7 @@ Return Value:
     Success = PrepareNonStreamingReadonlyTraceStoreMapsComplete(TraceContext,
                                                                 TraceStore);
     if (Success) {
+        __debugbreak();
         return;
     }
 
@@ -477,12 +490,14 @@ Return Value:
 
     Success = PopReadonlyNonStreamingBindComplete(TraceContext, &TraceStore);
     if (!Success) {
+        __debugbreak();
         return;
     }
 
     Success = BindNonStreamingReadonlyTraceStoreComplete(TraceContext,
                                                          TraceStore);
     if (!Success) {
+        __debugbreak();
         goto Error;
     }
 
@@ -551,6 +566,7 @@ Return Value:
     LeaveNewModuleTableCallback(TraceContext);
 
     if (!Success) {
+        __debugbreak();
         NOTHING;
     }
 
@@ -593,10 +609,12 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
     if (!PopTraceStoreMemoryMap(&TraceStore->CloseMemoryMaps, &MemoryMap)) {
+        __debugbreak();
         return;
     }
 

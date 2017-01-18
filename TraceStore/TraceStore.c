@@ -611,6 +611,7 @@ Return Value:
     InitializeSListHead(&TraceStore->FreeMemoryMaps);
     InitializeSListHead(&TraceStore->NextMemoryMaps);
     InitializeSListHead(&TraceStore->PrefaultMemoryMaps);
+    InitializeSListHead(&TraceStore->NonRetiredMemoryMaps);
 }
 
 _Use_decl_annotations_
@@ -901,6 +902,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -936,6 +938,8 @@ Return Value:
     );
 
     if (!Success) {
+        TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -962,6 +966,8 @@ Return Value:
                                FILE_BEGIN);
 
     if (!Success) {
+        TraceStore->LastError = GetLastError();
+        __debugbreak();
         return FALSE;
     }
 
@@ -970,6 +976,11 @@ Return Value:
     //
 
     Success = SetEndOfFile(TraceStore->FileHandle);
+
+    if (!Success) {
+        TraceStore->LastError = GetLastError();
+        __debugbreak();
+    }
 
     return Success;
 }
@@ -1008,6 +1019,7 @@ Return Value:
 {
     BOOL IsRundown;
     DWORD LastError;
+    DWORD WaitResult;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
@@ -1015,6 +1027,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
@@ -1028,6 +1041,26 @@ Return Value:
         return;
     }
 
+    if (TraceStore->PrepareNextMemoryMapWork) {
+        WaitForThreadpoolWorkCallbacks(
+            TraceStore->PrepareNextMemoryMapWork,
+            FALSE
+        );
+        CloseThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
+        TraceStore->PrepareNextMemoryMapWork = NULL;
+    }
+
+    if (TraceStore->PrefaultFuturePageWork) {
+        WaitForThreadpoolWorkCallbacks(TraceStore->PrefaultFuturePageWork,
+                                       FALSE);
+        CloseThreadpoolWork(TraceStore->PrefaultFuturePageWork);
+        TraceStore->PrefaultFuturePageWork = NULL;
+    }
+
+    if (!TraceStore->CloseMemoryMapWork) {
+        __debugbreak();
+    }
+
     //
     // Close the previous and current memory maps in the threadpool.
     //
@@ -1036,20 +1069,31 @@ Return Value:
     SubmitCloseMemoryMapThreadpoolWork(TraceStore, &TraceStore->MemoryMap);
 
     //
-    // Pop any prepared memory maps off the next memory map list and submit
-    // threadpool closes for them, too.
+    // Pop any prepared memory maps off the next memory map lists and submit
+    // threadpool closes for them.
     //
 
-    while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
+    while (PopNextMemoryMap(TraceStore, &MemoryMap)) {
         SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
     }
+
+    while (PopNonRetiredMemoryMap(TraceStore, &MemoryMap)) {
+        SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
+    }
+
+    WaitForThreadpoolWorkCallbacks(TraceStore->CloseMemoryMapWork, FALSE);
+    CloseThreadpoolWork(TraceStore->CloseMemoryMapWork);
+    TraceStore->CloseMemoryMapWork = NULL;
 
     //
     // When all threadpool close work has completed, the 'all memory maps are
     // free' event will be set, so we wait on this here.
     //
 
-    WaitForSingleObject(TraceStore->AllMemoryMapsAreFreeEvent, INFINITE);
+    WaitResult = WaitForSingleObject(TraceStore->AllMemoryMapsAreFreeEvent, 0);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+    }
 
     //
     // All threadpool work has completed, we can proceed with closing the file
@@ -1059,39 +1103,34 @@ Return Value:
     if (TraceStore->FileHandle) {
         TruncateStore(TraceStore);
         if (!FlushFileBuffers(TraceStore->FileHandle)) {
-            LastError = GetLastError();
+            TraceStore->LastError = GetLastError();
             __debugbreak();
+        } else {
+            if (!CloseHandle(TraceStore->FileHandle)) {
+                TraceStore->LastError = GetLastError();
+                __debugbreak();
+            } else {
+                TraceStore->FileHandle = NULL;
+            }
         }
-        if (!CloseHandle(TraceStore->FileHandle)) {
-            LastError = GetLastError();
-            __debugbreak();
-        }
-        //TraceStore->FileHandle = NULL;
     }
 
     if (TraceStore->NextMemoryMapAvailableEvent) {
-        CloseHandle(TraceStore->NextMemoryMapAvailableEvent);
-        TraceStore->NextMemoryMapAvailableEvent = NULL;
+        if (!CloseHandle(TraceStore->NextMemoryMapAvailableEvent)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        } else {
+            TraceStore->NextMemoryMapAvailableEvent = NULL;
+        }
     }
 
     if (TraceStore->AllMemoryMapsAreFreeEvent) {
-        CloseHandle(TraceStore->AllMemoryMapsAreFreeEvent);
-        TraceStore->AllMemoryMapsAreFreeEvent = NULL;
-    }
-
-    if (TraceStore->CloseMemoryMapWork) {
-        CloseThreadpoolWork(TraceStore->CloseMemoryMapWork);
-        TraceStore->CloseMemoryMapWork = NULL;
-    }
-
-    if (TraceStore->PrepareNextMemoryMapWork) {
-        CloseThreadpoolWork(TraceStore->PrepareNextMemoryMapWork);
-        TraceStore->PrepareNextMemoryMapWork = NULL;
-    }
-
-    if (TraceStore->PrefaultFuturePageWork) {
-        CloseThreadpoolWork(TraceStore->PrefaultFuturePageWork);
-        TraceStore->PrefaultFuturePageWork = NULL;
+        if (!CloseHandle(TraceStore->AllMemoryMapsAreFreeEvent)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        } else {
+            TraceStore->AllMemoryMapsAreFreeEvent = NULL;
+        }
     }
 
 }
@@ -1131,6 +1170,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
@@ -1142,12 +1182,16 @@ Return Value:
     RundownTraceStoreMemoryMap(TraceStore, TraceStore->MemoryMap);
 
     //
-    // Pop any prepared memory maps off the next memory map list and run those
-    // down synchronously too.
+    // Pop any prepared memory maps off the next and non-retired memory map
+    // lists and run those down synchronously too.
     //
 
-    while (PopTraceStoreMemoryMap(&TraceStore->NextMemoryMaps, &MemoryMap)) {
+    while (PopNextMemoryMap(TraceStore, &MemoryMap)) {
         RundownTraceStoreMemoryMap(TraceStore, MemoryMap);
+    }
+
+    while (PopNonRetiredMemoryMap(TraceStore, &MemoryMap)) {
+        SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
     }
 
     //
@@ -1156,9 +1200,15 @@ Return Value:
 
     if (TraceStore->FileHandle) {
         TruncateStore(TraceStore);
-        FlushFileBuffers(TraceStore->FileHandle);
-        CloseHandle(TraceStore->FileHandle);
-        TraceStore->FileHandle = NULL;
+        if (!FlushFileBuffers(TraceStore->FileHandle)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        } else if (!CloseHandle(TraceStore->FileHandle)) {
+            TraceStore->LastError = GetLastError();
+            __debugbreak();
+        } else {
+            TraceStore->FileHandle = NULL;
+        }
     }
 }
 
@@ -1191,6 +1241,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
@@ -1250,6 +1301,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TraceStore)) {
+        __debugbreak();
         return;
     }
 
@@ -1309,6 +1361,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(TracerConfig)) {
+        __debugbreak();
         return FALSE;
     }
 

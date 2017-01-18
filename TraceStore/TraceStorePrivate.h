@@ -103,7 +103,7 @@ PreThreadpoolWorkSubmission(
     SecureZeroMemory(Work, sizeof(*Work));
 
 #define CLOSE_WORK(Name) do {                             \
-    BOOL CancelPendingCallbacks = TRUE;                   \
+    BOOL CancelPendingCallbacks = FALSE;                  \
     PTRACE_STORE_WORK Work = &TraceContext->##Name##Work; \
                                                           \
     if (Work->ThreadpoolWork) {                           \
@@ -124,7 +124,7 @@ PreThreadpoolWorkSubmission(
 #define CLOSE_THREADPOOL_TIMER(Name, Lock)                              \
     if (TraceContext->##Name) {                                         \
         PTP_TIMER Timer = TraceContext->##Name;                         \
-        BOOL CancelPendingCallbacks = TRUE;                             \
+        BOOL CancelPendingCallbacks = FALSE;                            \
         AcquireSRWLockExclusive(&TraceContext->##Lock);                 \
         SetThreadpoolTimer(Timer, NULL, 0, 0);                          \
         WaitForThreadpoolTimerCallbacks(Timer, CancelPendingCallbacks); \
@@ -877,6 +877,34 @@ PopTraceStoreMemoryMap(
 }
 
 FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+PopNonRetiredMemoryMap(
+    _In_  PTRACE_STORE TraceStore,
+    _Out_ PPTRACE_STORE_MEMORY_MAP MemoryMap
+)
+{
+    PSLIST_HEADER ListHead;
+    PSLIST_ENTRY ListEntry;
+
+    ListHead = &TraceStore->NonRetiredMemoryMaps;
+
+    ListEntry = InterlockedPopEntrySList(ListHead);
+    if (!ListEntry) {
+        return FALSE;
+    }
+
+    *MemoryMap = CONTAINING_RECORD(ListEntry,
+                                   TRACE_STORE_MEMORY_MAP,
+                                   ListEntry);
+
+    InterlockedDecrement(&TraceStore->NumberOfNonRetiredMemoryMaps);
+
+    return TRUE;
+}
+
+FORCEINLINE
 VOID
 PushTraceStoreMemoryMap(
     _In_ PSLIST_HEADER ListHead,
@@ -915,6 +943,19 @@ GetTraceStoreFileInfo(
         sizeof(*FileInfo)
     );
 }
+
+#define PushNonRetiredMemoryMap(TraceStore, MemoryMap)               \
+    InterlockedIncrement(&TraceStore->NumberOfNonRetiredMemoryMaps); \
+    PushTraceStoreMemoryMap(                                         \
+        &TraceStore->NonRetiredMemoryMaps,                           \
+        MemoryMap                                                    \
+    )
+
+#define PopNextMemoryMap(TraceStore, MemoryMap) \
+    PopTraceStoreMemoryMap(                     \
+        &TraceStore->NextMemoryMaps,            \
+        MemoryMap                               \
+    )
 
 #define PushPrepareReadonlyNonStreamingMap(TraceStore, MemoryMap) \
     PushTraceStoreMemoryMap(                                      \
@@ -1988,7 +2029,7 @@ Return Value:
 //
 
 FORCEINLINE
-VOID
+BOOL
 FinalizeTraceStoreAddressTimes(
     _In_ PTRACE_STORE TraceStore,
     _In_opt_ PTRACE_STORE_ADDRESS AddressPointer
@@ -2027,7 +2068,7 @@ Return Value:
     //
 
     if (!ARGUMENT_PRESENT(AddressPointer)) {
-        return;
+        return FALSE;
     }
 
     //
@@ -2037,7 +2078,8 @@ Return Value:
     //
 
     if (!CopyTraceStoreAddress(&Address, AddressPointer)) {
-        return;
+        __debugbreak();
+        return FALSE;
     }
 
     //
@@ -2112,15 +2154,15 @@ Return Value:
     ElapsedPointer->QuadPart = Elapsed.QuadPart;
 
     //
-    // Copy the local record back to the backing store and ignore the return
-    // value.
+    // Copy the local record back to the backing store.
     //
 
     if (!CopyTraceStoreAddress(AddressPointer, &Address)) {
-        NOTHING;
+        __debugbreak();
+        return FALSE;
     }
 
-    return;
+    return TRUE;
 }
 
 //

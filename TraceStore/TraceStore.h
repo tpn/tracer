@@ -2150,8 +2150,10 @@ typedef struct _TRACE_STORE {
 
     DWORD LastError;
 
-    volatile ULONG  TotalNumberOfMemoryMaps;
-    volatile ULONG  NumberOfActiveMemoryMaps;
+    volatile LONG  TotalNumberOfMemoryMaps;
+    volatile LONG  NumberOfActiveMemoryMaps;
+    volatile LONG  NumberOfNonRetiredMemoryMaps;
+    ULONG Padding1;
 
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
@@ -2159,6 +2161,7 @@ typedef struct _TRACE_STORE {
     SLIST_HEADER            NextMemoryMaps;
     SLIST_HEADER            FreeMemoryMaps;
     SLIST_HEADER            PrefaultMemoryMaps;
+    SLIST_HEADER            NonRetiredMemoryMaps;
 
     TRACE_STORE_MEMORY_MAP  SingleMemoryMap;
 
