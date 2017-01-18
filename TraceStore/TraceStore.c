@@ -1018,7 +1018,6 @@ Return Value:
 --*/
 {
     BOOL IsRundown;
-    DWORD LastError;
     DWORD WaitResult;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
