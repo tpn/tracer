@@ -147,7 +147,7 @@ TraceStoreImageFileId                   =  29
 TraceStoreUnicodeStringBufferId         =  30
 TraceStoreLineId                        =  31
 TraceStoreObjectId                      =  32
-TraceStoreLoaderId                      =  33
+TraceStoreModuleLoadEventId             =  33
 TraceStoreInvalidId                     =  34
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
@@ -190,7 +190,7 @@ TraceStoreIdToName = {
     TraceStoreUnicodeStringBufferId: 'UnicodeStringBuffer',
     TraceStoreLineId: 'Line',
     TraceStoreObjectId: 'Object',
-    TraceStoreLoaderId: 'Loader',
+    TraceStoreModuleLoadEventId: 'ModuleLoadEvent',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -1079,14 +1079,18 @@ TRACE_STORE._fields_ = [
     ('StoreFlags', _TRACE_STORE_INNER_FLAGS),
     ('TraceFlags', TRACE_FLAGS),
     ('LastError', DWORD),
-    ('TotalNumberOfMemoryMaps', ULONG),
-    ('NumberOfActiveMemoryMaps', ULONG),
+    ('TotalNumberOfMemoryMaps', LONG),
+    ('NumberOfActiveMemoryMaps', LONG),
+    ('NumberOfNonRetiredMemoryMaps', LONG),
+    ('Padding1', LONG),
+    ('Padding2', ULONGLONG),
     ('CloseMemoryMaps', SLIST_HEADER),
     ('PrepareMemoryMaps', SLIST_HEADER),
     ('PrepareReadonlyMemoryMaps', SLIST_HEADER),
     ('NextMemoryMaps', SLIST_HEADER),
     ('FreeMemoryMaps', SLIST_HEADER),
     ('PrefaultMemoryMaps', SLIST_HEADER),
+    ('NonRetiredMemoryMaps', SLIST_HEADER),
     ('SingleMemoryMap', TRACE_STORE_MEMORY_MAP),
     ('StoresListEntry', TRACE_STORE_LIST_ENTRY),
     ('MetadataListHeadOrEntry', TRACE_STORE_LIST_ENTRY),
