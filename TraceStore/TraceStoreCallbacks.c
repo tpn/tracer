@@ -435,7 +435,6 @@ Return Value:
     Success = PrepareNonStreamingReadonlyTraceStoreMapsComplete(TraceContext,
                                                                 TraceStore);
     if (Success) {
-        __debugbreak();
         return;
     }
 
