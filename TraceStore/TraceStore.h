@@ -1659,10 +1659,27 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     SRWLOCK DuplicateEntriesLock;
 
     //
+    // Pointer to the symbol table for the module, if any.
+    //
+
+    struct _TRACE_SYMBOL_TABLE *SymbolTable;
+
+    //
+    // Optional threadpool work function that will be submitted when the symbol
+    // table is available.
+    //
+
+    PTP_WORK SymbolTableAvailableWork;
+
+    //
+    // (656 bytes consumed.)
+    //
+
+    //
     // Pad out to 992 bytes.
     //
 
-    BYTE Reserved[352];
+    BYTE Reserved[336];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
 typedef TRACE_MODULE_TABLE_ENTRY **PPTRACE_MODULE_TABLE_ENTRY;
@@ -1670,7 +1687,7 @@ C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsListHead) == 592);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsLock) == 624);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, DuplicateEntriesLock) == 632);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 640);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 656);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
@@ -1943,6 +1960,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
 
     //
+    // Pointer to the symbol tracing context if enable.d
+    //
+
+    struct _TRACE_SYMBOL_CONTEXT *SymbolContext;
+
+    //
     // Cookie used to deregister with UnregisterDllNotification().
     //
 
@@ -1985,6 +2008,255 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     };
 
 } TRACE_CONTEXT, *PTRACE_CONTEXT;
+
+//
+// Symbol tracing functions and structures.
+//
+
+typedef
+_Check_return_
+_Success_(return == 0)
+ULONG
+(WINAPI TRACE_SYMBOL_THREAD_ENTRY)(
+    _In_ struct _TRACE_SYMBOL_CONTEXT *SymbolContext
+    );
+typedef TRACE_SYMBOL_THREAD_ENTRY *PTRACE_SYMBOL_THREAD_ENTRY;
+
+typedef union _TRACE_SYMBOL_CONTEXT_FLAGS {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+} TRACE_SYMBOL_CONTEXT_FLAGS, *PTRACE_SYMBOL_CONTEXT_FLAGS;
+C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT_FLAGS) == sizeof(ULONG));
+
+typedef enum _TRACE_SYMBOL_CONTEXT_STATE {
+    TraceSymbolContextNullState = 0,
+    TraceSymbolContextStructureCreatedState = 1,
+    TraceSymbolContextThreadCreatedState = 2,
+    TraceSymbolContextWaitingForWorkState = 3,
+    TraceSymbolContextProcessingWorkState = 4,
+    TraceSymbolContextReceivedShutdownState = 5,
+    TraceSymbolContextWaitFailureInducedShutdownState = 6,
+} TRACE_SYMBOL_CONTEXT_STATE, *PTRACE_SYMBOL_CONTEXT_STATE;
+C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT_STATE) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
+
+    //
+    // Structure size, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_SYMBOL_CONTEXT)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TRACE_SYMBOL_CONTEXT_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    _Guarded_by_(CriticalSection)
+    TRACE_SYMBOL_CONTEXT_STATE State;
+
+    //
+    // Thread ID of the thread that owns the symbol context.
+    //
+
+    _Write_guarded_by_(CriticalSection)
+    ULONG ThreadId;
+
+    //
+    // Handle to the thread that owns the symbol context.
+    //
+
+    _Write_guarded_by_(CriticalSection)
+    HANDLE ThreadHandle;
+
+    //
+    // Critical section guarding the structure.
+    //
+
+    CRITICAL_SECTION CriticalSection;
+
+    //
+    // Pad out to 64 bytes.  This also ensures WorkListHead is aligned on a
+    // 16-byte boundary as required.
+    //
+
+    DECLSPEC_ALIGN(64) SLIST_HEADER WorkListHead;
+
+    //
+    // (80 bytes consumed.)
+    //
+
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_SYMBOL_THREAD_ENTRY ThreadEntry;
+
+    HANDLE ShutdownEvent;
+    HANDLE WorkAvailableEvent;
+
+    struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    ULONG LastError;
+    ULONG NumberOfWorkItemsProcessed;
+    ULONG NumberOfWorkItemsSucceeded;
+    ULONG NumberOfWorkItemsFailed;
+
+    //
+    // (136 bytes consumed.)
+    //
+
+    //
+    // Pad out to 256 bytes.
+    //
+
+    BYTE Reserved[120];
+
+} TRACE_SYMBOL_CONTEXT, *PTRACE_SYMBOL_CONTEXT;
+typedef TRACE_SYMBOL_CONTEXT **PPTRACE_SYMBOL_CONTEXT;
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, WorkListHead) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, TraceContext) == 80);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 136);
+C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
+
+#define AcquireTraceSymbolContextLock(SymbolContext) \
+    EnterCriticalSection(&SymbolContext->CriticalSection)
+
+#define TryAcquireTraceSymbolContextLock(SymbolContext) \
+    TryEnterCriticalSection(&SymbolContext->CriticalSection)
+
+#define ReleaseTraceSymbolContextLock(SymbolContext) \
+    LeaveCriticalSection(&SymbolContext->CriticalSection)
+
+#define SymbolContextIsStructureCreated(SymbolContext) \
+    (SymbolContext->State == TraceSymbolContextStructureCreatedState)
+
+#define SymbolContextIsThreadCreated(SymbolContext) \
+    (SymbolContext->State == TraceSymbolContextThreadCreatedState)
+
+#define SymbolContextIsThreadRunningCreated(SymbolContext) \
+    (SymbolContext->State == TraceSymbolContextThreadRunningState)
+
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_SYMBOL_TABLE_FLAGS {
+    ULONG Initialized:1;
+} TRACE_SYMBOL_TABLE_FLAGS, *PTRACE_SYMBOL_TABLE_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_TABLE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_SYMBOL_TABLE)) ULONG SizeOfStruct;
+
+    //
+    // Module table flags.
+    //
+
+    TRACE_SYMBOL_TABLE_FLAGS Flags;
+
+    //
+    // Pad out to 16 bytes.
+    //
+
+    ULONGLONG Padding1;
+
+    //
+    // AVL table keyed by the symbol name's hash.
+    //
+
+    RTL_AVL_TABLE SymbolHashTable;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    //
+    // Prefix table of symbol names.
+    //
+
+    PREFIX_TABLE SymbolPrefixTable;
+
+    //
+    // Pointer to the parent TRACE_MODULE_TABLE_ENTRY.
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    //
+    // (144 bytes consumed.)
+    //
+
+    //
+    // Pad out to 512 bytes.
+    //
+
+    BYTE Reserved[368];
+
+} TRACE_SYMBOL_TABLE, *PTRACE_SYMBOL_TABLE;
+typedef TRACE_SYMBOL_TABLE **PPTRACE_SYMBOL_TABLE;
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
+C_ASSERT(sizeof(PREFIX_TABLE) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolHashTable) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolPrefixTable) == 120);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, ModuleTableEntry) == 136);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, Reserved) == 144);
+
+//
+// Symbol table entry structure.
+//
+
+typedef struct
+_Struct_size_bytes_(sizeof(ULONG))
+_TRACE_SYMBOL_TABLE_ENTRY_FLAGS {
+    ULONG Unused:1;
+} TRACE_SYMBOL_TABLE_ENTRY_FLAGS, *PTRACE_SYMBOL_TABLE_ENTRY_FLAGS;
+C_ASSERT(sizeof(TRACE_SYMBOL_TABLE_ENTRY_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_TABLE_ENTRY {
+
+    //
+    // Hash of the symbol name.
+    //
+
+    ULONG SymbolNameHash;
+    ULONG FullSymbolNameHash;
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_SYMBOL_TABLE_ENTRY))
+        ULONG SizeOfStruct;
+
+    //
+    // Symbol table entry flags.
+    //
+
+    TRACE_SYMBOL_TABLE_ENTRY_FLAGS Flags;
+
+    //
+    // Prefix table entry; links to TRACE_SYMBOL_TABLE's SymbolPrefixTable.
+    //
+
+    PREFIX_TABLE_ENTRY PrefixTableEntry;
+
+} TRACE_SYMBOL_TABLE_ENTRY, *PTRACE_SYMBOL_TABLE_ENTRY;
+typedef TRACE_SYMBOL_TABLE_ENTRY **PPTRACE_SYMBOL_TABLE_ENTRY;
+
+//
+// Miscellaneous structure sizes.
+//
 
 typedef struct _TRACE_STORE_STRUCTURE_SIZES {
     ULONG TraceStore;

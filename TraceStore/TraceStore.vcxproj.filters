@@ -119,6 +119,9 @@
     <ClCompile Include="TraceStoreLoader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreSymbols.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <!--
   <ItemGroup>

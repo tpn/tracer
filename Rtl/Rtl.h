@@ -1989,8 +1989,10 @@ typedef struct _PREFIX_TABLE_ENTRY {
 typedef struct _PREFIX_TABLE {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
+    ULONG Unused;
     PPREFIX_TABLE_ENTRY NextPrefixTree;
 } PREFIX_TABLE, *PPREFIX_TABLE, **PPPREFIX_TABLE;
+C_ASSERT(sizeof(PREFIX_TABLE) == 16);
 
 typedef VOID (NTAPI *PPFX_INITIALIZE)(
     _Out_ PPREFIX_TABLE PrefixTable
@@ -2281,6 +2283,17 @@ typedef BOOL (WINAPI *PTHREAD32_NEXT)(
 //
 // Misc
 //
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK INIT_ONCE_CALLBACK)(
+    _Inout_     PINIT_ONCE InitOnce,
+    _Inout_opt_ PVOID      Parameter,
+    _Out_opt_   PVOID      *Context
+    );
+typedef INIT_ONCE_CALLBACK *PINIT_ONCE_CALLBACK;
 
 typedef VOID (NTAPI *PRTL_PREFETCH_MEMORY_NON_TEMPORAL)(
     _In_ PVOID Source,
