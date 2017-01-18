@@ -148,7 +148,10 @@ TraceStoreUnicodeStringBufferId         =  30
 TraceStoreLineId                        =  31
 TraceStoreObjectId                      =  32
 TraceStoreModuleLoadEventId             =  33
-TraceStoreInvalidId                     =  34
+TraceStoreSymbolTableId                 =  34
+TraceStoreSymbolTableEntryId            =  35
+TraceStoreSymbolBufferId                =  36
+TraceStoreInvalidId                     =  37
 
 MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
 TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
@@ -191,6 +194,9 @@ TraceStoreIdToName = {
     TraceStoreLineId: 'Line',
     TraceStoreObjectId: 'Object',
     TraceStoreModuleLoadEventId: 'ModuleLoadEvent',
+    TraceStoreSymbolTableId: 'SymbolTable',
+    TraceStoreSymbolTableEntryId: 'SymbolTableEntry',
+    TraceStoreSymbolBufferId: 'SymbolBuffer',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -757,6 +763,7 @@ class TRACE_CONTEXT(Structure):
         ('UnicodeStringBufferAllocator', ALLOCATOR),
         ('ImageFileAllocator', ALLOCATOR),
         ('AtExitExEntry', PVOID),
+        ('SymbolContext', PVOID),
         ('DllNotificationCookie', PVOID),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
@@ -1353,7 +1360,10 @@ TRACE_STORES._fields_ = [
     ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
     ('LineRelocationCompleteEvent', HANDLE),
     ('ObjectRelocationCompleteEvent', HANDLE),
-    ('LoaderRelocationCompleteEvent', HANDLE),
+    ('ModuleLoadEventRelocationCompleteEvent', HANDLE),
+    ('SymbolTableRelocationCompleteEvent', HANDLE),
+    ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
+    ('SymbolBufferRelocationCompleteEvent', HANDLE),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
     ('EventReloc', TRACE_STORE_RELOC),
@@ -1388,7 +1398,10 @@ TRACE_STORES._fields_ = [
     ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
     ('LineReloc', TRACE_STORE_RELOC),
     ('ObjectReloc', TRACE_STORE_RELOC),
-    ('LoaderReloc', TRACE_STORE_RELOC),
+    ('ModuleLoadEventReloc', TRACE_STORE_RELOC),
+    ('SymbolTableReloc', TRACE_STORE_RELOC),
+    ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
+    ('SymbolBufferReloc', TRACE_STORE_RELOC),
     ('Dummy1', PVOID),
 
     # Start of Stores[MAX_TRACE_STORES].
@@ -1780,17 +1793,53 @@ TRACE_STORES._fields_ = [
     ('ObjectSynchronizationStore', TRACE_STORE),
     ('ObjectInfoStore', INFO_STORE),
 
-    ('LoaderStore', TRACE_STORE),
-    ('LoaderMetadataInfoStore', TRACE_STORE),
-    ('LoaderAllocationStore', ALLOCATION_STORE),
-    ('LoaderRelocationStore', RELOCATION_STORE),
-    ('LoaderAddressStore', ADDRESS_STORE),
-    ('LoaderAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('LoaderAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
-    ('LoaderAllocationTimestampDeltaStore',
+    ('ModuleLoadEventStore', TRACE_STORE),
+    ('ModuleLoadEventMetadataInfoStore', TRACE_STORE),
+    ('ModuleLoadEventAllocationStore', ALLOCATION_STORE),
+    ('ModuleLoadEventRelocationStore', RELOCATION_STORE),
+    ('ModuleLoadEventAddressStore', ADDRESS_STORE),
+    ('ModuleLoadEventAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('ModuleLoadEventAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('ModuleLoadEventAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
-    ('LoaderSynchronizationStore', TRACE_STORE),
-    ('LoaderInfoStore', INFO_STORE),
+    ('ModuleLoadEventSynchronizationStore', TRACE_STORE),
+    ('ModuleLoadEventInfoStore', INFO_STORE),
+
+    ('SymbolTableStore', TRACE_STORE),
+    ('SymbolTableMetadataInfoStore', TRACE_STORE),
+    ('SymbolTableAllocationStore', ALLOCATION_STORE),
+    ('SymbolTableRelocationStore', RELOCATION_STORE),
+    ('SymbolTableAddressStore', ADDRESS_STORE),
+    ('SymbolTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolTableAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolTableSynchronizationStore', TRACE_STORE),
+    ('SymbolTableInfoStore', INFO_STORE),
+
+    ('SymbolTableEntryStore', TRACE_STORE),
+    ('SymbolTableEntryMetadataInfoStore', TRACE_STORE),
+    ('SymbolTableEntryAllocationStore', ALLOCATION_STORE),
+    ('SymbolTableEntryRelocationStore', RELOCATION_STORE),
+    ('SymbolTableEntryAddressStore', ADDRESS_STORE),
+    ('SymbolTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolTableEntryAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolTableEntrySynchronizationStore', TRACE_STORE),
+    ('SymbolTableEntryInfoStore', INFO_STORE),
+
+    ('SymbolBufferStore', TRACE_STORE),
+    ('SymbolBufferMetadataInfoStore', TRACE_STORE),
+    ('SymbolBufferAllocationStore', ALLOCATION_STORE),
+    ('SymbolBufferRelocationStore', RELOCATION_STORE),
+    ('SymbolBufferAddressStore', ADDRESS_STORE),
+    ('SymbolBufferAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolBufferAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolBufferSynchronizationStore', TRACE_STORE),
+    ('SymbolBufferInfoStore', INFO_STORE),
 
     ('Padding3', ULONGLONG * 2),
 ]
@@ -1845,7 +1894,10 @@ class TRACE_STORE_ARRAY(Structure):
         ('UnicodeStringBufferRelocationCompleteEvent', HANDLE),
         ('LineRelocationCompleteEvent', HANDLE),
         ('ObjectRelocationCompleteEvent', HANDLE),
-        ('LoaderRelocationCompleteEvent', HANDLE),
+        ('ModuleLoadEventRelocationCompleteEvent', HANDLE),
+        ('SymbolTableRelocationCompleteEvent', HANDLE),
+        ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
+        ('SymbolBufferRelocationCompleteEvent', HANDLE),
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1879,7 +1931,10 @@ class TRACE_STORE_ARRAY(Structure):
         ('UnicodeStringBufferReloc', TRACE_STORE_RELOC),
         ('LineReloc', TRACE_STORE_RELOC),
         ('ObjectReloc', TRACE_STORE_RELOC),
-        ('LoaderReloc', TRACE_STORE_RELOC),
+        ('ModuleLoadEventReloc', TRACE_STORE_RELOC),
+        ('SymbolTableReloc', TRACE_STORE_RELOC),
+        ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
+        ('SymbolBufferReloc', TRACE_STORE_RELOC),
         ('Dummy1', PVOID),
         ('TraceStores', TRACE_STORE * (
             MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE

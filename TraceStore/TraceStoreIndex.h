@@ -63,7 +63,10 @@ typedef enum _TRACE_STORE_ID {
     TraceStoreLineId                        =  31,
     TraceStoreObjectId                      =  32,
     TraceStoreModuleLoadEventId             =  33,
-    TraceStoreInvalidId                     =  34
+    TraceStoreSymbolTableId                 =  34,
+    TraceStoreSymbolTableEntryId            =  35,
+    TraceStoreSymbolBufferId                =  36,
+    TraceStoreInvalidId                     =  37
 } TRACE_STORE_ID, *PTRACE_STORE_ID;
 
 #define MAX_TRACE_STORE_IDS TraceStoreInvalidId-1
@@ -464,6 +467,36 @@ typedef enum _TRACE_STORE_INDEX {
     TraceStoreModuleLoadEventAllocationTimestampDeltaIndex,
     TraceStoreModuleLoadEventSynchronizationIndex,
     TraceStoreModuleLoadEventInfoIndex,
+    TraceStoreSymbolTableIndex,
+    TraceStoreSymbolTableMetadataInfoIndex,
+    TraceStoreSymbolTableAllocationIndex,
+    TraceStoreSymbolTableRelocationIndex,
+    TraceStoreSymbolTableAddressIndex,
+    TraceStoreSymbolTableAddressRangeIndex,
+    TraceStoreSymbolTableAllocationTimestampIndex,
+    TraceStoreSymbolTableAllocationTimestampDeltaIndex,
+    TraceStoreSymbolTableSynchronizationIndex,
+    TraceStoreSymbolTableInfoIndex,
+    TraceStoreSymbolTableEntryIndex,
+    TraceStoreSymbolTableEntryMetadataInfoIndex,
+    TraceStoreSymbolTableEntryAllocationIndex,
+    TraceStoreSymbolTableEntryRelocationIndex,
+    TraceStoreSymbolTableEntryAddressIndex,
+    TraceStoreSymbolTableEntryAddressRangeIndex,
+    TraceStoreSymbolTableEntryAllocationTimestampIndex,
+    TraceStoreSymbolTableEntryAllocationTimestampDeltaIndex,
+    TraceStoreSymbolTableEntrySynchronizationIndex,
+    TraceStoreSymbolTableEntryInfoIndex,
+    TraceStoreSymbolBufferIndex,
+    TraceStoreSymbolBufferMetadataInfoIndex,
+    TraceStoreSymbolBufferAllocationIndex,
+    TraceStoreSymbolBufferRelocationIndex,
+    TraceStoreSymbolBufferAddressIndex,
+    TraceStoreSymbolBufferAddressRangeIndex,
+    TraceStoreSymbolBufferAllocationTimestampIndex,
+    TraceStoreSymbolBufferAllocationTimestampDeltaIndex,
+    TraceStoreSymbolBufferSynchronizationIndex,
+    TraceStoreSymbolBufferInfoIndex,
     TraceStoreInvalidIndex
 } TRACE_STORE_INDEX, *PTRACE_STORE_INDEX;
 

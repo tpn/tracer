@@ -639,6 +639,44 @@ Return Value:
         InitializeSRWLock(&TraceContext->ModuleNamePrefixTableLock);
     }
 
+    if (TraceStores->Flags.EnableSymbolTracing) {
+        PTRACE_STORE SymbolTableStore;
+        PTRACE_STORE SymbolBufferStore;
+
+        //
+        // Attempt to create the TRACE_SYMBOL_CONTEXT structure.
+        //
+
+        Success = InitializeTraceSymbolContext(TraceContext);
+        if (!Success) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Override the BindComplete methods for the SymbolTable store and the
+        // SymbolTableBuffer store.
+        //
+
+        SymbolTableStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreSymbolTableId
+            )
+        );
+
+        SymbolBufferStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreSymbolBufferId
+            )
+        );
+
+        SymbolTableStore->BindComplete = SymbolTableStoreBindComplete;
+        SymbolBufferStore->BindComplete = SymbolBufferStoreBindComplete;
+    }
+
+
     //
     // Intentional follow-on to InitializeAllocators.
     //
@@ -995,6 +1033,18 @@ Return Value:
         }
 
         CLEANUP_WORK(NewModuleEntry);
+    }
+
+    if (TraceContext->SymbolContext) {
+        ULONG WaitResult;
+        HANDLE ThreadHandle;
+
+        ThreadHandle = TraceContext->SymbolContext->ThreadHandle;
+        SetEvent(TraceContext->SymbolContext->ShutdownEvent);
+        WaitResult = WaitForSingleObject(ThreadHandle, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
+        }
     }
 
     return;

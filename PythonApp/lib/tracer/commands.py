@@ -631,6 +631,7 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
                 cast(0, PVOID),
             )
 
+        assert success
         out("Initialized readonly trace context in %s." % t.fmt)
 
         if not wait(ctx.LoadingCompleteEvent):

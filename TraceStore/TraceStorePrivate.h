@@ -2333,6 +2333,60 @@ GetLastLoadEvent(
 }
 
 //
+// TraceStoreSymbol-related functions and macros.
+//
+
+BIND_COMPLETE SymbolTableStoreBindComplete;
+BIND_COMPLETE SymbolBufferStoreBindComplete;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK CREATE_TRACE_SYMBOL_CONTEXT_CALLBACK)(
+    _In_ PINIT_ONCE InitOnce,
+    _In_ PTRACE_CONTEXT TraceContext,
+    _Outptr_result_nullonfailure_ PPTRACE_SYMBOL_CONTEXT SymbolContextPointer
+    );
+typedef CREATE_TRACE_SYMBOL_CONTEXT_CALLBACK \
+      *PCREATE_TRACE_SYMBOL_CONTEXT_CALLBACK;
+CREATE_TRACE_SYMBOL_CONTEXT_CALLBACK CreateTraceSymbolContextCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_TRACE_SYMBOL_CONTEXT)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef CREATE_TRACE_SYMBOL_CONTEXT \
+      *PCREATE_TRACE_SYMBOL_CONTEXT;
+CREATE_TRACE_SYMBOL_CONTEXT CreateTraceSymbolContext;
+
+TRACE_SYMBOL_THREAD_ENTRY TraceSymbolThreadEntry;
+TRACE_SYMBOL_THREAD_ENTRY TraceSymbolThreadEntryImpl;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_SYMBOL_CONTEXT)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef INITIALIZE_TRACE_SYMBOL_CONTEXT *PINITIALIZE_TRACE_SYMBOL_CONTEXT;
+INITIALIZE_TRACE_SYMBOL_CONTEXT InitializeTraceSymbolContext;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(PROCESS_TRACE_SYMBOL_WORK)(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext
+    );
+typedef PROCESS_TRACE_SYMBOL_WORK *PPROCESS_TRACE_SYMBOL_WORK;
+PROCESS_TRACE_SYMBOL_WORK ProcessTraceSymbolWork;
+
+//
 // TraceStoreWorkingSet-related functions.
 //
 
