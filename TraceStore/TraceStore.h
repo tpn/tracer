@@ -1078,8 +1078,11 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
     ULONGLONG BackRefBitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
 
 } TRACE_STORE_RELOC, *PTRACE_STORE_RELOC;
-
 C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, ForwardRefBitmap) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, ForwardRefBitmapBuffer) == 40);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, BackRefBitmap) == 48);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_RELOC, BackRefBitmapBuffer) == 64);
+C_ASSERT(sizeof(TRACE_STORE_RELOC) == 72);
 
 //
 // Trace store free space is tracked in TRACE_STORE_BITMAP structure, which
@@ -2134,18 +2137,41 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
     // (136 bytes consumed.)
     //
 
+    struct {
+        struct _TRACE_STORE *SymbolTable;
+        struct _TRACE_STORE *SymbolTableEntry;
+        struct _TRACE_STORE *SymbolModuleInfo;
+        struct _TRACE_STORE *SymbolFile;
+        struct _TRACE_STORE *SymbolInfo;
+        struct _TRACE_STORE *SymbolLine;
+        struct _TRACE_STORE *SymbolType;
+        struct _TRACE_STORE *StackFrame;
+    } TraceStores;
+
+    //
+    // (200 bytes consumed.)
+
+    //
+    // Capture various stateful pointers/values such that they are accessible
+    // from DbgHelp callbacks that only get passed SymbolContext.  (This is
+    // safe because the symbol tracing is inherently single-threaded.)
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY CurrentModuleTableEntry;
+    LARGE_INTEGER CurrentTimestamp;
+
     //
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[120];
+    BYTE Reserved[40];
 
 } TRACE_SYMBOL_CONTEXT, *PTRACE_SYMBOL_CONTEXT;
 typedef TRACE_SYMBOL_CONTEXT **PPTRACE_SYMBOL_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, WorkListHead) == 64);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 136);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 216);
 C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
 
 #define AcquireTraceSymbolContextLock(SymbolContext) \
@@ -2764,10 +2790,14 @@ typedef struct _TRACE_STORE {
 
     volatile ULONG ReadonlyPreferredAddressUnavailable;
 
-#ifdef _TRACE_STORE_EMBED_PATH
-    UNICODE_STRING Path;
-    WCHAR PathBuffer[_OUR_MAX_PATH];
-#endif
+    //
+    // (852 bytes consumed.)
+
+    //
+    // Pad out to 1024 bytes.
+    //
+
+    BYTE Reserved[172];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 
@@ -2807,11 +2837,31 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
     LIST_ENTRY        StoresListHead;
-    HANDLE            RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
+
+    DECLSPEC_ALIGN(128)
+    HANDLE RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
+
+    DECLSPEC_ALIGN(512)
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
-    TRACE_STORE       Stores[MAX_TRACE_STORES];
-    ULONGLONG         Padding3;
+
+    DECLSPEC_ALIGN(4096)
+    TRACE_STORE Stores[MAX_TRACE_STORES];
+
+    //
+    // (0x67800 (423,936) bytes consumed.)
+    //
+
+    //
+    // Pad out to 0x68000 (425984).
+    //
+
+    ULONGLONG Reserved[256];
+
 } TRACE_STORES, *PTRACE_STORES;
+C_ASSERT(FIELD_OFFSET(TRACE_STORES, RelocationCompleteEvents) == 128);
+C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 512);
+C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 4096);
+C_ASSERT(sizeof(TRACE_STORES) == 0x68000);
 
 typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE MetadataInfoStore;

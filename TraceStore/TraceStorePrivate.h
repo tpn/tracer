@@ -2336,8 +2336,11 @@ GetLastLoadEvent(
 // TraceStoreSymbol-related functions and macros.
 //
 
+#define SYMBOL_CONTEXT_STORE(Name) \
+    (SymbolContext->TraceStores.##Name)
+
 BIND_COMPLETE SymbolTableStoreBindComplete;
-BIND_COMPLETE SymbolBufferStoreBindComplete;
+BIND_COMPLETE SymbolTypeStoreBindComplete;
 
 typedef
 _Check_return_
@@ -2386,7 +2389,6 @@ BOOL
 typedef PROCESS_TRACE_SYMBOL_WORK *PPROCESS_TRACE_SYMBOL_WORK;
 PROCESS_TRACE_SYMBOL_WORK ProcessTraceSymbolWork;
 
-
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -2398,6 +2400,19 @@ BOOL
 typedef CREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY \
       *PCREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY;
 CREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY CreateSymbolTableForModuleTableEntry;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK)(
+    _In_ PSYMBOL_INFO SymbolInfo,
+    _In_ ULONG SymbolSize,
+    _In_opt_ PTRACE_SYMBOL_CONTEXT SymbolContext
+    );
+typedef SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK \
+      *PSYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK;
+SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK SymbolContextEnumSymbolsCallback;
 
 FORCEINLINE
 VOID
@@ -2429,6 +2444,129 @@ MaybePushModuleTableEntryToSymbolContext(
     }
 
     PushModuleTableEntryToSymbolContext(SymbolContext, ModuleTableEntry);
+}
+
+FORCEINLINE
+BOOL
+AllocateAndCopySymbolModuleInfo(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PIMAGEHLP_MODULEW64 ModuleInfo
+    )
+{
+    SIZE_T QuadWords;
+    LONG_INTEGER AllocSize;
+    PTRACE_STORE TraceStore;
+    PRTL_IMAGE_FILE ImageFile;
+
+    AllocSize.LongPart = ALIGN_UP_POINTER(sizeof(*ModuleInfo));
+    if (AllocSize.HighPart) {
+        __debugbreak();
+    }
+
+    QuadWords = AllocSize.LongPart >> 3;
+
+    TraceStore = SymbolContext->TraceStores.SymbolModuleInfo;
+    ImageFile = &SymbolContext->CurrentModuleTableEntry->File.ImageFile;
+
+    TRY_MAPPED_MEMORY_OP {
+
+        //
+        // Allocate space.
+        //
+
+        ImageFile->ModuleInfo = (PIMAGEHLP_MODULEW64)(
+            TraceStore->AllocateRecordsWithTimestamp(
+                TraceStore->TraceContext,
+                TraceStore,
+                1,
+                AllocSize.LongPart,
+                &SymbolContext->CurrentTimestamp
+            )
+        );
+
+        if (!ImageFile->ModuleInfo) {
+            return FALSE;
+        }
+
+        //
+        // Copy the contents.
+        //
+
+        __movsq((PDWORD64)ImageFile->ModuleInfo,
+                (PDWORD64)ModuleInfo,
+                QuadWords);
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+ULONG
+CalculateSymbolInfoAllocSize(
+    _In_ PSYMBOL_INFO SymbolInfo
+    )
+{
+    return SymbolInfo->SizeOfStruct + SymbolInfo->NameLen;
+}
+
+FORCEINLINE
+PSYMBOL_INFO
+AllocateAndCopySymbolInfo(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PSYMBOL_INFO SourceSymbolInfo
+    )
+{
+    SIZE_T QuadWords;
+    LONG_INTEGER AllocSize;
+    PSYMBOL_INFO SymbolInfo;
+    PTRACE_STORE TraceStore;
+
+    AllocSize.LongPart = CalculateSymbolInfoAllocSize(SourceSymbolInfo);
+    AllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
+    if (AllocSize.HighPart) {
+        __debugbreak();
+    }
+
+    QuadWords = AllocSize.LongPart >> 3;
+
+    TraceStore = SymbolContext->TraceStores.SymbolInfo;
+
+    TRY_MAPPED_MEMORY_OP {
+
+        //
+        // Allocate space.
+        //
+
+        SymbolInfo = (PSYMBOL_INFO)(
+            TraceStore->AllocateRecordsWithTimestamp(
+                TraceStore->TraceContext,
+                TraceStore,
+                1,
+                AllocSize.LongPart,
+                &SymbolContext->CurrentTimestamp
+            )
+        );
+
+        if (!SymbolInfo) {
+            return NULL;
+        }
+
+        //
+        // Copy the contents.
+        //
+
+        __movsq((PDWORD64)SymbolInfo,
+                (PDWORD64)SourceSymbolInfo,
+                QuadWords);
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return NULL;
+    }
+
+    return SymbolInfo;
 }
 
 //

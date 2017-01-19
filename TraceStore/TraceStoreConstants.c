@@ -59,8 +59,12 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreModuleLoadEvent.dat",
     L"TraceStoreSymbolTable.dat",
     L"TraceStoreSymbolTableEntry.dat",
-    L"TraceStoreSymbolBuffer.dat",
+    L"TraceStoreSymbolModuleInfo.dat",
     L"TraceStoreSymbolFile.dat",
+    L"TraceStoreSymbolInfo.dat",
+    L"TraceStoreSymbolLine.dat",
+    L"TraceStoreSymbolType.dat",
+    L"TraceStoreStackFrame.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -186,8 +190,12 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 23,   // ModuleLoadEvent
      1 << 16,   // SymbolTable
      1 << 28,   // SymbolTableEntry
-     1 << 27,   // SymbolBuffer
+     1 << 27,   // SymbolModuleInfo
      1 << 29,   // SymbolFile
+     1 << 24,   // SymbolInfo
+     1 << 24,   // SymbolLine
+     1 << 24,   // SymbolType
+     1 << 25,   // StackFrame
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -977,11 +985,11 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
 
     //
-    // SymbolBuffer
+    // SymbolModuleInfo
     //
 
     {
-        1,  // VaryingRecordSize
+        0,  // VaryingRecordSize
         0,  // RecordSizeIsAlwaysPowerOf2
         1,  // MultipleRecords
         0,  // StreamingWrite
@@ -1000,6 +1008,94 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
     //
     // SymbolFile
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        1,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // SymbolInfo
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        1,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // SymbolLine
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        1,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // SymbolType
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        1,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // StackFrame
     //
 
     {

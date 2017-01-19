@@ -23,6 +23,7 @@ from ..wintypes import (
     SetThreadpoolCallbackPool,
     InitializeThreadpoolEnvironment,
 
+    BYTE,
     CDLL,
     BOOL,
     CHAR,
@@ -150,15 +151,13 @@ TraceStoreObjectId                      =  32
 TraceStoreModuleLoadEventId             =  33
 TraceStoreSymbolTableId                 =  34
 TraceStoreSymbolTableEntryId            =  35
-TraceStoreSymbolBufferId                =  36
+TraceStoreSymbolModuleInfoId            =  36
 TraceStoreSymbolFileId                  =  37
-TraceStoreInvalidId                     =  38
-
-MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
-TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
-NUMBER_OF_METADATA_STORES = 9
-ELEMENTS_PER_TRACE_STORE = NUMBER_OF_METADATA_STORES + 1
-MAX_TRACE_STORE_INDEX = MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
+TraceStoreSymbolInfoId                  =  38
+TraceStoreSymbolLineId                  =  39
+TraceStoreSymbolTypeId                  =  40
+TraceStoreStackFrameId                  =  41
+TraceStoreInvalidId                     =  42
 
 TraceStoreIdToName = {
     TraceStoreNullId: 'Null',
@@ -197,8 +196,12 @@ TraceStoreIdToName = {
     TraceStoreModuleLoadEventId: 'ModuleLoadEvent',
     TraceStoreSymbolTableId: 'SymbolTable',
     TraceStoreSymbolTableEntryId: 'SymbolTableEntry',
-    TraceStoreSymbolBufferId: 'SymbolBuffer',
+    TraceStoreSymbolModuleInfoId: 'SymbolModuleInfo',
     TraceStoreSymbolFileId: 'SymbolFile',
+    TraceStoreSymbolInfoId: 'SymbolInfo',
+    TraceStoreSymbolLineId: 'SymbolLine',
+    TraceStoreSymbolTypeId: 'SymbolType',
+    TraceStoreStackFrameId: 'StackFrame',
     TraceStoreInvalidId: 'Invalid',
 }
 
@@ -213,6 +216,13 @@ TraceStoreMetadataAllocationTimestampDeltaId    = 7
 TraceStoreMetadataSynchronizationId             = 8
 TraceStoreMetadataInfoId                        = 9
 TraceStoreMetadataInvalidId                     = 10
+
+MAX_TRACE_STORE_IDS = TraceStoreInvalidId - 1
+TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS = 1
+NUMBER_OF_METADATA_STORES = TraceStoreMetadataInvalidId - 1
+ELEMENTS_PER_TRACE_STORE = NUMBER_OF_METADATA_STORES + 1
+MAX_TRACE_STORE_INDEX = MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
+NUM_TRACE_STORES = MAX_TRACE_STORE_IDS
 
 TraceStoreMetadataIdToName = {
     TraceStoreMetadataNullId: 'Null',
@@ -1185,8 +1195,9 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('Padding2', ULONGLONG),
+    ('Reserved', BYTE * 172),
 ]
+assert sizeof(TRACE_STORE) == 1024, sizeof(TRACE_STORE)
 
 class METADATA_STORE(TRACE_STORE):
     is_metadata = True
@@ -1329,7 +1340,13 @@ TRACE_STORES._fields_ = [
     ('Rundown', PTRACE_STORES_RUNDOWN),
     ('StoresListHead', TRACE_STORE_LIST_ENTRY),
 
+    (
+        '__Reserved1__',
+        BYTE * 24
+    ),
+
     # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
+    # Aligned @ 128 bytes.
     ('EventRelocationCompleteEvent', HANDLE),
     ('StringBufferRelocationCompleteEvent', HANDLE),
     ('FunctionTableRelocationCompleteEvent', HANDLE),
@@ -1365,10 +1382,20 @@ TRACE_STORES._fields_ = [
     ('ModuleLoadEventRelocationCompleteEvent', HANDLE),
     ('SymbolTableRelocationCompleteEvent', HANDLE),
     ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
-    ('SymbolBufferRelocationCompleteEvent', HANDLE),
+    ('SymbolModuleInfoRelocationCompleteEvent', HANDLE),
     ('SymbolFileRelocationCompleteEvent', HANDLE),
+    ('SymbolInfoRelocationCompleteEvent', HANDLE),
+    ('SymbolLineRelocationCompleteEvent', HANDLE),
+    ('SymbolTypeRelocationCompleteEvent', HANDLE),
+    ('StackFrameRelocationCompleteEvent', HANDLE),
+
+    (
+        '__Reserved2__',
+        BYTE * (512 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
+    ),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
+    # Aligned @ 512 bytes.
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
     ('FunctionTableReloc', TRACE_STORE_RELOC),
@@ -1404,11 +1431,20 @@ TRACE_STORES._fields_ = [
     ('ModuleLoadEventReloc', TRACE_STORE_RELOC),
     ('SymbolTableReloc', TRACE_STORE_RELOC),
     ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
-    ('SymbolBufferReloc', TRACE_STORE_RELOC),
+    ('SymbolModuleInfoReloc', TRACE_STORE_RELOC),
     ('SymbolFileReloc', TRACE_STORE_RELOC),
-    ('Dummy1', PVOID),
+    ('SymbolInfoReloc', TRACE_STORE_RELOC),
+    ('SymbolLineReloc', TRACE_STORE_RELOC),
+    ('SymbolTypeReloc', TRACE_STORE_RELOC),
+    ('StackFrameReloc', TRACE_STORE_RELOC),
+
+    (
+        '__Reserved3__',
+        BYTE * (4096 - 512 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
+    ),
 
     # Start of Stores[MAX_TRACE_STORES].
+    # Aligned @ 4096.
     ('EventStore', PYTHON_TRACE_EVENT2_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
     ('EventAllocationStore', ALLOCATION_STORE),
@@ -1833,17 +1869,17 @@ TRACE_STORES._fields_ = [
     ('SymbolTableEntrySynchronizationStore', TRACE_STORE),
     ('SymbolTableEntryInfoStore', INFO_STORE),
 
-    ('SymbolBufferStore', TRACE_STORE),
-    ('SymbolBufferMetadataInfoStore', TRACE_STORE),
-    ('SymbolBufferAllocationStore', ALLOCATION_STORE),
-    ('SymbolBufferRelocationStore', RELOCATION_STORE),
-    ('SymbolBufferAddressStore', ADDRESS_STORE),
-    ('SymbolBufferAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('SymbolBufferAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
-    ('SymbolBufferAllocationTimestampDeltaStore',
+    ('SymbolModuleInfoStore', TRACE_STORE),
+    ('SymbolModuleInfoMetadataInfoStore', TRACE_STORE),
+    ('SymbolModuleInfoAllocationStore', ALLOCATION_STORE),
+    ('SymbolModuleInfoRelocationStore', RELOCATION_STORE),
+    ('SymbolModuleInfoAddressStore', ADDRESS_STORE),
+    ('SymbolModuleInfoAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolModuleInfoAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolModuleInfoAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
-    ('SymbolBufferSynchronizationStore', TRACE_STORE),
-    ('SymbolBufferInfoStore', INFO_STORE),
+    ('SymbolModuleInfoSynchronizationStore', TRACE_STORE),
+    ('SymbolModuleInfoInfoStore', INFO_STORE),
 
     ('SymbolFileStore', TRACE_STORE),
     ('SymbolFileMetadataInfoStore', TRACE_STORE),
@@ -1857,9 +1893,60 @@ TRACE_STORES._fields_ = [
     ('SymbolFileSynchronizationStore', TRACE_STORE),
     ('SymbolFileInfoStore', INFO_STORE),
 
+    ('SymbolInfoStore', TRACE_STORE),
+    ('SymbolInfoMetadataInfoStore', TRACE_STORE),
+    ('SymbolInfoAllocationStore', ALLOCATION_STORE),
+    ('SymbolInfoRelocationStore', RELOCATION_STORE),
+    ('SymbolInfoAddressStore', ADDRESS_STORE),
+    ('SymbolInfoAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolInfoAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolInfoAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolInfoSynchronizationStore', TRACE_STORE),
+    ('SymbolInfoInfoStore', INFO_STORE),
 
-    ('Padding3', ULONGLONG * 2),
+    ('SymbolLineStore', TRACE_STORE),
+    ('SymbolLineMetadataInfoStore', TRACE_STORE),
+    ('SymbolLineAllocationStore', ALLOCATION_STORE),
+    ('SymbolLineRelocationStore', RELOCATION_STORE),
+    ('SymbolLineAddressStore', ADDRESS_STORE),
+    ('SymbolLineAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolLineAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolLineAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolLineSynchronizationStore', TRACE_STORE),
+    ('SymbolLineInfoStore', INFO_STORE),
+
+    ('SymbolTypeStore', TRACE_STORE),
+    ('SymbolTypeMetadataInfoStore', TRACE_STORE),
+    ('SymbolTypeAllocationStore', ALLOCATION_STORE),
+    ('SymbolTypeRelocationStore', RELOCATION_STORE),
+    ('SymbolTypeAddressStore', ADDRESS_STORE),
+    ('SymbolTypeAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('SymbolTypeAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('SymbolTypeAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('SymbolTypeSynchronizationStore', TRACE_STORE),
+    ('SymbolTypeInfoStore', INFO_STORE),
+
+    ('StackFrameStore', TRACE_STORE),
+    ('StackFrameMetadataInfoStore', TRACE_STORE),
+    ('StackFrameAllocationStore', ALLOCATION_STORE),
+    ('StackFrameRelocationStore', RELOCATION_STORE),
+    ('StackFrameAddressStore', ADDRESS_STORE),
+    ('StackFrameAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('StackFrameAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('StackFrameAllocationTimestampDeltaStore',
+     ALLOCATION_TIMESTAMP_DELTA_STORE),
+    ('StackFrameSynchronizationStore', TRACE_STORE),
+    ('StackFrameInfoStore', INFO_STORE),
+
+    (
+        '__Reserved4__',
+        ULONGLONG * 256
+    ),
 ]
+assert sizeof(TRACE_STORES) == 0x68000, hex(sizeof(TRACE_STORES))
 
 class TRACE_STORE_ARRAY(Structure):
     _fields_ = [
@@ -1878,6 +1965,12 @@ class TRACE_STORE_ARRAY(Structure):
         ('RundownListEntry', LIST_ENTRY),
         ('Rundown', PTRACE_STORES_RUNDOWN),
         ('StoresListHead', TRACE_STORE_LIST_ENTRY),
+
+        (
+            '__Reserved1__',
+            BYTE * 24
+        ),
+
         # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
         ('EventRelocationCompleteEvent', HANDLE),
         ('StringBufferRelocationCompleteEvent', HANDLE),
@@ -1914,8 +2007,18 @@ class TRACE_STORE_ARRAY(Structure):
         ('ModuleLoadEventRelocationCompleteEvent', HANDLE),
         ('SymbolTableRelocationCompleteEvent', HANDLE),
         ('SymbolTableEntryRelocationCompleteEvent', HANDLE),
-        ('SymbolBufferRelocationCompleteEvent', HANDLE),
+        ('SymbolModuleInfoRelocationCompleteEvent', HANDLE),
         ('SymbolFileRelocationCompleteEvent', HANDLE),
+        ('SymbolInfoRelocationCompleteEvent', HANDLE),
+        ('SymbolLineRelocationCompleteEvent', HANDLE),
+        ('SymbolTypeRelocationCompleteEvent', HANDLE),
+        ('StackFrameRelocationCompleteEvent', HANDLE),
+
+        (
+            '__Reserved2__',
+            BYTE * (512 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
+        ),
+
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
@@ -1952,13 +2055,27 @@ class TRACE_STORE_ARRAY(Structure):
         ('ModuleLoadEventReloc', TRACE_STORE_RELOC),
         ('SymbolTableReloc', TRACE_STORE_RELOC),
         ('SymbolTableEntryReloc', TRACE_STORE_RELOC),
-        ('SymbolBufferReloc', TRACE_STORE_RELOC),
+        ('SymbolModuleInfoReloc', TRACE_STORE_RELOC),
         ('SymbolFileReloc', TRACE_STORE_RELOC),
-        ('Dummy1', PVOID),
-        ('TraceStores', TRACE_STORE * (
-            MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE
-        )),
-        ('Padding3', ULONGLONG),
+        ('SymbolInfoReloc', TRACE_STORE_RELOC),
+        ('SymbolLineReloc', TRACE_STORE_RELOC),
+        ('SymbolTypeReloc', TRACE_STORE_RELOC),
+        ('StackFrameReloc', TRACE_STORE_RELOC),
+
+        (
+            '__Reserved3__',
+            BYTE * (4096 - 512 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
+        ),
+
+        (
+            'TraceStores',
+            TRACE_STORE * (MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE)
+        ),
+
+        (
+            '__Reserved4__',
+            ULONGLONG * 256
+        ),
     ]
 
     def _indexes(self):
@@ -1996,7 +2113,10 @@ class TRACE_STORE_ARRAY(Structure):
             result = (pair, metadata)
             results.append(result)
         return results
-
+assert sizeof(TRACE_STORE_ARRAY) == sizeof(TRACE_STORES), (
+    sizeof(TRACE_STORE_ARRAY),
+    sizeof(TRACE_STORES),
+)
 
 PTRACE_STORE_ARRAY = POINTER(TRACE_STORE_ARRAY)
 

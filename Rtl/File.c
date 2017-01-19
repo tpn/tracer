@@ -467,12 +467,27 @@ Return Value:
     }
 
     //
-    // We can unmap the file and close all handles now.
+    // We can unmap the file and close all handles now unless init flags
+    // indicate otherwise.
     //
 
-    UnmapViewOfFile(SourceContent);
-    CloseHandle(MappingHandle);
-    CloseHandle(FileHandle);
+    if (InitFlags.KeepViewMapped) {
+        File->MappedAddress = SourceContent;
+    } else {
+        UnmapViewOfFile(SourceContent);
+    }
+
+    if (InitFlags.KeepMappingHandleOpen) {
+        File->MappingHandle = MappingHandle;
+    } else {
+        CloseHandle(MappingHandle);
+    }
+
+    if (InitFlags.KeepFileHandleOpen) {
+        File->FileHandle = FileHandle;
+    } else {
+        CloseHandle(FileHandle);
+    }
 
     SourceContent = NULL;
     MappingHandle = NULL;

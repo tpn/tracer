@@ -946,6 +946,18 @@ LoadDbg(
         OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModule'");
     }
 
+    if (!(Dbg->SymLoadModuleEx = (PSYM_LOAD_MODULE_EX)
+        GetProcAddress(DbghelpModule, "SymLoadModuleEx"))) {
+
+        OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModuleEx'");
+    }
+
+    if (!(Dbg->SymLoadModuleExW = (PSYM_LOAD_MODULE_EX_W)
+        GetProcAddress(DbghelpModule, "SymLoadModuleExW"))) {
+
+        OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModuleExW'");
+    }
+
     if (!(Dbg->SymMatchFileName = (PSYM_MATCH_FILE_NAME)
         GetProcAddress(DbghelpModule, "SymMatchFileName"))) {
 

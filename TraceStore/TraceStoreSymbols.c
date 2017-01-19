@@ -193,7 +193,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-SymbolBufferStoreBindComplete(
+SymbolTypeStoreBindComplete(
     PTRACE_CONTEXT TraceContext,
     PTRACE_STORE TraceStore,
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap
@@ -203,10 +203,7 @@ SymbolBufferStoreBindComplete(
 Routine Description:
 
     This routine overrides the normal trace store bind complete routine for
-    the SymbolBuffer trace store.  It waits for both the SymbolTable and
-    SymbolTableEntry stores to be ready (i.e. have their relocation complete
-    events set), then registers a callback for DLL load/unload notification
-    via Rtl.
+    the SymbolType trace store.
 
 Arguments:
 
@@ -227,10 +224,8 @@ Return Value:
     BOOL WaitAll = TRUE;
     ULONG WaitResult;
     ULONG NumberOfWaits;
-    PTRACE_STORES TraceStores;
     PTRACE_SYMBOL_CONTEXT SymbolContext;
-    HANDLE Events[2];
-
+    HANDLE Events[8];
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -241,31 +236,18 @@ Return Value:
         return FALSE;
     }
 
-    //
-    // Wait on the module table and module table entry stores before we continue
-    // with DLL notification registration.  We need to do this because we access
-    // the module table with the SRWLock exclusively acquired; that lock lives
-    // in the TRACE_STORE_SYNC metadata store and is only initialized once the
-    // trace store metadata has finished its BindComplete routine.
-    //
+    SymbolContext = TraceContext->SymbolContext;
 
-    TraceStores = TraceContext->TraceStores;
+    Events[0] = SYMBOL_CONTEXT_STORE(SymbolTable)->BindCompleteEvent;
+    Events[1] = SYMBOL_CONTEXT_STORE(SymbolTableEntry)->BindCompleteEvent;
+    Events[2] = SYMBOL_CONTEXT_STORE(SymbolModuleInfo)->BindCompleteEvent;
+    Events[3] = SYMBOL_CONTEXT_STORE(SymbolFile)->BindCompleteEvent;
+    Events[4] = SYMBOL_CONTEXT_STORE(SymbolInfo)->BindCompleteEvent;
+    Events[5] = SYMBOL_CONTEXT_STORE(SymbolLine)->BindCompleteEvent;
+    Events[6] = SYMBOL_CONTEXT_STORE(SymbolType)->BindCompleteEvent;
+    Events[7] = SYMBOL_CONTEXT_STORE(StackFrame)->BindCompleteEvent;
 
-    Events[0] = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreSymbolTableId
-        )->BindCompleteEvent
-    );
-
-    Events[1] = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreSymbolTableEntryId
-        )->BindCompleteEvent
-    );
-
-    NumberOfWaits = 2;
+    NumberOfWaits = sizeof(Events) / sizeof(Events[0]);
 
     WaitResult = WaitForMultipleObjects(NumberOfWaits,
                                         Events,
@@ -280,8 +262,6 @@ Return Value:
     // All waits were satisfied.  We can set the relevant symbol table fields
     // and resume the symbol tracing thread.
     //
-
-    SymbolContext = TraceContext->SymbolContext;
 
     if (ResumeThread(SymbolContext->ThreadHandle) == -1) {
         SymbolContext->LastError = GetLastError();
@@ -330,6 +310,7 @@ Return Value:
     ULONG SpinCount;
     HANDLE ShutdownEvent = NULL;
     HANDLE WorkAvailableEvent = NULL;
+    PTRACE_STORES TraceStores;
     PTRACE_SYMBOL_CONTEXT SymbolContext;
     PCRITICAL_SECTION CriticalSection;
     PALLOCATOR Allocator;
@@ -359,6 +340,8 @@ Return Value:
     if (!ARGUMENT_PRESENT(TraceContext)) {
         return FALSE;
     }
+
+    TraceStores = TraceContext->TraceStores;
 
     //
     // Attempt to create the events for communicating with the symbol tracing
@@ -421,6 +404,24 @@ Return Value:
     SymbolContext->WorkAvailableEvent = WorkAvailableEvent;
     SymbolContext->State = TraceSymbolContextStructureCreatedState;
     InitializeSListHead(&SymbolContext->WorkListHead);
+
+#define RESOLVE_STORE(Name)               \
+    SymbolContext->TraceStores.##Name = ( \
+        TraceStoreIdToTraceStore(         \
+            TraceStores,                  \
+            TraceStore##Name##Id          \
+        )                                 \
+    )
+
+    RESOLVE_STORE(SymbolTable);
+    RESOLVE_STORE(SymbolTableEntry);
+    RESOLVE_STORE(SymbolModuleInfo);
+    RESOLVE_STORE(SymbolFile);
+    RESOLVE_STORE(SymbolInfo);
+    RESOLVE_STORE(SymbolLine);
+    RESOLVE_STORE(SymbolType);
+    RESOLVE_STORE(StackFrame);
+
     ReleaseTraceSymbolContextLock(SymbolContext);
 
     //
@@ -646,13 +647,14 @@ Return Value:
     Rtl = SymbolContext->TraceContext->Rtl;
 
     Options = (
-        SYMOPT_DEBUG            |
-        SYMOPT_UNDNAME          |
-        SYMOPT_AUTO_PUBLICS     |
-        SYMOPT_LOAD_LINES       |
-        SYMOPT_LOAD_ANYTHING    |
-        SYMOPT_CASE_INSENSITIVE
+        SYMOPT_DEBUG                |
+        SYMOPT_UNDNAME              |
+        SYMOPT_NO_PROMPTS           |
+        SYMOPT_LOAD_LINES           |
+        SYMOPT_DEFERRED_LOADS       |
+        SYMOPT_FAIL_CRITICAL_ERRORS
     );
+
 
     if (!Rtl->SymSetOptions(Options)) {
         OutputDebugStringA("Rtl->SymSetOptions() failed.\n");
@@ -841,8 +843,202 @@ Return Value:
 
 --*/
 {
-    OutputDebugStringW(L"CreateSymbolTableForModuleTableEntry:\n");
-    OutputDebugStringW(ModuleTableEntry->File.Path.Full.Buffer);
+    PRTL Rtl;
+    PDBG Dbg;
+    BOOL Success;
+    ULONG LastError;
+    DWORD64 Address;
+    HMODULE ModuleHandle;
+    PRTL_PATH Path;
+    PRTL_FILE File;
+    PRTL_IMAGE_FILE ImageFile;
+    PTRACE_STORES TraceStores;
+    PTRACE_CONTEXT TraceContext;
+    IMAGEHLP_MODULEW64 ModuleInfo;
+    PSYM_ENUMERATESYMBOLS_CALLBACK EnumSymbolsCallback;
+
+    //
+    // Capture a timestamp for processing this module table entry.
+    //
+
+    QueryPerformanceCounter(&SymbolContext->CurrentTimestamp);
+
+    //
+    // Initialize aliases.
+    //
+
+    TraceContext = SymbolContext->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    Rtl = TraceContext->Rtl;
+    Dbg = &Rtl->Dbg;
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
+    ImageFile = &File->ImageFile;
+    ModuleHandle = ImageFile->ModuleHandle;
+
+    if (!AssertTrue("ModuleHandle != NULL", ModuleHandle != NULL)) {
+        goto Error;
+    }
+
+    //
+    // Update the symbol context to point at this module table entry.
+    //
+
+    SymbolContext->CurrentModuleTableEntry = ModuleTableEntry;
+
+    //
+    // Load the timestamp.
+    //
+
+    ImageFile->Timestamp = Dbg->GetTimestampForLoadedLibrary(ModuleHandle);
+    if (!ImageFile->Timestamp) {
+        SymbolContext->LastError = GetLastError();
+        __debugbreak();
+    }
+
+    //
+    // Load the module.
+    //
+
+    Address = Dbg->SymLoadModuleExW(SymbolContext->ThreadHandle,
+                                    ModuleHandle,
+                                    Path->Full.Buffer,
+                                    NULL,
+                                    (DWORD64)ImageFile->BaseAddress,
+                                    ImageFile->SizeOfImage,
+                                    NULL,
+                                    0);
+
+    if (!Address) {
+        DWORD LastError = GetLastError();
+        if (LastError != ERROR_SUCCESS) {
+            SymbolContext->LastError = LastError;
+            __debugbreak();
+            goto Error;
+        }
+    }
+
+    //
+    // Enumerate symbols.
+    //
+
+    EnumSymbolsCallback = (PSYM_ENUMERATESYMBOLS_CALLBACK)(
+        SymbolContextEnumSymbolsCallback
+    );
+
+    Success = Dbg->SymEnumSymbolsEx(SymbolContext->ThreadHandle,
+                                    (ULONG64)ImageFile->BaseAddress,
+                                    NULL,
+                                    EnumSymbolsCallback,
+                                    SymbolContext,
+                                    SYMENUM_OPTIONS_DEFAULT);
+
+    if (!Success) {
+        SymbolContext->LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Get the module info.
+    //
+
+    ModuleInfo.SizeOfStruct = sizeof(ModuleInfo);
+    Success = Dbg->SymGetModuleInfoW64(SymbolContext->ThreadHandle,
+        (DWORD64)ImageFile->EntryPoint,
+        &ModuleInfo);
+
+    if (!Success) {
+        LastError = GetLastError();
+        if (LastError != ERROR_MOD_NOT_FOUND) {
+            __debugbreak();
+            SymbolContext->LastError = LastError;
+            goto Error;
+        }
+    }
+
+    //
+    // Copy the module info.
+    //
+
+    Success = AllocateAndCopySymbolModuleInfo(SymbolContext, &ModuleInfo);
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    if (ImageFile->ModuleHandle) {
+        FreeLibrary(ImageFile->ModuleHandle);
+        ImageFile->ModuleHandle = NULL;
+    }
+
+    if (File->MappedAddress) {
+        UnmapViewOfFile(File->MappedAddress);
+        File->MappedAddress = NULL;
+    }
+
+    if (File->MappingHandle) {
+        CloseHandle(File->MappingHandle);
+        File->MappingHandle = NULL;
+    }
+
+    if (File->FileHandle) {
+        CloseHandle(File->FileHandle);
+        File->FileHandle = NULL;
+    }
+
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+SymbolContextEnumSymbolsCallback(
+    PSYMBOL_INFO SourceSymbolInfo,
+    ULONG SymbolSize,
+    PTRACE_SYMBOL_CONTEXT SymbolContext
+    )
+/*++
+
+Routine Description:
+
+    This routine is the symbol enumeration callback.
+
+Arguments:
+
+    SourceSymbolInfo - Supplies a pointer to a SYMBOL_INFO structure.
+
+    SymbolSize - Supplies the size of the symbol.
+
+    SymbolContext - Supplies a pointer to a TRACE_SYMBOL_CONTEXT structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    PSYMBOL_INFO SymbolInfo;
+
+    SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, SourceSymbolInfo);
+    if (!SymbolInfo) {
+        __debugbreak();
+        return FALSE;
+    }
+
     return TRUE;
 }
 
