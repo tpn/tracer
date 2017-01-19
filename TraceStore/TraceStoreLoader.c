@@ -825,7 +825,9 @@ InsertPrefix:
             // very frequently.
             //
 
-            __debugbreak();
+            InterlockedIncrement64(
+                &ModuleTable->UnicodePrefixTableLookupsRequiringRestart
+            );
             goto RestartSearch;
         }
     }

@@ -1542,18 +1542,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE {
     // (144 bytes consumed.)
     //
 
+    volatile ULONGLONG UnicodePrefixTableLookupsRequiringRestart;
+
     //
     // Pad out to 4096 bytes.
     //
 
-    BYTE Reserved[3952];
+    BYTE Reserved[3944];
 
 } TRACE_MODULE_TABLE, *PTRACE_MODULE_TABLE;
 C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
 C_ASSERT(sizeof(UNICODE_PREFIX_TABLE) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, BaseAddressTable) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, ModuleNamePrefixTable) == 120);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, Reserved) == 144);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, Reserved) == 152);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE) == 4096);
 
 //
@@ -2210,7 +2212,8 @@ C_ASSERT(sizeof(PREFIX_TABLE) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolHashTable) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolPrefixTable) == 120);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, ModuleTableEntry) == 136);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE, Reserved) == 144);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, Reserved) == 144);
+C_ASSERT(sizeof(TRACE_SYMBOL_TABLE) == 512);
 
 //
 // Symbol table entry structure.
