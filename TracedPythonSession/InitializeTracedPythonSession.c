@@ -534,6 +534,18 @@ Return Value:
     COPY_FLAG(EnableSymbolTracing);
 
     //
+    // If symbol tracing has been enabled, ensure we can load Dbghelp.
+    //
+
+    if (TraceFlags.EnableSymbolTracing) {
+        if (!Rtl->LoadDbghelp(Rtl)) {
+            OutputDebugStringA("Rtl->LoadDbghelp() failed.  "
+                               "Disabling symbol tracing.\n");
+            TraceFlags.EnableSymbolTracing = FALSE;
+        }
+    }
+
+    //
     // Get the required size of the TRACE_STORES structure.
     //
 

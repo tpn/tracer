@@ -638,7 +638,32 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     ULONG Result;
+    ULONG Options;
+
+    Rtl = SymbolContext->TraceContext->Rtl;
+
+    Options = (
+        SYMOPT_DEBUG            |
+        SYMOPT_UNDNAME          |
+        SYMOPT_AUTO_PUBLICS     |
+        SYMOPT_LOAD_LINES       |
+        SYMOPT_LOAD_ANYTHING    |
+        SYMOPT_CASE_INSENSITIVE
+    );
+
+    if (!Rtl->SymSetOptions(Options)) {
+        OutputDebugStringA("Rtl->SymSetOptions() failed.\n");
+        return 1;
+    }
+
+    if (!Rtl->SymInitialize(SymbolContext->ThreadHandle, NULL, FALSE)) {
+        OutputDebugStringA("Rtl->SymInitialize() failed.\n");
+        return 1;
+    }
+
+    OutputDebugStringA("Symbols successfully initialized.\n");
 
     TRY_MAPPED_MEMORY_OP {
         Result = SymbolContext->ThreadEntry(SymbolContext);
