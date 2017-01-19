@@ -644,6 +644,14 @@ Return Value:
         PTRACE_STORE SymbolBufferStore;
 
         //
+        // Ensure Rtl has loaded Dbhelp.
+        //
+
+        if (!Rtl->SymSetOptions) {
+            __debugbreak();
+        }
+
+        //
         // Attempt to create the TRACE_SYMBOL_CONTEXT structure.
         //
 

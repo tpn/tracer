@@ -341,6 +341,101 @@ class SyncRtlExFunctions(InvariantAwareCommand):
 
         self._verbose("Synchronized file.")
 
+class SyncDbgFunctions(InvariantAwareCommand):
+    """
+    Compares the members of _RTLEXFUNCTIONS_HEAD to symbols resolved in
+    LoadDbgSymbols() function and adds the necessary GetProcAddress()
+    steps.
+    """
+    _verbose_ = True
+
+    template = """\
+    if (!(Dbg->%(funcname)s = (%(typedef)s)
+        GetProcAddress(DbghelpModule, "%(funcname)s"))) {
+
+        OutputDebugStringA("Dbghelp: failed to resolve '%(funcname)s'");
+    }
+"""
+
+    header_path = None
+    class HeaderPathArg(PathInvariant):
+        _arg = '-H/--header-path'
+        _help = "path of the Rtl.h file [default: %default]"
+
+        def _default(self):
+            return join_path(dirname(__file__), "../../../Rtl/Rtl.h")
+
+    source_path = None
+    class SourcePathArg(PathInvariant):
+        _help = "path of the Rtl.c file [default: %default]"
+
+        def _default(self):
+            return join_path(dirname(__file__), "../../../Rtl/Rtl.c")
+
+    functions_head_macro_name = None
+    class FunctionsHeadMacroNameArg(StringInvariant):
+        _help = "name of the macro used to capture the functions to be sync'd"
+        _default = "_DBGHELP_FUNCTIONS_HEAD"
+
+    function_to_patch = None
+    class FunctionToPatchArg(StringInvariant):
+        _help = (
+            "name of the C function to potentially patch in order to sync "
+            "the functions in the macro with the symbols resolved via "
+            "GetProcAddress() calls"
+        )
+        _default = "LoadDbg"
+
+    def run(self):
+        header_path = self.options.header_path
+        source_path = self.options.source_path
+        macro_func_name = self.options.functions_head_macro_name
+        function_to_patch = self.options.function_to_patch
+
+        import re
+
+        from tracer.sourcefile import SourceFile
+
+        header = SourceFile(header_path)
+        self._verbose("Loaded header: %s" % header_path)
+
+        source = SourceFile(source_path)
+        self._verbose("Loaded source: %s" % source_path)
+
+        functions = header.functions_from_multiline_define(macro_func_name)
+
+        first_function = functions[0]
+        first_template = self.template % first_function._asdict()
+
+        first_block_lines = first_template.splitlines()
+
+        func = source.function_definition(function_to_patch, first_block_lines)
+        if not func:
+            msg = "no function named %s found in %s"
+            raise CommandError(msg % (function_to_patch, source_path))
+
+        if not func.first_block_line:
+            msg = "Could not find starting template:\n%s"
+            raise CommandError(msg % first_template)
+
+        new_blocks = [ self.template % fn._asdict() for fn in functions ]
+
+        assert func.first_block_line
+        assert func.last_block_line
+
+        pre_lines = source.lines[:func.first_block_line]
+        post_lines = source.lines[func.last_block_line+2:]
+
+        new_lines = pre_lines + new_blocks + post_lines + ['']
+
+        new_text = '\n'.join(new_lines)
+
+        with open(source_path, 'wb') as f:
+            f.write(new_text)
+
+        self._verbose("Synchronized file.")
+
+
 class SyncPythonExFunctions(InvariantAwareCommand):
     """
     Compares the members of _PYTHONEXFUNCTIONS_HEAD to symbols resolved in

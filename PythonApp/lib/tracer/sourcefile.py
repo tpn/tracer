@@ -64,6 +64,35 @@ MultilineMacroDefinition = namedtuple(
 #===============================================================================
 # Helpers
 #===============================================================================
+def convert_function_decls_to_funcptr_typedefs(text, prefix=None, prepend=None):
+    if not prefix:
+        prefix = '^BOOL\nIMAGEAPI\n'
+    if not prepend:
+        prepend = 'typedef\n_Check_return_\n_Success_(return != 0)'.split('\n')
+    pre_lines = prefix.count('\n')
+    name_line = pre_lines
+    pattern = '%s.*?    \);$' % prefix
+    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
+    matches = regex.findall(text)
+    regex = re.compile('[A-Z][^A-Z]*')
+    results = []
+    for match in matches:
+        match_lines = match.splitlines()
+        name = match_lines[name_line][:-1]
+        tokens = regex.findall(name)
+        upper_tokens = [ t.upper() for t in tokens ]
+        cap_name = '_'.join(upper_tokens)
+        func_lines = (
+            prepend +
+            match_lines[0:pre_lines] +
+            [ '(%s)(' % cap_name ] +
+            match_lines[name_line+1:] +
+            [ 'typedef %s *P%s;\n' % (cap_name, cap_name) ]
+        )
+        func_text = '\n'.join(func_lines)
+        results.append(func_text)
+
+    return results
 
 #===============================================================================
 # Classes

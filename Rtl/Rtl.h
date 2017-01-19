@@ -65,6 +65,8 @@ extern "C" {
 
 #include <Windows.h>
 #include <sal.h>
+#include <Psapi.h>
+#include <DbgHelp.h>
 
 //
 // Disable inconsistent SAL annotation warnings before importing the
@@ -3502,6 +3504,7 @@ typedef BOOL (*PHASH_UNICODE_STRING_TO_ATOM)(
 typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
 
 typedef BOOL (*PLOAD_SHLWAPI)(PRTL Rtl);
+typedef BOOL (*PLOAD_DBGHELP)(PRTL Rtl);
 
 typedef BOOL (*PPATH_CANONICALIZEA)(
         _Out_   LPSTR   Dest,
@@ -3851,6 +3854,7 @@ RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
     PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;         \
+    PLOAD_DBGHELP LoadDbghelp;                                                 \
     PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -3864,6 +3868,188 @@ typedef struct _SHLWAPI_FUNCTIONS {
     _SHLWAPIFUNCTIONS_HEAD
 } SHLWAPI_FUNCTIONS, *PSHLWAPI_FUNCTIONS, **PPSHLWAPI_FUNCTIONS;
 
+//
+// DbgHelp related functions.
+//
+
+#include "DbghelpFunctionPointerTypedefs.h"
+
+#define _DBGHELP_FUNCTIONS_HEAD                                                 \
+    PENUM_DIR_TREE EnumDirTree;                                                 \
+    PENUM_DIR_TREE_W EnumDirTreeW;                                              \
+    PENUMERATE_LOADED_MODULES64 EnumerateLoadedModules64;                       \
+    PENUMERATE_LOADED_MODULES EnumerateLoadedModules;                           \
+    PENUMERATE_LOADED_MODULES_EX EnumerateLoadedModulesEx;                      \
+    PENUMERATE_LOADED_MODULES_EX_W EnumerateLoadedModulesExW;                   \
+    PENUMERATE_LOADED_MODULES_W64 EnumerateLoadedModulesW64;                    \
+    PFIND_FILE_IN_PATH FindFileInPath;                                          \
+    PFIND_FILE_IN_SEARCH_PATH FindFileInSearchPath;                             \
+    PGET_SYM_LOAD_ERROR GetSymLoadError;                                        \
+    PGET_TIMESTAMP_FOR_LOADED_LIBRARY GetTimestampForLoadedLibrary;             \
+    PMAKE_SURE_DIRECTORY_PATH_EXISTS MakeSureDirectoryPathExists;               \
+    PRANGE_MAP_ADD_PE_IMAGE_SECTIONS RangeMapAddPeImageSections;                \
+    PRANGE_MAP_READ RangeMapRead;                                               \
+    PRANGE_MAP_REMOVE RangeMapRemove;                                           \
+    PRANGE_MAP_WRITE RangeMapWrite;                                             \
+    PREPORT_SYMBOL_LOAD_SUMMARY ReportSymbolLoadSummary;                        \
+    PSEARCH_TREE_FOR_FILE SearchTreeForFile;                                    \
+    PSEARCH_TREE_FOR_FILE_W SearchTreeForFileW;                                 \
+    PSTACK_WALK64 StackWalk64;                                                  \
+    PSTACK_WALK_EX StackWalkEx;                                                 \
+    PSTACK_WALK StackWalk;                                                      \
+    PSYM_ADDR_INCLUDE_INLINE_TRACE SymAddrIncludeInlineTrace;                   \
+    PSYM_ADD_SOURCE_STREAM_A SymAddSourceStreamA;                               \
+    PSYM_ADD_SOURCE_STREAM SymAddSourceStream;                                  \
+    PSYM_ADD_SOURCE_STREAM_W SymAddSourceStreamW;                               \
+    PSYM_ADD_SYMBOL SymAddSymbol;                                               \
+    PSYM_ADD_SYMBOL_W SymAddSymbolW;                                            \
+    PSYM_CLEANUP SymCleanup;                                                    \
+    PSYM_COMPARE_INLINE_TRACE SymCompareInlineTrace;                            \
+    PSYM_DELETE_SYMBOL SymDeleteSymbol;                                         \
+    PSYM_DELETE_SYMBOL_W SymDeleteSymbolW;                                      \
+    PSYM_ENUMERATE_MODULES64 SymEnumerateModules64;                             \
+    PSYM_ENUMERATE_MODULES SymEnumerateModules;                                 \
+    PSYM_ENUMERATE_MODULES_W64 SymEnumerateModulesW64;                          \
+    PSYM_ENUMERATE_SYMBOLS64 SymEnumerateSymbols64;                             \
+    PSYM_ENUMERATE_SYMBOLS SymEnumerateSymbols;                                 \
+    PSYM_ENUMERATE_SYMBOLS_W64 SymEnumerateSymbolsW64;                          \
+    PSYM_ENUMERATE_SYMBOLS_W SymEnumerateSymbolsW;                              \
+    PSYM_ENUM_LINES SymEnumLines;                                               \
+    PSYM_ENUM_LINES_W SymEnumLinesW;                                            \
+    PSYM_ENUM_PROCESSES SymEnumProcesses;                                       \
+    PSYM_ENUM_SOURCE_FILES SymEnumSourceFiles;                                  \
+    PSYM_ENUM_SOURCE_FILES_W SymEnumSourceFilesW;                               \
+    PSYM_ENUM_SOURCE_FILE_TOKENS SymEnumSourceFileTokens;                       \
+    PSYM_ENUM_SOURCE_LINES SymEnumSourceLines;                                  \
+    PSYM_ENUM_SOURCE_LINES_W SymEnumSourceLinesW;                               \
+    PSYM_ENUM_SYMBOLS_EX SymEnumSymbolsEx;                                      \
+    PSYM_ENUM_SYMBOLS_EX_W SymEnumSymbolsExW;                                   \
+    PSYM_ENUM_SYMBOLS_FOR_ADDR SymEnumSymbolsForAddr;                           \
+    PSYM_ENUM_SYMBOLS_FOR_ADDR_W SymEnumSymbolsForAddrW;                        \
+    PSYM_ENUM_SYMBOLS SymEnumSymbols;                                           \
+    PSYM_ENUM_SYMBOLS_W SymEnumSymbolsW;                                        \
+    PSYM_ENUM_SYM SymEnumSym;                                                   \
+    PSYM_ENUM_TYPES_BY_NAME SymEnumTypesByName;                                 \
+    PSYM_ENUM_TYPES_BY_NAME_W SymEnumTypesByNameW;                              \
+    PSYM_ENUM_TYPES SymEnumTypes;                                               \
+    PSYM_ENUM_TYPES_W SymEnumTypesW;                                            \
+    PSYM_FIND_FILE_IN_PATH SymFindFileInPath;                                   \
+    PSYM_FIND_FILE_IN_PATH_W SymFindFileInPathW;                                \
+    PSYM_FROM_ADDR SymFromAddr;                                                 \
+    PSYM_FROM_ADDR_W SymFromAddrW;                                              \
+    PSYM_FROM_INDEX SymFromIndex;                                               \
+    PSYM_FROM_INDEX_W SymFromIndexW;                                            \
+    PSYM_FROM_INLINE_CONTEXT SymFromInlineContext;                              \
+    PSYM_FROM_INLINE_CONTEXT_W SymFromInlineContextW;                           \
+    PSYM_FROM_NAME SymFromName;                                                 \
+    PSYM_FROM_NAME_W SymFromNameW;                                              \
+    PSYM_FROM_TOKEN SymFromToken;                                               \
+    PSYM_FROM_TOKEN_W SymFromTokenW;                                            \
+    PSYM_GET_FILE_LINE_OFFSETS64 SymGetFileLineOffsets64;                       \
+    PSYM_GET_LINE_FROM_ADDR64 SymGetLineFromAddr64;                             \
+    PSYM_GET_LINE_FROM_ADDR SymGetLineFromAddr;                                 \
+    PSYM_GET_LINE_FROM_ADDR_W64 SymGetLineFromAddrW64;                          \
+    PSYM_GET_LINE_FROM_ADDR_W SymGetLineFromAddrW;                              \
+    PSYM_GET_LINE_FROM_INLINE_CONTEXT SymGetLineFromInlineContext;              \
+    PSYM_GET_LINE_FROM_INLINE_CONTEXT_W SymGetLineFromInlineContextW;           \
+    PSYM_GET_LINE_FROM_NAME64 SymGetLineFromName64;                             \
+    PSYM_GET_LINE_FROM_NAME SymGetLineFromName;                                 \
+    PSYM_GET_LINE_FROM_NAME_W64 SymGetLineFromNameW64;                          \
+    PSYM_GET_LINE_NEXT64 SymGetLineNext64;                                      \
+    PSYM_GET_LINE_NEXT SymGetLineNext;                                          \
+    PSYM_GET_LINE_NEXT_W64 SymGetLineNextW64;                                   \
+    PSYM_GET_LINE_NEXT_W SymGetLineNextW;                                       \
+    PSYM_GET_LINE_PREV64 SymGetLinePrev64;                                      \
+    PSYM_GET_LINE_PREV SymGetLinePrev;                                          \
+    PSYM_GET_LINE_PREV_W64 SymGetLinePrevW64;                                   \
+    PSYM_GET_LINE_PREV_W SymGetLinePrevW;                                       \
+    PSYM_GET_MODULE_BASE SymGetModuleBase;                                      \
+    PSYM_GET_MODULE_INFO64 SymGetModuleInfo64;                                  \
+    PSYM_GET_MODULE_INFO SymGetModuleInfo;                                      \
+    PSYM_GET_MODULE_INFO_W64 SymGetModuleInfoW64;                               \
+    PSYM_GET_MODULE_INFO_W SymGetModuleInfoW;                                   \
+    PSYM_GET_OMAPS SymGetOmaps;                                                 \
+    PSYM_GET_OPTIONS SymGetOptions;                                             \
+    PSYM_GET_SCOPE SymGetScope;                                                 \
+    PSYM_GET_SCOPE_W SymGetScopeW;                                              \
+    PSYM_GET_SEARCH_PATH SymGetSearchPath;                                      \
+    PSYM_GET_SEARCH_PATH_W SymGetSearchPathW;                                   \
+    PSYM_GET_SOURCE_FILE_FROM_TOKEN SymGetSourceFileFromToken;                  \
+    PSYM_GET_SOURCE_FILE_FROM_TOKEN_W SymGetSourceFileFromTokenW;               \
+    PSYM_GET_SOURCE_FILE SymGetSourceFile;                                      \
+    PSYM_GET_SOURCE_FILE_TOKEN SymGetSourceFileToken;                           \
+    PSYM_GET_SOURCE_FILE_TOKEN_W SymGetSourceFileTokenW;                        \
+    PSYM_GET_SOURCE_FILE_W SymGetSourceFileW;                                   \
+    PSYM_GET_SOURCE_VAR_FROM_TOKEN SymGetSourceVarFromToken;                    \
+    PSYM_GET_SOURCE_VAR_FROM_TOKEN_W SymGetSourceVarFromTokenW;                 \
+    PSYM_GET_SYMBOL_FILE SymGetSymbolFile;                                      \
+    PSYM_GET_SYMBOL_FILE_W SymGetSymbolFileW;                                   \
+    PSYM_GET_SYM_FROM_ADDR64 SymGetSymFromAddr64;                               \
+    PSYM_GET_SYM_FROM_ADDR SymGetSymFromAddr;                                   \
+    PSYM_GET_SYM_FROM_NAME64 SymGetSymFromName64;                               \
+    PSYM_GET_SYM_FROM_NAME SymGetSymFromName;                                   \
+    PSYM_GET_SYM_NEXT64 SymGetSymNext64;                                        \
+    PSYM_GET_SYM_NEXT SymGetSymNext;                                            \
+    PSYM_GET_SYM_NEXT_W64 SymGetSymNextW64;                                     \
+    PSYM_GET_SYM_NEXT_W SymGetSymNextW;                                         \
+    PSYM_GET_SYM_PREV64 SymGetSymPrev64;                                        \
+    PSYM_GET_SYM_PREV SymGetSymPrev;                                            \
+    PSYM_GET_SYM_PREV_W64 SymGetSymPrevW64;                                     \
+    PSYM_GET_SYM_PREV_W SymGetSymPrevW;                                         \
+    PSYM_GET_TYPE_FROM_NAME SymGetTypeFromName;                                 \
+    PSYM_GET_TYPE_FROM_NAME_W SymGetTypeFromNameW;                              \
+    PSYM_GET_TYPE_INFO_EX SymGetTypeInfoEx;                                     \
+    PSYM_GET_TYPE_INFO SymGetTypeInfo;                                          \
+    PSYM_GET_UNWIND_INFO SymGetUnwindInfo;                                      \
+    PSYM_INITIALIZE SymInitialize;                                              \
+    PSYM_INITIALIZE_W SymInitializeW;                                           \
+    PSYM_LOAD_MODULE SymLoadModule;                                             \
+    PSYM_MATCH_FILE_NAME SymMatchFileName;                                      \
+    PSYM_MATCH_FILE_NAME_W SymMatchFileNameW;                                   \
+    PSYM_MATCH_STRING_A SymMatchStringA;                                        \
+    PSYM_MATCH_STRING SymMatchString;                                           \
+    PSYM_MATCH_STRING_W SymMatchStringW;                                        \
+    PSYM_NEXT SymNext;                                                          \
+    PSYM_NEXT_W SymNextW;                                                       \
+    PSYM_PREV SymPrev;                                                          \
+    PSYM_PREV_W SymPrevW;                                                       \
+    PSYM_QUERY_INLINE_TRACE SymQueryInlineTrace;                                \
+    PSYM_REFRESH_MODULE_LIST SymRefreshModuleList;                              \
+    PSYM_REGISTER_CALLBACK64 SymRegisterCallback64;                             \
+    PSYM_REGISTER_CALLBACK SymRegisterCallback;                                 \
+    PSYM_REGISTER_CALLBACK_W64 SymRegisterCallbackW64;                          \
+    PSYM_REGISTER_FUNCTION_ENTRY_CALLBACK64 SymRegisterFunctionEntryCallback64; \
+    PSYM_REGISTER_FUNCTION_ENTRY_CALLBACK SymRegisterFunctionEntryCallback;     \
+    PSYM_SEARCH SymSearch;                                                      \
+    PSYM_SEARCH_W SymSearchW;                                                   \
+    PSYM_SET_CONTEXT SymSetContext;                                             \
+    PSYM_SET_OPTIONS SymSetOptions;                                             \
+    PSYM_SET_PARENT_WINDOW SymSetParentWindow;                                  \
+    PSYM_SET_SCOPE_FROM_ADDR SymSetScopeFromAddr;                               \
+    PSYM_SET_SCOPE_FROM_INDEX SymSetScopeFromIndex;                             \
+    PSYM_SET_SCOPE_FROM_INLINE_CONTEXT SymSetScopeFromInlineContext;            \
+    PSYM_SET_SEARCH_PATH SymSetSearchPath;                                      \
+    PSYM_SET_SEARCH_PATH_W SymSetSearchPathW;                                   \
+    PSYM_SRV_GET_FILE_INDEXES SymSrvGetFileIndexes;                             \
+    PSYM_SRV_GET_FILE_INDEXES_W SymSrvGetFileIndexesW;                          \
+    PSYM_SRV_GET_FILE_INDEX_INFO SymSrvGetFileIndexInfo;                        \
+    PSYM_SRV_GET_FILE_INDEX_INFO_W SymSrvGetFileIndexInfoW;                     \
+    PSYM_SRV_GET_FILE_INDEX_STRING SymSrvGetFileIndexString;                    \
+    PSYM_SRV_GET_FILE_INDEX_STRING_W SymSrvGetFileIndexStringW;                 \
+    PSYM_SRV_IS_STORE SymSrvIsStore;                                            \
+    PSYM_SRV_IS_STORE_W SymSrvIsStoreW;                                         \
+    PSYM_UNDNAME64 SymUnDName64;                                                \
+    PSYM_UNDNAME SymUnDName;                                                    \
+    PSYM_UNLOAD_MODULE64 SymUnloadModule64;                                     \
+    PSYM_UNLOAD_MODULE SymUnloadModule;                                         \
+    PUNDECORATE_SYMBOL_NAME UndecorateSymbolName;                               \
+    PUNDECORATE_SYMBOL_NAME_W UndecorateSymbolNameW;                            \
+    PUNMAP_DEBUG_INFORMATION UnmapDebugInformation;
+
+typedef struct _DBG {
+    _DBGHELP_FUNCTIONS_HEAD
+} DBG, *PDBG;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -3872,6 +4058,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
     HMODULE     ShlwapiModule;
+    HMODULE     DbghelpModule;
 
     PATEXIT atexit;
     PATEXITEX AtExitEx;
@@ -3920,6 +4107,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
         SHLWAPI_FUNCTIONS ShlwapiFunctions;
         struct {
             _SHLWAPIFUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        DBG Dbg;
+        struct {
+            _DBGHELP_FUNCTIONS_HEAD
         };
     };
 
@@ -6461,4 +6655,4 @@ AppendTailList(
 } // extern "C"
 #endif
 
-// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

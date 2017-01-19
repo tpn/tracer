@@ -19,6 +19,7 @@ Abstract:
 #include <Windows.h>
 #include <sal.h>
 #include <Psapi.h>
+#include <Dbghelp.h>
 
 //
 // Disable inconsistent SAL annotation warnings before importing the
