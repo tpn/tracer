@@ -2061,6 +2061,37 @@ typedef SYM_LOAD_MODULE *PSYM_LOAD_MODULE;
 typedef
 _Check_return_
 _Success_(return != 0)
+DWORD64
+(IMAGEAPI SYM_LOAD_MODULE_EX)(
+    _In_opt_ HANDLE hFile,
+    _In_opt_ PCSTR ImageName,
+    _In_opt_ PCSTR ModuleName,
+    _In_ DWORD64 BaseOfDll,
+    _In_ DWORD DllSize,
+    _In_opt_ PMODLOAD_DATA Data,
+    _In_opt_ DWORD Flags
+    );
+typedef SYM_LOAD_MODULE_EX *PSYM_LOAD_MODULE_EX;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+DWORD64
+(IMAGEAPI SYM_LOAD_MODULE_EX_W)(
+    _In_ HANDLE hProcess,
+    _In_opt_ HANDLE hFile,
+    _In_opt_ PCWSTR ImageName,
+    _In_opt_ PCWSTR ModuleName,
+    _In_ DWORD64 BaseOfDll,
+    _In_ DWORD DllSize,
+    _In_opt_ PMODLOAD_DATA Data,
+    _In_opt_ DWORD Flags
+    );
+typedef SYM_LOAD_MODULE_EX_W *PSYM_LOAD_MODULE_EX_W;
+
+typedef
+_Check_return_
+_Success_(return != 0)
 DWORD
 (IMAGEAPI GET_SYM_LOAD_ERROR)(
     void

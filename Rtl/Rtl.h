@@ -2715,16 +2715,81 @@ C_ASSERT(sizeof(RTL_TEXT_FILE) == 80);
 // exe).
 
 typedef struct _RTL_IMAGE_FILE {
-    PVOID DllBase;
+
+    //
+    // Preferred base address, if set.
+    //
+
+    PVOID PreferredBaseAddress;
+
+    //
+    // Actual base address the module was loaded at.
+    //
+
+    PVOID BaseAddress;
+
+    //
+    // Pointer to the entry point of the image if applicable.  This will be
+    // relative to the loaded BaseAddress.
+    //
+
     PVOID EntryPoint;
+
+    //
+    // (24 bytes consumed.)
+    //
+
+    //
+    // Size of the image, in bytes.
+    //
+
     ULONG SizeOfImage;
+
+    //
+    // HeaderSum and CheckSum are filled in after CheckSumMappedFile() is
+    // called.
+    //
+
+    ULONG HeaderSum;
     ULONG CheckSum;
-    ULONG TimeDateStamp;
-    ULONG Padding1;
+
+    //
+    // Timestamp receives the return value from GetTimestampForLoadedLibrary().
+    //
+
+    ULONG Timestamp;
+
+    //
+    // (40 bytes consumed.)
+    //
+
+    //
+    // If a PDB file could be located, this will point to it.
+    //
+
     PRTL_PATH PdbPath;
+
+    //
+    // Captures the module handle.
+    //
+
+    HMODULE ModuleHandle;
+
+    //
+    // (56 bytes consumed.)
+    //
+
+    //
+    // Pointer to an IMAGEHLP_MODULE64 structure if symbol tracing is enabled
+    // and symbols were successfully loaded.
+    //
+
+    PIMAGEHLP_MODULEW64 ModuleInfo;
+
 } RTL_IMAGE_FILE, *PRTL_IMAGE_FILE;
-C_ASSERT(sizeof(RTL_IMAGE_FILE) == 8+8+4+4+4+4+8);
-C_ASSERT(sizeof(RTL_IMAGE_FILE) == 40);
+C_ASSERT(FIELD_OFFSET(RTL_IMAGE_FILE, SizeOfImage) == 24);
+C_ASSERT(FIELD_OFFSET(RTL_IMAGE_FILE, ModuleInfo) == 56);
+C_ASSERT(sizeof(RTL_IMAGE_FILE) == 64);
 
 //
 // This structure is used to capture information about a file that participates
@@ -2870,11 +2935,30 @@ typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
         RTL_IMAGE_FILE ImageFile;
 
         //
-        // Pad out to 512 bytes.
+        // Pad out to 480 bytes such that we've got 32 bytes at the end of the
+        // structure spare.
         //
 
-        BYTE Reserved[144];
+        BYTE Reserved[112];
     };
+
+    //
+    // (480 bytes consumed.)
+    //
+
+    //
+    // These will have values as long as the handles are open.
+    //
+
+    HANDLE FileHandle;
+    HANDLE MappingHandle;
+    PVOID MappedAddress;
+
+    //
+    // Pad out to a final 512 bytes.
+    //
+
+    BYTE Reserved2[8];
 
 } RTL_FILE, *PRTL_FILE, **PPRTL_FILE;
 C_ASSERT(FIELD_OFFSET(RTL_FILE, CreationTime) == 16);
@@ -2890,6 +2974,8 @@ C_ASSERT(FIELD_OFFSET(RTL_FILE, Content) == 152);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, Path) == 160);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, CopyTimeInMicroseconds) == 352);
 C_ASSERT(FIELD_OFFSET(RTL_FILE, SourceCode) == 368);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, FileHandle) == 480);
+C_ASSERT(FIELD_OFFSET(RTL_FILE, Reserved2) == 504);
 C_ASSERT(sizeof(RTL_FILE) == 512);
 
 //
@@ -2943,6 +3029,9 @@ typedef union _RTL_FILE_INIT_FLAGS {
         ULONG InitPath:1;
         ULONG CopyContents:1;
         ULONG CopyViaMovsq:1;
+        ULONG KeepViewMapped:1;
+        ULONG KeepFileHandleOpen:1;
+        ULONG KeepMappingHandleOpen:1;
     };
 } RTL_FILE_INIT_FLAGS, *PRTL_FILE_INIT_FLAGS;
 C_ASSERT(sizeof(RTL_FILE_INIT_FLAGS) == sizeof(ULONG));
@@ -3997,6 +4086,8 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_INITIALIZE SymInitialize;                                              \
     PSYM_INITIALIZE_W SymInitializeW;                                           \
     PSYM_LOAD_MODULE SymLoadModule;                                             \
+    PSYM_LOAD_MODULE_EX SymLoadModuleEx;                                        \
+    PSYM_LOAD_MODULE_EX_W SymLoadModuleExW;                                     \
     PSYM_MATCH_FILE_NAME SymMatchFileName;                                      \
     PSYM_MATCH_FILE_NAME_W SymMatchFileNameW;                                   \
     PSYM_MATCH_STRING_A SymMatchStringA;                                        \

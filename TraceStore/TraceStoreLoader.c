@@ -510,7 +510,7 @@ Return Value:
 
     ImageFile = &ModuleEntry->File.ImageFile;
 
-    ImageFile->DllBase = BaseAddress;
+    ImageFile->BaseAddress = BaseAddress;
     ImageFile->EntryPoint = EntryPoint;
     ImageFile->SizeOfImage = SizeOfImage;
 
@@ -694,14 +694,42 @@ Return Value:
     // Call the InitRtlFile method.
     //
 
-   InitFlags.AsLong = 0;
-   InitFlags.IsImageFile = TRUE;
-   InitFlags.InitPath = FALSE;
-   InitFlags.CopyContents = TRUE;
-   InitFlags.CopyViaMovsq = FALSE;
-   FilePointer = &ModuleEntry->File;
+    InitFlags.AsLong = 0;
+    InitFlags.IsImageFile = TRUE;
+    InitFlags.InitPath = FALSE;
+    InitFlags.CopyContents = TRUE;
+    InitFlags.CopyViaMovsq = FALSE;
 
-   Success = (
+    //
+    // If symbol tracing is enabled, get the module handle and toggle the init
+    // flags to keep all the handles open.
+    //
+
+    if (TraceContext->SymbolContext) {
+        ULONG Flags;
+        HMODULE Handle;
+        LPCWSTR Method;
+
+        Flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS;
+        Method = (LPCWSTR)ModuleEntry->File.ImageFile.BaseAddress;
+
+        if (!GetModuleHandleExW(Flags, Method, &Handle)) {
+            __debugbreak();
+            goto InitializeFile;
+        }
+
+        ModuleEntry->File.ImageFile.ModuleHandle = Handle;
+
+        InitFlags.KeepViewMapped = TRUE;
+        InitFlags.KeepFileHandleOpen = TRUE;
+        InitFlags.KeepMappingHandleOpen = TRUE;
+    }
+
+InitializeFile:
+
+    FilePointer = &ModuleEntry->File;
+
+    Success = (
        Rtl->InitializeRtlFile(
            Rtl,
            NULL,
@@ -715,13 +743,14 @@ Return Value:
            &FilePointer,
            &Timestamp
        )
-   );
+    );
+
+RestartSearch:
 
     //
     // Search for an entry in the Unicode prefix table for this module name.
     //
 
-RestartSearch:
     AcquireModuleNamePrefixTableLockShared(TraceContext);
     UnicodePrefixTableEntry = (
         Rtl->RtlFindUnicodePrefix(

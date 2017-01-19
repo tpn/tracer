@@ -641,7 +641,7 @@ Return Value:
 
     if (TraceStores->Flags.EnableSymbolTracing) {
         PTRACE_STORE SymbolTableStore;
-        PTRACE_STORE SymbolBufferStore;
+        PTRACE_STORE SymbolTypeStore;
 
         //
         // Ensure Rtl has loaded Dbhelp.
@@ -673,15 +673,15 @@ Return Value:
             )
         );
 
-        SymbolBufferStore = (
+        SymbolTypeStore = (
             TraceStoreIdToTraceStore(
                 TraceStores,
-                TraceStoreSymbolBufferId
+                TraceStoreSymbolTypeId
             )
         );
 
         SymbolTableStore->BindComplete = SymbolTableStoreBindComplete;
-        SymbolBufferStore->BindComplete = SymbolBufferStoreBindComplete;
+        SymbolTypeStore->BindComplete = SymbolTypeStoreBindComplete;
     }
 
 
