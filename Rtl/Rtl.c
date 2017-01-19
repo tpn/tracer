@@ -658,12 +658,6 @@ LoadDbg(
         OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromAddrW64'");
     }
 
-    if (!(Dbg->SymGetLineFromAddrW = (PSYM_GET_LINE_FROM_ADDR_W)
-        GetProcAddress(DbghelpModule, "SymGetLineFromAddrW"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromAddrW'");
-    }
-
     if (!(Dbg->SymGetLineFromInlineContext = (PSYM_GET_LINE_FROM_INLINE_CONTEXT)
         GetProcAddress(DbghelpModule, "SymGetLineFromInlineContext"))) {
 
@@ -712,12 +706,6 @@ LoadDbg(
         OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineNextW64'");
     }
 
-    if (!(Dbg->SymGetLineNextW = (PSYM_GET_LINE_NEXT_W)
-        GetProcAddress(DbghelpModule, "SymGetLineNextW"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineNextW'");
-    }
-
     if (!(Dbg->SymGetLinePrev64 = (PSYM_GET_LINE_PREV64)
         GetProcAddress(DbghelpModule, "SymGetLinePrev64"))) {
 
@@ -734,12 +722,6 @@ LoadDbg(
         GetProcAddress(DbghelpModule, "SymGetLinePrevW64"))) {
 
         OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLinePrevW64'");
-    }
-
-    if (!(Dbg->SymGetLinePrevW = (PSYM_GET_LINE_PREV_W)
-        GetProcAddress(DbghelpModule, "SymGetLinePrevW"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLinePrevW'");
     }
 
     if (!(Dbg->SymGetModuleBase = (PSYM_GET_MODULE_BASE)
@@ -904,18 +886,6 @@ LoadDbg(
         OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymNext'");
     }
 
-    if (!(Dbg->SymGetSymNextW64 = (PSYM_GET_SYM_NEXT_W64)
-        GetProcAddress(DbghelpModule, "SymGetSymNextW64"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymNextW64'");
-    }
-
-    if (!(Dbg->SymGetSymNextW = (PSYM_GET_SYM_NEXT_W)
-        GetProcAddress(DbghelpModule, "SymGetSymNextW"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymNextW'");
-    }
-
     if (!(Dbg->SymGetSymPrev64 = (PSYM_GET_SYM_PREV64)
         GetProcAddress(DbghelpModule, "SymGetSymPrev64"))) {
 
@@ -926,18 +896,6 @@ LoadDbg(
         GetProcAddress(DbghelpModule, "SymGetSymPrev"))) {
 
         OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymPrev'");
-    }
-
-    if (!(Dbg->SymGetSymPrevW64 = (PSYM_GET_SYM_PREV_W64)
-        GetProcAddress(DbghelpModule, "SymGetSymPrevW64"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymPrevW64'");
-    }
-
-    if (!(Dbg->SymGetSymPrevW = (PSYM_GET_SYM_PREV_W)
-        GetProcAddress(DbghelpModule, "SymGetSymPrevW"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymPrevW'");
     }
 
     if (!(Dbg->SymGetTypeFromName = (PSYM_GET_TYPE_FROM_NAME)
@@ -1216,22 +1174,16 @@ LoadDbg(
         OutputDebugStringA("Dbghelp: failed to resolve 'SymUnloadModule'");
     }
 
-    if (!(Dbg->UndecorateSymbolName = (PUNDECORATE_SYMBOL_NAME)
-        GetProcAddress(DbghelpModule, "UndecorateSymbolName"))) {
+    if (!(Dbg->UnDecorateSymbolName = (PUNDECORATE_SYMBOL_NAME)
+        GetProcAddress(DbghelpModule, "UnDecorateSymbolName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'UndecorateSymbolName'");
+        OutputDebugStringA("Dbghelp: failed to resolve 'UnDecorateSymbolName'");
     }
 
-    if (!(Dbg->UndecorateSymbolNameW = (PUNDECORATE_SYMBOL_NAME_W)
-        GetProcAddress(DbghelpModule, "UndecorateSymbolNameW"))) {
+    if (!(Dbg->UnDecorateSymbolNameW = (PUNDECORATE_SYMBOL_NAME_W)
+        GetProcAddress(DbghelpModule, "UnDecorateSymbolNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'UndecorateSymbolNameW'");
-    }
-
-    if (!(Dbg->UnmapDebugInformation = (PUNMAP_DEBUG_INFORMATION)
-        GetProcAddress(DbghelpModule, "UnmapDebugInformation"))) {
-
-        OutputDebugStringA("Dbghelp: failed to resolve 'UnmapDebugInformation'");
+        OutputDebugStringA("Dbghelp: failed to resolve 'UnDecorateSymbolNameW'");
     }
 
 
