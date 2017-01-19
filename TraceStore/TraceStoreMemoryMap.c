@@ -1191,14 +1191,14 @@ Return Value:
     //
 
     if (!MemoryMap) {
-        __debugbreak();
+        //__debugbreak();
         return;
     }
 
     TraceStore->BeginningRundown = TRUE;
 
     if (!FinalizeTraceStoreAddressTimes(TraceStore, MemoryMap->pAddress)) {
-        __debugbreak();
+        //__debugbreak();
     }
 
     if (MemoryMap->BaseAddress) {
@@ -1209,15 +1209,15 @@ Return Value:
 
         if (!FlushViewOfFile(MemoryMap->BaseAddress, 0)) {
             TraceStore->LastError = GetLastError();
-            __debugbreak();
+            //__debugbreak();
         }
 
         if (!UnmapViewOfFile(MemoryMap->BaseAddress)) {
             TraceStore->LastError = GetLastError();
-            __debugbreak();
+            //__debugbreak();
         }
 
-        //MemoryMap->BaseAddress = NULL;
+        MemoryMap->BaseAddress = NULL;
     }
 
     if (MemoryMap->MappingHandle) {
@@ -1228,9 +1228,9 @@ Return Value:
 
         if (!CloseHandle(MemoryMap->MappingHandle)) {
             TraceStore->LastError = GetLastError();
-            __debugbreak();
+            //__debugbreak();
         }
-        //MemoryMap->MappingHandle = NULL;
+        MemoryMap->MappingHandle = NULL;
     }
 
     TraceStore->RundownComplete = TRUE;
