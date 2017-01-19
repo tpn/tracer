@@ -3949,7 +3949,6 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_GET_LINE_FROM_ADDR64 SymGetLineFromAddr64;                             \
     PSYM_GET_LINE_FROM_ADDR SymGetLineFromAddr;                                 \
     PSYM_GET_LINE_FROM_ADDR_W64 SymGetLineFromAddrW64;                          \
-    PSYM_GET_LINE_FROM_ADDR_W SymGetLineFromAddrW;                              \
     PSYM_GET_LINE_FROM_INLINE_CONTEXT SymGetLineFromInlineContext;              \
     PSYM_GET_LINE_FROM_INLINE_CONTEXT_W SymGetLineFromInlineContextW;           \
     PSYM_GET_LINE_FROM_NAME64 SymGetLineFromName64;                             \
@@ -3958,11 +3957,9 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_GET_LINE_NEXT64 SymGetLineNext64;                                      \
     PSYM_GET_LINE_NEXT SymGetLineNext;                                          \
     PSYM_GET_LINE_NEXT_W64 SymGetLineNextW64;                                   \
-    PSYM_GET_LINE_NEXT_W SymGetLineNextW;                                       \
     PSYM_GET_LINE_PREV64 SymGetLinePrev64;                                      \
     PSYM_GET_LINE_PREV SymGetLinePrev;                                          \
     PSYM_GET_LINE_PREV_W64 SymGetLinePrevW64;                                   \
-    PSYM_GET_LINE_PREV_W SymGetLinePrevW;                                       \
     PSYM_GET_MODULE_BASE SymGetModuleBase;                                      \
     PSYM_GET_MODULE_INFO64 SymGetModuleInfo64;                                  \
     PSYM_GET_MODULE_INFO SymGetModuleInfo;                                      \
@@ -3990,12 +3987,8 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_GET_SYM_FROM_NAME SymGetSymFromName;                                   \
     PSYM_GET_SYM_NEXT64 SymGetSymNext64;                                        \
     PSYM_GET_SYM_NEXT SymGetSymNext;                                            \
-    PSYM_GET_SYM_NEXT_W64 SymGetSymNextW64;                                     \
-    PSYM_GET_SYM_NEXT_W SymGetSymNextW;                                         \
     PSYM_GET_SYM_PREV64 SymGetSymPrev64;                                        \
     PSYM_GET_SYM_PREV SymGetSymPrev;                                            \
-    PSYM_GET_SYM_PREV_W64 SymGetSymPrevW64;                                     \
-    PSYM_GET_SYM_PREV_W SymGetSymPrevW;                                         \
     PSYM_GET_TYPE_FROM_NAME SymGetTypeFromName;                                 \
     PSYM_GET_TYPE_FROM_NAME_W SymGetTypeFromNameW;                              \
     PSYM_GET_TYPE_INFO_EX SymGetTypeInfoEx;                                     \
@@ -4042,9 +4035,8 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_UNDNAME SymUnDName;                                                    \
     PSYM_UNLOAD_MODULE64 SymUnloadModule64;                                     \
     PSYM_UNLOAD_MODULE SymUnloadModule;                                         \
-    PUNDECORATE_SYMBOL_NAME UndecorateSymbolName;                               \
-    PUNDECORATE_SYMBOL_NAME_W UndecorateSymbolNameW;                            \
-    PUNMAP_DEBUG_INFORMATION UnmapDebugInformation;
+    PUNDECORATE_SYMBOL_NAME UnDecorateSymbolName;                               \
+    PUNDECORATE_SYMBOL_NAME_W UnDecorateSymbolNameW;
 
 typedef struct _DBG {
     _DBGHELP_FUNCTIONS_HEAD
