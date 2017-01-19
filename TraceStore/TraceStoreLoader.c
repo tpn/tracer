@@ -832,6 +832,13 @@ InsertPrefix:
         }
     }
 
+    //
+    // If symbol tracing is enabled, push this module table entry onto the
+    // symbol tracing thread's work list and set the work available event.
+    //
+
+    MaybePushModuleTableEntryToSymbolContext(TraceContext, ModuleEntry);
+
     return TRUE;
 }
 

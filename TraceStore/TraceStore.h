@@ -1678,10 +1678,27 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     //
 
     //
+    // If symbol tracing is enabled, this structure will be pushed onto the
+    // symbol tracing context's interlocked list head via this field below.
+    //
+
+    union {
+        SLIST_ENTRY ListEntry;
+        struct {
+            PSLIST_ENTRY Next;
+            PVOID Unused;
+        };
+    };
+
+    //
+    // (672 bytes consumed.)
+    //
+
+    //
     // Pad out to 992 bytes.
     //
 
-    BYTE Reserved[336];
+    BYTE Reserved[320];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
 typedef TRACE_MODULE_TABLE_ENTRY **PPTRACE_MODULE_TABLE_ENTRY;
@@ -1689,7 +1706,8 @@ C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsListHead) == 592);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsLock) == 624);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, DuplicateEntriesLock) == 632);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 656);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, ListEntry) == 656);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 672);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
