@@ -624,8 +624,9 @@ TraceSymbolThreadEntry(
 Routine Description:
 
     This routine is the standard entry point for the symbol tracing thread.
-    It is responsible for calling the SymbolContext->ThreadEntry function
-    from with a try/catch block that suppresses STATUS_IN_PAGE_ERROR exceptions.
+    It performs initial Dbghelp symbol initialization via Rtl and then calls
+    the SymbolContext->ThreadEntry function within a try/catch block that
+    suppresses STATUS_IN_PAGE_ERROR exceptions.
 
 Arguments:
 
@@ -705,6 +706,10 @@ Return Value:
     HANDLE ShutdownEvent;
     HANDLE WorkAvailableEvent;
 
+    //
+    // Initialize event aliases.
+    //
+
     ShutdownEvent = SymbolContext->ShutdownEvent;
     WorkAvailableEvent = SymbolContext->WorkAvailableEvent;
     Events[0] = ShutdownEvent;
@@ -783,14 +788,61 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     PSLIST_ENTRY ListEntry;
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
     ListEntry = InterlockedFlushSList(&SymbolContext->WorkListHead);
 
     for (; ListEntry != NULL; ListEntry = ListEntry->Next) {
+
+        ModuleTableEntry = CONTAINING_RECORD(ListEntry,
+                                             TRACE_MODULE_TABLE_ENTRY,
+                                             ListEntry);
+
+        Success = CreateSymbolTableForModuleTableEntry(SymbolContext,
+                                                       ModuleTableEntry);
+
+        if (!Success) {
+            SymbolContext->NumberOfWorkItemsFailed++;
+        } else {
+            SymbolContext->NumberOfWorkItemsSucceeded++;
+        }
+
         SymbolContext->NumberOfWorkItemsProcessed++;
     }
 
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateSymbolTableForModuleTableEntry(
+    PTRACE_SYMBOL_CONTEXT SymbolContext,
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+/*++
+
+Routine Description:
+
+    This routine creates a new TRACE_SYMBOL_TABLE and associated
+    TRACE_SYMBOL_TABLE_ENTRY for a given TRACE_MODULE_TABLE_ENTRY.
+
+Arguments:
+
+    SymbolContext - Supplies a pointer to a TRACE_SYMBOL_CONTEXT structure.
+
+    ModuleTableEntry - Supplies a pointer to a TRACE_MODULE_TABLE_ENTRY
+        structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    OutputDebugStringW(L"CreateSymbolTableForModuleTableEntry:\n");
+    OutputDebugStringW(ModuleTableEntry->File.Path.Full.Buffer);
     return TRUE;
 }
 

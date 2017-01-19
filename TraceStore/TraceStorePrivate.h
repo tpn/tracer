@@ -2386,6 +2386,51 @@ BOOL
 typedef PROCESS_TRACE_SYMBOL_WORK *PPROCESS_TRACE_SYMBOL_WORK;
 PROCESS_TRACE_SYMBOL_WORK ProcessTraceSymbolWork;
 
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY)(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    );
+typedef CREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY \
+      *PCREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY;
+CREATE_SYMBOL_TABLE_FOR_MODULE_TABLE_ENTRY CreateSymbolTableForModuleTableEntry;
+
+FORCEINLINE
+VOID
+PushModuleTableEntryToSymbolContext(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PSLIST_HEADER ListHead;
+
+    ListHead = &SymbolContext->WorkListHead;
+    InterlockedPushEntrySList(ListHead, &ModuleTableEntry->ListEntry);
+    SetEvent(SymbolContext->WorkAvailableEvent);
+}
+
+FORCEINLINE
+VOID
+MaybePushModuleTableEntryToSymbolContext(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PTRACE_SYMBOL_CONTEXT SymbolContext;
+
+    SymbolContext = TraceContext->SymbolContext;
+
+    if (!SymbolContext) {
+        return;
+    }
+
+    PushModuleTableEntryToSymbolContext(SymbolContext, ModuleTableEntry);
+}
+
 //
 // TraceStoreWorkingSet-related functions.
 //
