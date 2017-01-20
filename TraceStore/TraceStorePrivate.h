@@ -2405,6 +2405,19 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(CALLBACK SYMBOL_CONTEXT_ENUM_TYPES_CALLBACK)(
+    _In_ PSYMBOL_INFO SymbolInfo,
+    _In_ ULONG SymbolSize,
+    _In_opt_ PTRACE_SYMBOL_CONTEXT SymbolContext
+    );
+typedef SYMBOL_CONTEXT_ENUM_TYPES_CALLBACK \
+      *PSYMBOL_CONTEXT_ENUM_TYPES_CALLBACK;
+SYMBOL_CONTEXT_ENUM_TYPES_CALLBACK SymbolContextEnumTypesCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (CALLBACK SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK)(
     _In_ PSYMBOL_INFO SymbolInfo,
     _In_ ULONG SymbolSize,
@@ -2413,6 +2426,30 @@ BOOL
 typedef SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK \
       *PSYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK;
 SYMBOL_CONTEXT_ENUM_SYMBOLS_CALLBACK SymbolContextEnumSymbolsCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK SYMBOL_CONTEXT_ENUM_SOURCE_FILES_CALLBACK)(
+    _In_ PSOURCEFILEW SourceFile,
+    _In_opt_ PTRACE_SYMBOL_CONTEXT SymbolContext
+    );
+typedef SYMBOL_CONTEXT_ENUM_SOURCE_FILES_CALLBACK \
+      *PSYMBOL_CONTEXT_ENUM_SOURCE_FILES_CALLBACK;
+SYMBOL_CONTEXT_ENUM_SOURCE_FILES_CALLBACK SymbolContextEnumSourceFilesCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK SYMBOL_CONTEXT_ENUM_LINES_CALLBACK)(
+    _In_ PSRCCODEINFOW SourceCodeInfo,
+    _In_opt_ PTRACE_SYMBOL_CONTEXT SymbolContext
+    );
+typedef SYMBOL_CONTEXT_ENUM_LINES_CALLBACK \
+      *PSYMBOL_CONTEXT_ENUM_LINES_CALLBACK;
+SYMBOL_CONTEXT_ENUM_LINES_CALLBACK SymbolContextEnumLinesCallback;
 
 FORCEINLINE
 VOID
@@ -2567,6 +2604,35 @@ AllocateAndCopySymbolInfo(
     }
 
     return SymbolInfo;
+}
+
+FORCEINLINE
+BOOL
+AllocateAndCopySourceFile(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PSOURCEFILEW pSourceFile
+    )
+{
+    SIZE_T QuadWords;
+    LONG_INTEGER AllocSize;
+    PTRACE_STORE TraceStore;
+    PSOURCEFILEW SourceFile;
+    PRTL_IMAGE_FILE ImageFile;
+
+    AllocSize.LongPart = 0;
+    QuadWords = AllocSize.LongPart >> 3;
+
+    TraceStore = SymbolContext->TraceStores.SymbolFile;
+    ImageFile = &SymbolContext->CurrentModuleTableEntry->File.ImageFile;
+
+    //
+    // Need to add the source file as a prefix table entry on a structure
+    // somewhere.
+    //
+
+    SourceFile = NULL;
+    OutputDebugStringW(pSourceFile->FileName);
+    return TRUE;
 }
 
 //

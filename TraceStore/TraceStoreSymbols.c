@@ -855,7 +855,10 @@ Return Value:
     PTRACE_STORES TraceStores;
     PTRACE_CONTEXT TraceContext;
     IMAGEHLP_MODULEW64 ModuleInfo;
+    PSYM_ENUMERATESYMBOLS_CALLBACK EnumTypesCallback;
     PSYM_ENUMERATESYMBOLS_CALLBACK EnumSymbolsCallback;
+    PSYM_ENUMSOURCEFILES_CALLBACKW EnumSourceFilesCallback;
+    PSYM_ENUMLINES_CALLBACKW EnumLinesCallback;
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -919,6 +922,27 @@ Return Value:
     }
 
     //
+    // Enumerate types.
+    //
+
+    EnumTypesCallback = (PSYM_ENUMERATESYMBOLS_CALLBACK)(
+        SymbolContextEnumTypesCallback
+    );
+
+    Success = Dbg->SymEnumTypes(SymbolContext->ThreadHandle,
+                                (ULONG64)ImageFile->BaseAddress,
+                                EnumTypesCallback,
+                                SymbolContext);
+
+    if (!Success) {
+        SymbolContext->LastError = GetLastError();
+        OutputDebugStringA("SymEnumTypes() failed");
+        OutputDebugStringW(File->Path.Full.Buffer);
+        //__debugbreak();
+        //goto Error;
+    }
+
+    //
     // Enumerate symbols.
     //
 
@@ -935,8 +959,55 @@ Return Value:
 
     if (!Success) {
         SymbolContext->LastError = GetLastError();
-        __debugbreak();
-        goto Error;
+        OutputDebugStringA("SymEnumSymbolsEx() failed");
+        OutputDebugStringW(File->Path.Full.Buffer);
+        //__debugbreak();
+        //goto Error;
+    }
+
+    //
+    // Enumerate source files.
+    //
+
+    EnumSourceFilesCallback = (PSYM_ENUMSOURCEFILES_CALLBACKW)(
+        SymbolContextEnumSourceFilesCallback
+    );
+
+    Success = Dbg->SymEnumSourceFilesW(SymbolContext->ThreadHandle,
+                                       (ULONG64)ImageFile->BaseAddress,
+                                       NULL,
+                                       EnumSourceFilesCallback,
+                                       SymbolContext);
+
+    if (!Success) {
+        SymbolContext->LastError = GetLastError();
+        OutputDebugStringA("SymEnumSourceFilesW() failed");
+        OutputDebugStringW(File->Path.Full.Buffer);
+        //__debugbreak();
+        //goto Error;
+    }
+
+    //
+    // Enumerate source lines.
+    //
+
+    EnumLinesCallback = (PSYM_ENUMLINES_CALLBACKW)(
+        SymbolContextEnumLinesCallback
+    );
+
+    Success = Dbg->SymEnumLinesW(SymbolContext->ThreadHandle,
+                                 (ULONG64)ImageFile->BaseAddress,
+                                 NULL,   // Object
+                                 NULL,   // File
+                                 EnumLinesCallback,
+                                 SymbolContext);
+
+    if (!Success) {
+        SymbolContext->LastError = GetLastError();
+        OutputDebugStringA("SymEnumLinesW() failed");
+        OutputDebugStringW(File->Path.Full.Buffer);
+        //__debugbreak();
+        //goto Error;
     }
 
     //
@@ -1006,8 +1077,8 @@ End:
 
 _Use_decl_annotations_
 BOOL
-SymbolContextEnumSymbolsCallback(
-    PSYMBOL_INFO SourceSymbolInfo,
+SymbolContextEnumTypesCallback(
+    PSYMBOL_INFO pSymbolInfo,
     ULONG SymbolSize,
     PTRACE_SYMBOL_CONTEXT SymbolContext
     )
@@ -1033,11 +1104,119 @@ Return Value:
 {
     PSYMBOL_INFO SymbolInfo;
 
-    SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, SourceSymbolInfo);
+    OutputDebugStringA("EnumTypesCallback");
+    OutputDebugStringA(pSymbolInfo->Name);
+
+    SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
     if (!SymbolInfo) {
         __debugbreak();
         return FALSE;
     }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+SymbolContextEnumSymbolsCallback(
+    PSYMBOL_INFO pSymbolInfo,
+    ULONG SymbolSize,
+    PTRACE_SYMBOL_CONTEXT SymbolContext
+    )
+/*++
+
+Routine Description:
+
+    This routine is the symbol enumeration callback.
+
+Arguments:
+
+    pSymbolInfo - Supplies a pointer to a SYMBOL_INFO structure.
+
+    SymbolSize - Supplies the size of the symbol.
+
+    SymbolContext - Supplies a pointer to a TRACE_SYMBOL_CONTEXT structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    PSYMBOL_INFO SymbolInfo;
+
+    OutputDebugStringA("EnumSymbolsCallback");
+    OutputDebugStringA((PSTR)pSymbolInfo->Name);
+
+    SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
+    if (!SymbolInfo) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+SymbolContextEnumSourceFilesCallback(
+    PSOURCEFILEW pSourceFileW,
+    PTRACE_SYMBOL_CONTEXT SymbolContext
+    )
+/*++
+
+Routine Description:
+
+    This routine is the source files enumeration callback.
+
+Arguments:
+
+    pSourceFile - Supplies a pointer to a SOURCEFILEW structure.
+
+    SymbolContext - Supplies a pointer to a TRACE_SYMBOL_CONTEXT structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    OutputDebugStringA("EnumSourceFilesCallback");
+    OutputDebugStringW((PWSTR)pSourceFileW->FileName);
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+SymbolContextEnumLinesCallback(
+    PSRCCODEINFOW SourceCodeInfoPointer,
+    PTRACE_SYMBOL_CONTEXT SymbolContext
+    )
+/*++
+
+Routine Description:
+
+    This routine is the source files enumeration callback.
+
+Arguments:
+
+    SourceCodeInfoPointer - Supplies a pointer to a SRCCODEINFOW structure.
+
+    SymbolContext - Supplies a pointer to a TRACE_SYMBOL_CONTEXT structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    PSRCCODEINFOW SourceCodeInfo;
+
+    SourceCodeInfo = SourceCodeInfoPointer;
+
+    OutputDebugStringA("EnumLinesCallback");
+    OutputDebugStringW(SourceCodeInfo->Obj);
+    OutputDebugStringW(SourceCodeInfo->FileName);
 
     return TRUE;
 }
