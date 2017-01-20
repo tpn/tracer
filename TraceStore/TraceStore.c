@@ -1193,7 +1193,7 @@ Return Value:
     }
 
     while (PopNonRetiredMemoryMap(TraceStore, &MemoryMap)) {
-        SubmitCloseMemoryMapThreadpoolWork(TraceStore, &MemoryMap);
+        RundownTraceStoreMemoryMap(TraceStore, &MemoryMap);
     }
 
     //
