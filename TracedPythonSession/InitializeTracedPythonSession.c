@@ -120,6 +120,7 @@ Return Value:
     ULONG BufferAllocationFlags;
     SIZE_T BufferSize;
     SIZE_T LargePageMinimum;
+    HKEY Key;
     HANDLE LoadingCompleteEvent = NULL;
     HMODULE PythonDllModule;
     PRTL Rtl;
@@ -1150,7 +1151,7 @@ LoadPythonDll:
     // Save the run history registry key to the trace context as well.
     //
 
-    Session->TraceContext->RunHistoryRegistryKey = (
+    Key = Session->TraceContext->RunHistoryRegistryKey = (
         PythonTraceContext->RunHistoryRegistryKey
     );
 
@@ -1162,7 +1163,7 @@ LoadPythonDll:
     Success = Rtl->WriteRegistryString(                              \
         Rtl,                                                         \
         Allocator,                                                   \
-        PythonTraceContext->RunHistoryRegistryKey,                   \
+        Key,                                                         \
         L#Name,                                                      \
         Value                                                        \
     );                                                               \
@@ -1179,7 +1180,7 @@ LoadPythonDll:
     Success = Rtl->WriteEnvVarToRegistry(                              \
         Rtl,                                                           \
         Allocator,                                                     \
-        PythonTraceContext->RunHistoryRegistryKey,                     \
+        Key,                                                           \
         EnvVarName,                                                    \
         RegName                                                        \
     );                                                                 \
@@ -1195,6 +1196,13 @@ LoadPythonDll:
     WRITE_SESSION_REG_SZ(PythonExePath);
     WRITE_SESSION_REG_SZ(PythonHomePath);
     WRITE_SESSION_REG_SZ(OriginalDirectory);
+
+    //
+    // Write the process ID and this thread ID.
+    //
+
+    WRITE_REG_DWORD(Key, ProcessId, FastGetCurrentProcessId());
+    WRITE_REG_DWORD(Key, MainThreadId, FastGetCurrentThreadId());
 
     //
     // Write the command line to the run history, wrapping it in a Unicode
