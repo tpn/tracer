@@ -1256,9 +1256,17 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableSymbolTracing:1;
 
+            //
+            // When set, enables the creation of a debug engine to assist with
+            // tracing.
+            //
+
+            ULONG EnableDebugEngine:1;
+
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
+C_ASSERT(sizeof(TRACE_FLAGS) == sizeof(ULONG));
 
 typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_CONTEXT_FLAGS {
     ULONG Valid:1;
@@ -2161,17 +2169,23 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
     LARGE_INTEGER CurrentTimestamp;
 
     //
+    // (216 bytes consumed.)
+    //
+
+    PVOID DebugClient;
+
+    //
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[40];
+    BYTE Reserved[32];
 
 } TRACE_SYMBOL_CONTEXT, *PTRACE_SYMBOL_CONTEXT;
 typedef TRACE_SYMBOL_CONTEXT **PPTRACE_SYMBOL_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, WorkListHead) == 64);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 216);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 224);
 C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
 
 #define AcquireTraceSymbolContextLock(SymbolContext) \

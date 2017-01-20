@@ -625,7 +625,7 @@ TraceSymbolThreadEntry(
 Routine Description:
 
     This routine is the standard entry point for the symbol tracing thread.
-    It performs initial Dbghelp symbol initialization via Rtl and then calls
+    It performs initial DbgHelp symbol initialization via Rtl and then calls
     the SymbolContext->ThreadEntry function within a try/catch block that
     suppresses STATUS_IN_PAGE_ERROR exceptions.
 
@@ -641,8 +641,8 @@ Return Value:
 --*/
 {
     PRTL Rtl;
-    ULONG Result;
     ULONG Options;
+    ULONG ExitCode;
 
     Rtl = SymbolContext->TraceContext->Rtl;
 
@@ -669,12 +669,12 @@ Return Value:
     OutputDebugStringA("Symbols successfully initialized.\n");
 
     TRY_MAPPED_MEMORY_OP {
-        Result = SymbolContext->ThreadEntry(SymbolContext);
+        ExitCode = SymbolContext->ThreadEntry(SymbolContext);
     } CATCH_STATUS_IN_PAGE_ERROR {
-        Result = 1;
+        ExitCode = 1;
     }
 
-    return Result;
+    return ExitCode;
 }
 
 _Use_decl_annotations_

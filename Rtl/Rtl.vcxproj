@@ -71,6 +71,7 @@
     <ClInclude Include="AtExitEx.h" />
     <ClInclude Include="Commandline.h" />
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
+    <ClInclude Include="DebugEngine.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlPrivate.h" />
     <ClInclude Include="stdafx.h" />
@@ -83,6 +84,7 @@
     <ClCompile Include="atexit.c" />
     <ClCompile Include="AtExitEx.c" />
     <ClCompile Include="CopyPages.c" />
+    <ClCompile Include="DebugEngine.c" />
     <ClCompile Include="dllmain.c">
       <PrecompiledHeader />
     </ClCompile>

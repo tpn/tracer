@@ -532,14 +532,15 @@ Return Value:
     COPY_FLAG(EnablePerformanceTracing);
     COPY_FLAG(EnableLoaderTracing);
     COPY_FLAG(EnableSymbolTracing);
+    COPY_FLAG(EnableDebugEngine);
 
     //
-    // If symbol tracing has been enabled, ensure we can load Dbghelp.
+    // If symbol tracing has been enabled, ensure we can load DbgHelp.
     //
 
     if (TraceFlags.EnableSymbolTracing) {
-        if (!Rtl->LoadDbghelp(Rtl)) {
-            OutputDebugStringA("Rtl->LoadDbghelp() failed.  "
+        if (!Rtl->LoadDbgHelp(Rtl)) {
+            OutputDebugStringA("Rtl->LoadDbgHelp() failed.  "
                                "Disabling symbol tracing.\n");
             TraceFlags.EnableSymbolTracing = FALSE;
         }

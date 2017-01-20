@@ -16,6 +16,8 @@ Abstract:
 
 #include "targetver.h"
 
+#define CINTERFACE
+
 #include <Windows.h>
 #include <sal.h>
 #include <Psapi.h>
