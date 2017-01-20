@@ -279,6 +279,12 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableSymbolTracing:1;
 
     //
+    // When set, enables the creation of a debug engine to assist with tracing.
+    //
+
+    ULONG EnableDebugEngine:1;
+
+    //
     // When set, disables asynchronous initialization of trace contexts.  This
     // applies to the InitializeTraceContext() call.  When enabled, asynchronous
     // initialization will submit the relevant preparation required to bind the

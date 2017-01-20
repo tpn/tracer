@@ -198,11 +198,11 @@ LoadShlwapi(PRTL Rtl)
 
 BOOL
 LoadDbg(
-    _In_ HMODULE DbghelpModule,
+    _In_ HMODULE DbgHelpModule,
     _In_ PDBG Dbg
     )
 {
-    if (!ARGUMENT_PRESENT(DbghelpModule)) {
+    if (!ARGUMENT_PRESENT(DbgHelpModule)) {
         return FALSE;
     }
 
@@ -215,987 +215,987 @@ LoadDbg(
     //
 
     if (!(Dbg->EnumDirTree = (PENUM_DIR_TREE)
-        GetProcAddress(DbghelpModule, "EnumDirTree"))) {
+        GetProcAddress(DbgHelpModule, "EnumDirTree"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumDirTree'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumDirTree'");
     }
 
     if (!(Dbg->EnumDirTreeW = (PENUM_DIR_TREE_W)
-        GetProcAddress(DbghelpModule, "EnumDirTreeW"))) {
+        GetProcAddress(DbgHelpModule, "EnumDirTreeW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumDirTreeW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumDirTreeW'");
     }
 
     if (!(Dbg->EnumerateLoadedModules64 = (PENUMERATE_LOADED_MODULES64)
-        GetProcAddress(DbghelpModule, "EnumerateLoadedModules64"))) {
+        GetProcAddress(DbgHelpModule, "EnumerateLoadedModules64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumerateLoadedModules64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumerateLoadedModules64'");
     }
 
     if (!(Dbg->EnumerateLoadedModules = (PENUMERATE_LOADED_MODULES)
-        GetProcAddress(DbghelpModule, "EnumerateLoadedModules"))) {
+        GetProcAddress(DbgHelpModule, "EnumerateLoadedModules"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumerateLoadedModules'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumerateLoadedModules'");
     }
 
     if (!(Dbg->EnumerateLoadedModulesEx = (PENUMERATE_LOADED_MODULES_EX)
-        GetProcAddress(DbghelpModule, "EnumerateLoadedModulesEx"))) {
+        GetProcAddress(DbgHelpModule, "EnumerateLoadedModulesEx"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumerateLoadedModulesEx'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumerateLoadedModulesEx'");
     }
 
     if (!(Dbg->EnumerateLoadedModulesExW = (PENUMERATE_LOADED_MODULES_EX_W)
-        GetProcAddress(DbghelpModule, "EnumerateLoadedModulesExW"))) {
+        GetProcAddress(DbgHelpModule, "EnumerateLoadedModulesExW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumerateLoadedModulesExW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumerateLoadedModulesExW'");
     }
 
     if (!(Dbg->EnumerateLoadedModulesW64 = (PENUMERATE_LOADED_MODULES_W64)
-        GetProcAddress(DbghelpModule, "EnumerateLoadedModulesW64"))) {
+        GetProcAddress(DbgHelpModule, "EnumerateLoadedModulesW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'EnumerateLoadedModulesW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'EnumerateLoadedModulesW64'");
     }
 
     if (!(Dbg->FindFileInPath = (PFIND_FILE_IN_PATH)
-        GetProcAddress(DbghelpModule, "FindFileInPath"))) {
+        GetProcAddress(DbgHelpModule, "FindFileInPath"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'FindFileInPath'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'FindFileInPath'");
     }
 
     if (!(Dbg->FindFileInSearchPath = (PFIND_FILE_IN_SEARCH_PATH)
-        GetProcAddress(DbghelpModule, "FindFileInSearchPath"))) {
+        GetProcAddress(DbgHelpModule, "FindFileInSearchPath"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'FindFileInSearchPath'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'FindFileInSearchPath'");
     }
 
     if (!(Dbg->GetSymLoadError = (PGET_SYM_LOAD_ERROR)
-        GetProcAddress(DbghelpModule, "GetSymLoadError"))) {
+        GetProcAddress(DbgHelpModule, "GetSymLoadError"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'GetSymLoadError'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'GetSymLoadError'");
     }
 
     if (!(Dbg->GetTimestampForLoadedLibrary = (PGET_TIMESTAMP_FOR_LOADED_LIBRARY)
-        GetProcAddress(DbghelpModule, "GetTimestampForLoadedLibrary"))) {
+        GetProcAddress(DbgHelpModule, "GetTimestampForLoadedLibrary"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'GetTimestampForLoadedLibrary'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'GetTimestampForLoadedLibrary'");
     }
 
     if (!(Dbg->MakeSureDirectoryPathExists = (PMAKE_SURE_DIRECTORY_PATH_EXISTS)
-        GetProcAddress(DbghelpModule, "MakeSureDirectoryPathExists"))) {
+        GetProcAddress(DbgHelpModule, "MakeSureDirectoryPathExists"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'MakeSureDirectoryPathExists'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'MakeSureDirectoryPathExists'");
     }
 
     if (!(Dbg->RangeMapAddPeImageSections = (PRANGE_MAP_ADD_PE_IMAGE_SECTIONS)
-        GetProcAddress(DbghelpModule, "RangeMapAddPeImageSections"))) {
+        GetProcAddress(DbgHelpModule, "RangeMapAddPeImageSections"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'RangeMapAddPeImageSections'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'RangeMapAddPeImageSections'");
     }
 
     if (!(Dbg->RangeMapRead = (PRANGE_MAP_READ)
-        GetProcAddress(DbghelpModule, "RangeMapRead"))) {
+        GetProcAddress(DbgHelpModule, "RangeMapRead"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'RangeMapRead'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'RangeMapRead'");
     }
 
     if (!(Dbg->RangeMapRemove = (PRANGE_MAP_REMOVE)
-        GetProcAddress(DbghelpModule, "RangeMapRemove"))) {
+        GetProcAddress(DbgHelpModule, "RangeMapRemove"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'RangeMapRemove'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'RangeMapRemove'");
     }
 
     if (!(Dbg->RangeMapWrite = (PRANGE_MAP_WRITE)
-        GetProcAddress(DbghelpModule, "RangeMapWrite"))) {
+        GetProcAddress(DbgHelpModule, "RangeMapWrite"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'RangeMapWrite'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'RangeMapWrite'");
     }
 
     if (!(Dbg->ReportSymbolLoadSummary = (PREPORT_SYMBOL_LOAD_SUMMARY)
-        GetProcAddress(DbghelpModule, "ReportSymbolLoadSummary"))) {
+        GetProcAddress(DbgHelpModule, "ReportSymbolLoadSummary"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'ReportSymbolLoadSummary'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'ReportSymbolLoadSummary'");
     }
 
     if (!(Dbg->SearchTreeForFile = (PSEARCH_TREE_FOR_FILE)
-        GetProcAddress(DbghelpModule, "SearchTreeForFile"))) {
+        GetProcAddress(DbgHelpModule, "SearchTreeForFile"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SearchTreeForFile'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SearchTreeForFile'");
     }
 
     if (!(Dbg->SearchTreeForFileW = (PSEARCH_TREE_FOR_FILE_W)
-        GetProcAddress(DbghelpModule, "SearchTreeForFileW"))) {
+        GetProcAddress(DbgHelpModule, "SearchTreeForFileW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SearchTreeForFileW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SearchTreeForFileW'");
     }
 
     if (!(Dbg->StackWalk64 = (PSTACK_WALK64)
-        GetProcAddress(DbghelpModule, "StackWalk64"))) {
+        GetProcAddress(DbgHelpModule, "StackWalk64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'StackWalk64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'StackWalk64'");
     }
 
     if (!(Dbg->StackWalkEx = (PSTACK_WALK_EX)
-        GetProcAddress(DbghelpModule, "StackWalkEx"))) {
+        GetProcAddress(DbgHelpModule, "StackWalkEx"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'StackWalkEx'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'StackWalkEx'");
     }
 
     if (!(Dbg->StackWalk = (PSTACK_WALK)
-        GetProcAddress(DbghelpModule, "StackWalk"))) {
+        GetProcAddress(DbgHelpModule, "StackWalk"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'StackWalk'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'StackWalk'");
     }
 
     if (!(Dbg->SymAddrIncludeInlineTrace = (PSYM_ADDR_INCLUDE_INLINE_TRACE)
-        GetProcAddress(DbghelpModule, "SymAddrIncludeInlineTrace"))) {
+        GetProcAddress(DbgHelpModule, "SymAddrIncludeInlineTrace"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddrIncludeInlineTrace'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddrIncludeInlineTrace'");
     }
 
     if (!(Dbg->SymAddSourceStreamA = (PSYM_ADD_SOURCE_STREAM_A)
-        GetProcAddress(DbghelpModule, "SymAddSourceStreamA"))) {
+        GetProcAddress(DbgHelpModule, "SymAddSourceStreamA"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddSourceStreamA'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddSourceStreamA'");
     }
 
     if (!(Dbg->SymAddSourceStream = (PSYM_ADD_SOURCE_STREAM)
-        GetProcAddress(DbghelpModule, "SymAddSourceStream"))) {
+        GetProcAddress(DbgHelpModule, "SymAddSourceStream"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddSourceStream'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddSourceStream'");
     }
 
     if (!(Dbg->SymAddSourceStreamW = (PSYM_ADD_SOURCE_STREAM_W)
-        GetProcAddress(DbghelpModule, "SymAddSourceStreamW"))) {
+        GetProcAddress(DbgHelpModule, "SymAddSourceStreamW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddSourceStreamW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddSourceStreamW'");
     }
 
     if (!(Dbg->SymAddSymbol = (PSYM_ADD_SYMBOL)
-        GetProcAddress(DbghelpModule, "SymAddSymbol"))) {
+        GetProcAddress(DbgHelpModule, "SymAddSymbol"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddSymbol'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddSymbol'");
     }
 
     if (!(Dbg->SymAddSymbolW = (PSYM_ADD_SYMBOL_W)
-        GetProcAddress(DbghelpModule, "SymAddSymbolW"))) {
+        GetProcAddress(DbgHelpModule, "SymAddSymbolW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymAddSymbolW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymAddSymbolW'");
     }
 
     if (!(Dbg->SymCleanup = (PSYM_CLEANUP)
-        GetProcAddress(DbghelpModule, "SymCleanup"))) {
+        GetProcAddress(DbgHelpModule, "SymCleanup"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymCleanup'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymCleanup'");
     }
 
     if (!(Dbg->SymCompareInlineTrace = (PSYM_COMPARE_INLINE_TRACE)
-        GetProcAddress(DbghelpModule, "SymCompareInlineTrace"))) {
+        GetProcAddress(DbgHelpModule, "SymCompareInlineTrace"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymCompareInlineTrace'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymCompareInlineTrace'");
     }
 
     if (!(Dbg->SymDeleteSymbol = (PSYM_DELETE_SYMBOL)
-        GetProcAddress(DbghelpModule, "SymDeleteSymbol"))) {
+        GetProcAddress(DbgHelpModule, "SymDeleteSymbol"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymDeleteSymbol'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymDeleteSymbol'");
     }
 
     if (!(Dbg->SymDeleteSymbolW = (PSYM_DELETE_SYMBOL_W)
-        GetProcAddress(DbghelpModule, "SymDeleteSymbolW"))) {
+        GetProcAddress(DbgHelpModule, "SymDeleteSymbolW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymDeleteSymbolW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymDeleteSymbolW'");
     }
 
     if (!(Dbg->SymEnumerateModules64 = (PSYM_ENUMERATE_MODULES64)
-        GetProcAddress(DbghelpModule, "SymEnumerateModules64"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateModules64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateModules64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateModules64'");
     }
 
     if (!(Dbg->SymEnumerateModules = (PSYM_ENUMERATE_MODULES)
-        GetProcAddress(DbghelpModule, "SymEnumerateModules"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateModules"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateModules'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateModules'");
     }
 
     if (!(Dbg->SymEnumerateModulesW64 = (PSYM_ENUMERATE_MODULES_W64)
-        GetProcAddress(DbghelpModule, "SymEnumerateModulesW64"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateModulesW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateModulesW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateModulesW64'");
     }
 
     if (!(Dbg->SymEnumerateSymbols64 = (PSYM_ENUMERATE_SYMBOLS64)
-        GetProcAddress(DbghelpModule, "SymEnumerateSymbols64"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateSymbols64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateSymbols64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateSymbols64'");
     }
 
     if (!(Dbg->SymEnumerateSymbols = (PSYM_ENUMERATE_SYMBOLS)
-        GetProcAddress(DbghelpModule, "SymEnumerateSymbols"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateSymbols"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateSymbols'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateSymbols'");
     }
 
     if (!(Dbg->SymEnumerateSymbolsW64 = (PSYM_ENUMERATE_SYMBOLS_W64)
-        GetProcAddress(DbghelpModule, "SymEnumerateSymbolsW64"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateSymbolsW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateSymbolsW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateSymbolsW64'");
     }
 
     if (!(Dbg->SymEnumerateSymbolsW = (PSYM_ENUMERATE_SYMBOLS_W)
-        GetProcAddress(DbghelpModule, "SymEnumerateSymbolsW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumerateSymbolsW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumerateSymbolsW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumerateSymbolsW'");
     }
 
     if (!(Dbg->SymEnumLines = (PSYM_ENUM_LINES)
-        GetProcAddress(DbghelpModule, "SymEnumLines"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumLines"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumLines'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumLines'");
     }
 
     if (!(Dbg->SymEnumLinesW = (PSYM_ENUM_LINES_W)
-        GetProcAddress(DbghelpModule, "SymEnumLinesW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumLinesW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumLinesW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumLinesW'");
     }
 
     if (!(Dbg->SymEnumProcesses = (PSYM_ENUM_PROCESSES)
-        GetProcAddress(DbghelpModule, "SymEnumProcesses"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumProcesses"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumProcesses'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumProcesses'");
     }
 
     if (!(Dbg->SymEnumSourceFiles = (PSYM_ENUM_SOURCE_FILES)
-        GetProcAddress(DbghelpModule, "SymEnumSourceFiles"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSourceFiles"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSourceFiles'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSourceFiles'");
     }
 
     if (!(Dbg->SymEnumSourceFilesW = (PSYM_ENUM_SOURCE_FILES_W)
-        GetProcAddress(DbghelpModule, "SymEnumSourceFilesW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSourceFilesW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSourceFilesW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSourceFilesW'");
     }
 
     if (!(Dbg->SymEnumSourceFileTokens = (PSYM_ENUM_SOURCE_FILE_TOKENS)
-        GetProcAddress(DbghelpModule, "SymEnumSourceFileTokens"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSourceFileTokens"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSourceFileTokens'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSourceFileTokens'");
     }
 
     if (!(Dbg->SymEnumSourceLines = (PSYM_ENUM_SOURCE_LINES)
-        GetProcAddress(DbghelpModule, "SymEnumSourceLines"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSourceLines"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSourceLines'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSourceLines'");
     }
 
     if (!(Dbg->SymEnumSourceLinesW = (PSYM_ENUM_SOURCE_LINES_W)
-        GetProcAddress(DbghelpModule, "SymEnumSourceLinesW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSourceLinesW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSourceLinesW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSourceLinesW'");
     }
 
     if (!(Dbg->SymEnumSymbolsEx = (PSYM_ENUM_SYMBOLS_EX)
-        GetProcAddress(DbghelpModule, "SymEnumSymbolsEx"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbolsEx"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbolsEx'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbolsEx'");
     }
 
     if (!(Dbg->SymEnumSymbolsExW = (PSYM_ENUM_SYMBOLS_EX_W)
-        GetProcAddress(DbghelpModule, "SymEnumSymbolsExW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbolsExW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbolsExW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbolsExW'");
     }
 
     if (!(Dbg->SymEnumSymbolsForAddr = (PSYM_ENUM_SYMBOLS_FOR_ADDR)
-        GetProcAddress(DbghelpModule, "SymEnumSymbolsForAddr"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbolsForAddr"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbolsForAddr'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbolsForAddr'");
     }
 
     if (!(Dbg->SymEnumSymbolsForAddrW = (PSYM_ENUM_SYMBOLS_FOR_ADDR_W)
-        GetProcAddress(DbghelpModule, "SymEnumSymbolsForAddrW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbolsForAddrW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbolsForAddrW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbolsForAddrW'");
     }
 
     if (!(Dbg->SymEnumSymbols = (PSYM_ENUM_SYMBOLS)
-        GetProcAddress(DbghelpModule, "SymEnumSymbols"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbols"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbols'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbols'");
     }
 
     if (!(Dbg->SymEnumSymbolsW = (PSYM_ENUM_SYMBOLS_W)
-        GetProcAddress(DbghelpModule, "SymEnumSymbolsW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSymbolsW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSymbolsW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSymbolsW'");
     }
 
     if (!(Dbg->SymEnumSym = (PSYM_ENUM_SYM)
-        GetProcAddress(DbghelpModule, "SymEnumSym"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumSym"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumSym'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumSym'");
     }
 
     if (!(Dbg->SymEnumTypesByName = (PSYM_ENUM_TYPES_BY_NAME)
-        GetProcAddress(DbghelpModule, "SymEnumTypesByName"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumTypesByName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumTypesByName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumTypesByName'");
     }
 
     if (!(Dbg->SymEnumTypesByNameW = (PSYM_ENUM_TYPES_BY_NAME_W)
-        GetProcAddress(DbghelpModule, "SymEnumTypesByNameW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumTypesByNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumTypesByNameW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumTypesByNameW'");
     }
 
     if (!(Dbg->SymEnumTypes = (PSYM_ENUM_TYPES)
-        GetProcAddress(DbghelpModule, "SymEnumTypes"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumTypes"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumTypes'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumTypes'");
     }
 
     if (!(Dbg->SymEnumTypesW = (PSYM_ENUM_TYPES_W)
-        GetProcAddress(DbghelpModule, "SymEnumTypesW"))) {
+        GetProcAddress(DbgHelpModule, "SymEnumTypesW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymEnumTypesW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymEnumTypesW'");
     }
 
     if (!(Dbg->SymFindFileInPath = (PSYM_FIND_FILE_IN_PATH)
-        GetProcAddress(DbghelpModule, "SymFindFileInPath"))) {
+        GetProcAddress(DbgHelpModule, "SymFindFileInPath"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFindFileInPath'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFindFileInPath'");
     }
 
     if (!(Dbg->SymFindFileInPathW = (PSYM_FIND_FILE_IN_PATH_W)
-        GetProcAddress(DbghelpModule, "SymFindFileInPathW"))) {
+        GetProcAddress(DbgHelpModule, "SymFindFileInPathW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFindFileInPathW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFindFileInPathW'");
     }
 
     if (!(Dbg->SymFromAddr = (PSYM_FROM_ADDR)
-        GetProcAddress(DbghelpModule, "SymFromAddr"))) {
+        GetProcAddress(DbgHelpModule, "SymFromAddr"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromAddr'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromAddr'");
     }
 
     if (!(Dbg->SymFromAddrW = (PSYM_FROM_ADDR_W)
-        GetProcAddress(DbghelpModule, "SymFromAddrW"))) {
+        GetProcAddress(DbgHelpModule, "SymFromAddrW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromAddrW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromAddrW'");
     }
 
     if (!(Dbg->SymFromIndex = (PSYM_FROM_INDEX)
-        GetProcAddress(DbghelpModule, "SymFromIndex"))) {
+        GetProcAddress(DbgHelpModule, "SymFromIndex"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromIndex'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromIndex'");
     }
 
     if (!(Dbg->SymFromIndexW = (PSYM_FROM_INDEX_W)
-        GetProcAddress(DbghelpModule, "SymFromIndexW"))) {
+        GetProcAddress(DbgHelpModule, "SymFromIndexW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromIndexW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromIndexW'");
     }
 
     if (!(Dbg->SymFromInlineContext = (PSYM_FROM_INLINE_CONTEXT)
-        GetProcAddress(DbghelpModule, "SymFromInlineContext"))) {
+        GetProcAddress(DbgHelpModule, "SymFromInlineContext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromInlineContext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromInlineContext'");
     }
 
     if (!(Dbg->SymFromInlineContextW = (PSYM_FROM_INLINE_CONTEXT_W)
-        GetProcAddress(DbghelpModule, "SymFromInlineContextW"))) {
+        GetProcAddress(DbgHelpModule, "SymFromInlineContextW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromInlineContextW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromInlineContextW'");
     }
 
     if (!(Dbg->SymFromName = (PSYM_FROM_NAME)
-        GetProcAddress(DbghelpModule, "SymFromName"))) {
+        GetProcAddress(DbgHelpModule, "SymFromName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromName'");
     }
 
     if (!(Dbg->SymFromNameW = (PSYM_FROM_NAME_W)
-        GetProcAddress(DbghelpModule, "SymFromNameW"))) {
+        GetProcAddress(DbgHelpModule, "SymFromNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromNameW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromNameW'");
     }
 
     if (!(Dbg->SymFromToken = (PSYM_FROM_TOKEN)
-        GetProcAddress(DbghelpModule, "SymFromToken"))) {
+        GetProcAddress(DbgHelpModule, "SymFromToken"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromToken'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromToken'");
     }
 
     if (!(Dbg->SymFromTokenW = (PSYM_FROM_TOKEN_W)
-        GetProcAddress(DbghelpModule, "SymFromTokenW"))) {
+        GetProcAddress(DbgHelpModule, "SymFromTokenW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymFromTokenW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymFromTokenW'");
     }
 
     if (!(Dbg->SymGetFileLineOffsets64 = (PSYM_GET_FILE_LINE_OFFSETS64)
-        GetProcAddress(DbghelpModule, "SymGetFileLineOffsets64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetFileLineOffsets64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetFileLineOffsets64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetFileLineOffsets64'");
     }
 
     if (!(Dbg->SymGetLineFromAddr64 = (PSYM_GET_LINE_FROM_ADDR64)
-        GetProcAddress(DbghelpModule, "SymGetLineFromAddr64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromAddr64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromAddr64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromAddr64'");
     }
 
     if (!(Dbg->SymGetLineFromAddr = (PSYM_GET_LINE_FROM_ADDR)
-        GetProcAddress(DbghelpModule, "SymGetLineFromAddr"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromAddr"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromAddr'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromAddr'");
     }
 
     if (!(Dbg->SymGetLineFromAddrW64 = (PSYM_GET_LINE_FROM_ADDR_W64)
-        GetProcAddress(DbghelpModule, "SymGetLineFromAddrW64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromAddrW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromAddrW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromAddrW64'");
     }
 
     if (!(Dbg->SymGetLineFromInlineContext = (PSYM_GET_LINE_FROM_INLINE_CONTEXT)
-        GetProcAddress(DbghelpModule, "SymGetLineFromInlineContext"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromInlineContext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromInlineContext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromInlineContext'");
     }
 
     if (!(Dbg->SymGetLineFromInlineContextW = (PSYM_GET_LINE_FROM_INLINE_CONTEXT_W)
-        GetProcAddress(DbghelpModule, "SymGetLineFromInlineContextW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromInlineContextW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromInlineContextW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromInlineContextW'");
     }
 
     if (!(Dbg->SymGetLineFromName64 = (PSYM_GET_LINE_FROM_NAME64)
-        GetProcAddress(DbghelpModule, "SymGetLineFromName64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromName64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromName64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromName64'");
     }
 
     if (!(Dbg->SymGetLineFromName = (PSYM_GET_LINE_FROM_NAME)
-        GetProcAddress(DbghelpModule, "SymGetLineFromName"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromName'");
     }
 
     if (!(Dbg->SymGetLineFromNameW64 = (PSYM_GET_LINE_FROM_NAME_W64)
-        GetProcAddress(DbghelpModule, "SymGetLineFromNameW64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineFromNameW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineFromNameW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineFromNameW64'");
     }
 
     if (!(Dbg->SymGetLineNext64 = (PSYM_GET_LINE_NEXT64)
-        GetProcAddress(DbghelpModule, "SymGetLineNext64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineNext64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineNext64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineNext64'");
     }
 
     if (!(Dbg->SymGetLineNext = (PSYM_GET_LINE_NEXT)
-        GetProcAddress(DbghelpModule, "SymGetLineNext"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineNext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineNext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineNext'");
     }
 
     if (!(Dbg->SymGetLineNextW64 = (PSYM_GET_LINE_NEXT_W64)
-        GetProcAddress(DbghelpModule, "SymGetLineNextW64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLineNextW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLineNextW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLineNextW64'");
     }
 
     if (!(Dbg->SymGetLinePrev64 = (PSYM_GET_LINE_PREV64)
-        GetProcAddress(DbghelpModule, "SymGetLinePrev64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLinePrev64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLinePrev64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLinePrev64'");
     }
 
     if (!(Dbg->SymGetLinePrev = (PSYM_GET_LINE_PREV)
-        GetProcAddress(DbghelpModule, "SymGetLinePrev"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLinePrev"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLinePrev'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLinePrev'");
     }
 
     if (!(Dbg->SymGetLinePrevW64 = (PSYM_GET_LINE_PREV_W64)
-        GetProcAddress(DbghelpModule, "SymGetLinePrevW64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetLinePrevW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetLinePrevW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetLinePrevW64'");
     }
 
     if (!(Dbg->SymGetModuleBase = (PSYM_GET_MODULE_BASE)
-        GetProcAddress(DbghelpModule, "SymGetModuleBase"))) {
+        GetProcAddress(DbgHelpModule, "SymGetModuleBase"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetModuleBase'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetModuleBase'");
     }
 
     if (!(Dbg->SymGetModuleInfo64 = (PSYM_GET_MODULE_INFO64)
-        GetProcAddress(DbghelpModule, "SymGetModuleInfo64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetModuleInfo64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetModuleInfo64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetModuleInfo64'");
     }
 
     if (!(Dbg->SymGetModuleInfo = (PSYM_GET_MODULE_INFO)
-        GetProcAddress(DbghelpModule, "SymGetModuleInfo"))) {
+        GetProcAddress(DbgHelpModule, "SymGetModuleInfo"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetModuleInfo'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetModuleInfo'");
     }
 
     if (!(Dbg->SymGetModuleInfoW64 = (PSYM_GET_MODULE_INFO_W64)
-        GetProcAddress(DbghelpModule, "SymGetModuleInfoW64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetModuleInfoW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetModuleInfoW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetModuleInfoW64'");
     }
 
     if (!(Dbg->SymGetModuleInfoW = (PSYM_GET_MODULE_INFO_W)
-        GetProcAddress(DbghelpModule, "SymGetModuleInfoW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetModuleInfoW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetModuleInfoW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetModuleInfoW'");
     }
 
     if (!(Dbg->SymGetOmaps = (PSYM_GET_OMAPS)
-        GetProcAddress(DbghelpModule, "SymGetOmaps"))) {
+        GetProcAddress(DbgHelpModule, "SymGetOmaps"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetOmaps'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetOmaps'");
     }
 
     if (!(Dbg->SymGetOptions = (PSYM_GET_OPTIONS)
-        GetProcAddress(DbghelpModule, "SymGetOptions"))) {
+        GetProcAddress(DbgHelpModule, "SymGetOptions"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetOptions'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetOptions'");
     }
 
     if (!(Dbg->SymGetScope = (PSYM_GET_SCOPE)
-        GetProcAddress(DbghelpModule, "SymGetScope"))) {
+        GetProcAddress(DbgHelpModule, "SymGetScope"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetScope'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetScope'");
     }
 
     if (!(Dbg->SymGetScopeW = (PSYM_GET_SCOPE_W)
-        GetProcAddress(DbghelpModule, "SymGetScopeW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetScopeW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetScopeW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetScopeW'");
     }
 
     if (!(Dbg->SymGetSearchPath = (PSYM_GET_SEARCH_PATH)
-        GetProcAddress(DbghelpModule, "SymGetSearchPath"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSearchPath"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSearchPath'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSearchPath'");
     }
 
     if (!(Dbg->SymGetSearchPathW = (PSYM_GET_SEARCH_PATH_W)
-        GetProcAddress(DbghelpModule, "SymGetSearchPathW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSearchPathW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSearchPathW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSearchPathW'");
     }
 
     if (!(Dbg->SymGetSourceFileFromToken = (PSYM_GET_SOURCE_FILE_FROM_TOKEN)
-        GetProcAddress(DbghelpModule, "SymGetSourceFileFromToken"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFileFromToken"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFileFromToken'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFileFromToken'");
     }
 
     if (!(Dbg->SymGetSourceFileFromTokenW = (PSYM_GET_SOURCE_FILE_FROM_TOKEN_W)
-        GetProcAddress(DbghelpModule, "SymGetSourceFileFromTokenW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFileFromTokenW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFileFromTokenW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFileFromTokenW'");
     }
 
     if (!(Dbg->SymGetSourceFile = (PSYM_GET_SOURCE_FILE)
-        GetProcAddress(DbghelpModule, "SymGetSourceFile"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFile"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFile'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFile'");
     }
 
     if (!(Dbg->SymGetSourceFileToken = (PSYM_GET_SOURCE_FILE_TOKEN)
-        GetProcAddress(DbghelpModule, "SymGetSourceFileToken"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFileToken"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFileToken'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFileToken'");
     }
 
     if (!(Dbg->SymGetSourceFileTokenW = (PSYM_GET_SOURCE_FILE_TOKEN_W)
-        GetProcAddress(DbghelpModule, "SymGetSourceFileTokenW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFileTokenW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFileTokenW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFileTokenW'");
     }
 
     if (!(Dbg->SymGetSourceFileW = (PSYM_GET_SOURCE_FILE_W)
-        GetProcAddress(DbghelpModule, "SymGetSourceFileW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceFileW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceFileW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceFileW'");
     }
 
     if (!(Dbg->SymGetSourceVarFromToken = (PSYM_GET_SOURCE_VAR_FROM_TOKEN)
-        GetProcAddress(DbghelpModule, "SymGetSourceVarFromToken"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceVarFromToken"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceVarFromToken'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceVarFromToken'");
     }
 
     if (!(Dbg->SymGetSourceVarFromTokenW = (PSYM_GET_SOURCE_VAR_FROM_TOKEN_W)
-        GetProcAddress(DbghelpModule, "SymGetSourceVarFromTokenW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSourceVarFromTokenW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSourceVarFromTokenW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSourceVarFromTokenW'");
     }
 
     if (!(Dbg->SymGetSymbolFile = (PSYM_GET_SYMBOL_FILE)
-        GetProcAddress(DbghelpModule, "SymGetSymbolFile"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymbolFile"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymbolFile'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymbolFile'");
     }
 
     if (!(Dbg->SymGetSymbolFileW = (PSYM_GET_SYMBOL_FILE_W)
-        GetProcAddress(DbghelpModule, "SymGetSymbolFileW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymbolFileW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymbolFileW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymbolFileW'");
     }
 
     if (!(Dbg->SymGetSymFromAddr64 = (PSYM_GET_SYM_FROM_ADDR64)
-        GetProcAddress(DbghelpModule, "SymGetSymFromAddr64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymFromAddr64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymFromAddr64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymFromAddr64'");
     }
 
     if (!(Dbg->SymGetSymFromAddr = (PSYM_GET_SYM_FROM_ADDR)
-        GetProcAddress(DbghelpModule, "SymGetSymFromAddr"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymFromAddr"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymFromAddr'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymFromAddr'");
     }
 
     if (!(Dbg->SymGetSymFromName64 = (PSYM_GET_SYM_FROM_NAME64)
-        GetProcAddress(DbghelpModule, "SymGetSymFromName64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymFromName64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymFromName64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymFromName64'");
     }
 
     if (!(Dbg->SymGetSymFromName = (PSYM_GET_SYM_FROM_NAME)
-        GetProcAddress(DbghelpModule, "SymGetSymFromName"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymFromName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymFromName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymFromName'");
     }
 
     if (!(Dbg->SymGetSymNext64 = (PSYM_GET_SYM_NEXT64)
-        GetProcAddress(DbghelpModule, "SymGetSymNext64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymNext64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymNext64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymNext64'");
     }
 
     if (!(Dbg->SymGetSymNext = (PSYM_GET_SYM_NEXT)
-        GetProcAddress(DbghelpModule, "SymGetSymNext"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymNext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymNext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymNext'");
     }
 
     if (!(Dbg->SymGetSymPrev64 = (PSYM_GET_SYM_PREV64)
-        GetProcAddress(DbghelpModule, "SymGetSymPrev64"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymPrev64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymPrev64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymPrev64'");
     }
 
     if (!(Dbg->SymGetSymPrev = (PSYM_GET_SYM_PREV)
-        GetProcAddress(DbghelpModule, "SymGetSymPrev"))) {
+        GetProcAddress(DbgHelpModule, "SymGetSymPrev"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetSymPrev'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetSymPrev'");
     }
 
     if (!(Dbg->SymGetTypeFromName = (PSYM_GET_TYPE_FROM_NAME)
-        GetProcAddress(DbghelpModule, "SymGetTypeFromName"))) {
+        GetProcAddress(DbgHelpModule, "SymGetTypeFromName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetTypeFromName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetTypeFromName'");
     }
 
     if (!(Dbg->SymGetTypeFromNameW = (PSYM_GET_TYPE_FROM_NAME_W)
-        GetProcAddress(DbghelpModule, "SymGetTypeFromNameW"))) {
+        GetProcAddress(DbgHelpModule, "SymGetTypeFromNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetTypeFromNameW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetTypeFromNameW'");
     }
 
     if (!(Dbg->SymGetTypeInfoEx = (PSYM_GET_TYPE_INFO_EX)
-        GetProcAddress(DbghelpModule, "SymGetTypeInfoEx"))) {
+        GetProcAddress(DbgHelpModule, "SymGetTypeInfoEx"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetTypeInfoEx'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetTypeInfoEx'");
     }
 
     if (!(Dbg->SymGetTypeInfo = (PSYM_GET_TYPE_INFO)
-        GetProcAddress(DbghelpModule, "SymGetTypeInfo"))) {
+        GetProcAddress(DbgHelpModule, "SymGetTypeInfo"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetTypeInfo'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetTypeInfo'");
     }
 
     if (!(Dbg->SymGetUnwindInfo = (PSYM_GET_UNWIND_INFO)
-        GetProcAddress(DbghelpModule, "SymGetUnwindInfo"))) {
+        GetProcAddress(DbgHelpModule, "SymGetUnwindInfo"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymGetUnwindInfo'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymGetUnwindInfo'");
     }
 
     if (!(Dbg->SymInitialize = (PSYM_INITIALIZE)
-        GetProcAddress(DbghelpModule, "SymInitialize"))) {
+        GetProcAddress(DbgHelpModule, "SymInitialize"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymInitialize'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymInitialize'");
     }
 
     if (!(Dbg->SymInitializeW = (PSYM_INITIALIZE_W)
-        GetProcAddress(DbghelpModule, "SymInitializeW"))) {
+        GetProcAddress(DbgHelpModule, "SymInitializeW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymInitializeW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymInitializeW'");
     }
 
     if (!(Dbg->SymLoadModule = (PSYM_LOAD_MODULE)
-        GetProcAddress(DbghelpModule, "SymLoadModule"))) {
+        GetProcAddress(DbgHelpModule, "SymLoadModule"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModule'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymLoadModule'");
     }
 
     if (!(Dbg->SymLoadModuleEx = (PSYM_LOAD_MODULE_EX)
-        GetProcAddress(DbghelpModule, "SymLoadModuleEx"))) {
+        GetProcAddress(DbgHelpModule, "SymLoadModuleEx"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModuleEx'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymLoadModuleEx'");
     }
 
     if (!(Dbg->SymLoadModuleExW = (PSYM_LOAD_MODULE_EX_W)
-        GetProcAddress(DbghelpModule, "SymLoadModuleExW"))) {
+        GetProcAddress(DbgHelpModule, "SymLoadModuleExW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymLoadModuleExW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymLoadModuleExW'");
     }
 
     if (!(Dbg->SymMatchFileName = (PSYM_MATCH_FILE_NAME)
-        GetProcAddress(DbghelpModule, "SymMatchFileName"))) {
+        GetProcAddress(DbgHelpModule, "SymMatchFileName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymMatchFileName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymMatchFileName'");
     }
 
     if (!(Dbg->SymMatchFileNameW = (PSYM_MATCH_FILE_NAME_W)
-        GetProcAddress(DbghelpModule, "SymMatchFileNameW"))) {
+        GetProcAddress(DbgHelpModule, "SymMatchFileNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymMatchFileNameW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymMatchFileNameW'");
     }
 
     if (!(Dbg->SymMatchStringA = (PSYM_MATCH_STRING_A)
-        GetProcAddress(DbghelpModule, "SymMatchStringA"))) {
+        GetProcAddress(DbgHelpModule, "SymMatchStringA"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymMatchStringA'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymMatchStringA'");
     }
 
     if (!(Dbg->SymMatchString = (PSYM_MATCH_STRING)
-        GetProcAddress(DbghelpModule, "SymMatchString"))) {
+        GetProcAddress(DbgHelpModule, "SymMatchString"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymMatchString'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymMatchString'");
     }
 
     if (!(Dbg->SymMatchStringW = (PSYM_MATCH_STRING_W)
-        GetProcAddress(DbghelpModule, "SymMatchStringW"))) {
+        GetProcAddress(DbgHelpModule, "SymMatchStringW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymMatchStringW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymMatchStringW'");
     }
 
     if (!(Dbg->SymNext = (PSYM_NEXT)
-        GetProcAddress(DbghelpModule, "SymNext"))) {
+        GetProcAddress(DbgHelpModule, "SymNext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymNext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymNext'");
     }
 
     if (!(Dbg->SymNextW = (PSYM_NEXT_W)
-        GetProcAddress(DbghelpModule, "SymNextW"))) {
+        GetProcAddress(DbgHelpModule, "SymNextW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymNextW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymNextW'");
     }
 
     if (!(Dbg->SymPrev = (PSYM_PREV)
-        GetProcAddress(DbghelpModule, "SymPrev"))) {
+        GetProcAddress(DbgHelpModule, "SymPrev"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymPrev'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymPrev'");
     }
 
     if (!(Dbg->SymPrevW = (PSYM_PREV_W)
-        GetProcAddress(DbghelpModule, "SymPrevW"))) {
+        GetProcAddress(DbgHelpModule, "SymPrevW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymPrevW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymPrevW'");
     }
 
     if (!(Dbg->SymQueryInlineTrace = (PSYM_QUERY_INLINE_TRACE)
-        GetProcAddress(DbghelpModule, "SymQueryInlineTrace"))) {
+        GetProcAddress(DbgHelpModule, "SymQueryInlineTrace"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymQueryInlineTrace'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymQueryInlineTrace'");
     }
 
     if (!(Dbg->SymRefreshModuleList = (PSYM_REFRESH_MODULE_LIST)
-        GetProcAddress(DbghelpModule, "SymRefreshModuleList"))) {
+        GetProcAddress(DbgHelpModule, "SymRefreshModuleList"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRefreshModuleList'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRefreshModuleList'");
     }
 
     if (!(Dbg->SymRegisterCallback64 = (PSYM_REGISTER_CALLBACK64)
-        GetProcAddress(DbghelpModule, "SymRegisterCallback64"))) {
+        GetProcAddress(DbgHelpModule, "SymRegisterCallback64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRegisterCallback64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRegisterCallback64'");
     }
 
     if (!(Dbg->SymRegisterCallback = (PSYM_REGISTER_CALLBACK)
-        GetProcAddress(DbghelpModule, "SymRegisterCallback"))) {
+        GetProcAddress(DbgHelpModule, "SymRegisterCallback"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRegisterCallback'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRegisterCallback'");
     }
 
     if (!(Dbg->SymRegisterCallbackW64 = (PSYM_REGISTER_CALLBACK_W64)
-        GetProcAddress(DbghelpModule, "SymRegisterCallbackW64"))) {
+        GetProcAddress(DbgHelpModule, "SymRegisterCallbackW64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRegisterCallbackW64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRegisterCallbackW64'");
     }
 
     if (!(Dbg->SymRegisterFunctionEntryCallback64 = (PSYM_REGISTER_FUNCTION_ENTRY_CALLBACK64)
-        GetProcAddress(DbghelpModule, "SymRegisterFunctionEntryCallback64"))) {
+        GetProcAddress(DbgHelpModule, "SymRegisterFunctionEntryCallback64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRegisterFunctionEntryCallback64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRegisterFunctionEntryCallback64'");
     }
 
     if (!(Dbg->SymRegisterFunctionEntryCallback = (PSYM_REGISTER_FUNCTION_ENTRY_CALLBACK)
-        GetProcAddress(DbghelpModule, "SymRegisterFunctionEntryCallback"))) {
+        GetProcAddress(DbgHelpModule, "SymRegisterFunctionEntryCallback"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymRegisterFunctionEntryCallback'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymRegisterFunctionEntryCallback'");
     }
 
     if (!(Dbg->SymSearch = (PSYM_SEARCH)
-        GetProcAddress(DbghelpModule, "SymSearch"))) {
+        GetProcAddress(DbgHelpModule, "SymSearch"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSearch'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSearch'");
     }
 
     if (!(Dbg->SymSearchW = (PSYM_SEARCH_W)
-        GetProcAddress(DbghelpModule, "SymSearchW"))) {
+        GetProcAddress(DbgHelpModule, "SymSearchW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSearchW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSearchW'");
     }
 
     if (!(Dbg->SymSetContext = (PSYM_SET_CONTEXT)
-        GetProcAddress(DbghelpModule, "SymSetContext"))) {
+        GetProcAddress(DbgHelpModule, "SymSetContext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetContext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetContext'");
     }
 
     if (!(Dbg->SymSetOptions = (PSYM_SET_OPTIONS)
-        GetProcAddress(DbghelpModule, "SymSetOptions"))) {
+        GetProcAddress(DbgHelpModule, "SymSetOptions"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetOptions'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetOptions'");
     }
 
     if (!(Dbg->SymSetParentWindow = (PSYM_SET_PARENT_WINDOW)
-        GetProcAddress(DbghelpModule, "SymSetParentWindow"))) {
+        GetProcAddress(DbgHelpModule, "SymSetParentWindow"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetParentWindow'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetParentWindow'");
     }
 
     if (!(Dbg->SymSetScopeFromAddr = (PSYM_SET_SCOPE_FROM_ADDR)
-        GetProcAddress(DbghelpModule, "SymSetScopeFromAddr"))) {
+        GetProcAddress(DbgHelpModule, "SymSetScopeFromAddr"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetScopeFromAddr'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetScopeFromAddr'");
     }
 
     if (!(Dbg->SymSetScopeFromIndex = (PSYM_SET_SCOPE_FROM_INDEX)
-        GetProcAddress(DbghelpModule, "SymSetScopeFromIndex"))) {
+        GetProcAddress(DbgHelpModule, "SymSetScopeFromIndex"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetScopeFromIndex'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetScopeFromIndex'");
     }
 
     if (!(Dbg->SymSetScopeFromInlineContext = (PSYM_SET_SCOPE_FROM_INLINE_CONTEXT)
-        GetProcAddress(DbghelpModule, "SymSetScopeFromInlineContext"))) {
+        GetProcAddress(DbgHelpModule, "SymSetScopeFromInlineContext"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetScopeFromInlineContext'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetScopeFromInlineContext'");
     }
 
     if (!(Dbg->SymSetSearchPath = (PSYM_SET_SEARCH_PATH)
-        GetProcAddress(DbghelpModule, "SymSetSearchPath"))) {
+        GetProcAddress(DbgHelpModule, "SymSetSearchPath"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetSearchPath'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetSearchPath'");
     }
 
     if (!(Dbg->SymSetSearchPathW = (PSYM_SET_SEARCH_PATH_W)
-        GetProcAddress(DbghelpModule, "SymSetSearchPathW"))) {
+        GetProcAddress(DbgHelpModule, "SymSetSearchPathW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSetSearchPathW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSetSearchPathW'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexes = (PSYM_SRV_GET_FILE_INDEXES)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexes"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexes"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexes'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexes'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexesW = (PSYM_SRV_GET_FILE_INDEXES_W)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexesW"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexesW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexesW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexesW'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexInfo = (PSYM_SRV_GET_FILE_INDEX_INFO)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexInfo"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexInfo"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexInfo'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexInfo'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexInfoW = (PSYM_SRV_GET_FILE_INDEX_INFO_W)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexInfoW"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexInfoW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexInfoW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexInfoW'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexString = (PSYM_SRV_GET_FILE_INDEX_STRING)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexString"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexString"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexString'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexString'");
     }
 
     if (!(Dbg->SymSrvGetFileIndexStringW = (PSYM_SRV_GET_FILE_INDEX_STRING_W)
-        GetProcAddress(DbghelpModule, "SymSrvGetFileIndexStringW"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvGetFileIndexStringW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvGetFileIndexStringW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvGetFileIndexStringW'");
     }
 
     if (!(Dbg->SymSrvIsStore = (PSYM_SRV_IS_STORE)
-        GetProcAddress(DbghelpModule, "SymSrvIsStore"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvIsStore"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvIsStore'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvIsStore'");
     }
 
     if (!(Dbg->SymSrvIsStoreW = (PSYM_SRV_IS_STORE_W)
-        GetProcAddress(DbghelpModule, "SymSrvIsStoreW"))) {
+        GetProcAddress(DbgHelpModule, "SymSrvIsStoreW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymSrvIsStoreW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymSrvIsStoreW'");
     }
 
     if (!(Dbg->SymUnDName64 = (PSYM_UNDNAME64)
-        GetProcAddress(DbghelpModule, "SymUnDName64"))) {
+        GetProcAddress(DbgHelpModule, "SymUnDName64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymUnDName64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymUnDName64'");
     }
 
     if (!(Dbg->SymUnDName = (PSYM_UNDNAME)
-        GetProcAddress(DbghelpModule, "SymUnDName"))) {
+        GetProcAddress(DbgHelpModule, "SymUnDName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymUnDName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymUnDName'");
     }
 
     if (!(Dbg->SymUnloadModule64 = (PSYM_UNLOAD_MODULE64)
-        GetProcAddress(DbghelpModule, "SymUnloadModule64"))) {
+        GetProcAddress(DbgHelpModule, "SymUnloadModule64"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymUnloadModule64'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymUnloadModule64'");
     }
 
     if (!(Dbg->SymUnloadModule = (PSYM_UNLOAD_MODULE)
-        GetProcAddress(DbghelpModule, "SymUnloadModule"))) {
+        GetProcAddress(DbgHelpModule, "SymUnloadModule"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'SymUnloadModule'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'SymUnloadModule'");
     }
 
     if (!(Dbg->UnDecorateSymbolName = (PUNDECORATE_SYMBOL_NAME)
-        GetProcAddress(DbghelpModule, "UnDecorateSymbolName"))) {
+        GetProcAddress(DbgHelpModule, "UnDecorateSymbolName"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'UnDecorateSymbolName'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'UnDecorateSymbolName'");
     }
 
     if (!(Dbg->UnDecorateSymbolNameW = (PUNDECORATE_SYMBOL_NAME_W)
-        GetProcAddress(DbghelpModule, "UnDecorateSymbolNameW"))) {
+        GetProcAddress(DbgHelpModule, "UnDecorateSymbolNameW"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve 'UnDecorateSymbolNameW'");
+        OutputDebugStringA("DbgHelp: failed to resolve 'UnDecorateSymbolNameW'");
     }
 
 
@@ -1208,24 +1208,87 @@ LoadDbg(
 
 RTL_API
 BOOL
-LoadDbghelp(PRTL Rtl)
+LoadDbgHelp(PRTL Rtl)
 {
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
-    if (Rtl->DbghelpModule) {
+    if (Rtl->DbgHelpModule) {
         return TRUE;
     }
 
-    if (!(Rtl->DbghelpModule = LoadLibraryA("dbghelp"))) {
+    if (!(Rtl->DbgHelpModule = LoadLibraryA("dbghelp"))) {
         OutputDebugStringA("Rtl: Failed to load dbghelp.");
         return FALSE;
     }
 
-    return LoadDbg(Rtl->DbghelpModule, &Rtl->Dbg);
+    return LoadDbg(Rtl->DbgHelpModule, &Rtl->Dbg);
 }
 
+RTL_API
+BOOL
+InitializeCom(
+    _In_ PRTL Rtl
+    )
+{
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (Rtl->ComInitialized) {
+        return TRUE;
+    }
+
+    if (!(Rtl->Ole32Module = LoadLibraryA("ole32"))) {
+        OutputDebugStringA("Rtl: Failed to load ole32.");
+        return FALSE;
+    }
+
+    if (!(Rtl->CoInitializeEx = (PCO_INITIALIZE_EX)
+        GetProcAddress(Rtl->Ole32Module, "CoInitializeEx"))) {
+        OutputDebugStringA("Failed to resolve CoInitializeEx.\n");
+        return FALSE;
+    }
+
+    Rtl->ComInitialized = TRUE;
+    return TRUE;
+}
+
+RTL_API
+BOOL
+LoadDbgEng(
+    _In_ PRTL Rtl
+    )
+{
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (Rtl->DbgEngModule) {
+        return TRUE;
+    }
+
+    if (!Rtl->InitializeCom(Rtl)) {
+        return FALSE;
+    }
+
+    if (!(Rtl->DbgEngModule = LoadLibraryA("dbgeng"))) {
+        OutputDebugStringA("Rtl: Failed to load dbgeng.");
+        return FALSE;
+    }
+
+    if (!(Rtl->DebugCreate = (PDEBUG_CREATE)
+        GetProcAddress(Rtl->DbgEngModule, "DebugCreate"))) {
+
+        OutputDebugStringA("DbgEng: failed to resolve 'DebugCreate'");
+        return FALSE;
+    }
+
+    return TRUE;
+}
 
 BOOL
 CALLBACK
@@ -1233,7 +1296,7 @@ SetCSpecificHandlerCallback(
     PINIT_ONCE InitOnce,
     PVOID Parameter,
     PVOID *lpContext
-)
+    )
 {
     PROC Handler;
     HMODULE Module;
@@ -5254,10 +5317,10 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->LoadDbghelp = (PLOAD_DBGHELP)
-        GetProcAddress(RtlExModule, "LoadDbghelp"))) {
+    if (!(RtlExFunctions->LoadDbgHelp = (PLOAD_DBGHELP)
+        GetProcAddress(RtlExModule, "LoadDbgHelp"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'LoadDbghelp'");
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadDbgHelp'");
         return FALSE;
     }
 
@@ -5404,6 +5467,9 @@ InitializeRtl(
     if (!Success) {
         Rtl->LastError = GetLastError();
     }
+
+    Rtl->InitializeCom = InitializeCom;
+    Rtl->LoadDbgEng = LoadDbgEng;
 
     return Success;
 }

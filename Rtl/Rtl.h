@@ -232,6 +232,7 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 #include "Time.h"
 #include "Memory.h"
 #include "Commandline.h"
+#include "DebugEngine.h"
 
 typedef CONST char *PCSZ;
 
@@ -3594,6 +3595,7 @@ typedef BOOL (*PTEST_EXCEPTION_HANDLER)(VOID);
 
 typedef BOOL (*PLOAD_SHLWAPI)(PRTL Rtl);
 typedef BOOL (*PLOAD_DBGHELP)(PRTL Rtl);
+typedef BOOL (*PLOAD_DBGENG)(PRTL Rtl);
 
 typedef BOOL (*PPATH_CANONICALIZEA)(
         _Out_   LPSTR   Dest,
@@ -3943,7 +3945,8 @@ RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
     PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;         \
-    PLOAD_DBGHELP LoadDbghelp;                                                 \
+    PLOAD_DBGHELP LoadDbgHelp;                                                 \
+    PLOAD_DBGENG LoadDbgEng;                                                   \
     PLOAD_SHLWAPI LoadShlwapi;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -4133,6 +4136,37 @@ typedef struct _DBG {
     _DBGHELP_FUNCTIONS_HEAD
 } DBG, *PDBG;
 
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_CREATE)(
+    _In_ REFIID InterfaceId,
+    _Out_ PPVOID Interface
+    );
+typedef DEBUG_CREATE *PDEBUG_CREATE;
+
+#define _DBGENG_FUNCTIONS_HEAD                                                 \
+    PDEBUG_CREATE DebugCreate;
+
+typedef struct _DBGENG {
+    _DBGENG_FUNCTIONS_HEAD
+} DBGENG, *PDBGENG;
+
+typedef
+HRESULT
+(CO_INITIALIZE_EX)(
+    _In_opt_ LPVOID Reserved,
+    _In_ DWORD CoInit
+    );
+typedef CO_INITIALIZE_EX *PCO_INITIALIZE_EX;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+(INITIALIZE_COM)(
+    _In_ PRTL Rtl
+    );
+typedef INITIALIZE_COM *PINITIALIZE_COM;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -4141,7 +4175,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     Kernel32Module;
     HMODULE     NtosKrnlModule;
     HMODULE     ShlwapiModule;
-    HMODULE     DbghelpModule;
+    HMODULE     Ole32Module;
+    HMODULE     DbgHelpModule;
+    HMODULE     DbgEngModule;
+
+    BOOL ComInitialized;
+    PINITIALIZE_COM InitializeCom;
+    PCO_INITIALIZE_EX CoInitializeEx;
 
     PATEXIT atexit;
     PATEXITEX AtExitEx;
@@ -4197,6 +4237,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
         DBG Dbg;
         struct {
             _DBGHELP_FUNCTIONS_HEAD
+        };
+    };
+
+    union {
+        DBGENG DbgEng;
+        struct {
+            _DBGENG_FUNCTIONS_HEAD
         };
     };
 

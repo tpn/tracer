@@ -351,9 +351,9 @@ class SyncDbgFunctions(InvariantAwareCommand):
 
     template = """\
     if (!(Dbg->%(funcname)s = (%(typedef)s)
-        GetProcAddress(DbghelpModule, "%(funcname)s"))) {
+        GetProcAddress(DbgHelpModule, "%(funcname)s"))) {
 
-        OutputDebugStringA("Dbghelp: failed to resolve '%(funcname)s'");
+        OutputDebugStringA("DbgHelp: failed to resolve '%(funcname)s'");
     }
 """
 
