@@ -110,7 +110,6 @@ Main(VOID)
     } __finally {
 
         DestroyTracedPythonSession(&Session);
-
     }
 
     //
