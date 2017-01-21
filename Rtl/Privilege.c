@@ -142,6 +142,10 @@ DisablePrivilege(
     return SetPrivilege(PrivilegeName, FALSE);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// SE_MANAGE_VOLUME/SeManageVolume
+////////////////////////////////////////////////////////////////////////////////
+
 _Use_decl_annotations_
 BOOL
 EnableManageVolumePrivilege(
@@ -160,6 +164,10 @@ DisableManageVolumePrivilege(
     return DisablePrivilege(SE_MANAGE_VOLUME_NAME);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// SE_LOCK_MEMORY/SeLockMemory
+////////////////////////////////////////////////////////////////////////////////
+
 _Use_decl_annotations_
 BOOL
 EnableLockMemoryPrivilege(
@@ -176,6 +184,116 @@ DisableLockMemoryPrivilege(
     )
 {
     return DisablePrivilege(SE_LOCK_MEMORY_NAME);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SE_DEBUG/SeDebug
+////////////////////////////////////////////////////////////////////////////////
+
+_Use_decl_annotations_
+BOOL
+EnableDebugPrivilege(
+    VOID
+    )
+{
+    return EnablePrivilege(SE_DEBUG_NAME);
+}
+
+_Use_decl_annotations_
+BOOL
+DisableDebugPrivilege(
+    VOID
+    )
+{
+    return DisablePrivilege(SE_DEBUG_NAME);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SE_SYSTEM_PROFILE/SeSystemProfile
+////////////////////////////////////////////////////////////////////////////////
+
+_Use_decl_annotations_
+BOOL
+EnableSystemProfilePrivilege(
+    VOID
+    )
+{
+    return EnablePrivilege(SE_SYSTEM_PROFILE_NAME);
+}
+
+_Use_decl_annotations_
+BOOL
+DisableSystemProfilePrivilege(
+    VOID
+    )
+{
+    return DisablePrivilege(SE_SYSTEM_PROFILE_NAME);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// PROF_SINGLE_PROCESS/SeProfileSingleProcess
+////////////////////////////////////////////////////////////////////////////////
+
+_Use_decl_annotations_
+BOOL
+EnableProfileSingleProcessPrivilege(
+    VOID
+    )
+{
+    return EnablePrivilege(SE_PROF_SINGLE_PROCESS_NAME);
+}
+
+_Use_decl_annotations_
+BOOL
+DisableProfileSingleProcessPrivilege(
+    VOID
+    )
+{
+    return DisablePrivilege(SE_PROF_SINGLE_PROCESS_NAME);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SE_INC_WORKING_SET/SeIncreaseWorkingSet
+////////////////////////////////////////////////////////////////////////////////
+
+_Use_decl_annotations_
+BOOL
+EnableIncreaseWorkingSetPrivilege(
+    VOID
+    )
+{
+    return EnablePrivilege(SE_INC_WORKING_SET_NAME);
+}
+
+_Use_decl_annotations_
+BOOL
+DisableIncreaseWorkingSetPrivilege(
+    VOID
+    )
+{
+    return DisablePrivilege(SE_INC_WORKING_SET_NAME);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SE_CREATE_SYMBOLIC_LINK/SeCreateSymbolicLink
+////////////////////////////////////////////////////////////////////////////////
+
+_Use_decl_annotations_
+BOOL
+EnableCreateSymbolicLinkPrivilege(
+    VOID
+    )
+{
+    return EnablePrivilege(SE_CREATE_SYMBOLIC_LINK_NAME);
+}
+
+_Use_decl_annotations_
+BOOL
+DisableCreateSymbolicLinkPrivilege(
+    VOID
+    )
+{
+    return DisablePrivilege(SE_CREATE_SYMBOLIC_LINK_NAME);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
