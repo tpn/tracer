@@ -5226,31 +5226,66 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->UnicodeStringToRtlPath = (PUNICODE_STRING_TO_RTL_PATH)
-        GetProcAddress(RtlExModule, "UnicodeStringToRtlPath"))) {
+    if (!(RtlExFunctions->CopyPagesAvx2 = (PCOPY_PAGES)
+        GetProcAddress(RtlExModule, "CopyPagesAvx2"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToRtlPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyPagesAvx2'");
         return FALSE;
     }
 
-    if (!(RtlExFunctions->StringToRtlPath = (PSTRING_TO_RTL_PATH)
-        GetProcAddress(RtlExModule, "StringToRtlPath"))) {
+    if (!(RtlExFunctions->CopyPagesMovsq = (PCOPY_PAGES)
+        GetProcAddress(RtlExModule, "CopyPagesMovsq"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'StringToRtlPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyPagesMovsq'");
         return FALSE;
     }
 
-    if (!(RtlExFunctions->StringToExistingRtlPath = (PSTRING_TO_EXISTING_RTL_PATH)
-        GetProcAddress(RtlExModule, "StringToExistingRtlPath"))) {
+    if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPY_TO_MEMORY_MAPPED_MEMORY)
+        GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'StringToExistingRtlPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'CopyToMemoryMappedMemory'");
         return FALSE;
     }
 
-    if (!(RtlExFunctions->UnicodeStringToExistingRtlPath = (PUNICODE_STRING_TO_EXISTING_RTL_PATH)
-        GetProcAddress(RtlExModule, "UnicodeStringToExistingRtlPath"))) {
+    if (!(RtlExFunctions->CreateBitmapIndexForString = (PCREATE_BITMAP_INDEX_FOR_STRING)
+        GetProcAddress(RtlExModule, "CreateBitmapIndexForString"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToExistingRtlPath'");
+        OutputDebugStringA("RtlEx: failed to resolve 'CreateBitmapIndexForString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CreateBitmapIndexForUnicodeString = (PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING)
+        GetProcAddress(RtlExModule, "CreateBitmapIndexForUnicodeString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CreateBitmapIndexForUnicodeString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CurrentDirectoryToRtlPath = (PCURRENT_DIRECTORY_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "CurrentDirectoryToRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->CurrentDirectoryToUnicodeString = (PCURRENT_DIRECTORY_TO_UNICODE_STRING)
+        GetProcAddress(RtlExModule, "CurrentDirectoryToUnicodeString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToUnicodeString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DestroyPathEnvironmentVariable = (PDESTROY_PATH_ENVIRONMENT_VARIABLE)
+        GetProcAddress(RtlExModule, "DestroyPathEnvironmentVariable"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyPathEnvironmentVariable'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DestroyRtl = (PDESTROY_RTL)
+        GetProcAddress(RtlExModule, "DestroyRtl"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DestroyRtl'");
         return FALSE;
     }
 
@@ -5258,6 +5293,146 @@ LoadRtlExFunctions(
         GetProcAddress(RtlExModule, "DestroyRtlPath"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'DestroyRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableCreateSymbolicLinkPrivilege = (PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableCreateSymbolicLinkPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableCreateSymbolicLinkPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableDebugPrivilege = (PDISABLE_DEBUG_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableDebugPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableDebugPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableIncreaseWorkingSetPrivilege = (PDISABLE_INCREASE_WORKING_SET_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableIncreaseWorkingSetPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableIncreaseWorkingSetPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableLockMemoryPrivilege = (PDISABLE_LOCK_MEMORY_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableLockMemoryPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableLockMemoryPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableManageVolumePrivilege = (PDISABLE_MANAGE_VOLUME_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableManageVolumePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableManageVolumePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisablePrivilege = (PDISABLE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisablePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisablePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableProfileSingleProcessPrivilege = (PDISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableProfileSingleProcessPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableProfileSingleProcessPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->DisableSystemProfilePrivilege = (PDISABLE_SYSTEM_PROFILE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "DisableSystemProfilePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'DisableSystemProfilePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableCreateSymbolicLinkPrivilege = (PENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableCreateSymbolicLinkPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableCreateSymbolicLinkPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableDebugPrivilege = (PENABLE_DEBUG_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableDebugPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableDebugPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableIncreaseWorkingSetPrivilege = (PENABLE_INCREASE_WORKING_SET_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableIncreaseWorkingSetPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableIncreaseWorkingSetPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableLockMemoryPrivilege = (PENABLE_LOCK_MEMORY_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableLockMemoryPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableLockMemoryPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableManageVolumePrivilege = (PENABLE_MANAGE_VOLUME_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableManageVolumePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableManageVolumePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnablePrivilege = (PENABLE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnablePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnablePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableProfileSingleProcessPrivilege = (PENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableProfileSingleProcessPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableProfileSingleProcessPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->EnableSystemProfilePrivilege = (PENABLE_SYSTEM_PROFILE_PRIVILEGE)
+        GetProcAddress(RtlExModule, "EnableSystemProfilePrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'EnableSystemProfilePrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FilesExistA = (PFILES_EXISTA)
+        GetProcAddress(RtlExModule, "FilesExistA"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistA'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FilesExistW = (PFILES_EXISTW)
+        GetProcAddress(RtlExModule, "FilesExistW"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FilesExistW'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FindCharsInString = (PFIND_CHARS_IN_STRING)
+        GetProcAddress(RtlExModule, "FindCharsInString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FindCharsInString'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->FindCharsInUnicodeString = (PFIND_CHARS_IN_UNICODE_STRING)
+        GetProcAddress(RtlExModule, "FindCharsInUnicodeString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'FindCharsInUnicodeString'");
         return FALSE;
     }
 
@@ -5275,45 +5450,10 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->RegisterDllNotification = (PREGISTER_DLL_NOTIFICATION)
-        GetProcAddress(RtlExModule, "RegisterDllNotification"))) {
+    if (!(RtlExFunctions->LoadDbgEng = (PLOAD_DBGENG)
+        GetProcAddress(RtlExModule, "LoadDbgEng"))) {
 
-        OutputDebugStringA("RtlEx: failed to resolve 'RegisterDllNotification'");
-        return FALSE;
-    }
-
-    if (!(RtlExFunctions->UnregisterDllNotification = (PUNREGISTER_DLL_NOTIFICATION)
-        GetProcAddress(RtlExModule, "UnregisterDllNotification"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'UnregisterDllNotification'");
-        return FALSE;
-    }
-
-    if (!(RtlExFunctions->CurrentDirectoryToUnicodeString = (PCURRENT_DIRECTORY_TO_UNICODE_STRING)
-        GetProcAddress(RtlExModule, "CurrentDirectoryToUnicodeString"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToUnicodeString'");
-        return FALSE;
-    }
-
-    if (!(RtlExFunctions->CurrentDirectoryToRtlPath = (PCURRENT_DIRECTORY_TO_RTL_PATH)
-        GetProcAddress(RtlExModule, "CurrentDirectoryToRtlPath"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'CurrentDirectoryToRtlPath'");
-        return FALSE;
-    }
-
-    if (!(RtlExFunctions->LoadPathEnvironmentVariable = (PLOAD_PATH_ENVIRONMENT_VARIABLE)
-        GetProcAddress(RtlExModule, "LoadPathEnvironmentVariable"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'LoadPathEnvironmentVariable'");
-        return FALSE;
-    }
-
-    if (!(RtlExFunctions->DestroyPathEnvironmentVariable = (PDESTROY_PATH_ENVIRONMENT_VARIABLE)
-        GetProcAddress(RtlExModule, "DestroyPathEnvironmentVariable"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'DestroyPathEnvironmentVariable'");
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadDbgEng'");
         return FALSE;
     }
 
@@ -5324,10 +5464,164 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
+    if (!(RtlExFunctions->LoadPathEnvironmentVariable = (PLOAD_PATH_ENVIRONMENT_VARIABLE)
+        GetProcAddress(RtlExModule, "LoadPathEnvironmentVariable"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'LoadPathEnvironmentVariable'");
+        return FALSE;
+    }
+
     if (!(RtlExFunctions->LoadShlwapi = (PLOAD_SHLWAPI)
         GetProcAddress(RtlExModule, "LoadShlwapi"))) {
 
         OutputDebugStringA("RtlEx: failed to resolve 'LoadShlwapi'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->PrefaultPages = (PPREFAULT_PAGES)
+        GetProcAddress(RtlExModule, "PrefaultPages"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'PrefaultPages'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RegisterDllNotification = (PREGISTER_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "RegisterDllNotification"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RegisterDllNotification'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlCheckBit = (PRTL_CHECK_BIT)
+        GetProcAddress(RtlExModule, "RtlCheckBit"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlCheckBit'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlInitializeSplayLinks = (PRTL_INITIALIZE_SPLAY_LINKS)
+        GetProcAddress(RtlExModule, "RtlInitializeSplayLinks"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInitializeSplayLinks'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlInsertAsLeftChild = (PRTL_INSERT_AS_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlInsertAsLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInsertAsLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlInsertAsRightChild = (PRTL_INSERT_AS_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlInsertAsRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlInsertAsRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsLeftChild = (PRTL_IS_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlIsLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsRightChild = (PRTL_IS_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlIsRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlIsRoot = (PRTL_IS_ROOT)
+        GetProcAddress(RtlExModule, "RtlIsRoot"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlIsRoot'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlLeftChild = (PRTL_LEFT_CHILD)
+        GetProcAddress(RtlExModule, "RtlLeftChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlLeftChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlParent = (PRTL_PARENT)
+        GetProcAddress(RtlExModule, "RtlParent"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlParent'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->RtlRightChild = (PRTL_RIGHT_CHILD)
+        GetProcAddress(RtlExModule, "RtlRightChild"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'RtlRightChild'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->SetPrivilege = (PSET_PRIVILEGE)
+        GetProcAddress(RtlExModule, "SetPrivilege"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'SetPrivilege'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->StringToExistingRtlPath = (PSTRING_TO_EXISTING_RTL_PATH)
+        GetProcAddress(RtlExModule, "StringToExistingRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'StringToExistingRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->StringToRtlPath = (PSTRING_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "StringToRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'StringToRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->TestExceptionHandler = (PTEST_EXCEPTION_HANDLER)
+        GetProcAddress(RtlExModule, "TestExceptionHandler"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'TestExceptionHandler'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnicodeStringToExistingRtlPath = (PUNICODE_STRING_TO_EXISTING_RTL_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToExistingRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToExistingRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnicodeStringToRtlPath = (PUNICODE_STRING_TO_RTL_PATH)
+        GetProcAddress(RtlExModule, "UnicodeStringToRtlPath"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnicodeStringToRtlPath'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->UnregisterDllNotification = (PUNREGISTER_DLL_NOTIFICATION)
+        GetProcAddress(RtlExModule, "UnregisterDllNotification"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'UnregisterDllNotification'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->WriteEnvVarToRegistry = (PWRITE_ENV_VAR_TO_REGISTRY)
+        GetProcAddress(RtlExModule, "WriteEnvVarToRegistry"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'WriteEnvVarToRegistry'");
+        return FALSE;
+    }
+
+    if (!(RtlExFunctions->WriteRegistryString = (PWRITE_REGISTRY_STRING)
+        GetProcAddress(RtlExModule, "WriteRegistryString"))) {
+
+        OutputDebugStringA("RtlEx: failed to resolve 'WriteRegistryString'");
         return FALSE;
     }
 
@@ -5373,6 +5667,10 @@ LoadRtlExSymbols(
     if (!LoadRtlExFunctions(Module, &Rtl->RtlExFunctions)) {
         return FALSE;
     }
+
+    Rtl->CreateAndInitializeDebugEngineSession = (
+        CreateAndInitializeDebugEngineSession
+    );
 
     return TRUE;
 

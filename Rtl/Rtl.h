@@ -333,7 +333,6 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 #include "Time.h"
 #include "Memory.h"
 #include "Commandline.h"
-#include "DebugEngine.h"
 
 typedef CONST char *PCSZ;
 
@@ -453,13 +452,6 @@ typedef struct _RTL_BITMAP_RUN {
 //
 
 #define BITS_NOT_FOUND 0xFFFFFFFF
-
-RTL_API
-LONG
-CompareStringCaseInsensitive(
-    _In_ PCSTRING String1,
-    _In_ PCSTRING String2
-    );
 
 
 // 65535 (1 << 16)
@@ -1548,7 +1540,6 @@ BOOL
     _In_ _Post_invalid_ struct _RTL_ATEXIT_ENTRY *Entry
     );
 typedef UNREGISTER_RTL_ATEXIT_ENTRY *PUNREGISTER_RTL_ATEXIT_ENTRY;
-RTL_API UNREGISTER_RTL_ATEXIT_ENTRY UnregisterRtlAtExitEntry;
 
 //
 // End of atexit-related functionality.
@@ -2642,7 +2633,6 @@ BOOL
     _Out_ PPRTL_PATH PathPointer
     );
 typedef UNICODE_STRING_TO_RTL_PATH *PUNICODE_STRING_TO_RTL_PATH;
-RTL_API UNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2654,7 +2644,6 @@ BOOL
     _Out_ PPRTL_PATH PathPointer
     );
 typedef STRING_TO_RTL_PATH *PSTRING_TO_RTL_PATH;
-RTL_API STRING_TO_RTL_PATH StringToRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2668,7 +2657,6 @@ BOOL
     _In_ PLARGE_INTEGER TimestampPointer
     );
 typedef STRING_TO_EXISTING_RTL_PATH *PSTRING_TO_EXISTING_RTL_PATH;
-RTL_API STRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2683,7 +2671,6 @@ BOOL
     );
 typedef UNICODE_STRING_TO_EXISTING_RTL_PATH \
       *PUNICODE_STRING_TO_EXISTING_RTL_PATH;
-RTL_API UNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2692,7 +2679,6 @@ BOOL
     _Inout_opt_ PPRTL_PATH PathPointer
     );
 typedef DESTROY_RTL_PATH *PDESTROY_RTL_PATH;
-RTL_API DESTROY_RTL_PATH DestroyRtlPath;
 
 typedef
 _Success_(return != 0)
@@ -2704,7 +2690,6 @@ BOOL
     _Out_ PPRTL_PATH PathPointer
     );
 typedef GET_MODULE_RTL_PATH *PGET_MODULE_RTL_PATH;
-RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
 
 //
 // Our RTL_FILE structure.
@@ -3156,7 +3141,6 @@ BOOL
     _In_ PLARGE_INTEGER Timestamp
     );
 typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
-RTL_API INITIALIZE_RTL_FILE InitializeRtlFile;
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
     PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
@@ -3418,8 +3402,6 @@ VOID
     _Out_opt_ PPAGE_COPY_TYPE PageCopyType
     );
 typedef COPY_PAGES *PCOPY_PAGES;
-RTL_API COPY_PAGES CopyPagesMovsq;
-RTL_API COPY_PAGES CopyPagesAvx2;
 
 //
 // Our functions
@@ -3434,7 +3416,6 @@ PVOID
     _In_ SIZE_T Size
     );
 typedef COPY_TO_MEMORY_MAPPED_MEMORY *PCOPY_TO_MEMORY_MAPPED_MEMORY;
-RTL_API COPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;
 
 typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
     _In_     PRTL                Rtl,
@@ -3446,18 +3427,9 @@ typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
 
 typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
 
-RTL_API
-_Check_return_
+typedef 
 BOOL
-FindCharsInUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PRTL_BITMAP         Bitmap,
-    _In_     BOOL                Reverse
-    );
-
-typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
+(CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
     _In_     PUNICODE_STRING     String,
     _In_     WCHAR               Char,
@@ -3470,20 +3442,9 @@ typedef BOOL (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
 typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
        *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
 
-RTL_API
-_Check_return_
-BOOL
-CreateBitmapIndexForUnicodeString(
-    _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
-    _In_     WCHAR               Char,
-    _Inout_  PHANDLE             HeapHandlePointer,
-    _Inout_  PPRTL_BITMAP        BitmapPointer,
-    _In_     BOOL                Reverse,
-    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
-);
-
-typedef BOOL (FIND_CHARS_IN_STRING)(
+typedef
+BOOL 
+(FIND_CHARS_IN_STRING)(
     _In_     PRTL           Rtl,
     _In_     PSTRING        String,
     _In_     CHAR           Char,
@@ -3493,18 +3454,9 @@ typedef BOOL (FIND_CHARS_IN_STRING)(
 
 typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
 
-RTL_API
-_Check_return_
+typedef
 BOOL
-FindCharsInString(
-    _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
-    _In_     CHAR           Char,
-    _Inout_  PRTL_BITMAP    Bitmap,
-    _In_     BOOL           Reverse
-    );
-
-typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
+(CREATE_BITMAP_INDEX_FOR_STRING)(
     _In_     PRTL           Rtl,
     _In_     PSTRING        String,
     _In_     CHAR           Char,
@@ -3516,19 +3468,6 @@ typedef BOOL (CREATE_BITMAP_INDEX_FOR_STRING)(
 
 typedef CREATE_BITMAP_INDEX_FOR_STRING \
        *PCREATE_BITMAP_INDEX_FOR_STRING;
-
-RTL_API
-_Check_return_
-BOOL
-CreateBitmapIndexForString(
-    _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
-    _In_     CHAR           Char,
-    _Inout_  PHANDLE        HeapHandlePointer,
-    _Inout_  PPRTL_BITMAP   BitmapPointer,
-    _In_     BOOL           Reverse,
-    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
-    );
 
 typedef VOID *PALLOCATION_CONTEXT;
 
@@ -3782,7 +3721,6 @@ PPATH_ENV_VAR
     _In_ USHORT ReservedUnicodeBufferSizeInBytes
     );
 typedef LOAD_PATH_ENVIRONMENT_VARIABLE *PLOAD_PATH_ENVIRONMENT_VARIABLE;
-RTL_API LOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;
 
 typedef
 VOID
@@ -3790,7 +3728,6 @@ VOID
     _Inout_ PPPATH_ENV_VAR PathPointer
     );
 typedef DESTROY_PATH_ENVIRONMENT_VARIABLE *PDESTROY_PATH_ENVIRONMENT_VARIABLE;
-RTL_API DESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;
 
 typedef
 _Success_(return != 0)
@@ -3802,7 +3739,6 @@ PUNICODE_STRING
 typedef CURRENT_DIRECTORY_TO_UNICODE_STRING \
       *PCURRENT_DIRECTORY_TO_UNICODE_STRING,\
     **PPCURRENT_DIRECTORY_TO_UNICODE_STRING;
-RTL_API CURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;
 
 typedef
 _Success_(return != 0)
@@ -3814,7 +3750,6 @@ PRTL_PATH
 typedef CURRENT_DIRECTORY_TO_RTL_PATH \
       *PCURRENT_DIRECTORY_TO_RTL_PATH,\
     **PPCURRENT_DIRECTORY_TO_RTL_PATH;
-RTL_API CURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;
 
 typedef
 _Check_return_
@@ -3828,7 +3763,6 @@ BOOL
     _In_ PUNICODE_STRING Value
     );
 typedef WRITE_REGISTRY_STRING *PWRITE_REGISTRY_STRING;
-RTL_API WRITE_REGISTRY_STRING WriteRegistryString;
 
 typedef
 _Check_return_
@@ -3842,7 +3776,6 @@ BOOL
     _In_opt_ PWSTR RegistryKeyName
     );
 typedef WRITE_ENV_VAR_TO_REGISTRY *PWRITE_ENV_VAR_TO_REGISTRY;
-RTL_API WRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;
 
 typedef
 VOID
@@ -3850,7 +3783,6 @@ VOID
     _In_opt_ struct _RTL **RtlPointer
     );
 typedef DESTROY_RTL *PDESTROY_RTL, **PPDESTROY_RTL;
-RTL_API DESTROY_RTL DestroyRtl;
 
 typedef
 BOOL
@@ -3859,7 +3791,6 @@ BOOL
     _In_ ULONG NumberOfPages
     );
 typedef PREFAULT_PAGES *PPREFAULT_PAGES, **PPPREFAULT_PAGES;
-RTL_API PREFAULT_PAGES PrefaultPages;
 
 typedef
 _Success_(return != 0)
@@ -3869,7 +3800,6 @@ BOOL
     _In_ BOOL Enable
     );
 typedef SET_PRIVILEGE *PSET_PRIVILEGE;
-RTL_API SET_PRIVILEGE SetPrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3878,7 +3808,6 @@ BOOL
     _In_ PWSTR PrivilegeName
     );
 typedef ENABLE_PRIVILEGE *PENABLE_PRIVILEGE;
-RTL_API ENABLE_PRIVILEGE EnablePrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3887,7 +3816,6 @@ BOOL
     _In_ PWSTR PrivilegeName
     );
 typedef DISABLE_PRIVILEGE *PDISABLE_PRIVILEGE;
-RTL_API DISABLE_PRIVILEGE DisablePrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3896,7 +3824,6 @@ BOOL
     VOID
     );
 typedef ENABLE_MANAGE_VOLUME_PRIVILEGE *PENABLE_MANAGE_VOLUME_PRIVILEGE;
-RTL_API ENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3905,7 +3832,6 @@ BOOL
     VOID
     );
 typedef DISABLE_MANAGE_VOLUME_PRIVILEGE *PDISABLE_MANAGE_VOLUME_PRIVILEGE;
-RTL_API DISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3914,7 +3840,6 @@ BOOL
     VOID
     );
 typedef ENABLE_LOCK_MEMORY_PRIVILEGE *PENABLE_LOCK_MEMORY_PRIVILEGE;
-RTL_API ENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;
 
 typedef
 _Success_(return != 0)
@@ -3923,7 +3848,92 @@ BOOL
     VOID
     );
 typedef DISABLE_LOCK_MEMORY_PRIVILEGE *PDISABLE_LOCK_MEMORY_PRIVILEGE;
-RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_DEBUG_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_DEBUG_PRIVILEGE *PENABLE_DEBUG_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_DEBUG_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_DEBUG_PRIVILEGE *PDISABLE_DEBUG_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_SYSTEM_PROFILE_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_SYSTEM_PROFILE_PRIVILEGE *PENABLE_SYSTEM_PROFILE_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_SYSTEM_PROFILE_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_SYSTEM_PROFILE_PRIVILEGE *PDISABLE_SYSTEM_PROFILE_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE
+      *PENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE
+      *PDISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_INCREASE_WORKING_SET_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_INCREASE_WORKING_SET_PRIVILEGE
+      *PENABLE_INCREASE_WORKING_SET_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_INCREASE_WORKING_SET_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_INCREASE_WORKING_SET_PRIVILEGE
+      *PDISABLE_INCREASE_WORKING_SET_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(ENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE)(
+    VOID
+    );
+typedef ENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE
+      *PENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE)(
+    VOID
+    );
+typedef DISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE
+      *PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE;
 
 //
 // Loader hooking.
@@ -3984,7 +3994,6 @@ BOOL
     _Outptr_opt_result_nullonfailure_ PPVOID Cookie
     );
 typedef REGISTER_DLL_NOTIFICATION *PREGISTER_DLL_NOTIFICATION;
-RTL_API REGISTER_DLL_NOTIFICATION RegisterDllNotification;
 
 typedef
 _Success_(return != 0)
@@ -3993,62 +4002,71 @@ BOOL
     _In_ PVOID Cookie
     );
 typedef UNREGISTER_DLL_NOTIFICATION *PUNREGISTER_DLL_NOTIFICATION;
-RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
 
 #define PrefaultPage(Address) (*(volatile *)(PCHAR)(Address))
 
 #define PrefaultNextPage(Address)                          \
     (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
-#define _RTLEXFUNCTIONS_HEAD                                                   \
-    PDESTROY_RTL DestroyRtl;                                                   \
-    PPREFAULT_PAGES PrefaultPages;                                             \
-    PSET_PRIVILEGE SetPrivilege;                                               \
-    PENABLE_PRIVILEGE EnablePrivilege;                                         \
-    PDISABLE_PRIVILEGE DisablePrivilege;                                       \
-    PENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;               \
-    PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;             \
-    PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                   \
-    PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                 \
-    PWRITE_REGISTRY_STRING WriteRegistryString;                                \
-    PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                          \
-    PRTL_CHECK_BIT RtlCheckBit;                                                \
-    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                       \
-    PRTL_PARENT RtlParent;                                                     \
-    PRTL_LEFT_CHILD RtlLeftChild;                                              \
-    PRTL_RIGHT_CHILD RtlRightChild;                                            \
-    PRTL_IS_ROOT RtlIsRoot;                                                    \
-    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                                         \
-    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                       \
-    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                            \
-    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                          \
-    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                    \
-    PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                    \
-    PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString; \
-    PFIND_CHARS_IN_STRING FindCharsInString;                                   \
-    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                \
-    PFILES_EXISTW FilesExistW;                                                 \
-    PFILES_EXISTA FilesExistA;                                                 \
-    PCOPY_PAGES CopyPagesMovsq;                                                \
-    PCOPY_PAGES CopyPagesAvx2;                                                 \
-    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                              \
-    PARGVW_TO_ARGVA ArgvWToArgvA;                                              \
-    PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                        \
-    PSTRING_TO_RTL_PATH StringToRtlPath;                                       \
-    PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                      \
-    PUNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;       \
-    PDESTROY_RTL_PATH DestroyRtlPath;                                          \
-    PGET_MODULE_RTL_PATH GetModuleRtlPath;                                     \
-    PINITIALIZE_RTL_FILE InitializeRtlFile;                                    \
-    PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                        \
-    PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                    \
-    PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;      \
-    PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                  \
-    PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;               \
-    PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;         \
-    PLOAD_DBGHELP LoadDbgHelp;                                                 \
-    PLOAD_DBGENG LoadDbgEng;                                                   \
-    PLOAD_SHLWAPI LoadShlwapi;
+#define _RTLEXFUNCTIONS_HEAD                                                        \
+    PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
+    PCOPY_PAGES CopyPagesAvx2;                                                      \
+    PCOPY_PAGES CopyPagesMovsq;                                                     \
+    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                         \
+    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                     \
+    PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString;      \
+    PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                       \
+    PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;           \
+    PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;              \
+    PDESTROY_RTL DestroyRtl;                                                        \
+    PDESTROY_RTL_PATH DestroyRtlPath;                                               \
+    PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE DisableCreateSymbolicLinkPrivilege;     \
+    PDISABLE_DEBUG_PRIVILEGE DisableDebugPrivilege;                                 \
+    PDISABLE_INCREASE_WORKING_SET_PRIVILEGE DisableIncreaseWorkingSetPrivilege;     \
+    PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                      \
+    PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;                  \
+    PDISABLE_PRIVILEGE DisablePrivilege;                                            \
+    PDISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE DisableProfileSingleProcessPrivilege; \
+    PDISABLE_SYSTEM_PROFILE_PRIVILEGE DisableSystemProfilePrivilege;                \
+    PENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE EnableCreateSymbolicLinkPrivilege;       \
+    PENABLE_DEBUG_PRIVILEGE EnableDebugPrivilege;                                   \
+    PENABLE_INCREASE_WORKING_SET_PRIVILEGE EnableIncreaseWorkingSetPrivilege;       \
+    PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                        \
+    PENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;                    \
+    PENABLE_PRIVILEGE EnablePrivilege;                                              \
+    PENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE EnableProfileSingleProcessPrivilege;   \
+    PENABLE_SYSTEM_PROFILE_PRIVILEGE EnableSystemProfilePrivilege;                  \
+    PFILES_EXISTA FilesExistA;                                                      \
+    PFILES_EXISTW FilesExistW;                                                      \
+    PFIND_CHARS_IN_STRING FindCharsInString;                                        \
+    PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                         \
+    PGET_MODULE_RTL_PATH GetModuleRtlPath;                                          \
+    PINITIALIZE_RTL_FILE InitializeRtlFile;                                         \
+    PLOAD_DBGENG LoadDbgEng;                                                        \
+    PLOAD_DBGHELP LoadDbgHelp;                                                      \
+    PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;                    \
+    PLOAD_SHLWAPI LoadShlwapi;                                                      \
+    PPREFAULT_PAGES PrefaultPages;                                                  \
+    PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                             \
+    PRTL_CHECK_BIT RtlCheckBit;                                                     \
+    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                            \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                                 \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                               \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                                              \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                            \
+    PRTL_IS_ROOT RtlIsRoot;                                                         \
+    PRTL_LEFT_CHILD RtlLeftChild;                                                   \
+    PRTL_PARENT RtlParent;                                                          \
+    PRTL_RIGHT_CHILD RtlRightChild;                                                 \
+    PSET_PRIVILEGE SetPrivilege;                                                    \
+    PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                           \
+    PSTRING_TO_RTL_PATH StringToRtlPath;                                            \
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                                   \
+    PUNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;            \
+    PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                             \
+    PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                         \
+    PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                               \
+    PWRITE_REGISTRY_STRING WriteRegistryString;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -4065,7 +4083,8 @@ typedef struct _SHLWAPI_FUNCTIONS {
 // DbgHelp related functions.
 //
 
-#include "DbghelpFunctionPointerTypedefs.h"
+#include "DebugEngine.h"
+#include "DbgHelpFunctionPointerTypedefs.h"
 
 #define _DBGHELP_FUNCTIONS_HEAD                                                 \
     PENUM_DIR_TREE EnumDirTree;                                                 \
@@ -4245,8 +4264,9 @@ HRESULT
     );
 typedef DEBUG_CREATE *PDEBUG_CREATE;
 
-#define _DBGENG_FUNCTIONS_HEAD                                                 \
-    PDEBUG_CREATE DebugCreate;
+#define _DBGENG_FUNCTIONS_HEAD                                                        \
+    PDEBUG_CREATE DebugCreate;                                                        \
+    PCREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION CreateAndInitializeDebugEngineSession;
 
 typedef struct _DBGENG {
     _DBGENG_FUNCTIONS_HEAD
@@ -4832,9 +4852,6 @@ CompressUlongParallelSuffix(
     return Input;
 }
 
-RTL_API
-VOID
-Debugbreak();
 
 typedef
 _Success_(return != 0)
@@ -4845,47 +4862,6 @@ BOOL
     _Inout_                   PULONG SizeOfRtl
     );
 typedef INITIALIZE_RTL *PINITIALIZE_RTL, **PPINTIALIZE_RTL;
-RTL_API INITIALIZE_RTL InitializeRtl;
-
-RTL_API
-BOOL
-CreateUnicodeString(
-    _In_  PRTL                  Rtl,
-    _In_  PCUNICODE_STRING      Source,
-    _Out_ PPUNICODE_STRING      Destination,
-    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
-    _In_  PVOID                 AllocationContext
-    );
-
-RTL_API
-_Check_return_
-BOOL
-FilesExistW(
-    _In_      PRTL             Rtl,
-    _In_      PUNICODE_STRING  Directory,
-    _In_      USHORT           NumberOfFilenames,
-    _In_      PPUNICODE_STRING Filenames,
-    _Out_     PBOOL            Exists,
-    _Out_opt_ PUSHORT          WhichIndex,
-    _Out_opt_ PPUNICODE_STRING WhichFilename
-    );
-
-RTL_API
-_Check_return_
-BOOL
-FilesExistA(
-    _In_      PRTL     Rtl,
-    _In_      PSTRING  Directory,
-    _In_      USHORT   NumberOfFilenames,
-    _In_      PPSTRING Filenames,
-    _Out_     PBOOL    Exists,
-    _Out_opt_ PUSHORT  WhichIndex,
-    _Out_opt_ PPSTRING WhichFilename
-    );
-
-RTL_API
-BOOL
-TestExceptionHandler(VOID);
 
 FORCEINLINE
 VOID
@@ -5452,6 +5428,16 @@ InitializeRtlManuallyInline(PRTL Rtl, PULONG SizeOfRtl)
     return TRUE;
 }
 
+typedef
+_Check_return_
+_Success_(return != 0)
+RTL_API
+BOOL
+(CREATE_AND_INITIALIZE_RTL)(
+    _In_ struct _TRACER_CONFIG *TracerConfig,
+    _In_ PALLOCATOR Allocator,
+    _Out_ PPRTL RtlPointer
+    );
 
 FORCEINLINE
 VOID
@@ -5521,9 +5507,6 @@ InlineFindTwoWideCharsInUnicodeStringReversed(
 }
 
 
-RTL_API
-BOOL
-InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
 FORCEINLINE
 BOOL
@@ -6881,6 +6864,160 @@ AppendTailList(
     for (Entry = Head->Blink;                    \
          Entry != Head;                          \
          Entry = Entry->Blink)
+
+//
+// Disable browsing information generation when declaring instances of
+// functions; if we don't do this, 'Go To Definition' ends up here, instead
+// of the implementation body in the relevant .c file.
+//
+
+#pragma component(browser, off)
+
+RTL_API
+LONG
+CompareStringCaseInsensitive(
+    _In_ PCSTRING String1,
+    _In_ PCSTRING String2
+    );
+
+RTL_API
+_Check_return_
+BOOL
+FindCharsInUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PRTL_BITMAP         Bitmap,
+    _In_     BOOL                Reverse
+    );
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForUnicodeString(
+    _In_     PRTL                Rtl,
+    _In_     PUNICODE_STRING     String,
+    _In_     WCHAR               Char,
+    _Inout_  PHANDLE             HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP        BitmapPointer,
+    _In_     BOOL                Reverse,
+    _In_opt_ PFIND_CHARS_IN_UNICODE_STRING FindCharsFunction
+    );
+
+RTL_API
+_Check_return_
+BOOL
+FindCharsInString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PRTL_BITMAP    Bitmap,
+    _In_     BOOL           Reverse
+    );
+
+RTL_API
+_Check_return_
+BOOL
+CreateBitmapIndexForString(
+    _In_     PRTL           Rtl,
+    _In_     PSTRING        String,
+    _In_     CHAR           Char,
+    _Inout_  PHANDLE        HeapHandlePointer,
+    _Inout_  PPRTL_BITMAP   BitmapPointer,
+    _In_     BOOL           Reverse,
+    _In_opt_ PFIND_CHARS_IN_STRING FindCharsFunction
+    );
+
+RTL_API
+VOID
+Debugbreak();
+
+RTL_API
+BOOL
+CreateUnicodeString(
+    _In_  PRTL                  Rtl,
+    _In_  PCUNICODE_STRING      Source,
+    _Out_ PPUNICODE_STRING      Destination,
+    _In_  PALLOCATION_ROUTINE   AllocationRoutine,
+    _In_  PVOID                 AllocationContext
+    );
+
+RTL_API
+_Check_return_
+BOOL
+FilesExistW(
+    _In_      PRTL             Rtl,
+    _In_      PUNICODE_STRING  Directory,
+    _In_      USHORT           NumberOfFilenames,
+    _In_      PPUNICODE_STRING Filenames,
+    _Out_     PBOOL            Exists,
+    _Out_opt_ PUSHORT          WhichIndex,
+    _Out_opt_ PPUNICODE_STRING WhichFilename
+    );
+
+RTL_API
+_Check_return_
+BOOL
+FilesExistA(
+    _In_      PRTL     Rtl,
+    _In_      PSTRING  Directory,
+    _In_      USHORT   NumberOfFilenames,
+    _In_      PPSTRING Filenames,
+    _Out_     PBOOL    Exists,
+    _Out_opt_ PUSHORT  WhichIndex,
+    _Out_opt_ PPSTRING WhichFilename
+    );
+
+RTL_API
+BOOL
+TestExceptionHandler(VOID);
+
+RTL_API
+BOOL
+InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
+
+RTL_API COPY_PAGES CopyPagesAvx2;
+RTL_API COPY_PAGES CopyPagesMovsq;
+RTL_API COPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;
+RTL_API CREATE_AND_INITIALIZE_RTL CreateAndInitializeRtl;
+RTL_API CURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;
+RTL_API CURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;
+RTL_API DESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;
+RTL_API DESTROY_RTL DestroyRtl;
+RTL_API DESTROY_RTL_PATH DestroyRtlPath;
+RTL_API DISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;
+RTL_API DISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;
+RTL_API DISABLE_DEBUG_PRIVILEGE DisableDebugPrivilege;
+RTL_API DISABLE_SYSTEM_PROFILE_PRIVILEGE DisableSystemProfilePrivilege;
+RTL_API DISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE DisableProfileSingleProcessPrivilege;
+RTL_API DISABLE_INCREASE_WORKING_SET_PRIVILEGE DisableIncreaseWorkingSetPrivilege;
+RTL_API DISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE DisableCreateSymbolicLinkPrivilege;
+RTL_API DISABLE_PRIVILEGE DisablePrivilege;
+RTL_API ENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;
+RTL_API ENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;
+RTL_API ENABLE_DEBUG_PRIVILEGE EnableDebugPrivilege;
+RTL_API ENABLE_SYSTEM_PROFILE_PRIVILEGE EnableSystemProfilePrivilege;
+RTL_API ENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE EnableProfileSingleProcessPrivilege;
+RTL_API ENABLE_INCREASE_WORKING_SET_PRIVILEGE EnableIncreaseWorkingSetPrivilege;
+RTL_API ENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE EnableCreateSymbolicLinkPrivilege;
+RTL_API ENABLE_PRIVILEGE EnablePrivilege;
+RTL_API GET_MODULE_RTL_PATH GetModuleRtlPath;
+RTL_API INITIALIZE_RTL InitializeRtl;
+RTL_API INITIALIZE_RTL_FILE InitializeRtlFile;
+RTL_API LOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;
+RTL_API PREFAULT_PAGES PrefaultPages;
+RTL_API REGISTER_DLL_NOTIFICATION RegisterDllNotification;
+RTL_API SET_PRIVILEGE SetPrivilege;
+RTL_API STRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;
+RTL_API STRING_TO_RTL_PATH StringToRtlPath;
+RTL_API UNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;
+RTL_API UNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;
+RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
+RTL_API UNREGISTER_RTL_ATEXIT_ENTRY UnregisterRtlAtExitEntry;
+RTL_API WRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;
+RTL_API WRITE_REGISTRY_STRING WriteRegistryString;
+
+#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"
