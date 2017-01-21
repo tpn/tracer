@@ -196,6 +196,107 @@ extern "C" {
 #define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 #endif
 
+//
+// Helper macros.
+//
+
+#define CHECKED(Expr) do { \
+    if (!(Expr)) {         \
+        goto Error;        \
+    }                      \
+} while (0)
+
+#define CHECKED_HRESULT(Expr) do { \
+    if (FAILED((Expr)) {           \
+        goto Error;                \
+    }                              \
+} while (0)
+
+#define CHECKED_NTSTATUS(Expr) do { \
+    if ((Expr) != STATUS_SUCCESS) { \
+        goto Error;                 \
+    }                               \
+} while (0)
+
+#define CHECKED_MSG(Expr, FailureMessage) do {              \
+    if (!(Expr)) {                                          \
+        OutputDebugStringA("Failed: " FailureMessage "\n"); \
+        goto Error;                                         \
+    }                                                       \
+} while (0)
+
+#define CHECKED_HRESULT_MSG(Expr, FailureMessage) do {      \
+    if (FAILED((Expr))) {                                   \
+        OutputDebugStringA("Failed: " FailureMessage "\n"); \
+        goto Error;                                         \
+    }                                                       \
+} while (0)
+
+#define CHECKED_NTSTATUS_MSG(Expr, FailureMessage) do {     \
+    if ((Expr) != ERROR_SUCCESS) {                          \
+        OutputDebugStringA("Failed: " FailureMessage "\n"); \
+        goto Error;                                         \
+    }                                                       \
+} while (0)
+
+#define LOAD_LIBRARY_W(Target, Name) do {                  \
+    (Target) = LoadLibraryW(L#Name);                       \
+    if (!(Target)) {                                       \
+        OutputDebugStringA("Failed to load " #Name ".\n"); \
+        goto Error;                                        \
+    }                                                      \
+} while (0)
+
+#define LOAD_LIBRARY_A(Target, Name) do {                  \
+    (Target) = LoadLibraryA(#Name);                        \
+    if (!(Target)) {                                       \
+        OutputDebugStringA("Failed to load " #Name ".\n"); \
+        goto Error;                                        \
+    }                                                      \
+} while (0)
+
+#define RESOLVE_FUNCTION(Target, Module, Type, Name) do {                  \
+    (Target) = (Type)GetProcAddress((Module), #Name);                      \
+    if (!(Target)) {                                                       \
+        OutputDebugStringA("Failed to resolve " #Module " !" #Name ".\n"); \
+        goto Error;                                                        \
+    }                                                                      \
+} while (0)
+
+#define ALLOCATE_TYPE(Target, Type, Allocator) do {                   \
+    (Target) = (P##Type)(                                             \
+        Allocator->Calloc(                                            \
+            Allocator->Context,                                       \
+            1,                                                        \
+            sizeof(Type)                                              \
+        )                                                             \
+    );                                                                \
+    if (!(Target)) {                                                  \
+        OutputDebugStringA("Allocation of type " #Type " failed.\n"); \
+        goto Error;                                                   \
+    }                                                                 \
+} while (0)
+
+#define MAYBE_FREE_POINTER(Target, Allocator) do {      \
+    if ((Target)) {                                     \
+        Allocator->Free(Allocator->Context, &(Target)); \
+    }                                                   \
+} while (0)
+
+#define MAYBE_FREE_LIBRARY(Module) do { \
+    if ((Module)) {                     \
+        FreeLibrary((Module));          \
+        Module = NULL;                  \
+    }                                   \
+} while (0)
+
+#define MAYBE_CLOSE_HANDLE(Handle) do { \
+    if ((Handle)) {                     \
+        CloseHandle((Handle));          \
+        Handle = NULL;                  \
+    }                                   \
+} while (0)
+
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
 
