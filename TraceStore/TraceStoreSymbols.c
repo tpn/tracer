@@ -890,14 +890,10 @@ Return Value:
     SymbolContext->CurrentModuleTableEntry = ModuleTableEntry;
 
     //
-    // Load the timestamp.
+    // Attempt to load the timestamp.
     //
 
     ImageFile->Timestamp = Dbg->GetTimestampForLoadedLibrary(ModuleHandle);
-    if (!ImageFile->Timestamp) {
-        SymbolContext->LastError = GetLastError();
-        __debugbreak();
-    }
 
     //
     // Load the module.
