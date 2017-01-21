@@ -691,7 +691,7 @@ class ReplaceUuid(InvariantAwareCommand):
 
         regex = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){4}[0-9a-f]{8}', re.I)
 
-        with open(path, 'r', newline=None) as f:
+        with open(path, 'r') as f:
             text = f.read()
 
         uuid_map = {
@@ -708,7 +708,7 @@ class ReplaceUuid(InvariantAwareCommand):
         else:
             newline = '\n'
 
-        with open(path, 'w', newline=newline) as f:
+        with open(path, 'w') as f:
             f.write(text)
 
 class CreateNewProjectFromExisting(InvariantAwareCommand):
