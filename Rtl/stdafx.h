@@ -40,6 +40,7 @@ Abstract:
 #include "atexit.h"
 #include "AtExitEx.h"
 #include "RtlPrivate.h"
+#include "DebugEnginePrivate.h"
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
