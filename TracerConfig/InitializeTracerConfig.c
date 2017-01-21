@@ -682,4 +682,161 @@ End:
     return TracerConfig;
 }
 
+_Use_decl_annotations_
+BOOL
+CreateAndInitializeTracerConfigAndRtl(
+    PALLOCATOR Allocator,
+    PUNICODE_STRING RegistryPath,
+    PPTRACER_CONFIG TracerConfigPointer,
+    PPRTL RtlPointer
+    )
+/*++
+
+Routine Description:
+
+    Initializes a TRACER_CONFIG structure using the InitializeTracerConfig()
+    routine, then additionally loads the Rtl module from the path indicated
+    in the registry and creates an instance of the Rtl structure.
+
+Arguments:
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure which will
+        be used to manage the structure's memory.  This includes initial
+        allocation of bytes to hold the structure, plus space for each
+        UNICODE_STRING's Buffer in each of the paths in TRACER_PATHS,
+        plus space for the Rtl structure.
+
+    RegistryPath - Supplies a pointer to a fully-qualified UNICODE_STRING
+        to the primary registry path that will be used to load tracer
+        configuration information.  (Note that this string must be NULL
+        terminated, as the underlying Buffer is passed directly to the
+        RegCreateKeyExW() function, which expects an LPWSTR.)
+
+    TracerConfigPointer - Supplies the address of a variable that will receive
+        the address of the TRACER_CONFIG structure created by this routine if
+        successful, NULL otherwise.
+
+    RtlPointer - Supplies the address of a variable that will receive the
+        address of an RTL structure created by this routine if successful,
+        NULL otherwise.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    PRTL Rtl = NULL;
+    HMODULE Module = NULL;
+    ULONG RequiredSizeInBytes;
+    PTRACER_PATHS Paths;
+    PTRACER_CONFIG TracerConfig = NULL;
+    PINITIALIZE_RTL InitializeRtl;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(RegistryPath)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TracerConfigPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(RtlPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Clear the caller's pointers up-front.
+    //
+
+    *TracerConfigPointer = NULL;
+    *RtlPointer = NULL;
+
+    //
+    // Initialize the tracer config.
+    //
+
+    TracerConfig = InitializeTracerConfig(Allocator, RegistryPath);
+    if (!TracerConfig) {
+        return FALSE;
+    }
+
+    //
+    // Successfully initialized the config.  Attempt to load the Rtl module.
+    //
+
+    Paths = &TracerConfig->Paths;
+    Module = LoadLibraryW(Paths->RtlDllPath.Buffer);
+    if (!Module) {
+        goto Error;
+    }
+
+    //
+    // Attempt to resolve the InitializeRtl function.
+    //
+
+    InitializeRtl = (PINITIALIZE_RTL)GetProcAddress(Module, "InitializeRtl");
+    if (!InitializeRtl) {
+        goto Error;
+    }
+
+    //
+    // Obtain the size required for the RTL structure.
+    //
+
+    RequiredSizeInBytes = 0;
+    InitializeRtl(NULL, &RequiredSizeInBytes);
+    if (!RequiredSizeInBytes) {
+        goto Error;
+    }
+
+    //
+    // Allocate a buffer of the requested size.
+    //
+
+    Rtl = (PRTL)Allocator->Calloc(Allocator->Context, 1, RequiredSizeInBytes);
+    if (!Rtl) {
+        goto Error;
+    }
+
+    if (!InitializeRtl(Rtl, &RequiredSizeInBytes)) {
+        goto Error;
+    }
+
+    //
+    // Everything succeeded, update caller's pointers and return success.
+    //
+
+    *TracerConfigPointer = TracerConfig;
+    *RtlPointer = Rtl;
+
+    return TRUE;
+
+Error:
+
+    if (TracerConfig) {
+        DestroyTracerConfig(TracerConfig);
+        TracerConfig = NULL;
+    }
+
+    if (Module) {
+        FreeLibrary(Module);
+        Module = NULL;
+    }
+
+    if (Rtl) {
+        Allocator->FreePointer(Allocator->Context, &Rtl);
+    }
+
+    return FALSE;
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

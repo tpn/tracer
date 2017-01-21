@@ -508,19 +508,31 @@ typedef CONST PTRACER_CONFIG PCTRACER_CONFIG;
 typedef PCTRACER_CONFIG *PPCTRACER_CONFIG;
 
 typedef
-_Success_(return != 0)
 _Check_return_
+_Success_(return != 0)
 PTRACER_CONFIG
 (INITIALIZE_TRACER_CONFIG)(
     _In_ PALLOCATOR Allocator,
     _In_opt_ PUNICODE_STRING RegistryPath
     );
 typedef INITIALIZE_TRACER_CONFIG *PINITIALIZE_TRACER_CONFIG;
-TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
 
 typedef
-_Success_(return != 0)
 _Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL)(
+    _In_ PALLOCATOR Allocator,
+    _In_opt_ PUNICODE_STRING RegistryPath,
+    _Outptr_result_nullonfailure_ PPTRACER_CONFIG TracerConfig,
+    _Outptr_result_nullonfailure_ PPRTL Rtl
+    );
+typedef CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL
+      *PCREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL;
+
+typedef
+_Check_return_
+_Success_(return != 0)
 BOOL
 (INITIALIZE_GLOBAL_TRACER_CONFIG)(VOID);
 typedef INITIALIZE_GLOBAL_TRACER_CONFIG *PINITIALIZE_GLOBAL_TRACER_CONFIG;
@@ -539,7 +551,6 @@ VOID
     _In_opt_ PTRACER_CONFIG TracerConfig
     );
 typedef DESTROY_TRACER_CONFIG *PDESTROY_TRACER_CONFIG;
-TRACER_CONFIG_API DESTROY_TRACER_CONFIG DestroyTracerConfig;
 
 typedef
 VOID
@@ -552,7 +563,6 @@ VOID
     VOID
     );
 typedef DEBUG_BREAK *PDEBUG_BREAK;
-TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
 
 //
 // TracerHeap-related functions.  We export these so that modules don't have to
@@ -560,10 +570,22 @@ TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
 // InitializeTracerConfig().
 //
 
-TRACER_CONFIG_API CREATE_AND_INITIALIZE_ALLOCATOR \
-    CreateAndInitializeDefaultHeapAllocator;
 
+#pragma component(browser, off)
+TRACER_CONFIG_API CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL
+                  CreateAndInitializeTracerConfigAndRtl;
+
+TRACER_CONFIG_API CREATE_AND_INITIALIZE_ALLOCATOR
+                  CreateAndInitializeDefaultHeapAllocator;
+
+TRACER_CONFIG_API CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL
+                  CreateAndInitializeTracerConfigAndRtl;
+
+TRACER_CONFIG_API DESTROY_TRACER_CONFIG DestroyTracerConfig;
 TRACER_CONFIG_API GET_OR_CREATE_GLOBAL_ALLOCATOR GetOrCreateGlobalAllocator;
+TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
+TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
+#pragma component(browser, on)
 
 #ifdef __cplusplus
 }; // extern "C" {
