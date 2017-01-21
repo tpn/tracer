@@ -14,8 +14,6 @@ Abstract:
 
 #pragma once
 
-#define _USE_TLS_HEAP
-
 #include "targetver.h"
 
 #include <Windows.h>
@@ -27,6 +25,5 @@ Abstract:
 #include "../PythonTracer/PythonTracer.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../TracedPythonSession/TracedPythonSession.h"
-#include "../TlsTracerHeap/TlsTracerHeap.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
