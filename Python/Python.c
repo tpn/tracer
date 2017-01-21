@@ -136,6 +136,9 @@ LoadPythonFunctions(
     )                                      \
 )
 
+#ifdef RESOLVE_FUNCTION
+#undef RESOLVE_FUNCTION
+#endif
 #define RESOLVE_FUNCTION(Type, Name)                                \
     if (!TRY_RESOLVE_FUNCTION(Type, Name)) {                        \
         OutputDebugStringA("Failed to resolve Python!" #Name "\n"); \
