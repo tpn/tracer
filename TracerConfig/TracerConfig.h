@@ -152,9 +152,11 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     //
 
     UNICODE_STRING RtlDllPath;
+    UNICODE_STRING TrlDllPath;
     UNICODE_STRING PythonDllPath;
     UNICODE_STRING TracerHeapDllPath;
     UNICODE_STRING TraceStoreDllPath;
+    UNICODE_STRING DebugEngineDllPath;
     UNICODE_STRING StringTableDllPath;
     UNICODE_STRING PythonTracerDllPath;
     UNICODE_STRING TlsTracerHeapDllPath;

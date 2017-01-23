@@ -48,9 +48,6 @@
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DebugEngine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -96,9 +93,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="File.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DebugEngine.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

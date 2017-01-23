@@ -16,17 +16,50 @@ Abstract:
 
 #pragma once
 
-#include "stdafx.h"
+#ifdef _DEBUG_ENGINE_INTERNAL_BUILD
 
-#ifdef __cplusplus
-extern "C" {
+//
+// This is an internal build of the DebugEngine component.
+//
+
+#ifdef _DEBUG_ENGINE_DLL_BUILD
+
+//
+// This is the DLL build.
+//
+
+#define DEBUG_ENGINE_API __declspec(dllexport)
+#define DEBUG_ENGINE_DATA extern __declspec(dllexport)
+
+#else
+
+//
+// This is the static library build.
+//
+
+#define DEBUG_ENGINE_API
+#define DEBUG_ENGINE_DATA extern
+
 #endif
 
+#include "stdafx.h"
+
+#else
+
+//
+// We're being included by an external component.
+//
+
+#define DEBUG_ENGINE_API __declspec(dllimport)
+#define DEBUG_ENGINE_DATA extern __declspec(dllimport)
+
+#include <Windows.h>
 #pragma component(browser, off)
 #include <DbgEng.h>
 #pragma component(browser, on)
+#include "../Rtl/Rtl.h"
 
-#define DEBUG_ENGINE_API RTL_API
+#endif
 
 //
 // Declare IIDs of the DbgEng COM classes we use.
@@ -34,8 +67,8 @@ extern "C" {
 
 typedef const GUID *PCGUID;
 
-RTL_DATA CONST GUID IID_IDEBUG_CLIENT;
-RTL_DATA CONST GUID IID_IDEBUG_CONTROL;
+DEBUG_ENGINE_DATA CONST GUID IID_IDEBUG_CLIENT;
+DEBUG_ENGINE_DATA CONST GUID IID_IDEBUG_CONTROL;
 
 //
 // Define typedefs for the COM interfaces we want to use.
@@ -833,6 +866,15 @@ BOOL
     );
 typedef START_DEBUG_ENGINE_SESSION *PSTART_DEBUG_ENGINE_SESSION;
 
+typedef
+VOID
+(DESTROY_DEBUG_ENGINE_SESSION)(
+    _Pre_notnull_ _Post_null_ struct _DEBUG_ENGINE_SESSION **Session
+    );
+typedef DESTROY_DEBUG_ENGINE_SESSION   *PDESTROY_DEBUG_ENGINE_SESSION;
+typedef DESTROY_DEBUG_ENGINE_SESSION **PPDESTROY_DEBUG_ENGINE_SESSION;
+DEBUG_ENGINE_API DESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     //
@@ -858,6 +900,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PSTART_DEBUG_ENGINE_SESSION Start;
+
+    //
+    // Destructor.
+    //
+
+    PDESTROY_DEBUG_ENGINE_SESSION Destroy;
 
     //
     // Rtl structure.
@@ -940,22 +988,198 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(CREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION)(
+(INTIALIZE_DEBUG_ENGINE_SESSION)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
     _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_SESSION SessionPointer
     );
-typedef CREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION
-      *PCREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION;
+typedef INTIALIZE_DEBUG_ENGINE_SESSION *PINTIALIZE_DEBUG_ENGINE_SESSION;
+
+//
+// Inline Functions
+//
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+LoadAndInitializeDebugEngineSession(
+    _In_ PUNICODE_STRING DebugEngineDllPath,
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    _Out_ PPDEBUG_ENGINE_SESSION SessionPointer,
+    _Out_ PPDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSessionPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine loads the DebugEngine DLL from the given path, resolves the
+    routine InitializeDebugEngineSession(), then calls it with the same
+    arguments as passed in.
+
+Arguments:
+
+    DebugEngineDllPath - Supplies a pointer to a UNICODE_STRING that contains
+        the fully-qualified path of the DebugEngine DLL to load.
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an alternate ALLOCATOR to use.
+
+    InitFlags - Supplies flags that can be used to customize the type of
+        debug session created.
+
+    SessionPointer - Supplies a pointer that will receive the address of the
+        DEBUG_ENGINE_SESSION structure allocated.  This pointer is immediately
+        cleared (that is, '*SessionPointer = NULL;' is performed once it is
+        deemed non-NULL), and a value will only be set if initialization
+        was successful.
+
+    DestroyDebugEngineSessionPointer - Supplies a pointer to the address of a
+        variable that will receive the address of the DLL export by the same
+        name.  This should be called in order to destroy a successfully
+        initialized session.
+
+Return Value:
+
+    TRUE on Success, FALSE if an error occurred.  *SessionPointer will be
+    updated with the value of the newly created DEBUG_ENGINE_SESSION structure.
+
+See Also:
+
+    InitializeDebugEngineSession().
+
+--*/
+{
+    BOOL Success;
+    HMODULE Module;
+    PINTIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+    PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(DebugEngineDllPath)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(SessionPointer)) {
+        return FALSE;
+    }
+
+    if (!IsValidMinimumDirectoryUnicodeString(DebugEngineDllPath)) {
+        return FALSE;
+    }
+
+    //
+    // Attempt to load the library.
+    //
+
+    Module = LoadLibraryW(DebugEngineDllPath->Buffer);
+
+    if (!Module) {
+        OutputDebugStringA("Failed to load TracedPythonSessionDllPath.\n");
+        return FALSE;
+    }
+
+    //
+    // Resolve the initialize and destroy functions.
+    //
+
+    InitializeDebugEngineSession = (PINTIALIZE_DEBUG_ENGINE_SESSION)(
+        GetProcAddress(
+            Module,
+            "InitializeDebugEngineSession"
+        )
+    );
+
+    if (!InitializeDebugEngineSession) {
+        OutputDebugStringA("Failed to resolve InitializeDebugEngineSession\n");
+        goto Error;
+    }
+
+    DestroyDebugEngineSession = (PDESTROY_DEBUG_ENGINE_SESSION)(
+        GetProcAddress(
+            Module,
+            "DestroyDebugEngineSession"
+        )
+    );
+
+    if (!DestroyDebugEngineSession) {
+        OutputDebugStringA("Failed to resolve DestroyDebugEngineSession\n");
+        goto Error;
+    }
+
+    //
+    // Call the initialization function with the same arguments we were passed.
+    //
+
+    Success = InitializeDebugEngineSession(
+        Rtl,
+        Allocator,
+        InitFlags,
+        SessionPointer
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Update the caller's DestroyDebugEngineSession function pointer and the
+    // session pointer to the same function.
+    //
+
+    *DestroyDebugEngineSessionPointer = DestroyDebugEngineSession;
+    (*SessionPointer)->Destroy = DestroyDebugEngineSession;
+
+    //
+    // Return success.
+    //
+
+    return TRUE;
+
+Error:
+
+    //
+    // Attempt to destroy the session.
+    //
+
+    if (SessionPointer && *SessionPointer && DestroyDebugEngineSession) {
+
+        //
+        // This will also clear the caller's session pointer.
+        //
+
+        DestroyDebugEngineSession(SessionPointer);
+    }
+
+    //
+    // Attempt to free the module.
+    //
+
+    if (Module) {
+        FreeLibrary(Module);
+    }
+
+    return FALSE;
+}
 
 //
 // Public function declarations.
 //
 
 #pragma component(browser, off)
-DEBUG_ENGINE_API CREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION
-                 CreateAndInitializeDebugEngineSession;
+DEBUG_ENGINE_API INTIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+DEBUG_ENGINE_API DESTROY_DEBUG_ENGINE_SESSION DebugEngineSession;
 #pragma component(browser, on)
 
 #ifdef __cplusplus

@@ -38,6 +38,10 @@ from .Allocator import (
     GET_OR_CREATE_GLOBAL_ALLOCATOR
 )
 
+from .Rtl import (
+    PPRTL,
+)
+
 #===============================================================================
 # Enums
 #===============================================================================
@@ -118,9 +122,11 @@ class TRACER_PATHS(Structure):
         ('BaseTraceDirectory', UNICODE_STRING),
         ('DefaultPythonDirectory', UNICODE_STRING),
         ('RtlDllPath', UNICODE_STRING),
+        ('TrlDllPath', UNICODE_STRING),
         ('PythonDllPath', UNICODE_STRING),
         ('TracerHeapDllPath', UNICODE_STRING),
         ('TraceStoreDllPath', UNICODE_STRING),
+        ('DebugEngineDllPath', UNICODE_STRING),
         ('StringTableDllPath', UNICODE_STRING),
         ('PythonTracerDllPath', UNICODE_STRING),
         ('TlsTracerHeapDllPath', UNICODE_STRING),
@@ -198,6 +204,7 @@ class TRACER_CONFIG(Structure):
         return prompt_for_directory(base)
 
 PTRACER_CONFIG = POINTER(TRACER_CONFIG)
+PPTRACER_CONFIG = POINTER(PTRACER_CONFIG)
 
 #===============================================================================
 # Function Types
@@ -208,10 +215,20 @@ INITIALIZE_TRACER_CONFIG = CFUNCTYPE(
     PALLOCATOR,
     PUNICODE_STRING
 )
+
+CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL = CFUNCTYPE(
+    BOOL,
+    PALLOCATOR,
+    PUNICODE_STRING,
+    PPTRACER_CONFIG,
+    PPRTL,
+)
+
 CREATE_AND_INITIALIZE_ALLOCATOR = CFUNCTYPE(BOOL, PPALLOCATOR)
 GET_OR_CREATE_GLOBAL_ALLOCATOR = CFUNCTYPE(BOOL, PPALLOCATOR)
 
 INITIALIZE_TRACER_CONFIG.errcheck = errcheck
+CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL.errcheck = errcheck
 CREATE_AND_INITIALIZE_ALLOCATOR.errcheck = errcheck
 GET_OR_CREATE_GLOBAL_ALLOCATOR.errcheck = errcheck
 
@@ -241,6 +258,18 @@ InitializeTracerConfig = INITIALIZE_TRACER_CONFIG(
     ),
 )
 
+CreateAndInitializeTracerConfigAndRtl = (
+    CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL(
+        ('CreateAndInitializeTracerConfigAndRtl', TracerConfigDll),
+        (
+            (1, 'Allocator'),
+            (1, 'RegistryKey'),
+            (1, 'TracerConfig'),
+            (1, 'Rtl'),
+        ),
+    )
+)
+
 _DebugBreak = DEBUG_BREAK(
     ('_DebugBreak', TracerConfigDll),
 )
@@ -251,6 +280,24 @@ def load_tracer_config():
     registry_key = create_unicode_string(TRACER_REGISTRY_KEY)
 
     return InitializeTracerConfig(allocator, byref(registry_key)).contents
+
+
+def load_tracer_config_and_rtl():
+    allocator = PALLOCATOR()
+    CreateAndInitializeAllocator(byref(allocator))
+    registry_key = create_unicode_string(TRACER_REGISTRY_KEY)
+
+    rtl = PRTL()
+    tracer_config = PTRACER_CONFIG()
+
+    success = CreateAndInitializeTracerConfigAndRtl(
+        allocator,
+        byref(registry_key),
+        byref(tracer_config),
+        byref(rtl),
+    )
+
+    return (tracer_config.contents, rtl.contents)
 
 def debugbreak():
     _DebugBreak()

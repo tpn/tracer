@@ -145,7 +145,7 @@ CONST DEBUGINPUTCALLBACKS DebugInputCallbacks = {
 
 _Use_decl_annotations_
 BOOL
-CreateAndInitializeDebugEngineSession(
+InitializeDebugEngineSession(
     PRTL Rtl,
     PALLOCATOR Allocator,
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
@@ -180,9 +180,36 @@ Return Value:
     PIDEBUGCLIENT IClient;
     PDEBUGCONTROL Control;
     PIDEBUGCONTROL IControl;
+    PDEBUGSYMBOLS Symbols;
+    PIDEBUGSYMBOLS ISymbols;
     PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session = NULL;
     PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
+    ULONG64 Base;
+    ULONG Index;
+    //ULONG TypeId;
+    ULONG64 Offset;
+    ULONG64 Offset2;
+    ULONG Flags = 0;
+    ULONG64 Address = (ULONG64)0x000000001e0c5450;
+    CHAR Buffer[256];
+    PSTR Dest;
+    ULONG BufferSize = sizeof(Buffer);
+    ULONG DisassemblySize;
+    ULONG OffsetLine;
+    ULONG64 StartOffset;
+    ULONG64 EndOffset;
+    ULONG64 LineOffsets;
+    ULONG64 EffectiveOffset;
+    ULONG DisassemblyFlags = (
+        DEBUG_DISASM_MATCHING_SYMBOLS  |
+        DEBUG_DISASM_EFFECTIVE_ADDRESS |
+        DEBUG_DISASM_SOURCE_FILE_NAME  |
+        DEBUG_DISASM_SOURCE_LINE_NUMBER
+    );
+
+    PWSTR UnassemblePy_IncRef = L"uf python27!Py_IncRef";
+    PWSTR ListPy27Functions = L"x /D /f python!Py*";
 
     *SessionPointer = NULL;
 
@@ -250,6 +277,12 @@ Return Value:
     }
 
     //
+    // Set the start engine method.
+    //
+
+    Session->Start = StartDebugEngineSession;
+
+    //
     // Attach to the process with the debug client.
     //
 
@@ -258,16 +291,131 @@ Return Value:
     Client = Engine->Client;
     IClient = Engine->IClient;
 
+    CHECKED_MSG(InitializeCallbacks(Session), "InitializeCallbacks()");
+
     CHECKED_HRESULT_MSG(
         Client->AttachProcess(
             IClient,
             0,
             Session->TargetProcessId,
-            DEBUG_ATTACH_INVASIVE_RESUME_PROCESS
+            //DEBUG_ATTACH_INVASIVE_RESUME_PROCESS
             //DEBUG_ATTACH_DEFAULT
+            DEBUG_ATTACH_NONINVASIVE |
+            DEBUG_ATTACH_NONINVASIVE_NO_SUSPEND
         ),
         "IDebugClient->AttachProcess()"
     );
+
+    Control = Engine->Control;
+    IControl = Engine->IControl;
+
+    Symbols = Engine->Symbols;
+    ISymbols = Engine->ISymbols;
+
+    Result = Control->WaitForEvent(IControl, 0, 0);
+
+    CHECKED_HRESULT_MSG(
+        Control->GetExecutionStatus(IControl, &Engine->ExecutionStatus.LowPart),
+        "Control->GetExecutionStatus()"
+    );
+
+    Result = Symbols->GetModuleByModuleName(
+        ISymbols,
+        "python27",
+        0,
+        &Index,
+        &Base
+    );
+
+    Result = Symbols->GetOffsetByName(
+        ISymbols,
+        "python27!Py_IncRef",
+        &Offset
+    );
+
+    Result = Symbols->GetOffsetByName(
+        ISymbols,
+        "python27!PyGC_Collect",
+        &Offset2
+    );
+
+
+    Result = Control->ExecuteWide(
+        IControl,
+        DEBUG_OUTCTL_ALL_CLIENTS,
+        UnassemblePy_IncRef,
+        DEBUG_EXECUTE_ECHO
+    );
+
+    OutputDebugStringA("XXX");
+
+    CHECKED_HRESULT_MSG(
+        Control->SetAssemblyOptions(
+            IControl,
+            DEBUG_ASMOPT_IGNORE_OUTPUT_WIDTH |
+            DEBUG_ASMOPT_SOURCE_LINE_NUMBER
+        ),
+        "Control->SetAssemblyOptions()"
+    );
+
+    /*
+    Result = Control->ExecuteWide(
+        IControl,
+        DEBUG_OUTCTL_ALL_CLIENTS,
+        ListPy27Functions,
+        DEBUG_EXECUTE_ECHO
+    );
+    */
+
+    SecureZeroMemory(&Buffer, sizeof(Buffer));
+
+    Dest = Buffer;
+
+    Result = Control->Disassemble(IControl,
+                                  Offset,
+                                  Flags,
+                                  Dest,
+                                  BufferSize,
+                                  &DisassemblySize,
+                                  &EndOffset);
+    if (FAILED(Result)) {
+        OutputDebugStringA("Failed: Control->Disassemble()\n");
+    }
+
+    Result = Control->GetDisassembleEffectiveOffset(
+        IControl,
+        &EffectiveOffset
+    );
+
+    Dest += DisassemblySize;
+
+    Result = Control->Disassemble(IControl,
+                                  EndOffset+1,
+                                  Flags,
+                                  Dest,
+                                  BufferSize - DisassemblySize,
+                                  &DisassemblySize,
+                                  &EndOffset);
+    if (FAILED(Result)) {
+        OutputDebugStringA("Failed: Control->Disassemble()\n");
+    }
+
+    Result = Control->OutputDisassemblyLines(IControl,
+                                             DEBUG_OUTCTL_ALL_CLIENTS,
+                                             2,
+                                             5,
+                                             Offset2,
+                                             DisassemblyFlags,
+                                             &OffsetLine,
+                                             &StartOffset,
+                                             &EndOffset,
+                                             &LineOffsets);
+
+    if (FAILED(Result)) {
+        OutputDebugStringA("Failed: Control->OutputDisassemblyLines()\n");
+    }
+
+    return TRUE;
 
     //
     // AttachProcess work, create a debug control object.
@@ -275,8 +423,6 @@ Return Value:
 
     //CHECKED_MSG(CreateDebugInterfaces(Session),
     //            "CreateDebugInterfaces(Session)");
-    Control = Engine->Control;
-    IControl = Engine->IControl;
 
     CHECKED_MSG(InitializeCallbacks(Session), "InitializeCallbacks()");
 
@@ -368,6 +514,18 @@ Return Value:
 
     }
 
+    {
+        PWSTR Command = L"uf python27!PyGC_Collect";
+        Result = Control->ExecuteWide(IControl,
+                                      DEBUG_OUTCTL_ALL_CLIENTS,
+                                      Command,
+                                      DEBUG_EXECUTE_DEFAULT);
+
+        if (Result != S_OK) {
+            OutputDebugStringA("ExecuteWide() failed.");
+        }
+    }
+
     //
     // Update the caller's pointer.
     //
@@ -391,6 +549,33 @@ End:
 
     return Success;
 }
+
+_Use_decl_annotations_
+VOID
+DestroyDebugEngineSession(
+    PPDEBUG_ENGINE_SESSION SessionPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine destroys a previously created debug engine session.
+
+Arguments:
+
+    SessionPointer - Supplies the address of a variable that contains the
+        address of the DEBUG_ENGINE_SESSION structure to destroy.  This pointer
+        will be cleared by this routine.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    return;
+}
+
 
 BOOL
 InitializeDebugEngine(
@@ -446,7 +631,6 @@ Return Value:
     CREATE_INTERFACE(Symbols, SYMBOLS);
     CREATE_INTERFACE(Advanced, ADVANCED);
     CREATE_INTERFACE(DataSpaces, DATASPACES);
-    CREATE_INTERFACE(SymbolGroup, SYMBOLGROUP);
 
     Success = TRUE;
     goto End;
@@ -544,7 +728,6 @@ Return Value:
 {
     HRESULT Result;
     PDEBUG_ENGINE Engine;
-    DEBUGEVENTCALLBACKS EventCallbacks2;
     PDEBUGEVENTCALLBACKS EventCallbacks;
     PIDEBUGEVENTCALLBACKS IEventCallbacks;
     PDEBUGOUTPUTCALLBACKS OutputCallbacks;
@@ -575,25 +758,7 @@ Return Value:
     );
 
     EventCallbacks = &Engine->EventCallbacks;
-    EventCallbacks->QueryInterface = DebugEventQueryInterface;
-    EventCallbacks->AddRef = DebugEventAddRef;
-    EventCallbacks->Release = DebugEventRelease;
-    EventCallbacks->GetInterestMask = DebugEventGetInterestMaskCallback;
-    EventCallbacks->Breakpoint = DebugEventBreakpointCallback;
-    EventCallbacks->Exception = DebugEventExceptionCallback;
-    EventCallbacks->CreateThread = DebugEventCreateThreadCallback;
-    EventCallbacks->ExitThread = DebugEventExitThreadCallback;
-    EventCallbacks->CreateProcess = DebugEventCreateProcessCallback;
-    EventCallbacks->ExitProcess = DebugEventExitProcessCallback;
-    EventCallbacks->LoadModule = DebugEventLoadModuleCallback;
-    EventCallbacks->UnloadModule = DebugEventUnloadModuleCallback;
-    EventCallbacks->SystemError = DebugEventSystemErrorCallback;
-    EventCallbacks->SessionStatus = DebugEventSessionStatusCallback;
-    EventCallbacks->ChangeDebuggeeState = DebugEventChangeDebuggeeStateCallback;
-    EventCallbacks->ChangeEngineState = DebugEventChangeEngineStateCallback;
-    EventCallbacks->ChangeSymbolState = DebugEventChangeSymbolStateCallback;
-
-    CopyIDebugEventCallbacks(&EventCallbacks2);
+    CopyIDebugEventCallbacks(EventCallbacks);
 
     IEventCallbacks = &Engine->IEventCallbacks;
     IEventCallbacks->lpVtbl = EventCallbacks;
@@ -612,12 +777,7 @@ Return Value:
 
     Engine->OutputCallbacksInterestMask = DEBUG_OUTCBI_TEXT;
     OutputCallbacks = &Engine->OutputCallbacks;
-    OutputCallbacks->QueryInterface = DebugOutputQueryInterface;
-    OutputCallbacks->AddRef = DebugOutputAddRef;
-    OutputCallbacks->Release = DebugOutputRelease;
-    OutputCallbacks->Output = DebugOutputOutputCallback;
-    OutputCallbacks->GetInterestMask = DebugOutputGetInterestMaskCallback;
-    OutputCallbacks->Output2 = DebugOutputOutput2Callback;
+    CopyIDebugOutputCallbacks(OutputCallbacks);
 
     IOutputCallbacks = &Engine->IOutputCallbacks;
     IOutputCallbacks->lpVtbl = OutputCallbacks;
@@ -630,16 +790,14 @@ Return Value:
         "Client->SetOutputCallbacks()"
     );
 
+    return TRUE;
+
     //
     // Initialize input callbacks.
     //
 
     InputCallbacks = &Engine->InputCallbacks;
-    InputCallbacks->QueryInterface = DebugInputQueryInterface;
-    InputCallbacks->AddRef = DebugInputAddRef;
-    InputCallbacks->Release = DebugInputRelease;
-    InputCallbacks->StartInput = DebugInputStartInputCallback;
-    InputCallbacks->EndInput = DebugInputEndInputCallback;
+    CopyIDebugInputCallbacks(InputCallbacks);
 
     IInputCallbacks = &Engine->IInputCallbacks;
     IInputCallbacks->lpVtbl = InputCallbacks;
@@ -698,7 +856,7 @@ Return Value:
     PDEBUG_ENGINE Engine;                                                    \
     Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name##Callbacks);
 
-#define DEBUG_ADD_REF(Name)                                 \
+#define DEBUG_ADD_REF(Name) \
     InterlockedIncrement(&Engine->##Name##CallbackRefCount)
 
 #define DEBUG_RELEASE(Name)                                 \
@@ -1009,7 +1167,7 @@ DebugEventChangeEngineStateCallback(
     if (Engine->ChangeEngineState.ExecutionStatus) {
         Engine->ExecutionStatus.AsULongLong = Argument;
         if (Engine->ExecutionStatus.InsideWait) {
-            OutputDebugStringA("ChangeEngineState()->ExecutionStatus->InWait");
+            //OutputDebugStringA("ChangeEngineState()->ExecutionStatus->InWait");
         }
     }
 
@@ -1123,7 +1281,12 @@ DebugOutputOutput2Callback(
     PCWSTR String
     )
 {
-    OutputDebugStringW(String);
+    DEBUG_OUTPUT_CALLBACK_PROLOGUE();
+
+    if (Which == DEBUG_OUTCB_TEXT && String) {
+        OutputDebugStringW(String);
+    }
+
     return S_OK;
 }
 

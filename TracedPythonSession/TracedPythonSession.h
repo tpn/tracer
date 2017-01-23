@@ -51,7 +51,6 @@ extern "C" {
 
 #endif
 
-
 #include "stdafx.h"
 
 #else

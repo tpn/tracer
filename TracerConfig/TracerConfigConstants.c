@@ -41,6 +41,9 @@ CONST UNICODE_STRING x64_PGOptimize = \
 CONST UNICODE_STRING RtlDllPath = \
     RTL_CONSTANT_STRING(L"Rtl.dll");
 
+CONST UNICODE_STRING TrlDllPath = \
+    RTL_CONSTANT_STRING(L"Trl.dll");
+
 CONST UNICODE_STRING PythonDllPath = \
     RTL_CONSTANT_STRING(L"Python.dll");
 
@@ -49,6 +52,9 @@ CONST UNICODE_STRING TracerHeapDllPath = \
 
 CONST UNICODE_STRING TraceStoreDllPath = \
     RTL_CONSTANT_STRING(L"TraceStore.dll");
+
+CONST UNICODE_STRING DebugEngineDllPath = \
+    RTL_CONSTANT_STRING(L"DebugEngine.dll");
 
 CONST UNICODE_STRING StringTableDllPath = \
     RTL_CONSTANT_STRING(L"StringTable.dll");
@@ -72,9 +78,11 @@ CONST PUNICODE_STRING IntermediatePaths[] = {
 
 CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY DllPathOffsets[] = {
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
+    { FIELD_OFFSET(TRACER_PATHS, TrlDllPath),           &TrlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
     { FIELD_OFFSET(TRACER_PATHS, TracerHeapDllPath),    &TracerHeapDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
+    { FIELD_OFFSET(TRACER_PATHS, DebugEngineDllPath),   &DebugEngineDllPath   },
     { FIELD_OFFSET(TRACER_PATHS, StringTableDllPath),   &StringTableDllPath   },
     { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
     { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath },
