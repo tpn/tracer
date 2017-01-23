@@ -2344,6 +2344,83 @@ typedef VOID (NTAPI *PRTL_CLEAR_BIT_EX)(
     );
 
 //
+// Sparse bitmaps.  (Work in progress.)
+//
+
+typedef union _RTL_SPARSE_BITMAP_CTX_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG DefaultBitsSet:1;
+        ULONG SparseRangeArray:1;
+        ULONG NoInternalLocking:1;
+        ULONG SpareFlags:29;
+    };
+} RTL_SPARSE_BITMAP_CTX_FLAGS, *PRTL_SPARSE_BITMAP_CTX_FLAGS;
+C_ASSERT(sizeof(RTL_SPARSE_BITMAP_CTX_FLAGS) == sizeof(ULONG));
+
+typedef SRWLOCK RTL_SPARSE_BITMAP_LOCK;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+PVOID
+(NTAPI RTL_SPARSE_BITMAP_ALLOCATION_ROUTINE)(
+    _In_ struct _RTL_SPARSE_BITMAP_CTX *Context,
+    _In_ CLONG ByteSize
+    );
+typedef RTL_SPARSE_BITMAP_ALLOCATION_ROUTINE
+      *PRTL_SPARSE_BITMAP_ALLOCATION_ROUTINE;
+
+typedef
+VOID
+(NTAPI RTL_SPARSE_BITMAP_FREE_ROUTINE)(
+    _In_ struct _RTL_SPARSE_BITMAP_CTX *Context,
+    _In_ _Post_invalid_ PVOID Buffer
+    );
+typedef RTL_SPARSE_BITMAP_FREE_ROUTINE *PRTL_SPARSE_BITMAP_FREE_ROUTINE;
+
+typedef struct _RTL_SPARSE_BITMAP_RANGE {
+    RTL_SPARSE_BITMAP_LOCK Lock;
+    struct _SINGLE_LIST_ENTRY Next;
+    RTL_BITMAP RangeBitmap;
+} RTL_SPARSE_BITMAP_RANGE, *PRTL_SPARSE_BITMAP_RANGE;
+typedef RTL_SPARSE_BITMAP_RANGE **PPRTL_SPARSE_BITMAP_RANGE;
+
+typedef struct _RTL_SPARSE_BITMAP_CTX {
+    RTL_SPARSE_BITMAP_LOCK Lock;
+    PPRTL_SPARSE_BITMAP_RANGE BitmapRanges;
+    RTL_BITMAP RangeArrayCommitStatus;
+    PRTL_SPARSE_BITMAP_ALLOCATION_ROUTINE AllocationRoutine;
+    PRTL_SPARSE_BITMAP_FREE_ROUTINE FreeRoutine;
+
+    ULONG RangeCount;
+    ULONG RangeIndexLimit;
+    ULONG RangeCountMax;
+    ULONG RangeMetadataOffset;
+    ULONG MetadataSizePerBit;
+
+    union {
+        RTL_SPARSE_BITMAP_CONTEXT_FLAGS Flags;
+        struct _Struct_size_bytes_(sizeof(ULONG)) {
+            ULONG DefaultBitsSet:1;
+            ULONG SparseRangeArray:1;
+            ULONG NoInternalLocking:1;
+            ULONG SpareFlags:29;
+        };
+    };
+
+    ULONG Padding;
+
+} RTL_SPARSE_BITMAP_CTX, *PRTL_SPARSE_BITMAP_CTX;
+C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, BitmapRanges) == 8);
+C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, AllocationRoutine) == 0x20);
+C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, FreeRoutine) == 0x28);
+C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, RangeCount) == 0x30);
+C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, Flags) == 0x48);
+C_ASSERT(sizeof(RTL_SPARSE_BITMAP_CTX) == 80);
+
+//
 // CRC32 and CRC64
 //
 typedef ULONG (NTAPI *PRTLCRC32)(
