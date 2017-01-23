@@ -41,17 +41,33 @@ RTL_DATA CONST GUID IID_IDEBUG_CONTROL;
 // Define typedefs for the COM interfaces we want to use.
 //
 
+//
+// IDebugAdvanced4
+//
+
+typedef struct IDebugAdvanced4 IDEBUGADVANCED4;
+typedef IDEBUGADVANCED4 *PIDEBUGADVANCED4;
+
+typedef struct IDebugAdvanced4Vtbl IDEBUGADVANCED4VTBL;
+typedef IDEBUGADVANCED4VTBL *PIDEBUGADVANCED4VTBL;
+
+typedef IDEBUGADVANCED4     IDEBUGADVANCED;
+typedef IDEBUGADVANCED   *PIDEBUGADVANCED;
+typedef IDEBUGADVANCED **PPIDEBUGADVANCED;
+
+typedef IDEBUGADVANCED4VTBL   DEBUGADVANCED;
+typedef DEBUGADVANCED      *PDEBUGADVANCED;
+typedef DEBUGADVANCED    **PPDEBUGADVANCED;
+
+//
+// IDebugClient7
+//
+
 typedef struct IDebugClient7 IDEBUGCLIENT7;
 typedef IDEBUGCLIENT7 *PIDEBUGCLIENT7;
 
 typedef struct IDebugClient7Vtbl IDEBUGCLIENT7VTBL;
 typedef IDEBUGCLIENT7VTBL *PIDEBUGCLIENT7VTBL;
-
-typedef struct IDebugControl7 IDEBUGCONTROL7;
-typedef IDEBUGCONTROL7 *PIDEBUGCONTROL7;
-
-typedef struct IDebugControl7Vtbl IDEBUGCONTROL7VTBL;
-typedef IDEBUGCONTROL7VTBL *PIDEBUGCONTROL7VTBL;
 
 typedef IDEBUGCLIENT7     IDEBUGCLIENT;
 typedef IDEBUGCLIENT   *PIDEBUGCLIENT;
@@ -61,6 +77,16 @@ typedef IDEBUGCLIENT7VTBL   DEBUGCLIENT;
 typedef DEBUGCLIENT      *PDEBUGCLIENT;
 typedef DEBUGCLIENT    **PPDEBUGCLIENT;
 
+//
+// IDebugControl7
+//
+
+typedef struct IDebugControl7 IDEBUGCONTROL7;
+typedef IDEBUGCONTROL7 *PIDEBUGCONTROL7;
+
+typedef struct IDebugControl7Vtbl IDEBUGCONTROL7VTBL;
+typedef IDEBUGCONTROL7VTBL *PIDEBUGCONTROL7VTBL;
+
 typedef IDEBUGCONTROL7     IDEBUGCONTROL;
 typedef IDEBUGCONTROL   *PIDEBUGCONTROL;
 typedef IDEBUGCONTROL **PPIDEBUGCONTROL;
@@ -69,14 +95,89 @@ typedef IDEBUGCONTROL7VTBL   DEBUGCONTROL;
 typedef DEBUGCONTROL      *PDEBUGCONTROL;
 typedef DEBUGCONTROL    **PPDEBUGCONTROL;
 
-typedef struct IDebugEventCallbacks IDEBUGEVENTCALLBACKS;
+//
+// IDebugSymbols5
+//
+
+typedef struct IDebugSymbols5 IDEBUGSYMBOLS5;
+typedef IDEBUGSYMBOLS5 *PIDEBUGSYMBOLS5;
+
+typedef struct IDebugSymbols5Vtbl IDEBUGSYMBOLS5VTBL;
+typedef IDEBUGSYMBOLS5VTBL *PIDEBUGSYMBOLS5VTBL;
+
+typedef IDEBUGSYMBOLS5     IDEBUGSYMBOLS;
+typedef IDEBUGSYMBOLS   *PIDEBUGSYMBOLS;
+typedef IDEBUGSYMBOLS **PPIDEBUGSYMBOLS;
+
+typedef IDEBUGSYMBOLS5VTBL   DEBUGSYMBOLS;
+typedef DEBUGSYMBOLS      *PDEBUGSYMBOLS;
+typedef DEBUGSYMBOLS    **PPDEBUGSYMBOLS;
+
+//
+// IDebugSymbolGroup2
+//
+
+typedef struct IDebugSymbolGroup2 IDEBUGSYMBOLGROUPGROUP2;
+typedef IDEBUGSYMBOLGROUPGROUP2 *PIDEBUGSYMBOLGROUPGROUP2;
+
+typedef struct IDebugSymbolGroup2Vtbl IDEBUGSYMBOLGROUPGROUP2VTBL;
+typedef IDEBUGSYMBOLGROUPGROUP2VTBL *PIDEBUGSYMBOLGROUPGROUP2VTBL;
+
+typedef IDEBUGSYMBOLGROUPGROUP2     IDEBUGSYMBOLGROUP;
+typedef IDEBUGSYMBOLGROUP         *PIDEBUGSYMBOLGROUP;
+typedef IDEBUGSYMBOLGROUP      **PPIDEBUGSYMBOLGROUP;
+
+typedef IDEBUGSYMBOLGROUPGROUP2VTBL   DEBUGSYMBOLGROUP;
+typedef DEBUGSYMBOLGROUP            *PDEBUGSYMBOLGROUP;
+typedef DEBUGSYMBOLGROUP           **PPDEBUGSYMBOLGROUP;
+
+//
+// IDebugDataSpaces4
+//
+
+typedef struct IDebugDataSpaces4 IDEBUGDATASPACES4;
+typedef IDEBUGDATASPACES4 *PIDEBUGDATASPACES4;
+
+typedef struct IDebugDataSpaces4Vtbl IDEBUGDATASPACES4VTBL;
+typedef IDEBUGDATASPACES4VTBL *PIDEBUGDATASPACES4VTBL;
+
+typedef IDEBUGDATASPACES4     IDEBUGDATASPACES;
+typedef IDEBUGDATASPACES   *PIDEBUGDATASPACES;
+typedef IDEBUGDATASPACES **PPIDEBUGDATASPACES;
+
+typedef IDEBUGDATASPACES4VTBL   DEBUGDATASPACES;
+typedef DEBUGDATASPACES      *PDEBUGDATASPACES;
+typedef DEBUGDATASPACES    **PPDEBUGDATASPACES;
+
+//
+// IDebugEventCallbacks
+//
+
+typedef struct IDebugEventCallbacksWide IDEBUGEVENTCALLBACKS;
 typedef IDEBUGEVENTCALLBACKS *PIDEBUGEVENTCALLBACKS;
 
-typedef struct IDebugEventCallbacksVtbl DEBUGEVENTCALLBACKSVTBL;
-typedef DEBUGEVENTCALLBACKSVTBL *PDEBUGEVENTCALLBACKSVTBL;
+typedef struct IDebugEventCallbacksWideVtbl DEBUGEVENTCALLBACKS;
+typedef DEBUGEVENTCALLBACKS *PDEBUGEVENTCALLBACKS;
 
 //
+// IDebugOutputCallbacks
 //
+
+typedef struct IDebugOutputCallbacks2 IDEBUGOUTPUTCALLBACKS;
+typedef IDEBUGOUTPUTCALLBACKS *PIDEBUGOUTPUTCALLBACKS;
+
+typedef struct IDebugOutputCallbacks2Vtbl DEBUGOUTPUTCALLBACKS;
+typedef DEBUGOUTPUTCALLBACKS *PDEBUGOUTPUTCALLBACKS;
+
+//
+// IDebugInputCallbacks
+//
+
+typedef struct IDebugInputCallbacks IDEBUGINPUTCALLBACKS;
+typedef IDEBUGINPUTCALLBACKS *PIDEBUGINPUTCALLBACKS;
+
+typedef struct IDebugInputCallbacksVtbl DEBUGINPUTCALLBACKS;
+typedef DEBUGINPUTCALLBACKS *PDEBUGINPUTCALLBACKS;
 
 ////////////////////////////////////////////////////////////////////////////////
 // COM Function Pointer Type Definitions
@@ -99,14 +200,14 @@ HRESULT
 typedef IUNKNOWN_QUERY_INTERFACE *PIUNKNOWN_QUERY_INTERFACE;
 
 typedef
-HRESULT
+ULONG
 (STDAPICALLTYPE IUNKNOWN_ADD_REF)(
     _In_ PIUNKNOWN This
     );
 typedef IUNKNOWN_ADD_REF *PIUNKNOWN_ADD_REF;
 
 typedef
-HRESULT
+ULONG
 (STDAPICALLTYPE IUNKNOWN_RELEASE)(
     _In_ PIUNKNOWN This
     );
@@ -118,16 +219,41 @@ typedef IUNKNOWN_RELEASE *PIUNKNOWN_RELEASE;
 
 typedef
 HRESULT
-(STDAPICALLTYPE DEBUG_EVENT_GET_INTEREST_MASK)(
+(STDAPICALLTYPE DEBUG_EVENT_QUERY_INTERFACE)(
+    _In_ PIDEBUGEVENTCALLBACKS This,
+    _In_ REFIID InterfaceId,
+    _Out_ PPVOID Interface
+    );
+typedef DEBUG_EVENT_QUERY_INTERFACE *PDEBUG_EVENT_QUERY_INTERFACE;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_EVENT_ADD_REF)(
+    _In_ PIDEBUGEVENTCALLBACKS This
+    );
+typedef DEBUG_EVENT_ADD_REF *PDEBUG_EVENT_ADD_REF;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_EVENT_RELEASE)(
+    _In_ PIDEBUGEVENTCALLBACKS This
+    );
+typedef DEBUG_EVENT_RELEASE *PDEBUG_EVENT_RELEASE;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_EVENT_GET_INTEREST_MASK_CALLBACK)(
     _In_ PIDEBUGEVENTCALLBACKS This,
     _Out_ PULONG Mask
     );
+typedef DEBUG_EVENT_GET_INTEREST_MASK_CALLBACK
+      *PDEBUG_EVENT_GET_INTEREST_MASK_CALLBACK;
 
 typedef
 HRESULT
 (STDAPICALLTYPE DEBUG_EVENT_BREAKPOINT_CALLBACK)(
     _In_ PIDEBUGEVENTCALLBACKS This,
-    _In_ PDEBUG_BREAKPOINT Breakpoint
+    _In_ PDEBUG_BREAKPOINT2 Breakpoint
     );
 typedef DEBUG_EVENT_BREAKPOINT_CALLBACK *PDEBUG_EVENT_BREAKPOINT_CALLBACK;
 
@@ -166,8 +292,8 @@ HRESULT
     _In_ ULONG64 Handle,
     _In_ ULONG64 BaseOffset,
     _In_ ULONG ModuleSize,
-    _In_opt_ PCSTR ModuleName,
-    _In_opt_ PCSTR ImageName,
+    _In_opt_ PCWSTR ModuleName,
+    _In_opt_ PCWSTR ImageName,
     _In_ ULONG CheckSum,
     _In_ ULONG TimeDateStamp,
     _In_ ULONG64 InitialThreadHandle,
@@ -193,8 +319,8 @@ HRESULT
     _In_ ULONG64 ImageFileHandle,
     _In_ ULONG64 BaseOffset,
     _In_ ULONG ModuleSize,
-    _In_opt_ PCSTR ModuleName,
-    _In_opt_ PCSTR ImageName,
+    _In_opt_ PCWSTR ModuleName,
+    _In_opt_ PCWSTR ImageName,
     _In_ ULONG CheckSum,
     _In_ ULONG TimeDateStamp
     );
@@ -204,7 +330,7 @@ typedef
 HRESULT
 (STDAPICALLTYPE DEBUG_EVENT_UNLOAD_MODULE_CALLBACK)(
     _In_ PIDEBUGEVENTCALLBACKS This,
-    _In_opt_ PCSTR ImageBaseName,
+    _In_opt_ PCWSTR ImageBaseName,
     _In_ ULONG64 BaseOffset
     );
 typedef DEBUG_EVENT_UNLOAD_MODULE_CALLBACK *PDEBUG_EVENT_UNLOAD_MODULE_CALLBACK;
@@ -257,22 +383,299 @@ HRESULT
 typedef DEBUG_EVENT_CHANGE_SYMBOL_STATE_CALLBACK
       *PDEBUG_EVENT_CHANGE_SYMBOL_STATE_CALLBACK;
 
-
 //
 // IDebugOutputCallbacks
 //
 
 typedef
 HRESULT
-(STDAPICALLTYPE DEBUG_OUTPUT_CALLBACK)(
-    _In_ PDEBUG_OUTPUT_CALLBACKS This,
+(STDAPICALLTYPE DEBUG_OUTPUT_QUERY_INTERFACE)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This,
+    _In_ REFIID InterfaceId,
+    _Out_ PPVOID Interface
+    );
+typedef DEBUG_OUTPUT_QUERY_INTERFACE *PDEBUG_OUTPUT_QUERY_INTERFACE;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_OUTPUT_ADD_REF)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This
+    );
+typedef DEBUG_OUTPUT_ADD_REF *PDEBUG_OUTPUT_ADD_REF;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_OUTPUT_RELEASE)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This
+    );
+typedef DEBUG_OUTPUT_RELEASE *PDEBUG_OUTPUT_RELEASE;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_OUTPUT_OUTPUT_CALLBACK)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This,
     _In_ ULONG Mask,
     _In_ PCSTR String
     );
+typedef DEBUG_OUTPUT_OUTPUT_CALLBACK *PDEBUG_OUTPUT_OUTPUT_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_OUTPUT_GET_INTEREST_MASK_CALLBACK)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This,
+    _Out_ PULONG Mask
+    );
+typedef DEBUG_OUTPUT_GET_INTEREST_MASK_CALLBACK
+      *PDEBUG_OUTPUT_GET_INTEREST_MASK_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_OUTPUT_OUTPUT2_CALLBACK)(
+    _In_ PIDEBUGOUTPUTCALLBACKS This,
+    _In_ ULONG Which,
+    _In_ ULONG Flags,
+    _In_ ULONG64 Arg,
+    _In_opt_ PCWSTR Text
+    );
+typedef DEBUG_OUTPUT_OUTPUT2_CALLBACK *PDEBUG_OUTPUT_OUTPUT2_CALLBACK;
+
+//
+// IDebugInputCallbacks
+//
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_INPUT_QUERY_INTERFACE)(
+    _In_ PIDEBUGINPUTCALLBACKS This,
+    _In_ REFIID InterfaceId,
+    _Out_ PPVOID Interface
+    );
+typedef DEBUG_INPUT_QUERY_INTERFACE *PDEBUG_INPUT_QUERY_INTERFACE;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_INPUT_ADD_REF)(
+    _In_ PIDEBUGINPUTCALLBACKS This
+    );
+typedef DEBUG_INPUT_ADD_REF *PDEBUG_INPUT_ADD_REF;
+
+typedef
+ULONG
+(STDAPICALLTYPE DEBUG_INPUT_RELEASE)(
+    _In_ PIDEBUGINPUTCALLBACKS This
+    );
+typedef DEBUG_INPUT_RELEASE *PDEBUG_INPUT_RELEASE;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_INPUT_END_INPUT_CALLBACK)(
+    _In_ PIDEBUGINPUTCALLBACKS This
+    );
+typedef DEBUG_INPUT_END_INPUT_CALLBACK *PDEBUG_INPUT_END_INPUT_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_INPUT_START_INPUT_CALLBACK)(
+    _In_ PIDEBUGINPUTCALLBACKS This,
+    _In_ ULONG BufferSize
+    );
+typedef DEBUG_INPUT_START_INPUT_CALLBACK *PDEBUG_INPUT_START_INPUT_CALLBACK;
 
 ////////////////////////////////////////////////////////////////////////////////
 // End COM Function Pointer Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+//
+// Define helper bitflag structs that simplify working with various DEBUG_*
+// constants.
+//
+
+typedef union _DEBUG_CHANGE_ENGINE_STATE {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Current thread changed.  Argument is ID of new thread or
+        // DEBUG_ANY_ID if no thread is current.
+        //
+        //      0x0001
+        //
+
+        ULONG CurrentThread:1;
+
+        //
+        // Effective processor changed.  Argument is new processor type.
+        //
+        //      0x0002
+        //
+
+        ULONG EffectiveProcessor:1;
+
+        //
+        // Breakpoints changed.  If only a single breakpoint changed, argument
+        // is the ID of the breakpoint; otherwise it is DEBUG_ANY_ID.
+        //
+        //      0x0004
+        //
+
+        ULONG Breakpoints:1;
+
+        //
+        // Code interpretation level changed.  Argument is the new level.
+        //
+        //      0x0008
+        //
+
+        ULONG CodeLevel:1;
+
+        //
+        // Execution status changed.  Argument is the new execution status.
+        //
+        //      0x0010
+        //
+
+        ULONG ExecutionStatus:1;
+
+        //
+        // Engine options have changed.  Argument is the new options value.
+        //
+        //      0x0020
+        //
+
+        ULONG EngineOptions:1;
+
+        //
+        // Log file information has changed.  Argument is TRUE if a log file
+        // was opened, FALSE if a log file was closed.
+        //
+        //      0x0040
+        //
+
+        ULONG LogFile:1;
+
+        //
+        // Default number radix has changed.  Argument is the new radix.
+        //
+        //      0x0080
+        //
+
+        ULONG Radix:1;
+
+        //
+        // Event filters have changed.  If only a single filter has changed,
+        // the argument is the filter's index, otherwise it is DEBUG_ANY_ID.
+        //
+        //      0x0100
+        //
+
+        ULONG EventFilters:1;
+
+        //
+        // Process options have changed.  Argument is the new options value.
+        //
+        //      0x0200
+        //
+
+        ULONG ProcessOptions:1;
+
+        //
+        // Extensions have been added or removed.
+        //
+        //      0x0400
+        //
+
+        ULONG Extensions:1;
+
+        //
+        // Systems have been added or removed.  The argument is the system ID.
+        //
+        //  N.B. Unlike processes and threads, systems may be created at any
+        //       time and not just during WaitForEvent.
+        //
+        //      0x0800
+        //
+
+        ULONG Systems:1;
+
+        //
+        // Assembly/disassembly options have changed.  Argument is the new
+        // options value.
+        //
+        //      0x1000
+        //
+
+        ULONG AssemblyOptions:1;
+
+        //
+        // Expression syntax has changed.  Argument is the new syntax value.
+        //
+        //      0x2000
+        //
+
+        ULONG ExpressionSyntax:1;
+
+        //
+        // Text replacements have changed.
+        //
+        //      0x4000
+        //
+
+        ULONG TextReplacements:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:17;
+
+    };
+} DEBUG_CHANGE_ENGINE_STATE, *PDEBUG_CHANGE_ENGINE_STATE;
+C_ASSERT(sizeof(DEBUG_CHANGE_ENGINE_STATE) == sizeof(ULONG));
+
+typedef union _DEBUG_EXECUTION_STATUS {
+    struct {
+        ULONG LowPart;
+        ULONG HighPart;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
+    struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
+
+        //
+        // Pad out the unused bytes.
+        //
+
+        ULONGLONG Padding:32;
+
+        //
+        // Engine's execution status is changing due to operations performed
+        // during a wait, such as making synchronous calls.  If this bit is not
+        // set, execution status is changing due to a wait being satisfied.
+        //
+        //      0x100000000
+        //
+
+        ULONGLONG InsideWait:1;
+
+        //
+        // Engine's execution status update is due to a wait timing out.
+        // Indicates the status change was not due to an actual event occurring.
+        //
+        //      0x200000000
+        //
+
+        ULONGLONG WaitTimeout:1;
+
+        //
+        // Mark the remaining bits as unused.
+        //
+
+        ULONGLONG Unused:30;
+    };
+
+} DEBUG_EXECUTION_STATUS, *PDEBUG_EXECUTION_STATUS;
+C_ASSERT(sizeof(DEBUG_EXECUTION_STATUS) == sizeof(ULONGLONG));
 
 //
 // DebugEngine-related structures.
@@ -310,6 +713,65 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     PCGUID IID_Control;
     PIDEBUGCONTROL IControl;
     PDEBUGCONTROL Control;
+
+    PCGUID IID_Symbols;
+    PIDEBUGSYMBOLS ISymbols;
+    PDEBUGSYMBOLS Symbols;
+
+    PCGUID IID_SymbolGroup;
+    PIDEBUGSYMBOLGROUP ISymbolGroup;
+    PDEBUGSYMBOLGROUP SymbolGroup;
+
+    PCGUID IID_Advanced;
+    PIDEBUGADVANCED IAdvanced;
+    PDEBUGADVANCED Advanced;
+
+    PCGUID IID_DataSpaces;
+    PIDEBUGDATASPACES IDataSpaces;
+    PDEBUGDATASPACES DataSpaces;
+
+    //
+    // Client/Control state.
+    //
+
+    ULONG SessionStatus;
+
+    DEBUG_EXECUTION_STATUS ExecutionStatus;
+
+    ULONG EngineState;
+    ULONGLONG EngineStateArg;
+    DEBUG_CHANGE_ENGINE_STATE ChangeEngineState;
+
+    ULONG DebuggeeState;
+    ULONGLONG DebuggeeStateArg;
+
+    ULONG SymbolState;
+    ULONGLONG SymbolStateArg;
+
+    ULONG ActualProcessorType;
+    struct {
+        ULONG Error;
+        ULONG Level;
+    } SystemError;
+
+    //
+    // Callback-related fields.
+    //
+
+    volatile LONG EventCallbackRefCount;
+    ULONG EventCallbacksInterestMask;
+    IDEBUGEVENTCALLBACKS IEventCallbacks;
+    DEBUGEVENTCALLBACKS EventCallbacks;
+
+    volatile LONG OutputCallbackRefCount;
+    ULONG OutputCallbacksInterestMask;
+    IDEBUGOUTPUTCALLBACKS IOutputCallbacks;
+    DEBUGOUTPUTCALLBACKS OutputCallbacks;
+
+    volatile LONG InputCallbackRefCount;
+    ULONG Unused;
+    IDEBUGINPUTCALLBACKS IInputCallbacks;
+    DEBUGINPUTCALLBACKS InputCallbacks;
 
 } DEBUG_ENGINE, *PDEBUG_ENGINE, **PPDEBUG_ENGINE;
 
@@ -358,7 +820,7 @@ typedef union _DEBUG_ENGINE_SESSION_FLAGS {
 } DEBUG_ENGINE_SESSION_FLAGS; *PDEBUG_ENGINE_SESSION_FLAGS;
 
 //
-// Forward definition of the start fuction such that it can be referenced in
+// Forward definition of the start function such that it can be referenced in
 // the struct.
 //
 
