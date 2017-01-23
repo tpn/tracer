@@ -220,6 +220,8 @@ Return Value:
     CHECKED_MSG(Rtl->LoadDbgEng(Rtl), "Rtl!LoadDbgEng()");
     ALLOCATE_TYPE(Session, DEBUG_ENGINE_SESSION, Allocator);
 
+    *SessionPointer = Session;
+
     CHECKED_MSG(InitializeDebugEngine(Rtl, &Session->Engine),
                 "InitializeDebugEngine()");
 
