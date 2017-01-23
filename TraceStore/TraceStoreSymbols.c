@@ -643,8 +643,10 @@ Return Value:
     PRTL Rtl;
     ULONG Options;
     ULONG ExitCode;
+    PTRACE_CONTEXT TraceContext;
 
-    Rtl = SymbolContext->TraceContext->Rtl;
+    TraceContext = SymbolContext->TraceContext;
+    Rtl = TraceContext->Rtl;
 
     Options = (
         SYMOPT_DEBUG                |
@@ -664,6 +666,29 @@ Return Value:
     if (!Rtl->SymInitialize(SymbolContext->ThreadHandle, NULL, FALSE)) {
         OutputDebugStringA("Rtl->SymInitialize() failed.\n");
         return 1;
+    }
+
+    if (SymbolContext->TraceContext->TraceStores->Flags.EnableDebugEngine) {
+        BOOL Success;
+        DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
+        PTRACER_CONFIG TracerConfig;
+
+        InitFlags.InitializeFromCurrentProcess = TRUE;
+        TracerConfig = TraceContext->TracerConfig;
+
+        Success = LoadAndInitializeDebugEngineSession(
+            &TracerConfig->Paths.DebugEngineDllPath,
+            Rtl,
+            TraceContext->Allocator,
+            InitFlags,
+            &SymbolContext->DebugEngineSession,
+            &SymbolContext->DestroyDebugEngineSession
+        );
+
+        if (!Success) {
+            OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.");
+            return 1;
+        }
     }
 
     OutputDebugStringA("Symbols successfully initialized.\n");

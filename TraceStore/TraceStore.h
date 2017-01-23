@@ -40,6 +40,7 @@ Abstract:
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "../DebugEngine/DebugEngine.h"
 #include "TraceStoreIndex.h"
 
 #endif
@@ -2172,20 +2173,25 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
     // (216 bytes consumed.)
     //
 
-    PVOID DebugClient;
+    PDEBUG_ENGINE_SESSION DebugEngineSession;
+    PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
+
+    //
+    // (232 bytes consumed.)
+    //
 
     //
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[32];
+    BYTE Reserved[24];
 
 } TRACE_SYMBOL_CONTEXT, *PTRACE_SYMBOL_CONTEXT;
 typedef TRACE_SYMBOL_CONTEXT **PPTRACE_SYMBOL_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, WorkListHead) == 64);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 224);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 232);
 C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
 
 #define AcquireTraceSymbolContextLock(SymbolContext) \
