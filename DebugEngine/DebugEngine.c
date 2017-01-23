@@ -145,11 +145,10 @@ CONST DEBUGINPUTCALLBACKS DebugInputCallbacks = {
 
 _Use_decl_annotations_
 BOOL
-InitializeDebugEngineSession(
+InitializeFromCommandLine(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
-    PPDEBUG_ENGINE_SESSION SessionPointer
+    PDEBUG_ENGINE_SESSION Session
     )
 /*++
 
@@ -174,56 +173,8 @@ Return Value:
 {
     BOOL Success;
     NTSTATUS Status;
-    HRESULT Result;
     HMODULE Shell32Module = NULL;
-    PDEBUGCLIENT Client;
-    PIDEBUGCLIENT IClient;
-    PDEBUGCONTROL Control;
-    PIDEBUGCONTROL IControl;
-    PDEBUGSYMBOLS Symbols;
-    PIDEBUGSYMBOLS ISymbols;
-    PDEBUG_ENGINE Engine;
-    PDEBUG_ENGINE_SESSION Session = NULL;
     PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
-    ULONG64 Base;
-    ULONG Index;
-    //ULONG TypeId;
-    ULONG64 Offset;
-    ULONG64 Offset2;
-    ULONG Flags = 0;
-    ULONG64 Address = (ULONG64)0x000000001e0c5450;
-    CHAR Buffer[256];
-    PSTR Dest;
-    ULONG BufferSize = sizeof(Buffer);
-    ULONG DisassemblySize;
-    ULONG OffsetLine;
-    ULONG64 StartOffset;
-    ULONG64 EndOffset;
-    ULONG64 LineOffsets;
-    ULONG64 EffectiveOffset;
-    ULONG DisassemblyFlags = (
-        DEBUG_DISASM_MATCHING_SYMBOLS  |
-        DEBUG_DISASM_EFFECTIVE_ADDRESS |
-        DEBUG_DISASM_SOURCE_FILE_NAME  |
-        DEBUG_DISASM_SOURCE_LINE_NUMBER
-    );
-
-    PWSTR UnassemblePy_IncRef = L"uf python27!Py_IncRef";
-    PWSTR ListPy27Functions = L"x /D /f python!Py*";
-
-    *SessionPointer = NULL;
-
-    CHECKED_MSG(InitFlags.InitializeFromCommandLine,
-                "CreateAndInitializeDebugEngineSession(): InitFlags "
-                "missing InitializeFromCommandLine bit set");
-
-    CHECKED_MSG(Rtl->LoadDbgEng(Rtl), "Rtl!LoadDbgEng()");
-    ALLOCATE_TYPE(Session, DEBUG_ENGINE_SESSION, Allocator);
-
-    *SessionPointer = Session;
-
-    CHECKED_MSG(InitializeDebugEngine(Rtl, &Session->Engine),
-                "InitializeDebugEngine()");
 
     LOAD_LIBRARY_A(Shell32Module, Shell32);
 
@@ -270,6 +221,120 @@ Return Value:
     //
     // Try open a handle to the process with all access.
     //
+
+    Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
+                                               TRUE,
+                                               Session->TargetProcessId);
+    if (!Session->TargetProcessHandle) {
+        OutputDebugStringA("DbgEng:OpenProcess(PROCESS_ALL_ACCESS) failed.");
+    }
+
+    Success = TRUE;
+    goto End;
+
+Error:
+    Success = FALSE;
+
+    if (Session) {
+        MAYBE_CLOSE_HANDLE(Session->TargetProcessHandle);
+    }
+
+
+End:
+    MAYBE_FREE_LIBRARY(Shell32Module);
+
+    return Success;
+}
+
+
+_Use_decl_annotations_
+BOOL
+InitializeDebugEngineSession(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    PPDEBUG_ENGINE_SESSION SessionPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine creates a debug client object.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure.
+
+    EnginePointer - Supplies an address to a variable that will receive the
+        address of the newly created debug client.
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
+
+--*/
+{
+    BOOL Success;
+    HRESULT Result;
+    PDEBUGCLIENT Client;
+    PIDEBUGCLIENT IClient;
+    PDEBUGCONTROL Control;
+    PIDEBUGCONTROL IControl;
+    PDEBUGSYMBOLS Symbols;
+    PIDEBUGSYMBOLS ISymbols;
+    PDEBUG_ENGINE Engine;
+    PDEBUG_ENGINE_SESSION Session = NULL;
+    ULONG64 Base;
+    ULONG Index;
+    //ULONG TypeId;
+    ULONG64 Offset;
+    ULONG64 Offset2;
+    ULONG Flags = 0;
+    ULONG64 Address = (ULONG64)0x000000001e0c5450;
+    CHAR Buffer[256];
+    PSTR Dest;
+    ULONG BufferSize = sizeof(Buffer);
+    ULONG DisassemblySize;
+    ULONG OffsetLine;
+    ULONG64 StartOffset;
+    ULONG64 EndOffset;
+    ULONG64 LineOffsets;
+    ULONG64 EffectiveOffset;
+    ULONG DisassemblyFlags = (
+        DEBUG_DISASM_MATCHING_SYMBOLS  |
+        DEBUG_DISASM_EFFECTIVE_ADDRESS |
+        DEBUG_DISASM_SOURCE_FILE_NAME  |
+        DEBUG_DISASM_SOURCE_LINE_NUMBER
+    );
+
+    PWSTR UnassemblePy_IncRef = L"uf python27!Py_IncRef";
+    PWSTR ListPy27Functions = L"x /D /f python!Py*";
+
+    *SessionPointer = NULL;
+
+    CHECKED_MSG(Rtl->LoadDbgEng(Rtl), "Rtl!LoadDbgEng()");
+    ALLOCATE_TYPE(Session, DEBUG_ENGINE_SESSION, Allocator);
+
+    *SessionPointer = Session;
+
+    CHECKED_MSG(InitializeDebugEngine(Rtl, &Session->Engine),
+                "InitializeDebugEngine()");
+
+
+    if (InitFlags.InitializeFromCommandLine) {
+        CHECKED_MSG(
+            InitializeFromCommandLine(
+                Rtl,
+                Allocator,
+                Session
+            ),
+            "InitializeDebugEngine()->FromCommandLine"
+        );
+    } else if (InitFlags.InitializeFromCurrentProcess) {
+        Session->TargetProcessId = FastGetCurrentProcessId();
+    }
 
     Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
                                                TRUE,
@@ -547,7 +612,6 @@ Error:
     //MAYBE_FREE_POINTER(Session, Allocator);
 
 End:
-    MAYBE_FREE_LIBRARY(Shell32Module);
 
     return Success;
 }
