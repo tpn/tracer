@@ -111,7 +111,7 @@ extern "C" {
 
 #define BYTES_TO_QUADWORDS(Bytes) ((Bytes) >> 3)
 
-#define QUADWORD_SIZEOF(Type) (BYTES_TO_QUADWORDS(sizeof((Type))))
+#define QUADWORD_SIZEOF(Type) (BYTES_TO_QUADWORDS(sizeof(Type)))
 
 #ifndef ADDRESS_AND_SIZE_TO_SPAN_PAGES
 #define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Va,Size)                             \
@@ -4087,7 +4087,6 @@ typedef struct _SHLWAPI_FUNCTIONS {
 // DbgHelp related functions.
 //
 
-#include "DebugEngine.h"
 #include "DbgHelpFunctionPointerTypedefs.h"
 
 #define _DBGHELP_FUNCTIONS_HEAD                                                 \
@@ -4268,9 +4267,8 @@ HRESULT
     );
 typedef DEBUG_CREATE *PDEBUG_CREATE;
 
-#define _DBGENG_FUNCTIONS_HEAD                                                        \
-    PDEBUG_CREATE DebugCreate;                                                        \
-    PCREATE_AND_INTIALIZE_DEBUG_ENGINE_SESSION CreateAndInitializeDebugEngineSession;
+#define _DBGENG_FUNCTIONS_HEAD \
+    PDEBUG_CREATE DebugCreate;
 
 typedef struct _DBGENG {
     _DBGENG_FUNCTIONS_HEAD

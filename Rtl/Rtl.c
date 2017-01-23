@@ -5668,10 +5668,6 @@ LoadRtlExSymbols(
         return FALSE;
     }
 
-    Rtl->CreateAndInitializeDebugEngineSession = (
-        CreateAndInitializeDebugEngineSession
-    );
-
     return TRUE;
 
 }

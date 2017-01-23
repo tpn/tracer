@@ -37,6 +37,7 @@ class RTL(Structure):
         ('HeapHandle', HANDLE),
     ]
 PRTL = POINTER(RTL)
+PPRTL = POINTER(PRTL)
 
 class RTL_FILE(Structure):
     _fields_ = [

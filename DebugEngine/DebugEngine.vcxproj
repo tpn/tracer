@@ -43,8 +43,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{91695EDE-DFC2-4364-A959-3C8A0870507A}</ProjectGuid>
-    <RootNamespace>Rtl</RootNamespace>
+    <ProjectGuid>{9C21A82A-F8BD-41D5-A6FB-7B6F25F0C38F}</ProjectGuid>
+    <RootNamespace>DebugEngine</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
@@ -54,6 +54,10 @@
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -63,48 +67,25 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG_ENGINE_INTERNAL_BUILD;_DEBUG_ENGINE_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="atexit.h" />
-    <ClInclude Include="AtExitEx.h" />
-    <ClInclude Include="Commandline.h" />
-    <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
-    <ClInclude Include="Memory.h" />
-    <ClInclude Include="RtlPrivate.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Rtl.h" />
-    <ClInclude Include="Time.h" />
-    <ClInclude Include="__C_specific_handler.h" />
+    <ClInclude Include="DebugEngine.h" />
+    <ClInclude Include="DebugEnginePrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="atexit.c" />
-    <ClCompile Include="AtExitEx.c" />
-    <ClCompile Include="CopyPages.c" />
-    <ClCompile Include="dllmain.c">
-      <PrecompiledHeader />
-    </ClCompile>
-    <ClCompile Include="File.c" />
-    <ClCompile Include="Loader.c" />
-    <ClCompile Include="Privilege.c" />
-    <ClCompile Include="Registry.c" />
-    <ClCompile Include="RtlAtExitRundown.c" />
-    <ClCompile Include="RtlGlobalAtExitRundown.c" />
+    <ClCompile Include="..\Rtl\AtExitEx.c" />
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="DebugEngine.c" />
+    <ClCompile Include="dllmain.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Rtl.c" />
-    <ClCompile Include="PathEnvironmentVariable.c" />
-    <ClCompile Include="Commandline.c" />
-    <ClCompile Include="Path.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

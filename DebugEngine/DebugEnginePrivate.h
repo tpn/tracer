@@ -80,8 +80,33 @@ CopyIDebugEventCallbacks(
 {
     __movsq((PDWORD64)Target,
             (PDWORD64)&DebugEventCallbacks,
-            sizeof(DEBUGEVENTCALLBACKS) >> 3);
+            QUADWORD_SIZEOF(DEBUGEVENTCALLBACKS));
 }
+
+FORCEINLINE
+VOID
+CopyIDebugOutputCallbacks(
+    _Out_writes_bytes_(sizeof(DEBUGOUTPUTCALLBACKS))
+        PDEBUGOUTPUTCALLBACKS Target
+    )
+{
+    __movsq((PDWORD64)Target,
+            (PDWORD64)&DebugOutputCallbacks,
+            QUADWORD_SIZEOF(DEBUGOUTPUTCALLBACKS));
+}
+
+FORCEINLINE
+VOID
+CopyIDebugInputCallbacks(
+    _Out_writes_bytes_(sizeof(DEBUGINPUTCALLBACKS))
+        PDEBUGINPUTCALLBACKS Target
+    )
+{
+    __movsq((PDWORD64)Target,
+            (PDWORD64)&DebugInputCallbacks,
+            QUADWORD_SIZEOF(DEBUGINPUTCALLBACKS));
+}
+
 
 //
 // Private function declarations.
