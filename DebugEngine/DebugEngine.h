@@ -968,7 +968,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 //
 
 typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
-    ULONG AsLong;
+    LONG AsLong;
+    ULONG AsULong;
     struct {
 
         //
@@ -977,6 +978,12 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
         //
 
         ULONG InitializeFromCommandLine:1;
+
+        //
+        // When set, the debug engine attaches to the currently running process.
+        //
+
+        ULONG InitializeFromCurrentProcess:1;
     };
 } DEBUG_ENGINE_SESSION_INIT_FLAGS;
 
