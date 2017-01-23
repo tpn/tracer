@@ -2400,8 +2400,10 @@ typedef struct _RTL_SPARSE_BITMAP_CTX {
     ULONG RangeMetadataOffset;
     ULONG MetadataSizePerBit;
 
+    ULONG Padding1;
+
     union {
-        RTL_SPARSE_BITMAP_CONTEXT_FLAGS Flags;
+        RTL_SPARSE_BITMAP_CTX_FLAGS Flags;
         struct _Struct_size_bytes_(sizeof(ULONG)) {
             ULONG DefaultBitsSet:1;
             ULONG SparseRangeArray:1;
@@ -2410,7 +2412,7 @@ typedef struct _RTL_SPARSE_BITMAP_CTX {
         };
     };
 
-    ULONG Padding;
+    ULONG Padding2;
 
 } RTL_SPARSE_BITMAP_CTX, *PRTL_SPARSE_BITMAP_CTX;
 C_ASSERT(FIELD_OFFSET(RTL_SPARSE_BITMAP_CTX, BitmapRanges) == 8);
