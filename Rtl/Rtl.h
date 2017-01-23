@@ -109,6 +109,10 @@ extern "C" {
 )
 #endif
 
+#define BYTES_TO_QUADWORDS(Bytes) ((Bytes) >> 3)
+
+#define QUADWORD_SIZEOF(Type) (BYTES_TO_QUADWORDS(sizeof((Type))))
+
 #ifndef ADDRESS_AND_SIZE_TO_SPAN_PAGES
 #define ADDRESS_AND_SIZE_TO_SPAN_PAGES(Va,Size)                             \
     ((BYTE_OFFSET (Va) + ((SIZE_T) (Size)) + (PAGE_SIZE - 1)) >> PAGE_SHIFT
@@ -206,10 +210,10 @@ extern "C" {
     }                      \
 } while (0)
 
-#define CHECKED_HRESULT(Expr) do { \
-    if (FAILED((Expr)) {           \
-        goto Error;                \
-    }                              \
+#define CHECKED_HRESULT(Expr) do {     \
+    if (((Result) = (Expr)) != S_OK) { \
+        goto Error;                    \
+    }                                  \
 } while (0)
 
 #define CHECKED_NTSTATUS(Expr) do { \
@@ -226,14 +230,14 @@ extern "C" {
 } while (0)
 
 #define CHECKED_HRESULT_MSG(Expr, FailureMessage) do {      \
-    if (FAILED((Expr))) {                                   \
+    if (((Result) = (Expr)) != S_OK) {                      \
         OutputDebugStringA("Failed: " FailureMessage "\n"); \
         goto Error;                                         \
     }                                                       \
 } while (0)
 
 #define CHECKED_NTSTATUS_MSG(Expr, FailureMessage) do {     \
-    if ((Expr) != ERROR_SUCCESS) {                          \
+    if (((Status) = (Expr)) != ERROR_SUCCESS) {             \
         OutputDebugStringA("Failed: " FailureMessage "\n"); \
         goto Error;                                         \
     }                                                       \
