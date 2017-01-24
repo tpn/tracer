@@ -1037,8 +1037,8 @@ Return Value:
 
     ModuleInfo.SizeOfStruct = sizeof(ModuleInfo);
     Success = Dbg->SymGetModuleInfoW64(SymbolContext->ThreadHandle,
-        (DWORD64)ImageFile->EntryPoint,
-        &ModuleInfo);
+                                       (DWORD64)ImageFile->EntryPoint,
+                                       &ModuleInfo);
 
     if (!Success) {
         LastError = GetLastError();
