@@ -1125,8 +1125,8 @@ Return Value:
 {
     PSYMBOL_INFO SymbolInfo;
 
-    OutputDebugStringA("EnumTypesCallback");
-    OutputDebugStringA(pSymbolInfo->Name);
+    //OutputDebugStringA("EnumTypesCallback");
+    //OutputDebugStringA(pSymbolInfo->Name);
 
     SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
     if (!SymbolInfo) {
@@ -1166,8 +1166,8 @@ Return Value:
 {
     PSYMBOL_INFO SymbolInfo;
 
-    OutputDebugStringA("EnumSymbolsCallback");
-    OutputDebugStringA((PSTR)pSymbolInfo->Name);
+    //OutputDebugStringA("EnumSymbolsCallback");
+    //OutputDebugStringA((PSTR)pSymbolInfo->Name);
 
     SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
     if (!SymbolInfo) {
@@ -1202,8 +1202,8 @@ Return Value:
 
 --*/
 {
-    OutputDebugStringA("EnumSourceFilesCallback");
-    OutputDebugStringW((PWSTR)pSourceFileW->FileName);
+    //OutputDebugStringA("EnumSourceFilesCallback");
+    //OutputDebugStringW((PWSTR)pSourceFileW->FileName);
     return TRUE;
 }
 
@@ -1235,9 +1235,9 @@ Return Value:
 
     SourceCodeInfo = SourceCodeInfoPointer;
 
-    OutputDebugStringA("EnumLinesCallback");
-    OutputDebugStringW(SourceCodeInfo->Obj);
-    OutputDebugStringW(SourceCodeInfo->FileName);
+    //OutputDebugStringA("EnumLinesCallback");
+    //OutputDebugStringW(SourceCodeInfo->Obj);
+    //OutputDebugStringW(SourceCodeInfo->FileName);
 
     return TRUE;
 }
