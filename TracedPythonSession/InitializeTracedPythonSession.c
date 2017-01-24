@@ -533,7 +533,7 @@ Return Value:
     COPY_FLAG(EnablePerformanceTracing);
     COPY_FLAG(EnableLoaderTracing);
     COPY_FLAG(EnableSymbolTracing);
-    COPY_FLAG(EnableDebugEngine);
+    COPY_FLAG(EnableAssemblyTracing);
 
     //
     // If symbol tracing has been enabled, ensure we can load DbgHelp.

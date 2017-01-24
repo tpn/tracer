@@ -1262,7 +1262,7 @@ typedef struct _TRACE_FLAGS {
             // tracing.
             //
 
-            ULONG EnableDebugEngine:1;
+            ULONG EnableAssemblyTracing:1;
 
         };
     };
