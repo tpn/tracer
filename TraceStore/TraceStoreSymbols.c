@@ -668,7 +668,7 @@ Return Value:
         return 1;
     }
 
-    if (SymbolContext->TraceContext->TraceStores->Flags.EnableDebugEngine) {
+    if (SymbolContext->TraceContext->TraceStores->Flags.EnableAssemblyTracing) {
         BOOL Success;
         DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
         PTRACER_CONFIG TracerConfig;
