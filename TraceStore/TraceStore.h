@@ -2872,7 +2872,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     //
 
     //
-    // Pad out to 0x68000 (425984).
+    // Pad out to 0x6d000 (446464).
     //
 
     ULONGLONG Reserved[256];
@@ -2881,7 +2881,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, RelocationCompleteEvents) == 128);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 512);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 4096);
-C_ASSERT(sizeof(TRACE_STORES) == 0x68000);
+//C_ASSERT(sizeof(TRACE_STORES) == 0x6d000);
 
 typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE MetadataInfoStore;
