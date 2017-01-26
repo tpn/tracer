@@ -26,8 +26,8 @@ volatile BOOL PauseBeforeRelocate = TRUE;
 LPCWSTR TraceStoreFileNames[] = {
     L"TraceEvent.dat",
     L"TraceStringBuffer.dat",
-    L"TraceFunctionTable.dat",
-    L"TraceFunctionTableEntry.dat",
+    L"TracePythonFunctionTable.dat",
+    L"TracePythonFunctionTableEntry.dat",
     L"TracePathTable.dat",
     L"TracePathTableEntry.dat",
     L"TraceSession.dat",
@@ -65,6 +65,13 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreSymbolLine.dat",
     L"TraceStoreSymbolType.dat",
     L"TraceStoreStackFrame.dat",
+    L"TraceStoreTypeInfoTable.dat",
+    L"TraceStoreTypeInfoTableEntry.dat",
+    L"TraceStoreTypeStringBuffer.dat",
+    L"TraceStoreFunctionTable.dat",
+    L"TraceStoreFunctionTableEntry.dat",
+    L"TraceStoreFunctionAssembly.dat",
+    L"TraceStoreFunctionSourceCode.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -157,8 +164,8 @@ USHORT ElementsPerTraceStore = NUMBER_OF_METADATA_STORES + 1;
 LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 30,   // Event
      1 << 25,   // StringBuffer
-     1 << 16,   // FunctionTable
-     1 << 26,   // FunctionTableEntry
+     1 << 16,   // PythonFunctionTable
+     1 << 26,   // PythonFunctionTableEntry
      1 << 16,   // PathTable
      1 << 26,   // PathTableEntry
      1 << 18,   // TraceSession
@@ -196,6 +203,13 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 24,   // SymbolLine
      1 << 24,   // SymbolType
      1 << 25,   // StackFrame
+     1 << 16,   // TypeInfoTable
+     1 << 27,   // TypeInfoTableEntry
+     1 << 24,   // TypeInfoStringBuffer
+     1 << 16,   // FunctionTable
+     1 << 26,   // FunctionTableEntry
+     1 << 27,   // FunctionAssembly
+     1 << 27,   // FunctionSourceCode
 };
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
@@ -258,7 +272,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // FunctionTable
+    // PythonFunctionTable
     //
 
     {
@@ -280,7 +294,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // FunctionTableEntry
+    // PythonFunctionTableEntry
     //
 
     {
@@ -1116,6 +1130,159 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0   // Unused
     },
 
+    //
+    // TypeInfoTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        1,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // TypeInfoTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        1,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // TypeInfoStringBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // FunctionTable
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        0,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        0,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        1,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // FunctionTableEntry
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // FunctionAssembly
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
+
+    //
+    // FunctionSourceCode
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        1,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0   // Unused
+    },
 };
 
 TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
