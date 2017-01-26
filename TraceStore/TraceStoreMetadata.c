@@ -650,8 +650,8 @@ Routine Description:
 
     This is the bind complete callback routine for :Info stores.
 
-    It calls LoadTraceStoreTInfo() if this is a readonly session,
-    or SaveTraceStoreRelocationInfo() if this is a normal writable session.
+    It calls LoadTraceStoreTraits() if this is a readonly session, otherwise,
+    it calls SaveTraceStoreTraits() if this is a normal writable session.
 
 Arguments:
 
