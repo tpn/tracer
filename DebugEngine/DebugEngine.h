@@ -666,6 +666,181 @@ typedef union _DEBUG_CHANGE_ENGINE_STATE {
 } DEBUG_CHANGE_ENGINE_STATE, *PDEBUG_CHANGE_ENGINE_STATE;
 C_ASSERT(sizeof(DEBUG_CHANGE_ENGINE_STATE) == sizeof(ULONG));
 
+//
+// Wrap the DEBUG_OUTCBI_* constants.
+//
+
+typedef union _DEBUG_OUTPUT_CALLBACK_INTEREST_MASK {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Notification of all explicit flushes.
+        //
+        //      0x0001
+        //
+
+        ULONG ExplicitFlush:1;
+
+        //
+        // Notification of text output.
+        //
+        //      0x0002
+        //
+
+        ULONG Text:1;
+
+        //
+        // Notification of DML output.
+        //
+        //      0x0004
+        //
+
+        ULONG Markup:1;
+
+
+    };
+} DEBUG_OUTPUT_CALLBACK_INTEREST_MASK, *PDEBUG_OUTPUT_CALLBACK_INTEREST_MASK;
+C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACK_INTEREST_MASK) == sizeof(ULONG));
+
+//
+// Wrap the DEBUG_OUTCBF_* constants.
+//
+
+typedef union _DEBUG_OUTPUT_CALLBACK_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Content string was followed by an explicit flush.
+        //
+        //      0x0001
+        //
+
+        ULONG ExplicitFlush:1;
+
+        //
+        // Markup content string has embedded tags.
+        //
+        //      0x0002
+        //
+
+        ULONG MarkupHasEmbeddedTags:1;
+
+        //
+        // Markup content has encoded special characters like ", &, < and >.
+        //
+        //      0x0004
+        //
+
+        ULONG MarkupHasEncodedSpecialCharacters:1;
+    };
+} DEBUG_OUTPUT_CALLBACK_FLAGS, *PDEBUG_OUTPUT_CALLBACK_FLAGS;
+C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACK_FLAGS) == sizeof(ULONG));
+
+//
+// Wrap the DEBUG_OUTPUT_XXX constants.
+//
+
+typedef union _DEBUG_OUTPUT_OUTPUT_MASK {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Normal.
+        //
+        //      0x0001
+        //
+
+        ULONG Normal:1;
+
+        //
+        // Error.
+        //
+        //      0x0002
+        //
+
+        ULONG Error:1;
+
+        //
+        // Warning.
+        //
+        //      0x0004
+        //
+
+        ULONG Warning:1;
+
+        //
+        // Additional output.
+        //
+        //      0x0008
+        //
+
+        ULONG Verbose:1;
+
+        //
+        // Prompt output.
+        //
+        //      0x0010
+        //
+
+        ULONG Prompt:1;
+
+        //
+        // Register dump before prompt.
+        //
+        //      0x0020
+        //
+
+        ULONG PromptRegisters:1;
+
+        //
+        // Warnings specific to extension operation.
+        //
+        //      0x0040
+        //
+
+        ULONG ExtensionWarning:1;
+
+        //
+        // Debuggee output, such as from OutputDebugString().
+        //
+        //      0x0080
+        //
+
+        ULONG OutputDebuggee:1;
+
+        //
+        // Debuggee-generated prompt, such as from DbgPrompt.
+        //
+        //      0x0100
+        //
+
+        ULONG OutputDebuggeePrompt:1;
+
+        //
+        // Symbol messages, such as for !sym noisy.
+        //
+        //      0x0200
+        //
+
+        ULONG Symbols:1;
+
+        //
+        // Output which modifies the status bar.
+        //
+        //      0x0400
+        //
+
+        ULONG Status:1;
+
+    };
+} DEBUG_OUTPUT_OUTPUT_MASK, *PDEBUG_OUTPUT_OUTPUT_MASK;
+C_ASSERT(sizeof(DEBUG_OUTPUT_OUTPUT_MASK) == sizeof(ULONG));
+
 typedef union _DEBUG_EXECUTION_STATUS {
     struct {
         ULONG LowPart;
