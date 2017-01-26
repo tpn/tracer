@@ -61,6 +61,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <CreateHotPatchableImage></CreateHotPatchableImage>
+      <SetChecksum>true</SetChecksum>
       <AdditionalOptions>/HIGHENTROPYVA %(AdditionalOptions)</AdditionalOptions>
       <ProfileGuidedDatabase>$(PGDDirectory)$(TargetName).pgd</ProfileGuidedDatabase>
       <LinkTimeCodeGeneration Condition="$(Configuration) == 'Release'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
