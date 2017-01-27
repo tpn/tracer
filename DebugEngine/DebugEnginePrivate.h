@@ -20,6 +20,10 @@ Abstract:
 extern "C" {
 #endif
 
+#define DEFINE_GUID_EX(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+    const GUID DECLSPEC_SELECTANY name                                  \
+        = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
+
 //
 // Private function typedefs.
 //

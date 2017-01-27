@@ -20,10 +20,6 @@ Abstract:
 // EXTERN_C linkage we'll pick up if we use the values directly from DbgEng.h.
 //
 
-#define DEFINE_GUID_EX(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-    const GUID DECLSPEC_SELECTANY name                                  \
-        = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
-
 //
 // IID_IUnknown: 00000000-0000-0000-C000-000000000046
 //

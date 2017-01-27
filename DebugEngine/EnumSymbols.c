@@ -15,6 +15,17 @@ Abstract:
 
 #include "stdafx.h"
 
+//
+// IDebugOutputClients: 4bf58045-d654-4c40-b0af-683090f356dc
+//
+
+DEFINE_GUID_EX(IID_IDebugOutputCallbacksEx, 0x4bf58045, 0xd654, 0x4c40,
+               0xb0, 0xaf, 0x68, 0x30, 0x90, 0xf3, 0x56, 0xdc);
+
+//
+// Functions.
+//
+
 _Use_decl_annotations_
 BOOL
 DebugEngineEnumSymbols(
@@ -471,5 +482,7 @@ Error:
 End:
     return Result;
 }
+
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
