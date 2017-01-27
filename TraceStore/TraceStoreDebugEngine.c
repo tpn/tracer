@@ -1005,6 +1005,50 @@ Return Value:
 
 --*/
 {
+    //
+    // Examine all symbols:
+    //
+    //      x /t /v <module>!*
+    //
+    //          - /t: include type info if known
+    //          - /v: verbose
+    //
+
+    //
+    // For each symbol:
+    //
+    //      If type == function:
+    //
+    //          Unassemble function:
+    //
+    //              uf /m /i <module>!<function name>
+    //
+    //                  - /m: relax blocking requirements to allow multiple
+    //                        exits.
+    //                  - /i: display number of instructions.
+    //
+    //      If symbol == type:
+    //
+    //          Display extended type information:
+    //
+    //              dt -a -b -r9 -v <module>!<typename>
+    //
+
+    //
+    // Additional work:
+    //
+    // Functions:
+    //
+    //      - Capture call targets.
+    //      - Capture # arguments.
+    //      - Capture references to global data variables.
+    //
+    // Types:
+    //
+    //      - Look for pointers to other types and capture relationships.
+    //
+    //
+
     return TRUE;
 }
 
