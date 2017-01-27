@@ -80,7 +80,9 @@
     <ClCompile Include="..\Rtl\AtExitEx.c" />
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="DebugEngine.c" />
+    <ClCompile Include="DisassembleFunction.c" />
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="EnumSymbols.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

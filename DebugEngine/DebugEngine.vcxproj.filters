@@ -21,9 +21,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracedPythonSession.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DebugEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,6 +42,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Rtl\AtExitEx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EnumSymbols.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DisassembleFunction.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

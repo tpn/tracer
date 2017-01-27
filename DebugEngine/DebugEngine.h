@@ -896,6 +896,280 @@ typedef union _DEBUG_ENGINE_FLAGS {
     };
 } DEBUG_ENGINE_FLAGS; *PDEBUG_ENGINE_FLAGS;
 
+typedef enum _DEBUG_OUTPUT_TYPE {
+    DebugOutputText = 0,
+    DebugOutputMarkup = 1,
+    DebugOutputExplicitFlush = 2
+} DEBUG_OUTPUT_TYPE;
+
+FORCEINLINE
+BOOL
+IsTextOutput(
+    _In_ DEBUG_OUTPUT_TYPE OutputType
+    )
+{
+    return (OutputType == DebugOutputText);
+}
+
+FORCEINLINE
+BOOL
+IsMarkupOutput(
+    _In_ DEBUG_OUTPUT_TYPE OutputType
+    )
+{
+    return (OutputType == DebugOutputMarkup);
+}
+
+FORCEINLINE
+BOOL
+IsExplictFlush(
+    _In_ DEBUG_OUTPUT_TYPE OutputType
+    )
+{
+    return (OutputType == DebugOutputExplicitFlush);
+}
+
+typedef union _DEBUG_ENGINE_SYMBOL_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG WideCharacter:1;
+    };
+} DEBUG_ENGINE_SYMBOL_FLAGS;
+typedef DEBUG_ENGINE_SYMBOL_FLAGS *PDEBUG_ENGINE_SYMBOL_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SYMBOL {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_SYMBOL)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_SYMBOL_FLAGS Flags;
+
+    //
+    // Raw text returned by DbgEng.
+    //
+
+    union {
+        STRING RawText;
+        UNICODE_STRING RawTextWide;
+    };
+
+} DEBUG_ENGINE_SYMBOL;
+typedef DEBUG_ENGINE_SYMBOL *PDEBUG_ENGINE_SYMBOL;
+
+typedef
+BOOL
+(CALLBACK DEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK)(
+    _In_ PDEBUG_ENGINE_SYMBOL Symbol,
+    _In_opt_ PVOID Context
+    );
+typedef DEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK *PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK;
+
+typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Verbose output.  Corresponds to /v.
+        //
+
+        ULONG Verbose:1;
+
+        //
+        // Include type information, if known.  Corresponds to /t.
+        //
+
+        ULONG TypeInformation:1;
+
+        //
+        // Provide wide character output.
+        //
+
+        ULONG WideCharacter:1;
+
+    };
+
+} DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS) == sizeof(ULONG));
+
+typedef
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_ENUM_SYMBOLS)(
+    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
+    _In_ PVOID Context,
+    _In_ PALLOCATOR Allocator,
+    _In_ PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback,
+    _In_ DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS Flags,
+    _In_ PRTL_PATH ModulePath
+    );
+typedef DEBUG_ENGINE_ENUM_SYMBOLS *PDEBUG_ENGINE_ENUM_SYMBOLS;
+
+//
+// DisassembleFunction-related structures and functions.
+//
+
+typedef union _DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+} DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS;
+
+typedef
+struct _Struct_size_bytes_(SizeOfStruct)
+_DEBUG_ENGINE_DISASSEMBLED_FUNCTION {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_DISASSEMBLED_FUNCTION))
+        ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS Flags;
+
+    //
+    // Raw text returned from DbgEng.
+    //
+
+    PSTRING Raw;
+
+    //
+    // Number of instructions.
+    //
+
+    ULONG NumberOfInstructions;
+
+    //
+    // Number of basic blocks.
+    //
+
+    ULONG NumberOfBasicBlocks;
+
+} DEBUG_ENGINE_DISASSEMBLED_FUNCTION;
+typedef DEBUG_ENGINE_DISASSEMBLED_FUNCTION
+*PDEBUG_ENGINE_DISASSEMBLED_FUNCTION;
+typedef DEBUG_ENGINE_DISASSEMBLED_FUNCTION
+**PPDEBUG_ENGINE_DISASSEMBLED_FUNCTION;
+
+typedef union {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Display number of instructions.  Corresponds to /i.
+        //
+
+        ULONG DisplayNumberOfInstructions:1;
+
+        //
+        // Relax blocking requirements to allow multiple exits.  Corresponds
+        // to /m.
+        //
+
+        ULONG RelaxBlockingRequirements:1;
+    };
+} DEBUG_ENGINE_DISASSEMBLE_FUNCTION_FLAGS;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_DISASSEMBLE_FUNCTION)(
+    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
+    _In_ PALLOCATOR Allocator,
+    _In_ DEBUG_ENGINE_DISASSEMBLE_FUNCTION_FLAGS Flags,
+    _In_ PRTL_PATH ModulePath,
+    _In_opt_ PSTRING FunctionName,
+    _In_opt_ PUNICODE_STRING FunctionNameWide,
+    _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_DISASSEMBLED_FUNCTION
+    DisassembledFunction
+    );
+typedef DEBUG_ENGINE_DISASSEMBLE_FUNCTION
+*PDEBUG_ENGINE_DISASSEMBLE_FUNCTION;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_TYPE OutputType,
+    _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
+    _In_ ULONG64 Arg,
+    _In_opt_ PCWSTR Text
+    );
+typedef DEBUG_ENGINE_OUTPUT_CALLBACK *PDEBUG_ENGINE_OUTPUT_CALLBACK;
+
+typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG WideCharacter:1;
+    };
+} DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS;
+
+typedef
+struct _Struct_size_bytes_(SizeOfStruct)
+_DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(
+        == ,
+        sizeof(struct _DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT)
+    ) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS Flags;
+
+    PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
+    PVOID CallerContext;
+    PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK CallerCallback;
+    PALLOCATOR Allocator;
+    PRTL_PATH ModulePath;
+    union {
+        PSTRING Command;
+        PUNICODE_STRING CommandWide;
+    };
+} DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT;
+typedef DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT
+      *PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT;
+
+typedef struct _DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT {
+    PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
+    PVOID CallerContext;
+    PVOID CallerCallback;
+    PALLOCATOR Allocator;
+    PRTL_PATH ModulePath;
+    PUNICODE_STRING Command;
+} DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT;
+typedef DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT
+      *PDEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT;
+
+typedef union _DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT {
+    PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT EnumSymbols;
+    PDEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT
+        DisassembleFunction;
+} DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
 
     //
@@ -909,6 +1183,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     //
 
     DEBUG_ENGINE_FLAGS Flags;
+
+    //
+    // Slim R/W lock that must be held when invoking callbacks.
+    //
+
+    SRWLOCK Lock;
+
+    _Guarded_by_(Lock)
+    DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT OutputCallbackContext;
 
     //
     // IIDs, interfaces and vtables.
@@ -966,22 +1249,33 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     // Callback-related fields.
     //
 
-    volatile LONG EventCallbackRefCount;
+    _Guarded_by_(Lock)
     ULONG EventCallbacksInterestMask;
+
+    _Guarded_by_(Lock)
+    ULONG OutputCallbacksInterestMask;
+
+    volatile LONG EventCallbackRefCount;
+    volatile LONG OutputCallbackRefCount;
+    volatile LONG InputCallbackRefCount;
+    ULONG Unused;
+
     IDEBUGEVENTCALLBACKS IEventCallbacks;
     DEBUGEVENTCALLBACKS EventCallbacks;
 
-    volatile LONG OutputCallbackRefCount;
-    ULONG OutputCallbacksInterestMask;
     IDEBUGOUTPUTCALLBACKS IOutputCallbacks;
     DEBUGOUTPUTCALLBACKS OutputCallbacks;
 
-    volatile LONG InputCallbackRefCount;
-    ULONG Unused;
     IDEBUGINPUTCALLBACKS IInputCallbacks;
     DEBUGINPUTCALLBACKS InputCallbacks;
 
 } DEBUG_ENGINE, *PDEBUG_ENGINE, **PPDEBUG_ENGINE;
+
+#define AcquireDebugEngineLock(DebugEngine) \
+    AcquireSRWLockExclusive(&DebugEngine->Lock)
+
+#define ReleaseDebugEngineLock(DebugEngine) \
+    ReleaseSRWLockExclusive(&DebugEngine->Lock)
 
 //
 // Define our DEBUG_ENGINE_CONTEXT structure.
@@ -1081,6 +1375,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PDESTROY_DEBUG_ENGINE_SESSION Destroy;
+
+    //
+    // Enumerate symbols.
+    //
+
+    PDEBUG_ENGINE_ENUM_SYMBOLS EnumSymbols;
+
+    //
+    // Disassemble function.
+    //
+
+    PDEBUG_ENGINE_DISASSEMBLE_FUNCTION DisassembleFunction;
 
     //
     // Rtl structure.

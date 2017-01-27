@@ -1006,6 +1006,41 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PRTL Rtl;
+    PRTL_FILE File;
+    PRTL_PATH Path;
+    PALLOCATOR Allocator;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+    PDEBUG_ENGINE_SESSION DebugEngineSession;
+    PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback;
+    DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS EnumFlags;
+
+    //
+    // Capture a timestamp for processing this module table entry.
+    //
+
+    QueryPerformanceCounter(&DebugContext->CurrentTimestamp);
+
+    //
+    // Initialize aliases.
+    //
+
+    TraceContext = DebugContext->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    Rtl = TraceContext->Rtl;
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
+    Allocator = TraceContext->Allocator;
+    DebugEngineSession = DebugContext->DebugEngineSession;
+
+    //
+    // Update the debug context to point at this module table entry.
+    //
+
+    DebugContext->CurrentModuleTableEntry = ModuleTableEntry;
+
     //
     // Examine all symbols:
     //
@@ -1014,6 +1049,21 @@ Return Value:
     //          - /t: include type info if known
     //          - /v: verbose
     //
+
+    Callback = (PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK)(
+        TraceDebugEngineSymbolCallback
+    );
+    EnumFlags.Verbose = 1;
+    EnumFlags.TypeInformation = 1;
+    Success = DebugEngineSession->EnumSymbols(DebugEngineSession,
+                                              DebugContext,
+                                              Allocator,
+                                              Callback,
+                                              EnumFlags,
+                                              Path);
+    if (!Success) {
+        return FALSE;
+    }
 
     //
     // For each symbol:
@@ -1050,6 +1100,34 @@ Return Value:
     //
     //
 
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+TraceDebugEngineSymbolCallback(
+    PDEBUG_ENGINE_SYMBOL Symbol,
+    PTRACE_DEBUG_CONTEXT DebugContext
+    )
+/*++
+
+Routine Description:
+
+    This is the callback target invoked by the debug engine when enumerating
+    symbols.
+
+Arguments:
+
+    Symbol - Supplies a pointer to a DEBUG_ENGINE_SYMBOL structure.
+
+    DebugContext - Supplies a pointer to our active DEBUG_ENGINE_CONTEXT.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
     return TRUE;
 }
 

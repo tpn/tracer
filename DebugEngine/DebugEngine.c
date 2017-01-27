@@ -298,7 +298,7 @@ Return Value:
     CHECKED_MSG(Rtl->LoadDbgEng(Rtl), "Rtl!LoadDbgEng()");
     ALLOCATE_TYPE(Session, DEBUG_ENGINE_SESSION, Allocator);
 
-    *SessionPointer = Session;
+    InitializeSRWLock(&Session->Engine.Lock);
 
     CHECKED_MSG(InitializeDebugEngine(Rtl, &Session->Engine),
                 "InitializeDebugEngine()");
@@ -324,12 +324,6 @@ Return Value:
     }
 
     //
-    // Set the start engine method.
-    //
-
-    Session->Start = StartDebugEngineSession;
-
-    //
     // Attach to the process with the debug client.
     //
 
@@ -350,6 +344,17 @@ Return Value:
         ),
         "IDebugClient->AttachProcess()"
     );
+
+    //
+    // Set the function pointers.
+    //
+
+    Session->Start = StartDebugEngineSession;
+    Session->EnumSymbols = DebugEngineEnumSymbols;
+    Session->DisassembleFunction = DebugEngineDisassembleFunction;
+
+    //
+    // Update the caller's pointer.
 
     *SessionPointer = Session;
 
@@ -996,7 +1001,7 @@ DebugEventChangeEngineStateCallback(
     if (Engine->ChangeEngineState.ExecutionStatus) {
         Engine->ExecutionStatus.AsULongLong = Argument;
         if (Engine->ExecutionStatus.InsideWait) {
-            //OutputDebugStringA("ChangeEngineState()->ExecutionStatus->InWait");
+            //OutputDebugStringA("ChangeEngineState->ExecutionStatus->InWait");
         }
     }
 

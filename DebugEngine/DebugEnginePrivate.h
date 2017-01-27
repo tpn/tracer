@@ -119,6 +119,9 @@ CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
 INITIALIZE_DEBUG_ENGINE InitializeDebugEngine;
 START_DEBUG_ENGINE_SESSION StartDebugEngineSession;
 
+DEBUG_ENGINE_ENUM_SYMBOLS DebugEngineEnumSymbols;
+DEBUG_ENGINE_DISASSEMBLE_FUNCTION DebugEngineDisassembleFunction;
+
 //
 // IDebugEventCallbacks
 //
