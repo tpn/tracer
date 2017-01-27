@@ -154,7 +154,8 @@ TypeInfoTableStoreBindComplete(
 Routine Description:
 
     This routine overrides the normal trace store bind complete routine for
-    the TypeInfoTable trace store.  It calls the normal trace store bind complete
+    the TypeInfoTable trace store.  It calls the normal trace store bind
+    complete
     routine.
 
 Arguments:
