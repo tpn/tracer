@@ -533,6 +533,7 @@ Return Value:
     COPY_FLAG(EnablePerformanceTracing);
     COPY_FLAG(EnableLoaderTracing);
     COPY_FLAG(EnableSymbolTracing);
+    COPY_FLAG(EnableTypeInfoTracing);
     COPY_FLAG(EnableAssemblyTracing);
 
     //
