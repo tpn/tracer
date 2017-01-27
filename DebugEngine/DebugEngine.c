@@ -259,7 +259,10 @@ InitializeDebugEngineSession(
 
 Routine Description:
 
-    This routine creates a debug client object.
+    This routine initializes a debug engine session.  This involves loading
+    DbgEng.dll, initializing COM, creating an IDebugClient COM object,
+    attaching to the process indicated in InitFlags, then creating the
+    remaining COM objects and setting relevant client callbacks.
 
 Arguments:
 
@@ -267,8 +270,11 @@ Arguments:
 
     Allocator - Supplies a pointer to an ALLOCATOR structure.
 
-    EnginePointer - Supplies an address to a variable that will receive the
-        address of the newly created debug client.
+    InitFlags - Supplies initialization flags that are used to control how
+        this routine attaches to the initial process.
+
+    SessionPointer - Supplies an address to a variable that will receive the
+        address of the newly DEBUG_ENGINE_SESSION structure.
 
 Return Value:
 
@@ -280,37 +286,12 @@ Return Value:
     HRESULT Result;
     PDEBUGCLIENT Client;
     PIDEBUGCLIENT IClient;
-    PDEBUGCONTROL Control;
-    PIDEBUGCONTROL IControl;
-    PDEBUGSYMBOLS Symbols;
-    PIDEBUGSYMBOLS ISymbols;
     PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session = NULL;
-    ULONG64 Base;
-    ULONG Index;
-    //ULONG TypeId;
-    ULONG64 Offset;
-    ULONG64 Offset2;
-    ULONG Flags = 0;
-    ULONG64 Address = (ULONG64)0x000000001e0c5450;
-    CHAR Buffer[256];
-    PSTR Dest;
-    ULONG BufferSize = sizeof(Buffer);
-    ULONG DisassemblySize;
-    ULONG OffsetLine;
-    ULONG64 StartOffset;
-    ULONG64 EndOffset;
-    ULONG64 LineOffsets;
-    ULONG64 EffectiveOffset;
-    ULONG DisassemblyFlags = (
-        DEBUG_DISASM_MATCHING_SYMBOLS  |
-        DEBUG_DISASM_EFFECTIVE_ADDRESS |
-        DEBUG_DISASM_SOURCE_FILE_NAME  |
-        DEBUG_DISASM_SOURCE_LINE_NUMBER
-    );
 
-    PWSTR UnassemblePy_IncRef = L"uf python27!Py_IncRef";
-    PWSTR ListPy27Functions = L"x /D /f python!Py*";
+    //
+    // Clear the caller's session pointer up-front.
+    //
 
     *SessionPointer = NULL;
 
@@ -321,7 +302,6 @@ Return Value:
 
     CHECKED_MSG(InitializeDebugEngine(Rtl, &Session->Engine),
                 "InitializeDebugEngine()");
-
 
     if (InitFlags.InitializeFromCommandLine) {
         CHECKED_MSG(
@@ -365,237 +345,11 @@ Return Value:
             IClient,
             0,
             Session->TargetProcessId,
-            //DEBUG_ATTACH_INVASIVE_RESUME_PROCESS
-            //DEBUG_ATTACH_DEFAULT
             DEBUG_ATTACH_NONINVASIVE |
             DEBUG_ATTACH_NONINVASIVE_NO_SUSPEND
         ),
         "IDebugClient->AttachProcess()"
     );
-
-    Control = Engine->Control;
-    IControl = Engine->IControl;
-
-    Symbols = Engine->Symbols;
-    ISymbols = Engine->ISymbols;
-
-    Result = Control->WaitForEvent(IControl, 0, 0);
-
-    CHECKED_HRESULT_MSG(
-        Control->GetExecutionStatus(IControl, &Engine->ExecutionStatus.LowPart),
-        "Control->GetExecutionStatus()"
-    );
-
-    Result = Symbols->GetModuleByModuleName(
-        ISymbols,
-        "python27",
-        0,
-        &Index,
-        &Base
-    );
-
-    Result = Symbols->GetOffsetByName(
-        ISymbols,
-        "python27!Py_IncRef",
-        &Offset
-    );
-
-    Result = Symbols->GetOffsetByName(
-        ISymbols,
-        "python27!PyGC_Collect",
-        &Offset2
-    );
-
-
-    Result = Control->ExecuteWide(
-        IControl,
-        DEBUG_OUTCTL_ALL_CLIENTS,
-        UnassemblePy_IncRef,
-        DEBUG_EXECUTE_ECHO
-    );
-
-    OutputDebugStringA("XXX");
-
-    CHECKED_HRESULT_MSG(
-        Control->SetAssemblyOptions(
-            IControl,
-            DEBUG_ASMOPT_IGNORE_OUTPUT_WIDTH |
-            DEBUG_ASMOPT_SOURCE_LINE_NUMBER
-        ),
-        "Control->SetAssemblyOptions()"
-    );
-
-    /*
-    Result = Control->ExecuteWide(
-        IControl,
-        DEBUG_OUTCTL_ALL_CLIENTS,
-        ListPy27Functions,
-        DEBUG_EXECUTE_ECHO
-    );
-    */
-
-    SecureZeroMemory(&Buffer, sizeof(Buffer));
-
-    Dest = Buffer;
-
-    Result = Control->Disassemble(IControl,
-                                  Offset,
-                                  Flags,
-                                  Dest,
-                                  BufferSize,
-                                  &DisassemblySize,
-                                  &EndOffset);
-    if (FAILED(Result)) {
-        OutputDebugStringA("Failed: Control->Disassemble()\n");
-    }
-
-    Result = Control->GetDisassembleEffectiveOffset(
-        IControl,
-        &EffectiveOffset
-    );
-
-    Dest += DisassemblySize;
-
-    Result = Control->Disassemble(IControl,
-                                  EndOffset+1,
-                                  Flags,
-                                  Dest,
-                                  BufferSize - DisassemblySize,
-                                  &DisassemblySize,
-                                  &EndOffset);
-    if (FAILED(Result)) {
-        OutputDebugStringA("Failed: Control->Disassemble()\n");
-    }
-
-    Result = Control->OutputDisassemblyLines(IControl,
-                                             DEBUG_OUTCTL_ALL_CLIENTS,
-                                             2,
-                                             5,
-                                             Offset2,
-                                             DisassemblyFlags,
-                                             &OffsetLine,
-                                             &StartOffset,
-                                             &EndOffset,
-                                             &LineOffsets);
-
-    if (FAILED(Result)) {
-        OutputDebugStringA("Failed: Control->OutputDisassemblyLines()\n");
-    }
-
-    return TRUE;
-
-    //
-    // AttachProcess work, create a debug control object.
-    //
-
-    //CHECKED_MSG(CreateDebugInterfaces(Session),
-    //            "CreateDebugInterfaces(Session)");
-
-    CHECKED_MSG(InitializeCallbacks(Session), "InitializeCallbacks()");
-
-    Result = Control->WaitForEvent(IControl, 0, 0);
-
-    CHECKED_HRESULT_MSG(
-        Control->GetExecutionStatus(IControl, &Engine->ExecutionStatus.LowPart),
-        "Control->GetExecutionStatus()"
-    );
-
-    Result = Control->GetActualProcessorType(
-        IControl,
-        &Engine->ActualProcessorType
-    );
-    if (FAILED(Result)) {
-        OutputDebugStringA("Failed: Control->GetActualProcessorType().\n");
-    }
-
-    CHECKED_HRESULT_MSG(
-        Control->SetInterrupt(IControl, DEBUG_INTERRUPT_ACTIVE),
-        "Control->SetInterrupt(DEBUG_INTERRUPT_ACTIVE)"
-    );
-
-    CHECKED_HRESULT_MSG(
-        Control->GetExecutionStatus(IControl, &Engine->ExecutionStatus.LowPart),
-        "Control->GetExecutionStatus()"
-    );
-
-    while (Engine->ExecutionStatus.LowPart != DEBUG_STATUS_BREAK) {
-        CHECKED_HRESULT_MSG(
-            Client->DispatchCallbacks(IClient, INFINITE),
-            "Client->DispatchCallbacks(INFINITE)"
-        );
-    }
-
-    //
-    // We've got a debug break.
-    //
-
-    //
-    // Set the start pointer.
-    //
-
-    Session->Start = StartDebugEngineSession;
-
-    //
-    // Try disassemble a known address.
-    //
-
-    if (1) {
-        //ULONG Flags = DEBUG_DISASM_EFFECTIVE_ADDRESS;
-        ULONG Flags = 0;
-        ULONG64 Address = (ULONG64)0x000000001e0c5450;
-        CHAR Buffer[256];
-        ULONG BufferSize = sizeof(Buffer);
-        ULONG DisassemblySize;
-        ULONG OffsetLine;
-        ULONG64 StartOffset;
-        ULONG64 EndOffset;
-        ULONG64 LineOffsets;
-
-        SecureZeroMemory(&Buffer, sizeof(Buffer));
-
-        Result = Control->Disassemble(IControl,
-                                      Address,
-                                      Flags,
-                                      (PSTR)&Buffer,
-                                      BufferSize,
-                                      &DisassemblySize,
-                                      &EndOffset);
-        if (FAILED(Result)) {
-            OutputDebugStringA("Failed: Control->Disassemble()\n");
-        }
-
-        Result = Control->OutputDisassemblyLines(IControl,
-                                                 DEBUG_OUTCTL_THIS_CLIENT,
-                                                 2,
-                                                 5,
-                                                 Address,
-                                                 DEBUG_DISASM_MATCHING_SYMBOLS,
-                                                 &OffsetLine,
-                                                 &StartOffset,
-                                                 &EndOffset,
-                                                 &LineOffsets);
-
-        if (FAILED(Result)) {
-            OutputDebugStringA("Failed: Control->OutputDisassemblyLines()\n");
-        }
-
-    }
-
-    {
-        PWSTR Command = L"uf python27!PyGC_Collect";
-        Result = Control->ExecuteWide(IControl,
-                                      DEBUG_OUTCTL_ALL_CLIENTS,
-                                      Command,
-                                      DEBUG_EXECUTE_DEFAULT);
-
-        if (Result != S_OK) {
-            OutputDebugStringA("ExecuteWide() failed.");
-        }
-    }
-
-    //
-    // Update the caller's pointer.
-    //
 
     *SessionPointer = Session;
 
@@ -641,7 +395,6 @@ Return Value:
 {
     return;
 }
-
 
 BOOL
 InitializeDebugEngine(
@@ -800,6 +553,7 @@ Return Value:
     PIDEBUGOUTPUTCALLBACKS IOutputCallbacks;
     PDEBUGINPUTCALLBACKS InputCallbacks;
     PIDEBUGINPUTCALLBACKS IInputCallbacks;
+    DEBUG_OUTPUT_CALLBACK_INTEREST_MASK OutputInterestMask;
 
     Engine = &Session->Engine;
 
@@ -829,6 +583,12 @@ Return Value:
     IEventCallbacks = &Engine->IEventCallbacks;
     IEventCallbacks->lpVtbl = EventCallbacks;
 
+    //
+    // For now, don't register callbacks.
+    //
+
+    goto RegisterOutputCallbacks;
+
     CHECKED_HRESULT_MSG(
         Engine->Client->SetEventCallbacksWide(
             Engine->IClient,
@@ -841,7 +601,10 @@ Return Value:
     // Initialize output callbacks.
     //
 
-    Engine->OutputCallbacksInterestMask = DEBUG_OUTCBI_TEXT;
+RegisterOutputCallbacks:
+
+    OutputInterestMask.AsULong = 7;
+    Engine->OutputCallbacksInterestMask = OutputInterestMask.AsULong;
     OutputCallbacks = &Engine->OutputCallbacks;
     CopyIDebugOutputCallbacks(OutputCallbacks);
 
@@ -1347,7 +1110,12 @@ DebugOutputOutput2Callback(
     PCWSTR String
     )
 {
+    DEBUG_OUTPUT_OUTPUT_MASK OutputMask;
+    DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags;
     DEBUG_OUTPUT_CALLBACK_PROLOGUE();
+
+    OutputMask.AsULong = 0;
+    OutputFlags.AsULong = 0;
 
     if (Which == DEBUG_OUTCB_TEXT && String) {
         OutputDebugStringW(String);
