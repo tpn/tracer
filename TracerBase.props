@@ -34,8 +34,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <CompileAsManaged>false</CompileAsManaged>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <SetChecksum>true</SetChecksum>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <CallingConvention>StdCall</CallingConvention>
     </ClCompile>
     <ClCompile Condition="$(Configuration) == 'Debug'">
       <Optimization>Disabled</Optimization>
@@ -75,6 +75,7 @@
       <AdditionalOptions>/GENPROFILE:EXACT %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Link Condition="$(Configuration) == 'Debug'">
+      <SetChecksum>false</SetChecksum>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
