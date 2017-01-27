@@ -1258,8 +1258,13 @@ typedef struct _TRACE_FLAGS {
             ULONG EnableSymbolTracing:1;
 
             //
-            // When set, enables the creation of a debug engine to assist with
-            // tracing.
+            // When set, enables tracing of type information.
+            //
+
+            ULONG EnableTypeInfoTracing:1;
+
+            //
+            // When set, enables tracing of function assembly.
             //
 
             ULONG EnableAssemblyTracing:1;

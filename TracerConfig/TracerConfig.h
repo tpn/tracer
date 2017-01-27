@@ -281,7 +281,14 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableSymbolTracing:1;
 
     //
-    // When set, enables the creation of a debug engine to assist with tracing.
+    // When set, enables tracing of module (exe/DLL) type information via the
+    // DebugEngine component.
+    //
+
+    ULONG EnableTypeInfoTracing:1;
+
+    //
+    // When set, enables tracing of function assembly.
     //
 
     ULONG EnableAssemblyTracing:1;
