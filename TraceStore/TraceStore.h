@@ -1684,14 +1684,28 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     struct _TRACE_SYMBOL_TABLE *SymbolTable;
 
     //
-    // Optional threadpool work function that will be submitted when the symbol
-    // table is available.
+    // Pointer to the type info table for the module, if any.
+    //
+
+    struct _TRACE_TYPE_INFO_TABLE *TypeInfoTable;
+
+    //
+    // Pointer to the function table for the module, if any.
+    //
+
+    struct _TRACE_FUNCTION_TABLE *FunctionTable;
+
+    //
+    // The following threadpool work functions are optional; if set, they will
+    // be called when new items have been added to the respective tables.
     //
 
     PTP_WORK SymbolTableAvailableWork;
+    PTP_WORK TypeInfoTableAvailableWork;
+    PTP_WORK FunctionTableAvailableWork;
 
     //
-    // (656 bytes consumed.)
+    // (688 bytes consumed.)
     //
 
     //
@@ -1700,22 +1714,35 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     //
 
     union {
-        SLIST_ENTRY ListEntry;
+        SLIST_ENTRY SymbolContextListEntry;
         struct {
-            PSLIST_ENTRY Next;
-            PVOID Unused;
+            PSLIST_ENTRY SymbolContextNext;
+            PVOID Unused1;
         };
     };
 
     //
-    // (672 bytes consumed.)
+    // If the debug engine is enabled, this structure will be pushed onto the
+    // debug engine context's interlocked list head via this field below.
+    //
+
+    union {
+        SLIST_ENTRY DebugContextListEntry;
+        struct {
+            PSLIST_ENTRY DebugContextNext;
+            PVOID Unused2;
+        };
+    };
+
+    //
+    // (720 bytes consumed.)
     //
 
     //
     // Pad out to 992 bytes.
     //
 
-    BYTE Reserved[320];
+    BYTE Reserved[272];
 
 } TRACE_MODULE_TABLE_ENTRY, *PTRACE_MODULE_TABLE_ENTRY;
 typedef TRACE_MODULE_TABLE_ENTRY **PPTRACE_MODULE_TABLE_ENTRY;
@@ -1723,8 +1750,8 @@ C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, File) == 80);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsListHead) == 592);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, LoadEventsLock) == 624);
 C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, DuplicateEntriesLock) == 632);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, ListEntry) == 656);
-C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 672);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, SymbolContextNext) == 688);
+C_ASSERT(FIELD_OFFSET(TRACE_MODULE_TABLE_ENTRY, Reserved) == 720);
 C_ASSERT(sizeof(TRACE_MODULE_TABLE_ENTRY) == 992);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_LOAD_EVENT {
@@ -1997,10 +2024,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
 
     //
-    // Pointer to the symbol tracing context if enable.d
+    // Pointer to the symbol tracing context if enabled.
     //
 
     struct _TRACE_SYMBOL_CONTEXT *SymbolContext;
+
+    //
+    // Pointer to the symbol tracing context if enabled.
+    //
+
+    struct _TRACE_DEBUG_CONTEXT *DebugContext;
 
     //
     // Cookie used to deregister with UnregisterDllNotification().
@@ -2028,6 +2061,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     union {
         ULONGLONG BitmapBuffer[TRACE_STORE_BITMAP_SIZE_IN_QUADWORDS];
         struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+            //
+            // N.B. This is wildly out of date.
+            //
+
             ULONG TraceStoreNullId:1;
             ULONG TraceStoreEventId:1;
             ULONG TraceStoreStringBufferId:1;
@@ -2246,7 +2284,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_TABLE {
     // AVL table keyed by the symbol name's hash.
     //
 
-    RTL_AVL_TABLE SymbolHashTable;
+    RTL_AVL_TABLE SymbolHashAvlTable;
 
     //
     // (120 bytes consumed.)
@@ -2278,7 +2316,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_TABLE {
 typedef TRACE_SYMBOL_TABLE **PPTRACE_SYMBOL_TABLE;
 C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
 C_ASSERT(sizeof(PREFIX_TABLE) == 16);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolHashTable) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolHashAvlTable) == 16);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, SymbolPrefixTable) == 120);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, ModuleTableEntry) == 136);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_TABLE, Reserved) == 144);
@@ -2318,13 +2356,415 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_TABLE_ENTRY {
     TRACE_SYMBOL_TABLE_ENTRY_FLAGS Flags;
 
     //
-    // Prefix table entry; links to TRACE_SYMBOL_TABLE's SymbolPrefixTable.
+    // Prefix table entry; links to TRACE_SYMBOL_TABLE's TypeInfoPrefixTable.
     //
 
     PREFIX_TABLE_ENTRY PrefixTableEntry;
 
 } TRACE_SYMBOL_TABLE_ENTRY, *PTRACE_SYMBOL_TABLE_ENTRY;
 typedef TRACE_SYMBOL_TABLE_ENTRY **PPTRACE_SYMBOL_TABLE_ENTRY;
+
+//
+// The DebugEngine component (which provides a thin wrapper around DbgEng.dll)
+// is used for extracting type information from loaded modules as well as
+// disassembling functions.
+//
+
+typedef
+_Check_return_
+_Success_(return == 0)
+ULONG
+(WINAPI TRACE_DEBUG_ENGINE_THREAD_ENTRY)(
+    _In_ struct _TRACE_DEBUG_CONTEXT *DebugContext
+    );
+typedef TRACE_DEBUG_ENGINE_THREAD_ENTRY *PTRACE_DEBUG_ENGINE_THREAD_ENTRY;
+
+typedef union _TRACE_DEBUG_CONTEXT_FLAGS {
+    ULONG AsLong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+} TRACE_DEBUG_CONTEXT_FLAGS, *PTRACE_DEBUG_CONTEXT_FLAGS;
+C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT_FLAGS) == sizeof(ULONG));
+
+typedef enum _TRACE_DEBUG_CONTEXT_STATE {
+    TraceDebugContextNullState = 0,
+    TraceDebugContextStructureCreatedState = 1,
+    TraceDebugContextThreadCreatedState = 2,
+    TraceDebugContextWaitingForWorkState = 3,
+    TraceDebugContextProcessingWorkState = 4,
+    TraceDebugContextReceivedShutdownState = 5,
+    TraceDebugContextWaitFailureInducedShutdownState = 6,
+} TRACE_DEBUG_CONTEXT_STATE;
+typedef TRACE_DEBUG_CONTEXT_STATE *PTRACE_DEBUG_CONTEXT_STATE;
+C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT_STATE) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
+
+    //
+    // Structure size, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_DEBUG_CONTEXT)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TRACE_DEBUG_CONTEXT_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    _Guarded_by_(CriticalSection)
+    TRACE_DEBUG_CONTEXT_STATE State;
+
+    //
+    // Thread ID of the thread that owns the symbol context.
+    //
+
+    _Write_guarded_by_(CriticalSection)
+    ULONG ThreadId;
+
+    //
+    // Handle to the thread that owns the symbol context.
+    //
+
+    _Write_guarded_by_(CriticalSection)
+    HANDLE ThreadHandle;
+
+    //
+    // Critical section guarding the structure.
+    //
+
+    CRITICAL_SECTION CriticalSection;
+
+    //
+    // Pad out to 64 bytes.  This also ensures WorkListHead is aligned on a
+    // 16-byte boundary as required.
+    //
+
+    DECLSPEC_ALIGN(64) SLIST_HEADER WorkListHead;
+
+    //
+    // (80 bytes consumed.)
+    //
+
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_DEBUG_ENGINE_THREAD_ENTRY ThreadEntry;
+
+    HANDLE ShutdownEvent;
+    HANDLE WorkAvailableEvent;
+
+    struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    ULONG LastError;
+    ULONG NumberOfWorkItemsProcessed;
+    ULONG NumberOfWorkItemsSucceeded;
+    ULONG NumberOfWorkItemsFailed;
+
+    //
+    // (136 bytes consumed.)
+    //
+
+    struct {
+        struct _TRACE_STORE *TypeInfoTable;
+        struct _TRACE_STORE *TypeInfoTableEntry;
+        struct _TRACE_STORE *TypeInfoStringBuffer;
+        struct _TRACE_STORE *FunctionTable;
+        struct _TRACE_STORE *FunctionTableEntry;
+        struct _TRACE_STORE *FunctionAssembly;
+        struct _TRACE_STORE *FunctionSourceCode;
+        struct _TRACE_STORE *ReservedStore;
+    } TraceStores;
+
+    //
+    // (200 bytes consumed.)
+
+    //
+    // Capture various stateful pointers/values such that they are accessible
+    // from DbgHelp callbacks that only get passed DebugContext.  (This is
+    // safe because the symbol tracing is inherently single-threaded.)
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY CurrentModuleTableEntry;
+    LARGE_INTEGER CurrentTimestamp;
+
+    //
+    // (216 bytes consumed.)
+    //
+
+    PDEBUG_ENGINE_SESSION DebugEngineSession;
+    PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
+
+    //
+    // (232 bytes consumed.)
+    //
+
+    //
+    // Pad out to 256 bytes.
+    //
+
+    BYTE Reserved[24];
+
+} TRACE_DEBUG_CONTEXT;
+typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
+typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkListHead) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, Reserved) == 232);
+C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 256);
+
+#define AcquireTraceDebugContextLock(DebugContext) \
+    EnterCriticalSection(&DebugContext->CriticalSection)
+
+#define TryAcquireTraceDebugContextLock(DebugContext) \
+    TryEnterCriticalSection(&DebugContext->CriticalSection)
+
+#define ReleaseTraceDebugContextLock(DebugContext) \
+    LeaveCriticalSection(&DebugContext->CriticalSection)
+
+#define DebugContextIsStructureCreated(DebugContext) \
+    (DebugContext->State == TraceDebugContextStructureCreatedState)
+
+#define DebugContextIsThreadCreated(DebugContext) \
+    (DebugContext->State == TraceDebugContextThreadCreatedState)
+
+#define DebugContextIsThreadRunningCreated(DebugContext) \
+    (DebugContext->State == TraceDebugContextThreadRunningState)
+
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_TYPE_INFO_TABLE_FLAGS {
+    ULONG Initialized:1;
+} TRACE_TYPE_INFO_TABLE_FLAGS, *PTRACE_TYPE_INFO_TABLE_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_TYPE_INFO_TABLE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_TYPE_INFO_TABLE)) ULONG SizeOfStruct;
+
+    //
+    // Module table flags.
+    //
+
+    TRACE_TYPE_INFO_TABLE_FLAGS Flags;
+
+    //
+    // Pad out to 16 bytes.
+    //
+
+    ULONGLONG Padding1;
+
+    //
+    // AVL table keyed by the type name's hash.
+    //
+
+    RTL_AVL_TABLE TypeInfoTable;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    //
+    // Prefix table of symbol names.
+    //
+
+    PREFIX_TABLE TypeInfoPrefixTable;
+
+    //
+    // Pointer to the parent TRACE_MODULE_TABLE_ENTRY.
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    //
+    // (144 bytes consumed.)
+    //
+
+    //
+    // Pad out to 512 bytes.
+    //
+
+    BYTE Reserved[368];
+
+} TRACE_TYPE_INFO_TABLE, *PTRACE_TYPE_INFO_TABLE;
+typedef TRACE_TYPE_INFO_TABLE **PPTRACE_TYPE_INFO_TABLE;
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
+C_ASSERT(sizeof(PREFIX_TABLE) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_TYPE_INFO_TABLE, TypeInfoTable) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_TYPE_INFO_TABLE, TypeInfoPrefixTable) == 120);
+C_ASSERT(FIELD_OFFSET(TRACE_TYPE_INFO_TABLE, ModuleTableEntry) == 136);
+C_ASSERT(FIELD_OFFSET(TRACE_TYPE_INFO_TABLE, Reserved) == 144);
+C_ASSERT(sizeof(TRACE_TYPE_INFO_TABLE) == 512);
+
+//
+// Type info table entry structure.
+//
+
+typedef struct
+_Struct_size_bytes_(sizeof(ULONG))
+_TRACE_TYPE_INFO_TABLE_ENTRY_FLAGS {
+    ULONG Unused:1;
+} TRACE_TYPE_INFO_TABLE_ENTRY_FLAGS, *PTRACE_TYPE_INFO_TABLE_ENTRY_FLAGS;
+C_ASSERT(sizeof(TRACE_TYPE_INFO_TABLE_ENTRY_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_TYPE_INFO_TABLE_ENTRY {
+
+    //
+    // Hash of the type name.
+    //
+
+    ULONG TypeNameHash;
+
+    //
+    // Hash of the full type name including the module.
+    //
+
+    ULONG FullSymbolNameHash;
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_TYPE_INFO_TABLE_ENTRY))
+        ULONG SizeOfStruct;
+
+    //
+    // Type info table entry flags.
+    //
+
+    TRACE_TYPE_INFO_TABLE_ENTRY_FLAGS Flags;
+
+    //
+    // Prefix table entry. links to TRACE_TYPE_INFO_TABLE's
+    // TypeInfoPrefixTable.
+    //
+
+    PREFIX_TABLE_ENTRY PrefixTableEntry;
+
+} TRACE_TYPE_INFO_TABLE_ENTRY, *PTRACE_TYPE_INFO_TABLE_ENTRY;
+typedef TRACE_TYPE_INFO_TABLE_ENTRY **PPTRACE_TYPE_INFO_TABLE_ENTRY;
+
+//
+// Function table related structures.
+//
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_FUNCTION_TABLE_FLAGS {
+    ULONG Initialized:1;
+} TRACE_FUNCTION_TABLE_FLAGS, *PTRACE_FUNCTION_TABLE_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_FUNCTION_TABLE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_FUNCTION_TABLE)) ULONG SizeOfStruct;
+
+    //
+    // Module table flags.
+    //
+
+    TRACE_FUNCTION_TABLE_FLAGS Flags;
+
+    //
+    // Pad out to 16 bytes.
+    //
+
+    ULONGLONG Padding1;
+
+    //
+    // AVL table keyed by the function name's hash.
+    //
+
+    RTL_AVL_TABLE FunctionTable;
+
+    //
+    // (120 bytes consumed.)
+    //
+
+    //
+    // Prefix table of function names.
+    //
+
+    PREFIX_TABLE FunctionPrefixTable;
+
+    //
+    // Pointer to the parent TRACE_MODULE_TABLE_ENTRY.
+    //
+
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    //
+    // (144 bytes consumed.)
+    //
+
+    //
+    // Pad out to 512 bytes.
+    //
+
+    BYTE Reserved[368];
+
+} TRACE_FUNCTION_TABLE, *PTRACE_FUNCTION_TABLE;
+typedef TRACE_FUNCTION_TABLE **PPTRACE_FUNCTION_TABLE;
+C_ASSERT(sizeof(RTL_AVL_TABLE) == 104);
+C_ASSERT(sizeof(PREFIX_TABLE) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_FUNCTION_TABLE, FunctionTable) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_FUNCTION_TABLE, FunctionPrefixTable) == 120);
+C_ASSERT(FIELD_OFFSET(TRACE_FUNCTION_TABLE, ModuleTableEntry) == 136);
+C_ASSERT(FIELD_OFFSET(TRACE_FUNCTION_TABLE, Reserved) == 144);
+C_ASSERT(sizeof(TRACE_FUNCTION_TABLE) == 512);
+
+//
+// Symbol table entry structure.
+//
+
+typedef struct
+_Struct_size_bytes_(sizeof(ULONG))
+_TRACE_FUNCTION_TABLE_ENTRY_FLAGS {
+    ULONG Unused:1;
+} TRACE_FUNCTION_TABLE_ENTRY_FLAGS, *PTRACE_FUNCTION_TABLE_ENTRY_FLAGS;
+C_ASSERT(sizeof(TRACE_FUNCTION_TABLE_ENTRY_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_FUNCTION_TABLE_ENTRY {
+
+    //
+    // Hash of the symbol name.
+    //
+
+    ULONG SymbolNameHash;
+    ULONG FullSymbolNameHash;
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_FUNCTION_TABLE_ENTRY))
+        ULONG SizeOfStruct;
+
+    //
+    // Function table entry flags.
+    //
+
+    TRACE_FUNCTION_TABLE_ENTRY_FLAGS Flags;
+
+    //
+    // Prefix table entry; links to TRACE_FUNCTION_TABLE's FunctionPrefixTable.
+    //
+
+    PREFIX_TABLE_ENTRY PrefixTableEntry;
+
+} TRACE_FUNCTION_TABLE_ENTRY, *PTRACE_FUNCTION_TABLE_ENTRY;
+typedef TRACE_FUNCTION_TABLE_ENTRY **PPTRACE_FUNCTION_TABLE_ENTRY;
 
 //
 // Miscellaneous structure sizes.

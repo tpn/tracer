@@ -170,7 +170,7 @@ Return Value:
     // Initialize the AVL table.
     //
 
-    Rtl->RtlInitializeGenericTableAvl(&SymbolTable->SymbolHashTable,
+    Rtl->RtlInitializeGenericTableAvl(&SymbolTable->SymbolHashAvlTable,
                                       SymbolTableEntryCompareRoutine,
                                       SymbolTableEntryAllocateRoutine,
                                       SymbolTableEntryFreeRoutine,
@@ -668,29 +668,6 @@ Return Value:
         return 1;
     }
 
-    if (SymbolContext->TraceContext->TraceStores->Flags.EnableAssemblyTracing) {
-        BOOL Success;
-        DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
-        PTRACER_CONFIG TracerConfig;
-
-        InitFlags.InitializeFromCurrentProcess = TRUE;
-        TracerConfig = TraceContext->TracerConfig;
-
-        Success = LoadAndInitializeDebugEngineSession(
-            &TracerConfig->Paths.DebugEngineDllPath,
-            Rtl,
-            TraceContext->Allocator,
-            InitFlags,
-            &SymbolContext->DebugEngineSession,
-            &SymbolContext->DestroyDebugEngineSession
-        );
-
-        if (!Success) {
-            OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.");
-            return 1;
-        }
-    }
-
     OutputDebugStringA("Symbols successfully initialized.\n");
 
     TRY_MAPPED_MEMORY_OP {
@@ -825,7 +802,7 @@ Return Value:
 
         ModuleTableEntry = CONTAINING_RECORD(ListEntry,
                                              TRACE_MODULE_TABLE_ENTRY,
-                                             ListEntry);
+                                             SymbolContextListEntry);
 
         Success = CreateSymbolTableForModuleTableEntry(SymbolContext,
                                                        ModuleTableEntry);

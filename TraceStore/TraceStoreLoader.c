@@ -868,6 +868,13 @@ InsertPrefix:
 
     MaybePushModuleTableEntryToSymbolContext(TraceContext, ModuleEntry);
 
+    //
+    // If there's a debug context, push this module table entry onto the debug
+    // engine thread's work list and set the work available event.
+    //
+
+    MaybePushModuleTableEntryToDebugContext(TraceContext, ModuleEntry);
+
     return TRUE;
 }
 

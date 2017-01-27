@@ -644,7 +644,7 @@ Return Value:
         PTRACE_STORE SymbolTypeStore;
 
         //
-        // Ensure Rtl has loaded Dbhelp.
+        // Ensure Rtl has loaded DbgHelp.
         //
 
         if (!Rtl->SymSetOptions) {
@@ -682,6 +682,55 @@ Return Value:
 
         SymbolTableStore->BindComplete = SymbolTableStoreBindComplete;
         SymbolTypeStore->BindComplete = SymbolTypeStoreBindComplete;
+    }
+
+    if (TraceStores->Flags.EnableTypeInfoTracing ||
+        TraceStores->Flags.EnableAssemblyTracing) {
+
+        PTRACE_STORE TypeInfoTableStore;
+        PTRACE_STORE FunctionTableStore;
+        PTRACE_STORE FunctionSourceCodeStore;
+
+        //
+        // Attempt to create the TRACE_DEBUG_CONTEXT structure.
+        //
+
+        Success = InitializeTraceDebugContext(TraceContext);
+        if (!Success) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Override the BindComplete methods.
+        //
+
+        TypeInfoTableStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreTypeInfoTableId
+            )
+        );
+
+        FunctionTableStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreFunctionTableId
+            )
+        );
+
+        FunctionSourceCodeStore = (
+            TraceStoreIdToTraceStore(
+                TraceStores,
+                TraceStoreFunctionSourceCodeId
+            )
+        );
+
+        TypeInfoTableStore->BindComplete = TypeInfoTableStoreBindComplete;
+        FunctionTableStore->BindComplete = FunctionTableStoreBindComplete;
+        FunctionSourceCodeStore->BindComplete = (
+            FunctionSourceCodeStoreBindComplete
+        );
     }
 
 
@@ -760,8 +809,6 @@ InitializeAllocators:
                 TraceStoreAllocateRecordsWithTimestampImpl
             );
         }
-
-        //
 
         //
         // If the trace store has the concurrent allocations trait set, we need
@@ -1049,6 +1096,18 @@ Return Value:
 
         ThreadHandle = TraceContext->SymbolContext->ThreadHandle;
         SetEvent(TraceContext->SymbolContext->ShutdownEvent);
+        WaitResult = WaitForSingleObject(ThreadHandle, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
+        }
+    }
+
+    if (TraceContext->DebugContext) {
+        ULONG WaitResult;
+        HANDLE ThreadHandle;
+
+        ThreadHandle = TraceContext->DebugContext->ThreadHandle;
+        SetEvent(TraceContext->DebugContext->ShutdownEvent);
         WaitResult = WaitForSingleObject(ThreadHandle, INFINITE);
         if (WaitResult != WAIT_OBJECT_0) {
             __debugbreak();

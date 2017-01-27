@@ -2458,10 +2458,12 @@ PushModuleTableEntryToSymbolContext(
     _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
 {
+    PSLIST_ENTRY ListEntry;
     PSLIST_HEADER ListHead;
 
     ListHead = &SymbolContext->WorkListHead;
-    InterlockedPushEntrySList(ListHead, &ModuleTableEntry->ListEntry);
+    ListEntry = &ModuleTableEntry->SymbolContextListEntry;
+    InterlockedPushEntrySList(ListHead, ListEntry);
     SetEvent(SymbolContext->WorkAvailableEvent);
 }
 
@@ -2633,6 +2635,111 @@ AllocateAndCopySourceFile(
     SourceFile = NULL;
     OutputDebugStringW(pSourceFile->FileName);
     return TRUE;
+}
+
+//
+// TraceStoreDebugEngine-related functions and macros.
+//
+
+#define DEBUG_CONTEXT_STORE(Name) \
+    (DebugContext->TraceStores.##Name)
+
+BIND_COMPLETE TypeInfoTableStoreBindComplete;
+BIND_COMPLETE FunctionTableStoreBindComplete;
+BIND_COMPLETE FunctionSourceCodeStoreBindComplete;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK CREATE_TRACE_DEBUG_CONTEXT_CALLBACK)(
+    _In_ PINIT_ONCE InitOnce,
+    _In_ PTRACE_CONTEXT TraceContext,
+    _Outptr_result_nullonfailure_ PPTRACE_DEBUG_CONTEXT DebugContextPointer
+    );
+typedef CREATE_TRACE_DEBUG_CONTEXT_CALLBACK \
+      *PCREATE_TRACE_DEBUG_CONTEXT_CALLBACK;
+CREATE_TRACE_DEBUG_CONTEXT_CALLBACK CreateTraceDebugContextCallback;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_TRACE_DEBUG_CONTEXT)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef CREATE_TRACE_DEBUG_CONTEXT \
+      *PCREATE_TRACE_DEBUG_CONTEXT;
+CREATE_TRACE_DEBUG_CONTEXT CreateTraceDebugContext;
+
+TRACE_DEBUG_ENGINE_THREAD_ENTRY TraceDebugEngineThreadEntry;
+TRACE_DEBUG_ENGINE_THREAD_ENTRY TraceDebugEngineThreadEntryImpl;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_DEBUG_CONTEXT)(
+    _In_ PTRACE_CONTEXT TraceContext
+    );
+typedef INITIALIZE_TRACE_DEBUG_CONTEXT *PINITIALIZE_TRACE_DEBUG_CONTEXT;
+INITIALIZE_TRACE_DEBUG_CONTEXT InitializeTraceDebugContext;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(PROCESS_TRACE_DEBUG_ENGINE_WORK)(
+    _In_ PTRACE_DEBUG_CONTEXT DebugContext
+    );
+typedef PROCESS_TRACE_DEBUG_ENGINE_WORK *PPROCESS_TRACE_DEBUG_ENGINE_WORK;
+PROCESS_TRACE_DEBUG_ENGINE_WORK ProcessTraceDebugEngineWork;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_TYPE_INFO_TABLE_FOR_MODULE_TABLE_ENTRY)(
+    _In_ PTRACE_DEBUG_CONTEXT DebugContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    );
+typedef CREATE_TYPE_INFO_TABLE_FOR_MODULE_TABLE_ENTRY
+      *PCREATE_TYPE_INFO_TABLE_FOR_MODULE_TABLE_ENTRY;
+CREATE_TYPE_INFO_TABLE_FOR_MODULE_TABLE_ENTRY \
+    CreateTypeInfoTableForModuleTableEntry;
+
+FORCEINLINE
+VOID
+PushModuleTableEntryToDebugContext(
+    _In_ PTRACE_DEBUG_CONTEXT DebugContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PSLIST_ENTRY ListEntry;
+    PSLIST_HEADER ListHead;
+
+    ListHead = &DebugContext->WorkListHead;
+    ListEntry = &ModuleTableEntry->DebugContextListEntry;
+    InterlockedPushEntrySList(ListHead, ListEntry);
+    SetEvent(DebugContext->WorkAvailableEvent);
+}
+
+FORCEINLINE
+VOID
+MaybePushModuleTableEntryToDebugContext(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PTRACE_DEBUG_CONTEXT DebugContext;
+
+    DebugContext = TraceContext->DebugContext;
+
+    if (!DebugContext) {
+        return;
+    }
+
+    PushModuleTableEntryToDebugContext(DebugContext, ModuleTableEntry);
 }
 
 //
