@@ -4,12 +4,11 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    DebugEngine.c
+    InitializeDebugEngine.c
 
 Abstract:
 
-    This module implements functionality related to the Windows Debugger
-    Engine COM facilities exposed by the DbgEng.dll library.
+    This module implements the InitializeDebugEngine() routine.
 
 --*/
 

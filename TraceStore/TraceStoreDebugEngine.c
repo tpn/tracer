@@ -1128,6 +1128,10 @@ Return Value:
 
 --*/
 {
+    if (Symbol->RawText.Buffer) {
+        OutputDebugStringA(Symbol->RawText.Buffer);
+    }
+
     return TRUE;
 }
 
