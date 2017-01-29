@@ -18,10 +18,7 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 DebugEngineSetOutputCallbacks(
-    PDEBUG_ENGINE Engine,
-    PDEBUGOUTPUTCALLBACKS OutputCallbacks,
-    PCGUID InterfaceId,
-    DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK InterestMask
+    PDEBUG_ENGINE Engine
     )
 /*++
 
@@ -41,30 +38,19 @@ Return Value:
 {
     BOOL Success;
     HRESULT Result;
+    PCGUID InterfaceId;
 
-    //
-    // Acquire the engine lock.
-    //
+    InterfaceId = &IID_IDEBUG_OUTPUT_CALLBACKS;
 
-    AcquireDebugEngineLock(Engine);
+    if (InlineIsEqualGUID(&Engine->IID_CurrentOutputCallbacks, InterfaceId)) {
 
-    //
-    // Copy the interest mask.
-    //
+        //
+        // The output callbacks are already set.
+        //
 
-    Engine->OutputCallbacksInterestMask.AsULong = InterestMask.AsULong;
-
-    //
-    // Set the output mask on the client.
-    //
-
-    CHECKED_HRESULT_MSG(
-        Engine->Client->SetOutputMask(
-            Engine->IClient,
-            InterestMask.AsULong
-        ),
-        "Client->SetOutputMask()"
-    );
+        Success = TRUE;
+        goto End;
+    }
 
     //
     // Copy the debug output callbacks.
@@ -72,7 +58,7 @@ Return Value:
 
     CopyIDebugOutputCallbacks(Engine,
                               &Engine->OutputCallbacks,
-                              OutputCallbacks);
+                              &DebugOutputCallbacks);
 
     //
     // Set the callbacks.
@@ -99,7 +85,6 @@ Error:
     Success = FALSE;
 
 End:
-    ReleaseDebugEngineLock(Engine);
 
     return Success;
 }
@@ -162,6 +147,13 @@ DebugOutputCallbacksOutput(
     PCSTR String
     )
 {
+    DEBUG_OUTPUT_CALLBACKS_PROLOGUE();
+
+    if (Engine->OutputCallback) {
+        DEBUG_OUTPUT_MASK OutputMask = { Mask };
+        return Engine->OutputCallback(Engine, OutputMask, String);
+    }
+
     return S_OK;
 }
 

@@ -62,15 +62,6 @@ BOOL
     );
 typedef DEBUG_ENGINE_DISASSEMBLE_ADDRESS *PDEBUG_ENGINE_DISASSEMBLE_ADDRESS;
 
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(INITIALIZE_CALLBACKS)(
-    _In_ PDEBUG_ENGINE_SESSION Session
-    );
-typedef INITIALIZE_CALLBACKS *PINITIALIZE_CALLBACKS;
-
 //
 // DEBUG_ENGINE_OUTPUT related function typedefs and structures.
 //
@@ -79,12 +70,47 @@ typedef
 HRESULT
 (STDAPICALLTYPE DEBUG_ENGINE_OUTPUT_CALLBACK)(
     _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_MASK OutputMask,
+    _In_ PCSTR Text
+    );
+typedef DEBUG_ENGINE_OUTPUT_CALLBACK *PDEBUG_ENGINE_OUTPUT_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_OUTPUT_CALLBACK2)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
     _In_ DEBUG_OUTPUT_TYPE OutputType,
     _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
     _In_ ULONG64 Arg,
-    _In_opt_ PCWSTR Text
+    _In_ PCWSTR Text
+    );
+typedef DEBUG_ENGINE_OUTPUT_CALLBACK2 *PDEBUG_ENGINE_OUTPUT_CALLBACK2;
+
+//
+// EnumSymbols-related function pointer typedefs and structures.
+//
+
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_MASK OutputMask,
+    _In_ PCSTR Text
     );
 typedef DEBUG_ENGINE_OUTPUT_CALLBACK *PDEBUG_ENGINE_OUTPUT_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_TYPE OutputType,
+    _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
+    _In_ ULONG64 Arg,
+    _In_ PCWSTR Text
+    );
+typedef DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2
+      *PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2;
 
 typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS {
     LONG AsLong;
@@ -129,6 +155,14 @@ typedef DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT
 typedef
 HRESULT
 (STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_MASK OutputMask,
+    _In_ PCSTR Text
+    );
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_WIDE_CALLBACK)(
     _In_ struct _DEBUG_ENGINE *DebugEngine,
     _In_ DEBUG_OUTPUT_TYPE OutputType,
     _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
@@ -250,12 +284,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     _Guarded_by_(Lock)
     struct {
 
+        DEBUG_OUTPUT_MASK OutputMask;
+        PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
+        PDEBUG_ENGINE_OUTPUT_CALLBACK2 OutputCallback2;
         DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT OutputCallbackContext;
 
         DEBUG_EVENT_CALLBACKS_INTEREST_MASK EventCallbacksInterestMask;
-        DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK OutputCallbacksInterestMask;
         DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK OutputCallbacks2InterestMask;
-        ULONG Unused1;
 
         DEBUGEVENTCALLBACKS EventCallbacks;
         IDEBUGEVENTCALLBACKS IEventCallbacks;
@@ -306,6 +341,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
 typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_SET_EVENT_CALLBACKS)(
     _In_ PDEBUG_ENGINE Engine,
@@ -318,6 +354,7 @@ typedef DEBUG_ENGINE_SET_EVENT_CALLBACKS *PDEBUG_ENGINE_SET_EVENT_CALLBACKS;
 typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_SET_INPUT_CALLBACKS)(
     _In_ PDEBUG_ENGINE Engine,
@@ -329,24 +366,20 @@ typedef DEBUG_ENGINE_SET_INPUT_CALLBACKS *PDEBUG_ENGINE_SET_INPUT_CALLBACKS;
 typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_SET_OUTPUT_CALLBACKS)(
-    _In_ PDEBUG_ENGINE Engine,
-    _In_ PDEBUGOUTPUTCALLBACKS OutputCallbacks,
-    _In_ PCGUID InterfaceId,
-    _In_ DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK InterestMask
+    _In_ PDEBUG_ENGINE Engine
     );
 typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS *PDEBUG_ENGINE_SET_OUTPUT_CALLBACKS;
 
 typedef
 _Check_return_
 _Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2)(
-    _In_ PDEBUG_ENGINE Engine,
-    _In_ PDEBUGOUTPUTCALLBACKS2 OutputCallbacks2,
-    _In_ PCGUID InterfaceId,
-    _In_ DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK InterestMask
+    _In_ PDEBUG_ENGINE Engine
     );
 typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2
       *PDEBUG_ENGINE_SET_OUTPUT_CALLBACKS2;
@@ -439,14 +472,21 @@ CopyInterfaceId(
 
 #pragma component(browser, off)
 
-INITIALIZE_CALLBACKS InitializeCallbacks;
 CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
 INITIALIZE_DEBUG_ENGINE InitializeDebugEngine;
 
 DEBUG_ENGINE_ENUM_SYMBOLS DebugEngineEnumSymbols;
-DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK DebugEngineEnumSymbolsOutputCallback;
+
+DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK
+    DebugEngineEnumSymbolsOutputCallback;
+
+DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2
+    DebugEngineEnumSymbolsOutputCallback2;
 
 DEBUG_ENGINE_DISASSEMBLE_FUNCTION DebugEngineDisassembleFunction;
+
+DEBUG_ENGINE_SET_OUTPUT_CALLBACKS DebugEngineSetOutputCallbacks;
+DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2 DebugEngineSetOutputCallbacks2;
 
 //
 // IDebugEventCallbacks

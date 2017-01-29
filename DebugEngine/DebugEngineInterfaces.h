@@ -275,7 +275,7 @@ C_ASSERT(sizeof(DEBUG_CHANGE_ENGINE_STATE) == sizeof(ULONG));
 // This union wraps the DEBUG_OUTCBI_* constants.
 //
 
-typedef union _DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK {
+typedef union _DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -306,12 +306,12 @@ typedef union _DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK {
 
 
     };
-} DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK;
-typedef DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK
-      *PDEBUG_OUTPUT_CALLBACKS_INTEREST_MASK;
-C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK) == sizeof(ULONG));
+} DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK;
+typedef DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK
+      *PDEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK;
+C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK) == sizeof(ULONG));
 
-typedef DEBUG_OUTPUT_CALLBACKS_INTEREST_MASK
+typedef DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK
         DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK;
 
 //
@@ -354,7 +354,7 @@ C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACK_FLAGS) == sizeof(ULONG));
 // This union wraps the DEBUG_OUTPUT_XXX constants.
 //
 
-typedef union _DEBUG_OUTPUT_OUTPUT_MASK {
+typedef union _DEBUG_OUTPUT_MASK {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -448,8 +448,8 @@ typedef union _DEBUG_OUTPUT_OUTPUT_MASK {
         ULONG Status:1;
 
     };
-} DEBUG_OUTPUT_OUTPUT_MASK, *PDEBUG_OUTPUT_OUTPUT_MASK;
-C_ASSERT(sizeof(DEBUG_OUTPUT_OUTPUT_MASK) == sizeof(ULONG));
+} DEBUG_OUTPUT_MASK, *PDEBUG_OUTPUT_MASK;
+C_ASSERT(sizeof(DEBUG_OUTPUT_MASK) == sizeof(ULONG));
 
 //
 // This union wraps the constants relating to the debug engine's execution
@@ -501,7 +501,7 @@ typedef union _DEBUG_EXECUTION_STATUS {
 C_ASSERT(sizeof(DEBUG_EXECUTION_STATUS) == sizeof(ULONGLONG));
 
 //
-// This enum wraps the 'Which' parameter in the Output/Output2 callbacks.
+// This enum wraps the 'Which' parameter in the Output2 callbacks.
 //
 
 typedef enum _DEBUG_OUTPUT_TYPE {
