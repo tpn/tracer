@@ -8,19 +8,12 @@ Module Name:
 
 Abstract:
 
-    This module implements functionlity related to enumerating symbols via
+    This module implements functionality related to enumerating symbols via
     DbgEng.dll's `x` (examine symbols) command.
 
 --*/
 
 #include "stdafx.h"
-
-//
-// IDebugOutputClients: 4bf58045-d654-4c40-b0af-683090f356dc
-//
-
-DEFINE_GUID_EX(IID_IDebugOutputCallbacksEx, 0x4bf58045, 0xd654, 0x4c40,
-               0xb0, 0xaf, 0x68, 0x30, 0x90, 0xf3, 0x56, 0xdc);
 
 //
 // Functions.
@@ -70,18 +63,17 @@ Return Value:
 {
     BOOL Success;
     BOOL OversizedCommand;
+    HRESULT Result;
     USHORT StackBufferSizeInBytes;
     USHORT ModuleNameLengthInChars;
     ULONG_INTEGER CommandLengthInChars;
     ULONG_INTEGER CommandLengthInBytes;
-    ULONG_INTEGER AllocSizeInBytes;
     PDEBUG_ENGINE DebugEngine;
     UNICODE_STRING CommandWide;
     WCHAR CommandWideStackBuffer[256];
     STRING Command;
     CHAR CommandStackBuffer[256];
     PWSTR Dest;
-    PWSTR Source;
     PWSTR Buffer;
     DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT OutputContext = { 0 };
 
@@ -109,7 +101,7 @@ Return Value:
     // Initialize aliases.
     //
 
-    DebugEngine = &DebugEngineSession->Engine;
+    DebugEngine = DebugEngineSession->Engine;
 
     //
     // Calculate the module name length in characters by shifting the Length
@@ -273,7 +265,7 @@ Return Value:
     if (CommandWide.Buffer[CommandWide.Length >> 1] != L'\0') {
         __debugbreak();
     }
-    
+
     //
     // Initialize our output callback context.
     //
@@ -291,7 +283,6 @@ Return Value:
     } else {
 
         USHORT Index;
-        USHORT Length;
         WIDE_CHARACTER WideChar;
 
         //
@@ -344,8 +335,8 @@ Return Value:
         // characters in their name part.)
         //
 
-        for (Index = 0; Index < CommandLengthInChars.Length; Index++) {
-            WideChar = CommandWide.Buffer[Index];
+        for (Index = 0; Index < CommandLengthInChars.LowPart; Index++) {
+            WideChar.WidePart = CommandWide.Buffer[Index];
             if (WideChar.HighPart) {
                 __debugbreak();
             }
@@ -376,7 +367,7 @@ Return Value:
 
     AcquireDebugEngineLock(DebugEngine);
 
-    DebugEngine->OutputCallbackContext.EnumSymbols = OutputContext;
+    DebugEngine->OutputCallbackContext.EnumSymbols = &OutputContext;
 
     //
     // Execute the command.
@@ -385,7 +376,7 @@ Return Value:
     Result = DebugEngine->Control->ExecuteWide(
         DebugEngine->IControl,
         DEBUG_OUTCTL_THIS_CLIENT,
-        Command.Buffer,
+        CommandWide.Buffer,
         DEBUG_EXECUTE_NOT_LOGGED
     );
 
@@ -458,7 +449,12 @@ DebugEngineEnumSymbolsOutputCallback(
     Callback = Context->CallerCallback;
     Allocator = Context->Allocator;
 
-    TextLengthInChars.LongPart = wcslen(Text);
+    TextLengthInChars.LongPart = (LONG)wcslen(Text);
+
+    if (TextLengthInChars.HighPart) {
+        __debugbreak();
+    }
+
     TextSizeInBytes.LongPart = TextLengthInChars.LongPart << 1;
 
     if (TextSizeInBytes.HighPart) {
@@ -467,9 +463,9 @@ DebugEngineEnumSymbolsOutputCallback(
     }
 
     Symbol.SizeOfStruct = sizeof(Symbol);
-    Symbol.Raw.Length = TextSizeInBytes.LowPart;
-    Symbol.Raw.MaximumLength = TextSizeInBytes.LowPart;
-    Symbol.Raw.Buffer = Text;
+    Symbol.RawTextWide.Length = TextSizeInBytes.LowPart;
+    Symbol.RawTextWide.MaximumLength = TextSizeInBytes.LowPart;
+    Symbol.RawTextWide.Buffer = (PWSTR)Text;
 
     Success = Callback(&Symbol, Context->CallerContext);
     if (!Success) {

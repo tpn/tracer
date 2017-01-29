@@ -27,12 +27,15 @@
     <ClInclude Include="DebugEnginePrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebugEngineConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugEngineInterfaces.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DebugEngine.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.c">
@@ -44,10 +47,34 @@
     <ClCompile Include="..\Rtl\AtExitEx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EnumSymbols.c">
+    <ClCompile Include="DebugEngineConstants.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DisassembleFunction.c">
+    <ClCompile Include="DebugEngineEventCallbacks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineInputCallbacks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineOutputCallbacks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InitializeDebugEngine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DestroyDebugEngineSession.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InitializeDebugEngineSession.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineDisassembleFunction.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineEnumSymbols.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineOutputCallbacks2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

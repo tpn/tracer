@@ -1,0 +1,49 @@
+/*++
+
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    DebugEngineConstants.c
+
+Abstract:
+
+    This module defines constants used by the DebugEngine component.
+
+--*/
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "stdafx.h"
+
+#pragma component(browser, off)
+DEBUG_ENGINE_DATA CGUID IID_IUNKNOWN;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_ADVANCED;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_SYMBOLS;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_SYMBOLGROUP;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_DATASPACES;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_CLIENT;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_CONTROL;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_EVENT_CALLBACKS;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_INPUT_CALLBACKS;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_OUTPUT_CALLBACKS;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_OUTPUT_CALLBACKS2;
+
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_CLIENT;
+DEBUG_ENGINE_DATA CGUID IID_IDEBUG_CONTROL;
+
+CONST DEBUGEVENTCALLBACKS DebugEventCallbacks;
+CONST DEBUGINPUTCALLBACKS DebugInputCallbacks;
+CONST DEBUGOUTPUTCALLBACKS DebugOutputCallbacks;
+CONST DEBUGOUTPUTCALLBACKS2 DebugOutputCallbacks2;
+#pragma component(browser, on)
+
+#ifdef __cplusplus
+}; // extern "C"
+#endif
+
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
