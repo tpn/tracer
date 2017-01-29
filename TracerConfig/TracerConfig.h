@@ -294,6 +294,15 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG EnableAssemblyTracing:1;
 
     //
+    // If symbol, type info or assembly tracing is enabled, the following bits
+    // control whether or not modules residing in Windows directories are
+    // ignored.
+    //
+
+    ULONG IgnoreModulesInWindowsSystemDirectory:1;
+    ULONG IgnoreModulesInWindowsSxSDirectory:1;
+
+    //
     // When set, disables asynchronous initialization of trace contexts.  This
     // applies to the InitializeTraceContext() call.  When enabled, asynchronous
     // initialization will submit the relevant preparation required to bind the

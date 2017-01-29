@@ -535,6 +535,8 @@ Return Value:
     COPY_FLAG(EnableSymbolTracing);
     COPY_FLAG(EnableTypeInfoTracing);
     COPY_FLAG(EnableAssemblyTracing);
+    COPY_FLAG(IgnoreModulesInWindowsSystemDirectory);
+    COPY_FLAG(IgnoreModulesInWindowsSxSDirectory);
 
     //
     // If symbol tracing has been enabled, ensure we can load DbgHelp.

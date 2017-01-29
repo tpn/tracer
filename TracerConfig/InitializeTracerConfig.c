@@ -564,6 +564,8 @@ Return Value:
     READ_REG_DWORD_FLAG(EnableSymbolTracing, TRUE);
     READ_REG_DWORD_FLAG(EnableTypeInfoTracing, TRUE);
     READ_REG_DWORD_FLAG(EnableAssemblyTracing, TRUE);
+    READ_REG_DWORD_FLAG(IgnoreModulesInWindowsSystemDirectory, TRUE);
+    READ_REG_DWORD_FLAG(IgnoreModulesInWindowsSxSDirectory, FALSE);
     READ_REG_DWORD_FLAG(DisableAsynchronousInitialization, FALSE);
 
     //

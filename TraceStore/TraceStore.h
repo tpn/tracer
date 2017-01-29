@@ -1173,7 +1173,8 @@ typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 typedef struct _TRACE_FLAGS {
     union {
-        ULONG AsLong;
+        LONG AsLong;
+        ULONG AsULong;
         struct {
             ULONG Readonly:1;
             ULONG Compress:1;
@@ -1269,6 +1270,16 @@ typedef struct _TRACE_FLAGS {
 
             ULONG EnableAssemblyTracing:1;
 
+            //
+            // If symbol, type info or assembly tracing is enabled, the
+            // following bits control whether or not modules residing in
+            // Windows directories are ignored.
+            //
+
+            ULONG IgnoreModulesInWindowsSystemDirectory:1;
+            ULONG IgnoreModulesInWindowsSxSDirectory:1;
+
+            ULONG Unused:15;
         };
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
@@ -2467,9 +2478,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     ULONG NumberOfWorkItemsProcessed;
     ULONG NumberOfWorkItemsSucceeded;
     ULONG NumberOfWorkItemsFailed;
+    ULONG NumberOfWorkItemsIgnored;
+    ULONG Padding;
+
 
     //
-    // (136 bytes consumed.)
+    // (144 bytes consumed.)
     //
 
     struct {
@@ -2484,7 +2498,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     } TraceStores;
 
     //
-    // (200 bytes consumed.)
+    // (208 bytes consumed.)
 
     //
     // Capture various stateful pointers/values such that they are accessible
@@ -2496,21 +2510,21 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     LARGE_INTEGER CurrentTimestamp;
 
     //
-    // (216 bytes consumed.)
+    // (224 bytes consumed.)
     //
 
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
     //
-    // (232 bytes consumed.)
+    // (240 bytes consumed.)
     //
 
     //
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[24];
+    BYTE Reserved[16];
 
 } TRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
@@ -2518,7 +2532,7 @@ typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkListHead) == 64);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, Reserved) == 232);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, Reserved) == 240);
 C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 256);
 
 #define AcquireTraceDebugContextLock(DebugContext) \
