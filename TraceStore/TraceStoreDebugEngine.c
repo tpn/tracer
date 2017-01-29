@@ -1013,6 +1013,7 @@ Return Value:
     PALLOCATOR Allocator;
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
+    TRACE_FLAGS TraceFlags;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback;
     DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS EnumFlags;
@@ -1034,6 +1035,24 @@ Return Value:
     Path = &File->Path;
     Allocator = TraceContext->Allocator;
     DebugEngineSession = DebugContext->DebugEngineSession;
+    TraceFlags.AsULong = TraceStores->Flags.AsULong;
+
+    //
+    // Determine if we should continue processing this module based on whether
+    // or not the trace flags indicate it should be ignored or not.
+    //
+
+    if (TraceFlags.IgnoreModulesInWindowsSystemDirectory) {
+        if (Path->Flags.WithinWindowsSystemDirectory) {
+            DebugContext->NumberOfWorkItemsIgnored++;
+            return TRUE;
+        }
+    } else if (TraceFlags.IgnoreModulesInWindowsSxSDirectory) {
+        if (Path->Flags.WithinWindowsSxSDirectory) {
+            DebugContext->NumberOfWorkItemsIgnored++;
+            return TRUE;
+        }
+    }
 
     //
     // Update the debug context to point at this module table entry.
