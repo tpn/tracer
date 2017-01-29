@@ -16,6 +16,57 @@ Abstract:
 #include "stdafx.h"
 
 //
+// Define output line prefix related variables and inline functions.  We
+// set an 8 byte prefix, which allows us to cast the first 8 bytes of the
+// incoming text as a ULARGE_INTEGER and compare as two ULONGs.
+//
+
+CONST STRING EnumSymbolsPrefix = RTL_CONSTANT_STRING(":mySmunE");
+CONST UNICODE_STRING EnumSymbolsPrefixWide = RTL_CONSTANT_STRING(L"mySE");
+
+FORCEINLINE
+BOOL
+IsEnumSymbolsPrefix(
+    _In_ PCSTR String
+    )
+{
+    ULARGE_INTEGER ExpectedPrefix;
+    ULARGE_INTEGER ActualPrefix;
+    PSTR Buffer;
+
+    Buffer = EnumSymbolsPrefix.Buffer;
+
+    ActualPrefix.LowPart = *((PULONG)String);
+    ActualPrefix.HighPart = *((PULONG)(String + sizeof(ULONG)));
+
+    ExpectedPrefix.LowPart = *((PULONG)Buffer);
+    ExpectedPrefix.HighPart = *((PULONG)(Buffer + sizeof(ULONG)));
+
+    return (ExpectedPrefix.QuadPart == ActualPrefix.QuadPart);
+}
+
+FORCEINLINE
+BOOL
+IsEnumSymbolsPrefixWide(
+    _In_ PCWSTR String
+    )
+{
+    ULARGE_INTEGER ExpectedPrefix;
+    ULARGE_INTEGER ActualPrefix;
+    PWSTR Buffer;
+
+    Buffer = EnumSymbolsPrefixWide.Buffer;
+
+    ActualPrefix.LowPart = *((PULONG)String);
+    ActualPrefix.HighPart = *((PULONG)(String + (sizeof(ULONG) >> 1)));
+
+    ExpectedPrefix.LowPart = *((PULONG)Buffer);
+    ExpectedPrefix.HighPart = *((PULONG)(Buffer + (sizeof(ULONG) >> 1)));
+
+    return (ExpectedPrefix.QuadPart == ActualPrefix.QuadPart);
+}
+
+//
 // Functions.
 //
 
@@ -62,6 +113,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL AcquiredLock = FALSE;
     BOOL OversizedCommand;
     HRESULT Result;
     USHORT StackBufferSizeInBytes;
@@ -75,6 +127,9 @@ Return Value:
     CHAR CommandStackBuffer[256];
     PWSTR Dest;
     PWSTR Buffer;
+    ULONG64 OutputLinePrefixHandle = 0;
+    DEBUG_OUTPUT_MASK OutputMask = { 0 };
+    DEBUG_OUTPUT_MASK OldOutputMask = { 0 };
     DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT OutputContext = { 0 };
 
     //
@@ -332,7 +387,8 @@ Return Value:
         // Do a poor man's wchar->char conversion.  (I don't know how Unicode
         // characters would be handled by DbgEng; or rather, I'm making an
         // assumption that our RTL_PATHs point to modules with no non-ANSI
-        // characters in their name part.)
+        // characters in their name part.  Put a __debugbreak() in to trap
+        // any actual wide characters (i.e. those with a non-zero high byte).)
         //
 
         for (Index = 0; Index < CommandLengthInChars.LowPart; Index++) {
@@ -366,25 +422,121 @@ Return Value:
     //
 
     AcquireDebugEngineLock(DebugEngine);
-
+    AcquiredLock = TRUE;
     DebugEngine->OutputCallbackContext.EnumSymbols = &OutputContext;
 
     //
-    // Execute the command.
+    // Initialize our output mask to normal, get the current output mask,
+    // update the mask if they differ.
     //
 
-    Result = DebugEngine->Control->ExecuteWide(
-        DebugEngine->IControl,
-        DEBUG_OUTCTL_THIS_CLIENT,
-        CommandWide.Buffer,
-        DEBUG_EXECUTE_NOT_LOGGED
+    OutputMask.Normal = TRUE;
+
+    CHECKED_HRESULT_MSG(
+        DebugEngine->Client->GetOutputMask(
+            DebugEngine->IClient,
+            &OldOutputMask.AsULong
+        ),
+        "Client->GetOutputMask()"
     );
 
-    ReleaseDebugEngineLock(DebugEngine);
+    if (OutputMask.AsULong != OldOutputMask.AsULong) {
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Client->SetOutputMask(
+                DebugEngine->IClient,
+                OutputMask.AsULong
+            ),
+            "Client->SetOutputMask()"
+        );
+    }
 
-    if (Result != S_OK) {
-        __debugbreak();
-        goto Error;
+    //
+    // Push our "EnumSym:" output prefix, execute the command, pop our prefix
+    // and potentially restore the output mask.
+    //
+
+    if (Flags.WideCharacter) {
+
+        DebugEngine->OutputCallback2 = DebugEngineEnumSymbolsOutputCallback2;
+        CHECKED_MSG(
+            DebugEngineSetOutputCallbacks2(DebugEngine),
+            "DebugEngineSetOutputCallbacks2()"
+        );
+
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Client->PushOutputLinePrefixWide(
+                DebugEngine->IClient,
+                EnumSymbolsPrefixWide.Buffer,
+                &OutputLinePrefixHandle
+            ),
+            "Client->PushOutputLinePrefixWide()"
+        );
+
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Control->ExecuteWide(
+                DebugEngine->IControl,
+                DEBUG_OUTCTL_THIS_CLIENT,
+                CommandWide.Buffer,
+                DEBUG_EXECUTE_NOT_LOGGED
+            ),
+            "Control->ExecuteWide()"
+        );
+
+    } else {
+
+        DebugEngine->OutputCallback = DebugEngineEnumSymbolsOutputCallback;
+        CHECKED_MSG(
+            DebugEngineSetOutputCallbacks(DebugEngine),
+            "DebugEngineSetOutputCallbacks()"
+        );
+
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Client->PushOutputLinePrefix(
+                DebugEngine->IClient,
+                EnumSymbolsPrefix.Buffer,
+                &OutputLinePrefixHandle
+            ),
+            "Client->PushOutputLinePrefix()"
+        );
+
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Control->Execute(
+                DebugEngine->IControl,
+                DEBUG_OUTCTL_THIS_CLIENT,
+                Command.Buffer,
+                DEBUG_EXECUTE_NOT_LOGGED
+            ),
+            "Control->Execute()"
+        );
+
+    }
+
+    //
+    // Pop the output line prefix.
+    //
+
+    CHECKED_HRESULT_MSG(
+        DebugEngine->Client->PopOutputLinePrefix(
+            DebugEngine->IClient,
+            OutputLinePrefixHandle
+        ),
+        "Client->PopOutputLinePrefix()"
+    );
+
+    OutputLinePrefixHandle = 0;
+
+    //
+    // Restore the old output mask if we changed it earlier.
+    //
+
+    if (OutputMask.AsULong != OldOutputMask.AsULong) {
+        CHECKED_HRESULT_MSG(
+            DebugEngine->Client->SetOutputMask(
+                DebugEngine->IClient,
+                OldOutputMask.AsULong
+            ),
+            "Client->SetOutputMask(Old)"
+        );
     }
 
     Success = TRUE;
@@ -417,6 +569,10 @@ End:
         Allocator->Free(Allocator->Context, Command.Buffer);
     }
 
+    if (AcquiredLock) {
+        ReleaseDebugEngineLock(DebugEngine);
+    }
+
     return Success;
 }
 
@@ -425,10 +581,69 @@ HRESULT
 STDAPICALLTYPE
 DebugEngineEnumSymbolsOutputCallback(
     PDEBUG_ENGINE DebugEngine,
+    DEBUG_OUTPUT_MASK OutputMask,
+    PCSTR IncomingText
+    )
+{
+    BOOL Success;
+    HRESULT Result;
+    PALLOCATOR Allocator;
+    LONG_INTEGER TextSizeInBytes;
+    PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback;
+    PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT Context;
+    DEBUG_ENGINE_SYMBOL Symbol = { 0 };
+    PSTR Text;
+
+    Context = DebugEngine->OutputCallbackContext.EnumSymbols;
+    Callback = Context->CallerCallback;
+    Allocator = Context->Allocator;
+
+    if (!OutputMask.Normal) {
+        return S_OK;
+    }
+
+    if (!IsEnumSymbolsPrefix(IncomingText)) {
+        return S_OK;
+    }
+
+    Text = (PSTR)(IncomingText + sizeof(ULARGE_INTEGER));
+
+    TextSizeInBytes.LongPart = (LONG)strlen(Text);
+
+    if (TextSizeInBytes.HighPart) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Symbol.SizeOfStruct = sizeof(Symbol);
+    Symbol.RawText.Length = TextSizeInBytes.LowPart;
+    Symbol.RawText.MaximumLength = TextSizeInBytes.LowPart;
+    Symbol.RawText.Buffer = (PSTR)Text;
+
+    Success = Callback(&Symbol, Context->CallerContext);
+    if (!Success) {
+        goto Error;
+    }
+
+    Result = S_OK;
+    goto End;
+
+Error:
+    Result = E_FAIL;
+
+End:
+    return Result;
+}
+
+_Use_decl_annotations_
+HRESULT
+STDAPICALLTYPE
+DebugEngineEnumSymbolsOutputCallback2(
+    PDEBUG_ENGINE DebugEngine,
     DEBUG_OUTPUT_TYPE OutputType,
     DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
     ULONG64 Arg,
-    PCWSTR Text
+    PCWSTR IncomingText
     )
 {
     BOOL Success;
@@ -439,11 +654,17 @@ DebugEngineEnumSymbolsOutputCallback(
     PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback;
     PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT Context;
     DEBUG_ENGINE_SYMBOL Symbol = { 0 };
+    PWSTR Text;
 
-    if (!Text) {
-        Result = S_OK;
-        goto End;
+    if (!IsTextOutput(OutputType)) {
+        return S_OK;
     }
+
+    if (!IsEnumSymbolsPrefixWide(IncomingText)) {
+        return S_OK;
+    }
+
+    Text = (PWSTR)(IncomingText + (sizeof(ULARGE_INTEGER) >> 1));
 
     Context = DebugEngine->OutputCallbackContext.EnumSymbols;
     Callback = Context->CallerCallback;
@@ -471,6 +692,9 @@ DebugEngineEnumSymbolsOutputCallback(
     if (!Success) {
         goto Error;
     }
+
+    Result = S_OK;
+    goto End;
 
 Error:
     Result = E_FAIL;

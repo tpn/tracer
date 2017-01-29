@@ -18,10 +18,7 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 DebugEngineSetOutputCallbacks2(
-    PDEBUG_ENGINE Engine,
-    PDEBUGOUTPUTCALLBACKS2 OutputCallbacks2,
-    PCGUID InterfaceId,
-    DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK InterestMask
+    PDEBUG_ENGINE Engine
     )
 /*++
 
@@ -41,18 +38,19 @@ Return Value:
 {
     BOOL Success;
     HRESULT Result;
+    PCGUID InterfaceId;
 
-    //
-    // Acquire the engine lock.
-    //
+    InterfaceId = &IID_IDEBUG_OUTPUT_CALLBACKS2;
 
-    AcquireDebugEngineLock(Engine);
+    if (InlineIsEqualGUID(&Engine->IID_CurrentOutputCallbacks, InterfaceId)) {
 
-    //
-    // Copy the interest mask.
-    //
+        //
+        // The output callbacks are already set.
+        //
 
-    Engine->OutputCallbacks2InterestMask.AsULong = InterestMask.AsULong;
+        Success = TRUE;
+        goto End;
+    }
 
     //
     // Copy the debug output callbacks.
@@ -60,7 +58,7 @@ Return Value:
 
     CopyIDebugOutputCallbacks2(Engine,
                                &Engine->OutputCallbacks2,
-                               OutputCallbacks2);
+                               &DebugOutputCallbacks2);
 
     //
     // Set the callbacks.
@@ -71,7 +69,7 @@ Return Value:
             Engine->IClient,
             (PDEBUG_OUTPUT_CALLBACKS)&Engine->IOutputCallbacks2
         ),
-        "Client->SetOutputCallbacks()"
+        "Client->SetOutputCallbacks2()"
     );
 
     //
@@ -87,8 +85,6 @@ Error:
     Success = FALSE;
 
 End:
-    ReleaseDebugEngineLock(Engine);
-
     return Success;
 }
 
