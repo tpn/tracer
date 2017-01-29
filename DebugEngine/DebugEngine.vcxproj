@@ -71,6 +71,8 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DebugEngineInterfaces.h" />
+    <ClInclude Include="DebugEngineConstants.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="DebugEngine.h" />
@@ -79,8 +81,17 @@
   <ItemGroup>
     <ClCompile Include="..\Rtl\AtExitEx.c" />
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="DebugEngine.c" />
+    <ClCompile Include="DebugEngineConstants.c" />
+    <ClCompile Include="DebugEngineEventCallbacks.c" />
+    <ClCompile Include="DebugEngineOutputCallbacks2.c" />
+    <ClCompile Include="InitializeDebugEngine.c" />
+    <ClCompile Include="DebugEngineInputCallbacks.c" />
+    <ClCompile Include="DebugEngineOutputCallbacks.c" />
+    <ClCompile Include="DestroyDebugEngineSession.c" />
+    <ClCompile Include="InitializeDebugEngineSession.c" />
+    <ClCompile Include="DebugEngineDisassembleFunction.c" />
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="DebugEngineEnumSymbols.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
