@@ -5672,6 +5672,258 @@ LoadRtlExSymbols(
 
 }
 
+_Check_return_
+_Success_(return != 0)
+BOOL
+InitializeWindowsDirectories(
+    _In_ PRTL Rtl
+    )
+{
+    PWSTR Dest;
+    ULONG_INTEGER SizeInBytesExcludingNull;
+    ULONG_INTEGER SizeInBytesIncludingNull;
+    ULONG_INTEGER LengthInCharsExcludingNull;
+    ULONG_INTEGER LengthInCharsIncludingNull;
+    PUNICODE_STRING WindowsDirectory;
+    PUNICODE_STRING WindowsSxSDirectory;
+    PUNICODE_STRING WindowsSystemDirectory;
+    const UNICODE_STRING WinSxS = RTL_CONSTANT_STRING(L"\\WinSxS");
+
+    //
+    // Initialize aliases.
+    //
+
+    WindowsDirectory = &Rtl->WindowsDirectory;
+
+    LengthInCharsIncludingNull.LongPart = GetWindowsDirectory(NULL, 0);
+    if (!LengthInCharsIncludingNull.LongPart) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Sanity check the size isn't above MAX_USHORT.
+    //
+
+    SizeInBytesIncludingNull.LongPart = (
+        LengthInCharsIncludingNull.LongPart << 1
+    );
+
+    if (SizeInBytesIncludingNull.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate space for the buffer.
+    //
+
+    WindowsDirectory->Buffer = (PWSTR)(
+        HeapAlloc(
+            Rtl->HeapHandle,
+            0,
+            SizeInBytesIncludingNull.LongPart
+        )
+    );
+
+    if (!WindowsDirectory->Buffer) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Initialize lengths.
+    //
+
+    SizeInBytesExcludingNull.LongPart = (
+        SizeInBytesIncludingNull.LongPart - sizeof(WCHAR)
+    );
+    WindowsDirectory->Length = SizeInBytesExcludingNull.LowPart;
+    WindowsDirectory->MaximumLength = SizeInBytesIncludingNull.LowPart;
+
+    //
+    // Call GetWindowsDirectory() again with the newly allocated buffer.
+    //
+
+    LengthInCharsExcludingNull.LongPart = (
+        GetWindowsDirectory(
+            WindowsDirectory->Buffer,
+            LengthInCharsIncludingNull.LongPart
+        )
+    );
+
+    if (LengthInCharsExcludingNull.LongPart + 1 !=
+        LengthInCharsIncludingNull.LongPart) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Now process WinSxS directory.
+    //
+
+    WindowsSxSDirectory = &Rtl->WindowsSxSDirectory;
+
+    //
+    // Add the length of the "\\WinSxS" suffix.  Use WinSxS.Length as we've
+    // already accounted for the trailing NULL.
+    //
+
+    LengthInCharsIncludingNull.LongPart += WinSxS.Length >> 1;
+
+    //
+    // Convert into size in bytes.
+    //
+
+    SizeInBytesIncludingNull.LongPart = (
+        LengthInCharsIncludingNull.LongPart << 1
+    );
+
+    //
+    // Sanity check the size isn't above MAX_USHORT.
+    //
+
+    if (SizeInBytesIncludingNull.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate space for the buffer.
+    //
+
+    WindowsSxSDirectory->Buffer = (PWSTR)(
+        HeapAlloc(
+            Rtl->HeapHandle,
+            0,
+            SizeInBytesIncludingNull.LongPart
+        )
+    );
+
+    if (!WindowsSxSDirectory->Buffer) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Initialize lengths.
+    //
+
+    SizeInBytesExcludingNull.LongPart = (
+        SizeInBytesIncludingNull.LongPart - sizeof(WCHAR)
+    );
+    WindowsSxSDirectory->Length = SizeInBytesExcludingNull.LowPart;
+    WindowsSxSDirectory->MaximumLength = SizeInBytesIncludingNull.LowPart;
+
+    //
+    // Copy the Windows directory prefix over, excluding the terminating NULL.
+    //
+
+    Dest = WindowsSxSDirectory->Buffer;
+    __movsw((PWORD)Dest,
+            (PWORD)WindowsDirectory->Buffer,
+            WindowsDirectory->Length >> 1);
+
+    //
+    // Copy the "\\WinSxS" suffix.
+    //
+
+    Dest += (WindowsDirectory->Length >> 1);
+    __movsw((PWORD)Dest,
+            (PWORD)WinSxS.Buffer,
+            WinSxS.Length >> 1);
+
+    //
+    // Add terminating NULL.
+    //
+
+    Dest += (WinSxS.Length >> 1);
+    *Dest = L'\0';
+
+    //
+    // Sanity check things are where they should be.
+    //
+
+    if (WindowsSxSDirectory->Buffer[WindowsDirectory->Length >> 1] != L'\\') {
+        __debugbreak();
+    }
+
+    if (WindowsSxSDirectory->Buffer[WindowsSxSDirectory->Length>>1] != L'\0') {
+        __debugbreak();
+    }
+
+    //
+    // Now do the Windows system directory.
+    //
+
+    WindowsSystemDirectory = &Rtl->WindowsSystemDirectory;
+
+    LengthInCharsIncludingNull.LongPart = GetSystemDirectory(NULL, 0);
+    if (!LengthInCharsIncludingNull.LongPart) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Sanity check the size isn't above MAX_USHORT.
+    //
+
+    SizeInBytesIncludingNull.LongPart = (
+        LengthInCharsIncludingNull.LongPart << 1
+    );
+
+    if (SizeInBytesIncludingNull.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate space for the buffer.
+    //
+
+    WindowsSystemDirectory->Buffer = (PWSTR)(
+        HeapAlloc(
+            Rtl->HeapHandle,
+            0,
+            SizeInBytesIncludingNull.LongPart
+        )
+    );
+
+    if (!WindowsSystemDirectory->Buffer) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    //
+    // Initialize lengths.
+    //
+
+    SizeInBytesExcludingNull.LongPart = (
+        SizeInBytesIncludingNull.LongPart - sizeof(WCHAR)
+    );
+    WindowsSystemDirectory->Length = SizeInBytesExcludingNull.LowPart;
+    WindowsSystemDirectory->MaximumLength = SizeInBytesIncludingNull.LowPart;
+
+    //
+    // Call GetSystemDirectory() again with the newly allocated buffer.
+    //
+
+    LengthInCharsExcludingNull.LongPart = (
+        GetSystemDirectory(
+            WindowsSystemDirectory->Buffer,
+            LengthInCharsIncludingNull.LongPart
+        )
+    );
+
+    if (LengthInCharsExcludingNull.LongPart + 1 !=
+        LengthInCharsIncludingNull.LongPart) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(
@@ -5723,6 +5975,10 @@ InitializeRtl(
     Rtl->HeapHandle = HeapHandle;
 
     if (!LoadRtlExSymbols(NULL, Rtl)) {
+        return FALSE;
+    }
+
+    if (!InitializeWindowsDirectories(Rtl)) {
         return FALSE;
     }
 
