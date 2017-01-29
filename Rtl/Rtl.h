@@ -2599,14 +2599,66 @@ typedef struct _RTL_PATH_LINK {
 C_ASSERT(FIELD_OFFSET(RTL_PATH_LINK, SListEntry) == 16);
 C_ASSERT(sizeof(RTL_PATH_LINK) == 80);
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _RTL_PATH_FLAGS {
-    ULONG IsFile:1;
-    ULONG IsDirectory:1;
-    ULONG IsSymlink:1;
-    ULONG IsFullyQualified:1;
-    ULONG HasParent:1;
-    ULONG HasChildren:1;
-} RTL_PATH_FLAGS, *PRTL_PATH_FLAGS;
+typedef union _RTL_PATH_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG IsFile:1;
+        ULONG IsDirectory:1;
+        ULONG IsSymlink:1;
+        ULONG IsFullyQualified:1;
+        ULONG HasParent:1;
+        ULONG HasChildren:1;
+
+        //
+        // When set, indicates that the path resides within the Windows
+        // directory (e.g. "C:\Windows").  This includes the Windows directory
+        // itself.
+        //
+        // N.B. The Windows directory is obtained via GetWindowsDirectory();
+        //      if Windows was installed into the root directory of a drive,
+        //      e.g. C:\, this bit will be set for every fully-qualified path.
+        //
+        // Invariants:
+        //
+        //      If WithinWindowsDirectory == TRUE:
+        //          Assert IsFullyQualified == TRUE
+        //
+
+        ULONG WithinWindowsDirectory:1;
+
+        //
+        // When set, indicates that the path resides within the Windows
+        // side-by-side assembly directory (e.g. "C:\Windows\WinSxS").  This
+        // includes the WinSxS directory itself.
+        //
+        // N.B. This path is obtained by calling GetWindowsDirectory() and
+        //      appending "WinSxS" to the returned path.
+        //
+        // Invariants:
+        //
+        //      If WithinWindowsSxSDirectory == TRUE:
+        //          Assert IsFullyQualified == TRUE
+        //
+
+        ULONG WithinWindowsSxSDirectory:1;
+
+        //
+        // When set, indicates that the path resides within the Windows
+        // system directory (e.g. "C:\Windows\system32").  This includes the
+        // Windows sytem directory itself.
+        //
+        // Invariants:
+        //
+        //      If WithinWindowsSystemDirectory == TRUE:
+        //          Assert IsFullyQualified == TRUE
+        //
+
+        ULONG WithinWindowsSystemDirectory:1;
+    };
+} RTL_PATH_FLAGS;
+C_ASSERT(sizeof(RTL_PATH_FLAGS) == sizeof(ULONG));
+typedef RTL_PATH_FLAGS *PRTL_PATH_FLAGS;
 
 typedef _Struct_size_bytes_(sizeof(ULONG)) struct _RTL_PATH_CREATE_FLAGS {
     ULONG CheckType:1;
@@ -4400,6 +4452,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER Multiplicand;
+
+    UNICODE_STRING WindowsDirectory;
+    UNICODE_STRING WindowsSxSDirectory;
+    UNICODE_STRING WindowsSystemDirectory;
 
     //
     // Crypto Context.

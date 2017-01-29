@@ -15,6 +15,40 @@ Abstract:
 
 #define MAX_RTL_PATH_ALLOC 4000
 
+FORCEINLINE
+VOID
+UpdatePathFlagsIfWithinWindowsDirectories(
+    _In_ PRTL Rtl,
+    _In_ PRTL_PATH Path
+    )
+{
+    BOOL CaseInsensitive = TRUE;
+
+    Path->Flags.WithinWindowsDirectory = (
+        Rtl->RtlPrefixUnicodeString(
+            &Rtl->WindowsDirectory,
+            &Path->Full,
+            CaseInsensitive
+        )
+    );
+
+    Path->Flags.WithinWindowsSxSDirectory = (
+        Rtl->RtlPrefixUnicodeString(
+            &Rtl->WindowsSxSDirectory,
+            &Path->Full,
+            CaseInsensitive
+        )
+    );
+
+    Path->Flags.WithinWindowsSystemDirectory = (
+        Rtl->RtlPrefixUnicodeString(
+            &Rtl->WindowsSystemDirectory,
+            &Path->Full,
+            CaseInsensitive
+        )
+    );
+}
+
 _Use_decl_annotations_
 BOOL
 UnicodeStringToRtlPath(
@@ -392,10 +426,12 @@ Return Value:
     }
 
     //
-    // Set the allocator.
+    // Set the allocator and update path flags.
     //
 
     Path->Allocator = Allocator;
+
+    UpdatePathFlagsIfWithinWindowsDirectories(Rtl, Path);
 
     //
     // We're done, update the caller's path pointer and return success.
@@ -963,8 +999,10 @@ Return Value:
     }
 
     //
-    // We're done, update the caller's path pointer and return success.
+    // We're done, update path flags then return success.
     //
+
+    UpdatePathFlagsIfWithinWindowsDirectories(Rtl, Path);
 
     return TRUE;
 
@@ -1412,8 +1450,10 @@ Return Value:
     }
 
     //
-    // We're done, return success.
+    // We're done, update path flags and return success.
     //
+
+    UpdatePathFlagsIfWithinWindowsDirectories(Rtl, Path);
 
     return TRUE;
 
