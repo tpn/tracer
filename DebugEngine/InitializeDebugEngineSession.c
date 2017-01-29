@@ -160,10 +160,13 @@ Return Value:
     BOOL Success;
     BOOL AcquiredLock = FALSE;
     HRESULT Result;
+    ULONG ExecutionStatus;
     LONG_INTEGER AllocSizeInBytes;
     PDEBUGCLIENT Client;
     PIDEBUGCLIENT IClient;
     PDEBUG_ENGINE Engine;
+    ULONG ModuleIndex;
+    ULONGLONG ModuleBaseAddress;
     PDEBUG_ENGINE_SESSION Session = NULL;
 
     //
@@ -282,6 +285,38 @@ Return Value:
             DEBUG_ATTACH_NONINVASIVE_NO_SUSPEND
         ),
         "IDebugClient->AttachProcess()"
+    );
+
+    CHECKED_HRESULT_MSG(
+        Engine->Control->WaitForEvent(
+            Engine->IControl,
+            0,
+            0
+        ),
+        "Control->WaitForEvent()"
+    );
+
+    CHECKED_HRESULT_MSG(
+        Engine->Control->GetExecutionStatus(
+            Engine->IControl,
+            &ExecutionStatus
+        ),
+        "Control->GetExecutionStatus()"
+    );
+
+    //
+    // Attempt to resolve Rtl.
+    //
+
+    CHECKED_HRESULT_MSG(
+        Engine->Symbols->GetModuleByModuleName(
+            Engine->ISymbols,
+            "Rtl",
+            0,
+            &ModuleIndex,
+            &ModuleBaseAddress
+        ),
+        "Symbols->GetModuleByModuleName('Rtl')"
     );
 
     //

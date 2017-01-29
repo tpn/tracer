@@ -74,12 +74,6 @@ Main(VOID)
         goto Error;
     };
 
-    //
-    // Start the session.
-    //
-
-    CHECKED_MSG(Session->Start(Session), "DebugSession->Start()");
-
     ExitCode = 0;
     goto End;
 

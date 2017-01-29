@@ -116,6 +116,9 @@ Return Value:
     BOOL AcquiredLock = FALSE;
     BOOL OversizedCommand;
     HRESULT Result;
+    ULONG ModuleStartIndex;
+    ULONG ModuleIndex;
+    ULONGLONG ModuleBaseAddress;
     USHORT StackBufferSizeInBytes;
     USHORT ModuleNameLengthInChars;
     ULONG_INTEGER CommandLengthInChars;
@@ -164,6 +167,23 @@ Return Value:
     //
 
     ModuleNameLengthInChars = (ModulePath->Name.Length >> 1);
+
+    //
+    // If the module has an extension (e.g. ".dll"), omit its length.
+    //
+
+    if (ModulePath->Extension.Length) {
+
+        //
+        // Add a sizeof(WCHAR) to account for the '.', then shift right to
+        // to convert from bytes into character length and subtract from the
+        // current module name length.
+        //
+
+        ModuleNameLengthInChars -= (
+            (ModulePath->Extension.Length + sizeof(WCHAR)) >> 1
+        );
+    }
 
     //
     // Calculate the length in characters of the command string.
@@ -297,11 +317,37 @@ Return Value:
             (PWORD)ModulePath->Name.Buffer,
             ModuleNameLengthInChars);
 
-    Dest += ModuleNameLengthInChars;
+    //
+    // Zero the word after the module name in order to NULL terminate the
+    // string before we pass it to GetModuleByModuleNameWide().
+    //
+
+    *(Dest + ModuleNameLengthInChars) = L'\0';
 
     //
-    // Append the final '!*' and trailing NULL.
+    // Attempt to get the index and base address for this module.
     //
+
+    ModuleStartIndex = 0;
+    Result = DebugEngine->Symbols->GetModuleByModuleNameWide(
+        DebugEngine->ISymbols,
+        Dest,
+        ModuleStartIndex,
+        &ModuleIndex,
+        &ModuleBaseAddress
+    );
+
+    if (Result != S_OK) {
+        OutputDebugStringA("Failed: Symbols->GetModuleByModuleNameWide().\n");
+        goto Error;
+    }
+
+    //
+    // Continue construction of the command; append the final '!*' and
+    // trailing NULL.
+    //
+
+    Dest += ModuleNameLengthInChars;
 
     *Dest++ = L'!';
     *Dest++ = L'*';
@@ -399,8 +445,8 @@ Return Value:
             Command.Buffer[Index] = WideChar.LowPart;
         }
 
-        Command.Length = Index;
-        Command.MaximumLength = Index + 1;
+        Command.Length = Index - 1;
+        Command.MaximumLength = Index;
 
         //
         // Sanity check things are where they should be.
@@ -426,8 +472,8 @@ Return Value:
     DebugEngine->OutputCallbackContext.EnumSymbols = &OutputContext;
 
     //
-    // Initialize our output mask to normal, get the current output mask,
-    // update the mask if they differ.
+    // Initialize our output mask and get the current output mask.  If they
+    // differ, update the current one.
     //
 
     OutputMask.Normal = TRUE;
@@ -439,6 +485,12 @@ Return Value:
         ),
         "Client->GetOutputMask()"
     );
+
+    //
+    // XXX: temporarily inherit the existing mask.
+    //
+
+    OutputMask.AsULong = OldOutputMask.AsULong;
 
     if (OutputMask.AsULong != OldOutputMask.AsULong) {
         CHECKED_HRESULT_MSG(
@@ -499,15 +551,20 @@ Return Value:
             "Client->PushOutputLinePrefix()"
         );
 
-        CHECKED_HRESULT_MSG(
-            DebugEngine->Control->Execute(
-                DebugEngine->IControl,
-                DEBUG_OUTCTL_THIS_CLIENT,
-                Command.Buffer,
-                DEBUG_EXECUTE_NOT_LOGGED
-            ),
-            "Control->Execute()"
+        Result = DebugEngine->Control->Execute(
+            DebugEngine->IControl,
+            DEBUG_OUTCTL_ALL_CLIENTS,
+            Command.Buffer,
+            DEBUG_EXECUTE_NOT_LOGGED
         );
+
+        if (Result != S_OK) {
+            Success = FALSE;
+            OutputDebugStringA("Control->Execute() failed: ");
+            OutputDebugStringA(Command.Buffer);
+        } else {
+            Success = TRUE;
+        }
 
     }
 
@@ -515,31 +572,33 @@ Return Value:
     // Pop the output line prefix.
     //
 
-    CHECKED_HRESULT_MSG(
-        DebugEngine->Client->PopOutputLinePrefix(
-            DebugEngine->IClient,
-            OutputLinePrefixHandle
-        ),
-        "Client->PopOutputLinePrefix()"
+    Result = DebugEngine->Client->PopOutputLinePrefix(
+        DebugEngine->IClient,
+        OutputLinePrefixHandle
     );
 
-    OutputLinePrefixHandle = 0;
+    if (Result != S_OK) {
+        Success = FALSE;
+        OutputDebugStringA("Client->PopOutputLinePrefix() failed.\n");
+    } else {
+        OutputLinePrefixHandle = 0;
+    }
 
     //
     // Restore the old output mask if we changed it earlier.
     //
 
     if (OutputMask.AsULong != OldOutputMask.AsULong) {
-        CHECKED_HRESULT_MSG(
-            DebugEngine->Client->SetOutputMask(
-                DebugEngine->IClient,
-                OldOutputMask.AsULong
-            ),
-            "Client->SetOutputMask(Old)"
+        Result = DebugEngine->Client->SetOutputMask(
+            DebugEngine->IClient,
+            OldOutputMask.AsULong
         );
+        if (Result != S_OK) {
+            Success = FALSE;
+            OutputDebugStringA("Client->SetOutputMask(Old) failed.\n");
+        }
     }
 
-    Success = TRUE;
     goto End;
 
 Error:
@@ -602,11 +661,14 @@ DebugEngineEnumSymbolsOutputCallback(
         return S_OK;
     }
 
-    if (!IsEnumSymbolsPrefix(IncomingText)) {
-        return S_OK;
+    if (0) {
+        if (!IsEnumSymbolsPrefix(IncomingText)) {
+            return S_OK;
+        }
+        Text = (PSTR)(IncomingText + sizeof(ULARGE_INTEGER));
+    } else {
+        Text = (PSTR)IncomingText;
     }
-
-    Text = (PSTR)(IncomingText + sizeof(ULARGE_INTEGER));
 
     TextSizeInBytes.LongPart = (LONG)strlen(Text);
 
