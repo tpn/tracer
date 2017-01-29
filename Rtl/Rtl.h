@@ -4508,6 +4508,24 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 } RTL, *PRTL, **PPRTL;
 
 FORCEINLINE
+ULONG
+TrailingZeros(
+    _In_ ULONG Integer
+    )
+{
+    return _tzcnt_u32(Integer);
+}
+
+FORCEINLINE
+ULONG
+LeadingZeros(
+    _In_ ULONG Integer
+    )
+{
+    return _lzcnt_u32(Integer);
+}
+
+FORCEINLINE
 ULONGLONG
 TrailingZeros64(
     _In_ ULONGLONG Integer
