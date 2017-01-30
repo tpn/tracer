@@ -49,8 +49,6 @@ Return Value:
     BOOL AcquiredLock = FALSE;
     PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session;
-    DEBUG_OUTPUT_MASK OutputMask = { 0 };
-    DEBUG_OUTPUT_MASK OldOutputMask = { 0 };
     WCHAR WideStackBuffer[256];
     UNICODE_STRING StackBuffer;
 
