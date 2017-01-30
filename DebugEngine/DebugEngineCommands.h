@@ -36,7 +36,7 @@ DEBUG_ENGINE_COMMAND_TEMPLATE ExamineSymbolsCommandTemplate;
 STRING UnassembleFunctionCommandName;
 UNICODE_STRING UnassembleFunctionCommandNameWide;
 STRING UnassembleFunctionCommandDisplayName;
-UNICODE_STRING UnassembleCommandOptions[];
+UNICODE_STRING UnassembleFunctionCommandOptions[];
 DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate;
 
 //

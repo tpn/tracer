@@ -107,7 +107,7 @@ UNICODE_STRING UnassembleFunctionCommandNameWide =
 STRING UnassembleFunctionCommandDisplayName =
     RTL_CONSTANT_STRING("unassemble function");
 
-UNICODE_STRING UnassembleCommandOptions[] = {
+UNICODE_STRING UnassembleFunctionCommandOptions[] = {
     RTL_CONSTANT_STRING(L"/c "),
     RTL_CONSTANT_STRING(L"/D "),
     RTL_CONSTANT_STRING(L"/m "),
@@ -147,13 +147,13 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
     // NumberOfOptions
     //
 
-    ARRAYSIZE(UnassembleCommandOptions),
+    ARRAYSIZE(UnassembleFunctionCommandOptions),
 
     //
     // Options
     //
 
-    UnassembleCommandOptions,
+    UnassembleFunctionCommandOptions,
 
     //
     // CommandName
