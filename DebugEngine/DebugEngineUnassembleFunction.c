@@ -11,7 +11,6 @@ Abstract:
     This module implements functionality related to unassembling instruction
     codes in a function to their corresponding assembly mnemonics using the
     debugger command `uf` (unassemble function).
-    via DbgEng.dll.
 
 --*/
 
