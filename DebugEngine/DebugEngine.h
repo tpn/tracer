@@ -59,55 +59,201 @@ Abstract:
 #endif
 
 //
-// DEBUG_ENGINE_SYMBOL is used to capture information about a symbol returned
-// from the `x` (examine symbols) debugger command.
+// DEBUG_ENGINE_OUTPUT-related functions and structures.
 //
 
-typedef union _DEBUG_ENGINE_SYMBOL_FLAGS {
+typedef
+BOOL
+(CALLBACK DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK
+      *PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK;
+
+typedef
+BOOL
+(CALLBACK DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK
+      *PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK;
+
+typedef union _DEBUG_ENGINE_OUTPUT_STATE {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG WideCharacter:1;
+        ULONG Initialized:1;
+        ULONG CommandBuilt:1;
+        ULONG CommandExecuting:1;
+        ULONG InPartialOutputCallback:1;
+        ULONG CommandComplete:1;
+        ULONG Failed:1;
+        ULONG Succeeded:1;
     };
-} DEBUG_ENGINE_SYMBOL_FLAGS;
-C_ASSERT(sizeof(DEBUG_ENGINE_SYMBOL_FLAGS) == sizeof(ULONG));
-typedef DEBUG_ENGINE_SYMBOL_FLAGS *PDEBUG_ENGINE_SYMBOL_FLAGS;
+} DEBUG_ENGINE_OUTPUT_STATE;
+C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_STATE) == sizeof(ULONG));
+typedef DEBUG_ENGINE_OUTPUT_STATE
+      *PDEBUG_ENGINE_OUTPUT_STATE;
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SYMBOL {
+typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG WideCharacterOutput:1;
+    };
+} DEBUG_ENGINE_OUTPUT_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_FLAGS) == sizeof(ULONG));
+typedef DEBUG_ENGINE_OUTPUT_FLAGS *PDEBUG_ENGINE_OUTPUT_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
 
     //
     // Size of structure, in bytes.
     //
 
-    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_SYMBOL)) ULONG SizeOfStruct;
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_OUTPUT)) ULONG SizeOfStruct;
 
     //
     // Flags.
     //
 
-    DEBUG_ENGINE_SYMBOL_FLAGS Flags;
+    DEBUG_ENGINE_OUTPUT_FLAGS Flags;
 
     //
-    // Raw text returned by DbgEng.
+    // State.
+    //
+
+    DEBUG_ENGINE_OUTPUT_STATE State;
+
+    //
+    // Counters that track internal state.
+    //
+
+    ULONG NumberOfPartialCallbacks;
+    ULONG TotalBufferLengthInChars;
+    ULONG TotalBufferSizeInBytes;
+
+    //
+    // Captures the last HRESULT of an operation.
+    //
+
+    HRESULT LastResult;
+
+    //
+    // Pointer to the debug engine session this output was bound to via the
+    // InitializeDebugEngineOutput() call.
+    //
+
+    struct _DEBUG_ENGINE_SESSION *Session;
+
+    //
+    // User's context opaque pointer.
+    //
+
+    PVOID Context;
+
+    //
+    // Pointer to an ALLOCATOR structure that can be used by the debug engine
+    // for any temporary allocations (such as string buffer allocation when
+    // creating commands).
+    //
+
+    PALLOCATOR Allocator;
+
+    //
+    // Pointer to an RTL_PATH structure representing the target module that
+    // this output is related to, if applicable.
+    //
+
+    PRTL_PATH ModulePath;
+
+    //
+    // Pointers to the command executed by the engine in ANSI and wide formats.
+    //
+
+    PUNICODE_STRING Command;
+
+    //
+    // Opaque pointer to the command template used to assemble this command.
+    //
+
+    struct _DEBUG_ENGINE_COMMAND_TEMPLATE *CommandTemplate;
+
+    //
+    // Options used for this command.
+    //
+
+    ULONG CommandOptions;
+
+    //
+    // Output flags.
+    //
+
+    DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
+
+    //
+    // Timestamps for command start and end times.
+    //
+
+    struct {
+        LARGE_INTEGER CommandStart;
+        LARGE_INTEGER CommandEnd;
+    } Timestamp;
+
+    //
+    // Callbacks that will be invoked by the engine.  PartialOutputCallback
+    // will be called one or more times as the debug engine produces output.
+    // OutputCompleteCallback will be called once, after execution of the
+    // command has completed.
+    //
+
+    PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback;
+    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback;
+
+    //
+    // The following buffer is intended to point to a contiguous text buffer
+    // that contains all partial output chunks and whose size is governed by
+    // the TotalBufferLengthInChars and TotalBufferSizeInBytes fields above.
     //
 
     union {
-        STRING RawText;
-        UNICODE_STRING RawTextWide;
+        PSTR Buffer;
+        PWSTR BufferWide;
     };
 
-} DEBUG_ENGINE_SYMBOL;
-typedef DEBUG_ENGINE_SYMBOL *PDEBUG_ENGINE_SYMBOL;
+    //
+    // Raw text returned by DbgEng for this callback invocation.
+    //
+
+    union {
+        STRING ThisChunk;
+        UNICODE_STRING ThisChunkWide;
+    };
+
+} DEBUG_ENGINE_OUTPUT;
+typedef DEBUG_ENGINE_OUTPUT *PDEBUG_ENGINE_OUTPUT;
 
 typedef
+_Check_return_
+_Success_(return != 0)
 BOOL
-(CALLBACK DEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK)(
-    _In_ PDEBUG_ENGINE_SYMBOL Symbol,
-    _In_opt_ PVOID Context
+(INITIALIZE_DEBUG_ENGINE_OUTPUT)(
+    _Inout_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
+    _In_ PALLOCATOR Allocator,
+    _In_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback,
+    _In_ PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback,
+    _In_opt_ PVOID Context,
+    _In_opt_ PRTL_PATH ModulePath
     );
-typedef DEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK *PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK;
+typedef INITIALIZE_DEBUG_ENGINE_OUTPUT *PINITIALIZE_DEBUG_ENGINE_OUTPUT;
 
-typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS {
+
+//
+// DEBUG_ENGINE_EXAMINE_SYMBOLS-related functions and structures.
+//
+
+typedef union _DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -124,35 +270,26 @@ typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS {
 
         ULONG TypeInformation:1;
 
-        //
-        // Provide wide character output.
-        //
-
-        ULONG WideCharacter:1;
-
     };
-
-} DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS;
-C_ASSERT(sizeof(DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS) == sizeof(ULONG));
+} DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS;
+C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS) == sizeof(ULONG));
 
 typedef
+_Check_return_
 _Success_(return != 0)
 BOOL
-(DEBUG_ENGINE_ENUM_SYMBOLS)(
-    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
-    _In_ PVOID Context,
-    _In_ PALLOCATOR Allocator,
-    _In_ PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback,
-    _In_ DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS Flags,
-    _In_ PRTL_PATH ModulePath
+(DEBUG_ENGINE_EXAMINE_SYMBOLS)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
+    _In_ DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS CommandOptions
     );
-typedef DEBUG_ENGINE_ENUM_SYMBOLS *PDEBUG_ENGINE_ENUM_SYMBOLS;
+typedef DEBUG_ENGINE_EXAMINE_SYMBOLS *PDEBUG_ENGINE_EXAMINE_SYMBOLS;
 
 //
-// DisassembleFunction-related structures and functions.
+// UnassembleFunction-related structures and functions.
 //
 
-typedef union _DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS {
+typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -163,24 +300,24 @@ typedef union _DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS {
 
         ULONG WideCharacter:1;
     };
-} DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS;
+} DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS;
 
 typedef
 struct _Struct_size_bytes_(SizeOfStruct)
-_DEBUG_ENGINE_DISASSEMBLED_FUNCTION {
+_DEBUG_ENGINE_UNASSEMBLED_FUNCTION {
 
     //
     // Size of structure, in bytes.
     //
 
-    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_DISASSEMBLED_FUNCTION))
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION))
         ULONG SizeOfStruct;
 
     //
     // Flags.
     //
 
-    DEBUG_ENGINE_DISASSEMBLED_FUNCTION_FLAGS Flags;
+    DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS Flags;
 
     //
     // Raw text returned from DbgEng.
@@ -203,11 +340,11 @@ _DEBUG_ENGINE_DISASSEMBLED_FUNCTION {
 
     ULONG NumberOfBasicBlocks;
 
-} DEBUG_ENGINE_DISASSEMBLED_FUNCTION;
-typedef DEBUG_ENGINE_DISASSEMBLED_FUNCTION
-      *PDEBUG_ENGINE_DISASSEMBLED_FUNCTION;
-typedef DEBUG_ENGINE_DISASSEMBLED_FUNCTION
-    **PPDEBUG_ENGINE_DISASSEMBLED_FUNCTION;
+} DEBUG_ENGINE_UNASSEMBLED_FUNCTION;
+typedef DEBUG_ENGINE_UNASSEMBLED_FUNCTION
+      *PDEBUG_ENGINE_UNASSEMBLED_FUNCTION;
+typedef DEBUG_ENGINE_UNASSEMBLED_FUNCTION
+    **PPDEBUG_ENGINE_UNASSEMBLED_FUNCTION;
 
 typedef union {
     LONG AsLong;
@@ -227,24 +364,89 @@ typedef union {
 
         ULONG RelaxBlockingRequirements:1;
     };
-} DEBUG_ENGINE_DISASSEMBLE_FUNCTION_FLAGS;
-C_ASSERT(sizeof(DEBUG_ENGINE_DISASSEMBLE_FUNCTION_FLAGS) == sizeof(ULONG));
+} DEBUG_ENGINE_UNASSEMBLE_FUNCTION_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLE_FUNCTION_FLAGS) == sizeof(ULONG));
+
+typedef union _DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Only display call instructions in a routine.
+        //
+        // Corresponds to /c.
+        //
+
+        ULONG CallInstructionsOnly:1;
+
+        //
+        // Create linked callee names.
+        //
+        // Corresponds to /D.
+        //
+
+        ULONG CreateLinkedCalleeNames:1;
+
+        //
+        // Relax blocking requirements to permit multiple exits.
+        //
+        // Corresponds to /m.
+        //
+
+        ULONG RelaxBlockingRequirements:1;
+
+        //
+        // Sort display by address instead of function offset.  This option
+        // presents a memory-layout view of a full function.
+        //
+        // Corresponds to /o.
+        //
+
+        ULONG SortByAddress:1;
+
+        //
+        // Creates linked call lines for accessing call information and
+        // creating breakpoints.
+        //
+        // Corresponds to /O.
+        //
+
+        ULONG CreateLinkedCallLines:1;
+
+        //
+        // Display the number of instructions in the routine.
+        //
+        // Corresponds to /i.
+        //
+
+        ULONG DisplayInstructionCount:1;
+
+        //
+        // Unused.
+        //
+
+        ULONG Unused:26;
+
+    };
+
+} DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS;
+C_ASSERT(
+    sizeof(DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS) ==
+    sizeof(ULONG)
+);
 
 typedef
+_Check_return_
 _Success_(return != 0)
 BOOL
-(DEBUG_ENGINE_DISASSEMBLE_FUNCTION)(
-    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
-    _In_ PALLOCATOR Allocator,
-    _In_ DEBUG_ENGINE_DISASSEMBLE_FUNCTION_FLAGS Flags,
-    _In_ PRTL_PATH ModulePath,
-    _In_opt_ PSTRING FunctionName,
-    _In_opt_ PUNICODE_STRING FunctionNameWide,
-    _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_DISASSEMBLED_FUNCTION
-        DisassembledFunctionPointer
+(DEBUG_ENGINE_UNASSEMBLE_FUNCTION)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
+    _In_ DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS CommandOptions,
+    _In_ PUNICODE_STRING FunctionName
     );
-typedef DEBUG_ENGINE_DISASSEMBLE_FUNCTION
-      *PDEBUG_ENGINE_DISASSEMBLE_FUNCTION;
+typedef DEBUG_ENGINE_UNASSEMBLE_FUNCTION *PDEBUG_ENGINE_UNASSEMBLE_FUNCTION;
 
 //
 // DEBUG_ENGINE_SESSION-related function typedefs, unions and structures.
@@ -300,16 +502,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PDESTROY_DEBUG_ENGINE_SESSION Destroy;
 
     //
-    // Enumerate symbols.
+    // Initialize a DEBUG_ENGINE_OUTPUT structure prior to executing a command.
     //
 
-    PDEBUG_ENGINE_ENUM_SYMBOLS EnumSymbols;
+    PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
 
     //
-    // Disassemble function.
+    // Examine symbols.
     //
 
-    PDEBUG_ENGINE_DISASSEMBLE_FUNCTION DisassembleFunction;
+    PDEBUG_ENGINE_EXAMINE_SYMBOLS ExamineSymbols;
+
+    //
+    // Unassemble function.
+    //
+
+    PDEBUG_ENGINE_UNASSEMBLE_FUNCTION UnassembleFunction;
 
     //
     // Rtl structure.
@@ -410,6 +618,7 @@ typedef INTIALIZE_DEBUG_ENGINE_SESSION *PINTIALIZE_DEBUG_ENGINE_SESSION;
 //
 // Inline Functions
 //
+
 
 FORCEINLINE
 _Check_return_

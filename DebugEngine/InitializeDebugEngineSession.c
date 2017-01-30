@@ -324,8 +324,9 @@ Return Value:
     //
 
     Session->Destroy = DestroyDebugEngineSession;
-    Session->EnumSymbols = DebugEngineEnumSymbols;
-    Session->DisassembleFunction = DebugEngineDisassembleFunction;
+    Session->ExamineSymbols = DebugEngineExamineSymbols;
+    Session->UnassembleFunction = DebugEngineUnassembleFunction;
+    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
 
     //
     // Update the caller's pointer.

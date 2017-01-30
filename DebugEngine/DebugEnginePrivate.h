@@ -55,12 +55,12 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(DEBUG_ENGINE_DISASSEMBLE_ADDRESS)(
+(DEBUG_ENGINE_UNASSEMBLE_ADDRESS)(
     _In_ PDEBUG_ENGINE_SESSION Session,
     _In_ ULONG64 Offset,
     _In_ PSTRING Buffer
     );
-typedef DEBUG_ENGINE_DISASSEMBLE_ADDRESS *PDEBUG_ENGINE_DISASSEMBLE_ADDRESS;
+typedef DEBUG_ENGINE_UNASSEMBLE_ADDRESS *PDEBUG_ENGINE_UNASSEMBLE_ADDRESS;
 
 //
 // DEBUG_ENGINE_OUTPUT related function typedefs and structures.
@@ -87,109 +87,135 @@ HRESULT
 typedef DEBUG_ENGINE_OUTPUT_CALLBACK2 *PDEBUG_ENGINE_OUTPUT_CALLBACK2;
 
 //
-// EnumSymbols-related function pointer typedefs and structures.
+// DebugEngineCommands-related function typedefs and structures.
 //
 
+typedef enum _Enum_is_bitflag_ _DEBUG_ENGINE_COMMAND_ID {
+    DebugEngineNullCommandId            =       0,
+    ExamineSymbolsCommandId             =       1,
+    UnassembleFunctionCommandId         = (1 << 1),
+    DisplayTypeCommandId                = (1 << 2),
+    DebugEngineInvalidCommandId         = DisplayTypeCommandId + 1
+} DEBUG_ENGINE_COMMAND_ID;
 
-typedef
-HRESULT
-(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK)(
-    _In_ struct _DEBUG_ENGINE *DebugEngine,
-    _In_ DEBUG_OUTPUT_MASK OutputMask,
-    _In_ PCSTR Text
+FORCEINLINE
+BOOL
+IsValidDebugEngineCommandId(
+    _In_ DEBUG_ENGINE_COMMAND_ID CommandId
+    )
+{
+    return (
+        (CommandId == ExamineSymbolsCommandId) || (
+            CommandId >= UnassembleFunctionCommandId &&
+            CommandId <= DisplayTypeCommandId &&
+            IsPowerOf2(CommandId)
+        )
     );
-typedef DEBUG_ENGINE_OUTPUT_CALLBACK *PDEBUG_ENGINE_OUTPUT_CALLBACK;
+}
 
-typedef
-HRESULT
-(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2)(
-    _In_ struct _DEBUG_ENGINE *DebugEngine,
-    _In_ DEBUG_OUTPUT_TYPE OutputType,
-    _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
-    _In_ ULONG64 Arg,
-    _In_ PCWSTR Text
-    );
-typedef DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2
-      *PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2;
+FORCEINLINE
+LONG
+CommandIdToArrayIndex(
+    _In_ DEBUG_ENGINE_COMMAND_ID CommandId
+    )
+{
+    if (!IsValidDebugEngineCommandId(CommandId)) {
+        return -1;
+    }
 
-typedef union _DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS {
+    return TrailingZeros(CommandId);
+}
+
+typedef union _DEBUG_ENGINE_COMMAND_TYPE {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG WideCharacter:1;
+        ULONG ExamineSymbols:1;
+        ULONG UnassembleFunction:1;
+        ULONG DisplayType:1;
+        ULONG Unused:29;
     };
-} DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS;
+} DEBUG_ENGINE_COMMAND_TYPE;
+C_ASSERT(sizeof(DEBUG_ENGINE_COMMAND_TYPE) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _DEBUG_ENGINE_COMMAND_FLAGS {
+    ULONG HasOptions:1;
+    ULONG HasModuleName:1;
+    ULONG HasExclamationPoint:1;
+    ULONG HasSymbolName:1;
+    ULONG SymbolNameDefaultsToAsterisk:1;
+    ULONG Unused:1;
+} DEBUG_ENGINE_COMMAND_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_COMMAND_FLAGS) == sizeof(ULONG));
+typedef DEBUG_ENGINE_COMMAND_FLAGS *PDEBUG_ENGINE_COMMAND_FLAGS;
+
+typedef struct _DEBUG_ENGINE_COMMAND_OPTIONS {
+    PPWSTR OptionStrings;
+} DEBUG_ENGINE_COMMAND_OPTIONS;
 
 typedef
-struct _Struct_size_bytes_(SizeOfStruct)
-_DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT {
+_Check_return_
+_Success_(return != 0)
+USHORT
+(CALLBACK DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ struct _DEBUG_ENGINE_COMMAND_TEMPLATE *CommandTemplate,
+    _In_ ULONG CommandFlags,
+    _In_ PUNICODE_STRING OptionsBuffer,
+    _In_ PBOOL OptionsBufferTooSmall
+    );
+typedef DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK
+      *PDEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK;
+
+typedef
+struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_COMMAND_TEMPLATE {
 
     //
-    // Size of structure, in bytes.
+    // Size of the structure, in bytes.
     //
 
-    _Field_range_(
-        == ,
-        sizeof(struct _DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT)
-    ) ULONG SizeOfStruct;
+    _Field_range_(==, sizeof(struct _DEBUG_ENGINE_COMMAND_TEMPLATE))
+        ULONG SizeOfStruct;
 
     //
     // Flags.
     //
 
-    DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT_FLAGS Flags;
+    DEBUG_ENGINE_COMMAND_FLAGS Flags;
 
-    PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
-    PVOID CallerContext;
-    PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK CallerCallback;
-    PALLOCATOR Allocator;
-    PRTL_PATH ModulePath;
-    union {
-        PSTRING Command;
-        PUNICODE_STRING CommandWide;
-    };
-} DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT;
-typedef DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT
-      *PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT;
+    //
+    // Command Type.
+    //
 
-typedef
-HRESULT
-(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK)(
-    _In_ struct _DEBUG_ENGINE *DebugEngine,
-    _In_ DEBUG_OUTPUT_MASK OutputMask,
-    _In_ PCSTR Text
-    );
+    DEBUG_ENGINE_COMMAND_TYPE Type;
 
-typedef
-HRESULT
-(STDAPICALLTYPE DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_WIDE_CALLBACK)(
-    _In_ struct _DEBUG_ENGINE *DebugEngine,
-    _In_ DEBUG_OUTPUT_TYPE OutputType,
-    _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
-    _In_ ULONG64 Arg,
-    _In_ PCWSTR Text
-    );
+    //
+    // Number of options to the command.
+    //
 
-//
-// DisassembleFunction-related structures and function pointer typedefs.
-//
+    ULONG NumberOfOptions;
 
-typedef struct _DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT {
-    PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
-    PVOID CallerContext;
-    PVOID CallerCallback;
-    PALLOCATOR Allocator;
-    PRTL_PATH ModulePath;
-    PUNICODE_STRING Command;
-} DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT;
-typedef DEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT
-      *PDEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT;
+    //
+    // Array of PWSTR option strings, ordered by the command option bitmap.
+    //
 
-typedef union _DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT {
-    PDEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK_CONTEXT EnumSymbols;
-    PDEBUG_ENGINE_DISASSEMBLE_FUNCTION_OUTPUT_CALLBACK_CONTEXT
-        DisassembleFunction;
-} DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT;
+    PPUNICODE_STRING Options;
+
+    //
+    // Command name.
+    //
+
+    PCSTRING CommandName;
+    PCUNICODE_STRING CommandNameWide;
+
+    //
+    // Optional friendly/display name for the command.
+    //
+
+    PSTRING CommandDisplayName;
+
+} DEBUG_ENGINE_COMMAND_TEMPLATE;
+typedef DEBUG_ENGINE_COMMAND_TEMPLATE *PDEBUG_ENGINE_COMMAND_TEMPLATE;
 
 //
 // DEBUG_ENGINE-related function typedefs and structures.
@@ -287,7 +313,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
         DEBUG_OUTPUT_MASK OutputMask;
         PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
         PDEBUG_ENGINE_OUTPUT_CALLBACK2 OutputCallback2;
-        DEBUG_ENGINE_OUTPUT_CALLBACK_CONTEXT OutputCallbackContext;
+
+        PDEBUG_ENGINE_OUTPUT CurrentOutput;
 
         DEBUG_EVENT_CALLBACKS_INTEREST_MASK EventCallbacksInterestMask;
         DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK OutputCallbacks2InterestMask;
@@ -384,6 +411,30 @@ BOOL
 typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2
       *PDEBUG_ENGINE_SET_OUTPUT_CALLBACKS2;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_BUILD_COMMAND)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ DEBUG_ENGINE_COMMAND_ID CommandId,
+    _In_ ULONG CommandOptions,
+    _In_opt_ PUNICODE_STRING SymbolName,
+    _In_ PUNICODE_STRING CommandBuffer
+    );
+typedef DEBUG_ENGINE_BUILD_COMMAND *PDEBUG_ENGINE_BUILD_COMMAND;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_EXECUTE_COMMAND)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output
+    );
+typedef DEBUG_ENGINE_EXECUTE_COMMAND *PDEBUG_ENGINE_EXECUTE_COMMAND;
+
 //
 // Inline functions for copying callback vtables to the engine.
 //
@@ -474,19 +525,22 @@ CopyInterfaceId(
 
 CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
 INITIALIZE_DEBUG_ENGINE InitializeDebugEngine;
+INITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
 
-DEBUG_ENGINE_ENUM_SYMBOLS DebugEngineEnumSymbols;
+DEBUG_ENGINE_BUILD_COMMAND DebugEngineBuildCommand;
+DEBUG_ENGINE_EXECUTE_COMMAND DebugEngineExecuteCommand;
+DEBUG_ENGINE_OUTPUT_CALLBACK DebugEngineOutputCallback;
+DEBUG_ENGINE_OUTPUT_CALLBACK2 DebugEngineOutputCallback2;
 
-DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK
-    DebugEngineEnumSymbolsOutputCallback;
-
-DEBUG_ENGINE_ENUM_SYMBOLS_OUTPUT_CALLBACK2
-    DebugEngineEnumSymbolsOutputCallback2;
-
-DEBUG_ENGINE_DISASSEMBLE_FUNCTION DebugEngineDisassembleFunction;
+DEBUG_ENGINE_EXAMINE_SYMBOLS DebugEngineExamineSymbols;
+DEBUG_ENGINE_UNASSEMBLE_FUNCTION DebugEngineUnassembleFunction;
 
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS DebugEngineSetOutputCallbacks;
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2 DebugEngineSetOutputCallbacks2;
+
+DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK DisplayTypeGetOptionsCallback;
+DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK ExamineSymbolsGetOptionsCallback;
+DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK UnassembleFunctionGetOptionsCallback;
 
 //
 // IDebugEventCallbacks

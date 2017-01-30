@@ -2719,7 +2719,19 @@ BOOL
 typedef TRACE_DEBUG_ENGINE_SYMBOL_CALLBACK
       *PTRACE_DEBUG_ENGINE_SYMBOL_CALLBACK;
 
-TRACE_DEBUG_ENGINE_SYMBOL_CALLBACK TraceDebugEngineSymbolCallback;
+#pragma component(browser, off)
+DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK
+    TraceDebugEngineExamineSymbolsPartialOutputCallback;
+
+DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK
+    TraceDebugEngineExamineSymbolsOutputCompleteCallback;
+
+DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK
+    TraceDebugEngineUnassembleFunctionPartialOutputCallback;
+
+DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK
+    TraceDebugEngineUnassembleFunctionOutputCompleteCallback;
+#pragma component(browser, on)
 
 FORCEINLINE
 VOID

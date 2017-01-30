@@ -33,6 +33,7 @@ extern "C" {
 #include "DebugEngineInterfaces.h"
 #include "DebugEnginePrivate.h"
 #include "DebugEngineConstants.h"
+#include "DebugEngineCommands.h"
 
 #endif // _DEBUG_ENGINE_INTERNAL_BUILD
 

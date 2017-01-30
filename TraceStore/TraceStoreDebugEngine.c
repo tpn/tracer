@@ -1014,9 +1014,12 @@ Return Value:
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     TRACE_FLAGS TraceFlags;
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_OUTPUT Output;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
-    PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK Callback;
-    DEBUG_ENGINE_ENUM_SYMBOLS_FLAGS EnumFlags;
+    PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback;
+    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback;
+    DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -1030,11 +1033,6 @@ Return Value:
 
     TraceContext = DebugContext->TraceContext;
     TraceStores = TraceContext->TraceStores;
-    Rtl = TraceContext->Rtl;
-    File = &ModuleTableEntry->File;
-    Path = &File->Path;
-    Allocator = TraceContext->Allocator;
-    DebugEngineSession = DebugContext->DebugEngineSession;
     TraceFlags.AsULong = TraceStores->Flags.AsULong;
 
     //
@@ -1055,6 +1053,40 @@ Return Value:
     }
 
     //
+    // Continue initializing aliases.
+    //
+
+    Rtl = TraceContext->Rtl;
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
+    Allocator = TraceContext->Allocator;
+    DebugEngineSession = DebugContext->DebugEngineSession;
+
+    //
+    // Initialize the DEBUG_ENGINE_EXAMINE_SYMBOLS_OUTPUT structure.  This is
+    // a stack allocated structure that will persist for the lifetime of this
+    // routine and is used to communicate partial output state across multiple
+    // callbacks.
+    //
+
+    SecureZeroMemory(&Output, sizeof(DEBUG_ENGINE_OUTPUT));
+    Output.SizeOfStruct = sizeof(DEBUG_ENGINE_OUTPUT);
+
+    Success = DebugEngineSession->InitializeDebugEngineOutput(
+        &Output,
+        DebugEngineSession,
+        Allocator,
+        TraceDebugEngineExamineSymbolPartialOutputCallback,
+        TraceDebugEngineExamineSymbolOutputCompleteCallback,
+        DebugContext,
+        Path
+    );
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
     // Update the debug context to point at this module table entry.
     //
 
@@ -1069,17 +1101,14 @@ Return Value:
     //          - /v: verbose
     //
 
-    Callback = (PDEBUG_ENGINE_ENUM_SYMBOLS_CALLBACK)(
-        TraceDebugEngineSymbolCallback
-    );
-    EnumFlags.Verbose = 1;
-    EnumFlags.TypeInformation = 1;
-    Success = DebugEngineSession->EnumSymbols(DebugEngineSession,
-                                              DebugContext,
-                                              Allocator,
-                                              Callback,
-                                              EnumFlags,
-                                              Path);
+    OutputFlags.AsULong = 0;
+    ExamineSymbolsOptions.Verbose = 1;
+    ExamineSymbolsOptions.TypeInformation = 1;
+
+    Success = DebugEngineSession->ExamineSymbols(Output,
+                                                 OutputFlags,
+                                                 ExamineSymbolsOptions);
+
     if (!Success) {
         return FALSE;
     }
@@ -1124,22 +1153,19 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-TraceDebugEngineSymbolCallback(
-    PDEBUG_ENGINE_SYMBOL Symbol,
-    PTRACE_DEBUG_CONTEXT DebugContext
+TraceDebugEngineExamineSymbolPartialOutputCallback(
+    PDEBUG_ENGINE_OUTPUT Output
     )
 /*++
 
 Routine Description:
 
-    This is the callback target invoked by the debug engine when enumerating
-    symbols.
+    This is the callback target invoked by the debug engine when the examine
+    symbols command generates output.
 
 Arguments:
 
-    Symbol - Supplies a pointer to a DEBUG_ENGINE_SYMBOL structure.
-
-    DebugContext - Supplies a pointer to our active DEBUG_ENGINE_CONTEXT.
+    Output - Supplies a pointer to the active DEBUG_ENGINE_OUTPUT.
 
 Return Value:
 
@@ -1147,9 +1173,43 @@ Return Value:
 
 --*/
 {
-    if (Symbol->RawText.Buffer) {
-        OutputDebugStringA(Symbol->RawText.Buffer);
-    }
+    PTRACE_DEBUG_CONTEXT DebugContext;
+
+    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
+
+    //
+    // Allocate space from the TypeInfoStringBuffer store, copy the contents
+    // over.
+    //
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+TraceDebugEngineExamineSymbolOutputCompleteCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+/*++
+
+Routine Description:
+
+    This is the callback target invoked by the debug engine when the examine
+    symbols command generates output.
+
+Arguments:
+
+    Output - Supplies a pointer to the active DEBUG_ENGINE_OUTPUT.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    PTRACE_DEBUG_CONTEXT DebugContext;
+
+    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
 
     return TRUE;
 }

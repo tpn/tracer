@@ -71,6 +71,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DebugEngineCommands.h" />
     <ClInclude Include="DebugEngineInterfaces.h" />
     <ClInclude Include="DebugEngineConstants.h" />
     <ClInclude Include="stdafx.h" />
@@ -81,17 +82,21 @@
   <ItemGroup>
     <ClCompile Include="..\Rtl\AtExitEx.c" />
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="DebugEngineBuildCommand.c" />
+    <ClCompile Include="DebugEngineCommands.c" />
     <ClCompile Include="DebugEngineConstants.c" />
     <ClCompile Include="DebugEngineEventCallbacks.c" />
+    <ClCompile Include="DebugEngineExamineSymbols.c" />
+    <ClCompile Include="DebugEngineExecuteCommand.c" />
+    <ClCompile Include="DebugEngineOutput.c" />
     <ClCompile Include="DebugEngineOutputCallbacks2.c" />
     <ClCompile Include="InitializeDebugEngine.c" />
     <ClCompile Include="DebugEngineInputCallbacks.c" />
     <ClCompile Include="DebugEngineOutputCallbacks.c" />
     <ClCompile Include="DestroyDebugEngineSession.c" />
     <ClCompile Include="InitializeDebugEngineSession.c" />
-    <ClCompile Include="DebugEngineDisassembleFunction.c" />
+    <ClCompile Include="DebugEngineUnassembleFunction.c" />
     <ClCompile Include="dllmain.c" />
-    <ClCompile Include="DebugEngineEnumSymbols.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
