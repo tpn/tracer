@@ -1014,10 +1014,8 @@ Return Value:
     PTRACE_CONTEXT TraceContext;
     PTRACE_STORES TraceStores;
     TRACE_FLAGS TraceFlags;
-    DEBUG_ENGINE_EXAMINE_SYMBOLS_OUTPUT Output;
+    DEBUG_ENGINE_OUTPUT Output;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
-    PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback;
-    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
 
@@ -1034,6 +1032,9 @@ Return Value:
     TraceContext = DebugContext->TraceContext;
     TraceStores = TraceContext->TraceStores;
     TraceFlags.AsULong = TraceStores->Flags.AsULong;
+
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
 
     //
     // Determine if we should continue processing this module based on whether
@@ -1057,8 +1058,6 @@ Return Value:
     //
 
     Rtl = TraceContext->Rtl;
-    File = &ModuleTableEntry->File;
-    Path = &File->Path;
     Allocator = TraceContext->Allocator;
     DebugEngineSession = DebugContext->DebugEngineSession;
 
@@ -1076,8 +1075,8 @@ Return Value:
         &Output,
         DebugEngineSession,
         Allocator,
-        TraceDebugEngineExamineSymbolPartialOutputCallback,
-        TraceDebugEngineExamineSymbolOutputCompleteCallback,
+        TraceDebugEngineExamineSymbolsPartialOutputCallback,
+        TraceDebugEngineExamineSymbolsOutputCompleteCallback,
         DebugContext,
         Path
     );
@@ -1105,7 +1104,7 @@ Return Value:
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
 
-    Success = DebugEngineSession->ExamineSymbols(Output,
+    Success = DebugEngineSession->ExamineSymbols(&Output,
                                                  OutputFlags,
                                                  ExamineSymbolsOptions);
 
@@ -1153,7 +1152,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-TraceDebugEngineExamineSymbolPartialOutputCallback(
+TraceDebugEngineExamineSymbolsPartialOutputCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
 /*++
@@ -1187,7 +1186,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-TraceDebugEngineExamineSymbolOutputCompleteCallback(
+TraceDebugEngineExamineSymbolsOutputCompleteCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
 /*++
