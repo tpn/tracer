@@ -113,7 +113,7 @@ Return Value:
         ULONG Bitmap = CommandOptions;
         ULONG NumberOfTrailingZeros;
         ULONG NumberOfOptions = CommandTemplate->NumberOfOptions;
-        PPUNICODE_STRING Options = CommandTemplate->Options;
+        PUNICODE_STRING Options = CommandTemplate->Options;
         PUNICODE_STRING Option;
 
         //
@@ -156,7 +156,7 @@ Return Value:
             // Get the option string from the command template at this index.
             //
 
-            Option = Options[Index];
+            Option = (Options + Index);
 
             //
             // Append it to the current command buffer.
