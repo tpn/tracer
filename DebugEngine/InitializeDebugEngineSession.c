@@ -319,6 +319,8 @@ Return Value:
         "Symbols->GetModuleByModuleName('Rtl')"
     );
 
+    Session->Rtl = Rtl;
+
     //
     // Set the function pointers.
     //
