@@ -22,10 +22,10 @@ CONST UNICODE_STRING ExclamationPoint = RTL_CONSTANT_STRING(L"!");
 //
 
 STRING ExamineSymbolsCommandName =
-    RTL_CONSTANT_STRING("x");
+    RTL_CONSTANT_STRING("x ");
 
 UNICODE_STRING ExamineSymbolsCommandNameWide =
-    RTL_CONSTANT_STRING(L"x");
+    RTL_CONSTANT_STRING(L"x ");
 
 STRING ExamineSymbolsCommandDisplayName =
     RTL_CONSTANT_STRING("examine symbols");
@@ -72,7 +72,7 @@ DEBUG_ENGINE_COMMAND_TEMPLATE ExamineSymbolsCommandTemplate = {
     // Options
     //
 
-    (PPUNICODE_STRING)&ExamineSymbolsCommandOptions,
+    ExamineSymbolsCommandOptions,
 
     //
     // CommandName
@@ -99,10 +99,10 @@ DEBUG_ENGINE_COMMAND_TEMPLATE ExamineSymbolsCommandTemplate = {
 //
 
 STRING UnassembleFunctionCommandName =
-    RTL_CONSTANT_STRING("uf");
+    RTL_CONSTANT_STRING("uf ");
 
 UNICODE_STRING UnassembleFunctionCommandNameWide =
-    RTL_CONSTANT_STRING(L"uf");
+    RTL_CONSTANT_STRING(L"uf ");
 
 STRING UnassembleFunctionCommandDisplayName =
     RTL_CONSTANT_STRING("unassemble function");
@@ -153,7 +153,7 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
     // Options
     //
 
-    (PPUNICODE_STRING)&UnassembleCommandOptions,
+    UnassembleCommandOptions,
 
     //
     // CommandName

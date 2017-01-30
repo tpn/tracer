@@ -196,10 +196,10 @@ struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_COMMAND_TEMPLATE {
     ULONG NumberOfOptions;
 
     //
-    // Array of PWSTR option strings, ordered by the command option bitmap.
+    // Array of UNICODE_STRING option strings.
     //
 
-    PPUNICODE_STRING Options;
+    PUNICODE_STRING Options;
 
     //
     // Command name.
