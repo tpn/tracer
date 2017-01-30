@@ -40,6 +40,16 @@ UNICODE_STRING UnassembleFunctionCommandOptions[];
 DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate;
 
 //
+// DisplayType.
+//
+
+STRING DisplayTypeCommandName;
+UNICODE_STRING DisplayTypeCommandNameWide;
+STRING DisplayTypeCommandDisplayName;
+UNICODE_STRING DisplayTypeCommandOptions[];
+DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate;
+
+//
 // Array of templates.
 //
 

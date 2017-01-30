@@ -176,13 +176,94 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
 };
 
 //
+// DisplayType.
+//
+
+STRING DisplayTypeCommandName =
+    RTL_CONSTANT_STRING("dt ");
+
+UNICODE_STRING DisplayTypeCommandNameWide =
+    RTL_CONSTANT_STRING(L"dt ");
+
+STRING DisplayTypeCommandDisplayName =
+    RTL_CONSTANT_STRING("display type");
+
+UNICODE_STRING DisplayTypeCommandOptions[] = {
+    RTL_CONSTANT_STRING(L"-a "),    // ShowArrayElements
+    RTL_CONSTANT_STRING(L"-b "),    // DisplayBlocksRecursively
+    RTL_CONSTANT_STRING(L"-c "),    // CompactOutput
+    RTL_CONSTANT_STRING(L"-e "),    // ForceTypeEnumeration
+    RTL_CONSTANT_STRING(L"-r9 "),   // RecursivelyDumpSubtypes
+    RTL_CONSTANT_STRING(L"-v "),    // Verbose
+};
+
+DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate = {
+
+    //
+    // SizeOfStruct
+    //
+
+    sizeof(DEBUG_ENGINE_COMMAND_TEMPLATE),
+
+    //
+    // Flags
+    //
+
+    {
+        1,      // HasOptions
+        1,      // HasModuleName
+        1,      // HasExclamationPoint
+        1,      // HasSymbolName
+        0,      // SymbolNameDefaultsToAsterisk,
+        0,      // Unused
+    },
+
+    //
+    // Type
+    //
+
+    { DisplayTypeCommandId },
+
+    //
+    // NumberOfOptions
+    //
+
+    ARRAYSIZE(DisplayTypeCommandOptions),
+
+    //
+    // Options
+    //
+
+    DisplayTypeCommandOptions,
+
+    //
+    // CommandName
+    //
+
+    &DisplayTypeCommandName,
+
+    //
+    // CommandNameWide
+    //
+
+    &DisplayTypeCommandNameWide,
+
+    //
+    // CommandDisplayName
+    //
+
+    &DisplayTypeCommandDisplayName,
+
+};
+
+//
 // Array of templates.
 //
 
 PDEBUG_ENGINE_COMMAND_TEMPLATE DebugEngineCommandTemplates[] = {
     &ExamineSymbolsCommandTemplate,
     &UnassembleFunctionCommandTemplate,
-    NULL
+    &DisplayTypeCommandTemplate,
 };
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

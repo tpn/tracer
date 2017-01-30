@@ -449,6 +449,85 @@ BOOL
 typedef DEBUG_ENGINE_UNASSEMBLE_FUNCTION *PDEBUG_ENGINE_UNASSEMBLE_FUNCTION;
 
 //
+// DisplayType-related structures and functions.
+//
+
+typedef union _DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Show each array element on a new line.
+        //
+        // Corresponds to -a.
+        //
+
+        ULONG ShowArrayElements:1;
+
+        //
+        // Display blocks recursively.
+        //
+        // Corresponds to -b.
+        //
+
+        ULONG DisplayBlocksRecursively:1;
+
+        //
+        // Compact output; all fields are displayed on one line, if possible.
+        //
+
+        ULONG CompactOutput:1;
+
+        //
+        // Force type enumeration.
+        //
+        // Corresponds to -e.
+        //
+
+        ULONG ForceTypeEnumeration:1;
+
+        //
+        // Recursively dump subtype fields.
+        //
+        // Corresponds to -r9.
+        //
+
+        ULONG RecursivelyDumpSubtypes:1;
+
+        //
+        // Verbose output.  Includes total size of a structure and the number
+        // of elements, if applicable.
+        //
+        // Corresponds to -v.
+        //
+
+        ULONG Verbose:1;
+
+        //
+        // Unused.
+        //
+
+        ULONG Unused:26;
+
+    };
+
+} DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS;
+C_ASSERT(sizeof(DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS) == sizeof(ULONG));
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_DISPLAY_TYPE)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
+    _In_ DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS CommandOptions,
+    _In_ PUNICODE_STRING SymbolName
+    );
+typedef DEBUG_ENGINE_DISPLAY_TYPE *PDEBUG_ENGINE_DISPLAY_TYPE;
+
+//
 // DEBUG_ENGINE_SESSION-related function typedefs, unions and structures.
 //
 // This structure is the main way to interface with the DebugEngine
@@ -518,6 +597,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PDEBUG_ENGINE_UNASSEMBLE_FUNCTION UnassembleFunction;
+
+    //
+    // Display type.
+    //
+
+    PDEBUG_ENGINE_DISPLAY_TYPE DisplayType;
 
     //
     // Rtl structure.
