@@ -326,6 +326,7 @@ Return Value:
     //
 
     Session->Destroy = DestroyDebugEngineSession;
+    Session->DisplayType = DebugEngineDisplayType;
     Session->ExamineSymbols = DebugEngineExamineSymbols;
     Session->UnassembleFunction = DebugEngineUnassembleFunction;
     Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;

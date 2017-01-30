@@ -92,5 +92,8 @@
     <ClCompile Include="DebugEngineCommands.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DebugEngineDisplayType.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
