@@ -205,7 +205,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // StackFrame
      1 << 16,   // TypeInfoTable
      1 << 27,   // TypeInfoTableEntry
-     1 << 24,   // TypeInfoStringBuffer
+     1 << 26,   // TypeInfoStringBuffer
      1 << 16,   // FunctionTable
      1 << 26,   // FunctionTableEntry
      1 << 27,   // FunctionAssembly
@@ -1189,7 +1189,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // LinkedStore
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
-        0,  // AllowPageSpill
+        1,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
         0,  // ConcurrentDataStructure

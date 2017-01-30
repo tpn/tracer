@@ -93,7 +93,37 @@ Return Value:
 
     Output->State.CommandExecuting = TRUE;
 
-    if (Output->OutputFlags.WideCharacterOutput) {
+    //
+    // XXX: temporarily force everything to go through ExecuteWide() whilst
+    // evaluating the debugger's behavior.
+    //
+
+    if (1) {
+
+        Engine->OutputCallback = DebugEngineOutputCallback;
+        CHECKED_MSG(
+            DebugEngineSetOutputCallbacks(Engine),
+            "DebugEngineSetOutputCallbacks()"
+        );
+
+        Result = Output->LastResult = Engine->Control->ExecuteWide(
+            Engine->IControl,
+            DEBUG_OUTCTL_ALL_CLIENTS,
+            Output->Command->Buffer,
+            DEBUG_EXECUTE_ECHO
+        );
+
+        if (Result != S_OK) {
+            Success = FALSE;
+            OutputDebugStringA("Control->ExecuteWide() failed: ");
+            OutputDebugStringW(Output->Command->Buffer);
+            Output->State.Failed = TRUE;
+        } else {
+            Success = TRUE;
+            Output->State.Succeeded = TRUE;
+        }
+
+    } else if (Output->OutputFlags.WideCharacterOutput) {
 
         //
         // We don't support wide output at the moment.
@@ -105,29 +135,61 @@ Return Value:
             DebugEngineSetOutputCallbacks2(Engine),
             "DebugEngineSetOutputCallbacks2()"
         );
+
+        Result = Output->LastResult = Engine->Control->ExecuteWide(
+            Engine->IControl,
+            DEBUG_OUTCTL_THIS_CLIENT,
+            Output->Command->Buffer,
+            DEBUG_EXECUTE_NOT_LOGGED
+        );
+
+        if (Result != S_OK) {
+            Success = FALSE;
+            OutputDebugStringA("Control->ExecuteWide() failed: ");
+            OutputDebugStringW(Output->Command->Buffer);
+            Output->State.Failed = TRUE;
+        } else {
+            Success = TRUE;
+            Output->State.Succeeded = TRUE;
+        }
+
     } else {
+
+        PSTRING Command;
+        PALLOCATOR Allocator;
+
+        Allocator = Output->Allocator;
+
+        if (!ConvertUtf16StringToUtf8String(Output->Command,
+                                            &Command,
+                                            Allocator)) {
+            goto Error;
+        }
+
         Engine->OutputCallback = DebugEngineOutputCallback;
         CHECKED_MSG(
             DebugEngineSetOutputCallbacks(Engine),
             "DebugEngineSetOutputCallbacks()"
         );
-    }
 
-    Result = Output->LastResult = Engine->Control->ExecuteWide(
-        Engine->IControl,
-        DEBUG_OUTCTL_THIS_CLIENT,
-        Output->Command->Buffer,
-        DEBUG_EXECUTE_NOT_LOGGED
-    );
+        Result = Output->LastResult = Engine->Control->Execute(
+            Engine->IControl,
+            DEBUG_OUTCTL_ALL_CLIENTS,
+            Command->Buffer,
+            DEBUG_EXECUTE_ECHO
+        );
 
-    if (Result != S_OK) {
-        Success = FALSE;
-        OutputDebugStringA("Control->ExecuteWide() failed: ");
-        OutputDebugStringW(Output->Command->Buffer);
-        Output->State.Failed = TRUE;
-    } else {
-        Success = TRUE;
-        Output->State.Succeeded = TRUE;
+        if (Result != S_OK) {
+            Success = FALSE;
+            OutputDebugStringA("Control->Execute() failed: ");
+            OutputDebugStringA(Command->Buffer);
+            Output->State.Failed = TRUE;
+        } else {
+            Success = TRUE;
+            Output->State.Succeeded = TRUE;
+        }
+
+        Allocator->Free(Allocator->Context, Command);
     }
 
     //
