@@ -250,9 +250,7 @@ ProcessModuleName:
     Output->State.CommandBuilt = TRUE;
     Success = TRUE;
 
-    Output->Command->Length = CommandBuffer->Length;
-    Output->Command->MaximumLength = CommandBuffer->MaximumLength;
-    Output->Command->Buffer = CommandBuffer->Buffer;
+    Output->Command = CommandBuffer;
 
     goto End;
 

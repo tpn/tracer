@@ -1173,13 +1173,72 @@ Return Value:
 --*/
 {
     PTRACE_DEBUG_CONTEXT DebugContext;
+    PTRACE_STORE TraceStore;
+    PCHAR Buffer;
+    PCHAR TrailingDest;
+    PCHAR TrailingSource;
+    PSTRING Chunk;
+    USHORT SizeInBytes;
+    USHORT TrailingBytes;
+    USHORT NumberOfQuadwords;
 
     DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
+
+    Chunk = &Output->ThisChunk;
+    SizeInBytes = Chunk->Length;
+
 
     //
     // Allocate space from the TypeInfoStringBuffer store, copy the contents
     // over.
     //
+
+    TraceStore = DebugContext->TraceStores.TypeInfoStringBuffer;
+
+    Buffer = (PCHAR)(
+        TraceStore->AllocateRecordsWithTimestamp(
+            TraceStore->TraceContext,
+            TraceStore,
+            1,
+            Chunk->Length,
+            &Output->Timestamp.CommandStart
+        )
+    );
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+
+    NumberOfQuadwords = Output->ThisChunk.Length >> 3;
+    if (NumberOfQuadwords) {
+
+        TRY_MAPPED_MEMORY_OP {
+
+            __movsq((PDWORD64)Buffer,
+                    (PDWORD64)Output->ThisChunk.Buffer,
+                    NumberOfQuadwords);
+
+        } CATCH_STATUS_IN_PAGE_ERROR {
+            return FALSE;
+        }
+    }
+
+    TrailingBytes = SizeInBytes % 8;
+
+    if (TrailingBytes) {
+        TrailingDest = (Buffer + (SizeInBytes - TrailingBytes));
+        TrailingSource = (Chunk->Buffer + (SizeInBytes - TrailingBytes));
+
+        __movsb(TrailingDest,
+                TrailingSource,
+                TrailingBytes);
+    }
+
+    if (!Output->Buffer) {
+        Output->Buffer = Buffer;
+    }
 
     return TRUE;
 }
@@ -1206,9 +1265,25 @@ Return Value:
 
 --*/
 {
+    BOOL ContiguousMapping;
+    PCHAR ExpectedEnd;
+    PCHAR ActualEnd;
+    PTRACE_STORE TraceStore;
+
     PTRACE_DEBUG_CONTEXT DebugContext;
 
     DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
+
+    TraceStore = DebugContext->TraceStores.TypeInfoStringBuffer;
+
+    ExpectedEnd = Output->Buffer + Output->TotalBufferSizeInBytes;
+    ActualEnd = (PCHAR)TraceStore->MemoryMap->NextAddress;
+
+    ContiguousMapping = (ExpectedEnd == ActualEnd);
+
+    if (!ContiguousMapping) {
+        //__debugbreak();
+    }
 
     return TRUE;
 }
