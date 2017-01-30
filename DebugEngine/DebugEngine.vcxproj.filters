@@ -33,6 +33,9 @@
     <ClInclude Include="DebugEngineInterfaces.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebugEngineCommands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -68,13 +71,25 @@
     <ClCompile Include="InitializeDebugEngineSession.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DebugEngineDisassembleFunction.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DebugEngineEnumSymbols.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DebugEngineOutputCallbacks2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineUnassembleFunction.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineExamineSymbols.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineBuildCommand.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineOutput.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineExecuteCommand.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugEngineCommands.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
