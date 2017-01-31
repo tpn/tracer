@@ -2719,6 +2719,10 @@ typedef TRACE_DEBUG_ENGINE_SYMBOL_CALLBACK
       *PTRACE_DEBUG_ENGINE_SYMBOL_CALLBACK;
 
 #pragma component(browser, off)
+
+DEBUG_ENGINE_LINE_OUTPUT_CALLBACK
+    TraceDebugEngineExamineSymbolsLineOutputCallback;
+
 DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK
     TraceDebugEngineExamineSymbolsPartialOutputCallback;
 

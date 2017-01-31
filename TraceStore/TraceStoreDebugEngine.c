@@ -1075,6 +1075,7 @@ Return Value:
         &Output,
         DebugEngineSession,
         Allocator,
+        TraceDebugEngineExamineSymbolsLineOutputCallback,
         TraceDebugEngineExamineSymbolsPartialOutputCallback,
         TraceDebugEngineExamineSymbolsOutputCompleteCallback,
         DebugContext,
@@ -1100,7 +1101,9 @@ Return Value:
     //          - /v: verbose
     //
 
-    OutputFlags.AsULong = 0;
+    OutputFlags.EnableLineOutputCallbacks = TRUE;
+    OutputFlags.EnablePartialOutputCallbacks = TRUE;
+
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
 
@@ -1152,6 +1155,15 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
+TraceDebugEngineExamineSymbolsLineOutputCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
 TraceDebugEngineExamineSymbolsPartialOutputCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
@@ -1174,12 +1186,13 @@ Return Value:
 {
     PCHAR Buffer;
     USHORT SizeInBytes;
+    PSTRING Chunk;
     PTRACE_STORE TraceStore;
     PTRACE_DEBUG_CONTEXT DebugContext;
 
     DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
 
-    Chunk = &Output->ThisChunk;
+    Chunk = &Output->Chunk;
     SizeInBytes = Chunk->Length;
 
     //
@@ -1203,7 +1216,7 @@ Return Value:
         return FALSE;
     }
 
-    if (!CopyMemoryQuadwords(Buffer, Output->ThisChunk.Buffer, SizeInBytes)) {
+    if (!CopyMemoryQuadwords(Buffer, Chunk->Buffer, SizeInBytes)) {
         return FALSE;
     }
 

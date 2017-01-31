@@ -241,21 +241,22 @@ DebugEngineOutputCallback(
     ULONG Index;
     BOOL Success;
     PCHAR Dest;
-    PCHAR Source;
     PSTRING Line;
     PSTRING Chunk;
     STRING NewLine;
     HRESULT Result;
     ULONG BitIndex;
     ULONG LastBitIndex;
+    ULONG NumberOfLines;
     PSTRING PartialLine;
+    PALLOCATOR Allocator;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     HANDLE HeapHandle = NULL;
     PDEBUG_ENGINE_OUTPUT Output;
-    LONG_INTEGER TextSizeInBytes;
-    LONG_INTEGER AllocSizeInBytes;
-    LONG_INTEGER NewLineLengthInBytes;
+    ULONG_INTEGER TextSizeInBytes;
+    ULONG_INTEGER AllocSizeInBytes;
+    ULONG_INTEGER NewLineLengthInBytes;
     PRTL_FIND_SET_BITS FindSetBits;
     PLINKED_PARTIAL_LINE LinkedPartialLine;
 
@@ -266,6 +267,7 @@ DebugEngineOutputCallback(
     CHAR StackBitmapBuffer[256];
     RTL_BITMAP Bitmap = { 256 << 3, (PULONG)&StackBitmapBuffer };
     PRTL_BITMAP BitmapPointer = &Bitmap;
+    PRTL_BITMAP LineEndings;
 
     //
     // If this isn't normal output, just print it to the debug stream and
@@ -352,7 +354,7 @@ DebugEngineOutputCallback(
         }
     }
 
-    if (!Output->Flags.EnableLineOrientedCallbacks) {
+    if (!Output->Flags.EnableLineOutputCallbacks) {
         goto End;
     }
 
@@ -361,11 +363,12 @@ DebugEngineOutputCallback(
     //
 
     //
-    // Initialize Rtl and FindSetBits aliases.
+    // Initialize aliases.
     //
 
     Rtl = DebugEngine->Rtl;
     FindSetBits = Rtl->RtlFindSetBits;
+    Allocator = Output->Allocator;
 
     //
     // Create a bitmap of line endings.
@@ -447,7 +450,7 @@ DebugEngineOutputCallback(
         // Carve out the line and then buffer pointer from allocated memory.
         //
 
-        Line = &LinkedPartialLine->Line;
+        Line = &LinkedPartialLine->PartialLine;
         Line->Buffer = (PCHAR)(
             RtlOffsetToPointer(
                 LinkedPartialLine,
@@ -530,7 +533,7 @@ DebugEngineOutputCallback(
     // too.
     //
 
-    NewLineLengthInBytes = 0;
+    NewLineLengthInBytes.LongPart = 0;
 
     ListHead = &Output->PartialLinesListHead;
 
@@ -540,20 +543,20 @@ DebugEngineOutputCallback(
                                               LINKED_PARTIAL_LINE,
                                               ListEntry);
 
-        NewLineLengthInBytes += LinkedPartialLine->Line.Length;
+        NewLineLengthInBytes.LongPart += LinkedPartialLine->PartialLine.Length;
     }
 
     //
     // Add the length of this most recent line.
     //
 
-    NewLineLengthInBytes += Line->Length;
+    NewLineLengthInBytes.LongPart += Line->Length;
 
     //
     // Align up to a pointer boundary.
     //
 
-    AllocSizeInBytes.LongPart = ALIGN_UP_POINTER(NewLineLengthInBytes);
+    AllocSizeInBytes.LongPart = ALIGN_UP_POINTER(NewLineLengthInBytes.LongPart);
 
     //
     // Sanity check the size doesn't exceed MAX_USHORT.
@@ -594,7 +597,7 @@ DebugEngineOutputCallback(
                                               LINKED_PARTIAL_LINE,
                                               ListEntry);
 
-        PartialLine = &LinkedPartialLine->Line;
+        PartialLine = &LinkedPartialLine->PartialLine;
         __movsb(Dest, PartialLine->Buffer, PartialLine->Length);
         Dest += PartialLine->Length;
         Allocator->Free(Allocator->Context, LinkedPartialLine);
@@ -630,12 +633,6 @@ DebugEngineOutputCallback(
     Success = Output->LineOutputCallback(Output);
 
     //
-    // Intentional follow-on to CleanupNewlineBuffer.
-    //
-
-CleanupNewlineBuffer:
-
-    //
     // Free the temporary string buffer we allocated.
     //
 
@@ -656,7 +653,7 @@ ProcessLines:
     // ending.
     //
 
-    for (Index; Index < NumberOfLines; Index++) {
+    for (Index = 1; Index < NumberOfLines; Index++) {
         BitIndex = FindSetBits(LineEndings, 1, LastBitIndex);
         if (BitIndex == BITS_NOT_FOUND || BitIndex < LastBitIndex) {
             break;
