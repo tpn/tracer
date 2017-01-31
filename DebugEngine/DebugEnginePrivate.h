@@ -245,6 +245,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     DEBUG_ENGINE_FLAGS Flags;
 
     //
+    // Pointer to an initialized RTL structure.
+    //
+
+    PRTL Rtl;
+
+    //
     // IIDs, interfaces and vtables.
     //
 

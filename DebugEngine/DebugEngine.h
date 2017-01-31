@@ -62,6 +62,15 @@ Abstract:
 // DEBUG_ENGINE_OUTPUT-related functions and structures.
 //
 
+
+typedef
+BOOL
+(CALLBACK DEBUG_ENGINE_LINE_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_LINE_OUTPUT_CALLBACK
+      *PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK;
+
 typedef
 BOOL
 (CALLBACK DEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK)(
@@ -95,10 +104,50 @@ C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_STATE) == sizeof(ULONG));
 typedef DEBUG_ENGINE_OUTPUT_STATE
       *PDEBUG_ENGINE_OUTPUT_STATE;
 
+typedef struct _LINKED_PARTIAL_LINE {
+    LIST_ENTRY ListEntry;
+    union {
+        STRING PartialLine;
+        UNICODE_STRING PartialLineWide;
+    };
+} LINKED_PARTIAL_LINE;
+typedef LINKED_PARTIAL_LINE *PLINKED_PARTIAL_LINE;
+
+//
+// These flags are used to customize the type of output wanted by the caller.
+//
+
 typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates the caller wants to receive raw partial output
+        // callbacks for each chunk of text that the debugger engine generates.
+        //
+
+        ULONG EnablePartialOutputCallbacks:1;
+
+        //
+        // When set, indicates the caller wants to receive line-oriented
+        // callbacks.  If this flag is set, the caller must provide non-NULL
+        // callbacks for the LineOutputCallback, SavePartialLineCallback and
+        // RetrievePartialLineCallback callbacks.
+        //
+        // N.B. Callers are free to specify both EnablePartialOutputCallbacks
+        //      and EnableLineOrientedCallbacks (or none; in which case, no
+        //      callbacks will be sent to the client, but the command will
+        //      be executed anyway).
+        //
+
+        ULONG EnableLineOutputCallbacks:1;
+
+        //
+        // When set, indicates the caller wants wide character (WCHAR) output.
+        // (Not currently supported.)
+        //
+
         ULONG WideCharacterOutput:1;
     };
 } DEBUG_ENGINE_OUTPUT_FLAGS;
@@ -132,6 +181,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     ULONG NumberOfPartialCallbacks;
     ULONG TotalBufferLengthInChars;
     ULONG TotalBufferSizeInBytes;
+    ULONG LargestChunkSizeInBytes;
 
     //
     // Captures the last HRESULT of an operation.
@@ -207,6 +257,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     // command has completed.
     //
 
+    PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback;
     PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback;
     PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback;
 
@@ -222,12 +273,29 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     };
 
     //
+    // If line-oriented callback has been requested, the following structure
+    // will be filled out with the line details on each callback invocation.
+    //
+
+    union {
+        STRING Line;
+        UNICODE_STRING LineWide;
+    };
+
+    //
+    // Partial lines.
+    //
+
+    ULONG NumberOfPartialLines;
+    LIST_ENTRY PartialLinesListHead;
+
+    //
     // Raw text returned by DbgEng for this callback invocation.
     //
 
     union {
-        STRING ThisChunk;
-        UNICODE_STRING ThisChunkWide;
+        STRING Chunk;
+        UNICODE_STRING ChunkWide;
     };
 
 } DEBUG_ENGINE_OUTPUT;

@@ -237,14 +237,40 @@ DebugEngineOutputCallback(
     PCSTR Text
     )
 {
+    PRTL Rtl;
+    ULONG Index;
     BOOL Success;
+    PCHAR Dest;
+    PCHAR Source;
+    PSTRING Line;
+    PSTRING Chunk;
+    STRING NewLine;
     HRESULT Result;
-    LONG_INTEGER TextSizeInBytes;
+    ULONG BitIndex;
+    ULONG LastBitIndex;
+    PSTRING PartialLine;
+    PLIST_ENTRY ListHead;
+    PLIST_ENTRY ListEntry;
+    HANDLE HeapHandle = NULL;
     PDEBUG_ENGINE_OUTPUT Output;
+    LONG_INTEGER TextSizeInBytes;
+    LONG_INTEGER AllocSizeInBytes;
+    LONG_INTEGER NewLineLengthInBytes;
+    PRTL_FIND_SET_BITS FindSetBits;
+    PLINKED_PARTIAL_LINE LinkedPartialLine;
+
+    //
+    // Reserve a 256 byte (2048 bit/char) stack-allocated bitmap buffer.
+    //
+
+    CHAR StackBitmapBuffer[256];
+    RTL_BITMAP Bitmap = { 256 << 3, (PULONG)&StackBitmapBuffer };
+    PRTL_BITMAP BitmapPointer = &Bitmap;
 
     //
     // If this isn't normal output, just print it to the debug stream and
-    // return.
+    // return.  (We should probably attempt to grok the warning/error messages
+    // in the future -- like those involving symbol loading issues.)
     //
 
     if (!OutputMask.Normal) {
@@ -254,36 +280,425 @@ DebugEngineOutputCallback(
         return S_OK;
     }
 
+    //
+    // Resolve the Output structure and set our state to indicate we're in a
+    // partial callback.
+    //
+
     Output = DebugEngine->CurrentOutput;
     Output->State.InPartialOutputCallback = TRUE;
 
+    //
+    // Calculate the size in bytes of the incoming text.
+    //
+
     TextSizeInBytes.LongPart = (LONG)strlen(Text);
+
+    //
+    // Sanity check it's not over MAX_USHORT (which would prevent it from
+    // fitting in our STRING structure).
+    //
 
     if (TextSizeInBytes.HighPart) {
         __debugbreak();
         goto Error;
     }
 
-    Output->ThisChunk.Length = TextSizeInBytes.LowPart;
-    Output->ThisChunk.MaximumLength = TextSizeInBytes.LowPart;
-    Output->ThisChunk.Buffer = (PSTR)Text;
+    //
+    // Do we ever get empty lines?
+    //
+
+    if (!TextSizeInBytes.LowPart) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Capture the details about this chunk.
+    //
+
+    Chunk = &Output->Chunk;
+    Chunk->Length = TextSizeInBytes.LowPart;
+    Chunk->MaximumLength = TextSizeInBytes.LowPart;
+    Chunk->Buffer = (PSTR)Text;
+
+    if (TextSizeInBytes.LongPart > Output->LargestChunkSizeInBytes) {
+
+        //
+        // This new chunk is the largest we've seen.  Make a note.
+        //
+
+        Output->LargestChunkSizeInBytes = TextSizeInBytes.LongPart;
+    }
+
+    //
+    // Update our partial callback counter and totals counters.
+    //
 
     Output->NumberOfPartialCallbacks++;
     Output->TotalBufferLengthInChars += TextSizeInBytes.LowPart;
     Output->TotalBufferSizeInBytes += TextSizeInBytes.LowPart;
 
-    Success = Output->PartialOutputCallback(Output);
+    //
+    // Invoke the relevant callbacks based on the caller's output flags.
+    //
+
+    Result = S_OK;
+
+    if (Output->Flags.EnablePartialOutputCallbacks) {
+        Success = Output->PartialOutputCallback(Output);
+        if (!Success) {
+            goto Error;
+        }
+    }
+
+    if (!Output->Flags.EnableLineOrientedCallbacks) {
+        goto End;
+    }
+
+    //
+    // The caller wants line-oriented callbacks.
+    //
+
+    //
+    // Initialize Rtl and FindSetBits aliases.
+    //
+
+    Rtl = DebugEngine->Rtl;
+    FindSetBits = Rtl->RtlFindSetBits;
+
+    //
+    // Create a bitmap of line endings.
+    //
+
+    Success = Rtl->CreateBitmapIndexForString(Rtl,
+                                              Chunk,
+                                              '\n',
+                                              &HeapHandle,
+                                              &BitmapPointer,
+                                              FALSE,
+                                              NULL);
+
     if (!Success) {
         goto Error;
     }
 
-    Result = S_OK;
+    //
+    // Determine the number of lines in the output based on the number of
+    // bits in the bitmap.
+    //
+
+    NumberOfLines = Rtl->RtlNumberOfSetBits(BitmapPointer);
+    if (NumberOfLines == 0) {
+
+        //
+        // There were no lines in this chunk.  Save this partial line and
+        // finish up.
+        //
+
+        AllocSizeInBytes.LongPart = (
+
+            //
+            // Account for the size of the STRING structure.
+            //
+
+            sizeof(LINKED_PARTIAL_LINE) +
+
+            //
+            // Account for the actual backing string buffer.
+            //
+
+            TextSizeInBytes.LongPart
+
+        );
+
+        //
+        // Sanity check we're under MAX_USHORT.
+        //
+
+        if (AllocSizeInBytes.HighPart) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Attempt to allocate space for the STRING + buffer.
+        //
+
+        LinkedPartialLine = (PLINKED_PARTIAL_LINE)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                AllocSizeInBytes.LongPart
+            )
+        );
+
+        if (!LinkedPartialLine) {
+            goto Error;
+        }
+
+        //
+        // Initialize the list entry.
+        //
+
+        InitializeListHead(&LinkedPartialLine->ListEntry);
+
+        //
+        // Carve out the line and then buffer pointer from allocated memory.
+        //
+
+        Line = &LinkedPartialLine->Line;
+        Line->Buffer = (PCHAR)(
+            RtlOffsetToPointer(
+                LinkedPartialLine,
+                sizeof(LINKED_PARTIAL_LINE)
+            )
+        );
+
+        //
+        // Set the lengths.
+        //
+
+        Line->Length = TextSizeInBytes.LowPart;
+        Line->MaximumLength = TextSizeInBytes.LowPart;
+
+        //
+        // Append the linked line to the output list head and increment the
+        // partial line counter.
+        //
+
+        AppendTailList(&Output->PartialLinesListHead,
+                       &LinkedPartialLine->ListEntry);
+
+        Output->NumberOfPartialLines++;
+
+        goto End;
+    }
+
+    //
+    // We have at least one line to process if we reach this point.
+    //
+
+    //
+    // Initialize variables prior to the loop.
+    //
+
+    BitIndex = 0;
+    LastBitIndex = 0;
+    Line = &Output->Line;
+    LineEndings = BitmapPointer;
+
+    //
+    // Extract the first line.
+    //
+
+    BitIndex = FindSetBits(LineEndings, 1, LastBitIndex);
+    if (BitIndex == BITS_NOT_FOUND || BitIndex < LastBitIndex) {
+
+        //
+        // We shouldn't ever hit this on the first line.
+        //
+
+        __debugbreak();
+    }
+
+    //
+    // Fill in the first line details.
+    //
+
+    Line->Length = (USHORT)(BitIndex - (LastBitIndex-1));
+    Line->MaximumLength = Line->Length;
+    Line->Buffer = (PCHAR)(Text + LastBitIndex);
+
+    //
+    // If there are no partial lines recorded, dispatch this line output
+    // callback then jump to the processing of remaining lines.
+    //
+
+    if (!Output->NumberOfPartialLines) {
+        Success = Output->LineOutputCallback(Output);
+        if (!Success) {
+            goto Error;
+        }
+        goto ProcessLines;
+    }
+
+    //
+    // Calculate the size of all the partial lines, allocate a new buffer,
+    // copy all of them over, freeing the strings + buffers as we go, call
+    // the caller's line output callback with the final line, then free it
+    // too.
+    //
+
+    NewLineLengthInBytes = 0;
+
+    ListHead = &Output->PartialLinesListHead;
+
+    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+
+        LinkedPartialLine = CONTAINING_RECORD(ListEntry,
+                                              LINKED_PARTIAL_LINE,
+                                              ListEntry);
+
+        NewLineLengthInBytes += LinkedPartialLine->Line.Length;
+    }
+
+    //
+    // Add the length of this most recent line.
+    //
+
+    NewLineLengthInBytes += Line->Length;
+
+    //
+    // Align up to a pointer boundary.
+    //
+
+    AllocSizeInBytes.LongPart = ALIGN_UP_POINTER(NewLineLengthInBytes);
+
+    //
+    // Sanity check the size doesn't exceed MAX_USHORT.
+    //
+
+    if (AllocSizeInBytes.HighPart) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Attempt to allocate a buffer.
+    //
+
+    NewLine.Buffer = (PCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!NewLine.Buffer) {
+        goto Error;
+    }
+
+    //
+    // Allocation succeeded, copy each partial string, then free it.
+    //
+
+    Dest = NewLine.Buffer;
+
+    while (!IsListEmpty(ListHead)) {
+
+        ListEntry = RemoveHeadList(ListHead);
+
+        LinkedPartialLine = CONTAINING_RECORD(ListEntry,
+                                              LINKED_PARTIAL_LINE,
+                                              ListEntry);
+
+        PartialLine = &LinkedPartialLine->Line;
+        __movsb(Dest, PartialLine->Buffer, PartialLine->Length);
+        Dest += PartialLine->Length;
+        Allocator->Free(Allocator->Context, LinkedPartialLine);
+        Output->NumberOfPartialLines--;
+    }
+
+    //
+    // Sanity check invariants: number of partial lines should be 0 and our
+    // list head should be empty.
+    //
+
+    if (Output->NumberOfPartialLines) {
+        __debugbreak();
+    }
+
+    if (!IsListEmpty(ListHead)) {
+        __debugbreak();
+    }
+
+    //
+    // Copy the contents of the latest line.
+    //
+
+    __movsb(Dest, Line->Buffer, Line->Length);
+
+    //
+    // Update lengths and invoke the caller's line output callback.
+    //
+
+    NewLine.Length = NewLineLengthInBytes.LowPart;
+    NewLine.MaximumLength = AllocSizeInBytes.LowPart;
+
+    Success = Output->LineOutputCallback(Output);
+
+    //
+    // Intentional follow-on to CleanupNewlineBuffer.
+    //
+
+CleanupNewlineBuffer:
+
+    //
+    // Free the temporary string buffer we allocated.
+    //
+
+    Allocator->Free(Allocator->Context, NewLine.Buffer);
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Intentional follow-on to ProcessLines.
+    //
+
+ProcessLines:
+
+    //
+    // Enumerate the line ending bitmap and isolate each line.  Note that
+    // the Index starts at 1 as we've already processed the first line
+    // ending.
+    //
+
+    for (Index; Index < NumberOfLines; Index++) {
+        BitIndex = FindSetBits(LineEndings, 1, LastBitIndex);
+        if (BitIndex == BITS_NOT_FOUND || BitIndex < LastBitIndex) {
+            break;
+        }
+        Line->Length = (USHORT)(BitIndex - (LastBitIndex-1));
+        Line->MaximumLength = Line->Length;
+        Line->Buffer = (PCHAR)(Text + LastBitIndex);
+        LastBitIndex = BitIndex + 1;
+
+        //
+        // Invoke the caller's line output callback.
+        //
+
+        if (!Output->LineOutputCallback(Output)) {
+            goto Error;
+        }
+    }
+
     goto End;
 
 Error:
     Result = E_FAIL;
 
+    //
+    // Intentional follow-on to End.
+    //
+
 End:
+
+    //
+    // Perform heap/bitmap cleanup.
+    //
+
+    if (HeapHandle) {
+
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+            __debugbreak();
+        }
+
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    }
+
     Output->State.InPartialOutputCallback = FALSE;
     return Result;
 }
