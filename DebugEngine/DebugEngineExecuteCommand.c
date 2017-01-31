@@ -574,6 +574,14 @@ DebugEngineOutputCallback(
     NewLine.Length = NewLineLengthInBytes.LowPart;
     NewLine.MaximumLength = AllocSizeInBytes.LowPart;
 
+    //
+    // Update the line in the output structure.
+    //
+
+    Output->Line.Length = NewLine.Length;
+    Output->Line.MaximumLength = NewLine.MaximumLength;
+    Output->Line.Buffer = NewLine.Buffer;
+
     Output->NumberOfLines++;
     Success = Output->LineOutputCallback(Output);
 
@@ -582,6 +590,7 @@ DebugEngineOutputCallback(
     //
 
     Allocator->Free(Allocator->Context, NewLine.Buffer);
+
     if (!Success) {
         goto Error;
     }
