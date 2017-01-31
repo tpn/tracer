@@ -309,7 +309,7 @@ BOOL
     _Inout_ PDEBUG_ENGINE_OUTPUT Output,
     _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
     _In_ PALLOCATOR Allocator,
-    _In_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK LineOutputCallback,
+    _In_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback,
     _In_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback,
     _In_ PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback,
     _In_opt_ PVOID Context,
