@@ -672,6 +672,11 @@ ProcessLines:
         }
     }
 
+    //
+    // XXX TODO: check if there were bytes remaining and if so, save them as
+    // the next partial line.
+    //
+
     goto End;
 
 Error:
