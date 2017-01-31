@@ -258,7 +258,7 @@ DebugEngineOutputCallback(
     ULONG_INTEGER TextSizeInBytes;
     ULONG_INTEGER AllocSizeInBytes;
     ULONG_INTEGER NewLineLengthInBytes;
-    LONG_INTEGER TrailingBytes;
+    LONG_INTEGER TrailingBytes = { 0 };
     PRTL_FIND_SET_BITS FindSetBits;
     PLINKED_PARTIAL_LINE LinkedPartialLine;
 
@@ -470,6 +470,10 @@ DebugEngineOutputCallback(
         goto ProcessLines;
     }
 
+    if (Output->NumberOfPartialLines > 1) {
+        __debugbreak();
+    }
+
     //
     // Calculate the size of all the partial lines, allocate a new buffer,
     // copy all of them over, freeing the strings + buffers as we go, call
@@ -578,9 +582,10 @@ DebugEngineOutputCallback(
     // Update the line in the output structure.
     //
 
-    Output->Line.Length = NewLine.Length;
-    Output->Line.MaximumLength = NewLine.MaximumLength;
-    Output->Line.Buffer = NewLine.Buffer;
+    Line = &Output->Line;
+    Line->Length = NewLine.Length;
+    Line->MaximumLength = NewLine.MaximumLength;
+    Line->Buffer = NewLine.Buffer;
 
     Output->NumberOfLines++;
     Success = Output->LineOutputCallback(Output);
@@ -589,7 +594,11 @@ DebugEngineOutputCallback(
     // Free the temporary string buffer we allocated.
     //
 
-    Allocator->Free(Allocator->Context, NewLine.Buffer);
+    Allocator->Free(Allocator->Context, Line->Buffer);
+
+    Line->Length = 0;
+    Line->MaximumLength = 0;
+    Line->Buffer = NULL;
 
     if (!Success) {
         goto Error;
@@ -670,7 +679,7 @@ AddPartialLine:
     TrailingChunk.Buffer = (PSTR)Text + TextSizeInBytes.LowPart;
     TrailingChunk.Buffer -= TrailingBytes.LowPart;
 
-    if (NumberOfLines) {
+    if (NumberOfLines && Line->Buffer) {
         PCHAR ExpectedBuffer;
 
         //
@@ -760,14 +769,16 @@ AddPartialLine:
     // Set the lengths.
     //
 
-    Line->Length = TextSizeInBytes.LowPart;
-    Line->MaximumLength = TextSizeInBytes.LowPart;
+    Line->Length = TrailingChunk.Length;
+    Line->MaximumLength = TrailingChunk.Length;
 
     //
     // Copy the text over.
     //
 
-    if (!CopyMemoryQuadwords(Line->Buffer, (PCHAR)Text, Line->Length)) {
+    if (!CopyMemoryQuadwords(Line->Buffer,
+                             (PCHAR)TrailingChunk.Buffer,
+                             Line->Length)) {
         Allocator->Free(Allocator->Context, LinkedPartialLine);
         goto Error;
     }
