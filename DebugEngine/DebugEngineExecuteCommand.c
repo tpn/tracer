@@ -10,7 +10,7 @@ Abstract:
 
     This module implements helper functionality for executing command strings
     that will be executed by the debug engine via the IDebugControl->Execute()
-    interface.  Routines are provided to execute a build command string, as
+    interface.  Routines are provided to execute a built command string, as
     well as output callbacks that marshal the debugger output back to the
     upstream client in a consistent manner using the DEBUG_ENGINE_OUTPUT
     structure.
