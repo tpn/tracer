@@ -1159,6 +1159,16 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
 {
+    CHAR Char = Output->Line.Buffer[Output->Line.Length];
+
+
+    if (Output->Line.Buffer[Output->Line.Length-1] != '\n') {
+        __debugbreak();
+    }
+
+    Output->Line.Buffer[Output->Line.Length] = '\0';
+    OutputDebugStringA(Output->Line.Buffer);
+    Output->Line.Buffer[Output->Line.Length] = Char;
     return TRUE;
 }
 
