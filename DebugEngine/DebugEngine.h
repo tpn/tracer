@@ -178,10 +178,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     // Counters that track internal state.
     //
 
+    ULONG NumberOfLines;
     ULONG NumberOfPartialCallbacks;
     ULONG TotalBufferLengthInChars;
     ULONG TotalBufferSizeInBytes;
     ULONG LargestChunkSizeInBytes;
+    ULONG Unused1;
 
     //
     // Captures the last HRESULT of an operation.
@@ -234,12 +236,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     //
 
     ULONG CommandOptions;
-
-    //
-    // Output flags.
-    //
-
-    DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
 
     //
     // Timestamps for command start and end times.

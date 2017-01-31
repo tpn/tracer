@@ -93,6 +93,7 @@ Return Value:
     Output->SizeOfStruct = sizeof(*Output);
     Output->Allocator = Allocator;
     Output->Session = DebugEngineSession;
+    Output->LineOutputCallback = LineOutputCallback;
     Output->PartialOutputCallback = PartialOutputCallback;
     Output->OutputCompleteCallback = OutputCompleteCallback;
 

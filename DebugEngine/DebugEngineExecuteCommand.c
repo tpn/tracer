@@ -123,7 +123,7 @@ Return Value:
             Output->State.Succeeded = TRUE;
         }
 
-    } else if (Output->OutputFlags.WideCharacterOutput) {
+    } else if (Output->Flags.WideCharacterOutput) {
 
         //
         // We don't support wide output at the moment.
@@ -249,6 +249,7 @@ DebugEngineOutputCallback(
     ULONG LastBitIndex;
     ULONG NumberOfLines;
     PSTRING PartialLine;
+    STRING TrailingChunk;
     PALLOCATOR Allocator;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
@@ -257,6 +258,7 @@ DebugEngineOutputCallback(
     ULONG_INTEGER TextSizeInBytes;
     ULONG_INTEGER AllocSizeInBytes;
     ULONG_INTEGER NewLineLengthInBytes;
+    LONG_INTEGER TrailingBytes;
     PRTL_FIND_SET_BITS FindSetBits;
     PLINKED_PARTIAL_LINE LinkedPartialLine;
 
@@ -334,6 +336,12 @@ DebugEngineOutputCallback(
     }
 
     //
+    // Mark these bytes as trailing until proven otherwise.
+    //
+
+    TrailingBytes.LowPart = TextSizeInBytes.LowPart;
+
+    //
     // Update our partial callback counter and totals counters.
     //
 
@@ -395,87 +403,10 @@ DebugEngineOutputCallback(
     if (NumberOfLines == 0) {
 
         //
-        // There were no lines in this chunk.  Save this partial line and
-        // finish up.
+        // There were no lines, so add the entire chunk as a partial line.
         //
 
-        AllocSizeInBytes.LongPart = (
-
-            //
-            // Account for the size of the STRING structure.
-            //
-
-            sizeof(LINKED_PARTIAL_LINE) +
-
-            //
-            // Account for the actual backing string buffer.
-            //
-
-            TextSizeInBytes.LongPart
-
-        );
-
-        //
-        // Sanity check we're under MAX_USHORT.
-        //
-
-        if (AllocSizeInBytes.HighPart) {
-            __debugbreak();
-            goto Error;
-        }
-
-        //
-        // Attempt to allocate space for the STRING + buffer.
-        //
-
-        LinkedPartialLine = (PLINKED_PARTIAL_LINE)(
-            Allocator->Calloc(
-                Allocator->Context,
-                1,
-                AllocSizeInBytes.LongPart
-            )
-        );
-
-        if (!LinkedPartialLine) {
-            goto Error;
-        }
-
-        //
-        // Initialize the list entry.
-        //
-
-        InitializeListHead(&LinkedPartialLine->ListEntry);
-
-        //
-        // Carve out the line and then buffer pointer from allocated memory.
-        //
-
-        Line = &LinkedPartialLine->PartialLine;
-        Line->Buffer = (PCHAR)(
-            RtlOffsetToPointer(
-                LinkedPartialLine,
-                sizeof(LINKED_PARTIAL_LINE)
-            )
-        );
-
-        //
-        // Set the lengths.
-        //
-
-        Line->Length = TextSizeInBytes.LowPart;
-        Line->MaximumLength = TextSizeInBytes.LowPart;
-
-        //
-        // Append the linked line to the output list head and increment the
-        // partial line counter.
-        //
-
-        AppendTailList(&Output->PartialLinesListHead,
-                       &LinkedPartialLine->ListEntry);
-
-        Output->NumberOfPartialLines++;
-
-        goto End;
+        goto AddPartialLine;
     }
 
     //
@@ -514,11 +445,24 @@ DebugEngineOutputCallback(
     Line->Buffer = (PCHAR)(Text + LastBitIndex);
 
     //
+    // Update the last bit index.
+    //
+
+    LastBitIndex = BitIndex + 1;
+
+    //
+    // Decrement the trailing bytes counter.
+    //
+
+    TrailingBytes.LongPart -= Line->Length;
+
+    //
     // If there are no partial lines recorded, dispatch this line output
     // callback then jump to the processing of remaining lines.
     //
 
     if (!Output->NumberOfPartialLines) {
+        Output->NumberOfLines++;
         Success = Output->LineOutputCallback(Output);
         if (!Success) {
             goto Error;
@@ -630,6 +574,7 @@ DebugEngineOutputCallback(
     NewLine.Length = NewLineLengthInBytes.LowPart;
     NewLine.MaximumLength = AllocSizeInBytes.LowPart;
 
+    Output->NumberOfLines++;
     Success = Output->LineOutputCallback(Output);
 
     //
@@ -667,15 +612,166 @@ ProcessLines:
         // Invoke the caller's line output callback.
         //
 
+        Output->NumberOfLines++;
         if (!Output->LineOutputCallback(Output)) {
+            goto Error;
+        }
+
+        //
+        // Decrement the trailing bytes counter.
+        //
+
+        TrailingBytes.LongPart -= Line->Length;
+    }
+
+AddPartialLine:
+
+    //
+    // Invariant check: trailing bytes should be >= 0 and under MAX_USHORT.
+    //
+
+    if (TrailingBytes.LongPart < 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    if (TrailingBytes.HighPart) {
+        __debugbreak();
+        goto Error;
+    }
+
+    if (TrailingBytes.LowPart == 0) {
+
+        //
+        // There were no trailing bytes, so no more needs to be done.
+        //
+
+        goto End;
+    }
+
+    TrailingChunk.Length = TrailingBytes.LowPart;
+    TrailingChunk.MaximumLength = TrailingBytes.LowPart;
+
+    //
+    // Calculate the new buffer offset by taking the original text buffer,
+    // adding the text size in bytes, then subtracting the trailing bytes
+    // count.
+    //
+
+    TrailingChunk.Buffer = (PSTR)Text + TextSizeInBytes.LowPart;
+    TrailingChunk.Buffer -= TrailingBytes.LowPart;
+
+    if (NumberOfLines) {
+        PCHAR ExpectedBuffer;
+
+        //
+        // Invariant check: if we processed at least one line, the trailing
+        // chunk's buffer should match the byte after the last line's buffer,
+        // and the last byte should be a line feed character.
+        //
+
+        ExpectedBuffer = Line->Buffer + Line->Length;
+        if (*(ExpectedBuffer - 1) != '\n') {
+            __debugbreak();
+            goto Error;
+        }
+
+        if (TrailingChunk.Buffer != ExpectedBuffer) {
+            __debugbreak();
             goto Error;
         }
     }
 
     //
-    // XXX TODO: check if there were bytes remaining and if so, save them as
-    // the next partial line.
+    // All the invariant checks pass, continue allocating the partial line
+    // structure.
     //
+
+    AllocSizeInBytes.LongPart = (
+
+        //
+        // Account for the size of the STRING structure.
+        //
+
+        sizeof(LINKED_PARTIAL_LINE) +
+
+        //
+        // Account for the actual backing string buffer.
+        //
+
+        TrailingChunk.Length
+
+    );
+
+    //
+    // Sanity check we're under MAX_USHORT.
+    //
+
+    if (AllocSizeInBytes.HighPart) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Attempt to allocate space.
+    //
+
+    LinkedPartialLine = (PLINKED_PARTIAL_LINE)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!LinkedPartialLine) {
+        goto Error;
+    }
+
+    //
+    // Initialize the list entry.
+    //
+
+    InitializeListHead(&LinkedPartialLine->ListEntry);
+
+    //
+    // Initialize the Line pointer then carve out the buffer from the allocated
+    // memory.
+    //
+
+    Line = &LinkedPartialLine->PartialLine;
+    Line->Buffer = (PCHAR)(
+        RtlOffsetToPointer(
+            LinkedPartialLine,
+            sizeof(LINKED_PARTIAL_LINE)
+        )
+    );
+
+    //
+    // Set the lengths.
+    //
+
+    Line->Length = TextSizeInBytes.LowPart;
+    Line->MaximumLength = TextSizeInBytes.LowPart;
+
+    //
+    // Copy the text over.
+    //
+
+    if (!CopyMemoryQuadwords(Line->Buffer, (PCHAR)Text, Line->Length)) {
+        Allocator->Free(Allocator->Context, LinkedPartialLine);
+        goto Error;
+    }
+
+    //
+    // Append the linked line to the output list head and increment the
+    // partial line counter.
+    //
+
+    AppendTailList(&Output->PartialLinesListHead,
+                   &LinkedPartialLine->ListEntry);
+
+    Output->NumberOfPartialLines++;
 
     goto End;
 
@@ -718,7 +814,5 @@ DebugEngineOutputCallback2(
 {
     return E_FAIL;
 }
-
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
