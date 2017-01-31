@@ -83,7 +83,7 @@ Return Value:
     AcquiredLock = TRUE;
     Engine->CurrentOutput = Output;
 
-    Output->OutputFlags.AsULong = OutputFlags.AsULong;
+    Output->Flags.AsULong = OutputFlags.AsULong;
 
     //
     // Create the command string.
