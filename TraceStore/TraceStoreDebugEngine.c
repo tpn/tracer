@@ -1172,21 +1172,15 @@ Return Value:
 
 --*/
 {
-    PTRACE_DEBUG_CONTEXT DebugContext;
-    PTRACE_STORE TraceStore;
     PCHAR Buffer;
-    PCHAR TrailingDest;
-    PCHAR TrailingSource;
-    PSTRING Chunk;
     USHORT SizeInBytes;
-    USHORT TrailingBytes;
-    USHORT NumberOfQuadwords;
+    PTRACE_STORE TraceStore;
+    PTRACE_DEBUG_CONTEXT DebugContext;
 
     DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
 
     Chunk = &Output->ThisChunk;
     SizeInBytes = Chunk->Length;
-
 
     //
     // Allocate space from the TypeInfoStringBuffer store, copy the contents
@@ -1209,35 +1203,8 @@ Return Value:
         return FALSE;
     }
 
-    NumberOfQuadwords = SizeInBytes >> 3;
-
-    NumberOfQuadwords = Output->ThisChunk.Length >> 3;
-    if (NumberOfQuadwords) {
-
-        TRY_MAPPED_MEMORY_OP {
-
-            __movsq((PDWORD64)Buffer,
-                    (PDWORD64)Output->ThisChunk.Buffer,
-                    NumberOfQuadwords);
-
-        } CATCH_STATUS_IN_PAGE_ERROR {
-            return FALSE;
-        }
-    }
-
-    TrailingBytes = SizeInBytes % 8;
-
-    if (TrailingBytes) {
-        TrailingDest = (Buffer + (SizeInBytes - TrailingBytes));
-        TrailingSource = (Chunk->Buffer + (SizeInBytes - TrailingBytes));
-
-        __movsb(TrailingDest,
-                TrailingSource,
-                TrailingBytes);
-    }
-
-    if (!Output->Buffer) {
-        Output->Buffer = Buffer;
+    if (!CopyMemoryQuadwords(Buffer, Output->ThisChunk.Buffer, SizeInBytes)) {
+        return FALSE;
     }
 
     return TRUE;
