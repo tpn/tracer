@@ -5007,6 +5007,49 @@ CompressUlongParallelSuffix(
     return Input;
 }
 
+FORCEINLINE
+BOOL
+CopyMemoryQuadwords(
+    PCHAR Dest,
+    PCHAR Source,
+    SIZE_T SizeInBytes
+    )
+{
+    PCHAR TrailingDest;
+    PCHAR TrailingSource;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    TRY_MAPPED_MEMORY_OP {
+
+        if (NumberOfQuadwords) {
+
+            __movsq((PDWORD64)Dest,
+                    (PDWORD64)Source,
+                    NumberOfQuadwords);
+
+        }
+
+        if (TrailingBytes) {
+
+            TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+            TrailingSource = (Source + (SizeInBytes - TrailingBytes));
+
+            __movsb(TrailingDest,
+                    TrailingSource,
+                    TrailingBytes);
+
+        }
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+
+    return TRUE;
+}
 
 typedef
 _Success_(return != 0)
