@@ -157,12 +157,13 @@ Routine Description:
     OriginalAllocationSize = AllocationSize = RecordSize * NumberOfRecords;
 
     //
-    // If the record size for the trace store isn't fixed, align the allocation
-    // size up to the size of a pointer.
+    // If the record size for the trace store isn't fixed, and the no alignment
+    // trait hasn't been set, align the allocation size up to the size of a
+    // pointer.
     //
 
     Traits = *TraceStore->pTraits;
-    if (!IsFixedRecordSize(Traits)) {
+    if (!IsFixedRecordSize(Traits) && !NoAllocationAlignment(Traits)) {
         AllocationSize = ALIGN_UP(AllocationSize, sizeof(ULONG_PTR));
     }
 

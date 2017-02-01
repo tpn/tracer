@@ -672,10 +672,26 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG ConcurrentDataStructure:1;
 
     //
+    // When set, prevents the allocator from aligning the allocation size up
+    // to a pointer-aligned size.  This is typically used when streaming text
+    // to a trace store and thus, in conjunction with the AllowPageSpill trait.
+    //
+    // Invariants:
+    //
+    //  - If NoAllocationAlignment == TRUE
+    //      Assert AllowPageSpill == TRUE
+    //      Assert MultipleRecords == TRUE
+    //      Assert VaryingRecordSize == TRUE
+    //      Assert TraceStore->IsMetadata == FALSE
+    //
+
+    ULONG NoAllocationAlignment:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:18;
+    ULONG Unused:17;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -711,7 +727,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
     PageAlignedTrait                    =  1 << 11,
     PeriodicTrait                       =  1 << 12,
     ConcurrentDataStructureTrait        =  1 << 13,
-    InvalidTrait                        = (1 << 13) + 1
+    NoAllocationAlignmentTrait          =  1 << 14,
+    InvalidTrait                        = (1 << 14) + 1
 } TRACE_STORE_TRAIT_ID, *PTRACE_STORE_TRAIT_ID;
 
 //
@@ -761,6 +778,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define WantsPageAlignment(Traits) ((Traits).PageAligned)
 #define IsPeriodic(Traits) ((Traits).Periodic)
 #define IsConcurrentDataStructure(Traits) ((Traits).ConcurrentDataStructure)
+#define NoAllocationAlignment(Traits) ((Traits).NoAllocationAlignment)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -2494,11 +2512,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
         struct _TRACE_STORE *FunctionTableEntry;
         struct _TRACE_STORE *FunctionAssembly;
         struct _TRACE_STORE *FunctionSourceCode;
-        struct _TRACE_STORE *ReservedStore;
+        struct _TRACE_STORE *ExamineSymbolsLine;
+        struct _TRACE_STORE *ExamineSymbolsText;
+        struct _TRACE_STORE *Reserved;
     } TraceStores;
 
     //
-    // (208 bytes consumed.)
+    // (224 bytes consumed.)
 
     //
     // Capture various stateful pointers/values such that they are accessible
@@ -2510,21 +2530,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     LARGE_INTEGER CurrentTimestamp;
 
     //
-    // (224 bytes consumed.)
+    // (240 bytes consumed.)
     //
 
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
     //
-    // (240 bytes consumed.)
+    // (256 bytes consumed.)
     //
-
-    //
-    // Pad out to 256 bytes.
-    //
-
-    BYTE Reserved[16];
 
 } TRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
@@ -2532,7 +2546,7 @@ typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkListHead) == 64);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, Reserved) == 240);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
 C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 256);
 
 #define AcquireTraceDebugContextLock(DebugContext) \
@@ -3320,10 +3334,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     DECLSPEC_ALIGN(128)
     HANDLE RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
 
-    DECLSPEC_ALIGN(512)
+    DECLSPEC_ALIGN(1024)
     TRACE_STORE_RELOC Relocations[MAX_TRACE_STORE_IDS];
 
-    DECLSPEC_ALIGN(4096)
+    DECLSPEC_ALIGN(8192)
     TRACE_STORE Stores[MAX_TRACE_STORES];
 
     //
@@ -3338,8 +3352,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
 
 } TRACE_STORES, *PTRACE_STORES;
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, RelocationCompleteEvents) == 128);
-C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 512);
-C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 4096);
+C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 1024);
+C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 8192);
 //C_ASSERT(sizeof(TRACE_STORES) == 0x6d000);
 
 typedef struct _TRACE_STORE_METADATA_STORES {

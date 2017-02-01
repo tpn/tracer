@@ -393,7 +393,7 @@ Return Value:
     ULONG WaitResult;
     ULONG NumberOfWaits;
     PTRACE_DEBUG_CONTEXT DebugContext;
-    HANDLE Events[6];
+    HANDLE Events[8];
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -412,8 +412,10 @@ Return Value:
     Events[3] = DEBUG_CONTEXT_STORE(FunctionTable)->BindCompleteEvent;
     Events[4] = DEBUG_CONTEXT_STORE(FunctionTableEntry)->BindCompleteEvent;
     Events[5] = DEBUG_CONTEXT_STORE(FunctionAssembly)->BindCompleteEvent;
+    Events[6] = DEBUG_CONTEXT_STORE(ExamineSymbolsLine)->BindCompleteEvent;
+    Events[7] = DEBUG_CONTEXT_STORE(ExamineSymbolsText)->BindCompleteEvent;
 
-    NumberOfWaits = sizeof(Events) / sizeof(Events[0]);
+    NumberOfWaits = ARRAYSIZE(Events);
 
     WaitResult = WaitForMultipleObjects(NumberOfWaits,
                                         Events,
@@ -585,6 +587,8 @@ Return Value:
     RESOLVE_STORE(FunctionTableEntry);
     RESOLVE_STORE(FunctionAssembly);
     RESOLVE_STORE(FunctionSourceCode);
+    RESOLVE_STORE(ExamineSymbolsLine);
+    RESOLVE_STORE(ExamineSymbolsText);
 
     ReleaseTraceDebugContextLock(DebugContext);
 
@@ -1102,7 +1106,7 @@ Return Value:
     //
 
     OutputFlags.EnableLineOutputCallbacks = TRUE;
-    OutputFlags.EnablePartialOutputCallbacks = TRUE;
+    OutputFlags.EnablePartialOutputCallbacks = FALSE;
 
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
@@ -1159,16 +1163,60 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
 {
-    CHAR Char = Output->Line.Buffer[Output->Line.Length];
+    PCHAR Text;
+    PSTRING DestLine;
+    PSTRING SourceLine;
+    PTRACE_STORE TextTraceStore;
+    PTRACE_STORE LineTraceStore;
+    PTRACE_DEBUG_CONTEXT DebugContext;
 
+    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
 
-    if (Output->Line.Buffer[Output->Line.Length-1] != '\n') {
-        __debugbreak();
+    SourceLine = &Output->Line;
+
+    LineTraceStore = DebugContext->TraceStores.ExamineSymbolsLine;
+    TextTraceStore = DebugContext->TraceStores.ExamineSymbolsText;
+
+    DestLine = (PSTRING)(
+        LineTraceStore->AllocateRecordsWithTimestamp(
+            LineTraceStore->TraceContext,
+            LineTraceStore,
+            1,
+            sizeof(*SourceLine),
+            &Output->Timestamp.CommandStart
+        )
+    );
+
+    if (!DestLine) {
+        return FALSE;
     }
 
-    Output->Line.Buffer[Output->Line.Length] = '\0';
-    OutputDebugStringA(Output->Line.Buffer);
-    Output->Line.Buffer[Output->Line.Length] = Char;
+    Text = (PCHAR)(
+        TextTraceStore->AllocateRecordsWithTimestamp(
+            TextTraceStore->TraceContext,
+            TextTraceStore,
+            1,
+            SourceLine->Length,
+            &Output->Timestamp.CommandStart
+        )
+    );
+
+    if (!Text) {
+        return FALSE;
+    }
+
+    if (!CopyMemoryQuadwords(Text, SourceLine->Buffer, SourceLine->Length)) {
+        return FALSE;
+    }
+
+    TRY_MAPPED_MEMORY_OP {
+        DestLine->Length = SourceLine->Length;
+        DestLine->MaximumLength = SourceLine->Length;
+        DestLine->Buffer = Text;
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+
     return TRUE;
 }
 
