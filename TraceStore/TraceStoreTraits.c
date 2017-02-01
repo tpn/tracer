@@ -124,6 +124,22 @@ Return Value:
         }
     }
 
+    if (Traits.NoAllocationAlignment) {
+        if (!AssertTrue("AllowPageSpill", Traits.AllowPageSpill)) {
+            return FALSE;
+        }
+        if (!AssertTrue("MultipleRecords", Traits.MultipleRecords)) {
+            return FALSE;
+        }
+        if (!AssertFalse("RecordSizeIsAlwaysPowerOf2",
+                         Traits.RecordSizeIsAlwaysPowerOf2)) {
+            return FALSE;
+        }
+        if (!AssertFalse("TraceStore->IsMetadata", TraceStore->IsMetadata)) {
+            return FALSE;
+        }
+    }
+
     return TRUE;
 }
 
