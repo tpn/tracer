@@ -19,7 +19,7 @@ _Use_decl_annotations_
 STRING_TABLE_INDEX
 SearchStringTableSlotsForFirstPrefixMatch(
     PSTRING_TABLE StringTable,
-    PSTRING String,
+    PCSTRING String,
     USHORT Bitmap,
     PSTRING_MATCH Match
     )
