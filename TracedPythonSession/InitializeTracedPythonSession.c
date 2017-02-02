@@ -1236,25 +1236,19 @@ LoadPythonDll:
     // Initialize the string table and string array allocators.
     //
 
-    Success = Session->InitializeAllocatorFromTraceStore(
-        &Session->TraceStores->Stores[TraceStoreStringTableIndex],
-        &Session->StringTableAllocator
-    );
+    Session->StringTableAllocator = &(
+        TraceStoreIdToTraceStore(
+            Session->TraceStores,
+            TraceStoreStringTableId
+        )
+    )->Allocator;
 
-    if (!Success) {
-        OutputDebugStringA("InitializeAllocatorFromTraceStore(Table) failed\n");
-        goto Error;
-    }
-
-    Success = Session->InitializeAllocatorFromTraceStore(
-        &Session->TraceStores->Stores[TraceStoreStringArrayIndex],
-        &Session->StringArrayAllocator
-    );
-
-    if (!Success) {
-        OutputDebugStringA("InitializeAllocatorFromTraceStore(Array) failed\n");
-        goto Error;
-    }
+    Session->StringArrayAllocator = &(
+        TraceStoreIdToTraceStore(
+            Session->TraceStores,
+            TraceStoreStringArrayId
+        )
+    )->Allocator;
 
     if (CreateStringTableForTracerModuleNamesEnvironmentVariable(Session)) {
         PSTRING_TABLE ModuleNames = Session->ModuleNamesStringTable;

@@ -1433,6 +1433,15 @@ FREE_POINTER TraceStoreAllocatorFreePointer;
 INITIALIZE_ALLOCATOR TraceStoreInitializeAllocator;
 DESTROY_ALLOCATOR TraceStoreDestroyAllocator;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACE_STORE_ALLOCATOR)(
+    _In_ PTRACE_STORE TraceStore
+    );
+INITIALIZE_TRACE_STORE_ALLOCATOR InitializeTraceStoreAllocator;
+
 //
 // TraceStoreRelocation-related functions.
 //

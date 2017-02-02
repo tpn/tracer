@@ -231,12 +231,10 @@ Return Value:
     }
 
     //
-    // Allocate space for an array of memory maps.  We add 8 bytes to the size
-    // as it will allow us to align on a 16 byte boundary if the address isn't
-    // already aligned.  This saves freeing and re-allocation.
+    // Allocate space for an array of memory maps.
     //
 
-    Allocator = TraceStore->Allocator;
+    Allocator = TraceStore->pAllocator;
     MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
         Allocator->Calloc(
             Allocator->Context,
@@ -391,12 +389,10 @@ Return Value:
     }
 
     //
-    // Allocate space for an array of memory maps.  We add 8 bytes to the size
-    // as it will allow us to align on a 16 byte boundary if the address isn't
-    // already aligned.  This saves freeing and re-allocation.
+    // Allocate space for an array of memory maps.
     //
 
-    Allocator = TraceStore->Allocator;
+    Allocator = TraceStore->pAllocator;
     MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
         Allocator->Calloc(
             Allocator->Context,

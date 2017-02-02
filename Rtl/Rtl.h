@@ -1417,13 +1417,18 @@ CallSystemTimer(
     _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
 );
 
-typedef NTSTATUS (WINAPI *PRTLCHARTOINTEGER)(
+typedef
+NTSTATUS
+(WINAPI RTL_CHAR_TO_INTEGER)(
     _In_ PCSZ String,
     _In_opt_ ULONG Base,
     _Out_ PULONG Value
-);
+    );
+typedef RTL_CHAR_TO_INTEGER *PRTL_CHAR_TO_INTEGER;
 
-typedef DWORD (WINAPI *PSEARCHPATHW)(
+typedef
+DWORD
+(WINAPI SEARCHPATHW)(
     _In_opt_    LPCWSTR     lpPath,
     _In_        LPCWSTR     lpFileName,
     _In_opt_    LPCWSTR     lpExtension,
@@ -1431,7 +1436,7 @@ typedef DWORD (WINAPI *PSEARCHPATHW)(
     _Out_       LPWSTR      lpBuffer,
     _Out_opt_   LPWSTR      lpFilePart
     );
-
+typedef SEARCHPATHW *PSEARCHPATHW;
 
 //
 // CRT functions.
@@ -3278,7 +3283,7 @@ BOOL
 typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
 
 #define _RTLFUNCTIONS_HEAD                                                                             \
-    PRTLCHARTOINTEGER RtlCharToInteger;                                                                \
+    PRTL_CHAR_TO_INTEGER RtlCharToInteger;                                                             \
     PRTL_INITIALIZE_GENERIC_TABLE RtlInitializeGenericTable;                                           \
     PRTL_INSERT_ELEMENT_GENERIC_TABLE RtlInsertElementGenericTable;                                    \
     PRTL_INSERT_ELEMENT_GENERIC_TABLE_FULL RtlInsertElementGenericTableFull;                           \
@@ -3554,7 +3559,7 @@ typedef COPY_TO_MEMORY_MAPPED_MEMORY *PCOPY_TO_MEMORY_MAPPED_MEMORY;
 
 typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               Char,
     _Inout_  PRTL_BITMAP         Bitmap,
     _In_     BOOL                Reverse
@@ -3566,7 +3571,7 @@ typedef
 BOOL
 (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
@@ -3581,7 +3586,7 @@ typedef
 BOOL 
 (FIND_CHARS_IN_STRING)(
     _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
+    _In_     PCSTRING       String,
     _In_     CHAR           Char,
     _Inout_  PRTL_BITMAP    Bitmap,
     _In_     BOOL           Reverse
@@ -3593,7 +3598,7 @@ typedef
 BOOL
 (CREATE_BITMAP_INDEX_FOR_STRING)(
     _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
+    _In_     PCSTRING       String,
     _In_     CHAR           Char,
     _Inout_  PHANDLE        HeapHandlePointer,
     _Inout_  PPRTL_BITMAP   BitmapPointer,
@@ -7083,7 +7088,7 @@ _Check_return_
 BOOL
 FindCharsInUnicodeString(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               Char,
     _Inout_  PRTL_BITMAP         Bitmap,
     _In_     BOOL                Reverse
@@ -7094,7 +7099,7 @@ _Check_return_
 BOOL
 CreateBitmapIndexForUnicodeString(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
@@ -7107,7 +7112,7 @@ _Check_return_
 BOOL
 FindCharsInString(
     _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
+    _In_     PCSTRING       String,
     _In_     CHAR           Char,
     _Inout_  PRTL_BITMAP    Bitmap,
     _In_     BOOL           Reverse
@@ -7118,7 +7123,7 @@ _Check_return_
 BOOL
 CreateBitmapIndexForString(
     _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
+    _In_     PCSTRING       String,
     _In_     CHAR           Char,
     _Inout_  PHANDLE        HeapHandlePointer,
     _Inout_  PPRTL_BITMAP   BitmapPointer,

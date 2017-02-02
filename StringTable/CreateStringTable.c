@@ -361,7 +361,7 @@ CreateStringTableFromDelimitedString(
     PRTL Rtl,
     PALLOCATOR StringTableAllocator,
     PALLOCATOR StringArrayAllocator,
-    PSTRING String,
+    PCSTRING String,
     CHAR Delimiter
     )
 /*++
@@ -484,7 +484,7 @@ CreateStringTableFromDelimitedEnvironmentVariable(
     PALLOCATOR Allocator,
     PALLOCATOR StringTableAllocator,
     PALLOCATOR StringArrayAllocator,
-    PSTR EnvironmentVariableName,
+    PCSTR EnvironmentVariableName,
     CHAR Delimiter
     )
 /*++
@@ -532,7 +532,7 @@ Return Value:
 --*/
 {
     USHORT AlignedNumberOfCharacters;
-    PSTR Name;
+    PCSTR Name;
     LONG Length;
     STRING String;
     LONG_INTEGER NumberOfChars;

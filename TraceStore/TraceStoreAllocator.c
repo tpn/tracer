@@ -286,23 +286,33 @@ InitializeAllocatorFromTraceStore(
     PALLOCATOR Allocator
     )
 {
-    TRACE_STORE_TRAITS Traits;
-    TraceStoreInitializeAllocator(Allocator);
-    Allocator->TraceStore = TraceStore;
-
-    //
-    // Clear the Try* allocators if the concurrent trait isn't set.
-    //
-
-    Traits = *TraceStore->pTraits;
-    if (!Traits.ConcurrentAllocations) {
-        Allocator->TryMalloc = NULL;
-        Allocator->TryCalloc = NULL;
-        Allocator->TryMallocWithTimestamp = NULL;
-        Allocator->TryCallocWithTimestamp = NULL;
+    if (!TraceStoreInitializeAllocator(Allocator)) {
+        return FALSE;
     }
+
+    Allocator->TraceStore = TraceStore;
 
     return TRUE;
 }
+
+_Use_decl_annotations_
+BOOL
+InitializeTraceStoreAllocator(
+    PTRACE_STORE TraceStore
+    )
+{
+    PALLOCATOR Allocator;
+
+    Allocator = &TraceStore->Allocator;
+
+    if (!TraceStoreInitializeAllocator(Allocator)) {
+        return FALSE;
+    }
+
+    Allocator->TraceStore = TraceStore;
+
+    return TRUE;
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -741,7 +741,7 @@ ResolveAndVerifyPythonVersion(
     ULONG MinorVersion;
     ULONG PatchLevel = 0;
     CHAR VersionString[2] = { 0 };
-    PRTLCHARTOINTEGER RtlCharToInteger;
+    PRTL_CHAR_TO_INTEGER RtlCharToInteger;
 
     RtlCharToInteger = Python->Rtl->RtlCharToInteger;
 

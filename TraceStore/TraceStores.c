@@ -532,7 +532,7 @@ Return Value:
         TraceStore->MapViewOfFileDesiredAccess = (
             MapViewOfFileDesiredAccess
         );
-        TraceStore->Allocator = Allocator;
+        TraceStore->pAllocator = Allocator;
         TraceStore->BindComplete = TraceStoreBindComplete;
 
         Reloc = &TraceStores->Relocations[Index];

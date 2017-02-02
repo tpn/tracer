@@ -508,7 +508,7 @@ Return Value:
             &TraceContext->NumberOfStoresWithMultipleRelocationDependencies
         );
 
-        Allocator = TraceStore->Allocator;
+        Allocator = TraceStore->pAllocator;
         Events = (PHANDLE)(
             Allocator->Calloc(
                 Allocator->Context,

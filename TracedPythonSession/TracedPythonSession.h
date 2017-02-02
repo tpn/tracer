@@ -293,7 +293,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     //
     // StringTable-specific functions.
     //
-
+    
     PCREATE_STRING_TABLE CreateStringTable;
     PDESTROY_STRING_TABLE DestroyStringTable;
 
@@ -303,13 +303,8 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
         CreateStringTableFromDelimitedEnvironmentVariable;
 
-    //
-    // The StringTable and StringArray allocators will be initialized via the
-    // trace store InitializeAllocatorFromTraceStore() export.
-    //
-
-    ALLOCATOR StringTableAllocator;
-    ALLOCATOR StringArrayAllocator;
+    PALLOCATOR StringTableAllocator;
+    PALLOCATOR StringArrayAllocator;
     PSTRING_TABLE ModuleNamesStringTable;
 
     //

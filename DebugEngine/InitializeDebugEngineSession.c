@@ -128,6 +128,9 @@ InitializeDebugEngineSession(
     PRTL Rtl,
     PALLOCATOR Allocator,
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    HMODULE StringTableModule,
+    PALLOCATOR StringArrayAllocator,
+    PALLOCATOR StringTableAllocator,
     PPDEBUG_ENGINE_SESSION SessionPointer
     )
 /*++
@@ -147,6 +150,15 @@ Arguments:
 
     InitFlags - Supplies initialization flags that are used to control how
         this routine attaches to the initial process.
+
+    StringTableModule - Optionally supplies a handle to the StringTable module
+        obtained via an earlier LoadLibrary() call.
+
+    StringArrayAllocator - Optionally supplies a pointer to an allocator to
+        use for string array allocations.
+
+    StringTableAllocator - Optionally supplies a pointer to an allocator to
+        use for string table allocations.
 
     SessionPointer - Supplies an address to a variable that will receive the
         address of the newly DEBUG_ENGINE_SESSION structure.
@@ -168,12 +180,42 @@ Return Value:
     ULONG ModuleIndex;
     ULONGLONG ModuleBaseAddress;
     PDEBUG_ENGINE_SESSION Session = NULL;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
 
     //
     // Clear the caller's session pointer up-front.
     //
 
     *SessionPointer = NULL;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(StringTableModule)) {
+        CreateStringTableFromDelimitedString = NULL;
+    } else {
+        if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
+            return FALSE;
+        }
+        if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+            return FALSE;
+        }
+
+        CreateStringTableFromDelimitedString = (
+            (PCREATE_STRING_TABLE_FROM_DELIMITED_STRING)(
+                GetProcAddress(
+                    StringTableModule,
+                    "CreateStringTableFromDelimitedString"
+                )
+            )
+        );
+
+        if (!CreateStringTableFromDelimitedString) {
+            return FALSE;
+        }
+    }
 
     //
     // Load DbgEng.dll.
@@ -232,6 +274,9 @@ Return Value:
             sizeof(DEBUG_ENGINE_SESSION)
         )
     );
+
+    //
+    // If a string table module has been 
 
     //
     // Initialize and acquire the debug engine lock.
@@ -332,7 +377,49 @@ Return Value:
     Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
 
     //
+    // Set StringTable related fields.
+    //
+
+    if (CreateStringTableFromDelimitedString) {
+    
+        Session->CreateStringTableFromDelimitedString = (
+            CreateStringTableFromDelimitedString
+        );
+        Session->StringArrayAllocator = StringArrayAllocator;
+        Session->StringTableAllocator = StringTableAllocator;
+
+        Session->ExamineSymbolsPrefixStringTable = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringArrayAllocator,
+                StringTableAllocator,
+                &ExamineSymbolsPrefixes,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->ExamineSymbolsPrefixStringTable) {
+            goto Error;
+        }
+
+        Session->ExamineSymbolsBasicTypeStringTable = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringArrayAllocator,
+                StringTableAllocator,
+                &ExamineSymbolsBasicTypes,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->ExamineSymbolsBasicTypeStringTable) {
+            goto Error;
+        }
+    }
+
+    //
     // Update the caller's pointer.
+    //
 
     *SessionPointer = Session;
 

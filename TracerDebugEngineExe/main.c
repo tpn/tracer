@@ -66,6 +66,9 @@ Main(VOID)
                                                   Rtl,
                                                   &Allocator,
                                                   InitFlags,
+                                                  NULL,
+                                                  NULL,
+                                                  NULL,
                                                   &Session,
                                                   &DestroyDebugEngineSession);
 

@@ -110,7 +110,7 @@ Return Value:
         ULONG Count;
         ULONG Index;
         ULONG Shift = 0;
-        ULONG Bitmap = CommandOptions;
+        ULONG Bitmap;
         ULONG NumberOfTrailingZeros;
         ULONG NumberOfOptions = CommandTemplate->NumberOfOptions;
         PUNICODE_STRING Options = CommandTemplate->Options;
@@ -120,6 +120,11 @@ Return Value:
         // The command supports options.  Determine if the user has requested
         // any by doing a population count on the command options bitmap.
         //
+        // N.B. We need to explicitly zero bits we don't care about when using
+        //      the command options as a bitmap, hence the _bzhi_u32() call.
+        //
+
+        Bitmap = _bzhi_u32(CommandOptions, NumberOfOptions);
 
         Count = PopulationCount32(Bitmap);
 
