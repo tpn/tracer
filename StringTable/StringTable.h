@@ -1062,8 +1062,8 @@ GetBitmapForViablePrefixSlotsByLengths(
 FORCEINLINE
 USHORT
 IsPrefixMatch(
-    _In_ PSTRING SearchString,
-    _In_ PSTRING TargetString,
+    _In_ PCSTRING SearchString,
+    _In_ PCSTRING TargetString,
     _In_ USHORT Offset
     )
 {
