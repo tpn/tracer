@@ -47,7 +47,7 @@ Return Value:
 
 --*/
 {
-    USHORT Bitmap;
+    ULONG Bitmap;
     ULONG Mask;
     ULONG Count;
     ULONG Length;
@@ -213,7 +213,7 @@ Return Value:
     // Generate a mask.  (Sure would be nice to have _mm256_movemask_epi16().)
     //
 
-    Bitmap = (USHORT)_mm256_movemask_epi8(IncludeSlotsShifted);
+    Bitmap = _mm256_movemask_epi8(IncludeSlotsShifted);
 
     if (!Bitmap) {
 
