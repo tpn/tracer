@@ -1295,17 +1295,20 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     Address.Buffer = Char;
 
     if (Address.Buffer[8] != '`') {
+        __debugbreak();
         return TRUE;
     }
 
     Address.Buffer[8] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer, 16, &Addr.HighPart))) {
+        __debugbreak();
         NOTHING;
     }
     Address.Buffer[8] = '`';
 
     Address.Buffer[17] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer+9, 16, &Addr.LowPart))) {
+        __debugbreak();
         NOTHING;
     }
     Address.Buffer[17] = ' ';
@@ -1326,6 +1329,7 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     Temp = SymbolSize.Buffer[SymbolSize.Length];
     SymbolSize.Buffer[SymbolSize.Length] = '\0';
     if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 0, &Size))) {
+        __debugbreak();
         NOTHING;
     }
 
@@ -1342,6 +1346,7 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
                                          &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
+        __debugbreak();
         return TRUE;
     }
 
@@ -1387,6 +1392,16 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
                                               NULL);
 
     NumberOfParameters = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
+
+    if (NumberOfParameters == 0) {
+        PULONG ULongBuffer = (PULONG)Parameters.Buffer;
+        PULONG Void = (PULONG)"void";
+        BOOL IsVoid = (*(ULongBuffer) == *(Void));
+
+        if (!IsVoid) {
+            NumberOfParameters = 1;
+        }
+    }
 
 //End:
     if (HeapHandle) {
