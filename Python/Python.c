@@ -753,17 +753,17 @@ ResolveAndVerifyPythonVersion(
     );
 
     if (!Python->Py_GetVersion) {
-        goto error;
+        goto Error;
     }
 
     Python->VersionString = Python->Py_GetVersion();
     if (!Python->VersionString) {
-        goto error;
+        goto Error;
     }
 
     VersionString[0] = Python->VersionString[0];
     if (FAILED(RtlCharToInteger(VersionString, 0, &MajorVersion))) {
-        goto error;
+        goto Error;
     }
     Python->MajorVersion = (USHORT)MajorVersion;
 
@@ -774,7 +774,7 @@ ResolveAndVerifyPythonVersion(
         Version++;
         VersionString[0] = *Version;
         if (FAILED(RtlCharToInteger(VersionString, 0, &MinorVersion))) {
-            goto error;
+            goto Error;
         }
         Python->MinorVersion = (USHORT)MinorVersion;
 
@@ -783,7 +783,7 @@ ResolveAndVerifyPythonVersion(
             Version++;
             VersionString[0] = *Version;
             if (FAILED(RtlCharToInteger(VersionString, 0, &PatchLevel))) {
-                goto error;
+                goto Error;
             }
             Python->PatchLevel = (USHORT)PatchLevel;
             Version++;
@@ -791,7 +791,7 @@ ResolveAndVerifyPythonVersion(
                 PatchLevel = 0;
                 VersionString[0] = *Version;
                 if (FAILED(RtlCharToInteger(VersionString, 0, &PatchLevel))) {
-                    goto error;
+                    goto Error;
                 }
                 Python->PatchLevel = (USHORT)(
                     (Python->PatchLevel * 10) + PatchLevel
@@ -802,7 +802,7 @@ ResolveAndVerifyPythonVersion(
 
     return ResolvePythonOffsets(Python);
 
-error:
+Error:
     return FALSE;
 }
 
