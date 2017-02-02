@@ -57,8 +57,8 @@ Return Value:
         Session->CreateStringTableFromDelimitedEnvironmentVariable(
             Session->Rtl,
             Session->Allocator,
-            &Session->StringTableAllocator,
-            &Session->StringArrayAllocator,
+            Session->StringTableAllocator,
+            Session->StringArrayAllocator,
             TRACER_MODULE_NAMES_ENV_VAR_A,
             TRACER_MODULE_NAMES_DELIM
         )

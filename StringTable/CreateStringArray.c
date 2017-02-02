@@ -23,7 +23,7 @@ CreateStringArrayFromDelimitedString(
     PRTL Rtl,
     PALLOCATOR StringTableAllocator,
     PALLOCATOR StringArrayAllocator,
-    PSTRING String,
+    PCSTRING String,
     CHAR Delimiter,
     USHORT StringTablePaddingOffset,
     USHORT StringTableStructSize,

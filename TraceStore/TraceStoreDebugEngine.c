@@ -806,24 +806,44 @@ Return Value:
 --*/
 {
     PRTL Rtl;
-    ULONG ExitCode;
-    PTRACE_CONTEXT TraceContext;
-
-    TraceContext = DebugContext->TraceContext;
-    Rtl = TraceContext->Rtl;
-
     BOOL Success;
+    ULONG ExitCode;
+    PTRACE_STORES TraceStores;
+    PTRACE_CONTEXT TraceContext;
+    PALLOCATOR StringTableAllocator;
+    PALLOCATOR StringArrayAllocator;
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
     PTRACER_CONFIG TracerConfig;
 
+    TraceContext = DebugContext->TraceContext;
+    TraceStores = TraceContext->TraceStores;
+    Rtl = TraceContext->Rtl;
+
     InitFlags.InitializeFromCurrentProcess = TRUE;
     TracerConfig = TraceContext->TracerConfig;
+
+    StringTableAllocator = &(
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreStringTableId
+        )
+    )->Allocator;
+
+    StringArrayAllocator = &(
+        TraceStoreIdToTraceStore(
+            TraceStores,
+            TraceStoreStringArrayId
+        )
+    )->Allocator;
 
     Success = LoadAndInitializeDebugEngineSession(
         &TracerConfig->Paths.DebugEngineDllPath,
         Rtl,
         TraceContext->Allocator,
         InitFlags,
+        &TracerConfig->Paths.StringTableDllPath,
+        StringArrayAllocator,
+        StringTableAllocator,
         &DebugContext->DebugEngineSession,
         &DebugContext->DestroyDebugEngineSession
     );
@@ -1163,16 +1183,46 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     PDEBUG_ENGINE_OUTPUT Output
     )
 {
+    PRTL Rtl;
+    CHAR Temp;
     PCHAR Text;
+    BOOL Success;
+    USHORT Length;
+    ULONG Size;
+    SHORT MatchIndex;
+    PCHAR Char;
+    PCHAR End;
+    PSTRING Scope;
+    STRING SymbolSize;
+    STRING Address;
+    STRING BasicType;
+    STRING Function;
+    STRING Parameters;
     PSTRING DestLine;
     PSTRING SourceLine;
+    STRING_MATCH Match;
+    ULARGE_INTEGER Addr;
+    USHORT NumberOfParameters;
     PTRACE_STORE TextTraceStore;
     PTRACE_STORE LineTraceStore;
     PTRACE_DEBUG_CONTEXT DebugContext;
+    PSTRING_TABLE StringTable;
+    PDEBUG_ENGINE_SESSION Session;
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE SymbolType;
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE SymbolScope;
+    PRTL_CHAR_TO_INTEGER RtlCharToInteger;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    HANDLE HeapHandle = NULL;
+    CHAR StackBitmapBuffer[32];
+    RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
+    PRTL_BITMAP BitmapPointer = &Bitmap;
 
     DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
+    Session = DebugContext->DebugEngineSession;
 
     SourceLine = &Output->Line;
+    End = SourceLine->Buffer + SourceLine->Length;
 
     LineTraceStore = DebugContext->TraceStores.ExamineSymbolsLine;
     TextTraceStore = DebugContext->TraceStores.ExamineSymbolsText;
@@ -1215,6 +1265,128 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
         DestLine->Buffer = Text;
     } CATCH_STATUS_IN_PAGE_ERROR {
         return FALSE;
+    }
+
+    StringTable = Session->ExamineSymbolsPrefixStringTable;
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+
+    MatchIndex = IsPrefixOfStringInTable(StringTable,
+                                         SourceLine,
+                                         &Match);
+
+    if (MatchIndex == NO_MATCH_FOUND) {
+        return TRUE;
+    }
+
+    Rtl = DebugContext->TraceContext->Rtl;
+    RtlCharToInteger = Rtl->RtlCharToInteger;
+
+    SymbolScope = MatchIndex;
+    Scope = Match.String;
+
+    Length = Match.NumberOfMatchedCharacters + 1;
+    Char = (SourceLine->Buffer + Length);
+
+    while (*(++Char) == ' ');
+
+    Address.Length = sizeof("00000000`00000000")-1;
+    Address.MaximumLength = Address.Length;
+    Address.Buffer = Char;
+
+    if (Address.Buffer[8] != '`') {
+        return TRUE;
+    }
+
+    Address.Buffer[8] = '\0';
+    if (FAILED(RtlCharToInteger(Address.Buffer, 16, &Addr.HighPart))) {
+        NOTHING;
+    }
+    Address.Buffer[8] = '`';
+
+    Address.Buffer[17] = '\0';
+    if (FAILED(RtlCharToInteger(Address.Buffer+9, 16, &Addr.LowPart))) {
+        NOTHING;
+    }
+    Address.Buffer[17] = ' ';
+
+    Char = Address.Buffer + Address.Length;
+
+    while (*(++Char) == ' ');
+
+    SymbolSize.Buffer = Char;
+
+    while (*Char++ != ' ');
+
+    SymbolSize.Length = (USHORT)(Char - SymbolSize.Buffer) - 1;
+    SymbolSize.MaximumLength = SymbolSize.Length;
+
+    BasicType.Buffer = Char;
+
+    Temp = SymbolSize.Buffer[SymbolSize.Length];
+    SymbolSize.Buffer[SymbolSize.Length] = '\0';
+    if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 0, &Size))) {
+        NOTHING;
+    }
+
+    SymbolSize.Buffer[SymbolSize.Length] = Temp;
+
+    BasicType.Length = (USHORT)(End - BasicType.Buffer) - 1;
+    BasicType.MaximumLength = BasicType.Length;
+
+    StringTable = Session->ExamineSymbolsBasicTypeStringTable;
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+
+    MatchIndex = IsPrefixOfStringInTable(StringTable,
+                                         &BasicType,
+                                         &Match);
+
+    if (MatchIndex == NO_MATCH_FOUND) {
+        return TRUE;
+    }
+
+    SymbolType = MatchIndex;
+
+    if (SymbolType != FunctionType) {
+        return TRUE;
+    }
+
+    //
+    // We've found a function.  Advance to the function name.
+    //
+
+    while (*(Char++) != '!');
+
+    Function.Buffer = Char;
+
+    while (*(Char++) != ' ');
+
+    Function.Length = (USHORT)(Char - Function.Buffer) - 1;
+    Function.MaximumLength = Function.Length;
+
+    while (*(Char++) != '(');
+
+    Parameters.Buffer = Char;
+    Parameters.Length = (USHORT)(End - Parameters.Buffer) - 2;
+    Parameters.MaximumLength = Parameters.Length;
+
+    Success = Rtl->CreateBitmapIndexForString(Rtl,
+                                              &Parameters,
+                                              ',',
+                                              &HeapHandle,
+                                              &BitmapPointer,
+                                              FALSE,
+                                              NULL);
+
+    NumberOfParameters = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
+
+//End:
+    if (HeapHandle) {
+
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+            __debugbreak();
+        }
+
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
     }
 
     return TRUE;

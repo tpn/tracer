@@ -3015,7 +3015,7 @@ typedef struct _TRACE_STORE {
     };
 
     PRTL                    Rtl;
-    PALLOCATOR              Allocator;
+    PALLOCATOR              pAllocator;
     PTRACE_CONTEXT          TraceContext;
     LARGE_INTEGER           InitialSize;
     LARGE_INTEGER           ExtensionSize;
@@ -3287,12 +3287,15 @@ typedef struct _TRACE_STORE {
     // (852 bytes consumed.)
 
     //
-    // Pad out to 1024 bytes.
+    // Pad out to 856 bytes.
     //
 
-    BYTE Reserved[172];
+    //BYTE Reserved[4];
+
+    ALLOCATOR Allocator;
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
+//C_ASSERT(sizeof(TRACE_STORE) == 1024);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \

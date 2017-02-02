@@ -55,6 +55,7 @@ Abstract:
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
+#include "../StringTable/StringTable.h"
 
 #endif
 
@@ -317,6 +318,33 @@ typedef INITIALIZE_DEBUG_ENGINE_OUTPUT *PINITIALIZE_DEBUG_ENGINE_OUTPUT;
 //
 // DEBUG_ENGINE_EXAMINE_SYMBOLS-related functions and structures.
 //
+
+typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE {
+    PrivateFunctionScope = 0,
+    PrivateGlobalScope,
+    PrivateInlineScope,
+    PublicFunctionScope,
+    PublicGlobalScope,
+} DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE;
+
+typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
+    NullType = -1,
+    CharType = 0,
+    WideCharType,
+    ShortType,
+    LongType,
+    IntegerType,
+    Integer64Type,
+    FloatType,
+    DoubleType,
+    UnionType,
+    StructType,
+    UnsignedType,
+    FunctionType,
+    CLRType,
+    NoType,
+    InvalidType = NoType + 1
+} DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE;
 
 typedef union _DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS {
     LONG AsLong;
@@ -723,6 +751,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     HKEY RunHistoryRegistryKey;
 
+    //
+    // StringTable-specific functions.
+    //
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PALLOCATOR StringTableAllocator;
+    PALLOCATOR StringArrayAllocator;
+
+    PSTRING_TABLE ExamineSymbolsPrefixStringTable;
+    PSTRING_TABLE ExamineSymbolsBasicTypeStringTable;
+
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;
 
 //
@@ -761,6 +802,9 @@ BOOL
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
+    _In_opt_ HMODULE StringTableModule,
+    _In_opt_ PALLOCATOR StringArrayAllocator,
+    _In_opt_ PALLOCATOR StringTableAllocator,
     _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_SESSION SessionPointer
     );
 typedef INTIALIZE_DEBUG_ENGINE_SESSION *PINTIALIZE_DEBUG_ENGINE_SESSION;
@@ -779,6 +823,9 @@ LoadAndInitializeDebugEngineSession(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    _In_ PUNICODE_STRING StringTableDllPath,
+    _In_ PALLOCATOR StringArrayAllocator,
+    _In_ PALLOCATOR StringTableAllocator,
     _Out_ PPDEBUG_ENGINE_SESSION SessionPointer,
     _Out_ PPDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSessionPointer
     )
@@ -801,6 +848,15 @@ Arguments:
 
     InitFlags - Supplies flags that can be used to customize the type of
         debug session created.
+
+    StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
+        the fully-qualified path of the StringTable DLL to load.
+
+    StringArrayAllocator - Supplies a pointer to an allocator to use for string
+        array allocations.
+
+    StringTableAllocator - Supplies a pointer to an allocator to use for string
+        table allocations.
 
     SessionPointer - Supplies a pointer that will receive the address of the
         DEBUG_ENGINE_SESSION structure allocated.  This pointer is immediately
@@ -826,6 +882,7 @@ See Also:
 {
     BOOL Success;
     HMODULE Module;
+    HMODULE StringTableModule;
     PINTIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 
     //
@@ -876,12 +933,21 @@ See Also:
     }
 
     //
+    // Attempt to load the StringTable module.
+    //
+
+    StringTableModule = LoadLibraryW(StringTableDllPath->Buffer);
+
+    //
     // Call the initialization function with the same arguments we were passed.
     //
 
     Success = InitializeDebugEngineSession(Rtl,
                                            Allocator,
                                            InitFlags,
+                                           StringTableModule,
+                                           StringArrayAllocator,
+                                           StringTableAllocator,
                                            SessionPointer);
 
     if (!Success) {

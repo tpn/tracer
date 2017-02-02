@@ -403,10 +403,10 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
-        0,  // BlockingAllocations
+        1,  // BlockingAllocations
         0,  // LinkedStore
         1,  // CoalescedAllocations
-        0,  // ConcurrentAllocations
+        1,  // ConcurrentAllocations
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic
@@ -426,10 +426,10 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
-        0,  // BlockingAllocations
+        1,  // BlockingAllocations
         0,  // LinkedStore
         1,  // CoalescedAllocations
-        0,  // ConcurrentAllocations
+        1,  // ConcurrentAllocations
         0,  // AllowPageSpill
         0,  // PageAligned
         0,  // Periodic

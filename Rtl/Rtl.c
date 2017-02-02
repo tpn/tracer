@@ -1434,7 +1434,7 @@ CallSystemTimer(
 BOOL
 FindCharsInUnicodeString(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               CharToFind,
     _Inout_  PRTL_BITMAP         Bitmap,
     _In_     BOOL                Reverse
@@ -1474,11 +1474,11 @@ FindCharsInUnicodeString(
 BOOL
 FindCharsInString(
     _In_     PRTL         Rtl,
-    _In_     PSTRING      String,
+    _In_     PCSTRING     String,
     _In_     CHAR         CharToFind,
     _Inout_  PRTL_BITMAP  Bitmap,
     _In_     BOOL         Reverse
-)
+    )
 {
     USHORT Index;
     USHORT NumberOfCharacters = String->Length;
@@ -1517,7 +1517,7 @@ _Check_return_
 BOOL
 CreateBitmapIndexForUnicodeString(
     _In_     PRTL                Rtl,
-    _In_     PUNICODE_STRING     String,
+    _In_     PCUNICODE_STRING    String,
     _In_     WCHAR               Char,
     _Inout_  PHANDLE             HeapHandlePointer,
     _Inout_  PPRTL_BITMAP        BitmapPointer,
@@ -1859,7 +1859,7 @@ _Check_return_
 BOOL
 CreateBitmapIndexForString(
     _In_     PRTL           Rtl,
-    _In_     PSTRING        String,
+    _In_     PCSTRING       String,
     _In_     CHAR           Char,
     _Inout_  PHANDLE        HeapHandlePointer,
     _Inout_  PPRTL_BITMAP   BitmapPointer,
@@ -2990,13 +2990,13 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
     // the blocks should be placed.
     //
 
-    if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
+    if (!(Rtl->RtlCharToInteger = (PRTL_CHAR_TO_INTEGER)
         GetProcAddress(Rtl->NtdllModule, "RtlCharToInteger"))) {
 
-        if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
+        if (!(Rtl->RtlCharToInteger = (PRTL_CHAR_TO_INTEGER)
             GetProcAddress(Rtl->NtosKrnlModule, "RtlCharToInteger"))) {
 
-            if (!(Rtl->RtlCharToInteger = (PRTLCHARTOINTEGER)
+            if (!(Rtl->RtlCharToInteger = (PRTL_CHAR_TO_INTEGER)
                 GetProcAddress(Rtl->Kernel32Module, "RtlCharToInteger"))) {
 
                 OutputDebugStringA("Rtl: failed to resolve 'RtlCharToInteger'");

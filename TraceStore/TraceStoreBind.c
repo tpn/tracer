@@ -672,7 +672,7 @@ Return Value:
     // store's :Address metadata store.
     //
 
-    Allocator = TraceStore->Allocator;
+    Allocator = TraceStore->pAllocator;
     Addresses = (PTRACE_STORE_ADDRESS)(
         Allocator->Calloc(
             Allocator->Context,

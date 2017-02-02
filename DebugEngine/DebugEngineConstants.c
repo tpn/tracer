@@ -148,4 +148,40 @@ CONST DEBUGOUTPUTCALLBACKS2 DebugOutputCallbacks2 = {
     DebugOutputCallbacks2Output2,
 };
 
+//
+// String tables.
+//
+
+#undef DSTR
+#undef LAST
+#define DSTR(String) String ";"
+#define LAST(String) String
+
+CONST CHAR StringTableDelimiter = ';';
+
+CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
+    DSTR("prv func")
+    DSTR("prv global")
+    DSTR("prv inline")
+    DSTR("pub func")
+    LAST("pub global")
+);
+
+CONST STRING ExamineSymbolsBasicTypes = RTL_CONSTANT_STRING(
+    DSTR("char")
+    DSTR("wchar_t")
+    DSTR("short")
+    DSTR("long")
+    DSTR("int")
+    DSTR("int64")
+    DSTR("float")
+    DSTR("double")
+    DSTR("union")
+    DSTR("struct")
+    DSTR("unsigned")
+    DSTR("<function>")
+    DSTR("<CLR type>")
+    LAST("<NoType>")
+);
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

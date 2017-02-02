@@ -22,6 +22,7 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
+#include "../StringTable/StringTable.h"
 #include "DebugEngine.h"
 
 #ifdef _DEBUG_ENGINE_INTERNAL_BUILD

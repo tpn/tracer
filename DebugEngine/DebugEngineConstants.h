@@ -40,6 +40,11 @@ CONST DEBUGEVENTCALLBACKS DebugEventCallbacks;
 CONST DEBUGINPUTCALLBACKS DebugInputCallbacks;
 CONST DEBUGOUTPUTCALLBACKS DebugOutputCallbacks;
 CONST DEBUGOUTPUTCALLBACKS2 DebugOutputCallbacks2;
+
+DEBUG_ENGINE_DATA CONST CHAR StringTableDelimiter;
+DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsPrefixes;
+DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsBasicTypes;
+
 #pragma component(browser, on)
 
 #ifdef __cplusplus

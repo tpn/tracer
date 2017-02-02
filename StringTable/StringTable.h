@@ -209,10 +209,6 @@ STRING_TABLE_INDEX
     _In_opt_ struct _STRING_MATCH *StringMatch
     );
 typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE \
-    IsPrefixOfStringInSingleTableInline;
 
 typedef
 VOID
@@ -222,8 +218,6 @@ VOID
     _In_opt_ struct _STRING_TABLE *StringTable
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
-STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
-
 
 typedef _Struct_size_bytes_(sizeof(ULONG)) struct _STRING_TABLE_FLAGS {
 
@@ -488,7 +482,6 @@ PSTRING_ARRAY
     _Outptr_opt_result_maybenull_ PPSTRING_TABLE StringTablePointer
     );
 typedef COPY_STRING_ARRAY *PCOPY_STRING_ARRAY;
-STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
 
 typedef
 _Check_return_
@@ -498,7 +491,7 @@ PSTRING_ARRAY
     _In_ PRTL Rtl,
     _In_ PALLOCATOR StringTableAllocator,
     _In_ PALLOCATOR StringArrayAllocator,
-    _In_ PSTRING String,
+    _In_ PCSTRING String,
     _In_ CHAR Delimiter,
     _In_ USHORT StringTablePaddingOffset,
     _In_ USHORT StringTableStructSize,
@@ -507,8 +500,6 @@ PSTRING_ARRAY
 typedef CREATE_STRING_ARRAY_FROM_DELIMITED_STRING  \
       *PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING, \
     **PPCREATE_STRING_ARRAY_FROM_DELIMITED_STRING;
-STRING_TABLE_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING \
-                 CreateStringArrayFromDelimitedString;
 
 typedef
 _Check_return_
@@ -521,7 +512,6 @@ PSTRING_TABLE
     _In_ BOOL CopyArray
     );
 typedef CREATE_STRING_TABLE *PCREATE_STRING_TABLE;
-STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
 
 typedef
 _Check_return_
@@ -531,14 +521,12 @@ PSTRING_TABLE
     _In_ PRTL Rtl,
     _In_ PALLOCATOR StringTableAllocator,
     _In_ PALLOCATOR StringArrayAllocator,
-    _In_ PSTRING String,
+    _In_ PCSTRING String,
     _In_ CHAR Delimiter
     );
 typedef CREATE_STRING_TABLE_FROM_DELIMITED_STRING  \
       *PCREATE_STRING_TABLE_FROM_DELIMITED_STRING, \
     **PPCREATE_STRING_TABLE_FROM_DELIMITED_STRING;
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_STRING \
-                 CreateStringTableFromDelimitedString;
 
 typedef
 _Check_return_
@@ -549,27 +537,23 @@ PSTRING_TABLE
     _In_ PALLOCATOR Allocator,
     _In_ PALLOCATOR StringTableAllocator,
     _In_ PALLOCATOR StringArrayAllocator,
-    _In_ PSTR EnvironmentVariableName,
+    _In_ PCSTR EnvironmentVariableName,
     _In_ CHAR Delimiter
     );
 typedef CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
       *PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE, \
     **PPCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE;
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE \
-                 CreateStringTableFromDelimitedEnvironmentVariable;
 
 typedef
 STRING_TABLE_INDEX
 (SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH)(
     _In_ PSTRING_TABLE StringTable,
-    _In_ PSTRING String,
+    _In_ PCSTRING String,
     _In_ USHORT Index,
     _In_opt_ PSTRING_MATCH StringMatch
     );
 typedef   SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
         *PSEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH;
-STRING_TABLE_API SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
-                 SearchStringTableSlotsForFirstPrefixMatch;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -1395,6 +1379,35 @@ AssertStringTableFieldAlignment(
     return Success;
 
 }
+
+//
+// Public exported function defs.
+//
+
+#pragma component(browser, off)
+
+STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
+STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
+STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
+
+STRING_TABLE_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+    CreateStringArrayFromDelimitedString;
+
+STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+    CreateStringTableFromDelimitedEnvironmentVariable;
+
+STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_STRING
+    CreateStringTableFromDelimitedString;
+
+STRING_TABLE_API SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH
+    SearchStringTableSlotsForFirstPrefixMatch;
+
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
+STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE
+    IsPrefixOfStringInSingleTableInline;
+
+#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"

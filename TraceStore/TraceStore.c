@@ -137,6 +137,10 @@ Return Value:
         );
     }
 
+    if (!InitializeTraceStoreAllocator(TraceStore)) {
+        goto Error;
+    }
+
     //
     // Return success.
     //
@@ -242,7 +246,7 @@ Return Value:
     Name##Store->TraceStoreId = TraceStore->TraceStoreId;                      \
     Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;          \
     Name##Store->TraceStore = TraceStore;                                      \
-    Name##Store->Allocator = Allocator;                                        \
+    Name##Store->pAllocator = Allocator;                                       \
     Name##Store->MetadataInfoStore = MetadataInfoStore;                        \
     Name##Store->AllocationStore = AllocationStore;                            \
     Name##Store->RelocationStore = RelocationStore;                            \
@@ -273,6 +277,8 @@ Return Value:
     InitializeListHead(&Name##Store->MetadataListEntry);                       \
     AppendTailList(&TraceStore->MetadataListHead,                              \
                    &Name##Store->MetadataListEntry);                           \
+                                                                               \
+    InitializeAllocatorFromTraceStore(Name##Store, &Name##Store->Allocator);   \
                                                                                \
     Success = InitializeStore(                                                 \
         &##Name##Path[0],                                                      \
@@ -465,7 +471,7 @@ Return Value:
         return FALSE;
     }
 
-    Allocator = TraceStore->Allocator;
+    Allocator = TraceStore->pAllocator;
 
     if (!Allocator) {
         return FALSE;
