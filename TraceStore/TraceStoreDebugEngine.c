@@ -1187,6 +1187,7 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     CHAR Temp;
     PCHAR Text;
     BOOL Success;
+    BOOL IsFunctionPointer;
     USHORT Length;
     ULONG Size;
     SHORT MatchIndex;
@@ -1284,7 +1285,7 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     SymbolScope = MatchIndex;
     Scope = Match.String;
 
-    Length = Match.NumberOfMatchedCharacters + 1;
+    Length = Match.NumberOfMatchedCharacters;
     Char = (SourceLine->Buffer + Length);
 
     while (*(++Char) == ' ');
@@ -1354,6 +1355,14 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
     // We've found a function.  Advance to the function name.
     //
 
+    Char += Match.NumberOfMatchedCharacters + 1;
+
+    IsFunctionPointer = (*Char == '*');
+
+    if (IsFunctionPointer) {
+        return TRUE;
+    }
+
     while (*(Char++) != '!');
 
     Function.Buffer = Char;
@@ -1382,7 +1391,7 @@ TraceDebugEngineExamineSymbolsLineOutputCallback(
 //End:
     if (HeapHandle) {
 
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)StackBitmapBuffer) {
             __debugbreak();
         }
 
