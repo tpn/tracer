@@ -179,6 +179,7 @@ CONST STRING ExamineSymbolsBasicTypes = RTL_CONSTANT_STRING(
     DSTR("union")
     DSTR("struct")
     DSTR("unsigned")
+    DSTR("_SAL_ExecutionContext")
     DSTR("<function>")
     DSTR("<CLR type>")
     LAST("<NoType>")

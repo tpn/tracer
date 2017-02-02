@@ -340,6 +340,7 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
     UnionType,
     StructType,
     UnsignedType,
+    SALExecutionContextType,
     FunctionType,
     CLRType,
     NoType,
