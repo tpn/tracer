@@ -3567,7 +3567,7 @@ typedef BOOL (FIND_CHARS_IN_UNICODE_STRING)(
 
 typedef FIND_CHARS_IN_UNICODE_STRING *PFIND_CHARS_IN_UNICODE_STRING;
 
-typedef 
+typedef
 BOOL
 (CREATE_BITMAP_INDEX_FOR_UNICODE_STRING)(
     _In_     PRTL                Rtl,
@@ -3583,7 +3583,7 @@ typedef CREATE_BITMAP_INDEX_FOR_UNICODE_STRING \
        *PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING;
 
 typedef
-BOOL 
+BOOL
 (FIND_CHARS_IN_STRING)(
     _In_     PRTL           Rtl,
     _In_     PCSTRING       String,
@@ -5081,7 +5081,7 @@ InitializeStringFromString(
 FORCEINLINE
 BOOL
 IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
-    _In_ PUNICODE_STRING String,
+    _In_ PCUNICODE_STRING String,
     _In_ USHORT MinimumLengthInChars
     )
 {
@@ -5105,7 +5105,7 @@ IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
 FORCEINLINE
 BOOL
 IsValidUnicodeStringWithMinimumLengthInChars(
-    _In_ PUNICODE_STRING String,
+    _In_ PCUNICODE_STRING String,
     _In_ USHORT MinimumLengthInChars
     )
 {
@@ -5124,7 +5124,7 @@ IsValidUnicodeStringWithMinimumLengthInChars(
 FORCEINLINE
 BOOL
 IsValidMinimumDirectoryUnicodeString(
-    _In_ PUNICODE_STRING String
+    _In_ PCUNICODE_STRING String
     )
 {
     return IsValidUnicodeStringWithMinimumLengthInChars(
@@ -5136,7 +5136,7 @@ IsValidMinimumDirectoryUnicodeString(
 FORCEINLINE
 BOOL
 IsValidNullTerminatedUnicodeString(
-    _In_ PUNICODE_STRING String
+    _In_ PCUNICODE_STRING String
     )
 {
     return IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
@@ -5148,7 +5148,7 @@ IsValidNullTerminatedUnicodeString(
 FORCEINLINE
 BOOL
 IsValidMinimumDirectoryNullTerminatedUnicodeString(
-    _In_ PUNICODE_STRING String
+    _In_ PCUNICODE_STRING String
     )
 {
     //
@@ -5164,7 +5164,7 @@ IsValidMinimumDirectoryNullTerminatedUnicodeString(
 FORCEINLINE
 BOOL
 IsValidUnicodeString(
-    _In_ PUNICODE_STRING String
+    _In_ PCUNICODE_STRING String
     )
 {
     return (
@@ -5218,9 +5218,9 @@ AppendCharToString(
 FORCEINLINE
 BOOL
 AppendStringAndCharToString(
-    _Inout_ PSTRING Destination,
-    _In_    PSTRING String,
-    _In_    CHAR    Char
+    _Inout_ PSTRING  Destination,
+    _In_    PCSTRING String,
+    _In_    CHAR     Char
     )
 {
     USHORT NewOffset = Destination->Length;
@@ -5244,9 +5244,9 @@ AppendStringAndCharToString(
 FORCEINLINE
 BOOL
 AppendCharAndStringToString(
-    _Inout_ PSTRING Destination,
-    _In_    CHAR    Char,
-    _In_    PSTRING String
+    _Inout_ PSTRING  Destination,
+    _In_    CHAR     Char,
+    _In_    PCSTRING String
     )
 {
     USHORT NewOffset = Destination->Length;

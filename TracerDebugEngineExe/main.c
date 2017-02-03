@@ -66,6 +66,7 @@ Main(VOID)
                                                   Rtl,
                                                   &Allocator,
                                                   InitFlags,
+                                                  TracerConfig,
                                                   NULL,
                                                   NULL,
                                                   NULL,

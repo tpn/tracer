@@ -22,7 +22,7 @@ DebugEngineBuildCommand(
     PDEBUG_ENGINE_OUTPUT Output,
     DEBUG_ENGINE_COMMAND_ID CommandId,
     ULONG CommandOptions,
-    PUNICODE_STRING SymbolName,
+    PCUNICODE_STRING Argument,
     PUNICODE_STRING CommandBuffer
     )
 /*++
@@ -42,7 +42,8 @@ Arguments:
 
     OutputFlags - Supplies output flags for this command.
 
-    SymbolName - Optionally supplies a symbol name for the command.
+    Argument - Optionally supplies a const UNICODE_STRING as an argument to
+        append to the command.
 
     CommandBuffer - Optionally supplies a pointer to a temporary buffer that
         can be used by this routine in order to avoid more expensive allocations
@@ -222,16 +223,21 @@ ProcessModuleName:
         APPEND_TO_COMMAND(pExclamationPoint);
     }
 
-    if (CommandTemplate->Flags.HasSymbolName) {
+    if (CommandTemplate->Flags.MandatoryArgument) {
 
-        if (!SymbolName || !SymbolName->Length) {
+        if (!Argument || !Argument->Length) {
             __debugbreak();
             goto Error;
         }
 
-        APPEND_TO_COMMAND(SymbolName);
+        APPEND_TO_COMMAND(Argument);
 
-    } else if (CommandTemplate->Flags.SymbolNameDefaultsToAsterisk) {
+    } else if (CommandTemplate->Flags.OptionalArgument &&
+               (Argument && Argument->Length)) {
+
+        APPEND_TO_COMMAND(Argument);
+
+    } else if (CommandTemplate->Flags.ArgumentDefaultsToAsterisk) {
         PCUNICODE_STRING pAsterisk = &Asterisk;
 
         APPEND_TO_COMMAND(pAsterisk);

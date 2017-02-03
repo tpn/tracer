@@ -814,6 +814,7 @@ Return Value:
     PALLOCATOR StringArrayAllocator;
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
     PTRACER_CONFIG TracerConfig;
+    PDEBUG_ENGINE_SESSION DebugEngineSession;
 
     TraceContext = DebugContext->TraceContext;
     TraceStores = TraceContext->TraceStores;
@@ -841,6 +842,7 @@ Return Value:
         Rtl,
         TraceContext->Allocator,
         InitFlags,
+        TracerConfig,
         &TracerConfig->Paths.StringTableDllPath,
         StringArrayAllocator,
         StringTableAllocator,
@@ -851,6 +853,14 @@ Return Value:
     if (!Success) {
         OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.");
         return 1;
+    }
+
+    DebugEngineSession = DebugContext->DebugEngineSession;
+
+    Success = DebugEngineSession->ListSettings(DebugEngineSession);
+    if (!Success) {
+        OutputDebugStringA("DebugEngineSession->ListSettings() failed.\n");
+        return FALSE;
     }
 
     OutputDebugStringA("Debug Engine successfully initialized.\n");
@@ -874,7 +884,7 @@ TraceDebugEngineThreadEntryImpl(
 
 Routine Description:
 
-    This routine is the implementation backend of the debug engine worker
+    This routine is the implementation back-end of the debug engine worker
     thread.
 
 Arguments:
@@ -1035,9 +1045,10 @@ Return Value:
     PRTL_FILE File;
     PRTL_PATH Path;
     PALLOCATOR Allocator;
-    PTRACE_CONTEXT TraceContext;
-    PTRACE_STORES TraceStores;
     TRACE_FLAGS TraceFlags;
+    PTRACE_STORES TraceStores;
+    PTRACE_CONTEXT TraceContext;
+    PTRACER_CONFIG TracerConfig;
     DEBUG_ENGINE_OUTPUT Output;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
@@ -1083,6 +1094,7 @@ Return Value:
 
     Rtl = TraceContext->Rtl;
     Allocator = TraceContext->Allocator;
+    TracerConfig = TraceContext->TracerConfig;
     DebugEngineSession = DebugContext->DebugEngineSession;
 
     //

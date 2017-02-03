@@ -128,6 +128,7 @@ InitializeDebugEngineSession(
     PRTL Rtl,
     PALLOCATOR Allocator,
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    struct _TRACER_CONFIG *TracerConfig,
     HMODULE StringTableModule,
     PALLOCATOR StringArrayAllocator,
     PALLOCATOR StringTableAllocator,
@@ -150,6 +151,8 @@ Arguments:
 
     InitFlags - Supplies initialization flags that are used to control how
         this routine attaches to the initial process.
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure.
 
     StringTableModule - Optionally supplies a handle to the StringTable module
         obtained via an earlier LoadLibrary() call.
@@ -179,6 +182,7 @@ Return Value:
     PDEBUG_ENGINE Engine;
     ULONG ModuleIndex;
     ULONGLONG ModuleBaseAddress;
+    PCUNICODE_STRING DebuggerSettingsXmlPath;
     PDEBUG_ENGINE_SESSION Session = NULL;
     PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
         CreateStringTableFromDelimitedString;
@@ -192,6 +196,10 @@ Return Value:
     //
     // Validate arguments.
     //
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
 
     if (!ARGUMENT_PRESENT(StringTableModule)) {
         CreateStringTableFromDelimitedString = NULL;
@@ -276,7 +284,7 @@ Return Value:
     );
 
     //
-    // If a string table module has been 
+    // If a string table module has been
 
     //
     // Initialize and acquire the debug engine lock.
@@ -364,24 +372,42 @@ Return Value:
         "Symbols->GetModuleByModuleName('Rtl')"
     );
 
-    Session->Rtl = Rtl;
-
     //
-    // Set the function pointers.
+    // Set the command function pointers.
     //
 
     Session->Destroy = DestroyDebugEngineSession;
     Session->DisplayType = DebugEngineDisplayType;
     Session->ExamineSymbols = DebugEngineExamineSymbols;
     Session->UnassembleFunction = DebugEngineUnassembleFunction;
+
+    //
+    // Set the meta command function pointers.
+    //
+
+    Session->SettingsMeta = DebugEngineSettingsMeta;
+    Session->ListSettings = DebugEngineListSettings;
+
+    //
+    // Set other function pointers.
+    //
+
     Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
+
+    //
+    // Set miscellaneous fields.
+    //
+
+    Session->Rtl = Rtl;
+    Session->Allocator = Allocator;
+    Session->TracerConfig = TracerConfig;
 
     //
     // Set StringTable related fields.
     //
 
     if (CreateStringTableFromDelimitedString) {
-    
+
         Session->CreateStringTableFromDelimitedString = (
             CreateStringTableFromDelimitedString
         );
@@ -418,12 +444,36 @@ Return Value:
     }
 
     //
+    // If a debug settings XML path has been indicated, try load it now.
+    //
+
+    DebuggerSettingsXmlPath = &TracerConfig->Paths.DebuggerSettingsXmlPath;
+    if (IsValidMinimumDirectoryUnicodeString(DebuggerSettingsXmlPath)) {
+
+        //
+        // We need to release the debug engine lock here as it's a SRWLOCK
+        // and thus can't be acquired recursively, and loading settings will
+        // result in DebugEngineExecuteCommand() being called, which will
+        // attempt to acquire the lock.
+        //
+
+        ReleaseDebugEngineLock(Engine);
+        AcquiredLock = FALSE;
+
+        Success = DebugEngineLoadSettings(Session, DebuggerSettingsXmlPath);
+        if (!Success) {
+            goto Error;
+        }
+    }
+
+    //
     // Update the caller's pointer.
     //
 
     *SessionPointer = Session;
 
     Success = TRUE;
+
     goto End;
 
 Error:

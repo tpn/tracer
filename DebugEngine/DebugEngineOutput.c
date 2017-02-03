@@ -121,4 +121,47 @@ Return Value:
     return TRUE;
 }
 
+_Use_decl_annotations_
+BOOL
+InitializeDebugEngineOutputSimple(
+    PDEBUG_ENGINE_OUTPUT Output,
+    PDEBUG_ENGINE_SESSION Session
+    )
+/*++
+
+Routine Description:
+
+    This routine is a simplified version of InitializeDebugEngineOutput();
+    the allocator defaults to DebugEngineSession->Rtl->Allocator, and the
+    default debug stream line output callback and dummy partial and output
+    complete callbacks are used.  No context or module name is set.
+
+Arguments:
+
+    Output - Supplies a pointer to the DEBUG_ENGINE_OUTPUT structure to
+        initialize.  The SizeOfStruct field must be set to the correct size
+        (i.e. equal to sizeof(DEBUG_ENGINE_OUTPUT)) otherwise an error will
+        be returned.
+
+    Session - Supplies a pointer to the debug engine session to associate with
+        this output.
+
+Return Value:
+
+    TRUE on Success, FALSE if an error occurred.
+
+--*/
+{
+
+    return InitializeDebugEngineOutput(Output,
+                                       Session,
+                                       Session->Allocator,
+                                       DebugStreamLineOutputCallback,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL);
+}
+
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

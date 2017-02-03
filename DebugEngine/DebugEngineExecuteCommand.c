@@ -206,12 +206,15 @@ Return Value:
         );
     }
 
+    Output->State.CommandComplete = TRUE;
+
     //
-    // Call the output completion callback.
+    // Call the output completion callback if one is set.
     //
 
-    Output->State.CommandComplete = TRUE;
-    Success = Output->OutputCompleteCallback(Output);
+    if (Output->OutputCompleteCallback) {
+        Success = Output->OutputCompleteCallback(Output);
+    }
 
     goto End;
 
@@ -810,7 +813,11 @@ End:
 
     if (HeapHandle) {
 
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
+        if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)BitmapPointer->Buffer) {
+            __debugbreak();
+        }
+
+        if ((ULONG_PTR)StackBitmapBuffer == (ULONG_PTR)BitmapPointer->Buffer) {
             __debugbreak();
         }
 
@@ -833,6 +840,38 @@ DebugEngineOutputCallback2(
     )
 {
     return E_FAIL;
+}
+
+_Use_decl_annotations_
+BOOL
+DebugStreamLineOutputCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    PSTRING Line = &Output->Line;
+    CHAR Temp = Line->Buffer[Line->Length];
+    Line->Buffer[Line->Length] = '\0';
+    OutputDebugStringA(Line->Buffer);
+    Line->Buffer[Line->Length] = Temp;
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+DummyPartialOutputCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+DummyOutputCompleteCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    return TRUE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

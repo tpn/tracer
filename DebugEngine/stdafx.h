@@ -31,6 +31,7 @@ extern "C" {
 #include <DbgEng.h>
 #pragma component(browser, on)
 
+#include "../TracerConfig/TracerConfig.h"
 #include "DebugEngineInterfaces.h"
 #include "DebugEnginePrivate.h"
 #include "DebugEngineConstants.h"

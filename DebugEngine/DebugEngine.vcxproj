@@ -91,6 +91,7 @@
     <ClCompile Include="DebugEngineExecuteCommand.c" />
     <ClCompile Include="DebugEngineOutput.c" />
     <ClCompile Include="DebugEngineOutputCallbacks2.c" />
+    <ClCompile Include="DebugEngineSettingsMeta.c" />
     <ClCompile Include="InitializeDebugEngine.c" />
     <ClCompile Include="DebugEngineInputCallbacks.c" />
     <ClCompile Include="DebugEngineOutputCallbacks.c" />
