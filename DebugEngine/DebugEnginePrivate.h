@@ -95,7 +95,8 @@ typedef enum _Enum_is_bitflag_ _DEBUG_ENGINE_COMMAND_ID {
     ExamineSymbolsCommandId             =       1,
     UnassembleFunctionCommandId         = (1 << 1),
     DisplayTypeCommandId                = (1 << 2),
-    DebugEngineInvalidCommandId         = DisplayTypeCommandId + 1
+    SettingsMetaCommandId               = (1 << 3),
+    DebugEngineInvalidCommandId         = SettingsMetaCommandId + 1
 } DEBUG_ENGINE_COMMAND_ID;
 
 FORCEINLINE
@@ -107,7 +108,7 @@ IsValidDebugEngineCommandId(
     return (
         (CommandId == ExamineSymbolsCommandId) || (
             CommandId >= UnassembleFunctionCommandId &&
-            CommandId <= DisplayTypeCommandId &&
+            CommandId < DebugEngineInvalidCommandId &&
             IsPowerOf2(CommandId)
         )
     );
@@ -142,8 +143,9 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _DEBUG_ENGINE_COMMAND_FLAGS {
     ULONG HasOptions:1;
     ULONG HasModuleName:1;
     ULONG HasExclamationPoint:1;
-    ULONG HasSymbolName:1;
-    ULONG SymbolNameDefaultsToAsterisk:1;
+    ULONG MandatoryArgument:1;
+    ULONG OptionalArgument:1;
+    ULONG ArgumentDefaultsToAsterisk:1;
     ULONG Unused:1;
 } DEBUG_ENGINE_COMMAND_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_COMMAND_FLAGS) == sizeof(ULONG));
@@ -426,7 +428,7 @@ BOOL
     _In_ PDEBUG_ENGINE_OUTPUT Output,
     _In_ DEBUG_ENGINE_COMMAND_ID CommandId,
     _In_ ULONG CommandOptions,
-    _In_opt_ PUNICODE_STRING SymbolName,
+    _In_opt_ PCUNICODE_STRING Argument,
     _In_ PUNICODE_STRING CommandBuffer
     );
 typedef DEBUG_ENGINE_BUILD_COMMAND *PDEBUG_ENGINE_BUILD_COMMAND;
@@ -440,6 +442,16 @@ BOOL
     _In_ PDEBUG_ENGINE_OUTPUT Output
     );
 typedef DEBUG_ENGINE_EXECUTE_COMMAND *PDEBUG_ENGINE_EXECUTE_COMMAND;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_LOAD_SETTINGS)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session,
+    _In_ PCUNICODE_STRING DebugSettingsXmlPath
+    );
+typedef DEBUG_ENGINE_LOAD_SETTINGS *PDEBUG_ENGINE_LOAD_SETTINGS;
 
 //
 // Inline functions for copying callback vtables to the engine.
@@ -532,15 +544,23 @@ CopyInterfaceId(
 CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
 INITIALIZE_DEBUG_ENGINE InitializeDebugEngine;
 INITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
+INITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE InitializeDebugEngineOutputSimple;
 
 DEBUG_ENGINE_BUILD_COMMAND DebugEngineBuildCommand;
 DEBUG_ENGINE_EXECUTE_COMMAND DebugEngineExecuteCommand;
 DEBUG_ENGINE_OUTPUT_CALLBACK DebugEngineOutputCallback;
 DEBUG_ENGINE_OUTPUT_CALLBACK2 DebugEngineOutputCallback2;
 
+DEBUG_ENGINE_LINE_OUTPUT_CALLBACK DebugStreamLineOutputCallback;
+DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK DummyOutputCompleteCallback;
+
 DEBUG_ENGINE_DISPLAY_TYPE DebugEngineDisplayType;
 DEBUG_ENGINE_EXAMINE_SYMBOLS DebugEngineExamineSymbols;
 DEBUG_ENGINE_UNASSEMBLE_FUNCTION DebugEngineUnassembleFunction;
+
+DEBUG_ENGINE_SETTINGS_META DebugEngineSettingsMeta;
+DEBUG_ENGINE_LIST_SETTINGS DebugEngineListSettings;
+DEBUG_ENGINE_LOAD_SETTINGS DebugEngineLoadSettings;
 
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS DebugEngineSetOutputCallbacks;
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2 DebugEngineSetOutputCallbacks2;

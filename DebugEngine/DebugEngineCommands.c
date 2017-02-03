@@ -51,7 +51,8 @@ DEBUG_ENGINE_COMMAND_TEMPLATE ExamineSymbolsCommandTemplate = {
         1,      // HasOptions
         1,      // HasModuleName
         1,      // HasExclamationPoint
-        0,      // HasSymbolName
+        0,      // MandatoryArgument
+        0,      // OptionalArgument
         1,      // SymbolNameDefaultsToAsterisk,
         0,      // Unused
     },
@@ -132,7 +133,8 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
         1,      // HasOptions
         1,      // HasModuleName
         1,      // HasExclamationPoint
-        1,      // HasSymbolName
+        1,      // MandatoryArgument
+        0,      // OptionalArgument
         0,      // SymbolNameDefaultsToAsterisk,
         0,      // Unused
     },
@@ -213,7 +215,8 @@ DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate = {
         1,      // HasOptions
         1,      // HasModuleName
         1,      // HasExclamationPoint
-        1,      // HasSymbolName
+        1,      // MandatoryArgument
+        0,      // OptionalArgument
         0,      // SymbolNameDefaultsToAsterisk,
         0,      // Unused
     },
@@ -257,6 +260,84 @@ DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate = {
 };
 
 //
+// SettingsMeta.
+//
+
+STRING SettingsMetaCommandName =
+    RTL_CONSTANT_STRING(".settings ");
+
+UNICODE_STRING SettingsMetaCommandNameWide =
+    RTL_CONSTANT_STRING(L".settings ");
+
+STRING SettingsMetaCommandDisplayName =
+    RTL_CONSTANT_STRING(".settings");
+
+UNICODE_STRING SettingsMetaCommandOptions[] = {
+    RTL_CONSTANT_STRING(L"list "),
+    RTL_CONSTANT_STRING(L"load "),
+};
+
+DEBUG_ENGINE_COMMAND_TEMPLATE SettingsMetaCommandTemplate = {
+
+    //
+    // SizeOfStruct
+    //
+
+    sizeof(DEBUG_ENGINE_COMMAND_TEMPLATE),
+
+    //
+    // Flags
+    //
+
+    {
+        1,      // HasOptions
+        0,      // HasModuleName
+        0,      // HasExclamationPoint
+        0,      // MandatoryArgument
+        1,      // OptionalArgument
+        0,      // SymbolNameDefaultsToAsterisk,
+        0,      // Unused
+    },
+
+    //
+    // Type
+    //
+
+    { SettingsMetaCommandId },
+
+    //
+    // NumberOfOptions
+    //
+
+    ARRAYSIZE(SettingsMetaCommandOptions),
+
+    //
+    // Options
+    //
+
+    SettingsMetaCommandOptions,
+
+    //
+    // CommandName
+    //
+
+    &SettingsMetaCommandName,
+
+    //
+    // CommandNameWide
+    //
+
+    &SettingsMetaCommandNameWide,
+
+    //
+    // CommandDisplayName
+    //
+
+    &SettingsMetaCommandDisplayName,
+
+};
+
+//
 // Array of templates.
 //
 
@@ -264,6 +345,7 @@ PDEBUG_ENGINE_COMMAND_TEMPLATE DebugEngineCommandTemplates[] = {
     &ExamineSymbolsCommandTemplate,
     &UnassembleFunctionCommandTemplate,
     &DisplayTypeCommandTemplate,
+    &SettingsMetaCommandTemplate,
 };
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

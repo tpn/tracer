@@ -638,6 +638,12 @@ Return Value:
     READ_REG_SZ_PATH(DefaultPythonDirectory, Optional);
 
     //
+    // Load the optional DebuggerSettingsXmlPath.
+    //
+
+    READ_REG_SZ_PATH(DebuggerSettingsXmlPath, Optional);
+
+    //
     // Load fully-qualified DLL path names.
     //
 

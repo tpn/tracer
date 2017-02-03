@@ -145,6 +145,12 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     UNICODE_STRING DefaultPythonDirectory;
 
     //
+    // Optional debugger settings.
+    //
+
+    UNICODE_STRING DebuggerSettingsXmlPath;
+
+    //
     // Fully-qualified paths to relevant DLLs.  The paths are built
     // relative to the InstallationDirectory above.  If the flag
     // "LoadDebugLibraries" was set, the DLL paths will represent

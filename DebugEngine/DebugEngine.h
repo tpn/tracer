@@ -306,14 +306,24 @@ BOOL
     _Inout_ PDEBUG_ENGINE_OUTPUT Output,
     _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
     _In_ PALLOCATOR Allocator,
-    _In_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback,
-    _In_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback,
-    _In_ PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback,
+    _In_opt_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback,
+    _In_opt_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback,
+    _In_opt_ PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback,
     _In_opt_ PVOID Context,
     _In_opt_ PRTL_PATH ModulePath
     );
 typedef INITIALIZE_DEBUG_ENGINE_OUTPUT *PINITIALIZE_DEBUG_ENGINE_OUTPUT;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession
+    );
+typedef INITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE
+      *PINITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE;
 
 //
 // DEBUG_ENGINE_EXAMINE_SYMBOLS-related functions and structures.
@@ -622,6 +632,63 @@ BOOL
 typedef DEBUG_ENGINE_DISPLAY_TYPE *PDEBUG_ENGINE_DISPLAY_TYPE;
 
 //
+// SettingsMeta-related structures and functions.
+//
+
+typedef union _DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // List current settings.
+        //
+        // Corresponds to "list".
+        //
+
+        ULONG List:1;
+
+        //
+        // Load settings from xml.
+        //
+        // Corresponds to "load <xmlpath>".
+        //
+
+        ULONG Load:1;
+
+        //
+        // Unused.
+        //
+
+        ULONG Unused:30;
+
+    };
+
+} DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS;
+C_ASSERT(sizeof(DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS) == sizeof(ULONG));
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_SETTINGS_META)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output,
+    _In_ DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
+    _In_ DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS CommandOptions,
+    _In_opt_ PCUNICODE_STRING Arguments
+    );
+typedef DEBUG_ENGINE_SETTINGS_META *PDEBUG_ENGINE_SETTINGS_META;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_LIST_SETTINGS)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session
+    );
+typedef DEBUG_ENGINE_LIST_SETTINGS *PDEBUG_ENGINE_LIST_SETTINGS;
+
+//
 // DEBUG_ENGINE_SESSION-related function typedefs, unions and structures.
 //
 // This structure is the main way to interface with the DebugEngine
@@ -680,6 +747,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Commands.
+    ////////////////////////////////////////////////////////////////////////////
+
     //
     // Examine symbols.
     //
@@ -698,11 +769,28 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     PDEBUG_ENGINE_DISPLAY_TYPE DisplayType;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Meta Commands.
+    ////////////////////////////////////////////////////////////////////////////
+
+    //
+    // Settings
+    //
+
+    PDEBUG_ENGINE_SETTINGS_META SettingsMeta;
+    PDEBUG_ENGINE_LIST_SETTINGS ListSettings;
+
     //
     // Rtl structure.
     //
 
     PRTL Rtl;
+
+    //
+    // Allocator structure.
+    //
+
+    PALLOCATOR Allocator;
 
     //
     // TracerConfig structure.
@@ -803,6 +891,7 @@ BOOL
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
+    _In_ struct _TRACER_CONFIG *TracerConfig,
     _In_opt_ HMODULE StringTableModule,
     _In_opt_ PALLOCATOR StringArrayAllocator,
     _In_opt_ PALLOCATOR StringTableAllocator,
@@ -824,6 +913,7 @@ LoadAndInitializeDebugEngineSession(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    _In_ struct _TRACER_CONFIG *TracerConfig,
     _In_ PUNICODE_STRING StringTableDllPath,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PALLOCATOR StringTableAllocator,
@@ -849,6 +939,8 @@ Arguments:
 
     InitFlags - Supplies flags that can be used to customize the type of
         debug session created.
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure.
 
     StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
         the fully-qualified path of the StringTable DLL to load.
@@ -946,6 +1038,7 @@ See Also:
     Success = InitializeDebugEngineSession(Rtl,
                                            Allocator,
                                            InitFlags,
+                                           TracerConfig,
                                            StringTableModule,
                                            StringArrayAllocator,
                                            StringTableAllocator,

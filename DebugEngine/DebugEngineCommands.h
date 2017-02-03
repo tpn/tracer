@@ -50,6 +50,16 @@ UNICODE_STRING DisplayTypeCommandOptions[];
 DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate;
 
 //
+// SettingsMeta.
+//
+
+STRING SettingsMetaCommandName;
+UNICODE_STRING SettingsMetaCommandNameWide;
+STRING SettingsMetaCommandDisplayName;
+UNICODE_STRING SettingsMetaCommandOptions[];
+DEBUG_ENGINE_COMMAND_TEMPLATE SettingsMetaCommandTemplate;
+
+//
 // Array of templates.
 //
 
