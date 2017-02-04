@@ -4,20 +4,20 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    CreateStringTable.c
+    CreateStringTable2.c
 
 Abstract:
 
-    This module implements the functionality to create a STRING_TABLE structure.
+    This module implements the functionality to create a STRING_TABLE2 structure.
 
 --*/
 
 #include "stdafx.h"
 
 _Use_decl_annotations_
-PSTRING_TABLE
-CreateStringTable(
-    PALLOCATOR StringTableAllocator,
+PSTRING_TABLE2
+CreateStringTable2(
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY StringArray,
     BOOL CopyArray
@@ -26,27 +26,27 @@ CreateStringTable(
 
 Routine Description:
 
-    Allocates space for a STRING_TABLE structure using the provided allocators,
+    Allocates space for a STRING_TABLE2 structure using the provided allocators,
     then initializes it using the provided STRING_ARRAY.  If CopyArray is set
     to TRUE, the routine will copy the string array such that the caller is
     free to destroy it after the table has been successfully created.  If it
-    is set to FALSE and StringArray->StringTable has a non-NULL value, it is
+    is set to FALSE and StringArray->StringTable2 has a non-NULL value, it is
     assumed that sufficient space has already been allocated for the string
     table and this pointer will be used to initialize the rest of the structure.
 
-    The Allocator will be used for all memory allocations. DestroyStringTable()
-    must be called against the returned PSTRING_TABLE when the structure is no
+    The Allocator will be used for all memory allocations. DestroyStringTable2()
+    must be called against the returned PSTRING_TABLE2 when the structure is no
     longer needed in order to ensure resources are released.
 
 Arguments:
 
-    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
-        will be used for creating the STRING_TABLE.
+    StringTable2Allocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE2.
 
     StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
         may be used to create the STRING_ARRAY if it cannot fit within the
-        padding of the STRING_TABLE structure.  This is kept separate from the
-        StringTableAllocator due to the stringent alignment requirements of the
+        padding of the STRING_TABLE2 structure.  This is kept separate from the
+        StringTable2Allocator due to the stringent alignment requirements of the
         string table.
 
     StringArray - Supplies a pointer to an initialized STRING_ARRAY structure
@@ -60,8 +60,8 @@ Arguments:
 
 Return Value:
 
-    A pointer to a valid PSTRING_TABLE structure on success, NULL on failure.
-    Call DestroyStringTable() on the returned structure when it is no longer
+    A pointer to a valid PSTRING_TABLE2 structure on success, NULL on failure.
+    Call DestroyStringTable2() on the returned structure when it is no longer
     needed in order to ensure resources are cleaned up appropriately.
 
 --*/
@@ -72,7 +72,7 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return NULL;
     }
 
@@ -96,7 +96,7 @@ Return Value:
 
     if (NumberOfTables == 1) {
 
-        return CreateSingleStringTable(StringTableAllocator,
+        return CreateSingleStringTable2(StringTable2Allocator,
                                        StringArrayAllocator,
                                        StringArray,
                                        CopyArray);
@@ -107,9 +107,9 @@ Return Value:
 }
 
 _Use_decl_annotations_
-PSTRING_TABLE
-CreateSingleStringTable(
-    PALLOCATOR StringTableAllocator,
+PSTRING_TABLE2
+CreateSingleStringTable2(
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
     PSTRING_ARRAY SourceStringArray,
     BOOL CopyArray
@@ -118,9 +118,9 @@ CreateSingleStringTable(
 
 Routine Description:
 
-    This routine is an optimized version of CreateStringTable() when the
+    This routine is an optimized version of CreateStringTable2() when the
     string array contains no more than 16 strings.  See the documentation
-    for CreateStringTable() for more information.
+    for CreateStringTable2() for more information.
 
 --*/
 {
@@ -130,7 +130,7 @@ Routine Description:
     USHORT HighestBit;
     ULONG OccupiedBitmap;
     ULONG ContinuationBitmap;
-    PSTRING_TABLE StringTable;
+    PSTRING_TABLE2 StringTable2;
     PSTRING_ARRAY StringArray;
     PSTRING String;
     PSTRING_SLOT Slot;
@@ -141,7 +141,7 @@ Routine Description:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return NULL;
     }
 
@@ -164,12 +164,12 @@ Routine Description:
     if (CopyArray) {
 
         StringArray = CopyStringArray(
-            StringTableAllocator,
+            StringTable2Allocator,
             StringArrayAllocator,
             SourceStringArray,
-            FIELD_OFFSET(STRING_TABLE, StringArray),
-            sizeof(STRING_TABLE),
-            &StringTable
+            FIELD_OFFSET(STRING_TABLE2, StringArray),
+            sizeof(STRING_TABLE2),
+            &StringTable2
         );
 
         if (!StringArray) {
@@ -180,34 +180,34 @@ Routine Description:
 
         //
         // We're not copying the array, so initialize StringArray to point at
-        // the caller's SourceStringArray, and StringTable to point at the
-        // array's StringTable field (which will be non-NULL if sufficient
+        // the caller's SourceStringArray, and StringTable2 to point at the
+        // array's StringTable2 field (which will be non-NULL if sufficient
         // space has been allocated).
         //
 
         StringArray = SourceStringArray;
-        StringTable = StringArray->StringTable;
+        StringTable2 = StringArray->StringTable2;
 
     }
 
     //
-    // If StringTable has no value, we've either been called with CopyArray set
+    // If StringTable2 has no value, we've either been called with CopyArray set
     // to FALSE, or CopyStringArray() wasn't able to allocate sufficient space
     // for both the table and itself.  Either way, we need to allocate space for
     // the table.
     //
 
-    if (!StringTable) {
+    if (!StringTable2) {
 
-        StringTable = (PSTRING_TABLE)(
-            StringTableAllocator->Calloc(
-                StringTableAllocator->Context,
+        StringTable2 = (PSTRING_TABLE2)(
+            StringTable2Allocator->Calloc(
+                StringTable2Allocator->Context,
                 1,
-                sizeof(STRING_TABLE)
+                sizeof(STRING_TABLE2)
             )
         );
 
-        if (!StringTable) {
+        if (!StringTable2) {
             return NULL;
         }
     }
@@ -217,16 +217,16 @@ Routine Description:
     // aligned correctly.
     //
 
-    if (!AssertStringTableFieldAlignment(StringTable)) {
-        DestroyStringTable(StringTableAllocator,
+    if (!AssertStringTable2FieldAlignment(StringTable2)) {
+        DestroyStringTable2(StringTable2Allocator,
                            StringArrayAllocator,
-                           StringTable);
+                           StringTable2);
         return NULL;
     }
 
     //
     // At this point, we have copied the incoming StringArray if necessary,
-    // and we've allocated sufficient space for the StringTable structure.
+    // and we've allocated sufficient space for the StringTable2 structure.
     // Enumerate over all of the strings, set the continuation bit if the
     // length > 16, set the relevant slot length, set the relevant first
     // character entry, then move the first 16-bytes of the string into the
@@ -237,7 +237,7 @@ Routine Description:
     // Initialize pointers and counters, clear stack-based structures.
     //
 
-    Slot = StringTable->Slots;
+    Slot = StringTable2->Slots;
     String = StringArray->Strings;
 
     Index = 0;
@@ -311,13 +311,13 @@ Routine Description:
     // Store the slot lengths.
     //
 
-    _mm256_store_si256(&(StringTable->Lengths.SlotsYmm), Lengths.SlotsYmm);
+    _mm256_store_si256(&(StringTable2->Lengths.SlotsYmm), Lengths.SlotsYmm);
 
     //
     // Store the first characters.
     //
 
-    _mm_store_si128(&(StringTable->FirstChars.CharsXmm), FirstChars.CharsXmm);
+    _mm_store_si128(&(StringTable2->FirstChars.CharsXmm), FirstChars.CharsXmm);
 
     //
     // Generate and store the occupied bitmap.  Each bit, from low to high,
@@ -326,40 +326,40 @@ Routine Description:
     //
 
     HighestBit = (1 << (Index-1));
-    StringTable->OccupiedBitmap = (USHORT)_blsmsk_u32(HighestBit);
+    StringTable2->OccupiedBitmap = (USHORT)_blsmsk_u32(HighestBit);
 
     //
     // Store the continuation bitmap.
     //
 
-    StringTable->ContinuationBitmap = (USHORT)(ContinuationBitmap);
+    StringTable2->ContinuationBitmap = (USHORT)(ContinuationBitmap);
 
     //
     // Wire up the string array to the table.
     //
 
-    StringTable->pStringArray = StringArray;
+    StringTable2->pStringArray = StringArray;
 
     //
-    // Initialize the IsPrefixOfStringInTable and DestroyStringTable function
+    // Initialize the IsPrefixOfStringInTable and DestroyStringTable2 function
     // pointers.
     //
 
-    StringTable->IsPrefixOfStringInTable = IsPrefixOfStringInSingleTableInline;
-    StringTable->DestroyStringTable = DestroyStringTable;
+    StringTable2->IsPrefixOfStringInTable = IsPrefixOfStringInSingleTableInline;
+    StringTable2->DestroyStringTable2 = DestroyStringTable2;
 
     //
     // And we're done, return the table.
     //
 
-    return StringTable;
+    return StringTable2;
 }
 
 _Use_decl_annotations_
-PSTRING_TABLE
-CreateStringTableFromDelimitedString(
+PSTRING_TABLE2
+CreateStringTable2FromDelimitedString(
     PRTL Rtl,
-    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
     PCSTRING String,
     CHAR Delimiter
@@ -368,7 +368,7 @@ CreateStringTableFromDelimitedString(
 
 Routine Description:
 
-    This routine creates a new STRING_TABLE structure from a STRING_ARRAY
+    This routine creates a new STRING_TABLE2 structure from a STRING_ARRAY
     structure that is created from a STRING structure, whose underlying
     character buffer is delimited by a Delimiter character, such as a space,
     colon, comma, etc.
@@ -381,34 +381,34 @@ Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
-        will be used for creating the STRING_TABLE.
+    StringTable2Allocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE2.
 
     StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
         may be used to create the STRING_ARRAY if it cannot fit within the
-        padding of the STRING_TABLE structure.  This is kept separate from the
-        StringTableAllocator due to the stringent alignment requirements of the
+        padding of the STRING_TABLE2 structure.  This is kept separate from the
+        StringTable2Allocator due to the stringent alignment requirements of the
         string table.
 
     String - Supplies a pointer to a STRING structure that represents the
         delimited string to construct a STRING_ARRAY and then subsequent
-        STRING_TABLE from.
+        STRING_TABLE2 from.
 
     Delimiter - Supplies the character that delimits individual elements of
         the String pointer (e.g. ':', ' ').
 
 Return Value:
 
-    A pointer to a valid PSTRING_TABLE structure on success, NULL on failure.
-    Call DestroyStringTable() on the returned structure when it is no longer
+    A pointer to a valid PSTRING_TABLE2 structure on success, NULL on failure.
+    Call DestroyStringTable2() on the returned structure when it is no longer
     needed in order to ensure resources are cleaned up appropriately.
 
 --*/
 {
     PVOID Address;
     PSTRING_ARRAY StringArray;
-    PSTRING_TABLE StringTable;
-    PSTRING_TABLE NewTable;
+    PSTRING_TABLE2 StringTable2;
+    PSTRING_TABLE2 NewTable;
 
     //
     // Validate arguments.
@@ -418,7 +418,7 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return NULL;
     }
 
@@ -436,13 +436,13 @@ Return Value:
 
     StringArray = CreateStringArrayFromDelimitedString(
         Rtl,
-        StringTableAllocator,
+        StringTable2Allocator,
         StringArrayAllocator,
         String,
         Delimiter,
-        FIELD_OFFSET(STRING_TABLE, StringArray),
-        sizeof(STRING_TABLE),
-        &StringTable
+        FIELD_OFFSET(STRING_TABLE2, StringArray),
+        sizeof(STRING_TABLE2),
+        &StringTable2
     );
 
     if (!StringArray) {
@@ -453,7 +453,7 @@ Return Value:
     // Create the string table from the newly-created string array.
     //
 
-    NewTable = CreateStringTable(StringTableAllocator,
+    NewTable = CreateStringTable2(StringTable2Allocator,
                                  StringArrayAllocator,
                                  StringArray,
                                  FALSE);
@@ -461,13 +461,13 @@ Return Value:
     if (!NewTable) {
 
         //
-        // If StringTable has a value here, it is the address that should be
+        // If StringTable2 has a value here, it is the address that should be
         // freed, not StringArray.
         //
 
-        Address = (PVOID)StringTable;
+        Address = (PVOID)StringTable2;
         if (Address) {
-            StringTableAllocator->Free(StringTableAllocator->Context, Address);
+            StringTable2Allocator->Free(StringTable2Allocator->Context, Address);
         } else {
             Address = (PVOID)StringArray;
             StringArrayAllocator->Free(StringArrayAllocator->Context, Address);
@@ -478,11 +478,11 @@ Return Value:
 }
 
 _Use_decl_annotations_
-PSTRING_TABLE
-CreateStringTableFromDelimitedEnvironmentVariable(
+PSTRING_TABLE2
+CreateStringTable2FromDelimitedEnvironmentVariable(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
     PCSTR EnvironmentVariableName,
     CHAR Delimiter
@@ -491,7 +491,7 @@ CreateStringTableFromDelimitedEnvironmentVariable(
 
 Routine Description:
 
-    This routine creates a new STRING_TABLE structure by creating a new
+    This routine creates a new STRING_TABLE2 structure by creating a new
     STRING_ARRAY structure from the delimited string value in the given
     environment variable name.
 
@@ -503,8 +503,8 @@ Arguments:
         to allocate temporary memory for reading the contents of the environment
         variable.
 
-    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
-        will be used for creating the STRING_TABLE.  This allocator is kept
+    StringTable2Allocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE2.  This allocator is kept
         separate from the one above due to the fact that string tables have
         stringent alignment requirements and will be using custom allocators
         that wouldn't necessarily be suitable for the temp buffer created for
@@ -512,8 +512,8 @@ Arguments:
 
     StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
         may be used to create the STRING_ARRAY if it cannot fit within the
-        padding of the STRING_TABLE structure.  This is kept separate from the
-        StringTableAllocator due to the stringent alignment requirements of the
+        padding of the STRING_TABLE2 structure.  This is kept separate from the
+        StringTable2Allocator due to the stringent alignment requirements of the
         string table.
 
     EnvironmentVariableName - Supplies a pointer to a NULL-terminated string
@@ -525,8 +525,8 @@ Arguments:
 
 Return Value:
 
-    A pointer to a valid PSTRING_TABLE structure on success, NULL on failure.
-    Call DestroyStringTable() on the returned structure when it is no longer
+    A pointer to a valid PSTRING_TABLE2 structure on success, NULL on failure.
+    Call DestroyStringTable2() on the returned structure when it is no longer
     needed in order to ensure resources are cleaned up appropriately.
 
 --*/
@@ -536,7 +536,7 @@ Return Value:
     LONG Length;
     STRING String;
     LONG_INTEGER NumberOfChars;
-    PSTRING_TABLE StringTable = NULL;
+    PSTRING_TABLE2 StringTable2 = NULL;
 
     //
     // Validate arguments.
@@ -546,7 +546,7 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return NULL;
     }
 
@@ -631,12 +631,12 @@ Return Value:
     }
 
     //
-    // Pass the rest of the work over to CreateStringTableFromDelimitedString().
+    // Pass the rest of the work over to CreateStringTable2FromDelimitedString().
     //
 
-    StringTable = CreateStringTableFromDelimitedString(
+    StringTable2 = CreateStringTable2FromDelimitedString(
         Rtl,
-        StringTableAllocator,
+        StringTable2Allocator,
         StringArrayAllocator,
         &String,
         Delimiter
@@ -655,7 +655,7 @@ End:
 
     Allocator->Free(Allocator->Context, String.Buffer);
 
-    return StringTable;
+    return StringTable2;
 }
 
 

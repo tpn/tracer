@@ -4,11 +4,11 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    StringTablePrivate.h
+    StringTable2Private.h
 
 Abstract:
 
-    This is the private header file for the StringTable component.  It defines
+    This is the private header file for the StringTable2 component.  It defines
     function typedefs and function declarations for all major (i.e. not local
     to the module) functions available for use by individual modules within
     this component.
@@ -27,7 +27,7 @@ extern "C" {
 // Function typedefs and inline functions for internal modules.
 ////////////////////////////////////////////////////////////////////////////////
 
-CREATE_STRING_TABLE CreateSingleStringTable;
+CREATE_STRING_TABLE2 CreateSingleStringTable2;
 
 
 #ifdef __cplusplus

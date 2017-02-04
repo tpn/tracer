@@ -4,21 +4,21 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    PrefixSearchStringTable.c
+    PrefixSearchStringTable2.c
 
 Abstract:
 
     This module implements routines related to searching for a string within
-    a STRING_TABLE structure.
+    a STRING_TABLE2 structure.
 
 --*/
 
 #include "stdafx.h"
 
 _Use_decl_annotations_
-STRING_TABLE_INDEX
+STRING_TABLE2_INDEX
 IsPrefixOfStringInSingleTableInline(
-    PSTRING_TABLE StringTable,
+    PSTRING_TABLE2 StringTable2,
     PSTRING String,
     PSTRING_MATCH Match
     )
@@ -32,7 +32,7 @@ Routine Description:
 
 Arguments:
 
-    StringTable - Supplies a pointer to a STRING_TABLE struct.
+    StringTable2 - Supplies a pointer to a STRING_TABLE2 struct.
 
     String - Supplies a pointer to a STRING struct that contains the string to
         search for.
@@ -74,7 +74,7 @@ Return Value:
     YMMWORD IncludeSlotsShifted;
     const YMMWORD AllOnesYmm = _mm256_set1_epi8(0xff);
 
-    StringArray = StringTable->pStringArray;
+    StringArray = StringTable2->pStringArray;
 
     //
     // If the minimum length of the string array is greater than the length of
@@ -137,13 +137,13 @@ Return Value:
     // Load the slot length array into a YMM register.
     //
 
-    Lengths.SlotsYmm = _mm256_load_si256(&StringTable->Lengths.SlotsYmm);
+    Lengths.SlotsYmm = _mm256_load_si256(&StringTable2->Lengths.SlotsYmm);
 
     //
     // Load the string table's first character array into an XMM register.
     //
 
-    TableFirstChars = _mm_load_si128(&StringTable->FirstChars.CharsXmm);
+    TableFirstChars = _mm_load_si128(&StringTable2->FirstChars.CharsXmm);
 
     //
     // Broadcast the search string's length into a YMM register.
@@ -263,7 +263,7 @@ Return Value:
         // Load the slot and its length.
         //
 
-        Slot.CharsXmm = _mm_load_si128(&StringTable->Slots[Index].CharsXmm);
+        Slot.CharsXmm = _mm_load_si128(&StringTable2->Slots[Index].CharsXmm);
         Length = Lengths.Slots[Index];
 
         //
@@ -300,7 +300,7 @@ Return Value:
             // so do a direct comparison between the remaining buffers.
             //
 
-            TargetString = &StringTable->pStringArray->Strings[Index];
+            TargetString = &StringTable2->pStringArray->Strings[Index];
 
             CharactersMatched = IsPrefixMatch(String, TargetString, 16);
 
@@ -341,7 +341,7 @@ FoundMatch:
 
                 Match->Index = Index;
                 Match->NumberOfMatchedCharacters = (USHORT)CharactersMatched;
-                Match->String = &StringTable->pStringArray->Strings[Index];
+                Match->String = &StringTable2->pStringArray->Strings[Index];
 
             }
 

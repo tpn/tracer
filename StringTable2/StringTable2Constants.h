@@ -4,11 +4,11 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    StringTableConstants.h
+    StringTable2Constants.h
 
 Abstract:
 
-    This module defines constants related to the StringTable component.
+    This module defines constants related to the StringTable2 component.
 
 --*/
 

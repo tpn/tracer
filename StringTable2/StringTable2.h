@@ -4,16 +4,16 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    StringTable.h
+    StringTable2.h
 
 Abstract:
 
-    This is the main header file for the StringTable component.  It defines
+    This is the main header file for the StringTable2 component.  It defines
     structures and functions related to the implementation of the component.
 
     The main structures are the STRING_ARRAY structure, which is used by
     callers of this component to indicate the set of strings they'd like to
-    add to the string table, and the STRING_TABLE structure, which is the main
+    add to the string table, and the STRING_TABLE2 structure, which is the main
     data structure used by this component.
 
     Functions are provided for creating, destroying and searching for whether
@@ -33,18 +33,18 @@ Abstract:
 
 #pragma once
 
-#ifdef _STRING_TABLE_INTERNAL_BUILD
+#ifdef _STRING_TABLE2_INTERNAL_BUILD
 
 //
-// This is an internal build of the StringTable component.
+// This is an internal build of the StringTable2 component.
 //
 
-#define STRING_TABLE_API __declspec(dllexport)
-#define STRING_TABLE_DATA extern __declspec(dllexport)
+#define STRING_TABLE2_API __declspec(dllexport)
+#define STRING_TABLE2_DATA extern __declspec(dllexport)
 
 #include "stdafx.h"
 
-#elif _STRING_TABLE_NO_API_EXPORT_IMPORT
+#elif _STRING_TABLE2_NO_API_EXPORT_IMPORT
 
 //
 // We're being included by someone who doesn't want dllexport or dllimport.
@@ -52,8 +52,8 @@ Abstract:
 // testing or performance testing/profiling.
 //
 
-#define STRING_TABLE_API
-#define STRING_TABLE_DATA extern
+#define STRING_TABLE2_API
+#define STRING_TABLE2_DATA extern
 
 #else
 
@@ -61,8 +61,8 @@ Abstract:
 // We're being included by an external component.
 //
 
-#define STRING_TABLE_API __declspec(dllimport)
-#define STRING_TABLE_DATA extern __declspec(dllimport)
+#define STRING_TABLE2_API __declspec(dllimport)
+#define STRING_TABLE2_DATA extern __declspec(dllimport)
 
 #include "../Rtl/Rtl.h"
 
@@ -112,10 +112,10 @@ typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
     USHORT MaximumLength;
 
     //
-    // A pointer to the STRING_TABLE structure that "owns" us.
+    // A pointer to the STRING_TABLE2 structure that "owns" us.
     //
 
-    struct _STRING_TABLE *StringTable;
+    struct _STRING_TABLE2 *StringTable2;
 
     //
     // The string array.  Number of elements in the array is governed by the
@@ -192,19 +192,19 @@ typedef union _SLOT_LENGTHS {
 
 C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
-typedef SHORT STRING_TABLE_INDEX;
+typedef SHORT STRING_TABLE2_INDEX;
 #define NO_MATCH_FOUND (-1)
 
 //
-// Forward declaration of functions that we include in the STRING_TABLE
+// Forward declaration of functions that we include in the STRING_TABLE2
 // struct via function pointers.
 //
 
 typedef
 _Success_(return != 0)
-STRING_TABLE_INDEX
+STRING_TABLE2_INDEX
 (IS_PREFIX_OF_STRING_IN_TABLE)(
-    _In_ struct _STRING_TABLE *StringTable,
+    _In_ struct _STRING_TABLE2 *StringTable2,
     _In_ PSTRING String,
     _In_opt_ struct _STRING_MATCH *StringMatch
     );
@@ -212,14 +212,14 @@ typedef IS_PREFIX_OF_STRING_IN_TABLE *PIS_PREFIX_OF_STRING_IN_TABLE;
 
 typedef
 VOID
-(DESTROY_STRING_TABLE)(
-    _In_ PALLOCATOR StringTableAllocator,
+(DESTROY_STRING_TABLE2)(
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
-    _In_opt_ struct _STRING_TABLE *StringTable
+    _In_opt_ struct _STRING_TABLE2 *StringTable2
     );
-typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
+typedef DESTROY_STRING_TABLE2 *PDESTROY_STRING_TABLE2;
 
-typedef union _STRING_TABLE_FLAGS {
+typedef union _STRING_TABLE2_FLAGS {
     LONG AsLong;
     ULONG AsULong;
 
@@ -227,15 +227,15 @@ typedef union _STRING_TABLE_FLAGS {
 
         //
         // When set, indicates that the CopyArray flag was set to TRUE when the
-        // STRING_TABLE was created with CreateStringTable().  This implies the
-        // STRING_TABLE owns the STRING_ARRAY, and is responsible for its
+        // STRING_TABLE2 was created with CreateStringTable2().  This implies the
+        // STRING_TABLE2 owns the STRING_ARRAY, and is responsible for its
         // destruction.
         //
         // If the table does own the array, the destruction routine should still
         // verify a separate allocation was performed for the string array by
-        // checking StringTable->pStringArray against &StringTable->StringArray;
+        // checking StringTable2->pStringArray against &StringTable2->StringArray;
         // If the pointers point to the same location, the string array was able
-        // to fit in the trailing space of the STRING_TABLE structure, and thus,
+        // to fit in the trailing space of the STRING_TABLE2 structure, and thus,
         // doesn't need to be deallocated separately (i.e. no separate call to
         // Allocator->Free() is required).
         //
@@ -249,13 +249,13 @@ typedef union _STRING_TABLE_FLAGS {
         ULONG Unused:31;
     };
 
-} STRING_TABLE_FLAGS;
-typedef STRING_TABLE_FLAGS *PSTRING_TABLE_FLAGS;
-typedef STRING_TABLE_FLAGS **PPSTRING_TABLE_FLAGS;
-C_ASSERT(sizeof(STRING_TABLE_FLAGS) == sizeof(ULONG));
+} STRING_TABLE2_FLAGS;
+typedef STRING_TABLE2_FLAGS *PSTRING_TABLE2_FLAGS;
+typedef STRING_TABLE2_FLAGS **PPSTRING_TABLE2_FLAGS;
+C_ASSERT(sizeof(STRING_TABLE2_FLAGS) == sizeof(ULONG));
 
 //
-// The STRING_TABLE struct is an optimized structure for testing whether a
+// The STRING_TABLE2 struct is an optimized structure for testing whether a
 // prefix entry for a string is in a table, with the expectation that the
 // strings being compared will be relatively short (ideally <= 16 characters),
 // and the table of string prefixes to compare to will be relatively small
@@ -266,19 +266,19 @@ C_ASSERT(sizeof(STRING_TABLE_FLAGS) == sizeof(ULONG));
 // and SIMD instructions are used to try and achieve this.
 //
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) _STRING_TABLE {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _STRING_TABLE2 {
 
     //
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _STRING_TABLE_)) ULONG SizeOfStruct;
+    _Field_range_(==, sizeof(struct _STRING_TABLE2_)) ULONG SizeOfStruct;
 
     //
     // String table flags.
     //
 
-    STRING_TABLE_FLAGS Flags;
+    STRING_TABLE2_FLAGS Flags;
 
     //
     // Pointer to the STRING_ARRAY associated with this table, which we own
@@ -347,7 +347,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _STRING_TABLE {
         // space if it can fit.
         //
         // (You can test whether or not this occurred by checking the invariant
-        // `StringTable->pStringArray == &StringTable->StringArray`, if this is
+        // `StringTable2->pStringArray == &StringTable2->StringArray`, if this is
         // true, the array was allocated within this remaining padding space.)
         //
 
@@ -416,7 +416,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _STRING_TABLE {
     //
 
     DECLSPEC_ALIGN(496)
-    struct _STRING_TABLE_FUNCTIONS *Functions;
+    struct _STRING_TABLE2_FUNCTIONS *Functions;
 
     //
     // Function pointer to the destruction function for the table.  This is
@@ -424,19 +424,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _STRING_TABLE {
     //
 
     DECLSPEC_ALIGN(504)
-    PDESTROY_STRING_TABLE DestroyStringTable;
+    PDESTROY_STRING_TABLE2 DestroyStringTable2;
 
-} STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
+} STRING_TABLE2, *PSTRING_TABLE2, **PPSTRING_TABLE2;
 
 //
 // Assert critical size and alignment invariants at compile time.
 //
 
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, Lengths) == 32);
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, Slots)   == 64);
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, Padding) == 352);
-C_ASSERT(FIELD_OFFSET(STRING_TABLE, DestroyStringTable) == 504);
-C_ASSERT(sizeof(STRING_TABLE) == 512);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE2, Lengths) == 32);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE2, Slots)   == 64);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE2, Padding) == 352);
+C_ASSERT(FIELD_OFFSET(STRING_TABLE2, DestroyStringTable2) == 504);
+C_ASSERT(sizeof(STRING_TABLE2) == 512);
 
 //
 // This structure is used to communicate matches back to the caller.
@@ -464,7 +464,7 @@ typedef struct _STRING_MATCH {
 
     //
     // Pointer to the string that was matched.  The underlying buffer will
-    // stay valid for as long as the STRING_TABLE struct persists.
+    // stay valid for as long as the STRING_TABLE2 struct persists.
     //
 
     PSTRING String;
@@ -480,12 +480,12 @@ _Check_return_
 _Success_(return != 0)
 PSTRING_ARRAY
 (COPY_STRING_ARRAY)(
-    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING_ARRAY StringArray,
-    _In_ USHORT StringTablePaddingOffset,
-    _In_ USHORT StringTableStructSize,
-    _Outptr_opt_result_maybenull_ PPSTRING_TABLE StringTablePointer
+    _In_ USHORT StringTable2PaddingOffset,
+    _In_ USHORT StringTable2StructSize,
+    _Outptr_opt_result_maybenull_ PPSTRING_TABLE2 StringTable2Pointer
     );
 typedef COPY_STRING_ARRAY *PCOPY_STRING_ARRAY;
 
@@ -495,13 +495,13 @@ _Success_(return != 0)
 PSTRING_ARRAY
 (CREATE_STRING_ARRAY_FROM_DELIMITED_STRING)(
     _In_ PRTL Rtl,
-    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PCSTRING String,
     _In_ CHAR Delimiter,
-    _In_ USHORT StringTablePaddingOffset,
-    _In_ USHORT StringTableStructSize,
-    _Outptr_opt_result_maybenull_ PPSTRING_TABLE StringTablePointer
+    _In_ USHORT StringTable2PaddingOffset,
+    _In_ USHORT StringTable2StructSize,
+    _Outptr_opt_result_maybenull_ PPSTRING_TABLE2 StringTable2Pointer
     );
 typedef CREATE_STRING_ARRAY_FROM_DELIMITED_STRING  \
       *PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING, \
@@ -510,56 +510,56 @@ typedef CREATE_STRING_ARRAY_FROM_DELIMITED_STRING  \
 typedef
 _Check_return_
 _Success_(return != 0)
-PSTRING_TABLE
-(CREATE_STRING_TABLE)(
-    _In_ PALLOCATOR StringTableAllocator,
+PSTRING_TABLE2
+(CREATE_STRING_TABLE2)(
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PSTRING_ARRAY StringArray,
     _In_ BOOL CopyArray
     );
-typedef CREATE_STRING_TABLE *PCREATE_STRING_TABLE;
+typedef CREATE_STRING_TABLE2 *PCREATE_STRING_TABLE2;
 
 typedef
 _Check_return_
 _Success_(return != 0)
-PSTRING_TABLE
-(CREATE_STRING_TABLE_FROM_DELIMITED_STRING)(
+PSTRING_TABLE2
+(CREATE_STRING_TABLE2_FROM_DELIMITED_STRING)(
     _In_ PRTL Rtl,
-    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PCSTRING String,
     _In_ CHAR Delimiter
     );
-typedef CREATE_STRING_TABLE_FROM_DELIMITED_STRING  \
-      *PCREATE_STRING_TABLE_FROM_DELIMITED_STRING, \
-    **PPCREATE_STRING_TABLE_FROM_DELIMITED_STRING;
+typedef CREATE_STRING_TABLE2_FROM_DELIMITED_STRING  \
+      *PCREATE_STRING_TABLE2_FROM_DELIMITED_STRING, \
+    **PPCREATE_STRING_TABLE2_FROM_DELIMITED_STRING;
 
 typedef
 _Check_return_
 _Success_(return != 0)
-PSTRING_TABLE
-(CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE)(
+PSTRING_TABLE2
+(CREATE_STRING_TABLE2_FROM_DELIMITED_ENVIRONMENT_VARIABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringTable2Allocator,
     _In_ PALLOCATOR StringArrayAllocator,
     _In_ PCSTR EnvironmentVariableName,
     _In_ CHAR Delimiter
     );
-typedef CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
-      *PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE, \
-    **PPCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE;
+typedef CREATE_STRING_TABLE2_FROM_DELIMITED_ENVIRONMENT_VARIABLE  \
+      *PCREATE_STRING_TABLE2_FROM_DELIMITED_ENVIRONMENT_VARIABLE, \
+    **PPCREATE_STRING_TABLE2_FROM_DELIMITED_ENVIRONMENT_VARIABLE;
 
 typedef
-STRING_TABLE_INDEX
-(SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH)(
-    _In_ PSTRING_TABLE StringTable,
+STRING_TABLE2_INDEX
+(SEARCH_STRING_TABLE2_SLOTS_FOR_FIRST_PREFIX_MATCH)(
+    _In_ PSTRING_TABLE2 StringTable2,
     _In_ PCSTRING String,
     _In_ USHORT Index,
     _In_opt_ PSTRING_MATCH StringMatch
     );
-typedef   SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
-        *PSEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH;
+typedef   SEARCH_STRING_TABLE2_SLOTS_FOR_FIRST_PREFIX_MATCH \
+        *PSEARCH_STRING_TABLE2_SLOTS_FOR_FIRST_PREFIX_MATCH;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
@@ -883,10 +883,10 @@ Routine Description:
 FORCEINLINE
 BOOL
 HasEmbeddedStringArray(
-    _In_ PSTRING_TABLE StringTable
+    _In_ PSTRING_TABLE2 StringTable2
     )
 {
-    return (StringTable->pStringArray == &StringTable->StringArray);
+    return (StringTable2->pStringArray == &StringTable2->StringArray);
 }
 
 
@@ -896,19 +896,19 @@ HasEmbeddedStringArray(
 FORCEINLINE
 USHORT
 GetNumberOfStringsInTable(
-    _In_ PSTRING_TABLE StringTable
+    _In_ PSTRING_TABLE2 StringTable2
     )
 {
-    return (USHORT)__popcnt16(StringTable->OccupiedBitmap);
+    return (USHORT)__popcnt16(StringTable2->OccupiedBitmap);
 }
 
 FORCEINLINE
 USHORT
 GetNumberOfOversizedStringsInTable(
-    _In_ PSTRING_TABLE StringTable
+    _In_ PSTRING_TABLE2 StringTable2
     )
 {
-    return (USHORT)__popcnt16(StringTable->ContinuationBitmap);
+    return (USHORT)__popcnt16(StringTable2->ContinuationBitmap);
 }
 
 FORCEINLINE
@@ -935,15 +935,15 @@ ComputeCrc32ForString(
 
 FORCEINLINE
 USHORT
-IsFirstCharacterInStringTable(
-    _In_ PSTRING_TABLE StringTable,
+IsFirstCharacterInStringTable2(
+    _In_ PSTRING_TABLE2 StringTable2,
     _In_ CHAR FirstChar
     )
 {
     ULONG_INTEGER Index;
     XMMWORD EqualXmm;
     XMMWORD FirstCharXmm;
-    XMMWORD StringTableFirstCharXmm;
+    XMMWORD StringTable2FirstCharXmm;
     XMMWORD ShuffleXmm = _mm_setzero_si128();
     XMMWORD FirstCharShuffleXmm = { FirstChar };
 
@@ -957,15 +957,15 @@ IsFirstCharacterInStringTable(
     // Load the string table's first character array into an XMM register.
     //
 
-    StringTableFirstCharXmm = StringTable->FirstChars.CharsXmm;
+    StringTable2FirstCharXmm = StringTable2->FirstChars.CharsXmm;
 
-    EqualXmm = _mm_cmpeq_epi8(FirstCharXmm, StringTableFirstCharXmm);
+    EqualXmm = _mm_cmpeq_epi8(FirstCharXmm, StringTable2FirstCharXmm);
     Index.LongPart = _mm_movemask_epi8(EqualXmm);
 
     return Index.LowPart;
 }
 
-STRING_TABLE_DATA PARALLEL_SUFFIX_MOVE_MASK32 \
+STRING_TABLE2_DATA PARALLEL_SUFFIX_MOVE_MASK32 \
     ParallelSuffix32HighBitFromEveryOtherByte;
 
 #define LoadParallelSuffix32HighBitFromEveryOtherByte() \
@@ -1000,7 +1000,7 @@ CompressUlongHighBitFromEveryOtherByte(
 FORCEINLINE
 USHORT
 GetBitmapForViablePrefixSlotsByLengths(
-    _In_ PSTRING_TABLE StringTable,
+    _In_ PSTRING_TABLE2 StringTable2,
     _In_ PSTRING String
     )
 {
@@ -1017,7 +1017,7 @@ GetBitmapForViablePrefixSlotsByLengths(
     // Load the length array into a Ymm register.
     //
 
-    PrefixLengths = _mm256_load_si256(&(StringTable->Lengths.SlotsYmm));
+    PrefixLengths = _mm256_load_si256(&(StringTable2->Lengths.SlotsYmm));
 
     //
     // Broadcast the 16-bit String->Length to all words in a 256-byte
@@ -1362,25 +1362,25 @@ StartXmm:
 _Success_(return != 0)
 FORCEINLINE
 BOOL
-AssertStringTableFieldAlignment(
-    _In_ PSTRING_TABLE StringTable
+AssertStringTable2FieldAlignment(
+    _In_ PSTRING_TABLE2 StringTable2
     )
 {
     BOOL Success;
 
-    Success = AssertAligned512(StringTable);
+    Success = AssertAligned512(StringTable2);
 
     if (!Success) {
         return Success;
     }
 
-    Success = AssertAligned16(&StringTable->FirstChars);
+    Success = AssertAligned16(&StringTable2->FirstChars);
 
     if (!Success) {
         return Success;
     }
 
-    Success = AssertAligned32(&StringTable->Lengths);
+    Success = AssertAligned32(&StringTable2->Lengths);
 
     return Success;
 
@@ -1392,25 +1392,25 @@ AssertStringTableFieldAlignment(
 
 #pragma component(browser, off)
 
-STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
-STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
-STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
+STRING_TABLE2_API COPY_STRING_ARRAY CopyStringArray;
+STRING_TABLE2_API CREATE_STRING_TABLE2 CreateStringTable2;
+STRING_TABLE2_API DESTROY_STRING_TABLE2 DestroyStringTable2;
 
-STRING_TABLE_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+STRING_TABLE2_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING
     CreateStringArrayFromDelimitedString;
 
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
-    CreateStringTableFromDelimitedEnvironmentVariable;
+STRING_TABLE2_API CREATE_STRING_TABLE2_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+    CreateStringTable2FromDelimitedEnvironmentVariable;
 
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_STRING
-    CreateStringTableFromDelimitedString;
+STRING_TABLE2_API CREATE_STRING_TABLE2_FROM_DELIMITED_STRING
+    CreateStringTable2FromDelimitedString;
 
-STRING_TABLE_API SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH
-    SearchStringTableSlotsForFirstPrefixMatch;
+STRING_TABLE2_API SEARCH_STRING_TABLE2_SLOTS_FOR_FIRST_PREFIX_MATCH
+    SearchStringTable2SlotsForFirstPrefixMatch;
 
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE
+STRING_TABLE2_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
+STRING_TABLE2_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
+STRING_TABLE2_API IS_PREFIX_OF_STRING_IN_TABLE
     IsPrefixOfStringInSingleTableInline;
 
 #pragma component(browser, on)

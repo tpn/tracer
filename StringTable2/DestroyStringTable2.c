@@ -4,12 +4,12 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    DestroyStringTable.c
+    DestroyStringTable2.c
 
 Abstract:
 
     This module implements the functionality to destroy a previously created
-    STRING_TABLE structure.
+    STRING_TABLE2 structure.
 
 --*/
 
@@ -17,26 +17,26 @@ Abstract:
 
 _Use_decl_annotations_
 VOID
-DestroyStringTable(
-    PALLOCATOR StringTableAllocator,
+DestroyStringTable2(
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
-    PSTRING_TABLE StringTable
+    PSTRING_TABLE2 StringTable2
     )
 /*++
 
 Routine Description:
 
-    Destroys a StringTable structure.
+    Destroys a StringTable2 structure.
 
 Arguments:
 
-    StringTableAllocator - Supplies a pointer to the ALLOCATOR structure that
-        was used to create the STRING_TABLE.
+    StringTable2Allocator - Supplies a pointer to the ALLOCATOR structure that
+        was used to create the STRING_TABLE2.
 
     StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure that
         may have been used to create the STRING_ARRAY.
 
-    StringTable - Supplies a pointer to a STRING_TABLE struct to be destroyed.
+    StringTable2 - Supplies a pointer to a STRING_TABLE2 struct to be destroyed.
 
 Return Value:
 
@@ -48,11 +48,11 @@ Return Value:
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(StringTable)) {
+    if (!ARGUMENT_PRESENT(StringTable2)) {
         return;
     }
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return;
     }
 
@@ -64,19 +64,19 @@ Return Value:
     // If the string array isn't embedded, free it first.
     //
 
-    if (!HasEmbeddedStringArray(StringTable)) {
+    if (!HasEmbeddedStringArray(StringTable2)) {
         StringArrayAllocator->Free(
             StringArrayAllocator->Context,
-            StringTable->pStringArray
+            StringTable2->pStringArray
         );
-        StringTable->pStringArray = NULL;
+        StringTable2->pStringArray = NULL;
     }
 
     //
-    // Free the StringTable and return.
+    // Free the StringTable2 and return.
     //
 
-    StringTableAllocator->Free(StringTableAllocator->Context, StringTable);
+    StringTable2Allocator->Free(StringTable2Allocator->Context, StringTable2);
 
     return;
 }

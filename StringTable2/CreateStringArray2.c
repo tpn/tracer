@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     This module implements the functionality to create a new STRING_ARRAY
-    structure as part of the steps required to create a new STRING_TABLE
+    structure as part of the steps required to create a new STRING_TABLE2
     structure. Routines are currently provided for creating an array from a
     delimited string.
 
@@ -21,13 +21,13 @@ _Use_decl_annotations_
 PSTRING_ARRAY
 CreateStringArrayFromDelimitedString(
     PRTL Rtl,
-    PALLOCATOR StringTableAllocator,
+    PALLOCATOR StringTable2Allocator,
     PALLOCATOR StringArrayAllocator,
     PCSTRING String,
     CHAR Delimiter,
-    USHORT StringTablePaddingOffset,
-    USHORT StringTableStructSize,
-    PPSTRING_TABLE StringTablePointer
+    USHORT StringTable2PaddingOffset,
+    USHORT StringTable2StructSize,
+    PPSTRING_TABLE2 StringTable2Pointer
     )
 /*++
 
@@ -39,21 +39,21 @@ Routine Description:
     new STRING_ARRAY with two elements, 'foo' and 'bar'.
 
     If the routine determines the STRING_ARRAY structure can fit within the
-    trailing padding of a STRING_TABLE structure, it will allocate memory for
+    trailing padding of a STRING_TABLE2 structure, it will allocate memory for
     the table instead and initialize itself at the relevant location offset,
-    updating StringTablePointer with the base address of the allocation.
+    updating StringTable2Pointer with the base address of the allocation.
 
 Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    StringTableAllocator - Supplies a pointer to an ALLOCATOR structure which
-        will be used for creating the STRING_TABLE.
+    StringTable2Allocator - Supplies a pointer to an ALLOCATOR structure which
+        will be used for creating the STRING_TABLE2.
 
     StringArrayAllocator - Supplies a pointer to an ALLOCATOR structure which
         may be used to create the STRING_ARRAY if it cannot fit within the
-        padding of the STRING_TABLE structure.  This is kept separate from the
-        StringTableAllocator due to the stringent alignment requirements of the
+        padding of the STRING_TABLE2 structure.  This is kept separate from the
+        StringTable2Allocator due to the stringent alignment requirements of the
         string table.
 
     String - Supplies a pointer to a STRING structure that represents the
@@ -62,17 +62,17 @@ Arguments:
     Delimiter - Supplies the character that delimits individual elements of
         the String pointer (e.g. ':', ' ').
 
-    StringTablePaddingOffset - Supplies a USHORT value indicating the number
-        of bytes from the STRING_TABLE structure where the padding begins.
-        This value is used in conjunction with StringTableStructSize below
+    StringTable2PaddingOffset - Supplies a USHORT value indicating the number
+        of bytes from the STRING_TABLE2 structure where the padding begins.
+        This value is used in conjunction with StringTable2StructSize below
         to determine if the STRING_ARRAY will fit within the table.
 
-    StringTableStructSize - Supplies a USHORT value indicating the size of the
-        STRING_TABLE structure, in bytes.  This is used in conjunction with the
-        StringTablePaddingOffset parameter above.
+    StringTable2StructSize - Supplies a USHORT value indicating the size of the
+        STRING_TABLE2 structure, in bytes.  This is used in conjunction with the
+        StringTable2PaddingOffset parameter above.
 
-    StringTablePointer - Supplies a pointer to a variable that receives the
-        address of the STRING_TABLE structure if one could be allocated.  If
+    StringTable2Pointer - Supplies a pointer to a variable that receives the
+        address of the STRING_TABLE2 structure if one could be allocated.  If
         not, the pointer will be set to NULL.
 
 Return Value:
@@ -92,8 +92,8 @@ Return Value:
     USHORT MaximumLength;
     USHORT NumberOfElements;
     USHORT AlignedMaxLength;
-    USHORT AlignedStringTablePaddingOffset;
-    USHORT StringTableRemainingSpace;
+    USHORT AlignedStringTable2PaddingOffset;
+    USHORT StringTable2RemainingSpace;
 
     ULONG AlignedSize;
     ULONG StringBufferAllocSize;
@@ -118,7 +118,7 @@ Return Value:
 
     PSTRING DestString;
 
-    PSTRING_TABLE StringTable = NULL;
+    PSTRING_TABLE2 StringTable2 = NULL;
     PSTRING_ARRAY NewArray = NULL;
 
     PRTL_BITMAP Bitmap;
@@ -141,7 +141,7 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+    if (!ARGUMENT_PRESENT(StringTable2Allocator)) {
         return NULL;
     }
 
@@ -153,7 +153,7 @@ Return Value:
         return NULL;
     }
 
-    if (!ARGUMENT_PRESENT(StringTablePointer)) {
+    if (!ARGUMENT_PRESENT(StringTable2Pointer)) {
         return NULL;
     }
 
@@ -365,32 +365,32 @@ Return Value:
     // space of the string table.
     //
 
-    AlignedStringTablePaddingOffset = (
-        ALIGN_UP_POINTER(StringTablePaddingOffset)
+    AlignedStringTable2PaddingOffset = (
+        ALIGN_UP_POINTER(StringTable2PaddingOffset)
     );
 
-    StringTableRemainingSpace = (
-        StringTableStructSize -
-        AlignedStringTablePaddingOffset
+    StringTable2RemainingSpace = (
+        StringTable2StructSize -
+        AlignedStringTable2PaddingOffset
     );
 
-    if (StringTableRemainingSpace >= TotalAllocSize) {
+    if (StringTable2RemainingSpace >= TotalAllocSize) {
 
         //
         // We can fit our copy of the STRING_ARRAY within the trailing padding
-        // bytes of the STRING_TABLE, so, allocate sufficient space for that
+        // bytes of the STRING_TABLE2, so, allocate sufficient space for that
         // struct, then carve out our table pointer.
         //
 
-        StringTable = (PSTRING_TABLE)(
-            StringTableAllocator->Calloc(
-                StringTableAllocator->Context,
+        StringTable2 = (PSTRING_TABLE2)(
+            StringTable2Allocator->Calloc(
+                StringTable2Allocator->Context,
                 1,
-                StringTableStructSize
+                StringTable2StructSize
             )
         );
 
-        if (!StringTable) {
+        if (!StringTable2) {
 
             //
             // If we couldn't allocate 512-bytes for the table, I don't think
@@ -404,28 +404,28 @@ Return Value:
 
         //
         // Allocation was successful, carve out the pointer to the NewArray.
-        // (We use RtlOffsetToPointer() here instead of StringTable->StringArray
+        // (We use RtlOffsetToPointer() here instead of StringTable2->StringArray
         // as the former will be done against the aligned padding size and isn't
-        // dependent upon knowing anything about the STRING_TABLE struct other
+        // dependent upon knowing anything about the STRING_TABLE2 struct other
         // than the offset and struct size parameters passed in as arguments.)
         //
 
         NewArray = (PSTRING_ARRAY)(
             RtlOffsetToPointer(
-                StringTable,
-                AlignedStringTablePaddingOffset
+                StringTable2,
+                AlignedStringTable2PaddingOffset
             )
         );
 
     } else {
 
         //
-        // We can't embed ourselves within the trailing STRING_TABLE padding.
-        // Clear the pointer to make it clear no StringTable was allocated,
+        // We can't embed ourselves within the trailing STRING_TABLE2 padding.
+        // Clear the pointer to make it clear no StringTable2 was allocated,
         // and then try allocating sufficient space just for the STRING_ARRAY.
         //
 
-        StringTable = NULL;
+        StringTable2 = NULL;
 
         NewArray = (PSTRING_ARRAY)(
             StringArrayAllocator->Calloc(
@@ -456,10 +456,10 @@ Return Value:
     NewArray->MaximumLength = MaximumLength;
 
     //
-    // Initialize the StringTable field; if it's NULL at this point, that's ok.
+    // Initialize the StringTable2 field; if it's NULL at this point, that's ok.
     //
 
-    NewArray->StringTable = StringTable;
+    NewArray->StringTable2 = StringTable2;
 
     //
     // Initialize string source and destination string pointers and the count
@@ -619,13 +619,13 @@ Error:
         PVOID Address;
 
         //
-        // If StringTable has a value here, it is the address that should be
+        // If StringTable2 has a value here, it is the address that should be
         // freed, not NewArray.
         //
 
-        Address = (PVOID)StringTable;
+        Address = (PVOID)StringTable2;
         if (Address) {
-            StringTableAllocator->Free(StringTableAllocator->Context, Address);
+            StringTable2Allocator->Free(StringTable2Allocator->Context, Address);
         } else {
             Address = (PVOID)NewArray;
             StringArrayAllocator->Free(StringArrayAllocator->Context, Address);
@@ -635,7 +635,7 @@ Error:
         // Clear both pointers.
         //
 
-        StringTable = NULL;
+        StringTable2 = NULL;
         NewArray = NULL;
     }
 
@@ -646,11 +646,11 @@ Error:
 End:
 
     //
-    // Update the caller's StringTablePointer (which may be NULL if we didn't
-    // allocate a StringTable or encountered an error).
+    // Update the caller's StringTable2Pointer (which may be NULL if we didn't
+    // allocate a StringTable2 or encountered an error).
     //
 
-    *StringTablePointer = StringTable;
+    *StringTable2Pointer = StringTable2;
 
     //
     // Potentially free the bitmap buffer.
