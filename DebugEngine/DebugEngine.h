@@ -221,10 +221,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     PRTL_PATH ModulePath;
 
     //
-    // Pointers to the command executed by the engine in ANSI and wide formats.
+    // Pointer to the string representation of the command that was dispatched
+    // to the debugger's ExecuteWide() function.
     //
 
-    PUNICODE_STRING Command;
+    PCUNICODE_STRING Command;
 
     //
     // Opaque pointer to the command template used to assemble this command.
