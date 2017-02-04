@@ -232,6 +232,130 @@ End:
 }
 
 _Use_decl_annotations_
+BOOL
+DebugEngineSessionExecuteStaticCommand(
+    PDEBUG_ENGINE_SESSION Session,
+    PCUNICODE_STRING Command,
+    PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback
+    )
+/*++
+
+Routine Description:
+
+    Execute a static UNICODE_STRING command in the debugger.  Static in this
+    context refers to a pre-composed command string sent verbatim to the
+    debugger's ExecuteWide() routine.
+
+Arguments:
+
+    Engine - Supplies a pointer to the DEBUG_ENGINE to use.
+
+    Command - Supplies a pointer to a UNICODE_STRING structure containing the
+        command to send to the debugger.
+
+    LineOutputCallback - Optionally supplies a pointer to a line output callback
+        that will be set for the duration of the command's execution.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    BOOL Success;
+    BOOL AcquiredLock = FALSE;
+    PDEBUG_ENGINE Engine;
+    DEBUG_ENGINE_OUTPUT Output;
+    PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK Callback;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Session)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Command)) {
+        return FALSE;
+    }
+
+    //
+    // If the caller has provided a line output callback, use it.  Otherwise,
+    // default to the default DebugStream line output callback.
+    //
+
+    if (ARGUMENT_PRESENT(LineOutputCallback)) {
+        Callback = LineOutputCallback;
+    } else {
+        Callback = DebugStreamLineOutputCallback;
+    }
+
+    //
+    // Initialize aliases.
+    //
+
+    Engine = Session->Engine;
+
+    //
+    // Initialize the Output structure.
+    //
+
+    Success = Session->InitializeDebugEngineOutput(&Output,
+                                                   Session,
+                                                   Session->Allocator,
+                                                   Callback,
+                                                   NULL,
+                                                   NULL,
+                                                   NULL,
+                                                   NULL);
+    if (!Success) {
+        return FALSE;
+    }
+
+    //
+    // Acquire the engine lock and set the current output.
+    //
+
+    AcquireDebugEngineLock(Engine);
+    AcquiredLock = TRUE;
+    Engine->CurrentOutput = &Output;
+
+    //
+    // Enable line output.
+    //
+
+    Output.Flags.AsULong = 0;
+    Output.Flags.EnableLineOutputCallbacks = TRUE;
+
+    //
+    // Set the command on the Output struct.
+    //
+
+    Output.Command = Command;
+
+    //
+    // Execute the given command string.
+    //
+
+    QueryPerformanceCounter(&Output.Timestamp.CommandStart);
+
+    Success = DebugEngineExecuteCommand(&Output);
+
+    QueryPerformanceCounter(&Output.Timestamp.CommandEnd);
+
+    //
+    // Release the engine lock if applicable and return success.
+    //
+
+    if (AcquiredLock) {
+        ReleaseDebugEngineLock(Engine);
+    }
+
+    return Success;
+}
+
+_Use_decl_annotations_
 HRESULT
 STDAPICALLTYPE
 DebugEngineOutputCallback(

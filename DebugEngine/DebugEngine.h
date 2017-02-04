@@ -690,6 +690,80 @@ BOOL
 typedef DEBUG_ENGINE_LIST_SETTINGS *PDEBUG_ENGINE_LIST_SETTINGS;
 
 //
+// Generic static and dynamic command execution structures and typedefs.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_not_held_(Session->Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SESSION_EXECUTE_STATIC_COMMAND)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session,
+    _In_ PCUNICODE_STRING Command,
+    _In_opt_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback
+    );
+typedef DEBUG_ENGINE_SESSION_EXECUTE_STATIC_COMMAND
+      *PDEBUG_ENGINE_SESSION_EXECUTE_STATIC_COMMAND;
+
+typedef union _DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+} DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS) == sizeof(ULONG));
+typedef DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS
+      *PDEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) DEBUG_ENGINE_DYNAMIC_COMMAND {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_OUTPUT)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS Flags;
+
+    //
+    // Number of arguments in the array below.
+    //
+
+    _Field_range_(<=, 64) BYTE NumberOfArguments;
+
+    USHORT Unused[3];
+
+    //
+    // Optional bitmap that can be used to isolate arguments in the array below.
+    //
+
+    ULONGLONG Bitmap;
+
+    PCUNICODE_STRING Arguments;
+
+} DEBUG_ENGINE_DYNAMIC_COMMAND;
+typedef DEBUG_ENGINE_DYNAMIC_COMMAND *PDEBUG_ENGINE_DYNAMIC_COMMAND;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_not_held_(Session->Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SESSION_EXECUTE_DYNAMIC_COMMAND)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session,
+    _In_ PDEBUG_ENGINE_DYNAMIC_COMMAND DynamicCommand,
+    _In_opt_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback
+    );
+typedef DEBUG_ENGINE_SESSION_EXECUTE_DYNAMIC_COMMAND
+      *PDEBUG_ENGINE_SESSION_EXECUTE_DYNAMIC_COMMAND;
+
+//
 // DEBUG_ENGINE_SESSION-related function typedefs, unions and structures.
 //
 // This structure is the main way to interface with the DebugEngine
@@ -780,6 +854,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     PDEBUG_ENGINE_SETTINGS_META SettingsMeta;
     PDEBUG_ENGINE_LIST_SETTINGS ListSettings;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Generic Static/Dynamic Commands.
+    ////////////////////////////////////////////////////////////////////////////
+
+    PDEBUG_ENGINE_SESSION_EXECUTE_STATIC_COMMAND ExecuteStaticCommand;
+    PDEBUG_ENGINE_SESSION_EXECUTE_DYNAMIC_COMMAND ExecuteDynamicCommand;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // End of function pointers.
+    ////////////////////////////////////////////////////////////////////////////
 
     //
     // Rtl structure.
@@ -880,6 +965,7 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
     };
 } DEBUG_ENGINE_SESSION_INIT_FLAGS;
 
+
 //
 // Public function typedefs.
 //
@@ -903,7 +989,6 @@ typedef INTIALIZE_DEBUG_ENGINE_SESSION *PINTIALIZE_DEBUG_ENGINE_SESSION;
 //
 // Inline Functions
 //
-
 
 FORCEINLINE
 _Check_return_

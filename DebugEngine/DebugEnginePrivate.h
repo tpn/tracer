@@ -96,7 +96,13 @@ typedef enum _Enum_is_bitflag_ _DEBUG_ENGINE_COMMAND_ID {
     UnassembleFunctionCommandId         = (1 << 1),
     DisplayTypeCommandId                = (1 << 2),
     SettingsMetaCommandId               = (1 << 3),
-    DebugEngineInvalidCommandId         = SettingsMetaCommandId + 1
+
+    //
+    // Make sure the expression within parenthesis is identical to the last
+    // enumeration above.
+    //
+
+    DebugEngineInvalidCommandId         = (1 << 3) + 1
 } DEBUG_ENGINE_COMMAND_ID;
 
 FORCEINLINE
@@ -422,7 +428,6 @@ typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2
 typedef
 _Check_return_
 _Success_(return != 0)
-_Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_BUILD_COMMAND)(
     _In_ PDEBUG_ENGINE_OUTPUT Output,
@@ -568,6 +573,9 @@ DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2 DebugEngineSetOutputCallbacks2;
 DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK DisplayTypeGetOptionsCallback;
 DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK ExamineSymbolsGetOptionsCallback;
 DEBUG_ENGINE_COMMAND_GET_OPTIONS_CALLBACK UnassembleFunctionGetOptionsCallback;
+
+DEBUG_ENGINE_SESSION_EXECUTE_STATIC_COMMAND
+    DebugEngineSessionExecuteStaticCommand;
 
 //
 // IDebugEventCallbacks

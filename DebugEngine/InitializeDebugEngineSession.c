@@ -323,6 +323,29 @@ Return Value:
     }
 
     //
+    // If a debug settings XML path has been indicated, try load it now.
+    //
+
+    DebuggerSettingsXmlPath = &TracerConfig->Paths.DebuggerSettingsXmlPath;
+    if (IsValidMinimumDirectoryUnicodeString(DebuggerSettingsXmlPath)) {
+
+        //
+        // We need to release the debug engine lock here as it's a SRWLOCK
+        // and thus can't be acquired recursively, and loading settings will
+        // result in DebugEngineExecuteCommand() being called, which will
+        // attempt to acquire the lock.
+        //
+
+        ReleaseDebugEngineLock(Engine);
+        AcquiredLock = FALSE;
+
+        Success = DebugEngineLoadSettings(Session, DebuggerSettingsXmlPath);
+        if (!Success) {
+            goto Error;
+        }
+    }
+
+    //
     // Attach to the process with the debug client.
     //
 
@@ -393,6 +416,7 @@ Return Value:
     //
 
     Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
+    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
 
     //
     // Set miscellaneous fields.
@@ -439,29 +463,6 @@ Return Value:
         );
 
         if (!Session->ExamineSymbolsBasicTypeStringTable) {
-            goto Error;
-        }
-    }
-
-    //
-    // If a debug settings XML path has been indicated, try load it now.
-    //
-
-    DebuggerSettingsXmlPath = &TracerConfig->Paths.DebuggerSettingsXmlPath;
-    if (IsValidMinimumDirectoryUnicodeString(DebuggerSettingsXmlPath)) {
-
-        //
-        // We need to release the debug engine lock here as it's a SRWLOCK
-        // and thus can't be acquired recursively, and loading settings will
-        // result in DebugEngineExecuteCommand() being called, which will
-        // attempt to acquire the lock.
-        //
-
-        ReleaseDebugEngineLock(Engine);
-        AcquiredLock = FALSE;
-
-        Success = DebugEngineLoadSettings(Session, DebuggerSettingsXmlPath);
-        if (!Success) {
             goto Error;
         }
     }
