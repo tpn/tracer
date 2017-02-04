@@ -239,6 +239,35 @@ DebugEngineOutputCallback(
     DEBUG_OUTPUT_MASK OutputMask,
     PCSTR Text
     )
+/*++
+
+Routine Description:
+
+    This routine is our main debug output callback that is called directly by
+    the debugger.  It is responsible for processing text output based on the
+    current DEBUG_ENGINE_OUTPUT structure associated with the engine.  This
+    structure is used to capture both the command and the resulting text output
+    from the debugger.
+
+    The debugger invokes this callback in a somewhat unpredictable fashion.
+    If a caller has requested line-oriented output, we need to buffer the text
+    and do line delineation ourselves, which occupies the vast majority of
+    this routine's logic.
+
+Arguments:
+
+    Engine - Supplies a pointer to the DEBUG_ENGINE to use.
+
+    OutputMask - Supplies the output mask for this chunk of text.
+
+    Text - Supplies a NUL-terminated ANSI string of varying length that contains
+        output from the debugger after a command has been executed.
+
+Return Value:
+
+    S_OK on success, E_FAIL on error.
+
+--*/
 {
     PRTL Rtl;
     ULONG Index;
@@ -266,7 +295,8 @@ DebugEngineOutputCallback(
     PLINKED_PARTIAL_LINE LinkedPartialLine;
 
     //
-    // Reserve a 256 byte (2048 bit/char) stack-allocated bitmap buffer.
+    // Reserve a 256 byte (2048 bit/char) stack-allocated bitmap buffer for
+    // the line ending bitmap.
     //
 
     CHAR StackBitmapBuffer[256];
@@ -413,11 +443,8 @@ DebugEngineOutputCallback(
     }
 
     //
-    // We have at least one line to process if we reach this point.
-    //
-
-    //
-    // Initialize variables prior to the loop.
+    // We have at least one line to process if we reach this point.  Initialize
+    // the line-oriented local variables and then extract the first line.
     //
 
     BitIndex = 0;
