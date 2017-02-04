@@ -5524,9 +5524,9 @@ ClearString(_Inout_ PSTRING String)
 
 FORCEINLINE
 ULONG
-HashUnicodeToAtom(_In_ PWSTR String)
+HashUnicodeToAtom(_In_ PCWSTR String)
 {
-    PWCH Buffer;
+    WCHAR const *Buffer;
     WCHAR Char;
     ULONG Hash;
 
@@ -5542,9 +5542,9 @@ HashUnicodeToAtom(_In_ PWSTR String)
 
 FORCEINLINE
 ULONG
-HashUnicodeStringToAtom(_In_ PUNICODE_STRING String)
+HashUnicodeStringToAtom(_In_ PCUNICODE_STRING String)
 {
-    PWCH Buffer;
+    WCHAR const *Buffer;
     WCHAR Char;
     ULONG Hash;
     USHORT Index;
@@ -5562,9 +5562,9 @@ HashUnicodeStringToAtom(_In_ PUNICODE_STRING String)
 
 FORCEINLINE
 ULONG
-HashAnsiToAtom(_In_ PSTR String)
+HashAnsiToAtom(_In_ PCSTR String)
 {
-    PCH Pointer;
+    CHAR const *Pointer;
     CHAR Char;
     ULONG Hash;
 
@@ -5580,9 +5580,9 @@ HashAnsiToAtom(_In_ PSTR String)
 
 FORCEINLINE
 ULONG
-HashAnsiStringToAtom(_In_ PSTRING String)
+HashAnsiStringToAtom(_In_ PCSTRING String)
 {
-    PCH Buffer;
+    CHAR const *Buffer;
     CHAR Char;
     ULONG Hash;
     USHORT Index;
@@ -5645,7 +5645,7 @@ BOOL
 FORCEINLINE
 VOID
 InlineFindCharsInString(
-    _In_     PSTRING      String,
+    _In_     PCSTRING     String,
     _In_     CHAR         CharToFind,
     _Inout_  PRTL_BITMAP  Bitmap
     )
@@ -5665,9 +5665,9 @@ InlineFindCharsInString(
 FORCEINLINE
 VOID
 InlineFindWideCharsInUnicodeString(
-    _In_ PUNICODE_STRING String,
-    _In_ WCHAR           CharToFind,
-    _In_ PRTL_BITMAP     Bitmap
+    _In_ PCUNICODE_STRING String,
+    _In_ WCHAR            CharToFind,
+    _In_ PRTL_BITMAP      Bitmap
     )
 {
     USHORT Index;
@@ -5685,11 +5685,11 @@ InlineFindWideCharsInUnicodeString(
 FORCEINLINE
 VOID
 InlineFindTwoWideCharsInUnicodeStringReversed(
-    _In_ PUNICODE_STRING String,
-    _In_ WCHAR           Char1ToFind,
-    _In_ WCHAR           Char2ToFind,
-    _In_ PRTL_BITMAP     Bitmap1,
-    _In_ PRTL_BITMAP     Bitmap2
+    _In_ PCUNICODE_STRING String,
+    _In_ WCHAR            Char1ToFind,
+    _In_ WCHAR            Char2ToFind,
+    _In_ PRTL_BITMAP      Bitmap1,
+    _In_ PRTL_BITMAP      Bitmap2
     )
 {
     USHORT Index;
@@ -5714,7 +5714,7 @@ InlineFindTwoWideCharsInUnicodeStringReversed(
 FORCEINLINE
 BOOL
 ConvertUtf16StringToUtf8StringSlow(
-    _In_ PUNICODE_STRING Utf16,
+    _In_ PCUNICODE_STRING Utf16,
     _Out_ PPSTRING Utf8Pointer,
     _In_ PALLOCATOR Allocator,
     _In_ PLARGE_INTEGER TimestampPointer
@@ -5927,7 +5927,7 @@ Error:
 FORCEINLINE
 BOOL
 ConvertUtf16StringToUtf8String(
-    _In_ PUNICODE_STRING Utf16,
+    _In_ PCUNICODE_STRING Utf16,
     _Out_ PPSTRING Utf8Pointer,
     _In_ PALLOCATOR Allocator
     )
