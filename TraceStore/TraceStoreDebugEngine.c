@@ -22,7 +22,13 @@ Abstract:
 INIT_ONCE InitOnceTraceDebugContext = INIT_ONCE_STATIC_INIT;
 PTRACE_DEBUG_CONTEXT GlobalTraceDebugContext = NULL;
 
-#define CRITICAL_SECTION_SPIN_COUNT 1000
+//
+// Define a 2MB initial heap size.
+//
+
+#define HEAP_INITIAL_SIZE (1 << 21)
+
+#define CRITICAL_SECTION_SPIN_COUNT 4000
 
 //
 // AVL routines.
@@ -393,7 +399,7 @@ Return Value:
     ULONG WaitResult;
     ULONG NumberOfWaits;
     PTRACE_DEBUG_CONTEXT DebugContext;
-    HANDLE Events[8];
+    HANDLE Events[10];
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -406,14 +412,16 @@ Return Value:
 
     DebugContext = TraceContext->DebugContext;
 
-    Events[0] = DEBUG_CONTEXT_STORE(TypeInfoTable)->BindCompleteEvent;
-    Events[1] = DEBUG_CONTEXT_STORE(TypeInfoTableEntry)->BindCompleteEvent;
-    Events[2] = DEBUG_CONTEXT_STORE(TypeInfoStringBuffer)->BindCompleteEvent;
-    Events[3] = DEBUG_CONTEXT_STORE(FunctionTable)->BindCompleteEvent;
-    Events[4] = DEBUG_CONTEXT_STORE(FunctionTableEntry)->BindCompleteEvent;
-    Events[5] = DEBUG_CONTEXT_STORE(FunctionAssembly)->BindCompleteEvent;
-    Events[6] = DEBUG_CONTEXT_STORE(ExamineSymbolsLine)->BindCompleteEvent;
-    Events[7] = DEBUG_CONTEXT_STORE(ExamineSymbolsText)->BindCompleteEvent;
+    Events[0] = TRACE_CONTEXT_STORE(TypeInfoTable)->BindCompleteEvent;
+    Events[1] = TRACE_CONTEXT_STORE(TypeInfoTableEntry)->BindCompleteEvent;
+    Events[2] = TRACE_CONTEXT_STORE(TypeInfoStringBuffer)->BindCompleteEvent;
+    Events[3] = TRACE_CONTEXT_STORE(FunctionTable)->BindCompleteEvent;
+    Events[4] = TRACE_CONTEXT_STORE(FunctionTableEntry)->BindCompleteEvent;
+    Events[5] = TRACE_CONTEXT_STORE(FunctionAssembly)->BindCompleteEvent;
+    Events[6] = TRACE_CONTEXT_STORE(ExamineSymbolsLine)->BindCompleteEvent;
+    Events[7] = TRACE_CONTEXT_STORE(ExamineSymbolsText)->BindCompleteEvent;
+    Events[8] = TRACE_CONTEXT_STORE(ExamineSymbol)->BindCompleteEvent;
+    Events[9] = TRACE_CONTEXT_STORE(ExamineSymbolBuffer)->BindCompleteEvent;
 
     NumberOfWaits = ARRAYSIZE(Events);
 
@@ -560,6 +568,21 @@ Return Value:
     }
 
     //
+    // Initialize a non-serialized allocator; the debug engine allocates quite
+    // a lot of temporary memory -- as we're only ever running in a single
+    // threaded context, we can avoid the heap synchronization overhead.
+    //
+
+    Success = InitializeHeapAllocatorExInline(&DebugContext->Allocator,
+                                              HEAP_NO_SERIALIZE,
+                                              HEAP_INITIAL_SIZE,
+                                              0);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
     // Acquire the critical section and initialize the remaining fields.
     //
 
@@ -570,25 +593,8 @@ Return Value:
     DebugContext->ShutdownEvent = ShutdownEvent;
     DebugContext->WorkAvailableEvent = WorkAvailableEvent;
     DebugContext->State = TraceDebugContextStructureCreatedState;
-    InitializeSListHead(&DebugContext->WorkListHead);
-
-#define RESOLVE_STORE(Name)               \
-    DebugContext->TraceStores.##Name = ( \
-        TraceStoreIdToTraceStore(         \
-            TraceStores,                  \
-            TraceStore##Name##Id          \
-        )                                 \
-    )
-
-    RESOLVE_STORE(TypeInfoTable);
-    RESOLVE_STORE(TypeInfoTableEntry);
-    RESOLVE_STORE(TypeInfoStringBuffer);
-    RESOLVE_STORE(FunctionTable);
-    RESOLVE_STORE(FunctionTableEntry);
-    RESOLVE_STORE(FunctionAssembly);
-    RESOLVE_STORE(FunctionSourceCode);
-    RESOLVE_STORE(ExamineSymbolsLine);
-    RESOLVE_STORE(ExamineSymbolsText);
+    //InitializeSListHead(&DebugContext->WorkSListHead);
+    InitializeListHead(&DebugContext->WorkListHead);
 
     ReleaseTraceDebugContextLock(DebugContext);
 
@@ -616,6 +622,10 @@ Error:
     if (WorkAvailableEvent) {
         CloseHandle(WorkAvailableEvent);
         WorkAvailableEvent = NULL;
+    }
+
+    if (DebugContext->Allocator.HeapHandle) {
+        DestroyHeapAllocatorInline(&DebugContext->Allocator);
     }
 
     //
@@ -673,6 +683,7 @@ Return Value:
                                   Callback,
                                   TraceContext,
                                   &DebugContext);
+
     if (!Success) {
         OutputDebugStringA("TraceDebugContext:InitOnceExecuteOnce failed.\n");
         return FALSE;
@@ -863,6 +874,23 @@ Return Value:
         return FALSE;
     }
 
+    if (0) {
+        UNICODE_STRING Command = RTL_CONSTANT_STRING(
+            L".reload /d /f /i /v"
+        );
+        OutputDebugStringW(L"***** Executing: ");
+        OutputDebugStringW(Command.Buffer);
+        //__debugbreak();
+        Success = DebugEngineSession->ExecuteStaticCommand(
+            DebugEngineSession,
+            &Command,
+            NULL
+        );
+        if (!Success) {
+            __debugbreak();
+        }
+    }
+
     OutputDebugStringA("Debug Engine successfully initialized.\n");
 
     TRY_MAPPED_MEMORY_OP {
@@ -967,7 +995,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-ProcessTraceDebugEngineWork(
+ProcessTraceDebugEngineWorkSList(
     PTRACE_DEBUG_CONTEXT DebugContext
     )
 /*++
@@ -991,7 +1019,7 @@ Return Value:
     PSLIST_ENTRY ListEntry;
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
-    ListEntry = InterlockedFlushSList(&DebugContext->WorkListHead);
+    ListEntry = InterlockedFlushSList(&DebugContext->WorkSListHead);
 
     for (; ListEntry != NULL; ListEntry = ListEntry->Next) {
 
@@ -1010,6 +1038,52 @@ Return Value:
 
         DebugContext->NumberOfWorkItemsProcessed++;
     }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+ProcessTraceDebugEngineWork(
+    PTRACE_DEBUG_CONTEXT DebugContext
+    )
+/*++
+
+Routine Description:
+
+    This routine processes work entries pushed to the WorkListHead of the
+    DebugContext.
+
+Arguments:
+
+    DebugContext - Supplies a pointer to a TRACE_DEBUG_CONTEXT structure.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+
+    if (!PopModuleTableEntryFromDebugContext(DebugContext, &ModuleTableEntry)) {
+#ifdef _DEBUG
+        __debugbreak();
+#endif
+        return FALSE;
+    }
+
+    Success = CreateTypeInfoTableForModuleTableEntry(DebugContext,
+                                                     ModuleTableEntry);
+
+    if (!Success) {
+        DebugContext->NumberOfWorkItemsFailed++;
+    } else {
+        DebugContext->NumberOfWorkItemsSucceeded++;
+    }
+
+    DebugContext->NumberOfWorkItemsProcessed++;
 
     return TRUE;
 }
@@ -1053,6 +1127,7 @@ Return Value:
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
+    UNICODE_STRING Python27Dll = RTL_CONSTANT_STRING(L"python27.dll");
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -1093,7 +1168,7 @@ Return Value:
     //
 
     Rtl = TraceContext->Rtl;
-    Allocator = TraceContext->Allocator;
+    Allocator = &DebugContext->Allocator;
     TracerConfig = TraceContext->TracerConfig;
     DebugEngineSession = DebugContext->DebugEngineSession;
 
@@ -1104,15 +1179,18 @@ Return Value:
     // callbacks.
     //
 
-    SecureZeroMemory(&Output, sizeof(DEBUG_ENGINE_OUTPUT));
     Output.SizeOfStruct = sizeof(DEBUG_ENGINE_OUTPUT);
 
     Success = DebugEngineSession->InitializeDebugEngineOutput(
         &Output,
         DebugEngineSession,
         Allocator,
-        TraceDebugEngineExamineSymbolsLineOutputCallback,
-        TraceDebugEngineExamineSymbolsPartialOutputCallback,
+        &TRACE_CONTEXT_STORE(ExamineSymbolsLine)->Allocator,
+        &TRACE_CONTEXT_STORE(ExamineSymbolsText)->Allocator,
+        &TRACE_CONTEXT_STORE(ExamineSymbol)->Allocator,
+        &TRACE_CONTEXT_STORE(ExamineSymbolBuffer)->Allocator,
+        NULL, // LineOutputCallback
+        NULL, // PartialOutputCallback
         TraceDebugEngineExamineSymbolsOutputCompleteCallback,
         DebugContext,
         Path
@@ -1137,8 +1215,8 @@ Return Value:
     //          - /v: verbose
     //
 
-    OutputFlags.EnableLineOutputCallbacks = TRUE;
-    OutputFlags.EnablePartialOutputCallbacks = FALSE;
+    OutputFlags.AsULong = 0;
+    OutputFlags.EnableLineTextAndCustomStructureAllocators = TRUE;
 
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
@@ -1189,304 +1267,13 @@ Return Value:
     return TRUE;
 }
 
-_Use_decl_annotations_
-BOOL
-TraceDebugEngineExamineSymbolsLineOutputCallback(
-    PDEBUG_ENGINE_OUTPUT Output
+VOID
+UnknownBasicType(
+    _In_ PSTRING String
     )
 {
-    PRTL Rtl;
-    CHAR Temp;
-    PCHAR Text;
-    BOOL Success;
-    BOOL IsFunctionPointer;
-    USHORT Length;
-    ULONG Size;
-    SHORT MatchIndex;
-    PCHAR Char;
-    PCHAR End;
-    PSTRING Scope;
-    STRING SymbolSize;
-    STRING Address;
-    STRING BasicType;
-    STRING Function;
-    STRING Parameters;
-    PSTRING DestLine;
-    PSTRING SourceLine;
-    STRING_MATCH Match;
-    ULARGE_INTEGER Addr;
-    USHORT NumberOfParameters;
-    PTRACE_STORE TextTraceStore;
-    PTRACE_STORE LineTraceStore;
-    PTRACE_DEBUG_CONTEXT DebugContext;
-    PSTRING_TABLE StringTable;
-    PDEBUG_ENGINE_SESSION Session;
-    DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE SymbolType;
-    DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE SymbolScope;
-    PRTL_CHAR_TO_INTEGER RtlCharToInteger;
-    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
-
-    HANDLE HeapHandle = NULL;
-    CHAR StackBitmapBuffer[32];
-    RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
-    PRTL_BITMAP BitmapPointer = &Bitmap;
-
-    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
-    Session = DebugContext->DebugEngineSession;
-
-    SourceLine = &Output->Line;
-    End = SourceLine->Buffer + SourceLine->Length;
-
-    LineTraceStore = DebugContext->TraceStores.ExamineSymbolsLine;
-    TextTraceStore = DebugContext->TraceStores.ExamineSymbolsText;
-
-    DestLine = (PSTRING)(
-        LineTraceStore->AllocateRecordsWithTimestamp(
-            LineTraceStore->TraceContext,
-            LineTraceStore,
-            1,
-            sizeof(*SourceLine),
-            &Output->Timestamp.CommandStart
-        )
-    );
-
-    if (!DestLine) {
-        return FALSE;
-    }
-
-    Text = (PCHAR)(
-        TextTraceStore->AllocateRecordsWithTimestamp(
-            TextTraceStore->TraceContext,
-            TextTraceStore,
-            1,
-            SourceLine->Length,
-            &Output->Timestamp.CommandStart
-        )
-    );
-
-    if (!Text) {
-        return FALSE;
-    }
-
-    if (!CopyMemoryQuadwords(Text, SourceLine->Buffer, SourceLine->Length)) {
-        return FALSE;
-    }
-
-    TRY_MAPPED_MEMORY_OP {
-        DestLine->Length = SourceLine->Length;
-        DestLine->MaximumLength = SourceLine->Length;
-        DestLine->Buffer = Text;
-    } CATCH_STATUS_IN_PAGE_ERROR {
-        return FALSE;
-    }
-
-    StringTable = Session->ExamineSymbolsPrefixStringTable;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
-
-    MatchIndex = IsPrefixOfStringInTable(StringTable,
-                                         SourceLine,
-                                         &Match);
-
-    if (MatchIndex == NO_MATCH_FOUND) {
-        return TRUE;
-    }
-
-    Rtl = DebugContext->TraceContext->Rtl;
-    RtlCharToInteger = Rtl->RtlCharToInteger;
-
-    SymbolScope = MatchIndex;
-    Scope = Match.String;
-
-    Length = Match.NumberOfMatchedCharacters;
-    Char = (SourceLine->Buffer + Length);
-
-    while (*(++Char) == ' ');
-
-    Address.Length = sizeof("00000000`00000000")-1;
-    Address.MaximumLength = Address.Length;
-    Address.Buffer = Char;
-
-    if (Address.Buffer[8] != '`') {
-        __debugbreak();
-        return TRUE;
-    }
-
-    Address.Buffer[8] = '\0';
-    if (FAILED(RtlCharToInteger(Address.Buffer, 16, &Addr.HighPart))) {
-        __debugbreak();
-        NOTHING;
-    }
-    Address.Buffer[8] = '`';
-
-    Address.Buffer[17] = '\0';
-    if (FAILED(RtlCharToInteger(Address.Buffer+9, 16, &Addr.LowPart))) {
-        __debugbreak();
-        NOTHING;
-    }
-    Address.Buffer[17] = ' ';
-
-    Char = Address.Buffer + Address.Length;
-
-    while (*(++Char) == ' ');
-
-    SymbolSize.Buffer = Char;
-
-    while (*Char++ != ' ');
-
-    SymbolSize.Length = (USHORT)(Char - SymbolSize.Buffer) - 1;
-    SymbolSize.MaximumLength = SymbolSize.Length;
-
-    BasicType.Buffer = Char;
-
-    Temp = SymbolSize.Buffer[SymbolSize.Length];
-    SymbolSize.Buffer[SymbolSize.Length] = '\0';
-    if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 0, &Size))) {
-        __debugbreak();
-        NOTHING;
-    }
-
-    SymbolSize.Buffer[SymbolSize.Length] = Temp;
-
-    BasicType.Length = (USHORT)(End - BasicType.Buffer) - 1;
-    BasicType.MaximumLength = BasicType.Length;
-
-    StringTable = Session->ExamineSymbolsBasicTypeStringTable;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
-
-    MatchIndex = IsPrefixOfStringInTable(StringTable,
-                                         &BasicType,
-                                         &Match);
-
-    if (MatchIndex == NO_MATCH_FOUND) {
-        __debugbreak();
-        return TRUE;
-    }
-
-    SymbolType = MatchIndex;
-
-    if (SymbolType != FunctionType) {
-        return TRUE;
-    }
-
-    //
-    // We've found a function.  Advance to the function name.
-    //
-
-    Char += Match.NumberOfMatchedCharacters + 1;
-
-    IsFunctionPointer = (*Char == '*');
-
-    if (IsFunctionPointer) {
-        return TRUE;
-    }
-
-    while (*(Char++) != '!');
-
-    Function.Buffer = Char;
-
-    while (*(Char++) != ' ');
-
-    Function.Length = (USHORT)(Char - Function.Buffer) - 1;
-    Function.MaximumLength = Function.Length;
-
-    while (*(Char++) != '(');
-
-    Parameters.Buffer = Char;
-    Parameters.Length = (USHORT)(End - Parameters.Buffer) - 2;
-    Parameters.MaximumLength = Parameters.Length;
-
-    Success = Rtl->CreateBitmapIndexForString(Rtl,
-                                              &Parameters,
-                                              ',',
-                                              &HeapHandle,
-                                              &BitmapPointer,
-                                              FALSE,
-                                              NULL);
-
-    NumberOfParameters = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
-
-    if (NumberOfParameters == 0) {
-        PULONG ULongBuffer = (PULONG)Parameters.Buffer;
-        PULONG Void = (PULONG)"void";
-        BOOL IsVoid = (*(ULongBuffer) == *(Void));
-
-        if (!IsVoid) {
-            NumberOfParameters = 1;
-        }
-    }
-
-//End:
-    if (HeapHandle) {
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)StackBitmapBuffer) {
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
-    }
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-TraceDebugEngineExamineSymbolsPartialOutputCallback(
-    PDEBUG_ENGINE_OUTPUT Output
-    )
-/*++
-
-Routine Description:
-
-    This is the callback target invoked by the debug engine when the examine
-    symbols command generates output.
-
-Arguments:
-
-    Output - Supplies a pointer to the active DEBUG_ENGINE_OUTPUT.
-
-Return Value:
-
-    TRUE on success, FALSE on error.
-
---*/
-{
-    PCHAR Buffer;
-    USHORT SizeInBytes;
-    PSTRING Chunk;
-    PTRACE_STORE TraceStore;
-    PTRACE_DEBUG_CONTEXT DebugContext;
-
-    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
-
-    Chunk = &Output->Chunk;
-    SizeInBytes = Chunk->Length;
-
-    //
-    // Allocate space from the TypeInfoStringBuffer store, copy the contents
-    // over.
-    //
-
-    TraceStore = DebugContext->TraceStores.TypeInfoStringBuffer;
-
-    Buffer = (PCHAR)(
-        TraceStore->AllocateRecordsWithTimestamp(
-            TraceStore->TraceContext,
-            TraceStore,
-            1,
-            Chunk->Length,
-            &Output->Timestamp.CommandStart
-        )
-    );
-
-    if (!Buffer) {
-        return FALSE;
-    }
-
-    if (!CopyMemoryQuadwords(Buffer, Chunk->Buffer, SizeInBytes)) {
-        return FALSE;
-    }
-
-    return TRUE;
+    OutputDebugStringA("DebugEngine: Unknown Type: ");
+    PrintStringToDebugStream(String);
 }
 
 _Use_decl_annotations_
@@ -1511,26 +1298,6 @@ Return Value:
 
 --*/
 {
-    BOOL ContiguousMapping;
-    PCHAR ExpectedEnd;
-    PCHAR ActualEnd;
-    PTRACE_STORE TraceStore;
-
-    PTRACE_DEBUG_CONTEXT DebugContext;
-
-    DebugContext = (PTRACE_DEBUG_CONTEXT)Output->Context;
-
-    TraceStore = DebugContext->TraceStores.TypeInfoStringBuffer;
-
-    ExpectedEnd = Output->Buffer + Output->TotalBufferSizeInBytes;
-    ActualEnd = (PCHAR)TraceStore->MemoryMap->NextAddress;
-
-    ContiguousMapping = (ExpectedEnd == ActualEnd);
-
-    if (!ContiguousMapping) {
-        //__debugbreak();
-    }
-
     return TRUE;
 }
 

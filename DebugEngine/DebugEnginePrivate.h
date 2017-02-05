@@ -222,6 +222,14 @@ struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_COMMAND_TEMPLATE {
 
     PSTRING CommandDisplayName;
 
+    //
+    // Optional line parsing routine that converts the line output from the
+    // command into a custom structure (or array of custom structures).
+    //
+
+    PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+        ParseLinesIntoCustomStructureCallback;
+
 } DEBUG_ENGINE_COMMAND_TEMPLATE;
 typedef DEBUG_ENGINE_COMMAND_TEMPLATE *PDEBUG_ENGINE_COMMAND_TEMPLATE;
 
@@ -458,6 +466,16 @@ BOOL
     );
 typedef DEBUG_ENGINE_LOAD_SETTINGS *PDEBUG_ENGINE_LOAD_SETTINGS;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK DEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output
+    );
+typedef DEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK
+      *PDEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK;
+
 //
 // Inline functions for copying callback vtables to the engine.
 //
@@ -541,6 +559,125 @@ CopyInterfaceId(
 }
 
 //
+// DebugEngineExecuteCommand-related typedefs and inline functions.
+//
+
+FORCEINLINE
+VOID
+UnknownBasicType(
+    _In_ PSTRING String
+    )
+{
+    OutputDebugStringA("DebugEngine: Unknown Type: ");
+    PrintStringToDebugStream(String);
+}
+
+FORCEINLINE
+BOOL
+DispatchOutputLineCallbacks(
+    _In_ PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    BOOL Success;
+    BOOL SavingLineSuccess;
+
+    Output->State.DispatchingLineCallbacks = TRUE;
+
+    Output->NumberOfLines++;
+
+    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
+        Output->State.SavingOutputLine = TRUE;
+        SavingLineSuccess = Output->SaveOutputLine(Output);
+        Output->State.SavingOutputLine = FALSE;
+        if (!SavingLineSuccess) {
+            Output->State.SavingOutputLineFailed = TRUE;
+        } else {
+            Output->State.SavingOutputLineSucceeded = TRUE;
+        }
+    }
+
+    if (Output->Flags.EnableLineOutputCallbacks) {
+        Output->State.InLineOutputCallback = TRUE;
+        Success = Output->LineOutputCallback(Output);
+        Output->State.InLineOutputCallback = FALSE;
+        if (!Success) {
+            Output->State.LineOutputCallbackFailed = TRUE;
+        } else {
+            Output->State.LineOutputCallbackSucceeded = TRUE;
+        }
+    }
+
+    Output->State.DispatchingLineCallbacks = FALSE;
+    Success = (SavingLineSuccess && Success);
+    if (!Success) {
+        Output->State.DispatchingLineCallbacksFailed = TRUE;
+    } else {
+        Output->State.DispatchingLineCallbacksFailed = FALSE;
+    }
+
+    return Success;
+}
+
+FORCEINLINE
+BOOL
+DispatchOutputCompleteCallbacks(
+    _In_ PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    BOOL Success;
+    BOOL ParserSuccess;
+    PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK ParseLines;
+    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputComplete;
+
+    Output->State.DispatchingOutputCompleteCallbacks = TRUE;
+
+    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
+        Output->State.ParsingLinesIntoCustomStructure = TRUE;
+        ParseLines = Output->ParseLinesIntoCustomStructureCallback;
+        TRY_MAPPED_MEMORY_OP {
+            ParserSuccess = ParseLines(Output);
+        } CATCH_STATUS_IN_PAGE_ERROR {
+            ParserSuccess = FALSE;
+            Output->State.StatusInPageError = TRUE;
+        }
+        Output->State.ParsingLinesIntoCustomStructure = FALSE;
+        if (!ParserSuccess) {
+            Output->State.ParsingLinesIntoCustomStructureFailed = TRUE;
+        } else {
+            Output->State.ParsingLinesIntoCustomStructureSucceeded = TRUE;
+        }
+    }
+
+    if (Output->OutputCompleteCallback) {
+        Output->State.InOutputCompleteCallback = TRUE;
+        OutputComplete = Output->OutputCompleteCallback;
+        TRY_MAPPED_MEMORY_OP {
+            Success = OutputComplete(Output);
+        } CATCH_STATUS_IN_PAGE_ERROR {
+            Success = FALSE;
+            Output->State.StatusInPageError = TRUE;
+        }
+        Output->State.InOutputCompleteCallback = FALSE;
+        if (!Success) {
+            Output->State.OutputCompleteCallbackFailed = TRUE;
+        } else {
+            Output->State.OutputCompleteCallbackSucceeded = TRUE;
+        }
+    }
+
+    Output->State.DispatchingOutputCompleteCallbacks = FALSE;
+    Success = (ParserSuccess && Success);
+
+    if (!Success) {
+        Output->State.DispatchingOutputCompleteCallbackFailed = TRUE;
+    } else {
+        Output->State.DispatchingOutputCompleteCallbackSucceeded = TRUE;
+    }
+
+    return Success;
+}
+
+//
 // Private function declarations.
 //
 
@@ -556,12 +693,16 @@ DEBUG_ENGINE_EXECUTE_COMMAND DebugEngineExecuteCommand;
 DEBUG_ENGINE_OUTPUT_CALLBACK DebugEngineOutputCallback;
 DEBUG_ENGINE_OUTPUT_CALLBACK2 DebugEngineOutputCallback2;
 
+DEBUG_ENGINE_SAVE_OUTPUT_LINE DebugEngineSaveOutputLine;
 DEBUG_ENGINE_LINE_OUTPUT_CALLBACK DebugStreamLineOutputCallback;
 DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK DummyOutputCompleteCallback;
 
 DEBUG_ENGINE_DISPLAY_TYPE DebugEngineDisplayType;
 DEBUG_ENGINE_EXAMINE_SYMBOLS DebugEngineExamineSymbols;
 DEBUG_ENGINE_UNASSEMBLE_FUNCTION DebugEngineUnassembleFunction;
+
+DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+    ExamineSymbolsParseLinesIntoCustomStructureCallback;
 
 DEBUG_ENGINE_SETTINGS_META DebugEngineSettingsMeta;
 DEBUG_ENGINE_LIST_SETTINGS DebugEngineListSettings;

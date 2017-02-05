@@ -315,6 +315,8 @@ typedef WCHAR **PPWSTR;
 
 typedef const SHORT CSHORT;
 
+#define MAX_USHORT (USHORT)0xffff
+
 typedef struct _RTL *PRTL;
 
 typedef struct _STRING {
@@ -333,6 +335,28 @@ typedef struct _UNICODE_STRING {
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING, ***PPPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 #define UNICODE_NULL ((WCHAR)0)
+
+typedef struct _LINKED_STRING {
+    LIST_ENTRY ListEntry;
+    union {
+        struct {
+            USHORT Length;
+            USHORT MaximumLength;
+            LONG   Hash;
+            union {
+                PCHAR Buffer;
+                PWCHAR WideBuffer;
+            };
+        };
+        STRING String;
+        UNICODE_STRING Unicode;
+    };
+} LINKED_STRING;
+typedef LINKED_STRING *PLINKED_STRING;
+typedef LINKED_STRING **PPLINKED_STRING;
+typedef LINKED_STRING LINKED_LINE;
+typedef LINKED_LINE  *PLINKED_LINE;
+typedef LINKED_LINE **PPLINKED_LINE;
 
 #include "Time.h"
 #include "Memory.h"
@@ -1612,29 +1636,41 @@ typedef __SECURITY_INIT_COOKIE *P__SECURITY_INIT_COOKIE;
 // Prefix Helpers
 //
 
-typedef BOOLEAN (NTAPI *PRTL_PREFIX_STRING)(
+typedef
+BOOLEAN
+(NTAPI RTL_PREFIX_STRING)(
     _In_ PCSTRING String1,
     _In_ PCSTRING String2,
     _In_ BOOLEAN CaseInSensitive
     );
+typedef RTL_PREFIX_STRING *PRTL_PREFIX_STRING;
 
-typedef BOOLEAN (NTAPI *PRTL_SUFFIX_STRING)(
+typedef
+BOOLEAN
+(NTAPI RTL_SUFFIX_STRING)(
     _In_ PCSTRING String1,
     _In_ PCSTRING String2,
     _In_ BOOLEAN CaseInSensitive
     );
+typedef RTL_SUFFIX_STRING *PRTL_SUFFIX_STRING;
 
-typedef BOOLEAN (NTAPI *PRTL_PREFIX_UNICODE_STRING)(
+typedef
+BOOLEAN
+(NTAPI RTL_PREFIX_UNICODE_STRING)(
     _In_ PCUNICODE_STRING String1,
     _In_ PCUNICODE_STRING String2,
     _In_ BOOLEAN CaseInSensitive
     );
+typedef RTL_PREFIX_UNICODE_STRING *PRTL_PREFIX_UNICODE_STRING;
 
-typedef BOOLEAN (NTAPI *PRTL_SUFFIX_UNICODE_STRING)(
+typedef
+BOOLEAN
+(NTAPI RTL_SUFFIX_UNICODE_STRING)(
     _In_ PCUNICODE_STRING String1,
     _In_ PCUNICODE_STRING String2,
     _In_ BOOLEAN CaseInSensitive
     );
+typedef RTL_SUFFIX_UNICODE_STRING *PRTL_SUFFIX_UNICODE_STRING;
 
 //
 // Splay Links
@@ -5596,6 +5632,54 @@ HashAnsiStringToAtom(_In_ PCSTRING String)
     }
 
     return Hash;
+}
+
+FORCEINLINE
+VOID
+PrintStringToDebugStream(
+    _In_ PSTRING String
+    )
+{
+    CHAR Temp = String->Buffer[String->Length];
+    String->Buffer[String->Length] = '\0';
+    OutputDebugStringA(String->Buffer);
+    String->Buffer[String->Length] = Temp;
+}
+
+FORCEINLINE
+VOID
+PrintUnicodeStringToDebugStream(
+    _In_ PUNICODE_STRING String
+    )
+{
+    USHORT Index = String->Length >> 1;
+    WCHAR Temp = String->Buffer[Index];
+    String->Buffer[Index] = L'\0';
+    OutputDebugStringW(String->Buffer);
+    String->Buffer[Index] = Temp;
+}
+
+FORCEINLINE
+VOID
+PrintAsciiToDebugStream(
+    _In_ PSTR Text,
+    _In_opt_ SIZE_T Length
+    )
+{
+    STRING String;
+
+    if (!Length) {
+        Length = strlen(Text);
+    }
+
+    //
+    // Cap the length at MAX_USHORT.
+    //
+
+    String.Length = (USHORT)(min(Length, (SIZE_T)MAX_USHORT));
+    String.MaximumLength = String.Length;
+    String.Buffer = Text;
+    PrintStringToDebugStream(&String);
 }
 
 FORCEINLINE

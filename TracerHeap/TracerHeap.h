@@ -79,14 +79,6 @@ extern "C" {
 // Default heap routines that use the kernel32 heap routines.
 //
 
-TRACER_HEAP_API MALLOC DefaultHeapMalloc;
-TRACER_HEAP_API CALLOC DefaultHeapCalloc;
-TRACER_HEAP_API REALLOC DefaultHeapRealloc;
-TRACER_HEAP_API FREE DefaultHeapFree;
-TRACER_HEAP_API FREE_POINTER DefaultHeapFreePointer;
-TRACER_HEAP_API INITIALIZE_ALLOCATOR DefaultHeapInitializeAllocator;
-TRACER_HEAP_API DESTROY_ALLOCATOR DefaultHeapDestroyAllocator;
-
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -95,7 +87,18 @@ BOOL
     _In_ PALLOCATOR Allocator
     );
 typedef INITIALIZE_HEAP_ALLOCATOR *PINITIALIZE_HEAP_ALLOCATOR;
-TRACER_HEAP_API INITIALIZE_HEAP_ALLOCATOR InitializeHeapAllocator;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_HEAP_ALLOCATOR_EX)(
+    _In_ PALLOCATOR Allocator,
+    _In_ DWORD HeapCreateOptions,
+    _In_ SIZE_T InitialSize,
+    _In_ SIZE_T MaximumSize
+    );
+typedef INITIALIZE_HEAP_ALLOCATOR_EX *PINITIALIZE_HEAP_ALLOCATOR_EX;
 
 typedef
 VOID
@@ -104,7 +107,101 @@ VOID
     );
 typedef DESTROY_HEAP_ALLOCATOR *PDESTROY_HEAP_ALLOCATOR;
 typedef DESTROY_HEAP_ALLOCATOR **PPDESTROY_HEAP_ALLOCATOR;
+
+//
+// Export symbols.
+//
+
+#pragma component(browser, off)
+TRACER_HEAP_API MALLOC DefaultHeapMalloc;
+TRACER_HEAP_API CALLOC DefaultHeapCalloc;
+TRACER_HEAP_API REALLOC DefaultHeapRealloc;
+TRACER_HEAP_API FREE DefaultHeapFree;
+TRACER_HEAP_API FREE_POINTER DefaultHeapFreePointer;
+TRACER_HEAP_API INITIALIZE_ALLOCATOR DefaultHeapInitializeAllocator;
+TRACER_HEAP_API DESTROY_ALLOCATOR DefaultHeapDestroyAllocator;
+TRACER_HEAP_API INITIALIZE_HEAP_ALLOCATOR InitializeHeapAllocator;
+TRACER_HEAP_API INITIALIZE_HEAP_ALLOCATOR_EX InitializeHeapAllocatorEx;
 TRACER_HEAP_API DESTROY_HEAP_ALLOCATOR DestroyHeapAllocator;
+#pragma component(browser, on)
+
+//
+// Inline functions.
+//
+
+FORCEINLINE
+BOOLEAN
+InitializeHeapAllocatorExInline(
+    _In_ PALLOCATOR Allocator,
+    _In_ DWORD HeapCreateOptions,
+    _In_ SIZE_T InitialSize,
+    _In_ SIZE_T MaximumSize
+    )
+{
+    HANDLE HeapHandle;
+
+    if (!Allocator) {
+        return FALSE;
+    }
+
+    HeapHandle = HeapCreate(HeapCreateOptions, InitialSize, MaximumSize);
+    if (!HeapHandle) {
+        return FALSE;
+    }
+
+    InitializeAllocator(
+        Allocator,
+        Allocator,
+        DefaultHeapMalloc,
+        DefaultHeapCalloc,
+        DefaultHeapRealloc,
+        DefaultHeapFree,
+        DefaultHeapFreePointer,
+        DefaultHeapInitializeAllocator,
+        DefaultHeapDestroyAllocator,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        HeapHandle
+    );
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOLEAN
+InitializeHeapAllocatorInline(
+    _In_ PALLOCATOR Allocator
+    )
+{
+    return InitializeHeapAllocatorExInline(Allocator, 0, 0, 0);
+}
+
+FORCEINLINE
+BOOLEAN
+InitializeNonSerializedHeapAllocatorInline(
+    _In_ PALLOCATOR Allocator
+    )
+{
+    return InitializeHeapAllocatorExInline(Allocator, HEAP_NO_SERIALIZE, 0, 0);
+}
+
+FORCEINLINE
+VOID
+DestroyHeapAllocatorInline(
+    _In_ PALLOCATOR Allocator
+    )
+{
+    if (Allocator->HeapHandle) {
+        HeapDestroy(Allocator->HeapHandle);
+    }
+
+    return;
+}
+
 
 #ifdef __cplusplus
 } // extern "C"

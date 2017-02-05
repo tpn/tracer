@@ -284,9 +284,6 @@ Return Value:
     );
 
     //
-    // If a string table module has been
-
-    //
     // Initialize and acquire the debug engine lock.
     //
 
@@ -323,26 +320,104 @@ Return Value:
     }
 
     //
-    // If a debug settings XML path has been indicated, try load it now.
+    // Set the command function pointers.
     //
 
-    DebuggerSettingsXmlPath = &TracerConfig->Paths.DebuggerSettingsXmlPath;
-    if (IsValidMinimumDirectoryUnicodeString(DebuggerSettingsXmlPath)) {
+    Session->Destroy = DestroyDebugEngineSession;
+    Session->DisplayType = DebugEngineDisplayType;
+    Session->ExamineSymbols = DebugEngineExamineSymbols;
+    Session->UnassembleFunction = DebugEngineUnassembleFunction;
+
+    //
+    // Set the meta command function pointers.
+    //
+
+    Session->SettingsMeta = DebugEngineSettingsMeta;
+    Session->ListSettings = DebugEngineListSettings;
+
+    //
+    // Set other function pointers.
+    //
+
+    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
+    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
+
+    //
+    // Set miscellaneous fields.
+    //
+
+    Session->Rtl = Rtl;
+    Session->Allocator = Allocator;
+    Session->TracerConfig = TracerConfig;
+
+    //
+    // Set StringTable related fields.
+    //
+
+    if (CreateStringTableFromDelimitedString) {
 
         //
-        // We need to release the debug engine lock here as it's a SRWLOCK
-        // and thus can't be acquired recursively, and loading settings will
-        // result in DebugEngineExecuteCommand() being called, which will
-        // attempt to acquire the lock.
+        // Initialize the string table constructor function pointer and the
+        // string array and table allocators.
         //
 
-        ReleaseDebugEngineLock(Engine);
-        AcquiredLock = FALSE;
+        Session->CreateStringTableFromDelimitedString = (
+            CreateStringTableFromDelimitedString
+        );
+        Session->StringArrayAllocator = StringArrayAllocator;
+        Session->StringTableAllocator = StringTableAllocator;
 
-        Success = DebugEngineLoadSettings(Session, DebuggerSettingsXmlPath);
-        if (!Success) {
+        //
+        // Create the string table for the examine symbols prefix output.
+        //
+
+        Session->ExamineSymbolsPrefixStringTable = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &ExamineSymbolsPrefixes,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->ExamineSymbolsPrefixStringTable) {
             goto Error;
         }
+
+        //
+        // Create the string tables for the examine symbols type output.
+        //
+
+        Session->ExamineSymbolsBasicTypeStringTable1 = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &ExamineSymbolsBasicTypes1,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->ExamineSymbolsBasicTypeStringTable1) {
+            goto Error;
+        }
+
+        Session->ExamineSymbolsBasicTypeStringTable2 = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &ExamineSymbolsBasicTypes2,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->ExamineSymbolsBasicTypeStringTable2) {
+            goto Error;
+        }
+
+        Session->NumberOfBasicTypeStringTables = 2;
     }
 
     //
@@ -396,75 +471,33 @@ Return Value:
     );
 
     //
-    // Set the command function pointers.
+    // If a debug settings XML path has been indicated, try load it now.
     //
 
-    Session->Destroy = DestroyDebugEngineSession;
-    Session->DisplayType = DebugEngineDisplayType;
-    Session->ExamineSymbols = DebugEngineExamineSymbols;
-    Session->UnassembleFunction = DebugEngineUnassembleFunction;
+    DebuggerSettingsXmlPath = &TracerConfig->Paths.DebuggerSettingsXmlPath;
+    if (IsValidMinimumDirectoryUnicodeString(DebuggerSettingsXmlPath)) {
 
-    //
-    // Set the meta command function pointers.
-    //
+        //
+        // We need to release the debug engine lock here as it's a SRWLOCK
+        // and thus can't be acquired recursively, and loading settings will
+        // result in DebugEngineExecuteCommand() being called, which will
+        // attempt to acquire the lock.
+        //
 
-    Session->SettingsMeta = DebugEngineSettingsMeta;
-    Session->ListSettings = DebugEngineListSettings;
+        ReleaseDebugEngineLock(Engine);
+        AcquiredLock = FALSE;
 
-    //
-    // Set other function pointers.
-    //
-
-    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
-    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
-
-    //
-    // Set miscellaneous fields.
-    //
-
-    Session->Rtl = Rtl;
-    Session->Allocator = Allocator;
-    Session->TracerConfig = TracerConfig;
-
-    //
-    // Set StringTable related fields.
-    //
-
-    if (CreateStringTableFromDelimitedString) {
-
-        Session->CreateStringTableFromDelimitedString = (
-            CreateStringTableFromDelimitedString
-        );
-        Session->StringArrayAllocator = StringArrayAllocator;
-        Session->StringTableAllocator = StringTableAllocator;
-
-        Session->ExamineSymbolsPrefixStringTable = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringArrayAllocator,
-                StringTableAllocator,
-                &ExamineSymbolsPrefixes,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->ExamineSymbolsPrefixStringTable) {
+        Success = DebugEngineLoadSettings(Session, DebuggerSettingsXmlPath);
+        if (!Success) {
             goto Error;
         }
 
-        Session->ExamineSymbolsBasicTypeStringTable = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringArrayAllocator,
-                StringTableAllocator,
-                &ExamineSymbolsBasicTypes,
-                StringTableDelimiter
-            )
-        );
+        //
+        // Re-acquire the lock.
+        //
 
-        if (!Session->ExamineSymbolsBasicTypeStringTable) {
-            goto Error;
-        }
+        AcquireDebugEngineLock(Engine);
+        AcquiredLock = TRUE;
     }
 
     //

@@ -93,6 +93,12 @@ DEBUG_ENGINE_COMMAND_TEMPLATE ExamineSymbolsCommandTemplate = {
 
     &ExamineSymbolsCommandDisplayName,
 
+    //
+    // ParseLinesIntoCustomStructureCallback
+    //
+
+    ExamineSymbolsParseLinesIntoCustomStructureCallback,
+
 };
 
 //
@@ -174,6 +180,12 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
     //
 
     &UnassembleFunctionCommandDisplayName,
+
+    //
+    // ParseLinesIntoCustomStructureCallback
+    //
+
+    NULL,
 
 };
 
@@ -257,6 +269,12 @@ DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate = {
 
     &DisplayTypeCommandDisplayName,
 
+    //
+    // ParseLinesIntoCustomStructureCallback
+    //
+
+    NULL,
+
 };
 
 //
@@ -334,6 +352,12 @@ DEBUG_ENGINE_COMMAND_TEMPLATE SettingsMetaCommandTemplate = {
     //
 
     &SettingsMetaCommandDisplayName,
+
+    //
+    // ParseLinesIntoCustomStructureCallback
+    //
+
+    NULL,
 
 };
 

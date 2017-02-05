@@ -88,17 +88,65 @@ BOOL
 typedef DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK
       *PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_SAVE_OUTPUT_LINE)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_SAVE_OUTPUT_LINE *PDEBUG_ENGINE_SAVE_OUTPUT_LINE;
+
+typedef
+BOOL
+(CALLBACK DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+      *PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK;
+
 typedef union _DEBUG_ENGINE_OUTPUT_STATE {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Transient state flags.
+        //
+
         ULONG Initialized:1;
         ULONG CommandBuilt:1;
         ULONG CommandExecuting:1;
         ULONG InPartialOutputCallback:1;
+        ULONG DispatchingLineCallbacks:1;
+        ULONG SavingOutputLine:1;
+        ULONG InLineOutputCallback:1;
+        ULONG DispatchingOutputCompleteCallbacks:1;
+        ULONG ParsingLinesIntoCustomStructure:1;
+        ULONG InOutputCompleteCallback:1;
         ULONG CommandComplete:1;
+
+        //
+        // Final state flags.
+        //
+
         ULONG Failed:1;
         ULONG Succeeded:1;
+        ULONG StatusInPageError:1;
+        ULONG SavingOutputLineFailed:1;
+        ULONG SavingOutputLineSucceeded:1;
+        ULONG ExecuteCommandFailed:1;
+        ULONG ExecuteCommandSucceeded:1;
+        ULONG LineOutputCallbackFailed:1;
+        ULONG LineOutputCallbackSucceeded:1;
+        ULONG DispatchingLineCallbacksFailed:1;
+        ULONG DispatchingLineCallbacksSucceeded:1;
+        ULONG OutputCompleteCallbackFailed:1;
+        ULONG OutputCompleteCallbackSucceeded:1;
+        ULONG DispatchingOutputCompleteCallbackFailed:1;
+        ULONG DispatchingOutputCompleteCallbackSucceeded:1;
+        ULONG ParsingLinesIntoCustomStructureFailed:1;
+        ULONG ParsingLinesIntoCustomStructureSucceeded:1;
     };
 } DEBUG_ENGINE_OUTPUT_STATE;
 C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_STATE) == sizeof(ULONG));
@@ -143,6 +191,22 @@ typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
         //
 
         ULONG EnableLineOutputCallbacks:1;
+
+        //
+        // When set, indicates the caller has provided line, text and custom
+        // structure allocators, which will be automatically called to persist
+        // lines (LINKED_LINE structs pointing to individual lines), text and
+        // custom structures.
+        //
+
+        ULONG EnableLineTextAndCustomStructureAllocators:1;
+
+        //
+        // When set, invokes a parser routine against the command's output, if
+        // applicable.
+        //
+
+        ULONG EnableOutputParsingToCustomStructure:1;
 
         //
         // When set, indicates the caller wants wide character (WCHAR) output.
@@ -260,15 +324,65 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback;
 
     //
-    // The following buffer is intended to point to a contiguous text buffer
-    // that contains all partial output chunks and whose size is governed by
-    // the TotalBufferLengthInChars and TotalBufferSizeInBytes fields above.
+    // Internal function pointer invoked when saving lines.
     //
 
+    PDEBUG_ENGINE_SAVE_OUTPUT_LINE SaveOutputLine;
+
+    //
+    // Allocators that will be used to save line and text information
+    // automatically as part of output callback processing.
+    //
+
+    PALLOCATOR LineAllocator;
+    PALLOCATOR TextAllocator;
+
+    //
+    // A custom allocator that will be used for allocating instances of a
+    // command's specialized output, e.g. DEBUG_ENGINE_EXAMINED_SYMBOL for
+    // the ExamineSymbols() command.
+    //
+
+    PALLOCATOR CustomStructureAllocator;
+
+    //
+    // A custom allocator that can be used for secondary allocations related to
+    // persisting the main custom structure.  This is used, for example, to
+    // allocate individual STRING structures that describe an examined symbol's
+    // function arguments.
+    //
+
+    PALLOCATOR CustomStructureSecondaryAllocator;
+
+    //
+    // If custom allocation is being done, the following string will refer to
+    // the name of the structure that was allocated.  This will be backed by
+    // readonly memory within the DebugEngine DLL and must not be modified.
+    //
+
+    PCSTRING CustomStructureName;
+
+    //
+    // Pointer to the custom structure.  Examined symbols will be an array based
+    // at the indicated address; displayed types and unassembled functions will
+    // be single records.
+    //
+
+    ULONG NumberOfCustomStructures;
     union {
-        PSTR Buffer;
-        PWSTR BufferWide;
+        PVOID CustomStructure;
+        PVOID FirstCustomStructure;
+        struct _DEBUG_ENGINE_DISPLAYED_TYPE *DisplayedType;
+        struct _DEBUG_ENGINE_EXAMINED_SYMBOL *ExaminedSymbols;
+        struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION *UnassembledFunction;
     };
+
+    //
+    // Internal pointer to the relevant command's line parsing function.
+    //
+
+    PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+        ParseLinesIntoCustomStructureCallback;
 
     //
     // If line-oriented callback has been requested, the following structure
@@ -279,6 +393,78 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
         STRING Line;
         UNICODE_STRING LineWide;
     };
+
+    //
+    // Saved lines.  NumberOfSavedLines should match NumberOfLines when the
+    // completing the output callback if the caller has requested line and
+    // text persistence.  NumberOfSavedBytes should match TotalBufferSizeInBytes
+    // at the same point.
+    //
+
+    ULONG NumberOfSavedLines;
+    ULONG NumberOfSavedBytes;
+    LIST_ENTRY SavedLinesListHead;
+
+    //
+    // Track the contiguous nature of the underlying line text allocations.
+    //
+
+    struct {
+
+        //
+        // When set, indicates all buffers for the line allocations were
+        // contiguous; i.e. first line's buffer can be used to access the
+        // entire text output of the command.
+        //
+
+        ULONG Contiguous:1;
+
+        //
+        // When set, indicates the opposite of the above; there was at least
+        // one buffer that broke the contiguous memory layout.  The field
+        // FirstDiscontiguousBufferIndex will capture for which line this
+        // happened.
+        //
+
+        ULONG Discontiguous:1;
+    } SavedLineBufferAllocationState;
+
+    //
+    // 0-based index of the first discontiguous buffer, if any.
+    //
+
+    ULONG FirstDiscontiguousBufferIndex;
+    PCSTR FirstSavedLineBuffer;
+
+    //
+    // Track the contiguous nature of the linked line structure allocations.
+    //
+
+    struct {
+
+        //
+        // When set, indicates all LINKED_LINEs allocated were contiguous.
+        //
+
+        ULONG Contiguous:1;
+
+        //
+        // When set, indicates the opposite of the above; there was at least
+        // one buffer that broke the contiguous memory layout.  The field
+        // FirstDiscontiguousBufferIndex will capture which line this happened
+        // for.
+        //
+
+        ULONG Discontiguous:1;
+
+    } SavedLineAllocationState;
+
+    //
+    // 0-based index of the first discontiguous linked line, if any.
+    //
+
+    ULONG FirstDiscontiguousLineIndex;
+    PLINKED_LINE FirstSavedLine;
 
     //
     // Partial lines.
@@ -307,6 +493,10 @@ BOOL
     _Inout_ PDEBUG_ENGINE_OUTPUT Output,
     _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession,
     _In_ PALLOCATOR Allocator,
+    _In_opt_ PALLOCATOR LineAllocator,
+    _In_opt_ PALLOCATOR TextAllocator,
+    _In_opt_ PALLOCATOR CustomStructureAllocator,
+    _In_opt_ PALLOCATOR CustomStructureSecondaryAllocator,
     _In_opt_ PDEBUG_ENGINE_LINE_OUTPUT_CALLBACK LineOutputCallback,
     _In_opt_ PDEBUG_ENGINE_PARTIAL_OUTPUT_CALLBACK PartialOutputCallback,
     _In_opt_ PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputCompleteCallback,
@@ -338,24 +528,61 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE {
     PublicGlobalScope,
 } DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE;
 
+//
+// The order of these enumeration symbols must match the exact order of the
+// corresponding string in the relevant ExamineSymbolsBasicTypes[1..n] STRING
+// structure (see DebugEngineConstants.c).  This is because string tables are
+// created from the delimited strings and the match index is cast directly to
+// an enum of this type.
+//
+
 typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
-    NullType = -1,
-    CharType = 0,
+    UnknownType = -1,
+
+    //
+    // First 16 types captured by BasicTypeStringTable1.
+    //
+
+    NoType = 0,
+    FunctionType,
+
+    CharType,
     WideCharType,
     ShortType,
     LongType,
     IntegerType,
     Integer64Type,
-    FloatType,
-    DoubleType,
+
+    UnsignedCharType,
+    UnsignedWideCharType,
+    UnsignedShortType,
+    UnsignedLongType,
+    UnsignedIntegerType,
+    UnsignedInteger64Type,
+
     UnionType,
     StructType,
-    UnsignedType,
-    SALExecutionContextType,
-    FunctionType,
+
+    //
+    // Next 16 types captured by BasicTypeStringTable2.
+    //
+
     CLRType,
-    NoType,
-    InvalidType = NoType + 1
+    BoolType,
+    VoidType,
+    ClassType,
+    FloatType,
+    DoubleType,
+    SALExecutionContextType,
+    ENativeStartupStateType,
+
+    //
+    // Any enumeration value >= InvalidType is invalid.  Make sure this always
+    // comes last in the enum layout.
+    //
+
+    InvalidType
+
 } DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE;
 
 typedef union _DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS {
@@ -389,6 +616,133 @@ BOOL
     _In_ DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS CommandOptions
     );
 typedef DEBUG_ENGINE_EXAMINE_SYMBOLS *PDEBUG_ENGINE_EXAMINE_SYMBOLS;
+
+//
+// DEBUG_ENGINE_EXAMINED_SYMBOL-related structures and functions.
+//
+// This structure represents a parsed representation of a line of output from
+// the debugger engine's execution of the examine symbols command.
+//
+
+typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates that a pointer (*) was detected in the type.
+        // The PointerDepth field will be set to a non-zero value representing
+        // the number of literal asterisks detected.
+        //
+
+        ULONG IsPointer:1;
+
+        //
+        // When set, indicates that at least one array descriptor ([]) was
+        // detected in the type.  The NumberOfDimensions field will be set to
+        // a non-zero value representing the number of paired square brackets
+        // detected, e.g. `struct _foo [3][5]` would have a value of 2 for the
+        // NumberOfDimensions field..
+        //
+
+        ULONG IsArray:1;
+
+    };
+} DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_EXAMINED_SYMBOL))
+        ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS Flags;
+
+    //
+    // The type of the symbol.
+    //
+
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE Type;
+
+    //
+    // The scope of the symbol.
+    //
+
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE Scope;
+
+    //
+    // Pointer to the owning Output structure; this allows navigation back to
+    // the debug engine and calling context.
+    //
+
+    PDEBUG_ENGINE_OUTPUT Output;
+
+    //
+    // The following strings are wired up to point to the relevant part of the
+    // line output.
+    //
+
+    struct {
+
+        //
+        // Points to the initial scope part of the line, e.g. "prv global".
+        //
+
+        STRING Scope;
+
+        //
+        // Points to the hex address of the symbol.
+        //
+
+        STRING Address;
+
+        //
+        // Points to the size element of the symbol.
+        //
+
+        STRING Size;
+
+        //
+        // Points to the raw line.
+        //
+
+        STRING Line;
+
+    } String;
+
+    //
+    // The hex address in the text is converted to a 64-bit integer address and
+    // stored in the following field.
+    //
+
+    LARGE_INTEGER Address;
+
+    //
+    // Variable parts of the structure depending on the flags/type.
+    //
+
+    union {
+
+        struct {
+
+            USHORT NumberOfArguments;
+
+            LIST_ENTRY FunctionArgumentsListHead;
+
+        } Function;
+
+    };
+
+} DEBUG_ENGINE_EXAMINED_SYMBOL;
+typedef DEBUG_ENGINE_EXAMINED_SYMBOL *PDEBUG_ENGINE_EXAMINED_SYMBOL;
+typedef DEBUG_ENGINE_EXAMINED_SYMBOL **PPDEBUG_ENGINE_EXAMINED_SYMBOL;
 
 //
 // UnassembleFunction-related structures and functions.
@@ -937,7 +1291,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PALLOCATOR StringArrayAllocator;
 
     PSTRING_TABLE ExamineSymbolsPrefixStringTable;
-    PSTRING_TABLE ExamineSymbolsBasicTypeStringTable;
+
+    USHORT NumberOfBasicTypeStringTables;
+    USHORT Padding[3];
+
+    PSTRING_TABLE ExamineSymbolsBasicTypeStringTable1;
+    PSTRING_TABLE ExamineSymbolsBasicTypeStringTable2;
 
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;
 

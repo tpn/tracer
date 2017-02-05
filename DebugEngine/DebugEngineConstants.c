@@ -149,40 +149,78 @@ CONST DEBUGOUTPUTCALLBACKS2 DebugOutputCallbacks2 = {
 };
 
 //
+// Custom structure names.  The C_ASSERT() ensures the type name passed in is
+// actually a valid structure name.
+//
+
+#define DEFINE_CUSTOM_STRUCTURE_NAME(Name, Type)     \
+    C_ASSERT(sizeof(Type) == sizeof(Type));          \
+    CONST STRING Name = RTL_CONSTANT_STRING(#Type)
+
+DEFINE_CUSTOM_STRUCTURE_NAME(ExamineSymbolCustomStructureName,
+                             DEBUG_ENGINE_EXAMINED_SYMBOL);
+
+DEFINE_CUSTOM_STRUCTURE_NAME(UnassembledFunctionCustomStructureName,
+                             DEBUG_ENGINE_UNASSEMBLED_FUNCTION);
+
+//DEFINE_CUSTOM_STRUCTURE_NAME(DisplayedTypeCustomStructureName,
+//                             DEBUG_ENGINE_DISPLAYED_TYPE);
+
+//
 // String tables.
 //
 
 #undef DSTR
-#undef LAST
 #define DSTR(String) String ";"
-#define LAST(String) String
 
 CONST CHAR StringTableDelimiter = ';';
+
+//
+// N.B. The order of these string constants must match the *exact* order of the
+//      the corresponding enumeration symbol defined in DebugEngine.h.
+//
 
 CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
     DSTR("prv func")
     DSTR("prv global")
     DSTR("prv inline")
     DSTR("pub func")
-    LAST("pub global")
+    DSTR("pub global")
 );
 
-CONST STRING ExamineSymbolsBasicTypes = RTL_CONSTANT_STRING(
+//
+// Split the basic type names into chunks of 16 (which is the current limit of
+// the StringTable component).
+//
+
+CONST STRING ExamineSymbolsBasicTypes1 = RTL_CONSTANT_STRING(
+    DSTR("<NoType>")
+    DSTR("<function>")
     DSTR("char")
     DSTR("wchar_t")
     DSTR("short")
     DSTR("long")
     DSTR("int")
     DSTR("int64")
-    DSTR("float")
-    DSTR("double")
+    DSTR("unsigned char")
+    DSTR("unsigned wchar_t")
+    DSTR("unsigned short")
+    DSTR("unsigned long")
+    DSTR("unsigned int")
+    DSTR("unsigned int64")
     DSTR("union")
     DSTR("struct")
-    DSTR("unsigned")
-    DSTR("_SAL_ExecutionContext")
-    DSTR("<function>")
+);
+
+CONST STRING ExamineSymbolsBasicTypes2 = RTL_CONSTANT_STRING(
     DSTR("<CLR type>")
-    LAST("<NoType>")
+    DSTR("bool")
+    DSTR("void")
+    DSTR("class")
+    DSTR("float")
+    DSTR("double")
+    DSTR("_SAL_ExecutionContext")
+    DSTR("__enative_startup_state")
 );
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

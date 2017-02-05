@@ -293,7 +293,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     //
     // StringTable-specific functions.
     //
-    
+
     PCREATE_STRING_TABLE CreateStringTable;
     PDESTROY_STRING_TABLE DestroyStringTable;
 

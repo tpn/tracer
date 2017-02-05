@@ -74,6 +74,8 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreFunctionSourceCode.dat",
     L"TraceStoreExamineSymbolsLines.dat",
     L"TraceStoreExamineSymbolsText.txt",
+    L"TraceStoreExaminedSymbol.dat",
+    L"TraceStoreExaminedSymbolBuffer.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -163,6 +165,96 @@ PWCHAR TraceStoreMetadataSuffixes[] = {
 USHORT NumberOfMetadataStores = NUMBER_OF_METADATA_STORES;
 USHORT ElementsPerTraceStore = NUMBER_OF_METADATA_STORES + 1;
 
+//
+// Size key:
+//      1 << 16 == 64KB
+//      1 << 21 == 2MB
+//      1 << 22 == 4MB
+//      1 << 23 == 8MB
+//      1 << 24 == 16MB
+//      1 << 25 == 32MB
+//      1 << 26 == 64MB
+//      1 << 27 == 128MB
+//      1 << 28 == 256MB
+//      1 << 29 == 512MB
+//      1 << 30 == 1024MB
+//      1 << 31 == 2048MB
+//      1 << 32 == 4096MB
+//
+// N.B.: the trace store size should always be greater than or equal to the
+//       mapping size.
+//
+
+
+#ifdef _DEBUG
+
+//
+// Use smaller versions of files when debugging.
+//
+
+#define TRACE_STORE_USE_SMALLER_INITIAL_FILE_SIZES
+
+#endif
+
+#ifdef TRACE_STORE_USE_SMALLER_INITIAL_FILE_SIZES
+
+LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
+     1 << 30,   // Event
+     1 << 25,   // StringBuffer
+     1 << 16,   // PythonFunctionTable
+     1 << 25,   // PythonFunctionTableEntry
+     1 << 16,   // PathTable
+     1 << 25,   // PathTableEntry
+     1 << 18,   // TraceSession
+     1 << 21,   // StringArray
+     1 << 21,   // StringTable
+     1 << 25,   // EventTraitsEx
+     1 << 25,   // WsWatchInfoEx
+     1 << 25,   // WorkingSetExInfo
+     1 << 16,   // CCallStackTable
+     1 << 25,   // CCallStackTableEntry
+     1 << 16,   // ModuleTable
+     1 << 25,   // ModuleTableEntry
+     1 << 16,   // PythonCallStackTable
+     1 << 25,   // PythonCallStackTableEntry
+     1 << 16,   // PythonModuleTable
+     1 << 25,   // PythonModuleTableEntry
+     1 << 16,   // LineTable
+     1 << 25,   // LineTableEntry
+     1 << 25,   // LineStringBuffer
+     1 << 25,   // CallStack
+     1 << 25,   // Performance
+     1 << 25,   // PerformanceDelta
+     1 << 25,   // SourceCode
+     1 << 24,   // Bitmap
+     1 << 27,   // ImageFile
+     1 << 23,   // UnicodeStringBuffer
+     1 << 24,   // Line
+     1 << 23,   // Object
+     1 << 23,   // ModuleLoadEvent
+     1 << 16,   // SymbolTable
+     1 << 25,   // SymbolTableEntry
+     1 << 25,   // SymbolModuleInfo
+     1 << 27,   // SymbolFile
+     1 << 24,   // SymbolInfo
+     1 << 24,   // SymbolLine
+     1 << 24,   // SymbolType
+     1 << 25,   // StackFrame
+     1 << 16,   // TypeInfoTable
+     1 << 25,   // TypeInfoTableEntry
+     1 << 25,   // TypeInfoStringBuffer
+     1 << 16,   // FunctionTable
+     1 << 26,   // FunctionTableEntry
+     1 << 25,   // FunctionAssembly
+     1 << 25,   // FunctionSourceCode
+     1 << 23,   // ExamineSymbolsLines
+     1 << 25,   // ExamineSymbolsText
+     1 << 25,   // ExaminedSymbol
+     1 << 23,   // ExaminedSymbolBuffer
+};
+
+#else
+
 LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 30,   // Event
      1 << 25,   // StringBuffer
@@ -214,7 +306,11 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 27,   // FunctionSourceCode
      1 << 23,   // ExamineSymbolsLines
      1 << 25,   // ExamineSymbolsText
+     1 << 25,   // ExaminedSymbol
+     1 << 23,   // ExaminedSymbolBuffer
 };
+
+#endif
 
 CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
     InitialTraceStoreFileSizesAsLongLong
@@ -1379,6 +1475,52 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         1,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // ExaminedSymbol
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // ExaminedSymbolBuffer
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
         0   // Unused
     },
 };
