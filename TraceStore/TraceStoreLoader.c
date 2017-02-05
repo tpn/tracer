@@ -873,7 +873,7 @@ InsertPrefix:
     // engine thread's work list and set the work available event.
     //
 
-    MaybePushModuleTableEntryToDebugContext(TraceContext, ModuleEntry);
+    MaybeAppendModuleTableEntryToDebugContext(TraceContext, ModuleEntry);
 
     return TRUE;
 }

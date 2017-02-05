@@ -1742,8 +1742,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     // symbol tracing context's interlocked list head via this field below.
     //
 
+    DECLSPEC_ALIGN(16)
     union {
-        SLIST_ENTRY SymbolContextListEntry;
+        LIST_ENTRY SymbolContextListEntry;
+        SLIST_ENTRY SymbolContextSListEntry;
         struct {
             PSLIST_ENTRY SymbolContextNext;
             PVOID Unused1;
@@ -1755,8 +1757,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_MODULE_TABLE_ENTRY {
     // debug engine context's interlocked list head via this field below.
     //
 
+    DECLSPEC_ALIGN(16)
     union {
-        SLIST_ENTRY DebugContextListEntry;
+        LIST_ENTRY DebugContextListEntry;
+        SLIST_ENTRY DebugContextSListEntry;
         struct {
             PSLIST_ENTRY DebugContextNext;
             PVOID Unused2;
@@ -2474,10 +2478,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     // 16-byte boundary as required.
     //
 
-    DECLSPEC_ALIGN(64) SLIST_HEADER WorkListHead;
+    DECLSPEC_ALIGN(64)
+    union {
+        SLIST_HEADER WorkSListHead;
+
+        _Guarded_by_(CriticalSection)
+        LIST_ENTRY WorkListHead;
+    };
 
     //
-    // (80 bytes consumed.)
+    // (88 bytes consumed.)
     //
 
     PTRACE_CONTEXT TraceContext;
@@ -2499,55 +2509,40 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     ULONG NumberOfWorkItemsIgnored;
     ULONG Padding;
 
-
     //
     // (144 bytes consumed.)
-    //
-
-    struct {
-        struct _TRACE_STORE *TypeInfoTable;
-        struct _TRACE_STORE *TypeInfoTableEntry;
-        struct _TRACE_STORE *TypeInfoStringBuffer;
-        struct _TRACE_STORE *FunctionTable;
-        struct _TRACE_STORE *FunctionTableEntry;
-        struct _TRACE_STORE *FunctionAssembly;
-        struct _TRACE_STORE *FunctionSourceCode;
-        struct _TRACE_STORE *ExamineSymbolsLine;
-        struct _TRACE_STORE *ExamineSymbolsText;
-        struct _TRACE_STORE *Reserved;
-    } TraceStores;
-
-    //
-    // (224 bytes consumed.)
-
-    //
-    // Capture various stateful pointers/values such that they are accessible
-    // from DbgHelp callbacks that only get passed DebugContext.  (This is
-    // safe because the symbol tracing is inherently single-threaded.)
     //
 
     PTRACE_MODULE_TABLE_ENTRY CurrentModuleTableEntry;
     LARGE_INTEGER CurrentTimestamp;
 
     //
-    // (240 bytes consumed.)
+    // (160 bytes consumed.)
     //
 
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
     //
-    // (256 bytes consumed.)
+    // (176 bytes consumed.)
     //
+
+    ALLOCATOR Allocator;
+
+    //
+    // (320 bytes consumed.)
+    //
+
+    BYTE Reserved[192];
 
 } TRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkListHead) == 64);
-C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
-C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 256);
+//C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
+//C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
+//C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 512);
 
 #define AcquireTraceDebugContextLock(DebugContext) \
     EnterCriticalSection(&DebugContext->CriticalSection)

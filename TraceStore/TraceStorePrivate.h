@@ -65,6 +65,13 @@ PreThreadpoolWorkSubmission(
 // TraceStoreContext-related macros.
 //
 
+#define TRACE_CONTEXT_STORE(Name) ( \
+    TraceStoreIdToTraceStore(       \
+        TraceContext->TraceStores,  \
+        TraceStore##Name##Id        \
+    )                               \
+)
+
 #define INIT_WORK(Name, NumberOfItems)                               \
     Work = &TraceContext->##Name##Work;                              \
                                                                      \
@@ -2471,7 +2478,7 @@ PushModuleTableEntryToSymbolContext(
     PSLIST_HEADER ListHead;
 
     ListHead = &SymbolContext->WorkListHead;
-    ListEntry = &ModuleTableEntry->SymbolContextListEntry;
+    ListEntry = &ModuleTableEntry->SymbolContextSListEntry;
     InterlockedPushEntrySList(ListHead, ListEntry);
     SetEvent(SymbolContext->WorkAvailableEvent);
 }
@@ -2642,6 +2649,7 @@ AllocateAndCopySourceFile(
     //
 
     SourceFile = NULL;
+    OutputDebugStringA("Copied file: ");
     OutputDebugStringW(pSourceFile->FileName);
     return TRUE;
 }
@@ -2649,9 +2657,6 @@ AllocateAndCopySourceFile(
 //
 // TraceStoreDebugEngine-related functions and macros.
 //
-
-#define DEBUG_CONTEXT_STORE(Name) \
-    (DebugContext->TraceStores.##Name)
 
 BIND_COMPLETE TypeInfoTableStoreBindComplete;
 BIND_COMPLETE FunctionTableStoreBindComplete;
@@ -2755,8 +2760,8 @@ PushModuleTableEntryToDebugContext(
     PSLIST_ENTRY ListEntry;
     PSLIST_HEADER ListHead;
 
-    ListHead = &DebugContext->WorkListHead;
-    ListEntry = &ModuleTableEntry->DebugContextListEntry;
+    ListHead = &DebugContext->WorkSListHead;
+    ListEntry = &ModuleTableEntry->DebugContextSListEntry;
     InterlockedPushEntrySList(ListHead, ListEntry);
     SetEvent(DebugContext->WorkAvailableEvent);
 }
@@ -2777,6 +2782,83 @@ MaybePushModuleTableEntryToDebugContext(
     }
 
     PushModuleTableEntryToDebugContext(DebugContext, ModuleTableEntry);
+}
+
+FORCEINLINE
+VOID
+AppendModuleTableEntryToDebugContext(
+    _In_ PTRACE_DEBUG_CONTEXT DebugContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PLIST_ENTRY ListEntry;
+    PLIST_ENTRY ListHead;
+
+    ListHead = &DebugContext->WorkListHead;
+    ListEntry = &ModuleTableEntry->DebugContextListEntry;
+
+    AcquireTraceDebugContextLock(DebugContext);
+    AppendTailList(ListHead, ListEntry);
+    ReleaseTraceDebugContextLock(DebugContext);
+
+    SetEvent(DebugContext->WorkAvailableEvent);
+}
+
+FORCEINLINE
+VOID
+MaybeAppendModuleTableEntryToDebugContext(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    PTRACE_DEBUG_CONTEXT DebugContext;
+
+    DebugContext = TraceContext->DebugContext;
+
+    if (!DebugContext) {
+        return;
+    }
+
+    InitializeListHead(&ModuleTableEntry->DebugContextListEntry);
+
+    AppendModuleTableEntryToDebugContext(DebugContext, ModuleTableEntry);
+}
+
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_not_held_(DebugContext->CriticalSection)
+BOOL
+PopModuleTableEntryFromDebugContext(
+    _In_ PTRACE_DEBUG_CONTEXT DebugContext,
+    _Outptr_result_nullonfailure_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    BOOL Success;
+    PLIST_ENTRY ListEntry;
+    PLIST_ENTRY ListHead;
+
+    ListHead = &DebugContext->WorkListHead;
+    AcquireTraceDebugContextLock(DebugContext);
+    if (IsListEmpty(ListHead)) {
+        Success = FALSE;
+        *ModuleTableEntry = NULL;
+        goto End;
+    }
+
+    ListEntry = RemoveHeadList(ListHead);
+
+    *ModuleTableEntry = CONTAINING_RECORD(ListEntry,
+                                          TRACE_MODULE_TABLE_ENTRY,
+                                          DebugContextListEntry);
+
+    Success = TRUE;
+
+End:
+    ReleaseTraceDebugContextLock(DebugContext);
+
+    return Success;
 }
 
 //

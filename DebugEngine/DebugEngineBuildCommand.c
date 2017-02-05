@@ -106,6 +106,16 @@ Return Value:
     CommandName = CommandTemplate->CommandNameWide;
     APPEND_TO_COMMAND(CommandName);
 
+    //
+    // If the template has a custom parse lines function, set it now.
+    //
+
+    if (CommandTemplate->ParseLinesIntoCustomStructureCallback) {
+        Output->ParseLinesIntoCustomStructureCallback = (
+            CommandTemplate->ParseLinesIntoCustomStructureCallback
+        );
+    }
+
     if (CommandTemplate->Flags.HasOptions) {
 
         ULONG Count;

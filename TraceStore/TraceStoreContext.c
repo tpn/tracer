@@ -1112,6 +1112,8 @@ Return Value:
         if (WaitResult != WAIT_OBJECT_0) {
             __debugbreak();
         }
+
+        DestroyHeapAllocatorInline(&TraceContext->DebugContext->Allocator);
     }
 
     return;

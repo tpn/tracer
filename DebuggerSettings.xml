@@ -46,20 +46,19 @@
       <Setting Name="IgnoreDecoration" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="Include32BitModules" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="LoadAnything" Type="VT_BOOL" Value="true"></Setting>
-      <Setting Name="LoadAsNeeded" Type="VT_BOOL" Value="true"></Setting>
+      <Setting Name="LoadAsNeeded" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="NoisySymbolLoading" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="NoUnqualifiedLoads" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="OnlyUsePublics" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="SecureMode" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="StrictEvaluation" Type="VT_BOOL" Value="false"></Setting>
-      <Setting Name="SuppressErrors" Type="VT_BOOL" Value="true"></Setting>
+      <Setting Name="SuppressErrors" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="AllowPublics" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="AuthenticationPrompts" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="CppTranslation" Type="VT_BOOL" Value="true"></Setting>
-      <Setting Name="SearchDisk" Type="VT_BOOL" Value="false"></Setting>
+      <Setting Name="SearchDisk" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="UseEnvironmentSympath" Type="VT_BOOL" Value="true"></Setting>
     </Namespace>
-    <Setting Name="Sympath" Type="VT_BSTR" Value="cache*C:\SymCache;srv*C:\Symbols*https://msdl.microsoft.com/download/symbols"></Setting>
     <Namespace Name="Advanced">
       <Setting Name="MultithreadedSymbolLoading" Type="VT_BOOL" Value="true"></Setting>
     </Namespace>

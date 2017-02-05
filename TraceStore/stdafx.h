@@ -33,6 +33,7 @@ Abstract:
 #include "../Rtl/__C_specific_handler.h"
 #include "../Rtl/atexit.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "../TracerHeap/TracerHeap.h"
 #include "../DebugEngine/DebugEngine.h"
 #include "TraceStoreIndex.h"
 #include "TraceStore.h"
