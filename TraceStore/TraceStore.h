@@ -867,13 +867,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
     // Structure size, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _TRACE_STORE_SYNC)) USHORT SizeOfStruct;
-
-    //
-    // Pad out to 4 bytes.
-    //
-
-    USHORT Padding1;
+    _Field_range_(==, sizeof(struct _TRACE_STORE_SYNC)) ULONG SizeOfStruct;
 
     //
     // Flags.
@@ -886,12 +880,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
     //
 
     SRWLOCK SRWLock;
-
-    //
-    // Pad to 16 bytes.
-    //
-
-    ULONG Padding2;
 
     //
     // Allocator Critical section.
@@ -913,10 +901,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SYNC {
 
 } TRACE_STORE_SYNC, *PTRACE_STORE_SYNC;
 C_ASSERT(sizeof(CRITICAL_SECTION) == 40);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, AllocationCriticalSection) == 16);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CallbackCriticalSection) == 64);
-//C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 128);
-//C_ASSERT(sizeof(TRACE_STORE_SYNC) == 256);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, AllocationCriticalSection) == 16);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, CallbackCriticalSection) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_STORE_SYNC, Padding3) == 128);
+C_ASSERT(sizeof(TRACE_STORE_SYNC) == 256);
 
 //
 // For trace stores that record instances of structures from a running program,
