@@ -691,12 +691,28 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
     PDEBUG_ENGINE_OUTPUT Output;
 
+    ULONG Size;
+    ULONG Padding1;
+
+    //
+    // The hex address in the text is converted to a 64-bit integer address and
+    // stored in the following field.
+    //
+
+    LARGE_INTEGER Address;
+
     //
     // The following strings are wired up to point to the relevant part of the
     // line output.
     //
 
     struct {
+
+        //
+        // Points to the raw line.
+        //
+
+        STRING Line;
 
         //
         // Points to the initial scope part of the line, e.g. "prv global".
@@ -717,19 +733,33 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
         STRING Size;
 
         //
-        // Points to the raw line.
+        // Points to the module name, if applicable.
         //
 
-        STRING Line;
+        STRING ModuleName;
+
+        //
+        // Points to the symbol name, if applicable.
+        //
+
+        union {
+            STRING SymbolName;
+            STRING Function;
+            STRING Structure;
+            STRING Union;
+        };
+
+        //
+        // If this is a function, this will be set to the start of the
+        // parameters.
+        //
+
+        union {
+            STRING Parameters;
+        };
 
     } String;
 
-    //
-    // The hex address in the text is converted to a 64-bit integer address and
-    // stored in the following field.
-    //
-
-    LARGE_INTEGER Address;
 
     //
     // Variable parts of the structure depending on the flags/type.
