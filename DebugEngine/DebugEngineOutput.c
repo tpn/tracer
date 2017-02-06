@@ -130,6 +130,10 @@ Return Value:
     Output->OutputCompleteCallback = OutputCompleteCallback;
     Output->SaveOutputLine = DebugEngineSaveOutputLine;
 
+    if (Output->SaveOutputLine) {
+        Output->Flags.DispatchOutputLineCallbacks = TRUE;
+    }
+
     InitializeListHead(&Output->SavedLinesListHead);
     InitializeListHead(&Output->PartialLinesListHead);
 
@@ -365,7 +369,7 @@ Return Value:
         }
     }
 
-    if (!Output->Flags.EnableLineOutputCallbacks) {
+    if (!Output->Flags.DispatchOutputLineCallbacks) {
         goto End;
     }
 
@@ -945,6 +949,7 @@ Return Value:
         // Append it to the output's list of saved lines and adjust counters.
         //
 
+        InitializeListHead(&LinkedLine->ListEntry);
         AppendTailList(&Output->SavedLinesListHead, &LinkedLine->ListEntry);
         Output->NumberOfSavedBytes += Line->Length;
 

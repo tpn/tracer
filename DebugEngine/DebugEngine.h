@@ -209,6 +209,13 @@ typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
         ULONG EnableOutputParsingToCustomStructure:1;
 
         //
+        // This flag will be automatically set when a condition is met to
+        // warrant dispatching line output callbacks.
+        //
+
+        ULONG DispatchOutputLineCallbacks:1;
+
+        //
         // When set, indicates the caller wants wide character (WCHAR) output.
         // (Not currently supported.)
         //

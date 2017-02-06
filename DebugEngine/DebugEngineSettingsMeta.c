@@ -167,7 +167,6 @@ Return Value:
     // to communicate partial output state across multiple callbacks.
     //
 
-    SecureZeroMemory(&Output, sizeof(DEBUG_ENGINE_OUTPUT));
     Output.SizeOfStruct = sizeof(DEBUG_ENGINE_OUTPUT);
 
     Success = InitializeDebugEngineOutputSimple(&Output, Session);
@@ -224,7 +223,6 @@ Return Value:
     // to communicate partial output state across multiple callbacks.
     //
 
-    SecureZeroMemory(&Output, sizeof(DEBUG_ENGINE_OUTPUT));
     Output.SizeOfStruct = sizeof(DEBUG_ENGINE_OUTPUT);
 
     Success = InitializeDebugEngineOutputSimple(&Output, Session);
