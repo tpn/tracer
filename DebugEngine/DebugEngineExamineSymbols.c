@@ -137,7 +137,6 @@ _Use_decl_annotations_
 BOOL
 ExamineSymbolsParseLine(
     PDEBUG_ENGINE_OUTPUT Output,
-    PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol,
     PSTRING Line
     )
 /*++
@@ -174,21 +173,23 @@ Return Value:
     STRING Function;
     STRING Parameters;
     //PSTRING Parameter;
+    PSTRING SymbolName;
+    PSTRING ModuleName;
     HANDLE HeapHandle;
     STRING_MATCH Match;
     ULARGE_INTEGER Addr;
     USHORT NumberOfParameters;
     USHORT BasicTypeMatchAttempts;
     USHORT NumberOfBasicTypeStringTables;
-    PALLOCATOR ExamineSymbolAllocator;
-    PALLOCATOR ExamineSymbolSecondaryAllocator;
+    PALLOCATOR ExaminedSymbolAllocator;
+    PALLOCATOR ExaminedSymbolSecondaryAllocator;
     PSTRING_TABLE StringTable;
     PDEBUG_ENGINE_SESSION Session;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE SymbolType;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE SymbolScope;
+    PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
     PRTL_CHAR_TO_INTEGER RtlCharToInteger;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
-
 
     CHAR StackBitmapBuffer[32];
     RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
@@ -200,20 +201,27 @@ Return Value:
 
     Session = Output->Session;
     HeapHandle = Output->Allocator->HeapHandle;
-    ExamineSymbolAllocator = Output->CustomStructureAllocator;
-    ExamineSymbolSecondaryAllocator = Output->CustomStructureSecondaryAllocator;
+    ExaminedSymbolAllocator = Output->CustomStructureAllocator;
+    ExaminedSymbolSecondaryAllocator = (
+        Output->CustomStructureSecondaryAllocator
+    );
 
     End = Line->Buffer + Line->Length;
 
     StringTable = Session->ExamineSymbolsPrefixStringTable;
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable,
-                                         Line,
-                                         &Match);
+    MatchIndex = IsPrefixOfStringInTable(StringTable, Line, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
-        __debugbreak();
+
+        //
+        // Ignore any lines that don't have an expected prefix.  This will
+        // typically be the first line which is an echo of the examine symbols
+        // command that was just executed (assuming ExecuteWide() was called
+        // with the DEBUG_EXECUTE_ECHO flag set).
+        //
+
         return TRUE;
     }
 
@@ -284,9 +292,7 @@ Return Value:
 
 RetryBasicTypeMatch:
 
-    MatchIndex = IsPrefixOfStringInTable(StringTable,
-                                         &BasicType,
-                                         &Match);
+    MatchIndex = IsPrefixOfStringInTable(StringTable, &BasicType, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
         if (++BasicTypeMatchAttempts > NumberOfBasicTypeStringTables) {
@@ -299,7 +305,67 @@ RetryBasicTypeMatch:
         goto RetryBasicTypeMatch;
     }
 
-    SymbolType = MatchIndex + MatchOffset;
+    Symbol = (PDEBUG_ENGINE_EXAMINED_SYMBOL)(
+        ExaminedSymbolAllocator->CallocWithTimestamp(
+            ExaminedSymbolAllocator->Context,
+            1,
+            sizeof(*Symbol),
+            &Output->Timestamp.CommandStart
+        )
+    );
+
+    if (!Symbol) {
+        return FALSE;
+    }
+
+    Symbol->SizeOfStruct = sizeof(*Symbol);
+
+    Symbol->Type = SymbolType = MatchIndex + MatchOffset;
+    Symbol->Scope = SymbolScope;
+    Symbol->Output = Output;
+
+#define COPY_PSTRING_EX(Name, Source)                                  \
+    Symbol->String.##Name##.Length = ##Source##->Length;               \
+    Symbol->String.##Name##.MaximumLength = ##Source##->MaximumLength; \
+    Symbol->String.##Name##.Buffer = ##Source##->Buffer
+
+#define COPY_PSTRING(Name) COPY_PSTRING_EX(Name, Name)
+
+#define COPY_STRING_EX(Name, Source)                                  \
+    Symbol->String.##Name##.Length = ##Source##.Length;               \
+    Symbol->String.##Name##.MaximumLength = ##Source##.MaximumLength; \
+    Symbol->String.##Name##.Buffer = ##Source##.Buffer
+
+#define COPY_STRING(Name) COPY_STRING_EX(Name, Name)
+
+    COPY_PSTRING(Line);
+    COPY_STRING_EX(Size, SymbolSize);
+    COPY_PSTRING(Scope);
+    COPY_STRING(Address);
+
+    Symbol->Address.QuadPart = Addr.QuadPart;
+
+    Char += Match.NumberOfMatchedCharacters + 1;
+
+    Symbol->Flags.IsPointer = (*Char == '*');
+
+    IsFunctionPointer = (SymbolType == FunctionType && Symbol->Flags.IsPointer);
+
+    if (IsFunctionPointer) {
+        __debugbreak();
+        //return TRUE;
+    }
+
+    while (*(++Char) == ' ');
+
+    //
+    // XXX todo: Save module bit.
+    //
+
+    ModuleName = &Symbol->String.ModuleName;
+    ModuleName->Buffer = Char;
+
+    SymbolName = &Symbol->String.SymbolName;
 
     switch (SymbolType) {
 
@@ -308,15 +374,6 @@ RetryBasicTypeMatch:
             //
             // Advance to the function name.
             //
-
-            Char += Match.NumberOfMatchedCharacters + 1;
-
-            IsFunctionPointer = (*Char == '*');
-
-            if (IsFunctionPointer) {
-                __debugbreak();
-                return TRUE;
-            }
 
             while (*(Char++) != '!');
 
@@ -327,11 +384,15 @@ RetryBasicTypeMatch:
             Function.Length = (USHORT)(Char - Function.Buffer) - 1;
             Function.MaximumLength = Function.Length;
 
+            COPY_STRING(Function);
+
             while (*(Char++) != '(');
 
             Parameters.Buffer = Char;
             Parameters.Length = (USHORT)(End - Parameters.Buffer) - 2;
             Parameters.MaximumLength = Parameters.Length;
+
+            COPY_STRING(Parameters);
 
             Success = Rtl->CreateBitmapIndexForString(Rtl,
                                                       &Parameters,
@@ -351,6 +412,16 @@ RetryBasicTypeMatch:
                 if (!IsVoid) {
                     NumberOfParameters = 1;
                 }
+            }
+
+            Symbol->Function.NumberOfArguments = NumberOfParameters;
+
+            if (NumberOfParameters > 0) {
+
+                //
+                // Allocate parameters via secondary allocator.
+                //
+
             }
 
             break;
@@ -399,11 +470,36 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    PSTRING Line;
+    ULONG ParsedLines;
+    PLIST_ENTRY ListHead;
+    PLIST_ENTRY ListEntry;
+    PLINKED_LINE LinkedLine;
+
     //
     // For each line, call parse lines.
     //
 
-    return TRUE;
+    ParsedLines = 0;
+    ListHead = &Output->SavedLinesListHead;
+
+    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+        LinkedLine = CONTAINING_RECORD(ListEntry, LINKED_LINE, ListEntry);
+        Line = &LinkedLine->String;
+        Success = ExamineSymbolsParseLine(Output, Line);
+        if (!Success) {
+            return FALSE;
+        }
+        ParsedLines++;
+    }
+
+    if (ParsedLines != Output->NumberOfSavedLines) {
+        __debugbreak();
+        Success = FALSE;
+    }
+
+    return Success;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
