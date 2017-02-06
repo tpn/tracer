@@ -813,6 +813,7 @@ RestartSearch:
             // Two different files with the exact same name?
             //
 
+            __debugbreak();
             NOTHING;
         }
 
@@ -862,15 +863,15 @@ InsertPrefix:
     }
 
     //
-    // If symbol tracing is enabled, push this module table entry onto the
+    // If symbol tracing is enabled, append this module table entry to the
     // symbol tracing thread's work list and set the work available event.
     //
 
-    MaybePushModuleTableEntryToSymbolContext(TraceContext, ModuleEntry);
+    MaybeAppendModuleTableEntryToSymbolContext(TraceContext, ModuleEntry);
 
     //
-    // If there's a debug context, push this module table entry onto the debug
-    // engine thread's work list and set the work available event.
+    // If there's a debug context, append this module table entry to the
+    // debug engine thread's work list and set the work available event.
     //
 
     MaybeAppendModuleTableEntryToDebugContext(TraceContext, ModuleEntry);

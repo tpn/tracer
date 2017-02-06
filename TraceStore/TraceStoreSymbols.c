@@ -397,30 +397,14 @@ Return Value:
     //
 
     AcquireTraceSymbolContextLock(SymbolContext);
+
     SymbolContext->SizeOfStruct = sizeof(*SymbolContext);
     SymbolContext->TraceContext = TraceContext;
     SymbolContext->ThreadEntry = TraceSymbolThreadEntryImpl;
     SymbolContext->ShutdownEvent = ShutdownEvent;
     SymbolContext->WorkAvailableEvent = WorkAvailableEvent;
     SymbolContext->State = TraceSymbolContextStructureCreatedState;
-    InitializeSListHead(&SymbolContext->WorkListHead);
-
-#define RESOLVE_STORE(Name)               \
-    SymbolContext->TraceStores.##Name = ( \
-        TraceStoreIdToTraceStore(         \
-            TraceStores,                  \
-            TraceStore##Name##Id          \
-        )                                 \
-    )
-
-    RESOLVE_STORE(SymbolTable);
-    RESOLVE_STORE(SymbolTableEntry);
-    RESOLVE_STORE(SymbolModuleInfo);
-    RESOLVE_STORE(SymbolFile);
-    RESOLVE_STORE(SymbolInfo);
-    RESOLVE_STORE(SymbolLine);
-    RESOLVE_STORE(SymbolType);
-    RESOLVE_STORE(StackFrame);
+    InitializeGuardedListHead(&SymbolContext->WorkList);
 
     ReleaseTraceSymbolContextLock(SymbolContext);
 
@@ -779,8 +763,7 @@ ProcessTraceSymbolWork(
 
 Routine Description:
 
-    This routine processes work entries pushed to the WorkListHead of the
-    SymbolContext.
+    This routine processes work entries.
 
 Arguments:
 
@@ -793,28 +776,28 @@ Return Value:
 --*/
 {
     BOOL Success;
-    PSLIST_ENTRY ListEntry;
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
-    ListEntry = InterlockedFlushSList(&SymbolContext->WorkListHead);
+    Success = RemoveHeadModuleTableEntryFromSymbolContext(SymbolContext,
+                                                          &ModuleTableEntry);
 
-    for (; ListEntry != NULL; ListEntry = ListEntry->Next) {
-
-        ModuleTableEntry = CONTAINING_RECORD(ListEntry,
-                                             TRACE_MODULE_TABLE_ENTRY,
-                                             SymbolContextListEntry);
-
-        Success = CreateSymbolTableForModuleTableEntry(SymbolContext,
-                                                       ModuleTableEntry);
-
-        if (!Success) {
-            SymbolContext->NumberOfWorkItemsFailed++;
-        } else {
-            SymbolContext->NumberOfWorkItemsSucceeded++;
-        }
-
-        SymbolContext->NumberOfWorkItemsProcessed++;
+    if (!Success) {
+#ifdef _DEUBG
+        __debugbreak();
+#endif
+        return FALSE;
     }
+
+    Success = CreateSymbolTableForModuleTableEntry(SymbolContext,
+                                                   ModuleTableEntry);
+
+    if (!Success) {
+        SymbolContext->NumberOfWorkItemsFailed++;
+    } else {
+        SymbolContext->NumberOfWorkItemsSucceeded++;
+    }
+
+    SymbolContext->NumberOfWorkItemsProcessed++;
 
     return TRUE;
 }
