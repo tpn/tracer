@@ -7132,7 +7132,6 @@ AppendTailList(
     _Inout_ PLIST_ENTRY ListToAppend
     )
 {
-
     PLIST_ENTRY ListEnd = ListHead->Blink;
 
     ListHead->Blink->Flink = ListToAppend;
@@ -7151,6 +7150,208 @@ AppendTailList(
     for (Entry = Head->Blink;                    \
          Entry != Head;                          \
          Entry = Entry->Blink)
+
+//
+// Interlocked doubly-linked list.
+//
+
+typedef struct _GUARDED_LIST {
+    SRWLOCK Lock;
+
+    _Guarded_by_(Lock)
+    volatile LONGLONG NumberOfEntries;
+
+    _Guarded_by_(Lock)
+    LIST_ENTRY ListHead;
+
+} GUARDED_LIST;
+C_ASSERT(sizeof(GUARDED_LIST) == 32);
+typedef const GUARDED_LIST CGUARDED_LIST;
+typedef GUARDED_LIST *PGUARDED_LIST;
+typedef GUARDED_LIST **PPGUARDED_LIST;
+typedef GUARDED_LIST const *PCGUARDED_LIST;
+
+FORCEINLINE
+VOID
+AcquireGuardedListLockShared(
+    _In_ PGUARDED_LIST GuardedList
+    )
+{
+    AcquireSRWLockShared(&GuardedList->Lock);
+}
+
+FORCEINLINE
+VOID
+ReleaseGuardedListLockShared(
+    _In_ PGUARDED_LIST GuardedList
+    )
+{
+    ReleaseSRWLockShared(&GuardedList->Lock);
+}
+
+FORCEINLINE
+VOID
+AcquireGuardedListLockExclusive(
+    _In_ PGUARDED_LIST GuardedList
+    )
+{
+    AcquireSRWLockExclusive(&GuardedList->Lock);
+}
+
+FORCEINLINE
+VOID
+ReleaseGuardedListLockExclusive(
+    _In_ PGUARDED_LIST GuardedList
+    )
+{
+    ReleaseSRWLockExclusive(&GuardedList->Lock);
+}
+
+FORCEINLINE
+VOID
+InitializeGuardedListHead(
+    _Out_ PGUARDED_LIST GuardedList
+    )
+{
+    InitializeSRWLock(&GuardedList->Lock);
+    InitializeListHead(&GuardedList->ListHead);
+    GuardedList->NumberOfEntries = 0;
+    return;
+}
+
+FORCEINLINE
+BOOLEAN
+IsGuardedListEmpty(
+    _In_ PGUARDED_LIST GuardedList
+    )
+{
+    BOOL IsEmpty;
+    AcquireGuardedListLockShared(GuardedList);
+    IsEmpty = IsListEmpty(&GuardedList->ListHead);
+    ReleaseGuardedListLockShared(GuardedList);
+    return IsEmpty;
+}
+
+FORCEINLINE
+PLIST_ENTRY
+RemoveHeadGuardedList(
+    _Inout_ PGUARDED_LIST GuardedList
+    )
+{
+    PLIST_ENTRY Entry;
+
+    AcquireGuardedListLockExclusive(GuardedList);
+    Entry = RemoveHeadList(&GuardedList->ListHead);
+    GuardedList->NumberOfEntries--;
+    ReleaseGuardedListLockExclusive(GuardedList);
+    return Entry;
+}
+
+FORCEINLINE
+PLIST_ENTRY
+RemoveHeadGuardedListTsx(
+    _Inout_ PGUARDED_LIST GuardedList
+    )
+{
+    ULONG Status;
+    PLIST_ENTRY Entry;
+
+Retry:
+    Status = _xbegin();
+    if (Status & _XABORT_RETRY) {
+        goto Retry;
+    } else if (Status != _XBEGIN_STARTED) {
+        return RemoveHeadGuardedList(GuardedList);
+    }
+
+    Entry = RemoveHeadList(&GuardedList->ListHead);
+    GuardedList->NumberOfEntries--;
+    _xend();
+    return Entry;
+}
+
+FORCEINLINE
+PLIST_ENTRY
+RemoveTailGuardedList(
+    _Inout_ PGUARDED_LIST GuardedList
+    )
+
+{
+    PLIST_ENTRY Entry;
+
+    AcquireGuardedListLockExclusive(GuardedList);
+    Entry = RemoveTailList(&GuardedList->ListHead);
+    GuardedList->NumberOfEntries--;
+    ReleaseGuardedListLockExclusive(GuardedList);
+    return Entry;
+}
+
+FORCEINLINE
+VOID
+InsertTailGuardedList(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+    AcquireGuardedListLockExclusive(GuardedList);
+    InsertTailList(&GuardedList->ListHead, Entry);
+    GuardedList->NumberOfEntries++;
+    ReleaseGuardedListLockExclusive(GuardedList);
+    return;
+}
+
+FORCEINLINE
+VOID
+InsertHeadGuardedList(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+    AcquireGuardedListLockExclusive(GuardedList);
+    InsertHeadList(&GuardedList->ListHead, Entry);
+    GuardedList->NumberOfEntries++;
+    ReleaseGuardedListLockExclusive(GuardedList);
+    return;
+}
+
+FORCEINLINE
+VOID
+AppendTailGuardedList(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+    AcquireGuardedListLockExclusive(GuardedList);
+    AppendTailList(&GuardedList->ListHead, Entry);
+    GuardedList->NumberOfEntries++;
+    ReleaseGuardedListLockExclusive(GuardedList);
+    return;
+}
+
+FORCEINLINE
+VOID
+AppendTailGuardedListTsx(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY ListEntry
+    )
+{
+    ULONG Status;
+
+Retry:
+    Status = _xbegin();
+    if (Status & _XABORT_RETRY) {
+        goto Retry;
+    } else if (Status != _XBEGIN_STARTED) {
+        AppendTailGuardedList(GuardedList, ListEntry);
+        return;
+    }
+
+    AppendTailList(&GuardedList->ListHead, ListEntry);
+    GuardedList->NumberOfEntries++;
+    _xend();
+    return;
+}
+
 
 //
 // Disable browsing information generation when declaring instances of
