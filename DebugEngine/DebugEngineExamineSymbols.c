@@ -356,7 +356,9 @@ RetryBasicTypeMatch:
         //return TRUE;
     }
 
-    while (*(++Char) == ' ');
+    if (*Char == ' ') {
+        while (*(++Char) == ' ');
+    }
 
     //
     // XXX todo: Save module bit.
@@ -430,19 +432,8 @@ RetryBasicTypeMatch:
             break;
     }
 
-    if (SymbolType != FunctionType) {
-        return TRUE;
-    }
-
-
-//End:
-    if (HeapHandle) {
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)StackBitmapBuffer) {
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
+        HeapFree(HeapHandle, 0, Bitmap.Buffer);
     }
 
     return TRUE;
