@@ -200,14 +200,6 @@ Return Value:
     //
 
     Session = Output->Session;
-    HeapHandle = Output->Allocator->HeapHandle;
-    ExaminedSymbolAllocator = Output->CustomStructureAllocator;
-    ExaminedSymbolSecondaryAllocator = (
-        Output->CustomStructureSecondaryAllocator
-    );
-
-    End = Line->Buffer + Line->Length;
-
     StringTable = Session->ExamineSymbolsPrefixStringTable;
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
 
@@ -224,6 +216,18 @@ Return Value:
 
         return TRUE;
     }
+
+    //
+    // Continue initializing aliases.
+    //
+
+    HeapHandle = Output->Allocator->HeapHandle;
+    ExaminedSymbolAllocator = Output->CustomStructureAllocator;
+    ExaminedSymbolSecondaryAllocator = (
+        Output->CustomStructureSecondaryAllocator
+    );
+
+    End = Line->Buffer + Line->Length;
 
     Rtl = Session->Rtl;
     RtlCharToInteger = Rtl->RtlCharToInteger;
@@ -295,7 +299,7 @@ RetryBasicTypeMatch:
     MatchIndex = IsPrefixOfStringInTable(StringTable, &BasicType, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
-        if (++BasicTypeMatchAttempts > NumberOfBasicTypeStringTables) {
+        if (++BasicTypeMatchAttempts >= NumberOfBasicTypeStringTables) {
             __debugbreak();
             UnknownBasicType(&BasicType);
             return TRUE;
@@ -352,7 +356,7 @@ RetryBasicTypeMatch:
     IsFunctionPointer = (SymbolType == FunctionType && Symbol->Flags.IsPointer);
 
     if (IsFunctionPointer) {
-        __debugbreak();
+        //__debugbreak();
         //return TRUE;
     }
 
@@ -376,6 +380,10 @@ RetryBasicTypeMatch:
             //
             // Advance to the function name.
             //
+
+            if (IsFunctionPointer) {
+                break;
+            }
 
             while (*(Char++) != '!');
 
@@ -463,7 +471,6 @@ Return Value:
 {
     BOOL Success;
     PSTRING Line;
-    ULONG ParsedLines;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     PLINKED_LINE LinkedLine;
@@ -472,7 +479,7 @@ Return Value:
     // For each line, call parse lines.
     //
 
-    ParsedLines = 0;
+    Output->NumberOfParsedLines = 0;
     ListHead = &Output->SavedLinesListHead;
 
     FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
@@ -482,10 +489,10 @@ Return Value:
         if (!Success) {
             return FALSE;
         }
-        ParsedLines++;
+        Output->NumberOfParsedLines++;
     }
 
-    if (ParsedLines != Output->NumberOfSavedLines) {
+    if (Output->NumberOfParsedLines != Output->NumberOfSavedLines) {
         __debugbreak();
         Success = FALSE;
     }
