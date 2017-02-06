@@ -71,6 +71,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Rtl\__C_specific_handler.h" />
     <ClInclude Include="DebugEngineCommands.h" />
     <ClInclude Include="DebugEngineInterfaces.h" />
     <ClInclude Include="DebugEngineConstants.h" />

@@ -255,7 +255,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     ULONG TotalBufferLengthInChars;
     ULONG TotalBufferSizeInBytes;
     ULONG LargestChunkSizeInBytes;
-    ULONG Unused1;
+    ULONG NumberOfParsedLines;
 
     //
     // Captures the last HRESULT of an operation.

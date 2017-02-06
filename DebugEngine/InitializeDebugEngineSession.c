@@ -226,6 +226,12 @@ Return Value:
     }
 
     //
+    // Initialize our __C_specific_handler from Rtl.
+    //
+
+    __C_specific_handler_impl = Rtl->__C_specific_handler;
+
+    //
     // Load DbgEng.dll.
     //
 
