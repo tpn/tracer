@@ -594,6 +594,8 @@ DispatchOutputLineCallbacks(
         } else {
             Output->State.SavingOutputLineSucceeded = TRUE;
         }
+    } else {
+        SavingLineSuccess = TRUE;
     }
 
     if (Output->Flags.EnableLineOutputCallbacks) {
@@ -605,6 +607,8 @@ DispatchOutputLineCallbacks(
         } else {
             Output->State.LineOutputCallbackSucceeded = TRUE;
         }
+    } else {
+        Success = TRUE;
     }
 
     Output->State.DispatchingLineCallbacks = FALSE;
@@ -646,6 +650,8 @@ DispatchOutputCompleteCallbacks(
         } else {
             Output->State.ParsingLinesIntoCustomStructureSucceeded = TRUE;
         }
+    } else {
+        ParserSuccess = TRUE;
     }
 
     if (Output->OutputCompleteCallback) {
@@ -663,6 +669,8 @@ DispatchOutputCompleteCallbacks(
         } else {
             Output->State.OutputCompleteCallbackSucceeded = TRUE;
         }
+    } else {
+        Success = TRUE;
     }
 
     Output->State.DispatchingOutputCompleteCallbacks = FALSE;

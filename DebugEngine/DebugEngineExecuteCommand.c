@@ -84,6 +84,11 @@ Return Value:
         );
     }
 
+    if (Output->Flags.EnableLineTextAndCustomStructureAllocators ||
+        Output->Flags.EnableLineOutputCallbacks) {
+        Output->Flags.DispatchOutputLineCallbacks = TRUE;
+    }
+
     //
     // Set our output callbacks and execute the command.
     //
