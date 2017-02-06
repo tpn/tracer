@@ -238,7 +238,10 @@ typedef struct _ALLOCATOR {
 
     volatile ULONG NumberOfThreads;
 
-} ALLOCATOR, *PALLOCATOR, **PPALLOCATOR;
+} ALLOCATOR;
+typedef ALLOCATOR *PALLOCATOR;
+typedef ALLOCATOR **PPALLOCATOR;
+C_ASSERT(sizeof(ALLOCATOR) == 144);
 
 typedef
 _Success_(return != 0)
