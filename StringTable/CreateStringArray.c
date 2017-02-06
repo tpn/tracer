@@ -284,6 +284,10 @@ Return Value:
             // The search has wrapped, we're done.
             //
 
+            if (PreviousBitmapIndex != 0) {
+                __debugbreak();
+            }
+            Count++;
             break;
 
         } else if (PreviousBitmapIndex == String->Length) {
@@ -493,7 +497,7 @@ Return Value:
 
     //
     // Loop through the delimiter bitmap again and prime each destination
-    // string based.
+    // string.
     //
 
     Final = FALSE;
@@ -656,7 +660,7 @@ End:
     // Potentially free the bitmap buffer.
     //
 
-    if ((ULONG_PTR)StackBitmap.Buffer != (ULONG_PTR)Bitmap->Buffer) {
+    if ((ULONG_PTR)StackBitmapBuffer != (ULONG_PTR)Bitmap->Buffer) {
 
         //
         // We'll hit this point if a new bitmap had to be allocated because
