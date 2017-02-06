@@ -2352,8 +2352,12 @@ GetLastLoadEvent(
 // TraceStoreSymbol-related functions and macros.
 //
 
-#define SYMBOL_CONTEXT_STORE(Name) \
-    (SymbolContext->TraceStores.##Name)
+#define SYMBOL_CONTEXT_STORE(Name) (              \
+    TraceStoreIdToTraceStore(                     \
+        SymbolContext->TraceContext->TraceStores, \
+        TraceStore##Name##Id                      \
+    )                                             \
+)
 
 BIND_COMPLETE SymbolTableStoreBindComplete;
 BIND_COMPLETE SymbolTypeStoreBindComplete;
@@ -2469,23 +2473,23 @@ SYMBOL_CONTEXT_ENUM_LINES_CALLBACK SymbolContextEnumLinesCallback;
 
 FORCEINLINE
 VOID
-PushModuleTableEntryToSymbolContext(
+AppendModuleTableEntryToSymbolContext(
     _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
     _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
 {
-    PSLIST_ENTRY ListEntry;
-    PSLIST_HEADER ListHead;
+    PLIST_ENTRY ListEntry;
+    PGUARDED_LIST GuardedList;
 
-    ListHead = &SymbolContext->WorkListHead;
-    ListEntry = &ModuleTableEntry->SymbolContextSListEntry;
-    InterlockedPushEntrySList(ListHead, ListEntry);
+    ListEntry = &ModuleTableEntry->SymbolContextListEntry;
+    GuardedList = &SymbolContext->WorkList;
+    AppendTailGuardedList(GuardedList, ListEntry);
     SetEvent(SymbolContext->WorkAvailableEvent);
 }
 
 FORCEINLINE
 VOID
-MaybePushModuleTableEntryToSymbolContext(
+MaybeAppendModuleTableEntryToSymbolContext(
     _In_ PTRACE_CONTEXT TraceContext,
     _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
@@ -2498,7 +2502,47 @@ MaybePushModuleTableEntryToSymbolContext(
         return;
     }
 
-    PushModuleTableEntryToSymbolContext(SymbolContext, ModuleTableEntry);
+    InitializeListHead(&ModuleTableEntry->SymbolContextListEntry);
+
+    AppendModuleTableEntryToSymbolContext(SymbolContext, ModuleTableEntry);
+}
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+_Requires_lock_not_held_(SymbolContext->CriticalSection)
+BOOL
+RemoveHeadModuleTableEntryFromSymbolContext(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _Outptr_result_nullonfailure_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    )
+{
+    BOOL Success;
+    PLIST_ENTRY ListEntry;
+    PLIST_ENTRY ListHead;
+    PGUARDED_LIST GuardedList;
+
+    GuardedList = &SymbolContext->WorkList;
+    ListHead = &GuardedList->ListHead;
+    AcquireGuardedListLockExclusive(GuardedList);
+    if (IsListEmpty(ListHead)) {
+        Success = FALSE;
+        *ModuleTableEntry = NULL;
+        goto End;
+    }
+
+    ListEntry = RemoveHeadList(ListHead);
+
+    *ModuleTableEntry = CONTAINING_RECORD(ListEntry,
+                                          TRACE_MODULE_TABLE_ENTRY,
+                                          SymbolContextListEntry);
+
+    Success = TRUE;
+
+End:
+    ReleaseGuardedListLockExclusive(GuardedList);
+
+    return Success;
 }
 
 FORCEINLINE
@@ -2520,7 +2564,7 @@ AllocateAndCopySymbolModuleInfo(
 
     QuadWords = AllocSize.LongPart >> 3;
 
-    TraceStore = SymbolContext->TraceStores.SymbolModuleInfo;
+    TraceStore = SYMBOL_CONTEXT_STORE(SymbolModuleInfo);
     ImageFile = &SymbolContext->CurrentModuleTableEntry->File.ImageFile;
 
     TRY_MAPPED_MEMORY_OP {
@@ -2587,7 +2631,7 @@ AllocateAndCopySymbolInfo(
 
     QuadWords = AllocSize.LongPart >> 3;
 
-    TraceStore = SymbolContext->TraceStores.SymbolInfo;
+    TraceStore = SYMBOL_CONTEXT_STORE(SymbolInfo);
 
     TRY_MAPPED_MEMORY_OP {
 
@@ -2640,7 +2684,7 @@ AllocateAndCopySourceFile(
     AllocSize.LongPart = 0;
     QuadWords = AllocSize.LongPart >> 3;
 
-    TraceStore = SymbolContext->TraceStores.SymbolFile;
+    TraceStore = SYMBOL_CONTEXT_STORE(SymbolFile);
     ImageFile = &SymbolContext->CurrentModuleTableEntry->File.ImageFile;
 
     //
@@ -2752,55 +2796,17 @@ DEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK
 
 FORCEINLINE
 VOID
-PushModuleTableEntryToDebugContext(
-    _In_ PTRACE_DEBUG_CONTEXT DebugContext,
-    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
-    )
-{
-    PSLIST_ENTRY ListEntry;
-    PSLIST_HEADER ListHead;
-
-    ListHead = &DebugContext->WorkSListHead;
-    ListEntry = &ModuleTableEntry->DebugContextSListEntry;
-    InterlockedPushEntrySList(ListHead, ListEntry);
-    SetEvent(DebugContext->WorkAvailableEvent);
-}
-
-FORCEINLINE
-VOID
-MaybePushModuleTableEntryToDebugContext(
-    _In_ PTRACE_CONTEXT TraceContext,
-    _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
-    )
-{
-    PTRACE_DEBUG_CONTEXT DebugContext;
-
-    DebugContext = TraceContext->DebugContext;
-
-    if (!DebugContext) {
-        return;
-    }
-
-    PushModuleTableEntryToDebugContext(DebugContext, ModuleTableEntry);
-}
-
-FORCEINLINE
-VOID
 AppendModuleTableEntryToDebugContext(
     _In_ PTRACE_DEBUG_CONTEXT DebugContext,
     _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
 {
     PLIST_ENTRY ListEntry;
-    PLIST_ENTRY ListHead;
+    PGUARDED_LIST GuardedList;
 
-    ListHead = &DebugContext->WorkListHead;
     ListEntry = &ModuleTableEntry->DebugContextListEntry;
-
-    AcquireTraceDebugContextLock(DebugContext);
-    AppendTailList(ListHead, ListEntry);
-    ReleaseTraceDebugContextLock(DebugContext);
-
+    GuardedList = &DebugContext->WorkList;
+    AppendTailGuardedList(GuardedList, ListEntry);
     SetEvent(DebugContext->WorkAvailableEvent);
 }
 
@@ -2830,7 +2836,7 @@ _Check_return_
 _Success_(return != 0)
 _Requires_lock_not_held_(DebugContext->CriticalSection)
 BOOL
-PopModuleTableEntryFromDebugContext(
+RemoveHeadModuleTableEntryFromDebugContext(
     _In_ PTRACE_DEBUG_CONTEXT DebugContext,
     _Outptr_result_nullonfailure_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
@@ -2838,9 +2844,11 @@ PopModuleTableEntryFromDebugContext(
     BOOL Success;
     PLIST_ENTRY ListEntry;
     PLIST_ENTRY ListHead;
+    PGUARDED_LIST GuardedList;
 
-    ListHead = &DebugContext->WorkListHead;
-    AcquireTraceDebugContextLock(DebugContext);
+    GuardedList = &DebugContext->WorkList;
+    ListHead = &GuardedList->ListHead;
+    AcquireGuardedListLockExclusive(GuardedList);
     if (IsListEmpty(ListHead)) {
         Success = FALSE;
         *ModuleTableEntry = NULL;
@@ -2856,7 +2864,7 @@ PopModuleTableEntryFromDebugContext(
     Success = TRUE;
 
 End:
-    ReleaseTraceDebugContextLock(DebugContext);
+    ReleaseGuardedListLockExclusive(GuardedList);
 
     return Success;
 }

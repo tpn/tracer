@@ -587,14 +587,14 @@ Return Value:
     //
 
     AcquireTraceDebugContextLock(DebugContext);
+
     DebugContext->SizeOfStruct = sizeof(*DebugContext);
     DebugContext->TraceContext = TraceContext;
     DebugContext->ThreadEntry = TraceDebugEngineThreadEntryImpl;
     DebugContext->ShutdownEvent = ShutdownEvent;
     DebugContext->WorkAvailableEvent = WorkAvailableEvent;
     DebugContext->State = TraceDebugContextStructureCreatedState;
-    //InitializeSListHead(&DebugContext->WorkSListHead);
-    InitializeListHead(&DebugContext->WorkListHead);
+    InitializeGuardedListHead(&DebugContext->WorkList);
 
     ReleaseTraceDebugContextLock(DebugContext);
 
@@ -995,55 +995,6 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-ProcessTraceDebugEngineWorkSList(
-    PTRACE_DEBUG_CONTEXT DebugContext
-    )
-/*++
-
-Routine Description:
-
-    This routine processes work entries pushed to the WorkListHead of the
-    DebugContext.
-
-Arguments:
-
-    DebugContext - Supplies a pointer to a TRACE_DEBUG_CONTEXT structure.
-
-Return Value:
-
-    TRUE on success, FALSE on error.
-
---*/
-{
-    BOOL Success;
-    PSLIST_ENTRY ListEntry;
-    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
-
-    ListEntry = InterlockedFlushSList(&DebugContext->WorkSListHead);
-
-    for (; ListEntry != NULL; ListEntry = ListEntry->Next) {
-
-        ModuleTableEntry = CONTAINING_RECORD(ListEntry,
-                                             TRACE_MODULE_TABLE_ENTRY,
-                                             DebugContextListEntry);
-
-        Success = CreateTypeInfoTableForModuleTableEntry(DebugContext,
-                                                         ModuleTableEntry);
-
-        if (!Success) {
-            DebugContext->NumberOfWorkItemsFailed++;
-        } else {
-            DebugContext->NumberOfWorkItemsSucceeded++;
-        }
-
-        DebugContext->NumberOfWorkItemsProcessed++;
-    }
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
 ProcessTraceDebugEngineWork(
     PTRACE_DEBUG_CONTEXT DebugContext
     )
@@ -1051,8 +1002,7 @@ ProcessTraceDebugEngineWork(
 
 Routine Description:
 
-    This routine processes work entries pushed to the WorkListHead of the
-    DebugContext.
+    This routine processes work entries.
 
 Arguments:
 
@@ -1067,7 +1017,10 @@ Return Value:
     BOOL Success;
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
-    if (!PopModuleTableEntryFromDebugContext(DebugContext, &ModuleTableEntry)) {
+    Success = RemoveHeadModuleTableEntryFromDebugContext(DebugContext,
+                                                         &ModuleTableEntry);
+
+    if (!Success) {
 #ifdef _DEBUG
         __debugbreak();
 #endif

@@ -2179,15 +2179,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
     CRITICAL_SECTION CriticalSection;
 
     //
-    // Pad out to 64 bytes.  This also ensures WorkListHead is aligned on a
-    // 16-byte boundary as required.
+    // A guarded doubly-linked list for work entries.
     //
 
-    DECLSPEC_ALIGN(64) SLIST_HEADER WorkListHead;
-
-    //
-    // (80 bytes consumed.)
-    //
+    GUARDED_LIST WorkList;
 
     PTRACE_CONTEXT TraceContext;
     PTRACE_SYMBOL_THREAD_ENTRY ThreadEntry;
@@ -2197,32 +2192,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
 
     struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
 
-    //
-    // (120 bytes consumed.)
-    //
-
     ULONG LastError;
     ULONG NumberOfWorkItemsProcessed;
     ULONG NumberOfWorkItemsSucceeded;
     ULONG NumberOfWorkItemsFailed;
-
-    //
-    // (136 bytes consumed.)
-    //
-
-    struct {
-        struct _TRACE_STORE *SymbolTable;
-        struct _TRACE_STORE *SymbolTableEntry;
-        struct _TRACE_STORE *SymbolModuleInfo;
-        struct _TRACE_STORE *SymbolFile;
-        struct _TRACE_STORE *SymbolInfo;
-        struct _TRACE_STORE *SymbolLine;
-        struct _TRACE_STORE *SymbolType;
-        struct _TRACE_STORE *StackFrame;
-    } TraceStores;
-
-    //
-    // (200 bytes consumed.)
 
     //
     // Capture various stateful pointers/values such that they are accessible
@@ -2233,29 +2206,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_SYMBOL_CONTEXT {
     PTRACE_MODULE_TABLE_ENTRY CurrentModuleTableEntry;
     LARGE_INTEGER CurrentTimestamp;
 
-    //
-    // (216 bytes consumed.)
-    //
-
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
-
-    //
-    // (232 bytes consumed.)
-    //
 
     //
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[24];
+    BYTE Reserved[72];
 
-} TRACE_SYMBOL_CONTEXT, *PTRACE_SYMBOL_CONTEXT;
+} TRACE_SYMBOL_CONTEXT;
+typedef TRACE_SYMBOL_CONTEXT *PTRACE_SYMBOL_CONTEXT;
 typedef TRACE_SYMBOL_CONTEXT **PPTRACE_SYMBOL_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, WorkListHead) == 64);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, TraceContext) == 80);
-C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 232);
+C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 184);
 C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
 
 #define AcquireTraceSymbolContextLock(SymbolContext) \
@@ -2462,17 +2426,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     CRITICAL_SECTION CriticalSection;
 
     //
-    // Pad out to 64 bytes.  This also ensures WorkListHead is aligned on a
-    // 16-byte boundary as required.
+    // Guarded list of work entries.
     //
 
-    DECLSPEC_ALIGN(64)
-    union {
-        SLIST_HEADER WorkSListHead;
-
-        _Guarded_by_(CriticalSection)
-        LIST_ENTRY WorkListHead;
-    };
+    DECLSPEC_ALIGN(64) GUARDED_LIST WorkList;
 
     //
     // (88 bytes consumed.)
@@ -2512,22 +2469,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
     //
-    // (176 bytes consumed.)
+    // (216 bytes consumed.)
     //
 
     ALLOCATOR Allocator;
 
     //
-    // (320 bytes consumed.)
+    // (368 bytes consumed.)
     //
 
-    BYTE Reserved[192];
+    BYTE Reserved[112];
 
 } TRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
-C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkListHead) == 64);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkList) == 64);
 //C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
 //C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
 //C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 512);
@@ -3053,7 +3010,7 @@ typedef struct _TRACE_STORE {
     // When readonly, indicates the number of relocations we actually need to
     // perform based on whether or not other dependent trace stores needed
     // relocation.  If we have self references and any of our preferred base
-    // addresses couldn't be satisified, this will also be represented in this
+    // addresses couldn't be satisfied, this will also be represented in this
     // count.
     //
 
