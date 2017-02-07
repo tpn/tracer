@@ -307,13 +307,20 @@ Return Value:
     // Symbol size is next.
     //
 
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
     SymbolSize.Buffer = Char;
 
+    Char++;
+
     //
-    // Skip over spaces after the symbol size.
+    // Advance to the first space after the symbol size.
     //
 
-    while (BytesRemaining > 0 && *Char == ' ') {
+    while (BytesRemaining > 0 && *Char != ' ') {
         BytesRemaining--;
         Char++;
     }
@@ -323,12 +330,19 @@ Return Value:
         goto Error;
     }
 
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Char++;
+
     //
     // Set symbol size lengths, temporarily NUL-terminate the string, convert
     // to an integer, then restore the character replaced.
     //
 
-    SymbolSize.Length = (USHORT)(Char - SymbolSize.Buffer) - 1;
+    SymbolSize.Length = (USHORT)((Char - 1) - SymbolSize.Buffer);
     SymbolSize.MaximumLength = SymbolSize.Length;
 
     Temp = SymbolSize.Buffer[SymbolSize.Length];
@@ -357,8 +371,6 @@ Return Value:
     //
 
     BasicType.Buffer = Char;
-    BasicType.Length = (USHORT)(End - BasicType.Buffer) - 1;
-    BasicType.MaximumLength = BasicType.Length;
 
     StringTable = Session->ExamineSymbolsBasicTypeStringTable1;
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
@@ -432,7 +444,6 @@ RetryBasicTypeMatch:
     COPY_STRING(Address);
 
     COPY_STRING_EX(Size, SymbolSize);
-    COPY_STRING_EX(Type, BasicType);
 
     //
     // Copy the address.
@@ -445,6 +456,11 @@ RetryBasicTypeMatch:
 
     Char += Match.NumberOfMatchedCharacters;
     BytesRemaining -= Match.NumberOfMatchedCharacters;
+
+    BasicType.Length = (USHORT)((Char - 1) - BasicType.Buffer);
+    BasicType.MaximumLength = BasicType.Length;
+
+    COPY_STRING_EX(Type, BasicType);
 
     if (BytesRemaining <= 0) {
         __debugbreak();
