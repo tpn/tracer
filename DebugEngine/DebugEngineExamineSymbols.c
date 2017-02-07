@@ -367,10 +367,14 @@ Return Value:
 
     //
     // The basic type will be next.  Set up the variable then search the string
-    // table for a match.
+    // table for a match.  Set the length to the BytesRemaining for now; as long
+    // as it's >= or equal to the basic type length (which it should always be),
+    // that will be fine.
     //
 
     BasicType.Buffer = Char;
+    BasicType.Length = (USHORT)BytesRemaining;
+    BasicType.MaximumLength = (USHORT)BytesRemaining;
 
     StringTable = Session->ExamineSymbolsBasicTypeStringTable1;
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
@@ -452,20 +456,22 @@ RetryBasicTypeMatch:
     Symbol->Address.QuadPart = Addr.QuadPart;
 
     //
-    // Update our Char pointer past the length of the matched string.
+    // Update our Char pointer past the length of the matched string (the basic
+    // type name).
+    //
 
     Char += Match.NumberOfMatchedCharacters;
     BytesRemaining -= Match.NumberOfMatchedCharacters;
-
-    BasicType.Length = (USHORT)((Char - 1) - BasicType.Buffer);
-    BasicType.MaximumLength = BasicType.Length;
-
-    COPY_STRING_EX(Type, BasicType);
 
     if (BytesRemaining <= 0) {
         __debugbreak();
         goto Error;
     }
+
+    BasicType.Length = (USHORT)(Char - BasicType.Buffer);
+    BasicType.MaximumLength = BasicType.Length;
+
+    COPY_STRING_EX(Type, BasicType);
 
     if (*Char != ' ') {
 
@@ -547,7 +553,7 @@ RetryBasicTypeMatch:
     //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
     //
 
-    Marker = Char;
+    Marker = (BasicType.Buffer + BasicType.Length);
 
     while (BytesRemaining > 0 && *Char != '!') {
         BytesRemaining--;
@@ -597,7 +603,7 @@ RetryBasicTypeMatch:
 
     ModuleName = &Symbol->String.ModuleName;
     ModuleName->Buffer = NextChar;
-    ModuleName->Length = (USHORT)((Char - 1) - NextChar);
+    ModuleName->Length = (USHORT)(Char - NextChar);
     ModuleName->MaximumLength = ModuleName->Length;
 
     //
@@ -619,7 +625,11 @@ RetryBasicTypeMatch:
 
         NOTHING;
 
-    } else {
+    } else if (0) {
+
+        //
+        // This is currently broken logic.
+        //
 
         //
         // If not, then there's array information present after the type name
