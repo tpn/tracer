@@ -158,27 +158,33 @@ Return Value:
 {
     PRTL Rtl;
     CHAR Temp;
-    BOOL Success;
+    BOOL Found;
+    BOOL Success = FALSE;
     BOOL IsFunctionPointer;
     USHORT Length;
     ULONG Size;
+    PCHAR End;
+    PCHAR Char;
+    PCHAR Marker;
+    PCHAR Lookback;
+    PCHAR NextChar;
+    USHORT Index;
     SHORT MatchIndex;
     SHORT MatchOffset;
-    PCHAR Char;
-    PCHAR End;
-    PSTRING Scope;
     STRING SymbolSize;
     STRING Address;
     STRING BasicType;
-    STRING Function;
-    STRING Parameters;
-    //PSTRING Parameter;
+    PSTRING Array;
+    PSTRING Scope;
+    PSTRING Arguments;
     PSTRING SymbolName;
     PSTRING ModuleName;
+    PSTRING Remaining;
     HANDLE HeapHandle;
     STRING_MATCH Match;
     ULARGE_INTEGER Addr;
-    USHORT NumberOfParameters;
+    LONG BytesRemaining;
+    USHORT NumberOfArguments;
     USHORT BasicTypeMatchAttempts;
     USHORT NumberOfBasicTypeStringTables;
     PALLOCATOR ExaminedSymbolAllocator;
@@ -228,6 +234,7 @@ Return Value:
     );
 
     End = Line->Buffer + Line->Length;
+    BytesRemaining = Line->Length;
 
     Rtl = Session->Rtl;
     RtlCharToInteger = Rtl->RtlCharToInteger;
@@ -237,8 +244,25 @@ Return Value:
 
     Length = Match.NumberOfMatchedCharacters;
     Char = (Line->Buffer + Length);
+    BytesRemaining -= Length;
 
-    while (*(++Char) == ' ');
+    //
+    // Skip over spaces after the scope name.
+    //
+
+    while (BytesRemaining > 0 && *Char == ' ') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Extract the address, then convert from hex to integer in two parts.
+    //
 
     Address.Length = sizeof("00000000`00000000")-1;
     Address.MaximumLength = Address.Length;
@@ -246,45 +270,93 @@ Return Value:
 
     if (Address.Buffer[8] != '`') {
         __debugbreak();
-        return TRUE;
+        goto Error;
     }
 
     Address.Buffer[8] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer, 16, &Addr.HighPart))) {
         __debugbreak();
-        NOTHING;
+        goto Error;
     }
     Address.Buffer[8] = '`';
 
     Address.Buffer[17] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer+9, 16, &Addr.LowPart))) {
         __debugbreak();
-        NOTHING;
+        goto Error;
     }
     Address.Buffer[17] = ' ';
 
     Char = Address.Buffer + Address.Length;
 
-    while (*(++Char) == ' ');
+    //
+    // Skip over spaces after the address.
+    //
+
+    while (BytesRemaining > 0 && *Char == ' ') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Symbol size is next.
+    //
 
     SymbolSize.Buffer = Char;
 
-    while (*Char++ != ' ');
+    //
+    // Skip over spaces after the symbol size.
+    //
+
+    while (BytesRemaining > 0 && *Char == ' ') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Set symbol size lengths, temporarily NUL-terminate the string, convert
+    // to an integer, then restore the character replaced.
+    //
 
     SymbolSize.Length = (USHORT)(Char - SymbolSize.Buffer) - 1;
     SymbolSize.MaximumLength = SymbolSize.Length;
 
-    BasicType.Buffer = Char;
-
     Temp = SymbolSize.Buffer[SymbolSize.Length];
-    SymbolSize.Buffer[SymbolSize.Length] = '\0';
-    if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 0, &Size))) {
+
+    if (Temp != ' ') {
+
+        //
+        // It should always be a space.
+        //
+
         __debugbreak();
-        NOTHING;
+        goto Error;
+    }
+
+    SymbolSize.Buffer[SymbolSize.Length] = '\0';
+    if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 16, &Size))) {
+        __debugbreak();
+        goto Error;
     }
 
     SymbolSize.Buffer[SymbolSize.Length] = Temp;
 
+    //
+    // The basic type will be next.  Set up the variable then search the string
+    // table for a match.
+    //
+
+    BasicType.Buffer = Char;
     BasicType.Length = (USHORT)(End - BasicType.Buffer) - 1;
     BasicType.MaximumLength = BasicType.Length;
 
@@ -300,14 +372,18 @@ RetryBasicTypeMatch:
 
     if (MatchIndex == NO_MATCH_FOUND) {
         if (++BasicTypeMatchAttempts >= NumberOfBasicTypeStringTables) {
-            __debugbreak();
             UnknownBasicType(&BasicType);
-            return TRUE;
+            goto Error;
         }
         StringTable++;
         MatchOffset += MAX_STRING_TABLE_ENTRIES;
         goto RetryBasicTypeMatch;
     }
+
+    //
+    // We found a known type.  Proceed with allocation of an examined symbol
+    // record.
+    //
 
     Symbol = (PDEBUG_ENGINE_EXAMINED_SYMBOL)(
         ExaminedSymbolAllocator->CallocWithTimestamp(
@@ -319,14 +395,23 @@ RetryBasicTypeMatch:
     );
 
     if (!Symbol) {
-        return FALSE;
+        goto Error;
     }
+
+    //
+    // Initialize common parts of the structure before doing type-specific
+    // processing.
+    //
 
     Symbol->SizeOfStruct = sizeof(*Symbol);
 
     Symbol->Type = SymbolType = MatchIndex + MatchOffset;
     Symbol->Scope = SymbolScope;
     Symbol->Output = Output;
+
+    //
+    // Define some helper macros.
+    //
 
 #define COPY_PSTRING_EX(Name, Source)                                  \
     Symbol->String.##Name##.Length = ##Source##->Length;               \
@@ -343,108 +428,492 @@ RetryBasicTypeMatch:
 #define COPY_STRING(Name) COPY_STRING_EX(Name, Name)
 
     COPY_PSTRING(Line);
-    COPY_STRING_EX(Size, SymbolSize);
     COPY_PSTRING(Scope);
     COPY_STRING(Address);
 
+    COPY_STRING_EX(Size, SymbolSize);
+    COPY_STRING_EX(Type, BasicType);
+
+    //
+    // Copy the address.
+    //
+
     Symbol->Address.QuadPart = Addr.QuadPart;
 
-    Char += Match.NumberOfMatchedCharacters + 1;
+    //
+    // Update our Char pointer past the length of the matched string.
 
-    Symbol->Flags.IsPointer = (*Char == '*');
+    Char += Match.NumberOfMatchedCharacters;
+    BytesRemaining -= Match.NumberOfMatchedCharacters;
 
-    IsFunctionPointer = (SymbolType == FunctionType && Symbol->Flags.IsPointer);
-
-    if (IsFunctionPointer) {
-        //__debugbreak();
-        //return TRUE;
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
     }
 
-    if (*Char == ' ') {
-        while (*(++Char) == ' ');
+    if (*Char != ' ') {
+
+        //
+        // The name should always be followed by a space.
+        //
+
+        __debugbreak();
+        goto Error;
     }
 
     //
-    // XXX todo: Save module bit.
+    // Skip past the space.
+    //
+
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Char++;
+
+    //
+    // Pointer types will have an asterisk at this point.  They should be
+    // followed by spaces.
+    //
+
+    IsFunctionPointer = FALSE;
+
+    if (*Char == '*') {
+        Symbol->Flags.IsPointer = TRUE;
+
+        //
+        // If we're a function, make a note that this is a function pointer,
+        // as we'll handle it differently in the type-specific logic below.
+        //
+
+        if (SymbolType == FunctionType) {
+            IsFunctionPointer = TRUE;
+        }
+
+        //
+        // Advance the pointer and check that the next character is a space.
+        //
+
+        if (--BytesRemaining <= 0) {
+            __debugbreak();
+            goto Error;
+        }
+
+        if (*(++Char) != ' ') {
+            __debugbreak();
+            goto Error;
+        }
+    }
+
+    //
+    // Advance over any spaces.
+    //
+
+    while (BytesRemaining > 0 && *Char == ' ') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Make a note of the current buffer position, then advance the pointer
+    // to the exclamation point, which delineates the module name from the
+    // symbol name.  Once we've found this point, we can scan backwards for
+    // the space, which will allow us to extract both the module name and any
+    // array information that comes after the symbol type, e.g.:
+    //
+    //      double [5] python27!bigtens = ...
+    //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
+    //
+
+    Marker = Char;
+
+    while (BytesRemaining > 0 && *Char != '!') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Scan backwards for the space.
+    //
+
+    Found = FALSE;
+
+    for (Lookback = Char; Lookback > Marker; Lookback--) {
+        if (*Lookback == ' ') {
+            Found = TRUE;
+            break;
+        }
+    }
+
+    if (!Found) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Invariant check: the next character after *Lookback should not be a
+    // space.  (Note that this is an internal invariant check, not the normal
+    // aggressive bounds checking we do elsewhere in the routine.)
+    //
+
+    NextChar = (Lookback + 1);
+    if (*NextChar == ' ') {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // The module name will be from the next character (the character after the
+    // space) to the character before our exclamation point, which is where
+    // Char will currently be pointing.
     //
 
     ModuleName = &Symbol->String.ModuleName;
-    ModuleName->Buffer = Char;
+    ModuleName->Buffer = NextChar;
+    ModuleName->Length = (USHORT)((Char - 1) - NextChar);
+    ModuleName->MaximumLength = ModuleName->Length;
+
+    //
+    // Invariant check: if marker is past the next character, something has
+    // gone wrong.
+    //
+
+    if (Marker > NextChar) {
+
+        __debugbreak();
+        goto Error;
+
+    } else if (Marker == NextChar) {
+
+        //
+        // If the marker we took earlier matches the next character (the module
+        // name), there was no array information present after the type name.
+        //
+
+        NOTHING;
+
+    } else {
+
+        //
+        // If not, then there's array information present after the type name
+        // but before the module name.  Capture that information now.
+        //
+
+        Array = &Symbol->String.Array;
+        Array->Buffer = Marker;
+
+        //
+        // Lookback points to the space before the module name.  Marker points
+        // to the first character of the array information.  Deduce the length
+        // by subtracting the Marker from Lookback-1 (the -1 to account for the
+        // space).
+        //
+
+        Array->Length = (USHORT)((Lookback - 1) - Marker);
+        Array->MaximumLength = Array->Length;
+
+        //
+        // Invariant check: one past the array's buffer should match the
+        // module name's buffer.
+        //
+
+        if (&Array->Buffer[Array->Length] != ModuleName->Buffer) {
+            __debugbreak();
+            goto Error;
+        }
+    }
+
+    //
+    // Char will be positioned on the exclamation point; advance it to the next
+    // character, which will be the symbol name.
+    //
+
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Char++;
+
+    //
+    // Capture the current position as the start of the symbol name buffer.
+    //
 
     SymbolName = &Symbol->String.SymbolName;
+    SymbolName->Buffer = Char;
 
-    switch (SymbolType) {
+    //
+    // Advance through the symbol name until we get to the next space.  Whilst
+    // doing this, check to see if any of the characters are colons; if they
+    // are, we use this as an indicator that a C++ type is being referred to.
+    //
 
-        case FunctionType:
-
-            //
-            // Advance to the function name.
-            //
-
-            if (IsFunctionPointer) {
-                break;
-            }
-
-            while (*(Char++) != '!');
-
-            Function.Buffer = Char;
-
-            while (*(Char++) != ' ');
-
-            Function.Length = (USHORT)(Char - Function.Buffer) - 1;
-            Function.MaximumLength = Function.Length;
-
-            COPY_STRING(Function);
-
-            while (*(Char++) != '(');
-
-            Parameters.Buffer = Char;
-            Parameters.Length = (USHORT)(End - Parameters.Buffer) - 2;
-            Parameters.MaximumLength = Parameters.Length;
-
-            COPY_STRING(Parameters);
-
-            Success = Rtl->CreateBitmapIndexForString(Rtl,
-                                                      &Parameters,
-                                                      ',',
-                                                      &HeapHandle,
-                                                      &BitmapPointer,
-                                                      FALSE,
-                                                      NULL);
-
-            NumberOfParameters = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
-
-            if (NumberOfParameters == 0) {
-                PULONG ULongBuffer = (PULONG)Parameters.Buffer;
-                PULONG Void = (PULONG)"void";
-                BOOL IsVoid = (*(ULongBuffer) == *(Void));
-
-                if (!IsVoid) {
-                    NumberOfParameters = 1;
-                }
-            }
-
-            Symbol->Function.NumberOfArguments = NumberOfParameters;
-
-            if (NumberOfParameters > 0) {
-
-                //
-                // Allocate parameters via secondary allocator.
-                //
-
-            }
-
-            break;
-
-        default:
-            break;
+    while (BytesRemaining > 0 && *Char != ' ') {
+        BytesRemaining--;
+        if (*(++Char) == ':') {
+            Symbol->Flags.IsCpp = TRUE;
+        }
     }
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // The character pointer is now positioned at the space trailing the symbol
+    // name; use this to calculate the lengths by subtracting one from it (to
+    // account for the space) then subtracting the address of the start of the
+    // buffer (SymbolName->Buffer).
+    //
+
+    SymbolName->Length = (USHORT)((Char - 1) - SymbolName->Buffer);
+    SymbolName->MaximumLength = SymbolName->Length;
+
+    //
+    // The remaining bytes in the string will be specific to the type of the
+    // symbol.  The only types we care about at the moment are functions as
+    // the remaining string will capture the function's arguments with types
+    // (assuming this is a private function symbol and not a function pointer).
+    //
+
+    //
+    // Set the remaining bytes string.  The length will be whatever is left in
+    // the BytesRemaining counter we've been decrementing for each token we've
+    // processed.
+    //
+
+    Remaining = &Symbol->String.Remaining;
+    Remaining->Buffer = Char;
+    Remaining->Length = (USHORT)BytesRemaining;
+    Remaining->MaximumLength = (USHORT)BytesRemaining;
+
+    //
+    // Make sure the ends line up where we expect.
+    //
+
+    if ((Remaining->Buffer + Remaining->Length) != End) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // If this isn't a private function, we're done.
+    //
+
+    if (SymbolScope != PrivateFunctionScope) {
+        Success = TRUE;
+        goto End;
+    }
+
+    //
+    // Sanity check our symbol type is a function too.
+    //
+
+    if (SymbolType != FunctionType) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // The character pointer will be positioned on a space.  The next character
+    // should be an opening parenthesis.
+    //
+
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Char++;
+
+    if (*Char != '(') {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // The parenthesis was where we expected, advance the pointer.
+    //
+
+    if (--BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
+
+    Char++;
+
+    //
+    // Make a note of the current buffer position, then advance the pointer to
+    // the closing parenthesis.
+    //
+
+    Marker = Char;
+
+    while (BytesRemaining > 0 && *Char != ')') {
+        BytesRemaining--;
+        Char++;
+    }
+
+    //
+    // (Will this be 0 here?  Or 1, and the last character is '\n'?)
+    //
+
+    if (BytesRemaining != 1 || *(Char + 1) != '\n') {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Update the function arguments string with the buffer offsets.
+    //
+
+    Arguments = &Symbol->String.FunctionArguments;
+    Arguments->Buffer = Marker;
+    Arguments->Length = (USHORT)((Char - 1) - Arguments->Buffer);
+    Arguments->MaximumLength = Arguments->Length;
+
+    //
+    // Create a bitmap index of all the commas in the arguments string.
+    //
+
+    Success = Rtl->CreateBitmapIndexForString(Rtl,
+                                              Arguments,
+                                              ',',
+                                              &HeapHandle,
+                                              &BitmapPointer,
+                                              FALSE,
+                                              NULL);
+
+    NumberOfArguments = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
+
+    if (NumberOfArguments == 0) {
+
+        //
+        // No commas were detected.  This is either because there was only one
+        // argument, or there were no arguments.  If it's the latter, we'll see
+        // a "void" string value.
+        //
+
+        PULONG ULongBuffer = (PULONG)Arguments->Buffer;
+        PULONG Void = (PULONG)"void";
+        BOOL IsVoid = (*(ULongBuffer) == *(Void));
+
+        if (!IsVoid) {
+            NumberOfArguments = 1;
+        }
+    }
+
+    //
+    // Set the number of arguments and initialize the list head.
+    //
+
+    Symbol->Function.NumberOfArguments = NumberOfArguments;
+    InitializeListHead(&Symbol->Function.ArgumentsListHead);
+
+    if (NumberOfArguments == 0) {
+
+        //
+        // There were no arguments; we're done.
+        //
+
+        Success = TRUE;
+        goto End;
+    }
+
+    //
+    // Create a new linked string for the arguments.
+    //
+
+    Char = Arguments->Buffer;
+    Marker = Arguments->Buffer;
+
+    for (Index = 0; Index < NumberOfArguments; Index++) {
+
+        PLINKED_STRING Argument;
+
+        //
+        // Allocate a linked string for the function argument.
+        //
+
+        Argument = (PLINKED_STRING)(
+            ExaminedSymbolSecondaryAllocator->CallocWithTimestamp(
+                ExaminedSymbolSecondaryAllocator->Context,
+                1,
+                sizeof(LINKED_STRING),
+                &Output->Timestamp.CommandStart
+            )
+        );
+
+        if (!Argument) {
+            goto Error;
+        }
+
+        //
+        // Wire the structure up to the relevant buffer offset.  We use the
+        // Marker to delineate the start of each argument.
+        //
+
+        Argument->Buffer = Marker;
+
+        //
+        // If this is the last element, set our character pointer to the end
+        // of the arguments buffer.  Otherwise, advance to the next comma.
+        //
+
+        if (Index == NumberOfArguments) {
+            Char = Arguments->Buffer + Arguments->Length;
+        } else {
+            while (*Char != ',') {
+                Char++;
+            }
+        }
+
+        Argument->Length = (USHORT)((Char - 1) - Marker);
+        Argument->MaximumLength = Argument->Length;
+
+        InitializeListHead(&Argument->ListEntry);
+
+        AppendTailList(&Symbol->Function.ArgumentsListHead,
+                       &Argument->ListEntry);
+
+        //
+        // Adjust the character pointer by 2 such that it points to the next
+        // symbol name, then set the marker to the same value.
+        //
+
+        Char += 2;
+        Marker = Char;
+    }
+
+    Success = TRUE;
+    goto End;
+
+Error:
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
 
     if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
         HeapFree(HeapHandle, 0, Bitmap.Buffer);
     }
 
-    return TRUE;
+    return Success;
 }
 
 _Use_decl_annotations_

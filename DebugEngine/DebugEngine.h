@@ -654,8 +654,20 @@ typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
 
         ULONG IsArray:1;
 
+        //
+        // If a colon is detected in the symbol name, the name is assumed to
+        // be a (demangled) C++ symbol name.  The following flag will be set.
+        //
+        // N.B. Only one colon is tested for, despite two being technically the
+        //      valid indicator of a C++ name.  However, nothing else should use
+        //      a colon in their name, so we should be fine.
+        //
+
+        ULONG IsCpp:1;
+
     };
 } DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS) == sizeof(ULONG));
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
@@ -733,6 +745,26 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
         STRING Size;
 
         //
+        // Points to the basic type name of the symbol.
+        //
+
+        STRING Type;
+
+        //
+        // Points to any array information present after the type name but
+        // before the module name.  For example, given:
+        //
+        //      double [5] python27!bigtens = ...
+        //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
+        //
+        // Array will capture the "[5]" and "[95]" respectively.  (The presence
+        // of one or more preceeding asterisks will be captured in the flag
+        // 'IsPointer'.)
+        //
+
+        STRING Array;
+
+        //
         // Points to the module name, if applicable.
         //
 
@@ -750,31 +782,50 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
         };
 
         //
-        // If this is a function, this will be set to the start of the
-        // parameters.
+        // Remaining string after the space that trails the symbol name will
+        // be specific to the type being examined.
+        //
+
+        STRING Remaining;
+
+        //
+        // Specific symbol types can refine the range of bytes that the
+        // "Remaining" string above points to via this Value field.
         //
 
         union {
-            STRING Parameters;
+            STRING Value;
+            STRING FunctionArguments;
         };
 
     } String;
-
 
     //
     // Variable parts of the structure depending on the flags/type.
     //
 
     union {
-
         struct {
+
+            //
+            // Number of arguments to the function.
+            //
 
             USHORT NumberOfArguments;
 
-            LIST_ENTRY FunctionArgumentsListHead;
+            //
+            // Pad out to a pointer boundary.
+            //
+
+            USHORT Reserved[3];
+
+            //
+            // Linked-list head of all function arguments.
+            //
+
+            LIST_ENTRY ArgumentsListHead;
 
         } Function;
-
     };
 
 } DEBUG_ENGINE_EXAMINED_SYMBOL;
