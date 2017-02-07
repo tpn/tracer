@@ -167,7 +167,7 @@ DEFINE_CUSTOM_STRUCTURE_NAME(UnassembledFunctionCustomStructureName,
 //                             DEBUG_ENGINE_DISPLAYED_TYPE);
 
 //
-// String tables.
+// StringTable-related constants.
 //
 
 #undef DSTR
@@ -178,6 +178,9 @@ CONST CHAR StringTableDelimiter = ';';
 //
 // N.B. The order of these string constants must match the *exact* order of the
 //      the corresponding enumeration symbol defined in DebugEngine.h.
+//
+//      Additionally, when a name overlaps, the longer name must come first.
+//      E.g. "int64" needs to come before "int".
 //
 
 CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
@@ -200,14 +203,14 @@ CONST STRING ExamineSymbolsBasicTypes1 = RTL_CONSTANT_STRING(
     DSTR("wchar_t")
     DSTR("short")
     DSTR("long")
-    DSTR("int")
     DSTR("int64")
+    DSTR("int")
     DSTR("unsigned char")
     DSTR("unsigned wchar_t")
     DSTR("unsigned short")
     DSTR("unsigned long")
-    DSTR("unsigned int")
     DSTR("unsigned int64")
+    DSTR("unsigned int")
     DSTR("union")
     DSTR("struct")
 );
