@@ -176,6 +176,7 @@ Return Value:
     STRING BasicType;
     PSTRING Array;
     PSTRING Scope;
+    PSTRING TypeName;
     PSTRING Arguments;
     PSTRING SymbolName;
     PSTRING ModuleName;
@@ -233,8 +234,17 @@ Return Value:
         Output->CustomStructureSecondaryAllocator
     );
 
-    End = Line->Buffer + Line->Length;
-    BytesRemaining = Line->Length;
+    End = Line->Buffer + (Line->Length - 1);
+    BytesRemaining = Line->Length - 1;
+
+    //
+    // The end of the line should be a line feed character.
+    //
+
+    if (*End != '\n') {
+        __debugbreak();
+        goto Error;
+    }
 
     Rtl = Session->Rtl;
     RtlCharToInteger = Rtl->RtlCharToInteger;
@@ -287,7 +297,17 @@ Return Value:
     }
     Address.Buffer[17] = ' ';
 
+    //
+    // Advance the character pointer to the first space after the address.
+    //
+
     Char = Address.Buffer + Address.Length;
+    BytesRemaining -= Address.Length;
+
+    if (BytesRemaining <= 0) {
+        __debugbreak();
+        goto Error;
+    }
 
     //
     // Skip over spaces after the address.
@@ -422,6 +442,7 @@ RetryBasicTypeMatch:
     Symbol->SizeOfStruct = sizeof(*Symbol);
 
     Symbol->Type = SymbolType = MatchIndex + MatchOffset;
+    Symbol->Size = Size;
     Symbol->Scope = SymbolScope;
     Symbol->Output = Output;
 
@@ -471,12 +492,12 @@ RetryBasicTypeMatch:
     BasicType.Length = (USHORT)(Char - BasicType.Buffer);
     BasicType.MaximumLength = BasicType.Length;
 
-    COPY_STRING_EX(Type, BasicType);
+    COPY_STRING(BasicType);
 
     if (*Char != ' ') {
 
         //
-        // The name should always be followed by a space.
+        // The basic type name should always be followed by a space.
         //
 
         __debugbreak();
@@ -493,6 +514,42 @@ RetryBasicTypeMatch:
     }
 
     Char++;
+
+    //
+    // If this is a class, struct or union type, we need to advance the char
+    // pointer again to the next space.
+    //
+
+    if (SymbolType == ClassType  || SymbolType == UnionType ||
+        SymbolType == StructType) {
+
+        TypeName = &Symbol->String.TypeName;
+        TypeName->Buffer = Char;
+
+        while (BytesRemaining > 0 && *Char != ' ') {
+            BytesRemaining--;
+            Char++;
+        }
+
+        if (BytesRemaining <= 0) {
+            __debugbreak();
+            goto Error;
+        }
+
+        TypeName->Length = (USHORT)(Char - TypeName->Buffer);
+        TypeName->MaximumLength = TypeName->Length;
+
+        //
+        // Skip past the space.
+        //
+
+        if (--BytesRemaining <= 0) {
+            __debugbreak();
+            goto Error;
+        }
+
+        Char++;
+    }
 
     //
     // Pointer types will have an asterisk at this point.  They should be
@@ -514,7 +571,7 @@ RetryBasicTypeMatch:
         }
 
         //
-        // Advance the pointer and check that the next character is a space.
+        // Advance the pointer.
         //
 
         if (--BytesRemaining <= 0) {
@@ -522,10 +579,7 @@ RetryBasicTypeMatch:
             goto Error;
         }
 
-        if (*(++Char) != ' ') {
-            __debugbreak();
-            goto Error;
-        }
+        Char++;
     }
 
     //
@@ -553,7 +607,7 @@ RetryBasicTypeMatch:
     //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
     //
 
-    Marker = (BasicType.Buffer + BasicType.Length);
+    Marker = Char;
 
     while (BytesRemaining > 0 && *Char != '!') {
         BytesRemaining--;
@@ -571,7 +625,7 @@ RetryBasicTypeMatch:
 
     Found = FALSE;
 
-    for (Lookback = Char; Lookback > Marker; Lookback--) {
+    for (Lookback = Char; Lookback >= Marker - 1; Lookback--) {
         if (*Lookback == ' ') {
             Found = TRUE;
             break;
@@ -625,11 +679,7 @@ RetryBasicTypeMatch:
 
         NOTHING;
 
-    } else if (0) {
-
-        //
-        // This is currently broken logic.
-        //
+    } else {
 
         //
         // If not, then there's array information present after the type name
@@ -646,7 +696,7 @@ RetryBasicTypeMatch:
         // space).
         //
 
-        Array->Length = (USHORT)((Lookback - 1) - Marker);
+        Array->Length = (USHORT)(Lookback - Marker);
         Array->MaximumLength = Array->Length;
 
         //
@@ -654,10 +704,16 @@ RetryBasicTypeMatch:
         // module name's buffer.
         //
 
-        if (&Array->Buffer[Array->Length] != ModuleName->Buffer) {
+        if (&Array->Buffer[Array->Length+1] != ModuleName->Buffer) {
             __debugbreak();
             goto Error;
         }
+
+        //
+        // Toggle the IsArray flag to true.
+        //
+
+        Symbol->Flags.IsArray = TRUE;
     }
 
     //
@@ -704,7 +760,7 @@ RetryBasicTypeMatch:
     // buffer (SymbolName->Buffer).
     //
 
-    SymbolName->Length = (USHORT)((Char - 1) - SymbolName->Buffer);
+    SymbolName->Length = (USHORT)(Char - SymbolName->Buffer);
     SymbolName->MaximumLength = SymbolName->Length;
 
     //
@@ -739,6 +795,16 @@ RetryBasicTypeMatch:
     //
 
     if (SymbolScope != PrivateFunctionScope) {
+        Success = TRUE;
+        goto End;
+    }
+
+    //
+    // The SEH/CLR-type symbols get registered as private functions, too.
+    // Skip them as well.
+    //
+
+    if (SymbolType == CLRType) {
         Success = TRUE;
         goto End;
     }
@@ -793,7 +859,9 @@ RetryBasicTypeMatch:
     }
 
     //
-    // (Will this be 0 here?  Or 1, and the last character is '\n'?)
+    // Invariant check: we should have one byte left here, and char should be
+    // positioned on the final ')', which means that the following character
+    // should be a line feed.
     //
 
     if (BytesRemaining != 1 || *(Char + 1) != '\n') {
@@ -822,9 +890,9 @@ RetryBasicTypeMatch:
                                               FALSE,
                                               NULL);
 
-    NumberOfArguments = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer);
+    NumberOfArguments = (USHORT)Rtl->RtlNumberOfSetBits(BitmapPointer) + 1;
 
-    if (NumberOfArguments == 0) {
+    if (NumberOfArguments == 1) {
 
         //
         // No commas were detected.  This is either because there was only one
@@ -836,8 +904,8 @@ RetryBasicTypeMatch:
         PULONG Void = (PULONG)"void";
         BOOL IsVoid = (*(ULongBuffer) == *(Void));
 
-        if (!IsVoid) {
-            NumberOfArguments = 1;
+        if (IsVoid) {
+            NumberOfArguments = 0;
         }
     }
 
@@ -898,15 +966,15 @@ RetryBasicTypeMatch:
         // of the arguments buffer.  Otherwise, advance to the next comma.
         //
 
-        if (Index == NumberOfArguments) {
-            Char = Arguments->Buffer + Arguments->Length;
+        if (Index == NumberOfArguments - 1) {
+            Char = Arguments->Buffer + (Arguments->Length + 1);
         } else {
             while (*Char != ',') {
                 Char++;
             }
         }
 
-        Argument->Length = (USHORT)((Char - 1) - Marker);
+        Argument->Length = (USHORT)(Char - Marker);
         Argument->MaximumLength = Argument->Length;
 
         InitializeListHead(&Argument->ListEntry);

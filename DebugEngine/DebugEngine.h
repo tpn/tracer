@@ -748,7 +748,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
         // Points to the basic type name of the symbol.
         //
 
-        STRING Type;
+        STRING BasicType;
+
+        //
+        // For user defined types (UDT) -- classes, structs and unions, this
+        // will point to the name of the type.
+        //
+
+        STRING TypeName;
 
         //
         // Points to any array information present after the type name but
