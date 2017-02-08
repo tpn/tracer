@@ -626,7 +626,13 @@ DEBUG_ENGINE_EXAMINE_SYMBOLS DebugEngineExamineSymbols;
 DEBUG_ENGINE_UNASSEMBLE_FUNCTION DebugEngineUnassembleFunction;
 
 DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+    DisplayTypeParseLinesIntoCustomStructureCallback;
+
+DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
     ExamineSymbolsParseLinesIntoCustomStructureCallback;
+
+DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
+    UnassembleFunctionParseLinesIntoCustomStructureCallback;
 
 DEBUG_ENGINE_SETTINGS_META DebugEngineSettingsMeta;
 DEBUG_ENGINE_LIST_SETTINGS DebugEngineListSettings;

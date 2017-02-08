@@ -135,4 +135,96 @@ End:
     return Success;
 }
 
+_Use_decl_annotations_
+BOOL
+UnassembleFunctionParseLine(
+    PDEBUG_ENGINE_OUTPUT Output,
+    PSTRING Line
+    )
+/*++
+
+Routine Description:
+
+    Parses a line of output from the `uf` (unassemble function) command.
+
+Arguments:
+
+    Output - Supplies a pointer to the DEBUG_ENGINE_OUTPUT structure in use
+        for the unassemble function command.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+UnassembleFunctionParseLinesIntoCustomStructureCallback(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+/*++
+
+Routine Description:
+
+    This routine is called once the unassemble function command has completed
+    executing and all output lines have been saved.
+
+Arguments:
+
+    Output - Supplies a pointer to the DEBUG_ENGINE_OUTPUT structure in use
+        for the unassemble function command.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    BOOL Success;
+    PSTRING Line;
+    ULONG TotalLines;
+    PLIST_ENTRY ListHead;
+    PLIST_ENTRY ListEntry;
+    PLINKED_LINE LinkedLine;
+
+    //
+    // For each line, call parse lines.
+    //
+
+    Output->NumberOfParsedLines = 0;
+    ListHead = &Output->SavedLinesListHead;
+
+    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+        LinkedLine = CONTAINING_RECORD(ListEntry, LINKED_LINE, ListEntry);
+        Line = &LinkedLine->String;
+        Success = UnassembleFunctionParseLine(Output, Line);
+        if (!Success) {
+            OutputDebugStringA("Failed line!\n");
+            PrintStringToDebugStream(Line);
+            RemoveEntryList(&LinkedLine->ListEntry);
+            AppendTailList(&Output->FailedLinesListHead,
+                           &LinkedLine->ListEntry);
+            Output->NumberOfFailedLines++;
+        } else {
+            Output->NumberOfParsedLines++;
+        }
+    }
+
+    TotalLines = (
+        Output->NumberOfParsedLines +
+        Output->NumberOfFailedLines
+    );
+
+    if (TotalLines != Output->NumberOfSavedLines) {
+        __debugbreak();
+        Success = FALSE;
+    }
+
+    return Success;
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
