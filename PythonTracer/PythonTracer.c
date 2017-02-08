@@ -596,8 +596,8 @@ InitializeAllocators:
     NumberOfAllocators++;
 
     INIT_STORE_ALLOCATOR(StringBuffer);
-    INIT_STORE_ALLOCATOR(FunctionTable);
-    INIT_STORE_ALLOCATOR(FunctionTableEntry);
+    INIT_STORE_ALLOCATOR(PythonFunctionTable);
+    INIT_STORE_ALLOCATOR(PythonFunctionTableEntry);
     INIT_STORE_ALLOCATOR(PathTable);
     INIT_STORE_ALLOCATOR(PathTableEntry);
     INIT_STORE_ALLOCATOR(StringArray);
