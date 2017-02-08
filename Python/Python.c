@@ -373,7 +373,7 @@ FunctionTableAllocationRoutine(
     if (ByteSize != TargetSizeOfPythonFunctionTableEntry-8) {
         __debugbreak();
     }
-    return ALLOCATE(FunctionTableEntry, ByteSize+8);
+    return ALLOCATE(PythonFunctionTableEntry, ByteSize+8);
 }
 
 VOID
@@ -384,7 +384,7 @@ FunctionTableFreeRoutine(
     )
 {
     PPYTHON Python = (PPYTHON)Table->TableContext;
-    FREE(FunctionTableEntry, Buffer);
+    FREE(PythonFunctionTableEntry, Buffer);
 }
 
 FORCEINLINE

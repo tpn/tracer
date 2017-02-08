@@ -266,7 +266,7 @@ AllocatePythonFunctionTable(
         return FALSE;
     }
 
-    Buffer = ALLOCATE(FunctionTable, sizeof(PYTHON_FUNCTION_TABLE));
+    Buffer = ALLOCATE(PythonFunctionTable, sizeof(PYTHON_FUNCTION_TABLE));
 
     if (!Buffer) {
         return FALSE;
