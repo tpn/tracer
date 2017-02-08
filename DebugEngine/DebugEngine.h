@@ -216,6 +216,13 @@ typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
         ULONG DispatchOutputLineCallbacks:1;
 
         //
+        // When set, __debugbreak() will be issued if an internal error is
+        // encountered during line parsing.
+        //
+
+        ULONG DebugBreakOnLineParsingError:1;
+
+        //
         // When set, indicates the caller wants wide character (WCHAR) output.
         // (Not currently supported.)
         //
@@ -417,6 +424,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     ULONG NumberOfSavedLines;
     ULONG NumberOfSavedBytes;
     LIST_ENTRY SavedLinesListHead;
+
+    //
+    // If any lines fail parsing, they'll be captured here.
+    //
+
+    ULONG NumberOfFailedLines;
+    ULONG Unused2;
+    LIST_ENTRY FailedLinesListHead;
 
     //
     // Track the contiguous nature of the underlying line text allocations.
@@ -670,6 +685,13 @@ typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
         //
 
         ULONG IsCpp:1;
+
+        //
+        // This bit will be set if the basic type of the symbol could not be
+        // recognized.
+        //
+
+        ULONG UnknownType:1;
 
     };
 } DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;

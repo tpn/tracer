@@ -133,6 +133,11 @@ End:
     return Success;
 }
 
+#define MAYBE_BREAK()                                 \
+    if (Output->Flags.DebugBreakOnLineParsingError) { \
+        __debugbreak();                               \
+    }
+
 _Use_decl_annotations_
 BOOL
 ExamineSymbolsParseLine(
@@ -242,7 +247,7 @@ Return Value:
     //
 
     if (*End != '\n') {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -266,7 +271,7 @@ Return Value:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -279,20 +284,20 @@ Return Value:
     Address.Buffer = Char;
 
     if (Address.Buffer[8] != '`') {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
     Address.Buffer[8] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer, 16, &Addr.HighPart))) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
     Address.Buffer[8] = '`';
 
     Address.Buffer[17] = '\0';
     if (FAILED(RtlCharToInteger(Address.Buffer+9, 16, &Addr.LowPart))) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
     Address.Buffer[17] = ' ';
@@ -305,7 +310,7 @@ Return Value:
     BytesRemaining -= Address.Length;
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -319,7 +324,7 @@ Return Value:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -328,7 +333,7 @@ Return Value:
     //
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -346,12 +351,12 @@ Return Value:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -373,13 +378,13 @@ Return Value:
         // It should always be a space.
         //
 
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
     SymbolSize.Buffer[SymbolSize.Length] = '\0';
     if (FAILED(Rtl->RtlCharToInteger(SymbolSize.Buffer, 16, &Size))) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -485,7 +490,7 @@ RetryBasicTypeMatch:
     BytesRemaining -= Match.NumberOfMatchedCharacters;
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -500,7 +505,7 @@ RetryBasicTypeMatch:
         // The basic type name should always be followed by a space.
         //
 
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -509,7 +514,7 @@ RetryBasicTypeMatch:
     //
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -532,7 +537,7 @@ RetryBasicTypeMatch:
         }
 
         if (BytesRemaining <= 0) {
-            __debugbreak();
+            MAYBE_BREAK();
             goto Error;
         }
 
@@ -544,7 +549,7 @@ RetryBasicTypeMatch:
         //
 
         if (--BytesRemaining <= 0) {
-            __debugbreak();
+            MAYBE_BREAK();
             goto Error;
         }
 
@@ -575,7 +580,7 @@ RetryBasicTypeMatch:
         //
 
         if (--BytesRemaining <= 0) {
-            __debugbreak();
+            MAYBE_BREAK();
             goto Error;
         }
 
@@ -592,7 +597,7 @@ RetryBasicTypeMatch:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -615,7 +620,7 @@ RetryBasicTypeMatch:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -633,7 +638,7 @@ RetryBasicTypeMatch:
     }
 
     if (!Found) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -645,7 +650,7 @@ RetryBasicTypeMatch:
 
     NextChar = (Lookback + 1);
     if (*NextChar == ' ') {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -667,7 +672,7 @@ RetryBasicTypeMatch:
 
     if (Marker > NextChar) {
 
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
 
     } else if (Marker == NextChar) {
@@ -705,7 +710,7 @@ RetryBasicTypeMatch:
         //
 
         if (&Array->Buffer[Array->Length+1] != ModuleName->Buffer) {
-            __debugbreak();
+            MAYBE_BREAK();
             goto Error;
         }
 
@@ -722,7 +727,7 @@ RetryBasicTypeMatch:
     //
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -749,7 +754,7 @@ RetryBasicTypeMatch:
     }
 
     if (BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -786,7 +791,7 @@ RetryBasicTypeMatch:
     //
 
     if ((Remaining->Buffer + Remaining->Length) != End) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -814,7 +819,7 @@ RetryBasicTypeMatch:
     //
 
     if (SymbolType != FunctionType) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -824,14 +829,14 @@ RetryBasicTypeMatch:
     //
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
     Char++;
 
     if (*Char != '(') {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -840,7 +845,7 @@ RetryBasicTypeMatch:
     //
 
     if (--BytesRemaining <= 0) {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -865,7 +870,7 @@ RetryBasicTypeMatch:
     //
 
     if (BytesRemaining != 1 || *(Char + 1) != '\n') {
-        __debugbreak();
+        MAYBE_BREAK();
         goto Error;
     }
 
@@ -1034,6 +1039,7 @@ Return Value:
 {
     BOOL Success;
     PSTRING Line;
+    ULONG TotalLines;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     PLINKED_LINE LinkedLine;
@@ -1050,12 +1056,23 @@ Return Value:
         Line = &LinkedLine->String;
         Success = ExamineSymbolsParseLine(Output, Line);
         if (!Success) {
-            return FALSE;
+            OutputDebugStringA("Failed line!\n");
+            PrintStringToDebugStream(Line);
+            RemoveEntryList(&LinkedLine->ListEntry);
+            AppendTailList(&Output->FailedLinesListHead,
+                           &LinkedLine->ListEntry);
+            Output->NumberOfFailedLines++;
+        } else {
+            Output->NumberOfParsedLines++;
         }
-        Output->NumberOfParsedLines++;
     }
 
-    if (Output->NumberOfParsedLines != Output->NumberOfSavedLines) {
+    TotalLines = (
+        Output->NumberOfParsedLines +
+        Output->NumberOfFailedLines
+    );
+
+    if (TotalLines != Output->NumberOfSavedLines) {
         __debugbreak();
         Success = FALSE;
     }
