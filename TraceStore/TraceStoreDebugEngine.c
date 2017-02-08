@@ -1229,6 +1229,7 @@ Return Value:
     OutputFlags.AsULong = 0;
     OutputFlags.EnableLineTextAndCustomStructureAllocators = TRUE;
 
+    ExamineSymbolsOptions.AsULong = 0;
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
 
@@ -1266,13 +1267,15 @@ Return Value:
     // Initialize options for unassemble function and display type commands.
     //
 
+    UnassembleFunctionOptions.AsULong = 0;
     UnassembleFunctionOptions.DisplayInstructionCount = TRUE;
     UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
 
-    DisplayTypeOptions.Verbose = TRUE;
-    DisplayTypeOptions.ShowArrayElements = TRUE;
-    DisplayTypeOptions.RecursivelyDumpSubtypes = TRUE;
-    DisplayTypeOptions.DisplayBlocksRecursively = TRUE;
+    DisplayTypeOptions.AsULong = 0;
+    //DisplayTypeOptions.Verbose = TRUE;
+    //DisplayTypeOptions.ShowArrayElements = TRUE;
+    //DisplayTypeOptions.RecursivelyDumpSubtypes = TRUE;
+    //DisplayTypeOptions.DisplayBlocksRecursively = TRUE;
 
     //
     // For each symbol:
