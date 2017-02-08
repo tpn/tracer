@@ -396,6 +396,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
         struct _DEBUG_ENGINE_EXAMINED_SYMBOL *ExaminedSymbols;
         struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION *UnassembledFunction;
     };
+    LIST_ENTRY CustomStructureListHead;
 
     //
     // Internal pointer to the relevant command's line parsing function.
@@ -834,6 +835,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
         };
 
     } String;
+
+    //
+    // Linked list entry that links to the parent output.
+    //
+
+    LIST_ENTRY ListEntry;
 
     //
     // Variable parts of the structure depending on the flags/type.
