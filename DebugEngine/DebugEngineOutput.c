@@ -134,6 +134,8 @@ Return Value:
         Output->Flags.DispatchOutputLineCallbacks = TRUE;
     }
 
+    Output->Flags.DebugBreakOnLineParsingError = TRUE;
+
     //
     // Initialize the "shortest line" to MAX_USHORT rather than 0.
     //
@@ -142,6 +144,7 @@ Return Value:
 
     InitializeListHead(&Output->SavedLinesListHead);
     InitializeListHead(&Output->PartialLinesListHead);
+    InitializeListHead(&Output->FailedLinesListHead);
 
     //
     // Set the optional fields if applicable.
