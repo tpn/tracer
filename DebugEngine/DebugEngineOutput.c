@@ -259,7 +259,7 @@ Return Value:
     PALLOCATOR Allocator;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
-    HANDLE HeapHandle = NULL;
+    HANDLE HeapHandle;
     PDEBUG_ENGINE_OUTPUT Output;
     ULONG_INTEGER TextSizeInBytes;
     ULONG_INTEGER AllocSizeInBytes;
@@ -384,6 +384,7 @@ Return Value:
     Rtl = DebugEngine->Rtl;
     FindSetBits = Rtl->RtlFindSetBits;
     Allocator = Output->Allocator;
+    HeapHandle = Output->Allocator->HeapHandle;
 
     //
     // Create a bitmap of line endings.
@@ -799,24 +800,21 @@ Error:
     // Intentional follow-on to End.
     //
 
+    __debugbreak();
+
 End:
 
     //
-    // Perform heap/bitmap cleanup.
+    // Free the bitmap buffer if one was required for this line (unlikely).
     //
 
-    if (HeapHandle) {
-
-        if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)BitmapPointer->Buffer) {
-            __debugbreak();
-        }
-
-        if ((ULONG_PTR)StackBitmapBuffer == (ULONG_PTR)BitmapPointer->Buffer) {
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
+    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
+        HeapFree(HeapHandle, 0, Bitmap.Buffer);
     }
+
+    //
+    // Update output state and return.
+    //
 
     Output->State.InPartialOutputCallback = FALSE;
     return Result;
