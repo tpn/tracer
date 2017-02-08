@@ -46,7 +46,7 @@
       <Setting Name="IgnoreDecoration" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="Include32BitModules" Type="VT_BOOL" Value="false"></Setting>
       <Setting Name="LoadAnything" Type="VT_BOOL" Value="true"></Setting>
-      <Setting Name="LoadAsNeeded" Type="VT_BOOL" Value="false"></Setting>
+      <Setting Name="LoadAsNeeded" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="NoisySymbolLoading" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="NoUnqualifiedLoads" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="OnlyUsePublics" Type="VT_BOOL" Value="false"></Setting>
