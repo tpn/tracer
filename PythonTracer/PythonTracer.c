@@ -409,8 +409,8 @@ InitializePythonTraceContext(
     BOOL Success;
     PTRACE_STORES TraceStores;
     PTRACE_STORE StringBufferStore;
-    PTRACE_STORE FunctionTableStore;
-    PTRACE_STORE FunctionTableEntryStore;
+    PTRACE_STORE PythonFunctionTableStore;
+    PTRACE_STORE PythonFunctionTableEntryStore;
     PTRACE_STORE PathTableStore;
     PTRACE_STORE PathTableEntryStore;
     PTRACE_STORE StringArrayStore;

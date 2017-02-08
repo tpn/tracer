@@ -1867,8 +1867,8 @@ typedef struct _PYTHON_ALLOCATORS {
     ULONG NumberOfAllocators;
 
     ALLOCATOR  StringBuffer;
-    ALLOCATOR  FunctionTable;
-    ALLOCATOR  FunctionTableEntry;
+    ALLOCATOR  PythonFunctionTable;
+    ALLOCATOR  PythonFunctionTableEntry;
     ALLOCATOR  PathTable;
     ALLOCATOR  PathTableEntry;
     ALLOCATOR  StringArray;
