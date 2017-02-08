@@ -1071,16 +1071,20 @@ Return Value:
     PRTL Rtl;
     PRTL_FILE File;
     PRTL_PATH Path;
+    PLIST_ENTRY ListHead;
+    PLIST_ENTRY ListEntry;
     PALLOCATOR Allocator;
     TRACE_FLAGS TraceFlags;
     PTRACE_STORES TraceStores;
     PTRACE_CONTEXT TraceContext;
     PTRACER_CONFIG TracerConfig;
-    DEBUG_ENGINE_OUTPUT Output;
+    PDEBUG_ENGINE_OUTPUT Output;
+    DEBUG_ENGINE_OUTPUT ExamineSymbolOutput;
+    //DEBUG_ENGINE_OUTPUT UnassembleFunctionOutput;
+    PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
-    UNICODE_STRING Python27Dll = RTL_CONSTANT_STRING(L"python27.dll");
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -1132,10 +1136,11 @@ Return Value:
     // callbacks.
     //
 
-    Output.SizeOfStruct = sizeof(DEBUG_ENGINE_OUTPUT);
+    Output = &ExamineSymbolOutput;
+    Output->SizeOfStruct = sizeof(*Output);
 
     Success = DebugEngineSession->InitializeDebugEngineOutput(
-        &Output,
+        Output,
         DebugEngineSession,
         Allocator,
         &TRACE_CONTEXT_STORE(ExamineSymbolsLine)->Allocator,
@@ -1174,12 +1179,25 @@ Return Value:
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
 
-    Success = DebugEngineSession->ExamineSymbols(&Output,
+    Success = DebugEngineSession->ExamineSymbols(Output,
                                                  OutputFlags,
                                                  ExamineSymbolsOptions);
 
     if (!Success) {
         return FALSE;
+    }
+
+    ListHead = &Output->CustomStructureListHead;
+    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+
+        Symbol = CONTAINING_RECORD(ListEntry,
+                                   DEBUG_ENGINE_EXAMINED_SYMBOL,
+                                   ListEntry);
+
+        if (Symbol->Type == FunctionType) {
+            OutputDebugStringA("Found function!\n");
+            PrintStringToDebugStream(&Symbol->String.Function);
+        }
     }
 
     //

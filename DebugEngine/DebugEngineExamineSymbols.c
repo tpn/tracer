@@ -1008,6 +1008,16 @@ Error:
 
 End:
 
+    if (Success) {
+        InitializeListHead(&Symbol->ListEntry);
+        AppendTailList(&Output->CustomStructureListHead,
+                       &Symbol->ListEntry);
+
+        if (++Output->NumberOfCustomStructures == 1) {
+            Output->FirstCustomStructure = Symbol;
+        }
+    }
+
     if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
         HeapFree(HeapHandle, 0, Bitmap.Buffer);
     }

@@ -143,8 +143,9 @@ Return Value:
     Output->ShortestLineInBytes = MAX_USHORT;
 
     InitializeListHead(&Output->SavedLinesListHead);
-    InitializeListHead(&Output->PartialLinesListHead);
     InitializeListHead(&Output->FailedLinesListHead);
+    InitializeListHead(&Output->PartialLinesListHead);
+    InitializeListHead(&Output->CustomStructureListHead);
 
     //
     // Set the optional fields if applicable.
