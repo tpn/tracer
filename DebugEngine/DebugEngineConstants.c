@@ -163,8 +163,8 @@ DEFINE_CUSTOM_STRUCTURE_NAME(ExamineSymbolCustomStructureName,
 DEFINE_CUSTOM_STRUCTURE_NAME(UnassembledFunctionCustomStructureName,
                              DEBUG_ENGINE_UNASSEMBLED_FUNCTION);
 
-//DEFINE_CUSTOM_STRUCTURE_NAME(DisplayedTypeCustomStructureName,
-//                             DEBUG_ENGINE_DISPLAYED_TYPE);
+DEFINE_CUSTOM_STRUCTURE_NAME(DisplayedTypeCustomStructureName,
+                             DEBUG_ENGINE_DISPLAYED_TYPE);
 
 //
 // StringTable-related constants.

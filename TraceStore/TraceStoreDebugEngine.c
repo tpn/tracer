@@ -1079,12 +1079,21 @@ Return Value:
     PTRACE_CONTEXT TraceContext;
     PTRACER_CONFIG TracerConfig;
     PDEBUG_ENGINE_OUTPUT Output;
+    DEBUG_ENGINE_OUTPUT DisplayTypeOutput;
     DEBUG_ENGINE_OUTPUT ExamineSymbolOutput;
-    //DEBUG_ENGINE_OUTPUT UnassembleFunctionOutput;
+    DEBUG_ENGINE_OUTPUT UnassembleFunctionOutput;
+    PDEBUG_ENGINE_DISPLAYED_TYPE Type;
     PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
+    PDEBUG_ENGINE_UNASSEMBLED_FUNCTION Function;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
+    PDEBUG_ENGINE_DISPLAY_TYPE DisplayType;
+    PDEBUG_ENGINE_EXAMINE_SYMBOL ExamineSymbol;
+    PDEBUG_ENGINE_UNASSEMBLE_FUNCTION UnassembleFunction;
+    PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
+    DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS DisplayTypeOptions;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
+    DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS UnassembleFunctionOptions;
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -1130,33 +1139,62 @@ Return Value:
     DebugEngineSession = DebugContext->DebugEngineSession;
 
     //
+    // Initialize function pointers.
+    //
+
+    DisplayType = DebugEngineSession->DisplayType;
+    ExamineSymbols = DebugEngineSession->ExamineSymbols;
+    UnassembleFunction = DebugEngineSession->UnassembleFunction;
+    InitializeDebugEngineOutput = (
+        DebugEngineSession->InitializeDebugEngineOutput
+    );
+
+    //
+    // Define a helper macro to use for initializing the DEBUG_ENGINE_OUTPUT
+    // structure.
+    //
+
+#define INITIALIZE_OUTPUT(Command, Name)                    \
+                                                            \
+    Output = &##Command##Output;                            \
+    Output->SizeOfStruct = sizeof(*Output);                 \
+                                                            \
+    Success = InitializeDebugEngineOutput(                  \
+        Output,                                             \
+        DebugEngineSession,                                 \
+        Allocator,                                          \
+        &TRACE_CONTEXT_STORE(##Command##Line)->Allocator,   \
+        &TRACE_CONTEXT_STORE(##Command##Text)->Allocator,   \
+        &TRACE_CONTEXT_STORE(##Name##)->Allocator,          \
+        &TRACE_CONTEXT_STORE(##Name##Secondary)->Allocator, \
+        NULL,                                               \
+        NULL,                                               \
+        NULL,                                               \
+        DebugContext,                                       \
+        Path                                                \
+    );                                                      \
+                                                            \
+    if (!Success) {                                         \
+        return FALSE;                                       \
+    }
+
+#define INITIALIZE_EXAMINE_SYMBOLS_OUTPUT() \
+    INITIALIZE_OUTPUT(ExamineSymbols, ExaminedSymbol)
+
+#define INITIALIZE_UNASSEMBLED_FUNCTION_OUTPUT() \
+    INITIALIZE_OUTPUT(UnassembleFunction, UnassembledFunction)
+
+#define INITIALIZE_DISPLAY_TYPE_OUTPUT() \
+    INITIALIZE_OUTPUT(DisplayType, DisplayedType)
+
+    //
     // Initialize the DEBUG_ENGINE_EXAMINE_SYMBOLS_OUTPUT structure.  This is
     // a stack allocated structure that will persist for the lifetime of this
     // routine and is used to communicate partial output state across multiple
     // callbacks.
     //
 
-    Output = &ExamineSymbolOutput;
-    Output->SizeOfStruct = sizeof(*Output);
-
-    Success = DebugEngineSession->InitializeDebugEngineOutput(
-        Output,
-        DebugEngineSession,
-        Allocator,
-        &TRACE_CONTEXT_STORE(ExamineSymbolsLine)->Allocator,
-        &TRACE_CONTEXT_STORE(ExamineSymbolsText)->Allocator,
-        &TRACE_CONTEXT_STORE(ExamineSymbol)->Allocator,
-        &TRACE_CONTEXT_STORE(ExamineSymbolBuffer)->Allocator,
-        NULL, // LineOutputCallback
-        NULL, // PartialOutputCallback
-        TraceDebugEngineExamineSymbolsOutputCompleteCallback,
-        DebugContext,
-        Path
-    );
-
-    if (!Success) {
-        return FALSE;
-    }
+    INITIALIZE_EXAMINE_SYMBOLS_OUTPUT();
 
     //
     // Update the debug context to point at this module table entry.
@@ -1179,26 +1217,23 @@ Return Value:
     ExamineSymbolsOptions.Verbose = 1;
     ExamineSymbolsOptions.TypeInformation = 1;
 
-    Success = DebugEngineSession->ExamineSymbols(Output,
-                                                 OutputFlags,
-                                                 ExamineSymbolsOptions);
+    Success = ExamineSymbols(Output, OutputFlags, ExamineSymbolsOptions);
 
     if (!Success) {
         return FALSE;
     }
 
-    ListHead = &Output->CustomStructureListHead;
-    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+    //
+    // Initialize options for unassemble function and display type commands.
+    //
 
-        Symbol = CONTAINING_RECORD(ListEntry,
-                                   DEBUG_ENGINE_EXAMINED_SYMBOL,
-                                   ListEntry);
+    UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
+    UnassembleFunctionOptions.DisplayNumberOfInstructions = TRUE;
 
-        if (Symbol->Type == FunctionType) {
-            OutputDebugStringA("Found function!\n");
-            PrintStringToDebugStream(&Symbol->String.Function);
-        }
-    }
+    DisplayTypeOptions.Verbose = TRUE;
+    DisplayTypeOptions.ShowArrayElements = TRUE;
+    DisplayTypeOptions.RecursivelyDumpSubtypes = TRUE;
+    DisplayTypeOptions.DisplayBlocksRecursively = TRUE;
 
     //
     // For each symbol:
@@ -1220,6 +1255,49 @@ Return Value:
     //              dt -a -b -r9 -v <module>!<typename>
     //
 
+    ListHead = &Output->CustomStructureListHead;
+    FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+
+        Symbol = CONTAINING_RECORD(ListEntry,
+                                   DEBUG_ENGINE_EXAMINED_SYMBOL,
+                                   ListEntry);
+
+        switch (Symbol->Type) {
+
+            case FunctionType:
+
+                INITIALIZE_UNASSEMBLED_FUNCTION_OUTPUT();
+
+                Success = UnassembleFunction(Output,
+                                             OutputFlags,
+                                             UnassembleFunctionOptions);
+                if (!Success) {
+                    return FALSE;
+                }
+
+                break;
+
+            case ClassType:
+            case UnionType:
+            case StructType:
+
+                INITIALIZE_DISPLAY_TYPE_OUTPUT();
+
+                Success = DisplayType(Output,
+                                      OutputFlags,
+                                      DisplayType);
+
+                if (!Success) {
+                    return FALSE;
+                }
+
+                break;
+
+            default:
+                break;
+        }
+    }
+
     //
     // Additional work:
     //
@@ -1235,40 +1313,6 @@ Return Value:
     //
     //
 
-    return TRUE;
-}
-
-VOID
-UnknownBasicType(
-    _In_ PSTRING String
-    )
-{
-    OutputDebugStringA("DebugEngine: Unknown Type: ");
-    PrintStringToDebugStream(String);
-}
-
-_Use_decl_annotations_
-BOOL
-TraceDebugEngineExamineSymbolsOutputCompleteCallback(
-    PDEBUG_ENGINE_OUTPUT Output
-    )
-/*++
-
-Routine Description:
-
-    This is the callback target invoked by the debug engine when the examine
-    symbols command generates output.
-
-Arguments:
-
-    Output - Supplies a pointer to the active DEBUG_ENGINE_OUTPUT.
-
-Return Value:
-
-    TRUE on success, FALSE on error.
-
---*/
-{
     return TRUE;
 }
 
