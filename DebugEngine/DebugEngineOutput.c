@@ -147,6 +147,8 @@ Return Value:
     InitializeListHead(&Output->PartialLinesListHead);
     InitializeListHead(&Output->CustomStructureListHead);
 
+    Output->pSavedLinesListHead = &Output->SavedLinesListHead;
+
     //
     // Set the optional fields if applicable.
     //
@@ -983,7 +985,7 @@ Return Value:
         //
 
         InitializeListHead(&LinkedLine->ListEntry);
-        AppendTailList(&Output->SavedLinesListHead, &LinkedLine->ListEntry);
+        AppendTailList(Output->pSavedLinesListHead, &LinkedLine->ListEntry);
         Output->NumberOfSavedBytes += Line->Length;
 
         if (++Output->NumberOfSavedLines == 1) {

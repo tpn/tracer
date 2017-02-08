@@ -223,6 +223,19 @@ typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
         ULONG DebugBreakOnLineParsingError:1;
 
         //
+        // When set, indicates the caller has overridden the pSavedLinesListHead
+        // pointer and thus, it should not be initialized to point to the
+        // SavedLinesListHead LIST_ENTRY.
+        //
+        // This is used by commands like unassemble function and display type,
+        // where a single function or type will generate multiple lines of
+        // output from the debugger engine.  (As opposed to examining symbols,
+        // where each line represents an individual symbol.)
+        //
+
+        ULONG OverrideSavedLinesListHead:1;
+
+        //
         // When set, indicates the caller wants wide character (WCHAR) output.
         // (Not currently supported.)
         //
@@ -383,6 +396,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     PCSTRING CustomStructureName;
 
     //
+    // If applicable, this will be set to the name of the secondary element
+    // allocated in support of the custom structure.
+    //
+
+    PCSTRING CustomStructureSecondaryName;
+
+    //
     // Pointer to the custom structure.  Examined symbols will be an array based
     // at the indicated address; displayed types and unassembled functions will
     // be single records.
@@ -393,7 +413,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
         PVOID CustomStructure;
         PVOID FirstCustomStructure;
         struct _DEBUG_ENGINE_DISPLAYED_TYPE *DisplayedType;
-        struct _DEBUG_ENGINE_EXAMINED_SYMBOL *ExaminedSymbols;
+        struct _DEBUG_ENGINE_EXAMINED_SYMBOL *ExaminedSymbol;
         struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION *UnassembledFunction;
     };
     LIST_ENTRY CustomStructureListHead;
@@ -425,6 +445,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     ULONG NumberOfSavedLines;
     ULONG NumberOfSavedBytes;
     LIST_ENTRY SavedLinesListHead;
+    PLIST_ENTRY pSavedLinesListHead;
 
     //
     // If any lines fail parsing, they'll be captured here.
@@ -579,15 +600,15 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
     WideCharType,
     ShortType,
     LongType,
-    IntegerType,
     Integer64Type,
+    IntegerType,
 
     UnsignedCharType,
     UnsignedWideCharType,
     UnsignedShortType,
     UnsignedLongType,
-    UnsignedIntegerType,
     UnsignedInteger64Type,
+    UnsignedIntegerType,
 
     UnionType,
     StructType,
@@ -882,14 +903,10 @@ typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-
-        //
-        // Indicates the text strings are in wide character format.
-        //
-
-        ULONG WideCharacter:1;
+        ULONG Unused:1;
     };
 } DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS) == sizeof(ULONG));
 
 typedef
 struct _Struct_size_bytes_(SizeOfStruct)
@@ -909,13 +926,26 @@ _DEBUG_ENGINE_UNASSEMBLED_FUNCTION {
     DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS Flags;
 
     //
-    // Raw text returned from DbgEng.
+    // Pointer to the owning Output structure; this allows navigation back to
+    // the debug engine and calling context.
     //
 
-    union {
-        PSTRING RawText;
-        PUNICODE_STRING RawTextWide;
-    };
+    PDEBUG_ENGINE_OUTPUT Output;
+
+    //
+    // Pointer to the DEBUG_SESSION_EXAMINED_SYMBOL structure that triggered
+    // this function unassembly.  From the Symbol we can derive the function
+    // signature, name, number of arguments, argument list, etc.
+    //
+
+    PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
+
+    //
+    // List head of saved lines.  This overrides the DEBUG_ENGINE_OUTPUT's
+    // SavedLineListHead structure.
+    //
+
+    LIST_ENTRY SavedLinesListHead;
 
     //
     // Number of instructions.
@@ -1033,7 +1063,7 @@ BOOL
     _In_ PDEBUG_ENGINE_OUTPUT Output,
     _In_ DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
     _In_ DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS CommandOptions,
-    _In_ PUNICODE_STRING FunctionName
+    _In_ PSTRING FunctionName
     );
 typedef DEBUG_ENGINE_UNASSEMBLE_FUNCTION *PDEBUG_ENGINE_UNASSEMBLE_FUNCTION;
 
@@ -1115,6 +1145,84 @@ BOOL
     _In_ PUNICODE_STRING SymbolName
     );
 typedef DEBUG_ENGINE_DISPLAY_TYPE *PDEBUG_ENGINE_DISPLAY_TYPE;
+
+typedef union _DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+} DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS) == sizeof(ULONG));
+
+typedef
+struct _Struct_size_bytes_(SizeOfStruct)
+_DEBUG_ENGINE_DISPLAYED_TYPE {
+
+    //
+    // Size of structure, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _DEBUG_ENGINE_DISPLAYED_TYPE))
+        ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS Flags;
+
+    //
+    // Pointer to the owning Output structure; this allows navigation back to
+    // the debug engine and calling context.
+    //
+
+    PDEBUG_ENGINE_OUTPUT Output;
+
+    //
+    // Pointer to the DEBUG_SESSION_EXAMINED_SYMBOL structure that triggered
+    // this function unassembly.  From the Symbol we can derive the function
+    // signature, name, number of arguments, argument list, etc.
+    //
+
+    PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
+
+    //
+    // List head of saved lines.  This overrides the DEBUG_ENGINE_OUTPUT's
+    // SavedLineListHead structure.
+    //
+
+    LIST_ENTRY SavedLinesListHead;
+
+    //
+    // Total size of the type, in bytes.
+    //
+
+    ULONG TotalSizeInBytes;
+
+    union {
+
+        struct {
+
+            //
+            // Number of unique field offsets.
+            //
+
+            ULONG NumberOfUniqueFieldOffsets;
+
+            //
+            // Number of fields.
+            //
+
+            ULONG NumberOfFields;
+
+        } Structure;
+
+    };
+
+} DEBUG_ENGINE_DISPLAYED_TYPE;
+typedef DEBUG_ENGINE_DISPLAYED_TYPE   *PDEBUG_ENGINE_DISPLAYED_TYPE;
+typedef DEBUG_ENGINE_DISPLAYED_TYPE **PPDEBUG_ENGINE_DISPLAYED_TYPE;
 
 //
 // SettingsMeta-related structures and functions.
