@@ -2869,6 +2869,60 @@ End:
     return Success;
 }
 
+FORCEINLINE
+BOOL
+ConvertStringToWide(
+    _In_ PSTRING String,
+    _In_ PUNICODE_STRING Unicode,
+    _In_ PALLOCATOR Allocator,
+    _In_ PPUNICODE_STRING UnicodeStringPointer
+    )
+{
+    CHAR Char;
+    WCHAR Wide;
+    USHORT Index;
+    PUNICODE_STRING UnicodeString;
+
+    if (String->Length > (Unicode->MaximumLength >> 1)) {
+
+        UnicodeString = (PUNICODE_STRING)(
+            Allocator->Calloc(
+                Allocator->Context,
+                1,
+                sizeof(UNICODE_STRING) +
+                (String->Length << 1)
+            )
+        );
+
+        if (!UnicodeString) {
+            return FALSE;
+        }
+
+        UnicodeString->Buffer = (PWCHAR)(
+            RtlOffsetToPointer(
+                UnicodeString,
+                sizeof(UNICODE_STRING)
+            )
+        );
+
+        UnicodeString->MaximumLength = (String->Length << 1);
+
+    } else {
+        UnicodeString = Unicode;
+    }
+
+    for (Index = 0; Index < String->Length; Index++) {
+        Char = String->Buffer[Index];
+        Wide = (WCHAR)Char;
+        UnicodeString->Buffer[Index] = Wide;
+    }
+
+    UnicodeString->Length = String->Length << 1;
+    *UnicodeStringPointer = UnicodeString;
+
+    return TRUE;
+}
+
 //
 // TraceStoreWorkingSet-related functions.
 //

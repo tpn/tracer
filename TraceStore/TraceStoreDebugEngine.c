@@ -399,7 +399,7 @@ Return Value:
     ULONG WaitResult;
     ULONG NumberOfWaits;
     PTRACE_DEBUG_CONTEXT DebugContext;
-    HANDLE Events[18];
+    HANDLE Events[17];
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -412,7 +412,7 @@ Return Value:
 
     DebugContext = TraceContext->DebugContext;
 
-#define BIND_COMPLETE_EVENT(Name) \
+#define BIND_COMPLETE_EVENT(Name)                 \
     TRACE_CONTEXT_STORE(Name)->BindCompleteEvent;
 
     Events[0]  = BIND_COMPLETE_EVENT(TypeInfoTable);
@@ -1079,6 +1079,7 @@ Return Value:
 
 --*/
 {
+    BOOL Skip;
     BOOL Success;
     PRTL Rtl;
     PRTL_FILE File;
@@ -1095,9 +1096,7 @@ Return Value:
     DEBUG_ENGINE_OUTPUT ExamineSymbolsOutput;
     DEBUG_ENGINE_OUTPUT UnassembleFunctionOutput;
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
-    PDEBUG_ENGINE_DISPLAYED_TYPE Type;
     PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
-    PDEBUG_ENGINE_UNASSEMBLED_FUNCTION Function;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDEBUG_ENGINE_DISPLAY_TYPE DisplayType;
     PDEBUG_ENGINE_EXAMINE_SYMBOLS ExamineSymbols;
@@ -1106,6 +1105,10 @@ Return Value:
     DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS DisplayTypeOptions;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
     DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS UnassembleFunctionOptions;
+
+    UNICODE_STRING ArgumentWide;
+    WCHAR UnicodeBuffer[_MAX_PATH];
+    PUNICODE_STRING ArgumentWidePointer = NULL;
 
     //
     // Capture a timestamp for processing this module table entry.
@@ -1190,13 +1193,13 @@ Return Value:
         return FALSE;                                       \
     }
 
-#define INITIALIZE_EXAMINE_SYMBOLS_OUTPUT() \
+#define INITIALIZE_EXAMINE_SYMBOLS_OUTPUT()           \
     INITIALIZE_OUTPUT(ExamineSymbols, ExaminedSymbol)
 
-#define INITIALIZE_UNASSEMBLED_FUNCTION_OUTPUT() \
+#define INITIALIZE_UNASSEMBLED_FUNCTION_OUTPUT()               \
     INITIALIZE_OUTPUT(UnassembleFunction, UnassembledFunction)
 
-#define INITIALIZE_DISPLAY_TYPE_OUTPUT() \
+#define INITIALIZE_DISPLAY_TYPE_OUTPUT()          \
     INITIALIZE_OUTPUT(DisplayType, DisplayedType)
 
     //
@@ -1233,6 +1236,30 @@ Return Value:
 
     if (!Success) {
         return FALSE;
+    }
+
+    //
+    // Initialize the argument name unicode buffer.
+    //
+
+    ArgumentWide.Length = 0;
+    ArgumentWide.MaximumLength = sizeof(UnicodeBuffer);
+    ArgumentWide.Buffer = (PWSTR)&UnicodeBuffer;
+
+    //
+    // Define a helper macro for initializing the argument name relative to the
+    // DEBUG_ENGINE_EXAMINED_SYMBOL structure.
+    //
+
+#define INITIALIZE_ARGUMENT(Name)                           \
+                                                            \
+    Success = ConvertStringToWide(&Symbol->String.##Name##, \
+                                  &ArgumentWide,            \
+                                  Allocator,                \
+                                  &ArgumentWidePointer);    \
+                                                            \
+    if (!Success) {                                         \
+        return FALSE;                                       \
     }
 
     //
@@ -1278,11 +1305,26 @@ Return Value:
 
             case FunctionType:
 
+                //
+                // Skip function pointers and non-private functions.
+                //
+
+                Skip = (
+                    Symbol->Flags.IsPointer ||
+                    Symbol->Scope != PrivateFunctionScope
+                );
+
+                if (Skip) {
+                    continue;
+                }
+
                 INITIALIZE_UNASSEMBLED_FUNCTION_OUTPUT();
+                INITIALIZE_ARGUMENT(Function);
 
                 Success = UnassembleFunction(Output,
                                              OutputFlags,
-                                             UnassembleFunctionOptions);
+                                             UnassembleFunctionOptions,
+                                             ArgumentWidePointer);
                 if (!Success) {
                     return FALSE;
                 }
@@ -1294,10 +1336,12 @@ Return Value:
             case StructType:
 
                 INITIALIZE_DISPLAY_TYPE_OUTPUT();
+                INITIALIZE_ARGUMENT(TypeName);
 
                 Success = DisplayType(Output,
                                       OutputFlags,
-                                      DisplayTypeOptions);
+                                      DisplayTypeOptions,
+                                      ArgumentWidePointer);
 
                 if (!Success) {
                     return FALSE;
@@ -1308,6 +1352,12 @@ Return Value:
             default:
                 break;
         }
+
+        if (ArgumentWidePointer != &ArgumentWide) {
+            Allocator->Free(Allocator->Context, ArgumentWidePointer);
+        }
+
+        ArgumentWidePointer = NULL;
     }
 
     //

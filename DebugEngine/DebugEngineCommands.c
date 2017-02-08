@@ -185,7 +185,7 @@ DEBUG_ENGINE_COMMAND_TEMPLATE UnassembleFunctionCommandTemplate = {
     // ParseLinesIntoCustomStructureCallback
     //
 
-    NULL,
+    UnassembleFunctionParseLinesIntoCustomStructureCallback,
 
 };
 
@@ -273,7 +273,7 @@ DEBUG_ENGINE_COMMAND_TEMPLATE DisplayTypeCommandTemplate = {
     // ParseLinesIntoCustomStructureCallback
     //
 
-    NULL,
+    DisplayTypeParseLinesIntoCustomStructureCallback,
 
 };
 
