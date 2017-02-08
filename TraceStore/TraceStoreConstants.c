@@ -75,7 +75,15 @@ LPCWSTR TraceStoreFileNames[] = {
     L"TraceStoreExamineSymbolsLines.dat",
     L"TraceStoreExamineSymbolsText.txt",
     L"TraceStoreExaminedSymbol.dat",
-    L"TraceStoreExaminedSymbolBuffer.dat",
+    L"TraceStoreExaminedSymbolSecondary.dat",
+    L"TraceStoreUnassembleFunctionLines.dat",
+    L"TraceStoreUnassembleFunctionText.txt",
+    L"TraceStoreUnassembledFunction.dat",
+    L"TraceStoreUnassembledFunctionSecondary.dat",
+    L"TraceStoreDisplayTypeLines.dat",
+    L"TraceStoreDisplayTypeText.txt",
+    L"TraceStoreDisplayedType.dat",
+    L"TraceStoreDisplayedTypeSecondary.dat",
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -250,7 +258,15 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 23,   // ExamineSymbolsLines
      1 << 25,   // ExamineSymbolsText
      1 << 25,   // ExaminedSymbol
-     1 << 23,   // ExaminedSymbolBuffer
+     1 << 23,   // ExaminedSymbolSecondary
+     1 << 23,   // UnassembleFunctionLines
+     1 << 25,   // UnassembleFunctionText
+     1 << 25,   // UnassembledFunction
+     1 << 23,   // UnassembledFunctionSecondary
+     1 << 23,   // DisplayTypeLines
+     1 << 25,   // DisplayTypeText
+     1 << 25,   // DisplayedType
+     1 << 23,   // DisplayedTypeSecondary
 };
 
 #else
@@ -307,7 +323,15 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 23,   // ExamineSymbolsLines
      1 << 25,   // ExamineSymbolsText
      1 << 25,   // ExaminedSymbol
-     1 << 23,   // ExaminedSymbolBuffer
+     1 << 23,   // ExaminedSymbolSecondary
+     1 << 23,   // UnassembleFunctionLines
+     1 << 25,   // UnassembleFunctionText
+     1 << 25,   // UnassembledFunction
+     1 << 23,   // UnassembledFunctionSecondary
+     1 << 23,   // DisplayTypeLines
+     1 << 25,   // DisplayTypeText
+     1 << 25,   // DisplayedType
+     1 << 23,   // DisplayedTypeSecondary
 };
 
 #endif
@@ -1502,7 +1526,191 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // ExaminedSymbolBuffer
+    // ExaminedSymbolSecondary
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // UnassembleFunctionLines
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // UnassembleFunctionText
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        1,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        1,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        1,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // UnassembledFunction
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // UnassembledFunctionSecondary
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // DisplayTypeLines
+    //
+
+    {
+        0,  // VaryingRecordSize
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // DisplayTypeText
+    //
+
+    {
+        1,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        1,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        1,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        1,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // DisplayedType
+    //
+
+    {
+        0,  // VaryingRecordSize
+        0,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        0,  // StreamingWrite
+        0,  // StreamingRead
+        0,  // FrequentAllocations
+        1,  // BlockingAllocations
+        0,  // LinkedStore
+        0,  // CoalescedAllocations
+        0,  // ConcurrentAllocations
+        0,  // AllowPageSpill
+        0,  // PageAligned
+        0,  // Periodic
+        0,  // ConcurrentDataStructure
+        0,  // NoAllocationAlignment
+        0   // Unused
+    },
+
+    //
+    // DisplayedTypeSecondary
     //
 
     {

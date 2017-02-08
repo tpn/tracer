@@ -399,7 +399,7 @@ Return Value:
     ULONG WaitResult;
     ULONG NumberOfWaits;
     PTRACE_DEBUG_CONTEXT DebugContext;
-    HANDLE Events[10];
+    HANDLE Events[18];
 
     //
     // Complete the normal bind complete routine for the trace store.  This
@@ -412,16 +412,28 @@ Return Value:
 
     DebugContext = TraceContext->DebugContext;
 
-    Events[0] = TRACE_CONTEXT_STORE(TypeInfoTable)->BindCompleteEvent;
-    Events[1] = TRACE_CONTEXT_STORE(TypeInfoTableEntry)->BindCompleteEvent;
-    Events[2] = TRACE_CONTEXT_STORE(TypeInfoStringBuffer)->BindCompleteEvent;
-    Events[3] = TRACE_CONTEXT_STORE(FunctionTable)->BindCompleteEvent;
-    Events[4] = TRACE_CONTEXT_STORE(FunctionTableEntry)->BindCompleteEvent;
-    Events[5] = TRACE_CONTEXT_STORE(FunctionAssembly)->BindCompleteEvent;
-    Events[6] = TRACE_CONTEXT_STORE(ExamineSymbolsLine)->BindCompleteEvent;
-    Events[7] = TRACE_CONTEXT_STORE(ExamineSymbolsText)->BindCompleteEvent;
-    Events[8] = TRACE_CONTEXT_STORE(ExamineSymbol)->BindCompleteEvent;
-    Events[9] = TRACE_CONTEXT_STORE(ExamineSymbolBuffer)->BindCompleteEvent;
+#define BIND_COMPLETE_EVENT(Name) \
+    TRACE_CONTEXT_STORE(Name)->BindCompleteEvent;
+
+    Events[0]  = BIND_COMPLETE_EVENT(TypeInfoTable);
+    Events[0]  = BIND_COMPLETE_EVENT(TypeInfoTable);
+    Events[1]  = BIND_COMPLETE_EVENT(TypeInfoTableEntry);
+    Events[2]  = BIND_COMPLETE_EVENT(TypeInfoStringBuffer);
+    Events[3]  = BIND_COMPLETE_EVENT(FunctionTable);
+    Events[4]  = BIND_COMPLETE_EVENT(FunctionTableEntry);
+    Events[5]  = BIND_COMPLETE_EVENT(FunctionAssembly);
+    Events[6]  = BIND_COMPLETE_EVENT(ExamineSymbolsLine);
+    Events[7]  = BIND_COMPLETE_EVENT(ExamineSymbolsText);
+    Events[8]  = BIND_COMPLETE_EVENT(ExaminedSymbol);
+    Events[9]  = BIND_COMPLETE_EVENT(ExaminedSymbolSecondary);
+    Events[10] = BIND_COMPLETE_EVENT(UnassembleFunctionLine);
+    Events[11] = BIND_COMPLETE_EVENT(UnassembleFunctionText);
+    Events[12] = BIND_COMPLETE_EVENT(UnassembledFunction);
+    Events[13] = BIND_COMPLETE_EVENT(UnassembledFunctionSecondary);
+    Events[13] = BIND_COMPLETE_EVENT(DisplayTypeLine);
+    Events[14] = BIND_COMPLETE_EVENT(DisplayTypeText);
+    Events[15] = BIND_COMPLETE_EVENT(DisplayedType);
+    Events[16] = BIND_COMPLETE_EVENT(DisplayedTypeSecondary);
 
     NumberOfWaits = ARRAYSIZE(Events);
 
@@ -1080,17 +1092,17 @@ Return Value:
     PTRACER_CONFIG TracerConfig;
     PDEBUG_ENGINE_OUTPUT Output;
     DEBUG_ENGINE_OUTPUT DisplayTypeOutput;
-    DEBUG_ENGINE_OUTPUT ExamineSymbolOutput;
+    DEBUG_ENGINE_OUTPUT ExamineSymbolsOutput;
     DEBUG_ENGINE_OUTPUT UnassembleFunctionOutput;
+    DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
     PDEBUG_ENGINE_DISPLAYED_TYPE Type;
     PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
     PDEBUG_ENGINE_UNASSEMBLED_FUNCTION Function;
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDEBUG_ENGINE_DISPLAY_TYPE DisplayType;
-    PDEBUG_ENGINE_EXAMINE_SYMBOL ExamineSymbol;
+    PDEBUG_ENGINE_EXAMINE_SYMBOLS ExamineSymbols;
     PDEBUG_ENGINE_UNASSEMBLE_FUNCTION UnassembleFunction;
     PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
-    DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags;
     DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS DisplayTypeOptions;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
     DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS UnassembleFunctionOptions;
@@ -1227,8 +1239,8 @@ Return Value:
     // Initialize options for unassemble function and display type commands.
     //
 
+    UnassembleFunctionOptions.DisplayInstructionCount = TRUE;
     UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
-    UnassembleFunctionOptions.DisplayNumberOfInstructions = TRUE;
 
     DisplayTypeOptions.Verbose = TRUE;
     DisplayTypeOptions.ShowArrayElements = TRUE;
@@ -1285,7 +1297,7 @@ Return Value:
 
                 Success = DisplayType(Output,
                                       OutputFlags,
-                                      DisplayType);
+                                      DisplayTypeOptions);
 
                 if (!Success) {
                     return FALSE;

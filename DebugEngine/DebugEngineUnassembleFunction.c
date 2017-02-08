@@ -22,7 +22,7 @@ DebugEngineUnassembleFunction(
     PDEBUG_ENGINE_OUTPUT Output,
     DEBUG_ENGINE_OUTPUT_FLAGS OutputFlags,
     DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS CommandOptions,
-    PUNICODE_STRING FunctionName
+    PCUNICODE_STRING FunctionName
     )
 /*++
 
