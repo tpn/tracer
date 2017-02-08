@@ -114,6 +114,12 @@ static CONST DLL_FILES PythonDllFiles = {
 };
 
 //
+// The following DLL strings aren't being used.
+//
+
+#if 0
+
+//
 // MSVC Runtimes.
 //
 
@@ -333,6 +339,8 @@ static CONST USHORT NumberOfApiSetFiles = (
     sizeof(ApiSetFilesW) /
     sizeof(ApiSetFilesW[0])
 );
+
+#endif
 
 #ifdef __cplusplus
 }; // extern "C"
