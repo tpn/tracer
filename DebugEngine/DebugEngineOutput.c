@@ -134,6 +134,12 @@ Return Value:
         Output->Flags.DispatchOutputLineCallbacks = TRUE;
     }
 
+    //
+    // Initialize the "shortest line" to MAX_USHORT rather than 0.
+    //
+
+    Output->ShortestLineInBytes = MAX_USHORT;
+
     InitializeListHead(&Output->SavedLinesListHead);
     InitializeListHead(&Output->PartialLinesListHead);
 
@@ -316,6 +322,12 @@ Return Value:
     Output->State.InPartialOutputCallback = TRUE;
 
     //
+    // Increment the number of callbacks counter.
+    //
+
+    Output->NumberOfCallbacks++;
+
+    //
     // Do we ever get empty lines?
     //
 
@@ -411,15 +423,34 @@ Return Value:
     if (NumberOfLines == 0) {
 
         //
-        // There were no lines, so add the entire chunk as a partial line.
+        // There were no lines, increment the counter that tracks consecutive
+        // partial callbacks, then add the entire chunk as a partial line.
         //
+
+        Output->CurrentNumberOfConsecutivePartialCallbacks++;
 
         goto AddPartialLine;
     }
 
     //
-    // We have at least one line to process if we reach this point.  Initialize
-    // the line-oriented local variables and then extract the first line.
+    // We have at least one line to process if we reach this point.  Potentially
+    // update the longest number of consecutive partial callbacks counter, then
+    // reset the current count.
+    //
+
+    if (Output->CurrentNumberOfConsecutivePartialCallbacks >
+        Output->LongestNumberOfConsecutivePartialCallbacks) {
+
+        Output->LongestNumberOfConsecutivePartialCallbacks = (
+            Output->CurrentNumberOfConsecutivePartialCallbacks
+        );
+    }
+
+    Output->CurrentNumberOfConsecutivePartialCallbacks = 0;
+
+    //
+    // Initialize the line-oriented local variables and then extract the first
+    // line.
     //
 
     BitIndex = 0;
@@ -1054,6 +1085,143 @@ CompareLinkedLines:
 
 End:
     return TRUE;
+}
+
+_Use_decl_annotations_
+VOID
+UpdateOutputLineCounters(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    PSTRING Line;
+
+    if (Output->NumberOfCallbacks == 1) {
+        return;
+    }
+
+    Line = &Output->Line;
+
+    if (Line->Length < Output->ShortestLineInBytes) {
+        Output->ShortestLineInBytes = Line->Length;
+    }
+
+    if (Line->Length > Output->LongestLineInBytes) {
+        Output->LongestLineInBytes = Line->Length;
+    }
+}
+
+_Use_decl_annotations_
+BOOL
+DispatchOutputLineCallbacks(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    BOOL Success;
+    BOOL SavingLineSuccess;
+
+    Output->State.DispatchingLineCallbacks = TRUE;
+
+    Output->NumberOfLines++;
+    UpdateOutputLineCounters(Output);
+
+    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
+        Output->State.SavingOutputLine = TRUE;
+        SavingLineSuccess = Output->SaveOutputLine(Output);
+        Output->State.SavingOutputLine = FALSE;
+        if (!SavingLineSuccess) {
+            Output->State.SavingOutputLineFailed = TRUE;
+        } else {
+            Output->State.SavingOutputLineSucceeded = TRUE;
+        }
+    } else {
+        SavingLineSuccess = TRUE;
+    }
+
+    if (Output->Flags.EnableLineOutputCallbacks) {
+        Output->State.InLineOutputCallback = TRUE;
+        Success = Output->LineOutputCallback(Output);
+        Output->State.InLineOutputCallback = FALSE;
+        if (!Success) {
+            Output->State.LineOutputCallbackFailed = TRUE;
+        } else {
+            Output->State.LineOutputCallbackSucceeded = TRUE;
+        }
+    } else {
+        Success = TRUE;
+    }
+
+    Output->State.DispatchingLineCallbacks = FALSE;
+    Success = (SavingLineSuccess && Success);
+    if (!Success) {
+        Output->State.DispatchingLineCallbacksFailed = TRUE;
+    } else {
+        Output->State.DispatchingLineCallbacksFailed = FALSE;
+    }
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+DispatchOutputCompleteCallbacks(
+    PDEBUG_ENGINE_OUTPUT Output
+    )
+{
+    BOOL Success;
+    BOOL ParserSuccess;
+    PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK ParseLines;
+    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputComplete;
+
+    Output->State.DispatchingOutputCompleteCallbacks = TRUE;
+
+    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
+        Output->State.ParsingLinesIntoCustomStructure = TRUE;
+        ParseLines = Output->ParseLinesIntoCustomStructureCallback;
+        TRY_MAPPED_MEMORY_OP {
+            ParserSuccess = ParseLines(Output);
+        } CATCH_STATUS_IN_PAGE_ERROR {
+            ParserSuccess = FALSE;
+            Output->State.StatusInPageError = TRUE;
+        }
+        Output->State.ParsingLinesIntoCustomStructure = FALSE;
+        if (!ParserSuccess) {
+            Output->State.ParsingLinesIntoCustomStructureFailed = TRUE;
+        } else {
+            Output->State.ParsingLinesIntoCustomStructureSucceeded = TRUE;
+        }
+    } else {
+        ParserSuccess = TRUE;
+    }
+
+    if (Output->OutputCompleteCallback) {
+        Output->State.InOutputCompleteCallback = TRUE;
+        OutputComplete = Output->OutputCompleteCallback;
+        TRY_MAPPED_MEMORY_OP {
+            Success = OutputComplete(Output);
+        } CATCH_STATUS_IN_PAGE_ERROR {
+            Success = FALSE;
+            Output->State.StatusInPageError = TRUE;
+        }
+        Output->State.InOutputCompleteCallback = FALSE;
+        if (!Success) {
+            Output->State.OutputCompleteCallbackFailed = TRUE;
+        } else {
+            Output->State.OutputCompleteCallbackSucceeded = TRUE;
+        }
+    } else {
+        Success = TRUE;
+    }
+
+    Output->State.DispatchingOutputCompleteCallbacks = FALSE;
+    Success = (ParserSuccess && Success);
+
+    if (!Success) {
+        Output->State.DispatchingOutputCompleteCallbackFailed = TRUE;
+    } else {
+        Output->State.DispatchingOutputCompleteCallbackSucceeded = TRUE;
+    }
+
+    return Success;
 }
 
 _Use_decl_annotations_

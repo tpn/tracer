@@ -559,7 +559,7 @@ CopyInterfaceId(
 }
 
 //
-// DebugEngineExecuteCommand-related typedefs and inline functions.
+// DebugEngineOutput-related inline functions.
 //
 
 FORCEINLINE
@@ -572,118 +572,30 @@ UnknownBasicType(
     PrintStringToDebugStream(String);
 }
 
-FORCEINLINE
-BOOL
-DispatchOutputLineCallbacks(
+typedef
+VOID
+(UPDATE_OUTPUT_LINE_COUNTERS)(
     _In_ PDEBUG_ENGINE_OUTPUT Output
-    )
-{
-    BOOL Success;
-    BOOL SavingLineSuccess;
+    );
+typedef UPDATE_OUTPUT_LINE_COUNTERS *PUPDATE_OUTPUT_LINE_COUNTERS;
 
-    Output->State.DispatchingLineCallbacks = TRUE;
-
-    Output->NumberOfLines++;
-
-    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
-        Output->State.SavingOutputLine = TRUE;
-        SavingLineSuccess = Output->SaveOutputLine(Output);
-        Output->State.SavingOutputLine = FALSE;
-        if (!SavingLineSuccess) {
-            Output->State.SavingOutputLineFailed = TRUE;
-        } else {
-            Output->State.SavingOutputLineSucceeded = TRUE;
-        }
-    } else {
-        SavingLineSuccess = TRUE;
-    }
-
-    if (Output->Flags.EnableLineOutputCallbacks) {
-        Output->State.InLineOutputCallback = TRUE;
-        Success = Output->LineOutputCallback(Output);
-        Output->State.InLineOutputCallback = FALSE;
-        if (!Success) {
-            Output->State.LineOutputCallbackFailed = TRUE;
-        } else {
-            Output->State.LineOutputCallbackSucceeded = TRUE;
-        }
-    } else {
-        Success = TRUE;
-    }
-
-    Output->State.DispatchingLineCallbacks = FALSE;
-    Success = (SavingLineSuccess && Success);
-    if (!Success) {
-        Output->State.DispatchingLineCallbacksFailed = TRUE;
-    } else {
-        Output->State.DispatchingLineCallbacksFailed = FALSE;
-    }
-
-    return Success;
-}
-
-FORCEINLINE
+typedef
+_Check_return_
+_Success_(return != 0)
 BOOL
-DispatchOutputCompleteCallbacks(
+(DISPATCH_OUTPUT_LINE_CALLBACKS)(
     _In_ PDEBUG_ENGINE_OUTPUT Output
-    )
-{
-    BOOL Success;
-    BOOL ParserSuccess;
-    PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK ParseLines;
-    PDEBUG_ENGINE_OUTPUT_COMPLETE_CALLBACK OutputComplete;
+    );
+typedef DISPATCH_OUTPUT_LINE_CALLBACKS *PDISPATCH_OUTPUT_LINE_CALLBACKS;
 
-    Output->State.DispatchingOutputCompleteCallbacks = TRUE;
-
-    if (Output->Flags.EnableLineTextAndCustomStructureAllocators) {
-        Output->State.ParsingLinesIntoCustomStructure = TRUE;
-        ParseLines = Output->ParseLinesIntoCustomStructureCallback;
-        TRY_MAPPED_MEMORY_OP {
-            ParserSuccess = ParseLines(Output);
-        } CATCH_STATUS_IN_PAGE_ERROR {
-            ParserSuccess = FALSE;
-            Output->State.StatusInPageError = TRUE;
-        }
-        Output->State.ParsingLinesIntoCustomStructure = FALSE;
-        if (!ParserSuccess) {
-            Output->State.ParsingLinesIntoCustomStructureFailed = TRUE;
-        } else {
-            Output->State.ParsingLinesIntoCustomStructureSucceeded = TRUE;
-        }
-    } else {
-        ParserSuccess = TRUE;
-    }
-
-    if (Output->OutputCompleteCallback) {
-        Output->State.InOutputCompleteCallback = TRUE;
-        OutputComplete = Output->OutputCompleteCallback;
-        TRY_MAPPED_MEMORY_OP {
-            Success = OutputComplete(Output);
-        } CATCH_STATUS_IN_PAGE_ERROR {
-            Success = FALSE;
-            Output->State.StatusInPageError = TRUE;
-        }
-        Output->State.InOutputCompleteCallback = FALSE;
-        if (!Success) {
-            Output->State.OutputCompleteCallbackFailed = TRUE;
-        } else {
-            Output->State.OutputCompleteCallbackSucceeded = TRUE;
-        }
-    } else {
-        Success = TRUE;
-    }
-
-    Output->State.DispatchingOutputCompleteCallbacks = FALSE;
-    Success = (ParserSuccess && Success);
-
-    if (!Success) {
-        Output->State.DispatchingOutputCompleteCallbackFailed = TRUE;
-    } else {
-        Output->State.DispatchingOutputCompleteCallbackSucceeded = TRUE;
-    }
-
-    return Success;
-}
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(DISPATCH_OUTPUT_COMPLETE_CALLBACKS)(
+    _In_ PDEBUG_ENGINE_OUTPUT Output
+    );
+typedef DISPATCH_OUTPUT_COMPLETE_CALLBACKS *PDISPATCH_OUTPUT_COMPLETE_CALLBACKS;
 
 //
 // Private function declarations.
@@ -700,6 +612,10 @@ DEBUG_ENGINE_BUILD_COMMAND DebugEngineBuildCommand;
 DEBUG_ENGINE_EXECUTE_COMMAND DebugEngineExecuteCommand;
 DEBUG_ENGINE_OUTPUT_CALLBACK DebugEngineOutputCallback;
 DEBUG_ENGINE_OUTPUT_CALLBACK2 DebugEngineOutputCallback2;
+
+UPDATE_OUTPUT_LINE_COUNTERS UpdateOutputLineCounters;
+DISPATCH_OUTPUT_LINE_CALLBACKS DispatchOutputLineCallbacks;
+DISPATCH_OUTPUT_COMPLETE_CALLBACKS DispatchOutputCompleteCallbacks;
 
 DEBUG_ENGINE_SAVE_OUTPUT_LINE DebugEngineSaveOutputLine;
 DEBUG_ENGINE_LINE_OUTPUT_CALLBACK DebugStreamLineOutputCallback;

@@ -250,12 +250,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
     // Counters that track internal state.
     //
 
+    ULONG NumberOfCallbacks;
     ULONG NumberOfLines;
     ULONG NumberOfPartialCallbacks;
     ULONG TotalBufferLengthInChars;
     ULONG TotalBufferSizeInBytes;
     ULONG LargestChunkSizeInBytes;
     ULONG NumberOfParsedLines;
+    ULONG Unused1;
+    USHORT ShortestLineInBytes;
+    USHORT LongestLineInBytes;
+    USHORT CurrentNumberOfConsecutivePartialCallbacks;
+    USHORT LongestNumberOfConsecutivePartialCallbacks;
 
     //
     // Captures the last HRESULT of an operation.
