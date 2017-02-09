@@ -932,7 +932,7 @@ RetryBasicTypeMatch:
     }
 
     //
-    // Create a new linked string for the arguments.
+    // Create a new argument record for each argument.
     //
 
     Char = Arguments->Buffer;
@@ -940,17 +940,17 @@ RetryBasicTypeMatch:
 
     for (Index = 0; Index < NumberOfArguments; Index++) {
 
-        PLINKED_STRING Argument;
+        PDEBUG_ENGINE_FUNCTION_ARGUMENT Argument;
 
         //
-        // Allocate a linked string for the function argument.
+        // Allocate an argument record.
         //
 
-        Argument = (PLINKED_STRING)(
+        Argument = (PDEBUG_ENGINE_FUNCTION_ARGUMENT)(
             ExaminedSymbolSecondaryAllocator->CallocWithTimestamp(
                 ExaminedSymbolSecondaryAllocator->Context,
                 1,
-                sizeof(LINKED_STRING),
+                sizeof(*Argument),
                 &Output->Timestamp.CommandStart
             )
         );
@@ -964,7 +964,7 @@ RetryBasicTypeMatch:
         // Marker to delineate the start of each argument.
         //
 
-        Argument->Buffer = Marker;
+        Argument->Name.Buffer = Marker;
 
         //
         // If this is the last element, set our character pointer to the end
@@ -979,8 +979,25 @@ RetryBasicTypeMatch:
             }
         }
 
-        Argument->Length = (USHORT)(Char - Marker);
-        Argument->MaximumLength = Argument->Length;
+        Argument->Name.Length = (USHORT)(Char - Marker);
+        Argument->Name.MaximumLength = Argument->Name.Length;
+
+        //
+        // Todo: string table lookup on the argument, extract argument type,
+        // etc.
+        //
+
+        Argument->ArgumentNumber = Index + 1;
+        Argument->Atom = (USHORT)HashAnsiStringToAtom(&Argument->Name);
+
+        //
+        // If the argument number is four or less, set register information.
+        //
+
+        if (Index + 1 <= 4) {
+            Argument->Register.x64 = Index;
+            Argument->Flags.InRegister = TRUE;
+        }
 
         InitializeListHead(&Argument->ListEntry);
 

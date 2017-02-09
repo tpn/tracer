@@ -719,6 +719,298 @@ typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
 } DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS) == sizeof(ULONG));
 
+//
+// An enum for representing x64 registers.
+//
+
+typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_REGISTER_X64 {
+    RCX,
+    RDX,
+    R8,
+    R9,
+    XMM0,
+    XMM1,
+    XMM2,
+    XMM3,
+    YMM0,
+    YMM1,
+    YMM2,
+    YMM3,
+} DEBUG_ENGINE_FUNCTION_ARGUMENT_REGISTER_X64;
+
+typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
+    UnknownArgumentType = -1,
+
+    //
+    // First 16 types captured by FunctionArgumentTypeStringTable.
+    //
+
+    CharArgumentType = 0,
+    WideCharArgumentType,
+    ShortArgumentType,
+    LongArgumentType,
+    Integer64ArgumentType,
+    IntegerArgumentType,
+
+    UnsignedCharArgumentType,
+    UnsignedWideCharArgumentType,
+    UnsignedShortArgumentType,
+    UnsignedLongArgumentType,
+    UnsignedInteger64ArgumentType,
+    UnsignedIntegerArgumentType,
+
+    UnionArgumentType,
+    StructArgumentType,
+
+    FloatArgumentType,
+    DoubleArgumentType,
+
+    //
+    // Next 16 types captured by BasicTypeStringTable2.
+    //
+
+    BoolArgumentType,
+    VoidArgumentType,
+    ClassArgumentType,
+    SimdArgumentType,
+
+    //
+    // Any enumeration value >= InvalidArgumentType is invalid.  Make sure this
+    // always comes last in the enum layout.
+    //
+
+    InvalidArgumentType
+
+} DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE;
+
+//
+// This structure is used to capture information about a function argument.
+//
+
+typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates this argument is being passed in one of the
+        // standard four x64 calling convention registers: RCX, RDX, R8 and R9.
+        //
+
+        ULONG InRegister:1;
+
+        //
+        // When set, indicates this argument is being passed on the stack.
+        // This applies to fifth arguments onward.
+        //
+
+        ULONG OnStack:1;
+
+        //
+        // When set, indicates that this argument is a pointer.
+        //
+
+        ULONG IsPointer:1;
+
+        //
+        // When set, indicates this is a user-defined type (UDT), e.g. structs,
+        // unions, enums and classes.
+        //
+
+        ULONG IsUdt:1;
+
+        //
+        // When set, indicates that the argument is a structure.  This will
+        // typically always be set in conjunction with IsPointer.
+        //
+
+        ULONG IsStructure:1;
+
+        //
+        // When set, indicates the argument is a union.
+        //
+
+        ULONG IsUnion:1;
+
+        //
+        // When set, indicates the argument is an enum.
+        //
+
+        ULONG IsEnum:1;
+
+        //
+        // When set, indicates the argument is a C++ class.  This will typically
+        // always be set in conjunction with IsPointer.
+        //
+
+        ULONG IsClass:1;
+
+        //
+        // When set, indicates the argument is a vector register.  This covers
+        // any register over the native pointer size, e.g. typically 128-bits
+        // or larger.
+        //
+
+        ULONG IsVector:1;
+
+        //
+        // The following flags are only set if IsVector is set.
+        //
+
+        //
+        // When set, indicates that this is a 128-bit XMM register.
+        //
+
+        ULONG IsXmm:1;
+
+        //
+        // When set, indicates that this is a 256-bit YMM register.
+        //
+
+        ULONG IsYmm:1;
+
+        //
+        // When set, indicates that this is a 512-bit ZMM register.
+        //
+
+        ULONG IsZmm:1;
+
+        //
+        // When set, indicates the vector type is floating point.
+        //
+
+        ULONG IsFloatingPointVectorType:1;
+
+        //
+        // When set, indicates the vector type is a SIMD type, e.g. __m128
+        // (XMM) or __m256 (YMM).
+        //
+
+        ULONG IsSimdVectorType:1;
+
+        //
+        // When set, indicates the vector type is a homogenous float aggregate
+        // (HFA) value.  This is any composite type that has up to four members
+        // of identical floating-point vector types, e.g.:
+        //
+        //      typedef struct _HFA3 {
+        //          double X;
+        //          double Y;
+        //          double Z;
+        //      } HFA3;
+        //
+
+        ULONG IsHfaVectorType:1;
+
+        //
+        // When set, indicates the vector type is a homogenous vector aggregate
+        // (HVA) value.  This is any composite type that has up to four members
+        // of identical vector type, e.g.:
+        //
+        //      typedef struct _HVA3 {
+        //          __m256 X;
+        //          __m256 Y;
+        //          __m256 Z;
+        //      } HVA3;
+        //
+
+        ULONG IsHvaVectorType:1;
+    };
+
+} DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS) == sizeof(ULONG));
+
+typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DEBUG_ENGINE_FUNCTION_ARGUMENT))
+        ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS Flags;
+
+    //
+    // Size of the argument, in bytes.
+    //
+
+    USHORT SizeInBytes;
+
+    //
+    // Position of the argument in the function signature.
+    //
+
+    USHORT ArgumentNumber;
+
+    //
+    // If passed on the stack, the offset from the stack pointer upon entry
+    // into the function.
+    //
+
+    USHORT StackPointerOffset;
+
+    //
+    // The atom value of this argument's type's name.
+    //
+
+    USHORT Atom;
+
+    //
+    // The basic type of the argument.
+    //
+
+    DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE ArgumentType;
+
+    struct {
+
+        //
+        // The basic type name of this argument.
+        //
+
+        STRING BasicType;
+
+        //
+        // For composite types like structs/unions etc, the name of the type.
+        //
+
+        STRING TypeName;
+
+    } String;
+
+    //
+    // If passed via register, the register identifier.
+    //
+
+    union {
+        DEBUG_ENGINE_FUNCTION_ARGUMENT_REGISTER_X64 x64;
+    } Register;
+
+    //
+    // Link to the parent DEBUG_ENGINE_EXAMINED_SYMBOL via ArgumentsListHead.
+    //
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // The full raw text of the argument.
+    //
+
+    STRING Name;
+
+    //
+    // A pointer to the displayed type for this argument, if applicable.
+    //
+
+    struct _DEBUG_ENGINE_DISPLAYED_TYPE *Type;
+
+} DEBUG_ENGINE_FUNCTION_ARGUMENT;
+typedef DEBUG_ENGINE_FUNCTION_ARGUMENT *PDEBUG_ENGINE_FUNCTION_ARGUMENT;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
     //
@@ -903,7 +1195,106 @@ typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG Unused:1;
+
+        //
+        // The function modifies no non-volatile registers.  (This includes the
+        // stack pointer, thus, leaf entry functions cannot call other functions
+        // as that implicitly manipulates the stack.)
+        //
+
+        ULONG IsLeafEntry:1;
+
+        //
+        // When set, indicates that this function manipulates non-volatile
+        // registers.  This is the most common.
+        //
+
+        ULONG IsNestedEntry:1;
+
+        //
+        // When set, indicates that one or more arguments are vector arguments
+        // passed in vector registers.
+        //
+
+        ULONG HasVectorArguments:1;
+
+        //
+        // When set, indicates that this function has arguments passed via the
+        // stack.  This will usually be for the fifth argument onward.
+        //
+
+        ULONG HasStackArguments:1;
+
+        //
+        // When set, indicates the return type is an integer type and will be
+        // accessible in the AL/AX/EAX/RAX register.
+        //
+
+        ULONG IntegerReturnType:1;
+
+        //
+        // When set, indicates the return type is a vector type (floating point
+        // or SIMD) and will be returned via the XMM0/YMM0 register.
+        //
+
+        ULONG VectorReturnType:1;
+
+        //
+        // Indicates the vector return type is a floating-point type.  This will
+        // only be set if VectorReturnType is set.
+        //
+
+        ULONG FloatingPointVectorReturnType:1;
+
+        //
+        // Indicates the vector return type is a SIMD type.  This will only be
+        // set if VectorReturnType is set.
+        //
+
+        ULONG SimdVectorReturnType:1;
+
+        //
+        // The following flags relate to the function's calling convention.
+        //
+
+        //
+        // Function uses the __stdcall calling convention.
+        //
+
+        ULONG IsStdcall:1;
+
+        //
+        // Function uses the __cdecl calling convention.
+        //
+
+        ULONG IsCdecl:1;
+
+        //
+        // Function uses the __fastcall calling convention.  This will be set
+        // for all x64 functions except for __clrcall or __vectorcall.
+        //
+
+        ULONG IsFastcall:1;
+
+        //
+        // Function uses the __thiscall calling convention.  Only applicable to
+        // C++ programs.
+        //
+
+        ULONG IsThiscall:1;
+
+        //
+        // Function uses the __clrcall calling convention.
+        //
+
+        ULONG IsClrcall:1;
+
+        //
+        // Function uses the __vectorcall calling convention.
+        //
+
+        ULONG IsVectorcall:1;
+
     };
 } DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS) == sizeof(ULONG));
