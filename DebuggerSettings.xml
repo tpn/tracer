@@ -10,7 +10,7 @@
     <Namespace Name="Disassembly">
       <Setting Name="IgnoreOutputWidth" Type="VT_BOOL" Value="true"></Setting>
       <Setting Name="DisplayRawBytes" Type="VT_BOOL" Value="true"></Setting>
-      <Setting Name="DisplaySourceLines" Type="VT_BOOL" Value="true"></Setting>
+      <Setting Name="DisplaySourceLines" Type="VT_BOOL" Value="false"></Setting>
     </Namespace>
     <Setting Name="PreferDMLOutput" Type="VT_BOOL" Value="false"></Setting>
     <Setting Name="StackTraceDepth" Type="VT_INT" Value="256"></Setting>
