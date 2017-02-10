@@ -572,6 +572,16 @@ UnknownBasicType(
     PrintStringToDebugStream(String);
 }
 
+FORCEINLINE
+VOID
+UnknownFunctionArgumentType(
+    _In_ PSTRING String
+    )
+{
+    OutputDebugStringA("DebugEngine: Unknown Argument Type: ");
+    PrintStringToDebugStream(String);
+}
+
 typedef
 VOID
 (UPDATE_OUTPUT_LINE_COUNTERS)(

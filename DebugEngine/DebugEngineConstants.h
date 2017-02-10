@@ -47,6 +47,7 @@ DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsBasicTypes1;
 DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsBasicTypes2;
 DEBUG_ENGINE_DATA CONST STRING FunctionArgumentTypes1;
 DEBUG_ENGINE_DATA CONST STRING FunctionArgumentTypes2;
+DEBUG_ENGINE_DATA CONST STRING FunctionArgumentVectorTypes1;
 
 DEBUG_ENGINE_DATA CONST STRING DisplayTypeCustomStructureName;
 DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsCustomStructureName;

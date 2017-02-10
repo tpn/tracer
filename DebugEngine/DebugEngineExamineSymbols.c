@@ -1011,7 +1011,9 @@ RetryBasicTypeMatch:
         MatchAttempts = 0;
         StringTable = Session->FunctionArgumentTypeStringTable1;
         IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
-        NumberOfStringTables = Session->NumberOfFunctionArgumentStringTables;
+        NumberOfStringTables = (
+            Session->NumberOfFunctionArgumentTypeStringTables
+        );
 
 RetryArgumentMatch:
 
@@ -1019,13 +1021,42 @@ RetryArgumentMatch:
 
         if (MatchIndex == NO_MATCH_FOUND) {
             if (++MatchAttempts >= NumberOfStringTables) {
-                UnknownArgumentType(ArgumentType);
+
+                //
+                // We've exhausted all of the string tables for function
+                // argument types and weren't able to find a match.  Unlike
+                // basic type matching earlier in the routine, we don't treat
+                // this as a fatal error; we simply avoid further processing
+                // regarding the argument's type.
+                //
+
+                UnknownFunctionArgumentType(ArgumentType);
+                goto FinalizeArgument;
+
             } else {
+
+                //
+                // Try match the string in the next table.
+                //
+
                 StringTable++;
                 MatchOffset += MAX_STRING_TABLE_ENTRIES;
                 goto RetryArgumentMatch;
             }
         }
+
+        //
+        // If we get here, the argument is a known type.  If this is a composite
+        // type (struct, class, union), attempt to extract the type's name.
+        //
+        // Test for the presence of an asterisk, indicating this is a pointer.
+        //
+        // Test for vector arguments.
+        //
+
+        ArgumentTypeName = &Argument->String.ArgumentTypeName;
+
+FinalizeArgument:
 
         InitializeListHead(&Argument->ListEntry);
 
