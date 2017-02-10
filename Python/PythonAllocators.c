@@ -294,7 +294,7 @@ AllocatePythonPathTable(
         return FALSE;
     }
 
-    Buffer = ALLOCATE(PathTable, sizeof(PYTHON_PATH_TABLE));
+    Buffer = ALLOCATE(PythonPathTable, sizeof(PYTHON_PATH_TABLE));
 
     if (!Buffer) {
         return FALSE;
@@ -329,7 +329,7 @@ AllocatePythonPathTableEntry(
 
     *PathTableEntryPointer = NULL;
 
-    Buffer = ALLOCATE(PathTableEntry, sizeof(PYTHON_PATH_TABLE_ENTRY));
+    Buffer = ALLOCATE(PythonPathTableEntry, sizeof(PYTHON_PATH_TABLE_ENTRY));
 
     if (!Buffer) {
         return FALSE;
@@ -405,7 +405,7 @@ AllocatePythonModuleTable(
         return FALSE;
     }
 
-    Buffer = ALLOCATE(ModuleTable, sizeof(PYTHON_MODULE_TABLE));
+    Buffer = ALLOCATE(PythonModuleTable, sizeof(PYTHON_MODULE_TABLE));
 
     if (!Buffer) {
         return FALSE;
@@ -440,7 +440,8 @@ AllocatePythonModuleTableEntry(
 
     *ModuleTableEntryPointer = NULL;
 
-    Buffer = ALLOCATE(ModuleTableEntry, sizeof(PYTHON_MODULE_TABLE_ENTRY));
+    Buffer = ALLOCATE(PythonModuleTableEntry,
+                      sizeof(PYTHON_MODULE_TABLE_ENTRY));
 
     if (!Buffer) {
         return FALSE;
