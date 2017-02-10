@@ -191,8 +191,8 @@ Return Value:
     ULARGE_INTEGER Addr;
     LONG BytesRemaining;
     USHORT NumberOfArguments;
-    USHORT BasicTypeMatchAttempts;
-    USHORT NumberOfBasicTypeStringTables;
+    USHORT MatchAttempts;
+    USHORT NumberOfStringTables;
     PALLOCATOR ExaminedSymbolAllocator;
     PALLOCATOR ExaminedSymbolSecondaryAllocator;
     PSTRING_TABLE StringTable;
@@ -404,15 +404,15 @@ Return Value:
     StringTable = Session->ExamineSymbolsBasicTypeStringTable1;
     IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
     MatchOffset = 0;
-    BasicTypeMatchAttempts = 0;
-    NumberOfBasicTypeStringTables = Session->NumberOfBasicTypeStringTables;
+    MatchAttempts = 0;
+    NumberOfStringTables = Session->NumberOfBasicTypeStringTables;
 
 RetryBasicTypeMatch:
 
     MatchIndex = IsPrefixOfStringInTable(StringTable, &BasicType, &Match);
 
     if (MatchIndex == NO_MATCH_FOUND) {
-        if (++BasicTypeMatchAttempts >= NumberOfBasicTypeStringTables) {
+        if (++MatchAttempts >= NumberOfStringTables) {
             UnknownBasicType(&BasicType);
             goto Error;
         }
@@ -940,6 +940,8 @@ RetryBasicTypeMatch:
 
     for (Index = 0; Index < NumberOfArguments; Index++) {
 
+        PSTRING ArgumentType;
+        PSTRING ArgumentTypeName;
         PDEBUG_ENGINE_FUNCTION_ARGUMENT Argument;
 
         //
@@ -960,11 +962,28 @@ RetryBasicTypeMatch:
         }
 
         //
-        // Wire the structure up to the relevant buffer offset.  We use the
-        // Marker to delineate the start of each argument.
+        // Initialize the argument.
         //
 
-        Argument->Name.Buffer = Marker;
+        Argument->ArgumentNumber = Index + 1;
+        Argument->Atom = (USHORT)HashAnsiStringToAtom(&Argument->Name);
+
+        //
+        // If the argument number is four or less, set register information.
+        //
+
+        if (Index + 1 <= 4) {
+            Argument->Register.x64 = Index;
+            Argument->Flags.InRegister = TRUE;
+        }
+
+        //
+        // Wire the argument type string structure up to the relevant buffer
+        // offset.  We use the Marker to delineate the start of each argument.
+        //
+
+        ArgumentType = &Argument->String.ArgumentType;
+        ArgumentType->Buffer = Marker;
 
         //
         // If this is the last element, set our character pointer to the end
@@ -979,24 +998,33 @@ RetryBasicTypeMatch:
             }
         }
 
-        Argument->Name.Length = (USHORT)(Char - Marker);
-        Argument->Name.MaximumLength = Argument->Name.Length;
+        ArgumentType->Length = (USHORT)(Char - Marker);
+        ArgumentType->MaximumLength = ArgumentType->Length;
 
         //
-        // Todo: string table lookup on the argument, extract argument type,
-        // etc.
+        // Search for the argument in the function argument string tables.
+        // This uses the same algorith as the string table match earlier,
+        // slightly tweaked for function arguments.
         //
 
-        Argument->ArgumentNumber = Index + 1;
-        Argument->Atom = (USHORT)HashAnsiStringToAtom(&Argument->Name);
+        MatchOffset = 0;
+        MatchAttempts = 0;
+        StringTable = Session->FunctionArgumentTypeStringTable1;
+        IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+        NumberOfStringTables = Session->NumberOfFunctionArgumentStringTables;
 
-        //
-        // If the argument number is four or less, set register information.
-        //
+RetryArgumentMatch:
 
-        if (Index + 1 <= 4) {
-            Argument->Register.x64 = Index;
-            Argument->Flags.InRegister = TRUE;
+        MatchIndex = IsPrefixOfStringInTable(StringTable, ArgumentType, &Match);
+
+        if (MatchIndex == NO_MATCH_FOUND) {
+            if (++MatchAttempts >= NumberOfStringTables) {
+                UnknownArgumentType(ArgumentType);
+            } else {
+                StringTable++;
+                MatchOffset += MAX_STRING_TABLE_ENTRIES;
+                goto RetryArgumentMatch;
+            }
         }
 
         InitializeListHead(&Argument->ListEntry);
