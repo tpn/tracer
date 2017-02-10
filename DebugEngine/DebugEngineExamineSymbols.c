@@ -413,7 +413,7 @@ RetryBasicTypeMatch:
 
     if (MatchIndex == NO_MATCH_FOUND) {
         if (++MatchAttempts >= NumberOfStringTables) {
-            UnknownBasicType(&BasicType);
+            DebugPrintUnknownBasicType(&BasicType);
             goto Error;
         }
         StringTable++;
@@ -453,6 +453,26 @@ RetryBasicTypeMatch:
 
     //
     // Define some helper macros.
+    //
+    // N.B. The fact that we have some strings initially stored as stack-local
+    //      is an artifact of how this routine was first written; for the sake
+    //      of consistency, we should probably switch everything to use the
+    //      pointer-to-symbol-string-struct approach, e.g.:
+    //
+    //          PSTRING Address;
+    //          Address = &Symbol->String.Address;
+    //
+    //      Instead of the current approach:
+    //
+    //          STRING Address;
+    //
+    //          Address.Length = ...;
+    //          Address.MaximumLength = ...;
+    //          Address.Buffer = ...;
+    //
+    //          COPY_STRING(Address);
+    //
+    //      This would obviate the need for these macros.
     //
 
 #define COPY_PSTRING_EX(Name, Source)                                  \
@@ -940,9 +960,12 @@ RetryBasicTypeMatch:
 
     for (Index = 0; Index < NumberOfArguments; Index++) {
 
+        PCHAR ArgEnd;
+        PCHAR ArgChar;
         PSTRING ArgumentType;
         PSTRING ArgumentTypeName;
         PDEBUG_ENGINE_FUNCTION_ARGUMENT Argument;
+        DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE ArgType;
 
         //
         // Allocate an argument record.
@@ -970,11 +993,14 @@ RetryBasicTypeMatch:
 
         //
         // If the argument number is four or less, set register information.
+        // Over four, make a note that it's passed on the stack.
         //
 
         if (Index + 1 <= 4) {
             Argument->Register.x64 = Index;
             Argument->Flags.InRegister = TRUE;
+        } else {
+            Argument->Flags.OnStack = TRUE;
         }
 
         //
@@ -998,7 +1024,35 @@ RetryBasicTypeMatch:
             }
         }
 
-        ArgumentType->Length = (USHORT)(Char - Marker);
+        //
+        // If the character preceeding the comma is an asterisk, the argument
+        // is a pointer type.
+        //
+
+        ArgEnd = Char - 1;
+
+        if (*ArgEnd == '*') {
+
+            Argument->Flags.IsPointer = TRUE;
+            Argument->SizeInBytes = sizeof(ULONG_PTR);
+
+            //
+            // The character preceeding the asterisk should be a space.
+            //
+
+            if (*(--ArgEnd) != ' ') {
+                MAYBE_BREAK();
+                goto Error;
+            }
+        }
+
+        //
+        // Initialize the argument type's length to that of the entire string
+        // for the prefix match.  We'll refine it later for composite types
+        // (where a type name follows the type, e.g. 'struct _object').
+        //
+
+        ArgumentType->Length = (USHORT)(ArgEnd - Marker);
         ArgumentType->MaximumLength = ArgumentType->Length;
 
         //
@@ -1030,7 +1084,7 @@ RetryArgumentMatch:
                 // regarding the argument's type.
                 //
 
-                UnknownFunctionArgumentType(ArgumentType);
+                DebugPrintUnknownFunctionArgumentType(ArgumentType);
                 goto FinalizeArgument;
 
             } else {
@@ -1046,15 +1100,143 @@ RetryArgumentMatch:
         }
 
         //
-        // If we get here, the argument is a known type.  If this is a composite
-        // type (struct, class, union), attempt to extract the type's name.
-        //
-        // Test for the presence of an asterisk, indicating this is a pointer.
-        //
-        // Test for vector arguments.
+        // If we get here, the argument is a known type.  Point the ArgChar
+        // pointer at the character after the end of the matched string and
+        // resolve the type of the argument.
         //
 
-        ArgumentTypeName = &Argument->String.ArgumentTypeName;
+        ArgChar = ArgumentType->Buffer + Match.NumberOfMatchedCharacters;
+        ArgType = MatchIndex + MatchOffset;
+
+        //
+        // Determine if this is a user-defined type (UDT).
+        //
+
+        Argument->Flags.IsUnion = (ArgType == UnionType);
+        Argument->Flags.IsClass = (ArgType == ClassType);
+        Argument->Flags.IsStruct = (ArgType == StructType);
+
+        Argument->Flags.IsUdt = (
+            Argument->Flags.IsUnion ||
+            Argument->Flags.IsClass ||
+            Argument->Flags.IsStruct
+        );
+
+        if (Argument->Flags.IsUdt) {
+
+            //
+            // This argument is a UDT, which means the type will be followed
+            // by a name, which we want to extract into the argument type name
+            // string.  Before we do that, verify that the current position of
+            // the argument char pointer is on a space, and that the character
+            // after it isn't a space.
+            //
+
+            if (*ArgChar != ' ' || *(ArgChar + 1) == ' ') {
+                MAYBE_BREAK();
+                goto Error;
+            }
+
+            //
+            // Advance the argument character pointer two places such that it's
+            // pointing at the first character of the type name
+            //
+
+            ArgChar += 2;
+
+            //
+            // Wire up the ArgumentTypeName alias and initialize the string.
+            //
+
+            ArgumentTypeName = &Argument->String.ArgumentTypeName;
+            ArgumentTypeName->Buffer = ArgChar;
+            ArgumentTypeName->Length = (USHORT)(ArgEnd - ArgChar);
+            ArgumentTypeName->MaximumLength = ArgumentTypeName->Length;
+
+            //
+            // Scan the type name and look for colons, indicating a C++ type,
+            // or spaces, of which there shouldn't be any.
+            //
+
+            do {
+                if (*ArgChar == ':') {
+                    Argument->Flags.IsCpp = TRUE;
+                } else if (*ArgChar == ' ') {
+                    MAYBE_BREAK();
+                    goto Error;
+                }
+            } while (++ArgChar != ArgEnd);
+
+            goto FinalizeArgument;
+        }
+
+        //
+        // Determine if this is a normal, non-vector non-UDT argument type.
+        //
+
+        if ((ArgType >= CharArgumentType && ArgType <= UnsignedIntegerType) ||
+            (ArgType == BoolArgumentType || ArgType == VoidArgumentType)) {
+
+            //
+            // We don't need to do any further processing for these types.
+            //
+
+            goto FinalizeArgument;
+        }
+
+        //
+        // Determine if this is a floating-point register.
+        //
+
+        Argument->Flags.IsFloatingPointVectorType = (
+            ArgType == FloatArgumentType ||
+            ArgType == DoubleArgumentType
+        );
+
+        if (Argument->Flags.IsFloatingPointVectorType) {
+
+            //
+            // If this is one of the first four parameters, indicate that the
+            // register is one of the XMM0-XMM3 registers.
+            //
+
+            if (Index + 1 <= 4) {
+                Argument->Register.x64 = Index + XMM0;
+            }
+
+            Argument->Flags.IsVector = TRUE;
+
+            goto FinalizeArgument;
+        }
+
+        //
+        // If we get to this point, we should be a SIMD vector type.
+        //
+
+        if (!(ArgType >= Vector64Type && ArgType <= Vector512Type)) {
+            __debugbreak();
+            goto Error;
+        }
+
+        Argument->Flags.IsVector = TRUE;
+        Argument->Flags.IsSimdVectorType = TRUE;
+        Argument->Flags.IsMmx = (ArgType == Vector64Type);
+        Argument->Flags.IsXmm = (ArgType == Vector128Type);
+        Argument->Flags.IsYmm = (ArgType == Vector256Type);
+        Argument->Flags.IsZmm = (ArgType == Vector512Type);
+
+        //
+        // If this is one of the first four parameters, indicate the register
+        // is one of the vector types.
+        //
+
+        if (Index + 1 <= 4) {
+            Argument->Register.x64 = Index + (
+                (Argument->Flags.IsXmm * XMM0) +
+                (Argument->Flags.IsYmm * YMM0) +
+                (Argument->Flags.IsZmm * ZMM0)
+            );
+        }
 
 FinalizeArgument:
 
