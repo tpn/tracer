@@ -424,6 +424,54 @@ Return Value:
         }
 
         Session->NumberOfBasicTypeStringTables = 2;
+
+        //
+        // Create the string tables for function arguments.
+        //
+
+        Session->FunctionArgumentTypeStringTable1 = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &FunctionArgumentTypes1,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->FunctionArgumentTypeStringTable1) {
+            goto Error;
+        }
+
+        Session->FunctionArgumentTypeStringTable2 = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &FunctionArgumentTypes2,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->FunctionArgumentTypeStringTable2) {
+            goto Error;
+        }
+
+        Session->FunctionArgumentVectorTypeStringTable1 = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &FunctionArgumentVectorTypes1,
+                StringTableDelimiter
+            )
+        );
+
+        if (!Session->FunctionArgumentVectorTypeStringTable1) {
+            goto Error;
+        }
+
+        Session->NumberOfFunctionArgumentTypeStringTables = 3;
     }
 
     //
