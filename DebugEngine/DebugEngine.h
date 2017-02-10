@@ -1935,7 +1935,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable1;
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable2;
 
-    USHORT NumberOfFunctionArgumentStringTables;
+    USHORT NumberOfFunctionArgumentTypeStringTables;
     USHORT Padding2[3];
 
     PSTRING_TABLE FunctionArgumentTypeStringTable1;
