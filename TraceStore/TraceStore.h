@@ -1333,6 +1333,234 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE_WORK, Unused3) == 56);
 C_ASSERT(sizeof(TRACE_STORE_WORK) == 64);
 
 //
+// Working Set-related structures.
+//
+
+typedef struct _TRACE_WS_WATCH_INFORMATION {
+    union {
+        struct {
+            LPVOID FaultingPc;
+            LPVOID FaultingVa;
+        };
+        struct {
+            ULARGE_INTEGER FaultingProgramCounter;
+            ULARGE_INTEGER FaultingVirtualAddress;
+        };
+        PSAPI_WS_WATCH_INFORMATION AsWsWatchInformation;
+    };
+} TRACE_WS_WATCH_INFORMATION;
+typedef TRACE_WS_WATCH_INFORMATION *PTRACE_WS_WATCH_INFORMATION;
+
+typedef struct _TRACE_WS_WATCH_INFORMATION_EX {
+
+    //
+    // Inline TRACE_WS_WATCH_INFO_EX.
+    //
+
+    union {
+        TRACE_WS_WATCH_INFORMATION AsWsWatchInformation;
+        union {
+            struct {
+                LPVOID FaultingPc;
+                LPVOID FaultingVa;
+            };
+            struct {
+                ULARGE_INTEGER FaultingProgramCounter;
+                ULARGE_INTEGER FaultingVirtualAddress;
+            };
+        };
+    };
+
+    ULONG_PTR FaultingThreadId;
+    ULONG_PTR Flags;
+} TRACE_WS_WATCH_INFORMATION_EX;
+typedef TRACE_WS_WATCH_INFORMATION_EX *PTRACE_WS_WATCH_INFORMATION_EX;
+
+typedef union _TRACE_PAGE_FAULT_PC_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates that the TRACE_PAGE_FAULT structure has
+        // disassembly information about the faulting program counter (e.g.
+        // which instruction caused the page fault).
+        //
+
+        ULONG DisassemblyAvailable:1;
+
+        //
+        // When set, indicates source code (e.g. C source code) is available
+        // for the function containing the faulting program counter.
+        //
+
+        ULONG SourceCodeAvailable:1;
+
+        //
+        // The following flags capture information about the type of module
+        // that caused the page fault.
+        //
+
+        //
+        // Indicates the faulting module is a WinSxS module.
+        //
+
+        ULONG IsWinSxSModule:1;
+
+        //
+        // Indicates the faulting module resides in a Windows system directory.
+        //
+
+        ULONG IsWindowsModule:1;
+
+        //
+        // Indicates the faulting module is one of our tracer modules.
+        //
+
+        ULONG IsTracerModule:1;
+
+        //
+        // Indicates the faulting module is a core Python DLL.
+        //
+
+        ULONG IsCorePythonModule:1;
+
+        //
+        // Indicates the faulting module is a Python package (resides in the
+        // same directory tree as the Python DLL loaded for the traced process,
+        // but isn't one of the core DLLs shipped with the Python installer).
+        //
+
+        ULONG IsPythonPackageModule:1;
+    };
+} TRACE_PAGE_FAULT_PC_FLAGS;
+C_ASSERT(sizeof(TRACE_PAGE_FAULT_PC_FLAGS) == sizeof(ULONG));
+
+typedef union _TRACE_PAGE_FAULT_VA_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Indicates the faulting virtual address belongs to one of our trace
+        // store memory-mapped addresses.
+        //
+
+        ULONG IsTraceStoreAddress:1;
+
+        //
+        // Indicates the faulting virtual address belongs to a process heap.
+        //
+
+        ULONG IsProcessHeap:1;
+
+        //
+        // Indicates the faulting address is a section for a file object's
+        // mapping.
+        //
+
+        ULONG IsFileBacked:1;
+
+        //
+        // Indicates the faulting address is backed by the page file.
+        //
+
+        ULONG IsPageFile:1;
+    };
+} TRACE_PAGE_FAULT_VA_FLAGS;
+C_ASSERT(sizeof(TRACE_PAGE_FAULT_VA_FLAGS) == sizeof(ULONG));
+
+typedef union _TRACE_PAGE_FAULT_THREAD_FLAGS {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Indicates the faulting thread belongs to any of our tracer modules.
+        //
+
+        ULONG IsTracerThread:1;
+
+        //
+        // Indicates the faulting thread was one of our trace store threadpool
+        // threads.
+        //
+
+        ULONG IsTraceStoreThread:1;
+
+        //
+        // Indicates the thread belongs to the Python process being traced
+        // (either the main thread or some other thread created via the
+        //  threading module).
+        //
+
+        ULONG IsPythonThread:1;
+
+    };
+} TRACE_PAGE_FAULT_THREAD_FLAGS;
+C_ASSERT(sizeof(TRACE_PAGE_FAULT_THREAD_FLAGS) == sizeof(ULONG));
+
+//
+// The TRACE_PAGE_FAULT structure captures extended information (on top of
+// what is captured by the NT working set information structures) about the
+// nature of a page fault.
+//
+
+typedef struct _TRACE_PAGE_FAULT {
+
+    //
+    // Flags capturing additional information about the program counter,
+    // faulting virtual address, and faulting thread.
+    //
+
+    TRACE_PAGE_FAULT_PC_FLAGS FaultingPcFlags;
+    TRACE_PAGE_FAULT_VA_FLAGS FaultingVaFlags;
+    TRACE_PAGE_FAULT_THREAD_FLAGS FaultingThreadFlags;
+
+    //
+    // Pad out to an 8-byte boundary.
+    //
+
+    ULONG Padding;
+
+    //
+    // (16 bytes consumed.)
+    //
+
+    //
+    // Pointers to additional structures that provide additional information
+    // about the program counter, virtual address and thread.
+    //
+    //
+
+    struct _TRACE_MODULE_TABLE_ENTRY *FaultingPcModule;
+
+    //
+    // If the fault occurred against one of our trace stores, the following
+    // pointer will be set to the relevant store causing the fault.
+    //
+
+    struct _TRACE_STORE *FaultingVaTraceStore;
+
+    //
+    // If the faulting function has been disassembled, the following field will
+    // point to the relevant LINKED_STRING structure of the disassembly (this
+    // is backed by the TraceStoreUnassembleFunctionLine store).
+    //
+
+    PLINKED_STRING Disassembly;
+
+    //
+    // Pad out to 64 bytes.
+    //
+
+    ULONGLONG Reserved[3];
+
+} TRACE_PAGE_FAULT;
+C_ASSERT(sizeof(TRACE_PAGE_FAULT) == 64);
+typedef TRACE_PAGE_FAULT *PTRACE_PAGE_FAULT;
+
+//
 // This structure is used to capture performance metrics (and deltas between
 // calls) when performance tracing has been enabled.
 //
