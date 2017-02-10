@@ -1869,12 +1869,12 @@ typedef struct _PYTHON_ALLOCATORS {
     ALLOCATOR  StringBuffer;
     ALLOCATOR  PythonFunctionTable;
     ALLOCATOR  PythonFunctionTableEntry;
-    ALLOCATOR  PathTable;
-    ALLOCATOR  PathTableEntry;
+    ALLOCATOR  PythonPathTable;
+    ALLOCATOR  PythonPathTableEntry;
     ALLOCATOR  StringArray;
     ALLOCATOR  StringTable;
-    ALLOCATOR  ModuleTable;
-    ALLOCATOR  ModuleTableEntry;
+    ALLOCATOR  PythonModuleTable;
+    ALLOCATOR  PythonModuleTableEntry;
     ALLOCATOR  LineTable;
     ALLOCATOR  LineTableEntry;
     ALLOCATOR  LineStringBuffer;

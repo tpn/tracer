@@ -411,12 +411,12 @@ InitializePythonTraceContext(
     PTRACE_STORE StringBufferStore;
     PTRACE_STORE PythonFunctionTableStore;
     PTRACE_STORE PythonFunctionTableEntryStore;
-    PTRACE_STORE PathTableStore;
-    PTRACE_STORE PathTableEntryStore;
+    PTRACE_STORE PythonPathTableStore;
+    PTRACE_STORE PythonPathTableEntryStore;
     PTRACE_STORE StringArrayStore;
     PTRACE_STORE StringTableStore;
-    PTRACE_STORE ModuleTableStore;
-    PTRACE_STORE ModuleTableEntryStore;
+    PTRACE_STORE PythonModuleTableStore;
+    PTRACE_STORE PythonModuleTableEntryStore;
     PTRACE_STORE LineTableStore;
     PTRACE_STORE LineTableEntryStore;
     PTRACE_STORE LineStringBufferStore;
@@ -586,75 +586,58 @@ InitializeAllocators:
 
     Allocators = &Python->Allocators;
 
-#define INIT_STORE_ALLOCATOR(Name)                                     \
-    TraceStoreId = TraceStore##Name##Id;                               \
-    Name##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId); \
-    if (!InitializeAllocatorFromTraceStore(Name##Store,                \
-                                           &Allocators->##Name)) {     \
-        return FALSE;                                                  \
-    }                                                                  \
+    //
+    // Define some helper macros.
+    //
+
+#define RESOLVE_STORE_EX(AllocatorName, StoreName)                         \
+    TraceStoreId = TraceStore##StoreName##Id;                              \
+    StoreName##Store = TraceStoreIdToTraceStore(TraceStores, TraceStoreId)
+
+#define INIT_ALLOCATOR_EX(AllocatorName, StoreName, Target)             \
+    RESOLVE_STORE_EX(AllocatorName, StoreName);                         \
+    if (!InitializeAllocatorFromTraceStore(StoreName##Store, Target)) { \
+        return FALSE;                                                   \
+    }
+
+#define INIT_STORE_ALLOCATOR_EX(AllocatorName, StoreName) \
+    INIT_ALLOCATOR_EX(AllocatorName,                      \
+                      StoreName,                          \
+                      &Allocators->##AllocatorName);      \
     NumberOfAllocators++;
+
+#define INIT_STORE_ALLOCATOR(Name) INIT_STORE_ALLOCATOR_EX(Name, Name)
 
     INIT_STORE_ALLOCATOR(StringBuffer);
     INIT_STORE_ALLOCATOR(PythonFunctionTable);
     INIT_STORE_ALLOCATOR(PythonFunctionTableEntry);
-    INIT_STORE_ALLOCATOR(PathTable);
-    INIT_STORE_ALLOCATOR(PathTableEntry);
+    INIT_STORE_ALLOCATOR(PythonPathTable);
+    INIT_STORE_ALLOCATOR(PythonPathTableEntry);
     INIT_STORE_ALLOCATOR(StringArray);
     INIT_STORE_ALLOCATOR(StringTable);
     INIT_STORE_ALLOCATOR(LineTable);
     INIT_STORE_ALLOCATOR(LineTableEntry);
     INIT_STORE_ALLOCATOR(LineStringBuffer);
 
-    //
-    // ModuleTable and ModuleTableEntry have "Python" prefixed to their trace
-    // store names.  So initialize them manually.
-    //
-
-    ModuleTableStore = TraceStoreIdToTraceStore(
-        TraceStores,
-        TraceStorePythonModuleTableId
-    );
-    if (!InitializeAllocatorFromTraceStore(ModuleTableStore,
-                                           &Allocators->ModuleTable)) {
-        return FALSE;
-    }
-    NumberOfAllocators++;
-
-    ModuleTableEntryStore = TraceStoreIdToTraceStore(
-        TraceStores,
-        TraceStorePythonModuleTableEntryId
-    );
-    if (!InitializeAllocatorFromTraceStore(ModuleTableEntryStore,
-                                           &Allocators->ModuleTableEntry)) {
-        return FALSE;
-    }
-    NumberOfAllocators++;
+    INIT_STORE_ALLOCATOR(PythonModuleTable);
+    INIT_STORE_ALLOCATOR(PythonModuleTableEntry);
 
     Allocators->NumberOfAllocators = NumberOfAllocators;
     Allocators->SizeInBytes = sizeof(*Allocators);
 
     //
-    // Initialize allocators we use.
+    // Initialize allocators internal to the trace context.
     //
 
-    BitmapStore = TraceStoreIdToTraceStore(TraceStores, TraceStoreBitmapId);
-    if (!InitializeAllocatorFromTraceStore(BitmapStore,
-                                           &Context->BitmapAllocator)) {
-        return FALSE;
-    }
+#define INIT_CONTEXT_ALLOCATOR_EX(AllocatorName, StoreName) \
+    INIT_ALLOCATOR_EX(AllocatorName,                        \
+                      StoreName,                            \
+                      &Context->##AllocatorName##Allocator)
 
-    UnicodeStringBufferStore = (
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreUnicodeStringBufferId
-        )
-    );
-    if (!InitializeAllocatorFromTraceStore(
-            UnicodeStringBufferStore,
-            &Context->UnicodeStringBufferAllocator)) {
-        return FALSE;
-    }
+#define INIT_CONTEXT_ALLOCATOR(Name) INIT_CONTEXT_ALLOCATOR_EX(Name, Name)
+
+    INIT_CONTEXT_ALLOCATOR(Bitmap);
+    INIT_CONTEXT_ALLOCATOR(UnicodeStringBuffer);
 
     //
     // Initialize runtime tables and set the register path entry callback.

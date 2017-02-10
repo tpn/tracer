@@ -131,6 +131,8 @@ TRACE_STORE_DATA volatile BOOL PauseBeforePrepareReadonlyNonStreamingMap;
 TRACE_STORE_DATA volatile BOOL PauseBeforeReadonlyNonStreamingBindComplete;
 TRACE_STORE_DATA volatile BOOL PauseBeforeRelocate;
 
+TRACE_STORE_DATA CONST TRACE_STORE_ID TraceStoreIds[];
+
 #ifdef __cplusplus
 }; // extern "C"
 #endif

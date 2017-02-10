@@ -24,66 +24,131 @@ volatile BOOL PauseBeforeReadonlyNonStreamingBindComplete = TRUE;
 volatile BOOL PauseBeforeRelocate = TRUE;
 
 LPCWSTR TraceStoreFileNames[] = {
-    L"TraceEvent.dat",
-    L"TraceStringBuffer.dat",
-    L"TracePythonFunctionTable.dat",
-    L"TracePythonFunctionTableEntry.dat",
-    L"TracePathTable.dat",
-    L"TracePathTableEntry.dat",
-    L"TraceSession.dat",
-    L"TraceStringArray.dat",
-    L"TraceStringTable.dat",
-    L"TraceEventTraitsEx.dat",
-    L"TraceWsWatchInfoEx.dat",
-    L"TraceWsWorkingSetExInfo.dat",
-    L"TraceStoreCCallStackTable.dat",
-    L"TraceStoreCCallStackTableEntry.dat",
-    L"TraceStoreModuleTable.dat",
-    L"TraceStoreModuleTableEntry.dat",
-    L"TraceStorePythonCallStackTable.dat",
-    L"TraceStorePythonCallStackTableEntry.dat",
-    L"TraceStorePythonModuleTable.dat",
-    L"TraceStorePythonModuleTableEntry.dat",
-    L"TraceStoreLineTable.dat",
-    L"TraceStoreLineTableEntry.dat",
-    L"TraceStoreLineStringBuffer.dat",
-    L"TraceStoreCallStack.dat",
-    L"TraceStorePerformance.dat",
-    L"TraceStorePerformanceDelta.dat",
-    L"TraceStoreSourceCode.dat",
-    L"TraceStoreBitmap.dat",
-    L"TraceStoreImageFile.dat",
-    L"TraceStoreUnicodeStringBuffer.dat",
-    L"TraceStoreLine.dat",
-    L"TraceStoreObject.dat",
-    L"TraceStoreModuleLoadEvent.dat",
-    L"TraceStoreSymbolTable.dat",
-    L"TraceStoreSymbolTableEntry.dat",
-    L"TraceStoreSymbolModuleInfo.dat",
-    L"TraceStoreSymbolFile.dat",
-    L"TraceStoreSymbolInfo.dat",
-    L"TraceStoreSymbolLine.dat",
-    L"TraceStoreSymbolType.dat",
-    L"TraceStoreStackFrame.dat",
-    L"TraceStoreTypeInfoTable.dat",
-    L"TraceStoreTypeInfoTableEntry.dat",
-    L"TraceStoreTypeStringBuffer.dat",
-    L"TraceStoreFunctionTable.dat",
-    L"TraceStoreFunctionTableEntry.dat",
-    L"TraceStoreFunctionAssembly.dat",
-    L"TraceStoreFunctionSourceCode.dat",
-    L"TraceStoreExamineSymbolsLines.dat",
-    L"TraceStoreExamineSymbolsText.txt",
-    L"TraceStoreExaminedSymbol.dat",
-    L"TraceStoreExaminedSymbolSecondary.dat",
-    L"TraceStoreUnassembleFunctionLines.dat",
-    L"TraceStoreUnassembleFunctionText.txt",
-    L"TraceStoreUnassembledFunction.dat",
-    L"TraceStoreUnassembledFunctionSecondary.dat",
-    L"TraceStoreDisplayTypeLines.dat",
-    L"TraceStoreDisplayTypeText.txt",
-    L"TraceStoreDisplayedType.dat",
-    L"TraceStoreDisplayedTypeSecondary.dat",
+    L"PythonTracer_TraceEvent.dat",
+    L"TraceStore_StringBuffer.dat",
+    L"Python_PythonFunctionTable.dat",
+    L"Python_PythonFunctionTableEntry.dat",
+    L"Python_PythonPathTable.dat",
+    L"Python_PythonPathTableEntry.dat",
+    L"TraceStore_PageFault.dat",
+    L"StringTable_StringArray.dat",
+    L"StringTable_StringTable.dat",
+    L"Python_TraceEventTraitsEx.dat",
+    L"TraceStore_WsWatchInfoEx.dat",
+    L"TraceStore_WsWorkingSetExInfo.dat",
+    L"TraceStore_CCallStackTable.dat",
+    L"TraceStore_CCallStackTableEntry.dat",
+    L"TraceStore_ModuleTable.dat",
+    L"TraceStore_ModuleTableEntry.dat",
+    L"Python_PythonCallStackTable.dat",
+    L"Python_PythonCallStackTableEntry.dat",
+    L"Python_PythonModuleTable.dat",
+    L"Python_PythonModuleTableEntry.dat",
+    L"TraceStore_LineTable.dat",
+    L"TraceStore_LineTableEntry.dat",
+    L"TraceStore_LineStringBuffer.dat",
+    L"TraceStore_CallStack.dat",
+    L"TraceStore_Performance.dat",
+    L"TraceStore_PerformanceDelta.dat",
+    L"TraceStore_SourceCode.dat",
+    L"TraceStore_Bitmap.dat",
+    L"TraceStore_ImageFile.dat",
+    L"TraceStore_UnicodeStringBuffer.dat",
+    L"TraceStore_Line.dat",
+    L"TraceStore_Object.dat",
+    L"TraceStore_ModuleLoadEvent.dat",
+    L"TraceStore_SymbolTable.dat",
+    L"TraceStore_SymbolTableEntry.dat",
+    L"TraceStore_SymbolModuleInfo.dat",
+    L"TraceStore_SymbolFile.dat",
+    L"TraceStore_SymbolInfo.dat",
+    L"TraceStore_SymbolLine.dat",
+    L"TraceStore_SymbolType.dat",
+    L"TraceStore_StackFrame.dat",
+    L"TraceStore_TypeInfoTable.dat",
+    L"TraceStore_TypeInfoTableEntry.dat",
+    L"TraceStore_TypeStringBuffer.dat",
+    L"TraceStore_FunctionTable.dat",
+    L"TraceStore_FunctionTableEntry.dat",
+    L"TraceStore_FunctionAssembly.dat",
+    L"TraceStore_FunctionSourceCode.dat",
+    L"TraceStore_ExamineSymbolsLines.dat",
+    L"TraceStore_ExamineSymbolsText.txt",
+    L"TraceStore_ExaminedSymbol.dat",
+    L"TraceStore_ExaminedSymbolSecondary.dat",
+    L"TraceStore_UnassembleFunctionLines.dat",
+    L"TraceStore_UnassembleFunctionText.txt",
+    L"TraceStore_UnassembledFunction.dat",
+    L"TraceStore_UnassembledFunctionSecondary.dat",
+    L"TraceStore_DisplayTypeLines.dat",
+    L"TraceStore_DisplayTypeText.txt",
+    L"TraceStore_DisplayedType.dat",
+    L"TraceStore_DisplayedTypeSecondary.dat",
+};
+
+CONST TRACE_STORE_ID TraceStoreIds[] = {
+    TraceStoreNullId,
+    TraceStoreEventId,
+    TraceStoreStringBufferId,
+    TraceStorePythonFunctionTableId,
+    TraceStorePythonFunctionTableEntryId,
+    TraceStorePythonPathTableId,
+    TraceStorePythonPathTableEntryId,
+    TraceStorePageFaultId,
+    TraceStoreStringArrayId,
+    TraceStoreStringTableId,
+    TraceStoreEventTraitsExId,
+    TraceStoreWsWatchInfoExId,
+    TraceStoreWsWorkingSetExInfoId,
+    TraceStoreCCallStackTableId,
+    TraceStoreCCallStackTableEntryId,
+    TraceStoreModuleTableId,
+    TraceStoreModuleTableEntryId,
+    TraceStorePythonCallStackTableId,
+    TraceStorePythonCallStackTableEntryId,
+    TraceStorePythonModuleTableId,
+    TraceStorePythonModuleTableEntryId,
+    TraceStoreLineTableId,
+    TraceStoreLineTableEntryId,
+    TraceStoreLineStringBufferId,
+    TraceStoreCallStackId,
+    TraceStorePerformanceId,
+    TraceStorePerformanceDeltaId,
+    TraceStoreSourceCodeId,
+    TraceStoreBitmapId,
+    TraceStoreImageFileId,
+    TraceStoreUnicodeStringBufferId,
+    TraceStoreLineId,
+    TraceStoreObjectId,
+    TraceStoreModuleLoadEventId,
+    TraceStoreSymbolTableId,
+    TraceStoreSymbolTableEntryId,
+    TraceStoreSymbolModuleInfoId,
+    TraceStoreSymbolFileId,
+    TraceStoreSymbolInfoId,
+    TraceStoreSymbolLineId,
+    TraceStoreSymbolTypeId,
+    TraceStoreStackFrameId,
+    TraceStoreTypeInfoTableId,
+    TraceStoreTypeInfoTableEntryId,
+    TraceStoreTypeInfoStringBufferId,
+    TraceStoreFunctionTableId,
+    TraceStoreFunctionTableEntryId,
+    TraceStoreFunctionAssemblyId,
+    TraceStoreFunctionSourceCodeId,
+    TraceStoreExamineSymbolsLineId,
+    TraceStoreExamineSymbolsTextId,
+    TraceStoreExaminedSymbolId,
+    TraceStoreExaminedSymbolSecondaryId,
+    TraceStoreUnassembleFunctionLineId,
+    TraceStoreUnassembleFunctionTextId,
+    TraceStoreUnassembledFunctionId,
+    TraceStoreUnassembledFunctionSecondaryId,
+    TraceStoreDisplayTypeLineId,
+    TraceStoreDisplayTypeTextId,
+    TraceStoreDisplayedTypeId,
+    TraceStoreDisplayedTypeSecondaryId,
+    TraceStoreInvalidId,
 };
 
 WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
@@ -165,6 +230,20 @@ PWCHAR TraceStoreMetadataSuffixes[] = {
     TraceStoreInfoSuffix,
 };
 
+CONST TRACE_STORE_METADATA_ID TraceStoreMetadataIds[] = {
+    TraceStoreMetadataNullId,
+    TraceStoreMetadataMetadataInfoId,
+    TraceStoreMetadataAllocationId,
+    TraceStoreMetadataRelocationId,
+    TraceStoreMetadataAddressId,
+    TraceStoreMetadataAddressRangeId,
+    TraceStoreMetadataAllocationTimestampId,
+    TraceStoreMetadataAllocationTimestampDeltaId,
+    TraceStoreMetadataSynchronizationId,
+    TraceStoreMetadataInfoId,
+    TraceStoreMetadataInvalidId,
+};
+
 #define NUMBER_OF_METADATA_STORES (       \
     sizeof(TraceStoreMetadataSuffixes) /  \
     sizeof(TraceStoreMetadataSuffixes[0]) \
@@ -213,7 +292,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 25,   // PythonFunctionTableEntry
      1 << 16,   // PathTable
      1 << 25,   // PathTableEntry
-     1 << 18,   // TraceSession
+     1 << 26,   // TracePageFault
      1 << 21,   // StringArray
      1 << 21,   // StringTable
      1 << 25,   // EventTraitsEx
@@ -278,7 +357,7 @@ LONGLONG InitialTraceStoreFileSizesAsLongLong[] = {
      1 << 26,   // PythonFunctionTableEntry
      1 << 16,   // PathTable
      1 << 26,   // PathTableEntry
-     1 << 18,   // TraceSession
+     1 << 26,   // TracePageFault
      1 << 21,   // StringArray
      1 << 21,   // StringTable
      1 << 30,   // EventTraitsEx
@@ -444,7 +523,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // PathTable
+    // PythonPathTable
     //
 
     {
@@ -467,7 +546,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // PathTableEntry
+    // PythonPathTableEntry
     //
 
     {
@@ -490,19 +569,19 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 
     //
-    // TraceSession
+    // TracePageFault
     //
 
     {
         0,  // VaryingRecordSize
-        0,  // RecordSizeIsAlwaysPowerOf2
-        0,  // MultipleRecords
-        0,  // StreamingWrite
+        1,  // RecordSizeIsAlwaysPowerOf2
+        1,  // MultipleRecords
+        1,  // StreamingWrite
         0,  // StreamingRead
         0,  // FrequentAllocations
-        0,  // BlockingAllocations
+        1,  // BlockingAllocations
         0,  // LinkedStore
-        0,  // CoalescedAllocations
+        1,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
         0,  // PageAligned

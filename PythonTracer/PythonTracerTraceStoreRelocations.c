@@ -31,22 +31,22 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableRelocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE, TableRoot),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE, InsertOrderFlink),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE, InsertOrderBlink),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE, OrderedPointer),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
 
@@ -87,27 +87,27 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Parent),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, LeftChild),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, RightChild),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Flink),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_FUNCTION_TABLE_ENTRY, Blink),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     //
@@ -121,27 +121,27 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
         PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(NextPrefixTree),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(Parent),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(LeftChild),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(RightChild),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         PATH_TABLE_ENTRY_OFFSET_THROUGH_FUNCTION(Prefix),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     //
@@ -179,7 +179,7 @@ TRACE_STORE_FIELD_RELOC PythonFunctionTableEntryRelocations[] = {
 
     {
         OFFSET_THROUGH_FUNCTION(ParentPathEntry),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     LAST_TRACE_STORE_FIELD_RELOC
@@ -195,7 +195,7 @@ TRACE_STORE_FIELD_RELOC PythonPathTableRelocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE, NextPrefixTree),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     LAST_TRACE_STORE_FIELD_RELOC
@@ -211,27 +211,27 @@ TRACE_STORE_FIELD_RELOC PythonPathTableEntryRelocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, NextPrefixTree),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Parent),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, LeftChild),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, RightChild),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     {
         FIELD_OFFSET(PYTHON_PATH_TABLE_ENTRY, Prefix),
-        TraceStorePathTableEntryId
+        TraceStorePythonPathTableEntryId
     },
 
     //
@@ -276,7 +276,7 @@ TRACE_STORE_FIELD_RELOC PythonTraceEvent1Relocations[] = {
 
     {
         FIELD_OFFSET(PYTHON_TRACE_EVENT1, Function),
-        TraceStoreFunctionTableEntryId
+        TraceStorePythonFunctionTableEntryId
     },
 
     LAST_TRACE_STORE_FIELD_RELOC
@@ -290,22 +290,22 @@ DECLSPEC_ALIGN(128)
 TRACE_STORE_FIELD_RELOCS PythonTracerTraceStoreRelocations[] = {
 
     {
-        TraceStoreFunctionTableId,
+        TraceStorePythonFunctionTableId,
         (PTRACE_STORE_FIELD_RELOC)&PythonFunctionTableRelocations
     },
 
     {
-        TraceStoreFunctionTableEntryId,
+        TraceStorePythonFunctionTableEntryId,
         (PTRACE_STORE_FIELD_RELOC)&PythonFunctionTableEntryRelocations
     },
 
     {
-        TraceStorePathTableId,
+        TraceStorePythonPathTableId,
         (PTRACE_STORE_FIELD_RELOC)&PythonPathTableRelocations
     },
 
     {
-        TraceStorePathTableEntryId,
+        TraceStorePythonPathTableEntryId,
         (PTRACE_STORE_FIELD_RELOC)&PythonPathTableEntryRelocations
     },
 
