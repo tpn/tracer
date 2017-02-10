@@ -559,12 +559,12 @@ CopyInterfaceId(
 }
 
 //
-// DebugEngineOutput-related inline functions.
+// DebugEngineOutput-related inline functions and function typedefs.
 //
 
 FORCEINLINE
 VOID
-UnknownBasicType(
+DebugPrintUnknownBasicType(
     _In_ PSTRING String
     )
 {
@@ -574,7 +574,7 @@ UnknownBasicType(
 
 FORCEINLINE
 VOID
-UnknownFunctionArgumentType(
+DebugPrintUnknownFunctionArgumentType(
     _In_ PSTRING String
     )
 {

@@ -736,10 +736,10 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_REGISTER_X64 {
     YMM1,
     YMM2,
     YMM3,
+    ZMM0,
     ZMM1,
     ZMM2,
     ZMM3,
-    ZMM4,
 } DEBUG_ENGINE_FUNCTION_ARGUMENT_REGISTER_X64;
 
 typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
@@ -836,7 +836,7 @@ typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
         // typically always be set in conjunction with IsPointer.
         //
 
-        ULONG IsStructure:1;
+        ULONG IsStruct:1;
 
         //
         // When set, indicates the argument is a union.
@@ -858,6 +858,17 @@ typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
         ULONG IsClass:1;
 
         //
+        // If a colon is detected in the symbol name, the name is assumed to
+        // be a (demangled) C++ symbol name.  The following flag will be set.
+        //
+        // N.B. Only one colon is tested for, despite two being technically the
+        //      valid indicator of a C++ name.  However, nothing else should use
+        //      a colon in their name, so we should be fine.
+        //
+
+        ULONG IsCpp:1;
+
+        //
         // When set, indicates the argument is a vector register.  This covers
         // any register over the native pointer size, e.g. typically 128-bits
         // or larger.
@@ -870,25 +881,32 @@ typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
         //
 
         //
-        // When set, indicates that this is a 128-bit XMM register.
+        // When set, indicates that this is a 64-bit MMX (__m64) register.
+        //
+
+        ULONG IsMmx:1;
+
+        //
+        // When set, indicates that this is a 128-bit XMM (__m128) register.
         //
 
         ULONG IsXmm:1;
 
         //
-        // When set, indicates that this is a 256-bit YMM register.
+        // When set, indicates that this is a 256-bit YMM (__m256) register.
         //
 
         ULONG IsYmm:1;
 
         //
-        // When set, indicates that this is a 512-bit ZMM register.
+        // When set, indicates that this is a 512-bit ZMM (__m512) register.
         //
 
         ULONG IsZmm:1;
 
         //
-        // When set, indicates the vector type is floating point.
+        // When set, indicates the vector type is floating point (e.g. of
+        // type float or double).
         //
 
         ULONG IsFloatingPointVectorType:1;
@@ -951,7 +969,7 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
     // Size of the argument, in bytes.
     //
 
-    USHORT SizeInBytes;
+    SHORT SizeInBytes;
 
     //
     // Position of the argument in the function signature.
