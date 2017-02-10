@@ -742,7 +742,7 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     UnknownArgumentType = -1,
 
     //
-    // First 16 types captured by FunctionArgumentTypeStringTable.
+    // First 16 types captured by FunctionArgumentTypes1.
     //
 
     CharArgumentType = 0,
@@ -766,13 +766,21 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     DoubleArgumentType,
 
     //
-    // Next 16 types captured by BasicTypeStringTable2.
+    // Next non-vector 16 types captured by FunctionArgumentTypes2.
     //
 
-    BoolArgumentType,
+    BoolArgumentType = 16,
     VoidArgumentType,
     ClassArgumentType,
-    SimdArgumentType,
+
+    //
+    // Vector types start at 64.
+    //
+
+    Vector64Type = 32,
+    Vector128Type,
+    Vector256Type,
+    Vector512Type,
 
     //
     // Any enumeration value >= InvalidArgumentType is invalid.  Make sure this
@@ -972,13 +980,13 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
         // The basic type name of this argument.
         //
 
-        STRING BasicType;
+        STRING ArgumentType;
 
         //
         // For composite types like structs/unions etc, the name of the type.
         //
 
-        STRING TypeName;
+        STRING ArgumentTypeName;
 
     } String;
 
@@ -1922,10 +1930,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE ExamineSymbolsPrefixStringTable;
 
     USHORT NumberOfBasicTypeStringTables;
-    USHORT Padding[3];
+    USHORT Padding1[3];
 
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable1;
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable2;
+
+    USHORT NumberOfFunctionArgumentStringTables;
+    USHORT Padding2[3];
+
+    PSTRING_TABLE FunctionArgumentTypeStringTable1;
+    PSTRING_TABLE FunctionArgumentTypeStringTable2;
+    PSTRING_TABLE FunctionArgumentVectorTypeStringTable1;
 
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;
 

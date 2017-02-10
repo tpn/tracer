@@ -167,7 +167,8 @@ DEFINE_CUSTOM_STRUCTURE_NAME(DisplayedTypeCustomStructureName,
                              DEBUG_ENGINE_DISPLAYED_TYPE);
 
 //
-// StringTable-related constants.
+// StringTable-related constants.  Each table consists of a maximum of 16
+// strings, as this is the limit of an individual string table.
 //
 
 #undef DSTR
@@ -183,6 +184,10 @@ CONST CHAR StringTableDelimiter = ';';
 //      E.g. "int64" needs to come before "int".
 //
 
+//
+// ExamineSymbolPrefixes
+//
+
 CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
     DSTR("prv func")
     DSTR("prv global")
@@ -192,8 +197,7 @@ CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
 );
 
 //
-// Split the basic type names into chunks of 16 (which is the current limit of
-// the StringTable component).
+// ExamineSymbolsBasicTypes
 //
 
 CONST STRING ExamineSymbolsBasicTypes1 = RTL_CONSTANT_STRING(
@@ -224,6 +228,45 @@ CONST STRING ExamineSymbolsBasicTypes2 = RTL_CONSTANT_STRING(
     DSTR("double")
     DSTR("_SAL_ExecutionContext")
     DSTR("__enative_startup_state")
+);
+
+//
+// FunctionArgumentTypes
+//
+
+CONST STRING FunctionArgumentTypes1 = RTL_CONSTANT_STRING(
+    DSTR("char")
+    DSTR("wchar_t")
+    DSTR("short")
+    DSTR("long")
+    DSTR("int64")
+    DSTR("int")
+    DSTR("unsigned char")
+    DSTR("unsigned wchar_t")
+    DSTR("unsigned short")
+    DSTR("unsigned long")
+    DSTR("unsigned int64")
+    DSTR("unsigned int")
+    DSTR("union")
+    DSTR("struct")
+    DSTR("float")
+    DSTR("double")
+);
+
+CONST STRING FunctionArgumentTypes2 = RTL_CONSTANT_STRING(
+    DSTR("bool")
+    DSTR("void")
+    DSTR("class")
+);
+
+//
+// FunctionArgumentVectorTypes
+//
+
+CONST STRING FunctionArgumentVectorTypes1 = RTL_CONSTANT_STRING(
+    DSTR("__m64")
+    DSTR("__m128")
+    DSTR("__m256")
 );
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
