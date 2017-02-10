@@ -95,6 +95,7 @@
     <ClCompile Include="PythonFunction.c" />
     <ClCompile Include="PythonLineNumbers.c" />
     <ClCompile Include="PythonPathTableEntry.c" />
+    <ClCompile Include="PythonTypes.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
