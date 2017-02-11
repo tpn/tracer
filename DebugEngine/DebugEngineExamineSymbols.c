@@ -1025,7 +1025,7 @@ RetryBasicTypeMatch:
         }
 
         //
-        // If the character preceeding the comma is an asterisk, the argument
+        // If the character preceding the comma is an asterisk, the argument
         // is a pointer type.
         //
 
@@ -1037,7 +1037,7 @@ RetryBasicTypeMatch:
             Argument->SizeInBytes = sizeof(ULONG_PTR);
 
             //
-            // The character preceeding the asterisk should be a space.
+            // The character preceding the asterisk should be a space.
             //
 
             if (*(--ArgEnd) != ' ') {
@@ -1057,7 +1057,7 @@ RetryBasicTypeMatch:
 
         //
         // Search for the argument in the function argument string tables.
-        // This uses the same algorith as the string table match earlier,
+        // This uses the same algorithm as the string table match earlier,
         // slightly tweaked for function arguments.
         //
 
