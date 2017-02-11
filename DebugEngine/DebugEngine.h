@@ -776,6 +776,7 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     BoolArgumentType = 16,
     VoidArgumentType,
     ClassArgumentType,
+    FunctionArgumentType,
 
     //
     // Vector types start at 64.

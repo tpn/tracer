@@ -471,7 +471,14 @@ Return Value:
             goto Error;
         }
 
-        Session->NumberOfFunctionArgumentTypeStringTables = 3;
+        //
+        // The vector string table doesn't get included in the initial matching
+        // logic (because the types come through as `union __m128`, so we set
+        // this to 2 instead of 3.  A manual check is done against the string
+        // table when parsing unions.
+        //
+
+        Session->NumberOfFunctionArgumentTypeStringTables = 2;
     }
 
     //

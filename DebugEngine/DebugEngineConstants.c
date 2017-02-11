@@ -257,6 +257,7 @@ CONST STRING FunctionArgumentTypes2 = RTL_CONSTANT_STRING(
     DSTR("bool")
     DSTR("void")
     DSTR("class")
+    DSTR("<function>")
 );
 
 //
