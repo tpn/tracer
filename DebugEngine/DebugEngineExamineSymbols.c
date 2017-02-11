@@ -1051,16 +1051,8 @@ RetryBasicTypeMatch:
         // (where a type name follows the type, e.g. 'struct _object').
         //
 
-        ArgumentType->Length = (USHORT)(ArgEnd - Marker);
+        ArgumentType->Length = (USHORT)(Char - Marker);
         ArgumentType->MaximumLength = ArgumentType->Length;
-
-        //
-        // Calculate the argument type's atom value.
-        //
-
-        Argument->Atom.ArgumentType = (USHORT)(
-            HashAnsiStringToAtom(ArgumentType)
-        );
 
         //
         // Search for the argument in the function argument string tables.
@@ -1116,12 +1108,27 @@ RetryArgumentMatch:
         ArgType = MatchIndex + MatchOffset;
 
         //
+        // Update the lengths of the argument type string.
+        //
+
+        ArgumentType->Length = (USHORT)Match.NumberOfMatchedCharacters;
+        ArgumentType->MaximumLength = ArgumentType->Length;
+
+        //
+        // Hash the argument type string into an atom.
+        //
+
+        Argument->Atom.ArgumentType = (USHORT)(
+            HashAnsiStringToAtom(ArgumentType)
+        );
+
+        //
         // Determine if this is a user-defined type (UDT).
         //
 
-        Argument->Flags.IsUnion = (ArgType == UnionType);
-        Argument->Flags.IsClass = (ArgType == ClassType);
-        Argument->Flags.IsStruct = (ArgType == StructType);
+        Argument->Flags.IsUnion = (ArgType == UnionArgumentType);
+        Argument->Flags.IsClass = (ArgType == ClassArgumentType);
+        Argument->Flags.IsStruct = (ArgType == StructArgumentType);
 
         Argument->Flags.IsUdt = (
             Argument->Flags.IsUnion ||
@@ -1145,11 +1152,11 @@ RetryArgumentMatch:
             }
 
             //
-            // Advance the argument character pointer two places such that it's
-            // pointing at the first character of the type name
+            // Advance the argument character pointer such that it's pointing
+            // at the first character of the type name
             //
 
-            ArgChar += 2;
+            ArgChar++;
 
             //
             // Wire up the ArgumentTypeName alias and initialize the string.
