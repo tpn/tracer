@@ -1182,6 +1182,49 @@ RetryArgumentMatch:
             } while (++ArgChar != ArgEnd);
 
             //
+            // If this is a union, check to see if the type name matches one of
+            // our vector names in the vector string table, which actually come
+            // through the debug engine as `union __m128...`.
+            //
+
+            if (Argument->Flags.IsUnion) {
+                StringTable = Session->FunctionArgumentVectorTypeStringTable1;
+
+                MatchIndex = IsPrefixOfStringInTable(StringTable,
+                                                     ArgumentTypeName,
+                                                     &Match);
+
+                if (MatchIndex != NO_MATCH_FOUND) {
+
+                    //
+                    // This is actually a vector argument.  Update the arg type
+                    // and make the current argument type name the argument name
+                    // then jump to the vector handling logic.
+                    //
+
+                    ArgType = Vector64Type + MatchIndex;
+
+                    ArgumentType->Buffer = ArgumentTypeName->Buffer;
+                    ArgumentType->Length = ArgumentTypeName->Length;
+                    ArgumentType->MaximumLength = (
+                        ArgumentTypeName->MaximumLength
+                    );
+
+                    //
+                    // Clear the argument type name; this makes it look like
+                    // the __m128/__m256 type was native (i.e. removes the union
+                    // from the name).
+                    //
+
+                    ArgumentTypeName->Buffer = NULL;
+                    ArgumentTypeName->Length = 0;
+                    ArgumentTypeName->MaximumLength = 0;
+
+                    goto ProcessVectorArgument;
+                }
+            }
+
+            //
             // Capture the atom value then finalize the argument.
             //
 
@@ -1197,7 +1240,8 @@ RetryArgumentMatch:
         //
 
         if ((ArgType >= CharArgumentType && ArgType <= UnsignedIntegerType) ||
-            (ArgType == BoolArgumentType || ArgType == VoidArgumentType)) {
+            (ArgType == BoolArgumentType || ArgType == VoidArgumentType ||
+             ArgType == FunctionArgumentType)) {
 
             //
             // We don't need to do any further processing for these types.
@@ -1234,6 +1278,8 @@ RetryArgumentMatch:
         //
         // If we get to this point, we should be a SIMD vector type.
         //
+
+ProcessVectorArgument:
 
         if (!(ArgType >= Vector64Type && ArgType <= Vector512Type)) {
             __debugbreak();
@@ -1369,61 +1415,5 @@ Return Value:
 
     return Success;
 }
-
-#ifndef VECTORCALL
-#define VECTORCALL __vectorcall
-#endif
-
-XMMWORD
-VECTORCALL
-DummyVectorCall1(
-    _In_ XMMWORD Xmm0,
-    _In_ XMMWORD Xmm1,
-    _In_ XMMWORD Xmm2,
-    _In_ XMMWORD Xmm3
-    )
-{
-    XMMWORD Temp1;
-    XMMWORD Temp2;
-    Temp1 = _mm_xor_si128(Xmm0, Xmm1);
-    Temp2 = _mm_xor_si128(Xmm2, Xmm3);
-    return _mm_xor_si128(Temp1, Temp2);
-}
-
-typedef struct _TEST_HVA3 {
-    XMMWORD X;
-    XMMWORD Y;
-    XMMWORD Z;
-} TEST_HVA3;
-
-TEST_HVA3
-VECTORCALL
-DummyHvaCall1(
-    _In_ TEST_HVA3 Hva3
-    )
-{
-    Hva3.X = _mm_xor_si128(Hva3.Y, Hva3.Z);
-    return Hva3;
-}
-
-#if 0
-typedef struct _TEST_HFA3 {
-    DOUBLE X;
-    DOUBLE Y;
-    DOUBLE Z;
-} TEST_HFA3;
-
-TEST_HFA3
-VECTORCALL
-DummyHfaCall1(
-    _In_ TEST_HFA3 Hfa3
-    )
-{
-    __m128d Double;
-    Double = _mm_setr_pd(Hfa3.Y, Hfa3.Z);
-    Hfa3.X = Double.m128d_f64[0];
-    return Hfa3;
-}
-#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
