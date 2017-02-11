@@ -989,7 +989,6 @@ RetryBasicTypeMatch:
         //
 
         Argument->ArgumentNumber = Index + 1;
-        Argument->Atom = (USHORT)HashAnsiStringToAtom(&Argument->Name);
 
         //
         // If the argument number is four or less, set register information.
@@ -1004,7 +1003,7 @@ RetryBasicTypeMatch:
         }
 
         //
-        // Wire the argument type string structure up to the relevant buffer
+        // Wire up the argument type string structure to the relevant buffer
         // offset.  We use the Marker to delineate the start of each argument.
         //
 
@@ -1054,6 +1053,14 @@ RetryBasicTypeMatch:
 
         ArgumentType->Length = (USHORT)(ArgEnd - Marker);
         ArgumentType->MaximumLength = ArgumentType->Length;
+
+        //
+        // Calculate the argument type's atom value.
+        //
+
+        Argument->Atom.ArgumentType = (USHORT)(
+            HashAnsiStringToAtom(ArgumentType)
+        );
 
         //
         // Search for the argument in the function argument string tables.
@@ -1166,6 +1173,14 @@ RetryArgumentMatch:
                     goto Error;
                 }
             } while (++ArgChar != ArgEnd);
+
+            //
+            // Capture the atom value then finalize the argument.
+            //
+
+            Argument->Atom.ArgumentTypeName = (USHORT)(
+                HashAnsiStringToAtom(ArgumentTypeName)
+            );
 
             goto FinalizeArgument;
         }

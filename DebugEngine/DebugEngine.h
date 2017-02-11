@@ -985,16 +985,38 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
     USHORT StackPointerOffset;
 
     //
-    // The atom value of this argument's type's name.
+    // Pad out to 8 bytes.
     //
 
-    USHORT Atom;
+    USHORT Padding1;
+
+    struct {
+
+        //
+        // Atom (hash) value of the argument type's character representation.
+        //
+
+        USHORT ArgumentType;
+
+        //
+        // Atom (hash) value of the argument type's name, if applicable.
+        //
+
+        USHORT ArgumentTypeName;
+
+    } Atom;
 
     //
     // The basic type of the argument.
     //
 
     DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE ArgumentType;
+
+    //
+    // String structures that capture the character representation of the
+    // argument type and argument type name.  The latter only applies to
+    // UDTs (e.g. structs, unions etc).
+    //
 
     struct {
 
@@ -1025,12 +1047,6 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
     //
 
     LIST_ENTRY ListEntry;
-
-    //
-    // The full raw text of the argument.
-    //
-
-    STRING Name;
 
     //
     // A pointer to the displayed type for this argument, if applicable.
