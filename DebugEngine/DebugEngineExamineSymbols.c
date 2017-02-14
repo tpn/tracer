@@ -1032,17 +1032,33 @@ RetryBasicTypeMatch:
 
         if (*ArgEnd == '*') {
 
+            USHORT PointerDepth = 1;
+
             Argument->Flags.IsPointer = TRUE;
             Argument->SizeInBytes = sizeof(ULONG_PTR);
 
             //
-            // The character preceding the asterisk should be a space.
+            // Count how many asterisks we find.
             //
 
-            if (*(--ArgEnd) != ' ') {
+            while (*(--ArgEnd) == '*') {
+                PointerDepth++;
+            }
+
+            //
+            // The character preceding the first asterisk should be a space.
+            //
+
+            if (*ArgEnd != ' ') {
                 MAYBE_BREAK();
                 goto Error;
             }
+
+            //
+            // Update the pointer depth.
+            //
+
+            Argument->PointerDepth = PointerDepth;
         }
 
         //

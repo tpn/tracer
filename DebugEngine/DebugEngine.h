@@ -986,10 +986,12 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
     USHORT StackPointerOffset;
 
     //
-    // Pad out to 8 bytes.
+    // If this is a pointer, the following field reflects the depth of the
+    // pointer.  That is, literally how many asterisks were detected in the
+    // argument name.
     //
 
-    USHORT Padding1;
+    USHORT PointerDepth;
 
     struct {
 
