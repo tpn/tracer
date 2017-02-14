@@ -1105,6 +1105,7 @@ Return Value:
     DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS DisplayTypeOptions;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS ExamineSymbolsOptions;
     DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS UnassembleFunctionOptions;
+    CONST STRING CSpecificHandler = RTL_CONSTANT_STRING("__C_specific_handler");
 
     UNICODE_STRING ArgumentWide;
     WCHAR UnicodeBuffer[_MAX_PATH];
@@ -1309,12 +1310,19 @@ Return Value:
             case FunctionType:
 
                 //
-                // Skip function pointers and non-private functions.
+                // Skip function pointers, non-private functions and
+                // __C_specific_handler functions.  The latter is skipped
+                // because the debug engine doesn't appear to grok our
+                // (admittedly quirky) usage and results in up to 1600+
+                // nop-type instructions being dumped to the output stream.
                 //
 
                 Skip = (
-                    Symbol->Flags.IsPointer ||
-                    Symbol->Scope != PrivateFunctionScope
+                    Symbol->Flags.IsPointer               ||
+                    Symbol->Scope != PrivateFunctionScope ||
+                    Rtl->RtlEqualString(&Symbol->String.SymbolName,
+                                        &CSpecificHandler,
+                                        FALSE)
                 );
 
                 if (Skip) {
