@@ -1237,6 +1237,7 @@ LoadPythonDll:
     WRITE_ENV_VAR(CONDA_PREFIX);
     WRITE_ENV_VAR(CUDA_PATH_V7_5);
     WRITE_ENV_VAR(CUDA_PATH_V8_0);
+    WRITE_ENV_VAR(NVTOOLSEXT_PATH);
 
     //
     // Initialize the string table and string array allocators.
