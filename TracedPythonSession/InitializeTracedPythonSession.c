@@ -1231,6 +1231,7 @@ LoadPythonDll:
     WRITE_ENV_VAR(PROCESSOR_IDENTIFIER);
     WRITE_ENV_VAR(PROCESSOR_LEVEL);
     WRITE_ENV_VAR(PROCESSOR_REVISION);
+    WRITE_ENV_VAR(_NT_SYMBOL_PATH);
 
     //
     // Initialize the string table and string array allocators.
