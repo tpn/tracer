@@ -1232,6 +1232,9 @@ LoadPythonDll:
     WRITE_ENV_VAR(PROCESSOR_LEVEL);
     WRITE_ENV_VAR(PROCESSOR_REVISION);
     WRITE_ENV_VAR(_NT_SYMBOL_PATH);
+    WRITE_ENV_VAR(CONDA_DEFAULT_ENV);
+    WRITE_ENV_VAR(CONDA_ENVS_PATH);
+    WRITE_ENV_VAR(CONDA_PREFIX);
 
     //
     // Initialize the string table and string array allocators.
