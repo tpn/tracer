@@ -31,10 +31,16 @@ _DllMainCRTStartup(
             }
             break;
         case DLL_THREAD_ATTACH:
+            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
+                               "DLL_THREAD_ATTACH.\n");
             break;
         case DLL_THREAD_DETACH:
+            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
+                               "DLL_THREAD_DETACH.\n");
             break;
         case DLL_PROCESS_DETACH:
+            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
+                               "DLL_PROCESS_DETACH.\n");
             RundownGlobalTraceStores();
             DestroyGlobalTraceStoresRundown();
             break;
