@@ -788,6 +788,13 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     Vector512Type,
 
     //
+    // Enum is special in that it doesn't map to a string in the string table;
+    // if a type can't be inferred from the list above, it defaults to Enum.
+    //
+
+    EnumArgumentType = 64,
+
+    //
     // Any enumeration value >= InvalidArgumentType is invalid.  Make sure this
     // always comes last in the enum layout.
     //
