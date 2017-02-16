@@ -128,7 +128,7 @@ InitializeDebugEngineSession(
     PRTL Rtl,
     PALLOCATOR Allocator,
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
-    struct _TRACER_CONFIG *TracerConfig,
+    PTRACER_CONFIG TracerConfig,
     HMODULE StringTableModule,
     PALLOCATOR StringArrayAllocator,
     PALLOCATOR StringTableAllocator,
