@@ -1218,7 +1218,7 @@ RetryArgumentMatch:
                     // then jump to the vector handling logic.
                     //
 
-                    ArgType = Vector64Type + MatchIndex;
+                    ArgType = VectorArgument64Type + MatchIndex;
 
                     ArgumentType->Buffer = ArgumentTypeName->Buffer;
                     ArgumentType->Length = ArgumentTypeName->Length;
@@ -1291,23 +1291,26 @@ RetryArgumentMatch:
             goto FinalizeArgument;
         }
 
-        //
-        // If we get to this point, we should be a SIMD vector type.
-        //
-
 ProcessVectorArgument:
 
-        if (!(ArgType >= Vector64Type && ArgType <= Vector512Type)) {
+        //
+        // If we get to this point, we should be a SIMD vector type.  Assert
+        // this invariant now.
+        //
+
+        if (!(ArgType >= VectorArgument64Type &&
+              ArgType <= VectorArgument512Type)) {
+
             __debugbreak();
             goto Error;
         }
 
         Argument->Flags.IsVector = TRUE;
         Argument->Flags.IsSimdVectorType = TRUE;
-        Argument->Flags.IsMmx = (ArgType == Vector64Type);
-        Argument->Flags.IsXmm = (ArgType == Vector128Type);
-        Argument->Flags.IsYmm = (ArgType == Vector256Type);
-        Argument->Flags.IsZmm = (ArgType == Vector512Type);
+        Argument->Flags.IsMmx = (ArgType == VectorArgument64Type);
+        Argument->Flags.IsXmm = (ArgType == VectorArgument128Type);
+        Argument->Flags.IsYmm = (ArgType == VectorArgument256Type);
+        Argument->Flags.IsZmm = (ArgType == VectorArgument512Type);
 
         //
         // If this is one of the first four parameters, indicate the register

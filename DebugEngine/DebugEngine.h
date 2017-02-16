@@ -782,10 +782,10 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     // Vector types start at 32.
     //
 
-    Vector64Type = 32,
-    Vector128Type,
-    Vector256Type,
-    Vector512Type,
+    VectorArgument64Type = 32,
+    VectorArgument128Type,
+    VectorArgument256Type,
+    VectorArgument512Type,
 
     //
     // Enum is special in that it doesn't map to a string in the string table;
