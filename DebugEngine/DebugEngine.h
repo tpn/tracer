@@ -619,7 +619,7 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
     // Next 16 types captured by BasicTypeStringTable2.
     //
 
-    CLRType,
+    CLRType = 16,
     BoolType,
     VoidType,
     ClassType,
@@ -627,6 +627,13 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
     DoubleType,
     SALExecutionContextType,
     ENativeStartupStateType,
+
+    //
+    // Enum is special in that it doesn't map to a string in the string table;
+    // if a type can't be inferred from the list above, it defaults to Enum.
+    //
+
+    EnumType = 48,
 
     //
     // Any enumeration value >= InvalidType is invalid.  Make sure this always
@@ -794,7 +801,7 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
     // if a type can't be inferred from the list above, it defaults to Enum.
     //
 
-    EnumArgumentType = 64,
+    EnumArgumentType = 48,
 
     //
     // Any enumeration value >= InvalidArgumentType is invalid.  Make sure this
