@@ -494,6 +494,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
 
         //
         // When set, indicates all LINKED_LINEs allocated were contiguous.
+        // (This implies the lines can be enumerated as an array instead of
+        //  having to walk the linked list.)
         //
 
         ULONG Contiguous:1;
