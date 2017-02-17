@@ -413,12 +413,34 @@ RetryBasicTypeMatch:
 
     if (MatchIndex == NO_MATCH_FOUND) {
         if (++MatchAttempts >= NumberOfStringTables) {
-            DebugPrintUnknownBasicType(&BasicType);
-            goto Error;
+
+            //
+            // We weren't able to match the name to any known types.
+            // Default to the enum type.
+            //
+
+            SymbolType = EnumType;
+
+        } else {
+
+            //
+            // There are string tables remaining.  Attempt another match.
+            //
+
+            StringTable++;
+            MatchOffset += MAX_STRING_TABLE_ENTRIES;
+            goto RetryBasicTypeMatch;
+
         }
-        StringTable++;
-        MatchOffset += MAX_STRING_TABLE_ENTRIES;
-        goto RetryBasicTypeMatch;
+
+    } else {
+
+        //
+        // We found a match.  Our enums are carefully offset in order to allow
+        // the following `index + offset = enum value` to work.
+        //
+
+        SymbolType = MatchIndex + MatchOffset;
     }
 
     //
@@ -446,7 +468,7 @@ RetryBasicTypeMatch:
 
     Symbol->SizeOfStruct = sizeof(*Symbol);
 
-    Symbol->Type = SymbolType = MatchIndex + MatchOffset;
+    Symbol->Type = SymbolType;
     Symbol->Size = Size;
     Symbol->Scope = SymbolScope;
     Symbol->Output = Output;
@@ -1093,14 +1115,11 @@ RetryArgumentMatch:
 
                 //
                 // We've exhausted all of the string tables for function
-                // argument types and weren't able to find a match.  Unlike
-                // basic type matching earlier in the routine, we don't treat
-                // this as a fatal error; we simply avoid further processing
-                // regarding the argument's type.
+                // argument types and weren't able to find a match.  Treat
+                // this as an enum argument type.
                 //
 
-                DebugPrintUnknownFunctionArgumentType(ArgumentType);
-                goto FinalizeArgument;
+                ArgType = EnumArgumentType;
 
             } else {
 
@@ -1112,16 +1131,23 @@ RetryArgumentMatch:
                 MatchOffset += MAX_STRING_TABLE_ENTRIES;
                 goto RetryArgumentMatch;
             }
+
+        } else {
+
+            //
+            // We found a match.  Resolve the matched enum type via the index
+            // and offset.
+            //
+
+            ArgType = MatchIndex + MatchOffset;
         }
 
         //
         // If we get here, the argument is a known type.  Point the ArgChar
-        // pointer at the character after the end of the matched string and
-        // resolve the type of the argument.
+        // pointer at the character after the end of the matched string.
         //
 
         ArgChar = ArgumentType->Buffer + Match.NumberOfMatchedCharacters;
-        ArgType = MatchIndex + MatchOffset;
 
         //
         // Update the lengths of the argument type string.
@@ -1142,6 +1168,7 @@ RetryArgumentMatch:
         // Determine if this is a user-defined type (UDT).
         //
 
+        Argument->Flags.IsEnum = (ArgType == EnumArgumentType);
         Argument->Flags.IsUnion = (ArgType == UnionArgumentType);
         Argument->Flags.IsClass = (ArgType == ClassArgumentType);
         Argument->Flags.IsStruct = (ArgType == StructArgumentType);
@@ -1252,12 +1279,12 @@ RetryArgumentMatch:
         }
 
         //
-        // Determine if this is a normal, non-vector non-UDT argument type.
+        // Determine if this is a normal, non-vector, non-UDT argument type.
         //
 
         if ((ArgType >= CharArgumentType && ArgType <= UnsignedIntegerType) ||
             (ArgType == BoolArgumentType || ArgType == VoidArgumentType ||
-             ArgType == FunctionArgumentType)) {
+             ArgType == FunctionArgumentType || ArgType == EnumArgumentType)) {
 
             //
             // We don't need to do any further processing for these types.
