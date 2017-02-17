@@ -1327,9 +1327,7 @@ ProcessVectorArgument:
 
 FinalizeArgument:
 
-        InitializeListHead(&Argument->ListEntry);
-
-        AppendTailList(&Symbol->Function.ArgumentsListHead,
+        InsertTailList(&Symbol->Function.ArgumentsListHead,
                        &Argument->ListEntry);
 
         //
