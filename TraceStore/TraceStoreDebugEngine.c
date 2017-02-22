@@ -1084,6 +1084,8 @@ Return Value:
     PRTL Rtl;
     PRTL_FILE File;
     PRTL_PATH Path;
+    ULONG DisplayTypeFailed;
+    ULONG UnassembleFunctionFailed;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     PALLOCATOR Allocator;
@@ -1298,6 +1300,8 @@ Return Value:
     //              dt -a -b -r9 -v <module>!<typename>
     //
 
+    DisplayTypeFailed = 0;
+    UnassembleFunctionFailed = 0;
     ListHead = &Output->CustomStructureListHead;
     FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
 
@@ -1307,6 +1311,7 @@ Return Value:
 
         switch (Symbol->Type) {
 
+            case NoType:
             case FunctionType:
 
                 //
@@ -1319,7 +1324,7 @@ Return Value:
 
                 Skip = (
                     Symbol->Flags.IsPointer               ||
-                    Symbol->Scope != PrivateFunctionScope ||
+                    //Symbol->Scope != PrivateFunctionScope ||
                     Rtl->RtlEqualString(&Symbol->String.SymbolName,
                                         &CSpecificHandler,
                                         FALSE)
@@ -1337,7 +1342,7 @@ Return Value:
                                              UnassembleFunctionOptions,
                                              ArgumentWidePointer);
                 if (!Success) {
-                    return FALSE;
+                    UnassembleFunctionFailed++;
                 }
 
                 break;
@@ -1355,7 +1360,7 @@ Return Value:
                                       ArgumentWidePointer);
 
                 if (!Success) {
-                    return FALSE;
+                    DisplayTypeFailed++;
                 }
 
                 break;
