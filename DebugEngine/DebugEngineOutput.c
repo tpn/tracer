@@ -1076,7 +1076,6 @@ CompareLinkedLines:
             );
 
             if (!Contiguous) {
-                __debugbreak();
                 Output->SavedLineAllocationState.Contiguous = FALSE;
                 Output->SavedLineAllocationState.Discontiguous = TRUE;
                 Output->FirstDiscontiguousLineIndex = (
