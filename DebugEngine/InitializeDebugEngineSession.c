@@ -314,8 +314,10 @@ Return Value:
             ),
             "InitializeDebugEngine()->FromCommandLine"
         );
+        Session->Flags.OutOfProc = TRUE;
     } else if (InitFlags.InitializeFromCurrentProcess) {
         Session->TargetProcessId = FastGetCurrentProcessId();
+        Session->Flags.InProc = TRUE;
     }
 
     Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
@@ -559,6 +561,18 @@ Return Value:
 
         AcquireDebugEngineLock(Engine);
         AcquiredLock = TRUE;
+    }
+
+    //
+    // If we're in-proc, set a breakpoint on kernel exit points.
+    //
+
+    if (Session->Flags.InProc) {
+
+        //
+        // Add breakpoint here.
+        //
+
     }
 
     //
