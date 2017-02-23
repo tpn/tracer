@@ -241,20 +241,7 @@ typedef union _DEBUG_ENGINE_FLAGS {
     LONG AsLong;
     ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-
-        //
-        // When set, indicates the debug engine has attached to the current
-        // process.
-        //
-
-        ULONG InProc:1;
-
-        //
-        // When set, indicates the debug engine has attached to another process.
-        //
-
-        ULONG OutOfProc:1;
-
+        ULONG Unused:1;
     };
 } DEBUG_ENGINE_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_FLAGS) == sizeof(ULONG));
