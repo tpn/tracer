@@ -437,7 +437,7 @@ RetryBasicTypeMatch:
 
         //
         // We found a match.  Our enums are carefully offset in order to allow
-        // the following `index + offset = enum value` to work.
+        // the following `index + offset = enum value` logic to work.
         //
 
         SymbolType = MatchIndex + MatchOffset;
