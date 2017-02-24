@@ -393,8 +393,8 @@ Return Value:
     //
     // The basic type will be next.  Set up the variable then search the string
     // table for a match.  Set the length to the BytesRemaining for now; as long
-    // as it's >= or equal to the basic type length (which it should always be),
-    // that will be fine.
+    // as it's greater than or equal to the basic type length (which it should
+    // always be), that will be fine.
     //
 
     BasicType.Buffer = Char;
