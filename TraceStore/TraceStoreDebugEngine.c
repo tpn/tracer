@@ -1315,16 +1315,16 @@ Return Value:
             case FunctionType:
 
                 //
-                // Skip function pointers, non-private functions and
-                // __C_specific_handler functions.  The latter is skipped
-                // because the debug engine doesn't appear to grok our
-                // (admittedly quirky) usage and results in up to 1600+
-                // nop-type instructions being dumped to the output stream.
+                // Skip function pointers and __C_specific_handler functions.
+                // The unassembler doesn't appear to grok how we use the latter,
+                // in that it ends up interpreting huge chunks of zero bytes that
+                // usually follow the symbol in memory as part of the function; so
+                // you get thousands of useless lines of whatever the opcode is for
+                // 0x0.
                 //
 
                 Skip = (
                     Symbol->Flags.IsPointer               ||
-                    //Symbol->Scope != PrivateFunctionScope ||
                     Rtl->RtlEqualString(&Symbol->String.SymbolName,
                                         &CSpecificHandler,
                                         FALSE)
