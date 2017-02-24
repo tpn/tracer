@@ -1343,6 +1343,7 @@ Return Value:
                                              ArgumentWidePointer);
                 if (!Success) {
                     UnassembleFunctionFailed++;
+                    continue;
                 }
 
                 break;
@@ -1361,6 +1362,7 @@ Return Value:
 
                 if (!Success) {
                     DisplayTypeFailed++;
+                    continue;
                 }
 
                 break;
