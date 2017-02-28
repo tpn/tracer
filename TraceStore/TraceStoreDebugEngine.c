@@ -498,9 +498,9 @@ Return Value:
     HANDLE ShutdownEvent = NULL;
     HANDLE WorkAvailableEvent = NULL;
     PTRACE_STORES TraceStores;
-    PTRACE_DEBUG_CONTEXT DebugContext;
+    PTRACE_DEBUG_CONTEXT DebugContext = NULL;
     PCRITICAL_SECTION CriticalSection;
-    PALLOCATOR Allocator;
+    PALLOCATOR Allocator = NULL;
 
     //
     // Validate arguments.
@@ -636,16 +636,14 @@ Error:
         WorkAvailableEvent = NULL;
     }
 
-    if (DebugContext->Allocator.HeapHandle) {
-        DestroyHeapAllocatorInline(&DebugContext->Allocator);
-    }
-
     //
-    // Free the symbol context if it exists.
+    // Free the debug context if applicable.
     //
 
     if (DebugContext) {
-        Allocator->Free(Allocator->Context, DebugContext);
+        if (DebugContext->Allocator.HeapHandle) {
+            DestroyHeapAllocatorInline(&DebugContext->Allocator);
+        }
         DebugContext = NULL;
     }
 
