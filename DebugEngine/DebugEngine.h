@@ -1821,7 +1821,9 @@ typedef DEBUG_ENGINE_SESSION_EXECUTE_DYNAMIC_COMMAND
 typedef
 VOID
 (DESTROY_DEBUG_ENGINE_SESSION)(
-    _Pre_notnull_ _Post_null_ struct _DEBUG_ENGINE_SESSION **Session
+    _Pre_notnull_ _Post_satisfies_(*Session == 0)
+        struct _DEBUG_ENGINE_SESSION **Session,
+    _In_opt_ PBOOL IsProcessTerminating
     );
 typedef DESTROY_DEBUG_ENGINE_SESSION   *PDESTROY_DEBUG_ENGINE_SESSION;
 typedef DESTROY_DEBUG_ENGINE_SESSION **PPDESTROY_DEBUG_ENGINE_SESSION;
@@ -2228,11 +2230,13 @@ Error:
 
     if (SessionPointer && *SessionPointer && (*SessionPointer)->Destroy) {
 
+        BOOL IsProcessTerminating = TRUE;
+
         //
         // This will also clear the caller's session pointer.
         //
 
-        (*SessionPointer)->Destroy(SessionPointer);
+        (*SessionPointer)->Destroy(SessionPointer, &IsProcessTerminating);
     }
 
     //

@@ -101,5 +101,8 @@
     <ClCompile Include="DebugEngineSettingsMeta.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DestroyDebugEngine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
