@@ -3712,6 +3712,7 @@ TRACE_STORE_API CLOSE_TRACE_CONTEXT CloseTraceContext;
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+_Acquires_exclusive_lock_(TraceStore->Sync->SRWLock)
 FORCEINLINE
 VOID
 TraceStoreAcquireLockExclusive(
@@ -3721,6 +3722,7 @@ TraceStoreAcquireLockExclusive(
     AcquireSRWLockExclusive(&TraceStore->Sync->SRWLock);
 }
 
+_Acquires_shared_lock_(TraceStore->Sync->SRWLock)
 FORCEINLINE
 VOID
 TraceStoreAcquireLockShared(
@@ -3730,6 +3732,7 @@ TraceStoreAcquireLockShared(
     AcquireSRWLockShared(&TraceStore->Sync->SRWLock);
 }
 
+_Releases_exclusive_lock_(TraceStore->Sync->SRWLock)
 FORCEINLINE
 VOID
 TraceStoreReleaseLockExclusive(
@@ -3739,6 +3742,7 @@ TraceStoreReleaseLockExclusive(
     ReleaseSRWLockExclusive(&TraceStore->Sync->SRWLock);
 }
 
+_Releases_shared_lock_(TraceStore->Sync->SRWLock)
 FORCEINLINE
 VOID
 TraceStoreReleaseLockShared(
@@ -3748,6 +3752,7 @@ TraceStoreReleaseLockShared(
     ReleaseSRWLockShared(&TraceStore->Sync->SRWLock);
 }
 
+_When_(return != 0, _Acquires_exclusive_lock_(TraceStore->Sync->SRWLock))
 FORCEINLINE
 BOOLEAN
 TraceStoreTryAcquireLockExclusive(
@@ -3757,6 +3762,7 @@ TraceStoreTryAcquireLockExclusive(
     return TryAcquireSRWLockExclusive(&TraceStore->Sync->SRWLock);
 }
 
+_When_(return != 0, _Acquires_shared_lock_(TraceStore->Sync->SRWLock))
 FORCEINLINE
 BOOLEAN
 TraceStoreTryAcquireLockShared(

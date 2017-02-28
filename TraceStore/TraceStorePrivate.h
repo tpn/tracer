@@ -2232,7 +2232,7 @@ _Success_(return != 0)
 BOOL
 PopNewModuleTableEntry(
     _In_  PTRACE_CONTEXT TraceContext,
-    _Out_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    _Inout_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
 {
     PRTL_FILE File;
@@ -2293,7 +2293,7 @@ _Success_(return != 0)
 BOOL
 GetLastLoadEvent(
     _In_ PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry,
-    _Out_ PPTRACE_MODULE_LOAD_EVENT LoadEventPointer
+    _Inout_ PPTRACE_MODULE_LOAD_EVENT LoadEventPointer
     )
 {
     BOOL Found = FALSE;
@@ -2523,8 +2523,8 @@ RemoveHeadModuleTableEntryFromSymbolContext(
     PGUARDED_LIST GuardedList;
 
     GuardedList = &SymbolContext->WorkList;
-    ListHead = &GuardedList->ListHead;
     AcquireGuardedListLockExclusive(GuardedList);
+    ListHead = &GuardedList->ListHead;
     if (IsListEmpty(ListHead)) {
         Success = FALSE;
         *ModuleTableEntry = NULL;
@@ -2834,11 +2834,12 @@ MaybeAppendModuleTableEntryToDebugContext(
 FORCEINLINE
 _Check_return_
 _Success_(return != 0)
+_When_(return == 0, _Post_satisfies_(*ModuleTableEntry == NULL))
 _Requires_lock_not_held_(DebugContext->CriticalSection)
 BOOL
 RemoveHeadModuleTableEntryFromDebugContext(
     _In_ PTRACE_DEBUG_CONTEXT DebugContext,
-    _Outptr_result_nullonfailure_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
+    _Inout_ _Pre_notnull_ PPTRACE_MODULE_TABLE_ENTRY ModuleTableEntry
     )
 {
     BOOL Success;
@@ -2889,8 +2890,10 @@ ConvertStringToWide(
             Allocator->Calloc(
                 Allocator->Context,
                 1,
-                sizeof(UNICODE_STRING) +
-                (String->Length << 1)
+                (SIZE_T)(
+                    (USHORT)(sizeof(UNICODE_STRING)) +
+                    (USHORT)(String->Length << 1)
+                )
             )
         );
 
