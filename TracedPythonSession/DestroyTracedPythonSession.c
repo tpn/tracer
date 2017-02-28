@@ -1,3 +1,18 @@
+/*++
+
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    DestroyTracedPythonSession.c
+
+Abstract:
+
+    This module implements the DestroyTracedPythonSession() routine.  It is
+    primarily called by the TracedPythonExe component after Py_Main() returns.
+
+--*/
+
 #include "stdafx.h"
 
 _Use_decl_annotations_
