@@ -43,6 +43,16 @@ BOOL
 typedef INITIALIZE_DEBUG_ENGINE *PINITIALIZE_DEBUG_ENGINE;
 
 typedef
+_Requires_lock_not_held_(**EnginePointer->Lock)
+VOID
+(DESTROY_DEBUG_ENGINE)(
+    _Pre_notnull_ _Post_satisfies_(*Session == 0)
+        struct _DEBUG_ENGINE **EnginePointer,
+    _In_opt_ PBOOL IsProcessTerminating
+    );
+typedef DESTROY_DEBUG_ENGINE *PDESTROY_DEBUG_ENGINE;
+
+typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
@@ -614,6 +624,7 @@ typedef DISPATCH_OUTPUT_COMPLETE_CALLBACKS *PDISPATCH_OUTPUT_COMPLETE_CALLBACKS;
 #pragma component(browser, off)
 
 CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
+DESTROY_DEBUG_ENGINE DestroyDebugEngine;
 INITIALIZE_DEBUG_ENGINE InitializeDebugEngine;
 INITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
 INITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE InitializeDebugEngineOutputSimple;
