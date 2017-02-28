@@ -2047,7 +2047,7 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(INTIALIZE_DEBUG_ENGINE_SESSION)(
+(INITIALIZE_DEBUG_ENGINE_SESSION)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
@@ -2057,7 +2057,7 @@ BOOL
     _In_opt_ PALLOCATOR StringTableAllocator,
     _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_SESSION SessionPointer
     );
-typedef INTIALIZE_DEBUG_ENGINE_SESSION *PINTIALIZE_DEBUG_ENGINE_SESSION;
+typedef INITIALIZE_DEBUG_ENGINE_SESSION *PINITIALIZE_DEBUG_ENGINE_SESSION;
 
 //
 // Inline Functions
@@ -2135,7 +2135,7 @@ See Also:
     BOOL Success;
     HMODULE Module;
     HMODULE StringTableModule;
-    PINTIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+    PINITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 
     //
     // Validate arguments.
@@ -2172,7 +2172,7 @@ See Also:
     // Resolve the initialize and destroy functions.
     //
 
-    InitializeDebugEngineSession = (PINTIALIZE_DEBUG_ENGINE_SESSION)(
+    InitializeDebugEngineSession = (PINITIALIZE_DEBUG_ENGINE_SESSION)(
         GetProcAddress(
             Module,
             "InitializeDebugEngineSession"
@@ -2251,7 +2251,7 @@ Error:
 //
 
 #pragma component(browser, off)
-DEBUG_ENGINE_API INTIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 #pragma component(browser, on)
 
 #ifdef __cplusplus
