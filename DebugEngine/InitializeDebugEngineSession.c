@@ -4,7 +4,7 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    DebugEngineSessionInitialize.c
+    InitializeDebugEngineSession.c
 
 Abstract:
 
