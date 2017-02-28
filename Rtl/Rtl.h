@@ -7171,6 +7171,7 @@ typedef GUARDED_LIST *PGUARDED_LIST;
 typedef GUARDED_LIST **PPGUARDED_LIST;
 typedef GUARDED_LIST const *PCGUARDED_LIST;
 
+_Acquires_shared_lock_(GuardedList->Lock)
 FORCEINLINE
 VOID
 AcquireGuardedListLockShared(
@@ -7180,6 +7181,7 @@ AcquireGuardedListLockShared(
     AcquireSRWLockShared(&GuardedList->Lock);
 }
 
+_Releases_shared_lock_(GuardedList->Lock)
 FORCEINLINE
 VOID
 ReleaseGuardedListLockShared(
@@ -7189,6 +7191,7 @@ ReleaseGuardedListLockShared(
     ReleaseSRWLockShared(&GuardedList->Lock);
 }
 
+_Acquires_exclusive_lock_(GuardedList->Lock)
 FORCEINLINE
 VOID
 AcquireGuardedListLockExclusive(
@@ -7198,6 +7201,7 @@ AcquireGuardedListLockExclusive(
     AcquireSRWLockExclusive(&GuardedList->Lock);
 }
 
+_Releases_exclusive_lock_(GuardedList->Lock)
 FORCEINLINE
 VOID
 ReleaseGuardedListLockExclusive(
@@ -7247,9 +7251,14 @@ RemoveHeadGuardedList(
     return Entry;
 }
 
+//
+// We use _No_competing_thread_ for the TSX versions to pacify SAL.
+//
+
+_No_competing_thread_
 FORCEINLINE
 PLIST_ENTRY
-RemoveHeadGuardedListTsx(
+RemoveHeadGuardedListTsxInline(
     _Inout_ PGUARDED_LIST GuardedList
     )
 {
@@ -7270,6 +7279,15 @@ Retry:
     return Entry;
 }
 
+typedef
+_No_competing_thread_
+PLIST_ENTRY
+(REMOVE_HEAD_GUARDED_LIST_TSX)(
+    _Inout_ PGUARDED_LIST GuardedList
+    );
+typedef REMOVE_HEAD_GUARDED_LIST_TSX *PREMOVE_HEAD_GUARDED_LIST_TSX;
+RTL_API REMOVE_HEAD_GUARDED_LIST_TSX RemoveHeadGuardedListTsx;
+
 FORCEINLINE
 PLIST_ENTRY
 RemoveTailGuardedList(
@@ -7286,6 +7304,39 @@ RemoveTailGuardedList(
     return Entry;
 }
 
+_No_competing_thread_
+FORCEINLINE
+PLIST_ENTRY
+RemoveTailGuardedListTsxInline(
+    _Inout_ PGUARDED_LIST GuardedList
+    )
+{
+    ULONG Status;
+    PLIST_ENTRY Entry;
+
+Retry:
+    Status = _xbegin();
+    if (Status & _XABORT_RETRY) {
+        goto Retry;
+    } else if (Status != _XBEGIN_STARTED) {
+        return RemoveTailGuardedList(GuardedList);
+    }
+
+    Entry = RemoveTailList(&GuardedList->ListHead);
+    GuardedList->NumberOfEntries--;
+    _xend();
+    return Entry;
+}
+
+typedef
+_No_competing_thread_
+PLIST_ENTRY
+(REMOVE_TAIL_GUARDED_LIST_TSX)(
+    _Inout_ PGUARDED_LIST GuardedList
+    );
+typedef REMOVE_TAIL_GUARDED_LIST_TSX *PREMOVE_TAIL_GUARDED_LIST_TSX;
+RTL_API REMOVE_TAIL_GUARDED_LIST_TSX RemoveTailGuardedListTsx;
+
 FORCEINLINE
 VOID
 InsertTailGuardedList(
@@ -7299,6 +7350,41 @@ InsertTailGuardedList(
     ReleaseGuardedListLockExclusive(GuardedList);
     return;
 }
+
+_No_competing_thread_
+FORCEINLINE
+VOID
+InsertTailGuardedListTsxInline(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    )
+{
+    ULONG Status;
+
+Retry:
+    Status = _xbegin();
+
+    if (Status & _XABORT_RETRY) {
+        goto Retry;
+    } else if (Status != _XBEGIN_STARTED) {
+        InsertTailGuardedList(GuardedList, Entry);
+        return;
+    }
+
+    InsertTailList(&GuardedList->ListHead, Entry);
+    GuardedList->NumberOfEntries++;
+    return;
+}
+
+typedef
+_No_competing_thread_
+VOID
+(INSERT_TAIL_GUARDED_LIST_TSX)(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY Entry
+    );
+typedef INSERT_TAIL_GUARDED_LIST_TSX *PINSERT_TAIL_GUARDED_LIST_TSX;
+RTL_API INSERT_TAIL_GUARDED_LIST_TSX InsertTailGuardedListTsx;
 
 FORCEINLINE
 VOID
@@ -7328,9 +7414,10 @@ AppendTailGuardedList(
     return;
 }
 
+_No_competing_thread_
 FORCEINLINE
 VOID
-AppendTailGuardedListTsx(
+AppendTailGuardedListTsxInline(
     _Inout_ PGUARDED_LIST GuardedList,
     _Inout_ __drv_aliasesMem PLIST_ENTRY ListEntry
     )
@@ -7352,6 +7439,15 @@ Retry:
     return;
 }
 
+typedef
+_No_competing_thread_
+VOID
+(APPEND_TAIL_GUARDED_LIST_TSX)(
+    _Inout_ PGUARDED_LIST GuardedList,
+    _Inout_ __drv_aliasesMem PLIST_ENTRY ListEntry
+    );
+typedef APPEND_TAIL_GUARDED_LIST_TSX *PAPPEND_TAIL_GUARDED_LIST_TSX;
+RTL_API APPEND_TAIL_GUARDED_LIST_TSX AppendTailGuardedListTsx;
 
 //
 // Disable browsing information generation when declaring instances of

@@ -6079,6 +6079,43 @@ Debugbreak()
     __debugbreak();
 }
 
+_Use_decl_annotations_
+PLIST_ENTRY
+RemoveHeadGuardedListTsx(
+    PGUARDED_LIST GuardedList
+    )
+{
+    return RemoveHeadGuardedListTsxInline(GuardedList);
+}
+
+_Use_decl_annotations_
+PLIST_ENTRY
+RemoveTailGuardedListTsx(
+    PGUARDED_LIST GuardedList
+    )
+{
+    return RemoveTailGuardedListTsxInline(GuardedList);
+}
+
+_Use_decl_annotations_
+VOID
+InsertTailGuardedListTsx(
+    PGUARDED_LIST GuardedList,
+    PLIST_ENTRY Entry
+    )
+{
+    InsertTailGuardedListTsxInline(GuardedList, Entry);
+}
+
+_Use_decl_annotations_
+VOID
+AppendTailGuardedListTsx(
+    PGUARDED_LIST GuardedList,
+    PLIST_ENTRY Entry
+    )
+{
+    AppendTailGuardedListTsxInline(GuardedList, Entry);
+}
 
 #ifndef VECTORCALL
 #define VECTORCALL __vectorcall
@@ -6092,7 +6129,7 @@ DummyVectorCall1(
     _In_ XMMWORD Xmm1,
     _In_ XMMWORD Xmm2,
     _In_ XMMWORD Xmm3
-)
+    )
 {
     XMMWORD Temp1;
     XMMWORD Temp2;
@@ -6112,7 +6149,7 @@ TEST_HVA3
 VECTORCALL
 DummyHvaCall1(
     _In_ TEST_HVA3 Hva3
-)
+    )
 {
     Hva3.X = _mm_xor_si128(Hva3.Y, Hva3.Z);
     return Hva3;
