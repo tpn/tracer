@@ -1084,6 +1084,7 @@ Return Value:
     PRTL_PATH Path;
     ULONG DisplayTypeFailed;
     ULONG UnassembleFunctionFailed;
+    ULONG ConvertStringToWideFailed;
     PLIST_ENTRY ListHead;
     PLIST_ENTRY ListEntry;
     PALLOCATOR Allocator;
@@ -1261,7 +1262,9 @@ Return Value:
                                   &ArgumentWidePointer);    \
                                                             \
     if (!Success) {                                         \
-        return FALSE;                                       \
+        __debugbreak();                                     \
+        ConvertStringToWideFailed++;                        \
+        break;                                              \
     }
 
     //
@@ -1273,6 +1276,7 @@ Return Value:
     UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
 
     DisplayTypeOptions.AsULong = 0;
+
     //DisplayTypeOptions.Verbose = TRUE;
     //DisplayTypeOptions.ShowArrayElements = TRUE;
     //DisplayTypeOptions.RecursivelyDumpSubtypes = TRUE;
@@ -1298,9 +1302,23 @@ Return Value:
     //              dt -a -b -r9 -v <module>!<typename>
     //
 
+    //
+    // Initialize counters that track failed actions.  These are helpful during
+    // debugging.
+    //
+
     DisplayTypeFailed = 0;
     UnassembleFunctionFailed = 0;
+    ConvertStringToWideFailed = 0;
+
+    //
+    // Initialize the list head then walk the list of examined symbols and
+    // potentially perform addition processing for each symbol depending on
+    // its type.
+    //
+
     ListHead = &Output->CustomStructureListHead;
+
     FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
 
         Symbol = CONTAINING_RECORD(ListEntry,
@@ -1341,16 +1359,41 @@ Return Value:
                                              OutputFlags,
                                              UnassembleFunctionOptions,
                                              ArgumentWidePointer);
+
                 if (!Success) {
+
                     UnassembleFunctionFailed++;
-                    continue;
+
+                } else {
+
+                    //
+                    // Todo: Register disassembly.  Parse arguments, identify
+                    // those that haven't been seen yet and call DisplayType().
+                    //
+
+                    NOTHING;
+
                 }
+
+                break;
+
+            case InlineCallerType:
+
+                //
+                // Todo: capture all inline call sites for an inline function,
+                // plus a single disassembly.
+                //
 
                 break;
 
             case ClassType:
             case UnionType:
             case StructType:
+
+                //
+                // Todo: don't call DisplayType() on types we've already seen.
+                // (Keep a prefix tree of types?)
+                //
 
                 INITIALIZE_DISPLAY_TYPE_OUTPUT();
                 INITIALIZE_ARGUMENT(TypeName);
@@ -1361,21 +1404,46 @@ Return Value:
                                       ArgumentWidePointer);
 
                 if (!Success) {
+
                     DisplayTypeFailed++;
-                    continue;
+
+                } else {
+
+                    //
+                    // Todo: Register type name.
+                    //
+
+                    NOTHING;
+
                 }
 
                 break;
 
             default:
-                break;
+                continue;
         }
 
-        if (ArgumentWidePointer != &ArgumentWide) {
+        //
+        // If ArgumentWidePointer is non-NULL, and it has a different address
+        // to the stack-allocated ArgumentWide buffer, it means that the
+        // ConvertStringToWide() call above (within INITIALIZE_ARGUMENT())
+        // had to allocate a new string buffer via the provided allocator.
+        // So, free it now.
+        //
+
+        if (ArgumentWidePointer && ArgumentWidePointer != &ArgumentWide) {
             Allocator->Free(Allocator->Context, ArgumentWidePointer);
         }
 
         ArgumentWidePointer = NULL;
+    }
+
+    //
+    // Invariant check: ArgumentWidePointer should be clear at this point.
+    //
+
+    if (ArgumentWidePointer) {
+        __debugbreak();
     }
 
     //
