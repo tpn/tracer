@@ -189,11 +189,11 @@ CONST CHAR StringTableDelimiter = ';';
 //
 
 CONST STRING ExamineSymbolsPrefixes = RTL_CONSTANT_STRING(
-    DSTR("prv func")
     DSTR("prv global")
     DSTR("prv inline")
-    DSTR("pub func")
+    DSTR("prv func")
     DSTR("pub global")
+    DSTR("pub func")
 );
 
 //
