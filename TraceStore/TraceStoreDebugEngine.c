@@ -1273,7 +1273,7 @@ Return Value:
 
     UnassembleFunctionOptions.AsULong = 0;
     UnassembleFunctionOptions.DisplayInstructionCount = TRUE;
-    UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
+    //UnassembleFunctionOptions.RelaxBlockingRequirements = TRUE;
 
     DisplayTypeOptions.AsULong = 0;
 
