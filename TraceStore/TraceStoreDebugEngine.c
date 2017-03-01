@@ -1315,10 +1315,12 @@ Return Value:
                 //
                 // Skip function pointers and __C_specific_handler functions.
                 // The unassembler doesn't appear to grok how we use the latter,
-                // in that it ends up interpreting huge chunks of zero bytes that
-                // usually follow the symbol in memory as part of the function; so
-                // you get thousands of useless lines of whatever the opcode is for
-                // 0x0.
+                // in that it ends up interpreting huge chunks of zero bytes
+                // that usually follow the symbol in memory as part of the
+                // function; so you get many useless lines like this:
+                //
+                // 00007fff`5560a56c 0000            add     byte ptr [rax],al
+                // 00007fff`5560a56e 0000            add     byte ptr [rax],al
                 //
 
                 Skip = (
