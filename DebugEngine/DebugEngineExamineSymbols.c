@@ -226,6 +226,10 @@ Return Value:
         // with the DEBUG_EXECUTE_ECHO flag set).
         //
 
+#ifdef _DEBUG
+        OutputDebugStringA("Ignoring line: ");
+        PrintStringToDebugStream(Line);
+#endif
         return TRUE;
     }
 
@@ -563,6 +567,30 @@ RetryBasicTypeMatch:
 
     Char++;
 
+    if (SymbolScope == PrivateInlineScope) {
+
+        //
+        // Do we ever see something than other than <function> for private
+        // inline scopes?
+        //
+
+        if (SymbolType != FunctionType) {
+
+            //
+            // Apparently we do.
+            //
+
+            __debugbreak();
+
+        }
+
+        //
+        // Adjust the symbol type to be an inline call site.
+        //
+
+        SymbolType = Symbol->Type = InlineCallerType;
+    }
+
     //
     // If this is a class, struct or union type, we need to advance the char
     // pointer again to the next space.
@@ -597,6 +625,7 @@ RetryBasicTypeMatch:
         }
 
         Char++;
+
     }
 
     //

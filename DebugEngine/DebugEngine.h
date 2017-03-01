@@ -637,11 +637,23 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
     ENativeStartupStateType,
 
     //
+    // Any types that don't map directly to literal type names extracted from
+    // the output string are listed here.  The first one starts at 48 in order
+    // to differentiate it from the string tables.
+    //
+
+    //
+    // Call site of an inline function.
+    //
+
+    InlineCallerType = 48,
+
+    //
     // Enum is special in that it doesn't map to a string in the string table;
     // if a type can't be inferred from the list above, it defaults to Enum.
     //
 
-    EnumType = 48,
+    EnumType,
 
     //
     // Any enumeration value >= InvalidType is invalid.  Make sure this always
