@@ -1324,7 +1324,7 @@ Return Value:
                 //
 
                 Skip = (
-                    Symbol->Flags.IsPointer               ||
+                    Symbol->Flags.IsPointer ||
                     Rtl->RtlEqualString(&Symbol->String.SymbolName,
                                         &CSpecificHandler,
                                         FALSE)
