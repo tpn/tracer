@@ -573,11 +573,19 @@ typedef INITIALIZE_DEBUG_ENGINE_OUTPUT_SIMPLE
 //
 
 typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE {
-    PrivateFunctionScope = 0,
-    PrivateGlobalScope,
+    UnknownScope = -1,
+    PrivateGlobalScope = 0,
     PrivateInlineScope,
-    PublicFunctionScope,
+    PrivateFunctionScope,
     PublicGlobalScope,
+    PublicFunctionScope,
+
+    //
+    // Make sure InvalidScope comes last.
+    //
+
+    InvalidScope
+
 } DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE;
 
 //
