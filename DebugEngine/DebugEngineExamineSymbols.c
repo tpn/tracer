@@ -277,6 +277,7 @@ Return Value:
 
     //
     // Extract the address, then convert from hex to integer in two parts.
+    // (Subtract 1 from the sizeof() to account for the trailing NUL.)
     //
 
     Address.Length = sizeof("00000000`00000000")-1;
