@@ -1,0 +1,3 @@
+LIBRARY Rtl
+EXPORTS
+    CopyPagesNonTemporalAvx2 @1

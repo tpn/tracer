@@ -97,11 +97,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'">
+    <MASM Include="CopyPagesNonTemporalAvx2.asm">
       <Filter>Source Files</Filter>
     </MASM>
-    <MASM Include="Rtlx64.asm">
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Rtl.def">
       <Filter>Source Files</Filter>
-    </MASM>
+    </None>
   </ItemGroup>
 </Project>
