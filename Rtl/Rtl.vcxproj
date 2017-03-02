@@ -65,6 +65,36 @@
     <ClCompile>
       <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGOptimize|Win32'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGUpdate|x64'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGUpdate|Win32'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGInstrument|x64'">Rtl.def</ModuleDefinitionFile>
+    </Link>
+    <Link>
+      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGInstrument|Win32'">Rtl.def</ModuleDefinitionFile>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="atexit.h" />
@@ -101,7 +131,10 @@
     <ClCompile Include="Path.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="Rtlx64.asm" Condition="'$(Platform)' == 'x64'" />
+    <MASM Include="CopyPagesNonTemporalAvx2.asm" Condition="'$(Platform)' == 'x64'" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Rtl.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

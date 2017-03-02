@@ -167,11 +167,10 @@ CopyPagesAvx2(
 
 _Use_decl_annotations_
 VOID
-CopyPagesMovsq(
+CopyPagesMovsq_C(
     PCHAR Dest,
     PCHAR Source,
-    ULONG NumberOfPages,
-    PPAGE_COPY_TYPE PageCopyType
+    ULONG NumberOfPages
     )
 {
     ULONG_PTR BytesToCopy = NumberOfPages << PAGE_SHIFT;
@@ -180,19 +179,14 @@ CopyPagesMovsq(
     __movsq((PDWORD64)Dest,
             (PDWORD64)Source,
             QuadWordsToCopy);
-
-    if (ARGUMENT_PRESENT(PageCopyType)) {
-        PageCopyType->Movsq = TRUE;
-    }
 }
 
 _Use_decl_annotations_
 VOID
-CopyPagesAvx2(
+CopyPagesAvx2_C(
     PCHAR Dest,
     PCHAR Source,
-    ULONG NumberOfPages,
-    PPAGE_COPY_TYPE PageCopyType
+    ULONG NumberOfPages
     )
 {
     ULONG Outer;
@@ -289,10 +283,43 @@ CopyPagesAvx2(
         }
 
     }
+}
 
+_Use_decl_annotations_
+VOID
+CopyPagesMovsq(
+    PCHAR Dest,
+    PCHAR Source,
+    ULONG NumberOfPages,
+    PPAGE_COPY_TYPE PageCopyType
+    )
+{
+    CopyPagesMovsq_C(Dest, Source, NumberOfPages);
     if (ARGUMENT_PRESENT(PageCopyType)) {
-        PageCopyType->Avx2 = TRUE;
+        PageCopyType->Movsq = TRUE;
     }
+}
+
+_Use_decl_annotations_
+VOID
+CopyPagesAvx2(
+    PCHAR Dest,
+    PCHAR Source,
+    ULONG NumberOfPages,
+    PPAGE_COPY_TYPE PageCopyType
+    )
+{
+#if 0
+    CopyPagesAvx2_x64(Dest, Source, NumberOfPages);
+    if (ARGUMENT_PRESENT(PageCopyType)) {
+        PageCopyType->Avx2C = TRUE;
+    }
+#else
+    CopyPagesNonTemporalAvx2(Dest, Source, NumberOfPages);
+    if (ARGUMENT_PRESENT(PageCopyType)) {
+        PageCopyType->Avx2NonTemporal = TRUE;
+    }
+#endif
 }
 
 #endif

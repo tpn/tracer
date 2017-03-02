@@ -3566,18 +3566,28 @@ typedef struct _PAGE_COPY_TYPE {
     ULONG Movsb:1;
     ULONG Movsw:1;
     ULONG Movsq:1;
-    ULONG Avx2:1;
+    ULONG Avx2C:1;
+    ULONG Avx2NonTemporal:1;
 } PAGE_COPY_TYPE, *PPAGE_COPY_TYPE;
 
 typedef
 VOID
 (COPY_PAGES)(
     _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
-    _In_ _Const_ PCHAR Source,
+    _In_reads_bytes_(NumberOfPages << PAGE_SHIFT) _Const_ PCHAR Source,
+    _In_ ULONG NumberOfPages
+    );
+typedef COPY_PAGES *PCOPY_PAGES;
+
+typedef
+VOID
+(COPY_PAGES_EX)(
+    _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
+    _In_reads_bytes_(NumberOfPages << PAGE_SHIFT) _Const_ PCHAR Source,
     _In_ ULONG NumberOfPages,
     _Out_opt_ PPAGE_COPY_TYPE PageCopyType
     );
-typedef COPY_PAGES *PCOPY_PAGES;
+typedef COPY_PAGES_EX *PCOPY_PAGES_EX;
 
 //
 // Our functions
@@ -4185,16 +4195,19 @@ typedef UNREGISTER_DLL_NOTIFICATION *PUNREGISTER_DLL_NOTIFICATION;
     (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
 #define _RTLEXFUNCTIONS_HEAD                                                        \
+    PDESTROY_RTL DestroyRtl;                                                        \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
-    PCOPY_PAGES CopyPagesAvx2;                                                      \
-    PCOPY_PAGES CopyPagesMovsq;                                                     \
+    PCOPY_PAGES_EX CopyPagesMovsq;                                                  \
+    PCOPY_PAGES_EX CopyPagesAvx2;                                                   \
+    PCOPY_PAGES CopyPagesMovsq_C;                                                   \
+    PCOPY_PAGES CopyPagesAvx2_C;                                                    \
+    PCOPY_PAGES CopyPagesNonTemporalAvx2;                                           \
     PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                         \
     PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                     \
     PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString;      \
     PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                       \
     PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;           \
     PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;              \
-    PDESTROY_RTL DestroyRtl;                                                        \
     PDESTROY_RTL_PATH DestroyRtlPath;                                               \
     PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE DisableCreateSymbolicLinkPrivilege;     \
     PDISABLE_DEBUG_PRIVILEGE DisableDebugPrivilege;                                 \
@@ -7560,8 +7573,11 @@ RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
-RTL_API COPY_PAGES CopyPagesAvx2;
-RTL_API COPY_PAGES CopyPagesMovsq;
+RTL_API COPY_PAGES_EX CopyPagesAvx2;
+RTL_API COPY_PAGES_EX CopyPagesMovsq;
+RTL_API COPY_PAGES CopyPagesAvx2_C;
+RTL_API COPY_PAGES CopyPagesNonTemporalAvx2;
+RTL_API COPY_PAGES CopyPagesMovsq_C;
 RTL_API COPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;
 RTL_API CREATE_AND_INITIALIZE_RTL CreateAndInitializeRtl;
 RTL_API CURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;
