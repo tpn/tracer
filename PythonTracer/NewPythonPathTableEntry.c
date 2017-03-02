@@ -51,7 +51,6 @@ Return Value:
     PRTL Rtl;
     BOOL Success;
     BOOL IsSourceCode;
-    BYTE Inner;
     ULONG Index;
     PCHAR SourceContent = NULL;
     PCHAR DestContent;
@@ -88,19 +87,6 @@ Return Value:
     PALLOCATOR BitmapAllocator;
     PALLOCATOR UnicodeStringBufferAllocator;
     BY_HANDLE_FILE_INFORMATION HandleInfo;
-
-    YMMWORD Ymm1;
-    YMMWORD Ymm2;
-    YMMWORD Ymm3;
-    YMMWORD Ymm4;
-
-    YMMWORD Ymm5;
-    YMMWORD Ymm6;
-    YMMWORD Ymm7;
-    YMMWORD Ymm8;
-
-    PYMMWORD DestYmm;
-    PYMMWORD SourceYmm;
 
     //
     // Initialize aliases.
@@ -384,74 +370,14 @@ Return Value:
     );
 
     //
-    // Copy a page at a time using streaming loads.
+    // Copy the pages.
     //
 
     Dest = DestContent;
     Source = SourceContent;
+
     QueryPerformanceCounter(&StartCopy);
-
-    goto AvxCopy;
-
-    File->Flags.MovsqCopy = TRUE;
-
-    __movsq((PDWORD64)DestContent,
-            (PDWORD64)SourceContent,
-            File->AllocationSize.QuadPart >> 3);
-
-    goto CopyComplete;
-
-AvxCopy:
-
-    DestYmm = (PYMMWORD)Dest;
-    SourceYmm = (PYMMWORD)Source;
-    File->Flags.Avx2Copy = TRUE;
-
-    for (Index = 0; Index < File->NumberOfPages; Index++) {
-
-        //
-        // Each loop iteration copies 256 bytes.  We repeat it 16 times to copy
-        // the entire 4096 byte page.
-        //
-
-        for (Inner = 0; Inner < 16; Inner++) {
-
-            Ymm1 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm2 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm1);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm2);
-
-            Ymm3 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm4 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm3);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm4);
-
-            //
-            // (128 bytes copied.)
-            //
-
-            Ymm5 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm6 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm5);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm6);
-
-            Ymm7 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-            Ymm8 = _mm256_stream_load_si256((PYMMWORD)SourceYmm++);
-
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm7);
-            _mm256_store_si256((PYMMWORD)DestYmm++, Ymm8);
-
-            //
-            // (256 bytes copied.)
-            //
-        }
-    }
-
-CopyComplete:
-
+    Rtl->CopyPagesNonTemporalAvx2(Dest, Source, File->NumberOfPages);
     QueryPerformanceCounter(&EndCopy);
 
     Elapsed.QuadPart = EndCopy.QuadPart - StartCopy.QuadPart;
