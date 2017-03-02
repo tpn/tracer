@@ -1312,6 +1312,13 @@ Return Value:
     ConvertStringToWideFailed = 0;
 
     //
+    // Clear the ArgumentWidePointer.  It should be NULL at the top of every
+    // loop.
+    //
+
+    ArgumentWidePointer = NULL;
+
+    //
     // Initialize the list head then walk the list of examined symbols and
     // potentially perform addition processing for each symbol depending on
     // its type.
@@ -1320,6 +1327,10 @@ Return Value:
     ListHead = &Output->CustomStructureListHead;
 
     FOR_EACH_LIST_ENTRY(ListHead, ListEntry) {
+
+        if (ArgumentWidePointer) {
+            __debugbreak();
+        }
 
         Symbol = CONTAINING_RECORD(ListEntry,
                                    DEBUG_ENGINE_EXAMINED_SYMBOL,
