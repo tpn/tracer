@@ -129,6 +129,7 @@
     <ClCompile Include="PathEnvironmentVariable.c" />
     <ClCompile Include="Commandline.c" />
     <ClCompile Include="Path.c" />
+    <ClCompile Include="SymbolLoader.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="CopyPagesNonTemporalAvx2.asm" Condition="'$(Platform)' == 'x64'" />

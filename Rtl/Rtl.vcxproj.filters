@@ -95,6 +95,9 @@
     <ClCompile Include="File.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SymbolLoader.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="CopyPagesNonTemporalAvx2.asm">

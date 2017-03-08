@@ -312,6 +312,8 @@ typedef CHAR **PPCHAR;
 typedef WCHAR **PPWCHAR;
 typedef CHAR **PPSTR;
 typedef WCHAR **PPWSTR;
+typedef HMODULE *PHMODULE;
+typedef PROC *PPROC;
 
 typedef const SHORT CSHORT;
 
@@ -4194,6 +4196,22 @@ typedef UNREGISTER_DLL_NOTIFICATION *PUNREGISTER_DLL_NOTIFICATION;
 #define PrefaultNextPage(Address)                          \
     (*(volatile *)(PCHAR)((ULONG_PTR)Address + PAGE_SIZE))
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(LOAD_SYMBOLS)(
+    _In_count_(NumberOfSymbolNames) PSTR SymbolNameArray,
+    _In_ ULONG NumberOfSymbolNames,
+    _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
+    _In_ ULONG NumberOfSymbolAddresses,
+    _In_count_(NumberOfModules) PHMODULE ModuleArray,
+    _In_ USHORT NumberOfModules,
+    _In_ PRTL_BITMAP FailedSymbols,
+    _Out_ PULONG NumberOfResolvedSymbolsPointer
+    );
+typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
+
 #define _RTLEXFUNCTIONS_HEAD                                                        \
     PDESTROY_RTL DestroyRtl;                                                        \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
@@ -7573,6 +7591,7 @@ RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
+RTL_API LOAD_SYMBOLS LoadSymbols;
 RTL_API COPY_PAGES_EX CopyPagesAvx2;
 RTL_API COPY_PAGES_EX CopyPagesMovsq;
 RTL_API COPY_PAGES CopyPagesAvx2_C;
