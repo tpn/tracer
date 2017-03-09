@@ -66,34 +66,7 @@
       <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGOptimize|Win32'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGOptimize|x64'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGUpdate|x64'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGUpdate|Win32'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGInstrument|x64'">Rtl.def</ModuleDefinitionFile>
-    </Link>
-    <Link>
-      <ModuleDefinitionFile Condition="'$(Configuration)|$(Platform)'=='PGInstrument|Win32'">Rtl.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>Rtl.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
