@@ -39,7 +39,7 @@ Routine Description:
 
     This routine is used to dynamically resolve an array of symbol names
     against an array of modules via GetProcAddress(), storing the resulting
-    addresses in symbol address array.  If symbol name cannot be resolved in
+    addresses in symbol address array.  If a symbol name cannot be resolved in
     any of the given modules, its corresponding failure bit is set in the
     failed symbol bitmap, also provided by the caller.
 
