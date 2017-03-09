@@ -24,7 +24,7 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 LoadSymbols(
-    PSTR SymbolNameArray,
+    PPSTR SymbolNameArray,
     ULONG NumberOfSymbolNames,
     PULONG_PTR SymbolAddressArray,
     ULONG NumberOfSymbolAddresses,
@@ -161,7 +161,7 @@ Return Value:
         // Resolve symbol name and clear the Proc pointer.
         //
 
-        Name = (SymbolNameArray + Index);
+        Name = *(SymbolNameArray + Index);
         Proc = NULL;
 
         //
@@ -174,7 +174,7 @@ Return Value:
             // Resolve the module.
             //
 
-            Module = *(ModuleArray + Index);
+            Module = *(ModuleArray + ModuleIndex);
 
             //
             // Look up the symbol via GetProcAddress().
@@ -183,8 +183,7 @@ Return Value:
             Proc = GetProcAddress(Module, Name);
 
             //
-            // If the symbol resolved, break out of the loop.  Otherwise, let
-            // the loop continue.
+            // If the symbol wasn't resolved, continue the loop.
             //
 
             if (!Proc) {

@@ -4201,7 +4201,7 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (LOAD_SYMBOLS)(
-    _In_count_(NumberOfSymbolNames) PSTR SymbolNameArray,
+    _In_count_(NumberOfSymbolNames) PPSTR SymbolNameArray,
     _In_ ULONG NumberOfSymbolNames,
     _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
     _In_ ULONG NumberOfSymbolAddresses,
