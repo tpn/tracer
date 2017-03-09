@@ -4212,6 +4212,13 @@ BOOL
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
 
+typedef
+BOOL
+(TEST_LOAD_SYMBOLS)(
+    VOID
+    );
+typedef TEST_LOAD_SYMBOLS *PTEST_LOAD_SYMBOLS;
+
 #define _RTLEXFUNCTIONS_HEAD                                                        \
     PDESTROY_RTL DestroyRtl;                                                        \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
@@ -4576,6 +4583,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
             _DBGENG_FUNCTIONS_HEAD
         };
     };
+
+    PTEST_LOAD_SYMBOLS TestLoadSymbols;
 
 } RTL, *PRTL, **PPRTL;
 

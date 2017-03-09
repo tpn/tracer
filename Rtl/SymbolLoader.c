@@ -230,4 +230,81 @@ Return Value:
     return TRUE;
 }
 
+BOOL
+TestLoadSymbols(VOID)
+{
+    BOOL Success;
+
+    PSTR Names[] = {
+        "RtlNumberOfClearBits",
+        "RtlNumberOfSetBits",
+        "Dummy",
+        "PfxInsertPrefix",
+        "bsearch",
+        "RtlPrefetchMemoryNonTemporal",
+        "RtlEnumerateGenericTableAvl",
+    };
+
+    HMODULE Modules[] = {
+        LoadLibraryA("kernel32"),
+        LoadLibraryA("ntdll"),
+        LoadLibraryA("ntoskrnl.exe"),
+    };
+
+    struct {
+        PRTL_NUMBER_OF_CLEAR_BITS RtlNumberOfClearBits;
+        PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
+        PVOID Dummy;
+        PPFX_INSERT_PREFIX PfxInsertPrefix;
+        PBSEARCH bsearch;
+        PRTL_PREFETCH_MEMORY_NON_TEMPORAL RtlPrefetchMemoryNonTemporal;
+        PRTL_ENUMERATE_GENERIC_TABLE_AVL RtlEnumerateGenericTableAvl;
+    } Functions;
+
+    ULONG NumberOfResolvedSymbols;
+    RTL_BITMAP FailedBitmap;
+    ULONG BitmapBuffer = 0;
+
+    //
+    // Wire up the failed bitmap.
+    //
+
+    FailedBitmap.SizeOfBitMap = ARRAYSIZE(Names);
+    FailedBitmap.Buffer = &BitmapBuffer;
+
+    Success = LoadSymbols(Names,
+                          ARRAYSIZE(Names),
+                          (PULONG_PTR)&Functions,
+                          sizeof(Functions) / sizeof(ULONG_PTR),
+                          Modules,
+                          ARRAYSIZE(Modules),
+                          &FailedBitmap,
+                          &NumberOfResolvedSymbols);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    if (NumberOfResolvedSymbols != 6) {
+        __debugbreak();
+        Success = FALSE;
+        goto End;
+    }
+
+    if (Functions.RtlNumberOfSetBits(&FailedBitmap) != 1) {
+        __debugbreak();
+        Success = FALSE;
+        goto End;
+    }
+
+    if (Functions.RtlNumberOfClearBits(&FailedBitmap) != 6) {
+        __debugbreak();
+        Success = FALSE;
+        goto End;
+    }
+
+End:
+    return Success;
+}
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -5825,6 +5825,8 @@ InitializeRtl(
     Rtl->InitializeCom = InitializeCom;
     Rtl->LoadDbgEng = LoadDbgEng;
 
+    Rtl->TestLoadSymbols = TestLoadSymbols;
+
     return Success;
 }
 

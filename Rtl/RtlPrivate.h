@@ -570,6 +570,12 @@ REMOVE_RTL_LDR_NOTIFICATION_ENTRY RemoveRtlLdrNotificationEntry;
 
 LDR_DLL_NOTIFICATION_FUNCTION LdrDllNotificationFunction;
 
+//
+// Test-related glue.
+//
+
+RTL_API TEST_LOAD_SYMBOLS TestLoadSymbols;
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
