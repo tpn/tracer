@@ -575,6 +575,7 @@ LDR_DLL_NOTIFICATION_FUNCTION LdrDllNotificationFunction;
 //
 
 RTL_API TEST_LOAD_SYMBOLS TestLoadSymbols;
+RTL_API TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
 
 #ifdef __cplusplus
 } // extern "C"

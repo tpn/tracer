@@ -5825,7 +5825,12 @@ InitializeRtl(
     Rtl->InitializeCom = InitializeCom;
     Rtl->LoadDbgEng = LoadDbgEng;
 
+#ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;
+    Rtl->TestLoadSymbolsFromMultipleModules = (
+        TestLoadSymbolsFromMultipleModules
+    );
+#endif
 
     return Success;
 }
