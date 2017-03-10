@@ -81,6 +81,10 @@ extern "C" {
 
 #endif
 
+#ifndef _RTL_TEST
+#define _RTL_TEST
+#endif
+
 //
 // Define useful WDM macros if they're not already defined.
 //
@@ -4205,6 +4209,21 @@ BOOL
     _In_ ULONG NumberOfSymbolNames,
     _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
     _In_ ULONG NumberOfSymbolAddresses,
+    _In_ HMODULE Module,
+    _In_ PRTL_BITMAP FailedSymbols,
+    _Out_ PULONG NumberOfResolvedSymbolsPointer
+    );
+typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(LOAD_SYMBOLS_FROM_MULTIPLE_MODULES)(
+    _In_count_(NumberOfSymbolNames) PPSTR SymbolNameArray,
+    _In_ ULONG NumberOfSymbolNames,
+    _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
+    _In_ ULONG NumberOfSymbolAddresses,
     _In_count_(NumberOfModules) PHMODULE ModuleArray,
     _In_ USHORT NumberOfModules,
     _In_ PRTL_BITMAP FailedSymbols,
@@ -4212,12 +4231,22 @@ BOOL
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
 
+#ifdef _RTL_TEST
 typedef
 BOOL
 (TEST_LOAD_SYMBOLS)(
     VOID
     );
 typedef TEST_LOAD_SYMBOLS *PTEST_LOAD_SYMBOLS;
+
+typedef
+BOOL
+(TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES)(
+    VOID
+    );
+typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
+      *PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES;
+#endif
 
 #define _RTLEXFUNCTIONS_HEAD                                                        \
     PDESTROY_RTL DestroyRtl;                                                        \
@@ -4584,7 +4613,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
         };
     };
 
+#ifdef _RTL_TEST
     PTEST_LOAD_SYMBOLS TestLoadSymbols;
+    PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
+#endif
 
 } RTL, *PRTL, **PPRTL;
 
@@ -7601,6 +7633,7 @@ BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
 RTL_API LOAD_SYMBOLS LoadSymbols;
+RTL_API LOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
 RTL_API COPY_PAGES_EX CopyPagesAvx2;
 RTL_API COPY_PAGES_EX CopyPagesMovsq;
 RTL_API COPY_PAGES CopyPagesAvx2_C;
