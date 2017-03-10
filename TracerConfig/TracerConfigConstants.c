@@ -38,6 +38,9 @@ CONST UNICODE_STRING x64_PGOptimize = \
 // Fully-qualified paths.
 //
 
+CONST UNICODE_STRING AsmDllPath = \
+    RTL_CONSTANT_STRING(L"Asm.dll");
+
 CONST UNICODE_STRING RtlDllPath = \
     RTL_CONSTANT_STRING(L"Rtl.dll");
 
@@ -77,6 +80,7 @@ CONST PUNICODE_STRING IntermediatePaths[] = {
 };
 
 CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY DllPathOffsets[] = {
+    { FIELD_OFFSET(TRACER_PATHS, AsmDllPath),           &AsmDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, TrlDllPath),           &TrlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
