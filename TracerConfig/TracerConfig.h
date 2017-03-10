@@ -157,6 +157,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     // debug versions of the libraries.
     //
 
+    UNICODE_STRING AsmDllPath;
     UNICODE_STRING RtlDllPath;
     UNICODE_STRING TrlDllPath;
     UNICODE_STRING PythonDllPath;
