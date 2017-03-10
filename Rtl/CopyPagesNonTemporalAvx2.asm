@@ -18,7 +18,6 @@ include ksamd64.inc
 
 ;++
 ;
-;
 ; VOID
 ; CopyPagesNonTemporalAvx2(
 ;     _In_ PCHAR Destination,
@@ -171,6 +170,7 @@ Cpx80:  sfence
 Cpx90:  ret
 
         LEAF_END CopyPagesNonTemporalAvx2, _TEXT$00
+
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
 
