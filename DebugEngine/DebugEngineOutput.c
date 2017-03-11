@@ -1034,7 +1034,6 @@ Return Value:
 
             Contiguous = (ExpectedEndBufferAddress == ActualEndBufferAddress);
             if (!Contiguous) {
-                __debugbreak();
                 Output->SavedLineBufferAllocationState.Contiguous = FALSE;
                 Output->SavedLineBufferAllocationState.Discontiguous = TRUE;
                 Output->FirstDiscontiguousBufferIndex = (
