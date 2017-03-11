@@ -86,9 +86,6 @@
     <ClCompile Include="Registry.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CopyPages.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Loader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -98,15 +95,8 @@
     <ClCompile Include="SymbolLoader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="CopyPagesNonTemporalAvx2.asm">
+    <ClCompile Include="CopyPages.c">
       <Filter>Source Files</Filter>
-    </MASM>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Rtl.def">
-      <Filter>Source Files</Filter>
-    </None>
+    </ClCompile>
   </ItemGroup>
 </Project>

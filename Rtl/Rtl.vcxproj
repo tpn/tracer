@@ -62,12 +62,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
-    <ClCompile>
-      <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
     <Link>
-      <ModuleDefinitionFile>Rtl.def</ModuleDefinitionFile>
+      <AdditionalDependencies>AsmLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;_ASM_NO_API_EXPORT_IMPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="atexit.h" />
@@ -105,10 +105,9 @@
     <ClCompile Include="SymbolLoader.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="CopyPagesNonTemporalAvx2.asm" Condition="'$(Platform)' == 'x64'" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Rtl.def" />
+    <ProjectReference Include="..\AsmLib\AsmLib.vcxproj">
+      <Project>{a74874ac-5f75-42b8-9e94-4028de4d1829}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

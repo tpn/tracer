@@ -315,7 +315,7 @@ CopyPagesAvx2(
         PageCopyType->Avx2C = TRUE;
     }
 #else
-    CopyPagesNonTemporalAvx2(Dest, Source, NumberOfPages);
+    CopyPagesNonTemporalAvx2_v4(Dest, Source, NumberOfPages);
     if (ARGUMENT_PRESENT(PageCopyType)) {
         PageCopyType->Avx2NonTemporal = TRUE;
     }
