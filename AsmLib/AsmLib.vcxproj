@@ -43,9 +43,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{8A5AAEC6-FB14-49C3-8837-FE8A54D23C1D}</ProjectGuid>
-    <RootNamespace>TracerConfigLib</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{A74874AC-5F75-42B8-9E94-4028DE4D1829}</ProjectGuid>
+    <RootNamespace>AsmLib</RootNamespace>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -54,10 +53,6 @@
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -66,33 +61,29 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_ASM_INTERNAL_BUILD;_ASM_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <Link>
-      <AdditionalDependencies>TracerHeapLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>Asm.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup>
-    <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CONFIG_INTERNAL_BUILD;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="../TracerConfig/stdafx.h" />
-    <ClInclude Include="../TracerConfig/targetver.h" />
-    <ClInclude Include="../TracerConfig/TracerConfig.h" />
-    <ClInclude Include="../TracerConfig/TracerConfigConstants.h" />
-    <ClInclude Include="../TracerConfig/TracerConfigPrivate.h" />
+    <ClInclude Include="../Asm/AsmPrivate.h" />
+    <ClInclude Include="../Asm/stdafx.h" />
+    <ClInclude Include="../Asm/targetver.h" />
+    <ClInclude Include="../Asm/Asm.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="../TracerConfig/CreateTraceSessionDirectory.c" />
-    <ClCompile Include="../TracerConfig/DestroyTracerConfig.c" />
-    <ClCompile Include="../TracerConfig/HeapAllocator.c" />
-    <ClCompile Include="../TracerConfig/InitializeTracerConfig.c" />
-    <ClCompile Include="../TracerConfig/stdafx.c">
+    <ClCompile Include="../Asm/stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\TracerConfig\TracerConfigConstants.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="../Asm/CopyPages.asm" Condition="'$(Platform)' == 'x64'" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

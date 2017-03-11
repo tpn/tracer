@@ -364,6 +364,7 @@ typedef LINKED_STRING LINKED_LINE;
 typedef LINKED_LINE  *PLINKED_LINE;
 typedef LINKED_LINE **PPLINKED_LINE;
 
+#include "../Asm/Asm.h"
 #include "Time.h"
 #include "Memory.h"
 #include "Commandline.h"
@@ -3568,6 +3569,7 @@ typedef struct _STRINGEX {
 
 } STRINGEX, *PSTRINGEX, **PPSTRINGEX;
 
+#if 0
 typedef struct _PAGE_COPY_TYPE {
     ULONG Movsb:1;
     ULONG Movsw:1;
@@ -3594,6 +3596,7 @@ VOID
     _Out_opt_ PPAGE_COPY_TYPE PageCopyType
     );
 typedef COPY_PAGES_EX *PCOPY_PAGES_EX;
+#endif
 
 //
 // Our functions

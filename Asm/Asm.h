@@ -78,6 +78,13 @@ VOID
     );
 typedef COPY_PAGES_EX *PCOPY_PAGES_EX;
 
+typedef struct _COPY_PAGES_FUNCTIONS {
+	PCOPY_PAGES CopyPagesNonTemporalAvx2_v1;
+	PCOPY_PAGES CopyPagesNonTemporalAvx2_v2;
+	PCOPY_PAGES CopyPagesNonTemporalAvx2_v3;
+	PCOPY_PAGES CopyPagesNonTemporalAvx2_v4;
+} COPY_PAGES_FUNCTIONS;
+typedef COPY_PAGES_FUNCTIONS *PCOPY_PAGES_FUNCTIONS;
 
 //
 // Disable browsing information generation when declaring instances of
@@ -89,6 +96,8 @@ typedef COPY_PAGES_EX *PCOPY_PAGES_EX;
 
 ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v1;
 ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v2;
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v3;
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v4;
 
 #pragma component(browser, on)
 
