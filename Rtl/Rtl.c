@@ -5044,13 +5044,6 @@ LoadRtlExFunctions(
         return FALSE;
     }
 
-    if (!(RtlExFunctions->CopyPagesNonTemporalAvx2 = (PCOPY_PAGES)
-        GetProcAddress(RtlExModule, "CopyPagesNonTemporalAvx2"))) {
-
-        OutputDebugStringA("RtlEx: failed to resolve 'CopyPagesNonTemporalAvx2'");
-        return FALSE;
-    }
-
     if (!(RtlExFunctions->CopyToMemoryMappedMemory = (PCOPY_TO_MEMORY_MAPPED_MEMORY)
         GetProcAddress(RtlExModule, "CopyToMemoryMappedMemory"))) {
 
