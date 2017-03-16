@@ -156,22 +156,7 @@ class SyncRtlHeader(InvariantAwareCommand):
         );
 
     """
-    template = """\
-    if (!(Rtl->%(funcname)s = (%(typedef)s)
-        GetProcAddress(Rtl->NtdllModule, "%(funcname)s"))) {
-
-        if (!(Rtl->%(funcname)s = (%(typedef)s)
-            GetProcAddress(Rtl->NtosKrnlModule, "%(funcname)s"))) {
-
-            if (!(Rtl->%(funcname)s = (%(typedef)s)
-                GetProcAddress(Rtl->Kernel32Module, "%(funcname)s"))) {
-
-                OutputDebugStringA("Rtl: failed to resolve '%(funcname)s'");
-                return FALSE;
-            }
-        }
-    }
-"""
+    template = '        "%(funcname)s",'
 
     header_path = None
     class HeaderPathArg(PathInvariant):
@@ -200,13 +185,15 @@ class SyncRtlHeader(InvariantAwareCommand):
             "the functions in the macro with the symbols resolved via "
             "GetProcAddress() calls"
         )
-        _default = "LoadRtlSymbols"
+        _default = "ResolveRtlFunctions"
 
     def run(self):
         header_path = self.options.header_path
         source_path = self.options.source_path
         macro_func_name = self.options.functions_head_macro_name
         function_to_patch = self.options.function_to_patch
+
+        raise CommandError("Temporarily disabled until func is updated.")
 
         import re
 
