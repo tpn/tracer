@@ -377,7 +377,7 @@ Return Value:
     Source = SourceContent;
 
     QueryPerformanceCounter(&StartCopy);
-    Rtl->CopyPagesNonTemporalAvx2(Dest, Source, File->NumberOfPages);
+    Rtl->CopyPages(Dest, Source, File->NumberOfPages);
     QueryPerformanceCounter(&EndCopy);
 
     Elapsed.QuadPart = EndCopy.QuadPart - StartCopy.QuadPart;
