@@ -4879,6 +4879,49 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
     return TRUE;
 }
 
+_Check_return_
+BOOL
+ResolveRtlFunctions(_Inout_ PRTL Rtl)
+{
+    BOOL Success;
+    ULONG NumberOfResolvedSymbols;
+    PULONG_PTR Functions = (PULONG_PTR)&Rtl->RtlFunctions;
+
+    HMODULE Modules[] = {
+        Rtl->Kernel32Module,
+        Rtl->NtdllModule,
+        Rtl->NtosKrnlModule,
+    };
+
+    //
+    // Start of auto-generated section.
+    //
+
+    PSTR Names[] = {
+        "RtlCharToInteger",
+        "RtlInitializeGenericTable",
+    };
+
+    //
+    // End of auto-generated section.
+    //
+
+    ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), &BitmapBuffer };
+
+    Success = LoadSymbolsFromMultipleModules(
+        Names,
+        ARRAYSIZE(Names),
+        (PULONG_PTR)&Rtl->RtlFunctions,
+        sizeof(Functions) / sizeof(ULONG_PTR),
+        Modules,
+        ARRAYSIZE(Modules),
+        &FailedBitmap,
+        &NumberOfResolvedSymbols
+    );
+
+}
+
 
 RTL_API
 BOOLEAN
@@ -5817,6 +5860,7 @@ InitializeRtl(
 
     Rtl->InitializeCom = InitializeCom;
     Rtl->LoadDbgEng = LoadDbgEng;
+    Rtl->CopyPages = CopyPagesNonTemporalAvx2_v4;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;
