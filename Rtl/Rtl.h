@@ -4550,6 +4550,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PATEXIT atexit;
     PATEXITEX AtExitEx;
 
+    PCOPY_PAGES CopyPages;
+
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
 
