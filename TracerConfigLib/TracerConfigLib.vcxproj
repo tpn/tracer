@@ -72,7 +72,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CONFIG_INTERNAL_BUILD;_TRACER_HEAP_STATIC_LIB;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_CONFIG_INTERNAL_BUILD;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
