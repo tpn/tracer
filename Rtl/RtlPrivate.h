@@ -571,6 +571,20 @@ REMOVE_RTL_LDR_NOTIFICATION_ENTRY RemoveRtlLdrNotificationEntry;
 LDR_DLL_NOTIFICATION_FUNCTION LdrDllNotificationFunction;
 
 //
+// Symbol loading related typedefs.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RESOLVE_RTL_FUNCTIONS)(
+    _Inout_ PRTL Rtl
+    );
+typedef RESOLVE_RTL_FUNCTIONS *PRESOLVE_RTL_FUNCTIONS;
+RTL_API RESOLVE_RTL_FUNCTIONS ResolveRtlFunctions;
+
+//
 // Test-related glue.
 //
 
