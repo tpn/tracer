@@ -816,8 +816,7 @@ Start:
 
             HeapFree(HeapHandle, 0, Bitmap);
 
-        }
-        else {
+        } else {
 
             //
             // Free just the buffer.
