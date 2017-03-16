@@ -4907,7 +4907,7 @@ ResolveRtlFunctions(_Inout_ PRTL Rtl)
     //
 
     ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
-    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), &BitmapBuffer };
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
 
     Success = LoadSymbolsFromMultipleModules(
         Names,
