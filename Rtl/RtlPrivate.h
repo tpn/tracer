@@ -582,7 +582,29 @@ BOOL
     _Inout_ PRTL Rtl
     );
 typedef RESOLVE_RTL_FUNCTIONS *PRESOLVE_RTL_FUNCTIONS;
-RTL_API RESOLVE_RTL_FUNCTIONS ResolveRtlFunctions;
+RESOLVE_RTL_FUNCTIONS ResolveRtlFunctions;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RESOLVE_RTL_EX_FUNCTIONS)(
+    _In_     HMODULE RtlExModule,
+    _Inout_  PRTLEXFUNCTIONS RtlExFunctions
+    );
+typedef RESOLVE_RTL_EX_FUNCTIONS *PRESOLVE_RTL_EX_FUNCTIONS;
+RESOLVE_RTL_EX_FUNCTIONS ResolveRtlExFunctions;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RESOLVE_DBGHELP_FUNCTIONS)(
+    _In_     HMODULE DbgHelpModule,
+    _Inout_  PDBG Dbg
+    );
+typedef RESOLVE_DBGHELP_FUNCTIONS *PRESOLVE_DBGHELP_FUNCTIONS;
+RESOLVE_DBGHELP_FUNCTIONS ResolveDbgHelpFunctions;
 
 //
 // Test-related glue.
