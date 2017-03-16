@@ -122,7 +122,7 @@ LoadSymbols(
     HMODULE Module,
     PRTL_BITMAP FailedSymbols,
     PULONG NumberOfResolvedSymbolsPointer
-)
+    )
 /*++
 
 Routine Description:
