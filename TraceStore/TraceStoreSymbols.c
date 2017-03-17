@@ -894,7 +894,7 @@ Return Value:
                                     0);
 
     if (!Address) {
-        DWORD LastError = GetLastError();
+        LastError = GetLastError();
         if (LastError != ERROR_SUCCESS) {
             SymbolContext->LastError = LastError;
             __debugbreak();
