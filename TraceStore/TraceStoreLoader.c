@@ -714,6 +714,7 @@ Return Value:
         Method = (LPCWSTR)ModuleEntry->File.ImageFile.BaseAddress;
 
         if (!GetModuleHandleExW(Flags, Method, &Handle)) {
+            DWORD LastError = GetLastError();
             __debugbreak();
             goto InitializeFile;
         }
