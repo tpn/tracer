@@ -130,8 +130,7 @@ Routine Description:
     This routine is used to dynamically resolve an array of symbol names
     from a single module (DLL) via GetProcAddress(), storing the resulting
     addresses in symbol address array.  If a symbol name cannot be resolved,
-    its corresponding failure bit failure bit is set in the failed symbol
-    bitmap.
+    its corresponding failure bit is set in the failed symbol bitmap.
 
     See also: LoadSymbolsFromMultipleModules().
 
