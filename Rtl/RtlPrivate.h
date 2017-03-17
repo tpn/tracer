@@ -610,8 +610,10 @@ RESOLVE_DBGHELP_FUNCTIONS ResolveDbgHelpFunctions;
 // Test-related glue.
 //
 
+#ifdef _RTL_TEST
 RTL_API TEST_LOAD_SYMBOLS TestLoadSymbols;
 RTL_API TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
+#endif
 
 #ifdef __cplusplus
 } // extern "C"
