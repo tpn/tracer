@@ -2003,7 +2003,7 @@ ResolveRtlFunctions(_Inout_ PRTL Rtl)
     // Start of auto-generated section.
     //
 
-    PSTR Names[] = {
+    static CONST PSTR Names[] = {
         "RtlCharToInteger",
         "RtlInitializeGenericTable",
         "RtlInsertElementGenericTable",
@@ -2177,7 +2177,7 @@ ResolveRtlExFunctions(
     // Start of auto-generated section.
     //
 
-    PSTR Names[] = {
+    static CONST PSTR Names[] = {
         "DestroyRtl",
         "ArgvWToArgvA",
         "CopyPagesMovsq",
@@ -2285,7 +2285,7 @@ ResolveDbgHelpFunctions(
     // Start of auto-generated section.
     //
 
-    PSTR Names[] = {
+    static CONST PSTR Names[] = {
         "EnumDirTree",
         "EnumDirTreeW",
         "EnumerateLoadedModules64",

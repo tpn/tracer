@@ -115,7 +115,7 @@ Abstract:
 _Use_decl_annotations_
 BOOL
 LoadSymbols(
-    PPSTR SymbolNameArray,
+    CONST PCSZ *SymbolNameArray,
     ULONG NumberOfSymbolNames,
     PULONG_PTR SymbolAddressArray,
     ULONG NumberOfSymbolAddresses,
@@ -183,7 +183,7 @@ Return Value:
     ULONG NumberOfElements;
     ULONG NumberOfResolvedSymbols;
     ULONG NumberOfBitmapBytesToZero;
-    PSTR Name;
+    PCSZ Name;
     FARPROC Proc;
 
     //
@@ -297,7 +297,7 @@ Return Value:
 _Use_decl_annotations_
 BOOL
 LoadSymbolsFromMultipleModules(
-    PPSTR SymbolNameArray,
+    CONST PCSZ *SymbolNameArray,
     ULONG NumberOfSymbolNames,
     PULONG_PTR SymbolAddressArray,
     ULONG NumberOfSymbolAddresses,
@@ -374,7 +374,7 @@ Return Value:
     ULONG NumberOfElements;
     ULONG NumberOfResolvedSymbols;
     ULONG NumberOfBitmapBytesToZero;
-    PSTR Name;
+    PCSZ Name;
     FARPROC Proc;
     HMODULE Module;
 

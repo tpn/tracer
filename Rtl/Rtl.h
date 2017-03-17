@@ -81,8 +81,10 @@ extern "C" {
 
 #endif
 
+#ifdef _DEBUG
 #ifndef _RTL_TEST
 #define _RTL_TEST
+#endif
 #endif
 
 //
@@ -4208,7 +4210,7 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (LOAD_SYMBOLS)(
-    _In_count_(NumberOfSymbolNames) PPSTR SymbolNameArray,
+    _In_count_(NumberOfSymbolNames) CONST PCSZ *SymbolNameArray,
     _In_ ULONG NumberOfSymbolNames,
     _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
     _In_ ULONG NumberOfSymbolAddresses,
@@ -4223,7 +4225,7 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (LOAD_SYMBOLS_FROM_MULTIPLE_MODULES)(
-    _In_count_(NumberOfSymbolNames) PPSTR SymbolNameArray,
+    _In_count_(NumberOfSymbolNames) CONST PCSZ *SymbolNameArray,
     _In_ ULONG NumberOfSymbolNames,
     _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
     _In_ ULONG NumberOfSymbolAddresses,
