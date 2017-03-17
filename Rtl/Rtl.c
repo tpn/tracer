@@ -1984,9 +1984,11 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
     return TRUE;
 }
 
-_Check_return_
+_Use_decl_annotations_
 BOOL
-ResolveRtlFunctions(_Inout_ PRTL Rtl)
+ResolveRtlFunctions(
+    PRTL Rtl
+    )
 {
     BOOL Success;
     ULONG NumberOfResolvedSymbols;
@@ -2161,11 +2163,11 @@ ResolveRtlFunctions(_Inout_ PRTL Rtl)
     return TRUE;
 }
 
-_Check_return_
+_Use_decl_annotations_
 BOOL
 ResolveRtlExFunctions(
-    _In_opt_ HMODULE RtlExModule,
-    _Inout_  PRTLEXFUNCTIONS RtlExFunctions
+    HMODULE RtlExModule,
+    PRTLEXFUNCTIONS RtlExFunctions
     )
 {
     BOOL Success;
