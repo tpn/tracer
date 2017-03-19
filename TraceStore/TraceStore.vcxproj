@@ -114,6 +114,10 @@
     <ClCompile Include="TraceStoreTraits.c" />
     <ClCompile Include="TraceStoreTypes.c" />
     <ClCompile Include="TraceStoreWorkingSet.c" />
+    <ClCompile Condition="'$(Platform)|$(Configuration)'=='x64|PGOptimize'" Include="../Rtl/memset.c">
+      <PrecompiledHeader />
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">

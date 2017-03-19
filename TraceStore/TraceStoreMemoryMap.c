@@ -1411,13 +1411,13 @@ Return Value:
     // Load traits and initialize aliases.
     //
 
-    Traits = *TraceStore->pTraits;
     IsReadonly = IsReadonlyTraceStore(TraceStore);
     IsMetadata = IsMetadataTraceStore(TraceStore);
     HasRelocations = TraceStoreHasRelocations(TraceStore);
 
     Rtl = TraceStore->Rtl;
     RtlCopyMappedMemory = Rtl->RtlCopyMappedMemory;
+    RtlCopyMappedMemory(&Traits, TraceStore->pTraits, sizeof(Traits));
     TraceContext = TraceStore->TraceContext;
 
     //

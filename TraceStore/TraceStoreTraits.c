@@ -325,7 +325,7 @@ Return Value:
     // is "single instance" and allocated up-front.
     //
 
-    *TraceStore->Traits = *TraceStore->pTraits;
+    TraceStore->Traits->AsULong = TraceStore->pTraits->AsULong;
 
     return TRUE;
 }

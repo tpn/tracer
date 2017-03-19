@@ -453,7 +453,7 @@ typedef struct _TRACE_STORE_TOTALS {
 // trace stores.
 //
 
-typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
+struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
 
     //
     // When set, indicates records of different sizes may be allocated.  When
@@ -692,10 +692,43 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     //
 
     ULONG Unused:17;
+};
 
-} TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
+typedef union {
+
+    //
+    // Inline struct _TRACE_STORE_TRAITS automatically.
+    //
+
+    struct {
+        ULONG VaryingRecordSize:1;
+        ULONG RecordSizeIsAlwaysPowerOf2:1;
+        ULONG MultipleRecords:1;
+        ULONG StreamingWrite:1;
+        ULONG StreamingRead:1;
+        ULONG FrequentAllocations:1;
+        ULONG BlockingAllocations:1;
+        ULONG LinkedStore:1;
+        ULONG CoalesceAllocations:1;
+        ULONG ConcurrentAllocations:1;
+        ULONG AllowPageSpill:1;
+        ULONG PageAligned:1;
+        ULONG Periodic:1;
+        ULONG ConcurrentDataStructure:1;
+        ULONG NoAllocationAlignment:1;
+        ULONG Unused:17;
+    };
+
+    LONG AsLong;
+    ULONG AsULong;
+    struct _TRACE_STORE_TRAITS AsTraits;
+
+} TRACE_STORE_TRAITS;
+
+typedef TRACE_STORE_TRAITS *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
 
+C_ASSERT(sizeof(struct _TRACE_STORE_TRAITS) == sizeof(ULONG));
 C_ASSERT(sizeof(TRACE_STORE_TRAITS) == sizeof(ULONG));
 
 typedef
@@ -753,7 +786,7 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 // N.B.: Example assumes Traits has been loaded as follows:
 //
 //      TRACE_STORE_TRAITS Traits;
-//      Traits = *TraceStore->pTraits;
+//      InitializeTraitsFromStore(&Traits, TraceStore);
 //
 
 #define HasVaryingRecords(Traits) ((Traits).VaryingRecordSize)
@@ -3711,6 +3744,20 @@ TRACE_STORE_API CLOSE_TRACE_CONTEXT CloseTraceContext;
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+FORCEINLINE
+VOID
+InitializeTraitsFromStore(
+    _In_ PTRACE_STORE_TRAITS Traits,
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    PULONG Dest;
+    PULONG Source;
+    Dest = (PULONG)&Traits;
+    Source = (PULONG)TraceStore->pTraits;
+    __movsd(Dest, Source, 1);
+}
 
 _Acquires_exclusive_lock_(TraceStore->Sync->SRWLock)
 FORCEINLINE
