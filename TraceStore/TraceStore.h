@@ -3369,7 +3369,7 @@ typedef struct _TRACE_STORE {
     // Likewise for pTraits.
     //
 
-    PTRACE_STORE_TRAITS pTraits;
+    PCTRACE_STORE_TRAITS pTraits;
 
     //
     // For trace stores, the pointers below will point to the metadata trace
