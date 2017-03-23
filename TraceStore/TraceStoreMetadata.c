@@ -27,7 +27,7 @@ CONST ULONG TraceStoreMetadataRecordSizes[] = {
     sizeof(TRACE_STORE_INFO)
 };
 
-CONST PTRACE_STORE_TRAITS MetadataStoreTraits[] = {
+CONST PCTRACE_STORE_TRAITS MetadataStoreTraits[] = {
     &MetadataInfoStoreTraits,
     &AllocationStoreTraits,
     &RelocationStoreTraits,
@@ -52,7 +52,7 @@ CONST PBIND_COMPLETE TraceStoreMetadataBindCompletes[] = {
 };
 
 _Use_decl_annotations_
-PTRACE_STORE_TRAITS
+PCTRACE_STORE_TRAITS
 TraceStoreMetadataIdToTraits(
     TRACE_STORE_METADATA_ID TraceStoreMetadataId
     )
