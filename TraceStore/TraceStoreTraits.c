@@ -177,7 +177,7 @@ Return Value:
 --*/
 {
     TRACE_STORE_TRAITS Traits;
-    PTRACE_STORE_TRAITS pTraits;
+    PCTRACE_STORE_TRAITS pTraits;
 
     //
     // Validate arguments.

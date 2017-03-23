@@ -23,7 +23,7 @@ volatile BOOL PauseBeforePrepareReadonlyNonStreamingMap = TRUE;
 volatile BOOL PauseBeforeReadonlyNonStreamingBindComplete = TRUE;
 volatile BOOL PauseBeforeRelocate = TRUE;
 
-LPCWSTR TraceStoreFileNames[] = {
+CONST LPCWSTR TraceStoreFileNames[] = {
     L"PythonTracer_TraceEvent.dat",
     L"TraceStore_StringBuffer.dat",
     L"Python_PythonFunctionTable.dat",
@@ -151,74 +151,74 @@ CONST TRACE_STORE_ID TraceStoreIds[] = {
     TraceStoreInvalidId,
 };
 
-WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
-DWORD TraceStoreMetadataInfoSuffixLength = (
+CONST WCHAR TraceStoreMetadataInfoSuffix[] = L":MetadataInfo";
+CONST DWORD TraceStoreMetadataInfoSuffixLength = (
     sizeof(TraceStoreMetadataInfoSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAllocationSuffix[] = L":Allocation";
-DWORD TraceStoreAllocationSuffixLength = (
+CONST WCHAR TraceStoreAllocationSuffix[] = L":Allocation";
+CONST DWORD TraceStoreAllocationSuffixLength = (
     sizeof(TraceStoreAllocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreRelocationSuffix[] = L":Relocation";
-DWORD TraceStoreRelocationSuffixLength = (
+CONST WCHAR TraceStoreRelocationSuffix[] = L":Relocation";
+CONST DWORD TraceStoreRelocationSuffixLength = (
     sizeof(TraceStoreRelocationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAddressSuffix[] = L":Address";
-DWORD TraceStoreAddressSuffixLength = (
+CONST WCHAR TraceStoreAddressSuffix[] = L":Address";
+CONST DWORD TraceStoreAddressSuffixLength = (
     sizeof(TraceStoreAddressSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAddressRangeSuffix[] = L":AddressRange";
-DWORD TraceStoreAddressRangeSuffixLength = (
+CONST WCHAR TraceStoreAddressRangeSuffix[] = L":AddressRange";
+CONST DWORD TraceStoreAddressRangeSuffixLength = (
     sizeof(TraceStoreAddressRangeSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAllocationTimestampSuffix[] = L":AllocationTimestamp";
-DWORD TraceStoreAllocationTimestampSuffixLength = (
+CONST WCHAR TraceStoreAllocationTimestampSuffix[] = L":AllocationTimestamp";
+CONST DWORD TraceStoreAllocationTimestampSuffixLength = (
     sizeof(TraceStoreAllocationTimestampSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreAllocationTimestampDeltaSuffix[] = (
+CONST WCHAR TraceStoreAllocationTimestampDeltaSuffix[] = (
     L":AllocationTimestampDelta"
 );
 
-DWORD TraceStoreAllocationTimestampDeltaSuffixLength = (
+CONST DWORD TraceStoreAllocationTimestampDeltaSuffixLength = (
     sizeof(TraceStoreAllocationTimestampDeltaSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreSynchronizationSuffix[] = L":Synchronization";
-DWORD TraceStoreSynchronizationSuffixLength = (
+CONST WCHAR TraceStoreSynchronizationSuffix[] = L":Synchronization";
+CONST DWORD TraceStoreSynchronizationSuffixLength = (
     sizeof(TraceStoreSynchronizationSuffix) /
     sizeof(WCHAR)
 );
 
-WCHAR TraceStoreInfoSuffix[] = L":Info";
-DWORD TraceStoreInfoSuffixLength = (
+CONST WCHAR TraceStoreInfoSuffix[] = L":Info";
+CONST DWORD TraceStoreInfoSuffixLength = (
     sizeof(TraceStoreInfoSuffix) /
     sizeof(WCHAR)
 );
 
-USHORT LongestTraceStoreSuffixLength = (
+CONST USHORT LongestTraceStoreSuffixLength = (
     sizeof(TraceStoreAllocationTimestampDeltaSuffixLength) /
     sizeof(WCHAR)
 );
 
-USHORT NumberOfTraceStores = (
+CONST USHORT NumberOfTraceStores = (
     sizeof(TraceStoreFileNames) /
     sizeof(LPCWSTR)
 );
 
-PWCHAR TraceStoreMetadataSuffixes[] = {
+CONST LPCWSTR TraceStoreMetadataSuffixes[] = {
     TraceStoreMetadataInfoSuffix,
     TraceStoreAllocationSuffix,
     TraceStoreRelocationSuffix,
@@ -249,8 +249,8 @@ CONST TRACE_STORE_METADATA_ID TraceStoreMetadataIds[] = {
     sizeof(TraceStoreMetadataSuffixes[0]) \
 )
 
-USHORT NumberOfMetadataStores = NUMBER_OF_METADATA_STORES;
-USHORT ElementsPerTraceStore = NUMBER_OF_METADATA_STORES + 1;
+CONST USHORT NumberOfMetadataStores = NUMBER_OF_METADATA_STORES;
+CONST USHORT ElementsPerTraceStore = NUMBER_OF_METADATA_STORES + 1;
 
 //
 // Size key:
@@ -428,7 +428,7 @@ CONST PLARGE_INTEGER InitialTraceStoreFileSizes = (PLARGE_INTEGER)(
 //      Where NewFlag is the name of the new flag to add.
 //
 
-TRACE_STORE_TRAITS TraceStoreTraits[] = {
+CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
 
     //
     // Event
@@ -1812,7 +1812,7 @@ TRACE_STORE_TRAITS TraceStoreTraits[] = {
     },
 };
 
-TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
+CONST TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
     sizeof(TRACE_STORE),
     sizeof(TRACE_STORES),
     sizeof(TRACE_CONTEXT),
@@ -1825,35 +1825,35 @@ TRACE_STORE_STRUCTURE_SIZES TraceStoreStructureSizes = {
     sizeof(ADDRESS_BIT_COUNTS),
 };
 
-LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
-LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
+CONST LARGE_INTEGER MinimumMappingSize = { 1 << 16 }; // 64KB
+CONST LARGE_INTEGER MaximumMappingSize = { 1 << 31 }; // 2GB
 
-USHORT InitialFreeMemoryMapsForNonStreamingReaders = 64;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
-USHORT InitialFreeMemoryMapsForNonStreamingWriters = 64;
-USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 64;
-USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
-USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
-USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 1;
+CONST USHORT InitialFreeMemoryMapsForNonStreamingReaders = 64;
+CONST USHORT InitialFreeMemoryMapsForNonStreamingMetadataReaders = 64;
+CONST USHORT InitialFreeMemoryMapsForNonStreamingWriters = 64;
+CONST USHORT InitialFreeMemoryMapsForNonStreamingMetadataWriters = 64;
+CONST USHORT InitialFreeMemoryMapsForStreamingReaders = 64;
+CONST USHORT InitialFreeMemoryMapsForStreamingWriters = 64;
+CONST USHORT InitialFreeMemoryMapMultiplierForFrequentAllocators = 1;
 
-USHORT TraceStoreMetadataInfoStructSize = (
+CONST USHORT TraceStoreMetadataInfoStructSize = (
     sizeof(TRACE_STORE_METADATA_INFO)
 );
-USHORT TraceStoreAllocationStructSize = (
+CONST USHORT TraceStoreAllocationStructSize = (
     sizeof(TRACE_STORE_ALLOCATION)
 );
-USHORT TraceStoreRelocationStructSize = (
+CONST USHORT TraceStoreRelocationStructSize = (
     sizeof(TRACE_STORE_FIELD_RELOC)
 );
-USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
-USHORT TraceStoreAddressRangeStructSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
-USHORT TraceStoreAllocationTimestampStructSize = (
+CONST USHORT TraceStoreAddressStructSize = sizeof(TRACE_STORE_ADDRESS);
+CONST USHORT TraceStoreAddressRangeStructSize = sizeof(TRACE_STORE_ADDRESS_RANGE);
+CONST USHORT TraceStoreAllocationTimestampStructSize = (
     sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP)
 );
-USHORT TraceStoreAllocationTimestampDeltaStructSize = (
+CONST USHORT TraceStoreAllocationTimestampDeltaStructSize = (
     sizeof(TRACE_STORE_ALLOCATION_TIMESTAMP_DELTA)
 );
-USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
+CONST USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 
 //
 // Size key:
@@ -1867,50 +1867,50 @@ USHORT TraceStoreInfoStructSize = sizeof(TRACE_STORE_INFO);
 //       mapping size.
 //
 
-LARGE_INTEGER DefaultTraceStoreMappingSize = { 1 << 26 };
-LARGE_INTEGER DefaultTraceStoreEventMappingSize = { 1 << 30 };
+CONST LARGE_INTEGER DefaultTraceStoreMappingSize = { 1 << 26 };
+CONST LARGE_INTEGER DefaultTraceStoreEventMappingSize = { 1 << 30 };
 
-LARGE_INTEGER DefaultAllocationTraceStoreSize = { 1 << 21 };
-LARGE_INTEGER DefaultAllocationTraceStoreMappingSize = { 1 << 21 };
+CONST LARGE_INTEGER DefaultAllocationTraceStoreSize = { 1 << 21 };
+CONST LARGE_INTEGER DefaultAllocationTraceStoreMappingSize = { 1 << 21 };
 
-LARGE_INTEGER DefaultRelocationTraceStoreSize = { 1 << 16 };
-LARGE_INTEGER DefaultRelocationTraceStoreMappingSize = { 1 << 16 };
+CONST LARGE_INTEGER DefaultRelocationTraceStoreSize = { 1 << 16 };
+CONST LARGE_INTEGER DefaultRelocationTraceStoreMappingSize = { 1 << 16 };
 
-LARGE_INTEGER DefaultAddressTraceStoreSize = { 1 << 21 };
-LARGE_INTEGER DefaultAddressTraceStoreMappingSize = { 1 << 21 };
+CONST LARGE_INTEGER DefaultAddressTraceStoreSize = { 1 << 21 };
+CONST LARGE_INTEGER DefaultAddressTraceStoreMappingSize = { 1 << 21 };
 
-LARGE_INTEGER DefaultAddressRangeTraceStoreSize = { 1 << 20 };
-LARGE_INTEGER DefaultAddressRangeTraceStoreMappingSize = { 1 << 20 };
+CONST LARGE_INTEGER DefaultAddressRangeTraceStoreSize = { 1 << 20 };
+CONST LARGE_INTEGER DefaultAddressRangeTraceStoreMappingSize = { 1 << 20 };
 
-LARGE_INTEGER DefaultAllocationTimestampTraceStoreSize = { 1 << 26 };
-LARGE_INTEGER DefaultAllocationTimestampTraceStoreMappingSize = { 1 << 26 };
+CONST LARGE_INTEGER DefaultAllocationTimestampTraceStoreSize = { 1 << 26 };
+CONST LARGE_INTEGER DefaultAllocationTimestampTraceStoreMappingSize = { 1 << 26 };
 
-LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreSize = { 1 << 25 };
-LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreMappingSize = {
+CONST LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreSize = { 1 << 25 };
+CONST LARGE_INTEGER DefaultAllocationTimestampDeltaTraceStoreMappingSize = {
     1 << 25
 };
 
-LARGE_INTEGER DefaultMetadataInfoTraceStoreSize = {
+CONST LARGE_INTEGER DefaultMetadataInfoTraceStoreSize = {
     sizeof(TRACE_STORE_METADATA_INFO)
 };
 
-LARGE_INTEGER DefaultMetadataInfoTraceStoreMappingSize = {
+CONST LARGE_INTEGER DefaultMetadataInfoTraceStoreMappingSize = {
     sizeof(TRACE_STORE_METADATA_INFO)
 };
 
-LARGE_INTEGER DefaultInfoTraceStoreSize = {
+CONST LARGE_INTEGER DefaultInfoTraceStoreSize = {
     sizeof(TRACE_STORE_INFO)
 };
 
-LARGE_INTEGER DefaultInfoTraceStoreMappingSize = {
+CONST LARGE_INTEGER DefaultInfoTraceStoreMappingSize = {
     sizeof(TRACE_STORE_INFO)
 };
 
-LARGE_INTEGER DefaultSynchronizationTraceStoreSize = {
+CONST LARGE_INTEGER DefaultSynchronizationTraceStoreSize = {
     sizeof(TRACE_STORE_SYNC)
 };
 
-LARGE_INTEGER DefaultSynchronizationTraceStoreMappingSize = {
+CONST LARGE_INTEGER DefaultSynchronizationTraceStoreMappingSize = {
     sizeof(TRACE_STORE_SYNC)
 };
 
@@ -1924,7 +1924,7 @@ LARGE_INTEGER DefaultSynchronizationTraceStoreMappingSize = {
 //      Where NewFlag is the name of the new flag to add.
 //
 
-TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
+CONST TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // VaryingRecordSize
     0,  // RecordSizeIsAlwaysPowerOf2
     0,  // MultipleRecords
@@ -1943,7 +1943,7 @@ TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS AllocationStoreTraits = {
+CONST TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
@@ -1962,7 +1962,7 @@ TRACE_STORE_TRAITS AllocationStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS RelocationStoreTraits = {
+CONST TRACE_STORE_TRAITS RelocationStoreTraits = {
     1,  // VaryingRecordSize
     0,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
@@ -1981,7 +1981,7 @@ TRACE_STORE_TRAITS RelocationStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS AddressStoreTraits = {
+CONST TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
@@ -2000,7 +2000,7 @@ TRACE_STORE_TRAITS AddressStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS AddressRangeStoreTraits = {
+CONST TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
@@ -2019,26 +2019,7 @@ TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
-    0,  // VaryingRecordSize
-    1,  // RecordSizeIsAlwaysPowerOf2
-    1,  // MultipleRecords
-    1,  // StreamingWrite
-    1,  // StreamingRead
-    1,  // FrequentAllocations
-    1,  // BlockingAllocations
-    0,  // LinkedStore
-    0,  // CoalescedAllocations
-    0,  // ConcurrentAllocations
-    0,  // AllowPageSpill
-    0,  // PageAligned
-    0,  // Periodic
-    0,  // ConcurrentDataStructure
-    0,  // NoAllocationAlignment
-    0   // Unused
-};
-
-TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
+CONST TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     1,  // MultipleRecords
@@ -2057,7 +2038,26 @@ TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS SynchronizationStoreTraits = {
+CONST TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
+    0,  // VaryingRecordSize
+    1,  // RecordSizeIsAlwaysPowerOf2
+    1,  // MultipleRecords
+    1,  // StreamingWrite
+    1,  // StreamingRead
+    1,  // FrequentAllocations
+    1,  // BlockingAllocations
+    0,  // LinkedStore
+    0,  // CoalescedAllocations
+    0,  // ConcurrentAllocations
+    0,  // AllowPageSpill
+    0,  // PageAligned
+    0,  // Periodic
+    0,  // ConcurrentDataStructure
+    0,  // NoAllocationAlignment
+    0   // Unused
+};
+
+CONST TRACE_STORE_TRAITS SynchronizationStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     0,  // MultipleRecords
@@ -2076,7 +2076,7 @@ TRACE_STORE_TRAITS SynchronizationStoreTraits = {
     0   // Unused
 };
 
-TRACE_STORE_TRAITS InfoStoreTraits = {
+CONST TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // VaryingRecordSize
     1,  // RecordSizeIsAlwaysPowerOf2
     0,  // MultipleRecords
@@ -2095,4 +2095,4 @@ TRACE_STORE_TRAITS InfoStoreTraits = {
     0   // Unused
 };
 
-// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :
