@@ -101,6 +101,7 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="StringTableAllocator.c" />
     <ClCompile Include="StringTableConstants_C.c" />
   </ItemGroup>
   <ItemGroup>
