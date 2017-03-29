@@ -107,6 +107,9 @@ End:
 #define DEBUG_EVENT_CALLBACK_PROLOGUE() \
     DEBUG_CALLBACK_PROLOGUE(EventCallbacks)
 
+#define DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE() \
+    DEBUG_SESSION_CALLBACK_PROLOGUE(EventCallbacks)
+
 #define DEBUG_EVENT_QUERY_INTERFACE() \
     DEBUG_QUERY_INTERFACE(EventCallbacks, EVENT_CALLBACKS)
 
@@ -259,7 +262,9 @@ DebugEventCreateProcessCallback(
     ULONG64 StartOffset
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
+
+    Session->TargetMainThreadHandle = (HANDLE)InitialThreadHandle;
 
     return DEBUG_STATUS_NO_CHANGE;
 }

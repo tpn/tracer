@@ -314,6 +314,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     PRTL Rtl;
 
     //
+    // Pointer to our parent DEBUG_ENGINE_SESSION.
+    //
+
+    PDEBUG_ENGINE_SESSION Session;
+
+    //
     // IIDs, interfaces and vtables.
     //
 
@@ -420,6 +426,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
 #define DEBUG_CALLBACK_PROLOGUE(Name)                             \
     PDEBUG_ENGINE Engine;                                         \
     Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name);
+
+#define DEBUG_SESSION_CALLBACK_PROLOGUE(Name)                     \
+    PDEBUG_ENGINE Engine;                                         \
+    PDEBUG_ENGINE_SESSION Session;                                \
+    Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name); \
+    Session = Engine->Session;
 
 #define DEBUG_ADD_REF(Name) InterlockedIncrement(&Engine->##Name##RefCount)
 
