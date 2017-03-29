@@ -405,6 +405,7 @@ Return Value:
     // Set the command function pointers.
     //
 
+    Session->WaitForEvent = DebugEngineSessionWaitForEvent;
     Session->Destroy = DestroyDebugEngineSession;
     Session->DisplayType = DebugEngineDisplayType;
     Session->ExamineSymbols = DebugEngineExamineSymbols;
@@ -710,7 +711,7 @@ Return Value:
                 0,
                 (PSTR)Session->TargetCommandLineA,
                 //DEBUG_PROCESS | CREATE_SUSPENDED
-                DEBUG_PROCESS
+                DEBUG_PROCESS | DEBUG_ECREATE_PROCESS_INHERIT_HANDLES
             ),
             "DebugEngine: Client->CreateProcess"
         );

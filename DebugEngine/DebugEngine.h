@@ -1849,6 +1849,15 @@ typedef DESTROY_DEBUG_ENGINE_SESSION   *PDESTROY_DEBUG_ENGINE_SESSION;
 typedef DESTROY_DEBUG_ENGINE_SESSION **PPDESTROY_DEBUG_ENGINE_SESSION;
 DEBUG_ENGINE_API DESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
+typedef
+HRESULT
+(WAIT_FOR_EVENT)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session,
+    _In_ ULONG Flags,
+    _In_opt_ ULONG TimeoutInMilliseconds
+    );
+typedef WAIT_FOR_EVENT *PWAIT_FOR_EVENT;
+
 typedef union _DEBUG_ENGINE_SESSION_FLAGS {
     LONG AsLong;
     ULONG AsULong;
@@ -1939,6 +1948,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
+
+    //
+    // Wait for events command.  This must be called periodically in order to
+    // process the debug engine's events.
+    //
+
+    PWAIT_FOR_EVENT WaitForEvent;
 
     ////////////////////////////////////////////////////////////////////////////
     // Commands.

@@ -16,6 +16,47 @@ Abstract:
 #include "stdafx.h"
 
 _Use_decl_annotations_
+HRESULT
+DebugEngineSessionWaitForEvent(
+    PDEBUG_ENGINE_SESSION Session,
+    ULONG Flags,
+    ULONG TimeoutInMilliseconds
+    )
+/*++
+
+Routine Description:
+
+    This routine is a thin wrapper around the debug engine's WaitForEvent()
+    method.
+
+Arguments:
+
+    Session - Supplies a pointer to a DEBUG_ENGINE_SESSION.
+
+    Flags - Unused.
+
+    TimeoutInMilliseconds - Supplies an optional timeout, in milliseconds.
+
+Return Value:
+
+    Returns the HRESULT returned by IDebugControl's WaitForEvent() routine.
+
+--*/
+{
+    HRESULT Result;
+    PDEBUG_ENGINE Engine;
+
+    Engine = Session->Engine;
+
+    Result = Engine->Control->WaitForEvent(Engine->IControl,
+                                           Flags,
+                                           TimeoutInMilliseconds);
+
+    return Result;
+}
+
+
+_Use_decl_annotations_
 BOOL
 DebugEngineSetEventCallbacks(
     PDEBUG_ENGINE Engine,

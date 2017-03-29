@@ -23,6 +23,7 @@ Main(VOID)
     BOOL Success;
     PRTL Rtl;
     ULONG ExitCode;
+    HRESULT Result;
     ALLOCATOR Allocator;
     ALLOCATOR StringTableAllocator;
     ALLOCATOR StringArrayAllocator;
@@ -89,6 +90,14 @@ Main(VOID)
         OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.\n");
         goto Error;
     };
+
+    while (TRUE) {
+        Result = Session->WaitForEvent(Session, 0, 1000);
+
+        if (Result != S_OK && Result != S_FALSE) {
+            goto Error;
+        }
+    }
 
     ExitCode = 0;
     goto End;
