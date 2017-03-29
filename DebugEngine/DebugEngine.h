@@ -2155,8 +2155,9 @@ See Also:
 --*/
 {
     BOOL Success;
-    HMODULE Module;
-    HMODULE StringTableModule;
+    DWORD LastError;
+    HMODULE Module = NULL;
+    HMODULE StringTableModule = NULL;
     PINITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 
     //
@@ -2212,6 +2213,12 @@ See Also:
 
     StringTableModule = LoadLibraryW(StringTableDllPath->Buffer);
 
+    if (!StringTableModule) {
+        LastError = GetLastError();
+        OutputDebugStringA("Failed to load StringTable.dll.\n");
+        goto Error;
+    }
+
     //
     // Call the initialization function with the same arguments we were passed.
     //
@@ -2260,11 +2267,17 @@ Error:
     }
 
     //
-    // Attempt to free the module.
+    // Attempt to free any modules we loaded.
     //
 
     if (Module) {
         FreeLibrary(Module);
+        Module = NULL;
+    }
+
+    if (StringTableModule) {
+        FreeLibrary(StringTableModule);
+        StringTableModule = NULL;
     }
 
     return FALSE;
