@@ -1383,10 +1383,26 @@ AssertStringTableFieldAlignment(
 }
 
 //
+// Allocator-specific typedefs.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_STRING_TABLE_ALLOCATOR)(
+    _In_ PALLOCATOR Allocator
+    );
+typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
+
+//
 // Public exported function defs.
 //
 
 #pragma component(browser, off)
+
+STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR
+    InitializeStringTableAllocator;
 
 STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
 STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;

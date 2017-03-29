@@ -27,8 +27,16 @@ extern "C" {
 // Function typedefs and inline functions for internal modules.
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma component(browser, off)
 CREATE_STRING_TABLE CreateSingleStringTable;
-
+MALLOC StringTableMalloc;
+CALLOC StringTableCalloc;
+REALLOC StringTableRealloc;
+FREE StringTableFree;
+FREE_POINTER StringTableFreePointer;
+INITIALIZE_ALLOCATOR StringTableInitializeAllocator;
+DESTROY_ALLOCATOR StringTableDestroyAllocator;
+#pragma component(browser, on)
 
 #ifdef __cplusplus
 }; // extern "C"
