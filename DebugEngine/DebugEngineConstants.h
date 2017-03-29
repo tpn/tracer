@@ -49,6 +49,10 @@ DEBUG_ENGINE_DATA CONST STRING FunctionArgumentTypes1;
 DEBUG_ENGINE_DATA CONST STRING FunctionArgumentTypes2;
 DEBUG_ENGINE_DATA CONST STRING FunctionArgumentVectorTypes1;
 
+DEBUG_ENGINE_DATA CONST STRING CommandLineOptions;
+DEBUG_ENGINE_DATA CONST USHORT NumberOfCommandLineMatchIndexOptions;
+DEBUG_ENGINE_DATA CONST SHORT CommandLineMatchIndexToOption[];
+
 DEBUG_ENGINE_DATA CONST STRING DisplayTypeCustomStructureName;
 DEBUG_ENGINE_DATA CONST STRING ExamineSymbolsCustomStructureName;
 DEBUG_ENGINE_DATA CONST STRING UnassembleFunctionCustomStructureName;

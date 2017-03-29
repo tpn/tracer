@@ -1867,10 +1867,45 @@ typedef union _DEBUG_ENGINE_SESSION_FLAGS {
 
         ULONG OutOfProc:1;
 
+        //
+        // When set, indicates that an existing process was attached to.
+        //
+
+        ULONG AttachedToExistingProcess:1;
+
+        //
+        // When set, indicates a new process was created.
+        //
+
+        ULONG CreatedNewProcess:1;
+
     };
 } DEBUG_ENGINE_SESSION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_SESSION_FLAGS) == sizeof(ULONG));
 typedef DEBUG_ENGINE_SESSION_FLAGS *PDEBUG_ENGINE_SESSION_FLAGS;
+
+//
+// Command line options enumeration.
+//
+
+typedef enum _DEBUG_ENGINE_COMMAND_LINE_OPTION {
+
+    UnknownCommandLineOption = -1,
+
+    //
+    // Corresponds to -p/--pid.
+    //
+
+    PidCommandLineOption = 0,
+
+    //
+    // Corresponds to -c/--commandline.
+    //
+
+    CommandLineCommandLineOption,
+
+} DEBUG_ENGINE_COMMAND_LINE_OPTION;
+typedef DEBUG_ENGINE_COMMAND_LINE_OPTION *PDEBUG_ENGINE_COMMAND_LINE_OPTION;
 
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
@@ -1974,8 +2009,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTR CommandLineA;
     PWSTR CommandLineW;
 
-    STRING CommandLineString;
-    UNICODE_STRING CommandLineUnicodeString;
+    DEBUG_ENGINE_COMMAND_LINE_OPTION CommandLineOption;
 
     LONG NumberOfArguments;
     PPSTR ArgvA;
@@ -1985,8 +2019,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     // Target information extracted from command line.
     //
 
-    ULONG TargetProcessId;
-    ULONG TargetMainThreadId;
+    union {
+
+        //
+        // This will be set if CommandLineOption == PidCommandLineOption
+        // (corresponding to -p/--pid).
+        //
+
+        ULONG TargetProcessId;
+
+        //
+        // This will be set if CommandLineOption == CommandLineCommandLineOption
+        // (corresponding to -c/--commandline).
+        //
+
+        PCSTR TargetCommandLineA;
+    };
 
     //
     // Trace Session Directory.
@@ -2033,6 +2081,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE FunctionArgumentTypeStringTable1;
     PSTRING_TABLE FunctionArgumentTypeStringTable2;
     PSTRING_TABLE FunctionArgumentVectorTypeStringTable1;
+    PSTRING_TABLE CommandLineOptionsStringTable;
 
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;
 
@@ -2046,8 +2095,8 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
     struct {
 
         //
-        // When set, extracts the target process ID and other relevant session
-        // parameters from the command line.
+        // When set, initializes the debug engine session based on the command
+        // line.
         //
 
         ULONG InitializeFromCommandLine:1;
@@ -2126,11 +2175,17 @@ Arguments:
     StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
         the fully-qualified path of the StringTable DLL to load.
 
-    StringArrayAllocator - Supplies a pointer to an allocator to use for string
-        array allocations.
+    StringArrayAllocator- Supplies a pointer to an allocator to use for string
+        array allocations.  If the allocator has not yet been initialized (as
+        indicated by a NULL value in the Context field), the standard string
+        table allocator initialization routine will be called against the
+        structure first.
 
-    StringTableAllocator - Supplies a pointer to an allocator to use for string
-        table allocations.
+    StringTableAllocator- Supplies a pointer to an allocator to use for string
+        table allocations.  If the allocator has not yet been initialized (as
+        indicated by a NULL value in the Context field), the standard string
+        table allocator initialization routine will be called against the
+        structure first.
 
     SessionPointer - Supplies a pointer that will receive the address of the
         DEBUG_ENGINE_SESSION structure allocated.  This pointer is immediately
@@ -2159,6 +2214,7 @@ See Also:
     HMODULE Module = NULL;
     HMODULE StringTableModule = NULL;
     PINITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
 
     //
     // Validate arguments.
@@ -2173,6 +2229,14 @@ See Also:
     }
 
     if (!ARGUMENT_PRESENT(SessionPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
         return FALSE;
     }
 
@@ -2192,7 +2256,7 @@ See Also:
     }
 
     //
-    // Resolve the initialize and destroy functions.
+    // Resolve the initialize function.
     //
 
     InitializeDebugEngineSession = (PINITIALIZE_DEBUG_ENGINE_SESSION)(
@@ -2217,6 +2281,42 @@ See Also:
         LastError = GetLastError();
         OutputDebugStringA("Failed to load StringTable.dll.\n");
         goto Error;
+    }
+
+    //
+    // Resolve the StringTable's custom allocator initialization function.
+    //
+
+    InitializeStringTableAllocator = (PINITIALIZE_STRING_TABLE_ALLOCATOR)(
+        GetProcAddress(
+            StringTableModule,
+            "InitializeStringTableAllocator"
+        )
+    );
+
+    if (!InitializeStringTableAllocator) {
+        OutputDebugStringA("Failed to resolve InitializeStringTableAllocator\n");
+        goto Error;
+    }
+
+    //
+    // If either of the allocators have not yet been initialized (as indicated
+    // by a NULL value in the Context field), initialize them now with the
+    // string table allocator.
+    //
+
+    if (!StringArrayAllocator->Context) {
+        CHECKED_MSG(
+            InitializeStringTableAllocator(StringArrayAllocator),
+            "InitializeStringTableAllocator(StringArrayAllocator)"
+        );
+    }
+
+    if (!StringTableAllocator->Context) {
+        CHECKED_MSG(
+            InitializeStringTableAllocator(StringTableAllocator),
+            "InitializeStringTableAllocator(StringTableAllocator)"
+        );
     }
 
     //

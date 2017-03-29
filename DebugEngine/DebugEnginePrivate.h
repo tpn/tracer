@@ -256,6 +256,37 @@ typedef union _DEBUG_ENGINE_FLAGS {
 } DEBUG_ENGINE_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_FLAGS) == sizeof(ULONG));
 
+//
+// This captures state information about the current debug engine session.
+// It is currently used to coordinate behavior in event callbacks.
+//
+
+typedef union _DEBUG_ENGINE_STATE {
+    LONG AsLong;
+    ULONG AsULong;
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Transient state flags.
+        //
+
+        ULONG RegisteringEventCallbacks:1;
+        ULONG CreatingProcess:1;
+        ULONG InCreateProcessCallback:1;
+
+        //
+        // Final state flags.
+        //
+
+        ULONG EventCallbacksRegistered:1;
+        ULONG ProcessCreated:1;
+
+    };
+} DEBUG_ENGINE_STATE;
+C_ASSERT(sizeof(DEBUG_ENGINE_STATE) == sizeof(ULONG));
+typedef DEBUG_ENGINE_STATE
+      *PDEBUG_ENGINE_STATE;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
 
     //
@@ -269,6 +300,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     //
 
     DEBUG_ENGINE_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    DEBUG_ENGINE_STATE State;
 
     //
     // Pointer to an initialized RTL structure.
@@ -404,7 +441,7 @@ _Requires_exclusive_lock_held_(Engine->Lock)
 BOOL
 (DEBUG_ENGINE_SET_EVENT_CALLBACKS)(
     _In_ PDEBUG_ENGINE Engine,
-    _In_ PDEBUGEVENTCALLBACKS EventCallbacks,
+    _In_ PCDEBUGEVENTCALLBACKS EventCallbacks,
     _In_ PCGUID InterfaceId,
     _In_ DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask
     );
@@ -501,7 +538,7 @@ CopyIDebugEventCallbacks(
 {
     UNREFERENCED_PARAMETER(Engine);
     __movsq((PDWORD64)Dest,
-            (PDWORD64)&Source,
+            (PDWORD64)Source,
             QUADWORD_SIZEOF(DEBUGEVENTCALLBACKS));
 }
 
@@ -516,7 +553,7 @@ CopyIDebugInputCallbacks(
 {
     UNREFERENCED_PARAMETER(Engine);
     __movsq((PDWORD64)Dest,
-            (PDWORD64)&Source,
+            (PDWORD64)Source,
             QUADWORD_SIZEOF(DEBUGINPUTCALLBACKS));
 }
 
@@ -658,6 +695,8 @@ DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
 DEBUG_ENGINE_SETTINGS_META DebugEngineSettingsMeta;
 DEBUG_ENGINE_LIST_SETTINGS DebugEngineListSettings;
 DEBUG_ENGINE_LOAD_SETTINGS DebugEngineLoadSettings;
+
+DEBUG_ENGINE_SET_EVENT_CALLBACKS DebugEngineSetEventCallbacks;
 
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS DebugEngineSetOutputCallbacks;
 DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2 DebugEngineSetOutputCallbacks2;

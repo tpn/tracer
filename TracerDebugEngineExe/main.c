@@ -24,6 +24,9 @@ Main(VOID)
     PRTL Rtl;
     ULONG ExitCode;
     ALLOCATOR Allocator;
+    ALLOCATOR StringTableAllocator;
+    ALLOCATOR StringArrayAllocator;
+
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING RegistryPath;
     PUNICODE_STRING DebugEngineDllPath;
@@ -39,6 +42,13 @@ Main(VOID)
     if (!DefaultHeapInitializeAllocator(&Allocator)) {
         goto Error;
     }
+
+    //
+    // Zero the allocators for the StringTable component.
+    //
+
+    SecureZeroMemory(&StringArrayAllocator, sizeof(StringArrayAllocator));
+    SecureZeroMemory(&StringTableAllocator, sizeof(StringTableAllocator));
 
     //
     // Initialize TracerConfig and Rtl.
@@ -62,16 +72,18 @@ Main(VOID)
 
     InitFlags.InitializeFromCommandLine = TRUE;
     DebugEngineDllPath = &TracerConfig->Paths.DebugEngineDllPath;
-    Success = LoadAndInitializeDebugEngineSession(DebugEngineDllPath,
-                                                  Rtl,
-                                                  &Allocator,
-                                                  InitFlags,
-                                                  TracerConfig,
-                                                  NULL,
-                                                  NULL,
-                                                  NULL,
-                                                  &Session,
-                                                  &DestroyDebugEngineSession);
+    Success = LoadAndInitializeDebugEngineSession(
+        DebugEngineDllPath,
+        Rtl,
+        &Allocator,
+        InitFlags,
+        TracerConfig,
+        &TracerConfig->Paths.StringTableDllPath,
+        &StringArrayAllocator,
+        &StringTableAllocator,
+        &Session,
+        &DestroyDebugEngineSession
+    );
 
     if (!Success) {
         OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.\n");
