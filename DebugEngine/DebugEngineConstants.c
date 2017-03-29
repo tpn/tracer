@@ -270,4 +270,25 @@ CONST STRING FunctionArgumentVectorTypes1 = RTL_CONSTANT_STRING(
     DSTR("__m256")
 );
 
+//
+// Command line-related strings.
+//
+
+CONST STRING CommandLineOptions = RTL_CONSTANT_STRING(
+    DSTR("-p")
+    DSTR("--pid")
+    DSTR("-c")
+    DSTR("--commandline")
+);
+
+CONST SHORT CommandLineMatchIndexToOption[] = {
+    PidCommandLineOption,
+    PidCommandLineOption,
+    CommandLineCommandLineOption,
+    CommandLineCommandLineOption,
+};
+
+CONST USHORT NumberOfCommandLineMatchIndexOptions =
+    ARRAYSIZE(CommandLineMatchIndexToOption);
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

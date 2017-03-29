@@ -17,6 +17,9 @@ Abstract:
 
 #include "stdafx.h"
 
+#define DEBUG_ENGINE_USAGE_STRING \
+    "Invalid usage.  Usage: "     \
+    "[-p|--pid <pid>]|[-c|--commandline <command line string>]"
 
 _Use_decl_annotations_
 BOOL
@@ -37,8 +40,8 @@ Arguments:
 
     Allocator - Supplies a pointer to an ALLOCATOR structure.
 
-    EnginePointer - Supplies an address to a variable that will receive the
-        address of the newly created debug client.
+    Session - Supplies a pointer to the debug engine session being initialized.
+        The command line options string table must have already been created.
 
 Return Value:
 
@@ -47,9 +50,40 @@ Return Value:
 --*/
 {
     BOOL Success;
+    //PCHAR Char;
+    //PCHAR End;
+    PCHAR OptionA;
     NTSTATUS Status;
+    SHORT MatchIndex;
+    SHORT MaxMatchIndex;
+    STRING_MATCH Match;
+    STRING OptionString;
+    //LONG BytesRemaining;
     HMODULE Shell32Module = NULL;
+    PSTRING_TABLE StringTable;
+    DEBUG_ENGINE_COMMAND_LINE_OPTION Option;
     PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Session)) {
+        return FALSE;
+    }
+
+    //
+    // Extract the command line for the current process.
+    //
 
     LOAD_LIBRARY_A(Shell32Module, Shell32);
 
@@ -77,31 +111,70 @@ Return Value:
         "Rtl!ArgvWToArgA"
     );
 
-    CHECKED_MSG(Session->NumberOfArguments == 2,
-                "Invalid usage.  Usage: TracerDebugEngine <pid>");
+    CHECKED_MSG(Session->NumberOfArguments >= 3, DEBUG_ENGINE_USAGE_STRING);
 
     //
-    // Extract the process ID to attach to.
+    // Extract the ANSI version of the first argument (which should be one of
+    // the command options), convert it into a STRING representation, then do
+    // a lookup in the string table.
     //
 
-    CHECKED_NTSTATUS_MSG(
-        Rtl->RtlCharToInteger(
-            Session->ArgvA[1],
-            10,
-            &Session->TargetProcessId
-        ),
-        "Rtl->RtlCharToInteger(ArgvA[1])"
-    );
+    OptionA = Session->ArgvA[1];
+    OptionString.Buffer = OptionA;
+    OptionString.Length = (USHORT)strlen(OptionA);
+    OptionString.MaximumLength = OptionString.Length;
 
-    //
-    // Try open a handle to the process with all access.
-    //
+    StringTable = Session->CommandLineOptionsStringTable;
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
 
-    Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
-                                               TRUE,
-                                               Session->TargetProcessId);
-    if (!Session->TargetProcessHandle) {
-        OutputDebugStringA("DbgEng:OpenProcess(PROCESS_ALL_ACCESS) failed.");
+    MatchIndex = IsPrefixOfStringInTable(StringTable, &OptionString, &Match);
+
+    CHECKED_MSG(MatchIndex != NO_MATCH_FOUND, DEBUG_ENGINE_USAGE_STRING);
+
+    MaxMatchIndex = NumberOfCommandLineMatchIndexOptions;
+
+    if (MatchIndex > MaxMatchIndex) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Option = CommandLineMatchIndexToOption[MatchIndex];
+
+    switch (Option) {
+
+        case PidCommandLineOption:
+
+            //
+            // Extract the process ID to attach to.
+            //
+
+            CHECKED_NTSTATUS_MSG(
+                Rtl->RtlCharToInteger(
+                    Session->ArgvA[2],
+                    10,
+                    &Session->TargetProcessId
+                ),
+                "Rtl->RtlCharToInteger(ArgvA[1])"
+            );
+
+            Session->Flags.AttachedToExistingProcess = TRUE;
+
+            break;
+
+        case CommandLineCommandLineOption:
+
+            Session->TargetCommandLineA = Session->ArgvA[2];
+            Session->Flags.CreatedNewProcess = TRUE;
+            break;
+
+        default:
+
+            //
+            // This should be unreachable.
+            //
+
+            __debugbreak();
+            return FALSE;
     }
 
     Success = TRUE;
@@ -120,7 +193,6 @@ End:
 
     return Success;
 }
-
 
 _Use_decl_annotations_
 BOOL
@@ -226,6 +298,27 @@ Return Value:
     }
 
     //
+    // Validate initialization flags.
+    //
+
+    if (!InitFlags.InitializeFromCommandLine &&
+        !InitFlags.InitializeFromCurrentProcess) {
+        OutputDebugStringA("DebugEngine: Invalid InitFlags.\n");
+        return FALSE;
+    }
+
+    //
+    // Parsing the command line requires a string table; make sure we can create
+    // one if applicable.
+    //
+
+    if (InitFlags.InitializeFromCommandLine &&
+        !CreateStringTableFromDelimitedString) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
     // Initialize our __C_specific_handler from Rtl.
     //
 
@@ -304,28 +397,6 @@ Return Value:
     //
 
     CHECKED_MSG(InitializeDebugEngine(Rtl, Engine), "InitializeDebugEngine()");
-
-    if (InitFlags.InitializeFromCommandLine) {
-        CHECKED_MSG(
-            InitializeFromCommandLine(
-                Rtl,
-                Allocator,
-                Session
-            ),
-            "InitializeDebugEngine()->FromCommandLine"
-        );
-        Session->Flags.OutOfProc = TRUE;
-    } else if (InitFlags.InitializeFromCurrentProcess) {
-        Session->TargetProcessId = FastGetCurrentProcessId();
-        Session->Flags.InProc = TRUE;
-    }
-
-    Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
-                                               TRUE,
-                                               Session->TargetProcessId);
-    if (!Session->TargetProcessHandle) {
-        OutputDebugStringA("DbgEng:OpenProcess(PROCESS_ALL_ACCESS) failed.");
-    }
 
     //
     // Set the command function pointers.
@@ -481,57 +552,183 @@ Return Value:
         //
 
         Session->NumberOfFunctionArgumentTypeStringTables = 2;
+
+        //
+        // If we're initializing from the command line, create the command line
+        // options string table.
+        //
+
+        if (InitFlags.InitializeFromCommandLine) {
+
+            Session->CommandLineOptionsStringTable = (
+                CreateStringTableFromDelimitedString(
+                    Rtl,
+                    StringTableAllocator,
+                    StringArrayAllocator,
+                    &CommandLineOptions,
+                    StringTableDelimiter
+                )
+            );
+
+        }
     }
 
-    //
-    // Attach to the process with the debug client.
-    //
+    if (InitFlags.InitializeFromCommandLine) {
+
+        CHECKED_MSG(
+            InitializeFromCommandLine(
+                Rtl,
+                Allocator,
+                Session
+            ),
+            "InitializeDebugEngine()->FromCommandLine"
+        );
+        Session->Flags.OutOfProc = TRUE;
+
+    } else if (InitFlags.InitializeFromCurrentProcess) {
+
+        Session->TargetProcessId = FastGetCurrentProcessId();
+        Session->Flags.InProc = TRUE;
+        Session->Flags.AttachedToExistingProcess = TRUE;
+
+    }
 
     Client = Engine->Client;
     IClient = Engine->IClient;
 
-    CHECKED_HRESULT_MSG(
-        Client->AttachProcess(
-            IClient,
-            0,
-            Session->TargetProcessId,
-            DEBUG_ATTACH_NONINVASIVE |
-            DEBUG_ATTACH_NONINVASIVE_NO_SUSPEND
-        ),
-        "IDebugClient->AttachProcess()"
-    );
+    if (Session->Flags.AttachedToExistingProcess) {
 
-    CHECKED_HRESULT_MSG(
-        Engine->Control->WaitForEvent(
-            Engine->IControl,
-            0,
-            0
-        ),
-        "Control->WaitForEvent()"
-    );
+        //
+        // Attach to the process with the debug client.
+        //
 
-    CHECKED_HRESULT_MSG(
-        Engine->Control->GetExecutionStatus(
-            Engine->IControl,
-            &ExecutionStatus
-        ),
-        "Control->GetExecutionStatus()"
-    );
+        CHECKED_HRESULT_MSG(
+            Client->AttachProcess(
+                IClient,
+                0,
+                Session->TargetProcessId,
+                DEBUG_ATTACH_NONINVASIVE |
+                DEBUG_ATTACH_NONINVASIVE_NO_SUSPEND
+            ),
+            "IDebugClient->AttachProcess()"
+        );
 
-    //
-    // Attempt to resolve Rtl.
-    //
+        CHECKED_HRESULT_MSG(
+            Engine->Control->WaitForEvent(
+                Engine->IControl,
+                0,
+                0
+            ),
+            "Control->WaitForEvent()"
+        );
 
-    CHECKED_HRESULT_MSG(
-        Engine->Symbols->GetModuleByModuleName(
-            Engine->ISymbols,
-            "Rtl",
-            0,
-            &ModuleIndex,
-            &ModuleBaseAddress
-        ),
-        "Symbols->GetModuleByModuleName('Rtl')"
-    );
+        CHECKED_HRESULT_MSG(
+            Engine->Control->GetExecutionStatus(
+                Engine->IControl,
+                &ExecutionStatus
+            ),
+            "Control->GetExecutionStatus()"
+        );
+
+        //
+        // Attempt to resolve Rtl.
+        //
+
+        CHECKED_HRESULT_MSG(
+            Engine->Symbols->GetModuleByModuleName(
+                Engine->ISymbols,
+                "Rtl",
+                0,
+                &ModuleIndex,
+                &ModuleBaseAddress
+            ),
+            "Symbols->GetModuleByModuleName('Rtl')"
+        );
+
+    } else if (Session->Flags.CreatedNewProcess) {
+
+        DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask;
+
+        //
+        // Register event callbacks.
+        //
+
+        Engine->State.RegisteringEventCallbacks = TRUE;
+
+        InterestMask.AsULong = (
+            DEBUG_EVENT_BREAKPOINT          |
+            DEBUG_EVENT_EXCEPTION           |
+            DEBUG_EVENT_CREATE_THREAD       |
+            DEBUG_EVENT_EXIT_THREAD         |
+            DEBUG_EVENT_CREATE_PROCESS      |
+            DEBUG_EVENT_EXIT_PROCESS        |
+            DEBUG_EVENT_LOAD_MODULE         |
+            DEBUG_EVENT_UNLOAD_MODULE       |
+            DEBUG_EVENT_SYSTEM_ERROR        |
+            DEBUG_EVENT_CHANGE_SYMBOL_STATE
+        );
+
+        //
+        // DebugEngineSetEventCallbacks() will attempt to acquire the engine
+        // lock, so release it now first.
+        //
+
+        ReleaseDebugEngineLock(Engine);
+
+        CHECKED_MSG(
+            DebugEngineSetEventCallbacks(
+                Engine,
+                &DebugEventCallbacks,
+                &IID_IDEBUG_EVENT_CALLBACKS,
+                InterestMask
+            ),
+            "DebugEngineSetEventCallbacks()"
+        );
+
+        //
+        // Re-acquire the lock.
+        //
+
+        AcquireDebugEngineLock(Engine);
+
+        Engine->State.EventCallbacksRegistered = TRUE;
+        Engine->State.RegisteringEventCallbacks = FALSE;
+
+        //
+        // Create a new process based on the target command line extracted
+        // from this process's command line.
+        //
+
+        Engine->State.CreatingProcess = TRUE;
+
+        CHECKED_HRESULT_MSG(
+            Client->CreateProcess(
+                IClient,
+                0,
+                (PSTR)Session->TargetCommandLineA,
+                DEBUG_PROCESS | CREATE_SUSPENDED
+            ),
+            "DebugEngine: Client->CreateProcess"
+        );
+
+        Engine->State.CreatingProcess = FALSE;
+        Engine->State.ProcessCreated = TRUE;
+
+        //
+        // XXX TODO: CreateProcess() callback doesn't get called, should it?
+        // __debugbreak() here for now.
+        //
+
+        __debugbreak();
+    }
+
+    Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
+                                               TRUE,
+                                               Session->TargetProcessId);
+
+    if (!Session->TargetProcessHandle) {
+        OutputDebugStringA("DbgEng:OpenProcess(PROCESS_ALL_ACCESS) failed.");
+    }
 
     //
     // If a debug settings XML path has been indicated, try load it now.
@@ -603,4 +800,4 @@ End:
     return Success;
 }
 
-// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
+// im:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

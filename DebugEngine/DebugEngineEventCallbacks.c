@@ -19,7 +19,7 @@ _Use_decl_annotations_
 BOOL
 DebugEngineSetEventCallbacks(
     PDEBUG_ENGINE Engine,
-    PDEBUGEVENTCALLBACKS EventCallbacks,
+    PCDEBUGEVENTCALLBACKS EventCallbacks,
     PCGUID InterfaceId,
     DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask
     )
@@ -47,6 +47,16 @@ Return Value:
     //
 
     AcquireDebugEngineLock(Engine);
+
+    if (InlineIsEqualGUID(&Engine->IID_CurrentEventCallbacks, InterfaceId)) {
+
+        //
+        // The event callbacks are already set.
+        //
+
+        Success = TRUE;
+        goto End;
+    }
 
     //
     // Copy the interest mask.
