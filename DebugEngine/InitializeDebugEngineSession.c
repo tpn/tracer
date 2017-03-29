@@ -50,15 +50,12 @@ Return Value:
 --*/
 {
     BOOL Success;
-    //PCHAR Char;
-    //PCHAR End;
     PCHAR OptionA;
     NTSTATUS Status;
     SHORT MatchIndex;
     SHORT MaxMatchIndex;
     STRING_MATCH Match;
     STRING OptionString;
-    //LONG BytesRemaining;
     HMODULE Shell32Module = NULL;
     PSTRING_TABLE StringTable;
     DEBUG_ENGINE_COMMAND_LINE_OPTION Option;
@@ -381,6 +378,12 @@ Return Value:
             sizeof(DEBUG_ENGINE_SESSION)
         )
     );
+
+    //
+    // Point the engine at the session.
+    //
+
+    Engine->Session = Session;
 
     //
     // Initialize and acquire the debug engine lock.
@@ -706,7 +709,8 @@ Return Value:
                 IClient,
                 0,
                 (PSTR)Session->TargetCommandLineA,
-                DEBUG_PROCESS | CREATE_SUSPENDED
+                //DEBUG_PROCESS | CREATE_SUSPENDED
+                DEBUG_PROCESS
             ),
             "DebugEngine: Client->CreateProcess"
         );
@@ -715,19 +719,29 @@ Return Value:
         Engine->State.ProcessCreated = TRUE;
 
         //
-        // XXX TODO: CreateProcess() callback doesn't get called, should it?
-        // __debugbreak() here for now.
+        // The debugger engine doesn't complete its connection until we call
+        // WaitForEvent().  Do that now.
         //
 
-        __debugbreak();
-    }
+        Result = Engine->Control->WaitForEvent(Engine->IControl, 0, 0);
 
-    Session->TargetProcessHandle = OpenProcess(PROCESS_ALL_ACCESS,
-                                               TRUE,
-                                               Session->TargetProcessId);
+        if (Result != S_OK && Result != S_FALSE) {
+            OutputDebugStringA("Failed: Control->WaitForEvent().\n");
+            goto Error;
+        }
 
-    if (!Session->TargetProcessHandle) {
-        OutputDebugStringA("DbgEng:OpenProcess(PROCESS_ALL_ACCESS) failed.");
+        //
+        // Get the execution status.
+        //
+
+        CHECKED_HRESULT_MSG(
+            Engine->Control->GetExecutionStatus(
+                Engine->IControl,
+                &ExecutionStatus
+            ),
+            "Control->GetExecutionStatus()"
+        );
+
     }
 
     //
@@ -784,12 +798,6 @@ Return Value:
 
 Error:
     Success = FALSE;
-
-    if (Session) {
-        MAYBE_CLOSE_HANDLE(Session->TargetProcessHandle);
-    }
-
-    //MAYBE_FREE_POINTER(Session, Allocator);
 
 End:
 
