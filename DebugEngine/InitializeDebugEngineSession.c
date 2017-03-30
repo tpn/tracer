@@ -233,7 +233,8 @@ Arguments:
         use for string table allocations.
 
     SessionPointer - Supplies an address to a variable that will receive the
-        address of the newly DEBUG_ENGINE_SESSION structure.
+        address of the newly allocated and initialized DEBUG_ENGINE_SESSION
+        structure.
 
 Return Value:
 
