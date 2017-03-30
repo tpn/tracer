@@ -202,6 +202,68 @@ Main(VOID)
     //      structure and then simply set RCX in the CreateThread() callback.
     //
 
+    //
+    // Follow-up thoughts.
+    //
+    //  1.  We should probably let individual modules (e.g. TracedPythonSession)
+    //      decide whether or not they want to start tracing at the LoadModule
+    //      or CreateProcess callback event level.
+    //
+    //  2.  Actually, it could be made even more generic than "want to start
+    //      tracing".  *All* debug event calls (CreateProcess, LoadModule,
+    //      CreateThread etc) can be forwarded to all registered modules (i.e.
+    //      we call their callbacks).  If they're interested in the event, they
+    //      can request for a remote thread to be created, a DLL injected, then
+    //      a function called (with an optional context) once an event has been
+    //      set (i.e. same process as outlined above).
+    //
+    //      typedef _RTL_INJECTION_PACKET {
+    //          RTL_INJECTION_FLAGS Flags;
+    //          UNICODE_STRING Path;
+    //          STRING ProcName;
+    //          UNICODE_STRING EventName;
+    //          ULONG SizeOfBufferInBytes;
+    //          PVOID Buffer;
+    //      } RTL_INJECTION_PACKET;
+    //
+    //
+    //      typedef _RTL_INJECTION_CONTEXT {
+    //          PLOAD_LIBRARY LoadLibrary;
+    //          PGET_PROC_ADDRESS GetProcAddress;
+    //          POPEN_EVENT OpenEvent;
+    //          PCLOSE_EVENT CloseEvent;
+    //          PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
+    //          PRTL_INJECTION_FUNCTION InjectionFunction;
+    //
+    //          //
+    //          // Information about the source module (e.g.
+    //          // TracedPythonSession).
+    //          //
+    //
+    //          HMODULE SourceModule;
+    //
+    //          //
+    //          // Target information.
+    //          //
+    //
+    //          ULONG TargetProcessId;
+    //          ULONG TargetThreadId;
+    //
+    //          HANDLE TargetProcessHandle;
+    //          HANDLE TargetThreadHandle;
+    //
+    //          //
+    //          // Packet information.
+    //          //
+    //
+    //          RTL_INJECTION_PACKET Packet;
+    //
+    //      } RTL_INJECTION_CONTEXT;
+    //
+    //      Rtl->CreateRemoteThreadAndInjectDll()
+    //
+    //
+
     while (TRUE) {
         Result = Session->WaitForEvent(Session, 0, INFINITE);
 
