@@ -162,6 +162,7 @@ Return Value:
 
             Session->TargetCommandLineA = Session->ArgvA[2];
             Session->Flags.CreatedNewProcess = TRUE;
+
             break;
 
         default:
