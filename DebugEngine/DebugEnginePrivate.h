@@ -347,6 +347,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     PIDEBUGDATASPACES IDataSpaces;
     PDEBUGDATASPACES DataSpaces;
 
+    PCGUID IID_Registers;
+    PIDEBUGREGISTERS IRegisters;
+    PDEBUGREGISTERS Registers;
+
     //
     // Client/Control state.
     //

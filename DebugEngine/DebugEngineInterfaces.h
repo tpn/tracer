@@ -537,9 +537,9 @@ IsExplictFlush(
     return (OutputType == DebugOutputExplicitFlush);
 }
 
-//
-// Define typedefs for the COM interfaces we want to use.
-//
+////////////////////////////////////////////////////////////////////////////////
+// COM Type Definitions
+////////////////////////////////////////////////////////////////////////////////
 
 //
 // IDebugAdvanced4
@@ -648,6 +648,28 @@ typedef IDEBUGDATASPACES **PPIDEBUGDATASPACES;
 typedef IDEBUGDATASPACES4VTBL   DEBUGDATASPACES;
 typedef DEBUGDATASPACES      *PDEBUGDATASPACES;
 typedef DEBUGDATASPACES    **PPDEBUGDATASPACES;
+
+//
+// IDebugRegisters2
+//
+
+typedef struct IDebugRegisters2 IDEBUGREGISTERS2;
+typedef IDEBUGREGISTERS2 *PIDEBUGREGISTERS2;
+
+typedef struct IDebugRegisters2Vtbl IDEBUGREGISTERS2VTBL;
+typedef IDEBUGREGISTERS2VTBL *PIDEBUGREGISTERS2VTBL;
+
+typedef IDEBUGREGISTERS2     IDEBUGREGISTERS;
+typedef IDEBUGREGISTERS   *PIDEBUGREGISTERS;
+typedef IDEBUGREGISTERS **PPIDEBUGREGISTERS;
+
+typedef IDEBUGREGISTERS2VTBL   DEBUGREGISTERS;
+typedef DEBUGREGISTERS      *PDEBUGREGISTERS;
+typedef DEBUGREGISTERS    **PPDEBUGREGISTERS;
+
+////////////////////////////////////////////////////////////////////////////////
+// COM Callback Type Definitions
+////////////////////////////////////////////////////////////////////////////////
 
 //
 // IDebugEventCallbacks
