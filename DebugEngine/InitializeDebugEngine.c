@@ -26,8 +26,8 @@ Routine Description:
 
     This routine initializes a DEBUG_ENGINE structure.  CoInitializeEx() is
     called with COINIT_APARTMENTTHREADED, and then COM interfaces are created
-    for IDebugClient, IDebugControl, IDebugSymbols, IDebugAdvanced, and
-    IDebugDataSpaces.
+    for IDebugClient, IDebugControl, IDebugSymbols, IDebugAdvanced,
+    IDebugRegisters and IDebugDataSpaces.
 
 Arguments:
 
@@ -71,6 +71,7 @@ Return Value:
     CREATE_INTERFACE(Control, CONTROL);
     CREATE_INTERFACE(Symbols, SYMBOLS);
     CREATE_INTERFACE(Advanced, ADVANCED);
+    CREATE_INTERFACE(Registers, REGISTERS);
     CREATE_INTERFACE(DataSpaces, DATASPACES);
 
     //
