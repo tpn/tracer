@@ -303,9 +303,33 @@ DebugEventCreateProcessCallback(
     ULONG64 StartOffset
     )
 {
+    BOOL Success;
+    UNICODE_STRING Module;
     DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Session->TargetMainThreadHandle = (HANDLE)InitialThreadHandle;
+
+    //
+    // If an initial module name hasn't been set, do it now.
+    //
+
+    if (!Session->InitialModuleNameW.Length) {
+
+        Module.Length = (USHORT)(wcslen(ModuleName) << 1);
+        Module.MaximumLength = Module.Length;
+        Module.Buffer = (PWSTR)ModuleName;
+
+        Success = AllocateAndCopyUnicodeString(
+            Session->Allocator,
+            &Module,
+            &Session->InitialModuleNameW
+        );
+
+        if (!Success) {
+            OutputDebugStringA("Failed: CreateProcessCallback->"
+                               "AllocateAndCopyWideString()");
+        }
+    }
 
     return DEBUG_STATUS_NO_CHANGE;
 }
