@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the DLL main entry point for the Trl DLL.
+    This is the DLL main entry point for the TracerCore DLL.
 
 --*/
 

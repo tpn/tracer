@@ -44,8 +44,8 @@ CONST UNICODE_STRING AsmDllPath = \
 CONST UNICODE_STRING RtlDllPath = \
     RTL_CONSTANT_STRING(L"Rtl.dll");
 
-CONST UNICODE_STRING TrlDllPath = \
-    RTL_CONSTANT_STRING(L"Trl.dll");
+CONST UNICODE_STRING TracerCoreDllPath = \
+    RTL_CONSTANT_STRING(L"TracerCore.dll");
 
 CONST UNICODE_STRING PythonDllPath = \
     RTL_CONSTANT_STRING(L"Python.dll");
@@ -82,8 +82,8 @@ CONST PUNICODE_STRING IntermediatePaths[] = {
 CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY DllPathOffsets[] = {
     { FIELD_OFFSET(TRACER_PATHS, AsmDllPath),           &AsmDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
-    { FIELD_OFFSET(TRACER_PATHS, TrlDllPath),           &TrlDllPath           },
     { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
+    { FIELD_OFFSET(TRACER_PATHS, TracerCoreDllPath),    &TracerCoreDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, TracerHeapDllPath),    &TracerHeapDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
     { FIELD_OFFSET(TRACER_PATHS, DebugEngineDllPath),   &DebugEngineDllPath   },

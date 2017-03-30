@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled source file for the Trl component.
+    This is the precompiled source file for the TracerCore component.
 
 --*/
 

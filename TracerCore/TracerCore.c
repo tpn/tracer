@@ -4,12 +4,11 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    Trl.c
+    TracerCore.c
 
 Abstract:
 
-    This module provides routines for the Trl (Tracer Runtime Library)
-    component.
+    This module provides routines for the TracerCore component.
 
 --*/
 
@@ -17,9 +16,9 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-TRL_CALL_CONV
-InitializeTrl(
-    PTRL Trl,
+TRACER_CORE_CALL_CONV
+InitializeTracerCore(
+    PTRACER_CORE TracerCore,
     PULONG SizeInBytes
     )
 {
