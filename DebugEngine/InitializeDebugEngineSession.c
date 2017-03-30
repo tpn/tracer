@@ -246,6 +246,7 @@ Return Value:
     BOOL AcquiredLock = FALSE;
     HRESULT Result;
     ULONG ExecutionStatus;
+    ULONG CreateProcessFlags;
     LONG_INTEGER AllocSizeInBytes;
     PDEBUGCLIENT Client;
     PIDEBUGCLIENT IClient;
@@ -675,6 +676,28 @@ Return Value:
         );
 
         //
+        // The following block can be useful during debugging to quickly
+        // toggle interest masks on and off.
+        //
+
+        if (0) {
+            InterestMask.AsULong = 0;
+            InterestMask.Breakpoint = TRUE;
+            InterestMask.Exception = TRUE;
+            InterestMask.CreateThread = TRUE;
+            InterestMask.ExitThread = TRUE;
+            InterestMask.CreateProcess = TRUE;
+            InterestMask.ExitProcess = TRUE;
+            InterestMask.LoadModule = TRUE;
+            InterestMask.UnloadModule = TRUE;
+            InterestMask.SystemError = TRUE;
+            InterestMask.SessionStatus = TRUE;
+            InterestMask.ChangeDebuggeeState = TRUE;
+            InterestMask.ChangeEngineState = TRUE;
+            InterestMask.ChangeSymbolState = TRUE;
+        }
+
+        //
         // DebugEngineSetEventCallbacks() will attempt to acquire the engine
         // lock, so release it now first.
         //
@@ -707,13 +730,18 @@ Return Value:
 
         Engine->State.CreatingProcess = TRUE;
 
+        CreateProcessFlags = (
+            DEBUG_PROCESS    |
+            CREATE_SUSPENDED |
+            DEBUG_ECREATE_PROCESS_INHERIT_HANDLES
+        );
+
         CHECKED_HRESULT_MSG(
             Client->CreateProcess(
                 IClient,
                 0,
                 (PSTR)Session->TargetCommandLineA,
-                //DEBUG_PROCESS | CREATE_SUSPENDED
-                DEBUG_PROCESS | DEBUG_ECREATE_PROCESS_INHERIT_HANDLES
+                CreateProcessFlags
             ),
             "DebugEngine: Client->CreateProcess"
         );
