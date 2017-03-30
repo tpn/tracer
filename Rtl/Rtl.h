@@ -184,6 +184,14 @@ extern "C" {
 #define DECLSPEC_THREAD __declspec(thread)
 #endif
 
+#ifndef DECLSPEC_DLLEXPORT
+#define DECLSPEC_DLLEXPORT __declspec(dllexport)
+#endif
+
+#ifndef DECLSPEC_DLLIMPORT
+#define DECLSPEC_DLLIMPORT __declspec(dllimport)
+#endif
+
 #ifndef RtlUpcaseChar
 #define RtlUpcaseChar(C)                                         \
     (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
