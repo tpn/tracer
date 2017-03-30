@@ -99,6 +99,9 @@
       <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="TracedPythonExe.def" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

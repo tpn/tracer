@@ -16,6 +16,7 @@ Abstract:
 
 #include "stdafx.h"
 
+DECLSPEC_DLLEXPORT
 ULONG
 Main(VOID)
 {
