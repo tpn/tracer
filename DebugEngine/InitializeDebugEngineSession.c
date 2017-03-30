@@ -395,6 +395,7 @@ Return Value:
     AcquiredLock = TRUE;
 
     Engine->SizeOfStruct = sizeof(*Engine);
+    Session->SizeOfStruct = sizeof(*Session);
 
     //
     // Initialize the debug engine and create the COM interfaces.
