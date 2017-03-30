@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled header file for the Trl component.
+    This is the precompiled header file for the TracerCore component.
 
 --*/
 
@@ -19,10 +19,10 @@ extern "C" {
 #endif
 
 #include "../Rtl/Rtl.h"
-#include "Trl.h"
+#include "TracerCore.h"
 
-#ifdef _TRL_INTERNAL_BUILD
-#include "TrlPrivate.h"
+#ifdef _TRACER_CORE_INTERNAL_BUILD
+#include "TracerCorePrivate.h"
 #endif
 
 #ifdef __cplusplus

@@ -85,7 +85,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerDebugEngineExe", "Tra
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DebugEngine", "DebugEngine\DebugEngine.vcxproj", "{9C21A82A-F8BD-41D5-A6FB-7B6F25F0C38F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Trl", "Trl\Trl.vcxproj", "{041D453B-0451-43D5-B4E6-074660EEE1BF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerCore", "TracerCore\TracerCore.vcxproj", "{041D453B-0451-43D5-B4E6-074660EEE1BF}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Asm", "Asm\Asm.vcxproj", "{A74874AC-5F74-42B8-9E94-4028DE4D1829}"
 EndProject

@@ -21,10 +21,10 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Trl.h">
+    <ClInclude Include="TracerCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TrlPrivate.h">
+    <ClInclude Include="TracerCorePrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Trl.c">
+    <ClCompile Include="TracerCore.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.c">
