@@ -731,8 +731,7 @@ Return Value:
         Engine->State.CreatingProcess = TRUE;
 
         CreateProcessFlags = (
-            DEBUG_PROCESS    |
-            CREATE_SUSPENDED |
+            DEBUG_PROCESS |
             DEBUG_ECREATE_PROCESS_INHERIT_HANDLES
         );
 
