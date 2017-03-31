@@ -74,6 +74,8 @@
     <ClInclude Include="AtExitEx.h" />
     <ClInclude Include="Commandline.h" />
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
+    <ClInclude Include="Injection.h" />
+    <ClInclude Include="InjectionPrivate.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlPrivate.h" />
     <ClInclude Include="stdafx.h" />
@@ -90,6 +92,7 @@
       <PrecompiledHeader />
     </ClCompile>
     <ClCompile Include="File.c" />
+    <ClCompile Include="Injection.c" />
     <ClCompile Include="Loader.c" />
     <ClCompile Include="Privilege.c" />
     <ClCompile Include="Registry.c" />
