@@ -269,6 +269,18 @@ VOID
     );
 typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
 
+//
+// Public symbol declarations.
+//
+
+#pragma component(browser, off)
+RTL_API RTL_CREATE_INJECTION_PACKET CreateInjectionPacket;
+RTL_API RTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;
+RTL_API RTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;
+RTL_API RTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;
+RTL_API RTL_INJECT Inject;
+#pragma component(browser, on)
+
 
 #ifdef __cplusplus
 } // extern "C" {

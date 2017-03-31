@@ -20,7 +20,7 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-RtlCreateInjectionPacket(
+CreateInjectionPacket(
     PRTL Rtl,
     PRTL_INJECTION_PACKET_FLAGS Flags,
     PCUNICODE_STRING ModulePath,
@@ -51,7 +51,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-RtlDestroyInjectionPacket(
+DestroyInjectionPacket(
     PRTL Rtl,
     PRTL_INJECTION_PACKET *PacketPointer
     )
@@ -74,7 +74,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-RtlAddInjectionPayload(
+AddInjectionPayload(
     PRTL Rtl,
     PRTL_INJECTION_PACKET Packet,
     PRTL_INJECTION_PAYLOAD Payload,
@@ -99,7 +99,7 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-RtlAddInjectionSymbols(
+AddInjectionSymbols(
     PRTL Rtl,
     PRTL_INJECTION_PACKET Packet,
     PRTL_INJECTION_SYMBOLS Symbols,
@@ -124,9 +124,9 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
-RtlInject(
+Inject(
     PRTL Rtl,
-    PRTL_INJECTION_PACKET Packet,
+    PCRTL_INJECTION_PACKET Packet,
     PRTL_INJECTION_ERROR InjectionError
     )
 /*++
