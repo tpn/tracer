@@ -43,17 +43,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{041D453B-0451-43D5-B4E6-074660EEE1BF}</ProjectGuid>
-    <RootNamespace>TracerCore</RootNamespace>
+    <ProjectGuid>{ED5C33CF-378C-44F1-9F48-931DC385A50B}</ProjectGuid>
+    <RootNamespace>TracerExe</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -61,27 +65,41 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <TargetName>tracer</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>TracerHeapLib.lib;TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CORE_INTERNAL_BUILD;_TRACER_CORE_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;_TRACER_CORE_NO_API_EXPORT_IMPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="TracerCore.h" />
-    <ClInclude Include="TracerCorePrivate.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="..\Rtl\__C_specific_handler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="dllmain.c" />
+    <ClCompile Include="..\TracerCore\TracerExeMain.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TracerCore.c" />
+    <ClCompile Include="main.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
+      <Project>{8a5aaec6-fb14-49c3-8837-fe8a54d23c1d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -19,6 +19,10 @@ extern "C" {
 #endif
 
 #include "../Rtl/Rtl.h"
+#include "../DebugEngine/DebugEngine.h"
+#include "../TraceStore/TraceStore.h"
+#include "../TracerHeap/TracerHeap.h"
+#include "../TracerConfig/TracerConfig.h"
 #include "TracerCore.h"
 
 #ifdef _TRACER_CORE_INTERNAL_BUILD

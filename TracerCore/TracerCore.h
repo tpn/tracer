@@ -60,11 +60,13 @@ extern "C" {
 //
 
 typedef union _TRACER_CORE_FLAGS {
-    ULONG AsLong;
     struct {
         ULONG Unused:1;
     };
-} TRACER_CORE_FLAGS; *PTRACER_CORE_FLAGS;
+    ULONG AsLong;
+} TRACER_CORE_FLAGS;
+
+typedef TRACER_CORE_FLAGS *PTRACER_CORE_FLAGS;
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_CORE {
 
@@ -87,11 +89,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_CORE {
 } TRACER_CORE, *PTRACER_CORE, **PPTRACER_CORE;
 
 typedef union _TRACER_CORE_INIT_FLAGS {
-    ULONG AsLong;
     struct {
         ULONG Unused:1;
     };
-} TRACER_CORE_INIT_FLAGS; *PTRACER_CORE_INIT_FLAGS;
+    ULONG AsLong;
+} TRACER_CORE_INIT_FLAGS;
+
+typedef TRACER_CORE_INIT_FLAGS *PTRACER_CORE_INIT_FLAGS;
 
 typedef
 _Check_return_
@@ -103,12 +107,21 @@ BOOL
     );
 typedef INITIALIZE_TRACER_CORE *PINITIALIZE_TRACER_CORE;
 
+typedef
+_Success_(return != 0)
+ULONG
+(CDECL TRACER_EXE_MAIN)(
+    VOID
+    );
+typedef TRACER_EXE_MAIN *PTRACER_EXE_MAIN;
+
 //
 // Public function declarations..
 //
 
 #pragma component(browser, off)
 TRACER_CORE_API INITIALIZE_TRACER_CORE InitializeTracerCore;
+TRACER_CORE_API TRACER_EXE_MAIN TracerExeMain;
 #pragma component(browser, on)
 
 #ifdef __cplusplus

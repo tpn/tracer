@@ -51,6 +51,8 @@ extern "C" {
 
 #endif
 
+#include "../Rtl/DisableWarnings.h"
+
 typedef struct _PAGE_COPY_TYPE {
     ULONG Movsb:1;
     ULONG Movsw:1;

@@ -22,6 +22,8 @@ InitializeTracerCore(
     PULONG SizeInBytes
     )
 {
+    UNREFERENCED_PARAMETER(TracerCore);
+    UNREFERENCED_PARAMETER(SizeInBytes);
     return TRUE;
 }
 

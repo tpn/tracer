@@ -43,14 +43,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{041D453B-0451-43D5-B4E6-074660EEE1BF}</ProjectGuid>
-    <RootNamespace>TracerCore</RootNamespace>
+    <ProjectGuid>{88DCC275-44FE-47B1-BDBB-FD5FB8D24ED7}</ProjectGuid>
+    <RootNamespace>TracerCoreLib</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -63,25 +63,21 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CORE_INTERNAL_BUILD;_TRACER_CORE_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_CORE_INTERNAL_BUILD;_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="TracerCore.h" />
-    <ClInclude Include="TracerCorePrivate.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
+    <ClInclude Include="../TracerCore/TracerCore.h" />
+    <ClInclude Include="../TracerCore/TracerCorePrivate.h" />
+    <ClInclude Include="../TracerCore/stdafx.h" />
+    <ClInclude Include="../TracerCore/targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="dllmain.c" />
-    <ClCompile Include="stdafx.c">
+    <ClCompile Include="../TracerCore/stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TracerCore.c" />
+    <ClCompile Include="../TracerCore/TracerCore.c" />
+    <ClCompile Include="../TracerCore/TracerExeMain.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
-  </ImportGroup>
 </Project>

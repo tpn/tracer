@@ -294,6 +294,8 @@ Return Value:
     DLL_NOTIFICATION_REASON Reason;
     DLL_NOTIFICATION_DATA Data;
 
+    UNREFERENCED_PARAMETER(Flags);
+
     //
     // Acquire the notification table's critical section.
     //
@@ -393,9 +395,9 @@ Return Value:
     //
 
     if (!Table->Flags.IsRegistered) {
-        ULONG Flags = 0;
+        ULONG LdrFlags = 0;
 
-        Result = Rtl->LdrRegisterDllNotification(Flags,
+        Result = Rtl->LdrRegisterDllNotification(LdrFlags,
                                                  Table->NotificationFunction,
                                                  Table,
                                                  &Table->Cookie);

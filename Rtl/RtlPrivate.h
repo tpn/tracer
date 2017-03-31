@@ -571,6 +571,27 @@ REMOVE_RTL_LDR_NOTIFICATION_ENTRY RemoveRtlLdrNotificationEntry;
 LDR_DLL_NOTIFICATION_FUNCTION LdrDllNotificationFunction;
 
 //
+// Injection-related typedefs.
+//
+
+typedef
+VOID
+(CALLBACK RTL_INJECTION_CALLBACK)(
+    _In_ struct _RTL_INJECTION_CONTEXT Context
+    );
+typedef RTL_INJECTION_CALLBACK *PRTL_INJECTION_CALLBACK;
+
+typedef union _RTL_INJECTION_CONTEXT_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_INJECTION_CONTEXT_FLAGS;
+typedef RTL_INJECTION_CONTEXT_FLAGS *PRTL_INJECTION_CONTEXT_FLAGS;
+C_ASSERT(sizeof(RTL_INJECTION_CONTEXT_FLAGS) == sizeof(ULONG));
+
+//
 // Symbol loading related typedefs.
 //
 
