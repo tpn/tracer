@@ -106,8 +106,6 @@ typedef DEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK
       *PDEBUG_ENGINE_PARSE_LINES_INTO_CUSTOM_STRUCTURE_CALLBACK;
 
 typedef union _DEBUG_ENGINE_OUTPUT_STATE {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -148,6 +146,8 @@ typedef union _DEBUG_ENGINE_OUTPUT_STATE {
         ULONG ParsingLinesIntoCustomStructureFailed:1;
         ULONG ParsingLinesIntoCustomStructureSucceeded:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_OUTPUT_STATE;
 C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_STATE) == sizeof(ULONG));
 typedef DEBUG_ENGINE_OUTPUT_STATE
@@ -167,8 +167,6 @@ typedef LINKED_PARTIAL_LINE *PLINKED_PARTIAL_LINE;
 //
 
 typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -242,6 +240,8 @@ typedef union _DEBUG_ENGINE_OUTPUT_FLAGS {
 
         ULONG WideCharacterOutput:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_OUTPUT_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_OUTPUT_FLAGS) == sizeof(ULONG));
 typedef DEBUG_ENGINE_OUTPUT_FLAGS *PDEBUG_ENGINE_OUTPUT_FLAGS;
@@ -477,6 +477,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_OUTPUT {
         //
 
         ULONG Discontiguous:1;
+
     } SavedLineBufferAllocationState;
 
     //
@@ -665,8 +666,6 @@ typedef enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE {
 } DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE;
 
 typedef union _DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -682,6 +681,8 @@ typedef union _DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS {
         ULONG TypeInformation:1;
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS;
 C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINE_SYMBOLS_COMMAND_OPTIONS) == sizeof(ULONG));
 
@@ -704,8 +705,6 @@ typedef DEBUG_ENGINE_EXAMINE_SYMBOLS *PDEBUG_ENGINE_EXAMINE_SYMBOLS;
 //
 
 typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -745,6 +744,8 @@ typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
         ULONG UnknownType:1;
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS) == sizeof(ULONG));
 
@@ -837,8 +838,6 @@ typedef enum _DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE {
 //
 
 typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -983,7 +982,8 @@ typedef union _DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS {
 
         ULONG IsHvaVectorType:1;
     };
-
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_FUNCTION_ARGUMENT_FLAGS) == sizeof(ULONG));
 
@@ -1245,6 +1245,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
     //
 
     union {
+
         struct {
 
             //
@@ -1277,8 +1278,6 @@ typedef DEBUG_ENGINE_EXAMINED_SYMBOL **PPDEBUG_ENGINE_EXAMINED_SYMBOL;
 //
 
 typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1381,6 +1380,10 @@ typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
         ULONG IsVectorcall:1;
 
     };
+
+    LONG AsLong;
+    ULONG AsULong;
+
 } DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS) == sizeof(ULONG));
 
@@ -1442,8 +1445,6 @@ typedef DEBUG_ENGINE_UNASSEMBLED_FUNCTION
     **PPDEBUG_ENGINE_UNASSEMBLED_FUNCTION;
 
 typedef union {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1459,12 +1460,12 @@ typedef union {
 
         ULONG RelaxBlockingRequirements:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_UNASSEMBLE_FUNCTION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLE_FUNCTION_FLAGS) == sizeof(ULONG));
 
 typedef union _DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1525,6 +1526,9 @@ typedef union _DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS {
 
     };
 
+    LONG AsLong;
+    ULONG AsULong;
+
 } DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS;
 C_ASSERT(
     sizeof(DEBUG_ENGINE_UNASSEMBLE_FUNCTION_COMMAND_OPTIONS) ==
@@ -1548,8 +1552,6 @@ typedef DEBUG_ENGINE_UNASSEMBLE_FUNCTION *PDEBUG_ENGINE_UNASSEMBLE_FUNCTION;
 //
 
 typedef union _DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1606,6 +1608,9 @@ typedef union _DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS {
         ULONG Unused:26;
 
     };
+
+    LONG AsLong;
+    ULONG AsULong;
 
 } DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS;
 C_ASSERT(sizeof(DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS) == sizeof(ULONG));
@@ -1705,8 +1710,6 @@ typedef DEBUG_ENGINE_DISPLAYED_TYPE **PPDEBUG_ENGINE_DISPLAYED_TYPE;
 //
 
 typedef union _DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1732,6 +1735,9 @@ typedef union _DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS {
         ULONG Unused:30;
 
     };
+
+    LONG AsLong;
+    ULONG AsULong;
 
 } DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS;
 C_ASSERT(sizeof(DEBUG_ENGINE_SETTINGS_META_COMMAND_OPTIONS) == sizeof(ULONG));
@@ -1859,8 +1865,6 @@ HRESULT
 typedef WAIT_FOR_EVENT *PWAIT_FOR_EVENT;
 
 typedef union _DEBUG_ENGINE_SESSION_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct {
 
         //
@@ -1889,6 +1893,10 @@ typedef union _DEBUG_ENGINE_SESSION_FLAGS {
         ULONG CreatedNewProcess:1;
 
     };
+
+    LONG AsLong;
+    ULONG AsULong;
+
 } DEBUG_ENGINE_SESSION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_SESSION_FLAGS) == sizeof(ULONG));
 typedef DEBUG_ENGINE_SESSION_FLAGS *PDEBUG_ENGINE_SESSION_FLAGS;
@@ -2108,8 +2116,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 //
 
 typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct {
 
         //
@@ -2125,6 +2131,8 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
 
         ULONG InitializeFromCurrentProcess:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_SESSION_INIT_FLAGS;
 
 
@@ -2313,7 +2321,7 @@ See Also:
     );
 
     if (!InitializeStringTableAllocator) {
-        OutputDebugStringA("Failed to resolve InitializeStringTableAllocator\n");
+        OutputDebugStringA("Failed resolve: InitializeStringTableAllocator\n");
         goto Error;
     }
 

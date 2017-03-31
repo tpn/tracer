@@ -144,14 +144,14 @@ CommandIdToArrayIndex(
 }
 
 typedef union _DEBUG_ENGINE_COMMAND_TYPE {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG ExamineSymbols:1;
         ULONG UnassembleFunction:1;
         ULONG DisplayType:1;
         ULONG Unused:29;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_COMMAND_TYPE;
 C_ASSERT(sizeof(DEBUG_ENGINE_COMMAND_TYPE) == sizeof(ULONG));
 
@@ -248,11 +248,11 @@ typedef DEBUG_ENGINE_COMMAND_TEMPLATE *PDEBUG_ENGINE_COMMAND_TEMPLATE;
 //
 
 typedef union _DEBUG_ENGINE_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG Unused:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_FLAGS) == sizeof(ULONG));
 
@@ -262,8 +262,6 @@ C_ASSERT(sizeof(DEBUG_ENGINE_FLAGS) == sizeof(ULONG));
 //
 
 typedef union _DEBUG_ENGINE_STATE {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -282,6 +280,8 @@ typedef union _DEBUG_ENGINE_STATE {
         ULONG ProcessCreated:1;
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_ENGINE_STATE;
 C_ASSERT(sizeof(DEBUG_ENGINE_STATE) == sizeof(ULONG));
 typedef DEBUG_ENGINE_STATE
