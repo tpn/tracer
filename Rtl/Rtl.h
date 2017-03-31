@@ -87,6 +87,8 @@ extern "C" {
 #endif
 #endif
 
+#include "DisableWarnings.h"
+
 //
 // Define useful WDM macros if they're not already defined.
 //
@@ -195,6 +197,10 @@ extern "C" {
 #ifndef RtlUpcaseChar
 #define RtlUpcaseChar(C)                                         \
     (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
+#endif
+
+#ifndef WINAPI
+#define WINAPI __stdcall
 #endif
 
 #ifndef RtlUpcaseUnicodeChar
@@ -707,6 +713,7 @@ typedef RTL_CREATE_HEAP *PRTL_CREATE_HEAP;
 
 typedef
 _Check_return_
+PVOID
 (NTAPI RTL_DESTROY_HEAP)(
     _In_ PVOID HeapHandle
     );
@@ -1615,6 +1622,307 @@ typedef WMEMSET *PWMEMSET;
 
 //
 // End of CRT functions.
+//
+
+//
+// Injection-related functionality.
+//
+
+typedef
+_Ret_maybenull_
+HMODULE
+(WINAPI LOAD_LIBRARY_A)(
+    _In_ LPCSTR lpLibFileName
+    );
+typedef LOAD_LIBRARY_A *PLOAD_LIBRARY_A;
+
+typedef
+_Ret_maybenull_
+HMODULE
+(WINAPI LOAD_LIBRARY_W)(
+    _In_ LPWSTR lpLibFileName
+    );
+typedef LOAD_LIBRARY_W *PLOAD_LIBRARY_W;
+
+typedef
+WINBASEAPI
+FARPROC
+(WINAPI GET_PROC_ADDRESS)(
+    _In_ HMODULE hModule,
+    _In_ LPCSTR lpProcName
+    );
+typedef GET_PROC_ADDRESS *PGET_PROC_ADDRESS;
+
+typedef
+WINBASEAPI
+_Ret_maybenull_
+HANDLE
+(WINAPI OPEN_EVENT_A)(
+    _In_ DWORD dwDesiredAccess,
+    _In_ BOOL bInheritHandle,
+    _In_ LPCSTR lpName
+    );
+typedef OPEN_EVENT_A *POPEN_EVENT_A;
+
+typedef
+WINBASEAPI
+_Ret_maybenull_
+HANDLE
+(WINAPI OPEN_EVENT_W)(
+    _In_ DWORD dwDesiredAccess,
+    _In_ BOOL bInheritHandle,
+    _In_ LPCSTR lpName
+    );
+typedef OPEN_EVENT_W *POPEN_EVENT_W;
+
+typedef
+WINBASEAPI
+DWORD
+(WINAPI WAIT_FOR_SINGLE_OBJECT)(
+    _In_ HANDLE hHandle,
+    _In_ DWORD dwMilliseconds
+    );
+typedef WAIT_FOR_SINGLE_OBJECT *PWAIT_FOR_SINGLE_OBJECT;
+
+typedef
+WINBASEAPI
+BOOL
+(WINAPI CLOSE_HANDLE)(
+    _In_ HANDLE hObject
+    );
+typedef CLOSE_HANDLE *PCLOSE_HANDLE;
+
+typedef
+VOID
+(CALLBACK RTL_INJECTION_CALLBACK)(
+    _In_ struct _RTL_INJECTION_CONTEXT Context
+    );
+typedef RTL_INJECTION_CALLBACK *PRTL_INJECTION_CALLBACK;
+
+typedef union _RTL_INJECTION_PACKET_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_INJECTION_PACKET_FLAGS;
+typedef RTL_INJECTION_PACKET_FLAGS *PRTL_INJECTION_PACKET_FLAGS;
+C_ASSERT(sizeof(RTL_INJECTION_PACKET_FLAGS) == sizeof(ULONG));
+
+typedef union _RTL_INJECTION_MAGIC {
+    LARGE_INTEGER AsLargeInteger;
+    struct {
+        ULONG MagicNumber;
+        ULONG InjectionPacketCrc32;
+    };
+} RTL_INJECTION_MAGIC;
+
+typedef struct _RTL_INJECTION_PAYLOAD {
+    LIST_ENTRY ListEntry;
+    ULONGLONG NumberOfPages;
+    PVOID Buffer;
+
+    //
+    // The original address of the payload buffer in the process that requested
+    // the injection.  This will be set by the injection machinery prior to
+    // completing the injection request.  This is provided such that injected
+    // code can potentially relocate addresses contained within the payload
+    // buffer relative to an original address.
+    //
+
+    ULONG_PTR OriginalBufferAddress;
+
+    //
+    // (48 bytes consumed.)
+    //
+
+    //
+    // Pad out to 64 bytes.
+    //
+
+    ULONGLONG Padding[3];
+} RTL_INJECTION_PAYLOAD;
+typedef RTL_INJECTION_PAYLOAD *PRTL_INJECTION_PAYLOAD;
+C_ASSERT(sizeof(RTL_INJECTION_PAYLOAD) == 64);
+
+typedef struct _RTL_INJECTION_SYMBOLS {
+    LIST_ENTRY ListEntry;
+    ULONG NumberOfSymbols;
+    ULONG NumberOfModules;
+    PCSZ *SymbolNameArray;
+    PCUNICODE_STRING *ModuleNameArray;
+
+    ULONG NumberOfResolvedSymbols;
+    PULONG_PTR SymbolAddressesArray;
+    PRTL_BITMAP FailedSymbols;
+} RTL_INJECTION_SYMBOLS;
+typedef RTL_INJECTION_SYMBOLS *PRTL_INJECTION_SYMBOLS;
+
+//
+// Callers request a remote thread + DLL injection by way of the following
+// structure.
+//
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _RTL_INJECTION_PACKET)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    RTL_INJECTION_PACKET_FLAGS Flags;
+
+    //
+    // Packets are verified via the magic structure before being acted upon.
+    //
+
+    RTL_INJECTION_MAGIC Magic;
+
+    //
+    // Fully-qualified path name of the target library to load.
+    //
+
+    UNICODE_STRING Path;
+
+    //
+    // Name of the procedure to resolve via GetProcAddress(). The function
+    // should conform to the RTL_INJECTION_COMPLETE_CALLBACK signature, and
+    // will be invoked by a remote thread once injection has completed.
+    //
+
+    STRING CallbackFunctionName;
+
+    //
+    // Supplies the process ID to use as the target for injection.
+    //
+
+    ULONG TargetProcessId;
+
+    //
+    // Optionally supplies the ID of a thread within the targeted process to
+    // use for injection.  If this is 0, a new remote thread will be created.
+    //
+
+    ULONG OptionalTargetThreadId;
+
+    //
+    // Payload information.
+    //
+
+    LIST_ENTRY PayloadListHead;
+    ULONGLONG NumberOfPayloads;
+    PRTL_INJECTION_PAYLOAD Payloads;
+
+} RTL_INJECTION_PACKET;
+typedef RTL_INJECTION_PACKET *PRTL_INJECTION_PACKET;
+typedef const RTL_INJECTION_PACKET *PCRTL_INJECTION_PACKET;
+
+typedef union _RTL_INJECTION_ERROR {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG InvalidTargetProcessId:1;
+        ULONG InvalidOptionalTargetThreadId:1;
+        ULONG InvalidPacket:1;
+        ULONG InvalidPayload:1;
+        ULONG OpenTargetProcessHandleFailed:1;
+        ULONG CreateRemoteThreadFailed:1;
+        ULONG WriteRemoteMemoryFailed:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_INJECTION_ERROR;
+C_ASSERT(sizeof(RTL_INJECTION_ERROR) == sizeof(ULONG));
+typedef RTL_INJECTION_ERROR *PRTL_INJECTION_ERROR;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTL_CREATE_INJECTION_PACKET)(
+    _In_ struct _RTL *Rtl,
+    _In_opt_ PRTL_INJECTION_PACKET_FLAGS Flags,
+    _In_ PCUNICODE_STRING ModulePath,
+    _In_ PSTRING CallbackFunctionName,
+    _In_ ULONG TargetProcessId,
+    _In_opt_ ULONG OptionalTargetThreadId,
+    _Out_ PRTL_INJECTION_ERROR InjectionError
+    );
+typedef RTL_CREATE_INJECTION_PACKET *PRTL_CREATE_INJECTION_PACKET;
+
+typedef
+_Success_(return != 0)
+BOOL
+(RTL_DESTROY_INJECTION_PACKET)(
+    _In_ struct _RTL *Rtl,
+    _Inout_ PRTL_INJECTION_PACKET *Packet
+    );
+typedef RTL_DESTROY_INJECTION_PACKET *PRTL_DESTROY_INJECTION_PACKET;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTL_ADD_INJECTION_PAYLOAD)(
+    _In_ struct _RTL *Rtl,
+    _In_ PRTL_INJECTION_PACKET Packet,
+    _In_ PRTL_INJECTION_PAYLOAD Payload,
+    _Out_ PRTL_INJECTION_ERROR InjectionError
+    );
+typedef RTL_ADD_INJECTION_PAYLOAD *PRTL_ADD_INJECTION_PAYLOAD;
+
+/*
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTL_CREATE_INJECTION_SYMBOLS)(
+    _In_count_(NumberOfSymbolNames) CONST PCSZ *SymbolNameArray,
+    _In_ ULONG NumberOfSymbolNames,
+    _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
+    _In_ ULONG NumberOfSymbolAddresses,
+    _In_ HMODULE Module,
+    _In_ PRTL_BITMAP FailedSymbols,
+    _Out_ PULONG NumberOfResolvedSymbolsPointer
+    );
+*/
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTL_ADD_INJECTION_SYMBOLS)(
+    _In_ struct _RTL *Rtl,
+    _In_ PRTL_INJECTION_PACKET Packet,
+    _In_ PRTL_INJECTION_SYMBOLS Symbols,
+    _Out_ PRTL_INJECTION_ERROR InjectionError
+    );
+typedef RTL_ADD_INJECTION_SYMBOLS *PRTL_ADD_INJECTION_SYMBOLS;
+
+typedef
+_Check_return_
+_Success_(return == 0)
+BOOL
+(RTL_INJECT)(
+    _In_ struct _RTL *Rtl,
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Out_ PRTL_INJECTION_ERROR InjectionError
+    );
+typedef RTL_INJECT *PRTL_INJECT;
+
+typedef
+VOID
+(CALLBACK RTL_INJECTION_COMPLETE_CALLBACK)(
+    _In_ PRTL_INJECTION_PACKET Packet,
+    _In_opt_ RTL_INJECTION_ERROR InjectionError
+    );
+typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
+
+//
+// Miscellaneous NT/Rtl.
 //
 
 typedef NTSYSAPI SIZE_T (NTAPI RTL_COMPARE_MEMORY)(
@@ -4158,7 +4466,9 @@ typedef union _DLL_NOTIFICATION_REASON {
         ULONG Unloaded:1;
         ULONG LoadedInitial:1;
     };
-} DLL_NOTIFICATION_REASON; *PDLL_NOTIFICATION_REASON;
+} DLL_NOTIFICATION_REASON;
+
+typedef DLL_NOTIFICATION_REASON *PDLL_NOTIFICATION_REASON;
 
 typedef struct _DLL_NOTIFICATION_DATA {
     PLDR_DATA_TABLE_ENTRY LoaderDataTableEntry;
@@ -4536,6 +4846,7 @@ typedef CO_INITIALIZE_EX *PCO_INITIALIZE_EX;
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
 (INITIALIZE_COM)(
     _In_ PRTL Rtl
     );
@@ -7315,7 +7626,7 @@ IsGuardedListEmpty(
     _In_ PGUARDED_LIST GuardedList
     )
 {
-    BOOL IsEmpty;
+    BOOLEAN IsEmpty;
     AcquireGuardedListLockShared(GuardedList);
     IsEmpty = IsListEmpty(&GuardedList->ListHead);
     ReleaseGuardedListLockShared(GuardedList);

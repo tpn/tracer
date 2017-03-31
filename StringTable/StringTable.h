@@ -195,7 +195,7 @@ typedef union _SLOT_LENGTHS {
 C_ASSERT(sizeof(SLOT_LENGTHS) == 32);
 
 typedef SHORT STRING_TABLE_INDEX;
-#define NO_MATCH_FOUND (-1)
+#define NO_MATCH_FOUND ((USHORT)(-1))
 
 //
 // Forward declaration of functions that we include in the STRING_TABLE

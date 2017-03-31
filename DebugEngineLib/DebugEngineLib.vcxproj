@@ -43,14 +43,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{ED5C33CF-378C-44F1-9F48-931DC385A50B}</ProjectGuid>
-    <RootNamespace>TracerDebugEngineExe</RootNamespace>
+    <ProjectGuid>{C165B67C-FDB6-4D6A-88E2-03C065FC8952}</ProjectGuid>
+    <RootNamespace>DebugEngineLib</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -65,39 +65,41 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup>
-    <TargetName>TracerDebugEngine</TargetName>
-    <TargetExt>.exe</TargetExt>
-  </PropertyGroup>
   <ItemDefinitionGroup>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>TracerHeapLib.lib;TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <ExpandAttributedSource>true</ExpandAttributedSource>
-      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG_ENGINE_INTERNAL_BUILD;_DEBUG_ENGINE_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
+    <ClInclude Include="../DebugEngine/DebugEngineCommands.h" />
+    <ClInclude Include="../DebugEngine/DebugEngineInterfaces.h" />
+    <ClInclude Include="../DebugEngine/DebugEngineConstants.h" />
+    <ClInclude Include="../DebugEngine/stdafx.h" />
+    <ClInclude Include="../DebugEngine/targetver.h" />
+    <ClInclude Include="../DebugEngine/DebugEngine.h" />
+    <ClInclude Include="../DebugEngine/DebugEnginePrivate.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="main.c" />
-    <ClCompile Include="stdafx.c">
+    <ClCompile Include="../DebugEngine/DebugEngineBuildCommand.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineCommands.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineConstants.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineDisplayType.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineEventCallbacks.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineExamineSymbols.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineExecuteCommand.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineOutput.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineOutputCallbacks2.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineSettingsMeta.c" />
+    <ClCompile Include="../DebugEngine/DestroyDebugEngine.c" />
+    <ClCompile Include="../DebugEngine/InitializeDebugEngine.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineInputCallbacks.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineOutputCallbacks.c" />
+    <ClCompile Include="../DebugEngine/DestroyDebugEngineSession.c" />
+    <ClCompile Include="../DebugEngine/InitializeDebugEngineSession.c" />
+    <ClCompile Include="../DebugEngine/DebugEngineUnassembleFunction.c" />
+    <ClCompile Include="../DebugEngine/stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
-      <Project>{8a5aaec6-fb14-49c3-8837-fe8a54d23c1d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
-      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

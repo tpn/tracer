@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled header file for the TracerDebugEngineExe component.
+    This is the precompiled header file for the TracerExe component.
 
 --*/
 
@@ -23,5 +23,6 @@ Abstract:
 #include "../TraceStore/TraceStore.h"
 #include "../TracerHeap/TracerHeap.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "../TracerCore/TracerCore.h"
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

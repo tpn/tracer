@@ -144,6 +144,8 @@ Return Value:
     ULONG Value;
     PUNICODE_STRING Name;
 
+    UNREFERENCED_PARAMETER(TracerConfig);
+
     //
     // Validate arguments.
     //
@@ -207,7 +209,7 @@ CreateTraceSessionDirectory(
     PSYSTEMTIME SystemTime
     )
 {
-    BOOL Success;
+    BOOLEAN Success;
     USHORT Attempts = 64;
     USHORT BufferSizeInBytes;
     ULONG Bytes;

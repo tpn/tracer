@@ -24,6 +24,8 @@ _DllMainCRTStartup(
     _In_    LPVOID      Reserved
     )
 {
+    UNREFERENCED_PARAMETER(Module);
+
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
             break;

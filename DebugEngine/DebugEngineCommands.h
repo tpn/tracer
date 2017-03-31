@@ -16,8 +16,8 @@ Abstract:
 
 #include "stdafx.h"
 
-CONST UNICODE_STRING Asterisk;
-CONST UNICODE_STRING ExclamationPoint;
+extern CONST UNICODE_STRING Asterisk;
+extern CONST UNICODE_STRING ExclamationPoint;
 
 //
 // ExamineSymbols
