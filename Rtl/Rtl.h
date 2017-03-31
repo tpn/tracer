@@ -2228,6 +2228,7 @@ typedef BOOLEAN (NTAPI *PRTL_CONTRACT_HASH_TABLE)(
 //
 // Prefix Tables
 //
+
 typedef struct _PREFIX_TABLE_ENTRY {
     CSHORT NodeTypeCode;
     CSHORT NameLength;
@@ -2576,6 +2577,7 @@ C_ASSERT(sizeof(RTL_SPARSE_BITMAP_CTX) == 80);
 //
 // CRC32 and CRC64
 //
+
 typedef ULONG (NTAPI *PRTLCRC32)(
     _In_ const void *Buffer,
     _In_ size_t Size,
@@ -3552,6 +3554,15 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PZW_TERMINATE_THREAD ZwTerminateThread;                                                            \
     PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
+    PLOAD_LIBRARY_A LoadLibraryA;                                                                      \
+    PLOAD_LIBRARY_W LoadLibraryW;                                                                      \
+    PGET_PROC_ADDRESS GetProcAddress;                                                                  \
+    PCLOSE_HANDLE CloseHandle;                                                                         \
+    POPEN_EVENT_A OpenEventA;                                                                          \
+    POPEN_EVENT_W OpenEventW;                                                                          \
+    PSET_EVENT SetEvent;                                                                               \
+    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
+    PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
@@ -4408,6 +4419,11 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_LEFT_CHILD RtlLeftChild;                                                   \
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
+    PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
+    PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
+    PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
+    PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
+    PRTL_INJECT Inject;                                                             \
     PSET_PRIVILEGE SetPrivilege;                                                    \
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                           \
     PSTRING_TO_RTL_PATH StringToRtlPath;                                            \
