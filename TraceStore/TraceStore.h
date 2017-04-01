@@ -1179,8 +1179,6 @@ typedef struct _TRACE_CONTEXT TRACE_CONTEXT, *PTRACE_CONTEXT;
 
 typedef struct _TRACE_FLAGS {
     union {
-        LONG AsLong;
-        ULONG AsULong;
         struct {
             ULONG Readonly:1;
             ULONG Compress:1;
@@ -1287,6 +1285,8 @@ typedef struct _TRACE_FLAGS {
 
             ULONG Unused:15;
         };
+        LONG AsLong;
+        ULONG AsULong;
     };
 } TRACE_FLAGS, *PTRACE_FLAGS;
 C_ASSERT(sizeof(TRACE_FLAGS) == sizeof(ULONG));
@@ -1377,8 +1377,6 @@ typedef struct _TRACE_WS_WATCH_INFORMATION_EX {
 typedef TRACE_WS_WATCH_INFORMATION_EX *PTRACE_WS_WATCH_INFORMATION_EX;
 
 typedef union _TRACE_PAGE_FAULT_PC_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1433,12 +1431,12 @@ typedef union _TRACE_PAGE_FAULT_PC_FLAGS {
 
         ULONG IsPythonPackageModule:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } TRACE_PAGE_FAULT_PC_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_PC_FLAGS) == sizeof(ULONG));
 
 typedef union _TRACE_PAGE_FAULT_VA_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1467,12 +1465,12 @@ typedef union _TRACE_PAGE_FAULT_VA_FLAGS {
 
         ULONG IsPageFile:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } TRACE_PAGE_FAULT_VA_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_VA_FLAGS) == sizeof(ULONG));
 
 typedef union _TRACE_PAGE_FAULT_THREAD_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -1495,8 +1493,9 @@ typedef union _TRACE_PAGE_FAULT_THREAD_FLAGS {
         //
 
         ULONG IsPythonThread:1;
-
     };
+    LONG AsLong;
+    ULONG AsULong;
 } TRACE_PAGE_FAULT_THREAD_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_THREAD_FLAGS) == sizeof(ULONG));
 
