@@ -29,8 +29,8 @@ RtlCreateInjectionPacket(
     PBYTE Code,
     ULONG TargetProcessId,
     ULONG OptionalTargetThreadId,
-    PRTL_INJECTION_ERROR InjectionError,
-    PRTL_INJECTION_PACKET *InjectionPacketPointer
+    PRTL_INJECTION_PACKET *InjectionPacketPointer,
+    PRTL_INJECTION_ERROR InjectionError
     )
 /*++
 
@@ -83,14 +83,14 @@ Arguments:
     TargetThreadId - Optionally supplies the ID of an existing thread in the
         target process to hijack instead of creating a new remote thread.
 
-    InjectionError - Supplies a pointer to a variable that receives information
-        about the error, if one occurred (as indicated by this routine returning
-        FALSE).
-
     InjectionPacketPointer - Supplies a pointer to a variable that will receive
         the address of the newly-created RTL_INJECTION_PACKET if this routine
         completes successfully.  The packet can then have payload or symbols
         added to it before being injected.
+
+    InjectionError - Supplies a pointer to a variable that receives information
+        about the error, if one occurred (as indicated by this routine returning
+        FALSE).
 
 Return Value:
 
@@ -107,13 +107,29 @@ _Use_decl_annotations_
 BOOL
 RtlDestroyInjectionPacket(
     PRTL Rtl,
-    PRTL_INJECTION_PACKET *PacketPointer
+    PRTL_INJECTION_PACKET *PacketPointer,
+    PRTL_INJECTION_ERROR InjectionError
     )
 /*++
 
 Routine Description:
 
+    Destroys an injection packet previously created by RtlCreateInjectionPacket.
+    This routine should only be called if a created injection packet needs to
+    be abandoned before injecting it via RtlInject().  If RtlInject() is called
+    against the packet, the packet will be destroyed at the appropriate time.
+
 Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    PacketPointer - Supplies a pointer to a variable containing the address of
+        the injection packet to destroy.  The pointer will be set to NULL by
+        this routine.
+
+    InjectionError - Supplies a pointer to a variable that receives information
+        about the error, if one occurs (which will be indicated by the routine
+        returning FALSE).
 
 Return Value:
 

@@ -196,8 +196,8 @@ BOOL
     _In_reads_bytes_opt_(SizeOfCodeInBytes) PBYTE Code,
     _In_ ULONG TargetProcessId,
     _In_opt_ ULONG OptionalTargetThreadId,
-    _Outptr_result_maybenull_ PRTL_INJECTION_ERROR InjectionError,
     _Outptr_result_maybenull_ PRTL_INJECTION_PACKET *InjectionPacketPointer
+    _Outptr_result_maybenull_ PRTL_INJECTION_ERROR InjectionError,
     );
 typedef RTL_CREATE_INJECTION_PACKET *PRTL_CREATE_INJECTION_PACKET;
 
