@@ -4,3 +4,4 @@ EXPORTS
     CopyPagesNonTemporalAvx2_v2 @2
     CopyPagesNonTemporalAvx2_v3 @3
     CopyPagesNonTemporalAvx2_v4 @4
+    FillPagesNonTemporalAvx2_v1 @5

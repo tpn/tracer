@@ -15,34 +15,29 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="../Asm/AsmPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="targetver.h">
+    <ClInclude Include="../Asm/stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AsmPrivate.h">
+    <ClInclude Include="../Asm/targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Asm.h">
+    <ClInclude Include="../Asm/Asm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllmain.c">
+    <ClCompile Include="../Asm/stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Asm.def">
+    <MASM Include="../Asm/CopyPages.asm">
       <Filter>Source Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="CopyPages.asm">
+    </MASM>
+    <MASM Include="..\Asm\FillPages.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>

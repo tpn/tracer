@@ -88,6 +88,16 @@ typedef struct _COPY_PAGES_FUNCTIONS {
 } COPY_PAGES_FUNCTIONS;
 typedef COPY_PAGES_FUNCTIONS *PCOPY_PAGES_FUNCTIONS;
 
+typedef
+VOID
+(FILL_PAGES)(
+    _Out_writes_bytes_all_(NumberOfPages << PAGE_SHIFT) PCHAR Dest,
+    _In_opt_ BYTE Byte,
+    _In_ ULONG NumberOfPages
+    );
+typedef FILL_PAGES *PFILL_PAGES;
+
+
 //
 // Disable browsing information generation when declaring instances of
 // functions; if we don't do this, 'Go To Definition' ends up here, instead
@@ -100,6 +110,8 @@ ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v1;
 ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v2;
 ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v3;
 ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v4;
+
+ASM_API FILL_PAGES FillPagesNonTemporalAvx2_v1;
 
 #pragma component(browser, on)
 
