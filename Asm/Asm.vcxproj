@@ -84,6 +84,7 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="CopyPages.asm" Condition="'$(Platform)' == 'x64'" />
+    <MASM Include="FillPages.asm" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Asm.def" />

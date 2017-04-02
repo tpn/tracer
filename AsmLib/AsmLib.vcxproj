@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="../Asm/CopyPages.asm" Condition="'$(Platform)' == 'x64'" />
+    <MASM Include="..\Asm\FillPages.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
