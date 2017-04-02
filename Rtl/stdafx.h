@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -40,6 +40,7 @@ Abstract:
 #include "atexit.h"
 #include "AtExitEx.h"
 #include "RtlPrivate.h"
+#include "InjectionPrivate.h"
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
