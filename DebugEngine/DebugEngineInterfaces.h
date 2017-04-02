@@ -4,7 +4,7 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    DebugEngineCOM.h
+    DebugEngineInterfaces.h
 
 Abstract:
 
