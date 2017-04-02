@@ -4350,6 +4350,7 @@ BOOL
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
 
+
 #ifdef _RTL_TEST
 typedef
 BOOL
@@ -4420,6 +4421,7 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
     PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
+    PRTL_IS_INJECTION_COMPLETE_CALLBACK_TEST IsInjectionCompleteCallbackTest;       \
     PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
     PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
     PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
@@ -4653,6 +4655,15 @@ BOOL
     );
 typedef INITIALIZE_COM *PINITIALIZE_COM;
 
+typedef
+BOOL
+(CRYPT_GEN_RANDOM)(
+    _In_ PRTL Rtl,
+    _In_ ULONG SizeOfBufferInBytes,
+    _Out_writes_bytes_all_(SizeOfBufferInBytes) PBYTE Buffer
+    );
+typedef CRYPT_GEN_RANDOM *PCRYPT_GEN_RANDOM;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -4673,6 +4684,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PATEXITEX AtExitEx;
 
     PCOPY_PAGES CopyPages;
+    PFILL_PAGES FillPages;
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
@@ -4696,6 +4708,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     //
 
     HCRYPTPROV CryptProv;
+    PCRYPT_GEN_RANDOM CryptGenRandom;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -4913,6 +4926,7 @@ IsAligned(
 #define TRY_SSE42_ALIGNED __try
 #define TRY_SSE42_UNALIGNED __try
 
+#define TRY_PROBE_MEMORY __try
 #define TRY_MAPPED_MEMORY_OP __try
 
 #define CATCH_EXCEPTION_ILLEGAL_INSTRUCTION __except(     \
@@ -5338,6 +5352,30 @@ IsValidNullTerminatedUnicodeStringWithMinimumLengthInChars(
 
 FORCEINLINE
 BOOL
+IsValidNullTerminatedStringWithMinimumLengthInChars(
+    _In_ PCSTRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    //
+    // Add 1 to account for the NULL.
+    //
+
+    USHORT Length = (MinimumLengthInChars + 1) * sizeof(CHAR);
+    USHORT MaximumLength = Length + sizeof(CHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= MaximumLength &&
+        sizeof(CHAR) == (String->MaximumLength - String->Length) &&
+        String->Buffer[String->Length >> 1] == '\0'
+    );
+}
+
+FORCEINLINE
+BOOL
 IsValidUnicodeStringWithMinimumLengthInChars(
     _In_ PCUNICODE_STRING String,
     _In_ USHORT MinimumLengthInChars
@@ -5354,6 +5392,23 @@ IsValidUnicodeStringWithMinimumLengthInChars(
     );
 }
 
+FORCEINLINE
+BOOL
+IsValidStringWithMinimumLengthInChars(
+    _In_ PCSTRING String,
+    _In_ USHORT MinimumLengthInChars
+    )
+{
+    USHORT Length = MinimumLengthInChars * sizeof(CHAR);
+
+    return (
+        String != NULL &&
+        String->Buffer != NULL &&
+        String->Length >= Length &&
+        String->MaximumLength >= Length &&
+        String->MaximumLength >= String->Length
+    );
+}
 
 FORCEINLINE
 BOOL
@@ -5377,6 +5432,15 @@ IsValidNullTerminatedUnicodeString(
         String,
         1
     );
+}
+
+FORCEINLINE
+BOOL
+IsValidNullTerminatedString(
+    _In_ PCSTRING String
+    )
+{
+    return IsValidNullTerminatedStringWithMinimumLengthInChars(String, 1);
 }
 
 FORCEINLINE

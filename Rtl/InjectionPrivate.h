@@ -52,7 +52,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _RTL_INJECTION_PACKET)) ULONG SizeOfStruct;
+    _Field_range_(==, sizeof(struct _RTL_INJECTION_CONTEXT)) ULONG SizeOfStruct;
 
     //
     // Flags.
@@ -102,6 +102,24 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 } RTL_INJECTION_CONTEXT;
 typedef RTL_INJECTION_CONTEXT *PRTL_INJECTION_CONTEXT;
 typedef const RTL_INJECTION_CONTEXT *PCRTL_INJECTION_CONTEXT;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(RTLP_TEST_INJECTION_COMPLETE_CALLBACK)(
+    _In_ PRTL Rtl,
+    _In_ PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteError,
+    _Out_ PRTL_INJECTION_ERROR InjectionError
+    );
+typedef RTLP_TEST_INJECTION_COMPLETE_CALLBACK
+      *PRTLP_TEST_INJECTION_COMPLETE_CALLBACK;
+
+
+#pragma component(browser, off)
+RTLP_TEST_INJECTION_COMPLETE_CALLBACK RtlpTestInjectionCompleteCallback;
+#pragma component(browser, on)
+
 
 #ifdef __cplusplus
 } // extern "C" {

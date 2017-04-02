@@ -107,5 +107,11 @@
     <ClCompile Include="Injection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="InjectionPrivate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TestInjection.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

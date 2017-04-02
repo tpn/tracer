@@ -2241,6 +2241,7 @@ ResolveRtlExFunctions(
         "RtlParent",
         "RtlRightChild",
         "RtlCreateInjectionPacket",
+        "RtlIsInjectionCompleteCallbackTest",
         "RtlDestroyInjectionPacket",
         "RtlAddInjectionPayload",
         "RtlAddInjectionSymbols",
@@ -2894,6 +2895,36 @@ InitializeWindowsDirectories(
     return TRUE;
 }
 
+RTL_API CRYPT_GEN_RANDOM RtlCryptGenRandom;
+
+_Use_decl_annotations_
+BOOL
+RtlCryptGenRandom(
+    PRTL Rtl,
+    ULONG SizeOfBufferInBytes,
+    PBYTE Buffer
+    )
+{
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Rtl->CryptProv)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Buffer)) {
+        return FALSE;
+    }
+
+    if (!CryptGenRandom(Rtl->CryptProv, SizeOfBufferInBytes, Buffer)) {
+        Rtl->LastError = GetLastError();
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(
@@ -2986,11 +3017,15 @@ InitializeRtl(
 
     if (!Success) {
         Rtl->LastError = GetLastError();
+        return FALSE;
     }
+
+    Rtl->CryptGenRandom = RtlCryptGenRandom;
 
     Rtl->InitializeCom = InitializeCom;
     Rtl->LoadDbgEng = LoadDbgEng;
     Rtl->CopyPages = CopyPagesNonTemporalAvx2_v4;
+    Rtl->FillPages = FillPagesNonTemporalAvx2_v1;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

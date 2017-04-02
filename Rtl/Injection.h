@@ -44,9 +44,79 @@ extern "C" {
 
 #include "stdafx.h"
 
+typedef union _RTL_CREATE_INJECTION_PACKET_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, the caller indicates a module path (e.g. a .dll) and the
+        // name of the symbol exported by said module; the module will be loaded
+        // in the remote process, the symbol resolved to a function pointer via
+        // GetProcAddress(), then invoked by a newly-created remote thread, or
+        // the hijacking of an existing thread, specified by the user at the
+        // time the injection packet was created.
+        //
+        // Invariants:
+        //
+        //   - If InjectModule == TRUE:
+        //          Assert InjectCode == FALSE
+        //
+        //
+
+        ULONG InjectModule:1;
+
+        //
+        // Indicates that the caller has provided arbitrary code bytes to
+        // inject into the remote process instead of a module path and symbol
+        // name.
+        //
+        // Invariants:
+        //
+        //   - If InjectCode == TRUE:
+        //          Assert InjectModule == FALSE
+        //
+
+        ULONG InjectCode:1;
+
+        //
+        // When set, indicates that an existing thread in the target process
+        // should be hijacked to run the remote code, instead of creating a
+        // new thread in the remote process.  If this flag is set, the caller
+        // must provide a valid thread ID as the TargetThreadId parameter to
+        // the RtlCreateInjectionPacket() call.
+        //
+
+        ULONG HijackExistingThread:1;
+
+        //
+        // Unused.
+        //
+
+        ULONG Unused:29;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_CREATE_INJECTION_PACKET_FLAGS;
+typedef RTL_CREATE_INJECTION_PACKET_FLAGS *PRTL_CREATE_INJECTION_PACKET_FLAGS;
+C_ASSERT(sizeof(RTL_CREATE_INJECTION_PACKET_FLAGS) == sizeof(ULONG));
+
 typedef union _RTL_INJECTION_PACKET_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG Unused:1;
+
+        //
+        // When set, indicates the injection machinery is performing a test of
+        // the caller's requested code injection prior to actually doing the
+        // injection.  The injected code must detect the presence of this flag,
+        // read the contents of Packet->MagicNumber field, then return the XOR'd
+        // contents of the High and Low parts.
+        //
+
+        ULONG IsInjectionCompleteCallbackTest:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:31;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -54,13 +124,7 @@ typedef union _RTL_INJECTION_PACKET_FLAGS {
 typedef RTL_INJECTION_PACKET_FLAGS *PRTL_INJECTION_PACKET_FLAGS;
 C_ASSERT(sizeof(RTL_INJECTION_PACKET_FLAGS) == sizeof(ULONG));
 
-typedef union _RTL_INJECTION_MAGIC {
-    LARGE_INTEGER AsLargeInteger;
-    struct {
-        ULONG MagicNumber;
-        ULONG InjectionPacketCrc32;
-    };
-} RTL_INJECTION_MAGIC;
+typedef ULARGE_INTEGER RTL_INJECTION_MAGIC_NUMBER;
 
 typedef struct _RTL_INJECTION_PAYLOAD {
     LIST_ENTRY ListEntry;
@@ -104,6 +168,52 @@ typedef struct _RTL_INJECTION_SYMBOLS {
 typedef RTL_INJECTION_SYMBOLS *PRTL_INJECTION_SYMBOLS;
 
 //
+// All error state is encapsulated in the following bitfield.  Multiple bits
+// may be set, typically with each successive bit providing greater information
+// about the type of error (e.g. InvalidParameters and CodeProbeFailed may be
+// set).
+//
+
+typedef union _RTL_INJECTION_ERROR {
+    struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
+        ULONGLONG InternalError:1;
+        ULONGLONG InvalidParameters:1;
+        ULONGLONG InvalidFlags:1;
+        ULONGLONG InvalidModuleName:1;
+        ULONGLONG InvalidCallbackFunctionName:1;
+        ULONGLONG InvalidCodeParameter:1;
+        ULONGLONG InvalidCode:1;
+        ULONGLONG InvalidSizeOfCodeInBytes:1;
+        ULONGLONG InvalidTargetProcessId:1;
+        ULONGLONG InvalidTargetThreadId:1;
+        ULONGLONG CodeProbeFailed:1;
+        ULONGLONG LoadLibraryFailed:1;
+        ULONGLONG GetProcAddressFailed:1;
+        ULONGLONG VirtualAllocFailed:1;
+        ULONGLONG VirtualProtectFailed:1;
+        ULONGLONG FlushInstructionCacheFailed:1;
+        ULONGLONG IllegalInstructionInCallbackTest:1;
+        ULONGLONG AccessViolationInCallbackTest:1;
+        ULONGLONG StatusInPageErrorInCallbackTest:1;
+        ULONGLONG IncorrectMagicNumberReturnedInCallbackTest:1;
+        ULONGLONG OpenTargetProcessFailed:1;
+        ULONGLONG OpenTargetThreadFailed:1;
+        ULONGLONG SuspendTargetThreadFailed:1;
+        ULONGLONG CreateRemoteThreadFailed:1;
+        ULONGLONG InternalAllocationFailure:1;
+        ULONGLONG InternalStatusInPageError:1;
+        ULONGLONG WriteRemoteMemoryFailed:1;
+
+        ULONGLONG Unused:37;
+    };
+    LONGLONG ErrorCode;
+    ULONGLONG AsULongLong;
+} RTL_INJECTION_ERROR;
+C_ASSERT(sizeof(RTL_INJECTION_ERROR) == sizeof(ULONGLONG));
+typedef RTL_INJECTION_ERROR *PRTL_INJECTION_ERROR;
+
+
+//
 // Callers request a remote thread + DLL injection by way of the following
 // structure.
 //
@@ -116,17 +226,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
 
     _Field_range_(==, sizeof(struct _RTL_INJECTION_PACKET)) ULONG SizeOfStruct;
 
+    RTL_INJECTION_PACKET_FLAGS Flags;
+
     //
-    // Flags.
+    // All errors will be communicated through this error field.
     //
 
-    RTL_INJECTION_PACKET_FLAGS Flags;
+    RTL_INJECTION_ERROR Error;
 
     //
     // Packets are verified via the magic structure before being acted upon.
     //
 
-    RTL_INJECTION_MAGIC Magic;
+    RTL_INJECTION_MAGIC_NUMBER MagicNumber;
 
     //
     // Fully-qualified path name of the target library to load.
@@ -153,7 +265,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     // use for injection.  If this is 0, a new remote thread will be created.
     //
 
-    ULONG OptionalTargetThreadId;
+    ULONG TargetThreadId;
 
     //
     // Payload information.
@@ -167,46 +279,56 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
 typedef RTL_INJECTION_PACKET *PRTL_INJECTION_PACKET;
 typedef const RTL_INJECTION_PACKET *PCRTL_INJECTION_PACKET;
 
-typedef union _RTL_INJECTION_ERROR {
-    struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG InvalidTargetProcessId:1;
-        ULONG InvalidOptionalTargetThreadId:1;
-        ULONG InvalidPacket:1;
-        ULONG InvalidPayload:1;
-        ULONG OpenTargetProcessHandleFailed:1;
-        ULONG CreateRemoteThreadFailed:1;
-        ULONG WriteRemoteMemoryFailed:1;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} RTL_INJECTION_ERROR;
-C_ASSERT(sizeof(RTL_INJECTION_ERROR) == sizeof(ULONG));
-typedef RTL_INJECTION_ERROR *PRTL_INJECTION_ERROR;
-
 typedef
 _Check_return_
 _Success_(return != 0)
+_Pre_satisfies_(_Notnull_(Flags))
+_Pre_satisfies_(Flags->InjectModule || Flags->InjectCode)
+_Pre_satisfies_(Flags->Unused == 0)
+_When_(return != 0, _Post_satisfies_(InjectionError->ErrorCode == 0))
+_When_(return == 0, _Post_satisfies_(InjectionError->ErrorCode != 0))
 BOOL
 (RTL_CREATE_INJECTION_PACKET)(
     _In_ struct _RTL *Rtl,
-    _In_opt_ PRTL_INJECTION_PACKET_FLAGS Flags,
-    _In_opt_ PCUNICODE_STRING ModulePath,
-    _In_opt_ PSTRING CallbackFunctionName,
-    _In_opt_ ULONG SizeOfCodeInBytes,
-    _In_reads_bytes_opt_(SizeOfCodeInBytes) PBYTE Code,
+    _In_ PALLOCATOR Allocator,
+    _In_ PRTL_CREATE_INJECTION_PACKET_FLAGS Flags,
+
+    _When_(Flags->InjectModule == 0, _Pre_null_)
+    _When_(Flags->InjectModule != 0, _In_)
+        PCUNICODE_STRING ModulePath,
+
+    _When_(Flags->InjectModule == 0, _Pre_null_)
+    _When_(Flags->InjectModule != 0, _In_)
+        PCSTRING CallbackFunctionName,
+
+    _When_(Flags->InjectCode == 0, _Pre_null_)
+    _When_(Flags->InjectCode != 0, _In_)
+        ULONG SizeOfCodeInBytes,
+
+    _When_(Flags->InjectCode == 0, _Pre_null_)
+    _When_(Flags->InjectCode != 0,
+           _In_reads_bytes_(ROUND_TO_PAGES(SizeOfCodeInBytes)))
+        PBYTE Code,
+
     _In_ ULONG TargetProcessId,
-    _In_opt_ ULONG OptionalTargetThreadId,
-    _Outptr_result_maybenull_ PRTL_INJECTION_PACKET *InjectionPacketPointer
-    _Outptr_result_maybenull_ PRTL_INJECTION_ERROR InjectionError,
+
+    _When_(Flags->HijackExistingThread == 0, _Pre_null_)
+    _When_(Flags->HijackExistingThread != 0, _In_)
+        ULONG TargetThreadId,
+
+    _Outptr_result_nullonfailure_ PRTL_INJECTION_PACKET *InjectionPacketPointer,
+    _Outptr_ PRTL_INJECTION_ERROR InjectionError
     );
 typedef RTL_CREATE_INJECTION_PACKET *PRTL_CREATE_INJECTION_PACKET;
 
 typedef
 _Success_(return != 0)
+_When_(return != 0, _Post_satisfies_(InjectionError->ErrorCode == 0))
 BOOL
 (RTL_DESTROY_INJECTION_PACKET)(
     _In_ struct _RTL *Rtl,
-    _Pre_ _Notnull_ _Post_ _Notvalid_ PRTL_INJECTION_PACKET *PacketPointer
+    _Pre_ _Notnull_ _Post_ptr_invalid_ PRTL_INJECTION_PACKET *PacketPointer,
+    _Outptr_ PRTL_INJECTION_ERROR InjectionError
     );
 typedef RTL_DESTROY_INJECTION_PACKET *PRTL_DESTROY_INJECTION_PACKET;
 
@@ -262,12 +384,57 @@ BOOL
 typedef RTL_INJECT *PRTL_INJECT;
 
 typedef
-VOID
+ULONG
 (CALLBACK RTL_INJECTION_COMPLETE_CALLBACK)(
-    _In_ PRTL_INJECTION_PACKET Packet,
-    _In_opt_ RTL_INJECTION_ERROR InjectionError
+    _In_ PRTL Rtl,
+    _In_ PRTL_INJECTION_PACKET Packet
     );
 typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
+
+typedef
+BOOL
+(CALLBACK RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST)(
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Out_opt_ PULONG MagicNumber
+    );
+typedef RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST *PRTL_IS_INJECTION_COMPLETE_CALLBACK_TEST;
+
+FORCEINLINE
+BOOL
+RtlIsInjectionCompleteCallbackTestInline(
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Out_opt_ PULONG MagicNumber
+    )
+/*++
+
+Routine Description:
+
+    This routine implements the simple callback test protocol required as part
+    of the initial injection complete callback test.
+
+Arguments:
+
+    Packet - Supplies a pointer to an injection packet.
+
+    MagicNumber - Supplies the address of a variable that will receive the
+        magic number if this is a callback test.
+
+Return Value:
+
+    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
+    should return the value of the MagicNumber parameter.
+
+--*/
+{
+    if (Packet->Flags.IsInjectionCompleteCallbackTest) {
+        *MagicNumber = (
+            Packet->MagicNumber.LowPart ^
+            Packet->MagicNumber.HighPart
+        );
+        return TRUE;
+    }
+    return FALSE;
+}
 
 //
 // Public symbol declarations.
@@ -275,6 +442,7 @@ typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
 
 #pragma component(browser, off)
 RTL_API RTL_CREATE_INJECTION_PACKET RtlCreateInjectionPacket;
+RTL_API RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST RtlIsInjectionCompleteCallbackTest;
 RTL_API RTL_DESTROY_INJECTION_PACKET RtlDestroyInjectionPacket;
 RTL_API RTL_ADD_INJECTION_PAYLOAD RtlAddInjectionPayload;
 RTL_API RTL_ADD_INJECTION_SYMBOLS RtlAddInjectionSymbols;
