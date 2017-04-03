@@ -8,12 +8,159 @@ Module Name:
 
 Abstract:
 
-    This module implements private routines pertaining to the remote thread
-    creation and code injection functionality of the Rtl component.
+    This module implements private routines pertaining to the injection of code
+    into a remote process.  Routines are provided for getting an address of a
+    currently executing function, obtaining an approximate code size of a
+    function given an address within the function, skipping jumps when given
+    a pointer to byte code.
 
 --*/
 
 #include "stdafx.h"
+
+//
+// Assembly for the GetInstructionPointer() function.
+//
+
+CONST BYTE GetInstructionPointerByteCode[] = {
+    0x48, 0x8B, 0x04, 0x24,     //  mov     rax, qword ptr [rsp]
+    0xC3,                       //  ret
+};
+
+
+_Use_decl_annotations_
+DECLSPEC_NOINLINE
+ULONG_PTR
+GetInstructionPointer(
+    VOID
+    )
+/*++
+
+Routine Description:
+
+    Returns the return address of a routine.  This effectively provides an
+    address of the instruction pointer within the routine, which is used to
+    derive an approximate size of the function when passed to the routine
+    GetApproximateFunctionBoundaries().
+
+Arguments:
+
+    None.
+
+Return Value:
+
+    The address of the instruction pointer prior to entering the current call.
+
+--*/
+{
+    return (ULONG_PTR)_ReturnAddress();
+}
+
+_Use_decl_annotations_
+BOOL
+IsJump(
+    PBYTE Code
+    )
+/*++
+
+Routine Description:
+
+    Given an address of AMD64 byte code, returns TRUE if the underlying
+    instruction is a jump.
+
+Arguments:
+
+    Code - Supplies a pointer to the first byte of the code.
+
+Return Value:
+
+    TRUE if this address represents a jump, FALSE otherwise.
+
+--*/
+{
+    return IsJumpInline(Code);
+}
+
+
+_Use_decl_annotations_
+PBYTE
+FollowJumpsToFirstCodeByte(
+    PBYTE Code
+    )
+/*++
+
+Routine Description:
+
+    Given an address of AMD64 byte code, follows any jumps until the first non-
+    jump byte code is found, and returns that byte.  Alternatively, if the first
+    bytes passed in do not indicate a jump, the original byte code address is
+    returned.
+
+    This is used to traverse jump tables and get to the actual underlying
+    function.
+
+Arguments:
+
+    Code - Supplies a pointer to the first byte of the code for which any jumps
+        should be followed.
+
+Return Value:
+
+    The address of the first non-jump byte code encountered.
+
+--*/
+{
+    return FollowJumpsToFirstCodeByteInline(Code);
+}
+
+_Use_decl_annotations_
+BOOL
+GetApproximateFunctionBoundaries(
+    ULONG_PTR Address,
+    PULONG_PTR StartAddress,
+    PULONG_PTR EndAddress
+    )
+/*++
+
+Routine Description:
+
+    Given an address which resides within a function, return the approximate
+    start and end addresses of a function by searching forward and backward
+    for repeat occurrences of the `int 3` (breakpoint) instruction, represented
+    by 0xCC in byte code.  Such occurrences are usually good indicators of
+    function boundaries -- in fact, the Microsoft AMD64 calling convention
+    requires that function entry points should be padded with 6 bytes (to allow
+    for hot-patching), and this padding is always the 0xCC byte.
+
+    The term "approximate" is used to qualify both the start and end addresses,
+    because although scanning for repeat 0xCC occurrences is quite reliable, it
+    is not as reliable as a more authoritative source of function size, such as
+    debug symbols.
+
+Arguments:
+
+    Address - Supplies an address that resides somewhere within the function
+        for which the boundaries are to be obtained.
+
+    StartAddress - Supplies a pointer to a variable that will receive the
+        address of the approximate starting point of the function.
+
+    EndAddress - Supplies a pointer to a variable that will receive the
+        address of the approximate ending point of the function (this will
+        typically be the `ret` (0xC3) instruction).
+
+Return Value:
+
+    TRUE if the method was successful, FALSE otherwise.  FALSE will only be
+    returned if parameter validation fails.  StartAddress and EndAddress will
+    not be updated in this case.
+
+--*/
+{
+    return GetApproximateFunctionBoundariesInline(Address,
+                                                  StartAddress,
+                                                  EndAddress);
+}
 
 _Use_decl_annotations_
 BOOL
@@ -118,7 +265,7 @@ Return Value:
 
     __try {
 
-        ActualMagicNumber = InjectionCompleteCallback(Rtl, &Packet);
+        ActualMagicNumber = InjectionCompleteCallback(&Packet);
 
     } __except(
         GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||

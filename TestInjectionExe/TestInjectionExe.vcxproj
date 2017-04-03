@@ -43,17 +43,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{91695EDE-DFC2-4364-A959-3C8A0870507A}</ProjectGuid>
-    <RootNamespace>Rtl</RootNamespace>
+    <ProjectGuid>{0E046382-5241-4B4D-9E26-3056D2C63F3A}</ProjectGuid>
+    <RootNamespace>TestInjectionExe</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -61,61 +65,43 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <TargetName>TestInjection</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>AsmLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>TracerHeapLib.lib;TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;_ASM_NO_API_EXPORT_IMPORT;_DEBUG_ENGINE_NO_API_EXPORT_IMPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;_RTL_TEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="atexit.h" />
-    <ClInclude Include="AtExitEx.h" />
-    <ClInclude Include="Commandline.h" />
-    <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
-    <ClInclude Include="Injection.h" />
-    <ClInclude Include="InjectionPrivate.h" />
-    <ClInclude Include="Memory.h" />
-    <ClInclude Include="RtlPrivate.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Rtl.h" />
-    <ClInclude Include="Time.h" />
-    <ClInclude Include="__C_specific_handler.h" />
+    <ClInclude Include="TestInjection.h" />
+    <ClInclude Include="..\Rtl\__C_specific_handler.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="atexit.c" />
-    <ClCompile Include="AtExitEx.c" />
-    <ClCompile Include="CopyPages.c" />
-    <ClCompile Include="dllmain.c">
-      <PrecompiledHeader />
-    </ClCompile>
-    <ClCompile Include="File.c" />
-    <ClCompile Include="Injection.c" />
-    <ClCompile Include="InjectionPrivate.c" />
-    <ClCompile Include="Loader.c" />
-    <ClCompile Include="Privilege.c" />
-    <ClCompile Include="Registry.c" />
-    <ClCompile Include="RtlAtExitRundown.c" />
-    <ClCompile Include="RtlGlobalAtExitRundown.c" />
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="TestInjection.c" />
+    <ClCompile Include="TestInjectionMain.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Rtl.c" />
-    <ClCompile Include="PathEnvironmentVariable.c" />
-    <ClCompile Include="Commandline.c" />
-    <ClCompile Include="Path.c" />
-    <ClCompile Include="SymbolLoader.c" />
-    <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c" />
+    <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AsmLib\AsmLib.vcxproj">
-      <Project>{a74874ac-5f75-42b8-9e94-4028de4d1829}</Project>
+    <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
+      <Project>{347F64D0-020C-4CAB-90C5-BF9788C95316}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{C25BB763-5752-4677-AC2C-281FC7905522}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

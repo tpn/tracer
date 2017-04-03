@@ -110,7 +110,7 @@
     <ClCompile Include="InjectionPrivate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TestInjection.c">
+    <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
