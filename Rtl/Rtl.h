@@ -1704,6 +1704,20 @@ BOOL
     );
 typedef CLOSE_HANDLE *PCLOSE_HANDLE;
 
+typedef
+VOID
+(WINAPI OUTPUT_DEBUG_STRING_A)(
+    _In_opt_ LPCSTR lpOutputString
+    );
+typedef OUTPUT_DEBUG_STRING_A *POUTPUT_DEBUG_STRING_A;
+
+typedef
+VOID
+(WINAPI OUTPUT_DEBUG_STRING_W)(
+    _In_opt_ LPCWSTR lpOutputString
+    );
+typedef OUTPUT_DEBUG_STRING_W *POUTPUT_DEBUG_STRING_W;
+
 #include "Injection.h"
 
 //
@@ -4709,6 +4723,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     HCRYPTPROV CryptProv;
     PCRYPT_GEN_RANDOM CryptGenRandom;
+
+    POUTPUT_DEBUG_STRING_A OutputDebugStringA;
+    POUTPUT_DEBUG_STRING_W OutputDebugStringW;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

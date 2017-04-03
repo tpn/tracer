@@ -9,8 +9,10 @@ Module Name:
 Abstract:
 
     This is the private header file for COM-related aspects of the DebugEngine.
-    It is kept separate from DebugEnginePrivate.h in order to easily distinguish
-    our internal DebugEngine functionality versus boilerplate COM glue.
+    It is kept separate from DebugEnginePrivate.h in order for other components
+    to use it without needing to dig into our private innards, as well as making
+    it easier to distinguish between internal DebugEngine functionality versus
+    boilerplate COM glue.
 
 --*/
 
@@ -36,8 +38,6 @@ typedef GUID const *PCGUID;
 //
 
 typedef union _DEBUG_EVENT_CALLBACKS_INTEREST_MASK {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -125,12 +125,12 @@ typedef union _DEBUG_EVENT_CALLBACKS_INTEREST_MASK {
 
         ULONG Unused:19;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_EVENT_CALLBACKS_INTEREST_MASK;
 C_ASSERT(sizeof(DEBUG_EVENT_CALLBACKS_INTEREST_MASK) == sizeof(ULONG));
 
 typedef union _DEBUG_CHANGE_ENGINE_STATE {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -268,6 +268,8 @@ typedef union _DEBUG_CHANGE_ENGINE_STATE {
         ULONG Unused:17;
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_CHANGE_ENGINE_STATE, *PDEBUG_CHANGE_ENGINE_STATE;
 C_ASSERT(sizeof(DEBUG_CHANGE_ENGINE_STATE) == sizeof(ULONG));
 
@@ -276,8 +278,6 @@ C_ASSERT(sizeof(DEBUG_CHANGE_ENGINE_STATE) == sizeof(ULONG));
 //
 
 typedef union _DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -306,6 +306,8 @@ typedef union _DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK {
 
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK;
 typedef DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK
       *PDEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK;
@@ -355,8 +357,6 @@ C_ASSERT(sizeof(DEBUG_OUTPUT_CALLBACK_FLAGS) == sizeof(ULONG));
 //
 
 typedef union _DEBUG_OUTPUT_MASK {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -448,6 +448,8 @@ typedef union _DEBUG_OUTPUT_MASK {
         ULONG Status:1;
 
     };
+    LONG AsLong;
+    ULONG AsULong;
 } DEBUG_OUTPUT_MASK, *PDEBUG_OUTPUT_MASK;
 C_ASSERT(sizeof(DEBUG_OUTPUT_MASK) == sizeof(ULONG));
 
@@ -457,12 +459,6 @@ C_ASSERT(sizeof(DEBUG_OUTPUT_MASK) == sizeof(ULONG));
 //
 
 typedef union _DEBUG_EXECUTION_STATUS {
-    struct {
-        ULONG LowPart;
-        ULONG HighPart;
-    };
-    LONGLONG AsLongLong;
-    ULONGLONG AsULongLong;
     struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
 
         //
@@ -496,7 +492,12 @@ typedef union _DEBUG_EXECUTION_STATUS {
 
         ULONGLONG Unused:30;
     };
-
+    struct {
+        ULONG LowPart;
+        ULONG HighPart;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
 } DEBUG_EXECUTION_STATUS, *PDEBUG_EXECUTION_STATUS;
 C_ASSERT(sizeof(DEBUG_EXECUTION_STATUS) == sizeof(ULONGLONG));
 
@@ -1058,6 +1059,25 @@ typedef DEBUG_OUTPUT_CALLBACKS2_OUTPUT2 *PDEBUG_OUTPUT_CALLBACKS2_OUTPUT2;
 ////////////////////////////////////////////////////////////////////////////////
 // End COM Function Pointer Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+//
+// Define constant GUID symbol names for interfaces.
+//
+
+#pragma component(browser, off)
+CGUID IID_IUNKNOWN;
+CGUID IID_IDEBUG_ADVANCED;
+CGUID IID_IDEBUG_SYMBOLS;
+CGUID IID_IDEBUG_SYMBOLGROUP;
+CGUID IID_IDEBUG_DATASPACES;
+CGUID IID_IDEBUG_CLIENT;
+CGUID IID_IDEBUG_CONTROL;
+CGUID IID_IDEBUG_REGISTERS;
+CGUID IID_IDEBUG_EVENT_CALLBACKS;
+CGUID IID_IDEBUG_INPUT_CALLBACKS;
+CGUID IID_IDEBUG_OUTPUT_CALLBACKS;
+CGUID IID_IDEBUG_OUTPUT_CALLBACKS2;
+#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"

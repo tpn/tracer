@@ -90,6 +90,7 @@
     <ClCompile Include="DebugEngineEventCallbacks.c" />
     <ClCompile Include="DebugEngineExamineSymbols.c" />
     <ClCompile Include="DebugEngineExecuteCommand.c" />
+    <ClCompile Include="DebugEngineInterfaces.c" />
     <ClCompile Include="DebugEngineOutput.c" />
     <ClCompile Include="DebugEngineOutputCallbacks2.c" />
     <ClCompile Include="DebugEngineSettingsMeta.c" />

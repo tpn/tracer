@@ -25,7 +25,6 @@ RtlCreateInjectionPacket(
     PRTL_CREATE_INJECTION_PACKET_FLAGS CreateInjectionFlags,
     PCUNICODE_STRING ModulePath,
     PCSTRING CallbackFunctionName,
-    ULONG SizeOfCodeInBytes,
     PBYTE Code,
     ULONG TargetProcessId,
     ULONG TargetThreadId,
@@ -71,15 +70,10 @@ Arguments:
         a valid string if CreateFlags.InjectModule is TRUE, otherwise it must
         be NULL.
 
-    SizeOfCodeInBytes - Supplies the size, in bytes, of the buffer pointed to
-        by the Code parameter.  This must be non-zero if CreateFlags.InjectCode
-        is set, zero otherwise.
-
     Code - Supplies a pointer to a buffer of code to be injected into the
         process and then executed by the target thread.  This must be NULL
         if Flags.InjectModule is set, otherwise, it should point to a valid
-        buffer whose size is indicated by the SizeOfCodeInBytes parameter if
-        CreateFlags.InjectCode is set.
+        buffer that contains AMD64 byte code.
 
     TargetProcessId - Supplies the ID of the target process to perform the
         injection.
@@ -114,6 +108,7 @@ Return Value:
     ULONG Index;
     ULONG ValidPages;
     ULONG NumberOfCodePages;
+    ULONG SizeOfCodeInBytes;
     ULONG PageAlignedSizeOfCode;
     ULONG OldProtection;
     LONG ThreadSuspensionCount;
@@ -280,6 +275,13 @@ Return Value:
         // Probe the entire address space indicated by the SizeOfCodeInBytes,
         // one page at a time, by dereferencing the first byte of each page.
         //
+
+        //
+        // (Temporarily disable this code.)
+        //
+
+        SizeOfCodeInBytes = 0;
+        __debugbreak();
 
         ValidPages = 0;
         PageAlignedSizeOfCode = ROUND_TO_PAGES(SizeOfCodeInBytes);

@@ -2986,6 +2986,9 @@ InitializeRtl(
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
 
+    Rtl->OutputDebugStringA = OutputDebugStringA;
+    Rtl->OutputDebugStringW = OutputDebugStringW;
+
     Rtl->MaximumFileSectionSize = Rtl->MmGetMaximumFileSectionSize();
 
     Table = Rtl->LoaderNotificationTable = (PRTL_LDR_NOTIFICATION_TABLE)(

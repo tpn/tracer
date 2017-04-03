@@ -16,6 +16,10 @@ Abstract:
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _DEBUG_ENGINE_INTERNAL_BUILD
 
 //
@@ -46,6 +50,19 @@ Abstract:
 
 #else
 
+#ifdef _DEBUG_ENGINE_NO_API_EXPORT_IMPORT
+
+//
+// We're being included by someone who doesn't want dllexport or dllimport.
+// This is useful for creating new .exe-based projects for things like unit
+// testing or performance testing/profiling.
+//
+
+#define DEBUG_ENGINE_API
+#define DEBUG_ENGINE_DATA extern
+
+#else
+
 //
 // We're being included by an external component.
 //
@@ -53,11 +70,415 @@ Abstract:
 #define DEBUG_ENGINE_API __declspec(dllimport)
 #define DEBUG_ENGINE_DATA extern __declspec(dllimport)
 
+#endif
+
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
 #include "../StringTable/StringTable.h"
 
+//
+// Disable source browsing for DbgEng.h to avoid this:
+//
+// dbgeng.h(18410): warning BK4504: file contains too many references;
+//                  ignoring further references from this source
+//
+
+#pragma component(browser, off)
+#include <DbgEng.h>
+#pragma component(browser, on)
+
+#include "DebugEngineInterfaces.h"
+
 #endif
+
+//
+// DEBUG_ENGINE-related function typedefs and structures.
+//
+
+typedef union _DEBUG_ENGINE_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} DEBUG_ENGINE_FLAGS;
+C_ASSERT(sizeof(DEBUG_ENGINE_FLAGS) == sizeof(ULONG));
+
+//
+// This captures state information about the current debug engine session.
+// It is currently used to coordinate behavior in event callbacks.
+//
+
+typedef union _DEBUG_ENGINE_STATE {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Transient state flags.
+        //
+
+        ULONG RegisteringEventCallbacks:1;
+        ULONG CreatingProcess:1;
+        ULONG InCreateProcessCallback:1;
+
+        //
+        // Final state flags.
+        //
+
+        ULONG EventCallbacksRegistered:1;
+        ULONG ProcessCreated:1;
+
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} DEBUG_ENGINE_STATE;
+C_ASSERT(sizeof(DEBUG_ENGINE_STATE) == sizeof(ULONG));
+typedef DEBUG_ENGINE_STATE
+      *PDEBUG_ENGINE_STATE;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_MASK OutputMask,
+    _In_ PCSTR Text
+    );
+typedef DEBUG_ENGINE_OUTPUT_CALLBACK *PDEBUG_ENGINE_OUTPUT_CALLBACK;
+
+typedef
+HRESULT
+(STDAPICALLTYPE DEBUG_ENGINE_OUTPUT_CALLBACK2)(
+    _In_ struct _DEBUG_ENGINE *DebugEngine,
+    _In_ DEBUG_OUTPUT_TYPE OutputType,
+    _In_ DEBUG_OUTPUT_CALLBACK_FLAGS OutputFlags,
+    _In_ ULONG64 Arg,
+    _In_ PCWSTR Text
+    );
+typedef DEBUG_ENGINE_OUTPUT_CALLBACK2 *PDEBUG_ENGINE_OUTPUT_CALLBACK2;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _DEBUG_ENGINE)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    DEBUG_ENGINE_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    DEBUG_ENGINE_STATE State;
+
+    //
+    // Pointer to an initialized RTL structure.
+    //
+
+    struct _RTL *Rtl;
+
+    //
+    // Pointer to our parent DEBUG_ENGINE_SESSION.
+    //
+
+    struct _DEBUG_ENGINE_SESSION *Session;
+
+    //
+    // IIDs, interfaces and vtables.
+    //
+
+    PCGUID IID_Client;
+    PIDEBUGCLIENT IClient;
+    PDEBUGCLIENT Client;
+
+    PCGUID IID_Control;
+    PIDEBUGCONTROL IControl;
+    PDEBUGCONTROL Control;
+
+    PCGUID IID_Symbols;
+    PIDEBUGSYMBOLS ISymbols;
+    PDEBUGSYMBOLS Symbols;
+
+    PCGUID IID_SymbolGroup;
+    PIDEBUGSYMBOLGROUP ISymbolGroup;
+    PDEBUGSYMBOLGROUP SymbolGroup;
+
+    PCGUID IID_Advanced;
+    PIDEBUGADVANCED IAdvanced;
+    PDEBUGADVANCED Advanced;
+
+    PCGUID IID_DataSpaces;
+    PIDEBUGDATASPACES IDataSpaces;
+    PDEBUGDATASPACES DataSpaces;
+
+    PCGUID IID_Registers;
+    PIDEBUGREGISTERS IRegisters;
+    PDEBUGREGISTERS Registers;
+
+    //
+    // Client/Control state.
+    //
+
+    ULONG SessionStatus;
+
+    DEBUG_EXECUTION_STATUS ExecutionStatus;
+
+    ULONG EngineState;
+    ULONGLONG EngineStateArg;
+    DEBUG_CHANGE_ENGINE_STATE ChangeEngineState;
+
+    ULONG DebuggeeState;
+    ULONGLONG DebuggeeStateArg;
+
+    ULONG SymbolState;
+    ULONGLONG SymbolStateArg;
+
+    ULONG ActualProcessorType;
+    struct {
+        ULONG Error;
+        ULONG Level;
+    } SystemError;
+
+    //
+    // Callback-related fields.
+    //
+
+    volatile LONG EventCallbacksRefCount;
+    volatile LONG InputCallbacksRefCount;
+    volatile LONG OutputCallbacksRefCount;
+    volatile LONG OutputCallbacks2RefCount;
+
+    SRWLOCK Lock;
+
+    _Guarded_by_(Lock)
+    struct {
+
+        DEBUG_OUTPUT_MASK OutputMask;
+        PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
+        PDEBUG_ENGINE_OUTPUT_CALLBACK2 OutputCallback2;
+
+        struct _DEBUG_ENGINE_OUTPUT *CurrentOutput;
+
+        DEBUG_EVENT_CALLBACKS_INTEREST_MASK EventCallbacksInterestMask;
+        DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK OutputCallbacks2InterestMask;
+
+        DEBUGEVENTCALLBACKS EventCallbacks;
+        IDEBUGEVENTCALLBACKS IEventCallbacks;
+
+        DEBUGINPUTCALLBACKS InputCallbacks;
+        IDEBUGINPUTCALLBACKS IInputCallbacks;
+
+        DEBUGOUTPUTCALLBACKS OutputCallbacks;
+        IDEBUGOUTPUTCALLBACKS IOutputCallbacks;
+
+        DEBUGOUTPUTCALLBACKS2 OutputCallbacks2;
+        IDEBUGOUTPUTCALLBACKS2 IOutputCallbacks2;
+
+        GUID IID_CurrentEventCallbacks;
+        GUID IID_CurrentInputCallbacks;
+        GUID IID_CurrentOutputCallbacks;
+    };
+
+} DEBUG_ENGINE;
+typedef DEBUG_ENGINE *PDEBUG_ENGINE;
+typedef DEBUG_ENGINE **PPDEBUG_ENGINE;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(DebugEngine->Lock)
+BOOL
+(INITIALIZE_DEBUG_ENGINE)(
+    _In_ PRTL Rtl,
+    _In_ struct _DEBUG_ENGINE *DebugEngine
+    );
+typedef INITIALIZE_DEBUG_ENGINE *PINITIALIZE_DEBUG_ENGINE;
+
+typedef
+_Requires_lock_not_held_(*EnginePointer->Lock)
+VOID
+(DESTROY_DEBUG_ENGINE)(
+    _Pre_notnull_ _Post_satisfies_(*EnginePointer == 0)
+        struct _DEBUG_ENGINE **EnginePointer,
+    _In_opt_ PBOOL IsProcessTerminating
+    );
+typedef DESTROY_DEBUG_ENGINE *PDESTROY_DEBUG_ENGINE;
+
+
+#define AcquireDebugEngineLock(Engine) \
+    AcquireSRWLockExclusive(&(Engine)->Lock)
+
+#define ReleaseDebugEngineLock(Engine) \
+    ReleaseSRWLockExclusive(&(Engine)->Lock)
+
+//
+// Event callbacks.
+//
+
+#define DEBUG_CALLBACK_PROLOGUE(Name)                             \
+    PDEBUG_ENGINE Engine;                                         \
+    Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name);
+
+#define DEBUG_SESSION_CALLBACK_PROLOGUE(Name)                     \
+    PDEBUG_ENGINE Engine;                                         \
+    PDEBUG_ENGINE_SESSION Session;                                \
+    Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name); \
+    Session = Engine->Session;
+
+#define DEBUG_ADD_REF(Name) InterlockedIncrement(&Engine->##Name##RefCount)
+
+#define DEBUG_RELEASE(Name) InterlockedIncrement(&Engine->##Name##RefCount)
+
+#define DEBUG_QUERY_INTERFACE(Name, Upper)                       \
+    if (InlineIsEqualGUID(InterfaceId, &IID_IUNKNOWN) ||         \
+        InlineIsEqualGUID(InterfaceId, &IID_IDEBUG_##Upper##)) { \
+        InterlockedIncrement(&Engine->##Name##RefCount);         \
+        *Interface = &Engine->I##Name##;                         \
+        return S_OK;                                             \
+    }                                                            \
+    *Interface = NULL
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SET_EVENT_CALLBACKS)(
+    _In_ PDEBUG_ENGINE Engine,
+    _In_ PCDEBUGEVENTCALLBACKS EventCallbacks,
+    _In_ PCGUID InterfaceId,
+    _In_ DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask
+    );
+typedef DEBUG_ENGINE_SET_EVENT_CALLBACKS *PDEBUG_ENGINE_SET_EVENT_CALLBACKS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SET_INPUT_CALLBACKS)(
+    _In_ PDEBUG_ENGINE Engine,
+    _In_ PDEBUGINPUTCALLBACKS InputCallbacks,
+    _In_ PCGUID InterfaceId
+    );
+typedef DEBUG_ENGINE_SET_INPUT_CALLBACKS *PDEBUG_ENGINE_SET_INPUT_CALLBACKS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SET_OUTPUT_CALLBACKS)(
+    _In_ PDEBUG_ENGINE Engine
+    );
+typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS *PDEBUG_ENGINE_SET_OUTPUT_CALLBACKS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+_Requires_exclusive_lock_held_(Engine->Lock)
+BOOL
+(DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2)(
+    _In_ PDEBUG_ENGINE Engine
+    );
+typedef DEBUG_ENGINE_SET_OUTPUT_CALLBACKS2
+      *PDEBUG_ENGINE_SET_OUTPUT_CALLBACKS2;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK DEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK)(
+    _In_ struct _DEBUG_ENGINE_OUTPUT *Output
+    );
+typedef DEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK
+      *PDEBUG_ENGINE_PARSE_EXAMINE_SYMBOLS_LINE_OUTPUT_CALLBACK;
+
+//
+// Inline functions for copying callback vtables to the engine.
+//
+
+_Requires_exclusive_lock_held_(Engine->Lock)
+FORCEINLINE
+VOID
+CopyIDebugEventCallbacks(
+    _In_ PDEBUG_ENGINE Engine,
+    _Out_writes_bytes_(sizeof(DEBUGEVENTCALLBACKS)) PDEBUGEVENTCALLBACKS Dest,
+    _In_ PCDEBUGEVENTCALLBACKS Source
+    )
+{
+    UNREFERENCED_PARAMETER(Engine);
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            QUADWORD_SIZEOF(DEBUGEVENTCALLBACKS));
+}
+
+_Requires_exclusive_lock_held_(Engine->Lock)
+FORCEINLINE
+VOID
+CopyIDebugInputCallbacks(
+    _In_ PDEBUG_ENGINE Engine,
+    _Out_writes_bytes_(sizeof(DEBUGINPUTCALLBACKS)) PDEBUGINPUTCALLBACKS Dest,
+    _In_ PCDEBUGINPUTCALLBACKS Source
+    )
+{
+    UNREFERENCED_PARAMETER(Engine);
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            QUADWORD_SIZEOF(DEBUGINPUTCALLBACKS));
+}
+
+_Requires_exclusive_lock_held_(Engine->Lock)
+FORCEINLINE
+VOID
+CopyIDebugOutputCallbacks(
+    _In_ PDEBUG_ENGINE Engine,
+    _Out_writes_bytes_(sizeof(DEBUGOUTPUTCALLBACKS))
+        PDEBUGOUTPUTCALLBACKS Dest,
+    _In_ PCDEBUGOUTPUTCALLBACKS Source
+    )
+{
+    UNREFERENCED_PARAMETER(Engine);
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            QUADWORD_SIZEOF(DEBUGOUTPUTCALLBACKS));
+}
+
+_Requires_exclusive_lock_held_(Engine->Lock)
+FORCEINLINE
+VOID
+CopyIDebugOutputCallbacks2(
+    _In_ PDEBUG_ENGINE Engine,
+    _Out_writes_bytes_(sizeof(DEBUGOUTPUTCALLBACKS2))
+        PDEBUGOUTPUTCALLBACKS2 Dest,
+    _In_ PCDEBUGOUTPUTCALLBACKS2 Source
+    )
+{
+    UNREFERENCED_PARAMETER(Engine);
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            QUADWORD_SIZEOF(DEBUGOUTPUTCALLBACKS2));
+}
+
+//
+// Inline function for copying GUIDs.
+//
+
+FORCEINLINE
+VOID
+CopyInterfaceId(
+    _Out_writes_bytes_(sizeof(GUID)) PGUID Dest,
+    _In_ PCGUID Source
+    )
+{
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            QUADWORD_SIZEOF(GUID));
+}
 
 //
 // DEBUG_ENGINE_OUTPUT-related functions and structures.
