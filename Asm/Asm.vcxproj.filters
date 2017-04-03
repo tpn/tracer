@@ -48,5 +48,8 @@
     <MASM Include="FillPages.asm">
       <Filter>Source Files</Filter>
     </MASM>
+    <MASM Include="Misc.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

@@ -83,8 +83,9 @@ include ksamd64.inc
 ; 16 lanes of a second XMM register.
 ;
 
-        mov             xmm1, 0cch              ; Load 0xCC into XMM1.
-        pbroadcastb     xmm0, xmm0              ; Broadcast across XMM0.
+        mov             rax,  0cch              ; Load 0xCC into RAX.
+        movd            xmm1, rax               ; Load 0xCC into XMM1.
+        ;pbroadcastb     xmm0, xmm0, xmm1        ; Broadcast across XMM0.
 
 ;
 ; Clear r10 and r11.
@@ -102,6 +103,7 @@ include ksamd64.inc
         and     rcx, 31
 
 Gfb05:  xor     rax, rax
+        sub     rax, 32
 
         align 16
 
@@ -109,18 +111,18 @@ Gfb05:  xor     rax, rax
 ; Search backwards 32 bytes at a time, via two 16 byte registers.
 ;
 
-Gfb10:  movntdqa    xmm1, xmmword ptr [rcx + rax - 32 ] ; Load -32-16 bytes.
-        pcmpeqb     xmm2, xmm1, xmm0                    ; Check for 0xCC.
+Gfb10:  movntdqa    xmm1, xmmword ptr [rcx + rax + 16]  ; Load -32-16 bytes.
+        ;pcmpeqb     xmm2, xmm1, xmm0                    ; Check for 0xCC.
         pmovmskb    r10, xmm2                           ; Create mask.
 
-        movntdqa    xmm3, xmmword ptr [rcx + rax - 16 ] ; Load -16-0 bytes.
-        pcmpeqb     xmm4, xmm2, xmm0                    ; Check for 0xCC.
+        movntdqa    xmm3, xmmword ptr [rcx + rax]       ; Load -16-0 bytes.
+        ;pcmpeqb     xmm4, xmm2, xmm0                    ; Check for 0xCC.
         pmovmskb    r11, xmm4                           ; Create mask.
 
 ;
 ; Fast-path comparison of the two masks.
 ;
-        sub     rax, -32                        ; Subtract 32 from rax.
+        sub     rax, 32                         ; Subtract 32 from rax.
         test    r10, r11                        ; Any 0xCCs?
         jz      short Gfb10                     ; No, keep searching.
 
@@ -132,11 +134,11 @@ Gfb10:  movntdqa    xmm1, xmmword ptr [rcx + rax - 32 ] ; Load -32-16 bytes.
 ; XXX TODO: work in progress.
 ;
 
-        lea r8, [rcx - r10]
+        ;lea r8, [rcx - r10]
 
         ret                                     ; Return.
 
-        LEAF_END GetInstructionPointerAddress, _TEXT$00
+        LEAF_END GetFunctionBoundaries, _TEXT$00
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
 
