@@ -169,7 +169,7 @@ RtlpTestInjectionCompleteCallback(
     PRTL Rtl,
     PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
     PRTL_INJECTION_ERROR InjectionError
-)
+    )
 /*++
 
 Routine Description:
