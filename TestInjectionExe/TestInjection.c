@@ -21,25 +21,10 @@ InjectionCallback1(
     PRTL_INJECTION_PACKET Packet
     )
 {
-    LONG CodeSize;
-    ULONG MagicNumber;
-    ULONG_PTR Address;
-    ULONG_PTR Start;
-    ULONG_PTR End;
+    ULONG Token;
 
-    if (Packet->Flags.IsCodeSizeQuery) {
-        Address = Packet->GetInstructionPointer();
-        Packet->GetApproximateFunctionBoundaries(Address, &Start, &End);
-        CodeSize = (ULONG)(End - Start);
-        return CodeSize;
-    }
-
-    if (RtlIsInjectionCompleteCallbackTestInline(Packet, &MagicNumber)) {
-        return MagicNumber;
-    }
-
-    if (!Packet->Flags.IsInjected) {
-        return 0;
+    if (RtlIsInjectionProtocolCallbackInline(Packet, &Token)) {
+        return Token;
     }
 
     return 1;
