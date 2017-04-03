@@ -130,7 +130,8 @@ Routine Description:
     by 0xCC in byte code.  Such occurrences are usually good indicators of
     function boundaries -- in fact, the Microsoft AMD64 calling convention
     requires that function entry points should be padded with 6 bytes (to allow
-    for hot-patching), and this padding is always the 0xCC byte.
+    for hot-patching), and this padding is always the 0xCC byte.  The search is
+    terminated in both directions once two successive 0xCC bytes are found.
 
     The term "approximate" is used to qualify both the start and end addresses,
     because although scanning for repeat 0xCC occurrences is quite reliable, it
