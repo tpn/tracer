@@ -103,25 +103,6 @@ typedef union _RTL_INJECTION_PACKET_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
-        // When set, indicates the injection machinery is performing a test of
-        // the caller's requested code injection prior to actually doing the
-        // injection.  The injected code must detect the presence of this flag,
-        // read the contents of Packet->MagicNumber field, then return the XOR'd
-        // contents of the High and Low parts.
-        //
-
-        ULONG IsInjectionCompleteCallbackTest:1;
-
-        //
-        // When set, indicates that a calling routine wishes to obtain the
-        // code size of the given function as the return value.  The function
-        // pointer Packet->GetReturnAddress will be provided in order to assist
-        // with determining the callback code size.
-        //
-
-        ULONG IsCodeSizeQuery:1;
-
-        //
         // When set, indicates the function is running in the injected context.
         //
 
@@ -131,7 +112,7 @@ typedef union _RTL_INJECTION_PACKET_FLAGS {
         // Unused bits.
         //
 
-        ULONG Unused:29;
+        ULONG Unused:31;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -228,33 +209,13 @@ C_ASSERT(sizeof(RTL_INJECTION_ERROR) == sizeof(ULONGLONG));
 typedef RTL_INJECTION_ERROR *PRTL_INJECTION_ERROR;
 
 typedef
-ULONG_PTR
-(CALLBACK GET_INSTRUCTION_POINTER)(VOID);
-typedef GET_INSTRUCTION_POINTER *PGET_INSTRUCTION_POINTER;
-
-typedef
+_Check_return_
 BOOL
-(CALLBACK GET_APPROXIMATE_FUNCTION_BOUNDARIES)(
-    _In_ ULONG_PTR Address,
-    _Out_ PULONG_PTR StartAddress,
-    _Out_ PULONG_PTR EndAddress
+(CALLBACK RTL_IS_INJECTION_PROTOCOL_CALLBACK)(
+    _In_ struct _RTL_INJECTION_PACKET const *Packet,
+    _Outptr_result_maybenull_ PVOID Token
     );
-typedef GET_APPROXIMATE_FUNCTION_BOUNDARIES
-      *PGET_APPROXIMATE_FUNCTION_BOUNDARIES;
-
-typedef
-BOOL
-(CALLBACK IS_JUMP)(
-    _In_ PBYTE Code
-    );
-typedef IS_JUMP *PIS_JUMP;
-
-typedef
-PBYTE
-(FOLLOW_JUMPS_TO_FIRST_CODE_BYTE)(
-    _In_ PBYTE Code
-    );
-typedef FOLLOW_JUMPS_TO_FIRST_CODE_BYTE *PFOLLOW_JUMPS_TO_FIRST_CODE_BYTE;
+typedef RTL_IS_INJECTION_PROTOCOL_CALLBACK *PRTL_IS_INJECTION_PROTOCOL_CALLBACK;
 
 //
 // Callers request a remote thread + DLL injection by way of the following
@@ -264,10 +225,31 @@ typedef FOLLOW_JUMPS_TO_FIRST_CODE_BYTE *PFOLLOW_JUMPS_TO_FIRST_CODE_BYTE;
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
 
     //
+    // The injection protocol requires that callback code must perform the
+    // following:
+    //
+    //      PVOID Token;
+    //
+    //      if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
+    //          return Token;
+    //      }
+    //
+    // The following field contains the function pointer to facilitate such
+    // a check.  It is guaranteed to always be the first element in the
+    // injection packet structure.
+    //
+
+    PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;
+
+    //
     // Size of the structure, in bytes.
     //
 
     _Field_range_(==, sizeof(struct _RTL_INJECTION_PACKET)) ULONG SizeOfStruct;
+
+    //
+    // Flags used for communicating various states of the packet.
+    //
 
     RTL_INJECTION_PACKET_FLAGS Flags;
 
@@ -276,22 +258,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     //
 
     RTL_INJECTION_ERROR Error;
-
-    //
-    // Packets are verified via the magic structure before being acted upon.
-    //
-
-    RTL_INJECTION_MAGIC_NUMBER MagicNumber;
-
-    //
-    // The following two function pointers will always be provided when an
-    // injection complete callback routine is being invoked, regardless of
-    // whether or not the code is in the original process (e.g. a test) or
-    // the injected process.
-    //
-
-    PGET_INSTRUCTION_POINTER GetInstructionPointer;
-    PGET_APPROXIMATE_FUNCTION_BOUNDARIES GetApproximateFunctionBoundaries;
 
     //
     // Fully-qualified path name of the target library to load.
@@ -333,6 +299,14 @@ typedef RTL_INJECTION_PACKET *PRTL_INJECTION_PACKET;
 typedef const RTL_INJECTION_PACKET *PCRTL_INJECTION_PACKET;
 
 typedef
+ULONGLONG
+(CALLBACK RTL_INJECTION_COMPLETE_CALLBACK)(
+    _In_ PRTL_INJECTION_PACKET Packet
+    );
+typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
+
+
+typedef
 _Check_return_
 _Success_(return != 0)
 _Pre_satisfies_(_Notnull_(Flags))
@@ -356,7 +330,7 @@ BOOL
 
     _When_(Flags->InjectCode == 0, _Pre_null_)
     _When_(Flags->InjectCode != 0, _In_)
-        PBYTE Code,
+        PRTL_INJECTION_COMPLETE_CALLBACK Callback,
 
     _In_ ULONG TargetProcessId,
 
@@ -392,7 +366,6 @@ BOOL
     );
 typedef RTL_ADD_INJECTION_PAYLOAD *PRTL_ADD_INJECTION_PAYLOAD;
 
-/*
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -406,7 +379,6 @@ BOOL
     _In_ PRTL_BITMAP FailedSymbols,
     _Out_ PULONG NumberOfResolvedSymbolsPointer
     );
-*/
 
 typedef
 _Check_return_
@@ -431,406 +403,49 @@ BOOL
     );
 typedef RTL_INJECT *PRTL_INJECT;
 
-typedef
-ULONG
-(CALLBACK RTL_INJECTION_COMPLETE_CALLBACK)(
-    _In_ PRTL_INJECTION_PACKET Packet
-    );
-typedef RTL_INJECTION_COMPLETE_CALLBACK *PRTL_INJECTION_COMPLETE_CALLBACK;
-
-typedef
-BOOL
-(CALLBACK RTL_IS_INJECTION_CODE_SIZE_QUERY)(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG CodeSize
-    );
-typedef RTL_IS_INJECTION_CODE_SIZE_QUERY
-      *PRTL_IS_INJECTION_CODE_SIZE_QUERY;
-
-FORCEINLINE
-BOOL
-RtlIsInjectionCodeSizeQueryInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG CodeSize
-    )
-/*++
-
-Routine Description:
-
-    This routine implements the code size query protocol required by injected
-    routines.
-
-Arguments:
-
-    Packet - Supplies a pointer to an injection packet.
-
-    CodeSize - Supplies the address of a variable that will receive the size of
-        the injection callback code, in bytes.
-
-Return Value:
-
-    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
-    should return the value of the CodeSize parameter.
-
---*/
-{
-    ULONG_PTR Address;
-    ULONG_PTR Start;
-    ULONG_PTR End;
-
-    if (!Packet->Flags.IsCodeSizeQuery) {
-        return FALSE;
-    }
-
-    Address = Packet->GetInstructionPointer();
-    if (!Packet->GetApproximateFunctionBoundaries(Address, &Start, &End)) {
-        return FALSE;
-    }
-
-    *CodeSize = (ULONG)(End - Start);
-
-    return TRUE;
-}
-
-typedef
-BOOL
-(CALLBACK RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST)(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG MagicNumber
-    );
-typedef RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST *PRTL_IS_INJECTION_COMPLETE_CALLBACK_TEST;
-
-FORCEINLINE
-BOOL
-RtlIsInjectionCompleteCallbackTestInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG MagicNumber
-    )
-/*++
-
-Routine Description:
-
-    This routine implements the simple callback test protocol required as part
-    of the initial injection complete callback test.
-
-Arguments:
-
-    Packet - Supplies a pointer to an injection packet.
-
-    MagicNumber - Supplies the address of a variable that will receive the
-        magic number if this is a callback test.
-
-Return Value:
-
-    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
-    should return the value of the MagicNumber parameter.
-
---*/
-{
-    if (Packet->Flags.IsInjectionCompleteCallbackTest) {
-        *MagicNumber = (
-            Packet->MagicNumber.LowPart ^
-            Packet->MagicNumber.HighPart
-        );
-        return TRUE;
-    }
-    return FALSE;
-}
-
-typedef
-BOOL
-(CALLBACK RTL_IS_INJECTION_PROTOCOL_CALLBACK)(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG ReturnValue
-    );
-typedef RTL_IS_INJECTION_PROTOCOL_CALLBACK
-      *PRTL_IS_INJECTION_PROTOCOL_CALLBACK;
-
-//
-// Inline functions.
-//
-
-FORCEINLINE
-BOOL
-IsJumpInline(
-    PBYTE Code
-    )
-/*++
-
-Routine Description:
-
-    Given an address of AMD64 byte code, returns TRUE if the underlying
-    instruction is a jump.
-
-Arguments:
-
-    Code - Supplies a pointer to the first byte of the code.
-
-Return Value:
-
-    TRUE if this address represents a jump, FALSE otherwise.
-
---*/
-{
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(Code)) {
-        return FALSE;
-    }
-
-    return ((
-        (Code[0] == 0xFF && Code[1] == 0x25)                    |
-        (Code[0] == 0x48 && Code[1] == 0xFF && Code[2] == 0x25) |
-        (Code[0] == 0xE9)                                       |
-        (Code[0] == 0xEB)
-    ) ? TRUE : FALSE);
-}
-
-FORCEINLINE
-PBYTE
-FollowJumpsToFirstCodeByteInline(
-    PBYTE Code
-    )
-/*++
-
-Routine Description:
-
-    Given an address of AMD64 byte code, follows any jumps until the first non-
-    jump byte code is found, and returns that byte.  Alternatively, if the first
-    bytes passed in do not indicate a jump, the original byte code address is
-    returned.
-
-    This is used to traverse jump tables and get to the actual underlying
-    function.
-
-Arguments:
-
-    Code - Supplies a pointer to the first byte of the code for which any jumps
-        should be followed.
-
-Return Value:
-
-    The address of the first non-jump byte code encountered.
-
---*/
-{
-    LONG Offset;
-    CHAR ShortOffset;
-    PBYTE OriginalCode = Code;
-    PBYTE Target;
-
-    if (!ARGUMENT_PRESENT(Code)) {
-        return NULL;
-    }
-
-    while (TRUE) {
-
-        Target = NULL;
-
-        if (Code[0] == 0xFF && Code[1] == 0x25) {
-
-            //
-            // Offset is 32-bit.
-            //
-
-            Offset = *((PLONG)&Code[2]);
-
-            Target = *((PBYTE *)(Code + 6 + Offset));
-
-        } else if (Code[0] == 0x48 && Code[1] == 0xFF && Code[2] == 0x25) {
-
-            //
-            // REX-encoded 32-bit offset.
-            //
-
-            Offset = *((PLONG)&Code[3]);
-
-            Target = *((PBYTE *)(Code + 7 + Offset));
-
-        } else if (Code[0] == 0xE9) {
-
-            //
-            // Offset is 32-bit.
-            //
-
-            Offset = *((PLONG)&Code[1]);
-
-            Target = *((PBYTE *)(Code + 7 + Offset));
-
-        } else if (Code[0] == 0xEB) {
-
-            //
-            // Short jump; 8-bit offset.
-            //
-
-            ShortOffset = *((CHAR *)&Code[1]);
-
-            Target = *((PBYTE *)(Code + 2 + ShortOffset));
-
-        }
-
-        if (!Target) {
-
-            //
-            // No more jumps, break out of the loop.
-            //
-
-            break;
-        }
-    }
-
-    return Target;
-}
-
-FORCEINLINE
-BOOL
-GetApproximateFunctionBoundariesInline(
-    ULONG_PTR Address,
-    PULONG_PTR StartAddress,
-    PULONG_PTR EndAddress
-    )
-/*++
-
-Routine Description:
-
-    Given an address which resides within a function, return the approximate
-    start and end addresses of a function by searching forward and backward
-    for repeat occurrences of the `int 3` (breakpoint) instruction, represented
-    by 0xCC in byte code.  Such occurrences are usually good indicators of
-    function boundaries -- in fact, the Microsoft AMD64 calling convention
-    requires that function entry points should be padded with 6 bytes (to allow
-    for hot-patching), and this padding is always the 0xCC byte.
-
-    The term "approximate" is used to qualify both the start and end addresses,
-    because although scanning for repeat 0xCC occurrences is quite reliable, it
-    is not as reliable as a more authoritative source of function size, such as
-    debug symbols.
-
-Arguments:
-
-    Address - Supplies an address that resides somewhere within the function
-        for which the boundaries are to be obtained.
-
-    StartAddress - Supplies a pointer to a variable that will receive the
-        address of the approximate starting point of the function.
-
-    EndAddress - Supplies a pointer to a variable that will receive the
-        address of the approximate ending point of the function (this will
-        typically be the `ret` (0xC3) instruction).
-
-Return Value:
-
-    TRUE if the method was successful, FALSE otherwise.  FALSE will only be
-    returned if parameter validation fails.  StartAddress and EndAddress will
-    not be updated in this case.
-
---*/
-{
-    PWORD Start;
-    PWORD End;
-    const WORD Int3x2 = 0xCCCC;
-
-    //
-    // Verify arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(Address)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(StartAddress)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(EndAddress)) {
-        return FALSE;
-    }
-
-    //
-    // Skip through any jump instructions of the initial function address,
-    // using this instruction as both the Start and End address;
-    //
-
-    Start = End = (PWORD)FollowJumpsToFirstCodeByteInline((PBYTE)Address);
-
-    //
-    // Search backward through memory until we find two `int 3` instructions.
-    //
-
-    for (; *Start != Int3x2; --((PBYTE)Start));
-
-    //
-    // Search forward through memory until we find two `int 3` instructions.
-    //
-
-    for (; *End != Int3x2; ++((PBYTE)End));
-
-    //
-    // Update the caller's address pointers.
-    //
-
-    *StartAddress = (ULONG_PTR)(Start+1);
-    *EndAddress = (ULONG_PTR)End;
-
-    return TRUE;
-}
-
-FORCEINLINE
-BOOL
-RtlIsInjectionProtocolCallbackInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_opt_ PULONG ReturnValue
-    )
-/*++
-
-Routine Description:
-
-    This routine implements the injection callback protocol required by injected
-    code routines.  It should be called as the first step in the injected code,
-    and must return the ReturnValue if it returns TRUE.
-
-Arguments:
-
-    Packet - Supplies a pointer to an injection packet.
-
-    ReturnValue - Supplies the address of a variable that will receive the
-        return value if this is a protocol callback.
-
-Return Value:
-
-    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
-    should return the value of the ReturnValue parameter.
-
---*/
-{
-    if (RtlIsInjectionCodeSizeQueryInline(Packet, ReturnValue)) {
-        return TRUE;
-    }
-
-    if (RtlIsInjectionCompleteCallbackTestInline(Packet, ReturnValue)) {
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
 //
 // Public symbol declarations.
 //
 
 #pragma component(browser, off)
+
+//
+// Primary Injection API.
+//
+
 RTL_API RTL_CREATE_INJECTION_PACKET RtlCreateInjectionPacket;
-RTL_API RTL_IS_INJECTION_COMPLETE_CALLBACK_TEST RtlIsInjectionCompleteCallbackTest;
 RTL_API RTL_DESTROY_INJECTION_PACKET RtlDestroyInjectionPacket;
 RTL_API RTL_ADD_INJECTION_PAYLOAD RtlAddInjectionPayload;
 RTL_API RTL_ADD_INJECTION_SYMBOLS RtlAddInjectionSymbols;
 RTL_API RTL_INJECT RtlInject;
+
+//
+// Other injection related methods supporting the primary API.
+//
+
+RTL_API RTL_INITIALIZE_INJECTION RtlInitializeInjection;
+RTL_API RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlIsInjectionProtocolCallback;
+
+//
+// Additional helper methods that can be used independently to injection.
+//
+
 RTL_API GET_INSTRUCTION_POINTER GetInstructionPointer;
 RTL_API GET_APPROXIMATE_FUNCTION_BOUNDARIES GetApproximateFunctionBoundaries;
-RTL_API FOLLOW_JUMPS_TO_FIRST_CODE_BYTE FollowJumpsToFirstCodeByte;
+RTL_API SKIP_JUMPS SkipJumps;
 RTL_API IS_JUMP IsJump;
+
+//
+// The RIP-relative code isn't implemented yet.
+//
+
+/*
+RTL_API IS_RIP_RELATIVE_INSTRUCTION IsRipRelativeInstruction;
+RTL_API EXTRACT_RIP_RELATIVE_OFFSET ExtractRipRelativeOffset;
+RTL_API GET_EFFECTIVE_ADDRESS_FROM_RIP_RELATIVE_INSTRUCTION GetEffectiveAddressFromRipRelativeInstruction;
+RTL_API RELOCATE_RIP_RELATIVE_CODE RelocateRipRelativeCode;
+*/
+
 #pragma component(browser, on)
 
 

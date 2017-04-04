@@ -2954,6 +2954,10 @@ InitializeRtl(
         *SizeOfRtl = sizeof(*Rtl);
     }
 
+    if (!RtlInitializeInjection()) {
+        return FALSE;
+    }
+
     HeapHandle = GetProcessHeap();
     if (!HeapHandle) {
         return FALSE;

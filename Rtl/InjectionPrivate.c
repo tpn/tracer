@@ -19,14 +19,43 @@ Abstract:
 #include "stdafx.h"
 
 //
-// Assembly for the GetInstructionPointer() function.
+// The following routines are simple wrappers around their inline counterparts.
 //
 
-CONST BYTE GetInstructionPointerByteCode[] = {
-    0x48, 0x8B, 0x04, 0x24,     //  mov     rax, qword ptr [rsp]
-    0xC3,                       //  ret
-};
+_Use_decl_annotations_
+BOOL
+IsJump(
+    PBYTE Code
+    )
+{
+    return IsJumpInline(Code);
+}
 
+_Use_decl_annotations_
+PBYTE
+FollowJumpsToFirstCodeByte(
+    PBYTE Code
+    )
+{
+    return FollowJumpsToFirstCodeByteInline(Code);
+}
+
+_Use_decl_annotations_
+BOOL
+GetApproximateFunctionBoundaries(
+    ULONG_PTR Address,
+    PULONG_PTR StartAddress,
+    PULONG_PTR EndAddress
+    )
+{
+    return GetApproximateFunctionBoundariesInline(Address,
+                                                  StartAddress,
+                                                  EndAddress);
+}
+
+//
+// End of inline function wrappers.
+//
 
 _Use_decl_annotations_
 DECLSPEC_NOINLINE
@@ -56,116 +85,19 @@ Return Value:
     return (ULONG_PTR)_ReturnAddress();
 }
 
-_Use_decl_annotations_
-BOOL
-IsJump(
-    PBYTE Code
-    )
-/*++
+//
+// Assembly for the GetInstructionPointer() function.
+//
 
-Routine Description:
+CONST BYTE GetInstructionPointerByteCode[] = {
+    0x48, 0x8B, 0x04, 0x24,     //  mov     rax, qword ptr [rsp]
+    0xC3,                       //  ret
+};
 
-    Given an address of AMD64 byte code, returns TRUE if the underlying
-    instruction is a jump.
-
-Arguments:
-
-    Code - Supplies a pointer to the first byte of the code.
-
-Return Value:
-
-    TRUE if this address represents a jump, FALSE otherwise.
-
---*/
-{
-    return IsJumpInline(Code);
-}
-
-
-_Use_decl_annotations_
-PBYTE
-FollowJumpsToFirstCodeByte(
-    PBYTE Code
-    )
-/*++
-
-Routine Description:
-
-    Given an address of AMD64 byte code, follows any jumps until the first non-
-    jump byte code is found, and returns that byte.  Alternatively, if the first
-    bytes passed in do not indicate a jump, the original byte code address is
-    returned.
-
-    This is used to traverse jump tables and get to the actual underlying
-    function.
-
-Arguments:
-
-    Code - Supplies a pointer to the first byte of the code for which any jumps
-        should be followed.
-
-Return Value:
-
-    The address of the first non-jump byte code encountered.
-
---*/
-{
-    return FollowJumpsToFirstCodeByteInline(Code);
-}
 
 _Use_decl_annotations_
 BOOL
-GetApproximateFunctionBoundaries(
-    ULONG_PTR Address,
-    PULONG_PTR StartAddress,
-    PULONG_PTR EndAddress
-    )
-/*++
-
-Routine Description:
-
-    Given an address which resides within a function, return the approximate
-    start and end addresses of a function by searching forward and backward
-    for repeat occurrences of the `int 3` (breakpoint) instruction, represented
-    by 0xCC in byte code.  Such occurrences are usually good indicators of
-    function boundaries -- in fact, the Microsoft AMD64 calling convention
-    requires that function entry points should be padded with 6 bytes (to allow
-    for hot-patching), and this padding is always the 0xCC byte.  The search is
-    terminated in both directions once two successive 0xCC bytes are found.
-
-    The term "approximate" is used to qualify both the start and end addresses,
-    because although scanning for repeat 0xCC occurrences is quite reliable, it
-    is not as reliable as a more authoritative source of function size, such as
-    debug symbols.
-
-Arguments:
-
-    Address - Supplies an address that resides somewhere within the function
-        for which the boundaries are to be obtained.
-
-    StartAddress - Supplies a pointer to a variable that will receive the
-        address of the approximate starting point of the function.
-
-    EndAddress - Supplies a pointer to a variable that will receive the
-        address of the approximate ending point of the function (this will
-        typically be the `ret` (0xC3) instruction).
-
-Return Value:
-
-    TRUE if the method was successful, FALSE otherwise.  FALSE will only be
-    returned if parameter validation fails.  StartAddress and EndAddress will
-    not be updated in this case.
-
---*/
-{
-    return GetApproximateFunctionBoundariesInline(Address,
-                                                  StartAddress,
-                                                  EndAddress);
-}
-
-_Use_decl_annotations_
-BOOL
-RtlpTestInjectionCompleteCallback(
+RtlpInjectionCallbackVerifyMagicNumberInline(
     PRTL Rtl,
     PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
     PRTL_INJECTION_ERROR InjectionError
@@ -330,6 +262,315 @@ End:
 
     return Success;
 }
+
+_Use_decl_annotations_
+BOOL
+RtlpVerifyInjectionCallback(
+    PRTL Rtl,
+    PRTL_INJECTION_CONTEXT Context,
+    PRTL_INJECTION_ERROR Error
+    )
+/*++
+
+Routine Description:
+
+    This routine is responsible for verifying a caller's injection complete
+    callback routine prior to actually performing any injection.  It tests
+    the callback's compliance with the injection protocol -- that is, that its
+    code looks something like this:
+
+        ULONGLONG
+        ExampleInjectionCompleteCallback(
+            _In_ PRTL_INJECTION_PACKET Packet
+            )
+        {
+            ULONGLONG Token;
+
+            if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
+                return Token;
+            }
+
+            ...
+        }
+
+    This routine wires up the Packet->IsInjectionProtocolCallback to our
+    internal routine RtlpPreInjectionProtocolCallbackImpl().  We then set
+    various packet flags and invoke the caller's callback, verifying the
+    return values as we go.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    Context - Supplies a pointer to an RTL_INJECTION_CONTEXT structure that has
+        been initialized with the caller's initial callback.
+
+    InjectionError - Supplies a pointer to a variable that receives information
+        about the error, if one occurred (as indicated by this routine returning
+        FALSE).
+
+Return Value:
+
+    If the routine completes successfully, TRUE is returned.  If a failure
+    occurs, FALSE is returned and InjectionError is set with the relevant
+    error code.
+
+--*/
+{
+    BOOL Success;
+    BOOL EncounteredException;
+    ULONG MagicSize;
+    ULONG ExpectedMagicNumber;
+    ULONG ActualMagicNumber;
+    PBYTE MagicBuffer;
+    RTL_INJECTION_PACKET Packet;
+    RTL_INJECTION_ERROR Error;
+
+    //
+    // Zero the memory up-front so we don't leak any stack information.
+    //
+
+    SecureZeroMemory(&Packet, sizeof(Packet));
+
+    //
+    // Clear our local error variable.
+    //
+
+    Error.ErrorCode = 0;
+
+    //
+    // Generate 8 bytes of random data.
+    //
+
+    MagicSize = (USHORT)sizeof(Packet.MagicNumber);
+    MagicBuffer = (PBYTE)&Packet.MagicNumber;
+    Success = Rtl->CryptGenRandom(Rtl, MagicSize, MagicBuffer);
+    if (!Success) {
+        Error.InternalError = TRUE;
+        goto Error;
+    }
+
+    //
+    // XOR the lower and upper ULONGs to generate the ULONG we expect to get
+    // back from the initial injection completion callback test.
+    //
+
+    ExpectedMagicNumber = (
+        Packet.MagicNumber.LowPart ^
+        Packet.MagicNumber.HighPart
+    );
+
+    //
+    // Set the relevant packet flag to indicate this is a callback test.
+    //
+
+    Packet.Flags.IsInjectionCompleteCallbackTest = TRUE;
+
+    //
+    // Call the routine.
+    //
+
+    EncounteredException = FALSE;
+
+    __try {
+
+        ActualMagicNumber = InjectionCompleteCallback(&Packet);
+
+    } __except(
+        GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
+        GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ||
+        GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
+            EXCEPTION_EXECUTE_HANDLER :
+            EXCEPTION_CONTINUE_SEARCH) {
+
+        EncounteredException = TRUE;
+
+        switch (GetExceptionCode()) {
+            case STATUS_IN_PAGE_ERROR:
+                Error.StatusInPageErrorInCallbackTest = TRUE;
+                break;
+            case EXCEPTION_ACCESS_VIOLATION:
+                Error.AccessViolationInCallbackTest = TRUE;
+                break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+                Error.IllegalInstructionInCallbackTest = TRUE;
+                break;
+        }
+    }
+
+    if (EncounteredException) {
+        goto Error;
+    }
+
+    //
+    // Verify the magic number was as we expect.
+    //
+
+    if (ExpectedMagicNumber == ActualMagicNumber) {
+
+        //
+        // Test was successful.
+        //
+
+        Success = TRUE;
+        goto End;
+    }
+
+    //
+    // Intentional follow-on to Error.
+    //
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Update the error code and return.
+    //
+
+    InjectionError->ErrorCode = Error.ErrorCode;
+
+    return Success;
+}
+
+
+_Use_decl_annotations_
+BOOL
+RtlpInjectionCallbackVerifyMagicNumber(
+    PRTL Rtl,
+    PRTL_INJECTION_COMPLETE_CALLBACK Callback,
+    PRTL_INJECTION_ERROR Error
+    )
+{
+    return RtlpInjectionCallbackVerifyMagicNumberInline(Rtl,
+                                                        Callback,
+                                                        Error);
+}
+
+
+FORCEINLINE
+BOOL
+RtlIsInjectionProtocolCallbackInline(
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Outptr_result_maybenull_ PVOID Token
+    )
+/*++
+
+Routine Description:
+
+    This routine implements the injection callback protocol required by injected
+    code routines.  It should be called as the first step in the injected code,
+    and must return the ReturnValue if it returns TRUE.
+
+Arguments:
+
+    Packet - Supplies a pointer to an injection packet.
+
+    ReturnValue - Supplies the address of a variable that will receive the
+        return value if this is a protocol callback.
+
+Return Value:
+
+    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
+    should return the value of the ReturnValue parameter.
+
+--*/
+{
+    if (RtlIsInjectionCodeSizeQueryInline(Packet, ReturnValue)) {
+        return TRUE;
+    }
+
+    if (RtlIsInjectionCompleteCallbackTestInline(Packet, ReturnValue)) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+#pragma optimize("", off)
+LONG
+RtlRemoteInjectionInitThunk(
+    PRTL_INJECTION_CONTEXT Context
+    )
+{
+    PRTL Rtl;
+    RTL RtlLocal;
+    ULONG SizeOfRtl;
+    ULONG Token;
+    ULONG Result;
+    HMODULE Module;
+    PINITIALIZE_RTL InitialzeRtl;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PLOAD_LIBRARY_EX_W LoadLibraryExW;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Context)) {
+        return InjectedRemoteThreadNullContext;
+    }
+
+    //
+    // Adhere to the context callback protocol.
+    //
+
+    if (Context->IsInjectionContextProtocolCallback(Context, &Token)) {
+        return Token;
+    }
+
+    //
+    // Initialize local function pointers.
+    //
+
+    GetProcAddress = Context->GetProcAddress;
+    LoadLibraryExW = Context->LoadLibraryExW;
+
+    //
+    // Load the Rtl module.
+    //
+
+    Module = LoadLibraryExW(Context->RtlDllPath.Buffer, NULL, 0);
+
+    if (!Module || Module == INVALID_HANDLE_VALUE) {
+        return InjectedRemoteThreadLoadLibraryRtlFailed;
+    }
+
+    //
+    // Get the address of the InitializeRtl() function.
+    //
+
+    InitializeRtl = (PINITIALIZE_RTL)GetProcAddress(Module, "InitializeRtl");
+    if (!InitialzeRtl) {
+        return InjectedRemoteThreadResolveInitializeRtlFailed;
+    }
+
+    //
+    // Initialize our local, stack-allocated RTL structure.
+    //
+
+    Rtl = &RtlLocal;
+    SizeOfRtl = sizeof(*Rtl);
+
+    if (!InitializeRtl(Rtl, &SizeOfRtl)) {
+        return InjectedRemoteThreadInitializeRtlFailed;
+    }
+
+    //
+    // Defer to our main dispatch routine.
+    //
+
+    Result = Rtl->InjectedRemoteThreadEntry(Context);
+
+    return Result;
+}
+#pragma optimize("", on)
 
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

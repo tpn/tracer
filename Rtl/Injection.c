@@ -17,6 +17,31 @@ Abstract:
 
 #include "stdafx.h"
 
+#pragma data_seg(".shared")
+#pragma data_seg()
+#pragma comment(linker, "/section:.shared,rws")
+
+BOOL
+CALLBACK
+RtlpInitializeInjectionCallback(
+    PINIT_ONCE InitOnce,
+    PVOID Parameter,
+    PVOID *lpContext
+    )
+{
+    PRTL_INJECTION_SHARED Context = CONTE
+
+}
+
+BOOL
+RtlInitializeInjection(
+    VOID
+    )
+{
+
+}
+
+
 _Use_decl_annotations_
 BOOL
 RtlCreateInjectionPacket(
@@ -25,7 +50,7 @@ RtlCreateInjectionPacket(
     PRTL_CREATE_INJECTION_PACKET_FLAGS CreateInjectionFlags,
     PCUNICODE_STRING ModulePath,
     PCSTRING CallbackFunctionName,
-    PBYTE Code,
+    PRTL_INJECTION_COMPLETE_CALLBACK Callback,
     ULONG TargetProcessId,
     ULONG TargetThreadId,
     PRTL_INJECTION_PACKET *InjectionPacketPointer,
@@ -70,10 +95,10 @@ Arguments:
         a valid string if CreateFlags.InjectModule is TRUE, otherwise it must
         be NULL.
 
-    Code - Supplies a pointer to a buffer of code to be injected into the
-        process and then executed by the target thread.  This must be NULL
-        if Flags.InjectModule is set, otherwise, it should point to a valid
-        buffer that contains AMD64 byte code.
+    InjectionCompleteCallback - Supplies a pointer to a buffer of code to be
+        injected into the process and then executed by the target thread.  This
+        must be NULL if Flags.InjectModule is set, otherwise, it should point to
+        a valid buffer that contains AMD64 byte code.
 
     TargetProcessId - Supplies the ID of the target process to perform the
         injection.
@@ -102,9 +127,10 @@ Return Value:
 {
     BOOL Success;
     BOOL SuspendedThread = FALSE;
+    PBYTE OriginalCode;
+    PBYTE FinalCode;
     FARPROC Proc;
     HMODULE Module = NULL;
-    PBYTE Byte;
     ULONG Index;
     ULONG ValidPages;
     ULONG NumberOfCodePages;
@@ -119,9 +145,11 @@ Return Value:
     LPVOID RemoteThreadStartAddress = NULL;
     RTL_INJECTION_ERROR Error;
     RTL_CREATE_INJECTION_PACKET_FLAGS CreateFlags;
-    PRTL_INJECTION_PACKET Packet = NULL;
-    PRTL_INJECTION_CONTEXT Context = NULL;
-    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback = NULL;
+    RTL_INJECTION_CONTEXT LocalContext;
+    PRTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_CONTEXT Context;
+    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback = NULL;
+    PRTL_INJECTION_COMPLETE_CALLBACK FinalCallback = NULL;
 
     //
     // Validate arguments.  Start with the simple non-NULL checks, then verify
@@ -231,21 +259,10 @@ Return Value:
         }
 
         //
-        // Everything checks out, test the callback routine.
+        // Everything checks out, save Proc as our Callback pointer.
         //
 
-        InjectionCompleteCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)Proc;
-        Success = RtlpTestInjectionCompleteCallback(Rtl,
-                                                    InjectionCompleteCallback,
-                                                    InjectionError);
-        if (!Success) {
-            goto Error;
-        }
-
-        //
-        // We've successfully tested the callback.  We keep the library module
-        // loaded for now as we use it later.
-        //
+        OriginalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)Proc;
 
     } else {
 
@@ -266,126 +283,17 @@ Return Value:
         //  code byte).
         //
 
-        if (!ARGUMENT_PRESENT(Code) || !ARGUMENT_PRESENT(*Code)) {
+        if (!ARGUMENT_PRESENT(InjectionCompleteCallback) ||
+            !ARGUMENT_PRESENT(*InjectionCompleteCallback)) {
             Error.InvalidCodeParameter = TRUE;
             goto Error;
         }
 
         //
-        // Probe the entire address space indicated by the SizeOfCodeInBytes,
-        // one page at a time, by dereferencing the first byte of each page.
+        // Save the initial caller provided value as the original callback.
         //
 
-        //
-        // (Temporarily disable this code.)
-        //
-
-        SizeOfCodeInBytes = 0;
-        __debugbreak();
-
-        ValidPages = 0;
-        PageAlignedSizeOfCode = ROUND_TO_PAGES(SizeOfCodeInBytes);
-        NumberOfCodePages = PageAlignedSizeOfCode >> PAGE_SHIFT;
-
-        TRY_PROBE_MEMORY {
-
-            for (Index = 0; Index < NumberOfCodePages; Index++) {
-                Byte = Code + (Index * (1 << PAGE_SHIFT));
-                PrefaultPage(Byte);
-                ValidPages++;
-            }
-
-        } CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION {
-
-            Error.CodeProbeFailed = TRUE;
-        }
-
-        if (Error.CodeProbeFailed) {
-            goto Error;
-        }
-
-        //
-        // The code is valid.  Allocate the required amount of pages, copy the
-        // code over, change the permissions to executable, and cast to the
-        // CallbackRoutine variable.
-        //
-
-        Byte = VirtualAlloc(NULL,
-                            PageAlignedSizeOfCode,
-                            MEM_COMMIT,
-                            PAGE_READWRITE);
-        if (!Byte) {
-            Error.VirtualAllocFailed = TRUE;
-            goto Error;
-        }
-
-        //
-        // Fill all the pages with `int 3` (0xcc) first.
-        //
-
-        Rtl->FillPages((PCHAR)Byte, 0xcc, NumberOfCodePages);
-
-        //
-        // Copy the code bytes over.
-        //
-
-        if (!CopyMemoryQuadwords(Byte, Code, SizeOfCodeInBytes)) {
-            Error.InternalError = TRUE;
-            Error.InternalStatusInPageError = TRUE;
-            VirtualFree(Byte, 0, MEM_RELEASE);
-            goto Error;
-        }
-
-        //
-        // Change the protections of the pages to PAGE_EXECUTE.
-        //
-
-        Success = VirtualProtect(Byte,
-                                 PageAlignedSizeOfCode,
-                                 PAGE_EXECUTE,
-                                 &OldProtection);
-
-        if (!Success) {
-            Rtl->LastError = GetLastError();
-            Error.VirtualProtectFailed = TRUE;
-            VirtualFree(Byte, 0, MEM_RELEASE);
-            goto Error;
-        }
-
-        //
-        // Successfully changed protections of memory such that we can execute
-        // it.  Flush the instruction cache as a final step.
-        //
-
-        Success = FlushInstructionCache(GetCurrentProcess(),
-                                        Byte,
-                                        PageAlignedSizeOfCode);
-
-        if (!Success) {
-            Rtl->LastError = GetLastError();
-            Error.FlushInstructionCacheFailed = TRUE;
-            VirtualFree(Byte, 0, MEM_RELEASE);
-        }
-
-        //
-        // Cast the new memory as our completion callback and verify it.
-        //
-
-        InjectionCompleteCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)Byte;
-        Success = RtlpTestInjectionCompleteCallback(Rtl,
-                                                    InjectionCompleteCallback,
-                                                    InjectionError);
-
-        //
-        // Free the memory now, regardless of the injection test result.
-        //
-
-        VirtualFree(Byte, 0, MEM_RELEASE);
-
-        if (!Success) {
-            goto Error;
-        }
-
+        OriginalCallback = InjectionCompleteCallback;
     }
 
     //
@@ -393,9 +301,36 @@ Return Value:
     // Success should be set to TRUE.
     //
 
-    if (!Success || !InjectionCompleteCallback) {
+    if (!Success || !OriginalCallback) {
         __debugbreak();
         Error.InternalError = TRUE;
+        goto Error;
+    }
+
+    //
+    // Skip any initial jumps present in the code.
+    //
+
+    OriginalCode = (PBYTE)OriginalCallback;
+    FinalCode = SkipJumps(OriginalCode);
+    FinalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)FinalCode;
+
+    //
+    // Wire up context and packet pointers, then zero the entire context.
+    //
+
+    Context = &LocalContext;
+    Packet = &LocalContext.Packet;
+
+    SecureZeroMemory(Context, sizeof(*Context));
+
+    //
+    // Verify the callback.
+    //
+
+    Success = RtlpVerifyInjectionCallback(Rtl, Context, &Error);
+
+    if (!Success) {
         goto Error;
     }
 
@@ -474,16 +409,49 @@ Return Value:
     }
 
     //
-    // All the parameters have been validated at this point.
+    // All the parameters have been validated at this point, so clear the
+    // invalid parameters flag we set earlier.
     //
 
     Error.InvalidParameters = FALSE;
+
+    //
+    // Create a debug engine client and perform a non-invasive attach on the
+    // process, then see if the Rtl library has already been loaded and
+    // initialized.
+    //
+
+    //
+    // Attempt to create our initial chunks of memory in the remote process.
+    //
+
+    Success = RtlpPreInjectionAllocateRemoteMemory(Rtl, Context, &Error);
+
+    if (!Success) {
+        goto Error;
+    }
+
+
 
     //
     // We now have enough information to commit to allocating and initializing
     // an injection context (which will contain the packet returned to the
     // user).
     //
+
+    //
+    // Calculate the required allocation size.
+    //
+
+    AllocSize.LongPart = (
+
+        //
+        // Account for the Context structure.
+        //
+
+
+
+    );
 
     Context = (PRTL_INJECTION_CONTEXT)(
         Allocator->Calloc(
