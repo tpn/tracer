@@ -404,6 +404,12 @@ BOOL
 typedef RTL_INJECT *PRTL_INJECT;
 
 //
+// Include inline functions.
+//
+
+#include "InjectionInline.h"
+
+//
 // Public symbol declarations.
 //
 
@@ -423,7 +429,7 @@ RTL_API RTL_INJECT RtlInject;
 // Other injection related methods supporting the primary API.
 //
 
-RTL_API RTL_INITIALIZE_INJECTION RtlInitializeInjection;
+//RTL_API RTL_INITIALIZE_INJECTION RtlInitializeInjection;
 RTL_API RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlIsInjectionProtocolCallback;
 
 //

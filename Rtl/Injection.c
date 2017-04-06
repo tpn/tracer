@@ -29,7 +29,9 @@ RtlpInitializeInjectionCallback(
     PVOID *lpContext
     )
 {
-    PRTL_INJECTION_SHARED Context = CONTE
+    //PRTL_INJECTION_SHARED Context;
+
+    return FALSE;
 
 }
 
@@ -38,9 +40,8 @@ RtlInitializeInjection(
     VOID
     )
 {
-
+    return FALSE;
 }
-
 
 _Use_decl_annotations_
 BOOL
@@ -50,7 +51,7 @@ RtlCreateInjectionPacket(
     PRTL_CREATE_INJECTION_PACKET_FLAGS CreateInjectionFlags,
     PCUNICODE_STRING ModulePath,
     PCSTRING CallbackFunctionName,
-    PRTL_INJECTION_COMPLETE_CALLBACK Callback,
+    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
     ULONG TargetProcessId,
     ULONG TargetThreadId,
     PRTL_INJECTION_PACKET *InjectionPacketPointer,
@@ -138,6 +139,7 @@ Return Value:
     ULONG PageAlignedSizeOfCode;
     ULONG OldProtection;
     LONG ThreadSuspensionCount;
+    LONG_INTEGER AllocSize;
     HANDLE ProcessHandle = NULL;
     HANDLE ThreadHandle = NULL;
     HANDLE ThreadsSnapshotHandle = NULL;
@@ -449,7 +451,13 @@ Return Value:
         // Account for the Context structure.
         //
 
+        sizeof(RTL_INJECTION_CONTEXT) //+
 
+        //
+        // Account for a copy of ... string.
+        //
+
+        //sizeof(UNICODE_STRING) +
 
     );
 

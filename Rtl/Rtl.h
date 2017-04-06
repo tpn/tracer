@@ -4627,7 +4627,7 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
     PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
-    PRTL_IS_INJECTION_COMPLETE_CALLBACK_TEST IsInjectionCompleteCallbackTest;       \
+    PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;                \
     PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
     PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
     PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
@@ -5521,7 +5521,6 @@ SecureZeroMemoryQuadwords(
     )
 {
     VPCHAR TrailingDest;
-    VPCHAR TrailingSource;
     SIZE_T TrailingBytes;
     SIZE_T NumberOfQuadwords;
 
@@ -5533,20 +5532,19 @@ SecureZeroMemoryQuadwords(
     }
 
     if (TrailingBytes) {
-
         TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
-        TrailingSource = (Source + (SizeInBytes - TrailingBytes));
-
-        __stosb(TrailingDest, 0, TrailingBytes);
+        __stosb((PBYTE)TrailingDest, 0, TrailingBytes);
     }
 
     return TRUE;
 }
 
+#if 0
 #ifdef SecureZeroMemory
 #undef SecureZeroMemory
 #endif
 #define SecureZeroMemory SecureZeroMemoryQuadwords
+#endif
 
 typedef
 _Success_(return != 0)
@@ -5556,7 +5554,7 @@ BOOL
     _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
     _Inout_                   PULONG SizeOfRtl
     );
-typedef INITIALIZE_RTL *PINITIALIZE_RTL, **PPINTIALIZE_RTL;
+typedef INITIALIZE_RTL *PINITIALIZE_RTL;
 
 FORCEINLINE
 VOID

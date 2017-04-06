@@ -236,13 +236,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_SHARED {
     INIT_ONCE InitOnce;
     SRWLOCK Lock;
     ALLOCATOR Allocator;
-    LIST_HEAD ListHead;
+    //LIST_HEAD ListHead;
 } RTL_INJECTION_SHARED;
 typedef RTL_INJECTION_SHARED *PRTL_INJECTION_SHARED;
 
 
 #pragma component(browser, off)
-RTLP_INJECTION_VERIFY_MAGIC_NUMBER RtlpVerifyInjectionCallback;
+RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionCallback;
 RTLP_INJECTION_BOOTSTRAP RtlpInjectionBootstrap;
 #pragma component(browser, on)
 

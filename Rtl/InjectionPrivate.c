@@ -33,11 +33,11 @@ IsJump(
 
 _Use_decl_annotations_
 PBYTE
-FollowJumpsToFirstCodeByte(
+SkipJumps(
     PBYTE Code
     )
 {
-    return FollowJumpsToFirstCodeByteInline(Code);
+    return SkipJumpsInline(Code);
 }
 
 _Use_decl_annotations_
@@ -482,11 +482,11 @@ Return Value:
 
 --*/
 {
-    if (RtlIsInjectionCodeSizeQueryInline(Packet, ReturnValue)) {
+    if (RtlIsInjectionCodeSizeQueryInline(Packet, Token)) {
         return TRUE;
     }
 
-    if (RtlIsInjectionCompleteCallbackTestInline(Packet, ReturnValue)) {
+    if (RtlIsInjectionCompleteCallbackTestInline(Packet, Token)) {
         return TRUE;
     }
 

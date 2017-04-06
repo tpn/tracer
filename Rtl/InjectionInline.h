@@ -31,7 +31,6 @@ typedef IS_JUMP *PIS_JUMP;
 FORCEINLINE
 _Check_return_
 _Success_(return != 0)
-CALLBACK
 BOOL
 IsJumpInline(
     _In_ PBYTE Code
