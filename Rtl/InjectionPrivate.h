@@ -82,7 +82,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // before executing any other code.
     //
 
-    PRTL_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK IsInjectionContextProtocolCallback;
+    PRTL_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK
+        IsInjectionContextProtocolCallback;
 
     //
     // Size of the structure, in bytes.
@@ -166,7 +167,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // Approximate size of our thread start routine.
     //
 
-    LONG ThreadStartRoutineCodeSize;
+    LONG SizeOfThreadStartRoutineInBytes;
 
     //
     // The ID of the remote thread we created to handle the initial injection.
@@ -175,16 +176,42 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     ULONG RemoteThreadId;
 
     //
-    // An approximate size of the function code.
+    // An approximate size of the callback function code.
     //
 
-    LONG SizeOfCodeInBytes;
+    LONG SizeOfCallbackCodeInBytes;
 
     //
     // Pad out to 8 bytes.
     //
 
     ULONG Reserved;
+
+    //
+    // Total size of the data bytes that were allocated in the remote process.
+    //
+
+    LONG_INTEGER TotalDataAllocSize;
+
+    //
+    // Total size of the code bytes that were allocated in the remote process.
+    //
+
+    LONG_INTEGER TotalCodeAllocSize;
+
+    //
+    // Base address of the data allocation, the size of which is indicated by
+    // the TotalDataAllocSize struct member above.
+    //
+
+    LPVOID BaseDataAddress;
+
+    //
+    // Base address of the code allocation, the size of which is indicated by
+    // the TotalCodeAllocSize struct member above.
+    //
+
+    LPVOID BaseCodeAddress;
 
     //
     // Function pointers required by the initial injection callback.
@@ -244,6 +271,8 @@ typedef RTL_INJECTION_SHARED *PRTL_INJECTION_SHARED;
 #pragma component(browser, off)
 RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionCallback;
 RTLP_INJECTION_BOOTSTRAP RtlpInjectionBootstrap;
+RTL_INJECTION_COMPLETE_CALLBACK RtlpPreInjectionCallbackImpl;
+RTL_INJECTION_COMPLETE_CALLBACK RtlpInjectionCompleteCallbackImpl;
 #pragma component(browser, on)
 
 

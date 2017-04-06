@@ -23,7 +23,7 @@ InjectionCallback1(
 {
     ULONG Token;
 
-    if (RtlIsInjectionProtocolCallbackInline(Packet, &Token)) {
+    if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
         return Token;
     }
 

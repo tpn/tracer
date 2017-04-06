@@ -132,12 +132,6 @@ Return Value:
     PBYTE FinalCode;
     FARPROC Proc;
     HMODULE Module = NULL;
-    ULONG Index;
-    ULONG ValidPages;
-    ULONG NumberOfCodePages;
-    ULONG SizeOfCodeInBytes;
-    ULONG PageAlignedSizeOfCode;
-    ULONG OldProtection;
     LONG ThreadSuspensionCount;
     LONG_INTEGER AllocSize;
     HANDLE ProcessHandle = NULL;
@@ -327,7 +321,15 @@ Return Value:
     SecureZeroMemory(Context, sizeof(*Context));
 
     //
-    // Verify the callback.
+    // Wire up callback information.
+    //
+
+    Context->OriginalCode = OriginalCode;
+    Context->Code = FinalCode;
+
+    //
+    // Verify the callback.  This performs the magic number test, then obtains
+    // the code size of the callback function and saves it in Context.
     //
 
     Success = RtlpVerifyInjectionCallback(Rtl, Context, &Error);
@@ -418,12 +420,6 @@ Return Value:
     Error.InvalidParameters = FALSE;
 
     //
-    // Create a debug engine client and perform a non-invasive attach on the
-    // process, then see if the Rtl library has already been loaded and
-    // initialized.
-    //
-
-    //
     // Attempt to create our initial chunks of memory in the remote process.
     //
 
@@ -432,8 +428,6 @@ Return Value:
     if (!Success) {
         goto Error;
     }
-
-
 
     //
     // We now have enough information to commit to allocating and initializing

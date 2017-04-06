@@ -260,6 +260,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     RTL_INJECTION_ERROR Error;
 
     //
+    // A magic number used to perform simple validation of the injected code.
+    //
+
+    RTL_INJECTION_MAGIC_NUMBER MagicNumber;
+
+    //
     // Fully-qualified path name of the target library to load.
     //
 

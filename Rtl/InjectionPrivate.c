@@ -20,6 +20,7 @@ Abstract:
 
 //
 // The following routines are simple wrappers around their inline counterparts.
+// The InjectionInline.h for docstrings.
 //
 
 _Use_decl_annotations_
@@ -97,9 +98,9 @@ CONST BYTE GetInstructionPointerByteCode[] = {
 
 _Use_decl_annotations_
 BOOL
-RtlpInjectionCallbackVerifyMagicNumberInline(
+RtlpInjectionCallbackVerifyMagicNumber(
     PRTL Rtl,
-    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
+    PRTL_INJECTION_CONTEXT Context,
     PRTL_INJECTION_ERROR InjectionError
     )
 /*++
@@ -113,8 +114,8 @@ Routine Description:
     MagicNumber LowPart and HighPart fields, e.g.:
 
         ExpectedMagicNumber = (
-            Packet.MagicNumber.LowPart ^
-            Packet.MagicNumber.HighPart
+            Packet->MagicNumber.LowPart ^
+            Packet->MagicNumber.HighPart
         );
 
     N.B. The purpose of this routine is to help catch programmer mistakes in
@@ -126,8 +127,7 @@ Arguments:
 
     Rtl - Supplies a pointer to an initialized RTL structure.
 
-    InjectionCompleteCallback - Supplies a pointer to a function that will be
-        invoked as per the pre-injection complete callback test.
+    Packet - Supplies a pointer to the injection context being tested.
 
     InjectionError - Supplies a pointer to a variable that receives information
         about the error, if one occurred (as indicated by this routine returning
@@ -147,14 +147,9 @@ Return Value:
     ULONG ExpectedMagicNumber;
     ULONG ActualMagicNumber;
     PBYTE MagicBuffer;
-    RTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_PACKET Packet;
     RTL_INJECTION_ERROR Error;
-
-    //
-    // Zero the memory up-front so we don't leak any stack information.
-    //
-
-    SecureZeroMemory(&Packet, sizeof(Packet));
+    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback;
 
     //
     // Clear our local error variable.
@@ -163,11 +158,19 @@ Return Value:
     Error.ErrorCode = 0;
 
     //
+    // Wire up our local packet pointer, and extract the injection complete
+    // callback function pointer.
+    //
+
+    Packet = &Context->Packet;
+    InjectionCompleteCallback = Context->Callback;
+
+    //
     // Generate 8 bytes of random data.
     //
 
-    MagicSize = (USHORT)sizeof(Packet.MagicNumber);
-    MagicBuffer = (PBYTE)&Packet.MagicNumber;
+    MagicSize = (USHORT)sizeof(Packet->MagicNumber);
+    MagicBuffer = (PBYTE)&Packet->MagicNumber;
     Success = Rtl->CryptGenRandom(Rtl, MagicSize, MagicBuffer);
     if (!Success) {
         Error.InternalError = TRUE;
@@ -180,15 +183,15 @@ Return Value:
     //
 
     ExpectedMagicNumber = (
-        Packet.MagicNumber.LowPart ^
-        Packet.MagicNumber.HighPart
+        Packet->MagicNumber.LowPart ^
+        Packet->MagicNumber.HighPart
     );
 
     //
     // Set the relevant packet flag to indicate this is a callback test.
     //
 
-    Packet.Flags.IsInjectionCompleteCallbackTest = TRUE;
+    Packet->Flags.IsVerifyMagicNumberCallback = TRUE;
 
     //
     // Call the routine.
@@ -239,6 +242,8 @@ Return Value:
         Success = TRUE;
         goto End;
     }
+
+    Error.MagicNumberMismatch = TRUE;
 
     //
     // Intentional follow-on to Error.
@@ -319,18 +324,8 @@ Return Value:
 {
     BOOL Success;
     BOOL EncounteredException;
-    ULONG MagicSize;
-    ULONG ExpectedMagicNumber;
-    ULONG ActualMagicNumber;
-    PBYTE MagicBuffer;
-    RTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_PACKET Packet;
     RTL_INJECTION_ERROR Error;
-
-    //
-    // Zero the memory up-front so we don't leak any stack information.
-    //
-
-    SecureZeroMemory(&Packet, sizeof(Packet));
 
     //
     // Clear our local error variable.
@@ -339,32 +334,59 @@ Return Value:
     Error.ErrorCode = 0;
 
     //
-    // Generate 8 bytes of random data.
+    // Wire our local Packet variable up to the relevant context offset.
     //
 
-    MagicSize = (USHORT)sizeof(Packet.MagicNumber);
-    MagicBuffer = (PBYTE)&Packet.MagicNumber;
-    Success = Rtl->CryptGenRandom(Rtl, MagicSize, MagicBuffer);
+    Packet = &Context->Packet;
+
+    //
+    // Initialize the initial callback.
+    //
+
+    Packet->IsInjectionProtocolCallback = RtlpPreInjectionProtocolCallbackImpl;
+
+    //
+    // Perform the magic number callback test.
+    //
+
+    Success = RtlpInjectionCallbackVerifyMagicNumber(Rtl,
+                                                     Context,
+                                                     InjectionError);
+
     if (!Success) {
-        Error.InternalError = TRUE;
         goto Error;
     }
 
     //
-    // XOR the lower and upper ULONGs to generate the ULONG we expect to get
-    // back from the initial injection completion callback test.
+    // Magic number verification was successful.  Extract the code size.
     //
 
-    ExpectedMagicNumber = (
-        Packet.MagicNumber.LowPart ^
-        Packet.MagicNumber.HighPart
+    Success = RtlpInjectionCallbackExtractCodeSize(Rtl,
+                                                   Context,
+                                                   InjectionError);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Ensure there are no RIP-relative instructions within the function to be
+    // injected.
+    //
+
+    Success = RtlpInjectionCallbackEnsureNoRipRelativeInstructions(
+        Rtl,
+        Context,
+        InjectionError
     );
 
-    //
-    // Set the relevant packet flag to indicate this is a callback test.
-    //
+    if (!Success) {
+        goto Error;
+    }
 
-    Packet.Flags.IsInjectionCompleteCallbackTest = TRUE;
+    //
+    // Routine has been verified.
+    //
 
     //
     // Call the routine.
@@ -465,8 +487,9 @@ RtlIsInjectionProtocolCallbackInline(
 Routine Description:
 
     This routine implements the injection callback protocol required by injected
-    code routines.  It should be called as the first step in the injected code,
-    and must return the ReturnValue if it returns TRUE.
+    code routines.  It should be called as the first step in the injected code.
+    The injected code should return the value of Token if this routine returns
+    TRUE.
 
 Arguments:
 
@@ -486,6 +509,7 @@ Return Value:
         return TRUE;
     }
 
+    if (RtlIs
     if (RtlIsInjectionCompleteCallbackTestInline(Packet, Token)) {
         return TRUE;
     }
@@ -498,6 +522,32 @@ LONG
 RtlRemoteInjectionInitThunk(
     PRTL_INJECTION_CONTEXT Context
     )
+/*++
+
+Routine Description:
+
+    This is the main thread entry point for a remote thread created as part of
+    injection.  It is responsible for calling the initial injection context
+    protocol callback function, then loading the Rtl module and initializing an
+    RTL structure (allocated on our stack).
+
+    We then call Rtl->InjectedThreadRemoteEntry(Context) to enter the main work
+    loop of the remote thread.
+
+    This method is somewhat unique in that it is copied into the remote address
+    space of a different process; this is why we use function pointers stored in
+    the Context structure for GetProcAddress() and LoadLibraryExW().
+
+Arguments:
+
+    Context - Supplies a pointer to the RTL_INJECTION_CONTEXT structure that is
+        being used for this injection.
+
+Return Value:
+
+    A LONG integer, the value of which will depend on the context.
+
+--*/
 {
     PRTL Rtl;
     RTL RtlLocal;
@@ -505,7 +555,7 @@ RtlRemoteInjectionInitThunk(
     ULONG Token;
     ULONG Result;
     HMODULE Module;
-    PINITIALIZE_RTL InitialzeRtl;
+    PINITIALIZE_RTL InitRtl;
     PGET_PROC_ADDRESS GetProcAddress;
     PLOAD_LIBRARY_EX_W LoadLibraryExW;
 
@@ -546,8 +596,8 @@ RtlRemoteInjectionInitThunk(
     // Get the address of the InitializeRtl() function.
     //
 
-    InitializeRtl = (PINITIALIZE_RTL)GetProcAddress(Module, "InitializeRtl");
-    if (!InitialzeRtl) {
+    InitRtl = (PINITIALIZE_RTL)GetProcAddress(Module, "InitializeRtl");
+    if (!InitRtl) {
         return InjectedRemoteThreadResolveInitializeRtlFailed;
     }
 
@@ -558,7 +608,7 @@ RtlRemoteInjectionInitThunk(
     Rtl = &RtlLocal;
     SizeOfRtl = sizeof(*Rtl);
 
-    if (!InitializeRtl(Rtl, &SizeOfRtl)) {
+    if (!pInitializeRtl(Rtl, &SizeOfRtl)) {
         return InjectedRemoteThreadInitializeRtlFailed;
     }
 

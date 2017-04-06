@@ -5516,10 +5516,11 @@ CopyMemoryQuadwords(
 FORCEINLINE
 BOOL
 SecureZeroMemoryQuadwords(
-    VPCHAR Dest,
+    PVOID pDest,
     SIZE_T SizeInBytes
     )
 {
+    VPCHAR Dest = (VPCHAR)pDest;
     VPCHAR TrailingDest;
     SIZE_T TrailingBytes;
     SIZE_T NumberOfQuadwords;
@@ -5539,12 +5540,10 @@ SecureZeroMemoryQuadwords(
     return TRUE;
 }
 
-#if 0
 #ifdef SecureZeroMemory
 #undef SecureZeroMemory
 #endif
 #define SecureZeroMemory SecureZeroMemoryQuadwords
-#endif
 
 typedef
 _Success_(return != 0)
@@ -7877,6 +7876,7 @@ Retry:
 
     InsertTailList(&GuardedList->ListHead, Entry);
     GuardedList->NumberOfEntries++;
+    _xend();
     return;
 }
 

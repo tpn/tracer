@@ -2925,6 +2925,14 @@ RtlCryptGenRandom(
     return TRUE;
 }
 
+BOOL
+RtlInitializeInjection(
+    VOID
+    )
+{
+    return TRUE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(
