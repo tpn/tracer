@@ -86,16 +86,6 @@ Return Value:
     return (ULONG_PTR)_ReturnAddress();
 }
 
-//
-// Assembly for the GetInstructionPointer() function.
-//
-
-CONST BYTE GetInstructionPointerByteCode[] = {
-    0x48, 0x8B, 0x04, 0x24,     //  mov     rax, qword ptr [rsp]
-    0xC3,                       //  ret
-};
-
-
 _Use_decl_annotations_
 BOOL
 RtlpInjectionCallbackVerifyMagicNumber(
@@ -144,8 +134,8 @@ Return Value:
     BOOL Success;
     BOOL EncounteredException;
     ULONG MagicSize;
-    ULONG ExpectedMagicNumber;
-    ULONG ActualMagicNumber;
+    ULONGLONG ExpectedMagicNumber;
+    ULONGLONG ActualMagicNumber;
     PBYTE MagicBuffer;
     PRTL_INJECTION_PACKET Packet;
     RTL_INJECTION_ERROR Error;
@@ -191,7 +181,7 @@ Return Value:
     // Set the relevant packet flag to indicate this is a callback test.
     //
 
-    Packet->Flags.IsVerifyMagicNumberCallback = TRUE;
+    Packet->Flags.IsMagicNumberTest = TRUE;
 
     //
     // Call the routine.
@@ -201,7 +191,7 @@ Return Value:
 
     __try {
 
-        ActualMagicNumber = InjectionCompleteCallback(&Packet);
+        ActualMagicNumber = InjectionCompleteCallback(Packet);
 
     } __except(
         GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
@@ -270,10 +260,181 @@ End:
 
 _Use_decl_annotations_
 BOOL
+RtlpInjectionCallbackExtractCodeSize(
+    PRTL Rtl,
+    PRTL_INJECTION_CONTEXT Context,
+    PRTL_INJECTION_ERROR InjectionError
+    )
+/*++
+
+Routine Description:
+
+    Extracts an approximate size of the injection code.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    Context - Supplies a pointer to the injection context being tested.
+
+    InjectionError - Supplies a pointer to a variable that receives information
+        about the error, if one occurred (as indicated by this routine returning
+        FALSE).
+
+Return Value:
+
+    If the routine completes successfully, TRUE is returned.  If a failure
+    occurs, FALSE is returned and InjectionError is set with the relevant
+    error code.
+
+--*/
+{
+    BOOL Success;
+    BOOL EncounteredException;
+    ULONGLONG CodeSizeFromReturnValue;
+    ULONGLONG CodeSize;
+    ULONG_PTR Code;
+    ULONG_PTR StartAddress;
+    ULONG_PTR EndAddress;
+    PRTL_INJECTION_PACKET Packet;
+    RTL_INJECTION_ERROR Error;
+    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback;
+
+    //
+    // Clear our local error variable.
+    //
+
+    Error.ErrorCode = 0;
+
+    //
+    // Wire up our local packet pointer, and extract the injection complete
+    // callback function pointer.
+    //
+
+    Packet = &Context->Packet;
+    InjectionCompleteCallback = Context->Callback;
+
+    //
+    // Set the relevant packet flag to indicate this is a callback test.
+    //
+
+    Packet->Flags.IsCodeSizeQuery = TRUE;
+
+    //
+    // Call the routine.
+    //
+
+    EncounteredException = FALSE;
+
+    __try {
+
+        CodeSizeFromReturnValue = InjectionCompleteCallback(Packet);
+
+    } __except(
+        GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
+        GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ||
+        GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
+            EXCEPTION_EXECUTE_HANDLER :
+            EXCEPTION_CONTINUE_SEARCH) {
+
+        EncounteredException = TRUE;
+
+        switch (GetExceptionCode()) {
+            case STATUS_IN_PAGE_ERROR:
+                Error.StatusInPageErrorInCallbackTest = TRUE;
+                break;
+            case EXCEPTION_ACCESS_VIOLATION:
+                Error.AccessViolationInCallbackTest = TRUE;
+                break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+                Error.IllegalInstructionInCallbackTest = TRUE;
+                break;
+        }
+    }
+
+    if (EncounteredException) {
+        goto Error;
+    }
+
+    //
+    // Assume there's an error until verified otherwise.
+    //
+
+    Error.InternalError = TRUE;
+    Error.ExtractCodeSizeFailedDuringCallbackTest = TRUE;
+
+    //
+    // Verify the sizes and addresses.
+    //
+
+    Code = (ULONG_PTR)InjectionCompleteCallback;
+    Success = GetApproximateFunctionBoundaries(Code,
+                                               &StartAddress,
+                                               &EndAddress);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    CodeSize = EndAddress - StartAddress;
+
+    if (CodeSize != CodeSizeFromReturnValue) {
+        goto Error;
+    }
+
+    if (CodeSize >= PAGE_SIZE) {
+        Error.CallbackCodeSizeGreaterThanOrEqualToPageSize = TRUE;
+        goto Error;
+    }
+
+    if (PointerToOffsetCrossesPageBoundary((PVOID)StartAddress, CodeSize)) {
+        Error.CallbackCodeCrossesPageBoundary = TRUE;
+        goto Error;
+    }
+
+    if (StartAddress != Context->StartAddress) {
+        goto Error;
+    }
+
+    if (EndAddress != Context->EndAddress) {
+        goto Error;
+    }
+
+    //
+    // Code size passes tests, clear the error flags we set earlier.
+    //
+
+    Error.InternalError = FALSE;
+    Error.ExtractCodeSizeFailedDuringCallbackTest = FALSE;
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Update the error code and return.
+    //
+
+    InjectionError->ErrorCode = Error.ErrorCode;
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
 RtlpVerifyInjectionCallback(
     PRTL Rtl,
     PRTL_INJECTION_CONTEXT Context,
-    PRTL_INJECTION_ERROR Error
+    PRTL_INJECTION_ERROR InjectionError
     )
 /*++
 
@@ -323,7 +484,6 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL EncounteredException;
     PRTL_INJECTION_PACKET Packet;
     RTL_INJECTION_ERROR Error;
 
@@ -370,73 +530,11 @@ Return Value:
     }
 
     //
-    // Ensure there are no RIP-relative instructions within the function to be
-    // injected.
+    // If we were going to ensure the injected code had no RIP-relative
+    // addresses, we'd do that now.
     //
 
-    Success = RtlpInjectionCallbackEnsureNoRipRelativeInstructions(
-        Rtl,
-        Context,
-        InjectionError
-    );
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Routine has been verified.
-    //
-
-    //
-    // Call the routine.
-    //
-
-    EncounteredException = FALSE;
-
-    __try {
-
-        ActualMagicNumber = InjectionCompleteCallback(&Packet);
-
-    } __except(
-        GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
-        GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ||
-        GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
-            EXCEPTION_EXECUTE_HANDLER :
-            EXCEPTION_CONTINUE_SEARCH) {
-
-        EncounteredException = TRUE;
-
-        switch (GetExceptionCode()) {
-            case STATUS_IN_PAGE_ERROR:
-                Error.StatusInPageErrorInCallbackTest = TRUE;
-                break;
-            case EXCEPTION_ACCESS_VIOLATION:
-                Error.AccessViolationInCallbackTest = TRUE;
-                break;
-            case EXCEPTION_ILLEGAL_INSTRUCTION:
-                Error.IllegalInstructionInCallbackTest = TRUE;
-                break;
-        }
-    }
-
-    if (EncounteredException) {
-        goto Error;
-    }
-
-    //
-    // Verify the magic number was as we expect.
-    //
-
-    if (ExpectedMagicNumber == ActualMagicNumber) {
-
-        //
-        // Test was successful.
-        //
-
-        Success = TRUE;
-        goto End;
-    }
+    goto End;
 
     //
     // Intentional follow-on to Error.
@@ -461,26 +559,47 @@ End:
     return Success;
 }
 
-
 _Use_decl_annotations_
 BOOL
-RtlpInjectionCallbackVerifyMagicNumber(
+RtlpPreInjectionAllocateRemoteMemory(
     PRTL Rtl,
-    PRTL_INJECTION_COMPLETE_CALLBACK Callback,
-    PRTL_INJECTION_ERROR Error
+    PRTL_INJECTION_CONTEXT Context,
+    PRTL_INJECTION_ERROR InjectionError
     )
+/*++
+
+Routine Description:
+
+    This routine allocates memory required for injection in a remote process.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    Context - Supplies a pointer to an RTL_INJECTION_CONTEXT structure that has
+        been initialized with the caller's initial callback.
+
+    InjectionError - Supplies a pointer to a variable that receives information
+        about the error, if one occurred (as indicated by this routine returning
+        FALSE).
+
+Return Value:
+
+    If the routine completes successfully, TRUE is returned.  If a failure
+    occurs, FALSE is returned and InjectionError is set with the relevant
+    error code.
+
+--*/
 {
-    return RtlpInjectionCallbackVerifyMagicNumberInline(Rtl,
-                                                        Callback,
-                                                        Error);
+    return FALSE;
 }
 
 
-FORCEINLINE
+_Use_decl_annotations_
 BOOL
-RtlIsInjectionProtocolCallbackInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Outptr_result_maybenull_ PVOID Token
+RtlpPreInjectionProtocolCallbackImpl(
+    PCRTL_INJECTION_PACKET Packet,
+    PVOID Token
     )
 /*++
 
@@ -505,15 +624,46 @@ Return Value:
 
 --*/
 {
-    if (RtlIsInjectionCodeSizeQueryInline(Packet, Token)) {
+    if (RtlpIsInjectionMagicNumberTestInline(Packet, Token)) {
         return TRUE;
     }
 
-    if (RtlIs
-    if (RtlIsInjectionCompleteCallbackTestInline(Packet, Token)) {
+    if (RtlpIsInjectionCodeSizeQueryInline(Packet, Token)) {
         return TRUE;
     }
 
+    return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+RtlpInjectionCompleteCallbackImpl(
+    PCRTL_INJECTION_PACKET Packet,
+    PVOID Token
+    )
+/*++
+
+Routine Description:
+
+    This routine implements the injection callback protocol required by injected
+    code routines.  It should be called as the first step in the injected code.
+    The injected code should return the value of Token if this routine returns
+    TRUE.
+
+Arguments:
+
+    Packet - Supplies a pointer to an injection packet.
+
+    ReturnValue - Supplies the address of a variable that will receive the
+        return value if this is a protocol callback.
+
+Return Value:
+
+    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
+    should return the value of the ReturnValue parameter.
+
+--*/
+{
     return FALSE;
 }
 
@@ -608,19 +758,33 @@ Return Value:
     Rtl = &RtlLocal;
     SizeOfRtl = sizeof(*Rtl);
 
-    if (!pInitializeRtl(Rtl, &SizeOfRtl)) {
+    if (!InitRtl(Rtl, &SizeOfRtl)) {
         return InjectedRemoteThreadInitializeRtlFailed;
     }
+
+    //
+    // Store a pointer to RTL in the context.
+    //
+
+    Context->Rtl = Rtl;
 
     //
     // Defer to our main dispatch routine.
     //
 
-    Result = Rtl->InjectedRemoteThreadEntry(Context);
+    Result = Rtl->InjectionRemoteThreadEntry(Context);
 
     return Result;
 }
 #pragma optimize("", on)
 
+_Use_decl_annotations_
+LONG
+RtlInjectionRemoteThreadEntry(
+    PRTL_INJECTION_CONTEXT Context
+    )
+{
+    return 0;
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

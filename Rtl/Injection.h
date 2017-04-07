@@ -103,6 +103,14 @@ typedef union _RTL_INJECTION_PACKET_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
+        // The following two flags are used as part of the injection callback
+        // protocol.
+        //
+
+        ULONG IsMagicNumberTest:1;
+        ULONG IsCodeSizeQuery:1;
+
+        //
         // When set, indicates the function is running in the injected context.
         //
 
@@ -112,7 +120,7 @@ typedef union _RTL_INJECTION_PACKET_FLAGS {
         // Unused bits.
         //
 
-        ULONG Unused:31;
+        ULONG Unused:29;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -191,7 +199,10 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG IllegalInstructionInCallbackTest:1;
         ULONGLONG AccessViolationInCallbackTest:1;
         ULONGLONG StatusInPageErrorInCallbackTest:1;
-        ULONGLONG IncorrectMagicNumberReturnedInCallbackTest:1;
+        ULONGLONG MagicNumberMismatch:1;
+        ULONGLONG ExtractCodeSizeFailedDuringCallbackTest:1;
+        ULONGLONG CallbackCodeSizeGreaterThanOrEqualToPageSize:1;
+        ULONGLONG CallbackCodeCrossesPageBoundary:1;
         ULONGLONG OpenTargetProcessFailed:1;
         ULONGLONG OpenTargetThreadFailed:1;
         ULONGLONG SuspendTargetThreadFailed:1;
@@ -200,7 +211,7 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG InternalStatusInPageError:1;
         ULONGLONG WriteRemoteMemoryFailed:1;
 
-        ULONGLONG Unused:37;
+        ULONGLONG Unused:34;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;

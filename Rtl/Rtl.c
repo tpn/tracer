@@ -2998,6 +2998,8 @@ InitializeRtl(
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
 
+    Rtl->InjectionRemoteThreadEntry = RtlInjectionRemoteThreadEntry;
+
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;
 

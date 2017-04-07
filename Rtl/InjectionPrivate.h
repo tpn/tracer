@@ -157,6 +157,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     };
 
     //
+    // Approximate start and end addresses of the caller's code, as determined
+    // by the GetApproximateFunctionBoundaries() routine.
+    //
+
+    ULONG_PTR StartAddress;
+    ULONG_PTR EndAddress;
+
+    //
     // The start address of our initial remote thread thunk, allocated in the
     // target process's memory space.
     //
@@ -252,6 +260,18 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(RTLP_PRE_INJECTION_ALLOCATE_REMOTE_MEMORY)(
+    _In_ PRTL Rtl,
+    _Inout_ PRTL_INJECTION_CONTEXT Context,
+    _Out_ PRTL_INJECTION_ERROR Error
+    );
+typedef RTLP_PRE_INJECTION_ALLOCATE_REMOTE_MEMORY
+      *PRTLP_PRE_INJECTION_ALLOCATE_REMOTE_MEMORY;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (RTLP_INJECTION_BOOTSTRAP)(
     _In_ PRTL Rtl,
     _Inout_ PRTL_INJECTION_CONTEXT Context,
@@ -263,16 +283,95 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_SHARED {
     INIT_ONCE InitOnce;
     SRWLOCK Lock;
     ALLOCATOR Allocator;
-    //LIST_HEAD ListHead;
+    LIST_ENTRY ListHead;
 } RTL_INJECTION_SHARED;
 typedef RTL_INJECTION_SHARED *PRTL_INJECTION_SHARED;
 
+//
+// Private inline functions.
+//
+
+FORCEINLINE
+BOOL
+RtlpIsInjectionMagicNumberTestInline(
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Outptr_result_maybenull_ PVOID Token
+    )
+{
+    ULARGE_INTEGER Magic;
+
+    if (!Packet->Flags.IsMagicNumberTest) {
+        return FALSE;
+    }
+
+    Magic.QuadPart = Packet->MagicNumber.QuadPart;
+
+    *((PULONGLONG)Token) = Magic.LowPart ^ Magic.HighPart;
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOL
+RtlpIsInjectionCodeSizeQueryInline(
+    _In_ PCRTL_INJECTION_PACKET Packet,
+    _Outptr_result_maybenull_ PVOID Token
+    )
+{
+    BOOL Success;
+    ULONG_PTR InstructionPointer;
+    ULONG_PTR StartAddress;
+    ULONG_PTR EndAddress;
+    ULONG_PTR CodeSize;
+    PRTL_INJECTION_CONTEXT Context;
+
+    if (!Packet->Flags.IsCodeSizeQuery) {
+        return FALSE;
+    }
+
+    Context = CONTAINING_RECORD(Packet,
+                                RTL_INJECTION_CONTEXT,
+                                Packet);
+
+
+    InstructionPointer = GetInstructionPointer();
+
+    Success = GetApproximateFunctionBoundaries(InstructionPointer,
+                                               &StartAddress,
+                                               &EndAddress);
+
+
+    Context->StartAddress = StartAddress;
+    Context->EndAddress = EndAddress;
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    CodeSize = EndAddress - StartAddress;
+
+    if (CodeSize >= PAGE_SIZE) {
+        return FALSE;
+    }
+
+    if (PointerToOffsetCrossesPageBoundary((PVOID)StartAddress, CodeSize)) {
+        return FALSE;
+    }
+
+    *((PULONGLONG)Token) = CodeSize;
+
+    Context->SizeOfCallbackCodeInBytes = (ULONG)CodeSize;
+
+    return TRUE;
+}
 
 #pragma component(browser, off)
+RTL_INJECTION_REMOTE_THREAD_ENTRY RtlInjectionRemoteThreadEntry;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionCallback;
-RTLP_INJECTION_BOOTSTRAP RtlpInjectionBootstrap;
-RTL_INJECTION_COMPLETE_CALLBACK RtlpPreInjectionCallbackImpl;
-RTL_INJECTION_COMPLETE_CALLBACK RtlpInjectionCompleteCallbackImpl;
+RTLP_PRE_INJECTION_ALLOCATE_REMOTE_MEMORY RtlpPreInjectionAllocateRemoteMemory;
+RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPreInjectionProtocolCallbackImpl;
+RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpInjectionCompleteProtocolCallbackImpl;
+
 #pragma component(browser, on)
 
 

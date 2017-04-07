@@ -17,32 +17,6 @@ Abstract:
 
 #include "stdafx.h"
 
-#pragma data_seg(".shared")
-#pragma data_seg()
-#pragma comment(linker, "/section:.shared,rws")
-
-BOOL
-CALLBACK
-RtlpInitializeInjectionCallback(
-    PINIT_ONCE InitOnce,
-    PVOID Parameter,
-    PVOID *lpContext
-    )
-{
-    //PRTL_INJECTION_SHARED Context;
-
-    return FALSE;
-
-}
-
-BOOL
-RtlInitializeInjection(
-    VOID
-    )
-{
-    return FALSE;
-}
-
 _Use_decl_annotations_
 BOOL
 RtlCreateInjectionPacket(
@@ -293,11 +267,10 @@ Return Value:
     }
 
     //
-    // Invariant check: InjectionCompleteCallback should be non-NULL here, and
-    // Success should be set to TRUE.
+    // Invariant check: OriginalCallback should be non-NULL here.
     //
 
-    if (!Success || !OriginalCallback) {
+    if (!OriginalCallback) {
         __debugbreak();
         Error.InternalError = TRUE;
         goto Error;
@@ -420,23 +393,13 @@ Return Value:
     Error.InvalidParameters = FALSE;
 
     //
-    // Attempt to create our initial chunks of memory in the remote process.
-    //
-
-    Success = RtlpPreInjectionAllocateRemoteMemory(Rtl, Context, &Error);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
     // We now have enough information to commit to allocating and initializing
     // an injection context (which will contain the packet returned to the
     // user).
     //
 
     //
-    // Calculate the required allocation size.
+    // Calculate the required allocation size for the context and any strings.
     //
 
     AllocSize.LongPart = (
@@ -459,7 +422,7 @@ Return Value:
         Allocator->Calloc(
             Allocator->Context,
             1,
-            sizeof(RTL_INJECTION_CONTEXT)
+            AllocSize.LongPart
         )
     );
 
@@ -519,7 +482,7 @@ Error:
         return FALSE;
     }
 
-    if (Context) {
+    if (Context && Context != &LocalContext) {
         Allocator->FreePointer(Allocator->Context, &Context);
         Packet = NULL;
     }
@@ -680,16 +643,6 @@ Return Value:
 --*/
 {
     return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-RtlIsInjectionCompleteCallbackTest(
-    PCRTL_INJECTION_PACKET Packet,
-    PULONG MagicNumber
-    )
-{
-    return RtlIsInjectionCompleteCallbackTestInline(Packet, MagicNumber);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

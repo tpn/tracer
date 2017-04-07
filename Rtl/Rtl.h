@@ -4870,6 +4870,13 @@ BOOL
     );
 typedef CRYPT_GEN_RANDOM *PCRYPT_GEN_RANDOM;
 
+typedef
+LONG
+(CALLBACK RTL_INJECTION_REMOTE_THREAD_ENTRY)(
+    _In_ struct _RTL_INJECTION_CONTEXT *Context
+    );
+typedef RTL_INJECTION_REMOTE_THREAD_ENTRY *PRTL_INJECTION_REMOTE_THREAD_ENTRY;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -4918,6 +4925,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+
+    PRTL_INJECTION_REMOTE_THREAD_ENTRY InjectionRemoteThreadEntry;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
