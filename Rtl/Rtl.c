@@ -2241,7 +2241,6 @@ ResolveRtlExFunctions(
         "RtlParent",
         "RtlRightChild",
         "RtlCreateInjectionPacket",
-        "RtlIsInjectionProtocolCallback",
         "RtlDestroyInjectionPacket",
         "RtlAddInjectionPayload",
         "RtlAddInjectionSymbols",

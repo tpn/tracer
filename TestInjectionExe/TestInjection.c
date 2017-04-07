@@ -15,13 +15,13 @@ Abstract:
 
 #include "stdafx.h"
 
-
-ULONG
+ULONGLONG
+CALLBACK
 InjectionCallback1(
     PRTL_INJECTION_PACKET Packet
     )
 {
-    ULONG Token;
+    ULONGLONG Token;
 
     if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
         return Token;
@@ -38,24 +38,31 @@ TestInjection1(
     PDEBUG_ENGINE_SESSION Session
     )
 {
-    LONG SizeOfCode;
-    PBYTE Code;
+    BOOL Success;
+    //LONG SizeOfCode;
+    //PBYTE Code;
 
     RTL_CREATE_INJECTION_PACKET_FLAGS CreateFlags;
     PRTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_COMPLETE_CALLBACK Callback;
+    RTL_INJECTION_ERROR Error;
 
     CreateFlags.AsULong = 0;
     CreateFlags.InjectCode = TRUE;
 
-    Code = (PBYTE)InjectionCallback1;
-    SizeOfCode = InjectionCallback1(NULL);
+    Callback = InjectionCallback1;
 
-    if (SizeOfCode == -1) {
-        __debugbreak();
-        return 1;
-    }
+    Success = Rtl->CreateInjectionPacket(Rtl,
+                                         Allocator,
+                                         &CreateFlags,
+                                         NULL,
+                                         NULL,
+                                         Callback,
+                                         1,
+                                         0,
+                                         &Packet,
+                                         &Error);
 
-    Packet = NULL;
 
     return ERROR_SUCCESS;
 }

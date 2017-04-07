@@ -4627,7 +4627,6 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
     PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
-    PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;                \
     PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
     PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
     PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
