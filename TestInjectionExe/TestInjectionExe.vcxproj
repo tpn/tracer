@@ -94,6 +94,9 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Rtl\Rtl.vcxproj">
+      <Project>{91695ede-dfc2-4364-a959-3c8a0870507a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
       <Project>{347F64D0-020C-4CAB-90C5-BF9788C95316}</Project>
     </ProjectReference>
