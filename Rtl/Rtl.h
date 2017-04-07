@@ -335,6 +335,8 @@ typedef WCHAR **PPWSTR;
 typedef HMODULE *PHMODULE;
 typedef PROC *PPROC;
 
+typedef volatile CHAR *VPCHAR;
+
 typedef const SHORT CSHORT;
 
 #define MAX_USHORT (USHORT)0xffff
@@ -1645,6 +1647,16 @@ HMODULE
 typedef LOAD_LIBRARY_W *PLOAD_LIBRARY_W;
 
 typedef
+_Ret_maybenull_
+HMODULE
+(WINAPI LOAD_LIBRARY_EX_W)(
+    _In_ LPWSTR lpLibFileName,
+    _Reserved_ HANDLE hFile,
+    _In_ DWORD Flags
+    );
+typedef LOAD_LIBRARY_EX_W *PLOAD_LIBRARY_EX_W;
+
+typedef
 FARPROC
 (WINAPI GET_PROC_ADDRESS)(
     _In_ HMODULE hModule,
@@ -1671,6 +1683,186 @@ HANDLE
     _In_ LPCSTR lpName
     );
 typedef OPEN_EVENT_W *POPEN_EVENT_W;
+
+typedef
+_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI VIRTUAL_ALLOC)(
+    _In_opt_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flAllocationType,
+    _In_ DWORD flProtect
+    );
+typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
+
+typedef
+_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI VIRTUAL_ALLOC)(
+    _In_opt_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flAllocationType,
+    _In_ DWORD flProtect
+    );
+typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
+
+
+typedef
+_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI VIRTUAL_ALLOC_EX)(
+    _In_ HANDLE hProcess,
+    _In_opt_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flAllocationType,
+    _In_ DWORD flProtect
+    );
+
+typedef
+BOOL
+(WINAPI VIRTUAL_FREE)(
+
+    _Pre_notnull_
+        _When_(dwFreeType == MEM_DECOMMIT, _Post_invalid_)
+        _When_(dwFreeType == MEM_RELEASE, _Post_ptr_invalid_)
+            LPVOID lpAddress,
+
+    _In_ SIZE_T dwSize,
+    _In_ DWORD dwFreeType
+    );
+typedef VIRTUAL_FREE *PVIRTUAL_FREE;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI VIRTUAL_PROTECT)(
+    _In_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flNewProtect,
+    _Out_ PDWORD lpflOldProtect
+    );
+
+typedef
+BOOL
+(WINAPI VIRTUAL_FREE_EX)(
+    _In_ HANDLE hProcess,
+
+    _Pre_notnull_
+        _When_(dwFreeType == MEM_DECOMMIT, _Post_invalid_)
+        _When_(dwFreeType == MEM_RELEASE, _Post_ptr_invalid_)
+            LPVOID lpAddress,
+
+    _In_ SIZE_T dwSize,
+    _In_ DWORD dwFreeType
+    );
+typedef VIRTUAL_FREE_EX *PVIRTUAL_FREE_EX;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI VIRTUAL_PROTECT_EX)(
+    _In_ HANDLE hProcess,
+    _In_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flNewProtect,
+    _Out_ PDWORD lpflOldProtect
+    );
+typedef VIRTUAL_PROTECT_EX *PVIRTUAL_PROTECT_EX;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI READ_PROCESS_MEMORY)(
+    _In_ HANDLE hProcess,
+    _In_ LPCVOID lpBaseAddress,
+    _Out_writes_bytes_to_(nSize, *lpNumberOfBytesRead) LPVOID lpBuffer,
+    _In_ SIZE_T nSize,
+    _Out_opt_ SIZE_T * lpNumberOfBytesRead
+    );
+typedef READ_PROCESS_MEMORY *PREAD_PROCESS_MEMORY;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI WRITE_PROCESS_MEMORY)(
+    _In_ HANDLE hProcess,
+    _In_ LPVOID lpBaseAddress,
+    _In_reads_bytes_(nSize) LPCVOID lpBuffer,
+    _In_ SIZE_T nSize,
+    _Out_opt_ SIZE_T * lpNumberOfBytesWritten
+    );
+typedef WRITE_PROCESS_MEMORY *PWRITE_PROCESS_MEMORY;
+
+typedef
+_Ret_maybenull_
+HANDLE
+(WINAPI CREATE_FILE_MAPPING_W)(
+    _In_ HANDLE hFile,
+    _In_opt_ LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+    _In_ DWORD flProtect,
+    _In_ DWORD dwMaximumSizeHigh,
+    _In_ DWORD dwMaximumSizeLow,
+    _In_opt_ LPCWSTR lpName
+    );
+typedef CREATE_FILE_MAPPING_W *PCREATE_FILE_MAPPING_W;
+
+typedef
+_Ret_maybenull_
+HANDLE
+(WINAPI OPEN_FILE_MAPPING_W)(
+    _In_ DWORD dwDesiredAccess,
+    _In_ BOOL bInheritHandle,
+    _In_ LPCWSTR lpName
+    );
+typedef OPEN_FILE_MAPPING_W *POPEN_FILE_MAPPING_W;
+
+typedef
+_Ret_maybenull_  __out_data_source(FILE)
+LPVOID
+(WINAPI MAP_VIEW_OF_FILE)(
+    _In_ HANDLE hFileMappingObject,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwFileOffsetHigh,
+    _In_ DWORD dwFileOffsetLow,
+    _In_ SIZE_T dwNumberOfBytesToMap
+    );
+typedef MAP_VIEW_OF_FILE *PMAP_VIEW_OF_FILE;
+
+typedef
+_Ret_maybenull_  __out_data_source(FILE)
+LPVOID
+(WINAPI MAP_VIEW_OF_FILE_EX)(
+    _In_ HANDLE hFileMappingObject,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwFileOffsetHigh,
+    _In_ DWORD dwFileOffsetLow,
+    _In_ SIZE_T dwNumberOfBytesToMap,
+    _In_opt_ LPVOID lpBaseAddress
+    );
+typedef MAP_VIEW_OF_FILE_EX *PMAP_VIEW_OF_FILE_EX;
+
+typedef
+BOOL
+(WINAPI FLUSH_VIEW_OF_FILE)(
+    _In_ LPCVOID lpBaseAddress,
+    _In_ SIZE_T dwNumberOfBytesToFlush
+    );
+typedef FLUSH_VIEW_OF_FILE *PFLUSH_VIEW_OF_FILE;
+
+typedef
+BOOL
+(WINAPI UNMAP_VIEW_OF_FILE)(
+    _In_ LPCVOID lpBaseAddress
+    );
+typedef UNMAP_VIEW_OF_FILE *PUNMAP_VIEW_OF_FILE;
+
+typedef
+BOOL
+(WINAPI UNMAP_VIEW_OF_FILE_EX)(
+    _In_ PVOID BaseAddress,
+    _In_ ULONG UnmapFlags
+    );
+typedef UNMAP_VIEW_OF_FILE_EX *PUNMAP_VIEW_OF_FILE_EX;
 
 typedef
 DWORD
@@ -4435,7 +4627,7 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
     PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
-    PRTL_IS_INJECTION_COMPLETE_CALLBACK_TEST IsInjectionCompleteCallbackTest;       \
+    PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;                \
     PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
     PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
     PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
@@ -4678,6 +4870,13 @@ BOOL
     );
 typedef CRYPT_GEN_RANDOM *PCRYPT_GEN_RANDOM;
 
+typedef
+LONG
+(CALLBACK RTL_INJECTION_REMOTE_THREAD_ENTRY)(
+    _In_ struct _RTL_INJECTION_CONTEXT *Context
+    );
+typedef RTL_INJECTION_REMOTE_THREAD_ENTRY *PRTL_INJECTION_REMOTE_THREAD_ENTRY;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -4726,6 +4925,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+
+    PRTL_INJECTION_REMOTE_THREAD_ENTRY InjectionRemoteThreadEntry;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -5321,6 +5522,38 @@ CopyMemoryQuadwords(
     return TRUE;
 }
 
+FORCEINLINE
+BOOL
+SecureZeroMemoryQuadwords(
+    PVOID pDest,
+    SIZE_T SizeInBytes
+    )
+{
+    VPCHAR Dest = (VPCHAR)pDest;
+    VPCHAR TrailingDest;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    if (NumberOfQuadwords) {
+        __stosq((PDWORD64)Dest, 0, NumberOfQuadwords);
+    }
+
+    if (TrailingBytes) {
+        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+        __stosb((PBYTE)TrailingDest, 0, TrailingBytes);
+    }
+
+    return TRUE;
+}
+
+#ifdef SecureZeroMemory
+#undef SecureZeroMemory
+#endif
+#define SecureZeroMemory SecureZeroMemoryQuadwords
+
 typedef
 _Success_(return != 0)
 _Check_return_
@@ -5329,7 +5562,7 @@ BOOL
     _Out_bytecap_(*SizeOfRtl) PRTL   Rtl,
     _Inout_                   PULONG SizeOfRtl
     );
-typedef INITIALIZE_RTL *PINITIALIZE_RTL, **PPINTIALIZE_RTL;
+typedef INITIALIZE_RTL *PINITIALIZE_RTL;
 
 FORCEINLINE
 VOID
@@ -7652,6 +7885,7 @@ Retry:
 
     InsertTailList(&GuardedList->ListHead, Entry);
     GuardedList->NumberOfEntries++;
+    _xend();
     return;
 }
 
