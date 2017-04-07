@@ -225,7 +225,7 @@ GetApproximateFunctionBoundariesInline(
 Routine Description:
 
     Given an address which resides within a function, return the approximate
-    start and end addresses of a function by searching forward and backward
+    start and end addresses of the function by searching forward and backward
     for repeat occurrences of the `int 3` (breakpoint) instruction, represented
     by 0xCC in byte code.  Such occurrences are usually good indicators of
     function boundaries -- in fact, the Microsoft AMD64 calling convention
@@ -235,8 +235,8 @@ Routine Description:
 
     The term "approximate" is used to qualify both the start and end addresses,
     because although scanning for repeat 0xCC occurrences is quite reliable, it
-    is not as reliable as a more authoritative source of function size, such as
-    debug symbols.
+    is essentially still a heuristic, and thus, not an authoritative source of
+    a function's code size (in comparison to, say, debug symbols).
 
 Arguments:
 
