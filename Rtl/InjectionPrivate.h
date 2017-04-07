@@ -50,7 +50,25 @@ typedef RTL_INJECTION_CALLBACK *PRTL_INJECTION_CALLBACK;
 
 typedef union _RTL_INJECTION_CONTEXT_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG Unused:1;
+
+        //
+        // The following flag is used as part of the injection context callback
+        // protocol.
+        //
+
+        ULONG IsCodeSizeQuery:1;
+
+        //
+        // When set, indicates the function is running in the injected context.
+        //
+
+        ULONG IsInjected:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:30;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -287,90 +305,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_SHARED {
 } RTL_INJECTION_SHARED;
 typedef RTL_INJECTION_SHARED *PRTL_INJECTION_SHARED;
 
-//
-// Private inline functions.
-//
-
-FORCEINLINE
-BOOL
-RtlpIsInjectionMagicNumberTestInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Outptr_result_maybenull_ PVOID Token
-    )
-{
-    ULARGE_INTEGER Magic;
-
-    if (!Packet->Flags.IsMagicNumberTest) {
-        return FALSE;
-    }
-
-    Magic.QuadPart = Packet->MagicNumber.QuadPart;
-
-    *((PULONGLONG)Token) = Magic.LowPart ^ Magic.HighPart;
-
-    return TRUE;
-}
-
-FORCEINLINE
-BOOL
-RtlpIsInjectionCodeSizeQueryInline(
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Outptr_result_maybenull_ PVOID Token
-    )
-{
-    BOOL Success;
-    ULONG_PTR InstructionPointer;
-    ULONG_PTR StartAddress;
-    ULONG_PTR EndAddress;
-    ULONG_PTR CodeSize;
-    PRTL_INJECTION_CONTEXT Context;
-
-    if (!Packet->Flags.IsCodeSizeQuery) {
-        return FALSE;
-    }
-
-    Context = CONTAINING_RECORD(Packet,
-                                RTL_INJECTION_CONTEXT,
-                                Packet);
-
-
-    InstructionPointer = GetInstructionPointer();
-
-    Success = GetApproximateFunctionBoundaries(InstructionPointer,
-                                               &StartAddress,
-                                               &EndAddress);
-
-
-    Context->StartAddress = StartAddress;
-    Context->EndAddress = EndAddress;
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    CodeSize = EndAddress - StartAddress;
-
-    if (CodeSize >= PAGE_SIZE) {
-        return FALSE;
-    }
-
-    if (PointerToOffsetCrossesPageBoundary((PVOID)StartAddress, CodeSize)) {
-        return FALSE;
-    }
-
-    *((PULONGLONG)Token) = CodeSize;
-
-    Context->SizeOfCallbackCodeInBytes = (ULONG)CodeSize;
-
-    return TRUE;
-}
-
 #pragma component(browser, off)
 RTL_INJECTION_REMOTE_THREAD_ENTRY RtlInjectionRemoteThreadEntry;
+RTLP_VERIFY_INJECTION_CALLBACK RtlpInjectionCallbackVerifyMagicNumber;
+RTLP_VERIFY_INJECTION_CALLBACK RtlpInjectionCallbackExtractCodeSize;
+RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionContext;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionCallback;
 RTLP_PRE_INJECTION_ALLOCATE_REMOTE_MEMORY RtlpPreInjectionAllocateRemoteMemory;
 RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPreInjectionProtocolCallbackImpl;
 RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpInjectionCompleteProtocolCallbackImpl;
+RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpIsInjectionContextProtocolCallback;
 
 #pragma component(browser, on)
 
