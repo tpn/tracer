@@ -166,7 +166,7 @@ Return Value:
 
         CreateFlags.AsULong = CreateInjectionFlags->AsULong;
 
-        if (!(CreateFlags.InjectModule & CreateFlags.InjectCode)) {
+        if (!(CreateFlags.InjectModule | CreateFlags.InjectCode)) {
 
             //
             // One of InjectModule or InjectCode needs to be set.
