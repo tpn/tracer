@@ -75,6 +75,7 @@
     <ClInclude Include="Commandline.h" />
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
     <ClInclude Include="Injection.h" />
+    <ClInclude Include="InjectionInline.h" />
     <ClInclude Include="InjectionPrivate.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlPrivate.h" />

@@ -2241,7 +2241,7 @@ ResolveRtlExFunctions(
         "RtlParent",
         "RtlRightChild",
         "RtlCreateInjectionPacket",
-        "RtlIsInjectionCompleteCallbackTest",
+        "RtlIsInjectionProtocolCallback",
         "RtlDestroyInjectionPacket",
         "RtlAddInjectionPayload",
         "RtlAddInjectionSymbols",
@@ -2925,6 +2925,14 @@ RtlCryptGenRandom(
     return TRUE;
 }
 
+BOOL
+RtlInitializeInjection(
+    VOID
+    )
+{
+    return TRUE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(
@@ -2952,6 +2960,10 @@ InitializeRtl(
         return FALSE;
     } else {
         *SizeOfRtl = sizeof(*Rtl);
+    }
+
+    if (!RtlInitializeInjection()) {
+        return FALSE;
     }
 
     HeapHandle = GetProcessHeap();
@@ -2985,6 +2997,8 @@ InitializeRtl(
 
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
+
+    Rtl->InjectionRemoteThreadEntry = RtlInjectionRemoteThreadEntry;
 
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;
