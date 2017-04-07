@@ -132,8 +132,9 @@ Return Value:
 {
     LONG Offset;
     CHAR ShortOffset;
-    PBYTE OriginalCode = Code;
+    PBYTE Address;
     PBYTE Target;
+    PBYTE Final = Code;
 
     if (!ARGUMENT_PRESENT(Code)) {
         return NULL;
@@ -150,8 +151,9 @@ Return Value:
             //
 
             Offset = *((PLONG)&Code[2]);
-
-            Target = *((PBYTE *)(Code + 6 + Offset));
+            Address = Code + 6;
+            Address += Offset;
+            Target = Address;
 
         } else if (Code[0] == 0x48 && Code[1] == 0xFF && Code[2] == 0x25) {
 
@@ -160,8 +162,9 @@ Return Value:
             //
 
             Offset = *((PLONG)&Code[3]);
-
-            Target = *((PBYTE *)(Code + 7 + Offset));
+            Address = Code + 7;
+            Address += Offset;
+            Target = Address;
 
         } else if (Code[0] == 0xE9) {
 
@@ -170,8 +173,9 @@ Return Value:
             //
 
             Offset = *((PLONG)&Code[1]);
-
-            Target = *((PBYTE *)(Code + 7 + Offset));
+            Address = Code + 5;
+            Address += Offset;
+            Target = Address;
 
         } else if (Code[0] == 0xEB) {
 
@@ -180,8 +184,9 @@ Return Value:
             //
 
             ShortOffset = *((CHAR *)&Code[1]);
-
-            Target = *((PBYTE *)(Code + 2 + ShortOffset));
+            Address = Code + 2;
+            Address += ShortOffset;
+            Target = Address;
 
         }
 
@@ -192,10 +197,20 @@ Return Value:
             //
 
             break;
+
+        } else {
+
+            //
+            // Update the Code pointer such that we continue skipping any
+            // jumps on subsequent loop iterations.
+            //
+
+            Final = Target;
+            Code = Target;
         }
     }
 
-    return Target;
+    return Final;
 }
 
 FORCEINLINE
