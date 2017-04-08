@@ -4870,6 +4870,30 @@ BOOL
 typedef CRYPT_GEN_RANDOM *PCRYPT_GEN_RANDOM;
 
 typedef
+_Success_(return != 0)
+BOOL
+(WINAPI CRYPT_BINARY_TO_STRING_A)(
+    _In_reads_bytes_(cbBinary) CONST BYTE *pbBinary,
+    _In_ DWORD cbBinary,
+    _In_ DWORD dwFlags,
+    _Out_writes_to_opt_(*pcchString, *pcchString) LPSTR pszString,
+    _Inout_ DWORD *pcchString
+    );
+typedef CRYPT_BINARY_TO_STRING_A *PCRYPT_BINARY_TO_STRING_A;
+
+typedef
+_Success_(return != 0)
+BOOL
+(WINAPI CRYPT_BINARY_TO_STRING_W)(
+    _In_reads_bytes_(cbBinary) CONST BYTE *pbBinary,
+    _In_ DWORD cbBinary,
+    _In_ DWORD dwFlags,
+    _Out_writes_to_opt_(*pcchString, *pcchString) LPWSTR pszString,
+    _Inout_ DWORD *pcchString
+    );
+typedef CRYPT_BINARY_TO_STRING_W *PCRYPT_BINARY_TO_STRING_W;
+
+typedef
 LONG
 (CALLBACK RTL_INJECTION_REMOTE_THREAD_ENTRY)(
     _In_ struct _RTL_INJECTION_CONTEXT *Context
