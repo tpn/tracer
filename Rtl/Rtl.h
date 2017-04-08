@@ -1680,7 +1680,7 @@ HANDLE
 (WINAPI OPEN_EVENT_W)(
     _In_ DWORD dwDesiredAccess,
     _In_ BOOL bInheritHandle,
-    _In_ LPCSTR lpName
+    _In_ LPCWSTR lpName
     );
 typedef OPEN_EVENT_W *POPEN_EVENT_W;
 
