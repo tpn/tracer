@@ -6058,7 +6058,7 @@ FORCEINLINE
 BOOLEAN
 AllocateAndCopyUnicodeString(
     _In_ PALLOCATOR Allocator,
-    _In_ PUNICODE_STRING SourceString,
+    _In_ PCUNICODE_STRING SourceString,
     _In_ PUNICODE_STRING DestString
     )
 /*++
