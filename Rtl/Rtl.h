@@ -5546,6 +5546,44 @@ CopyMemoryQuadwords(
 }
 
 FORCEINLINE
+VOID
+CopyMemory(
+    PVOID Dst,
+    PVOID Src,
+    SIZE_T SizeInBytes
+    )
+{
+    PCHAR Dest = (PCHAR)Dest;
+    PCHAR Source = (PCHAR)Source;
+    PCHAR TrailingDest;
+    PCHAR TrailingSource;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    if (NumberOfQuadwords) {
+
+        __movsq((PDWORD64)Dest,
+                (PDWORD64)Source,
+                NumberOfQuadwords);
+
+    }
+
+    if (TrailingBytes) {
+
+        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+        TrailingSource = (Source + (SizeInBytes - TrailingBytes));
+
+        __movsb(TrailingDest,
+                TrailingSource,
+                TrailingBytes);
+
+    }
+}
+
+FORCEINLINE
 BOOL
 SecureZeroMemoryQuadwords(
     PVOID pDest,
