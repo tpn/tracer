@@ -4865,7 +4865,7 @@ BOOL
 (CRYPT_GEN_RANDOM)(
     _In_ PRTL Rtl,
     _In_ ULONG SizeOfBufferInBytes,
-    _Out_writes_bytes_all_(SizeOfBufferInBytes) PBYTE Buffer
+    _Inout_updates_bytes_(SizeOfBufferInBytes) PBYTE Buffer
     );
 typedef CRYPT_GEN_RANDOM *PCRYPT_GEN_RANDOM;
 
