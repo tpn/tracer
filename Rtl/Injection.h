@@ -229,13 +229,17 @@ typedef union _RTL_INJECTION_ERROR {
 
         ULONGLONG CreateEventNameFailed:1;
         ULONGLONG InvalidEventId:1;
+        ULONGLONG IllegalInstructionInCallback:1;
+        ULONGLONG AccessViolationInCallback:1;
+        ULONGLONG StatusInPageErrorInCallback:1;
+        ULONGLONG InjectionThunkExtractCodeSizeFailed:1;
 
         //
         // Decrement the remaining bits in the Unused member below when adding
         // new fields.
         //
 
-        ULONGLONG Unused:30;
+        ULONGLONG Unused:26;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;

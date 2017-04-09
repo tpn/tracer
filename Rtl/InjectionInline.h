@@ -213,6 +213,26 @@ Return Value:
     return Final;
 }
 
+//
+// Define two helper macros for utilising SkipJumps() in a more concise manner.
+// E.g. instead of:
+//
+//      InjectionThunk = ((PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
+//          SkipJumps((PBYTE)RtlpInjectionRemoteThreadEntryThunk)
+//      );
+//
+//  One can write:
+//
+//      InjectionThunk = SKIP_JUMPS(
+//          RtlpInjectionRemoteThreadEntryThunk,
+//          PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
+//      );
+//
+//
+
+#define SKIP_JUMPS(Target, Type) ((Type)SkipJumps((PBYTE)Target))
+#define SKIP_JUMPS_INLINE(Target, Type) ((Type)SkipJumpsInline((PBYTE)Target))
+
 FORCEINLINE
 BOOL
 GetApproximateFunctionBoundariesInline(

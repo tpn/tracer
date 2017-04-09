@@ -470,15 +470,8 @@ Return Value:
     ULONG_PTR Code;
     ULONG_PTR StartAddress;
     ULONG_PTR EndAddress;
-    PRTL_INJECTION_PACKET Packet;
     RTL_INJECTION_ERROR Error;
     PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
-
-    //
-    // XXX TODO: this routine was copy-and-pasted and definitely needs a review.
-    //
-
-    __debugbreak();
 
     //
     // Clear our local error variable.
@@ -487,19 +480,16 @@ Return Value:
     Error.ErrorCode = 0;
 
     //
-    // Wire up our local packet pointer, and extract the thread injection
-    // thunk.
+    // Wire up our local injection thunk function pointer.
     //
 
-    Packet = &Context->Packet;
     InjectionThunk = Context->RemoteThread.InjectionThunk;
 
     //
-    // Set the relevant packet flag to indicate this is a callback test.
+    // Set the relevant context flag to indicate this is a callback test.
     //
 
-    Packet->Flags.AsULong = 0;
-    Packet->Flags.IsCodeSizeQuery = TRUE;
+    Context->Flags.IsCodeSizeQuery = TRUE;
 
     //
     // Call the routine.
@@ -542,7 +532,7 @@ Return Value:
     //
 
     Error.InternalError = TRUE;
-    Error.ExtractCodeSizeFailedDuringCallbackTest = TRUE;
+    Error.InjectionThunkExtractCodeSizeFailed = TRUE;
 
     //
     // Verify the sizes and addresses.
@@ -586,7 +576,7 @@ Return Value:
     //
 
     Error.InternalError = FALSE;
-    Error.ExtractCodeSizeFailedDuringCallbackTest = FALSE;
+    Error.InjectionThunkExtractCodeSizeFailed = FALSE;
 
     Success = TRUE;
     goto End;
@@ -602,9 +592,11 @@ Error:
 End:
 
     //
-    // Update the error code and return.
+    // Clear the code size query flag in the context, update the error code,
+    // and return.
     //
 
+    Context->Flags.IsCodeSizeQuery = FALSE;
     InjectionError->ErrorCode = Error.ErrorCode;
 
     return Success;
@@ -681,7 +673,7 @@ Return Value:
     Packet = &Context->Packet;
 
     //
-    // Initialize the initial callback.
+    // Initialize the initial packet callback.
     //
 
     Packet->IsInjectionProtocolCallback = RtlpPreInjectionProtocolCallbackImpl;
@@ -711,9 +703,30 @@ Return Value:
     }
 
     //
-    // Code size extraction was successful.  Verify our internal thread entry
-    // thunk.
+    // (If we were going to ensure the injected code had no RIP-relative
+    //  addresses, we'd do that here.)
     //
+
+    //
+    // Code size extraction was successful.  Verify our internal thread entry
+    // thunk.  Wire up the remote thread injection thunk and set the injection
+    // context protocol callback to the pre-injection implementation, then
+    // perform the verification.
+    //
+
+    Context->RemoteThread.InjectionThunk = (
+        SKIP_JUMPS(
+            RtlpInjectionRemoteThreadEntryThunk,
+            PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
+        )
+    );
+
+    Context->IsInjectionContextProtocolCallback = (
+        SKIP_JUMPS(
+            RtlpPreInjectionContextProtocolCallbackImpl,
+            PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK
+        )
+    );
 
     Success = RtlpInjectionVerifyContextCallback(Rtl,
                                                  Context,
@@ -724,15 +737,10 @@ Return Value:
     }
 
     //
-    // If we were going to ensure the injected code had no RIP-relative
-    // addresses, we'd do that now.
+    // Context and packet callbacks have been verified successfully, we're done.
     //
 
     goto End;
-
-    //
-    // Intentional follow-on to Error.
-    //
 
 Error:
 
@@ -745,10 +753,10 @@ Error:
 End:
 
     //
-    // Update the error code and return.
+    // Merge the error code and return.
     //
 
-    InjectionError->ErrorCode = Error.ErrorCode;
+    InjectionError->ErrorCode |= Error.ErrorCode;
 
     return Success;
 }
@@ -913,9 +921,16 @@ Return Value:
     return TRUE;
 }
 
+//
+// The post-injection implementations of the Packet->IsInjectionProtocolCallback
+// and Context->IsInjectionContextProtocolCallback routines are defined below.
+// Currently, they are both dummy routines that simply return FALSE, as we do no
+// callback interrogation post-injection.
+//
+
 _Use_decl_annotations_
 BOOL
-RtlpInjectionCompleteCallbackImpl(
+RtlpPostInjectionProtocolCallbackImpl(
     PCRTL_INJECTION_PACKET Packet,
     PVOID Token
     )
@@ -923,10 +938,9 @@ RtlpInjectionCompleteCallbackImpl(
 
 Routine Description:
 
-    This routine implements the injection callback protocol required by injected
-    code routines.  It should be called as the first step in the injected code.
-    The injected code should return the value of Token if this routine returns
-    TRUE.
+    In an injected thread, Packet->IsInjectionProtocolCallback will be set to
+    this routine.  It simply returns FALSE as we don't need to do any protocol
+    checks (like magic number or code size extraction) post-injection.
 
 Arguments:
 
@@ -942,15 +956,39 @@ Return Value:
 
 --*/
 {
-    //
-    // WIP.
-    //
-
-    __debugbreak();
-
     return FALSE;
 }
 
+_Use_decl_annotations_
+BOOL
+RtlpPostInjectionContextProtocolCallbackImpl(
+    PRTL_INJECTION_CONTEXT Context,
+    PVOID Token
+    )
+/*++
+
+Routine Description:
+
+    In an injected thread, Context->IsInjectionContextProtocolCallback will be
+    set to this routine.  It simply returns FALSE as we don't need to do any
+    protocol checks (like code size extraction) post-injection.
+
+Arguments:
+
+    Packet - Supplies a pointer to an injection packet.
+
+    Token - Supplies the address of a variable that will receive the return
+        value if this is a protocol callback.
+
+Return Value:
+
+    TRUE if this was a callback test, FALSE otherwise.  If TRUE, the caller
+    should return the value of the Token parameter.
+
+--*/
+{
+    return FALSE;
+}
 
 _Use_decl_annotations_
 BOOL
@@ -963,16 +1001,16 @@ RtlpInjectionRemoteThreadEntry(
 Routine Description:
 
     This is the main "worker" routine of an injected remote thread.  It is
-    called by our initial thread entry bootstrap code once the Rtl module has
-    been loaded and an RTL structure initialized.
+    called by our initial thread entry bootstrap code (the "injection thunk")
+    once the Rtl module has been loaded and an RTL structure initialized.
 
-    This routine differs from the initial thread entry routine in that it a
-    normal unrestricted DLL routine -- i.e. there are no constraints regarding
-    the use of RIP-relative instructions.
+    This routine differs from the initial injection thunk thread entry routine
+    (RtlpInjectionRemoteThreadEntryThunk) in that it a normal unrestricted DLL
+    routine -- i.e. there are no constraints regarding the use of RIP-relative
+    instructions (e.g. via external symbol references, linker jump tables, etc).
 
     The routine is responsible for invoking the caller's callback complete
     routine, as per the details in the context's embedded packet structure.
-    This includes servicing any payload or symbol loading requests.
 
 Arguments:
 
@@ -985,7 +1023,8 @@ Arguments:
 
 Return Value:
 
-    TRUE on success, FALSE on error.
+    TRUE on success, FALSE on error.  Context->Packet.Error will be updated
+    with an appropriate RTL_INJECTION_ERROR state if an error occurs.
 
 --*/
 {
@@ -1043,13 +1082,13 @@ Return Value:
 
         switch (GetExceptionCode()) {
             case STATUS_IN_PAGE_ERROR:
-                Error.StatusInPageErrorInCallbackTest = TRUE;
+                Error.StatusInPageErrorInCallback = TRUE;
                 break;
             case EXCEPTION_ACCESS_VIOLATION:
-                Error.AccessViolationInCallbackTest = TRUE;
+                Error.AccessViolationInCallback = TRUE;
                 break;
             case EXCEPTION_ILLEGAL_INSTRUCTION:
-                Error.IllegalInstructionInCallbackTest = TRUE;
+                Error.IllegalInstructionInCallback = TRUE;
                 break;
         }
     }
@@ -1088,7 +1127,7 @@ End:
     // Update the packet's error variable.
     //
 
-    Packet->Error.ErrorCode = Error.ErrorCode;
+    Packet->Error.ErrorCode |= Error.ErrorCode;
 
     //
     // Update the result pointer.
@@ -1173,7 +1212,7 @@ Return Value:
     RTL_INJECTION_ERROR Error;
     PRTL_INJECTION_PACKET Packet;
     PCRTL_INJECTION_PACKET SourcePacket;
-    const USHORT EventNameMaxLength =RTL_INJECTION_CONTEXT_EVENT_NAME_MAXLENGTH;
+    const USHORT EventNameMaxLength=RTL_INJECTION_CONTEXT_EVENT_NAME_MAXLENGTH;
     const USHORT EventNameLength = EventNameMaxLength - 1;
 
     //
