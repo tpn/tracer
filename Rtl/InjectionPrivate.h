@@ -147,7 +147,7 @@ typedef
 _Check_return_
 BOOL
 (CALLBACK RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK)(
-    _In_ struct _RTL_INJECTION_CONTEXT const *Context,
+    _In_ struct _RTL_INJECTION_CONTEXT *Context,
     _Outptr_result_maybenull_ PVOID Token
     );
 typedef RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK
@@ -160,6 +160,15 @@ ULONGLONG
     );
 typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
       *PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK;
+
+typedef
+_Success_(return != 0)
+BOOL
+(CALLBACK RTLP_INJECTION_REMOTE_THREAD_ENTRY)(
+    _In_ struct _RTL_INJECTION_CONTEXT *Context,
+    _Inout_ PULONGLONG ResultPointer
+    );
+typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
 
 //
 // An RTL_INJECTION_CONTEXT is created for each RTL_INJECTION_PACKET requested
@@ -274,9 +283,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // target process's memory space.
     //
 
-    union {
-        LPTHREAD_START_ROUTINE StartRoutine;
-        PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
+    struct {
+        union {
+            LPTHREAD_START_ROUTINE StartRoutine;
+            PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
+        };
+        PRTLP_INJECTION_REMOTE_THREAD_ENTRY InjectionThreadEntry;
     } RemoteThread;
 
     //
@@ -383,15 +395,6 @@ typedef const RTL_INJECTION_CONTEXT *PCRTL_INJECTION_CONTEXT;
 typedef const RTL_INJECTION_CONTEXT **PPCRTL_INJECTION_CONTEXT;
 
 typedef
-_Success_(return != 0)
-BOOL
-(CALLBACK RTLP_INJECTION_REMOTE_THREAD_ENTRY)(
-    _In_ PRTL_INJECTION_CONTEXT Context,
-    _Inout_ PULONGLONG ResultPointer
-    );
-typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
-
-typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
@@ -470,9 +473,11 @@ typedef RTLP_DESTROY_INJECTION_CONTEXT *PRTLP_DESTROY_INJECTION_CONTEXT;
 
 #pragma component(browser, off)
 RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPreInjectionProtocolCallbackImpl;
-RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpInjectionCompleteProtocolCallbackImpl;
-RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpIsInjectionContextProtocolCallback;
+RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPostInjectionProtocolCallbackImpl;
+RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpPreInjectionContextProtocolCallbackImpl;
+RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpPostInjectionContextProtocolCallbackImpl;
 RTLP_INJECTION_REMOTE_THREAD_ENTRY RtlpInjectionRemoteThreadEntry;
+RTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK RtlpInjectionRemoteThreadEntryThunk;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpInjectionCallbackVerifyMagicNumber;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpInjectionCallbackExtractCodeSize;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpVerifyInjectionContext;
@@ -490,4 +495,4 @@ RTLP_DESTROY_INJECTION_CONTEXT RtlpDestroyInjectionContext;
 } // extern "C" {
 #endif
 
-// vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
+// vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :
