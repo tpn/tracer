@@ -15,6 +15,12 @@ Abstract:
 
 #include "stdafx.h"
 
+//
+// Temp hack: need to include RtlConstants.c directly.
+//
+
+#include "RtlConstants.c"
+
 static PRTL_COMPARE_STRING _RtlCompareString = NULL;
 
 INIT_ONCE InitOnceSystemTimerFunction = INIT_ONCE_STATIC_INIT;
@@ -303,7 +309,9 @@ SetCSpecificHandlerCallback(
 }
 
 BOOL
-SetCSpecificHandler(_In_ HMODULE Module)
+SetCSpecificHandler(
+    _In_ HMODULE Module
+    )
 {
     BOOL Status;
 
@@ -324,7 +332,7 @@ GetSystemTimerFunctionCallback(
     _Inout_     PINIT_ONCE  InitOnce,
     _Inout_     PVOID       Parameter,
     _Inout_opt_ PVOID       *lpContext
-)
+    )
 {
     HMODULE Module;
     FARPROC Proc;
@@ -361,7 +369,9 @@ GetSystemTimerFunctionCallback(
 }
 
 PSYSTEM_TIMER_FUNCTION
-GetSystemTimerFunction()
+GetSystemTimerFunction(
+    VOID
+    )
 {
     BOOL Status;
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction;
@@ -385,7 +395,7 @@ BOOL
 CallSystemTimer(
     _Out_       PFILETIME   SystemTime,
     _Inout_opt_ PPSYSTEM_TIMER_FUNCTION ppSystemTimerFunction
-)
+    )
 {
     PSYSTEM_TIMER_FUNCTION SystemTimerFunction = NULL;
 
@@ -428,7 +438,7 @@ FindCharsInUnicodeString(
     _In_     WCHAR               CharToFind,
     _Inout_  PRTL_BITMAP         Bitmap,
     _In_     BOOL                Reverse
-)
+    )
 {
     USHORT Index;
     USHORT NumberOfCharacters = String->Length >> 1;
@@ -2002,149 +2012,13 @@ ResolveRtlFunctions(
     };
 
     //
-    // Start of auto-generated section.
+    // Temp hack in lieu of proper refactoring.
     //
 
-    static CONST PSTR Names[] = {
-        "RtlCharToInteger",
-        "RtlInitializeGenericTable",
-        "RtlInsertElementGenericTable",
-        "RtlInsertElementGenericTableFull",
-        "RtlDeleteElementGenericTable",
-        "RtlLookupElementGenericTable",
-        "RtlLookupElementGenericTableFull",
-        "RtlEnumerateGenericTable",
-        "RtlEnumerateGenericTableWithoutSplaying",
-        "RtlGetElementGenericTable",
-        "RtlNumberGenericTableElements",
-        "RtlIsGenericTableEmpty",
-        "RtlInitializeGenericTableAvl",
-        "RtlInsertElementGenericTableAvl",
-        "RtlInsertElementGenericTableFullAvl",
-        "RtlDeleteElementGenericTableAvl",
-        "RtlLookupElementGenericTableAvl",
-        "RtlLookupElementGenericTableFullAvl",
-        "RtlEnumerateGenericTableAvl",
-        "RtlEnumerateGenericTableWithoutSplayingAvl",
-        "RtlLookupFirstMatchingElementGenericTableAvl",
-        "RtlEnumerateGenericTableLikeADirectory",
-        "RtlGetElementGenericTableAvl",
-        "RtlNumberGenericTableElementsAvl",
-        "RtlIsGenericTableEmptyAvl",
-        "PfxInitialize",
-        "PfxInsertPrefix",
-        "PfxRemovePrefix",
-        "PfxFindPrefix",
-        "RtlPrefixString",
-        "RtlPrefixUnicodeString",
-        "RtlCreateHashTable",
-        "RtlDeleteHashTable",
-        "RtlInsertEntryHashTable",
-        "RtlRemoveEntryHashTable",
-        "RtlLookupEntryHashTable",
-        "RtlGetNextEntryHashTable",
-        "RtlEnumerateEntryHashTable",
-        "RtlEndEnumerationHashTable",
-        "RtlInitWeakEnumerationHashTable",
-        "RtlWeaklyEnumerateEntryHashTable",
-        "RtlEndWeakEnumerationHashTable",
-        "RtlExpandHashTable",
-        "RtlContractHashTable",
-        "RtlInitializeBitMap",
-        "RtlClearBit",
-        "RtlSetBit",
-        "RtlTestBit",
-        "RtlClearAllBits",
-        "RtlSetAllBits",
-        "RtlFindClearBits",
-        "RtlFindSetBits",
-        "RtlFindClearBitsAndSet",
-        "RtlFindSetBitsAndClear",
-        "RtlClearBits",
-        "RtlSetBits",
-        "RtlFindClearRuns",
-        "RtlFindLongestRunClear",
-        "RtlNumberOfClearBits",
-        "RtlNumberOfSetBits",
-        "RtlAreBitsClear",
-        "RtlAreBitsSet",
-        "RtlFindFirstRunClear",
-        "RtlFindNextForwardRunClear",
-        "RtlFindLastBackwardRunClear",
-        "RtlInitializeUnicodePrefix",
-        "RtlInsertUnicodePrefix",
-        "RtlRemoveUnicodePrefix",
-        "RtlFindUnicodePrefix",
-        "RtlNextUnicodePrefix",
-        "RtlCopyUnicodeString",
-        "RtlInitString",
-        "RtlCopyString",
-        "RtlAppendUnicodeToString",
-        "RtlAppendUnicodeStringToString",
-        "RtlUnicodeStringToAnsiSize",
-        "RtlUnicodeStringToAnsiString",
-        "RtlEqualString",
-        "RtlEqualUnicodeString",
-        "RtlCompareString",
-        "RtlCompareMemory",
-        "RtlPrefetchMemoryNonTemporal",
-        "RtlMoveMemory",
-        "RtlCopyMemory",
-        "RtlCopyMappedMemory",
-        "RtlFillMemory",
-        "RtlLocalTimeToSystemTime",
-        "RtlTimeToSecondsSince1970",
-        "bsearch",
-        "qsort",
-        "memset",
-        "MmGetMaximumFileSectionSize",
-        "K32GetProcessMemoryInfo",
-        "K32GetPerformanceInfo",
-        "GetProcessIoCounters",
-        "GetProcessHandleCount",
-        "K32InitializeProcessForWsWatch",
-        "K32GetWsChanges",
-        "K32GetWsChangesEx",
-        "K32QueryWorkingSet",
-        "K32QueryWorkingSetEx",
-        "ZwQueryInformationProcess",
-        "LdrRegisterDllNotification",
-        "LdrUnregisterDllNotification",
-        "LdrLockLoaderLock",
-        "LdrUnlockLoaderLock",
-        "ZwAllocateVirtualMemory",
-        "ZwFreeVirtualMemory",
-        "RtlCreateHeap",
-        "RtlDestroyHeap",
-        "RtlAllocateHeap",
-        "RtlFreeHeap",
-        "RtlCaptureStackBackTrace",
-        "ZwCreateSection",
-        "ZwMapViewOfSection",
-        "ZwUnmapViewOfSection",
-        "ZwCreateProcess",
-        "ZwCreateProcessEx",
-        "ZwCreateThread",
-        "ZwOpenThread",
-        "ZwTerminateThread",
-        "SearchPathW",
-        "CreateToolhelp32Snapshot",
-        "LoadLibraryA",
-        "LoadLibraryW",
-        "GetProcAddress",
-        "CloseHandle",
-        "OpenEventA",
-        "OpenEventW",
-        "SetEvent",
-        "WaitForSingleObject",
-        "SignalObjectAndWait",
-        "Thread32First",
-        "Thread32Next",
-    };
-
-    //
-    // End of auto-generated section.
-    //
+#ifdef Names
+#undef Names
+#endif
+#define Names RtlFunctionNames
 
     ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
     RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
@@ -2169,6 +2043,8 @@ ResolveRtlFunctions(
         __debugbreak();
     }
 
+#undef Names
+
     return TRUE;
 }
 
@@ -2184,81 +2060,10 @@ ResolveRtlExFunctions(
     ULONG ExpectedNumberOfResolvedSymbols;
     PULONG_PTR Functions = (PULONG_PTR)RtlExFunctions;
 
-    //
-    // Start of auto-generated section.
-    //
-
-    static CONST PSTR Names[] = {
-        "DestroyRtl",
-        "ArgvWToArgvA",
-        "CopyPagesMovsq",
-        "CopyPagesAvx2",
-        "CopyPagesMovsq_C",
-        "CopyPagesAvx2_C",
-        "CopyToMemoryMappedMemory",
-        "CreateBitmapIndexForString",
-        "CreateBitmapIndexForUnicodeString",
-        "CurrentDirectoryToRtlPath",
-        "CurrentDirectoryToUnicodeString",
-        "DestroyPathEnvironmentVariable",
-        "DestroyRtlPath",
-        "DisableCreateSymbolicLinkPrivilege",
-        "DisableDebugPrivilege",
-        "DisableIncreaseWorkingSetPrivilege",
-        "DisableLockMemoryPrivilege",
-        "DisableManageVolumePrivilege",
-        "DisablePrivilege",
-        "DisableProfileSingleProcessPrivilege",
-        "DisableSystemProfilePrivilege",
-        "EnableCreateSymbolicLinkPrivilege",
-        "EnableDebugPrivilege",
-        "EnableIncreaseWorkingSetPrivilege",
-        "EnableLockMemoryPrivilege",
-        "EnableManageVolumePrivilege",
-        "EnablePrivilege",
-        "EnableProfileSingleProcessPrivilege",
-        "EnableSystemProfilePrivilege",
-        "FilesExistA",
-        "FilesExistW",
-        "FindCharsInString",
-        "FindCharsInUnicodeString",
-        "GetModuleRtlPath",
-        "InitializeRtlFile",
-        "LoadDbgEng",
-        "LoadDbgHelp",
-        "LoadPathEnvironmentVariable",
-        "LoadShlwapi",
-        "PrefaultPages",
-        "RegisterDllNotification",
-        "RtlCheckBit",
-        "RtlInitializeSplayLinks",
-        "RtlInsertAsLeftChild",
-        "RtlInsertAsRightChild",
-        "RtlIsLeftChild",
-        "RtlIsRightChild",
-        "RtlIsRoot",
-        "RtlLeftChild",
-        "RtlParent",
-        "RtlRightChild",
-        "RtlCreateInjectionPacket",
-        "RtlDestroyInjectionPacket",
-        "RtlAddInjectionPayload",
-        "RtlAddInjectionSymbols",
-        "RtlInject",
-        "SetPrivilege",
-        "StringToExistingRtlPath",
-        "StringToRtlPath",
-        "TestExceptionHandler",
-        "UnicodeStringToExistingRtlPath",
-        "UnicodeStringToRtlPath",
-        "UnregisterDllNotification",
-        "WriteEnvVarToRegistry",
-        "WriteRegistryString",
-    };
-
-    //
-    // End of auto-generated section.
-    //
+#ifdef Names
+#undef Names
+#endif
+#define Names RtlExFunctionNames
 
     ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
     RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
@@ -2282,6 +2087,8 @@ ResolveRtlExFunctions(
         __debugbreak();
     }
 
+#undef Names
+
     return TRUE;
 }
 
@@ -2297,176 +2104,10 @@ ResolveDbgHelpFunctions(
     ULONG ExpectedNumberOfResolvedSymbols;
     PULONG_PTR Functions = (PULONG_PTR)Dbg;
 
-    //
-    // Start of auto-generated section.
-    //
-
-    static CONST PSTR Names[] = {
-        "EnumDirTree",
-        "EnumDirTreeW",
-        "EnumerateLoadedModules64",
-        "EnumerateLoadedModules",
-        "EnumerateLoadedModulesEx",
-        "EnumerateLoadedModulesExW",
-        "EnumerateLoadedModulesW64",
-        "FindFileInPath",
-        "FindFileInSearchPath",
-        "GetSymLoadError",
-        "GetTimestampForLoadedLibrary",
-        "MakeSureDirectoryPathExists",
-        "RangeMapAddPeImageSections",
-        "RangeMapRead",
-        "RangeMapRemove",
-        "RangeMapWrite",
-        "ReportSymbolLoadSummary",
-        "SearchTreeForFile",
-        "SearchTreeForFileW",
-        "StackWalk64",
-        "StackWalkEx",
-        "StackWalk",
-        "SymAddrIncludeInlineTrace",
-        "SymAddSourceStreamA",
-        "SymAddSourceStream",
-        "SymAddSourceStreamW",
-        "SymAddSymbol",
-        "SymAddSymbolW",
-        "SymCleanup",
-        "SymCompareInlineTrace",
-        "SymDeleteSymbol",
-        "SymDeleteSymbolW",
-        "SymEnumerateModules64",
-        "SymEnumerateModules",
-        "SymEnumerateModulesW64",
-        "SymEnumerateSymbols64",
-        "SymEnumerateSymbols",
-        "SymEnumerateSymbolsW64",
-        "SymEnumerateSymbolsW",
-        "SymEnumLines",
-        "SymEnumLinesW",
-        "SymEnumProcesses",
-        "SymEnumSourceFiles",
-        "SymEnumSourceFilesW",
-        "SymEnumSourceFileTokens",
-        "SymEnumSourceLines",
-        "SymEnumSourceLinesW",
-        "SymEnumSymbolsEx",
-        "SymEnumSymbolsExW",
-        "SymEnumSymbolsForAddr",
-        "SymEnumSymbolsForAddrW",
-        "SymEnumSymbols",
-        "SymEnumSymbolsW",
-        "SymEnumSym",
-        "SymEnumTypesByName",
-        "SymEnumTypesByNameW",
-        "SymEnumTypes",
-        "SymEnumTypesW",
-        "SymFindFileInPath",
-        "SymFindFileInPathW",
-        "SymFromAddr",
-        "SymFromAddrW",
-        "SymFromIndex",
-        "SymFromIndexW",
-        "SymFromInlineContext",
-        "SymFromInlineContextW",
-        "SymFromName",
-        "SymFromNameW",
-        "SymFromToken",
-        "SymFromTokenW",
-        "SymGetFileLineOffsets64",
-        "SymGetLineFromAddr64",
-        "SymGetLineFromAddr",
-        "SymGetLineFromAddrW64",
-        "SymGetLineFromInlineContext",
-        "SymGetLineFromInlineContextW",
-        "SymGetLineFromName64",
-        "SymGetLineFromName",
-        "SymGetLineFromNameW64",
-        "SymGetLineNext64",
-        "SymGetLineNext",
-        "SymGetLineNextW64",
-        "SymGetLinePrev64",
-        "SymGetLinePrev",
-        "SymGetLinePrevW64",
-        "SymGetModuleBase",
-        "SymGetModuleInfo64",
-        "SymGetModuleInfo",
-        "SymGetModuleInfoW64",
-        "SymGetModuleInfoW",
-        "SymGetOmaps",
-        "SymGetOptions",
-        "SymGetScope",
-        "SymGetScopeW",
-        "SymGetSearchPath",
-        "SymGetSearchPathW",
-        "SymGetSourceFileFromToken",
-        "SymGetSourceFileFromTokenW",
-        "SymGetSourceFile",
-        "SymGetSourceFileToken",
-        "SymGetSourceFileTokenW",
-        "SymGetSourceFileW",
-        "SymGetSourceVarFromToken",
-        "SymGetSourceVarFromTokenW",
-        "SymGetSymbolFile",
-        "SymGetSymbolFileW",
-        "SymGetSymFromAddr64",
-        "SymGetSymFromAddr",
-        "SymGetSymFromName64",
-        "SymGetSymFromName",
-        "SymGetSymNext64",
-        "SymGetSymNext",
-        "SymGetSymPrev64",
-        "SymGetSymPrev",
-        "SymGetTypeFromName",
-        "SymGetTypeFromNameW",
-        "SymGetTypeInfoEx",
-        "SymGetTypeInfo",
-        "SymGetUnwindInfo",
-        "SymInitialize",
-        "SymInitializeW",
-        "SymLoadModule",
-        "SymLoadModuleEx",
-        "SymLoadModuleExW",
-        "SymMatchFileName",
-        "SymMatchFileNameW",
-        "SymMatchStringA",
-        "SymMatchString",
-        "SymMatchStringW",
-        "SymNext",
-        "SymNextW",
-        "SymPrev",
-        "SymPrevW",
-        "SymQueryInlineTrace",
-        "SymRefreshModuleList",
-        "SymRegisterCallback64",
-        "SymRegisterCallback",
-        "SymRegisterCallbackW64",
-        "SymRegisterFunctionEntryCallback64",
-        "SymRegisterFunctionEntryCallback",
-        "SymSearch",
-        "SymSearchW",
-        "SymSetContext",
-        "SymSetOptions",
-        "SymSetParentWindow",
-        "SymSetScopeFromAddr",
-        "SymSetScopeFromIndex",
-        "SymSetScopeFromInlineContext",
-        "SymSetSearchPath",
-        "SymSetSearchPathW",
-        "SymSrvGetFileIndexes",
-        "SymSrvGetFileIndexesW",
-        "SymSrvGetFileIndexInfo",
-        "SymSrvGetFileIndexInfoW",
-        "SymSrvGetFileIndexString",
-        "SymSrvGetFileIndexStringW",
-        "SymSrvIsStore",
-        "SymSrvIsStoreW",
-        "SymUnDName64",
-        "SymUnDName",
-        "SymUnloadModule64",
-        "SymUnloadModule",
-        "UnDecorateSymbolName",
-        "UnDecorateSymbolNameW",
-    };
+#ifdef Names
+#undef Names
+#endif
+#define Names DbgHelpFunctionNames
 
     //
     // End of auto-generated section.
@@ -2493,6 +2134,8 @@ ResolveDbgHelpFunctions(
     if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
         __debugbreak();
     }
+
+#undef Names
 
     return TRUE;
 }
@@ -2932,6 +2575,234 @@ RtlInitializeInjection(
     return TRUE;
 }
 
+RTL_API RTL_SET_DLL_PATH RtlpSetDllPath;
+
+_Use_decl_annotations_
+BOOL
+RtlpSetDllPath(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PCUNICODE_STRING Path
+    )
+{
+    return AllocateAndCopyUnicodeString(Allocator, Path, &Rtl->RtlDllPath);
+}
+
+RTL_API RTL_CREATE_NAMED_EVENT RtlpCreateNamedEvent;
+
+#if 0
+_Use_decl_annotations_
+BOOL
+RtlpCreateNamedEvent(
+    PRTL Rtl,
+    PHANDLE HandlePointer,
+    LPSECURITY_ATTRIBUTES EventAttributes,
+    BOOL ManualReset,
+    BOOL InitialState,
+    PCUNICODE_STRING Prefix,
+    PCUNICODE_STRING Suffix,
+    PUNICODE_STRING EventName
+    )
+{
+    BOOL Success;
+    HRESULT Result;
+    USHORT BytesRemaining;
+    HANDLE Handle;
+    const UNICODE_STRING Local = RTL_CONSTANT_STRING(L"Local\\");
+    BYTE LocalBuffer[64];
+    WCHAR WideBase64Buffer[86];
+    ULONG WideBase64BufferLengthInChars = ARRAYSIZE(WideBase64Buffer);
+    ULONG WideBase64BufferSizeInBytes = sizeof(WideBase64Buffer);
+
+    //
+    // Clear the caller's pointer up-front.
+    //
+
+    *HandlePointer = NULL;
+
+    if (EventName->Length != 0) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Result = Rtl->RtlAppendUnicodeStringToString(EventName, &Local);
+    if (FAILED(Result)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (ARGUMENT_PRESENT(Prefix)) {
+
+        Result = Rtl->RtlAppendUnicodeStringToString(EventName, Prefix);
+        if (FAILED(Result)) {
+            __debugbreak();
+            return FALSE;
+        }
+
+    }
+
+    BytesRemaining = (
+        (EventName->MaximumLength - sizeof(WCHAR)) -
+        EventName->Length
+    );
+
+    if (ARGUMENT_PRESENT(Suffix)) {
+        BytesRemaining -= Suffix->Length;
+    }
+
+    if (BytesRemaining <= 7) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Cap the size to the number of bytes remaining.
+    //
+
+    if (BytesRemaining >= WideBase64BufferSizeInBytes) {
+        BytesRemaining = (USHORT)WideBase64BufferSizeInBytes;
+    }
+
+    //
+    // (I'm being lazy; just generate 64 bytes of random data into the local
+    //  buffer instead of fiddling with exact lengths and whatnot.)
+    //
+
+    Success = Rtl->CryptGenRandom(Rtl,
+                                  sizeof(LocalBuffer)-1,
+                                  (PBYTE)&LocalBuffer);
+    if (!Success) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Success = CryptBinaryToStringW((const PBYTE)&LocalBuffer,
+                                   sizeof(LocalBuffer)-1,
+                                   CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF,
+                                   (LPWSTR)&WideBase64Buffer,
+                                   &WideBase64BufferLengthInChars);
+
+    if (!Success) {
+        Rtl->LastError = GetLastError();
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Forcibly NULL-terminate the wide character buffer based on our number of
+    // bytes remaining.
+    //
+
+    WideBase64Buffer[(BytesRemaining >> 1)] = L'\0';
+
+    //
+    // Copy the random data over.
+    //
+
+    Result = Rtl->RtlAppendUnicodeToString(EventName, WideBase64Buffer);
+    if (FAILED(Result)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // If there was a suffix, copy that over.
+    //
+
+    if (ARGUMENT_PRESENT(Suffix)) {
+
+        Result = Rtl->RtlAppendUnicodeStringToString(EventName, Suffix);
+        if (FAILED(Result)) {
+            __debugbreak();
+            return FALSE;
+        }
+
+    }
+
+    //
+    // Invariant checks.
+    //
+
+    if (EventName->Length >= EventName->MaximumLength) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // NULL-terminate the Unicode string.
+    //
+
+    EventName->Buffer[(EventName->Length >> 1)] = L'\0';
+
+    //
+    // Now create the event.
+    //
+
+    Handle = CreateEventW(EventAttributes,
+                          ManualReset,
+                          InitialState,
+                          EventName->Buffer);
+
+    if (!Handle || Handle == INVALID_HANDLE_VALUE) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Update the caller's pointer and return TRUE.
+    //
+
+    *HandlePointer = Handle;
+
+    return TRUE;
+}
+#endif
+
+RTL_API PROBE_FOR_READ ProbeForRead;
+
+_Use_decl_annotations_
+BOOL
+ProbeForRead(
+    PRTL Rtl,
+    PVOID Address,
+    SIZE_T NumberOfBytes,
+    PULONG NumberOfValidPages
+    )
+{
+    BOOL Success;
+    ULONG Index;
+    ULONG ValidPages;
+    ULONG NumberOfPages;
+    PBYTE Byte;
+    PBYTE Buffer;
+    SIZE_T PageAlignedSize;
+
+    ValidPages = 0;
+    PageAlignedSize = ROUND_TO_PAGES(NumberOfBytes);
+    NumberOfPages = (ULONG)(PageAlignedSize >> PAGE_SHIFT);
+    Buffer = (PBYTE)Address;
+    Success = TRUE;
+
+    TRY_PROBE_MEMORY {
+
+        for (Index = 0; Index < NumberOfPages; Index++) {
+            Byte = Buffer + (Index * (1 << PAGE_SHIFT));
+            PrefaultPage(Byte);
+            ValidPages++;
+        }
+
+    } CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION {
+
+        Success = FALSE;
+    }
+
+    if (ARGUMENT_PRESENT(NumberOfValidPages)) {
+        *NumberOfValidPages = ValidPages;
+    }
+
+    return Success;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(
@@ -2997,7 +2868,7 @@ InitializeRtl(
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
 
-    Rtl->InjectionRemoteThreadEntry = RtlInjectionRemoteThreadEntry;
+    Rtl->InjectionRemoteThreadEntry = RtlpInjectionRemoteThreadEntry;
 
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;
@@ -3037,11 +2908,20 @@ InitializeRtl(
     }
 
     Rtl->CryptGenRandom = RtlCryptGenRandom;
+    //Rtl->CryptBinaryToStringA = CryptBinaryToStringA;
+    //Rtl->CryptBinaryToStringW = CryptBinaryToStringW;
+    Rtl->CreateEventA = CreateEventA;
+    Rtl->CreateEventW = CreateEventW;
 
     Rtl->InitializeCom = InitializeCom;
     Rtl->LoadDbgEng = LoadDbgEng;
     Rtl->CopyPages = CopyPagesNonTemporalAvx2_v4;
     Rtl->FillPages = FillPagesNonTemporalAvx2_v1;
+    Rtl->ProbeForRead = ProbeForRead;
+
+    Rtl->SetDllPath = RtlpSetDllPath;
+
+    //Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

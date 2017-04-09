@@ -42,26 +42,26 @@ TestInjection1(
     //LONG SizeOfCode;
     //PBYTE Code;
 
-    RTL_CREATE_INJECTION_PACKET_FLAGS CreateFlags;
+    RTL_INJECTION_FLAGS Flags;
     PRTL_INJECTION_PACKET Packet;
     PRTL_INJECTION_COMPLETE_CALLBACK Callback;
     RTL_INJECTION_ERROR Error;
 
-    CreateFlags.AsULong = 0;
-    CreateFlags.InjectCode = TRUE;
+    Flags.AsULong = 0;
+    Flags.InjectCode = TRUE;
 
     Callback = InjectionCallback1;
 
-    Success = Rtl->CreateInjectionPacket(Rtl,
-                                         Allocator,
-                                         &CreateFlags,
-                                         NULL,
-                                         NULL,
-                                         Callback,
-                                         1,
-                                         0,
-                                         &Packet,
-                                         &Error);
+    Success = Rtl->Inject(Rtl,
+                          Allocator,
+                          &Flags,
+                          NULL,
+                          NULL,
+                          Callback,
+                          NULL,
+                          1,
+                          &Packet,
+                          &Error);
 
 
     return ERROR_SUCCESS;

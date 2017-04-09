@@ -821,6 +821,14 @@ Return Value:
     }
 
     //
+    // Copy the Rtl path name over.
+    //
+
+    if (!Rtl->SetDllPath(Rtl, Allocator, &Paths->RtlDllPath)) {
+        goto Error;
+    }
+
+    //
     // Everything succeeded, update caller's pointers and return success.
     //
 
