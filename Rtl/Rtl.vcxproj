@@ -78,6 +78,7 @@
     <ClInclude Include="InjectionInline.h" />
     <ClInclude Include="InjectionPrivate.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="RtlConstants.h" />
     <ClInclude Include="RtlPrivate.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -95,6 +96,7 @@
     <ClCompile Include="File.c" />
     <ClCompile Include="Injection.c" />
     <ClCompile Include="InjectionPrivate.c" />
+    <ClCompile Include="InjectionRemoteThreadEntryThunk.c" />
     <ClCompile Include="Loader.c" />
     <ClCompile Include="Privilege.c" />
     <ClCompile Include="Registry.c" />

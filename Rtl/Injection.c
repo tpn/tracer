@@ -19,15 +19,15 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-RtlCreateInjectionPacket(
+RtlInject(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PRTL_CREATE_INJECTION_PACKET_FLAGS CreateInjectionFlags,
+    PRTL_INJECTION_FLAGS InjectionFlags,
     PCUNICODE_STRING ModulePath,
     PCSTRING CallbackFunctionName,
     PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
+    PRTL_INJECTION_PAYLOAD InjectionPayload,
     ULONG TargetProcessId,
-    ULONG TargetThreadId,
     PRTL_INJECTION_PACKET *InjectionPacketPointer,
     PRTL_INJECTION_ERROR InjectionError
     )
@@ -55,25 +55,30 @@ Arguments:
     Allocator - Supplies a pointer to an ALLOCATOR structure to use for all
         memory allocations for this injection.
 
-    CreateFlags - Supplies a pointer to injection packet flags.  At minimum,
-        either CreateFlags.InjectModule or CreateFlags.InjectCode must be set,
+    InjectionFlags - Supplies a pointer to injection flags.  At minimum, either
+        InjectionFlags.InjectModule or InjectionFlags.InjectCode must be set,
         indicating which type of injection method should be used.
 
     ModulePath - Supplies a pointer to a fully-qualified UNICODE_STRING
         structure representing the module path to load into the remote process.
-        If CreateFlags.InjectModule is set, both this value and the parameter
+        If InjectionFlags.InjectModule is set, both this value and the parameter
         CallbackFunctionName must be valid.
 
     CallbackFunctionName - Supplies a pointer to a STRING structure representing
         the name of an exported symbol to resolve once the module indicated by
         the ModulePath parameter is loaded.  This must be non-NULL and point to
-        a valid string if CreateFlags.InjectModule is TRUE, otherwise it must
+        a valid string if InjectionFlags.InjectModule is TRUE, otherwise it must
         be NULL.
 
     InjectionCompleteCallback - Supplies a pointer to a buffer of code to be
         injected into the process and then executed by the target thread.  This
         must be NULL if Flags.InjectModule is set, otherwise, it should point to
         a valid buffer that contains AMD64 byte code.
+
+    InjectionPayload - Supplies a pointer to an RTL_INJECTION_PAYLOAD structure
+        to include in the remote process injection.  This must be non-NULL and
+        point to a valid structure if InjectionFlags.InjectPayload is TRUE, NULL
+        otherwise..
 
     TargetProcessId - Supplies the ID of the target process to perform the
         injection.
@@ -101,25 +106,20 @@ Return Value:
 --*/
 {
     BOOL Success;
-    BOOL SuspendedThread = FALSE;
+    BOOL SuspendedThread;
     PBYTE OriginalCode;
     PBYTE FinalCode;
     FARPROC Proc;
-    HMODULE Module = NULL;
-    LONG ThreadSuspensionCount;
-    LONG_INTEGER AllocSize;
-    HANDLE ProcessHandle = NULL;
-    HANDLE ThreadHandle = NULL;
-    HANDLE ThreadsSnapshotHandle = NULL;
-    HANDLE RemoteThreadHandle = NULL;
-    LPVOID RemoteThreadStartAddress = NULL;
+    HMODULE Module;
+    HANDLE ProcessHandle;
     RTL_INJECTION_ERROR Error;
-    RTL_CREATE_INJECTION_PACKET_FLAGS CreateFlags;
+    RTL_INJECTION_FLAGS Flags;
     RTL_INJECTION_CONTEXT LocalContext;
     PRTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_PAYLOAD Payload;
     PRTL_INJECTION_CONTEXT Context;
-    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback = NULL;
-    PRTL_INJECTION_COMPLETE_CALLBACK FinalCallback = NULL;
+    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback;
+    PRTL_INJECTION_COMPLETE_CALLBACK FinalCallback;
 
     //
     // Validate arguments.  Start with the simple non-NULL checks, then verify
@@ -138,6 +138,16 @@ Return Value:
 
         Error.ErrorCode = 0;
         Error.InvalidParameters = TRUE;
+
+        //
+        // Clear local variables.
+        //
+
+        Module = NULL;
+        ProcessHandle = NULL;
+        FinalCallback = NULL;
+        OriginalCallback = NULL;
+        SuspendedThread = FALSE;
     }
 
     if (!ARGUMENT_PRESENT(Rtl)) {
@@ -156,44 +166,31 @@ Return Value:
         goto Error;
     }
 
-    if (!ARGUMENT_PRESENT(CreateInjectionFlags)) {
+    if (!ARGUMENT_PRESENT(InjectionFlags)) {
+
         goto Error;
+
     } else {
 
         //
         // Initialize local copy of the flags.
         //
 
-        CreateFlags.AsULong = CreateInjectionFlags->AsULong;
+        Flags.AsULong = InjectionFlags->AsULong;
 
-        if (!(CreateFlags.InjectModule | CreateFlags.InjectCode)) {
+        if ((!Flags.InjectModule && !Flags.InjectCode) ||
+            (Flags.InjectModule && Flags.InjectCode)) {
 
             //
-            // One of InjectModule or InjectCode needs to be set.
+            // One (and only one) of InjectModule or InjectCode needs to be set.
             //
 
             goto Error;
         }
 
-        //
-        // If CreateFlags.HijackExistingThread is set, TargetThreadId must be
-        // non-zero, else, it must be zero.
-        //
-
-        if (CreateFlags.HijackExistingThread) {
-            if (!TargetThreadId) {
-                Error.InvalidTargetThreadId = TRUE;
-                goto Error;
-            }
-        } else {
-            if (TargetThreadId) {
-                Error.InvalidTargetThreadId = TRUE;
-                goto Error;
-            }
-        }
     }
 
-    if (CreateFlags.InjectModule) {
+    if (Flags.InjectModule) {
 
         //
         // Caller wants to inject a module and call the named exported routine.
@@ -240,7 +237,7 @@ Return Value:
         // Invariant check: InjectCode should be set at this point.
         //
 
-        if (!CreateFlags.InjectCode) {
+        if (!Flags.InjectCode) {
             __debugbreak();
             Error.InternalError = TRUE;
             goto Error;
@@ -277,6 +274,68 @@ Return Value:
     }
 
     //
+    // Initialize local payload alias.
+    //
+
+    Payload = InjectionPayload;
+
+    if (Flags.InjectPayload) {
+        ULONG ValidPages;
+
+        //
+        // Payload should be non-NULL here.
+        //
+
+        if (!ARGUMENT_PRESENT(Payload)) {
+            Error.InvalidPayloadParameter = TRUE;
+            goto Error;
+        }
+
+        //
+        // Verify payload details.  Buffer should be non-NULL, buffer size
+        // should be greater than 0 and less than or equal to 2GB, and the
+        // SizeOfStruct field should match what we're expecting.
+        //
+
+        Error.InvalidPayload = (
+            (Payload->Buffer == NULL)                   |
+            (Payload->SizeOfBufferInBytes == 0)         |
+            (Payload->SizeOfBufferInBytes > (1 << 31))  |
+            (Payload->SizeOfStruct != sizeof(*Payload))
+        );
+
+        if (Error.InvalidPayload) {
+            goto Error;
+        }
+
+        //
+        // Probe all of the pages within the payload buffer for read access.
+        //
+
+        Success = Rtl->ProbeForRead(Rtl,
+                                    Payload->Buffer,
+                                    Payload->SizeOfBufferInBytes,
+                                    &ValidPages);
+
+        if (!Success) {
+            Error.InvalidPayload = TRUE;
+            Error.PayloadReadProbeFailed = TRUE;
+            goto Error;
+        }
+
+    } else {
+
+        //
+        // Payload should be NULL here.
+        //
+
+        if (ARGUMENT_PRESENT(Payload)) {
+            Error.InvalidPayloadParameter = TRUE;
+            goto Error;
+        }
+    }
+
+    //
     // Skip any initial jumps present in the code.
     //
 
@@ -285,20 +344,67 @@ Return Value:
     FinalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)FinalCode;
 
     //
-    // Wire up context and packet pointers, then zero the entire context.
+    // Wire up context, packet and payload pointers, then zero everything (via
+    // the context, which embed the other two structures).
     //
 
     Context = &LocalContext;
     Packet = &LocalContext.Packet;
+    Payload = &Packet->Payload;
 
     SecureZeroMemory(Context, sizeof(*Context));
 
     //
-    // Wire up callback information.
+    // Initialize structure sizes.
+    //
+
+    Context->SizeOfStruct = sizeof(*Context);
+    Packet->SizeOfStruct = sizeof(*Packet);
+    Payload->SizeOfStruct = sizeof(*Payload);
+
+    //
+    // Wire up callback information and copy injection flags over.
     //
 
     Context->OriginalCode = OriginalCode;
     Context->Code = FinalCode;
+    Packet->InjectionFlags.AsULong = Flags.AsULong;
+
+    //
+    // Mark this context as being stack-allocated.
+    //
+
+    Context->Flags.IsStackAllocated = TRUE;
+
+    //
+    // Wire up the module path and function name strings if this was a module
+    // injection.
+    //
+
+    if (Flags.InjectModule) {
+        PSTRING String;
+        PUNICODE_STRING Unicode;
+
+        Unicode = &Packet->ModulePath;
+        Unicode->Length = ModulePath->Length;
+        Unicode->MaximumLength = ModulePath->MaximumLength;
+        Unicode->Buffer = ModulePath->Buffer;
+
+        String = &Packet->CallbackFunctionName;
+        String->Length = CallbackFunctionName->Length;
+        String->MaximumLength = CallbackFunctionName->MaximumLength;
+        String->Buffer = CallbackFunctionName->Buffer;
+    }
+
+    //
+    // Copy the payload details if applicable.
+    //
+
+    if (Flags.InjectPayload) {
+        Payload->Flags.AsULong = InjectionPayload->Flags.AsULong;
+        Payload->SizeOfBufferInBytes = InjectionPayload->SizeOfBufferInBytes;
+        Payload->OriginalBufferAddress = (ULONG_PTR)InjectionPayload->Buffer;
+    }
 
     //
     // Verify the callback.  This performs the magic number test, then obtains
@@ -322,8 +428,8 @@ Return Value:
     if (!Success) {
 
         //
-        // We won't be able to open processes or handles for which we don't have
-        // appropriate access.
+        // Not having debug privileges is not fatal, it just limits what we'll
+        // be able to open.
         //
 
         NOTHING;
@@ -342,50 +448,6 @@ Return Value:
     }
 
     //
-    // A handle was opened successfully.  If a thread ID was provided, attempt
-    // to open a handle to it, too.
-    //
-
-    if (CreateFlags.HijackExistingThread) {
-
-        ThreadHandle = OpenThread(PROCESS_ALL_ACCESS, FALSE, TargetThreadId);
-        if (!ThreadHandle || ThreadHandle == INVALID_HANDLE_VALUE) {
-            Rtl->LastError = GetLastError();
-            Error.OpenTargetThreadFailed = TRUE;
-            goto Error;
-        }
-
-        //
-        // We successfully opened a handle to the thread.  Suspend it now.
-        //
-
-        ThreadSuspensionCount = SuspendThread(ThreadHandle);
-        if (ThreadSuspensionCount == -1) {
-            Rtl->LastError = GetLastError();
-            Error.SuspendTargetThreadFailed = TRUE;
-            goto Error;
-        }
-
-        //
-        // Suspension was successful.  Make a note of that now, such that if
-        // we encounter an error later in this routine, we can unsuspended the
-        // thread if need be.
-        //
-
-        SuspendedThread = TRUE;
-
-    } else {
-
-        //
-        // We need to create a new remote thread in the process, but we haven't
-        // prepared the target memory to use as the start address yet, so punt
-        // for now.
-        //
-
-        NOTHING;
-    }
-
-    //
     // All the parameters have been validated at this point, so clear the
     // invalid parameters flag we set earlier.
     //
@@ -393,64 +455,43 @@ Return Value:
     Error.InvalidParameters = FALSE;
 
     //
+    // Save the target process ID as it's used in event name generation.
+    //
+
+    Packet->TargetProcessId = TargetProcessId;
+
+    //
     // We now have enough information to commit to allocating and initializing
     // an injection context (which will contain the packet returned to the
-    // user).
+    // user).  Assign handles to the context and clear our local stack-allocated
+    // pointers; the context (via RtlpDestroyInjectionContext()) is responsible
+    // for closing these handles now.
     //
 
-    //
-    // Calculate the required allocation size for the context and any strings.
-    //
+    Context->ModuleHandle = Module;
+    Context->TargetProcessHandle = ProcessHandle;
+    Module = NULL;
+    ProcessHandle = NULL;
 
-    AllocSize.LongPart = (
+    Success = RtlpInjectContext(Rtl,
+                                Allocator,
+                                &Context,
+                                &LocalContext,
+                                &Error);
+
+    if (Success) {
 
         //
-        // Account for the Context structure.
+        // We've successfully created the final injection context and injected
+        // it into the remote process.  We're done.
         //
 
-        sizeof(RTL_INJECTION_CONTEXT) //+
-
-        //
-        // Account for a copy of ... string.
-        //
-
-        //sizeof(UNICODE_STRING) +
-
-    );
-
-    Context = (PRTL_INJECTION_CONTEXT)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AllocSize.LongPart
-        )
-    );
-
-    if (!Context) {
-        Error.InternalAllocationFailure = TRUE;
-        goto Error;
+        goto End;
     }
 
     //
-    // Initialize scalar fields.
+    // Intentional follow-on to Error.
     //
-
-    Context->SizeOfStruct = sizeof(*Context);
-    Packet = &Context->Packet;
-    Packet->SizeOfStruct = sizeof(*Packet);
-
-    //
-    // XXX TODO: current implementation point.
-    //
-
-    __debugbreak();
-
-    //
-    // Indicate success and return.
-    //
-
-    Success = TRUE;
-    goto End;
 
 Error:
 
@@ -464,31 +505,14 @@ Error:
         ProcessHandle = NULL;
     }
 
-    if (ThreadHandle) {
-        if (SuspendedThread) {
-            ResumeThread(ThreadHandle);
-            SuspendedThread = FALSE;
-        }
-        CloseHandle(ThreadHandle);
-        ThreadHandle = NULL;
-    } else if (SuspendedThread) {
-
-        //
-        // Invariant check: the SuspendedThread boolean shouldn't be set if
-        // there's no thread handle.
-        //
-
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (Context && Context != &LocalContext) {
-        Allocator->FreePointer(Allocator->Context, &Context);
+    if (Context) {
+        RtlpDestroyInjectionContext(&Context);
         Packet = NULL;
+        Payload = NULL;
     }
 
     //
-    // Update the caller's injection error pointer and clear the packet pointer.
+    // Update the caller's injection error pointer.
     //
 
     InjectionError->ErrorCode = Error.ErrorCode;
@@ -513,11 +537,31 @@ End:
         //
 
         if (!Context) {
+
+            //
+            // Context should be non-NULL.
+            //
+
+            __debugbreak();
+            return FALSE;
+
+        } else if (Context == &LocalContext) {
+
+            //
+            // Context shouldn't be pointing at the stack-allocated local
+            // context.
+            //
+
             __debugbreak();
             return FALSE;
         }
 
         if (!Packet || Packet != &Context->Packet) {
+
+            //
+            // Packet should be non-NULL and wired up to the Context.
+            //
+
             __debugbreak();
             return FALSE;
         }
@@ -530,119 +574,6 @@ End:
     }
 
     return Success;
-}
-
-_Use_decl_annotations_
-BOOL
-RtlDestroyInjectionPacket(
-    PRTL Rtl,
-    PRTL_INJECTION_PACKET *PacketPointer,
-    PRTL_INJECTION_ERROR InjectionError
-    )
-/*++
-
-Routine Description:
-
-    Destroys an injection packet previously created by RtlCreateInjectionPacket.
-    This routine should only be called if a created injection packet needs to
-    be abandoned before injecting it via RtlInject().  If RtlInject() is called
-    against the packet, the packet will be destroyed at the appropriate time.
-
-Arguments:
-
-    Rtl - Supplies a pointer to an initialized RTL structure.
-
-    PacketPointer - Supplies a pointer to a variable containing the address of
-        the injection packet to destroy.  The pointer will be set to NULL by
-        this routine.
-
-    InjectionError - Supplies a pointer to a variable that receives information
-        about the error, if one occurs (which will be indicated by the routine
-        returning FALSE).
-
-Return Value:
-
-    If the routine completes successfully, TRUE is returned.  If a failure
-    occurs, FALSE is returned and InjectionError is set with the relevant
-    error code.
-
---*/
-{
-    return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-RtlAddInjectionPayload(
-    PRTL Rtl,
-    PRTL_INJECTION_PACKET Packet,
-    PRTL_INJECTION_PAYLOAD Payload,
-    PRTL_INJECTION_ERROR InjectionError
-    )
-/*++
-
-Routine Description:
-
-Arguments:
-
-Return Value:
-
-    If the routine completes successfully, TRUE is returned.  If a failure
-    occurs, FALSE is returned and InjectionError is set with the relevant
-    error code.
-
---*/
-{
-    return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-RtlAddInjectionSymbols(
-    PRTL Rtl,
-    PRTL_INJECTION_PACKET Packet,
-    PRTL_INJECTION_SYMBOLS Symbols,
-    PRTL_INJECTION_ERROR InjectionError
-    )
-/*++
-
-Routine Description:
-
-Arguments:
-
-Return Value:
-
-    If the routine completes successfully, TRUE is returned.  If a failure
-    occurs, FALSE is returned and InjectionError is set with the relevant
-    error code.
-
---*/
-{
-    return FALSE;
-}
-
-_Use_decl_annotations_
-BOOL
-RtlInject(
-    PRTL Rtl,
-    PCRTL_INJECTION_PACKET Packet,
-    PRTL_INJECTION_ERROR InjectionError
-    )
-/*++
-
-Routine Description:
-
-Arguments:
-
-Return Value:
-
-    If the routine completes successfully, TRUE is returned.  If a failure
-    occurs, FALSE is returned and InjectionError is set with the relevant
-    error code.
-
---*/
-{
-    return FALSE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

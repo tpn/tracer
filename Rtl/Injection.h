@@ -11,28 +11,9 @@ Abstract:
     This is the header file for the Rtl component's remote thread creation
     and DLL injection functionality, referred to collectively as "injection".
 
-    Callers request injection by way of creating an RTL_INJECTION_PACKET via
-    RtlCreateInjectionPacket().  Arbitrary pages of memory can be added to the
-    injection packet via RtlAddInjectionPayload(); sufficient memory will be
-    allocated in the target process's address space and the memory will be
-    copied over as part of the injection process.  If the caller depends on
-    symbols exported by other libraries once injected into the remote process's
-    address space, RtlAddInjectionSymbolsRequest() can be used to achieve this
-    by passing in module names (e.g. "kernel32.dll") and arrays of symbol names
-    (e.g. { "OpenEvent", "CloseHandle" }).  Each injection symbols request will
-    create an RTL_INJECTION_SYMBOLS_REQUEST structure and associate it with the
-    RTL_INJECTION_PACKET.
-
-    Callers can indicate the code they would like executed by a thread in the
-    remote process in one of two ways: by specifying a module path and a name
-    to an exported function in the module, or by providing arbitrary code bytes
-    to be injected.  This is controlled by the RTL_INJECTION_PACKET_FLAGS param
-    provided to RtlCreateInjectionPacket().  In either case, the function must
-    match the prototype of RTL_INJECTION_FUNCTION_CALLBACK.
-
-    The behavior of the thread after the completion function has been called
-    hasn't been thought about enough yet and is undefined.  (If we're hijacking
-    an existing thread, do we need to allow it to return to what it was doing?)
+    The main routine exposed by this module is RtlInject().  The main public
+    data type (created as part of RtlInject()) is the RTL_INJECTION_PACKET
+    structure.
 
 --*/
 
@@ -44,16 +25,18 @@ extern "C" {
 
 #include "stdafx.h"
 
-typedef union _RTL_CREATE_INJECTION_PACKET_FLAGS {
+//
+// This type is used to communicate the type of injection wanted to RtlInject().
+//
+
+typedef union _RTL_INJECTION_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
         // When set, the caller indicates a module path (e.g. a .dll) and the
         // name of the symbol exported by said module; the module will be loaded
         // in the remote process, the symbol resolved to a function pointer via
-        // GetProcAddress(), then invoked by a newly-created remote thread, or
-        // the hijacking of an existing thread, specified by the user at the
-        // time the injection packet was created.
+        // GetProcAddress(), then invoked by a newly-created remote thread.
         //
         // Invariants:
         //
@@ -78,14 +61,12 @@ typedef union _RTL_CREATE_INJECTION_PACKET_FLAGS {
         ULONG InjectCode:1;
 
         //
-        // When set, indicates that an existing thread in the target process
-        // should be hijacked to run the remote code, instead of creating a
-        // new thread in the remote process.  If this flag is set, the caller
-        // must provide a valid thread ID as the TargetThreadId parameter to
-        // the RtlCreateInjectionPacket() call.
+        // When set, indicates the caller also wishes to inject a payload into
+        // the remote process.  Requires a valid Payload pointer be passed to
+        // RtlCreateInjectionPacket().
         //
 
-        ULONG HijackExistingThread:1;
+        ULONG InjectPayload:1;
 
         //
         // Unused.
@@ -95,9 +76,9 @@ typedef union _RTL_CREATE_INJECTION_PACKET_FLAGS {
     };
     LONG AsLong;
     ULONG AsULong;
-} RTL_CREATE_INJECTION_PACKET_FLAGS;
-typedef RTL_CREATE_INJECTION_PACKET_FLAGS *PRTL_CREATE_INJECTION_PACKET_FLAGS;
-C_ASSERT(sizeof(RTL_CREATE_INJECTION_PACKET_FLAGS) == sizeof(ULONG));
+} RTL_INJECTION_FLAGS;
+typedef RTL_INJECTION_FLAGS *PRTL_INJECTION_FLAGS;
+C_ASSERT(sizeof(RTL_INJECTION_FLAGS) == sizeof(ULONG));
 
 typedef union _RTL_INJECTION_PACKET_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -130,9 +111,51 @@ C_ASSERT(sizeof(RTL_INJECTION_PACKET_FLAGS) == sizeof(ULONG));
 
 typedef ULARGE_INTEGER RTL_INJECTION_MAGIC_NUMBER;
 
-typedef struct _RTL_INJECTION_PAYLOAD {
-    LIST_ENTRY ListEntry;
-    ULONGLONG NumberOfPages;
+//
+// Injection payload flags.  (Currently unused.)
+//
+
+typedef union _RTL_INJECTION_PAYLOAD_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_INJECTION_PAYLOAD_FLAGS;
+typedef RTL_INJECTION_PAYLOAD_FLAGS *PRTL_INJECTION_PAYLOAD_FLAGS;
+C_ASSERT(sizeof(RTL_INJECTION_PAYLOAD_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PAYLOAD {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _RTL_INJECTION_PAYLOAD)) ULONG SizeOfStruct;
+
+    //
+    // Payload flags.
+    //
+
+    RTL_INJECTION_PAYLOAD_FLAGS Flags;
+
+    //
+    // Size of the memory pointed to by Buffer.
+    //
+
+    ULONGLONG SizeOfBufferInBytes;
+
+    //
+    // Pointer to the payload.  In the injecting process, this will be the
+    // caller's original buffer address.  In the injected process, this will
+    // be the newly-allocated buffer.
+    //
+
     PVOID Buffer;
 
     //
@@ -146,30 +169,17 @@ typedef struct _RTL_INJECTION_PAYLOAD {
     ULONG_PTR OriginalBufferAddress;
 
     //
-    // (48 bytes consumed.)
+    // (32 bytes consumed.)
     //
 
     //
     // Pad out to 64 bytes.
     //
 
-    ULONGLONG Padding[3];
+    ULONGLONG Padding[4];
 } RTL_INJECTION_PAYLOAD;
 typedef RTL_INJECTION_PAYLOAD *PRTL_INJECTION_PAYLOAD;
 C_ASSERT(sizeof(RTL_INJECTION_PAYLOAD) == 64);
-
-typedef struct _RTL_INJECTION_SYMBOLS {
-    LIST_ENTRY ListEntry;
-    ULONG NumberOfSymbols;
-    ULONG NumberOfModules;
-    PCSZ *SymbolNameArray;
-    PCUNICODE_STRING *ModuleNameArray;
-
-    ULONG NumberOfResolvedSymbols;
-    PULONG_PTR SymbolAddressesArray;
-    PRTL_BITMAP FailedSymbols;
-} RTL_INJECTION_SYMBOLS;
-typedef RTL_INJECTION_SYMBOLS *PRTL_INJECTION_SYMBOLS;
 
 //
 // All error state is encapsulated in the following bitfield.  Multiple bits
@@ -187,10 +197,10 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG InvalidCallbackFunctionName:1;
         ULONGLONG InvalidCodeParameter:1;
         ULONGLONG InvalidCode:1;
-        ULONGLONG InvalidSizeOfCodeInBytes:1;
+        ULONGLONG InvalidPayloadParameter:1;
+        ULONGLONG InvalidPayload:1;
+        ULONGLONG PayloadReadProbeFailed:1;
         ULONGLONG InvalidTargetProcessId:1;
-        ULONGLONG InvalidTargetThreadId:1;
-        ULONGLONG CodeProbeFailed:1;
         ULONGLONG LoadLibraryFailed:1;
         ULONGLONG GetProcAddressFailed:1;
         ULONGLONG VirtualAllocFailed:1;
@@ -209,9 +219,23 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG CreateRemoteThreadFailed:1;
         ULONGLONG InternalAllocationFailure:1;
         ULONGLONG InternalStatusInPageError:1;
+        ULONGLONG CreateInjectionContextFailed:1;
         ULONGLONG WriteRemoteMemoryFailed:1;
+        ULONGLONG CreateEventWFailed:1;
 
-        ULONGLONG Unused:34;
+        //
+        // (32 bits consumed.)
+        //
+
+        ULONGLONG CreateEventNameFailed:1;
+        ULONGLONG InvalidEventId:1;
+
+        //
+        // Decrement the remaining bits in the Unused member below when adding
+        // new fields.
+        //
+
+        ULONGLONG Unused:30;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;
@@ -271,16 +295,29 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     RTL_INJECTION_ERROR Error;
 
     //
+    // Injection flags passed to RtlInject().
+    //
+
+    RTL_INJECTION_FLAGS InjectionFlags;
+
+    //
     // A magic number used to perform simple validation of the injected code.
     //
 
     RTL_INJECTION_MAGIC_NUMBER MagicNumber;
 
     //
-    // Fully-qualified path name of the target library to load.
+    // An instance of the RTL structure initialized in the target process.
     //
 
-    UNICODE_STRING Path;
+    PRTL Rtl;
+
+    //
+    // Fully-qualified path name of the target library to load if InjectModule
+    // was requested.
+    //
+
+    UNICODE_STRING ModulePath;
 
     //
     // Name of the procedure to resolve via GetProcAddress(). The function
@@ -297,8 +334,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     ULONG TargetProcessId;
 
     //
-    // Optionally supplies the ID of a thread within the targeted process to
-    // use for injection.  If this is 0, a new remote thread will be created.
+    // The ID of the remote thread created as part of injection.
     //
 
     ULONG TargetThreadId;
@@ -307,9 +343,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     // Payload information.
     //
 
-    LIST_ENTRY PayloadListHead;
-    ULONGLONG NumberOfPayloads;
-    PRTL_INJECTION_PAYLOAD Payloads;
+    RTL_INJECTION_PAYLOAD Payload;
 
 } RTL_INJECTION_PACKET;
 typedef RTL_INJECTION_PACKET *PRTL_INJECTION_PACKET;
@@ -332,10 +366,10 @@ _Pre_satisfies_(Flags->Unused == 0)
 _When_(return != 0, _Post_satisfies_(InjectionError->ErrorCode == 0))
 _When_(return == 0, _Post_satisfies_(InjectionError->ErrorCode != 0))
 BOOL
-(RTL_CREATE_INJECTION_PACKET)(
+(RTL_INJECT)(
     _In_ struct _RTL *Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ PRTL_CREATE_INJECTION_PACKET_FLAGS Flags,
+    _In_ PRTL_INJECTION_FLAGS Flags,
 
     _When_(Flags->InjectModule == 0, _Pre_null_)
     _When_(Flags->InjectModule != 0, _In_)
@@ -349,74 +383,14 @@ BOOL
     _When_(Flags->InjectCode != 0, _In_)
         PRTL_INJECTION_COMPLETE_CALLBACK Callback,
 
-    _In_ ULONG TargetProcessId,
+    _When_(Flags->InjectPayload == 0, _Pre_null_)
+    _When_(Flags->InjectPayload != 0, _In_)
+        PRTL_INJECTION_PAYLOAD Payload,
 
-    _When_(Flags->HijackExistingThread == 0, _Pre_null_)
-    _When_(Flags->HijackExistingThread != 0, _In_)
-        ULONG TargetThreadId,
+    _In_ ULONG TargetProcessId,
 
     _Outptr_result_nullonfailure_ PRTL_INJECTION_PACKET *InjectionPacketPointer,
     _Outptr_ PRTL_INJECTION_ERROR InjectionError
-    );
-typedef RTL_CREATE_INJECTION_PACKET *PRTL_CREATE_INJECTION_PACKET;
-
-typedef
-_Success_(return != 0)
-_When_(return != 0, _Post_satisfies_(InjectionError->ErrorCode == 0))
-BOOL
-(RTL_DESTROY_INJECTION_PACKET)(
-    _In_ struct _RTL *Rtl,
-    _Pre_ _Notnull_ _Post_ptr_invalid_ PRTL_INJECTION_PACKET *PacketPointer,
-    _Outptr_ PRTL_INJECTION_ERROR InjectionError
-    );
-typedef RTL_DESTROY_INJECTION_PACKET *PRTL_DESTROY_INJECTION_PACKET;
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(RTL_ADD_INJECTION_PAYLOAD)(
-    _In_ struct _RTL *Rtl,
-    _In_ PRTL_INJECTION_PACKET Packet,
-    _In_ PRTL_INJECTION_PAYLOAD Payload,
-    _Out_ PRTL_INJECTION_ERROR InjectionError
-    );
-typedef RTL_ADD_INJECTION_PAYLOAD *PRTL_ADD_INJECTION_PAYLOAD;
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(RTL_CREATE_INJECTION_SYMBOLS)(
-    _In_count_(NumberOfSymbolNames) CONST PCSZ *SymbolNameArray,
-    _In_ ULONG NumberOfSymbolNames,
-    _In_count_(NumberOfSymbolAddresses) PULONG_PTR SymbolAddressArray,
-    _In_ ULONG NumberOfSymbolAddresses,
-    _In_ HMODULE Module,
-    _In_ PRTL_BITMAP FailedSymbols,
-    _Out_ PULONG NumberOfResolvedSymbolsPointer
-    );
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(RTL_ADD_INJECTION_SYMBOLS)(
-    _In_ struct _RTL *Rtl,
-    _In_ PRTL_INJECTION_PACKET Packet,
-    _In_ PRTL_INJECTION_SYMBOLS Symbols,
-    _Out_ PRTL_INJECTION_ERROR InjectionError
-    );
-typedef RTL_ADD_INJECTION_SYMBOLS *PRTL_ADD_INJECTION_SYMBOLS;
-
-typedef
-_Check_return_
-_Success_(return == 0)
-BOOL
-(RTL_INJECT)(
-    _In_ struct _RTL *Rtl,
-    _In_ PCRTL_INJECTION_PACKET Packet,
-    _Out_ PRTL_INJECTION_ERROR InjectionError
     );
 typedef RTL_INJECT *PRTL_INJECT;
 
@@ -436,17 +410,12 @@ typedef RTL_INJECT *PRTL_INJECT;
 // Primary Injection API.
 //
 
-RTL_API RTL_CREATE_INJECTION_PACKET RtlCreateInjectionPacket;
-RTL_API RTL_DESTROY_INJECTION_PACKET RtlDestroyInjectionPacket;
-RTL_API RTL_ADD_INJECTION_PAYLOAD RtlAddInjectionPayload;
-RTL_API RTL_ADD_INJECTION_SYMBOLS RtlAddInjectionSymbols;
 RTL_API RTL_INJECT RtlInject;
 
 //
 // Other injection related methods supporting the primary API.
 //
 
-//RTL_API RTL_INITIALIZE_INJECTION RtlInitializeInjection;
 RTL_API RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlIsInjectionProtocolCallback;
 
 //
@@ -458,19 +427,7 @@ RTL_API GET_APPROXIMATE_FUNCTION_BOUNDARIES GetApproximateFunctionBoundaries;
 RTL_API SKIP_JUMPS SkipJumps;
 RTL_API IS_JUMP IsJump;
 
-//
-// The RIP-relative code isn't implemented yet.
-//
-
-/*
-RTL_API IS_RIP_RELATIVE_INSTRUCTION IsRipRelativeInstruction;
-RTL_API EXTRACT_RIP_RELATIVE_OFFSET ExtractRipRelativeOffset;
-RTL_API GET_EFFECTIVE_ADDRESS_FROM_RIP_RELATIVE_INSTRUCTION GetEffectiveAddressFromRipRelativeInstruction;
-RTL_API RELOCATE_RIP_RELATIVE_CODE RelocateRipRelativeCode;
-*/
-
 #pragma component(browser, on)
-
 
 #ifdef __cplusplus
 } // extern "C" {

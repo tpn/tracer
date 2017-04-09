@@ -347,4 +347,127 @@ InitializeTlsAllocator(
 
 }
 
+//
+// Helper routines.
+//
+
+FORCEINLINE
+BOOL
+CopyMemoryQuadwords(
+    PCHAR Dest,
+    PCHAR Source,
+    SIZE_T SizeInBytes
+    )
+{
+    PCHAR TrailingDest;
+    PCHAR TrailingSource;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    TRY_MAPPED_MEMORY_OP {
+
+        if (NumberOfQuadwords) {
+
+            __movsq((PDWORD64)Dest,
+                    (PDWORD64)Source,
+                    NumberOfQuadwords);
+
+        }
+
+        if (TrailingBytes) {
+
+            TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+            TrailingSource = (Source + (SizeInBytes - TrailingBytes));
+
+            __movsb(TrailingDest,
+                    TrailingSource,
+                    TrailingBytes);
+
+        }
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+#ifdef CopyMemory
+#undef CopyMemory
+#endif
+
+FORCEINLINE
+VOID
+CopyMemory(
+    _Out_writes_bytes_all_(SizeInBytes) PVOID Dst,
+    _In_ const PVOID Src,
+    _In_ SIZE_T SizeInBytes
+    )
+{
+    PCHAR Dest = (PCHAR)Dst;
+    PCHAR Source = (PCHAR)Src;
+    PCHAR TrailingDest;
+    PCHAR TrailingSource;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    if (NumberOfQuadwords) {
+
+        __movsq((PDWORD64)Dest,
+                (PDWORD64)Source,
+                NumberOfQuadwords);
+
+    }
+
+    if (TrailingBytes) {
+
+        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+        TrailingSource = (Source + (SizeInBytes - TrailingBytes));
+
+        __movsb(TrailingDest,
+                TrailingSource,
+                TrailingBytes);
+
+    }
+}
+
+FORCEINLINE
+BOOL
+SecureZeroMemoryQuadwords(
+    PVOID pDest,
+    SIZE_T SizeInBytes
+    )
+{
+    VPCHAR Dest = (VPCHAR)pDest;
+    VPCHAR TrailingDest;
+    SIZE_T TrailingBytes;
+    SIZE_T NumberOfQuadwords;
+
+    NumberOfQuadwords = SizeInBytes >> 3;
+    TrailingBytes = SizeInBytes % 8;
+
+    if (NumberOfQuadwords) {
+        __stosq((PDWORD64)Dest, 0, NumberOfQuadwords);
+    }
+
+    if (TrailingBytes) {
+        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
+        __stosb((PBYTE)TrailingDest, 0, TrailingBytes);
+    }
+
+    return TRUE;
+}
+
+#ifdef SecureZeroMemory
+#undef SecureZeroMemory
+#endif
+#define SecureZeroMemory SecureZeroMemoryQuadwords
+
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

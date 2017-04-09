@@ -324,6 +324,42 @@ extern "C" {
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
 
+#define TRY_AVX __try
+#define TRY_AVX_ALIGNED __try
+#define TRY_AVX_UNALIGNED __try
+
+#define TRY_SSE42 __try
+#define TRY_SSE42_ALIGNED __try
+#define TRY_SSE42_UNALIGNED __try
+
+#define TRY_PROBE_MEMORY __try
+#define TRY_MAPPED_MEMORY_OP __try
+
+#define CATCH_EXCEPTION_ILLEGAL_INSTRUCTION __except(     \
+    GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ? \
+        EXCEPTION_EXECUTE_HANDLER :                       \
+        EXCEPTION_CONTINUE_SEARCH                         \
+    )
+
+#define CATCH_EXCEPTION_ACCESS_VIOLATION __except(     \
+    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? \
+        EXCEPTION_EXECUTE_HANDLER :                    \
+        EXCEPTION_CONTINUE_SEARCH                      \
+    )
+
+#define CATCH_STATUS_IN_PAGE_ERROR __except(     \
+    GetExceptionCode() == STATUS_IN_PAGE_ERROR ? \
+        EXCEPTION_EXECUTE_HANDLER :              \
+        EXCEPTION_CONTINUE_SEARCH                \
+    )
+
+#define CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION __except( \
+    GetExceptionCode() == STATUS_IN_PAGE_ERROR ||                \
+    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?           \
+        EXCEPTION_EXECUTE_HANDLER :                              \
+        EXCEPTION_CONTINUE_SEARCH                                \
+    )
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
@@ -1683,6 +1719,28 @@ HANDLE
     _In_ LPCWSTR lpName
     );
 typedef OPEN_EVENT_W *POPEN_EVENT_W;
+
+typedef
+_Ret_maybenull_
+HANDLE
+(WINAPI CREATE_EVENT_A)(
+    _In_opt_ LPSECURITY_ATTRIBUTES lpEventAttributes,
+    _In_ BOOL bManualReset,
+    _In_ BOOL bInitialState,
+    _In_opt_ LPCSTR lpName
+    );
+typedef CREATE_EVENT_A *PCREATE_EVENT_A;
+
+typedef
+_Ret_maybenull_
+HANDLE
+(WINAPI CREATE_EVENT_W)(
+    _In_opt_ LPSECURITY_ATTRIBUTES lpEventAttributes,
+    _In_ BOOL bManualReset,
+    _In_ BOOL bInitialState,
+    _In_opt_ LPCWSTR lpName
+    );
+typedef CREATE_EVENT_W *PCREATE_EVENT_W;
 
 typedef
 _Ret_maybenull_ _Post_writable_byte_size_(dwSize)
@@ -4556,7 +4614,6 @@ BOOL
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
 
-
 #ifdef _RTL_TEST
 typedef
 BOOL
@@ -4626,10 +4683,6 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_LEFT_CHILD RtlLeftChild;                                                   \
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
-    PRTL_CREATE_INJECTION_PACKET CreateInjectionPacket;                             \
-    PRTL_DESTROY_INJECTION_PACKET DestroyInjectionPacket;                           \
-    PRTL_ADD_INJECTION_PAYLOAD AddInjectionPayload;                                 \
-    PRTL_ADD_INJECTION_SYMBOLS AddInjectionSymbols;                                 \
     PRTL_INJECT Inject;                                                             \
     PSET_PRIVILEGE SetPrivilege;                                                    \
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                           \
@@ -4900,6 +4953,41 @@ LONG
     );
 typedef RTL_INJECTION_REMOTE_THREAD_ENTRY *PRTL_INJECTION_REMOTE_THREAD_ENTRY;
 
+typedef
+BOOL
+(CALLBACK RTL_SET_DLL_PATH)(
+    _Inout_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PCUNICODE_STRING RtlDllPath
+    );
+typedef RTL_SET_DLL_PATH *PRTL_SET_DLL_PATH;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+(CALLBACK RTL_CREATE_NAMED_EVENT)(
+    _In_ PRTL Rtl,
+    _Inout_ PHANDLE HandlePointer,
+    _In_opt_ LPSECURITY_ATTRIBUTES EventAttributes,
+    _In_ BOOL ManualReset,
+    _In_ BOOL InitialState,
+    _In_opt_ PCUNICODE_STRING Prefix,
+    _In_opt_ PCUNICODE_STRING Suffix,
+    _Inout_ PUNICODE_STRING EventName
+    );
+typedef RTL_CREATE_NAMED_EVENT *PRTL_CREATE_NAMED_EVENT;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+(CALLBACK PROBE_FOR_READ)(
+    _In_ PRTL Rtl,
+    _In_reads_(ROUND_TO_PAGES(NumberOfBytes)) PVOID Address,
+    _In_ SIZE_T NumberOfBytes,
+    _Outptr_opt_result_maybenull_ PULONG NumberOfValidPages
+    );
+typedef PROBE_FOR_READ *PPROBE_FOR_READ;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -4921,6 +5009,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PCOPY_PAGES CopyPages;
     PFILL_PAGES FillPages;
+    PPROBE_FOR_READ ProbeForRead;
+
+    //PRTL_CREATE_NAMED_EVENT CreateNamedEvent;
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
@@ -4939,17 +5030,25 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     UNICODE_STRING WindowsSxSDirectory;
     UNICODE_STRING WindowsSystemDirectory;
 
-    //
-    // Crypto Context.
-    //
-
     HCRYPTPROV CryptProv;
     PCRYPT_GEN_RANDOM CryptGenRandom;
+    PCRYPT_BINARY_TO_STRING_A CryptBinaryToStringA;
+    PCRYPT_BINARY_TO_STRING_W CryptBinaryToStringW;
 
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
 
-    PRTL_INJECTION_REMOTE_THREAD_ENTRY InjectionRemoteThreadEntry;
+    PCREATE_EVENT_A CreateEventA;
+    PCREATE_EVENT_W CreateEventW;
+
+    PVOID InjectionRemoteThreadEntry;
+
+    //
+    // Fully-qualified module path name set by SetDllPath().
+    //
+
+    UNICODE_STRING RtlDllPath;
+    PRTL_SET_DLL_PATH SetDllPath;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -5159,41 +5258,6 @@ IsAligned(
 
 #define IsPowerOf2(X) (((X) & ((X)-1)) == 0)
 
-#define TRY_AVX __try
-#define TRY_AVX_ALIGNED __try
-#define TRY_AVX_UNALIGNED __try
-
-#define TRY_SSE42 __try
-#define TRY_SSE42_ALIGNED __try
-#define TRY_SSE42_UNALIGNED __try
-
-#define TRY_PROBE_MEMORY __try
-#define TRY_MAPPED_MEMORY_OP __try
-
-#define CATCH_EXCEPTION_ILLEGAL_INSTRUCTION __except(     \
-    GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ? \
-        EXCEPTION_EXECUTE_HANDLER :                       \
-        EXCEPTION_CONTINUE_SEARCH                         \
-    )
-
-#define CATCH_EXCEPTION_ACCESS_VIOLATION __except(     \
-    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? \
-        EXCEPTION_EXECUTE_HANDLER :                    \
-        EXCEPTION_CONTINUE_SEARCH                      \
-    )
-
-#define CATCH_STATUS_IN_PAGE_ERROR __except(     \
-    GetExceptionCode() == STATUS_IN_PAGE_ERROR ? \
-        EXCEPTION_EXECUTE_HANDLER :              \
-        EXCEPTION_CONTINUE_SEARCH                \
-    )
-
-#define CATCH_STATUS_IN_PAGE_ERROR_OR_ACCESS_VIOLATION __except( \
-    GetExceptionCode() == STATUS_IN_PAGE_ERROR ||                \
-    GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ?           \
-        EXCEPTION_EXECUTE_HANDLER :                              \
-        EXCEPTION_CONTINUE_SEARCH                                \
-    )
 
 ////////////////////////////////////////////////////////////////////////////////
 // SIMD Utilities
@@ -5500,120 +5564,6 @@ CompressUlongParallelSuffix(
 
     return Input;
 }
-
-FORCEINLINE
-BOOL
-CopyMemoryQuadwords(
-    PCHAR Dest,
-    PCHAR Source,
-    SIZE_T SizeInBytes
-    )
-{
-    PCHAR TrailingDest;
-    PCHAR TrailingSource;
-    SIZE_T TrailingBytes;
-    SIZE_T NumberOfQuadwords;
-
-    NumberOfQuadwords = SizeInBytes >> 3;
-    TrailingBytes = SizeInBytes % 8;
-
-    TRY_MAPPED_MEMORY_OP {
-
-        if (NumberOfQuadwords) {
-
-            __movsq((PDWORD64)Dest,
-                    (PDWORD64)Source,
-                    NumberOfQuadwords);
-
-        }
-
-        if (TrailingBytes) {
-
-            TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
-            TrailingSource = (Source + (SizeInBytes - TrailingBytes));
-
-            __movsb(TrailingDest,
-                    TrailingSource,
-                    TrailingBytes);
-
-        }
-
-    } CATCH_STATUS_IN_PAGE_ERROR {
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-FORCEINLINE
-VOID
-CopyMemory(
-    PVOID Dst,
-    PVOID Src,
-    SIZE_T SizeInBytes
-    )
-{
-    PCHAR Dest = (PCHAR)Dest;
-    PCHAR Source = (PCHAR)Source;
-    PCHAR TrailingDest;
-    PCHAR TrailingSource;
-    SIZE_T TrailingBytes;
-    SIZE_T NumberOfQuadwords;
-
-    NumberOfQuadwords = SizeInBytes >> 3;
-    TrailingBytes = SizeInBytes % 8;
-
-    if (NumberOfQuadwords) {
-
-        __movsq((PDWORD64)Dest,
-                (PDWORD64)Source,
-                NumberOfQuadwords);
-
-    }
-
-    if (TrailingBytes) {
-
-        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
-        TrailingSource = (Source + (SizeInBytes - TrailingBytes));
-
-        __movsb(TrailingDest,
-                TrailingSource,
-                TrailingBytes);
-
-    }
-}
-
-FORCEINLINE
-BOOL
-SecureZeroMemoryQuadwords(
-    PVOID pDest,
-    SIZE_T SizeInBytes
-    )
-{
-    VPCHAR Dest = (VPCHAR)pDest;
-    VPCHAR TrailingDest;
-    SIZE_T TrailingBytes;
-    SIZE_T NumberOfQuadwords;
-
-    NumberOfQuadwords = SizeInBytes >> 3;
-    TrailingBytes = SizeInBytes % 8;
-
-    if (NumberOfQuadwords) {
-        __stosq((PDWORD64)Dest, 0, NumberOfQuadwords);
-    }
-
-    if (TrailingBytes) {
-        TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
-        __stosb((PBYTE)TrailingDest, 0, TrailingBytes);
-    }
-
-    return TRUE;
-}
-
-#ifdef SecureZeroMemory
-#undef SecureZeroMemory
-#endif
-#define SecureZeroMemory SecureZeroMemoryQuadwords
 
 typedef
 _Success_(return != 0)
@@ -7259,6 +7209,20 @@ CountNumberOfDigits(_In_ ULONG Value)
 }
 
 FORCEINLINE
+USHORT
+CountNumberOfLongLongDigits(_In_ ULONGLONG Value)
+{
+    USHORT Count = 0;
+
+    do {
+        Count++;
+        Value = Value / 10;
+    } while (Value != 0);
+
+    return Count;
+}
+
+FORCEINLINE
 BOOLEAN
 AppendIntegerToUnicodeString(
     _In_ PUNICODE_STRING String,
@@ -7328,6 +7292,146 @@ Return Value:
     //
 
     ActualNumberOfDigits = CountNumberOfDigits(Integer);
+
+    if (ActualNumberOfDigits > NumberOfDigits) {
+        return FALSE;
+    }
+
+    //
+    // Initialize our destination pointer to the last digit.  (We write
+    // back-to-front.)
+    //
+
+    Dest = (PWCHAR)(
+        RtlOffsetToPointer(
+            String->Buffer,
+            String->Length + (
+                (NumberOfDigits - 1) *
+                sizeof(WCHAR)
+            )
+        )
+    );
+    Count = 0;
+    Bytes = 0;
+
+    //
+    // Convert each digit into the corresponding character and copy to the
+    // string buffer, retreating the pointer as we go.
+    //
+
+    Value = Integer;
+
+    do {
+        Count++;
+        Bytes += 2;
+        Digit = Value % Base;
+        Value = Value / Base;
+        Char = IntegerToWCharTable[Digit];
+        *Dest-- = Char;
+    } while (Value != 0);
+
+    //
+    // Pad the string with zeros if necessary.
+    //
+
+    NumberOfZerosToPad = NumberOfDigits - ActualNumberOfDigits;
+
+    if (NumberOfZerosToPad) {
+        do {
+            Count++;
+            Bytes += 2;
+            *Dest-- = L'0';
+        } while (--NumberOfZerosToPad);
+    }
+
+    //
+    // Update the string with the new length.
+    //
+
+    String->Length += (USHORT)Bytes;
+
+    //
+    // Add the trailer if applicable.
+    //
+
+    if (Trailer) {
+        String->Length += sizeof(WCHAR);
+        String->Buffer[(String->Length - 1) >> 1] = Trailer;
+    }
+
+    return TRUE;
+}
+
+FORCEINLINE
+BOOLEAN
+AppendLongLongIntegerToUnicodeString(
+    _In_ PUNICODE_STRING String,
+    _In_ ULONGLONG Integer,
+    _In_ USHORT NumberOfDigits,
+    _In_opt_ WCHAR Trailer
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that allows construction of unicode strings out
+    of integer values.
+
+Arguments:
+
+    String - Supplies a pointer to a UNICODE_STRING that will be appended to.
+        Sufficient buffer space must exist for the entire string to be written.
+
+    Integer - Supplies the long long integer value to be appended to the string.
+
+    NumberOfDigits - The expected number of digits for the value.  If Integer
+        has less digits than this number, it will be left-padded with zeros.
+
+    Trailer - An optional trailing wide character to append.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT ActualNumberOfDigits;
+    USHORT BytesRequired;
+    USHORT BytesRemaining;
+    USHORT NumberOfZerosToPad;
+    const ULONGLONG Base = 10;
+    ULONGLONG Digit;
+    ULONGLONG Value;
+    ULONGLONG Count;
+    ULONGLONG Bytes;
+    WCHAR Char;
+    PWCHAR Dest;
+
+    //
+    // Verify the unicode string has sufficient space.
+    //
+
+    BytesRequired = NumberOfDigits * sizeof(WCHAR);
+
+    if (Trailer) {
+        BytesRequired += (1 * sizeof(Trailer));
+    }
+
+    BytesRemaining = (
+        String->MaximumLength -
+        String->Length
+    );
+
+    if (BytesRemaining < BytesRequired) {
+        return FALSE;
+    }
+
+    //
+    // Make sure the integer value doesn't have more digits than
+    // specified.
+    //
+
+    ActualNumberOfDigits = CountNumberOfLongLongDigits(Integer);
 
     if (ActualNumberOfDigits > NumberOfDigits) {
         return FALSE;
