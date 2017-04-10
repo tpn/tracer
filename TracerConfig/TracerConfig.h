@@ -140,7 +140,7 @@ typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
 typedef TRACER_DLL_PATH_ID *PTRACER_DLL_PATH_ID;
 C_ASSERT(sizeof(TRACER_DLL_PATH_ID) == sizeof(ULONG));
 
-#define MAX_TRACER_DLL_PATH_ID (TracerInvalidDllPathId - 1)
+#define MAX_TRACER_DLL_PATH_ID (TrailingZeros(TracerInvalidDllPathId-1)+1)
 
 typedef union _TRACER_DLL_PATH_TYPE {
     struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
@@ -266,6 +266,7 @@ GetNextTracerInjectionDll(
 {
     ULONG BitIndex;
     ULONG LastIndex;
+    PUNICODE_STRING Path;
     PRTL_BITMAP Bitmap = &Paths->TracerInjectionDllsBitmap;
 
     LastIndex = *Index;
@@ -275,8 +276,10 @@ GetNextTracerInjectionDll(
         return FALSE;
     }
 
+    Path = &Paths->FirstDllPath + BitIndex;
+
     *Index = BitIndex + 1;
-    *DllPath = &Paths->FirstDllPath + (BitIndex - 1);
+    *DllPath = Path;
     return TRUE;
 }
 

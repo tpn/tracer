@@ -69,14 +69,10 @@
     <ClCompile>
       <PreprocessorDefinitions>_PYTHON_TRACER_INJECTION_INTERNAL_BUILD;_PYTHON_TRACER_INJECTION_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-  </ItemDefinitionGroup>
-  <!--
-  <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>PythonTracerInjection.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
-  -->
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
