@@ -25,6 +25,10 @@ extern "C" {
 
 extern CONST DEBUGEVENTCALLBACKS PythonTracerInjectionDebugEventCallbacks;
 
+typedef struct _PYTHON_TRACER_INJECTION_CONTEXT {
+    ULONGLONG Unused;
+} PYTHON_TRACER_INJECTION_CONTEXT;
+typedef PYTHON_TRACER_INJECTION_CONTEXT *PPYTHON_TRACER_INJECTION_CONTEXT;
 
 #ifdef __cplusplus
 }; // extern "C"
