@@ -2277,6 +2277,17 @@ typedef DESTROY_DEBUG_ENGINE_SESSION **PPDESTROY_DEBUG_ENGINE_SESSION;
 DEBUG_ENGINE_API DESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_CHILD_DEBUG_ENGINE_SESSION)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Parent,
+    _Outptr_result_nullonfailure_ struct _DEBUG_ENGINE_SESSION **SessionPointer
+    );
+typedef INITIALIZE_CHILD_DEBUG_ENGINE_SESSION
+      *PINITIALIZE_CHILD_DEBUG_ENGINE_SESSION;
+
+typedef
 HRESULT
 (WAIT_FOR_EVENT)(
     _In_ struct _DEBUG_ENGINE_SESSION *Session,
@@ -2312,6 +2323,12 @@ typedef union _DEBUG_ENGINE_SESSION_FLAGS {
         //
 
         ULONG CreatedNewProcess:1;
+
+        //
+        // When set, indicates injection intent.
+        //
+
+        ULONG InjectionIntent:1;
 
     };
 
@@ -2365,6 +2382,34 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     struct _DEBUG_ENGINE *Engine;
+
+    //
+    // Tracer injection modules, if applicable.
+    //
+
+    struct _TRACER_INJECTION_MODULES *InjectionModules;
+
+    //
+    // Parent/child fields.
+    //
+
+    struct _DEBUG_ENGINE_SESSION *Parent;
+
+    SRWLOCK ListHeadLock;
+
+    _Guarded_by_(ListHeadLock)
+    struct {
+        LIST_ENTRY ListHead;
+        volatile ULONGLONG NumberOfListEntries;
+    };
+
+    LIST_ENTRY ListEntry;
+
+    //
+    // Initializer for children.
+    //
+
+    PINITIALIZE_CHILD_DEBUG_ENGINE_SESSION InitializeChildDebugEngineSession;
 
     //
     // Destructor.
@@ -2551,6 +2596,9 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
         //
 
         ULONG InitializeFromCurrentProcess:1;
+
+        //
+        // When set, initializes a child debug engine session from a parent one
     };
     LONG AsLong;
     ULONG AsULong;
@@ -2577,9 +2625,285 @@ BOOL
     );
 typedef INITIALIZE_DEBUG_ENGINE_SESSION *PINITIALIZE_DEBUG_ENGINE_SESSION;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
+    _In_ struct _TRACER_CONFIG *TracerConfig,
+    _In_opt_ HMODULE StringTableModule,
+    _In_opt_ PALLOCATOR StringArrayAllocator,
+    _In_opt_ PALLOCATOR StringTableAllocator,
+    _In_ struct _TRACER_INJECTION_MODULES *InjectionModules,
+    _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_SESSION SessionPointer
+    );
+typedef INITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
+      *PINITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT;
+
 //
 // Inline Functions
 //
+
+FORCEINLINE
+_Check_return_
+_Success_(return != 0)
+BOOL
+LoadAndInitializeDebugEngineSessionWithInjectionIntent(
+    _In_ PUNICODE_STRING DebugEngineDllPath,
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    _In_ struct _TRACER_CONFIG *TracerConfig,
+    _In_ PUNICODE_STRING StringTableDllPath,
+    _In_ PALLOCATOR StringArrayAllocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ struct _TRACER_INJECTION_MODULES *InjectionModules,
+    _Out_ PPDEBUG_ENGINE_SESSION SessionPointer,
+    _Out_ PPDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSessionPointer
+    )
+/*++
+
+Routine Description:
+
+    Initializes a debug session with injection intent.
+
+Arguments:
+
+    DebugEngineDllPath - Supplies a pointer to a UNICODE_STRING that contains
+        the fully-qualified path of the DebugEngine DLL to load.
+
+    Rtl - Supplies a pointer to an RTL structure.
+
+    Allocator - Supplies a pointer to an alternate ALLOCATOR to use.
+
+    InitFlags - Supplies flags that can be used to customize the type of
+        debug session created.
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure.
+
+    StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
+        the fully-qualified path of the StringTable DLL to load.
+
+    StringArrayAllocator- Supplies a pointer to an allocator to use for string
+        array allocations.  If the allocator has not yet been initialized (as
+        indicated by a NULL value in the Context field), the standard string
+        table allocator initialization routine will be called against the
+        structure first.
+
+    StringTableAllocator- Supplies a pointer to an allocator to use for string
+        table allocations.  If the allocator has not yet been initialized (as
+        indicated by a NULL value in the Context field), the standard string
+        table allocator initialization routine will be called against the
+        structure first.
+
+    InjectionModules - Supplies a pointer to an initialized tracer injection
+        modules structure.
+
+    SessionPointer - Supplies a pointer that will receive the address of the
+        DEBUG_ENGINE_SESSION structure allocated.  This pointer is immediately
+        cleared (that is, '*SessionPointer = NULL;' is performed once it is
+        deemed non-NULL), and a value will only be set if initialization
+        was successful.
+
+    DestroyDebugEngineSessionPointer - Supplies a pointer to the address of a
+        variable that will receive the address of the DLL export by the same
+        name.  This should be called in order to destroy a successfully
+        initialized session.
+
+Return Value:
+
+    TRUE on Success, FALSE if an error occurred.  *SessionPointer will be
+    updated with the value of the newly created DEBUG_ENGINE_SESSION structure.
+
+See Also:
+
+    InitializeDebugEngineSession().
+
+--*/
+{
+    BOOL Success;
+    DWORD LastError;
+    HMODULE Module = NULL;
+    HMODULE StringTableModule = NULL;
+    PINITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
+        InitializeDebugEngineSessionWithInjectionIntent;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(DebugEngineDllPath)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(SessionPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
+        return FALSE;
+    }
+
+    if (!IsValidMinimumDirectoryUnicodeString(DebugEngineDllPath)) {
+        return FALSE;
+    }
+
+    //
+    // Attempt to load the library.
+    //
+
+    Module = LoadLibraryW(DebugEngineDllPath->Buffer);
+
+    if (!Module) {
+        OutputDebugStringA("Failed to load DebugEngine.dll.\n");
+        return FALSE;
+    }
+
+    //
+    // Resolve the initialize function.
+    //
+
+    InitializeDebugEngineSessionWithInjectionIntent = (
+        (PINITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT)(
+            GetProcAddress(
+                Module,
+                "InitializeDebugEngineSessionWithInjectionIntent"
+            )
+        )
+    );
+
+    if (!InitializeDebugEngineSessionWithInjectionIntent) {
+        OutputDebugStringA("Failed to resolve InitializeDebugEngineSession"
+                           "WithInjectionIntent.\n");
+        goto Error;
+    }
+
+    //
+    // Attempt to load the StringTable module.
+    //
+
+    StringTableModule = LoadLibraryW(StringTableDllPath->Buffer);
+
+    if (!StringTableModule) {
+        LastError = GetLastError();
+        OutputDebugStringA("Failed to load StringTable.dll.\n");
+        goto Error;
+    }
+
+    //
+    // Resolve the StringTable's custom allocator initialization function.
+    //
+
+    InitializeStringTableAllocator = (PINITIALIZE_STRING_TABLE_ALLOCATOR)(
+        GetProcAddress(
+            StringTableModule,
+            "InitializeStringTableAllocator"
+        )
+    );
+
+    if (!InitializeStringTableAllocator) {
+        OutputDebugStringA("Failed resolve: InitializeStringTableAllocator\n");
+        goto Error;
+    }
+
+    //
+    // If either of the allocators have not yet been initialized (as indicated
+    // by a NULL value in the Context field), initialize them now with the
+    // string table allocator.
+    //
+
+    if (!StringArrayAllocator->Context) {
+        CHECKED_MSG(
+            InitializeStringTableAllocator(StringArrayAllocator),
+            "InitializeStringTableAllocator(StringArrayAllocator)"
+        );
+    }
+
+    if (!StringTableAllocator->Context) {
+        CHECKED_MSG(
+            InitializeStringTableAllocator(StringTableAllocator),
+            "InitializeStringTableAllocator(StringTableAllocator)"
+        );
+    }
+
+    //
+    // Call the initialization function with the same arguments we were passed.
+    //
+
+    Success = InitializeDebugEngineSessionWithInjectionIntent(
+        Rtl,
+        Allocator,
+        InitFlags,
+        TracerConfig,
+        StringTableModule,
+        StringArrayAllocator,
+        StringTableAllocator,
+        InjectionModules,
+        SessionPointer
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Update the caller's DestroyDebugEngineSession function pointer and the
+    // session pointer to the same function.
+    //
+
+    *DestroyDebugEngineSessionPointer = (*SessionPointer)->Destroy;
+
+    //
+    // Return success.
+    //
+
+    return TRUE;
+
+Error:
+
+    //
+    // Attempt to destroy the session.
+    //
+
+    if (SessionPointer && *SessionPointer && (*SessionPointer)->Destroy) {
+
+        BOOL IsProcessTerminating = TRUE;
+
+        //
+        // This will also clear the caller's session pointer.
+        //
+
+        (*SessionPointer)->Destroy(SessionPointer, &IsProcessTerminating);
+    }
+
+    //
+    // Attempt to free any modules we loaded.
+    //
+
+    if (Module) {
+        FreeLibrary(Module);
+        Module = NULL;
+    }
+
+    if (StringTableModule) {
+        FreeLibrary(StringTableModule);
+        StringTableModule = NULL;
+    }
+
+    return FALSE;
+}
 
 FORCEINLINE
 _Check_return_
@@ -2656,178 +2980,21 @@ See Also:
 
 --*/
 {
-    BOOL Success;
-    DWORD LastError;
-    HMODULE Module = NULL;
-    HMODULE StringTableModule = NULL;
-    PINITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
-
-    //
-    // Validate arguments.
-    //
-
-    if (!ARGUMENT_PRESENT(DebugEngineDllPath)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Allocator)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(SessionPointer)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
-        return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(StringTableAllocator)) {
-        return FALSE;
-    }
-
-    if (!IsValidMinimumDirectoryUnicodeString(DebugEngineDllPath)) {
-        return FALSE;
-    }
-
-    //
-    // Attempt to load the library.
-    //
-
-    Module = LoadLibraryW(DebugEngineDllPath->Buffer);
-
-    if (!Module) {
-        OutputDebugStringA("Failed to load DebugEngine.dll.\n");
-        return FALSE;
-    }
-
-    //
-    // Resolve the initialize function.
-    //
-
-    InitializeDebugEngineSession = (PINITIALIZE_DEBUG_ENGINE_SESSION)(
-        GetProcAddress(
-            Module,
-            "InitializeDebugEngineSession"
+    return (
+        LoadAndInitializeDebugEngineSessionWithInjectionIntent(
+            DebugEngineDllPath,
+            Rtl,
+            Allocator,
+            InitFlags,
+            TracerConfig,
+            StringTableDllPath,
+            StringArrayAllocator,
+            StringTableAllocator,
+            NULL,
+            SessionPointer,
+            DestroyDebugEngineSessionPointer
         )
     );
-
-    if (!InitializeDebugEngineSession) {
-        OutputDebugStringA("Failed to resolve InitializeDebugEngineSession\n");
-        goto Error;
-    }
-
-    //
-    // Attempt to load the StringTable module.
-    //
-
-    StringTableModule = LoadLibraryW(StringTableDllPath->Buffer);
-
-    if (!StringTableModule) {
-        LastError = GetLastError();
-        OutputDebugStringA("Failed to load StringTable.dll.\n");
-        goto Error;
-    }
-
-    //
-    // Resolve the StringTable's custom allocator initialization function.
-    //
-
-    InitializeStringTableAllocator = (PINITIALIZE_STRING_TABLE_ALLOCATOR)(
-        GetProcAddress(
-            StringTableModule,
-            "InitializeStringTableAllocator"
-        )
-    );
-
-    if (!InitializeStringTableAllocator) {
-        OutputDebugStringA("Failed resolve: InitializeStringTableAllocator\n");
-        goto Error;
-    }
-
-    //
-    // If either of the allocators have not yet been initialized (as indicated
-    // by a NULL value in the Context field), initialize them now with the
-    // string table allocator.
-    //
-
-    if (!StringArrayAllocator->Context) {
-        CHECKED_MSG(
-            InitializeStringTableAllocator(StringArrayAllocator),
-            "InitializeStringTableAllocator(StringArrayAllocator)"
-        );
-    }
-
-    if (!StringTableAllocator->Context) {
-        CHECKED_MSG(
-            InitializeStringTableAllocator(StringTableAllocator),
-            "InitializeStringTableAllocator(StringTableAllocator)"
-        );
-    }
-
-    //
-    // Call the initialization function with the same arguments we were passed.
-    //
-
-    Success = InitializeDebugEngineSession(Rtl,
-                                           Allocator,
-                                           InitFlags,
-                                           TracerConfig,
-                                           StringTableModule,
-                                           StringArrayAllocator,
-                                           StringTableAllocator,
-                                           SessionPointer);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Update the caller's DestroyDebugEngineSession function pointer and the
-    // session pointer to the same function.
-    //
-
-    *DestroyDebugEngineSessionPointer = (*SessionPointer)->Destroy;
-
-    //
-    // Return success.
-    //
-
-    return TRUE;
-
-Error:
-
-    //
-    // Attempt to destroy the session.
-    //
-
-    if (SessionPointer && *SessionPointer && (*SessionPointer)->Destroy) {
-
-        BOOL IsProcessTerminating = TRUE;
-
-        //
-        // This will also clear the caller's session pointer.
-        //
-
-        (*SessionPointer)->Destroy(SessionPointer, &IsProcessTerminating);
-    }
-
-    //
-    // Attempt to free any modules we loaded.
-    //
-
-    if (Module) {
-        FreeLibrary(Module);
-        Module = NULL;
-    }
-
-    if (StringTableModule) {
-        FreeLibrary(StringTableModule);
-        StringTableModule = NULL;
-    }
-
-    return FALSE;
 }
 
 //
@@ -2836,6 +3003,8 @@ Error:
 
 #pragma component(browser, off)
 DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
+DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
+                 InitializeDebugEngineSessionWithInjectionIntent;
 #pragma component(browser, on)
 
 #ifdef __cplusplus
