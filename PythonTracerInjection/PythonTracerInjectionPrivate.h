@@ -23,6 +23,8 @@ extern "C" {
 
 #include "stdafx.h"
 
+extern CONST DEBUGEVENTCALLBACKS PythonTracerInjectionDebugEventCallbacks;
+
 
 #ifdef __cplusplus
 }; // extern "C"

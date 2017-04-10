@@ -2282,6 +2282,9 @@ _Success_(return != 0)
 BOOL
 (INITIALIZE_CHILD_DEBUG_ENGINE_SESSION)(
     _In_ struct _DEBUG_ENGINE_SESSION *Parent,
+    _In_ PCDEBUGEVENTCALLBACKS EventCallbacks,
+    _In_ PCGUID InterfaceId,
+    _In_ DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask,
     _Outptr_result_nullonfailure_ struct _DEBUG_ENGINE_SESSION **SessionPointer
     );
 typedef INITIALIZE_CHILD_DEBUG_ENGINE_SESSION
@@ -2410,6 +2413,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PINITIALIZE_CHILD_DEBUG_ENGINE_SESSION InitializeChildDebugEngineSession;
+
+    //
+    // Opaque context for children.
+    //
+
+    PVOID ChildContext;
 
     //
     // Destructor.
