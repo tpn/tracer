@@ -1,0 +1,3 @@
+LIBRARY PythonTracerInjection
+EXPORTS
+    InitializeTracerInjection=InitializePythonTracerInjection @1

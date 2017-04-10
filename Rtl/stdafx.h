@@ -22,6 +22,7 @@ Abstract:
 #include <sal.h>
 #include <Psapi.h>
 #include <Dbghelp.h>
+#include <combaseapi.h>
 
 //
 // Disable inconsistent SAL annotation warnings before importing the

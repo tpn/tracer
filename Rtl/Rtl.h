@@ -67,6 +67,7 @@ extern "C" {
 #include <sal.h>
 #include <Psapi.h>
 #include <DbgHelp.h>
+#include <combaseapi.h>
 
 //
 // Disable inconsistent SAL annotation warnings before importing the
@@ -3820,6 +3821,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PLOAD_LIBRARY_A LoadLibraryA;                                                                      \
     PLOAD_LIBRARY_W LoadLibraryW;                                                                      \
+    PLOAD_LIBRARY_EX_W LoadLibraryExW;                                                                 \
     PGET_PROC_ADDRESS GetProcAddress;                                                                  \
     PCLOSE_HANDLE CloseHandle;                                                                         \
     POPEN_EVENT_A OpenEventA;                                                                          \
@@ -4896,6 +4898,10 @@ typedef struct _DBGENG {
     _DBGENG_FUNCTIONS_HEAD
 } DBGENG, *PDBGENG;
 
+//
+// COM-related typedefs.
+//
+
 typedef
 HRESULT
 (CO_INITIALIZE_EX)(
@@ -4912,6 +4918,104 @@ BOOL
     _In_ PRTL Rtl
     );
 typedef INITIALIZE_COM *PINITIALIZE_COM;
+
+typedef
+_Check_return_
+(STDAPICALLTYPE DLL_GET_CLASS_OBJECT)(
+    _In_ REFCLSID rclsid,
+    _In_ REFIID riid,
+    _Outptr_ LPVOID FAR* ppv
+    );
+typedef DLL_GET_CLASS_OBJECT *PDLL_GET_CLASS_OBJECT;
+
+typedef
+__control_entrypoint(DllExport)
+(STDAPICALLTYPE DLL_CAN_UNLOAD_NOW)(
+    VOID
+    );
+typedef DLL_CAN_UNLOAD_NOW *PDLL_CAN_UNLOAD_NOW;
+
+#define DEFINE_GUID_EX(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+    const GUID DECLSPEC_SELECTANY name                                  \
+        = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
+
+typedef GUID *PGUID;
+typedef const GUID CGUID;
+typedef GUID const *PCGUID;
+
+//
+// IUnknown
+//
+
+typedef
+HRESULT
+(STDAPICALLTYPE IUNKNOWN_QUERY_INTERFACE)(
+    _In_ struct _IUNKNOWN *This,
+    _In_ REFIID InterfaceId,
+    _Out_ PPVOID Interface
+    );
+typedef IUNKNOWN_QUERY_INTERFACE *PIUNKNOWN_QUERY_INTERFACE;
+
+typedef
+ULONG
+(STDAPICALLTYPE IUNKNOWN_ADD_REF)(
+    _In_ struct _IUNKNOWN *This
+    );
+typedef IUNKNOWN_ADD_REF *PIUNKNOWN_ADD_REF;
+
+typedef
+ULONG
+(STDAPICALLTYPE IUNKNOWN_RELEASE)(
+    _In_ struct _IUNKNOWN *This
+    );
+typedef IUNKNOWN_RELEASE *PIUNKNOWN_RELEASE;
+
+typedef struct _IUNKNOWN_VTBL {
+    PIUNKNOWN_QUERY_INTERFACE QueryInterface;
+    PIUNKNOWN_ADD_REF AddRef;
+    PIUNKNOWN_RELEASE Release;
+} IUNKNOWN_VTBL;
+typedef IUNKNOWN_VTBL *PIUNKNOWN_VTBL;
+
+typedef struct _IUNKNOWN {
+    PIUNKNOWN_VTBL lpVtbl;
+} IUNKNOWN;
+typedef IUNKNOWN *PIUNKNOWN;
+
+//
+// IClassFactory
+//
+
+typedef
+HRESULT
+(STDAPICALLTYPE ICLASS_FACTORY_CREATE_INSTANCE)(
+    _In_ struct _ICLASS_FACTORY *This,
+    _In_opt_ PIUNKNOWN pUnkOuter,
+    _In_ REFIID riid,
+    _COM_Outptr_result_maybenull_ PPVOID ppvObject
+    );
+typedef ICLASS_FACTORY_CREATE_INSTANCE *PICLASS_FACTORY_CREATE_INSTANCE;
+
+typedef
+HRESULT
+(STDAPICALLTYPE ICLASS_FACTORY_LOCK_SERVER)(
+    _In_ struct _ICLASS_FACTORY *This,
+    _In_opt_ BOOL Lock
+    );
+typedef ICLASS_FACTORY_LOCK_SERVER *PICLASS_FACTORY_LOCK_SERVER;
+
+typedef struct _ICLASS_FACTORY_VTBL {
+    PIUNKNOWN_QUERY_INTERFACE QueryInterface;
+    PIUNKNOWN_ADD_REF AddRef;
+    PIUNKNOWN_RELEASE Release;
+    PICLASS_FACTORY_CREATE_INSTANCE CreateInstance;
+    PICLASS_FACTORY_LOCK_SERVER LockServer;
+} ICLASS_FACTORY_VTBL;
+typedef ICLASS_FACTORY_VTBL *PICLASS_FACTORY_VTBL;
+
+//
+// Crypt-related typedefs.
+//
 
 typedef
 BOOL

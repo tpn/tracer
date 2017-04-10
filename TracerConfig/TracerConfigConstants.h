@@ -54,6 +54,14 @@ TRACER_CONFIG_DATA CONST UNICODE_STRING StringTableDllPath;
 TRACER_CONFIG_DATA CONST UNICODE_STRING PythonTracerDllPath;
 TRACER_CONFIG_DATA CONST UNICODE_STRING TlsTracerHeapDllPath;
 TRACER_CONFIG_DATA CONST UNICODE_STRING TracedPythonSessionDllPath;
+TRACER_CONFIG_DATA CONST UNICODE_STRING PythonTracerInjectionDllPath;
+
+//
+// A bitmap where each set bit corresponds to the TRACER_DLL_PATH_ID of the same
+// value, indicating which DLLs support tracer injection.
+//
+
+TRACER_CONFIG_DATA CONST TRACER_DLL_PATH_TYPE TracerInjectionDllsBitmap;
 
 //
 // This array can be indexed by the TRACER_BINARY_TYPE_INDEX enum.

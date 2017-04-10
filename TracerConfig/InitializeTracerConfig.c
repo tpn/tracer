@@ -453,8 +453,9 @@ Return Value:
     ULONG Result;
     ULONG Disposition;
     HKEY RegistryKey;
-    PTRACER_CONFIG TracerConfig;
+    PRTL_BITMAP Bitmap;
     PTRACER_PATHS Paths;
+    PTRACER_CONFIG TracerConfig;
     PTRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
     //
@@ -470,6 +471,16 @@ Return Value:
     }
 
     if (!IsValidNullTerminatedUnicodeString(RegistryPath)) {
+        return NULL;
+    }
+
+    //
+    // Invariant check: NumberOfDllPathOffsets should match the enum value of
+    // TracerInvalidDllPathId - 1, which is MAX_TRACER_DLL_PATH_ID.
+    //
+
+    if (!AssertTrue("NumberOfDllPathOffsets == MAX_TRACER_DLL_PATH_ID",
+                     NumberOfDllPathOffsets == MAX_TRACER_DLL_PATH_ID)) {
         return NULL;
     }
 
@@ -632,12 +643,6 @@ Return Value:
     READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
 
     //
-    // Load the optional DefaultPythonDirectory.
-    //
-
-    READ_REG_SZ_PATH(DefaultPythonDirectory, Optional);
-
-    //
     // Load the optional DebuggerSettingsXmlPath.
     //
 
@@ -652,6 +657,17 @@ Return Value:
             goto Error;
         }
     }
+
+    //
+    // Initialize the bitmap that indicates which DLLs support tracer injection.
+    //
+
+    Bitmap = &Paths->TracerInjectionDllsBitmap;
+    Bitmap->SizeOfBitMap = MAX_TRACER_DLL_PATH_ID;
+    Bitmap->Buffer = (PULONG)&Paths->TracerInjectionDlls;
+
+    CopyTracerDllPathType(Paths->TracerInjectionDlls,
+                          TracerInjectionDllsBitmap);
 
     //
     // That's it, we're done.
@@ -854,6 +870,274 @@ Error:
     }
 
     return FALSE;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateAndInitializeTracerInjectionModules(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PTRACER_INJECTION_MODULES *InjectionModulesPointer
+    )
+/*++
+
+Routine Description:
+
+    Creates and initializes a TRACER_INJECTION_MODULES structure from the
+    given tracer config.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure which will
+        be used to manage the structure's memory.
+
+    TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
+
+    InjectionModulesPointer - Supplies a pointer to a variable that will receive
+        the address of the newly-allocated TRACER_INJECTION_MODULES structure
+        created and initialized by this routine.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL Success;
+    ULONG Index = 0;
+    ULONG BitIndex = 0;
+    FARPROC Proc;
+    USHORT Offset;
+    HMODULE Module;
+    PHMODULE ModuleArray;
+    PRTL_BITMAP Bitmap;
+    PTRACER_PATHS Paths;
+    PUNICODE_STRING Path;
+    PPUNICODE_STRING PathArray;
+    ULONG NumberOfModules;
+    LONG_INTEGER AllocSizeInBytes;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PLOAD_LIBRARY_EX_W LoadLibraryExW;
+    PRTL_NUMBER_OF_SET_BITS NumberOfSetBits;
+    PTRACER_INJECTION_MODULES InjectionModules;
+    PINITIALIZE_TRACER_INJECTION Initializer;
+    PPINITIALIZE_TRACER_INJECTION InitializerArray;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Allocator)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(InjectionModulesPointer)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize aliases.
+    //
+
+    Paths = &TracerConfig->Paths;
+    Bitmap = &Paths->TracerInjectionDllsBitmap;
+    NumberOfSetBits = Rtl->RtlNumberOfSetBits;
+    LoadLibraryExW = SKIP_JUMPS_INLINE(Rtl->LoadLibraryExW, PLOAD_LIBRARY_EX_W);
+    GetProcAddress = SKIP_JUMPS_INLINE(Rtl->GetProcAddress, PGET_PROC_ADDRESS);
+
+    //
+    // Determine how many modules will be included.
+    //
+
+    NumberOfModules = NumberOfSetBits(Bitmap);
+
+    if (!NumberOfModules) {
+        return FALSE;
+    }
+
+    //
+    // Determine the allocation size.
+    //
+
+    AllocSizeInBytes.LongPart = (
+
+        //
+        // Account for the module structure.
+        //
+
+        sizeof(TRACER_INJECTION_MODULES) +
+
+        //
+        // Account for the array of PUNICODE_STRING pointers.
+        //
+
+        (sizeof(PUNICODE_STRING) * NumberOfModules) +
+
+        //
+        // Account for the array of HMODULEs.
+        //
+
+        (sizeof(HMODULE) * NumberOfModules) +
+
+        //
+        // Account for the array of tracer initialization function pointers.
+        //
+
+        (sizeof(PINITIALIZE_TRACER_INJECTION) * NumberOfModules)
+
+    );
+
+    //
+    // Sanity check we're not above MAX_USHORT.
+    //
+
+    if (AllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate space for the structure plus arrays.
+    //
+
+    InjectionModules = (PTRACER_INJECTION_MODULES)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!InjectionModules) {
+        return FALSE;
+    }
+
+    //
+    // N.B. Everything after this point must `goto Error` instead of returning
+    //      FALSE in order to ensure InjectionModules gets cleaned up on error.
+    //
+
+    //
+    // Initialize scalar fields.
+    //
+
+    InjectionModules->SizeOfStruct = sizeof(*InjectionModules);
+    InjectionModules->NumberOfModules = NumberOfModules;
+    InjectionModules->TotalAllocSizeInBytes = AllocSizeInBytes.LongPart;
+
+    //
+    // Wire up the pointers to arrays that live at the end of our injection
+    // modules structure.
+    //
+
+    Offset = (USHORT)sizeof(TRACER_INJECTION_MODULES);
+    PathArray = InjectionModules->Paths = (PPUNICODE_STRING)(
+        RtlOffsetToPointer(
+            InjectionModules,
+            Offset
+        )
+    );
+
+    Offset += (USHORT)(sizeof(PUNICODE_STRING) * NumberOfModules);
+    ModuleArray = InjectionModules->Modules = (PHMODULE)(
+        RtlOffsetToPointer(
+            InjectionModules,
+            Offset
+        )
+    );
+
+    Offset += (USHORT)(sizeof(PHMODULE) * NumberOfModules);
+    InitializerArray = InjectionModules->Initializers = (
+        (PPINITIALIZE_TRACER_INJECTION)(
+            RtlOffsetToPointer(
+                InjectionModules,
+                Offset
+            )
+        )
+    );
+
+    //
+    // Enumerate over the modules supporting injection.
+    //
+
+    while (GetNextTracerInjectionDll(Rtl, Paths, &BitIndex, &Path)) {
+
+        //
+        // Load the library.
+        //
+
+        Module = LoadLibraryExW(Path->Buffer, NULL, 0);
+        if (!Module) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Resolve the exported InitializeTracerInjection function.
+        //
+
+        Proc = GetProcAddress(Module, "InitializeTracerInjection");
+        if (!Proc) {
+            __debugbreak();
+            goto Error;
+        }
+
+        Initializer = (PINITIALIZE_TRACER_INJECTION)Proc;
+
+        //
+        // Save each element to its respective array location.
+        //
+
+        *(PathArray + Index) = Path;
+        *(ModuleArray + Index) = Module;
+        *(InitializerArray + Index) = Initializer;
+
+        //
+        // Increment our index and continue the enumeration.
+        //
+
+        Index++;
+    }
+
+    //
+    // We're done, indicate success and return.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    if (InjectionModules) {
+        Allocator->FreePointer(Allocator->Context, &InjectionModules);
+    }
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Update the caller's pointer and return.
+    //
+
+    *InjectionModulesPointer = InjectionModules;
+
+    return Success;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
