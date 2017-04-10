@@ -18,11 +18,6 @@ Abstract:
 DEFINE_GUID_EX(IID_IDEBUG_EVENT_CALLBACKS, 0x0690e046, 0x9c23, 0x45ac,
                0xa0, 0x4f, 0x98, 0x7a, 0xc2, 0x9a, 0xd0, 0xd3);
 
-typedef struct _PYTHON_TRACER_INJECTION_CONTEXT {
-    ULONGLONG Unused;
-} PYTHON_TRACER_INJECTION_CONTEXT;
-typedef PYTHON_TRACER_INJECTION_CONTEXT *PPYTHON_TRACER_INJECTION_CONTEXT;
-
 _Use_decl_annotations_
 BOOL
 InitializePythonTracerInjection(
@@ -63,7 +58,17 @@ Return Value:
     // Allocate Context.
     //
 
-    Context = NULL;
+    Context = (PPYTHON_TRACER_INJECTION_CONTEXT)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            sizeof(*Context)
+        )
+    );
+
+    if (!Context) {
+        goto Error;
+    }
 
     //
     // Initialize interest mask.
@@ -121,6 +126,12 @@ Return Value:
     if (!Success) {
         goto Error;
     }
+
+    //
+    // Set our context.
+    //
+
+    Session->ChildContext = Context;
 
     Success = TRUE;
     goto End;
