@@ -709,7 +709,11 @@ Return Value:
 
     //
     // Code size extraction was successful.  Verify our internal thread entry
-    // thunk.  Wire up the remote thread injection thunk and set the injection
+    // thunk.
+    //
+
+    //
+    // Wire up the remote thread injection thunk and set the injection
     // context protocol callback to the pre-injection implementation, then
     // perform the verification.
     //
