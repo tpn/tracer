@@ -792,6 +792,7 @@ Return Value:
         //
 
         ReleaseDebugEngineLock(Engine);
+        AcquiredLock = FALSE;
 
         CHECKED_MSG(
             DebugEngineSetEventCallbacks(
@@ -808,6 +809,7 @@ Return Value:
         //
 
         AcquireDebugEngineLock(Engine);
+        AcquiredLock = TRUE;
 
         Engine->State.EventCallbacksRegistered = TRUE;
         Engine->State.RegisteringEventCallbacks = FALSE;
@@ -1009,6 +1011,9 @@ _Use_decl_annotations_
 BOOL
 InitializeChildDebugEngineSession(
     PDEBUG_ENGINE_SESSION Parent,
+    PCDEBUGEVENTCALLBACKS EventCallbacks,
+    PCGUID EventInterfaceId,
+    DEBUG_EVENT_CALLBACKS_INTEREST_MASK EventInterestMask,
     PPDEBUG_ENGINE_SESSION SessionPointer
     )
 /*++
@@ -1021,6 +1026,12 @@ Arguments:
 
     Parent - Supplies a pointer to an initialized DEBUG_ENGINE_SESSION structure
         that will be used to prime the child debug engine session.
+
+    EventCallbacks - Supplies event callbacks.
+
+    EventInterfaceId - Supplies the event callback interface ID.
+
+    EventInterestMask - Supplies the interest mask.
 
     SessionPointer - Supplies an address to a variable that will receive the
         address of the newly allocated and initialized DEBUG_ENGINE_SESSION
@@ -1056,6 +1067,18 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(SessionPointer)) {
         return FALSE;
+    }
+
+    if (EventInterestMask.AsULong != 0) {
+
+        if (!ARGUMENT_PRESENT(EventCallbacks)) {
+            return FALSE;
+        }
+
+        if (!ARGUMENT_PRESENT(EventInterfaceId)) {
+            return FALSE;
+        }
+
     }
 
     //
@@ -1243,10 +1266,49 @@ Return Value:
         "Client->ConnectSession()"
     );
 
+    if (EventInterestMask.AsULong) {
+        goto RegisterWithParent;
+    }
+
     //
-    // Todo: register event callbacks.
+    // Register event callbacks.
     //
 
+    Engine->State.RegisteringEventCallbacks = TRUE;
+
+    //
+    // DebugEngineSetEventCallbacks() will attempt to acquire the engine
+    // lock, so release it now first.
+    //
+
+    ReleaseDebugEngineLock(Engine);
+    AcquiredLock = FALSE;
+
+    CHECKED_MSG(
+        DebugEngineSetEventCallbacks(
+            Engine,
+            EventCallbacks,
+            EventInterfaceId,
+            EventInterestMask
+        ),
+        "InitializeChildDebugEngineSession()->DebugEngineSetEventCallbacks()"
+    );
+
+    //
+    // Re-acquire the lock.
+    //
+
+    AcquireDebugEngineLock(Engine);
+    AcquiredLock = TRUE;
+
+    Engine->State.EventCallbacksRegistered = TRUE;
+    Engine->State.RegisteringEventCallbacks = FALSE;
+
+    //
+    // Intentional follow-on to RegisterWithParent.
+    //
+
+RegisterWithParent:
     AcquireSRWLockExclusive(&Parent->ListHeadLock);
     InterlockedIncrement64(&Parent->NumberOfListEntries);
     AppendTailList(&Parent->ListHead, &Session->ListEntry);
