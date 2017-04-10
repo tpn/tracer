@@ -1164,7 +1164,8 @@ Routine Description:
     injection.  This includes allocating two pages of executable memory for the
     caller's completion callback routine, as well as our initial thread entry
     point, as well as a separate memory page containing the injection structure
-    and all necessary supporting buffers (e.g. for path and event names).
+    and all necessary supporting buffers (e.g. for path and event names).  If a
+    payload has been requested, this is allocated separately, too.
 
     Two global events will be created, one "signal" event and one "wait" event.
     They will be created with unique Unicode string names that will be marshaled
