@@ -192,6 +192,164 @@ End:
     return Success;
 }
 
+_Check_return_
+_Success_(return != 0)
+BOOL
+InitializeDebugEngineSessionStringTables(
+    _In_ PRTL Rtl,
+    _Inout_ PDEBUG_ENGINE_SESSION Session,
+    _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
+    _In_ PALLOCATOR StringArrayAllocator,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString
+    )
+{
+
+    //
+    // Initialize the string table constructor function pointer and the
+    // string array and table allocators.
+    //
+
+    Session->CreateStringTableFromDelimitedString = (
+        CreateStringTableFromDelimitedString
+    );
+    Session->StringArrayAllocator = StringArrayAllocator;
+    Session->StringTableAllocator = StringTableAllocator;
+
+    //
+    // Create the string table for the examine symbols prefix output.
+    //
+
+    Session->ExamineSymbolsPrefixStringTable = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &ExamineSymbolsPrefixes,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->ExamineSymbolsPrefixStringTable) {
+        goto Error;
+    }
+
+    //
+    // Create the string tables for the examine symbols type output.
+    //
+
+    Session->ExamineSymbolsBasicTypeStringTable1 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &ExamineSymbolsBasicTypes1,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->ExamineSymbolsBasicTypeStringTable1) {
+        goto Error;
+    }
+
+    Session->ExamineSymbolsBasicTypeStringTable2 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &ExamineSymbolsBasicTypes2,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->ExamineSymbolsBasicTypeStringTable2) {
+        goto Error;
+    }
+
+    Session->NumberOfBasicTypeStringTables = 2;
+
+    //
+    // Create the string tables for function arguments.
+    //
+
+    Session->FunctionArgumentTypeStringTable1 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &FunctionArgumentTypes1,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->FunctionArgumentTypeStringTable1) {
+        goto Error;
+    }
+
+    Session->FunctionArgumentTypeStringTable2 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &FunctionArgumentTypes2,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->FunctionArgumentTypeStringTable2) {
+        goto Error;
+    }
+
+    Session->FunctionArgumentVectorTypeStringTable1 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &FunctionArgumentVectorTypes1,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->FunctionArgumentVectorTypeStringTable1) {
+        goto Error;
+    }
+
+    //
+    // The vector string table doesn't get included in the initial matching
+    // logic (because the types come through as `union __m128`, so we set
+    // this to 2 instead of 3.  A manual check is done against the string
+    // table when parsing unions.
+    //
+
+    Session->NumberOfFunctionArgumentTypeStringTables = 2;
+
+    //
+    // If we're initializing from the command line, create the command line
+    // options string table.
+    //
+
+    if (InitFlags.InitializeFromCommandLine) {
+
+        Session->CommandLineOptionsStringTable = (
+            CreateStringTableFromDelimitedString(
+                Rtl,
+                StringTableAllocator,
+                StringArrayAllocator,
+                &CommandLineOptions,
+                StringTableDelimiter
+            )
+        );
+
+    }
+
+    return TRUE;
+
+Error:
+
+    return FALSE;
+}
+
 _Use_decl_annotations_
 BOOL
 InitializeDebugEngineSession(
@@ -530,143 +688,17 @@ Return Value:
     //
 
     if (CreateStringTableFromDelimitedString) {
-
-        //
-        // Initialize the string table constructor function pointer and the
-        // string array and table allocators.
-        //
-
-        Session->CreateStringTableFromDelimitedString = (
-            CreateStringTableFromDelimitedString
-        );
-        Session->StringArrayAllocator = StringArrayAllocator;
-        Session->StringTableAllocator = StringTableAllocator;
-
-        //
-        // Create the string table for the examine symbols prefix output.
-        //
-
-        Session->ExamineSymbolsPrefixStringTable = (
-            CreateStringTableFromDelimitedString(
+        CHECKED_MSG(
+            InitializeDebugEngineSessionStringTables(
                 Rtl,
+                Session,
+                InitFlags,
                 StringTableAllocator,
                 StringArrayAllocator,
-                &ExamineSymbolsPrefixes,
-                StringTableDelimiter
-            )
+                CreateStringTableFromDelimitedString
+            ),
+            "InitializeDebugEngineSessionStringTables()"
         );
-
-        if (!Session->ExamineSymbolsPrefixStringTable) {
-            goto Error;
-        }
-
-        //
-        // Create the string tables for the examine symbols type output.
-        //
-
-        Session->ExamineSymbolsBasicTypeStringTable1 = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringTableAllocator,
-                StringArrayAllocator,
-                &ExamineSymbolsBasicTypes1,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->ExamineSymbolsBasicTypeStringTable1) {
-            goto Error;
-        }
-
-        Session->ExamineSymbolsBasicTypeStringTable2 = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringTableAllocator,
-                StringArrayAllocator,
-                &ExamineSymbolsBasicTypes2,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->ExamineSymbolsBasicTypeStringTable2) {
-            goto Error;
-        }
-
-        Session->NumberOfBasicTypeStringTables = 2;
-
-        //
-        // Create the string tables for function arguments.
-        //
-
-        Session->FunctionArgumentTypeStringTable1 = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringTableAllocator,
-                StringArrayAllocator,
-                &FunctionArgumentTypes1,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->FunctionArgumentTypeStringTable1) {
-            goto Error;
-        }
-
-        Session->FunctionArgumentTypeStringTable2 = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringTableAllocator,
-                StringArrayAllocator,
-                &FunctionArgumentTypes2,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->FunctionArgumentTypeStringTable2) {
-            goto Error;
-        }
-
-        Session->FunctionArgumentVectorTypeStringTable1 = (
-            CreateStringTableFromDelimitedString(
-                Rtl,
-                StringTableAllocator,
-                StringArrayAllocator,
-                &FunctionArgumentVectorTypes1,
-                StringTableDelimiter
-            )
-        );
-
-        if (!Session->FunctionArgumentVectorTypeStringTable1) {
-            goto Error;
-        }
-
-        //
-        // The vector string table doesn't get included in the initial matching
-        // logic (because the types come through as `union __m128`, so we set
-        // this to 2 instead of 3.  A manual check is done against the string
-        // table when parsing unions.
-        //
-
-        Session->NumberOfFunctionArgumentTypeStringTables = 2;
-
-        //
-        // If we're initializing from the command line, create the command line
-        // options string table.
-        //
-
-        if (InitFlags.InitializeFromCommandLine) {
-
-            Session->CommandLineOptionsStringTable = (
-                CreateStringTableFromDelimitedString(
-                    Rtl,
-                    StringTableAllocator,
-                    StringArrayAllocator,
-                    &CommandLineOptions,
-                    StringTableDelimiter
-                )
-            );
-
-        }
     }
 
     if (InitFlags.InitializeFromCommandLine) {
