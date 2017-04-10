@@ -71,6 +71,7 @@ Abstract:
 #endif
 
 #include "../Rtl/Rtl.h"
+#include "../TracerCore/TracerCore.h"
 
 #endif
 
@@ -113,6 +114,57 @@ BOOLEAN
 typedef CREATE_GLOBAL_TRACE_SESSION_DIRECTORY \
     *PCREATE_GLOBAL_TRACE_SESSION_DIRECTORY;
 
+typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
+    TracerNullDllPathId                   = 0,
+
+    AsmDllPathId                          =        1,
+    RtlDllPathId                          =  1 <<  1,
+    TracerCoreDllPathId                   =  1 <<  2,
+    PythonDllPathId                       =  1 <<  3,
+    TracerHeapDllPathId                   =  1 <<  4,
+    TraceStoreDllPathId                   =  1 <<  5,
+    DebugEngineDllPathId                  =  1 <<  6,
+    StringTableDllPathId                  =  1 <<  7,
+    PythonTracerDllPathId                 =  1 <<  8,
+    TlsTracerHeapDllPathId                =  1 <<  9,
+    TracedPythonSessionDllPathId          =  1 << 10,
+    PythonTracerInjectionDllPathId        =  1 << 11,
+
+    //
+    // Make sure the right shift value matches the last value in the line above.
+    //
+
+    TracerInvalidDllPathId                = (1 << 11) + 1,
+
+} TRACER_DLL_PATH_ID;
+typedef TRACER_DLL_PATH_ID *PTRACER_DLL_PATH_ID;
+C_ASSERT(sizeof(TRACER_DLL_PATH_ID) == sizeof(ULONG));
+
+#define MAX_TRACER_DLL_PATH_ID (TracerInvalidDllPathId - 1)
+
+typedef union _TRACER_DLL_PATH_TYPE {
+    struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
+        ULONGLONG AsmDllPath:1;
+        ULONGLONG RtlDllPath:1;
+        ULONGLONG TracerCoreDllPath:1;
+        ULONGLONG PythonDllPath:1;
+        ULONGLONG TracerHeapDllPath:1;
+        ULONGLONG TraceStoreDllPath:1;
+        ULONGLONG DebugEngineDllPath:1;
+        ULONGLONG StringTableDllPath:1;
+        ULONGLONG PythonTracerDllPath:1;
+        ULONGLONG TlsTracerHeapDllPath:1;
+        ULONGLONG TracedPythonSessionDllPath:1;
+        ULONGLONG PythonTracerInjectionDllPath:1;
+
+        ULONGLONG Unused:52;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
+    TRACER_DLL_PATH_ID AsPathId;
+} TRACER_DLL_PATH_TYPE;
+C_ASSERT(sizeof(TRACER_DLL_PATH_TYPE) == sizeof(ULONGLONG));
+
 typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
 
     //
@@ -122,7 +174,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT Size;
 
     //
-    // Padding out to 8-bytes.
+    // Pad out to 8 bytes.
     //
 
     USHORT Padding[3];
@@ -137,53 +189,96 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     UNICODE_STRING BaseTraceDirectory;
 
     //
-    // Default Python directory to use when initializing a traced Python
-    // session if the directory cannot be otherwise identified.  Also read
-    // from the registry.
-    //
-
-    UNICODE_STRING DefaultPythonDirectory;
-
-    //
     // Optional debugger settings.
     //
 
     UNICODE_STRING DebuggerSettingsXmlPath;
 
     //
-    // Fully-qualified paths to relevant DLLs.  The paths are built
-    // relative to the InstallationDirectory above.  If the flag
-    // "LoadDebugLibraries" was set, the DLL paths will represent
-    // debug versions of the libraries.
+    // Fully-qualified paths to relevant DLLs.  The paths are built relative to
+    // the InstallationDirectory above.  If the flag "LoadDebugLibraries" was
+    // set, the DLL paths will represent debug versions of the libraries.
+    // Ordering is important; make sure to match the ordering of the path type
+    // enum/bitfields.
     //
 
-    UNICODE_STRING AsmDllPath;
-    UNICODE_STRING RtlDllPath;
-    UNICODE_STRING TracerCoreDllPath;
-    UNICODE_STRING PythonDllPath;
-    UNICODE_STRING TracerHeapDllPath;
-    UNICODE_STRING TraceStoreDllPath;
-    UNICODE_STRING DebugEngineDllPath;
-    UNICODE_STRING StringTableDllPath;
-    UNICODE_STRING PythonTracerDllPath;
-    UNICODE_STRING TlsTracerHeapDllPath;
-    UNICODE_STRING TracedPythonSessionDllPath;
+    union {
+        struct {
+            UNICODE_STRING AsmDllPath;
+            UNICODE_STRING RtlDllPath;
+            UNICODE_STRING TracerCoreDllPath;
+            UNICODE_STRING PythonDllPath;
+            UNICODE_STRING TracerHeapDllPath;
+            UNICODE_STRING TraceStoreDllPath;
+            UNICODE_STRING DebugEngineDllPath;
+            UNICODE_STRING StringTableDllPath;
+            UNICODE_STRING PythonTracerDllPath;
+            UNICODE_STRING TlsTracerHeapDllPath;
+            UNICODE_STRING TracedPythonSessionDllPath;
+            UNICODE_STRING PythonTracerInjectionDllPath;
+        };
 
-} TRACER_PATHS, *PTRACER_PATHS;
+        //
+        // Provide a convenient way to access the first DLL path name member
+        // without having to know its name.
+        //
 
-//
-// Bitmask of supported runtimes.  (Currently only Python and
-// C are supported.)
-//
+        UNICODE_STRING FirstDllPath;
+    };
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_SUPPORTED_RUNTIMES {
-    ULONG Python:1;
-    ULONG C:1;
-    ULONG CPlusPlus:1;
-    ULONG CSharp:1;
-    ULONG Ruby:1;
-} TRACER_SUPPORTED_RUNTIMES, *PTRACER_SUPPORTED_RUNTIMES;
+    //
+    // A bitmap indicating DLLs that support the tracer injection interface.
+    // The bitmap buffer will be wired up directly to the subsequent
+    // TRACER_DLL_PATH_TYPE structure.
+    //
 
+    RTL_BITMAP TracerInjectionDllsBitmap;
+    TRACER_DLL_PATH_TYPE TracerInjectionDlls;
+
+} TRACER_PATHS;
+typedef TRACER_PATHS *PTRACER_PATHS;
+
+#define CopyTracerDllPathType(Dest, Source) \
+    Dest.AsULongLong = Source.AsULongLong;
+
+FORCEINLINE
+PUNICODE_STRING
+TracerDllPathIdToUnicodeString(
+    _In_ PTRACER_PATHS Paths,
+    _In_ TRACER_DLL_PATH_ID PathId
+    )
+{
+    if (PathId <= TracerNullDllPathId || PathId >= TracerInvalidDllPathId) {
+        return NULL;
+    }
+
+    return &Paths->FirstDllPath + (PathId - 1);
+}
+
+FORCEINLINE
+BOOL
+GetNextTracerInjectionDll(
+    _In_ PRTL Rtl,
+    _In_ PTRACER_PATHS Paths,
+    _Inout_ PULONG Index,
+    _Out_ PPUNICODE_STRING DllPath
+    )
+{
+    ULONG BitIndex;
+    ULONG LastIndex;
+    PRTL_BITMAP Bitmap = &Paths->TracerInjectionDllsBitmap;
+
+    LastIndex = *Index;
+    BitIndex = Rtl->RtlFindSetBits(Bitmap, 1, LastIndex);
+    if (BitIndex == BITS_NOT_FOUND || BitIndex < LastIndex) {
+        *DllPath = NULL;
+        return FALSE;
+    }
+
+    *Index = BitIndex + 1;
+    *DllPath = &Paths->FirstDllPath + (BitIndex - 1);
+    return TRUE;
+}
 
 //
 // Tracer configuration flags.  Map to REG_DWORD entries of the same name.
@@ -532,6 +627,65 @@ typedef CONST TRACER_CONFIG CTRACER_CONFIG;
 typedef CONST PTRACER_CONFIG PCTRACER_CONFIG;
 typedef PCTRACER_CONFIG *PPCTRACER_CONFIG;
 
+typedef union _TRACER_INJECTION_MODULES_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACER_INJECTION_MODULES_FLAGS;
+typedef TRACER_INJECTION_MODULES_FLAGS *PTRACER_INJECTION_MODULES_FLAGS;
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_INJECTION_MODULES {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACER_PATHS)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TRACER_INJECTION_MODULES_FLAGS Flags;
+
+    //
+    // Number of DLLs participating in this structure.  This governs the size
+    // of the Paths and Modules arrays.
+    //
+
+    ULONG NumberOfModules;
+
+    //
+    // Total allocation size of this structure and all supporting arrays.
+    //
+
+    ULONG TotalAllocSizeInBytes;
+
+    //
+    // Base address of an array of pointers to UNICODE_STRING structures that
+    // reflect the fully-qualified path names of each module.
+    //
+
+    PPUNICODE_STRING Paths;
+
+    //
+    // Base address of an array of module handles for each path.
+    //
+
+    PHMODULE Modules;
+
+    //
+    // Base address of an array of function pointers to each respective module's
+    // exported InitializeTracerInjection function.
+    //
+
+    PPINITIALIZE_TRACER_INJECTION Initializers;
+
+} TRACER_INJECTION_MODULES;
+typedef TRACER_INJECTION_MODULES *PTRACER_INJECTION_MODULES;
+
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -554,6 +708,20 @@ BOOL
     );
 typedef CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL
       *PCREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CREATE_AND_INITIALIZE_TRACER_INJECTION_MODULES)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PTRACER_CONFIG TracerConfig,
+    _Outptr_result_nullonfailure_
+        PTRACER_INJECTION_MODULES *InjectionModulesPointer
+    );
+typedef CREATE_AND_INITIALIZE_TRACER_INJECTION_MODULES
+      *PCREATE_AND_INITIALIZE_TRACER_INJECTION_MODULES;
 
 typedef
 _Check_return_
@@ -605,6 +773,9 @@ TRACER_CONFIG_API CREATE_AND_INITIALIZE_ALLOCATOR
 
 TRACER_CONFIG_API CREATE_AND_INITIALIZE_TRACER_CONFIG_AND_RTL
                   CreateAndInitializeTracerConfigAndRtl;
+
+TRACER_CONFIG_API CREATE_AND_INITIALIZE_TRACER_INJECTION_MODULES
+                  CreateAndInitializeTracerInjectionModules;
 
 TRACER_CONFIG_API DESTROY_TRACER_CONFIG DestroyTracerConfig;
 TRACER_CONFIG_API GET_OR_CREATE_GLOBAL_ALLOCATOR GetOrCreateGlobalAllocator;

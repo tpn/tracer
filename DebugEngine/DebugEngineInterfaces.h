@@ -24,13 +24,6 @@ Abstract:
 extern "C" {
 #endif
 
-//
-// GUID typedefs.
-//
-
-typedef GUID *PGUID;
-typedef const GUID CGUID;
-typedef GUID const *PCGUID;
 
 //
 // Define helper bitflag structs that simplify working with various DEBUG_*
@@ -719,36 +712,6 @@ typedef const DEBUGOUTPUTCALLBACKS2 *PCDEBUGOUTPUTCALLBACKS2;
 ////////////////////////////////////////////////////////////////////////////////
 // COM Function Pointer Type Definitions
 ////////////////////////////////////////////////////////////////////////////////
-
-//
-// IUnknown
-//
-
-typedef struct IUnknown IUNKNOWN;
-typedef IUNKNOWN *PIUNKNOWN;
-
-typedef
-HRESULT
-(STDAPICALLTYPE IUNKNOWN_QUERY_INTERFACE)(
-    _In_ PIUNKNOWN This,
-    _In_ REFIID InterfaceId,
-    _Out_ PPVOID Interface
-    );
-typedef IUNKNOWN_QUERY_INTERFACE *PIUNKNOWN_QUERY_INTERFACE;
-
-typedef
-ULONG
-(STDAPICALLTYPE IUNKNOWN_ADD_REF)(
-    _In_ PIUNKNOWN This
-    );
-typedef IUNKNOWN_ADD_REF *PIUNKNOWN_ADD_REF;
-
-typedef
-ULONG
-(STDAPICALLTYPE IUNKNOWN_RELEASE)(
-    _In_ PIUNKNOWN This
-    );
-typedef IUNKNOWN_RELEASE *PIUNKNOWN_RELEASE;
 
 //
 // IDebugEventCallbacks

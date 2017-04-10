@@ -140,6 +140,7 @@ CONST PCSTR RtlFunctionNames[] = {
     "CreateToolhelp32Snapshot",
     "LoadLibraryA",
     "LoadLibraryW",
+    "LoadLibraryExW",
     "GetProcAddress",
     "CloseHandle",
     "OpenEventA",

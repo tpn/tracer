@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -85,6 +85,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_CORE {
     PRTL Rtl;
     PALLOCATOR Allocator;
     struct _TRACER_CONFIG *TracerConfig;
+    struct _DEBUG_ENGINE_SESSION *DebugEngineSession;
 
 } TRACER_CORE, *PTRACER_CORE, **PPTRACER_CORE;
 
@@ -94,8 +95,8 @@ typedef union _TRACER_CORE_INIT_FLAGS {
     };
     ULONG AsLong;
 } TRACER_CORE_INIT_FLAGS;
-
 typedef TRACER_CORE_INIT_FLAGS *PTRACER_CORE_INIT_FLAGS;
+C_ASSERT(sizeof(TRACER_CORE_INIT_FLAGS) == sizeof(ULONG));
 
 typedef
 _Check_return_
@@ -114,6 +115,19 @@ ULONG
     VOID
     );
 typedef TRACER_EXE_MAIN *PTRACER_EXE_MAIN;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK INITIALIZE_TRACER_INJECTION)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ struct _TRACER_CONFIG *TracerConfig,
+    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession
+    );
+typedef INITIALIZE_TRACER_INJECTION *PINITIALIZE_TRACER_INJECTION;
+typedef INITIALIZE_TRACER_INJECTION **PPINITIALIZE_TRACER_INJECTION;
 
 //
 // Public function declarations..

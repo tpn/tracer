@@ -772,36 +772,6 @@ Return Value:
         goto FoundPython;
     }
 
-    //
-    // No Python DLL file was found next to us.  Try the DefaultPythonDirectory
-    // in the registry/TracerConfig.
-    //
-
-    Directory = &Paths->DefaultPythonDirectory;
-
-    if (Directory->Length > 0) {
-
-        Success = Session->FindPythonDllAndExe(
-            Rtl,
-            Allocator,
-            Directory,
-            &PythonDllPath,
-            &PythonExePath,
-            &Session->NumberOfPathEntries,
-            &Session->PathEntries,
-            &Session->PythonMajorVersion,
-            &Session->PythonMinorVersion
-        );
-
-        if (!Success) {
-            goto Error;
-        }
-
-        if (PythonDllPath) {
-            goto FoundPython;
-        }
-    }
-
     OutputDebugStringA("Failed to find a Python DLL to load.\n");
     goto Error;
 
