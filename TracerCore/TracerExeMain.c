@@ -20,22 +20,18 @@ TracerExeMain(VOID)
 {
     BOOL Success;
     PRTL Rtl;
-    ULONG Index;
     ULONG ExitCode;
     HRESULT Result;
-    HMODULE Module;
     ALLOCATOR Allocator;
     ALLOCATOR StringTableAllocator;
     ALLOCATOR StringArrayAllocator;
 
     PTRACER_CONFIG TracerConfig;
-    PUNICODE_STRING Path;
     PUNICODE_STRING RegistryPath;
     PUNICODE_STRING DebugEngineDllPath;
     PUNICODE_STRING TracingDllPath = NULL;
     PDEBUG_ENGINE_SESSION Session;
     PTRACER_INJECTION_MODULES InjectionModules;
-    PINITIALIZE_TRACER_INJECTION Initializer;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags = { 0 };
 
@@ -91,7 +87,7 @@ TracerExeMain(VOID)
 
     InitFlags.InitializeFromCommandLine = TRUE;
     DebugEngineDllPath = &TracerConfig->Paths.DebugEngineDllPath;
-    Success = LoadAndInitializeDebugEngineSession(
+    Success = LoadAndInitializeDebugEngineSessionWithInjectionIntent(
         DebugEngineDllPath,
         Rtl,
         &Allocator,
@@ -100,44 +96,20 @@ TracerExeMain(VOID)
         &TracerConfig->Paths.StringTableDllPath,
         &StringArrayAllocator,
         &StringTableAllocator,
+        InjectionModules,
         &Session,
         &DestroyDebugEngineSession
     );
 
     if (!Success) {
-        OutputDebugStringA("LoadAndInitializeDebugEngineSession() failed.\n");
+        OutputDebugStringA("LoadAndInitializeDebugEngineSession"
+                           "WithInjectionIntent() failed.\n");
         goto Error;
     };
 
     //
-    // Ensure we've got the name of the first program.
+    // Main loop.
     //
-
-    while (!Session->InitialModuleNameW.Length) {
-
-        Result = Session->WaitForEvent(Session, 0, 100);
-
-        if (Result != S_OK && Result != S_FALSE) {
-            goto Error;
-        }
-    }
-
-    //
-    // Initialize all of the injection modules.
-    //
-
-    for (Index = 0; Index < InjectionModules->NumberOfModules; Index++) {
-
-        Path = InjectionModules->Paths[Index];
-        Module = InjectionModules->Modules[Index];
-        Initializer = InjectionModules->Initializers[Index];
-
-        Success = Initializer(Rtl, &Allocator, TracerConfig, Session);
-        if (!Success) {
-            __debugbreak();
-            goto Error;
-        }
-    }
 
     while (TRUE) {
         Result = Session->WaitForEvent(Session, 0, INFINITE);

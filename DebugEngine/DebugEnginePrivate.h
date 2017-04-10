@@ -283,6 +283,8 @@ typedef DISPATCH_OUTPUT_COMPLETE_CALLBACKS *PDISPATCH_OUTPUT_COMPLETE_CALLBACKS;
 
 #pragma component(browser, off)
 
+INITIALIZE_CHILD_DEBUG_ENGINE_SESSION InitializeChildDebugEngineSession;
+
 WAIT_FOR_EVENT DebugEngineSessionWaitForEvent;
 
 CREATE_DEBUG_INTERFACES CreateDebugInterfaces;
