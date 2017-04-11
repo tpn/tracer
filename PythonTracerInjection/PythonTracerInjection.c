@@ -18,6 +18,19 @@ Abstract:
 DEFINE_GUID_EX(IID_IDEBUG_EVENT_CALLBACKS, 0x0690e046, 0x9c23, 0x45ac,
                0xa0, 0x4f, 0x98, 0x7a, 0xc2, 0x9a, 0xd0, 0xd3);
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK INITIALIZE_PYTHON_TRACER_INJECTION_BREAKPOINTS)(
+    _In_ PPYTHON_TRACER_INJECTION_CONTEXT Context
+    );
+typedef INITIALIZE_PYTHON_TRACER_INJECTION_BREAKPOINTS
+      *PINITIALIZE_PYTHON_TRACER_INJECTION_BREAKPOINTS;
+
+INITIALIZE_PYTHON_TRACER_INJECTION_BREAKPOINTS
+    InitializePythonTracerInjectionBreakpoints;
+
 _Use_decl_annotations_
 ULONG
 PythonTracerInjectionThreadEntry(
@@ -287,6 +300,15 @@ CompletePythonTracerInjection(
     }
 
     //
+    // Initialize delayed breakpoints we're interested in.
+    //
+
+    Success = InitializePythonTracerInjectionBreakpoints(Context);
+    if (!Success) {
+        goto Error;
+    }
+
+    //
     // Set our context and return success;
     //
 
@@ -312,6 +334,16 @@ End:
     InjectionInitializationComplete(Parent, Session);
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+InitializePythonTracerInjectionBreakpoints(
+    PPYTHON_TRACER_INJECTION_CONTEXT Context
+    )
+{
+
+    return TRUE;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
