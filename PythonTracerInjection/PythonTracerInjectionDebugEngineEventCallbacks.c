@@ -15,82 +15,6 @@ Abstract:
 #include "stdafx.h"
 
 
-_Use_decl_annotations_
-HRESULT
-DebugEngineSessionWaitForEvent(
-    PDEBUG_ENGINE_SESSION Session,
-    ULONG Flags,
-    ULONG TimeoutInMilliseconds
-    )
-/*++
-
-Routine Description:
-
-    This routine is a thin wrapper around the debug engine's WaitForEvent()
-    method.
-
-Arguments:
-
-    Session - Supplies a pointer to a DEBUG_ENGINE_SESSION.
-
-    Flags - Unused.
-
-    TimeoutInMilliseconds - Supplies an optional timeout, in milliseconds.
-
-Return Value:
-
-    Returns the HRESULT returned by IDebugControl's WaitForEvent() routine.
-
---*/
-{
-    HRESULT Result;
-    PDEBUG_ENGINE Engine;
-
-    Engine = Session->Engine;
-
-    Result = Engine->Control->WaitForEvent(Engine->IControl,
-                                           Flags,
-                                           TimeoutInMilliseconds);
-
-    return Result;
-}
-
-_Use_decl_annotations_
-HRESULT
-DebugEngineSessionDispatchCallbacks(
-    PDEBUG_ENGINE_SESSION Session,
-    ULONG TimeoutInMilliseconds
-    )
-/*++
-
-Routine Description:
-
-    This routine is a thin wrapper around the debug engine's DispatchCallbacks()
-    method.
-
-Arguments:
-
-    Session - Supplies a pointer to a DEBUG_ENGINE_SESSION.
-
-    TimeoutInMilliseconds - Supplies an optional timeout, in milliseconds.
-
-Return Value:
-
-    Returns the HRESULT returned by IDebugControl's DispatchCallbacks() routine.
-
---*/
-{
-    HRESULT Result;
-    PDEBUG_ENGINE Engine;
-
-    Engine = Session->Engine;
-
-    Result = Engine->Client->DispatchCallbacks(Engine->IClient,
-                                               TimeoutInMilliseconds);
-
-    return Result;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // IDebugEventCallbacks
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +50,12 @@ DEBUG_EVENT_CHANGE_SYMBOL_STATE_CALLBACK DebugEventChangeSymbolStateCallback;
 
 #define DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE() \
     DEBUG_SESSION_CALLBACK_PROLOGUE(EventCallbacks)
+
+#define CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE() \
+    CHILD_DEBUG_SESSION_CALLBACK_PROLOGUE(            \
+        PPYTHON_TRACER_INJECTION_CONTEXT,             \
+        EventCallbacks                                \
+    )
 
 #define DEBUG_EVENT_QUERY_INTERFACE() \
     DEBUG_QUERY_INTERFACE(EventCallbacks, EVENT_CALLBACKS)
@@ -199,7 +129,7 @@ DebugEventBreakpointCallback(
     PDEBUG_BREAKPOINT2 Breakpoint
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -217,7 +147,7 @@ DebugEventExceptionCallback(
     ULONG FirstChance
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -236,7 +166,7 @@ DebugEventCreateThreadCallback(
     ULONG64 StartOffset
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -253,7 +183,7 @@ DebugEventExitThreadCallback(
     ULONG ExitCode
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -281,7 +211,7 @@ DebugEventCreateProcessCallback(
 {
     BOOL Success;
     UNICODE_STRING Module;
-    DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Session->TargetMainThreadHandle = (HANDLE)InitialThreadHandle;
 
@@ -289,7 +219,7 @@ DebugEventCreateProcessCallback(
     // If an initial module name hasn't been set, do it now.
     //
 
-    if (0 && !Session->InitialModuleNameW.Length) {
+    if (!Session->InitialModuleNameW.Length) {
 
         Module.Length = (USHORT)(wcslen(ModuleName) << 1);
         Module.MaximumLength = Module.Length;
@@ -322,7 +252,7 @@ DebugEventExitProcessCallback(
     ULONG ExitCode
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -345,7 +275,7 @@ DebugEventLoadModuleCallback(
     ULONG TimeDateStamp
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -362,7 +292,7 @@ DebugEventUnloadModuleCallback(
     ULONG64 BaseOffset
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -381,7 +311,7 @@ DebugEventSystemErrorCallback(
     ULONG Level
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -398,7 +328,7 @@ DebugEventSessionStatusCallback(
     ULONG Status
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Engine->SessionStatus = Status;
 
@@ -418,7 +348,7 @@ DebugEventChangeDebuggeeStateCallback(
     ULONG64 Argument
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Engine->DebuggeeState = Flags;
     Engine->DebuggeeStateArg = Argument;
@@ -439,7 +369,7 @@ DebugEventChangeEngineStateCallback(
     ULONG64 Argument
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Engine->ChangeEngineState.AsULong = Flags;
 
@@ -469,7 +399,7 @@ DebugEventChangeSymbolStateCallback(
     ULONG64 Argument
     )
 {
-    DEBUG_EVENT_CALLBACK_PROLOGUE();
+    CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     Engine->SymbolState = Flags;
     Engine->SymbolStateArg = Argument;

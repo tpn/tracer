@@ -67,10 +67,11 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_PYTHON_TRACER_INJECTION_INTERNAL_BUILD;_PYTHON_TRACER_INJECTION_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PYTHON_TRACER_INJECTION_INTERNAL_BUILD;_PYTHON_TRACER_INJECTION_DLL_BUILD;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>PythonTracerInjection.def</ModuleDefinitionFile>
+      <AdditionalDependencies>TracerHeapLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -91,6 +92,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="PythonTracerInjection.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
+      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -678,10 +678,7 @@ Return Value:
     Session->TracerConfig = TracerConfig;
     Session->InjectionModules = InjectionModules;
 
-    InitializeSRWLock(&Session->ListHeadLock);
-    AcquireSRWLockExclusive(&Session->ListHeadLock);
-    InitializeListHead(&Session->ListHead);
-    ReleaseSRWLockExclusive(&Session->ListHeadLock);
+    InitializeGuardedListHead(&Session->Children);
 
     //
     // Set StringTable related fields.
@@ -898,7 +895,9 @@ Return Value:
     } else if (Session->Flags.CreatedNewProcess && InjectionModules) {
 
         ULONG Index;
+        ULONG WaitResult;
         HMODULE Module;
+        HANDLE ReadyEvent;
         PUNICODE_STRING Path;
         PINITIALIZE_TRACER_INJECTION Initializer;
 
@@ -932,6 +931,14 @@ Return Value:
         // to the session.
         //
 
+        ReadyEvent = Rtl->CreateEventW(NULL, FALSE, FALSE, NULL);
+        if (!ReadyEvent || ReadyEvent == INVALID_HANDLE_VALUE) {
+            goto Error;
+        }
+
+        Session->AllInjectionInitializersReady = ReadyEvent;
+        Session->OutstandingInjectionInitializers = 0;
+
         //
         // (This may need to be done after the initial WaitForEvent().)
         //
@@ -942,19 +949,42 @@ Return Value:
             Module = InjectionModules->Modules[Index];
             Initializer = InjectionModules->Initializers[Index];
 
-            Success = Initializer(Rtl, Allocator, TracerConfig, Session);
+            Success = Initializer(Session);
             if (!Success) {
                 __debugbreak();
                 goto Error;
             }
         }
 
-        AcquireSRWLockShared(&Session->ListHeadLock);
-        if (Session->NumberOfListEntries != InjectionModules->NumberOfModules) {
+        //
+        // Wait for all child threads to finish initialization.
+        //
+
+        OutputDebugStringA("Parent debug engine session: waiting for "
+                           "AllInjectionInitializersReady event.\n");
+
+        WaitResult = Rtl->WaitForSingleObject(ReadyEvent, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+            goto Error;
+        }
+
+        //
+        // All initializer threads have finished, verify our count is as
+        // expected.
+        //
+
+        Success = FALSE;
+        AcquireChildrenLockShared(Session);
+        Success = (
+            Session->Children.NumberOfEntries ==
+            InjectionModules->NumberOfModules
+        );
+        ReleaseChildrenLockShared(Session);
+
+        if (!Success) {
             __debugbreak();
             goto Error;
         }
-        ReleaseSRWLockShared(&Session->ListHeadLock);
 
         //
         // The debugger engine doesn't complete its connection until we call
@@ -1202,16 +1232,18 @@ Return Value:
     Session->SizeOfStruct = sizeof(*Session);
 
     //
-    // Initialize the debug engine and create the COM interfaces.
+    // Create a debug engine client from the parent session's client.
     //
 
-    CHECKED_MSG(InitializeDebugEngine(Rtl, Engine), "InitializeDebugEngine()");
+    CHECKED_MSG(
+        InitializeChildDebugEngine(Rtl, Engine, Parent->Engine),
+        "InitializeChildDebugEngine(Rtl, Engine, Parent->Engine)"
+    );
 
     //
     // Set the command function pointers.
     //
 
-    Session->WaitForEvent = DebugEngineSessionWaitForEvent;
     Session->Destroy = DestroyDebugEngineSession;
     Session->DisplayType = DebugEngineDisplayType;
     Session->ExamineSymbols = DebugEngineExamineSymbols;
@@ -1238,42 +1270,24 @@ Return Value:
     Session->Rtl = Rtl;
     Session->Allocator = Allocator;
     Session->TracerConfig = TracerConfig;
-    Session->InjectionModules = Parent->InjectionModules;
+
+#define COPY_PARENT(Name) Session->##Name = Parent->##Name
+
+    COPY_PARENT(InjectionModules);
 
     //
     // Copy string table glue from the parent.
     //
 
-    Session->StringArrayAllocator = Parent->StringArrayAllocator;
-    Session->StringTableAllocator = Parent->StringTableAllocator;
-
-    Session->ExamineSymbolsPrefixStringTable = (
-        Parent->ExamineSymbolsPrefixStringTable
-    );
-
-    Session->ExamineSymbolsBasicTypeStringTable1 = (
-        Parent->ExamineSymbolsBasicTypeStringTable1
-    );
-
-    Session->ExamineSymbolsBasicTypeStringTable2 = (
-        Parent->ExamineSymbolsBasicTypeStringTable2
-    );
-
-    Session->NumberOfBasicTypeStringTables = (
-        Parent->NumberOfBasicTypeStringTables
-    );
-
-    Session->FunctionArgumentTypeStringTable1 = (
-        Parent->FunctionArgumentTypeStringTable1
-    );
-
-    Session->FunctionArgumentTypeStringTable2 = (
-        Parent->FunctionArgumentTypeStringTable2
-    );
-
-    Session->FunctionArgumentVectorTypeStringTable1 = (
-        Parent->FunctionArgumentVectorTypeStringTable1
-    );
+    COPY_PARENT(StringArrayAllocator);
+    COPY_PARENT(StringTableAllocator);
+    COPY_PARENT(ExamineSymbolsPrefixStringTable);
+    COPY_PARENT(ExamineSymbolsBasicTypeStringTable1);
+    COPY_PARENT(ExamineSymbolsBasicTypeStringTable2);
+    COPY_PARENT(NumberOfBasicTypeStringTables);
+    COPY_PARENT(FunctionArgumentTypeStringTable1);
+    COPY_PARENT(FunctionArgumentTypeStringTable2);
+    COPY_PARENT(FunctionArgumentVectorTypeStringTable1);
 
     //
     // Connect the engine.
@@ -1297,10 +1311,6 @@ Return Value:
         ),
         "Client->ConnectSession()"
     );
-
-    if (EventInterestMask.AsULong) {
-        goto RegisterWithParent;
-    }
 
     //
     // Register event callbacks.
@@ -1337,14 +1347,8 @@ Return Value:
     Engine->State.RegisteringEventCallbacks = FALSE;
 
     //
-    // Intentional follow-on to RegisterWithParent.
+    // We're done, indicate success and return.
     //
-
-RegisterWithParent:
-    AcquireSRWLockExclusive(&Parent->ListHeadLock);
-    InterlockedIncrement64(&Parent->NumberOfListEntries);
-    AppendTailList(&Parent->ListHead, &Session->ListEntry);
-    ReleaseSRWLockExclusive(&Parent->ListHeadLock);
 
     Success = TRUE;
     goto End;
