@@ -56,57 +56,70 @@ extern "C" {
 #endif
 
 //
-// Define the TRACER_CORE structure.
+// Define the TRACER_INJECTION_CONTEXT structure.
 //
 
-typedef union _TRACER_CORE_FLAGS {
+typedef union _TRACER_INJECTION_CONTEXT_FLAGS {
     struct {
         ULONG Unused:1;
     };
     ULONG AsLong;
-} TRACER_CORE_FLAGS;
+} TRACER_INJECTION_CONTEXT_FLAGS;
 
-typedef TRACER_CORE_FLAGS *PTRACER_CORE_FLAGS;
+typedef TRACER_INJECTION_CONTEXT_FLAGS *PTRACER_INJECTION_CONTEXT_FLAGS;
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_CORE {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_INJECTION_CONTEXT {
 
     //
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _TRACER_CORE)) ULONG SizeOfStruct;
+    _Field_range_(==, sizeof(struct _TRACER_INJECTION_CONTEXT))
+        ULONG SizeOfStruct;
 
     //
     // Flags.
     //
 
-    TRACER_CORE_FLAGS Flags;
+    TRACER_INJECTION_CONTEXT_FLAGS Flags;
+
+    ULONG DebugEngineThreadId;
+    ULONG Padding;
+
+    HANDLE DebugEngineThreadHandle;
+
+    //
+    // Standard fields.
+    //
 
     PRTL Rtl;
     PALLOCATOR Allocator;
     struct _TRACER_CONFIG *TracerConfig;
+    struct _DEBUG_ENGINE_SESSION *ParentDebugEngineSession;
     struct _DEBUG_ENGINE_SESSION *DebugEngineSession;
 
-} TRACER_CORE, *PTRACER_CORE, **PPTRACER_CORE;
+} TRACER_INJECTION_CONTEXT;
+typedef TRACER_INJECTION_CONTEXT *PTRACER_INJECTION_CONTEXT;
+typedef TRACER_INJECTION_CONTEXT **PPTRACER_INJECTION_CONTEXT;
 
-typedef union _TRACER_CORE_INIT_FLAGS {
+typedef union _TRACER_INJECTION_CONTEXT_INIT_FLAGS {
     struct {
         ULONG Unused:1;
     };
     ULONG AsLong;
-} TRACER_CORE_INIT_FLAGS;
-typedef TRACER_CORE_INIT_FLAGS *PTRACER_CORE_INIT_FLAGS;
-C_ASSERT(sizeof(TRACER_CORE_INIT_FLAGS) == sizeof(ULONG));
+} TRACER_INJECTION_CONTEXT_INIT_FLAGS;
+typedef TRACER_INJECTION_CONTEXT_INIT_FLAGS *PTRACER_INJECTION_CONTEXT_INIT_FLAGS;
+C_ASSERT(sizeof(TRACER_INJECTION_CONTEXT_INIT_FLAGS) == sizeof(ULONG));
 
 typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(TRACER_CORE_CALL_CONV INITIALIZE_TRACER_CORE)(
-    _In_opt_ PTRACER_CORE TracerCore,
+(CALLBACK INITIALIZE_TRACER_INJECTION_CONTEXT)(
+    _In_opt_ PTRACER_INJECTION_CONTEXT InjectionContext,
     _Inout_ PULONG SizeInBytes
     );
-typedef INITIALIZE_TRACER_CORE *PINITIALIZE_TRACER_CORE;
+typedef INITIALIZE_TRACER_INJECTION_CONTEXT *PINITIALIZE_TRACER_INJECTION_CONTEXT;
 
 typedef
 _Success_(return != 0)
@@ -121,20 +134,26 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (CALLBACK INITIALIZE_TRACER_INJECTION)(
-    _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ struct _TRACER_CONFIG *TracerConfig,
-    _In_ struct _DEBUG_ENGINE_SESSION *DebugEngineSession
+    _In_ struct _DEBUG_ENGINE_SESSION *ParentDebugEngineSession
     );
 typedef INITIALIZE_TRACER_INJECTION *PINITIALIZE_TRACER_INJECTION;
 typedef INITIALIZE_TRACER_INJECTION **PPINITIALIZE_TRACER_INJECTION;
+
+typedef
+ULONG
+(__stdcall INITIALIZE_TRACER_INJECTION_THREAD_ENTRY)(
+    _Inout_ PTRACER_INJECTION_CONTEXT InjectionContext
+    );
+typedef INITIALIZE_TRACER_INJECTION_THREAD_ENTRY
+      *PINITIALIZE_TRACER_INJECTION_THREAD_ENTRY;
 
 //
 // Public function declarations..
 //
 
 #pragma component(browser, off)
-TRACER_CORE_API INITIALIZE_TRACER_CORE InitializeTracerCore;
+TRACER_CORE_API INITIALIZE_TRACER_INJECTION_CONTEXT
+                InitializeTracerInjectionContext;
 TRACER_CORE_API TRACER_EXE_MAIN TracerExeMain;
 #pragma component(browser, on)
 

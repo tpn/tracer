@@ -227,7 +227,6 @@ BOOL
     );
 typedef DEBUG_ENGINE_LOAD_SETTINGS *PDEBUG_ENGINE_LOAD_SETTINGS;
 
-
 //
 // DebugEngineOutput-related inline functions and function typedefs.
 //
@@ -283,6 +282,7 @@ typedef DISPATCH_OUTPUT_COMPLETE_CALLBACKS *PDISPATCH_OUTPUT_COMPLETE_CALLBACKS;
 
 #pragma component(browser, off)
 
+INITIALIZE_CHILD_DEBUG_ENGINE InitializeChildDebugEngine;
 INITIALIZE_CHILD_DEBUG_ENGINE_SESSION InitializeChildDebugEngineSession;
 
 WAIT_FOR_EVENT DebugEngineSessionWaitForEvent;

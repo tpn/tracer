@@ -308,13 +308,6 @@ VOID
     );
 typedef DESTROY_DEBUG_ENGINE *PDESTROY_DEBUG_ENGINE;
 
-
-#define AcquireDebugEngineLock(Engine) \
-    AcquireSRWLockExclusive(&(Engine)->Lock)
-
-#define ReleaseDebugEngineLock(Engine) \
-    ReleaseSRWLockExclusive(&(Engine)->Lock)
-
 //
 // Event callbacks.
 //
@@ -328,6 +321,14 @@ typedef DESTROY_DEBUG_ENGINE *PDESTROY_DEBUG_ENGINE;
     PDEBUG_ENGINE_SESSION Session;                                \
     Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name); \
     Session = Engine->Session;
+
+#define CHILD_DEBUG_SESSION_CALLBACK_PROLOGUE(Type, Name)         \
+    PDEBUG_ENGINE Engine;                                         \
+    PDEBUG_ENGINE_SESSION Session;                                \
+    Type Context;                                                 \
+    Engine = CONTAINING_RECORD(This->lpVtbl, DEBUG_ENGINE, Name); \
+    Session = Engine->Session;                                    \
+    Context = (Type)Session->ChildContext;
 
 #define DEBUG_ADD_REF(Name) InterlockedIncrement(&Engine->##Name##RefCount)
 
@@ -2291,6 +2292,17 @@ typedef INITIALIZE_CHILD_DEBUG_ENGINE_SESSION
       *PINITIALIZE_CHILD_DEBUG_ENGINE_SESSION;
 
 typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_CHILD_DEBUG_ENGINE)(
+    _In_ PRTL Rtl,
+    _Inout_ PDEBUG_ENGINE Engine,
+    _In_ PDEBUG_ENGINE Parent
+    );
+typedef INITIALIZE_CHILD_DEBUG_ENGINE *PINITIALIZE_CHILD_DEBUG_ENGINE;
+
+typedef
 HRESULT
 (WAIT_FOR_EVENT)(
     _In_ struct _DEBUG_ENGINE_SESSION *Session,
@@ -2398,14 +2410,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
     struct _DEBUG_ENGINE_SESSION *Parent;
 
-    SRWLOCK ListHeadLock;
+    //
+    // If we're a parent session, children are linked to the Children guarded
+    // list via the ListEntry field.
+    //
 
-    _Guarded_by_(ListHeadLock)
-    struct {
-        LIST_ENTRY ListHead;
-        volatile ULONGLONG NumberOfListEntries;
-    };
-
+    GUARDED_LIST Children;
     LIST_ENTRY ListEntry;
 
     //
@@ -2419,6 +2429,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     PVOID ChildContext;
+
+    //
+    // When this counter hits zero, the AllInjectionInitializersReady event will
+    // be set.
+    //
+
+    volatile ULONGLONG OutstandingInjectionInitializers;
+    HANDLE AllInjectionInitializersReady;
 
     //
     // Destructor.
@@ -2585,6 +2603,46 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE CommandLineOptionsStringTable;
 
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;
+
+
+//
+// Helper macros and inline functions for the debug engine session.
+//
+
+#define AcquireDebugEngineLock(Engine) \
+    AcquireSRWLockExclusive(&(Engine)->Lock)
+
+#define ReleaseDebugEngineLock(Engine) \
+    ReleaseSRWLockExclusive(&(Engine)->Lock)
+
+#define AppendChildSession(Parent, Child) \
+    InsertTailGuardedList(&Parent->Children, &Child->ListEntry)
+
+#define AcquireChildrenLockShared(Parent) \
+    AcquireGuardedListLockShared(&Parent->Children)
+
+#define ReleaseChildrenLockShared(Parent) \
+    ReleaseGuardedListLockShared(&Parent->Children)
+
+#define AcquireChildrenLockExclusive(Parent) \
+    AcquireGuardedListLockExclusive(&Parent->Children)
+
+#define ReleaseChildrenLockExclusive(Parent) \
+    ReleaseGuardedListLockExclusive(&Parent->Children)
+
+FORCEINLINE
+VOID
+InjectionInitializationComplete(
+    _Inout_ PDEBUG_ENGINE_SESSION Parent,
+    _Inout_ PDEBUG_ENGINE_SESSION Child
+    )
+{
+    AppendChildSession(Parent, Child);
+
+    if (!InterlockedDecrement64(&Parent->OutstandingInjectionInitializers)) {
+        SetEvent(Parent->AllInjectionInitializersReady);
+    }
+}
 
 //
 // Flags for CreateAndInitializeDebugEngineSession().
