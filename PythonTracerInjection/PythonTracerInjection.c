@@ -291,6 +291,7 @@ CompletePythonTracerInjection(
     //
 
     Session->ChildContext = Context;
+    Context->InjectionContext.DebugEngineSession = Session;
 
     goto End;
 
