@@ -937,7 +937,9 @@ Return Value:
         }
 
         Session->AllInjectionInitializersReady = ReadyEvent;
-        Session->OutstandingInjectionInitializers = 0;
+        Session->OutstandingInjectionInitializers = (
+            InjectionModules->NumberOfModules
+        );
 
         //
         // (This may need to be done after the initial WaitForEvent().)
