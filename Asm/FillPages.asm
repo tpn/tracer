@@ -53,7 +53,7 @@ include ksamd64.inc
 
         test    r8, r8                      ; Test NumberOfPages against self.
         jz      short Fpx05                 ; Number of pages is 0, return.
-        jmp     short Fpx07                 ; Number of pages >= 1, continue.
+        jmp     short Fpx06                 ; Number of pages >= 1, continue.
 
 Fpx05:  ret
 
@@ -61,7 +61,7 @@ Fpx05:  ret
 ; Broadcast the byte value in rdx to a YMM register (by way of an XMM reg).
 ;
 
-        movd            xmm0, rdx
+Fpx06:  movd            xmm0, rdx
         vpbroadcastb    ymm1, xmm0
 
 ;
