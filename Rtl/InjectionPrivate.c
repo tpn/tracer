@@ -1490,7 +1490,7 @@ Return Value:
         sizeof(RTL_INJECTION_CONTEXT)
     );
 
-    if (AssertTrue("Offset != ExpectedOffset", Offset != ExpectedOffset)) {
+    if (!AssertTrue("Offset == ExpectedOffset", Offset == ExpectedOffset)) {
         return FALSE;
     }
 
@@ -1505,7 +1505,7 @@ Return Value:
     }
 
     //
-    // Perform context initialization.
+    // Copy the injection flags into the context.
     //
 
     Context->InjectionFlags.AsULong = SourcePacket->InjectionFlags.AsULong;
@@ -1695,6 +1695,13 @@ Return Value:
     // Append the target process ID.
     //
 
+    //
+    // XXX: Why doesn't TargetProcessId have a value here?  Looks like context
+    // isn't being copied properly.
+    //
+
+    __debugbreak();
+
     Success = AppendIntegerToUnicodeString(EventName,
                                            Context->Packet.TargetProcessId,
                                            10,
@@ -1832,6 +1839,12 @@ Return Value:
     //
     // Create caller's signal event name.
     //
+
+    //
+    // XXX: this next call is currently failing.
+    //
+
+    __debugbreak();
 
     EventId = RtlInjectionCallerSignalEventId;
     Success = RtlpInjectionCreateEventName(Rtl, Context, EventId, &Error);
