@@ -298,6 +298,7 @@ CalculateAddresses:
 
                 //
                 // Non-contiguous mapping.
+                //
 
                 ReturnAddress = MemoryMap->BaseAddress;
 
@@ -313,7 +314,6 @@ CalculateAddresses:
                 //
                 // The mapping is contiguous.
                 //
-
 
                 //
                 // Our return address will be the value of the previous memory
