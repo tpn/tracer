@@ -52,18 +52,99 @@ extern "C" {
 #define TRACER_CORE_DATA extern __declspec(dllimport)
 
 #include "../Rtl/Rtl.h"
+#include "../DebugEngine/DebugEngine.h"
+#include "../TracerCore/TracerCore.h"
 
 #endif
+
+//
+// Define TRACER_INJECTION_BREAKPOINT structure.
+//
+
+typedef union _TRACER_INJECTION_BREAKPOINT_ERROR {
+    struct {
+        ULONG InitializationFailed:1;
+        ULONG AddBreakpointFailed:1;
+        ULONG GetIdFailed:1;
+        ULONG SetOffsetExpressionFailed:1;
+        ULONG AddFlagsEnabledFailed:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACER_INJECTION_BREAKPOINT_ERROR;
+
+typedef union _TRACER_INJECTION_BREAKPOINT_FLAGS {
+    struct {
+        ULONG Initialized:1;
+        ULONG Enabled:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACER_INJECTION_BREAKPOINT_FLAGS;
+
+typedef
+HRESULT
+(STDAPICALLTYPE TRACER_INJECTION_HANDLE_BREAKPOINT)(
+    _In_ struct _TRACER_INJECTION_CONTEXT *InjectionContext,
+    _In_ PIDEBUGBREAKPOINT IBreakpoint
+    );
+typedef TRACER_INJECTION_HANDLE_BREAKPOINT *PTRACER_INJECTION_HANDLE_BREAKPOINT;
+
+//
+// Breakpoint specification.
+//
+
+typedef struct _TRACER_INJECTION_BREAKPOINT_SPEC {
+    PCSTR OffsetExpression;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+} TRACER_INJECTION_BREAKPOINT_SPEC;
+typedef TRACER_INJECTION_BREAKPOINT_SPEC
+      *PTRACER_INJECTION_BREAKPOINT_SPEC;
+typedef const TRACER_INJECTION_BREAKPOINT_SPEC
+           *PCTRACER_INJECTION_BREAKPOINT_SPEC;
+
+typedef struct _TRACER_INJECTION_BREAKPOINT {
+    ULONG SizeOfStruct;
+    ULONG Id;
+    TRACER_INJECTION_BREAKPOINT_FLAGS Flags;
+    TRACER_INJECTION_BREAKPOINT_ERROR Error;
+    PDEBUGBREAKPOINT Breakpoint;
+    PIDEBUGBREAKPOINT IBreakpoint;
+
+    //
+    // Inline TRACER_INJECTION_BREAKPOINT_SPEC.
+    //
+
+    union {
+        struct {
+            PCSTR OffsetExpression;
+            PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+        };
+        TRACER_INJECTION_BREAKPOINT_SPEC Spec;
+    };
+} TRACER_INJECTION_BREAKPOINT;
+typedef TRACER_INJECTION_BREAKPOINT *PTRACER_INJECTION_BREAKPOINT;
 
 //
 // Define the TRACER_INJECTION_CONTEXT structure.
 //
 
+typedef union _TRACER_INJECTION_CONTEXT_ERROR {
+    struct {
+        ULONG InitializationFailed:1;
+        ULONG BreakpointInitializationFailed:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACER_INJECTION_CONTEXT_ERROR;
+
 typedef union _TRACER_INJECTION_CONTEXT_FLAGS {
     struct {
-        ULONG Unused:1;
+        ULONG BreakpointsInitialized:1;
+        ULONG Initialized:1;
     };
-    ULONG AsLong;
+    LONG AsLong;
+    ULONG AsULong;
 } TRACER_INJECTION_CONTEXT_FLAGS;
 
 typedef TRACER_INJECTION_CONTEXT_FLAGS *PTRACER_INJECTION_CONTEXT_FLAGS;
@@ -78,13 +159,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_INJECTION_CONTEXT {
         ULONG SizeOfStruct;
 
     //
+    // Error.
+    //
+
+    TRACER_INJECTION_CONTEXT_ERROR Error;
+
+    //
     // Flags.
     //
 
     TRACER_INJECTION_CONTEXT_FLAGS Flags;
 
     ULONG DebugEngineThreadId;
-    ULONG Padding;
 
     HANDLE DebugEngineThreadHandle;
 
@@ -98,6 +184,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_INJECTION_CONTEXT {
     struct _DEBUG_ENGINE_SESSION *ParentDebugEngineSession;
     struct _DEBUG_ENGINE_SESSION *DebugEngineSession;
 
+    ULONG NumberOfBreakpoints;
+    ULONG Padding;
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoints;
+
 } TRACER_INJECTION_CONTEXT;
 typedef TRACER_INJECTION_CONTEXT *PTRACER_INJECTION_CONTEXT;
 typedef TRACER_INJECTION_CONTEXT **PPTRACER_INJECTION_CONTEXT;
@@ -108,7 +198,8 @@ typedef union _TRACER_INJECTION_CONTEXT_INIT_FLAGS {
     };
     ULONG AsLong;
 } TRACER_INJECTION_CONTEXT_INIT_FLAGS;
-typedef TRACER_INJECTION_CONTEXT_INIT_FLAGS *PTRACER_INJECTION_CONTEXT_INIT_FLAGS;
+typedef TRACER_INJECTION_CONTEXT_INIT_FLAGS
+      *PTRACER_INJECTION_CONTEXT_INIT_FLAGS;
 C_ASSERT(sizeof(TRACER_INJECTION_CONTEXT_INIT_FLAGS) == sizeof(ULONG));
 
 typedef
@@ -119,7 +210,8 @@ BOOL
     _In_opt_ PTRACER_INJECTION_CONTEXT InjectionContext,
     _Inout_ PULONG SizeInBytes
     );
-typedef INITIALIZE_TRACER_INJECTION_CONTEXT *PINITIALIZE_TRACER_INJECTION_CONTEXT;
+typedef INITIALIZE_TRACER_INJECTION_CONTEXT
+      *PINITIALIZE_TRACER_INJECTION_CONTEXT;
 
 typedef
 _Success_(return != 0)
@@ -130,22 +222,23 @@ ULONG
 typedef TRACER_EXE_MAIN *PTRACER_EXE_MAIN;
 
 typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(CALLBACK INITIALIZE_TRACER_INJECTION)(
-    _In_ struct _DEBUG_ENGINE_SESSION *ParentDebugEngineSession
-    );
-typedef INITIALIZE_TRACER_INJECTION *PINITIALIZE_TRACER_INJECTION;
-typedef INITIALIZE_TRACER_INJECTION **PPINITIALIZE_TRACER_INJECTION;
-
-typedef
 ULONG
 (__stdcall INITIALIZE_TRACER_INJECTION_THREAD_ENTRY)(
     _Inout_ PTRACER_INJECTION_CONTEXT InjectionContext
     );
 typedef INITIALIZE_TRACER_INJECTION_THREAD_ENTRY
       *PINITIALIZE_TRACER_INJECTION_THREAD_ENTRY;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK INITIALIZE_TRACER_INJECTION_BREAKPOINTS)(
+    _Inout_ PTRACER_INJECTION_CONTEXT InjectionContext
+    );
+typedef INITIALIZE_TRACER_INJECTION_BREAKPOINTS
+      *PINITIALIZE_TRACER_INJECTION_BREAKPOINTS;
+
 
 //
 // Public function declarations..

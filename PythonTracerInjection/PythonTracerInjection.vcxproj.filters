@@ -44,7 +44,7 @@
     <ClCompile Include="PythonTracerInjection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PythonTracerInjectionDebugEngineEventCallbacks.c">
+    <ClCompile Include="PythonTracerDebugEventCallbacks.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

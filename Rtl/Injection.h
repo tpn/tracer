@@ -69,10 +69,31 @@ typedef union _RTL_INJECTION_FLAGS {
         ULONG InjectPayload:1;
 
         //
+        // When set, indicates the caller wishes to inject the Rtl library into
+        // the target process and call InitializeRtl() such that the Rtl field
+        // of the injection packet points to an initialized structure by the
+        // time the callback routine is invoked.
+        //
+        // N.B. Not currently supported.
+        //
+
+        ULONG InjectRtl:1;
+
+        //
+        // When set, the callback routine will be invoked from within a SEH
+        // block that catches STATUS_IN_PAGE_ERROR, EXCEPTION_ACCESS_VIOLATION
+        // and EXCEPTION_ILLEGAL_INSTRUCTION errors.  If such an exception is
+        // caught, the remote thread's exit code will reflect the specific
+        // exception code, e.g. InjectedRemoteThreadAccessViolationInCallback.
+        //
+
+        ULONG CatchExceptionsInRemoteThreadCallback:1;
+
+        //
         // Unused.
         //
 
-        ULONG Unused:29;
+        ULONG Unused:27;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -247,6 +268,38 @@ typedef union _RTL_INJECTION_ERROR {
 C_ASSERT(sizeof(RTL_INJECTION_ERROR) == sizeof(ULONGLONG));
 typedef RTL_INJECTION_ERROR *PRTL_INJECTION_ERROR;
 
+//
+// Define an enum for remote thread exit codes.
+//
+
+typedef enum _RTL_INJECTION_REMOTE_THREAD_EXIT_CODE {
+
+    InjectedRemoteThreadNoError = 0,
+
+    //
+    // Start the remaining error codes off at an arbitrarily high number, such
+    // that it's easy to distinguish between an error code and the size of the
+    // function if a context protocol callback is being dispatched.
+    //
+
+    InjectedRemoteThreadNullContext = 1 << 20,
+    InjectedRemoteThreadLoadLibraryRtlFailed,
+    InjectedRemoteThreadResolveInitializeRtlFailed,
+    InjectedRemoteThreadInitializeRtlFailed,
+    InjectedRemoteThreadNullResultParameter,
+    InjectedRemoteThreadEncounteredExceptionInCompletionCallback,
+
+    InjectedRemoteThreadOpenSignalEventFailed,
+    InjectedRemoteThreadOpenWaitEventFailed,
+    InjectedRemoteThreadOpenCallerSignalEventFailed,
+    InjectedRemoteThreadOpenCallerWaitEventFailed,
+
+    InjectedRemoteThreadStatusInPageErrorInCallback,
+    InjectedRemoteThreadAccessViolationInCallback,
+    InjectedRemoteThreadIllegalInstructionInCallback,
+
+} RTL_INJECTION_REMOTE_THREAD_EXIT_CODE;
+
 typedef
 _Check_return_
 BOOL
@@ -255,6 +308,24 @@ BOOL
     _Outptr_result_maybenull_ PVOID Token
     );
 typedef RTL_IS_INJECTION_PROTOCOL_CALLBACK *PRTL_IS_INJECTION_PROTOCOL_CALLBACK;
+
+//
+// A minimal set of functions used to bootstrap injected code.
+//
+
+typedef struct _RTL_INJECTION_FUNCTIONS {
+    PSET_EVENT SetEvent;
+    POPEN_EVENT_W OpenEventW;
+    PCLOSE_HANDLE CloseHandle;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PLOAD_LIBRARY_EX_W LoadLibraryExW;
+    PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
+    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
+    POUTPUT_DEBUG_STRING_A OutputDebugStringA;
+    POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+} RTL_INJECTION_FUNCTIONS;
+typedef RTL_INJECTION_FUNCTIONS *PRTL_INJECTION_FUNCTIONS;
+typedef const RTL_INJECTION_FUNCTIONS *PCRTL_INJECTION_FUNCTIONS;
 
 //
 // Callers request a remote thread + DLL injection by way of the following
@@ -342,6 +413,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     //
 
     ULONG TargetThreadId;
+
+    //
+    // Signal and Wait event handles and names for general purpose use.
+    //
+
+    HANDLE SignalEventHandle;
+    HANDLE WaitEventHandle;
+
+    PCUNICODE_STRING SignalEventName;
+    PCUNICODE_STRING WaitEventName;
+
+    //
+    // A pointer to the structure of bootstrap functions,.
+    //
+
+    PCRTL_INJECTION_FUNCTIONS Functions;
 
     //
     // Payload information.

@@ -20,6 +20,7 @@ extern "C" {
 
 #include "../Rtl/Rtl.h"
 #include "../DebugEngine/DebugEngine.h"
+#include "../DebugEngine/DebugEngineInterfaces.h"
 #include "../TraceStore/TraceStore.h"
 #include "../TracerHeap/TracerHeap.h"
 #include "../TracerConfig/TracerConfig.h"

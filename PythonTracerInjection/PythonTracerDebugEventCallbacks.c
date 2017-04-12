@@ -4,7 +4,7 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    PythonTracerInjectionDebugEngineEventCallbacks.c
+    DebugEventCallbacks.c
 
 Abstract:
 
@@ -126,12 +126,64 @@ HRESULT
 STDAPICALLTYPE
 DebugEventBreakpointCallback(
     PIDEBUGEVENTCALLBACKS This,
-    PDEBUG_BREAKPOINT2 Breakpoint
+    PDEBUG_BREAKPOINT2 Breakpoint2
     )
 {
+    ULONG Id;
+    ULONG FirstId;
+    ULONG LastId;
+    ULONG Index;
+    BOOL Found;
+    HRESULT Result;
+    PDEBUGBREAKPOINT Breakpoint;
+    PIDEBUGBREAKPOINT IBreakpoint;
+    PTRACER_INJECTION_BREAKPOINT First;
+    PTRACER_INJECTION_BREAKPOINT Last;
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
     CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
-    return DEBUG_STATUS_NO_CHANGE;
+    IBreakpoint = (PIDEBUGBREAKPOINT)Breakpoint2;
+    Breakpoint = IBreakpoint->lpVtbl;
+
+    Result = Breakpoint->GetId(IBreakpoint, &Id);
+    if (Result != S_OK) {
+        return DEBUG_STATUS_BREAK;
+    }
+
+    First = &Context->InitialBreakpoints.First;
+    Last = &Context->InitialBreakpoints.First + NUM_INITIAL_BREAKPOINTS() - 1;
+    FirstId = First->Id;
+    LastId = Last->Id;
+
+    if (Id < FirstId && Id > LastId) {
+        goto SlowLookup;
+    }
+
+    InjectionBreakpoint = First + (Id - FirstId);
+    if (InjectionBreakpoint->Id != Id) {
+        InjectionBreakpoint = NULL;
+    }
+
+    if (!InjectionBreakpoint) {
+SlowLookup:
+        Found = FALSE;
+        for (Index = 0; Index < NUM_INITIAL_BREAKPOINTS(); Index++) {
+            InjectionBreakpoint = First + Index;
+            if (InjectionBreakpoint->Id == Id) {
+                Found = TRUE;
+                break;
+            }
+        }
+        if (!Found) {
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+    }
+
+    Result = InjectionBreakpoint->HandleBreakpoint(&Context->InjectionContext,
+                                                   IBreakpoint);
+
+    return Result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,21 +261,38 @@ DebugEventCreateProcessCallback(
     ULONG64 StartOffset
     )
 {
+    PRTL Rtl;
     BOOL Success;
+    BOOL IsPython;
+    ULONG ProcessId;
+    ULONG ThreadId;
     UNICODE_STRING Module;
+    HANDLE ProcessHandle;
+    HANDLE ThreadHandle;
+    PTRACER_INJECTION_CONTEXT InjectionContext;
     CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
-
-    Session->TargetMainThreadHandle = (HANDLE)InitialThreadHandle;
+    const UNICODE_STRING PythonModule = RTL_CONSTANT_STRING(L"python");
 
     //
-    // If an initial module name hasn't been set, do it now.
+    // Initialize aliases.
     //
 
-    if (!Session->InitialModuleNameW.Length) {
+    Rtl = Session->Rtl;
+    InjectionContext = &Context->InjectionContext;
 
-        Module.Length = (USHORT)(wcslen(ModuleName) << 1);
-        Module.MaximumLength = Module.Length;
-        Module.Buffer = (PWSTR)ModuleName;
+    ProcessHandle = (HANDLE)Handle;
+    ThreadHandle = (HANDLE)InitialThreadHandle;
+
+    ProcessId = GetProcessId(ProcessHandle);
+    ThreadId = GetThreadId(ThreadHandle);
+
+    Module.Length = (USHORT)(wcslen(ModuleName) << 1);
+    Module.MaximumLength = Module.Length;
+    Module.Buffer = (PWSTR)ModuleName;
+
+    if (!Session->InitialProcessId) {
+        Session->InitialProcessId = ProcessId;
+        Session->InitialThreadId = ThreadId;
 
         Success = AllocateAndCopyUnicodeString(
             Session->Allocator,
@@ -232,12 +301,71 @@ DebugEventCreateProcessCallback(
         );
 
         if (!Success) {
-            OutputDebugStringA("Failed: CreateProcessCallback->"
-                               "AllocateAndCopyWideString()");
+            __debugbreak();
+            goto End;
         }
     }
 
-    return DEBUG_STATUS_NO_CHANGE;
+    //
+    // Initialize breakpoints we're interested in (regardless of whether or not
+    // this was a Python process).
+    //
+
+    Success = InitializePythonTracerInjectionBreakpoints(InjectionContext);
+    if (!Success) {
+        __debugbreak();
+        goto End;
+    }
+
+    IsPython = Rtl->RtlPrefixUnicodeString(&Module, &PythonModule, TRUE);
+
+    if (IsPython) {
+
+        //
+        // This is definitely a Python program, perform a remote injection.
+        //
+
+        RTL_INJECTION_FLAGS Flags;
+        PRTL_INJECTION_PACKET Packet;
+        PRTL_INJECTION_COMPLETE_CALLBACK Callback;
+        RTL_INJECTION_ERROR Error;
+
+        Flags.AsULong = 0;
+        Flags.InjectCode = TRUE;
+
+        Callback = PythonTracerInjectionCompleteCallback;
+
+        Success = Rtl->Inject(Rtl,
+                              Session->Allocator,
+                              &Flags,
+                              NULL,
+                              NULL,
+                              Callback,
+                              NULL,
+                              ProcessId,
+                              &Packet,
+                              &Error);
+
+        if (!Success) {
+            OutputDebugStringA("Rtl->Inject() failed.");
+            goto End;
+        }
+
+        //
+        // XXX: how does the signal/wait logic work here if we're within a
+        // debug callback?  We probably need to spawn a new thread such that
+        // we can freely communicate with the remote thread without impeding
+        // the general debug engine event loop/callback dispatching.
+        //
+    }
+
+    //
+    // If an initial module name hasn't been set, do it now.
+    //
+
+End:
+
+    return DEBUG_STATUS_GO;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

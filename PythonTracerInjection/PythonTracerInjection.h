@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -60,6 +60,8 @@ extern "C" {
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
 #include "../Python/Python.h"
+#include "../DebugEngine/DebugEngine.h"
+#include "../DebugEngine/DebugEngineInterfaces.h"
 #include "../TraceStore/TraceStore.h"
 #include "../TracerCore/TracerCore.h"
 #include "../StringTable/StringTable.h"

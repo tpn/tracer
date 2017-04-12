@@ -2572,6 +2572,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     HANDLE TargetProcessHandle;
     HANDLE TargetMainThreadHandle;
 
+    ULONG InitialProcessId;
+    ULONG InitialThreadId;
+
     UNICODE_STRING InitialModuleNameW;
 
     HKEY RunHistoryRegistryKey;

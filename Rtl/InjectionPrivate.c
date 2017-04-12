@@ -1504,6 +1504,11 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Perform context initialization.
+    //
+
+    Context->InjectionFlags.AsULong = SourcePacket->InjectionFlags.AsULong;
 
     //
     // Events have been successfully created, proceed with memory allocation
@@ -1570,13 +1575,11 @@ RtlpInjectionCreateEventName(
 
 Routine Description:
 
-    This routine creates a unique event name for use with the "signal" and
-    "wait" events used for synchronization between the current process and
-    a second process being targeted for injection.
+    This routine creates a unique event name of a given type.
 
     The final event name will be a Unicode string of the format:
 
-        L"Local\\RtlInjection_<our_pid>_<target_pid>_(Signal|Wait)_<timestamp>"
+        L"Local\\RtlInjection_<our_pid>_<target_pid>_<event_type>_<timestamp>"
 
 Arguments:
 
@@ -1641,6 +1644,16 @@ Return Value:
         case RtlInjectionWaitEventId:
             EventName = &Context->WaitEventName;
             TypeName = L"Wait_";
+            break;
+
+        case RtlInjectionCallerSignalEventId:
+            EventName = &Context->CallerSignalEventName;
+            TypeName = L"CallerSignal_";
+            break;
+
+        case RtlInjectionCallerWaitEventId:
+            EventName = &Context->CallerWaitEventName;
+            TypeName = L"CallerWait_";
             break;
 
         default:
@@ -1780,12 +1793,14 @@ Return Value:
     RTL_INJECTION_ERROR Error;
     RTL_INJECTION_EVENT_ID EventId;
     LPSECURITY_ATTRIBUTES EventAttributes;
+    PRTL_INJECTION_PACKET Packet;
 
     //
-    // Clear our local error variable.
+    // Clear our local error variable and initialize the packet alias.
     //
 
     Error.ErrorCode = 0;
+    Packet = &Context->Packet;
 
     //
     // Create event names for the synchronization event objects used by the
@@ -1808,6 +1823,28 @@ Return Value:
     //
 
     EventId = RtlInjectionWaitEventId;
+    Success = RtlpInjectionCreateEventName(Rtl, Context, EventId, &Error);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Create caller's signal event name.
+    //
+
+    EventId = RtlInjectionCallerSignalEventId;
+    Success = RtlpInjectionCreateEventName(Rtl, Context, EventId, &Error);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Create caller's wait event name.
+    //
+
+    EventId = RtlInjectionCallerWaitEventId;
     Success = RtlpInjectionCreateEventName(Rtl, Context, EventId, &Error);
 
     if (!Success) {
@@ -1855,6 +1892,40 @@ Return Value:
     }
 
     Context->WaitEventHandle = EventHandle;
+
+    //
+    // Create caller signal event and reflect in packet.
+    //
+
+    EventHandle = Rtl->CreateEventW(EventAttributes,
+                                    ManualReset,
+                                    InitialState,
+                                    Context->CallerSignalEventName.Buffer);
+
+    if (!EventHandle || EventHandle == INVALID_HANDLE_VALUE) {
+        Error.CreateEventWFailed = TRUE;
+        goto Error;
+    }
+
+    Packet->SignalEventHandle = Context->CallerSignalEventHandle = EventHandle;
+    Packet->SignalEventName = &Context->CallerSignalEventName;
+
+    //
+    // Create caller wait event and reflect in packet.
+    //
+
+    EventHandle = Rtl->CreateEventW(EventAttributes,
+                                    ManualReset,
+                                    InitialState,
+                                    Context->CallerWaitEventName.Buffer);
+
+    if (!EventHandle || EventHandle == INVALID_HANDLE_VALUE) {
+        Error.CreateEventWFailed = TRUE;
+        goto Error;
+    }
+
+    Packet->WaitEventHandle = Context->CallerWaitEventHandle = EventHandle;
+    Packet->WaitEventName = &Context->CallerWaitEventName;
 
     //
     // Events were created successfully, indicate success and return.

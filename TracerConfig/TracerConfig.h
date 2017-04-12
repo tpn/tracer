@@ -625,10 +625,15 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
     TRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
 } TRACER_CONFIG, *PTRACER_CONFIG, **PPTRACER_CONFIG;
-
 typedef CONST TRACER_CONFIG CTRACER_CONFIG;
 typedef CONST PTRACER_CONFIG PCTRACER_CONFIG;
 typedef PCTRACER_CONFIG *PPCTRACER_CONFIG;
+
+//
+// Modules that support the tracer injection protocol are referred to generally
+// as "tracer injection modules".  The set of modules are represented by the
+// structure TRACER_INJECTION_MODULES.
+//
 
 typedef union _TRACER_INJECTION_MODULES_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -638,6 +643,22 @@ typedef union _TRACER_INJECTION_MODULES_FLAGS {
     ULONG AsULong;
 } TRACER_INJECTION_MODULES_FLAGS;
 typedef TRACER_INJECTION_MODULES_FLAGS *PTRACER_INJECTION_MODULES_FLAGS;
+
+//
+// Tracer injection modules export a function named InitializeTracerInjection
+// which conforms to the PINITIALIZE_TRACER_INJECTION signature, defined below.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK INITIALIZE_TRACER_INJECTION)(
+    _In_ struct _DEBUG_ENGINE_SESSION *ParentDebugEngineSession
+    );
+typedef INITIALIZE_TRACER_INJECTION *PINITIALIZE_TRACER_INJECTION;
+typedef INITIALIZE_TRACER_INJECTION **PPINITIALIZE_TRACER_INJECTION;
+
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACER_INJECTION_MODULES {
 

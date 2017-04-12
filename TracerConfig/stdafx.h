@@ -18,7 +18,6 @@ Abstract:
 
 #include "../Rtl/Rtl.h"
 #include "../TracerHeap/TracerHeap.h"
-#include "../TracerCore/TracerCore.h"
 #include "TracerConfig.h"
 #include "TracerConfigConstants.h"
 
