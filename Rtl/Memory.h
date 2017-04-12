@@ -417,15 +417,16 @@ CopyMemory(
     NumberOfQuadwords = SizeInBytes >> 3;
     TrailingBytes = SizeInBytes % 8;
 
-    if (NumberOfQuadwords) {
-
-        __movsq((PDWORD64)Dest,
-                (PDWORD64)Source,
-                NumberOfQuadwords);
-
+    if (!NumberOfQuadwords) {
+        goto HandleTrailingBytes;
     }
 
+    __movsq((PDWORD64)Dest,
+            (PDWORD64)Source,
+            NumberOfQuadwords);
+
     if (TrailingBytes) {
+HandleTrailingBytes:
 
         TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
         TrailingSource = (Source + (SizeInBytes - TrailingBytes));
