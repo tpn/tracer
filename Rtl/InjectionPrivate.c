@@ -1281,14 +1281,14 @@ Return Value:
     Size = sizeof(RTL_INJECTION_CONTEXT);
 
     //
-    // Account for two event name string buffers.
+    // Account for the four event name string buffers.
     //
 
     if (!AssertAligned8(EventNameMaxLength)) {
         return FALSE;
     }
 
-    Size += (EventNameMaxLength * 2);
+    Size += (EventNameMaxLength * 4);
 
     //
     // Account for the fully-qualified representation of the Rtl .dll path,
@@ -1385,13 +1385,19 @@ Return Value:
     // Copy the source context over.
     //
 
-    CopyMemory(Context, (const PVOID)SourceContext, sizeof(Context));
+    CopyMemory(Context, (const PVOID)SourceContext, sizeof(*Context));
 
     //
     // Make a note of the context allocation size.
     //
 
     Context->TotalContextAllocSize.LongPart = AllocSizeInBytes.LongPart;
+
+    //
+    // Clear the flags.  (In particular, we want to clear IsStackAllocated.)
+    //
+
+    Context->Flags.IsStackAllocated = FALSE;
 
     //
     // Wire up a local packet alias.
@@ -1437,6 +1443,28 @@ Return Value:
     //
 
     Unicode = &Context->WaitEventName;
+    Unicode->Length = 0;
+    Unicode->MaximumLength = EventNameMaxLength;
+    Unicode->Buffer = (PWSTR)RtlOffsetToPointer(Context, Offset);
+
+    Offset += EventNameMaxLength;
+
+    //
+    // Caller's Signal event.
+    //
+
+    Unicode = &Context->CallerSignalEventName;
+    Unicode->Length = 0;
+    Unicode->MaximumLength = EventNameMaxLength;
+    Unicode->Buffer = (PWSTR)RtlOffsetToPointer(Context, Offset);
+
+    Offset += EventNameMaxLength;
+
+    //
+    // Caller's Wait event.
+    //
+
+    Unicode = &Context->CallerWaitEventName;
     Unicode->Length = 0;
     Unicode->MaximumLength = EventNameMaxLength;
     Unicode->Buffer = (PWSTR)RtlOffsetToPointer(Context, Offset);
@@ -1695,13 +1723,6 @@ Return Value:
     // Append the target process ID.
     //
 
-    //
-    // XXX: Why doesn't TargetProcessId have a value here?  Looks like context
-    // isn't being copied properly.
-    //
-
-    __debugbreak();
-
     Success = AppendIntegerToUnicodeString(EventName,
                                            Context->Packet.TargetProcessId,
                                            10,
@@ -1839,12 +1860,6 @@ Return Value:
     //
     // Create caller's signal event name.
     //
-
-    //
-    // XXX: this next call is currently failing.
-    //
-
-    __debugbreak();
 
     EventId = RtlInjectionCallerSignalEventId;
     Success = RtlpInjectionCreateEventName(Rtl, Context, EventId, &Error);
