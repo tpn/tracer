@@ -32,29 +32,6 @@ extern "C" {
 #define RTL_INJECTION_CONTEXT_EVENT_NAME_PREFIX L"Local\\"
 
 //
-// Define an enum for remote thread exit codes.
-//
-
-typedef enum _RTL_INJECTION_REMOTE_THREAD_EXIT_CODE {
-
-    InjectedRemoteThreadNoError = 0,
-
-    //
-    // Start the remaining error codes off at an arbitrarily high number, such
-    // that it's easy to distinguish between an error code and the size of the
-    // function if a context protocol callback is being dispatched.
-    //
-
-    InjectedRemoteThreadNullContext = 1 << 20,
-    InjectedRemoteThreadLoadLibraryRtlFailed,
-    InjectedRemoteThreadResolveInitializeRtlFailed,
-    InjectedRemoteThreadInitializeRtlFailed,
-    InjectedRemoteThreadNullResultParameter,
-    InjectedRemoteThreadEncounteredExceptionInCompletionCallback,
-
-} RTL_INJECTION_REMOTE_THREAD_EXIT_CODE;
-
-//
 // Define a bitfield struct and enum for representing event types.
 //
 
@@ -74,10 +51,22 @@ typedef union _RTL_INJECTION_EVENT_TYPE {
         ULONG Wait:1;
 
         //
+        // Indicates this is the caller's Signal event.
+        //
+
+        ULONG CallerSignal:1;
+
+        //
+        // Indicates this is the caller's Wait event.
+        //
+
+        ULONG CallerWait:1;
+
+        //
         // Unused.
         //
 
-        ULONG Unused:30;
+        ULONG Unused:28;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -91,10 +80,12 @@ C_ASSERT(sizeof(RTL_INJECTION_EVENT_TYPE) == sizeof(ULONG));
 
 typedef enum _Enum_is_bitflag_ _RTL_INJECTION_EVENT_ID {
 
-    RtlInjectionSignalEventId       =       1,
-    RtlInjectionWaitEventId         =  1 << 1,
+    RtlInjectionSignalEventId           =       1,
+    RtlInjectionWaitEventId             =  1 << 1,
+    RtlInjectionCallerSignalEventId     =  1 << 2,
+    RtlInjectionCallerWaitEventId       =  1 << 3,
 
-    RtlInjectionInvalidEventId      = (1 << 1) + 1
+    RtlInjectionInvalidEventId          = (1 << 3) + 1
 
 } RTL_INJECTION_EVENT_ID;
 typedef RTL_INJECTION_EVENT_ID *PRTL_INJECTION_EVENT_ID;
@@ -199,6 +190,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     RTL_INJECTION_CONTEXT_FLAGS Flags;
 
     //
+    // Injection flags passed to RtlInject().
+    //
+
+    RTL_INJECTION_FLAGS InjectionFlags;
+
+    //
+    // Pad out to 8 bytes.
+    //
+
+    ULONG Padding;
+
+    //
     // Fully-qualified path of the Rtl.dll module to load.
     //
 
@@ -231,11 +234,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     UNICODE_STRING WaitEventName;
 
     //
+    // The caller also gets signal and wait events created for it.
+    //
+
+    UNICODE_STRING CallerSignalEventName;
+    UNICODE_STRING CallerWaitEventName;
+
+    //
     // Handles to the events.
     //
 
     HANDLE SignalEventHandle;
     HANDLE WaitEventHandle;
+    HANDLE CallerSignalEventHandle;
+    HANDLE CallerWaitEventHandle;
 
     //
     // Handles to the target process and thread.
@@ -368,13 +380,25 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // Function pointers required by the initial injection callback.
     //
 
-    PSET_EVENT SetEvent;
-    POPEN_EVENT_W OpenEventW;
-    PCLOSE_HANDLE CloseHandle;
-    PGET_PROC_ADDRESS GetProcAddress;
-    PLOAD_LIBRARY_EX_W LoadLibraryExW;
-    PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
-    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
+    //
+    // Inline RTL_INJECTION_FUNCTIONS.
+    //
+
+    union {
+        struct {
+            PSET_EVENT SetEvent;
+            POPEN_EVENT_W OpenEventW;
+            PCLOSE_HANDLE CloseHandle;
+            PGET_PROC_ADDRESS GetProcAddress;
+            PLOAD_LIBRARY_EX_W LoadLibraryExW;
+            PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
+            PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
+            POUTPUT_DEBUG_STRING_A OutputDebugStringA;
+            POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+        };
+
+        RTL_INJECTION_FUNCTIONS Functions;
+    };
 
     //
     // For linking to AtExitEx().
