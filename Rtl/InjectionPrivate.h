@@ -369,9 +369,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 
     //
     // Base address of our internal thread entry code allocation, the size of
-    // which is indicated by the TotalCallerCodeAllocSize struct member above.  The caller's code will
-    // The ThreadStartRoutine will be offset 7 bytes into this space, as per
-    // the `int 3` (0xCC) padding requirements.
+    // which is indicated by the TotalInjectionThunkAllocSize struct member
+    // above.  The ThreadStartRoutine will be offset 7 bytes into this space,
+    // as per the int 3` (0xCC) padding requirements.
     //
 
     LPVOID BaseInjectionThunkAddress;
