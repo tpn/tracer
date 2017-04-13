@@ -1253,7 +1253,7 @@ Return Value:
     ULONG_INTEGER AlignedRtlDllPathLength;
     ULONG_INTEGER AlignedModulePathLength;
     ULONG_INTEGER AlignedCallbackFunctionNameLength;
-    PRTL_INJECTION_CONTEXT Context;
+    PRTL_INJECTION_CONTEXT Context = NULL;
     ULONG_INTEGER AllocSizeInBytes;
     ULONG_INTEGER PageAlignedAllocSizeInBytes;
     RTL_INJECTION_ERROR Error;
@@ -2276,6 +2276,12 @@ Return Value:
     // Remote thread has been created!  Signal and wait on the event pairs.
     //
 
+    //
+    // (Goto Success for now.)
+    //
+
+    goto Success;
+
     WaitResult = (
         SignalObjectAndWait(
             Context->SignalEventHandle,
@@ -2295,7 +2301,7 @@ Return Value:
     // We're getting there...
     //
 
-    __debugbreak();
+Success:
     Error.AsULongLong = 0;
     Success = TRUE;
     goto End;
@@ -2362,6 +2368,8 @@ End:
     //
 
     InjectionError->ErrorCode |= Error.ErrorCode;
+
+    *DestContext = Context;
 
     return Success;
 }
