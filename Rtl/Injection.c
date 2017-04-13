@@ -556,7 +556,9 @@ End:
             return FALSE;
         }
 
-        if (!Packet || Packet != &Context->Packet) {
+        Packet = &Context->Packet;
+
+        if (!Packet) {
 
             //
             // Packet should be non-NULL and wired up to the Context.
