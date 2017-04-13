@@ -195,6 +195,18 @@ extern "C" {
 #define DECLSPEC_DLLIMPORT __declspec(dllimport)
 #endif
 
+#ifndef NOINLINE
+#define NOINLINE __declspec(noinline)
+#endif
+
+#ifndef INLINE
+#define INLINE __inline
+#endif
+
+#ifndef FORCEINLINE
+#define FORCEINLINE __forceinline
+#endif
+
 #ifndef RtlUpcaseChar
 #define RtlUpcaseChar(C)                                         \
     (CHAR)(((C) >= 'a' && (C) <= 'z' ? (C) - ('a' - 'A') : (C)))
@@ -383,7 +395,10 @@ typedef struct _RTL *PRTL;
 typedef struct _STRING {
     USHORT Length;
     USHORT MaximumLength;
-    LONG   Hash;
+    union {
+        LONG Hash;
+        LONG Offset;
+    };
     PCHAR  Buffer;
 } STRING, ANSI_STRING, *PSTRING, *PANSI_STRING, **PPSTRING, **PPANSI_STRING;
 typedef const STRING *PCSTRING;
@@ -391,7 +406,10 @@ typedef const STRING *PCSTRING;
 typedef struct _UNICODE_STRING {
     USHORT Length;
     USHORT MaximumLength;
-    LONG   Hash;
+    union {
+        LONG Hash;
+        LONG Offset;
+    };
     PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING, **PPUNICODE_STRING, ***PPPUNICODE_STRING;
 typedef const UNICODE_STRING *PCUNICODE_STRING;
@@ -1437,32 +1455,6 @@ typedef NT_TERMINATE_THREAD *PNT_TERMINATE_THREAD;
 typedef NT_TERMINATE_THREAD   ZW_TERMINATE_THREAD;
 typedef ZW_TERMINATE_THREAD *PZW_TERMINATE_THREAD;
 
-typedef
-VOID
-(APC_ROUTINE) (
-    _In_opt_ PVOID ApcArgument1,
-    _In_opt_ PVOID ApcArgument2,
-    _In_opt_ PVOID ApcArgument3
-    );
-typedef APC_ROUTINE *PAPC_ROUTINE;
-
-typedef
-NTSTATUS
-(NTAPI NT_QUEUE_APC_THREAD)(
-    _In_ HANDLE ThreadHandle,
-    _In_ PAPC_ROUTINE ApcRoutine,
-    _In_opt_ PVOID ApcArgument1,
-    _In_opt_ PVOID ApcArgument2,
-    _In_opt_ PVOID ApcArgument3
-    );
-typedef NT_QUEUE_APC_THREAD *PNT_QUEUE_APC_THREAD;
-
-typedef
-NTSTATUS
-(NTAPI NT_TEST_ALERT)(
-    VOID
-    );
-typedef NT_TEST_ALERT *PNT_TEST_ALERT;
 
 //
 // SystemTime-related functions.
@@ -1932,6 +1924,15 @@ DWORD
 typedef WAIT_FOR_SINGLE_OBJECT *PWAIT_FOR_SINGLE_OBJECT;
 
 typedef
+DWORD
+(WINAPI WAIT_FOR_SINGLE_OBJECT_EX)(
+    _In_ HANDLE hHandle,
+    _In_ DWORD dwMilliseconds,
+    _In_ BOOL bAlertable
+    );
+typedef WAIT_FOR_SINGLE_OBJECT_EX *PWAIT_FOR_SINGLE_OBJECT_EX;
+
+typedef
 BOOL
 (WINAPI SET_EVENT)(
     _In_ HANDLE hEvent
@@ -1947,6 +1948,47 @@ DWORD
     _In_ BOOL   bAlertable
     );
 typedef SIGNAL_OBJECT_AND_WAIT *PSIGNAL_OBJECT_AND_WAIT;
+
+typedef
+DWORD
+(WINAPI SLEEP_EX)(
+    _In_ DWORD dwMilliseconds,
+    _In_ BOOL bAlertable
+    );
+typedef SLEEP_EX *PSLEEP_EX;
+
+typedef
+VOID
+(WINAPI EXIT_THREAD)(
+    _In_ DWORD dwExitCode
+    );
+typedef EXIT_THREAD *PEXIT_THREAD;
+
+typedef
+BOOL
+(WINAPI TERMINATE_THREAD)(
+    _In_ HANDLE hThread,
+    _In_ DWORD dwExitCode
+    );
+typedef TERMINATE_THREAD *PTERMINATE_THREAD;
+
+typedef
+_Success_(return != 0)
+BOOL
+(WINAPI GET_EXIT_CODE_THREAD)(
+    _In_ HANDLE hThread,
+    _Out_ LPDWORD lpExitCode
+    );
+typedef GET_EXIT_CODE_THREAD *PGET_EXIT_CODE_THREAD;
+
+typedef
+DWORD
+(WINAPI QUEUE_USER_APC)(
+    _In_ PAPCFUNC pfnAPC,
+    _In_ HANDLE hThread,
+    _In_ ULONG_PTR dwData
+    );
+typedef QUEUE_USER_APC *PQUEUE_USER_APC;
 
 typedef
 BOOL
@@ -1968,6 +2010,33 @@ VOID
     _In_opt_ LPCWSTR lpOutputString
     );
 typedef OUTPUT_DEBUG_STRING_W *POUTPUT_DEBUG_STRING_W;
+
+typedef
+VOID
+(CALLBACK APC_ROUTINE) (
+    _In_opt_ PVOID ApcArgument1,
+    _In_opt_ PVOID ApcArgument2,
+    _In_opt_ PVOID ApcArgument3
+    );
+typedef APC_ROUTINE *PAPC_ROUTINE;
+
+typedef
+NTSTATUS
+(NTAPI NT_QUEUE_APC_THREAD)(
+    _In_ HANDLE ThreadHandle,
+    _In_ PAPC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcArgument1,
+    _In_opt_ PVOID ApcArgument2,
+    _In_opt_ PVOID ApcArgument3
+    );
+typedef NT_QUEUE_APC_THREAD *PNT_QUEUE_APC_THREAD;
+
+typedef
+NTSTATUS
+(NTAPI NT_TEST_ALERT)(
+    VOID
+    );
+typedef NT_TEST_ALERT *PNT_TEST_ALERT;
 
 #include "Injection.h"
 
@@ -3817,6 +3886,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PZW_CREATE_THREAD ZwCreateThread;                                                                  \
     PZW_OPEN_THREAD ZwOpenThread;                                                                      \
     PZW_TERMINATE_THREAD ZwTerminateThread;                                                            \
+    PNT_QUEUE_APC_THREAD NtQueueApcThread;                                                             \
+    PNT_TEST_ALERT NtTestAlert;                                                                        \
     PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PLOAD_LIBRARY_A LoadLibraryA;                                                                      \
@@ -3827,8 +3898,19 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     POPEN_EVENT_A OpenEventA;                                                                          \
     POPEN_EVENT_W OpenEventW;                                                                          \
     PSET_EVENT SetEvent;                                                                               \
-    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
+    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                  \
+    PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;                                                  \
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
+    PSLEEP_EX SleepEx;                                                                                 \
+    PEXIT_THREAD ExitThread;                                                                           \
+    PGET_EXIT_CODE_THREAD GetExitCodeThread;                                                           \
+    PTERMINATE_THREAD TerminateThread;                                                                 \
+    PQUEUE_USER_APC QueueUserAPC;                                                                      \
+    PCREATE_FILE_MAPPING_W CreateFileMappingW;                                                         \
+    POPEN_FILE_MAPPING_W OpenFileMappingW;                                                             \
+    PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;                                                              \
+    PFLUSH_VIEW_OF_FILE FlushViewOfFile;                                                               \
+    PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;                                                               \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 

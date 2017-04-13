@@ -256,7 +256,11 @@ Routine Description:
     The term "approximate" is used to qualify both the start and end addresses,
     because although scanning for repeat 0xCC occurrences is quite reliable, it
     is essentially still a heuristic, and thus, not an authoritative source of
-    a function's code size (in comparison to, say, debug symbols).
+    a function's code size (in comparison to, say, debug symbols).  The MSVC
+    compiler suite, in particular, can aggresively hoist cold blocks into
+    completely separate areas that are far jumped to, such that the code size
+    cannot be determined simply by looking at start/end markers (one would need
+    to use a recursive descent style analysis of the routine, instead).
 
 Arguments:
 

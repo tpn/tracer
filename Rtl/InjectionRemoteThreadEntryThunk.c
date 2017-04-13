@@ -64,6 +64,7 @@ Return Value:
     PGET_PROC_ADDRESS GetProcAddress;
     PLOAD_LIBRARY_EX_W LoadLibraryExW;
     PRTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_FUNCTIONS Functions;
     PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback;
 
     //
@@ -86,9 +87,11 @@ Return Value:
     // Initialize local function pointers.
     //
 
-    OpenEventW = Context->OpenEventW;
-    GetProcAddress = Context->GetProcAddress;
-    LoadLibraryExW = Context->LoadLibraryExW;
+    Functions = &Context->Functions;
+
+    OpenEventW = Functions->OpenEventW;
+    GetProcAddress = Functions->GetProcAddress;
+    LoadLibraryExW = Functions->LoadLibraryExW;
 
     //
     // Wire up a local packet alias.
