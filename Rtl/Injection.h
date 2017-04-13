@@ -225,7 +225,7 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG LoadLibraryFailed:1;
         ULONGLONG GetProcAddressFailed:1;
         ULONGLONG VirtualAllocExFailed:1;
-        ULONGLONG VirtualProtectFailed:1;
+        ULONGLONG VirtualProtectExFailed:1;
         ULONGLONG FlushInstructionCacheFailed:1;
         ULONGLONG IllegalInstructionInCallbackTest:1;
         ULONGLONG AccessViolationInCallbackTest:1;
@@ -268,6 +268,10 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG WriteRemoteContextCodeFailed:1;
         ULONGLONG WriteRemoteCallerCodeFailed:1;
         ULONGLONG WriteRemotePayloadFailed:1;
+        ULONGLONG VirtualProtectExContextCodeFailed:1;
+        ULONGLONG VirtualProtectExCallerCodeFailed:1;
+        ULONGLONG FlushInstructionCacheContextCodeFailed:1;
+        ULONGLONG FlushInstructionCacheCallerCodeFailed:1;
         ULONGLONG SignalObjectAndWaitFailed:1;
 
         //
@@ -275,7 +279,7 @@ typedef union _RTL_INJECTION_ERROR {
         // new fields.
         //
 
-        ULONGLONG Unused:11;
+        ULONGLONG Unused:7;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;
