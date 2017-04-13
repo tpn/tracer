@@ -15,27 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="../TracerCore/TracerCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="targetver.h">
+    <ClInclude Include="../TracerCore/TracerCorePrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracerCore.h">
+    <ClInclude Include="../TracerCore/stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TracerCorePrivate.h">
+    <ClInclude Include="../TracerCore/targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.c">
+    <ClCompile Include="../TracerCore/stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TracerCore.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dllmain.c">
+    <ClCompile Include="../TracerCore/TracerCore.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

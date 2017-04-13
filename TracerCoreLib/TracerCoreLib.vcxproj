@@ -77,7 +77,6 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="../TracerCore/TracerCore.c" />
-    <ClCompile Include="../TracerCore/TracerExeMain.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
