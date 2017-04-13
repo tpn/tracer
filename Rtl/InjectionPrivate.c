@@ -1744,6 +1744,7 @@ Return Value:
     }
 
     AssertAligned16(CodeSize);
+    CodeSize += 16;
     Context->ContextProtocolThunkOffset = CodeSize;
     CodeSize += ALIGN_UP(Context->SizeOfContextProtocolThunkInBytes, 16);
 
@@ -1776,6 +1777,7 @@ Return Value:
     }
 
     AssertAligned16(CodeSize);
+    CodeSize += 16;
     Context->CallbackProtocolThunkOffset = CodeSize;
     CodeSize += ALIGN_UP(Context->SizeOfCallerProtocolThunkInBytes, 16);
 
@@ -1798,6 +1800,7 @@ Return Value:
     }
 
     AssertAligned16(CodeSize);
+    CodeSize += 16;
     Context->InjectionThunkOffset = CodeSize;
     CodeSize += ALIGN_UP(Context->SizeOfInjectionThunkInBytes, 16);
 
@@ -1995,7 +1998,7 @@ Return Value:
 
     Rtl->CopyPages((PCHAR)RemoteContext,
                    (PCHAR)Context,
-                   Context->NumberOfPagesForContext);
+                   Context->NumberOfPagesForContext >> 1);
 
     //
     // Update all the buffer addresses.
@@ -2168,6 +2171,7 @@ Return Value:
     );
 
     if (!Success) {
+        DWORD LastError = GetLastError();
         Error.InternalError = TRUE;
         Error.WriteRemoteMemoryFailed = TRUE;
         Error.WriteRemoteContextFailed = TRUE;
