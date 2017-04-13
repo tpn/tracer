@@ -367,7 +367,7 @@ Return Value:
     //
 
     Context->OriginalCode = OriginalCode;
-    Context->Code = FinalCode;
+    Context->CallerCode = (PAPC_ROUTINE)FinalCode;
     Packet->InjectionFlags.AsULong = Flags.AsULong;
 
     //

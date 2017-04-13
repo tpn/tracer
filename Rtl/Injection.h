@@ -224,7 +224,7 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG InvalidTargetProcessId:1;
         ULONGLONG LoadLibraryFailed:1;
         ULONGLONG GetProcAddressFailed:1;
-        ULONGLONG VirtualAllocFailed:1;
+        ULONGLONG VirtualAllocExFailed:1;
         ULONGLONG VirtualProtectFailed:1;
         ULONGLONG FlushInstructionCacheFailed:1;
         ULONGLONG IllegalInstructionInCallbackTest:1;
@@ -254,13 +254,28 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG AccessViolationInCallback:1;
         ULONGLONG StatusInPageErrorInCallback:1;
         ULONGLONG InjectionThunkExtractCodeSizeFailed:1;
+        ULONGLONG RemoteContextAllocationFailed:1;
+        ULONGLONG RemoteInjectionThunkAllocationFailed:1;
+        ULONGLONG RemoteCallerCodeAllocationFailed:1;
+        ULONGLONG RemotePayloadAllocationFailed:1;
+        ULONGLONG CanCallGetLastErrorForMoreInfo:1;
+        ULONGLONG VirtualAllocFailed:1;
+        ULONGLONG InjectionContextAllocationFailed:1;
+        ULONGLONG InjectionContextCodeAllocationFailed:1;
+        ULONGLONG InjectionCallerCodeAllocationFailed:1;
+        ULONGLONG RemoteMemoryInjectionFailed:1;
+        ULONGLONG WriteRemoteContextFailed:1;
+        ULONGLONG WriteRemoteContextCodeFailed:1;
+        ULONGLONG WriteRemoteCallerCodeFailed:1;
+        ULONGLONG WriteRemotePayloadFailed:1;
+        ULONGLONG SignalObjectAndWaitFailed:1;
 
         //
         // Decrement the remaining bits in the Unused member below when adding
         // new fields.
         //
 
-        ULONGLONG Unused:26;
+        ULONGLONG Unused:11;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;
@@ -298,6 +313,8 @@ typedef enum _RTL_INJECTION_REMOTE_THREAD_EXIT_CODE {
     InjectedRemoteThreadAccessViolationInCallback,
     InjectedRemoteThreadIllegalInstructionInCallback,
 
+    InjectedRemoteThreadQueuedAPCExitThread,
+
 } RTL_INJECTION_REMOTE_THREAD_EXIT_CODE;
 
 typedef
@@ -320,9 +337,20 @@ typedef struct _RTL_INJECTION_FUNCTIONS {
     PGET_PROC_ADDRESS GetProcAddress;
     PLOAD_LIBRARY_EX_W LoadLibraryExW;
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
-    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
+    PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+    PNT_QUEUE_APC_THREAD NtQueueUserApcThread;
+    PNT_TEST_ALERT NtTestAlert;
+    PQUEUE_USER_APC QueueUserAPC;
+    PSLEEP_EX SleepEx;
+    PEXIT_THREAD ExitThread;
+    PGET_EXIT_CODE_THREAD GetExitCodeThread;
+    PCREATE_FILE_MAPPING_W CreateFileMappingW;
+    POPEN_FILE_MAPPING_W OpenFileMappingW;
+    PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;
+    PFLUSH_VIEW_OF_FILE FlushViewOfFile;
+    PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;
 } RTL_INJECTION_FUNCTIONS;
 typedef RTL_INJECTION_FUNCTIONS *PRTL_INJECTION_FUNCTIONS;
 typedef const RTL_INJECTION_FUNCTIONS *PCRTL_INJECTION_FUNCTIONS;
@@ -349,7 +377,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_PACKET {
     // injection packet structure.
     //
 
-    PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;
+    union {
+        PRTL_IS_INJECTION_PROTOCOL_CALLBACK IsInjectionProtocolCallback;
+        PAPC_ROUTINE CallbackProtocolThunk;
+    };
 
     //
     // Size of the structure, in bytes.

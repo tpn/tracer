@@ -394,11 +394,11 @@ Return Value:
         goto Error;
     }
 
-    if (StartAddress != Context->CodeStartAddress) {
+    if (StartAddress != Context->CallerCodeStartAddress) {
         goto Error;
     }
 
-    if (EndAddress != Context->CodeEndAddress) {
+    if (EndAddress != Context->CallerCodeEndAddress) {
         goto Error;
     }
 
@@ -822,8 +822,8 @@ Return Value:
                                                    &StartAddress,
                                                    &EndAddress);
 
-        Context->CodeStartAddress = StartAddress;
-        Context->CodeEndAddress = EndAddress;
+        Context->CallerCodeStartAddress = StartAddress;
+        Context->CallerCodeEndAddress = EndAddress;
 
         if (!Success) {
             return FALSE;
@@ -841,7 +841,7 @@ Return Value:
 
         *((PULONGLONG)Token) = CodeSize;
 
-        Context->SizeOfCallbackCodeInBytes = (ULONG)CodeSize;
+        Context->SizeOfCallerCodeInBytes = (ULONG)CodeSize;
 
         return TRUE;
     }
@@ -930,10 +930,10 @@ Return Value:
 // and Context->IsInjectionContextProtocolCallback routines are defined below.
 // Currently, they are both dummy routines that simply return FALSE, as we do no
 // callback interrogation post-injection.
-//
 
 _Use_decl_annotations_
 BOOL
+NOINLINE
 RtlpPostInjectionProtocolCallbackImpl(
     PCRTL_INJECTION_PACKET Packet,
     PVOID Token
@@ -964,6 +964,7 @@ Return Value:
 }
 
 _Use_decl_annotations_
+NOINLINE
 BOOL
 RtlpPostInjectionContextProtocolCallbackImpl(
     PRTL_INJECTION_CONTEXT Context,
@@ -992,6 +993,36 @@ Return Value:
 --*/
 {
     return FALSE;
+}
+
+_Use_decl_annotations_
+DECLSPEC_NORETURN
+NOINLINE
+VOID
+RtlpExitThreadThunk(
+    PCRTL_INJECTION_CONTEXT Context
+    )
+/*++
+
+Routine Description:
+
+    If we need to terminate the target thread, an APC will be queued using
+    this routine.
+
+Arguments:
+
+    Context - Supplies a pointer to the remote process's injection context.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PEXIT_THREAD ExitThread;
+
+    ExitThread = Context->Functions.ExitThread;
+    ExitThread(InjectedRemoteThreadQueuedAPCExitThread);
 }
 
 _Use_decl_annotations_
@@ -1204,19 +1235,45 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL QueueAPCToTerminateThreadOnError = FALSE;
     ULONG Size;
     USHORT Offset;
+    USHORT CodeSize;
     USHORT ExpectedOffset;
+    ULONG RemoteThreadId;
+    ULONG RemoteThreadCreationFlags;
     PSTRING String;
+    NTSTATUS Status;
     PUNICODE_STRING Unicode;
+    LONG_INTEGER NumberOfPages;
+    HANDLE RemoteProcessHandle;
+    HANDLE RemoteThreadHandle = NULL;
+    SIZE_T NumberOfBytesWritten;
+    HRESULT WaitResult;
     ULONG_INTEGER AlignedRtlDllPathLength;
     ULONG_INTEGER AlignedModulePathLength;
     ULONG_INTEGER AlignedCallbackFunctionNameLength;
     PRTL_INJECTION_CONTEXT Context;
     ULONG_INTEGER AllocSizeInBytes;
+    ULONG_INTEGER PageAlignedAllocSizeInBytes;
     RTL_INJECTION_ERROR Error;
     PRTL_INJECTION_PACKET Packet;
+    PRTL_INJECTION_PACKET RemotePacket;
+    PRTL_INJECTION_PACKET ActualRemotePacket;
     PCRTL_INJECTION_PACKET SourcePacket;
+    PRTL_INJECTION_CONTEXT RemoteContext;
+    PRTL_INJECTION_CONTEXT ActualRemoteContext;
+    PBYTE Dest;
+    PBYTE Source;
+    PBYTE BaseContextCode;
+    PBYTE RemoteBaseContextCode;
+    PBYTE ActualRemoteBaseContextCode;
+    PBYTE BaseCallerCode;
+    PBYTE RemoteBaseCallerCode;
+    PBYTE ActualRemoteBaseCallerCode;
+    PVOID RemoteContextAddress = NULL;
+    LPVOID RemoteThreadParameter;
+    LPTHREAD_START_ROUTINE RemoteThreadStartRoutine;
     const USHORT EventNameMaxLength=RTL_INJECTION_CONTEXT_EVENT_NAME_MAXLENGTH;
     const USHORT EventNameLength = EventNameMaxLength - 1;
 
@@ -1365,21 +1422,91 @@ Return Value:
     }
 
     //
-    // Allocate the context in this process first via the allocator.
+    // Calculate the page-aligned size of the context, then count the number of
+    // pages required to store it.  (It should be 1.)
     //
 
+    PageAlignedAllocSizeInBytes.LongPart = (
+        ROUND_TO_PAGES(AllocSizeInBytes.LongPart)
+    );
+
+    if (PageAlignedAllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    NumberOfPages.LongPart = PageAlignedAllocSizeInBytes.LongPart >> PAGE_SHIFT;
+
+    if (NumberOfPages.LongPart != 1) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Allocate a page of memory in the remote process for the remote context,
+    // then allocate two pages in our process; the first page is our version
+    // of the context, the second is a scratch area we use to prepare what the
+    // remote context will look like once it's injected.  That is, we adjust
+    // all pointers and memory references here, then blit the entire page over
+    // the fence via WriteProcessMemory().
+    //
+
+    RemoteProcessHandle = SourceContext->TargetProcessHandle;
+    ActualRemoteContext = (PRTL_INJECTION_CONTEXT)(
+        VirtualAllocEx(
+            RemoteProcessHandle,
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!ActualRemoteContext) {
+        Error.VirtualAllocExFailed = TRUE;
+        Error.RemoteMemoryInjectionFailed = TRUE;
+        Error.CanCallGetLastErrorForMoreInfo = TRUE;
+        goto Error;
+    }
+
+    //
+    // Remote memory allocation was successful, proceed with local context
+    // allocation of two pages.
+    //
+
+    NumberOfPages.LowPart += 1;
+    PageAlignedAllocSizeInBytes.LongPart = NumberOfPages.LowPart << PAGE_SHIFT;
+
     Context = (PRTL_INJECTION_CONTEXT)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AllocSizeInBytes.LowPart
+        VirtualAlloc(
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart,
+            MEM_COMMIT,
+            PAGE_READWRITE
         )
     );
 
     if (!Context) {
+        Error.VirtualAllocFailed = TRUE;
         Error.InternalAllocationFailure = TRUE;
+        Error.InjectionContextAllocationFailed = TRUE;
         goto Error;
     }
+
+    //
+    // Carve out the temporary remote context in the trailing page.
+    //
+
+    RemoteContext = (PRTL_INJECTION_CONTEXT)(((PBYTE)Context) + PAGE_SIZE);
+    Context->TemporaryRemoteContext = RemoteContext;
+    Context->RemoteBaseContextAddress = ActualRemoteContext;
+
+
+    //
+    // Zero the entire allocation.
+    //
+
+    Rtl->FillPages((PCHAR)Context, 0, NumberOfPages.LowPart);
 
     //
     // Copy the source context over.
@@ -1388,10 +1515,11 @@ Return Value:
     CopyMemory(Context, (const PVOID)SourceContext, sizeof(*Context));
 
     //
-    // Make a note of the context allocation size.
+    // Make a note of the context allocation size and number of pages required.
     //
 
     Context->TotalContextAllocSize.LongPart = AllocSizeInBytes.LongPart;
+    Context->NumberOfPagesForContext = NumberOfPages.LowPart;
 
     //
     // Clear the flags.  (In particular, we want to clear IsStackAllocated.)
@@ -1404,6 +1532,13 @@ Return Value:
     //
 
     Packet = &Context->Packet;
+
+    //
+    // Initialize the bootstrap functions; wire the packet's pointer up to them.
+    //
+
+    RtlpInitializeRtlInjectionFunctions(Rtl, &Context->Functions);
+    Packet->Functions = &Context->Functions;
 
     //
     // Carve out pointers to string buffers via offsets past the context we
@@ -1506,6 +1641,7 @@ Return Value:
                    String->Length);
 
         Offset += String->MaximumLength;
+
     }
 
     //
@@ -1539,14 +1675,568 @@ Return Value:
     Context->InjectionFlags.AsULong = SourcePacket->InjectionFlags.AsULong;
 
     //
-    // Events have been successfully created, proceed with memory allocation
-    // in the remote process.
+    // Init the code size.  As we account for each thunk we need to inject, we
+    // add a leading 16 bytes, in order to ensure the function always starts on
+    // a 16 byte boundary, and we also round up to a 16 byte alignment at the
+    // end, to ensure the offset is aligned properly for the next function.
     //
 
-    Success = RtlpInjectionAllocateRemoteMemory(Rtl, Context, &Error);
+    CodeSize = 16;
+
+    //
+    // Wire up the exit thread thunk.
+    //
+
+    Context->ExitThreadThunk = (
+        SKIP_JUMPS_INLINE(
+            RtlpExitThreadThunk,
+            PAPC_ROUTINE
+        )
+    );
+
+    Success = (
+        GetApproximateFunctionBoundaries(
+            (ULONG_PTR)Context->ExitThreadThunk,
+            (PULONG_PTR)&Context->ExitThreadThunkStartAddress,
+            (PULONG_PTR)&Context->ExitThreadThunkEndAddress
+        )
+    );
+
+    Context->SizeOfExitThreadThunkInBytes = (LONG)(
+        Context->ExitThreadThunkEndAddress -
+        Context->ExitThreadThunkStartAddress
+    );
 
     if (!Success) {
         goto Error;
+    }
+
+    AssertAligned16(CodeSize);
+    Context->ExitThreadThunkOffset = CodeSize;
+    CodeSize += ALIGN_UP(Context->SizeOfExitThreadThunkInBytes, 16);
+
+    //
+    // Wire up the context protocol thunk.
+    //
+
+    Context->ContextProtocolThunk = (
+        SKIP_JUMPS_INLINE(
+            RtlpPostInjectionContextProtocolCallbackImpl,
+            PAPC_ROUTINE
+        )
+    );
+
+    Success = (
+        GetApproximateFunctionBoundaries(
+            (ULONG_PTR)Context->ContextProtocolThunk,
+            (PULONG_PTR)&Context->ContextProtocolThunkStartAddress,
+            (PULONG_PTR)&Context->ContextProtocolThunkEndAddress
+        )
+    );
+
+    Context->SizeOfContextProtocolThunkInBytes = (LONG)(
+        Context->ContextProtocolThunkEndAddress -
+        Context->ContextProtocolThunkStartAddress
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    AssertAligned16(CodeSize);
+    Context->ContextProtocolThunkOffset = CodeSize;
+    CodeSize += ALIGN_UP(Context->SizeOfContextProtocolThunkInBytes, 16);
+
+    //
+    // Wire up the callback protocol thunk.
+    //
+
+    Packet->CallbackProtocolThunk = (
+        SKIP_JUMPS_INLINE(
+            RtlpPostInjectionProtocolCallbackImpl,
+            PAPC_ROUTINE
+        )
+    );
+
+    Success = (
+        GetApproximateFunctionBoundaries(
+            (ULONG_PTR)Packet->CallbackProtocolThunk,
+            (PULONG_PTR)&Context->CallbackProtocolThunkStartAddress,
+            (PULONG_PTR)&Context->CallbackProtocolThunkEndAddress
+        )
+    );
+
+    Context->SizeOfCallerProtocolThunkInBytes = (LONG)(
+        Context->CallbackProtocolThunkEndAddress -
+        Context->CallbackProtocolThunkStartAddress
+    );
+
+    if (!Success) {
+        goto Error;
+    }
+
+    AssertAligned16(CodeSize);
+    Context->CallbackProtocolThunkOffset = CodeSize;
+    CodeSize += ALIGN_UP(Context->SizeOfCallerProtocolThunkInBytes, 16);
+
+    //
+    // The injection thunk will have already been wired up for us, so just
+    // calculate its size and offset.
+    //
+
+    if (!Context->RemoteThread.InjectionThunk   ||
+        !Context->InjectionThunkStartAddress    ||
+        !Context->InjectionThunkEndAddress      ||
+         Context->SizeOfInjectionThunkInBytes <= 0) {
+
+        //
+        // Invariant check.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    AssertAligned16(CodeSize);
+    Context->InjectionThunkOffset = CodeSize;
+    CodeSize += ALIGN_UP(Context->SizeOfInjectionThunkInBytes, 16);
+
+    //
+    // Ensure the final code allocation size fits into a single page.
+    //
+
+    PageAlignedAllocSizeInBytes.LongPart = ROUND_TO_PAGES(CodeSize);
+
+    if (PageAlignedAllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    NumberOfPages.LongPart = PageAlignedAllocSizeInBytes.LongPart >> PAGE_SHIFT;
+
+    if (NumberOfPages.LongPart != 1) {
+        __debugbreak();
+    }
+
+    //
+    // Save the final sizes.
+    //
+
+    Context->TotalContextCodeAllocSize.LongPart = (
+        PageAlignedAllocSizeInBytes.LongPart
+    );
+
+    Context->NumberOfPagesForContextCode = NumberOfPages.LowPart;
+
+    //
+    // Everything checks out for our context code page.  Process the caller's
+    // code page now.  Note that we reset the CodeSize.
+    //
+
+    if (!Context->CallerCode              ||
+        !Context->CallerCodeStartAddress  ||
+        !Context->CallerCodeEndAddress    ||
+         Context->SizeOfCallerCodeInBytes <= 0) {
+
+        //
+        // Invariant check.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    CodeSize = 16;
+    Context->CallerCodeOffset = CodeSize;
+    CodeSize += ALIGN_UP(Context->SizeOfCallerCodeInBytes, 16);
+
+    PageAlignedAllocSizeInBytes.LongPart = ROUND_TO_PAGES(CodeSize);
+
+    if (PageAlignedAllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    NumberOfPages.LongPart = PageAlignedAllocSizeInBytes.LongPart >> PAGE_SHIFT;
+
+    if (NumberOfPages.LongPart != 1) {
+        __debugbreak();
+    }
+
+    //
+    // Save the final sizes.
+    //
+
+    Context->TotalCallerCodeAllocSize.LongPart = (
+        PageAlignedAllocSizeInBytes.LongPart
+    );
+
+    Context->NumberOfPagesForCallerCode = NumberOfPages.LowPart;
+
+    //
+    // We now need to create the other remote memory blocks.  We use the same
+    // approach as with the context and allocate two pages for every one page
+    // we need such that we can prepare what the remote memory page needs to
+    // look like programmatically before sending it over via WriteProcessMemory.
+    //
+
+    BaseContextCode = (PBYTE)(
+        VirtualAlloc(
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart << 1,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!BaseContextCode) {
+        Error.VirtualAllocFailed = TRUE;
+        Error.InternalAllocationFailure = TRUE;
+        Error.InjectionContextCodeAllocationFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // Two pages for the context code were allocated successfully on our side.
+    //
+
+    Context->BaseContextCodeAddress = BaseContextCode;
+    RemoteBaseContextCode = BaseContextCode + PAGE_SIZE;
+    Context->TemporaryRemoteBaseContextCodeAddress = RemoteBaseContextCode;
+
+    //
+    // Fill the code pages with 0xCC.
+    //
+
+    Rtl->FillPages((PCHAR)BaseContextCode, 0xCC, NumberOfPages.LowPart << 1);
+
+    //
+    // Now attempt the remote allocation.
+    //
+
+    ActualRemoteBaseContextCode = (PBYTE)(
+        VirtualAllocEx(
+            RemoteProcessHandle,
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!ActualRemoteBaseContextCode) {
+        Error.VirtualAllocExFailed = TRUE;
+        Error.InternalAllocationFailure = TRUE;
+        Error.InjectionCallerCodeAllocationFailed = TRUE;
+        goto Error;
+    }
+
+    Context->RemoteBaseContextCodeAddress = ActualRemoteBaseContextCode;
+
+    //
+    // Now repeat the process for the caller code.
+    //
+
+    BaseCallerCode = (PBYTE)(
+        VirtualAlloc(
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart << 1,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!BaseCallerCode) {
+        Error.VirtualAllocFailed = TRUE;
+        Error.InternalAllocationFailure = TRUE;
+        Error.InjectionCallerCodeAllocationFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // Two pages for the caller code were allocated successfully on our side.
+    //
+
+    Context->BaseCallerCodeAddress = BaseCallerCode;
+    RemoteBaseCallerCode = BaseCallerCode + PAGE_SIZE;
+    Context->TemporaryRemoteBaseCallerCodeAddress = RemoteBaseCallerCode;
+
+    //
+    // Fill the code pages with 0xCC.
+    //
+
+    Rtl->FillPages((PCHAR)BaseCallerCode, 0xCC, NumberOfPages.LowPart << 1);
+
+    //
+    // Now attempt the remote allocation.
+    //
+
+    ActualRemoteBaseCallerCode = (PBYTE)(
+        VirtualAllocEx(
+            RemoteProcessHandle,
+            NULL,
+            PageAlignedAllocSizeInBytes.LongPart,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!ActualRemoteBaseCallerCode) {
+        Error.VirtualAllocExFailed = TRUE;
+        Error.InternalAllocationFailure = TRUE;
+        Error.InjectionCallerCodeAllocationFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // All allocation was successful.  Copy the context page over to the remote
+    // context staging area (which is in our process's address space).
+    //
+
+    Rtl->CopyPages((PCHAR)RemoteContext,
+                   (PCHAR)Context,
+                   Context->NumberOfPagesForContext);
+
+    //
+    // Update all the buffer addresses.
+    //
+
+#define UPDATE_BUFFER(Name, Target, Type) (          \
+    Remote##Target##->##Name##.Buffer = (Type)(      \
+        (ULONG_PTR)ActualRemote##Target## + (        \
+            (ULONG_PTR)##Target##->##Name##.Buffer - \
+            (ULONG_PTR)##Target##                    \
+        )                                            \
+    )                                                \
+)
+
+#define UPDATE_CONTEXT_BUFFER(Name) UPDATE_BUFFER(Name, Context, PWSTR)
+
+    UPDATE_CONTEXT_BUFFER(RtlDllPath);
+    UPDATE_CONTEXT_BUFFER(SignalEventName);
+    UPDATE_CONTEXT_BUFFER(WaitEventName);
+    UPDATE_CONTEXT_BUFFER(CallerSignalEventName);
+    UPDATE_CONTEXT_BUFFER(CallerWaitEventName);
+
+    RemotePacket = (PRTL_INJECTION_PACKET)(
+        (ULONG_PTR)RemoteContext +
+        FIELD_OFFSET(RTL_INJECTION_CONTEXT, Packet)
+    );
+
+    ActualRemotePacket = (PRTL_INJECTION_PACKET)(
+        (ULONG_PTR)ActualRemoteContext +
+        FIELD_OFFSET(RTL_INJECTION_CONTEXT, Packet)
+    );
+
+#define UPDATE_PACKET_BUFFER(Name, Type) UPDATE_BUFFER(Name, Packet, Type)
+#define UPDATE_PACKET_STRING_BUFFER(Name) UPDATE_PACKET_BUFFER(Name, PSTR)
+#define UPDATE_PACKET_UNICODE_BUFFER(Name) UPDATE_PACKET_BUFFER(Name, PWSTR)
+
+    if (SourcePacket->InjectionFlags.InjectModule) {
+        UPDATE_PACKET_STRING_BUFFER(CallbackFunctionName);
+        UPDATE_PACKET_UNICODE_BUFFER(ModulePath);
+    }
+
+    RemotePacket->SignalEventName = (PCUNICODE_STRING)(
+        (ULONG_PTR)ActualRemoteContext +
+        (ULONG_PTR)FIELD_OFFSET(RTL_INJECTION_CONTEXT, CallerSignalEventName)
+    );
+
+    RemotePacket->WaitEventName = (PCUNICODE_STRING)(
+        (ULONG_PTR)ActualRemoteContext +
+        (ULONG_PTR)FIELD_OFFSET(RTL_INJECTION_CONTEXT, CallerWaitEventName)
+    );
+
+    RemotePacket->Functions = (PCRTL_INJECTION_FUNCTIONS)(
+        (ULONG_PTR)ActualRemoteContext +
+        (ULONG_PTR)FIELD_OFFSET(RTL_INJECTION_CONTEXT, Functions)
+    );
+
+    //
+    // Now copy all the chunks of code over, updating references/pointers as
+    // we go.  Once we're done, we'll send everything over to the remote
+    // process via WriteProcessMemory().
+    //
+
+    //
+    // Copy the exit thread thunk.
+    //
+
+    Dest = BaseContextCode + Context->ExitThreadThunkOffset;
+    Source = (PBYTE)Context->ExitThreadThunkStartAddress;
+    CodeSize = (USHORT)Context->SizeOfExitThreadThunkInBytes;
+
+    CopyMemory(Dest, Source, CodeSize);
+
+    RemoteContext->ExitThreadThunk = (PAPC_ROUTINE)(
+        (ULONG_PTR)ActualRemoteBaseContextCode +
+        (ULONG_PTR)Context->ExitThreadThunkOffset
+    );
+
+    //
+    // Copy the context protocol thunk.
+    //
+
+    Dest = BaseContextCode + Context->ContextProtocolThunkOffset;
+    Source = (PBYTE)Context->ContextProtocolThunkStartAddress;
+    CodeSize = (USHORT)Context->SizeOfContextProtocolThunkInBytes;
+
+    CopyMemory(Dest, Source, CodeSize);
+
+    RemoteContext->ContextProtocolThunk = (PAPC_ROUTINE)(
+        (ULONG_PTR)ActualRemoteBaseContextCode +
+        (ULONG_PTR)Context->ContextProtocolThunkOffset
+    );
+
+    //
+    // Copy the callback protocol thunk.
+    //
+
+    Dest = BaseContextCode + Context->CallbackProtocolThunkOffset;
+    Source = (PBYTE)Context->CallbackProtocolThunkStartAddress;
+    CodeSize = (USHORT)Context->SizeOfCallerProtocolThunkInBytes;
+
+    CopyMemory(Dest, Source, CodeSize);
+
+    RemotePacket->CallbackProtocolThunk = (PAPC_ROUTINE)(
+        (ULONG_PTR)ActualRemoteBaseContextCode +
+        (ULONG_PTR)Context->CallbackProtocolThunkOffset
+    );
+
+    //
+    // Copy the injection thunk.
+    //
+
+    Dest = BaseContextCode + Context->InjectionThunkOffset;
+    Source = (PBYTE)Context->InjectionThunkStartAddress;
+    CodeSize = (USHORT)Context->SizeOfInjectionThunkInBytes;
+
+    CopyMemory(Dest, Source, CodeSize);
+
+    RemoteContext->RemoteThread.InjectionRoutine = (PAPC_ROUTINE)(
+        (ULONG_PTR)ActualRemoteBaseContextCode +
+        (ULONG_PTR)Context->InjectionThunkOffset
+    );
+
+    //
+    // Copy the caller's code.
+    //
+
+    Dest = BaseCallerCode + Context->CallerCodeOffset;
+    Source = (PBYTE)Context->CallerCodeStartAddress;
+    CodeSize = (USHORT)Context->SizeOfCallerCodeInBytes;
+
+    CopyMemory(Dest, Source, CodeSize);
+
+    RemoteContext->CallerCode = (PAPC_ROUTINE)(
+        (ULONG_PTR)ActualRemoteBaseCallerCode +
+        (ULONG_PTR)Context->CallerCodeOffset
+    );
+
+    RemotePacket->CallbackProtocolThunk = RemoteContext->CallerCode;
+
+    //
+    // Handle payloads.
+    //
+
+    if (SourceContext->InjectionFlags.InjectPayload) {
+
+        //
+        // XXX todo.
+        //
+
+        __debugbreak();
+    }
+
+    //
+    // We can now copy all of the pages into the remote process then set the
+    // code pages to executable.
+    //
+
+    PageAlignedAllocSizeInBytes.LongPart = (
+        Context->NumberOfPagesForContext << PAGE_SHIFT
+    );
+
+    Success = (
+        WriteProcessMemory(
+            RemoteProcessHandle,
+            Context->RemoteBaseContextAddress,
+            RemoteContext,
+            PageAlignedAllocSizeInBytes.LongPart,
+            &NumberOfBytesWritten
+        )
+    );
+
+    if (!Success) {
+        Error.InternalError = TRUE;
+        Error.WriteRemoteMemoryFailed = TRUE;
+        Error.WriteRemoteContextFailed = TRUE;
+        goto Error;
+    }
+
+    if (NumberOfBytesWritten != PageAlignedAllocSizeInBytes.LongPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Copy the context code.
+    //
+
+    PageAlignedAllocSizeInBytes.LongPart = (
+        Context->NumberOfPagesForContextCode << PAGE_SHIFT
+    );
+
+    Success = (
+        WriteProcessMemory(
+            RemoteProcessHandle,
+            Context->RemoteBaseContextCodeAddress,
+            BaseContextCode,
+            PageAlignedAllocSizeInBytes.LongPart,
+            &NumberOfBytesWritten
+        )
+    );
+
+    if (!Success) {
+        Error.InternalError = TRUE;
+        Error.WriteRemoteMemoryFailed = TRUE;
+        Error.WriteRemoteContextCodeFailed = TRUE;
+        goto Error;
+    }
+
+    if (NumberOfBytesWritten != PageAlignedAllocSizeInBytes.LongPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Copy the caller's code.
+    //
+
+    PageAlignedAllocSizeInBytes.LongPart = (
+        Context->NumberOfPagesForCallerCode << PAGE_SHIFT
+    );
+
+    Success = (
+        WriteProcessMemory(
+            RemoteProcessHandle,
+            Context->RemoteBaseCallerCodeAddress,
+            BaseCallerCode,
+            PageAlignedAllocSizeInBytes.LongPart,
+            &NumberOfBytesWritten
+        )
+    );
+
+    if (!Success) {
+        Error.InternalError = TRUE;
+        Error.WriteRemoteMemoryFailed = TRUE;
+        Error.WriteRemoteCallerCodeFailed = TRUE;
+        goto Error;
+    }
+
+    if (NumberOfBytesWritten != PageAlignedAllocSizeInBytes.LongPart) {
+        __debugbreak();
+        return FALSE;
     }
 
     //
@@ -1555,18 +2245,55 @@ Return Value:
     // actual "injection" step.
     //
 
-    Success = RtlpInjectionCreateRemoteThread(Rtl, Context, &Error);
+    RemoteThreadStartRoutine = RemoteContext->RemoteThread.StartRoutine;
+    RemoteThreadParameter = ActualRemoteContext;
+    RemoteThreadCreationFlags = 0;
 
-    if (Success) {
+    RemoteThreadHandle = (
+        CreateRemoteThread(
+            RemoteProcessHandle,
+            NULL,
+            0,
+            RemoteThreadStartRoutine,
+            RemoteThreadParameter,
+            RemoteThreadCreationFlags,
+            &RemoteThreadId
+        )
+    );
 
-        //
-        // Everything completed successfully, we're done.
-        //
-
-        Error.InternalError = FALSE;
-        Error.CreateInjectionContextFailed = FALSE;
-        goto End;
+    if (!RemoteThreadHandle || RemoteThreadHandle == INVALID_HANDLE_VALUE) {
+        Error.InternalError = TRUE;
+        Error.CreateRemoteThreadFailed = TRUE;
+        goto Error;
     }
+
+    //
+    // Remote thread has been created!  Signal and wait on the event pairs.
+    //
+
+    WaitResult = (
+        SignalObjectAndWait(
+            Context->SignalEventHandle,
+            Context->WaitEventHandle,
+            INFINITE,
+            TRUE
+        )
+    );
+
+    if (WaitResult != WAIT_OBJECT_0) {
+        Error.SignalObjectAndWaitFailed = TRUE;
+        Error.CanCallGetLastErrorForMoreInfo = TRUE;
+        goto Error;
+    }
+
+    //
+    // We're getting there...
+    //
+
+    __debugbreak();
+    Error.AsULongLong = 0;
+    Success = TRUE;
+    goto End;
 
     //
     // Intentional follow-on to Error.
@@ -1575,6 +2302,49 @@ Return Value:
 Error:
 
     Success = FALSE;
+
+    if (RemoteThreadHandle) {
+
+        if (!QueueAPCToTerminateThreadOnError) {
+
+            Rtl->ZwTerminateThread(RemoteThreadHandle, ERROR_SUCCESS);
+
+        } else {
+            DWORD WaitResult;
+            PAPC_ROUTINE ApcRoutine;
+
+            ApcRoutine = (PAPC_ROUTINE)RemoteContext->ExitThreadThunk;
+
+            Status = Rtl->NtQueueApcThread(RemoteThreadHandle,
+                                           RemoteContext->ExitThreadThunk,
+                                           RemoteContextAddress,
+                                           NULL,
+                                           NULL);
+
+            if (FAILED(Status)) {
+                NOTHING;
+            }
+
+            WaitResult = WaitForSingleObject(RemoteThreadHandle, INFINITE);
+
+            if (WaitResult != WAIT_OBJECT_0) {
+                Rtl->ZwTerminateThread(RemoteThreadHandle, ERROR_SUCCESS);
+            }
+        }
+        RemoteThreadHandle = NULL;
+    }
+
+    if (RemoteContextAddress) {
+
+        VirtualFreeEx(
+            SourceContext->TargetProcessHandle,
+            RemoteContextAddress,
+            0,
+            MEM_RELEASE
+        );
+
+        RemoteContextAddress = NULL;
+    }
 
     //
     // Intentional follow-on to End.
@@ -1750,6 +2520,15 @@ Return Value:
                                                    Timestamp.QuadPart,
                                                    20,
                                                    0);
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // Add a trailing NULL.
+    //
+
+    Success = AppendUnicodeCharToUnicodeString(EventName, L'\0');
     if (!Success) {
         goto Error;
     }
@@ -1993,6 +2772,9 @@ RtlpInjectionAllocateRemoteMemory(
 Routine Description:
 
     This routine allocates memory required for injection in a remote process.
+    Allocations are performed separately for a) the initial injection thread
+    thunk, b) the caller's completion callback routine, c) the injection context
+    structure, and d) the caller's payload, if one has been requested.
 
 Arguments:
 
@@ -2013,14 +2795,169 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
+    //USHORT Offset;
+    //USHORT ExpectedOffset;
+    //USHORT NumberOfPages;
+    USHORT PageAlignedAllocSizeInBytes;
+    //PSTRING String;
+    //PUNICODE_STRING Unicode;
+    HANDLE RemoteProcessHandle;
+    RTL_INJECTION_ERROR Error;
+    PRTL_INJECTION_CONTEXT RemoteContext;
+
+    if (!ARGUMENT_PRESENT(InjectionError)) {
+
+        return FALSE;
+
+    } else {
+
+        //
+        // Clear our local error variable, then initialize to the "failed until
+        // proven otherwise" state applicable to this routine.
+        //
+
+        Error.ErrorCode = 0;
+        Error.InternalError = TRUE;
+        Error.InvalidParameters = TRUE;
+        Error.RemoteMemoryInjectionFailed = TRUE;
+
+    }
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        goto Error;
+    }
+
+    if (!ARGUMENT_PRESENT(Context)) {
+        goto Error;
+    }
+
     //
-    // WIP.
+    // Parameters are valid.
     //
+
+    Error.InvalidParameters = FALSE;
+
+    //
+    // Initialize aliases.
+    //
+
+    RemoteProcessHandle = Context->TargetProcessHandle;
+
+    PageAlignedAllocSizeInBytes = (
+        Context->NumberOfPagesForContext << PAGE_SHIFT
+    );
+
+    //
+    // Make sure it's only 1 page for now.
+    //
+
+    if (PageAlignedAllocSizeInBytes != PAGE_SIZE) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    RemoteContext = (PRTL_INJECTION_CONTEXT)(
+        VirtualAllocEx(
+            RemoteProcessHandle,
+            NULL,
+            PageAlignedAllocSizeInBytes,
+            MEM_COMMIT,
+            PAGE_READWRITE
+        )
+    );
+
+    if (!RemoteContext) {
+        Error.VirtualAllocExFailed = TRUE;
+        Error.RemoteContextAllocationFailed = TRUE;
+        Error.CanCallGetLastErrorForMoreInfo = TRUE;
+        goto Error;
+    }
 
     __debugbreak();
 
-    return FALSE;
+    Success = TRUE;
+
+    if (Success) {
+
+        //
+        // Everything completed successfully, we're done.
+        //
+
+        Error.InternalError = FALSE;
+        Error.RemoteMemoryInjectionFailed = FALSE;
+        goto End;
+    }
+
+    //
+    // Intentional follow-on to Error.
+    //
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Merge error flags.
+    //
+
+    InjectionError->ErrorCode |= Error.ErrorCode;
+
+    return Success;
 }
+
+_Use_decl_annotations_
+VOID
+RtlpInitializeRtlInjectionFunctions(
+    PRTL Rtl,
+    PRTL_INJECTION_FUNCTIONS Functions
+    )
+{
+    PBYTE Code;
+    PBYTE NewCode;
+    PBYTE *Function;
+    PBYTE *Pointers;
+    USHORT Index;
+    USHORT NumberOfFunctions;
+
+    Functions->SetEvent = Rtl->SetEvent;
+    Functions->OpenEventW = Rtl->OpenEventW;
+    Functions->CloseHandle = Rtl->CloseHandle;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
+    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
+    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
+    Functions->NtQueueUserApcThread = Rtl->NtQueueApcThread;
+    Functions->NtTestAlert = Rtl->NtTestAlert;
+    Functions->QueueUserAPC = Rtl->QueueUserAPC;
+    Functions->SleepEx = Rtl->SleepEx;
+    Functions->ExitThread = Rtl->ExitThread;
+    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
+    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
+    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
+    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
+    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
+
+    Pointers = (PBYTE *)Functions;
+    NumberOfFunctions = sizeof(*Functions) / sizeof(ULONG_PTR);
+
+    for (Index = 0; Index < NumberOfFunctions; Index++) {
+        Function = Pointers + Index;
+        Code = *Function;
+        NewCode = SkipJumpsInline(Code);
+        *Function = NewCode;
+    }
+}
+
 
 _Use_decl_annotations_
 BOOL

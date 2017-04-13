@@ -175,7 +175,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // before executing any other code.
     //
 
-    PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK IsInjectionContextProtocolCallback;
+    union {
+        PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK IsInjectionContextProtocolCallback;
+        PAPC_ROUTINE ContextProtocolThunk;
+    };
+
+    //
+    // An APC routine we can queue to the remote thread for shutdown purposes.
+    // This will always be the second member of this structure.
+    //
+
+    PAPC_ROUTINE ExitThreadThunk;
 
     //
     // Size of the structure, in bytes.
@@ -278,7 +288,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     //
 
     union {
-        PBYTE Code;
+        PAPC_ROUTINE CallerCode;
         PRTL_INJECTION_COMPLETE_CALLBACK Callback;
     };
 
@@ -287,8 +297,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     // by the GetApproximateFunctionBoundaries() routine.
     //
 
-    ULONG_PTR CodeStartAddress;
-    ULONG_PTR CodeEndAddress;
+    ULONG_PTR CallerCodeStartAddress;
+    ULONG_PTR CallerCodeEndAddress;
 
     //
     // The start address of our initial remote thread thunk, allocated in the
@@ -298,9 +308,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     struct {
         union {
             LPTHREAD_START_ROUTINE StartRoutine;
+            PAPC_ROUTINE InjectionRoutine;
             PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
         };
-        PRTLP_INJECTION_REMOTE_THREAD_ENTRY InjectionThreadEntry;
     } RemoteThread;
 
     //
@@ -312,16 +322,81 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     ULONG_PTR InjectionThunkEndAddress;
 
     //
-    // An approximate size of the callback function code.
+    // Approximate start and end addresses of our remote thread's exit thread
+    // thunk, as determined by the GetApproximateFunctionBoundaries() routine.
     //
 
-    LONG SizeOfCallbackCodeInBytes;
+    ULONG_PTR ExitThreadThunkStartAddress;
+    ULONG_PTR ExitThreadThunkEndAddress;
+
+    //
+    // Approximate start and end addresses of our remote thread's context
+    // protocol thunk, as determined by the GetApproximateFunctionBoundaries()
+    // routine.
+    //
+
+    ULONG_PTR ContextProtocolThunkStartAddress;
+    ULONG_PTR ContextProtocolThunkEndAddress;
+
+    //
+    // Approximate start and end addresses of our remote thread's callback
+    // protocol thunk for the caller.
+    //
+
+    ULONG_PTR CallbackProtocolThunkStartAddress;
+    ULONG_PTR CallbackProtocolThunkEndAddress;
+
+    //
+    // Offsets from the base of the respective code allocation where each
+    // routine starts.
+    //
+
+    USHORT ExitThreadThunkOffset;
+    USHORT InjectionThunkOffset;
+    USHORT ContextProtocolThunkOffset;
+    USHORT CallbackProtocolThunkOffset;
+
+    //
+    // Caller's code resides in a separate page.
+    //
+
+    USHORT CallerCodeOffset;
+
+    //
+    // Pad out to 4 bytes.
+    //
+
+    USHORT Padding2;
 
     //
     // Approximate size of our thread start routine.
     //
 
     LONG SizeOfInjectionThunkInBytes;
+
+    //
+    // Approximate size of our exit thread thunk.
+    //
+
+    LONG SizeOfExitThreadThunkInBytes;
+
+    //
+    // Approximate size of our injection context protocol thunk.
+    //
+
+    LONG SizeOfContextProtocolThunkInBytes;
+
+    //
+    // Approximate size of our injection callback protocol thunk for the caller.
+    //
+
+    LONG SizeOfCallerProtocolThunkInBytes;
+
+    //
+    // An approximate size of the callback function code.
+    //
+
+    LONG SizeOfCallerCodeInBytes;
 
     //
     // Allocation size used for the context plus all supporting string buffers.
@@ -339,17 +414,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 
     //
     // Total size of the code bytes that were allocated in the remote process
-    // for the caller's code.
+    // for the caller's code.  This includes the callback function size plus
+    // at least six leading 0xCC padding bytes, plus a dummy post-injection
+    // callback protocol implementation (and necessary padding bytes).
     //
 
-    LONG_INTEGER TotalCodeAllocSize;
+    LONG_INTEGER TotalCallerCodeAllocSize;
 
     //
     // Total size of the code (executable) memory allocation for our internal
-    // thread start routine.
+    // thread start routine, protocol thunk, and exit thread thunk, plus any
+    // requisite padding.
     //
 
-    LONG_INTEGER TotalInjectionThunkAllocSize;
+    LONG_INTEGER TotalContextCodeAllocSize;
 
     //
     // Base address of the context allocation, the size of which is indicated by
@@ -357,48 +435,65 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     //
 
     LPVOID BaseContextAddress;
+    LPVOID RemoteBaseContextAddress;
+
+    //
+    // Base address of our context code.
+    //
+
+    LPVOID BaseContextCodeAddress;
+    LPVOID RemoteBaseContextCodeAddress;
 
     //
     // Base address of the code allocation, the size of which is indicated by
-    // the TotalCallerCodeAllocSize struct member above.  The caller's code will
-    // be copied into this space from the 7th byte onward -- the first six are
-    // padded with `int 3` (0xCC).
+    // the TotalCallerCodeAllocSize struct member above.
     //
 
-    LPVOID BaseCodeAddress;
+    LPVOID BaseCallerCodeAddress;
+    LPVOID RemoteBaseCallerCodeAddress;
 
     //
-    // Base address of our internal thread entry code allocation, the size of
-    // which is indicated by the TotalInjectionThunkAllocSize struct member
-    // above.  The ThreadStartRoutine will be offset 7 bytes into this space,
-    // as per the int 3` (0xCC) padding requirements.
+    // Base address of the caller's payload, if one was requested.
     //
 
-    LPVOID BaseInjectionThunkAddress;
+    LPVOID BasePayloadAddress;
+    LPVOID RemoteBasePayloadAddress;
+
+    //
+    // A pointer to the remote context prepared on the injection side prior to
+    // being dispatched to the target process via WriteProcessMemory().
+    //
+
+    struct _RTL_INJECTION_CONTEXT *TemporaryRemoteContext;
+
+    //
+    // A pointer to the remote context code prepared on the injection side
+    // prior to injection.
+    //
+
+    PBYTE TemporaryRemoteBaseContextCodeAddress;
+
+    //
+    // A pointer to the remote caller code prepared on the injection side
+    // prior to injection.
+    //
+
+    PBYTE TemporaryRemoteBaseCallerCodeAddress;
+
+    //
+    // The number of pages consumed by each allocation.  (They should all be 1.)
+    //
+
+    USHORT NumberOfPagesForContext;
+    USHORT NumberOfPagesForContextCode;
+    USHORT NumberOfPagesForCallerCode;
+    USHORT NumberOfPagesForPayload;
 
     //
     // Function pointers required by the initial injection callback.
     //
 
-    //
-    // Inline RTL_INJECTION_FUNCTIONS.
-    //
-
-    union {
-        struct {
-            PSET_EVENT SetEvent;
-            POPEN_EVENT_W OpenEventW;
-            PCLOSE_HANDLE CloseHandle;
-            PGET_PROC_ADDRESS GetProcAddress;
-            PLOAD_LIBRARY_EX_W LoadLibraryExW;
-            PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
-            PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
-            POUTPUT_DEBUG_STRING_A OutputDebugStringA;
-            POUTPUT_DEBUG_STRING_W OutputDebugStringW;
-        };
-
-        RTL_INJECTION_FUNCTIONS Functions;
-    };
+    RTL_INJECTION_FUNCTIONS Functions;
 
     //
     // For linking to AtExitEx().
@@ -417,6 +512,15 @@ typedef RTL_INJECTION_CONTEXT *PRTL_INJECTION_CONTEXT;
 typedef RTL_INJECTION_CONTEXT **PPRTL_INJECTION_CONTEXT;
 typedef const RTL_INJECTION_CONTEXT *PCRTL_INJECTION_CONTEXT;
 typedef const RTL_INJECTION_CONTEXT **PPCRTL_INJECTION_CONTEXT;
+
+typedef
+VOID
+(CALLBACK RTLP_INITIALIZE_RTL_INJECTION_FUNCTIONS)(
+    _In_ struct _RTL *Rtl,
+    _Inout_ PRTL_INJECTION_FUNCTIONS Functions
+    );
+typedef RTLP_INITIALIZE_RTL_INJECTION_FUNCTIONS
+      *PRTLP_INITIALIZE_RTL_INJECTION_FUNCTIONS;
 
 typedef
 _Check_return_
@@ -500,6 +604,7 @@ RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPreInjectionProtocolCallbackImpl;
 RTL_IS_INJECTION_PROTOCOL_CALLBACK RtlpPostInjectionProtocolCallbackImpl;
 RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpPreInjectionContextProtocolCallbackImpl;
 RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK RtlpPostInjectionContextProtocolCallbackImpl;
+RTLP_INITIALIZE_RTL_INJECTION_FUNCTIONS RtlpInitializeRtlInjectionFunctions;
 RTLP_INJECTION_REMOTE_THREAD_ENTRY RtlpInjectionRemoteThreadEntry;
 RTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK RtlpInjectionRemoteThreadEntryThunk;
 RTLP_VERIFY_INJECTION_CALLBACK RtlpInjectionCallbackVerifyMagicNumber;
