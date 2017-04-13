@@ -336,7 +336,7 @@ Py_Main_HandleBreakpoint(
     PIDEBUGBREAKPOINT IBreakpoint
     )
 {
-    OutputDebugStringA("Caught Py_Main.");
+    OutputDebugStringA("Caught Py_Main.\n");
     return DEBUG_STATUS_NO_CHANGE;
 }
 
@@ -347,7 +347,7 @@ Py_InitializeEx_HandleBreakpoint(
     PIDEBUGBREAKPOINT IBreakpoint
     )
 {
-    OutputDebugStringA("Caught Py_InitializeEx.");
+    OutputDebugStringA("Caught Py_InitializeEx.\n");
     return DEBUG_STATUS_NO_CHANGE;
 }
 
