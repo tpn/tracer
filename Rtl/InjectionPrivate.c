@@ -1240,6 +1240,8 @@ Return Value:
     USHORT Offset;
     USHORT CodeSize;
     USHORT ExpectedOffset;
+    ULONG LastError;
+    ULONG OldProtection;
     ULONG RemoteThreadId;
     ULONG RemoteThreadCreationFlags;
     PSTRING String;
@@ -2172,7 +2174,7 @@ Return Value:
     );
 
     if (!Success) {
-        DWORD LastError = GetLastError();
+        LastError = GetLastError();
         Error.InternalError = TRUE;
         Error.WriteRemoteMemoryFailed = TRUE;
         Error.WriteRemoteContextFailed = TRUE;
@@ -2215,6 +2217,47 @@ Return Value:
     }
 
     //
+    // Change the context code to be executable.
+    //
+
+    Success = (
+        VirtualProtectEx(
+            RemoteProcessHandle,
+            Context->RemoteBaseContextCodeAddress,
+            PageAlignedAllocSizeInBytes.LongPart,
+            PAGE_EXECUTE,
+            &OldProtection
+        )
+    );
+
+    if (!Success) {
+        LastError = GetLastError();
+        Error.InternalError = TRUE;
+        Error.VirtualProtectExFailed = TRUE;
+        Error.VirtualProtectExContextCodeFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // Flush the instruction cache for the context code.
+    //
+
+    Success = (
+        FlushInstructionCache(
+            RemoteProcessHandle,
+            Context->RemoteBaseContextCodeAddress,
+            PageAlignedAllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!Success) {
+        LastError = GetLastError();
+        Error.InternalError = TRUE;
+        Error.FlushInstructionCacheContextCodeFailed = TRUE;
+        goto Error;
+    }
+
+    //
     // Copy the caller's code.
     //
 
@@ -2245,9 +2288,48 @@ Return Value:
     }
 
     //
-    // Remote memory allocation has been performed.  The start address for our
-    // remote thread will be available, so we can create it now.  This is the
-    // actual "injection" step.
+    // Change the caller code to be executable.
+    //
+
+    Success = (
+        VirtualProtectEx(
+            RemoteProcessHandle,
+            Context->RemoteBaseCallerCodeAddress,
+            PageAlignedAllocSizeInBytes.LongPart,
+            PAGE_EXECUTE,
+            &OldProtection
+        )
+    );
+
+    if (!Success) {
+        LastError = GetLastError();
+        Error.InternalError = TRUE;
+        Error.VirtualProtectExFailed = TRUE;
+        Error.VirtualProtectExCallerCodeFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // Flush the instruction cache for the caller code.
+    //
+
+    Success = (
+        FlushInstructionCache(
+            RemoteProcessHandle,
+            Context->RemoteBaseCallerCodeAddress,
+            PageAlignedAllocSizeInBytes.LongPart
+        )
+    );
+
+    if (!Success) {
+        LastError = GetLastError();
+        Error.InternalError = TRUE;
+        Error.FlushInstructionCacheCallerCodeFailed = TRUE;
+        goto Error;
+    }
+
+    //
+    // Now create the remote thread and point it at the injection thunk.
     //
 
     RemoteThreadStartRoutine = RemoteContext->RemoteThread.StartRoutine;
