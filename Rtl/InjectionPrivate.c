@@ -1494,15 +1494,6 @@ Return Value:
     }
 
     //
-    // Carve out the temporary remote context in the trailing page.
-    //
-
-    RemoteContext = (PRTL_INJECTION_CONTEXT)(((PBYTE)Context) + PAGE_SIZE);
-    Context->TemporaryRemoteContext = RemoteContext;
-    Context->RemoteBaseContextAddress = ActualRemoteContext;
-
-
-    //
     // Zero the entire allocation.
     //
 
@@ -1515,11 +1506,19 @@ Return Value:
     CopyMemory(Context, (const PVOID)SourceContext, sizeof(*Context));
 
     //
+    // Carve out the temporary remote context in the trailing page.
+    //
+
+    RemoteContext = (PRTL_INJECTION_CONTEXT)(((PBYTE)Context) + PAGE_SIZE);
+    Context->TemporaryRemoteContext = RemoteContext;
+    Context->RemoteBaseContextAddress = ActualRemoteContext;
+
+    //
     // Make a note of the context allocation size and number of pages required.
     //
 
     Context->TotalContextAllocSize.LongPart = AllocSizeInBytes.LongPart;
-    Context->NumberOfPagesForContext = NumberOfPages.LowPart;
+    Context->NumberOfPagesForContext = NumberOfPages.LowPart >> 1;
 
     //
     // Clear the flags.  (In particular, we want to clear IsStackAllocated.)
@@ -1990,6 +1989,8 @@ Return Value:
         Error.InjectionCallerCodeAllocationFailed = TRUE;
         goto Error;
     }
+
+    Context->RemoteBaseCallerCodeAddress = ActualRemoteBaseCallerCode;
 
     //
     // All allocation was successful.  Copy the context page over to the remote
