@@ -822,6 +822,18 @@ USHORT
 typedef RTL_CAPTURE_STACK_BACK_TRACE *PRTL_CAPTURE_STACK_BACK_TRACE;
 
 typedef
+PVOID
+(NTAPI RTL_PC_TO_FILE_HEADER)(
+    _In_ PVOID PcValue,
+    _Out_ PVOID * BaseOfImage
+    );
+typedef RTL_PC_TO_FILE_HEADER *PRTL_PC_TO_FILE_HEADER;
+
+//
+// Runtime function table function typedefs.
+//
+
+typedef
 PRUNTIME_FUNCTION
 (WINAPI RTL_LOOKUP_FUNCTION_ENTRY)(
     _In_  ULONGLONG  ControlPc,
@@ -831,12 +843,61 @@ PRUNTIME_FUNCTION
 typedef RTL_LOOKUP_FUNCTION_ENTRY *PRTL_LOOKUP_FUNCTION_ENTRY;
 
 typedef
-PVOID
-(NTAPI RTL_PC_TO_FILE_HEADER)(
-    _In_ PVOID PcValue,
-    _Out_ PVOID * BaseOfImage
+BOOLEAN
+__cdecl
+(__cdecl RTL_ADD_FUNCTION_TABLE)(
+    _In_reads_(EntryCount) PRUNTIME_FUNCTION FunctionTable,
+    _In_ DWORD EntryCount,
+    _In_ DWORD64 BaseAddress
     );
-typedef RTL_PC_TO_FILE_HEADER *PRTL_PC_TO_FILE_HEADER;
+typedef RTL_ADD_FUNCTION_TABLE *PRTL_ADD_FUNCTION_TABLE;
+
+typedef
+BOOLEAN
+(__cdecl RTL_DELETE_FUNCTION_TABLE)(
+    _In_ PRUNTIME_FUNCTION FunctionTable
+    );
+typedef RTL_DELETE_FUNCTION_TABLE *PRTL_DELETE_FUNCTION_TABLE;
+
+typedef
+BOOLEAN
+(__cdecl RTL_INSTALL_FUNCTION_TABLE_CALLBACK)(
+    _In_ DWORD64 TableIdentifier,
+    _In_ DWORD64 BaseAddress,
+    _In_ DWORD Length,
+    _In_ PGET_RUNTIME_FUNCTION_CALLBACK Callback,
+    _In_opt_ PVOID Context,
+    _In_opt_ PCWSTR OutOfProcessCallbackDll
+    );
+typedef RTL_INSTALL_FUNCTION_TABLE_CALLBACK
+       *PRTL_INSTALL_FUNCTION_TABLE_CALLBACK;
+
+typedef
+ULONG
+(NTAPI RTL_ADD_GROWABLE_FUNCTION_TABLE)(
+    _Out_ PVOID * DynamicTable,
+    _In_reads_(MaximumEntryCount) PRUNTIME_FUNCTION FunctionTable,
+    _In_ DWORD EntryCount,
+    _In_ DWORD MaximumEntryCount,
+    _In_ ULONG_PTR RangeBase,
+    _In_ ULONG_PTR RangeEnd
+    );
+typedef RTL_ADD_GROWABLE_FUNCTION_TABLE *PRTL_ADD_GROWABLE_FUNCTION_TABLE;
+
+typedef
+VOID
+(NTAPI RTL_GROW_FUNCTION_TABLE)(
+    _Inout_ PVOID DynamicTable,
+    _In_ DWORD NewEntryCount
+    );
+typedef RTL_GROW_FUNCTION_TABLE *PRTL_GROW_FUNCTION_TABLE;
+
+typedef
+VOID
+(NTAPI RTL_DELETE_GROWABLE_FUNCTION_TABLE)(
+    _In_ PVOID DynamicTable
+    );
+typedef RTL_DELETE_GROWABLE_FUNCTION_TABLE *PRTL_DELETE_GROWABLE_FUNCTION_TABLE;
 
 //
 // Process and Thread support.
@@ -1742,6 +1803,13 @@ HANDLE
     _In_opt_ LPCWSTR lpName
     );
 typedef CREATE_EVENT_W *PCREATE_EVENT_W;
+
+typedef
+DWORD
+(WINAPI WAIT_FOR_IDLE_INPUT)(
+    _In_ HANDLE hProcess,
+    _In_ DWORD dwMilliseconds);
+typedef WAIT_FOR_IDLE_INPUT *PWAIT_FOR_IDLE_INPUT;
 
 typedef
 _Ret_maybenull_ _Post_writable_byte_size_(dwSize)
@@ -3888,6 +3956,12 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PRTL_CAPTURE_STACK_BACK_TRACE RtlCaptureStackBackTrace;                                            \
     PRTL_PC_TO_FILE_HEADER RtlPcToFileHeader;                                                          \
     PRTL_LOOKUP_FUNCTION_ENTRY RtlLookupFunctionEntry;                                                 \
+    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;                                                       \
+    PRTL_DELETE_FUNCTION_TABLE RtlDeleteFunctionTable;                                                 \
+    PRTL_INSTALL_FUNCTION_TABLE_CALLBACK RtlInstallFunctionTableCallback;                              \
+    PRTL_ADD_GROWABLE_FUNCTION_TABLE RtlAddGrowableFunctionTable;                                      \
+    PRTL_GROW_FUNCTION_TABLE RtlGrowFunctionTable;                                                     \
+    PRTL_DELETE_FUNCTION_TABLE RtlDeleteFunctionTable;                                                 \
     PZW_CREATE_SECTION ZwCreateSection;                                                                \
     PZW_MAP_VIEW_OF_SECTION ZwMapViewOfSection;                                                        \
     PZW_UNMAP_VIEW_OF_SECTION ZwUnmapViewOfSection;                                                    \
@@ -3911,6 +3985,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
     PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;                                                  \
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
+    PWAIT_FOR_IDLE_INPUT WaitForIdleInput;                                                             \
     PSLEEP_EX SleepEx;                                                                                 \
     PEXIT_THREAD ExitThread;                                                                           \
     PGET_EXIT_CODE_THREAD GetExitCodeThread;                                                           \
