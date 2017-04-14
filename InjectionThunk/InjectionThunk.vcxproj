@@ -65,6 +65,9 @@
     <ClCompile>
       <PreprocessorDefinitions>_INJECTION_THUNK_INTERNAL_BUILD;_INJECTION_THUNK_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>InjectionThunk.def</ModuleDefinitionFile>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="InjectionThunk.h" />
@@ -75,10 +78,14 @@
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="dllmain.c" />
+    <ClCompile Include="InjectionRemoteThreadEntry.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="InjectionThunk.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="InjectionThunk.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

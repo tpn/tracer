@@ -127,14 +127,15 @@ typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
     StringTableDllPathId                  =  1 <<  7,
     PythonTracerDllPathId                 =  1 <<  8,
     TlsTracerHeapDllPathId                =  1 <<  9,
-    TracedPythonSessionDllPathId          =  1 << 10,
-    PythonTracerInjectionDllPathId        =  1 << 11,
+    InjectionThunkDllPathId               =  1 << 10,
+    TracedPythonSessionDllPathId          =  1 << 11,
+    PythonTracerInjectionDllPathId        =  1 << 12,
 
     //
     // Make sure the right shift value matches the last value in the line above.
     //
 
-    TracerInvalidDllPathId                = (1 << 11) + 1,
+    TracerInvalidDllPathId                = (1 << 12) + 1,
 
 } TRACER_DLL_PATH_ID;
 typedef TRACER_DLL_PATH_ID *PTRACER_DLL_PATH_ID;
@@ -154,10 +155,11 @@ typedef union _TRACER_DLL_PATH_TYPE {
         ULONGLONG StringTableDllPath:1;
         ULONGLONG PythonTracerDllPath:1;
         ULONGLONG TlsTracerHeapDllPath:1;
+        ULONGLONG InjectionThunkDllPathId:1;
         ULONGLONG TracedPythonSessionDllPath:1;
         ULONGLONG PythonTracerInjectionDllPath:1;
 
-        ULONGLONG Unused:52;
+        ULONGLONG Unused:51;
     };
     LONGLONG AsLongLong;
     ULONGLONG AsULongLong;
@@ -214,6 +216,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
             UNICODE_STRING StringTableDllPath;
             UNICODE_STRING PythonTracerDllPath;
             UNICODE_STRING TlsTracerHeapDllPath;
+            UNICODE_STRING InjectionThunkDllPath;
             UNICODE_STRING TracedPythonSessionDllPath;
             UNICODE_STRING PythonTracerInjectionDllPath;
         };

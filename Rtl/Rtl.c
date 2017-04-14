@@ -219,7 +219,7 @@ LoadDbgHelp(PRTL Rtl)
         return FALSE;
     }
 
-    return ResolveDbgHelpFunctions(Rtl->DbgHelpModule, &Rtl->Dbg);
+    return ResolveDbgHelpFunctions(Rtl, Rtl->DbgHelpModule, &Rtl->Dbg);
 }
 
 RTL_API
@@ -283,6 +283,88 @@ LoadDbgEng(
         return FALSE;
     }
 
+    return TRUE;
+}
+
+RTL_API
+BOOL
+InitializeInjection(PRTL Rtl)
+{
+    PVOID Base1;
+    ULONGLONG Base2;
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (Rtl->InjectionInitialized) {
+        return TRUE;
+    }
+
+    if (!IsValidMinimumDirectoryUnicodeString(&Rtl->InjectionThunkDllPath)) {
+
+        //
+        // SetInjectionThunkDllPath() needs to be called.
+        //
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->InjectionThunkModule = LoadLibraryW(Rtl->InjectionThunkDllPath.Buffer);
+    if (!Rtl->InjectionThunkModule) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->InjectionThunkRoutine = (
+        GetProcAddress(
+            Rtl->InjectionThunkModule,
+            "InjectionThunk"
+        )
+    );
+
+    if (!Rtl->InjectionThunkRoutine) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->InjectionRemoteThreadEntry = (
+        GetProcAddress(
+            Rtl->InjectionThunkModule,
+            "InjectionRemoteThreadEntry"
+        )
+    );
+
+    if (!Rtl->InjectionRemoteThreadEntry) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->InjectionThunkRoutine = (
+        SkipJumpsInline((PBYTE)Rtl->InjectionThunkRoutine)
+    );
+
+    Rtl->InjectionRemoteThreadEntry = (
+        SkipJumpsInline((PBYTE)Rtl->InjectionRemoteThreadEntry)
+    );
+
+    Rtl->InjectionThunkBase = (
+        Rtl->RtlPcToFileHeader(
+            Rtl->InjectionThunkRoutine,
+            &Base1
+        )
+    );
+
+    Rtl->InjectionThunkRuntimeFunction = (
+        Rtl->RtlLookupFunctionEntry(
+            (ULONGLONG)Rtl->InjectionThunkRoutine,
+            &Base2,
+            NULL
+        )
+    );
+
+    Rtl->InjectionInitialized = TRUE;
     return TRUE;
 }
 
@@ -2095,11 +2177,14 @@ ResolveRtlExFunctions(
 _Check_return_
 BOOL
 ResolveDbgHelpFunctions(
+    _In_ PRTL Rtl,
     _In_ HMODULE DbgHelpModule,
     _In_ PDBG Dbg
     )
 {
     BOOL Success;
+    ULONG FirstFailedSymbol;
+    ULONG NumberOfFailedSymbols;
     ULONG NumberOfResolvedSymbols;
     ULONG ExpectedNumberOfResolvedSymbols;
     PULONG_PTR Functions = (PULONG_PTR)Dbg;
@@ -2132,8 +2217,9 @@ ResolveDbgHelpFunctions(
         __debugbreak();
     }
 
-    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
     if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
         __debugbreak();
     }
 
@@ -2590,6 +2676,21 @@ RtlpSetDllPath(
     return AllocateAndCopyUnicodeString(Allocator, Path, &Rtl->RtlDllPath);
 }
 
+RTL_API RTL_SET_INJECTION_THUNK_DLL_PATH RtlpSetInjectionThunkDllPath;
+
+_Use_decl_annotations_
+BOOL
+RtlpSetInjectionThunkDllPath(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PCUNICODE_STRING Path
+    )
+{
+    return AllocateAndCopyUnicodeString(Allocator,
+                                        Path,
+                                        &Rtl->InjectionThunkDllPath);
+}
+
 RTL_API RTL_CREATE_NAMED_EVENT RtlpCreateNamedEvent;
 
 #if 0
@@ -2834,10 +2935,6 @@ InitializeRtl(
         *SizeOfRtl = sizeof(*Rtl);
     }
 
-    if (!RtlInitializeInjection()) {
-        return FALSE;
-    }
-
     HeapHandle = GetProcessHeap();
     if (!HeapHandle) {
         return FALSE;
@@ -2870,7 +2967,7 @@ InitializeRtl(
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
 
-    Rtl->InjectionRemoteThreadEntry = RtlpInjectionRemoteThreadEntry;
+    Rtl->InitializeInjection = InitializeInjection;
 
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;
@@ -2922,6 +3019,7 @@ InitializeRtl(
     Rtl->ProbeForRead = ProbeForRead;
 
     Rtl->SetDllPath = RtlpSetDllPath;
+    Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
 
     //Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
 

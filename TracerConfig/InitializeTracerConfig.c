@@ -452,10 +452,16 @@ Return Value:
     }
 
     //
-    // Copy the Rtl path name over.
+    // Copy the Rtl and InjectionThunk path names over.
     //
 
     if (!Rtl->SetDllPath(Rtl, Allocator, &Paths->RtlDllPath)) {
+        goto Error;
+    }
+
+    if (!Rtl->SetInjectionThunkDllPath(Rtl,
+                                       Allocator,
+                                       &Paths->InjectionThunkDllPath)) {
         goto Error;
     }
 
@@ -534,8 +540,6 @@ Return Value:
     PPUNICODE_STRING PathArray;
     ULONG NumberOfModules;
     LONG_INTEGER AllocSizeInBytes;
-    //PGET_PROC_ADDRESS GetProcAddress;
-    //PLOAD_LIBRARY_EX_W LoadLibraryExW;
     PRTL_NUMBER_OF_SET_BITS NumberOfSetBits;
     PTRACER_INJECTION_MODULES InjectionModules;
     PINITIALIZE_TRACER_INJECTION Initializer;
@@ -568,8 +572,6 @@ Return Value:
     Paths = &TracerConfig->Paths;
     Bitmap = &Paths->TracerInjectionDllsBitmap;
     NumberOfSetBits = Rtl->RtlNumberOfSetBits;
-    //LoadLibraryExW = SKIP_JUMPS_INLINE(Rtl->LoadLibraryExW, PLOAD_LIBRARY_EX_W);
-    //GetProcAddress = SKIP_JUMPS_INLINE(Rtl->GetProcAddress, PGET_PROC_ADDRESS);
 
     //
     // Determine how many modules will be included.

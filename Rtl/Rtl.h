@@ -830,6 +830,14 @@ PRUNTIME_FUNCTION
     );
 typedef RTL_LOOKUP_FUNCTION_ENTRY *PRTL_LOOKUP_FUNCTION_ENTRY;
 
+typedef
+PVOID
+(NTAPI RTL_PC_TO_FILE_HEADER)(
+    _In_ PVOID PcValue,
+    _Out_ PVOID * BaseOfImage
+    );
+typedef RTL_PC_TO_FILE_HEADER *PRTL_PC_TO_FILE_HEADER;
+
 //
 // Process and Thread support.
 //
@@ -3878,6 +3886,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PRTL_ALLOCATE_HEAP RtlAllocateHeap;                                                                \
     PRTL_FREE_HEAP RtlFreeHeap;                                                                        \
     PRTL_CAPTURE_STACK_BACK_TRACE RtlCaptureStackBackTrace;                                            \
+    PRTL_PC_TO_FILE_HEADER RtlPcToFileHeader;                                                          \
+    PRTL_LOOKUP_FUNCTION_ENTRY RtlLookupFunctionEntry;                                                 \
     PZW_CREATE_SECTION ZwCreateSection;                                                                \
     PZW_MAP_VIEW_OF_SECTION ZwMapViewOfSection;                                                        \
     PZW_UNMAP_VIEW_OF_SECTION ZwUnmapViewOfSection;                                                    \
@@ -3898,7 +3908,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     POPEN_EVENT_A OpenEventA;                                                                          \
     POPEN_EVENT_W OpenEventW;                                                                          \
     PSET_EVENT SetEvent;                                                                               \
-    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                  \
+    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
     PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;                                                  \
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
     PSLEEP_EX SleepEx;                                                                                 \
@@ -3910,7 +3920,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     POPEN_FILE_MAPPING_W OpenFileMappingW;                                                             \
     PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;                                                              \
     PFLUSH_VIEW_OF_FILE FlushViewOfFile;                                                               \
-    PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;                                                               \
+    PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;                                                          \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
@@ -4959,7 +4969,12 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PSYM_UNLOAD_MODULE64 SymUnloadModule64;                                     \
     PSYM_UNLOAD_MODULE SymUnloadModule;                                         \
     PUNDECORATE_SYMBOL_NAME UnDecorateSymbolName;                               \
-    PUNDECORATE_SYMBOL_NAME_W UnDecorateSymbolNameW;
+    PUNDECORATE_SYMBOL_NAME_W UnDecorateSymbolNameW;                            \
+    PIMAGE_NT_HEADER ImageNtHeader;                                             \
+    PIMAGE_DIRECTORY_ENTRY_TO_DATA ImageDirectoryEntryToData;                   \
+    PIMAGE_DIRECTORY_ENTRY_TO_DATA_EX ImageDirectoryEntryToDataEx;              \
+    PIMAGE_RVA_TO_SECTION ImageRvaToSection;                                    \
+    PIMAGE_RVA_TO_VA ImageRvaToV;
 
 typedef struct _DBG {
     _DBGHELP_FUNCTIONS_HEAD
@@ -5149,6 +5164,16 @@ BOOL
 typedef RTL_SET_DLL_PATH *PRTL_SET_DLL_PATH;
 
 typedef
+BOOL
+(CALLBACK RTL_SET_INJECTION_THUNK_DLL_PATH)(
+    _Inout_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PCUNICODE_STRING InjectionThunkDllPath
+    );
+typedef RTL_SET_INJECTION_THUNK_DLL_PATH
+      *PRTL_SET_INJECTION_THUNK_DLL_PATH;
+
+typedef
 _Check_return_
 _Success_(return != 0)
 (CALLBACK RTL_CREATE_NAMED_EVENT)(
@@ -5174,6 +5199,14 @@ _Success_(return != 0)
     );
 typedef PROBE_FOR_READ *PPROBE_FOR_READ;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+(CALLBACK INITIALIZE_INJECTION)(
+    _In_ struct _RTL *Rtl
+    );
+typedef INITIALIZE_INJECTION *PINITIALIZE_INJECTION;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
@@ -5185,6 +5218,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     Ole32Module;
     HMODULE     DbgHelpModule;
     HMODULE     DbgEngModule;
+    HMODULE     InjectionThunkModule;
+
+    BOOL InjectionInitialized;
+    PVOID InjectionThunkBase;
+    PVOID InjectionThunkRoutine;
+    PVOID InjectionRemoteThreadEntry;
+    PRUNTIME_FUNCTION InjectionThunkRuntimeFunction;
+
+    PINITIALIZE_INJECTION InitializeInjection;
 
     BOOL ComInitialized;
     PINITIALIZE_COM InitializeCom;
@@ -5227,7 +5269,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_EVENT_A CreateEventA;
     PCREATE_EVENT_W CreateEventW;
 
-    PVOID InjectionRemoteThreadEntry;
 
     //
     // Fully-qualified module path name set by SetDllPath().
@@ -5235,6 +5276,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     UNICODE_STRING RtlDllPath;
     PRTL_SET_DLL_PATH SetDllPath;
+
+    //
+    // Fully-qualified module path name set by SetInjectionThunkDllPath().
+    //
+
+    UNICODE_STRING InjectionThunkDllPath;
+    PRTL_SET_INJECTION_THUNK_DLL_PATH SetInjectionThunkDllPath;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

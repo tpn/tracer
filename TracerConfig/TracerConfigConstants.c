@@ -68,6 +68,9 @@ CONST UNICODE_STRING PythonTracerDllPath = \
 CONST UNICODE_STRING TlsTracerHeapDllPath = \
     RTL_CONSTANT_STRING(L"TlsTracerHeap.dll");
 
+CONST UNICODE_STRING InjectionThunkDllPath = \
+    RTL_CONSTANT_STRING(L"InjectionThunk.dll");
+
 CONST UNICODE_STRING TracedPythonSessionDllPath = \
     RTL_CONSTANT_STRING(L"TracedPythonSession.dll");
 
@@ -93,6 +96,10 @@ CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY DllPathOffsets[] = {
     { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
     { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath },
     {
+        FIELD_OFFSET(TRACER_PATHS, InjectionThunkDllPath),
+        &InjectionThunkDllPath,
+    },
+    {
         FIELD_OFFSET(TRACER_PATHS, TracedPythonSessionDllPath),
         &TracedPythonSessionDllPath
     },
@@ -114,6 +121,7 @@ CONST TRACER_DLL_PATH_TYPE TracerInjectionDllsBitmap = {
     0, // StringTableDllPath
     0, // PythonTracerDllPath
     0, // TlsTracerHeapDllPath
+    0, // InjectionThunkDllPath
     0, // TracedPythonSessionDllPath
     1, // PythonTracerInjectionDllPath
     0, // Remaining

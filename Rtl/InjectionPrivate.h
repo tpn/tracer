@@ -153,13 +153,29 @@ typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
       *PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK;
 
 typedef
-_Success_(return != 0)
-BOOL
+LONG
 (CALLBACK RTLP_INJECTION_REMOTE_THREAD_ENTRY)(
-    _In_ struct _RTL_INJECTION_CONTEXT *Context,
-    _Inout_ PULONGLONG ResultPointer
+    _In_ struct _RTL_INJECTION_CONTEXT *Context
     );
 typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
+
+//
+// This structure captures the bare minimum information required by our
+// injection thunk code.
+//
+
+typedef struct _RTL_INJECTION_THUNK_CONTEXT {
+    PEXIT_THREAD ExitThread;
+    PLOAD_LIBRARY_W LoadLibraryW;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PWSTR DllPath;
+    PSTR FunctionName;
+    struct _RTL_INJECTION_CONTEXT *Context;
+    PVOID ReturnAddress;
+    PVOID Padding;
+} RTL_INJECTION_THUNK_CONTEXT;
+typedef RTL_INJECTION_THUNK_CONTEXT *PRTL_INJECTION_THUNK_CONTEXT;
+C_ASSERT(sizeof(RTL_INJECTION_THUNK_CONTEXT) == 64);
 
 //
 // An RTL_INJECTION_CONTEXT is created for each RTL_INJECTION_PACKET requested
@@ -169,11 +185,7 @@ typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 
-    //
-    // As with RTL_INJECTION_PACKET, the first member of this structure will
-    // always be the function pointer that a remote thread is required to call
-    // before executing any other code.
-    //
+    RTL_INJECTION_THUNK_CONTEXT InjectionThunkContext;
 
     union {
         PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK IsInjectionContextProtocolCallback;
@@ -182,10 +194,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 
     //
     // An APC routine we can queue to the remote thread for shutdown purposes.
-    // This will always be the second member of this structure.
     //
 
     PAPC_ROUTINE ExitThreadThunk;
+
+    //
+    // Fully-qualified path to the InjectionThunk.dll to load.
+    //
+
+    UNICODE_STRING InjectionThunkDllPath;
 
     //
     // Size of the structure, in bytes.
@@ -212,7 +229,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
     ULONG Padding;
 
     //
-    // Fully-qualified path of the Rtl.dll module to load.
+    // Fully-qualified path of Rtl.dll.
     //
 
     UNICODE_STRING RtlDllPath;
@@ -309,8 +326,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
         union {
             LPTHREAD_START_ROUTINE StartRoutine;
             PAPC_ROUTINE InjectionRoutine;
-            PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
         };
+        PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
     } RemoteThread;
 
     //

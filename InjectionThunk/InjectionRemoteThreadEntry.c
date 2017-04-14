@@ -4,34 +4,26 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    InjectionRemoteThreadEntryThunk.c
+    InjectionRemoteThreadEntry.c
 
 Abstract:
 
-    This module implements the thread entry routine that is used as the start
-    address of injected threads.  This routine is copied directly into the
-    target process's memory space, and thus, care must be taken regarding the
-    types of instructions that can be used.
-
-    Keeping the routine in a separate module increases flexibility with regards
-    to potentially specifying different compiler (optimization) flags for this
-    module only.
+    TBD.
 
 --*/
 
 #include "stdafx.h"
 
-
 _Use_decl_annotations_
 LONG
-RtlpInjectionRemoteThreadEntry(
+InjectionRemoteThreadEntry(
     PRTL_INJECTION_CONTEXT Context
     )
 /*++
 
 Routine Description:
 
-    Injection worker thread.
+    TBD.
 
 Arguments:
 

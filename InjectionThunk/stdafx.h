@@ -18,15 +18,11 @@ Abstract:
 extern "C" {
 #endif
 
-#include "../Rtl/Rtl.h"
-#include "../DebugEngine/DebugEngine.h"
-#include "../DebugEngine/DebugEngineInterfaces.h"
-#include "../TraceStore/TraceStore.h"
-#include "../TracerHeap/TracerHeap.h"
-#include "../TracerConfig/TracerConfig.h"
+#include "..\Rtl\Rtl.h"
 #include "InjectionThunk.h"
 
 #ifdef _INJECTION_THUNK_INTERNAL_BUILD
+#include "..\Rtl\InjectionPrivate.h"
 #include "InjectionThunkPrivate.h"
 #endif
 
