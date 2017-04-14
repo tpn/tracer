@@ -600,6 +600,7 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (RESOLVE_DBGHELP_FUNCTIONS)(
+    _In_     PRTL Rtl,
     _In_     HMODULE DbgHelpModule,
     _Inout_  PDBG Dbg
     );

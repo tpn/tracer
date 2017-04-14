@@ -20,7 +20,7 @@ typedef STARTUPINFOW *PSTARTUPINFOW;
 UNICODE_STRING ThunkExeFilename = RTL_CONSTANT_STRING(L"thunk.exe");
 PUNICODE_STRING ThunkExePath = NULL;
 
-ULONGLONG
+ULONG
 CALLBACK
 InjectionCallback1(
     PRTL_INJECTION_PACKET Packet
@@ -29,7 +29,7 @@ InjectionCallback1(
     ULONGLONG Token;
 
     if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
-        return Token;
+        return (ULONG)Token;
     }
 
     Packet->Functions->OutputDebugStringA("Entered Injection1 callback.\n");
@@ -90,6 +90,10 @@ TestInjection1(
 
     if (!CreateThunkExe(&StartupInfo, &ProcessInfo)) {
         return GetLastError();
+    }
+
+    if (!Rtl->LoadDbgHelp(Rtl)) {
+        return (ULONG)-1;
     }
 
     Flags.AsULong = 0;

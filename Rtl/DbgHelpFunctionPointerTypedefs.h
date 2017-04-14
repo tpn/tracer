@@ -2136,6 +2136,54 @@ typedef SYM_GET_FILE_LINE_OFFSETS64 *PSYM_GET_FILE_LINE_OFFSETS64;
 #undef SymUnDName
 #undef SymUnloadModule
 
+
+typedef
+PIMAGE_NT_HEADERS
+(IMAGEAPI IMAGE_NT_HEADER)(
+    _In_ PVOID Base
+    );
+typedef IMAGE_NT_HEADER *PIMAGE_NT_HEADER;
+
+typedef
+PVOID
+(IMAGEAPI IMAGE_DIRECTORY_ENTRY_TO_DATA)(
+    _In_ PVOID Base,
+    _In_ BOOLEAN MappedAsImage,
+    _In_ USHORT DirectoryEntry,
+    _Out_ PULONG Size
+    );
+typedef IMAGE_DIRECTORY_ENTRY_TO_DATA *PIMAGE_DIRECTORY_ENTRY_TO_DATA;
+
+typedef
+PVOID
+(IMAGEAPI IMAGE_DIRECTORY_ENTRY_TO_DATA_EX)(
+    _In_ PVOID Base,
+    _In_ BOOLEAN MappedAsImage,
+    _In_ USHORT DirectoryEntry,
+    _Out_ PULONG Size,
+    _Out_opt_ PIMAGE_SECTION_HEADER *FoundHeader
+    );
+typedef IMAGE_DIRECTORY_ENTRY_TO_DATA_EX *PIMAGE_DIRECTORY_ENTRY_TO_DATA_EX;
+
+typedef
+PIMAGE_SECTION_HEADER
+(IMAGEAPI IMAGE_RVA_TO_SECTION)(
+    _In_ PIMAGE_NT_HEADERS NtHeaders,
+    _In_ PVOID Base,
+    _In_ ULONG Rva
+    );
+typedef IMAGE_RVA_TO_SECTION *PIMAGE_RVA_TO_SECTION;
+
+typedef
+PVOID
+(IMAGEAPI IMAGE_RVA_TO_VA)(
+    _In_ PIMAGE_NT_HEADERS NtHeaders,
+    _In_ PVOID Base,
+    _In_ ULONG Rva,
+    _In_opt_ OUT PIMAGE_SECTION_HEADER *LastRvaSection
+    );
+typedef IMAGE_RVA_TO_VA *PIMAGE_RVA_TO_VA;
+
 typedef struct _DBGHELP_FUNCTIONSX {
     PENUM_DIR_TREE EnumDirTree;
     PENUM_DIR_TREE_W EnumDirTreeW;
@@ -2307,4 +2355,9 @@ typedef struct _DBGHELP_FUNCTIONSX {
     PUNDECORATE_SYMBOL_NAME UndecorateSymbolName;
     PUNDECORATE_SYMBOL_NAME_W UndecorateSymbolNameW;
     PUNMAP_DEBUG_INFORMATION UnmapDebugInformation;
+    PIMAGE_NT_HEADER ImageNtHeader;
+    PIMAGE_DIRECTORY_ENTRY_TO_DATA ImageDirectoryEntryToData;
+    PIMAGE_DIRECTORY_ENTRY_TO_DATA_EX ImageDirectoryEntryToDataEx;
+    PIMAGE_RVA_TO_SECTION ImageRvaToSection;
+    PIMAGE_RVA_TO_VA ImageRvaToV;
 } DBGHELP_FUNCTIONSX, *PDBGHELP_FUNCTIONSX;

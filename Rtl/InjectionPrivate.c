@@ -720,7 +720,7 @@ Return Value:
 
     Context->RemoteThread.InjectionThunk = (
         SKIP_JUMPS(
-            RtlpInjectionRemoteThreadEntryThunk,
+            Rtl->InjectionThunkRoutine,
             PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
         )
     );
@@ -1025,9 +1025,8 @@ Return Value:
     ExitThread(InjectedRemoteThreadQueuedAPCExitThread);
 }
 
-_Use_decl_annotations_
 BOOL
-RtlpInjectionRemoteThreadEntry(
+RtlpInjectionRemoteThreadEntryDisabled(
     PRTL_INJECTION_CONTEXT Context,
     PULONGLONG ResultPointer
     )
@@ -1255,6 +1254,7 @@ Return Value:
     ULONG_INTEGER AlignedRtlDllPathLength;
     ULONG_INTEGER AlignedModulePathLength;
     ULONG_INTEGER AlignedCallbackFunctionNameLength;
+    ULONG_INTEGER AlignedInjectionThunkDllPathLength;
     PRTL_INJECTION_CONTEXT Context = NULL;
     ULONG_INTEGER AllocSizeInBytes;
     ULONG_INTEGER PageAlignedAllocSizeInBytes;
@@ -1367,6 +1367,25 @@ Return Value:
     }
 
     Size += AlignedRtlDllPathLength.LongPart;
+
+    //
+    // Account for the fully-qualified representation of the InjectionThunk .dll path,
+    // plus a terminating NULL character.
+    //
+
+    AlignedInjectionThunkDllPathLength.LongPart = (
+        ALIGN_UP_POINTER(
+            Rtl->InjectionThunkDllPath.Length +
+            sizeof(WCHAR)
+        )
+    );
+
+    if (AlignedInjectionThunkDllPathLength.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Size += AlignedInjectionThunkDllPathLength.LongPart;
 
     //
     // If we were injecting a module, account for the module Unicode path name
@@ -1562,6 +1581,22 @@ Return Value:
                Unicode->Length);
 
     Offset += AlignedRtlDllPathLength.LowPart;
+
+    //
+    // InjectionThunk.dll.
+    //
+
+    Offset = sizeof(*Context);
+    Unicode = &Context->InjectionThunkDllPath;
+    Unicode->Length = Rtl->InjectionThunkDllPath.Length;
+    Unicode->MaximumLength = AlignedInjectionThunkDllPathLength.LowPart;
+    Unicode->Buffer = (PWSTR)RtlOffsetToPointer(Context, Offset);
+
+    CopyMemory(Unicode->Buffer,
+               Rtl->InjectionThunkDllPath.Buffer,
+               Unicode->Length);
+
+    Offset += AlignedInjectionThunkDllPathLength.LowPart;
 
     //
     // Signal event.
@@ -3021,11 +3056,11 @@ RtlpInitializeRtlInjectionFunctions(
     USHORT Index;
     USHORT NumberOfFunctions;
 
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
     Functions->SetEvent = Rtl->SetEvent;
     Functions->OpenEventW = Rtl->OpenEventW;
     Functions->CloseHandle = Rtl->CloseHandle;
-    Functions->GetProcAddress = Rtl->GetProcAddress;
-    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
     Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
     Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
     Functions->OutputDebugStringA = Rtl->OutputDebugStringA;

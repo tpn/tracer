@@ -187,7 +187,11 @@ Return Value:
 
             goto Error;
         }
+    }
 
+    if (!Rtl->InitializeInjection(Rtl)) {
+        __debugbreak();
+        return FALSE;
     }
 
     if (Flags.InjectModule) {

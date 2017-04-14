@@ -128,6 +128,8 @@ CONST PCSTR RtlFunctionNames[] = {
     "RtlAllocateHeap",
     "RtlFreeHeap",
     "RtlCaptureStackBackTrace",
+    "RtlPcToFileHeader",
+    "RtlLookupFunctionEntry",
     "ZwCreateSection",
     "ZwMapViewOfSection",
     "ZwUnmapViewOfSection",
@@ -394,6 +396,11 @@ CONST PCSTR DbgHelpFunctionNames[] = {
     "SymUnloadModule",
     "UnDecorateSymbolName",
     "UnDecorateSymbolNameW",
+    "ImageNtHeader",
+    "ImageDirectoryEntryToData",
+    "ImageDirectoryEntryToDataEx",
+    "ImageRvaToSection",
+    "ImageRvaToVa"
 };
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :
