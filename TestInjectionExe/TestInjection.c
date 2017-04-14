@@ -15,6 +15,11 @@ Abstract:
 
 #include "stdafx.h"
 
+typedef STARTUPINFOW *PSTARTUPINFOW;
+
+UNICODE_STRING ThunkExeFilename = RTL_CONSTANT_STRING(L"thunk.exe");
+PUNICODE_STRING ThunkExePath = NULL;
+
 ULONGLONG
 CALLBACK
 InjectionCallback1(
@@ -27,7 +32,41 @@ InjectionCallback1(
         return Token;
     }
 
+    Packet->Functions->OutputDebugStringA("Entered Injection1 callback.\n");
+
     return 1;
+}
+
+BOOL
+CreateThunkExe(
+    PSTARTUPINFOW StartupInfo,
+    PPROCESS_INFORMATION ProcessInfo
+    )
+{
+    BOOL Success;
+    DWORD LastError;
+
+    __stosq((PDWORD64)StartupInfo, 0, sizeof(*StartupInfo) >> 3);
+    __stosq((PDWORD64)ProcessInfo, 0, sizeof(*ProcessInfo) >> 3);
+
+    StartupInfo->cb = sizeof(*StartupInfo);
+
+    Success = CreateProcessW(ThunkExePath->Buffer,
+                             NULL,
+                             NULL,
+                             NULL,
+                             FALSE,
+                             0,
+                             NULL,
+                             NULL,
+                             StartupInfo,
+                             ProcessInfo);
+
+    if (!Success) {
+        LastError = GetLastError();
+    }
+
+    return Success;
 }
 
 ULONG
@@ -46,6 +85,12 @@ TestInjection1(
     PRTL_INJECTION_PACKET Packet;
     PRTL_INJECTION_COMPLETE_CALLBACK Callback;
     RTL_INJECTION_ERROR Error;
+    STARTUPINFOW StartupInfo;
+    PROCESS_INFORMATION ProcessInfo;
+
+    if (!CreateThunkExe(&StartupInfo, &ProcessInfo)) {
+        return GetLastError();
+    }
 
     Flags.AsULong = 0;
     Flags.InjectCode = TRUE;
@@ -59,7 +104,7 @@ TestInjection1(
                           NULL,
                           Callback,
                           NULL,
-                          1,
+                          ProcessInfo.dwProcessId,
                           &Packet,
                           &Error);
 
@@ -78,6 +123,10 @@ TestInjection(
     PDEBUG_ENGINE_SESSION Session
     )
 {
+    if (!MakeTracerPath(TracerConfig, &ThunkExeFilename, &ThunkExePath)) {
+        return ~0;
+    }
+
     TEST(1);
 
     return ERROR_SUCCESS;
