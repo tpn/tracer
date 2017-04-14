@@ -213,13 +213,13 @@ Return Value:
 
     //
     // Initialize NumberOfElements to the NumberOfSymbolNames, then make sure
-    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap.
+    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap-1.
     //
 
     NumberOfElements = NumberOfSymbolNames;
 
     if (NumberOfElements != NumberOfSymbolAddresses ||
-        NumberOfElements != FailedSymbols->SizeOfBitMap) {
+        NumberOfElements != FailedSymbols->SizeOfBitMap-1) {
         return FALSE;
     }
 
@@ -413,13 +413,13 @@ Return Value:
 
     //
     // Initialize NumberOfElements to the NumberOfSymbolNames, then make sure
-    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap.
+    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap-1.
     //
 
     NumberOfElements = NumberOfSymbolNames;
 
     if (NumberOfElements != NumberOfSymbolAddresses ||
-        NumberOfElements != FailedSymbols->SizeOfBitMap) {
+        NumberOfElements != FailedSymbols->SizeOfBitMap-1) {
         return FALSE;
     }
 
