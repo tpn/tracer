@@ -544,9 +544,8 @@ End:
     return Success;
 }
 
-#pragma optimize("", off)
 _Use_decl_annotations_
-ULONGLONG
+ULONG
 CALLBACK
 PythonTracerInjectionCompleteCallback(
     PRTL_INJECTION_PACKET Packet
@@ -558,7 +557,7 @@ PythonTracerInjectionCompleteCallback(
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
 
     if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
-        return Token;
+        return (ULONG)Token;
     }
 
     OutputDebugStringA = Packet->Functions->OutputDebugStringA;
@@ -573,6 +572,5 @@ PythonTracerInjectionCompleteCallback(
 
     return WaitResult;
 }
-#pragma optimize("", on)
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
