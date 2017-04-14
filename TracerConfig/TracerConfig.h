@@ -751,6 +751,17 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
+(MAKE_TRACER_PATH)(
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ PCUNICODE_STRING Filename,
+    _Inout_ PPUNICODE_STRING PathPointer
+    );
+typedef MAKE_TRACER_PATH *PMAKE_TRACER_PATH;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
 (INITIALIZE_GLOBAL_TRACER_CONFIG)(VOID);
 typedef INITIALIZE_GLOBAL_TRACER_CONFIG *PINITIALIZE_GLOBAL_TRACER_CONFIG;
 
@@ -805,6 +816,7 @@ TRACER_CONFIG_API DESTROY_TRACER_CONFIG DestroyTracerConfig;
 TRACER_CONFIG_API GET_OR_CREATE_GLOBAL_ALLOCATOR GetOrCreateGlobalAllocator;
 TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
 TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
+TRACER_CONFIG_API MAKE_TRACER_PATH MakeTracerPath;
 #pragma component(browser, on)
 
 #ifdef __cplusplus

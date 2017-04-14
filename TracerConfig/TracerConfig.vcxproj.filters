@@ -53,5 +53,8 @@
     <ClCompile Include="TracerConfigConstants.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TracerPath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
