@@ -844,7 +844,6 @@ typedef RTL_LOOKUP_FUNCTION_ENTRY *PRTL_LOOKUP_FUNCTION_ENTRY;
 
 typedef
 BOOLEAN
-__cdecl
 (__cdecl RTL_ADD_FUNCTION_TABLE)(
     _In_reads_(EntryCount) PRUNTIME_FUNCTION FunctionTable,
     _In_ DWORD EntryCount,
@@ -3961,7 +3960,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PRTL_INSTALL_FUNCTION_TABLE_CALLBACK RtlInstallFunctionTableCallback;                              \
     PRTL_ADD_GROWABLE_FUNCTION_TABLE RtlAddGrowableFunctionTable;                                      \
     PRTL_GROW_FUNCTION_TABLE RtlGrowFunctionTable;                                                     \
-    PRTL_DELETE_FUNCTION_TABLE RtlDeleteFunctionTable;                                                 \
+    PRTL_DELETE_GROWABLE_FUNCTION_TABLE RtlDeleteGrowableFunctionTable;                                \
     PZW_CREATE_SECTION ZwCreateSection;                                                                \
     PZW_MAP_VIEW_OF_SECTION ZwMapViewOfSection;                                                        \
     PZW_UNMAP_VIEW_OF_SECTION ZwUnmapViewOfSection;                                                    \
