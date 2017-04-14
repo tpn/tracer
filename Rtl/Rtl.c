@@ -2020,8 +2020,8 @@ ResolveRtlFunctions(
 #endif
 #define Names RtlFunctionNames
 
-    ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
-    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
 
     Success = LoadSymbolsFromMultipleModules(
         Names,
@@ -2065,8 +2065,8 @@ ResolveRtlExFunctions(
 #endif
 #define Names RtlExFunctionNames
 
-    ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
-    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
 
     Success = LoadSymbols(
         Names,
@@ -2113,8 +2113,10 @@ ResolveDbgHelpFunctions(
     // End of auto-generated section.
     //
 
-    ULONG BitmapBuffer[ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5];
-    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names), (PULONG)&BitmapBuffer };
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
+
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
 
     Success = LoadSymbols(
         Names,
