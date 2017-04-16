@@ -50,8 +50,8 @@ Home ends
 AddRuntimeFunction equ 1
 
 Thunk struct
-        Flags               dw      ?
-        EntryCount          dw      ?
+        Flags               dd      ?
+        EntryCount          dd      ?
         FunctionTable       dq      ?
         BaseAddress         dq      ?
         RtlAddFunctionTable dq      ?
