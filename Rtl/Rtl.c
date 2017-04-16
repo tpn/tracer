@@ -387,11 +387,11 @@ InitializeInjection(PRTL Rtl)
     StartAddr = (PVOID)OurStartAddress;
     EndAddr = (PVOID)OurEndAddress;
 
-    RuntimeFuncEx.StartAddress = (PVOID)(Base + RuntimeFunc->BeginAddress);
+    RuntimeFuncEx.BeginAddress = (PVOID)(Base + RuntimeFunc->BeginAddress);
     RuntimeFuncEx.EndAddress = (PVOID)(Base + RuntimeFunc->EndAddress);
     RuntimeFuncEx.UnwindInfo = (PVOID)(Base + RuntimeFunc->UnwindInfoAddress);
 
-    if (RuntimeFuncEx.StartAddress != StartAddr) {
+    if (RuntimeFuncEx.BeginAddress != StartAddr) {
         __debugbreak();
         return FALSE;
     }
