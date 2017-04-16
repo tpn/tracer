@@ -292,7 +292,7 @@ HfEnd:  BEGIN_EPILOGUE
 
 
         lea rsp
-        mov 
+        mov
 
 ;
 ; Generate the entry timestamp.
