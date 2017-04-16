@@ -145,7 +145,7 @@ typedef RTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK
       *PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK;
 
 typedef
-ULONGLONG
+LONG
 (CALLBACK RTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
     _In_ struct _RTL_INJECTION_CONTEXT *Context
     );
@@ -165,17 +165,69 @@ typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
 //
 
 typedef struct _RTL_INJECTION_THUNK_CONTEXT {
+    union {
+        struct {
+            ULONG AddFunctionTable:1;
+            ULONG Unused:31;
+        };
+        LONG AsLong;
+        ULONG AsULong;
+    } Flags;
+    ULONG EntryCount;
+    PRUNTIME_FUNCTION FunctionTable;
+    PVOID BaseAddress;
+    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
+    PVOID ContextAddress;
+    PVOID BasePointer;
+    PVOID StackPointer;
+    PVOID ReturnAddress;
     PEXIT_THREAD ExitThread;
     PLOAD_LIBRARY_W LoadLibraryW;
     PGET_PROC_ADDRESS GetProcAddress;
-    PWSTR DllPath;
+    PWSTR ModulePath;
+    HANDLE ModuleHandle;
     PSTR FunctionName;
-    struct _RTL_INJECTION_CONTEXT *Context;
-    PVOID ReturnAddress;
-    PVOID Padding;
+    union {
+        PRTLP_INJECTION_REMOTE_THREAD_ENTRY ThreadEntry;
+        PVOID FunctionAddress;
+    };
 } RTL_INJECTION_THUNK_CONTEXT;
 typedef RTL_INJECTION_THUNK_CONTEXT *PRTL_INJECTION_THUNK_CONTEXT;
-C_ASSERT(sizeof(RTL_INJECTION_THUNK_CONTEXT) == 64);
+
+typedef struct _RTL_INJECTION_THUNK_CONTEXT_OLD2 {
+    PVOID ContextAddress;
+    PVOID BasePointer;
+    PVOID StackPointer;
+    PVOID ReturnAddress;
+    PEXIT_THREAD ExitThread;
+    PLOAD_LIBRARY_W LoadLibraryW;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PWSTR ModulePath;
+    HANDLE ModuleHandle;
+    PSTR FunctionName;
+    union {
+        PRTLP_INJECTION_REMOTE_THREAD_ENTRY ThreadEntry;
+        PVOID FunctionAddress;
+    };
+} RTL_INJECTION_THUNK_CONTEXT_OLD2;
+typedef RTL_INJECTION_THUNK_CONTEXT_OLD2 *PRTL_INJECTION_THUNK_CONTEXT_OLD2;
+
+typedef struct _RTL_INJECTION_THUNK_CONTEXT_OLD {
+    PEXIT_THREAD ExitThread;
+    PLOAD_LIBRARY_W LoadLibraryW;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PRTL_LOOKUP_FUNCTION_ENTRY RtlLookupFunctionEntry;
+    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
+    HMODULE InjectionThunkModule;
+    PWSTR InjectionThunkDllPath;
+    PSTR InjectionThunkName;
+    PSTR InjectionThunkThreadEntryName;
+    PVOID ThunkAddress;
+    PVOID ThreadEntryAddress;
+    PVOID ReturnAddressInThunk;
+    PPVOID AddressOfReturnAddress;
+} RTL_INJECTION_THUNK_CONTEXT_OLD;
+typedef RTL_INJECTION_THUNK_CONTEXT_OLD *PRTL_INJECTION_THUNK_CONTEXT_OLD;
 
 //
 // An RTL_INJECTION_CONTEXT is created for each RTL_INJECTION_PACKET requested
@@ -185,7 +237,7 @@ C_ASSERT(sizeof(RTL_INJECTION_THUNK_CONTEXT) == 64);
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_INJECTION_CONTEXT {
 
-    RTL_INJECTION_THUNK_CONTEXT InjectionThunkContext;
+    RTL_INJECTION_THUNK_CONTEXT Thunk;
 
     union {
         PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK IsInjectionContextProtocolCallback;

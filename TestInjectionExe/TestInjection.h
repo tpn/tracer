@@ -21,7 +21,7 @@ extern "C" {
 #include "stdafx.h"
 
 typedef
-ULONG
+LONG
 (TEST_INJECTION)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,

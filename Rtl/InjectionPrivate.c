@@ -499,7 +499,8 @@ Return Value:
 
     __try {
 
-        CodeSizeFromReturnValue = InjectionThunk(Context);
+        InjectionThunk(Context);
+        CodeSizeFromReturnValue = 0;
 
     } __except(
         GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
@@ -698,53 +699,18 @@ Return Value:
                                                    Context,
                                                    InjectionError);
 
-    if (!Success) {
-        goto Error;
+    if (Success) {
+
+        //
+        // We're done.
+        //
+
+        goto End;
     }
 
     //
-    // (If we were going to ensure the injected code had no RIP-relative
-    //  addresses, we'd do that here.)
+    // Intentional follow-on to Error.
     //
-
-    //
-    // Code size extraction was successful.  Verify our internal thread entry
-    // thunk.
-    //
-
-    //
-    // Wire up the remote thread injection thunk and set the injection
-    // context protocol callback to the pre-injection implementation, then
-    // perform the verification.
-    //
-
-    Context->RemoteThread.InjectionThunk = (
-        SKIP_JUMPS(
-            Rtl->InjectionThunkRoutine,
-            PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK
-        )
-    );
-
-    Context->IsInjectionContextProtocolCallback = (
-        SKIP_JUMPS(
-            RtlpPreInjectionContextProtocolCallbackImpl,
-            PRTLP_IS_INJECTION_CONTEXT_PROTOCOL_CALLBACK
-        )
-    );
-
-    Success = RtlpInjectionVerifyContextCallback(Rtl,
-                                                 Context,
-                                                 InjectionError);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Context and packet callbacks have been verified successfully, we're done.
-    //
-
-    goto End;
 
 Error:
 

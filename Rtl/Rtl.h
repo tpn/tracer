@@ -981,7 +981,7 @@ typedef UNWIND_INFO *PUNWIND_INFO;
 #pragma pack(pop)
 
 typedef struct _RUNTIME_FUNCTION_EX {
-    PVOID StartAddress;
+    PVOID BeginAddress;
     PVOID EndAddress;
     union {
         PUNWIND_INFO UnwindInfo;

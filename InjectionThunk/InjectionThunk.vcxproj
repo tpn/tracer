@@ -82,10 +82,15 @@
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="InjectionThunk.c" />
+    <ClCompile Include="_InjectionThunk.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="InjectionThunk.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\Asm\InjectionThunk.asm" />
+    <MASM Include="..\Asm\InjectionThunk3.asm" />
+    <MASM Include="..\Asm\InjectionThunk4.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
