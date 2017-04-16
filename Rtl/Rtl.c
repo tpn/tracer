@@ -286,12 +286,30 @@ LoadDbgEng(
     return TRUE;
 }
 
+#pragma warning(push)
+#pragma warning(disable: 4101)
 RTL_API
 BOOL
 InitializeInjection(PRTL Rtl)
 {
-    PVOID Base1;
-    ULONGLONG Base2;
+    BOOL Success;
+    PVOID StartAddress;
+    PVOID EndAddress;
+    ULONG_PTR Base;
+
+    PUNWIND_INFO UnwindInfo;
+    UWOP_UNWIND_CODE UwopUnwindCode;
+    UWOP_UNWIND_OPREG UwopUnwindReg;
+
+    PRUNTIME_FUNCTION RuntimeFunc;
+    RUNTIME_FUNCTION_EX RuntimeFuncEx;
+
+    ULONG_PTR Address;
+    ULONG_PTR OurStartAddress;
+    ULONG_PTR OurEndAddress;
+
+    PVOID StartAddr;
+    PVOID EndAddr;
 
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
@@ -349,24 +367,44 @@ InitializeInjection(PRTL Rtl)
         SkipJumpsInline((PBYTE)Rtl->InjectionRemoteThreadEntry)
     );
 
-    Rtl->InjectionThunkBase = (
-        Rtl->RtlPcToFileHeader(
-            Rtl->InjectionThunkRoutine,
-            &Base1
-        )
-    );
-
-    Rtl->InjectionThunkRuntimeFunction = (
+    RuntimeFunc = Rtl->InjectionThunkRuntimeFunction = (
         Rtl->RtlLookupFunctionEntry(
             (ULONGLONG)Rtl->InjectionThunkRoutine,
-            &Base2,
+            &Base,
             NULL
         )
     );
 
+    Address = (ULONG_PTR)Rtl->InjectionThunkRoutine;
+    Success = GetApproximateFunctionBoundaries(Address,
+                                               &OurStartAddress,
+                                               &OurEndAddress);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    StartAddr = (PVOID)OurStartAddress;
+    EndAddr = (PVOID)OurEndAddress;
+
+    RuntimeFuncEx.StartAddress = (PVOID)(Base + RuntimeFunc->BeginAddress);
+    RuntimeFuncEx.EndAddress = (PVOID)(Base + RuntimeFunc->EndAddress);
+    RuntimeFuncEx.UnwindInfo = (PVOID)(Base + RuntimeFunc->UnwindInfoAddress);
+
+    if (RuntimeFuncEx.StartAddress != StartAddr) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (RuntimeFuncEx.EndAddress != EndAddr) {
+        __debugbreak();
+        return FALSE;
+    }
+
     Rtl->InjectionInitialized = TRUE;
     return TRUE;
 }
+#pragma warning(pop)
 
 BOOL
 CALLBACK
