@@ -159,7 +159,6 @@ CONST PCSTR RtlFunctionNames[] = {
     "WaitForSingleObject",
     "WaitForSingleObjectEx",
     "SignalObjectAndWait",
-    "WaitForIdleInput",
     "SleepEx",
     "ExitThread",
     "GetExitCodeThread",

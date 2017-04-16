@@ -1805,10 +1805,10 @@ typedef CREATE_EVENT_W *PCREATE_EVENT_W;
 
 typedef
 DWORD
-(WINAPI WAIT_FOR_IDLE_INPUT)(
+(WINAPI WAIT_FOR_INPUT_IDLE)(
     _In_ HANDLE hProcess,
     _In_ DWORD dwMilliseconds);
-typedef WAIT_FOR_IDLE_INPUT *PWAIT_FOR_IDLE_INPUT;
+typedef WAIT_FOR_INPUT_IDLE *PWAIT_FOR_INPUT_IDLE;
 
 typedef
 _Ret_maybenull_ _Post_writable_byte_size_(dwSize)
@@ -3984,7 +3984,6 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
     PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;                                                  \
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
-    PWAIT_FOR_IDLE_INPUT WaitForIdleInput;                                                             \
     PSLEEP_EX SleepEx;                                                                                 \
     PEXIT_THREAD ExitThread;                                                                           \
     PGET_EXIT_CODE_THREAD GetExitCodeThread;                                                           \
