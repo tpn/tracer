@@ -2143,6 +2143,8 @@ ResolveRtlFunctions(
     ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
     RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
 
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
+
     Success = LoadSymbolsFromMultipleModules(
         Names,
         ARRAYSIZE(Names),
@@ -2158,8 +2160,14 @@ ResolveRtlFunctions(
         __debugbreak();
     }
 
-    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
     if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
     }
 
@@ -2171,6 +2179,7 @@ ResolveRtlFunctions(
 _Use_decl_annotations_
 BOOL
 ResolveRtlExFunctions(
+    PRTL Rtl,
     HMODULE RtlExModule,
     PRTLEXFUNCTIONS RtlExFunctions
     )
@@ -2188,6 +2197,8 @@ ResolveRtlExFunctions(
     ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
     RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
 
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
+
     Success = LoadSymbols(
         Names,
         ARRAYSIZE(Names),
@@ -2202,8 +2213,14 @@ ResolveRtlExFunctions(
         __debugbreak();
     }
 
-    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
     if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
     }
 
@@ -2221,8 +2238,6 @@ ResolveDbgHelpFunctions(
     )
 {
     BOOL Success;
-    ULONG FirstFailedSymbol;
-    ULONG NumberOfFailedSymbols;
     ULONG NumberOfResolvedSymbols;
     ULONG ExpectedNumberOfResolvedSymbols;
     PULONG_PTR Functions = (PULONG_PTR)Dbg;
@@ -2256,8 +2271,13 @@ ResolveDbgHelpFunctions(
     }
 
     if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
         NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
         FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
     }
 
@@ -2403,7 +2423,7 @@ LoadRtlExSymbols(
         }
     }
 
-    if (!ResolveRtlExFunctions(Module, &Rtl->RtlExFunctions)) {
+    if (!ResolveRtlExFunctions(Rtl, Module, &Rtl->RtlExFunctions)) {
         return FALSE;
     }
 
