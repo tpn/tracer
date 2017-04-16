@@ -168,7 +168,10 @@ typedef struct _RTL_INJECTION_THUNK_CONTEXT {
     union {
         struct {
             ULONG AddFunctionTable:1;
-            ULONG Unused:31;
+            ULONG TestExceptionHandler:1;
+            ULONG TestAccessViolation:1;
+            ULONG TestIllegalInstruction:1;
+            ULONG Unused:28;
         };
         LONG AsLong;
         ULONG AsULong;
