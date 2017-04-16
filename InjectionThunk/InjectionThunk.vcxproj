@@ -91,6 +91,7 @@
     <MASM Include="..\Asm\InjectionThunk.asm" />
     <MASM Include="..\Asm\InjectionThunk3.asm" />
     <MASM Include="..\Asm\InjectionThunk4.asm" />
+    <MASM Include="..\Asm\InjectionThunk5.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

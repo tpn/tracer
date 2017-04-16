@@ -158,7 +158,7 @@ CreateThunkExe(
 }
 
 ULONG
-TestInjection1(
+TestInjection1Old(
     PRTL Rtl,
     PALLOCATOR Allocator,
     PTRACER_CONFIG TracerConfig,
@@ -201,6 +201,7 @@ TestInjection1(
 
     return ERROR_SUCCESS;
 }
+
 
 DECLSPEC_DLLEXPORT
 LONG
@@ -304,8 +305,12 @@ BOOL
     _In_ PALLOCATOR Allocator,
     _In_ HANDLE TargetProcessHandle,
     _In_ PVOID SourceFunction,
-    _In_ PPVOID DestBaseAddressPointer,
-    _In_ PPVOID DestFunctionPointer
+    _In_opt_ PVOID SourceHandlerFunction,
+    _Out_ PPVOID DestBaseAddressPointer,
+    _Out_ PPVOID DestFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    _Out_ PULONG EntryCountPointer
     );
 typedef COPY_FUNCTION *PCOPY_FUNCTION;
 
@@ -318,35 +323,61 @@ CopyFunction(
     PALLOCATOR Allocator,
     HANDLE TargetProcessHandle,
     PVOID SourceFunction,
-    PVOID *DestBaseAddressPointer,
-    PVOID *DestFunctionPointer
+    PVOID SourceHandlerFunction,
+    PPVOID DestBaseAddressPointer,
+    PPVOID DestFunctionPointer,
+    PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    PULONG EntryCountPointer
     )
 {
     BOOL Success = FALSE;
+    BOOL HasHandler = FALSE;
     USHORT CodeSize;
+    USHORT HandlerCodeSize;
     SHORT UnwindCodeSize;
     SHORT UnwindInfoSize;
     SHORT TotalUnwindSize;
+    SHORT UnwindInfoHeaderSize;
+    SHORT NumberOfUnwindCodes;
+    SHORT HandlerUnwindCodeSize;
+    SHORT TotalHandlerUnwindSize;
     ULONG OldProtection;
+    ULONG EntryCount;
     SIZE_T NumberOfBytesWritten;
     HANDLE ProcessHandle = GetCurrentProcess();
-    ULONG OnePage = 1 << PAGE_SHIFT;
-    ULONG TwoPages = 2 << PAGE_SHIFT;
+    const ULONG OnePage = 1 << PAGE_SHIFT;
+    const ULONG TwoPages = 2 << PAGE_SHIFT;
     PVOID SourceFunc;
+    PVOID HandlerFunc;
+    PVOID HandlerFunction;
     PVOID LocalBaseCodeAddress = NULL;
     PVOID LocalBaseDataAddress = NULL;
     PVOID RemoteBaseCodeAddress = NULL;
     PVOID RemoteBaseDataAddress = NULL;
     PRUNTIME_FUNCTION DestRuntimeFunction;
+    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
     PRUNTIME_FUNCTION SourceRuntimeFunction;
+    PRUNTIME_FUNCTION SourceHandlerRuntimeFunction;
     RUNTIME_FUNCTION_EX SourceRuntimeFunctionEx;
+    RUNTIME_FUNCTION_EX SourceHandlerRuntimeFunctionEx;
     PUNWIND_INFO UnwindInfo;
     PUNWIND_INFO DestUnwindInfo;
+    PUNWIND_INFO HandlerUnwindInfo;
+    PUNWIND_INFO DestHandlerUnwindInfo;
+    ULONG SourceHandlerFieldOffset;
+    ULONG SourceHandlerOffset;
+    ULONG SourceScopeTableFieldOffset;
+    ULONG SourceScopeTableOffset;
     ULONGLONG SourceBaseAddress;
+    ULONGLONG HandlerBaseAddress;
     PBYTE DestCode;
+    PBYTE DestHandlerCode;
     PBYTE EndCode;
+    PBYTE EndHandlerCode;
     PBYTE DestData;
     PBYTE SourceCode;
+    PBYTE SourceHandlerCode;
 
     struct {
         LARGE_INTEGER Frequency;
@@ -364,6 +395,7 @@ CopyFunction(
 
     *DestBaseAddressPointer = NULL;
     *DestFunctionPointer = NULL;
+    *DestRuntimeFunctionPointer = NULL;
 
     //
     // Allocate local pages for code and data.
@@ -457,6 +489,27 @@ CopyFunction(
 
     UnwindInfo = SourceRuntimeFunctionEx.UnwindInfo;
 
+    if (UnwindInfo->Flags & UNW_FLAG_CHAININFO) {
+
+        //
+        // We don't support copying functions with chained unwind info at the
+        // moment.
+        //
+
+        __debugbreak();
+        goto Cleanup;
+    } else if ((UnwindInfo->Flags & (UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER))) {
+        HasHandler = TRUE;
+        EntryCount = 2;
+    } else {
+        EntryCount = 1;
+    }
+
+    if (UnwindInfo->Version != 1) {
+        __debugbreak();
+        goto Cleanup;
+    }
+
     CodeSize = (USHORT)(
         (ULONGLONG)SourceRuntimeFunction->EndAddress -
         (ULONGLONG)SourceRuntimeFunction->BeginAddress
@@ -465,8 +518,49 @@ CopyFunction(
     SourceCode = (PBYTE)SourceRuntimeFunctionEx.BeginAddress;
 
     UnwindInfoSize = sizeof(UNWIND_INFO);
-    UnwindCodeSize = (UnwindInfo->CountOfCodes - 1) * sizeof(UNWIND_CODE);
-    TotalUnwindSize = UnwindInfoSize + UnwindCodeSize;
+    UnwindInfoHeaderSize = FIELD_OFFSET(UNWIND_INFO, UnwindCode);
+
+    if (UnwindInfo->CountOfCodes > 0) {
+        NumberOfUnwindCodes = UnwindInfo->CountOfCodes;
+        if (NumberOfUnwindCodes % 2 != 0) {
+            NumberOfUnwindCodes += 1;
+        }
+        UnwindCodeSize = NumberOfUnwindCodes * sizeof(UNWIND_CODE);
+    }
+
+    TotalUnwindSize = UnwindInfoHeaderSize + UnwindCodeSize;
+
+    SourceHandlerFieldOffset = UnwindInfoHeaderSize + UnwindCodeSize;
+    SourceScopeTableFieldOffset = SourceHandlerFieldOffset + sizeof(ULONG);
+
+    SourceHandlerOffset = *((PULONG)(
+        (PBYTE)UnwindInfo + SourceHandlerFieldOffset
+    ));
+
+    SourceScopeTableOffset = *((PULONG)(
+        (PBYTE)UnwindInfo + SourceScopeTableFieldOffset
+    ));
+
+    SourceRuntimeFunctionEx.HandlerFunction = (PVOID)(
+        SourceBaseAddress + SourceHandlerOffset
+    );
+
+    if (HasHandler && SourceScopeTableOffset) {
+        ULONG ScopeCount;
+
+        SourceRuntimeFunctionEx.ScopeTable = (PVOID)(
+            SourceBaseAddress + SourceScopeTableOffset
+        );
+
+        ScopeCount = SourceRuntimeFunctionEx.ScopeTable->Count;
+
+        if (ScopeCount > 0) {
+            TotalUnwindSize += (
+                ((USHORT)sizeof(ULONG)) +
+                ((USHORT)ScopeCount * (USHORT)sizeof(UNWIND_SCOPE_RECORD))
+            );
+        }
+    }
 
     DestCode = (PBYTE)LocalBaseCodeAddress;
 
@@ -476,7 +570,9 @@ CopyFunction(
 
     DestData = (PBYTE)LocalBaseDataAddress;
     DestRuntimeFunction = (PRUNTIME_FUNCTION)DestData;
-    DestData += ALIGN_UP(sizeof(RUNTIME_FUNCTION), 16);
+    DestHandlerRuntimeFunction = DestRuntimeFunction + 1;
+
+    DestData = (PBYTE)ALIGN_UP(DestHandlerRuntimeFunction + 16, 16);
 
     DestUnwindInfo = (PUNWIND_INFO)DestData;
     CopyMemory((PBYTE)DestUnwindInfo, (PBYTE)UnwindInfo, TotalUnwindSize);
@@ -500,6 +596,94 @@ CopyFunction(
     DestRuntimeFunction->UnwindInfoAddress = (ULONG)(
         (ULONG_PTR)DestUnwindInfo - (ULONG_PTR)LocalBaseCodeAddress
     );
+
+    if (HasHandler) {
+
+        HandlerFunction = SourceRuntimeFunctionEx.HandlerFunction;
+
+        HandlerFunc = SkipJumpsInline(HandlerFunction);
+
+        SourceHandlerRuntimeFunction = (
+            Rtl->RtlLookupFunctionEntry(
+                (ULONGLONG)HandlerFunc,
+                &HandlerBaseAddress,
+                NULL
+            )
+        );
+
+        if (!SourceHandlerRuntimeFunction) {
+            goto Cleanup;
+        }
+
+        SourceHandlerRuntimeFunctionEx.BeginAddress = (PVOID)(
+            HandlerBaseAddress + SourceHandlerRuntimeFunction->BeginAddress
+        );
+
+        SourceHandlerRuntimeFunctionEx.EndAddress = (PVOID)(
+            HandlerBaseAddress + SourceHandlerRuntimeFunction->EndAddress
+        );
+
+        SourceHandlerRuntimeFunctionEx.UnwindInfo = (PUNWIND_INFO)(
+            HandlerBaseAddress +
+            SourceHandlerRuntimeFunction->UnwindInfoAddress
+        );
+
+        HandlerUnwindInfo = SourceHandlerRuntimeFunctionEx.UnwindInfo;
+
+        HandlerCodeSize = (USHORT)(
+            (ULONGLONG)SourceHandlerRuntimeFunction->EndAddress -
+            (ULONGLONG)SourceHandlerRuntimeFunction->BeginAddress
+        );
+
+        SourceHandlerCode = (PBYTE)SourceHandlerRuntimeFunctionEx.BeginAddress;
+
+        if (HandlerUnwindInfo->CountOfCodes > 0) {
+            NumberOfUnwindCodes = HandlerUnwindInfo->CountOfCodes;
+            if (NumberOfUnwindCodes % 2 != 0) {
+                NumberOfUnwindCodes += 1;
+            }
+            HandlerUnwindCodeSize = NumberOfUnwindCodes * sizeof(UNWIND_CODE);
+        } else {
+            HandlerUnwindCodeSize = 0;
+        }
+
+        TotalHandlerUnwindSize = UnwindInfoHeaderSize + HandlerUnwindCodeSize;
+
+        if (HandlerUnwindInfo->Flags != 0) {
+            __debugbreak();
+            goto Cleanup;
+        }
+
+        if (HandlerUnwindInfo->Version != 1) {
+            __debugbreak();
+            goto Cleanup;
+        }
+
+        DestHandlerCode = (PBYTE)ALIGN_UP(EndCode + 16, 16);
+        CopyMemory(DestHandlerCode, SourceHandlerCode, HandlerCodeSize);
+        EndHandlerCode = DestHandlerCode + HandlerCodeSize;
+
+        DestHandlerUnwindInfo = (PUNWIND_INFO)(
+            (PBYTE)DestUnwindInfo + ALIGN_UP(TotalUnwindSize, 16)
+        );
+
+        CopyMemory((PBYTE)DestHandlerUnwindInfo,
+                   (PBYTE)HandlerUnwindInfo,
+                   TotalHandlerUnwindSize);
+
+        DestHandlerRuntimeFunction->BeginAddress = (ULONG)(
+            (ULONG_PTR)DestHandlerCode - (ULONG_PTR)LocalBaseCodeAddress
+        );
+
+        DestHandlerRuntimeFunction->EndAddress = (ULONG)(
+            (ULONG_PTR)EndHandlerCode - (ULONG_PTR)LocalBaseCodeAddress
+        );
+
+        DestHandlerRuntimeFunction->UnwindInfoAddress = (ULONG)(
+            (ULONG_PTR)DestHandlerUnwindInfo - (ULONG_PTR)LocalBaseCodeAddress
+        );
+
+    }
 
     Success = (
         WriteProcessMemory(
@@ -551,11 +735,11 @@ CopyFunction(
         )
     );
 
-    if (ProcessHandle == TargetProcessHandle) {
+    if (0 && ProcessHandle == TargetProcessHandle) {
         Success = (
             Rtl->RtlAddFunctionTable(
                 DestRuntimeFunction,
-                1,
+                EntryCount,
                 (ULONGLONG)RemoteBaseCodeAddress
             )
         );
@@ -567,10 +751,10 @@ CopyFunction(
     }
 
     if (Success) {
+        *DestRuntimeFunctionPointer = DestRuntimeFunction;
         *DestBaseAddressPointer = RemoteBaseCodeAddress;
-        *DestFunctionPointer = (
-            (PBYTE)RemoteBaseCodeAddress + 16
-        );
+        *DestFunctionPointer = ((PBYTE)RemoteBaseCodeAddress) + 16;
+        *EntryCountPointer = EntryCount;
         goto End;
     }
 
@@ -645,7 +829,111 @@ End:
     return Success;
 }
 
+BOOL
+TestInjection1(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PDEBUG_ENGINE_SESSION Session
+    )
+{
+    BOOL Success;
+    PWSTR Path;
+    LONG Result;
+    ULONG EntryCount;
+    HANDLE ProcessHandle;
+    RTL_INJECTION_CONTEXT Context;
+    PRUNTIME_FUNCTION DestRuntimeFunction;
+    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
+    PRTL_INJECTION_THUNK_CONTEXT Thunk;
+    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
+    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK DestInjectionThunk;
+    PRTL_EXCEPTION_HANDLER InjectionThunkHandler;
+    PVOID DestBaseAddress;
+    CHAR FunctionName[] = "TestInjection2ThreadEntry";
 
+    ZeroStruct(TestInjectionFunctionName);
+
+    __movsb((PBYTE)TestInjectionFunctionName,
+            (PBYTE)FunctionName,
+            sizeof(FunctionName));
+
+    Path = InjectionThunkActiveDllPath->Buffer;
+    InjectionThunkModule = Rtl->LoadLibraryW(Path);
+    if (!InjectionThunkModule) {
+        return FALSE;
+    }
+
+    InjectionThunk = (PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
+        GetProcAddress(
+            InjectionThunkModule,
+            "InjectionThunk1"
+        )
+    );
+
+    if (!InjectionThunk) {
+        return FALSE;
+    }
+
+    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
+        GetProcAddress(
+            InjectionThunkModule,
+            "InjectionThunk1Handler"
+        )
+    );
+
+    if (!InjectionThunkHandler) {
+        return FALSE;
+    }
+
+    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
+        SkipJumpsInline((PBYTE)InjectionThunkHandler)
+    );
+
+    ProcessHandle = GetCurrentProcess();
+
+    Success = CopyFunction(Rtl,
+                           Allocator,
+                           ProcessHandle,
+                           InjectionThunk,
+                           InjectionThunkHandler,
+                           &DestBaseAddress,
+                           (PVOID *)&DestInjectionThunk,
+                           &DestRuntimeFunction,
+                           &DestHandlerRuntimeFunction,
+                           &EntryCount);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    ZeroStruct(Context);
+
+    Thunk = &Context.Thunk;
+
+    Thunk->EntryCount = 1;
+    Thunk->BaseAddress = DestBaseAddress;
+    Thunk->FunctionTable = DestRuntimeFunction;
+    Thunk->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
+    Thunk->ExitThread = Rtl->ExitThread;
+    Thunk->LoadLibraryW = Rtl->LoadLibraryW;
+    Thunk->GetProcAddress = Rtl->GetProcAddress;
+    Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
+    Thunk->FunctionName = TestInjectionFunctionName;
+
+    InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
+
+    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+    Thunk->Flags.AddFunctionTable = FALSE;
+    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+    Thunk->Flags.TestExceptionHandler = TRUE;
+    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+    return TRUE;
+}
 
 BOOL
 TestInjection4(
@@ -658,11 +946,16 @@ TestInjection4(
     BOOL Success;
     PWSTR Path;
     LONG Result;
+    ULONG EntryCount;
+    ULONG RipOffset;
     HANDLE ProcessHandle;
     RTL_INJECTION_CONTEXT Context;
+    PRUNTIME_FUNCTION DestRuntimeFunction;
+    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
     PRTL_INJECTION_THUNK_CONTEXT Thunk;
     PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
     PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK DestInjectionThunk;
+    PRTL_EXCEPTION_HANDLER InjectionThunkHandler;
     PVOID DestBaseAddress;
     CHAR FunctionName[] = "TestInjection2ThreadEntry";
 
@@ -689,14 +982,33 @@ TestInjection4(
         return FALSE;
     }
 
+    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
+        GetProcAddress(
+            InjectionThunkModule,
+            "InjectionThunkHandler"
+        )
+    );
+
+    if (!InjectionThunkHandler) {
+        return FALSE;
+    }
+
+    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
+        SkipJumpsInline((PBYTE)InjectionThunkHandler)
+    );
+
     ProcessHandle = GetCurrentProcess();
 
     Success = CopyFunction(Rtl,
                            Allocator,
                            ProcessHandle,
                            InjectionThunk,
+                           InjectionThunkHandler,
                            &DestBaseAddress,
-                           (PVOID *)&DestInjectionThunk);
+                           (PVOID *)&DestInjectionThunk,
+                           &DestRuntimeFunction,
+                           &DestHandlerRuntimeFunction,
+                           &EntryCount);
 
     if (!Success) {
         return FALSE;
@@ -706,7 +1018,11 @@ TestInjection4(
 
     Thunk = &Context.Thunk;
 
-    Thunk->Flags.AddFunctionTable = FALSE;
+    Thunk->Flags.AddFunctionTable = TRUE;
+    Thunk->EntryCount = EntryCount;
+    Thunk->BaseAddress = DestBaseAddress;
+    Thunk->FunctionTable = DestRuntimeFunction;
+    Thunk->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
     Thunk->ExitThread = Rtl->ExitThread;
     Thunk->LoadLibraryW = Rtl->LoadLibraryW;
     Thunk->GetProcAddress = Rtl->GetProcAddress;
@@ -715,6 +1031,22 @@ TestInjection4(
 
     InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
 
+    //goto TestExceptionHandler;
+
+    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+//TestExceptionHandler:
+
+    RipOffset = FIELD_OFFSET(CONTEXT, Rip);
+
+    Thunk->Flags.TestExceptionHandler = TRUE;
+    Thunk->Flags.TestAccessViolation = TRUE;
+    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+    Thunk->Flags.TestAccessViolation = FALSE;
+    Thunk->Flags.TestIllegalInstruction = TRUE;
     Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
     Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
 
@@ -732,11 +1064,14 @@ TestInjection5(
     BOOL Success;
     PWSTR Path;
     LONG Result;
+    ULONG EntryCount;
     USHORT ModulePathOffset;
     USHORT ModuleHandleOffset;
     USHORT FunctionNameOffset;
     HANDLE ProcessHandle;
     //RTL_INJECTION_CONTEXT Context;
+    PRUNTIME_FUNCTION DestRuntimeFunction;
+    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
     RTL_INJECTION_THUNK_CONTEXT LocalThunk;
     PRTL_INJECTION_THUNK_CONTEXT Thunk;
     PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
@@ -775,8 +1110,12 @@ TestInjection5(
                            Allocator,
                            ProcessHandle,
                            InjectionThunk,
+                           NULL,
                            &DestBaseAddress,
-                           (PVOID *)&DestInjectionThunk);
+                           (PVOID *)&DestInjectionThunk,
+                           &DestRuntimeFunction,
+                           &DestHandlerRuntimeFunction,
+                           &EntryCount);
 
     if (!Success) {
         return FALSE;
@@ -808,6 +1147,88 @@ InitThunk:
 
     return TRUE;
 }
+
+BOOL
+TestInjection6(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PDEBUG_ENGINE_SESSION Session
+    )
+{
+    BOOL Success;
+    PWSTR Path;
+    LONG Result;
+    ULONG EntryCount;
+    HANDLE ProcessHandle;
+    RTL_INJECTION_CONTEXT Context;
+    PRTL_INJECTION_THUNK_CONTEXT Thunk;
+    PRUNTIME_FUNCTION DestRuntimeFunction;
+    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
+    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
+    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK DestInjectionThunk;
+    PVOID DestBaseAddress;
+    CHAR FunctionName[] = "TestInjection2ThreadEntry";
+
+    ZeroStruct(TestInjectionFunctionName);
+
+    __movsb((PBYTE)TestInjectionFunctionName,
+            (PBYTE)FunctionName,
+            sizeof(FunctionName));
+
+    Path = InjectionThunkActiveDllPath->Buffer;
+    InjectionThunkModule = Rtl->LoadLibraryW(Path);
+    if (!InjectionThunkModule) {
+        return FALSE;
+    }
+
+    InjectionThunk = (PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
+        GetProcAddress(
+            InjectionThunkModule,
+            "InjectionThunk4"
+        )
+    );
+
+    if (!InjectionThunk) {
+        return FALSE;
+    }
+
+    ProcessHandle = GetCurrentProcess();
+
+    Success = CopyFunction(Rtl,
+                           Allocator,
+                           ProcessHandle,
+                           InjectionThunk,
+                           NULL,
+                           &DestBaseAddress,
+                           (PVOID *)&DestInjectionThunk,
+                           &DestRuntimeFunction,
+                           &DestHandlerRuntimeFunction,
+                           &EntryCount);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    ZeroStruct(Context);
+
+    Thunk = &Context.Thunk;
+
+    Thunk->Flags.AddFunctionTable = FALSE;
+    Thunk->ExitThread = Rtl->ExitThread;
+    Thunk->LoadLibraryW = Rtl->LoadLibraryW;
+    Thunk->GetProcAddress = Rtl->GetProcAddress;
+    Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
+    Thunk->FunctionName = TestInjectionFunctionName;
+
+    InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
+
+    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
+
+    return TRUE;
+}
+
 
 #define TEST(n) TestInjection##n##(Rtl, Allocator, TracerConfig, Session)
 
@@ -882,8 +1303,9 @@ TestInjection(
         return -5;
     }
 
-    TEST(5);
     TEST(4);
+    //TEST(5);
+    //TEST(1);
 
     return ERROR_SUCCESS;
 }

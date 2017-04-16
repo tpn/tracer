@@ -44,10 +44,18 @@ Home struct
 Home ends
 
 ;
+; Define flags for RTL_INJECTION_THUNK_CONTEXT.Flags.
+;
+
+AddRuntimeFunction      equ         1
+TestExceptionHandler    equ         2
+TestAccessViolation     equ         4
+TestIllegalInstruction  equ         8
+
+;
 ; Define the RTL_INJECTION_THUNK_CONTEXT structure.
 ;
 
-AddRuntimeFunction equ 1
 
 Thunk struct
         Flags               dd      ?
@@ -75,6 +83,97 @@ Thunk ends
 RtlAddFunctionTableFailed   equ     -1
 LoadLibraryWFailed          equ     -2
 GetProcAddressFailed        equ     -3
+
+;
+; Forward declarations of Fault/Resume addresses in InjectionThunk body.
+;
+
+altentry InjectionThunkAVFault
+altentry InjectionThunkAVResume
+altentry InjectionThunkIllInstFault
+altentry InjectionThunkIllInstResume
+
+;++
+;
+; LONG
+; InjectionThunk4ExceptionHandler(
+;     _In_ PEXCEPTION_RECORD ExceptionRecord,
+;     _In_ PVOID EstablisherFrame,
+;     _Inout_ PCONTEXT ContextRecord,
+;     _Inout_ DispatcherContext
+;     )
+;
+; Routine Description:
+;
+;   This is the exception handler for our injection thunk routine.  Its purpose
+;   is to trap the access violation that the thunk can be directed to trigger
+;   and ignore it, returning execution back to the thunk.  This isn't used in
+;   practice -- it's simply a test that we grok how to write exception handlers
+;   in assembly, and that they can be effectively relocated as part of dynamic
+;   injection.
+;
+; Arguments:
+;
+;   ExceptionRecord (rcx) - Supplies a pointer to an exception record.
+;
+;   EstablisherFrame (rdx) - Supplies the frame pointer of the establisher
+;       of this exception handler.
+;
+;   ContextRecord (r8) - Supplies a pointer to a context record.
+;
+;   DispatcherContext (r9) - Supplies a pointer to the dispatcher context
+;       record.
+;
+; Return Value:
+;
+;   If we correctly detect that the exception was triggered by our expected
+;   access violation, we adjust the RIP and return ExceptionContinueExecution.
+;   Return ExceptionContinueSearch in all other cases.
+;
+;--
+
+        LEAF_ENTRY InjectionThunkHandler, _TEXT$00
+
+;
+; If this is an unwind, return ExceptionContinueSearch.
+;
+
+        test    dword ptr ErExceptionFlags[rcx], EXCEPTION_UNWIND
+        jnz     short Injh90                    ; This is an unwind, return.
+
+;
+; Check to see if this is an access violation exception.  If it isn't, it won't
+; (or shouldn't) have come from our injection thunk routine.
+;
+
+        xor     rax, rax
+        mov     eax, dword ptr ErExceptionCode[rcx] ; Load exception code.
+        cmp     eax, STATUS_ACCESS_VIOLATION        ; Was this an AV?
+        jne     short Injh90                        ; Wasn't an AV, return.
+
+;
+; Load the known fault address into rax and compare against the actual fault
+; IP of the triggering exception.
+;
+        lea     rax, InjectionThunkAVFault      ; Load RIP of known fault.
+        cmp     rax, CxRip[r8]                  ; Compare to actual RIP.
+        jne     short Injh90                    ; Doesn't match, return.
+
+;
+; The exception occurred on our fault address.  Update the RIP in the context
+; to skip past the faulting exception, then return ExceptionContinueExecution.
+;
+
+        lea     rax, InjectionThunkAVResume     ; Load resume address.
+        mov     CxRip[r8], rax                  ; Save into RIP.
+        mov     eax, ExceptionContinueExecution ; Load return code.
+        ret
+
+Injh90: mov     eax, ExceptionContinueSearch
+        ret
+
+        LEAF_END InjectionThunkHandler, _TEXT$00
+
 
 ;++
 ;
@@ -122,7 +221,7 @@ GetProcAddressFailed        equ     -3
 ;
 ;--
 
-        NESTED_ENTRY InjectionThunk4, _TEXT$00
+        NESTED_ENTRY InjectionThunk4, _TEXT$00, InjectionThunkHandler
 
 ;
 ; This routine uses the non-volatile r12 to store the Thunk pointer (initially
@@ -163,9 +262,9 @@ GetProcAddressFailed        equ     -3
 ; Determine if we need to register a runtime function entry for this thunk.
 ;
 
-        mov     r8d, Thunk.Flags                ; Load flags into r8d.
+        mov     r8d, Thunk.Flags[r12]           ; Load flags into r8d.
         test    r8d, AddRuntimeFunction         ; Is flag set?
-        jz      Inj20                           ; No, jump to main logic.
+        jz      short Inj10                     ; No, jump to EH check.
 
 ;
 ; Register a runtime function for this currently executing piece of code.  This
@@ -174,15 +273,50 @@ GetProcAddressFailed        equ     -3
 
         mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
         xor     rdx, rdx                                ; Clear rdx.
+        xor     r9, r9                                  ; Clear r9.
         mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
         mov     r8, Thunk.BaseAddress[r12]              ; Load BaseAddress.
-        call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
+        mov     rax, Thunk.RtlAddFunctionTable[r12]     ; Load Function.
+        call    rax                                     ; Invoke function.
         test    rax, rax                                ; Check result.
-        jz      short Inj10                             ; Function failed.
-        jmp     short Inj20                             ; Function succeeded.
+        jz      short @F                                ; Function failed.
+        jmp     short Inj10                             ; Function succeeded.
 
-Inj10:  mov     rax, RtlAddFunctionTableFailed          ; Load error code.
-        jmp     short Inj90                             ; Jump to epilogue.
+@@:     mov     rax, RtlAddFunctionTableFailed          ; Load error code.
+        jmp     Inj90                                   ; Jump to epilogue.
+
+;
+; Determine if an access violation test has been requested.  Note that this is
+; only ever performed after a runtime function table has been added.  It is used
+; solely for testing our exception handling logic.
+;
+
+Inj10:  mov     r8d, Thunk.Flags[r12]           ; Load flags into r8d.
+        test    r8d, TestExceptionHandler       ; Is flag set?
+        jnz     Inj15                           ; Yes, jump to test.
+        jmp     Inj20                           ; No, jump to main.
+
+Inj15:  test    r8d, TestAccessViolation        ; Is AV test?
+        jnz     Inj18                           ; Yes, jump to test.
+
+        test    r8d, TestIllegalInstruction     ; Is IL test?
+        jnz     Inj17                           ; Yes, jump to test.
+
+        int 3                                   ; Invariant failed: no flags set
+        jmp     short Inj90
+
+Inj17:  nop
+        ALTERNATE_ENTRY InjectionThunkIllInstFault
+        db      06h                             ; Trigger illegal inst fault.
+        ALTERNATE_ENTRY InjectionThunkIllInstResume
+        jmp     Inj20                           ; Jump to main.
+
+        align   16
+Inj18:  xor     rax, rax                                ; Zero rax.
+
+        ALTERNATE_ENTRY InjectionThunkAVFault
+        mov     [rax], rax                              ; Force trap.
+        ALTERNATE_ENTRY InjectionThunkAVResume
 
 ;
 ; Prepare for a LoadLibraryW() call against the module path in the thunk.
@@ -191,10 +325,10 @@ Inj10:  mov     rax, RtlAddFunctionTableFailed          ; Load error code.
 Inj20:  mov     rcx, Thunk.ModulePath[r12]              ; Load ModulePath.
         call    Thunk.LoadLibraryW[r12]                 ; Call LoadLibraryW().
         test    rax, rax                                ; Check Handle != NULL.
-        jz      short Inj30                             ; Handle is NULL.
+        jz      short @F                                ; Handle is NULL.
         jmp     short Inj40                             ; Handle is valid.
 
-Inj30:  mov     rax, LoadLibraryWFailed                 ; Load error code.
+@@:     mov     rax, LoadLibraryWFailed                 ; Load error code.
         jmp     short Inj90                             ; Jump to epilogue.
 
 ;
@@ -207,10 +341,10 @@ Inj40:  mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
         mov     rdx, Thunk.FunctionName[r12]            ; Load name as 2nd.
         call    Thunk.GetProcAddress[r12]               ; Call GetProcAddress.
         test    rax, rax                                ; Check return value.
-        jz      short Inj50                             ; Lookup failed.
+        jz      short @F                                ; Lookup failed.
         jmp     short Inj60                             ; Lookup succeeded.
 
-Inj50:  mov     rax, GetProcAddressFailed               ; Load error code.
+@@:     mov     rax, GetProcAddressFailed               ; Load error code.
         jmp     short Inj90                             ; Jump to return.
 
 ;
@@ -242,6 +376,6 @@ Inj90:
 
         NESTED_END InjectionThunk4, _TEXT$00
 
-; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
+; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
 
 end

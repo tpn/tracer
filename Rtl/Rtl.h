@@ -892,15 +892,17 @@ VOID
 typedef RTL_GROW_FUNCTION_TABLE *PRTL_GROW_FUNCTION_TABLE;
 
 typedef enum _UWOP_UNWIND_CODE {
-    UWOP_PUSH_NONVOL        = 0,
-    UWOP_ALLOC_LARGE        = 1,
-    UWOP_ALLOC_SMALL        = 2,
-    UWOP_SET_FPREG          = 3,
-    UWOP_SAVE_NONVOL        = 4,
-    UWOP_SAVE_NONVOL_FAR    = 5,
-    UWOP_SAVE_XMM128        = 8,
-    UWOP_SAVE_XMM128_FAR    = 9,
-    UWOP_PUSH_MACHFRAME     = 10,
+    UWOP_PUSH_NONVOL        = 0,        //  1
+    UWOP_ALLOC_LARGE        = 1,        //  2 or 3
+    UWOP_ALLOC_SMALL        = 2,        //  1
+    UWOP_SET_FPREG          = 3,        //  1
+    UWOP_SAVE_NONVOL        = 4,        //  2
+    UWOP_SAVE_NONVOL_FAR    = 5,        //  3
+    UWOP_SPARE_CODE1        = 6,        //  0
+    UWOP_SPARE_CODE2        = 7,        //  0
+    UWOP_SAVE_XMM128        = 8,        //  2
+    UWOP_SAVE_XMM128_FAR    = 9,        //  3
+    UWOP_PUSH_MACHFRAME     = 10,       //  1
 } UWOP_UNWIND_CODE;
 typedef UWOP_UNWIND_CODE *PUWOP_UNWIND_CODE;
 
@@ -961,7 +963,14 @@ typedef struct _UNWIND_INFO {
     UBYTE CountOfCodes;
     UBYTE FrameRegister:4;
     UBYTE FrameOffset:4;
-    UNWIND_CODE UnwindCode[1];
+
+    //
+    // The array of unwind codes will always be padded out to an even number;
+    // thus, the minimum size will be 2 (or 0 if no codes).
+    //
+
+    UNWIND_CODE UnwindCode[2];
+
     union {
         struct {
             ULONG ExceptionHandler;
@@ -978,6 +987,114 @@ typedef struct _UNWIND_INFO {
     };
 } UNWIND_INFO;
 typedef UNWIND_INFO *PUNWIND_INFO;
+
+typedef struct _UNWIND_SCOPE_RECORD {
+    ULONG BeginAddress;
+    ULONG EndAddress;
+    ULONG HandlerAddress;
+    ULONG JumpTarget;
+} UNWIND_SCOPE_RECORD;
+
+typedef struct _UNWIND_SCOPE_TABLE {
+    ULONG Count;
+    UNWIND_SCOPE_RECORD ScopeRecord[1];
+} UNWIND_SCOPE_TABLE;
+typedef UNWIND_SCOPE_TABLE *PUNWIND_SCOPE_TABLE;
+
+//
+// Helper structs based on UNWIND_INFO with hard-coded code sizes in common
+// intervals (4, 6, 8 etc).
+//
+
+typedef struct _UNWIND_INFO4 {
+    UBYTE Version:3;
+    UBYTE Flags:5;
+    UBYTE SizeOfProlog;
+    UBYTE CountOfCodes;
+    UBYTE FrameRegister:4;
+    UBYTE FrameOffset:4;
+    UNWIND_CODE UnwindCode[4];
+    union {
+        struct {
+            ULONG ExceptionHandler;
+            ULONG ExceptionData[1];
+        };
+        union {
+            struct {
+                ULONG FunctionStartAddress;
+                ULONG FunctionEndAddress;
+                ULONG UnwindInfoAddress;
+            };
+            RUNTIME_FUNCTION RuntimeFunction;
+        };
+    };
+} UNWIND_INFO4;
+typedef UNWIND_INFO4 UNWIND_INFO3;
+typedef UNWIND_INFO4 *PUNWIND_INFO4;
+
+typedef struct _UNWIND_INFO6 {
+    UBYTE Version:3;
+    UBYTE Flags:5;
+    UBYTE SizeOfProlog;
+    UBYTE CountOfCodes;
+    UBYTE FrameRegister:4;
+    UBYTE FrameOffset:4;
+    UNWIND_CODE UnwindCode[6];
+    union {
+        struct {
+            ULONG ExceptionHandler;
+            ULONG ExceptionData[1];
+        };
+        union {
+            struct {
+                ULONG FunctionStartAddress;
+                ULONG FunctionEndAddress;
+                ULONG UnwindInfoAddress;
+            };
+            RUNTIME_FUNCTION RuntimeFunction;
+        };
+    };
+} UNWIND_INFO6;
+typedef UNWIND_INFO6 UNWIND_INFO5;
+typedef UNWIND_INFO6 *PUNWIND_INFO6;
+
+typedef struct _UNWIND_INFO8 {
+    UBYTE Version:3;
+    UBYTE Flags:5;
+    UBYTE SizeOfProlog;
+    UBYTE CountOfCodes;
+    UBYTE FrameRegister:4;
+    UBYTE FrameOffset:4;
+    UNWIND_CODE UnwindCode[8];
+    union {
+        struct {
+            ULONG ExceptionHandler;
+            ULONG ExceptionData[1];
+        };
+        union {
+            struct {
+                ULONG FunctionStartAddress;
+                ULONG FunctionEndAddress;
+                ULONG UnwindInfoAddress;
+            };
+            RUNTIME_FUNCTION RuntimeFunction;
+        };
+    };
+} UNWIND_INFO8;
+typedef UNWIND_INFO8 UNWIND_INFO7;
+typedef UNWIND_INFO8 *PUNWIND_INFO8;
+
+typedef union _UNWIND_INFO_EX {
+    UNWIND_INFO     UnwindInfo;
+    UNWIND_INFO3    UnwindInfo3;
+    UNWIND_INFO4    UnwindInfo4;
+    UNWIND_INFO5    UnwindInfo5;
+    UNWIND_INFO6    UnwindInfo6;
+    UNWIND_INFO7    UnwindInfo7;
+    UNWIND_INFO8    UnwindInfo8;
+} UNWIND_INFO_EX;
+typedef UNWIND_INFO_EX *PUNWIND_INFO_EX;
+
 #pragma pack(pop)
 
 typedef struct _RUNTIME_FUNCTION_EX {
@@ -985,8 +1102,11 @@ typedef struct _RUNTIME_FUNCTION_EX {
     PVOID EndAddress;
     union {
         PUNWIND_INFO UnwindInfo;
+        PUNWIND_INFO_EX UnwindInfoEx;
         PVOID UnwindData;
     };
+    PVOID HandlerFunction;
+    PUNWIND_SCOPE_TABLE ScopeTable;
 } RUNTIME_FUNCTION_EX;
 typedef RUNTIME_FUNCTION_EX *PRUNTIME_FUNCTION_EX;
 
@@ -2228,12 +2348,15 @@ typedef RTL_COMPARE_MEMORY *PRTL_COMPARE_MEMORY;
 
 typedef
 EXCEPTION_DISPOSITION
-(__cdecl __C_SPECIFIC_HANDLER)(
+(__cdecl RTL_EXCEPTION_HANDLER)(
     PEXCEPTION_RECORD ExceptionRecord,
     ULONG_PTR Frame,
     PCONTEXT Context,
     struct _DISPATCHER_CONTEXT *Dispatch
     );
+typedef RTL_EXCEPTION_HANDLER *PRTL_EXCEPTION_HANDLER;
+
+typedef RTL_EXCEPTION_HANDLER __C_SPECIFIC_HANDLER;
 typedef __C_SPECIFIC_HANDLER *P__C_SPECIFIC_HANDLER;
 
 typedef

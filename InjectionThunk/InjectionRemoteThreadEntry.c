@@ -41,6 +41,7 @@ Return Value:
     ULONG SizeOfRtl;
     ULONG Token;
     ULONG Result;
+    BOOL SawFinally = FALSE;
     HMODULE Module;
     PINITIALIZE_RTL InitRtl;
     POPEN_EVENT_W OpenEventW;
@@ -220,29 +221,33 @@ Return Value:
         //
 
         __try {
+            __try {
 
-            Result = InjectionCompleteCallback(Packet);
+                Result = InjectionCompleteCallback(Packet);
 
-        } __except(
-            GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
-            GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ||
-            GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
-                EXCEPTION_EXECUTE_HANDLER :
-                EXCEPTION_CONTINUE_SEARCH) {
+            } __except(
+                GetExceptionCode() == STATUS_IN_PAGE_ERROR       ||
+                GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ||
+                GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
+                    EXCEPTION_EXECUTE_HANDLER :
+                    EXCEPTION_CONTINUE_SEARCH) {
 
-            EncounteredException = TRUE;
+                EncounteredException = TRUE;
 
-            switch (GetExceptionCode()) {
-                case STATUS_IN_PAGE_ERROR:
-                    Result = InjectedRemoteThreadStatusInPageErrorInCallback;
-                    break;
-                case EXCEPTION_ACCESS_VIOLATION:
-                    Result = InjectedRemoteThreadAccessViolationInCallback;
-                    break;
-                case EXCEPTION_ILLEGAL_INSTRUCTION:
-                    Result = InjectedRemoteThreadIllegalInstructionInCallback;
-                    break;
+                switch (GetExceptionCode()) {
+                    case STATUS_IN_PAGE_ERROR:
+                        Result = InjectedRemoteThreadStatusInPageErrorInCallback;
+                        break;
+                    case EXCEPTION_ACCESS_VIOLATION:
+                        Result = InjectedRemoteThreadAccessViolationInCallback;
+                        break;
+                    case EXCEPTION_ILLEGAL_INSTRUCTION:
+                        Result = InjectedRemoteThreadIllegalInstructionInCallback;
+                        break;
+                }
             }
+        } __finally {
+            SawFinally = TRUE;
         }
 
         if (EncounteredException) {
