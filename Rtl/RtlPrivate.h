@@ -589,6 +589,7 @@ _Check_return_
 _Success_(return != 0)
 BOOL
 (RESOLVE_RTL_EX_FUNCTIONS)(
+    _In_     PRTL Rtl,
     _In_     HMODULE RtlExModule,
     _Inout_  PRTLEXFUNCTIONS RtlExFunctions
     );
