@@ -757,6 +757,7 @@ BOOL
 (MAKE_TRACER_PATH)(
     _In_ PTRACER_CONFIG TracerConfig,
     _In_ PCUNICODE_STRING Filename,
+    _In_opt_ PTRACER_BINARY_TYPE_INDEX BinaryTypeIndexPointer,
     _Inout_ PPUNICODE_STRING PathPointer
     );
 typedef MAKE_TRACER_PATH *PMAKE_TRACER_PATH;

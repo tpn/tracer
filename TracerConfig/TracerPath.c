@@ -20,6 +20,7 @@ BOOL
 MakeTracerPath(
     PTRACER_CONFIG TracerConfig,
     PCUNICODE_STRING Filename,
+    PTRACER_BINARY_TYPE_INDEX BinaryTypeIndexPointer,
     PPUNICODE_STRING PathPointer
     )
 /*++
@@ -36,6 +37,10 @@ Arguments:
 
     Filename - Supplies a pointer to a UNICODE_STRING structure representing
         the filename to convert into a fully-qualified path name.
+
+    BinaryTypeIndexPointer - Supplies an optional pointer to an enumeration of
+        type TRACER_BINARY_TYPE_INDEX in order to create a path rooted in a
+        directory tree that isn't currently active (as per the current flags).
 
     PathPointer - Supplies a pointer to a variable that receives the address
         of the new path.  If the incoming pointer is NULL, a new UNICODE_STRING
@@ -98,7 +103,12 @@ Return Value:
 
     Flags = TracerConfig->Flags;
     Allocator = TracerConfig->Allocator;
-    BinaryTypeIndex = ExtractTracerBinaryTypeIndexFromFlags(Flags);
+
+    if (ARGUMENT_PRESENT(BinaryTypeIndexPointer)) {
+        BinaryTypeIndex = *BinaryTypeIndexPointer;
+    } else {
+        BinaryTypeIndex = ExtractTracerBinaryTypeIndexFromFlags(Flags);
+    }
 
     //
     // Initialize paths.
@@ -264,12 +274,10 @@ Return Value:
 --*/
 {
     USHORT Offset;
-    TRACER_FLAGS Flags;
     PTRACER_PATHS Paths;
     PALLOCATOR Allocator;
     PCUNICODE_STRING DllPath;
     PUNICODE_STRING TargetPath;
-    TRACER_BINARY_TYPE_INDEX BinaryTypeIndex;
 
     //
     // Validate arguments.
@@ -287,11 +295,9 @@ Return Value:
     // Initialize various local variables.
     //
 
-    Flags = TracerConfig->Flags;
     Paths = &TracerConfig->Paths;
     Offset = DllPathOffsets[Index].Offset;
     Allocator = TracerConfig->Allocator;
-    BinaryTypeIndex = ExtractTracerBinaryTypeIndexFromFlags(Flags);
 
     //
     // Initialize paths.
@@ -304,7 +310,7 @@ Return Value:
     // Dispatch to MakeTracerPath() for final path preparation.
     //
 
-    return MakeTracerPath(TracerConfig, DllPath, &TargetPath);
+    return MakeTracerPath(TracerConfig, DllPath, NULL, &TargetPath);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
