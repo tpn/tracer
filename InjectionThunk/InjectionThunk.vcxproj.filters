@@ -32,9 +32,6 @@
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InjectionThunk.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dllmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -44,10 +41,24 @@
     <ClCompile Include="InjectionRemoteThreadEntry.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="_InjectionThunk.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="InjectionThunk.def">
       <Filter>Source Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\Asm\InjectionThunk.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="..\Asm\InjectionThunk3.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="..\Asm\InjectionThunk4.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

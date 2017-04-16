@@ -273,13 +273,14 @@ typedef union _RTL_INJECTION_ERROR {
         ULONGLONG FlushInstructionCacheContextCodeFailed:1;
         ULONGLONG FlushInstructionCacheCallerCodeFailed:1;
         ULONGLONG SignalObjectAndWaitFailed:1;
+        ULONGLONG NoRuntimeFunctionEntryFound:1;
 
         //
         // Decrement the remaining bits in the Unused member below when adding
         // new fields.
         //
 
-        ULONGLONG Unused:7;
+        ULONGLONG Unused:6;
     };
     LONGLONG ErrorCode;
     ULONGLONG AsULongLong;

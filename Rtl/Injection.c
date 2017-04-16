@@ -112,14 +112,17 @@ Return Value:
     FARPROC Proc;
     HMODULE Module;
     HANDLE ProcessHandle;
+    ULONGLONG CallerModuleBaseAddress;
     RTL_INJECTION_ERROR Error;
     RTL_INJECTION_FLAGS Flags;
     RTL_INJECTION_CONTEXT LocalContext;
     PRTL_INJECTION_PACKET Packet;
     PRTL_INJECTION_PAYLOAD Payload;
     PRTL_INJECTION_CONTEXT Context;
-    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback;
+    PRUNTIME_FUNCTION RuntimeFunction;
+    PRTL_INJECTION_THUNK_CONTEXT Thunk;
     PRTL_INJECTION_COMPLETE_CALLBACK FinalCallback;
+    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback;
 
     //
     // Validate arguments.  Start with the simple non-NULL checks, then verify
@@ -348,11 +351,25 @@ Return Value:
     FinalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)FinalCode;
 
     //
+    // Make sure the caller's code has a runtime function entry.
+    //
+
+    RuntimeFunction = Rtl->RtlLookupFunctionEntry((ULONGLONG)FinalCode,
+                                                  &CallerModuleBaseAddress,
+                                                  NULL);
+
+    if (!RuntimeFunction) {
+        Error.NoRuntimeFunctionEntryFound = TRUE;
+        goto Error;
+    }
+
+    //
     // Wire up context, packet and payload pointers, then zero everything (via
-    // the context, which embed the other two structures).
+    // the context, which embed the other three structures).
     //
 
     Context = &LocalContext;
+    Thunk = &LocalContext.Thunk;
     Packet = &LocalContext.Packet;
     Payload = &Packet->Payload;
 

@@ -19,6 +19,7 @@ Abstract:
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
 #include "../Rtl/__C_specific_handler.h"
+#include "../Rtl/InjectionPrivate.h"
 #include "../TracerHeap/TracerHeap.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../DebugEngine/DebugEngine.h"
