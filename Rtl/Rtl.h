@@ -891,6 +891,105 @@ VOID
     );
 typedef RTL_GROW_FUNCTION_TABLE *PRTL_GROW_FUNCTION_TABLE;
 
+typedef enum _UWOP_UNWIND_CODE {
+    UWOP_PUSH_NONVOL        = 0,
+    UWOP_ALLOC_LARGE        = 1,
+    UWOP_ALLOC_SMALL        = 2,
+    UWOP_SET_FPREG          = 3,
+    UWOP_SAVE_NONVOL        = 4,
+    UWOP_SAVE_NONVOL_FAR    = 5,
+    UWOP_SAVE_XMM128        = 8,
+    UWOP_SAVE_XMM128_FAR    = 9,
+    UWOP_PUSH_MACHFRAME     = 10,
+} UWOP_UNWIND_CODE;
+typedef UWOP_UNWIND_CODE *PUWOP_UNWIND_CODE;
+
+typedef enum _UWOP_UNWIND_OPREG {
+    UWOP_REG_RAX            = 0,
+    UWOP_REG_RCX            = 1,
+    UWOP_REG_RDX            = 2,
+    UWOP_REG_RBX            = 3,
+    UWOP_REG_RSP            = 4,
+    UWOP_REG_RBP            = 5,
+    UWOP_REG_RSI            = 6,
+    UWOP_REG_RDI            = 7,
+    UWOP_REG_R8             = 8,
+    UWOP_REG_R9             = 9,
+    UWOP_REG_R10            = 10,
+    UWOP_REG_R11            = 11,
+    UWOP_REG_R12            = 12,
+    UWOP_REG_R13            = 13,
+    UWOP_REG_R14            = 14,
+    UWOP_REG_R15            = 15,
+} UWOP_UNWIND_OPREG;
+typedef UWOP_UNWIND_OPREG *PUWOP_UNWIND_OPREG;
+
+#ifndef UBYTE
+#define UBYTE unsigned char
+#endif
+
+#pragma pack(push, 1)
+typedef struct _UNWIND_CODE {
+    UBYTE PrologOffset;
+    UBYTE UnwindOpCode:4;
+    UBYTE UnwindOpInfo:4;
+} UNWIND_CODE;
+typedef UNWIND_CODE *PUNWIND_CODE;
+
+typedef struct _UNWIND_CODE_EX {
+    UBYTE PrologOffset;
+    union {
+        struct {
+            UBYTE UnwindOpCode:4;
+            UBYTE UnwindOpInfo:4;
+        };
+        struct {
+            UWOP_UNWIND_CODE Code;
+        };
+        struct {
+            UBYTE _UnwindOpCode:4;
+            UWOP_UNWIND_OPREG Reg;
+        };
+    };
+} UNWIND_CODE_EX;
+typedef UNWIND_CODE_EX *PUNWIND_CODE_EX;
+
+typedef struct _UNWIND_INFO {
+    UBYTE Version:3;
+    UBYTE Flags:5;
+    UBYTE SizeOfProlog;
+    UBYTE CountOfCodes;
+    UBYTE FrameRegister:4;
+    UBYTE FrameOffset:4;
+    UNWIND_CODE UnwindCode[1];
+    union {
+        struct {
+            ULONG ExceptionHandler;
+            ULONG ExceptionData[1];
+        };
+        union {
+            struct {
+                ULONG FunctionStartAddress;
+                ULONG FunctionEndAddress;
+                ULONG UnwindInfoAddress;
+            };
+            RUNTIME_FUNCTION RuntimeFunction;
+        };
+    };
+} UNWIND_INFO;
+typedef UNWIND_INFO *PUNWIND_INFO;
+#pragma pack(pop)
+
+typedef struct _RUNTIME_FUNCTION_EX {
+    PVOID StartAddress;
+    PVOID EndAddress;
+    union {
+        PUNWIND_INFO UnwindInfo;
+        PVOID UnwindData;
+    };
+} RUNTIME_FUNCTION_EX;
+typedef RUNTIME_FUNCTION_EX *PRUNTIME_FUNCTION_EX;
+
 typedef
 VOID
 (NTAPI RTL_DELETE_GROWABLE_FUNCTION_TABLE)(
