@@ -180,11 +180,6 @@ typedef struct _RTL_INJECTION_THUNK_CONTEXT {
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseAddress;
     PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
-    PVOID ContextAddress;
-    PVOID BasePointer;
-    PVOID StackPointer;
-    PVOID ReturnAddress;
-    PEXIT_THREAD ExitThread;
     PLOAD_LIBRARY_W LoadLibraryW;
     PGET_PROC_ADDRESS GetProcAddress;
     PWSTR ModulePath;
@@ -196,41 +191,6 @@ typedef struct _RTL_INJECTION_THUNK_CONTEXT {
     };
 } RTL_INJECTION_THUNK_CONTEXT;
 typedef RTL_INJECTION_THUNK_CONTEXT *PRTL_INJECTION_THUNK_CONTEXT;
-
-typedef struct _RTL_INJECTION_THUNK_CONTEXT_OLD2 {
-    PVOID ContextAddress;
-    PVOID BasePointer;
-    PVOID StackPointer;
-    PVOID ReturnAddress;
-    PEXIT_THREAD ExitThread;
-    PLOAD_LIBRARY_W LoadLibraryW;
-    PGET_PROC_ADDRESS GetProcAddress;
-    PWSTR ModulePath;
-    HANDLE ModuleHandle;
-    PSTR FunctionName;
-    union {
-        PRTLP_INJECTION_REMOTE_THREAD_ENTRY ThreadEntry;
-        PVOID FunctionAddress;
-    };
-} RTL_INJECTION_THUNK_CONTEXT_OLD2;
-typedef RTL_INJECTION_THUNK_CONTEXT_OLD2 *PRTL_INJECTION_THUNK_CONTEXT_OLD2;
-
-typedef struct _RTL_INJECTION_THUNK_CONTEXT_OLD {
-    PEXIT_THREAD ExitThread;
-    PLOAD_LIBRARY_W LoadLibraryW;
-    PGET_PROC_ADDRESS GetProcAddress;
-    PRTL_LOOKUP_FUNCTION_ENTRY RtlLookupFunctionEntry;
-    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
-    HMODULE InjectionThunkModule;
-    PWSTR InjectionThunkDllPath;
-    PSTR InjectionThunkName;
-    PSTR InjectionThunkThreadEntryName;
-    PVOID ThunkAddress;
-    PVOID ThreadEntryAddress;
-    PVOID ReturnAddressInThunk;
-    PPVOID AddressOfReturnAddress;
-} RTL_INJECTION_THUNK_CONTEXT_OLD;
-typedef RTL_INJECTION_THUNK_CONTEXT_OLD *PRTL_INJECTION_THUNK_CONTEXT_OLD;
 
 //
 // An RTL_INJECTION_CONTEXT is created for each RTL_INJECTION_PACKET requested
