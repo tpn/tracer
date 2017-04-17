@@ -307,7 +307,8 @@ Inj15:  test    r8d, TestAccessViolation        ; Is AV test?
 
 Inj17:  nop
         ALTERNATE_ENTRY InjectionThunkIllInstFault
-        db      06h                             ; Trigger illegal inst fault.
+        db      0fh                             ; Trigger illegal inst fault.
+        db      0bh
         ALTERNATE_ENTRY InjectionThunkIllInstResume
         jmp     Inj20                           ; Jump to main.
 
