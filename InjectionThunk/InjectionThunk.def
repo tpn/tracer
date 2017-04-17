@@ -1,10 +1,4 @@
 LIBRARY InjectionThunk
 EXPORTS
+    InjectionThunk
     InjectionRemoteThreadEntry
-    InjectionThunk1
-    InjectionThunk3
-    InjectionThunk4
-    InjectionThunk5
-    InjectionThunk=InjectionThunk3
-    InjectionThunkHandler
-    InjectionThunk1Handler

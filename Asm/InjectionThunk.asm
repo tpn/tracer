@@ -17,15 +17,30 @@
 include ksamd64.inc
 
 ;
-; Define a home parameter + return address structure.
+; Define a home parameter + return address structure.  Before alloc_stack in
+; the prologue, this struct is used against rsp.  After rsp, we use rbp.
 ;
 
 Home struct
         ReturnAddress   dq      ?       ; 8     32      40      (28h)
-        Param1          dq      ?       ; 8     24      32      (20h)
-        Param2          dq      ?       ; 8     16      24      (18h)
-        Param3          dq      ?       ; 8     8       16      (10h)
-        Param4          dq      ?       ; 8     0       8       (08h)
+        union
+            Thunk       dq      ?       ; 8     24      32      (20h)
+            SavedRcx    dq      ?       ; 8     24      32      (20h)
+            Param1      dq      ?       ; 8     24      32      (20h)
+        ends
+        union
+            SavedR12    dq      ?       ; 8     16      24      (18h)
+            Param2      dq      ?       ; 8     16      24      (18h)
+        ends
+        union
+            SavedRbp    dq      ?       ; 8     8       16      (10h)
+            SavedR8     dq      ?       ; 8     8       16      (10h)
+            Param3      dq      ?       ; 8     8       16      (10h)
+        ends
+        union
+            SavedR9     dq      ?       ; 8     0       8       (08h)
+            Param4      dq      ?       ; 8     0       8       (08h)
+        ends
 Home ends
 
 ;
@@ -33,8 +48,11 @@ Home ends
 ;
 
 Thunk struct
-        VirtualProtect      dq      ?
-        ExitThread          dq      ?
+        Flags               dd      ?
+        EntryCount          dd      ?
+        FunctionTable       dq      ?
+        BaseAddress         dq      ?
+        RtlAddFunctionTable dq      ?
         LoadLibraryW        dq      ?
         GetProcAddress      dq      ?
         ModulePath          dq      ?
@@ -43,27 +61,42 @@ Thunk struct
         FunctionAddress     dq      ?
 Thunk ends
 
-InjLoadLibraryFailed     equ -1
-InjGetProcAddressFailed  equ -2
+;
+; Define error codes.
+;
 
-        LEAF_ENTRY InjectionThunk1Handler, _TEXT$00
-
-        mov     eax, ExceptionContinueSearch
-        ret
-
-        LEAF_END InjectionThunk1Handler, _TEXT$00
+RtlAddFunctionTableFailed   equ     -1
+LoadLibraryWFailed          equ     -2
+GetProcAddressFailed        equ     -3
 
 ;++
 ;
-; VOID
+; LONG
 ; InjectionThunk(
 ;     _In_ PRTL_INJECTION_THUNK_CONTEXT Thunk
 ;     );
 ;
 ; Routine Description:
 ;
-;   This routine fills one or more pages of memory with a given byte pattern
-;   using non-temporal hints.
+;   This routine is the initial entry point of our injection logic.  That is,
+;   newly created remoted threads in a target process have their start address
+;   set to a copy of this routine (that was prepared in a separate process and
+;   then injected via WriteProcessMemory()).
+;
+;   It is responsible for registering a runtime function for itself, such that
+;   appropriate unwind data can be found by the kernel if an exception occurs
+;   and the stack is being unwound.  It then loads a library designated by the
+;   fully qualified path in the thunk's module path field via LoadLibraryW,
+;   then calls GetProcAddress on the returned module for the function name also
+;   contained within the thunk.  If an address is successfully resolved, the
+;   routine is called with the thunk back as the first parameter, and the return
+;   value is propagated back to our caller (typically, this will be the routine
+;   kernel32!UserBaseInitThunk).
+;
+;   In practice, the module path we attempt to load is InjectionThunk.dll, and
+;   the function name we resolve is "InjectionRemoteThreadEntry".  This routine
+;   is responsible for doing more heavy lifting in C prior to calling the actual
+;   caller's end routine.
 ;
 ; Arguments:
 ;
@@ -71,108 +104,129 @@ InjGetProcAddressFailed  equ -2
 ;
 ; Return Value:
 ;
-;   This routine does not return.
+;   If an error occured in this routine, an error code (see above) will be
+;   returned (ranging in value from -1 to -3).  If this routine succeeded,
+;   the return value of the function we were requested to execute will be
+;   returned instead.  (Unfortunately, there's no guarantee that this won't
+;   overlap with our error codes.)
+;
+;   This return value will end up as the exit code for the thread if being
+;   called in the injection context.
 ;
 ;--
 
-        ;LEAF_ENTRY InjectionThunk1, _TEXT$00, InjectionThunk1Handler
-        NESTED_ENTRY InjectionThunk1, _TEXT$00, InjectionThunk1Handler
+        NESTED_ENTRY InjectionThunk, _TEXT$00
+
+;
+; This routine uses the non-volatile r12 to store the Thunk pointer (initially
+; passed in via rcx).  As we only have one parameter, we use the home parameter
+; space reserved for rdx for saving r12 (instead of pushing it to the stack).
+;
+
+        save_reg r12, Home.SavedR12             ; Use rdx home to save r12.
+
+;
+; We use rbp as our frame pointer.  As with r12, we repurpose r8's home area
+; instead of pushing to the stack, then call set_frame (which sets rsp to rbp).
+;
+
+        save_reg    rbp, Home.SavedRbp          ; Use r8 home to save rbp.
+        set_frame   rbp, 0                      ; Use rbp as frame pointer.
+
+;
+; As we are calling other functions, we need to reserve 32 bytes for their
+; parameter home space.
+;
+
+        alloc_stack 20h                         ; Reserve home param space.
+
         END_PROLOGUE
 
 ;
-; Put in a dummy nop just so our first byte isn't a jump, and thus, won't be
-; skipped over by SkipJumps.
+; Home our Thunk parameter register, then save in r12.  The homing of rcx isn't
+; technically necessary (as we never re-load it from rcx), but it doesn't hurt,
+; and it is useful during development and debugging to help detect anomalies
+; (if we clobber r12 accidentally, for example).
 ;
 
-        nop
+        mov     Home.Thunk[rbp], rcx            ; Home Thunk (rcx) parameter.
+        mov     r12, rcx                        ; Move Thunk into r12.
 
 ;
-; Jump past our inline quadwords reserved for rsp and rcx.
+; Register a runtime function for this currently executing piece of code.  This
+; is done when we've been copied into memory at runtime.
 ;
 
-        jmp     Inj05
+        mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
+        xor     rdx, rdx                                ; Clear rdx.
+        mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
+        mov     r8, Thunk.BaseAddress[r12]              ; Load BaseAddress.
+        call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
+        test    rax, rax                                ; Check result.
+        jz      short @F                                ; Function failed.
+        jmp     short Inj20                             ; Function succeeded.
 
-        align   16
-
-        ALTERNATE_ENTRY InjRsp
-        dq      ?
-
-        ALTERNATE_ENTRY InjRcx
-        dq      ?
-
-        align   16
-
-Inj05:  mov qword ptr [InjRsp], rsp                 ; Save rsp.
-        mov qword ptr [InjRcx], rcx                 ; Save rcx.
+@@:     mov     rax, RtlAddFunctionTableFailed          ; Load error code.
+        jmp     short Inj90                             ; Jump to epilogue.
 
 ;
-; Move the thunk pointer in rcx to r11, move the path name into rcx, set the
-; return address to the instruction after the call, then "call" LoadLibrary by
-; way of a long jump.
+; Prepare for a LoadLibraryW() call against the module path in the thunk.
 ;
 
-        mov     r11, rcx
-        mov     rcx, qword ptr Thunk.ModulePath[rcx]
-        mov     rsp, qword ptr [InjectionThunkCallout1]
-        jmp     qword ptr Thunk.LoadLibraryW[r11]
+Inj20:  mov     rcx, Thunk.ModulePath[r12]              ; Load ModulePath.
+        call    Thunk.LoadLibraryW[r12]                 ; Call LoadLibraryW().
+        test    rax, rax                                ; Check Handle != NULL.
+        jz      short @F                                ; Handle is NULL.
+        jmp     short Inj40                             ; Handle is valid.
 
-        ALTERNATE_ENTRY InjectionThunkCallout1
-
-;
-; We should resume execution here after LoadLibraryW() returns.  Verify the
-; module was loaded successfully.
-;
-
-        test    rax, rax                        ; Is handle NULL?
-        jz      Inj70                           ; LoadLibraryW() failed.
+@@:     mov     rax, LoadLibraryWFailed                 ; Load error code.
+        jmp     short Inj90                             ; Jump to epilogue.
 
 ;
-; Module was loaded successfully.  Load it into rcx, load the function name
-; into rdx, set the return address to the instruction after the call, then
-; then "call" GetProcAddress by way of a long jump.
+; Module was loaded successfully.  The Handle value lives in rax.  Save a copy
+; in the thunk, then prepare arguments for a call to GetProcAddress().
 ;
 
-        mov     r11, qword ptr [InjRcx]             ; Re-load Thunk into r11.
-        mov     Thunk.ModuleHandle[r11], rax        ; Save handle.
-        mov     rcx, rax                            ; Load module into rcx.
-        mov     rdx, Thunk.FunctionName[r11]        ; Load function name.
-        mov     rsp, qword ptr [InjectionThunkCallout2] ; Set return address.
-        jmp     qword ptr Thunk.GetProcAddress[r11] ; "Call" GetProcAddress.
+Inj40:  mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
+        mov     rcx, rax                                ; Load as 1st param.
+        mov     rdx, Thunk.FunctionName[r12]            ; Load name as 2nd.
+        call    Thunk.GetProcAddress[r12]               ; Call GetProcAddress.
+        test    rax, rax                                ; Check return value.
+        jz      short @F                                ; Lookup failed.
+        jmp     short Inj60                             ; Lookup succeeded.
 
-        ALTERNATE_ENTRY InjectionThunkCallout2
-
-;
-; Verify the return value.
-;
-
-        test    rax, rax                        ; Is PROC NULL?
-        jz      Inj80                           ; Yes; GetProcAddress() failed.
+@@:     mov     rax, GetProcAddressFailed               ; Load error code.
+        jmp     short Inj90                             ; Jump to return.
 
 ;
-; The function was resolved successfully.  Save a copy of the resolved address
-; in the thunk.
+; The function name was resolved successfully.  The function address lives in
+; rax.  Save a copy in the thunk, and then prepare arguments for a call to it.
 ;
 
-        mov     rcx, qword ptr [InjRcx]         ; Re-load Thunk into rcx.
-        mov     Thunk.FunctionAddress[rcx], rax ; Save the function.
+Inj60:  mov     Thunk.FunctionAddress[r12], rax         ; Save func ptr.
+        mov     rcx, r12                                ; Load thunk into rcx.
+        call    rax                                     ; Call the function.
 
 ;
-; Load the original return address back into the return address such that it
-; looks like kernel32!BaseThreadInitThunk called us.
+; Intentional follow-on to Inj90 to exit the function; rax will be returned back
+; to the caller.
 ;
-        mov     rsp, qword ptr [InjRsp]
-        jmp     Thunk.FunctionAddress[rcx]  ; Call the thread entry routine.
 
-Inj70:  mov     rcx, InjLoadLibraryFailed       ; Load the error code.
-        jmp     short Inj90
+Inj90:
 
-Inj80:  mov     rcx, InjGetProcAddressFailed    ; Load the error code.
+;
+; Begin epilogue.  Restore r12 and rbp from home parameter space and return
+; rsp to its original value.
+;
 
-Inj90:  mov     r11, qword ptr [InjRcx]         ; Move Thunk into r11.
-        jmp     Thunk.ExitThread[r11]           ; Terminate thread.
+        mov     r12, Home.SavedR12[rbp]                 ; Restore non-vol r12.
+        mov     rbp, Home.SavedRbp[rbp]                 ; Restore non-vol rbp.
+        add     rsp, 20h                                ; Restore home space.
 
-        LEAF_END InjectionThunk1, _TEXT$00
+        ret
 
-; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
+        NESTED_END InjectionThunk4, _TEXT$00
+
+; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
 
 end
