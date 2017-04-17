@@ -225,7 +225,7 @@ Inj90:
 
         ret
 
-        NESTED_END InjectionThunk4, _TEXT$00
+        NESTED_END InjectionThunk, _TEXT$00
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
 

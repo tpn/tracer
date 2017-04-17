@@ -241,61 +241,6 @@ TestJump2(
 }
 
 
-BOOL
-TestInjection3(
-    PRTL Rtl,
-    PALLOCATOR Allocator,
-    PTRACER_CONFIG TracerConfig,
-    PDEBUG_ENGINE_SESSION Session
-    )
-{
-    PWSTR Path;
-    LONG Result;
-    RTL_INJECTION_CONTEXT Context;
-    PRTL_INJECTION_THUNK_CONTEXT Thunk;
-    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
-    CHAR FunctionName[] = "TestInjection2ThreadEntry";
-
-    ZeroStruct(TestInjectionFunctionName);
-
-    __movsb((PBYTE)TestInjectionFunctionName,
-            (PBYTE)FunctionName,
-            sizeof(FunctionName));
-
-    Path = InjectionThunkActiveDllPath->Buffer;
-    InjectionThunkModule = Rtl->LoadLibraryW(Path);
-    if (!InjectionThunkModule) {
-        return FALSE;
-    }
-
-    InjectionThunk = (PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
-        GetProcAddress(
-            InjectionThunkModule,
-            "InjectionThunk"
-        )
-    );
-
-    if (!InjectionThunk) {
-        return FALSE;
-    }
-
-    ZeroStruct(Context);
-
-    Thunk = &Context.Thunk;
-
-    Thunk->ExitThread = Rtl->ExitThread;
-    Thunk->LoadLibraryW = Rtl->LoadLibraryW;
-    Thunk->GetProcAddress = Rtl->GetProcAddress;
-    Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
-    Thunk->FunctionName = TestInjectionFunctionName;
-
-    InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
-
-    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
-
-    return TRUE;
-}
-
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -776,20 +721,6 @@ Cleanup:
         LocalBaseCodeAddress = NULL;
     }
 
-    /*
-    if (LocalBaseDataAddress) {
-
-        VirtualFreeEx(
-            ProcessHandle,
-            LocalBaseDataAddress,
-            0,
-            MEM_RELEASE
-        );
-
-        LocalBaseDataAddress = NULL;
-    }
-    */
-
     if (Success) {
         goto End;
     }
@@ -810,129 +741,9 @@ Cleanup:
         RemoteBaseCodeAddress = NULL;
     }
 
-    /*
-    if (RemoteBaseDataAddress) {
-
-        VirtualFreeEx(
-            ProcessHandle,
-            RemoteBaseDataAddress,
-            0,
-            MEM_RELEASE
-        );
-
-        RemoteBaseDataAddress = NULL;
-    }
-    */
-
 End:
 
     return Success;
-}
-
-BOOL
-TestInjection1(
-    PRTL Rtl,
-    PALLOCATOR Allocator,
-    PTRACER_CONFIG TracerConfig,
-    PDEBUG_ENGINE_SESSION Session
-    )
-{
-    BOOL Success;
-    PWSTR Path;
-    LONG Result;
-    ULONG EntryCount;
-    HANDLE ProcessHandle;
-    RTL_INJECTION_CONTEXT Context;
-    PRUNTIME_FUNCTION DestRuntimeFunction;
-    PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
-    PRTL_INJECTION_THUNK_CONTEXT Thunk;
-    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK InjectionThunk;
-    PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK DestInjectionThunk;
-    PRTL_EXCEPTION_HANDLER InjectionThunkHandler;
-    PVOID DestBaseAddress;
-    CHAR FunctionName[] = "TestInjection2ThreadEntry";
-
-    ZeroStruct(TestInjectionFunctionName);
-
-    __movsb((PBYTE)TestInjectionFunctionName,
-            (PBYTE)FunctionName,
-            sizeof(FunctionName));
-
-    Path = InjectionThunkActiveDllPath->Buffer;
-    InjectionThunkModule = Rtl->LoadLibraryW(Path);
-    if (!InjectionThunkModule) {
-        return FALSE;
-    }
-
-    InjectionThunk = (PRTLP_INJECTION_REMOTE_THREAD_ENTRY_THUNK)(
-        GetProcAddress(
-            InjectionThunkModule,
-            "InjectionThunk1"
-        )
-    );
-
-    if (!InjectionThunk) {
-        return FALSE;
-    }
-
-    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
-        GetProcAddress(
-            InjectionThunkModule,
-            "InjectionThunk1Handler"
-        )
-    );
-
-    if (!InjectionThunkHandler) {
-        return FALSE;
-    }
-
-    InjectionThunkHandler = (PRTL_EXCEPTION_HANDLER)(
-        SkipJumpsInline((PBYTE)InjectionThunkHandler)
-    );
-
-    ProcessHandle = GetCurrentProcess();
-
-    Success = CopyFunction(Rtl,
-                           Allocator,
-                           ProcessHandle,
-                           InjectionThunk,
-                           InjectionThunkHandler,
-                           &DestBaseAddress,
-                           (PVOID *)&DestInjectionThunk,
-                           &DestRuntimeFunction,
-                           &DestHandlerRuntimeFunction,
-                           &EntryCount);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    ZeroStruct(Context);
-
-    Thunk = &Context.Thunk;
-
-    Thunk->EntryCount = 1;
-    Thunk->BaseAddress = DestBaseAddress;
-    Thunk->FunctionTable = DestRuntimeFunction;
-    Thunk->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
-    Thunk->ExitThread = Rtl->ExitThread;
-    Thunk->LoadLibraryW = Rtl->LoadLibraryW;
-    Thunk->GetProcAddress = Rtl->GetProcAddress;
-    Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
-    Thunk->FunctionName = TestInjectionFunctionName;
-
-    InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
-
-    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
-
-    Thunk->Flags.AddFunctionTable = FALSE;
-    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
-
-    Thunk->Flags.TestExceptionHandler = TRUE;
-    Result = InjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
-    Result = DestInjectionThunk((PRTL_INJECTION_CONTEXT)Thunk);
-
-    return TRUE;
 }
 
 BOOL
@@ -1023,7 +834,6 @@ TestInjection4(
     Thunk->BaseAddress = DestBaseAddress;
     Thunk->FunctionTable = DestRuntimeFunction;
     Thunk->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
-    Thunk->ExitThread = Rtl->ExitThread;
     Thunk->LoadLibraryW = Rtl->LoadLibraryW;
     Thunk->GetProcAddress = Rtl->GetProcAddress;
     Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
@@ -1130,7 +940,6 @@ InitThunk:
     Thunk = &LocalThunk;
 
     Thunk->Flags.AddFunctionTable = FALSE;
-    Thunk->ExitThread = Rtl->ExitThread;
     Thunk->LoadLibraryW = Rtl->LoadLibraryW;
     Thunk->GetProcAddress = Rtl->GetProcAddress;
     Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
@@ -1215,7 +1024,6 @@ TestInjection6(
     Thunk = &Context.Thunk;
 
     Thunk->Flags.AddFunctionTable = FALSE;
-    Thunk->ExitThread = Rtl->ExitThread;
     Thunk->LoadLibraryW = Rtl->LoadLibraryW;
     Thunk->GetProcAddress = Rtl->GetProcAddress;
     Thunk->ModulePath = TestInjectionActiveExePath->Buffer;
