@@ -7,4 +7,4 @@ EXPORTS
     CopyPagesNonTemporal=CopyPagesNonTemporalAvx2_v4 @5
     FillPagesNonTemporalAvx2_v1 @6
     FillPagesNonTemporal=FillPagesNonTemporalAvx2_v1 @7
-    InjectionThunk=InjectionThunk1 @8
+    InjectionThunk=InjectionThunk @8
