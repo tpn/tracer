@@ -164,27 +164,31 @@ typedef RTLP_INJECTION_REMOTE_THREAD_ENTRY *PRTLP_INJECTION_REMOTE_THREAD_ENTRY;
 // injection thunk code.
 //
 
+typedef union _RTL_INJECTION_THUNK_FLAGS {
+    struct {
+        ULONG DebugBreakOnEntry:1;
+        ULONG AddFunctionTable:1;
+        ULONG TestExceptionHandler:1;
+        ULONG TestAccessViolation:1;
+        ULONG TestIllegalInstruction:1;
+        ULONG Unused:27;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_INJECTION_THUNK_FLAGS;
+C_ASSERT(sizeof(RTL_INJECTION_THUNK_FLAGS) == sizeof(ULONG));
+
 typedef struct _RTL_INJECTION_THUNK_CONTEXT {
-    union {
-        struct {
-            ULONG AddFunctionTable:1;
-            ULONG TestExceptionHandler:1;
-            ULONG TestAccessViolation:1;
-            ULONG TestIllegalInstruction:1;
-            ULONG Unused:28;
-        };
-        LONG AsLong;
-        ULONG AsULong;
-    } Flags;
+    RTL_INJECTION_THUNK_FLAGS Flags;
     ULONG EntryCount;
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseAddress;
     PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
     PLOAD_LIBRARY_W LoadLibraryW;
     PGET_PROC_ADDRESS GetProcAddress;
-    PWSTR ModulePath;
+    UNICODE_STRING ModulePath;
+    STRING FunctionName;
     HANDLE ModuleHandle;
-    PSTR FunctionName;
     union {
         PRTLP_INJECTION_REMOTE_THREAD_ENTRY ThreadEntry;
         PVOID FunctionAddress;
