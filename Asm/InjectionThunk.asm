@@ -174,7 +174,7 @@ GetProcAddressFailed        equ     -3
 ; (if we clobber r12 accidentally, for example).
 ;
 
-        ;mov     Home.Thunk[rbp], rcx            ; Home Thunk (rcx) parameter.
+        mov     Home.Thunk[rbp], rcx            ; Home Thunk (rcx) parameter.
         mov     r12, rcx                        ; Move Thunk into r12.
 
 ;
@@ -221,9 +221,7 @@ Inj20:  mov     rcx, Thunk.ModulePath.Buffer[r12]       ; Load ModulePath.
 ; in the thunk, then prepare arguments for a call to GetProcAddress().
 ;
 
-Inj40:
-        ;mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
-        mov     rcx, rax                                ; Load as 1st param.
+Inj40:  mov     rcx, rax                                ; Load as 1st param.
         mov     rdx, Thunk.FunctionName.Buffer[r12]     ; Load name as 2nd.
         call    Thunk.GetProcAddress[r12]               ; Call GetProcAddress.
         test    rax, rax                                ; Check return value.
@@ -235,12 +233,10 @@ Inj40:
 
 ;
 ; The function name was resolved successfully.  The function address lives in
-; rax.  Save a copy in the thunk, and then prepare arguments for a call to it.
+; rax.
 ;
 
-Inj60:
-        ; mov     Thunk.FunctionAddress[r12], rax         ; Save func ptr.
-        mov     rcx, r12                                ; Load thunk into rcx.
+Inj60:  mov     rcx, r12                                ; Load thunk into rcx.
         call    rax                                     ; Call the function.
 
 ;
