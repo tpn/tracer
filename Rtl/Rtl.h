@@ -373,6 +373,17 @@ extern "C" {
         EXCEPTION_CONTINUE_SEARCH                                \
     )
 
+//
+// Define start/end markers for IACA.
+//
+
+#define IACA_VC_START() __writegsbyte(111, 111)
+#define IACA_VC_END()   __writegsbyte(222, 222)
+
+//
+// Define common NT-style typedefs.
+//
+
 typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
