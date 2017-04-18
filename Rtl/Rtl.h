@@ -5711,6 +5711,21 @@ PointerToOffsetCrossesPageBoundary(
 
 FORCEINLINE
 BOOL
+IsSamePage(
+    _In_ PVOID Left,
+    _In_ PVOID Right
+    )
+{
+    LONG_PTR LeftPage;
+    LONG_PTR RightPage;
+
+    LeftPage = ALIGN_DOWN(Left, PAGE_SIZE);
+    RightPage = ALIGN_DOWN(Right, PAGE_SIZE);
+    return (LeftPage == RightPage);
+}
+
+FORCEINLINE
+BOOL
 AssertTrue(
     _In_ PSTR Expression,
     _In_ BOOL Value
@@ -6120,6 +6135,18 @@ VOID
 InitializeStringFromString(
     _Out_   PSTRING     Dest,
     _In_    PCSTRING    Source
+    )
+{
+    Dest->Length = Source->Length;
+    Dest->MaximumLength = Source->MaximumLength;
+    Dest->Buffer = Source->Buffer;
+}
+
+FORCEINLINE
+VOID
+InitializeUnicodeStringFromUnicodeString(
+    _Out_   PUNICODE_STRING     Dest,
+    _In_    PCUNICODE_STRING    Source
     )
 {
     Dest->Length = Source->Length;

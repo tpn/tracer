@@ -1,4 +1,5 @@
         title "Injection Thunk Assembly Routine"
+        option nokeyword:<Length>
 
 ;++
 ;
@@ -44,22 +45,46 @@ Home struct
 Home ends
 
 ;
+; Define supporting UNICODE_STRING and STRING structures for ModulePath and
+; FunctionName respectively.
+
+UNICODE_STRING struct
+    Length          dw      ?
+    MaximumLength   dw      ?
+    Padding         dd      ?
+    Buffer          dq      ?
+UNICODE_STRING ends
+
+STRING struct
+    Length          dw      ?
+    MaximumLength   dw      ?
+    Padding         dd      ?
+    Buffer          dq      ?
+STRING ends
+
+;
 ; Define the RTL_INJECTION_THUNK_CONTEXT structure.
 ;
 
 Thunk struct
-        Flags               dd      ?
-        EntryCount          dd      ?
-        FunctionTable       dq      ?
-        BaseAddress         dq      ?
-        RtlAddFunctionTable dq      ?
-        LoadLibraryW        dq      ?
-        GetProcAddress      dq      ?
-        ModulePath          dq      ?
-        ModuleHandle        dq      ?
-        FunctionName        dq      ?
-        FunctionAddress     dq      ?
+        Flags               dd              ?
+        EntryCount          dd              ?
+        FunctionTable       dq              ?
+        BaseAddress         dq              ?
+        RtlAddFunctionTable dq              ?
+        LoadLibraryW        dq              ?
+        GetProcAddress      dq              ?
+        ModulePath          UNICODE_STRING  { }
+        FunctionName        STRING          { }
+        ModuleHandle        dq              ?
+        FunctionAddress     dq              ?
 Thunk ends
+
+;
+; Define thunk flags.
+;
+
+DebugBreakOnEntry           equ     1
 
 ;
 ; Define error codes.
@@ -138,7 +163,7 @@ GetProcAddressFailed        equ     -3
 ; parameter home space.
 ;
 
-        alloc_stack 20h                         ; Reserve home param space.
+        alloc_stack 28h                         ; Reserve home param space.
 
         END_PROLOGUE
 
@@ -149,15 +174,25 @@ GetProcAddressFailed        equ     -3
 ; (if we clobber r12 accidentally, for example).
 ;
 
-        mov     Home.Thunk[rbp], rcx            ; Home Thunk (rcx) parameter.
+        ;mov     Home.Thunk[rbp], rcx            ; Home Thunk (rcx) parameter.
         mov     r12, rcx                        ; Move Thunk into r12.
+
+;
+; Check to see if the DebugBreakOnEntry flag is set in the thunk flags.  If it
+; is, break.
+;
+
+        mov     r8d, Thunk.Flags[r12]           ; Move flags into r8d.
+        test    r8d, DebugBreakOnEntry          ; Test for debugbreak flag.
+        jz      @F                              ; Flag isn't set.
+        int     3                               ; Flag is set, so break.
 
 ;
 ; Register a runtime function for this currently executing piece of code.  This
 ; is done when we've been copied into memory at runtime.
 ;
 
-        mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
+@@:     mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
         mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
         mov     r8, Thunk.BaseAddress[r12]              ; Load BaseAddress.
         call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
@@ -172,7 +207,7 @@ GetProcAddressFailed        equ     -3
 ; Prepare for a LoadLibraryW() call against the module path in the thunk.
 ;
 
-Inj20:  mov     rcx, Thunk.ModulePath[r12]              ; Load ModulePath.
+Inj20:  mov     rcx, Thunk.ModulePath.Buffer[r12]       ; Load ModulePath.
         call    Thunk.LoadLibraryW[r12]                 ; Call LoadLibraryW().
         test    rax, rax                                ; Check Handle != NULL.
         jz      short @F                                ; Handle is NULL.
@@ -186,9 +221,10 @@ Inj20:  mov     rcx, Thunk.ModulePath[r12]              ; Load ModulePath.
 ; in the thunk, then prepare arguments for a call to GetProcAddress().
 ;
 
-Inj40:  mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
+Inj40:
+        ;mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
         mov     rcx, rax                                ; Load as 1st param.
-        mov     rdx, Thunk.FunctionName[r12]            ; Load name as 2nd.
+        mov     rdx, Thunk.FunctionName.Buffer[r12]     ; Load name as 2nd.
         call    Thunk.GetProcAddress[r12]               ; Call GetProcAddress.
         test    rax, rax                                ; Check return value.
         jz      short @F                                ; Lookup failed.
@@ -202,7 +238,8 @@ Inj40:  mov     Thunk.ModuleHandle[r12], rax            ; Save Handle.
 ; rax.  Save a copy in the thunk, and then prepare arguments for a call to it.
 ;
 
-Inj60:  mov     Thunk.FunctionAddress[r12], rax         ; Save func ptr.
+Inj60:
+        ; mov     Thunk.FunctionAddress[r12], rax         ; Save func ptr.
         mov     rcx, r12                                ; Load thunk into rcx.
         call    rax                                     ; Call the function.
 
@@ -220,7 +257,7 @@ Inj90:
 
         mov     r12, Home.SavedR12[rbp]                 ; Restore non-vol r12.
         mov     rbp, Home.SavedRbp[rbp]                 ; Restore non-vol rbp.
-        add     rsp, 20h                                ; Restore home space.
+        add     rsp, 28h                                ; Restore home space.
 
         ret
 
