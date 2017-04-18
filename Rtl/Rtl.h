@@ -1129,6 +1129,51 @@ VOID
 typedef RTL_DELETE_GROWABLE_FUNCTION_TABLE *PRTL_DELETE_GROWABLE_FUNCTION_TABLE;
 
 //
+// Our remote function copying support.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK ADJUST_POINTERS)(
+    _In_ PRTL Rtl,
+    _In_ PBYTE OriginalDataBuffer,
+    _In_ USHORT SizeOfDataBufferInBytes,
+    _In_ PBYTE TemporaryLocalDataBuffer,
+    _In_ USHORT BytesRemaining,
+    _In_ ULONG_PTR RemoteDataBufferAddress,
+    _In_ PRUNTIME_FUNCTION RemoteRuntimeFunction,
+    _In_ PVOID RemoteCodeBaseAddress,
+    _In_ ULONG EntryCount
+    );
+typedef ADJUST_POINTERS *PADJUST_POINTERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK COPY_FUNCTION)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PVOID SourceFunction,
+    _In_opt_ PVOID SourceHandlerFunction,
+    _In_ USHORT SizeOfDataBufferInBytes,
+    _In_ PBYTE DataBuffer,
+    _In_ PADJUST_POINTERS AdjustPointers,
+    _Out_ PPVOID DestBaseCodeAddressPointer,
+    _Out_ PPVOID DestDataBufferAddressPointer,
+    _Out_ PPVOID DestFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
+    _When_(SourceHandlerFunction == NULL, _Out_opt_)
+        PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    _Out_ PULONG EntryCountPointer
+    );
+typedef COPY_FUNCTION *PCOPY_FUNCTION;
+
+//
 // Process and Thread support.
 //
 
@@ -5590,6 +5635,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     UNICODE_STRING InjectionThunkDllPath;
     PRTL_SET_INJECTION_THUNK_DLL_PATH SetInjectionThunkDllPath;
 
+    PCOPY_FUNCTION CopyFunction;
+
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
         struct {
@@ -8805,6 +8852,7 @@ RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
+RTL_API COPY_FUNCTION CopyFunction;
 RTL_API LOAD_SYMBOLS LoadSymbols;
 RTL_API LOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
 RTL_API COPY_PAGES_EX CopyPagesAvx2;

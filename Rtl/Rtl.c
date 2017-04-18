@@ -3078,6 +3078,7 @@ InitializeRtl(
 
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
+    Rtl->CopyFunction = CopyFunction;
 
     //Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
 
