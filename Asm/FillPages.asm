@@ -15,7 +15,7 @@
 ;
 ;--
 
-include ksamd64.inc
+include Asm.inc
 
 ;++
 ;
@@ -133,6 +133,6 @@ Fpx90:  ret
 
         LEAF_END FillPagesNonTemporalAvx2_v1, _TEXT$00
 
-; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
+; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
 
 end

@@ -589,6 +589,6 @@ Cpa90:  ret
 
 
 
-; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql com=:;                 :
+; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
 
 end
