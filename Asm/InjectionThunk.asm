@@ -14,7 +14,7 @@
 ;
 ;--
 
-include ksamd64.inc
+include Asm.inc
 
 ;
 ; Define a home parameter + return address structure.  Before alloc_stack in

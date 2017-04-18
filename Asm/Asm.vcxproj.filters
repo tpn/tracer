@@ -40,6 +40,9 @@
     <None Include="Asm.def">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="Asm.inc">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="CopyPages.asm">
