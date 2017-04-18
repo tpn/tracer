@@ -76,6 +76,8 @@ Return Value:
 
     StringArray = StringTable->pStringArray;
 
+    // IACA_VC_START();
+
     //
     // If the minimum length of the string array is greater than the length of
     // our search string, there can't be a prefix match.
@@ -360,6 +362,8 @@ FoundMatch:
     //
 
 NoMatch:
+
+    // IACA_VC_END();
 
     return NO_MATCH_FOUND;
 }
