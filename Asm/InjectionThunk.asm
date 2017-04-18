@@ -158,7 +158,6 @@ GetProcAddressFailed        equ     -3
 ;
 
         mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
-        xor     rdx, rdx                                ; Clear rdx.
         mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
         mov     r8, Thunk.BaseAddress[r12]              ; Load BaseAddress.
         call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
@@ -215,8 +214,8 @@ Inj60:  mov     Thunk.FunctionAddress[r12], rax         ; Save func ptr.
 Inj90:
 
 ;
-; Begin epilogue.  Restore r12 and rbp from home parameter space and return
-; rsp to its original value.
+; Restore r12 and rbp from home parameter space and return rsp to its original
+; value.
 ;
 
         mov     r12, Home.SavedR12[rbp]                 ; Restore non-vol r12.
