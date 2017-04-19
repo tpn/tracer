@@ -52,11 +52,8 @@ extern "C" {
 #define INJECTION_THUNK_DATA extern __declspec(dllimport)
 
 #include "../Rtl/Rtl.h"
-#include "../DebugEngine/DebugEngine.h"
-#include "../InjectionThunk/InjectionThunk.h"
 
 #endif
-
 
 #ifdef __cplusplus
 } // extern "C"

@@ -1,4 +1,3 @@
 LIBRARY InjectionThunk
 EXPORTS
     InjectionThunk
-    InjectionRemoteThreadEntry

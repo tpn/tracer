@@ -299,7 +299,7 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(CALLBACK COPY_FUNCTION)(
+(CALLBACK COPY_FUNC)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ HANDLE TargetProcessHandle,
@@ -317,13 +317,13 @@ BOOL
         PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
     _Out_ PULONG EntryCountPointer
     );
-typedef COPY_FUNCTION *PCOPY_FUNCTION;
+typedef COPY_FUNC *PCOPY_FUNC;
 
-COPY_FUNCTION CopyFunction;
+COPY_FUNC CopyFunc;
 
 _Use_decl_annotations_
 BOOL
-CopyFunction(
+CopyFunc(
     PRTL Rtl,
     PALLOCATOR Allocator,
     HANDLE TargetProcessHandle,
@@ -1004,20 +1004,20 @@ TestInjection4(
 
     InitializeRtlInjectionFunctions(Rtl, &Context.Functions);
 
-    Success = CopyFunction(Rtl,
-                           Allocator,
-                           ProcessInfo.hProcess,
-                           InjectionThunk,
-                           NULL,
-                           sizeof(Context),
-                           (PBYTE)Thunk,
-                           AdjustThunkPointers,
-                           &DestBaseCodeAddress,
-                           &DestDataBufferAddress,
-                           (PVOID *)&DestInjectionThunk,
-                           &DestRuntimeFunction,
-                           NULL,
-                           &EntryCount);
+    Success = CopyFunc(Rtl,
+                       Allocator,
+                       ProcessInfo.hProcess,
+                       InjectionThunk,
+                       NULL,
+                       sizeof(Context),
+                       (PBYTE)Thunk,
+                       AdjustThunkPointers,
+                       &DestBaseCodeAddress,
+                       &DestDataBufferAddress,
+                       (PVOID *)&DestInjectionThunk,
+                       &DestRuntimeFunction,
+                       NULL,
+                       &EntryCount);
 
     if (!Success) {
         return FALSE;

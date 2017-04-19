@@ -609,6 +609,24 @@ typedef RESOLVE_DBGHELP_FUNCTIONS *PRESOLVE_DBGHELP_FUNCTIONS;
 RESOLVE_DBGHELP_FUNCTIONS ResolveDbgHelpFunctions;
 
 //
+// Thunk injection related typedefs.
+//
+
+typedef struct _INJECTION_THUNK_CONTEXT {
+    INJECTION_THUNK_FLAGS Flags;
+    USHORT EntryCount;
+    USHORT UserDataOffset;
+    PRUNTIME_FUNCTION FunctionTable;
+    PVOID BaseCodeAddress;
+    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
+    PLOAD_LIBRARY_W LoadLibraryW;
+    PGET_PROC_ADDRESS GetProcAddress;
+    UNICODE_STRING ModulePath;
+    STRING FunctionName;
+} INJECTION_THUNK_CONTEXT;
+typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;
+
+//
 // Test-related glue.
 //
 

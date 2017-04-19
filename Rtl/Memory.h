@@ -470,5 +470,7 @@ SecureZeroMemoryQuadwords(
 #endif
 #define SecureZeroMemory SecureZeroMemoryQuadwords
 
+#define ZeroStruct(Name)        __stosq((PDWORD64)&Name, 0, sizeof(Name)  >> 3)
+#define ZeroStructPointer(Name) __stosq((PDWORD64)Name,  0, sizeof(*Name) >> 3)
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

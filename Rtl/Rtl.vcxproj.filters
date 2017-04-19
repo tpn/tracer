@@ -122,5 +122,11 @@
     <ClCompile Include="InjectionRemoteThreadEntryThunk.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CopyFunction.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InjectThunk.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

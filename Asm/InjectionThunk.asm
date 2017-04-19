@@ -67,17 +67,16 @@ STRING ends
 ;
 
 Thunk struct
-        Flags               dd              ?
-        EntryCount          dd              ?
-        FunctionTable       dq              ?
-        BaseAddress         dq              ?
-        RtlAddFunctionTable dq              ?
-        LoadLibraryW        dq              ?
-        GetProcAddress      dq              ?
-        ModulePath          UNICODE_STRING  { }
-        FunctionName        STRING          { }
-        ModuleHandle        dq              ?
-        FunctionAddress     dq              ?
+        Flags                   dd              ?
+        EntryCount              dw              ?
+        UserDataOffset          dw              ?
+        FunctionTable           dq              ?
+        BaseCodeAddress         dq              ?
+        RtlAddFunctionTable     dq              ?
+        LoadLibraryW            dq              ?
+        GetProcAddress          dq              ?
+        ModulePath              UNICODE_STRING  { }
+        FunctionName            STRING          { }
 Thunk ends
 
 ;
@@ -194,7 +193,7 @@ GetProcAddressFailed        equ     -3
 
 @@:     mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
         mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
-        mov     r8, Thunk.BaseAddress[r12]              ; Load BaseAddress.
+        mov     r8, Thunk.BaseCodeAddress[r12]          ; Load BaseCodeAddress.
         call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
         test    rax, rax                                ; Check result.
         jz      short @F                                ; Function failed.
@@ -233,10 +232,15 @@ Inj40:  mov     rcx, rax                                ; Load as 1st param.
 
 ;
 ; The function name was resolved successfully.  The function address lives in
-; rax.
+; rax.  Load the offset of the user's data buffer and calculate the address
+; based on the base address of the thunk.  Call the user's function with that
+; address.
 ;
 
-Inj60:  mov     rcx, r12                                ; Load thunk into rcx.
+Inj60:  xor     r8, r8                                  ; Clear r8.
+        mov     r8w, word ptr Thunk.UserDataOffset[r12] ; Load offset.
+        mov     rcx, r12                                ; Load base address.
+        add     rcx, r8                                 ; Add offset.
         call    rax                                     ; Call the function.
 
 ;

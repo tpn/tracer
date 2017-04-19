@@ -1129,6 +1129,103 @@ VOID
 typedef RTL_DELETE_GROWABLE_FUNCTION_TABLE *PRTL_DELETE_GROWABLE_FUNCTION_TABLE;
 
 //
+// Our remote function copying support.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK ADJUST_THUNK_POINTERS)(
+    _In_ PRTL Rtl,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PBYTE OriginalThunkBuffer,
+    _In_ USHORT SizeOfThunkBufferInBytes,
+    _Inout_bytecap_(BytesRemaining) PBYTE TemporaryLocalThunkBuffer,
+    _In_ USHORT BytesRemaining,
+    _In_ ULONG_PTR RemoteThunkBufferAddress,
+    _In_ PRUNTIME_FUNCTION RemoteRuntimeFunction,
+    _In_ PVOID RemoteCodeBaseAddress,
+    _In_ USHORT EntryCount,
+    _Out_ PUSHORT NumberOfBytesWritten
+    );
+typedef ADJUST_THUNK_POINTERS *PADJUST_THUNK_POINTERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK ADJUST_USER_DATA_POINTERS)(
+    _In_ PRTL Rtl,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PBYTE OriginalDataBuffer,
+    _In_ USHORT SizeOfDataBufferInBytes,
+    _In_ PBYTE TemporaryLocalDataBuffer,
+    _In_ USHORT BytesRemaining,
+    _In_ ULONG_PTR RemoteDataBufferAddress
+    );
+typedef ADJUST_USER_DATA_POINTERS *PADJUST_USER_DATA_POINTERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK COPY_FUNCTION)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PVOID SourceFunction,
+    _In_opt_ PVOID SourceHandlerFunction,
+    _In_reads_bytes_(SizeOfThunkBufferInBytes) PBYTE ThunkBuffer,
+    _In_ USHORT SizeOfThunkBufferInBytes,
+    _In_reads_bytes_(SizeOfUserDataInBytes) PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ PADJUST_THUNK_POINTERS AdjustThunkPointers,
+    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _Out_ PPVOID DestBaseCodeAddressPointer,
+    _Out_ PPVOID DestThunkBufferAddressPointer,
+    _Out_ PPVOID DestUserDataAddressPointer,
+    _Out_ PPVOID DestFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
+    _When_(SourceHandlerFunction == NULL, _Out_opt_)
+        PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    _Out_ PULONG EntryCountPointer
+    );
+typedef COPY_FUNCTION *PCOPY_FUNCTION;
+
+typedef union _INJECTION_THUNK_FLAGS {
+    struct {
+        ULONG DebugBreakOnEntry:1;
+        ULONG Unused:31;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} INJECTION_THUNK_FLAGS;
+C_ASSERT(sizeof(INJECTION_THUNK_FLAGS) == sizeof(ULONG));
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INJECT_THUNK)(
+    _In_ struct _RTL *Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ INJECTION_THUNK_FLAGS Flags,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PCUNICODE_STRING TargetModuleDllPath,
+    _In_ PCSTRING TargetFunctionName,
+    _In_ PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _In_ PHANDLE RemoteThreadHandlePointer,
+    _In_ PULONG RemoteThreadIdPointer,
+    _In_ PPVOID RemoteBaseCodeAddress,
+    _In_ PPVOID RemoteUserDataAddress
+    );
+typedef INJECT_THUNK *PINJECT_THUNK;
+
+//
 // Process and Thread support.
 //
 
@@ -5526,14 +5623,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     DbgEngModule;
     HMODULE     InjectionThunkModule;
 
-    BOOL InjectionInitialized;
-    PVOID InjectionThunkBase;
-    PVOID InjectionThunkRoutine;
-    PVOID InjectionRemoteThreadEntry;
-    PRUNTIME_FUNCTION InjectionThunkRuntimeFunction;
-
-    PINITIALIZE_INJECTION InitializeInjection;
-
     BOOL ComInitialized;
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
@@ -5589,6 +5678,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     UNICODE_STRING InjectionThunkDllPath;
     PRTL_SET_INJECTION_THUNK_DLL_PATH SetInjectionThunkDllPath;
+
+    PCOPY_FUNCTION CopyFunction;
+
+    PVOID InjectionThunkRoutine;
+    PINJECT_THUNK InjectThunk;
+    PINITIALIZE_INJECTION InitializeInjection;
+    PADJUST_THUNK_POINTERS AdjustThunkPointers;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
@@ -8805,6 +8901,7 @@ RTL_API
 BOOL
 InitializeRtlManually(PRTL Rtl, PULONG SizeOfRtl);
 
+RTL_API COPY_FUNCTION CopyFunction;
 RTL_API LOAD_SYMBOLS LoadSymbols;
 RTL_API LOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
 RTL_API COPY_PAGES_EX CopyPagesAvx2;

@@ -286,36 +286,15 @@ LoadDbgEng(
     return TRUE;
 }
 
-#pragma warning(push)
-#pragma warning(disable: 4101)
 RTL_API
 BOOL
 InitializeInjection(PRTL Rtl)
 {
-    BOOL Success;
-    PVOID StartAddress;
-    PVOID EndAddress;
-    ULONG_PTR Base;
-
-    PUNWIND_INFO UnwindInfo;
-    UWOP_UNWIND_CODE UwopUnwindCode;
-    UWOP_UNWIND_OPREG UwopUnwindReg;
-
-    PRUNTIME_FUNCTION RuntimeFunc;
-    RUNTIME_FUNCTION_EX RuntimeFuncEx;
-
-    ULONG_PTR Address;
-    ULONG_PTR OurStartAddress;
-    ULONG_PTR OurEndAddress;
-
-    PVOID StartAddr;
-    PVOID EndAddr;
-
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
-    if (Rtl->InjectionInitialized) {
+    if (Rtl->InjectionThunkRoutine) {
         return TRUE;
     }
 
@@ -347,64 +326,8 @@ InitializeInjection(PRTL Rtl)
         return FALSE;
     }
 
-    Rtl->InjectionRemoteThreadEntry = (
-        GetProcAddress(
-            Rtl->InjectionThunkModule,
-            "InjectionRemoteThreadEntry"
-        )
-    );
-
-    if (!Rtl->InjectionRemoteThreadEntry) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    Rtl->InjectionThunkRoutine = (
-        SkipJumpsInline((PBYTE)Rtl->InjectionThunkRoutine)
-    );
-
-    Rtl->InjectionRemoteThreadEntry = (
-        SkipJumpsInline((PBYTE)Rtl->InjectionRemoteThreadEntry)
-    );
-
-    RuntimeFunc = Rtl->InjectionThunkRuntimeFunction = (
-        Rtl->RtlLookupFunctionEntry(
-            (ULONGLONG)Rtl->InjectionThunkRoutine,
-            &Base,
-            NULL
-        )
-    );
-
-    Address = (ULONG_PTR)Rtl->InjectionThunkRoutine;
-    Success = GetApproximateFunctionBoundaries(Address,
-                                               &OurStartAddress,
-                                               &OurEndAddress);
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    StartAddr = (PVOID)OurStartAddress;
-    EndAddr = (PVOID)OurEndAddress;
-
-    RuntimeFuncEx.BeginAddress = (PVOID)(Base + RuntimeFunc->BeginAddress);
-    RuntimeFuncEx.EndAddress = (PVOID)(Base + RuntimeFunc->EndAddress);
-    RuntimeFuncEx.UnwindInfo = (PVOID)(Base + RuntimeFunc->UnwindInfoAddress);
-
-    if (RuntimeFuncEx.BeginAddress != StartAddr) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    if (RuntimeFuncEx.EndAddress != EndAddr) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    Rtl->InjectionInitialized = TRUE;
     return TRUE;
 }
-#pragma warning(pop)
 
 BOOL
 CALLBACK
@@ -3078,6 +3001,7 @@ InitializeRtl(
 
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
+    Rtl->CopyFunction = CopyFunction;
 
     //Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
 
