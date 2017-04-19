@@ -30,10 +30,33 @@ LONG
     );
 typedef TEST_INJECTION *PTEST_INJECTION;
 
-#pragma component(browser, off)
+typedef STARTUPINFOW *PSTARTUPINFOW;
+
+BOOL
+CreateThunkExe(
+    PSTARTUPINFOW StartupInfo,
+    PPROCESS_INFORMATION ProcessInfo
+    );
+
+extern PUNICODE_STRING InjectionThunkActiveDllPath;
+extern PUNICODE_STRING InjectionThunkDebugDllPath;
+extern PUNICODE_STRING InjectionThunkReleaseDllPath;
+
+extern PUNICODE_STRING TestInjectionActiveExePath;
+extern PUNICODE_STRING TestInjectionDebugExePath;
+extern PUNICODE_STRING TestInjectionReleaseExePath;
+
 TEST_INJECTION TestInjection;
+
+BOOL
+TestInjectThunk(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PDEBUG_ENGINE_SESSION Session
+    );
+
 ULONG TestInjectionMain(VOID);
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"

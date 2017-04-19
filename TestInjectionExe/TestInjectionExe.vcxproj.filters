@@ -44,5 +44,8 @@
     <ClCompile Include="TestInjectionMain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TestInjectThunk.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

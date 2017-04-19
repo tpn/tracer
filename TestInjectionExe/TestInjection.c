@@ -47,8 +47,6 @@ PVOID CodePage1;
 #pragma comment(linker, "/section:.testshared,rws")
 
 
-typedef STARTUPINFOW *PSTARTUPINFOW;
-
 UNICODE_STRING ThunkExeFilename =
     RTL_CONSTANT_STRING(L"thunk.exe");
 
@@ -1414,7 +1412,9 @@ TestInjection(
         return -5;
     }
 
-    TEST(4);
+    TestInjectThunk(Rtl, Allocator, TracerConfig, Session);
+
+    //TEST(4);
     //TEST(5);
     //TEST(1);
 
