@@ -244,6 +244,73 @@ DebugEventExitThreadCallback(
 //      IDebugEventCallbacks->CreateProcess()
 ////////////////////////////////////////////////////////////////////////////////
 
+DECLSPEC_DLLEXPORT
+LONG
+PythonTracerRemoteInjectionThreadEntry(
+    PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext
+    )
+{
+    return InjectedContext->ParentProcessId;
+}
+
+LONG
+ParentThreadEntry(
+    PPYTHON_TRACER_INJECTION_CONTEXT Context
+    )
+{
+    BOOL Success;
+    PRTL Rtl;
+    ULONG RemoteThreadId;
+    ULONG RemoteThreadExitCode;
+    HANDLE RemoteThreadHandle;
+    PVOID RemoteBaseCodeAddress;
+    PVOID RemoteUserBufferAddress;
+    INJECTION_THUNK_FLAGS Flags;
+    PCUNICODE_STRING DllPath;
+    PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
+    PDEBUG_ENGINE_SESSION Session;
+    const STRING FunctionName =
+        RTL_CONSTANT_STRING("PythonTracerRemoteInjectionThreadEntry");
+
+    Rtl = Context->InjectionContext.Rtl;
+    InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
+    InjectedContext.ParentProcessId = FastGetCurrentProcessId();
+    InjectedContext.ParentThreadId = FastGetCurrentThreadId();
+
+    Flags.AsULong = 0;
+    Session = Context->InjectionContext.DebugEngineSession;
+    DllPath = &Session->TracerConfig->Paths.PythonTracerInjectionDllPath;
+
+    OutputDebugStringA("Found Python process!\n");
+
+    Success = Rtl->InjectThunk(Rtl,
+                               Session->Allocator,
+                               Flags,
+                               Context->RemotePythonProcessHandle,
+                               DllPath,
+                               &FunctionName,
+                               (PBYTE)&InjectedContext,
+                               sizeof(InjectedContext),
+                               NULL,
+                               &RemoteThreadHandle,
+                               &RemoteThreadId,
+                               &RemoteBaseCodeAddress,
+                               &RemoteUserBufferAddress);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    WaitForSingleObject(RemoteThreadHandle, INFINITE);
+
+    Success = GetExitCodeThread(RemoteThreadHandle, &RemoteThreadExitCode);
+    if (!Success) {
+        return -1;
+    }
+
+    return RemoteThreadExitCode;
+}
+
 _Use_decl_annotations_
 HRESULT
 DebugEventCreateProcessCallback(
@@ -325,38 +392,18 @@ DebugEventCreateProcessCallback(
         // This is definitely a Python program, perform a remote injection.
         //
 
-        RTL_INJECTION_FLAGS Flags;
-        PRTL_INJECTION_PACKET Packet;
-        PRTL_INJECTION_COMPLETE_CALLBACK Callback;
-        RTL_INJECTION_ERROR Error;
+        Context->PythonThreadHandle = (
+            CreateThread(NULL,
+                         0,
+                         (LPTHREAD_START_ROUTINE)ParentThreadEntry,
+                         InjectionContext,
+                         0,
+                         &Context->PythonThreadId)
+        );
 
-        Flags.AsULong = 0;
-        Flags.InjectCode = TRUE;
-
-        Callback = PythonTracerInjectionCompleteCallback;
-
-        Success = Rtl->Inject(Rtl,
-                              Session->Allocator,
-                              &Flags,
-                              NULL,
-                              NULL,
-                              Callback,
-                              NULL,
-                              ProcessId,
-                              &Packet,
-                              &Error);
-
-        if (!Success) {
-            OutputDebugStringA("Rtl->Inject() failed.");
-            goto End;
+        if (!Context->PythonThreadHandle) {
+            __debugbreak();
         }
-
-        //
-        // XXX: how does the signal/wait logic work here if we're within a
-        // debug callback?  We probably need to spawn a new thread such that
-        // we can freely communicate with the remote thread without impeding
-        // the general debug engine event loop/callback dispatching.
-        //
     }
 
     //
