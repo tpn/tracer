@@ -46,6 +46,8 @@ extern PUNICODE_STRING TestInjectionActiveExePath;
 extern PUNICODE_STRING TestInjectionDebugExePath;
 extern PUNICODE_STRING TestInjectionReleaseExePath;
 
+extern ULONG TestDummyLong;
+
 TEST_INJECTION TestInjection;
 
 BOOL

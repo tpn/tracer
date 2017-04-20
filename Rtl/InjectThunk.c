@@ -25,19 +25,27 @@ AdjustThunkPointers(
     USHORT SizeOfThunkBufferInBytes,
     PBYTE TemporaryLocalThunkBuffer,
     USHORT BytesRemaining,
-    ULONG_PTR RemoteThunkBufferAddress,
+    PBYTE RemoteThunkBufferAddress,
     PRUNTIME_FUNCTION RemoteRuntimeFunction,
     PVOID RemoteCodeBaseAddress,
     USHORT EntryCount,
-    PUSHORT NumberOfBytesWritten
+    PUSHORT NumberOfBytesWritten,
+    PBYTE *NewDestUserData,
+    PBYTE *NewRemoteDestUserData
     )
 {
-    USHORT Bytes;
     USHORT TotalBytes;
+    USHORT UserDataOffset;
+    USHORT ModulePathAllocSizeInBytes;
+    USHORT FunctionNameAllocSizeInBytes;
     PBYTE Base;
     PBYTE Dest;
-    PINJECTION_THUNK_CONTEXT OriginalThunk;
+    PBYTE NewUserData;
+    PBYTE NewRemoteUserData;
+    PBYTE UserPage;
+    PBYTE RemotePage;
     PINJECTION_THUNK_CONTEXT Thunk;
+    PINJECTION_THUNK_CONTEXT OriginalThunk;
 
     if (SizeOfThunkBufferInBytes != sizeof(INJECTION_THUNK_CONTEXT)) {
         __debugbreak();
@@ -70,22 +78,36 @@ AdjustThunkPointers(
     // Copy the InjectionThunk.dll path.
     //
 
-    Bytes = OriginalThunk->ModulePath.Length + sizeof(WCHAR);
-    CopyMemory(Dest, (PBYTE)OriginalThunk->ModulePath.Buffer, Bytes);
+    CopyMemory(Dest,
+               OriginalThunk->ModulePath.Buffer,
+               OriginalThunk->ModulePath.Length);
 
-    Bytes = ALIGN_UP_POINTER(Bytes + 8);
-    Dest += Bytes;
-    TotalBytes = Bytes;
+    ModulePathAllocSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            OriginalThunk->ModulePath.Length +
+            sizeof(WCHAR)
+        )
+    );
+
+    Dest += ModulePathAllocSizeInBytes;
+    TotalBytes = ModulePathAllocSizeInBytes;
 
     //
     // Copy the function name.
     //
 
-    Bytes = OriginalThunk->FunctionName.Length + sizeof(CHAR);
-    CopyMemory(Dest, (PBYTE)OriginalThunk->FunctionName.Buffer, Bytes);
+    CopyMemory(Dest,
+               OriginalThunk->FunctionName.Buffer,
+               OriginalThunk->FunctionName.Length);
 
-    Bytes = ALIGN_UP_POINTER(Bytes + 8);
-    TotalBytes += Bytes;
+    FunctionNameAllocSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            OriginalThunk->FunctionName.Length +
+            sizeof(CHAR)
+        )
+    );
+
+    TotalBytes += FunctionNameAllocSizeInBytes;
 
     //
     // Adjust the function name's buffer.
@@ -98,6 +120,8 @@ AdjustThunkPointers(
         )
     );
 
+    Dest += FunctionNameAllocSizeInBytes;
+
     //
     // Adjust the runtime function entry details for RtlAddFunctionTable().
     //
@@ -107,11 +131,43 @@ AdjustThunkPointers(
     Thunk->BaseCodeAddress = RemoteCodeBaseAddress;
 
     //
+    // Invariant checks.
+    //
+
+    NewUserData = Base + TotalBytes;
+    if (NewUserData != Dest) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    UserDataOffset = (USHORT)(Dest - TemporaryLocalThunkBuffer);
+
+    NewRemoteUserData = (PBYTE)(
+        RtlOffsetToPointer(
+            RemoteThunkBufferAddress,
+            UserDataOffset
+        )
+    );
+
+    //
+    // Isolate the PAGE_SIZE bits of each address and ensure they match.
+    //
+
+    UserPage = (PBYTE)((ULONG_PTR)NewUserData & PAGE_SIZE);
+    RemotePage = (PBYTE)((ULONG_PTR)NewRemoteUserData & PAGE_SIZE);
+
+    if (UserPage != RemotePage) {
+        __debugbreak();
+    }
+
+    //
     // Set the offset of the user data from the base thunk.
     //
 
-    Thunk->UserDataOffset = TotalBytes;
+    Thunk->UserDataOffset = UserDataOffset;
     *NumberOfBytesWritten = TotalBytes;
+    *NewDestUserData = NewUserData;
+    *NewRemoteDestUserData = NewRemoteUserData;
 
     return TRUE;
 }
@@ -195,7 +251,7 @@ InjectThunk(
             NULL,
             0,
             StartRoutine,
-            DestUserDataAddress,
+            DestThunkBufferAddress,
             CreationFlags,
             &RemoteThreadId
         )

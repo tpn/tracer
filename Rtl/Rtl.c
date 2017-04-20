@@ -2949,6 +2949,7 @@ InitializeRtl(
     Rtl->AtExitEx = AtExitExImpl;
 
     Rtl->InitializeInjection = InitializeInjection;
+    Rtl->InjectThunk = InjectThunk;
 
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;

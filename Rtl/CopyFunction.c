@@ -94,6 +94,8 @@ CopyFunction(
     PBYTE DestThunkBuffer;
     PBYTE DestThunkBufferEnd;
     PBYTE RemoteDestThunkBuffer;
+    PBYTE NewDestUserData;
+    PBYTE NewRemoteDestUserData;
 
     struct {
         LARGE_INTEGER Frequency;
@@ -425,27 +427,47 @@ CopyFunction(
     DestThunkBuffer = DestData;
     DestThunkBufferEnd = DestThunkBuffer + SizeOfThunkBufferInBytes;
     CopyMemory(DestThunkBuffer, ThunkBuffer, SizeOfThunkBufferInBytes);
-    DestData += ALIGN_UP(SizeOfThunkBufferInBytes + 8, 8);
+    DestData += SizeOfThunkBufferInBytes;
 
     Success = AdjustThunkPointers(Rtl,
                                   TargetProcessHandle,
                                   ThunkBuffer,
                                   SizeOfThunkBufferInBytes,
                                   DestThunkBuffer,
-                                  (USHORT)NumberOfDataBytesRemaining,
-                                  (ULONG_PTR)RemoteDestThunkBuffer,
+                                  NumberOfDataBytesRemaining,
+                                  RemoteDestThunkBuffer,
                                   (PRUNTIME_FUNCTION)RemoteBaseDataAddress,
                                   RemoteBaseCodeAddress,
                                   EntryCount,
-                                  &NumberOfDataBytesWritten);
+                                  &NumberOfDataBytesWritten,
+                                  &NewDestUserData,
+                                  &NewRemoteDestUserData);
 
     if (NumberOfDataBytesWritten > NumberOfDataBytesRemaining) {
         __debugbreak();
         return FALSE;
     }
 
+    if (NewDestUserData - NumberOfDataBytesWritten !=
+        DestThunkBuffer + SizeOfThunkBufferInBytes) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (NewRemoteDestUserData - NumberOfDataBytesWritten !=
+        RemoteDestThunkBuffer + SizeOfThunkBufferInBytes) {
+        __debugbreak();
+    }
+
     DestData += NumberOfDataBytesWritten;
     NumberOfDataBytesRemaining -= NumberOfDataBytesWritten;
+
+    if (DestData != NewDestUserData) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    RemoteDestUserData = NewRemoteDestUserData;
 
     //
     // Copy user data and adjust pointers.
@@ -468,8 +490,17 @@ CopyFunction(
     DestUserData = DestData;
     CopyMemory(DestUserData, UserData, SizeOfUserDataInBytes);
 
-    RemoteDestUserData = (
-        (PBYTE)RemoteBaseDataAddress + NumberOfDataBytesWritten
+    NumberOfDataBytesAllocated = (USHORT)(DestData - LocalBaseData);
+
+    if (RemoteDestUserData <=
+        (RemoteDestThunkBuffer + SizeOfThunkBufferInBytes)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    NumberOfDataBytesRemaining = (USHORT)(
+        ALIGN_UP(NumberOfDataBytesAllocated, PAGE_SIZE) -
+        NumberOfDataBytesAllocated
     );
 
     Success = AdjustUserDataPointers(Rtl,
@@ -478,7 +509,7 @@ CopyFunction(
                                      SizeOfUserDataInBytes,
                                      DestUserData,
                                      NumberOfDataBytesRemaining,
-                                     (ULONG_PTR)RemoteDestUserData);
+                                     RemoteDestUserData);
 
     if (!Success) {
         goto Cleanup;

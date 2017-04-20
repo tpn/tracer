@@ -1143,11 +1143,13 @@ BOOL
     _In_ USHORT SizeOfThunkBufferInBytes,
     _Inout_bytecap_(BytesRemaining) PBYTE TemporaryLocalThunkBuffer,
     _In_ USHORT BytesRemaining,
-    _In_ ULONG_PTR RemoteThunkBufferAddress,
+    _In_ PBYTE RemoteThunkBufferAddress,
     _In_ PRUNTIME_FUNCTION RemoteRuntimeFunction,
     _In_ PVOID RemoteCodeBaseAddress,
     _In_ USHORT EntryCount,
-    _Out_ PUSHORT NumberOfBytesWritten
+    _Out_ PUSHORT NumberOfBytesWritten,
+    _Out_ PBYTE *NewDestUserData,
+    _Out_ PBYTE *NewRemoteDestUserData
     );
 typedef ADJUST_THUNK_POINTERS *PADJUST_THUNK_POINTERS;
 
@@ -1162,7 +1164,7 @@ BOOL
     _In_ USHORT SizeOfDataBufferInBytes,
     _In_ PBYTE TemporaryLocalDataBuffer,
     _In_ USHORT BytesRemaining,
-    _In_ ULONG_PTR RemoteDataBufferAddress
+    _In_ PBYTE RemoteDataBufferAddress
     );
 typedef ADJUST_USER_DATA_POINTERS *PADJUST_USER_DATA_POINTERS;
 

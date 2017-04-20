@@ -37,7 +37,7 @@ AdjustDataBufferPointers(
     USHORT SizeOfDataBufferInBytes,
     PBYTE TemporaryLocalDataBuffer,
     USHORT BytesRemaining,
-    ULONG_PTR RemoteDataBufferAddress
+    PBYTE RemoteDataBufferAddress
     )
 {
     PINJECTION_TEST OriginalTest;
@@ -71,7 +71,8 @@ TestInjectThunkThreadEntry(
     )
 {
     Test->OutputDebugStringW(Test->Path.Buffer);
-    return (ULONG)++Test->Count;
+    Test->OutputDebugStringA(Test->Function.Buffer);
+    return (LONG)(Test->Count + 1);
 }
 
 BOOL
@@ -86,6 +87,7 @@ TestInjectThunk(
     LONG ThreadExitCode;
     ULONG WaitResult;
     ULONG RemoteThreadId;
+    USHORT Count;
     HANDLE RemoteThreadHandle;
     INJECTION_THUNK_FLAGS Flags;
     PVOID RemoteBaseCodeAddress;
@@ -110,6 +112,7 @@ TestInjectThunk(
     Test.Path.Length = sizeof(Test.PathBuffer) - sizeof(WCHAR);
     Test.Path.MaximumLength = sizeof(Test.PathBuffer);
     Test.Path.Buffer = (PWSTR)&Test.PathBuffer;
+    Count = Test.Path.Length >> 1;
     __stosw((PWCHAR)&Test.PathBuffer, L'!', Test.Path.Length >> 1);
 
     CopyMemory((PBYTE)&Test.FunctionBuffer,
@@ -119,6 +122,7 @@ TestInjectThunk(
     InitializeStringFromString(&Test.Function, &FunctionName);
 
     Flags.AsULong = 0;
+    Test.Count = 1;
 
     Success = Rtl->InjectThunk(Rtl,
                                Allocator,
@@ -135,22 +139,28 @@ TestInjectThunk(
                                &RemoteDataBufferAddress);
 
     if (!Success) {
-        return FALSE;
+        goto End;
     }
 
     WaitResult = WaitForSingleObject(RemoteThreadHandle, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
-        __debugbreak();
-        return FALSE;
+        NOTHING;
     }
 
     Success = GetExitCodeThread(RemoteThreadHandle, &ThreadExitCode);
     if (ThreadExitCode != 2) {
         __debugbreak();
-        return FALSE;
-   }
+        Success = FALSE;
+        goto End;
+    }
 
-    return TRUE;
+    Success = TRUE;
+
+End:
+
+    TerminateProcess(ProcessInfo.hProcess, 0);
+
+    return Success;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -20,10 +20,12 @@ typedef struct _TEST_DATA {
     CHAR        Buffer[24];
 } TEST_DATA;
 
-#pragma data_seg(".testshared")
+#pragma data_seg("tshared")
 
 LONG Test2 = 0;
 TEST_DATA TestData = { 0, };
+
+ULONG TestDummyLong = 0;
 
 PUNICODE_STRING ThunkExePath = NULL;
 
@@ -44,7 +46,7 @@ PVOID DataPage1;
 PVOID CodePage1;
 
 #pragma data_seg()
-#pragma comment(linker, "/section:.testshared,rws")
+#pragma comment(linker, "/section:tshared,rws")
 
 
 UNICODE_STRING ThunkExeFilename =
@@ -973,6 +975,7 @@ TestInjection4(
     Path = InjectionThunkActiveDllPath->Buffer;
     InjectionThunkModule = Rtl->LoadLibraryW(Path);
     if (!InjectionThunkModule) {
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
@@ -984,6 +987,7 @@ TestInjection4(
     );
 
     if (!InjectionThunk) {
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
@@ -1018,6 +1022,7 @@ TestInjection4(
                        &EntryCount);
 
     if (!Success) {
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
@@ -1049,26 +1054,29 @@ TestInjection4(
     );
 
     if (!RemoteThreadHandle || RemoteThreadHandle == INVALID_HANDLE_VALUE) {
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
     WaitResult = WaitForSingleObject(RemoteThreadHandle, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
-        __debugbreak();
-        return FALSE;
+        NOTHING;
     }
 
     if (Test2 != 1) {
         __debugbreak();
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
     Success = GetExitCodeThread(RemoteThreadHandle, &ThreadExitCode);
     if (ThreadExitCode != 1) {
         __debugbreak();
+        TerminateProcess(ProcessInfo.hProcess, 1);
         return FALSE;
     }
 
+    TerminateProcess(ProcessInfo.hProcess, 1);
     return TRUE;
 }
 
@@ -1412,9 +1420,10 @@ TestInjection(
         return -5;
     }
 
+    TEST(4);
+
     TestInjectThunk(Rtl, Allocator, TracerConfig, Session);
 
-    //TEST(4);
     //TEST(5);
     //TEST(1);
 
