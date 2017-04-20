@@ -181,8 +181,8 @@ GetProcAddressFailed        equ     -3
 ; is, break.
 ;
 
-        mov     r8d, Thunk.Flags[r12]           ; Move flags into r8d.
-        test    r8d, DebugBreakOnEntry          ; Test for debugbreak flag.
+        movsx   r8, word ptr Thunk.Flags[r12]   ; Move flags into r8d.
+        test    r8, DebugBreakOnEntry           ; Test for debugbreak flag.
         jz      @F                              ; Flag isn't set.
         int     3                               ; Flag is set, so break.
 
@@ -192,7 +192,7 @@ GetProcAddressFailed        equ     -3
 ;
 
 @@:     mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
-        mov     edx, dword ptr Thunk.EntryCount[r12]    ; Load EntryCount.
+        movsx   rdx, word ptr Thunk.EntryCount[r12]     ; Load EntryCount.
         mov     r8, Thunk.BaseCodeAddress[r12]          ; Load BaseCodeAddress.
         call    Thunk.RtlAddFunctionTable[r12]          ; Invoke function.
         test    rax, rax                                ; Check result.
@@ -238,7 +238,7 @@ Inj40:  mov     rcx, rax                                ; Load as 1st param.
 ;
 
 Inj60:  xor     r8, r8                                  ; Clear r8.
-        mov     r8w, word ptr Thunk.UserDataOffset[r12] ; Load offset.
+        mov     r8w, Thunk.UserDataOffset[r12]          ; Load offset.
         mov     rcx, r12                                ; Load base address.
         add     rcx, r8                                 ; Add offset.
         call    rax                                     ; Call the function.
