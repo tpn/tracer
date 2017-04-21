@@ -503,6 +503,10 @@ CopyFunction(
         NumberOfDataBytesAllocated
     );
 
+    if (!AdjustUserDataPointers) {
+        goto WriteMemory;
+    }
+
     Success = AdjustUserDataPointers(Rtl,
                                      TargetProcessHandle,
                                      UserData,
