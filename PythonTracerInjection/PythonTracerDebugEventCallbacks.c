@@ -392,6 +392,8 @@ DebugEventCreateProcessCallback(
         // This is definitely a Python program, perform a remote injection.
         //
 
+        Context->RemotePythonProcessHandle = ProcessHandle;
+
         Context->PythonThreadHandle = (
             CreateThread(NULL,
                          0,
