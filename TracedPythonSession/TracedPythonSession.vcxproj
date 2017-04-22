@@ -67,12 +67,12 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACED_PYTHON_SESSION_INTERNAL_BUILD;_TRACED_PYTHON_SESSION_DLL_BUILD;_TRACER_CONFIG_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_TRACED_PYTHON_SESSION_INTERNAL_BUILD;_TRACED_PYTHON_SESSION_DLL_BUILD;_TRACER_CONFIG_STATIC_LIB;_TRACER_HEAP_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>TracerConfigLib.lib;TracerHeapLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -82,9 +82,12 @@
     <ClInclude Include="TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
+    <ClCompile Include="InitializeTracedPythonSessionFromPythonDllModule.c" />
+    <ClCompile Include="InjectedTracedPythonSessionRemoteThreadEntry.c" />
     <ClCompile Include="SanitizePathEnvironmentVariableForPython.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>

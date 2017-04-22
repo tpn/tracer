@@ -477,15 +477,34 @@ typedef
 _Success_(return != 0)
 BOOL
 (INITIALIZE_TRACED_PYTHON_SESSION)(
-    _Outptr_opt_result_maybenull_ PPTRACED_PYTHON_SESSION Session,
+    _In_     PRTL Rtl,
     _In_     PTRACER_CONFIG TracerConfig,
     _In_opt_ PALLOCATOR Allocator,
     _In_opt_ HMODULE OwningModule,
-    _Inout_  PPUNICODE_STRING TraceSessionDirectoryPointer
+    _Inout_  PPUNICODE_STRING TraceSessionDirectoryPointer,
+    _Outptr_opt_result_maybenull_ PPTRACED_PYTHON_SESSION Session
     );
 typedef INITIALIZE_TRACED_PYTHON_SESSION *PINITIALIZE_TRACED_PYTHON_SESSION;
 TRACED_PYTHON_SESSION_API INITIALIZE_TRACED_PYTHON_SESSION \
                           InitializeTracedPythonSession;
+
+typedef
+_Success_(return != 0)
+BOOL
+(INITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE)(
+    _In_     PRTL Rtl,
+    _In_     PTRACER_CONFIG TracerConfig,
+    _In_opt_ PALLOCATOR Allocator,
+    _In_opt_ HMODULE PythonDllModule,
+    _Inout_  PPUNICODE_STRING TraceSessionDirectoryPointer,
+    _Outptr_opt_result_maybenull_ PPTRACED_PYTHON_SESSION Session
+    );
+typedef INITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE
+      *PINITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE;
+TRACED_PYTHON_SESSION_API
+    INITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE
+    InitializeTracedPythonSessionFromPythonDllModule;
+
 
 typedef
 _Success_(return != 0)
@@ -511,6 +530,24 @@ typedef CHANGE_INTO_PYTHON_HOME_DIRECTORY  \
 TRACED_PYTHON_SESSION_API CHANGE_INTO_PYTHON_HOME_DIRECTORY \
                           ChangeIntoPythonHomeDirectory;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(LOAD_AND_INITIALIZE_TRACED_PYTHON_SESSION)(
+    _In_ PRTL Rtl,
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ PALLOCATOR Allocator,
+    _In_opt_ HMODULE OwningModule,
+    _In_opt_ HMODULE PythonDllModule,
+    _Inout_ PPUNICODE_STRING TraceSessionDirectoryPointer,
+    _Out_ PPTRACED_PYTHON_SESSION Session,
+    _Out_ PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
+    );
+typedef LOAD_AND_INITIALIZE_TRACED_PYTHON_SESSION
+      *PLOAD_AND_INITIALIZE_TRACED_PYTHON_SESSION;
+TRACED_PYTHON_SESSION_API LOAD_AND_INITIALIZE_TRACED_PYTHON_SESSION
+                          LoadAndInitializeTracedPythonSession;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inline Functions
@@ -520,12 +557,14 @@ FORCEINLINE
 _Check_return_
 _Success_(return != 0)
 BOOL
-LoadAndInitializeTracedPythonSession(
-    _Out_ PPTRACED_PYTHON_SESSION Session,
+LoadAndInitializeTracedPythonSessionInline(
+    _In_ PRTL Rtl,
     _In_ PTRACER_CONFIG TracerConfig,
     _In_ PALLOCATOR Allocator,
     _In_opt_ HMODULE OwningModule,
+    _In_opt_ HMODULE PythonDllModule,
     _Inout_ PPUNICODE_STRING TraceSessionDirectoryPointer,
+    _Out_ PPTRACED_PYTHON_SESSION Session,
     _Out_ PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
     )
 /*++
@@ -539,11 +578,7 @@ Routine Description:
 
 Arguments:
 
-    SessionPointer - Supplies a pointer that will receive the address of the
-        TRACED_PYTHON_SESSION structure allocated.  This pointer is immediately
-        cleared (that is, '*SessionPointer = NULL;' is performed once
-        SessionPointer is deemed non-NULL), and a value will only be set if
-        initialization was successful.
+    Rtl - Supplies a pointer to an initialized RTL structure.
 
     TracerConfig - Supplies a pointer to an initialized TRACER_CONFIG structure.
 
@@ -552,11 +587,20 @@ Arguments:
 
     OwningModule - Optionally supplies the owning module handle.
 
+    PythonDllModule - Optionally supplies a handle for the target Python module
+        (i.e. python27.dll) for which the traced session is to be initialized.
+
     TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
         provides the address to a UNICODE_STRING structure that represents the
         trace session directory to open in a read-only context, or, if the
         pointer is NULL, this will receive the address of the newly-created
         UNICODE_STRING structure that matches the trace session directory.
+
+    SessionPointer - Supplies a pointer that will receive the address of the
+        TRACED_PYTHON_SESSION structure allocated.  This pointer is immediately
+        cleared (that is, '*SessionPointer = NULL;' is performed once
+        SessionPointer is deemed non-NULL), and a value will only be set if
+        initialization was successful.
 
     DestroyTracedPythonSessionPointer - Supplies a pointer to the address of a
         variable that will receive the address of the DLL export by the same
@@ -577,14 +621,16 @@ See Also:
 {
     BOOL Success;
     HMODULE Module;
-    PINITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
+    PINITIALIZE_TRACED_PYTHON_SESSION InitializeTracedPythonSession;
+    PINITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE
+        InitializeTracedPythonSessionFromPythonDllModule;
 
     //
     // Validate arguments.
     //
 
-    if (!ARGUMENT_PRESENT(Session)) {
+    if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
 
@@ -597,6 +643,10 @@ See Also:
     }
 
     if (!ARGUMENT_PRESENT(TraceSessionDirectoryPointer)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Session)) {
         return FALSE;
     }
 
@@ -621,18 +671,6 @@ See Also:
     // Resolve the initialize and destroy functions.
     //
 
-    InitializeTracedPythonSession = (PINITIALIZE_TRACED_PYTHON_SESSION)(
-        GetProcAddress(
-            Module,
-            "InitializeTracedPythonSession"
-        )
-    );
-
-    if (!InitializeTracedPythonSession) {
-        OutputDebugStringA("Failed to resolve InitializeTracedPythonSession\n");
-        goto Error;
-    }
-
     DestroyTracedPythonSession = (PDESTROY_TRACED_PYTHON_SESSION)(
         GetProcAddress(
             Module,
@@ -649,13 +687,58 @@ See Also:
     // Call the initialization function with the same arguments we were passed.
     //
 
-    Success = InitializeTracedPythonSession(
-        Session,
-        TracerConfig,
-        Allocator,
-        NULL,
-        TraceSessionDirectoryPointer
-    );
+    if (PythonDllModule) {
+
+        InitializeTracedPythonSessionFromPythonDllModule = (
+            (PINITIALIZE_TRACED_PYTHON_SESSION_FROM_PYTHON_DLL_MODULE)(
+                GetProcAddress(
+                    Module,
+                    "InitializeTracedPythonSessionFromPythonDllModule"
+                )
+            )
+        );
+
+        if (!InitializeTracedPythonSessionFromPythonDllModule) {
+            OutputDebugStringA(
+                "InitializeTracedPythonSessionFromPythonDllModule: "
+                "not found.\n"
+            );
+            goto Error;
+        }
+
+        Success = (
+            InitializeTracedPythonSessionFromPythonDllModule(
+                Rtl,
+                TracerConfig,
+                Allocator,
+                PythonDllModule,
+                TraceSessionDirectoryPointer,
+                Session
+            )
+        );
+
+    } else {
+
+        InitializeTracedPythonSession = (PINITIALIZE_TRACED_PYTHON_SESSION)(
+            GetProcAddress(
+                Module,
+                "InitializeTracedPythonSession"
+            )
+        );
+
+        if (!InitializeTracedPythonSession) {
+            OutputDebugStringA("InitializeTracedPythonSession: not found.\n");
+            goto Error;
+        }
+
+
+        Success = InitializeTracedPythonSession(Rtl,
+                                                TracerConfig,
+                                                Allocator,
+                                                OwningModule,
+                                                TraceSessionDirectoryPointer,
+                                                Session);
+    }
 
     if (!Success) {
         goto Error;

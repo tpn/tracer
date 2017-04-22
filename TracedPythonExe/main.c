@@ -22,11 +22,13 @@ Main(VOID)
 {
     BOOL Success;
     ULONG ExitCode = 1;
+    PRTL Rtl;
     ALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PTRACED_PYTHON_SESSION Session;
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
+    PUNICODE_STRING RegistryPath;
     PUNICODE_STRING TraceSessionDirectory = NULL;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
 
@@ -40,17 +42,20 @@ Main(VOID)
     }
 
     //
-    // Initialize our TracerConfig from the given registry path.
+    // Initialize TracerConfig and Rtl.
     //
 
-    TracerConfig = InitializeTracerConfig(
-        &Allocator,
-        (PUNICODE_STRING)&TracerRegistryPath
-    );
+    RegistryPath = (PUNICODE_STRING)&TracerRegistryPath;
 
-    if (!TracerConfig) {
-        goto Error;
-    }
+    CHECKED_MSG(
+        CreateAndInitializeTracerConfigAndRtl(
+            &Allocator,
+            RegistryPath,
+            &TracerConfig,
+            &Rtl
+        ),
+        "CreateAndInitializeTracerConfigAndRtl()"
+    );
 
     //
     // Initialize the TracedPythonSession.  This is the main workhorse that
@@ -58,12 +63,14 @@ Main(VOID)
     // with tracing stores created and enabled.
     //
 
-    Success = LoadAndInitializeTracedPythonSession(
-        &Session,
+    Success = LoadAndInitializeTracedPythonSessionInline(
+        Rtl,
         TracerConfig,
         &Allocator,
         NULL,
+        NULL,
         &TraceSessionDirectory,
+        &Session,
         &DestroyTracedPythonSession
     );
 

@@ -4,7 +4,7 @@ Copyright (c) 2016 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    InitializeTracedPythonSession.c
+    InitializeTracedPythonSessionFromPythonDllModule.c
 
 Abstract:
 
@@ -21,59 +21,11 @@ Abstract:
 
 _Use_decl_annotations_
 BOOL
-ChangeIntoPythonHomeDirectory(
-    PTRACED_PYTHON_SESSION Session
-    )
-/*++
-
-Routine Description:
-
-    This function takes a copy of the current working directory and saves it
-    into the Session->OriginalDirectory field, then changes into the directory
-    stored in Session->PythonHomePath.
-
-Arguments:
-
-    Session - Supplies a pointer to TRACED_PYTHON_SESSION structure that is
-        to be used to control the operation.
-
-Return Value:
-
-    TRUE if the directory was changed, FALSE if an error occurred.
-
---*/
-{
-    PRTL Rtl;
-    PALLOCATOR Allocator;
-    PUNICODE_STRING TargetDirectory;
-    PUNICODE_STRING CurrentDirectory;
-
-    Allocator = Session->Allocator;
-    Rtl = Session->Rtl;
-
-    CurrentDirectory = Rtl->CurrentDirectoryToUnicodeString(Allocator);
-    if (!CurrentDirectory) {
-        return FALSE;
-    }
-
-    TargetDirectory = Session->PythonHomePath;
-
-    if (!Rtl->RtlEqualUnicodeString(CurrentDirectory, TargetDirectory, TRUE)) {
-        SetCurrentDirectoryW(TargetDirectory->Buffer);
-    }
-
-    Session->OriginalDirectory = CurrentDirectory;
-
-    return TRUE;
-}
-
-_Use_decl_annotations_
-BOOL
-InitializeTracedPythonSession(
+InitializeTracedPythonSessionFromPythonDllModule(
     PRTL Rtl,
     PTRACER_CONFIG TracerConfig,
     PALLOCATOR Allocator,
-    HMODULE OwningModule,
+    HMODULE PythonDllModule,
     PPUNICODE_STRING TraceSessionDirectoryPointer,
     PPTRACED_PYTHON_SESSION SessionPointer
     )
@@ -92,7 +44,8 @@ Arguments:
     Allocator - Optionally supplies a pointer to an alternate ALLOCATOR to use.
         If not present, TracerConfig->Allocator will be used.
 
-    OwningModule - Optionally supplies a handle to the module that owns us.
+    PythonDllModule - Supplies a handle for the target Python module for which
+        the traced session is to be initialized.
 
     TraceSessionDirectoryPointer - Supplies a pointer to a variable that either
         provides the address to a UNICODE_STRING structure that represents the
@@ -119,26 +72,18 @@ Return Value:
     BOOL IsReadonly;
     BOOL LockMemoryEnabled;
     BOOL ManageVolumeEnabled;
-    CHAR MajorVersion;
-    USHORT Index;
     ULONG RequiredSize;
     ULONG BufferAllocationFlags;
     SIZE_T BufferSize;
     SIZE_T LargePageMinimum;
     HKEY Key;
     HANDLE LoadingCompleteEvent = NULL;
-    HMODULE PythonDllModule;
     PVOID Buffer;
     PPYTHON Python;
     PTRACER_PATHS Paths;
     PTRACED_PYTHON_SESSION Session;
     UNICODE_STRING CommandLine;
-    PUNICODE_STRING Path;
-    PUNICODE_STRING Directory;
-    PUNICODE_STRING PythonDllPath;
-    PUNICODE_STRING PythonExePath;
     PUNICODE_STRING TraceSessionDirectory;
-    PDLL_DIRECTORY_COOKIE DirectoryCookie;
     TRACE_FLAGS TraceFlags;
     TRACER_FLAGS TracerConfigFlags;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
@@ -163,6 +108,10 @@ Return Value:
     }
 
     if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(PythonDllModule)) {
         return FALSE;
     }
 
@@ -221,42 +170,6 @@ Return Value:
     Session->TracerConfig = TracerConfig;
 
     //
-    // Load the system modules.
-    //
-
-#define LOAD(Module, Name) do {                      \
-    Session->Module = LoadLibraryA(Name);            \
-    if (!Session->Module) {                          \
-        OutputDebugStringA("Failed to load " #Name); \
-        goto Error;                                  \
-    }                                                \
-} while (0)
-
-    LOAD(Kernel32Module, "kernel32");
-    LOAD(Shell32Module, "shell32");
-    LOAD(User32Module, "user32");
-    LOAD(Advapi32Module, "advapi32");
-    LOAD(Winsock2Module, "WS2_32");
-
-    //
-    // Set our "owning" module.
-    //
-
-    if (OwningModule) {
-
-        Session->OwningModule = OwningModule;
-
-    } else {
-
-        //
-        // No module was specified, default to the default module for the
-        // process (typically the launching .exe).
-        //
-
-        Session->OwningModule = GetModuleHandle(NULL);
-    }
-
-    //
     // Load our modules.
     //
 
@@ -287,14 +200,6 @@ Return Value:
     }                                                                     \
 } while (0)
 
-    RESOLVE(Shell32Module, PCOMMAND_LINE_TO_ARGVW, CommandLineToArgvW);
-
-    //
-    // Rtl
-    //
-
-    Session->Rtl = Rtl;
-
     //
     // TraceStore
     //
@@ -324,8 +229,6 @@ Return Value:
     //
     // Python
     //
-
-    RESOLVE(PythonModule, PFIND_PYTHON_DLL_AND_EXE, FindPythonDllAndExe);
 
     RESOLVE(PythonModule, PINITIALIZE_PYTHON, InitializePython);
 
@@ -383,6 +286,8 @@ Return Value:
         goto Error;                                                        \
     }
 
+    Session->Rtl = Rtl;
+
     //
     // If any of our DLLs use structured exception handling (i.e. contain
     // code that uses __try/__except), they'll also export SetCSpecificHandler
@@ -423,21 +328,6 @@ Return Value:
     INIT_ATEXITEX(TraceStore);
     INIT_ATEXITEX(StringTable);
     INIT_ATEXITEX(PythonTracer);
-
-
-    //
-    // Load our owning module name.
-    //
-
-    Success = Rtl->GetModuleRtlPath(Rtl,
-                                    Session->OwningModule,
-                                    Allocator,
-                                    &Session->OwningModulePath);
-
-    if (!Success) {
-        OutputDebugStringA("Rtl->GetModuleRtlPath() failed.\n");
-        goto Error;
-    }
 
     //
     // Allocate and initialize TraceSession.
@@ -728,157 +618,6 @@ Return Value:
 
     LoadingCompleteEvent = Session->TraceContext->LoadingCompleteEvent;
 
-    //
-    // Attempt to load the relevant Python DLL for this session.  Look in our
-    // module's directory first, which will pick up the common case where we
-    // live in the same directory as python.exe, and thus, the relevant Python
-    // DLL (e.g. python27.dll, python35.dll etc).
-    //
-
-    Directory = &Session->OwningModulePath->Directory;
-    Success = Session->FindPythonDllAndExe(
-        Rtl,
-        Allocator,
-        Directory,
-        &PythonDllPath,
-        &PythonExePath,
-        &Session->NumberOfPathEntries,
-        &Session->PathEntries,
-        &Session->PythonMajorVersion,
-        &Session->PythonMinorVersion
-    );
-
-    if (!Success) {
-        goto Error;
-    }
-
-    if (PythonDllPath) {
-        goto FoundPython;
-    }
-
-    OutputDebugStringA("Failed to find a Python DLL to load.\n");
-    goto Error;
-
-FoundPython:
-
-    MajorVersion = Session->PythonMajorVersion;
-
-    if (MajorVersion != '2' && MajorVersion != '3') {
-        OutputDebugStringA("Invalid major version!\n");
-        goto Error;
-    }
-
-    Session->PythonDllPath = PythonDllPath;
-    Session->PythonExePath = PythonExePath;
-    Session->PythonHomePath = Directory;
-
-    if (Session->NumberOfPathEntries == 0) {
-        OutputDebugStringA("Session->NumberOfPathEntries invalid.\n");
-        goto Error;
-    }
-
-    //
-    // Allocate the array for DLL_DIRECTORY_COOKIE values.
-    //
-
-    Session->PathDirectoryCookies = (PDLL_DIRECTORY_COOKIE)(
-        Allocator->Calloc(
-            Allocator->Context,
-            Session->NumberOfPathEntries,
-            sizeof(DLL_DIRECTORY_COOKIE)
-        )
-    );
-
-    if (!Session->PathDirectoryCookies) {
-        OutputDebugStringA("Failed to allocate PathDirectoryCookies.\n");
-        goto Error;
-    }
-
-    //
-    // Create a UTF-8 version of the fully-qualified python.exe path so that
-    // we can use it as argv[0].
-    //
-
-    Success = ConvertUtf16StringToUtf8String(
-        PythonExePath,
-        &Session->PythonExePathA,
-        Allocator
-    );
-
-    if (!Success) {
-        OutputDebugStringA("Exe:ConvertUtf16StringToUtf8String() failed.\n");
-        goto Error;
-    }
-
-    //
-    // Create a UTF-8 version of the fully-qualified directory containing the
-    // python.exe and Python DLL so that we can set it as PYTHONHOME.
-    //
-
-    Success = ConvertUtf16StringToUtf8String(
-        Session->PythonHomePath,
-        &Session->PythonHomePathA,
-        Allocator
-    );
-
-    if (!Success) {
-        OutputDebugStringA("Home:ConvertUtf16StringToUtf8String() failed.\n");
-        goto Error;
-    }
-
-    //
-    // Remove conflicting PATH entries from our environment variable.
-    //
-
-    Success = SanitizePathEnvironmentVariableForPython(Session);
-    if (!Success) {
-        OutputDebugStringA("Failed to remove conflicting Python PATHs.\n");
-    }
-
-    //
-    // Temporarily change into the Python HOME directory.
-    //
-
-    AddDllDirectory(Directory->Buffer);
-
-    Success = ChangeIntoPythonHomeDirectory(Session);
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Add the Python PATH entries to the list of DLL directories.  (Currently
-    // disabled.)
-    //
-
-    goto LoadPythonDll;
-
-    Path = Session->PathEntries;
-    DirectoryCookie = Session->PathDirectoryCookies;
-    for (Index = 0; Index < Session->NumberOfPathEntries; Index++) {
-        DLL_DIRECTORY_COOKIE Cookie = AddDllDirectory((PCWSTR)Path->Buffer);
-        if (!Cookie) {
-            OutputDebugStringA("AddDllDirectory() failed.\n");
-            OutputDebugStringW(Path->Buffer);
-            OutputDebugStringA("\n");
-            goto Error;
-        }
-        Path++;
-        *DirectoryCookie++ = Cookie;
-    }
-
-    //
-    // Load the library.
-    //
-
-LoadPythonDll:
-    PythonDllModule = LoadLibraryW(PythonDllPath->Buffer);
-
-    if (!PythonDllModule) {
-        OutputDebugStringA("LoadLibraryW() of Python DLL failed.\n");
-        goto Error;
-    }
-
     Session->PythonDllModule = PythonDllModule;
 
     //
@@ -901,153 +640,6 @@ LoadPythonDll:
     }
 
     Python = Session->Python;
-
-    if (Python->VersionString[0] != MajorVersion) {
-
-        //
-        // The version derived from the DLL name did not match the version
-        // derived from Py_GetVersion().
-        //
-
-        goto Error;
-    }
-
-    //
-    // Get ascii and unicode versions of the command line.
-    //
-
-    Session->CommandLineA = GetCommandLineA();
-    Session->CommandLineW = GetCommandLineW();
-
-    if (!Session->CommandLineA && !Session->CommandLineW) {
-        goto Error;
-    }
-
-    //
-    // Convert the unicode commandline into an argc/argv equivalent.
-    //
-
-    Session->ArgvW = Session->CommandLineToArgvW(
-        Session->CommandLineW,
-        &Session->NumberOfArguments
-    );
-
-    if (!Session->ArgvW) {
-        goto Error;
-    }
-
-    if (Session->NumberOfArguments == 0) {
-        goto Error;
-    }
-
-    //
-    // Replace argv[0] with the name of the Python executable.
-    //
-
-    Session->ArgvW[0] = PythonExePath->Buffer;
-
-    //
-    // Convert the unicode argv into an ansi argv.
-    //
-
-    Success = Rtl->ArgvWToArgvA(
-        Session->ArgvW,
-        Session->NumberOfArguments,
-        &Session->ArgvA,
-        NULL,
-        Allocator
-    );
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // Skip the first argument (the executable name) for what we pass to Python.
-    //
-
-    Session->PythonNumberOfArguments = Session->NumberOfArguments - 1;
-    Session->PythonArgvA = Session->ArgvA + 1;
-    Session->PythonArgvW = Session->ArgvW + 1;
-
-    //
-    // If we need to hook functions such that we've got hooks in place before
-    // anything is called, we'd do it here.
-    //
-
-
-    //
-    // Set the Python program name to the "python.exe" path, set PYTHONHOME
-    // to the containing directory, initialize the interpreter, then set args.
-    //
-    // Use the ANSI versions if we're Python 2, wide character versions if 3.
-    //
-
-    if (MajorVersion == '2') {
-        LONG Argc = Session->PythonNumberOfArguments;
-        PPSTR Argv = Session->PythonArgvA;
-
-        Python->Py_SetProgramNameA(Session->PythonExePathA->Buffer);
-        Python->Py_SetPythonHomeA(Session->PythonHomePathA->Buffer);
-
-        SetEnvironmentVariableA(
-            "PYTHONHOME",
-            Session->PythonHomePathA->Buffer
-        );
-
-        Python->Py_Initialize();
-
-        if (Python->PySys_SetArgvExA) {
-
-            //
-            // Available since 2.6.6.
-            //
-
-            Python->PySys_SetArgvExA(Argc, Argv, 0);
-
-        } else {
-
-            Python->PySys_SetArgvA(Argc, Argv);
-
-        }
-
-    } else {
-
-        LONG Argc = Session->PythonNumberOfArguments;
-        PPWSTR Argv = Session->PythonArgvW;
-
-        Python->Py_SetProgramNameW(Session->PythonExePath->Buffer);
-        Python->Py_SetPythonHomeW(Session->PythonHomePath->Buffer);
-
-        SetEnvironmentVariableW(
-            L"PYTHONHOME",
-            Session->PythonHomePath->Buffer
-        );
-
-        Python->Py_Initialize();
-
-        if (Python->PySys_SetArgvExW) {
-
-            //
-            // Available since 3.1.3.
-            //
-
-            Python->PySys_SetArgvExW(Argc, Argv, 0);
-
-        } else {
-
-            Python->PySys_SetArgvW(Argc, Argv);
-
-        }
-    }
-
-    //
-    // Change back to the original directory.
-    //
-
-    if (Session->OriginalDirectory) {
-        SetCurrentDirectoryW(Session->OriginalDirectory->Buffer);
-    }
 
     //
     // Get the required size of a PYTHON_TRACE_CONTEXT structure.
@@ -1289,34 +881,6 @@ End:
     }
 
     return Success;
-}
-
-
-_Use_decl_annotations_
-BOOL
-LoadAndInitializeTracedPythonSession(
-    PRTL Rtl,
-    PTRACER_CONFIG TracerConfig,
-    PALLOCATOR Allocator,
-    HMODULE OwningModule,
-    HMODULE PythonModule,
-    PPUNICODE_STRING TraceSessionDirectoryPointer,
-    PPTRACED_PYTHON_SESSION SessionPointer,
-    PPDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSessionPointer
-    )
-{
-    return (
-        LoadAndInitializeTracedPythonSessionInline(
-            Rtl,
-            TracerConfig,
-            Allocator,
-            OwningModule,
-            PythonModule,
-            TraceSessionDirectoryPointer,
-            SessionPointer,
-            DestroyTracedPythonSessionPointer
-        )
-    );
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
