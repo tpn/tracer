@@ -329,28 +329,6 @@ End:
 TRACER_INJECTION_HANDLE_BREAKPOINT Py_Main_HandleBreakpoint;
 TRACER_INJECTION_HANDLE_BREAKPOINT Py_InitializeEx_HandleBreakpoint;
 
-_Use_decl_annotations_
-HRESULT
-Py_Main_HandleBreakpoint(
-    PTRACER_INJECTION_CONTEXT Context,
-    PIDEBUGBREAKPOINT IBreakpoint
-    )
-{
-    OutputDebugStringA("Caught Py_Main.\n");
-    return DEBUG_STATUS_NO_CHANGE;
-}
-
-_Use_decl_annotations_
-HRESULT
-Py_InitializeEx_HandleBreakpoint(
-    PTRACER_INJECTION_CONTEXT Context,
-    PIDEBUGBREAKPOINT IBreakpoint
-    )
-{
-    OutputDebugStringA("Caught Py_InitializeEx.\n");
-    return DEBUG_STATUS_NO_CHANGE;
-}
-
 CONST TRACER_INJECTION_BREAKPOINT_SPEC BreakpointSpecs[] = {
     { "python27!Py_Main", Py_Main_HandleBreakpoint },
     { "python30!Py_Main", Py_Main_HandleBreakpoint },
@@ -370,6 +348,41 @@ CONST TRACER_INJECTION_BREAKPOINT_SPEC BreakpointSpecs[] = {
     { "python35!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
     { "python36!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
 };
+
+_Use_decl_annotations_
+HRESULT
+Py_Main_HandleBreakpoint(
+    PTRACER_INJECTION_CONTEXT InjectionContext,
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint
+    )
+{
+    PPYTHON_TRACER_INJECTION_CONTEXT Context;
+
+    Context = CONTAINING_RECORD(InjectionContext,
+                                PYTHON_TRACER_INJECTION_CONTEXT,
+                                InjectionContext);
+
+    OutputDebugStringA("Caught Py_Main.\n");
+    return DEBUG_STATUS_NO_CHANGE;
+}
+
+_Use_decl_annotations_
+HRESULT
+Py_InitializeEx_HandleBreakpoint(
+    PTRACER_INJECTION_CONTEXT InjectionContext,
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint
+    )
+{
+    PPYTHON_TRACER_INJECTION_CONTEXT Context;
+
+    Context = CONTAINING_RECORD(InjectionContext,
+                                PYTHON_TRACER_INJECTION_CONTEXT,
+                                InjectionContext);
+
+    OutputDebugStringA("Caught Py_InitializeEx.\n");
+    return DEBUG_STATUS_NO_CHANGE;
+}
+
 
 C_ASSERT(ARRAYSIZE(BreakpointSpecs) == NUM_INITIAL_BREAKPOINTS());
 

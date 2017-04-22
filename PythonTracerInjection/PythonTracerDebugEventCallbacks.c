@@ -181,7 +181,7 @@ SlowLookup:
     }
 
     Result = InjectionBreakpoint->HandleBreakpoint(&Context->InjectionContext,
-                                                   IBreakpoint);
+                                                   InjectionBreakpoint);
 
     return Result;
 }
