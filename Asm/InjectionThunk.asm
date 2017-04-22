@@ -237,8 +237,7 @@ Inj40:  mov     rcx, rax                                ; Load as 1st param.
 ; address.
 ;
 
-Inj60:  xor     r8, r8                                  ; Clear r8.
-        mov     r8w, Thunk.UserDataOffset[r12]          ; Load offset.
+Inj60:  movsx   r8, word ptr Thunk.UserDataOffset[r12]  ; Load offset.
         mov     rcx, r12                                ; Load base address.
         add     rcx, r8                                 ; Add offset.
         call    rax                                     ; Call the function.
