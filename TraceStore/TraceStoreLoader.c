@@ -691,7 +691,7 @@ Return Value:
     );
 
     //
-    // Call the InitRtlFile method.
+    // Call the InitializeRtlFile method.
     //
 
     InitFlags.AsLong = 0;
