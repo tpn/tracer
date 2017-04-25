@@ -47,6 +47,7 @@ Home ends
 ;
 ; Define supporting UNICODE_STRING and STRING structures for ModulePath and
 ; FunctionName respectively.
+;
 
 UNICODE_STRING struct
     Length          dw      ?
@@ -159,7 +160,8 @@ GetProcAddressFailed        equ     -3
 
 ;
 ; As we are calling other functions, we need to reserve 32 bytes for their
-; parameter home space.
+; parameter home space, plus an additional 8 bytes to ensure the stack is
+; kept aligned at a 16-byte boundary.
 ;
 
         alloc_stack 28h                         ; Reserve home param space.
