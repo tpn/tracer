@@ -270,7 +270,7 @@ ParentThreadEntry(
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
     PDEBUG_ENGINE_SESSION Session;
     const STRING FunctionName =
-        RTL_CONSTANT_STRING("PythonTracerRemoteInjectionThreadEntry");
+        RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
 
     Rtl = Context->InjectionContext.Rtl;
     InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
@@ -279,7 +279,7 @@ ParentThreadEntry(
 
     Flags.AsULong = 0;
     Session = Context->InjectionContext.DebugEngineSession;
-    DllPath = &Session->TracerConfig->Paths.PythonTracerInjectionDllPath;
+    DllPath = &Session->TracerConfig->Paths.TracedPythonSessionDllPath;
 
     OutputDebugStringA("Found Python process!\n");
 

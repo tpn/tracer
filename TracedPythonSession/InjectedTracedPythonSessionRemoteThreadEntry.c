@@ -16,6 +16,7 @@ Abstract:
 
 #include "../PythonTracerInjection/PythonTracerInjectionPrivate.h"
 
+DECLSPEC_DLLEXPORT
 _Use_decl_annotations_
 LONG
 InjectedTracedPythonSessionRemoteThreadEntry(
