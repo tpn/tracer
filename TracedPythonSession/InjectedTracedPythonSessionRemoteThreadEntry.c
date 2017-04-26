@@ -16,6 +16,94 @@ Abstract:
 
 #include "../PythonTracerInjection/PythonTracerInjectionPrivate.h"
 
+typedef struct _WORK_ITEM {
+
+    union {
+        SLIST_ENTRY ListEntry;
+        struct {
+            PSLIST_ENTRY NextEntry;
+            struct {
+                ULONG WorkId;
+                ULONG Unused1;
+            };
+        };
+    };
+
+    PVOID Param1;
+    PVOID Param2;
+    PVOID Param3;
+    PVOID Param4;
+    PVOID Param5;
+    PVOID Param6;
+
+} WORK_ITEM;
+typedef WORK_ITEM *PWORK_ITEM;
+C_ASSERT(sizeof(WORK_ITEM) == 64);
+
+typedef struct _TRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT {
+    SLIST_HEADER FreeList;
+    SLIST_HEADER WorkList;
+
+    ULONG Flags;
+    ULONG State;
+
+    ULONG MainThreadId;
+    ULONG NumberOfWorkItems;
+
+    PWORK_ITEM BaseWorkItem;
+
+    HANDLE LocalShutdownEvent;
+    HANDLE LocalWorkAvailableEvent;
+
+    HANDLE RemoteShutdownEvent;
+    HANDLE RemoteWorkAvailableEvent;
+
+} TRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT;
+typedef TRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT
+      *PTRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(TRACED_PYTHON_SESSION_INJECTED_THREAD_EVENT_LOOP)(
+    _In_ PTRACED_PYTHON_SESSION Session,
+    _In_ PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext,
+    _In_ PTRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT Context,
+    _Out_ PULONG ExitCode
+    );
+typedef TRACED_PYTHON_SESSION_INJECTED_THREAD_EVENT_LOOP
+      *PTRACED_PYTHON_SESSION_INJECTED_THREAD_EVENT_LOOP;
+
+BOOL
+TracedPythonSessionInjectedThreadEventLoop(
+    PTRACED_PYTHON_SESSION Session,
+    PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext,
+    PTRACED_PYTHON_SESSION_INJECTED_THREAD_CONTEXT Context,
+    PULONG ExitCode
+    )
+/*++
+
+Routine Description:
+
+    TBD.
+
+Arguments:
+
+    TBD.
+
+Return Value:
+
+    TBD.
+
+--*/
+{
+    BOOL Success = FALSE;
+
+    return Success;
+}
+
+
 DECLSPEC_DLLEXPORT
 _Use_decl_annotations_
 LONG
@@ -41,6 +129,7 @@ Return Value:
     BOOL Success;
     PRTL Rtl;
     PPYTHON Python;
+    LONG ExitCode = -1;
     ALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING RegistryPath;
@@ -99,35 +188,31 @@ Return Value:
     __C_specific_handler_impl = Session->Rtl->__C_specific_handler;
 
     //
-    // Start tracing/profiling.
+    // Enter the event loop.
     //
 
-    //
-    // XXX: this should be done in the context of the main thread...
-    //
+    Success = (
+        TracedPythonSessionInjectedThreadEventLoop(
+            Session,
+            InjectedContext,
+            NULL,
+            &ExitCode
+        )
+    );
 
-    PythonTraceContext->Start(PythonTraceContext);
-
-    while (TRUE) {
-        SleepEx(INFINITE, TRUE);
+    if (!Success) {
+        NOTHING;
     }
-
-    //
-    // We're finally done.
-    //
-
-    Success = TRUE;
 
     goto End;
 
 Error:
-    Success = FALSE;
 
-    //DestroyTracedPythonSession(&Session);
+    ExitCode = -1;
 
 End:
 
-    return (Success ? 0 : 1);
+    return ExitCode;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

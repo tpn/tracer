@@ -83,7 +83,10 @@ typedef struct _PYTHON_TRACER_INJECTED_CONTEXT {
     ULONG ParentProcessId;
     ULONG ParentThreadId;
     HMODULE PythonDllModule;
-    PVOID Padding;
+    UNICODE_STRING SharedMemoryName;
+    UNICODE_STRING ShutdownEventName;
+    UNICODE_STRING WorkAvailableEventName;
+    UNICODE_STRING RemoteThreadReadyEventName;
 } PYTHON_TRACER_INJECTED_CONTEXT;
 typedef PYTHON_TRACER_INJECTED_CONTEXT *PPYTHON_TRACER_INJECTED_CONTEXT;
 

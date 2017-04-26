@@ -244,15 +244,6 @@ DebugEventExitThreadCallback(
 //      IDebugEventCallbacks->CreateProcess()
 ////////////////////////////////////////////////////////////////////////////////
 
-DECLSPEC_DLLEXPORT
-LONG
-PythonTracerRemoteInjectionThreadEntry(
-    PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext
-    )
-{
-    return InjectedContext->ParentProcessId;
-}
-
 LONG
 ParentThreadEntry(
     PPYTHON_TRACER_INJECTION_CONTEXT Context
@@ -453,6 +444,7 @@ DebugEventLoadModuleCallback(
     )
 {
     CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
+    const UNICODE_STRING PythonModule = RTL_CONSTANT_STRING(L"python");
 
     return DEBUG_STATUS_NO_CHANGE;
 }
