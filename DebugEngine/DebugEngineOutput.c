@@ -833,11 +833,11 @@ AddPartialLine:
 Error:
     Result = E_FAIL;
 
+    __debugbreak();
+
     //
     // Intentional follow-on to End.
     //
-
-    __debugbreak();
 
 End:
 
