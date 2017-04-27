@@ -656,19 +656,7 @@ End:
 
     *StringTablePointer = StringTable;
 
-    //
-    // Potentially free the bitmap buffer.
-    //
-
-    if ((ULONG_PTR)StackBitmapBuffer != (ULONG_PTR)Bitmap->Buffer) {
-
-        //
-        // We'll hit this point if a new bitmap had to be allocated because
-        // our stack-allocated one was too small.  Make sure we free it here.
-        //
-
-        HeapFree(HeapHandle, 0, Bitmap->Buffer);
-    }
+    MAYBE_FREE_BITMAP_BUFFER(Bitmap, StackBitmapBuffer);
 
     //
     // Return the new string array.

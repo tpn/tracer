@@ -264,15 +264,7 @@ End:
         Buffer = NULL;
     }
 
-    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)BitmapPointer->Buffer) {
-
-        //
-        // We'll hit this point if a new bitmap had to be allocated because
-        // our stack-allocated one was too small.  Make sure we free it here.
-        //
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
-    }
+    MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer);
 
     return Success;
 }

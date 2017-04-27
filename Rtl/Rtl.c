@@ -616,10 +616,14 @@ Arguments:
         The SizeOfBitMap field in this example will be altered to match the
         required size.  If a heap allocation takes place, user is responsible
         for cleaning it up (i.e. either freeing the entire PRTL_BITMAP struct
-        returned, or just the Bitmap->Buffer, depending on usage).
+        returned, or just the Bitmap->Buffer, depending on usage).  The macro
+        MAYBE_FREE_BITMAP_BUFFER() should be used for this.  (See Examples.)
 
     Reverse - Supplies a boolean flag indicating the bitmap index should be
         created in reverse.  This is passed to FindCharsInUnicodeString().
+
+    FindCharsInUnicodeString - Supplies an optional pointer to a function that
+        conforms to the PFIND_CHARS_IN_UNICODE_STRING signature.
 
 Return Value:
 
@@ -627,10 +631,10 @@ Return Value:
 
 Examples:
 
-    A stack-allocated bitmap structure and buffer:
+    A stack-allocated bitmap structure and 256-byte buffer:
 
-        CHAR StackBuffer[_MAX_FNAME >> 3];
-        RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBuffer };
+        CHAR StackBitmapBuffer[256];
+        RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
         PRTL_BITMAP BitmapPointer = &Bitmap;
         HANDLE HeapHandle;
 
@@ -643,26 +647,9 @@ Examples:
 
         ...
 
-Error:
-    if (HeapHandle) {
+        MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer);
 
-        //
-        // HeapHandle will be set if a new bitmap had to be allocated
-        // because our stack-allocated one was too small.
-        //
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
-
-            //
-            // This should never happen.  If HeapHandle is set, the buffers
-            // should differ.
-            //
-
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
-    }
+        return;
 
 --*/
 
@@ -956,10 +943,14 @@ Arguments:
         The SizeOfBitMap field in this example will be altered to match the
         required size.  If a heap allocation takes place, user is responsible
         for cleaning it up (i.e. either freeing the entire PRTL_BITMAP struct
-        returned, or just the Bitmap->Buffer, depending on usage).
+        returned, or just the Bitmap->Buffer, depending on usage).  The macro
+        MAYBE_FREE_BITMAP_BUFFER() should be used for this.  (See Examples.)
 
     Reverse - Supplies a boolean flag indicating the bitmap index should be
-        created in reverse.  This is passed to FindCharsInUnicodeString().
+        created in reverse.  This is passed to FindCharsInString().
+
+    FindCharsInString - Supplies an optional pointer to a function that conforms
+        to the PFIND_CHARS_IN_STRING signature.
 
 Return Value:
 
@@ -969,8 +960,8 @@ Examples:
 
     A stack-allocated bitmap structure and buffer:
 
-        CHAR StackBuffer[_MAX_FNAME >> 3];
-        RTL_BITMAP Bitmap = { _MAX_FNAME, (PULONG)&StackBuffer };
+        CHAR StackBitmapBuffer[256];
+        RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
         PRTL_BITMAP BitmapPointer = &Bitmap;
         HANDLE HeapHandle;
 
@@ -983,26 +974,9 @@ Examples:
 
         ...
 
-Error:
-    if (HeapHandle) {
+        MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer);
 
-        //
-        // HeapHandle will be set if a new bitmap had to be allocated
-        // because our stack-allocated one was too small.
-        //
-
-        if ((ULONG_PTR)Bitmap.Buffer == (ULONG_PTR)BitmapPointer->Buffer) {
-
-            //
-            // This should never happen.  If HeapHandle is set, the buffers
-            // should differ.
-            //
-
-            __debugbreak();
-        }
-
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);
-    }
+        return;
 
 --*/
 

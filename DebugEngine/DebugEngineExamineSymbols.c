@@ -1418,9 +1418,7 @@ End:
         }
     }
 
-    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
-        HeapFree(HeapHandle, 0, Bitmap.Buffer);
-    }
+    MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer);
 
     return Success;
 }

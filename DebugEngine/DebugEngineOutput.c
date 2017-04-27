@@ -841,13 +841,7 @@ Error:
 
 End:
 
-    //
-    // Free the bitmap buffer if one was required for this line (unlikely).
-    //
-
-    if ((ULONG_PTR)Bitmap.Buffer != (ULONG_PTR)StackBitmapBuffer) {
-        HeapFree(HeapHandle, 0, Bitmap.Buffer);
-    }
+    MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer);
 
     //
     // Update output state and return.
