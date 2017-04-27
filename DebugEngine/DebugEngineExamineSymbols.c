@@ -167,6 +167,7 @@ Return Value:
     BOOL Success = FALSE;
     BOOL IsFunctionPointer;
     USHORT Length;
+    USHORT PointerDepth;
     ULONG Size;
     PCHAR End;
     PCHAR Char;
@@ -1084,7 +1085,7 @@ RetryBasicTypeMatch:
 
         if (*ArgEnd == '*') {
 
-            USHORT PointerDepth = 1;
+            PointerDepth = 1;
 
             Argument->Flags.IsPointer = TRUE;
             Argument->SizeInBytes = sizeof(ULONG_PTR);
