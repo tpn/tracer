@@ -175,7 +175,7 @@ Return Value:
     PCHAR Lookback;
     PCHAR NextChar;
     USHORT Index;
-    SHORT MatchIndex;
+    USHORT MatchIndex;
     SHORT MatchOffset;
     STRING SymbolSize;
     STRING Address;
