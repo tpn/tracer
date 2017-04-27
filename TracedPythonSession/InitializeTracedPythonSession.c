@@ -827,6 +827,12 @@ FoundPython:
     }
 
     //
+    // XXX Temporary: Disable any further processing for now.
+    //
+
+    goto LoadPythonDll;
+
+    //
     // Remove conflicting PATH entries from our environment variable.
     //
 
@@ -1152,7 +1158,10 @@ LoadPythonDll:
 
     WRITE_SESSION_REG_SZ(PythonExePath);
     WRITE_SESSION_REG_SZ(PythonHomePath);
-    WRITE_SESSION_REG_SZ(OriginalDirectory);
+
+    if (Session->OriginalDirectory) {
+        WRITE_SESSION_REG_SZ(OriginalDirectory);
+    }
 
     //
     // Write the process ID and this thread ID.
