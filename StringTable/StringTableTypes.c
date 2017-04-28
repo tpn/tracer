@@ -4,7 +4,7 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    PythonTypes.c
+    StringTableTypes.c
 
 Abstract:
 
@@ -26,11 +26,8 @@ Abstract:
 //
 
 typedef struct _TRACE_STORE_TYPES {
-    PPYTHON_FUNCTION_TABLE PythonFunctionTable;
-    PPYTHON_FUNCTION_TABLE_ENTRY PythonFunctionTableEntry;
-    PPYTHON_PATH_TABLE PythonPathTable;
-    PPYTHON_PATH_TABLE_ENTRY PythonPathTableEntry;
-    PPYTHON_FUNCTION PythonFunction;
+    PSTRING_ARRAY StringArray;
+    PSTRING_TABLE StringTable;
 } TRACE_STORE_TYPES;
 typedef TRACE_STORE_TYPES *PTRACE_STORE_TYPES;
 

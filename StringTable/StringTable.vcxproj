@@ -103,6 +103,7 @@
     </ClCompile>
     <ClCompile Include="StringTableAllocator.c" />
     <ClCompile Include="StringTableConstants_C.c" />
+    <ClCompile Include="StringTableTypes.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="StringTable_x64.asm" Condition="'$(Platform)' == 'x64'" />

@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2016 Trent Nelson <trent@trent.me>
+Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -15,10 +15,6 @@ Abstract:
 
 --*/
 
-#ifndef _TRACER_CONFIG_INTERNAL_BUILD
-#error TracerConfigPrivate.h being included but _TRACER_CONFIG_INTERNAL_BUILD not set.
-#endif
-
 #pragma once
 
 #ifdef __cplusplus
@@ -26,6 +22,20 @@ extern "C" {
 #endif
 
 #include "stdafx.h"
+
+//
+// Define private function typedefs.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(LOAD_ALL_TRACER_MODULES)(
+    _In_ PTRACER_CONFIG TracerConfig
+    );
+typedef LOAD_ALL_TRACER_MODULES *PLOAD_ALL_TRACER_MODULES;
+LOAD_ALL_TRACER_MODULES LoadAllTracerModules;
 
 typedef
 _Check_return_
@@ -37,6 +47,10 @@ BOOL
     );
 typedef LOAD_TRACER_PATH *PLOAD_TRACER_PATH;
 LOAD_TRACER_PATH LoadTracerPath;
+
+//
+// Define helper macros.
+//
 
 /*++
 

@@ -164,10 +164,11 @@ Return Value:
     InitializeSRWLock(&TraceSessionDirectories->Lock);
 
     //
-    // Initialize size and allocator.
+    // Initialize size, number of paths, and allocator.
     //
 
     TracerConfig->Size = sizeof(*TracerConfig);
+    TracerConfig->Paths.NumberOfPaths = NumberOfDllPathOffsets;
 
     TracerConfig->Allocator = Allocator;
 

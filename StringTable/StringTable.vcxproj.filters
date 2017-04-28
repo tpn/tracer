@@ -46,6 +46,9 @@
     <ClCompile Include="StringTableAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StringTableTypes.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringTable.h">
@@ -74,10 +77,5 @@
     <None Include="StringTable.inc">
       <Filter>Header Files</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="StringTable_x64.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
   </ItemGroup>
 </Project>

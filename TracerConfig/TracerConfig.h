@@ -71,7 +71,6 @@ Abstract:
 #endif
 
 #include "../Rtl/Rtl.h"
-#include "../TracerCore/TracerCore.h"
 
 #endif
 
@@ -176,10 +175,19 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT Size;
 
     //
+    // Number of DLL paths.  This field can be used in conjunction with the
+    // FirstDllPath field below to iterate over the paths using pointer
+    // arithmetic.
+    //
+
+    _Field_range_(==, ARRAYSIZE(struct _TRACER_PATH_UNICODE_STRINGS))
+    USHORT NumberOfPaths;
+
+    //
     // Pad out to 8 bytes.
     //
 
-    USHORT Padding[3];
+    USHORT Padding[2];
 
     //
     // Installation directory and the base trace data directory
@@ -205,7 +213,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     //
 
     union {
-        struct {
+        struct _TRACER_PATH_UNICODE_STRINGS {
             UNICODE_STRING AsmDllPath;
             UNICODE_STRING RtlDllPath;
             UNICODE_STRING TracerCoreDllPath;

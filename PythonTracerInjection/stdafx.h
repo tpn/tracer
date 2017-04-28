@@ -23,6 +23,7 @@ Abstract:
 #include "../DebugEngine/DebugEngine.h"
 #include "../DebugEngine/DebugEngineInterfaces.h"
 #include "../TracerConfig/TracerConfig.h"
+#include "../TracerCore/TracerCore.h"
 #include "../TracerHeap/TracerHeap.h"
 #include "../TraceStore/TraceStore.h"
 #include "../StringTable/StringTable.h"

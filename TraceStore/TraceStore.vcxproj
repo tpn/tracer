@@ -112,8 +112,8 @@
     <ClCompile Include="TraceStoreTimer.c" />
     <ClCompile Include="TraceStoreTime.c" />
     <ClCompile Include="TraceStoreTraits.c" />
-    <ClCompile Include="TraceStoreTypes.c" />
     <ClCompile Include="TraceStoreWorkingSet.c" />
+    <ClCompile Include="TraceStoreTypes.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
