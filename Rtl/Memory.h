@@ -382,8 +382,8 @@ CopyMemoryQuadwords(
             TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
             TrailingSource = (Source + (SizeInBytes - TrailingBytes));
 
-            __movsb(TrailingDest,
-                    TrailingSource,
+            __movsb((PBYTE)TrailingDest,
+                    (PBYTE)TrailingSource,
                     TrailingBytes);
 
         }
@@ -431,8 +431,8 @@ HandleTrailingBytes:
         TrailingDest = (Dest + (SizeInBytes - TrailingBytes));
         TrailingSource = (Source + (SizeInBytes - TrailingBytes));
 
-        __movsb(TrailingDest,
-                TrailingSource,
+        __movsb((PBYTE)TrailingDest,
+                (PBYTE)TrailingSource,
                 TrailingBytes);
 
     }
