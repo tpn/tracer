@@ -1277,7 +1277,7 @@ Return Value:
 
     DisplayTypeOptions.AsULong = 0;
 
-    //DisplayTypeOptions.Verbose = TRUE;
+    DisplayTypeOptions.Verbose = TRUE;
     //DisplayTypeOptions.ShowArrayElements = TRUE;
     //DisplayTypeOptions.RecursivelyDumpSubtypes = TRUE;
     //DisplayTypeOptions.DisplayBlocksRecursively = TRUE;
