@@ -1,9 +1,8 @@
 version:
-    0.1.3.{build}
+    0.1.6.{build}
 
 image:
     - Visual Studio 2015
-    - Visual Studio 2017
 
 configuration:
     Release
@@ -14,5 +13,3 @@ platform:
 build:
     project:
         Tracer.sln
-    verbosity:
-        detailed
