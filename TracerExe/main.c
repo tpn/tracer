@@ -15,6 +15,7 @@ Abstract:
 
 #include "stdafx.h"
 
+DECLSPEC_NORETURN
 VOID
 WINAPI
 mainCRTStartup()
