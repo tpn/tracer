@@ -33,7 +33,7 @@ CONST LPCWSTR TraceStoreFileNames[] = {
     L"TraceStore_PageFault.dat",
     L"StringTable_StringArray.dat",
     L"StringTable_StringTable.dat",
-    L"Python_TraceEventTraitsEx.dat",
+    L"PythonTracer_TraceEventTraitsEx.dat",
     L"TraceStore_WsWatchInfoEx.dat",
     L"TraceStore_WsWorkingSetExInfo.dat",
     L"TraceStore_CCallStackTable.dat",

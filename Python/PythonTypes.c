@@ -26,11 +26,13 @@ Abstract:
 //
 
 typedef struct _TRACE_STORE_TYPES {
+    PPYTHON_FUNCTION PythonFunction;
     PPYTHON_FUNCTION_TABLE PythonFunctionTable;
     PPYTHON_FUNCTION_TABLE_ENTRY PythonFunctionTableEntry;
+    PPYTHON_MODULE_TABLE PythonModuleTable;
+    PPYTHON_MODULE_TABLE_ENTRY PythonModuleTableEntry;
     PPYTHON_PATH_TABLE PythonPathTable;
     PPYTHON_PATH_TABLE_ENTRY PythonPathTableEntry;
-    PPYTHON_FUNCTION PythonFunction;
 } TRACE_STORE_TYPES;
 typedef TRACE_STORE_TYPES *PTRACE_STORE_TYPES;
 

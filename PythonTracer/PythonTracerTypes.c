@@ -8,15 +8,40 @@ Module Name:
 
 Abstract:
 
-    Define trace store variable types.  See TraceStore/TraceStoreTypes.c for
-    more information.
+    Define trace store types.
 
 --*/
 
 #include "stdafx.h"
 
-PYTHON_TRACER_DATA CONST PPYTHON_TRACE_EVENT1 TraceEvent1 = 0;
-PYTHON_TRACER_DATA CONST PPYTHON_TRACE_EVENT2 TraceEvent2 = 0;
-PYTHON_TRACER_DATA CONST PPYTHON_TRACE_EVENT2 TraceEvent = 0;
+//
+// Define the trace store types owned by this module.
+//
+
+//
+// N.B. Keep these sorted alphabetically.  In vim, mark the start and end brace
+//      with ma and mb, then issue the command:
+//
+//          :'a,'b !sort -b -k 2
+//
+
+typedef struct _TRACE_STORE_TYPES {
+    PPYTHON_EVENT_TRAITS_EX TraceEventTraitsEx;
+    PPYTHON_TRACE_EVENT2 TraceEvent;
+} TRACE_STORE_TYPES;
+typedef TRACE_STORE_TYPES *PTRACE_STORE_TYPES;
+
+//
+// Type exposure functions.
+//
+
+DECLSPEC_DLLEXPORT
+VOID
+TraceStoreTypes(
+    PTRACE_STORE_TYPES Types
+    )
+{
+    UNREFERENCED_PARAMETER(Types);
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
