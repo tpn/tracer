@@ -31,6 +31,7 @@ Main(VOID)
     PUNICODE_STRING RegistryPath;
     PUNICODE_STRING TraceSessionDirectory = NULL;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
+    PRUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
 
     //
     // Initialize the default heap allocator.  This is a thin wrapper around
@@ -80,6 +81,7 @@ Main(VOID)
 
     Python = Session->Python;
     PythonTraceContext = Session->PythonTraceContext;
+    RundownGlobalAtExitFunctions = Rtl->RundownGlobalAtExitFunctions;
 
     //
     // Initialize the __C_specific_handler from Rtl.
@@ -117,6 +119,7 @@ Main(VOID)
 
     } __finally {
 
+        RundownGlobalAtExitFunctions(TRUE);
         DestroyTracedPythonSession(&Session);
     }
 
@@ -132,6 +135,8 @@ Main(VOID)
 
 Error:
 
+    RundownGlobalAtExitFunctions(TRUE);
+
     if (Session) {
         DestroyTracedPythonSession(&Session);
     }
@@ -140,6 +145,7 @@ Error:
 }
 
 
+DECLSPEC_NORETURN
 VOID
 WINAPI
 mainCRTStartup()
