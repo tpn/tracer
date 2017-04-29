@@ -20,6 +20,8 @@ Abstract:
 
 RTL_DATA RTL_ATEXIT_RUNDOWN GlobalRtlAtExitRundown = { 0 };
 
+GET_GLOBAL_RTL_ATEXIT_RUNDOWN GetGlobalRtlAtExitRundown;
+
 PRTL_ATEXIT_RUNDOWN
 GetGlobalRtlAtExitRundown(
     VOID
@@ -42,6 +44,9 @@ Return Value:
 {
     return &GlobalRtlAtExitRundown;
 }
+
+
+INITIALIZE_GLOBAL_RTL_ATEXIT_RUNDOWN InitializeGlobalRtlAtExitRundown;
 
 _Use_decl_annotations_
 BOOL
@@ -92,6 +97,9 @@ Return Value:
     DestroyRtlAtExitRundown(GetGlobalRtlAtExitRundown());
 }
 
+
+REGISTER_GLOBAL_ATEXITFUNC RegisterGlobalAtExitFunc;
+
 _Use_decl_annotations_
 BOOL
 RegisterGlobalAtExitFunc(
@@ -117,6 +125,9 @@ Return Value:
 {
     return RegisterAtExitFunc(GetGlobalRtlAtExitRundown(), AtExitFunc);
 }
+
+
+REGISTER_GLOBAL_ATEXITEX_CALLBACK RegisterGlobalAtExitExCallback;
 
 _Use_decl_annotations_
 BOOL
@@ -162,6 +173,9 @@ Return Value:
                                     EntryPointer);
 }
 
+
+RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
+
 _Use_decl_annotations_
 VOID
 RundownGlobalAtExitFunctions(
@@ -189,6 +203,9 @@ Return Value:
 {
     RundownAtExitFunctions(GetGlobalRtlAtExitRundown(), IsProcessTerminating);
 }
+
+
+IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE IsGlobalRtlAtExitRundownActive;
 
 BOOL
 IsGlobalRtlAtExitRundownActive(

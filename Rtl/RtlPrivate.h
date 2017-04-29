@@ -194,7 +194,7 @@ BOOL
     _Outptr_result_nullonfailure_ PPRTL_ATEXIT_ENTRY AtExitEntryPointer
     );
 typedef CREATE_RTL_ATEXIT_ENTRY *PCREATE_RTL_ATEXIT_ENTRY;
-CREATE_RTL_ATEXIT_ENTRY CreateRtlAtExitEntry;
+extern CREATE_RTL_ATEXIT_ENTRY CreateRtlAtExitEntry;
 
 typedef
 _Check_return_
@@ -209,7 +209,7 @@ BOOL
     _Outptr_result_nullonfailure_ PPRTL_ATEXIT_ENTRY AtExitEntryPointer
     );
 typedef CREATE_RTL_ATEXITEX_ENTRY *PCREATE_RTL_ATEXITEX_ENTRY;
-CREATE_RTL_ATEXITEX_ENTRY CreateRtlAtExitExEntry;
+extern CREATE_RTL_ATEXITEX_ENTRY CreateRtlAtExitExEntry;
 
 typedef
 _Requires_lock_not_held_(Rundown->CriticalSection)
@@ -219,7 +219,7 @@ VOID
     _In_opt_ BOOL IsProcessTerminating
     );
 typedef RUNDOWN_ATEXIT_FUNCTIONS *PRUNDOWN_ATEXIT_FUNCTIONS;
-RUNDOWN_ATEXIT_FUNCTIONS RundownAtExitFunctions;
+extern RUNDOWN_ATEXIT_FUNCTIONS RundownAtExitFunctions;
 
 typedef
 BOOL
@@ -227,7 +227,7 @@ BOOL
     _In_ PRTL_ATEXIT_RUNDOWN Rundown
     );
 typedef IS_RTL_ATEXIT_RUNDOWN_ACTIVE *PIS_RTL_ATEXIT_RUNDOWN_ACTIVE;
-IS_RTL_ATEXIT_RUNDOWN_ACTIVE IsRtlAtExitRundownActive;
+extern IS_RTL_ATEXIT_RUNDOWN_ACTIVE IsRtlAtExitRundownActive;
 
 typedef
 _Success_(return != 0)
@@ -238,7 +238,7 @@ BOOL
     );
 typedef INITIALIZE_RTL_ATEXIT_RUNDOWN \
       *PINITIALIZE_RTL_ATEXIT_RUNDOWN;
-INITIALIZE_RTL_ATEXIT_RUNDOWN InitializeRtlAtExitRundown;
+extern INITIALIZE_RTL_ATEXIT_RUNDOWN InitializeRtlAtExitRundown;
 
 typedef
 VOID
@@ -247,7 +247,7 @@ VOID
     );
 typedef DESTROY_RTL_ATEXIT_RUNDOWN \
       *PDESTROY_RTL_ATEXIT_RUNDOWN;
-DESTROY_RTL_ATEXIT_RUNDOWN DestroyRtlAtExitRundown;
+extern DESTROY_RTL_ATEXIT_RUNDOWN DestroyRtlAtExitRundown;
 
 typedef
 _Requires_lock_held_(Rundown->CriticalSection)
@@ -257,7 +257,7 @@ VOID
     _In_ PRTL_ATEXIT_ENTRY AtExitEntry
     );
 typedef ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN *PADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN;
-ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN AddRtlAtExitEntryToRundown;
+extern ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN AddRtlAtExitEntryToRundown;
 
 typedef
 _Requires_lock_held_(AtExitEntry->Rundown->CriticalSection)
@@ -267,7 +267,7 @@ VOID
     );
 typedef REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN \
       *PREMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN;
-REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN RemoveRtlAtExitEntryFromRundown;
+extern REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN RemoveRtlAtExitEntryFromRundown;
 
 typedef
 _Success_(return != 0)
@@ -279,7 +279,7 @@ BOOL
     _In_ PATEXITFUNC AtExitFunc
     );
 typedef REGISTER_ATEXITFUNC *PREGISTER_ATEXITFUNC;
-REGISTER_ATEXITFUNC RegisterAtExitFunc;
+extern REGISTER_ATEXITFUNC RegisterAtExitFunc;
 
 typedef
 _Success_(return != 0)
@@ -294,7 +294,7 @@ BOOL
     _Outptr_opt_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
     );
 typedef REGISTER_ATEXITEX_CALLBACK *PREGISTER_ATEXITEX_CALLBACK;
-REGISTER_ATEXITEX_CALLBACK RegisterAtExitExCallback;
+extern REGISTER_ATEXITEX_CALLBACK RegisterAtExitExCallback;
 
 //
 // RtlGlobalAtExitRundown-related functions.
@@ -306,7 +306,7 @@ PRTL_ATEXIT_RUNDOWN
     VOID
     );
 typedef GET_GLOBAL_RTL_ATEXIT_RUNDOWN *PGET_GLOBAL_RTL_ATEXIT_RUNDOWN;
-GET_GLOBAL_RTL_ATEXIT_RUNDOWN GetGlobalRtlAtExitRundown;
+extern GET_GLOBAL_RTL_ATEXIT_RUNDOWN GetGlobalRtlAtExitRundown;
 
 typedef
 BOOL
@@ -315,8 +315,7 @@ BOOL
     );
 typedef IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE \
       *PIS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE;
-RTL_API IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE IsGlobalRtlAtExitRundownActive;
-
+extern IS_GLOBAL_RTL_ATEXIT_RUNDOWN_ACTIVE IsGlobalRtlAtExitRundownActive;
 
 //
 // N.B. RegisterGlobalAtExitFunc will be the atexit() endpoint at runtime.
@@ -330,7 +329,7 @@ BOOL
     _In_ PATEXITFUNC AtExitFunc
     );
 typedef REGISTER_GLOBAL_ATEXITFUNC *PREGISTER_GLOBAL_ATEXITFUNC;
-REGISTER_GLOBAL_ATEXITFUNC RegisterGlobalAtExitFunc;
+extern REGISTER_GLOBAL_ATEXITFUNC RegisterGlobalAtExitFunc;
 
 
 //
@@ -349,15 +348,7 @@ BOOL
     _Outptr_opt_result_nullonfailure_ PPRTL_ATEXIT_ENTRY EntryPointer
     );
 typedef REGISTER_GLOBAL_ATEXITEX_CALLBACK *PREGISTER_GLOBAL_ATEXIT_CALLBACK;
-REGISTER_GLOBAL_ATEXITEX_CALLBACK RegisterGlobalAtExitExCallback;
-
-typedef
-VOID
-(RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS)(
-    _In_opt_ BOOL IsProcessTerminating
-    );
-typedef RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS *PRUNDOWN_GLOBAL_ATEXIT_FUNCTIONS;
-RTL_API RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
+extern REGISTER_GLOBAL_ATEXITEX_CALLBACK RegisterGlobalAtExitExCallback;
 
 typedef
 _Success_(return != 0)
@@ -368,7 +359,7 @@ BOOL
     );
 typedef INITIALIZE_GLOBAL_RTL_ATEXIT_RUNDOWN \
       *PINITIALIZE_GLOBAL_RTL_ATEXIT_RUNDOWN;
-INITIALIZE_GLOBAL_RTL_ATEXIT_RUNDOWN InitializeGlobalRtlAtExitRundown;
+extern INITIALIZE_GLOBAL_RTL_ATEXIT_RUNDOWN InitializeGlobalRtlAtExitRundown;
 
 typedef
 VOID
@@ -377,7 +368,7 @@ VOID
     );
 typedef DESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN \
       *PDESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN;
-DESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN DestroyGlobalRtlAtExitRundown;
+extern DESTROY_GLOBAL_RTL_ATEXIT_RUNDOWN DestroyGlobalRtlAtExitRundown;
 
 //
 // Loader-related structures and functions.

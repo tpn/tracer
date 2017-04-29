@@ -19,6 +19,8 @@ Abstract:
 
 #define RTL_ATEXIT_RUNDOWN_CRITICAL_SECTION_SPIN_COUNT 4000
 
+INITIALIZE_RTL_ATEXIT_RUNDOWN InitializeRtlAtExitRundown;
+
 _Use_decl_annotations_
 BOOL
 InitializeRtlAtExitRundown(
@@ -73,6 +75,8 @@ Return Value:
     return TRUE;
 }
 
+DESTROY_RTL_ATEXIT_RUNDOWN DestroyRtlAtExitRundown;
+
 _Use_decl_annotations_
 VOID
 DestroyRtlAtExitRundown(
@@ -110,6 +114,8 @@ Return Value:
 
     return;
 }
+
+CREATE_RTL_ATEXIT_ENTRY CreateRtlAtExitEntry;
 
 _Use_decl_annotations_
 BOOL
@@ -207,6 +213,9 @@ Return Value:
     return TRUE;
 }
 
+
+CREATE_RTL_ATEXITEX_ENTRY CreateRtlAtExitExEntry;
+
 _Use_decl_annotations_
 BOOL
 CreateRtlAtExitExEntry(
@@ -300,6 +309,9 @@ Return Value:
     return TRUE;
 }
 
+
+ADD_RTL_ATEXIT_ENTRY_TO_RUNDOWN AddRtlAtExitEntryToRundown;
+
 _Use_decl_annotations_
 VOID
 AddRtlAtExitEntryToRundown(
@@ -331,6 +343,9 @@ Return Value:
     InsertHeadList(&Rundown->ListHead, &AtExitEntry->ListEntry);
 }
 
+
+REMOVE_RTL_ATEXIT_ENTRY_FROM_RUNDOWN RemoveRtlAtExitEntryFromRundown;
+
 _Use_decl_annotations_
 VOID
 RemoveRtlAtExitEntryFromRundown(
@@ -355,6 +370,9 @@ Return Value:
 {
     RemoveEntryList(&AtExitEntry->ListEntry);
 }
+
+
+REGISTER_ATEXITFUNC RegisterAtExitFunc;
 
 _Use_decl_annotations_
 BOOL
@@ -435,6 +453,9 @@ End:
 
     return Success;
 }
+
+
+REGISTER_ATEXITEX_CALLBACK RegisterAtExitExCallback;
 
 _Use_decl_annotations_
 BOOL
@@ -547,6 +568,9 @@ End:
     return Success;
 }
 
+
+UNREGISTER_RTL_ATEXIT_ENTRY UnregisterRtlAtExitEntry;
+
 _Use_decl_annotations_
 BOOL
 UnregisterRtlAtExitEntry(
@@ -620,6 +644,9 @@ Return Value:
 
     return TRUE;
 }
+
+
+RUNDOWN_ATEXIT_FUNCTIONS RundownAtExitFunctions;
 
 _Use_decl_annotations_
 VOID
@@ -815,6 +842,9 @@ AfterCallback:
 
     return;
 }
+
+
+IS_RTL_ATEXIT_RUNDOWN_ACTIVE IsRtlAtExitRundownActive;
 
 _Use_decl_annotations_
 BOOL
