@@ -5585,6 +5585,14 @@ typedef RTL_SET_INJECTION_THUNK_DLL_PATH
       *PRTL_SET_INJECTION_THUNK_DLL_PATH;
 
 typedef
+VOID
+(RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS)(
+    _In_opt_ BOOL IsProcessTerminating
+    );
+typedef RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS *PRUNDOWN_GLOBAL_ATEXIT_FUNCTIONS;
+extern RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
+
+typedef
 _Check_return_
 _Success_(return != 0)
 (CALLBACK RTL_CREATE_NAMED_EVENT)(
@@ -5637,6 +5645,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PATEXIT atexit;
     PATEXITEX AtExitEx;
+
+    PRUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
 
     PCOPY_PAGES CopyPages;
     PFILL_PAGES FillPages;

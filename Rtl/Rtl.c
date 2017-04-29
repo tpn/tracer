@@ -2921,6 +2921,7 @@ InitializeRtl(
 
     Rtl->atexit = atexit_impl;
     Rtl->AtExitEx = AtExitExImpl;
+    Rtl->RundownGlobalAtExitFunctions = RundownGlobalAtExitFunctions;
 
     Rtl->InitializeInjection = InitializeInjection;
     Rtl->InjectThunk = InjectThunk;
