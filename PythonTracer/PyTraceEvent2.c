@@ -104,8 +104,8 @@ PyTraceEvent2(
     TraceContextQueryPerformanceCounter(TraceContext, &Elapsed, &Timestamp);
 
     //
-    // If we're doing call stack tracing and this is an appropriate event, write
-    // it now.
+    // If we're doing call stack tracing and this is an appropriate event,
+    // write it now.
     //
 
     TraceCallStack = (
