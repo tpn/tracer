@@ -337,6 +337,7 @@ extern "C" {
 #define TIMESTAMP_TO_SECONDS    1000000
 #define SECONDS_TO_MICROSECONDS 1000000
 
+#define TRY_TSX __try
 #define TRY_AVX __try
 #define TRY_AVX_ALIGNED __try
 #define TRY_AVX_UNALIGNED __try
@@ -5639,6 +5640,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     DbgEngModule;
     HMODULE     InjectionThunkModule;
 
+    BOOL TsxAvailable;
     BOOL ComInitialized;
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;

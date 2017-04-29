@@ -2816,6 +2816,26 @@ RtlpCreateNamedEvent(
 }
 #endif
 
+BOOL
+InitializeTsx(PRTL Rtl)
+{
+    GUARDED_LIST List;
+    LIST_ENTRY Entry;
+
+    InitializeGuardedListHead(&List);
+    InitializeListHead(&Entry);
+
+    Rtl->TsxAvailable = TRUE;
+
+    TRY_AVX {
+        InsertTailGuardedListTsxInline(&List, &Entry);
+    } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
+        Rtl->TsxAvailable = FALSE;
+    }
+
+    return TRUE;
+}
+
 RTL_API PROBE_FOR_READ ProbeForRead;
 
 _Use_decl_annotations_
@@ -2916,6 +2936,10 @@ InitializeRtl(
     }
 
     if (!InitializeWindowsDirectories(Rtl)) {
+        return FALSE;
+    }
+
+    if (!InitializeTsx(Rtl)) {
         return FALSE;
     }
 
