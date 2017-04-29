@@ -100,6 +100,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TracerConfigConstants.c" />
+    <ClCompile Include="TracerConfigPrivate.c" />
     <ClCompile Include="TracerPath.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
