@@ -25,7 +25,7 @@ Abstract:
 #include <combaseapi.h>
 
 //
-// Disable inconsistent SAL annotation warnings before importing the
+// Disable "inconsistent SAL annotation" warnings before importing the
 // intrinsics headers.
 //
 
