@@ -60,6 +60,9 @@
     <ClInclude Include="RtlConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Cuda.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
