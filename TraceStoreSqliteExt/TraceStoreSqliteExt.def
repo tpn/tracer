@@ -1,0 +1,3 @@
+LIBRARY TraceStoreSqliteExt
+EXPORTS
+    sqlite3_TraceStore_init=TraceStoreSqliteExtInit
