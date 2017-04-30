@@ -58,7 +58,10 @@ typedef struct _TRACE_STORE_TYPES {
     PTRACE_PERFORMANCE Performance;
     PTRACE_PERFORMANCE PerformanceDelta;
     PCHAR SourceCode;
+    PSRCCODEINFOW SourceCodeInfo;
+    PSOURCEFILEW SourceFile;
     PCHAR StringBuffer;
+    PSYMBOL_INFO SymbolInfo;
     PTRACE_SYMBOL_TABLE SymbolTable;
     PTRACE_SYMBOL_TABLE_ENTRY SymbolTableEntry;
     PDEBUG_ENGINE_UNASSEMBLED_FUNCTION UnassembledFunction;
