@@ -43,6 +43,7 @@ Abstract:
 #include "AtExitEx.h"
 #include "RtlPrivate.h"
 #include "InjectionPrivate.h"
+#include "Sqlite.h"
 #include "Cuda.h"
 #endif
 

@@ -60,6 +60,15 @@
     <ClInclude Include="RtlConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Sqlite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite3ext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Cuda.h">
       <Filter>Header Files</Filter>
     </ClInclude>

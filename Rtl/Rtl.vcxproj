@@ -81,6 +81,9 @@
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlConstants.h" />
     <ClInclude Include="RtlPrivate.h" />
+    <ClInclude Include="Sqlite.h" />
+    <ClInclude Include="sqlite3.h" />
+    <ClInclude Include="sqlite3ext.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Rtl.h" />
