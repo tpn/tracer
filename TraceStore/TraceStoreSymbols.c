@@ -868,6 +868,11 @@ Return Value:
         goto Error;
     }
 
+    if (0) {
+        OutputDebugStringA("CreateSymbolTableForModuleTableEntry: ");
+        PrintUnicodeStringToDebugStream(&Path->Full);
+    }
+
     //
     // Update the symbol context to point at this module table entry.
     //
