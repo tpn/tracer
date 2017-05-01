@@ -132,18 +132,27 @@ InitializeAllocatorFromSqlite3(
     PCSQLITE3 Sqlite3
     )
 {
+
+    //
+    // Validate arguments.
+    //
+
     if (!ARGUMENT_PRESENT(Allocator)) {
-        return FALSE;
+        return;
     }
 
     if (!ARGUMENT_PRESENT(Sqlite3)) {
-        return FALSE;
+        return;
     }
+
+    //
+    // Initialize the allocator, then set the Sqlite3 address to Context2.
+    //
 
     Sqlite3ExtInitializeAllocator(Allocator);
     Allocator->Context2 = (PVOID)Sqlite3;
 
-    return TRUE;
+    return;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
