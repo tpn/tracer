@@ -7410,7 +7410,7 @@ ConvertUtf8StringToUtf16StringSlow(
     _In_ PSTRING Utf8,
     _Out_ PPUNICODE_STRING Utf16Pointer,
     _In_ PALLOCATOR Allocator,
-    _In_ PLARGE_INTEGER TimestampPointer
+    _In_opt_ PLARGE_INTEGER TimestampPointer
     )
 /*++
 
@@ -7501,7 +7501,7 @@ Return Value:
     // Convert character buffer size into bytes.
     //
 
-    BufferSizeInBytes = BufferSizeInChars << 1;
+    BufferSizeInBytes = NewLengthInChars << 1;
 
     //
     // Align the buffer.
@@ -7547,7 +7547,7 @@ Return Value:
         Allocator->CallocWithTimestamp(
             Allocator->Context,
             1,
-            AlignedBufferSizeInBytes.LowPart,
+            AllocSize.LongPart,
             TimestampPointer
         )
     );
@@ -7614,8 +7614,7 @@ Error:
         // Try free the underlying buffer.
         //
 
-        Allocator->Free(Allocator->Context, Utf16);
-        Utf16 = NULL;
+        Allocator->FreePointer(Allocator->Context, &Utf16);
     }
 
     return FALSE;
@@ -7751,7 +7750,7 @@ Return Value:
         Allocator->Calloc(
             Allocator->Context,
             1,
-            AlignedBufferSizeInBytes.LowPart
+            AllocSize.LongPart
         )
     );
 
