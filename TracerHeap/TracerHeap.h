@@ -110,9 +110,14 @@ typedef DESTROY_HEAP_ALLOCATOR **PPDESTROY_HEAP_ALLOCATOR;
 // Export symbols.
 //
 
-#pragma component(browser, off)
 TRACER_HEAP_API MALLOC DefaultHeapMalloc;
 TRACER_HEAP_API CALLOC DefaultHeapCalloc;
+TRACER_HEAP_API TRY_MALLOC DefaultHeapTryMalloc;
+TRACER_HEAP_API TRY_CALLOC DefaultHeapTryCalloc;
+TRACER_HEAP_API MALLOC_WITH_TIMESTAMP DefaultHeapMallocWithTimestamp;
+TRACER_HEAP_API CALLOC_WITH_TIMESTAMP DefaultHeapCallocWithTimestamp;
+TRACER_HEAP_API TRY_MALLOC_WITH_TIMESTAMP DefaultHeapTryMallocWithTimestamp;
+TRACER_HEAP_API TRY_CALLOC_WITH_TIMESTAMP DefaultHeapTryCallocWithTimestamp;
 TRACER_HEAP_API REALLOC DefaultHeapRealloc;
 TRACER_HEAP_API FREE DefaultHeapFree;
 TRACER_HEAP_API FREE_POINTER DefaultHeapFreePointer;
@@ -121,7 +126,6 @@ TRACER_HEAP_API DESTROY_ALLOCATOR DefaultHeapDestroyAllocator;
 TRACER_HEAP_API INITIALIZE_HEAP_ALLOCATOR InitializeHeapAllocator;
 TRACER_HEAP_API INITIALIZE_HEAP_ALLOCATOR_EX InitializeHeapAllocatorEx;
 TRACER_HEAP_API DESTROY_HEAP_ALLOCATOR DestroyHeapAllocator;
-#pragma component(browser, on)
 
 //
 // Inline functions.
@@ -157,12 +161,12 @@ InitializeHeapAllocatorExInline(
         DefaultHeapFreePointer,
         DefaultHeapInitializeAllocator,
         DefaultHeapDestroyAllocator,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
+        DefaultHeapTryMalloc,
+        DefaultHeapTryCalloc,
+        DefaultHeapMallocWithTimestamp,
+        DefaultHeapCallocWithTimestamp,
+        DefaultHeapTryMallocWithTimestamp,
+        DefaultHeapTryCallocWithTimestamp,
         HeapHandle
     );
 
