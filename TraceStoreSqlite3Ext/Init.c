@@ -14,6 +14,9 @@ Abstract:
 
 #include "stdafx.h"
 
+TRACE_STORE_SQLITE3_EXT_INIT TraceStoreSqlite3ExtInit;
+
+_Use_decl_annotations_
 LONG
 TraceStoreSqlite3ExtInit(
     PRTL Rtl,

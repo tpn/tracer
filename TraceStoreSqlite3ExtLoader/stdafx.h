@@ -38,8 +38,4 @@ Abstract:
 #include "../TraceStoreSqlite3Ext/TraceStoreSqlite3Ext.h"
 #include "TraceStoreSqlite3ExtLoader.h"
 
-#ifdef _TRACE_STORE_INTERNAL_BUILD
-#include "TraceStoreSqlite3ExtLoaderPrivate.h"
-#endif
-
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

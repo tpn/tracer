@@ -27,7 +27,7 @@
     <ClInclude Include="TraceStoreSqlite3Ext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TraceStoreSqliteSchemas.h">
+    <ClInclude Include="TraceStoreSqlite3ExtPrivate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -35,13 +35,16 @@
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TraceStoreSqlite3Ext.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dllmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Schemas.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Init.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

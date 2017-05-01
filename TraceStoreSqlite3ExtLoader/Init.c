@@ -89,7 +89,7 @@ Return Value:
 
     Success = (
         CreateAndInitializeTracerConfigAndRtl(
-            &Allocator,
+            Allocator,
             RegistryPath,
             &TracerConfig,
             &Rtl
@@ -97,7 +97,7 @@ Return Value:
     );
 
     if (!Success) {
-        *ErrorMessagePointer = "CreateAndInitializeTracerConfigAndRtl() failed."
+        *ErrorMessagePointer = "CreateAndInitializeTracerConfigAndRtl() failed.";
         goto Error;
     }
 

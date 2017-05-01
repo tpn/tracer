@@ -82,18 +82,18 @@ extern "C" {
 #endif
 
 
-//
-// Declare allocator functions.
-//
-
 typedef
-VOID
-(INITIALIZE_ALLOCATOR_FROM_SQLITE3)(
-    _Inout_ PALLOCATOR Allocator,
+LONG
+(TRACE_STORE_SQLITE3_EXT_INIT)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ PTRACER_CONFIG TracerConfig,
+    _In_ PSQLITE3_DB Database,
+    _In_ PCSZ *ErrorMessagePointer,
     _In_ PCSQLITE3 Sqlite3
     );
-typedef INITIALIZE_ALLOCATOR_FROM_SQLITE3 *PINITIALIZE_ALLOCATOR_FROM_SQLITE3;
-extern  INITIALIZE_ALLOCATOR_FROM_SQLITE3 InitializeAllocatorFromSqlite3;
+typedef TRACE_STORE_SQLITE3_EXT_INIT *PTRACE_STORE_SQLITE3_EXT_INIT;
+
 
 #ifdef __cplusplus
 } // extern "C"

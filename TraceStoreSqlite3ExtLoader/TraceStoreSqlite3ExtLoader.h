@@ -16,9 +16,20 @@ Abstract:
 
 #pragma once
 
+#include "stdafx.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef
+VOID
+(INITIALIZE_ALLOCATOR_FROM_SQLITE3)(
+    _Inout_ PALLOCATOR Allocator,
+    _In_ PCSQLITE3 Sqlite3
+    );
+typedef INITIALIZE_ALLOCATOR_FROM_SQLITE3 *PINITIALIZE_ALLOCATOR_FROM_SQLITE3;
+extern  INITIALIZE_ALLOCATOR_FROM_SQLITE3 InitializeAllocatorFromSqlite3;
 
 #ifdef __cplusplus
 } // extern "C"

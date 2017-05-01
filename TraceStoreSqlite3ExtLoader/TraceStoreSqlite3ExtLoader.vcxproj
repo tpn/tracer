@@ -82,9 +82,9 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TraceStoreSqlite3ExtLoader.h" />
-    <ClInclude Include="TraceStoreSqlite3ExtLoaderPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Allocator.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

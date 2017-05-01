@@ -71,7 +71,8 @@
       <ModuleDefinitionFile>TraceStoreSqlite3Ext.def</ModuleDefinitionFile>
     </Link>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_CONFIG_STATIC_LIB;_TRACE_STORE_SQLITE3_EXT_INTERNAL_BUILD;_TRACE_STORE_SQLITE3_EXT_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions> </ClCompile>
+      <PreprocessorDefinitions>_TRACER_CONFIG_STATIC_LIB;_TRACE_STORE_SQLITE3_EXT_INTERNAL_BUILD;_TRACE_STORE_SQLITE3_EXT_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -86,7 +87,6 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="Schemas.c" />
-    <ClCompile Include="Allocator.c" />
     <ClCompile Include="Init.c" />
   </ItemGroup>
   <ItemGroup>
