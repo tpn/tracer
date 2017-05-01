@@ -370,6 +370,55 @@ typedef const SQLITE3_MODULE *PCSQLITE3_MODULE;
 //
 
 typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(SQLITE3_MALLOC)(
+    _In_ LONG Size
+    );
+typedef SQLITE3_MALLOC *PSQLITE3_MALLOC;
+
+typedef
+VOID
+(SQLITE3_FREE)(
+    _Pre_maybenull_ _Post_invalid_ PVOID Buffer
+    );
+typedef SQLITE3_FREE *PSQLITE3_FREE;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NewSize)
+PVOID
+(SQLITE3_REALLOC)(
+    _In_ PVOID Buffer,
+    _In_ LONG NewSize
+    );
+typedef SQLITE3_REALLOC *PSQLITE3_REALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(SQLITE3_MALLOC64)(
+    _In_ SQLITE3_UINT64 Size,
+    );
+typedef SQLITE3_MALLOC64 *PSQLITE3_MALLOC64;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NewSize)
+PVOID
+(SQLITE3_REALLOC64)(
+    _In_ PVOID Buffer,
+    _In_ SQLITE3_UINT64 NewSize
+    );
+typedef SQLITE3_REALLOC64 *PSQLITE3_REALLOC64;
+
+typedef
 VOID
 (SQLITE3_DESTROY_MODULE)(
     _In_opt_ PVOID Context
@@ -471,7 +520,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     int  (*exec)(sqlite3*,const char*,sqlite3_callback,void*,char**);
     int  (*expired)(sqlite3_stmt*);
     int  (*finalize)(sqlite3_stmt*pStmt);
-    void  (*free)(void*);
+
+    PSQLITE3_FREE Free;
+
     void  (*free_table)(char**result);
     int  (*get_autocommit)(sqlite3*);
     void * (*get_auxdata)(sqlite3_context*,int);
@@ -481,7 +532,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     sqlite_int64  (*last_insert_rowid)(sqlite3*);
     const char * (*libversion)(void);
     int  (*libversion_number)(void);
-    void *(*malloc)(int);
+
+    PSQLITE3_MALLOC Malloc;
+
     char * (*mprintf)(const char*,...);
     int  (*open)(const char*,sqlite3**);
     int  (*open16)(const void*,sqlite3**);
@@ -633,9 +686,13 @@ typedef struct _SQLITE3_API_ROUTINES {
                       void(*)(void*),unsigned char);
     int (*cancel_auto_extension)(void(*)(void));
     int (*load_extension)(sqlite3*,const char*,const char*,char**);
-    void *(*malloc64)(sqlite3_uint64);
+
+    PSQLITE3_MALLOC64 Malloc64;
+
     sqlite3_uint64 (*msize)(void*);
-    void *(*realloc64)(void*,sqlite3_uint64);
+
+    PSQLITE3_REALLOC64 Realloc64;
+
     void (*reset_auto_extension)(void);
     void (*result_blob64)(sqlite3_context*,const void*,sqlite3_uint64,
                         void(*)(void*));
