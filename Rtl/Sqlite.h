@@ -12,6 +12,8 @@ Abstract:
 
 --*/
 
+#pragma once
+
 #include "stdafx.h"
 #include "sqlite3.h"
 
@@ -403,7 +405,7 @@ _Ret_maybenull_
 _Post_writable_byte_size_(Size)
 PVOID
 (SQLITE3_MALLOC64)(
-    _In_ SQLITE3_UINT64 Size,
+    _In_ SQLITE3_UINT64 Size
     );
 typedef SQLITE3_MALLOC64 *PSQLITE3_MALLOC64;
 

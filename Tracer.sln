@@ -110,7 +110,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ModuleLoaderExe", "ModuleLo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScratchExe", "ScratchExe\ScratchExe.vcxproj", "{681468CA-92CE-47D8-95D0-FB906CB5E80A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TraceStoreSqliteExt", "TraceStoreSqliteExt\TraceStoreSqliteExt.vcxproj", "{12818255-949F-4B5B-961E-DD5B53CAD2EB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TraceStoreSqlite3Ext", "TraceStoreSqlite3Ext\TraceStoreSqlite3Ext.vcxproj", "{12818255-949F-4B5B-961E-DD5B53CAD2EB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TraceStoreSqlite3ExtLoader", "TraceStoreSqlite3ExtLoader\TraceStoreSqlite3ExtLoader.vcxproj", "{3670370F-FFC8-4A7B-B748-4F26FCA183FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -676,6 +678,26 @@ Global
 		{12818255-949F-4B5B-961E-DD5B53CAD2EB}.Release|x64.Build.0 = Release|x64
 		{12818255-949F-4B5B-961E-DD5B53CAD2EB}.Release|x86.ActiveCfg = Release|Win32
 		{12818255-949F-4B5B-961E-DD5B53CAD2EB}.Release|x86.Build.0 = Release|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Debug|x64.ActiveCfg = Debug|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Debug|x64.Build.0 = Debug|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Debug|x86.ActiveCfg = Debug|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Debug|x86.Build.0 = Debug|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGInstrument|x64.ActiveCfg = PGInstrument|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGInstrument|x64.Build.0 = PGInstrument|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGInstrument|x86.ActiveCfg = PGInstrument|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGInstrument|x86.Build.0 = PGInstrument|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGOptimize|x64.ActiveCfg = PGOptimize|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGOptimize|x64.Build.0 = PGOptimize|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGOptimize|x86.ActiveCfg = PGOptimize|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGOptimize|x86.Build.0 = PGOptimize|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGUpdate|x64.ActiveCfg = PGUpdate|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGUpdate|x64.Build.0 = PGUpdate|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGUpdate|x86.ActiveCfg = PGUpdate|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.PGUpdate|x86.Build.0 = PGUpdate|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Release|x64.ActiveCfg = Release|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Release|x64.Build.0 = Release|x64
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Release|x86.ActiveCfg = Release|Win32
+		{3670370F-FFC8-4A7B-B748-4F26FCA183FD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

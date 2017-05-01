@@ -4,15 +4,57 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    TraceStoreSqliteExt.h
+    TraceStoreSqlite3Ext.h
 
 Abstract:
 
-    This is the header file for the TraceStore's sqlite3 extension component.
+    This is the main header file for the TraceStore sqlite3 extension component.
+    It defines structures and functions related to the implementation of the
+    component.
 
 --*/
 
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stdafx.h"
+
+//
+// Define the trace store database structure.
+//
+
+typedef struct _TRACE_STORE_SQLITE3_DB {
+    PRTL Rtl;
+    PALLOCATOR Allocator;
+    PTRACER_CONFIG TracerConfig;
+    PUNICODE_STRING TraceSessionDirectory;
+    PTRACE_STORES TraceStores;
+    PTRACE_SESSION TraceSession;
+    PTRACE_CONTEXT TraceContext;
+
+    //
+    // Threadpool and callback environment.
+    //
+
+    ULONG MaximumProcessorCount;
+    PTP_POOL Threadpool;
+    TP_CALLBACK_ENVIRON ThreadpoolCallbackEnviron;
+
+    //
+    // A threadpool with 1 thread limited to cancellations.
+    //
+
+    PTP_POOL CancellationThreadpool;
+    TP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnviron;
+
+
+    PALLOCATOR Sqlite3Allocator;
+    PSQLITE3_DB Sqlite3Db;
+    PSQLITE3 Sqlite3;
+} TRACE_STORE_SQLITE3_DB;
 
 //
 // Define Trace Store sqlite3 cursor and vtab structures.
@@ -89,5 +131,9 @@ extern SQLITE3_RENAME TraceStoreSqlite3ModuleRename;
 extern SQLITE3_SAVEPOINT TraceStoreSqlite3ModuleSavepoint;
 extern SQLITE3_RELEASE TraceStoreSqlite3ModuleRelease;
 extern SQLITE3_ROLLBACK_TO TraceStoreSqlite3ModuleRollbackTo;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

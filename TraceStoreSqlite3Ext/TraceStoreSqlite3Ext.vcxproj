@@ -44,8 +44,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{12818255-949F-4B5B-961E-DD5B53CAD2EB}</ProjectGuid>
-    <RootNamespace>TraceStoreSqliteExt</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <RootNamespace>TraceStoreSqlite3Ext</RootNamespace>
+    <TargetPlatformVersion>10.0.14393.0</TargetPlatformVersion>
     <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -67,18 +67,17 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>TracerHeapLib.lib;TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>TraceStoreSqliteExt.def</ModuleDefinitionFile>
+      <AdditionalDependencies>TracerConfigLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>TraceStoreSqlite3Ext.def</ModuleDefinitionFile>
     </Link>
     <ClCompile>
-      <PreprocessorDefinitions>_TRACER_HEAP_STATIC_LIB;_TRACER_CONFIG_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
+      <PreprocessorDefinitions>_TRACER_CONFIG_STATIC_LIB;_TRACE_STORE_SQLITE3_EXT_INTERNAL_BUILD;_TRACE_STORE_SQLITE3_EXT_DLL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions> </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="TraceStoreSqliteExt.h" />
-    <ClInclude Include="TraceStoreSqliteSchemas.h" />
+    <ClInclude Include="TraceStoreSqlite3Ext.h" />
+    <ClInclude Include="TraceStoreSqlite3ExtPrivate.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -86,15 +85,13 @@
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="dllmain.c" />
-    <ClCompile Include="TraceStoreSqliteExt.c" />
-    <ClCompile Include="TraceStoreSqliteSchemas.c" />
+    <ClCompile Include="Schemas.c" />
+    <ClCompile Include="Allocator.c" />
+    <ClCompile Include="Init.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">
       <Project>{8a5aaec6-fb14-49c3-8837-fe8a54d23c1d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\TracerHeapLib\TracerHeapLib.vcxproj">
-      <Project>{4868dda6-86d8-4fdf-ab71-8f9ea51a1142}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

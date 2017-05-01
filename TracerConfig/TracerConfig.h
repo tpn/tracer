@@ -78,8 +78,6 @@ Abstract:
 extern "C" {
 #endif
 
-#pragma once
-
 //
 // Constants.
 //
@@ -128,13 +126,14 @@ typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
     TlsTracerHeapDllPathId                =  1 <<  9,
     InjectionThunkDllPathId               =  1 << 10,
     TracedPythonSessionDllPathId          =  1 << 11,
-    PythonTracerInjectionDllPathId        =  1 << 12,
+    TraceStoreSqlite3ExtDllPathId         =  1 << 12,
+    PythonTracerInjectionDllPathId        =  1 << 13,
 
     //
     // Make sure the right shift value matches the last value in the line above.
     //
 
-    TracerInvalidDllPathId                = (1 << 12) + 1,
+    TracerInvalidDllPathId                = (1 << 13) + 1,
 
 } TRACER_DLL_PATH_ID;
 typedef TRACER_DLL_PATH_ID *PTRACER_DLL_PATH_ID;
@@ -156,9 +155,10 @@ typedef union _TRACER_DLL_PATH_TYPE {
         ULONGLONG TlsTracerHeapDllPath:1;
         ULONGLONG InjectionThunkDllPathId:1;
         ULONGLONG TracedPythonSessionDllPath:1;
+        ULONGLONG TraceStoreSqlite3ExtDllPath:1;
         ULONGLONG PythonTracerInjectionDllPath:1;
 
-        ULONGLONG Unused:51;
+        ULONGLONG Unused:50;
     };
     LONGLONG AsLongLong;
     ULONGLONG AsULongLong;
@@ -226,6 +226,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
             UNICODE_STRING TlsTracerHeapDllPath;
             UNICODE_STRING InjectionThunkDllPath;
             UNICODE_STRING TracedPythonSessionDllPath;
+            UNICODE_STRING TraceStoreSqlite3ExtDllPath;
             UNICODE_STRING PythonTracerInjectionDllPath;
         };
 

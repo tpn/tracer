@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the DLL main entry point for the TraceStoreSqliteExt DLL.
+    This is the DLL main entry point for the TraceStoreSqlite3ExtLoader DLL.
 
 --*/
 
@@ -26,16 +26,22 @@ _DllMainCRTStartup(
         case DLL_PROCESS_ATTACH:
             break;
         case DLL_THREAD_ATTACH:
-            OutputDebugStringA("TraceStoreSqliteExt!_DllMainCRTStartup(): "
-                               "DLL_THREAD_ATTACH.\n");
+            OutputDebugStringA(
+                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
+                "DLL_THREAD_ATTACH.\n"
+            );
             break;
         case DLL_THREAD_DETACH:
-            OutputDebugStringA("TraceStoreSqliteExt!_DllMainCRTStartup(): "
-                               "DLL_THREAD_DETACH.\n");
+            OutputDebugStringA(
+                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
+                "DLL_THREAD_DETACH.\n"
+            );
             break;
         case DLL_PROCESS_DETACH:
-            OutputDebugStringA("TraceStoreSqliteExt!_DllMainCRTStartup(): "
-                               "DLL_PROCESS_DETACH.\n");
+            OutputDebugStringA(
+                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
+                "DLL_PROCESS_DETACH.\n"
+            );
             break;
     }
 
