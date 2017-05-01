@@ -32,11 +32,13 @@ Abstract:
 #include "../Rtl/Rtl.h"
 #include "../Rtl/Sqlite.h"
 #include "../Rtl/__C_specific_handler.h"
+#include "../StringTable/StringTable.h"
+#include "../TracerHeap/TracerHeap.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../TraceStore/TraceStore.h"
 #include "TraceStoreSqlite3Ext.h"
 
-#ifdef _TRACE_STORE_INTERNAL_BUILD
+#ifdef _TRACE_STORE_SQLITE3_EXT_INTERNAL_BUILD
 #include "TraceStoreSqlite3ExtPrivate.h"
 #endif
 

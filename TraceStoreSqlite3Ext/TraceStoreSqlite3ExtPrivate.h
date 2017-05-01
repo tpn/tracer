@@ -26,14 +26,100 @@ extern "C" {
 // Define the trace store database structure.
 //
 
-typedef struct _TRACE_STORE_SQLITE3_DB {
+typedef union _TRACE_STORE_SQLITE3_DB_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_SQLITE3_DB_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_SQLITE3_DB_FLAGS) == sizeof(ULONG));
+
+typedef union _TRACE_STORE_SQLITE3_DB_STATE {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_SQLITE3_DB_STATE;
+C_ASSERT(sizeof(TRACE_STORE_SQLITE3_DB_STATE) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
+
+    _Field_range_(==, sizeof(struct _TRACE_STORE_SQLITE3_DB))
+    ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TRACE_STORE_SQLITE3_DB_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    TRACE_STORE_SQLITE3_DB_STATE State;
+
+    //
+    // Sqlite3-specific fields.
+    //
+
+    PALLOCATOR Sqlite3Allocator;
+    PSQLITE3_DB Sqlite3Db;
+    PCSQLITE3 Sqlite3;
+
+    //
+    // Our internal fields.
+    //
+
     PRTL Rtl;
-    PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING TraceSessionDirectory;
-    PTRACE_STORES TraceStores;
-    PTRACE_SESSION TraceSession;
-    PTRACE_CONTEXT TraceContext;
+
+    HANDLE OwningModule;
+    PRTL_PATH OwningModulePath;
+
+    //
+    // Our core tracing/support modules.
+    //
+
+    HMODULE TracerHeapModule;
+    HMODULE TraceStoreModule;
+    HMODULE StringTableModule;
+
+    //
+    // TracerHeap-specific functions.
+    //
+
+    PINITIALIZE_HEAP_ALLOCATOR_EX InitializeHeapAllocatorEx;
+
+    //
+    // StringTable-specific functions.
+    //
+
+    PCREATE_STRING_TABLE CreateStringTable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+        CreateStringTableFromDelimitedEnvironmentVariable;
+
+    PALLOCATOR StringTableAllocator;
+    PALLOCATOR StringArrayAllocator;
+
+    //
+    // TraceStore-specific initializers.
+    //
+
+    PINITIALIZE_TRACE_STORES InitializeTraceStores;
+    PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
+    PINITIALIZE_TRACE_SESSION InitializeTraceSession;
+    PCLOSE_TRACE_STORES CloseTraceStores;
+    PCLOSE_TRACE_CONTEXT CloseTraceContext;
+    PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
 
     //
     // Threadpool and callback environment.
@@ -50,11 +136,14 @@ typedef struct _TRACE_STORE_SQLITE3_DB {
     PTP_POOL CancellationThreadpool;
     TP_CALLBACK_ENVIRON CancellationThreadpoolCallbackEnviron;
 
+    ALLOCATOR Allocator;
 
-    PALLOCATOR Sqlite3Allocator;
-    PSQLITE3_DB Sqlite3Db;
-    PSQLITE3 Sqlite3;
+    PTRACE_SESSION TraceSession;
+    PTRACE_CONTEXT TraceContext;
+    PTRACE_STORES TraceStores;
+
 } TRACE_STORE_SQLITE3_DB;
+typedef TRACE_STORE_SQLITE3_DB *PTRACE_STORE_SQLITE3_DB;
 
 //
 // Define Trace Store sqlite3 cursor and vtab structures.
