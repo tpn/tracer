@@ -9,7 +9,9 @@
 //
 
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
 PVOID
 (MALLOC)(
     _In_ PVOID Context,
@@ -89,7 +91,8 @@ PVOID
 typedef TRY_CALLOC_WITH_TIMESTAMP *PTRY_CALLOC_WITH_TIMESTAMP;
 
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
 _Ret_reallocated_bytes_(Buffer, NewSize)
 PVOID
 (REALLOC)(
@@ -103,7 +106,7 @@ typedef
 VOID
 (FREE)(
     _In_ PVOID Context,
-    _Frees_ptr_opt_ PVOID Buffer
+    _Pre_maybenull_ _Post_invalid_ PVOID Buffer
     );
 typedef FREE *PFREE;
 
@@ -255,7 +258,7 @@ typedef GET_OR_CREATE_GLOBAL_ALLOCATOR *PGET_OR_CREATE_GLOBAL_ALLOCATOR;
 FORCEINLINE
 VOID
 InitializeAllocator(
-    _In_ PALLOCATOR Allocator,
+    _Inout_ PALLOCATOR Allocator,
     _In_ PVOID Context,
     _In_ PMALLOC Malloc,
     _In_ PCALLOC Calloc,
