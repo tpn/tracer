@@ -73,8 +73,6 @@ Abstract:
 extern "C" {
 #endif
 
-#pragma once
-
 //
 // Default heap routines that use the kernel32 heap routines.
 //
