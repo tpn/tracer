@@ -447,6 +447,14 @@ LONG
     );
 typedef SQLITE3_CREATE_MODULE_V2 *PSQLITE3_CREATE_MODULE_V2;
 
+typedef
+PCSZ
+(SQLITE3_DB_FILENAME)(
+    _In_ PSQLITE3_DB Sqlite3Db,
+    _In_opt_ PCSZ DatabaseName
+    );
+typedef SQLITE3_DB_FILENAME *PSQLITE3_DB_FILENAME;
+
 //
 // Define the SQLITE3_API_ROUTINES structure.
 //
@@ -668,7 +676,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     int (*vtab_on_conflict)(sqlite3*);
     /* Version 3.7.16 and later */
     int (*close_v2)(sqlite3*);
-    const char *(*db_filename)(sqlite3*,const char*);
+
+    PSQLITE3_DB_FILENAME DbFilename;
+
     int (*db_readonly)(sqlite3*,const char*);
     int (*db_release_memory)(sqlite3*);
     const char *(*errstr)(int);
