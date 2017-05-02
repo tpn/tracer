@@ -4,18 +4,18 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    TraceStoreSqlite3ExtLoader.h
+    TraceStoreSqlite3ExtInit.c
 
 Abstract:
 
-    This is the header file for the TraceStore's sqlite3 extension component.
+    WIP.
 
 --*/
 
 #include "stdafx.h"
 
 LONG
-TraceStoreSqlite3ExtLoaderInit(
+TraceStoreSqlite3ExtInit(
     PSQLITE3_DB Database,
     PCSZ *ErrorMessagePointer,
     PCSQLITE3 Sqlite3
@@ -105,7 +105,7 @@ Return Value:
     // Load the actual extension DLL and resolve the initialization function.
     //
 
-    DllPath = &TracerConfig->Paths.TraceStoreSqlite3ExtDllPath;
+    DllPath = &TracerConfig->Paths.TraceStoreDllPath;
     Module = LoadLibraryW(DllPath->Buffer);
     if (!Module) {
         *ErrorMessagePointer = "LoadLibraryW() of extension failed.";

@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled source file for the TraceStoreSqlite3Ext component.
+    This is the precompiled source file for the TraceStoreSqlite3ExtLoader component.
 
 --*/
 

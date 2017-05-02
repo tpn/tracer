@@ -30,6 +30,7 @@ Abstract:
 #include <Windows.h>
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
+#include "../Rtl/Sqlite.h"
 #include "../Rtl/__C_specific_handler.h"
 #include "../Rtl/atexit.h"
 #include "../TracerConfig/TracerConfig.h"

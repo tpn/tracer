@@ -1,4 +1,3 @@
 LIBRARY TraceStoreSqlite3Ext
 EXPORTS
-    TraceStoreSqlite3ExtInit
-    TraceStoreAddressSchema DATA
+    sqlite3_extension_init=TraceStoreSqlite3ExtInit

@@ -1,3 +1,0 @@
-LIBRARY tstoresqlite3
-EXPORTS
-    sqlite3_extension_init=TraceStoreSqlite3ExtLoaderInit

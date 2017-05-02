@@ -39,6 +39,7 @@ Abstract:
 #include <sal.h>
 #include <Strsafe.h>
 #include "../Rtl/Rtl.h"
+#include "../Rtl/Sqlite.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../DebugEngine/DebugEngine.h"
 #include "TraceStoreIndex.h"
@@ -3102,6 +3103,55 @@ BOOL
     );
 typedef BIND_COMPLETE *PBIND_COMPLETE;
 
+//
+// Sqlite3-related structures.
+//
+
+typedef struct _TRACE_STORE_SQLITE3_VTAB {
+
+    PRTL Rtl;
+    struct _TRACE_STORE *TraceStore;
+
+    //
+    // Inline SQLITE3_VTAB structure.
+    //
+    // N.B.: This structure must always come last.
+    //
+
+    union {
+        struct {
+            union {
+                struct _SQLITE3_MODULE *Sqlite3Module;
+                struct _TRACE_STORE_SQLITE3_MODULE *Module;
+            };
+            LONG NumberOfOpenCursors;
+            LONG Padding;
+            PCSZ ErrorMessage;
+        };
+        SQLITE3_VTAB AsSqlite3Vtab;
+    };
+
+} TRACE_STORE_SQLITE3_VTAB;
+
+typedef struct _TRACE_STORE_SQLITE3_CURSOR {
+
+    ULONGLONG Rowid;
+
+    //
+    // Inline SQLITE3_VTAB_CURSOR structure.
+    //
+    // N.B.: This structure must always come last.
+    //
+
+    union {
+        struct {
+            PSQLITE3_VTAB VirtualTable;
+        };
+        SQLITE3_VTAB_CURSOR AsSqlite3VtabCursor;
+    };
+
+} TRACE_STORE_SQLITE3_CURSOR;
+
 typedef struct _TRACE_STORE {
 
     TRACE_STORE_ID TraceStoreId;
@@ -3455,18 +3505,31 @@ typedef struct _TRACE_STORE {
     volatile ULONG ReadonlyPreferredAddressUnavailable;
 
     //
-    // (852 bytes consumed.)
-
-    //
-    // Pad out to 856 bytes.
+    // Optional pointers to text data type representations.
     //
 
-    //BYTE Reserved[4];
+    struct {
+        PSTRING Ctypes;
+        PSTRING NumpyDtype;
+    } DataType;
+
+    //
+    // Allocator structure.
+    //
 
     ALLOCATOR Allocator;
 
+    //
+    // Sqlite3-related fields.  These are used by the TraceStoreSqlite3Ext
+    // module.
+    //
+
+    PSTRING Sqlite3Schema;
+    PSTRING Sqlite3ModuleName;
+
+    SQLITE3_MODULE Sqlite3Module;
+
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
-//C_ASSERT(sizeof(TRACE_STORE) == 1024);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -3514,21 +3577,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     DECLSPEC_ALIGN(8192)
     TRACE_STORE Stores[MAX_TRACE_STORES];
 
-    //
-    // (0x67800 (423,936) bytes consumed.)
-    //
-
-    //
-    // Pad out to 0x6d000 (446464).
-    //
-
-    ULONGLONG Reserved[256];
-
 } TRACE_STORES, *PTRACE_STORES;
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, RelocationCompleteEvents) == 128);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 1024);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 8192);
-//C_ASSERT(sizeof(TRACE_STORES) == 0x6d000);
 
 typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE MetadataInfoStore;

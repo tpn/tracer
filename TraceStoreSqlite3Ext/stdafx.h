@@ -8,7 +8,8 @@ Module Name:
 
 Abstract:
 
-    This is the precompiled header file for the TraceStoreSqlite3Ext component.
+    This is the precompiled header file for the TraceStoreSqlite3ExtLoader
+    component.
 
 --*/
 
@@ -32,14 +33,12 @@ Abstract:
 #include "../Rtl/Rtl.h"
 #include "../Rtl/Sqlite.h"
 #include "../Rtl/__C_specific_handler.h"
-#include "../StringTable/StringTable.h"
-#include "../TracerHeap/TracerHeap.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../TraceStore/TraceStore.h"
 #include "TraceStoreSqlite3Ext.h"
 
 #ifdef _TRACE_STORE_SQLITE3_EXT_INTERNAL_BUILD
-#include "TraceStoreSqlite3ExtPrivate.h"
+#include "../TraceStore/TraceStorePrivate.h"
 #endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
