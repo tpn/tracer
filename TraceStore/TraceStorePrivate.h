@@ -2988,6 +2988,35 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 #define ReleaseCapturePerformanceMetricsLock(TraceContext)                \
     ReleaseSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
 
+//
+// Sqlite3-related decls.
+//
+
+extern SQLITE3_CREATE TraceStoreSqlite3ModuleCreate;
+extern SQLITE3_CONNECT TraceStoreSqlite3ModuleConnect;
+extern SQLITE3_BEST_INDEX TraceStoreSqlite3ModuleBestIndex;
+extern SQLITE3_DISCONNECT TraceStoreSqlite3ModuleDisconnect;
+extern SQLITE3_DESTROY TraceStoreSqlite3ModuleDestroy;
+extern SQLITE3_OPEN TraceStoreSqlite3ModuleOpen;
+extern SQLITE3_CLOSE TraceStoreSqlite3ModuleClose;
+extern SQLITE3_FILTER TraceStoreSqlite3ModuleFilter;
+extern SQLITE3_NEXT TraceStoreSqlite3ModuleNext;
+extern SQLITE3_EOF TraceStoreSqlite3ModuleEof;
+extern SQLITE3_COLUMN TraceStoreSqlite3ModuleColumn;
+extern SQLITE3_ROWID TraceStoreSqlite3ModuleRowid;
+extern SQLITE3_UPDATE TraceStoreSqlite3ModuleUpdate;
+extern SQLITE3_BEGIN TraceStoreSqlite3ModuleBegin;
+extern SQLITE3_SYNC TraceStoreSqlite3ModuleSync;
+extern SQLITE3_COMMIT TraceStoreSqlite3ModuleCommit;
+extern SQLITE3_ROLLBACK TraceStoreSqlite3ModuleRollback;
+extern SQLITE3_FIND_FUNCTION TraceStoreSqlite3ModuleFindFunction;
+extern SQLITE3_RENAME TraceStoreSqlite3ModuleRename;
+extern SQLITE3_SAVEPOINT TraceStoreSqlite3ModuleSavepoint;
+extern SQLITE3_RELEASE TraceStoreSqlite3ModuleRelease;
+extern SQLITE3_ROLLBACK_TO TraceStoreSqlite3ModuleRollbackTo;
+
+extern SQLITE3_MODULE TraceStoreSqlite3Module;
+
 #ifdef __cplusplus
 }; // extern "C"
 #endif

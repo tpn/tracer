@@ -86,8 +86,6 @@
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="dllmain.c" />
-    <ClCompile Include="Schemas.c" />
-    <ClCompile Include="Init.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TracerConfigLib\TracerConfigLib.vcxproj">

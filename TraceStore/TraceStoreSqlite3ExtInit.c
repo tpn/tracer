@@ -75,6 +75,7 @@ Return Value:
     PTRACE_STORE_SQLITE3_DB Db;
     HANDLE LoadingCompleteEvent = NULL;
     TRACE_FLAGS TraceFlags;
+    TRACE_CONTEXT_FLAGS TraceContextFlags;
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
@@ -445,8 +446,11 @@ Return Value:
     );
 
     //
-    // Clear the trace context flags.
+    // Clear the trace context flags and set readonly.
     //
+
+    TraceContextFlags.AsULong = 0;
+    TraceContextFlags.Readonly = TRUE;
 
     //
     // Get the required size of a TRACE_CONTEXT structure.
@@ -482,15 +486,26 @@ Return Value:
         Db->TraceStores,
         &Db->ThreadpoolCallbackEnviron,
         &Db->CancellationThreadpoolCallbackEnviron,
-        NULL,
+        &TraceContextFlags,
         (PVOID)Db
     );
 
     if (!Success) {
-        OutputDebugStringA("InitializeTraceContext() failed.\n");
+        *ErrorMessagePointer = "InitializeTraceContext() failed.\n";
         goto Error;
     }
 
+    LoadingCompleteEvent = Db->TraceContext->LoadingCompleteEvent;
+
+    //
+    // We've successfully loaded the trace stores in this directory.  Proceed
+    // with creation of the sqlite3 modules.
+    //
+
+    Result = Sqlite3->CreateModule(Sqlite3Db,
+                                   "TraceStore",
+                                   &TraceStoreSqlite3Module,
+                                   NULL);
 
     Result = SQLITE_OK;
 
