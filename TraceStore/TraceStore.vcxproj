@@ -107,6 +107,9 @@
     <ClCompile Include="TraceStores.c" />
     <ClCompile Include="TraceStoreSession.c" />
     <ClCompile Include="TraceStoresGlobalRundown.c" />
+    <ClCompile Include="TraceStoreSqlite3ExtInit.c" />
+    <ClCompile Include="TraceStoreSqlite3Module.c" />
+    <ClCompile Include="TraceStoreSqlite3Schemas.c" />
     <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreSymbols.c" />
     <ClCompile Include="TraceStoreTimer.c" />

@@ -62,6 +62,8 @@ Return Value:
     PCHAR Char;
     USHORT Count;
     USHORT Length;
+    USHORT Index;
+    USHORT StoreIndex;
     ULONG Result;
     ULONG RequiredSize;
     PCSZ DatabaseFilename;
@@ -499,13 +501,20 @@ Return Value:
 
     //
     // We've successfully loaded the trace stores in this directory.  Proceed
-    // with creation of the sqlite3 modules.
+    // with creation of the sqlite3 modules for each trace store.
     //
 
-    Result = Sqlite3->CreateModule(Sqlite3Db,
-                                   "TraceStore",
-                                   &TraceStoreSqlite3Module,
-                                   NULL);
+    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        TRACE_STORE_DECLS();
+
+
+        /*
+        Result = Sqlite3->CreateModule(Sqlite3Db,
+                                       "TraceStore",
+                                       &TraceStoreSqlite3Module,
+                                       NULL);
+        */
+    }
 
     Result = SQLITE_OK;
 
