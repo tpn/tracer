@@ -1291,22 +1291,26 @@ typedef struct _TRACE_FLAGS {
 } TRACE_FLAGS, *PTRACE_FLAGS;
 C_ASSERT(sizeof(TRACE_FLAGS) == sizeof(ULONG));
 
-typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_CONTEXT_FLAGS {
-    ULONG Valid:1;
-    ULONG Readonly:1;
-    ULONG DisableAsynchronousInitialization:1;
+typedef union _TRACE_CONTEXT_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Valid:1;
+        ULONG Readonly:1;
+        ULONG DisableAsynchronousInitialization:1;
 
-    //
-    // When set, indicates that the caller has set the relevant bits in the
-    // trace context's IgnorePreferredAddressesBitmap corresponding to the
-    // trace store IDs for which they want to ignore the preferred address.
-    // Only applicable when readonly, and typically only useful for testing
-    // the relocation logic.
-    //
+        //
+        // When set, indicates that the caller has set the relevant bits in the
+        // trace context's IgnorePreferredAddressesBitmap corresponding to the
+        // trace store IDs for which they want to ignore the preferred address.
+        // Only applicable when readonly, and typically only useful for testing
+        // the relocation logic.
+        //
 
-    ULONG IgnorePreferredAddresses:1;
-
-} TRACE_CONTEXT_FLAGS, *PTRACE_CONTEXT_FLAGS;
+        ULONG IgnorePreferredAddresses:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_CONTEXT_FLAGS;
+typedef TRACE_CONTEXT_FLAGS *PTRACE_CONTEXT_FLAGS;
 C_ASSERT(sizeof(TRACE_CONTEXT_FLAGS) == sizeof(ULONG));
 
 typedef struct DECLSPEC_ALIGN(16) _TRACE_STORE_WORK {
