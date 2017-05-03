@@ -818,15 +818,18 @@ ReturnFreeTraceStoreMemoryMap(
     // onto the free list.
     //
 
-    if (MemoryMap != &TraceStore->SingleMemoryMap) {
-        SecureZeroMemory(MemoryMap, sizeof(*MemoryMap));
-
-        InterlockedPushEntrySList(
-            &TraceStore->FreeMemoryMaps,
-            &MemoryMap->ListEntry
-        );
+    if (MemoryMap == &TraceStore->SingleMemoryMap) {
+        goto DecrementActiveMaps;
     }
 
+    SecureZeroMemory(MemoryMap, sizeof(*MemoryMap));
+
+    InterlockedPushEntrySList(
+        &TraceStore->FreeMemoryMaps,
+        &MemoryMap->ListEntry
+    );
+
+DecrementActiveMaps:
     if (!InterlockedDecrement(&TraceStore->NumberOfActiveMemoryMaps)) {
         SetEvent(TraceStore->AllMemoryMapsAreFreeEvent);
     }
