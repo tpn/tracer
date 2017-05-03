@@ -1040,7 +1040,7 @@ TryMapMemory:
     // Copy it to the Prepared timestamp.
     //
 
-    Address.Timestamp.Prepared.QuadPart = Elapsed.QuadPart;
+    Address.Timestamp.Prepared.QuadPart = Timestamp.QuadPart;
 
     //
     // Calculate the elapsed time spent awaiting preparation.

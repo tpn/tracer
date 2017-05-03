@@ -401,6 +401,21 @@ Return Value:
         MapViewOfFileDesiredAccess = FILE_MAP_READ;
     }
 
+    //
+    // N.B. There's a slight design flaw with this current logic.  As we don't
+    //      provide a preferred base address when mapping readonly metadata
+    //      stores, there's a slim chance we'll be assigned an address that will
+    //      conflict with an address we want to request later when mapping other
+    //      trace store address ranges.  I haven't witnessed this happen in the
+    //      wild yet thanks to high-entropy ASLR, however.
+    //
+    //      This could be addressed as part of another enhancement that is
+    //      being contemplated regarding a new trace store geared toward
+    //      efficient capture of *all* trace store address ranges, such that
+    //      free address ranges can be identified easily in situations like
+    //      this.
+    //
+
     MemoryMap->MappingHandle = CreateFileMappingNuma(
         MemoryMap->FileHandle,
         NULL,
@@ -526,6 +541,10 @@ Routine Description:
     It uses the trace store's address range metadata information to identify
     how many memory maps to create and which addresses to map them at.
 
+    If applicable, it additionally creates a second mapping at a new base
+    address that covers the entire range of the file, allowing the data to be
+    accessed via a flat array from a single base address.
+
 Arguments:
 
     TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
@@ -547,6 +566,7 @@ Return Value:
     DWORD ProcessId;
     DWORD ThreadId;
     HANDLE MappingHandle;
+    HANDLE FlatMappingHandle;
     LARGE_INTEGER FileOffset;
     LONGLONG BytesRemaining;
     ULONGLONG EndOfFile;
@@ -559,6 +579,7 @@ Return Value:
     PTRACE_STORE_ADDRESS Address;
     PTRACE_STORE_ADDRESS Addresses = NULL;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
+    PTRACE_STORE_MEMORY_MAP FlatMemoryMap;
     PTRACE_STORE_MEMORY_MAP FirstMemoryMap;
     PTRACE_STORE_MEMORY_MAP MemoryMaps = NULL;
     PTRACE_STORE_ADDRESS_RANGE AddressRange;
@@ -745,6 +766,84 @@ Return Value:
     }
 
     //
+    // If this is a single record trait, we already implicitly have a flat
+    // mapping, so no further work needs to be done.
+    //
+
+    if (IsSingleRecord(*TraceStore->pTraits)) {
+        goto PrepareMaps;
+    }
+
+    //
+    // Create another mapping that covers the entire range of the file, using
+    // the FlatMemoryMap and FlatAddress structures.  This will be submitted
+    // for mapping once the trace context has finished loading all other trace
+    // stores.
+    //
+
+    FlatMemoryMap = &TraceStore->FlatMemoryMap;
+
+    //
+    // Invariant check: make sure the SingleMemoryMap isn't being used for
+    // anything else at the moment.
+    //
+
+    if (FlatMemoryMap->FileHandle || FlatMemoryMap->BaseAddress) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Just inherit the normal mapping flags for now.  (We could experiment
+    // with large pages here later.)
+    //
+
+    FlatMappingHandle = CreateFileMappingNuma(
+        TraceStore->FileHandle,
+        NULL,
+        TraceStore->CreateFileMappingProtectionFlags,
+        FileInfo.EndOfFile.HighPart,
+        FileInfo.EndOfFile.LowPart,
+        NULL,
+        TraceStore->NumaNode
+    );
+
+    if (FlatMappingHandle == NULL ||
+        FlatMappingHandle == INVALID_HANDLE_VALUE) {
+        TraceStore->LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    TraceStore->FlatMappingHandle = FlatMappingHandle;
+
+    FlatMemoryMap->FileHandle = TraceStore->FileHandle;
+    FlatMemoryMap->MappingHandle = FlatMappingHandle;
+    FlatMemoryMap->FileOffset.QuadPart = 0;
+    FlatMemoryMap->PreferredBaseAddress = NULL;
+    FlatMemoryMap->BaseAddress = NULL;
+    FlatMemoryMap->MappingSize.QuadPart = FileInfo.EndOfFile.QuadPart;
+
+    //
+    // Point the pAddress element to the FlatAddress embedded structure.
+    //
+
+    FlatMemoryMap->pAddress = &TraceStore->FlatAddress;
+
+    //
+    // Submit the deferred flat memory map binding.
+    //
+
+    SubmitDeferredFlatMemoryMap(TraceContext, TraceStore);
+
+    //
+    // Continue with the preparation of the normal memory maps (that mirror
+    // the mapping that was done originally by the process being traced).
+    //
+
+PrepareMaps:
+
+    //
     // N.B. Code must not 'goto Error' after this point as memory maps will
     //      potentially be in play.
     //
@@ -914,16 +1013,27 @@ Return Value:
         return FALSE;
     }
 
-    return TRUE;
+    Success = TRUE;
+
+
+    goto End;
 
 Error:
+
+    Success = FALSE;
 
     if (TraceStore->MappingHandle) {
         CloseHandle(TraceStore->MappingHandle);
         TraceStore->MappingHandle = NULL;
     }
 
-    return FALSE;
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
 }
 
 _Use_decl_annotations_
@@ -1233,6 +1343,179 @@ ReadyForRelocation:
 End:
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+BindFlatMemoryMap(
+    PTRACE_CONTEXT TraceContext,
+    PTRACE_STORE_MEMORY_MAP FlatMemoryMap
+    )
+/*++
+
+Routine Description:
+
+    This routine binds a flat readonly trace store memory map to a trace
+    context.  This simply involves mapping the entire file for the trace store
+    via a single MapViewOfFileExNuma() call.  This routine is always executed
+    after all other mappings (which try and maintain preferred addresses) are
+    complete -- otherwise, we may get assigned an address range that conflicts
+    with a range used by the trace store initially.
+
+Arguments:
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure for which
+        the given FlatMemoryMap is to be bound.
+
+    FlatMemoryMap - Supplies a pointer to a TRACE_STORE's embedded FlatMemoryMap
+        structure that is used to capture details about the flat mapping.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    USHORT NumaNode;
+    ULONG ProcessId;
+    ULONG ThreadId;
+    PLARGE_INTEGER Requested;
+    LARGE_INTEGER FileOffset;
+    LARGE_INTEGER Timestamp;
+    LARGE_INTEGER Elapsed;
+    PTRACE_STORE TraceStore;
+    PTRACE_STORE_ADDRESS FlatAddress;
+    PTRACE_STORE_ADDRESS_RANGE FlatAddressRange;
+    PROCESSOR_NUMBER ProcessorNumber;
+
+    //
+    // Resolve the trace store from the flat memory map and verify the invariant
+    // that HasFlatMapping is set to TRUE.
+    //
+
+    TraceStore = CONTAINING_RECORD(FlatMemoryMap,
+                                   TRACE_STORE,
+                                   FlatMemoryMap);
+
+    if (!TraceStore->HasFlatMapping) {
+        __debugbreak();
+    }
+
+    //
+    // Initialize local variables.
+    //
+
+    NumaNode = 0;
+    FileOffset.QuadPart = 0;
+    ThreadId = FastGetCurrentThreadId();
+    ProcessId = FastGetCurrentProcessId();
+    GetCurrentProcessorNumberEx(&ProcessorNumber);
+    GetNumaProcessorNodeEx(&ProcessorNumber, &NumaNode);
+
+    //
+    // Fill in address details.
+    //
+
+    FlatAddress = &TraceStore->FlatAddress;
+    Requested = &FlatAddress->Timestamp.Requested;
+    TraceStoreQueryPerformanceCounter(TraceStore, Requested, &Timestamp);
+    FlatAddress->RequestingThreadId = ThreadId;
+    FlatAddress->ProcessId = ProcessId;
+    FlatAddress->RequestingProcessor = ProcessorNumber;
+    FlatAddress->RequestingNumaNode = (UCHAR)NumaNode;
+    FlatAddress->MappedSequenceId = 0;
+
+    //
+    // Fill in address range details.
+    //
+
+    FlatAddressRange = &TraceStore->FlatAddressRange;
+    FlatAddressRange->PreferredBaseAddress = NULL;
+    FlatAddressRange->MappedSize.QuadPart = FlatMemoryMap->MappingSize.QuadPart;
+
+    //
+    // Attempt to map the memory.
+    //
+
+    FlatMemoryMap->BaseAddress = MapViewOfFileExNuma(
+        FlatMemoryMap->MappingHandle,
+        TraceStore->MapViewOfFileDesiredAccess,
+        FlatMemoryMap->FileOffset.HighPart,
+        FlatMemoryMap->FileOffset.LowPart,
+        FlatMemoryMap->MappingSize.QuadPart,
+        NULL,
+        TraceStore->NumaNode
+    );
+
+    if (!FlatMemoryMap->BaseAddress) {
+        TraceStore->LastError = GetLastError();
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // The mapping was successful.  Finalize details.
+    //
+
+    //
+    // Take a local copy of the timestamp.
+    //
+
+    TraceStoreQueryPerformanceCounter(TraceStore, &Elapsed, &Timestamp);
+
+    //
+    // Copy it to the Prepared timestamp.
+    //
+
+    FlatAddress->Timestamp.Prepared.QuadPart = Elapsed.QuadPart;
+
+    //
+    // Calculate the elapsed time spent awaiting preparation.
+    //
+
+    Elapsed.QuadPart -= FlatAddress->Timestamp.Requested.QuadPart;
+    FlatAddress->Elapsed.AwaitingPreparation.QuadPart = Elapsed.QuadPart;
+
+    //
+    // "Consume" the memory map now, too.  This is simple in the case of flat
+    // memory maps as preparation and consumption aren't two different things;
+    // so, just copy the preparation details where applicable.
+    //
+
+    FlatAddress->Timestamp.Consumed.QuadPart = Elapsed.QuadPart;
+    FlatAddress->Elapsed.AwaitingConsumption.QuadPart = 0;
+
+    //
+    // Fill in final FlatAddress details.
+    //
+
+    FlatAddress->BaseAddress = FlatMemoryMap->BaseAddress;
+    FlatAddress->FulfillingThreadId = ThreadId;
+    FlatAddress->FulfillingNumaNode = (UCHAR)NumaNode;
+
+    //
+    // Fill in final FlatAddressRange details.
+    //
+
+    FlatAddressRange->ActualBaseAddress = (PVOID)(
+        RtlOffsetToPointer(
+            FlatMemoryMap->BaseAddress,
+            FlatMemoryMap->MappingSize.QuadPart
+        )
+    );
+
+    FlatAddressRange->ActualBaseAddress = FlatMemoryMap->BaseAddress;
+    FlatAddressRange->BitCounts.Actual = (
+        GetTraceStoreAddressBitCounts(
+            FlatMemoryMap->BaseAddress
+        )
+    );
+
+    //
+    // We're done, return success;
+    //
+
+    return TRUE;
 }
 
 _Use_decl_annotations_

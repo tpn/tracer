@@ -2186,6 +2186,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK BindTraceStoreWork;
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
     TRACE_STORE_WORK NewModuleEntryWork;
+    TRACE_STORE_WORK BindFlatMemoryMapWork;
 
     //
     // These items are associated with the cancellation threadpool, not the
@@ -2247,6 +2248,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     volatile ULONG ReadonlyNonStreamingBindCompletesInProgress;
 
     volatile ULONG NumberOfStoresWithMultipleRelocationDependencies;
+
+    //
+    // This represents the number of trace stores a flat memory mapping will
+    // be performed for once the normal memory maps have been loaded.
+    //
+
+    volatile ULONG NumberOfFlatMemoryMaps;
 
     TRACE_STORE_TIME Time;
 
@@ -3171,6 +3179,8 @@ typedef struct _TRACE_STORE {
             ULONG HasNullStoreRelocations:1;
             ULONG BeginningRundown:1;
             ULONG RundownComplete:1;
+            ULONG HasFlatMapping:1;
+            ULONG FlatMappingLoaded:1;
         };
     };
 
@@ -3325,6 +3335,22 @@ typedef struct _TRACE_STORE {
     HANDLE MappingHandle;
     HANDLE FileHandle;
     PVOID PrevAddress;
+
+    //
+    // FlatMappingHandle will only have a value if we're readonly and not a
+    // metadata trace store or single record store.  The flag HasFlatMapping
+    // will also be set during initial readonly preparation (in the bind step);
+    // this flag is subsequently checked when all trace stores have completed
+    // loading, and, if set, the actual memory mapping is done at this point.
+    // It is done like this in order to ensure the flat memory maps (which are
+    // a convenience only) don't clobber address ranges that need to be mapped
+    // by trace store's being prepared concurrently.
+    //
+
+    HANDLE FlatMappingHandle;
+    TRACE_STORE_ADDRESS FlatAddress;
+    TRACE_STORE_ADDRESS_RANGE FlatAddressRange;
+    TRACE_STORE_MEMORY_MAP FlatMemoryMap;
 
     //
     // The trace store pointers below will be valid for all trace and metadata

@@ -760,6 +760,16 @@ BIND_TRACE_STORE_CALLBACK BindTraceStoreCallback;
 
 typedef
 VOID
+(CALLBACK BIND_FLAT_MEMORY_MAP_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef BIND_FLAT_MEMORY_MAP_CALLBACK *PBIND_FLAT_MEMORY_MAP_CALLBACK;
+extern BIND_FLAT_MEMORY_MAP_CALLBACK BindFlatMemoryMapCallback;
+
+typedef
+VOID
 (CALLBACK NEW_MODULE_ENTRY_CALLBACK)(
     _In_     PTP_CALLBACK_INSTANCE Instance,
     _In_opt_ PTRACE_CONTEXT TraceContext,
@@ -1024,6 +1034,28 @@ GetTraceStoreFileInfo(
     SubmitThreadpoolWork(                                     \
         TraceContext->RelocateWork.ThreadpoolWork             \
     )
+
+#define PushFlatMemoryMap(TraceContext, TraceStore)     \
+    TraceStore->HasFlatMapping = TRUE;                  \
+    PushTraceStoreMemoryMap(                            \
+        &TraceContext->BindFlatMemoryMapWork.ListHead,  \
+        &TraceStore->FlatMemoryMap                      \
+    )
+
+#define PopFlatMemoryMap(TraceContext, MemoryMapPointer) \
+    PopTraceStoreMemoryMap(                              \
+        &TraceContext->BindFlatMemoryMapWork.ListHead,   \
+        MemoryMapPointer                                 \
+    )
+
+#define SubmitDeferredFlatMemoryMap(TraceContext, TraceStore)    \
+    PRE_THREADPOOL_WORK_SUBMISSION(&PauseBeforeRelocate);        \
+    InterlockedIncrement(                                        \
+        &TraceContext->BindFlatMemoryMapWork.NumberOfActiveItems \
+    );                                                           \
+    InterlockedIncrement(&TraceContext->NumberOfFlatMemoryMaps); \
+    PushFlatMemoryMap(TraceContext, TraceStore);
+
 
 //
 // TraceStoreAddress-related functions.
@@ -1590,6 +1622,17 @@ BOOL
     );
 typedef BIND_TRACE_STORE *PBIND_TRACE_STORE;
 BIND_TRACE_STORE BindTraceStore;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(BIND_FLAT_MEMORY_MAP)(
+    _In_ PTRACE_CONTEXT TraceContext,
+    _In_ PTRACE_STORE_MEMORY_MAP FlatMemoryMap
+    );
+typedef BIND_FLAT_MEMORY_MAP *PBIND_FLAT_MEMORY_MAP;
+extern BIND_FLAT_MEMORY_MAP BindFlatMemoryMap;
 
 typedef
 VOID

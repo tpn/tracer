@@ -251,7 +251,8 @@ Routine Description:
     off the trace context's bind trace store interlocked list, calls the
     BindStore() method, and, if successful, decrements the trace context's
     count of in-progress trace store binds.  If this was the last trace store
-    to be bound, the trace context's loading complete event is set.
+    to be bound, threadpool work will be submitted for all pending flat memory
+    map requests.
 
 Arguments:
 
@@ -268,6 +269,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    ULONG Index;
     PTRACE_STORE TraceStore;
 
     //
@@ -291,17 +293,109 @@ Return Value:
 
     //
     // The trace store was bound successfully.  If this was the last trace
-    // store to be bound, set the trace context's loading complete event.
+    // store to be bound, process flat memory maps.
     //
 
     if (InterlockedDecrement(&TraceContext->BindsInProgress) == 0) {
+        goto HandleFlatMemoryMaps;
+    }
+
+    return;
+
+HandleFlatMemoryMaps:
+
+    if (TraceContext->NumberOfFlatMemoryMaps == 0) {
+
+        //
+        // There are no flat memory maps.  When does this ever happen?
+        //
+
+        __debugbreak();
+
         SetEvent(TraceContext->LoadingCompleteEvent);
+        return;
+    }
+
+    for (Index = 0; Index < TraceContext->NumberOfFlatMemoryMaps; Index++) {
+        PTP_WORK Work = TraceContext->BindFlatMemoryMapWork.ThreadpoolWork;
+        SubmitThreadpoolWork(Work);
     }
 
     return;
 
 Error:
     PushFailedTraceStore(TraceContext, TraceStore);
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+BindFlatMemoryMapCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback target for the process flat memory map
+    threadpool work item of a trace context.  It is submitted when all normal
+    memory maps for all trace stores have been loaded.
+
+    It pops memory maps off the trace context's process flat memory map
+    interlocked list, calls the BindFlatMemoryMap() method, and, if successful,
+    decrements the trace context's count of in-progress flat memory map work
+    items.  If this was the last item, the loading complete event is set.
+
+Arguments:
+
+    Instance - Not used.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Not used.
+
+Return Value:
+
+    None.  If an error occurs, PushFailedTraceStore() is called.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE_WORK BindFlatWork;
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        return;
+    }
+
+    if (!PopFlatMemoryMap(TraceContext, &MemoryMap)) {
+        __debugbreak();
+        return;
+    }
+
+    Success = BindFlatMemoryMap(TraceContext, MemoryMap);
+    if (!Success) {
+        __debugbreak();
+        return;
+    }
+
+    //
+    // The flat memory map was bound successfully.  If this was the last
+    // map, set the loading complete event.
+    //
+
+    BindFlatWork = &TraceContext->BindFlatMemoryMapWork;
+    if (InterlockedDecrement(&BindFlatWork->NumberOfActiveItems) == 0) {
+        SetEvent(TraceContext->LoadingCompleteEvent);
+    }
+
     return;
 }
 

@@ -417,6 +417,7 @@ Return Value:
     INIT_WORK(BindRemainingMetadataStores, NumberOfRemainingMetadataStores);
     INIT_WORK(BindTraceStore, NumberOfTraceStores);
     INIT_WORK(ReadonlyNonStreamingBindComplete, NumberOfTraceStores);
+    INIT_WORK(BindFlatMemoryMap, 0);
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
