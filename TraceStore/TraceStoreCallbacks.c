@@ -307,10 +307,8 @@ HandleFlatMemoryMaps:
     if (TraceContext->NumberOfFlatMemoryMaps == 0) {
 
         //
-        // There are no flat memory maps.  When does this ever happen?
+        // There won't be any flat memory maps if we're readonly.
         //
-
-        __debugbreak();
 
         SetEvent(TraceContext->LoadingCompleteEvent);
         return;
