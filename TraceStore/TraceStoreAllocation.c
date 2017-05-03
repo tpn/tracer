@@ -1403,6 +1403,20 @@ Return Value:
 
     Allocation->NumberOfRecords.QuadPart += NumberOfRecords;
 
+    if (WastedBytes) {
+        NOTHING;
+    } else {
+
+        //
+        // Update the trace store's total record count and total record size.
+        //
+
+        TraceStore->Totals->NumberOfRecords.QuadPart += NumberOfRecords;
+        TraceStore->Totals->RecordSize.QuadPart += (
+            NumberOfRecords * RecordSize
+        );
+    }
+
     //
     // Return success to the caller.
     //

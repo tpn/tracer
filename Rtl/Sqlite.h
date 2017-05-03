@@ -74,7 +74,7 @@ typedef enum _SQLITE3_CONSTRAINT_OPERATOR {
 typedef struct _SQLITE3_INDEX_CONSTRAINT {
     LONG ColumnNumber;
     UCHAR Op;
-    UCHAR Usable;
+    UCHAR IsUsable;
     SHORT Padding;
     LONG TermOffset;
 } SQLITE3_INDEX_CONSTRAINT;
@@ -193,18 +193,18 @@ typedef SQLITE3_DESTROY *PSQLITE3_DESTROY;
 
 typedef
 LONG
-(SQLITE3_OPEN)(
+(SQLITE3_OPEN_CURSOR)(
     _In_ PSQLITE3_VTAB VirtualTable,
     _Inout_ PSQLITE3_VTAB_CURSOR *Cursor
     );
-typedef SQLITE3_OPEN *PSQLITE3_OPEN;
+typedef SQLITE3_OPEN_CURSOR *PSQLITE3_OPEN_CURSOR;
 
 typedef
 LONG
-(SQLITE3_CLOSE)(
+(SQLITE3_CLOSE_CURSOR)(
     _In_ PSQLITE3_VTAB_CURSOR Cursor
     );
-typedef SQLITE3_CLOSE *PSQLITE3_CLOSE;
+typedef SQLITE3_CLOSE_CURSOR *PSQLITE3_CLOSE_CURSOR;
 
 typedef
 LONG
@@ -244,7 +244,7 @@ typedef
 LONG
 (SQLITE3_ROWID)(
     _In_ PSQLITE3_VTAB_CURSOR Cursor,
-    _Inout_ PSQLITE3_INT64 *Rowid
+    _Out_ PSQLITE3_INT64 Rowid
     );
 typedef SQLITE3_ROWID *PSQLITE3_ROWID;
 
@@ -342,8 +342,8 @@ typedef struct _SQLITE3_MODULE {
     PSQLITE3_BEST_INDEX BestIndex;
     PSQLITE3_DISCONNECT Disconnect;
     PSQLITE3_DESTROY Destroy;
-    PSQLITE3_OPEN Open;
-    PSQLITE3_CLOSE Close;
+    PSQLITE3_OPEN_CURSOR OpenCursor;
+    PSQLITE3_CLOSE_CURSOR CloseCursor;
     PSQLITE3_FILTER Filter;
     PSQLITE3_NEXT Next;
     PSQLITE3_EOF Eof;
@@ -432,7 +432,8 @@ LONG
 (SQLITE3_CREATE_MODULE)(
     _In_ PSQLITE3_DB Database,
     _In_ PCSZ ModuleName,
-    _In_ PCSQLITE3_MODULE Module
+    _In_ PCSQLITE3_MODULE Module,
+    _In_opt_ PVOID ClientData
     );
 typedef SQLITE3_CREATE_MODULE *PSQLITE3_CREATE_MODULE;
 
@@ -454,6 +455,37 @@ PCSZ
     _In_opt_ PCSZ DatabaseName
     );
 typedef SQLITE3_DB_FILENAME *PSQLITE3_DB_FILENAME;
+
+typedef
+LONG
+(SQLITE3_DECLARE_VIRTUAL_TABLE)(
+    _In_ PSQLITE3_DB Sqlite3Db,
+    _In_ PCSZ Schema
+    );
+typedef SQLITE3_DECLARE_VIRTUAL_TABLE *PSQLITE3_DECLARE_VIRTUAL_TABLE;
+
+typedef
+VOID
+(SQLITE3_RESULT_NULL)(
+    _In_ PSQLITE3_CONTEXT Context
+    );
+typedef SQLITE3_RESULT_NULL *PSQLITE3_RESULT_NULL;
+
+typedef
+VOID
+(SQLITE3_RESULT_INT)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ INT Result
+    );
+typedef SQLITE3_RESULT_INT *PSQLITE3_RESULT_INT;
+
+typedef
+VOID
+(SQLITE3_RESULT_INT64)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ SQLITE3_INT64 Result
+    );
+typedef SQLITE3_RESULT_INT64 *PSQLITE3_RESULT_INT64;
 
 //
 // Define the SQLITE3_API_ROUTINES structure.
@@ -522,7 +554,9 @@ typedef struct _SQLITE3_API_ROUTINES {
 
     int  (*data_count)(sqlite3_stmt*pStmt);
     sqlite3 * (*db_handle)(sqlite3_stmt*);
-    int (*declare_vtab)(sqlite3*,const char*);
+
+    PSQLITE3_DECLARE_VIRTUAL_TABLE DeclareVirtualTable;
+
     int  (*enable_shared_cache)(int);
     int  (*errcode)(sqlite3*db);
     const char * (*errmsg)(sqlite3*);
@@ -558,9 +592,11 @@ typedef struct _SQLITE3_API_ROUTINES {
     void  (*result_double)(sqlite3_context*,double);
     void  (*result_error)(sqlite3_context*,const char*,int);
     void  (*result_error16)(sqlite3_context*,const void*,int);
-    void  (*result_int)(sqlite3_context*,int);
-    void  (*result_int64)(sqlite3_context*,sqlite_int64);
-    void  (*result_null)(sqlite3_context*);
+
+    PSQLITE3_RESULT_INT ResultInt;
+    PSQLITE3_RESULT_INT64 ResultInt64;
+    PSQLITE3_RESULT_NULL ResultNull;
+
     void  (*result_text)(sqlite3_context*,const char*,int,void(*)(void*));
     void  (*result_text16)(sqlite3_context*,const void*,int,void(*)(void*));
     void  (*result_text16be)(sqlite3_context*,const void*,int,void(*)(void*));

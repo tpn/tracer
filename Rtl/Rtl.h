@@ -395,6 +395,10 @@ typedef CHAR **PPSTR;
 typedef WCHAR **PPWSTR;
 typedef HMODULE *PHMODULE;
 typedef PROC *PPROC;
+typedef DOUBLE *PDOUBLE;
+typedef DOUBLE **PPDOUBLE;
+typedef const DOUBLE *PCDOUBLE;
+typedef const DOUBLE **PPCDOUBLE;
 
 typedef volatile CHAR *VPCHAR;
 

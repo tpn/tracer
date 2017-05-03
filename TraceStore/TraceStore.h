@@ -439,12 +439,15 @@ C_ASSERT(FIELD_OFFSET(TRACE_STORE_STATS, Reserved) == 44);
 C_ASSERT(sizeof(TRACE_STORE_STATS) == 64);
 
 //
-// Track total number of allocations and total record size.
+// Track total number of allocations, total allocation size, total number
+// of records and total record size.
 //
 
 typedef struct _TRACE_STORE_TOTALS {
     ULARGE_INTEGER NumberOfAllocations;
     ULARGE_INTEGER AllocationSize;
+    ULARGE_INTEGER NumberOfRecords;
+    ULARGE_INTEGER RecordSize;
 } TRACE_STORE_TOTALS, *PTRACE_STORE_TOTALS;
 
 //
@@ -800,7 +803,7 @@ typedef struct DECLSPEC_ALIGN(128) _TRACE_STORE_INFO {
     // Pad out to 256 bytes.
     //
 
-    BYTE Reserved[76];
+    BYTE Reserved[60];
 
 } TRACE_STORE_INFO, *PTRACE_STORE_INFO, **PPTRACE_STORE_INFO;
 C_ASSERT(sizeof(TRACE_STORE_INFO) == 256);
@@ -3109,9 +3112,6 @@ typedef BIND_COMPLETE *PBIND_COMPLETE;
 
 typedef struct _TRACE_STORE_SQLITE3_VTAB {
 
-    PRTL Rtl;
-    struct _TRACE_STORE *TraceStore;
-
     //
     // Inline SQLITE3_VTAB structure.
     //
@@ -3132,25 +3132,18 @@ typedef struct _TRACE_STORE_SQLITE3_VTAB {
     };
 
 } TRACE_STORE_SQLITE3_VTAB;
+typedef TRACE_STORE_SQLITE3_VTAB *PTRACE_STORE_SQLITE3_VTAB;
 
-typedef struct _TRACE_STORE_SQLITE3_CURSOR {
-
-    ULONGLONG Rowid;
-
-    //
-    // Inline SQLITE3_VTAB_CURSOR structure.
-    //
-    // N.B.: This structure must always come last.
-    //
-
-    union {
-        struct {
-            PSQLITE3_VTAB VirtualTable;
-        };
-        SQLITE3_VTAB_CURSOR AsSqlite3VtabCursor;
-    };
-
-} TRACE_STORE_SQLITE3_CURSOR;
+typedef
+LONG
+(TRACE_STORE_SQLITE3_COLUMN)(
+    _In_ PCSQLITE3 Sqlite3,
+    _In_ PTRACE_STORE TraceStore,
+    _In_ struct _TRACE_STORE_SQLITE3_CURSOR *Cursor,
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ LONG ColumnNumber
+    );
+typedef TRACE_STORE_SQLITE3_COLUMN *PTRACE_STORE_SQLITE3_COLUMN;
 
 typedef struct _TRACE_STORE {
 
@@ -3524,10 +3517,22 @@ typedef struct _TRACE_STORE {
     // module.
     //
 
-    PSTRING Sqlite3Schema;
-    PSTRING Sqlite3ModuleName;
+    struct _TRACE_STORE_SQLITE3_DB *Db;
+    PCSZ Sqlite3Schema;
+    PCSZ Sqlite3VirtualTableName;
+
+    //
+    // Function pointer overrides.
+    //
+
+    PTRACE_STORE_SQLITE3_COLUMN Sqlite3Column;
+
+    //
+    // Embedded Sqlite3 structures.
+    //
 
     SQLITE3_MODULE Sqlite3Module;
+    TRACE_STORE_SQLITE3_VTAB Sqlite3VirtualTable;
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 

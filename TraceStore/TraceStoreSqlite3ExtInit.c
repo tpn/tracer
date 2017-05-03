@@ -4,17 +4,19 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    Init.c
+    TraceStoreSqlite3ExtInit.c
 
 Abstract:
 
-    WIP.
+    This module implements the sqlite3 extension initialization function
+    TraceStoreSqlite3ExtInit, which is called by TraceStoreSqlite3Ext module
+    when sqlite3 has loaded it.
 
 --*/
 
 #include "stdafx.h"
 
-TRACE_STORE_SQLITE3_EXT_INIT TraceStoreSqlite3ExtInit;
+DECLSPEC_DLLEXPORT TRACE_STORE_SQLITE3_EXT_INIT TraceStoreSqlite3ExtInit;
 
 _Use_decl_annotations_
 LONG
@@ -63,7 +65,6 @@ Return Value:
     USHORT Count;
     USHORT Length;
     USHORT Index;
-    USHORT StoreIndex;
     ULONG Result;
     ULONG RequiredSize;
     PCSZ DatabaseFilename;
@@ -132,14 +133,6 @@ Return Value:
 
     Db->SizeOfStruct = sizeof(*Db);
 
-    //
-    // Initialize aliases.
-    //
-
-    TraceStores = Db->TraceStores;
-    TraceContext = Db->TraceContext;
-    TraceSession = Db->TraceSession;
-
 #define LOAD_DLL(Name) do {                                            \
     Db->Name##Module = LoadLibraryW(Paths->Name##DllPath.Buffer);      \
     if (!Db->Name##Module) {                                           \
@@ -151,7 +144,6 @@ Return Value:
     Paths = &TracerConfig->Paths;
 
     LOAD_DLL(TracerHeap);
-    LOAD_DLL(TraceStore);
     LOAD_DLL(StringTable);
 
     //
@@ -258,32 +250,6 @@ Return Value:
     }
 
     //
-    // TraceStore
-    //
-
-    RESOLVE(TraceStoreModule, PINITIALIZE_TRACE_STORES, InitializeTraceStores);
-
-    RESOLVE(TraceStoreModule,
-            PINITIALIZE_TRACE_CONTEXT,
-            InitializeTraceContext);
-
-    RESOLVE(TraceStoreModule,
-            PCLOSE_TRACE_CONTEXT,
-            CloseTraceContext);
-
-    RESOLVE(TraceStoreModule,
-            PINITIALIZE_TRACE_SESSION,
-            InitializeTraceSession);
-
-    RESOLVE(TraceStoreModule,
-            PCLOSE_TRACE_STORES,
-            CloseTraceStores);
-
-    RESOLVE(TraceStoreModule,
-            PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE,
-            InitializeAllocatorFromTraceStore);
-
-    //
     // StringTable
     //
 
@@ -316,7 +282,6 @@ Return Value:
 } while (0)
 
     INIT_C_SPECIFIC_HANDLER(TracerHeap);
-    INIT_C_SPECIFIC_HANDLER(TraceStore);
     INIT_C_SPECIFIC_HANDLER(StringTable);
 
     //
@@ -333,7 +298,6 @@ Return Value:
 } while (0)
 
     INIT_ATEXITEX(TracerHeap);
-    INIT_ATEXITEX(TraceStore);
     INIT_ATEXITEX(StringTable);
 
 
@@ -342,11 +306,11 @@ Return Value:
     //
 
     RequiredSize = 0;
-    Db->InitializeTraceSession(Rtl, NULL, &RequiredSize);
+    InitializeTraceSession(Rtl, NULL, &RequiredSize);
     ALLOCATE(TraceSession, PTRACE_SESSION);
-    Success = Db->InitializeTraceSession(Rtl,
-                                         Db->TraceSession,
-                                         &RequiredSize);
+    Success = InitializeTraceSession(Rtl,
+                                     Db->TraceSession,
+                                     &RequiredSize);
 
     if (!Success) {
         OutputDebugStringA("Db->InitializeTraceSession() failed.\n");
@@ -365,7 +329,7 @@ Return Value:
     //
 
     RequiredSize = 0;
-    Db->InitializeTraceStores(
+    InitializeTraceStores(
         NULL,           // Rtl
         NULL,           // Allocator
         NULL,           // TracerConfig
@@ -383,7 +347,7 @@ Return Value:
     //
 
     ALLOCATE(TraceStores, PTRACE_STORES);
-    Success = Db->InitializeTraceStores(
+    Success = InitializeTraceStores(
         Rtl,
         Allocator,
         Db->TracerConfig,
@@ -459,7 +423,7 @@ Return Value:
     //
 
     RequiredSize = 0;
-    Db->InitializeTraceContext(
+    InitializeTraceContext(
         NULL,           // Rtl
         NULL,           // Allocator
         NULL,           // TracerConfig
@@ -478,7 +442,7 @@ Return Value:
     //
 
     ALLOCATE(TraceContext, PTRACE_CONTEXT);
-    Success = Db->InitializeTraceContext(
+    Success = InitializeTraceContext(
         Rtl,
         Allocator,
         Db->TracerConfig,
@@ -500,23 +464,48 @@ Return Value:
     LoadingCompleteEvent = Db->TraceContext->LoadingCompleteEvent;
 
     //
+    // Initialize aliases.
+    //
+
+    TraceStores = Db->TraceStores;
+    TraceContext = Db->TraceContext;
+    TraceSession = Db->TraceSession;
+
+    //
     // We've successfully loaded the trace stores in this directory.  Proceed
     // with creation of the sqlite3 modules for each trace store.
     //
 
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
-        TRACE_STORE_DECLS();
+    for (Index = 0; Index < TraceStores->NumberOfTraceStores; Index++) {
+        PTRACE_STORE TraceStore;
+        PSQLITE3_MODULE Module;
+        PCSZ *Schema;
+        PCSZ *VirtualTableName;
 
+        TraceStore = &TraceStores->Stores[Index];
+        TraceStore->Db = Db;
+        TraceStore->Sqlite3Column = TraceStoreSqlite3Columns[Index];
+        Module = &TraceStore->Sqlite3Module;
+        Schema = &TraceStore->Sqlite3Schema;
+        VirtualTableName = &TraceStore->Sqlite3VirtualTableName;
 
-        /*
+        CopySqlite3ModuleInline(Module, &TraceStoreSqlite3Module);
+
+        *Schema = TraceStoreSchemas[Index];
+        *VirtualTableName = TraceStoreSqlite3VirtualTableNames[Index];
+
         Result = Sqlite3->CreateModule(Sqlite3Db,
-                                       "TraceStore",
-                                       &TraceStoreSqlite3Module,
-                                       NULL);
-        */
+                                       *VirtualTableName,
+                                       Module,
+                                       TraceStore);
+
+        if (Result != SQLITE_OK) {
+            __debugbreak();
+            goto Error;
+        }
     }
 
-    Result = SQLITE_OK;
+    Result = SQLITE_OK_LOAD_PERMANENTLY;
 
     goto End;
 

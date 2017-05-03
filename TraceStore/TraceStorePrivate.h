@@ -2986,13 +2986,233 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 // Sqlite3-related decls.
 //
 
+typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates a coalesced allocation is currently active.
+        // The number of iterations into the coalesced allocation is tracked
+        // via CurrentCoalescedAllocationNumber.  When this number reaches
+        // TotalCoalescedAllocations, the allocation record will be advanced.
+        //
+
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_SQLITE3_CURSOR_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_SQLITE3_CURSOR_FLAGS) == sizeof(ULONG));
+
+typedef union _TRACE_STORE_ROW {
+    PTRACE_STORE_METADATA_INFO AsMetadataInfo;
+    PTRACE_STORE_ALLOCATION AsAllocation;
+    PTRACE_STORE_RELOC AsReloc;
+    PTRACE_STORE_ADDRESS AsAddress;
+    PTRACE_STORE_ADDRESS_RANGE AsAddressRange;
+    PTRACE_STORE_ALLOCATION_TIMESTAMP AsAllocationTimestamp;
+    PTRACE_STORE_ALLOCATION_TIMESTAMP_DELTA AsAllocationTimestampDelta;
+    PTRACE_STORE_SYNC AsSync;
+    PTRACE_STORE_INFO AsInfo;
+    PSTR AsStringBuffer;
+    PWSTR AsWideStringBuffer;
+    PSTRING AsString;
+    PUNICODE_STRING AsUnicodeString;
+    PBYTE AsByte;
+    PCHAR AsChar;
+    PSHORT AsShort;
+    PUSHORT AsUShort;
+    PLONG AsLong;
+    PULONG AsULong;
+    PLARGE_INTEGER AsLargeInteger;
+    PULARGE_INTEGER AsULargeInteger;
+    PLONGLONG AsLongLong;
+    PULONGLONG AsULongLong;
+    PFLOAT AsFloat;
+    PDOUBLE AsDouble;
+    PVOID AsVoid;
+    //PXMMWORD AsXmm;
+    //PYMMWORD AsYmm;
+} TRACE_STORE_ROW;
+typedef TRACE_STORE_ROW *PTRACE_STORE_ROW;
+C_ASSERT(sizeof(TRACE_STORE_ROW) == 8);
+
+//
+// This structure captures the necessary information about a column's data type
+// and offset such that it can be translated into an appropriate sqlite3 result
+// during cursor iteration.
+//
+
+typedef union _TRACE_STORE_COLUMN_TYPE {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_COLUMN_TYPE;
+typedef TRACE_STORE_COLUMN_TYPE *PTRACE_STORE_COLUMN_TYPE;
+
+typedef union _TRACE_STORE_COLUMN_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_COLUMN_FLAGS;
+typedef TRACE_STORE_COLUMN_FLAGS *PTRACE_STORE_COLUMN_FLAGS;
+
+typedef struct _TRACE_STORE_COLUMN {
+    TRACE_STORE_COLUMN_TYPE Type;
+    TRACE_STORE_COLUMN_FLAGS Flags;
+
+    LONGLONG Offset;
+    ULONGLONG SizeInBytes;
+
+    struct _TRACE_STORE_COLUMN *PointedToColumn;
+
+} TRACE_STORE_COLUMN;
+typedef TRACE_STORE_COLUMN *PTRACE_STORE_COLUMN;
+
+typedef struct _TRACE_STORE_SQLITE3_CURSOR {
+
+    //
+    // Copy of the trace store's traits.
+    //
+
+    TRACE_STORE_TRAITS Traits;
+
+    //
+    // Cursor flags.
+    //
+
+    TRACE_STORE_SQLITE3_CURSOR_FLAGS Flags;
+
+    //
+    // The first row.  This will always point to the base address of the first
+    // memory map.
+    //
+
+    TRACE_STORE_ROW FirstRow;
+
+    //
+    // The current row being processed.
+    //
+
+    TRACE_STORE_ROW CurrentRow;
+
+    //
+    // Rowid is synonymous with a single record.
+    //
+
+    LONGLONG Rowid;
+
+    //
+    // Track how many records and allocations we've iterated over so far.
+    //
+
+    LONGLONG CurrentRecordCount;
+    LONGLONG CurrentAllocationCount;
+
+    //
+    // Total number of records allocated by this store.  This will correspond
+    // to the number of rows returned by this cursor if we're doing a full
+    // table scan.
+    //
+
+    LONGLONG TotalNumberOfRecords;
+
+    //
+    // The total number of allocations that were performed by this trace store.
+    //
+
+    LONGLONG TotalNumberOfAllocations;
+
+    //
+    // Pointer to the active memory map record.
+    //
+
+    PTRACE_STORE_MEMORY_MAP MemoryMap;
+
+    //
+    // The following fields only apply to trace stores, not metadata stores.
+    //
+
+    //
+    // Pointer to the active address record.
+    //
+
+    PTRACE_STORE_ADDRESS Address;
+
+    //
+    // Pointer to the active address range record.
+    //
+
+    PTRACE_STORE_ADDRESS_RANGE AddressRange;
+
+    //
+    // Pointer to the active allocation record.
+    //
+
+    PTRACE_STORE_ALLOCATION Allocation;
+
+    //
+    // If the trace store coalesced allocations, this counter is used to track
+    // how far we are through the coalesced allocation.
+    //
+
+    LONGLONG CurrentCoalescedAllocationNumber;
+    LONGLONG TotalCoalescedAllocations;
+
+    //
+    // Pointer back to our owning trace store and trace store db.
+    //
+
+    PTRACE_STORE TraceStore;
+    struct _TRACE_STORE_SQLITE3_DB *Db;
+
+    //
+    // Pointer to our column function.
+    //
+
+    PTRACE_STORE_SQLITE3_COLUMN Sqlite3Column;
+
+    //
+    // Pointer to the sqlite3 API.
+    //
+
+    PCSQLITE3 Sqlite3;
+
+    //
+    // Timestamp counter of when this cursor was opened.
+    //
+
+    LARGE_INTEGER OpenedTimestamp;
+
+    //
+    // Inline SQLITE3_VTAB_CURSOR structure.
+    //
+    // N.B.: This structure must always come last.
+    //
+
+    union {
+        struct {
+            PSQLITE3_VTAB VirtualTable;
+        };
+        SQLITE3_VTAB_CURSOR AsSqlite3VtabCursor;
+    };
+
+} TRACE_STORE_SQLITE3_CURSOR;
+typedef TRACE_STORE_SQLITE3_CURSOR *PTRACE_STORE_SQLITE3_CURSOR;
+
+
+#include "TraceStoreSqlite3Schemas.h"
+
 extern SQLITE3_CREATE TraceStoreSqlite3ModuleCreate;
 extern SQLITE3_CONNECT TraceStoreSqlite3ModuleConnect;
 extern SQLITE3_BEST_INDEX TraceStoreSqlite3ModuleBestIndex;
 extern SQLITE3_DISCONNECT TraceStoreSqlite3ModuleDisconnect;
 extern SQLITE3_DESTROY TraceStoreSqlite3ModuleDestroy;
-extern SQLITE3_OPEN TraceStoreSqlite3ModuleOpen;
-extern SQLITE3_CLOSE TraceStoreSqlite3ModuleClose;
+extern SQLITE3_OPEN_CURSOR TraceStoreSqlite3ModuleOpenCursor;
+extern SQLITE3_CLOSE_CURSOR TraceStoreSqlite3ModuleCloseCursor;
 extern SQLITE3_FILTER TraceStoreSqlite3ModuleFilter;
 extern SQLITE3_NEXT TraceStoreSqlite3ModuleNext;
 extern SQLITE3_EOF TraceStoreSqlite3ModuleEof;
@@ -3032,6 +3252,18 @@ LONG
     _In_ PCSQLITE3 Sqlite3
     );
 typedef TRACE_STORE_SQLITE3_EXT_INIT *PTRACE_STORE_SQLITE3_EXT_INIT;
+
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3DefaultColumnImpl;
+
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3MetadataInfoColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3RelocationColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AddressColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AddressRangeColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampDeltaColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3SynchronizationColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3InfoColumn;
 
 typedef union _TRACE_STORE_SQLITE3_DB_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -3092,7 +3324,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     //
 
     HMODULE TracerHeapModule;
-    HMODULE TraceStoreModule;
     HMODULE StringTableModule;
 
     //
@@ -3116,17 +3347,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
 
     PALLOCATOR StringTableAllocator;
     PALLOCATOR StringArrayAllocator;
-
-    //
-    // TraceStore-specific initializers.
-    //
-
-    PINITIALIZE_TRACE_STORES InitializeTraceStores;
-    PINITIALIZE_TRACE_CONTEXT InitializeTraceContext;
-    PINITIALIZE_TRACE_SESSION InitializeTraceSession;
-    PCLOSE_TRACE_STORES CloseTraceStores;
-    PCLOSE_TRACE_CONTEXT CloseTraceContext;
-    PINITIALIZE_ALLOCATOR_FROM_TRACE_STORE InitializeAllocatorFromTraceStore;
 
     //
     // Threadpool and callback environment.

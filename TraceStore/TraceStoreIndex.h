@@ -767,6 +767,7 @@ typedef enum _TRACE_STORE_INDEX {
 
 #define MAX_TRACE_STORES TraceStoreInvalidIndex
 
+
 #ifdef __cplusplus
 }; // extern "C"
 #endif
