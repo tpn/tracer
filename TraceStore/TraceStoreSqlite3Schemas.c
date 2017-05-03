@@ -45,7 +45,11 @@ TraceStoreSqlite3MetadataInfoColumn(
 //
 
 CONST CHAR TraceStoreAllocationSchema[] =
-    PLACEHOLDER_SCHEMA;
+    "CREATE TABLE Allocation ("
+        "NumberOfRecords BIGINT, "
+        "RecordSize BIGINT, "
+        "IsDummyAllocation TINYINT"
+    ")";
 
 _Use_decl_annotations_
 LONG
@@ -57,11 +61,58 @@ TraceStoreSqlite3AllocationColumn(
     LONG ColumnNumber
     )
 {
-    return TraceStoreSqlite3DefaultColumnImpl(Sqlite3,
-                                              TraceStore,
-                                              Cursor,
-                                              Context,
-                                              ColumnNumber);
+    PTRACE_STORE_ALLOCATION Allocation;
+
+    Allocation = Cursor->CurrentRow.AsAllocation;
+
+    //
+    // Define helper macros.
+    //
+
+#define ALLOCATION_INT64(Name)                       \
+    Sqlite3->ResultInt64(                            \
+        Context,                                     \
+        (SQLITE3_INT64)Allocation->##Name##.QuadPart \
+    )
+
+#define ALLOCATION_TINYINT(Name)        \
+    Sqlite3->ResultInt(          \
+        Context,                 \
+        (LONG)Allocation->##Name \
+    )
+
+    switch (ColumnNumber) {
+
+        //
+        // NumberOfRecords BIGINT
+        //
+
+        case 0:
+            ALLOCATION_INT64(NumberOfRecords);
+            break;
+
+        //
+        // RecordSize BIGINT
+        //
+
+        case 1:
+            ALLOCATION_INT64(RecordSize);
+            break;
+
+        //
+        // IsDummyAllocation TINYINT
+        //
+
+        case 2:
+            ALLOCATION_TINYINT(NumberOfRecords.DummyAllocation2);
+            break;
+
+        default:
+            __debugbreak();
+            return SQLITE_ERROR;
+    }
+
+    return SQLITE_OK;
 }
 
 //
