@@ -62,11 +62,13 @@ Return Value:
 {
     BOOL Success;
     PCHAR Char;
+    PVOID Buffer;
     USHORT Count;
     USHORT Length;
     USHORT Index;
     ULONG Result;
     ULONG RequiredSize;
+    ULONG Flags;
     PCSZ DatabaseFilename;
     STRING Filename;
     PALLOCATOR Allocator;
@@ -114,7 +116,7 @@ Return Value:
     // Allocate space for the TRACE_STORE_SQLITE3_DB structure.
     //
 
-    Db = (PTRACE_STORE_SQLITE3_DB)Sqlite3->Malloc64(sizeof(*Db));
+    Db = (PTRACE_STORE_SQLITE3_DB)Sqlite3->Malloc(sizeof(*Db));
     if (!Db) {
         return SQLITE_NOMEM;
     }
@@ -343,10 +345,18 @@ Return Value:
     );
 
     //
-    // Allocate sufficient space, then initialize the stores.
+    // Use a large page allocation for trace stores.
     //
 
-    ALLOCATE(TraceStores, PTRACE_STORES);
+    Flags = PAGE_READWRITE;
+    RequiredSize = ALIGN_UP(RequiredSize, Rtl->LargePageMinimum);
+    Buffer = Rtl->TryLargePageVirtualAlloc(NULL, RequiredSize, 0, Flags);
+    if (!Buffer) {
+        __debugbreak();
+        goto Error;
+    }
+    Db->TraceStores = (PTRACE_STORES)Buffer;
+
     Success = InitializeTraceStores(
         Rtl,
         Allocator,
