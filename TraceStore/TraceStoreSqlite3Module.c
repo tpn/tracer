@@ -191,12 +191,35 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     if (!TraceStore->IsMetadata) {
         Cursor->Address = TraceStore->ReadonlyAddresses;
-        Cursor->MemoryMap = TraceStore->ReadonlyMemoryMaps;
+        Cursor->MemoryMap = &TraceStore->FlatMemoryMap;
         Cursor->AddressRange = TraceStore->ReadonlyAddressRanges;
         Cursor->TotalNumberOfRecords = Totals->NumberOfRecords.QuadPart;
     } else {
         Cursor->MemoryMap = &TraceStore->SingleMemoryMap;
         Cursor->TotalNumberOfRecords = Cursor->TotalNumberOfAllocations;
+    }
+
+    //
+    // Check for the rare case that our flat mapping hasn't finished loading
+    // yet.
+    //
+
+    if (!TraceStore->FlatMappingLoaded) {
+        ULONG WaitResult;
+        HANDLE Event;
+
+        Event = Db->TraceContext->LoadingCompleteEvent;
+        WaitResult = WaitForSingleObject(Event, INFINITE);
+
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
+            return SQLITE_ERROR;
+        }
+
+        if (Db->TraceContext->FailedCount > 0) {
+            __debugbreak();
+            return SQLITE_ERROR;
+        }
     }
 
     Cursor->FirstRow.AsVoid = Cursor->MemoryMap->BaseAddress;

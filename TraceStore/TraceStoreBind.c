@@ -1512,6 +1512,14 @@ Return Value:
     );
 
     //
+    // Toggle the flag indicating our flat memory map has loaded.  This allows
+    // downstream code to skip the WaitForSingleObject() call on the loading
+    // complete event (in the trace context).
+    //
+
+    TraceStore->FlatMappingLoaded = TRUE;
+
+    //
     // We're done, return success;
     //
 
