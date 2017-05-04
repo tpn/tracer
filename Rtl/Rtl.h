@@ -5631,9 +5631,37 @@ _Success_(return != 0)
     );
 typedef INITIALIZE_INJECTION *PINITIALIZE_INJECTION;
 
+typedef union _RTL_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates Intel's TSX extensions are available.
+        //
+
+        ULONG TsxAvailable:1;
+
+        //
+        // When set, indicates COM has been initialized.
+        //
+
+        ULONG ComInitialized:1;
+
+        //
+        // When set, indicates large pages are available.
+        //
+
+        ULONG LargePagesAvailable:1;
+
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_FLAGS;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     _Field_range_(==, sizeof(struct _RTL)) ULONG SizeOfStruct;
+
+    RTL_FLAGS Flags;
 
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
@@ -5644,10 +5672,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     DbgEngModule;
     HMODULE     InjectionThunkModule;
 
-    BOOL TsxAvailable;
-    BOOL ComInitialized;
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
+
+    PALLOCATOR LargePageAllocator;
 
     PATEXIT atexit;
     PATEXITEX AtExitEx;
@@ -5687,7 +5715,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PCREATE_EVENT_A CreateEventA;
     PCREATE_EVENT_W CreateEventW;
-
 
     //
     // Fully-qualified module path name set by SetDllPath().

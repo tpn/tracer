@@ -233,7 +233,7 @@ InitializeCom(
         return FALSE;
     }
 
-    if (Rtl->ComInitialized) {
+    if (Rtl->Flags.ComInitialized) {
         return TRUE;
     }
 
@@ -248,7 +248,7 @@ InitializeCom(
         return FALSE;
     }
 
-    Rtl->ComInitialized = TRUE;
+    Rtl->Flags.ComInitialized = TRUE;
     return TRUE;
 }
 
@@ -2825,13 +2825,21 @@ InitializeTsx(PRTL Rtl)
     InitializeGuardedListHead(&List);
     InitializeListHead(&Entry);
 
-    Rtl->TsxAvailable = TRUE;
+    Rtl->Flags.TsxAvailable = TRUE;
 
     TRY_AVX {
         InsertTailGuardedListTsxInline(&List, &Entry);
     } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION {
-        Rtl->TsxAvailable = FALSE;
+        Rtl->Flags.TsxAvailable = FALSE;
     }
+
+    return TRUE;
+}
+
+BOOL
+InitializeLargePages(PRTL Rtl)
+{
+    Rtl->Flags.IsLargePageEnabled = Rtl->EnableLockMemoryPrivilege();
 
     return TRUE;
 }
@@ -2940,6 +2948,10 @@ InitializeRtl(
     }
 
     if (!InitializeTsx(Rtl)) {
+        return FALSE;
+    }
+
+    if (!InitializeLargePages(Rtl)) {
         return FALSE;
     }
 
