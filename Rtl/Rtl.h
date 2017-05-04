@@ -5625,6 +5625,33 @@ typedef PROBE_FOR_READ *PPROBE_FOR_READ;
 
 typedef
 _Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI VIRTUAL_ALLOC)(
+    _In_opt_ LPVOID lpAddress,
+    _In_     SIZE_T dwSize,
+    _In_     DWORD  flAllocationType,
+    _In_     DWORD  flProtect
+    );
+typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI VIRTUAL_ALLOC_EX)(
+    _In_     HANDLE hProcess,
+    _In_opt_ LPVOID lpAddress,
+    _In_     SIZE_T dwSize,
+    _In_     DWORD  flAllocationType,
+    _In_     DWORD  flProtect
+    );
+typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
+
+typedef
+_Check_return_
 _Success_(return != 0)
 (CALLBACK INITIALIZE_INJECTION)(
     _In_ struct _RTL *Rtl
@@ -5675,7 +5702,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
 
+    DWORD LastError;
+
+    ULONG LargePageMinimum;
     PALLOCATOR LargePageAllocator;
+    PVIRTUAL_ALLOC TryLargePageVirtualAlloc;
+    PVIRTUAL_ALLOC_EX TryLargePageVirtualAllocEx;
 
     PATEXIT atexit;
     PATEXITEX AtExitEx;
@@ -5695,8 +5727,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     struct _RTL_LDR_NOTIFICATION_TABLE *LoaderNotificationTable;
 
     HANDLE HeapHandle;
-
-    DWORD LastError;
 
     LARGE_INTEGER Frequency;
     LARGE_INTEGER Multiplicand;

@@ -2836,10 +2836,55 @@ InitializeTsx(PRTL Rtl)
     return TRUE;
 }
 
+VIRTUAL_ALLOC RtlpTryLargePageVirtualAlloc;
+
+_Use_decl_annotations_
+LPVOID
+RtlpLargePageVirtualAlloc(
+    LPVOID lpAddress,
+    SIZE_T dwSize,
+    DWORD  flAllocationType,
+    DWORD  flProtect
+    )
+{
+    return VirtualAlloc(lpAddress,
+                        MAX(dwSize, Rtl->LargePageMinimum),
+                        flAllocationType | MEM_LARGE_PAGES,
+                        flProtect);
+}
+
+VIRTUAL_ALLOC_EX RtlpTryLargePageVirtualAllocEx;
+
+_Use_decl_annotations_
+LPVOID
+RtlpLargePageVirtualAllocEx(
+    HANDLE hProcess,
+    LPVOID lpAddress,
+    SIZE_T dwSize,
+    DWORD  flAllocationType,
+    DWORD  flProtect
+    )
+{
+    return VirtualAllocEx(hProcess,
+                          lpAddress,
+                          MAX(dwSize, Rtl->LargePageMinimum),
+                          flAllocationType | MEM_LARGE_PAGES,
+                          flProtect);
+}
+
 BOOL
 InitializeLargePages(PRTL Rtl)
 {
     Rtl->Flags.IsLargePageEnabled = Rtl->EnableLockMemoryPrivilege();
+    Rtl->LargePageMinimum = GetLargePageMinimum();
+
+    if (Rtl->Flags.IsLargePageEnabled) {
+        Rtl->TryLargePageVirtualAlloc = RtlpLargePageVirtualAlloc;
+        Rtl->TryLargePageVirtualAllocEx = RtlpLargePageVirtualAllocEx;
+    } else {
+        Rtl->TryLargePageVirtualAlloc = VirtualAlloc;
+        Rtl->TryLargePageVirtualAllocEx = VirtualAllocEx;
+    }
 
     return TRUE;
 }
