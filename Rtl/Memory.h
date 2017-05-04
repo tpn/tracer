@@ -139,10 +139,18 @@ VOID
     );
 typedef DESTROY_ALLOCATOR *PDESTROY_ALLOCATOR;
 
-typedef struct _ALLOCATOR_FLAGS {
-    ULONG IsTlsAware:1;
-    ULONG IsTlsRedirectionEnabled:1;
-} ALLOCATOR_FLAGS, *PALLOCATOR_FLAGS;
+typedef union _ALLOCATOR_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG IsTlsAware:1;
+        ULONG IsTlsRedirectionEnabled:1;
+        ULONG IsLargePageEnabled:1;
+        ULONG Unused:29;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} ALLOCATOR_FLAGS;
+C_ASSERT(sizeof(ALLOCATOR_FLAGS) == sizeof(ULONG));
+typedef ALLOCATOR_FLAGS *PALLOCATOR_FLAGS;
 
 //
 // Allocator structure.  This intentionally mirrors the Python 3.5+
