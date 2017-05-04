@@ -68,7 +68,6 @@ Return Value:
     USHORT Index;
     ULONG Result;
     ULONG RequiredSize;
-    ULONG Flags;
     PCSZ DatabaseFilename;
     STRING Filename;
     PALLOCATOR Allocator;
@@ -348,9 +347,11 @@ Return Value:
     // Use a large page allocation for trace stores.
     //
 
-    Flags = PAGE_READWRITE;
-    RequiredSize = ALIGN_UP(RequiredSize, Rtl->LargePageMinimum);
-    Buffer = Rtl->TryLargePageVirtualAlloc(NULL, RequiredSize, 0, Flags);
+    RequiredSize = ALIGN_UP(RequiredSize, (ULONG)Rtl->LargePageMinimum);
+    Buffer = Rtl->TryLargePageVirtualAlloc(NULL,
+                                           RequiredSize,
+                                           MEM_COMMIT,
+                                           PAGE_READWRITE);
     if (!Buffer) {
         __debugbreak();
         goto Error;

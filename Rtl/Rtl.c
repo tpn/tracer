@@ -2848,7 +2848,7 @@ RtlpLargePageVirtualAlloc(
     )
 {
     return VirtualAlloc(lpAddress,
-                        MAX(dwSize, Rtl->LargePageMinimum),
+                        max(dwSize, GetLargePageMinimum()),
                         flAllocationType | MEM_LARGE_PAGES,
                         flProtect);
 }
@@ -2867,7 +2867,7 @@ RtlpLargePageVirtualAllocEx(
 {
     return VirtualAllocEx(hProcess,
                           lpAddress,
-                          MAX(dwSize, Rtl->LargePageMinimum),
+                          max(dwSize, GetLargePageMinimum()),
                           flAllocationType | MEM_LARGE_PAGES,
                           flProtect);
 }

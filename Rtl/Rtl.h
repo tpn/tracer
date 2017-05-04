@@ -5677,7 +5677,7 @@ typedef union _RTL_FLAGS {
         // When set, indicates large pages are available.
         //
 
-        ULONG LargePagesAvailable:1;
+        ULONG IsLargePageEnabled:1;
 
     };
     LONG AsLong;
@@ -5703,8 +5703,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCO_INITIALIZE_EX CoInitializeEx;
 
     DWORD LastError;
+    ULONG Padding;
 
-    ULONG LargePageMinimum;
+    SIZE_T LargePageMinimum;
     PALLOCATOR LargePageAllocator;
     PVIRTUAL_ALLOC TryLargePageVirtualAlloc;
     PVIRTUAL_ALLOC_EX TryLargePageVirtualAllocEx;
