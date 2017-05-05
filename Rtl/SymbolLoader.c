@@ -350,8 +350,8 @@ Arguments:
         lookup attempts.
 
         N.B. As the names and addresses arrays are 0-based, the array index is
-             obtained by the failed bit position by subtracting 1.  E.g. if the
-             first bit set is 5, that corresponds to Names[4].
+             obtained from the failed bit position by subtracting 1.  E.g. if
+             the first bit set is 5, that corresponds to Names[4].
 
     NumberOfResolvedSymbolsPointer - Supplies the address of a variable that
         will receive the number of successfully resolved symbols.
