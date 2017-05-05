@@ -389,7 +389,9 @@ TraceStoreSqlite3AddressRangeColumn(
 //
 
 CONST CHAR TraceStoreAllocationTimestampSchema[] =
-    PLACEHOLDER_SCHEMA;
+    "CREATE TABLE AllocationTimestamp("
+        "Timestamp BIGINT"
+    ")";
 
 _Use_decl_annotations_
 LONG
@@ -401,11 +403,9 @@ TraceStoreSqlite3AllocationTimestampColumn(
     LONG ColumnNumber
     )
 {
-    return TraceStoreSqlite3DefaultColumnImpl(Sqlite3,
-                                              TraceStore,
-                                              Cursor,
-                                              Context,
-                                              ColumnNumber);
+    Sqlite3->ResultInt64(Context, *Cursor->CurrentRow.AsSqlite3Int64);
+
+    return SQLITE_OK;
 }
 
 //
@@ -413,7 +413,9 @@ TraceStoreSqlite3AllocationTimestampColumn(
 //
 
 CONST CHAR TraceStoreAllocationTimestampDeltaSchema[] =
-    PLACEHOLDER_SCHEMA;
+    "CREATE TABLE AllocationTimestampDelta("
+        "Delta BIGINT"
+    ")";
 
 _Use_decl_annotations_
 LONG
@@ -425,11 +427,9 @@ TraceStoreSqlite3AllocationTimestampDeltaColumn(
     LONG ColumnNumber
     )
 {
-    return TraceStoreSqlite3DefaultColumnImpl(Sqlite3,
-                                              TraceStore,
-                                              Cursor,
-                                              Context,
-                                              ColumnNumber);
+    Sqlite3->ResultInt64(Context, *Cursor->CurrentRow.AsSqlite3Int64);
+
+    return SQLITE_OK;
 }
 
 //

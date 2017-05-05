@@ -3042,7 +3042,13 @@ typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
         // TotalCoalescedAllocations, the allocation record will be advanced.
         //
 
-        ULONG Unused:32;
+        ULONG IsCoalescedAllocationActive:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:31;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -3076,6 +3082,7 @@ typedef union _TRACE_STORE_ROW {
     PFLOAT AsFloat;
     PDOUBLE AsDouble;
     PVOID AsVoid;
+    PSQLITE3_INT64 AsSqlite3Int64;
     //PXMMWORD AsXmm;
     //PYMMWORD AsYmm;
 } TRACE_STORE_ROW;
@@ -3114,6 +3121,8 @@ typedef struct _TRACE_STORE_COLUMN {
     ULONGLONG SizeInBytes;
 
     struct _TRACE_STORE_COLUMN *PointedToColumn;
+
+    PCSZ Name;
 
 } TRACE_STORE_COLUMN;
 typedef TRACE_STORE_COLUMN *PTRACE_STORE_COLUMN;
