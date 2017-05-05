@@ -18,10 +18,19 @@ Abstract:
 ULONG
 ModuleLoaderExeMain(VOID)
 {
+    BOOL Success;
     PRTL Rtl;
+    ULONG NumberOfCharsRead;
+    HMODULE Module;
+    HANDLE StandardInput;
+    HANDLE StandardOutput;
+    HANDLE StandardError;
     ALLOCATOR Allocator;
+    CPINFOEXW CodePageInfoEx;
+    ULONG CurrentConsoleCodePage;
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING RegistryPath;
+    WCHAR Path[_MAX_PATH];
 
     //
     // Initialize the default heap allocator.  This is a thin wrapper around
@@ -48,6 +57,8 @@ ModuleLoaderExeMain(VOID)
         "CreateAndInitializeTracerConfigAndRtl()"
     );
 
+    SecureZeroMemory(&Path, sizeof(Path));
+
     //
     // Load all known tracer modules.
     //
@@ -57,8 +68,65 @@ ModuleLoaderExeMain(VOID)
     }
 
     //
+    // Get standard console handles.
+    //
+
+    StandardInput = GetStdHandle(STD_INPUT_HANDLE);
+    if (!StandardInput) {
+        goto SleepForever;
+    }
+
+    StandardOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (!StandardOutput) {
+        goto SleepForever;
+    }
+
+    StandardError = GetStdHandle(STD_ERROR_HANDLE);
+    if (!StandardError) {
+        goto SleepForever;
+    }
+
+    CurrentConsoleCodePage = GetConsoleCP();
+    Success = GetCPInfoExW(CurrentConsoleCodePage,
+                           0,
+                           &CodePageInfoEx);
+
+    if (!Success) {
+        goto SleepForever;
+    }
+
+    while (TRUE) {
+
+        Success = ReadConsoleW(StandardInput,
+                               &Path,
+                               sizeof(Path) >> 1,
+                               &NumberOfCharsRead,
+                               NULL);
+
+        if (!Success) {
+            continue;
+        }
+
+        if (Path[NumberOfCharsRead] != L'\0') {
+            Path[NumberOfCharsRead] = L'\0';
+        }
+
+        if (Path[NumberOfCharsRead-1] == L'\n') {
+            Path[NumberOfCharsRead-1] = L'\0';
+        }
+
+        if (Path[NumberOfCharsRead-2] == L'\r') {
+            Path[NumberOfCharsRead-2] = L'\0';
+        }
+
+        Module = LoadLibraryW(Path);
+    }
+
+    //
     // Sleep until killed.
     //
+
+SleepForever:
 
     return SleepEx(INFINITE, TRUE);
 
