@@ -342,7 +342,21 @@ InitializeDebugEngineSessionStringTables(
         goto Error;
     }
 
-    Session->NumberOfDisplayTypesStringTables = 1;
+    Session->DisplayTypesStringTable2 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &DisplayTypes2,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->DisplayTypesStringTable2) {
+        goto Error;
+    }
+
+    Session->NumberOfDisplayTypesStringTables = 2;
 
     //
     // If we're initializing from the command line, create the command line

@@ -80,6 +80,7 @@
     <ClInclude Include="TraceStore.h" />
     <ClInclude Include="TraceStoreIndex.h" />
     <ClInclude Include="TraceStorePrivate.h" />
+    <ClInclude Include="TraceStoreSqlite3Schemas.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

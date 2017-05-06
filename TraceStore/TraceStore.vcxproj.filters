@@ -36,6 +36,9 @@
     <ClInclude Include="TraceStoreIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TraceStoreSqlite3Schemas.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

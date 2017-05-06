@@ -2041,7 +2041,7 @@ typedef enum _DEBUG_ENGINE_DISPLAY_TYPES {
     UnknownDisplayTypeType = -1,
 
     //
-    // First 16 types captured by DisplayTypes.
+    // First 11 types captured by DisplayTypes.
     //
 
     CharDisplayType = 0,
@@ -2056,13 +2056,19 @@ typedef enum _DEBUG_ENGINE_DISPLAY_TYPES {
     UnsignedLongIntegerDisplayType,
     UnsignedLongLongIntegerDisplayType,
 
-    PointerToDisplayType,
+    VoidDisplayType,
+    EnumDisplayType,
+
+    //
+    // Next set of types start at 16.
+    //
+
+    PointerToDisplayType = 16,
     StructDisplayType,
     UnionDisplayType,
 
     BitfieldPositionDisplayType,
     ArrayDisplayType,
-    VoidDisplayType,
 
     //
     // Any enumeration value >= InvalidDisplayType is invalid.  Make sure this
@@ -2641,6 +2647,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE FunctionArgumentVectorTypeStringTable1;
 
     PSTRING_TABLE DisplayTypesStringTable1;
+    PSTRING_TABLE DisplayTypesStringTable2;
 
     PSTRING_TABLE CommandLineOptionsStringTable;
 
