@@ -3416,6 +3416,81 @@ PVOID
 (MM_GET_MAXIMUM_FILE_SECTION_SIZE)(VOID);
 typedef MM_GET_MAXIMUM_FILE_SECTION_SIZE *PMM_GET_MAXIMUM_FILE_SECTION_SIZE;
 
+//
+// Address Windowing Extensions
+//
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI ALLOCATE_USER_PHYSICAL_PAGES)(
+    _In_ HANDLE hProcess,
+    _Inout_ PULONG_PTR NumberOfPages,
+    _Out_writes_to_(*NumberOfPages, *NumberOfPages) PULONG_PTR PageArray
+    );
+typedef ALLOCATE_USER_PHYSICAL_PAGES *PALLOCATE_USER_PHYSICAL_PAGES;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI ALLOCATE_USER_PHYSICAL_PAGES_NUMA)(
+    _In_ HANDLE hProcess,
+    _Inout_ PULONG_PTR NumberOfPages,
+    _Out_writes_to_(*NumberOfPages, *NumberOfPages) PULONG_PTR PageArray,
+    _In_ DWORD nndPreferred
+    );
+typedef ALLOCATE_USER_PHYSICAL_PAGES_NUMA *PALLOCATE_USER_PHYSICAL_PAGES_NUMA;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI FREE_USER_PHYSICAL_PAGES)(
+    _In_ HANDLE hProcess,
+    _Inout_ PULONG_PTR NumberOfPages,
+    _In_reads_(*NumberOfPages) PULONG_PTR PageArray
+    );
+typedef FREE_USER_PHYSICAL_PAGES *PFREE_USER_PHYSICAL_PAGES;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI MAP_USER_PHYSYICAL_PAGES)(
+    _In_ PVOID VirtualAddress,
+    _In_ ULONG_PTR NumberOfPages,
+    _In_reads_opt_(NumberOfPages) PULONG_PTR PageArray
+    );
+typedef MAP_USER_PHYSYICAL_PAGES *PMAP_USER_PHYSICAL_PAGES;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI MAP_USER_PHYSYICAL_PAGES_SCATTER)(
+    _In_ PVOID *VirtualAddresses,
+    _In_ ULONG_PTR NumberOfPages,
+    _In_reads_opt_(NumberOfPages) PULONG_PTR PageArray
+    );
+typedef MAP_USER_PHYSYICAL_PAGES_SCATTER *PMAP_USER_PHYSICAL_PAGES_SCATTER;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI FREE_USER_PHYSICAL_PAGES)(
+    _In_ HANDLE hProcess,
+    _Inout_ PULONG_PTR NumberOfPages,
+    _In_reads_(*NumberOfPages) PULONG_PTR PageArray
+    );
+typedef FREE_USER_PHYSICAL_PAGES *PFREE_USER_PHYSICAL_PAGES;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI MAP_USER_PHYSYICAL_PAGES)(
+    _In_ PVOID VirtualAddress,
+    _In_ ULONG_PTR NumberOfPages,
+    _In_reads_opt_(NumberOfPages) PULONG_PTR PageArray
+    );
+typedef MAP_USER_PHYSYICAL_PAGES *PMAP_USER_PHYSICAL_PAGES;
+
 #ifdef _M_X64
 
 #ifndef BitTestAndSet
@@ -4285,6 +4360,11 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PLDR_UNLOCK_LOADER_LOCK LdrUnlockLoaderLock;                                                       \
     PZW_ALLOCATE_VIRTUAL_MEMORY ZwAllocateVirtualMemory;                                               \
     PZW_FREE_VIRTUAL_MEMORY ZwFreeVirtualMemory;                                                       \
+    PALLOCATE_USER_PHYSICAL_PAGES AllocateUserPhysicalPages;                                           \
+    PALLOCATE_USER_PHYSICAL_PAGES_NUMA AllocateUserPhysicalPagesNuma;                                  \
+    PMAP_USER_PHYSICAL_PAGES MapUserPhysicalPages;                                                     \
+    PMAP_USER_PHYSICAL_PAGES_SCATTER MapUserPhysicalPagesScatter;                                      \
+    PFREE_USER_PHYSICAL_PAGES FreeUserPhysicalPages;                                                   \
     PRTL_CREATE_HEAP RtlCreateHeap;                                                                    \
     PRTL_DESTROY_HEAP RtlDestroyHeap;                                                                  \
     PRTL_ALLOCATE_HEAP RtlAllocateHeap;                                                                \
