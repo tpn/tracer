@@ -185,6 +185,33 @@ CONST STRING FunctionArgumentVectorTypes1 = RTL_CONSTANT_STRING(
 );
 
 //
+// DisplayTypes
+//
+
+CONST STRING DisplayTypes1 = RTL_CONSTANT_STRING(
+    DSTR("Char")
+    DSTR("UChar")
+    DSTR("Wchar")
+    DSTR("Int2B")
+    DSTR("Int4B")
+    DSTR("Int8B")
+    DSTR("Uint2B")
+    DSTR("Uint4B")
+    DSTR("Uint8B")
+    DSTR("Float")
+    DSTR("Void")
+    DSTR("Enum")
+);
+
+CONST STRING DisplayTypes2 = RTL_CONSTANT_STRING(
+    DSTR("Ptr64 to ")
+    DSTR("struct ")
+    DSTR("union ")
+    DSTR("Bitfield Pos ")
+    DSTR("[")
+);
+
+//
 // Command line-related strings.
 //
 
