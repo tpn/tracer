@@ -3242,6 +3242,9 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
 
     LARGE_INTEGER OpenedTimestamp;
 
+    FLOAT Float;
+    DOUBLE Double;
+
     //
     // Inline SQLITE3_VTAB_CURSOR structure.
     //

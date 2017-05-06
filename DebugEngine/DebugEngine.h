@@ -2037,6 +2037,43 @@ typedef union _DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS {
 } DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS;
 C_ASSERT(sizeof(DEBUG_ENGINE_DISPLAY_TYPE_COMMAND_OPTIONS) == sizeof(ULONG));
 
+typedef enum _DEBUG_ENGINE_DISPLAY_TYPES {
+    UnknownDisplayTypeType = -1,
+
+    //
+    // First 16 types captured by DisplayTypes.
+    //
+
+    CharDisplayType = 0,
+    UnsignedCharDisplayType,
+    WideCharDisplayType,
+
+    ShortIntegerDisplayType,
+    LongIntegerDisplayType,
+    LongLongIntegerDisplayType,
+
+    UnsignedShortIntegerDisplayType,
+    UnsignedLongIntegerDisplayType,
+    UnsignedLongLongIntegerDisplayType,
+
+    PointerToDisplayType,
+    StructDisplayType,
+    UnionDisplayType,
+
+    BitfieldPositionDisplayType,
+    ArrayDisplayType,
+    VoidDisplayType,
+
+    //
+    // Any enumeration value >= InvalidDisplayType is invalid.  Make sure this
+    // always comes last in the enum layout.
+    //
+
+    InvalidDisplayType
+
+} DEBUG_ENGINE_DISPLAY_TYPES;
+typedef DEBUG_ENGINE_DISPLAY_TYPES *PDEBUG_ENGINE_DISPLAY_TYPES;
+
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -2592,17 +2629,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PSTRING_TABLE ExamineSymbolsPrefixStringTable;
 
     USHORT NumberOfBasicTypeStringTables;
-    USHORT Padding1[3];
+    USHORT NumberOfFunctionArgumentTypeStringTables;
+    USHORT NumberOfDisplayTypesStringTables;
+    USHORT Padding;
 
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable1;
     PSTRING_TABLE ExamineSymbolsBasicTypeStringTable2;
 
-    USHORT NumberOfFunctionArgumentTypeStringTables;
-    USHORT Padding2[3];
-
     PSTRING_TABLE FunctionArgumentTypeStringTable1;
     PSTRING_TABLE FunctionArgumentTypeStringTable2;
     PSTRING_TABLE FunctionArgumentVectorTypeStringTable1;
+
+    PSTRING_TABLE DisplayTypesStringTable1;
+
     PSTRING_TABLE CommandLineOptionsStringTable;
 
 } DEBUG_ENGINE_SESSION, *PDEBUG_ENGINE_SESSION, **PPDEBUG_ENGINE_SESSION;

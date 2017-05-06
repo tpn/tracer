@@ -185,6 +185,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL Started = FALSE;
     PSTRING Line;
     ULONG TotalLines;
     PLIST_ENTRY ListHead;

@@ -325,6 +325,26 @@ InitializeDebugEngineSessionStringTables(
     Session->NumberOfFunctionArgumentTypeStringTables = 2;
 
     //
+    // Create the string table for display types.
+    //
+
+    Session->DisplayTypesStringTable1 = (
+        CreateStringTableFromDelimitedString(
+            Rtl,
+            StringTableAllocator,
+            StringArrayAllocator,
+            &DisplayTypes1,
+            StringTableDelimiter
+        )
+    );
+
+    if (!Session->DisplayTypesStringTable1) {
+        goto Error;
+    }
+
+    Session->NumberOfDisplayTypesStringTables = 1;
+
+    //
     // If we're initializing from the command line, create the command line
     // options string table.
     //
