@@ -109,6 +109,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ModuleLoaderExe", "ModuleLo
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScratchExe", "ScratchExe\ScratchExe.vcxproj", "{681468CA-92CE-47D8-95D0-FB906CB5E80A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142} = {4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TraceStoreSqlite3Ext", "TraceStoreSqlite3Ext\TraceStoreSqlite3Ext.vcxproj", "{3670370F-FFC8-4A7B-B748-4F26FCA183FD}"
 EndProject
