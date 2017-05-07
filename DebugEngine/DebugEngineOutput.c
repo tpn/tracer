@@ -583,7 +583,7 @@ Return Value:
                                               ListEntry);
 
         PartialLine = &LinkedPartialLine->String;
-        __movsb(Dest, PartialLine->Buffer, PartialLine->Length);
+        CopyMemory(Dest, PartialLine->Buffer, PartialLine->Length);
         Dest += PartialLine->Length;
         Allocator->Free(Allocator->Context, LinkedPartialLine);
         Output->NumberOfPartialLines--;
@@ -606,7 +606,7 @@ Return Value:
     // Copy the contents of the latest line.
     //
 
-    __movsb(Dest, Line->Buffer, Line->Length);
+    CopyMemory(Dest, Line->Buffer, Line->Length);
 
     //
     // Update lengths and invoke the caller's line output callback.
