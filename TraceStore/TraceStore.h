@@ -2856,8 +2856,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_TYPE_INFO_TABLE_ENTRY {
     TRACE_TYPE_INFO_TABLE_ENTRY_FLAGS Flags;
 
     //
-    // Prefix table entry. links to TRACE_TYPE_INFO_TABLE's
-    // TypeInfoPrefixTable.
+    // Links to TRACE_TYPE_INFO_TABLE's TypeInfoPrefixTable.
     //
 
     PREFIX_TABLE_ENTRY PrefixTableEntry;
