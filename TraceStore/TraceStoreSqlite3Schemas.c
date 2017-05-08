@@ -20,6 +20,46 @@ Abstract:
 // Define helper macros for returning results.
 //
 
+#define RESULT_WCHAR(WideChar) \
+    Sqlite3->ResultText16LE(   \
+        Context,               \
+        &WideChar,             \
+        sizeof(WCHAR),         \
+        SQLITE_STATIC          \
+    )
+
+#define RESULT_BLOB(Blob, Size) \
+    Sqlite3->ResultBlob(        \
+        Context,                \
+        &Blob,                  \
+        Size,                   \
+        SQLITE_STATIC           \
+    )
+
+#define RESULT_PBLOB(Blob, Size) \
+    Sqlite3->ResultBlob(         \
+        Context,                 \
+        Blob,                    \
+        Size,                    \
+        SQLITE_STATIC            \
+    )
+
+#define RESULT_BLOB64(Blob, Size) \
+    Sqlite3->ResultBlob64(        \
+        Context,                  \
+        &Blob,                    \
+        (SQLITE3_UINT64)Size,     \
+        SQLITE_STATIC             \
+    )
+
+#define RESULT_PBLOB64(Blob, Size) \
+    Sqlite3->ResultBlob64(         \
+        Context,                   \
+        Blob,                      \
+        (SQLITE3_UINT64)Size,      \
+        SQLITE_STATIC              \
+    )
+
 #define RESULT_PSTRING(String) \
     Sqlite3->ResultText16LE(   \
         Context,               \
@@ -62,6 +102,11 @@ Abstract:
 #define RESULT_ULONG(ULong) Sqlite3->ResultInt(Context, ULong)
 #define RESULT_ULONGLONG(ULongLong) \
     Sqlite3->ResultInt64(Context, (SQLITE3_INT64)ULongLong)
+
+#define INVALID_COLUMN()          \
+    __debugbreak();               \
+    Sqlite3->ResultNull(Context); \
+    break
 
 //
 // MetadataInfo
@@ -533,12 +578,30 @@ TraceStoreSqlite3InfoColumn(
 
 CONST CHAR TraceStoreModuleLoadEventSchema[] =
     "CREATE TABLE TraceStore_ModuleLoadEvent("
-        "Path TEXT, "
-        "Loaded BIGINT, "
-        "Unloaded BIGINT, "
-        "PreferredBaseAddress BIGINT, "
-        "BaseAddress BIGINT, "
-        "EntryPoint BIGINT"
+        "Path TEXT, "                           // Path->Full, UNICODE_STRING
+        "NumberOfSlashes SMALLINT, "            // Path->NumberOfSlashes
+        "NumberOfDots SMALLINT, "               // Path->NumberOfDots
+        "Drive TEXT, "                          // Path->Drive, WCHAR
+        "CreationTime BIGINT, "                 // File->CreationTime
+        "LastAccessTime BIGINT, "               // File->LastAccessTime
+        "LastWriteTime BIGINT, "                // File->LastWriteTime
+        "ChangeTime BIGINT, "                   // File->ChangeTime
+        "FileAttributes INTEGER, "              // File->FileAttributes
+        "NumberOfPages INTEGER, "               // File->NumberOfChanges
+        "EndOfFile BIGINT, "                    // File->EndOfFile
+        "AllocationSize BIGINT, "               // File->AllocationSize
+        "FileId BIGINT, "                       // File->FileId
+        "VolumeSerialNumber BIGINT, "           // File->VolumeSerialNumber
+        "FileId128 BLOB, "                      // File->FileId128, sizeof()
+        "MD5 BLOB, "                            // File->MD5, sizeof()
+        "SHA1 BLOB, "                           // File->SHA1, sizeof()
+        "CopyTimeInMicroseconds BIGINT, "       // File->CopyTimeInMicroseconds, LARGE_INTEGER
+        "CopiedBytesPerSecond BIGINT, "         // File->CopiedBytesPerSecond, LARGE_INTEGER
+        "Loaded BIGINT, "                       // LoadEvent->Timestamp.Loaded, LARGE_INTEGER
+        "Unloaded BIGINT, "                     // LoadEvent->Timestamp.Unloaded, LARGE_INTEGER
+        "PreferredBaseAddress BIGINT, "         // LoadEvent->PreferredBaseAddress
+        "BaseAddress BIGINT, "                  // LoadEvent->BaseAddress
+        "EntryPoint BIGINT"                     // LoadEvent->EntryPoint
     ")";
 
 _Use_decl_annotations_
@@ -557,13 +620,131 @@ TraceStoreSqlite3ModuleLoadEventColumn(
     PRTL_PATH Path;
 
     LoadEvent = (PTRACE_MODULE_LOAD_EVENT)Cursor->CurrentRowRaw;
+    ModuleTableEntry = LoadEvent->ModuleTableEntry;
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
 
     switch (ColumnNumber) {
 
         case 0:
-            ModuleTableEntry = LoadEvent->ModuleTableEntry;
-            File = &ModuleTableEntry->File;
-            Path = &File->Path;
+            RESULT_UNICODE_STRING(Path->Full);
+            break;
+
+        //
+        // Loaded BIGINT
+        //
+
+        case 1:
+            RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Loaded);
+            break;
+
+        //
+        // Unloaded BIGINT
+        //
+
+        case 2:
+            RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Unloaded);
+            break;
+
+        //
+        // PreferredBaseAddress BIGINT
+        //
+
+        case 3:
+            RESULT_ULONGLONG(LoadEvent->PreferredBaseAddress);
+            break;
+
+        //
+        // BaseAddress BIGINT
+        //
+
+        case 4:
+            RESULT_ULONGLONG(LoadEvent->BaseAddress);
+            break;
+
+        //
+        // EntryPoint BIGINT
+        //
+
+        case 5:
+            RESULT_ULONGLONG(LoadEvent->EntryPoint);
+            break;
+
+        default:
+            __debugbreak();
+            Sqlite3->ResultNull(Context);
+            return SQLITE_ERROR;
+    }
+
+    return SQLITE_OK;
+}
+
+//
+// N.B. Having the Python stuff here is an encapsulation violation, however,
+//      it does the job for now.
+//
+
+#include "..\Python\Python.h"
+
+//
+// Python_PythonFunctionTableEntry
+//
+
+CONST CHAR PythonFunctionTableEntrySchema[] =
+    "CREATE TABLE Python_PythonFunctionTableEntry("
+        "Path TEXT, "
+        "FullName TEXT, " 
+        "ModuleName TEXT, "
+        "Name TEXT, "
+        "ClassName TEXT, "
+        "MaxCallStackDepth INTEGER, "
+        "CallCount INTEGER, "
+        "FirstLineNumber SMALLINT, "
+        "NumberOfLines SMALLINT, "
+        "NumberOfCodeLines SMALLINT, "
+        "SizeOfByteCodeInBytes SMALLINT, "
+        "Signature BIGINT, "
+        "IsModuleDirectory TINYINT, "
+        "IsNonModuleDirectory TINYINT, "
+        "IsFileSystemDirectory TINYINT, "
+        "IsFile TINYINT, "
+        "IsClass TINYINT, "
+        "IsFunction TINYINT, "
+        "IsSpecial TINYINT, "
+        "IsValid TINYINT, "
+        "IsDll TINYINT, "
+        "IsC TINYINT, "
+        "IsBuiltin TINYINT, "
+        "IsInitPy TINYINT, "
+    ")";
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PythonFunctionTableEntryColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_MODULE_LOAD_EVENT LoadEvent;
+    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+    PRTL_FILE File;
+    PRTL_PATH Path;
+
+    LoadEvent = (PTRACE_MODULE_LOAD_EVENT)Cursor->CurrentRowRaw;
+    ModuleTableEntry = LoadEvent->ModuleTableEntry;
+    File = &ModuleTableEntry->File;
+    Path = &File->Path;
+
+    switch (ColumnNumber) {
+
+        //
+        // Path TEXT
+        //
+
+        case 0:
             RESULT_UNICODE_STRING(Path->Full);
             break;
 

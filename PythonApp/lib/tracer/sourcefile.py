@@ -61,6 +61,15 @@ MultilineMacroDefinition = namedtuple(
     ]
 )
 
+MultilineConstStringDecl = namedtuple(
+    'MultilineConstStringDecl', [
+        'name',
+        'first_lineno',
+        'last_lineno',
+        'lines',
+    ]
+)
+
 #===============================================================================
 # Helpers
 #===============================================================================
@@ -93,6 +102,101 @@ def convert_function_decls_to_funcptr_typedefs(text, prefix=None, prepend=None):
         results.append(func_text)
 
     return results
+
+def generate_sqlite3_column_func_switch_statement(mdecl):
+    lines = [
+        '',
+        '        //',
+        '        // Begin auto-generated section.',
+        '        //',
+    ]
+    # Skip the first two lines and last line.
+    for (i, line) in enumerate(mdecl.lines[2:-1]):
+
+        # Find the index of the first quote.
+        ix = line.find('"')
+        assert ix != -1, line
+
+        # Find the index of the second quote.
+        ix2 = line.find('"', ix+1)
+        assert ix2 != -1, (line, ix1)
+
+        # Extract the schema part and omit the trailing ", " if applicable.
+        schema = line[ix+1:ix2]
+        if schema.endswith(', '):
+            schema = schema[:-2]
+        (name, dtype) = schema.split(' ')
+
+        # Find the start of the line's comment.
+        ix3 = line.find('//', ix2 + 1)
+        assert ix != -1, (line, ix1, ix2)
+
+        # Extract the access descriptor.
+        access = line[ix3+3:]
+
+        stmt = None
+
+        if dtype == 'TEXT':
+            # TEXT should always have a ", <type>" suffix, e.g.:
+            #   Path->Full, UNICODE_STRING
+            (target, cast) = access.split(', ')
+            stmt = 'RESULT_%s(%s);' % (cast, target)
+        elif dtype.startswith('BLOB'):
+            # BLOB should be followed by either ", sizeof()" or "sizeof(*)".
+            (target, cast) = access.split(', ')
+            assert cast in ('sizeof()', 'sizeof(*)'), (cast, line, dtype)
+            if '*' in cast:
+                ptr = 'P'
+                sizeof = 'sizeof(*%s)' % target
+            else:
+                ptr = ''
+                sizeof = 'sizeof(%s)' % target
+            fmt = 'RESULT_%s%s(%s, %s);'
+            stmt = fmt % (ptr, dtype, target, sizeof)
+        elif dtype == 'REAL':
+            if ', ' in access:
+                (target, cast) = access.split(', ')
+            else:
+                target = access
+                cast = 'DOUBLE'
+            fmt = 'RESULT_%s((%s)%s);'
+            stmt = fmt % (cast, cast, target)
+        elif dtype == 'NUMERIC':
+            raise RuntimeError("NUMERIC not supported.")
+        else:
+            assert 'INT' in dtype, (dtype, line)
+            is_big = 'BIG' in dtype
+            if ', ' in access:
+                (target, cast) = access.split(', ')
+            else:
+                target = access
+                cast = 'ULONGLONG' if is_big else 'ULONG'
+            fmt = 'RESULT_%s(%s);'
+            stmt = fmt % (cast, target)
+
+        lines += [
+            '',
+            '        //',
+           #'        // %d: %s %s -> %s' % (i, name, dtype, stmt),
+            '        // %d: %s %s' % (i, name, dtype),
+            '        //',
+            '',
+            '        case %d:' % i,
+            '            %s' % stmt,
+            '            break;',
+        ]
+
+    lines += [
+        '',
+        '        default:',
+        '           INVALID_COLUMN();',
+        '',
+        '        //',
+        '        // End auto-generated section.',
+        '        //',
+    ]
+
+    return lines
 
 #===============================================================================
 # Classes
@@ -173,6 +277,71 @@ class SourceFile(InvariantAwareObject):
             lines.append(line)
 
             results[name] = MultilineMacroDefinition(
+                name=name,
+                first_lineno=first_lineno,
+                last_lineno=last_lineno,
+                lines=lines
+            )
+
+        return results
+
+    @property
+    @memoize
+    def const_string_decls(self):
+        results = []
+        string_types = ('CHAR', 'WCHAR', 'STR', 'WSTR')
+        for (lineno, line) in enumerate(self.lines):
+            if not line.startswith('CONST '):
+                continue
+
+            tokens = line.split(' ')
+            if not any(token in string_types for token in tokens):
+                continue
+
+            if line.endswith('[] ='):
+                results.append((lineno, line))
+
+        return results
+
+    @property
+    @memoize
+    def const_array_decls(self):
+        results = []
+        for (lineno, line) in enumerate(self.lines):
+            if not line.startswith('CONST '):
+                continue
+
+            if line.endswith('[] = {'):
+                results.append((lineno, line))
+
+        return results
+
+    @property
+    @memoize
+    def multiline_const_string_decls(self):
+        results = {}
+
+        decls = self.const_string_decls
+        for decl in decls:
+            lines = []
+            (lineno, line) = decl
+
+            name = line.replace('CONST ', '').split(' ')[1].replace('[]', '')
+            first_lineno = lineno
+            lines.append(line)
+
+            lineno += 1
+            line = self.lines[lineno]
+
+            while not line.endswith(';'):
+                lines.append(line)
+                lineno += 1
+                line = self.lines[lineno]
+
+            last_lineno = lineno
+            lines.append(line)
+
+            results[name] = MultilineConstStringDecl(
                 name=name,
                 first_lineno=first_lineno,
                 last_lineno=last_lineno,

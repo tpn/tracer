@@ -593,6 +593,75 @@ class TrailingSlashesAlign(InvariantAwareCommand):
                 f.write('\n'.join(lines))
                 f.write('\n')
 
+class SyncSchema(InvariantAwareCommand):
+    """
+    Syncs the TraceStore/TraceStoreSqlite3Schemas.c file.
+    """
+
+    path = None
+    class PathArg(PathInvariant):
+        _help = "path of the file"
+        _default = "TraceStore\\TraceStoreSqlite3Schemas.c"
+
+    def run(self):
+        out = self._out
+        options = self.options
+        verbose = self._verbose
+
+        path = options.path
+
+
+        from tracer.sourcefile import (
+            SourceFile,
+            generate_sqlite3_column_func_switch_statement,
+        )
+
+        source = SourceFile(path)
+        orig_data = source.data
+        orig_lines = source.lines
+
+        from copy import copy
+        lines = copy(orig_lines)
+
+        funcs = {}
+        block = ['    switch (ColumnNumber) {']
+        decls = source.const_string_decls
+        multiline_const_string_decls = source.multiline_const_string_decls
+
+        if not multiline_const_string_decls:
+            return
+
+        switches = {}
+
+        for (mname, mdecl) in multiline_const_string_decls.items():
+            name = mname.replace('TraceStore', '').replace('Schema', '')
+            column_func_name = 'TraceStoreSqlite3%sColumn' % name
+            func = source.function_definition(column_func_name, block=block)
+            if not func:
+                continue
+            if name != 'ModuleLoadEvent':
+                continue
+            first_line = func.first_block_line
+            last_line = func.last_block_line
+            assert first_line
+            assert last_line
+
+            funcs[mname] = func
+
+            switch_lines = generate_sqlite3_column_func_switch_statement(mdecl)
+
+            old_lines = lines[first_line+1:last_line]
+            if old_lines != switch_lines:
+                out("Updating %s." % column_func_name)
+                dirty = True
+                lines[first_line+1:last_line] = switch_lines
+
+        if dirty and False:
+            with open(path, 'wb') as f:
+                f.write('\n'.join(lines))
+                f.write('\n')
+
+
 class SyncTraceStoreIndexHeader(InvariantAwareCommand):
     """
     Finds all multi-line macros and aligns trailing slashes where necessary.
