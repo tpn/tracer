@@ -3045,10 +3045,26 @@ typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
         ULONG IsCoalescedAllocationActive:1;
 
         //
+        // When set, indicates that this is a cursor for a metadata store.
+        // This value is primed from the TraceStore->IsMetadata flag.
+        //
+
+        ULONG IsMetadataStore:1;
+
+        //
+        // When set, indicates that this trace store's traits indicate it that
+        // it has a fixed record size, and that the record size is a power of
+        // 2.  This makes it easier to calculate the next record's starting
+        // address in the cursor's Next() method.
+        //
+
+        ULONG FixedRecordSizeAndAlwaysPowerOf2:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:31;
+        ULONG Unused:29;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -3152,7 +3168,10 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     // The current row being processed.
     //
 
-    TRACE_STORE_ROW CurrentRow;
+    union {
+        TRACE_STORE_ROW CurrentRow;
+        ULONGLONG CurrentRowRaw;
+    };
 
     //
     // Rowid is synonymous with a single record.
@@ -3180,6 +3199,23 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     //
 
     LONGLONG TotalNumberOfAllocations;
+
+    //
+    // If this is a metadata store, the size of each record (allocation).
+    // (Metadata stores have fixed records.)
+    //
+
+    ULONGLONG MetadataRecordSizeInBytes;
+
+    //
+    // If it's possible to ascertain the trace store's record size up front
+    // (e.g. if it has a fixed record size that is also a power of 2), this
+    // value will be set to a non-zero value.  If it's zero, then the cursor's
+    // Next() callback will need to do a little more work to determine where
+    // the next row begins (based on the trace store's traits, etc).
+    //
+
+    ULONGLONG TraceStoreRecordSizeInBytes;
 
     //
     // Pointer to the active memory map record.

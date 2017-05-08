@@ -172,7 +172,7 @@ Routine Description:
 
     This routine is the callback target for the bind remaining metadata
     threadpool work item of a trace context.  It is submitted in parallel
-    for all metadata trace stores as soon as the :metadatainfo store has
+    for all metadata trace stores as soon as the :MetadataInfo store has
     been bound.  It pops a metadata store off the trace context, calls the
     bind method, and, if successful, decrements the main trace store's count
     of in-progress metadata bindings.  If this was the last metadata binding,
@@ -224,6 +224,10 @@ Return Value:
     TraceStore = MetadataStore->TraceStore;
     if (InterlockedDecrement(&TraceStore->MetadataBindsInProgress) == 0) {
         SubmitBindTraceStoreWork(TraceContext, TraceStore);
+    }
+
+    if (MetadataStore->IsReadonly) {
+        MetadataStore->FlatMappingLoaded = TRUE;
     }
 
     return;

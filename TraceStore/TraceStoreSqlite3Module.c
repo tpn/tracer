@@ -159,6 +159,7 @@ TraceStoreSqlite3ModuleOpenCursor(
 {
     PCSQLITE3 Sqlite3;
     PTRACE_STORE TraceStore;
+    TRACE_STORE_TRAITS Traits;
     PTRACE_STORE_TOTALS Totals;
     PTRACE_STORE_SQLITE3_DB Db;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
@@ -184,7 +185,7 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     Cursor->Db = Db;
     Cursor->TraceStore = TraceStore;
-    Cursor->Traits = *TraceStore->pTraits;
+    Traits = Cursor->Traits = *TraceStore->pTraits;
     Cursor->Sqlite3 = Sqlite3;
     Cursor->Sqlite3Column = TraceStore->Sqlite3Column;
     Cursor->TotalNumberOfAllocations = Totals->NumberOfAllocations.QuadPart;
@@ -194,9 +195,25 @@ TraceStoreSqlite3ModuleOpenCursor(
         Cursor->MemoryMap = &TraceStore->FlatMemoryMap;
         Cursor->AddressRange = TraceStore->ReadonlyAddressRanges;
         Cursor->TotalNumberOfRecords = Totals->NumberOfRecords.QuadPart;
+
+        if (IsFixedRecordSize(Traits)) {
+            if (IsRecordSizeAlwaysPowerOf2(Traits)) {
+                Cursor->Flags.FixedRecordSizeAndAlwaysPowerOf2 = TRUE;
+                Cursor->TraceStoreRecordSizeInBytes = (
+                    Totals->AllocationSize.QuadPart /
+                    Totals->NumberOfAllocations.QuadPart
+                );
+            }
+        }
+
     } else {
+        Cursor->Flags.IsMetadataStore = TRUE;
         Cursor->MemoryMap = &TraceStore->SingleMemoryMap;
         Cursor->TotalNumberOfRecords = Cursor->TotalNumberOfAllocations;
+        Cursor->MetadataRecordSizeInBytes = (
+            Totals->AllocationSize.QuadPart /
+            Totals->NumberOfAllocations.QuadPart
+        );
     }
 
     //
@@ -282,26 +299,173 @@ TraceStoreSqlite3ModuleNext(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
+    ULONGLONG NumberOfRecords;
+    ULONGLONG NextRecordOffset = 0;
+    TRACE_STORE_TRAITS Traits;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
+    PTRACE_STORE_ALLOCATION NextAllocation = NULL;
+
+    //
+    // Resolve cursor and initialize local traits variable.
+    //
 
     Cursor = CONTAINING_RECORD(Sqlite3Cursor,
                                TRACE_STORE_SQLITE3_CURSOR,
                                AsSqlite3VtabCursor);
 
-    Cursor->Rowid++;
+    Traits = Cursor->Traits;
 
     //
-    // Need to calculate the next address, plus see if we need to switch base
-    // addresses because we've exhausted that memory map...
-    //
-    // This functionality should probably be encapsulated in a ReadRecords()
-    // type function (that parallels AllocateRecords()).
+    // Advance the cursor and perform an EOF check; if true, return now and
+    // avoid any unnecessary record size deduction.
     //
 
-    Cursor->CurrentRow.AsVoid = (PVOID)(
-        ((ULONG_PTR)Cursor->CurrentRow.AsVoid) + 8
-        //Cursor->RecordSize
-    );
+    if (Cursor->Rowid++ >= Cursor->TotalNumberOfRecords - 1) {
+        return SQLITE_OK;
+    }
+
+    //
+    // Invariant check: the multiple records trait should be set for the trace
+    // store at this point if we passed the EOF test above.
+    //
+
+    if (IsSingleRecord(Traits)) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+    //
+    // We need to determine the size of the active record (row) in order to
+    // determine how many bytes we need to advance the current row pointer
+    // such that it points at the next row.
+    //
+
+    if (Cursor->Flags.IsMetadataStore) {
+
+        //
+        // For metadata stores, this is easy, as they always have a fixed
+        // record size, and we capture it up-front when the cursor is created.
+        //
+
+        NextRecordOffset = Cursor->MetadataRecordSizeInBytes;
+
+    } else {
+
+        //
+        // For trace stores, things are a little more involved.  Let's handle
+        // the easiest case first: if the trace store's record size is already
+        // set for us, we don't need to do any more work.
+        //
+
+        if (Cursor->TraceStoreRecordSizeInBytes) {
+            NextRecordOffset = Cursor->TraceStoreRecordSizeInBytes;
+            goto UpdateRow;
+        }
+
+        //
+        // If we're already in the middle of enumerating a coalesced allocation,
+        // continue with that logic.
+        //
+
+        if (Cursor->Flags.IsCoalescedAllocationActive) {
+
+            //
+            // Update our current coalesced allocation counter.  If it has
+            // surpassed the total number of coalesced allocations in this
+            // chunk, advance to the next allocation record.  Otherwise,
+            // use the coalesced allocation's record size as the next record
+            // offset and jump to the final row update.
+            //
+
+            Cursor->CurrentCoalescedAllocationNumber += 1;
+
+            if (Cursor->CurrentCoalescedAllocationNumber ==
+                Cursor->TotalCoalescedAllocations) {
+
+                //
+                // Advance to the next allocation record and reset the current
+                // coalesced allocation state.
+                //
+
+                Cursor->Allocation++;
+                Cursor->Flags.IsCoalescedAllocationActive = FALSE;
+
+            } else {
+
+                //
+                // Current allocation record is still active, use its record
+                // size.
+                //
+
+                NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
+                goto UpdateRow;
+            }
+
+        } else {
+
+            //
+            // If no coalesced record is active, advance the allocation record.
+            //
+
+            Cursor->Allocation++;
+        }
+
+        //
+        // If we get here, we will have just advanced the allocation record.
+        // Thus, we need to test if the currently active allocation is a dummy
+        // one, and if so, skip past it and any subsequent dummy allocations
+        // until we find the first real one.
+        //
+
+        while (IsDummyAllocation(Cursor->Allocation)) {
+            Cursor->Allocation++;
+        }
+
+        //
+        // The cursor's allocation record is now definitely the one we want.
+        // That is, it describes the size of the record that was allocated for
+        // the address reflected in the cursor's current row.  (Note that the
+        // allocation record actually lags one iteration behind the row; i.e.
+        // in order to find out where row 2 starts, we process the allocation
+        // record number 1.)
+        //
+        // Obtain the record offset from the allocation record.  Then, test to
+        // see if it represents multiple allocations; if so, initialize the
+        // cursor's coalesced counters such that the relevant state can be
+        // resumed upon subsequent invocations of Next().
+        //
+
+        NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
+
+        NumberOfRecords = Cursor->Allocation->NumberOfRecords.QuadPart;
+        if (NumberOfRecords > 1) {
+
+            //
+            // Initialize coalesced allocation state.
+            //
+
+            Cursor->Flags.IsCoalescedAllocationActive = TRUE;
+            Cursor->CurrentCoalescedAllocationNumber = 1;
+            Cursor->TotalCoalescedAllocations = NumberOfRecords;
+        }
+    }
+
+    //
+    // Invariant check, next record offset should be non-zero here.
+    //
+
+    if (!NextRecordOffset) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+UpdateRow:
+
+    //
+    // Update the cursor and return success.
+    //
+
+    Cursor->CurrentRowRaw = Cursor->CurrentRowRaw + NextRecordOffset;
 
     return SQLITE_OK;
 }

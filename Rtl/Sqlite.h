@@ -473,6 +473,14 @@ typedef SQLITE3_RESULT_NULL *PSQLITE3_RESULT_NULL;
 
 typedef
 VOID
+(SQLITE3_RESULT_DOUBLE)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ DOUBLE Double
+    );
+typedef SQLITE3_RESULT_DOUBLE *PSQLITE3_RESULT_DOUBLE;
+
+typedef
+VOID
 (SQLITE3_RESULT_INT)(
     _In_ PSQLITE3_CONTEXT Context,
     _In_ INT Result
@@ -486,6 +494,85 @@ VOID
     _In_ SQLITE3_INT64 Result
     );
 typedef SQLITE3_RESULT_INT64 *PSQLITE3_RESULT_INT64;
+
+typedef
+VOID
+(SQLITE3_DESTRUCTOR)(
+    _In_ PVOID Buffer
+    );
+typedef SQLITE3_DESTRUCTOR *PSQLITE3_DESTRUCTOR;
+
+    void  (*result_blob)(sqlite3_context*,const void*,int,void(*)(void*));
+typedef
+VOID
+(SQLITE3_RESULT_BLOB)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfBufferInBytes) PVOID Buffer,
+    _In_ LONG SizeOfBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_BLOB *PSQLITE3_RESULT_BLOB;
+
+typedef
+VOID
+(SQLITE3_RESULT_BLOB64)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfBufferInBytes) PVOID Buffer,
+    _In_ SQLITE3_UINT64 SizeOfBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_BLOB64 *PSQLITE3_RESULT_BLOB64;
+
+typedef
+VOID
+(SQLITE3_RESULT_TEXT)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfBufferInBytes) PCCH Buffer,
+    _In_opt_ LONG SizeOfBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_TEXT *PSQLITE3_RESULT_TEXT;
+
+typedef
+VOID
+(SQLITE3_RESULT_TEXT16)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfWideBufferInBytes) PCWCHAR WideBuffer,
+    _In_ LONG SizeOfWideBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_TEXT16 *PSQLITE3_RESULT_TEXT16;
+
+typedef
+VOID
+(SQLITE3_RESULT_TEXT16BE)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfWideBufferInBytes) PCWCHAR WideBuffer,
+    _In_ LONG SizeOfWideBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_TEXT16BE *PSQLITE3_RESULT_TEXT16BE;
+
+typedef
+VOID
+(SQLITE3_RESULT_TEXT16LE)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfWideBufferInBytes) PCWCHAR WideBuffer,
+    _In_ LONG SizeOfWideBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor
+    );
+typedef SQLITE3_RESULT_TEXT16LE *PSQLITE3_RESULT_TEXT16LE;
+
+typedef
+VOID
+(SQLITE3_RESULT_TEXT64)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_reads_bytes_(SizeOfBufferInBytes) PCCH Buffer,
+    _In_ LONG SizeOfBufferInBytes,
+    _In_opt_ PSQLITE3_DESTRUCTOR Destructor,
+    _In_ CHAR Encoding
+    );
+typedef SQLITE3_RESULT_TEXT64 *PSQLITE3_RESULT_TEXT64;
 
 //
 // Define the SQLITE3_API_ROUTINES structure.
@@ -588,8 +675,10 @@ typedef struct _SQLITE3_API_ROUTINES {
     void  (*progress_handler)(sqlite3*,int,int(*)(void*),void*);
     void *(*realloc)(void*,int);
     int  (*reset)(sqlite3_stmt*pStmt);
-    void  (*result_blob)(sqlite3_context*,const void*,int,void(*)(void*));
-    void  (*result_double)(sqlite3_context*,double);
+
+    PSQLITE3_RESULT_BLOB ResultBlob;
+    PSQLITE3_RESULT_DOUBLE ResultDouble;
+
     void  (*result_error)(sqlite3_context*,const char*,int);
     void  (*result_error16)(sqlite3_context*,const void*,int);
 
@@ -597,10 +686,11 @@ typedef struct _SQLITE3_API_ROUTINES {
     PSQLITE3_RESULT_INT64 ResultInt64;
     PSQLITE3_RESULT_NULL ResultNull;
 
-    void  (*result_text)(sqlite3_context*,const char*,int,void(*)(void*));
-    void  (*result_text16)(sqlite3_context*,const void*,int,void(*)(void*));
-    void  (*result_text16be)(sqlite3_context*,const void*,int,void(*)(void*));
-    void  (*result_text16le)(sqlite3_context*,const void*,int,void(*)(void*));
+    PSQLITE3_RESULT_TEXT ResultText;
+    PSQLITE3_RESULT_TEXT16 ResultText16;
+    PSQLITE3_RESULT_TEXT16BE ResultText16BE;
+    PSQLITE3_RESULT_TEXT16LE ResultText16LE;
+
     void  (*result_value)(sqlite3_context*,sqlite3_value*);
     void * (*rollback_hook)(sqlite3*,void(*)(void*),void*);
     int  (*set_authorizer)(sqlite3*,int(*)(void*,int,const char*,const char*,
@@ -742,10 +832,10 @@ typedef struct _SQLITE3_API_ROUTINES {
     PSQLITE3_REALLOC64 Realloc64;
 
     void (*reset_auto_extension)(void);
-    void (*result_blob64)(sqlite3_context*,const void*,sqlite3_uint64,
-                        void(*)(void*));
-    void (*result_text64)(sqlite3_context*,const char*,sqlite3_uint64,
-                         void(*)(void*), unsigned char);
+
+    PSQLITE3_RESULT_BLOB64 ResultBlob64;
+    PSQLITE3_RESULT_TEXT64 ResultText64;
+
     int (*strglob)(const char*,const char*);
     /* Version 3.8.11 and later */
     sqlite3_value *(*value_dup)(const sqlite3_value*);

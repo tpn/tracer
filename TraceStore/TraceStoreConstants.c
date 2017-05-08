@@ -97,6 +97,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "PythonTracer_TraceEvent_AllocationTimestampDelta",
     "PythonTracer_TraceEvent_Synchronization",
     "PythonTracer_TraceEvent_Info",
+
     "TraceStore_StringBuffer",
     "TraceStore_StringBuffer_MetadataInfo",
     "TraceStore_StringBuffer_Allocation",
@@ -107,6 +108,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_StringBuffer_AllocationTimestampDelta",
     "TraceStore_StringBuffer_Synchronization",
     "TraceStore_StringBuffer_Info",
+
     "Python_PythonFunctionTable",
     "Python_PythonFunctionTable_MetadataInfo",
     "Python_PythonFunctionTable_Allocation",
@@ -117,6 +119,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonFunctionTable_AllocationTimestampDelta",
     "Python_PythonFunctionTable_Synchronization",
     "Python_PythonFunctionTable_Info",
+
     "Python_PythonFunctionTableEntry",
     "Python_PythonFunctionTableEntry_MetadataInfo",
     "Python_PythonFunctionTableEntry_Allocation",
@@ -127,6 +130,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonFunctionTableEntry_AllocationTimestampDelta",
     "Python_PythonFunctionTableEntry_Synchronization",
     "Python_PythonFunctionTableEntry_Info",
+
     "Python_PythonPathTable",
     "Python_PythonPathTable_MetadataInfo",
     "Python_PythonPathTable_Allocation",
@@ -137,6 +141,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonPathTable_AllocationTimestampDelta",
     "Python_PythonPathTable_Synchronization",
     "Python_PythonPathTable_Info",
+
     "Python_PythonPathTableEntry",
     "Python_PythonPathTableEntry_MetadataInfo",
     "Python_PythonPathTableEntry_Allocation",
@@ -147,6 +152,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonPathTableEntry_AllocationTimestampDelta",
     "Python_PythonPathTableEntry_Synchronization",
     "Python_PythonPathTableEntry_Info",
+
     "TraceStore_PageFault",
     "TraceStore_PageFault_MetadataInfo",
     "TraceStore_PageFault_Allocation",
@@ -157,6 +163,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_PageFault_AllocationTimestampDelta",
     "TraceStore_PageFault_Synchronization",
     "TraceStore_PageFault_Info",
+
     "StringTable_StringArray",
     "StringTable_StringArray_MetadataInfo",
     "StringTable_StringArray_Allocation",
@@ -167,6 +174,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "StringTable_StringArray_AllocationTimestampDelta",
     "StringTable_StringArray_Synchronization",
     "StringTable_StringArray_Info",
+
     "StringTable_StringTable",
     "StringTable_StringTable_MetadataInfo",
     "StringTable_StringTable_Allocation",
@@ -177,6 +185,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "StringTable_StringTable_AllocationTimestampDelta",
     "StringTable_StringTable_Synchronization",
     "StringTable_StringTable_Info",
+
     "PythonTracer_EventTraitsEx",
     "PythonTracer_EventTraitsEx_MetadataInfo",
     "PythonTracer_EventTraitsEx_Allocation",
@@ -187,6 +196,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "PythonTracer_EventTraitsEx_AllocationTimestampDelta",
     "PythonTracer_EventTraitsEx_Synchronization",
     "PythonTracer_EventTraitsEx_Info",
+
     "TraceStore_WsWatchInfoEx",
     "TraceStore_WsWatchInfoEx_MetadataInfo",
     "TraceStore_WsWatchInfoEx_Allocation",
@@ -197,16 +207,18 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_WsWatchInfoEx_AllocationTimestampDelta",
     "TraceStore_WsWatchInfoEx_Synchronization",
     "TraceStore_WsWatchInfoEx_Info",
-    "TraceStore_WorkingSetEx_Info",
-    "TraceStore_WorkingSetExInfo_MetadataInfo",
-    "TraceStore_WorkingSetExInfo_Allocation",
-    "TraceStore_WorkingSetExInfo_Relocation",
-    "TraceStore_WorkingSetExInfo_Address",
-    "TraceStore_WorkingSetExInfo_AddressRange",
-    "TraceStore_WorkingSetExInfo_AllocationTimestamp",
-    "TraceStore_WorkingSetExInfo_AllocationTimestampDelta",
-    "TraceStore_WorkingSetExInfo_Synchronization",
-    "TraceStore_WorkingSetExInfo_Info",
+
+    "TraceStore_WsWorkingSetExInfo",
+    "TraceStore_WsWorkingSetExInfo_MetadataInfo",
+    "TraceStore_WsWorkingSetExInfo_Allocation",
+    "TraceStore_WsWorkingSetExInfo_Relocation",
+    "TraceStore_WsWorkingSetExInfo_Address",
+    "TraceStore_WsWorkingSetExInfo_AddressRange",
+    "TraceStore_WsWorkingSetExInfo_AllocationTimestamp",
+    "TraceStore_WsWorkingSetExInfo_AllocationTimestampDelta",
+    "TraceStore_WsWorkingSetExInfo_Synchronization",
+    "TraceStore_WsWorkingSetExInfo_Info",
+
     "TraceStore_CCallStackTable",
     "TraceStore_CCallStackTable_MetadataInfo",
     "TraceStore_CCallStackTable_Allocation",
@@ -217,6 +229,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_CCallStackTable_AllocationTimestampDelta",
     "TraceStore_CCallStackTable_Synchronization",
     "TraceStore_CCallStackTable_Info",
+
     "TraceStore_CCallStackTableEntry",
     "TraceStore_CCallStackTableEntry_MetadataInfo",
     "TraceStore_CCallStackTableEntry_Allocation",
@@ -227,6 +240,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_CCallStackTableEntry_AllocationTimestampDelta",
     "TraceStore_CCallStackTableEntry_Synchronization",
     "TraceStore_CCallStackTableEntry_Info",
+
     "TraceStore_ModuleTable",
     "TraceStore_ModuleTable_MetadataInfo",
     "TraceStore_ModuleTable_Allocation",
@@ -237,6 +251,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ModuleTable_AllocationTimestampDelta",
     "TraceStore_ModuleTable_Synchronization",
     "TraceStore_ModuleTable_Info",
+
     "TraceStore_ModuleTableEntry",
     "TraceStore_ModuleTableEntry_MetadataInfo",
     "TraceStore_ModuleTableEntry_Allocation",
@@ -247,6 +262,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ModuleTableEntry_AllocationTimestampDelta",
     "TraceStore_ModuleTableEntry_Synchronization",
     "TraceStore_ModuleTableEntry_Info",
+
     "Python_PythonCallStackTable",
     "Python_PythonCallStackTable_MetadataInfo",
     "Python_PythonCallStackTable_Allocation",
@@ -257,6 +273,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonCallStackTable_AllocationTimestampDelta",
     "Python_PythonCallStackTable_Synchronization",
     "Python_PythonCallStackTable_Info",
+
     "Python_PythonCallStackTableEntry",
     "Python_PythonCallStackTableEntry_MetadataInfo",
     "Python_PythonCallStackTableEntry_Allocation",
@@ -267,6 +284,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonCallStackTableEntry_AllocationTimestampDelta",
     "Python_PythonCallStackTableEntry_Synchronization",
     "Python_PythonCallStackTableEntry_Info",
+
     "Python_PythonModuleTable",
     "Python_PythonModuleTable_MetadataInfo",
     "Python_PythonModuleTable_Allocation",
@@ -277,6 +295,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonModuleTable_AllocationTimestampDelta",
     "Python_PythonModuleTable_Synchronization",
     "Python_PythonModuleTable_Info",
+
     "Python_PythonModuleTableEntry",
     "Python_PythonModuleTableEntry_MetadataInfo",
     "Python_PythonModuleTableEntry_Allocation",
@@ -287,6 +306,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "Python_PythonModuleTableEntry_AllocationTimestampDelta",
     "Python_PythonModuleTableEntry_Synchronization",
     "Python_PythonModuleTableEntry_Info",
+
     "TraceStore_LineTable",
     "TraceStore_LineTable_MetadataInfo",
     "TraceStore_LineTable_Allocation",
@@ -297,6 +317,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_LineTable_AllocationTimestampDelta",
     "TraceStore_LineTable_Synchronization",
     "TraceStore_LineTable_Info",
+
     "TraceStore_LineTableEntry",
     "TraceStore_LineTableEntry_MetadataInfo",
     "TraceStore_LineTableEntry_Allocation",
@@ -307,6 +328,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_LineTableEntry_AllocationTimestampDelta",
     "TraceStore_LineTableEntry_Synchronization",
     "TraceStore_LineTableEntry_Info",
+
     "TraceStore_LineStringBuffer",
     "TraceStore_LineStringBuffer_MetadataInfo",
     "TraceStore_LineStringBuffer_Allocation",
@@ -317,6 +339,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_LineStringBuffer_AllocationTimestampDelta",
     "TraceStore_LineStringBuffer_Synchronization",
     "TraceStore_LineStringBuffer_Info",
+
     "TraceStore_CallStack",
     "TraceStore_CallStack_MetadataInfo",
     "TraceStore_CallStack_Allocation",
@@ -327,6 +350,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_CallStack_AllocationTimestampDelta",
     "TraceStore_CallStack_Synchronization",
     "TraceStore_CallStack_Info",
+
     "TraceStore_Performance",
     "TraceStore_Performance_MetadataInfo",
     "TraceStore_Performance_Allocation",
@@ -337,6 +361,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_Performance_AllocationTimestampDelta",
     "TraceStore_Performance_Synchronization",
     "TraceStore_Performance_Info",
+
     "TraceStore_PerformanceDelta",
     "TraceStore_PerformanceDelta_MetadataInfo",
     "TraceStore_PerformanceDelta_Allocation",
@@ -347,6 +372,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_PerformanceDelta_AllocationTimestampDelta",
     "TraceStore_PerformanceDelta_Synchronization",
     "TraceStore_PerformanceDelta_Info",
+
     "TraceStore_SourceCode",
     "TraceStore_SourceCode_MetadataInfo",
     "TraceStore_SourceCode_Allocation",
@@ -357,6 +383,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SourceCode_AllocationTimestampDelta",
     "TraceStore_SourceCode_Synchronization",
     "TraceStore_SourceCode_Info",
+
     "TraceStore_Bitmap",
     "TraceStore_Bitmap_MetadataInfo",
     "TraceStore_Bitmap_Allocation",
@@ -367,6 +394,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_Bitmap_AllocationTimestampDelta",
     "TraceStore_Bitmap_Synchronization",
     "TraceStore_Bitmap_Info",
+
     "TraceStore_ImageFile",
     "TraceStore_ImageFile_MetadataInfo",
     "TraceStore_ImageFile_Allocation",
@@ -377,6 +405,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ImageFile_AllocationTimestampDelta",
     "TraceStore_ImageFile_Synchronization",
     "TraceStore_ImageFile_Info",
+
     "TraceStore_UnicodeStringBuffer",
     "TraceStore_UnicodeStringBuffer_MetadataInfo",
     "TraceStore_UnicodeStringBuffer_Allocation",
@@ -387,6 +416,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_UnicodeStringBuffer_AllocationTimestampDelta",
     "TraceStore_UnicodeStringBuffer_Synchronization",
     "TraceStore_UnicodeStringBuffer_Info",
+
     "TraceStore_Line",
     "TraceStore_Line_MetadataInfo",
     "TraceStore_Line_Allocation",
@@ -397,6 +427,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_Line_AllocationTimestampDelta",
     "TraceStore_Line_Synchronization",
     "TraceStore_Line_Info",
+
     "TraceStore_Object",
     "TraceStore_Object_MetadataInfo",
     "TraceStore_Object_Allocation",
@@ -407,6 +438,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_Object_AllocationTimestampDelta",
     "TraceStore_Object_Synchronization",
     "TraceStore_Object_Info",
+
     "TraceStore_ModuleLoadEvent",
     "TraceStore_ModuleLoadEvent_MetadataInfo",
     "TraceStore_ModuleLoadEvent_Allocation",
@@ -417,6 +449,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ModuleLoadEvent_AllocationTimestampDelta",
     "TraceStore_ModuleLoadEvent_Synchronization",
     "TraceStore_ModuleLoadEvent_Info",
+
     "TraceStore_SymbolTable",
     "TraceStore_SymbolTable_MetadataInfo",
     "TraceStore_SymbolTable_Allocation",
@@ -427,6 +460,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolTable_AllocationTimestampDelta",
     "TraceStore_SymbolTable_Synchronization",
     "TraceStore_SymbolTable_Info",
+
     "TraceStore_SymbolTableEntry",
     "TraceStore_SymbolTableEntry_MetadataInfo",
     "TraceStore_SymbolTableEntry_Allocation",
@@ -437,7 +471,8 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolTableEntry_AllocationTimestampDelta",
     "TraceStore_SymbolTableEntry_Synchronization",
     "TraceStore_SymbolTableEntry_Info",
-    "TraceStore_SymbolModule_Info",
+
+    "TraceStore_SymbolModuleInfo",
     "TraceStore_SymbolModuleInfo_MetadataInfo",
     "TraceStore_SymbolModuleInfo_Allocation",
     "TraceStore_SymbolModuleInfo_Relocation",
@@ -447,6 +482,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolModuleInfo_AllocationTimestampDelta",
     "TraceStore_SymbolModuleInfo_Synchronization",
     "TraceStore_SymbolModuleInfo_Info",
+
     "TraceStore_SymbolFile",
     "TraceStore_SymbolFile_MetadataInfo",
     "TraceStore_SymbolFile_Allocation",
@@ -457,7 +493,8 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolFile_AllocationTimestampDelta",
     "TraceStore_SymbolFile_Synchronization",
     "TraceStore_SymbolFile_Info",
-    "TraceStore_Symbol_Info",
+
+    "TraceStore_SymbolInfo",
     "TraceStore_SymbolInfo_MetadataInfo",
     "TraceStore_SymbolInfo_Allocation",
     "TraceStore_SymbolInfo_Relocation",
@@ -467,6 +504,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolInfo_AllocationTimestampDelta",
     "TraceStore_SymbolInfo_Synchronization",
     "TraceStore_SymbolInfo_Info",
+
     "TraceStore_SymbolLine",
     "TraceStore_SymbolLine_MetadataInfo",
     "TraceStore_SymbolLine_Allocation",
@@ -477,6 +515,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolLine_AllocationTimestampDelta",
     "TraceStore_SymbolLine_Synchronization",
     "TraceStore_SymbolLine_Info",
+
     "TraceStore_SymbolType",
     "TraceStore_SymbolType_MetadataInfo",
     "TraceStore_SymbolType_Allocation",
@@ -487,6 +526,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_SymbolType_AllocationTimestampDelta",
     "TraceStore_SymbolType_Synchronization",
     "TraceStore_SymbolType_Info",
+
     "TraceStore_StackFrame",
     "TraceStore_StackFrame_MetadataInfo",
     "TraceStore_StackFrame_Allocation",
@@ -497,6 +537,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_StackFrame_AllocationTimestampDelta",
     "TraceStore_StackFrame_Synchronization",
     "TraceStore_StackFrame_Info",
+
     "TraceStore_TypeInfoTable",
     "TraceStore_TypeInfoTable_MetadataInfo",
     "TraceStore_TypeInfoTable_Allocation",
@@ -507,6 +548,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_TypeInfoTable_AllocationTimestampDelta",
     "TraceStore_TypeInfoTable_Synchronization",
     "TraceStore_TypeInfoTable_Info",
+
     "TraceStore_TypeInfoTableEntry",
     "TraceStore_TypeInfoTableEntry_MetadataInfo",
     "TraceStore_TypeInfoTableEntry_Allocation",
@@ -517,6 +559,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_TypeInfoTableEntry_AllocationTimestampDelta",
     "TraceStore_TypeInfoTableEntry_Synchronization",
     "TraceStore_TypeInfoTableEntry_Info",
+
     "TraceStore_TypeInfoStringBuffer",
     "TraceStore_TypeInfoStringBuffer_MetadataInfo",
     "TraceStore_TypeInfoStringBuffer_Allocation",
@@ -527,6 +570,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_TypeInfoStringBuffer_AllocationTimestampDelta",
     "TraceStore_TypeInfoStringBuffer_Synchronization",
     "TraceStore_TypeInfoStringBuffer_Info",
+
     "TraceStore_FunctionTable",
     "TraceStore_FunctionTable_MetadataInfo",
     "TraceStore_FunctionTable_Allocation",
@@ -537,6 +581,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_FunctionTable_AllocationTimestampDelta",
     "TraceStore_FunctionTable_Synchronization",
     "TraceStore_FunctionTable_Info",
+
     "TraceStore_FunctionTableEntry",
     "TraceStore_FunctionTableEntry_MetadataInfo",
     "TraceStore_FunctionTableEntry_Allocation",
@@ -547,6 +592,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_FunctionTableEntry_AllocationTimestampDelta",
     "TraceStore_FunctionTableEntry_Synchronization",
     "TraceStore_FunctionTableEntry_Info",
+
     "TraceStore_FunctionAssembly",
     "TraceStore_FunctionAssembly_MetadataInfo",
     "TraceStore_FunctionAssembly_Allocation",
@@ -557,6 +603,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_FunctionAssembly_AllocationTimestampDelta",
     "TraceStore_FunctionAssembly_Synchronization",
     "TraceStore_FunctionAssembly_Info",
+
     "TraceStore_FunctionSourceCode",
     "TraceStore_FunctionSourceCode_MetadataInfo",
     "TraceStore_FunctionSourceCode_Allocation",
@@ -567,6 +614,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_FunctionSourceCode_AllocationTimestampDelta",
     "TraceStore_FunctionSourceCode_Synchronization",
     "TraceStore_FunctionSourceCode_Info",
+
     "TraceStore_ExamineSymbolsLine",
     "TraceStore_ExamineSymbolsLine_MetadataInfo",
     "TraceStore_ExamineSymbolsLine_Allocation",
@@ -577,6 +625,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ExamineSymbolsLine_AllocationTimestampDelta",
     "TraceStore_ExamineSymbolsLine_Synchronization",
     "TraceStore_ExamineSymbolsLine_Info",
+
     "TraceStore_ExamineSymbolsText",
     "TraceStore_ExamineSymbolsText_MetadataInfo",
     "TraceStore_ExamineSymbolsText_Allocation",
@@ -587,6 +636,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ExamineSymbolsText_AllocationTimestampDelta",
     "TraceStore_ExamineSymbolsText_Synchronization",
     "TraceStore_ExamineSymbolsText_Info",
+
     "TraceStore_ExaminedSymbol",
     "TraceStore_ExaminedSymbol_MetadataInfo",
     "TraceStore_ExaminedSymbol_Allocation",
@@ -597,6 +647,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ExaminedSymbol_AllocationTimestampDelta",
     "TraceStore_ExaminedSymbol_Synchronization",
     "TraceStore_ExaminedSymbol_Info",
+
     "TraceStore_ExaminedSymbolSecondary",
     "TraceStore_ExaminedSymbolSecondary_MetadataInfo",
     "TraceStore_ExaminedSymbolSecondary_Allocation",
@@ -607,6 +658,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_ExaminedSymbolSecondary_AllocationTimestampDelta",
     "TraceStore_ExaminedSymbolSecondary_Synchronization",
     "TraceStore_ExaminedSymbolSecondary_Info",
+
     "TraceStore_UnassembleFunctionLine",
     "TraceStore_UnassembleFunctionLine_MetadataInfo",
     "TraceStore_UnassembleFunctionLine_Allocation",
@@ -617,6 +669,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_UnassembleFunctionLine_AllocationTimestampDelta",
     "TraceStore_UnassembleFunctionLine_Synchronization",
     "TraceStore_UnassembleFunctionLine_Info",
+
     "TraceStore_UnassembleFunctionText",
     "TraceStore_UnassembleFunctionText_MetadataInfo",
     "TraceStore_UnassembleFunctionText_Allocation",
@@ -627,6 +680,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_UnassembleFunctionText_AllocationTimestampDelta",
     "TraceStore_UnassembleFunctionText_Synchronization",
     "TraceStore_UnassembleFunctionText_Info",
+
     "TraceStore_UnassembledFunction",
     "TraceStore_UnassembledFunction_MetadataInfo",
     "TraceStore_UnassembledFunction_Allocation",
@@ -637,6 +691,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_UnassembledFunction_AllocationTimestampDelta",
     "TraceStore_UnassembledFunction_Synchronization",
     "TraceStore_UnassembledFunction_Info",
+
     "TraceStore_UnassembledFunctionSecondary",
     "TraceStore_UnassembledFunctionSecondary_MetadataInfo",
     "TraceStore_UnassembledFunctionSecondary_Allocation",
@@ -647,6 +702,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_UnassembledFunctionSecondary_AllocationTimestampDelta",
     "TraceStore_UnassembledFunctionSecondary_Synchronization",
     "TraceStore_UnassembledFunctionSecondary_Info",
+
     "TraceStore_DisplayTypeLine",
     "TraceStore_DisplayTypeLine_MetadataInfo",
     "TraceStore_DisplayTypeLine_Allocation",
@@ -657,6 +713,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_DisplayTypeLine_AllocationTimestampDelta",
     "TraceStore_DisplayTypeLine_Synchronization",
     "TraceStore_DisplayTypeLine_Info",
+
     "TraceStore_DisplayTypeText",
     "TraceStore_DisplayTypeText_MetadataInfo",
     "TraceStore_DisplayTypeText_Allocation",
@@ -667,6 +724,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_DisplayTypeText_AllocationTimestampDelta",
     "TraceStore_DisplayTypeText_Synchronization",
     "TraceStore_DisplayTypeText_Info",
+
     "TraceStore_DisplayedType",
     "TraceStore_DisplayedType_MetadataInfo",
     "TraceStore_DisplayedType_Allocation",
@@ -677,6 +735,7 @@ CONST LPCSTR TraceStoreSqlite3VirtualTableNames[] = {
     "TraceStore_DisplayedType_AllocationTimestampDelta",
     "TraceStore_DisplayedType_Synchronization",
     "TraceStore_DisplayedType_Info",
+
     "TraceStore_DisplayedTypeSecondary",
     "TraceStore_DisplayedTypeSecondary_MetadataInfo",
     "TraceStore_DisplayedTypeSecondary_Allocation",

@@ -68,6 +68,7 @@ Return Value:
     USHORT Index;
     ULONG Result;
     ULONG RequiredSize;
+    USHORT TotalNumberOfTraceStores;
     PCSZ DatabaseFilename;
     STRING Filename;
     PALLOCATOR Allocator;
@@ -487,13 +488,19 @@ Return Value:
     // with creation of the sqlite3 modules for each trace store.
     //
 
-    for (Index = 0; Index < TraceStores->NumberOfTraceStores; Index++) {
+    TotalNumberOfTraceStores = (
+        TraceStores->NumberOfTraceStores *
+        TraceStores->ElementsPerTraceStore
+    );
+
+    for (Index = 0; Index < TotalNumberOfTraceStores; Index++) {
         PTRACE_STORE TraceStore;
         PSQLITE3_MODULE Module;
         PCSZ *Schema;
         PCSZ *VirtualTableName;
 
         TraceStore = &TraceStores->Stores[Index];
+
         TraceStore->Db = Db;
         TraceStore->Sqlite3Column = TraceStoreSqlite3Columns[Index];
         Module = &TraceStore->Sqlite3Module;
@@ -504,6 +511,12 @@ Return Value:
 
         *Schema = TraceStoreSchemas[Index];
         *VirtualTableName = TraceStoreSqlite3VirtualTableNames[Index];
+
+        if (TraceStore->TraceStoreMetadataId == TraceStoreMetadataInfoId) {
+            if (*Schema != TraceStoreInfoSchema) {
+                __debugbreak();
+            }
+        }
 
         Result = Sqlite3->CreateModule(Sqlite3Db,
                                        *VirtualTableName,
