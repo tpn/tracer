@@ -3007,6 +3007,28 @@ InitializeRtl(
     Rtl->InitializeInjection = InitializeInjection;
     Rtl->InjectThunk = InjectThunk;
 
+    //
+    // Windows 8 onward.
+    //
+
+    Rtl->MapViewOfFileExNuma = (PMAP_VIEW_OF_FILE_EX_NUMA)(
+        GetProcAddress(
+            Rtl->Kernel32Module,
+            "MapViewOfFileExNuma"
+        )
+    );
+
+    //
+    // Windows 10 1703 onward.
+    //
+
+    Rtl->MapViewOfFileNuma2 = (PMAP_VIEW_OF_FILE_NUMA2)(
+        GetProcAddress(
+            Rtl->Kernel32Module,
+            "MapViewOfFileNuma2"
+        )
+    );
+
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;
 

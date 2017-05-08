@@ -2277,7 +2277,8 @@ HANDLE
 typedef OPEN_FILE_MAPPING_W *POPEN_FILE_MAPPING_W;
 
 typedef
-_Ret_maybenull_  __out_data_source(FILE)
+_Ret_maybenull_
+__out_data_source(FILE)
 LPVOID
 (WINAPI MAP_VIEW_OF_FILE)(
     _In_ HANDLE hFileMappingObject,
@@ -2289,7 +2290,8 @@ LPVOID
 typedef MAP_VIEW_OF_FILE *PMAP_VIEW_OF_FILE;
 
 typedef
-_Ret_maybenull_  __out_data_source(FILE)
+_Ret_maybenull_
+__out_data_source(FILE)
 LPVOID
 (WINAPI MAP_VIEW_OF_FILE_EX)(
     _In_ HANDLE hFileMappingObject,
@@ -2300,6 +2302,37 @@ LPVOID
     _In_opt_ LPVOID lpBaseAddress
     );
 typedef MAP_VIEW_OF_FILE_EX *PMAP_VIEW_OF_FILE_EX;
+
+typedef
+_Ret_maybenull_
+__out_data_source(FILE)
+LPVOID
+(WINAPI MAP_VIEW_OF_FILE_EX_NUMA)(
+    _In_ HANDLE hFileMappingObject,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwFileOffsetHigh,
+    _In_ DWORD dwFileOffsetLow,
+    _In_ SIZE_T dwNumberOfBytesToMap,
+    _In_opt_ LPVOID lpBaseAddress,
+    _In_ ULONG nndPreferred
+    );
+typedef MAP_VIEW_OF_FILE_EX_NUMA *PMAP_VIEW_OF_FILE_EX_NUMA;
+
+typedef
+_Ret_maybenull_
+__out_data_source(FILE)
+PVOID
+(WINAPI MAP_VIEW_OF_FILE_NUMA2)(
+    _In_ HANDLE FileMappingHandle,
+    _In_ HANDLE ProcessHandle,
+    _In_ ULONG64 Offset,
+    _In_opt_ PVOID BaseAddress,
+    _In_ SIZE_T ViewSize,
+    _In_ ULONG AllocationType,
+    _In_ ULONG PageProtection,
+    _In_ ULONG PreferredNode
+    );
+typedef MAP_VIEW_OF_FILE_NUMA2 *PMAP_VIEW_OF_FILE_NUMA2;
 
 typedef
 BOOL
@@ -5820,6 +5853,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCRYPT_GEN_RANDOM CryptGenRandom;
     PCRYPT_BINARY_TO_STRING_A CryptBinaryToStringA;
     PCRYPT_BINARY_TO_STRING_W CryptBinaryToStringW;
+
+    PMAP_VIEW_OF_FILE_EX_NUMA MapViewOfFileExNuma;
+    PMAP_VIEW_OF_FILE_NUMA2 MapViewOfFileNuma2;
 
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
