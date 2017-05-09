@@ -30,6 +30,30 @@ Abstract:
         SQLITE_STATIC          \
     )
 
+#define RESULT_CHAR(Char)  \
+    Sqlite3->ResultText(   \
+        Context,           \
+        &Char,             \
+        sizeof(CHAR),      \
+        SQLITE_STATIC      \
+    )
+
+#define RESULT_PWCHAR(WideChar) \
+    Sqlite3->ResultText16LE(    \
+        Context,                \
+        WideChar,               \
+        0,                      \
+        SQLITE_STATIC           \
+    )
+
+#define RESULT_PCHAR(Char) \
+    Sqlite3->ResultText(   \
+        Context,           \
+        Char,              \
+        0,                 \
+        SQLITE_STATIC      \
+    )
+
 #define RESULT_BLOB(Blob, Size) \
     Sqlite3->ResultBlob(        \
         Context,                \
