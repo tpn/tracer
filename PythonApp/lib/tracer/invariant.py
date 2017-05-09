@@ -620,6 +620,24 @@ class EndDateInvariant(DateInvariant):
 
         return True
 
+class EnablePostMortemDebuggerInvariant(BoolInvariant):
+    _arg = '-G/--enable-post-mortem-debugger'
+    _help = (
+        "If set, a post-mortem debugger will be enabled as soon as an "
+        "exception is encountered."
+    )
+    _default = False
+    _mandatory = False
+    def _test(self):
+        if not BoolInvariant._test(self):
+            return False
+
+        import sys
+        from .debug import post_mortem_hook
+        sys.excepthook = post_mortem_hook
+        return True
+
+
 #===============================================================================
 # Networking Invariants
 #===============================================================================

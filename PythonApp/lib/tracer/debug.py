@@ -16,6 +16,28 @@ def idebug(f, *args, **kwds):
     pdb = Pdb(color_scheme='Linux')
     return pdb.runcall(f, *args, **kwds)
 
+def post_mortem_hook(type, value, tb):
+    __print_variables__ = False
+    import traceback, pdb
+    traceback.print_exception(type, value, tb)
+
+    if __print_variables__ is True:
+        locals = True
+        for active_vars in [tb.tb_frame.f_locals, tb.tb_frame.f_globals]:
+            header = 'Locals:' if locals else 'Globals:'
+            print(header)
+            for k, v in active_vars.items():
+                if not (k.startswith('__') and k.endswith('__')):
+                    print('\t{} = {}'.format(k, v))
+            locals = False
+
+
+    fmt = "\n************Entering Post Mortem Debugging***********.\n"
+    msg = fmt.format(tb=tb, type=str(type), value=value)
+    print(msg)
+    pdb.pm()
+
+
 #===============================================================================
 # Classes
 #===============================================================================

@@ -28,6 +28,7 @@ from tracer.invariant import (
     StringInvariant,
     DirectoryInvariant,
     PositiveIntegerInvariant,
+    EnablePostMortemDebuggerInvariant,
 )
 
 from tracer.commandinvariant import (
@@ -602,6 +603,10 @@ class SyncSchema(InvariantAwareCommand):
     class PathArg(PathInvariant):
         _help = "path of the file"
         _default = "TraceStore\\TraceStoreSqlite3Schemas.c"
+
+    enable_post_mortem_debugger = None
+    class EnablePostMortemDebuggerArg(EnablePostMortemDebuggerInvariant):
+        pass
 
     def run(self):
         out = self._out
