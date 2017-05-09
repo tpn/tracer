@@ -274,179 +274,171 @@ TraceStoreSqlite3AddressColumn(
 
     Address = Cursor->CurrentRow.AsAddress;
 
-    //
-    // Define helper macros for addresses, timestamps and elapsed values.
-    //
-
-#define RESULT_ADDRESS(Name)                                      \
-    Sqlite3->ResultInt64(Context, (SQLITE3_INT64)Address->##Name)
-
-#define RESULT_TIMESTAMP(Name)                                           \
-    Sqlite3->ResultInt64(Context, Address->Timestamp.##Name##.QuadPart);
-
-#define RESULT_ELAPSED(Name)                                           \
-    Sqlite3->ResultInt64(Context, Address->Elapsed.##Name##.QuadPart);
-
     switch (ColumnNumber) {
 
         //
-        // PreferredBaseAddress BIGINT
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: PreferredBaseAddress BIGINT
         //
 
         case 0:
-            RESULT_ADDRESS(PreferredBaseAddress);
+            RESULT_ULONGLONG(Address->PreferredBaseAddress);
             break;
 
         //
-        // BaseAddress BIGINT
+        // 1: BaseAddress BIGINT
         //
 
         case 1:
-            RESULT_ADDRESS(BaseAddress);
+            RESULT_ULONGLONG(Address->BaseAddress);
             break;
 
         //
-        // FileOffset BIGINT
+        // 2: FileOffset BIGINT
         //
 
         case 2:
-            Sqlite3->ResultInt64(Context, Address->FileOffset.QuadPart);
+            RESULT_LARGE_INTEGER(Address->FileOffset);
             break;
 
         //
-        // MappedSize BIGINT
+        // 3: MappedSize BIGINT
         //
 
         case 3:
-            Sqlite3->ResultInt64(Context, Address->MappedSize.QuadPart);
+            RESULT_LARGE_INTEGER(Address->MappedSize);
             break;
 
         //
-        // ProcessId INT
+        // 4: ProcessId INT
         //
 
         case 4:
-            Sqlite3->ResultInt(Context, Address->ProcessId);
+            RESULT_ULONG(Address->ProcessId);
             break;
 
         //
-        // RequestingThreadId INT
+        // 5: RequestingThreadId INT
         //
 
         case 5:
-            Sqlite3->ResultInt(Context, Address->RequestingThreadId);
+            RESULT_ULONG(Address->RequestingThreadId);
             break;
 
         //
-        // Requested BIGINT
+        // 6: Requested BIGINT
         //
 
         case 6:
-            RESULT_TIMESTAMP(Requested);
+            RESULT_ULONGLONG(Address->Timestamp.Requested.QuadPart);
             break;
 
-
         //
-        // Prepared BIGINT
+        // 7: Prepared BIGINT
         //
 
         case 7:
-            RESULT_TIMESTAMP(Prepared);
+            RESULT_ULONGLONG(Address->Timestamp.Prepared.QuadPart);
             break;
 
-
         //
-        // Consumed BIGINT
+        // 8: Consumed BIGINT
         //
 
         case 8:
-            RESULT_TIMESTAMP(Consumed);
+            RESULT_ULONGLONG(Address->Timestamp.Consumed.QuadPart);
             break;
 
         //
-        // Retired BIGINT
+        // 9: Retired BIGINT
         //
 
         case 9:
-            RESULT_TIMESTAMP(Retired);
+            RESULT_ULONGLONG(Address->Timestamp.Retired.QuadPart);
             break;
 
         //
-        // Released BIGINT
+        // 10: Released BIGINT
         //
 
         case 10:
-            RESULT_TIMESTAMP(Released);
+            RESULT_ULONGLONG(Address->Timestamp.Released.QuadPart);
             break;
 
         //
-        // AwaitingPreparation BIGINT
+        // 11: AwaitingPreparation BIGINT
         //
 
         case 11:
-            RESULT_ELAPSED(AwaitingPreparation);
+            RESULT_ULONGLONG(Address->Elapsed.AwaitingPreparation.QuadPart);
             break;
 
         //
-        // AwaitingConsumption BIGINT
+        // 12: AwaitingConsumption BIGINT
         //
 
         case 12:
-            RESULT_ELAPSED(AwaitingPreparation);
+            RESULT_ULONGLONG(Address->Elapsed.AwaitingConsumption.QuadPart);
             break;
 
         //
-        // Active BIGINT
+        // 13: Active BIGINT
         //
 
         case 13:
-            RESULT_ELAPSED(Active);
+            RESULT_ULONGLONG(Address->Elapsed.Active.QuadPart);
             break;
 
         //
-        // AwaitingRelease BIGINT
+        // 14: AwaitingRelease BIGINT
         //
 
         case 14:
-            RESULT_ELAPSED(AwaitingRelease);
+            RESULT_ULONGLONG(Address->Elapsed.AwaitingRelease.QuadPart);
             break;
 
         //
-        // MappedSequenceId INT
+        // 15: MappedSequenceId INT
         //
 
         case 15:
-            Sqlite3->ResultInt(Context, Address->MappedSequenceId);
+            RESULT_ULONG(Address->MappedSequenceId);
             break;
 
         //
-        // RequestingProcGroup SMALLINT
+        // 16: RequestingProcGroup SMALLINT
         //
 
         case 16:
-            Sqlite3->ResultInt(Context, Address->RequestingProcGroup);
+            RESULT_ULONG(Address->RequestingProcGroup);
             break;
 
         //
-        // RequestingNumaNode TINYINT
+        // 17: RequestingNumaNode TINYINT
         //
 
         case 17:
-            Sqlite3->ResultInt(Context, Address->RequestingNumaNode);
+            RESULT_ULONG(Address->RequestingNumaNode);
             break;
 
         //
-        // FulfillingThreadId INT
+        // 18: FulfillingThreadId INT
         //
 
         case 18:
-            Sqlite3->ResultInt64(Context, Address->FulfillingThreadId);
+            RESULT_ULONG(Address->FulfillingThreadId);
             break;
 
         default:
-            __debugbreak();
-            Sqlite3->ResultNull(Context);
-            return SQLITE_ERROR;
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
     }
 
     return SQLITE_OK;
@@ -579,24 +571,45 @@ TraceStoreSqlite3InfoColumn(
 CONST CHAR TraceStoreModuleLoadEventSchema[] =
     "CREATE TABLE TraceStore_ModuleLoadEvent("
         "Path TEXT, "                           // Path->Full, UNICODE_STRING
+        "Drive TEXT, "                          // Path->Drive, WCHAR
+        "Name TEXT, "                           // Path->Name, UNICODE_STRING
+        "Directory TEXT, "                      // Path->Directory, UNICODE_STRING
+        "Extension TEXT, "                      // Path->Extension, UNICODE_STRING
         "NumberOfSlashes SMALLINT, "            // Path->NumberOfSlashes
         "NumberOfDots SMALLINT, "               // Path->NumberOfDots
-        "Drive TEXT, "                          // Path->Drive, WCHAR
-        "CreationTime BIGINT, "                 // File->CreationTime
-        "LastAccessTime BIGINT, "               // File->LastAccessTime
-        "LastWriteTime BIGINT, "                // File->LastWriteTime
-        "ChangeTime BIGINT, "                   // File->ChangeTime
+        "AllocSize SMALLINT, "                  // Path->AllocSize
+        "IsFile TINYINT, "                      // Path->Flags.IsFile
+        "IsDirectory TINYINT, "                 // Path->Flags.IsDirectory
+        "IsSymlink TINYINT, "                   // Path->Flags.IsSymlink
+        "IsFullyQualified TINYINT, "            // Path->Flags.IsFullyQualified
+        "HasParent TINYINT, "                   // Path->Flags.HasParent
+        "HasChildren TINYINT, "                 // Path->Flags.HasChildren
+        "WithinWindowsDirectory TINYINT, "      // Path->Flags.WithinWindowsDirectory
+        "WithinWindowsSxSDirectory TINYINT, "   // Path->Flags.WithinWindowsSxSDirectory
+        "WithinWindowsSystemDirectory TINYINT, "// Path->Flags.WithinWindowsSystemDirectory
+        "PathFlagsAsLong INT, "                 // Path->Flags.AsLong
+        "CreationTime BIGINT, "                 // File->CreationTime, LARGE_INTEGER
+        "LastAccessTime BIGINT, "               // File->LastAccessTime, LARGE_INTEGER
+        "LastWriteTime BIGINT, "                // File->LastWriteTime, LARGE_INTEGER
+        "ChangeTime BIGINT, "                   // File->ChangeTime, LARGE_INTEGER
         "FileAttributes INT, "                  // File->FileAttributes
-        "NumberOfPages INT, "                   // File->NumberOfChanges
-        "EndOfFile BIGINT, "                    // File->EndOfFile
-        "AllocationSize BIGINT, "               // File->AllocationSize
-        "FileId BIGINT, "                       // File->FileId
+        "NumberOfPages INT, "                   // File->NumberOfPages
+        "EndOfFile BIGINT, "                    // File->EndOfFile, LARGE_INTEGER
+        "AllocationSize BIGINT, "               // File->AllocationSize, LARGE_INTEGER
+        "FileId BIGINT, "                       // File->FileId, LARGE_INTEGER
         "VolumeSerialNumber BIGINT, "           // File->VolumeSerialNumber
         "FileId128 BLOB, "                      // File->FileId128, sizeof()
         "MD5 BLOB, "                            // File->MD5, sizeof()
         "SHA1 BLOB, "                           // File->SHA1, sizeof()
         "CopyTimeInMicroseconds BIGINT, "       // File->CopyTimeInMicroseconds, LARGE_INTEGER
         "CopiedBytesPerSecond BIGINT, "         // File->CopiedBytesPerSecond, LARGE_INTEGER
+        "FileType INT, "                        // File->Type
+        "FileFlags INT, "                       // File->Flags.AsULong
+        "ContentAddress BIGINT, "               // File->Content
+        "HeaderSum INT, "                       // ImageFile->HeaderSum
+        "CheckSum INT, "                        // ImageFile->CheckSum
+        "Timestamp INT, "                       // ImageFile->Timestamp
+        "ModuleInfo BIGINT, "                   // ImageFile->ModuleInfo
         "Loaded BIGINT, "                       // LoadEvent->Timestamp.Loaded, LARGE_INTEGER
         "Unloaded BIGINT, "                     // LoadEvent->Timestamp.Unloaded, LARGE_INTEGER
         "PreferredBaseAddress BIGINT, "         // LoadEvent->PreferredBaseAddress
@@ -618,62 +631,387 @@ TraceStoreSqlite3ModuleLoadEventColumn(
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
     PRTL_FILE File;
     PRTL_PATH Path;
+    PRTL_IMAGE_FILE ImageFile;
 
     LoadEvent = (PTRACE_MODULE_LOAD_EVENT)Cursor->CurrentRowRaw;
     ModuleTableEntry = LoadEvent->ModuleTableEntry;
     File = &ModuleTableEntry->File;
+    ImageFile = &File->ImageFile;
     Path = &File->Path;
 
     switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: Path TEXT
+        //
 
         case 0:
             RESULT_UNICODE_STRING(Path->Full);
             break;
 
         //
-        // Loaded BIGINT
+        // 1: Drive TEXT
         //
 
         case 1:
+            RESULT_WCHAR(Path->Drive);
+            break;
+
+        //
+        // 2: Name TEXT
+        //
+
+        case 2:
+            RESULT_UNICODE_STRING(Path->Name);
+            break;
+
+        //
+        // 3: Directory TEXT
+        //
+
+        case 3:
+            RESULT_UNICODE_STRING(Path->Directory);
+            break;
+
+        //
+        // 4: Extension TEXT
+        //
+
+        case 4:
+            RESULT_UNICODE_STRING(Path->Extension);
+            break;
+
+        //
+        // 5: NumberOfSlashes SMALLINT
+        //
+
+        case 5:
+            RESULT_ULONG(Path->NumberOfSlashes);
+            break;
+
+        //
+        // 6: NumberOfDots SMALLINT
+        //
+
+        case 6:
+            RESULT_ULONG(Path->NumberOfDots);
+            break;
+
+        //
+        // 7: AllocSize SMALLINT
+        //
+
+        case 7:
+            RESULT_ULONG(Path->AllocSize);
+            break;
+
+        //
+        // 8: IsFile TINYINT
+        //
+
+        case 8:
+            RESULT_ULONG(Path->Flags.IsFile);
+            break;
+
+        //
+        // 9: IsDirectory TINYINT
+        //
+
+        case 9:
+            RESULT_ULONG(Path->Flags.IsDirectory);
+            break;
+
+        //
+        // 10: IsSymlink TINYINT
+        //
+
+        case 10:
+            RESULT_ULONG(Path->Flags.IsSymlink);
+            break;
+
+        //
+        // 11: IsFullyQualified TINYINT
+        //
+
+        case 11:
+            RESULT_ULONG(Path->Flags.IsFullyQualified);
+            break;
+
+        //
+        // 12: HasParent TINYINT
+        //
+
+        case 12:
+            RESULT_ULONG(Path->Flags.HasParent);
+            break;
+
+        //
+        // 13: HasChildren TINYINT
+        //
+
+        case 13:
+            RESULT_ULONG(Path->Flags.HasChildren);
+            break;
+
+        //
+        // 14: WithinWindowsDirectory TINYINT
+        //
+
+        case 14:
+            RESULT_ULONG(Path->Flags.WithinWindowsDirectory);
+            break;
+
+        //
+        // 15: WithinWindowsSxSDirectory TINYINT
+        //
+
+        case 15:
+            RESULT_ULONG(Path->Flags.WithinWindowsSxSDirectory);
+            break;
+
+        //
+        // 16: WithinWindowsSystemDirectory TINYINT
+        //
+
+        case 16:
+            RESULT_ULONG(Path->Flags.WithinWindowsSystemDirectory);
+            break;
+
+        //
+        // 17: PathFlagsAsLong INT
+        //
+
+        case 17:
+            RESULT_ULONG(Path->Flags.AsLong);
+            break;
+
+        //
+        // 18: CreationTime BIGINT
+        //
+
+        case 18:
+            RESULT_LARGE_INTEGER(File->CreationTime);
+            break;
+
+        //
+        // 19: LastAccessTime BIGINT
+        //
+
+        case 19:
+            RESULT_LARGE_INTEGER(File->LastAccessTime);
+            break;
+
+        //
+        // 20: LastWriteTime BIGINT
+        //
+
+        case 20:
+            RESULT_LARGE_INTEGER(File->LastWriteTime);
+            break;
+
+        //
+        // 21: ChangeTime BIGINT
+        //
+
+        case 21:
+            RESULT_LARGE_INTEGER(File->ChangeTime);
+            break;
+
+        //
+        // 22: FileAttributes INT
+        //
+
+        case 22:
+            RESULT_ULONG(File->FileAttributes);
+            break;
+
+        //
+        // 23: NumberOfPages INT
+        //
+
+        case 23:
+            RESULT_ULONG(File->NumberOfPages);
+            break;
+
+        //
+        // 24: EndOfFile BIGINT
+        //
+
+        case 24:
+            RESULT_LARGE_INTEGER(File->EndOfFile);
+            break;
+
+        //
+        // 25: AllocationSize BIGINT
+        //
+
+        case 25:
+            RESULT_LARGE_INTEGER(File->AllocationSize);
+            break;
+
+        //
+        // 26: FileId BIGINT
+        //
+
+        case 26:
+            RESULT_LARGE_INTEGER(File->FileId);
+            break;
+
+        //
+        // 27: VolumeSerialNumber BIGINT
+        //
+
+        case 27:
+            RESULT_ULONGLONG(File->VolumeSerialNumber);
+            break;
+
+        //
+        // 28: FileId128 BLOB
+        //
+
+        case 28:
+            RESULT_BLOB(File->FileId128, sizeof(File->FileId128));
+            break;
+
+        //
+        // 29: MD5 BLOB
+        //
+
+        case 29:
+            RESULT_BLOB(File->MD5, sizeof(File->MD5));
+            break;
+
+        //
+        // 30: SHA1 BLOB
+        //
+
+        case 30:
+            RESULT_BLOB(File->SHA1, sizeof(File->SHA1));
+            break;
+
+        //
+        // 31: CopyTimeInMicroseconds BIGINT
+        //
+
+        case 31:
+            RESULT_LARGE_INTEGER(File->CopyTimeInMicroseconds);
+            break;
+
+        //
+        // 32: CopiedBytesPerSecond BIGINT
+        //
+
+        case 32:
+            RESULT_LARGE_INTEGER(File->CopiedBytesPerSecond);
+            break;
+
+        //
+        // 33: FileType INT
+        //
+
+        case 33:
+            RESULT_ULONG(File->Type);
+            break;
+
+        //
+        // 34: FileFlags INT
+        //
+
+        case 34:
+            RESULT_ULONG(File->Flags.AsULong);
+            break;
+
+        //
+        // 35: ContentAddress BIGINT
+        //
+
+        case 35:
+            RESULT_ULONGLONG(File->Content);
+            break;
+
+        //
+        // 36: HeaderSum INT
+        //
+
+        case 36:
+            RESULT_ULONG(ImageFile->HeaderSum);
+            break;
+
+        //
+        // 37: CheckSum INT
+        //
+
+        case 37:
+            RESULT_ULONG(ImageFile->CheckSum);
+            break;
+
+        //
+        // 38: Timestamp INT
+        //
+
+        case 38:
+            RESULT_ULONG(ImageFile->Timestamp);
+            break;
+
+        //
+        // 39: ModuleInfo BIGINT
+        //
+
+        case 39:
+            RESULT_ULONGLONG(ImageFile->ModuleInfo);
+            break;
+
+        //
+        // 40: Loaded BIGINT
+        //
+
+        case 40:
             RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Loaded);
             break;
 
         //
-        // Unloaded BIGINT
+        // 41: Unloaded BIGINT
         //
 
-        case 2:
+        case 41:
             RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Unloaded);
             break;
 
         //
-        // PreferredBaseAddress BIGINT
+        // 42: PreferredBaseAddress BIGINT
         //
 
-        case 3:
+        case 42:
             RESULT_ULONGLONG(LoadEvent->PreferredBaseAddress);
             break;
 
         //
-        // BaseAddress BIGINT
+        // 43: BaseAddress BIGINT
         //
 
-        case 4:
+        case 43:
             RESULT_ULONGLONG(LoadEvent->BaseAddress);
             break;
 
         //
-        // EntryPoint BIGINT
+        // 44: EntryPoint BIGINT
         //
 
-        case 5:
+        case 44:
             RESULT_ULONGLONG(LoadEvent->EntryPoint);
             break;
 
         default:
-            __debugbreak();
-            Sqlite3->ResultNull(Context);
-            return SQLITE_ERROR;
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
     }
 
     return SQLITE_OK;
@@ -693,7 +1031,7 @@ TraceStoreSqlite3ModuleLoadEventColumn(
 CONST CHAR PythonFunctionTableEntrySchema[] =
     "CREATE TABLE Python_PythonFunctionTableEntry("
         "Path TEXT, "
-        "FullName TEXT, " 
+        "FullName TEXT, "
         "ModuleName TEXT, "
         "Name TEXT, "
         "ClassName TEXT, "
@@ -831,7 +1169,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // Python_PythonFunctionTableEntry,
+    PythonFunctionTableEntrySchema, // Python_PythonFunctionTableEntry,
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -1494,7 +1832,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // Python_PythonFunctionTableEntry,
+    TraceStoreSqlite3PythonFunctionTableEntryColumn, // Python_PythonFunctionTableEntry,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
