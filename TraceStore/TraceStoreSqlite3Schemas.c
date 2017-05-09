@@ -631,10 +631,35 @@ CONST CHAR TraceStoreModuleLoadEventSchema[] =
         "FileType INT, "                        // File->Type
         "FileFlags INT, "                       // File->Flags.AsULong
         "ContentAddress BIGINT, "               // File->Content
-        "HeaderSum INT, "                       // ImageFile->HeaderSum
-        "CheckSum INT, "                        // ImageFile->CheckSum
-        "Timestamp INT, "                       // ImageFile->Timestamp
-        "ModuleInfo BIGINT, "                   // ImageFile->ModuleInfo
+        "ImageFile_HeaderSum INT, "             // ImageFile->HeaderSum, [(File->Type == RtlFileImageFileType && ImageFile != NULL)]
+        "ImageFile_CheckSum INT, "              // ImageFile->CheckSum, [(File->Type == RtlFileImageFileType && ImageFile != NULL)]
+        "ImageFile_Timestamp INT, "             // ImageFile->Timestamp, [(File->Type == RtlFileImageFileType && ImageFile != NULL)]
+        "ModuleInfo BIGINT, "                   // ImageFile->ModuleInfo, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_SizeOfStruct INT, "         // ModuleInfo->SizeOfStruct, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_BaseOfImage BIGINT, "       // ModuleInfo->BaseOfImage, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_ImageSize INT, "            // ModuleInfo->ImageSize, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_TimeDateStamp INT, "        // ModuleInfo->TimeDateStamp, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_CheckSum INT, "             // ModuleInfo->CheckSum, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_SymType INT, "              // ModuleInfo->SymType, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_NumSyms INT, "              // ModuleInfo->NumSyms, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_ModuleName TEXT, "          // ModuleInfo->ModuleName, PWCHAR, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_ImageName TEXT, "           // ModuleInfo->ImageName, PWCHAR, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_LoadedImageName TEXT, "     // ModuleInfo->LoadedImageName, PWCHAR, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_LoadedPdbName TEXT, "       // ModuleInfo->LoadedPdbName, PWCHAR, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_CVSig INT, "                // ModuleInfo->CVSig, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_CVData TEXT, "              // ModuleInfo->CVData, PWCHAR, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_PdbSig INT, "               // ModuleInfo->PdbSig, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_PdbSig70 BLOB, "            // ModuleInfo->PdbSig70, sizeof(), [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_PdbAge INT, "               // ModuleInfo->PdbAge, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_PdbUnmatched TINYINT, "     // ModuleInfo->PdbUnmatched, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_DbgUnmatched TINYINT, "     // ModuleInfo->DbgUnmatched, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_LineNumbers TINYINT, "      // ModuleInfo->LineNumbers, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_GlobalSymbols TINYINT, "    // ModuleInfo->GlobalSymbols, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_TypeInfo TINYINT, "         // ModuleInfo->TypeInfo, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_SourceIndexed TINYINT, "    // ModuleInfo->SourceIndexed, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_Publics TINYINT, "          // ModuleInfo->Publics, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_MachineType INT, "          // ModuleInfo->MachineType, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
+        "ModuleInfo_Reserved INT, "             // ModuleInfo->Reserved, [(File->Type == RtlFileImageFileType && ModuleInfo != NULL)]
         "Loaded BIGINT, "                       // LoadEvent->Timestamp.Loaded, LARGE_INTEGER
         "Unloaded BIGINT, "                     // LoadEvent->Timestamp.Unloaded, LARGE_INTEGER
         "PreferredBaseAddress BIGINT, "         // LoadEvent->PreferredBaseAddress
@@ -1082,7 +1107,18 @@ CONST CHAR PythonFunctionTableEntrySchema[] =
         "IsDll TINYINT, "                   // PathTableEntry->IsDll
         "IsC TINYINT, "                     // PathTableEntry->IsC
         "IsBuiltin TINYINT, "               // PathTableEntry->IsBuiltin
-        "IsInitPy TINYINT"                  // PathTableEntry->IsInitPy
+        "IsInitPy TINYINT,"                 // PathTableEntry->IsInitPy
+        "TextFile_StructSizeInBytes INT, "                  // TextFile->StructSizeInBytes, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_NumberOfLines INT, "                      // TextFile->NumberOfLines, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LinesAddress BIGINT, "                    // TextFile->Lines, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_CarriageReturnBitmapAddress BIGINT, "     // TextFile->CarriageReturnBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineFeedBitmapAddress BIGINT, "           // TextFile->LineFeedBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineEndingBitmapAddress BIGINT, "         // TextFile->LineEndingBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineBitmapAddress BIGINT, "               // TextFile->LineBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_WhitespaceBitmapAddress BIGINT, "         // TextFile->WhitespaceBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_TabBitmapAddress BIGINT, "                // TextFile->TabBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_IndentBitmapAddress BIGINT, "             // TextFile->IndentBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_TrailingWhitespaceBitmapAddress BIGINT"   // TextFile->TrailingWhitespaceBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
     ")";
 
 
