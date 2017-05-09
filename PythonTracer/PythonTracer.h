@@ -62,7 +62,6 @@ typedef enum _PYTHON_TRACE_EVENT_TYPE {
 #define MAX_PYTHON_TRACE_EVENT_TYPE PythonTraceEventInvalid - 1
 
 typedef union _PYTHON_EVENT_TRAITS_EX {
-    ULONG AsLong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -78,8 +77,9 @@ typedef union _PYTHON_EVENT_TRAITS_EX {
         ULONG IsReverseJump:1;
         ULONG LineNumberOrCallStackDepth:23;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } PYTHON_EVENT_TRAITS_EX, *PPYTHON_EVENT_TRAITS_EX;
-
 C_ASSERT(sizeof(PYTHON_EVENT_TRAITS_EX) == sizeof(ULONG));
 
 #pragma pack(push, DefaultAlignment, 2)
