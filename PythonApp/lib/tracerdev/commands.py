@@ -633,13 +633,15 @@ class SyncSchema(InvariantAwareCommand):
 
         switches = {}
 
+        gen_switch_statement = generate_sqlite3_column_func_switch_statement
+
         for (mname, mdecl) in multiline_const_string_decls.items():
             name = mname.replace('TraceStore', '').replace('Schema', '')
             column_func_name = 'TraceStoreSqlite3%sColumn' % name
             func = source.function_definition(column_func_name, block=block)
             if not func:
                 continue
-            if name != 'ModuleLoadEvent':
+            if name not in ('ModuleLoadEvent', 'Address'):
                 continue
             first_line = func.first_block_line
             last_line = func.last_block_line
@@ -648,13 +650,13 @@ class SyncSchema(InvariantAwareCommand):
 
             funcs[mname] = func
 
-            switch_lines = generate_sqlite3_column_func_switch_statement(mdecl)
+            switch_stmt_lines = gen_switch_statement(name, mdecl)
 
             old_lines = lines[first_line+1:last_line]
-            if old_lines != switch_lines:
+            if old_lines != switch_stmt_lines:
                 out("Updating %s." % column_func_name)
                 dirty = True
-                lines[first_line+1:last_line] = switch_lines
+                lines[first_line+1:last_line] = switch_stmt_lines
 
         if dirty and False:
             with open(path, 'wb') as f:

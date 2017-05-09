@@ -103,7 +103,7 @@ def convert_function_decls_to_funcptr_typedefs(text, prefix=None, prepend=None):
 
     return results
 
-def generate_sqlite3_column_func_switch_statement(mdecl):
+def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
     lines = [
         '',
         '        //',
@@ -129,10 +129,21 @@ def generate_sqlite3_column_func_switch_statement(mdecl):
 
         # Find the start of the line's comment.
         ix3 = line.find('//', ix2 + 1)
-        assert ix != -1, (line, ix1, ix2)
-
-        # Extract the access descriptor.
-        access = line[ix3+3:]
+        if ix3 == -1:
+            # No access descriptor for this field.  Make the target the name
+            # of the table (e.g. 'Address') plus the name of the field, e.g.
+            # Address->BaseAddress.
+            access = '%s->%s' % (tablename, name)
+        else:
+            # Extract the access descriptor.  If the field is a BIGINT, check
+            # to see if the access descriptor ends with LARGE_INTEGER and that
+            # there is no comma -- this is an indicator that we can use the
+            # tablename + mdecl.name approach above, but should use the cast
+            # for RESULT_[PU]LARGE_INTEGER.
+            access = line[ix3+3:]
+            if access.endswith('LARGE_INTEGER'):
+                if ',' not in access:
+                    access = '%s->%s, %s' % (tablename, name, access)
 
         stmt = None
 

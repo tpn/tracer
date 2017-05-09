@@ -239,19 +239,19 @@ CONST CHAR TraceStoreAddressSchema[] =
     "CREATE TABLE Address ("
         "PreferredBaseAddress BIGINT, "
         "BaseAddress BIGINT, "
-        "FileOffset BIGINT, "
-        "MappedSize BIGINT, "
+        "FileOffset BIGINT, "               // LARGE_INTEGER
+        "MappedSize BIGINT, "               // LARGE_INTEGER
         "ProcessId INT, "
         "RequestingThreadId INT, "
-        "Requested BIGINT, "
-        "Prepared BIGINT, "
-        "Consumed BIGINT, "
-        "Retired BIGINT, "
-        "Released BIGINT, "
-        "AwaitingPreparation BIGINT, "
-        "AwaitingConsumption BIGINT, "
-        "Active BIGINT, "
-        "AwaitingRelease BIGINT, "
+        "Requested BIGINT, "                // Address->Timestamp.Requested.QuadPart
+        "Prepared BIGINT, "                 // Address->Timestamp.Prepared.QuadPart
+        "Consumed BIGINT, "                 // Address->Timestamp.Consumed.QuadPart
+        "Retired BIGINT, "                  // Address->Timestamp.Retired.QuadPart
+        "Released BIGINT, "                 // Address->Timestamp.Released.QuadPart
+        "AwaitingPreparation BIGINT, "      // Address->Elapsed.AwaitingPreparation.QuadPart
+        "AwaitingConsumption BIGINT, "      // Address->Elapsed.AwaitingConsumption.QuadPart
+        "Active BIGINT, "                   // Address->Elapsed.Active.QuadPart
+        "AwaitingRelease BIGINT, "          // Address->Elapsed.AwaitingRelease.QuadPart
         "MappedSequenceId INT, "
         "RequestingProcGroup SMALLINT, "
         "RequestingNumaNode TINYINT, "
@@ -586,8 +586,8 @@ CONST CHAR TraceStoreModuleLoadEventSchema[] =
         "LastAccessTime BIGINT, "               // File->LastAccessTime
         "LastWriteTime BIGINT, "                // File->LastWriteTime
         "ChangeTime BIGINT, "                   // File->ChangeTime
-        "FileAttributes INTEGER, "              // File->FileAttributes
-        "NumberOfPages INTEGER, "               // File->NumberOfChanges
+        "FileAttributes INT, "                  // File->FileAttributes
+        "NumberOfPages INT, "                   // File->NumberOfChanges
         "EndOfFile BIGINT, "                    // File->EndOfFile
         "AllocationSize BIGINT, "               // File->AllocationSize
         "FileId BIGINT, "                       // File->FileId
