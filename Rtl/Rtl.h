@@ -3607,8 +3607,6 @@ C_ASSERT(FIELD_OFFSET(RTL_PATH_LINK, SListEntry) == 16);
 C_ASSERT(sizeof(RTL_PATH_LINK) == 80);
 
 typedef union _RTL_PATH_FLAGS {
-    LONG AsLong;
-    ULONG AsULong;
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG IsFile:1;
         ULONG IsDirectory:1;
@@ -3663,6 +3661,8 @@ typedef union _RTL_PATH_FLAGS {
 
         ULONG WithinWindowsSystemDirectory:1;
     };
+    LONG AsLong;
+    ULONG AsULong;
 } RTL_PATH_FLAGS;
 C_ASSERT(sizeof(RTL_PATH_FLAGS) == sizeof(ULONG));
 typedef RTL_PATH_FLAGS *PRTL_PATH_FLAGS;
@@ -3841,18 +3841,21 @@ typedef GET_MODULE_RTL_PATH *PGET_MODULE_RTL_PATH;
 // Flags for the RTL_FILE structure.
 //
 
-typedef struct _Struct_size_bytes_(sizeof(ULONG)) _RTL_FILE_FLAGS {
+typedef union _RTL_FILE_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
 
-    ULONG Valid:1;
+        ULONG Valid:1;
 
-    //
-    // Which copy method was used to copy the source file contents into the
-    // destination.
-    //
+        //
+        // Which copy method was used to copy the source file contents into the
+        // destination.
+        //
 
-    ULONG Avx2Copy:1;
-    ULONG MovsqCopy:1;
-
+        ULONG Avx2Copy:1;
+        ULONG MovsqCopy:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
 } RTL_FILE_FLAGS, *PRTL_FILE_FLAGS;
 
 typedef enum _RTL_FILE_TYPE {
