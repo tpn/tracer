@@ -580,7 +580,9 @@ Return Value:
         goto Error;
     }
 
-    if (IsSourceCode) {
+    if (!IsSourceCode) {
+        File->Type = RtlFileImageFileType;
+    } else {
         ULONG NumberOfLines;
         ULONG SizeOfBitMap;
         ULONG BitmapBytes;
@@ -591,6 +593,8 @@ Return Value:
         PRTL_BITMAP LineEndings;
         PPRTL_BITMAP BitmapPointer;
         PRTL_FIND_SET_BITS FindSetBits;
+
+        File->Type = RtlFileTextFileType;
 
         SourceCode = &File->SourceCode;
 
