@@ -188,7 +188,6 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         lines += [
             '',
             '        //',
-           #'        // %d: %s %s -> %s' % (i, name, dtype, stmt),
             '        // %d: %s %s' % (i, name, dtype),
             '        //',
             '',
@@ -205,6 +204,7 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         '        //',
         '        // End auto-generated section.',
         '        //',
+        '',
     ]
 
     return lines

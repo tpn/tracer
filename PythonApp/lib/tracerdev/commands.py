@@ -633,6 +633,7 @@ class SyncSchema(InvariantAwareCommand):
 
         switches = {}
 
+        dirty = False
         gen_switch_statement = generate_sqlite3_column_func_switch_statement
 
         for (mname, mdecl) in multiline_const_string_decls.items():
@@ -658,7 +659,7 @@ class SyncSchema(InvariantAwareCommand):
                 dirty = True
                 lines[first_line+1:last_line] = switch_stmt_lines
 
-        if dirty and False:
+        if dirty:
             with open(path, 'wb') as f:
                 f.write('\n'.join(lines))
                 f.write('\n')
