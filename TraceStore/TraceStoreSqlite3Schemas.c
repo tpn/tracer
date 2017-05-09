@@ -42,7 +42,7 @@ Abstract:
     Sqlite3->ResultText16LE(    \
         Context,                \
         WideChar,               \
-        0,                      \
+        -1,                     \
         SQLITE_STATIC           \
     )
 
@@ -50,7 +50,7 @@ Abstract:
     Sqlite3->ResultText(   \
         Context,           \
         Char,              \
-        0,                 \
+        -1,                \
         SQLITE_STATIC      \
     )
 
