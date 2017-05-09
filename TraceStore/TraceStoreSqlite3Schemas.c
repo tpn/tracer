@@ -1385,6 +1385,227 @@ TraceStoreSqlite3ModuleLoadEventColumn(
     return SQLITE_OK;
 }
 
+CONST CHAR TraceStoreWsWorkingSetExInfoSchema[] =
+    "CREATE TABLE TraceStore_WsWorkingSetExInfo("
+        "VirtualAddress BIGINT, "
+        "VirtualAttributes BIGINT, "    // VirtualAttributes.Flags
+        "Valid BIGINT, "                // VirtualAttributes.Valid
+        "ShareCount BIGINT, "           // VirtualAttributes.ShareCount
+        "Win32Protection BIGINT, "      // VirtualAttributes.Win32Protection
+        "Shared BIGINT, "               // VirtualAttributes.Shared
+        "Node BIGINT, "                 // VirtualAttributes.Node
+        "Locked BIGINT, "               // VirtualAttributes.Locked
+        "LargePage BIGINT, "            // VirtualAttributes.LargePage
+        "Reserved BIGINT, "             // VirtualAttributes.Reserved
+        "Bad BIGINT"                    // VirtualAttributes.Bad
+    ");";
+
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3WsWorkingSetExInfoColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3WsWorkingSetExInfoColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PPSAPI_WORKING_SET_EX_INFORMATION WsWorkingSetExInfo;
+    PSAPI_WORKING_SET_EX_BLOCK VirtualAttributes;
+
+
+    WsWorkingSetExInfo = (PPSAPI_WORKING_SET_EX_INFORMATION)(
+        Cursor->CurrentRowRaw
+    );
+
+    VirtualAttributes.Flags = WsWorkingSetExInfo->VirtualAttributes.Flags;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: VirtualAddress BIGINT
+        //
+
+        case 0:
+            RESULT_ULONGLONG(WsWorkingSetExInfo->VirtualAddress);
+            break;
+
+        //
+        // 1: VirtualAttributes BIGINT
+        //
+
+        case 1:
+            RESULT_ULONGLONG(VirtualAttributes.Flags);
+            break;
+
+        //
+        // 2: Valid BIGINT
+        //
+
+        case 2:
+            RESULT_ULONGLONG(VirtualAttributes.Valid);
+            break;
+
+        //
+        // 3: ShareCount BIGINT
+        //
+
+        case 3:
+            RESULT_ULONGLONG(VirtualAttributes.ShareCount);
+            break;
+
+        //
+        // 4: Win32Protection BIGINT
+        //
+
+        case 4:
+            RESULT_ULONGLONG(VirtualAttributes.Win32Protection);
+            break;
+
+        //
+        // 5: Shared BIGINT
+        //
+
+        case 5:
+            RESULT_ULONGLONG(VirtualAttributes.Shared);
+            break;
+
+        //
+        // 6: Node BIGINT
+        //
+
+        case 6:
+            RESULT_ULONGLONG(VirtualAttributes.Node);
+            break;
+
+        //
+        // 7: Locked BIGINT
+        //
+
+        case 7:
+            RESULT_ULONGLONG(VirtualAttributes.Locked);
+            break;
+
+        //
+        // 8: LargePage BIGINT
+        //
+
+        case 8:
+            RESULT_ULONGLONG(VirtualAttributes.LargePage);
+            break;
+
+        //
+        // 9: Reserved BIGINT
+        //
+
+        case 9:
+            RESULT_ULONGLONG(VirtualAttributes.Reserved);
+            break;
+
+        //
+        // 10: Bad BIGINT
+        //
+
+        case 10:
+            RESULT_ULONGLONG(VirtualAttributes.Bad);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+    
+
+CONST CHAR TraceStoreWsWatchInfoExSchema[] =
+    "CREATE TABLE TraceStore_WsWatchInfoEx("
+        "FaultingPc BIGINT, "
+        "FaultingVa BIGINT, "
+        "FaultingThreadId BIGINT, "
+        "Flags BIGINT"
+    ");";
+
+
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3WsWatchInfoExColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3WsWatchInfoExColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_WS_WATCH_INFORMATION_EX WsWatchInfoEx;
+
+    WsWatchInfoEx = (PTRACE_WS_WATCH_INFORMATION_EX)(
+        Cursor->CurrentRowRaw
+    );
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: FaultingPc BIGINT
+        //
+
+        case 0:
+            RESULT_ULONGLONG(WsWatchInfoEx->FaultingPc);
+            break;
+
+        //
+        // 1: FaultingVa BIGINT
+        //
+
+        case 1:
+            RESULT_ULONGLONG(WsWatchInfoEx->FaultingVa);
+            break;
+
+        //
+        // 2: FaultingThreadId BIGINT
+        //
+
+        case 2:
+            RESULT_ULONGLONG(WsWatchInfoEx->FaultingThreadId);
+            break;
+
+        //
+        // 3: Flags BIGINT
+        //
+
+        case 3:
+            RESULT_ULONGLONG(WsWatchInfoEx->Flags);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
 //
 // N.B. Having the Python stuff here is an encapsulation violation, however,
 //      it does the job for now.
@@ -1854,6 +2075,127 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
             } else {
                 RESULT_ULONGLONG(TextFile->TrailingWhitespaceBitmap);
             }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+//
+// Continue the encapsulation violation and include PythonTracer's main header
+// here too.
+//
+
+#include "../PythonTracer/PythonTracer.h"
+
+//
+// PythonTracer_TraceEventTraitsEx
+//
+
+CONST CHAR PythonEventTraitsExSchema[] =
+    "CREATE TABLE PythonTracer_TraceEventTraitsEx("
+        "IsCall INT, "
+        "IsException INT, "
+        "IsLine INT, "
+        "IsReturn INT, "
+        "IsC INT, "
+        "AsEventType INT, "
+        "IsReverseJump INT, "
+        "LineNumberOrCallStackDepth INT"
+    ")";
+
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3PythonEventTraitsExColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PythonEventTraitsExColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PPYTHON_EVENT_TRAITS_EX PythonEventTraitsEx;
+
+    PythonEventTraitsEx = (PPYTHON_EVENT_TRAITS_EX)Cursor->CurrentRowRaw;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: IsCall INT
+        //
+
+        case 0:
+            RESULT_ULONG(PythonEventTraitsEx->IsCall);
+            break;
+
+        //
+        // 1: IsException INT
+        //
+
+        case 1:
+            RESULT_ULONG(PythonEventTraitsEx->IsException);
+            break;
+
+        //
+        // 2: IsLine INT
+        //
+
+        case 2:
+            RESULT_ULONG(PythonEventTraitsEx->IsLine);
+            break;
+
+        //
+        // 3: IsReturn INT
+        //
+
+        case 3:
+            RESULT_ULONG(PythonEventTraitsEx->IsReturn);
+            break;
+
+        //
+        // 4: IsC INT
+        //
+
+        case 4:
+            RESULT_ULONG(PythonEventTraitsEx->IsC);
+            break;
+
+        //
+        // 5: AsEventType INT
+        //
+
+        case 5:
+            RESULT_ULONG(PythonEventTraitsEx->AsEventType);
+            break;
+
+        //
+        // 6: IsReverseJump INT
+        //
+
+        case 6:
+            RESULT_ULONG(PythonEventTraitsEx->IsReverseJump);
+            break;
+
+        //
+        // 7: LineNumberOrCallStackDepth INT
+        //
+
+        case 7:
+            RESULT_ULONG(PythonEventTraitsEx->LineNumberOrCallStackDepth);
             break;
 
         default:
