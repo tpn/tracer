@@ -127,6 +127,8 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
             schema = schema[:-2]
         (name, dtype) = schema.split(' ')
 
+        predicate = None
+
         # Find the start of the line's comment.
         ix3 = line.find('//', ix2 + 1)
         if ix3 == -1:
@@ -141,10 +143,21 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
             # tablename + mdecl.name approach above, but should use the cast
             # for RESULT_[PU]LARGE_INTEGER.
             access = line[ix3+3:]
+            # Check to see if there's a predicate, indicated by the presence
+            # of an opening square bracket and a subsequent closing square
+            # bracket.
+            ix4 = line.find('[', ix3+3)
+            if ix4 != -1:
+                ix5 = line.find(']', ix4 + 1)
+                assert ix5 != -1, (line, ix4, ix5)
+                predicate = line[ix4+1:ix5]
+                access = access.replace(line[ix4:ix5+1], '')
+                if access.endswith(', '):
+                    access = access[:-2]
+
             if access.endswith('LARGE_INTEGER'):
                 if ',' not in access:
                     access = '%s->%s, %s' % (tablename, name, access)
-
         stmt = None
 
         if dtype == 'TEXT':
@@ -192,9 +205,22 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
             '        //',
             '',
             '        case %d:' % i,
-            '            %s' % stmt,
-            '            break;',
         ]
+
+        if not predicate:
+            lines += [
+                '            %s' % stmt,
+                '            break;',
+            ]
+        else:
+            lines += [
+                '            if (!(%s)) {' % predicate,
+                '                RESULT_NULL();',
+                '            } else {',
+                '                %s' % stmt,
+                '            }',
+                '            break;',
+            ]
 
     lines += [
         '',

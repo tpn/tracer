@@ -20,6 +20,8 @@ Abstract:
 // Define helper macros for returning results.
 //
 
+#define RESULT_NULL() Sqlite3->ResultNull(Context);
+
 #define RESULT_WCHAR(WideChar) \
     Sqlite3->ResultText16LE(   \
         Context,               \
@@ -103,10 +105,17 @@ Abstract:
 #define RESULT_ULONGLONG(ULongLong) \
     Sqlite3->ResultInt64(Context, (SQLITE3_INT64)ULongLong)
 
-#define INVALID_COLUMN()          \
-    __debugbreak();               \
-    Sqlite3->ResultNull(Context); \
+#define _INVALID_COLUMN()          \
+    __debugbreak();                \
+    Sqlite3->ResultNull(Context);  \
     break
+
+//
+// Allow functions to undefine INVALID_COLUMN, then set it back to
+// _INVALID_COLUMN when they're done.
+//
+
+#define INVALID_COLUMN() _INVALID_COLUMN()
 
 //
 // MetadataInfo
@@ -138,9 +147,9 @@ TraceStoreSqlite3MetadataInfoColumn(
 
 CONST CHAR TraceStoreAllocationSchema[] =
     "CREATE TABLE Allocation ("
-        "NumberOfRecords BIGINT, "
-        "RecordSize BIGINT, "
-        "IsDummyAllocation TINYINT"
+        "NumberOfRecords BIGINT, "   // LARGE_INTEGER
+        "RecordSize BIGINT, "        // LARGE_INTEGER
+        "IsDummyAllocation BIGINT"  // Allocation->NumberOfRecords.DummyAllocation2
     ")";
 
 _Use_decl_annotations_
@@ -157,51 +166,43 @@ TraceStoreSqlite3AllocationColumn(
 
     Allocation = Cursor->CurrentRow.AsAllocation;
 
-    //
-    // Define helper macros.
-    //
-
-#define ALLOCATION_INT64(Name)                       \
-    Sqlite3->ResultInt64(                            \
-        Context,                                     \
-        (SQLITE3_INT64)Allocation->##Name##.QuadPart \
-    )
-
-#define ALLOCATION_TINYINT(Name) \
-    Sqlite3->ResultInt(          \
-        Context,                 \
-        (LONG)Allocation->##Name \
-    )
-
     switch (ColumnNumber) {
 
         //
-        // NumberOfRecords BIGINT
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: NumberOfRecords BIGINT
         //
 
         case 0:
-            ALLOCATION_INT64(NumberOfRecords);
+            RESULT_LARGE_INTEGER(Allocation->NumberOfRecords);
             break;
 
         //
-        // RecordSize BIGINT
+        // 1: RecordSize BIGINT
         //
 
         case 1:
-            ALLOCATION_INT64(RecordSize);
+            RESULT_LARGE_INTEGER(Allocation->RecordSize);
             break;
 
         //
-        // IsDummyAllocation TINYINT
+        // 2: IsDummyAllocation BIGINT
         //
 
         case 2:
-            ALLOCATION_TINYINT(NumberOfRecords.DummyAllocation2);
+            RESULT_ULONGLONG(Allocation->NumberOfRecords.DummyAllocation2);
             break;
 
         default:
-            __debugbreak();
-            return SQLITE_ERROR;
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
     }
 
     return SQLITE_OK;
@@ -1030,31 +1031,36 @@ TraceStoreSqlite3ModuleLoadEventColumn(
 
 CONST CHAR PythonFunctionTableEntrySchema[] =
     "CREATE TABLE Python_PythonFunctionTableEntry("
-        "Path TEXT, "
-        "FullName TEXT, "
-        "ModuleName TEXT, "
-        "Name TEXT, "
-        "ClassName TEXT, "
-        "MaxCallStackDepth INTEGER, "
-        "CallCount INTEGER, "
-        "FirstLineNumber SMALLINT, "
-        "NumberOfLines SMALLINT, "
-        "NumberOfCodeLines SMALLINT, "
-        "SizeOfByteCodeInBytes SMALLINT, "
-        "Signature BIGINT, "
-        "IsModuleDirectory TINYINT, "
-        "IsNonModuleDirectory TINYINT, "
-        "IsFileSystemDirectory TINYINT, "
-        "IsFile TINYINT, "
-        "IsClass TINYINT, "
-        "IsFunction TINYINT, "
-        "IsSpecial TINYINT, "
-        "IsValid TINYINT, "
-        "IsDll TINYINT, "
-        "IsC TINYINT, "
-        "IsBuiltin TINYINT, "
-        "IsInitPy TINYINT, "
+        "Path TEXT, "                       // Path->Full, UNICODE_STRING
+        "FullName TEXT, "                   // PathTableEntry->FullName, STRING
+        "ModuleName TEXT, "                 // PathTableEntry->ModuleName, STRING
+        "Name TEXT, "                       // PathTableEntry->Name, STRING
+        "ClassName TEXT, "                  // PathTableEntry->ClassName, STRING
+        "CodeObject BIGINT, "               // Function->CodeObject
+        "PyCFunctionObject BIGINT, "        // Function->PyCFunctionObject
+        "MaxCallStackDepth INTEGER, "       // Function->MaxCallStackDepth
+        "CallCount INTEGER, "               // Function->CallCount
+        "CodeLineNumbers BIGINT, "          // Function->CodeLineNumbers, [Function->CodeObject != NULL]
+        "CodeObjectHash INT, "              // Function->CodeObjectHash, [Function->CodeObject != NULL]
+        "FirstLineNumber SMALLINT, "        // Function->FirstLineNumber, [Function->CodeObject != NULL]
+        "NumberOfLines SMALLINT, "          // Function->NumberOfLines, [Function->CodeObject != NULL]
+        "NumberOfCodeLines SMALLINT, "      // Function->NumberOfCodeLines, [Function->CodeObject != NULL]
+        "SizeOfByteCodeInBytes SMALLINT, "  // Function->SizeOfByteCodeInBytes, [Function->CodeObject != NULL]
+        "Signature BIGINT, "                // Function->Signature
+        "IsModuleDirectory TINYINT, "       // PathTableEntry->IsModuleDirectory
+        "IsNonModuleDirectory TINYINT, "    // PathTableEntry->IsNonModuleDirectory
+        "IsFileSystemDirectory TINYINT, "   // PathTableEntry->IsFileSystemDirectory
+        "IsFile TINYINT, "                  // PathTableEntry->IsFile
+        "IsClass TINYINT, "                 // PathTableEntry->IsClass
+        "IsFunction TINYINT, "              // PathTableEntry->IsFunction
+        "IsSpecial TINYINT, "               // PathTableEntry->IsSpecial
+        "IsValid TINYINT, "                 // PathTableEntry->IsValid
+        "IsDll TINYINT, "                   // PathTableEntry->IsDll
+        "IsC TINYINT, "                     // PathTableEntry->IsC
+        "IsBuiltin TINYINT, "               // PathTableEntry->IsBuiltin
+        "IsInitPy TINYINT"                  // PathTableEntry->IsInitPy
     ")";
+
 
 _Use_decl_annotations_
 LONG
@@ -1066,20 +1072,32 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
     LONG ColumnNumber
     )
 {
-    PTRACE_MODULE_LOAD_EVENT LoadEvent;
-    PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
+    PPYTHON_PATH_TABLE_ENTRY PathTableEntry;
+    PPYTHON_FUNCTION_TABLE_ENTRY FunctionTableEntry;
+    PPYTHON_FUNCTION Function;
     PRTL_FILE File;
     PRTL_PATH Path;
 
-    LoadEvent = (PTRACE_MODULE_LOAD_EVENT)Cursor->CurrentRowRaw;
-    ModuleTableEntry = LoadEvent->ModuleTableEntry;
-    File = &ModuleTableEntry->File;
+    FunctionTableEntry = (PPYTHON_FUNCTION_TABLE_ENTRY)Cursor->CurrentRowRaw;
+    Function = (PPYTHON_FUNCTION)(
+        CONTAINING_RECORD(
+            FunctionTableEntry,
+            PYTHON_FUNCTION_TABLE_ENTRY,
+            PythonFunction
+        )
+    );
+    PathTableEntry = &Function->PathEntry;
+    File = &PathTableEntry->File;
     Path = &File->Path;
 
     switch (ColumnNumber) {
 
         //
-        // Path TEXT
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: Path TEXT
         //
 
         case 0:
@@ -1087,53 +1105,263 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
             break;
 
         //
-        // Loaded BIGINT
+        // 1: FullName TEXT
         //
 
         case 1:
-            RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Loaded);
+            RESULT_STRING(PathTableEntry->FullName);
             break;
 
         //
-        // Unloaded BIGINT
+        // 2: ModuleName TEXT
         //
 
         case 2:
-            RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Unloaded);
+            RESULT_STRING(PathTableEntry->ModuleName);
             break;
 
         //
-        // PreferredBaseAddress BIGINT
+        // 3: Name TEXT
         //
 
         case 3:
-            RESULT_ULONGLONG(LoadEvent->PreferredBaseAddress);
+            RESULT_STRING(PathTableEntry->Name);
             break;
 
         //
-        // BaseAddress BIGINT
+        // 4: ClassName TEXT
         //
 
         case 4:
-            RESULT_ULONGLONG(LoadEvent->BaseAddress);
+            RESULT_STRING(PathTableEntry->ClassName);
             break;
 
         //
-        // EntryPoint BIGINT
+        // 5: CodeObject BIGINT
         //
 
         case 5:
-            RESULT_ULONGLONG(LoadEvent->EntryPoint);
+            RESULT_ULONGLONG(Function->CodeObject);
+            break;
+
+        //
+        // 6: PyCFunctionObject BIGINT
+        //
+
+        case 6:
+            RESULT_ULONGLONG(Function->PyCFunctionObject);
+            break;
+
+        //
+        // 7: MaxCallStackDepth INTEGER
+        //
+
+        case 7:
+            RESULT_ULONG(Function->MaxCallStackDepth);
+            break;
+
+        //
+        // 8: CallCount INTEGER
+        //
+
+        case 8:
+            RESULT_ULONG(Function->CallCount);
+            break;
+
+        //
+        // 9: CodeLineNumbers BIGINT
+        //
+
+        case 9:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Function->CodeLineNumbers);
+            }
+            break;
+
+        //
+        // 10: CodeObjectHash INT
+        //
+
+        case 10:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->CodeObjectHash);
+            }
+            break;
+
+        //
+        // 11: FirstLineNumber SMALLINT
+        //
+
+        case 11:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->FirstLineNumber);
+            }
+            break;
+
+        //
+        // 12: NumberOfLines SMALLINT
+        //
+
+        case 12:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->NumberOfLines);
+            }
+            break;
+
+        //
+        // 13: NumberOfCodeLines SMALLINT
+        //
+
+        case 13:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->NumberOfCodeLines);
+            }
+            break;
+
+        //
+        // 14: SizeOfByteCodeInBytes SMALLINT
+        //
+
+        case 14:
+            if (!(Function->CodeObject != NULL)) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->SizeOfByteCodeInBytes);
+            }
+            break;
+
+        //
+        // 15: Signature BIGINT
+        //
+
+        case 15:
+            RESULT_ULONGLONG(Function->Signature);
+            break;
+
+        //
+        // 16: IsModuleDirectory TINYINT
+        //
+
+        case 16:
+            RESULT_ULONG(PathTableEntry->IsModuleDirectory);
+            break;
+
+        //
+        // 17: IsNonModuleDirectory TINYINT
+        //
+
+        case 17:
+            RESULT_ULONG(PathTableEntry->IsNonModuleDirectory);
+            break;
+
+        //
+        // 18: IsFileSystemDirectory TINYINT
+        //
+
+        case 18:
+            RESULT_ULONG(PathTableEntry->IsFileSystemDirectory);
+            break;
+
+        //
+        // 19: IsFile TINYINT
+        //
+
+        case 19:
+            RESULT_ULONG(PathTableEntry->IsFile);
+            break;
+
+        //
+        // 20: IsClass TINYINT
+        //
+
+        case 20:
+            RESULT_ULONG(PathTableEntry->IsClass);
+            break;
+
+        //
+        // 21: IsFunction TINYINT
+        //
+
+        case 21:
+            RESULT_ULONG(PathTableEntry->IsFunction);
+            break;
+
+        //
+        // 22: IsSpecial TINYINT
+        //
+
+        case 22:
+            RESULT_ULONG(PathTableEntry->IsSpecial);
+            break;
+
+        //
+        // 23: IsValid TINYINT
+        //
+
+        case 23:
+            RESULT_ULONG(PathTableEntry->IsValid);
+            break;
+
+        //
+        // 24: IsDll TINYINT
+        //
+
+        case 24:
+            RESULT_ULONG(PathTableEntry->IsDll);
+            break;
+
+        //
+        // 25: IsC TINYINT
+        //
+
+        case 25:
+            RESULT_ULONG(PathTableEntry->IsC);
+            break;
+
+        //
+        // 26: IsBuiltin TINYINT
+        //
+
+        case 26:
+            RESULT_ULONG(PathTableEntry->IsBuiltin);
+            break;
+
+        //
+        // 27: IsInitPy TINYINT
+        //
+
+        case 27:
+            RESULT_ULONG(PathTableEntry->IsInitPy);
             break;
 
         default:
-            __debugbreak();
-            Sqlite3->ResultNull(Context);
-            return SQLITE_ERROR;
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
     }
 
     return SQLITE_OK;
 }
+
+//
+// N.B. The next two arrays are much larger than they need to be; the metadata
+//      stores are consistent and never need to vary on a per trace store basis.
+//      Fix by reducing the arrays to just the trace stores and alter the module
+//      initializer to handle metadata stores accordingly.
+//
 
 CONST LPCSTR TraceStoreSchemas[] = {
     PLACEHOLDER_SCHEMA, // PythonTracer_TraceEvent,
@@ -2459,7 +2687,6 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 };
-//C_ASSERT((sizeof(TraceStoreSqlite3Columns) / sizeof(ULONG_PTR)) == MAX_TRACE_STORES);
 C_ASSERT(ARRAYSIZE(TraceStoreSqlite3Columns) == MAX_TRACE_STORES);
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

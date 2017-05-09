@@ -642,11 +642,11 @@ class SyncSchema(InvariantAwareCommand):
             func = source.function_definition(column_func_name, block=block)
             if not func:
                 continue
-            if name not in ('ModuleLoadEvent', 'Address'):
-                continue
             first_line = func.first_block_line
             last_line = func.last_block_line
-            assert first_line
+            if not first_line:
+                out("Skipping %s, no switch block." % name)
+                continue
             assert last_line
 
             funcs[mname] = func
