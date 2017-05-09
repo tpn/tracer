@@ -18,3 +18,4 @@ sdv.temp
 .ipynb_checkpoints
 TestResults
 *.pgd
+.idea
