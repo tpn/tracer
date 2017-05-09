@@ -682,11 +682,13 @@ TraceStoreSqlite3ModuleLoadEventColumn(
     PRTL_FILE File;
     PRTL_PATH Path;
     PRTL_IMAGE_FILE ImageFile;
+    PIMAGEHLP_MODULEW64 ModuleInfo;
 
     LoadEvent = (PTRACE_MODULE_LOAD_EVENT)Cursor->CurrentRowRaw;
     ModuleTableEntry = LoadEvent->ModuleTableEntry;
     File = &ModuleTableEntry->File;
     ImageFile = &File->ImageFile;
+    ModuleInfo = ImageFile->ModuleInfo;
     Path = &File->Path;
 
     switch (ColumnNumber) {
@@ -984,27 +986,39 @@ TraceStoreSqlite3ModuleLoadEventColumn(
             break;
 
         //
-        // 36: HeaderSum INT
+        // 36: ImageFile_HeaderSum INT
         //
 
         case 36:
-            RESULT_ULONG(ImageFile->HeaderSum);
+            if (!((File->Type == RtlFileImageFileType && ImageFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ImageFile->HeaderSum);
+            }
             break;
 
         //
-        // 37: CheckSum INT
+        // 37: ImageFile_CheckSum INT
         //
 
         case 37:
-            RESULT_ULONG(ImageFile->CheckSum);
+            if (!((File->Type == RtlFileImageFileType && ImageFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ImageFile->CheckSum);
+            }
             break;
 
         //
-        // 38: Timestamp INT
+        // 38: ImageFile_Timestamp INT
         //
 
         case 38:
-            RESULT_ULONG(ImageFile->Timestamp);
+            if (!((File->Type == RtlFileImageFileType && ImageFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ImageFile->Timestamp);
+            }
             break;
 
         //
@@ -1012,46 +1026,350 @@ TraceStoreSqlite3ModuleLoadEventColumn(
         //
 
         case 39:
-            RESULT_ULONGLONG(ImageFile->ModuleInfo);
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(ImageFile->ModuleInfo);
+            }
             break;
 
         //
-        // 40: Loaded BIGINT
+        // 40: ModuleInfo_SizeOfStruct INT
         //
 
         case 40:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->SizeOfStruct);
+            }
+            break;
+
+        //
+        // 41: ModuleInfo_BaseOfImage BIGINT
+        //
+
+        case 41:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(ModuleInfo->BaseOfImage);
+            }
+            break;
+
+        //
+        // 42: ModuleInfo_ImageSize INT
+        //
+
+        case 42:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->ImageSize);
+            }
+            break;
+
+        //
+        // 43: ModuleInfo_TimeDateStamp INT
+        //
+
+        case 43:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->TimeDateStamp);
+            }
+            break;
+
+        //
+        // 44: ModuleInfo_CheckSum INT
+        //
+
+        case 44:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->CheckSum);
+            }
+            break;
+
+        //
+        // 45: ModuleInfo_SymType INT
+        //
+
+        case 45:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->SymType);
+            }
+            break;
+
+        //
+        // 46: ModuleInfo_NumSyms INT
+        //
+
+        case 46:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->NumSyms);
+            }
+            break;
+
+        //
+        // 47: ModuleInfo_ModuleName TEXT
+        //
+
+        case 47:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_PWCHAR(ModuleInfo->ModuleName);
+            }
+            break;
+
+        //
+        // 48: ModuleInfo_ImageName TEXT
+        //
+
+        case 48:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_PWCHAR(ModuleInfo->ImageName);
+            }
+            break;
+
+        //
+        // 49: ModuleInfo_LoadedImageName TEXT
+        //
+
+        case 49:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_PWCHAR(ModuleInfo->LoadedImageName);
+            }
+            break;
+
+        //
+        // 50: ModuleInfo_LoadedPdbName TEXT
+        //
+
+        case 50:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_PWCHAR(ModuleInfo->LoadedPdbName);
+            }
+            break;
+
+        //
+        // 51: ModuleInfo_CVSig INT
+        //
+
+        case 51:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->CVSig);
+            }
+            break;
+
+        //
+        // 52: ModuleInfo_CVData TEXT
+        //
+
+        case 52:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_PWCHAR(ModuleInfo->CVData);
+            }
+            break;
+
+        //
+        // 53: ModuleInfo_PdbSig INT
+        //
+
+        case 53:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->PdbSig);
+            }
+            break;
+
+        //
+        // 54: ModuleInfo_PdbSig70 BLOB
+        //
+
+        case 54:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_BLOB(ModuleInfo->PdbSig70, sizeof(ModuleInfo->PdbSig70));
+            }
+            break;
+
+        //
+        // 55: ModuleInfo_PdbAge INT
+        //
+
+        case 55:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->PdbAge);
+            }
+            break;
+
+        //
+        // 56: ModuleInfo_PdbUnmatched TINYINT
+        //
+
+        case 56:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->PdbUnmatched);
+            }
+            break;
+
+        //
+        // 57: ModuleInfo_DbgUnmatched TINYINT
+        //
+
+        case 57:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->DbgUnmatched);
+            }
+            break;
+
+        //
+        // 58: ModuleInfo_LineNumbers TINYINT
+        //
+
+        case 58:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->LineNumbers);
+            }
+            break;
+
+        //
+        // 59: ModuleInfo_GlobalSymbols TINYINT
+        //
+
+        case 59:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->GlobalSymbols);
+            }
+            break;
+
+        //
+        // 60: ModuleInfo_TypeInfo TINYINT
+        //
+
+        case 60:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->TypeInfo);
+            }
+            break;
+
+        //
+        // 61: ModuleInfo_SourceIndexed TINYINT
+        //
+
+        case 61:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->SourceIndexed);
+            }
+            break;
+
+        //
+        // 62: ModuleInfo_Publics TINYINT
+        //
+
+        case 62:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->Publics);
+            }
+            break;
+
+        //
+        // 63: ModuleInfo_MachineType INT
+        //
+
+        case 63:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->MachineType);
+            }
+            break;
+
+        //
+        // 64: ModuleInfo_Reserved INT
+        //
+
+        case 64:
+            if (!((File->Type == RtlFileImageFileType && ModuleInfo != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(ModuleInfo->Reserved);
+            }
+            break;
+
+        //
+        // 65: Loaded BIGINT
+        //
+
+        case 65:
             RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Loaded);
             break;
 
         //
-        // 41: Unloaded BIGINT
+        // 66: Unloaded BIGINT
         //
 
-        case 41:
+        case 66:
             RESULT_LARGE_INTEGER(LoadEvent->Timestamp.Unloaded);
             break;
 
         //
-        // 42: PreferredBaseAddress BIGINT
+        // 67: PreferredBaseAddress BIGINT
         //
 
-        case 42:
+        case 67:
             RESULT_ULONGLONG(LoadEvent->PreferredBaseAddress);
             break;
 
         //
-        // 43: BaseAddress BIGINT
+        // 68: BaseAddress BIGINT
         //
 
-        case 43:
+        case 68:
             RESULT_ULONGLONG(LoadEvent->BaseAddress);
             break;
 
         //
-        // 44: EntryPoint BIGINT
+        // 69: EntryPoint BIGINT
         //
 
-        case 44:
+        case 69:
             RESULT_ULONGLONG(LoadEvent->EntryPoint);
             break;
 
@@ -1137,6 +1455,7 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
     PPYTHON_FUNCTION Function;
     PRTL_FILE File;
     PRTL_PATH Path;
+    PRTL_TEXT_FILE TextFile;
 
     FunctionTableEntry = (PPYTHON_FUNCTION_TABLE_ENTRY)Cursor->CurrentRowRaw;
     Function = (PPYTHON_FUNCTION)(
@@ -1148,6 +1467,7 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
     );
     PathTableEntry = &Function->PathEntry;
     File = &PathTableEntry->File;
+    TextFile = &File->SourceCode;
     Path = &File->Path;
 
     switch (ColumnNumber) {
@@ -1397,11 +1717,143 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
             break;
 
         //
-        // 27: IsInitPy TINYINT
+        // 27: IsInitPy TINYINT,
         //
 
         case 27:
             RESULT_ULONG(PathTableEntry->IsInitPy);
+            break;
+
+        //
+        // 28: TextFile_StructSizeInBytes INT
+        //
+
+        case 28:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(TextFile->StructSizeInBytes);
+            }
+            break;
+
+        //
+        // 29: TextFile_NumberOfLines INT
+        //
+
+        case 29:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(TextFile->NumberOfLines);
+            }
+            break;
+
+        //
+        // 30: TextFile_LinesAddress BIGINT
+        //
+
+        case 30:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->Lines);
+            }
+            break;
+
+        //
+        // 31: TextFile_CarriageReturnBitmapAddress BIGINT
+        //
+
+        case 31:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->CarriageReturnBitmap);
+            }
+            break;
+
+        //
+        // 32: TextFile_LineFeedBitmapAddress BIGINT
+        //
+
+        case 32:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineFeedBitmap);
+            }
+            break;
+
+        //
+        // 33: TextFile_LineEndingBitmapAddress BIGINT
+        //
+
+        case 33:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineEndingBitmap);
+            }
+            break;
+
+        //
+        // 34: TextFile_LineBitmapAddress BIGINT
+        //
+
+        case 34:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineBitmap);
+            }
+            break;
+
+        //
+        // 35: TextFile_WhitespaceBitmapAddress BIGINT
+        //
+
+        case 35:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->WhitespaceBitmap);
+            }
+            break;
+
+        //
+        // 36: TextFile_TabBitmapAddress BIGINT
+        //
+
+        case 36:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->TabBitmap);
+            }
+            break;
+
+        //
+        // 37: TextFile_IndentBitmapAddress BIGINT
+        //
+
+        case 37:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->IndentBitmap);
+            }
+            break;
+
+        //
+        // 38: TextFile_TrailingWhitespaceBitmapAddress BIGINT
+        //
+
+        case 38:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->TrailingWhitespaceBitmap);
+            }
             break;
 
         default:

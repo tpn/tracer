@@ -645,7 +645,7 @@ class SyncSchema(InvariantAwareCommand):
             first_line = func.first_block_line
             last_line = func.last_block_line
             if not first_line:
-                out("Skipping %s, no switch block." % name)
+                verbose("Skipping %s, no switch block." % name)
                 continue
             assert last_line
 
@@ -656,14 +656,22 @@ class SyncSchema(InvariantAwareCommand):
             old_lines = lines[first_line+1:last_line]
             if old_lines != switch_stmt_lines:
                 out("Updating %s." % column_func_name)
-                dirty = True
-                lines[first_line+1:last_line] = switch_stmt_lines
 
-        if dirty:
-            with open(path, 'wb') as f:
-                f.write('\n'.join(lines))
-                f.write('\n')
+                assert lines[last_line] == '    }'
+                assert lines[first_line] == block[0]
 
+                lines = (
+                    lines[:first_line+1] +
+                    switch_stmt_lines  +
+                    lines[last_line:]
+                )
+
+                with open(path, 'wb') as f:
+                    f.write('\n'.join(lines))
+                    f.write('\n')
+
+                source = SourceFile(path)
+                lines = copy(source.lines)
 
 class SyncTraceStoreIndexHeader(InvariantAwareCommand):
     """
