@@ -161,9 +161,15 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         stmt = None
 
         if dtype == 'TEXT':
-            # TEXT should always have a ", <type>" suffix, e.g.:
+            # TEXT should always have a "<type>" suffix, e.g.:
             #   Path->Full, UNICODE_STRING
-            (target, cast) = access.split(', ')
+            #   PSTRING
+            # etc.
+            if ',' in access:
+                (target, cast) = access.split(', ')
+            else:
+                cast = access
+                target = '%s->%s' % (tablename, name)
             stmt = 'RESULT_%s(%s);' % (cast, target)
         elif dtype.startswith('BLOB'):
             # BLOB should be followed by either ", sizeof()" or "sizeof(*)".
