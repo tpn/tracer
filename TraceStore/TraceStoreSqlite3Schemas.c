@@ -4294,7 +4294,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_Performance,
+    TraceStorePerformanceSchema, // TraceStore_Performance
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4305,7 +4305,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_PerformanceDelta,
+    TraceStorePerformanceDeltaSchema, // TraceStore_PerformanceDelta
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4316,7 +4316,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SourceCode,
+    PLACEHOLDER_SCHEMA, // TraceStore_SourceCode
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4327,7 +4327,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_Bitmap,
+    PLACEHOLDER_SCHEMA, // TraceStore_Bitmap
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4338,7 +4338,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ImageFile,
+    PLACEHOLDER_SCHEMA, // TraceStore_ImageFile
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4349,7 +4349,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_UnicodeStringBuffer,
+    PLACEHOLDER_SCHEMA, // TraceStore_UnicodeStringBuffer
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4360,7 +4360,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_Line,
+    PLACEHOLDER_SCHEMA, // TraceStore_Line
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4371,7 +4371,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_Object,
+    PLACEHOLDER_SCHEMA, // TraceStore_Object
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4382,7 +4382,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    TraceStoreModuleLoadEventSchema, // TraceStore_ModuleLoadEvent,
+    TraceStoreModuleLoadEventSchema, // TraceStore_ModuleLoadEvent
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4393,7 +4393,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolTable,
+    PLACEHOLDER_SCHEMA, // TraceStore_SymbolTable
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4404,7 +4404,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolTableEntry,
+    PLACEHOLDER_SCHEMA, // TraceStore_SymbolTableEntry
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4415,7 +4415,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolModuleInfo,
+    PLACEHOLDER_SCHEMA, // TraceStore_SymbolModuleInfo
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4448,7 +4448,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolLine,
+    PLACEHOLDER_SCHEMA, // TraceStore_SymbolLine
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4459,7 +4459,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolType,
+    PLACEHOLDER_SCHEMA, // TraceStore_SymbolType
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4470,7 +4470,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_StackFrame,
+    PLACEHOLDER_SCHEMA, // TraceStore_StackFrame
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4481,7 +4481,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoTable,
+    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoTable
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4492,7 +4492,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoTableEntry,
+    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoTableEntry
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4503,7 +4503,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoStringBuffer,
+    PLACEHOLDER_SCHEMA, // TraceStore_TypeInfoStringBuffer
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4514,7 +4514,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_FunctionTable,
+    PLACEHOLDER_SCHEMA, // TraceStore_FunctionTable
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4525,7 +4525,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_FunctionTableEntry,
+    PLACEHOLDER_SCHEMA, // TraceStore_FunctionTableEntry
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4536,7 +4536,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_FunctionAssembly,
+    PLACEHOLDER_SCHEMA, // TraceStore_FunctionAssembly
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4547,7 +4547,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_FunctionSourceCode,
+    PLACEHOLDER_SCHEMA, // TraceStore_FunctionSourceCode
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4558,7 +4558,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExamineSymbolsLine,
+    PLACEHOLDER_SCHEMA, // TraceStore_ExamineSymbolsLine
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4569,7 +4569,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExamineSymbolsText,
+    PLACEHOLDER_SCHEMA, // TraceStore_ExamineSymbolsText
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4580,7 +4580,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbol,
+    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbol
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4591,7 +4591,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbolSecondary,
+    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbolSecondary
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4602,7 +4602,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_UnassembleFunctionLine,
+    PLACEHOLDER_SCHEMA, // TraceStore_UnassembleFunctionLine
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4613,7 +4613,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_UnassembleFunctionText,
+    PLACEHOLDER_SCHEMA, // TraceStore_UnassembleFunctionText
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4624,7 +4624,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_UnassembledFunction,
+    PLACEHOLDER_SCHEMA, // TraceStore_UnassembledFunction
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4635,7 +4635,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_UnassembledFunctionSecondary,
+    PLACEHOLDER_SCHEMA, // TraceStore_UnassembledFunctionSecondary
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4646,7 +4646,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_DisplayTypeLine,
+    PLACEHOLDER_SCHEMA, // TraceStore_DisplayTypeLine
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4657,7 +4657,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_DisplayTypeText,
+    PLACEHOLDER_SCHEMA, // TraceStore_DisplayTypeText
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4668,7 +4668,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_DisplayedType,
+    PLACEHOLDER_SCHEMA, // TraceStore_DisplayedType
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -4679,7 +4679,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_DisplayedTypeSecondary,
+    PLACEHOLDER_SCHEMA, // TraceStore_DisplayedTypeSecondary
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
