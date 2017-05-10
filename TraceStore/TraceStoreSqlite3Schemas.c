@@ -87,7 +87,7 @@ Abstract:
     )
 
 #define RESULT_PSTRING(String) \
-    Sqlite3->ResultText16LE(   \
+    Sqlite3->ResultText(       \
         Context,               \
         String##->Buffer,      \
         String##->Length,      \
