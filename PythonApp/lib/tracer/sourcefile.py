@@ -110,6 +110,11 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         '        // Begin auto-generated section.',
         '        //',
     ]
+    bigint_casts = (
+        'LARGE_INTEGER',
+        'FILETIME',
+        'SYSTEMTIME',
+    )
     # Skip the first two lines and last line.
     for (i, line) in enumerate(mdecl.lines[2:-1]):
 
@@ -126,6 +131,10 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         if schema.endswith(', '):
             schema = schema[:-2]
         (name, dtype) = schema.split(' ')
+        if '_' in name:
+            field = name.replace('_', '->')
+        else:
+            field = name
 
         predicate = None
 
@@ -135,7 +144,10 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
             # No access descriptor for this field.  Make the target the name
             # of the table (e.g. 'Address') plus the name of the field, e.g.
             # Address->BaseAddress.
-            access = '%s->%s' % (tablename, name)
+            if '_' not in name:
+                access = '%s->%s' % (tablename, name)
+            else:
+                access = field
         else:
             # Extract the access descriptor.  If the field is a BIGINT, check
             # to see if the access descriptor ends with LARGE_INTEGER and that
@@ -155,9 +167,13 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
                 if access.endswith(', '):
                     access = access[:-2]
 
-            if access.endswith(('LARGE_INTEGER', 'FILETIME')):
+            if access.endswith(bigint_casts):
                 if ',' not in access:
-                    access = '%s->%s, %s' % (tablename, name, access)
+                    if '_' not in name:
+                        access = '%s->%s, %s' % (tablename, name, access)
+                    else:
+                        access = '%s, %s' % (field, access)
+
         stmt = None
 
         if dtype == 'TEXT':
