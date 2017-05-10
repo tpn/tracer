@@ -4568,7 +4568,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_Performance,
+    TraceStoreSqlite3PerformanceColumn, // TraceStore_Performance,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
@@ -4579,7 +4579,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_PerformanceDelta,
+    TraceStoreSqlite3PerformanceDeltaColumn, // TraceStore_PerformanceDelta,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
