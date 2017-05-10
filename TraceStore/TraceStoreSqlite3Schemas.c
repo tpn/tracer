@@ -157,7 +157,367 @@ Abstract:
 //
 
 CONST CHAR TraceStoreMetadataInfoSchema[] =
-    PLACEHOLDER_SCHEMA;
+        "MetadataInfo_MetadataInfo_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_MetadataInfo_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_MetadataInfo_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_MetadataInfo_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_MetadataInfo_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Stats_DroppedRecords INT, "
+        "MetadataInfo_MetadataInfo_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_MetadataInfo_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_MetadataInfo_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_MetadataInfo_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_MetadataInfo_Stats_BlockedAllocations INT, "
+        "MetadataInfo_MetadataInfo_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_MetadataInfo_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_MetadataInfo_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_MetadataInfo_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_MetadataInfo_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_MetadataInfo_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_MetadataInfo_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_MetadataInfo_Traits_MultipleRecords INT, "
+        "MetadataInfo_MetadataInfo_Traits_StreamingWrite INT, "
+        "MetadataInfo_MetadataInfo_Traits_StreamingRead INT, "
+        "MetadataInfo_MetadataInfo_Traits_FrequentAllocations INT, "
+        "MetadataInfo_MetadataInfo_Traits_BlockingAllocations INT, "
+        "MetadataInfo_MetadataInfo_Traits_LinkedStore INT, "
+        "MetadataInfo_MetadataInfo_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_MetadataInfo_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_MetadataInfo_Traits_AllowPageSpill INT, "
+        "MetadataInfo_MetadataInfo_Traits_PageAligned INT, "
+        "MetadataInfo_MetadataInfo_Traits_Periodic INT, "
+        "MetadataInfo_MetadataInfo_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_MetadataInfo_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_MetadataInfo_Traits_Unused INT, "
+        "MetadataInfo_Allocation_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_Allocation_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_Allocation_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Allocation_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_Allocation_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_Allocation_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_Allocation_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_Allocation_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Allocation_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_Allocation_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_Allocation_Stats_DroppedRecords INT, "
+        "MetadataInfo_Allocation_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_Allocation_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_Allocation_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_Allocation_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_Allocation_Stats_BlockedAllocations INT, "
+        "MetadataInfo_Allocation_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_Allocation_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_Allocation_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_Allocation_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_Allocation_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Allocation_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_Allocation_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_Allocation_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Allocation_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_Allocation_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_Allocation_Traits_MultipleRecords INT, "
+        "MetadataInfo_Allocation_Traits_StreamingWrite INT, "
+        "MetadataInfo_Allocation_Traits_StreamingRead INT, "
+        "MetadataInfo_Allocation_Traits_FrequentAllocations INT, "
+        "MetadataInfo_Allocation_Traits_BlockingAllocations INT, "
+        "MetadataInfo_Allocation_Traits_LinkedStore INT, "
+        "MetadataInfo_Allocation_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_Allocation_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_Allocation_Traits_AllowPageSpill INT, "
+        "MetadataInfo_Allocation_Traits_PageAligned INT, "
+        "MetadataInfo_Allocation_Traits_Periodic INT, "
+        "MetadataInfo_Allocation_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_Allocation_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_Allocation_Traits_Unused INT, "
+        "MetadataInfo_Relocation_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_Relocation_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_Relocation_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Relocation_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_Relocation_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_Relocation_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_Relocation_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_Relocation_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Relocation_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_Relocation_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_Relocation_Stats_DroppedRecords INT, "
+        "MetadataInfo_Relocation_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_Relocation_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_Relocation_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_Relocation_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_Relocation_Stats_BlockedAllocations INT, "
+        "MetadataInfo_Relocation_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_Relocation_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_Relocation_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_Relocation_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_Relocation_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Relocation_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_Relocation_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_Relocation_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Relocation_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_Relocation_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_Relocation_Traits_MultipleRecords INT, "
+        "MetadataInfo_Relocation_Traits_StreamingWrite INT, "
+        "MetadataInfo_Relocation_Traits_StreamingRead INT, "
+        "MetadataInfo_Relocation_Traits_FrequentAllocations INT, "
+        "MetadataInfo_Relocation_Traits_BlockingAllocations INT, "
+        "MetadataInfo_Relocation_Traits_LinkedStore INT, "
+        "MetadataInfo_Relocation_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_Relocation_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_Relocation_Traits_AllowPageSpill INT, "
+        "MetadataInfo_Relocation_Traits_PageAligned INT, "
+        "MetadataInfo_Relocation_Traits_Periodic INT, "
+        "MetadataInfo_Relocation_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_Relocation_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_Relocation_Traits_Unused INT, "
+        "MetadataInfo_Address_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_Address_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_Address_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Address_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_Address_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_Address_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_Address_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_Address_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Address_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_Address_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_Address_Stats_DroppedRecords INT, "
+        "MetadataInfo_Address_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_Address_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_Address_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_Address_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_Address_Stats_BlockedAllocations INT, "
+        "MetadataInfo_Address_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_Address_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_Address_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_Address_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_Address_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Address_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_Address_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_Address_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Address_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_Address_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_Address_Traits_MultipleRecords INT, "
+        "MetadataInfo_Address_Traits_StreamingWrite INT, "
+        "MetadataInfo_Address_Traits_StreamingRead INT, "
+        "MetadataInfo_Address_Traits_FrequentAllocations INT, "
+        "MetadataInfo_Address_Traits_BlockingAllocations INT, "
+        "MetadataInfo_Address_Traits_LinkedStore INT, "
+        "MetadataInfo_Address_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_Address_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_Address_Traits_AllowPageSpill INT, "
+        "MetadataInfo_Address_Traits_PageAligned INT, "
+        "MetadataInfo_Address_Traits_Periodic INT, "
+        "MetadataInfo_Address_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_Address_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_Address_Traits_Unused INT, "
+        "MetadataInfo_AddressRange_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_AddressRange_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_AddressRange_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_AddressRange_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_AddressRange_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Stats_DroppedRecords INT, "
+        "MetadataInfo_AddressRange_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_AddressRange_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_AddressRange_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_AddressRange_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_AddressRange_Stats_BlockedAllocations INT, "
+        "MetadataInfo_AddressRange_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_AddressRange_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_AddressRange_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_AddressRange_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_AddressRange_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AddressRange_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_AddressRange_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_AddressRange_Traits_MultipleRecords INT, "
+        "MetadataInfo_AddressRange_Traits_StreamingWrite INT, "
+        "MetadataInfo_AddressRange_Traits_StreamingRead INT, "
+        "MetadataInfo_AddressRange_Traits_FrequentAllocations INT, "
+        "MetadataInfo_AddressRange_Traits_BlockingAllocations INT, "
+        "MetadataInfo_AddressRange_Traits_LinkedStore INT, "
+        "MetadataInfo_AddressRange_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_AddressRange_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_AddressRange_Traits_AllowPageSpill INT, "
+        "MetadataInfo_AddressRange_Traits_PageAligned INT, "
+        "MetadataInfo_AddressRange_Traits_Periodic INT, "
+        "MetadataInfo_AddressRange_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_AddressRange_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_AddressRange_Traits_Unused INT, "
+        "MetadataInfo_AllocationTimestamp_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Stats_DroppedRecords INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_BlockedAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_AllocationTimestamp_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_AllocationTimestamp_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_AllocationTimestamp_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestamp_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_MultipleRecords INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_StreamingWrite INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_StreamingRead INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_FrequentAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_BlockingAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_LinkedStore INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_AllowPageSpill INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_PageAligned INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_Periodic INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_AllocationTimestamp_Traits_Unused INT, "
+        "MetadataInfo_AllocationTimestampDelta_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Stats_DroppedRecords INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_BlockedAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_AllocationTimestampDelta_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_AllocationTimestampDelta_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_AllocationTimestampDelta_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_MultipleRecords INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_StreamingWrite INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_StreamingRead INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_FrequentAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_BlockingAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_LinkedStore INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_AllowPageSpill INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_PageAligned INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_Periodic INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_AllocationTimestampDelta_Traits_Unused INT, "
+        "MetadataInfo_Synchronization_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_Synchronization_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_Synchronization_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_Synchronization_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_Synchronization_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Stats_DroppedRecords INT, "
+        "MetadataInfo_Synchronization_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_Synchronization_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_Synchronization_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_Synchronization_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_Synchronization_Stats_BlockedAllocations INT, "
+        "MetadataInfo_Synchronization_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_Synchronization_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_Synchronization_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_Synchronization_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_Synchronization_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Synchronization_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_Synchronization_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_Synchronization_Traits_MultipleRecords INT, "
+        "MetadataInfo_Synchronization_Traits_StreamingWrite INT, "
+        "MetadataInfo_Synchronization_Traits_StreamingRead INT, "
+        "MetadataInfo_Synchronization_Traits_FrequentAllocations INT, "
+        "MetadataInfo_Synchronization_Traits_BlockingAllocations INT, "
+        "MetadataInfo_Synchronization_Traits_LinkedStore INT, "
+        "MetadataInfo_Synchronization_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_Synchronization_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_Synchronization_Traits_AllowPageSpill INT, "
+        "MetadataInfo_Synchronization_Traits_PageAligned INT, "
+        "MetadataInfo_Synchronization_Traits_Periodic INT, "
+        "MetadataInfo_Synchronization_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_Synchronization_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_Synchronization_Traits_Unused INT, "
+        "MetadataInfo_Info_Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "MetadataInfo_Info_Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "MetadataInfo_Info_Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Info_Time_StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "MetadataInfo_Info_Time_StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "MetadataInfo_Info_Time_StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "MetadataInfo_Info_Time_StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "MetadataInfo_Info_Time_StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Info_Time_StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "MetadataInfo_Info_Time_StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "MetadataInfo_Info_Stats_DroppedRecords INT, "
+        "MetadataInfo_Info_Stats_ExhaustedFreeMemoryMaps INT, "
+        "MetadataInfo_Info_Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "MetadataInfo_Info_Stats_PreferredAddressUnavailable INT, "
+        "MetadataInfo_Info_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "MetadataInfo_Info_Stats_BlockedAllocations INT, "
+        "MetadataInfo_Info_Stats_SuspendedAllocations INT, "
+        "MetadataInfo_Info_Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "MetadataInfo_Info_Stats_WastedBytes BIGINT, "
+        "MetadataInfo_Info_Stats_PaddedAllocations BIGINT, "
+        "MetadataInfo_Info_Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "MetadataInfo_Info_Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "MetadataInfo_Info_Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "MetadataInfo_Info_Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "MetadataInfo_Info_Traits_VaryingRecordSize INT, "
+        "MetadataInfo_Info_Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "MetadataInfo_Info_Traits_MultipleRecords INT, "
+        "MetadataInfo_Info_Traits_StreamingWrite INT, "
+        "MetadataInfo_Info_Traits_StreamingRead INT, "
+        "MetadataInfo_Info_Traits_FrequentAllocations INT, "
+        "MetadataInfo_Info_Traits_BlockingAllocations INT, "
+        "MetadataInfo_Info_Traits_LinkedStore INT, "
+        "MetadataInfo_Info_Traits_CoalesceAllocations INT, "
+        "MetadataInfo_Info_Traits_ConcurrentAllocations INT, "
+        "MetadataInfo_Info_Traits_AllowPageSpill INT, "
+        "MetadataInfo_Info_Traits_PageAligned INT, "
+        "MetadataInfo_Info_Traits_Periodic INT, "
+        "MetadataInfo_Info_Traits_ConcurrentDataStructure INT, "
+        "MetadataInfo_Info_Traits_NoAllocationAlignment INT, "
+        "MetadataInfo_Info_Traits_Unused INT"
+    ")";
 
 _Use_decl_annotations_
 LONG
@@ -169,11 +529,2899 @@ TraceStoreSqlite3MetadataInfoColumn(
     LONG ColumnNumber
     )
 {
-    return TraceStoreSqlite3DefaultColumnImpl(Sqlite3,
-                                              TraceStore,
-                                              Cursor,
-                                              Context,
-                                              ColumnNumber);
+
+    PTRACE_STORE_METADATA_INFO MetadataInfo;
+
+    MetadataInfo = (PTRACE_STORE_METADATA_INFO)Cursor->CurrentRowRaw;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: MetadataInfo_MetadataInfo_Time_Frequency BIGINT
+        //
+
+        case 0:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Time.Frequency);
+            break;
+
+        //
+        // 1: MetadataInfo_MetadataInfo_Time_Multiplicand BIGINT
+        //
+
+        case 1:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Time.Multiplicand);
+            break;
+
+        //
+        // 2: MetadataInfo_MetadataInfo_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 2:
+            RESULT_FILETIME(MetadataInfo->MetadataInfo.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 3: MetadataInfo_MetadataInfo_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 3:
+            RESULT_FILETIME(MetadataInfo->MetadataInfo.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 4: MetadataInfo_MetadataInfo_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 4:
+            RESULT_SYSTEMTIME(MetadataInfo->MetadataInfo.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 5: MetadataInfo_MetadataInfo_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 5:
+            RESULT_SYSTEMTIME(MetadataInfo->MetadataInfo.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 6: MetadataInfo_MetadataInfo_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 6:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 7: MetadataInfo_MetadataInfo_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 7:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 8: MetadataInfo_MetadataInfo_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 8:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 9: MetadataInfo_MetadataInfo_Stats_DroppedRecords INT
+        //
+
+        case 9:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.DroppedRecords);
+            break;
+
+        //
+        // 10: MetadataInfo_MetadataInfo_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 10:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 11: MetadataInfo_MetadataInfo_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 11:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 12: MetadataInfo_MetadataInfo_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 12:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 13: MetadataInfo_MetadataInfo_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 13:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 14: MetadataInfo_MetadataInfo_Stats_BlockedAllocations INT
+        //
+
+        case 14:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 15: MetadataInfo_MetadataInfo_Stats_SuspendedAllocations INT
+        //
+
+        case 15:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 16: MetadataInfo_MetadataInfo_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 16:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 17: MetadataInfo_MetadataInfo_Stats_WastedBytes BIGINT
+        //
+
+        case 17:
+            RESULT_ULONGLONG(MetadataInfo->MetadataInfo.Stats.WastedBytes);
+            break;
+
+        //
+        // 18: MetadataInfo_MetadataInfo_Stats_PaddedAllocations BIGINT
+        //
+
+        case 18:
+            RESULT_ULONGLONG(MetadataInfo->MetadataInfo.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 19: MetadataInfo_MetadataInfo_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 19:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 20: MetadataInfo_MetadataInfo_Totals_AllocationSize BIGINT
+        //
+
+        case 20:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Totals.AllocationSize);
+            break;
+
+        //
+        // 21: MetadataInfo_MetadataInfo_Totals_NumberOfRecords BIGINT
+        //
+
+        case 21:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 22: MetadataInfo_MetadataInfo_Totals_RecordSize BIGINT
+        //
+
+        case 22:
+            RESULT_LARGE_INTEGER(MetadataInfo->MetadataInfo.Totals.RecordSize);
+            break;
+
+        //
+        // 23: MetadataInfo_MetadataInfo_Traits_VaryingRecordSize INT
+        //
+
+        case 23:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 24: MetadataInfo_MetadataInfo_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 24:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 25: MetadataInfo_MetadataInfo_Traits_MultipleRecords INT
+        //
+
+        case 25:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.MultipleRecords);
+            break;
+
+        //
+        // 26: MetadataInfo_MetadataInfo_Traits_StreamingWrite INT
+        //
+
+        case 26:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.StreamingWrite);
+            break;
+
+        //
+        // 27: MetadataInfo_MetadataInfo_Traits_StreamingRead INT
+        //
+
+        case 27:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.StreamingRead);
+            break;
+
+        //
+        // 28: MetadataInfo_MetadataInfo_Traits_FrequentAllocations INT
+        //
+
+        case 28:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 29: MetadataInfo_MetadataInfo_Traits_BlockingAllocations INT
+        //
+
+        case 29:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 30: MetadataInfo_MetadataInfo_Traits_LinkedStore INT
+        //
+
+        case 30:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.LinkedStore);
+            break;
+
+        //
+        // 31: MetadataInfo_MetadataInfo_Traits_CoalesceAllocations INT
+        //
+
+        case 31:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 32: MetadataInfo_MetadataInfo_Traits_ConcurrentAllocations INT
+        //
+
+        case 32:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 33: MetadataInfo_MetadataInfo_Traits_AllowPageSpill INT
+        //
+
+        case 33:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 34: MetadataInfo_MetadataInfo_Traits_PageAligned INT
+        //
+
+        case 34:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.PageAligned);
+            break;
+
+        //
+        // 35: MetadataInfo_MetadataInfo_Traits_Periodic INT
+        //
+
+        case 35:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.Periodic);
+            break;
+
+        //
+        // 36: MetadataInfo_MetadataInfo_Traits_ConcurrentDataStructure INT
+        //
+
+        case 36:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 37: MetadataInfo_MetadataInfo_Traits_NoAllocationAlignment INT
+        //
+
+        case 37:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 38: MetadataInfo_MetadataInfo_Traits_Unused INT
+        //
+
+        case 38:
+            RESULT_ULONG(MetadataInfo->MetadataInfo.Traits.Unused);
+            break;
+
+        //
+        // 39: MetadataInfo_Allocation_Eof_EndOfFile BIGINT
+        //
+
+        case 39:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Eof.EndOfFile);
+            break;
+
+        //
+        // 40: MetadataInfo_Allocation_Time_Frequency BIGINT
+        //
+
+        case 40:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Time.Frequency);
+            break;
+
+        //
+        // 41: MetadataInfo_Allocation_Time_Multiplicand BIGINT
+        //
+
+        case 41:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Time.Multiplicand);
+            break;
+
+        //
+        // 42: MetadataInfo_Allocation_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 42:
+            RESULT_FILETIME(MetadataInfo->Allocation.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 43: MetadataInfo_Allocation_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 43:
+            RESULT_FILETIME(MetadataInfo->Allocation.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 44: MetadataInfo_Allocation_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 44:
+            RESULT_SYSTEMTIME(MetadataInfo->Allocation.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 45: MetadataInfo_Allocation_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 45:
+            RESULT_SYSTEMTIME(MetadataInfo->Allocation.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 46: MetadataInfo_Allocation_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 46:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 47: MetadataInfo_Allocation_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 47:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 48: MetadataInfo_Allocation_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 48:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 49: MetadataInfo_Allocation_Stats_DroppedRecords INT
+        //
+
+        case 49:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.DroppedRecords);
+            break;
+
+        //
+        // 50: MetadataInfo_Allocation_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 50:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 51: MetadataInfo_Allocation_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 51:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 52: MetadataInfo_Allocation_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 52:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 53: MetadataInfo_Allocation_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 53:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 54: MetadataInfo_Allocation_Stats_BlockedAllocations INT
+        //
+
+        case 54:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 55: MetadataInfo_Allocation_Stats_SuspendedAllocations INT
+        //
+
+        case 55:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 56: MetadataInfo_Allocation_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 56:
+            RESULT_ULONG(MetadataInfo->Allocation.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 57: MetadataInfo_Allocation_Stats_WastedBytes BIGINT
+        //
+
+        case 57:
+            RESULT_ULONGLONG(MetadataInfo->Allocation.Stats.WastedBytes);
+            break;
+
+        //
+        // 58: MetadataInfo_Allocation_Stats_PaddedAllocations BIGINT
+        //
+
+        case 58:
+            RESULT_ULONGLONG(MetadataInfo->Allocation.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 59: MetadataInfo_Allocation_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 59:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 60: MetadataInfo_Allocation_Totals_AllocationSize BIGINT
+        //
+
+        case 60:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Totals.AllocationSize);
+            break;
+
+        //
+        // 61: MetadataInfo_Allocation_Totals_NumberOfRecords BIGINT
+        //
+
+        case 61:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 62: MetadataInfo_Allocation_Totals_RecordSize BIGINT
+        //
+
+        case 62:
+            RESULT_LARGE_INTEGER(MetadataInfo->Allocation.Totals.RecordSize);
+            break;
+
+        //
+        // 63: MetadataInfo_Allocation_Traits_VaryingRecordSize INT
+        //
+
+        case 63:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 64: MetadataInfo_Allocation_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 64:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 65: MetadataInfo_Allocation_Traits_MultipleRecords INT
+        //
+
+        case 65:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.MultipleRecords);
+            break;
+
+        //
+        // 66: MetadataInfo_Allocation_Traits_StreamingWrite INT
+        //
+
+        case 66:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.StreamingWrite);
+            break;
+
+        //
+        // 67: MetadataInfo_Allocation_Traits_StreamingRead INT
+        //
+
+        case 67:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.StreamingRead);
+            break;
+
+        //
+        // 68: MetadataInfo_Allocation_Traits_FrequentAllocations INT
+        //
+
+        case 68:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 69: MetadataInfo_Allocation_Traits_BlockingAllocations INT
+        //
+
+        case 69:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 70: MetadataInfo_Allocation_Traits_LinkedStore INT
+        //
+
+        case 70:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.LinkedStore);
+            break;
+
+        //
+        // 71: MetadataInfo_Allocation_Traits_CoalesceAllocations INT
+        //
+
+        case 71:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 72: MetadataInfo_Allocation_Traits_ConcurrentAllocations INT
+        //
+
+        case 72:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 73: MetadataInfo_Allocation_Traits_AllowPageSpill INT
+        //
+
+        case 73:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 74: MetadataInfo_Allocation_Traits_PageAligned INT
+        //
+
+        case 74:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.PageAligned);
+            break;
+
+        //
+        // 75: MetadataInfo_Allocation_Traits_Periodic INT
+        //
+
+        case 75:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.Periodic);
+            break;
+
+        //
+        // 76: MetadataInfo_Allocation_Traits_ConcurrentDataStructure INT
+        //
+
+        case 76:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 77: MetadataInfo_Allocation_Traits_NoAllocationAlignment INT
+        //
+
+        case 77:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 78: MetadataInfo_Allocation_Traits_Unused INT
+        //
+
+        case 78:
+            RESULT_ULONG(MetadataInfo->Allocation.Traits.Unused);
+            break;
+
+        //
+        // 79: MetadataInfo_Relocation_Eof_EndOfFile BIGINT
+        //
+
+        case 79:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Eof.EndOfFile);
+            break;
+
+        //
+        // 80: MetadataInfo_Relocation_Time_Frequency BIGINT
+        //
+
+        case 80:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Time.Frequency);
+            break;
+
+        //
+        // 81: MetadataInfo_Relocation_Time_Multiplicand BIGINT
+        //
+
+        case 81:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Time.Multiplicand);
+            break;
+
+        //
+        // 82: MetadataInfo_Relocation_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 82:
+            RESULT_FILETIME(MetadataInfo->Relocation.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 83: MetadataInfo_Relocation_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 83:
+            RESULT_FILETIME(MetadataInfo->Relocation.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 84: MetadataInfo_Relocation_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 84:
+            RESULT_SYSTEMTIME(MetadataInfo->Relocation.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 85: MetadataInfo_Relocation_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 85:
+            RESULT_SYSTEMTIME(MetadataInfo->Relocation.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 86: MetadataInfo_Relocation_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 86:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 87: MetadataInfo_Relocation_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 87:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 88: MetadataInfo_Relocation_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 88:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 89: MetadataInfo_Relocation_Stats_DroppedRecords INT
+        //
+
+        case 89:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.DroppedRecords);
+            break;
+
+        //
+        // 90: MetadataInfo_Relocation_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 90:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 91: MetadataInfo_Relocation_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 91:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 92: MetadataInfo_Relocation_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 92:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 93: MetadataInfo_Relocation_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 93:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 94: MetadataInfo_Relocation_Stats_BlockedAllocations INT
+        //
+
+        case 94:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 95: MetadataInfo_Relocation_Stats_SuspendedAllocations INT
+        //
+
+        case 95:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 96: MetadataInfo_Relocation_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 96:
+            RESULT_ULONG(MetadataInfo->Relocation.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 97: MetadataInfo_Relocation_Stats_WastedBytes BIGINT
+        //
+
+        case 97:
+            RESULT_ULONGLONG(MetadataInfo->Relocation.Stats.WastedBytes);
+            break;
+
+        //
+        // 98: MetadataInfo_Relocation_Stats_PaddedAllocations BIGINT
+        //
+
+        case 98:
+            RESULT_ULONGLONG(MetadataInfo->Relocation.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 99: MetadataInfo_Relocation_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 99:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 100: MetadataInfo_Relocation_Totals_AllocationSize BIGINT
+        //
+
+        case 100:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Totals.AllocationSize);
+            break;
+
+        //
+        // 101: MetadataInfo_Relocation_Totals_NumberOfRecords BIGINT
+        //
+
+        case 101:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 102: MetadataInfo_Relocation_Totals_RecordSize BIGINT
+        //
+
+        case 102:
+            RESULT_LARGE_INTEGER(MetadataInfo->Relocation.Totals.RecordSize);
+            break;
+
+        //
+        // 103: MetadataInfo_Relocation_Traits_VaryingRecordSize INT
+        //
+
+        case 103:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 104: MetadataInfo_Relocation_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 104:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 105: MetadataInfo_Relocation_Traits_MultipleRecords INT
+        //
+
+        case 105:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.MultipleRecords);
+            break;
+
+        //
+        // 106: MetadataInfo_Relocation_Traits_StreamingWrite INT
+        //
+
+        case 106:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.StreamingWrite);
+            break;
+
+        //
+        // 107: MetadataInfo_Relocation_Traits_StreamingRead INT
+        //
+
+        case 107:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.StreamingRead);
+            break;
+
+        //
+        // 108: MetadataInfo_Relocation_Traits_FrequentAllocations INT
+        //
+
+        case 108:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 109: MetadataInfo_Relocation_Traits_BlockingAllocations INT
+        //
+
+        case 109:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 110: MetadataInfo_Relocation_Traits_LinkedStore INT
+        //
+
+        case 110:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.LinkedStore);
+            break;
+
+        //
+        // 111: MetadataInfo_Relocation_Traits_CoalesceAllocations INT
+        //
+
+        case 111:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 112: MetadataInfo_Relocation_Traits_ConcurrentAllocations INT
+        //
+
+        case 112:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 113: MetadataInfo_Relocation_Traits_AllowPageSpill INT
+        //
+
+        case 113:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 114: MetadataInfo_Relocation_Traits_PageAligned INT
+        //
+
+        case 114:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.PageAligned);
+            break;
+
+        //
+        // 115: MetadataInfo_Relocation_Traits_Periodic INT
+        //
+
+        case 115:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.Periodic);
+            break;
+
+        //
+        // 116: MetadataInfo_Relocation_Traits_ConcurrentDataStructure INT
+        //
+
+        case 116:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 117: MetadataInfo_Relocation_Traits_NoAllocationAlignment INT
+        //
+
+        case 117:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 118: MetadataInfo_Relocation_Traits_Unused INT
+        //
+
+        case 118:
+            RESULT_ULONG(MetadataInfo->Relocation.Traits.Unused);
+            break;
+
+        //
+        // 119: MetadataInfo_Address_Eof_EndOfFile BIGINT
+        //
+
+        case 119:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Eof.EndOfFile);
+            break;
+
+        //
+        // 120: MetadataInfo_Address_Time_Frequency BIGINT
+        //
+
+        case 120:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Time.Frequency);
+            break;
+
+        //
+        // 121: MetadataInfo_Address_Time_Multiplicand BIGINT
+        //
+
+        case 121:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Time.Multiplicand);
+            break;
+
+        //
+        // 122: MetadataInfo_Address_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 122:
+            RESULT_FILETIME(MetadataInfo->Address.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 123: MetadataInfo_Address_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 123:
+            RESULT_FILETIME(MetadataInfo->Address.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 124: MetadataInfo_Address_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 124:
+            RESULT_SYSTEMTIME(MetadataInfo->Address.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 125: MetadataInfo_Address_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 125:
+            RESULT_SYSTEMTIME(MetadataInfo->Address.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 126: MetadataInfo_Address_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 126:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 127: MetadataInfo_Address_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 127:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 128: MetadataInfo_Address_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 128:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 129: MetadataInfo_Address_Stats_DroppedRecords INT
+        //
+
+        case 129:
+            RESULT_ULONG(MetadataInfo->Address.Stats.DroppedRecords);
+            break;
+
+        //
+        // 130: MetadataInfo_Address_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 130:
+            RESULT_ULONG(MetadataInfo->Address.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 131: MetadataInfo_Address_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 131:
+            RESULT_ULONG(MetadataInfo->Address.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 132: MetadataInfo_Address_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 132:
+            RESULT_ULONG(MetadataInfo->Address.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 133: MetadataInfo_Address_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 133:
+            RESULT_ULONG(MetadataInfo->Address.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 134: MetadataInfo_Address_Stats_BlockedAllocations INT
+        //
+
+        case 134:
+            RESULT_ULONG(MetadataInfo->Address.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 135: MetadataInfo_Address_Stats_SuspendedAllocations INT
+        //
+
+        case 135:
+            RESULT_ULONG(MetadataInfo->Address.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 136: MetadataInfo_Address_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 136:
+            RESULT_ULONG(MetadataInfo->Address.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 137: MetadataInfo_Address_Stats_WastedBytes BIGINT
+        //
+
+        case 137:
+            RESULT_ULONGLONG(MetadataInfo->Address.Stats.WastedBytes);
+            break;
+
+        //
+        // 138: MetadataInfo_Address_Stats_PaddedAllocations BIGINT
+        //
+
+        case 138:
+            RESULT_ULONGLONG(MetadataInfo->Address.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 139: MetadataInfo_Address_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 139:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 140: MetadataInfo_Address_Totals_AllocationSize BIGINT
+        //
+
+        case 140:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Totals.AllocationSize);
+            break;
+
+        //
+        // 141: MetadataInfo_Address_Totals_NumberOfRecords BIGINT
+        //
+
+        case 141:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 142: MetadataInfo_Address_Totals_RecordSize BIGINT
+        //
+
+        case 142:
+            RESULT_LARGE_INTEGER(MetadataInfo->Address.Totals.RecordSize);
+            break;
+
+        //
+        // 143: MetadataInfo_Address_Traits_VaryingRecordSize INT
+        //
+
+        case 143:
+            RESULT_ULONG(MetadataInfo->Address.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 144: MetadataInfo_Address_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 144:
+            RESULT_ULONG(MetadataInfo->Address.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 145: MetadataInfo_Address_Traits_MultipleRecords INT
+        //
+
+        case 145:
+            RESULT_ULONG(MetadataInfo->Address.Traits.MultipleRecords);
+            break;
+
+        //
+        // 146: MetadataInfo_Address_Traits_StreamingWrite INT
+        //
+
+        case 146:
+            RESULT_ULONG(MetadataInfo->Address.Traits.StreamingWrite);
+            break;
+
+        //
+        // 147: MetadataInfo_Address_Traits_StreamingRead INT
+        //
+
+        case 147:
+            RESULT_ULONG(MetadataInfo->Address.Traits.StreamingRead);
+            break;
+
+        //
+        // 148: MetadataInfo_Address_Traits_FrequentAllocations INT
+        //
+
+        case 148:
+            RESULT_ULONG(MetadataInfo->Address.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 149: MetadataInfo_Address_Traits_BlockingAllocations INT
+        //
+
+        case 149:
+            RESULT_ULONG(MetadataInfo->Address.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 150: MetadataInfo_Address_Traits_LinkedStore INT
+        //
+
+        case 150:
+            RESULT_ULONG(MetadataInfo->Address.Traits.LinkedStore);
+            break;
+
+        //
+        // 151: MetadataInfo_Address_Traits_CoalesceAllocations INT
+        //
+
+        case 151:
+            RESULT_ULONG(MetadataInfo->Address.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 152: MetadataInfo_Address_Traits_ConcurrentAllocations INT
+        //
+
+        case 152:
+            RESULT_ULONG(MetadataInfo->Address.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 153: MetadataInfo_Address_Traits_AllowPageSpill INT
+        //
+
+        case 153:
+            RESULT_ULONG(MetadataInfo->Address.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 154: MetadataInfo_Address_Traits_PageAligned INT
+        //
+
+        case 154:
+            RESULT_ULONG(MetadataInfo->Address.Traits.PageAligned);
+            break;
+
+        //
+        // 155: MetadataInfo_Address_Traits_Periodic INT
+        //
+
+        case 155:
+            RESULT_ULONG(MetadataInfo->Address.Traits.Periodic);
+            break;
+
+        //
+        // 156: MetadataInfo_Address_Traits_ConcurrentDataStructure INT
+        //
+
+        case 156:
+            RESULT_ULONG(MetadataInfo->Address.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 157: MetadataInfo_Address_Traits_NoAllocationAlignment INT
+        //
+
+        case 157:
+            RESULT_ULONG(MetadataInfo->Address.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 158: MetadataInfo_Address_Traits_Unused INT
+        //
+
+        case 158:
+            RESULT_ULONG(MetadataInfo->Address.Traits.Unused);
+            break;
+
+        //
+        // 159: MetadataInfo_AddressRange_Eof_EndOfFile BIGINT
+        //
+
+        case 159:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Eof.EndOfFile);
+            break;
+
+        //
+        // 160: MetadataInfo_AddressRange_Time_Frequency BIGINT
+        //
+
+        case 160:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Time.Frequency);
+            break;
+
+        //
+        // 161: MetadataInfo_AddressRange_Time_Multiplicand BIGINT
+        //
+
+        case 161:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Time.Multiplicand);
+            break;
+
+        //
+        // 162: MetadataInfo_AddressRange_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 162:
+            RESULT_FILETIME(MetadataInfo->AddressRange.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 163: MetadataInfo_AddressRange_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 163:
+            RESULT_FILETIME(MetadataInfo->AddressRange.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 164: MetadataInfo_AddressRange_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 164:
+            RESULT_SYSTEMTIME(MetadataInfo->AddressRange.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 165: MetadataInfo_AddressRange_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 165:
+            RESULT_SYSTEMTIME(MetadataInfo->AddressRange.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 166: MetadataInfo_AddressRange_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 166:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 167: MetadataInfo_AddressRange_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 167:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 168: MetadataInfo_AddressRange_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 168:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 169: MetadataInfo_AddressRange_Stats_DroppedRecords INT
+        //
+
+        case 169:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.DroppedRecords);
+            break;
+
+        //
+        // 170: MetadataInfo_AddressRange_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 170:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 171: MetadataInfo_AddressRange_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 171:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 172: MetadataInfo_AddressRange_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 172:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 173: MetadataInfo_AddressRange_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 173:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 174: MetadataInfo_AddressRange_Stats_BlockedAllocations INT
+        //
+
+        case 174:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 175: MetadataInfo_AddressRange_Stats_SuspendedAllocations INT
+        //
+
+        case 175:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 176: MetadataInfo_AddressRange_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 176:
+            RESULT_ULONG(MetadataInfo->AddressRange.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 177: MetadataInfo_AddressRange_Stats_WastedBytes BIGINT
+        //
+
+        case 177:
+            RESULT_ULONGLONG(MetadataInfo->AddressRange.Stats.WastedBytes);
+            break;
+
+        //
+        // 178: MetadataInfo_AddressRange_Stats_PaddedAllocations BIGINT
+        //
+
+        case 178:
+            RESULT_ULONGLONG(MetadataInfo->AddressRange.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 179: MetadataInfo_AddressRange_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 179:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 180: MetadataInfo_AddressRange_Totals_AllocationSize BIGINT
+        //
+
+        case 180:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Totals.AllocationSize);
+            break;
+
+        //
+        // 181: MetadataInfo_AddressRange_Totals_NumberOfRecords BIGINT
+        //
+
+        case 181:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 182: MetadataInfo_AddressRange_Totals_RecordSize BIGINT
+        //
+
+        case 182:
+            RESULT_LARGE_INTEGER(MetadataInfo->AddressRange.Totals.RecordSize);
+            break;
+
+        //
+        // 183: MetadataInfo_AddressRange_Traits_VaryingRecordSize INT
+        //
+
+        case 183:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 184: MetadataInfo_AddressRange_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 184:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 185: MetadataInfo_AddressRange_Traits_MultipleRecords INT
+        //
+
+        case 185:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.MultipleRecords);
+            break;
+
+        //
+        // 186: MetadataInfo_AddressRange_Traits_StreamingWrite INT
+        //
+
+        case 186:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.StreamingWrite);
+            break;
+
+        //
+        // 187: MetadataInfo_AddressRange_Traits_StreamingRead INT
+        //
+
+        case 187:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.StreamingRead);
+            break;
+
+        //
+        // 188: MetadataInfo_AddressRange_Traits_FrequentAllocations INT
+        //
+
+        case 188:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 189: MetadataInfo_AddressRange_Traits_BlockingAllocations INT
+        //
+
+        case 189:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 190: MetadataInfo_AddressRange_Traits_LinkedStore INT
+        //
+
+        case 190:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.LinkedStore);
+            break;
+
+        //
+        // 191: MetadataInfo_AddressRange_Traits_CoalesceAllocations INT
+        //
+
+        case 191:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 192: MetadataInfo_AddressRange_Traits_ConcurrentAllocations INT
+        //
+
+        case 192:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 193: MetadataInfo_AddressRange_Traits_AllowPageSpill INT
+        //
+
+        case 193:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 194: MetadataInfo_AddressRange_Traits_PageAligned INT
+        //
+
+        case 194:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.PageAligned);
+            break;
+
+        //
+        // 195: MetadataInfo_AddressRange_Traits_Periodic INT
+        //
+
+        case 195:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.Periodic);
+            break;
+
+        //
+        // 196: MetadataInfo_AddressRange_Traits_ConcurrentDataStructure INT
+        //
+
+        case 196:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 197: MetadataInfo_AddressRange_Traits_NoAllocationAlignment INT
+        //
+
+        case 197:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 198: MetadataInfo_AddressRange_Traits_Unused INT
+        //
+
+        case 198:
+            RESULT_ULONG(MetadataInfo->AddressRange.Traits.Unused);
+            break;
+
+        //
+        // 199: MetadataInfo_AllocationTimestamp_Eof_EndOfFile BIGINT
+        //
+
+        case 199:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Eof.EndOfFile);
+            break;
+
+        //
+        // 200: MetadataInfo_AllocationTimestamp_Time_Frequency BIGINT
+        //
+
+        case 200:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Time.Frequency);
+            break;
+
+        //
+        // 201: MetadataInfo_AllocationTimestamp_Time_Multiplicand BIGINT
+        //
+
+        case 201:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Time.Multiplicand);
+            break;
+
+        //
+        // 202: MetadataInfo_AllocationTimestamp_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 202:
+            RESULT_FILETIME(MetadataInfo->AllocationTimestamp.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 203: MetadataInfo_AllocationTimestamp_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 203:
+            RESULT_FILETIME(MetadataInfo->AllocationTimestamp.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 204: MetadataInfo_AllocationTimestamp_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 204:
+            RESULT_SYSTEMTIME(MetadataInfo->AllocationTimestamp.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 205: MetadataInfo_AllocationTimestamp_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 205:
+            RESULT_SYSTEMTIME(MetadataInfo->AllocationTimestamp.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 206: MetadataInfo_AllocationTimestamp_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 206:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 207: MetadataInfo_AllocationTimestamp_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 207:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 208: MetadataInfo_AllocationTimestamp_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 208:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 209: MetadataInfo_AllocationTimestamp_Stats_DroppedRecords INT
+        //
+
+        case 209:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.DroppedRecords);
+            break;
+
+        //
+        // 210: MetadataInfo_AllocationTimestamp_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 210:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 211: MetadataInfo_AllocationTimestamp_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 211:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 212: MetadataInfo_AllocationTimestamp_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 212:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 213: MetadataInfo_AllocationTimestamp_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 213:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 214: MetadataInfo_AllocationTimestamp_Stats_BlockedAllocations INT
+        //
+
+        case 214:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 215: MetadataInfo_AllocationTimestamp_Stats_SuspendedAllocations INT
+        //
+
+        case 215:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 216: MetadataInfo_AllocationTimestamp_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 216:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 217: MetadataInfo_AllocationTimestamp_Stats_WastedBytes BIGINT
+        //
+
+        case 217:
+            RESULT_ULONGLONG(MetadataInfo->AllocationTimestamp.Stats.WastedBytes);
+            break;
+
+        //
+        // 218: MetadataInfo_AllocationTimestamp_Stats_PaddedAllocations BIGINT
+        //
+
+        case 218:
+            RESULT_ULONGLONG(MetadataInfo->AllocationTimestamp.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 219: MetadataInfo_AllocationTimestamp_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 219:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 220: MetadataInfo_AllocationTimestamp_Totals_AllocationSize BIGINT
+        //
+
+        case 220:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Totals.AllocationSize);
+            break;
+
+        //
+        // 221: MetadataInfo_AllocationTimestamp_Totals_NumberOfRecords BIGINT
+        //
+
+        case 221:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 222: MetadataInfo_AllocationTimestamp_Totals_RecordSize BIGINT
+        //
+
+        case 222:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestamp.Totals.RecordSize);
+            break;
+
+        //
+        // 223: MetadataInfo_AllocationTimestamp_Traits_VaryingRecordSize INT
+        //
+
+        case 223:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 224: MetadataInfo_AllocationTimestamp_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 224:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 225: MetadataInfo_AllocationTimestamp_Traits_MultipleRecords INT
+        //
+
+        case 225:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.MultipleRecords);
+            break;
+
+        //
+        // 226: MetadataInfo_AllocationTimestamp_Traits_StreamingWrite INT
+        //
+
+        case 226:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.StreamingWrite);
+            break;
+
+        //
+        // 227: MetadataInfo_AllocationTimestamp_Traits_StreamingRead INT
+        //
+
+        case 227:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.StreamingRead);
+            break;
+
+        //
+        // 228: MetadataInfo_AllocationTimestamp_Traits_FrequentAllocations INT
+        //
+
+        case 228:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 229: MetadataInfo_AllocationTimestamp_Traits_BlockingAllocations INT
+        //
+
+        case 229:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 230: MetadataInfo_AllocationTimestamp_Traits_LinkedStore INT
+        //
+
+        case 230:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.LinkedStore);
+            break;
+
+        //
+        // 231: MetadataInfo_AllocationTimestamp_Traits_CoalesceAllocations INT
+        //
+
+        case 231:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 232: MetadataInfo_AllocationTimestamp_Traits_ConcurrentAllocations INT
+        //
+
+        case 232:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 233: MetadataInfo_AllocationTimestamp_Traits_AllowPageSpill INT
+        //
+
+        case 233:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 234: MetadataInfo_AllocationTimestamp_Traits_PageAligned INT
+        //
+
+        case 234:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.PageAligned);
+            break;
+
+        //
+        // 235: MetadataInfo_AllocationTimestamp_Traits_Periodic INT
+        //
+
+        case 235:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.Periodic);
+            break;
+
+        //
+        // 236: MetadataInfo_AllocationTimestamp_Traits_ConcurrentDataStructure INT
+        //
+
+        case 236:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 237: MetadataInfo_AllocationTimestamp_Traits_NoAllocationAlignment INT
+        //
+
+        case 237:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 238: MetadataInfo_AllocationTimestamp_Traits_Unused INT
+        //
+
+        case 238:
+            RESULT_ULONG(MetadataInfo->AllocationTimestamp.Traits.Unused);
+            break;
+
+        //
+        // 239: MetadataInfo_AllocationTimestampDelta_Eof_EndOfFile BIGINT
+        //
+
+        case 239:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Eof.EndOfFile);
+            break;
+
+        //
+        // 240: MetadataInfo_AllocationTimestampDelta_Time_Frequency BIGINT
+        //
+
+        case 240:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Time.Frequency);
+            break;
+
+        //
+        // 241: MetadataInfo_AllocationTimestampDelta_Time_Multiplicand BIGINT
+        //
+
+        case 241:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Time.Multiplicand);
+            break;
+
+        //
+        // 242: MetadataInfo_AllocationTimestampDelta_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 242:
+            RESULT_FILETIME(MetadataInfo->AllocationTimestampDelta.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 243: MetadataInfo_AllocationTimestampDelta_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 243:
+            RESULT_FILETIME(MetadataInfo->AllocationTimestampDelta.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 244: MetadataInfo_AllocationTimestampDelta_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 244:
+            RESULT_SYSTEMTIME(MetadataInfo->AllocationTimestampDelta.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 245: MetadataInfo_AllocationTimestampDelta_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 245:
+            RESULT_SYSTEMTIME(MetadataInfo->AllocationTimestampDelta.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 246: MetadataInfo_AllocationTimestampDelta_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 246:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 247: MetadataInfo_AllocationTimestampDelta_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 247:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 248: MetadataInfo_AllocationTimestampDelta_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 248:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 249: MetadataInfo_AllocationTimestampDelta_Stats_DroppedRecords INT
+        //
+
+        case 249:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.DroppedRecords);
+            break;
+
+        //
+        // 250: MetadataInfo_AllocationTimestampDelta_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 250:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 251: MetadataInfo_AllocationTimestampDelta_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 251:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 252: MetadataInfo_AllocationTimestampDelta_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 252:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 253: MetadataInfo_AllocationTimestampDelta_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 253:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 254: MetadataInfo_AllocationTimestampDelta_Stats_BlockedAllocations INT
+        //
+
+        case 254:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 255: MetadataInfo_AllocationTimestampDelta_Stats_SuspendedAllocations INT
+        //
+
+        case 255:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 256: MetadataInfo_AllocationTimestampDelta_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 256:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 257: MetadataInfo_AllocationTimestampDelta_Stats_WastedBytes BIGINT
+        //
+
+        case 257:
+            RESULT_ULONGLONG(MetadataInfo->AllocationTimestampDelta.Stats.WastedBytes);
+            break;
+
+        //
+        // 258: MetadataInfo_AllocationTimestampDelta_Stats_PaddedAllocations BIGINT
+        //
+
+        case 258:
+            RESULT_ULONGLONG(MetadataInfo->AllocationTimestampDelta.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 259: MetadataInfo_AllocationTimestampDelta_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 259:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 260: MetadataInfo_AllocationTimestampDelta_Totals_AllocationSize BIGINT
+        //
+
+        case 260:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Totals.AllocationSize);
+            break;
+
+        //
+        // 261: MetadataInfo_AllocationTimestampDelta_Totals_NumberOfRecords BIGINT
+        //
+
+        case 261:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 262: MetadataInfo_AllocationTimestampDelta_Totals_RecordSize BIGINT
+        //
+
+        case 262:
+            RESULT_LARGE_INTEGER(MetadataInfo->AllocationTimestampDelta.Totals.RecordSize);
+            break;
+
+        //
+        // 263: MetadataInfo_AllocationTimestampDelta_Traits_VaryingRecordSize INT
+        //
+
+        case 263:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 264: MetadataInfo_AllocationTimestampDelta_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 264:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 265: MetadataInfo_AllocationTimestampDelta_Traits_MultipleRecords INT
+        //
+
+        case 265:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.MultipleRecords);
+            break;
+
+        //
+        // 266: MetadataInfo_AllocationTimestampDelta_Traits_StreamingWrite INT
+        //
+
+        case 266:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.StreamingWrite);
+            break;
+
+        //
+        // 267: MetadataInfo_AllocationTimestampDelta_Traits_StreamingRead INT
+        //
+
+        case 267:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.StreamingRead);
+            break;
+
+        //
+        // 268: MetadataInfo_AllocationTimestampDelta_Traits_FrequentAllocations INT
+        //
+
+        case 268:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 269: MetadataInfo_AllocationTimestampDelta_Traits_BlockingAllocations INT
+        //
+
+        case 269:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 270: MetadataInfo_AllocationTimestampDelta_Traits_LinkedStore INT
+        //
+
+        case 270:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.LinkedStore);
+            break;
+
+        //
+        // 271: MetadataInfo_AllocationTimestampDelta_Traits_CoalesceAllocations INT
+        //
+
+        case 271:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 272: MetadataInfo_AllocationTimestampDelta_Traits_ConcurrentAllocations INT
+        //
+
+        case 272:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 273: MetadataInfo_AllocationTimestampDelta_Traits_AllowPageSpill INT
+        //
+
+        case 273:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 274: MetadataInfo_AllocationTimestampDelta_Traits_PageAligned INT
+        //
+
+        case 274:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.PageAligned);
+            break;
+
+        //
+        // 275: MetadataInfo_AllocationTimestampDelta_Traits_Periodic INT
+        //
+
+        case 275:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.Periodic);
+            break;
+
+        //
+        // 276: MetadataInfo_AllocationTimestampDelta_Traits_ConcurrentDataStructure INT
+        //
+
+        case 276:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 277: MetadataInfo_AllocationTimestampDelta_Traits_NoAllocationAlignment INT
+        //
+
+        case 277:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 278: MetadataInfo_AllocationTimestampDelta_Traits_Unused INT
+        //
+
+        case 278:
+            RESULT_ULONG(MetadataInfo->AllocationTimestampDelta.Traits.Unused);
+            break;
+
+        //
+        // 279: MetadataInfo_Synchronization_Eof_EndOfFile BIGINT
+        //
+
+        case 279:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Eof.EndOfFile);
+            break;
+
+        //
+        // 280: MetadataInfo_Synchronization_Time_Frequency BIGINT
+        //
+
+        case 280:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Time.Frequency);
+            break;
+
+        //
+        // 281: MetadataInfo_Synchronization_Time_Multiplicand BIGINT
+        //
+
+        case 281:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Time.Multiplicand);
+            break;
+
+        //
+        // 282: MetadataInfo_Synchronization_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 282:
+            RESULT_FILETIME(MetadataInfo->Synchronization.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 283: MetadataInfo_Synchronization_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 283:
+            RESULT_FILETIME(MetadataInfo->Synchronization.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 284: MetadataInfo_Synchronization_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 284:
+            RESULT_SYSTEMTIME(MetadataInfo->Synchronization.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 285: MetadataInfo_Synchronization_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 285:
+            RESULT_SYSTEMTIME(MetadataInfo->Synchronization.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 286: MetadataInfo_Synchronization_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 286:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 287: MetadataInfo_Synchronization_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 287:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 288: MetadataInfo_Synchronization_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 288:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 289: MetadataInfo_Synchronization_Stats_DroppedRecords INT
+        //
+
+        case 289:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.DroppedRecords);
+            break;
+
+        //
+        // 290: MetadataInfo_Synchronization_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 290:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 291: MetadataInfo_Synchronization_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 291:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 292: MetadataInfo_Synchronization_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 292:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 293: MetadataInfo_Synchronization_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 293:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 294: MetadataInfo_Synchronization_Stats_BlockedAllocations INT
+        //
+
+        case 294:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 295: MetadataInfo_Synchronization_Stats_SuspendedAllocations INT
+        //
+
+        case 295:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 296: MetadataInfo_Synchronization_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 296:
+            RESULT_ULONG(MetadataInfo->Synchronization.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 297: MetadataInfo_Synchronization_Stats_WastedBytes BIGINT
+        //
+
+        case 297:
+            RESULT_ULONGLONG(MetadataInfo->Synchronization.Stats.WastedBytes);
+            break;
+
+        //
+        // 298: MetadataInfo_Synchronization_Stats_PaddedAllocations BIGINT
+        //
+
+        case 298:
+            RESULT_ULONGLONG(MetadataInfo->Synchronization.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 299: MetadataInfo_Synchronization_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 299:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 300: MetadataInfo_Synchronization_Totals_AllocationSize BIGINT
+        //
+
+        case 300:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Totals.AllocationSize);
+            break;
+
+        //
+        // 301: MetadataInfo_Synchronization_Totals_NumberOfRecords BIGINT
+        //
+
+        case 301:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 302: MetadataInfo_Synchronization_Totals_RecordSize BIGINT
+        //
+
+        case 302:
+            RESULT_LARGE_INTEGER(MetadataInfo->Synchronization.Totals.RecordSize);
+            break;
+
+        //
+        // 303: MetadataInfo_Synchronization_Traits_VaryingRecordSize INT
+        //
+
+        case 303:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 304: MetadataInfo_Synchronization_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 304:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 305: MetadataInfo_Synchronization_Traits_MultipleRecords INT
+        //
+
+        case 305:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.MultipleRecords);
+            break;
+
+        //
+        // 306: MetadataInfo_Synchronization_Traits_StreamingWrite INT
+        //
+
+        case 306:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.StreamingWrite);
+            break;
+
+        //
+        // 307: MetadataInfo_Synchronization_Traits_StreamingRead INT
+        //
+
+        case 307:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.StreamingRead);
+            break;
+
+        //
+        // 308: MetadataInfo_Synchronization_Traits_FrequentAllocations INT
+        //
+
+        case 308:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 309: MetadataInfo_Synchronization_Traits_BlockingAllocations INT
+        //
+
+        case 309:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 310: MetadataInfo_Synchronization_Traits_LinkedStore INT
+        //
+
+        case 310:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.LinkedStore);
+            break;
+
+        //
+        // 311: MetadataInfo_Synchronization_Traits_CoalesceAllocations INT
+        //
+
+        case 311:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 312: MetadataInfo_Synchronization_Traits_ConcurrentAllocations INT
+        //
+
+        case 312:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 313: MetadataInfo_Synchronization_Traits_AllowPageSpill INT
+        //
+
+        case 313:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 314: MetadataInfo_Synchronization_Traits_PageAligned INT
+        //
+
+        case 314:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.PageAligned);
+            break;
+
+        //
+        // 315: MetadataInfo_Synchronization_Traits_Periodic INT
+        //
+
+        case 315:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.Periodic);
+            break;
+
+        //
+        // 316: MetadataInfo_Synchronization_Traits_ConcurrentDataStructure INT
+        //
+
+        case 316:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 317: MetadataInfo_Synchronization_Traits_NoAllocationAlignment INT
+        //
+
+        case 317:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 318: MetadataInfo_Synchronization_Traits_Unused INT
+        //
+
+        case 318:
+            RESULT_ULONG(MetadataInfo->Synchronization.Traits.Unused);
+            break;
+
+        //
+        // 319: MetadataInfo_Info_Eof_EndOfFile BIGINT
+        //
+
+        case 319:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Eof.EndOfFile);
+            break;
+
+        //
+        // 320: MetadataInfo_Info_Time_Frequency BIGINT
+        //
+
+        case 320:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Time.Frequency);
+            break;
+
+        //
+        // 321: MetadataInfo_Info_Time_Multiplicand BIGINT
+        //
+
+        case 321:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Time.Multiplicand);
+            break;
+
+        //
+        // 322: MetadataInfo_Info_Time_StartTime_FileTimeUtc BIGINT
+        //
+
+        case 322:
+            RESULT_FILETIME(MetadataInfo->Info.Time.StartTime.FileTimeUtc);
+            break;
+
+        //
+        // 323: MetadataInfo_Info_Time_StartTime_FileTimeLocal BIGINT
+        //
+
+        case 323:
+            RESULT_FILETIME(MetadataInfo->Info.Time.StartTime.FileTimeLocal);
+            break;
+
+        //
+        // 324: MetadataInfo_Info_Time_StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 324:
+            RESULT_SYSTEMTIME(MetadataInfo->Info.Time.StartTime.SystemTimeUtc);
+            break;
+
+        //
+        // 325: MetadataInfo_Info_Time_StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 325:
+            RESULT_SYSTEMTIME(MetadataInfo->Info.Time.StartTime.SystemTimeLocal);
+            break;
+
+        //
+        // 326: MetadataInfo_Info_Time_StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 326:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Time.StartTime.SecondsSince1970);
+            break;
+
+        //
+        // 327: MetadataInfo_Info_Time_StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 327:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Time.StartTime.MicrosecondsSince1970);
+            break;
+
+        //
+        // 328: MetadataInfo_Info_Time_StartTime_PerformanceCounter BIGINT
+        //
+
+        case 328:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Time.StartTime.PerformanceCounter);
+            break;
+
+        //
+        // 329: MetadataInfo_Info_Stats_DroppedRecords INT
+        //
+
+        case 329:
+            RESULT_ULONG(MetadataInfo->Info.Stats.DroppedRecords);
+            break;
+
+        //
+        // 330: MetadataInfo_Info_Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 330:
+            RESULT_ULONG(MetadataInfo->Info.Stats.ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 331: MetadataInfo_Info_Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 331:
+            RESULT_ULONG(MetadataInfo->Info.Stats.AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 332: MetadataInfo_Info_Stats_PreferredAddressUnavailable INT
+        //
+
+        case 332:
+            RESULT_ULONG(MetadataInfo->Info.Stats.PreferredAddressUnavailable);
+            break;
+
+        //
+        // 333: MetadataInfo_Info_Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 333:
+            RESULT_ULONG(MetadataInfo->Info.Stats.AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 334: MetadataInfo_Info_Stats_BlockedAllocations INT
+        //
+
+        case 334:
+            RESULT_ULONG(MetadataInfo->Info.Stats.BlockedAllocations);
+            break;
+
+        //
+        // 335: MetadataInfo_Info_Stats_SuspendedAllocations INT
+        //
+
+        case 335:
+            RESULT_ULONG(MetadataInfo->Info.Stats.SuspendedAllocations);
+            break;
+
+        //
+        // 336: MetadataInfo_Info_Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 336:
+            RESULT_ULONG(MetadataInfo->Info.Stats.ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 337: MetadataInfo_Info_Stats_WastedBytes BIGINT
+        //
+
+        case 337:
+            RESULT_ULONGLONG(MetadataInfo->Info.Stats.WastedBytes);
+            break;
+
+        //
+        // 338: MetadataInfo_Info_Stats_PaddedAllocations BIGINT
+        //
+
+        case 338:
+            RESULT_ULONGLONG(MetadataInfo->Info.Stats.PaddedAllocations);
+            break;
+
+        //
+        // 339: MetadataInfo_Info_Totals_NumberOfAllocations BIGINT
+        //
+
+        case 339:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Totals.NumberOfAllocations);
+            break;
+
+        //
+        // 340: MetadataInfo_Info_Totals_AllocationSize BIGINT
+        //
+
+        case 340:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Totals.AllocationSize);
+            break;
+
+        //
+        // 341: MetadataInfo_Info_Totals_NumberOfRecords BIGINT
+        //
+
+        case 341:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Totals.NumberOfRecords);
+            break;
+
+        //
+        // 342: MetadataInfo_Info_Totals_RecordSize BIGINT
+        //
+
+        case 342:
+            RESULT_LARGE_INTEGER(MetadataInfo->Info.Totals.RecordSize);
+            break;
+
+        //
+        // 343: MetadataInfo_Info_Traits_VaryingRecordSize INT
+        //
+
+        case 343:
+            RESULT_ULONG(MetadataInfo->Info.Traits.VaryingRecordSize);
+            break;
+
+        //
+        // 344: MetadataInfo_Info_Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 344:
+            RESULT_ULONG(MetadataInfo->Info.Traits.RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 345: MetadataInfo_Info_Traits_MultipleRecords INT
+        //
+
+        case 345:
+            RESULT_ULONG(MetadataInfo->Info.Traits.MultipleRecords);
+            break;
+
+        //
+        // 346: MetadataInfo_Info_Traits_StreamingWrite INT
+        //
+
+        case 346:
+            RESULT_ULONG(MetadataInfo->Info.Traits.StreamingWrite);
+            break;
+
+        //
+        // 347: MetadataInfo_Info_Traits_StreamingRead INT
+        //
+
+        case 347:
+            RESULT_ULONG(MetadataInfo->Info.Traits.StreamingRead);
+            break;
+
+        //
+        // 348: MetadataInfo_Info_Traits_FrequentAllocations INT
+        //
+
+        case 348:
+            RESULT_ULONG(MetadataInfo->Info.Traits.FrequentAllocations);
+            break;
+
+        //
+        // 349: MetadataInfo_Info_Traits_BlockingAllocations INT
+        //
+
+        case 349:
+            RESULT_ULONG(MetadataInfo->Info.Traits.BlockingAllocations);
+            break;
+
+        //
+        // 350: MetadataInfo_Info_Traits_LinkedStore INT
+        //
+
+        case 350:
+            RESULT_ULONG(MetadataInfo->Info.Traits.LinkedStore);
+            break;
+
+        //
+        // 351: MetadataInfo_Info_Traits_CoalesceAllocations INT
+        //
+
+        case 351:
+            RESULT_ULONG(MetadataInfo->Info.Traits.CoalesceAllocations);
+            break;
+
+        //
+        // 352: MetadataInfo_Info_Traits_ConcurrentAllocations INT
+        //
+
+        case 352:
+            RESULT_ULONG(MetadataInfo->Info.Traits.ConcurrentAllocations);
+            break;
+
+        //
+        // 353: MetadataInfo_Info_Traits_AllowPageSpill INT
+        //
+
+        case 353:
+            RESULT_ULONG(MetadataInfo->Info.Traits.AllowPageSpill);
+            break;
+
+        //
+        // 354: MetadataInfo_Info_Traits_PageAligned INT
+        //
+
+        case 354:
+            RESULT_ULONG(MetadataInfo->Info.Traits.PageAligned);
+            break;
+
+        //
+        // 355: MetadataInfo_Info_Traits_Periodic INT
+        //
+
+        case 355:
+            RESULT_ULONG(MetadataInfo->Info.Traits.Periodic);
+            break;
+
+        //
+        // 356: MetadataInfo_Info_Traits_ConcurrentDataStructure INT
+        //
+
+        case 356:
+            RESULT_ULONG(MetadataInfo->Info.Traits.ConcurrentDataStructure);
+            break;
+
+        //
+        // 357: MetadataInfo_Info_Traits_NoAllocationAlignment INT
+        //
+
+        case 357:
+            RESULT_ULONG(MetadataInfo->Info.Traits.NoAllocationAlignment);
+            break;
+
+        //
+        // 358: MetadataInfo_Info_Traits_Unused INT
+        //
+
+        case 358:
+            RESULT_ULONG(MetadataInfo->Info.Traits.Unused);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
 }
 
 //

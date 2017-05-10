@@ -136,6 +136,11 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
         else:
             field = name
 
+        # Quick hack for MetadataInfo.  We only need one ->.
+        if field.startswith('MetadataInfo->'):
+            fields = field.split('->')
+            field = '%s.%s' % ('->'.join(fields[:2]), '.'.join(fields[2:]))
+
         predicate = None
 
         # Find the start of the line's comment.
@@ -175,6 +180,7 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
                         access = '%s, %s' % (field, access)
 
         stmt = None
+
 
         if dtype == 'TEXT':
             # TEXT should always have a "<type>" suffix, e.g.:
