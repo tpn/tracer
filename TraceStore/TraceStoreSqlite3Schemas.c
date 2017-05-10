@@ -124,6 +124,12 @@ Abstract:
         *((PSQLITE3_INT64)(PULONGLONG)(&FileTime)) \
     )
 
+#define RESULT_SYSTEMTIME(SystemTime)                \
+    Sqlite3->ResultInt64(                            \
+        Context,                                     \
+        *((PSQLITE3_INT64)(PULONGLONG)(&SystemTime)) \
+    )
+
 #define RESULT_LARGE_INTEGER(LargeInteger)     \
     Sqlite3->ResultInt64(                      \
         Context,                               \
