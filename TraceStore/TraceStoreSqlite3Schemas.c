@@ -118,6 +118,11 @@ Abstract:
         SQLITE_STATIC                        \
     )
 
+#define RESULT_FILETIME(FileTime)                  \
+    Sqlite3->ResultInt64(                          \
+        Context,                                   \
+        *((PSQLITE3_INT64)(PULONGLONG)(&FileTime)) \
+    )
 
 #define RESULT_LARGE_INTEGER(LargeInteger)     \
     Sqlite3->ResultInt64(                      \
@@ -1527,7 +1532,851 @@ TraceStoreSqlite3WsWorkingSetExInfoColumn(
 
     return SQLITE_OK;
 }
-    
+
+//
+// TraceStore_Performance
+//
+
+CONST CHAR TraceStorePerformanceSchema[] =
+    "CREATE TABLE TraceStore_Performance("
+        "SizeOfStruct INT, "
+        "ProcessHandleCount INT, "
+        "IntervalInMilliseconds INT, "
+        "WindowLengthInMilliseconds INT, "
+        "Timestamp BIGINT, "                    // LARGE_INTEGER
+        "UserTime BIGINT, "                     // FILETIME
+        "KernelTime BIGINT, "                   // FILETIME
+        "ProcessCycles BIGINT, "
+        "ProcessMemoryCountersExSize INT, "
+        "PageFaultCount INT, "
+        "PeakWorkingSetSize BIGINT, "
+        "WorkingSetSize BIGINT, "
+        "QuotaPeakPagedPoolUsage BIGINT, "
+        "QuotaPagedPoolUsage BIGINT, "
+        "QuotaPeakNonPagedPoolUsage BIGINT, "
+        "QuotaNonPagedPoolUsage BIGINT, "
+        "PagefileUsage BIGINT, "
+        "PeakPagefileUsage BIGINT, "
+        "PrivateUsage BIGINT, "
+        "MemoryLoad INT, "
+        "TotalPhys BIGINT, "
+        "AvailPhys BIGINT, "
+        "TotalPageFile BIGINT, "
+        "AvailPageFile BIGINT, "
+        "TotalVirtual BIGINT, "
+        "AvailVirtual BIGINT, "
+        "AvailExtendedVirtual BIGINT, "
+        "ReadOperationCount BIGINT, "
+        "WriteOperationCount BIGINT, "
+        "OtherOperationCount BIGINT, "
+        "ReadTransferCount BIGINT, "
+        "WriteTransferCount BIGINT, "
+        "OtherTransferCount BIGINT, "
+        "CommitTotal BIGINT, "
+        "CommitLimit BIGINT, "
+        "CommitPeak BIGINT, "
+        "PhysicalTotal BIGINT, "
+        "PhysicalAvailable BIGINT, "
+        "SystemCache BIGINT, "
+        "KernelTotal BIGINT, "
+        "KernelPaged BIGINT, "
+        "KernelNonpaged BIGINT, "
+        "PageSize BIGINT, "
+        "HandleCount INT, "
+        "ProcessCount INT, "
+        "ThreadCount INT"
+    ")";
+ 
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3PerformanceColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PerformanceColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_PERFORMANCE Performance;
+
+    Performance = (PTRACE_PERFORMANCE)Cursor->CurrentRowRaw;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: SizeOfStruct INT
+        //
+
+        case 0:
+            RESULT_ULONG(Performance->SizeOfStruct);
+            break;
+
+        //
+        // 1: ProcessHandleCount INT
+        //
+
+        case 1:
+            RESULT_ULONG(Performance->ProcessHandleCount);
+            break;
+
+        //
+        // 2: IntervalInMilliseconds INT
+        //
+
+        case 2:
+            RESULT_ULONG(Performance->IntervalInMilliseconds);
+            break;
+
+        //
+        // 3: WindowLengthInMilliseconds INT
+        //
+
+        case 3:
+            RESULT_ULONG(Performance->WindowLengthInMilliseconds);
+            break;
+
+        //
+        // 4: Timestamp BIGINT
+        //
+
+        case 4:
+            RESULT_LARGE_INTEGER(Performance->Timestamp);
+            break;
+
+        //
+        // 5: UserTime BIGINT
+        //
+
+        case 5:
+            RESULT_FILETIME(Performance->UserTime);
+            break;
+
+        //
+        // 6: KernelTime BIGINT
+        //
+
+        case 6:
+            RESULT_FILETIME(Performance->KernelTime);
+            break;
+
+        //
+        // 7: ProcessCycles BIGINT
+        //
+
+        case 7:
+            RESULT_ULONGLONG(Performance->ProcessCycles);
+            break;
+
+        //
+        // 8: ProcessMemoryCountersExSize INT
+        //
+
+        case 8:
+            RESULT_ULONG(Performance->ProcessMemoryCountersExSize);
+            break;
+
+        //
+        // 9: PageFaultCount INT
+        //
+
+        case 9:
+            RESULT_ULONG(Performance->PageFaultCount);
+            break;
+
+        //
+        // 10: PeakWorkingSetSize BIGINT
+        //
+
+        case 10:
+            RESULT_ULONGLONG(Performance->PeakWorkingSetSize);
+            break;
+
+        //
+        // 11: WorkingSetSize BIGINT
+        //
+
+        case 11:
+            RESULT_ULONGLONG(Performance->WorkingSetSize);
+            break;
+
+        //
+        // 12: QuotaPeakPagedPoolUsage BIGINT
+        //
+
+        case 12:
+            RESULT_ULONGLONG(Performance->QuotaPeakPagedPoolUsage);
+            break;
+
+        //
+        // 13: QuotaPagedPoolUsage BIGINT
+        //
+
+        case 13:
+            RESULT_ULONGLONG(Performance->QuotaPagedPoolUsage);
+            break;
+
+        //
+        // 14: QuotaPeakNonPagedPoolUsage BIGINT
+        //
+
+        case 14:
+            RESULT_ULONGLONG(Performance->QuotaPeakNonPagedPoolUsage);
+            break;
+
+        //
+        // 15: QuotaNonPagedPoolUsage BIGINT
+        //
+
+        case 15:
+            RESULT_ULONGLONG(Performance->QuotaNonPagedPoolUsage);
+            break;
+
+        //
+        // 16: PagefileUsage BIGINT
+        //
+
+        case 16:
+            RESULT_ULONGLONG(Performance->PagefileUsage);
+            break;
+
+        //
+        // 17: PeakPagefileUsage BIGINT
+        //
+
+        case 17:
+            RESULT_ULONGLONG(Performance->PeakPagefileUsage);
+            break;
+
+        //
+        // 18: PrivateUsage BIGINT
+        //
+
+        case 18:
+            RESULT_ULONGLONG(Performance->PrivateUsage);
+            break;
+
+        //
+        // 19: MemoryLoad INT
+        //
+
+        case 19:
+            RESULT_ULONG(Performance->MemoryLoad);
+            break;
+
+        //
+        // 20: TotalPhys BIGINT
+        //
+
+        case 20:
+            RESULT_ULONGLONG(Performance->TotalPhys);
+            break;
+
+        //
+        // 21: AvailPhys BIGINT
+        //
+
+        case 21:
+            RESULT_ULONGLONG(Performance->AvailPhys);
+            break;
+
+        //
+        // 22: TotalPageFile BIGINT
+        //
+
+        case 22:
+            RESULT_ULONGLONG(Performance->TotalPageFile);
+            break;
+
+        //
+        // 23: AvailPageFile BIGINT
+        //
+
+        case 23:
+            RESULT_ULONGLONG(Performance->AvailPageFile);
+            break;
+
+        //
+        // 24: TotalVirtual BIGINT
+        //
+
+        case 24:
+            RESULT_ULONGLONG(Performance->TotalVirtual);
+            break;
+
+        //
+        // 25: AvailVirtual BIGINT
+        //
+
+        case 25:
+            RESULT_ULONGLONG(Performance->AvailVirtual);
+            break;
+
+        //
+        // 26: AvailExtendedVirtual BIGINT
+        //
+
+        case 26:
+            RESULT_ULONGLONG(Performance->AvailExtendedVirtual);
+            break;
+
+        //
+        // 27: ReadOperationCount BIGINT
+        //
+
+        case 27:
+            RESULT_ULONGLONG(Performance->ReadOperationCount);
+            break;
+
+        //
+        // 28: WriteOperationCount BIGINT
+        //
+
+        case 28:
+            RESULT_ULONGLONG(Performance->WriteOperationCount);
+            break;
+
+        //
+        // 29: OtherOperationCount BIGINT
+        //
+
+        case 29:
+            RESULT_ULONGLONG(Performance->OtherOperationCount);
+            break;
+
+        //
+        // 30: ReadTransferCount BIGINT
+        //
+
+        case 30:
+            RESULT_ULONGLONG(Performance->ReadTransferCount);
+            break;
+
+        //
+        // 31: WriteTransferCount BIGINT
+        //
+
+        case 31:
+            RESULT_ULONGLONG(Performance->WriteTransferCount);
+            break;
+
+        //
+        // 32: OtherTransferCount BIGINT
+        //
+
+        case 32:
+            RESULT_ULONGLONG(Performance->OtherTransferCount);
+            break;
+
+        //
+        // 33: CommitTotal BIGINT
+        //
+
+        case 33:
+            RESULT_ULONGLONG(Performance->CommitTotal);
+            break;
+
+        //
+        // 34: CommitLimit BIGINT
+        //
+
+        case 34:
+            RESULT_ULONGLONG(Performance->CommitLimit);
+            break;
+
+        //
+        // 35: CommitPeak BIGINT
+        //
+
+        case 35:
+            RESULT_ULONGLONG(Performance->CommitPeak);
+            break;
+
+        //
+        // 36: PhysicalTotal BIGINT
+        //
+
+        case 36:
+            RESULT_ULONGLONG(Performance->PhysicalTotal);
+            break;
+
+        //
+        // 37: PhysicalAvailable BIGINT
+        //
+
+        case 37:
+            RESULT_ULONGLONG(Performance->PhysicalAvailable);
+            break;
+
+        //
+        // 38: SystemCache BIGINT
+        //
+
+        case 38:
+            RESULT_ULONGLONG(Performance->SystemCache);
+            break;
+
+        //
+        // 39: KernelTotal BIGINT
+        //
+
+        case 39:
+            RESULT_ULONGLONG(Performance->KernelTotal);
+            break;
+
+        //
+        // 40: KernelPaged BIGINT
+        //
+
+        case 40:
+            RESULT_ULONGLONG(Performance->KernelPaged);
+            break;
+
+        //
+        // 41: KernelNonpaged BIGINT
+        //
+
+        case 41:
+            RESULT_ULONGLONG(Performance->KernelNonpaged);
+            break;
+
+        //
+        // 42: PageSize BIGINT
+        //
+
+        case 42:
+            RESULT_ULONGLONG(Performance->PageSize);
+            break;
+
+        //
+        // 43: HandleCount INT
+        //
+
+        case 43:
+            RESULT_ULONG(Performance->HandleCount);
+            break;
+
+        //
+        // 44: ProcessCount INT
+        //
+
+        case 44:
+            RESULT_ULONG(Performance->ProcessCount);
+            break;
+
+        //
+        // 45: ThreadCount INT
+        //
+
+        case 45:
+            RESULT_ULONG(Performance->ThreadCount);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+//
+// TraceStore_PerformanceDelta
+//
+
+CONST CHAR TraceStorePerformanceDeltaSchema[] =
+    "CREATE TABLE TraceStore_PerformanceDelta("
+        "ProcessHandleCountDelta INT, "
+        "PageFaultCountDelta INT, "
+        "PeakWorkingSetSizeDelta BIGINT, "
+        "WorkingSetSizeDelta BIGINT, "
+        "QuotaPeakPagedPoolUsageDelta BIGINT, "
+        "QuotaPagedPoolUsageDelta BIGINT, "
+        "QuotaPeakNonPagedPoolUsageDelta BIGINT, "
+        "QuotaNonPagedPoolUsageDelta BIGINT, "
+        "PagefileUsageDelta BIGINT, "
+        "PeakPagefileUsageDelta BIGINT, "
+        "PrivateUsageDelta BIGINT, "
+        "MemoryLoadDelta INT, "
+        "TotalPhysDelta BIGINT, "
+        "AvailPhysDelta BIGINT, "
+        "TotalPageFileDelta BIGINT, "
+        "AvailPageFileDelta BIGINT, "
+        "TotalVirtualDelta BIGINT, "
+        "AvailVirtualDelta BIGINT, "
+        "AvailExtendedVirtualDelta BIGINT, "
+        "ReadOperationCountDelta BIGINT, "
+        "WriteOperationCountDelta BIGINT, "
+        "OtherOperationCountDelta BIGINT, "
+        "ReadTransferCountDelta BIGINT, "
+        "WriteTransferCountDelta BIGINT, "
+        "OtherTransferCountDelta BIGINT, "
+        "CommitTotalDelta BIGINT, "
+        "CommitLimitDelta BIGINT, "
+        "CommitPeakDelta BIGINT, "
+        "PhysicalTotalDelta BIGINT, "
+        "PhysicalAvailableDelta BIGINT, "
+        "SystemCacheDelta BIGINT, "
+        "KernelTotalDelta BIGINT, "
+        "KernelPagedDelta BIGINT, "
+        "KernelNonpagedDelta BIGINT, "
+        "PageSizeDelta BIGINT, "
+        "HandleCountDelta INT, "
+        "ProcessCountDelta INT, "
+        "ThreadCountDelta INT"
+    ")";
+ 
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3PerformanceDeltaColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PerformanceDeltaColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_PERFORMANCE PerformanceDelta;
+
+    PerformanceDelta = (PTRACE_PERFORMANCE)Cursor->CurrentRowRaw;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: ProcessHandleCountDelta INT
+        //
+
+        case 0:
+            RESULT_ULONG(PerformanceDelta->ProcessHandleCountDelta);
+            break;
+
+        //
+        // 1: PageFaultCountDelta INT
+        //
+
+        case 1:
+            RESULT_ULONG(PerformanceDelta->PageFaultCountDelta);
+            break;
+
+        //
+        // 2: PeakWorkingSetSizeDelta BIGINT
+        //
+
+        case 2:
+            RESULT_ULONGLONG(PerformanceDelta->PeakWorkingSetSizeDelta);
+            break;
+
+        //
+        // 3: WorkingSetSizeDelta BIGINT
+        //
+
+        case 3:
+            RESULT_ULONGLONG(PerformanceDelta->WorkingSetSizeDelta);
+            break;
+
+        //
+        // 4: QuotaPeakPagedPoolUsageDelta BIGINT
+        //
+
+        case 4:
+            RESULT_ULONGLONG(PerformanceDelta->QuotaPeakPagedPoolUsageDelta);
+            break;
+
+        //
+        // 5: QuotaPagedPoolUsageDelta BIGINT
+        //
+
+        case 5:
+            RESULT_ULONGLONG(PerformanceDelta->QuotaPagedPoolUsageDelta);
+            break;
+
+        //
+        // 6: QuotaPeakNonPagedPoolUsageDelta BIGINT
+        //
+
+        case 6:
+            RESULT_ULONGLONG(PerformanceDelta->QuotaPeakNonPagedPoolUsageDelta);
+            break;
+
+        //
+        // 7: QuotaNonPagedPoolUsageDelta BIGINT
+        //
+
+        case 7:
+            RESULT_ULONGLONG(PerformanceDelta->QuotaNonPagedPoolUsageDelta);
+            break;
+
+        //
+        // 8: PagefileUsageDelta BIGINT
+        //
+
+        case 8:
+            RESULT_ULONGLONG(PerformanceDelta->PagefileUsageDelta);
+            break;
+
+        //
+        // 9: PeakPagefileUsageDelta BIGINT
+        //
+
+        case 9:
+            RESULT_ULONGLONG(PerformanceDelta->PeakPagefileUsageDelta);
+            break;
+
+        //
+        // 10: PrivateUsageDelta BIGINT
+        //
+
+        case 10:
+            RESULT_ULONGLONG(PerformanceDelta->PrivateUsageDelta);
+            break;
+
+        //
+        // 11: MemoryLoadDelta INT
+        //
+
+        case 11:
+            RESULT_ULONG(PerformanceDelta->MemoryLoadDelta);
+            break;
+
+        //
+        // 12: TotalPhysDelta BIGINT
+        //
+
+        case 12:
+            RESULT_ULONGLONG(PerformanceDelta->TotalPhysDelta);
+            break;
+
+        //
+        // 13: AvailPhysDelta BIGINT
+        //
+
+        case 13:
+            RESULT_ULONGLONG(PerformanceDelta->AvailPhysDelta);
+            break;
+
+        //
+        // 14: TotalPageFileDelta BIGINT
+        //
+
+        case 14:
+            RESULT_ULONGLONG(PerformanceDelta->TotalPageFileDelta);
+            break;
+
+        //
+        // 15: AvailPageFileDelta BIGINT
+        //
+
+        case 15:
+            RESULT_ULONGLONG(PerformanceDelta->AvailPageFileDelta);
+            break;
+
+        //
+        // 16: TotalVirtualDelta BIGINT
+        //
+
+        case 16:
+            RESULT_ULONGLONG(PerformanceDelta->TotalVirtualDelta);
+            break;
+
+        //
+        // 17: AvailVirtualDelta BIGINT
+        //
+
+        case 17:
+            RESULT_ULONGLONG(PerformanceDelta->AvailVirtualDelta);
+            break;
+
+        //
+        // 18: AvailExtendedVirtualDelta BIGINT
+        //
+
+        case 18:
+            RESULT_ULONGLONG(PerformanceDelta->AvailExtendedVirtualDelta);
+            break;
+
+        //
+        // 19: ReadOperationCountDelta BIGINT
+        //
+
+        case 19:
+            RESULT_ULONGLONG(PerformanceDelta->ReadOperationCountDelta);
+            break;
+
+        //
+        // 20: WriteOperationCountDelta BIGINT
+        //
+
+        case 20:
+            RESULT_ULONGLONG(PerformanceDelta->WriteOperationCountDelta);
+            break;
+
+        //
+        // 21: OtherOperationCountDelta BIGINT
+        //
+
+        case 21:
+            RESULT_ULONGLONG(PerformanceDelta->OtherOperationCountDelta);
+            break;
+
+        //
+        // 22: ReadTransferCountDelta BIGINT
+        //
+
+        case 22:
+            RESULT_ULONGLONG(PerformanceDelta->ReadTransferCountDelta);
+            break;
+
+        //
+        // 23: WriteTransferCountDelta BIGINT
+        //
+
+        case 23:
+            RESULT_ULONGLONG(PerformanceDelta->WriteTransferCountDelta);
+            break;
+
+        //
+        // 24: OtherTransferCountDelta BIGINT
+        //
+
+        case 24:
+            RESULT_ULONGLONG(PerformanceDelta->OtherTransferCountDelta);
+            break;
+
+        //
+        // 25: CommitTotalDelta BIGINT
+        //
+
+        case 25:
+            RESULT_ULONGLONG(PerformanceDelta->CommitTotalDelta);
+            break;
+
+        //
+        // 26: CommitLimitDelta BIGINT
+        //
+
+        case 26:
+            RESULT_ULONGLONG(PerformanceDelta->CommitLimitDelta);
+            break;
+
+        //
+        // 27: CommitPeakDelta BIGINT
+        //
+
+        case 27:
+            RESULT_ULONGLONG(PerformanceDelta->CommitPeakDelta);
+            break;
+
+        //
+        // 28: PhysicalTotalDelta BIGINT
+        //
+
+        case 28:
+            RESULT_ULONGLONG(PerformanceDelta->PhysicalTotalDelta);
+            break;
+
+        //
+        // 29: PhysicalAvailableDelta BIGINT
+        //
+
+        case 29:
+            RESULT_ULONGLONG(PerformanceDelta->PhysicalAvailableDelta);
+            break;
+
+        //
+        // 30: SystemCacheDelta BIGINT
+        //
+
+        case 30:
+            RESULT_ULONGLONG(PerformanceDelta->SystemCacheDelta);
+            break;
+
+        //
+        // 31: KernelTotalDelta BIGINT
+        //
+
+        case 31:
+            RESULT_ULONGLONG(PerformanceDelta->KernelTotalDelta);
+            break;
+
+        //
+        // 32: KernelPagedDelta BIGINT
+        //
+
+        case 32:
+            RESULT_ULONGLONG(PerformanceDelta->KernelPagedDelta);
+            break;
+
+        //
+        // 33: KernelNonpagedDelta BIGINT
+        //
+
+        case 33:
+            RESULT_ULONGLONG(PerformanceDelta->KernelNonpagedDelta);
+            break;
+
+        //
+        // 34: PageSizeDelta BIGINT
+        //
+
+        case 34:
+            RESULT_ULONGLONG(PerformanceDelta->PageSizeDelta);
+            break;
+
+        //
+        // 35: HandleCountDelta INT
+        //
+
+        case 35:
+            RESULT_ULONG(PerformanceDelta->HandleCountDelta);
+            break;
+
+        //
+        // 36: ProcessCountDelta INT
+        //
+
+        case 36:
+            RESULT_ULONG(PerformanceDelta->ProcessCountDelta);
+            break;
+
+        //
+        // 37: ThreadCountDelta INT
+        //
+
+        case 37:
+            RESULT_ULONG(PerformanceDelta->ThreadCountDelta);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+
+//
+// TraceStore_WsWatchInfoEx
+//
 
 CONST CHAR TraceStoreWsWatchInfoExSchema[] =
     "CREATE TABLE TraceStore_WsWatchInfoEx("
@@ -2885,7 +3734,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // PythonTracer_EventTraitsEx,
+    PythonEventTraitsExSchema, // PythonTracer_EventTraitsEx,
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -2896,7 +3745,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_WsWatchInfoEx,
+    TraceStoreWsWatchInfoExSchema, // TraceStore_WsWatchInfoEx
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -2907,7 +3756,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_WsWorkingSetEx,
+    TraceStoreWsWorkingSetExInfoSchema, // TraceStore_WsWorkingSetExInfo
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -3548,7 +4397,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // PythonTracer_EventTraitsEx,
+    TraceStoreSqlite3PythonEventTraitsExColumn, // PythonTracer_EventTraitsEx,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
@@ -3559,7 +4408,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_WsWatchInfoEx,
+    TraceStoreSqlite3WsWatchInfoExColumn, // TraceStore_WsWatchInfoEx,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
@@ -3570,7 +4419,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_WsWorkingSetExInfo,
+    TraceStoreSqlite3WsWorkingSetExInfoColumn, // TraceStore_WsWorkingSetExInfo,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,

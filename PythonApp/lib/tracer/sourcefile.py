@@ -155,7 +155,7 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
                 if access.endswith(', '):
                     access = access[:-2]
 
-            if access.endswith('LARGE_INTEGER'):
+            if access.endswith(('LARGE_INTEGER', 'FILETIME')):
                 if ',' not in access:
                     access = '%s->%s, %s' % (tablename, name, access)
         stmt = None

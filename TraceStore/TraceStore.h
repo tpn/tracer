@@ -1586,10 +1586,13 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
     _Field_range_(==, sizeof(struct _TRACE_PERFORMANCE)) ULONG SizeOfStruct;
 
     //
-    // Pad out to 8 bytes.
+    // Handle count.
     //
 
-    ULONG Padding1;
+    union {
+        ULONG ProcessHandleCount;
+        LONG ProcessHandleCountDelta;
+    };
 
     //
     // Interval and window length being used.
@@ -1616,15 +1619,6 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
     //
 
     ULONGLONG ProcessCycles;
-
-    //
-    // Handle count.
-    //
-
-    union {
-        ULONG ProcessHandleCount;
-        LONG ProcessHandleCountDelta;
-    };
 
     //
     // Inline PROCESS_MEMORY_COUNTERS_EX.
@@ -1680,7 +1674,7 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
             DWORDLONG ullAvailExtendedVirtual;
         };
         struct {
-            DWORD _MemoryStatusExLength;
+            DWORD _MemoryStatusExLength1;
             LONG dwMemoryLoadDelta;
             LONGLONG ullTotalPhysDelta;
             LONGLONG ullAvailPhysDelta;
@@ -1689,6 +1683,28 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
             LONGLONG ullTotalVirtualDelta;
             LONGLONG ullAvailVirtualDelta;
             LONGLONG ullAvailExtendedVirtualDelta;
+        };
+        struct {
+            DWORD _MemoryStatusExLength2;
+            DWORD MemoryLoad;
+            DWORDLONG TotalPhys;
+            DWORDLONG AvailPhys;
+            DWORDLONG TotalPageFile;
+            DWORDLONG AvailPageFile;
+            DWORDLONG TotalVirtual;
+            DWORDLONG AvailVirtual;
+            DWORDLONG AvailExtendedVirtual;
+        };
+        struct {
+            DWORD _MemoryStatusExLength3;
+            LONG MemoryLoadDelta;
+            LONGLONG TotalPhysDelta;
+            LONGLONG AvailPhysDelta;
+            LONGLONG TotalPageFileDelta;
+            LONGLONG AvailPageFileDelta;
+            LONGLONG TotalVirtualDelta;
+            LONGLONG AvailVirtualDelta;
+            LONGLONG AvailExtendedVirtualDelta;
         };
         MEMORYSTATUSEX MemoryStatusEx;
     };
