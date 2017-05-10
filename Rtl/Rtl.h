@@ -5808,6 +5808,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     HMODULE     NtdllModule;
     HMODULE     Kernel32Module;
+    HMODULE     KernelBaseModule;
     HMODULE     NtosKrnlModule;
     HMODULE     ShlwapiModule;
     HMODULE     Ole32Module;

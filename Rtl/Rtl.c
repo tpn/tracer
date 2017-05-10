@@ -1973,6 +1973,10 @@ LoadRtlSymbols(_Inout_ PRTL Rtl)
         return FALSE;
     }
 
+    if (!(Rtl->KernelBaseModule = LoadLibraryA("kernelbase"))) {
+        return FALSE;
+    }
+
     if (!(Rtl->NtdllModule = LoadLibraryA("ntdll"))) {
         return FALSE;
     }
@@ -2023,6 +2027,7 @@ ResolveRtlFunctions(
     PULONG_PTR Functions = (PULONG_PTR)&Rtl->RtlFunctions;
 
     HMODULE Modules[] = {
+        Rtl->KernelBaseModule,
         Rtl->Kernel32Module,
         Rtl->NtdllModule,
         Rtl->NtosKrnlModule,
@@ -3024,7 +3029,7 @@ InitializeRtl(
 
     Rtl->MapViewOfFileNuma2 = (PMAP_VIEW_OF_FILE_NUMA2)(
         GetProcAddress(
-            Rtl->Kernel32Module,
+            Rtl->KernelBaseModule,
             "MapViewOfFileNuma2"
         )
     );
@@ -3133,6 +3138,11 @@ DestroyRtl(
     if (Rtl->Kernel32Module) {
         FreeLibrary(Rtl->Kernel32Module);
         Rtl->Kernel32Module = NULL;
+    }
+
+    if (Rtl->KernelBaseModule) {
+        FreeLibrary(Rtl->KernelBaseModule);
+        Rtl->KernelBaseModule = NULL;
     }
 
     if (Rtl->NtosKrnlModule) {
