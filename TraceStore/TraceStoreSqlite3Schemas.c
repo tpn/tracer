@@ -1614,6 +1614,574 @@ TraceStoreSqlite3WsWatchInfoExColumn(
 #include "..\Python\Python.h"
 
 //
+// Python_PythonPathTableEntry
+//
+
+CONST CHAR PythonPathTableEntrySchema[] =
+    "CREATE TABLE Python_PythonPathTableEntry("
+        "NodeTypeCode SMALLINT, "
+        "PrefixNameLength SMALLINT, "
+        "PathEntryTypeFlags INT, "
+        "IsModuleDirectory INT, "
+        "IsNonModuleDirectory INT, "
+        "IsFileSystemDirectory INT, "
+        "IsFile INT, "
+        "IsClass INT, "
+        "IsFunction INT, "
+        "IsSpecial INT, "
+        "IsValid INT, "
+        "IsDll INT, "
+        "IsC INT, "
+        "IsBuiltin INT, "
+        "IsInitPy INT,"
+        "Prefix TEXT, "                             // PSTRING
+        "Path TEXT, "                               // STRING
+        "PathLength SMALLINT, "
+        "PathMaximumLength SMALLINT, "
+        "FullName TEXT, "                           // STRING
+        "ModuleName TEXT, "                         // STRING
+        "Name TEXT, "                               // STRING
+        "ClassName TEXT, "                          // STRING
+        "FullName TEXT, "                           // STRING
+        "File_CreationTime BIGINT, "                // File->CreationTime, LARGE_INTEGER
+        "File_LastAccessTime BIGINT, "              // File->LastAccessTime, LARGE_INTEGER
+        "File_LastWriteTime BIGINT, "               // File->LastWriteTime, LARGE_INTEGER
+        "File_ChangeTime BIGINT, "                  // File->ChangeTime, LARGE_INTEGER
+        "File_FileAttributes INT, "                 // File->FileAttributes
+        "File_NumberOfPages INT, "                  // File->NumberOfPages
+        "File_EndOfFile BIGINT, "                   // File->EndOfFile, LARGE_INTEGER
+        "File_AllocationSize BIGINT, "              // File->AllocationSize, LARGE_INTEGER
+        "File_FileId BIGINT, "                      // File->FileId, LARGE_INTEGER
+        "File_VolumeSerialNumber BIGINT, "          // File->VolumeSerialNumber
+        "File_FileId128 BLOB, "                     // File->FileId128, sizeof()
+        "File_MD5 BLOB, "                           // File->MD5, sizeof()
+        "File_SHA1 BLOB, "                          // File->SHA1, sizeof()
+        "File_CopyTimeInMicroseconds BIGINT, "      // File->CopyTimeInMicroseconds, LARGE_INTEGER
+        "File_CopiedBytesPerSecond BIGINT, "        // File->CopiedBytesPerSecond, LARGE_INTEGER
+        "File_FileType INT, "                       // File->Type
+        "File_FileFlags INT, "                      // File->Flags.AsULong
+        "File_ContentAddress BIGINT, "              // File->Content
+        "TextFile_StructSizeInBytes INT, "                  // TextFile->StructSizeInBytes, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_NumberOfLines INT, "                      // TextFile->NumberOfLines, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LinesAddress BIGINT, "                    // TextFile->Lines, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_CarriageReturnBitmapAddress BIGINT, "     // TextFile->CarriageReturnBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineFeedBitmapAddress BIGINT, "           // TextFile->LineFeedBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineEndingBitmapAddress BIGINT, "         // TextFile->LineEndingBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_LineBitmapAddress BIGINT, "               // TextFile->LineBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_WhitespaceBitmapAddress BIGINT, "         // TextFile->WhitespaceBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_TabBitmapAddress BIGINT, "                // TextFile->TabBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_IndentBitmapAddress BIGINT, "             // TextFile->IndentBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+        "TextFile_TrailingWhitespaceBitmapAddress BIGINT"   // TextFile->TrailingWhitespaceBitmap, [(File->Type == RtlFileTextFileType && TextFile != NULL)]
+    ")";
+
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PythonPathTableEntryColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PPYTHON_PATH_TABLE_ENTRY PythonPathTableEntry;
+    PRTL_FILE File;
+    PRTL_PATH Path;
+    PRTL_TEXT_FILE TextFile;
+
+    PythonPathTableEntry = (PPYTHON_PATH_TABLE_ENTRY)Cursor->CurrentRowRaw;
+    File = &PythonPathTableEntry->File;
+    Path = &File->Path;
+    TextFile = &File->SourceCode;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: NodeTypeCode SMALLINT
+        //
+
+        case 0:
+            RESULT_ULONG(PythonPathTableEntry->NodeTypeCode);
+            break;
+
+        //
+        // 1: PrefixNameLength SMALLINT
+        //
+
+        case 1:
+            RESULT_ULONG(PythonPathTableEntry->PrefixNameLength);
+            break;
+
+        //
+        // 2: PathEntryTypeFlags INT
+        //
+
+        case 2:
+            RESULT_ULONG(PythonPathTableEntry->PathEntryTypeFlags);
+            break;
+
+        //
+        // 3: IsModuleDirectory INT
+        //
+
+        case 3:
+            RESULT_ULONG(PythonPathTableEntry->IsModuleDirectory);
+            break;
+
+        //
+        // 4: IsNonModuleDirectory INT
+        //
+
+        case 4:
+            RESULT_ULONG(PythonPathTableEntry->IsNonModuleDirectory);
+            break;
+
+        //
+        // 5: IsFileSystemDirectory INT
+        //
+
+        case 5:
+            RESULT_ULONG(PythonPathTableEntry->IsFileSystemDirectory);
+            break;
+
+        //
+        // 6: IsFile INT
+        //
+
+        case 6:
+            RESULT_ULONG(PythonPathTableEntry->IsFile);
+            break;
+
+        //
+        // 7: IsClass INT
+        //
+
+        case 7:
+            RESULT_ULONG(PythonPathTableEntry->IsClass);
+            break;
+
+        //
+        // 8: IsFunction INT
+        //
+
+        case 8:
+            RESULT_ULONG(PythonPathTableEntry->IsFunction);
+            break;
+
+        //
+        // 9: IsSpecial INT
+        //
+
+        case 9:
+            RESULT_ULONG(PythonPathTableEntry->IsSpecial);
+            break;
+
+        //
+        // 10: IsValid INT
+        //
+
+        case 10:
+            RESULT_ULONG(PythonPathTableEntry->IsValid);
+            break;
+
+        //
+        // 11: IsDll INT
+        //
+
+        case 11:
+            RESULT_ULONG(PythonPathTableEntry->IsDll);
+            break;
+
+        //
+        // 12: IsC INT
+        //
+
+        case 12:
+            RESULT_ULONG(PythonPathTableEntry->IsC);
+            break;
+
+        //
+        // 13: IsBuiltin INT
+        //
+
+        case 13:
+            RESULT_ULONG(PythonPathTableEntry->IsBuiltin);
+            break;
+
+        //
+        // 14: IsInitPy INT,
+        //
+
+        case 14:
+            RESULT_ULONG(PythonPathTableEntry->IsInitPy);
+            break;
+
+        //
+        // 15: Prefix TEXT
+        //
+
+        case 15:
+            RESULT_PSTRING(PythonPathTableEntry->Prefix);
+            break;
+
+        //
+        // 16: Path TEXT
+        //
+
+        case 16:
+            RESULT_STRING(PythonPathTableEntry->Path);
+            break;
+
+        //
+        // 17: PathLength SMALLINT
+        //
+
+        case 17:
+            RESULT_ULONG(PythonPathTableEntry->PathLength);
+            break;
+
+        //
+        // 18: PathMaximumLength SMALLINT
+        //
+
+        case 18:
+            RESULT_ULONG(PythonPathTableEntry->PathMaximumLength);
+            break;
+
+        //
+        // 19: FullName TEXT
+        //
+
+        case 19:
+            RESULT_STRING(PythonPathTableEntry->FullName);
+            break;
+
+        //
+        // 20: ModuleName TEXT
+        //
+
+        case 20:
+            RESULT_STRING(PythonPathTableEntry->ModuleName);
+            break;
+
+        //
+        // 21: Name TEXT
+        //
+
+        case 21:
+            RESULT_STRING(PythonPathTableEntry->Name);
+            break;
+
+        //
+        // 22: ClassName TEXT
+        //
+
+        case 22:
+            RESULT_STRING(PythonPathTableEntry->ClassName);
+            break;
+
+        //
+        // 23: FullName TEXT
+        //
+
+        case 23:
+            RESULT_STRING(PythonPathTableEntry->FullName);
+            break;
+
+        //
+        // 24: File_CreationTime BIGINT
+        //
+
+        case 24:
+            RESULT_LARGE_INTEGER(File->CreationTime);
+            break;
+
+        //
+        // 25: File_LastAccessTime BIGINT
+        //
+
+        case 25:
+            RESULT_LARGE_INTEGER(File->LastAccessTime);
+            break;
+
+        //
+        // 26: File_LastWriteTime BIGINT
+        //
+
+        case 26:
+            RESULT_LARGE_INTEGER(File->LastWriteTime);
+            break;
+
+        //
+        // 27: File_ChangeTime BIGINT
+        //
+
+        case 27:
+            RESULT_LARGE_INTEGER(File->ChangeTime);
+            break;
+
+        //
+        // 28: File_FileAttributes INT
+        //
+
+        case 28:
+            RESULT_ULONG(File->FileAttributes);
+            break;
+
+        //
+        // 29: File_NumberOfPages INT
+        //
+
+        case 29:
+            RESULT_ULONG(File->NumberOfPages);
+            break;
+
+        //
+        // 30: File_EndOfFile BIGINT
+        //
+
+        case 30:
+            RESULT_LARGE_INTEGER(File->EndOfFile);
+            break;
+
+        //
+        // 31: File_AllocationSize BIGINT
+        //
+
+        case 31:
+            RESULT_LARGE_INTEGER(File->AllocationSize);
+            break;
+
+        //
+        // 32: File_FileId BIGINT
+        //
+
+        case 32:
+            RESULT_LARGE_INTEGER(File->FileId);
+            break;
+
+        //
+        // 33: File_VolumeSerialNumber BIGINT
+        //
+
+        case 33:
+            RESULT_ULONGLONG(File->VolumeSerialNumber);
+            break;
+
+        //
+        // 34: File_FileId128 BLOB
+        //
+
+        case 34:
+            RESULT_BLOB(File->FileId128, sizeof(File->FileId128));
+            break;
+
+        //
+        // 35: File_MD5 BLOB
+        //
+
+        case 35:
+            RESULT_BLOB(File->MD5, sizeof(File->MD5));
+            break;
+
+        //
+        // 36: File_SHA1 BLOB
+        //
+
+        case 36:
+            RESULT_BLOB(File->SHA1, sizeof(File->SHA1));
+            break;
+
+        //
+        // 37: File_CopyTimeInMicroseconds BIGINT
+        //
+
+        case 37:
+            RESULT_LARGE_INTEGER(File->CopyTimeInMicroseconds);
+            break;
+
+        //
+        // 38: File_CopiedBytesPerSecond BIGINT
+        //
+
+        case 38:
+            RESULT_LARGE_INTEGER(File->CopiedBytesPerSecond);
+            break;
+
+        //
+        // 39: File_FileType INT
+        //
+
+        case 39:
+            RESULT_ULONG(File->Type);
+            break;
+
+        //
+        // 40: File_FileFlags INT
+        //
+
+        case 40:
+            RESULT_ULONG(File->Flags.AsULong);
+            break;
+
+        //
+        // 41: File_ContentAddress BIGINT
+        //
+
+        case 41:
+            RESULT_ULONGLONG(File->Content);
+            break;
+
+        //
+        // 42: TextFile_StructSizeInBytes INT
+        //
+
+        case 42:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(TextFile->StructSizeInBytes);
+            }
+            break;
+
+        //
+        // 43: TextFile_NumberOfLines INT
+        //
+
+        case 43:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(TextFile->NumberOfLines);
+            }
+            break;
+
+        //
+        // 44: TextFile_LinesAddress BIGINT
+        //
+
+        case 44:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->Lines);
+            }
+            break;
+
+        //
+        // 45: TextFile_CarriageReturnBitmapAddress BIGINT
+        //
+
+        case 45:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->CarriageReturnBitmap);
+            }
+            break;
+
+        //
+        // 46: TextFile_LineFeedBitmapAddress BIGINT
+        //
+
+        case 46:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineFeedBitmap);
+            }
+            break;
+
+        //
+        // 47: TextFile_LineEndingBitmapAddress BIGINT
+        //
+
+        case 47:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineEndingBitmap);
+            }
+            break;
+
+        //
+        // 48: TextFile_LineBitmapAddress BIGINT
+        //
+
+        case 48:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->LineBitmap);
+            }
+            break;
+
+        //
+        // 49: TextFile_WhitespaceBitmapAddress BIGINT
+        //
+
+        case 49:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->WhitespaceBitmap);
+            }
+            break;
+
+        //
+        // 50: TextFile_TabBitmapAddress BIGINT
+        //
+
+        case 50:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->TabBitmap);
+            }
+            break;
+
+        //
+        // 51: TextFile_IndentBitmapAddress BIGINT
+        //
+
+        case 51:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->IndentBitmap);
+            }
+            break;
+
+        //
+        // 52: TextFile_TrailingWhitespaceBitmapAddress BIGINT
+        //
+
+        case 52:
+            if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(TextFile->TrailingWhitespaceBitmap);
+            }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+//
 // Python_PythonFunctionTableEntry
 //
 
@@ -2273,7 +2841,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // Python_PythonPathTableEntry,
+    PythonPathTableEntrySchema, // Python_PythonPathTableEntry,
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -2936,7 +3504,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // Python_PythonPathTableEntry,
+    TraceStoreSqlite3PythonPathTableEntryColumn, // Python_PythonPathTableEntry,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
