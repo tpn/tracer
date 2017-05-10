@@ -581,7 +581,48 @@ TraceStoreSqlite3SynchronizationColumn(
 //
 
 CONST CHAR TraceStoreInfoSchema[] =
-    PLACEHOLDER_SCHEMA;
+    "CREATE TABLE Info("
+        "Eof_EndOfFile BIGINT, "                    // LARGE_INTEGER
+        "Time_Frequency BIGINT, "                   // LARGE_INTEGER
+        "Time_Multiplicand BIGINT, "                // LARGE_INTEGER
+        "StartTime_FileTimeUtc BIGINT, "            // FILETIME
+        "StartTime_FileTimeLocal BIGINT, "          // FILETIME
+        "StartTime_SystemTimeUtc BIGINT, "          // SYSTEMTIME
+        "StartTime_SystemTimeLocal BIGINT, "        // SYSTEMTIME
+        "StartTime_SecondsSince1970 BIGINT, "       // LARGE_INTEGER
+        "StartTime_MicrosecondsSince1970 BIGINT, "  // LARGE_INTEGER
+        "StartTime_PerformanceCounter BIGINT, "     // LARGE_INTEGER
+        "Stats_DroppedRecords INT, "
+        "Stats_ExhaustedFreeMemoryMaps INT, "
+        "Stats_AllocationsOutpacingNextMemoryMapPreparation INT, "
+        "Stats_PreferredAddressUnavailable INT, "
+        "Stats_AccessViolationsEncounteredDuringAsyncPrefault INT, "
+        "Stats_BlockedAllocations INT, "
+        "Stats_SuspendedAllocations INT, "
+        "Stats_ElapsedSuspensionTimeInMicroseconds INT, "
+        "Stats_WastedBytes BIGINT, "
+        "Stats_PaddedAllocations BIGINT, "
+        "Totals_NumberOfAllocations BIGINT, "       // LARGE_INTEGER
+        "Totals_AllocationSize BIGINT, "            // LARGE_INTEGER
+        "Totals_NumberOfRecords BIGINT, "           // LARGE_INTEGER
+        "Totals_RecordSize BIGINT, "                // LARGE_INTEGER
+        "Traits_VaryingRecordSize INT, "
+        "Traits_RecordSizeIsAlwaysPowerOf2 INT, "
+        "Traits_MultipleRecords INT, "
+        "Traits_StreamingWrite INT, "
+        "Traits_StreamingRead INT, "
+        "Traits_FrequentAllocations INT, "
+        "Traits_BlockingAllocations INT, "
+        "Traits_LinkedStore INT, "
+        "Traits_CoalesceAllocations INT, "
+        "Traits_ConcurrentAllocations INT, "
+        "Traits_AllowPageSpill INT, "
+        "Traits_PageAligned INT, "
+        "Traits_Periodic INT, "
+        "Traits_ConcurrentDataStructure INT, "
+        "Traits_NoAllocationAlignment INT, "
+        "Traits_Unused INT"
+    ")";
 
 _Use_decl_annotations_
 LONG
@@ -593,11 +634,359 @@ TraceStoreSqlite3InfoColumn(
     LONG ColumnNumber
     )
 {
-    return TraceStoreSqlite3DefaultColumnImpl(Sqlite3,
-                                              TraceStore,
-                                              Cursor,
-                                              Context,
-                                              ColumnNumber);
+    PTRACE_STORE_INFO Info;
+    PTRACE_STORE_EOF Eof;
+    PTRACE_STORE_TIME Time;
+    PTRACE_STORE_START_TIME StartTime;
+    PTRACE_STORE_STATS Stats;
+    PTRACE_STORE_TOTALS Totals;
+    PTRACE_STORE_TRAITS Traits;
+
+    Info = (PTRACE_STORE_INFO)Cursor->CurrentRowRaw;
+    Eof = &Info->Eof;
+    Time = &Info->Time;
+    StartTime = &Time->StartTime;
+    Stats = &Info->Stats;
+    Totals = &Info->Totals;
+    Traits = &Info->Traits;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: Eof_EndOfFile BIGINT
+        //
+
+        case 0:
+            RESULT_LARGE_INTEGER(Eof->EndOfFile);
+            break;
+
+        //
+        // 1: Time_Frequency BIGINT
+        //
+
+        case 1:
+            RESULT_LARGE_INTEGER(Time->Frequency);
+            break;
+
+        //
+        // 2: Time_Multiplicand BIGINT
+        //
+
+        case 2:
+            RESULT_LARGE_INTEGER(Time->Multiplicand);
+            break;
+
+        //
+        // 3: StartTime_FileTimeUtc BIGINT
+        //
+
+        case 3:
+            RESULT_FILETIME(StartTime->FileTimeUtc);
+            break;
+
+        //
+        // 4: StartTime_FileTimeLocal BIGINT
+        //
+
+        case 4:
+            RESULT_FILETIME(StartTime->FileTimeLocal);
+            break;
+
+        //
+        // 5: StartTime_SystemTimeUtc BIGINT
+        //
+
+        case 5:
+            RESULT_SYSTEMTIME(StartTime->SystemTimeUtc);
+            break;
+
+        //
+        // 6: StartTime_SystemTimeLocal BIGINT
+        //
+
+        case 6:
+            RESULT_SYSTEMTIME(StartTime->SystemTimeLocal);
+            break;
+
+        //
+        // 7: StartTime_SecondsSince1970 BIGINT
+        //
+
+        case 7:
+            RESULT_LARGE_INTEGER(StartTime->SecondsSince1970);
+            break;
+
+        //
+        // 8: StartTime_MicrosecondsSince1970 BIGINT
+        //
+
+        case 8:
+            RESULT_LARGE_INTEGER(StartTime->MicrosecondsSince1970);
+            break;
+
+        //
+        // 9: StartTime_PerformanceCounter BIGINT
+        //
+
+        case 9:
+            RESULT_LARGE_INTEGER(StartTime->PerformanceCounter);
+            break;
+
+        //
+        // 10: Stats_DroppedRecords INT
+        //
+
+        case 10:
+            RESULT_ULONG(Stats->DroppedRecords);
+            break;
+
+        //
+        // 11: Stats_ExhaustedFreeMemoryMaps INT
+        //
+
+        case 11:
+            RESULT_ULONG(Stats->ExhaustedFreeMemoryMaps);
+            break;
+
+        //
+        // 12: Stats_AllocationsOutpacingNextMemoryMapPreparation INT
+        //
+
+        case 12:
+            RESULT_ULONG(Stats->AllocationsOutpacingNextMemoryMapPreparation);
+            break;
+
+        //
+        // 13: Stats_PreferredAddressUnavailable INT
+        //
+
+        case 13:
+            RESULT_ULONG(Stats->PreferredAddressUnavailable);
+            break;
+
+        //
+        // 14: Stats_AccessViolationsEncounteredDuringAsyncPrefault INT
+        //
+
+        case 14:
+            RESULT_ULONG(Stats->AccessViolationsEncounteredDuringAsyncPrefault);
+            break;
+
+        //
+        // 15: Stats_BlockedAllocations INT
+        //
+
+        case 15:
+            RESULT_ULONG(Stats->BlockedAllocations);
+            break;
+
+        //
+        // 16: Stats_SuspendedAllocations INT
+        //
+
+        case 16:
+            RESULT_ULONG(Stats->SuspendedAllocations);
+            break;
+
+        //
+        // 17: Stats_ElapsedSuspensionTimeInMicroseconds INT
+        //
+
+        case 17:
+            RESULT_ULONG(Stats->ElapsedSuspensionTimeInMicroseconds);
+            break;
+
+        //
+        // 18: Stats_WastedBytes BIGINT
+        //
+
+        case 18:
+            RESULT_ULONGLONG(Stats->WastedBytes);
+            break;
+
+        //
+        // 19: Stats_PaddedAllocations BIGINT
+        //
+
+        case 19:
+            RESULT_ULONGLONG(Stats->PaddedAllocations);
+            break;
+
+        //
+        // 20: Totals_NumberOfAllocations BIGINT
+        //
+
+        case 20:
+            RESULT_LARGE_INTEGER(Totals->NumberOfAllocations);
+            break;
+
+        //
+        // 21: Totals_AllocationSize BIGINT
+        //
+
+        case 21:
+            RESULT_LARGE_INTEGER(Totals->AllocationSize);
+            break;
+
+        //
+        // 22: Totals_NumberOfRecords BIGINT
+        //
+
+        case 22:
+            RESULT_LARGE_INTEGER(Totals->NumberOfRecords);
+            break;
+
+        //
+        // 23: Totals_RecordSize BIGINT
+        //
+
+        case 23:
+            RESULT_LARGE_INTEGER(Totals->RecordSize);
+            break;
+
+        //
+        // 24: Traits_VaryingRecordSize INT
+        //
+
+        case 24:
+            RESULT_ULONG(Traits->VaryingRecordSize);
+            break;
+
+        //
+        // 25: Traits_RecordSizeIsAlwaysPowerOf2 INT
+        //
+
+        case 25:
+            RESULT_ULONG(Traits->RecordSizeIsAlwaysPowerOf2);
+            break;
+
+        //
+        // 26: Traits_MultipleRecords INT
+        //
+
+        case 26:
+            RESULT_ULONG(Traits->MultipleRecords);
+            break;
+
+        //
+        // 27: Traits_StreamingWrite INT
+        //
+
+        case 27:
+            RESULT_ULONG(Traits->StreamingWrite);
+            break;
+
+        //
+        // 28: Traits_StreamingRead INT
+        //
+
+        case 28:
+            RESULT_ULONG(Traits->StreamingRead);
+            break;
+
+        //
+        // 29: Traits_FrequentAllocations INT
+        //
+
+        case 29:
+            RESULT_ULONG(Traits->FrequentAllocations);
+            break;
+
+        //
+        // 30: Traits_BlockingAllocations INT
+        //
+
+        case 30:
+            RESULT_ULONG(Traits->BlockingAllocations);
+            break;
+
+        //
+        // 31: Traits_LinkedStore INT
+        //
+
+        case 31:
+            RESULT_ULONG(Traits->LinkedStore);
+            break;
+
+        //
+        // 32: Traits_CoalesceAllocations INT
+        //
+
+        case 32:
+            RESULT_ULONG(Traits->CoalesceAllocations);
+            break;
+
+        //
+        // 33: Traits_ConcurrentAllocations INT
+        //
+
+        case 33:
+            RESULT_ULONG(Traits->ConcurrentAllocations);
+            break;
+
+        //
+        // 34: Traits_AllowPageSpill INT
+        //
+
+        case 34:
+            RESULT_ULONG(Traits->AllowPageSpill);
+            break;
+
+        //
+        // 35: Traits_PageAligned INT
+        //
+
+        case 35:
+            RESULT_ULONG(Traits->PageAligned);
+            break;
+
+        //
+        // 36: Traits_Periodic INT
+        //
+
+        case 36:
+            RESULT_ULONG(Traits->Periodic);
+            break;
+
+        //
+        // 37: Traits_ConcurrentDataStructure INT
+        //
+
+        case 37:
+            RESULT_ULONG(Traits->ConcurrentDataStructure);
+            break;
+
+        //
+        // 38: Traits_NoAllocationAlignment INT
+        //
+
+        case 38:
+            RESULT_ULONG(Traits->NoAllocationAlignment);
+            break;
+
+        //
+        // 39: Traits_Unused INT
+        //
+
+        case 39:
+            RESULT_ULONG(Traits->Unused);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+
 }
 
 //
