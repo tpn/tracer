@@ -134,6 +134,13 @@ TRACE_STORE_DATA volatile BOOL PauseBeforeRelocate;
 
 TRACE_STORE_DATA CONST TRACE_STORE_ID TraceStoreIds[];
 
+TRACE_STORE_DATA CONST CHAR TraceStoreSqlite3StringTableDelimiter;
+TRACE_STORE_DATA CONST STRING TraceStoreSqlite3FunctionsString;
+TRACE_STORE_DATA CONST USHORT TraceStoreSqlite3FunctionsNumberOfArguments[];
+
+TRACE_STORE_DATA CONST LONG
+                 TraceStoreSqlite3FunctionsTextEncodingAndDeterministicFlags[];
+
 #ifdef __cplusplus
 }; // extern "C"
 #endif

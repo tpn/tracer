@@ -2757,4 +2757,75 @@ CONST TRACE_STORE_TRAITS InfoStoreTraits = {
     0   // Unused
 };
 
+//
+// StringTable-related constants.  Each table consists of a maximum of 16
+// strings, as this is the limit of an individual string table.
+//
+
+#undef DSTR
+#define DSTR(String) String ";"
+
+CONST CHAR TraceStoreSqlite3StringTableDelimiter = ';';
+
+CONST STRING TraceStoreSqlite3FunctionsString = RTL_CONSTANT_STRING(
+    DSTR("tscount")
+    DSTR("tsavg")
+    DSTR("tssum")
+    DSTR("tsmin")
+    DSTR("tsmax")
+);
+
+CONST USHORT TraceStoreSqlite3FunctionsNumberOfArguments[] = {
+    1,
+    1,
+    1,
+    1,
+    1,
+};
+
+CONST LONG TraceStoreSqlite3FunctionsTextEncodingAndDeterministicFlags[] = {
+    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tscount
+    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsavg
+    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tssum
+    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsmin
+    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsmax
+};
+
+#define DEFAULT_AGGREGATE_STEP TraceStoreSqlite3DefaultAggregateStepFunction
+#define DEFAULT_AGGREGATE_FINAL TraceStoreSqlite3DefaultAggregateFinalFunction
+
+CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL TraceStoreSqlite3FunctionImplTuples[]={
+
+    //
+    // tscount
+    //
+
+    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+
+    //
+    // tsavg
+    //
+
+    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+
+    //
+    // tssum
+    //
+
+    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+
+    //
+    // tsmin
+    //
+
+    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+
+    //
+    // tsmax
+    //
+
+    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+
+};
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

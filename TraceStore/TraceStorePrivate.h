@@ -3032,6 +3032,28 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 // Sqlite3-related decls.
 //
 
+//
+// The order of items in this enum must be kept in sync with the string used
+// to initialize the string table (TraceStoreSqlite3FunctionsString).
+//
+
+typedef enum _TRACE_STORE_SQLITE3_FUNCTION_ID {
+    UnknownFunction = -1,
+
+    CountFunctionId,
+    AverageFunctionId,
+    SumFunctionId,
+
+    //
+    // Any enumeration value >= InvalidFunctionId is invalid.  Make sure this
+    // always comes last in the enum layout.
+    //
+
+    InvalidFunctionId
+
+} TRACE_STORE_SQLITE3_FUNCTION_ID;
+
+
 typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
@@ -3356,6 +3378,25 @@ extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampDeltaColum
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3SynchronizationColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3InfoColumn;
 
+typedef union _TRACE_STORE_SQLITE3_FUNCTION_IMPL {
+    struct {
+        PSQLITE3_SCALAR_FUNCTION Scalar;
+        PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStep;
+        PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinal;
+    };
+    PSQLITE3_FUNCTION Functions;
+} TRACE_STORE_SQLITE3_FUNCTION_IMPL;
+typedef TRACE_STORE_SQLITE3_FUNCTION_IMPL *PTRACE_STORE_SQLITE3_FUNCTION_IMPL;
+
+extern CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL
+             TraceStoreSqlite3FunctionImplTuples[];
+
+extern SQLITE3_SCALAR_FUNCTION TraceStoreSqlite3DefaultScalarFunction;
+extern SQLITE3_AGGREGATE_STEP_FUNCTION
+       TraceStoreSqlite3DefaultAggregateStepFunction;
+extern SQLITE3_AGGREGATE_FINAL_FUNCTION
+       TraceStoreSqlite3DefaultAggregateFinalFunction;
+
 typedef union _TRACE_STORE_SQLITE3_DB_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG Unused:32;
@@ -3427,6 +3468,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     // StringTable-specific functions.
     //
 
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
     PCREATE_STRING_TABLE CreateStringTable;
     PDESTROY_STRING_TABLE DestroyStringTable;
 
@@ -3436,8 +3478,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
         CreateStringTableFromDelimitedEnvironmentVariable;
 
-    PALLOCATOR StringTableAllocator;
-    PALLOCATOR StringArrayAllocator;
+    ALLOCATOR StringTableAllocator;
+    ALLOCATOR StringArrayAllocator;
+
+    USHORT NumberOfFunctionStringTables;
+    USHORT Padding[3];
+
+    PSTRING_TABLE FunctionStringTable1;
 
     //
     // Threadpool and callback environment.

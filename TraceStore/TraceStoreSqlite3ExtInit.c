@@ -66,11 +66,17 @@ Return Value:
     USHORT Count;
     USHORT Length;
     USHORT Index;
+    USHORT OuterIndex;
     ULONG Result;
     ULONG RequiredSize;
+    PSTRING_ARRAY StringArray;
+    PSTRING_TABLE StringTable;
+    CONST USHORT *NumberOfArguments;
+    CONST LONG *TextEncodingAndDeterministicFlags;
     USHORT TotalNumberOfTraceStores;
     PCSZ DatabaseFilename;
     STRING Filename;
+    PSTRING Strings;
     PALLOCATOR Allocator;
     PUNICODE_STRING Path;
     PTRACER_PATHS Paths;
@@ -83,6 +89,8 @@ Return Value:
     TRACE_CONTEXT_FLAGS TraceContextFlags;
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+    CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL *FunctionImplTuples;
+    CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL *Functions;
 
     //
     // Validate arguments.
@@ -135,12 +143,12 @@ Return Value:
 
     Db->SizeOfStruct = sizeof(*Db);
 
-#define LOAD_DLL(Name) do {                                            \
-    Db->Name##Module = LoadLibraryW(Paths->Name##DllPath.Buffer);      \
-    if (!Db->Name##Module) {                                           \
-        OutputDebugStringA("Failed to load " #Name);                   \
-        goto Error;                                                    \
-    }                                                                  \
+#define LOAD_DLL(Name) do {                                       \
+    Db->Name##Module = LoadLibraryW(Paths->Name##DllPath.Buffer); \
+    if (!Db->Name##Module) {                                      \
+        OutputDebugStringA("Failed to load " #Name);              \
+        goto Error;                                               \
+    }                                                             \
 } while (0)
 
     Paths = &TracerConfig->Paths;
@@ -152,12 +160,12 @@ Return Value:
     // Resolve the functions.
     //
 
-#define RESOLVE(Module, Type, Name) do {                                  \
-    Db->Name = (Type)GetProcAddress(Db->Module, #Name);                   \
-    if (!Db->Name) {                                                      \
-        OutputDebugStringA("Failed to resolve " #Module " !" #Name "\n"); \
-        goto Error;                                                       \
-    }                                                                     \
+#define RESOLVE(Module, Type, Name) do {                                     \
+    Db->Name = (Type)GetProcAddress(Db->Module, #Name);                      \
+    if (!Db->Name) {                                                         \
+        *ErrorMessagePointer = "Failed to resolve " #Module " !" #Name "\n"; \
+        goto Error;                                                          \
+    }                                                                        \
 } while (0)
 
     RESOLVE(TracerHeapModule,
@@ -187,7 +195,7 @@ Return Value:
                                     &Db->OwningModulePath);
 
     if (!Success) {
-        OutputDebugStringA("Rtl->GetModuleRtlPath() failed.\n");
+        *ErrorMessagePointer = "Rtl->GetModuleRtlPath() failed.\n";
         goto Error;
     }
 
@@ -238,22 +246,26 @@ Return Value:
     //
 
 #undef ALLOCATE
-#define ALLOCATE(Target, Type)                                             \
-    Db->Target = (Type)(                                                   \
-        Allocator->Calloc(                                                 \
-            Allocator->Context,                                            \
-            1,                                                             \
-            RequiredSize                                                   \
-        )                                                                  \
-    );                                                                     \
-    if (!Db->Target) {                                                     \
-        OutputDebugStringA("Allocation failed for " #Target " struct.\n"); \
-        goto Error;                                                        \
+#define ALLOCATE(Target, Type)                                                \
+    Db->Target = (Type)(                                                      \
+        Allocator->Calloc(                                                    \
+            Allocator->Context,                                               \
+            1,                                                                \
+            RequiredSize                                                      \
+        )                                                                     \
+    );                                                                        \
+    if (!Db->Target) {                                                        \
+        *ErrorMessagePointer = "Allocation failed for " #Target " struct.\n"; \
+        goto Error;                                                           \
     }
 
     //
     // StringTable
     //
+
+    RESOLVE(StringTableModule,
+            PINITIALIZE_STRING_TABLE_ALLOCATOR,
+            InitializeStringTableAllocator);
 
     RESOLVE(StringTableModule,
             PCREATE_STRING_TABLE,
@@ -274,13 +286,13 @@ Return Value:
     // have initialized.
     //
 
-#define INIT_C_SPECIFIC_HANDLER(Name) do {                           \
-    SetCSpecificHandler = (PSET_C_SPECIFIC_HANDLER)(                 \
-        GetProcAddress(Db->Name##Module, "SetCSpecificHandler")      \
-    );                                                               \
-    if (SetCSpecificHandler) {                                       \
-        SetCSpecificHandler(Rtl->__C_specific_handler);              \
-    }                                                                \
+#define INIT_C_SPECIFIC_HANDLER(Name) do {                      \
+    SetCSpecificHandler = (PSET_C_SPECIFIC_HANDLER)(            \
+        GetProcAddress(Db->Name##Module, "SetCSpecificHandler") \
+    );                                                          \
+    if (SetCSpecificHandler) {                                  \
+        SetCSpecificHandler(Rtl->__C_specific_handler);         \
+    }                                                           \
 } while (0)
 
     INIT_C_SPECIFIC_HANDLER(TracerHeap);
@@ -290,18 +302,53 @@ Return Value:
     // Use the same approach for any DLLs that require extended atexit support.
     //
 
-#define INIT_ATEXITEX(Name) do {                             \
-    SetAtExitEx = (PSET_ATEXITEX)(                           \
-        GetProcAddress(Db->Name##Module, "SetAtExitEx")      \
-    );                                                       \
-    if (SetAtExitEx) {                                       \
-        SetAtExitEx(Rtl->AtExitEx);                          \
-    }                                                        \
+#define INIT_ATEXITEX(Name) do {                        \
+    SetAtExitEx = (PSET_ATEXITEX)(                      \
+        GetProcAddress(Db->Name##Module, "SetAtExitEx") \
+    );                                                  \
+    if (SetAtExitEx) {                                  \
+        SetAtExitEx(Rtl->AtExitEx);                     \
+    }                                                   \
 } while (0)
 
     INIT_ATEXITEX(TracerHeap);
     INIT_ATEXITEX(StringTable);
 
+    //
+    // Initialize string table allocators then create string tables.
+    //
+
+    Success = Db->InitializeStringTableAllocator(&Db->StringTableAllocator);
+    if (!Success) {
+        *ErrorMessagePointer = (
+            "InitializeStringTableAllocator(StringTable) failed.\n"
+        );
+        goto Error;
+    }
+
+    Success = Db->InitializeStringTableAllocator(&Db->StringArrayAllocator);
+    if (!Success) {
+        *ErrorMessagePointer = (
+            "InitializeStringTableAllocator(StringArray) failed.\n"
+        );
+        goto Error;
+    }
+
+    Db->FunctionStringTable1 = (
+        Db->CreateStringTableFromDelimitedString(
+            Rtl,
+            &Db->StringTableAllocator,
+            &Db->StringArrayAllocator,
+            &TraceStoreSqlite3FunctionsString,
+            TraceStoreSqlite3StringTableDelimiter
+        )
+    );
+
+    if (!Db->FunctionStringTable1) {
+        goto Error;
+    }
+
+    Db->NumberOfFunctionStringTables = 1;
 
     //
     // Allocate and initialize TraceSession.
@@ -315,7 +362,7 @@ Return Value:
                                      &RequiredSize);
 
     if (!Success) {
-        OutputDebugStringA("Db->InitializeTraceSession() failed.\n");
+        *ErrorMessagePointer = "Db->InitializeTraceSession() failed.\n";
         goto Error;
     }
 
@@ -373,7 +420,7 @@ Return Value:
     );
 
     if (!Success) {
-        OutputDebugStringA("InitializeTraceStores() failed.\n");
+        *ErrorMessagePointer = "InitializeTraceStores() failed.\n";
         goto Error;
     }
 
@@ -386,7 +433,7 @@ Return Value:
 
     Db->Threadpool = CreateThreadpool(NULL);
     if (!Db->Threadpool) {
-        OutputDebugStringA("CreateThreadpool() failed.\n");
+        *ErrorMessagePointer = "CreateThreadpool() failed.\n";
         goto Error;
     }
 
@@ -526,6 +573,50 @@ Return Value:
         if (Result != SQLITE_OK) {
             __debugbreak();
             goto Error;
+        }
+    }
+
+    NumberOfArguments = TraceStoreSqlite3FunctionsNumberOfArguments;
+    TextEncodingAndDeterministicFlags = (
+        TraceStoreSqlite3FunctionsTextEncodingAndDeterministicFlags
+    );
+    FunctionImplTuples = TraceStoreSqlite3FunctionImplTuples;
+
+    for (OuterIndex = 0;
+         OuterIndex < Db->NumberOfFunctionStringTables;
+         OuterIndex++) {
+
+        StringTable = Db->FunctionStringTable1 + OuterIndex;
+        StringArray = StringTable->pStringArray;
+        Strings = StringArray->Strings;
+
+        for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
+
+            Result = Sqlite3->OverloadFunction(Sqlite3Db,
+                                               Strings[Index].Buffer,
+                                               NumberOfArguments[Index]);
+            if (Result != SQLITE_OK) {
+                __debugbreak();
+                goto Error;
+            }
+
+            Functions = FunctionImplTuples + OuterIndex;
+
+            Result = Sqlite3->CreateFunction(
+                Sqlite3Db,
+                Strings[Index].Buffer,
+                NumberOfArguments[Index],
+                TextEncodingAndDeterministicFlags[Index],
+                Db,
+                Functions[Index].Scalar,
+                Functions[Index].AggregateStep,
+                Functions[Index].AggregateFinal
+            );
+
+            if (Result != SQLITE_OK) {
+                __debugbreak();
+                goto Error;
+            }
         }
     }
 

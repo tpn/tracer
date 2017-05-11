@@ -44,7 +44,7 @@ SQLITE3_MODULE TraceStoreSqlite3Module = {
     NULL, // TraceStoreSqlite3ModuleSync,
     NULL, // TraceStoreSqlite3ModuleCommit,
     NULL, // TraceStoreSqlite3ModuleRollback,
-    NULL, // TraceStoreSqlite3ModuleFindFunction,
+    TraceStoreSqlite3ModuleFindFunction,
     NULL, // TraceStoreSqlite3ModuleRename,
     NULL, // TraceStoreSqlite3ModuleSavepoint,
     NULL, // TraceStoreSqlite3ModuleRelease,
@@ -375,7 +375,7 @@ TraceStoreSqlite3ModuleNext(
             // surpassed the total number of coalesced allocations in this
             // chunk, advance to the next allocation record.  Otherwise,
             // use the coalesced allocation's record size as the next record
-            // offset and jump to the final row update.
+            // offset and jump to the update row logic.
             //
 
             Cursor->CurrentCoalescedAllocationNumber += 1;
@@ -579,10 +579,56 @@ TraceStoreSqlite3ModuleFindFunction(
     PSQLITE3_VTAB VirtualTable,
     LONG ArgumentNumber,
     PCSZ FunctionName,
-    PSQLITE3_FUNCTION Function,
-    PPVOID Argument
+    PSQLITE3_SCALAR_FUNCTION *ScalarFunctionPointer,
+    PVOID *ArgumentPointer
     )
 {
+    USHORT MatchIndex;
+    STRING String;
+    PCSQLITE3 Sqlite3;
+    STRING_MATCH Match;
+    PTRACE_STORE TraceStore;
+    PSTRING_TABLE StringTable;
+    PTRACE_STORE_SQLITE3_DB Db;
+    TRACE_STORE_SQLITE3_FUNCTION_ID FunctionId;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    TraceStore = CONTAINING_RECORD(VirtualTable,
+                                   TRACE_STORE,
+                                   Sqlite3VirtualTable);
+
+    Db = TraceStore->Db;
+    Sqlite3 = Db->Sqlite3;
+
+    String.Length = (USHORT)strlen(FunctionName);
+    String.MaximumLength = String.Length;
+    String.Buffer = (PSTR)FunctionName;
+
+    StringTable = Db->FunctionStringTable1;
+    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+
+    MatchIndex = IsPrefixOfStringInTable(StringTable, &String, &Match);
+    if (MatchIndex == NO_MATCH_FOUND) {
+        return SQLITE_ERROR;
+    }
+
+    FunctionId = MatchIndex;
+
+    switch (FunctionId) {
+
+        case CountFunctionId:
+            break;
+
+        case AverageFunctionId:
+            break;
+
+        case SumFunctionId:
+            break;
+
+        default:
+            break;
+    }
+
     return SQLITE_ERROR;
 }
 
