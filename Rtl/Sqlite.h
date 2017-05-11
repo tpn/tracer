@@ -502,7 +502,6 @@ VOID
     );
 typedef SQLITE3_DESTRUCTOR *PSQLITE3_DESTRUCTOR;
 
-    void  (*result_blob)(sqlite3_context*,const void*,int,void(*)(void*));
 typedef
 VOID
 (SQLITE3_RESULT_BLOB)(
