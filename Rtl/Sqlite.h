@@ -142,13 +142,126 @@ typedef sqlite3_value SQLITE3_VALUE;
 typedef SQLITE3_VALUE *PSQLITE3_VALUE;
 
 typedef
+PVOID
+(SQLITE3_USER_DATA)(
+    _In_ PSQLITE3_CONTEXT Context
+    );
+typedef SQLITE3_USER_DATA *PSQLITE3_USER_DATA;
+
+typedef
+struct _SQLITE3_API_ROUTINES *
+(SQLITE3_CONTEXT_DB_HANDLE)(
+    _In_ PSQLITE3_CONTEXT Context
+    );
+typedef SQLITE3_CONTEXT_DB_HANDLE *PSQLITE3_CONTEXT_DB_HANDLE;
+
+typedef
+PVOID
+(SQLITE3_AGGREGATE_CONTEXT)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ LONG NumberOfBytes
+    );
+typedef SQLITE3_AGGREGATE_CONTEXT *PSQLITE3_AGGREGATE_CONTEXT;
+
+typedef
+LONG
+(SQLITE3_AGGREGATE_COUNT)(
+    _In_ PSQLITE3_CONTEXT Context
+    );
+typedef SQLITE3_AGGREGATE_COUNT *PSQLITE3_AGGREGATE_COUNT;
+
+typedef
 VOID
 (SQLITE3_FUNCTION)(
     _In_ PSQLITE3_CONTEXT Context,
     _In_ LONG ArgumentNumber,
-    _Outptr_ PSQLITE3_VALUE Value
+    _Outptr_ PSQLITE3_VALUE *ValuePointer
     );
 typedef SQLITE3_FUNCTION *PSQLITE3_FUNCTION;
+
+typedef
+VOID
+(SQLITE3_SCALAR_FUNCTION)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ LONG ArgumentNumber,
+    _Outptr_ PSQLITE3_VALUE *ValuePointer
+    );
+typedef SQLITE3_SCALAR_FUNCTION *PSQLITE3_SCALAR_FUNCTION;
+
+typedef
+VOID
+(SQLITE3_AGGREGATE_STEP_FUNCTION)(
+    _In_ PSQLITE3_CONTEXT Context,
+    _In_ LONG ArgumentNumber,
+    _Outptr_ PSQLITE3_VALUE *ValuePointer
+    );
+typedef SQLITE3_AGGREGATE_STEP_FUNCTION *PSQLITE3_AGGREGATE_STEP_FUNCTION;
+
+typedef
+VOID
+(SQLITE3_AGGREGATE_FINAL_FUNCTION)(
+    _In_ PSQLITE3_CONTEXT Context
+    );
+typedef SQLITE3_AGGREGATE_FINAL_FUNCTION *PSQLITE3_AGGREGATE_FINAL_FUNCTION;
+
+typedef
+VOID
+(SQLITE3_FUNCTION_DESTROY)(
+    _In_opt_ PVOID UserContext
+    );
+typedef SQLITE3_FUNCTION_DESTROY *PSQLITE3_FUNCTION_DESTROY;
+
+typedef
+LONG
+(SQLITE3_OVERLOAD_FUNCTION)(
+    _In_ PSQLITE3_DB Database,
+    _In_ PCSZ FunctionName,
+    _In_ LONG NumberOfArguments
+    );
+typedef SQLITE3_OVERLOAD_FUNCTION *PSQLITE3_OVERLOAD_FUNCTION;
+
+typedef
+LONG
+(SQLITE3_CREATE_FUNCTION)(
+    _In_ PSQLITE3_DB Database,
+    _In_ PCSZ FunctionName,
+    _In_ LONG NumberOfArguments,
+    _In_ LONG TextEncodingAndDeterministicFlag,
+    _In_ PVOID UserContext,
+    _In_opt_ PSQLITE3_SCALAR_FUNCTION ScalarFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStepFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinalFunction
+    );
+typedef SQLITE3_CREATE_FUNCTION *PSQLITE3_CREATE_FUNCTION;
+
+typedef
+LONG
+(SQLITE3_CREATE_FUNCTION16)(
+    _In_ PSQLITE3_DB Database,
+    _In_ PCWSTR FunctionNameWide,
+    _In_ LONG NumberOfArguments,
+    _In_ LONG TextEncodingAndDeterministicFlag,
+    _In_ PVOID UserContext,
+    _In_opt_ PSQLITE3_SCALAR_FUNCTION ScalarFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStepFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinalFunction
+    );
+typedef SQLITE3_CREATE_FUNCTION16 *PSQLITE3_CREATE_FUNCTION16;
+
+typedef
+LONG
+(SQLITE3_CREATE_FUNCTION_V2)(
+    _In_ PSQLITE3_DB Database,
+    _In_ PCSZ FunctionName,
+    _In_ LONG NumberOfArguments,
+    _In_ LONG TextEncodingAndDeterministicFlag,
+    _In_ PVOID UserContext,
+    _In_opt_ PSQLITE3_SCALAR_FUNCTION ScalarFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStepFunction,
+    _In_opt_ PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinalFunction,
+    _In_opt_ PSQLITE3_FUNCTION_DESTROY DestroyFunction
+    );
+typedef SQLITE3_CREATE_FUNCTION_V2 *PSQLITE3_CREATE_FUNCTION_V2;
 
 //
 // Define SQLITE3_MODULE function pointer typedefs.
@@ -292,8 +405,8 @@ LONG
     _In_ PSQLITE3_VTAB VirtualTable,
     _In_ LONG ArgumentNumber,
     _In_ PCSZ FunctionName,
-    _Outptr_ PSQLITE3_FUNCTION Function,
-    _Outptr_ PPVOID Argument
+    _Outptr_ PSQLITE3_SCALAR_FUNCTION *ScalarFunctionPointer,
+    _Outptr_ PVOID *ArgumentPointer
     );
 typedef SQLITE3_FIND_FUNCTION *PSQLITE3_FIND_FUNCTION;
 
@@ -578,8 +691,8 @@ typedef SQLITE3_RESULT_TEXT64 *PSQLITE3_RESULT_TEXT64;
 //
 
 typedef struct _SQLITE3_API_ROUTINES {
-    void * (*aggregate_context)(sqlite3_context*,int nBytes);
-    int  (*aggregate_count)(sqlite3_context*);
+    PSQLITE3_AGGREGATE_CONTEXT AggregateContext;
+    PSQLITE3_AGGREGATE_COUNT AggregateCount;
     int  (*bind_blob)(sqlite3_stmt*,int,const void*,int n,void(*)(void*));
     int  (*bind_double)(sqlite3_stmt*,int,double);
     int  (*bind_int)(sqlite3_stmt*,int,int);
@@ -627,15 +740,9 @@ typedef struct _SQLITE3_API_ROUTINES {
                            int(*)(void*,int,const void*,int,const void*));
     int  (*create_collation16)(sqlite3*,const void*,int,void*,
                              int(*)(void*,int,const void*,int,const void*));
-    int  (*create_function)(sqlite3*,const char*,int,int,void*,
-                          void (*xFunc)(sqlite3_context*,int,sqlite3_value**),
-                          void (*xStep)(sqlite3_context*,int,sqlite3_value**),
-                          void (*xFinal)(sqlite3_context*));
-    int  (*create_function16)(sqlite3*,const void*,int,int,void*,
-                            void (*xFunc)(sqlite3_context*,int,sqlite3_value**),
-                            void (*xStep)(sqlite3_context*,int,sqlite3_value**),
-                            void (*xFinal)(sqlite3_context*));
 
+    PSQLITE3_CREATE_FUNCTION CreateFunction;
+    PSQLITE3_CREATE_FUNCTION16 CreateFunction16;
     PSQLITE3_CREATE_MODULE CreateModule;
 
     int  (*data_count)(sqlite3_stmt*pStmt);
@@ -705,7 +812,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     int  (*transfer_bindings)(sqlite3_stmt*,sqlite3_stmt*);
     void * (*update_hook)(sqlite3*,void(*)(void*,int ,char const*,char const*,
                                          sqlite_int64),void*);
-    void * (*user_data)(sqlite3_context*);
+
+    PSQLITE3_USER_DATA UserData;
+
     const void * (*value_blob)(sqlite3_value*);
     int  (*value_bytes)(sqlite3_value*);
     int  (*value_bytes16)(sqlite3_value*);
@@ -720,7 +829,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     int  (*value_type)(sqlite3_value*);
     char *(*vmprintf)(const char*,va_list);
     /* Added ??? */
-    int (*overload_function)(sqlite3*, const char *zFuncName, int nArg);
+
+    PSQLITE3_OVERLOAD_FUNCTION OverloadFunction;
+
     /* Added by 3.3.13 */
     int (*prepare_v2)(sqlite3*,const char*,int,sqlite3_stmt**,const char**);
     int (*prepare16_v2)(sqlite3*,const void*,int,sqlite3_stmt**,const void**);
@@ -765,7 +876,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     void (*result_error_code)(sqlite3_context*,int);
     int (*test_control)(int, ...);
     void (*randomness)(int,void*);
-    sqlite3 *(*context_db_handle)(sqlite3_context*);
+
+    struct _SQLITE3_API_ROUTINES *ContextDbHandle;
+
     int (*extended_result_codes)(sqlite3*,int);
     int (*limit)(sqlite3*,int,int);
     sqlite3_stmt *(*next_stmt)(sqlite3*,sqlite3_stmt*);
@@ -778,11 +891,9 @@ typedef struct _SQLITE3_API_ROUTINES {
     int (*backup_step)(sqlite3_backup*,int);
     const char *(*compileoption_get)(int);
     int (*compileoption_used)(const char*);
-    int (*create_function_v2)(sqlite3*,const char*,int,int,void*,
-                            void (*xFunc)(sqlite3_context*,int,sqlite3_value**),
-                            void (*xStep)(sqlite3_context*,int,sqlite3_value**),
-                            void (*xFinal)(sqlite3_context*),
-                            void(*xDestroy)(void*));
+
+    PSQLITE3_CREATE_FUNCTION_V2 CreateFunctionV2;
+
     int (*db_config)(sqlite3*,int,...);
     sqlite3_mutex *(*db_mutex)(sqlite3*);
     int (*db_status)(sqlite3*,int,int*,int*,int);
