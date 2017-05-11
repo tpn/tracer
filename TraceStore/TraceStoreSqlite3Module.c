@@ -90,6 +90,7 @@ TraceStoreSqlite3ModuleCreate(
 
     Failed = Sqlite3->DeclareVirtualTable(Sqlite3Db, TraceStore->Sqlite3Schema);
     if (Failed) {
+        __debugbreak();
         return Failed;
     }
 
