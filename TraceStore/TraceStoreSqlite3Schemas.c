@@ -5229,7 +5229,7 @@ CONST CHAR TraceStorePerformanceSchema[] =
         "ProcessCount INT, "
         "ThreadCount INT"
     ")";
- 
+
 TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3PerformanceColumn;
 
 _Use_decl_annotations_
@@ -5677,7 +5677,7 @@ CONST CHAR TraceStorePerformanceDeltaSchema[] =
         "ProcessCountDelta INT, "
         "ThreadCountDelta INT"
     ")";
- 
+
 TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3PerformanceDeltaColumn;
 
 _Use_decl_annotations_
@@ -6132,9 +6132,8 @@ CONST CHAR PythonPathTableEntrySchema[] =
         "PathMaximumLength SMALLINT, "
         "FullName TEXT, "                           // STRING
         "ModuleName TEXT, "                         // STRING
-        "Name TEXT, "                               // STRING
         "ClassName TEXT, "                          // STRING
-        "FullName TEXT, "                           // STRING
+        "Name TEXT, "                               // STRING
         "File_CreationTime BIGINT, "                // File->CreationTime, LARGE_INTEGER
         "File_LastAccessTime BIGINT, "              // File->LastAccessTime, LARGE_INTEGER
         "File_LastWriteTime BIGINT, "               // File->LastWriteTime, LARGE_INTEGER
@@ -6362,178 +6361,170 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 21: Name TEXT
+        // 21: ClassName TEXT
         //
 
         case 21:
-            RESULT_STRING(PythonPathTableEntry->Name);
-            break;
-
-        //
-        // 22: ClassName TEXT
-        //
-
-        case 22:
             RESULT_STRING(PythonPathTableEntry->ClassName);
             break;
 
         //
-        // 23: FullName TEXT
+        // 22: Name TEXT
         //
 
-        case 23:
-            RESULT_STRING(PythonPathTableEntry->FullName);
+        case 22:
+            RESULT_STRING(PythonPathTableEntry->Name);
             break;
 
         //
-        // 24: File_CreationTime BIGINT
+        // 23: File_CreationTime BIGINT
         //
 
-        case 24:
+        case 23:
             RESULT_LARGE_INTEGER(File->CreationTime);
             break;
 
         //
-        // 25: File_LastAccessTime BIGINT
+        // 24: File_LastAccessTime BIGINT
         //
 
-        case 25:
+        case 24:
             RESULT_LARGE_INTEGER(File->LastAccessTime);
             break;
 
         //
-        // 26: File_LastWriteTime BIGINT
+        // 25: File_LastWriteTime BIGINT
         //
 
-        case 26:
+        case 25:
             RESULT_LARGE_INTEGER(File->LastWriteTime);
             break;
 
         //
-        // 27: File_ChangeTime BIGINT
+        // 26: File_ChangeTime BIGINT
         //
 
-        case 27:
+        case 26:
             RESULT_LARGE_INTEGER(File->ChangeTime);
             break;
 
         //
-        // 28: File_FileAttributes INT
+        // 27: File_FileAttributes INT
         //
 
-        case 28:
+        case 27:
             RESULT_ULONG(File->FileAttributes);
             break;
 
         //
-        // 29: File_NumberOfPages INT
+        // 28: File_NumberOfPages INT
         //
 
-        case 29:
+        case 28:
             RESULT_ULONG(File->NumberOfPages);
             break;
 
         //
-        // 30: File_EndOfFile BIGINT
+        // 29: File_EndOfFile BIGINT
         //
 
-        case 30:
+        case 29:
             RESULT_LARGE_INTEGER(File->EndOfFile);
             break;
 
         //
-        // 31: File_AllocationSize BIGINT
+        // 30: File_AllocationSize BIGINT
         //
 
-        case 31:
+        case 30:
             RESULT_LARGE_INTEGER(File->AllocationSize);
             break;
 
         //
-        // 32: File_FileId BIGINT
+        // 31: File_FileId BIGINT
         //
 
-        case 32:
+        case 31:
             RESULT_LARGE_INTEGER(File->FileId);
             break;
 
         //
-        // 33: File_VolumeSerialNumber BIGINT
+        // 32: File_VolumeSerialNumber BIGINT
         //
 
-        case 33:
+        case 32:
             RESULT_ULONGLONG(File->VolumeSerialNumber);
             break;
 
         //
-        // 34: File_FileId128 BLOB
+        // 33: File_FileId128 BLOB
         //
 
-        case 34:
+        case 33:
             RESULT_BLOB(File->FileId128, sizeof(File->FileId128));
             break;
 
         //
-        // 35: File_MD5 BLOB
+        // 34: File_MD5 BLOB
         //
 
-        case 35:
+        case 34:
             RESULT_BLOB(File->MD5, sizeof(File->MD5));
             break;
 
         //
-        // 36: File_SHA1 BLOB
+        // 35: File_SHA1 BLOB
         //
 
-        case 36:
+        case 35:
             RESULT_BLOB(File->SHA1, sizeof(File->SHA1));
             break;
 
         //
-        // 37: File_CopyTimeInMicroseconds BIGINT
+        // 36: File_CopyTimeInMicroseconds BIGINT
         //
 
-        case 37:
+        case 36:
             RESULT_LARGE_INTEGER(File->CopyTimeInMicroseconds);
             break;
 
         //
-        // 38: File_CopiedBytesPerSecond BIGINT
+        // 37: File_CopiedBytesPerSecond BIGINT
         //
 
-        case 38:
+        case 37:
             RESULT_LARGE_INTEGER(File->CopiedBytesPerSecond);
             break;
 
         //
-        // 39: File_FileType INT
+        // 38: File_FileType INT
         //
 
-        case 39:
+        case 38:
             RESULT_ULONG(File->Type);
             break;
 
         //
-        // 40: File_FileFlags INT
+        // 39: File_FileFlags INT
         //
 
-        case 40:
+        case 39:
             RESULT_ULONG(File->Flags.AsULong);
             break;
 
         //
-        // 41: File_ContentAddress BIGINT
+        // 40: File_ContentAddress BIGINT
         //
 
-        case 41:
+        case 40:
             RESULT_ULONGLONG(File->Content);
             break;
 
         //
-        // 42: TextFile_StructSizeInBytes INT
+        // 41: TextFile_StructSizeInBytes INT
         //
 
-        case 42:
+        case 41:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6542,10 +6533,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 43: TextFile_NumberOfLines INT
+        // 42: TextFile_NumberOfLines INT
         //
 
-        case 43:
+        case 42:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6554,10 +6545,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 44: TextFile_LinesAddress BIGINT
+        // 43: TextFile_LinesAddress BIGINT
         //
 
-        case 44:
+        case 43:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6566,10 +6557,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 45: TextFile_CarriageReturnBitmapAddress BIGINT
+        // 44: TextFile_CarriageReturnBitmapAddress BIGINT
         //
 
-        case 45:
+        case 44:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6578,10 +6569,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 46: TextFile_LineFeedBitmapAddress BIGINT
+        // 45: TextFile_LineFeedBitmapAddress BIGINT
         //
 
-        case 46:
+        case 45:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6590,10 +6581,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 47: TextFile_LineEndingBitmapAddress BIGINT
+        // 46: TextFile_LineEndingBitmapAddress BIGINT
         //
 
-        case 47:
+        case 46:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6602,10 +6593,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 48: TextFile_LineBitmapAddress BIGINT
+        // 47: TextFile_LineBitmapAddress BIGINT
         //
 
-        case 48:
+        case 47:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6614,10 +6605,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 49: TextFile_WhitespaceBitmapAddress BIGINT
+        // 48: TextFile_WhitespaceBitmapAddress BIGINT
         //
 
-        case 49:
+        case 48:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6626,10 +6617,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 50: TextFile_TabBitmapAddress BIGINT
+        // 49: TextFile_TabBitmapAddress BIGINT
         //
 
-        case 50:
+        case 49:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6638,10 +6629,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 51: TextFile_IndentBitmapAddress BIGINT
+        // 50: TextFile_IndentBitmapAddress BIGINT
         //
 
-        case 51:
+        case 50:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6650,10 +6641,10 @@ TraceStoreSqlite3PythonPathTableEntryColumn(
             break;
 
         //
-        // 52: TextFile_TrailingWhitespaceBitmapAddress BIGINT
+        // 51: TextFile_TrailingWhitespaceBitmapAddress BIGINT
         //
 
-        case 52:
+        case 51:
             if (!((File->Type == RtlFileTextFileType && TextFile != NULL))) {
                 RESULT_NULL();
             } else {
@@ -6739,13 +6730,7 @@ TraceStoreSqlite3PythonFunctionTableEntryColumn(
     PRTL_TEXT_FILE TextFile;
 
     FunctionTableEntry = (PPYTHON_FUNCTION_TABLE_ENTRY)Cursor->CurrentRowRaw;
-    Function = (PPYTHON_FUNCTION)(
-        CONTAINING_RECORD(
-            FunctionTableEntry,
-            PYTHON_FUNCTION_TABLE_ENTRY,
-            PythonFunction
-        )
-    );
+    Function = (PPYTHON_FUNCTION)&FunctionTableEntry->PythonFunction;
     PathTableEntry = &Function->PathEntry;
     File = &PathTableEntry->File;
     TextFile = &File->SourceCode;
