@@ -3053,6 +3053,76 @@ typedef enum _TRACE_STORE_SQLITE3_FUNCTION_ID {
 
 } TRACE_STORE_SQLITE3_FUNCTION_ID;
 
+//
+// Define helper structure that we use to statically define our function
+// overloads.  These are defined in TraceStoreConstants.c and used in the
+// initialization function in TraceStoreSqlite3ExtInit.c.
+//
+
+typedef union _TRACE_STORE_SQLITE3_FUNCTION_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_SQLITE3_FUNCTION_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_SQLITE3_FUNCTION_FLAGS) == sizeof(ULONG));
+typedef TRACE_STORE_SQLITE3_FUNCTION_FLAGS *PTRACE_STORE_SQLITE3_FUNCTION_FLAGS;
+
+typedef struct _TRACE_STORE_SQLITE3_FUNCTION {
+    TRACE_STORE_SQLITE3_FUNCTION_ID Id;
+    TRACE_STORE_SQLITE3_FUNCTION_FLAGS Flags;
+    PCSZ Name;
+    LONG NumberOfArguments;
+    LONG TextEncoding;
+    PSQLITE3_SCALAR_FUNCTION ScalarFunction;
+    PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStepFunction;
+    PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinalFunction;
+    PSQLITE3_FUNCTION_DESTROY DestroyFunction;
+} TRACE_STORE_SQLITE3_FUNCTION;
+typedef TRACE_STORE_SQLITE3_FUNCTION *PTRACE_STORE_SQLITE3_FUNCTION;
+typedef CONST TRACE_STORE_SQLITE3_FUNCTION *PCTRACE_STORE_SQLITE3_FUNCTION;
+
+#define NULL_FUNCTION_ENTRY \
+    {                       \
+        InvalidFunctionId,  \
+        {                   \
+            0,              \
+        },                  \
+        NULL,               \
+        0,                  \
+        0,                  \
+        NULL,               \
+        NULL,               \
+        NULL                \
+    }
+
+#define LAST_FUNCTION_ENTRY NULL_FUNCTION_ENTRY
+
+FORCEINLINE
+BOOL
+IsLastTraceStoreSqlite3Function(
+    _In_ PCTRACE_STORE_SQLITE3_FUNCTION Function
+    )
+{
+    return (
+        Function->Id == InvalidFunctionId &&
+        Function->Name == NULL
+    );
+}
+
+#define FOR_EACH_TRACE_STORE_SQLITE3_FUNCTION(Function) \
+    for (Function = TraceStoreSqlite3Functions;         \
+         !IsLastTraceStoreSqlite3Function(Function);    \
+         Function++)
+
+extern SQLITE3_AGGREGATE_STEP_FUNCTION TraceStoreSqlite3CountStep;
+extern SQLITE3_AGGREGATE_FINAL_FUNCTION TraceStoreSqlite3CountFinal;
+extern SQLITE3_FUNCTION_DESTROY TraceStoreSqlite3CountDestroy;
+
+//
+// Cursor flags.
+//
 
 typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -3377,19 +3447,6 @@ extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampDeltaColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3SynchronizationColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3InfoColumn;
-
-typedef union _TRACE_STORE_SQLITE3_FUNCTION_IMPL {
-    struct {
-        PSQLITE3_SCALAR_FUNCTION Scalar;
-        PSQLITE3_AGGREGATE_STEP_FUNCTION AggregateStep;
-        PSQLITE3_AGGREGATE_FINAL_FUNCTION AggregateFinal;
-    };
-    PSQLITE3_FUNCTION Functions;
-} TRACE_STORE_SQLITE3_FUNCTION_IMPL;
-typedef TRACE_STORE_SQLITE3_FUNCTION_IMPL *PTRACE_STORE_SQLITE3_FUNCTION_IMPL;
-
-extern CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL
-             TraceStoreSqlite3FunctionImplTuples[];
 
 extern SQLITE3_SCALAR_FUNCTION TraceStoreSqlite3DefaultScalarFunction;
 extern SQLITE3_AGGREGATE_STEP_FUNCTION

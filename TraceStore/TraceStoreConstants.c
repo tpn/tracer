@@ -2775,56 +2775,262 @@ CONST STRING TraceStoreSqlite3FunctionsString = RTL_CONSTANT_STRING(
     DSTR("tsmax")
 );
 
-CONST USHORT TraceStoreSqlite3FunctionsNumberOfArguments[] = {
-    1,
-    1,
-    1,
-    1,
-    1,
-};
-
-CONST LONG TraceStoreSqlite3FunctionsTextEncodingAndDeterministicFlags[] = {
-    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tscount
-    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsavg
-    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tssum
-    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsmin
-    SQLITE_UTF8 | SQLITE_DETERMINISTIC, // tsmax
-};
-
-#define DEFAULT_AGGREGATE_STEP TraceStoreSqlite3DefaultAggregateStepFunction
-#define DEFAULT_AGGREGATE_FINAL TraceStoreSqlite3DefaultAggregateFinalFunction
-
-CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL TraceStoreSqlite3FunctionImplTuples[]={
+CONST TRACE_STORE_SQLITE3_FUNCTION TraceStoreSqlite3Functions[] = {
 
     //
-    // tscount
+    // tscount, 0 arguments.
     //
 
-    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+    {
+        //
+        // Id
+        //
+
+        CountFunctionId,
+
+        //
+        // Flags
+        //
+
+        {
+            0,  // Unused
+        },
+
+        //
+        // Name
+        //
+
+        "tscount",
+
+        //
+        // NumberOfArguments
+        //
+
+        0,
+
+        //
+        // TextEncodingAndDeterministicFlag
+        //
+
+        SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+
+        //
+        // ScalarFunction
+        //
+
+        NULL,
+
+        //
+        // AggregateStepFunction
+        //
+
+        TraceStoreSqlite3CountStep,
+
+        //
+        // AggregateFinalFunction
+        //
+
+        TraceStoreSqlite3CountFinal,
+
+        //
+        // DestroyFunction
+        //
+
+        TraceStoreSqlite3CountDestroy,
+
+    },
 
     //
-    // tsavg
+    // tscount, 1 argument.
     //
 
-    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+    {
+        //
+        // Id
+        //
+
+        CountFunctionId,
+
+        //
+        // Flags
+        //
+
+        {
+            0,  // Unused
+        },
+
+        //
+        // Name
+        //
+
+        "tscount",
+
+        //
+        // NumberOfArguments
+        //
+
+        1,
+
+        //
+        // TextEncodingAndDeterministicFlag
+        //
+
+        SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+
+        //
+        // ScalarFunction
+        //
+
+        NULL,
+
+        //
+        // AggregateStepFunction
+        //
+
+        TraceStoreSqlite3CountStep,
+
+        //
+        // AggregateFinalFunction
+        //
+
+        TraceStoreSqlite3CountFinal,
+
+        //
+        // DestroyFunction
+        //
+
+        TraceStoreSqlite3CountDestroy,
+
+    },
 
     //
-    // tssum
+    // count, 0 arguments.
     //
 
-    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+    {
+        //
+        // Id
+        //
+
+        CountFunctionId,
+
+        //
+        // Flags
+        //
+
+        {
+            0,  // Unused
+        },
+
+        //
+        // Name
+        //
+
+        "count",
+
+        //
+        // NumberOfArguments
+        //
+
+        0,
+
+        //
+        // TextEncodingAndDeterministicFlag
+        //
+
+        SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+
+        //
+        // ScalarFunction
+        //
+
+        NULL,
+
+        //
+        // AggregateStepFunction
+        //
+
+        TraceStoreSqlite3CountStep,
+
+        //
+        // AggregateFinalFunction
+        //
+
+        TraceStoreSqlite3CountFinal,
+
+        //
+        // DestroyFunction
+        //
+
+        TraceStoreSqlite3CountDestroy,
+
+    },
 
     //
-    // tsmin
+    // count, 1 argument.
     //
 
-    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+    {
+        //
+        // Id
+        //
 
-    //
-    // tsmax
-    //
+        CountFunctionId,
 
-    { NULL, DEFAULT_AGGREGATE_STEP, DEFAULT_AGGREGATE_FINAL },
+        //
+        // Flags
+        //
+
+        {
+            0,  // Unused
+        },
+
+        //
+        // Name
+        //
+
+        "count",
+
+        //
+        // NumberOfArguments
+        //
+
+        1,
+
+        //
+        // TextEncodingAndDeterministicFlag
+        //
+
+        SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+
+        //
+        // ScalarFunction
+        //
+
+        NULL,
+
+        //
+        // AggregateStepFunction
+        //
+
+        TraceStoreSqlite3CountStep,
+
+        //
+        // AggregateFinalFunction
+        //
+
+        TraceStoreSqlite3CountFinal,
+
+        //
+        // DestroyFunction
+        //
+
+        TraceStoreSqlite3CountDestroy,
+
+    },
+
+
+    LAST_FUNCTION_ENTRY,
 
 };
 

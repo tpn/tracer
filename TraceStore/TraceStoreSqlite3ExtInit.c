@@ -66,17 +66,11 @@ Return Value:
     USHORT Count;
     USHORT Length;
     USHORT Index;
-    USHORT OuterIndex;
     ULONG Result;
     ULONG RequiredSize;
-    PSTRING_ARRAY StringArray;
-    PSTRING_TABLE StringTable;
-    CONST USHORT *NumberOfArguments;
-    CONST LONG *TextEncodingAndDeterministicFlags;
     USHORT TotalNumberOfTraceStores;
     PCSZ DatabaseFilename;
     STRING Filename;
-    PSTRING Strings;
     PALLOCATOR Allocator;
     PUNICODE_STRING Path;
     PTRACER_PATHS Paths;
@@ -89,8 +83,7 @@ Return Value:
     TRACE_CONTEXT_FLAGS TraceContextFlags;
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
-    CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL *FunctionImplTuples;
-    CONST TRACE_STORE_SQLITE3_FUNCTION_IMPL *Functions;
+    PCTRACE_STORE_SQLITE3_FUNCTION Function;
 
     //
     // Validate arguments.
@@ -576,47 +569,34 @@ Return Value:
         }
     }
 
-    NumberOfArguments = TraceStoreSqlite3FunctionsNumberOfArguments;
-    TextEncodingAndDeterministicFlags = (
-        TraceStoreSqlite3FunctionsTextEncodingAndDeterministicFlags
-    );
-    FunctionImplTuples = TraceStoreSqlite3FunctionImplTuples;
+    //
+    // Register all of our functions.
+    //
 
-    for (OuterIndex = 0;
-         OuterIndex < Db->NumberOfFunctionStringTables;
-         OuterIndex++) {
+    FOR_EACH_TRACE_STORE_SQLITE3_FUNCTION(Function) {
 
-        StringTable = Db->FunctionStringTable1 + OuterIndex;
-        StringArray = StringTable->pStringArray;
-        Strings = StringArray->Strings;
+        Result = Sqlite3->OverloadFunction(Sqlite3Db,
+                                           Function->Name,
+                                           Function->NumberOfArguments);
 
-        for (Index = 0; Index < StringArray->NumberOfElements; Index++) {
+        if (Result != SQLITE_OK) {
+            __debugbreak();
+            goto Error;
+        }
 
-            Result = Sqlite3->OverloadFunction(Sqlite3Db,
-                                               Strings[Index].Buffer,
-                                               NumberOfArguments[Index]);
-            if (Result != SQLITE_OK) {
-                __debugbreak();
-                goto Error;
-            }
+        Result = Sqlite3->CreateFunctionV2(Sqlite3Db,
+                                           Function->Name,
+                                           Function->NumberOfArguments,
+                                           Function->TextEncoding,
+                                           Db,
+                                           Function->ScalarFunction,
+                                           Function->AggregateStepFunction,
+                                           Function->AggregateFinalFunction,
+                                           Function->DestroyFunction);
 
-            Functions = FunctionImplTuples + OuterIndex;
-
-            Result = Sqlite3->CreateFunction(
-                Sqlite3Db,
-                Strings[Index].Buffer,
-                NumberOfArguments[Index],
-                TextEncodingAndDeterministicFlags[Index],
-                Db,
-                Functions[Index].Scalar,
-                Functions[Index].AggregateStep,
-                Functions[Index].AggregateFinal
-            );
-
-            if (Result != SQLITE_OK) {
-                __debugbreak();
-                goto Error;
-            }
+        if (Result != SQLITE_OK) {
+            __debugbreak();
+            goto Error;
         }
     }
 

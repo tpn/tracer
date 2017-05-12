@@ -14,6 +14,52 @@ Abstract:
 
 #include "stdafx.h"
 
+//
+// Count function.
+//
+
+SQLITE3_AGGREGATE_STEP_FUNCTION TraceStoreSqlite3CountStep;
+
+_Use_decl_annotations_
+VOID
+TraceStoreSqlite3CountStep(
+    PSQLITE3_CONTEXT Context,
+    LONG ArgumentNumber,
+    PSQLITE3_VALUE *ValuePointer
+    )
+{
+    __debugbreak();
+    return;
+}
+
+SQLITE3_AGGREGATE_FINAL_FUNCTION TraceStoreSqlite3CountFinal;
+
+_Use_decl_annotations_
+VOID
+TraceStoreSqlite3CountFinal(
+    PSQLITE3_CONTEXT Context
+    )
+{
+    __debugbreak();
+    return;
+}
+
+SQLITE3_FUNCTION_DESTROY TraceStoreSqlite3CountDestroy;
+
+_Use_decl_annotations_
+VOID
+TraceStoreSqlite3CountDestroy(
+    PVOID UserContext
+    )
+{
+    __debugbreak();
+    return;
+}
+
+//
+// Dummy default functions.
+//
+
 _Use_decl_annotations_
 VOID
 TraceStoreSqlite3DefaultScalarFunction(
@@ -22,6 +68,7 @@ TraceStoreSqlite3DefaultScalarFunction(
     PSQLITE3_VALUE *ValuePointer
     )
 {
+    __debugbreak();
     return;
 }
 
@@ -33,6 +80,7 @@ TraceStoreSqlite3DefaultAggregateStepFunction(
     PSQLITE3_VALUE *ValuePointer
     )
 {
+    __debugbreak();
     return;
 }
 
@@ -42,6 +90,7 @@ TraceStoreSqlite3DefaultAggregateFinalFunction(
     PSQLITE3_CONTEXT Context
     )
 {
+    __debugbreak();
     return;
 }
 
