@@ -24,25 +24,26 @@ _DllMainCRTStartup(
     _In_    LPVOID      Reserved
     )
 {
+    BOOL IsProcessTerminating = FALSE;
     switch (Reason) {
         case DLL_PROCESS_ATTACH:
+            if (!TraceStoreSqlite3TlsProcessAttach(Module, Reason, Reserved)) {
+                return FALSE;
+            }
             if (!InitializeGlobalTraceStoresRundown()) {
                 return FALSE;
             }
             break;
         case DLL_THREAD_ATTACH:
-            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
-                               "DLL_THREAD_ATTACH.\n");
             break;
         case DLL_THREAD_DETACH:
-            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
-                               "DLL_THREAD_DETACH.\n");
             break;
         case DLL_PROCESS_DETACH:
-            OutputDebugStringA("TraceStore!_DllMainCRTStartup(): "
-                               "DLL_PROCESS_DETACH.\n");
             RundownGlobalTraceStores();
             DestroyGlobalTraceStoresRundown();
+            if (!TraceStoreSqlite3TlsProcessDetach(Module, Reason, Reserved)) {
+                NOTHING;
+            }
             break;
     }
 

@@ -3121,6 +3121,62 @@ extern SQLITE3_AGGREGATE_FINAL_FUNCTION TraceStoreSqlite3CountFinal;
 extern SQLITE3_FUNCTION_DESTROY TraceStoreSqlite3CountDestroy;
 
 //
+// The sqlite3 virtual function signatures only have an opaque pointer to a
+// struct named SQLITE3_CONTEXT; this is useless for us as we rely on being
+// able to get to the SQLITE3 API via function parameters.  We could abuse
+// the opaqueness of the context and back track to the data we need, but this
+// would be fragile and prone to breakage when their internal structures are
+// changed.  Instead, we use TLS; when a cursor is opened, relevant details
+// are stashed in a TLS slot, which can then be probed in the virtual function
+// callbacks.  The following variable is our TLS index.  It is assigned via
+// TlsAlloc() in our DLL entry point for PROCESS_ATTACH events.
+//
+
+extern ULONG TraceStoreSqlite3TlsIndex;
+
+//
+// The PROCESS_ATTACH and PROCESS_ATTACH functions share the same signature.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+(TRACE_STORE_SQLITE3_TLS_FUNCTION)(
+    _In_    HMODULE     Module,
+    _In_    DWORD       Reason,
+    _In_    LPVOID      Reserved
+    );
+typedef TRACE_STORE_SQLITE3_TLS_FUNCTION *PTRACE_STORE_SQLITE3_TLS_FUNCTION;
+
+TRACE_STORE_SQLITE3_TLS_FUNCTION TraceStoreSqlite3TlsProcessAttach;
+TRACE_STORE_SQLITE3_TLS_FUNCTION TraceStoreSqlite3TlsProcessDetach;
+
+//
+// Define TLS Get/Set cursor functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(TRACE_STORE_SQLITE3_TLS_SET_CURSOR)(
+    _In_ struct _TRACE_STORE_SQLITE3_CURSOR *Cursor
+    );
+typedef TRACE_STORE_SQLITE3_TLS_SET_CURSOR *PTRACE_STORE_SQLITE3_TLS_SET_CURSOR;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+struct _TRACE_STORE_SQLITE3_CURSOR *
+(TRACE_STORE_SQLITE3_TLS_GET_CURSOR)(
+    VOID
+    );
+typedef TRACE_STORE_SQLITE3_TLS_GET_CURSOR *PTRACE_STORE_SQLITE3_TLS_GET_CURSOR;
+
+extern TRACE_STORE_SQLITE3_TLS_SET_CURSOR TraceStoreSqlite3TlsSetCursor;
+extern TRACE_STORE_SQLITE3_TLS_GET_CURSOR TraceStoreSqlite3TlsGetCursor;
+
+//
 // Cursor flags.
 //
 
@@ -3153,10 +3209,20 @@ typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
         ULONG FixedRecordSizeAndAlwaysPowerOf2:1;
 
         //
+        // The Eof() virtual table routine will check this flag each time it
+        // is called.  If it is set, it will return as if the data stream's
+        // end of file was reached.  This is useful for things like overriding
+        // count(*) where we don't need to stream through the entire record
+        // set because we can just reference Cursor->TotalNumberOfRecords.
+        //
+
+        ULONG EofOverride:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:29;
+        ULONG Unused:28;
     };
     LONG AsLong;
     ULONG AsULong;

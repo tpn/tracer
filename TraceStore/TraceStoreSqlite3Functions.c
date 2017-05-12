@@ -28,7 +28,17 @@ TraceStoreSqlite3CountStep(
     PSQLITE3_VALUE *ValuePointer
     )
 {
-    __debugbreak();
+    PTRACE_STORE_SQLITE3_CURSOR Cursor;
+
+    Cursor = TraceStoreSqlite3TlsGetCursor();
+
+    //
+    // Force the next Eof() callback to indicate we've reached the end of our
+    // data set.  This avoids the need to stream through the entire record set.
+    //
+
+    Cursor->Flags.EofOverride = TRUE;
+
     return;
 }
 
@@ -40,7 +50,14 @@ TraceStoreSqlite3CountFinal(
     PSQLITE3_CONTEXT Context
     )
 {
-    __debugbreak();
+    PCSQLITE3 Sqlite3;
+    PTRACE_STORE_SQLITE3_CURSOR Cursor;
+
+    Cursor = TraceStoreSqlite3TlsGetCursor();
+    Sqlite3 = Cursor->Sqlite3;
+
+    Sqlite3->ResultInt64(Context, Cursor->TotalNumberOfRecords);
+
     return;
 }
 
@@ -52,7 +69,6 @@ TraceStoreSqlite3CountDestroy(
     PVOID UserContext
     )
 {
-    __debugbreak();
     return;
 }
 

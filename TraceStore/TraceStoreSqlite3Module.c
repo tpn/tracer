@@ -245,6 +245,8 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     QueryPerformanceCounter(&Cursor->OpenedTimestamp);
 
+    TraceStoreSqlite3TlsSetCursor(Cursor);
+
     *CursorPointer = &Cursor->AsSqlite3VtabCursor;
 
     return SQLITE_OK;
@@ -267,6 +269,8 @@ TraceStoreSqlite3ModuleCloseCursor(
     TraceTimeQueryPerformanceCounter(Cursor->TraceStore->Time,
                                      &Elapsed,
                                      &CloseTimestamp);
+
+    TraceStoreSqlite3TlsSetCursor(NULL);
 
     Cursor->Sqlite3->Free(Cursor);
 
@@ -477,13 +481,19 @@ TraceStoreSqlite3ModuleEof(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
+    BOOL Eof;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
 
     Cursor = CONTAINING_RECORD(Sqlite3Cursor,
                                TRACE_STORE_SQLITE3_CURSOR,
                                AsSqlite3VtabCursor);
 
-    return (Cursor->Rowid >= Cursor->TotalNumberOfRecords);
+    Eof = (
+        Cursor->Flags.EofOverride ||
+        Cursor->Rowid >= Cursor->TotalNumberOfRecords
+    );
+
+    return Eof;
 }
 
 _Use_decl_annotations_
@@ -592,6 +602,8 @@ TraceStoreSqlite3ModuleFindFunction(
     PTRACE_STORE_SQLITE3_DB Db;
     TRACE_STORE_SQLITE3_FUNCTION_ID FunctionId;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+    __debugbreak();
 
     TraceStore = CONTAINING_RECORD(VirtualTable,
                                    TRACE_STORE,

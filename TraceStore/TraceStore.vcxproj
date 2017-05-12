@@ -111,6 +111,7 @@
     <ClCompile Include="TraceStoreSqlite3Functions.c" />
     <ClCompile Include="TraceStoreSqlite3Module.c" />
     <ClCompile Include="TraceStoreSqlite3Schemas.c" />
+    <ClCompile Include="TraceStoreSqlite3Tls.c" />
     <ClCompile Include="TraceStoresRundown.c" />
     <ClCompile Include="TraceStoreSymbols.c" />
     <ClCompile Include="TraceStoreTimer.c" />
