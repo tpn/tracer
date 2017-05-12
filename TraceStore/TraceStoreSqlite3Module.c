@@ -124,6 +124,36 @@ TraceStoreSqlite3ModuleBestIndex(
         if (!Constraint->IsUsable) {
             continue;
         }
+
+        switch (Constraint->Op) {
+
+            case EqualConstraint:
+                break;
+
+            case GreaterThanConstraint:
+                break;
+
+            case LessThanOrEqualConstraint:
+                break;
+
+            case LessThanConstraint:
+                break;
+
+            case GreaterThanOrEqualConstraint:
+                break;
+
+            case MatchConstraint:
+                break;
+
+            case LikeConstraint:
+                break;
+
+            case GlobConstraint:
+                break;
+
+            case RegExpConstraint:
+                break;
+        }
     }
 
     IndexInfo->IndexNumber = 1;
@@ -283,10 +313,11 @@ TraceStoreSqlite3ModuleFilter(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor,
     LONG IndexNumber,
     PCSZ IndexString,
-    LONG ArgumentCount,
+    LONG NumberOfArguments,
     PSQLITE3_VALUE *Arguments
     )
 {
+    PSTRING String;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
 
     Cursor = CONTAINING_RECORD(Sqlite3Cursor,
@@ -294,6 +325,15 @@ TraceStoreSqlite3ModuleFilter(
                                AsSqlite3VtabCursor);
 
     Cursor->Rowid = 0;
+
+    Cursor->FilterArguments = Arguments;
+    Cursor->NumberOfArguments = NumberOfArguments;
+    Cursor->FilterIndexNumber = IndexNumber;
+    Cursor->FilterIndexStringBuffer = IndexString;
+
+    String = &Cursor->FilterIndexString;
+    String->Length = IndexString ? (USHORT)strlen(IndexString) : 0;
+    String->MaximumLength = String->Length;
 
     return SQLITE_OK;
 }

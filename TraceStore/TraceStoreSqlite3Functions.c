@@ -39,6 +39,12 @@ TraceStoreSqlite3CountStep(
 
     Cursor->Flags.EofOverride = TRUE;
 
+    //
+    // Update the rowid whilst we're here.
+    //
+
+    Cursor->Rowid = Cursor->TotalNumberOfRecords;
+
     return;
 }
 

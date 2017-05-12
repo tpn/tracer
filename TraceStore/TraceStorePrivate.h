@@ -3437,6 +3437,16 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     LARGE_INTEGER OpenedTimestamp;
 
     //
+    // Filtering information.
+    //
+
+    PSQLITE3_VALUE *FilterArguments;
+    LONG NumberOfArguments;
+    LONG FilterIndexNumber;
+    PCSZ FilterIndexStringBuffer;
+    STRING FilterIndexString;
+
+    //
     // Inline SQLITE3_VTAB_CURSOR structure.
     //
     // N.B.: This structure must always come last.
