@@ -26,22 +26,10 @@ _DllMainCRTStartup(
         case DLL_PROCESS_ATTACH:
             break;
         case DLL_THREAD_ATTACH:
-            OutputDebugStringA(
-                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
-                "DLL_THREAD_ATTACH.\n"
-            );
             break;
         case DLL_THREAD_DETACH:
-            OutputDebugStringA(
-                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
-                "DLL_THREAD_DETACH.\n"
-            );
             break;
         case DLL_PROCESS_DETACH:
-            OutputDebugStringA(
-                "TraceStoreSqlite3ExtLoader!_DllMainCRTStartup(): "
-                "DLL_PROCESS_DETACH.\n"
-            );
             break;
     }
 
