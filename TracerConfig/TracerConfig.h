@@ -111,6 +111,43 @@ BOOLEAN
 typedef CREATE_GLOBAL_TRACE_SESSION_DIRECTORY \
     *PCREATE_GLOBAL_TRACE_SESSION_DIRECTORY;
 
+//
+// Define an enumeration for capturing the types of paths we expose.
+//
+
+typedef enum _TRACER_PATH_TYPE {
+    TracerNullPathType = -1,
+    TracerDllPathType = 0,
+    TracerPtxPathType,
+    TracerInvalidPathType = TracerPtxPathType + 1
+} TRACER_PATH_TYPE;
+typedef TRACER_PATH_TYPE *PTRACER_PATH_TYPE;
+
+FORCEINLINE
+BOOL
+IsValidTracerPathTypeInline(
+    _In_ TRACER_PATH_TYPE Type
+    )
+{
+    return (
+        Type > TracerNullPathType &&
+        Type < TracerInvalidPathType
+    );
+}
+
+typedef
+BOOL
+(IS_VALID_TRACER_PATH_TYPE_AND_INDEX)(
+    _In_ TRACER_PATH_TYPE PathType,
+    _In_ USHORT Index
+    );
+typedef IS_VALID_TRACER_PATH_TYPE_AND_INDEX
+      *PIS_VALID_TRACER_PATH_TYPE_AND_INDEX;
+
+//
+// Define DLL path enumerations and bitmaps.
+//
+
 typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
     TracerNullDllPathId                   = 0,
 
@@ -166,13 +203,46 @@ typedef union _TRACER_DLL_PATH_TYPE {
 } TRACER_DLL_PATH_TYPE;
 C_ASSERT(sizeof(TRACER_DLL_PATH_TYPE) == sizeof(ULONGLONG));
 
+//
+// Define PTX path enumerations and bitmaps.
+//
+
+typedef enum _Enum_is_bitflag_ _TRACER_PTX_PATH_ID {
+    TracerNullPtxPathId                   =        0,
+
+    TraceStoreKernelsPtxPathId            =        1,
+
+    //
+    // Make sure the right shift value matches the last value in the line above.
+    //
+
+    TracerInvalidPtxPathId                =        1 + 1,
+
+} TRACER_PTX_PATH_ID;
+typedef TRACER_PTX_PATH_ID *PTRACER_PTX_PATH_ID;
+C_ASSERT(sizeof(TRACER_PTX_PATH_ID) == sizeof(ULONG));
+
+#define MAX_TRACER_PTX_PATH_ID (TrailingZeros(TracerInvalidPtxPathId-1)+1)
+
+typedef union _TRACER_PTX_PATH_TYPE {
+    struct _Struct_size_bytes_(sizeof(ULONGLONG)) {
+        ULONGLONG TraceStoreKernelsPtxPathId:1;
+        ULONGLONG Unused:63;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
+    TRACER_PTX_PATH_ID AsPathId;
+} TRACER_PTX_PATH_TYPE;
+C_ASSERT(sizeof(TRACER_PTX_PATH_TYPE) == sizeof(ULONGLONG));
+
+
 typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
 
     //
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT Size;
+    _Field_range_(==, sizeof(struct _TRACER_PATHS)) USHORT SizeOfStruct;
 
     //
     // Number of DLL paths.  This field can be used in conjunction with the
@@ -180,14 +250,23 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     // arithmetic.
     //
 
-    _Field_range_(==, ARRAYSIZE(struct _TRACER_PATH_UNICODE_STRINGS))
-    USHORT NumberOfPaths;
+    _Field_range_(==, ARRAYSIZE(struct _TRACER_DLL_PATH_UNICODE_STRINGS))
+    USHORT NumberOfDllPaths;
+
+    //
+    // Number of PTX paths.  This field can be used in conjunction with the
+    // FirstPtxPath field below to iterate over the paths using pointer
+    // arithmetic.
+    //
+
+    _Field_range_(==, ARRAYSIZE(struct _TRACER_PTX_PATH_UNICODE_STRINGS))
+    USHORT NumberOfPtxPaths;
 
     //
     // Pad out to 8 bytes.
     //
 
-    USHORT Padding[2];
+    USHORT Padding;
 
     //
     // Installation directory and the base trace data directory
@@ -213,7 +292,7 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
     //
 
     union {
-        struct _TRACER_PATH_UNICODE_STRINGS {
+        struct _TRACER_DLL_PATH_UNICODE_STRINGS {
             UNICODE_STRING AsmDllPath;
             UNICODE_STRING RtlDllPath;
             UNICODE_STRING TracerCoreDllPath;
@@ -236,6 +315,26 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
         //
 
         UNICODE_STRING FirstDllPath;
+    };
+
+    //
+    // Fully-qualified paths to PTX files.  The paths are built relative to
+    // InstallationDirectory above, using the same binary type semantics as the
+    // DLL paths above for selecting the intermediate part of the path name
+    // (e.g. x64\Debug vs x64\Release).
+    //
+
+    union {
+        struct _TRACER_PTX_PATH_UNICODE_STRINGS {
+            UNICODE_STRING TraceStoreKernelsPtxPath;
+        };
+
+        //
+        // Provide a convenient way to access the first DLL path name member
+        // without having to know its name.
+        //
+
+        UNICODE_STRING FirstPtxPath;
     };
 
     //
@@ -266,6 +365,21 @@ TracerDllPathIdToUnicodeString(
 
     return &Paths->FirstDllPath + (PathId - 1);
 }
+
+FORCEINLINE
+PUNICODE_STRING
+TracerPtxPathIdToUnicodeString(
+    _In_ PTRACER_PATHS Paths,
+    _In_ TRACER_PTX_PATH_ID PathId
+    )
+{
+    if (PathId <= TracerNullPtxPathId || PathId >= TracerInvalidPtxPathId) {
+        return NULL;
+    }
+
+    return &Paths->FirstPtxPath + (PathId - 1);
+}
+
 
 FORCEINLINE
 BOOL
@@ -636,6 +750,13 @@ typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
 
     TRACE_SESSION_DIRECTORIES TraceSessionDirectories;
 
+    //
+    // The CUDA device ordinal to use for any CUDA-related work.
+    //
+
+    ULONG CuDeviceOrdinal;
+    ULONG Padding2;
+
 } TRACER_CONFIG, *PTRACER_CONFIG, **PPTRACER_CONFIG;
 typedef CONST TRACER_CONFIG CTRACER_CONFIG;
 typedef CONST PTRACER_CONFIG PCTRACER_CONFIG;
@@ -830,6 +951,8 @@ TRACER_CONFIG_API GET_OR_CREATE_GLOBAL_ALLOCATOR GetOrCreateGlobalAllocator;
 TRACER_CONFIG_API INITIALIZE_TRACER_CONFIG InitializeTracerConfig;
 TRACER_CONFIG_API DEBUG_BREAK _DebugBreak;
 TRACER_CONFIG_API MAKE_TRACER_PATH MakeTracerPath;
+TRACER_CONFIG_API IS_VALID_TRACER_PATH_TYPE_AND_INDEX
+                  IsValidTracerPathTypeAndIndex;
 #pragma component(browser, on)
 
 #ifdef __cplusplus

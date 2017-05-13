@@ -43,6 +43,7 @@ _Success_(return != 0)
 BOOL
 (LOAD_TRACER_PATH)(
     _In_ PTRACER_CONFIG TracerConfig,
+    _In_ TRACER_PATH_TYPE PathType,
     _In_ USHORT Index
     );
 typedef LOAD_TRACER_PATH *PLOAD_TRACER_PATH;
@@ -106,6 +107,67 @@ Return Value:
         );                                      \
     }                                           \
 } while (0)
+
+/*++
+
+    VOID
+    READ_REG_DWORD(
+        Name,
+        Default
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry
+    into the TRACER_CONFIG structure.  If the registry key isn't present,
+    an attempt will be made to write the default value.
+
+Arguments:
+
+    Name - Name of the flag to read (e.g. LoadDebugLibraries).  The macro
+        resolves this to Flags.Name (e.g. Flags.LoadDebugLibraries).
+
+    Default - Default value to assign to the field if the registry key couldn't
+        be read successfully (because it was not present, or was an incorrect
+        type).
+
+Return Value:
+
+    None.
+
+--*/
+
+#ifdef READ_REG_DWORD
+#undef READ_REG_DWORD
+#endif
+
+#define READ_REG_DWORD(Name, Default) do {      \
+    ULONG Value;                                \
+    ULONG ValueLength = sizeof(Value);          \
+    Result = RegGetValueW(                      \
+        RegistryKey,                            \
+        NULL,                                   \
+        L#Name,                                 \
+        RRF_RT_REG_DWORD,                       \
+        NULL,                                   \
+        (PVOID)&Value,                          \
+        &ValueLength                            \
+    );                                          \
+    if (Result == ERROR_SUCCESS) {              \
+        TracerConfig->##Name = Value;           \
+    } else {                                    \
+        TracerConfig->##Name = Value = Default; \
+        RegSetValueExW(                         \
+            RegistryKey,                        \
+            L#Name,                             \
+            0,                                  \
+            REG_DWORD,                          \
+            (const BYTE*)&Value,                \
+            ValueLength                         \
+        );                                      \
+    }                                           \
+} while (0)
+
 
 /*++
 

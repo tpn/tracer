@@ -45,7 +45,7 @@ Return Value:
 --*/
 {
     USHORT Index;
-    USHORT NumberOfPaths;
+    USHORT NumberOfDllPaths;
     HMODULE Module;
     PTRACER_PATHS Paths;
     PUNICODE_STRING Path;
@@ -63,9 +63,9 @@ Return Value:
     //
 
     Paths = &TracerConfig->Paths;
-    NumberOfPaths = TracerConfig->Paths.NumberOfPaths;
+    NumberOfDllPaths = TracerConfig->Paths.NumberOfDllPaths;
 
-    for (Index = 0; Index < NumberOfPaths; Index++) {
+    for (Index = 0; Index < NumberOfDllPaths; Index++) {
         Path = &Paths->FirstDllPath + Index;
         Module = LoadLibraryW(Path->Buffer);
         if (!Module || Module == INVALID_HANDLE_VALUE) {
@@ -75,5 +75,6 @@ Return Value:
 
     return TRUE;
 }
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

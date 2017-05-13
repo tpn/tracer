@@ -34,52 +34,6 @@ CONST UNICODE_STRING x64_PGInstrument = \
 CONST UNICODE_STRING x64_PGOptimize = \
     RTL_CONSTANT_STRING(L"\\x64\\PGOptimize\\");
 
-//
-// Fully-qualified paths.
-//
-
-CONST UNICODE_STRING AsmDllPath = \
-    RTL_CONSTANT_STRING(L"Asm.dll");
-
-CONST UNICODE_STRING RtlDllPath = \
-    RTL_CONSTANT_STRING(L"Rtl.dll");
-
-CONST UNICODE_STRING TracerCoreDllPath = \
-    RTL_CONSTANT_STRING(L"TracerCore.dll");
-
-CONST UNICODE_STRING PythonDllPath = \
-    RTL_CONSTANT_STRING(L"Python.dll");
-
-CONST UNICODE_STRING TracerHeapDllPath = \
-    RTL_CONSTANT_STRING(L"TracerHeap.dll");
-
-CONST UNICODE_STRING TraceStoreDllPath = \
-    RTL_CONSTANT_STRING(L"TraceStore.dll");
-
-CONST UNICODE_STRING DebugEngineDllPath = \
-    RTL_CONSTANT_STRING(L"DebugEngine.dll");
-
-CONST UNICODE_STRING StringTableDllPath = \
-    RTL_CONSTANT_STRING(L"StringTable.dll");
-
-CONST UNICODE_STRING PythonTracerDllPath = \
-    RTL_CONSTANT_STRING(L"PythonTracer.dll");
-
-CONST UNICODE_STRING TlsTracerHeapDllPath = \
-    RTL_CONSTANT_STRING(L"TlsTracerHeap.dll");
-
-CONST UNICODE_STRING InjectionThunkDllPath = \
-    RTL_CONSTANT_STRING(L"InjectionThunk.dll");
-
-CONST UNICODE_STRING TracedPythonSessionDllPath = \
-    RTL_CONSTANT_STRING(L"TracedPythonSession.dll");
-
-CONST UNICODE_STRING TraceStoreSqlite3ExtDllPath = \
-    RTL_CONSTANT_STRING(L"TraceStoreSqlite3Ext.dll");
-
-CONST UNICODE_STRING PythonTracerInjectionDllPath = \
-    RTL_CONSTANT_STRING(L"PythonTracerInjection.dll");
-
 CONST PUNICODE_STRING IntermediatePaths[] = {
     (CONST PUNICODE_STRING)&x64_Release,
     (CONST PUNICODE_STRING)&x64_Debug,
@@ -87,35 +41,82 @@ CONST PUNICODE_STRING IntermediatePaths[] = {
     (CONST PUNICODE_STRING)&x64_PGOptimize
 };
 
-CONST TRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY DllPathOffsets[] = {
-    { FIELD_OFFSET(TRACER_PATHS, AsmDllPath),           &AsmDllPath           },
-    { FIELD_OFFSET(TRACER_PATHS, RtlDllPath),           &RtlDllPath           },
-    { FIELD_OFFSET(TRACER_PATHS, PythonDllPath),        &PythonDllPath        },
-    { FIELD_OFFSET(TRACER_PATHS, TracerCoreDllPath),    &TracerCoreDllPath    },
-    { FIELD_OFFSET(TRACER_PATHS, TracerHeapDllPath),    &TracerHeapDllPath    },
-    { FIELD_OFFSET(TRACER_PATHS, TraceStoreDllPath),    &TraceStoreDllPath    },
-    { FIELD_OFFSET(TRACER_PATHS, DebugEngineDllPath),   &DebugEngineDllPath   },
-    { FIELD_OFFSET(TRACER_PATHS, StringTableDllPath),   &StringTableDllPath   },
-    { FIELD_OFFSET(TRACER_PATHS, PythonTracerDllPath),  &PythonTracerDllPath  },
-    { FIELD_OFFSET(TRACER_PATHS, TlsTracerHeapDllPath), &TlsTracerHeapDllPath },
-    {
-        FIELD_OFFSET(TRACER_PATHS, InjectionThunkDllPath),
-        &InjectionThunkDllPath,
-    },
-    {
-        FIELD_OFFSET(TRACER_PATHS, TracedPythonSessionDllPath),
-        &TracedPythonSessionDllPath
-    },
-    {
-        FIELD_OFFSET(TRACER_PATHS, TraceStoreSqlite3ExtDllPath),
-        &TraceStoreSqlite3ExtDllPath
-    },
-    {
-        FIELD_OFFSET(TRACER_PATHS, PythonTracerInjectionDllPath),
-        &PythonTracerInjectionDllPath
-    },
-    LAST_DLL_OFFSET_ENTRY
+//
+// DLL filenames.
+//
+
+CONST UNICODE_STRING AsmDllFilename =
+    RTL_CONSTANT_STRING(L"Asm.dll");
+
+CONST UNICODE_STRING RtlDllFilename =
+    RTL_CONSTANT_STRING(L"Rtl.dll");
+
+CONST UNICODE_STRING TracerCoreDllFilename =
+    RTL_CONSTANT_STRING(L"TracerCore.dll");
+
+CONST UNICODE_STRING PythonDllFilename =
+    RTL_CONSTANT_STRING(L"Python.dll");
+
+CONST UNICODE_STRING TracerHeapDllFilename =
+    RTL_CONSTANT_STRING(L"TracerHeap.dll");
+
+CONST UNICODE_STRING TraceStoreDllFilename =
+    RTL_CONSTANT_STRING(L"TraceStore.dll");
+
+CONST UNICODE_STRING DebugEngineDllFilename =
+    RTL_CONSTANT_STRING(L"DebugEngine.dll");
+
+CONST UNICODE_STRING StringTableDllFilename =
+    RTL_CONSTANT_STRING(L"StringTable.dll");
+
+CONST UNICODE_STRING PythonTracerDllFilename =
+    RTL_CONSTANT_STRING(L"PythonTracer.dll");
+
+CONST UNICODE_STRING TlsTracerHeapDllFilename =
+    RTL_CONSTANT_STRING(L"TlsTracerHeap.dll");
+
+CONST UNICODE_STRING InjectionThunkDllFilename =
+    RTL_CONSTANT_STRING(L"InjectionThunk.dll");
+
+CONST UNICODE_STRING TracedPythonSessionDllFilename =
+    RTL_CONSTANT_STRING(L"TracedPythonSession.dll");
+
+CONST UNICODE_STRING TraceStoreSqlite3ExtDllFilename =
+    RTL_CONSTANT_STRING(L"TraceStoreSqlite3Ext.dll");
+
+CONST UNICODE_STRING PythonTracerInjectionDllFilename =
+    RTL_CONSTANT_STRING(L"PythonTracerInjection.dll");
+
+#define OFFSET_ENTRY(Name)                      \
+    {                                           \
+        FIELD_OFFSET(TRACER_PATHS, Name##Path), \
+        &##Name##Filename,                      \
+    }
+
+CONST TRACER_OFFSET_TO_PATH_ENTRY DllPathOffsets[] = {
+    OFFSET_ENTRY(AsmDll),
+    OFFSET_ENTRY(RtlDll),
+    OFFSET_ENTRY(TracerCoreDll),
+    OFFSET_ENTRY(PythonDll),
+    OFFSET_ENTRY(TracerHeapDll),
+    OFFSET_ENTRY(TraceStoreDll),
+    OFFSET_ENTRY(DebugEngineDll),
+    OFFSET_ENTRY(StringTableDll),
+    OFFSET_ENTRY(PythonTracerDll),
+    OFFSET_ENTRY(TlsTracerHeapDll),
+    OFFSET_ENTRY(InjectionThunkDll),
+    OFFSET_ENTRY(TracedPythonSessionDll),
+    OFFSET_ENTRY(TraceStoreSqlite3ExtDll),
+    OFFSET_ENTRY(PythonTracerInjectionDll),
+    LAST_OFFSET_ENTRY,
 };
+
+//
+// Subtract 1 to account for the trailing NULL element (LAST_OFFSET_ENTRY).
+//
+//
+
+CONST USHORT NumberOfDllPathOffsets = ARRAYSIZE(DllPathOffsets) - 1;
 
 CONST TRACER_DLL_PATH_TYPE TracerInjectionDllsBitmap = {
     0, // AsmDllPath
@@ -136,21 +137,75 @@ CONST TRACER_DLL_PATH_TYPE TracerInjectionDllsBitmap = {
 };
 
 //
-// Subtract 1 to account for the trailing NULL element.
+// PTX filenames.
 //
 
-CONST USHORT NumberOfDllPathOffsets = (
-    (sizeof(DllPathOffsets) /
-     sizeof(DllPathOffsets[0])) - 1
-);
+CONST UNICODE_STRING TraceStoreKernelsPtxFilename =
+    RTL_CONSTANT_STRING(L"TraceStoreKernels.ptx");
+
+CONST TRACER_OFFSET_TO_PATH_ENTRY PtxPathOffsets[] = {
+    OFFSET_ENTRY(TraceStoreKernelsPtx),
+    LAST_OFFSET_ENTRY
+};
+
+//
+// Subtract 1 to account for the trailing NULL element (LAST_OFFSET_ENTRY).
+//
+
+CONST USHORT NumberOfPtxPathOffsets = ARRAYSIZE(PtxPathOffsets) - 1;
+
+//
+// This array can be indexed by a valid TRACER_PATH_TYPE enum value.
+//
+
+#define PATH_TYPE_OFFSETS(Name)                             \
+    {                                                       \
+        ARRAYSIZE(##Name##PathOffsets) - 1,                 \
+        (PCTRACER_OFFSET_TO_PATH_ENTRY)##Name##PathOffsets, \
+    }
+
+CONST TRACER_PATH_OFFSETS TracerPathOffsets[] = {
+    PATH_TYPE_OFFSETS(Dll),
+    PATH_TYPE_OFFSETS(Ptx),
+};
+
+//
+// Non-inline entry points of inline helpers.
+//
 
 _Use_decl_annotations_
 BOOL
 IsLastPathOffset(
-    PCTRACER_DLL_OFFSET_TO_DLL_PATH_ENTRY Entry
+    PCTRACER_OFFSET_TO_PATH_ENTRY Entry
     )
 {
     return IsLastPathOffsetInline(Entry);
+}
+
+_Use_decl_annotations_
+BOOL
+IsValidTracerPathType(
+    TRACER_PATH_TYPE Type
+    )
+{
+    return IsValidTracerPathTypeInline(Type);
+}
+
+_Use_decl_annotations_
+BOOL
+IsValidTracerPathTypeAndIndex(
+    TRACER_PATH_TYPE PathType,
+    USHORT Index
+    )
+{
+    USHORT Offsets;
+
+    if (!IsValidTracerPathTypeInline(PathType)) {
+        return FALSE;
+    }
+
+    Offsets = TracerPathOffsets[PathType].NumberOfOffsets;
+    return (Index < Offsets);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

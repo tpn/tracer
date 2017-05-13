@@ -164,11 +164,12 @@ Return Value:
     InitializeSRWLock(&TraceSessionDirectories->Lock);
 
     //
-    // Initialize size, number of paths, and allocator.
+    // Initialize size, number of DLL and PTX paths, and allocator.
     //
 
     TracerConfig->Size = sizeof(*TracerConfig);
-    TracerConfig->Paths.NumberOfPaths = NumberOfDllPathOffsets;
+    TracerConfig->Paths.NumberOfDllPaths = NumberOfDllPathOffsets;
+    TracerConfig->Paths.NumberOfPtxPaths = NumberOfPtxPathOffsets;
 
     TracerConfig->Allocator = Allocator;
 
@@ -249,7 +250,7 @@ Return Value:
     //
 
     Paths = &TracerConfig->Paths;
-    Paths->Size = sizeof(*Paths);
+    Paths->SizeOfStruct = sizeof(*Paths);
 
     //
     // Load InstallationDirectory and BaseTraceDirectory.
@@ -269,10 +270,21 @@ Return Value:
     //
 
     for (Index = 0; Index < NumberOfDllPathOffsets; Index++) {
-        if (!LoadTracerPath(TracerConfig, Index)) {
+        if (!LoadTracerPath(TracerConfig, TracerDllPathType, Index)) {
             goto Error;
         }
     }
+
+    //
+    // Load fully-qualified PTX path names.
+    //
+
+    for (Index = 0; Index < NumberOfPtxPathOffsets; Index++) {
+        if (!LoadTracerPath(TracerConfig, TracerPtxPathType, Index)) {
+            goto Error;
+        }
+    }
+
 
     //
     // Initialize the bitmap that indicates which DLLs support tracer injection.
@@ -284,6 +296,12 @@ Return Value:
 
     CopyTracerDllPathType(Paths->TracerInjectionDlls,
                           TracerInjectionDllsBitmap);
+
+    //
+    // Read CuDeviceOrdinal from the registry.
+    //
+
+    READ_REG_DWORD(CuDeviceOrdinal, 1);
 
     //
     // That's it, we're done.

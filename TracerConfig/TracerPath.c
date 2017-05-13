@@ -247,6 +247,7 @@ _Use_decl_annotations_
 BOOL
 LoadTracerPath(
     PTRACER_CONFIG TracerConfig,
+    TRACER_PATH_TYPE PathType,
     USHORT Index
     )
 /*++
@@ -262,6 +263,11 @@ Routine Description:
 
 Arguments:
 
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure for which
+        the path is being loaded.
+
+    PathType - Supplies the type of path being loaded (e.g. DLL vs PTX).
+
     Index - Supplies the 0-based index into the PathOffsets[] array which
         is used to resolve a pointer to the UNICODE_STRING variable in the
         TRACER_PATHS structure, as well as a pointer to the UNICODE_STRING
@@ -269,15 +275,15 @@ Arguments:
 
 Return Value:
 
-    TRUE on success, FALSE on FAILURE.
+    TRUE on success, FALSE on failure.
 
 --*/
 {
     USHORT Offset;
     PTRACER_PATHS Paths;
-    PALLOCATOR Allocator;
-    PCUNICODE_STRING DllPath;
+    PCUNICODE_STRING Filename;
     PUNICODE_STRING TargetPath;
+    PCTRACER_OFFSET_TO_PATH_ENTRY PathEntry;
 
     //
     // Validate arguments.
@@ -287,30 +293,30 @@ Return Value:
         return FALSE;
     }
 
-    if (Index >= NumberOfDllPathOffsets) {
+    if (!IsValidTracerPathTypeAndIndex(PathType, Index)) {
         return FALSE;
     }
 
     //
-    // Initialize various local variables.
+    // Load the offset and filename for this combination of path type and index.
+    //
+
+    PathEntry = &TracerPathOffsets[PathType].Entries[Index];
+    Offset = PathEntry->Offset;
+    Filename = PathEntry->Filename;
+
+    //
+    // Resolve the address of the final target path.
     //
 
     Paths = &TracerConfig->Paths;
-    Offset = DllPathOffsets[Index].Offset;
-    Allocator = TracerConfig->Allocator;
-
-    //
-    // Initialize paths.
-    //
-
-    DllPath = DllPathOffsets[Index].DllPath;
     TargetPath = (PUNICODE_STRING)((((ULONG_PTR)Paths) + Offset));
 
     //
     // Dispatch to MakeTracerPath() for final path preparation.
     //
 
-    return MakeTracerPath(TracerConfig, DllPath, NULL, &TargetPath);
+    return MakeTracerPath(TracerConfig, Filename, NULL, &TargetPath);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
