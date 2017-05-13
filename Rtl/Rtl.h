@@ -233,6 +233,22 @@ extern "C" {
 #define RtlPointerToOffset(B,P)    ((ULONG_PTR)(((PCHAR)(P)) - ((PCHAR)(B))))
 #endif
 
+#ifndef FlagOn
+#define FlagOn(_F,_SF)        ((_F) & (_SF))
+#endif
+
+#ifndef BooleanFlagOn
+#define BooleanFlagOn(F,SF)   ((BOOLEAN)(((F) & (SF)) != 0))
+#endif
+
+#ifndef SetFlag
+#define SetFlag(_F,_SF)       ((_F) |= (_SF))
+#endif
+
+#ifndef ClearFlag
+#define ClearFlag(_F,_SF)     ((_F) &= ~(_SF))
+#endif
+
 //
 // Helper macros.
 //
@@ -2333,6 +2349,23 @@ PVOID
     _In_ ULONG PreferredNode
     );
 typedef MAP_VIEW_OF_FILE_NUMA2 *PMAP_VIEW_OF_FILE_NUMA2;
+
+typedef
+_Ret_maybenull_
+__out_data_source(FILE)
+PVOID
+(WINAPI TRY_MAP_VIEW_OF_FILE_NUMA2)(
+    _In_ struct _RTL *Rtl,
+    _In_ HANDLE FileMappingHandle,
+    _In_ HANDLE ProcessHandle,
+    _In_ ULONG64 Offset,
+    _In_opt_ PVOID BaseAddress,
+    _In_ SIZE_T ViewSize,
+    _In_ ULONG AllocationType,
+    _In_ ULONG PageProtection,
+    _In_ ULONG PreferredNode
+    );
+typedef TRY_MAP_VIEW_OF_FILE_NUMA2 *PTRY_MAP_VIEW_OF_FILE_NUMA2;
 
 typedef
 BOOL
@@ -5846,6 +5879,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PVIRTUAL_ALLOC TryLargePageVirtualAlloc;
     PVIRTUAL_ALLOC_EX TryLargePageVirtualAllocEx;
 
+    PMAP_VIEW_OF_FILE_EX_NUMA MapViewOfFileExNuma;
+    PMAP_VIEW_OF_FILE_NUMA2 MapViewOfFileNuma2;
+    PTRY_MAP_VIEW_OF_FILE_NUMA2 TryMapViewOfFileNuma2;
+
     PATEXIT atexit;
     PATEXITEX AtExitEx;
 
@@ -5876,9 +5913,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCRYPT_GEN_RANDOM CryptGenRandom;
     PCRYPT_BINARY_TO_STRING_A CryptBinaryToStringA;
     PCRYPT_BINARY_TO_STRING_W CryptBinaryToStringW;
-
-    PMAP_VIEW_OF_FILE_EX_NUMA MapViewOfFileExNuma;
-    PMAP_VIEW_OF_FILE_NUMA2 MapViewOfFileNuma2;
 
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
@@ -5955,6 +5989,20 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 #endif
 
 } RTL, *PRTL, **PPRTL;
+
+FORCEINLINE
+ULONG
+FilterLargePageFlags(
+    _In_ PRTL Rtl,
+    _In_ ULONG Flags
+    )
+{
+    if (!Rtl->Flags.IsLargePageEnabled) {
+        return Flags & ~(MEM_LARGE_PAGES | SEC_LARGE_PAGES);
+    } else {
+        return Flags;
+    }
+}
 
 FORCEINLINE
 ULONG
@@ -8481,6 +8529,56 @@ Return Value:
         QwordLength                            \
     );                                         \
 } while (0)
+
+/*++
+
+    VOID
+    READ_REG_DWORD(
+        _In_ HKEY Key,
+        _In_ LITERAL Name,
+        _In_ PDWORD DwordPointer
+        );
+
+Routine Description:
+
+    This is a helper macro for reading REG_DWORD values from the registry.
+
+Arguments:
+
+    Key - Supplies an HKEY handle that represents an open registry key with
+        appropriate read access.
+
+    Name - Name of the registry key to read.  This is converted into a literal
+        wide character string by the macro (e.g. MaxNoneRefCount will become
+        L"MaxNoneRefCount").
+
+    DwordPointer - Supplies a pointer to a DWORD that will receive the
+        registry key value.
+
+Return Value:
+
+    None.
+
+    N.B. If an error occurs, 0 will be written to DwordPointer.
+
+--*/
+
+#define READ_REG_DWORD(Key, Name, DwordPointer) do { \
+    ULONG DwordLength = sizeof(*DwordPointer);       \
+    Result = RegGetValueW(                           \
+        Key,                                         \
+        NULL,                                        \
+        L#Name,                                      \
+        RRF_RT_REG_DWORD,                            \
+        NULL,                                        \
+        (PVOID)DwordPointer,                         \
+        &DwordLength                                 \
+    );                                               \
+    if (Result != ERROR_SUCCESS) {                   \
+        *DwordPointer = 0;                           \
+    }                                                \
+} while (0)
+
 
 /*++
 

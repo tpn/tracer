@@ -483,7 +483,7 @@ typedef
 _Check_return_
 CU_RESULT
 (CU_DEVICE_GET)(
-    _Out_ PCU_DEVICE Device,
+    _Outptr_result_maybenull_ PCU_DEVICE Device,
     _In_opt_ LONG Ordinal
     );
 typedef CU_DEVICE_GET *PCU_DEVICE_GET;
@@ -624,7 +624,7 @@ CU_RESULT
     _In_z_ PCHAR Image,
     _In_ LONG NumberOfOptions,
     _In_reads_(NumberOfOptions) PCU_JIT_OPTION Options,
-    _Out_writes_(NumberOfOptions) PPCU_JIT_OPTION OptionValuesPointer
+    _Out_writes_(NumberOfOptions) PPVOID OptionValuesPointer
     );
 typedef CU_MODULE_LOAD_DATA_EX *PCU_MODULE_LOAD_DATA_EX;
 

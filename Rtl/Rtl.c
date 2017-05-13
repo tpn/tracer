@@ -3001,6 +3001,48 @@ InitializeLargePages(PRTL Rtl)
     return TRUE;
 }
 
+PVOID
+TryMapViewOfFileNuma2(
+    PRTL Rtl,
+    HANDLE FileMappingHandle,
+    HANDLE ProcessHandle,
+    ULONG64 Offset,
+    PVOID BaseAddress,
+    SIZE_T ViewSize,
+    ULONG AllocationType,
+    ULONG PageProtection,
+    ULONG PreferredNode
+    )
+{
+    LARGE_INTEGER FileOffset;
+
+    if (!Rtl->MapViewOfFileNuma2) {
+        goto Fallback;
+    }
+
+    AllocationType = FilterLargePageFlags(Rtl, AllocationType);
+
+    return Rtl->MapViewOfFileNuma2(FileMappingHandle,
+                                   ProcessHandle,
+                                   Offset,
+                                   BaseAddress,
+                                   ViewSize,
+                                   AllocationType,
+                                   PageProtection,
+                                   PreferredNode);
+
+Fallback:
+
+    FileOffset.QuadPart = Offset;
+    return Rtl->MapViewOfFileExNuma(FileMappingHandle,
+                                    PageProtection,
+                                    FileOffset.HighPart,
+                                    FileOffset.LowPart,
+                                    ViewSize,
+                                    BaseAddress,
+                                    PreferredNode);
+}
+
 RTL_API PROBE_FOR_READ ProbeForRead;
 
 _Use_decl_annotations_
@@ -3142,6 +3184,8 @@ InitializeRtl(
             "MapViewOfFileNuma2"
         )
     );
+
+    Rtl->TryMapViewOfFileNuma2 = TryMapViewOfFileNuma2;
 
     Rtl->OutputDebugStringA = OutputDebugStringA;
     Rtl->OutputDebugStringW = OutputDebugStringW;

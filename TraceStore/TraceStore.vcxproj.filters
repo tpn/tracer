@@ -144,11 +144,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="TraceStoreKernels.cu">
-      <Filter>Source Files</Filter>
-    </None>
-  </ItemGroup>
   <!--
   <ItemGroup>
     <MASM Include="..\Rtl\__chkstk.s" Condition="'$(Platform)' == 'x64'">

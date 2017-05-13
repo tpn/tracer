@@ -16,14 +16,41 @@ Abstract:
 extern "C" {
 #endif
 
-__global__
-void saxpy(int n, float a, float *x, float *y)
-{
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x;
-         i < n;
-         i += blockDim.x * gridDim.x) {
+#include "Cu.cuh"
+#include <no_sal2.h>
 
-        y[i] = a * x[i] + y[i];
+GLOBAL
+VOID
+SinglePrecisionAlphaXPlusY(
+    _In_ LONG Total,
+    _In_ FLOAT Alpha,
+    _In_ PFLOAT X,
+    _Out_ PFLOAT Y
+    )
+{
+    LONG Index;
+
+    FOR_EACH_1D(Index, Total) {
+        Y[Index] = Alpha * X[Index] + Y[Index];
+    }
+}
+
+GLOBAL
+VOID
+DeltaTimestamp(
+    _In_ ULONG64 Total,
+    _In_ PULONG64 Timestamp,
+    _Out_ PULONG64 Delta
+    )
+{
+    ULONG64 Index;
+
+    if (ThreadIndex.x % 32 == 0) {
+        return;
+    }
+
+    FOR_EACH_1D(Index, Total) {
+        Delta[Index] = Timestamp[Index] - Timestamp[Index-1];
     }
 }
 

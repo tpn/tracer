@@ -3532,7 +3532,19 @@ extern SQLITE3_AGGREGATE_FINAL_FUNCTION
 
 typedef union _TRACE_STORE_SQLITE3_DB_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
-        ULONG Unused:32;
+
+        //
+        // When set, indicates CUDA has been initialized and is ready for use
+        // (via the Cu interface pointer).
+        //
+
+        ULONG CuAvailable:1;
+
+        //
+        // Unused.
+        //
+
+        ULONG Unused:31;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -3589,6 +3601,21 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     //
 
     PCU Cu;
+
+    //
+    // We prepare CUDA in a separate thread.  The following event is set when
+    // the InitCu() threadpool callback has completed.  Note that completion
+    // doesn't imply success; the caller must check the CuAvailable flag.
+    //
+
+    HANDLE CuLoadingCompleteEvent;
+
+    //
+    // Our CU_MODULE for TraceStoreKernels.
+    //
+
+    PCU_MODULE CuModule;
+    PCU_FUNCTION CuFunctions[2];
 
     //
     // Our core tracing/support modules.

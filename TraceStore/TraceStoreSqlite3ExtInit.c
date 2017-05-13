@@ -16,6 +16,319 @@ Abstract:
 
 #include "stdafx.h"
 
+typedef
+VOID
+(CALLBACK TRACE_STORE_SQLITE3_INIT_CU)(
+    _Inout_ PTP_CALLBACK_INSTANCE Instance,
+    _Inout_opt_ PVOID Context
+    );
+typedef TRACE_STORE_SQLITE3_INIT_CU *PTRACE_STORE_SQLITE3_INIT_CU;
+
+typedef
+BOOL
+(LOAD_FILE)(
+    _In_ PRTL Rtl,
+    _In_ PCUNICODE_STRING Path,
+    _Out_ PHANDLE FileHandlePointer,
+    _Out_ PHANDLE MappingHandlePointer,
+    _Out_ PPVOID BaseAddressPointer
+    );
+typedef LOAD_FILE *PLOAD_FILE;
+
+LOAD_FILE LoadFile;
+
+_Use_decl_annotations_
+BOOL
+LoadFile(
+    PRTL Rtl,
+    PCUNICODE_STRING Path,
+    PHANDLE FileHandlePointer,
+    PHANDLE MappingHandlePointer,
+    PPVOID BaseAddressPointer
+    )
+{
+    BOOL Success;
+    ULONG LastError;
+    HANDLE FileHandle = NULL;
+    PVOID BaseAddress = NULL;
+    HANDLE MappingHandle = NULL;
+
+    //
+    // Clear the caller's pointers up-front.
+    //
+
+    *FileHandlePointer = NULL;
+    *BaseAddressPointer = NULL;
+    *MappingHandlePointer = NULL;
+
+    FileHandle = CreateFileW(Path->Buffer,
+                             GENERIC_READ,
+                             FILE_SHARE_READ,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_OVERLAPPED  |
+                             FILE_ATTRIBUTE_NORMAL |
+                             FILE_FLAG_SEQUENTIAL_SCAN,
+                             NULL);
+
+    if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
+        FileHandle = NULL;
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    MappingHandle = CreateFileMappingNuma(FileHandle,
+                                          NULL,
+                                          PAGE_READONLY,
+                                          0,
+                                          0,
+                                          NULL,
+                                          NUMA_NO_PREFERRED_NODE);
+
+    if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
+        MappingHandle = NULL;
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    BaseAddress = Rtl->MapViewOfFileExNuma(MappingHandle,
+                                           FILE_MAP_READ,
+                                           0,
+                                           0,
+                                           0,
+                                           BaseAddress,
+                                           NUMA_NO_PREFERRED_NODE);
+
+    if (!BaseAddress) {
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // We've successfully opened, created a section for, and then subsequently
+    // mapped, the requested PTX file.  Update the caller's pointers and return
+    // success.
+    //
+
+    *FileHandlePointer = FileHandle;
+    *BaseAddressPointer = BaseAddress;
+    *MappingHandlePointer = MappingHandle;
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    if (MappingHandle) {
+        CloseHandle(MappingHandle);
+        MappingHandle = NULL;
+    }
+
+    if (FileHandle) {
+        CloseHandle(FileHandle);
+        FileHandle = NULL;
+    }
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
+}
+
+
+
+TRACE_STORE_SQLITE3_INIT_CU TraceStoreSqlite3InitCu;
+
+#define NUM_PTX_FILES 1
+
+_Use_decl_annotations_
+VOID
+TraceStoreSqlite3InitCu(
+    PTP_CALLBACK_INSTANCE Instance,
+    PVOID TpContext
+    )
+{
+    BOOL Success;
+    PCU Cu;
+    PRTL Rtl;
+    USHORT Index;
+    USHORT FuncIndex;
+    ULONG Ordinal;
+    CU_DEVICE Device;
+    PCU_MODULE Module;
+    PCU_CONTEXT Context;
+    PCU_FUNCTION Function;
+    PCSZ FunctionName;
+    PTRACE_STORE_SQLITE3_DB Db;
+    TRACER_PTX_PATH_ID PtxPathIds[NUM_PTX_FILES] = {
+        TraceStoreKernelsPtxPathId,
+    };
+
+    PCSZ TraceStoreKernelFunctionNames[] = {
+        (PCSZ)"SinglePrecisionAlphaXPlusY",
+        (PCSZ)"DeltaTimestamp",
+    };
+
+    PCSZ *PtxFunctionNames[] = {
+
+        //
+        // TraceStoreKernels
+        //
+
+        TraceStoreKernelFunctionNames,
+    };
+
+    PTRACER_CONFIG TracerConfig;
+    PTRACER_PATHS Paths;
+    TRACER_PTX_PATH_ID PathId;
+    HANDLE FileHandle;
+    PVOID BaseAddress;
+    HANDLE MappingHandle;
+    PCUNICODE_STRING Path;
+    PCSZ PtxContents;
+    CHAR JitLogBuffer[1024];
+    CU_RESULT Result;
+    CU_JIT_OPTION JitOptions[] = {
+        CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES,
+        CU_JIT_INFO_LOG_BUFFER,
+        CU_JIT_MAX_REGISTERS,
+    };
+    PVOID JitOptionValues[] = {
+        (PVOID)sizeof(JitLogBuffer),
+        (PVOID)JitLogBuffer,
+        (PVOID)32LL,
+    };
+    USHORT NumberOfJitOptions = ARRAYSIZE(JitOptions);
+    USHORT NumberOfFunctions = ARRAYSIZE(TraceStoreKernelFunctionNames);
+
+    //
+    // Resolve local aliases.
+    //
+
+    Db = (PTRACE_STORE_SQLITE3_DB)TpContext;
+    Rtl = Db->Rtl;
+    TracerConfig = Db->TracerConfig;
+    Paths = &TracerConfig->Paths;
+
+    //
+    // Register a SetEvent() against our loading complete event for when this
+    // callback returns.  The TraceStoreSqlite3ExtInit() routine will perform
+    // a WaitForSingleObject(INFINITE) against this event prior to returning
+    // to the caller.
+    //
+
+    SetEventWhenCallbackReturns(Instance, Db->CuLoadingCompleteEvent);
+
+    //
+    // Load Cu.
+    //
+
+    Success = Rtl->GetCu(Rtl, &Db->Cu);
+    if (!Success) {
+
+        //
+        // If we couldn't load nvcuda, there's nothing more to do.
+        //
+
+        return;
+    }
+
+    //
+    // The initial CU interface was created successfully.  Attempt to get a
+    // handle to the device indicated by TracerConfig, then create a context.
+    //
+
+    Cu = Db->Cu;
+    Ordinal = TracerConfig->CuDeviceOrdinal;
+    Result = Cu->GetDevice(&Device, Ordinal);
+    if (CU_FAILED(Result)) {
+        goto Error;
+    }
+
+    Result = Cu->CreateContext(&Context, 0, Device);
+    if (CU_FAILED(Result)) {
+        goto Error;
+    }
+
+    //
+    // Now enumerate through each PTX path and create a corresponding module,
+    // then load the module's functions.
+    //
+
+    for (Index = 0; Index < NUM_PTX_FILES; Index++) {
+
+        PathId = PtxPathIds[Index];
+
+        //
+        // Resolve the path of the given PTX file.
+        //
+
+        Path = TracerPtxPathIdToUnicodeString(Paths, PathId);
+
+        Success = LoadFile(Rtl,
+                           Path,
+                           &FileHandle,
+                           &MappingHandle,
+                           &BaseAddress);
+
+        if (!Success) {
+            __debugbreak();
+            goto Error;
+        }
+
+        PtxContents = (PCSZ)BaseAddress;
+
+        Result = Cu->LoadModuleDataEx(&Module,
+                                      BaseAddress,
+                                      NumberOfJitOptions,
+                                      JitOptions,
+                                      JitOptionValues);
+
+        if (CU_FAILED(Result)) {
+            __debugbreak();
+            goto Error;
+        }
+
+        for (FuncIndex = 0; FuncIndex < NumberOfFunctions; FuncIndex++) {
+            FunctionName = PtxFunctionNames[Index][FuncIndex];
+            Result = Cu->GetModuleFunction(&Function, Module, FunctionName);
+            if (CU_FAILED(Result)) {
+                goto Error;
+            }
+            Db->CuFunctions[FuncIndex] = Function;
+        }
+
+        UnmapViewOfFile(BaseAddress);
+        CloseHandle(MappingHandle);
+        CloseHandle(FileHandle);
+
+        FileHandle = NULL;
+        BaseAddress = NULL;
+        MappingHandle = NULL;
+    }
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+End:
+
+    return;
+}
+
+
+
 DECLSPEC_DLLEXPORT TRACE_STORE_SQLITE3_EXT_INIT TraceStoreSqlite3ExtInit;
 
 _Use_decl_annotations_
@@ -61,6 +374,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    BOOL DispatchedInitCu = TRUE;
     PCHAR Char;
     PVOID Buffer;
     USHORT Count;
@@ -135,6 +449,28 @@ Return Value:
     Db->Sqlite3Allocator = Sqlite3Allocator;
 
     Db->SizeOfStruct = sizeof(*Db);
+
+    //
+    // Create an event for the CUDA handles.
+    //
+
+    Db->CuLoadingCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!Db->CuLoadingCompleteEvent) {
+        *ErrorMessagePointer = "CreateEvent(CuLoadingCompleteEvent) failed.\n";
+        goto Error;
+    }
+
+    //
+    // Dispatch the InitCu() work via the default threadpool.
+    //
+
+    if (!TrySubmitThreadpoolCallback(TraceStoreSqlite3InitCu, Db, NULL)) {
+        __debugbreak();
+        *ErrorMessagePointer = "TrySubmitThreadpoolCallback(InitCu) failed.\n";
+        DispatchedInitCu = FALSE;
+        goto Error;
+    }
+
 
 #define LOAD_DLL(Name) do {                                       \
     Db->Name##Module = LoadLibraryW(Paths->Name##DllPath.Buffer); \
@@ -516,15 +852,6 @@ Return Value:
     LoadingCompleteEvent = Db->TraceContext->LoadingCompleteEvent;
 
     //
-    // Attempt to load nvcuda if possible.
-    //
-
-    Success = Rtl->GetCu(Rtl, &Db->Cu);
-    if (!Success) {
-        NOTHING;
-    }
-
-    //
     // Initialize aliases.
     //
 
@@ -605,6 +932,17 @@ Return Value:
 
         if (Result != SQLITE_OK) {
             __debugbreak();
+            goto Error;
+        }
+    }
+
+    if (DispatchedInitCu) {
+        LONG WaitResult;
+
+        WaitResult = WaitForSingleObject(Db->CuLoadingCompleteEvent, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
+            Db->Cu = NULL;
             goto Error;
         }
     }
