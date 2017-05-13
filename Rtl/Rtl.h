@@ -5774,6 +5774,15 @@ _Success_(return != 0)
     );
 typedef INITIALIZE_INJECTION *PINITIALIZE_INJECTION;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+(GET_CU)(
+    _Inout_ PRTL Rtl,
+    _Outptr_result_nullonfailure_ struct _CU **CuPointer
+    );
+typedef GET_CU *PGET_CU;
+
 typedef union _RTL_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
@@ -5795,6 +5804,12 @@ typedef union _RTL_FLAGS {
 
         ULONG IsLargePageEnabled:1;
 
+        //
+        // When set, indicates the nvcuda library has been loaded.
+        //
+
+        ULONG NvcudaInitialized:1;
+
     };
     LONG AsLong;
     ULONG AsULong;
@@ -5815,9 +5830,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     DbgHelpModule;
     HMODULE     DbgEngModule;
     HMODULE     InjectionThunkModule;
+    HMODULE     NvcudaModule;
 
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
+
+    PGET_CU GetCu;
+    struct _CU *Cu;
 
     DWORD LastError;
     ULONG Padding;

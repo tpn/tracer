@@ -73,6 +73,7 @@
     <ClInclude Include="atexit.h" />
     <ClInclude Include="AtExitEx.h" />
     <ClInclude Include="Commandline.h" />
+    <ClInclude Include="Cu.h" />
     <ClInclude Include="Cuda.h" />
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
     <ClInclude Include="Injection.h" />

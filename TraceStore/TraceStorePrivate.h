@@ -3585,6 +3585,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     PRTL_PATH OwningModulePath;
 
     //
+    // Pointer to a CUDA Device structure if available.
+    //
+
+    PCU Cu;
+
+    //
     // Our core tracing/support modules.
     //
 

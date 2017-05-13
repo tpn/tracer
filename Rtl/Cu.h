@@ -22,14 +22,30 @@ Abstract:
 
 typedef LONG CU_DEVICE;
 typedef ULONG_PTR CU_DEVICE_POINTER;
-typedef struct CU_CONTEXT;
-typedef CU_CONTEXT *PCU_CONTEXT;
-typedef struct CU_EVENT;
-typedef CU_EVENT *PCU_EVENT;
-typedef struct CU_STREAM;
-typedef CU_STREAM *PCU_STREAM;
-typedef struct CU_FUNCTION;
-typedef CU_FUNCTION *PCU_FUNCTION;
+typedef CU_DEVICE *PCU_DEVICE;
+typedef CU_DEVICE **PPCU_DEVICE;
+typedef CU_DEVICE_POINTER *PCU_DEVICE_POINTER;
+typedef CU_DEVICE_POINTER **PPCU_DEVICE_POINTER;
+
+struct CU_CONTEXT;
+typedef struct CU_CONTEXT *PCU_CONTEXT;
+typedef struct CU_CONTEXT **PPCU_CONTEXT;
+
+struct CU_MODULE;
+typedef struct CU_MODULE *PCU_MODULE;
+typedef struct CU_MODULE **PPCU_MODULE;
+
+struct CU_EVENT;
+typedef struct CU_EVENT *PCU_EVENT;
+typedef struct CU_EVENT **PPCU_EVENT;
+
+struct CU_STREAM;
+typedef struct CU_STREAM *PCU_STREAM;
+typedef struct CU_STREAM **PPCU_STREAM;
+
+struct CU_FUNCTION;
+typedef struct CU_FUNCTION *PCU_FUNCTION;
+typedef struct CU_FUNCTION **PPCU_FUNCTION;
 
 typedef enum _CU_RESULT {
 
@@ -403,8 +419,55 @@ typedef enum _CU_RESULT {
 
 } CU_RESULT;
 
+#define CU_SUCCEEDED(Result) (Result == CUDA_SUCCESS)
+#define CU_FAILED(Result) (Result != CUDA_SUCCESS)
+
+typedef enum _Enum_is_bitflag_ _CU_CTX_CREATE_FLAGS {
+    CU_CTX_SCHED_AUTO          = 0x00,
+    CU_CTX_SCHED_SPIN          = 0x01,
+    CU_CTX_SCHED_YIELD         = 0x02,
+    CU_CTX_SCHED_BLOCKING_SYNC = 0x04,
+    CU_CTX_BLOCKING_SYNC       = 0x04,
+    CU_CTX_MAP_HOST            = 0x08,
+    CU_CTX_LMEM_RESIZE_TO_MAX  = 0x10,
+    CU_CTX_SCHED_MASK          = 0x07,
+    CU_CTX_PRIMARY             = 0x20,
+    CU_CTX_FLAGS_MASK          = 0x3f
+} CU_CTX_CREATE_FLAGS;
+
+typedef enum _CU_JIT_OPTION {
+    CU_JIT_MAX_REGISTERS = 0,
+    CU_JIT_THREADS_PER_BLOCK,
+    CU_JIT_WALL_TIME,
+    CU_JIT_INFO_LOG_BUFFER,
+    CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES,
+    CU_JIT_ERROR_LOG_BUFFER,
+    CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
+    CU_JIT_OPTIMIZATION_LEVEL,
+    CU_JIT_TARGET_FROM_CUCONTEXT,
+    CU_JIT_TARGET,
+    CU_JIT_FALLBACK_STRATEGY
+} CU_JIT_OPTION;
+typedef CU_JIT_OPTION *PCU_JIT_OPTION;
+typedef CU_JIT_OPTION **PPCU_JIT_OPTION;
+
+//
+// Initialization.
+//
+
 typedef
-_Success_(return == 0)
+_Check_return_
+CU_RESULT
+(CU_INIT)(
+    _In_opt_ ULONG Flags
+    );
+typedef CU_INIT *PCU_INIT;
+
+//
+// Driver Version.
+//
+
+typedef
 _Check_return_
 CU_RESULT
 (CU_DRIVER_GET_VERSION)(
@@ -412,9 +475,174 @@ CU_RESULT
     );
 typedef CU_DRIVER_GET_VERSION *PCU_DRIVER_GET_VERSION;
 
+//
+// Device Management.
+//
 
 typedef
-_Success_(return == 0)
+_Check_return_
+CU_RESULT
+(CU_DEVICE_GET)(
+    _Out_ PCU_DEVICE Device,
+    _In_opt_ LONG Ordinal
+    );
+typedef CU_DEVICE_GET *PCU_DEVICE_GET;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_DEVICE_GET_COUNT)(
+    _Out_ PLONG Count
+    );
+typedef CU_DEVICE_GET_COUNT *PCU_DEVICE_GET_COUNT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_DEVICE_GET_NAME)(
+    _Out_writes_z_(SizeOfNameBufferInBytes) PCHAR NameBuffer,
+    _In_ LONG SizeOfNameBufferInBytes,
+    _In_ CU_DEVICE Device
+    );
+typedef CU_DEVICE_GET_NAME *PCU_DEVICE_GET_NAME;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_DEVICE_GET_TOTAL_MEMORY)(
+    _Out_ PSIZE_T TotalMemoryInBytes,
+    _In_ CU_DEVICE Device
+    );
+typedef CU_DEVICE_GET_TOTAL_MEMORY *PCU_DEVICE_GET_TOTAL_MEMORY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_DEVICE_COMPUTE_CAPABILITY)(
+    _Out_ PLONG Major,
+    _Out_ PLONG Minor,
+    _In_ CU_DEVICE Device
+    );
+typedef CU_DEVICE_COMPUTE_CAPABILITY *PCU_DEVICE_COMPUTE_CAPABILITY;
+
+//
+// Context Management.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_CREATE)(
+    _Outptr_result_maybenull_ PPCU_CONTEXT ContextPointer,
+    _In_opt_ CU_CTX_CREATE_FLAGS Flags,
+    _In_ CU_DEVICE Device
+    );
+typedef CU_CTX_CREATE *PCU_CTX_CREATE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_DESTROY)(
+    _In_ _Post_invalid_ PCU_CONTEXT Context
+    );
+typedef CU_CTX_DESTROY *PCU_CTX_DESTROY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_PUSH_CURRENT)(
+    _In_ PCU_CONTEXT Context
+    );
+typedef CU_CTX_PUSH_CURRENT *PCU_CTX_PUSH_CURRENT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_POP_CURRENT)(
+    _Outptr_result_maybenull_ PPCU_CONTEXT ContextPointer
+    );
+typedef CU_CTX_POP_CURRENT *PCU_CTX_POP_CURRENT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_SET_CURRENT)(
+    _In_ PCU_CONTEXT Context
+    );
+typedef CU_CTX_SET_CURRENT *PCU_CTX_SET_CURRENT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_GET_CURRENT)(
+    _Outptr_result_maybenull_ PPCU_CONTEXT ContextPointer
+    );
+typedef CU_CTX_GET_CURRENT *PCU_CTX_GET_CURRENT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_GET_DEVICE)(
+    _Outptr_result_maybenull_ PPCU_DEVICE pDevice
+    );
+typedef CU_CTX_GET_DEVICE *PCU_CTX_GET_DEVICE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_SYNCHRONIZE)(
+    VOID
+    );
+typedef CU_CTX_SYNCHRONIZE *PCU_CTX_SYNCHRONIZE;
+
+//
+// Module Management.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MODULE_LOAD)(
+    _Outptr_result_maybenull_ PPCU_MODULE ModulePointer,
+    _In_ PCSZ Path
+    );
+typedef CU_MODULE_LOAD *PCU_MODULE_LOAD;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MODULE_UNLOAD)(
+    _In_ _Post_invalid_ PCU_MODULE Module
+    );
+typedef CU_MODULE_UNLOAD *PCU_MODULE_UNLOAD;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MODULE_LOAD_DATA_EX)(
+    _Outptr_result_maybenull_ PPCU_MODULE ModulePointer,
+    _In_z_ PCHAR Image,
+    _In_ LONG NumberOfOptions,
+    _In_reads_(NumberOfOptions) PCU_JIT_OPTION Options,
+    _Out_writes_(NumberOfOptions) PPCU_JIT_OPTION OptionValuesPointer
+    );
+typedef CU_MODULE_LOAD_DATA_EX *PCU_MODULE_LOAD_DATA_EX;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MODULE_GET_FUNCTION)(
+    _Outptr_result_maybenull_ PPCU_FUNCTION FunctionPointer,
+    _In_ PCU_MODULE Module,
+    _In_ PCSZ FunctioName
+    );
+typedef CU_MODULE_GET_FUNCTION *PCU_MODULE_GET_FUNCTION;
+
+//
+// Functions.
+//
+
+typedef
 _Check_return_
 CU_RESULT
 (CU_LAUNCH_KERNEL)(
@@ -436,7 +664,25 @@ typedef CU_LAUNCH_KERNEL *PCU_LAUNCH_KERNEL;
 // Define function pointer head macro.
 //
 
-#define CU_FUNCTIONS_HEAD \
+#define CU_FUNCTIONS_HEAD                                     \
+    PCU_INIT Init;                                            \
+    PCU_DEVICE_GET GetDevice;                                 \
+    PCU_DEVICE_GET_COUNT GetDeviceCount;                      \
+    PCU_DEVICE_GET_NAME GetDeviceName;                        \
+    PCU_DEVICE_GET_TOTAL_MEMORY GetDeviceTotalMemory;         \
+    PCU_DEVICE_COMPUTE_CAPABILITY GetDeviceComputeCapability; \
+    PCU_CTX_CREATE CreateContext;                             \
+    PCU_CTX_DESTROY DestroyContext;                           \
+    PCU_CTX_PUSH_CURRENT PushCurrentContext;                  \
+    PCU_CTX_POP_CURRENT PopCurrentContext;                    \
+    PCU_CTX_SET_CURRENT SetCurrentContext;                    \
+    PCU_CTX_GET_CURRENT GetCurrentContext;                    \
+    PCU_CTX_GET_DEVICE GetContextDevice;                      \
+    PCU_CTX_SYNCHRONIZE SynchronizeContext;                   \
+    PCU_MODULE_LOAD LoadModule;                               \
+    PCU_MODULE_UNLOAD UnloadModule;                           \
+    PCU_MODULE_LOAD_DATA_EX LoadModuleDataEx;                 \
+    PCU_MODULE_GET_FUNCTION GetModuleFunction;                \
     PCU_LAUNCH_KERNEL LaunchKernel;
 
 typedef struct _CU_FUNCTIONS {
@@ -464,7 +710,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _CU {
     // Size of the structure, in bytes.
     //
 
-    _Field_range_(==, sizeof(struct _CU)) SizeOfStruct;
+    _Field_range_(==, sizeof(struct _CU)) ULONG SizeOfStruct;
 
     //
     // Flags.
@@ -497,16 +743,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _CU {
 
 } CU;
 typedef CU *PCU;
-
-typedef
-_Success_(return != 0)
-_Check_return_
-BOOL
-(INITIALIZE_CU)(
-    _Inout_bytecap_(*SizeOfCu) PCU Cu,
-    _Inout_ PULONG SizeOfCu
-    );
-typedef INITIALIZE_CU *PINITIALIZE_CU;
 
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

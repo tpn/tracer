@@ -72,6 +72,9 @@
     <ClInclude Include="Cuda.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Cu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">

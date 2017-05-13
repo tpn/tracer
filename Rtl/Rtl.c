@@ -16,6 +16,13 @@ Abstract:
 #include "stdafx.h"
 
 //
+// Keep Cu.h out of the pre-compiled header for now whilst it's in constant
+// fluctuation.
+//
+
+#include "Cu.h"
+
+//
 // Temp hack: need to include RtlConstants.c directly.
 //
 
@@ -327,6 +334,106 @@ InitializeInjection(PRTL Rtl)
     }
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+ResolveNvcudaFunctions(
+    PRTL Rtl,
+    HMODULE NvcudaModule,
+    PCU_FUNCTIONS CuFunctions
+    )
+{
+    BOOL Success;
+    ULONG NumberOfResolvedSymbols;
+    ULONG ExpectedNumberOfResolvedSymbols;
+    PULONG_PTR Functions = (PULONG_PTR)CuFunctions;
+
+#ifdef Names
+#undef Names
+#endif
+#define Names CuFunctionNames
+
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
+
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
+
+    Success = LoadSymbols(
+        Names,
+        ARRAYSIZE(Names),
+        Functions,
+        sizeof(*CuFunctions) / sizeof(ULONG_PTR),
+        NvcudaModule,
+        &FailedBitmap,
+        &NumberOfResolvedSymbols
+    );
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol-1];
+        __debugbreak();
+    }
+
+#undef Names
+
+    return TRUE;
+}
+
+
+RTL_API
+BOOL
+GetCu(
+    PRTL Rtl,
+    PCU *CuPointer
+    )
+{
+    BOOL Success;
+    PCU Cu;
+    CU_RESULT Result;
+
+    if (!Rtl->Flags.NvcudaInitialized) {
+        Rtl->NvcudaModule = LoadLibraryA("nvcuda");
+        Cu = Rtl->Cu = (PCU)HeapAlloc(Rtl->HeapHandle, 0, sizeof(*Rtl->Cu));
+        if (!Cu) {
+            return FALSE;
+        }
+
+        ZeroStructPointer(Cu);
+        Cu->SizeOfStruct = sizeof(*Cu);
+        Cu->NumberOfFunctions = sizeof(CU_FUNCTIONS) / sizeof(ULONG_PTR);
+        Success = ResolveNvcudaFunctions(Rtl,
+                                         Rtl->NvcudaModule,
+                                         &Cu->Functions);
+        if (!Success) {
+            goto Error;
+        }
+
+        Result = Cu->Init(0);
+        if (CU_FAILED(Result)) {
+            goto Error;
+        }
+
+        Rtl->Flags.NvcudaInitialized = TRUE;
+    }
+
+    *CuPointer = Rtl->Cu;
+    return TRUE;
+
+Error:
+
+    HeapFree(Rtl->HeapHandle, 0, Cu);
+    Rtl->Cu = NULL;
+    return FALSE;
 }
 
 BOOL
@@ -3011,6 +3118,8 @@ InitializeRtl(
 
     Rtl->InitializeInjection = InitializeInjection;
     Rtl->InjectThunk = InjectThunk;
+
+    Rtl->GetCu = GetCu;
 
     //
     // Windows 8 onward.

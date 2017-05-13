@@ -516,6 +516,15 @@ Return Value:
     LoadingCompleteEvent = Db->TraceContext->LoadingCompleteEvent;
 
     //
+    // Attempt to load nvcuda if possible.
+    //
+
+    Success = Rtl->GetCu(Rtl, &Db->Cu);
+    if (!Success) {
+        NOTHING;
+    }
+
+    //
     // Initialize aliases.
     //
 

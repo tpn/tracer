@@ -414,4 +414,26 @@ CONST PCSTR DbgHelpFunctionNames[] = {
     "ImageRvaToVa"
 };
 
+CONST PCSTR CuFunctionNames[] = {
+    "cuInit",
+    "cuDeviceGet",
+    "cuDeviceGetCount",
+    "cuDeviceGetName",
+    "cuDeviceTotalMem",
+    "cuDeviceComputeCapability",
+    "cuCtxCreate",
+    "cuCtxDestroy",
+    "cuCtxPushCurrent",
+    "cuCtxPopCurrent",
+    "cuCtxSetCurrent",
+    "cuCtxGetCurrent",
+    "cuCtxGetDevice",
+    "cuCtxSynchronize",
+    "cuModuleLoad",
+    "cuModuleUnload",
+    "cuModuleLoadDataEx",
+    "cuModuleGetFunction",
+    "cuLaunchKernel",
+};
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :
