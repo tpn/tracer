@@ -214,6 +214,7 @@ CONST PCSTR RtlExFunctionNames[] = {
     "FindCharsInUnicodeString",
     "GetModuleRtlPath",
     "InitializeRtlFile",
+    "LoadFile",
     "LoadDbgEng",
     "LoadDbgHelp",
     "LoadPathEnvironmentVariable",

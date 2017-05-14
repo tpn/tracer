@@ -3088,6 +3088,116 @@ ProbeForRead(
     return Success;
 }
 
+RTL_API LOAD_FILE LoadFile;
+
+_Use_decl_annotations_
+BOOL
+LoadFile(
+    PRTL Rtl,
+    LOAD_FILE_FLAGS Flags,
+    PCUNICODE_STRING Path,
+    PHANDLE FileHandlePointer,
+    PHANDLE MappingHandlePointer,
+    PPVOID BaseAddressPointer
+    )
+{
+    BOOL Success;
+    ULONG LastError;
+    HANDLE FileHandle = NULL;
+    PVOID BaseAddress = NULL;
+    HANDLE MappingHandle = NULL;
+
+    //
+    // Clear the caller's pointers up-front.
+    //
+
+    *FileHandlePointer = NULL;
+    *BaseAddressPointer = NULL;
+    *MappingHandlePointer = NULL;
+
+    FileHandle = CreateFileW(Path->Buffer,
+                             GENERIC_READ,
+                             FILE_SHARE_READ,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_OVERLAPPED  |
+                             FILE_ATTRIBUTE_NORMAL |
+                             FILE_FLAG_SEQUENTIAL_SCAN,
+                             NULL);
+
+    if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
+        FileHandle = NULL;
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    MappingHandle = CreateFileMappingNuma(FileHandle,
+                                          NULL,
+                                          PAGE_READONLY,
+                                          0,
+                                          0,
+                                          NULL,
+                                          NUMA_NO_PREFERRED_NODE);
+
+    if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
+        MappingHandle = NULL;
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    BaseAddress = Rtl->MapViewOfFileExNuma(MappingHandle,
+                                           FILE_MAP_READ,
+                                           0,
+                                           0,
+                                           0,
+                                           BaseAddress,
+                                           NUMA_NO_PREFERRED_NODE);
+
+    if (!BaseAddress) {
+        LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // We've successfully opened, created a section for, and then subsequently
+    // mapped, the requested PTX file.  Update the caller's pointers and return
+    // success.
+    //
+
+    *FileHandlePointer = FileHandle;
+    *BaseAddressPointer = BaseAddress;
+    *MappingHandlePointer = MappingHandle;
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    if (MappingHandle) {
+        CloseHandle(MappingHandle);
+        MappingHandle = NULL;
+    }
+
+    if (FileHandle) {
+        CloseHandle(FileHandle);
+        FileHandle = NULL;
+    }
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
+}
+
+
 _Use_decl_annotations_
 BOOL
 InitializeRtl(

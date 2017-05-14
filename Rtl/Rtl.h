@@ -5273,6 +5273,27 @@ BOOL
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
 
+typedef union _LOAD_FILE_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} LOAD_FILE_FLAGS;
+typedef LOAD_FILE_FLAGS *PLOAD_FILE_FLAGS;
+
+typedef
+BOOL
+(LOAD_FILE)(
+    _In_ PRTL Rtl,
+    _In_ LOAD_FILE_FLAGS Flags,
+    _In_ PCUNICODE_STRING Path,
+    _Out_ PHANDLE FileHandlePointer,
+    _Out_ PHANDLE MappingHandlePointer,
+    _Out_ PPVOID BaseAddressPointer
+    );
+typedef LOAD_FILE *PLOAD_FILE;
+
 #ifdef _RTL_TEST
 typedef
 BOOL
@@ -5326,6 +5347,7 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                         \
     PGET_MODULE_RTL_PATH GetModuleRtlPath;                                          \
     PINITIALIZE_RTL_FILE InitializeRtlFile;                                         \
+    PLOAD_FILE LoadFile;                                                            \
     PLOAD_DBGENG LoadDbgEng;                                                        \
     PLOAD_DBGHELP LoadDbgHelp;                                                      \
     PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;                    \

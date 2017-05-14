@@ -24,125 +24,6 @@ VOID
     );
 typedef TRACE_STORE_SQLITE3_INIT_CU *PTRACE_STORE_SQLITE3_INIT_CU;
 
-typedef
-BOOL
-(LOAD_FILE)(
-    _In_ PRTL Rtl,
-    _In_ PCUNICODE_STRING Path,
-    _Out_ PHANDLE FileHandlePointer,
-    _Out_ PHANDLE MappingHandlePointer,
-    _Out_ PPVOID BaseAddressPointer
-    );
-typedef LOAD_FILE *PLOAD_FILE;
-
-LOAD_FILE LoadFile;
-
-_Use_decl_annotations_
-BOOL
-LoadFile(
-    PRTL Rtl,
-    PCUNICODE_STRING Path,
-    PHANDLE FileHandlePointer,
-    PHANDLE MappingHandlePointer,
-    PPVOID BaseAddressPointer
-    )
-{
-    BOOL Success;
-    ULONG LastError;
-    HANDLE FileHandle = NULL;
-    PVOID BaseAddress = NULL;
-    HANDLE MappingHandle = NULL;
-
-    //
-    // Clear the caller's pointers up-front.
-    //
-
-    *FileHandlePointer = NULL;
-    *BaseAddressPointer = NULL;
-    *MappingHandlePointer = NULL;
-
-    FileHandle = CreateFileW(Path->Buffer,
-                             GENERIC_READ,
-                             FILE_SHARE_READ,
-                             NULL,
-                             OPEN_EXISTING,
-                             FILE_FLAG_OVERLAPPED  |
-                             FILE_ATTRIBUTE_NORMAL |
-                             FILE_FLAG_SEQUENTIAL_SCAN,
-                             NULL);
-
-    if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
-        FileHandle = NULL;
-        LastError = GetLastError();
-        __debugbreak();
-        goto Error;
-    }
-
-    MappingHandle = CreateFileMappingNuma(FileHandle,
-                                          NULL,
-                                          PAGE_READONLY,
-                                          0,
-                                          0,
-                                          NULL,
-                                          NUMA_NO_PREFERRED_NODE);
-
-    if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
-        MappingHandle = NULL;
-        LastError = GetLastError();
-        __debugbreak();
-        goto Error;
-    }
-
-    BaseAddress = Rtl->MapViewOfFileExNuma(MappingHandle,
-                                           FILE_MAP_READ,
-                                           0,
-                                           0,
-                                           0,
-                                           BaseAddress,
-                                           NUMA_NO_PREFERRED_NODE);
-
-    if (!BaseAddress) {
-        LastError = GetLastError();
-        __debugbreak();
-        goto Error;
-    }
-
-    //
-    // We've successfully opened, created a section for, and then subsequently
-    // mapped, the requested PTX file.  Update the caller's pointers and return
-    // success.
-    //
-
-    *FileHandlePointer = FileHandle;
-    *BaseAddressPointer = BaseAddress;
-    *MappingHandlePointer = MappingHandle;
-
-    Success = TRUE;
-    goto End;
-
-Error:
-
-    if (MappingHandle) {
-        CloseHandle(MappingHandle);
-        MappingHandle = NULL;
-    }
-
-    if (FileHandle) {
-        CloseHandle(FileHandle);
-        FileHandle = NULL;
-    }
-
-    Success = FALSE;
-
-    //
-    // Intentional follow-on to End.
-    //
-
-End:
-
-    return Success;
-}
-
 
 
 TRACE_STORE_SQLITE3_INIT_CU TraceStoreSqlite3InitCu;
@@ -168,6 +49,16 @@ TraceStoreSqlite3InitCu(
     PCU_FUNCTION Function;
     PCSZ FunctionName;
     PTRACE_STORE_SQLITE3_DB Db;
+    PTRACER_CONFIG TracerConfig;
+    PTRACER_PATHS Paths;
+    TRACER_PTX_PATH_ID PathId;
+    HANDLE FileHandle;
+    PVOID BaseAddress;
+    HANDLE MappingHandle;
+    PCUNICODE_STRING Path;
+    PCSZ PtxContents;
+    LOAD_FILE_FLAGS LoadFileFlags;
+
     TRACER_PTX_PATH_ID PtxPathIds[NUM_PTX_FILES] = {
         TraceStoreKernelsPtxPathId,
     };
@@ -186,14 +77,6 @@ TraceStoreSqlite3InitCu(
         TraceStoreKernelFunctionNames,
     };
 
-    PTRACER_CONFIG TracerConfig;
-    PTRACER_PATHS Paths;
-    TRACER_PTX_PATH_ID PathId;
-    HANDLE FileHandle;
-    PVOID BaseAddress;
-    HANDLE MappingHandle;
-    PCUNICODE_STRING Path;
-    PCSZ PtxContents;
     CHAR JitLogBuffer[1024];
     CU_RESULT Result;
     CU_JIT_OPTION JitOptions[] = {
@@ -263,6 +146,8 @@ TraceStoreSqlite3InitCu(
     // then load the module's functions.
     //
 
+    LoadFileFlags.AsULong = 0;
+
     for (Index = 0; Index < NUM_PTX_FILES; Index++) {
 
         PathId = PtxPathIds[Index];
@@ -273,11 +158,12 @@ TraceStoreSqlite3InitCu(
 
         Path = TracerPtxPathIdToUnicodeString(Paths, PathId);
 
-        Success = LoadFile(Rtl,
-                           Path,
-                           &FileHandle,
-                           &MappingHandle,
-                           &BaseAddress);
+        Success = Rtl->LoadFile(Rtl,
+                                LoadFileFlags,
+                                Path,
+                                &FileHandle,
+                                &MappingHandle,
+                                &BaseAddress);
 
         if (!Success) {
             __debugbreak();
