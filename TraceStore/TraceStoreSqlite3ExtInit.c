@@ -248,12 +248,12 @@ TraceStoreSqlite3InitCu(
 
     Cu = Db->Cu;
     Ordinal = TracerConfig->CuDeviceOrdinal;
-    Result = Cu->GetDevice(&Device, Ordinal);
+    Result = Cu->DeviceGet(&Device, Ordinal);
     if (CU_FAILED(Result)) {
         goto Error;
     }
 
-    Result = Cu->CreateContext(&Context, 0, Device);
+    Result = Cu->CtxCreate(&Context, 0, Device);
     if (CU_FAILED(Result)) {
         goto Error;
     }
@@ -286,7 +286,7 @@ TraceStoreSqlite3InitCu(
 
         PtxContents = (PCSZ)BaseAddress;
 
-        Result = Cu->LoadModuleDataEx(&Module,
+        Result = Cu->ModuleLoadDataEx(&Module,
                                       BaseAddress,
                                       NumberOfJitOptions,
                                       JitOptions,
@@ -299,7 +299,7 @@ TraceStoreSqlite3InitCu(
 
         for (FuncIndex = 0; FuncIndex < NumberOfFunctions; FuncIndex++) {
             FunctionName = PtxFunctionNames[Index][FuncIndex];
-            Result = Cu->GetModuleFunction(&Function, Module, FunctionName);
+            Result = Cu->ModuleGetFunction(&Function, Module, FunctionName);
             if (CU_FAILED(Result)) {
                 goto Error;
             }

@@ -664,25 +664,25 @@ typedef CU_LAUNCH_KERNEL *PCU_LAUNCH_KERNEL;
 // Define function pointer head macro.
 //
 
-#define CU_FUNCTIONS_HEAD                                     \
-    PCU_INIT Init;                                            \
-    PCU_DEVICE_GET GetDevice;                                 \
-    PCU_DEVICE_GET_COUNT GetDeviceCount;                      \
-    PCU_DEVICE_GET_NAME GetDeviceName;                        \
-    PCU_DEVICE_GET_TOTAL_MEMORY GetDeviceTotalMemory;         \
-    PCU_DEVICE_COMPUTE_CAPABILITY GetDeviceComputeCapability; \
-    PCU_CTX_CREATE CreateContext;                             \
-    PCU_CTX_DESTROY DestroyContext;                           \
-    PCU_CTX_PUSH_CURRENT PushCurrentContext;                  \
-    PCU_CTX_POP_CURRENT PopCurrentContext;                    \
-    PCU_CTX_SET_CURRENT SetCurrentContext;                    \
-    PCU_CTX_GET_CURRENT GetCurrentContext;                    \
-    PCU_CTX_GET_DEVICE GetContextDevice;                      \
-    PCU_CTX_SYNCHRONIZE SynchronizeContext;                   \
-    PCU_MODULE_LOAD LoadModule;                               \
-    PCU_MODULE_UNLOAD UnloadModule;                           \
-    PCU_MODULE_LOAD_DATA_EX LoadModuleDataEx;                 \
-    PCU_MODULE_GET_FUNCTION GetModuleFunction;                \
+#define CU_FUNCTIONS_HEAD                                  \
+    PCU_INIT Init;                                         \
+    PCU_DEVICE_GET DeviceGet;                              \
+    PCU_DEVICE_GET_COUNT DeviceGetCount;                   \
+    PCU_DEVICE_GET_NAME DeviceGetName;                     \
+    PCU_DEVICE_GET_TOTAL_MEMORY DeviceGetTotalMem;         \
+    PCU_DEVICE_COMPUTE_CAPABILITY DeviceComputeCapability; \
+    PCU_CTX_CREATE CtxCreate;                              \
+    PCU_CTX_DESTROY CtxDestroy;                            \
+    PCU_CTX_PUSH_CURRENT CtxPushCurrent;                   \
+    PCU_CTX_POP_CURRENT CtxPopCurrent;                     \
+    PCU_CTX_SET_CURRENT CtxSetCurrent;                     \
+    PCU_CTX_GET_CURRENT CtxGetCurrent;                     \
+    PCU_CTX_GET_DEVICE CtxGetDevice;                       \
+    PCU_CTX_SYNCHRONIZE CtxSynchronize;                    \
+    PCU_MODULE_LOAD ModuleLoad;                            \
+    PCU_MODULE_UNLOAD ModuleUnload;                        \
+    PCU_MODULE_LOAD_DATA_EX ModuleLoadDataEx;              \
+    PCU_MODULE_GET_FUNCTION ModuleGetFunction;             \
     PCU_LAUNCH_KERNEL LaunchKernel;
 
 typedef struct _CU_FUNCTIONS {
