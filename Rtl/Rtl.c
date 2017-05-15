@@ -404,6 +404,9 @@ GetCu(
 
     if (!Rtl->Flags.NvcudaInitialized) {
         Rtl->NvcudaModule = LoadLibraryA("nvcuda");
+        if (!Rtl->NvcudaModule) {
+            return FALSE;
+        }
         Cu = Rtl->Cu = (PCU)HeapAlloc(Rtl->HeapHandle, 0, sizeof(*Rtl->Cu));
         if (!Cu) {
             return FALSE;
