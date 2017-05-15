@@ -5253,6 +5253,7 @@ BOOL
     _In_ ULONG NumberOfSymbolAddresses,
     _In_ HMODULE Module,
     _In_ PRTL_BITMAP FailedSymbols,
+    _In_ BOOL SkipJumpInstructions,
     _Out_ PULONG NumberOfResolvedSymbolsPointer
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
@@ -5269,6 +5270,7 @@ BOOL
     _In_count_(NumberOfModules) PHMODULE ModuleArray,
     _In_ USHORT NumberOfModules,
     _In_ PRTL_BITMAP FailedSymbols,
+    _In_ BOOL SkipJumpInstructions,
     _Out_ PULONG NumberOfResolvedSymbolsPointer
     );
 typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;

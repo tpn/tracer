@@ -366,6 +366,7 @@ ResolveNvcudaFunctions(
         sizeof(*CuFunctions) / sizeof(ULONG_PTR),
         NvcudaModule,
         &FailedBitmap,
+        TRUE,
         &NumberOfResolvedSymbols
     );
 
@@ -2162,6 +2163,7 @@ ResolveRtlFunctions(
         Modules,
         ARRAYSIZE(Modules),
         &FailedBitmap,
+        TRUE,
         &NumberOfResolvedSymbols
     );
 
@@ -2215,6 +2217,7 @@ ResolveRtlExFunctions(
         sizeof(*RtlExFunctions) / sizeof(ULONG_PTR),
         RtlExModule,
         &FailedBitmap,
+        TRUE,
         &NumberOfResolvedSymbols
     );
 
@@ -2272,6 +2275,7 @@ ResolveDbgHelpFunctions(
         sizeof(*Dbg) / sizeof(ULONG_PTR),
         DbgHelpModule,
         &FailedBitmap,
+        TRUE,
         &NumberOfResolvedSymbols
     );
 

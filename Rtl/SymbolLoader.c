@@ -121,6 +121,7 @@ LoadSymbols(
     ULONG NumberOfSymbolAddresses,
     HMODULE Module,
     PRTL_BITMAP FailedSymbols,
+    BOOL SkipJumpInstructions,
     PULONG NumberOfResolvedSymbolsPointer
     )
 /*++
@@ -162,6 +163,12 @@ Arguments:
         N.B. As the names and addresses arrays are 0-based, the array index is
              obtained by the failed bit position by subtracting 1.  E.g. if the
              first bit set is 5, that corresponds to Names[4].
+
+    SkipJumpInstructions - Supplies a boolean flag indicating whether or not
+        the x64 instruction stream resolved functions should be fast-forwarded
+        to the first non-jump instruction.  This is useful for avoiding things
+        like ILT and import address table thunks and getting the actual first
+        instruction of a given routine.
 
     NumberOfResolvedSymbolsPointer - Supplies the address of a variable that
         will receive the number of successfully resolved symbols.
@@ -266,6 +273,8 @@ Return Value:
 
             NumberOfResolvedSymbols--;
 
+        } else if (SkipJumpInstructions) {
+            Proc = (FARPROC)SkipJumpsInline((PBYTE)Proc);
         }
 
         //
@@ -303,6 +312,7 @@ LoadSymbolsFromMultipleModules(
     PHMODULE ModuleArray,
     USHORT NumberOfModules,
     PRTL_BITMAP FailedSymbols,
+    BOOL SkipJumpInstructions,
     PULONG NumberOfResolvedSymbolsPointer
     )
 /*++
@@ -352,6 +362,12 @@ Arguments:
         N.B. As the names and addresses arrays are 0-based, the array index is
              obtained from the failed bit position by subtracting 1.  E.g. if
              the first bit set is 5, that corresponds to Names[4].
+
+    SkipJumpInstructions - Supplies a boolean flag indicating whether or not
+        the x64 instruction stream resolved functions should be fast-forwarded
+        to the first non-jump instruction.  This is useful for avoiding things
+        like ILT and import address table thunks and getting the actual first
+        instruction of a given routine.
 
     NumberOfResolvedSymbolsPointer - Supplies the address of a variable that
         will receive the number of successfully resolved symbols.
@@ -495,6 +511,8 @@ Return Value:
 
             NumberOfResolvedSymbols--;
 
+        } else if (SkipJumpInstructions) {
+            Proc = (FARPROC)SkipJumpsInline((PBYTE)Proc);
         }
 
         //
@@ -554,6 +572,7 @@ TestLoadSymbols(VOID)
                           sizeof(Functions) / sizeof(ULONG_PTR),
                           Module,
                           &FailedBitmap,
+                          FALSE,
                           &NumberOfResolvedSymbols);
 
     if (!Success) {
@@ -633,6 +652,7 @@ TestLoadSymbolsFromMultipleModules(VOID)
         Modules,
         ARRAYSIZE(Modules),
         &FailedBitmap,
+        FALSE,
         &NumberOfResolvedSymbols
     );
 
