@@ -3611,11 +3611,19 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     HANDLE CuLoadingCompleteEvent;
 
     //
-    // Our CU_MODULE for TraceStoreKernels.
+    // Our CU_MODULE for TraceStoreKernels, plus context and associated funcs.
     //
 
     PCU_MODULE CuModule;
+    PCU_CONTEXT CuContext;
     PCU_FUNCTION CuFunctions[2];
+
+    //
+    // Device and attributes.
+    //
+
+    CU_DEVICE CuDevice;
+    CU_DEVICE_ATTRIBUTES CuDeviceAttributes;
 
     //
     // Our core tracing/support modules.

@@ -1,6 +1,6 @@
 /*++
 
-Copyright (c) 2017 Trent Nelson <trent@trent.me>
+Copyright (c) 2015-2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
@@ -136,7 +136,12 @@ TraceStoreSqlite3InitCu(
         goto Error;
     }
 
-    Result = Cu->CtxCreate(&Context, 0, Device);
+    Result = LoadCuDeviceAttributes(Cu, &Db->CuDeviceAttributes, Device);
+    if (CU_FAILED(Result)) {
+        goto Error;
+    }
+
+    Result = Cu->CtxCreate(&Context, CU_CTX_MAP_HOST, Device);
     if (CU_FAILED(Result)) {
         goto Error;
     }
@@ -202,6 +207,9 @@ TraceStoreSqlite3InitCu(
     }
 
     Success = TRUE;
+
+    Db->CuDevice = Device;
+    Db->CuContext = Context;
     goto End;
 
 Error:
@@ -822,6 +830,7 @@ Return Value:
         }
     }
 
+    /*
     if (DispatchedInitCu) {
         LONG WaitResult;
 
@@ -832,6 +841,7 @@ Return Value:
             goto Error;
         }
     }
+    */
 
     Result = SQLITE_OK_LOAD_PERMANENTLY;
 
