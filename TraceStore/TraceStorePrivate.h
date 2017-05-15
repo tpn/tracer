@@ -3263,6 +3263,34 @@ typedef union _TRACE_STORE_ROW {
 typedef TRACE_STORE_ROW *PTRACE_STORE_ROW;
 C_ASSERT(sizeof(TRACE_STORE_ROW) == 8);
 
+typedef enum _TRACE_STORE_SQLITE3_ROWID_CONSTRAINT {
+
+    RowidEqualConstraint                = 1,
+    RowidGreaterThanConstraint          = 2,
+    RowidGreaterThanOrEqualConstraint   = 3,
+    RowidLessThanConstraint             = 4,
+    RowidLessThanOrEqualConstraint      = 5,
+    RowidInvalidConstraint              = 6,
+    RowidMaskConstraint                 = 7
+
+} TRACE_STORE_SQLITE3_ROWID_CONSTRAINT;
+
+typedef union _TRACE_STORE_SQLITE3_ROWID_INDEX {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG EqualConstraint:1;
+        ULONG GreaterThanConstraint:1;
+        ULONG LessThanConstraint:1;
+
+        ULONG Unused:28;
+        ULONG IsRowidIndex:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_SQLITE3_ROWID_INDEX;
+C_ASSERT(sizeof(TRACE_STORE_SQLITE3_ROWID_INDEX) == sizeof(ULONG));
+typedef TRACE_STORE_SQLITE3_ROWID_INDEX *PTRACE_STORE_SQLITE3_ROWID_INDEX;
+
+
 //
 // This structure captures the necessary information about a column's data type
 // and offset such that it can be translated into an appropriate sqlite3 result
@@ -3316,11 +3344,55 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     TRACE_STORE_SQLITE3_CURSOR_FLAGS Flags;
 
     //
-    // The first row.  This will always point to the base address of the first
-    // memory map.
+    // Rowid tracks the current row/record being processed.
     //
 
-    TRACE_STORE_ROW FirstRow;
+    ULONGLONG Rowid;
+
+    //
+    // The first row.  This will always initially point to the base address of
+    // the first memory map.  It may be subsequently updated to point at an
+    // alternate row if a query has rowid constraints.
+    //
+
+    union {
+        TRACE_STORE_ROW FirstRow;
+        ULONGLONG FirstRowRaw;
+    };
+
+    //
+    // Likewise, FirstRowid will either be 0 if no constraints have been set
+    // filtering row IDs, or something greater than zero if constraints have
+    // been set.
+    //
+
+    ULONGLONG FirstRowid;
+
+    //
+    // The last row.  This will always initially point to the address of the
+    // last record of the trace store.  It may be subsequently updated to point
+    // at an alternate row if a query has rowid constraints.
+    //
+
+    union {
+        TRACE_STORE_ROW LastRow;
+        ULONGLONG LastRowRaw;
+    };
+
+    //
+    // Likewise, LastRowid will either be the same as TotalNumberOfRecords if
+    // no rowid constraints have been set, otherwise, it will be some value
+    // less than this value.
+    //
+
+    ULONGLONG LastRowid;
+
+    //
+    // The maximum possible rowid value for this query.  This will correspond
+    // to TotalNumberOfRecords - 1.
+    //
+
+    ULONGLONG MaxRowid;
 
     //
     // The current row being processed.
@@ -3330,12 +3402,6 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
         TRACE_STORE_ROW CurrentRow;
         ULONGLONG CurrentRowRaw;
     };
-
-    //
-    // Rowid is synonymous with a single record.
-    //
-
-    LONGLONG Rowid;
 
     //
     // Track how many records and allocations we've iterated over so far.
@@ -3461,7 +3527,6 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
 
 } TRACE_STORE_SQLITE3_CURSOR;
 typedef TRACE_STORE_SQLITE3_CURSOR *PTRACE_STORE_SQLITE3_CURSOR;
-
 
 #include "TraceStoreSqlite3Schemas.h"
 

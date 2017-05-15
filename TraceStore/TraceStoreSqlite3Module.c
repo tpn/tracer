@@ -107,10 +107,18 @@ TraceStoreSqlite3ModuleBestIndex(
     )
 {
     LONG Index;
+    BOOL RowidConstraint = TRUE;
+    LONG ConstraintCount = 0;
+    ULONG Shifted;
+    LONGLONG EstimatedRows;
     PCSQLITE3 Sqlite3;
     PTRACE_STORE TraceStore;
+    PTRACE_STORE_TOTALS Totals;
     PTRACE_STORE_SQLITE3_DB Db;
     PSQLITE3_INDEX_CONSTRAINT Constraint;
+    PSQLITE3_INDEX_CONSTRAINT_USAGE ConstraintUsage;
+    TRACE_STORE_SQLITE3_ROWID_INDEX RowidIndex;
+    TRACE_STORE_SQLITE3_ROWID_INDEX FinalRowidIndex;
 
     TraceStore = CONTAINING_RECORD(VirtualTable,
                                    TRACE_STORE,
@@ -119,46 +127,96 @@ TraceStoreSqlite3ModuleBestIndex(
     Db = TraceStore->Db;
     Sqlite3 = Db->Sqlite3;
 
+    if (IndexInfo->NumberOfConstraints > 2) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+    Totals = TraceStore->Totals;
+    if (TraceStore->IsMetadata) {
+        EstimatedRows = Totals->NumberOfAllocations.QuadPart;
+    } else {
+        EstimatedRows = Totals->NumberOfRecords.QuadPart;
+    }
+
+    FinalRowidIndex.AsULong = 0;
+
     for (Index = 0; Index < IndexInfo->NumberOfConstraints; Index++) {
         Constraint = IndexInfo->Constraints + Index;
         if (!Constraint->IsUsable) {
             continue;
         }
 
+        if (Constraint->ColumnNumber != -1) {
+            RowidConstraint = FALSE;
+            continue;
+        }
+
+        ConstraintUsage = &IndexInfo->ConstraintUsage[ConstraintCount++];
+        ConstraintUsage->ArgumentIndex = ConstraintCount;
+        ConstraintUsage->Omit = TRUE;
+
+        RowidIndex.AsULong = 0;
+
         switch (Constraint->Op) {
 
             case EqualConstraint:
+                RowidIndex.EqualConstraint = TRUE;
+                IndexInfo->IndexFlags = SQLITE_INDEX_SCAN_UNIQUE;
                 break;
 
             case GreaterThanConstraint:
+                RowidIndex.GreaterThanConstraint = TRUE;
                 break;
 
             case LessThanOrEqualConstraint:
+                RowidIndex.EqualConstraint = TRUE;
+                RowidIndex.LessThanConstraint = TRUE;
                 break;
 
             case LessThanConstraint:
+                RowidIndex.LessThanConstraint = TRUE;
                 break;
 
             case GreaterThanOrEqualConstraint:
+                RowidIndex.EqualConstraint = TRUE;
+                RowidIndex.GreaterThanConstraint = TRUE;
                 break;
 
             case MatchConstraint:
-                break;
-
             case LikeConstraint:
-                break;
-
             case GlobConstraint:
-                break;
-
             case RegExpConstraint:
+            default:
+
+                //
+                // These are all invalid for rowid.
+                //
+
+                __debugbreak();
                 break;
         }
+
+        //
+        // Update the final row index.
+        //
+
+        Shifted = (RowidIndex.AsULong & RowidMaskConstraint) << (Index * 3);
+        FinalRowidIndex.AsULong |= Shifted;
+
     }
 
-    IndexInfo->IndexNumber = 1;
-    IndexInfo->EstimatedCost = 1.0;
-    IndexInfo->EstimatedRows = TraceStore->Totals->NumberOfRecords.QuadPart;
+    IndexInfo->EstimatedRows = EstimatedRows;
+
+    if (ConstraintCount == 0 || !RowidConstraint) {
+        IndexInfo->IndexNumber = 0;
+        IndexInfo->EstimatedCost = 1.0 * (DOUBLE)IndexInfo->EstimatedRows;
+        return SQLITE_OK;
+    }
+
+    FinalRowidIndex.IsRowidIndex = TRUE;
+    IndexInfo->IndexNumber = FinalRowidIndex.AsLong;
+    IndexInfo->EstimatedCost = (DOUBLE)ConstraintCount * 1.0;
 
     return SQLITE_OK;
 }
@@ -271,7 +329,6 @@ TraceStoreSqlite3ModuleOpenCursor(
     }
 
     Cursor->FirstRow.AsVoid = Cursor->MemoryMap->BaseAddress;
-    Cursor->CurrentRow.AsVoid = Cursor->MemoryMap->BaseAddress;
 
     QueryPerformanceCounter(&Cursor->OpenedTimestamp);
 
@@ -317,23 +374,167 @@ TraceStoreSqlite3ModuleFilter(
     PSQLITE3_VALUE *Arguments
     )
 {
-    PSTRING String;
+    BYTE Index;
+    BYTE Count;
+    ULONG MaskedConstraint;
+    ULONGLONG Rowid;
+    ULONGLONG RecordSize;
+    PCSQLITE3 Sqlite3;
+    PTRACE_STORE TraceStore;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
+    TRACE_STORE_SQLITE3_ROWID_INDEX RowidIndex;
 
     Cursor = CONTAINING_RECORD(Sqlite3Cursor,
                                TRACE_STORE_SQLITE3_CURSOR,
                                AsSqlite3VtabCursor);
-
-    Cursor->Rowid = 0;
 
     Cursor->FilterArguments = Arguments;
     Cursor->NumberOfArguments = NumberOfArguments;
     Cursor->FilterIndexNumber = IndexNumber;
     Cursor->FilterIndexStringBuffer = IndexString;
 
-    String = &Cursor->FilterIndexString;
-    String->Length = IndexString ? (USHORT)strlen(IndexString) : 0;
-    String->MaximumLength = String->Length;
+    Cursor->FirstRowid = 0;
+    Cursor->CurrentRow.AsVoid = Cursor->MemoryMap->BaseAddress;
+    Cursor->LastRowid = Cursor->MaxRowid = Cursor->TotalNumberOfRecords - 1;
+
+    RowidIndex.AsLong = IndexNumber;
+    if (!RowidIndex.IsRowidIndex) {
+        return SQLITE_OK;
+    }
+
+    TraceStore = Cursor->TraceStore;
+    if (TraceStore->IsMetadata) {
+        RecordSize = Cursor->MetadataRecordSizeInBytes;
+    } else {
+        RecordSize = Cursor->TraceStoreRecordSizeInBytes;
+    }
+
+    if (!RecordSize) {
+
+        //
+        // We don't support rowid constraints when we don't have fixed record
+        // sizes yet.
+        //
+
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+    //
+    // Toggle the rowid tag back to 0 now that we've confirmed it's a rowid
+    // index.  This is done as a precautionary measure as we shift the row
+    // index raw value right when extracting predicates.
+    //
+
+    RowidIndex.IsRowidIndex = FALSE;
+
+    if (NumberOfArguments < 1 || NumberOfArguments > 2) {
+
+        //
+        // There should only ever be 1 or 2 arguments for rowid-based filtering.
+        //
+
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+    Count = (BYTE)NumberOfArguments;
+    Sqlite3 = Cursor->Sqlite3;
+
+    for (Index = 0; Index < Count; Index++) {
+
+        Rowid = (ULONGLONG)Sqlite3->ValueInt64(Arguments[Index]);
+
+        //
+        // Extract the low three bits.
+        //
+
+        MaskedConstraint = RowidIndex.AsULong & RowidMaskConstraint;
+
+        switch (MaskedConstraint) {
+            case RowidEqualConstraint:
+
+                //
+                // We shouldn't see equal constraints after the first iteration.
+                //
+
+                if (Index != 0) {
+                    __debugbreak();
+                    return SQLITE_ERROR;
+                }
+
+                Cursor->FirstRowid = Rowid;
+                Cursor->LastRowid = Rowid;
+                break;
+
+            case RowidGreaterThanConstraint:
+                Cursor->FirstRowid = Rowid + 1;
+                break;
+
+            case RowidGreaterThanOrEqualConstraint:
+                Cursor->FirstRowid = Rowid;
+                break;
+
+            case RowidLessThanConstraint:
+                Cursor->LastRowid = Rowid - 1;
+                break;
+
+            case RowidLessThanOrEqualConstraint:
+                Cursor->LastRowid = Rowid;
+                break;
+
+            default:
+                __debugbreak();
+                return SQLITE_ERROR;
+        }
+
+        //
+        // Shift the row index right three bits such that the next argument's
+        // predicate is in the lower three bits.
+        //
+
+        RowidIndex.AsULong >>= 3;
+    }
+
+    //
+    // Sanity check invariants.
+    //
+
+    if (Cursor->FirstRowid > Cursor->LastRowid) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    } else if (Cursor->FirstRowid > Cursor->MaxRowid) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    } else if (Cursor->LastRowid > Cursor->MaxRowid) {
+        __debugbreak();
+        return SQLITE_ERROR;
+    }
+
+    //
+    // Advance the first and current rows to the appropriate offset based on the
+    // first rowid.  Likewise for the last row and last rowid.
+    //
+
+    Cursor->CurrentRow.AsVoid = Cursor->FirstRow.AsVoid = (
+        RtlOffsetToPointer(
+            Cursor->MemoryMap->BaseAddress,
+            Cursor->FirstRowid * RecordSize
+        )
+    );
+
+    Cursor->LastRow.AsVoid = (
+        RtlOffsetToPointer(
+            Cursor->MemoryMap->BaseAddress,
+            Cursor->LastRowid * RecordSize
+        )
+    );
+
+    //
+    // Point our cursor at the first row.
+    //
+
+    Cursor->Rowid = Cursor->FirstRowid;
 
     return SQLITE_OK;
 }
@@ -365,7 +566,7 @@ TraceStoreSqlite3ModuleNext(
     // avoid any unnecessary record size deduction.
     //
 
-    if (Cursor->Rowid++ >= Cursor->TotalNumberOfRecords - 1) {
+    if (Cursor->Rowid++ >= Cursor->LastRowid) {
         return SQLITE_OK;
     }
 
@@ -530,7 +731,7 @@ TraceStoreSqlite3ModuleEof(
 
     Eof = (
         Cursor->Flags.EofOverride ||
-        Cursor->Rowid >= Cursor->TotalNumberOfRecords
+        Cursor->Rowid > Cursor->LastRowid
     );
 
     return Eof;

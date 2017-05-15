@@ -43,7 +43,7 @@ TraceStoreSqlite3CountStep(
     // Update the rowid whilst we're here.
     //
 
-    Cursor->Rowid = Cursor->TotalNumberOfRecords;
+    Cursor->Rowid = Cursor->LastRowid;
 
     return;
 }
@@ -58,11 +58,14 @@ TraceStoreSqlite3CountFinal(
 {
     PCSQLITE3 Sqlite3;
     PTRACE_STORE_SQLITE3_CURSOR Cursor;
+    ULONGLONG RecordCount;
 
     Cursor = TraceStoreSqlite3TlsGetCursor();
     Sqlite3 = Cursor->Sqlite3;
 
-    Sqlite3->ResultInt64(Context, Cursor->TotalNumberOfRecords);
+    RecordCount = (Cursor->LastRowid - Cursor->FirstRowid) + 1;
+
+    Sqlite3->ResultInt64(Context, (SQLITE3_INT64)RecordCount);
 
     return;
 }

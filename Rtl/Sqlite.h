@@ -27,6 +27,9 @@ typedef SQLITE3_INT64 *PSQLITE3_INT64;
 typedef sqlite3_uint64 SQLITE3_UINT64;
 typedef SQLITE3_UINT64 *PSQLITE3_UINT64;
 
+typedef sqlite3_value SQLITE3_VALUE;
+typedef SQLITE3_VALUE *PSQLITE3_VALUE;
+
 //
 // N.B.: We use SQLITE3 for the sqlite3_api_routines structure; sqlite3 is
 //       referred to as SQLITE3_DB.  The rest of the typedefs mirror their
@@ -61,6 +64,32 @@ typedef enum _SQLITE3_CONSTRAINT_OPERATOR {
     RegExpConstraint                   = 67
 } SQLITE3_CONSTRAINT_OPERATOR;
 
+//
+// Provide an alternate bitflag-friendly enumeration of the constraint
+// operators where the Like/Glob/RegExp constraints don't overlap the
+// first set of logic predicates.
+//
+
+typedef enum _SQLITE3_CONSTRAINT_ID {
+    NotEqualConstraintId               =         1,
+    EqualConstraintId                  = (1 <<   1),
+    GreaterThanConstraintId            = (1 <<   2),
+    LessThanOrEqualConstraintId        = (1 <<   3),
+    LessThanConstraintId               = (1 <<   4),
+    GreaterThanOrEqualConstraintId     = (1 <<   5),
+    MatchConstraintId                  = (1 <<   6),
+    LikeConstraintId                   = (1 <<   7),
+    GlobConstraintId                   = (1 <<   8),
+    RegExpConstraintId                 = (1 <<   9),
+
+    //
+    // Keep this last and make sure it's always using the same expression used
+    // by the enumeration above.
+    //
+
+    InvalidConstraintId                = (1 <<   9) + 1
+} SQLITE3_CONSTRAINT_ID;
+
 #define IsEqualConstraint(Op) ((UCHAR)Op == (UCHAR)EqualConstraint)
 #define IsGreaterThanConstraint(Op) ((UCHAR)Op == (UCHAR)GreaterThanConstraint)
 #define IsLessThanOrEqualConstraint(Op) ((UCHAR)Op == (UCHAR)LessThanOrEqualConstraint)
@@ -79,6 +108,9 @@ typedef struct _SQLITE3_INDEX_CONSTRAINT {
     LONG TermOffset;
 } SQLITE3_INDEX_CONSTRAINT;
 typedef SQLITE3_INDEX_CONSTRAINT *PSQLITE3_INDEX_CONSTRAINT;
+
+#define SQLITE3_ROWID_COLUMN = (-1)
+#define IsRowidColumn(ColumnNumber) ((ColumnNumber) == SQLITE3_ROWID_COLUMN)
 
 typedef struct _SQLITE3_INDEX_ORDER_BY {
     LONG ColumnNumber;
@@ -262,6 +294,20 @@ LONG
     _In_opt_ PSQLITE3_FUNCTION_DESTROY DestroyFunction
     );
 typedef SQLITE3_CREATE_FUNCTION_V2 *PSQLITE3_CREATE_FUNCTION_V2;
+
+typedef
+LONGLONG
+(SQLITE3_VALUE_INT64)(
+    _In_ PSQLITE3_VALUE Value
+    );
+typedef SQLITE3_VALUE_INT64 *PSQLITE3_VALUE_INT64;
+
+typedef
+LONG
+(SQLITE3_VALUE_NUMERIC_TYPE)(
+    _In_ PSQLITE3_VALUE Value
+    );
+typedef SQLITE3_VALUE_NUMERIC_TYPE *PSQLITE3_VALUE_NUMERIC_TYPE;
 
 //
 // Define SQLITE3_MODULE function pointer typedefs.
@@ -820,8 +866,10 @@ typedef struct _SQLITE3_API_ROUTINES {
     int  (*value_bytes16)(sqlite3_value*);
     double  (*value_double)(sqlite3_value*);
     int  (*value_int)(sqlite3_value*);
-    sqlite_int64  (*value_int64)(sqlite3_value*);
-    int  (*value_numeric_type)(sqlite3_value*);
+
+    PSQLITE3_VALUE_INT64 ValueInt64;
+    PSQLITE3_VALUE_NUMERIC_TYPE ValueNumericType;
+
     const unsigned char * (*value_text)(sqlite3_value*);
     const void * (*value_text16)(sqlite3_value*);
     const void * (*value_text16be)(sqlite3_value*);
