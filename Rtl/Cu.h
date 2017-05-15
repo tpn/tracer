@@ -423,17 +423,82 @@ typedef enum _CU_RESULT {
 #define CU_FAILED(Result) (Result != CUDA_SUCCESS)
 
 typedef enum _Enum_is_bitflag_ _CU_CTX_CREATE_FLAGS {
-    CU_CTX_SCHED_AUTO          = 0x00,
-    CU_CTX_SCHED_SPIN          = 0x01,
-    CU_CTX_SCHED_YIELD         = 0x02,
-    CU_CTX_SCHED_BLOCKING_SYNC = 0x04,
-    CU_CTX_BLOCKING_SYNC       = 0x04,
-    CU_CTX_MAP_HOST            = 0x08,
-    CU_CTX_LMEM_RESIZE_TO_MAX  = 0x10,
-    CU_CTX_SCHED_MASK          = 0x07,
-    CU_CTX_PRIMARY             = 0x20,
-    CU_CTX_FLAGS_MASK          = 0x3f
+    CU_CTX_SCHED_AUTO           = 0x00,
+    CU_CTX_SCHED_SPIN           = 0x01,
+    CU_CTX_SCHED_YIELD          = 0x02,
+    CU_CTX_SCHED_BLOCKING_SYNC  = 0x04,
+    CU_CTX_BLOCKING_SYNC        = 0x04,
+    CU_CTX_MAP_HOST             = 0x08,
+    CU_CTX_LMEM_RESIZE_TO_MAX   = 0x10,
+    CU_CTX_SCHED_MASK           = 0x07,
+    CU_CTX_PRIMARY              = 0x20,
+    CU_CTX_FLAGS_MASK           = 0x3f
 } CU_CTX_CREATE_FLAGS;
+
+typedef enum _Enum_is_bitflag_ _CU_EVENT_FLAGS {
+    CU_EVENT_DEFAULT            = 0x0,
+    CU_EVENT_BLOCKING_SYNC      = 0x1,
+    CU_EVENT_DISABLE_TIMING     = 0x2,
+    CU_EVENT_INTERPROCESS       = 0x4
+} CU_EVENT_FLAGS;
+
+typedef enum _Enum_is_bitflag_ _CU_STREAM_FLAGS {
+    CU_STREAM_DEFAULT           =   0x0,
+    CU_STREAM_NON_BLOCKING      =   0x1
+} CU_STREAM_FLAGS;
+
+typedef enum _Enum_is_bitflag_ _CU_MEM_ATTACH_FLAGS {
+    CU_MEM_ATTACH_GLOBAL        = 0x1,
+    CU_MEM_ATTACH_HOST          = 0x2,
+    CU_MEM_ATTACH_SINGLE        = 0x4
+} CU_MEM_ATTACH_FLAGS;
+
+typedef enum _Enum_is_bitflag_ _CU_STREAM_WAIT_VALUE {
+    CU_STREAM_WAIT_VALUE_GEQ   = 0x0,
+    CU_STREAM_WAIT_VALUE_EQ    = 0x1,
+    CU_STREAM_WAIT_VALUE_AND   = 0x2,
+    CU_STREAM_WAIT_VALUE_FLUSH = 1<<30
+} CU_STREAM_WAIT_VALUE;
+
+typedef enum _Enum_is_bitflag_ _CU_STREAM_WRITE_VALUE {
+    CU_STREAM_WRITE_VALUE_DEFAULT           = 0x0,
+    CU_STREAM_WRITE_VALUE_NO_MEMORY_BARRIER = 0x1
+} CU_STREAM_WRITE_VALUE;
+
+typedef enum _CU_STREAM_BATCH_MEM_OP_TYPE {
+    CU_STREAM_MEM_OP_WAIT_VALUE_32          = 1,
+    CU_STREAM_MEM_OP_WRITE_VALUE_32         = 2,
+    CU_STREAM_MEM_OP_FLUSH_REMOTE_WRITES    = 3
+} CU_STREAM_BATCH_MEM_OP_TYPE;
+typedef CU_STREAM_BATCH_MEM_OP_TYPE *PCU_STREAM_BATCH_MEM_OP_TYPE;
+
+typedef union _CU_STREAM_BATCH_MEM_OP_PARAMS {
+    CU_STREAM_BATCH_MEM_OP_TYPE Operation;
+    struct {
+        CU_STREAM_BATCH_MEM_OP_TYPE Operation;
+        PCU_DEVICE_POINTER Address;
+        ULONG Value;
+        ULONG Padding1;
+        CU_STREAM_WAIT_VALUE Flags;
+        ULONG Padding2;
+        PCU_DEVICE_POINTER Alias;
+    } Wait;
+    struct {
+        CU_STREAM_BATCH_MEM_OP_TYPE Operation;
+        PCU_DEVICE_POINTER Address;
+        ULONG Value;
+        ULONG Padding1;
+        CU_STREAM_WRITE_VALUE Flags;
+        ULONG Padding2;
+        PCU_DEVICE_POINTER Alias;
+    } Write;
+    struct {
+        CU_STREAM_BATCH_MEM_OP_TYPE Operation;
+        ULONG Flags;
+    } FlushRemoteWrites;
+    ULONG64 Padding[6];
+} CU_STREAM_BATCH_MEM_OP_PARAMS;
+typedef CU_STREAM_BATCH_MEM_OP_PARAMS *PCU_STREAM_BATCH_MEM_OP_PARAMS;
 
 typedef enum _CU_JIT_OPTION {
     CU_JIT_MAX_REGISTERS = 0,
@@ -451,6 +516,227 @@ typedef enum _CU_JIT_OPTION {
 typedef CU_JIT_OPTION *PCU_JIT_OPTION;
 typedef CU_JIT_OPTION **PPCU_JIT_OPTION;
 
+typedef enum _CU_DEVICE_ATTRIBUTE {
+    CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 1,
+    CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X = 2,
+    CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Y = 3,
+    CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Z = 4,
+    CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_X = 5,
+    CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Y = 6,
+    CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Z = 7,
+    CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK = 8,
+    CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY = 9,
+    CU_DEVICE_ATTRIBUTE_WARP_SIZE = 10,
+    CU_DEVICE_ATTRIBUTE_MAX_PITCH = 11,
+    CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK = 12,
+    CU_DEVICE_ATTRIBUTE_CLOCK_RATE = 13,
+    CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT = 14,
+    CU_DEVICE_ATTRIBUTE_GPU_OVERLAP = 15,
+    CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT = 16,
+    CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT = 17,
+    CU_DEVICE_ATTRIBUTE_INTEGRATED = 18,
+    CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY = 19,
+    CU_DEVICE_ATTRIBUTE_COMPUTE_MODE = 20,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_WIDTH = 21,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_WIDTH = 22,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_HEIGHT = 23,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_WIDTH = 24,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_HEIGHT = 25,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_DEPTH = 26,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_WIDTH = 27,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_HEIGHT = 28,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_NUMSLICES = 29,
+    CU_DEVICE_ATTRIBUTE_SURFACE_ALIGNMENT = 30,
+    CU_DEVICE_ATTRIBUTE_CONCURRENT_KERNELS = 31,
+    CU_DEVICE_ATTRIBUTE_ECC_ENABLED = 32,
+    CU_DEVICE_ATTRIBUTE_PCI_BUS_ID = 33,
+    CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID = 34,
+    CU_DEVICE_ATTRIBUTE_TCC_DRIVER = 35,
+    CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE = 36,
+    CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH = 37,
+    CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE = 38,
+    CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR = 39,
+    CU_DEVICE_ATTRIBUTE_ASYNC_ENGINE_COUNT = 40,
+    CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING = 41,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_LAYERED_WIDTH = 42,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_LAYERED_LAYERS = 43,
+    CU_DEVICE_ATTRIBUTE_CAN_TEX2D_GATHER = 44,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_GATHER_WIDTH = 45,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_GATHER_HEIGHT = 46,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_WIDTH_ALTERNATE = 47,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_HEIGHT_ALTERNATE = 48,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_DEPTH_ALTERNATE = 49,
+    CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID = 50,
+    CU_DEVICE_ATTRIBUTE_TEXTURE_PITCH_ALIGNMENT = 51,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURECUBEMAP_WIDTH = 52,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURECUBEMAP_LAYERED_WIDTH = 53,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURECUBEMAP_LAYERED_LAYERS = 54,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE1D_WIDTH = 55,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE2D_WIDTH = 56,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE2D_HEIGHT = 57,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE3D_WIDTH = 58,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE3D_HEIGHT = 59,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE3D_DEPTH = 60,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE1D_LAYERED_WIDTH = 61,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE1D_LAYERED_LAYERS = 62,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE2D_LAYERED_WIDTH = 63,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE2D_LAYERED_HEIGHT = 64,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACE2D_LAYERED_LAYERS = 65,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACECUBEMAP_WIDTH = 66,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACECUBEMAP_LAYERED_WIDTH = 67,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_SURFACECUBEMAP_LAYERED_LAYERS = 68,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_LINEAR_WIDTH = 69,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LINEAR_WIDTH = 70,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LINEAR_HEIGHT = 71,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LINEAR_PITCH = 72,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_MIPMAPPED_WIDTH = 73,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_MIPMAPPED_HEIGHT = 74,
+    CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR = 75,
+    CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR = 76,
+    CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_MIPMAPPED_WIDTH = 77,
+    CU_DEVICE_ATTRIBUTE_STREAM_PRIORITIES_SUPPORTED = 78,
+    CU_DEVICE_ATTRIBUTE_GLOBAL_L1_CACHE_SUPPORTED = 79,
+    CU_DEVICE_ATTRIBUTE_LOCAL_L1_CACHE_SUPPORTED = 80,
+    CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR = 81,
+    CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR = 82,
+    CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY = 83,
+    CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD = 84,
+    CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD_GROUP_ID = 85,
+    CU_DEVICE_ATTRIBUTE_HOST_NATIVE_ATOMIC_SUPPORTED = 86,
+    CU_DEVICE_ATTRIBUTE_SINGLE_TO_DOUBLE_PRECISION_PERF_RATIO = 87,
+    CU_DEVICE_ATTRIBUTE_PAGEABLE_MEMORY_ACCESS = 88,
+    CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS = 89,
+    CU_DEVICE_ATTRIBUTE_COMPUTE_PREEMPTION_SUPPORTED = 90,
+    CU_DEVICE_ATTRIBUTE_CAN_USE_HOST_POINTER_FOR_REGISTERED_MEM = 91,
+    CU_DEVICE_ATTRIBUTE_MAX
+} CU_DEVICE_ATTRIBUTE;
+typedef CU_DEVICE_ATTRIBUTE *PCU_DEVICE_ATTRIBUTE;
+
+typedef struct _CU_DEVICE_ATTRIBUTES {
+    ULONG MaxThreadsPerBlock;
+    ULONG MaxBlockDimX;
+    ULONG MaxBlockDimY;
+    ULONG MaxBlockDimZ;
+    ULONG MaxGridDimX;
+    ULONG MaxGridDimY;
+    ULONG MaxGridDimZ;
+    ULONG MaxSharedMemoryPerBlock;
+    ULONG TotalConstantMemory;
+    ULONG WarpSize;
+    ULONG MaxPitch;
+    ULONG MaxRegistersPerBlock;
+    ULONG ClockRate;
+    ULONG TextureAlignment;
+    ULONG GpuOverlap;
+    ULONG MultiprocessorCount;
+    ULONG KernelExecTimeout;
+    ULONG Integrated;
+    ULONG CanMapHostMemory;
+    ULONG ComputeMode;
+    ULONG MaximumTexture1DWidth;
+    ULONG MaximumTexture2DWidth;
+    ULONG MaximumTexture2DHeight;
+    ULONG MaximumTexture3DWidth;
+    ULONG MaximumTexture3DHeight;
+    ULONG MaximumTexture3DDepth;
+    ULONG MaximumTexture2DArrayWidth;
+    ULONG MaximumTexture2DArrayHeight;
+    ULONG MaximumTexture2DArrayNumslices;
+    ULONG SurfaceAlignment;
+    ULONG ConcurrentKernels;
+    ULONG EccEnabled;
+    ULONG PciBusId;
+    ULONG PciDeviceId;
+    ULONG TccDriver;
+    ULONG MemoryClockRate;
+    ULONG GlobalMemoryBusWidth;
+    ULONG L2CacheSize;
+    ULONG MaxThreadsPerMultiprocessor;
+    ULONG AsyncEngineCount;
+    ULONG UnifiedAddressing;
+    ULONG MaximumTexture1DLayeredWidth;
+    ULONG MaximumTexture1DLayeredLayers;
+    ULONG CanTex2DGather;
+    ULONG MaximumTexture2DGatherWidth;
+    ULONG MaximumTexture2DGatherHeight;
+    ULONG MaximumTexture3DWidthAlternate;
+    ULONG MaximumTexture3DHeightAlternate;
+    ULONG MaximumTexture3DDepthAlternate;
+    ULONG PciDomainId;
+    ULONG TexturePitchAlignment;
+    ULONG MaximumTexturecubemapWidth;
+    ULONG MaximumTexturecubemapLayeredWidth;
+    ULONG MaximumTexturecubemapLayeredLayers;
+    ULONG MaximumSurface1DWidth;
+    ULONG MaximumSurface2DWidth;
+    ULONG MaximumSurface2DHeight;
+    ULONG MaximumSurface3DWidth;
+    ULONG MaximumSurface3DHeight;
+    ULONG MaximumSurface3DDepth;
+    ULONG MaximumSurface1DLayeredWidth;
+    ULONG MaximumSurface1DLayeredLayers;
+    ULONG MaximumSurface2DLayeredWidth;
+    ULONG MaximumSurface2DLayeredHeight;
+    ULONG MaximumSurface2DLayeredLayers;
+    ULONG MaximumSurfacecubemapWidth;
+    ULONG MaximumSurfacecubemapLayeredWidth;
+    ULONG MaximumSurfacecubemapLayeredLayers;
+    ULONG MaximumTexture1DLinearWidth;
+    ULONG MaximumTexture2DLinearWidth;
+    ULONG MaximumTexture2DLinearHeight;
+    ULONG MaximumTexture2DLinearPitch;
+    ULONG MaximumTexture2DMipmappedWidth;
+    ULONG MaximumTexture2DMipmappedHeight;
+    ULONG ComputeCapabilityMajor;
+    ULONG ComputeCapabilityMinor;
+    ULONG MaximumTexture1DMipmappedWidth;
+    ULONG StreamPrioritiesSupported;
+    ULONG GlobalL1CacheSupported;
+    ULONG LocalL1CacheSupported;
+    ULONG MaxSharedMemoryPerMultiprocessor;
+    ULONG MaxRegistersPerMultiprocessor;
+    ULONG ManagedMemory;
+    ULONG MultiGpuBoard;
+    ULONG MultiGpuBoardGroupId;
+    ULONG HostNativeAtomicSupported;
+    ULONG SingleToDoublePrecisionPerfRatio;
+    ULONG PageableMemoryAccess;
+    ULONG ConcurrentManagedAccess;
+    ULONG ComputePreemptionSupported;
+    ULONG CanUseHostPointerForRegisteredMem;
+} CU_DEVICE_ATTRIBUTES;
+typedef CU_DEVICE_ATTRIBUTES *PCU_DEVICE_ATTRIBUTES;
+
+#define CU_MEMHOSTALLOC_PORTABLE        0x01
+#define CU_MEMHOSTALLOC_DEVICEMAP       0x02
+#define CU_MEMHOSTALLOC_WRITECOMBINED   0x04
+#define CU_MEMHOSTREGISTER_PORTABLE     0x01
+#define CU_MEMHOSTREGISTER_DEVICEMAP    0x02
+#define CU_MEMHOSTREGISTER_IOMEMORY     0x04
+#define CU_MEMPEERREGISTER_DEVICEMAP    0x02
+
+typedef union _CU_MEM_HOST_ALLOC_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Portable:1;
+        ULONG DeviceMap:1;
+        ULONG WriteCombined:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} CU_MEM_HOST_ALLOC_FLAGS;
+C_ASSERT(sizeof(CU_MEM_HOST_ALLOC_FLAGS) == sizeof(ULONG));
+
+typedef union _CU_MEM_HOST_REGISTER_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Portable:1;
+        ULONG DeviceMap:1;
+        ULONG IoMemory:1;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} CU_MEM_HOST_REGISTER_FLAGS;
+C_ASSERT(sizeof(CU_MEM_HOST_REGISTER_FLAGS) == sizeof(ULONG));
+
 //
 // Initialization.
 //
@@ -462,6 +748,28 @@ CU_RESULT
     _In_opt_ ULONG Flags
     );
 typedef CU_INIT *PCU_INIT;
+
+//
+// Errors.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_GET_ERROR_NAME)(
+    _In_opt_ CU_RESULT Error,
+    _Outptr_result_z_ PCSZ *ErrorString
+    );
+typedef CU_GET_ERROR_NAME *PCU_GET_ERROR_NAME;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_GET_ERROR_STRING)(
+    _In_opt_ CU_RESULT Error,
+    _Outptr_result_z_ PCSZ *ErrorString
+    );
+typedef CU_GET_ERROR_STRING *PCU_GET_ERROR_STRING;
 
 //
 // Driver Version.
@@ -524,6 +832,16 @@ CU_RESULT
     _In_ CU_DEVICE Device
     );
 typedef CU_DEVICE_COMPUTE_CAPABILITY *PCU_DEVICE_COMPUTE_CAPABILITY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_DEVICE_GET_ATTRIBUTE)(
+    _Outptr_result_maybenull_ PLONG AttributeValuePointer,
+    _In_ CU_DEVICE_ATTRIBUTE Attribute,
+    _In_ CU_DEVICE Device
+    );
+typedef CU_DEVICE_GET_ATTRIBUTE *PCU_DEVICE_GET_ATTRIBUTE;
 
 //
 // Context Management.
@@ -595,6 +913,15 @@ CU_RESULT
     );
 typedef CU_CTX_SYNCHRONIZE *PCU_CTX_SYNCHRONIZE;
 
+typedef
+_Check_return_
+CU_RESULT
+(CU_CTX_GET_STREAM_PRIORITY_RANGE)(
+    _Out_ PULONG LeastPriority,
+    _Out_ PULONG GreatestPriority
+    );
+typedef CU_CTX_GET_STREAM_PRIORITY_RANGE *PCU_CTX_GET_STREAM_PRIORITY_RANGE;
+
 //
 // Module Management.
 //
@@ -638,6 +965,319 @@ CU_RESULT
     );
 typedef CU_MODULE_GET_FUNCTION *PCU_MODULE_GET_FUNCTION;
 
+typedef
+_Check_return_
+CU_RESULT
+(CU_MODULE_GET_GLOBAL)(
+    _Outptr_result_maybenull_ PPCU_DEVICE_POINTER DevicePtrPointer,
+    _Outptr_result_maybenull_ PSIZE_T SizeInBytes,
+    _In_ PCU_MODULE Module,
+    _In_ PCSZ Name
+    );
+typedef CU_MODULE_GET_GLOBAL *PCU_MODULE_GET_GLOBAL;
+
+//
+// Stream Management.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_CREATE)(
+    _Outptr_result_maybenull_ PPCU_STREAM StreamPointer,
+    _In_opt_ CU_STREAM_FLAGS Flags
+    );
+typedef CU_STREAM_CREATE *PCU_STREAM_CREATE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_CREATE_WITH_PRIORITY)(
+    _Outptr_result_maybenull_ PPCU_STREAM StreamPointer,
+    _In_opt_ CU_STREAM_FLAGS Flags,
+    _In_opt_ ULONG Priority
+    );
+typedef CU_STREAM_CREATE_WITH_PRIORITY *PCU_STREAM_CREATE_WITH_PRIORITY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_DESTROY)(
+    _In_ _Post_invalid_ PCU_STREAM Stream
+    );
+typedef CU_STREAM_DESTROY *PCU_STREAM_DESTROY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_QUERY)(
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_STREAM_QUERY *PCU_STREAM_QUERY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_SYNCHRONIZE)(
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_STREAM_SYNCHRONIZE *PCU_STREAM_SYNCHRONIZE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CALLBACK CU_STREAM_CALLBACK)(
+    _In_opt_ PCU_STREAM Stream,
+    _In_opt_ CU_RESULT Status,
+    _In_opt_ PVOID UserData
+    );
+typedef CU_STREAM_CALLBACK *PCU_STREAM_CALLBACK;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_ADD_CALLBACK)(
+    _In_ PCU_STREAM Stream,
+    _In_ PCU_STREAM_CALLBACK Callback,
+    _In_opt_ PVOID UserData,
+    _In_opt_ ULONG Flags
+    );
+typedef CU_STREAM_ADD_CALLBACK *PCU_STREAM_ADD_CALLBACK;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_ATTACH_MEM_ASYNC)(
+    _In_ PCU_STREAM Stream,
+    _In_ PCU_DEVICE_POINTER Address,
+    _In_opt_ _Pre_ _Field_range_(==, 0) SIZE_T Length,
+    _In_opt_ CU_MEM_ATTACH_FLAGS Flags
+    );
+typedef CU_STREAM_ATTACH_MEM_ASYNC *PCU_STREAM_ATTACH_MEM_ASYNC;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_WAIT_EVENT)(
+    _In_ PCU_STREAM Stream,
+    _In_ PCU_EVENT Event,
+    _In_opt_ ULONG Unused
+    );
+typedef CU_STREAM_WAIT_EVENT *PCU_STREAM_WAIT_EVENT;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_WAIT_VALUE_32)(
+    _In_ PCU_STREAM Stream,
+    _In_ PCU_DEVICE_POINTER Address,
+    _In_opt_ ULONG Value,
+    _In_opt_ CU_STREAM_WAIT_VALUE Flags
+    );
+typedef CU_STREAM_WAIT_VALUE_32 *PCU_STREAM_WAIT_VALUE_32;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_WRITE_VALUE_32)(
+    _In_ PCU_STREAM Stream,
+    _In_ PCU_DEVICE_POINTER Address,
+    _In_opt_ ULONG Value,
+    _In_opt_ CU_STREAM_WRITE_VALUE Flags
+    );
+typedef CU_STREAM_WRITE_VALUE_32 *PCU_STREAM_WRITE_VALUE_32;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_STREAM_BATCH_MEM_OP)(
+    _In_ PCU_STREAM Stream,
+    _In_ ULONG Count,
+    _In_reads_(Count) PCU_STREAM_BATCH_MEM_OP_PARAMS Params,
+    _In_opt_ ULONG Flags
+    );
+typedef CU_STREAM_BATCH_MEM_OP *PCU_STREAM_BATCH_MEM_OP;
+
+//
+// Event Management.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_CREATE)(
+    _Outptr_result_maybenull_ PPCU_EVENT EventPointer,
+    _In_opt_ CU_EVENT_FLAGS Flags
+    );
+typedef CU_EVENT_CREATE *PCU_EVENT_CREATE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_DESTROY)(
+    _In_ _Post_invalid_ PCU_EVENT Event
+    );
+typedef CU_EVENT_DESTROY *PCU_EVENT_DESTROY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_ELAPSED_TIME)(
+    _Outptr_ PFLOAT Milliseconds,
+    _In_ PCU_EVENT StartEvent,
+    _In_ PCU_EVENT EndEvent
+    );
+typedef CU_EVENT_ELAPSED_TIME *PCU_EVENT_ELAPSED_TIME;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_QUERY)(
+    _In_ PCU_EVENT Event
+    );
+typedef CU_EVENT_QUERY *PCU_EVENT_QUERY;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_RECORD)(
+    _In_ PCU_EVENT Event,
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_EVENT_RECORD *PCU_EVENT_RECORD;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_EVENT_SYNCHRONIZE)(
+    _In_ PCU_EVENT Event
+    );
+typedef CU_EVENT_SYNCHRONIZE *PCU_EVENT_SYNCHRONIZE;
+
+//
+// Memory Management.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_ALLOC)(
+    _Outptr_result_maybenull_ PPCU_DEVICE_POINTER pDevicePointer,
+    _In_ SIZE_T SizeInBytes
+    );
+typedef CU_MEM_ALLOC *PCU_MEM_ALLOC;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_FREE)(
+    _In_ _Post_invalid_ PCU_DEVICE_POINTER DevicePointer
+    );
+typedef CU_MEM_FREE *PCU_MEM_FREE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_HOST_ALLOC)(
+    _Outptr_result_maybenull_ PPVOID pHostPointer,
+    _In_ SIZE_T SizeInBytes,
+    _In_opt_ CU_MEM_HOST_ALLOC_FLAGS Flags
+    );
+typedef CU_MEM_HOST_ALLOC *PCU_MEM_HOST_ALLOC;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_PREFETCH_ASYNC)(
+    _In_ PCU_DEVICE_POINTER DevicePointer,
+    _In_ SIZE_T Count,
+    _In_ CU_DEVICE DestDevice,
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_MEM_PREFETCH_ASYNC *PCU_MEM_PREFETCH_ASYNC;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_HOST_GET_DEVICE_POINTER)(
+    _Outptr_result_maybenull_ PPCU_DEVICE_POINTER pDevicePointer,
+    _In_ PVOID HostPointer,
+    _In_ LONG Unused
+    );
+typedef CU_MEM_HOST_GET_DEVICE_POINTER *PCU_MEM_HOST_GET_DEVICE_POINTER;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_HOST_REGISTER)(
+    _In_ PVOID HostPointer,
+    _In_ SIZE_T SizeInBytes,
+    _In_ CU_MEM_HOST_REGISTER_FLAGS Flags
+    );
+typedef CU_MEM_HOST_REGISTER *PCU_MEM_HOST_REGISTER;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_HOST_UNREGISTER)(
+    _In_ PVOID HostPointer
+    );
+typedef CU_MEM_HOST_UNREGISTER *PCU_MEM_HOST_UNREGISTER;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEM_FREE_HOST)(
+    _In_ _Post_invalid_ PVOID HostPointer
+    );
+typedef CU_MEM_FREE_HOST *PCU_MEM_FREE_HOST;
+
+//
+// Memcpy Functions.
+//
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEMCPY_HOST_TO_DEVICE)(
+    _In_ PCU_DEVICE_POINTER DestDevicePointer,
+    _In_reads_bytes_(ByteCount) PCVOID SourceHostPointer,
+    _In_ SIZE_T ByteCount
+    );
+typedef CU_MEMCPY_HOST_TO_DEVICE *PCU_MEMCPY_HOST_TO_DEVICE;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEMCPY_DEVICE_TO_HOST)(
+    _Out_writes_(ByteCount) PVOID DestHostPointer,
+    _In_ PCU_DEVICE_POINTER SourceDevicePointer,
+    _In_ SIZE_T ByteCount
+    );
+typedef CU_MEMCPY_DEVICE_TO_HOST *PCU_MEMCPY_DEVICE_TO_HOST;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEMCPY_HOST_TO_DEVICE_ASYNC)(
+    _In_ PCU_DEVICE_POINTER DestDevicePointer,
+    _In_reads_bytes_(ByteCount) PCVOID SourceHostPointer,
+    _In_ SIZE_T ByteCount,
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_MEMCPY_HOST_TO_DEVICE_ASYNC *PCU_MEMCPY_HOST_TO_DEVICE_ASYNC;
+
+typedef
+_Check_return_
+CU_RESULT
+(CU_MEMCPY_DEVICE_TO_HOST_ASYNC)(
+    _Out_writes_bytes_(ByteCount) PVOID DestHostPointer,
+    _In_ PCU_DEVICE_POINTER SourceDevicePointer,
+    _In_ SIZE_T ByteCount,
+    _In_ PCU_STREAM Stream
+    );
+typedef CU_MEMCPY_DEVICE_TO_HOST_ASYNC *PCU_MEMCPY_DEVICE_TO_HOST_ASYNC;
+
 //
 // Functions.
 //
@@ -664,25 +1304,59 @@ typedef CU_LAUNCH_KERNEL *PCU_LAUNCH_KERNEL;
 // Define function pointer head macro.
 //
 
-#define CU_FUNCTIONS_HEAD                                  \
-    PCU_INIT Init;                                         \
-    PCU_DEVICE_GET DeviceGet;                              \
-    PCU_DEVICE_GET_COUNT DeviceGetCount;                   \
-    PCU_DEVICE_GET_NAME DeviceGetName;                     \
-    PCU_DEVICE_GET_TOTAL_MEMORY DeviceGetTotalMem;         \
-    PCU_DEVICE_COMPUTE_CAPABILITY DeviceComputeCapability; \
-    PCU_CTX_CREATE CtxCreate;                              \
-    PCU_CTX_DESTROY CtxDestroy;                            \
-    PCU_CTX_PUSH_CURRENT CtxPushCurrent;                   \
-    PCU_CTX_POP_CURRENT CtxPopCurrent;                     \
-    PCU_CTX_SET_CURRENT CtxSetCurrent;                     \
-    PCU_CTX_GET_CURRENT CtxGetCurrent;                     \
-    PCU_CTX_GET_DEVICE CtxGetDevice;                       \
-    PCU_CTX_SYNCHRONIZE CtxSynchronize;                    \
-    PCU_MODULE_LOAD ModuleLoad;                            \
-    PCU_MODULE_UNLOAD ModuleUnload;                        \
-    PCU_MODULE_LOAD_DATA_EX ModuleLoadDataEx;              \
-    PCU_MODULE_GET_FUNCTION ModuleGetFunction;             \
+#define CU_FUNCTIONS_HEAD                                        \
+    PCU_INIT Init;                                               \
+    PCU_GET_ERROR_NAME GetErrorName;                             \
+    PCU_GET_ERROR_STRING GetErrorString;                         \
+    PCU_DEVICE_GET DeviceGet;                                    \
+    PCU_DEVICE_GET_COUNT DeviceGetCount;                         \
+    PCU_DEVICE_GET_NAME DeviceGetName;                           \
+    PCU_DEVICE_GET_TOTAL_MEMORY DeviceGetTotalMem;               \
+    PCU_DEVICE_COMPUTE_CAPABILITY DeviceComputeCapability;       \
+    PCU_DEVICE_GET_ATTRIBUTE DeviceGetAttribute;                 \
+    PCU_CTX_CREATE CtxCreate;                                    \
+    PCU_CTX_DESTROY CtxDestroy;                                  \
+    PCU_CTX_PUSH_CURRENT CtxPushCurrent;                         \
+    PCU_CTX_POP_CURRENT CtxPopCurrent;                           \
+    PCU_CTX_SET_CURRENT CtxSetCurrent;                           \
+    PCU_CTX_GET_CURRENT CtxGetCurrent;                           \
+    PCU_CTX_GET_DEVICE CtxGetDevice;                             \
+    PCU_CTX_SYNCHRONIZE CtxSynchronize;                          \
+    PCU_CTX_GET_STREAM_PRIORITY_RANGE CtxGetStreamPriorityRange; \
+    PCU_MODULE_LOAD ModuleLoad;                                  \
+    PCU_MODULE_UNLOAD ModuleUnload;                              \
+    PCU_MODULE_LOAD_DATA_EX ModuleLoadDataEx;                    \
+    PCU_MODULE_GET_FUNCTION ModuleGetFunction;                   \
+    PCU_MODULE_GET_GLOBAL ModuleGetGlobal;                       \
+    PCU_STREAM_CREATE StreamCreate;                              \
+    PCU_STREAM_CREATE_WITH_PRIORITY StreamCreateWithPriority;    \
+    PCU_STREAM_DESTROY StreamDestroy;                            \
+    PCU_STREAM_QUERY StreamQuery;                                \
+    PCU_STREAM_SYNCHRONIZE StreamSynchronize;                    \
+    PCU_STREAM_ADD_CALLBACK StreamAddCallback;                   \
+    PCU_STREAM_ATTACH_MEM_ASYNC StreamAttachMemAsync;            \
+    PCU_STREAM_WAIT_EVENT StreamWaitEvent;                       \
+    PCU_STREAM_WAIT_VALUE_32 StreamWaitValue32;                  \
+    PCU_STREAM_WRITE_VALUE_32 StreamWriteValue32;                \
+    PCU_STREAM_BATCH_MEM_OP StreamBatchMemOp;                    \
+    PCU_EVENT_CREATE EventCreate;                                \
+    PCU_EVENT_DESTROY EventDestroy;                              \
+    PCU_EVENT_ELAPSED_TIME EventElapsedTime;                     \
+    PCU_EVENT_QUERY EventQuery;                                  \
+    PCU_EVENT_RECORD EventRecord;                                \
+    PCU_EVENT_SYNCHRONIZE EventSynchronize;                      \
+    PCU_MEM_ALLOC MemAlloc;                                      \
+    PCU_MEM_FREE MemFree;                                        \
+    PCU_MEM_HOST_ALLOC MemHostAlloc;                             \
+    PCU_MEM_PREFETCH_ASYNC MemPrefetchAsync;                     \
+    PCU_MEM_HOST_GET_DEVICE_POINTER MemHostGetDevicePointer;     \
+    PCU_MEM_HOST_REGISTER MemHostRegister;                       \
+    PCU_MEM_HOST_UNREGISTER MemHostUnregister;                   \
+    PCU_MEM_FREE_HOST MemFreeHost;                               \
+    PCU_MEMCPY_HOST_TO_DEVICE MemcpyHtoD;                        \
+    PCU_MEMCPY_DEVICE_TO_HOST MemcpyDtoH;                        \
+    PCU_MEMCPY_HOST_TO_DEVICE_ASYNC MemcpyHtoDAsync;             \
+    PCU_MEMCPY_DEVICE_TO_HOST_ASYNC MemcpyDtoHAsync;             \
     PCU_LAUNCH_KERNEL LaunchKernel;
 
 typedef struct _CU_FUNCTIONS {
@@ -744,5 +1418,33 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _CU {
 } CU;
 typedef CU *PCU;
 
+FORCEINLINE
+CU_RESULT
+LoadCuDeviceAttributes(
+    _In_ PCU Cu,
+    _Inout_ PCU_DEVICE_ATTRIBUTES AttributesPointer,
+    _In_ CU_DEVICE Device
+    )
+{
+    LONG Index;
+    LONG NumberOfAttributes;
+    PLONG Attribute;
+    CU_RESULT Result;
+
+    ZeroStructPointer(AttributesPointer);
+
+    Attribute = (PLONG)AttributesPointer;
+    NumberOfAttributes = sizeof(*AttributesPointer) / sizeof(ULONG);
+
+    for (Index = 0; Index < NumberOfAttributes; Index++) {
+        Result = Cu->DeviceGetAttribute(Attribute, Index+1, Device);
+        if (CU_FAILED(Result)) {
+            return Result;
+        }
+        Attribute++;
+    }
+
+    return CUDA_SUCCESS;
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
