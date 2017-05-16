@@ -2206,6 +2206,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     TRACE_STORE_WORK ReadonlyNonStreamingBindCompleteWork;
     TRACE_STORE_WORK NewModuleEntryWork;
     TRACE_STORE_WORK BindFlatMemoryMapWork;
+    TRACE_STORE_WORK PrepareIntervalsWork;
 
     //
     // These items are associated with the cancellation threadpool, not the
@@ -2274,6 +2275,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
     //
 
     volatile ULONG NumberOfFlatMemoryMaps;
+
+    //
+    // This represents the number of trace stores intervals will be prepared
+    // for once the flat memory maps have been loaded.
+    //
+
+    volatile ULONG NumberOfPreparedIntervals;
 
     TRACE_STORE_TIME Time;
 
@@ -3555,6 +3563,17 @@ typedef struct _TRACE_STORE {
     //
 
     ALLOCATOR Allocator;
+
+    //
+    // Interval-related fields.
+    //
+
+    ULONGLONG IntervalFramesPerSecond;
+    ULONGLONG IntervalInNanoseconds;
+    ULONGLONG TicksPerInterval;
+    ULONGLONG NumberOfIntervals;
+    PULONGLONG IntervalAllocationTimestamps;
+    PULONGLONG IntervalToRecordAddresses;
 
     //
     // Sqlite3-related fields.  These are used by the TraceStoreSqlite3Ext

@@ -770,6 +770,16 @@ extern BIND_FLAT_MEMORY_MAP_CALLBACK BindFlatMemoryMapCallback;
 
 typedef
 VOID
+(CALLBACK PREPARE_INTERVALS_CALLBACK)(
+    _In_     PTP_CALLBACK_INSTANCE Instance,
+    _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_     PTP_WORK Work
+    );
+typedef PREPARE_INTERVALS_CALLBACK *PPREPARE_INTERVALS_CALLBACK;
+extern PREPARE_INTERVALS_CALLBACK PrepareIntervalsCallback;
+
+typedef
+VOID
 (CALLBACK NEW_MODULE_ENTRY_CALLBACK)(
     _In_     PTP_CALLBACK_INSTANCE Instance,
     _In_opt_ PTRACE_CONTEXT TraceContext,
@@ -1035,11 +1045,11 @@ GetTraceStoreFileInfo(
         TraceContext->RelocateWork.ThreadpoolWork             \
     )
 
-#define PushFlatMemoryMap(TraceContext, TraceStore)     \
-    TraceStore->HasFlatMapping = TRUE;                  \
-    PushTraceStoreMemoryMap(                            \
-        &TraceContext->BindFlatMemoryMapWork.ListHead,  \
-        &TraceStore->FlatMemoryMap                      \
+#define PushFlatMemoryMap(TraceContext, TraceStore)    \
+    TraceStore->HasFlatMapping = TRUE;                 \
+    PushTraceStoreMemoryMap(                           \
+        &TraceContext->BindFlatMemoryMapWork.ListHead, \
+        &TraceStore->FlatMemoryMap                     \
     )
 
 #define PopFlatMemoryMap(TraceContext, MemoryMapPointer) \
@@ -1056,6 +1066,18 @@ GetTraceStoreFileInfo(
     InterlockedIncrement(&TraceContext->NumberOfFlatMemoryMaps); \
     PushFlatMemoryMap(TraceContext, TraceStore);
 
+#define PushIntervalPreparation(TraceContext, TraceStore)                     \
+    InterlockedIncrement(                                                     \
+        &TraceContext->PrepareIntervalsWork.NumberOfActiveItems               \
+    );                                                                        \
+    InterlockedIncrement(&TraceContext->NumberOfPreparedIntervals);           \
+    PushTraceStore(&TraceContext->PrepareIntervalsWork.ListHead, TraceStore);
+
+#define PopIntervalPreparation(TraceContext, TraceStorePointer)               \
+    PopTraceStore(                                                            \
+        &TraceContext->PrepareIntervalsWork.ListHead,                         \
+        TraceStorePointer                                                     \
+    )
 
 //
 // TraceStoreAddress-related functions.
@@ -3027,6 +3049,20 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 
 #define ReleaseCapturePerformanceMetricsLock(TraceContext)                \
     ReleaseSRWLockExclusive(&TraceContext->CapturePerformanceMetricsLock)
+
+//
+// TraceStoreIntervals-related functions.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(PREPARE_TRACE_STORE_INTERVALS)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef PREPARE_TRACE_STORE_INTERVALS *PPREPARE_TRACE_STORE_INTERVALS;
+extern PREPARE_TRACE_STORE_INTERVALS PrepareTraceStoreIntervals;
 
 //
 // Sqlite3-related decls.

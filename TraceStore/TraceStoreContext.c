@@ -416,8 +416,12 @@ Return Value:
     INIT_WORK(BindMetadataInfoStore, NumberOfTraceStores);
     INIT_WORK(BindRemainingMetadataStores, NumberOfRemainingMetadataStores);
     INIT_WORK(BindTraceStore, NumberOfTraceStores);
-    INIT_WORK(ReadonlyNonStreamingBindComplete, NumberOfTraceStores);
-    INIT_WORK(BindFlatMemoryMap, 0);
+
+    if (IsReadonly) {
+        INIT_WORK(ReadonlyNonStreamingBindComplete, NumberOfTraceStores);
+        INIT_WORK(BindFlatMemoryMap, NumberOfTraceStores);
+        INIT_WORK(PrepareIntervals, NumberOfTraceStores);
+    }
 
     TraceContext->BindsInProgress = NumberOfTraceStores;
 
@@ -838,6 +842,14 @@ InitializeAllocators:
         );
 
     }
+
+    //
+    // Set the default trace store interval from runtime parameters.
+    //
+
+    TraceStore->IntervalFramesPerSecond = (
+        RuntimeParameters->IntervalFramesPerSecond
+    );
 
     //
     // A handful of trace stores need a priority bump at the moment.
