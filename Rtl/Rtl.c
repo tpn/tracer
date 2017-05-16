@@ -2166,7 +2166,7 @@ ResolveRtlFunctions(
         Modules,
         ARRAYSIZE(Modules),
         &FailedBitmap,
-        TRUE,
+        FALSE,
         &NumberOfResolvedSymbols
     );
 
