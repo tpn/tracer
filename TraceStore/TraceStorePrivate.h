@@ -3055,29 +3055,29 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 // TraceStoreIntervals-related functions.
 //
 
-typedef struct _TRACE_STORE_INTERVAL {
-    ULONGLONG IntervalNumber;
-    ULONGLONG RecordNumber;
-    ULONGLONG AllocationTimestamp;
-    ULONGLONG Address;
-} TRACE_STORE_INTERVAL;
-typedef TRACE_STORE_INTERVAL *PTRACE_STORE_INTERVAL;
-
-typedef struct _TRACE_STORE_INTERVALS {
-    ULONGLONG FramesPerSecond;
-    ULONGLONG IntervalInNanoseconds;
-    ULONGLONG TicksPerInterval;
-    ULONGLONG NumberOfIntervals;
-    TRACE_STORE_INTERVAL Interval[ANYSIZE_ARRAY];
-} TRACE_STORE_INTERVALS;
-typedef TRACE_STORE_INTERVALS *PTRACE_STORE_INTERVALS;
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(EXTRACT_INTERVALS)(
+    _In_ ULONGLONG NumberOfIntervals,
+    _In_ ULONGLONG TicksPerInterval,
+    _In_ ULONGLONG NumberOfRecords,
+    _In_ ULONGLONG RecordSizeInBytes,
+    _In_ PVOID AllocationTimestampBaseAddress,
+    _In_ PVOID RecordBaseAddress,
+    _Out_writes_(NumberOfIntervals) PTRACE_STORE_INTERVAL Interval,
+    _Out_ PULONGLONG ExtractionTicksPointer
+    );
+typedef EXTRACT_INTERVALS *PEXTRACT_INTERVALS;
+extern EXTRACT_INTERVALS ExtractIntervals;
 
 typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
 (PREPARE_TRACE_STORE_INTERVALS)(
-    _In_ PTRACE_STORE TraceStore
+    _In_ struct _TRACE_STORE *TraceStore
     );
 typedef PREPARE_TRACE_STORE_INTERVALS *PPREPARE_TRACE_STORE_INTERVALS;
 extern PREPARE_TRACE_STORE_INTERVALS PrepareTraceStoreIntervals;

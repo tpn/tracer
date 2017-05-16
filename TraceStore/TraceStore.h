@@ -3141,6 +3141,42 @@ BOOL
 typedef BIND_COMPLETE *PBIND_COMPLETE;
 
 //
+// Interval-related structures.
+//
+
+typedef struct _TRACE_STORE_INTERVAL {
+    ULONGLONG IntervalNumber;
+    ULONGLONG RecordNumber;
+    ULONGLONG AllocationTimestamp;
+    ULONGLONG Address;
+} TRACE_STORE_INTERVAL;
+typedef TRACE_STORE_INTERVAL *PTRACE_STORE_INTERVAL;
+
+typedef struct _TRACE_STORE_INTERVALS {
+    ULONGLONG FramesPerSecond;
+    ULONGLONG TicksPerInterval;
+    ULONGLONG NumberOfIntervals;
+    ULONGLONG LastIntervalNumber;
+    ULONGLONG LastRecordNumber;
+    ULONGLONG IntervalExtractionTimeInMicroseconds;
+    ULONGLONG NumberOfRecords;
+    ULONGLONG RecordSizeInBytes;
+    PULONGLONG FirstAllocationTimestamp;
+    PULONGLONG LastAllocationTimestamp;
+    ULONG_PTR FirstRecordAddress;
+    ULONG_PTR LastRecordAddress;
+    PTRACE_STORE_INTERVAL Intervals;
+
+    //
+    // Pad out to 128 bytes.
+    //
+
+    PVOID Padding[3];
+} TRACE_STORE_INTERVALS;
+C_ASSERT(sizeof(TRACE_STORE_INTERVALS) == 128);
+typedef TRACE_STORE_INTERVALS *PTRACE_STORE_INTERVALS;
+
+//
 // Sqlite3-related structures.
 //
 
@@ -3568,8 +3604,7 @@ typedef struct _TRACE_STORE {
     // Interval-related fields.
     //
 
-    ULONGLONG IntervalFramesPerSecond;
-    struct _TRACE_STORE_INTERVALS *Intervals;
+    TRACE_STORE_INTERVALS Intervals;
 
     //
     // Sqlite3-related fields.  These are used by the TraceStoreSqlite3Ext
