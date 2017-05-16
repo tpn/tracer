@@ -143,6 +143,9 @@
     <ClCompile Include="TraceStoreSqlite3Tls.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TraceStoreIntervals.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <!--
   <ItemGroup>

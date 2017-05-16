@@ -245,6 +245,11 @@ Return Value:
         4000
     );
 
+    READ_REG_DWORD_RUNTIME_PARAM(
+        IntervalFramesPerSecond,
+        240
+    );
+
     //
     // Prep the TRACER_PATHS structure.
     //

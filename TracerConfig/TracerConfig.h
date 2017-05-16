@@ -644,6 +644,19 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
 
     ULONG ConcurrentAllocationsCriticalSectionSpinCount;
 
+    //
+    // The number of frames per second to aim for when doing interval-based
+    // slicing and aggregation of trace store data.
+    //
+
+    ULONG IntervalFramesPerSecond;
+
+    //
+    // Pad out to 64 bytes.
+    //
+
+    ULONG Unused;
+
 } TRACER_RUNTIME_PARAMETERS, *PTRACER_RUNTIME_PARAMETERS;
 
 typedef struct _TRACE_SESSION_DIRECTORY {

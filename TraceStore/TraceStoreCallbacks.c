@@ -366,7 +366,9 @@ Return Value:
 --*/
 {
     BOOL Success;
+    PTRACE_STORE TraceStore;
     PTRACE_STORE_WORK BindFlatWork;
+    PTRACE_STORE_WORK PrepareIntervalsWork;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
     //
@@ -398,7 +400,71 @@ Return Value:
         SetEvent(TraceContext->LoadingCompleteEvent);
     }
 
+    //
+    // Get the owning trace store and submit interval preparation work.
+    //
+
+    TraceStore = CONTAINING_RECORD(MemoryMap,
+                                   TRACE_STORE,
+                                   FlatMemoryMap);
+
+    PrepareIntervalsWork = &TraceContext->PrepareIntervalsWork;
+    PushIntervalPreparation(TraceContext, TraceStore);
+
     return;
+}
+
+_Use_decl_annotations_
+VOID
+CALLBACK
+PrepareIntervalsCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PTRACE_CONTEXT TraceContext,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This routine is the threadpool callback target for a trace store's prepare
+    intervals routine.
+
+Arguments:
+
+    Instance - Unused.
+
+    TraceContext - Supplies a pointer to a TRACE_CONTEXT structure.
+
+    Work - Unused.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BOOL Success;
+    PTRACE_STORE TraceStore;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(TraceContext)) {
+        __debugbreak();
+        return;
+    }
+
+    if (!PopIntervalPreparation(TraceContext, &TraceStore)) {
+        __debugbreak();
+        return;
+    }
+
+    Success = PrepareTraceStoreIntervals(TraceStore);
+    if (!Success) {
+        NOTHING;
+    }
+
 }
 
 _Use_decl_annotations_
