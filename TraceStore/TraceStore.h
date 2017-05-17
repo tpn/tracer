@@ -3639,6 +3639,7 @@ typedef struct _TRACE_STORE {
 
     PCSZ Sqlite3IntervalSchema;
     PCSZ Sqlite3IntervalVirtualTableName;
+    PTRACE_STORE_SQLITE3_COLUMN Sqlite3IntervalColumn;
     SQLITE3_MODULE Sqlite3IntervalModule;
     TRACE_STORE_SQLITE3_VTAB Sqlite3IntervalVirtualTable;
 

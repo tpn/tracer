@@ -808,7 +808,7 @@ Return Value:
             continue;
         }
 
-        TraceStore->Sqlite3Column = TraceStoreSqlite3IntervalColumn;
+        TraceStore->Sqlite3IntervalColumn = TraceStoreSqlite3IntervalColumn;
         Module = &TraceStore->Sqlite3IntervalModule;
         Schema = &TraceStore->Sqlite3IntervalSchema;
         VirtualTableName = &TraceStore->Sqlite3IntervalVirtualTableName;
