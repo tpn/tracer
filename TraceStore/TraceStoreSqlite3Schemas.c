@@ -7471,6 +7471,187 @@ TraceStoreSqlite3PythonEventTraitsExColumn(
 }
 
 //
+// TraceStore_SymbolInfo.
+//
+
+CONST CHAR TraceStoreSymbolInfoSchema[] =
+    "CREATE TABLE SymbolInfo("
+        "SizeOfStruct INT, "
+        "TypeIndex INT, "
+        "SymbolIndex INT, "     // SymbolInfo->Index
+        "Size INT, "
+        "ModBase BIGINT, "
+        "Flags INT, "
+        "Value BIGINT, "
+        "Address BIGINT, "
+        "Register INT, "
+        "Scope INT, "
+        "Tag INT, "
+        "NameLen INT, "
+        "MaxNameLen INT, "
+        "Name TEXT"             // Name, STRING, [(SymbolInfo->MaxNameLen > 0)]
+    ")";
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3SymbolInfoColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PSYMBOL_INFO SymbolInfo;
+    STRING Name;
+
+    SymbolInfo = (PSYMBOL_INFO)Cursor->CurrentRowRaw;
+
+    if (ColumnNumber == 13) {
+        if (SymbolInfo->MaxNameLen == 0) {
+            ZeroStruct(Name);
+        } else {
+            Name.Length = (USHORT)SymbolInfo->NameLen;
+            Name.MaximumLength = (USHORT)SymbolInfo->MaxNameLen;
+            Name.Buffer = (PCHAR)&SymbolInfo->Name;
+        }
+    }
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: SizeOfStruct INT
+        //
+
+        case 0:
+            RESULT_ULONG(SymbolInfo->SizeOfStruct);
+            break;
+
+        //
+        // 1: TypeIndex INT
+        //
+
+        case 1:
+            RESULT_ULONG(SymbolInfo->TypeIndex);
+            break;
+
+        //
+        // 2: SymbolIndex INT
+        //
+
+        case 2:
+            RESULT_ULONG(SymbolInfo->Index);
+            break;
+
+        //
+        // 3: Size INT
+        //
+
+        case 3:
+            RESULT_ULONG(SymbolInfo->Size);
+            break;
+
+        //
+        // 4: ModBase BIGINT
+        //
+
+        case 4:
+            RESULT_ULONGLONG(SymbolInfo->ModBase);
+            break;
+
+        //
+        // 5: Flags INT
+        //
+
+        case 5:
+            RESULT_ULONG(SymbolInfo->Flags);
+            break;
+
+        //
+        // 6: Value BIGINT
+        //
+
+        case 6:
+            RESULT_ULONGLONG(SymbolInfo->Value);
+            break;
+
+        //
+        // 7: Address BIGINT
+        //
+
+        case 7:
+            RESULT_ULONGLONG(SymbolInfo->Address);
+            break;
+
+        //
+        // 8: Register INT
+        //
+
+        case 8:
+            RESULT_ULONG(SymbolInfo->Register);
+            break;
+
+        //
+        // 9: Scope INT
+        //
+
+        case 9:
+            RESULT_ULONG(SymbolInfo->Scope);
+            break;
+
+        //
+        // 10: Tag INT
+        //
+
+        case 10:
+            RESULT_ULONG(SymbolInfo->Tag);
+            break;
+
+        //
+        // 11: NameLen INT
+        //
+
+        case 11:
+            RESULT_ULONG(SymbolInfo->NameLen);
+            break;
+
+        //
+        // 12: MaxNameLen INT
+        //
+
+        case 12:
+            RESULT_ULONG(SymbolInfo->MaxNameLen);
+            break;
+
+        //
+        // 13: Name TEXT
+        //
+
+        case 13:
+            if (!((SymbolInfo->MaxNameLen > 0))) {
+                RESULT_NULL();
+            } else {
+                RESULT_STRING(Name);
+            }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+//
 // *_Interval
 //
 
@@ -8034,7 +8215,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_SymbolInfo
+    TraceStoreSymbolInfoSchema, // TraceStore_SymbolInfo
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -8697,7 +8878,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_SymbolInfo
+    TraceStoreSqlite3SymbolInfoColumn, // TraceStore_SymbolInfo
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
