@@ -732,6 +732,13 @@ VOID
     );
 typedef SQLITE3_RESULT_TEXT64 *PSQLITE3_RESULT_TEXT64;
 
+typedef
+PCSZ
+(SQLITE3_GET_ERROR_MESSAGE)(
+    _In_ PSQLITE3_DB Db
+    );
+typedef SQLITE3_GET_ERROR_MESSAGE *PSQLITE3_GET_ERROR_MESSAGE;
+
 //
 // Define the SQLITE3_API_ROUTINES structure.
 //
@@ -798,7 +805,9 @@ typedef struct _SQLITE3_API_ROUTINES {
 
     int  (*enable_shared_cache)(int);
     int  (*errcode)(sqlite3*db);
-    const char * (*errmsg)(sqlite3*);
+
+    PSQLITE3_GET_ERROR_MESSAGE GetErrorMessage;
+
     const void * (*errmsg16)(sqlite3*);
     int  (*exec)(sqlite3*,const char*,sqlite3_callback,void*,char**);
     int  (*expired)(sqlite3_stmt*);
