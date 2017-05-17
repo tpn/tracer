@@ -96,6 +96,7 @@ Return Value:
     TRACE_STORE_TRAITS Traits;
     TRACE_CONTEXT_FLAGS ContextFlags;
     HANDLE Event;
+    HANDLE IntervalsLoadedEvent;
     HANDLE ResumeAllocationEvent;
     HANDLE BindCompleteEvent;
     PTRACE_STORE_WORK Work;
@@ -788,10 +789,21 @@ InitializeAllocators:
             goto Error;
         }
 
+
+        //
+        // Create an interval loading complete event.
+        //
+
+        IntervalsLoadedEvent = CreateEvent(NULL, ManualReset, FALSE, NULL);
+        if (!IntervalsLoadedEvent) {
+            goto Error;
+        }
+
         TraceStore = &TraceStores->Stores[StoreIndex];
         TraceStore->TraceContext = TraceContext;
         TraceStore->ResumeAllocationsEvent = ResumeAllocationEvent;
         TraceStore->BindCompleteEvent = BindCompleteEvent;
+        TraceStore->Intervals.LoadingCompleteEvent = IntervalsLoadedEvent;
 
         TraceStore->AllocateRecords = TraceStoreAllocateRecords;
         TraceStore->AllocateRecordsWithTimestamp = SuspendedAllocator;
@@ -842,14 +854,6 @@ InitializeAllocators:
         );
 
     }
-
-    //
-    // Set the default trace store interval from runtime parameters.
-    //
-
-    TraceStore->IntervalFramesPerSecond = (
-        RuntimeParameters->IntervalFramesPerSecond
-    );
 
     //
     // A handful of trace stores need a priority bump at the moment.

@@ -306,7 +306,7 @@ Return Value:
     // Read CuDeviceOrdinal from the registry.
     //
 
-    READ_REG_DWORD(CuDeviceOrdinal, 1);
+    READ_REG_DWORD(CuDeviceOrdinal, 0);
 
     //
     // That's it, we're done.

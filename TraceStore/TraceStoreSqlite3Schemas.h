@@ -19,6 +19,7 @@ Abstract:
 //
 
 extern CONST LPCSTR TraceStoreSchemas[];
+extern CONST CHAR TraceStoreIntervalSchema[];
 extern CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[];
 
 //

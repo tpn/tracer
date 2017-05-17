@@ -38,8 +38,7 @@ Return Value:
 --*/
 {
     BOOL Exclude;
-    TRACE_STORE_INTERVALS Intervals;
-    DOUBLE TicksPerInterval;
+    BOOL Success;
     DOUBLE NumberOfIntervals;
     ULONGLONG StartTicks;
     ULONGLONG EndTicks;
@@ -48,11 +47,15 @@ Return Value:
     PTRACE_STORE_TOTALS Totals;
     ULONGLONG NumberOfAllocations;
     ULONGLONG RecordSizeInBytes;
-    ULONG_PTR LastRecordOffset;
-    ULONG_PTR StartAddress;
-    ULONG_PTR EndAddress;
+    ULONGLONG StartAddress;
+    ULONGLONG EndAddress;
+    ULONGLONG LastRecordOffset;
+    PTRACE_STORE_INTERVALS Intervals;
     PTRACE_STORE AllocationTimestampStore;
-    PVOID AllocationTimestampBaseAddress;
+    SIZE_T AllocSizeInBytes;
+    SIZE_T PageAlignedAllocSizeInBytes;
+
+    Intervals = &TraceStore->Intervals;
 
     Traits = *TraceStore->pTraits;
 
@@ -63,65 +66,211 @@ Return Value:
     );
 
     if (Exclude) {
-        return FALSE;
+        Success = FALSE;
+        goto End;
     }
 
     Totals = TraceStore->Totals;
     NumberOfAllocations = Totals->NumberOfAllocations.QuadPart;
     if (NumberOfAllocations == 0) {
-        return FALSE;
+        Success = FALSE;
+        goto End;
     }
 
     RecordSizeInBytes = (
-        Totals->AllocationSize.QuadPart /
-        Totals->NumberOfAllocations.QuadPart
+        Totals->RecordSize.QuadPart /
+        Totals->NumberOfRecords.QuadPart
     );
 
     if (!IsPowerOf2(RecordSizeInBytes)) {
         __debugbreak();
+        Success = FALSE;
+        goto End;
     }
 
-    ZeroStruct(Intervals);
+    if (RecordSizeInBytes == 0) {
+        __debugbreak();
+        Success = FALSE;
+        goto End;
+    }
 
-    //Intervals.FramesPerSecond = TraceStore->IntervalFramesPerSecond;
-    Intervals.FramesPerSecond = 240;
-    TicksPerInterval = (
-        ((DOUBLE)1.0 / (DOUBLE)Intervals.FramesPerSecond) /
-        ((DOUBLE)1.0 / (DOUBLE)TraceStore->Time->Frequency.QuadPart)
+    Intervals->FramesPerSecond = (DOUBLE)TraceStore->IntervalFramesPerSecond;
+    //Intervals->FramesPerSecond = 240.0;
+    Intervals->Frequency = TraceStore->Time->Frequency.QuadPart;
+    Intervals->TicksPerIntervalAsDouble = (
+        ((DOUBLE)1.0 / Intervals->FramesPerSecond) /
+        ((DOUBLE)1.0 / (DOUBLE)Intervals->Frequency)
     );
 
-    Intervals.TicksPerInterval = (ULONGLONG)TicksPerInterval;
+    Intervals->TicksPerInterval = (ULONGLONG)(
+        Intervals->TicksPerIntervalAsDouble
+    );
+
+    Intervals->NumberOfRecords = NumberOfAllocations;
+    Intervals->RecordSizeInBytes = RecordSizeInBytes;
 
     AllocationTimestampStore = TraceStore->AllocationTimestampStore;
 
     if (AllocationTimestampStore->Totals->NumberOfAllocations.QuadPart !=
         NumberOfAllocations) {
         __debugbreak();
-        return FALSE;
+        Success = FALSE;
+        goto End;
     }
 
-    AllocationTimestampBaseAddress = (
+    Intervals->FirstAllocationTimestamp = (PULONGLONG)(
         AllocationTimestampStore->MemoryMap->BaseAddress
     );
 
-    StartTicks = *((PULONGLONG)AllocationTimestampBaseAddress);
-    EndTicks = *(
+    Intervals->LastAllocationTimestamp = (
         (PULONGLONG)(
             RtlOffsetToPointer(
-                AllocationTimestampBaseAddress,
+                Intervals->FirstAllocationTimestamp,
                 (NumberOfAllocations - 1) * sizeof(ULONGLONG)
             )
         )
     );
 
+    StartTicks = *Intervals->FirstAllocationTimestamp;
+    EndTicks = *Intervals->LastAllocationTimestamp;
     ElapsedTicks = EndTicks - StartTicks;
 
-    NumberOfIntervals = (DOUBLE)ElapsedTicks / (DOUBLE)TicksPerInterval;
-    Intervals.NumberOfIntervals = (ULONGLONG)NumberOfIntervals;
+    NumberOfIntervals = (
+        (DOUBLE)ElapsedTicks /
+        Intervals->TicksPerIntervalAsDouble
+    );
+    Intervals->NumberOfIntervals = (ULONGLONG)NumberOfIntervals;
 
     LastRecordOffset = (NumberOfAllocations - 1) * RecordSizeInBytes;
-    StartAddress = (ULONG_PTR)TraceStore->FlatMemoryMap.BaseAddress;
-    EndAddress = (ULONG_PTR)StartAddress + LastRecordOffset;
+    StartAddress = (ULONGLONG)TraceStore->FlatMemoryMap.BaseAddress;
+    EndAddress = (ULONGLONG)StartAddress + LastRecordOffset;
+    Intervals->FirstRecordAddress = StartAddress;
+    Intervals->LastRecordAddress = EndAddress;
+
+    AllocSizeInBytes = (
+        ALIGN_UP_POINTER(Intervals->NumberOfIntervals) *
+        sizeof(TRACE_STORE_INTERVAL)
+    );
+
+    PageAlignedAllocSizeInBytes = ROUND_TO_PAGES(AllocSizeInBytes);
+
+    Intervals->FirstInterval = (PTRACE_STORE_INTERVAL)(
+        VirtualAlloc(NULL,
+                     PageAlignedAllocSizeInBytes,
+                     MEM_COMMIT | MEM_RESERVE,
+                     PAGE_READWRITE)
+    );
+
+    if (!Intervals->FirstInterval) {
+        Success = FALSE;
+        goto End;
+    }
+
+    Success = ExtractIntervals(TraceStore->Rtl, Intervals);
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    SetEvent(TraceStore->Intervals.LoadingCompleteEvent);
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+ExtractIntervals(
+    PRTL Rtl,
+    PTRACE_STORE_INTERVALS Intervals
+    )
+/*++
+
+Routine Description:
+
+    WIP.
+
+Arguments:
+
+    WIP
+
+Return Value:
+
+    TRUE on success, FALSE otherwise.
+
+--*/
+{
+    ULONGLONG Address;
+    ULONGLONG NextTimestamp;
+    ULONGLONG RecordIndex;
+    ULONGLONG IntervalIndex;
+    ULONGLONG RecordSizeInBytes;
+    ULONGLONG TicksPerInterval;
+    LARGE_INTEGER Start;
+    LARGE_INTEGER End;
+    LARGE_INTEGER Elapsed;
+    PULONGLONG AllocationTimestamp;
+    PULONGLONG LastAllocationTimestamp;
+    PTRACE_STORE_INTERVAL Interval;
+
+    //
+    // Initialize local variables and aliases.
+    //
+
+    Interval = Intervals->FirstInterval;
+    Address = Intervals->FirstRecordAddress;
+    TicksPerInterval = Intervals->TicksPerInterval;
+    RecordSizeInBytes = Intervals->RecordSizeInBytes;
+    AllocationTimestamp = Intervals->FirstAllocationTimestamp;
+    LastAllocationTimestamp = Intervals->LastAllocationTimestamp;
+    NextTimestamp = *Intervals->FirstAllocationTimestamp + TicksPerInterval;
+
+    //
+    // Wire up the first interval.
+    //
+
+    Interval->IntervalIndex = IntervalIndex = 0;
+    Interval->RecordIndex = RecordIndex = 0;
+    Interval->AllocationTimestamp = *AllocationTimestamp;
+    Interval->Address = Address;
+    Interval++;
+
+    NextTimestamp = *AllocationTimestamp + TicksPerInterval;
+
+    QueryPerformanceCounter(&Start);
+
+    //
+    // Stream through the allocation timestamps and wire up interval records
+    // each time we detect a new interval.
+    //
+
+    while (++AllocationTimestamp <= LastAllocationTimestamp) {
+        ++RecordIndex;
+        if (*AllocationTimestamp >= NextTimestamp) {
+            Interval->IntervalIndex = IntervalIndex++;
+            Interval->RecordIndex = RecordIndex;
+            Interval->AllocationTimestamp = *AllocationTimestamp;
+            Interval->Address = (ULONGLONG)(
+                RtlOffsetToPointer(
+                    Address,
+                    RecordIndex * RecordSizeInBytes
+                )
+            );
+            NextTimestamp = *AllocationTimestamp + TicksPerInterval;
+            Interval++;
+        }
+    }
+
+    QueryPerformanceCounter(&End);
+
+    Intervals->LastInterval = Interval - 1;
+
+    Elapsed.QuadPart = End.QuadPart - Start.QuadPart;
+    Elapsed.QuadPart *= TIMESTAMP_TO_SECONDS;
+    Elapsed.QuadPart /= Intervals->Frequency;
+
+    Intervals->IntervalExtractionTimeInMicroseconds = Elapsed.QuadPart;
 
     return TRUE;
 }

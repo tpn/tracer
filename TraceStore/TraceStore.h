@@ -3141,6 +3141,44 @@ BOOL
 typedef BIND_COMPLETE *PBIND_COMPLETE;
 
 //
+// Interval-related structures.
+//
+
+typedef struct _TRACE_STORE_INTERVAL {
+    ULONGLONG IntervalIndex;
+    ULONGLONG RecordIndex;
+    ULONGLONG AllocationTimestamp;
+    ULONGLONG Address;
+} TRACE_STORE_INTERVAL;
+typedef TRACE_STORE_INTERVAL *PTRACE_STORE_INTERVAL;
+
+typedef struct _TRACE_STORE_INTERVALS {
+    DOUBLE FramesPerSecond;
+    DOUBLE TicksPerIntervalAsDouble;
+    ULONGLONG TicksPerInterval;
+    ULONGLONG Frequency;
+    ULONGLONG NumberOfIntervals;
+    ULONGLONG IntervalExtractionTimeInMicroseconds;
+    ULONGLONG NumberOfRecords;
+    ULONGLONG RecordSizeInBytes;
+    PULONGLONG FirstAllocationTimestamp;
+    PULONGLONG LastAllocationTimestamp;
+    ULONGLONG FirstRecordAddress;
+    ULONGLONG LastRecordAddress;
+    PTRACE_STORE_INTERVAL FirstInterval;
+    PTRACE_STORE_INTERVAL LastInterval;
+    HANDLE LoadingCompleteEvent;
+
+    //
+    // Pad out to 128 bytes.
+    //
+
+    PVOID Padding;
+} TRACE_STORE_INTERVALS;
+C_ASSERT(sizeof(TRACE_STORE_INTERVALS) == 128);
+typedef TRACE_STORE_INTERVALS *PTRACE_STORE_INTERVALS;
+
+//
 // Sqlite3-related structures.
 //
 
@@ -3211,6 +3249,8 @@ typedef struct _TRACE_STORE {
     };
 
     TRACE_FLAGS TraceFlags;
+
+    PTRACER_CONFIG TracerConfig;
 
     //
     // This may be set if any system calls fail.
@@ -3569,7 +3609,7 @@ typedef struct _TRACE_STORE {
     //
 
     ULONGLONG IntervalFramesPerSecond;
-    struct _TRACE_STORE_INTERVALS *Intervals;
+    TRACE_STORE_INTERVALS Intervals;
 
     //
     // Sqlite3-related fields.  These are used by the TraceStoreSqlite3Ext
@@ -3592,6 +3632,15 @@ typedef struct _TRACE_STORE {
 
     SQLITE3_MODULE Sqlite3Module;
     TRACE_STORE_SQLITE3_VTAB Sqlite3VirtualTable;
+
+    //
+    // Interval-specific Sqlite3 details.
+    //
+
+    PCSZ Sqlite3IntervalSchema;
+    PCSZ Sqlite3IntervalVirtualTableName;
+    SQLITE3_MODULE Sqlite3IntervalModule;
+    TRACE_STORE_SQLITE3_VTAB Sqlite3IntervalVirtualTable;
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 

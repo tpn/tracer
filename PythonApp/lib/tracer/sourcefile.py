@@ -178,6 +178,11 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
                         access = '%s->%s, %s' % (tablename, name, access)
                     else:
                         access = '%s, %s' % (field, access)
+            elif not access:
+                if '_' not in name:
+                    access = '%s->%s' % (tablename, name)
+                else:
+                    access = field
 
         stmt = None
 
@@ -205,7 +210,7 @@ def generate_sqlite3_column_func_switch_statement(tablename, mdecl):
                 sizeof = 'sizeof(%s)' % target
             fmt = 'RESULT_%s%s(%s, %s);'
             stmt = fmt % (ptr, dtype, target, sizeof)
-        elif dtype == 'REAL':
+        elif dtype in ('REAL', 'DOUBLE', 'FLOAT'):
             if ', ' in access:
                 (target, cast) = access.split(', ')
             else:

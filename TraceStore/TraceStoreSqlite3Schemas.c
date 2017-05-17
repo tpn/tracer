@@ -140,6 +140,8 @@ Abstract:
 #define RESULT_ULONGLONG(ULongLong) \
     Sqlite3->ResultInt64(Context, (SQLITE3_INT64)ULongLong)
 
+#define RESULT_DOUBLE(Double) Sqlite3->ResultDouble(Context, (DOUBLE)Double)
+
 #define _INVALID_COLUMN()          \
     __debugbreak();                \
     Sqlite3->ResultNull(Context);  \
@@ -3869,7 +3871,23 @@ CONST CHAR TraceStoreInfoSchema[] =
         "Traits_Periodic INT, "
         "Traits_ConcurrentDataStructure INT, "
         "Traits_NoAllocationAlignment INT, "
-        "Traits_Unused INT"
+        "Traits_Unused INT, "
+        "Intervals_FramesPerSecond DOUBLE, "                        // [(Intervals != NULL)]
+        "Intervals_TicksPerIntervalAsDouble DOUBLE, "               // [(Intervals != NULL)]
+        "Intervals_TicksPerInterval BIGINT, "                       // [(Intervals != NULL)]
+        "Intervals_Frequency BIGINT, "                              // [(Intervals != NULL)]
+        "Intervals_NumberOfIntervals BIGINT, "                      // [(Intervals != NULL)]
+        "Intervals_IntervalExtractionTimeInMicroseconds BIGINT, "   // [(Intervals != NULL)]
+        "Intervals_NumberOfRecords BIGINT, "                        // [(Intervals != NULL)]
+        "Intervals_RecordSizeInBytes BIGINT, "                      // [(Intervals != NULL)]
+        "Intervals_FirstAllocationTimestampAddress BIGINT, "        // Intervals->FirstAllocationTimestamp, [(Intervals != NULL)]
+        "Intervals_FirstAllocationTimestamp BIGINT, "               // *Intervals->FirstAllocationTimestamp, [(Intervals != NULL)]
+        "Intervals_LastAllocationTimestampAddress BIGINT, "         // Intervals->LastAllocationTimestamp, [(Intervals != NULL)]
+        "Intervals_LastAllocationTimestamp BIGINT, "                // *Intervals->LastAllocationTimestamp, [(Intervals != NULL)]
+        "Intervals_FirstRecordAddress BIGINT, "                     // [(Intervals != NULL)]
+        "Intervals_LastRecordAddress BIGINT, "                      // [(Intervals != NULL)]
+        "Intervals_FirstIntervalAddress BIGINT, "                   // Intervals->FirstInterval, [(Intervals != NULL)]
+        "Intervals_LastIntervalAddress BIGINT"                      // Intervals->LastInterval, [(Intervals != NULL)]
     ")";
 
 _Use_decl_annotations_
@@ -3889,6 +3907,7 @@ TraceStoreSqlite3InfoColumn(
     PTRACE_STORE_STATS Stats;
     PTRACE_STORE_TOTALS Totals;
     PTRACE_STORE_TRAITS Traits;
+    PTRACE_STORE_INTERVALS Intervals;
 
     Info = (PTRACE_STORE_INFO)Cursor->CurrentRowRaw;
     Eof = &Info->Eof;
@@ -3897,6 +3916,10 @@ TraceStoreSqlite3InfoColumn(
     Stats = &Info->Stats;
     Totals = &Info->Totals;
     Traits = &Info->Traits;
+    Intervals = &TraceStore->TraceStore->Intervals;
+    if (!Intervals->NumberOfRecords) {
+        Intervals = NULL;
+    }
 
     switch (ColumnNumber) {
 
@@ -4222,6 +4245,198 @@ TraceStoreSqlite3InfoColumn(
 
         case 39:
             RESULT_ULONG(Traits->Unused);
+            break;
+
+        //
+        // 40: Intervals_FramesPerSecond DOUBLE
+        //
+
+        case 40:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_DOUBLE((DOUBLE)Intervals->FramesPerSecond);
+            }
+            break;
+
+        //
+        // 41: Intervals_TicksPerIntervalAsDouble DOUBLE
+        //
+
+        case 41:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_DOUBLE((DOUBLE)Intervals->TicksPerIntervalAsDouble);
+            }
+            break;
+
+        //
+        // 42: Intervals_TicksPerInterval BIGINT
+        //
+
+        case 42:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->TicksPerInterval);
+            }
+            break;
+
+        //
+        // 43: Intervals_Frequency BIGINT
+        //
+
+        case 43:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->Frequency);
+            }
+            break;
+
+        //
+        // 44: Intervals_NumberOfIntervals BIGINT
+        //
+
+        case 44:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->NumberOfIntervals);
+            }
+            break;
+
+        //
+        // 45: Intervals_IntervalExtractionTimeInMicroseconds BIGINT
+        //
+
+        case 45:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->IntervalExtractionTimeInMicroseconds);
+            }
+            break;
+
+        //
+        // 46: Intervals_NumberOfRecords BIGINT
+        //
+
+        case 46:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->NumberOfRecords);
+            }
+            break;
+
+        //
+        // 47: Intervals_RecordSizeInBytes BIGINT
+        //
+
+        case 47:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->RecordSizeInBytes);
+            }
+            break;
+
+        //
+        // 48: Intervals_FirstAllocationTimestampAddress BIGINT
+        //
+
+        case 48:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->FirstAllocationTimestamp);
+            }
+            break;
+
+        //
+        // 49: Intervals_FirstAllocationTimestamp BIGINT
+        //
+
+        case 49:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(*Intervals->FirstAllocationTimestamp);
+            }
+            break;
+
+        //
+        // 50: Intervals_LastAllocationTimestampAddress BIGINT
+        //
+
+        case 50:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->LastAllocationTimestamp);
+            }
+            break;
+
+        //
+        // 51: Intervals_LastAllocationTimestamp BIGINT
+        //
+
+        case 51:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(*Intervals->LastAllocationTimestamp);
+            }
+            break;
+
+        //
+        // 52: Intervals_FirstRecordAddress BIGINT
+        //
+
+        case 52:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->FirstRecordAddress);
+            }
+            break;
+
+        //
+        // 53: Intervals_LastRecordAddress BIGINT
+        //
+
+        case 53:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->LastRecordAddress);
+            }
+            break;
+
+        //
+        // 54: Intervals_FirstIntervalAddress BIGINT
+        //
+
+        case 54:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->FirstInterval);
+            }
+            break;
+
+        //
+        // 55: Intervals_LastIntervalAddress BIGINT
+        //
+
+        case 55:
+            if (!((Intervals != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(Intervals->LastInterval);
+            }
             break;
 
         default:
@@ -7254,6 +7469,85 @@ TraceStoreSqlite3PythonEventTraitsExColumn(
 
     return SQLITE_OK;
 }
+
+//
+// *_Interval
+//
+
+CONST CHAR TraceStoreIntervalSchema[] =
+    "CREATE TABLE Interval("
+        "IntervalIndex BIGINT, "
+        "RecordIndex BIGINT, "
+        "AllocationTimestamp BIGINT, "
+        "Address BIGINT"
+    ")";
+
+TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3IntervalColumn;
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3IntervalColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_STORE_INTERVAL Interval;
+
+    Interval = (PTRACE_STORE_INTERVAL)Cursor->CurrentRowRaw;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: IntervalIndex BIGINT
+        //
+
+        case 0:
+            RESULT_ULONGLONG(Interval->IntervalIndex);
+            break;
+
+        //
+        // 1: RecordIndex BIGINT
+        //
+
+        case 1:
+            RESULT_ULONGLONG(Interval->RecordIndex);
+            break;
+
+        //
+        // 2: AllocationTimestamp BIGINT
+        //
+
+        case 2:
+            RESULT_ULONGLONG(Interval->AllocationTimestamp);
+            break;
+
+        //
+        // 3: Address BIGINT
+        //
+
+        case 3:
+            RESULT_ULONGLONG(Interval->Address);
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
 
 //
 // N.B. The next two arrays are much larger than they need to be; the metadata

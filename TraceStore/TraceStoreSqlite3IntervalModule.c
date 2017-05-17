@@ -4,7 +4,7 @@ Copyright (c) 2017 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    TraceStoreSqlite3Module.c
+    TraceStoreSqlite3IntervalModule.c
 
 Abstract:
 
@@ -18,44 +18,13 @@ Abstract:
 // This is required in order to link without the CRT.
 //
 
-LONG _fltused;
-
-//
-// Define the default Trace Store sqlite3 module function pointers.
-//
-
-SQLITE3_MODULE TraceStoreSqlite3Module = {
-    0,  // Version
-    0,  // Padding
-    TraceStoreSqlite3ModuleCreate,
-    TraceStoreSqlite3ModuleCreate,
-    TraceStoreSqlite3ModuleBestIndex,
-    TraceStoreSqlite3ModuleDisconnect,
-    NULL, // TraceStoreSqlite3ModuleDestroy,
-    TraceStoreSqlite3ModuleOpenCursor,
-    TraceStoreSqlite3ModuleCloseCursor,
-    TraceStoreSqlite3ModuleFilter,
-    TraceStoreSqlite3ModuleNext,
-    TraceStoreSqlite3ModuleEof,
-    TraceStoreSqlite3ModuleColumn,
-    TraceStoreSqlite3ModuleRowid,
-    NULL, // TraceStoreSqlite3ModuleUpdate,
-    NULL, // TraceStoreSqlite3ModuleBegin,
-    NULL, // TraceStoreSqlite3ModuleSync,
-    NULL, // TraceStoreSqlite3ModuleCommit,
-    NULL, // TraceStoreSqlite3ModuleRollback,
-    TraceStoreSqlite3ModuleFindFunction,
-    NULL, // TraceStoreSqlite3ModuleRename,
-    NULL, // TraceStoreSqlite3ModuleSavepoint,
-    NULL, // TraceStoreSqlite3ModuleRelease,
-    NULL, // TraceStoreSqlite3ModuleRollbackTo,
-};
+//LONG _fltused;
 
 //
 // Define the interval Trace Store sqlite3 module function pointers.
 //
 
-SQLITE3_MODULE TraceStoreSqlite3Module = {
+SQLITE3_MODULE TraceStoreSqlite3IntervalModule = {
     0,  // Version
     0,  // Padding
     TraceStoreSqlite3IntervalModuleCreate,
@@ -82,27 +51,10 @@ SQLITE3_MODULE TraceStoreSqlite3Module = {
     NULL, // TraceStoreSqlite3IntervalModuleRollbackTo,
 };
 
-//
-// Define a dummy column function used by default.
-//
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3DefaultColumnImpl(
-    PCSQLITE3 Sqlite3,
-    PTRACE_STORE TraceStore,
-    PTRACE_STORE_SQLITE3_CURSOR Cursor,
-    PSQLITE3_CONTEXT Context,
-    LONG ColumnNumber
-    )
-{
-    Sqlite3->ResultNull(Context);
-    return SQLITE_OK;
-}
-
-_Use_decl_annotations_
-LONG
-TraceStoreSqlite3ModuleCreate(
+TraceStoreSqlite3IntervalModuleCreate(
     PSQLITE3_DB Sqlite3Db,
     PVOID Aux,
     LONG NumberOfArguments,
@@ -119,20 +71,25 @@ TraceStoreSqlite3ModuleCreate(
     Db = TraceStore->Db;
     Sqlite3 = Db->Sqlite3;
 
-    Failed = Sqlite3->DeclareVirtualTable(Sqlite3Db, TraceStore->Sqlite3Schema);
+    Failed = (
+        Sqlite3->DeclareVirtualTable(
+            Sqlite3Db,
+            TraceStore->Sqlite3IntervalSchema
+        )
+    );
     if (Failed) {
         __debugbreak();
         return Failed;
     }
 
-    *VirtualTable = &TraceStore->Sqlite3VirtualTable.AsSqlite3Vtab;
+    *VirtualTable = &TraceStore->Sqlite3IntervalVirtualTable.AsSqlite3Vtab;
 
     return SQLITE_OK;
 }
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleBestIndex(
+TraceStoreSqlite3IntervalModuleBestIndex(
     PSQLITE3_VTAB VirtualTable,
     PSQLITE3_INDEX_INFO IndexInfo
     )
@@ -153,7 +110,7 @@ TraceStoreSqlite3ModuleBestIndex(
 
     TraceStore = CONTAINING_RECORD(VirtualTable,
                                    TRACE_STORE,
-                                   Sqlite3VirtualTable);
+                                   Sqlite3IntervalVirtualTable);
 
     Db = TraceStore->Db;
     Sqlite3 = Db->Sqlite3;
@@ -254,7 +211,7 @@ TraceStoreSqlite3ModuleBestIndex(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleDisconnect(
+TraceStoreSqlite3IntervalModuleDisconnect(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -263,7 +220,7 @@ TraceStoreSqlite3ModuleDisconnect(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleDestroy(
+TraceStoreSqlite3IntervalModuleDestroy(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -272,7 +229,7 @@ TraceStoreSqlite3ModuleDestroy(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleOpenCursor(
+TraceStoreSqlite3IntervalModuleOpenCursor(
     PSQLITE3_VTAB VirtualTable,
     PSQLITE3_VTAB_CURSOR *CursorPointer
     )
@@ -288,7 +245,7 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     TraceStore = CONTAINING_RECORD(VirtualTable,
                                    TRACE_STORE,
-                                   Sqlite3VirtualTable);
+                                   Sqlite3IntervalVirtualTable);
 
     Db = TraceStore->Db;
     Sqlite3 = Db->Sqlite3;
@@ -307,9 +264,8 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     Cursor->Db = Db;
     Cursor->TraceStore = TraceStore;
-    Traits = Cursor->Traits = *TraceStore->pTraits;
     Cursor->Sqlite3 = Sqlite3;
-    Cursor->Sqlite3Column = TraceStore->Sqlite3Column;
+    Cursor->Sqlite3Column = TraceStoreSqlite3IntervalColumn;
     Cursor->TotalNumberOfAllocations = Totals->NumberOfAllocations.QuadPart;
 
     if (!TraceStore->IsMetadata) {
@@ -386,7 +342,7 @@ TraceStoreSqlite3ModuleOpenCursor(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleCloseCursor(
+TraceStoreSqlite3IntervalModuleCloseCursor(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
@@ -411,7 +367,7 @@ TraceStoreSqlite3ModuleCloseCursor(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleFilter(
+TraceStoreSqlite3IntervalModuleFilter(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor,
     LONG IndexNumber,
     PCSZ IndexString,
@@ -586,184 +542,27 @@ TraceStoreSqlite3ModuleFilter(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleNext(
+TraceStoreSqlite3IntervalModuleNext(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
-    ULONGLONG NumberOfRecords;
-    ULONGLONG NextRecordOffset = 0;
-    TRACE_STORE_TRAITS Traits;
-    PTRACE_STORE_SQLITE3_CURSOR Cursor;
-    PTRACE_STORE_ALLOCATION NextAllocation = NULL;
-
-    //
-    // Resolve cursor and initialize local traits variable.
-    //
 
     Cursor = CONTAINING_RECORD(Sqlite3Cursor,
                                TRACE_STORE_SQLITE3_CURSOR,
                                AsSqlite3VtabCursor);
 
-    Traits = Cursor->Traits;
-
-    //
-    // Advance the cursor and perform an EOF check; if true, return now and
-    // avoid any unnecessary record size deduction.
-    //
-
     if (Cursor->Rowid++ >= Cursor->LastRowid) {
         return SQLITE_OK;
     }
 
-    //
-    // Invariant check: the multiple records trait should be set for the trace
-    // store at this point if we passed the EOF test above.
-    //
-
-    if (IsSingleRecord(Traits)) {
-        __debugbreak();
-        return SQLITE_ERROR;
-    }
-
-    //
-    // We need to determine the size of the active record (row) in order to
-    // determine how many bytes we need to advance the current row pointer
-    // such that it points at the next row.
-    //
-
-    if (Cursor->Flags.IsMetadataStore) {
-
-        //
-        // For metadata stores, this is easy, as they always have a fixed
-        // record size, and we capture it up-front when the cursor is created.
-        //
-
-        NextRecordOffset = Cursor->MetadataRecordSizeInBytes;
-
-    } else {
-
-        //
-        // For trace stores, things are a little more involved.  Let's handle
-        // the easiest case first: if the trace store's record size is already
-        // set for us, we don't need to do any more work.
-        //
-
-        if (Cursor->TraceStoreRecordSizeInBytes) {
-            NextRecordOffset = Cursor->TraceStoreRecordSizeInBytes;
-            goto UpdateRow;
-        }
-
-        //
-        // If we're already in the middle of enumerating a coalesced allocation,
-        // continue with that logic.
-        //
-
-        if (Cursor->Flags.IsCoalescedAllocationActive) {
-
-            //
-            // Update our current coalesced allocation counter.  If it has
-            // surpassed the total number of coalesced allocations in this
-            // chunk, advance to the next allocation record.  Otherwise,
-            // use the coalesced allocation's record size as the next record
-            // offset and jump to the update row logic.
-            //
-
-            Cursor->CurrentCoalescedAllocationNumber += 1;
-
-            if (Cursor->CurrentCoalescedAllocationNumber ==
-                Cursor->TotalCoalescedAllocations) {
-
-                //
-                // Advance to the next allocation record and reset the current
-                // coalesced allocation state.
-                //
-
-                Cursor->Allocation++;
-                Cursor->Flags.IsCoalescedAllocationActive = FALSE;
-
-            } else {
-
-                //
-                // Current allocation record is still active, use its record
-                // size.
-                //
-
-                NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
-                goto UpdateRow;
-            }
-
-        } else {
-
-            //
-            // If no coalesced record is active, advance the allocation record.
-            //
-
-            Cursor->Allocation++;
-        }
-
-        //
-        // If we get here, we will have just advanced the allocation record.
-        // Thus, we need to test if the currently active allocation is a dummy
-        // one, and if so, skip past it and any subsequent dummy allocations
-        // until we find the first real one.
-        //
-
-        while (IsDummyAllocation(Cursor->Allocation)) {
-            Cursor->Allocation++;
-        }
-
-        //
-        // The cursor's allocation record is now definitely the one we want.
-        // That is, it describes the size of the record that was allocated for
-        // the address reflected in the cursor's current row.  (Note that the
-        // allocation record actually lags one iteration behind the row; i.e.
-        // in order to find out where row 2 starts, we process the allocation
-        // record number 1.)
-        //
-        // Obtain the record offset from the allocation record.  Then, test to
-        // see if it represents multiple allocations; if so, initialize the
-        // cursor's coalesced counters such that the relevant state can be
-        // resumed upon subsequent invocations of Next().
-        //
-
-        NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
-
-        NumberOfRecords = Cursor->Allocation->NumberOfRecords.QuadPart;
-        if (NumberOfRecords > 1) {
-
-            //
-            // Initialize coalesced allocation state.
-            //
-
-            Cursor->Flags.IsCoalescedAllocationActive = TRUE;
-            Cursor->CurrentCoalescedAllocationNumber = 1;
-            Cursor->TotalCoalescedAllocations = NumberOfRecords;
-        }
-    }
-
-    //
-    // Invariant check, next record offset should be non-zero here.
-    //
-
-    if (!NextRecordOffset) {
-        __debugbreak();
-        return SQLITE_ERROR;
-    }
-
-UpdateRow:
-
-    //
-    // Update the cursor and return success.
-    //
-
-    Cursor->CurrentRowRaw = Cursor->CurrentRowRaw + NextRecordOffset;
+    Cursor->CurrentRowRaw += sizeof(TRACE_STORE_INTERVAL);
 
     return SQLITE_OK;
 }
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleEof(
+TraceStoreSqlite3IntervalModuleEof(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
@@ -784,7 +583,7 @@ TraceStoreSqlite3ModuleEof(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleColumn(
+TraceStoreSqlite3IntervalModuleColumn(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor,
     PSQLITE3_CONTEXT Context,
     LONG ColumnNumber
@@ -805,7 +604,7 @@ TraceStoreSqlite3ModuleColumn(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleRowid(
+TraceStoreSqlite3IntervalModuleRowid(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor,
     PSQLITE3_INT64 RowidPointer
     )
@@ -823,7 +622,7 @@ TraceStoreSqlite3ModuleRowid(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleUpdate(
+TraceStoreSqlite3IntervalModuleUpdate(
     PSQLITE3_VTAB VirtualTable,
     LONG Unknown1,
     PSQLITE3_VALUE *Value,
@@ -835,7 +634,7 @@ TraceStoreSqlite3ModuleUpdate(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleBegin(
+TraceStoreSqlite3IntervalModuleBegin(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -844,7 +643,7 @@ TraceStoreSqlite3ModuleBegin(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleSync(
+TraceStoreSqlite3IntervalModuleSync(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -853,7 +652,7 @@ TraceStoreSqlite3ModuleSync(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleCommit(
+TraceStoreSqlite3IntervalModuleCommit(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -862,7 +661,7 @@ TraceStoreSqlite3ModuleCommit(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleRollback(
+TraceStoreSqlite3IntervalModuleRollback(
     PSQLITE3_VTAB VirtualTable
     )
 {
@@ -871,7 +670,7 @@ TraceStoreSqlite3ModuleRollback(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleFindFunction(
+TraceStoreSqlite3IntervalModuleFindFunction(
     PSQLITE3_VTAB VirtualTable,
     LONG ArgumentNumber,
     PCSZ FunctionName,
@@ -893,7 +692,7 @@ TraceStoreSqlite3ModuleFindFunction(
 
     TraceStore = CONTAINING_RECORD(VirtualTable,
                                    TRACE_STORE,
-                                   Sqlite3VirtualTable);
+                                   Sqlite3IntervalVirtualTable);
 
     Db = TraceStore->Db;
     Sqlite3 = Db->Sqlite3;
@@ -932,7 +731,7 @@ TraceStoreSqlite3ModuleFindFunction(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleRename(
+TraceStoreSqlite3IntervalModuleRename(
     PSQLITE3_VTAB VirtualTable,
     PCSZ NewName
     )
@@ -942,7 +741,7 @@ TraceStoreSqlite3ModuleRename(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleSavepoint(
+TraceStoreSqlite3IntervalModuleSavepoint(
     PSQLITE3_VTAB VirtualTable,
     LONG Unknown
     )
@@ -952,7 +751,7 @@ TraceStoreSqlite3ModuleSavepoint(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleRelease(
+TraceStoreSqlite3IntervalModuleRelease(
     PSQLITE3_VTAB VirtualTable,
     LONG Unknown
     )
@@ -962,7 +761,7 @@ TraceStoreSqlite3ModuleRelease(
 
 _Use_decl_annotations_
 LONG
-TraceStoreSqlite3ModuleRollbackTo(
+TraceStoreSqlite3IntervalModuleRollbackTo(
     PSQLITE3_VTAB VirtualTable,
     LONG Unknown
     )

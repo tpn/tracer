@@ -22,6 +22,7 @@ extern "C" {
 
 TRACE_STORE_DATA CONST LPCWSTR TraceStoreFileNames[];
 TRACE_STORE_DATA CONST LPCSTR TraceStoreSqlite3VirtualTableNames[];
+TRACE_STORE_DATA CONST LPCSTR TraceStoreSqlite3IntervalVirtualTableNames[];
 
 TRACE_STORE_DATA CONST WCHAR TraceStoreMetadataInfoSuffix[];
 TRACE_STORE_DATA CONST DWORD TraceStoreMetadataInfoSuffixLength;
