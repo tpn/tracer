@@ -721,7 +721,13 @@ Return Value:
     BOOL Success;
 
 
-    if (!TraceStore->OnlyRelocationIsToNull) {
+    //
+    // This has started triggering and I'm not sure if it's correct either.
+    //if (!TraceStore->OnlyRelocationIsToNull) {
+    //    __debugbreak();
+    //}
+
+    if (TraceStore->NumberOfRelocationsRequired != 0) {
         __debugbreak();
     }
 

@@ -764,6 +764,7 @@ Return Value:
     );
 
     for (Index = 0; Index < TotalNumberOfTraceStores; Index++) {
+        TRACE_STORE_ID Id;
         PTRACE_STORE TraceStore;
         PSQLITE3_MODULE Module;
         PCSZ *Schema;
@@ -797,6 +798,36 @@ Return Value:
             __debugbreak();
             goto Error;
         }
+
+        //
+        // If this is a metadata store, continue the loop.  Otherwise, wire
+        // up a custom interval virtual table/module.
+        //
+
+        if (TraceStore->IsMetadata) {
+            continue;
+        }
+
+        TraceStore->Sqlite3Column = TraceStoreSqlite3IntervalColumn;
+        Module = &TraceStore->Sqlite3IntervalModule;
+        Schema = &TraceStore->Sqlite3IntervalSchema;
+        VirtualTableName = &TraceStore->Sqlite3IntervalVirtualTableName;
+
+        Id = TraceStore->TraceStoreId;
+        *Schema = TraceStoreIntervalSchema;
+        *VirtualTableName = TraceStoreSqlite3IntervalVirtualTableNames[Id-1];
+        CopySqlite3ModuleInline(Module, &TraceStoreSqlite3IntervalModule);
+
+        Result = Sqlite3->CreateModule(Sqlite3Db,
+                                       *VirtualTableName,
+                                       Module,
+                                       TraceStore);
+
+        if (Result != SQLITE_OK) {
+            __debugbreak();
+            goto Error;
+        }
+
     }
 
     //

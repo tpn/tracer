@@ -534,6 +534,10 @@ Return Value:
         );
         TraceStore->pAllocator = Allocator;
         TraceStore->BindComplete = TraceStoreBindComplete;
+        TraceStore->TracerConfig = TracerConfig;
+        TraceStore->IntervalFramesPerSecond = (
+            TracerConfig->RuntimeParameters.IntervalFramesPerSecond
+        );
 
         Reloc = &TraceStores->Relocations[Index];
 

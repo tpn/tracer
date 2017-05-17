@@ -3055,29 +3055,38 @@ BIND_COMPLETE PerformanceStoreBindComplete;
 // TraceStoreIntervals-related functions.
 //
 
-typedef struct _TRACE_STORE_INTERVAL {
-    ULONGLONG IntervalNumber;
-    ULONGLONG RecordNumber;
-    ULONGLONG AllocationTimestamp;
-    ULONGLONG Address;
-} TRACE_STORE_INTERVAL;
-typedef TRACE_STORE_INTERVAL *PTRACE_STORE_INTERVAL;
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(EXTRACT_INTERVALS_OLD)(
+    _In_ ULONGLONG NumberOfIntervals,
+    _In_ ULONGLONG TicksPerInterval,
+    _In_ ULONGLONG NumberOfRecords,
+    _In_ ULONGLONG RecordSizeInBytes,
+    _In_ PVOID AllocationTimestampBaseAddress,
+    _In_ PVOID RecordBaseAddress,
+    _Out_writes_(NumberOfIntervals) PTRACE_STORE_INTERVAL Interval,
+    _Out_ PULONGLONG ExtractionTicksPointer
+    );
 
-typedef struct _TRACE_STORE_INTERVALS {
-    ULONGLONG FramesPerSecond;
-    ULONGLONG IntervalInNanoseconds;
-    ULONGLONG TicksPerInterval;
-    ULONGLONG NumberOfIntervals;
-    TRACE_STORE_INTERVAL Interval[ANYSIZE_ARRAY];
-} TRACE_STORE_INTERVALS;
-typedef TRACE_STORE_INTERVALS *PTRACE_STORE_INTERVALS;
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(EXTRACT_INTERVALS)(
+    _In_ PRTL Rtl,
+    _Inout_ PTRACE_STORE_INTERVALS Intervals
+    );
+typedef EXTRACT_INTERVALS *PEXTRACT_INTERVALS;
+extern EXTRACT_INTERVALS ExtractIntervals;
 
 typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
 (PREPARE_TRACE_STORE_INTERVALS)(
-    _In_ PTRACE_STORE TraceStore
+    _In_ struct _TRACE_STORE *TraceStore
     );
 typedef PREPARE_TRACE_STORE_INTERVALS *PPREPARE_TRACE_STORE_INTERVALS;
 extern PREPARE_TRACE_STORE_INTERVALS PrepareTraceStoreIntervals;
@@ -3274,10 +3283,19 @@ typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
         ULONG EofOverride:1;
 
         //
+        // When set, indicates this is an interval cursor.  These differ from
+        // normal cursors in that they enumerate over dynamically calculated
+        // interval data (versus the normal trace store memory map+allocation
+        // approach used by normal cursors).
+        //
+
+        ULONG IsIntervalCursor:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:28;
+        ULONG Unused:27;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -3311,6 +3329,7 @@ typedef union _TRACE_STORE_ROW {
     PFLOAT AsFloat;
     PDOUBLE AsDouble;
     PVOID AsVoid;
+    PTRACE_STORE_INTERVAL AsInterval;
     PSQLITE3_INT64 AsSqlite3Int64;
     //PXMMWORD AsXmm;
     //PYMMWORD AsYmm;
@@ -3540,6 +3559,13 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     struct _TRACE_STORE_SQLITE3_DB *Db;
 
     //
+    // Pointer back to the trace store's intervals, if applicable.
+    //
+
+    PTRACE_STORE_INTERVALS Intervals;
+    ULONGLONG IntervalRecordSize;
+
+    //
     // Pointer to our column function.
     //
 
@@ -3585,6 +3611,10 @@ typedef TRACE_STORE_SQLITE3_CURSOR *PTRACE_STORE_SQLITE3_CURSOR;
 
 #include "TraceStoreSqlite3Schemas.h"
 
+//
+// TraceStore-wrapper module.
+//
+
 extern SQLITE3_CREATE TraceStoreSqlite3ModuleCreate;
 extern SQLITE3_CONNECT TraceStoreSqlite3ModuleConnect;
 extern SQLITE3_BEST_INDEX TraceStoreSqlite3ModuleBestIndex;
@@ -3609,6 +3639,36 @@ extern SQLITE3_RELEASE TraceStoreSqlite3ModuleRelease;
 extern SQLITE3_ROLLBACK_TO TraceStoreSqlite3ModuleRollbackTo;
 
 extern SQLITE3_MODULE TraceStoreSqlite3Module;
+
+//
+// Custom interval module (one per normal trace store).
+//
+
+extern SQLITE3_CREATE TraceStoreSqlite3IntervalModuleCreate;
+extern SQLITE3_CONNECT TraceStoreSqlite3IntervalModuleConnect;
+extern SQLITE3_BEST_INDEX TraceStoreSqlite3IntervalModuleBestIndex;
+extern SQLITE3_DISCONNECT TraceStoreSqlite3IntervalModuleDisconnect;
+extern SQLITE3_DESTROY TraceStoreSqlite3IntervalModuleDestroy;
+extern SQLITE3_OPEN_CURSOR TraceStoreSqlite3IntervalModuleOpenCursor;
+extern SQLITE3_CLOSE_CURSOR TraceStoreSqlite3IntervalModuleCloseCursor;
+extern SQLITE3_FILTER TraceStoreSqlite3IntervalModuleFilter;
+extern SQLITE3_NEXT TraceStoreSqlite3IntervalModuleNext;
+extern SQLITE3_EOF TraceStoreSqlite3IntervalModuleEof;
+extern SQLITE3_COLUMN TraceStoreSqlite3IntervalModuleColumn;
+extern SQLITE3_ROWID TraceStoreSqlite3IntervalModuleRowid;
+extern SQLITE3_UPDATE TraceStoreSqlite3IntervalModuleUpdate;
+extern SQLITE3_BEGIN TraceStoreSqlite3IntervalModuleBegin;
+extern SQLITE3_SYNC TraceStoreSqlite3IntervalModuleSync;
+extern SQLITE3_COMMIT TraceStoreSqlite3IntervalModuleCommit;
+extern SQLITE3_ROLLBACK TraceStoreSqlite3IntervalModuleRollback;
+extern SQLITE3_FIND_FUNCTION TraceStoreSqlite3IntervalModuleFindFunction;
+extern SQLITE3_RENAME TraceStoreSqlite3IntervalModuleRename;
+extern SQLITE3_SAVEPOINT TraceStoreSqlite3IntervalModuleSavepoint;
+extern SQLITE3_RELEASE TraceStoreSqlite3IntervalModuleRelease;
+extern SQLITE3_ROLLBACK_TO TraceStoreSqlite3IntervalModuleRollbackTo;
+
+extern SQLITE3_MODULE TraceStoreSqlite3IntervalModule;
+
 
 FORCEINLINE
 VOID
@@ -3643,6 +3703,7 @@ extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3AllocationTimestampDeltaColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3SynchronizationColumn;
 extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3InfoColumn;
+extern TRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3IntervalColumn;
 
 extern SQLITE3_SCALAR_FUNCTION TraceStoreSqlite3DefaultScalarFunction;
 extern SQLITE3_AGGREGATE_STEP_FUNCTION
