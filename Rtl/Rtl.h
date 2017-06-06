@@ -5565,6 +5565,88 @@ typedef struct _SHLWAPI_FUNCTIONS {
     PIMAGE_RVA_TO_SECTION ImageRvaToSection;                                    \
     PIMAGE_RVA_TO_VA ImageRvaToV;
 
+//
+// Helper/convenience enums/bitflags for the Flags, Scope, Type and Tag fields
+// of the SYMBOL_INFO structure.
+//
+
+typedef enum _Enum_is_bitflag_ _SYMFLAG {
+    SymFlagValuePresent      = 0x00000001,
+    SymFlagRegister          = 0x00000008,
+    SymFlagRegRel            = 0x00000010,
+    SymFlagFrameRel          = 0x00000020,
+    SymFlagParameter         = 0x00000040,
+    SymFlagLocal             = 0x00000080,
+    SymFlagConstant          = 0x00000100,
+    SymFlagExport            = 0x00000200,
+    SymFlagForwarder         = 0x00000400,
+    SymFlagFunction          = 0x00000800,
+    SymFlagVirtual           = 0x00001000,
+    SymFlagThunk             = 0x00002000,
+    SymFlagTlsRel            = 0x00004000,
+    SymFlagSlot              = 0x00008000,
+    SymFlagIlRel             = 0x00010000,
+    SymFlagMetadata          = 0x00020000,
+    SymFlagClrToken          = 0x00040000,
+    SymFlagNull              = 0x00080000,
+    SymFlagFuncNoReturn      = 0x00100000,
+    SymFlagSyntheticZeroBase = 0x00200000,
+    SymFlagPublicCode        = 0x00400000
+} SYMFLAG;
+typedef SYMFLAG *PSYMFLAG;
+
+typedef union _SYM_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG ValuePresent:1;       //      0x00000001,
+        ULONG Unused1:2;
+        ULONG Register:1;           //      0x00000008
+        ULONG RegRel:1;             //      0x00000010
+        ULONG FrameRel:1;           //      0x00000020
+        ULONG Parameter:1;          //      0x00000040
+        ULONG Local:1;              //      0x00000080
+        ULONG Constant:1;           //      0x00000100
+        ULONG Export:1;             //      0x00000200
+        ULONG Forwarder:1;          //      0x00000400
+        ULONG Function:1;           //      0x00000800
+        ULONG Virtual:1;            //      0x00001000
+        ULONG Thunk:1;              //      0x00002000
+        ULONG TlsRel:1;             //      0x00004000
+        ULONG Slot:1;               //      0x00008000
+        ULONG IlRel:1;              //      0x00010000
+        ULONG Metadata:1;           //      0x00020000
+        ULONG ClrToken:1;           //      0x00040000
+        ULONG Null:1;               //      0x00080000
+        ULONG FuncNoReturn:1;       //      0x00100000
+        ULONG SyntheticZeroBase:1;  //      0x00200000
+        ULONG PublicCode:1;         //      0x00400000
+        ULONG SpareBits:9;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} SYM_FLAGS;
+C_ASSERT(sizeof(SYM_FLAGS) == sizeof(ULONG));
+typedef SYM_FLAGS *PSYM_FLAGS;
+
+typedef enum SymTagEnum SYMTAG;
+
+typedef struct _SYMINFO {
+    ULONG       SizeOfStruct;
+    SYM_TYPE    TypeIndex;
+    ULONG64     Reserved[2];
+    ULONG       Index;
+    ULONG       Size;
+    ULONG64     ModBase;
+    SYMFLAG     Flags;
+    ULONG64     Value;
+    ULONG64     Address;
+    ULONG       Register;
+    ULONG       Scope;
+    ULONG       Tag;
+    ULONG       NameLen;
+    ULONG       MaxNameLen;
+    CHAR        Name[1];
+} SYMINFO;
+
 typedef struct _DBG {
     _DBGHELP_FUNCTIONS_HEAD
 } DBG, *PDBG;
