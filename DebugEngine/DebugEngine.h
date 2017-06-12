@@ -219,6 +219,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
     PIDEBUGREGISTERS IRegisters;
     PDEBUGREGISTERS Registers;
 
+    PCGUID IID_SystemObjects;
+    PIDEBUGSYSTEMOBJECTS ISystemObjects;
+    PDEBUGSYSTEMOBJECTS SystemObjects;
+
     //
     // Client/Control state.
     //

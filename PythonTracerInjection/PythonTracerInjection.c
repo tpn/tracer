@@ -327,26 +327,35 @@ End:
 //
 
 TRACER_INJECTION_HANDLE_BREAKPOINT Py_Main_HandleBreakpoint;
+TRACER_INJECTION_HANDLE_BREAKPOINT Py_Main_HandleReturnBreakpoint;
 TRACER_INJECTION_HANDLE_BREAKPOINT Py_InitializeEx_HandleBreakpoint;
+TRACER_INJECTION_HANDLE_BREAKPOINT Py_InitializeEx_HandleReturnBreakpoint;
+
+#define PYTHON_BREAKPOINT(Version, Name) \
+    {                                    \
+        "python" # Version "!" # Name,   \
+        Name##_HandleBreakpoint,         \
+        Name##_HandleReturnBreakpoint    \
+    }
 
 CONST TRACER_INJECTION_BREAKPOINT_SPEC BreakpointSpecs[] = {
-    { "python27!Py_Main", Py_Main_HandleBreakpoint },
-    { "python30!Py_Main", Py_Main_HandleBreakpoint },
-    { "python31!Py_Main", Py_Main_HandleBreakpoint },
-    { "python32!Py_Main", Py_Main_HandleBreakpoint },
-    { "python33!Py_Main", Py_Main_HandleBreakpoint },
-    { "python34!Py_Main", Py_Main_HandleBreakpoint },
-    { "python35!Py_Main", Py_Main_HandleBreakpoint },
-    { "python36!Py_Main", Py_Main_HandleBreakpoint },
+    PYTHON_BREAKPOINT(27, Py_Main),
+    PYTHON_BREAKPOINT(30, Py_Main),
+    PYTHON_BREAKPOINT(31, Py_Main),
+    PYTHON_BREAKPOINT(32, Py_Main),
+    PYTHON_BREAKPOINT(33, Py_Main),
+    PYTHON_BREAKPOINT(34, Py_Main),
+    PYTHON_BREAKPOINT(35, Py_Main),
+    PYTHON_BREAKPOINT(36, Py_Main),
 
-    { "python27!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python30!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python31!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python32!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python33!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python34!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python35!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
-    { "python36!Py_InitializeEx", Py_InitializeEx_HandleBreakpoint },
+    PYTHON_BREAKPOINT(27, Py_InitializeEx),
+    PYTHON_BREAKPOINT(30, Py_InitializeEx),
+    PYTHON_BREAKPOINT(31, Py_InitializeEx),
+    PYTHON_BREAKPOINT(32, Py_InitializeEx),
+    PYTHON_BREAKPOINT(33, Py_InitializeEx),
+    PYTHON_BREAKPOINT(34, Py_InitializeEx),
+    PYTHON_BREAKPOINT(35, Py_InitializeEx),
+    PYTHON_BREAKPOINT(36, Py_InitializeEx),
 };
 
 _Use_decl_annotations_
@@ -368,6 +377,23 @@ Py_Main_HandleBreakpoint(
 
 _Use_decl_annotations_
 HRESULT
+Py_Main_HandleReturnBreakpoint(
+    PTRACER_INJECTION_CONTEXT InjectionContext,
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint
+    )
+{
+    PPYTHON_TRACER_INJECTION_CONTEXT Context;
+
+    Context = CONTAINING_RECORD(InjectionContext,
+                                PYTHON_TRACER_INJECTION_CONTEXT,
+                                InjectionContext);
+
+    OutputDebugStringA("Caught return of Py_Main.\n");
+    return DEBUG_STATUS_NO_CHANGE;
+}
+
+_Use_decl_annotations_
+HRESULT
 Py_InitializeEx_HandleBreakpoint(
     PTRACER_INJECTION_CONTEXT InjectionContext,
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint
@@ -383,23 +409,135 @@ Py_InitializeEx_HandleBreakpoint(
     return DEBUG_STATUS_NO_CHANGE;
 }
 
+LONG
+ParentThreadEntry(
+    PPYTHON_TRACER_INJECTION_CONTEXT Context
+    )
+{
+    BOOL Success;
+    PRTL Rtl;
+    ULONG RemoteThreadId;
+    ULONG RemoteThreadExitCode;
+    HANDLE RemoteThreadHandle;
+    PVOID RemoteBaseCodeAddress;
+    PVOID RemoteUserBufferAddress;
+    INJECTION_THUNK_FLAGS Flags;
+    PCUNICODE_STRING DllPath;
+    PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
+    PDEBUG_ENGINE_SESSION Session;
+    const STRING FunctionName =
+        RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
+
+    Rtl = Context->InjectionContext.Rtl;
+    InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
+    InjectedContext.ParentProcessId = FastGetCurrentProcessId();
+    InjectedContext.ParentThreadId = FastGetCurrentThreadId();
+
+    Flags.AsULong = 0;
+    Session = Context->InjectionContext.DebugEngineSession;
+    DllPath = &Session->TracerConfig->Paths.TracedPythonSessionDllPath;
+
+    Success = Rtl->InjectThunk(Rtl,
+                               Session->Allocator,
+                               Flags,
+                               Context->RemotePythonProcessHandle,
+                               DllPath,
+                               &FunctionName,
+                               (PBYTE)&InjectedContext,
+                               sizeof(InjectedContext),
+                               NULL,
+                               &RemoteThreadHandle,
+                               &RemoteThreadId,
+                               &RemoteBaseCodeAddress,
+                               &RemoteUserBufferAddress);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    WaitForSingleObject(RemoteThreadHandle, INFINITE);
+
+    Success = GetExitCodeThread(RemoteThreadHandle, &RemoteThreadExitCode);
+    if (!Success) {
+        return -1;
+    }
+
+    return RemoteThreadExitCode;
+}
+
+
+_Use_decl_annotations_
+HRESULT
+Py_InitializeEx_HandleReturnBreakpoint(
+    PTRACER_INJECTION_CONTEXT InjectionContext,
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint
+    )
+{
+    BOOL Success;
+    ULONG WaitResult;
+    PPYTHON_TRACER_INJECTION_CONTEXT Context;
+
+    OutputDebugStringA("Caught return of Py_InitializeEx, injecting...\n");
+
+    Context = CONTAINING_RECORD(InjectionContext,
+                                PYTHON_TRACER_INJECTION_CONTEXT,
+                                InjectionContext);
+
+    Context->RemotePythonProcessHandle = (
+        InjectionBreakpoint->CurrentProcessHandle
+    );
+
+    Context->PythonThreadHandle = (
+        CreateThread(NULL,
+                     0,
+                     (LPTHREAD_START_ROUTINE)ParentThreadEntry,
+                     InjectionContext,
+                     0,
+                     &Context->PythonThreadId)
+    );
+
+    if (!Context->PythonThreadHandle) {
+        __debugbreak();
+    }
+
+    WaitResult = WaitForSingleObject(Context->PythonThreadHandle, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+    }
+
+    Success = GetExitCodeThread(Context->PythonThreadHandle,
+                                &Context->PythonThreadExitCode);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    return DEBUG_STATUS_NO_CHANGE;
+}
+
 
 C_ASSERT(ARRAYSIZE(BreakpointSpecs) == NUM_INITIAL_BREAKPOINTS());
 
 BOOL
 InitializeBreakpoint(
-    PDEBUGCONTROL Control,
-    PIDEBUGCONTROL IControl,
+    PDEBUG_ENGINE Engine,
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint,
-    PCSTR OffsetExpression,
-    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint
+    PCTRACER_INJECTION_BREAKPOINT_SPEC BreakpointSpec
     )
 {
     BOOL Success;
-    ULONG Id;
+    ULONG BreakpointId;
+    ULONG ReturnBreakpointId;
     HRESULT Result;
+    PDEBUGCONTROL Control;
+    PIDEBUGCONTROL IControl;
     PDEBUGBREAKPOINT Breakpoint;
     PIDEBUGBREAKPOINT IBreakpoint;
+    PDEBUGBREAKPOINT ReturnBreakpoint;
+    PIDEBUGBREAKPOINT IReturnBreakpoint;
+    PCSTR OffsetExpression;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleReturnBreakpoint;
 
     TRACER_INJECTION_BREAKPOINT_ERROR Error;
     TRACER_INJECTION_BREAKPOINT_FLAGS Flags;
@@ -407,6 +545,13 @@ InitializeBreakpoint(
     Flags.AsULong = 0;
     Error.AsULong = 0;
     Error.InitializationFailed = TRUE;
+
+    OffsetExpression = BreakpointSpec->OffsetExpression;
+    HandleBreakpoint = BreakpointSpec->HandleBreakpoint;
+    HandleReturnBreakpoint = BreakpointSpec->HandleReturnBreakpoint;
+
+    Control = Engine->Control;
+    IControl = Engine->IControl;
 
     Result = Control->AddBreakpoint(IControl,
                                     DEBUG_BREAKPOINT_CODE,
@@ -420,9 +565,9 @@ InitializeBreakpoint(
 
     Breakpoint = IBreakpoint->lpVtbl;
 
-    Result = Breakpoint->GetId(IBreakpoint, &Id);
+    Result = Breakpoint->GetId(IBreakpoint, &BreakpointId);
     if (Result != S_OK) {
-        Id = DEBUG_ANY_ID;
+        BreakpointId = DEBUG_ANY_ID;
         Error.GetIdFailed = TRUE;
         goto Error;
     }
@@ -439,9 +584,35 @@ InitializeBreakpoint(
         goto Error;
     }
 
-    Error.InitializationFailed = FALSE;
-    Flags.Initialized = TRUE;
-    Flags.Enabled = TRUE;
+    if (!HandleReturnBreakpoint) {
+        Success = TRUE;
+        goto End;
+    }
+
+    //
+    // Add the return breakpoint in the same fashion, but leave it disabled.
+    // (They are enabled in the breakpoint callback for the main handler.)
+    //
+
+    Result = Control->AddBreakpoint(IControl,
+                                    DEBUG_BREAKPOINT_CODE,
+                                    DEBUG_ANY_ID,
+                                    (PDEBUG_BREAKPOINT *)&IReturnBreakpoint);
+
+    if (Result != S_OK) {
+        Error.AddReturnBreakpointFailed = TRUE;
+        goto Error;
+    }
+
+    ReturnBreakpoint = IReturnBreakpoint->lpVtbl;
+
+    Result = ReturnBreakpoint->GetId(IReturnBreakpoint, &ReturnBreakpointId);
+    if (Result != S_OK) {
+        ReturnBreakpointId = DEBUG_ANY_ID;
+        Error.GetReturnIdFailed = TRUE;
+        goto Error;
+    }
+
     Success = TRUE;
     goto End;
 
@@ -455,12 +626,23 @@ Error:
 
 End:
 
-    InjectionBreakpoint->Id = Id;
+    if (Success) {
+        Error.InitializationFailed = FALSE;
+        Flags.Initialized = TRUE;
+        Flags.BreakpointEnabled = TRUE;
+        Flags.ReturnBreakpointEnabled = TRUE;
+    }
+
+    InjectionBreakpoint->BreakpointId = BreakpointId;
+    InjectionBreakpoint->ReturnBreakpointId = ReturnBreakpointId;
     InjectionBreakpoint->Breakpoint = Breakpoint;
     InjectionBreakpoint->IBreakpoint = IBreakpoint;
+    InjectionBreakpoint->ReturnBreakpoint = ReturnBreakpoint;
+    InjectionBreakpoint->IReturnBreakpoint = IReturnBreakpoint;
     InjectionBreakpoint->Error.AsULong = Error.AsULong;
     InjectionBreakpoint->Flags.AsULong = Flags.AsULong;
     InjectionBreakpoint->HandleBreakpoint = HandleBreakpoint;
+    InjectionBreakpoint->HandleReturnBreakpoint = HandleReturnBreakpoint;
     InjectionBreakpoint->SizeOfStruct = sizeof(*InjectionBreakpoint);
     InjectionBreakpoint->OffsetExpression = OffsetExpression;
 
@@ -477,8 +659,6 @@ InitializePythonTracerInjectionBreakpoints(
     USHORT Index;
     USHORT NumberOfBreakpoints;
 
-    PDEBUGCONTROL Control;
-    PIDEBUGCONTROL IControl;
     PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
@@ -511,8 +691,6 @@ InitializePythonTracerInjectionBreakpoints(
     Session = Context->InjectionContext.DebugEngineSession;
     Engine = Session->Engine;
 
-    Control = Engine->Control;
-    IControl = Engine->IControl;
 
     NumberOfBreakpoints = ARRAYSIZE(BreakpointSpecs);
 
@@ -524,11 +702,9 @@ InitializePythonTracerInjectionBreakpoints(
     for (Index = 0; Index < NumberOfBreakpoints; Index++) {
         BreakpointSpec = &BreakpointSpecs[Index];
 
-        Success = InitializeBreakpoint(Control,
-                                       IControl,
+        Success = InitializeBreakpoint(Engine,
                                        InjectionBreakpoint++,
-                                       BreakpointSpec->OffsetExpression,
-                                       BreakpointSpec->HandleBreakpoint);
+                                       BreakpointSpec);
 
         if (!Success) {
             InjectionContext->NumberOfBreakpoints = Index;

@@ -68,10 +68,9 @@ typedef struct _PYTHON_TRACER_INJECTION_CONTEXT {
 
     HANDLE PythonThreadHandle;
     ULONG PythonThreadId;
-    ULONG Padding1;
+    ULONG PythonThreadExitCode;
 
     HANDLE RemotePythonProcessHandle;
-    HANDLE RemotePythonTracerThreadHandle;
 
     HMODULE PythonDllModule;
 

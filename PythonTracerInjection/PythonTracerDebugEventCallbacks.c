@@ -134,12 +134,27 @@ DebugEventBreakpointCallback(
     ULONG LastId;
     ULONG Index;
     BOOL Found;
+    BOOL IsReturnBreakpoint = FALSE;
     HRESULT Result;
+    HRESULT ReturnResult;
+    ULONGLONG StackOffset;
+    ULONGLONG ReturnOffset;
+    PDEBUGCONTROL Control;
+    PIDEBUGCONTROL IControl;
+    PDEBUGREGISTERS Registers;
+    PIDEBUGREGISTERS IRegisters;
     PDEBUGBREAKPOINT Breakpoint;
     PIDEBUGBREAKPOINT IBreakpoint;
+    PDEBUGBREAKPOINT ReturnBreakpoint;
+    PIDEBUGBREAKPOINT IReturnBreakpoint;
+    PDEBUGSYSTEMOBJECTS SystemObjects;
+    PIDEBUGSYSTEMOBJECTS ISystemObjects;
+    PTRACER_INJECTION_CONTEXT InjectionContext;
     PTRACER_INJECTION_BREAKPOINT First;
     PTRACER_INJECTION_BREAKPOINT Last;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleReturnBreakpoint;
     CHILD_DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
     IBreakpoint = (PIDEBUGBREAKPOINT)Breakpoint2;
@@ -152,38 +167,202 @@ DebugEventBreakpointCallback(
 
     First = &Context->InitialBreakpoints.First;
     Last = &Context->InitialBreakpoints.First + NUM_INITIAL_BREAKPOINTS() - 1;
-    FirstId = First->Id;
-    LastId = Last->Id;
+    FirstId = First->BreakpointId;
+    LastId = Last->ReturnBreakpointId;
 
     if (Id < FirstId && Id > LastId) {
         goto SlowLookup;
     }
 
     InjectionBreakpoint = First + (Id - FirstId);
-    if (InjectionBreakpoint->Id != Id) {
+    IsReturnBreakpoint = (InjectionBreakpoint->ReturnBreakpointId == Id);
+
+    if (InjectionBreakpoint->BreakpointId != Id && !IsReturnBreakpoint) {
         InjectionBreakpoint = NULL;
     }
 
     if (!InjectionBreakpoint) {
 SlowLookup:
         Found = FALSE;
-        for (Index = 0; Index < NUM_INITIAL_BREAKPOINTS(); Index++) {
+
+        //
+        // We multiply the number of initial breakpoints by 2 to account for the
+        // fact each breakpoint is potentially two breakpoints -- one for the
+        // initial offset expression, then one for the return address
+        // breakpoint.
+        //
+
+        for (Index = 0; Index < (NUM_INITIAL_BREAKPOINTS() << 1); Index++) {
             InjectionBreakpoint = First + Index;
-            if (InjectionBreakpoint->Id == Id) {
+            IsReturnBreakpoint = InjectionBreakpoint->ReturnBreakpointId == Id;
+            if (InjectionBreakpoint->BreakpointId == Id || IsReturnBreakpoint) {
                 Found = TRUE;
                 break;
             }
         }
+
         if (!Found) {
             __debugbreak();
             return DEBUG_STATUS_BREAK;
         }
     }
 
-    Result = InjectionBreakpoint->HandleBreakpoint(&Context->InjectionContext,
-                                                   InjectionBreakpoint);
+    //
+    // Initialize remaining aliases.
+    //
 
-    return Result;
+    Control = Engine->Control;
+    IControl = Engine->IControl;
+    Breakpoint = InjectionBreakpoint->Breakpoint;
+    IBreakpoint = InjectionBreakpoint->IBreakpoint;
+    ReturnBreakpoint = InjectionBreakpoint->Breakpoint;
+    IReturnBreakpoint = InjectionBreakpoint->IReturnBreakpoint;
+    SystemObjects = Engine->SystemObjects;
+    ISystemObjects = Engine->ISystemObjects;
+
+    InjectionContext = &Context->InjectionContext;
+
+    HandleBreakpoint = InjectionBreakpoint->HandleBreakpoint;
+    HandleReturnBreakpoint = InjectionBreakpoint->HandleReturnBreakpoint;
+
+    //
+    // Get the current process and thread IDs and handles.
+    //
+
+    Result = SystemObjects->GetCurrentProcessId(
+        ISystemObjects,
+        &InjectionBreakpoint->CurrentProcessId
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    Result = SystemObjects->GetCurrentProcessHandle(
+        ISystemObjects,
+        (PULONG64)&InjectionBreakpoint->CurrentProcessHandle
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    Result = SystemObjects->GetCurrentThreadId(
+        ISystemObjects,
+        &InjectionBreakpoint->CurrentThreadId
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    Result = SystemObjects->GetCurrentThreadHandle(
+        ISystemObjects,
+        (PULONG64)&InjectionBreakpoint->CurrentThreadHandle
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    if (!IsReturnBreakpoint) {
+
+        //
+        // This is the first breakpoint.  Get the stack offset, then call the
+        // handler and, if successful, enable the return breakpoint if one is
+        // present.
+        //
+
+        Registers = Engine->Registers;
+        IRegisters = Engine->IRegisters;
+        Result = Registers->GetStackOffset(IRegisters, &StackOffset);
+        if (FAILED(Result)) {
+            InjectionBreakpoint->Error.GetStackOffsetFailed = TRUE;
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+
+        InjectionBreakpoint->StackOffset = StackOffset;
+
+        //
+        // Get the return offset.
+        //
+
+        Result = Control->GetReturnOffset(IControl, &ReturnOffset);
+        if (FAILED(Result)) {
+            InjectionBreakpoint->Error.GetReturnOffsetFailed = TRUE;
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+
+        InjectionBreakpoint->ReturnOffset = ReturnOffset;
+
+        ReturnResult = HandleBreakpoint(InjectionContext, InjectionBreakpoint);
+
+        if (FAILED(ReturnResult) || !HandleReturnBreakpoint) {
+            goto End;
+        }
+
+        //
+        // Enable the return breakpoint.
+        //
+
+        Result = ReturnBreakpoint->SetOffset(IReturnBreakpoint, ReturnOffset);
+        if (FAILED(Result)) {
+            InjectionBreakpoint->Error.SetOffsetFailed = TRUE;
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+
+        Result = ReturnBreakpoint->AddFlags(IReturnBreakpoint,
+                                            DEBUG_BREAKPOINT_ENABLED);
+        if (FAILED(Result)) {
+            InjectionBreakpoint->Error.AddReturnFlagsEnabledFailed = TRUE;
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+
+        InjectionBreakpoint->Flags.ReturnBreakpointEnabled = TRUE;
+
+        if (InjectionBreakpoint->Flags.IsOnceOff) {
+            Result = Breakpoint->RemoveFlags(IBreakpoint,
+                                             DEBUG_BREAKPOINT_ENABLED);
+            if (FAILED(Result)) {
+                InjectionBreakpoint->Error.RemoveFlagsEnabledFailed = TRUE;
+                __debugbreak();
+                return DEBUG_STATUS_BREAK;
+            }
+
+            InjectionBreakpoint->Flags.BreakpointEnabled = FALSE;
+        }
+
+    } else {
+
+        //
+        // This is the return breakpoint.  Call the handler then disable the
+        // breakpoint.
+        //
+
+        ReturnResult = HandleReturnBreakpoint(InjectionContext,
+                                              InjectionBreakpoint);
+
+        Result = ReturnBreakpoint->RemoveFlags(IReturnBreakpoint,
+                                               DEBUG_BREAKPOINT_ENABLED);
+        if (FAILED(Result)) {
+            InjectionBreakpoint->Error.RemoveReturnFlagsEnabledFailed = TRUE;
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+    }
+
+
+End:
+
+    return ReturnResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,64 +422,6 @@ DebugEventExitThreadCallback(
 ////////////////////////////////////////////////////////////////////////////////
 //      IDebugEventCallbacks->CreateProcess()
 ////////////////////////////////////////////////////////////////////////////////
-
-LONG
-ParentThreadEntry(
-    PPYTHON_TRACER_INJECTION_CONTEXT Context
-    )
-{
-    BOOL Success;
-    PRTL Rtl;
-    ULONG RemoteThreadId;
-    ULONG RemoteThreadExitCode;
-    HANDLE RemoteThreadHandle;
-    PVOID RemoteBaseCodeAddress;
-    PVOID RemoteUserBufferAddress;
-    INJECTION_THUNK_FLAGS Flags;
-    PCUNICODE_STRING DllPath;
-    PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
-    PDEBUG_ENGINE_SESSION Session;
-    const STRING FunctionName =
-        RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
-
-    Rtl = Context->InjectionContext.Rtl;
-    InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
-    InjectedContext.ParentProcessId = FastGetCurrentProcessId();
-    InjectedContext.ParentThreadId = FastGetCurrentThreadId();
-
-    Flags.AsULong = 0;
-    Session = Context->InjectionContext.DebugEngineSession;
-    DllPath = &Session->TracerConfig->Paths.TracedPythonSessionDllPath;
-
-    OutputDebugStringA("Found Python process!\n");
-
-    Success = Rtl->InjectThunk(Rtl,
-                               Session->Allocator,
-                               Flags,
-                               Context->RemotePythonProcessHandle,
-                               DllPath,
-                               &FunctionName,
-                               (PBYTE)&InjectedContext,
-                               sizeof(InjectedContext),
-                               NULL,
-                               &RemoteThreadHandle,
-                               &RemoteThreadId,
-                               &RemoteBaseCodeAddress,
-                               &RemoteUserBufferAddress);
-
-    if (!Success) {
-        __debugbreak();
-    }
-
-    WaitForSingleObject(RemoteThreadHandle, INFINITE);
-
-    Success = GetExitCodeThread(RemoteThreadHandle, &RemoteThreadExitCode);
-    if (!Success) {
-        return -1;
-    }
-
-    return RemoteThreadExitCode;
-}
 
 _Use_decl_annotations_
 HRESULT
@@ -377,26 +498,17 @@ DebugEventCreateProcessCallback(
 
     IsPython = Rtl->RtlPrefixUnicodeString(&Module, &PythonModule, TRUE);
 
-    if (IsPython) {
+    //
+    // Disable injection at the CreateProcess level for now (as we're using
+    // the Py_Initialize() breakpoint instead).
+    //
+
+    if (IsPython && FALSE) {
 
         //
         // This is definitely a Python program, perform a remote injection.
         //
 
-        Context->RemotePythonProcessHandle = ProcessHandle;
-
-        Context->PythonThreadHandle = (
-            CreateThread(NULL,
-                         0,
-                         (LPTHREAD_START_ROUTINE)ParentThreadEntry,
-                         InjectionContext,
-                         0,
-                         &Context->PythonThreadId)
-        );
-
-        if (!Context->PythonThreadHandle) {
-            __debugbreak();
-        }
     }
 
     //

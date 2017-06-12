@@ -64,11 +64,37 @@ extern "C" {
 typedef union _TRACER_INJECTION_BREAKPOINT_ERROR {
     struct {
         ULONG InitializationFailed:1;
+
+        //
+        // General breakpoint error flags.
+        //
+
+        ULONG GetCurrentProcessIdFailed:1;
+        ULONG GetCurrentThreadIdFailed:1;
+
+        //
+        // Failure flags related to the initial offset expression breakpoint.
+        //
+
         ULONG AddBreakpointFailed:1;
         ULONG GetIdFailed:1;
         ULONG SetOffsetExpressionFailed:1;
         ULONG AddFlagsEnabledFailed:1;
+        ULONG RemoveFlagsEnabledFailed:1;
+        ULONG GetStackOffsetFailed:1;
+        ULONG GetReturnOffsetFailed:1;
+
+        //
+        // Failure flags related to the optional return address breakpoint.
+        //
+
+        ULONG AddReturnBreakpointFailed:1;
+        ULONG GetReturnIdFailed:1;
+        ULONG SetOffsetFailed:1;
+        ULONG AddReturnFlagsEnabledFailed:1;
+        ULONG RemoveReturnFlagsEnabledFailed:1;
     };
+
     LONG AsLong;
     ULONG AsULong;
 } TRACER_INJECTION_BREAKPOINT_ERROR;
@@ -76,7 +102,9 @@ typedef union _TRACER_INJECTION_BREAKPOINT_ERROR {
 typedef union _TRACER_INJECTION_BREAKPOINT_FLAGS {
     struct {
         ULONG Initialized:1;
-        ULONG Enabled:1;
+        ULONG IsOnceOff:1;
+        ULONG BreakpointEnabled:1;
+        ULONG ReturnBreakpointEnabled:1;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -97,6 +125,7 @@ typedef TRACER_INJECTION_HANDLE_BREAKPOINT *PTRACER_INJECTION_HANDLE_BREAKPOINT;
 typedef struct _TRACER_INJECTION_BREAKPOINT_SPEC {
     PCSTR OffsetExpression;
     PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+    PTRACER_INJECTION_HANDLE_BREAKPOINT HandleReturnBreakpoint;
 } TRACER_INJECTION_BREAKPOINT_SPEC;
 typedef TRACER_INJECTION_BREAKPOINT_SPEC
       *PTRACER_INJECTION_BREAKPOINT_SPEC;
@@ -105,11 +134,23 @@ typedef const TRACER_INJECTION_BREAKPOINT_SPEC
 
 typedef struct _TRACER_INJECTION_BREAKPOINT {
     ULONG SizeOfStruct;
-    ULONG Id;
+    ULONG BreakpointId;
+    ULONG ReturnBreakpointId;
+    ULONG CurrentProcessId;
+    ULONG CurrentThreadId;
+    ULONG Padding;
     TRACER_INJECTION_BREAKPOINT_FLAGS Flags;
     TRACER_INJECTION_BREAKPOINT_ERROR Error;
     PDEBUGBREAKPOINT Breakpoint;
     PIDEBUGBREAKPOINT IBreakpoint;
+    PDEBUGBREAKPOINT ReturnBreakpoint;
+    PIDEBUGBREAKPOINT IReturnBreakpoint;
+
+    ULONGLONG StackOffset;
+    ULONGLONG ReturnOffset;
+
+    HANDLE CurrentProcessHandle;
+    HANDLE CurrentThreadHandle;
 
     //
     // Inline TRACER_INJECTION_BREAKPOINT_SPEC.
@@ -119,6 +160,7 @@ typedef struct _TRACER_INJECTION_BREAKPOINT {
         struct {
             PCSTR OffsetExpression;
             PTRACER_INJECTION_HANDLE_BREAKPOINT HandleBreakpoint;
+            PTRACER_INJECTION_HANDLE_BREAKPOINT HandleReturnBreakpoint;
         };
         TRACER_INJECTION_BREAKPOINT_SPEC Spec;
     };

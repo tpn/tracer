@@ -86,7 +86,6 @@
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="InitializeTracedPythonSession.c" />
-    <ClCompile Include="InitializeTracedPythonSessionFromPythonDllModule.c" />
     <ClCompile Include="InjectedTracedPythonSessionRemoteThreadEntry.c" />
     <ClCompile Include="SanitizePathEnvironmentVariableForPython.c" />
     <ClCompile Include="stdafx.c">

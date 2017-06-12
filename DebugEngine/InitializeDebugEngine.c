@@ -174,6 +174,7 @@ Return Value:
     CREATE_INTERFACE(Advanced, ADVANCED);
     CREATE_INTERFACE(Registers, REGISTERS);
     CREATE_INTERFACE(DataSpaces, DATASPACES);
+    CREATE_INTERFACE(SystemObjects, SYSTEMOBJECTS);
 
     //
     // Wire up the vtable pointers.
