@@ -98,7 +98,7 @@ Return Value:
 
 --*/
 {
-    BOOL Success = FALSE;
+    BOOL Success = TRUE;
 
     return Success;
 }
@@ -138,6 +138,8 @@ Return Value:
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
     PUNICODE_STRING TraceSessionDirectory;
 
+    OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
+
     //
     // Initialize the default heap allocator.  This is a thin wrapper around
     // the generic Win32 Heap functions.
@@ -163,6 +165,8 @@ Return Value:
         "CreateAndInitializeTracerConfigAndRtl()"
     );
 
+    OutputDebugStringA("CreateAndInitializeTracerConfigAndRtl()\n");
+
     Success = LoadAndInitializeTracedPythonSession(
         Rtl,
         TracerConfig,
@@ -173,6 +177,8 @@ Return Value:
         &Session,
         &DestroyTracedPythonSession
     );
+
+    OutputDebugStringA("LoadAndInitializeTracedPythonSession()\n");
 
     if (!Success) {
         goto Error;
@@ -200,8 +206,8 @@ Return Value:
         )
     );
 
-    if (!Success) {
-        NOTHING;
+    if (Success) {
+        ExitCode = 0;
     }
 
     goto End;

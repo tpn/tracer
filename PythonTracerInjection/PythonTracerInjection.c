@@ -418,12 +418,17 @@ ParentThreadEntry(
     PRTL Rtl;
     ULONG RemoteThreadId;
     ULONG RemoteThreadExitCode;
+    HANDLE ResumeEvent;
     HANDLE RemoteThreadHandle;
+    HANDLE RemotePythonProcessHandle;
+    HANDLE SuspendedThreadHandle;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
+    PTRACER_INJECTION_CONTEXT InjectionContext;
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
+    PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
     PDEBUG_ENGINE_SESSION Session;
     const STRING FunctionName =
         RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
@@ -437,10 +442,27 @@ ParentThreadEntry(
     Session = Context->InjectionContext.DebugEngineSession;
     DllPath = &Session->TracerConfig->Paths.TracedPythonSessionDllPath;
 
+    //
+    // Take a copy of volatile details.  The values of these fields are
+    // undefined as soon as we call SetEvent() on the resume event.
+    //
+
+    InjectionContext = &Context->InjectionContext;
+    InjectionBreakpoint = InjectionContext->CurrentInjectionBreakpoint;
+    RemotePythonProcessHandle = InjectionBreakpoint->CurrentProcessHandle;
+    SuspendedThreadHandle = InjectionBreakpoint->CurrentThreadHandle;
+    ResumeEvent = InjectionContext->ResumeEvent;
+
+    OutputDebugStringA("About to call SetEvent(ResumeEvent)...\n");
+
+    SetEvent(ResumeEvent);
+
+    OutputDebugStringA("Injecting...\n");
+
     Success = Rtl->InjectThunk(Rtl,
                                Session->Allocator,
                                Flags,
-                               Context->RemotePythonProcessHandle,
+                               RemotePythonProcessHandle,
                                DllPath,
                                &FunctionName,
                                (PBYTE)&InjectedContext,
@@ -455,12 +477,23 @@ ParentThreadEntry(
         __debugbreak();
     }
 
+    OutputDebugStringA("Injection complete, waiting...\n");
+
     WaitForSingleObject(RemoteThreadHandle, INFINITE);
+
+    OutputDebugStringA("Wait complete... getting exit code...\n");
 
     Success = GetExitCodeThread(RemoteThreadHandle, &RemoteThreadExitCode);
     if (!Success) {
-        return -1;
+        RemoteThreadExitCode = -1;
     }
+
+    OutputDebugStringA("Would enqueue APC here...\n");
+
+    //SuspensionCount = ResumeThread(SuspendedThreadHandle);
+    //if (SuspensionCount == (ULONG)-1) {
+    //    __debugbreak();
+    //}
 
     return RemoteThreadExitCode;
 }
@@ -475,7 +508,11 @@ Py_InitializeEx_HandleReturnBreakpoint(
 {
     BOOL Success;
     ULONG WaitResult;
+    HANDLE EventHandle;
     PPYTHON_TRACER_INJECTION_CONTEXT Context;
+    PDEBUG_ENGINE_SESSION Session;
+    UNICODE_STRING FreezeThreadCommand = RTL_CONSTANT_STRING(L"~# f");
+    PCUNICODE_STRING Command = (PCUNICODE_STRING)&FreezeThreadCommand;
 
     OutputDebugStringA("Caught return of Py_InitializeEx, injecting...\n");
 
@@ -486,6 +523,26 @@ Py_InitializeEx_HandleReturnBreakpoint(
     Context->RemotePythonProcessHandle = (
         InjectionBreakpoint->CurrentProcessHandle
     );
+
+    //
+    // We need to freeze the faulting thread that triggered the Py_InitializeEx
+    // breakpoint, such that it doesn't run when this method returns.
+    //
+
+    Session = InjectionContext->DebugEngineSession;
+    Session->Engine->OutputCallback = NULL;
+    Success = Session->ExecuteStaticCommand(Session, Command, NULL);
+    if (!Success) {
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    EventHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!EventHandle) {
+        __debugbreak();
+    }
+
+    InjectionContext->ResumeEvent = EventHandle;
 
     Context->PythonThreadHandle = (
         CreateThread(NULL,
@@ -498,19 +555,20 @@ Py_InitializeEx_HandleReturnBreakpoint(
 
     if (!Context->PythonThreadHandle) {
         __debugbreak();
+        return DEBUG_STATUS_BREAK;
     }
 
-    WaitResult = WaitForSingleObject(Context->PythonThreadHandle, INFINITE);
+    OutputDebugStringA("Created thread, waiting on resume event...\n");
+
+    WaitResult = WaitForSingleObject(EventHandle, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
         __debugbreak();
     }
 
-    Success = GetExitCodeThread(Context->PythonThreadHandle,
-                                &Context->PythonThreadExitCode);
+    OutputDebugStringA("Thread resumed... returning...\n");
 
-    if (!Success) {
-        __debugbreak();
-    }
+    CloseHandle(EventHandle);
+    InjectionContext->ResumeEvent = NULL;
 
     return DEBUG_STATUS_NO_CHANGE;
 }
@@ -690,7 +748,6 @@ InitializePythonTracerInjectionBreakpoints(
 
     Session = Context->InjectionContext.DebugEngineSession;
     Engine = Session->Engine;
-
 
     NumberOfBreakpoints = ARRAYSIZE(BreakpointSpecs);
 

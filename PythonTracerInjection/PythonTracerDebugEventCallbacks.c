@@ -221,6 +221,7 @@ SlowLookup:
     ISystemObjects = Engine->ISystemObjects;
 
     InjectionContext = &Context->InjectionContext;
+    InjectionContext->CurrentInjectionBreakpoint = InjectionBreakpoint;
 
     HandleBreakpoint = InjectionBreakpoint->HandleBreakpoint;
     HandleReturnBreakpoint = InjectionBreakpoint->HandleReturnBreakpoint;
@@ -229,7 +230,7 @@ SlowLookup:
     // Get the current process and thread IDs and handles.
     //
 
-    Result = SystemObjects->GetCurrentProcessId(
+    Result = SystemObjects->GetCurrentProcessSystemId(
         ISystemObjects,
         &InjectionBreakpoint->CurrentProcessId
     );
@@ -249,7 +250,7 @@ SlowLookup:
         return DEBUG_STATUS_BREAK;
     }
 
-    Result = SystemObjects->GetCurrentThreadId(
+    Result = SystemObjects->GetCurrentThreadSystemId(
         ISystemObjects,
         &InjectionBreakpoint->CurrentThreadId
     );
