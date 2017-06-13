@@ -84,6 +84,7 @@ TracerExeMain(VOID)
     // Extract the target process ID and thread ID from the command line.
     //
 
+    InitFlags.StartServer = TRUE;
     InitFlags.InitializeFromCommandLine = TRUE;
     DebugEngineDllPath = &TracerConfig->Paths.DebugEngineDllPath;
     Success = LoadAndInitializeDebugEngineSessionWithInjectionIntent(

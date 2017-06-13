@@ -1240,6 +1240,21 @@ Return Value:
     }
 
     //
+    // If a server has been requested, start it now.
+    //
+
+    if (InitFlags.StartServer) {
+        CHECKED_HRESULT_MSG(
+            Engine->Client->StartServer(
+                Engine->IClient,
+                "npipe:pipe=tracer_%d"
+            ),
+            "Client->StartServer()"
+        );
+        Session->Flags.StartedServer = TRUE;
+    }
+
+    //
     // Update the caller's pointer.
     //
 

@@ -179,7 +179,7 @@ Return Value:
 
     OutputDebugStringA("CreateAndInitializeTracerConfigAndRtl()\n");
 
-    return 0;
+    __debugbreak();
 
     Success = LoadAndInitializeTracedPythonSession(
         Rtl,

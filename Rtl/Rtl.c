@@ -265,6 +265,10 @@ LoadDbgEng(
     _In_ PRTL Rtl
     )
 {
+    PCSZ Path = (
+        "C:\\Program Files (x86)\\Windows Kits\\"
+        "10\\Debuggers\\x64\\dbgeng.dll"
+    );
 
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
@@ -278,7 +282,10 @@ LoadDbgEng(
         return FALSE;
     }
 
-    if (!(Rtl->DbgEngModule = LoadLibraryA("dbgeng"))) {
+    if (!(Rtl->DbgEngModule = LoadLibraryA(Path))) {
+        OutputDebugStringA("Rtl: Failed to load dbgeng.");
+        return FALSE;
+    } else if (!(Rtl->DbgEngModule = LoadLibraryA("dbgeng"))) {
         OutputDebugStringA("Rtl: Failed to load dbgeng.");
         return FALSE;
     }

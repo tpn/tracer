@@ -2394,6 +2394,13 @@ typedef union _DEBUG_ENGINE_SESSION_FLAGS {
 
         ULONG InjectionIntent:1;
 
+        //
+        // When set, indicates a server was started for this debug engine
+        // session (e.g. via Control->StartServer()).
+        //
+
+        ULONG StartedServer:1;
+
     };
 
     LONG AsLong;
@@ -2777,7 +2784,14 @@ typedef union _DEBUG_ENGINE_SESSION_INIT_FLAGS {
         ULONG InitializeFromCurrentProcess:1;
 
         //
-        // When set, initializes a child debug engine session from a parent one
+        // When set, starts a debugging server that can be connected to
+        // remotely by other debugger clients (e.g. kd, WinDbg).  This is
+        // useful for debugging internal code that has been injected into
+        // a remote process that was launched via a debug engine session.
+        //
+
+        ULONG StartServer:1;
+
     };
     LONG AsLong;
     ULONG AsULong;
