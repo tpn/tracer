@@ -42,10 +42,6 @@ Return Value:
 {
     BOOL Success;
     ULONG ExitCode;
-    HRESULT Result;
-    PDEBUG_ENGINE Engine;
-    PDEBUGCLIENT Client;
-    PIDEBUGCLIENT IClient;
     PDEBUG_ENGINE_SESSION Session;
     PPYTHON_TRACER_INJECTION_CONTEXT Context;
 
@@ -59,16 +55,9 @@ Return Value:
     }
 
     Session = Context->InjectionContext.DebugEngineSession;
-    Engine = Session->Engine;
-    Client = Engine->Client;
-    IClient = Engine->IClient;
 
-    while (TRUE) {
-        Result = Client->DispatchCallbacks(IClient, INFINITE);
-
-        if (Result != S_OK && Result != S_FALSE) {
-            goto Error;
-        }
+    if (!Session->EventLoop(Session)) {
+        goto Error;
     }
 
     ExitCode = 0;
@@ -409,21 +398,95 @@ Py_InitializeEx_HandleBreakpoint(
     return DEBUG_STATUS_NO_CHANGE;
 }
 
+VOID
+UnfreezeThreadApc(
+    PPYTHON_TRACER_INJECTION_CONTEXT Context,
+    ULONG SuspendedThreadId
+    )
+{
+    PRTL Rtl;
+    BOOL Success;
+    NTSTATUS Status;
+    USHORT NumberOfDigits;
+    PDEBUG_ENGINE_SESSION Session;
+    PCUNICODE_STRING Command;
+    UNICODE_STRING UnfreezeThreadCommand;
+    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L" u");
+    WCHAR Buffer[] = L"~~[            u";
+    //                    ^^^^^^^^^^
+    //                    Thread ID will be inserted here (up to 10 digits).
+
+    OutputDebugStringA("Entered UnfreezeThreadApc()\n");
+
+    Rtl = Context->InjectionContext.Rtl;
+    Session = Context->InjectionContext.DebugEngineSession;
+
+    //
+    // Set the length to the third character, so that we append the thread ID
+    // after the open bracket (character position 4).  (Shifting left by to
+    // account for wide characters.)
+    //
+
+    UnfreezeThreadCommand.Length = 3 << 1;
+    UnfreezeThreadCommand.MaximumLength = ARRAYSIZE(Buffer) << 1;
+    UnfreezeThreadCommand.Buffer = Buffer;
+
+    NumberOfDigits = CountNumberOfDigits(SuspendedThreadId);
+
+    Success = AppendIntegerToUnicodeString(&UnfreezeThreadCommand,
+                                           SuspendedThreadId,
+                                           NumberOfDigits,
+                                           L']');
+    if (!Success) {
+        __debugbreak();
+        return;
+    }
+
+    Status = Rtl->RtlAppendUnicodeStringToString(&UnfreezeThreadCommand,
+                                                 (PCUNICODE_STRING)&Suffix);
+    if (!SUCCEEDED(Status)) {
+        __debugbreak();
+        return;
+    }
+   
+    OutputDebugStringA("Unfreeze thread command: ");
+    PrintUnicodeStringToDebugStream(&UnfreezeThreadCommand);
+
+    Command = (PCUNICODE_STRING)&UnfreezeThreadCommand;
+    Success = Session->ExecuteStaticCommand(Session, Command, NULL);
+    if (!Success) {
+        __debugbreak();
+    }
+
+    OutputDebugStringA("Leaving apc...\n");
+
+    InterlockedDecrement64(&Session->NumberOfPendingApcs);
+
+    return;
+}
+
 LONG
 ParentThreadEntry(
     PPYTHON_TRACER_INJECTION_CONTEXT Context
     )
 {
     BOOL Success;
+    PAPC Apc;
     PRTL Rtl;
+    HRESULT Result;
+    //NTSTATUS Status;
     ULONG RemoteThreadId;
     ULONG RemoteThreadExitCode;
+    ULONG WaitResult;
+    ULONGLONG SuspendedThreadId;
     HANDLE ResumeEvent;
     HANDLE RemoteThreadHandle;
     HANDLE RemotePythonProcessHandle;
-    HANDLE SuspendedThreadHandle;
+    HANDLE DebugEngineThreadHandle;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
+    PDEBUGCLIENT ExitDispatchClient;
+    PIDEBUGCLIENT IExitDispatchClient;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
     PTRACER_INJECTION_CONTEXT InjectionContext;
@@ -434,6 +497,8 @@ ParentThreadEntry(
         RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
 
     Rtl = Context->InjectionContext.Rtl;
+
+
     InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
     InjectedContext.ParentProcessId = FastGetCurrentProcessId();
     InjectedContext.ParentThreadId = FastGetCurrentThreadId();
@@ -450,7 +515,8 @@ ParentThreadEntry(
     InjectionContext = &Context->InjectionContext;
     InjectionBreakpoint = InjectionContext->CurrentInjectionBreakpoint;
     RemotePythonProcessHandle = InjectionBreakpoint->CurrentProcessHandle;
-    SuspendedThreadHandle = InjectionBreakpoint->CurrentThreadHandle;
+    SuspendedThreadId = InjectionBreakpoint->CurrentThreadId;
+    DebugEngineThreadHandle = InjectionContext->DebugEngineThreadHandle;
     ResumeEvent = InjectionContext->ResumeEvent;
 
     OutputDebugStringA("About to call SetEvent(ResumeEvent)...\n");
@@ -488,12 +554,52 @@ ParentThreadEntry(
         RemoteThreadExitCode = -1;
     }
 
-    OutputDebugStringA("Would enqueue APC here...\n");
+    OutputDebugStringA("Queuing APC...\n");
 
-    //SuspensionCount = ResumeThread(SuspendedThreadHandle);
-    //if (SuspensionCount == (ULONG)-1) {
-    //    __debugbreak();
-    //}
+    InterlockedIncrement64(&Session->NumberOfPendingApcs);
+
+    //
+    // Force the main debug thread to exit it's event dispatching.
+    //
+
+    ExitDispatchClient = Session->ExitDispatchEngine->Client;
+    IExitDispatchClient = Session->ExitDispatchEngine->IClient;
+
+    Result = ExitDispatchClient->ExitDispatch(
+        IExitDispatchClient,
+        (PDEBUG_CLIENT)Session->Engine->IClient
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return -1;
+    }
+
+    WaitResult = WaitForSingleObject(Session->ReadyForApcEvent, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+        return -1;
+    }
+
+    Apc = &Session->Apc;
+    ZeroStructPointer(Apc);
+    Apc->Routine = (PAPC_ROUTINE)UnfreezeThreadApc;
+    Apc->Argument1 = Context;
+    Apc->Argument2 = (PVOID)SuspendedThreadId;
+
+    SetEvent(Session->WaitForApcEvent);
+
+#if 0
+    Status = Rtl->NtQueueApcThread(DebugEngineThreadHandle,
+                                   (PAPC_ROUTINE)UnfreezeThreadApc,
+                                   Context,
+                                   (PVOID)SuspendedThreadId,
+                                   NULL);
+
+    if (!SUCCEEDED(Status)) {
+        __debugbreak();
+    }
+#endif
 
     return RemoteThreadExitCode;
 }
@@ -508,7 +614,10 @@ Py_InitializeEx_HandleReturnBreakpoint(
 {
     BOOL Success;
     ULONG WaitResult;
+    ULONG LastError;
     HANDLE EventHandle;
+    HANDLE CurrentProcessHandle;
+    HANDLE DebugEngineThreadHandle;
     PPYTHON_TRACER_INJECTION_CONTEXT Context;
     PDEBUG_ENGINE_SESSION Session;
     UNICODE_STRING FreezeThreadCommand = RTL_CONSTANT_STRING(L"~# f");
@@ -530,19 +639,35 @@ Py_InitializeEx_HandleReturnBreakpoint(
     //
 
     Session = InjectionContext->DebugEngineSession;
-    Session->Engine->OutputCallback = NULL;
     Success = Session->ExecuteStaticCommand(Session, Command, NULL);
     if (!Success) {
         __debugbreak();
         return DEBUG_STATUS_BREAK;
     }
+    //Session->Engine->OutputCallback = NULL;
 
     EventHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!EventHandle) {
         __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
+
+    CurrentProcessHandle = GetCurrentProcess();
+    Success = DuplicateHandle(CurrentProcessHandle,
+                              GetCurrentThread(),
+                              CurrentProcessHandle,
+                              &DebugEngineThreadHandle,
+                              0,
+                              FALSE,
+                              DUPLICATE_SAME_ACCESS);
+    if (!Success) {
+        LastError = GetLastError();
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
     }
 
     InjectionContext->ResumeEvent = EventHandle;
+    InjectionContext->DebugEngineThreadHandle = DebugEngineThreadHandle;
 
     Context->PythonThreadHandle = (
         CreateThread(NULL,

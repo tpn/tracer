@@ -186,10 +186,14 @@ Return Value:
     Engine->IOutputCallbacks2.lpVtbl = &Engine->OutputCallbacks2;
 
     //
-    // Save the Rtl pointer and return success.
+    // Save the Rtl pointer.
     //
 
     Engine->Rtl = Rtl;
+
+    //
+    // We're done, return success.
+    //
 
     Success = TRUE;
     goto End;

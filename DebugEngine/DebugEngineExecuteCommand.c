@@ -43,6 +43,7 @@ Return Value:
 --*/
 {
     BOOL Success;
+    ULONG LastError;
     HRESULT Result;
     PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session;
@@ -106,10 +107,16 @@ Return Value:
         Output->Command->Buffer,
         DEBUG_EXECUTE_ECHO
     );
+
+    //
+    // XXX: Do we need a Client->FlushCallbacks() here?
+    //
+
     Output->State.CommandExecuting = FALSE;
 
     if (Result != S_OK) {
         Success = FALSE;
+        LastError = GetLastError();
         OutputDebugStringA("Control->ExecuteWide() failed: ");
         OutputDebugStringW(Output->Command->Buffer);
         Output->State.ExecuteCommandFailed = TRUE;
@@ -162,6 +169,16 @@ End:
     if (Success) {
         Output->State.Succeeded = TRUE;
     }
+
+    //
+    // Clear the OutputCallback handler such that subsequent output from the
+    // debugger is ignored.  This could be improved by returning to a 'default'
+    // output handler that uses a heap allocated DEBUG_ENGINE_OUTPUT structure
+    // (most callers of this function use stack-allocated structures, and thus,
+    //  the structure is invalid after the call returns).
+    //
+
+    Engine->OutputCallback = NULL;
 
     return Success;
 }

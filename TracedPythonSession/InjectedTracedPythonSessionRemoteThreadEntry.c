@@ -130,7 +130,7 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
-    ALLOCATOR Allocator;
+    PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING RegistryPath;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
@@ -140,12 +140,24 @@ Return Value:
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
+    Allocator = (PALLOCATOR)(
+        HeapAlloc(
+            GetProcessHeap(),
+            HEAP_ZERO_MEMORY,
+            sizeof(ALLOCATOR)
+        )
+    );
+
+    if (!Allocator) {
+        return -1;
+    }
+
     //
     // Initialize the default heap allocator.  This is a thin wrapper around
     // the generic Win32 Heap functions.
     //
 
-    if (!DefaultHeapInitializeAllocator(&Allocator)) {
+    if (!DefaultHeapInitializeAllocator(Allocator)) {
         goto Error;
     }
 
@@ -157,7 +169,7 @@ Return Value:
 
     CHECKED_MSG(
         CreateAndInitializeTracerConfigAndRtl(
-            &Allocator,
+            Allocator,
             RegistryPath,
             &TracerConfig,
             &Rtl
@@ -167,10 +179,12 @@ Return Value:
 
     OutputDebugStringA("CreateAndInitializeTracerConfigAndRtl()\n");
 
+    return 0;
+
     Success = LoadAndInitializeTracedPythonSession(
         Rtl,
         TracerConfig,
-        &Allocator,
+        Allocator,
         NULL,
         InjectedContext->PythonDllModule,
         &TraceSessionDirectory,
@@ -217,6 +231,8 @@ Error:
     ExitCode = -1;
 
 End:
+
+    OutputDebugStringA("Injected thread returning\n");
 
     return ExitCode;
 }

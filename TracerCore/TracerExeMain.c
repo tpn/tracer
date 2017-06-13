@@ -21,7 +21,6 @@ TracerExeMain(VOID)
     BOOL Success;
     PRTL Rtl;
     ULONG ExitCode;
-    HRESULT Result;
     ALLOCATOR Allocator;
     ALLOCATOR StringTableAllocator;
     ALLOCATOR StringArrayAllocator;
@@ -111,13 +110,20 @@ TracerExeMain(VOID)
     // Main loop.
     //
 
-    while (TRUE) {
-        Result = Session->WaitForEvent(Session, 0, INFINITE);
+#if 0
+    RunOnce = TRUE;
 
-        if (Result != S_OK && Result != S_FALSE) {
-            goto Error;
+    while (TRUE) {
+        if (RunOnce) {
+            Session->WaitForEvent(Session, 0, 3000);
+        } else {
+            Sleep(3000);
         }
     }
+#endif
+
+    Success = Session->EventLoop(Session);
+    //SleepEx(INFINITE, TRUE);
 
     ExitCode = 0;
     goto End;

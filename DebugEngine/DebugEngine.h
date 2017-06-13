@@ -263,9 +263,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE {
 
         DEBUG_OUTPUT_MASK OutputMask;
         PDEBUG_ENGINE_OUTPUT_CALLBACK OutputCallback;
+        PDEBUG_ENGINE_OUTPUT_CALLBACK DefaultOutputCallback;
         PDEBUG_ENGINE_OUTPUT_CALLBACK2 OutputCallback2;
 
         struct _DEBUG_ENGINE_OUTPUT *CurrentOutput;
+        struct _DEBUG_ENGINE_OUTPUT *DefaultOutput;
 
         DEBUG_EVENT_CALLBACKS_INTEREST_MASK EventCallbacksInterestMask;
         DEBUG_OUTPUT_CALLBACKS2_INTEREST_MASK OutputCallbacks2InterestMask;
@@ -2351,12 +2353,12 @@ typedef INITIALIZE_CHILD_DEBUG_ENGINE *PINITIALIZE_CHILD_DEBUG_ENGINE;
 
 typedef
 HRESULT
-(WAIT_FOR_EVENT)(
+(EVENT_DISPATCH)(
     _In_ struct _DEBUG_ENGINE_SESSION *Session,
     _In_ ULONG Flags,
     _In_opt_ ULONG TimeoutInMilliseconds
     );
-typedef WAIT_FOR_EVENT *PWAIT_FOR_EVENT;
+typedef EVENT_DISPATCH *PEVENT_DISPATCH;
 
 typedef union _DEBUG_ENGINE_SESSION_FLAGS {
     struct {
@@ -2424,6 +2426,27 @@ typedef enum _DEBUG_ENGINE_COMMAND_LINE_OPTION {
 } DEBUG_ENGINE_COMMAND_LINE_OPTION;
 typedef DEBUG_ENGINE_COMMAND_LINE_OPTION *PDEBUG_ENGINE_COMMAND_LINE_OPTION;
 
+//
+// Define event loop function pointer typedefs.
+//
+
+typedef
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_SESSION_EVENT_LOOP)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session
+    );
+typedef DEBUG_ENGINE_SESSION_EVENT_LOOP *PDEBUG_ENGINE_SESSION_EVENT_LOOP;
+
+typedef
+_Success_(return != 0)
+BOOL
+(DEBUG_ENGINE_SESSION_EVENT_LOOP_RUN_ONCE)(
+    _In_ struct _DEBUG_ENGINE_SESSION *Session,
+    _Out_ PBOOL TerminateLoop
+    );
+typedef DEBUG_ENGINE_SESSION_EVENT_LOOP_RUN_ONCE
+       *PDEBUG_ENGINE_SESSION_EVENT_LOOP_RUN_ONCE;
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
 
@@ -2444,6 +2467,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     //
 
     struct _DEBUG_ENGINE *Engine;
+
+    //
+    // Secondary debug engine used for dispatching Control->ExitDispatch()
+    // calls.  This results in Session->WaitForEvent() returning and entering
+    // a predictable APC-dequeuing pattern before attempt to wait for debug
+    // engine events again.
+    //
+
+    struct _DEBUG_ENGINE *ExitDispatchEngine;
 
     //
     // Tracer injection modules, if applicable.
@@ -2486,6 +2518,23 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     HANDLE AllInjectionInitializersReady;
 
     //
+    // When this counter is above zero, indicates there are pending APCs.
+    //
+
+    volatile ULONGLONG NumberOfPendingApcs;
+
+    HANDLE ReadyForApcEvent;
+    HANDLE WaitForApcEvent;
+
+    APC Apc;
+
+    //
+    // Shutdown event.
+    //
+
+    HANDLE ShutdownEvent;
+
+    //
     // Destructor.
     //
 
@@ -2498,11 +2547,21 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     PINITIALIZE_DEBUG_ENGINE_OUTPUT InitializeDebugEngineOutput;
 
     //
-    // Wait for events command.  This must be called periodically in order to
-    // process the debug engine's events.
+    // Event dispatching functions.  Parent sessions typically use WaitForEvent
+    // and children use DispatchCallbacks.  EventDispatch will be set to the
+    // most appropriate event for the given instance.
     //
 
-    PWAIT_FOR_EVENT WaitForEvent;
+    PEVENT_DISPATCH WaitForEvent;
+    PEVENT_DISPATCH DispatchCallbacks;
+    PEVENT_DISPATCH EventDispatch;
+
+    //
+    // Event loop functions.
+    //
+
+    PDEBUG_ENGINE_SESSION_EVENT_LOOP EventLoop;
+    PDEBUG_ENGINE_SESSION_EVENT_LOOP_RUN_ONCE EventLoopRunOnce;
 
     ////////////////////////////////////////////////////////////////////////////
     // Commands.

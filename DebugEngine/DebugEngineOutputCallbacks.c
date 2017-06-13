@@ -152,6 +152,8 @@ DebugOutputCallbacksOutput(
     if (Engine->OutputCallback) {
         DEBUG_OUTPUT_MASK OutputMask = { Mask };
         return Engine->OutputCallback(Engine, OutputMask, String);
+    } else {
+        OutputDebugStringA(String);
     }
 
     return S_OK;

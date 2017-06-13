@@ -55,6 +55,44 @@ Return Value:
     return Result;
 }
 
+_Use_decl_annotations_
+HRESULT
+DebugEngineSessionDispatchCallbacks(
+    PDEBUG_ENGINE_SESSION Session,
+    ULONG Flags,
+    ULONG TimeoutInMilliseconds
+    )
+/*++
+
+Routine Description:
+
+    This routine is a thin wrapper around the debug engine DispatchCallbacks()
+    method.
+
+Arguments:
+
+    Session - Supplies a pointer to a DEBUG_ENGINE_SESSION.
+
+    Flags - Unused.
+
+    TimeoutInMilliseconds - Supplies an optional timeout, in milliseconds.
+
+Return Value:
+
+    Returns the HRESULT returned by IDebugControl's DispatchCallbacks() routine.
+
+--*/
+{
+    HRESULT Result;
+    PDEBUG_ENGINE Engine;
+
+    Engine = Session->Engine;
+
+    Result = Engine->Client->DispatchCallbacks(Engine->IClient,
+                                               TimeoutInMilliseconds);
+
+    return Result;
+}
 
 _Use_decl_annotations_
 BOOL

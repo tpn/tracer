@@ -153,6 +153,14 @@ typedef struct _TRACER_INJECTION_BREAKPOINT {
     HANDLE CurrentThreadHandle;
 
     //
+    // This is the handle of the thread on which the debug engine was created.
+    // This is captured in order to facilitate queuing APCs for debug engine
+    // actions from other threads (e.g. unfreezing a thread).
+    //
+
+    HANDLE DebugEngineThreadHandle;
+
+    //
     // Inline TRACER_INJECTION_BREAKPOINT_SPEC.
     //
 

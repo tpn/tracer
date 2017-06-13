@@ -107,5 +107,8 @@
     <ClCompile Include="DebugEngineInterfaces.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DebugEngineEventLoop.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -2506,6 +2506,14 @@ NTSTATUS
     );
 typedef NT_QUEUE_APC_THREAD *PNT_QUEUE_APC_THREAD;
 
+typedef struct _APC {
+    PAPC_ROUTINE Routine;
+    PVOID Argument1;
+    PVOID Argument2;
+    PVOID Argument3;
+} APC;
+typedef APC *PAPC;
+
 typedef
 NTSTATUS
 (NTAPI NT_TEST_ALERT)(

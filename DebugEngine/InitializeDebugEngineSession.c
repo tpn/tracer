@@ -452,6 +452,241 @@ Return Value:
 
 _Use_decl_annotations_
 BOOL
+InitializeDebugEngineSessionCommon(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PPDEBUG_ENGINE_SESSION SessionPointer
+    )
+{
+    BOOL Success;
+    LONG_INTEGER AllocSizeInBytes;
+    PDEBUG_ENGINE Engine;
+    PDEBUG_ENGINE ExitDispatchEngine;
+    PDEBUG_ENGINE_SESSION Session = NULL;
+
+    //
+    // Calculate the required allocation size.
+    //
+
+    AllocSizeInBytes.LongPart = (
+
+        //
+        // Account for the DEBUG_ENGINE_SESSION structure.
+        //
+
+        sizeof(DEBUG_ENGINE_SESSION) +
+
+        //
+        // Account for the primary the DEBUG_ENGINE structure (Session->Engine).
+        //
+
+        sizeof(DEBUG_ENGINE) +
+
+        //
+        // Account for the exit callbacks engine (Session->ExitDispatchEngine).
+        //
+
+        sizeof(DEBUG_ENGINE)
+    );
+
+    //
+    // Sanity check our size isn't over MAX_USHORT.
+    //
+
+    if (AllocSizeInBytes.HighPart) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Session = (PDEBUG_ENGINE_SESSION)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            AllocSizeInBytes.LowPart
+        )
+    );
+
+    if (!Session) {
+        goto Error;
+    }
+
+    //
+    // Memory was allocated successfully.  Carve out the primary DEBUG_ENGINE.
+    //
+
+    Engine = Session->Engine = (PDEBUG_ENGINE)(
+        RtlOffsetToPointer(
+            Session,
+            sizeof(DEBUG_ENGINE_SESSION)
+        )
+    );
+
+    //
+    // Point the engine at the session.
+    //
+
+    Engine->Session = Session;
+
+    //
+    // Ditto for the exit callbacks engine.
+    //
+
+    ExitDispatchEngine = Session->ExitDispatchEngine = (PDEBUG_ENGINE)(
+        RtlOffsetToPointer(
+            Session,
+            sizeof(DEBUG_ENGINE_SESSION) +
+            sizeof(DEBUG_ENGINE)
+        )
+    );
+
+    ExitDispatchEngine->Session = Session;
+
+    //
+    // Initialize and acquire the debug engine locks.
+    //
+
+    InitializeSRWLock(&Engine->Lock);
+    InitializeSRWLock(&ExitDispatchEngine->Lock);
+    AcquireDebugEngineLock(Engine);
+    AcquireDebugEngineLock(ExitDispatchEngine);
+
+    //
+    // Set the command function pointers.
+    //
+
+    Session->WaitForEvent = DebugEngineSessionWaitForEvent;
+    Session->DispatchCallbacks = DebugEngineSessionDispatchCallbacks;
+    Session->Destroy = DestroyDebugEngineSession;
+    Session->DisplayType = DebugEngineDisplayType;
+    Session->ExamineSymbols = DebugEngineExamineSymbols;
+    Session->UnassembleFunction = DebugEngineUnassembleFunction;
+
+    //
+    // Set the meta command function pointers.
+    //
+
+    Session->SettingsMeta = DebugEngineSettingsMeta;
+    Session->ListSettings = DebugEngineListSettings;
+
+    //
+    // Set other function pointers.
+    //
+
+    Session->EventLoop = DebugEngineSessionEventLoop;
+    Session->EventLoopRunOnce = DebugEngineSessionEventLoopRunOnce;
+    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
+    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
+    Session->InitializeChildDebugEngineSession = (
+        InitializeChildDebugEngineSession
+    );
+
+    //
+    // Set miscellaneous fields.
+    //
+
+    Session->Rtl = Rtl;
+    Session->Allocator = Allocator;
+    Session->TracerConfig = TracerConfig;
+
+    InitializeGuardedListHead(&Session->Children);
+
+    //
+    // Create the APC-related events.
+    //
+
+    Session->NumberOfPendingApcs = 0;
+    Session->ReadyForApcEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    Session->WaitForApcEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+    if (!Session->ReadyForApcEvent || !Session->WaitForApcEvent) {
+        goto Error;
+    }
+
+    //
+    // Create a shutdown event.  (We should probably make this named such that
+    // it can be set externally.)
+    //
+
+    Session->ShutdownEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!Session->ShutdownEvent) {
+        goto Error;
+    }
+
+    Engine->SizeOfStruct = sizeof(*Engine);
+    ExitDispatchEngine->SizeOfStruct = sizeof(*Engine);
+    Session->SizeOfStruct = sizeof(*Session);
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    if (Session) {
+        __debugbreak();
+        Session = NULL;
+    }
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    *SessionPointer = Session;
+
+    return Success;
+}
+
+BOOL
+ConnectClient(
+    _In_ PIDEBUGCLIENT IClient
+    )
+{
+    BOOL Success;
+    HRESULT Result;
+    PDEBUGCLIENT Client;
+    ULONG HistoryLimit;
+    ULONG ConnectSessionFlags;
+
+    HistoryLimit = 0;
+
+    ConnectSessionFlags = (
+        DEBUG_CONNECT_SESSION_NO_VERSION |
+        DEBUG_CONNECT_SESSION_NO_ANNOUNCE
+    );
+
+    Client = (PDEBUGCLIENT)IClient->lpVtbl;
+
+    CHECKED_HRESULT_MSG(
+        Client->ConnectSession(
+            IClient,
+            ConnectSessionFlags,
+            HistoryLimit
+        ),
+        "Client->ConnectSession()"
+    );
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
 InitializeDebugEngineSessionWithInjectionIntent(
     PRTL Rtl,
     PALLOCATOR Allocator,
@@ -510,10 +745,10 @@ Return Value:
     HRESULT Result;
     ULONG ExecutionStatus;
     ULONG CreateProcessFlags;
-    LONG_INTEGER AllocSizeInBytes;
     PDEBUGCLIENT Client;
     PIDEBUGCLIENT IClient;
     PDEBUG_ENGINE Engine;
+    PDEBUG_ENGINE ExitDispatchEngine;
     ULONG ModuleIndex;
     ULONGLONG ModuleBaseAddress;
     PCUNICODE_STRING DebuggerSettingsXmlPath;
@@ -602,117 +837,27 @@ Return Value:
     CHECKED_MSG(Rtl->LoadDbgEng(Rtl), "Rtl!LoadDbgEng()");
 
     //
-    // Calculate the required allocation size.
+    // Initialize common structure fields.
     //
 
-    AllocSizeInBytes.LongPart = (
+    Success = InitializeDebugEngineSessionCommon(Rtl,
+                                                 Allocator,
+                                                 TracerConfig,
+                                                 SessionPointer);
 
-        //
-        // Account for the DEBUG_ENGINE_SESSION structure.
-        //
-
-        sizeof(DEBUG_ENGINE_SESSION) +
-
-        //
-        // Account for the DEBUG_ENGINE structure, which follows the session
-        // in memory.
-        //
-
-        sizeof(DEBUG_ENGINE)
-    );
-
-    //
-    // Sanity check our size isn't over MAX_USHORT.
-    //
-
-    if (AllocSizeInBytes.HighPart) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    Session = (PDEBUG_ENGINE_SESSION)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AllocSizeInBytes.LowPart
-        )
-    );
-
-    if (!Session) {
+    if (!Success) {
         goto Error;
     }
 
-    //
-    // Memory was allocated successfully.  Carve out the DEBUG_ENGINE pointer.
-    //
+    Session = *SessionPointer;
 
-    Engine = Session->Engine = (PDEBUG_ENGINE)(
-        RtlOffsetToPointer(
-            Session,
-            sizeof(DEBUG_ENGINE_SESSION)
-        )
-    );
-
-    //
-    // Point the engine at the session.
-    //
-
-    Engine->Session = Session;
-
-    //
-    // Initialize and acquire the debug engine lock.
-    //
-
-    InitializeSRWLock(&Engine->Lock);
-    AcquireDebugEngineLock(Engine);
-    AcquiredLock = TRUE;
-
-    Engine->SizeOfStruct = sizeof(*Engine);
-    Session->SizeOfStruct = sizeof(*Session);
-
-    //
-    // Initialize the debug engine and create the COM interfaces.
-    //
-
-    CHECKED_MSG(InitializeDebugEngine(Rtl, Engine), "InitializeDebugEngine()");
-
-    //
-    // Set the command function pointers.
-    //
-
-    Session->WaitForEvent = DebugEngineSessionWaitForEvent;
-    Session->Destroy = DestroyDebugEngineSession;
-    Session->DisplayType = DebugEngineDisplayType;
-    Session->ExamineSymbols = DebugEngineExamineSymbols;
-    Session->UnassembleFunction = DebugEngineUnassembleFunction;
-
-    //
-    // Set the meta command function pointers.
-    //
-
-    Session->SettingsMeta = DebugEngineSettingsMeta;
-    Session->ListSettings = DebugEngineListSettings;
-
-    //
-    // Set other function pointers.
-    //
-
-    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
-    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
-    Session->InitializeChildDebugEngineSession = (
-        InitializeChildDebugEngineSession
-    );
-
-    //
-    // Set miscellaneous fields.
-    //
-
-    Session->Rtl = Rtl;
-    Session->Allocator = Allocator;
-    Session->TracerConfig = TracerConfig;
+    Session->EventDispatch = Session->WaitForEvent;
     Session->InjectionModules = InjectionModules;
+    Engine = Session->Engine;
+    ExitDispatchEngine = Session->ExitDispatchEngine;
 
-    InitializeGuardedListHead(&Session->Children);
+
+    AcquiredLock = TRUE;
 
     //
     // Set StringTable related fields.
@@ -731,6 +876,20 @@ Return Value:
             "InitializeDebugEngineSessionStringTables()"
         );
     }
+
+    //
+    // Initialize the debug engine and create the COM interfaces.
+    //
+
+    CHECKED_MSG(
+        InitializeDebugEngine(Rtl, Engine),
+        "InitializeDebugEngine()"
+    );
+
+    CHECKED_MSG(
+        InitializeChildDebugEngine(Rtl, ExitDispatchEngine, Engine),
+        "InitializeChildDebugEngine(Rtl, ExitDispatchEngine, Engine)"
+    );
 
     if (InitFlags.InitializeFromCommandLine) {
 
@@ -975,10 +1134,6 @@ Return Value:
             InjectionModules->NumberOfModules
         );
 
-        //
-        // (This may need to be done after the initial WaitForEvent().)
-        //
-
         for (Index = 0; Index < InjectionModules->NumberOfModules; Index++) {
 
             Path = InjectionModules->Paths[Index];
@@ -1078,6 +1233,12 @@ Return Value:
         AcquiredLock = TRUE;
     }
 
+    Success = ConnectClient(Session->ExitDispatchEngine->IClient);
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
+
     //
     // Update the caller's pointer.
     //
@@ -1144,16 +1305,11 @@ Return Value:
     BOOL Success;
     BOOL AcquiredLock = FALSE;
     PRTL Rtl;
-    ULONG ConnectSessionFlags;
-    ULONG HistoryLimit;
-    HRESULT Result;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PDEBUG_ENGINE_SESSION Session;
-    LONG_INTEGER AllocSizeInBytes;
-    PDEBUGCLIENT Client;
-    PIDEBUGCLIENT IClient;
     PDEBUG_ENGINE Engine;
+    PDEBUG_ENGINE ExitDispatchEngine;
 
     //
     // Validate arguments.
@@ -1176,7 +1332,6 @@ Return Value:
         if (!ARGUMENT_PRESENT(EventInterfaceId)) {
             return FALSE;
         }
-
     }
 
     //
@@ -1194,78 +1349,23 @@ Return Value:
     TracerConfig = Parent->TracerConfig;
 
     //
-    // Verbatim copy of the innards of InitializeDebugEngineSession().  The
-    // common parts should be refactored out into a common routine.
+    // Initialize common structure fields.
     //
 
-    //
-    // Calculate the required allocation size.
-    //
+    Success = InitializeDebugEngineSessionCommon(Rtl,
+                                                 Allocator,
+                                                 TracerConfig,
+                                                 SessionPointer);
 
-    AllocSizeInBytes.LongPart = (
-
-        //
-        // Account for the DEBUG_ENGINE_SESSION structure.
-        //
-
-        sizeof(DEBUG_ENGINE_SESSION) +
-
-        //
-        // Account for the DEBUG_ENGINE structure, which follows the session
-        // in memory.
-        //
-
-        sizeof(DEBUG_ENGINE)
-    );
-
-    //
-    // Sanity check our size isn't over MAX_USHORT.
-    //
-
-    if (AllocSizeInBytes.HighPart) {
-        __debugbreak();
-        return FALSE;
-    }
-
-    Session = (PDEBUG_ENGINE_SESSION)(
-        Allocator->Calloc(
-            Allocator->Context,
-            1,
-            AllocSizeInBytes.LowPart
-        )
-    );
-
-    if (!Session) {
+    if (!Success) {
         goto Error;
     }
 
-    //
-    // Memory was allocated successfully.  Carve out the DEBUG_ENGINE pointer.
-    //
+    Session = *SessionPointer;
 
-    Engine = Session->Engine = (PDEBUG_ENGINE)(
-        RtlOffsetToPointer(
-            Session,
-            sizeof(DEBUG_ENGINE_SESSION)
-        )
-    );
-
-    //
-    // Point the engine at the session.
-    //
-
-    Engine->Session = Session;
-
-    //
-    // Initialize and acquire the debug engine lock.
-    //
-
-    InitializeSRWLock(&Engine->Lock);
-    AcquireDebugEngineLock(Engine);
-    AcquiredLock = TRUE;
-
-    Engine->SizeOfStruct = sizeof(*Engine);
-    Session->SizeOfStruct = sizeof(*Session);
+    Session->EventDispatch = Session->DispatchCallbacks;
+    Engine = Session->Engine;
+    ExitDispatchEngine = Session->ExitDispatchEngine;
 
     //
     // Create a debug engine client from the parent session's client.
@@ -1276,36 +1376,10 @@ Return Value:
         "InitializeChildDebugEngine(Rtl, Engine, Parent->Engine)"
     );
 
-    //
-    // Set the command function pointers.
-    //
-
-    Session->Destroy = DestroyDebugEngineSession;
-    Session->DisplayType = DebugEngineDisplayType;
-    Session->ExamineSymbols = DebugEngineExamineSymbols;
-    Session->UnassembleFunction = DebugEngineUnassembleFunction;
-
-    //
-    // Set the meta command function pointers.
-    //
-
-    Session->SettingsMeta = DebugEngineSettingsMeta;
-    Session->ListSettings = DebugEngineListSettings;
-
-    //
-    // Set other function pointers.
-    //
-
-    Session->ExecuteStaticCommand = DebugEngineSessionExecuteStaticCommand;
-    Session->InitializeDebugEngineOutput = InitializeDebugEngineOutput;
-
-    //
-    // Set miscellaneous fields.
-    //
-
-    Session->Rtl = Rtl;
-    Session->Allocator = Allocator;
-    Session->TracerConfig = TracerConfig;
+    CHECKED_MSG(
+        InitializeChildDebugEngine(Rtl, ExitDispatchEngine, Engine),
+        "InitializeChildDebugEngine(Rtl, ExitDispatchEngine, Engine)"
+    );
 
 #define COPY_PARENT(Name) Session->##Name = Parent->##Name
 
@@ -1326,27 +1400,20 @@ Return Value:
     COPY_PARENT(FunctionArgumentVectorTypeStringTable1);
 
     //
-    // Connect the engine.
+    // Connect the client engines.
     //
 
-    Client = Engine->Client;
-    IClient = Engine->IClient;
+    Success = ConnectClient(Session->Engine->IClient);
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
 
-    ConnectSessionFlags = (
-        DEBUG_CONNECT_SESSION_NO_VERSION |
-        DEBUG_CONNECT_SESSION_NO_ANNOUNCE
-    );
-
-    HistoryLimit = 0;
-
-    CHECKED_HRESULT_MSG(
-        Client->ConnectSession(
-            IClient,
-            ConnectSessionFlags,
-            HistoryLimit
-        ),
-        "Client->ConnectSession()"
-    );
+    Success = ConnectClient(Session->ExitDispatchEngine->IClient);
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
 
     //
     // Register event callbacks.

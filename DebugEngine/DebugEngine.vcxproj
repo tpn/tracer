@@ -88,6 +88,7 @@
     <ClCompile Include="DebugEngineConstants.c" />
     <ClCompile Include="DebugEngineDisplayType.c" />
     <ClCompile Include="DebugEngineEventCallbacks.c" />
+    <ClCompile Include="DebugEngineEventLoop.c" />
     <ClCompile Include="DebugEngineExamineSymbols.c" />
     <ClCompile Include="DebugEngineExecuteCommand.c" />
     <ClCompile Include="DebugEngineInterfaces.c" />
