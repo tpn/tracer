@@ -138,7 +138,7 @@ typedef struct _TRACER_INJECTION_BREAKPOINT {
     ULONG ReturnBreakpointId;
     ULONG CurrentProcessId;
     ULONG CurrentThreadId;
-    ULONG Padding;
+    ULONG SuspendedThreadId;
     TRACER_INJECTION_BREAKPOINT_FLAGS Flags;
     TRACER_INJECTION_BREAKPOINT_ERROR Error;
     PDEBUGBREAKPOINT Breakpoint;
@@ -151,6 +151,7 @@ typedef struct _TRACER_INJECTION_BREAKPOINT {
 
     HANDLE CurrentProcessHandle;
     HANDLE CurrentThreadHandle;
+    HANDLE SuspendedThreadHandle;
 
     //
     // This is the handle of the thread on which the debug engine was created.

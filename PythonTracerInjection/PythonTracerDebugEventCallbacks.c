@@ -129,14 +129,23 @@ DebugEventBreakpointCallback(
     PDEBUG_BREAKPOINT2 Breakpoint2
     )
 {
+
+    //
+    // N.B. This method is generic enough to be moved to somewhere else like
+    //      DebugEngine or TracerCore.
+    //
+
     ULONG Id;
     ULONG FirstId;
     ULONG LastId;
     ULONG Index;
+    ULONG LastError;
+    ULONG SuspendedThreadId;
     BOOL Found;
     BOOL IsReturnBreakpoint = FALSE;
     HRESULT Result;
     HRESULT ReturnResult;
+    HANDLE SuspendedThreadHandle;
     ULONGLONG StackOffset;
     ULONGLONG ReturnOffset;
     PDEBUGCONTROL Control;
@@ -344,9 +353,37 @@ SlowLookup:
     } else {
 
         //
-        // This is the return breakpoint.  Call the handler then disable the
-        // breakpoint.
+        // This is the return breakpoint.  Suspend the thread that triggered the
+        // breakpoint, then call the return breakpoint handler.
         //
+
+        //
+        // SystemObjects->GetCurrentThreadHandle() doesn't return a handle that
+        // we can call SuspendThread() and ResumeThread() on directly.  So, we
+        // open up a new reference to the thread with all access and use that
+        // instead.
+        //
+
+        SuspendedThreadId = InjectionBreakpoint->CurrentThreadId;
+        SuspendedThreadHandle = OpenThread(THREAD_ALL_ACCESS,
+                                           FALSE,
+                                           SuspendedThreadId);
+
+        if (!SuspendedThreadHandle ||
+             SuspendedThreadHandle == INVALID_HANDLE_VALUE) {
+            __debugbreak();
+            return DEBUG_STATUS_BREAK;
+        }
+
+        if ((LONG)SuspendThread(SuspendedThreadHandle) == -1) {
+            __debugbreak();
+            LastError = GetLastError();
+            CloseHandle(SuspendedThreadHandle);
+            return DEBUG_STATUS_BREAK;
+        }
+
+        InjectionBreakpoint->SuspendedThreadId = SuspendedThreadId;
+        InjectionBreakpoint->SuspendedThreadHandle = SuspendedThreadHandle;
 
         ReturnResult = HandleReturnBreakpoint(InjectionContext,
                                               InjectionBreakpoint);

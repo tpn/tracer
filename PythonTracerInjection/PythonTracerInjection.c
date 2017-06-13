@@ -471,22 +471,24 @@ ParentThreadEntry(
     )
 {
     BOOL Success;
-    PAPC Apc;
+    //PAPC Apc;
     PRTL Rtl;
-    HRESULT Result;
+    //HRESULT Result;
     //NTSTATUS Status;
     ULONG RemoteThreadId;
     ULONG RemoteThreadExitCode;
-    ULONG WaitResult;
-    ULONGLONG SuspendedThreadId;
+    //ULONG WaitResult;
+    LONG SuspendedCount;
+    ULONG SuspendedThreadId;
     HANDLE ResumeEvent;
     HANDLE RemoteThreadHandle;
     HANDLE RemotePythonProcessHandle;
     HANDLE DebugEngineThreadHandle;
+    HANDLE SuspendedThreadHandle;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
-    PDEBUGCLIENT ExitDispatchClient;
-    PIDEBUGCLIENT IExitDispatchClient;
+    //PDEBUGCLIENT ExitDispatchClient;
+    //PIDEBUGCLIENT IExitDispatchClient;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
     PTRACER_INJECTION_CONTEXT InjectionContext;
@@ -516,6 +518,7 @@ ParentThreadEntry(
     InjectionBreakpoint = InjectionContext->CurrentInjectionBreakpoint;
     RemotePythonProcessHandle = InjectionBreakpoint->CurrentProcessHandle;
     SuspendedThreadId = InjectionBreakpoint->CurrentThreadId;
+    SuspendedThreadHandle = InjectionBreakpoint->SuspendedThreadHandle;
     DebugEngineThreadHandle = InjectionContext->DebugEngineThreadHandle;
     ResumeEvent = InjectionContext->ResumeEvent;
 
@@ -554,6 +557,20 @@ ParentThreadEntry(
         RemoteThreadExitCode = -1;
     }
 
+    //
+    // Resume the original thread we suspended.
+    //
+
+    do {
+        SuspendedCount = (LONG)ResumeThread(SuspendedThreadHandle);
+    } while (SuspendedCount > 0);
+
+    if (SuspendedCount == -1) {
+        __debugbreak();
+        return -1;
+    }
+
+#if 0
     OutputDebugStringA("Queuing APC...\n");
 
     InterlockedIncrement64(&Session->NumberOfPendingApcs);
@@ -588,6 +605,7 @@ ParentThreadEntry(
     Apc->Argument2 = (PVOID)SuspendedThreadId;
 
     SetEvent(Session->WaitForApcEvent);
+#endif
 
 #if 0
     Status = Rtl->NtQueueApcThread(DebugEngineThreadHandle,
@@ -639,12 +657,14 @@ Py_InitializeEx_HandleReturnBreakpoint(
     //
 
     Session = InjectionContext->DebugEngineSession;
+#if 0
     Success = Session->ExecuteStaticCommand(Session, Command, NULL);
     if (!Success) {
         __debugbreak();
         return DEBUG_STATUS_BREAK;
     }
     //Session->Engine->OutputCallback = NULL;
+#endif
 
     EventHandle = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!EventHandle) {
@@ -708,6 +728,12 @@ InitializeBreakpoint(
     PCTRACER_INJECTION_BREAKPOINT_SPEC BreakpointSpec
     )
 {
+
+    //
+    // N.B. This method is generic enough to be moved to somewhere like
+    //      TracerCore or DebugEngine.
+    //
+
     BOOL Success;
     ULONG BreakpointId;
     ULONG ReturnBreakpointId;
