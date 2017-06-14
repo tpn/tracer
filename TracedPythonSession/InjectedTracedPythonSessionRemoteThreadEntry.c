@@ -136,7 +136,7 @@ Return Value:
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
     PTRACED_PYTHON_SESSION Session;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
-    PUNICODE_STRING TraceSessionDirectory;
+    PUNICODE_STRING TraceSessionDirectory = NULL;
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
