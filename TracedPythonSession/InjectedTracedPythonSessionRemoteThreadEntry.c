@@ -179,8 +179,6 @@ Return Value:
 
     OutputDebugStringA("CreateAndInitializeTracerConfigAndRtl()\n");
 
-    __debugbreak();
-
     Success = LoadAndInitializeTracedPythonSession(
         Rtl,
         TracerConfig,
