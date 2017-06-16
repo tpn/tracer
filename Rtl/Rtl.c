@@ -2772,13 +2772,47 @@ RtlpSetInjectionThunkDllPath(
                                         &Rtl->InjectionThunkDllPath);
 }
 
+BOOL
+InitCrypt32(PRTL Rtl)
+{
+    if (Rtl->Flags.Crypt32Initialized) {
+        return TRUE;
+    }
+
+    Rtl->Crypt32Module = LoadLibraryA("crypt32");
+    if (!Rtl->Crypt32Module) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->CryptBinaryToStringA = (PCRYPT_BINARY_TO_STRING_A)(
+        GetProcAddress(Rtl->Crypt32Module, "CryptBinaryToStringA")
+    );
+    if (!Rtl->CryptBinaryToStringA) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->CryptBinaryToStringW = (PCRYPT_BINARY_TO_STRING_W)(
+        GetProcAddress(Rtl->Crypt32Module, "CryptBinaryToStringW")
+    );
+    if (!Rtl->CryptBinaryToStringW) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    Rtl->Flags.Crypt32Initialized = TRUE;
+
+    return TRUE;
+}
+
 RTL_API RTL_CREATE_NAMED_EVENT RtlpCreateNamedEvent;
 
-#if 0
 _Use_decl_annotations_
 BOOL
 RtlpCreateNamedEvent(
     PRTL Rtl,
+    PALLOCATOR Allocator,
     PHANDLE HandlePointer,
     LPSECURITY_ATTRIBUTES EventAttributes,
     BOOL ManualReset,
@@ -2790,6 +2824,7 @@ RtlpCreateNamedEvent(
 {
     BOOL Success;
     HRESULT Result;
+    ULONG CryptFlags;
     USHORT BytesRemaining;
     HANDLE Handle;
     const UNICODE_STRING Local = RTL_CONSTANT_STRING(L"Local\\");
@@ -2803,6 +2838,12 @@ RtlpCreateNamedEvent(
     //
 
     *HandlePointer = NULL;
+
+    if (!Rtl->Flags.Crypt32Initialized) {
+        if (!InitCrypt32(Rtl)) {
+            return FALSE;
+        }
+    }
 
     if (EventName->Length != 0) {
         __debugbreak();
@@ -2860,11 +2901,12 @@ RtlpCreateNamedEvent(
         return FALSE;
     }
 
-    Success = CryptBinaryToStringW((const PBYTE)&LocalBuffer,
-                                   sizeof(LocalBuffer)-1,
-                                   CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF,
-                                   (LPWSTR)&WideBase64Buffer,
-                                   &WideBase64BufferLengthInChars);
+    CryptFlags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
+    Success = Rtl->CryptBinaryToStringW((const PBYTE)&LocalBuffer,
+                                        sizeof(LocalBuffer)-1,
+                                        CryptFlags,
+                                        (LPWSTR)&WideBase64Buffer,
+                                        &WideBase64BufferLengthInChars);
 
     if (!Success) {
         Rtl->LastError = GetLastError();
@@ -2922,10 +2964,10 @@ RtlpCreateNamedEvent(
     // Now create the event.
     //
 
-    Handle = CreateEventW(EventAttributes,
-                          ManualReset,
-                          InitialState,
-                          EventName->Buffer);
+    Handle = Rtl->CreateEventW(EventAttributes,
+                               ManualReset,
+                               InitialState,
+                               EventName->Buffer);
 
     if (!Handle || Handle == INVALID_HANDLE_VALUE) {
         __debugbreak();
@@ -2940,7 +2982,6 @@ RtlpCreateNamedEvent(
 
     return TRUE;
 }
-#endif
 
 BOOL
 InitializeTsx(PRTL Rtl)
@@ -3349,8 +3390,6 @@ InitializeRtl(
     }
 
     Rtl->CryptGenRandom = RtlCryptGenRandom;
-    //Rtl->CryptBinaryToStringA = CryptBinaryToStringA;
-    //Rtl->CryptBinaryToStringW = CryptBinaryToStringW;
     Rtl->CreateEventA = CreateEventA;
     Rtl->CreateEventW = CreateEventW;
 
@@ -3364,7 +3403,7 @@ InitializeRtl(
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
     Rtl->CopyFunction = CopyFunction;
 
-    //Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
+    Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

@@ -53,10 +53,14 @@ mainCRTStartup()
     LONG ExitCode = 0;
 
 #if 1
+    BOOL Success;
     PRTL Rtl;
     PTRACER_CONFIG TracerConfig;
+    HANDLE EventHandle;
     ALLOCATOR Allocator;
-
+    const UNICODE_STRING Prefix = RTL_CONSTANT_STRING(L"Test");
+    UNICODE_STRING EventName;
+    WCHAR EventNameBuffer[256];
 
     if (!DefaultHeapInitializeAllocator(&Allocator)) {
         ExitCode = 1;
@@ -72,6 +76,26 @@ mainCRTStartup()
         ),
         "CreateAndInitializeTracerConfigAndRtl()"
     );
+
+    EventName.Length = 0;
+    EventName.MaximumLength = sizeof(EventNameBuffer);
+    EventName.Buffer = (PWSTR)&EventNameBuffer;
+
+    Success = Rtl->CreateNamedEvent(Rtl,
+                                    &Allocator,
+                                    &EventHandle,
+                                    NULL,
+                                    FALSE,
+                                    FALSE,
+                                    (PCUNICODE_STRING)&Prefix,
+                                    NULL,
+                                    &EventName);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+
 #endif
 
 #if 0

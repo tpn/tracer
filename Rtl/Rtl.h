@@ -5865,6 +5865,7 @@ _Check_return_
 _Success_(return != 0)
 (CALLBACK RTL_CREATE_NAMED_EVENT)(
     _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
     _Inout_ PHANDLE HandlePointer,
     _In_opt_ LPSECURITY_ATTRIBUTES EventAttributes,
     _In_ BOOL ManualReset,
@@ -5957,6 +5958,13 @@ typedef union _RTL_FLAGS {
 
         ULONG NvcudaInitialized:1;
 
+        //
+        // When set, indicates Crypt32 module has been load and the various
+        // Crypt functions in RTL are available.
+        //
+
+        ULONG Crypt32Initialized:1;
+
     };
     LONG AsLong;
     ULONG AsULong;
@@ -5978,6 +5986,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     DbgEngModule;
     HMODULE     InjectionThunkModule;
     HMODULE     NvcudaModule;
+    HMODULE     Crypt32Module;
 
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
@@ -6006,7 +6015,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PFILL_PAGES FillPages;
     PPROBE_FOR_READ ProbeForRead;
 
-    //PRTL_CREATE_NAMED_EVENT CreateNamedEvent;
+    PRTL_CREATE_NAMED_EVENT CreateNamedEvent;
 
     P__C_SPECIFIC_HANDLER __C_specific_handler;
     P__SECURITY_INIT_COOKIE __security_init_cookie;
