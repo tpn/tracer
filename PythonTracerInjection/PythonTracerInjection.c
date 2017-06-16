@@ -465,6 +465,42 @@ UnfreezeThreadApc(
     return;
 }
 
+VOID
+DetachProcessesApc(
+    PPYTHON_TRACER_INJECTION_CONTEXT Context
+    )
+{
+    PRTL Rtl;
+    HRESULT Result;
+    PDEBUG_ENGINE Engine;
+    PDEBUGCLIENT Client;
+    PIDEBUGCLIENT IClient;
+    PDEBUG_ENGINE_SESSION Session;
+
+    OutputDebugStringA("Entered DetachProcessesApc()\n");
+
+    Rtl = Context->InjectionContext.Rtl;
+    Session = Context->InjectionContext.DebugEngineSession;
+    Engine = Session->Engine;
+    Client = Engine->Client;
+    IClient = Engine->IClient;
+
+    Result = Client->DetachProcesses(IClient);
+
+    if (!SUCCEEDED(Result)) {
+        OutputDebugStringA("DetachProcesses() failed.\n");
+        __debugbreak();
+    }
+
+    OutputDebugStringA("Leaving apc...\n");
+
+    //InterlockedDecrement64(&Session->NumberOfPendingApcs);
+
+    SetEvent(Session->ShutdownEvent);
+
+    return;
+}
+
 LONG
 ParentThreadEntry(
     PPYTHON_TRACER_INJECTION_CONTEXT Context
@@ -473,11 +509,11 @@ ParentThreadEntry(
     BOOL Success;
     //PAPC Apc;
     PRTL Rtl;
-    //HRESULT Result;
-    //NTSTATUS Status;
+    HRESULT Result;
+    NTSTATUS Status;
     ULONG RemoteThreadId;
     ULONG RemoteThreadExitCode;
-    //ULONG WaitResult;
+    ULONG WaitResult;
     LONG SuspendedCount;
     ULONG SuspendedThreadId;
     HANDLE ResumeEvent;
@@ -487,8 +523,8 @@ ParentThreadEntry(
     HANDLE SuspendedThreadHandle;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
-    //PDEBUGCLIENT ExitDispatchClient;
-    //PIDEBUGCLIENT IExitDispatchClient;
+    PDEBUGCLIENT ExitDispatchClient;
+    PIDEBUGCLIENT IExitDispatchClient;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
     PTRACER_INJECTION_CONTEXT InjectionContext;
@@ -526,6 +562,49 @@ ParentThreadEntry(
 
     SetEvent(ResumeEvent);
 
+    //
+    // Detaching processes.
+    //
+
+    OutputDebugStringA("Queuing APC...\n");
+
+    InterlockedIncrement64(&Session->NumberOfPendingApcs);
+
+    //
+    // Force the main debug thread to exit it's event dispatching.
+    //
+
+    ExitDispatchClient = Session->ExitDispatchEngine->Client;
+    IExitDispatchClient = Session->ExitDispatchEngine->IClient;
+
+    Result = ExitDispatchClient->ExitDispatch(
+        IExitDispatchClient,
+        (PDEBUG_CLIENT)Session->Engine->IClient
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return -1;
+    }
+
+    WaitResult = WaitForSingleObject(Session->ReadyForApcEvent, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+        return -1;
+    }
+
+    OutputDebugStringA("Queuing APC.\n");
+
+    Status = Rtl->NtQueueApcThread(DebugEngineThreadHandle,
+                                   (PAPC_ROUTINE)DetachProcessesApc,
+                                   Context,
+                                   NULL,
+                                   NULL);
+
+    if (!SUCCEEDED(Status)) {
+        __debugbreak();
+    }
+
     OutputDebugStringA("Injecting...\n");
 
     Success = Rtl->InjectThunk(Rtl,
@@ -561,6 +640,7 @@ ParentThreadEntry(
     // Resume the original thread we suspended.
     //
 
+
     do {
         SuspendedCount = (LONG)ResumeThread(SuspendedThreadHandle);
     } while (SuspendedCount > 0);
@@ -571,52 +651,13 @@ ParentThreadEntry(
     }
 
 #if 0
-    OutputDebugStringA("Queuing APC...\n");
-
-    InterlockedIncrement64(&Session->NumberOfPendingApcs);
-
-    //
-    // Force the main debug thread to exit it's event dispatching.
-    //
-
-    ExitDispatchClient = Session->ExitDispatchEngine->Client;
-    IExitDispatchClient = Session->ExitDispatchEngine->IClient;
-
-    Result = ExitDispatchClient->ExitDispatch(
-        IExitDispatchClient,
-        (PDEBUG_CLIENT)Session->Engine->IClient
-    );
-
-    if (FAILED(Result)) {
-        __debugbreak();
-        return -1;
-    }
-
-    WaitResult = WaitForSingleObject(Session->ReadyForApcEvent, INFINITE);
-    if (WaitResult != WAIT_OBJECT_0) {
-        __debugbreak();
-        return -1;
-    }
-
     Apc = &Session->Apc;
     ZeroStructPointer(Apc);
-    Apc->Routine = (PAPC_ROUTINE)UnfreezeThreadApc;
+    Apc->Routine = (PAPC_ROUTINE)DetachProcesses;
     Apc->Argument1 = Context;
     Apc->Argument2 = (PVOID)SuspendedThreadId;
 
     SetEvent(Session->WaitForApcEvent);
-#endif
-
-#if 0
-    Status = Rtl->NtQueueApcThread(DebugEngineThreadHandle,
-                                   (PAPC_ROUTINE)UnfreezeThreadApc,
-                                   Context,
-                                   (PVOID)SuspendedThreadId,
-                                   NULL);
-
-    if (!SUCCEEDED(Status)) {
-        __debugbreak();
-    }
 #endif
 
     return RemoteThreadExitCode;
