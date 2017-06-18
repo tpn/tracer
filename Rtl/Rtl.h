@@ -1220,12 +1220,29 @@ typedef COPY_FUNCTION *PCOPY_FUNCTION;
 typedef union _INJECTION_THUNK_FLAGS {
     struct {
         ULONG DebugBreakOnEntry:1;
-        ULONG Unused:31;
+        ULONG HasEvents:1;
+        ULONG Unused:30;
     };
     LONG AsLong;
     ULONG AsULong;
 } INJECTION_THUNK_FLAGS;
 C_ASSERT(sizeof(INJECTION_THUNK_FLAGS) == sizeof(ULONG));
+
+typedef struct _INJECTION_EVENTS {
+    _Field_range_(sizeof(struct _INJECTION_EVENTS)) USHORT StructSizeInBytes;
+    USHORT NumberOfEvents;
+    ULONG TotalAllocSizeInBytes;
+    PCUNICODE_STRING EventNames;
+    PHANDLE EventHandles;
+} INJECTION_EVENTS;
+typedef INJECTION_EVENTS *PINJECTION_EVENTS;
+
+typedef struct _INJECTION_SHARED_MEMORY {
+    _Field_range_(sizeof(struct _INJECTION_EVENTS)) ULONG StructSizeInBytes;
+    ULONG NumberOfPages;
+    PCUNICODE_STRING SharedMemoryName;
+    PVOID BaseAddress;
+} INJECTION_SHARED_MEMORY;
 
 typedef
 _Check_return_
@@ -1240,6 +1257,8 @@ BOOL
     _In_ PCSTRING TargetFunctionName,
     _In_ PBYTE UserData,
     _In_ USHORT SizeOfUserDataInBytes,
+    _In_opt_ USHORT NumberOfInjectionEvents,
+    _In_opt_ USHORT OffsetOfInjectionEventsPointerFromUserData,
     _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
     _In_ PHANDLE RemoteThreadHandlePointer,
     _In_ PULONG RemoteThreadIdPointer,
