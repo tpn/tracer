@@ -54,6 +54,81 @@ mainCRTStartup()
 
 #if 1
     BOOL Success;
+    ULONG SizeOfBuffer;
+    PWSTR WideBuffer;
+    PRTL Rtl;
+    PTRACER_CONFIG TracerConfig;
+    ALLOCATOR Allocator;
+    //const UNICODE_STRING Prefix = RTL_CONSTANT_STRING(L"Test");
+    UNICODE_STRING ObjectNames[3];
+    UNICODE_STRING ObjectPrefixes[] = {
+        RTL_CONSTANT_STRING(L"Test1_"),
+        RTL_CONSTANT_STRING(L"Test3_")
+    };
+    PUNICODE_STRING Names[] = {
+        &ObjectNames[0],
+        &ObjectNames[1],
+        &ObjectNames[2]
+    };
+    PUNICODE_STRING Prefixes[] ={
+        &ObjectPrefixes[0],
+        NULL,
+        &ObjectPrefixes[1]
+    };
+
+    if (!DefaultHeapInitializeAllocator(&Allocator)) {
+        ExitCode = 1;
+        goto Error;
+    }
+
+    CHECKED_MSG(
+        CreateAndInitializeTracerConfigAndRtl(
+            &Allocator,
+            (PUNICODE_STRING)&TracerRegistryPath,
+            &TracerConfig,
+            &Rtl
+        ),
+        "CreateAndInitializeTracerConfigAndRtl()"
+    );
+
+    Success = Rtl->CreateRandomObjectNames(Rtl,
+                                           &Allocator,
+                                           &Allocator,
+                                           ARRAYSIZE(ObjectNames),
+                                           64,
+                                           57,
+                                           NULL,
+                                           (PPUNICODE_STRING)&Names,
+                                           NULL,
+                                           &SizeOfBuffer,
+                                           &WideBuffer);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    Allocator.FreePointer(Allocator.Context, &WideBuffer);
+
+    Success = Rtl->CreateRandomObjectNames(Rtl,
+                                           &Allocator,
+                                           &Allocator,
+                                           ARRAYSIZE(ObjectNames),
+                                           64,
+                                           32,
+                                           NULL,
+                                           (PPUNICODE_STRING)&Names,
+                                           (PPUNICODE_STRING)&Prefixes,
+                                           &SizeOfBuffer,
+                                           &WideBuffer);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+#endif
+
+#if 0
+    BOOL Success;
     PRTL Rtl;
     PTRACER_CONFIG TracerConfig;
     HANDLE EventHandle;

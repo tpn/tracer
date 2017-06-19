@@ -2587,11 +2587,11 @@ BOOL
     _In_ PALLOCATOR WideBufferAllocator,
     _In_ USHORT NumberOfNames,
     _In_ USHORT LengthOfNameInChars,
-    _In_ USHORT MinimumNumberOfRandomCharactersPerName,
-    _In_opt_ PCUNICODE_STRING NamespacePrefix,
+    _In_ USHORT MinimumNumberOfRandomCharsPerName,
+    _In_opt_ PUNICODE_STRING NamespacePrefix,
     _In_ PPUNICODE_STRING NamesArrayPointer,
     _In_opt_ PPUNICODE_STRING PrefixArrayPointer,
-    _Out_ PUSHORT SizeOfWideBufferInBytes,
+    _Out_ PULONG SizeOfWideBufferInBytes,
     _Out_writes_bytes_all_(*SizeOfWideBufferInBytes) PPWSTR WideBufferPointer
     );
 typedef CREATE_RANDOM_OBJECT_NAMES *PCREATE_RANDOM_OBJECT_NAMES;
