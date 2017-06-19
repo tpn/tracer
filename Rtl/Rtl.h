@@ -2217,6 +2217,29 @@ BOOL
     _In_ DWORD flNewProtect,
     _Out_ PDWORD lpflOldProtect
     );
+typedef VIRTUAL_PROTECT *PVIRTUAL_PROTECT;
+
+typedef
+_Success_(return != FALSE)
+BOOL
+(WINAPI VIRTUAL_PROTECT_EX)(
+    _In_ HANDLE hProcess,
+    _In_ LPVOID lpAddress,
+    _In_ SIZE_T dwSize,
+    _In_ DWORD flNewProtect,
+    _Out_ PDWORD lpflOldProtect
+    );
+typedef VIRTUAL_PROTECT_EX *PVIRTUAL_PROTECT_EX;
+
+typedef
+SIZE_T
+(WINAPI VIRTUAL_QUERY_EX)(
+    _In_ HANDLE hProcess,
+    _In_opt_ LPCVOID lpAddress,
+    _Out_writes_bytes_to_(dwLength, return) PMEMORY_BASIC_INFORMATION lpBuffer,
+    _In_ SIZE_T dwLength
+    );
+typedef VIRTUAL_QUERY_EX *PVIRTUAL_QUERY_EX;
 
 typedef
 BOOL
@@ -2232,18 +2255,6 @@ BOOL
     _In_ DWORD dwFreeType
     );
 typedef VIRTUAL_FREE_EX *PVIRTUAL_FREE_EX;
-
-typedef
-_Success_(return != FALSE)
-BOOL
-(WINAPI VIRTUAL_PROTECT_EX)(
-    _In_ HANDLE hProcess,
-    _In_ LPVOID lpAddress,
-    _In_ SIZE_T dwSize,
-    _In_ DWORD flNewProtect,
-    _Out_ PDWORD lpflOldProtect
-    );
-typedef VIRTUAL_PROTECT_EX *PVIRTUAL_PROTECT_EX;
 
 typedef
 _Success_(return != FALSE)
@@ -2408,11 +2419,55 @@ DWORD
 typedef WAIT_FOR_SINGLE_OBJECT_EX *PWAIT_FOR_SINGLE_OBJECT_EX;
 
 typedef
+ULONG
+(WINAPI GET_LAST_ERROR)(
+    VOID
+    );
+typedef GET_LAST_ERROR *PGET_LAST_ERROR;
+
+typedef
 BOOL
 (WINAPI SET_EVENT)(
     _In_ HANDLE hEvent
     );
 typedef SET_EVENT *PSET_EVENT;
+
+typedef
+BOOL
+(WINAPI RESET_EVENT)(
+    _In_ HANDLE hEvent
+    );
+typedef RESET_EVENT *PRESET_EVENT;
+
+typedef
+ULONG
+(WINAPI SUSPEND_THREAD)(
+    _In_ HANDLE ThreadHandle
+    );
+typedef SUSPEND_THREAD *PSUSPEND_THREAD;
+
+typedef
+ULONG
+(WINAPI RESUME_THREAD)(
+    _In_ HANDLE ThreadHandle
+    );
+typedef RESUME_THREAD *PRESUME_THREAD;
+
+typedef
+BOOL
+(WINAPI GET_THREAD_CONTEXT)(
+    _In_ HANDLE ThreadHandle,
+    _Inout_ LPCONTEXT Context
+    );
+typedef GET_THREAD_CONTEXT *PGET_THREAD_CONTEXT;
+
+typedef
+BOOL
+(WINAPI SET_THREAD_CONTEXT)(
+    _In_ HANDLE ThreadHandle,
+    _In_ const CONTEXT *Context
+    );
+typedef SET_THREAD_CONTEXT *PSET_THREAD_CONTEXT;
 
 typedef
 DWORD
@@ -2520,6 +2575,20 @@ NTSTATUS
     VOID
     );
 typedef NT_TEST_ALERT *PNT_TEST_ALERT;
+
+typedef
+BOOL
+(WINAPI DEBUG_ACTIVE_PROCESS_STOP)(
+    _In_ BOOL KillOnExit
+    );
+typedef DEBUG_ACTIVE_PROCESS_STOP *PDEBUG_ACTIVE_PROCESS_STOP;
+
+typedef
+BOOL
+(WINAPI DEBUG_SET_PROCESS_KILL_ON_EXIT)(
+    _In_ BOOL KillOnExit
+    );
+typedef DEBUG_SET_PROCESS_KILL_ON_EXIT *PDEBUG_SET_PROCESS_KILL_ON_EXIT;
 
 #include "Injection.h"
 
@@ -4475,6 +4544,9 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     POPEN_EVENT_A OpenEventA;                                                                          \
     POPEN_EVENT_W OpenEventW;                                                                          \
     PSET_EVENT SetEvent;                                                                               \
+    PRESET_EVENT ResetEvent;                                                                           \
+    PGET_THREAD_CONTEXT GetThreadContext;                                                              \
+    PSET_THREAD_CONTEXT SetThreadContext;                                                              \
     PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
     PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;                                                  \
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;                                                       \
@@ -4488,6 +4560,12 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;                                                              \
     PFLUSH_VIEW_OF_FILE FlushViewOfFile;                                                               \
     PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;                                                          \
+    PVIRTUAL_ALLOC_EX VirtualAllocEx;                                                                  \
+    PVIRTUAL_FREE_EX VirtualFreeEx;                                                                    \
+    PVIRTUAL_PROTECT_EX VirtualProtectEx;                                                              \
+    PVIRTUAL_QUERY_EX VirtualQueryEx;                                                                  \
+    PDEBUG_ACTIVE_PROCESS_STOP DebugActiveProcessStop;                                                 \
+    PDEBUG_SET_PROCESS_KILL_ON_EXIT DebugSetProcessKillOnExit;                                         \
     PTHREAD32_FIRST Thread32First;                                                                     \
     PTHREAD32_NEXT Thread32Next;
 
