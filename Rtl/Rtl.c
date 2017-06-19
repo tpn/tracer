@@ -3401,8 +3401,9 @@ End:
     }
 
     *WideBufferPointer = WideBase64Buffer;
-    *SizeOfWideBufferInBytes =
+    *SizeOfWideBufferInBytes = SizeOfWideBase64BufferInBytes;
 
+    return Success;
 }
 
 BOOL

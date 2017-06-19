@@ -632,19 +632,6 @@ typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;
 RTL_API INJECT_THUNK InjectThunk;
 RTL_API INJECT_THUNK_EX InjectThunkEx;
 
-typedef
-BOOL
-(CREATE_RANDOM_SHARED_NAME_BUFFER)(
-    _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ USHORT NumberOfNames,
-    _In_ USHORT LengthOfNameInChars,
-    _In_ USHORT SizeOfWideBufferInBytes,
-    _Out_writes_bytes_all_(SizeOfBufferInBytes) PWSTR WideBuffer,
-    _Inout_updates_to_(sizeof(PUNICODE_STRING), NumberOfNames) NamesPointer
-    );
-typedef CREATE_RANDOM_SHARED_NAME_BUFFER *PCREATE_RANDOM_SHARED_NAME_BUFFER;
-
 FORCEINLINE
 VOID
 InitializeInjectionFunctions(

@@ -2591,6 +2591,23 @@ BOOL
     );
 typedef COPY_FUNCTION_EX *PCOPY_FUNCTION_EX;
 
+typedef
+BOOL
+(CREATE_RANDOM_OBJECT_NAMES)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR TemporaryAllocator,
+    _In_ PALLOCATOR WideBufferAllocator,
+    _In_ USHORT NumberOfNames,
+    _In_ USHORT LengthOfNameInChars,
+    _In_ USHORT MinimumNumberOfRandomCharactersPerName,
+    _In_opt_ PCUNICODE_STRING NamespacePrefix,
+    _In_ PPUNICODE_STRING NamesArrayPointer,
+    _In_opt_ PPUNICODE_STRING PrefixArrayPointer,
+    _Out_ PUSHORT SizeOfWideBufferInBytes,
+    _Out_writes_bytes_all_(*SizeOfWideBufferInBytes) PPWSTR WideBufferPointer
+    );
+typedef CREATE_RANDOM_OBJECT_NAMES *PCREATE_RANDOM_OBJECT_NAMES;
+
 //
 // A minimal set of functions used to bootstrap injected code.
 //
@@ -6525,6 +6542,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PCOPY_FUNCTION CopyFunction;
     PCOPY_FUNCTION_EX CopyFunctionEx;
+    PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
 
     PVOID InjectionThunkRoutine;
     PINJECT_THUNK InjectThunk;
