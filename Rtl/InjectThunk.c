@@ -172,9 +172,11 @@ AdjustThunkPointers(
     return TRUE;
 }
 
+INJECT_THUNK_EX InjectThunkExImpl
+
 _Use_decl_annotations_
 BOOL
-InjectThunk(
+InjectThunkImpl(
     PRTL Rtl,
     PALLOCATOR Allocator,
     INJECTION_THUNK_FLAGS Flags,
@@ -183,11 +185,19 @@ InjectThunk(
     PCSTRING TargetFunctionName,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
+    USHORT DesiredNumberOfWritablePages,
+    USHORT NumberOfInjectionEvents,
+    USHORT OffsetOfInjectionEventsPointerFromUserData,
+    USHORT NumberOfInjectionFileMappings,
+    USHORT OffsetOfInjectionFileMappingsPointerFromUserData,
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
     PHANDLE RemoteThreadHandlePointer,
     PULONG RemoteThreadIdPointer,
     PPVOID RemoteBaseCodeAddress,
-    PPVOID RemoteUserDataAddress
+    PPVOID RemoteWritableDataAddress,
+    PPVOID RemoteUserDataAddress,
+    PPVOID RemoteUserWritableDataAddress,
+    PUSHORT ActualNumberOfWritablePages
     )
 {
     BOOL Success;
@@ -217,26 +227,27 @@ InjectThunk(
     InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
                                              TargetModuleDllPath);
 
-    CopyFunction = Rtl->CopyFunction;
+    CopyFunctionEx = Rtl->CopyFunctionEx;
 
-    Success = CopyFunction(Rtl,
-                           Allocator,
-                           TargetProcessHandle,
-                           Rtl->InjectionThunkRoutine,
-                           NULL,
-                           (PBYTE)&Thunk,
-                           sizeof(Thunk),
-                           (PBYTE)UserData,
-                           SizeOfUserDataInBytes,
-                           AdjustThunkPointers,
-                           AdjustUserDataPointers,
-                           &DestBaseCodeAddress,
-                           &DestThunkBufferAddress,
-                           &DestUserDataAddress,
-                           &DestInjectionThunk,
-                           &DestRuntimeFunction,
-                           NULL,
-                           &EntryCount);
+    Success = CopyFunctionEx(Rtl,
+                             Allocator,
+                             TargetProcessHandle,
+                             Rtl->InjectionThunkRoutine,
+                             NULL,
+                             (PBYTE)&Thunk,
+                             sizeof(Thunk),
+                             (PBYTE)UserData,
+                             SizeOfUserDataInBytes,
+                             DesiredNumberOfWritablePages,
+                             AdjustThunkPointers,
+                             AdjustUserDataPointers,
+                             &DestBaseCodeAddress,
+                             &DestThunkBufferAddress,
+                             &DestUserDataAddress,
+                             &DestInjectionThunk,
+                             &DestRuntimeFunction,
+                             NULL,
+                             &EntryCount);
 
     if (!Success) {
         return FALSE;
@@ -267,6 +278,78 @@ InjectThunk(
     *RemoteUserDataAddress = DestUserDataAddress;
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+BOOL
+InjectThunk(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    INJECTION_THUNK_FLAGS Flags,
+    HANDLE TargetProcessHandle,
+    PCUNICODE_STRING TargetModuleDllPath,
+    PCSTRING TargetFunctionName,
+    PBYTE UserData,
+    USHORT SizeOfUserDataInBytes,
+    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    PHANDLE RemoteThreadHandlePointer,
+    PULONG RemoteThreadIdPointer,
+    PPVOID RemoteBaseCodeAddress,
+    PPVOID RemoteUserDataAddress
+    )
+{
+    return InjectThunkExImpl(Rtl,
+                             Allocator,
+                             Flags,
+                             TargetProcessHandle,
+                             TargetModuleDllPath,
+                             TargetFunctionName,
+                             UserData,
+                             SizeOfUserDataInBytes,
+                             0, // NumberOfInjectionEvents
+                             0, // OffsetOfInjectionEventsPointerFromUserData
+                             AdjustUserDataPointers,
+                             RemoteThreadHandlePointer,
+                             RemoteThreadIdPointer,
+                             RemoteBaseCodeAddress,
+                             RemoteUserDataAddress);
+}
+
+_Use_decl_annotations_
+BOOL
+InjectThunkEx(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    INJECTION_THUNK_FLAGS Flags,
+    HANDLE TargetProcessHandle,
+    PCUNICODE_STRING TargetModuleDllPath,
+    PCSTRING TargetFunctionName,
+    PBYTE UserData,
+    USHORT SizeOfUserDataInBytes,
+    USHORT NumberOfInjectionEvents,
+    USHORT OffsetOfInjectionEventsPointerFromUserData,
+    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    PHANDLE RemoteThreadHandlePointer,
+    PULONG RemoteThreadIdPointer,
+    PPVOID RemoteBaseCodeAddress,
+    PPVOID RemoteUserDataAddress
+    )
+{
+    return InjectThunkExImpl(Rtl,
+                             Allocator,
+                             Flags,
+                             TargetProcessHandle,
+                             TargetModuleDllPath,
+                             TargetFunctionName,
+                             UserData,
+                             SizeOfUserDataInBytes,
+                             NumberOfInjectionEvents,
+                             OffsetOfInjectionEventsPointerFromUserData,
+                             AdjustUserDataPointers,
+                             RemoteThreadHandlePointer,
+                             RemoteThreadIdPointer,
+                             RemoteBaseCodeAddress,
+                             RemoteUserDataAddress);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

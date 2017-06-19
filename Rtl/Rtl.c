@@ -304,6 +304,8 @@ RTL_API
 BOOL
 InitializeInjection(PRTL Rtl)
 {
+    PINJECTION_FUNCTIONS Functions;
+
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
@@ -339,6 +341,37 @@ InitializeInjection(PRTL Rtl)
         __debugbreak();
         return FALSE;
     }
+
+    Functions = &Rtl->InjectionFunctions;
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->SetEvent = Rtl->SetEvent;
+    Functions->ResetEvent = Rtl->ResetEvent;
+    Functions->GetThreadContext = Rtl->GetThreadContext;
+    Functions->GetThreadContext = Rtl->GetThreadContext;
+    Functions->SuspendThread = Rtl->SuspendThread;
+    Functions->ResumeThread = Rtl->ResumeThread;
+    Functions->OpenEventW = Rtl->OpenEventW;
+    Functions->CloseHandle = Rtl->CloseHandle;
+    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
+    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
+    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
+    Functions->NtQueueUserApcThread = Rtl->NtQueueUserApcThread;
+    Functions->NtTestAlert = Rtl->NtTestAlert;
+    Functions->QueueUserAPC = Rtl->QueueUserAPC;
+    Functions->SleepEx = Rtl->SleepEx;
+    Functions->ExitThread = Rtl->ExitThread;
+    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
+    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
+    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
+    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
+    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
+    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
+    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
+    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
+    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
 
     return TRUE;
 }
@@ -2984,6 +3017,395 @@ RtlpCreateNamedEvent(
 }
 
 BOOL
+CreateRandomObjectNames(
+    PRTL Rtl,
+    PALLOCATOR TemporaryAllocator,
+    PALLOCATOR BufferAllocator,
+    USHORT NumberOfNames,
+    USHORT LengthOfNameInChars,
+    USHORT MinimumNumberOfRandomCharactersPerName,
+    PCUNICODE_STRING NamespacePrefix,
+    PPUNICODE_STRING NamesArrayPointer,
+    PPUNICODE_STRING PrefixArrayPointer,
+    PUSHORT SizeOfWideBufferInBytes,
+    PPWSTR WideBufferPointer
+    )
+/*++
+
+Routine Description:
+
+    This routine writes Base64-encoded random data to an existing buffer in a
+    format suitable for subsequent use of UNICODE_STRING-based system names for
+    things like events or shared memory handles.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.  If the crypto
+        subsystem hasn't yet been initialized, this routine will also initialize
+        it.
+
+    TemporaryAllocator - Supplies a pointer to an initialized ALLOCATOR struct
+        that this routine will use for temporary allocations.  (Any temporarily
+        allocated memory will be freed before the routine returns, regardless
+        of success/error.)
+
+    BufferAllocator - Supplies a pointer to an initialized ALLOCATOR structure
+        that this routine will use to allocate the final wide character buffer
+        that contains the base64-encoded random data.  The caller is responsible
+        for freeing this address (which will be received via the output param
+        WideBufferPointer).
+
+    NumberOfNames - Supplies the number of names that will be carved out of the
+        provided WideBuffer by the caller.  This parameter is used in concert
+        with the LengthOfNameInChars parameter to ensure the buffer is laid out
+        in the correct format.
+
+    LengthOfNameInChars - Supplies the desired length of each name string in
+        characters.  This length is assumed to include the trailing NULL and
+        the prefix -- that is, the space required to contain the prefix and
+        trailing NULL will be subtracted from this parameter.  For optimal
+        layout, this parameter should be a power of 2 -- with 64 and 128 being
+        good default values.
+
+    MinimumNumberOfRandomCharactersPerName - Supplies the minimal number of
+        random characters that must be present per random object name generated.
+        Setting this to a sensible value provides protection against providing
+        prefix or namespace names that are too long for the desired object name
+        length.  If the number of random characters for a given name is less
+        than this amount, a breakpoint exception will be raised.
+
+    NamespacePrefix - Optionally supplies a pointer to a UNICODE_STRING to
+        use as the namespace (prefix) for each string.  If NULL, this value
+        defaults L"Local\\".  (If L"Global\\" is used, the caller is responsible
+        for ensuring the SeCreateGlobalPrivilege privilege is enabled.)
+
+    NamesArrayPointer - Supplies a pointer to the first element of an array of
+        of pointers to UNICODE_STRING structures that will be filled out with
+        the details of the corresponding object name.  Sufficient space should
+        be allocated such that the array contains sizeof(UNICODE_STRING) *
+        NumberOfNames in space.
+
+    PrefixArray - Optionally supplies a pointer to the first element of an array
+        of pointers to UNICODE_STRING structures which can be used to further
+        customize the name of the object after the namespace but before the
+        random character data.  If a NULL pointer resides at a given array
+        element, it is assumed no prefix is desired for this element.
+
+    SizeOfWideBufferInBytes - Receives the size in bytes of the buffer allocated
+        to store the object names' wide character data.
+
+    WideBufferPointer - Receives the base address of the object names wide char
+        buffer.
+
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    BOOL Success;
+    USHORT Bytes;
+    USHORT Index;
+    USHORT Count;
+    USHORT PrefixLengthInChars;
+    USHORT NumberOfWideBase64CharsToCopy;
+    LONG CharsRemaining;
+    LONG CharsUsed;
+    LONG RandomCharsUsed;
+    LONG FinalCharCount;
+    ULONG CryptFlags;
+    ULONG SizeOfBinaryBufferInBytes;
+    ULONG SizeOfWideBase64BufferInBytes;
+    ULONG OldLengthOfWideBase64BufferInChars;
+    ULONG LengthOfWideBase64BufferInChars;
+    PBYTE BinaryBuffer;
+    PWCHAR Dest;
+    PWCHAR Source;
+    PWCHAR WideBase64Buffer = NULL;
+    UNICODE_STRING Base64;
+    PUNICODE_STRING String;
+    PUNICODE_STRING Prefix;
+    PUNICODE_STRING Prefixes;
+    PCUNICODE_STRING Namespace;
+    UNICODE_STRING LocalNamespace = RTL_CONSTANT_STRING(L"Local\\");
+
+    //
+    // Validate arguments.
+    //
+
+    if (ARGUMENT_PRESENT(NamespacePrefix)) {
+        if (!IsValidUnicodeStringWithMinimumLengthInChars(NamespacePrefix)) {
+            return FALSE;
+        }
+        Namespace = NamespacePrefix;
+    } else {
+        Namespace = LocalNamespace;
+    }
+
+    //
+    // Namespace length should be (far) less than the desired name length.
+    //
+
+    if (Namespace->Length >= (LengthOfNameInChars << 1)) {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // If the namespace ends with a trailing NULL, omit it by reducing the
+    // length by one wide character.  Then, verify the final character is a
+    // slash.
+    //
+
+    if (Namespace->Buffer[Namespace->Length >> 1] == L'\0') {
+        Namespace->Length -= sizeof(WCHAR);
+    }
+
+    if (Namespace->Buffer[Namespace->Length >> 1] != L'\\') {
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Make sure the crypto subsystem is available.
+    //
+
+    if (!Rtl->Flags.Crypt32Initialized) {
+        if (!InitCrypt32(Rtl)) {
+            return FALSE;
+        }
+    }
+
+    //
+    // Allocate a buffer for the initial binary data; we generate more random
+    // data than we need here, but it's easier than trying to get everything
+    // exact up-front (i.e. base64->binary size conversions).
+    //
+    // N.B. We use Allocator->Malloc() instead of the Calloc() here as the
+    //      existing memory data will contribute as a seed value.
+    //
+
+    SizeOfBinaryBufferInBytes = NumberOfNames * LengthOfNameInChars;
+
+    BinaryBuffer = (PBYTE)(
+        Allocator->Malloc(
+            Allocator->Context,
+            SizeOfBinaryBufferInBytes
+        )
+    );
+
+    if (!BinaryBuffer) {
+        return FALSE;
+    }
+
+    //
+    // Allocate a wide character buffer for the base64-encoded binary data that
+    // is double the length of the binary buffer -- this is simpler than trying
+    // to get the exact conversion right.
+    //
+
+    SizeOfWideBase64BufferInBytes = (
+        NumberOfNames *
+        LengthOfNameInChars *
+        sizeof(WCHAR) *
+        2
+    );
+
+    WideBase64Buffer = (PWCHAR)(
+        Allocator->Calloc(
+            Allocator->Context,
+            1,
+            SizeOfWideBufferInBytes
+        )
+    );
+
+    if (!WideBase64Buffer) {
+        goto Error;
+    }
+
+    //
+    // We successfully allocated space for our two buffers.  Fill the first one
+    // with random data now.
+    //
+
+    Success = Rtl->CryptGenRandom(Rtl,
+                                  SizeOfBinaryBufferInBytes,
+                                  (PBYTE)&BinaryBuffer);
+    if (!Success) {
+        Rtl->LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Convert the entire binary data buffer into base64-encoded wide character
+    // representation.  We calculate the number of wide characters the buffer
+    // can receive by shifting the byte size right by one, then copy that value
+    // into a second variable that CryptBinaryToStringW() can overwrite with
+    // the actual length converted.
+    //
+
+    OldLengthOfWideBase64BufferInChars = SizeOfWideBase64BufferInBytes >> 1;
+    LengthOfWideBase64BufferInChars = OldLengthOfWideBase64BufferInChars;
+
+    CryptFlags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
+    Success = Rtl->CryptBinaryToStringW(BinaryBuffer,
+                                        SizeOfBinaryBufferInBytes,
+                                        CryptFlags,
+                                        WideBase64Buffer,
+                                        &LengthOfWideBase64BufferInChars);
+
+    if (!Success) {
+        Rtl->LastError = GetLastError();
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Conversion of the binary data into base64-encoded data was successful,
+    // so we can free the binary buffer now.
+    //
+
+    Allocator->FreePointer(Allocator->Context, &BinaryBuffer);
+
+    //
+    // Loop through the array of pointers to UNICODE_STRING structures and fill
+    // each one out, adding the namespace and prefixes accordingly.
+    //
+
+    RandomCharsUsed = 0;
+
+    for (Index = 0; Index < NumberOfNames; Index++) {
+
+        //
+        // Resolve the next unicode string pointer.
+        //
+
+        String = *(NamesArrayPointer + Index);
+
+        //
+        // Reset counters.  CharsUsed has one subtracted from it in addition
+        // to the namespace length to account for the trailing NULL.
+        //
+
+        CharsUsed = (Namespace->Length >> 1) - 1;
+        CharsRemaining = CharsUsed - (LONG)LengthOfNameInChars;
+
+        if (Prefixes && ((Prefix = *(Prefixes + Index)) != NULL)) {
+
+            //
+            // Omit any trailing NULLs from the custom prefix provided by the
+            // caller, then subtract the prefix length from the remaining bytes
+            // and verify we've got a sensible number left.
+            //
+
+            PrefixLengthInChars = Prefix->Length >> 1;
+            if (Prefix->Buffer[PrefixLengthInChars] == L'\0') {
+                PrefixLengthInChars -= 1;
+            }
+
+            CharsUsed += PrefixLengthInChars;
+            CharsRemaining -= PrefixLengthInChars;
+        } else {
+            Prefix = NULL;
+            PrefixLengthInChars = 0;
+        }
+
+        if (CharsRemaining <= 0) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Verify a sufficient number of random characters are being included
+        // in this object's name.
+        //
+
+        NumberOfWideBase64CharsToCopy = CharsRemaining;
+        if (NumberOfWideBase64CharsToCopy < MinimumNumberOfRandomCharsPerName) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Final sanity check that the lengths add up.
+        //
+
+        FinalCharCount = (
+            (Namespace->Length >> 1) +
+            PrefixLengthInChars +
+            NumberOfWideBase64CharsToCopy +
+            1
+        );
+
+        if (FinalCharCount != LengthOfNameInChars) {
+            __debugbreak();
+            goto Error;
+        }
+
+        //
+        // Everything checks out, fill out the unicode string details and copy
+        // the relevant parts over: namespace, optional prefix and then finally
+        // the random characters.
+        //
+
+        String->Length = FinalCharCount << 1;
+        String->MaximumLength = String->Length + sizeof(WCHAR);
+
+        Dest = String->Buffer = (WideBase64Buffer + RandomCharsUsed);
+
+        //
+        // Copy the namespace and optionally prefix into the initial part of
+        // the random character data buffer, then NULL terminate the name and
+        // update counters.
+        //
+
+        Count = Namespace->Length >> 1;
+        __movsw(Dest, Namespace->Buffer, Count);
+        Dest += Count;
+        RandomCharsUsed += Count;
+
+        if (Prefix) {
+            Count = PrefixLengthInChars;
+            __movsw(Dest, Prefix->Buffer, PrefixLengthInChars);
+            Dest += Count;
+            RandomCharsUsed += Count;
+        }
+
+        Count = NumberOfWideBase64CharsToCopy + 1;
+        Dest += Count;
+        *Dest = L'\0';
+        RandomCharsUsed += Count;
+    }
+
+    //
+    // We're done, indicate success and finish up.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    if (BinaryBuffer) {
+        Allocator->FreePointer(Allocator->Context, &BinaryBuffer);
+    }
+
+    *WideBufferPointer = WideBase64Buffer;
+    *SizeOfWideBufferInBytes =
+
+}
+
+BOOL
 InitializeTsx(PRTL Rtl)
 {
     GUARDED_LIST List;
@@ -3402,8 +3824,10 @@ InitializeRtl(
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
     Rtl->CopyFunction = CopyFunction;
+    Rtl->CopyFunctionEx = CopyFunctionEx;
 
     Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
+    Rtl->CreateRandomObjectNames = CreateRandomObjectNames;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

@@ -448,7 +448,7 @@ UnfreezeThreadApc(
         __debugbreak();
         return;
     }
-   
+
     OutputDebugStringA("Unfreeze thread command: ");
     PrintUnicodeStringToDebugStream(&UnfreezeThreadCommand);
 

@@ -607,17 +607,55 @@ typedef struct _INJECTION_THUNK_CONTEXT {
     INJECTION_THUNK_FLAGS Flags;
     USHORT EntryCount;
     USHORT UserDataOffset;
+    USHORT UserWritableDataOffset;
+    USHORT NumberOfEvents;
+    USHORT NumberOfFileMappings;
+    USHORT NumberOfInjectionFunctions;
+
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseCodeAddress;
-    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
-    PLOAD_LIBRARY_W LoadLibraryW;
-    PGET_PROC_ADDRESS GetProcAddress;
+
+    //
+    // Functions.
+    //
+
+    INJECTION_FUNCTIONS Functions;
+
+    //
+    //
     UNICODE_STRING ModulePath;
     STRING FunctionName;
+    PINJECTION_EVENTS InjectionEvents;
 } INJECTION_THUNK_CONTEXT;
 typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;
 
 RTL_API INJECT_THUNK InjectThunk;
+RTL_API INJECT_THUNK_EX InjectThunkEx;
+
+typedef
+BOOL
+(CREATE_RANDOM_SHARED_NAME_BUFFER)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ USHORT NumberOfNames,
+    _In_ USHORT LengthOfNameInChars,
+    _In_ USHORT SizeOfWideBufferInBytes,
+    _Out_writes_bytes_all_(SizeOfBufferInBytes) PWSTR WideBuffer,
+    _Inout_updates_to_(sizeof(PUNICODE_STRING), NumberOfNames) NamesPointer
+    );
+typedef CREATE_RANDOM_SHARED_NAME_BUFFER *PCREATE_RANDOM_SHARED_NAME_BUFFER;
+
+FORCEINLINE
+VOID
+InitializeInjectionFunctions(
+    _In_ PRTL Rtl,
+    _In_ PINJECTION_FUNCTIONS Functions
+    )
+{
+    CopyMemory(Functions,
+               &Rtl->InjectionFunctions,
+               sizeof(Rtl->InjectionFunctions));
+}
 
 //
 // Test-related glue.

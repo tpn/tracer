@@ -26,6 +26,8 @@ CopyFunction(
     USHORT SizeOfThunkBufferInBytes,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
+    USHORT NumberOfInjectionEvents,
+    USHORT OffsetOfInjectionEventsPointerFromUserData,
     PADJUST_THUNK_POINTERS AdjustThunkPointers,
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
     PPVOID DestBaseCodeAddressPointer,
@@ -52,6 +54,7 @@ CopyFunction(
     SHORT NumberOfDataBytesRemaining;
     USHORT NumberOfDataBytesWritten;
     ULONG OldProtection;
+    ULONG InjectionEventsAllocSizeInBytes;
     USHORT EntryCount;
     SIZE_T NumberOfBytesWritten;
     HANDLE ProcessHandle = GetCurrentProcess();
@@ -117,6 +120,21 @@ CopyFunction(
     *DestFunctionPointer = NULL;
     *DestRuntimeFunctionPointer = NULL;
     *EntryCountPointer = 0;
+    InjectionEventsAllocSizeInBytes = 0;
+
+    //
+    // If we're injecting events, calculate the additional total size required
+    // by the INJECTION_EVENTS structure and all supporting arrays/structures.
+    //
+
+    if (NumberOfInjectionEvents > 0) {
+
+        CalculateInjectionEventsAllocationSize(
+            NumberOfInjectionEvents,
+            &InjectionEventsAllocSizeInBytes
+        );
+
+    }
 
     //
     // Allocate local pages for code and data.
@@ -584,6 +602,8 @@ WriteMemory:
     *DestBaseCodeAddressPointer = RemoteBaseCodeAddress;
     *DestFunctionPointer = ((PBYTE)RemoteBaseCodeAddress) + 16;
     *DestUserDataAddressPointer = RemoteDestUserData;
+    *DestWritableDataAddressPointer = RemoteDestWritableData;
+    *DestUserWritableDataAddressPointer = RemoteDestUserWritableData;
     *DestThunkBufferAddressPointer = RemoteDestThunkBuffer;
 
     //
