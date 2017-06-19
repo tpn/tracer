@@ -2174,18 +2174,6 @@ typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
 typedef
 _Ret_maybenull_ _Post_writable_byte_size_(dwSize)
 LPVOID
-(WINAPI VIRTUAL_ALLOC)(
-    _In_opt_ LPVOID lpAddress,
-    _In_ SIZE_T dwSize,
-    _In_ DWORD flAllocationType,
-    _In_ DWORD flProtect
-    );
-typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
-
-
-typedef
-_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
-LPVOID
 (WINAPI VIRTUAL_ALLOC_EX)(
     _In_ HANDLE hProcess,
     _In_opt_ LPVOID lpAddress,
@@ -2193,6 +2181,7 @@ LPVOID
     _In_ DWORD flAllocationType,
     _In_ DWORD flProtect
     );
+typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
 
 typedef
 BOOL
@@ -2207,6 +2196,21 @@ BOOL
     _In_ DWORD dwFreeType
     );
 typedef VIRTUAL_FREE *PVIRTUAL_FREE;
+
+typedef
+BOOL
+(WINAPI VIRTUAL_FREE_EX)(
+    _In_ HANDLE hProcess,
+
+    _Pre_notnull_
+        _When_(dwFreeType == MEM_DECOMMIT, _Post_invalid_)
+        _When_(dwFreeType == MEM_RELEASE, _Post_ptr_invalid_)
+            LPVOID lpAddress,
+
+    _In_ SIZE_T dwSize,
+    _In_ DWORD dwFreeType
+    );
+typedef VIRTUAL_FREE_EX *PVIRTUAL_FREE_EX;
 
 typedef
 _Success_(return != FALSE)
@@ -2240,21 +2244,6 @@ SIZE_T
     _In_ SIZE_T dwLength
     );
 typedef VIRTUAL_QUERY_EX *PVIRTUAL_QUERY_EX;
-
-typedef
-BOOL
-(WINAPI VIRTUAL_FREE_EX)(
-    _In_ HANDLE hProcess,
-
-    _Pre_notnull_
-        _When_(dwFreeType == MEM_DECOMMIT, _Post_invalid_)
-        _When_(dwFreeType == MEM_RELEASE, _Post_ptr_invalid_)
-            LPVOID lpAddress,
-
-    _In_ SIZE_T dwSize,
-    _In_ DWORD dwFreeType
-    );
-typedef VIRTUAL_FREE_EX *PVIRTUAL_FREE_EX;
 
 typedef
 _Success_(return != FALSE)
