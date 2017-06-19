@@ -4787,10 +4787,10 @@ BOOL
 typedef CREATE_BITMAP_INDEX_FOR_STRING \
        *PCREATE_BITMAP_INDEX_FOR_STRING;
 
-#define MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer)           \
-    if ((ULONG_PTR)StackBitmapBuffer != (ULONG_PTR)BitmapPointer->Buffer &&  \
-        HeapHandle != NULL) {                                                \
-        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);                      \
+#define MAYBE_FREE_BITMAP_BUFFER(BitmapPointer, StackBitmapBuffer)          \
+    if ((ULONG_PTR)StackBitmapBuffer != (ULONG_PTR)BitmapPointer->Buffer && \
+        HeapHandle != NULL) {                                               \
+        HeapFree(HeapHandle, 0, BitmapPointer->Buffer);                     \
     }
 
 typedef VOID *PALLOCATION_CONTEXT;
