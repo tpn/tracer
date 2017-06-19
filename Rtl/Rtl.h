@@ -6136,6 +6136,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PRTL_SET_INJECTION_THUNK_DLL_PATH SetInjectionThunkDllPath;
 
     PCOPY_FUNCTION CopyFunction;
+    PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
 
     PVOID InjectionThunkRoutine;
     PINJECT_THUNK InjectThunk;
