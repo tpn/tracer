@@ -45,6 +45,41 @@ FindStreams(
     return 0;
 }
 
+#if 1
+
+typedef
+VOID
+(TEST_PARAMS1)(
+    _In_ LONG Param1,
+    _In_ LONG Param2,
+    _In_ LONG Param3,
+    _In_ LONG Param4,
+    _In_ LONG Param5,
+    _In_ LONG Param6,
+    _In_ LONG Param7,
+    _In_ LONG Param8
+    );
+typedef TEST_PARAMS1 *PTEST_PARAMS1;
+
+typedef
+VOID
+(TEST_PARAMS2)(
+    _In_ LONG Param1,
+    _In_ LONG Param2,
+    _In_ LONG Param3,
+    _In_ LONG Param4,
+    _In_ LONG Param5,
+    _In_ LONG Param6,
+    _In_ LONG Param7,
+    _In_ LONG Param8
+    );
+typedef TEST_PARAMS2 *PTEST_PARAMS2;
+
+extern TEST_PARAMS1 TestParams1;
+extern TEST_PARAMS2 TestParams2;
+
+#endif
+
 DECLSPEC_NORETURN
 VOID
 WINAPI
@@ -53,6 +88,32 @@ mainCRTStartup()
     LONG ExitCode = 0;
 
 #if 1
+
+    TestParams1(1, 2, 3, 4, 5, 6, 7, 8);
+    TestParams2(1, 2, 3, 4, 5, 6, 7, 8);
+
+#endif
+
+#if 0
+    HMODULE Module;
+    PROC Proc;
+    PTEST_PARAMS1 TestParams1;
+    PTEST_PARAMS2 TestParams2;
+
+    Module = LoadLibraryA("T:\\Users\\Trent\\src\\tracer\\x64\\Release\\Asm.dll");
+    Proc = GetProcAddress(Module, "TestParams1");
+    TestParams1 = (PTEST_PARAMS1)Proc;
+
+    TestParams1(1, 2, 3, 4, 5, 6, 7, 8);
+
+    Proc = GetProcAddress(Module, "TestParams2");
+    TestParams2 = (PTEST_PARAMS2)Proc;
+
+    TestParams2(1, 2, 3, 4, 5, 6, 7, 8);
+
+#endif
+
+#if 0
     BOOL Success;
     ULONG SizeOfBuffer;
     PWSTR WideBuffer;
