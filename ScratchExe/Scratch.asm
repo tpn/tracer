@@ -54,13 +54,24 @@ Locals struct
     Temp2           dq      ?
     Temp3           dq      ?
     Temp4           dq      ?
-    SavedRbp        dq      ?
+
+    union
+        FirstNvRegister dq      ?
+        SavedRbp        dq      ?
+    ends
+
 Locals ends
+
+;
+; Exclude the space within the locals frame that was used for storing nv regs.
+;
+
+LOCALS_SIZE  equ ((sizeof Locals) + (Locals.FirstNvRegister - (sizeof Locals)))
 
         NESTED_ENTRY TestParams2, _TEXT$00
 
         rex_push_reg rbp
-        alloc_stack (sizeof Locals) - 8
+        alloc_stack LOCALS_SIZE
         set_frame rbp, Locals.SavedRbp
 
         END_PROLOGUE
@@ -87,7 +98,7 @@ Locals ends
 
         call TestParams1
 
-TeP90:  add rsp, (sizeof Locals) - 8
+TeP90:  add rsp, LOCALS_SIZE
         pop rbp
 
         ret
