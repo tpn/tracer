@@ -53,6 +53,10 @@ extern "C" {
 
 #include "../Rtl/DisableWarnings.h"
 
+//
+// Define page copying structures and function pointer typedefs.
+//
+
 typedef struct _PAGE_COPY_TYPE {
     ULONG Movsb:1;
     ULONG Movsw:1;
@@ -88,6 +92,15 @@ typedef struct _COPY_PAGES_FUNCTIONS {
 } COPY_PAGES_FUNCTIONS;
 typedef COPY_PAGES_FUNCTIONS *PCOPY_PAGES_FUNCTIONS;
 
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v1;
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v2;
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v3;
+ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v4;
+
+//
+// Define page filling function prototypes.
+//
+
 typedef
 VOID
 (FILL_PAGES)(
@@ -96,24 +109,7 @@ VOID
     _In_ ULONG NumberOfPages
     );
 typedef FILL_PAGES *PFILL_PAGES;
-
-
-//
-// Disable browsing information generation when declaring instances of
-// functions; if we don't do this, 'Go To Definition' ends up here, instead
-// of the implementation body in the relevant .c file.
-//
-
-#pragma component(browser, off)
-
-ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v1;
-ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v2;
-ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v3;
-ASM_API COPY_PAGES CopyPagesNonTemporalAvx2_v4;
-
 ASM_API FILL_PAGES FillPagesNonTemporalAvx2_v1;
-
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"
