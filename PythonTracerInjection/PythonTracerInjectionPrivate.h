@@ -77,15 +77,47 @@ typedef struct _PYTHON_TRACER_INJECTION_CONTEXT {
 } PYTHON_TRACER_INJECTION_CONTEXT;
 typedef PYTHON_TRACER_INJECTION_CONTEXT *PPYTHON_TRACER_INJECTION_CONTEXT;
 
+typedef union _PYTHON_TRACER_EVENT_NAMES {
+    struct {
+        UNICODE_STRING Event1;
+        UNICODE_STRING Event2;
+        UNICODE_STRING Event3;
+        UNICODE_STRING Event4;
+    };
+    UNICODE_STRING First;
+} PYTHON_TRACER_EVENT_NAMES;
+
+typedef union _PYTHON_TRACER_EVENT_HANDLES {
+    struct {
+        HANDLE Event1;
+        HANDLE Event2;
+        HANDLE Event3;
+        HANDLE Event4;
+    };
+    HANDLE First;
+} PYTHON_TRACER_EVENT_NAMES;
+
+typedef union _PYTHON_TRACER_EVENT_ERRORS {
+    struct {
+        ULONG Event1;
+        ULONG Event2;
+        ULONG Event3;
+        ULONG Event4;
+    };
+    ULONG First;
+} PYTHON_TRACER_EVENT_NAMES;
+
 typedef struct _PYTHON_TRACER_INJECTED_CONTEXT {
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     ULONG ParentProcessId;
     ULONG ParentThreadId;
+    ULONG SuspendedMainThreadId;
     HMODULE PythonDllModule;
-    UNICODE_STRING SharedMemoryName;
-    UNICODE_STRING ShutdownEventName;
-    UNICODE_STRING WorkAvailableEventName;
-    UNICODE_STRING RemoteThreadReadyEventName;
+
+
+    PYTHON_TRACER_INJECTION_EVENT_NAMES EventNames;
+
+    PINJECTION_EVENTS InjectionEvents;
 } PYTHON_TRACER_INJECTED_CONTEXT;
 typedef PYTHON_TRACER_INJECTED_CONTEXT *PPYTHON_TRACER_INJECTED_CONTEXT;
 

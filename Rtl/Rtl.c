@@ -304,6 +304,8 @@ RTL_API
 BOOL
 InitializeInjection(PRTL Rtl)
 {
+    PINJECTION_FUNCTIONS Functions;
+
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
@@ -339,6 +341,40 @@ InitializeInjection(PRTL Rtl)
         __debugbreak();
         return FALSE;
     }
+
+    Functions = &Rtl->InjectionFunctions;
+    Functions->RtlAddFunctionTable = Rtl->AddFunctionTable;
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->SetEvent = Rtl->SetEvent;
+    Functions->ResetEvent = Rtl->ResetEvent;
+    Functions->GetThreadContext = Rtl->GetThreadContext;
+    Functions->SetThreadContext = Rtl->SetThreadContext;
+    Functions->SuspendThread = Rtl->SuspendThread;
+    Functions->ResumeThread = Rtl->ResumeThread;
+    Functions->OpenEventW = Rtl->OpenEventW;
+    Functions->CloseHandle = Rtl->CloseHandle;
+    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
+    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
+    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
+    Functions->NtQueueApcThread = Rtl->NtQueueApcThread;
+    Functions->NtTestAlert = Rtl->NtTestAlert;
+    Functions->QueueUserAPC = Rtl->QueueUserAPC;
+    Functions->SleepEx = Rtl->SleepEx;
+    Functions->ExitThread = Rtl->ExitThread;
+    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
+    Functions->DeviceIoControl = Rtl->DeviceIoControl;
+    Functions->CreateFileW = Rtl->CreateFileW;
+    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
+    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
+    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
+    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
+    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
+    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
+    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
+    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
 
     return TRUE;
 }
@@ -660,8 +696,7 @@ FindCharsInString(
                 FastSetBit(Bitmap, Bit);
             }
         }
-    }
-    else {
+    } else {
         for (Index = 0; Index < NumberOfCharacters; Index++) {
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
@@ -3804,6 +3839,7 @@ InitializeRtl(
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
     Rtl->CopyFunction = CopyFunction;
+    //Rtl->CopyFunctionEx = CopyFunctionEx;
 
     Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
     Rtl->CreateRandomObjectNames = CreateRandomObjectNames;

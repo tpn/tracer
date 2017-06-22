@@ -1150,105 +1150,6 @@ VOID
 typedef RTL_DELETE_GROWABLE_FUNCTION_TABLE *PRTL_DELETE_GROWABLE_FUNCTION_TABLE;
 
 //
-// Our remote function copying support.
-//
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(CALLBACK ADJUST_THUNK_POINTERS)(
-    _In_ PRTL Rtl,
-    _In_ HANDLE TargetProcessHandle,
-    _In_ PBYTE OriginalThunkBuffer,
-    _In_ USHORT SizeOfThunkBufferInBytes,
-    _Inout_bytecap_(BytesRemaining) PBYTE TemporaryLocalThunkBuffer,
-    _In_ USHORT BytesRemaining,
-    _In_ PBYTE RemoteThunkBufferAddress,
-    _In_ PRUNTIME_FUNCTION RemoteRuntimeFunction,
-    _In_ PVOID RemoteCodeBaseAddress,
-    _In_ USHORT EntryCount,
-    _Out_ PUSHORT NumberOfBytesWritten,
-    _Out_ PBYTE *NewDestUserData,
-    _Out_ PBYTE *NewRemoteDestUserData
-    );
-typedef ADJUST_THUNK_POINTERS *PADJUST_THUNK_POINTERS;
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(CALLBACK ADJUST_USER_DATA_POINTERS)(
-    _In_ PRTL Rtl,
-    _In_ HANDLE TargetProcessHandle,
-    _In_ PBYTE OriginalDataBuffer,
-    _In_ USHORT SizeOfDataBufferInBytes,
-    _In_ PBYTE TemporaryLocalDataBuffer,
-    _In_ USHORT BytesRemaining,
-    _In_ PBYTE RemoteDataBufferAddress
-    );
-typedef ADJUST_USER_DATA_POINTERS *PADJUST_USER_DATA_POINTERS;
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(CALLBACK COPY_FUNCTION)(
-    _In_ PRTL Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ HANDLE TargetProcessHandle,
-    _In_ PVOID SourceFunction,
-    _In_opt_ PVOID SourceHandlerFunction,
-    _In_reads_bytes_(SizeOfThunkBufferInBytes) PBYTE ThunkBuffer,
-    _In_ USHORT SizeOfThunkBufferInBytes,
-    _In_reads_bytes_(SizeOfUserDataInBytes) PBYTE UserData,
-    _In_ USHORT SizeOfUserDataInBytes,
-    _In_ PADJUST_THUNK_POINTERS AdjustThunkPointers,
-    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
-    _Out_ PPVOID DestBaseCodeAddressPointer,
-    _Out_ PPVOID DestThunkBufferAddressPointer,
-    _Out_ PPVOID DestUserDataAddressPointer,
-    _Out_ PPVOID DestFunctionPointer,
-    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
-    _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
-    _When_(SourceHandlerFunction == NULL, _Out_opt_)
-        PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
-    _Out_ PULONG EntryCountPointer
-    );
-typedef COPY_FUNCTION *PCOPY_FUNCTION;
-
-typedef union _INJECTION_THUNK_FLAGS {
-    struct {
-        ULONG DebugBreakOnEntry:1;
-        ULONG Unused:31;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} INJECTION_THUNK_FLAGS;
-C_ASSERT(sizeof(INJECTION_THUNK_FLAGS) == sizeof(ULONG));
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(INJECT_THUNK)(
-    _In_ struct _RTL *Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ INJECTION_THUNK_FLAGS Flags,
-    _In_ HANDLE TargetProcessHandle,
-    _In_ PCUNICODE_STRING TargetModuleDllPath,
-    _In_ PCSTRING TargetFunctionName,
-    _In_ PBYTE UserData,
-    _In_ USHORT SizeOfUserDataInBytes,
-    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
-    _In_ PHANDLE RemoteThreadHandlePointer,
-    _In_ PULONG RemoteThreadIdPointer,
-    _In_ PPVOID RemoteBaseCodeAddress,
-    _In_ PPVOID RemoteUserDataAddress
-    );
-typedef INJECT_THUNK *PINJECT_THUNK;
-
-//
 // Process and Thread support.
 //
 
@@ -2270,6 +2171,34 @@ BOOL
 typedef WRITE_PROCESS_MEMORY *PWRITE_PROCESS_MEMORY;
 
 typedef
+BOOL
+(WINAPI DEVICE_IO_CONTROL)(
+    _In_ HANDLE hDevice,
+    _In_ DWORD dwIoControlCode,
+    _In_reads_bytes_opt_(nInBufferSize) LPVOID lpInBuffer,
+    _In_ DWORD nInBufferSize,
+    _Out_writes_bytes_to_opt_(nOutBufferSize, *lpBytesReturned)
+        LPVOID lpOutBuffer,
+    _In_ DWORD nOutBufferSize,
+    _Out_opt_ LPDWORD lpBytesReturned,
+    _Inout_opt_ LPOVERLAPPED lpOverlapped
+    );
+typedef DEVICE_IO_CONTROL *PDEVICE_IO_CONTROL;
+
+typedef
+HANDLE
+(WINAPI CREATE_FILE_W)(
+    _In_ LPCWSTR lpFileName,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwShareMode,
+    _In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    _In_ DWORD dwCreationDisposition,
+    _In_ DWORD dwFlagsAndAttributes,
+    _In_opt_ HANDLE hTemplateFile
+    );
+typedef CREATE_FILE_W *PCREATE_FILE_W;
+
+typedef
 _Ret_maybenull_
 HANDLE
 (WINAPI CREATE_FILE_MAPPING_W)(
@@ -2579,6 +2508,106 @@ BOOL
     );
 typedef DEBUG_SET_PROCESS_KILL_ON_EXIT *PDEBUG_SET_PROCESS_KILL_ON_EXIT;
 
+//
+// Injection implementation details (needs to be moved to Injection.h).
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK ADJUST_THUNK_POINTERS)(
+    _In_ PRTL Rtl,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PBYTE OriginalThunkBuffer,
+    _In_ USHORT SizeOfThunkBufferInBytes,
+    _Inout_bytecap_(BytesRemaining) PBYTE TemporaryLocalThunkBuffer,
+    _In_ USHORT BytesRemaining,
+    _In_ PBYTE RemoteThunkBufferAddress,
+    _In_ PRUNTIME_FUNCTION RemoteRuntimeFunction,
+    _In_ PVOID RemoteCodeBaseAddress,
+    _In_ USHORT EntryCount,
+    _Out_ PUSHORT NumberOfBytesWritten,
+    _Out_ PBYTE *NewDestUserData,
+    _Out_ PBYTE *NewRemoteDestUserData
+    );
+typedef ADJUST_THUNK_POINTERS *PADJUST_THUNK_POINTERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK ADJUST_USER_DATA_POINTERS)(
+    _In_ PRTL Rtl,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PBYTE OriginalDataBuffer,
+    _In_ USHORT SizeOfDataBufferInBytes,
+    _In_ PBYTE TemporaryLocalDataBuffer,
+    _In_ USHORT BytesRemaining,
+    _In_ PBYTE RemoteDataBufferAddress
+    );
+typedef ADJUST_USER_DATA_POINTERS *PADJUST_USER_DATA_POINTERS;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK COPY_FUNCTION)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PVOID SourceFunction,
+    _In_opt_ PVOID SourceHandlerFunction,
+    _In_reads_bytes_(SizeOfThunkBufferInBytes) PBYTE ThunkBuffer,
+    _In_ USHORT SizeOfThunkBufferInBytes,
+    _In_reads_bytes_(SizeOfUserDataInBytes) PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ PADJUST_THUNK_POINTERS AdjustThunkPointers,
+    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _Out_ PPVOID DestBaseCodeAddressPointer,
+    _Out_ PPVOID DestThunkBufferAddressPointer,
+    _Out_ PPVOID DestUserDataAddressPointer,
+    _Out_ PPVOID DestFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
+    _When_(SourceHandlerFunction == NULL, _Out_opt_)
+        PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    _Out_ PULONG EntryCountPointer
+    );
+typedef COPY_FUNCTION *PCOPY_FUNCTION;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(CALLBACK COPY_FUNCTION_EX)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PVOID SourceFunction,
+    _In_opt_ PVOID SourceHandlerFunction,
+    _In_reads_bytes_(SizeOfThunkBufferInBytes) PBYTE ThunkBuffer,
+    _In_ USHORT SizeOfThunkBufferInBytes,
+    _In_reads_bytes_(SizeOfUserDataInBytes) PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ USHORT DesiredNumberOfWritablePages,
+    _In_ PADJUST_THUNK_POINTERS AdjustThunkPointers,
+    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _Out_ PPVOID DestBaseCodeAddressPointer,
+    _Out_ PPVOID DestThunkBufferAddressPointer,
+    _Out_ PPVOID DestUserDataAddressPointer,
+    _Out_ PPVOID DestWritableDataAddressPointer,
+    _Out_ PPVOID DestUserWritableDataAddressPointer,
+    _Out_ PPVOID DestFunctionPointer,
+    _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
+    _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
+    _When_(SourceHandlerFunction == NULL, _Out_opt_)
+        PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
+    _Out_ PULONG EntryCountPointer,
+    _Out_ PUSHORT ActualNumberOfWritablePages
+    );
+typedef COPY_FUNCTION_EX *PCOPY_FUNCTION_EX;
+
 typedef
 BOOL
 (CREATE_RANDOM_OBJECT_NAMES)(
@@ -2595,6 +2624,364 @@ BOOL
     _Out_writes_bytes_all_(*SizeOfWideBufferInBytes) PPWSTR WideBufferPointer
     );
 typedef CREATE_RANDOM_OBJECT_NAMES *PCREATE_RANDOM_OBJECT_NAMES;
+
+//
+// Useful functions to have on hand during injection.
+//
+
+typedef struct _INJECTION_FUNCTIONS {
+    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
+    PLOAD_LIBRARY_EX_W LoadLibraryExW;
+    PGET_PROC_ADDRESS GetProcAddress;
+    PSET_EVENT SetEvent;
+    PRESET_EVENT ResetEvent;
+    PGET_THREAD_CONTEXT GetThreadContext;
+    PSET_THREAD_CONTEXT SetThreadContext;
+    PSUSPEND_THREAD SuspendThread;
+    PRESUME_THREAD ResumeThread;
+    POPEN_EVENT_W OpenEventW;
+    PCLOSE_HANDLE CloseHandle;
+    PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
+    PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;
+    POUTPUT_DEBUG_STRING_A OutputDebugStringA;
+    POUTPUT_DEBUG_STRING_W OutputDebugStringW;
+    PNT_QUEUE_APC_THREAD NtQueueApcThread;
+    PNT_TEST_ALERT NtTestAlert;
+    PQUEUE_USER_APC QueueUserAPC;
+    PSLEEP_EX SleepEx;
+    PEXIT_THREAD ExitThread;
+    PGET_EXIT_CODE_THREAD GetExitCodeThread;
+    PDEVICE_IO_CONTROL DeviceIoControl;
+    PCREATE_FILE_W CreateFileW;
+    PCREATE_FILE_MAPPING_W CreateFileMappingW;
+    POPEN_FILE_MAPPING_W OpenFileMappingW;
+    PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;
+    PFLUSH_VIEW_OF_FILE FlushViewOfFile;
+    PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;
+    PVIRTUAL_ALLOC_EX VirtualAllocEx;
+    PVIRTUAL_FREE_EX VirtualFreeEx;
+    PVIRTUAL_PROTECT_EX VirtualProtectEx;
+    PVIRTUAL_QUERY_EX VirtualQueryEx;
+} INJECTION_FUNCTIONS;
+typedef INJECTION_FUNCTIONS *PINJECTION_FUNCTIONS;
+typedef const INJECTION_FUNCTIONS *PCINJECTION_FUNCTIONS;
+
+
+typedef union _INJECTION_THUNK_FLAGS {
+    struct {
+        ULONG DebugBreakOnEntry:1;
+        ULONG HasInjectionObjects:1;
+        ULONG Unused:30;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} INJECTION_THUNK_FLAGS;
+C_ASSERT(sizeof(INJECTION_THUNK_FLAGS) == sizeof(ULONG));
+
+//
+// Define injection objects structure.
+//
+
+typedef enum _Enum_is_bitflag_ _INJECTION_OBJECT_ID {
+    NullInjectionObjectId               =        0,
+    EventInjectionObjectId              =        1,
+    FileMappingInjectionObjectId        =  (1 << 1),
+
+    //
+    // Make sure the expression within parenthesis below is identical to the
+    // last enumeration above.
+    //
+
+    InvalidInjectionObjectId            =  (1 << 1) + 1
+} INJECTION_OBJECT_ID;
+typedef INJECTION_OBJECT_ID *PINJECTION_OBJECT_ID;
+
+typedef union _INJECTION_OBJECT_TYPE {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Event:1;
+        ULONG FileMapping:1;
+        ULONG Unused:30;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+    INJECTION_OBJECT_ID AsId;
+} INJECTION_OBJECT_TYPE;
+C_ASSERT(sizeof(INJECTION_OBJECT_TYPE) == sizeof(ULONG));
+typedef INJECTION_OBJECT_TYPE *PINJECTION_OBJECT_TYPE;
+
+typedef struct _INJECTION_OBJECT_EVENT {
+    HANDLE Handle;
+} INJECTION_OBJECT_EVENT;
+
+typedef struct _INJECTION_OBJECT_FILE_MAPPING {
+    UNICODE_STRING FileName;
+    ULONG DesiredAccess;
+    ULONG ShareMode;
+    ULONG CreationDisposition;
+    ULONG FlagsAndAttributes;
+    HANDLE FileHandle;
+    HANDLE MappingHandle;
+    LARGE_INTEGER FileOffset;
+    LARGE_INTEGER MappingSize;
+    PVOID BaseAddress;
+} INJECTION_OBJECT_FILE_MAPPING;
+
+typedef union _INJECTION_OBJECT_CONTEXT {
+    INJECTION_OBJECT_EVENT AsEvent;
+    INJECTION_OBJECT_FILE_MAPPING AsFileMapping;
+} INJECTION_OBJECT_CONTEXT;
+typedef INJECTION_OBJECT_CONTEXT *PINJECTION_OBJECT_CONTEXT;
+
+typedef struct _INJECTION_OBJECT {
+    PUNICODE_STRING Name;
+    PINJECTION_OBJECT_TYPE Type;
+    PINJECTION_OBJECT_CONTEXT Context;
+    PVOID Unused;
+} INJECTION_OBJECT;
+typedef INJECTION_OBJECT *PINJECTION_OBJECT;
+
+typedef union _INJECTION_OBJECTS_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} INJECTION_OBJECTS_FLAGS;
+C_ASSERT(sizeof(INJECTION_OBJECTS_FLAGS) == sizeof(ULONG));
+
+typedef struct _INJECTION_OBJECTS {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _INJECTION_OBJECTS))
+        USHORT StructSizeInBytes;
+
+    //
+    // Number of objects captured by this structure.  This value governs the
+    // number of elements in the arrays for names, contexts etc.
+    //
+
+    USHORT NumberOfObjects;
+
+    //
+    // Total number of bytes allocated in support of this structure.  This will
+    // include all UNICODE_STRING structures and backing wide character buffers,
+    // and all handle and error code arrays, plus the size of this structure.
+    //
+
+    ULONG TotalAllocSizeInBytes;
+
+    //
+    // Flags related to this structure.
+    //
+
+    INJECTION_OBJECTS_FLAGS Flags;
+
+    //
+    // Base addresses of arrays.
+    //
+
+    PINJECTION_OBJECT Objects;
+    PUNICODE_STRING Names;
+    PINJECTION_OBJECT_TYPE Types;
+    PINJECTION_OBJECT_CONTEXT Contexts;
+    PULONG Errors;
+} INJECTION_OBJECTS;
+typedef INJECTION_OBJECTS *PINJECTION_OBJECTS;
+
+//
+// Define the length of the Base64-encoded random wide character strings used
+// for object names, including the trailing NULL.
+//
+
+#define INJECTION_OBJECT_NAME_LENGTH_IN_CHARS 64
+
+FORCEINLINE
+VOID
+CalculateInjectionObjectsAllocationSize(
+    _In_ USHORT NumberOfObjects,
+    _Outptr_result_nullonfailure_ PULONG AllocationSize
+    )
+{
+    ULONG Size;
+
+    //
+    // Account for the size of the structure.
+    //
+
+    Size = sizeof(INJECTION_OBJECTS);
+
+    //
+    // Account for the array of UNICODE_STRING structures used to capture each
+    // object's name.
+    //
+
+    Size += sizeof(UNICODE_STRING) * NumberOfObjects;
+
+    //
+    // Account for the 64 characters consumed by each wide character buffer
+    // for the underlying event name (wired up to each UNICODE_STRING).
+    //
+
+    Size += (
+        INJECTION_OBJECT_NAME_LENGTH_IN_CHARS *
+        sizeof(WCHAR) * NumberOfObjects
+    );
+
+    //
+    // Account for the array of INJECTION_OBJECT_CONTEXT structures.
+    //
+
+    Size += sizeof(INJECTION_OBJECT_CONTEXT) * NumberOfObjects;
+
+    //
+    // Account for the array of error codes.
+    //
+
+    Size += sizeof(ULONG) * NumberOfObjects;
+
+    //
+    // Update the caller's pointer.
+    //
+
+    *AllocationSize = Size;
+}
+
+
+#define INJECTION_OBJECT_NAME_LENGTH_IN_CHARS 64
+
+FORCEINLINE
+VOID
+CalculateInjectionObjectsAllocationSize2(
+    _In_ USHORT NumberOfObjects,
+    _Out_ PULONG ReadonlyAllocationSizeInBytes,
+    _Out_ PULONG WritableAllocationSizeInBytes
+    )
+{
+    ULONG ReadonlySize;
+    ULONG WritableSize;
+
+    //
+    // Account for the size of the structure.
+    //
+
+    ReadonlySize = sizeof(INJECTION_OBJECTS);
+
+    //
+    // Account for the array of UNICODE_STRING structures used to capture the
+    // object names.
+    //
+
+    ReadonlySize += sizeof(UNICODE_STRING) * NumberOfObjects;
+
+    //
+    // Account for the characters consumed by each wide character buffer
+    // for the underlying object name (wired up to each UNICODE_STRING).
+    //
+
+    ReadonlySize += (
+        INJECTION_OBJECT_NAME_LENGTH_IN_CHARS *
+        sizeof(WCHAR) * NumberOfObjects
+    );
+
+    //
+    // Account for the array of handles for each object.
+    //
+
+    ReadonlySize += sizeof(HANDLE) * NumberOfObjects;
+
+    //
+    // Account for the array of error codes.
+    //
+
+    ReadonlySize += sizeof(ULONG) * NumberOfObjects;
+
+    //
+    // Account for the array of object types.
+    //
+
+    ReadonlySize += sizeof(INJECTION_OBJECT_TYPE) * NumberOfObjects;
+
+    //
+    // Update the caller's readonly size pointer.
+    //
+
+    *ReadonlyAllocationSizeInBytes = ReadonlySize;
+
+    //
+    // Now, calculate the size of the writable data.
+    //
+
+    //
+    // Account for the array of opaque pointers for each object.
+    //
+
+    WritableSize = sizeof(PVOID) * NumberOfObjects;
+
+    //
+    // Account for the array of error codes.
+    //
+
+    WritableSize += sizeof(ULONG) * NumberOfObjects;
+
+    //
+    // Update the caller's writable size pointer.
+    //
+
+    *WritableAllocationSizeInBytes = WritableSize;
+}
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INJECT_THUNK)(
+    _In_ struct _RTL *Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ INJECTION_THUNK_FLAGS Flags,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PCUNICODE_STRING TargetModuleDllPath,
+    _In_ PCSTRING TargetFunctionName,
+    _In_ PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _In_ PHANDLE RemoteThreadHandlePointer,
+    _In_ PULONG RemoteThreadIdPointer,
+    _In_ PPVOID RemoteBaseCodeAddress,
+    _In_ PPVOID RemoteUserDataAddress
+    );
+typedef INJECT_THUNK *PINJECT_THUNK;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INJECT_THUNK_EX)(
+    _In_ struct _RTL *Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ INJECTION_THUNK_FLAGS Flags,
+    _In_ HANDLE TargetProcessHandle,
+    _In_ PCUNICODE_STRING TargetModuleDllPath,
+    _In_ PCSTRING TargetFunctionName,
+    _In_ PBYTE UserData,
+    _In_ USHORT SizeOfUserDataInBytes,
+    _In_ USHORT NumberOfWritablePages,
+    _In_opt_ USHORT NumberOfInjectionEvents,
+    _In_opt_ USHORT OffsetOfInjectionEventsPointerFromUserData,
+    _In_opt_ USHORT NumberOfInjectionFileMappings,
+    _In_opt_ USHORT OffsetOfInjectionFileMappingsPointerFromUserData,
+    _In_opt_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    _Out_ PHANDLE RemoteThreadHandlePointer,
+    _Out_ PULONG RemoteThreadIdPointer,
+    _Out_ PPVOID RemoteBaseCodeAddress,
+    _Out_ PPVOID RemoteUserDataAddress,
+    _Out_ PPVOID RemoteWritableDataAddress,
+    _Out_ PPVOID RemoteUserWritableDataAddress
+    );
+typedef INJECT_THUNK_EX *PINJECT_THUNK_EX;
+
 
 #include "Injection.h"
 
@@ -4551,6 +4938,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     POPEN_EVENT_W OpenEventW;                                                                          \
     PSET_EVENT SetEvent;                                                                               \
     PRESET_EVENT ResetEvent;                                                                           \
+    PSUSPEND_THREAD SuspendThread;                                                                     \
+    PRESUME_THREAD ResumeThread;                                                                       \
     PGET_THREAD_CONTEXT GetThreadContext;                                                              \
     PSET_THREAD_CONTEXT SetThreadContext;                                                              \
     PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
@@ -4561,6 +4950,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PGET_EXIT_CODE_THREAD GetExitCodeThread;                                                           \
     PTERMINATE_THREAD TerminateThread;                                                                 \
     PQUEUE_USER_APC QueueUserAPC;                                                                      \
+    PDEVICE_IO_CONTROL DeviceIoControl;                                                                \
+    PCREATE_FILE_W CreateFileW;                                                                        \
     PCREATE_FILE_MAPPING_W CreateFileMappingW;                                                         \
     POPEN_FILE_MAPPING_W OpenFileMappingW;                                                             \
     PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;                                                              \
@@ -6142,10 +6533,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PRTL_SET_INJECTION_THUNK_DLL_PATH SetInjectionThunkDllPath;
 
     PCOPY_FUNCTION CopyFunction;
+    PCOPY_FUNCTION_EX CopyFunctionEx;
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
 
     PVOID InjectionThunkRoutine;
     PINJECT_THUNK InjectThunk;
+    PINJECT_THUNK_EX InjectThunkEx;
     PINITIALIZE_INJECTION InitializeInjection;
     PADJUST_THUNK_POINTERS AdjustThunkPointers;
 
@@ -6190,6 +6583,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
             _DBGENG_FUNCTIONS_HEAD
         };
     };
+
+    INJECTION_FUNCTIONS InjectionFunctions;
 
 #ifdef _RTL_TEST
     PTEST_LOAD_SYMBOLS TestLoadSymbols;
