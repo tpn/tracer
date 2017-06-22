@@ -38,16 +38,61 @@ Locals struct
     ; the stack.
     ;
 
-    CalleeParam5    dq      ?
-    CalleeParam6    dq      ?
-    CalleeParam7    dq      ?
-    CalleeParam8    dq      ?
+    union
+
+        ;
+        ; Generic 5th parameter.
+        ;
+
+        CalleeParam5        dq      ?
+
+        ;
+        ; Used by MapViewOfFileExNuma().
+        ;
+
+        NumberOfBytesToMap  dq  ?
+
+    ends
+
+    union
+
+        ;
+        ; Generic 6th parameter.
+        ;
+
+        CalleeParam6            dq      ?
+
+        ;
+        ; Used by MapViewOfFileExNuma().
+        ;
+
+        PreferredBaseAddress    dq      ?
+
+    ends
+
+    union
+
+        ;
+        ; Generic 7th parameter.
+        ;
+
+        CalleeParam7            dq      ?
+
+        ;
+        ; Used by MapViewOfFileExNuma().
+        ;
+
+        PreferredNumaNode       dq      ?
+
+    ends
+
+    CalleeParam8            dq      ?
 
     ;
     ; Define local variables.
     ;
 
-    Temp1           dq      ?
+    Temp1                   dq      ?
 
     ;
     ; Define non-volatile register storage.
@@ -118,6 +163,17 @@ LARGE_INTEGER union
 LARGE_INTEGER ends
 
 ;
+; Define the APC structure.
+;
+
+APC struct
+    Routine     dq      ?
+    Argument1   dq      ?
+    Argument2   dq      ?
+    Argument3   dq      ?
+APC ends
+
+;
 ; Define the INJECTION_FUNCTIONS structure.  This encapsulates all function
 ; pointers available for use as part of injection.
 ;
@@ -126,6 +182,8 @@ INJECTION_FUNCTIONS struct
     RtlAddFunctionTable     dq      ?
     LoadLibraryExW          dq      ?
     GetProcAddress          dq      ?
+    GetLastError            dq      ?
+    SetLastError            dq      ?
     SetEvent                dq      ?
     ResetEvent              dq      ?
     GetThreadContext        dq      ?
@@ -149,6 +207,7 @@ INJECTION_FUNCTIONS struct
     CreateFileMappingW      dq      ?
     OpenFileMappingW        dq      ?
     MapViewOfFileEx         dq      ?
+    MapViewOfFileExNuma     dq      ?
     FlushViewOfFile         dq      ?
     UnmapViewOfFileEx       dq      ?
     VirtualAllocEx          dq      ?
@@ -162,19 +221,26 @@ INJECTION_FUNCTIONS ends
 ;
 
 INJECTION_OBJECT_EVENT struct
-    Handle  dq	?
+    EventName       PUNICODE_STRING ?
+    EventHandle     dq	            ?
+    DesiredAccess   dd              ?
+    InheritHandle   dd              ?
 INJECTION_OBJECT_EVENT ends
 
 INJECTION_OBJECT_FILE_MAPPING struct
-    FileName                UNICODE_STRING      { }
+    MappingName             PUNICODE_STRING     ?
+    MappingHandle           dq                  ?
     DesiredAccess           dd                  ?
+    InheritHandle           dd                  ?
     ShareMode               dd                  ?
     CreationDisposition     dd                  ?
     FlagsAndAttributes      dd                  ?
-    FileHandle              dq                  ?
-    MappingHandle           dq                  ?
-    FileOffset              LARGE_INTEGER       { }
-    MappingSize             LARGE_INTEGER       { }
+    AllocationType          dd                  ?
+    PreferredNode           dd                  ?
+    Padding                 dd                  ?
+    FileOffset              dq                  ?
+    MappingSize             dq                  ?
+    PreferredBaseAddress    dq                  ?
     BaseAddress             dq                  ?
 INJECTION_OBJECT_FILE_MAPPING ends
 
@@ -202,8 +268,8 @@ INJECTION_OBJECTS struct
     SizeOfInjectionObjectContextInBytes     dw                          ?
     TotalAllocSizeInBytes                   dd                          ?
     Flags                                   dd                          ?
-    Objects                                 PINJECTION_OBJECT           ?
-    Names                                   PUNICODE_STRING             ?
+    FirstObject                             PINJECTION_OBJECT           ?
+    FirstName                               PUNICODE_STRING             ?
     Types                                   PINJECTION_OBJECT_TYPE      ?
     Contexts                                PINJECTION_OBJECT_CONTEXT   ?
     Errors                                  dq                          ?
@@ -217,7 +283,10 @@ PINJECTION_OBJECTS typedef ptr INJECTION_OBJECT
 
 Object typedef INJECTION_OBJECT
 Objects typedef INJECTION_OBJECTS
+Unicode typedef UNICODE_STRING
 Functions typedef INJECTION_FUNCTIONS
+Event typedef INJECTION_OBJECT_EVENT
+FileMapping typedef INJECTION_OBJECT_FILE_MAPPING
 
 ;
 ; Define the RTL_INJECTION_THUNK_CONTEXT structure.
@@ -233,6 +302,7 @@ Thunk struct
     InjectionObjects        PINJECTION_OBJECTS      ?
     ModulePath              UNICODE_STRING          { }
     FunctionName            STRING                  { }
+    UserApc                 APC                     { }
 Thunk ends
 
 ;
@@ -242,6 +312,7 @@ Thunk ends
 DebugBreakOnEntry           equ     1
 HasInjectionObjects         equ     2
 HasModuleAndFunction        equ     4
+HasApc                      equ     8
 
 ;
 ; Define injection object types.
@@ -360,7 +431,7 @@ InvalidInjectionContext     equ     1003
 
 @@:     int     3
         mov     rax, RtlAddFunctionTableFailed          ; Load error code.
-        jmp     short Inj90                             ; Jump to epilogue.
+        jmp     Inj90                                   ; Jump to epilogue.
 
 ;
 ; Check to see if the thunk has any injection objects.  If it doesn't, proceed
@@ -369,7 +440,7 @@ InvalidInjectionContext     equ     1003
 
 Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         test    r8, HasInjectionObjects                 ; Any injection objects?
-        jnz     short Inj60                             ; No; check mod+func.
+        jnz     Inj60                                   ; No; check mod+func.
 
 ;
 ; The injection thunk features one or more injection objects.  An object can be
@@ -378,6 +449,9 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
 ;
 ; N.B. Register use for this loop is as follows:
 ;
+;   rbx - Supplies the address of the active INJECTION_OBJECT structure.
+;
+;   rbp - Supplies the address of the active INJECTION_OBJECT_CONTEXT structure.
 ;
 ;   r14 - Supplies the address of the INJECTION_OBJECTS structure.
 ;
@@ -404,7 +478,8 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         jnz     short @F                                ; Pointer is valid.
         int     3                                       ; Break because NULL ptr
 
-@@:     mov     r15, Objects.NumberOfObjects[r14]       ; Load # of objects.
+@@:     xor     r15, r15                                ; Clear dependency.
+        mov     r15w, Objects.NumberOfObjects[r14]      ; Load # of objects.
         test    r15, r15                                ; At least 1 objects?
         jnz     short @F                                ; Yes, continue.
         int     3                                       ; No, break.
@@ -418,60 +493,195 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         cmp     rax, (sizeof INJECTION_OBJECT_CONTEXT)  ; Compare ctx size.
         je      short @F                                ; Sizes are equal, cont.
         int     3                                       ; Sizes != equal, break.
+        jmp     Inj90                                   ; Jump to end.
 
 ;
 ; Invariant checks passed.  Zero our loop counter (rsi) and load the base
 ; address of the injection objects array into rdi.
 ;
 
-        xor     rsi, rsi                                ; Zero loop counter.
-        mov     rdi, Objects.Object[r14]                ; Load base address.
+        xor     rsi, rsi                                  ; Zero loop counter.
+        mov     rdi, Objects.FirstObject[r14]             ; Load first address.
 
 ;
-; Top of loop.  Load next injection object (into rbx), load the type into r9d,
-; determine whether we're dealing with an event or file mapping handle and
-; process accordingly.
+; Top of loop.  Load next injection object (into rbx), load the context into
+; rbp, the type into r9d, determine whether we're dealing with an event or
+; file mapping handle, and process accordingly.
 ;
+
+        align   16
 
 Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
-        movsx   r9, dword ptr Object.ObjectType[rbx]    ; Load object type.
+        mov     rbp, Object.Context[rbx]                ; Load context.
+        mov     rax, Object.ObjectType[rbx]             ; Load ptr to obj type.
+        mov     r9d, dword ptr [rax]                    ; Load object type.
         cmp     r9d, EventObjectType                    ; Is event type?
-        jne     short Inj40                             ; No; try next type.
+        jne     short Inj40                             ; No; try file mapping.
 
 ;
-; This is an event object type.  We need to open the event handle via the name
-; provided in the array.
+; This is an event object type.  Load the arguments for OpenEventW into relevant
+; registers and invoke the function.
 ;
 
-Inj30:
+Inj30:  mov     ecx, Event.DesiredAccess[rbp]           ; Load desired access.
+        mov     edx, Event.InheritHandle[rbp]           ; Load inherit handle.
+        mov     rax, Event.EventName[rbp]               ; Load unicode string.
+        mov     r8, Unicode.Buffer[rax]                 ; Load event name.
+        call    Functions.OpenEventW[r13]               ; Call OpenEventW().
+        test    rax, rax                                ; Check result.
+        jnz     short @F                                ; Valid handle, proceed.
+        int     3                                       ; Invalid handle, brk.
+        call    Functions.GetLastError[r13]             ; Get last error.
+        jmp     Inj90                                   ; Jump to end.
+
+@@:     mov     Event.EventHandle[rbp], rax             ; Save event handle.
+        jmp     Inj50                                   ; Jump to loop bottom.
 
 ;
-; This is a file mapping type.
+; This is a file mapping type.  We need to open the file mapping, then map it.
 ;
 
-Inj40:
+Inj40:  mov     ecx, FileMapping.DesiredAccess[rbp]     ; Load desired access.
+        mov     edx, FileMapping.InheritHandle[rbp]     ; Load inherit handle.
+        mov     rax, FileMapping.MappingName[rbp]       ; Load unicode string.
+        mov     r8, Unicode.Buffer[rax]                 ; Load mapping name.
+        call    Functions.OpenFileMappingW[r13]         ; Call function.
+        test    rax, rax                                ; Check result.
+        jnz     short @F                                ; Valid handle, proceed.
+        int     3                                       ; Invalid handle, brk.
+        call    Functions.GetLastError[r13]             ; Get last error.
+        jmp     Inj90                                   ; Jump to end.
+
+;
+; We successfully opened the file mapping.  Save the handle, then map it.  For
+; now, we use MapViewOfFileExNuma(), although the underlying file mapping struct
+; has support for AllocationType, PageProtection and PreferredNode such that
+; MapViewOfFileNuma2() could eventually be used.
+;
+
+@@:     mov     qword ptr FileMapping.MappingHandle[rbp], rax ; Save handle.
+
+;
+; Load the preferred base address into the relevant stack offset now, outside
+; of the main body that prepares the rest of the arguments.  This allows us to
+; override the address if it couldn't be granted and retry the mapping with
+; relative ease.
+;
+
+        mov     rax, FileMapping.PreferredBaseAddress[rbp]  ; Load pref. BA.
+        mov     Locals.PreferredBaseAddress[rsp], rax       ; ...as 6th arg.
+
+Inj45:  mov     rcx, FileMapping.MappingHandle[rbp]     ; Load handle.
+        xor     edx, edx                                ; Clear reg.
+        mov     edx, FileMapping.DesiredAccess[rbp]     ; Load desired access.
+
+;
+; N.B. The file offset requires a bit of LARGE_INTEGER juggling.
+;
+
+        mov     rax, FileMapping.FileOffset[rbp]        ; Load file offset.
+        mov     r8, rax                                 ; Load offset into r8.
+        shr     r8, 32                                  ; Load high offset.
+        xor     r9, r9                                  ; Clear dependency.
+        mov     r9d, eax                                ; Load low offset.
+
+;
+; Continue loading arguments; preferred address has already been done (see our
+; comment above), so that leaves mapping size and preferred NUMA node.  All
+; arguments herein are provided via the stack.
+;
+
+        mov     rax, FileMapping.MappingSize[rbp]       ; Load mapping size.
+        mov     Locals.NumberOfBytesToMap[rsp], rax     ; ...as 5th arg.
+        mov     eax, FileMapping.PreferredNode[rbp]     ; Load pref NN.
+        mov     Locals.PreferredNumaNode[rsp], rax      ; ...as 7th arg.
+
+;
+; Call the function and test to see if we got a valid (non-NULL) address back.
+;
+
+        call    Functions.MapViewOfFileExNuma[r13]      ; Invoke.
+        test    rax, rax                                ; Check return value.
+        jz      short Inj47                             ; Invalid addr.
+
+;
+; The view was mapped successfully.  Save the base address back to the context,
+; then continue the loop by falling through.
+;
+
+        mov     FileMapping.BaseAddress[rbp], rax       ; Save base addr.
+        jmp     short Inj50                             ; Jump to loop bottom.
+
+;
+; The mapping attempt failed.  If we provided a preferred base address, try the
+; request again
+;
+
+Inj47:  mov     rax, Locals.PreferredBaseAddress[rbp]   ; Load pref. base.
+        test    rax, rax                                ; Is address NULL?
+        jnz     short @F                                ; No, jump to retry.
+
+;
+; Preferred base address was NULL and the call still failed, so the failure
+; wasn't a result of not being able to assign the address we wanted.  This
+; is considered fatal, so debugbreak, get last error (to help when stepping
+; via debugger), then jump to end.
+;
+
+        int     3                                       ; Invalid addr, break.
+        call    Functions.GetLastError[r13]             ; Get last error.
+        jmp     Inj90                                   ; Jump to end.
+
+;
+; Clear the preferred address and re-try the mapping.
+;
+
+@@:     xor     rax, rax                                        ; Clear rax.
+        mov     qword ptr Locals.PreferredBaseAddress[rbp], rax ; Zero address.
+        jmp     short Inj45
 
 ;
 ; Bottom of the loop.  Update loop counter and determine if there are more
 ; objects to process.  If there are, continue back at the start (Inj20).  If
-; not, jump to the mod+func processing logic (Inj60).
+; not, fall through to the APC test.
 ;
 
 Inj50:  add     rsi, 1                                  ; Index++
         cmp     rsi, r15                                ; Compare to # objects.
-        jl      short Inj20                             ; Index < Count, cont.
+        jl      Inj20                                   ; Index < Count, cont.
 
 ;
-; Intentional follow-on to mod+func processing logic.
+; Intentional follow-on to to APC test logic.
 ;
+
+;
+; Check to see if we've been requested to call a generic APC routine.
+;
+
+Inj55:  mov     r8d, Thunk.Flags[r12]                   ; Move flags into r8d.
+        test    r8d, HasApc                             ; APC flag set?
+        jz      short Inj60                             ; No; jump to mod+fn.
+
+;
+; A generic APC routine has been requested.  We pass the thunk as the first
+; parameter irrespective of what the value of Argument1 is.  The remaining two
+; arguments are passed along.
+;
+
+Inj57:  mov     rcx, r12                                ; Load thunk into arg 1.
+        mov     rdx, Thunk.UserApc.Argument2[r12]       ; Load arg 2.
+        mov     r8, Thunk.UserApc.Argument3[r12]        ; Load arg 3.
+        mov     rax, Thunk.UserApc.Routine[r12]         ; Load the routine.
+        call    rax                                     ; Call it.
 
 ;
 ; Check to see if we've been requested to load a module and resolve a function.
 ;
 
-Inj60:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
+Inj60:  xor     rax, rax                                ; Clear rax.
+        movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         test    r8, HasModuleAndFunction                ; Has module+func?
-        jz      Inj90                                   ; No; jump to end.
+        jz      Inj90                                   ; No; we're done.
 
 ;
 ; Prepare for a LoadLibraryW() call against the module path in the thunk.
@@ -521,7 +731,7 @@ Inj80:  movsx   r8, word ptr Thunk.UserDataOffset[r12]  ; Load offset.
 Inj90:
 
 ;
-; Restore non-volatile registers prior to defining our epilogue.
+; Restore non-volatile registers.
 ;
 
         mov     rbp, Locals.SavedRbp[rsp]

@@ -608,9 +608,7 @@ typedef struct _INJECTION_THUNK_CONTEXT {
     USHORT EntryCount;
     USHORT UserDataOffset;
     USHORT UserWritableDataOffset;
-    USHORT NumberOfEvents;
-    USHORT NumberOfFileMappings;
-    USHORT NumberOfInjectionFunctions;
+    USHORT Unused;
 
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseCodeAddress;

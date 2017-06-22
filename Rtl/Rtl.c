@@ -346,6 +346,8 @@ InitializeInjection(PRTL Rtl)
     Functions->RtlAddFunctionTable = Rtl->AddFunctionTable;
     Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
     Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->GetLastError = Rtl->GetLastError;
+    Functions->SetLastError = Rtl->SetLastError;
     Functions->SetEvent = Rtl->SetEvent;
     Functions->ResetEvent = Rtl->ResetEvent;
     Functions->GetThreadContext = Rtl->GetThreadContext;
@@ -369,6 +371,7 @@ InitializeInjection(PRTL Rtl)
     Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
     Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
     Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->MapViewOfFileExNuma = Rtl->MapViewOfFileExNuma;
     Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
     Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
     Functions->VirtualAllocEx = Rtl->VirtualAllocEx;

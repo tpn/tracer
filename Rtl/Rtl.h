@@ -2344,6 +2344,13 @@ ULONG
 typedef GET_LAST_ERROR *PGET_LAST_ERROR;
 
 typedef
+VOID
+(WINAPI SET_LAST_ERROR)(
+    ULONG
+    );
+typedef SET_LAST_ERROR *PSET_LAST_ERROR;
+
+typedef
 BOOL
 (WINAPI SET_EVENT)(
     _In_ HANDLE hEvent
@@ -2633,6 +2640,8 @@ typedef struct _INJECTION_FUNCTIONS {
     PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
     PLOAD_LIBRARY_EX_W LoadLibraryExW;
     PGET_PROC_ADDRESS GetProcAddress;
+    PGET_LAST_ERROR GetLastError;
+    PSET_LAST_ERROR SetLastError;
     PSET_EVENT SetEvent;
     PRESET_EVENT ResetEvent;
     PGET_THREAD_CONTEXT GetThreadContext;
@@ -2656,6 +2665,7 @@ typedef struct _INJECTION_FUNCTIONS {
     PCREATE_FILE_MAPPING_W CreateFileMappingW;
     POPEN_FILE_MAPPING_W OpenFileMappingW;
     PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;
+    PMAP_VIEW_OF_FILE_EX_NUMA MapViewOfFileExNuma;
     PFLUSH_VIEW_OF_FILE FlushViewOfFile;
     PUNMAP_VIEW_OF_FILE_EX UnmapViewOfFileEx;
     PVIRTUAL_ALLOC_EX VirtualAllocEx;
@@ -2710,23 +2720,34 @@ C_ASSERT(sizeof(INJECTION_OBJECT_TYPE) == sizeof(ULONG));
 typedef INJECTION_OBJECT_TYPE *PINJECTION_OBJECT_TYPE;
 
 typedef struct _INJECTION_OBJECT_EVENT {
+    PUNICODE_STRING EventName;
     HANDLE Handle;
+    ULONG DesiredAccess;
+    ULONG InheritHandle;
 } INJECTION_OBJECT_EVENT;
 
 typedef struct _INJECTION_OBJECT_FILE_MAPPING {
-    UNICODE_STRING FileName;
+    PUNICODE_STRING MappingName;
+    HANDLE MappingHandle;
     ULONG DesiredAccess;
+    ULONG InheritHandle;
     ULONG ShareMode;
     ULONG CreationDisposition;
     ULONG FlagsAndAttributes;
-    HANDLE FileHandle;
-    HANDLE MappingHandle;
+    ULONG AllocationType;
+    ULONG PageProtection;
+    ULONG PreferredNumaNode;
     LARGE_INTEGER FileOffset;
     LARGE_INTEGER MappingSize;
+    PVOID PreferredBaseAddress;
     PVOID BaseAddress;
 } INJECTION_OBJECT_FILE_MAPPING;
 
 typedef union _INJECTION_OBJECT_CONTEXT {
+    struct {
+        PUNICODE_STRING ObjectName;
+        HANDLE ObjectHandle;
+    };
     INJECTION_OBJECT_EVENT AsEvent;
     INJECTION_OBJECT_FILE_MAPPING AsFileMapping;
 } INJECTION_OBJECT_CONTEXT;
@@ -4951,6 +4972,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PCLOSE_HANDLE CloseHandle;                                                                         \
     POPEN_EVENT_A OpenEventA;                                                                          \
     POPEN_EVENT_W OpenEventW;                                                                          \
+    PGET_LAST_ERROR GetLastError;                                                                      \
+    PSET_LAST_ERROR SetLastError;                                                                      \
     PSET_EVENT SetEvent;                                                                               \
     PRESET_EVENT ResetEvent;                                                                           \
     PSUSPEND_THREAD SuspendThread;                                                                     \

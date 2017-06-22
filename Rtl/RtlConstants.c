@@ -160,6 +160,8 @@ CONST PCSTR RtlFunctionNames[] = {
     "CloseHandle",
     "OpenEventA",
     "OpenEventW",
+    "GetLastError",
+    "SetLastError",
     "SetEvent",
     "ResetEvent",
     "SuspendThread",
