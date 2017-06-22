@@ -26,6 +26,7 @@ CopyFunction(
     USHORT SizeOfThunkBufferInBytes,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
+    USHORT DesiredNumberOfWritablePages,
     PADJUST_THUNK_POINTERS AdjustThunkPointers,
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
     PPVOID DestBaseCodeAddressPointer,
@@ -34,7 +35,8 @@ CopyFunction(
     PPVOID DestFunctionPointer,
     PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
     PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
-    PULONG EntryCountPointer
+    PULONG EntryCountPointer,
+    PULONG ActualNumberOfWritablePages
     )
 {
     BOOL Success = FALSE;
@@ -52,18 +54,22 @@ CopyFunction(
     SHORT NumberOfDataBytesRemaining;
     USHORT NumberOfDataBytesWritten;
     ULONG OldProtection;
+    ULONG InjectionEventsAllocSizeInBytes;
     USHORT EntryCount;
     SIZE_T NumberOfBytesWritten;
     HANDLE ProcessHandle = GetCurrentProcess();
     const ULONG OnePage = 1 << PAGE_SHIFT;
     const ULONG TwoPages = 2 << PAGE_SHIFT;
+    const ULONG ThreePages = 3 << PAGE_SHIFT;
     PVOID SourceFunc;
     PVOID HandlerFunc;
     PVOID HandlerFunction;
     PVOID LocalBaseCodeAddress = NULL;
     PVOID LocalBaseDataAddress = NULL;
+    PVOID LocalWritableBaseDataAddress = NULL;
     PVOID RemoteBaseCodeAddress = NULL;
     PVOID RemoteBaseDataAddress = NULL;
+    PVOID RemoteWritableBaseDataAddress = NULL;
     PRUNTIME_FUNCTION DestRuntimeFunction;
     PRUNTIME_FUNCTION DestHandlerRuntimeFunction;
     PRUNTIME_FUNCTION SourceRuntimeFunction;
@@ -91,25 +97,14 @@ CopyFunction(
     PBYTE LocalBaseData;
     PBYTE RemoteDestUserData;
     PBYTE RemoteDestBaseData;
+    PBYTE RemoteDestWritableData;
     PBYTE DestThunkBuffer;
     PBYTE DestThunkBufferEnd;
     PBYTE RemoteDestThunkBuffer;
     PBYTE NewDestUserData;
+    PBYTE NewDestWritableUserData;
     PBYTE NewRemoteDestUserData;
-
-    struct {
-        LARGE_INTEGER Frequency;
-        struct {
-            LARGE_INTEGER Enter;
-            LARGE_INTEGER Exit;
-            LARGE_INTEGER Elapsed;
-        } FillCodePages;
-        struct {
-            LARGE_INTEGER Enter;
-            LARGE_INTEGER Exit;
-            LARGE_INTEGER Elapsed;
-        } FillDataPages;
-    } Timestamps;
+    PBYTE NewRemoteDestWritableUserData;
 
     *DestBaseCodeAddressPointer = NULL;
     *DestThunkBufferAddressPointer = NULL;
@@ -117,6 +112,21 @@ CopyFunction(
     *DestFunctionPointer = NULL;
     *DestRuntimeFunctionPointer = NULL;
     *EntryCountPointer = 0;
+    InjectionEventsAllocSizeInBytes = 0;
+
+    //
+    // If we're injecting events, calculate the additional total size required
+    // by the INJECTION_EVENTS structure and all supporting arrays/structures.
+    //
+
+    if (NumberOfInjectionEvents > 0) {
+
+        CalculateInjectionEventsAllocationSize(
+            NumberOfInjectionEvents,
+            &InjectionEventsAllocSizeInBytes
+        );
+
+    }
 
     //
     // Allocate local pages for code and data.
@@ -126,7 +136,7 @@ CopyFunction(
         VirtualAllocEx(
             ProcessHandle,
             NULL,
-            TwoPages,
+            TotalAllocationSize,
             MEM_COMMIT,
             PAGE_READWRITE
         )
@@ -136,8 +146,19 @@ CopyFunction(
         return FALSE;
     }
 
-    LocalBaseDataAddress = (PVOID)((PCHAR)LocalBaseCodeAddress + OnePage);
+    //
+    // Readonly data lives one page after the code page.
+    //
+
+    LocalBaseDataAddress = RtlOffsetToPointer(LocalBaseCodeAddress, OnePage);
     LocalBaseData = (PBYTE)LocalBaseDataAddress;
+
+    //
+    // Writable data lives one page after the readonly data page.
+    //
+
+    LocalWritableBaseDataAddress = RtlOffsetToPointer(LocalBaseData, OnePage);
+    LocalWritableBaseData = (PBYTE)LocalWritableBaseDataAddress;
 
     //
     // Allocate remote code and data.
@@ -147,7 +168,7 @@ CopyFunction(
         VirtualAllocEx(
             TargetProcessHandle,
             NULL,
-            TwoPages,
+            TotalAllocationSize,
             MEM_COMMIT,
             PAGE_READWRITE
         )
@@ -157,32 +178,18 @@ CopyFunction(
         goto Cleanup;
     }
 
-    RemoteBaseDataAddress = (PVOID)((PCHAR)RemoteBaseCodeAddress + OnePage);
+    RemoteBaseDataAddress = RtlOffsetToPointer(RemoteBaseCodeAddress, OnePage);
     RemoteDestBaseData = (PBYTE)RemoteBaseDataAddress;
 
+    RemoteWritableDataAddress = RtlOffsetToPointer(RemoteDestBaseData, OnePage);
+    RemoteDestWritableData = (PBYTE)RemoteWritableDataAddress;
+
     //
-    // Fill local code page with 0xCC (int 3), and local data page with zeros.
+    // Fill local code page with 0xCC (int 3), and local data pages with zeros.
     //
 
-    QueryPerformanceCounter(&Timestamps.FillCodePages.Enter);
     Rtl->FillPages((PCHAR)LocalBaseCodeAddress, 0xCC, 1);
-    QueryPerformanceCounter(&Timestamps.FillCodePages.Exit);
-
-    QueryPerformanceCounter(&Timestamps.FillDataPages.Enter);
-    Rtl->FillPages((PCHAR)LocalBaseDataAddress, 0x00, 1);
-    QueryPerformanceCounter(&Timestamps.FillDataPages.Exit);
-
-    Timestamps.FillCodePages.Elapsed.QuadPart = (
-        Timestamps.FillCodePages.Exit.QuadPart -
-        Timestamps.FillCodePages.Enter.QuadPart
-    );
-
-    Timestamps.FillDataPages.Elapsed.QuadPart = (
-        Timestamps.FillDataPages.Exit.QuadPart -
-        Timestamps.FillDataPages.Enter.QuadPart
-    );
-
-    QueryPerformanceFrequency(&Timestamps.Frequency);
+    Rtl->FillPages((PCHAR)LocalBaseDataAddress, 0x00, NumberOfDataPages);
 
     SourceFunc = SkipJumpsInline(SourceFunction);
 
@@ -584,6 +591,8 @@ WriteMemory:
     *DestBaseCodeAddressPointer = RemoteBaseCodeAddress;
     *DestFunctionPointer = ((PBYTE)RemoteBaseCodeAddress) + 16;
     *DestUserDataAddressPointer = RemoteDestUserData;
+    *DestWritableDataAddressPointer = RemoteDestWritableData;
+    *DestUserWritableDataAddressPointer = RemoteDestUserWritableData;
     *DestThunkBufferAddressPointer = RemoteDestThunkBuffer;
 
     //
@@ -625,6 +634,8 @@ Cleanup:
     }
 
 End:
+
+    *ActualNumberOfWritablePages = NumberOfWritablePages;
 
     return Success;
 }

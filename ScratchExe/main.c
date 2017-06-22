@@ -78,6 +78,14 @@ typedef TEST_PARAMS2 *PTEST_PARAMS2;
 extern TEST_PARAMS1 TestParams1;
 extern TEST_PARAMS2 TestParams2;
 
+typedef
+VOID
+(INJECTION_THUNK)(
+    _In_ PVOID Param1
+    );
+typedef INJECTION_THUNK *PINJECTION_THUNK;
+extern INJECTION_THUNK InjectionThunk;
+
 #endif
 
 DECLSPEC_NORETURN
@@ -88,6 +96,11 @@ mainCRTStartup()
     LONG ExitCode = 0;
 
 #if 1
+    InjectionThunk(NULL);
+
+#endif
+
+#if 0
 
     TestParams1(1, 2, 3, 4, 5, 6, 7, 8);
     TestParams2(1, 2, 3, 4, 5, 6, 7, 8);

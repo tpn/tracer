@@ -607,17 +607,51 @@ typedef struct _INJECTION_THUNK_CONTEXT {
     INJECTION_THUNK_FLAGS Flags;
     USHORT EntryCount;
     USHORT UserDataOffset;
+    USHORT UserWritableDataOffset;
+    USHORT NumberOfEvents;
+    USHORT NumberOfFileMappings;
+    USHORT NumberOfInjectionFunctions;
+
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseCodeAddress;
-    PRTL_ADD_FUNCTION_TABLE RtlAddFunctionTable;
-    PLOAD_LIBRARY_W LoadLibraryW;
-    PGET_PROC_ADDRESS GetProcAddress;
+
+    //
+    // Functions.
+    //
+
+    INJECTION_FUNCTIONS Functions;
+
+    //
+    // Optional injection objects.
+    //
+
+    PINJECTION_OBJECTS InjectionObjects;
+
+    //
+    // Target module to load and function to resolve and call once injection
+    // objects (if any) have been loaded.
+    //
+
     UNICODE_STRING ModulePath;
     STRING FunctionName;
+
 } INJECTION_THUNK_CONTEXT;
 typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;
 
 RTL_API INJECT_THUNK InjectThunk;
+RTL_API INJECT_THUNK_EX InjectThunkEx;
+
+FORCEINLINE
+VOID
+InitializeInjectionFunctions(
+    _In_ PRTL Rtl,
+    _In_ PINJECTION_FUNCTIONS Functions
+    )
+{
+    CopyMemory(Functions,
+               &Rtl->InjectionFunctions,
+               sizeof(Rtl->InjectionFunctions));
+}
 
 //
 // Test-related glue.
