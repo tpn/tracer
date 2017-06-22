@@ -50,19 +50,7 @@ Locals struct
     Temp1           dq      ?
 
     ;
-    ; Any non-volatile registers we use go after this point.  It's convenient
-    ; being able to reference a pushed non-volatile register via this Locals
-    ; struct (e.g. `mov rax, Locals.SavedRdi[rbp]`), especially when debugging.
-    ; However, because we use `rax_push_reg <reg>` to save them in the prologue,
-    ; they automatically have stack space allocated for them.  Thus, we need to
-    ; account for that by removing the non-volatile registers from the stack
-    ; size we allocate via alloc_stack.  This is done by using an anonymous
-    ; union for the first non-volatile register with a consistent name (i.e.
-    ; FirstNvRegister), and then using that name in the definition of the
-    ; LOCALS_SIZE equ below to subtract the non-volatile registers from the
-    ; locals stack space.  This gives us the best of both worlds: we can access
-    ; the variables via the Locals struct, and our prologue and epilogue code
-    ; is kept simple (`alloc_stack LOCALS_SIZE`; `add rsp, LOCALS_SIZE`).
+    ; Define non-volatile register storage.
     ;
 
     union
@@ -91,7 +79,11 @@ Locals struct
 
 Locals ends
 
-LOCALS_SIZE  equ ((sizeof Locals) + (Locals.FirstNvRegister - (sizeof Locals)))
+;
+; Exclude the return address onward from the frame calculation size.
+;
+
+LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
 
 ;
 ; Define supporting UNICODE_STRING and STRING structures for ModulePath and
@@ -316,23 +308,18 @@ InvalidInjectionContext     equ     1003
         NESTED_ENTRY InjectionThunk, _TEXT$00
 
 ;
-; Thunk prologue.  Push all non-volatile registers to the stack, allocate
-; space for our locals structure and assign a frame pointer.
+; Thunk prologue.  Allocate stack space and save non-volatile registers.
 ;
 
-;
-; xxx: change this to alloc_stack first, then set_frames, then adjust epilog.
-;
-
-        rex_push_reg    rbp
-        push_reg        rbx
-        push_reg        rdi
-        push_reg        rsi
-        push_reg        r12
-        push_reg        r13
-        push_reg        r14
-        push_reg        r15
-        alloc_stack LOCALS_SIZE
+        alloc_stack LOCALS_SIZE                 ; Allocate stack space.
+        save_reg    rbp, Locals.SavedRbp        ; Save non-volatile rbp.
+        save_reg    rbx, Locals.SavedRbx        ; Save non-volatile rbx.
+        save_reg    rdi, Locals.SavedRdi        ; Save non-volatile rdi.
+        save_reg    rsi, Locals.SavedRsi        ; Save non-volatile rsi.
+        save_reg    r12, Locals.SavedR12        ; Save non-volatile r12.
+        save_reg    r13, Locals.SavedR13        ; Save non-volatile r13.
+        save_reg    r14, Locals.SavedR14        ; Save non-volatile r14.
+        save_reg    r15, Locals.SavedR15        ; Save non-volatile r15.
 
         END_PROLOGUE
 
@@ -397,8 +384,7 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
 ;   r15 - Supplies the value of the number of injection objects indicated by
 ;       the INJECTION_OBJECTS.NumberOfObjects field.
 ;
-;   rdi - Supplies the address of the INJECTION_OBJECT structure currently
-;       being processed.
+;   rdi - Supplies the base address of the INJECTION_OBJECT array.
 ;
 ;   rsi - Supplies the current loop index.  This is initialized to 0, and will
 ;       have a maximum value of NumberOfObjects-1.
@@ -414,11 +400,11 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
 ;
 
         mov     r14, Thunk.InjectionObjects[r12]        ; Load pointer into r14.
-        test    rdi, rdi                                ; Check not-NULL.
+        test    r14, r14                                ; Check not-NULL.
         jnz     short @F                                ; Pointer is valid.
         int     3                                       ; Break because NULL ptr
 
-@@:     mov     r15, Objects.NumberOfObjects[r12]       ; Load # of objects.
+@@:     mov     r15, Objects.NumberOfObjects[r14]       ; Load # of objects.
         test    r15, r15                                ; At least 1 objects?
         jnz     short @F                                ; Yes, continue.
         int     3                                       ; No, break.
@@ -434,23 +420,50 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         int     3                                       ; Sizes != equal, break.
 
 ;
-; Invariant checks passed.
+; Invariant checks passed.  Zero our loop counter (rsi) and load the base
+; address of the injection objects array into rdi.
 ;
 
-@@:
+        xor     rsi, rsi                                ; Zero loop counter.
+        mov     rdi, Objects.Object[r14]                ; Load base address.
 
 ;
-; Verify that the number of objects
+; Top of loop.  Load next injection object (into rbx), load the type into r9d,
+; determine whether we're dealing with an event or file mapping handle and
+; process accordingly.
 ;
 
-@@:     mov
+Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
+        movsx   r9, dword ptr Object.ObjectType[rbx]    ; Load object type.
+        cmp     r9d, EventObjectType                    ; Is event type?
+        jne     short Inj40                             ; No; try next type.
 
 ;
-; The pointer to the base address of the array of injection objects is valid.
-; Initialize the loop
+; This is an event object type.  We need to open the event handle via the name
+; provided in the array.
 ;
 
-Inj15:
+Inj30:
+
+;
+; This is a file mapping type.
+;
+
+Inj40:
+
+;
+; Bottom of the loop.  Update loop counter and determine if there are more
+; objects to process.  If there are, continue back at the start (Inj20).  If
+; not, jump to the mod+func processing logic (Inj60).
+;
+
+Inj50:  add     rsi, 1                                  ; Index++
+        cmp     rsi, r15                                ; Compare to # objects.
+        jl      short Inj20                             ; Index < Count, cont.
+
+;
+; Intentional follow-on to mod+func processing logic.
+;
 
 ;
 ; Check to see if we've been requested to load a module and resolve a function.
@@ -458,7 +471,7 @@ Inj15:
 
 Inj60:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         test    r8, HasModuleAndFunction                ; Has module+func?
-        jz      Inj90                                   ; No; jump to epilogue.
+        jz      Inj90                                   ; No; jump to end.
 
 ;
 ; Prepare for a LoadLibraryW() call against the module path in the thunk.
@@ -508,20 +521,23 @@ Inj80:  movsx   r8, word ptr Thunk.UserDataOffset[r12]  ; Load offset.
 Inj90:
 
 ;
-; Begin epilogue.  Deallocate stack space and restore non-volatile registers,
-; then return.
+; Restore non-volatile registers prior to defining our epilogue.
+;
+
+        mov     rbp, Locals.SavedRbp[rsp]
+        mov     rbx, Locals.SavedRbx[rsp]
+        mov     rdi, Locals.SavedRdi[rsp]
+        mov     rsi, Locals.SavedRsi[rsp]
+        mov     r12, Locals.SavedR12[rsp]
+        mov     r13, Locals.SavedR13[rsp]
+        mov     r14, Locals.SavedR14[rsp]
+        mov     r15, Locals.SavedR15[rsp]
+
+;
+; Begin epilogue.  Deallocate stack space and return.
 ;
 
         add     rsp, LOCALS_SIZE
-        pop     r15
-        pop     r14
-        pop     r13
-        pop     r12
-        pop     rsi
-        pop     rdi
-        pop     rbx
-        pop     rbp
-
         ret
 
         NESTED_END InjectionThunk, _TEXT$00
