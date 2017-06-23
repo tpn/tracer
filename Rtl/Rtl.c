@@ -2989,7 +2989,6 @@ CreateRandomObjectNames(
     PALLOCATOR WideBufferAllocator,
     USHORT NumberOfNames,
     USHORT LengthOfNameInChars,
-    USHORT MinimumNumberOfRandomCharsPerName,
     PUNICODE_STRING NamespacePrefix,
     PPUNICODE_STRING NamesArrayPointer,
     PPUNICODE_STRING PrefixArrayPointer,
@@ -3035,13 +3034,6 @@ Arguments:
         trailing NULL will be subtracted from this parameter.  For optimal
         layout, this parameter should be a power of 2 -- with 64 and 128 being
         good default values.
-
-    MinimumNumberOfRandomCharsPerName - Supplies the minimal number of random
-        characters that must be present per random object name generated.
-        Setting this to a sensible value provides protection against providing
-        prefix or namespace names that are too long for the desired object name
-        length.  If the number of random characters for a given name is less
-        than this amount, a breakpoint exception will be raised.
 
     NamespacePrefix - Optionally supplies a pointer to a UNICODE_STRING to
         use as the namespace (prefix) for each string.  If NULL, this value
@@ -3293,19 +3285,10 @@ Return Value:
         }
 
         //
-        // Verify a sufficient number of random characters are being included
-        // in this object's name.
+        // Final sanity check that the lengths add up.
         //
 
         NumberOfWideBase64CharsToCopy = CharsRemaining;
-        if (NumberOfWideBase64CharsToCopy < MinimumNumberOfRandomCharsPerName) {
-            __debugbreak();
-            goto Error;
-        }
-
-        //
-        // Final sanity check that the lengths add up.
-        //
 
         FinalCharCount = (
             (Namespace->Length >> 1) +
@@ -3349,7 +3332,7 @@ Return Value:
         }
 
         Count = (USHORT)NumberOfWideBase64CharsToCopy + 1;
-        Dest += Count;
+        Dest += Count - 1;
         *Dest = L'\0';
         RandomCharsUsed += Count;
     }

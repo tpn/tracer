@@ -2622,7 +2622,6 @@ BOOL
     _In_ PALLOCATOR WideBufferAllocator,
     _In_ USHORT NumberOfNames,
     _In_ USHORT LengthOfNameInChars,
-    _In_ USHORT MinimumNumberOfRandomCharsPerName,
     _In_opt_ PUNICODE_STRING NamespacePrefix,
     _In_ PPUNICODE_STRING NamesArrayPointer,
     _In_opt_ PPUNICODE_STRING PrefixArrayPointer,
