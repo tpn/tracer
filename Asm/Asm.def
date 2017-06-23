@@ -8,3 +8,4 @@ EXPORTS
     FillPagesNonTemporalAvx2_v1 @6
     FillPagesNonTemporal=FillPagesNonTemporalAvx2_v1 @7
     InjectionThunk=InjectionThunk @8
+    InjectionThunkEx=InjectionThunkEx @9

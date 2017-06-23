@@ -86,6 +86,7 @@
     <MASM Include="CopyPages.asm" Condition="'$(Platform)' == 'x64'" />
     <MASM Include="FillPages.asm" />
     <MASM Include="InjectionThunk.asm" />
+    <MASM Include="InjectionThunkEx.asm" />
     <MASM Include="Misc.asm" />
   </ItemGroup>
   <ItemGroup>
