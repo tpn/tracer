@@ -277,10 +277,10 @@ INJECTION_OBJECTS ends
 PINJECTION_OBJECTS typedef ptr INJECTION_OBJECT
 
 ;
-; Define the INJECTION_THUNK_CONTEXT structure.
+; Define the INJECTION_THUNK_EX_CONTEXT structure.
 ;
 
-INJECTION_THUNK_CONTEXT struct
+INJECTION_THUNK_EX_CONTEXT struct
     Flags                   dd                      ?
     EntryCount              dw                      ?
     UserDataOffset          dw                      ?
@@ -291,15 +291,14 @@ INJECTION_THUNK_CONTEXT struct
     ModulePath              UNICODE_STRING          { }
     FunctionName            STRING                  { }
     UserApc                 APC                     { }
-INJECTION_THUNK_CONTEXT ends
-
+INJECTION_THUNK_EX_CONTEXT ends
 
 ;
 ; Define helper typedefs for structures that are nicer to work with in assembly
 ; than their long uppercase names.
 ;
 
-Thunk typedef INJECTION_THUNK_CONTEXT
+Thunk typedef INJECTION_THUNK_EX_CONTEXT
 Object typedef INJECTION_OBJECT
 Objects typedef INJECTION_OBJECTS
 Unicode typedef UNICODE_STRING
