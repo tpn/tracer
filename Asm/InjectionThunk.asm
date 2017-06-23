@@ -455,13 +455,17 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
 ;
 ;   r14 - Supplies the address of the INJECTION_OBJECTS structure.
 ;
-;   r15 - Supplies the value of the number of injection objects indicated by
-;       the INJECTION_OBJECTS.NumberOfObjects field.
+;   r15 - Initially supplies the number of injection objects indicated by
+;       the INJECTION_OBJECTS.NumberOfObjects field.  After this is validated
+;       as being greater than zero, it is multiplied by `size INJECTION_OBJECT`
+;       such that it can be used to test for loop termination against rsi.
 ;
 ;   rdi - Supplies the base address of the INJECTION_OBJECT array.
 ;
-;   rsi - Supplies the current loop index.  This is initialized to 0, and will
-;       have a maximum value of NumberOfObjects-1.
+;   rsi - Supplies the scaling index relative to rdi for the current injection
+;       object such that `lea rbx, [rdi + rsi]` loads the appropriate address
+;       of the INJECTION_OBJECT structure within the objects array.  This is
+;       incremented by `size INJECTION_OBJECT` each loop iteration.
 ;
 ; N.B. Erroneous conditions are handled by an immediate `int 3` breakpoint.
 ;
@@ -496,8 +500,15 @@ Inj10:  movsx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         jmp     Inj90                                   ; Jump to end.
 
 ;
-; Invariant checks passed.  Zero our loop counter (rsi) and load the base
-; address of the injection objects array into rdi.
+; Invariant checks passed.  Convert r15 into the final scaling index offset
+; such that it can be used to test if the loop has finished.
+;
+
+        imul    r15, (size INJECTION_OBJECT)
+
+;
+; Zero our loop counter (rsi) and load the base address of the injection objects
+; array into rdi.
 ;
 
         xor     rsi, rsi                                  ; Zero loop counter.
@@ -572,18 +583,15 @@ Inj40:  mov     ecx, FileMapping.DesiredAccess[rbp]     ; Load desired access.
         mov     Locals.PreferredBaseAddress[rsp], rax       ; ...as 6th arg.
 
 Inj45:  mov     rcx, FileMapping.MappingHandle[rbp]     ; Load handle.
-        xor     edx, edx                                ; Clear reg.
         mov     edx, FileMapping.DesiredAccess[rbp]     ; Load desired access.
 
 ;
 ; N.B. The file offset requires a bit of LARGE_INTEGER juggling.
 ;
 
-        mov     rax, FileMapping.FileOffset[rbp]        ; Load file offset.
-        mov     r8, rax                                 ; Load offset into r8.
+        mov     r9, FileMapping.FileOffset[rbp]         ; Load file offset.
+        mov     r8, r9                                  ; Duplicate into r8.
         shr     r8, 32                                  ; Load high offset.
-        xor     r9, r9                                  ; Clear dependency.
-        mov     r9d, eax                                ; Load low offset.
 
 ;
 ; Continue loading arguments; preferred address has already been done (see our
@@ -636,8 +644,8 @@ Inj47:  mov     rax, Locals.PreferredBaseAddress[rbp]   ; Load pref. base.
 ; Clear the preferred address and re-try the mapping.
 ;
 
-@@:     xor     rax, rax                                        ; Clear rax.
-        mov     qword ptr Locals.PreferredBaseAddress[rbp], rax ; Zero address.
+@@:     xor     rax, rax                                ; Clear rax.
+        mov     Locals.PreferredBaseAddress[rbp], rax   ; Zero address.
         jmp     short Inj45
 
 ;
@@ -646,9 +654,9 @@ Inj47:  mov     rax, Locals.PreferredBaseAddress[rbp]   ; Load pref. base.
 ; not, fall through to the APC test.
 ;
 
-Inj50:  add     rsi, 1                                  ; Index++
-        cmp     rsi, r15                                ; Compare to # objects.
-        jl      Inj20                                   ; Index < Count, cont.
+Inj50:  add     rsi, size INJECTION_OBJECT              ; Update index.
+        cmp     rsi, r15                                ; Compare to end.
+        jl      Inj20                                   ; Items remaining.
 
 ;
 ; Intentional follow-on to to APC test logic.
