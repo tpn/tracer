@@ -448,7 +448,7 @@ UnfreezeThreadApc(
         __debugbreak();
         return;
     }
-   
+
     OutputDebugStringA("Unfreeze thread command: ");
     PrintUnicodeStringToDebugStream(&UnfreezeThreadCommand);
 
@@ -530,6 +530,7 @@ ParentThreadEntry(
     PTRACER_INJECTION_CONTEXT InjectionContext;
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
+    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers;
     PDEBUG_ENGINE_SESSION Session;
     const STRING FunctionName =
         RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
@@ -607,6 +608,8 @@ ParentThreadEntry(
 
     OutputDebugStringA("Injecting...\n");
 
+    AdjustUserDataPointers = NULL;
+
     Success = Rtl->InjectThunk(Rtl,
                                Session->Allocator,
                                Flags,
@@ -615,7 +618,7 @@ ParentThreadEntry(
                                &FunctionName,
                                (PBYTE)&InjectedContext,
                                sizeof(InjectedContext),
-                               NULL,
+                               AdjustUserDataPointers,
                                &RemoteThreadHandle,
                                &RemoteThreadId,
                                &RemoteBaseCodeAddress,
@@ -639,7 +642,6 @@ ParentThreadEntry(
     //
     // Resume the original thread we suspended.
     //
-
 
     do {
         SuspendedCount = (LONG)ResumeThread(SuspendedThreadHandle);
