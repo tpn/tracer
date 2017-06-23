@@ -1,3 +1,4 @@
 LIBRARY InjectionThunk
 EXPORTS
     InjectionThunk
+    InjectionThunkEx

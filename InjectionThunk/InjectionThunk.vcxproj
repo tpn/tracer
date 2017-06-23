@@ -87,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\Asm\InjectionThunk.asm" />
+    <MASM Include="..\Asm\InjectionThunkEx.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
