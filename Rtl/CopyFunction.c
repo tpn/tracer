@@ -57,6 +57,7 @@ CopyFunction(
     HANDLE ProcessHandle = GetCurrentProcess();
     const ULONG OnePage = 1 << PAGE_SHIFT;
     const ULONG TwoPages = 2 << PAGE_SHIFT;
+    const ULONG ThreePages = 3 << PAGE_SHIFT;
     PVOID SourceFunc;
     PVOID HandlerFunc;
     PVOID HandlerFunction;
@@ -119,14 +120,15 @@ CopyFunction(
     *EntryCountPointer = 0;
 
     //
-    // Allocate local pages for code and data.
+    // Allocate three local pages; one for code, one for readonly data, and one
+    // for read/write data.
     //
 
     LocalBaseCodeAddress = (
         VirtualAllocEx(
             ProcessHandle,
             NULL,
-            TwoPages,
+            ThreePages,
             MEM_COMMIT,
             PAGE_READWRITE
         )
@@ -147,7 +149,7 @@ CopyFunction(
         VirtualAllocEx(
             TargetProcessHandle,
             NULL,
-            TwoPages,
+            ThreePages,
             MEM_COMMIT,
             PAGE_READWRITE
         )
@@ -522,7 +524,7 @@ CopyFunction(
 WriteMemory:
 
     //
-    // Write both code and data pages with a single call.
+    // Write all three pages with a single call.
     //
 
     Success = (
@@ -530,7 +532,7 @@ WriteMemory:
             TargetProcessHandle,
             RemoteBaseCodeAddress,
             LocalBaseCodeAddress,
-            TwoPages,
+            ThreePages,
             &NumberOfBytesWritten
         )
     );
@@ -538,6 +540,10 @@ WriteMemory:
     if (!Success) {
         goto Cleanup;
     }
+
+    //
+    // Make the first page read/executable.
+    //
 
     Success = (
         VirtualProtectEx(
@@ -565,6 +571,10 @@ WriteMemory:
         __debugbreak();
     }
 
+    //
+    // Make the second page readonly.
+    //
+
     Success = (
         VirtualProtectEx(
             TargetProcessHandle,
@@ -578,6 +588,11 @@ WriteMemory:
     if (!Success) {
         goto Cleanup;
     }
+
+    //
+    // N.B. The third page is already read/write, so we don't have to do
+    //      anything for it.
+    //
 
     *EntryCountPointer = EntryCount;
     *DestRuntimeFunctionPointer = DestRuntimeFunction;
