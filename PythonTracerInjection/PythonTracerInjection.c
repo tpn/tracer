@@ -761,7 +761,6 @@ Py_InitializeEx_HandleReturnBreakpoint(
     return DEBUG_STATUS_NO_CHANGE;
 }
 
-
 C_ASSERT(ARRAYSIZE(BreakpointSpecs) == NUM_INITIAL_BREAKPOINTS());
 
 BOOL
