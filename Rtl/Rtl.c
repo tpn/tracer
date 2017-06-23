@@ -660,8 +660,7 @@ FindCharsInString(
                 FastSetBit(Bitmap, Bit);
             }
         }
-    }
-    else {
+    } else {
         for (Index = 0; Index < NumberOfCharacters; Index++) {
             Char = String->Buffer[Index];
             if (Char == CharToFind) {
