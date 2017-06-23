@@ -2270,6 +2270,34 @@ BOOL
 typedef WRITE_PROCESS_MEMORY *PWRITE_PROCESS_MEMORY;
 
 typedef
+BOOL
+(WINAPI DEVICE_IO_CONTROL)(
+    _In_ HANDLE hDevice,
+    _In_ DWORD dwIoControlCode,
+    _In_reads_bytes_opt_(nInBufferSize) LPVOID lpInBuffer,
+    _In_ DWORD nInBufferSize,
+    _Out_writes_bytes_to_opt_(nOutBufferSize, *lpBytesReturned)
+        LPVOID lpOutBuffer,
+    _In_ DWORD nOutBufferSize,
+    _Out_opt_ LPDWORD lpBytesReturned,
+    _Inout_opt_ LPOVERLAPPED lpOverlapped
+    );
+typedef DEVICE_IO_CONTROL *PDEVICE_IO_CONTROL;
+
+typedef
+HANDLE
+(WINAPI CREATE_FILE_W)(
+    _In_ LPCWSTR lpFileName,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwShareMode,
+    _In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    _In_ DWORD dwCreationDisposition,
+    _In_ DWORD dwFlagsAndAttributes,
+    _In_opt_ HANDLE hTemplateFile
+    );
+typedef CREATE_FILE_W *PCREATE_FILE_W;
+
+typedef
 _Ret_maybenull_
 HANDLE
 (WINAPI CREATE_FILE_MAPPING_W)(
@@ -2413,6 +2441,13 @@ ULONG
     VOID
     );
 typedef GET_LAST_ERROR *PGET_LAST_ERROR;
+
+typedef
+VOID
+(WINAPI SET_LAST_ERROR)(
+    ULONG
+    );
+typedef SET_LAST_ERROR *PSET_LAST_ERROR;
 
 typedef
 BOOL
@@ -4549,8 +4584,12 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PCLOSE_HANDLE CloseHandle;                                                                         \
     POPEN_EVENT_A OpenEventA;                                                                          \
     POPEN_EVENT_W OpenEventW;                                                                          \
+    PGET_LAST_ERROR GetLastError;                                                                      \
+    PSET_LAST_ERROR SetLastError;                                                                      \
     PSET_EVENT SetEvent;                                                                               \
     PRESET_EVENT ResetEvent;                                                                           \
+    PSUSPEND_THREAD SuspendThread;                                                                     \
+    PRESUME_THREAD ResumeThread;                                                                       \
     PGET_THREAD_CONTEXT GetThreadContext;                                                              \
     PSET_THREAD_CONTEXT SetThreadContext;                                                              \
     PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;                                                       \
@@ -4561,6 +4600,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PGET_EXIT_CODE_THREAD GetExitCodeThread;                                                           \
     PTERMINATE_THREAD TerminateThread;                                                                 \
     PQUEUE_USER_APC QueueUserAPC;                                                                      \
+    PDEVICE_IO_CONTROL DeviceIoControl;                                                                \
+    PCREATE_FILE_W CreateFileW;                                                                        \
     PCREATE_FILE_MAPPING_W CreateFileMappingW;                                                         \
     POPEN_FILE_MAPPING_W OpenFileMappingW;                                                             \
     PMAP_VIEW_OF_FILE_EX MapViewOfFileEx;                                                              \
