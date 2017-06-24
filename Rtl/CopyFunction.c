@@ -32,6 +32,9 @@ CopyFunction(
     PPVOID DestThunkBufferAddressPointer,
     PPVOID DestUserDataAddressPointer,
     PPVOID DestFunctionPointer,
+    PPVOID LocalBaseCodeAddressPointer,
+    PPVOID LocalThunkBufferAddressPointer,
+    PPVOID LocalUserDataAddressPointer,
     PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
     PRUNTIME_FUNCTION *DestHandlerRuntimeFunctionPointer,
     PULONG EntryCountPointer
@@ -609,14 +612,32 @@ Cleanup:
 
     if (LocalBaseCodeAddress) {
 
-        VirtualFreeEx(
-            ProcessHandle,
-            LocalBaseCodeAddress,
-            0,
-            MEM_RELEASE
-        );
+        if (ARGUMENT_PRESENT(LocalBaseCodeAddressPointer)) {
+            *LocalBaseCodeAddressPointer = LocalBaseCodeAddress;
 
-        LocalBaseCodeAddress = NULL;
+            if (ARGUMENT_PRESENT(LocalThunkBufferAddressPointer)) {
+                *LocalThunkBufferAddressPointer = DestThunkBuffer;
+            }
+
+            if (ARGUMENT_PRESENT(LocalUserDataAddressPointer)) {
+                *LocalUserDataAddressPointer = DestUserData;
+            }
+
+        } else {
+
+            *LocalBaseCodeAddressPointer = NULL;
+            *LocalThunkBufferAddressPointer = NULL;
+            *LocalUserDataAddressPointer = NULL;
+
+            VirtualFreeEx(
+                ProcessHandle,
+                LocalBaseCodeAddress,
+                0,
+                MEM_RELEASE
+            );
+
+            LocalBaseCodeAddress = NULL;
+        }
     }
 
     if (Success) {

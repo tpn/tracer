@@ -187,7 +187,10 @@ InjectThunk(
     PHANDLE RemoteThreadHandlePointer,
     PULONG RemoteThreadIdPointer,
     PPVOID RemoteBaseCodeAddress,
-    PPVOID RemoteUserDataAddress
+    PPVOID RemoteUserDataAddress,
+    PPVOID LocalBaseCodeAddressPointer,
+    PPVOID LocalThunkBufferAddressPointer,
+    PPVOID LocalUserDataAddressPointer
     )
 {
     BOOL Success;
@@ -201,6 +204,10 @@ InjectThunk(
     PVOID DestBaseCodeAddress;
     PVOID DestUserDataAddress;
     PVOID DestThunkBufferAddress;
+    PVOID LocalBaseCodeAddress;
+    PVOID LocalThunkBufferAddress;
+    PVOID LocalUserDataAddress;
+    //PVOID InjectionThunkRoutine;
     LPTHREAD_START_ROUTINE StartRoutine;
     PCOPY_FUNCTION CopyFunction;
 
@@ -234,6 +241,9 @@ InjectThunk(
                            &DestThunkBufferAddress,
                            &DestUserDataAddress,
                            &DestInjectionThunk,
+                           &LocalBaseCodeAddress,
+                           &LocalThunkBufferAddress,
+                           &LocalUserDataAddress,
                            &DestRuntimeFunction,
                            NULL,
                            &EntryCount);
@@ -265,6 +275,18 @@ InjectThunk(
     *RemoteThreadIdPointer = RemoteThreadId;
     *RemoteBaseCodeAddress = DestBaseCodeAddress;
     *RemoteUserDataAddress = DestUserDataAddress;
+
+    if (ARGUMENT_PRESENT(LocalBaseCodeAddressPointer)) {
+        *LocalBaseCodeAddressPointer = LocalBaseCodeAddress;
+
+        if (ARGUMENT_PRESENT(LocalThunkBufferAddressPointer)) {
+            *LocalThunkBufferAddressPointer = LocalThunkBufferAddress;
+        }
+
+        if (ARGUMENT_PRESENT(LocalUserDataAddressPointer)) {
+            *LocalUserDataAddressPointer = LocalUserDataAddress;
+        }
+    }
 
     return TRUE;
 }

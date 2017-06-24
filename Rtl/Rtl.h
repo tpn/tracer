@@ -1209,6 +1209,9 @@ BOOL
     _Out_ PPVOID DestThunkBufferAddressPointer,
     _Out_ PPVOID DestUserDataAddressPointer,
     _Out_ PPVOID DestFunctionPointer,
+    _Out_opt_ PPVOID LocalBaseCodeAddressPointer,
+    _Out_opt_ PPVOID LocalThunkBufferAddressPointer,
+    _Out_opt_ PPVOID LocalUserDataAddressPointer,
     _Out_ PRUNTIME_FUNCTION *DestRuntimeFunctionPointer,
     _When_(SourceHandlerFunction != NULL, _Outptr_result_nullonfailure_)
     _When_(SourceHandlerFunction == NULL, _Out_opt_)
@@ -1244,7 +1247,10 @@ BOOL
     _In_ PHANDLE RemoteThreadHandlePointer,
     _In_ PULONG RemoteThreadIdPointer,
     _In_ PPVOID RemoteBaseCodeAddress,
-    _In_ PPVOID RemoteUserDataAddress
+    _In_ PPVOID RemoteUserDataAddress,
+    _Out_opt_ PPVOID LocalBaseCodeAddressPointer,
+    _Out_opt_ PPVOID LocalThunkBufferAddressPointer,
+    _Out_opt_ PPVOID LocalUserDataAddressPointer
     );
 typedef INJECT_THUNK *PINJECT_THUNK;
 
@@ -6185,6 +6191,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
 
     PVOID InjectionThunkRoutine;
+    PVOID InjectionThunkExRoutine;
     PINJECT_THUNK InjectThunk;
     PINITIALIZE_INJECTION InitializeInjection;
     PADJUST_THUNK_POINTERS AdjustThunkPointers;
