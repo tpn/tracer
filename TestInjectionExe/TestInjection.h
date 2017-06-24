@@ -58,6 +58,14 @@ TestInjectThunk(
     PDEBUG_ENGINE_SESSION Session
     );
 
+BOOL
+TestInjectionObjects(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    PTRACER_CONFIG TracerConfig,
+    PDEBUG_ENGINE_SESSION Session
+    );
+
 ULONG TestInjectionMain(VOID);
 
 #ifdef __cplusplus

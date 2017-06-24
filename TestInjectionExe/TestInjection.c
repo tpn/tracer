@@ -1420,9 +1420,11 @@ TestInjection(
         return -5;
     }
 
-    TEST(4);
+    //TEST(4);
 
-    TestInjectThunk(Rtl, Allocator, TracerConfig, Session);
+    //TestInjectThunk(Rtl, Allocator, TracerConfig, Session);
+
+    TestInjectionObjects(Rtl, Allocator, TracerConfig, Session);
 
     //TEST(5);
     //TEST(1);
