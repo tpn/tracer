@@ -414,7 +414,7 @@ FORCEINLINE
 VOID
 CopyMemory(
     _Out_writes_bytes_all_(SizeInBytes) PVOID Dst,
-    _In_ const PVOID Src,
+    _In_ const VOID *Src,
     _In_ SIZE_T SizeInBytes
     )
 {
