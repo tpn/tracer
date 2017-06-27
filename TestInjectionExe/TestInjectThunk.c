@@ -136,7 +136,10 @@ TestInjectThunk(
                                &RemoteThreadHandle,
                                &RemoteThreadId,
                                &RemoteBaseCodeAddress,
-                               &RemoteDataBufferAddress);
+                               &RemoteDataBufferAddress,
+                               NULL,
+                               NULL,
+                               NULL);
 
     if (!Success) {
         goto End;
