@@ -288,6 +288,12 @@ typedef struct _INJECTION_OBJECTS {
     INJECTION_OBJECTS_FLAGS Flags;
 
     //
+    // Pad out to an 8 byte boundary.
+    //
+
+    ULONG Padding;
+
+    //
     // Base address of first element in objects array.
     //
 
