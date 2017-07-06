@@ -191,7 +191,7 @@ typedef INJECTION_OBJECT_EVENT_FLAGS *PINJECTION_OBJECT_EVENT_FLAGS;
 typedef struct _INJECTION_OBJECT_EVENT {
     INJECTION_OBJECT_TYPE Type;
     INJECTION_OBJECT_EVENT_FLAGS Flags;
-    PUNICODE_STRING Name;
+    UNICODE_STRING Name;
     HANDLE Handle;
     ULONG DesiredAccess;
     ULONG InheritHandle;
@@ -201,7 +201,7 @@ typedef INJECTION_OBJECT_EVENT *PINJECTION_OBJECT_EVENT;
 typedef struct _INJECTION_OBJECT_FILE_MAPPING {
     INJECTION_OBJECT_TYPE Type;
     INJECTION_OBJECT_FLAGS Flags;
-    PUNICODE_STRING Name;
+    UNICODE_STRING Name;
     HANDLE Handle;
     ULONG DesiredAccess;
     ULONG InheritHandle;
@@ -230,15 +230,24 @@ typedef union _INJECTION_OBJECT {
     struct {
         INJECTION_OBJECT_TYPE Type;
         INJECTION_OBJECT_FLAGS Flags;
-        PUNICODE_STRING Name;
+        UNICODE_STRING Name;
         HANDLE Handle;
         ULONG DesiredAccess;
         ULONG InheritHandle;
+
+        //
+        // Pad out to 128 bytes (40 bytes consumed).
+        //
+
+        ULONG Padding[22];
     };
     INJECTION_OBJECT_EVENT AsEvent;
     INJECTION_OBJECT_FILE_MAPPING AsFileMapping;
 } INJECTION_OBJECT;
+C_ASSERT(FIELD_OFFSET(INJECTION_OBJECT, Padding) == 40);
+C_ASSERT(sizeof(INJECTION_OBJECT) == 128);
 typedef INJECTION_OBJECT *PINJECTION_OBJECT;
+
 
 typedef union _INJECTION_OBJECTS_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -288,23 +297,32 @@ typedef struct _INJECTION_OBJECTS {
     INJECTION_OBJECTS_FLAGS Flags;
 
     //
-    // Pad out to an 8 byte boundary.
-    //
-
-    ULONG Padding;
-
-    //
     // Base address of first element in objects array.
     //
 
     PINJECTION_OBJECT Objects;
+
+    //
+    // (24 bytes consumed.)
+    //
+
+    //
+    // Pad out to 128 bytes such that our size matches that of the injection
+    // object structure.
+    //
+
+    ULONGLONG Padding[13];
+
 } INJECTION_OBJECTS;
+C_ASSERT(sizeof(INJECTION_OBJECTS) == 128);
 typedef INJECTION_OBJECTS *PINJECTION_OBJECTS;
 
 typedef struct _INJECTION_THUNK_CONTEXT_EX {
     INJECTION_THUNK_EX_FLAGS Flags;
     USHORT EntryCount;
     USHORT UserDataOffset;
+    USHORT OffsetOfInjectionObjectsPointerFromUserData;
+    USHORT Padding[3];
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseCodeAddress;
 
@@ -362,15 +380,33 @@ AdjustThunkPointersEx(
     USHORT UserDataOffset;
     USHORT ModulePathAllocSizeInBytes;
     USHORT FunctionNameAllocSizeInBytes;
+    USHORT Count;
+    ULONG Index;
+    ULONG NumberOfObjects;
+    ULONG InjectionObjectArraySizeInBytes;
+    ULONG TotalInjectionObjectsAllocSizeInBytes;
     PBYTE Base;
     PBYTE Dest;
     PBYTE NewUserData;
     PBYTE NewRemoteUserData;
     PBYTE UserPage;
     PBYTE RemotePage;
+    PBYTE LocalThunkPage;
+    PBYTE LocalInjectionObjectsPage;
+    PBYTE RemoteThunkPage;
+    PBYTE RemoteInjectionObjectsPage;
+    PWCHAR LocalNameBuffer;
+    PWCHAR RemoteNameBuffer;
+    PUNICODE_STRING Name;
+    PUNICODE_STRING OriginalName;
     PINJECTION_THUNK_CONTEXT_EX Thunk;
     PINJECTION_THUNK_CONTEXT_EX OriginalThunk;
-    PINJECTION_OBJECTS InjectionObjects;
+    PINJECTION_OBJECT InjectionObject;
+    PINJECTION_OBJECT LocalInjectionObject;
+    PINJECTION_OBJECT RemoteInjectionObject;
+    PINJECTION_OBJECT OriginalInjectionObject;
+    PINJECTION_OBJECTS LocalInjectionObjects;
+    PINJECTION_OBJECTS RemoteInjectionObjects;
     PINJECTION_OBJECTS OriginalInjectionObjects;
 
     if (SizeOfThunkBufferInBytes != sizeof(INJECTION_THUNK_CONTEXT_EX)) {
@@ -380,14 +416,6 @@ AdjustThunkPointersEx(
 
     OriginalThunk = (PINJECTION_THUNK_CONTEXT_EX)OriginalThunkBuffer;
     Thunk = (PINJECTION_THUNK_CONTEXT_EX)LocalThunkBuffer;
-
-    OriginalInjectionObjects = OriginalThunk->InjectionObjects;
-
-    //
-    // xxx todo: need to point the new injection objects at the writable mem.
-    //
-
-    InjectionObjects = (PINJECTION_OBJECTS)NULL;
 
     Base = Dest = (PBYTE)(
         RtlOffsetToPointer(
@@ -465,11 +493,6 @@ AdjustThunkPointersEx(
     Thunk->BaseCodeAddress = RemoteCodeBaseAddress;
 
     //
-    // xxx todo: process injection objects
-    //
-
-
-    //
     // Invariant checks.
     //
 
@@ -508,6 +531,165 @@ AdjustThunkPointersEx(
     *NewDestUserData = NewUserData;
     *NewRemoteDestUserData = NewRemoteUserData;
 
+    //
+    // Process injection objects if applicable.  If there were none, we're done,
+    // return success.
+    //
+
+    OriginalInjectionObjects = OriginalThunk->InjectionObjects;
+    if (!OriginalInjectionObjects) {
+        return TRUE;
+    }
+
+    //
+    // The writable injection objects structure will live one page after the
+    // local thunk buffer address.  Resolve the relevant page address for both
+    // local and remote thunks and injection objects structures.
+    //
+
+    LocalThunkPage = (PBYTE)ALIGN_DOWN_PAGE(LocalThunkBuffer);
+    LocalInjectionObjectsPage = LocalThunkPage + PAGE_SIZE;
+    LocalInjectionObjects = (PINJECTION_OBJECTS)LocalInjectionObjectsPage;
+
+    RemoteThunkPage = (PBYTE)ALIGN_DOWN_PAGE(RemoteThunkBufferAddress);
+    RemoteInjectionObjectsPage = RemoteThunkPage + PAGE_SIZE;
+    RemoteInjectionObjects = (PINJECTION_OBJECTS)RemoteInjectionObjectsPage;
+
+    //
+    // The first injection object in the array will live after the injection
+    // object structure in the remote memory layout.
+    //
+
+    LocalInjectionObject = (PINJECTION_OBJECT)(
+        RtlOffsetToPointer(
+            LocalInjectionObjects,
+            sizeof(INJECTION_OBJECTS)
+        )
+    );
+
+    RemoteInjectionObject = (PINJECTION_OBJECT)(
+        RtlOffsetToPointer(
+            RemoteInjectionObjects,
+            sizeof(INJECTION_OBJECTS)
+        )
+    );
+
+    //
+    // Invariant check: struct sizes indicated on the incoming objects should
+    // match sizeof() against the corresponding object.
+    //
+
+    if (OriginalInjectionObjects->SizeOfStruct !=
+        (USHORT)sizeof(*LocalInjectionObjects)) {
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (OriginalInjectionObjects->SizeOfInjectionObjectInBytes !=
+        (USHORT)sizeof(*LocalInjectionObject)) {
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    //
+    // Copy the original injection objects structure and adjust the objects
+    // pointer to the base of the remote injection object array.
+    //
+
+    CopyMemory((PBYTE)LocalInjectionObjects,
+               (PBYTE)OriginalInjectionObjects,
+               sizeof(*LocalInjectionObjects));
+
+    LocalInjectionObjects->Objects = RemoteInjectionObject;
+
+    //
+    // Copy the array of original injection object structures into the local
+    // injection object structure.
+    //
+
+    InjectionObjectArraySizeInBytes = (
+        (ULONG)OriginalInjectionObjects->NumberOfObjects *
+        (ULONG)sizeof(INJECTION_OBJECT)
+    );
+
+    CopyMemory((PBYTE)LocalInjectionObject,
+               (PBYTE)OriginalInjectionObjects->Objects,
+               InjectionObjectArraySizeInBytes);
+
+    //
+    // Initialize the base addresses of the local and remote wide character
+    // buffers that will receive a copy of the injection object's Name.Buffer
+    // contents.
+    //
+
+    LocalNameBuffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            LocalInjectionObject,
+            InjectionObjectArraySizeInBytes
+        )
+    );
+
+    RemoteNameBuffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            RemoteInjectionObject,
+            InjectionObjectArraySizeInBytes
+        )
+    );
+
+
+    //
+    // Loop through all of the original injection object structures and carve
+    // out UNICODE_STRING structure + buffer space for each object name.
+    //
+
+    NumberOfObjects = OriginalInjectionObjects->NumberOfObjects;
+
+    TotalInjectionObjectsAllocSizeInBytes = (
+        (ULONG)sizeof(INJECTION_OBJECTS) +
+        InjectionObjectArraySizeInBytes
+    );
+
+
+    for (Index = 0; Index < NumberOfObjects; Index++) {
+
+        //
+        // Resolve the original injection object and pointer to its name field.
+        //
+
+        OriginalInjectionObject = OriginalInjectionObjects->Objects + Index;
+        OriginalName = &OriginalInjectionObject->Name;
+
+        //
+        // Resolve the local injection object and a pointer to its name field.
+        // Initialize the Length and MaximumLength fields to reflect the values
+        // indicated by the original name.
+        //
+
+        InjectionObject = LocalInjectionObject + Index;
+        Name = &InjectionObject->Name;
+        Name->Length = OriginalName->Length;
+        Name->MaximumLength = OriginalName->MaximumLength;
+
+        //
+        // Capture the number of characters for this name by shifting the name's
+        // maximum length (size in bytes) right by 1.  Copy the original name's
+        // buffer over, update the local name's buffer to the relevant remote
+        // wide character buffer offset, then update both wide character buffer
+        // pointers to account for the count (number of chars) we just copied.
+        //
+
+        Count = Name->MaximumLength >> 1;
+        __movsw(LocalNameBuffer, OriginalName->Buffer, Count);
+        Name->Buffer = RemoteNameBuffer;
+
+        LocalNameBuffer += Count;
+        RemoteNameBuffer += Count;
+
+        TotalInjectionObjectsAllocSizeInBytes += Name->MaximumLength;
+    }
+
     return TRUE;
 }
 
@@ -522,14 +704,16 @@ InjectThunkEx(
     PAPC Apc,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
+    USHORT OffsetOfInjectionObjectsPointerFromUserData,
     PINJECTION_OBJECTS InjectionObjects,
-    //PADJUST_USER_DATA_POINTERS_EX AdjustUserDataPointersEx,
+    PADJUST_USER_DATA_POINTERS AdjustUserDataPointersEx,
     PHANDLE RemoteThreadHandlePointer,
     PULONG RemoteThreadIdPointer,
     PPVOID RemoteBaseCodeAddress,
-    PPVOID RemoteUserDataAddress//,
-    //PPINJECTION_THUNK_CONTEXT_EX ThunkPointer,
-    //PPINJECTION_OBJECTS InjectionObjectsPointer
+    PPVOID RemoteUserDataAddress,
+    PPVOID LocalBaseCodeAddressPointer,
+    PPVOID LocalThunkBufferAddressPointer,
+    PPVOID LocalUserDataAddressPointer
     )
 {
     BOOL Success;
@@ -550,6 +734,8 @@ InjectThunkEx(
     //PVOID InjectionThunkRoutine;
     LPTHREAD_START_ROUTINE StartRoutine;
     PCOPY_FUNCTION CopyFunction;
+    STRING NullString;
+    UNICODE_STRING NullUnicodeString;
 
     if (!Rtl->InitializeInjection(Rtl)) {
         return FALSE;
@@ -557,13 +743,41 @@ InjectThunkEx(
 
     Thunk.Flags.AsULong = Flags.AsULong;
 
+    ZeroStruct(NullString);
+    ZeroStruct(NullUnicodeString);
+
     //InitializeInjectionFunctions(&Thunk.Functions, Rtl);
 
+    if (!ARGUMENT_PRESENT(TargetModuleDllPath)) {
 
-    InitializeStringFromString(&Thunk.FunctionName, TargetFunctionName);
-    InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
-                                             TargetModuleDllPath);
+        if (ARGUMENT_PRESENT(TargetFunctionName)) {
+            __debugbreak();
+            return FALSE;
+        }
 
+        InitializeStringFromString(&Thunk.FunctionName, &NullString);
+        InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
+                                                 &NullUnicodeString);
+
+    } else {
+
+        InitializeStringFromString(&Thunk.FunctionName, TargetFunctionName);
+        InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
+                                                 TargetModuleDllPath);
+    }
+
+    //Thunk.UserApc = Apc;
+
+    /*
+    InjectionObjects = (PINJECTION_OBJECTS)(
+        RtlOffsetToPointer(
+            UserData,
+            OffsetOfInjectionObjectsPointerFromUserData
+        )
+    );
+    */
+    Thunk.InjectionObjects = InjectionObjects;
+    
     CopyFunction = Rtl->CopyFunction;
 
     Success = CopyFunction(Rtl,
@@ -576,7 +790,7 @@ InjectThunkEx(
                            (PBYTE)UserData,
                            SizeOfUserDataInBytes,
                            AdjustThunkPointersEx,
-                           NULL, //AdjustUserDataPointers,
+                           AdjustUserDataPointersEx,
                            &DestBaseCodeAddress,
                            &DestThunkBufferAddress,
                            &DestUserDataAddress,
@@ -616,7 +830,6 @@ InjectThunkEx(
     *RemoteBaseCodeAddress = DestBaseCodeAddress;
     *RemoteUserDataAddress = DestUserDataAddress;
 
-    /*
     if (ARGUMENT_PRESENT(LocalBaseCodeAddressPointer)) {
         *LocalBaseCodeAddressPointer = LocalBaseCodeAddress;
 
@@ -628,112 +841,33 @@ InjectThunkEx(
             *LocalUserDataAddressPointer = LocalUserDataAddress;
         }
     }
-    */
 
     return TRUE;
 }
 
-_Use_decl_annotations_
-BOOL
-InjectThunk(
-    PRTL Rtl,
-    PALLOCATOR Allocator,
-    INJECTION_THUNK_FLAGS Flags,
-    HANDLE TargetProcessHandle,
-    PCUNICODE_STRING TargetModuleDllPath,
-    PCSTRING TargetFunctionName,
-    PBYTE UserData,
-    USHORT SizeOfUserDataInBytes,
-    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
-    PHANDLE RemoteThreadHandlePointer,
-    PULONG RemoteThreadIdPointer,
-    PPVOID RemoteBaseCodeAddress,
-    PPVOID RemoteUserDataAddress
-    )
-{
-    BOOL Success;
-    //ULONG EntryCount;
-    ULONG CreationFlags;
-    ULONG RemoteThreadId;
-    HANDLE RemoteThreadHandle;
-    //PRUNTIME_FUNCTION DestRuntimeFunction;
-    INJECTION_THUNK_CONTEXT_EX Thunk;
-    PVOID DestInjectionThunk = NULL;
-    PVOID DestBaseCodeAddress = NULL;
-    PVOID DestUserDataAddress = NULL;
-    PVOID DestThunkBufferAddress = NULL;
-    LPTHREAD_START_ROUTINE StartRoutine;
-    PCOPY_FUNCTION CopyFunction;
-
-    if (!Rtl->InitializeInjection(Rtl)) {
-        return FALSE;
-    }
-
-    Thunk.Flags.AsULong = Flags.AsULong;
-
-    InitializeStringFromString(&Thunk.FunctionName, TargetFunctionName);
-    InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
-                                             TargetModuleDllPath);
-
-    CopyFunction = Rtl->CopyFunction;
-
-    /*
-    Success = CopyFunction(Rtl,
-                           Allocator,
-                           TargetProcessHandle,
-                           Rtl->InjectionThunkRoutine,
-                           NULL,
-                           (PBYTE)&Thunk,
-                           sizeof(Thunk),
-                           (PBYTE)UserData,
-                           SizeOfUserDataInBytes,
-                           NULL, //AdjustThunkPointers,
-                           AdjustUserDataPointers,
-                           &DestBaseCodeAddress,
-                           &DestThunkBufferAddress,
-                           &DestUserDataAddress,
-                           &DestInjectionThunk,
-                           &DestRuntimeFunction,
-                           NULL,
-                           &EntryCount);
-    */
-
-    Success = FALSE;
-
-    if (!Success) {
-        return FALSE;
-    }
-
-    StartRoutine = (LPTHREAD_START_ROUTINE)DestInjectionThunk;
-    CreationFlags = 0;
-
-    RemoteThreadHandle = (
-        CreateRemoteThread(
-            TargetProcessHandle,
-            NULL,
-            0,
-            StartRoutine,
-            DestThunkBufferAddress,
-            CreationFlags,
-            &RemoteThreadId
-        )
-    );
-
-    if (!RemoteThreadHandle || RemoteThreadHandle == INVALID_HANDLE_VALUE) {
-        return FALSE;
-    }
-
-    *RemoteThreadHandlePointer = RemoteThreadHandle;
-    *RemoteThreadIdPointer = RemoteThreadId;
-    *RemoteBaseCodeAddress = DestBaseCodeAddress;
-    *RemoteUserDataAddress = DestUserDataAddress;
-
-    return TRUE;
-}
 
 //
 // End injection glue.
 //
+
+typedef struct _TEST_CONTEXT {
+    PINJECTION_OBJECTS InjectionObjects;
+    ULONG Test1;
+    ULONG Test2;
+} TEST_CONTEXT;
+typedef TEST_CONTEXT *PTEST_CONTEXT;
+
+DECLSPEC_DLLEXPORT
+ULONG
+TestInjectedObjectsThreadEntry(
+    PTEST_CONTEXT TestContext
+    )
+{
+    SleepEx(0, TRUE);
+
+    return 0;
+}
+
 
 BOOL
 TestInjectionObjects(
@@ -746,20 +880,26 @@ TestInjectionObjects(
     LONG ExitCode = 1;
 
     BOOL Success;
-    ULONG SizeOfBuffer;
-    ULONG LastError;
     USHORT Index;
+    //USHORT Count;
     USHORT MappingIndex;
     USHORT NumberOfObjects;
     USHORT NumberOfEvents;
     USHORT NumberOfFileMappings;
+    ULONG SizeOfBuffer;
+    ULONG LastError;
+    ULONG WaitResult;
+    ULONG RemoteThreadId;
     HANDLE Handle;
+    HANDLE RemoteThreadHandle;
     PWSTR WideBuffer;
     PVOID BaseAddress;
+    PVOID RemoteBaseCodeAddress;
+    PVOID RemoteDataBufferAddress;
     PUNICODE_STRING Name;
     STARTUPINFOW StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
-    UNICODE_STRING LogFile = RTL_CONSTANT_STRING(L"\\\\?\\S:\\ScratchLog.txt");
+    UNICODE_STRING LogFile = RTL_CONSTANT_STRING(L"\\\\?\\T:\\ScratchLog.txt");
     INJECTION_OBJECT Objects[7];
     UNICODE_STRING ObjectNames[7];
     UNICODE_STRING ObjectPrefixes[] = {
@@ -816,13 +956,20 @@ TestInjectionObjects(
     LARGE_INTEGER MappingSize;
     INJECTION_OBJECTS InjectionObjects;
     INJECTION_FUNCTIONS InjectionFunctions;
+    INJECTION_THUNK_EX_FLAGS InjectionThunkFlags;
     PINJECTION_OBJECT Object;
     PINJECTION_OBJECT_EVENT Event;
     PINJECTION_OBJECT_FILE_MAPPING FileMapping;
+    TEST_CONTEXT TestContext;
+    PVOID LocalBaseCodeAddress;
+    PVOID LocalThunkBufferAddress;
+    PVOID LocalUserDataAddress;
+    STRING FunctionName = RTL_CONSTANT_STRING("TestInjectedObjectsThreadEntry");
 
     ZeroStruct(Objects);
     ZeroStruct(InjectionObjects);
     ZeroStruct(InjectionFunctions);
+    ZeroStruct(TestContext);
 
     NumberOfObjects = ARRAYSIZE(ObjectNames);
     NumberOfEvents = 4;
@@ -859,7 +1006,7 @@ TestInjectionObjects(
         Name = Names[Index];
         Object = &Objects[Index];
         Event = &Object->AsEvent;
-        Event->Name = Name;
+        InitializeUnicodeStringFromUnicodeString(&Event->Name, Name);
         Event->Type.AsId = EventInjectionObjectId;
         Event->Flags.ManualReset = FALSE;
         Event->DesiredAccess = EVENT_MODIFY_STATE;
@@ -888,7 +1035,7 @@ TestInjectionObjects(
         Name = Names[Index];
         Object = &Objects[Index];
         FileMapping = &Object->AsFileMapping;
-        FileMapping->Name = Name;
+        InitializeUnicodeStringFromUnicodeString(&FileMapping->Name, Name);
         FileMapping->Type.AsId = FileMappingInjectionObjectId;
         FileMapping->DesiredAccess = FileMappingDesiredAccess[MappingIndex];
         FileMapping->PageProtection = FileMappingPageProtection[MappingIndex];
@@ -901,9 +1048,11 @@ TestInjectionObjects(
                                       GENERIC_READ | GENERIC_WRITE,
                                       FILE_SHARE_DELETE,
                                       NULL,
-                                      TRUNCATE_EXISTING,
+                                      OPEN_ALWAYS,
                                       FILE_ATTRIBUTE_NORMAL,
                                       NULL);
+
+            LastError = GetLastError();
 
             if (!Handle || Handle == INVALID_HANDLE_VALUE) {
                 __debugbreak();
@@ -911,7 +1060,6 @@ TestInjectionObjects(
             }
 
             FileMapping->FileHandle = Handle;
-            LastError = GetLastError();
 
             if (FALSE && LastError == ERROR_ALREADY_EXISTS) {
                 FILE_STANDARD_INFO FileInfo;
@@ -937,7 +1085,7 @@ TestInjectionObjects(
                                          PAGE_READWRITE,
                                          FileMapping->MappingSize.HighPart,
                                          FileMapping->MappingSize.LowPart,
-                                         FileMapping->Name->Buffer);
+                                         FileMapping->Name.Buffer);
 
         LastError = GetLastError();
 
@@ -973,6 +1121,47 @@ TestInjectionObjects(
     InjectionObjects.NumberOfObjects = NumberOfObjects;
     InjectionObjects.TotalAllocSizeInBytes = 0;
     InjectionObjects.Objects = Objects;
+    TestContext.InjectionObjects = &InjectionObjects;
+
+    //
+    // Perform injection.
+    //
+
+    InjectionThunkFlags.AsULong = 0;
+    InjectionThunkFlags.DebugBreakOnEntry = TRUE;
+    InjectionThunkFlags.HasInjectionObjects = TRUE;
+
+    Success = InjectThunkEx(Rtl,
+                            Allocator,
+                            InjectionThunkFlags,
+                            ProcessInfo.hProcess,
+                            TestInjectionActiveExePath,     // ModulePath
+                            &FunctionName,                  // FunctionName
+                            NULL,                           // Apc
+                            (PBYTE)&TestContext,
+                            sizeof(TestContext),
+                            FIELD_OFFSET(TEST_CONTEXT, InjectionObjects),
+                            &InjectionObjects,
+                            NULL,                   // AdjustUserDataPointersEx
+                            &RemoteThreadHandle,
+                            &RemoteThreadId,
+                            &RemoteBaseCodeAddress,
+                            &RemoteDataBufferAddress,
+                            &LocalBaseCodeAddress,
+                            &LocalThunkBufferAddress,
+                            &LocalUserDataAddress);
+
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
+
+    //
+    // Do some SignalObjectAndWait()'s against the new events... some shared
+    // memory read/writes, etc.
+    //
+
+    WaitResult = WAIT_OBJECT_0;
 
     Success = TRUE;
 
@@ -983,6 +1172,8 @@ Error:
     Success = FALSE;
 
 End:
+
+    TerminateProcess(ProcessInfo.hProcess, 0);
 
     return Success;
 }
