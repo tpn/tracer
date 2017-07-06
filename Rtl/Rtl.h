@@ -147,6 +147,10 @@ extern "C" {
 #define ALIGN_DOWN_POINTER(Address) (ALIGN_DOWN(Address, sizeof(ULONG_PTR)))
 #endif
 
+#ifndef ALIGN_DOWN_PAGE
+#define ALIGN_DOWN_PAGE(Address) (ALIGN_DOWN(Address, PAGE_SIZE))
+#endif
+
 #ifndef ALIGN_DOWN_USHORT_TO_POINTER_SIZE
 #define ALIGN_DOWN_USHORT_TO_POINTER_SIZE(Value)                   \
     (USHORT)(ALIGN_DOWN((USHORT)Value, (USHORT)sizeof(ULONG_PTR)))
