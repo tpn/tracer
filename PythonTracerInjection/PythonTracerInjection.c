@@ -622,7 +622,10 @@ ParentThreadEntry(
                                &RemoteThreadHandle,
                                &RemoteThreadId,
                                &RemoteBaseCodeAddress,
-                               &RemoteUserBufferAddress);
+                               &RemoteUserBufferAddress,
+                               NULL,
+                               NULL,
+                               NULL);
 
     if (!Success) {
         __debugbreak();
