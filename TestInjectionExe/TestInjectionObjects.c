@@ -350,7 +350,7 @@ typedef struct _INJECTION_THUNK_CONTEXT_EX {
     // User-provided APC-like routine.
     //
 
-    APC UserApc;
+    PAPC UserApc;
 
 } INJECTION_THUNK_CONTEXT_EX;
 typedef INJECTION_THUNK_CONTEXT_EX *PINJECTION_THUNK_CONTEXT_EX;
@@ -690,6 +690,13 @@ AdjustThunkPointersEx(
         TotalInjectionObjectsAllocSizeInBytes += Name->MaximumLength;
     }
 
+    //
+    // Finally, point the local thunk's injection objects pointer at the remote
+    // address.
+    //
+
+    Thunk->InjectionObjects = RemoteInjectionObjects;
+
     return TRUE;
 }
 
@@ -701,7 +708,7 @@ InjectThunkEx(
     HANDLE TargetProcessHandle,
     PCUNICODE_STRING TargetModuleDllPath,
     PCSTRING TargetFunctionName,
-    PAPC Apc,
+    PAPC UserApc,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
     USHORT OffsetOfInjectionObjectsPointerFromUserData,
@@ -746,7 +753,7 @@ InjectThunkEx(
     ZeroStruct(NullString);
     ZeroStruct(NullUnicodeString);
 
-    //InitializeInjectionFunctions(&Thunk.Functions, Rtl);
+    InitializeInjectionFunctions(Rtl, &Thunk.Functions);
 
     if (!ARGUMENT_PRESENT(TargetModuleDllPath)) {
 
@@ -766,16 +773,7 @@ InjectThunkEx(
                                                  TargetModuleDllPath);
     }
 
-    //Thunk.UserApc = Apc;
-
-    /*
-    InjectionObjects = (PINJECTION_OBJECTS)(
-        RtlOffsetToPointer(
-            UserData,
-            OffsetOfInjectionObjectsPointerFromUserData
-        )
-    );
-    */
+    Thunk.UserApc = UserApc;
     Thunk.InjectionObjects = InjectionObjects;
     
     CopyFunction = Rtl->CopyFunction;
