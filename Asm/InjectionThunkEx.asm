@@ -775,6 +775,6 @@ Inj90:
 
         NESTED_END InjectionThunkEx, _TEXT$00
 
-; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=:;            :
+; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=\:;           :
 
 end
