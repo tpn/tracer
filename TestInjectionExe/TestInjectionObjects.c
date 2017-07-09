@@ -44,6 +44,7 @@ typedef struct _INJECTION_FUNCTIONS {
     PEXIT_THREAD ExitThread;
     PGET_EXIT_CODE_THREAD GetExitCodeThread;
     PDEVICE_IO_CONTROL DeviceIoControl;
+    PGET_MODULE_HANDLE_W GetModuleHandleW;
     PCREATE_FILE_W CreateFileW;
     PCREATE_FILE_MAPPING_W CreateFileMappingW;
     POPEN_FILE_MAPPING_W OpenFileMappingW;
@@ -89,6 +90,7 @@ InitializeInjectionFunctions(
     Functions->ExitThread = Rtl->ExitThread;
     Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
     Functions->DeviceIoControl = Rtl->DeviceIoControl;
+    Functions->GetModuleHandleW = Rtl->GetModuleHandleW;
     Functions->CreateFileW = Rtl->CreateFileW;
     Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
     Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
@@ -128,7 +130,7 @@ typedef union _INJECTION_THUNK_EX_FLAGS {
 C_ASSERT(sizeof(INJECTION_THUNK_EX_FLAGS) == sizeof(ULONG));
 
 //
-// Define injection objects structure.
+// Define injection object id enum and type structure bitmap.
 //
 
 typedef enum _Enum_is_bitflag_ _INJECTION_OBJECT_ID {
@@ -168,14 +170,26 @@ typedef union _INJECTION_OBJECT_FLAGS {
 C_ASSERT(sizeof(INJECTION_OBJECT_FLAGS) == sizeof(ULONG));
 typedef INJECTION_OBJECT_FLAGS *PINJECTION_OBJECT_FLAGS;
 
+//
+// Define the injection object header structure, which contains the set of
+// fields common between all injection object types.
+//
+
 typedef struct _INJECTION_OBJECT_HEADER {
     INJECTION_OBJECT_TYPE Type;
     INJECTION_OBJECT_FLAGS Flags;
-    PUNICODE_STRING Name;
+    UNICODE_STRING Name;
     HANDLE Handle;
     ULONG DesiredAccess;
     ULONG InheritHandle;
 } INJECTION_OBJECT_HEADER;
+typedef INJECTION_OBJECT_HEADER *PINJECTION_OBJECT_HEADER;
+C_ASSERT(FIELD_OFFSET(INJECTION_OBJECT_HEADER, Name) == 8);
+C_ASSERT(sizeof(INJECTION_OBJECT_HEADER) == 40);
+
+//
+// Define the event injection object flags and structure.
+//
 
 typedef union _INJECTION_OBJECT_EVENT_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -196,11 +210,27 @@ typedef struct _INJECTION_OBJECT_EVENT {
     ULONG DesiredAccess;
     ULONG InheritHandle;
 } INJECTION_OBJECT_EVENT;
+C_ASSERT(sizeof(INJECTION_OBJECT_EVENT) == 40);
 typedef INJECTION_OBJECT_EVENT *PINJECTION_OBJECT_EVENT;
+
+//
+// Define the file mapping injection object flags and structure.
+//
+
+typedef union _INJECTION_OBJECT_FILE_MAPPING_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} INJECTION_OBJECT_FILE_MAPPING_FLAGS;
+C_ASSERT(sizeof(INJECTION_OBJECT_FILE_MAPPING_FLAGS) == sizeof(ULONG));
+typedef INJECTION_OBJECT_FILE_MAPPING_FLAGS
+       *PINJECTION_OBJECT_FILE_MAPPING_FLAGS;
 
 typedef struct _INJECTION_OBJECT_FILE_MAPPING {
     INJECTION_OBJECT_TYPE Type;
-    INJECTION_OBJECT_FLAGS Flags;
+    INJECTION_OBJECT_FILE_MAPPING_FLAGS Flags;
     UNICODE_STRING Name;
     HANDLE Handle;
     ULONG DesiredAccess;
@@ -215,16 +245,25 @@ typedef struct _INJECTION_OBJECT_FILE_MAPPING {
     LARGE_INTEGER MappingSize;
     PVOID PreferredBaseAddress;
     PVOID BaseAddress;
-    PUNICODE_STRING Path;
+    UNICODE_STRING Path;
     HANDLE FileHandle;
+    PVOID Padding;
 } INJECTION_OBJECT_FILE_MAPPING;
+C_ASSERT(sizeof(INJECTION_OBJECT_FILE_MAPPING) == 128);
 typedef INJECTION_OBJECT_FILE_MAPPING *PINJECTION_OBJECT_FILE_MAPPING;
 
-typedef union _INJECTION_OBJECT {
+//
+// Define the injection object "base" structure, which inlines the common
+// injection object header structure, and then pads itself out to the maximum
+// size used by all injection object subtypes.  This typically isn't interacted
+// with in code; its main purpose is to easily assert structure sizes are as
+// expected.
+//
+
+typedef struct _INJECTION_OBJECT_BASE {
 
     //
-    // All subtypes currently share the name, handle, desired access and inherit
-    // handle values.  Provide direct access to them here.
+    // Inline INJECTION_OBJECT_HEADER.
     //
 
     struct {
@@ -234,20 +273,68 @@ typedef union _INJECTION_OBJECT {
         HANDLE Handle;
         ULONG DesiredAccess;
         ULONG InheritHandle;
-
-        //
-        // Pad out to 128 bytes (40 bytes consumed).
-        //
-
-        ULONG Padding[22];
     };
+
+    //
+    // Pad out to 128 bytes (40 bytes currently consumed by the header).
+    //
+
+    ULONGLONG Padding[11];
+} INJECTION_OBJECT_BASE;
+C_ASSERT(sizeof(INJECTION_OBJECT_BASE) == 128);
+typedef INJECTION_OBJECT_BASE *PINJECTION_OBJECT_BASE;
+
+//
+// Define the primary injection object union that is worked with directly by
+// code.  A union of all possible representations is used as it provides the
+// most flexibility in code when working with objects.
+//
+
+typedef union _INJECTION_OBJECT {
+
+    //
+    // Inline INJECTION_OBJECT_HEADER.
+    //
+
+    struct {
+        INJECTION_OBJECT_TYPE Type;
+        INJECTION_OBJECT_FLAGS Flags;
+        UNICODE_STRING Name;
+        HANDLE Handle;
+        ULONG DesiredAccess;
+        ULONG InheritHandle;
+    };
+
+    //
+    // N.B. The base structure is intended to control the total structure size.
+    //      It must always have sufficient padding such that its size meets or
+    //      exceeds the size of the largest injection object subtype.
+    //
+
+    INJECTION_OBJECT_BASE AsBase;
+
+    //
+    // Define injection object subtype representations.  These enable easy
+    // casting based on the injection object's type.
+    //
+
     INJECTION_OBJECT_EVENT AsEvent;
     INJECTION_OBJECT_FILE_MAPPING AsFileMapping;
 } INJECTION_OBJECT;
-C_ASSERT(FIELD_OFFSET(INJECTION_OBJECT, Padding) == 40);
-C_ASSERT(sizeof(INJECTION_OBJECT) == 128);
+C_ASSERT(sizeof(INJECTION_OBJECT) == sizeof(INJECTION_OBJECT_BASE));
 typedef INJECTION_OBJECT *PINJECTION_OBJECT;
 
+//
+// Define the injection objects composite structure (and corresponding flags).
+// This is used to encapsulate a set of injection objects, plus some additional
+// utility fields that can be written to by the injected thread.  The underlying
+// memory backing this structure and all individual objects is the only memory
+// that is given read/write permission in the target process.  The code and
+// user data pages are set to read/execute and readonly, respectively.  (We
+// need the injection object memory to be writable as the initial injection
+// thunk needs to save handle information once the relevant subtype has been
+// initialized.)
+//
 
 typedef union _INJECTION_OBJECTS_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -277,7 +364,8 @@ typedef struct _INJECTION_OBJECTS {
 
     //
     // Number of objects captured by this structure.  This value governs the
-    // number of elements in the arrays for names, contexts etc.
+    // number of elements in the array of pointers to injection objects whose
+    // first element is supplied by the Objects field below.
     //
 
     ULONG NumberOfObjects;
@@ -307,22 +395,36 @@ typedef struct _INJECTION_OBJECTS {
     //
 
     //
-    // Pad out to 128 bytes such that our size matches that of the injection
-    // object structure.
+    // If a module and function name was requested as part of injection, the
+    // module handle resolved by LoadLibraryW() and the resulting proc address
+    // resolved by GetProcAddress() will be stored here.
     //
 
-    ULONGLONG Padding[13];
+    HANDLE ModuleHandle;
+    PROC FunctionPointer;
+
+    //
+    // Pad out to 128 bytes such that our size matches that of the injection
+    // object structure.  This eases size calculations and boundary conditions
+    // given that we keep everything as powers of two.
+    //
+
+    ULONGLONG Padding[11];
 
 } INJECTION_OBJECTS;
-C_ASSERT(sizeof(INJECTION_OBJECTS) == 128);
+C_ASSERT(sizeof(INJECTION_OBJECTS) == sizeof(INJECTION_OBJECT));
 typedef INJECTION_OBJECTS *PINJECTION_OBJECTS;
+
+//
+// Define the injection thunk context structure.  This structure is passed as
+// the first argument to our injected thread, and is the primary means for
+// directing the behavior of the injected thread's thunk routine.
+//
 
 typedef struct _INJECTION_THUNK_CONTEXT_EX {
     INJECTION_THUNK_EX_FLAGS Flags;
     USHORT EntryCount;
     USHORT UserDataOffset;
-    USHORT OffsetOfInjectionObjectsPointerFromUserData;
-    USHORT Padding[3];
     PRUNTIME_FUNCTION FunctionTable;
     PVOID BaseCodeAddress;
 
@@ -333,7 +435,7 @@ typedef struct _INJECTION_THUNK_CONTEXT_EX {
     INJECTION_FUNCTIONS Functions;
 
     //
-    // Optional injection objects.
+    // Injection objects.
     //
 
     PINJECTION_OBJECTS InjectionObjects;
@@ -897,7 +999,7 @@ TestInjectionObjects(
     PUNICODE_STRING Name;
     STARTUPINFOW StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
-    UNICODE_STRING LogFile = RTL_CONSTANT_STRING(L"\\\\?\\T:\\ScratchLog.txt");
+    UNICODE_STRING LogFile = RTL_CONSTANT_STRING(L"\\\\?\\S:\\ScratchLog.txt");
     INJECTION_OBJECT Objects[7];
     UNICODE_STRING ObjectNames[7];
     UNICODE_STRING ObjectPrefixes[] = {
@@ -1024,7 +1126,7 @@ TestInjectionObjects(
 
     Object = &Objects[ARRAYSIZE(Objects)-1];
     FileMapping = &Object->AsFileMapping;
-    FileMapping->Path = &LogFile;
+    InitializeUnicodeStringFromUnicodeString(&FileMapping->Path, &LogFile);
 
     for (Index = NumberOfEvents, MappingIndex = 0;
          Index < NumberOfObjects;
@@ -1040,9 +1142,9 @@ TestInjectionObjects(
         MappingSize.QuadPart = MappingSizes[MappingIndex].QuadPart;
         FileMapping->MappingSize.QuadPart = MappingSize.QuadPart;
 
-        if (FileMapping->Path) {
+        if (FileMapping->Path.Buffer) {
 
-            Handle = Rtl->CreateFileW(FileMapping->Path->Buffer,
+            Handle = Rtl->CreateFileW(FileMapping->Path.Buffer,
                                       GENERIC_READ | GENERIC_WRITE,
                                       FILE_SHARE_DELETE,
                                       NULL,

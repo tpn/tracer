@@ -203,6 +203,7 @@ INJECTION_FUNCTIONS struct
     ExitThread              dq      ?
     GetExitCodeThread       dq      ?
     DeviceIoControl         dq      ?
+    GetModuleHandleW        dq      ?
     CreateFileW             dq      ?
     CreateFileMappingW      dq      ?
     OpenFileMappingW        dq      ?
@@ -228,6 +229,7 @@ INJECTION_OBJECT_EVENT struct
     DesiredAccess           dd                      ?
     InheritHandle           dd                      ?
 INJECTION_OBJECT_EVENT ends
+.erre (size INJECTION_OBJECT_EVENT eq 40), @catstr(<Size error: INJECTION_OBJECT_EVENT: >, %(size INJECTION_OBJECT_EVENT))
 
 INJECTION_OBJECT_FILE_MAPPING struct
     ObjectType              dd                      ?
@@ -240,13 +242,17 @@ INJECTION_OBJECT_FILE_MAPPING struct
     CreationDisposition     dd                      ?
     FlagsAndAttributes      dd                      ?
     AllocationType          dd                      ?
-    PreferredNode           dd                      ?
-    Padding                 dd                      ?
+    PageProtection          dd                      ?
+    PreferredNumaNode       dd                      ?
     FileOffset              dq                      ?
     MappingSize             dq                      ?
     PreferredBaseAddress    dq                      ?
     BaseAddress             dq                      ?
+    Path                    UNICODE_STRING          { }
+    FileHandle              dq                      ?
+    Padding                 dq                      ?
 INJECTION_OBJECT_FILE_MAPPING ends
+.erre (size INJECTION_OBJECT_FILE_MAPPING eq 128), @catstr(<Size error: INJECTION_OBJECT_FILE_MAPPING: >, %(size INJECTION_OBJECT_FILE_MAPPING))
 
 INJECTION_OBJECT union
     struct
@@ -256,11 +262,13 @@ INJECTION_OBJECT union
         Handle          dq                          ?
         DesiredAccess   dd                          ?
         InheritHandle   dd                          ?
-        Padding         dd 22 dup                   (?)
+        Padding         dq 11 dup                   (?)
     ends
     AsEvent         INJECTION_OBJECT_EVENT          { }
     AsFileMapping   INJECTION_OBJECT_FILE_MAPPING   { }
 INJECTION_OBJECT ends
+.erre (size INJECTION_OBJECT eq 128), @catstr(<Size error: INJECTION_OBJECT: >, %(size INJECTION_OBJECT))
+
 PINJECTION_OBJECT typedef ptr INJECTION_OBJECT
 
 INJECTION_OBJECTS struct
@@ -270,8 +278,11 @@ INJECTION_OBJECTS struct
     TotalAllocSizeInBytes           dd              ?
     Flags                           dd              ?
     FirstObject                     dq              ?
-    Padding                         dq 13 dup       (?)
+    ModuleHandle                    dq              ?
+    FunctionPointer                 dq              ?
+    Padding                         dq 11 dup       (?)
 INJECTION_OBJECTS ends
+.erre (size INJECTION_OBJECTS eq 128), @catstr(<Size error: INJECTION_OBJECTS: >, %(size INJECTION_OBJECTS))
 PINJECTION_OBJECTS typedef ptr INJECTION_OBJECT
 
 ;
@@ -282,8 +293,6 @@ INJECTION_THUNK_EX_CONTEXT struct
     Flags                   dd                      ?
     EntryCount              dw                      ?
     UserDataOffset          dw                      ?
-    OffsetOfInjectionObjectsPointerFromUserData dw  ?
-    Padding                 dw 3 dup                (?)
     FunctionTable           dq                      ?
     BaseCodeAddress         dq                      ?
     InjectionFunctions      INJECTION_FUNCTIONS     { }
@@ -439,10 +448,13 @@ InvalidInjectionContext     equ     1003
 
 ;
 ; Check to see if the thunk has any injection objects.  If it doesn't, proceed
-; to the test to see if it has a module path and function name.
+; to the test to see if it has a module path and function name.  We clear r14
+; up front such that we can test for non-NULL later on in the routine when we
+; may need to persist the module handle and function pointer.
 ;
 
-Inj10:  movzx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
+Inj10:  xor     r14, r14                                ; Zero ptr for inj obs.
+        movzx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         test    r8, HasInjectionObjects                 ; Any injection objects?
         jz      Inj60                                   ; No; check mod+func.
 
@@ -612,7 +624,7 @@ Inj45:  mov     rcx, FileMapping.Handle[rbx]            ; Load handle.
 
         mov     rax, FileMapping.MappingSize[rbx]       ; Load mapping size.
         mov     Locals.NumberOfBytesToMap[rsp], rax     ; ...as 5th arg.
-        mov     eax, FileMapping.PreferredNode[rbx]     ; Load pref NN.
+        mov     eax, FileMapping.PreferredNumaNode[rbx] ; Load pref NN.
         mov     Locals.PreferredNumaNode[rsp], rax      ; ...as 7th arg.
 
 ;
@@ -625,7 +637,7 @@ Inj45:  mov     rcx, FileMapping.Handle[rbx]            ; Load handle.
 
 ;
 ; The view was mapped successfully.  Save the base address back to the context,
-; then continue the loop by falling through.
+; then jump to the bottom of the loop (Inj50).
 ;
 
         mov     FileMapping.BaseAddress[rbx], rax       ; Save base addr.
@@ -718,11 +730,13 @@ Inj60:  xor     rax, rax                                ; Clear rax.
 
 ;
 ; Module was loaded successfully.  The handle value lives in rax.  Copy it to
-; rcx (first parameter for GetProcAddress), then prepare the second parameter
-; (rdx) with the function name we wish to resolve.
+; rcx (first parameter for GetProcAddress) and rsi (so that it's available in
+; a non-volatile register in order to save it later in the routine), then
+; prepare the second parameter (rdx) with the function name we wish to resolve.
 ;
 
 Inj70:  mov     rcx, rax                                ; Load as 1st param.
+        mov     rsi, rax                                ; Also stash in rsi.
         mov     rdx, Thunk.FunctionName.Buffer[r12]     ; Load name as 2nd.
         call    Functions.GetProcAddress[r13]           ; Call GetProcAddress().
         test    rax, rax                                ; Check return value.
@@ -734,16 +748,28 @@ Inj70:  mov     rcx, rax                                ; Load as 1st param.
 
 ;
 ; The function name was resolved successfully, and its address lives in rax.
-; Load the offset of the user's data buffer and calculate the address based on
-; the base address of the thunk.  Call the user's function with that address as
-; the first parameter, and the address of the injection objects structure (which
-; still lives in r14) as the second parameter.
+; Save both the module handle and resulting function pointer to the relevant
+; location in the injection objects structure (assuming it is not NULL).
 ;
 
-Inj80:  movzx   r8, word ptr Thunk.UserDataOffset[r12]  ; Load offset.
+Inj80:  test    r14, r14                                ; Inj. objects avail?
+        jz      short @F                                ; NULL ptr, don't save.
+        mov     Objects.ModuleHandle[r14], rsi          ; Save module handle.
+        mov     Objects.FunctionPointer[r14], rax       ; Save func ptr.
+
+;
+; Load the offset of the user's data buffer and calculate the address based on
+; the base address of the thunk.  Call the user's function with that address as
+; the first parameter, the address of the injection objects structure (which
+; still lives in r14) as the second parameter, and the address of the injection
+; thunk context as the third parameter.
+;
+
+@@:     movzx   r8, word ptr Thunk.UserDataOffset[r12]  ; Load offset.
         mov     rcx, r12                                ; Load base address.
         add     rcx, r8                                 ; Add offset.
         mov     rdx, r14                                ; Load inj. objs ptr.
+        mov     r8, r12                                 ; Include thunk ctx.
         call    rax                                     ; Call the function.
 
 ;
