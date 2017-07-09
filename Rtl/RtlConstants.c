@@ -177,6 +177,8 @@ CONST PCSTR RtlFunctionNames[] = {
     "TerminateThread",
     "QueueUserAPC",
     "DeviceIoControl",
+    "GetModuleHandleA",
+    "GetModuleHandleW",
     "CreateFileW",
     "CreateFileMappingW",
     "OpenFileMappingW",

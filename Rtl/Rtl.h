@@ -2295,6 +2295,24 @@ BOOL
 typedef DEVICE_IO_CONTROL *PDEVICE_IO_CONTROL;
 
 typedef
+_When_(lpModuleName == NULL, _Ret_notnull_)
+_When_(lpModuleName != NULL, _Ret_maybenull_)
+HMODULE
+(WINAPI GET_MODULE_HANDLE_A)(
+    _In_opt_ LPCSTR lpModuleName
+    );
+typedef GET_MODULE_HANDLE_A *PGET_MODULE_HANDLE_A;
+
+typedef
+_When_(lpModuleName == NULL, _Ret_notnull_)
+_When_(lpModuleName != NULL, _Ret_maybenull_)
+HMODULE
+(WINAPI GET_MODULE_HANDLE_W)(
+    _In_opt_ LPCWSTR lpModuleName
+    );
+typedef GET_MODULE_HANDLE_W *PGET_MODULE_HANDLE_W;
+
+typedef
 HANDLE
 (WINAPI CREATE_FILE_W)(
     _In_ LPCWSTR lpFileName,
@@ -4610,6 +4628,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PTERMINATE_THREAD TerminateThread;                                                                 \
     PQUEUE_USER_APC QueueUserAPC;                                                                      \
     PDEVICE_IO_CONTROL DeviceIoControl;                                                                \
+    PGET_MODULE_HANDLE_A GetModuleHandleA;                                                             \
+    PGET_MODULE_HANDLE_W GetModuleHandleW;                                                             \
     PCREATE_FILE_W CreateFileW;                                                                        \
     PCREATE_FILE_MAPPING_W CreateFileMappingW;                                                         \
     POPEN_FILE_MAPPING_W OpenFileMappingW;                                                             \
