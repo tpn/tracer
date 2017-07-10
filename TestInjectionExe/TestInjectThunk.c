@@ -124,22 +124,22 @@ TestInjectThunk(
     Flags.AsULong = 0;
     Test.Count = 1;
 
-    Success = Rtl->InjectThunk(Rtl,
-                               Allocator,
-                               Flags,
-                               ProcessInfo.hProcess,
-                               TestInjectionActiveExePath,
-                               &FunctionName,
-                               (PBYTE)&Test,
-                               sizeof(Test),
-                               AdjustDataBufferPointers,
-                               &RemoteThreadHandle,
-                               &RemoteThreadId,
-                               &RemoteBaseCodeAddress,
-                               &RemoteDataBufferAddress,
-                               NULL,
-                               NULL,
-                               NULL);
+    Success = Rtl->Inject(Rtl,
+                          Allocator,
+                          Flags,
+                          ProcessInfo.hProcess,
+                          TestInjectionActiveExePath,
+                          &FunctionName,
+                          (PBYTE)&Test,
+                          sizeof(Test),
+                          AdjustDataBufferPointers,
+                          &RemoteThreadHandle,
+                          &RemoteThreadId,
+                          &RemoteBaseCodeAddress,
+                          &RemoteDataBufferAddress,
+                          NULL,
+                          NULL,
+                          NULL);
 
     if (!Success) {
         goto End;

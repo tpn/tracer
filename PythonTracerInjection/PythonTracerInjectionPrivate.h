@@ -98,7 +98,7 @@ COMPLETE_PYTHON_TRACER_INJECTION CompletePythonTracerInjection;
 INITIALIZE_TRACER_INJECTION_BREAKPOINTS
     InitializePythonTracerInjectionBreakpoints;
 
-RTL_INJECTION_COMPLETE_CALLBACK PythonTracerInjectionCompleteCallback;
+INJECTION_COMPLETE PythonTracerInjectionCompleteCallback;
 
 #ifdef __cplusplus
 }; // extern "C"

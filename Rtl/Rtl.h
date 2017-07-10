@@ -409,6 +409,8 @@ typedef const LONG CLONG;
 typedef PVOID *PPVOID;
 typedef const PVOID PCVOID;
 typedef const PVOID CPVOID;
+typedef const BYTE CBYTE;
+typedef CBYTE *PCBYTE;
 typedef CHAR **PPCHAR;
 typedef WCHAR **PPWCHAR;
 typedef CHAR **PPSTR;
@@ -1223,40 +1225,6 @@ BOOL
     _Out_ PULONG EntryCountPointer
     );
 typedef COPY_FUNCTION *PCOPY_FUNCTION;
-
-typedef union _INJECTION_THUNK_FLAGS {
-    struct {
-        ULONG DebugBreakOnEntry:1;
-        ULONG Unused:31;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} INJECTION_THUNK_FLAGS;
-C_ASSERT(sizeof(INJECTION_THUNK_FLAGS) == sizeof(ULONG));
-
-typedef
-_Check_return_
-_Success_(return != 0)
-BOOL
-(INJECT_THUNK)(
-    _In_ struct _RTL *Rtl,
-    _In_ PALLOCATOR Allocator,
-    _In_ INJECTION_THUNK_FLAGS Flags,
-    _In_ HANDLE TargetProcessHandle,
-    _In_ PCUNICODE_STRING TargetModuleDllPath,
-    _In_ PCSTRING TargetFunctionName,
-    _In_ PBYTE UserData,
-    _In_ USHORT SizeOfUserDataInBytes,
-    _In_ PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
-    _In_ PHANDLE RemoteThreadHandlePointer,
-    _In_ PULONG RemoteThreadIdPointer,
-    _In_ PPVOID RemoteBaseCodeAddress,
-    _In_ PPVOID RemoteUserDataAddress,
-    _Out_opt_ PPVOID LocalBaseCodeAddressPointer,
-    _Out_opt_ PPVOID LocalThunkBufferAddressPointer,
-    _Out_opt_ PPVOID LocalUserDataAddressPointer
-    );
-typedef INJECT_THUNK *PINJECT_THUNK;
 
 //
 // Process and Thread support.
@@ -5528,7 +5496,6 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PRTL_LEFT_CHILD RtlLeftChild;                                                   \
     PRTL_PARENT RtlParent;                                                          \
     PRTL_RIGHT_CHILD RtlRightChild;                                                 \
-    PRTL_INJECT Inject;                                                             \
     PSET_PRIVILEGE SetPrivilege;                                                    \
     PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                           \
     PSTRING_TO_RTL_PATH StringToRtlPath;                                            \
@@ -6215,8 +6182,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
 
     PVOID InjectionThunkRoutine;
-    PVOID InjectionThunkExRoutine;
-    PINJECT_THUNK InjectThunk;
+    PINJECT Inject;
     PINITIALIZE_INJECTION InitializeInjection;
     PADJUST_THUNK_POINTERS AdjustThunkPointers;
 

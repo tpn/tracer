@@ -57,8 +57,5 @@
     <MASM Include="InjectionThunk.asm">
       <Filter>Source Files</Filter>
     </MASM>
-    <MASM Include="InjectionThunkEx.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
   </ItemGroup>
 </Project>

@@ -340,18 +340,6 @@ InitializeInjection(PRTL Rtl)
         return FALSE;
     }
 
-    Rtl->InjectionThunkExRoutine = (
-        GetProcAddress(
-            Rtl->InjectionThunkModule,
-            "InjectionThunkEx"
-        )
-    );
-
-    if (!Rtl->InjectionThunkExRoutine) {
-        __debugbreak();
-        return FALSE;
-    }
-
     return TRUE;
 }
 
@@ -3720,7 +3708,7 @@ InitializeRtl(
     Rtl->RundownGlobalAtExitFunctions = RundownGlobalAtExitFunctions;
 
     Rtl->InitializeInjection = InitializeInjection;
-    Rtl->InjectThunk = InjectThunk;
+    Rtl->Inject = Inject;
 
     Rtl->GetCu = GetCu;
 

@@ -78,7 +78,6 @@
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
     <ClInclude Include="Injection.h" />
     <ClInclude Include="InjectionInline.h" />
-    <ClInclude Include="InjectionPrivate.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="RtlConstants.h" />
     <ClInclude Include="RtlPrivate.h" />
@@ -101,9 +100,6 @@
     </ClCompile>
     <ClCompile Include="File.c" />
     <ClCompile Include="Injection.c" />
-    <ClCompile Include="InjectionPrivate.c" />
-    <ClCompile Include="InjectionRemoteThreadEntryThunk.c" />
-    <ClCompile Include="InjectThunk.c" />
     <ClCompile Include="Loader.c" />
     <ClCompile Include="Privilege.c" />
     <ClCompile Include="Registry.c" />

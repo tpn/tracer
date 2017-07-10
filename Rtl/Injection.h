@@ -9,14 +9,13 @@ Module Name:
 Abstract:
 
     This is the header file for the Rtl component's injection module, which
-    facilitates "injection" of objects such as events and shared memory, into
+    facilitates "injection" of objects, such as events and file mappings, into
     a remote process, in conjunction with remote thread creation.
 
     Callers wire up one or more INJECTION_OBJECT-derived structures and fill
     out a containing INJECTION_OBJECTS container structure.  This container,
-    in additional to a DLL name and corresponding public function name (i.e.
-    a DLL-exported function name), is then passed to the main function of this
-    routine: Inject().
+    in additional to a DLL name and corresponding exported function name, are
+    then passed to an Inject() function, which performs the injection.
 
 --*/
 
@@ -34,7 +33,8 @@ extern "C" {
 // always be mapped into memory addresses accessible by every process at the
 // same address.  That is, they represent functions residing in modules such
 // as kernel32.dll and ntdll.dll, which will always be present in the address
-// space of a Win32 process.
+// space of a Win32 process, and always mapped at the same addresses across all
+// processes.
 //
 
 typedef struct _INJECTION_FUNCTIONS {
@@ -79,10 +79,10 @@ typedef INJECTION_FUNCTIONS *PINJECTION_FUNCTIONS;
 typedef const INJECTION_FUNCTIONS *PCINJECTION_FUNCTIONS;
 
 //
-// Define function type definitions and inline implementations for initializing
-// an INJECTION_FUNCTIONS structure from an instance of RTL (typically only done
-// once, at startup), and copying an initialized structure to a new one (which
-// needs
+// Define function type definitions for initializing an INJECTION_FUNCTIONS
+// structure from an instance of RTL (typically only done once, at startup),
+// and copying an initialized structure to a new one (which is done as part
+// of preparation of an INJECTION_OBJECTS structure prior to calling Inject).
 //
 
 typedef
@@ -93,62 +93,6 @@ VOID
     );
 typedef INITIALIZE_INJECTION_FUNCTIONS *PINITIALIZE_INJECTION_FUNCTIONS;
 extern INITIALIZE_INJECTION_FUNCTIONS InitializeInjectionFunctions;
-
-VOID
-InitializeInjectionFunctionsInline(
-    _In_ PRTL Rtl,
-    _Out_ PINJECTION_FUNCTIONS Functions
-    )
-{
-    Functions->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
-    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
-    Functions->GetProcAddress = Rtl->GetProcAddress;
-    Functions->GetLastError = Rtl->GetLastError;
-    Functions->SetLastError = Rtl->SetLastError;
-    Functions->SetEvent = Rtl->SetEvent;
-    Functions->ResetEvent = Rtl->ResetEvent;
-    Functions->GetThreadContext = Rtl->GetThreadContext;
-    Functions->SetThreadContext = Rtl->SetThreadContext;
-    Functions->SuspendThread = Rtl->SuspendThread;
-    Functions->ResumeThread = Rtl->ResumeThread;
-    Functions->OpenEventW = Rtl->OpenEventW;
-    Functions->CloseHandle = Rtl->CloseHandle;
-    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
-    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
-    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
-    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
-    Functions->NtQueueApcThread = Rtl->NtQueueApcThread;
-    Functions->NtTestAlert = Rtl->NtTestAlert;
-    Functions->QueueUserAPC = Rtl->QueueUserAPC;
-    Functions->SleepEx = Rtl->SleepEx;
-    Functions->ExitThread = Rtl->ExitThread;
-    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
-    Functions->DeviceIoControl = Rtl->DeviceIoControl;
-    Functions->GetModuleHandleW = Rtl->GetModuleHandleW;
-    Functions->CreateFileW = Rtl->CreateFileW;
-    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
-    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
-    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
-    Functions->MapViewOfFileExNuma = Rtl->MapViewOfFileExNuma;
-    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
-    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
-    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
-    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
-    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
-    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
-}
-
-FORCEINLINE
-VOID
-CopyInjectionFunctions(
-    _Out_ PINJECTION_FUNCTIONS DestFunctions,
-    _In_ PCINJECTION_FUNCTIONS SourceFunctions
-    )
-{
-    CopyMemory(DestFunctions,
-               SourceFunctions,
-               sizeof(*DestFunctions));
-}
 
 //
 // Define the injection thunk structure and supporting flags.  This structure
@@ -470,12 +414,13 @@ C_ASSERT(sizeof(INJECTION_OBJECTS) == sizeof(INJECTION_OBJECT));
 typedef INJECTION_OBJECTS *PINJECTION_OBJECTS;
 
 //
-// Define the injection thunk structure.  This structure is passed as the first
-// argument to our injected thread, and is the primary means for directing the
-// behavior of the injected thread's thunk routine, as described earlier.
+// Define the injection thunk context structure.  This structure is passed as
+// the first argument to our injected thread, and is the primary means for
+// directing the behavior of the injected thread's thunk routine, as described
+// earlier.
 //
 
-typedef struct _INJECTION_THUNK {
+typedef struct _INJECTION_THUNK_CONTEXT {
 
     //
     // Define flags related to the thunk.
@@ -503,14 +448,14 @@ typedef struct _INJECTION_THUNK {
     // Supplies a pointer to the runtime function table entry registered for
     // our injection routine.  This is automatically wired up for us as part
     // copying our injection routine into a separate memory address space
-    // (via CopyFunction()).
+    // (via CopyFunction()), and is passed to RtlAddFunctionTable().
     //
 
     PRUNTIME_FUNCTION FunctionTable;
 
     //
     // Supplies the base address of the injection routine's code.  This value
-    // is provided to RtlAddFunctionTable().
+    // is passed to RtlAddFunctionTable().
     //
 
     PVOID BaseCodeAddress;
@@ -544,8 +489,8 @@ typedef struct _INJECTION_THUNK {
 
     PAPC UserApc;
 
-} INJECTION_THUNK_CONTEXT_EX;
-typedef INJECTION_THUNK_CONTEXT_EX *PINJECTION_THUNK_CONTEXT_EX;
+} INJECTION_THUNK_CONTEXT;
+typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;
 
 //
 // Define the function typedef for the main injection function.
@@ -577,6 +522,26 @@ BOOL
     );
 typedef INJECT *PINJECT;
 extern INJECT Inject;
+
+//
+// Define the function prototype for the injection complete function, which is
+// the function that is resolved dynamically in the remote process based on the
+// DLL module path and function name provided to Inject().
+//
+// That is, if providing a DLL and function name, the target function must
+// conform to this function signature.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INJECTION_COMPLETE)(
+    _In_ PCBYTE UserData,
+    _In_opt_ PINJECTION_OBJECTS InjectionObjects,
+    _In_ PINJECTION_FUNCTIONS InjectionFunctions
+    );
+typedef INJECTION_COMPLETE *PINJECTION_COMPLETE;
 
 //
 // Include inline functions.
