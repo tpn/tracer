@@ -877,7 +877,7 @@ InjectThunkEx(
 
     Thunk.UserApc = UserApc;
     Thunk.InjectionObjects = InjectionObjects;
-    
+
     CopyFunction = Rtl->CopyFunction;
 
     Success = CopyFunction(Rtl,
