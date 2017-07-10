@@ -433,7 +433,7 @@ InvalidInjectionContext     equ     1003
 ;      struct (which is contained within the thunk) into r13.
 ;
 
-@@:     lea     r13, Thunk.InjectionFunctions[r12]      ; Load functions struct.
+@@:     lea     r13, Thunk.InjectionFunctions[r12]      ; Load Functions.
         mov     rcx, Thunk.FunctionTable[r12]           ; Load FunctionTable.
         movzx   rdx, word ptr Thunk.EntryCount[r12]     ; Load EntryCount.
         mov     r8, Thunk.BaseCodeAddress[r12]          ; Load BaseCodeAddress.
