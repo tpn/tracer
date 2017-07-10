@@ -813,7 +813,6 @@ InjectThunkEx(
     PAPC UserApc,
     PBYTE UserData,
     USHORT SizeOfUserDataInBytes,
-    USHORT OffsetOfInjectionObjectsPointerFromUserData,
     PINJECTION_OBJECTS InjectionObjects,
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointersEx,
     PHANDLE RemoteThreadHandlePointer,
