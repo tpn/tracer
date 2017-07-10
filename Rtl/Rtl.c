@@ -340,6 +340,8 @@ InitializeInjection(PRTL Rtl)
         return FALSE;
     }
 
+    InitializeInjectionFunctions(Rtl, &Rtl->InjectionFunctions);
+
     return TRUE;
 }
 

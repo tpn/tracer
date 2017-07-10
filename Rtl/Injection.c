@@ -26,82 +26,6 @@ Abstract:
 ADJUST_THUNK_POINTERS AdjustThunkPointers;
 
 //
-// Functions for initializing and copying injection functions.
-//
-
-VOID
-InitializeInjectionFunctions(
-    _In_ PRTL Rtl,
-    _Out_ PINJECTION_FUNCTIONS Functions
-    )
-{
-    PBYTE Code;
-    PBYTE NewCode;
-    PBYTE *Function;
-    PBYTE *Pointers;
-    USHORT Index;
-    USHORT NumberOfFunctions;
-
-    Functions->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
-    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
-    Functions->GetProcAddress = Rtl->GetProcAddress;
-    Functions->GetLastError = Rtl->GetLastError;
-    Functions->SetLastError = Rtl->SetLastError;
-    Functions->SetEvent = Rtl->SetEvent;
-    Functions->ResetEvent = Rtl->ResetEvent;
-    Functions->GetThreadContext = Rtl->GetThreadContext;
-    Functions->SetThreadContext = Rtl->SetThreadContext;
-    Functions->SuspendThread = Rtl->SuspendThread;
-    Functions->ResumeThread = Rtl->ResumeThread;
-    Functions->OpenEventW = Rtl->OpenEventW;
-    Functions->CloseHandle = Rtl->CloseHandle;
-    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
-    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
-    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
-    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
-    Functions->NtQueueApcThread = Rtl->NtQueueApcThread;
-    Functions->NtTestAlert = Rtl->NtTestAlert;
-    Functions->QueueUserAPC = Rtl->QueueUserAPC;
-    Functions->SleepEx = Rtl->SleepEx;
-    Functions->ExitThread = Rtl->ExitThread;
-    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
-    Functions->DeviceIoControl = Rtl->DeviceIoControl;
-    Functions->GetModuleHandleW = Rtl->GetModuleHandleW;
-    Functions->CreateFileW = Rtl->CreateFileW;
-    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
-    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
-    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
-    Functions->MapViewOfFileExNuma = Rtl->MapViewOfFileExNuma;
-    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
-    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
-    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
-    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
-    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
-    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
-
-    Pointers = (PBYTE *)Functions;
-    NumberOfFunctions = sizeof(*Functions) / sizeof(ULONG_PTR);
-
-    for (Index = 0; Index < NumberOfFunctions; Index++) {
-        Function = Pointers + Index;
-        Code = *Function;
-        NewCode = SkipJumpsInline(Code);
-        *Function = NewCode;
-    }
-}
-
-VOID
-CopyInjectionFunctions(
-    _Out_ PINJECTION_FUNCTIONS DestFunctions,
-    _In_ PCINJECTION_FUNCTIONS SourceFunctions
-    )
-{
-    CopyMemory(DestFunctions,
-               SourceFunctions,
-               sizeof(*DestFunctions));
-}
-
-//
 // Main injection function.
 //
 
@@ -242,7 +166,8 @@ Return Value:
     ZeroStruct(NullString);
     ZeroStruct(NullUnicodeString);
 
-    InitializeInjectionFunctions(Rtl, &Thunk.Functions);
+    CopyInjectionFunctionsInline(&Thunk.Functions,
+                                 &Rtl->InjectionFunctions);
 
     if (!ARGUMENT_PRESENT(TargetModuleDllPath)) {
 
@@ -262,7 +187,10 @@ Return Value:
                                                  TargetModuleDllPath);
     }
 
-    Thunk.UserApc = UserApc;
+    if (ARGUMENT_PRESENT(UserApc)) {
+        CopyMemory(&Thunk.UserApc, UserApc, sizeof(Thunk.UserApc));
+    }
+
     Thunk.InjectionObjects = InjectionObjects;
 
     CopyFunction = Rtl->CopyFunction;
@@ -740,5 +668,80 @@ Return Value:
     return (ULONG_PTR)_ReturnAddress();
 }
 
+//
+// Functions for initializing and copying injection functions.
+//
+
+VOID
+InitializeInjectionFunctions(
+    _In_ PRTL Rtl,
+    _Out_ PINJECTION_FUNCTIONS Functions
+    )
+{
+    PBYTE Code;
+    PBYTE NewCode;
+    PBYTE *Function;
+    PBYTE *Pointers;
+    USHORT Index;
+    USHORT NumberOfFunctions;
+
+    Functions->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->GetLastError = Rtl->GetLastError;
+    Functions->SetLastError = Rtl->SetLastError;
+    Functions->SetEvent = Rtl->SetEvent;
+    Functions->ResetEvent = Rtl->ResetEvent;
+    Functions->GetThreadContext = Rtl->GetThreadContext;
+    Functions->SetThreadContext = Rtl->SetThreadContext;
+    Functions->SuspendThread = Rtl->SuspendThread;
+    Functions->ResumeThread = Rtl->ResumeThread;
+    Functions->OpenEventW = Rtl->OpenEventW;
+    Functions->CloseHandle = Rtl->CloseHandle;
+    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
+    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
+    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
+    Functions->NtQueueApcThread = Rtl->NtQueueApcThread;
+    Functions->NtTestAlert = Rtl->NtTestAlert;
+    Functions->QueueUserAPC = Rtl->QueueUserAPC;
+    Functions->SleepEx = Rtl->SleepEx;
+    Functions->ExitThread = Rtl->ExitThread;
+    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
+    Functions->DeviceIoControl = Rtl->DeviceIoControl;
+    Functions->GetModuleHandleW = Rtl->GetModuleHandleW;
+    Functions->CreateFileW = Rtl->CreateFileW;
+    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
+    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
+    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->MapViewOfFileExNuma = Rtl->MapViewOfFileExNuma;
+    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
+    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
+    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
+    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
+    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
+    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
+
+    return;
+
+    Pointers = (PBYTE *)Functions;
+    NumberOfFunctions = sizeof(*Functions) / sizeof(ULONG_PTR);
+
+    for (Index = 0; Index < NumberOfFunctions; Index++) {
+        Function = Pointers + Index;
+        Code = *Function;
+        NewCode = SkipJumpsInline(Code);
+        *Function = NewCode;
+    }
+}
+
+VOID
+CopyInjectionFunctions(
+    _Out_ PINJECTION_FUNCTIONS DestFunctions,
+    _In_ PCINJECTION_FUNCTIONS SourceFunctions
+    )
+{
+    CopyInjectionFunctionsInline(DestFunctions, SourceFunctions);
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

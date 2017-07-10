@@ -94,6 +94,26 @@ VOID
 typedef INITIALIZE_INJECTION_FUNCTIONS *PINITIALIZE_INJECTION_FUNCTIONS;
 extern INITIALIZE_INJECTION_FUNCTIONS InitializeInjectionFunctions;
 
+typedef
+VOID
+(COPY_INJECTION_FUNCTIONS)(
+    _Out_ PINJECTION_FUNCTIONS DestFunctions,
+    _In_ PCINJECTION_FUNCTIONS SourceFunctions
+    );
+typedef COPY_INJECTION_FUNCTIONS *PCOPY_INJECTION_FUNCTIONS;
+
+FORCEINLINE
+VOID
+CopyInjectionFunctionsInline(
+    _Out_ PINJECTION_FUNCTIONS DestFunctions,
+    _In_ PCINJECTION_FUNCTIONS SourceFunctions
+    )
+{
+    CopyMemory(DestFunctions,
+               SourceFunctions,
+               sizeof(*DestFunctions));
+}
+
 //
 // Define the injection thunk structure and supporting flags.  This structure
 // is used to control the injection process.  A local version of this structure
@@ -461,13 +481,6 @@ typedef struct _INJECTION_THUNK_CONTEXT {
     PVOID BaseCodeAddress;
 
     //
-    // We embed the injection functions structure directly into our thunk to
-    // facilitate easy access by our injection routine.
-    //
-
-    INJECTION_FUNCTIONS Functions;
-
-    //
     // Supplies a pointer to an optional injection objects container structure,
     // which, in conjunction with Thunk.Flags.HasInjectionObjects being set to
     // TRUE, will be initialized by the injection routine.
@@ -487,7 +500,14 @@ typedef struct _INJECTION_THUNK_CONTEXT {
     // User-provided APC-like routine.
     //
 
-    PAPC UserApc;
+    APC UserApc;
+
+    //
+    // We embed the injection functions structure directly into our thunk to
+    // facilitate easy access by our injection routine.
+    //
+
+    INJECTION_FUNCTIONS Functions;
 
 } INJECTION_THUNK_CONTEXT;
 typedef INJECTION_THUNK_CONTEXT *PINJECTION_THUNK_CONTEXT;

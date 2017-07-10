@@ -6186,6 +6186,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PINITIALIZE_INJECTION InitializeInjection;
     PADJUST_THUNK_POINTERS AdjustThunkPointers;
 
+    INJECTION_FUNCTIONS InjectionFunctions;
+
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
         struct {

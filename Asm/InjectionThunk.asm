@@ -286,28 +286,28 @@ INJECTION_OBJECTS ends
 PINJECTION_OBJECTS typedef ptr INJECTION_OBJECT
 
 ;
-; Define the INJECTION_THUNK_EX_CONTEXT structure.
+; Define the INJECTION_THUNK_CONTEXT structure.
 ;
 
-INJECTION_THUNK_EX_CONTEXT struct
+INJECTION_THUNK_CONTEXT struct
     Flags                   dd                      ?
     EntryCount              dw                      ?
     UserDataOffset          dw                      ?
     FunctionTable           dq                      ?
     BaseCodeAddress         dq                      ?
-    InjectionFunctions      INJECTION_FUNCTIONS     { }
     InjectionObjects        PINJECTION_OBJECTS      ?
     ModulePath              UNICODE_STRING          { }
     FunctionName            STRING                  { }
     UserApc                 APC                     { }
-INJECTION_THUNK_EX_CONTEXT ends
+    InjectionFunctions      INJECTION_FUNCTIONS     { }
+INJECTION_THUNK_CONTEXT ends
 
 ;
 ; Define helper typedefs for structures that are nicer to work with in assembly
 ; than their long uppercase names.
 ;
 
-Thunk typedef INJECTION_THUNK_EX_CONTEXT
+Thunk typedef INJECTION_THUNK_CONTEXT
 Object typedef INJECTION_OBJECT
 Objects typedef INJECTION_OBJECTS
 Unicode typedef UNICODE_STRING
@@ -343,7 +343,7 @@ InvalidInjectionContext     equ     1003
 ;++
 ;
 ; LONG
-; InjectionThunkEx(
+; InjectionThunk(
 ;     _In_ PINJECTION_THUNK_CONTEXT Thunk
 ;     );
 ;
@@ -720,6 +720,8 @@ Inj60:  xor     rax, rax                                ; Clear rax.
 ;
 
         mov     rcx, Thunk.ModulePath.Buffer[r12]       ; Load ModulePath.
+        xor     rdx, rdx                                ; Clear 2nd parameter.
+        xor     r8, r8                                  ; Clear 3rd parameter.
         call    Functions.LoadLibraryExW[r13]           ; Call LoadLibraryExW().
         test    rax, rax                                ; Check Handle != NULL.
         je      short @F                                ; Handle is NULL.

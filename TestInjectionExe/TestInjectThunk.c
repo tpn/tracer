@@ -122,6 +122,7 @@ TestInjectThunk(
     InitializeStringFromString(&Test.Function, &FunctionName);
 
     Flags.AsULong = 0;
+    Flags.HasModuleAndFunction = TRUE;
     Test.Count = 1;
 
     Success = Rtl->Inject(Rtl,
@@ -130,8 +131,10 @@ TestInjectThunk(
                           ProcessInfo.hProcess,
                           TestInjectionActiveExePath,
                           &FunctionName,
+                          NULL,
                           (PBYTE)&Test,
                           sizeof(Test),
+                          NULL,
                           AdjustDataBufferPointers,
                           &RemoteThreadHandle,
                           &RemoteThreadId,

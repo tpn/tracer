@@ -248,7 +248,6 @@ CONST PCSTR RtlExFunctionNames[] = {
     "RtlLeftChild",
     "RtlParent",
     "RtlRightChild",
-    "RtlInject",
     "SetPrivilege",
     "StringToExistingRtlPath",
     "StringToRtlPath",

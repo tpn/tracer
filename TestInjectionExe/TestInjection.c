@@ -728,6 +728,8 @@ End:
     return Success;
 }
 
+/*
+
 ADJUST_POINTERS AdjustThunkPointers;
 
 _Use_decl_annotations_
@@ -816,7 +818,7 @@ AdjustThunkPointers(
     return TRUE;
 }
 
-
+/*
 BOOL
 TestInjection4(
     PRTL Rtl,
