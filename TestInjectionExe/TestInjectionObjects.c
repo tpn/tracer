@@ -30,27 +30,51 @@ TestInjectedObjectsThreadEntry(
     PINJECTION_FUNCTIONS Functions
     )
 {
+    BOOL Success;
     ULONG WaitResult;
-    PULONG Dummy;
+    ULONG LastError;
+    volatile ULONG *Dummy;
     PINJECTION_OBJECT Object;
-    PINJECTION_OBJECT_FILE_MAPPING Shared;
+    PINJECTION_OBJECT_EVENT Event1;
+    PINJECTION_OBJECT_EVENT Event2;
+    PINJECTION_OBJECT_EVENT Event3;
+    PINJECTION_OBJECT_EVENT Event4;
+    PINJECTION_OBJECT_FILE_MAPPING Shared1;
+    PINJECTION_OBJECT_FILE_MAPPING Shared2;
     PINJECTION_OBJECT_FILE_MAPPING Log;
-    PINJECTION_OBJECT_EVENT InjectionComplete;
-    PINJECTION_OBJECT_EVENT InjectionContinue;
+
+    __debugbreak();
 
     Object = InjectionObjects->Objects;
 
-    InjectionComplete = &Object->AsEvent;
-    InjectionContinue = &(Object + 1)->AsEvent;
-    Shared = &(Object + 4)->AsFileMapping;
+    Event1 = &Object->AsEvent;
+    Event2 = &(Object + 1)->AsEvent;
+    Event3 = &(Object + 2)->AsEvent;
+    Event4 = &(Object + 3)->AsEvent;
+
+    Shared1 = &(Object + 4)->AsFileMapping;
+    Shared2 = &(Object + 5)->AsFileMapping;
     Log = &(Object + 6)->AsFileMapping;
 
-    Dummy = (PULONG)Shared->BaseAddress;
+    Dummy = (PULONG)Shared2->BaseAddress;
+    *Dummy = 1;
 
-    WaitResult = Functions->SignalObjectAndWait(InjectionComplete->Handle,
-                                                InjectionContinue->Handle,
-                                                INFINITE,
-                                                TRUE);   
+    Success = Functions->SetEvent(Event2->Handle);
+    if (!Success) {
+        LastError = Functions->GetLastError();
+        __debugbreak();
+        return 1;
+    }
+
+    WaitResult = Functions->WaitForSingleObject(Event1->Handle, INFINITE);
+
+    if (WaitResult != WAIT_OBJECT_0) {
+        LastError = Functions->GetLastError();
+        __debugbreak();
+        return 1;
+    }
+
+    InterlockedIncrement(Dummy);
 
     return 0;
 }
@@ -152,6 +176,13 @@ TestInjectionObjects(
     PVOID LocalUserDataAddress;
     volatile ULONG *Dummy;
     STRING FunctionName = RTL_CONSTANT_STRING("TestInjectedObjectsThreadEntry");
+    PINJECTION_OBJECT_EVENT Event1;
+    PINJECTION_OBJECT_EVENT Event2;
+    PINJECTION_OBJECT_EVENT Event3;
+    PINJECTION_OBJECT_EVENT Event4;
+    PINJECTION_OBJECT_FILE_MAPPING Shared1;
+    PINJECTION_OBJECT_FILE_MAPPING Shared2;
+    PINJECTION_OBJECT_FILE_MAPPING Log;
 
     ZeroStruct(Objects);
     ZeroStruct(InjectionObjects);
@@ -193,7 +224,7 @@ TestInjectionObjects(
         InitializeUnicodeStringFromUnicodeString(&Event->Name, Name);
         Event->Type.AsId = EventInjectionObjectId;
         Event->Flags.ManualReset = FALSE;
-        Event->DesiredAccess = EVENT_MODIFY_STATE;
+        Event->DesiredAccess = EVENT_MODIFY_STATE | SYNCHRONIZE;
 
         Event->Handle = Rtl->CreateEventW(NULL,
                                           Event->Flags.ManualReset,
@@ -293,6 +324,7 @@ TestInjectionObjects(
             goto Error;
         }
 
+        FileMapping->BaseAddress = BaseAddress;
         FileMapping->PreferredBaseAddress = BaseAddress;
     }
 
@@ -314,6 +346,17 @@ TestInjectionObjects(
     InjectionThunkFlags.DebugBreakOnEntry = TRUE;
     InjectionThunkFlags.HasInjectionObjects = TRUE;
     InjectionThunkFlags.HasModuleAndFunction = TRUE;
+
+    Object = Objects;
+
+    Event1 = &Object->AsEvent;
+    Event2 = &(Object + 1)->AsEvent;
+    Event3 = &(Object + 2)->AsEvent;
+    Event4 = &(Object + 3)->AsEvent;
+
+    Shared1 = &(Object + 4)->AsFileMapping;
+    Shared2 = &(Object + 5)->AsFileMapping;
+    Log = &(Object + 6)->AsFileMapping;
 
     Success = Rtl->Inject(Rtl,
                           Allocator,
@@ -339,19 +382,22 @@ TestInjectionObjects(
         goto Error;
     }
 
-    //
-    // Do some SignalObjectAndWait()'s against the new events... some shared
-    // memory read/writes, etc.
-    //
+    Dummy = (volatile ULONG *)Shared2->BaseAddress;
 
-    WaitResult = WaitForSingleObject(Objects[0].Handle, INFINITE);
+    Success = SetEvent(Event1->Handle);
+    if (!Success) {
+        __debugbreak();
+        goto Error;
+    }
 
-    Dummy = (PULONG)Objects[4].AsFileMapping.BaseAddress;
+    WaitResult = WaitForSingleObject(Event2->Handle, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+        goto Error;
+    }
 
-    *Dummy = 1;
+    InterlockedIncrement(Dummy);
 
-    WaitResult = SignalObjectAndWait(Objects[1].Handle, Objects[2].Handle, INFINITE, FALSE);
-    
     Success = TRUE;
 
     goto End;

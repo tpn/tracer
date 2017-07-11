@@ -193,6 +193,7 @@ INJECTION_FUNCTIONS struct
     OpenEventW              dq      ?
     CloseHandle             dq      ?
     SignalObjectAndWait     dq      ?
+    WaitForSingleObject     dq      ?
     WaitForSingleObjectEx   dq      ?
     OutputDebugStringA      dq      ?
     OutputDebugStringW      dq      ?

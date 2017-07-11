@@ -678,13 +678,6 @@ InitializeInjectionFunctions(
     _Out_ PINJECTION_FUNCTIONS Functions
     )
 {
-    PBYTE Code;
-    PBYTE NewCode;
-    PBYTE *Function;
-    PBYTE *Pointers;
-    USHORT Index;
-    USHORT NumberOfFunctions;
-
     Functions->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
     Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
     Functions->GetProcAddress = Rtl->GetProcAddress;
@@ -699,6 +692,7 @@ InitializeInjectionFunctions(
     Functions->OpenEventW = Rtl->OpenEventW;
     Functions->CloseHandle = Rtl->CloseHandle;
     Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObject = Rtl->WaitForSingleObject;
     Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
     Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
     Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
@@ -721,18 +715,6 @@ InitializeInjectionFunctions(
     Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
     Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
     Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
-
-    return;
-
-    Pointers = (PBYTE *)Functions;
-    NumberOfFunctions = sizeof(*Functions) / sizeof(ULONG_PTR);
-
-    for (Index = 0; Index < NumberOfFunctions; Index++) {
-        Function = Pointers + Index;
-        Code = *Function;
-        NewCode = SkipJumpsInline(Code);
-        *Function = NewCode;
-    }
 }
 
 VOID

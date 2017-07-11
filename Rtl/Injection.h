@@ -52,6 +52,7 @@ typedef struct _INJECTION_FUNCTIONS {
     POPEN_EVENT_W OpenEventW;
     PCLOSE_HANDLE CloseHandle;
     PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
+    PWAIT_FOR_SINGLE_OBJECT WaitForSingleObject;
     PWAIT_FOR_SINGLE_OBJECT_EX WaitForSingleObjectEx;
     POUTPUT_DEBUG_STRING_A OutputDebugStringA;
     POUTPUT_DEBUG_STRING_W OutputDebugStringW;
