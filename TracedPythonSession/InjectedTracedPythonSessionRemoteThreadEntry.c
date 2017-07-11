@@ -134,6 +134,7 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
+    ULONG WaitResult;
     volatile ULONG *Status;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
@@ -155,6 +156,11 @@ Return Value:
     Status = (PULONG)Shared1->BaseAddress;
 
     Success = Functions->SetEvent(Event1->Handle);
+
+    WaitResult = Functions->WaitForSingleObject(Event2->Handle, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        goto Error;
+    }
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 

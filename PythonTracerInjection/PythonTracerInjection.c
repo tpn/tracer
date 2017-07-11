@@ -518,7 +518,6 @@ ParentThreadEntry(
     USHORT NumberOfEvents;
     USHORT NumberOfFileMappings;
     ULONG RemoteThreadId;
-    ULONG RemoteThreadExitCode;
     ULONG WaitResult;
     ULONG LastError;
     LONG SuspendedCount;
@@ -541,7 +540,6 @@ ParentThreadEntry(
     PTRACER_INJECTION_CONTEXT InjectionContext;
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
-    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers;
     PDEBUG_ENGINE_SESSION Session;
     PUNICODE_STRING Name;
     PINJECTION_OBJECT Object;
@@ -766,7 +764,7 @@ ParentThreadEntry(
     //
 
     InjectionThunkFlags.AsULong = 0;
-    InjectionThunkFlags.DebugBreakOnEntry = TRUE;
+    InjectionThunkFlags.DebugBreakOnEntry = FALSE;
     InjectionThunkFlags.HasInjectionObjects = TRUE;
     InjectionThunkFlags.HasModuleAndFunction = TRUE;
 
@@ -853,44 +851,6 @@ ParentThreadEntry(
         __debugbreak();
     }
 
-    OutputDebugStringA("Injecting...\n");
-
-    AdjustUserDataPointers = NULL;
-
-    Success = Rtl->Inject(Rtl,
-                          Session->Allocator,
-                          Flags,
-                          RemotePythonProcessHandle,
-                          DllPath,
-                          &FunctionName,
-                          NULL,
-                          (PBYTE)&InjectedContext,
-                          sizeof(InjectedContext),
-                          &InjectionObjects,
-                          AdjustUserDataPointers,
-                          &RemoteThreadHandle,
-                          &RemoteThreadId,
-                          &RemoteBaseCodeAddress,
-                          &RemoteUserBufferAddress,
-                          NULL,
-                          NULL,
-                          NULL);
-
-    if (!Success) {
-        __debugbreak();
-    }
-
-    OutputDebugStringA("Injection complete, waiting...\n");
-
-    WaitForSingleObject(RemoteThreadHandle, INFINITE);
-
-    OutputDebugStringA("Wait complete... getting exit code...\n");
-
-    Success = GetExitCodeThread(RemoteThreadHandle, &RemoteThreadExitCode);
-    if (!Success) {
-        RemoteThreadExitCode = -1;
-    }
-
     //
     // Resume the original thread we suspended.
     //
@@ -914,7 +874,7 @@ ParentThreadEntry(
     SetEvent(Session->WaitForApcEvent);
 #endif
 
-    return RemoteThreadExitCode;
+    return 0;
 
 Error:
 
@@ -957,6 +917,7 @@ Py_InitializeEx_HandleReturnBreakpoint(
     //
 
     Session = InjectionContext->DebugEngineSession;
+
 #if 0
     Success = Session->ExecuteStaticCommand(Session, Command, NULL);
     if (!Success) {
