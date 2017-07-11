@@ -507,20 +507,31 @@ ParentThreadEntry(
     )
 {
     BOOL Success;
-    //PAPC Apc;
     PRTL Rtl;
+    PALLOCATOR Allocator;
     HRESULT Result;
     NTSTATUS Status;
+    LONG ExitCode;
+    USHORT Index;
+    USHORT MappingIndex;
+    USHORT NumberOfObjects;
+    USHORT NumberOfEvents;
+    USHORT NumberOfFileMappings;
     ULONG RemoteThreadId;
     ULONG RemoteThreadExitCode;
     ULONG WaitResult;
+    ULONG LastError;
     LONG SuspendedCount;
     ULONG SuspendedThreadId;
+    ULONG SizeOfBuffer;
+    PWSTR WideBuffer;
+    HANDLE Handle;
     HANDLE ResumeEvent;
     HANDLE RemoteThreadHandle;
     HANDLE RemotePythonProcessHandle;
     HANDLE DebugEngineThreadHandle;
     HANDLE SuspendedThreadHandle;
+    PVOID BaseAddress;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
     PDEBUGCLIENT ExitDispatchClient;
@@ -532,12 +543,63 @@ ParentThreadEntry(
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointers;
     PDEBUG_ENGINE_SESSION Session;
-    PINJECTION_OBJECTS InjectionObjects;
+    PUNICODE_STRING Name;
+    PINJECTION_OBJECT Object;
+    INJECTION_OBJECT Objects[3];
+    UNICODE_STRING ObjectNames[3];
+    UNICODE_STRING ObjectPrefixes[] = {
+        RTL_CONSTANT_STRING(L"Event1_"),
+        RTL_CONSTANT_STRING(L"Event2_"),
+        RTL_CONSTANT_STRING(L"SharedMem1_"),
+    };
+    PUNICODE_STRING Names[] = {
+        &ObjectNames[0],
+        &ObjectNames[1],
+        &ObjectNames[2],
+    };
+    PUNICODE_STRING Prefixes[] ={
+        &ObjectPrefixes[0],
+        &ObjectPrefixes[1],
+        &ObjectPrefixes[2],
+    };
+    ULONG FileMappingDesiredAccess[] = {
+        FILE_MAP_READ | FILE_MAP_WRITE,
+    };
+    ULONG FileMappingPageProtection[] = {
+        PAGE_READWRITE,
+        PAGE_READWRITE,
+    };
+    LARGE_INTEGER MappingSizes[] = {
+        {
+            1 << 16,    // 64KB
+            0,
+        },
+    };
+    LARGE_INTEGER MappingSize;
+    INJECTION_OBJECTS InjectionObjects;
+    INJECTION_THUNK_FLAGS InjectionThunkFlags;
+    PINJECTION_OBJECT_EVENT Event;
+    PINJECTION_OBJECT_EVENT Event1;
+    PINJECTION_OBJECT_EVENT Event2;
+    PINJECTION_OBJECT_FILE_MAPPING Shared1;
+    PINJECTION_OBJECT_FILE_MAPPING FileMapping;
     const STRING FunctionName =
         RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
 
-    Rtl = Context->InjectionContext.Rtl;
+    ZeroStruct(Objects);
+    ZeroStruct(InjectionObjects);
+    ZeroStruct(InjectionContext);
 
+    NumberOfObjects = ARRAYSIZE(ObjectNames);
+    NumberOfEvents = 4;
+    NumberOfFileMappings = 3;
+
+    Rtl = Context->InjectionContext.Rtl;
+    Allocator = Context->InjectionContext.Allocator;
+
+    if (!Rtl->InitializeInjection(Rtl)) {
+        goto Error;
+    }
 
     InjectedContext.OutputDebugStringA = Rtl->OutputDebugStringA;
     InjectedContext.ParentProcessId = FastGetCurrentProcessId();
@@ -563,6 +625,189 @@ ParentThreadEntry(
     OutputDebugStringA("About to call SetEvent(ResumeEvent)...\n");
 
     SetEvent(ResumeEvent);
+
+    Success = Rtl->CreateRandomObjectNames(Rtl,
+                                           Allocator,
+                                           Allocator,
+                                           ARRAYSIZE(ObjectNames),
+                                           64,
+                                           NULL,
+                                           (PPUNICODE_STRING)&Names,
+                                           (PPUNICODE_STRING)&Prefixes,
+                                           &SizeOfBuffer,
+                                           &WideBuffer);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    NumberOfEvents = 2;
+    NumberOfObjects = ARRAYSIZE(ObjectNames);
+
+    for (Index = 0; Index < NumberOfEvents; Index++) {
+        Name = Names[Index];
+        Object = &Objects[Index];
+        Event = &Object->AsEvent;
+        InitializeUnicodeStringFromUnicodeString(&Event->Name, Name);
+        Event->Type.AsId = EventInjectionObjectId;
+        Event->Flags.ManualReset = FALSE;
+        Event->DesiredAccess = EVENT_MODIFY_STATE | SYNCHRONIZE;
+
+        Event->Handle = Rtl->CreateEventW(NULL,
+                                          Event->Flags.ManualReset,
+                                          FALSE,
+                                          Name->Buffer);
+
+        LastError = GetLastError();
+
+        if (!Event->Handle || LastError == ERROR_ALREADY_EXISTS) {
+            __debugbreak();
+            goto Error;
+        }
+    }
+
+    for (Index = NumberOfEvents, MappingIndex = 0;
+         Index < NumberOfObjects;
+         Index++, MappingIndex++) {
+
+        Name = Names[Index];
+        Object = &Objects[Index];
+        FileMapping = &Object->AsFileMapping;
+        InitializeUnicodeStringFromUnicodeString(&FileMapping->Name, Name);
+        FileMapping->Type.AsId = FileMappingInjectionObjectId;
+        FileMapping->DesiredAccess = FileMappingDesiredAccess[MappingIndex];
+        FileMapping->PageProtection = FileMappingPageProtection[MappingIndex];
+        MappingSize.QuadPart = MappingSizes[MappingIndex].QuadPart;
+        FileMapping->MappingSize.QuadPart = MappingSize.QuadPart;
+
+        if (FileMapping->Path.Buffer) {
+
+            Handle = Rtl->CreateFileW(FileMapping->Path.Buffer,
+                                      GENERIC_READ | GENERIC_WRITE,
+                                      FILE_SHARE_DELETE,
+                                      NULL,
+                                      OPEN_ALWAYS,
+                                      FILE_ATTRIBUTE_NORMAL,
+                                      NULL);
+
+            LastError = GetLastError();
+
+            if (!Handle || Handle == INVALID_HANDLE_VALUE) {
+                __debugbreak();
+                goto Error;
+            }
+
+            FileMapping->FileHandle = Handle;
+
+            if (FALSE && LastError == ERROR_ALREADY_EXISTS) {
+                FILE_STANDARD_INFO FileInfo;
+                FILE_INFO_BY_HANDLE_CLASS Class;
+
+                Class = (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo;
+
+                Success = GetFileInformationByHandleEx(Handle,
+                                                       Class,
+                                                       &FileInfo,
+                                                       sizeof(FileInfo));
+                if (!Success) {
+                    __debugbreak();
+                    goto Error;
+                }
+
+                FileMapping->FileOffset.QuadPart = FileInfo.EndOfFile.QuadPart;
+            }
+        }
+
+        Handle = Rtl->CreateFileMappingW(FileMapping->FileHandle,
+                                         NULL,
+                                         PAGE_READWRITE,
+                                         FileMapping->MappingSize.HighPart,
+                                         FileMapping->MappingSize.LowPart,
+                                         FileMapping->Name.Buffer);
+
+        LastError = GetLastError();
+
+        if (!Handle || LastError == ERROR_ALREADY_EXISTS) {
+            __debugbreak();
+            goto Error;
+        }
+
+        FileMapping->Handle = Handle;
+
+        BaseAddress = Rtl->MapViewOfFileEx(Handle,
+                                           FILE_MAP_ALL_ACCESS,
+                                           FileMapping->FileOffset.HighPart,
+                                           FileMapping->FileOffset.LowPart,
+                                           FileMapping->MappingSize.QuadPart,
+                                           FileMapping->BaseAddress);
+
+        if (!BaseAddress) {
+            LastError = GetLastError();
+            __debugbreak();
+            goto Error;
+        }
+
+        FileMapping->BaseAddress = BaseAddress;
+        FileMapping->PreferredBaseAddress = BaseAddress;
+    }
+
+    //
+    // Initialize the INJECTION_OBJECTS container.
+    //
+
+    InjectionObjects.SizeOfStruct = sizeof(InjectionObjects);
+    InjectionObjects.SizeOfInjectionObjectInBytes = sizeof(INJECTION_OBJECT);
+    InjectionObjects.NumberOfObjects = NumberOfObjects;
+    InjectionObjects.TotalAllocSizeInBytes = 0;
+    InjectionObjects.Objects = Objects;
+
+    //
+    // Perform injection.
+    //
+
+    InjectionThunkFlags.AsULong = 0;
+    InjectionThunkFlags.DebugBreakOnEntry = TRUE;
+    InjectionThunkFlags.HasInjectionObjects = TRUE;
+    InjectionThunkFlags.HasModuleAndFunction = TRUE;
+
+    Object = Objects;
+
+    Event1 = &Object->AsEvent;
+    Event2 = &(Object + 1)->AsEvent;
+
+    Shared1 = &(Object + 4)->AsFileMapping;
+
+    Success = Rtl->Inject(Rtl,
+                          Session->Allocator,
+                          Flags,
+                          RemotePythonProcessHandle,
+                          DllPath,
+                          &FunctionName,
+                          NULL,
+                          (PBYTE)&InjectedContext,
+                          sizeof(InjectedContext),
+                          &InjectionObjects,
+                          NULL,
+                          &RemoteThreadHandle,
+                          &RemoteThreadId,
+                          &RemoteBaseCodeAddress,
+                          &RemoteUserBufferAddress,
+                          NULL,
+                          NULL,
+                          NULL);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+    WaitResult = WaitForSingleObject(Event1->Handle, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+    }
+
+    //
+    // The injected thread has loaded.
+    //
 
     //
     // Detaching processes.
@@ -592,7 +837,8 @@ ParentThreadEntry(
     WaitResult = WaitForSingleObject(Session->ReadyForApcEvent, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
         __debugbreak();
-        return -1;
+        ExitCode = -1;
+        goto Error;
     }
 
     OutputDebugStringA("Queuing APC.\n");
@@ -610,7 +856,6 @@ ParentThreadEntry(
     OutputDebugStringA("Injecting...\n");
 
     AdjustUserDataPointers = NULL;
-    InjectionObjects = NULL;
 
     Success = Rtl->Inject(Rtl,
                           Session->Allocator,
@@ -621,7 +866,7 @@ ParentThreadEntry(
                           NULL,
                           (PBYTE)&InjectedContext,
                           sizeof(InjectedContext),
-                          InjectionObjects,
+                          &InjectionObjects,
                           AdjustUserDataPointers,
                           &RemoteThreadHandle,
                           &RemoteThreadId,
@@ -670,6 +915,11 @@ ParentThreadEntry(
 #endif
 
     return RemoteThreadExitCode;
+
+Error:
+
+    return -1;
+
 }
 
 

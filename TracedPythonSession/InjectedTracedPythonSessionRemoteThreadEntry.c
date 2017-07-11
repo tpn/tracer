@@ -100,6 +100,8 @@ Return Value:
 {
     BOOL Success = TRUE;
 
+    SleepEx(INFINITE, TRUE);
+
     return Success;
 }
 
@@ -108,7 +110,9 @@ DECLSPEC_DLLEXPORT
 _Use_decl_annotations_
 LONG
 InjectedTracedPythonSessionRemoteThreadEntry(
-    PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext
+    PPYTHON_TRACER_INJECTED_CONTEXT InjectedContext,
+    PINJECTION_OBJECTS InjectionObjects,
+    PINJECTION_FUNCTIONS Functions
     )
 /*++
 
@@ -130,6 +134,7 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
+    volatile ULONG *Status;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
     PUNICODE_STRING RegistryPath;
@@ -137,6 +142,19 @@ Return Value:
     PTRACED_PYTHON_SESSION Session;
     PDESTROY_TRACED_PYTHON_SESSION DestroyTracedPythonSession;
     PUNICODE_STRING TraceSessionDirectory = NULL;
+    PINJECTION_OBJECT Object;
+    PINJECTION_OBJECT_EVENT Event1;
+    PINJECTION_OBJECT_EVENT Event2;
+    PINJECTION_OBJECT_FILE_MAPPING Shared1;
+
+    Object = InjectionObjects->Objects;
+    Event1 = &Object->AsEvent;
+    Event2 = &(Object + 1)->AsEvent;
+    Shared1 = &(Object + 2)->AsFileMapping;
+
+    Status = (PULONG)Shared1->BaseAddress;
+
+    Success = Functions->SetEvent(Event1->Handle);
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
@@ -149,7 +167,7 @@ Return Value:
     );
 
     if (!Allocator) {
-        return -1;
+        goto Error;
     }
 
     //
@@ -209,6 +227,8 @@ Return Value:
     // Enter the event loop.
     //
 
+    *Status = 1;
+
     Success = (
         TracedPythonSessionInjectedThreadEventLoop(
             Session,
@@ -220,13 +240,13 @@ Return Value:
 
     if (Success) {
         ExitCode = 0;
+        goto End;
     }
-
-    goto End;
 
 Error:
 
     ExitCode = -1;
+    *Status = ExitCode;
 
 End:
 
