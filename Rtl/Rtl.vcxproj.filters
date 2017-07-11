@@ -51,9 +51,6 @@
     <ClInclude Include="Injection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="InjectionPrivate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="InjectionInline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -128,19 +125,10 @@
     <ClCompile Include="Injection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InjectionPrivate.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InjectionRemoteThreadEntryThunk.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CopyFunction.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="InjectThunk.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -532,6 +532,7 @@ ParentThreadEntry(
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
     PADJUST_USER_DATA_POINTERS AdjustUserDataPointers;
     PDEBUG_ENGINE_SESSION Session;
+    PINJECTION_OBJECTS InjectionObjects;
     const STRING FunctionName =
         RTL_CONSTANT_STRING("InjectedTracedPythonSessionRemoteThreadEntry");
 
@@ -609,23 +610,26 @@ ParentThreadEntry(
     OutputDebugStringA("Injecting...\n");
 
     AdjustUserDataPointers = NULL;
+    InjectionObjects = NULL;
 
-    Success = Rtl->InjectThunk(Rtl,
-                               Session->Allocator,
-                               Flags,
-                               RemotePythonProcessHandle,
-                               DllPath,
-                               &FunctionName,
-                               (PBYTE)&InjectedContext,
-                               sizeof(InjectedContext),
-                               AdjustUserDataPointers,
-                               &RemoteThreadHandle,
-                               &RemoteThreadId,
-                               &RemoteBaseCodeAddress,
-                               &RemoteUserBufferAddress,
-                               NULL,
-                               NULL,
-                               NULL);
+    Success = Rtl->Inject(Rtl,
+                          Session->Allocator,
+                          Flags,
+                          RemotePythonProcessHandle,
+                          DllPath,
+                          &FunctionName,
+                          NULL,
+                          (PBYTE)&InjectedContext,
+                          sizeof(InjectedContext),
+                          InjectionObjects,
+                          AdjustUserDataPointers,
+                          &RemoteThreadHandle,
+                          &RemoteThreadId,
+                          &RemoteBaseCodeAddress,
+                          &RemoteUserBufferAddress,
+                          NULL,
+                          NULL,
+                          NULL);
 
     if (!Success) {
         __debugbreak();
@@ -984,35 +988,6 @@ End:
     InjectionContext->Flags.AsULong |= Flags.AsULong;
 
     return Success;
-}
-
-_Use_decl_annotations_
-ULONG
-CALLBACK
-PythonTracerInjectionCompleteCallback(
-    PRTL_INJECTION_PACKET Packet
-    )
-{
-    ULONG WaitResult;
-    ULONGLONG Token;
-    POUTPUT_DEBUG_STRING_A OutputDebugStringA;
-    PSIGNAL_OBJECT_AND_WAIT SignalObjectAndWait;
-
-    if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
-        return (ULONG)Token;
-    }
-
-    OutputDebugStringA = Packet->Functions->OutputDebugStringA;
-    SignalObjectAndWait = Packet->Functions->SignalObjectAndWait;
-
-    OutputDebugStringA("PythonTracerInjectionCompleteCallback!\n");
-
-    WaitResult = SignalObjectAndWait(Packet->SignalEventHandle,
-                                     Packet->WaitEventHandle,
-                                     INFINITE,
-                                     TRUE);
-
-    return WaitResult;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

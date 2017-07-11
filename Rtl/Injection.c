@@ -8,45 +8,62 @@ Module Name:
 
 Abstract:
 
-    This module implements the Rtl component's remote thread and code injection
-    component.  Functions are provided for creating injection packets, adding
-    injection payloads to packets, adding symbol requests to packets, destroying
-    packets, and performing the actual injection.
+    This module implements the Rtl component's remote thread, code and object
+    injection functionality, collectively referred to as "injection".  The
+    main function used to interface to this functionality is the Inject()
+    routine.  An internal routine is also implemented for adjusting a thunk
+    buffer as part of the CopyFunction() interface, upon which this injection
+    logic depends.
 
 --*/
 
 #include "stdafx.h"
 
+//
+// Forward declaration.
+//
+
+ADJUST_THUNK_POINTERS AdjustThunkPointers;
+
+//
+// Main injection function.
+//
+
 _Use_decl_annotations_
 BOOL
-RtlInject(
+Inject(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PRTL_INJECTION_FLAGS InjectionFlags,
-    PCUNICODE_STRING ModulePath,
-    PCSTRING CallbackFunctionName,
-    PRTL_INJECTION_COMPLETE_CALLBACK InjectionCompleteCallback,
-    PRTL_INJECTION_PAYLOAD InjectionPayload,
-    ULONG TargetProcessId,
-    PRTL_INJECTION_PACKET *InjectionPacketPointer,
-    PRTL_INJECTION_ERROR InjectionError
+    INJECTION_THUNK_FLAGS Flags,
+    HANDLE TargetProcessHandle,
+    PCUNICODE_STRING TargetModuleDllPath,
+    PCSTRING TargetFunctionName,
+    PAPC UserApc,
+    PBYTE UserData,
+    USHORT SizeOfUserDataInBytes,
+    PINJECTION_OBJECTS InjectionObjects,
+    PADJUST_USER_DATA_POINTERS AdjustUserDataPointers,
+    PHANDLE RemoteThreadHandlePointer,
+    PULONG RemoteThreadIdPointer,
+    PPVOID RemoteBaseCodeAddress,
+    PPVOID RemoteUserDataAddress,
+    PPVOID LocalBaseCodeAddressPointer,
+    PPVOID LocalThunkBufferAddressPointer,
+    PPVOID LocalUserDataAddressPointer
     )
 /*++
 
 Routine Description:
 
-    Creates an injection packet as part of the first step of code injection
-    into a remote process.  The caller must indicate what type of injection
-    they want via the Flags parameter.  Specifically, either Flags.InjectCode
-    or Flags.InjectModule must be set.  This affects the parameter requirements
-    as discussed in the Arguments section below.
-
-    Once an injection packet has been successfully created, a caller can add
-    payloads to the packet via RtlAddInjectionPayload(), and request symbols
-    to be made available to the remote thread via RtlAddInjectionSymbols().
-
-    The actual injection will be performed when the packet is passed to the
-    RtlInject() routine.
+    This routine creates a remote thread in the target process, creates handles
+    for any injection objects requested (e.g. named events, named file mappings,
+    etc.), optionally calls an APC-conforming routine (which must already exist
+    in the remote process), and then loads a given DLL module, looks up the
+    address of the exported function name, then calls the resulting function
+    pointer (which should point to a routine that conforms with the function
+    signature INJECTION_COMPLETE) with relevant addresses of the user's data
+    (which will be copied and pointer-adjusted in the remote address space),
+    injection objects, and injection functions as parameters.
 
 Arguments:
 
@@ -55,548 +72,658 @@ Arguments:
     Allocator - Supplies a pointer to an ALLOCATOR structure to use for all
         memory allocations for this injection.
 
-    InjectionFlags - Supplies a pointer to injection flags.  At minimum, either
-        InjectionFlags.InjectModule or InjectionFlags.InjectCode must be set,
-        indicating which type of injection method should be used.
+    Flags - Supplies injection thunk flags, such as whether or not the remote
+        thread thunk should immediately debug break at the earliest opportunity,
+        whether or not injection objects are being used, etc.
 
-    ModulePath - Supplies a pointer to a fully-qualified UNICODE_STRING
-        structure representing the module path to load into the remote process.
-        If InjectionFlags.InjectModule is set, both this value and the parameter
-        CallbackFunctionName must be valid.
+    TargetProcessHandle - Supplies a handle to the target process for which the
+        injection is to take place.  The caller must have sufficient privilege
+        to call CreateRemoteThread() against this handle in order for injection
+        to work.
 
-    CallbackFunctionName - Supplies a pointer to a STRING structure representing
-        the name of an exported symbol to resolve once the module indicated by
-        the ModulePath parameter is loaded.  This must be non-NULL and point to
-        a valid string if InjectionFlags.InjectModule is TRUE, otherwise it must
-        be NULL.
+    TargetModuleDllPath - Supplies a pointer to a UNICODE_STRING structure that
+        represents a fully-qualified path of a DLL to be loaded after the thunk
+        has initialized any injection objects.
 
-    InjectionCompleteCallback - Supplies a pointer to a buffer of code to be
-        injected into the process and then executed by the target thread.  This
-        must be NULL if Flags.InjectModule is set, otherwise, it should point to
-        a valid buffer that contains AMD64 byte code.
+    TargetFunctionName - Supplies a pointer to a STRING structure that reflects
+        the exported name of the function conforming to the INJECTION_COMPLETE
+        signature in the module identified by TargetModuleDllPath.  This will
+        be passed to GetProcAddress() and then called with the relevant params
+        (as per the signature) as the final step by the injection thunk thread.
 
-    InjectionPayload - Supplies a pointer to an RTL_INJECTION_PAYLOAD structure
-        to include in the remote process injection.  This must be non-NULL and
-        point to a valid structure if InjectionFlags.InjectPayload is TRUE, NULL
-        otherwise..
+    UserApc - Optionally supplies a pointer to an APC structure representing
+        an APC routine to call in the remote process.  All addresses within the
+        APC structure must already be in the remote process address space.
 
-    TargetProcessId - Supplies the ID of the target process to perform the
-        injection.
+    UserData - Supplies the address of opaque user data that will be injected
+        into the remote process in a readonly memory segment.  Tnis is typically
+        used for user-specific context structures related to the injection.
 
-    TargetThreadId - Optionally supplies the ID of an existing thread in the
-        target process to hijack instead of creating a new remote thread.  If
-        Flags.HijackExistingThread is set, this parameter must be non-zero,
-        otherwise, it must be zero.
+    SizeOfUserDataInBytes - Supplies the size of the data represented by the
+        UserData parameter, in bytes.  The maximum size of user data is about
+        ~3500 bytes -- essentially, it must fit within the single readonly page
+        being used for data (by both the thunk and the user).  Any attempt to
+        write to memory backed by this address range in the remote process will
+        fault due to readonly protection.
 
-    InjectionPacketPointer - Supplies a pointer to a variable that will receive
-        the address of the newly-created RTL_INJECTION_PACKET if this routine
-        completes successfully.  The packet can then have payload or symbols
-        added to it before being injected.
+    AdjustUserDataPointers - Optionally supplies a pointer to a function that
+        will be invoked as part of injection preparation such that any addresses
+        (i.e. pointer fields) can be converted into their remote equivalents.
 
-    InjectionError - Supplies a pointer to a variable that receives information
-        about the error, if one occurred (as indicated by this routine returning
-        FALSE).
+    RemoteThreadHandlePointer - Supplies the address of a variable that will
+        receive a handle to the remote thread in the target process.  This
+        handle can be subsequently waited on, for example, if the caller wants
+        to wait for the injection process to complete (including execution of
+        their function).
+
+    RemoteThreadIdPointer - Supplies the address of a variable that will receive
+        the thread ID of the remote thread in the target process.
+
+    RemoteBaseCodeAddress - Supplies the address of a variable that will receive
+        the base address of the page of memory in the remote process where the
+        injection thunk routine will be copied.
+
+    RemoteUserDataAddress - Supplies the address of a variable that will receive
+        the address of the user's data in the remote process's address space.
+
+    LocalBaseCodeAddressPointer - Undocumented.
+
+    LocalThunkBufferAddressPointer - Undocumented.
+
+    LocalUserDataAddressPointer - Undocumented.
 
 Return Value:
 
-    If the routine completes successfully, TRUE is returned.  If a failure
-    occurs, FALSE is returned and InjectionError is set with the relevant
-    error code.
+    TRUE on success, FALSE on error.
 
 --*/
 {
     BOOL Success;
-    BOOL SuspendedThread;
-    PBYTE OriginalCode;
-    PBYTE FinalCode;
-    FARPROC Proc;
-    HMODULE Module;
-    HANDLE ProcessHandle;
-    ULONGLONG CallerModuleBaseAddress;
-    RTL_INJECTION_ERROR Error;
-    RTL_INJECTION_FLAGS Flags;
-    RTL_INJECTION_CONTEXT LocalContext;
-    PRTL_INJECTION_PACKET Packet;
-    PRTL_INJECTION_PAYLOAD Payload;
-    PRTL_INJECTION_CONTEXT Context;
-    PRUNTIME_FUNCTION RuntimeFunction;
-    PRTL_INJECTION_THUNK_CONTEXT Thunk;
-    PRTL_INJECTION_COMPLETE_CALLBACK FinalCallback;
-    PRTL_INJECTION_COMPLETE_CALLBACK OriginalCallback;
-
-    //
-    // Validate arguments.  Start with the simple non-NULL checks, then verify
-    // the optional parameters against the given flags.
-    //
-
-    if (!ARGUMENT_PRESENT(InjectionError)) {
-        return FALSE;
-    } else {
-
-        //
-        // Initialize local error variable.  The next handful of tests all exit
-        // early with the InvalidParameters flag set to TRUE, so set it now and
-        // clear it later once all parameters have been validated.
-        //
-
-        Error.ErrorCode = 0;
-        Error.InvalidParameters = TRUE;
-
-        //
-        // Clear local variables.
-        //
-
-        Module = NULL;
-        ProcessHandle = NULL;
-        FinalCallback = NULL;
-        OriginalCallback = NULL;
-        SuspendedThread = FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(Rtl)) {
-        goto Error;
-    }
-
-    if (!ARGUMENT_PRESENT(Allocator)) {
-        goto Error;
-    }
-
-    if (!ARGUMENT_PRESENT(InjectionPacketPointer)) {
-        goto Error;
-    }
-
-    if (!ARGUMENT_PRESENT(TargetProcessId)) {
-        goto Error;
-    }
-
-    if (!ARGUMENT_PRESENT(InjectionFlags)) {
-
-        goto Error;
-
-    } else {
-
-        //
-        // Initialize local copy of the flags.
-        //
-
-        Flags.AsULong = InjectionFlags->AsULong;
-
-        if ((!Flags.InjectModule && !Flags.InjectCode) ||
-            (Flags.InjectModule && Flags.InjectCode)) {
-
-            //
-            // One (and only one) of InjectModule or InjectCode needs to be set.
-            //
-
-            goto Error;
-        }
-    }
+    ULONG EntryCount;
+    ULONG CreationFlags;
+    ULONG RemoteThreadId;
+    HANDLE RemoteThreadHandle;
+    PRUNTIME_FUNCTION DestRuntimeFunction;
+    INJECTION_THUNK_CONTEXT Thunk;
+    PVOID DestInjectionThunk;
+    PVOID DestBaseCodeAddress;
+    PVOID DestUserDataAddress;
+    PVOID DestThunkBufferAddress;
+    PVOID LocalBaseCodeAddress;
+    PVOID LocalThunkBufferAddress;
+    PVOID LocalUserDataAddress;
+    LPTHREAD_START_ROUTINE StartRoutine;
+    PCOPY_FUNCTION CopyFunction;
+    STRING NullString;
+    UNICODE_STRING NullUnicodeString;
 
     if (!Rtl->InitializeInjection(Rtl)) {
+        return FALSE;
+    }
+
+    Thunk.Flags.AsULong = Flags.AsULong;
+
+    ZeroStruct(NullString);
+    ZeroStruct(NullUnicodeString);
+
+    CopyInjectionFunctionsInline(&Thunk.Functions,
+                                 &Rtl->InjectionFunctions);
+
+    if (!ARGUMENT_PRESENT(TargetModuleDllPath)) {
+
+        if (ARGUMENT_PRESENT(TargetFunctionName)) {
+            __debugbreak();
+            return FALSE;
+        }
+
+        InitializeStringFromString(&Thunk.FunctionName, &NullString);
+        InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
+                                                 &NullUnicodeString);
+
+    } else {
+
+        InitializeStringFromString(&Thunk.FunctionName, TargetFunctionName);
+        InitializeUnicodeStringFromUnicodeString(&Thunk.ModulePath,
+                                                 TargetModuleDllPath);
+    }
+
+    if (ARGUMENT_PRESENT(UserApc)) {
+        CopyMemory(&Thunk.UserApc, UserApc, sizeof(Thunk.UserApc));
+    }
+
+    Thunk.InjectionObjects = InjectionObjects;
+
+    CopyFunction = Rtl->CopyFunction;
+
+    Success = CopyFunction(Rtl,
+                           Allocator,
+                           TargetProcessHandle,
+                           Rtl->InjectionThunkRoutine,
+                           NULL,
+                           (PBYTE)&Thunk,
+                           sizeof(Thunk),
+                           (PBYTE)UserData,
+                           SizeOfUserDataInBytes,
+                           AdjustThunkPointers,
+                           AdjustUserDataPointers,
+                           &DestBaseCodeAddress,
+                           &DestThunkBufferAddress,
+                           &DestUserDataAddress,
+                           &DestInjectionThunk,
+                           &LocalBaseCodeAddress,
+                           &LocalThunkBufferAddress,
+                           &LocalUserDataAddress,
+                           &DestRuntimeFunction,
+                           NULL,
+                           &EntryCount);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    StartRoutine = (LPTHREAD_START_ROUTINE)DestInjectionThunk;
+    CreationFlags = 0;
+
+    RemoteThreadHandle = (
+        CreateRemoteThread(
+            TargetProcessHandle,
+            NULL,
+            0,
+            StartRoutine,
+            DestThunkBufferAddress,
+            CreationFlags,
+            &RemoteThreadId
+        )
+    );
+
+    if (!RemoteThreadHandle || RemoteThreadHandle == INVALID_HANDLE_VALUE) {
+        return FALSE;
+    }
+
+    *RemoteThreadHandlePointer = RemoteThreadHandle;
+    *RemoteThreadIdPointer = RemoteThreadId;
+    *RemoteBaseCodeAddress = DestBaseCodeAddress;
+    *RemoteUserDataAddress = DestUserDataAddress;
+
+    if (ARGUMENT_PRESENT(LocalBaseCodeAddressPointer)) {
+        *LocalBaseCodeAddressPointer = LocalBaseCodeAddress;
+
+        if (ARGUMENT_PRESENT(LocalThunkBufferAddressPointer)) {
+            *LocalThunkBufferAddressPointer = LocalThunkBufferAddress;
+        }
+
+        if (ARGUMENT_PRESENT(LocalUserDataAddressPointer)) {
+            *LocalUserDataAddressPointer = LocalUserDataAddress;
+        }
+    }
+
+    return TRUE;
+}
+
+BOOL
+AdjustThunkPointers(
+    PRTL Rtl,
+    HANDLE TargetProcessHandle,
+    PBYTE OriginalThunkBuffer,
+    USHORT SizeOfThunkBufferInBytes,
+    PBYTE LocalThunkBuffer,
+    USHORT BytesRemaining,
+    PBYTE RemoteThunkBufferAddress,
+    PRUNTIME_FUNCTION RemoteRuntimeFunction,
+    PVOID RemoteCodeBaseAddress,
+    USHORT EntryCount,
+    PUSHORT NumberOfBytesWritten,
+    PBYTE *NewDestUserData,
+    PBYTE *NewRemoteDestUserData
+    )
+{
+    USHORT TotalBytes;
+    USHORT UserDataOffset;
+    USHORT ModulePathAllocSizeInBytes;
+    USHORT FunctionNameAllocSizeInBytes;
+    USHORT Count;
+    ULONG Index;
+    ULONG NumberOfObjects;
+    ULONG InjectionObjectArraySizeInBytes;
+    ULONG TotalInjectionObjectsAllocSizeInBytes;
+    PBYTE Base;
+    PBYTE Dest;
+    PBYTE NewUserData;
+    PBYTE NewRemoteUserData;
+    PBYTE UserPage;
+    PBYTE RemotePage;
+    PBYTE LocalThunkPage;
+    PBYTE LocalInjectionObjectsPage;
+    PBYTE RemoteThunkPage;
+    PBYTE RemoteInjectionObjectsPage;
+    PWCHAR LocalNameBuffer;
+    PWCHAR RemoteNameBuffer;
+    PUNICODE_STRING Name;
+    PUNICODE_STRING OriginalName;
+    PINJECTION_THUNK_CONTEXT Thunk;
+    PINJECTION_THUNK_CONTEXT OriginalThunk;
+    PINJECTION_OBJECT InjectionObject;
+    PINJECTION_OBJECT LocalInjectionObject;
+    PINJECTION_OBJECT RemoteInjectionObject;
+    PINJECTION_OBJECT OriginalInjectionObject;
+    PINJECTION_OBJECTS LocalInjectionObjects;
+    PINJECTION_OBJECTS RemoteInjectionObjects;
+    PINJECTION_OBJECTS OriginalInjectionObjects;
+
+    if (SizeOfThunkBufferInBytes != sizeof(INJECTION_THUNK_CONTEXT)) {
         __debugbreak();
         return FALSE;
     }
 
-    if (Flags.InjectModule) {
+    OriginalThunk = (PINJECTION_THUNK_CONTEXT)OriginalThunkBuffer;
+    Thunk = (PINJECTION_THUNK_CONTEXT)LocalThunkBuffer;
 
-        //
-        // Caller wants to inject a module and call the named exported routine.
-        // Verify the strings are sane, then try load the module and resolve the
-        // name.
-        //
-
-        if (!IsValidNullTerminatedUnicodeString(ModulePath)) {
-            Error.InvalidModuleName = TRUE;
-            goto Error;
-        }
-
-        if (!IsValidNullTerminatedString(CallbackFunctionName)) {
-            Error.InvalidCallbackFunctionName = TRUE;
-            goto Error;
-        }
-
-        Module = LoadLibraryW(ModulePath->Buffer);
-        if (!Module || Module == INVALID_HANDLE_VALUE) {
-            Error.LoadLibraryFailed = TRUE;
-            goto Error;
-        }
-
-        //
-        // We were able to load the library requested by the caller.  Attempt
-        // to resolve the routine they've requested.
-        //
-
-        Proc = GetProcAddress(Module, CallbackFunctionName->Buffer);
-        if (!Proc) {
-            Error.GetProcAddressFailed = TRUE;
-            goto Error;
-        }
-
-        //
-        // Everything checks out, save Proc as our Callback pointer.
-        //
-
-        OriginalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)Proc;
-
-    } else {
-
-        //
-        // Invariant check: InjectCode should be set at this point.
-        //
-
-        if (!Flags.InjectCode) {
-            __debugbreak();
-            Error.InternalError = TRUE;
-            goto Error;
-        }
-
-        //
-        // Caller has requested code injection.  Verify Code is non-NULL, and
-        // then dereference the first byte and make sure it isn't NULL either
-        // (it's highly unlikely the caller wants to inject 0x00 as the first
-        //  code byte).
-        //
-
-        if (!ARGUMENT_PRESENT(InjectionCompleteCallback) ||
-            !ARGUMENT_PRESENT(*InjectionCompleteCallback)) {
-            Error.InvalidCodeParameter = TRUE;
-            goto Error;
-        }
-
-        //
-        // Save the initial caller provided value as the original callback.
-        //
-
-        OriginalCallback = InjectionCompleteCallback;
-    }
+    Base = Dest = (PBYTE)(
+        RtlOffsetToPointer(
+            LocalThunkBuffer,
+            SizeOfThunkBufferInBytes
+        )
+    );
 
     //
-    // Invariant check: OriginalCallback should be non-NULL here.
+    // Adjust the module path's buffer pointer such that it's valid in the
+    // remote process's address space.
     //
 
-    if (!OriginalCallback) {
+    Thunk->ModulePath.Buffer = (PWSTR)(
+        RtlOffsetToPointer(
+            RemoteThunkBufferAddress,
+            SizeOfThunkBufferInBytes
+        )
+    );
+
+    //
+    // Copy the downstream injection module path.
+    //
+
+    CopyMemory(Dest,
+               OriginalThunk->ModulePath.Buffer,
+               OriginalThunk->ModulePath.Length);
+
+    ModulePathAllocSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            OriginalThunk->ModulePath.Length +
+            sizeof(WCHAR)
+        )
+    );
+
+    Dest += ModulePathAllocSizeInBytes;
+    TotalBytes = ModulePathAllocSizeInBytes;
+
+    //
+    // Copy the function name.
+    //
+
+    CopyMemory(Dest,
+               OriginalThunk->FunctionName.Buffer,
+               OriginalThunk->FunctionName.Length);
+
+    FunctionNameAllocSizeInBytes = (
+        ALIGN_UP_USHORT_TO_POINTER_SIZE(
+            OriginalThunk->FunctionName.Length +
+            sizeof(CHAR)
+        )
+    );
+
+    TotalBytes += FunctionNameAllocSizeInBytes;
+
+    //
+    // Adjust the function name's buffer.
+    //
+
+    Thunk->FunctionName.Buffer = (PSTR)(
+        RtlOffsetToPointer(
+            RemoteThunkBufferAddress,
+            SizeOfThunkBufferInBytes + (Dest - Base)
+        )
+    );
+
+    Dest += FunctionNameAllocSizeInBytes;
+
+    //
+    // Adjust the runtime function entry details for RtlAddFunctionTable().
+    //
+
+    Thunk->EntryCount = EntryCount;
+    Thunk->FunctionTable = RemoteRuntimeFunction;
+    Thunk->BaseCodeAddress = RemoteCodeBaseAddress;
+
+    //
+    // Invariant checks.
+    //
+
+    NewUserData = Base + TotalBytes;
+    if (NewUserData != Dest) {
         __debugbreak();
-        Error.InternalError = TRUE;
-        goto Error;
+        return FALSE;
+    }
+
+    UserDataOffset = (USHORT)(Dest - LocalThunkBuffer);
+
+    NewRemoteUserData = (PBYTE)(
+        RtlOffsetToPointer(
+            RemoteThunkBufferAddress,
+            UserDataOffset
+        )
+    );
+
+    //
+    // Isolate the PAGE_SIZE bits of each address and ensure they match.
+    //
+
+    UserPage = (PBYTE)((ULONG_PTR)NewUserData & PAGE_SIZE);
+    RemotePage = (PBYTE)((ULONG_PTR)NewRemoteUserData & PAGE_SIZE);
+
+    if (UserPage != RemotePage) {
+        __debugbreak();
     }
 
     //
-    // Initialize local payload alias.
+    // Set the offset of the user data from the base thunk.
     //
 
-    Payload = InjectionPayload;
+    Thunk->UserDataOffset = UserDataOffset;
+    *NumberOfBytesWritten = TotalBytes;
+    *NewDestUserData = NewUserData;
+    *NewRemoteDestUserData = NewRemoteUserData;
 
-    if (Flags.InjectPayload) {
-        ULONG ValidPages;
+    //
+    // Process injection objects if applicable.  If there were none, we're done,
+    // return success.
+    //
 
-        //
-        // Payload should be non-NULL here.
-        //
-
-        if (!ARGUMENT_PRESENT(Payload)) {
-            Error.InvalidPayloadParameter = TRUE;
-            goto Error;
-        }
-
-        //
-        // Verify payload details.  Buffer should be non-NULL, buffer size
-        // should be greater than 0 and less than or equal to 2GB, and the
-        // SizeOfStruct field should match what we're expecting.
-        //
-
-        Error.InvalidPayload = (
-            (Payload->Buffer == NULL)                   |
-            (Payload->SizeOfBufferInBytes == 0)         |
-            (Payload->SizeOfBufferInBytes > (1 << 31))  |
-            (Payload->SizeOfStruct != sizeof(*Payload))
-        );
-
-        if (Error.InvalidPayload) {
-            goto Error;
-        }
-
-        //
-        // Probe all of the pages within the payload buffer for read access.
-        //
-
-        Success = Rtl->ProbeForRead(Rtl,
-                                    Payload->Buffer,
-                                    Payload->SizeOfBufferInBytes,
-                                    &ValidPages);
-
-        if (!Success) {
-            Error.InvalidPayload = TRUE;
-            Error.PayloadReadProbeFailed = TRUE;
-            goto Error;
-        }
-
-    } else {
-
-        //
-        // Payload should be NULL here.
-        //
-
-        if (ARGUMENT_PRESENT(Payload)) {
-            Error.InvalidPayloadParameter = TRUE;
-            goto Error;
-        }
+    OriginalInjectionObjects = OriginalThunk->InjectionObjects;
+    if (!OriginalInjectionObjects) {
+        return TRUE;
     }
 
     //
-    // Skip any initial jumps present in the code.
+    // The writable injection objects structure will live one page after the
+    // local thunk buffer address.  Resolve the relevant page address for both
+    // local and remote thunks and injection objects structures.
     //
 
-    OriginalCode = (PBYTE)OriginalCallback;
-    FinalCode = SkipJumps(OriginalCode);
-    FinalCallback = (PRTL_INJECTION_COMPLETE_CALLBACK)FinalCode;
+    LocalThunkPage = (PBYTE)ALIGN_DOWN_PAGE(LocalThunkBuffer);
+    LocalInjectionObjectsPage = LocalThunkPage + PAGE_SIZE;
+    LocalInjectionObjects = (PINJECTION_OBJECTS)LocalInjectionObjectsPage;
+
+    RemoteThunkPage = (PBYTE)ALIGN_DOWN_PAGE(RemoteThunkBufferAddress);
+    RemoteInjectionObjectsPage = RemoteThunkPage + PAGE_SIZE;
+    RemoteInjectionObjects = (PINJECTION_OBJECTS)RemoteInjectionObjectsPage;
 
     //
-    // Make sure the caller's code has a runtime function entry.
+    // The first injection object in the array will live after the injection
+    // object structure in the remote memory layout.
     //
 
-    RuntimeFunction = Rtl->RtlLookupFunctionEntry((ULONGLONG)FinalCode,
-                                                  &CallerModuleBaseAddress,
-                                                  NULL);
+    LocalInjectionObject = (PINJECTION_OBJECT)(
+        RtlOffsetToPointer(
+            LocalInjectionObjects,
+            sizeof(INJECTION_OBJECTS)
+        )
+    );
 
-    if (!RuntimeFunction) {
-        Error.NoRuntimeFunctionEntryFound = TRUE;
-        goto Error;
+    RemoteInjectionObject = (PINJECTION_OBJECT)(
+        RtlOffsetToPointer(
+            RemoteInjectionObjects,
+            sizeof(INJECTION_OBJECTS)
+        )
+    );
+
+    //
+    // Invariant check: struct sizes indicated on the incoming objects should
+    // match sizeof() against the corresponding object.
+    //
+
+    if (OriginalInjectionObjects->SizeOfStruct !=
+        (USHORT)sizeof(*LocalInjectionObjects)) {
+
+        __debugbreak();
+        return FALSE;
+    }
+
+    if (OriginalInjectionObjects->SizeOfInjectionObjectInBytes !=
+        (USHORT)sizeof(*LocalInjectionObject)) {
+
+        __debugbreak();
+        return FALSE;
     }
 
     //
-    // Wire up context, packet and payload pointers, then zero everything (via
-    // the context, which embed the other three structures).
+    // Copy the original injection objects structure and adjust the objects
+    // pointer to the base of the remote injection object array.
     //
 
-    Context = &LocalContext;
-    Thunk = &LocalContext.Thunk;
-    Packet = &LocalContext.Packet;
-    Payload = &Packet->Payload;
+    CopyMemory((PBYTE)LocalInjectionObjects,
+               (PBYTE)OriginalInjectionObjects,
+               sizeof(*LocalInjectionObjects));
 
-    SecureZeroMemory(Context, sizeof(*Context));
-
-    //
-    // Initialize structure sizes.
-    //
-
-    Context->SizeOfStruct = sizeof(*Context);
-    Packet->SizeOfStruct = sizeof(*Packet);
-    Payload->SizeOfStruct = sizeof(*Payload);
+    LocalInjectionObjects->Objects = RemoteInjectionObject;
 
     //
-    // Wire up callback information and copy injection flags over.
+    // Copy the array of original injection object structures into the local
+    // injection object structure.
     //
 
-    Context->OriginalCode = OriginalCode;
-    Context->CallerCode = (PAPC_ROUTINE)FinalCode;
-    Packet->InjectionFlags.AsULong = Flags.AsULong;
+    InjectionObjectArraySizeInBytes = (
+        (ULONG)OriginalInjectionObjects->NumberOfObjects *
+        (ULONG)sizeof(INJECTION_OBJECT)
+    );
+
+    CopyMemory((PBYTE)LocalInjectionObject,
+               (PBYTE)OriginalInjectionObjects->Objects,
+               InjectionObjectArraySizeInBytes);
 
     //
-    // Mark this context as being stack-allocated.
+    // Initialize the base addresses of the local and remote wide character
+    // buffers that will receive a copy of the injection object's Name.Buffer
+    // contents.
     //
 
-    Context->Flags.IsStackAllocated = TRUE;
+    LocalNameBuffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            LocalInjectionObject,
+            InjectionObjectArraySizeInBytes
+        )
+    );
+
+    RemoteNameBuffer = (PWCHAR)(
+        RtlOffsetToPointer(
+            RemoteInjectionObject,
+            InjectionObjectArraySizeInBytes
+        )
+    );
+
 
     //
-    // Wire up the module path and function name strings if this was a module
-    // injection.
+    // Loop through all of the original injection object structures and carve
+    // out UNICODE_STRING structure + buffer space for each object name.
     //
 
-    if (Flags.InjectModule) {
-        PSTRING String;
-        PUNICODE_STRING Unicode;
+    NumberOfObjects = OriginalInjectionObjects->NumberOfObjects;
 
-        Unicode = &Packet->ModulePath;
-        Unicode->Length = ModulePath->Length;
-        Unicode->MaximumLength = ModulePath->MaximumLength;
-        Unicode->Buffer = ModulePath->Buffer;
+    TotalInjectionObjectsAllocSizeInBytes = (
+        (ULONG)sizeof(INJECTION_OBJECTS) +
+        InjectionObjectArraySizeInBytes
+    );
 
-        String = &Packet->CallbackFunctionName;
-        String->Length = CallbackFunctionName->Length;
-        String->MaximumLength = CallbackFunctionName->MaximumLength;
-        String->Buffer = CallbackFunctionName->Buffer;
-    }
 
-    //
-    // Copy the payload details if applicable.
-    //
-
-    if (Flags.InjectPayload) {
-        Payload->Flags.AsULong = InjectionPayload->Flags.AsULong;
-        Payload->SizeOfBufferInBytes = InjectionPayload->SizeOfBufferInBytes;
-        Payload->OriginalBufferAddress = (ULONG_PTR)InjectionPayload->Buffer;
-    }
-
-    //
-    // Verify the callback.  This performs the magic number test, then obtains
-    // the code size of the callback function and saves it in Context.
-    //
-
-    Success = RtlpVerifyInjectionCallback(Rtl, Context, &Error);
-
-    if (!Success) {
-        goto Error;
-    }
-
-    //
-    // We now need to validate the process ID and then attempt to open a handle
-    // to it with all access.  Try enable the SeDebugPrivilege, as it'll allow
-    // us to bypass all access checks.
-    //
-
-    Success = Rtl->EnableDebugPrivilege();
-
-    if (!Success) {
+    for (Index = 0; Index < NumberOfObjects; Index++) {
 
         //
-        // Not having debug privileges is not fatal, it just limits what we'll
-        // be able to open.
+        // Resolve the original injection object and pointer to its name field.
         //
 
-        NOTHING;
+        OriginalInjectionObject = OriginalInjectionObjects->Objects + Index;
+        OriginalName = &OriginalInjectionObject->Name;
+
+        //
+        // Resolve the local injection object and a pointer to its name field.
+        // Initialize the Length and MaximumLength fields to reflect the values
+        // indicated by the original name.
+        //
+
+        InjectionObject = LocalInjectionObject + Index;
+        Name = &InjectionObject->Name;
+        Name->Length = OriginalName->Length;
+        Name->MaximumLength = OriginalName->MaximumLength;
+
+        //
+        // Capture the number of characters for this name by shifting the name's
+        // maximum length (size in bytes) right by 1.  Copy the original name's
+        // buffer over, update the local name's buffer to the relevant remote
+        // wide character buffer offset, then update both wide character buffer
+        // pointers to account for the count (number of chars) we just copied.
+        //
+
+        Count = Name->MaximumLength >> 1;
+        __movsw(LocalNameBuffer, OriginalName->Buffer, Count);
+        Name->Buffer = RemoteNameBuffer;
+
+        LocalNameBuffer += Count;
+        RemoteNameBuffer += Count;
+
+        TotalInjectionObjectsAllocSizeInBytes += Name->MaximumLength;
     }
 
     //
-    // Open a handle to the process.
+    // Finally, point the local thunk's injection objects pointer at the remote
+    // address.
     //
 
-    ProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, TargetProcessId);
+    Thunk->InjectionObjects = RemoteInjectionObjects;
 
-    if (!ProcessHandle || ProcessHandle == INVALID_HANDLE_VALUE) {
-        Rtl->LastError = GetLastError();
-        Error.OpenTargetProcessFailed = TRUE;
-        goto Error;
-    }
+    return TRUE;
+}
 
-    //
-    // All the parameters have been validated at this point, so clear the
-    // invalid parameters flag we set earlier.
-    //
+//
+// The following routines are simple wrappers around their inline counterparts.
+//
 
-    Error.InvalidParameters = FALSE;
+_Use_decl_annotations_
+BOOL
+IsJump(
+    PBYTE Code
+    )
+{
+    return IsJumpInline(Code);
+}
 
-    //
-    // Save the target process ID as it's used in event name generation.
-    //
+_Use_decl_annotations_
+PBYTE
+SkipJumps(
+    PBYTE Code
+    )
+{
+    return SkipJumpsInline(Code);
+}
 
-    Packet->TargetProcessId = TargetProcessId;
+_Use_decl_annotations_
+BOOL
+GetApproximateFunctionBoundaries(
+    ULONG_PTR Address,
+    PULONG_PTR StartAddress,
+    PULONG_PTR EndAddress
+    )
+{
+    return GetApproximateFunctionBoundariesInline(Address,
+                                                  StartAddress,
+                                                  EndAddress);
+}
 
-    //
-    // We now have enough information to commit to allocating and initializing
-    // an injection context (which will contain the packet returned to the
-    // user).  Assign handles to the context and clear our local stack-allocated
-    // pointers; the context (via RtlpDestroyInjectionContext()) is responsible
-    // for closing these handles now.
-    //
+//
+// End of inline function wrappers.
+//
 
-    Context->ModuleHandle = Module;
-    Context->TargetProcessHandle = ProcessHandle;
-    Module = NULL;
-    ProcessHandle = NULL;
+_Use_decl_annotations_
+DECLSPEC_NOINLINE
+ULONG_PTR
+GetInstructionPointer(
+    VOID
+    )
+/*++
 
-    Success = RtlpInjectContext(Rtl,
-                                Allocator,
-                                &Context,
-                                &LocalContext,
-                                &Error);
+Routine Description:
 
-    if (Success) {
+    Returns the return address of a routine.  This effectively provides an
+    address of the instruction pointer within the routine, which is used to
+    derive an approximate size of the function when passed to the routine
+    GetApproximateFunctionBoundaries().
 
-        //
-        // We've successfully created the final injection context and injected
-        // it into the remote process.  We're done.
-        //
+Arguments:
 
-        goto End;
-    }
+    None.
 
-    //
-    // Intentional follow-on to Error.
-    //
+Return Value:
 
-Error:
+    The address of the instruction pointer prior to entering the current call.
 
-    if (Module) {
-        FreeLibrary(Module);
-        Module = NULL;
-    }
+--*/
+{
+    return (ULONG_PTR)_ReturnAddress();
+}
 
-    if (ProcessHandle) {
-        CloseHandle(ProcessHandle);
-        ProcessHandle = NULL;
-    }
+//
+// Functions for initializing and copying injection functions.
+//
 
-    if (Context) {
-        RtlpDestroyInjectionContext(&Context);
-        Packet = NULL;
-        Payload = NULL;
-    }
+VOID
+InitializeInjectionFunctions(
+    _In_ PRTL Rtl,
+    _Out_ PINJECTION_FUNCTIONS Functions
+    )
+{
+    Functions->RtlAddFunctionTable = Rtl->RtlAddFunctionTable;
+    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
+    Functions->GetProcAddress = Rtl->GetProcAddress;
+    Functions->GetLastError = Rtl->GetLastError;
+    Functions->SetLastError = Rtl->SetLastError;
+    Functions->SetEvent = Rtl->SetEvent;
+    Functions->ResetEvent = Rtl->ResetEvent;
+    Functions->GetThreadContext = Rtl->GetThreadContext;
+    Functions->SetThreadContext = Rtl->SetThreadContext;
+    Functions->SuspendThread = Rtl->SuspendThread;
+    Functions->ResumeThread = Rtl->ResumeThread;
+    Functions->OpenEventW = Rtl->OpenEventW;
+    Functions->CloseHandle = Rtl->CloseHandle;
+    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
+    Functions->WaitForSingleObject = Rtl->WaitForSingleObject;
+    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
+    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
+    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
+    Functions->NtQueueApcThread = Rtl->NtQueueApcThread;
+    Functions->NtTestAlert = Rtl->NtTestAlert;
+    Functions->QueueUserAPC = Rtl->QueueUserAPC;
+    Functions->SleepEx = Rtl->SleepEx;
+    Functions->ExitThread = Rtl->ExitThread;
+    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
+    Functions->DeviceIoControl = Rtl->DeviceIoControl;
+    Functions->GetModuleHandleW = Rtl->GetModuleHandleW;
+    Functions->CreateFileW = Rtl->CreateFileW;
+    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
+    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
+    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
+    Functions->MapViewOfFileExNuma = Rtl->MapViewOfFileExNuma;
+    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
+    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
+    Functions->VirtualAllocEx = Rtl->VirtualAllocEx;
+    Functions->VirtualFreeEx = Rtl->VirtualFreeEx;
+    Functions->VirtualProtectEx = Rtl->VirtualProtectEx;
+    Functions->VirtualQueryEx = Rtl->VirtualQueryEx;
+}
 
-    //
-    // Update the caller's injection error pointer.
-    //
-
-    InjectionError->ErrorCode = Error.ErrorCode;
-
-    //
-    // Indicate failure.
-    //
-
-    Success = FALSE;
-
-    //
-    // Intentional follow-on to End.
-    //
-
-End:
-
-    if (Success) {
-
-        //
-        // Some final invariant tests prior to updating the caller's injection
-        // packet pointer.
-        //
-
-        if (!Context) {
-
-            //
-            // Context should be non-NULL.
-            //
-
-            __debugbreak();
-            return FALSE;
-
-        } else if (Context == &LocalContext) {
-
-            //
-            // Context shouldn't be pointing at the stack-allocated local
-            // context.
-            //
-
-            __debugbreak();
-            return FALSE;
-        }
-
-        Packet = &Context->Packet;
-
-        if (!Packet) {
-
-            //
-            // Packet should be non-NULL and wired up to the Context.
-            //
-
-            __debugbreak();
-            return FALSE;
-        }
-
-        //
-        // Update the caller's pointer.
-        //
-
-        *InjectionPacketPointer = Packet;
-    }
-
-    return Success;
+VOID
+CopyInjectionFunctions(
+    _Out_ PINJECTION_FUNCTIONS DestFunctions,
+    _In_ PCINJECTION_FUNCTIONS SourceFunctions
+    )
+{
+    CopyInjectionFunctionsInline(DestFunctions, SourceFunctions);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

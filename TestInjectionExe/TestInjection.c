@@ -61,69 +61,6 @@ UNICODE_STRING TestInjectionFilename =
 #define ZeroStruct(Name)        __stosq((PDWORD64)&Name, 0, sizeof(Name)  >> 3)
 #define ZeroStructPointer(Name) __stosq((PDWORD64)Name,  0, sizeof(*Name) >> 3)
 
-_Use_decl_annotations_
-VOID
-InitializeRtlInjectionFunctions(
-    PRTL Rtl,
-    PRTL_INJECTION_FUNCTIONS Functions
-    )
-{
-    PBYTE Code;
-    PBYTE NewCode;
-    PBYTE *Function;
-    PBYTE *Pointers;
-    USHORT Index;
-    USHORT NumberOfFunctions;
-
-    Functions->LoadLibraryExW = Rtl->LoadLibraryExW;
-    Functions->GetProcAddress = Rtl->GetProcAddress;
-    Functions->SetEvent = Rtl->SetEvent;
-    Functions->OpenEventW = Rtl->OpenEventW;
-    Functions->CloseHandle = Rtl->CloseHandle;
-    Functions->SignalObjectAndWait = Rtl->SignalObjectAndWait;
-    Functions->WaitForSingleObjectEx = Rtl->WaitForSingleObjectEx;
-    Functions->OutputDebugStringA = Rtl->OutputDebugStringA;
-    Functions->OutputDebugStringW = Rtl->OutputDebugStringW;
-    Functions->NtQueueUserApcThread = Rtl->NtQueueApcThread;
-    Functions->NtTestAlert = Rtl->NtTestAlert;
-    Functions->QueueUserAPC = Rtl->QueueUserAPC;
-    Functions->SleepEx = Rtl->SleepEx;
-    Functions->ExitThread = Rtl->ExitThread;
-    Functions->GetExitCodeThread = Rtl->GetExitCodeThread;
-    Functions->CreateFileMappingW = Rtl->CreateFileMappingW;
-    Functions->OpenFileMappingW = Rtl->OpenFileMappingW;
-    Functions->MapViewOfFileEx = Rtl->MapViewOfFileEx;
-    Functions->FlushViewOfFile = Rtl->FlushViewOfFile;
-    Functions->UnmapViewOfFileEx = Rtl->UnmapViewOfFileEx;
-
-    Pointers = (PBYTE *)Functions;
-    NumberOfFunctions = sizeof(*Functions) / sizeof(ULONG_PTR);
-
-    for (Index = 0; Index < NumberOfFunctions; Index++) {
-        Function = Pointers + Index;
-        Code = *Function;
-        NewCode = SkipJumpsInline(Code);
-        *Function = NewCode;
-    }
-}
-
-
-ULONG
-CALLBACK
-InjectionCallback1(
-    PRTL_INJECTION_PACKET Packet
-    )
-{
-    ULONGLONG Token;
-
-    if (Packet->IsInjectionProtocolCallback(Packet, &Token)) {
-        return (ULONG)Token;
-    }
-
-    Packet->Functions->OutputDebugStringA("Entered Injection1 callback.\n");
-
-    return 1;
-}
 
 BOOL
 CreateThunkExe(
@@ -193,63 +130,6 @@ InjectRemoteThread(
     *RemoteThreadIdPointer = RemoteThreadId;
 
     return TRUE;
-}
-
-ULONG
-TestInjection1Old(
-    PRTL Rtl,
-    PALLOCATOR Allocator,
-    PTRACER_CONFIG TracerConfig,
-    PDEBUG_ENGINE_SESSION Session
-    )
-{
-    BOOL Success;
-
-    RTL_INJECTION_FLAGS Flags;
-    PRTL_INJECTION_PACKET Packet;
-    PRTL_INJECTION_COMPLETE_CALLBACK Callback;
-    RTL_INJECTION_ERROR Error;
-    STARTUPINFOW StartupInfo;
-    PROCESS_INFORMATION ProcessInfo;
-
-    if (!CreateThunkExe(&StartupInfo, &ProcessInfo)) {
-        return GetLastError();
-    }
-
-    if (!Rtl->LoadDbgHelp(Rtl)) {
-        return (ULONG)-1;
-    }
-
-    Flags.AsULong = 0;
-    Flags.InjectCode = TRUE;
-
-    Callback = InjectionCallback1;
-
-    Success = Rtl->Inject(Rtl,
-                          Allocator,
-                          &Flags,
-                          NULL,
-                          NULL,
-                          Callback,
-                          NULL,
-                          ProcessInfo.dwProcessId,
-                          &Packet,
-                          &Error);
-
-
-    return ERROR_SUCCESS;
-}
-
-
-DECLSPEC_DLLEXPORT
-LONG
-CALLBACK
-TestInjection2ThreadEntry(
-    PRTL_INJECTION_CONTEXT Context
-    )
-{
-    //Context->Functions.OutputDebugStringA("Test 1 2 3.\n");
-    return ++Test2;
 }
 
 LONGLONG
@@ -848,6 +728,8 @@ End:
     return Success;
 }
 
+/*
+
 ADJUST_POINTERS AdjustThunkPointers;
 
 _Use_decl_annotations_
@@ -936,7 +818,7 @@ AdjustThunkPointers(
     return TRUE;
 }
 
-
+/*
 BOOL
 TestInjection4(
     PRTL Rtl,

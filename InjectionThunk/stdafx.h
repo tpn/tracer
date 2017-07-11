@@ -22,7 +22,6 @@ extern "C" {
 #include "InjectionThunk.h"
 
 #ifdef _INJECTION_THUNK_INTERNAL_BUILD
-#include "..\Rtl\InjectionPrivate.h"
 #include "InjectionThunkPrivate.h"
 #endif
 
