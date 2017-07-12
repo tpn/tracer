@@ -773,7 +773,14 @@ ParentThreadEntry(
     Event1 = &Object->AsEvent;
     Event2 = &(Object + 1)->AsEvent;
 
-    Shared1 = &(Object + 4)->AsFileMapping;
+    Event1 = &Object++->AsEvent;
+    Event2 = &Object++->AsEvent;
+    Shared1 = &Object++->AsFileMapping;
+
+    Event1->Flags.SetEventAfterOpening = TRUE;
+
+    Event2->Flags.WaitOnEventAfterOpening = TRUE;
+    Event2->Flags.DebugBreakAfterWaitSatisfied = TRUE;
 
     Success = Rtl->Inject(Rtl,
                           Session->Allocator,

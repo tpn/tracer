@@ -320,26 +320,36 @@ FileMapping typedef INJECTION_OBJECT_FILE_MAPPING
 ; Define thunk flags.
 ;
 
-DebugBreakOnEntry           equ     1
-HasInjectionObjects         equ     2
-HasModuleAndFunction        equ     4
-HasApc                      equ     8
+DebugBreakOnEntry               equ     1
+HasInjectionObjects             equ     2
+HasModuleAndFunction            equ     4
+HasApc                          equ     8
+WaitOnFirstEvent                equ     16
+DebugBreakAfterFirstEvent       equ     32
+
+;
+; Define injection object event flags.
+;
+
+ManualReset                     equ     1
+WaitOnEventAfterOpening         equ     2
+DebugBreakAfterWaitSatisfied    equ     4
+SetEventAfterOpening            equ     8
 
 ;
 ; Define injection object types.
 ;
 
-EventObjectType             equ     1
-FileMappingObjectType       equ     2
+EventObjectType                 equ     1
+FileMappingObjectType           equ     2
 
 ;
 ; Define error codes.
 ;
 
-RtlAddFunctionTableFailed   equ     1000
-LoadLibraryWFailed          equ     1001
-GetProcAddressFailed        equ     1002
-InvalidInjectionContext     equ     1003
+RtlAddFunctionTableFailed       equ     1000
+LoadLibraryWFailed              equ     1001
+GetProcAddressFailed            equ     1002
 
 ;++
 ;
@@ -353,37 +363,40 @@ InvalidInjectionContext     equ     1003
 ;   This routine is the initial entry point of our injection logic.  That is,
 ;   newly created remoted threads in a target process have their start address
 ;   set to a copy of this routine (that was prepared in a separate process and
-;   then injected via WriteProcessMemory()).
+;   then injected via WriteProcessMemory(), currently via CopyFunction()).
 ;
 ;   It is responsible for registering a runtime function for itself, such that
 ;   appropriate unwind data can be found by the kernel if an exception occurs
-;   and the stack is being unwound.  It then loads a library designated by the
-;   fully qualified path in the thunk's module path field via LoadLibraryW,
-;   then calls GetProcAddress on the returned module for the function name also
-;   contained within the thunk.  If an address is successfully resolved, the
-;   routine is called with the thunk back as the first parameter, and the return
-;   value is propagated back to our caller (typically, this will be the routine
-;   kernel32!UserBaseInitThunk).
+;   and the stack is being unwound.
 ;
-;   In practice, the module path we attempt to load is InjectionThunk.dll, and
-;   the function name we resolve is "InjectionRemoteThreadEntry".  This routine
-;   is responsible for doing more heavy lifting in C prior to calling the actual
-;   caller's end routine.
+;   It then enumerates any injection objects associated with the thunk and
+;   initializes the object according to its type; i.e. named events are opened
+;   via OpenEventW(), named file mappings are opened via OpenFileMappingW() and
+;   then mapped at the requested address via MapViewOfFileExNuma().
+;
+;   If an APC structure has been indicated, the routine will invoke the function
+;   with the first argument as the thunk context, and second and third arguments
+;   as indicated by the APC struct's Argument2 and Argument3 fields.
+;
+;   It then loads a DLL referenced by the injection thunk via LoadLibraryExW(),
+;   then resolves the address of a function pointer for the given public name,
+;   also provided by the thunk.  This function is then invoked with the user's
+;   context, thunk context and injection functions as the first, second and
+;   third parameters, respectively.  The thunk then returns the value returned
+;   by this routine -- this value will end up as the exit code for the thread.
+;
+;   The routine will immediately trap (int 3) on any errors or failed functions.
 ;
 ; Arguments:
 ;
-;   Thunk (rcx) - Supplies a pointer to the injection context thunk.
+;   Thunk (rcx) - Supplies a pointer to the injection thunk context.
 ;
 ; Return Value:
 ;
-;   If an error occured in this routine, an error code (see above) will be
-;   returned (ranging in value from -1 to -3).  If this routine succeeded,
-;   the return value of the function we were requested to execute will be
-;   returned instead.  (Unfortunately, there's no guarantee that this won't
-;   overlap with our error codes.)
-;
-;   This return value will end up as the exit code for the thread if being
-;   called in the injection context.
+;   If successful, the return value will be the result of the routine from
+;   the loaded DLL.  On error, the routine will immediately debugbreak, and
+;   jump straight to the epilogue.  The return value is undefined in this
+;   situation.
 ;
 ;--
 
@@ -540,7 +553,7 @@ Inj10:  xor     r14, r14                                ; Zero ptr for inj obs.
 Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
         mov     ebp, dword ptr Object.ObjectType[rbx]   ; Load object type.
         cmp     ebp, EventObjectType                    ; Is it an event?
-        jne     short Inj30                             ; No; try file mapping.
+        jne     Inj30                                   ; No; try file mapping.
 
 ;
 ; This is an event object type.  Load the arguments for OpenEventW into relevant
@@ -559,7 +572,52 @@ Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
         jmp     Inj90                                   ; Jump to end.
 
 @@:     mov     Event.Handle[rbx], rax                  ; Save event handle.
-        jmp     Inj50                                   ; Jump to loop bottom.
+
+;
+; See if this event object has the WaitOnEventAfterOpening flag set, and if so,
+; perform a wait on it.
+;
+
+        mov     ecx, dword ptr Event.ObjectFlags[rbx]   ; Load event flags.
+        test    ecx, WaitOnEventAfterOpening            ; Wait on this event?
+        jz      Inj25                                   ; No, check set event.
+
+        mov     rcx, rax                                ; Load handle param 1.
+        xor     rdx, rdx                                ; Clear rdx.
+        not     rdx                                     ; Invert to all 1s.
+        call    Functions.WaitForSingleObject[r13]      ; Invoke wait.
+        test    rax, rax                                ; Wait result == 0?
+        jz      @F                                      ; Yes, continue.
+        int     3                                       ; No, abort.
+        jmp     Inj90
+
+;
+; We successfully opened the event.  Re-load the flags into ecx and see if the
+; DebugBreakAfterWaitSatisfied bit is set.  If so, break.  If not, continue the
+; loop by jumping to the bottom (Inj50).
+;
+
+@@:     mov     ecx, dword ptr Event.ObjectFlags[rcx]   ; Re-load flags.
+        test    ecx, DebugBreakAfterWaitSatisfied       ; Break now?
+        jz      Inj50                                   ; No, jump to bottom.
+        int     3                                       ; Yes, break.
+        jmp     Inj50                                   ; Jump to bottom.
+
+;
+; See if this event object has the SetEventAfterOpening flag set, and if so,
+; signal the handle via SetEvent().  Otherwise, jump to the bottom of the loop.
+;
+
+Inj25:  mov     ecx, dword ptr Event.ObjectFlags[rcx]   ; Re-load flags.
+        test    ecx, SetEventAfterOpening               ; Call SetEvent()?
+        jz      Inj50                                   ; No, jump to bottom.
+        mov     rcx, rax                                ; Load handle param 1.
+        call    Functions.SetEvent[r13]                 ; Invoke function.
+        test    rax, rax                                ; Check result.
+        jnz     Inj50                                   ; Success, continue.
+        int     3                                       ; Failed, break.
+        call    Functions.GetLastError[r13]             ; Get last error.
+        jmp     Inj90                                   ; Jump to end.
 
 ;
 ; Determine if this is a file mapping type.

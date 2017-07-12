@@ -208,7 +208,35 @@ C_ASSERT(sizeof(INJECTION_OBJECT_HEADER) == 40);
 typedef union _INJECTION_OBJECT_EVENT_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
         ULONG ManualReset:1;
-        ULONG Unused:31;
+
+        //
+        // When set, the injection thunk will perform a wait on this event
+        // after successfully obtaining a handle to it via OpenEventW().  This
+        // can be useful during debugging.
+        //
+
+        ULONG WaitOnEventAfterOpening:1;
+
+        //
+        // When set, debug break after the wait above is satisfied.  This has
+        // no effect unless WaitOnEventAfterOpening is also set.
+        //
+
+        ULONG DebugBreakAfterWaitSatisfied:1;
+
+        //
+        // When set, the injection thunk will call SetEvent() after opening the
+        // event.  This is checked after (and is mutually exclusive with) the
+        // WaitOnEventAfterOpening flag above.
+        //
+
+        ULONG SetEventAfterOpening:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:28;
     };
     LONG AsLong;
     ULONG AsULong;
