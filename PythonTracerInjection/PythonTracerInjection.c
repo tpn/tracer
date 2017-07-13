@@ -230,6 +230,7 @@ CompletePythonTracerInjection(
         DEBUG_EVENT_LOAD_MODULE         |
         DEBUG_EVENT_UNLOAD_MODULE       |
         DEBUG_EVENT_SYSTEM_ERROR        |
+        DEBUG_EVENT_CHANGE_ENGINE_STATE |
         DEBUG_EVENT_CHANGE_SYMBOL_STATE
     );
 
@@ -249,6 +250,17 @@ CompletePythonTracerInjection(
         InterestMask.LoadModule = TRUE;
         InterestMask.UnloadModule = TRUE;
         InterestMask.SystemError = TRUE;
+        InterestMask.SessionStatus = TRUE;
+        InterestMask.ChangeDebuggeeState = TRUE;
+        InterestMask.ChangeEngineState = TRUE;
+        InterestMask.ChangeSymbolState = TRUE;
+    }
+
+    if (1) {
+        InterestMask.AsULong = 0;
+        InterestMask.Breakpoint = TRUE;
+        InterestMask.CreateProcess = TRUE;
+        InterestMask.ExitProcess = TRUE;
         InterestMask.SessionStatus = TRUE;
         InterestMask.ChangeDebuggeeState = TRUE;
         InterestMask.ChangeEngineState = TRUE;
@@ -533,14 +545,16 @@ ParentThreadEntry(
     PVOID BaseAddress;
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
-    PDEBUGCLIENT ExitDispatchClient;
-    PIDEBUGCLIENT IExitDispatchClient;
+    PAPC Apc;
+    //PDEBUGCLIENT ExitDispatchClient;
+    //PIDEBUGCLIENT IExitDispatchClient;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
     PTRACER_INJECTION_CONTEXT InjectionContext;
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
     PDEBUG_ENGINE_SESSION Session;
+    PDEBUG_ENGINE_SESSION Parent;
     PUNICODE_STRING Name;
     PINJECTION_OBJECT Object;
     INJECTION_OBJECT Objects[3];
@@ -614,7 +628,7 @@ ParentThreadEntry(
 
     InjectionContext = &Context->InjectionContext;
     InjectionBreakpoint = InjectionContext->CurrentInjectionBreakpoint;
-    RemotePythonProcessHandle = InjectionBreakpoint->CurrentProcessHandle;
+    RemotePythonProcessHandle = Context->RemotePythonProcessHandle;
     SuspendedThreadId = InjectionBreakpoint->CurrentThreadId;
     SuspendedThreadHandle = InjectionBreakpoint->SuspendedThreadHandle;
     DebugEngineThreadHandle = InjectionContext->DebugEngineThreadHandle;
@@ -777,14 +791,29 @@ ParentThreadEntry(
     Event2 = &Object++->AsEvent;
     Shared1 = &Object++->AsFileMapping;
 
-    Event1->Flags.SetEventAfterOpening = TRUE;
+    Event1->Flags.SetEventAfterOpening = FALSE;
 
-    Event2->Flags.WaitOnEventAfterOpening = TRUE;
-    Event2->Flags.DebugBreakAfterWaitSatisfied = TRUE;
+    Event2->Flags.WaitOnEventAfterOpening = FALSE;
+    Event2->Flags.DebugBreakAfterWaitSatisfied = FALSE;
+
+    Parent = Context->InjectionContext.ParentDebugEngineSession;
+
+    SetEvent(Parent->ShutdownEvent);
+
+    Parent->Engine->State.ExitDispatchWhenAble = TRUE;
+    Result = Parent->Engine->Control->SetInterrupt(
+        Parent->Engine->IControl,
+        DEBUG_INTERRUPT_ACTIVE
+    );
+
+    WaitResult = WaitForSingleObject(Parent->ShutdownCompleteEvent, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+    }
 
     Success = Rtl->Inject(Rtl,
                           Session->Allocator,
-                          Flags,
+                          InjectionThunkFlags,
                           RemotePythonProcessHandle,
                           DllPath,
                           &FunctionName,
@@ -810,6 +839,8 @@ ParentThreadEntry(
         __debugbreak();
     }
 
+    goto Resume;
+
     //
     // The injected thread has loaded.
     //
@@ -818,14 +849,28 @@ ParentThreadEntry(
     // Detaching processes.
     //
 
-    OutputDebugStringA("Queuing APC...\n");
+    //OutputDebugStringA("Queuing APC...\n");
 
-    InterlockedIncrement64(&Session->NumberOfPendingApcs);
+    //InterlockedIncrement64(&Session->NumberOfPendingApcs);
+
+#if 0
+    Session->Engine.State.ExitDispatchWhenAble = TRUE;
+    Result = Session->Engine->Control->SetInterrupt(
+        Session->Engine->IControl,
+        DEBUG_INTERRUPT_ACTIVE
+    );
+
+    if (FAILED(Result)) {
+        __debugbreak();
+        return -1;
+    }
+#endif
 
     //
     // Force the main debug thread to exit it's event dispatching.
     //
 
+#if 0
     ExitDispatchClient = Session->ExitDispatchEngine->Client;
     IExitDispatchClient = Session->ExitDispatchEngine->IClient;
 
@@ -838,6 +883,7 @@ ParentThreadEntry(
         __debugbreak();
         return -1;
     }
+#endif
 
     WaitResult = WaitForSingleObject(Session->ReadyForApcEvent, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
@@ -846,6 +892,16 @@ ParentThreadEntry(
         goto Error;
     }
 
+    Apc = &Session->Apc;
+    ZeroStructPointer(Apc);
+    Apc->Routine = (PAPC_ROUTINE)DetachProcessesApc;
+    Apc->Argument1 = Context;
+    Apc->Argument2 = (PVOID)((ULONG_PTR)SuspendedThreadId);
+    UNREFERENCED_PARAMETER(Status);
+
+    SetEvent(Session->WaitForApcEvent);
+
+#if 0
     OutputDebugStringA("Queuing APC.\n");
 
     Status = Rtl->NtQueueApcThread(DebugEngineThreadHandle,
@@ -857,10 +913,13 @@ ParentThreadEntry(
     if (!SUCCEEDED(Status)) {
         __debugbreak();
     }
+#endif
 
     //
     // Resume the original thread we suspended.
     //
+
+Resume:
 
     do {
         SuspendedCount = (LONG)ResumeThread(SuspendedThreadHandle);
@@ -870,16 +929,6 @@ ParentThreadEntry(
         __debugbreak();
         return -1;
     }
-
-#if 0
-    Apc = &Session->Apc;
-    ZeroStructPointer(Apc);
-    Apc->Routine = (PAPC_ROUTINE)DetachProcesses;
-    Apc->Argument1 = Context;
-    Apc->Argument2 = (PVOID)SuspendedThreadId;
-
-    SetEvent(Session->WaitForApcEvent);
-#endif
 
     return 0;
 
@@ -914,9 +963,24 @@ Py_InitializeEx_HandleReturnBreakpoint(
                                 PYTHON_TRACER_INJECTION_CONTEXT,
                                 InjectionContext);
 
-    Context->RemotePythonProcessHandle = (
-        InjectionBreakpoint->CurrentProcessHandle
-    );
+    //
+    // Duplicate the process handle such that we can use it independently of
+    // the debug engine session.
+    //
+
+    CurrentProcessHandle = GetCurrentProcess();
+    Success = DuplicateHandle(CurrentProcessHandle,
+                              InjectionBreakpoint->CurrentProcessHandle,
+                              CurrentProcessHandle,
+                              &Context->RemotePythonProcessHandle,
+                              0,
+                              FALSE,
+                              DUPLICATE_SAME_ACCESS);
+    if (!Success) {
+        LastError = GetLastError();
+        __debugbreak();
+        return DEBUG_STATUS_BREAK;
+    }
 
     //
     // We need to freeze the faulting thread that triggered the Py_InitializeEx
@@ -940,7 +1004,6 @@ Py_InitializeEx_HandleReturnBreakpoint(
         return DEBUG_STATUS_BREAK;
     }
 
-    CurrentProcessHandle = GetCurrentProcess();
     Success = DuplicateHandle(CurrentProcessHandle,
                               GetCurrentThread(),
                               CurrentProcessHandle,

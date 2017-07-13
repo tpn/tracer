@@ -856,6 +856,16 @@ Return Value:
     Engine = Session->Engine;
     ExitDispatchEngine = Session->ExitDispatchEngine;
 
+    //
+    // Create a shutdown complete event.  This will be signaled when the debug
+    // engine has detached from the target process.  This is only done in the
+    // parent process.
+    //
+
+    Session->ShutdownCompleteEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!Session->ShutdownCompleteEvent) {
+        goto Error;
+    }
 
     AcquiredLock = TRUE;
 
@@ -1086,13 +1096,90 @@ Return Value:
         );
 
     } else if (Session->Flags.CreatedNewProcess && InjectionModules) {
-
         ULONG Index;
         ULONG WaitResult;
         HMODULE Module;
         HANDLE ReadyEvent;
         PUNICODE_STRING Path;
         PINITIALIZE_TRACER_INJECTION Initializer;
+        DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask;
+
+        //
+        // Register event callbacks.
+        //
+
+        Engine->State.RegisteringEventCallbacks = TRUE;
+
+        InterestMask.AsULong = (
+            DEBUG_EVENT_BREAKPOINT          |
+            DEBUG_EVENT_EXCEPTION           |
+            DEBUG_EVENT_CREATE_THREAD       |
+            DEBUG_EVENT_EXIT_THREAD         |
+            DEBUG_EVENT_CREATE_PROCESS      |
+            DEBUG_EVENT_EXIT_PROCESS        |
+            DEBUG_EVENT_LOAD_MODULE         |
+            DEBUG_EVENT_UNLOAD_MODULE       |
+            DEBUG_EVENT_SYSTEM_ERROR        |
+            DEBUG_EVENT_CHANGE_SYMBOL_STATE
+        );
+
+        //
+        // The following block can be useful during debugging to quickly
+        // toggle interest masks on and off.
+        //
+
+        if (0) {
+            InterestMask.AsULong = 0;
+            InterestMask.Breakpoint = TRUE;
+            InterestMask.Exception = TRUE;
+            InterestMask.CreateThread = TRUE;
+            InterestMask.ExitThread = TRUE;
+            InterestMask.CreateProcess = TRUE;
+            InterestMask.ExitProcess = TRUE;
+            InterestMask.LoadModule = TRUE;
+            InterestMask.UnloadModule = TRUE;
+            InterestMask.SystemError = TRUE;
+            InterestMask.SessionStatus = TRUE;
+            InterestMask.ChangeDebuggeeState = TRUE;
+            InterestMask.ChangeEngineState = TRUE;
+            InterestMask.ChangeSymbolState = TRUE;
+        }
+
+        if (1) {
+            InterestMask.AsULong = 0;
+            InterestMask.CreateProcess = TRUE;
+            InterestMask.SessionStatus = TRUE;
+            InterestMask.ChangeDebuggeeState = TRUE;
+            InterestMask.ChangeEngineState = TRUE;
+        }
+
+        //
+        // DebugEngineSetEventCallbacks() will attempt to acquire the engine
+        // lock, so release it now first.
+        //
+
+        ReleaseDebugEngineLock(Engine);
+        AcquiredLock = FALSE;
+
+        CHECKED_MSG(
+            DebugEngineSetEventCallbacks(
+                Engine,
+                &DebugEventCallbacks,
+                &IID_IDEBUG_EVENT_CALLBACKS,
+                InterestMask
+            ),
+            "DebugEngineSetEventCallbacks()"
+        );
+
+        //
+        // Re-acquire the lock.
+        //
+
+        AcquireDebugEngineLock(Engine);
+        AcquiredLock = TRUE;
+
+        Engine->State.EventCallbacksRegistered = TRUE;
+        Engine->State.RegisteringEventCallbacks = FALSE;
 
         //
         // Create a new process based on the target command line extracted
@@ -1247,7 +1334,8 @@ Return Value:
         CHECKED_HRESULT_MSG(
             Engine->Client->StartServer(
                 Engine->IClient,
-                "npipe:pipe=tracer_%d"
+                //"npipe:pipe=tracer_%d"
+                "npipe:pipe=tracer"
             ),
             "Client->StartServer()"
         );

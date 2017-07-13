@@ -121,6 +121,15 @@ typedef union _DEBUG_ENGINE_STATE {
         ULONG InCreateProcessCallback:1;
 
         //
+        // When set, indicates that ExitDispatch() should be called against the
+        // exit dispatch client when able.  This is currently done in the event
+        // callback for DebugEngineChangeEngineState() when the execution status
+        // changes and it is not from a wait being satisfied.
+        //
+
+        ULONG ExitDispatchWhenAble:1;
+
+        //
         // Final state flags.
         //
 
@@ -2536,10 +2545,11 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     APC Apc;
 
     //
-    // Shutdown event.
+    // Shutdown and shutdown complete events.
     //
 
     HANDLE ShutdownEvent;
+    HANDLE ShutdownCompleteEvent;
 
     //
     // Destructor.

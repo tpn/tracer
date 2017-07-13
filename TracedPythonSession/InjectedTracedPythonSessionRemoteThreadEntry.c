@@ -134,7 +134,7 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
-    ULONG WaitResult;
+    //ULONG WaitResult;
     volatile ULONG *Status;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
@@ -155,12 +155,14 @@ Return Value:
 
     Status = (PULONG)Shared1->BaseAddress;
 
+#if 0
     Success = Functions->SetEvent(Event1->Handle);
 
     WaitResult = Functions->WaitForSingleObject(Event2->Handle, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
         goto Error;
     }
+#endif
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
@@ -228,6 +230,12 @@ Return Value:
     //
 
     __C_specific_handler_impl = Session->Rtl->__C_specific_handler;
+
+    //
+    // Set the event indicating we've completed initialization.
+    //
+
+    SetEvent(Event1->Handle);
 
     //
     // Enter the event loop.

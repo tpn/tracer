@@ -345,6 +345,7 @@ DebugEventCreateProcessCallback(
     UNICODE_STRING Module;
     DEBUG_EVENT_SESSION_CALLBACK_PROLOGUE();
 
+    Session->TargetProcessHandle = (HANDLE)Handle;
     Session->TargetMainThreadHandle = (HANDLE)InitialThreadHandle;
 
     //
@@ -501,20 +502,54 @@ DebugEventChangeEngineStateCallback(
     ULONG64 Argument
     )
 {
+    HRESULT Result;
+    PDEBUG_ENGINE_SESSION Session;
+    PDEBUGCLIENT ExitDispatchClient;
+    PIDEBUGCLIENT IExitDispatchClient;
+    ULONG ExecutionStatus;
+
     DEBUG_EVENT_CALLBACK_PROLOGUE();
 
     Engine->ChangeEngineState.AsULong = Flags;
 
     if (Engine->ChangeEngineState.ExecutionStatus) {
         Engine->ExecutionStatus.AsULongLong = Argument;
-        if (Engine->ExecutionStatus.InsideWait) {
-            //OutputDebugStringA("ChangeEngineState->ExecutionStatus->InWait");
+        if (!Engine->ExecutionStatus.InsideWait) {
+            CHECKED_HRESULT_MSG(
+                Engine->Control->GetExecutionStatus(
+                    Engine->IControl,
+                    &ExecutionStatus
+                ),
+                "Control->GetExecutionStatus()"
+            );
+            if (Engine->State.ExitDispatchWhenAble) {
+                Session = Engine->Session;
+                Engine->State.ExitDispatchWhenAble = FALSE;
+                ExitDispatchClient = Session->ExitDispatchEngine->Client;
+                IExitDispatchClient = Session->ExitDispatchEngine->IClient;
+
+                OutputDebugStringA("Exiting dispatch from within engine.");
+                Result = ExitDispatchClient->ExitDispatch(
+                    IExitDispatchClient,
+                    (PDEBUG_CLIENT)Session->Engine->IClient
+                );
+                if (FAILED(Result)) {
+                    __debugbreak();
+                }
+
+            }
         }
     }
 
     Engine->EngineState = Flags;
     Engine->EngineStateArg = Argument;
 
+    goto End;
+
+Error:
+    __debugbreak();
+
+End:
     return S_OK;
 }
 

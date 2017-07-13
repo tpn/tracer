@@ -46,6 +46,9 @@ Return Value:
     BOOL NotAlertable = FALSE;
     HRESULT Result;
     ULONG WaitResult;
+    ULONG ExecutionStatus;
+    PDEBUGCLIENT Client;
+    PIDEBUGCLIENT IClient;
 
     //
     // Clear the loop terminator up front.
@@ -96,6 +99,13 @@ Return Value:
     if (WaitResult == WAIT_OBJECT_0) {
         *TerminateLoop = TRUE;
         Success = TRUE;
+        Client = Session->Engine->Client;
+        IClient = Session->Engine->IClient;
+        Result = Client->EndSession(IClient, DEBUG_END_ACTIVE_DETACH);
+        if (FAILED(Result)) {
+            __debugbreak();
+        }
+        Success = TRUE;
     } else if (WaitResult == WAIT_TIMEOUT) {
         Success = TRUE;
     } else {
@@ -109,6 +119,18 @@ Return Value:
 
     if (!Success) {
         __debugbreak();
+    }
+
+    Result = Session->Engine->Control->GetExecutionStatus(
+        Session->Engine->IControl,
+        &ExecutionStatus
+    );
+
+    if (ExecutionStatus == DEBUG_STATUS_NO_DEBUGGEE) {
+        *TerminateLoop = TRUE;
+        if (Session->ShutdownCompleteEvent) {
+            SetEvent(Session->ShutdownCompleteEvent);
+        }
     }
 
     goto End;
@@ -150,11 +172,24 @@ Return Value:
 {
     BOOL Success;
     BOOL TerminateLoop;
+    ULONG WaitResult;
+    ULONG LastError;
 
     do {
         Success = Session->EventLoopRunOnce(Session, &TerminateLoop);
     } while (Success && !TerminateLoop);
 
+    SleepEx(INFINITE, TRUE);
+    goto End;
+
+    WaitResult = WaitForSingleObject(Session->TargetProcessHandle, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0) {
+        __debugbreak();
+        LastError = GetLastError();
+        Success = FALSE;
+    }
+
+End:
     return Success;
 }
 
