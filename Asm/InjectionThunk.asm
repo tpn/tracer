@@ -597,7 +597,7 @@ Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
 ; loop by jumping to the bottom (Inj50).
 ;
 
-@@:     mov     ecx, dword ptr Event.ObjectFlags[rcx]   ; Re-load flags.
+@@:     mov     ecx, dword ptr Event.ObjectFlags[rbx]   ; Re-load flags.
         test    ecx, DebugBreakAfterWaitSatisfied       ; Break now?
         jz      Inj50                                   ; No, jump to bottom.
         int     3                                       ; Yes, break.
@@ -608,7 +608,7 @@ Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
 ; signal the handle via SetEvent().  Otherwise, jump to the bottom of the loop.
 ;
 
-Inj25:  mov     ecx, dword ptr Event.ObjectFlags[rcx]   ; Re-load flags.
+Inj25:  mov     ecx, dword ptr Event.ObjectFlags[rbx]   ; Re-load flags.
         test    ecx, SetEventAfterOpening               ; Call SetEvent()?
         jz      Inj50                                   ; No, jump to bottom.
         mov     rcx, rax                                ; Load handle param 1.
