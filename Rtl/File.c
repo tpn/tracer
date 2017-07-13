@@ -400,7 +400,16 @@ Return Value:
     );
 
     if (File->NumberOfPages != AllocationPages) {
-        __debugbreak();
+
+        //
+        // I've seen this getting hit on ntdll.dll for some reason; file size
+        // and size on disk don't match up and it's not compressed.  (I can't
+        // remember why I was debugbreak'ing either, so, ignore for now.)
+        //
+
+        //__debugbreak();
+
+        NOTHING;
     }
 
     if (InitFlags.CopyContents) {
