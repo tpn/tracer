@@ -285,6 +285,7 @@ TraceStoreSqlite3ModuleOpenCursor(
     if (!TraceStore->IsMetadata) {
         Cursor->Address = TraceStore->ReadonlyAddresses;
         Cursor->MemoryMap = &TraceStore->FlatMemoryMap;
+        Cursor->Allocation = TraceStore->Allocation;
         Cursor->AddressRange = TraceStore->ReadonlyAddressRanges;
         Cursor->TotalNumberOfRecords = Totals->NumberOfRecords.QuadPart;
 
