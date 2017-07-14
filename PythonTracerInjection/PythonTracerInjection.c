@@ -215,6 +215,7 @@ CompletePythonTracerInjection(
     PDEBUG_ENGINE_SESSION Parent;
     PDEBUG_ENGINE_SESSION Session;
     DEBUG_EVENT_CALLBACKS_INTEREST_MASK InterestMask;
+    DEBUGEVENTCALLBACKS EventCallbacks;
 
     //
     // Initialize interest mask.
@@ -260,23 +261,36 @@ CompletePythonTracerInjection(
         InterestMask.AsULong = 0;
         InterestMask.Breakpoint = TRUE;
         InterestMask.CreateProcess = TRUE;
-        InterestMask.ExitProcess = TRUE;
-        InterestMask.SessionStatus = TRUE;
-        InterestMask.ChangeDebuggeeState = TRUE;
-        InterestMask.ChangeEngineState = TRUE;
-        InterestMask.ChangeSymbolState = TRUE;
+        //InterestMask.ExitProcess = TRUE;
+        //InterestMask.SessionStatus = TRUE;
+        //InterestMask.ChangeDebuggeeState = TRUE;
+        //InterestMask.ChangeEngineState = TRUE;
+        //InterestMask.ChangeSymbolState = TRUE;
     }
+
+    //
+    // Copy our debug events over, then override the ChangeEngineStatus one.
+    //
+
+
+    CopyMemory((PBYTE)&EventCallbacks,
+               (PCBYTE)&PythonTracerInjectionDebugEventCallbacks,
+               sizeof(EventCallbacks));
+
+    Parent = Context->InjectionContext.ParentDebugEngineSession;
+
+    //EventCallbacks.ChangeEngineState = (
+    //    Parent->Engine->EventCallbacks.ChangeEngineState
+    //);
 
     //
     // Initialize our child debug engine session.
     //
 
-    Parent = Context->InjectionContext.ParentDebugEngineSession;
-
     Success = (
         Parent->InitializeChildDebugEngineSession(
             Parent,
-            &PythonTracerInjectionDebugEventCallbacks,
+            &EventCallbacks,
             &IID_IDEBUG_EVENT_CALLBACKS,
             InterestMask,
             &Session
@@ -292,6 +306,12 @@ CompletePythonTracerInjection(
     //
 
     Context->InjectionContext.DebugEngineSession = Session;
+
+    //
+    // Wire ourselves up to the parent.
+    //
+
+    Session->Parent = Parent;
 
     //
     // Set our context and return success;
@@ -546,13 +566,14 @@ ParentThreadEntry(
     PVOID RemoteBaseCodeAddress;
     PVOID RemoteUserBufferAddress;
     PAPC Apc;
-    //PDEBUGCLIENT ExitDispatchClient;
-    //PIDEBUGCLIENT IExitDispatchClient;
+    PDEBUGCLIENT ExitDispatchClient;
+    PIDEBUGCLIENT IExitDispatchClient;
     INJECTION_THUNK_FLAGS Flags;
     PCUNICODE_STRING DllPath;
     PTRACER_INJECTION_CONTEXT InjectionContext;
     PYTHON_TRACER_INJECTED_CONTEXT InjectedContext;
     PTRACER_INJECTION_BREAKPOINT InjectionBreakpoint;
+    PDEBUG_ENGINE Engine;
     PDEBUG_ENGINE_SESSION Session;
     PDEBUG_ENGINE_SESSION Parent;
     PUNICODE_STRING Name;
@@ -619,6 +640,7 @@ ParentThreadEntry(
 
     Flags.AsULong = 0;
     Session = Context->InjectionContext.DebugEngineSession;
+    Engine = Session->Engine;
     DllPath = &Session->TracerConfig->Paths.TracedPythonSessionDllPath;
 
     //
@@ -799,12 +821,25 @@ ParentThreadEntry(
     Parent = Context->InjectionContext.ParentDebugEngineSession;
 
     SetEvent(Parent->ShutdownEvent);
+    SetEvent(Session->ShutdownEvent);
 
     Parent->Engine->State.ExitDispatchWhenAble = TRUE;
+
     Result = Parent->Engine->Control->SetInterrupt(
         Parent->Engine->IControl,
         DEBUG_INTERRUPT_ACTIVE
     );
+
+    ExitDispatchClient = Session->ExitDispatchEngine->Client;
+    IExitDispatchClient = Session->ExitDispatchEngine->IClient;
+
+    Result = ExitDispatchClient->ExitDispatch(
+        IExitDispatchClient,
+        (PDEBUG_CLIENT)Session->Engine->IClient
+    );
+    if (FAILED(Result)) {
+        __debugbreak();
+    }
 
     WaitResult = WaitForSingleObject(Parent->ShutdownCompleteEvent, INFINITE);
     if (WaitResult != WAIT_OBJECT_0) {
@@ -988,6 +1023,8 @@ Py_InitializeEx_HandleReturnBreakpoint(
     //
 
     Session = InjectionContext->DebugEngineSession;
+
+    Session->Parent->TargetProcessHandle = Context->RemotePythonProcessHandle;
 
 #if 0
     Success = Session->ExecuteStaticCommand(Session, Command, NULL);

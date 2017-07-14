@@ -100,8 +100,6 @@ Return Value:
 {
     BOOL Success = TRUE;
 
-    SleepEx(INFINITE, TRUE);
-
     return Success;
 }
 
@@ -154,15 +152,6 @@ Return Value:
     Shared1 = &(Object + 2)->AsFileMapping;
 
     Status = (PULONG)Shared1->BaseAddress;
-
-#if 0
-    Success = Functions->SetEvent(Event1->Handle);
-
-    WaitResult = Functions->WaitForSingleObject(Event2->Handle, INFINITE);
-    if (WaitResult != WAIT_OBJECT_0) {
-        goto Error;
-    }
-#endif
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
@@ -230,6 +219,16 @@ Return Value:
     //
 
     __C_specific_handler_impl = Session->Rtl->__C_specific_handler;
+
+    //
+    // Do any hooking here.
+    //
+
+    //
+    // Start tracing/profiling.
+    //
+
+    Session->PythonTraceContext->Start(Session->PythonTraceContext);
 
     //
     // Set the event indicating we've completed initialization.

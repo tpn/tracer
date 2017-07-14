@@ -99,11 +99,13 @@ Return Value:
     if (WaitResult == WAIT_OBJECT_0) {
         *TerminateLoop = TRUE;
         Success = TRUE;
-        Client = Session->Engine->Client;
-        IClient = Session->Engine->IClient;
-        Result = Client->EndSession(IClient, DEBUG_END_ACTIVE_DETACH);
-        if (FAILED(Result)) {
-            __debugbreak();
+        if (!Session->Parent) {
+            Client = Session->Engine->Client;
+            IClient = Session->Engine->IClient;
+            Result = Client->EndSession(IClient, DEBUG_END_ACTIVE_DETACH);
+            if (FAILED(Result)) {
+                __debugbreak();
+            }
         }
         Success = TRUE;
     } else if (WaitResult == WAIT_TIMEOUT) {
@@ -179,17 +181,21 @@ Return Value:
         Success = Session->EventLoopRunOnce(Session, &TerminateLoop);
     } while (Success && !TerminateLoop);
 
-    SleepEx(INFINITE, TRUE);
-    goto End;
+    if (!Session->Parent) {
 
-    WaitResult = WaitForSingleObject(Session->TargetProcessHandle, INFINITE);
-    if (WaitResult != WAIT_OBJECT_0) {
-        __debugbreak();
-        LastError = GetLastError();
-        Success = FALSE;
+        //
+        // This is a parent session (by virtue of the fact it has no value for
+        // the parent pointer).  Wait on the target process handle.
+        //
+
+        WaitResult = WaitForSingleObject(Session->TargetProcessHandle, INFINITE);
+        if (WaitResult != WAIT_OBJECT_0) {
+            __debugbreak();
+            LastError = GetLastError();
+            Success = FALSE;
+        }
     }
 
-End:
     return Success;
 }
 
