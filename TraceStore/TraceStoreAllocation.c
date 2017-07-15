@@ -1168,8 +1168,8 @@ Return Value:
     AllocateWithTimestamp = TraceStore->AllocateRecordsWithTimestampImpl2;
     Address = AllocateWithTimestamp(TraceContext,
                                     TraceStore,
-                                    RecordSize,
                                     NumberOfRecords,
+                                    RecordSize,
                                     TimestampPointer);
 
     //
