@@ -7512,7 +7512,7 @@ TraceStoreSqlite3SymbolInfoColumn(
             ZeroStruct(Name);
         } else {
             Name.Length = (USHORT)SymbolInfo->NameLen;
-            Name.MaximumLength = (USHORT)SymbolInfo->MaxNameLen;
+            Name.MaximumLength = (USHORT)SymbolInfo->NameLen;
             Name.Buffer = (PCHAR)&SymbolInfo->Name;
         }
     }
