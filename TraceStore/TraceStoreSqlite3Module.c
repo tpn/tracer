@@ -703,6 +703,21 @@ TraceStoreSqlite3ModuleNext(
         if (NumberOfRecords > 1) {
 
             //
+            // Sanity check the trace store supports coalesced allocations.
+            //
+
+            if (!WantsCoalescedAllocations(Traits)) {
+
+                //
+                // Coalesced allocations shouldn't be present if the trace
+                // store indicates it doesn't want any.
+                //
+
+                __debugbreak();
+                return SQLITE_ERROR;
+            }
+
+            //
             // Initialize coalesced allocation state.
             //
 
