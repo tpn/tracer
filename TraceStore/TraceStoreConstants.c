@@ -2024,7 +2024,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
-        1,  // PageAligned
+        0,  // PageAligned
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
@@ -2047,7 +2047,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
-        1,  // PageAligned
+        0,  // PageAligned
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
@@ -2070,7 +2070,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         0,  // ConcurrentAllocations
         0,  // AllowPageSpill
-        1,  // PageAligned
+        0,  // PageAligned
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
@@ -2093,7 +2093,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // CoalescedAllocations
         1,  // ConcurrentAllocations
         0,  // AllowPageSpill
-        1,  // PageAligned
+        0,  // PageAligned
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
