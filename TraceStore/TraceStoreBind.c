@@ -377,8 +377,16 @@ Return Value:
             // MetadataInfo and Info should always have a value.
             //
 
-            __debugbreak();
-            return FALSE;
+            //
+            // N.B. This was getting hit when loading trace stores readonly that
+            //      are still active.  Put an additional check in to only break
+            //      if there has been at least one allocation.
+            //
+
+            if (TraceStore->Totals->NumberOfAllocations.QuadPart > 0) {
+                __debugbreak();
+                return FALSE;
+            }
         }
 
         return TRUE;
