@@ -621,6 +621,7 @@ Return Value:
 {
     BOOL Success;
     PRTL Rtl;
+    ULONG LastError;
     LARGE_INTEGER Timestamp;
     PTRACE_STORES TraceStores;
     PTRACE_STORE ImageFileStore;
@@ -714,8 +715,26 @@ Return Value:
         Method = (LPCWSTR)ModuleEntry->File.ImageFile.BaseAddress;
 
         if (!GetModuleHandleExW(Flags, Method, &Handle)) {
-            DWORD LastError = GetLastError();
-            __debugbreak();
+            LastError = GetLastError();
+            if (LastError == ERROR_MOD_NOT_FOUND) {
+
+                //
+                // This condition has been observed when debugging a trace
+                // session; the module is unloaded before this routine is
+                // called.  (C:\Windows\System32\wshbth.dll was the file.)
+                //
+
+                NOTHING;
+
+            } else {
+
+                //
+                // What other sorts of errors do we see here?
+                //
+
+                __debugbreak();
+            }
+
             goto InitializeFile;
         }
 
