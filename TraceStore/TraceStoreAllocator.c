@@ -59,6 +59,10 @@ TraceStoreAllocatorCalloc(
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
 
+    if (ElementSize == 1) {
+        __debugbreak();
+    }
+
     Address = TraceStore->AllocateRecords(TraceContext,
                                           TraceStore,
                                           NumberOfElements,
@@ -104,6 +108,10 @@ TraceStoreAllocatorTryCalloc(
 
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
+
+    if (ElementSize == 1) {
+        __debugbreak();
+    }
 
     Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
                                                           TraceStore,
@@ -153,6 +161,10 @@ TraceStoreAllocatorCallocWithTimestamp(
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
 
+    if (ElementSize == 1) {
+        __debugbreak();
+    }
+
     Address = TraceStore->AllocateRecordsWithTimestamp(TraceContext,
                                                        TraceStore,
                                                        NumberOfElements,
@@ -200,6 +212,10 @@ TraceStoreAllocatorTryCallocWithTimestamp(
 
     TraceStore = ContextToTraceStore(Context);
     TraceContext = TraceStore->TraceContext;
+
+    if (ElementSize == 1) {
+        __debugbreak();
+    }
 
     Address = TraceStore->TryAllocateRecordsWithTimestamp(TraceContext,
                                                           TraceStore,

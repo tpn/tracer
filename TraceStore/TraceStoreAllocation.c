@@ -156,6 +156,10 @@ Routine Description:
 
     OriginalAllocationSize = AllocationSize = RecordSize * NumberOfRecords;
 
+    if (RecordSize == 1) {
+        __debugbreak();
+    }
+
     //
     // If the record size for the trace store isn't fixed, and the no alignment
     // trait hasn't been set, align the allocation size up to the size of a
@@ -1278,6 +1282,18 @@ Return Value:
         // This should never happen.
         //
 
+        __debugbreak();
+    }
+
+    //
+    // XXX: temporary debugging helpers.
+    //
+
+    if ((LONGLONG)NumberOfRecords <= 0) {
+        __debugbreak();
+    }
+
+    if ((LONGLONG)RecordSize <= 1) {
         __debugbreak();
     }
 
