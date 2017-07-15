@@ -3432,9 +3432,9 @@ TraceStoreSqlite3MetadataInfoColumn(
 
 CONST CHAR TraceStoreAllocationSchema[] =
     "CREATE TABLE Allocation ("
-        "NumberOfRecords BIGINT, "   // LARGE_INTEGER
-        "RecordSize BIGINT, "        // LARGE_INTEGER
-        "IsDummyAllocation BIGINT"  // Allocation->NumberOfRecords.DummyAllocation2
+        "NumberOfRecords BIGINT, "   // NumberOfRecords
+        "RecordSize BIGINT, "        // RecordSize
+        "IsDummyAllocation INT"      // IsDummyAllocation
     ")";
 
 _Use_decl_annotations_
@@ -3447,9 +3447,19 @@ TraceStoreSqlite3AllocationColumn(
     LONG ColumnNumber
     )
 {
+    BOOL IsDummyAllocation;
+    ULONGLONG NumberOfRecords;
+    LONGLONG RecordSize;
     PTRACE_STORE_ALLOCATION Allocation;
 
     Allocation = Cursor->CurrentRow.AsAllocation;
+    IsDummyAllocation = (BOOL)Allocation->NumberOfRecords.DummyAllocation2;
+    NumberOfRecords = (ULONGLONG)Allocation->NumberOfRecords.QuadPart;
+    RecordSize = (LONGLONG)Allocation->RecordSize.QuadPart;
+
+    if (RecordSize <= 0) {
+        __debugbreak();
+    }
 
     switch (ColumnNumber) {
 
@@ -3462,7 +3472,7 @@ TraceStoreSqlite3AllocationColumn(
         //
 
         case 0:
-            RESULT_LARGE_INTEGER(Allocation->NumberOfRecords);
+            RESULT_ULONGLONG(NumberOfRecords);
             break;
 
         //
@@ -3470,15 +3480,15 @@ TraceStoreSqlite3AllocationColumn(
         //
 
         case 1:
-            RESULT_LARGE_INTEGER(Allocation->RecordSize);
+            RESULT_ULONGLONG(RecordSize);
             break;
 
         //
-        // 2: IsDummyAllocation BIGINT
+        // 2: IsDummyAllocation INT
         //
 
         case 2:
-            RESULT_ULONGLONG(Allocation->NumberOfRecords.DummyAllocation2);
+            RESULT_ULONG(IsDummyAllocation);
             break;
 
         default:
