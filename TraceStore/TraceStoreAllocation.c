@@ -481,6 +481,9 @@ UpdateAddresses:
     }
 
 UpdateTotals:
+    if (WastedBytes) {
+        TraceStore->Totals->NumberOfAllocations.QuadPart += 1;
+    }
     TraceStore->Totals->NumberOfAllocations.QuadPart += 1;
     TraceStore->Totals->AllocationSize.QuadPart += AllocationSize;
     TraceStore->Eof->EndOfFile.QuadPart += AllocationSize;
@@ -1330,7 +1333,7 @@ Return Value:
             TraceStore->TraceContext,
             TraceStore->AllocationStore,
             1,
-            WastedBytes,
+            sizeof(*Allocation),
             NULL
         );
 
@@ -1339,14 +1342,13 @@ Return Value:
         }
 
         Allocation = (PTRACE_STORE_ALLOCATION)Address;
-        Allocation->RecordSize.QuadPart = RecordSize;
-        Allocation->NumberOfRecords.QuadPart = 1;
+        Allocation->RecordSize.QuadPart = WastedBytes;
 
         //
-        // Set the highest bit to indicate that this was a dummy allocation.
+        // Use -1 to indicated this was a dummy allocation (high bit set).
         //
 
-        Allocation->NumberOfRecords.DummyAllocation1 = TRUE;
+        Allocation->NumberOfRecords.SignedQuadPart = -1;
 
         //
         // Record the padding in the trace store's stats.
@@ -1419,19 +1421,14 @@ Return Value:
 
     Allocation->NumberOfRecords.QuadPart += NumberOfRecords;
 
-    if (WastedBytes) {
-        NOTHING;
-    } else {
+    //
+    // Update the trace store's total record count and total record size.
+    //
 
-        //
-        // Update the trace store's total record count and total record size.
-        //
-
-        TraceStore->Totals->NumberOfRecords.QuadPart += NumberOfRecords;
-        TraceStore->Totals->RecordSize.QuadPart += (
-            NumberOfRecords * RecordSize
-        );
-    }
+    TraceStore->Totals->NumberOfRecords.QuadPart += NumberOfRecords;
+    TraceStore->Totals->RecordSize.QuadPart += (
+        NumberOfRecords * RecordSize
+    );
 
     //
     // Return success to the caller.

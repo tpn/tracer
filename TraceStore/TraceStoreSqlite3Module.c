@@ -311,10 +311,10 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     //
     // Check for the rare case that our flat mapping hasn't finished loading
-    // yet.
+    // yet if we're not metadata.  (Metadata is always inherently flat-loaded.)
     //
 
-    if (!TraceStore->FlatMappingLoaded) {
+    if (!TraceStore->IsMetadata && !TraceStore->FlatMappingLoaded) {
 
         Event = Db->TraceContext->LoadingCompleteEvent;
         WaitResult = WaitForSingleObject(Event, INFINITE);
@@ -679,8 +679,12 @@ TraceStoreSqlite3ModuleNext(
         // until we find the first real one.
         //
 
-        while (IsDummyAllocation(Cursor->Allocation)) {
-            Cursor->Allocation++;
+        if (IsDummyAllocation(Cursor->Allocation)) {
+            NextRecordOffset = 0;
+            while (IsDummyAllocation(Cursor->Allocation)) {
+                NextRecordOffset += Cursor->Allocation->RecordSize.QuadPart;
+                Cursor->Allocation++;
+            }
         }
 
         //

@@ -70,13 +70,14 @@ typedef struct _TRACE_STORE_ALLOCATION {
             ULONGLONG QuadPart:63;
             ULONGLONG DummyAllocation2:1;
         };
+        LONGLONG SignedQuadPart;
     } NumberOfRecords;
     LARGE_INTEGER   RecordSize;
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
 
 #define IsDummyAllocation(Allocation) \
-    (Allocation->NumberOfRecords.DummyAllocation2 == TRUE)
+    (Allocation->NumberOfRecords.SignedQuadPart < 0)
 
 typedef struct _TRACE_STORE_ALLOCATION_TIMESTAMP {
     LARGE_INTEGER Timestamp;
