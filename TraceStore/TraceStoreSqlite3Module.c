@@ -15,7 +15,8 @@ Abstract:
 #include "stdafx.h"
 
 //
-// This is required in order to link without the CRT.
+// This is required in order to link without the CRT (due to our use of
+// doubles).
 //
 
 LONG _fltused;

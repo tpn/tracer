@@ -1345,7 +1345,7 @@ Return Value:
         Allocation->RecordSize.QuadPart = WastedBytes;
 
         //
-        // Use -1 to indicated this was a dummy allocation (high bit set).
+        // Use -1 to indicate this was a dummy allocation.
         //
 
         Allocation->NumberOfRecords.SignedQuadPart = -1;
