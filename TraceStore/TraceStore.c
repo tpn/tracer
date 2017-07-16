@@ -207,6 +207,13 @@ Return Value:
         return FALSE;                                                 \
     }
 
+#define METADATA_STORE_INDEX_OFFSET_FROM_TRACE_STORE(Name) ( \
+    ((                                                       \
+        FIELD_OFFSET(TRACE_STORE, Name##Store) -             \
+        FIELD_OFFSET(TRACE_STORE, MetadataInfoStore)         \
+    ) / sizeof(ULONG_PTR)) + 1                               \
+)
+
 /*++
 
 VOID
@@ -244,6 +251,9 @@ Return Value:
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;                    \
     Name##Store->SequenceId = TraceStore->SequenceId;                          \
     Name##Store->TraceStoreId = TraceStore->TraceStoreId;                      \
+    Name##Store->TraceStoreIndex = TraceStore->TraceStoreIndex + (             \
+        METADATA_STORE_INDEX_OFFSET_FROM_TRACE_STORE(Name)                     \
+    );                                                                         \
     Name##Store->TraceStoreMetadataId = TraceStoreMetadata##Name##Id;          \
     Name##Store->TraceStore = TraceStore;                                      \
     Name##Store->pAllocator = Allocator;                                       \
