@@ -554,10 +554,17 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
     ULONG InjectionThunkDebugBreakOnEntry:1;
 
     //
+    // When set, the trace store sqlite3 module will __debugbreak() as early as
+    // possible (during module load).
+    //
+
+    ULONG TraceStoreSqlite3ModuleDebugBreakOnEntry:1;
+
+    //
     // Unused bits.
     //
 
-    ULONG Unused:12;
+    ULONG Unused:11;
 } TRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
 typedef TRACER_FLAGS *PTRACER_FLAGS;

@@ -322,6 +322,14 @@ Return Value:
     }
 
     //
+    // If the debugbreak on entry flag is set, do it.
+    //
+
+    if (TracerConfig->Flags.TraceStoreSqlite3ModuleDebugBreakOnEntry) {
+        __debugbreak();
+    }
+
+    //
     // Allocate space for the TRACE_STORE_SQLITE3_DB structure.
     //
 
