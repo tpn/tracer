@@ -546,8 +546,21 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
 
     ULONG DisableAsynchronousInitialization:1;
 
-} TRACER_FLAGS, *PTRACER_FLAGS;
+    //
+    // When set, the injection thunk will be configured to __debugbreak() as
+    // early as possible in the thunk routine.
+    //
+
+    ULONG InjectionThunkDebugBreakOnEntry:1;
+
+    //
+    // Unused bits.
+    //
+
+    ULONG Unused:12;
+} TRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
+typedef TRACER_FLAGS *PTRACER_FLAGS;
 
 //
 // This enum can be used as an array index for the IntermediatePaths[] array

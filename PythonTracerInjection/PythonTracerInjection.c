@@ -800,9 +800,12 @@ ParentThreadEntry(
     //
 
     InjectionThunkFlags.AsULong = 0;
-    InjectionThunkFlags.DebugBreakOnEntry = FALSE;
     InjectionThunkFlags.HasInjectionObjects = TRUE;
     InjectionThunkFlags.HasModuleAndFunction = TRUE;
+
+    InjectionThunkFlags.DebugBreakOnEntry = (
+        InjectionContext->TracerConfig->Flags.InjectionThunkDebugBreakOnEntry
+    );
 
     Object = Objects;
 
