@@ -1061,6 +1061,103 @@ End:
     return Success;
 }
 
+FORCEINLINE
+ULONG
+CalculateSymbolInfoAllocSize(
+    _In_ PSYMBOL_INFO SymbolInfo
+    )
+{
+    ULONG Size;
+    const ULONG Padding = sizeof(*SymbolInfo) - FIELD_OFFSET(SYMBOL_INFO, Name);
+
+    //
+    // The +1 accounts for the trailing NULL.
+    //
+
+    Size = SymbolInfo->SizeOfStruct + SymbolInfo->NameLen - Padding + 1;
+
+    return Size;
+}
+
+PSYMBOL_INFO
+AllocateAndCopySymbolInfo(
+    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
+    _In_ PSYMBOL_INFO SourceSymbolInfo
+    )
+{
+    SIZE_T NameLength;
+    LONG_INTEGER SymbolSize;
+    LONG_INTEGER AllocSize;
+    PSYMBOL_INFO SymbolInfo;
+    PTRACE_STORE TraceStore;
+
+    if (SourceSymbolInfo->NameLen > 0) {
+        NameLength = strlen(SourceSymbolInfo->Name);
+        if (NameLength != SourceSymbolInfo->NameLen) {
+            __debugbreak();
+        }
+        if (SourceSymbolInfo->Name[SourceSymbolInfo->NameLen] != '\0') {
+            __debugbreak();
+        }
+    }
+
+    SymbolSize.LongPart = CalculateSymbolInfoAllocSize(SourceSymbolInfo);
+    AllocSize.LongPart = ALIGN_UP_POINTER(SymbolSize.LongPart);
+
+    if (AllocSize.HighPart) {
+        __debugbreak();
+    }
+
+    if (SymbolSize.LongPart != AllocSize.LongPart) {
+        //__debugbreak();
+        NOTHING;
+    }
+
+    TraceStore = SYMBOL_CONTEXT_STORE(SymbolInfo);
+
+    TRY_MAPPED_MEMORY_OP {
+
+        //
+        // Allocate space.
+        //
+
+        SymbolInfo = (PSYMBOL_INFO)(
+            TraceStore->AllocateRecordsWithTimestamp(
+                TraceStore->TraceContext,
+                TraceStore,
+                1,
+                AllocSize.LongPart,
+                &SymbolContext->CurrentTimestamp
+            )
+        );
+
+        if (!SymbolInfo) {
+            return NULL;
+        }
+
+        __stosb((PBYTE)SymbolInfo, 0xcc, AllocSize.LongPart);
+
+        //
+        // Copy the contents.
+        //
+
+        CopyMemory(SymbolInfo, SourceSymbolInfo, SymbolSize.LongPart);
+
+        if (SymbolInfo->NameLen > 0) {
+            SymbolInfo->MaxNameLen = SymbolInfo->NameLen + 1;
+            if (SymbolInfo->Name[SymbolInfo->NameLen] != '\0') {
+                __debugbreak();
+            }
+        }
+
+    } CATCH_STATUS_IN_PAGE_ERROR {
+        return NULL;
+    }
+
+    return SymbolInfo;
+}
+
+
 _Use_decl_annotations_
 BOOL
 SymbolContextEnumTypesCallback(
@@ -1092,6 +1189,10 @@ Return Value:
 
     //OutputDebugStringA("EnumTypesCallback");
     //OutputDebugStringA(pSymbolInfo->Name);
+
+    if (pSymbolInfo->SizeOfStruct == 0) {
+        __debugbreak();
+    }
 
     SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
     if (!SymbolInfo) {
@@ -1134,10 +1235,18 @@ Return Value:
     //OutputDebugStringA("EnumSymbolsCallback");
     //OutputDebugStringA((PSTR)pSymbolInfo->Name);
 
+    if (pSymbolInfo->SizeOfStruct == 0) {
+        __debugbreak();
+    }
+
     SymbolInfo = AllocateAndCopySymbolInfo(SymbolContext, pSymbolInfo);
     if (!SymbolInfo) {
         __debugbreak();
         return FALSE;
+    }
+
+    if (SymbolInfo->SizeOfStruct == 0) {
+        __debugbreak();
     }
 
     return TRUE;

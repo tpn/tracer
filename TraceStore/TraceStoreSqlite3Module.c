@@ -556,12 +556,16 @@ TraceStoreSqlite3ModuleFilter(
     return SQLITE_OK;
 }
 
+typedef SYMBOL_INFO SYMBOL_INFO_30[30];
+typedef SYMBOL_INFO_30 *PSYMBOL_INFO_30;
+
 _Use_decl_annotations_
 LONG
 TraceStoreSqlite3ModuleNext(
     PSQLITE3_VTAB_CURSOR Sqlite3Cursor
     )
 {
+    USHORT NumberOfDummyAllocations;
     ULONGLONG NumberOfRecords;
     ULONGLONG NextRecordOffset = 0;
     TRACE_STORE_TRAITS Traits;
@@ -667,9 +671,11 @@ TraceStoreSqlite3ModuleNext(
         } else {
 
             //
-            // If no coalesced record is active, advance the allocation record.
+            // If no coalesced record is active, capture the record offset then
+            // advance the allocation record.
             //
 
+            NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
             Cursor->Allocation++;
         }
 
@@ -681,11 +687,53 @@ TraceStoreSqlite3ModuleNext(
         //
 
         if (IsDummyAllocation(Cursor->Allocation)) {
-            NextRecordOffset = 0;
+
+            NumberOfDummyAllocations = 0;
+
             while (IsDummyAllocation(Cursor->Allocation)) {
-                NextRecordOffset += Cursor->Allocation->RecordSize.QuadPart;
+
+                //
+                // Invariant check: there should only ever be one dummy present
+                // at a time.  (Dummy allocations are used to capture the bytes
+                // of padding used by the allocator to prevent a page spill.)
+                //
+
+                if (++NumberOfDummyAllocations > 1) {
+                    __debugbreak();
+                }
+
+                //
+                // Invariant check: convert the negative number of records into
+                // its positive counterpart, then verify it is 1.
+                //
+
+                NumberOfRecords = (ULONGLONG)(
+                    Cursor->Allocation->NumberOfRecords.SignedQuadPart * -1LL
+                );
+
+                if (NumberOfRecords != 1) {
+                    __debugbreak();
+                }
+
+                //
+                // Update the next record offset by the size of the dummy
+                // allocation.  Multiplying by the number of records is benign
+                // here as we've just asserted it will only ever be 1, but it
+                // may not be in the future, and it doesn't hurt to be prepared.
+                //
+
+                NextRecordOffset += (
+                    Cursor->Allocation->RecordSize.QuadPart *
+                    NumberOfRecords
+                );
+
+                //
+                // Advance the allocation pointer to the next record.
+                //
+
                 Cursor->Allocation++;
             }
+
         }
 
         //
@@ -696,13 +744,6 @@ TraceStoreSqlite3ModuleNext(
         // in order to find out where row 2 starts, we process the allocation
         // record number 1.)
         //
-        // Obtain the record offset from the allocation record.  Then, test to
-        // see if it represents multiple allocations; if so, initialize the
-        // cursor's coalesced counters such that the relevant state can be
-        // resumed upon subsequent invocations of Next().
-        //
-
-        NextRecordOffset = Cursor->Allocation->RecordSize.QuadPart;
 
         NumberOfRecords = Cursor->Allocation->NumberOfRecords.QuadPart;
         if (NumberOfRecords > 1) {

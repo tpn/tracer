@@ -7508,7 +7508,7 @@ CONST CHAR TraceStoreSymbolInfoSchema[] =
         "Tag INT, "
         "NameLen INT, "
         "MaxNameLen INT, "
-        "Name TEXT"             // Name, STRING, [(SymbolInfo->MaxNameLen > 0)]
+        "Name TEXT"             // Name, STRING, [(SymbolInfo->NameLen > 0)]
     ")";
 
 _Use_decl_annotations_
@@ -7526,12 +7526,16 @@ TraceStoreSqlite3SymbolInfoColumn(
 
     SymbolInfo = (PSYMBOL_INFO)Cursor->CurrentRowRaw;
 
+    if (SymbolInfo->SizeOfStruct != sizeof(*SymbolInfo)) {
+        __debugbreak();
+    }
+
     if (ColumnNumber == 13) {
-        if (SymbolInfo->MaxNameLen == 0) {
+        if (SymbolInfo->NameLen == 0) {
             ZeroStruct(Name);
         } else {
             Name.Length = (USHORT)SymbolInfo->NameLen;
-            Name.MaximumLength = (USHORT)SymbolInfo->NameLen;
+            Name.MaximumLength = (USHORT)SymbolInfo->MaxNameLen;
             Name.Buffer = (PCHAR)&SymbolInfo->Name;
         }
     }
@@ -7651,7 +7655,7 @@ TraceStoreSqlite3SymbolInfoColumn(
         //
 
         case 13:
-            if (!((SymbolInfo->MaxNameLen > 0))) {
+            if (!((SymbolInfo->NameLen > 0))) {
                 RESULT_NULL();
             } else {
                 RESULT_STRING(Name);

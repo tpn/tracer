@@ -2666,72 +2666,6 @@ AllocateAndCopySymbolModuleInfo(
 }
 
 FORCEINLINE
-ULONG
-CalculateSymbolInfoAllocSize(
-    _In_ PSYMBOL_INFO SymbolInfo
-    )
-{
-    return SymbolInfo->SizeOfStruct + SymbolInfo->NameLen;
-}
-
-FORCEINLINE
-PSYMBOL_INFO
-AllocateAndCopySymbolInfo(
-    _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
-    _In_ PSYMBOL_INFO SourceSymbolInfo
-    )
-{
-    SIZE_T QuadWords;
-    LONG_INTEGER AllocSize;
-    PSYMBOL_INFO SymbolInfo;
-    PTRACE_STORE TraceStore;
-
-    AllocSize.LongPart = CalculateSymbolInfoAllocSize(SourceSymbolInfo);
-    AllocSize.LongPart = ALIGN_UP_POINTER(AllocSize.LongPart);
-    if (AllocSize.HighPart) {
-        __debugbreak();
-    }
-
-    QuadWords = AllocSize.LongPart >> 3;
-
-    TraceStore = SYMBOL_CONTEXT_STORE(SymbolInfo);
-
-    TRY_MAPPED_MEMORY_OP {
-
-        //
-        // Allocate space.
-        //
-
-        SymbolInfo = (PSYMBOL_INFO)(
-            TraceStore->AllocateRecordsWithTimestamp(
-                TraceStore->TraceContext,
-                TraceStore,
-                1,
-                AllocSize.LongPart,
-                &SymbolContext->CurrentTimestamp
-            )
-        );
-
-        if (!SymbolInfo) {
-            return NULL;
-        }
-
-        //
-        // Copy the contents.
-        //
-
-        __movsq((PDWORD64)SymbolInfo,
-                (PDWORD64)SourceSymbolInfo,
-                QuadWords);
-
-    } CATCH_STATUS_IN_PAGE_ERROR {
-        return NULL;
-    }
-
-    return SymbolInfo;
-}
-
-FORCEINLINE
 BOOL
 AllocateAndCopySourceFile(
     _In_ PTRACE_SYMBOL_CONTEXT SymbolContext,
@@ -3302,6 +3236,11 @@ typedef union _TRACE_STORE_SQLITE3_CURSOR_FLAGS {
 } TRACE_STORE_SQLITE3_CURSOR_FLAGS;
 C_ASSERT(sizeof(TRACE_STORE_SQLITE3_CURSOR_FLAGS) == sizeof(ULONG));
 
+//
+// Define a helper union that allows easy casting to common pointer types
+// captured by trace stores.
+//
+
 typedef union _TRACE_STORE_ROW {
     PTRACE_STORE_METADATA_INFO AsMetadataInfo;
     PTRACE_STORE_ALLOCATION AsAllocation;
@@ -3331,8 +3270,7 @@ typedef union _TRACE_STORE_ROW {
     PVOID AsVoid;
     PTRACE_STORE_INTERVAL AsInterval;
     PSQLITE3_INT64 AsSqlite3Int64;
-    //PXMMWORD AsXmm;
-    //PYMMWORD AsYmm;
+    PSYMBOL_INFO AsSymbolInfo;
 } TRACE_STORE_ROW;
 typedef TRACE_STORE_ROW *PTRACE_STORE_ROW;
 C_ASSERT(sizeof(TRACE_STORE_ROW) == 8);
