@@ -1289,14 +1289,14 @@ Return Value:
     }
 
     //
-    // XXX: temporary debugging helpers.
+    // Sanity check inputs.
     //
 
     if ((LONGLONG)NumberOfRecords <= 0) {
         __debugbreak();
     }
 
-    if ((LONGLONG)RecordSize <= 1) {
+    if ((LONGLONG)RecordSize <= 0) {
         __debugbreak();
     }
 
