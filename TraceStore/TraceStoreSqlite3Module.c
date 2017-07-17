@@ -690,6 +690,16 @@ TraceStoreSqlite3ModuleNext(
 
             NumberOfDummyAllocations = 0;
 
+            //
+            // Ensure this isn't a page-aligned trace store, as they don't have
+            // dummy allocations (everything gets page-aligned, so the "wasted
+            // bytes" are implicit on every allocation).
+            //
+
+            if (WantsPageAlignment(Traits)) {
+                __debugbreak();
+            }
+
             while (IsDummyAllocation(Cursor->Allocation)) {
 
                 //
@@ -746,6 +756,7 @@ TraceStoreSqlite3ModuleNext(
         //
 
         NumberOfRecords = Cursor->Allocation->NumberOfRecords.QuadPart;
+
         if (NumberOfRecords > 1) {
 
             //
@@ -785,10 +796,16 @@ TraceStoreSqlite3ModuleNext(
 UpdateRow:
 
     //
-    // Update the cursor and return success.
+    // Update the cursor and return success.  If we're page-aligned, simply
+    // round the existing row up to the next page boundary.  Otherwise, add
+    // the next record offset we've just calculated to the current row.
     //
 
-    Cursor->CurrentRowRaw = Cursor->CurrentRowRaw + NextRecordOffset;
+    if (WantsPageAlignment(Traits)) {
+        Cursor->CurrentRowRaw = ROUND_TO_PAGES(Cursor->CurrentRowRaw);
+    } else {
+        Cursor->CurrentRowRaw = Cursor->CurrentRowRaw + NextRecordOffset;
+    }
 
     return SQLITE_OK;
 }
