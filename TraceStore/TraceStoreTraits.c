@@ -146,7 +146,8 @@ Return Value:
 _Use_decl_annotations_
 BOOL
 InitializeTraceStoreTraits(
-    PTRACE_STORE TraceStore
+    PTRACE_STORE TraceStore,
+    PCTRACE_STORE_TRAITS pTraits
     )
 /*++
 
@@ -156,6 +157,7 @@ Routine Description:
     store is readonly, the traits will be read from the TRACE_STORE_TRAITS
     structure stored in the info metadata store via the LoadTraceStoreTraits()
     routine.  If the trace store is not readonly, the traits will be obtained
+    from the
     from the TraceStoreTraits[] array.
 
     N.B.: The description above is how the routine *should* work.  How it
@@ -177,7 +179,6 @@ Return Value:
 --*/
 {
     TRACE_STORE_TRAITS Traits;
-    PCTRACE_STORE_TRAITS pTraits;
 
     //
     // Validate arguments.

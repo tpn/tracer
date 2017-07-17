@@ -22,7 +22,8 @@ InitializeStore(
     PCWSTR        Path,
     PTRACE_STORE  TraceStore,
     LARGE_INTEGER InitialSize,
-    LARGE_INTEGER MappingSize
+    LARGE_INTEGER MappingSize,
+    PCTRACE_STORE_TRAITS Traits
     )
 /*++
 
@@ -45,6 +46,10 @@ Arguments:
 
     MappingSize - Supplies the mapping size in bytes to be used for each trace
         store memory map.  If zero, the default mapping size is used.
+
+    Traits - Supplies a pointer to the traits to use for this trace store.
+        This is mandatory only for write sessions; for readonly sessions, the
+        value is ignored.
 
 Return Value:
 
@@ -102,13 +107,14 @@ Return Value:
     }
 
     //
-    // Initialize trait information.
+    // Save initial trait information if applicable.
     //
 
-    if (!InitializeTraceStoreTraits(TraceStore)) {
-        goto Error;
+    if (Traits) {
+        if (!InitializeTraceStoreTraits(TraceStore, Traits)) {
+            goto Error;
+        }
     }
-
 
     //
     // Initialize default values.
@@ -245,7 +251,6 @@ Return Value:
 #define INIT_METADATA(Name)                                                    \
     Name##Store->Rtl = TraceStore->Rtl;                                        \
     Name##Store->TraceFlags = TraceStore->TraceFlags;                          \
-    Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;          \
     Name##Store->IsMetadata = TRUE;                                            \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                          \
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;                    \
@@ -294,7 +299,8 @@ Return Value:
         &##Name##Path[0],                                                      \
         ##Name##Store,                                                         \
         Default##Name##TraceStoreSize,                                         \
-        Default##Name##TraceStoreMappingSize                                   \
+        Default##Name##TraceStoreMappingSize,                                  \
+        &##Name##StoreTraits                                                   \
     );                                                                         \
                                                                                \
     if (!Success) {                                                            \
@@ -322,7 +328,8 @@ InitializeTraceStore(
     LARGE_INTEGER InitialSize,
     LARGE_INTEGER MappingSize,
     PTRACE_FLAGS TraceFlags,
-    PTRACE_STORE_RELOC Reloc
+    PTRACE_STORE_RELOC Reloc,
+    PCTRACE_STORE_TRAITS Traits
     )
 /*++
 
@@ -389,6 +396,10 @@ Arguments:
         not use relocations, Reloc->NumberOfRelocations should be set to 0.
         If present, this structure will be written to the RelocationStore when
         the store is bound to a context.
+
+    Traits - Supplies a pointer to the traits to use for this trace store.
+        This is mandatory only for write sessions; for readonly sessions, the
+        value is ignored.
 
 Return Value:
 
@@ -579,7 +590,7 @@ Return Value:
     // Now initialize the TraceStore itself.
     //
 
-    if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize)) {
+    if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize, Traits)) {
         __debugbreak();
         goto Error;
     }
