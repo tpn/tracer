@@ -1605,7 +1605,8 @@ BOOL
     _In_     PCWSTR Path,
     _In_     PTRACE_STORE TraceStore,
     _In_opt_ LARGE_INTEGER InitialSize,
-    _In_opt_ LARGE_INTEGER MappingSize
+    _In_opt_ LARGE_INTEGER MappingSize,
+    _In_opt_ PCTRACE_STORE_TRAITS Traits
     );
 typedef INITIALIZE_STORE *PINITIALIZE_STORE;
 INITIALIZE_STORE InitializeStore;
@@ -1630,7 +1631,8 @@ BOOL
     _In_ LARGE_INTEGER InitialSize,
     _In_ LARGE_INTEGER MappingSize,
     _In_ PTRACE_FLAGS TraceFlags,
-    _In_ PTRACE_STORE_RELOC Reloc
+    _In_ PTRACE_STORE_RELOC Reloc,
+    _In_opt_ PCTRACE_STORE_TRAITS Traits
     );
 typedef INITIALIZE_TRACE_STORE *PINITIALIZE_TRACE_STORE;
 INITIALIZE_TRACE_STORE InitializeTraceStore;

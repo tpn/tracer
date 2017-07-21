@@ -811,6 +811,10 @@ InitializeAllocators:
             SuspendedAllocator
         );
 
+        if (TraceStore->IsReadonly) {
+            continue;
+        }
+
         //
         // Determine which allocator implementation to use based on the
         // page alignment trait.

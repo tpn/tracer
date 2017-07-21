@@ -1176,6 +1176,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1199,6 +1200,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1222,6 +1224,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1245,6 +1248,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1268,6 +1272,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1291,6 +1296,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1314,6 +1320,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1337,6 +1344,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1360,6 +1368,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1383,6 +1392,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1406,6 +1416,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1429,6 +1440,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1452,6 +1464,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1475,6 +1488,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1498,6 +1512,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         1,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1521,6 +1536,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1544,6 +1560,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1567,6 +1584,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1590,6 +1608,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1613,6 +1632,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1636,6 +1656,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1659,6 +1680,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1682,6 +1704,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1705,6 +1728,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1728,6 +1752,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1751,6 +1776,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         1,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1774,6 +1800,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1797,6 +1824,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1820,6 +1848,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1843,6 +1872,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -1866,6 +1896,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1889,6 +1920,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1912,6 +1944,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1935,6 +1968,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         1,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1958,6 +1992,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -1982,6 +2017,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2005,6 +2041,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2028,6 +2065,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -2051,6 +2089,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2074,6 +2113,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2097,6 +2137,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2120,6 +2161,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         1,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2143,6 +2185,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         1,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2166,6 +2209,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2189,6 +2233,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         1,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2212,6 +2257,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2235,6 +2281,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2258,6 +2305,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        1,  // Compress
         0   // Unused
     },
 
@@ -2281,6 +2329,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2304,6 +2353,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         1,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2327,6 +2377,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2350,6 +2401,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2373,6 +2425,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2396,6 +2449,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         1,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2419,6 +2473,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2442,6 +2497,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2465,6 +2521,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2488,6 +2545,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         1,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2511,6 +2569,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 
@@ -2534,6 +2593,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
+        0,  // Compress
         0   // Unused
     },
 };
@@ -2666,6 +2726,7 @@ CONST TRACE_STORE_TRAITS MetadataInfoStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2685,6 +2746,7 @@ CONST TRACE_STORE_TRAITS AllocationStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    1,  // Compress
     0   // Unused
 };
 
@@ -2704,6 +2766,7 @@ CONST TRACE_STORE_TRAITS RelocationStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2723,6 +2786,7 @@ CONST TRACE_STORE_TRAITS AddressStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2742,6 +2806,7 @@ CONST TRACE_STORE_TRAITS AddressRangeStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    1,  // Compress
     0   // Unused
 };
 
@@ -2761,6 +2826,7 @@ CONST TRACE_STORE_TRAITS AllocationTimestampStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2780,6 +2846,7 @@ CONST TRACE_STORE_TRAITS AllocationTimestampDeltaStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2799,6 +2866,7 @@ CONST TRACE_STORE_TRAITS SynchronizationStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 
@@ -2818,6 +2886,7 @@ CONST TRACE_STORE_TRAITS InfoStoreTraits = {
     0,  // Periodic
     0,  // ConcurrentDataStructure
     0,  // NoAllocationAlignment
+    0,  // Compress
     0   // Unused
 };
 

@@ -30,7 +30,8 @@ InitializeTraceStores(
     PLARGE_INTEGER InitialFileSizes,
     PLARGE_INTEGER MappingSizes,
     PTRACE_FLAGS TraceFlags,
-    PTRACE_STORE_FIELD_RELOCS FieldRelocations
+    PTRACE_STORE_FIELD_RELOCS FieldRelocations,
+    PCTRACE_STORE_TRAITS TraitsArray
     )
 /*++
 
@@ -69,6 +70,9 @@ Arguments:
 
     FieldRelocations - Supplies an optional pointer to an array of
         TRACE_STORE_FIELD_RELOCS structures to use for the trace stores.
+
+    TraitsArray - Supplies a pointer to the first element of an array of trace
+        store traits.
 
 Return Value:
 
@@ -110,6 +114,7 @@ Return Value:
     LARGE_INTEGER RemainingChars;
     LONG_INTEGER DirectorySizeInBytes;
     PLARGE_INTEGER Sizes = InitialFileSizes;
+    PCTRACE_STORE_TRAITS BaseTraits;
     PLIST_ENTRY StoresListHead;
     WCHAR Path[_OUR_MAX_PATH];
 
@@ -148,6 +153,11 @@ Return Value:
 
     if (!Sizes) {
         Sizes = InitialTraceStoreFileSizes;
+    }
+
+    BaseTraits = TraitsArray;
+    if (!BaseTraits) {
+        BaseTraits = TraceStoreTraits;
     }
 
     Result = StringCchLengthW(
@@ -499,9 +509,11 @@ Return Value:
         LPCWSTR FileName = TraceStoreFileNames[Index];
         LARGE_INTEGER InitialSize;
         LARGE_INTEGER MappingSize;
+        TRACE_STORE_TRAITS Traits;
 
         InitialSize.QuadPart = Sizes[Index].QuadPart;
         MappingSize.QuadPart = InitialSize.QuadPart;
+        Traits = BaseTraits[Index];
 
         Result = StringCchCopyW(
             FileNameDest,
@@ -561,7 +573,8 @@ Return Value:
             InitialSize,
             MappingSize,
             &Flags,
-            Reloc
+            Reloc,
+            &Traits
         );
 
         if (!Success) {
@@ -665,6 +678,7 @@ Return Value:
                                  NULL,
                                  NULL,
                                  &Flags,
+                                 NULL,
                                  NULL);
 }
 

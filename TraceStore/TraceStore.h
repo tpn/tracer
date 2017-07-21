@@ -696,10 +696,18 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_TRAITS {
     ULONG NoAllocationAlignment:1;
 
     //
+    // When set, indicates this trace store is suitable for compression.  This
+    // will result in transparent file system compression being enabled for the
+    // underlying file that is backing the trace store.
+    //
+
+    ULONG Compress:1;
+
+    //
     // Mark the remaining bits as unused.
     //
 
-    ULONG Unused:17;
+    ULONG Unused:16;
 
 } TRACE_STORE_TRAITS, *PTRACE_STORE_TRAITS;
 typedef const TRACE_STORE_TRAITS CTRACE_STORE_TRAITS, *PCTRACE_STORE_TRAITS;
@@ -787,6 +795,8 @@ typedef enum _Enum_is_bitflag_ _TRACE_STORE_TRAIT_ID {
 #define IsPeriodic(Traits) ((Traits).Periodic)
 #define IsConcurrentDataStructure(Traits) ((Traits).ConcurrentDataStructure)
 #define NoAllocationAlignment(Traits) ((Traits).NoAllocationAlignment)
+#define IsCompressed(Traits) ((Traits).Compress)
+#define WantsCompression(Traits) ((Traits).Compress)
 
 //
 // TRACE_STORE_INFO is intended for storage of single-instance structs of
@@ -3251,6 +3261,14 @@ typedef struct _TRACE_STORE {
 
     TRACE_FLAGS TraceFlags;
 
+    //
+    // The traits used when initializing the trace store will be set here.
+    // After the trace store is bound, *TraceStore->pTraits should be used
+    // as this will be backed by the appropriate store.
+    //
+
+    TRACE_STORE_TRAITS InitialTraits;
+
     PTRACER_CONFIG TracerConfig;
 
     //
@@ -3262,7 +3280,6 @@ typedef struct _TRACE_STORE {
     volatile LONG  TotalNumberOfMemoryMaps;
     volatile LONG  NumberOfActiveMemoryMaps;
     volatile LONG  NumberOfNonRetiredMemoryMaps;
-    ULONG Padding1;
 
     SLIST_HEADER            CloseMemoryMaps;
     SLIST_HEADER            PrepareMemoryMaps;
@@ -3760,7 +3777,8 @@ BOOL
     _In_opt_    PLARGE_INTEGER  InitialFileSizes,
     _In_opt_    PLARGE_INTEGER  MappingSizes,
     _In_opt_    PTRACE_FLAGS    TraceFlags,
-    _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations
+    _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations,
+    _In_opt_    PCTRACE_STORE_TRAITS TraitsArray
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;

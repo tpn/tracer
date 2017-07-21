@@ -619,7 +619,8 @@ Return Value:
         NULL,           // InitialFileSizes
         NULL,           // MappingSizes
         &TraceFlags,    // TraceFlags
-        NULL            // FieldRelocations
+        NULL,           // FieldRelocations
+        NULL            // TraitsArray
     );
 
     //
@@ -647,7 +648,8 @@ Return Value:
         NULL,
         NULL,
         &TraceFlags,
-        NULL //Db->PythonTracerTraceStoreRelocations
+        NULL, //Db->PythonTracerTraceStoreRelocations
+        NULL
     );
 
     if (!Success) {

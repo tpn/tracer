@@ -22,7 +22,8 @@ InitializeStore(
     PCWSTR        Path,
     PTRACE_STORE  TraceStore,
     LARGE_INTEGER InitialSize,
-    LARGE_INTEGER MappingSize
+    LARGE_INTEGER MappingSize,
+    PCTRACE_STORE_TRAITS Traits
     )
 /*++
 
@@ -46,12 +47,18 @@ Arguments:
     MappingSize - Supplies the mapping size in bytes to be used for each trace
         store memory map.  If zero, the default mapping size is used.
 
+    Traits - Supplies a pointer to the traits to use for this trace store.
+        This is mandatory only for write sessions; for readonly sessions, the
+        value is ignored.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
 
 --*/
 {
+    BOOL Success;
+    ULONG LastError;
 
     //
     // Validate arguments.
@@ -102,13 +109,74 @@ Return Value:
     }
 
     //
-    // Initialize trait information.
+    // Save initial trait information if applicable.
     //
 
-    if (!InitializeTraceStoreTraits(TraceStore)) {
-        goto Error;
-    }
+    if (!TraceStore->IsReadonly && Traits) {
 
+        TraceStore->InitialTraits = *Traits;
+        if (!InitializeTraceStoreTraits(TraceStore)) {
+            goto Error;
+        }
+
+        //
+        // If the compress trait has been set, attempt to enable compression
+        // on the file handle.
+        //
+
+        if (WantsCompression(*Traits)) {
+            HANDLE Handle;
+            USHORT CompressionFormat = COMPRESSION_FORMAT_DEFAULT;
+            DWORD BytesReturned = 0;
+
+            //
+            // Obtain a handle with FILE_FLAG_BACKUP_SEMANTICS, which is
+            // required in order for us to call the FSCTL_SET_COMPRESSION
+            // IoControl below.
+            //
+
+            Handle = CreateFileW(Path,
+                                 TraceStore->CreateFileDesiredAccess,
+                                 FILE_SHARE_READ  |
+                                 FILE_SHARE_WRITE |
+                                 FILE_SHARE_DELETE,
+                                 NULL,
+                                 OPEN_EXISTING,
+                                 FILE_FLAG_BACKUP_SEMANTICS,
+                                 NULL);
+
+            if (!Handle || Handle == INVALID_HANDLE_VALUE) {
+                LastError = GetLastError();
+                return FALSE;
+            }
+
+            //
+            // Request compression on the file handle.
+            //
+
+            Success = DeviceIoControl(
+                Handle,                         // hDevice
+                FSCTL_SET_COMPRESSION,          // dwIoControlCode
+                &CompressionFormat,             // lpInBuffer
+                sizeof(CompressionFormat),      // nInBufferSize
+                NULL,                           // lpOutBuffer
+                0,                              // nOutBufferSize
+                &BytesReturned,                 // lpBytesReturned
+                NULL                            // lpOverlapped
+            );
+
+            if (!Success) {
+
+                //
+                // We can't do anything useful here.
+                //
+
+                OutputDebugStringA("Failed to enable compression.\n");
+            }
+
+            CloseHandle(Handle);
+        }
+    }
 
     //
     // Initialize default values.
@@ -245,7 +313,6 @@ Return Value:
 #define INIT_METADATA(Name)                                                    \
     Name##Store->Rtl = TraceStore->Rtl;                                        \
     Name##Store->TraceFlags = TraceStore->TraceFlags;                          \
-    Name##Store->pTraits = (PTRACE_STORE_TRAITS)&##Name##StoreTraits;          \
     Name##Store->IsMetadata = TRUE;                                            \
     Name##Store->IsReadonly = TraceStore->IsReadonly;                          \
     Name##Store->NoPrefaulting = TraceStore->NoPrefaulting;                    \
@@ -294,7 +361,8 @@ Return Value:
         &##Name##Path[0],                                                      \
         ##Name##Store,                                                         \
         Default##Name##TraceStoreSize,                                         \
-        Default##Name##TraceStoreMappingSize                                   \
+        Default##Name##TraceStoreMappingSize,                                  \
+        &##Name##StoreTraits                                                   \
     );                                                                         \
                                                                                \
     if (!Success) {                                                            \
@@ -322,7 +390,8 @@ InitializeTraceStore(
     LARGE_INTEGER InitialSize,
     LARGE_INTEGER MappingSize,
     PTRACE_FLAGS TraceFlags,
-    PTRACE_STORE_RELOC Reloc
+    PTRACE_STORE_RELOC Reloc,
+    PCTRACE_STORE_TRAITS Traits
     )
 /*++
 
@@ -389,6 +458,10 @@ Arguments:
         not use relocations, Reloc->NumberOfRelocations should be set to 0.
         If present, this structure will be written to the RelocationStore when
         the store is bound to a context.
+
+    Traits - Supplies a pointer to the traits to use for this trace store.
+        This is mandatory only for write sessions; for readonly sessions, the
+        value is ignored.
 
 Return Value:
 
@@ -480,6 +553,14 @@ Return Value:
     if (!ARGUMENT_PRESENT(Reloc)) {
         return FALSE;
     }
+
+    if (!ARGUMENT_PRESENT(Traits)) {
+        return FALSE;
+    }
+
+    //
+    // Arguments are valid, proceed with initialization.
+    //
 
     Allocator = TraceStore->pAllocator;
 
@@ -579,7 +660,7 @@ Return Value:
     // Now initialize the TraceStore itself.
     //
 
-    if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize)) {
+    if (!InitializeStore(Path, TraceStore, InitialSize, MappingSize, Traits)) {
         __debugbreak();
         goto Error;
     }

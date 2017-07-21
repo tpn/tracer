@@ -156,15 +156,8 @@ Routine Description:
     store is readonly, the traits will be read from the TRACE_STORE_TRAITS
     structure stored in the info metadata store via the LoadTraceStoreTraits()
     routine.  If the trace store is not readonly, the traits will be obtained
-    from the TraceStoreTraits[] array.
-
-    N.B.: The description above is how the routine *should* work.  How it
-          currently works is less sophisticated: it always obtains the traits
-          from the TraceStoreTraits[] array and updates TraceStore->pTraits
-          accordingly.
-
-          The split between initialization and binding to a context needs to
-          be refactored before the logic can above can be implemented cleanly.
+    from the TraceStore->InitialTraits field if this is a non-metadata store,
+    otherwise they will be obtained from the TraceStoreMetadataIdToTraits array.
 
 Arguments:
 
@@ -177,6 +170,8 @@ Return Value:
 --*/
 {
     TRACE_STORE_TRAITS Traits;
+    TRACE_STORE_TRAITS InitialTraits;
+    TRACE_STORE_METADATA_ID MetadataId;
     PCTRACE_STORE_TRAITS pTraits;
 
     //
@@ -187,12 +182,14 @@ Return Value:
         return FALSE;
     }
 
+    InitialTraits = TraceStore->InitialTraits;
+
     //
     // Load the traits from the relevant location.
     //
 
     if (TraceStore->IsMetadata) {
-        TRACE_STORE_METADATA_ID MetadataId = TraceStore->TraceStoreMetadataId;
+        MetadataId = TraceStore->TraceStoreMetadataId;
         pTraits = TraceStoreMetadataIdToTraits(MetadataId);
     } else {
         USHORT Index = TraceStoreIdToArrayIndex(TraceStore->TraceStoreId);
@@ -262,8 +259,8 @@ SaveTraceStoreTraits(
 Routine Description:
 
     This routine saves the traits of a trace store into the TRACE_STORE_TRAITS
-    structure of the metadata Info store.  The trace store must not be set to
-    readonly.
+    structure of the metadata :Info store.  The trace store must not be set to
+    readonly.  It is called by the :Info metadata store's bind complete routine.
 
 Arguments:
 
@@ -339,7 +336,9 @@ LoadTraceStoreTraits(
 
 Routine Description:
 
-    This routine loads trace store traits from a trace store's :info metadata.
+    This routine loads trace store traits from a trace store's :Info metadata.
+    It is called by the :Info metadata store's bind complete routine, and is
+    only used for readonly stores.
 
 Arguments:
 
