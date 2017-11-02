@@ -587,11 +587,11 @@ Return Value:
     // done.
     //
 
-    Traits = *TraceStore->pTraits;
-
     if (TraceStore->IsReadonly || Sync->Flags.Initialized) {
         return TRUE;
     }
+
+    Traits = *TraceStore->pTraits;
 
     //
     // Initialize the applicable critical sections.
