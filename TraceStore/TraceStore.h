@@ -1457,6 +1457,7 @@ typedef union _TRACE_PAGE_FAULT_PC_FLAGS {
     ULONG AsULong;
 } TRACE_PAGE_FAULT_PC_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_PC_FLAGS) == sizeof(ULONG));
+typedef TRACE_PAGE_FAULT_PC_FLAGS *PTRACE_PAGE_FAULT_PC_FLAGS;
 
 typedef union _TRACE_PAGE_FAULT_VA_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -1491,6 +1492,7 @@ typedef union _TRACE_PAGE_FAULT_VA_FLAGS {
     ULONG AsULong;
 } TRACE_PAGE_FAULT_VA_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_VA_FLAGS) == sizeof(ULONG));
+typedef TRACE_PAGE_FAULT_VA_FLAGS *PTRACE_PAGE_FAULT_VA_FLAGS;
 
 typedef union _TRACE_PAGE_FAULT_THREAD_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -1520,6 +1522,7 @@ typedef union _TRACE_PAGE_FAULT_THREAD_FLAGS {
     ULONG AsULong;
 } TRACE_PAGE_FAULT_THREAD_FLAGS;
 C_ASSERT(sizeof(TRACE_PAGE_FAULT_THREAD_FLAGS) == sizeof(ULONG));
+typedef TRACE_PAGE_FAULT_THREAD_FLAGS *PTRACE_PAGE_FAULT_THREAD_FLAGS;
 
 //
 // The TRACE_PAGE_FAULT structure captures extended information (on top of

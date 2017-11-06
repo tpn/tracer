@@ -7490,6 +7490,200 @@ TraceStoreSqlite3PythonEventTraitsExColumn(
 }
 
 //
+// TraceStore_PageFault
+//
+
+CONST CHAR TraceStorePageFaultSchema[] =
+    "CREATE TABLE TraceStore_PageFault("
+        "FaultingPcFlags_DisassemblyAvailable SMALLINT, "
+        "FaultingPcFlags_SourceCodeAvailable SMALLINT, "
+        "FaultingPcFlags_IsWinSxSModule SMALLINT, "
+        "FaultingPcFlags_IsWindowsModule SMALLINT, "
+        "FaultingPcFlags_IsTracerModule SMALLINT, "
+        "FaultingPcFlags_IsCorePythonModule SMALLINT, "
+        "FaultingPcFlags_IsPythonPackageModule SMALLINT, "
+        "FaultingVaFlags_IsTraceStoreAddress SMALLINT, "
+        "FaultingVaFlags_IsProcessHeap SMALLINT, "
+        "FaultingVaFlags_IsFileBacked SMALLINT, "
+        "FaultingVaFlags_IsPageFile SMALLINT, "
+        "FaultingThreadFlags_IsTracerThread SMALLINT, "
+        "FaultingThreadFlags_IsTraceStoreThread SMALLINT, "
+        "FaultingThreadFlags_IsPythonThread SMALLINT, "
+        "FaultingPcModule_BaseAddress BIGINT"               // FaultingPcModule->BaseAddress, [(FaultingPcModule != NULL)]
+    ")";
+
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3PageFaultColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PTRACE_PAGE_FAULT PageFault;
+    PTRACE_PAGE_FAULT_PC_FLAGS FaultingPcFlags;
+    PTRACE_PAGE_FAULT_VA_FLAGS FaultingVaFlags;
+    PTRACE_PAGE_FAULT_THREAD_FLAGS FaultingThreadFlags;
+    PTRACE_MODULE_TABLE_ENTRY FaultingPcModule;
+    PTRACE_STORE FaultingVaTraceStore;
+    PLINKED_STRING Disassembly;
+
+    PageFault = (PTRACE_PAGE_FAULT)Cursor->CurrentRowRaw;
+    FaultingPcFlags = &PageFault->FaultingPcFlags;
+    FaultingVaFlags = &PageFault->FaultingVaFlags;
+    FaultingThreadFlags = &PageFault->FaultingThreadFlags;
+    FaultingPcModule = PageFault->FaultingPcModule;
+    FaultingVaTraceStore = PageFault->FaultingVaTraceStore;
+    Disassembly = PageFault->Disassembly;
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: FaultingPcFlags_DisassemblyAvailable SMALLINT
+        //
+
+        case 0:
+            RESULT_ULONG(FaultingPcFlags->DisassemblyAvailable);
+            break;
+
+        //
+        // 1: FaultingPcFlags_SourceCodeAvailable SMALLINT
+        //
+
+        case 1:
+            RESULT_ULONG(FaultingPcFlags->SourceCodeAvailable);
+            break;
+
+        //
+        // 2: FaultingPcFlags_IsWinSxSModule SMALLINT
+        //
+
+        case 2:
+            RESULT_ULONG(FaultingPcFlags->IsWinSxSModule);
+            break;
+
+        //
+        // 3: FaultingPcFlags_IsWindowsModule SMALLINT
+        //
+
+        case 3:
+            RESULT_ULONG(FaultingPcFlags->IsWindowsModule);
+            break;
+
+        //
+        // 4: FaultingPcFlags_IsTracerModule SMALLINT
+        //
+
+        case 4:
+            RESULT_ULONG(FaultingPcFlags->IsTracerModule);
+            break;
+
+        //
+        // 5: FaultingPcFlags_IsCorePythonModule SMALLINT
+        //
+
+        case 5:
+            RESULT_ULONG(FaultingPcFlags->IsCorePythonModule);
+            break;
+
+        //
+        // 6: FaultingPcFlags_IsPythonPackageModule SMALLINT
+        //
+
+        case 6:
+            RESULT_ULONG(FaultingPcFlags->IsPythonPackageModule);
+            break;
+
+        //
+        // 7: FaultingVaFlags_IsTraceStoreAddress SMALLINT
+        //
+
+        case 7:
+            RESULT_ULONG(FaultingVaFlags->IsTraceStoreAddress);
+            break;
+
+        //
+        // 8: FaultingVaFlags_IsProcessHeap SMALLINT
+        //
+
+        case 8:
+            RESULT_ULONG(FaultingVaFlags->IsProcessHeap);
+            break;
+
+        //
+        // 9: FaultingVaFlags_IsFileBacked SMALLINT
+        //
+
+        case 9:
+            RESULT_ULONG(FaultingVaFlags->IsFileBacked);
+            break;
+
+        //
+        // 10: FaultingVaFlags_IsPageFile SMALLINT
+        //
+
+        case 10:
+            RESULT_ULONG(FaultingVaFlags->IsPageFile);
+            break;
+
+        //
+        // 11: FaultingThreadFlags_IsTracerThread SMALLINT
+        //
+
+        case 11:
+            RESULT_ULONG(FaultingThreadFlags->IsTracerThread);
+            break;
+
+        //
+        // 12: FaultingThreadFlags_IsTraceStoreThread SMALLINT
+        //
+
+        case 12:
+            RESULT_ULONG(FaultingThreadFlags->IsTraceStoreThread);
+            break;
+
+        //
+        // 13: FaultingThreadFlags_IsPythonThread SMALLINT
+        //
+
+        case 13:
+            RESULT_ULONG(FaultingThreadFlags->IsPythonThread);
+            break;
+
+        //
+        // 14: FaultingPcModule_BaseAddress BIGINT
+        //
+
+        case 14:
+            if (!((FaultingPcModule != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONGLONG(FaultingPcModule->BaseAddress);
+            }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+
+
+//
 // TraceStore_SymbolInfo.
 //
 
@@ -7897,7 +8091,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_PageFault,
+    TraceStorePageFaultSchema, // TraceStore_PageFault,
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -8560,7 +8754,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_PageFault,
+    TraceStoreSqlite3PageFaultColumn, // TraceStore_PageFault,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
