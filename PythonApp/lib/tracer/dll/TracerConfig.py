@@ -27,6 +27,7 @@ from ..wintypes import (
     POINTER,
     CFUNCTYPE,
     LIST_ENTRY,
+    RTL_BITMAP,
     UNICODE_STRING,
     PUNICODE_STRING,
 )
@@ -116,13 +117,16 @@ def load_tracer_config_dll():
 
 class TRACER_PATHS(Structure):
     _fields_ = [
-        ('Size', USHORT),
-        ('Padding', USHORT * 3),
+        ('SizeOfStruct', USHORT),
+        ('NumberOfDllPaths', USHORT),
+        ('NumberOfPtxPaths', USHORT),
+        ('Padding', USHORT),
         ('InstallationDirectory', UNICODE_STRING),
         ('BaseTraceDirectory', UNICODE_STRING),
-        ('DefaultPythonDirectory', UNICODE_STRING),
+        ('DebuggerSettingsXmlPath', UNICODE_STRING),
+        ('AsmDllPath', UNICODE_STRING),
         ('RtlDllPath', UNICODE_STRING),
-        ('TrlDllPath', UNICODE_STRING),
+        ('TracerCoreDllPath', UNICODE_STRING),
         ('PythonDllPath', UNICODE_STRING),
         ('TracerHeapDllPath', UNICODE_STRING),
         ('TraceStoreDllPath', UNICODE_STRING),
@@ -130,7 +134,13 @@ class TRACER_PATHS(Structure):
         ('StringTableDllPath', UNICODE_STRING),
         ('PythonTracerDllPath', UNICODE_STRING),
         ('TlsTracerHeapDllPath', UNICODE_STRING),
+        ('InjectionThunkDllPath', UNICODE_STRING),
         ('TracedPythonSessionDllPath', UNICODE_STRING),
+        ('TraceStoreSqlite3ExtDllPath', UNICODE_STRING),
+        ('PythonTracerInjectionDllPath', UNICODE_STRING),
+        ('TraceStoreKernelsPtxPath', UNICODE_STRING),
+        ('TracerInjectionDllsBitmap', RTL_BITMAP),
+        ('TracerInjectionDlls', ULONG),
     ]
 PTRACER_PATHS = POINTER(TRACER_PATHS)
 
@@ -160,7 +170,10 @@ class TRACER_RUNTIME_PARAMETERS(Structure):
         ('CapturePerformanceMetricsIntervalInMilliseconds', ULONG),
         ('CapturePerformanceMetricsWindowLengthInMilliseconds', ULONG),
         ('ConcurrentAllocationsCriticalSectionSpinCount', ULONG),
+        ('IntervalFramesPerSecond', ULONG),
+        ('Unused', ULONG),
     ]
+
 
 class TRACE_SESSION_DIRECTORY(Structure):
     _fields_ = [
@@ -193,6 +206,8 @@ class TRACER_CONFIG(Structure):
         ('ListEntry', LIST_ENTRY),
         ('Paths', TRACER_PATHS),
         ('TraceSessionDirectories', TRACE_SESSION_DIRECTORIES),
+        ('CuDeviceOrdinal', ULONG),
+        ('Padding2', ULONG),
     ]
 
     def trace_store_directories(self):
