@@ -95,7 +95,6 @@ Return Value:
     }
 
     Intervals->FramesPerSecond = (DOUBLE)TraceStore->IntervalFramesPerSecond;
-    //Intervals->FramesPerSecond = 240.0;
     Intervals->Frequency = TraceStore->Time->Frequency.QuadPart;
     Intervals->TicksPerIntervalAsDouble = (
         ((DOUBLE)1.0 / Intervals->FramesPerSecond) /
