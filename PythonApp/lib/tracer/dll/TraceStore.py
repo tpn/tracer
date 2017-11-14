@@ -29,11 +29,13 @@ from ..wintypes import (
     CHAR,
     LONG,
     GUID,
+    PCSZ,
     PWSTR,
     DWORD,
     PVOID,
     ULONG,
     PISID,
+    DOUBLE,
     USHORT,
     PULONG,
     PCWSTR,
@@ -50,6 +52,7 @@ from ..wintypes import (
     ULONGLONG,
     RTL_BITMAP,
     SYSTEMTIME,
+    PULONGLONG,
     LIST_ENTRY,
     SLIST_ENTRY,
     SLIST_HEADER,
@@ -779,11 +782,14 @@ class TRACE_CONTEXT(Structure):
         ('ThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('CancellationThreadpoolCallbackEnvironment', PTP_CALLBACK_ENVIRON),
         ('LoadingCompleteEvent', HANDLE),
+        ('Padding1', ULONGLONG),
         ('BindMetadataInfoStoreWork', TRACE_STORE_WORK),
         ('BindRemainingMetadataStoresWork', TRACE_STORE_WORK),
         ('BindTraceStoreWork', TRACE_STORE_WORK),
         ('ReadonlyNonStreamingBindCompleteWork', TRACE_STORE_WORK),
         ('NewModuleEntryWork', TRACE_STORE_WORK),
+        ('BindFlatMemoryMapWork', TRACE_STORE_WORK),
+        ('PrepareIntervalsWork', TRACE_STORE_WORK),
         ('FailedListHead', SLIST_HEADER),
         ('ThreadpoolCleanupGroup', PTP_CLEANUP_GROUP),
         ('CleanupThreadpoolMembersWork', PTP_WORK),
@@ -814,6 +820,7 @@ class TRACE_CONTEXT(Structure):
         ('ImageFileAllocator', ALLOCATOR),
         ('AtExitExEntry', PVOID),
         ('SymbolContext', PVOID),
+        ('DebugContext', PVOID),
         ('DllNotificationCookie', PVOID),
         ('BitmapBufferSizeInQuadwords', ULONG),
         ('IgnorePreferredAddressesBitmap', RTL_BITMAP),
@@ -1129,6 +1136,48 @@ class _TRACE_STORE_RELOC_DEP(Union):
         ('Store', PTRACE_STORE),
     ]
 
+class TRACE_STORE_INTERVAL(Structure):
+    _fields_ = [
+        ('IntervalIndex', ULONGLONG),
+        ('RecordIndex', ULONGLONG),
+        ('AllocationTimestamp', ULONGLONG),
+        ('Address', ULONGLONG),
+    ]
+PTRACE_STORE_INTERVAL = POINTER(TRACE_STORE_INTERVAL)
+
+class TRACE_STORE_INTERVALS(Structure):
+    _fields_ = [
+        ('FramesPerSecond', DOUBLE),
+        ('TicksPerIntervalAsDouble', DOUBLE),
+        ('TicksPerInterval', ULONGLONG),
+        ('Frequency', ULONGLONG),
+        ('NumberOfIntervals', ULONGLONG),
+        ('IntervalExtractionTimeInMicroseconds', ULONGLONG),
+        ('NumberOfRecords', ULONGLONG),
+        ('RecordSizeInBytes', ULONGLONG),
+        ('FirstAllocationTimestamp', PULONGLONG),
+        ('LastAllocationTimestamp', PULONGLONG),
+        ('FirstRecordAddress', ULONGLONG),
+        ('LastRecordAddress', ULONGLONG),
+        ('FirstInterval', PTRACE_STORE_INTERVAL),
+        ('LastInterval', PTRACE_STORE_INTERVAL),
+        ('LoadingCompleteEvent', HANDLE),
+        ('Padding', PVOID),
+    ]
+assert sizeof(TRACE_STORE_INTERVALS) == 128, sizeof(TRACE_STORE_INTERVALS)
+
+class SQLITE3_MODULE(Structure):
+    _fields_ = [
+        ('Reserved', BYTE * 184),
+    ]
+
+class TRACE_STORE_SQLITE3_VTAB(Structure):
+    _fields_ = [
+        ('Reserved', BYTE * 24),
+    ]
+
+PTRACE_STORE_SQLITE3_COLUMN = PVOID
+
 TRACE_STORE._fields_ = [
     ('TraceStoreId', TRACE_STORE_ID),
     ('TraceStoreMetadataId', TRACE_STORE_METADATA_ID),
@@ -1154,7 +1203,7 @@ TRACE_STORE._fields_ = [
     ('ListEntry', SLIST_ENTRY),
     ('Unused', PVOID),
     ('Rtl', PRTL),
-    ('Allocator', PALLOCATOR),
+    ('pAllocator', PALLOCATOR),
     ('TraceContext', PTRACE_CONTEXT),
     ('InitialSize', LARGE_INTEGER),
     ('ExtensionSize', LARGE_INTEGER),
@@ -1178,6 +1227,7 @@ TRACE_STORE._fields_ = [
     ('MetadataBindsInProgress', LONG),
     ('PrepareReadonlyNonStreamingMapsInProgress', LONG),
     ('ReadonlyNonStreamingBindCompletesInProgress', LONG),
+    ('ActiveAllocators', LONG),
     ('NumberOfRelocationDependencies', ULONG),
     ('NumberOfRelocationsRequired', ULONG),
     ('SequenceId', ULONG),
@@ -1190,6 +1240,11 @@ TRACE_STORE._fields_ = [
     ('MappingHandle', HANDLE),
     ('FileHandle', HANDLE),
     ('PrevAddress', PVOID),
+    ('FlatMappingHandle', HANDLE),
+    ('FlatAddress', TRACE_STORE_ADDRESS),
+    ('FlatAddressRange', TRACE_STORE_ADDRESS_RANGE),
+    ('Padding4', PVOID),
+    ('FlatMemoryMap', TRACE_STORE_MEMORY_MAP),
     ('TraceStore', PTRACE_STORE),
     ('MetadataInfoStore', PTRACE_STORE),
     ('AllocationStore', PTRACE_STORE),
@@ -1233,9 +1288,25 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('Reserved', BYTE * 172),
+    ('CtypesDataType', PSTRING),
+    ('NumpyDtype', PSTRING),
+    ('Allocator', ALLOCATOR),
+    ('IntervalFramesPerSecond', ULONGLONG),
+    ('Intervals', TRACE_STORE_INTERVALS),
+    ('Db', PVOID),
+    ('Sqlite3Schema', PCSZ),
+    ('Sqlite3VirtualTableName', PCSZ),
+    ('Sqlite3Column', PVOID),
+    ('Sqlite3Module', SQLITE3_MODULE),
+    ('Sqlite3VirtualTable', TRACE_STORE_SQLITE3_VTAB),
+    ('Sqlite3IntervalSchema', PCSZ),
+    ('Sqlite3IntervalVirtualTableName', PCSZ),
+    ('Sqlite3IntervalColumn', PTRACE_STORE_SQLITE3_COLUMN),
+    ('Sqlite3IntervalModule', SQLITE3_MODULE),
+    ('Sqlite3IntervalVirtualTable', TRACE_STORE_SQLITE3_VTAB),
+    ('Padding5', BYTE * 152),
 ]
-assert sizeof(TRACE_STORE) == 1024, sizeof(TRACE_STORE)
+assert sizeof(TRACE_STORE) == 2048, sizeof(TRACE_STORE)
 
 class METADATA_STORE(TRACE_STORE):
     is_metadata = True
@@ -1426,14 +1497,33 @@ TRACE_STORES._fields_ = [
     ('SymbolLineRelocationCompleteEvent', HANDLE),
     ('SymbolTypeRelocationCompleteEvent', HANDLE),
     ('StackFrameRelocationCompleteEvent', HANDLE),
+    ('TypeInfoTableRelocationCompleteEvent', HANDLE),
+    ('TypeInfoTableEntryRelocationCompleteEvent', HANDLE),
+    ('TypeInfoStringBufferRelocationCompleteEvent', HANDLE),
+    ('FunctionTableRelocationCompleteEvent', HANDLE),
+    ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+    ('FunctionAssemblyRelocationCompleteEvent', HANDLE),
+    ('FunctionSourceCodeRelocationCompleteEvent', HANDLE),
+    ('ExamineSymbolsLineRelocationCompleteEvent', HANDLE),
+    ('ExamineSymbolsTextRelocationCompleteEvent', HANDLE),
+    ('ExaminedSymbolRelocationCompleteEvent', HANDLE),
+    ('ExaminedSymbolSecondaryRelocationCompleteEvent', HANDLE),
+    ('UnassembleFunctionLineRelocationCompleteEvent', HANDLE),
+    ('UnassembleFunctionTextRelocationCompleteEvent', HANDLE),
+    ('UnassembledFunctionRelocationCompleteEvent', HANDLE),
+    ('UnassembledFunctionSecondaryRelocationCompleteEvent', HANDLE),
+    ('DisplayTypeLineRelocationCompleteEvent', HANDLE),
+    ('DisplayTypeTextRelocationCompleteEvent', HANDLE),
+    ('DisplayedTypeRelocationCompleteEvent', HANDLE),
+    ('DisplayedTypeSecondaryRelocationCompleteEvent', HANDLE),
 
     (
         '__Reserved2__',
-        BYTE * (512 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
+        BYTE * (1024 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
     ),
 
     # Start of Relocations[MAX_TRACE_STORE_IDS].
-    # Aligned @ 512 bytes.
+    # Aligned @ 1024 bytes.
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
     ('FunctionTableReloc', TRACE_STORE_RELOC),
@@ -1475,14 +1565,33 @@ TRACE_STORES._fields_ = [
     ('SymbolLineReloc', TRACE_STORE_RELOC),
     ('SymbolTypeReloc', TRACE_STORE_RELOC),
     ('StackFrameReloc', TRACE_STORE_RELOC),
+    ('TypeInfoTableReloc', TRACE_STORE_RELOC),
+    ('TypeInfoTableEntryReloc', TRACE_STORE_RELOC),
+    ('TypeInfoStringBufferReloc', TRACE_STORE_RELOC),
+    ('FunctionTableReloc', TRACE_STORE_RELOC),
+    ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+    ('FunctionAssemblyReloc', TRACE_STORE_RELOC),
+    ('FunctionSourceCodeReloc', TRACE_STORE_RELOC),
+    ('ExamineSymbolsLineReloc', TRACE_STORE_RELOC),
+    ('ExamineSymbolsTextReloc', TRACE_STORE_RELOC),
+    ('ExaminedSymbolReloc', TRACE_STORE_RELOC),
+    ('ExaminedSymbolSecondaryReloc', TRACE_STORE_RELOC),
+    ('UnassembleFunctionLineReloc', TRACE_STORE_RELOC),
+    ('UnassembleFunctionTextReloc', TRACE_STORE_RELOC),
+    ('UnassembledFunctionReloc', TRACE_STORE_RELOC),
+    ('UnassembledFunctionSecondaryReloc', TRACE_STORE_RELOC),
+    ('DisplayTypeLineReloc', TRACE_STORE_RELOC),
+    ('DisplayTypeTextReloc', TRACE_STORE_RELOC),
+    ('DisplayedTypeReloc', TRACE_STORE_RELOC),
+    ('DisplayedTypeSecondaryReloc', TRACE_STORE_RELOC),
 
     (
         '__Reserved3__',
-        BYTE * (4096 - 512 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
+        BYTE * (8192 - 1024 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
     ),
 
     # Start of Stores[MAX_TRACE_STORES].
-    # Aligned @ 4096.
+    # Aligned @ 8192.
     ('EventStore', PYTHON_TRACE_EVENT2_STORE),
     ('EventMetadataInfoStore', TRACE_STORE),
     ('EventAllocationStore', ALLOCATION_STORE),
@@ -2207,12 +2316,12 @@ TRACE_STORES._fields_ = [
     ('DisplayedTypeSecondarySynchronizationStore', TRACE_STORE),
     ('DisplayedTypeSecondaryInfoStore', INFO_STORE),
 
-    (
-        '__Reserved4__',
-        ULONGLONG * 256
-    ),
+    #(
+    #    '__Reserved4__',
+    #    ULONGLONG * 208
+    #),
 ]
-assert sizeof(TRACE_STORES) == 0x68000, hex(sizeof(TRACE_STORES))
+#assert sizeof(TRACE_STORES) == 0x11e000, hex(sizeof(TRACE_STORES))
 
 class TRACE_STORE_ARRAY(Structure):
     _fields_ = [
@@ -2232,8 +2341,7 @@ class TRACE_STORE_ARRAY(Structure):
         ('Rundown', PTRACE_STORES_RUNDOWN),
         ('StoresListHead', TRACE_STORE_LIST_ENTRY),
 
-        (
-            '__Reserved1__',
+        ( '__Reserved1__',
             BYTE * 24
         ),
 
@@ -2279,10 +2387,29 @@ class TRACE_STORE_ARRAY(Structure):
         ('SymbolLineRelocationCompleteEvent', HANDLE),
         ('SymbolTypeRelocationCompleteEvent', HANDLE),
         ('StackFrameRelocationCompleteEvent', HANDLE),
+        ('TypeInfoTableRelocationCompleteEvent', HANDLE),
+        ('TypeInfoTableEntryRelocationCompleteEvent', HANDLE),
+        ('TypeInfoStringBufferRelocationCompleteEvent', HANDLE),
+        ('FunctionTableRelocationCompleteEvent', HANDLE),
+        ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+        ('FunctionAssemblyRelocationCompleteEvent', HANDLE),
+        ('FunctionSourceCodeRelocationCompleteEvent', HANDLE),
+        ('ExamineSymbolsLineRelocationCompleteEvent', HANDLE),
+        ('ExamineSymbolsTextRelocationCompleteEvent', HANDLE),
+        ('ExaminedSymbolRelocationCompleteEvent', HANDLE),
+        ('ExaminedSymbolSecondaryRelocationCompleteEvent', HANDLE),
+        ('UnassembleFunctionLineRelocationCompleteEvent', HANDLE),
+        ('UnassembleFunctionTextRelocationCompleteEvent', HANDLE),
+        ('UnassembledFunctionRelocationCompleteEvent', HANDLE),
+        ('UnassembledFunctionSecondaryRelocationCompleteEvent', HANDLE),
+        ('DisplayTypeLineRelocationCompleteEvent', HANDLE),
+        ('DisplayTypeTextRelocationCompleteEvent', HANDLE),
+        ('DisplayedTypeRelocationCompleteEvent', HANDLE),
+        ('DisplayedTypeSecondaryRelocationCompleteEvent', HANDLE),
 
         (
             '__Reserved2__',
-            BYTE * (512 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
+            BYTE * (1024 - 128 - (sizeof(HANDLE) * NUM_TRACE_STORES))
         ),
 
         # Start of Relocations[MAX_TRACE_STORE_IDS].
@@ -2327,10 +2454,29 @@ class TRACE_STORE_ARRAY(Structure):
         ('SymbolLineReloc', TRACE_STORE_RELOC),
         ('SymbolTypeReloc', TRACE_STORE_RELOC),
         ('StackFrameReloc', TRACE_STORE_RELOC),
+        ('TypeInfoTableReloc', TRACE_STORE_RELOC),
+        ('TypeInfoTableEntryReloc', TRACE_STORE_RELOC),
+        ('TypeInfoStringBufferReloc', TRACE_STORE_RELOC),
+        ('FunctionTableReloc', TRACE_STORE_RELOC),
+        ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+        ('FunctionAssemblyReloc', TRACE_STORE_RELOC),
+        ('FunctionSourceCodeReloc', TRACE_STORE_RELOC),
+        ('ExamineSymbolsLineReloc', TRACE_STORE_RELOC),
+        ('ExamineSymbolsTextReloc', TRACE_STORE_RELOC),
+        ('ExaminedSymbolReloc', TRACE_STORE_RELOC),
+        ('ExaminedSymbolSecondaryReloc', TRACE_STORE_RELOC),
+        ('UnassembleFunctionLineReloc', TRACE_STORE_RELOC),
+        ('UnassembleFunctionTextReloc', TRACE_STORE_RELOC),
+        ('UnassembledFunctionReloc', TRACE_STORE_RELOC),
+        ('UnassembledFunctionSecondaryReloc', TRACE_STORE_RELOC),
+        ('DisplayTypeLineReloc', TRACE_STORE_RELOC),
+        ('DisplayTypeTextReloc', TRACE_STORE_RELOC),
+        ('DisplayedTypeReloc', TRACE_STORE_RELOC),
+        ('DisplayedTypeSecondaryReloc', TRACE_STORE_RELOC),
 
         (
             '__Reserved3__',
-            BYTE * (4096 - 512 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
+            BYTE * (8192 - 1024 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
         ),
 
         (
@@ -2338,10 +2484,10 @@ class TRACE_STORE_ARRAY(Structure):
             TRACE_STORE * (MAX_TRACE_STORE_IDS * ELEMENTS_PER_TRACE_STORE)
         ),
 
-        (
-            '__Reserved4__',
-            ULONGLONG * 256
-        ),
+        #(
+        #    '__Reserved4__',
+        #    ULONGLONG * 208
+        #),
     ]
 
     def _indexes(self):
@@ -2379,6 +2525,7 @@ class TRACE_STORE_ARRAY(Structure):
             result = (pair, metadata)
             results.append(result)
         return results
+
 assert sizeof(TRACE_STORE_ARRAY) == sizeof(TRACE_STORES), (
     sizeof(TRACE_STORE_ARRAY),
     sizeof(TRACE_STORES),

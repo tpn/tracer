@@ -2214,6 +2214,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 
     HANDLE LoadingCompleteEvent;
 
+    ULONGLONG Padding1;
+
     TRACE_STORE_WORK BindMetadataInfoStoreWork;
     TRACE_STORE_WORK BindRemainingMetadataStoresWork;
     TRACE_STORE_WORK BindTraceStoreWork;
@@ -2387,7 +2389,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
         };
     };
 
-} TRACE_CONTEXT, *PTRACE_CONTEXT;
+} TRACE_CONTEXT;
+typedef TRACE_CONTEXT *PTRACE_CONTEXT;
+C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindMetadataInfoStoreWork) == 112);
+C_ASSERT(sizeof(TRACE_CONTEXT) == 1312);
 
 //
 // Symbol tracing functions and structures.
@@ -3440,6 +3445,12 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_MEMORY_MAP FlatMemoryMap;
 
     //
+    // Pad out to a 16-byte boundary.
+    //
+
+    ULONGLONG Padding4;
+
+    //
     // The trace store pointers below will be valid for all trace and metadata
     // stores, even if a store is pointing to itself.
     //
@@ -3664,7 +3675,14 @@ typedef struct _TRACE_STORE {
     SQLITE3_MODULE Sqlite3IntervalModule;
     TRACE_STORE_SQLITE3_VTAB Sqlite3IntervalVirtualTable;
 
+    //
+    // Final padding.
+    //
+
+    ULONGLONG Padding5[18];
+
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
+C_ASSERT(sizeof(TRACE_STORE) == 2048);
 
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
@@ -3716,6 +3734,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, RelocationCompleteEvents) == 128);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Relocations) == 1024);
 C_ASSERT(FIELD_OFFSET(TRACE_STORES, Stores) == 8192);
+C_ASSERT(sizeof(TRACE_STORES) == 0x12e000);
 
 typedef struct _TRACE_STORE_METADATA_STORES {
     PTRACE_STORE MetadataInfoStore;
