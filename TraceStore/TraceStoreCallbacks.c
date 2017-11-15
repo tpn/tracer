@@ -308,13 +308,19 @@ Return Value:
 
 HandleFlatMemoryMaps:
 
+    //
+    // Set the loading complete event at this point, as all trace stores have
+    // had their initial binding completed.
+    //
+
+    SetEvent(TraceContext->LoadingCompleteEvent);
+
     if (TraceContext->NumberOfFlatMemoryMaps == 0) {
 
         //
-        // There won't be any flat memory maps if we're readonly.
+        // If there aren't any flat memory maps, we're finished.
         //
 
-        SetEvent(TraceContext->LoadingCompleteEvent);
         return;
     }
 
@@ -367,7 +373,6 @@ Return Value:
 {
     BOOL Success;
     PTRACE_STORE TraceStore;
-    PTRACE_STORE_WORK BindFlatWork;
     PTRACE_STORE_WORK PrepareIntervalsWork;
     PTRACE_STORE_MEMORY_MAP MemoryMap;
 
@@ -388,16 +393,6 @@ Return Value:
     if (!Success) {
         __debugbreak();
         return;
-    }
-
-    //
-    // The flat memory map was bound successfully.  If this was the last
-    // map, set the loading complete event.
-    //
-
-    BindFlatWork = &TraceContext->BindFlatMemoryMapWork;
-    if (InterlockedDecrement(&BindFlatWork->NumberOfActiveItems) == 0) {
-        SetEvent(TraceContext->LoadingCompleteEvent);
     }
 
     //

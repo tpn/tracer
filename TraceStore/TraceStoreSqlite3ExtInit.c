@@ -279,6 +279,7 @@ Return Value:
     USHORT TotalNumberOfTraceStores;
     PCSZ DatabaseFilename;
     STRING Filename;
+    HRESULT WaitResult;
     PALLOCATOR Allocator;
     PUNICODE_STRING Path;
     PTRACER_PATHS Paths;
@@ -292,6 +293,7 @@ Return Value:
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
     PCTRACE_STORE_SQLITE3_FUNCTION Function;
+
 
     //
     // Validate arguments.
@@ -871,10 +873,8 @@ Return Value:
         }
     }
 
-    /*
+#if 0
     if (DispatchedInitCu) {
-        LONG WaitResult;
-
         WaitResult = WaitForSingleObject(Db->CuLoadingCompleteEvent, INFINITE);
         if (WaitResult != WAIT_OBJECT_0) {
             __debugbreak();
@@ -882,7 +882,7 @@ Return Value:
             goto Error;
         }
     }
-    */
+#endif
 
     Result = SQLITE_OK_LOAD_PERMANENTLY;
 
@@ -893,13 +893,17 @@ Error:
     Success = FALSE;
 
     //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
     // If the loading complete event handle is non-NULL, we need to wait on
     // this first before we can destroy the traced python session.
     //
 
     if (LoadingCompleteEvent) {
-        HRESULT WaitResult;
-
         OutputDebugStringA("Destroy: waiting for LoadingCompleteEvent.\n");
         WaitResult = WaitForSingleObject(LoadingCompleteEvent, INFINITE);
         if (WaitResult != WAIT_OBJECT_0) {
@@ -910,13 +914,13 @@ Error:
             //
 
             OutputDebugStringA("Wait failed, skipping destroy.\n");
-            goto End;
+            Success = FALSE;
         }
     }
 
-    //DestroyTracedPythonSession(&Session);
-
-End:
+    if (!Success) {
+        DestroyTracedPythonSession(&Session);
+    }
 
     return Result;
 }
