@@ -672,12 +672,14 @@ typedef struct _TRACER_RUNTIME_PARAMETERS {
     ULONG IntervalFramesPerSecond;
 
     //
-    // Pad out to 64 bytes.
+    // Pad out to 32 bytes.
     //
 
     ULONG Unused;
 
-} TRACER_RUNTIME_PARAMETERS, *PTRACER_RUNTIME_PARAMETERS;
+} TRACER_RUNTIME_PARAMETERS;
+typedef TRACER_RUNTIME_PARAMETERS *PTRACER_RUNTIME_PARAMETERS;
+C_ASSERT(sizeof(TRACER_RUNTIME_PARAMETERS) == 32);
 
 typedef struct _TRACE_SESSION_DIRECTORY {
     LIST_ENTRY ListEntry;
