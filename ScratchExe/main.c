@@ -159,6 +159,44 @@ mainCRTStartup()
 
 #endif
 
+#if 1
+    BOOL Success;
+    PRTL Rtl;
+    PTRACER_CONFIG TracerConfig;
+    //HANDLE EventHandle;
+    ALLOCATOR Allocator;
+    const UNICODE_STRING Prefix = RTL_CONSTANT_STRING(L"Test");
+    UNICODE_STRING Name;
+
+    if (!DefaultHeapInitializeAllocator(&Allocator)) {
+        ExitCode = 1;
+        goto Error;
+    }
+
+    CHECKED_MSG(
+        CreateAndInitializeTracerConfigAndRtl(
+            &Allocator,
+            (PUNICODE_STRING)&TracerRegistryPath,
+            &TracerConfig,
+            &Rtl
+        ),
+        "CreateAndInitializeTracerConfigAndRtl()"
+    );
+
+    Success = Rtl->CreateSingleRandomObjectName(Rtl,
+                                                &Allocator,
+                                                &Allocator,
+                                                &Prefix,
+                                                &Name);
+
+    if (!Success) {
+        __debugbreak();
+    }
+
+
+#endif
+
+
 #if 0
     UNICODE_STRING Path = RTL_CONSTANT_STRING(L"\\\\?\\S:\\trace\\2017-04-29-194742.551\\TraceStore_ImageFile.dat");
 

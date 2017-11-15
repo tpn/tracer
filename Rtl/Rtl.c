@@ -2984,6 +2984,7 @@ RtlpCreateNamedEvent(
     return TRUE;
 }
 
+_Use_decl_annotations_
 BOOL
 CreateRandomObjectNames(
     PRTL Rtl,
@@ -3365,6 +3366,92 @@ End:
 
     *WideBufferPointer = WideBase64Buffer;
     *SizeOfWideBufferInBytes = SizeOfWideBase64BufferInBytes;
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateSingleRandomObjectName(
+    PRTL Rtl,
+    PALLOCATOR TemporaryAllocator,
+    PALLOCATOR WideBufferAllocator,
+    PCUNICODE_STRING Prefix,
+    PUNICODE_STRING Name
+    )
+/*++
+
+Routine Description:
+
+    This is a convenience routine that simplifies the task of creating a single,
+    optionally-prefixed, random object name.  Behind the scenes, it calls the
+    procedure Rtl->CreateRandomObjectNames().
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.  If the crypto
+        subsystem hasn't yet been initialized, this routine will also initialize
+        it.
+
+    TemporaryAllocator - Supplies a pointer to an initialized ALLOCATOR struct
+        that this routine will use for temporary allocations.  (Any temporarily
+        allocated memory will be freed before the routine returns, regardless
+        of success/error.)
+
+    WideBufferAllocator - Supplies a pointer to an initialized ALLOCATOR struct
+        that this routine will use to allocate the final wide character buffer
+        that contains the base64-encoded random data.  This data will then have
+        the prefix and trailing NULL characters overlaid on top of it.  (That
+        is, the UNICODE_STRING structure pointed to by the Name parameter will
+        have its Buffer address point within this buffer.)  The caller is
+        responsible for freeing this address (Name->Buffer).
+
+    Prefix - Optionally supplies the address of a UNICODE_STRING structure to
+        use as the prefix for the object name.  This will be appended after
+        the namespace name and before the random base64-encoded data.
+
+    Name - Supplies the address of a UNICODE_STRING structure that will receive
+        the details of the newly-created object name.  The caller is responsible
+        for freeing the address at Name->Buffer via Allocator.
+
+Return Value:
+
+    TRUE on success, FALSE on error.
+
+--*/
+{
+    BOOL Success;
+    ULONG SizeOfBuffer;
+    PWSTR WideBuffer;
+    PUNICODE_STRING Names[1];
+    PCUNICODE_STRING Prefixes[1];
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Name)) {
+        return FALSE;
+    }
+
+    //
+    // Initialize the arrays.
+    //
+
+    Names[0] = Name;
+    Prefixes[0] = Prefix;
+
+    Success = Rtl->CreateRandomObjectNames(Rtl,
+                                           TemporaryAllocator,
+                                           WideBufferAllocator,
+                                           1,
+                                           64,
+                                           NULL,
+                                           (PPUNICODE_STRING)&Names,
+                                           (PPUNICODE_STRING)&Prefixes,
+                                           &SizeOfBuffer,
+                                           &WideBuffer);
+
 
     return Success;
 }
@@ -3791,6 +3878,7 @@ InitializeRtl(
 
     Rtl->CreateNamedEvent = RtlpCreateNamedEvent;
     Rtl->CreateRandomObjectNames = CreateRandomObjectNames;
+    Rtl->CreateSingleRandomObjectName = CreateSingleRandomObjectName;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

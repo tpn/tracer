@@ -2611,6 +2611,7 @@ BOOL
 typedef DEBUG_SET_PROCESS_KILL_ON_EXIT *PDEBUG_SET_PROCESS_KILL_ON_EXIT;
 
 typedef
+_Success_(return != 0)
 BOOL
 (CREATE_RANDOM_OBJECT_NAMES)(
     _In_ PRTL Rtl,
@@ -2619,12 +2620,24 @@ BOOL
     _In_ USHORT NumberOfNames,
     _In_ USHORT LengthOfNameInChars,
     _In_opt_ PUNICODE_STRING NamespacePrefix,
-    _In_ PPUNICODE_STRING NamesArrayPointer,
+    _Inout_ PPUNICODE_STRING NamesArrayPointer,
     _In_opt_ PPUNICODE_STRING PrefixArrayPointer,
     _Out_ PULONG SizeOfWideBufferInBytes,
     _Out_writes_bytes_all_(*SizeOfWideBufferInBytes) PPWSTR WideBufferPointer
     );
 typedef CREATE_RANDOM_OBJECT_NAMES *PCREATE_RANDOM_OBJECT_NAMES;
+
+typedef
+_Success_(return != 0)
+BOOL
+(CREATE_SINGLE_RANDOM_OBJECT_NAME)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR TemporaryAllocator,
+    _In_ PALLOCATOR WideBufferAllocator,
+    _In_opt_ PCUNICODE_STRING Prefix,
+    _Inout_ PUNICODE_STRING Name
+    );
+typedef CREATE_SINGLE_RANDOM_OBJECT_NAME *PCREATE_SINGLE_RANDOM_OBJECT_NAME;
 
 #include "Injection.h"
 
@@ -6180,6 +6193,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PCOPY_FUNCTION CopyFunction;
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
+    PCREATE_SINGLE_RANDOM_OBJECT_NAME CreateSingleRandomObjectName;
 
     PVOID InjectionThunkRoutine;
     PINJECT Inject;
@@ -9478,6 +9492,8 @@ RTL_API COPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;
 RTL_API CREATE_AND_INITIALIZE_RTL CreateAndInitializeRtl;
 RTL_API CURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;
 RTL_API CURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;
+RTL_API CREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
+RTL_API CREATE_SINGLE_RANDOM_OBJECT_NAME CreateSingleRandomObjectName;
 RTL_API DESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;
 RTL_API DESTROY_RTL DestroyRtl;
 RTL_API DESTROY_RTL_PATH DestroyRtlPath;
