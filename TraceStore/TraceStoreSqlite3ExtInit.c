@@ -919,7 +919,7 @@ End:
     }
 
     if (!Success) {
-        DestroyTracedPythonSession(&Session);
+        Result = SQLITE_ERROR;
     }
 
     return Result;
