@@ -3753,6 +3753,18 @@ typedef struct _TRACE_STORE_METADATA_STORES {
 ////////////////////////////////////////////////////////////////////////////////
 
 //
+// Miscellaneous functions.
+//
+
+typedef
+VOID
+(TRACE_STORE_DEBUG_BREAK)(
+    _In_ PTRACE_STORE TraceStore
+    );
+typedef TRACE_STORE_DEBUG_BREAK *PTRACE_STORE_DEBUG_BREAK;
+TRACE_STORE_API TRACE_STORE_DEBUG_BREAK TraceStoreDebugBreak;
+
+//
 // TraceStoreAllocator-related functions.
 //
 

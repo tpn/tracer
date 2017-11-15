@@ -1472,5 +1472,14 @@ Return Value:
     return TRUE;
 }
 
+_Use_decl_annotations_
+VOID
+TraceStoreDebugBreak(
+    PTRACE_STORE TraceStore
+    )
+{
+    __debugbreak();
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
