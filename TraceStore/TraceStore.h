@@ -3238,6 +3238,31 @@ LONG
     );
 typedef TRACE_STORE_SQLITE3_COLUMN *PTRACE_STORE_SQLITE3_COLUMN;
 
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_FLAGS {
+    ULONG NoRetire:1;
+    ULONG NoPrefaulting:1;
+    ULONG IgnorePreferredAddresses:1;
+    ULONG IsReadonly:1;
+    ULONG SetEndOfFileOnClose:1;
+    ULONG IsMetadata:1;
+    ULONG HasRelocations:1;
+    ULONG NoTruncate:1;
+    ULONG IsRelocationTarget:1;
+    ULONG HasSelfRelocations:1;
+    ULONG OnlyRelocationIsToSelf:1;
+    ULONG OnlyRelocationIsToNull:1;
+    ULONG HasMultipleRelocationWaits:1;
+    ULONG RequiresSelfRelocation:1;
+    ULONG HasNullStoreRelocations:1;
+    ULONG BeginningRundown:1;
+    ULONG RundownComplete:1;
+    ULONG HasFlatMapping:1;
+    ULONG FlatMappingLoaded:1;
+    ULONG Unused:13;
+} TRACE_STORE_FLAGS;
+typedef TRACE_STORE_FLAGS *PTRACE_STORE_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_FLAGS) == sizeof(ULONG));
+
 typedef struct _TRACE_STORE {
 
     TRACE_STORE_ID TraceStoreId;
@@ -3245,7 +3270,11 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_INDEX TraceStoreIndex;
 
     union {
-        ULONG StoreFlags;
+
+        //
+        // Inline TRACE_STORE_FLAGS.
+        //
+
         struct _Struct_size_bytes_(sizeof(ULONG)) {
             ULONG NoRetire:1;
             ULONG NoPrefaulting:1;
@@ -3266,7 +3295,10 @@ typedef struct _TRACE_STORE {
             ULONG RundownComplete:1;
             ULONG HasFlatMapping:1;
             ULONG FlatMappingLoaded:1;
+            ULONG UnusedStoreFlagBits:13;
         };
+
+        TRACE_STORE_FLAGS StoreFlags;
     };
 
     TRACE_FLAGS TraceFlags;
