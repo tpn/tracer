@@ -158,7 +158,15 @@ class TRACER_FLAGS(Structure):
         ('EnableFileFlagWriteThrough', ULONG, 1),
         ('EnableWorkingSetTracing', ULONG, 1),
         ('EnablePerformanceTracing', ULONG, 1),
+        ('EnableLoaderTracing', ULONG, 1),
+        ('EnableSymbolTracing', ULONG, 1),
+        ('EnableTypeInfoTracing', ULONG, 1),
+        ('EnableAssemblyTracing', ULONG, 1),
+        ('IgnoreModulesInWindowsSystemDirectory', ULONG, 1),
+        ('IgnoreModulesInWindowsSxSDirectory', ULONG, 1),
         ('DisableAsynchronousInitialization', ULONG, 1),
+        ('InjectionThunkDebugBreakOnEntry', ULONG, 1),
+        ('TraceStoreSqlite3ModuleDebugBreakOnEntry', ULONG, 1),
     ]
 PTRACER_FLAGS = POINTER(TRACER_FLAGS)
 

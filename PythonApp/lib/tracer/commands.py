@@ -643,7 +643,7 @@ class PrintTraceSessionInfo(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
@@ -835,7 +835,7 @@ class PrintAddressInfo(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
@@ -1037,7 +1037,7 @@ class PrintAddressRangeInfo(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
@@ -1219,7 +1219,7 @@ class PrintWorkingSetInfo(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
@@ -1453,7 +1453,7 @@ class PrintNames(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
@@ -1465,7 +1465,7 @@ class PrintNames(InvariantAwareCommand):
             'Path',
         ]
 
-        funcs = ts.FunctionTableEntryStore.get_valid_functions()
+        funcs = ts.PythonFunctionTableEntryStore.get_valid_functions()
 
         rows = [
             (f.fullname,
@@ -1868,11 +1868,11 @@ class LoadTrace(InvariantAwareCommand):
             render_text_table,
         )
 
-        totals = ts.FunctionTableEntryStore.Totals.contents
+        totals = ts.PythonFunctionTableEntryStore.Totals.contents
         total_allocs = totals.NumberOfAllocations
         out("Total number of function table allocations: %d." % total_allocs)
 
-        address_ranges = ts.FunctionTableEntryStore.address_ranges
+        address_ranges = ts.PythonFunctionTableEntryStore.address_ranges
 
         import numpy as np
         import pandas as pd
@@ -1893,7 +1893,7 @@ class LoadTrace(InvariantAwareCommand):
                 return_inverse=True
             )
 
-        funcs = ts.FunctionTableEntryStore.get_valid_functions()
+        funcs = ts.PythonFunctionTableEntryStore.get_valid_functions()
 
         #events = [ a for a in ts.EventStore.arrays ][0]
 

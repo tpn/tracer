@@ -30,11 +30,13 @@ from ..wintypes import (
     LONG,
     GUID,
     PCSZ,
+    VOID,
     PWSTR,
     DWORD,
     PVOID,
     ULONG,
     PISID,
+    SIZE_T,
     DOUBLE,
     USHORT,
     PULONG,
@@ -47,6 +49,7 @@ from ..wintypes import (
     SRWLOCK,
     FILETIME,
     PTP_WORK,
+    DWORDLONG,
     PTP_TIMER,
     CFUNCTYPE,
     ULONGLONG,
@@ -121,8 +124,8 @@ IS_BOUND = False
 TraceStoreNullId                        =   0
 TraceStoreEventId                       =   1
 TraceStoreStringBufferId                =   2
-TraceStoreFunctionTableId               =   3
-TraceStoreFunctionTableEntryId          =   4
+TraceStorePythonFunctionTableId         =   3
+TraceStorePythonFunctionTableEntryId    =   4
 TraceStorePathTableId                   =   5
 TraceStorePathTableEntryId              =   6
 TraceStoreSessionId                     =   7
@@ -185,8 +188,8 @@ TraceStoreIdToName = {
     TraceStoreNullId: 'Null',
     TraceStoreEventId: 'Event',
     TraceStoreStringBufferId: 'StringBuffer',
-    TraceStoreFunctionTableId: 'FunctionTable',
-    TraceStoreFunctionTableEntryId: 'FunctionTableEntry',
+    TraceStorePythonFunctionTableId: 'PythonFunctionTable',
+    TraceStorePythonFunctionTableEntryId: 'PythonFunctionTableEntry',
     TraceStorePathTableId: 'PathTable',
     TraceStorePathTableEntryId: 'PathTableEntry',
     TraceStoreSessionId: 'Session',
@@ -314,6 +317,30 @@ class TRACE_FLAGS(Structure):
         ('EnablePerformanceTracing', ULONG, 1),
     ]
 PTRACE_FLAGS = POINTER(TRACE_FLAGS)
+
+class TRACE_STORE_FLAGS(Structure):
+    _fields_ = [
+        ('NoRetire', ULONG, 1),
+        ('NoPrefaulting', ULONG, 1),
+        ('IgnorePreferredAddresses', ULONG, 1),
+        ('IsReadonly', ULONG, 1),
+        ('SetEndOfFileOnClose', ULONG, 1),
+        ('IsMetadata', ULONG, 1),
+        ('HasRelocations', ULONG, 1),
+        ('NoTruncate', ULONG, 1),
+        ('IsRelocationTarget', ULONG, 1),
+        ('HasSelfRelocations', ULONG, 1),
+        ('OnlyRelocationIsToSelf', ULONG, 1),
+        ('OnlyRelocationIsToNull', ULONG, 1),
+        ('HasMultipleRelocationWaits', ULONG, 1),
+        ('RequiresSelfRelocation', ULONG, 1),
+        ('HasNullStoreRelocations', ULONG, 1),
+        ('BeginningRundown', ULONG, 1),
+        ('RundownComplete', ULONG, 1),
+        ('HasFlatMapping', ULONG, 1),
+        ('FlatMappingLoaded', ULONG, 1),
+    ]
+PTRACE_STORE_FLAGS = POINTER(TRACE_STORE_FLAGS)
 
 class TRACE_CONTEXT_FLAGS(Structure):
     _fields_ = [
@@ -740,8 +767,8 @@ class _TRACE_STORE_BITMAP(Structure):
         ('TraceStoreNullId', ULONG, 1),
         ('TraceStoreEventId', ULONG, 1),
         ('TraceStoreStringBufferId', ULONG, 1),
-        ('TraceStoreFunctionTableId', ULONG, 1),
-        ('TraceStoreFunctionTableEntryId', ULONG, 1),
+        ('TraceStorePythonFunctionTableId', ULONG, 1),
+        ('TraceStorePythonFunctionTableEntryId', ULONG, 1),
         ('TraceStorePathTableId', ULONG, 1),
         ('TraceStorePathTableEntryId', ULONG, 1),
         ('TraceStoreSessionId', ULONG, 1),
@@ -836,24 +863,6 @@ class TRACE_CONTEXT(Structure):
         self.BitmapBuffer.TraceStoreBitmap.Raw = ignore.Raw
 
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
-
-class _TRACE_STORE_INNER_FLAGS(Structure):
-    _fields_ = [
-        ('NoRetire', ULONG, 1),
-        ('NoPrefaulting', ULONG, 1),
-        ('IgnorePreferredAddresses', ULONG, 1),
-        ('IsReadonly', ULONG, 1),
-        ('SetEndOfFileOnClose', ULONG, 1),
-        ('IsMetadata', ULONG, 1),
-        ('HasRelocations', ULONG, 1),
-        ('NoTruncate', ULONG, 1),
-        ('IsRelocationTarget', ULONG, 1),
-        ('HasSelfRelocations', ULONG, 1),
-        ('OnlyRelocationIsToSelf', ULONG, 1),
-        ('HasMultipleRelocationWaits', ULONG, 1),
-        ('RequiresSelfRelocation', ULONG, 1),
-        ('HasNullStoreRelocations', ULONG, 1),
-    ]
 
 class TRACE_STORE(Structure):
     __array = None
@@ -969,7 +978,8 @@ class TRACE_STORE(Structure):
         ctypes_array = self.as_array
         size = self.number_of_records
         numpy_array = as_array(ctypes_array, shape=(size,))
-        numpy_array.dtype = self.numpy_dtype
+        if not hasattr(ctypes_array, '__array_interface__'):
+            numpy_array.dtype = self.numpy_dtype
         return numpy_array
 
     @property
@@ -1035,7 +1045,8 @@ class TRACE_STORE(Structure):
 
     @property
     def base_address(self):
-        return self.ReadonlyMemoryMaps.contents.BaseAddress
+        #return self.ReadonlyMemoryMaps.contents.BaseAddress
+        return self.FlatMemoryMap.BaseAddress
 
     def __len__(self):
         return self.Totals.contents.NumberOfAllocations
@@ -1099,7 +1110,8 @@ class TRACE_STORE(Structure):
 
     @property
     def mapped_size(self):
-        return self.MemoryMap.contents.MappingSize
+        #return self.MemoryMap.contents.MappingSize
+        return self.FlatMemoryMap.MappingSize
 
     @property
     def end_address(self):
@@ -1182,7 +1194,7 @@ TRACE_STORE._fields_ = [
     ('TraceStoreId', TRACE_STORE_ID),
     ('TraceStoreMetadataId', TRACE_STORE_METADATA_ID),
     ('TraceStoreIndex', TRACE_STORE_INDEX),
-    ('StoreFlags', _TRACE_STORE_INNER_FLAGS),
+    ('StoreFlags', TRACE_STORE_FLAGS),
     ('TraceFlags', TRACE_FLAGS),
     ('LastError', DWORD),
     ('TotalNumberOfMemoryMaps', LONG),
@@ -1419,6 +1431,133 @@ class PYTHON_FUNCTION_TABLE_ENTRY_STORE(TRACE_STORE):
                 funcs.append(func)
         return funcs
 
+class TRACE_PERFORMANCE(Structure):
+    _fields_ = [
+        ('SizeOfStruct', ULONG),
+        ('ProcessHandleCount', ULONG),
+        ('IntervalInMilliseconds', ULONG),
+        ('WindowLengthInMilliseconds', ULONG),
+        ('Timestamp', ULARGE_INTEGER),
+        ('UserTime', FILETIME),
+        ('KernelTime', FILETIME),
+        ('ProcessCycles', ULONGLONG),
+
+        ('_ProcessMemoryCountersExSize', DWORD),
+        ('PageFaultCount', DWORD),
+        ('PeakWorkingSetSize', SIZE_T),
+        ('WorkingSetSize', SIZE_T),
+        ('QuotaPeakPagedPoolUsage', SIZE_T),
+        ('QuotaPagedPoolUsage', SIZE_T),
+        ('QuotaPeakNonPagedPoolUsage', SIZE_T),
+        ('QuotaNonPagedPoolUsage', SIZE_T),
+        ('PagefileUsage', SIZE_T),
+        ('PeakPagefileUsage', SIZE_T),
+        ('PrivateUsage', SIZE_T),
+
+        ('_MemoryStatusExLength', DWORD),
+        ('MemoryLoad', DWORD),
+        ('TotalPhys', DWORDLONG),
+        ('AvailPhys', DWORDLONG),
+        ('TotalPageFile', DWORDLONG),
+        ('AvailPageFile', DWORDLONG),
+        ('TotalVirtual', DWORDLONG),
+        ('AvailVirtual', DWORDLONG),
+        ('AvailExtendedVirtual', DWORDLONG),
+
+        ('ReadOperationCount', ULONGLONG),
+        ('WriteOperationCount', ULONGLONG),
+        ('OtherOperationCount', ULONGLONG),
+        ('ReadTransferCount', ULONGLONG),
+        ('WriteTransferCount', ULONGLONG),
+        ('OtherTransferCount', ULONGLONG),
+
+        ('_PerformanceInfoSize', DWORD),
+        ('_Padding1', DWORD),
+        ('CommitTotal', SIZE_T),
+        ('CommitLimit', SIZE_T),
+        ('CommitPeak', SIZE_T),
+        ('PhysicalTotal', SIZE_T),
+        ('PhysicalAvailable', SIZE_T),
+        ('SystemCache', SIZE_T),
+        ('KernelTotal', SIZE_T),
+        ('KernelPaged', SIZE_T),
+        ('KernelNonpaged', SIZE_T),
+        ('PageSize', SIZE_T),
+        ('HandleCount', DWORD),
+        ('ProcessCount', DWORD),
+        ('ThreadCount', DWORD),
+        ('_Padding2', DWORD),
+
+        ('_Padding3', ULONG * 42),
+    ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '|V512',
+        'descr': [
+            ('SizeOfStruct', '<u4'),
+            ('ProcessHandleCount', '<u4'),
+            ('IntervalInMilliseconds', '<u4'),
+            ('WindowLengthInMilliseconds', '<u4'),
+            ('Timestamp', '<u8'),
+            ('UserTime', '<u8'),
+            ('KernelTime', '<u8'),
+            ('ProcessCycles', '<u8'),
+
+            ('_ProcessMemoryCountersExSize', '<u4'),
+            ('PageFaultCount', '<u4'),
+            ('PeakWorkingSetSize', '<i8'),
+            ('WorkingSetSize', '<i8'),
+            ('QuotaPeakPagedPoolUsage', '<i8'),
+            ('QuotaPagedPoolUsage', '<i8'),
+            ('QuotaPeakNonPagedPoolUsage', '<i8'),
+            ('QuotaNonPagedPoolUsage', '<i8'),
+            ('PagefileUsage', '<i8'),
+            ('PeakPagefileUsage', '<i8'),
+            ('PrivateUsage', '<i8'),
+
+            ('_MemoryStatusExLength', '<u4'),
+            ('MemoryLoad', '<u4'),
+            ('TotalPhys', '<u8'),
+            ('AvailPhys', '<u8'),
+            ('TotalPageFile', '<u8'),
+            ('AvailPageFile', '<u8'),
+            ('TotalVirtual', '<u8'),
+            ('AvailVirtual', '<u8'),
+            ('AvailExtendedVirtual', '<u8'),
+
+            ('ReadOperationCount', '<u8'),
+            ('WriteOperationCount', '<u8'),
+            ('OtherOperationCount', '<u8'),
+            ('ReadTransferCount', '<u8'),
+            ('WriteTransferCount', '<u8'),
+            ('OtherTransferCount', '<u8'),
+
+            ('_PerformanceInfoSize', '<u4'),
+            ('_Padding1', '<u4'),
+            ('CommitTotal', '<i8'),
+            ('CommitLimit', '<i8'),
+            ('CommitPeak', '<i8'),
+            ('PhysicalTotal', '<i8'),
+            ('PhysicalAvailable', '<i8'),
+            ('SystemCache', '<i8'),
+            ('KernelTotal', '<i8'),
+            ('KernelPaged', '<i8'),
+            ('KernelNonpaged', '<i8'),
+            ('PageSize', '<i8'),
+            ('HandleCount', '<u4'),
+            ('ProcessCount', '<u4'),
+            ('ThreadCount', '<u4'),
+            ('_Padding2', '<u4'),
+
+            ('_Padding3', '<u168'),
+        ],
+    }
+
+assert sizeof(TRACE_PERFORMANCE) == 512, sizeof(TRACE_PERFORMANCE)
+
+class TRACE_PERFORMANCE_STORE(TRACE_STORE):
+    struct_type = TRACE_PERFORMANCE
 
 class TRACE_STORES_RUNDOWN(Structure):
     pass
@@ -1458,8 +1597,8 @@ TRACE_STORES._fields_ = [
     # Aligned @ 128 bytes.
     ('EventRelocationCompleteEvent', HANDLE),
     ('StringBufferRelocationCompleteEvent', HANDLE),
-    ('FunctionTableRelocationCompleteEvent', HANDLE),
-    ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+    ('PythonFunctionTableRelocationCompleteEvent', HANDLE),
+    ('PythonFunctionTableEntryRelocationCompleteEvent', HANDLE),
     ('PathTableRelocationCompleteEvent', HANDLE),
     ('PathTableEntryRelocationCompleteEvent', HANDLE),
     ('SessionRelocationCompleteEvent', HANDLE),
@@ -1526,8 +1665,8 @@ TRACE_STORES._fields_ = [
     # Aligned @ 1024 bytes.
     ('EventReloc', TRACE_STORE_RELOC),
     ('StringBufferReloc', TRACE_STORE_RELOC),
-    ('FunctionTableReloc', TRACE_STORE_RELOC),
-    ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+    ('PythonFunctionTableReloc', TRACE_STORE_RELOC),
+    ('PythonFunctionTableEntryReloc', TRACE_STORE_RELOC),
     ('PathTableReloc', TRACE_STORE_RELOC),
     ('PathTableEntryReloc', TRACE_STORE_RELOC),
     ('SessionReloc', TRACE_STORE_RELOC),
@@ -1616,29 +1755,29 @@ TRACE_STORES._fields_ = [
     ('StringBufferSynchronizationStore', TRACE_STORE),
     ('StringBufferInfoStore', INFO_STORE),
 
-    ('FunctionTableStore', TRACE_STORE),
-    ('FunctionTableMetadataInfoStore', TRACE_STORE),
-    ('FunctionTableAllocationStore', ALLOCATION_STORE),
-    ('FunctionTableRelocationStore', RELOCATION_STORE),
-    ('FunctionTableAddressStore', ADDRESS_STORE),
-    ('FunctionTableAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
-    ('FunctionTableAllocationTimestampDeltaStore',
+    ('PythonFunctionTableStore', TRACE_STORE),
+    ('PythonFunctionTableMetadataInfoStore', TRACE_STORE),
+    ('PythonFunctionTableAllocationStore', ALLOCATION_STORE),
+    ('PythonFunctionTableRelocationStore', RELOCATION_STORE),
+    ('PythonFunctionTableAddressStore', ADDRESS_STORE),
+    ('PythonFunctionTableAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonFunctionTableAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PythonFunctionTableAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
-    ('FunctionTableSynchronizationStore', TRACE_STORE),
-    ('FunctionTableInfoStore', INFO_STORE),
+    ('PythonFunctionTableSynchronizationStore', TRACE_STORE),
+    ('PythonFunctionTableInfoStore', INFO_STORE),
 
-    ('FunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
-    ('FunctionTableEntryMetadataInfoStore', TRACE_STORE),
-    ('FunctionTableEntryAllocationStore', ALLOCATION_STORE),
-    ('FunctionTableEntryRelocationStore', RELOCATION_STORE),
-    ('FunctionTableEntryAddressStore', ADDRESS_STORE),
-    ('FunctionTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
-    ('FunctionTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
-    ('FunctionTableEntryAllocationTimestampDeltaStore',
+    ('PythonFunctionTableEntryStore', PYTHON_FUNCTION_TABLE_ENTRY_STORE),
+    ('PythonFunctionTableEntryMetadataInfoStore', TRACE_STORE),
+    ('PythonFunctionTableEntryAllocationStore', ALLOCATION_STORE),
+    ('PythonFunctionTableEntryRelocationStore', RELOCATION_STORE),
+    ('PythonFunctionTableEntryAddressStore', ADDRESS_STORE),
+    ('PythonFunctionTableEntryAddressRangeStore', ADDRESS_RANGE_STORE),
+    ('PythonFunctionTableEntryAllocationTimestampStore', ALLOCATION_TIMESTAMP_STORE),
+    ('PythonFunctionTableEntryAllocationTimestampDeltaStore',
      ALLOCATION_TIMESTAMP_DELTA_STORE),
-    ('FunctionTableEntrySynchronizationStore', TRACE_STORE),
-    ('FunctionTableEntryInfoStore', INFO_STORE),
+    ('PythonFunctionTableEntrySynchronizationStore', TRACE_STORE),
+    ('PythonFunctionTableEntryInfoStore', INFO_STORE),
 
     ('PathTableStore', TRACE_STORE),
     ('PathTableMetadataInfoStore', TRACE_STORE),
@@ -1884,7 +2023,7 @@ TRACE_STORES._fields_ = [
     ('CallStackSynchronizationStore', TRACE_STORE),
     ('CallStackInfoStore', INFO_STORE),
 
-    ('PerformanceStore', TRACE_STORE),
+    ('PerformanceStore', TRACE_PERFORMANCE_STORE),
     ('PerformanceMetadataInfoStore', TRACE_STORE),
     ('PerformanceAllocationStore', ALLOCATION_STORE),
     ('PerformanceRelocationStore', RELOCATION_STORE),
@@ -1896,7 +2035,7 @@ TRACE_STORES._fields_ = [
     ('PerformanceSynchronizationStore', TRACE_STORE),
     ('PerformanceInfoStore', INFO_STORE),
 
-    ('PerformanceDeltaStore', TRACE_STORE),
+    ('PerformanceDeltaStore', TRACE_PERFORMANCE_STORE),
     ('PerformanceDeltaMetadataInfoStore', TRACE_STORE),
     ('PerformanceDeltaAllocationStore', ALLOCATION_STORE),
     ('PerformanceDeltaRelocationStore', RELOCATION_STORE),
@@ -2348,8 +2487,8 @@ class TRACE_STORE_ARRAY(Structure):
         # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
         ('EventRelocationCompleteEvent', HANDLE),
         ('StringBufferRelocationCompleteEvent', HANDLE),
-        ('FunctionTableRelocationCompleteEvent', HANDLE),
-        ('FunctionTableEntryRelocationCompleteEvent', HANDLE),
+        ('PythonFunctionTableRelocationCompleteEvent', HANDLE),
+        ('PythonFunctionTableEntryRelocationCompleteEvent', HANDLE),
         ('PathTableRelocationCompleteEvent', HANDLE),
         ('PathTableEntryRelocationCompleteEvent', HANDLE),
         ('SessionRelocationCompleteEvent', HANDLE),
@@ -2415,8 +2554,8 @@ class TRACE_STORE_ARRAY(Structure):
         # Start of Relocations[MAX_TRACE_STORE_IDS].
         ('EventReloc', TRACE_STORE_RELOC),
         ('StringBufferReloc', TRACE_STORE_RELOC),
-        ('FunctionTableReloc', TRACE_STORE_RELOC),
-        ('FunctionTableEntryReloc', TRACE_STORE_RELOC),
+        ('PythonFunctionTableReloc', TRACE_STORE_RELOC),
+        ('PythonFunctionTableEntryReloc', TRACE_STORE_RELOC),
         ('PathTableReloc', TRACE_STORE_RELOC),
         ('PathTableEntryReloc', TRACE_STORE_RELOC),
         ('SessionReloc', TRACE_STORE_RELOC),
@@ -2597,12 +2736,18 @@ INITIALIZE_TRACE_CONTEXT = CFUNCTYPE(
     PVOID,
 )
 
+TRACE_STORE_DEBUG_BREAK = CFUNCTYPE(
+    VOID,
+    PTRACE_STORE
+)
+
 #===============================================================================
 # Binding
 #===============================================================================
 
 TracerConfig = None
 TraceStoreDll = None
+TraceStoreDebugBreak = None
 TraceStoreStructureSizesRaw = None
 InitializeReadonlyTraceStores = None
 InitializeReadonlyTraceContext = None
@@ -2611,6 +2756,7 @@ UpdateTracerConfigWithTraceStoreInfo = None
 def bind(path=None, dll=None):
     global IS_BOUND
     global TraceStoreDll
+    global TraceStoreDebugBreak
     global TraceStoreStructureSizes
     global TraceStoreStructureSizesRaw
     global InitializeReadonlyTraceStores
@@ -2623,6 +2769,13 @@ def bind(path=None, dll=None):
         if not dll:
             dll = CDLL(path)
             TraceStoreDll = dll
+
+    TraceStoreDebugBreak = TRACE_STORE_DEBUG_BREAK(
+        ('TraceStoreDebugBreak', dll),
+        (
+            (1, 'TraceStore'),
+        )
+    )
 
     InitializeReadonlyTraceStores = INITIALIZE_READONLY_TRACE_STORES(
         ('InitializeReadonlyTraceStores', dll),
