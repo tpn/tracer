@@ -1754,6 +1754,7 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
     union {
         struct {
             DWORD PerformanceInfoSize;
+            DWORD Padding1;
             SIZE_T CommitTotal;
             SIZE_T CommitLimit;
             SIZE_T CommitPeak;
@@ -1767,6 +1768,7 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
             DWORD HandleCount;
             DWORD ProcessCount;
             DWORD ThreadCount;
+            DWORD Padding2;
         };
         struct {
             DWORD _PerformanceInfoSize;
@@ -1791,7 +1793,7 @@ _Struct_size_bytes_(SizeOfStruct) _TRACE_PERFORMANCE {
     // Pad out to 512 bytes.
     //
 
-    BYTE Padding2[156];
+    ULONG Padding3[42];
 
 } TRACE_PERFORMANCE, *PTRACE_PERFORMANCE, *PPTRACE_PERFORMANCE;
 C_ASSERT(sizeof(TRACE_PERFORMANCE) == 512);
