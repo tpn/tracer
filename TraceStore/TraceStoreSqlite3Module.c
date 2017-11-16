@@ -278,7 +278,6 @@ TraceStoreSqlite3ModuleOpenCursor(
 
     Cursor->Db = Db;
     Cursor->TraceStore = TraceStore;
-    Traits = Cursor->Traits = *TraceStore->pTraits;
     Cursor->Sqlite3 = Sqlite3;
     Cursor->Sqlite3Column = TraceStore->Sqlite3Column;
     Cursor->TotalNumberOfAllocations = Totals->NumberOfAllocations.QuadPart;
@@ -289,6 +288,7 @@ TraceStoreSqlite3ModuleOpenCursor(
         Cursor->Allocation = TraceStore->Allocation;
         Cursor->AddressRange = TraceStore->ReadonlyAddressRanges;
         Cursor->TotalNumberOfRecords = Totals->NumberOfRecords.QuadPart;
+        Traits = Cursor->Traits = *TraceStore->pTraits;
 
         if (IsFixedRecordSize(Traits)) {
             if (IsRecordSizeAlwaysPowerOf2(Traits)) {
