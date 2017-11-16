@@ -109,8 +109,8 @@ typedef enum _CU_RESULT {
 
     CUDA_ERROR_PROFILER_ALREADY_STOPPED       = 8,
     //
-    // This indicates that no CUDA-capable devices were detected by the installed
-    // CUDA driver.
+    // This indicates that no CUDA-capable devices were detected by the
+    // installed CUDA driver.
     //
 
     CUDA_ERROR_NO_DEVICE                      = 100,
@@ -282,9 +282,10 @@ typedef enum _CU_RESULT {
 
     //
     // This indicates that asynchronous operations issued previously have not
-    // completed yet. This result is not actually an error, but must be indicated
-    // differently than ::CUDA_SUCCESS (which indicates completion). Calls that
-    // may return this value include ::cuEventQuery() and ::cuStreamQuery().
+    // completed yet. This result is not actually an error, but must be
+    // indicated differently than ::CUDA_SUCCESS (which indicates completion).
+    // Calls that may return this value include ::cuEventQuery() and
+    // ::cuStreamQuery().
     //
 
     CUDA_ERROR_NOT_READY                      = 600,
