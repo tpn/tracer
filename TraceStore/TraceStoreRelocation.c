@@ -723,9 +723,15 @@ Return Value:
 
     //
     // This has started triggering and I'm not sure if it's correct either.
-    //if (!TraceStore->OnlyRelocationIsToNull) {
-    //    __debugbreak();
-    //}
+    //
+
+    if (!TraceStore->OnlyRelocationIsToNull) {
+        __debugbreak();
+    }
+
+    //
+    // N.B. This has also started triggering.
+    //
 
     if (TraceStore->NumberOfRelocationsRequired != 0) {
         __debugbreak();

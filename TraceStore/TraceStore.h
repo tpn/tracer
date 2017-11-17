@@ -3477,13 +3477,14 @@ typedef struct _TRACE_STORE {
     HANDLE FlatMappingHandle;
     TRACE_STORE_ADDRESS FlatAddress;
     TRACE_STORE_ADDRESS_RANGE FlatAddressRange;
+    ULONGLONG Padding4;
     TRACE_STORE_MEMORY_MAP FlatMemoryMap;
 
     //
     // Pad out to a 16-byte boundary.
     //
 
-    ULONGLONG Padding4;
+    //ULONGLONG Padding4;
 
     //
     // The trace store pointers below will be valid for all trace and metadata

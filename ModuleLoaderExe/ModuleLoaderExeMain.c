@@ -15,6 +15,14 @@ Abstract:
 
 #include "stdafx.h"
 
+VOID
+MaybeBreak(BOOL Break)
+{
+    if (Break) {
+        __debugbreak();
+    }
+}
+
 ULONG
 ModuleLoaderExeMain(VOID)
 {
@@ -66,6 +74,8 @@ ModuleLoaderExeMain(VOID)
     if (!LoadAllTracerModules(TracerConfig)) {
         goto Error;
     }
+
+    MaybeBreak(FALSE);
 
     //
     // Get standard console handles.

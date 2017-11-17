@@ -47,8 +47,10 @@ from ..wintypes import (
     POINTER,
     PHANDLE,
     SRWLOCK,
+    SSIZE_T,
     FILETIME,
     PTP_WORK,
+    LONGLONG,
     DWORDLONG,
     PTP_TIMER,
     CFUNCTYPE,
@@ -1004,6 +1006,10 @@ class TRACE_STORE(Structure):
         return self.Info.contents
 
     @property
+    def intervals(self):
+        return self.Intervals.contents
+
+    @property
     def mapping_size(self):
         return self.MappingSize
 
@@ -1155,7 +1161,19 @@ class TRACE_STORE_INTERVAL(Structure):
         ('AllocationTimestamp', ULONGLONG),
         ('Address', ULONGLONG),
     ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '|V32',
+        'descr': [
+            ('IntervalIndex', '<u8'),
+            ('RecordIndex', '<u8'),
+            ('AllocationTimestamp', '<u8'),
+            ('Address', '<u8'),
+        ],
+    }
 PTRACE_STORE_INTERVAL = POINTER(TRACE_STORE_INTERVAL)
+assert sizeof(TRACE_STORE_INTERVAL) == 32, sizeof(TRACE_STORE_INTERVAL)
 
 class TRACE_STORE_INTERVALS(Structure):
     _fields_ = [
@@ -1176,6 +1194,31 @@ class TRACE_STORE_INTERVALS(Structure):
         ('LoadingCompleteEvent', HANDLE),
         ('Padding', PVOID),
     ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '|V128',
+        'descr': [
+            ('FramesPerSecond', '<f8'),
+            ('TicksPerIntervalAsDouble', '<f8'),
+            ('TicksPerInterval', '<u8'),
+            ('Frequency', '<u8'),
+            ('NumberOfIntervals', '<u8'),
+            ('IntervalExtractionTimeInMicroseconds', '<u8'),
+            ('NumberOfRecords', '<u8'),
+            ('RecordSizeInBytes', '<u8'),
+            ('FirstAllocationTimestamp', '<u8'),
+            ('LastAllocationTimestamp', '<u8'),
+            ('FirstRecordAddress', '<u8'),
+            ('LastRecordAddress', '<u8'),
+            ('FirstInterval', '|V8'),
+            ('LastInterval', '|V8'),
+            ('LoadingCompleteEvent', '|V8'),
+            ('Padding', '|V8'),
+        ],
+    }
+
+
 assert sizeof(TRACE_STORE_INTERVALS) == 128, sizeof(TRACE_STORE_INTERVALS)
 
 class SQLITE3_MODULE(Structure):
@@ -1255,8 +1298,8 @@ TRACE_STORE._fields_ = [
     ('FlatMappingHandle', HANDLE),
     ('FlatAddress', TRACE_STORE_ADDRESS),
     ('FlatAddressRange', TRACE_STORE_ADDRESS_RANGE),
-    ('Padding4', PVOID),
     ('FlatMemoryMap', TRACE_STORE_MEMORY_MAP),
+    ('Padding4', ULONGLONG),
     ('TraceStore', PTRACE_STORE),
     ('MetadataInfoStore', PTRACE_STORE),
     ('AllocationStore', PTRACE_STORE),
@@ -1506,15 +1549,15 @@ class TRACE_PERFORMANCE(Structure):
 
             ('_ProcessMemoryCountersExSize', '<u4'),
             ('PageFaultCount', '<u4'),
-            ('PeakWorkingSetSize', '<i8'),
-            ('WorkingSetSize', '<i8'),
-            ('QuotaPeakPagedPoolUsage', '<i8'),
-            ('QuotaPagedPoolUsage', '<i8'),
-            ('QuotaPeakNonPagedPoolUsage', '<i8'),
-            ('QuotaNonPagedPoolUsage', '<i8'),
-            ('PagefileUsage', '<i8'),
-            ('PeakPagefileUsage', '<i8'),
-            ('PrivateUsage', '<i8'),
+            ('PeakWorkingSetSize', '<u8'),
+            ('WorkingSetSize', '<u8'),
+            ('QuotaPeakPagedPoolUsage', '<u8'),
+            ('QuotaPagedPoolUsage', '<u8'),
+            ('QuotaPeakNonPagedPoolUsage', '<u8'),
+            ('QuotaNonPagedPoolUsage', '<u8'),
+            ('PagefileUsage', '<u8'),
+            ('PeakPagefileUsage', '<u8'),
+            ('PrivateUsage', '<u8'),
 
             ('_MemoryStatusExLength', '<u4'),
             ('MemoryLoad', '<u4'),
@@ -1554,7 +1597,130 @@ class TRACE_PERFORMANCE(Structure):
         ],
     }
 
-assert sizeof(TRACE_PERFORMANCE) == 512, sizeof(TRACE_PERFORMANCE)
+class TRACE_PERFORMANCE_DELTA(Structure):
+    _fields_ = [
+        ('SizeOfStruct', ULONG),
+        ('ProcessHandleCountDelta', LONG),
+        ('IntervalInMilliseconds', ULONG),
+        ('WindowLengthInMilliseconds', ULONG),
+        ('Timestamp', ULARGE_INTEGER),
+        ('UserTime', FILETIME),
+        ('KernelTime', FILETIME),
+        ('ProcessCycles', ULONGLONG),
+
+        ('_ProcessMemoryCountersExSize', DWORD),
+        ('PageFaultCountDelta', LONG),
+        ('PeakWorkingSetSizeDelta', SSIZE_T),
+        ('WorkingSetSizeDelta', SSIZE_T),
+        ('QuotaPeakPagedPoolUsageDelta', SSIZE_T),
+        ('QuotaPagedPoolUsageDelta', SSIZE_T),
+        ('QuotaPeakNonPagedPoolUsageDelta', SSIZE_T),
+        ('QuotaNonPagedPoolUsageDelta', SSIZE_T),
+        ('PagefileUsageDelta', SSIZE_T),
+        ('PeakPagefileUsageDelta', SSIZE_T),
+        ('PrivateUsageDelta', SSIZE_T),
+
+        ('_MemoryStatusExLength', DWORD),
+        ('MemoryLoadDelta', LONG),
+        ('TotalPhysDelta', LONGLONG),
+        ('AvailPhysDelta', LONGLONG),
+        ('TotalPageFileDelta', LONGLONG),
+        ('AvailPageFileDelta', LONGLONG),
+        ('TotalVirtualDelta', LONGLONG),
+        ('AvailVirtualDelta', LONGLONG),
+        ('AvailExtendedVirtualDelta', LONGLONG),
+
+        ('ReadOperationCountDelta', LONGLONG),
+        ('WriteOperationCountDelta', LONGLONG),
+        ('OtherOperationCountDelta', LONGLONG),
+        ('ReadTransferCountDelta', LONGLONG),
+        ('WriteTransferCountDelta', LONGLONG),
+        ('OtherTransferCountDelta', LONGLONG),
+
+        ('_PerformanceInfoSize', DWORD),
+        ('_Padding1', DWORD),
+        ('CommitTotalDelta', SSIZE_T),
+        ('CommitLimitDelta', SSIZE_T),
+        ('CommitPeakDelta', SSIZE_T),
+        ('PhysicalTotalDelta', SSIZE_T),
+        ('PhysicalAvailableDelta', SSIZE_T),
+        ('SystemCacheDelta', SSIZE_T),
+        ('KernelTotalDelta', SSIZE_T),
+        ('KernelPagedDelta', SSIZE_T),
+        ('KernelNonpagedDelta', SSIZE_T),
+        ('PageSizeDelta', SSIZE_T),
+        ('HandleCountDelta', LONG),
+        ('ProcessCountDelta', LONG),
+        ('ThreadCountDelta', LONG),
+        ('_Padding2', DWORD),
+
+        ('_Padding3', ULONG * 42),
+    ]
+
+    __array_interface__ = {
+        'version': 3,
+        'typestr': '|V512',
+        'descr': [
+            ('SizeOfStruct', '<u4'),
+            ('ProcessHandleCountDelta', '<i4'),
+            ('IntervalInMilliseconds', '<u4'),
+            ('WindowLengthInMilliseconds', '<u4'),
+            ('Timestamp', '<u8'),
+            ('UserTime', '<u8'),
+            ('KernelTime', '<u8'),
+            ('ProcessCycles', '<u8'),
+
+            ('_ProcessMemoryCountersExSize', '<u4'),
+            ('PageFaultCountDelta', '<i4'),
+            ('PeakWorkingSetSizeDelta', '<i8'),
+            ('WorkingSetSizeDelta', '<i8'),
+            ('QuotaPeakPagedPoolUsageDelta', '<i8'),
+            ('QuotaPagedPoolUsageDelta', '<i8'),
+            ('QuotaPeakNonPagedPoolUsageDelta', '<i8'),
+            ('QuotaNonPagedPoolUsageDelta', '<i8'),
+            ('PagefileUsageDelta', '<i8'),
+            ('PeakPagefileUsageDelta', '<i8'),
+            ('PrivateUsageDelta', '<i8'),
+
+            ('_MemoryStatusExLength', '<u4'),
+            ('MemoryLoadDelta', '<i4'),
+            ('TotalPhysDelta', '<i8'),
+            ('AvailPhysDelta', '<i8'),
+            ('TotalPageFileDelta', '<i8'),
+            ('AvailPageFileDelta', '<i8'),
+            ('TotalVirtualDelta', '<i8'),
+            ('AvailVirtualDelta', '<i8'),
+            ('AvailExtendedVirtualDelta', '<i8'),
+
+            ('ReadOperationCountDelta', '<i8'),
+            ('WriteOperationCountDelta', '<i8'),
+            ('OtherOperationCountDelta', '<i8'),
+            ('ReadTransferCountDelta', '<i8'),
+            ('WriteTransferCountDelta', '<i8'),
+            ('OtherTransferCountDelta', '<i8'),
+
+            ('_PerformanceInfoSize', '<u4'),
+            ('_Padding1', '<u4'),
+            ('CommitTotalDelta', '<i8'),
+            ('CommitLimitDelta', '<i8'),
+            ('CommitPeakDelta', '<i8'),
+            ('PhysicalTotalDelta', '<i8'),
+            ('PhysicalAvailableDelta', '<i8'),
+            ('SystemCacheDelta', '<i8'),
+            ('KernelTotalDelta', '<i8'),
+            ('KernelPagedDelta', '<i8'),
+            ('KernelNonpagedDelta', '<i8'),
+            ('PageSizeDelta', '<i8'),
+            ('HandleCountDelta', '<i4'),
+            ('ProcessCountDelta', '<i4'),
+            ('ThreadCountDelta', '<i4'),
+            ('_Padding2', '<u4'),
+
+            ('_Padding3', '<u168'),
+        ],
+    }
+
+assert sizeof(TRACE_PERFORMANCE_DELTA) == 512, sizeof(TRACE_PERFORMANCE_DELTA)
 
 class TRACE_PERFORMANCE_STORE(TRACE_STORE):
     struct_type = TRACE_PERFORMANCE
@@ -2615,7 +2781,11 @@ class TRACE_STORE_ARRAY(Structure):
 
         (
             '__Reserved3__',
-            BYTE * (8192 - 1024 - (sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES))
+            BYTE * (
+                8192 - 1024 - (
+                    sizeof(TRACE_STORE_RELOC) * NUM_TRACE_STORES
+                )
+            )
         ),
 
         (
