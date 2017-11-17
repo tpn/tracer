@@ -288,6 +288,7 @@ class BaseLine(object):
     is_decimal = False
     is_pointer = False
     is_unnamed = False
+    is_bitfield = False
     is_character = False
     is_composite = False
 
@@ -305,6 +306,7 @@ class BaseLine(object):
             setattr(self, key, value)
 
 class BitfieldLine(BaseLine):
+    is_bitfield = True
     bit_position = None
     number_of_bits = None
 
@@ -569,58 +571,70 @@ class VoidPointerLine(BasePointerLine):
 class DataPointerLine(BasePointerLine):
     pass
 
-class StructLine2(SlotObject):
-    __slots__ = [
-        'size_in_bytes',
-        'num_elements',
-        'struct_name',
-        'type_name',
-    ]
+class Bitmap(object):
+    def __init__(self, offset):
+        self.offset = offset
+        self.bitfields = []
+        self.finalized = False
+        self.last_position = None
+        self.name_to_bitfield = {}
+        self.last_number_of_bits = None
+        self.total_number_of_bits = 0
 
-    @classmethod
-    def parse(cls, line):
+        self._size_in_bytes = None
+        self._implicit_padding_bits = None
 
-        words = line.split(' ')
+    def add_bitfield(self, offset, bitfield):
+        assert not self.finalized
+        assert isinstance(bitfield, BitfieldLine)
+        assert offset == self.offset, (offset, self.offset)
 
-        struct_index = None
+        if self.last_position is None:
+            assert bitfield.bit_position == 0, bitfield.bit_position
+        else:
+            assert bitfield.bit_position == self.expected_next_bit_position
 
-        for (i, word) in enumerate(words):
-            if word == 'Ptr64':
-                break
-            if word != 'struct':
-                continue
-            struct_index = i
-            break
+        assert bitfield.name not in self.name_to_bitfield
+        self.name_to_bitfield[bitfield.name] = bitfield
+        self.bitfields.append(bitfield)
 
-        if struct_index is None:
-            raise InvalidStructLine()
+        self.total_number_of_bits += bitfield.number_of_bits
 
-        line = ' '.join(words[struct_index+1:])
-        words = line.split(', ')
+        self.last_position = bitfield.bit_position
+        self.last_number_of_bits = bitfield.number_of_bits
 
-        obj = cls()
-        obj.struct_name = words.pop(0)
-        assert obj.struct_name[0] == '_'
-        obj.type_name = obj.struct_name[1:]
+    def finalize(self):
+        assert not self.finalized
+        if self.total_number_of_bits not in (32, 64):
+            if self.total_number_of_bits < 32:
+                self._size_in_bytes = 4
+                self._implicit_padding_bits = 32 - self.total_number_of_bits
+            else:
+                assert self.total_number_of_bits < 64
+                self._size_in_bytes = 8
+                self._implicit_padding_bits = 64 - self.total_number_of_bits
+        else:
+            self._size_in_bytes = self.total_number_of_bits / 8
+            self._implicit_padding_bits = 0
+        self.finalized = True
 
-        obj.num_elements = int(words.pop(0).replace(' elements', ''))
-        obj.size_in_bytes = int(words.pop(0).replace(' bytes', ''), 16)
+    @property
+    def number_of_bitfields(self):
+        return len(self.bitfields)
 
-        return obj
+    @property
+    def expected_next_bit_position(self):
+        return self.last_position + self.last_number_of_bits
 
-    @classmethod
-    def try_create(cls, line):
-        try:
-            return cls.create(line)
-        except InvalidStructLine:
-            pass
+    @property
+    def size_in_bytes(self):
+        assert self.finalized
+        return self._size_in_bytes
 
-    def __hash__(self):
-        return (
-            self.struct_name ^
-            self.num_elements ^
-            self.size_in_bytes
-        )
+    @property
+    def implicit_padding_bits(self):
+        assert self.finalized
+        return self._implicit_padding_bits
 
 class Struct(StructLine):
 
@@ -639,6 +653,12 @@ class Struct(StructLine):
         self.enums = {}
         self.enums_by_offset = defaultdict(list)
         self.expected_next_offset = 0
+        self.line_types = []
+        self.last_line_was_bitfield = False
+        self.bitmaps_by_offset = {}
+        self.active_bitmap = None
+        self.last_bitmap = None
+        self.last_bitmap_offset = None
 
     @classmethod
     def extract_type(self, line, chained=None):
@@ -758,45 +778,108 @@ class Struct(StructLine):
 
         line = line[4:]
         (left, right) = line.split(' : ')
-        (offset, field_name) = left.split(' ')
+        (offset, field_name) = left.rstrip().split(' ')
         offset = int(offset, 16)
         if self.last_offset:
             assert self.last_offset <= offset, (self.last_offset, offset)
 
         if offset != self.expected_next_offset:
-            import ipdb
-            ipdb.set_trace()
+            assert False
 
         is_new_offset = offset in self.offsets
         self.offsets[offset] = line
 
         t = self.extract_type(right)
+
+        if not t.is_bitfield:
+            self.line_types.append(t)
+
+        # Bitmap/bitfield processing.
+
+        m = Mutex()
+
+        m.is_first_bitfield = (
+            t.is_bitfield and
+            not self.last_line_was_bitfield
+        )
+
+        m.is_bitfield_continuation = (
+            t.is_bitfield and
+            self.last_line_was_bitfield
+        )
+
+        m.need_to_finalize_bitmap = (
+            not t.is_bitfield and
+            self.last_line_was_bitfield
+        )
+
+        m.no_bitfield_action_required = (
+            not t.is_bitfield and
+            not self.last_line_was_bitfield
+        )
+
+        with m:
+            if m.is_first_bitfield:
+                assert not self.active_bitmap
+                self.active_bitmap = Bitmap(offset)
+                bitmap.add_bitfield(offset, t)
+                self.last_line_was_bitfield = True
+
+            elif m.is_bitfield_continuation:
+                assert offset == self.last_offset, (offset, self.last_offset)
+                assert self.last_line_was_bitfield
+                self.active_bitmap.add_bitfield(offset, t)
+
+            elif m.need_to_finalize_bitmap:
+                bitmap = self.active_bitmap
+                bitmap.finalize()
+                self.active_bitmap = None
+                self.last_bitmap = bitmap
+                self.last_bitmap_offset = offset
+
+                if offset > self.last_offset:
+                    # There's no union present at the bitfield offset, so
+                    # handle the expected offset size here.
+                    assert False
+                else:
+                    assert False
+
+                self.last_line_was_bitfield = False
+
+            elif m.no_bitfield_action_required:
+                self.expected_next_offset = offset + t.size_in_bytes
+
+        # Update next vars.
+
         return t
+
+    @classmethod
+    def load(cls, text):
+        lines = text.splitlines()
+
+        first_lineno = None
+
+        for (i, line) in enumerate(lines):
+            if not line.startswith('struct _'):
+                continue
+            first_lineno = i
+            break
+
+        assert first_lineno is not None
+
+        struct = cls(lines[first_lineno])
+
+        remaining = lines[first_lineno+1:]
+
+        for line in remaining:
+            struct.add_line(line)
+
+        return struct
 
 
 #===============================================================================
 # Functions
 #===============================================================================
-
-def parse_struct(text):
-    lines = text.splitlines()
-
-    first_lineno = None
-
-    for (i, line) in enumerate(lines):
-        if not line.startswith('struct _'):
-            continue
-        first_lineno = i
-        break
-
-    assert first_lineno is not None
-
-    struct = Struct.create(lines[first_lineno])
-    assert struct
-
-    remaining = lines[first_lineno+1:]
-
-    return struct
 
 
 #===============================================================================
