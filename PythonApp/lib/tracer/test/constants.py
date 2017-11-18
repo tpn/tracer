@@ -2,6 +2,24 @@
 # Constants
 #===============================================================================
 
+struct__TEST1 = """\
+struct _TEST1, 13 elements, 0x4c0 bytes
+   +0x000 Foo              : [1] UChar
+   +0x001 Bar              : [2] [3] UChar
+   +0x008 Moo              : [4] [5] [6] Uint2B
+   +0x0f8 Guid             : struct _GUID, 4 elements, 0x10 bytes
+   +0x110 Xmm0             : union __m128i, 8 elements, 0x10 bytes
+   +0x120 Ymm0             : union __m256i, 8 elements, 0x20 bytes
+   +0x140 Float            : Float
+   +0x148 Double           : Float
+   +0x150 Bitfield1        : Bitfield Pos 0, 1 Bit
+   +0x150 VoidPointer      : Ptr64 to Void
+   +0x150 Bitfield2        : Bitfield Pos 0, 1 Bit
+   +0x158 Allocator3DArray : [1] [2] [3] struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x4b8 Char             : Char
+   +0x4c0 NamedUnion1      : union <unnamed-tag>, 2 elements, 0x8 bytes
+   +0x4c8 NamedStruct2     : struct <unnamed-tag>, 2 elements, 0x4 bytes"""
+
 struct__TRACE_STORE = """\
 struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x000 TraceStoreId     : Enum _TRACE_STORE_ID,  62 total enums

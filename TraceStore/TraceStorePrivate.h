@@ -3805,6 +3805,38 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
 } TRACE_STORE_SQLITE3_DB;
 typedef TRACE_STORE_SQLITE3_DB *PTRACE_STORE_SQLITE3_DB;
 
+#if 1
+
+typedef struct _TEST1 {
+    BYTE Foo[1];
+    BYTE Bar[2][3];
+    WORD Moo[4][5][6];
+    GUID Guid;
+    XMMWORD Xmm0;
+    YMMWORD Ymm0;
+    FLOAT Float;
+    DOUBLE Double;
+    union {
+        ULONG Bitfield1:1;
+        PVOID VoidPointer;
+        ULONG Bitfield2:1;
+    };
+    ALLOCATOR Allocator3DArray[1][2][3];
+    CHAR Char;
+    union {
+        LONG Long;
+        LONGLONG LongLong;
+    } NamedUnion1;
+
+    struct {
+        SHORT Short;
+        USHORT UShort;
+    } NamedStruct2;
+
+} TEST1;
+
+#endif
+
 
 #ifdef __cplusplus
 }; // extern "C"

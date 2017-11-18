@@ -4,6 +4,8 @@
 
 from collections import (
     defaultdict,
+
+    OrderedDict,
 )
 
 from .logic import (
@@ -127,7 +129,7 @@ class InvalidDataPointerLine(InvalidLine):
 # Type Helpers
 #===============================================================================
 
-def extract_type(self, line):
+def extract_type(line):
 
     parts = line.split(' ')
     first = parts[0]
@@ -236,6 +238,8 @@ def extract_type(self, line):
 #===============================================================================
 
 class BaseLine(object):
+    name = None
+    line = None
     is_numeric = False
     is_integer = False
     is_decimal = False
@@ -245,7 +249,13 @@ class BaseLine(object):
     is_character = False
     is_composite = False
 
-    name = None
+    __keys__ = []
+    __default_keys__ = [
+        'name',
+        'line',
+        'size_in_bytes',
+        'number_of_elements',
+    ]
 
     def __init__(self, line):
         self.line = line
@@ -258,10 +268,34 @@ class BaseLine(object):
         for (key, value) in parsed.items():
             setattr(self, key, value)
 
+    def __repr__(self):
+        keys = self.__keys__ + self.__default_keys__
+        keys = [
+            key for key in keys if
+                hasattr(self, key) and
+                getattr(self, key)
+        ]
+
+        return '<%s %s>' % (
+            self.__class__.__name__,
+            ', '.join(
+                '%s=%r' % (k, v)
+                    for (k, v) in (
+                        (k, getattr(self, k))
+                            for k in keys
+                    )
+                )
+        )
+
 class BitfieldLine(BaseLine):
     is_bitfield = True
     bit_position = None
     number_of_bits = None
+
+    __keys__ = [
+        'bit_position',
+        'number_of_bits',
+    ]
 
     @classmethod
     def parse(cls, line):
@@ -298,6 +332,11 @@ class StructLine(BaseLine):
     is_composite = True
     size_in_bytes = None
     number_of_elements = None
+
+    __keys__ = [
+        'type_name',
+        'struct_name',
+    ]
 
     @classmethod
     def parse(cls, line):
@@ -348,6 +387,11 @@ class UnionLine(BaseLine):
     size_in_bytes = None
     number_of_elements = None
 
+    __keys__ = [
+        'type_name',
+        'struct_name',
+    ]
+
     @classmethod
     def parse(cls, line):
         parts = line.split(', ')
@@ -396,6 +440,12 @@ class EnumLine(BaseLine):
     enum_name = None
     size_in_bytes = 4
     number_of_enums = None
+
+    __keys__ = [
+        'type_name',
+        'enum_name',
+        'number_of_enums',
+    ]
 
     @classmethod
     def parse(cls, line):
@@ -485,14 +535,75 @@ class FloatLine(BaseLine):
     size_in_bytes = 8
 
 class ArrayLine(BaseLine):
+    shape = None
+    element_type = None
+    size_in_bytes = None
+    number_of_dimensions = None
+    element_size_in_bytes = None
+    total_number_of_elements = None
+
+    __keys__ = [
+        'shape',
+        'element_type',
+        'number_of_dimensions',
+        'element_size_in_bytes',
+        'total_number_of_elements',
+    ]
 
     @classmethod
     def parse(cls, line):
-        ix = line.find(' ')
-        assert ix != -1
-        left = line[:ix]
-        #import ipdb
-        #ipdb.set_trace()
+        open_count = line.count('[')
+        close_count = line.count(']')
+        assert open_count == close_count, (open_count, close_count)
+        assert line.startswith('['), line
+
+        last = 0
+        elems = 0
+        count = 0
+        parts = []
+        while True:
+            ix = line.find(' ', last+1)
+            if ix == -1:
+                assert count == open_count, (count, open_count)
+                break
+            prev = line[ix-1]
+            if prev != ']':
+                assert count == open_count, (count, open_count)
+                break
+            part = line[last+1:ix-1]
+            part = int(part)
+            if not elems:
+                elems = part
+            else:
+                elems *= part
+            parts.append(part)
+            count = count + 1
+            last = ix + 1
+
+        prefix = '%s ' % ' '.join('[%d]' % i for i in parts)
+        remaining = line.replace(prefix, '')
+
+        shape = tuple(parts)
+        number_of_dimensions = len(parts)
+        element_type = extract_type(remaining)
+        element_size_in_bytes = element_type.size_in_bytes
+        total_number_of_elements = elems
+        size_in_bytes = (
+            element_size_in_bytes *
+            total_number_of_elements
+        )
+
+        result = {
+            'shape': shape,
+            'element_type': element_type,
+            'size_in_bytes': size_in_bytes,
+            'number_of_dimensions': number_of_dimensions,
+            'element_size_in_bytes': element_size_in_bytes,
+            'total_number_of_elements': total_number_of_elements,
+        }
+
+        return result
+
 
 class BaseStringLine(BaseLine):
     is_string = True
@@ -522,6 +633,7 @@ class DataPointerLine(BasePointerLine):
 class Bitmap(object):
     def __init__(self, offset):
         self.offset = offset
+        self.names = []
         self.bitfields = []
         self.finalized = False
         self.last_position = None
@@ -531,6 +643,38 @@ class Bitmap(object):
 
         self._size_in_bytes = None
         self._implicit_padding_bits = None
+
+    def __repr__(self):
+        fmt = (
+            "<%s offset=%d"
+               " num_bitfields=%d"
+               " total_number_of_bits=%d"
+        )
+
+        values = [
+            self.__class__.__name__,
+            self.offset,
+            len(self.bitfields),
+            self.total_number_of_bits,
+        ]
+
+        if not self.finalized:
+            fmt += " finalized=False"
+        else:
+            fmt += (
+                " size_in_bytes=%d"
+                " implicit_padding_bits=%d"
+            )
+
+            values += [
+                self.size_in_bytes,
+                self.implicit_padding_bits,
+            ]
+
+        fmt += " names=%r>"
+        values.append(self.names)
+
+        return fmt % tuple(values)
 
     def add_bitfield(self, offset, name, bitfield):
         assert not self.finalized
@@ -544,6 +688,7 @@ class Bitmap(object):
 
         assert name not in self.name_to_bitfield
         bitfield.name = name
+        self.names.append(name)
         self.name_to_bitfield[name] = bitfield
         self.bitfields.append(bitfield)
 
@@ -587,6 +732,11 @@ class Bitmap(object):
 
 class Struct(StructLine):
 
+    __keys__ = [
+        'type_name',
+        'struct_name',
+    ]
+
     def __init__(self, *args, **kwds):
         StructLine.__init__(self, *args, **kwds)
         self.lines = []
@@ -594,8 +744,8 @@ class Struct(StructLine):
         self.cumulative_size = 0
         self.bitmaps = []
         self.offsets = defaultdict(list)
-        self.inline_unions = {}
-        self.inline_unions_by_offset = defaultdict(list)
+        self.offset_to_line_type = defaultdict(list)
+        self.inline_union_offsets = []
         self.inline_bitfields = {}
         self.inline_bitfields_by_offset = defaultdict(list)
         self.inline_structs = {}
@@ -604,6 +754,8 @@ class Struct(StructLine):
         self.enums_by_offset = defaultdict(list)
         self.expected_next_offset = 0
         self.line_types = []
+        self.field_names = set()
+        self.field_name_to_line_type = OrderedDict()
         self.last_line_was_bitfield = False
         self.bitmaps_by_offset = {}
         self.active_bitmap = None
@@ -611,9 +763,11 @@ class Struct(StructLine):
         self.last_bitmap_offset = None
         self.expected_next_offsets = defaultdict(list)
         self.field_sizes_by_offset = defaultdict(list)
-
+        self.offset_to_max_size_in_bytes = OrderedDict()
+        self.finalized = False
 
     def add_line(self, line):
+        assert not self.finalized
 
         if not line.startswith('   +0x'):
             return
@@ -625,8 +779,11 @@ class Struct(StructLine):
         if self.last_offset:
             assert self.last_offset <= offset, (self.last_offset, offset)
 
+        assert field_name not in self.field_names
+        self.field_names.add(field_name)
+
         is_new_offset = offset in self.offsets
-        self.offsets[offset] = line
+        self.offsets[offset].append(line)
 
         t = extract_type(right)
 
@@ -683,9 +840,10 @@ class Struct(StructLine):
                 self.bitmaps.append(bitmap)
                 self.bitmaps_by_offset[offset] = bitmap
 
-                # Add the bitmap's size to the last offset.
                 size = bitmap.size_in_bytes
                 self.field_sizes_by_offset[self.last_offset].append(size)
+                self.offset_to_line_type[offset].append(bitmap)
+                self.line_types.append(bitmap)
 
                 self.last_line_was_bitfield = False
 
@@ -695,12 +853,36 @@ class Struct(StructLine):
         if field_size_in_bytes:
             assert not t.is_bitfield
             self.field_sizes_by_offset[offset].append(field_size_in_bytes)
+
+            self.offset_to_line_type[offset].append(t)
         else:
             assert t.is_bitfield
+
+        self.line_types.append(t)
+        self.field_name_to_line_type[field_name] = t
 
         self.last_offset = offset
 
         return t
+
+    def finalize(self):
+        assert not self.finalized
+
+        total_size = 0
+        offsets = self.field_sizes_by_offset.keys()
+        offset_sizes = self.offset_to_max_size_in_bytes
+        field_sizes_by_offsets = self.field_sizes_by_offset.items()
+
+        for (i, (offset, sizes)) in enumerate(field_sizes_by_offset):
+            if len(sizes) > 1:
+                self.inline_unions_offsets.append(offset)
+
+            size = max(sizes)
+            offset_sizes[offset] = size
+
+        # XXX TODO: calculate implicit padding re: offsets.
+
+        self.finalized = True
 
     @classmethod
     def load(cls, text):
@@ -722,6 +904,8 @@ class Struct(StructLine):
 
         for line in remaining:
             struct.add_line(line)
+
+        struct.finalize()
 
         return struct
 
