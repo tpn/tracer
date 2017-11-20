@@ -180,6 +180,7 @@ struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x450 ReadonlyAddressRanges : Ptr64 to struct _TRACE_STORE_ADDRESS_RANGE, 7 elements, 0x40 bytes
    +0x458 ReadonlyMappingSizes : Ptr64 to union _ULARGE_INTEGER, 4 elements, 0x8 bytes
    +0x460 ReadonlyPreferredAddressUnavailable : Uint4B
+   +0x464 Padding5         : Uint4B
    +0x468 DataType         : struct <unnamed-tag>, 2 elements, 0x10 bytes
    +0x478 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x508 IntervalFramesPerSecond : Uint8B
@@ -195,7 +196,7 @@ struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x690 Sqlite3IntervalColumn : Ptr64 to     long
    +0x698 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
    +0x750 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x768 Padding5         : [18] Uint8B"""
+   +0x768 Padding6         : [19] Uint8B"""
 
 struct__TRACE_STORES = """\
 struct _TRACE_STORES, 18 elements, 0x12e000 bytes

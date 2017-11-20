@@ -7,6 +7,9 @@ from .logic import (
 )
 
 from .util import (
+    defaultdict,
+
+    Dict,
     OrderedDict,
     OrderedDefaultDict,
 )
@@ -794,6 +797,7 @@ class Struct(StructLine):
     def __init__(self, *args, **kwds):
         StructLine.__init__(self, *args, **kwds)
         self.lines = []
+        self.dt_line = None
         self.module_name = None
         self.last_offset = None
         self.cumulative_size = 0
@@ -1047,27 +1051,49 @@ class Struct(StructLine):
                     start_line = i
                     continue
             else:
-                if line.startswith('   +0x'):
+                if not line or line.startswith('   +0x'):
                     continue
                 else:
                     end_line = i
+                    assert dt_line
+                    assert start_line
                     indexes.append((dt_line, start_line, end_line))
                     active_struct = False
+                    start_line = None
+                    if line.startswith(dt_prefix):
+                        dt_line = line
+                    else:
+                        dt_line = None
+
 
         structs = []
+        module_names = set()
+        by_module = defaultdict(dict)
+        has_padding = list()
+        has_implicit_padding = list()
+        has_trailing_padding = list()
 
         for (dt_line, start, end) in indexes:
             (left, right) = dt_line.replace('0:000> dt -v ', '').split('!')
             struct_line = lines[start]
             struct = cls(struct_line)
             struct.module_name = left
+            struct.dt_line = dt_line
             for i in range(start+1, end):
                 line = lines[i]
                 struct.add_line(line)
             struct.finalize()
+            module_names.add(struct.name)
+            by_module[struct.module_name][struct.name] = struct
+            if struct.has_padding:
+                has_padding.append(struct)
             structs.append(struct)
 
-        return structs
+        return Dict({
+            'all': structs,
+            'by_module': { k: v for (k, v) in by_module.items() },
+            'has_padding': has_padding,
+        })
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
