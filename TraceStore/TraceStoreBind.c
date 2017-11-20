@@ -1334,7 +1334,7 @@ ReadyForRelocation:
             //  is event correct.  Disable for now.)
             //
 
-            //__debugbreak();
+            __debugbreak();
             //return FALSE;
         }
     }
