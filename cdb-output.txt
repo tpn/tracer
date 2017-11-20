@@ -178,6 +178,24 @@ struct _DEBUG_ENGINE_EXAMINED_SYMBOL, 11 elements, 0x100 bytes
    +0x028 String           : struct <unnamed-tag>, 15 elements, 0xb0 bytes
    +0x0d8 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x0e8 Function         : struct <unnamed-tag>, 3 elements, 0x18 bytes
+0:000> dt -v DebugEngine!_DEBUG_ENGINE_UNASSEMBLED_FUNCTION
+struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION, 7 elements, 0x30 bytes
+   +0x000 SizeOfStruct     : Uint4B
+   +0x004 Flags            : union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS, 16 elements, 0x4 bytes
+   +0x008 Output           : Ptr64 to struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
+   +0x010 Symbol           : Ptr64 to struct _DEBUG_ENGINE_EXAMINED_SYMBOL, 11 elements, 0x100 bytes
+   +0x018 SavedLinesListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x028 NumberOfInstructions : Uint4B
+   +0x02c NumberOfBasicBlocks : Uint4B
+0:000> dt -v DebugEngine!_DEBUG_ENGINE_DISPLAYED_TYPE
+struct _DEBUG_ENGINE_DISPLAYED_TYPE, 7 elements, 0x38 bytes
+   +0x000 SizeOfStruct     : Uint4B
+   +0x004 Flags            : union _DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS, 3 elements, 0x4 bytes
+   +0x008 Output           : Ptr64 to struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
+   +0x010 Symbol           : Ptr64 to struct _DEBUG_ENGINE_EXAMINED_SYMBOL, 11 elements, 0x100 bytes
+   +0x018 SavedLinesListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x028 TotalSizeInBytes : Uint4B
+   +0x02c Structure        : struct <unnamed-tag>, 2 elements, 0x8 bytes
 0:000> dt -v DebugEngine!_DEBUG_ENGINE_DYNAMIC_COMMAND
 struct _DEBUG_ENGINE_DYNAMIC_COMMAND, 6 elements, 0x20 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -4750,7 +4768,7 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x690 Sqlite3IntervalColumn : Ptr64 to     long 
    +0x698 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
    +0x750 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x768 Padding6         : [18] Uint8B
+   +0x768 Padding6         : [19] Uint8B
 0:000> dt -v TraceStore!_TRACE_STORES
 struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x000 SizeOfStruct     : Uint4B
