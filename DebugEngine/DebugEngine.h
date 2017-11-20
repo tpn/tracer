@@ -1824,9 +1824,7 @@ typedef union _DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS {
 } DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_UNASSEMBLED_FUNCTION_FLAGS) == sizeof(ULONG));
 
-typedef
-struct _Struct_size_bytes_(SizeOfStruct)
-_DEBUG_ENGINE_UNASSEMBLED_FUNCTION {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_UNASSEMBLED_FUNCTION {
 
     //
     // Size of structure, in bytes.
@@ -2116,9 +2114,7 @@ typedef union _DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS {
 } DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_DISPLAYED_TYPE_FLAGS) == sizeof(ULONG));
 
-typedef
-struct _Struct_size_bytes_(SizeOfStruct)
-_DEBUG_ENGINE_DISPLAYED_TYPE {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_DISPLAYED_TYPE {
 
     //
     // Size of structure, in bytes.
