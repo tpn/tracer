@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -60,6 +60,9 @@
     <Compile Include="lib\tracer\runvspyprof.py" />
     <Compile Include="lib\tracer\sourcefile.py" />
     <Compile Include="lib\tracer\testprof.py" />
+    <Compile Include="lib\tracer\test\constants.py" />
+    <Compile Include="lib\tracer\test\test_dbgeng.py" />
+    <Compile Include="lib\tracer\test\__init__.py" />
     <Compile Include="lib\tracer\util.py" />
     <Compile Include="lib\tracer\util_win32.py" />
     <Compile Include="lib\tracer\visualstudio\commands.py" />
@@ -84,6 +87,7 @@
     <Folder Include="lib\tracerdev" />
     <Folder Include="lib\tracer\clipboard" />
     <Folder Include="lib\tracer\dll" />
+    <Folder Include="lib\tracer\test\" />
     <Folder Include="lib\tracer\visualstudio" />
   </ItemGroup>
   <ItemGroup>
