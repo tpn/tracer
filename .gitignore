@@ -19,3 +19,4 @@ sdv.temp
 TestResults
 *.pgd
 .idea
+.cache
