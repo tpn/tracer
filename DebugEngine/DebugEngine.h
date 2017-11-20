@@ -2271,7 +2271,7 @@ C_ASSERT(sizeof(DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS) == sizeof(ULONG));
 typedef DEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS
       *PDEBUG_ENGINE_DYNAMIC_COMMAND_FLAGS;
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) DEBUG_ENGINE_DYNAMIC_COMMAND {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_DYNAMIC_COMMAND {
 
     //
     // Size of structure, in bytes.
