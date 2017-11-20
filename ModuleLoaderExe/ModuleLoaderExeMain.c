@@ -15,6 +15,14 @@ Abstract:
 
 #include "stdafx.h"
 
+VOID
+MaybeBreak(BOOL Break)
+{
+    if (Break) {
+        __debugbreak();
+    }
+}
+
 ULONG
 ModuleLoaderExeMain(VOID)
 {
@@ -66,6 +74,13 @@ ModuleLoaderExeMain(VOID)
     if (!LoadAllTracerModules(TracerConfig)) {
         goto Error;
     }
+
+    //
+    // Call our dummy MaybeBreak() function to allow a cdb/windbg session to
+    // break properly.
+    //
+
+    MaybeBreak(FALSE);
 
     //
     // Get standard console handles.
