@@ -8,12 +8,64 @@ Module Name:
 
 Abstract:
 
-    This module is the main entry point for the thunk executable.
-    It implements mainCRTStartup().
+    Scratch/testing file.
 
 --*/
 
 #include "stdafx.h"
+
+#if 1
+
+typedef struct _TEST1 {
+    CHAR Char;
+    LONGLONG LongLong;
+    WCHAR WideChar;
+    union {
+        ULONG Bitfield1:1;
+        PVOID VoidPointer;
+        ULONG Bitfield2:1;
+    };
+} TEST1;
+
+typedef struct _TEST2 {
+    BYTE Foo[1];
+    BYTE Bar[2][3];
+    WORD Moo[4][5][6];
+    GUID Guid;
+    XMMWORD Xmm0;
+    YMMWORD Ymm0;
+    FLOAT Float;
+    DOUBLE Double;
+    union {
+        ULONG Bitfield1:1;
+        PVOID VoidPointer;
+        ULONG Bitfield2:1;
+    };
+    ALLOCATOR Allocator3DArray[1][2][3];
+    CHAR Char;
+    union {
+        LONG Long;
+        LONGLONG LongLong;
+    } NamedUnion1;
+
+    struct {
+        SHORT Short;
+        USHORT UShort;
+    } NamedStruct2;
+
+} TEST2;
+
+typedef struct _TEST3 {
+    union {
+        SLIST_ENTRY ListEntry;
+        struct {
+            PSLIST_ENTRY Next;
+            PVOID Unused;
+        };
+    };
+} TEST3;
+
+#endif
 
 LONG
 FindStreams(
