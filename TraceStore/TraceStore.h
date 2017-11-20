@@ -3481,12 +3481,6 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_MEMORY_MAP FlatMemoryMap;
 
     //
-    // Pad out to a 16-byte boundary.
-    //
-
-    //ULONGLONG Padding4;
-
-    //
     // The trace store pointers below will be valid for all trace and metadata
     // stores, even if a store is pointing to itself.
     //
@@ -3657,6 +3651,8 @@ typedef struct _TRACE_STORE {
 
     volatile ULONG ReadonlyPreferredAddressUnavailable;
 
+    ULONG Padding5;
+
     //
     // Optional pointers to text data type representations.
     //
@@ -3715,7 +3711,7 @@ typedef struct _TRACE_STORE {
     // Final padding.
     //
 
-    ULONGLONG Padding5[18];
+    ULONGLONG Padding6[18];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);

@@ -2,19 +2,13 @@
 # Imports
 #===============================================================================
 
-from collections import (
-    defaultdict,
-
-    OrderedDict,
-)
-
 from .logic import (
     Mutex,
 )
 
 from .util import (
-    Constant,
-    SlotObject,
+    OrderedDict,
+    OrderedDefaultDict,
 )
 
 #===============================================================================
@@ -202,10 +196,10 @@ def extract_type(line):
             t = UnsignedLongLine(line)
 
         elif m.is_longlong:
-            t = SignedLongLong(line)
+            t = SignedLongLongLine(line)
 
         elif m.is_ulonglong:
-            t = UnsignedLongLine(line)
+            t = UnsignedLongLongLine(line)
 
         elif m.is_float:
             t = FloatLine(line)
@@ -234,7 +228,7 @@ def extract_type(line):
     return t
 
 #===============================================================================
-# Line Classes
+# Classes
 #===============================================================================
 
 class BaseLine(object):
@@ -730,6 +724,42 @@ class Bitmap(object):
         assert self.finalized
         return self._implicit_padding_bits
 
+class ImplicitPadding(object):
+    size_to_line = {
+        1: 'UChar',
+        2: 'Wchar',
+        4: 'Uint4B',
+        8: 'Uint8B',
+    }
+
+    def __init__(self, offset, expected_offset):
+        assert offset > expected_offset, (offset, expected_offset)
+        self.offset = offset
+        self.expected_offset = expected_offset
+        size = self.size_in_bytes = offset - expected_offset
+        assert size >= 1
+
+        try:
+            line = self.size_to_line[size]
+        except KeyError:
+            line = '[%d] UChar' % size
+
+        self.line = line
+        self.line_type = extract_type(line)
+
+    def __repr__(self):
+        fmt = "<%s offset=%d expected=%d size_in_bytes=%d line=%s>"
+        return fmt % (
+            self.__class__.__name__,
+            self.offset,
+            self.expected_offset,
+            self.size_in_bytes,
+            self.line,
+        )
+
+class TrailingPadding(ImplicitPadding):
+    pass
+
 class Struct(StructLine):
 
     __keys__ = [
@@ -743,15 +773,13 @@ class Struct(StructLine):
         self.last_offset = None
         self.cumulative_size = 0
         self.bitmaps = []
-        self.offsets = defaultdict(list)
-        self.offset_to_line_type = defaultdict(list)
+        self.offsets = OrderedDefaultDict(list)
+        self.offset_to_line_type = OrderedDefaultDict(list)
         self.inline_union_offsets = []
         self.inline_bitfields = {}
-        self.inline_bitfields_by_offset = defaultdict(list)
-        self.inline_structs = {}
-        self.inline_structs_by_offset = defaultdict(list)
+        self.inline_bitfields_by_offset = OrderedDefaultDict(list)
         self.enums = {}
-        self.enums_by_offset = defaultdict(list)
+        self.enums_by_offset = OrderedDefaultDict(list)
         self.expected_next_offset = 0
         self.line_types = []
         self.field_names = set()
@@ -761,9 +789,11 @@ class Struct(StructLine):
         self.active_bitmap = None
         self.last_bitmap = None
         self.last_bitmap_offset = None
-        self.expected_next_offsets = defaultdict(list)
-        self.field_sizes_by_offset = defaultdict(list)
+        self.expected_next_offsets = OrderedDefaultDict(list)
+        self.field_sizes_by_offset = OrderedDefaultDict(list)
         self.offset_to_max_size_in_bytes = OrderedDict()
+        self.implicit_paddings = OrderedDict()
+        self.trailing_padding = None
         self.finalized = False
 
     def add_line(self, line):
@@ -771,6 +801,8 @@ class Struct(StructLine):
 
         if not line.startswith('   +0x'):
             return
+
+        self.lines.append(line)
 
         line = line[4:]
         (left, right) = line.split(' : ')
@@ -782,7 +814,6 @@ class Struct(StructLine):
         assert field_name not in self.field_names
         self.field_names.add(field_name)
 
-        is_new_offset = offset in self.offsets
         self.offsets[offset].append(line)
 
         t = extract_type(right)
@@ -868,21 +899,77 @@ class Struct(StructLine):
     def finalize(self):
         assert not self.finalized
 
+        i = -1
+        first = True
+        last_sizes = None
         total_size = 0
+        last_offset = 0
+        expected_offset = 0
+        is_union = False
+        last_offset_was_union = False
+        alternate_expected_offset = None
         offsets = self.field_sizes_by_offset.keys()
         offset_sizes = self.offset_to_max_size_in_bytes
-        field_sizes_by_offsets = self.field_sizes_by_offset.items()
 
-        for (i, (offset, sizes)) in enumerate(field_sizes_by_offset):
-            if len(sizes) > 1:
-                self.inline_unions_offsets.append(offset)
+        for offset, sizes in self.field_sizes_by_offset.items():
 
-            size = max(sizes)
+            i = i + 1
+
+            if len(sizes) == 1:
+                is_union = False
+                size = sizes[0]
+            else:
+                is_union = True
+                self.inline_union_offsets.append(offset)
+                max_size = max(sizes)
+                min_size = min(sizes)
+                if max_size <= 8:
+                    size = max_size
+                else:
+                    try:
+                        next_offset = offsets[i+1]
+                    except IndexError:
+                        next_offset = self.size_in_bytes
+                    size = next_offset - offset
+
             offset_sizes[offset] = size
 
-        # XXX TODO: calculate implicit padding re: offsets.
+            total_size += size
+
+            if first:
+                first = False
+                expected_offset = last_offset + size
+                continue
+
+            if offset != expected_offset:
+                assert offset > expected_offset, (offset, expected_offset)
+                padding = ImplicitPadding(offset, expected_offset)
+                new_expected_offset = expected_offset + padding.size_in_bytes
+                assert offset == new_expected_offset
+                self.implicit_paddings[expected_offset] = padding
+
+            last_offset = offset
+            expected_offset = last_offset + size
+
+        if total_size != self.size_in_bytes:
+            padding = TrailingPadding(self.size_in_bytes, total_size)
+            new_total_size = total_size + padding.size_in_bytes
+            assert new_total_size == self.size_in_bytes
+            self.trailing_padding = padding
 
         self.finalized = True
+
+    @property
+    def has_implicit_padding(self):
+        return bool(self.implicit_paddings)
+
+    @property
+    def has_trailing_padding(self):
+        return bool(self.trailing_padding)
+
+    @property
+    def has_padding(self):
+        return self.has_implicit_padding or self.has_trailing_padding
 
     @classmethod
     def load(cls, text):
