@@ -531,4 +531,19 @@ class Config(RawConfigParser):
         exe = ProcessWrapper(self.sqllocaldb_exe_path)
         return exe
 
+    @property
+    def cdb_output_text(self):
+        path = join_path(ROOT_DIR, 'cdb-output.txt')
+
+        with open(path, 'r') as f:
+            text = f.read()
+
+        return text
+
+    @property
+    def structs(self):
+        from tracer.dbgeng import Struct
+        text = self.cdb_output_text
+        return Struct.load_all_from_text(text)
+
 # vim:set ts=8 sw=4 sts=4 tw=78 et:

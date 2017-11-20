@@ -771,9 +771,15 @@ def wait(event, timeout=INFINITE):
         raise OSError("WaitForSingleObject: WAIT_FAILED")
 
 
-def field_to_offset(struct):
+def field_to_offset_hex(struct):
     return [
         (hex(getattr(struct, name[0]).offset), name)
+            for name in struct._fields_
+    ]
+
+def field_to_offset(struct):
+    return [
+        (getattr(struct, name[0]).offset, name)
             for name in struct._fields_
     ]
 

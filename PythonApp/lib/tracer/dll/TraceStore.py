@@ -867,6 +867,7 @@ class TRACE_CONTEXT(Structure):
 PTRACE_CONTEXT = POINTER(TRACE_CONTEXT)
 
 class TRACE_STORE(Structure):
+    _pack_ = 8
     __array = None
     struct_type = None
     is_metadata = False
@@ -1239,12 +1240,12 @@ TRACE_STORE._fields_ = [
     ('TraceStoreIndex', TRACE_STORE_INDEX),
     ('StoreFlags', TRACE_STORE_FLAGS),
     ('TraceFlags', TRACE_FLAGS),
+    ('InitialTraits', TRACE_STORE_TRAITS),
+    ('TracerConfig', PTRACER_CONFIG),
     ('LastError', DWORD),
     ('TotalNumberOfMemoryMaps', LONG),
     ('NumberOfActiveMemoryMaps', LONG),
     ('NumberOfNonRetiredMemoryMaps', LONG),
-    ('Padding1', LONG),
-    ('Padding2', ULONGLONG),
     ('CloseMemoryMaps', SLIST_HEADER),
     ('PrepareMemoryMaps', SLIST_HEADER),
     ('PrepareReadonlyMemoryMaps', SLIST_HEADER),
@@ -1254,7 +1255,7 @@ TRACE_STORE._fields_ = [
     ('NonRetiredMemoryMaps', SLIST_HEADER),
     ('SingleMemoryMap', TRACE_STORE_MEMORY_MAP),
     ('StoresListEntry', TRACE_STORE_LIST_ENTRY),
-    ('MetadataListHeadOrEntry', TRACE_STORE_LIST_ENTRY),
+    ('MetadataListHead', TRACE_STORE_LIST_ENTRY),
     ('ListEntry', SLIST_ENTRY),
     ('Unused', PVOID),
     ('Rtl', PRTL),
@@ -1265,7 +1266,7 @@ TRACE_STORE._fields_ = [
     ('MappingSize', LARGE_INTEGER),
     ('PrefaultFuturePageWork', PTP_WORK),
     ('PrepareNextMemoryMapWork', PTP_WORK),
-    ('PrepareReadonlyMemoryMapWork', PTP_WORK),
+    ('PrepareReadonlyNonStreamingMemoryMapWork', PTP_WORK),
     ('CloseMemoryMapWork', PTP_WORK),
     ('NextMemoryMapAvailableEvent', HANDLE),
     ('AllMemoryMapsAreFreeEvent', HANDLE),
@@ -1298,8 +1299,8 @@ TRACE_STORE._fields_ = [
     ('FlatMappingHandle', HANDLE),
     ('FlatAddress', TRACE_STORE_ADDRESS),
     ('FlatAddressRange', TRACE_STORE_ADDRESS_RANGE),
+    ('Padding1', ULONGLONG),
     ('FlatMemoryMap', TRACE_STORE_MEMORY_MAP),
-    ('Padding4', ULONGLONG),
     ('TraceStore', PTRACE_STORE),
     ('MetadataInfoStore', PTRACE_STORE),
     ('AllocationStore', PTRACE_STORE),
@@ -1310,7 +1311,7 @@ TRACE_STORE._fields_ = [
     ('AllocationTimestampDeltaStore', PTRACE_STORE),
     ('SynchronizationStore', PTRACE_STORE),
     ('InfoStore', PTRACE_STORE),
-    ('RelocationDependency', _TRACE_STORE_RELOC_DEP),
+    ('RelocationDependencyStores', _TRACE_STORE_RELOC_DEP),
     ('AllocateRecords', PALLOCATE_RECORDS),
     ('AllocateRecordsWithTimestamp', PALLOCATE_RECORDS_WITH_TIMESTAMP),
     ('TryAllocateRecords', PVOID),
@@ -1343,8 +1344,7 @@ TRACE_STORE._fields_ = [
     ('ReadonlyAddressRanges', PTRACE_STORE_ADDRESS_RANGE),
     ('ReadonlyMappingSizes', PULARGE_INTEGER),
     ('ReadonlyPreferredAddressUnavailable', ULONG),
-    ('CtypesDataType', PSTRING),
-    ('NumpyDtype', PSTRING),
+    ('Padding2', ULONG),
     ('Allocator', ALLOCATOR),
     ('IntervalFramesPerSecond', ULONGLONG),
     ('Intervals', TRACE_STORE_INTERVALS),
@@ -1359,9 +1359,9 @@ TRACE_STORE._fields_ = [
     ('Sqlite3IntervalColumn', PTRACE_STORE_SQLITE3_COLUMN),
     ('Sqlite3IntervalModule', SQLITE3_MODULE),
     ('Sqlite3IntervalVirtualTable', TRACE_STORE_SQLITE3_VTAB),
-    ('Padding5', BYTE * 152),
+    ('Padding3', BYTE * 168),
 ]
-assert sizeof(TRACE_STORE) == 2048, sizeof(TRACE_STORE)
+#assert sizeof(TRACE_STORE) == 2048, sizeof(TRACE_STORE)
 
 class METADATA_STORE(TRACE_STORE):
     is_metadata = True

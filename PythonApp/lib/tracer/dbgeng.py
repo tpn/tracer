@@ -18,14 +18,6 @@ from .util import (
 # Globals/Aliases
 #===============================================================================
 
-#===============================================================================
-# Enums
-#===============================================================================
-
-#===============================================================================
-# Classes
-#===============================================================================
-
 Names = [
     'Bitfield',
     'Struct',
@@ -804,6 +796,7 @@ class Struct(StructLine):
         self.bitmaps = []
         self.offsets = OrderedDefaultDict(list)
         self.offset_to_line_type = OrderedDefaultDict(list)
+        self.offset_to_field_name = OrderedDefaultDict(list)
         self.inline_union_offsets = []
         self.inline_bitfields = {}
         self.inline_bitfields_by_offset = OrderedDefaultDict(list)
@@ -917,6 +910,7 @@ class Struct(StructLine):
             self.field_sizes_by_offset[offset].append(field_size_in_bytes)
 
             self.offset_to_line_type[offset].append(t)
+            self.offset_to_field_name[offset].append(field_name)
         else:
             assert t.is_bitfield
 
@@ -1094,6 +1088,148 @@ class Struct(StructLine):
             'by_module': { k: v for (k, v) in by_module.items() },
             'has_padding': has_padding,
         })
+
+    def offset_diff(self, ctypes_struct):
+        left_offsets = self.offsets
+        right_offsets = OrderedDict(
+            (getattr(ctypes_struct, name[0]).offset, name)
+                for name in ctypes_struct._fields_
+        )
+
+        left_keys = left_offsets.keys()
+        right_keys = right_offsets.keys()
+
+        left = [ str(k) for k in left_keys ]
+        right = [ str(k) for k in right_keys ]
+
+        lines = []
+        added = {}
+        missing = {}
+
+        from difflib import unified_diff
+        diff = list(unified_diff(left, right, fromfile='ours', tofile='theirs'))
+        for line in diff:
+            if not line:
+                continue
+
+            first = line[0]
+
+            try:
+                second = line[1]
+            except IndexError:
+                second = None
+
+            if not second:
+                lines.append(line)
+                continue
+
+            if first == '-':
+                if second == '-':
+                    lines.append(line)
+                    continue
+                else:
+                    offset = int(line[1:])
+                    field_name = self.offsets[offset][0]
+                    missing[offset] = field_name
+                    lines.append('%s (%s)' % (line, field_name))
+                    continue
+            elif first == '+':
+                if second == '+':
+                    lines.append(line)
+                    continue
+                else:
+                    offset = int(line[1:])
+                    field_name = right_offsets[offset]
+                    added[offset] = field_name
+                    lines.append('%s (%s)' % (line, field_name))
+                    continue
+            else:
+                lines.append(line)
+                continue
+
+        return {
+            'diff': diff,
+            'lines': lines,
+            'added': added,
+            'missing': missing,
+        }
+
+    def offset_and_fields_diff(self, ctypes_struct):
+        left_offsets = self.offset_to_field_name
+        right_offsets = OrderedDict(
+            (getattr(ctypes_struct, name[0]).offset, name)
+                for name in ctypes_struct._fields_
+        )
+
+        left = [
+            "%s\t%s" % (offset, names[0])
+                for (offset, names) in left_offsets.items()
+        ]
+
+        right = [
+            "%s\t%s" % (offset, name[0])
+                for (offset, name) in right_offsets.items()
+        ]
+
+        lines = []
+        added = {}
+        missing = {}
+
+        from difflib import unified_diff
+        diff = list(unified_diff(left, right, fromfile='ours', tofile='theirs'))
+        for line in diff:
+            if not line:
+                continue
+
+            first = line[0]
+
+            try:
+                second = line[1]
+            except IndexError:
+                second = None
+
+            if not second:
+                lines.append(line)
+                continue
+
+            if first == '-':
+                if second == '-':
+                    lines.append(line)
+                    continue
+                else:
+                    offset = int(line[1:line.find('\t', 1)])
+                    field_name = self.offsets[offset][0]
+                    missing[offset] = field_name
+                    lines.append(line)
+                    continue
+            elif first == '+':
+                if second == '+':
+                    lines.append(line)
+                    continue
+                else:
+                    offset = int(line[1:line.find('\t', 1)])
+                    field_name = right_offsets[offset]
+                    added[offset] = field_name
+                    lines.append(line)
+                    continue
+            else:
+                lines.append(line)
+                continue
+
+        return {
+            'diff': diff,
+            'lines': lines,
+            'added': added,
+            'missing': missing,
+        }
+
+
+    def as_ctypes_struct(self):
+        buf = StringIO.StringIO()
+
+        w = lambda chunk: buf.write(chunk)
+        wl = lambda line: buf.write(line + '\n')
+
 
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :

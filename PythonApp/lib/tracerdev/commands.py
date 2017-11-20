@@ -878,7 +878,28 @@ class ParseCdbDumpTypes(InvariantAwareCommand):
         import IPython
         IPython.embed()
 
+class CheckCtypes(InvariantAwareCommand):
+    """
+    Checks the ctypes representation of various structs.
+    """
 
+    enable_post_mortem_debugger = None
+    class EnablePostMortemDebuggerArg(EnablePostMortemDebuggerInvariant):
+        pass
 
+    def run(self):
+
+        structs = self.conf.structs
+
+        from tracer.dll import TraceStore
+
+        ts = structs.by_module['TraceStore']['TRACE_STORE']
+        diff = ts.offset_and_fields_diff(TraceStore.TRACE_STORE)
+
+        import ipdb
+        ipdb.set_trace()
+
+        #import IPython
+        #IPython.embed()
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
