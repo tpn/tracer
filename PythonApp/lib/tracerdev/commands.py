@@ -855,5 +855,30 @@ class CreateNewProjectFromExisting(InvariantAwareCommand):
         while i < num_lines:
             line = lines[i]
 
+class ParseCdbDumpTypes(InvariantAwareCommand):
+    """
+    Parses the output of cdb-output.txt.
+    """
+
+    enable_post_mortem_debugger = None
+    class EnablePostMortemDebuggerArg(EnablePostMortemDebuggerInvariant):
+        pass
+
+    def run(self):
+        from tracer.path import join_path
+        from tracerdev.config import ROOT_DIR
+        path = join_path(ROOT_DIR, 'cdb-output.txt')
+
+        with open(path, 'r') as f:
+            text = f.read()
+
+        from tracer.dbgeng import Struct
+        structs = Struct.load_all_from_text(text)
+
+        import IPython
+        IPython.embed()
+
+
+
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
