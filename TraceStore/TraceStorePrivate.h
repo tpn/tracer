@@ -3805,7 +3805,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
 } TRACE_STORE_SQLITE3_DB;
 typedef TRACE_STORE_SQLITE3_DB *PTRACE_STORE_SQLITE3_DB;
 
-
 #ifdef __cplusplus
 }; // extern "C"
 #endif
