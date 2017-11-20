@@ -4307,7 +4307,7 @@ struct _TRACE_PAGE_FAULT, 8 elements, 0x40 bytes
    +0x008 FaultingThreadFlags : union _TRACE_PAGE_FAULT_THREAD_FLAGS, 5 elements, 0x4 bytes
    +0x00c Padding          : Uint4B
    +0x010 FaultingPcModule : Ptr64 to struct _TRACE_MODULE_TABLE_ENTRY, 25 elements, 0x3e0 bytes
-   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x020 Disassembly      : Ptr64 to struct _LINKED_STRING, 8 elements, 0x20 bytes
    +0x028 Reserved         : [3] Uint8B
 0:000> dt -v TraceStore!_TRACE_MODULE_TABLE_FLAGS
@@ -4616,7 +4616,7 @@ struct _TRACE_STORE_FLAGS, 20 elements, 0x4 bytes
    +0x000 FlatMappingLoaded : Bitfield Pos 18, 1 Bit
    +0x000 Unused           : Bitfield Pos 19, 13 Bits
 0:000> dt -v TraceStore!_TRACE_STORE
-struct _TRACE_STORE, 149 elements, 0x800 bytes
+struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x000 TraceStoreId     : Enum _TRACE_STORE_ID,  62 total enums
 
    +0x004 TraceStoreMetadataId : Enum _TRACE_STORE_METADATA_ID,  11 total enums
@@ -4706,20 +4706,20 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x200 FlatMappingHandle : Ptr64 to Void
    +0x208 FlatAddress      : struct _TRACE_STORE_ADDRESS, 20 elements, 0x80 bytes
    +0x288 FlatAddressRange : struct _TRACE_STORE_ADDRESS_RANGE, 7 elements, 0x40 bytes
-   +0x2c8 Padding4         : Uint8B
+   +0x2c8 Padding1         : Uint8B
    +0x2d0 FlatMemoryMap    : struct _TRACE_STORE_MEMORY_MAP, 10 elements, 0x40 bytes
-   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x368 AllocateRecords  : Ptr64 to     void* 
    +0x370 AllocateRecordsWithTimestamp : Ptr64 to     void* 
    +0x378 TryAllocateRecords : Ptr64 to     void* 
@@ -4752,23 +4752,22 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x450 ReadonlyAddressRanges : Ptr64 to struct _TRACE_STORE_ADDRESS_RANGE, 7 elements, 0x40 bytes
    +0x458 ReadonlyMappingSizes : Ptr64 to union _ULARGE_INTEGER, 4 elements, 0x8 bytes
    +0x460 ReadonlyPreferredAddressUnavailable : Uint4B
-   +0x464 Padding5         : Uint4B
-   +0x468 DataType         : struct <unnamed-tag>, 2 elements, 0x10 bytes
-   +0x478 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x508 IntervalFramesPerSecond : Uint8B
-   +0x510 Intervals        : struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
-   +0x590 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
-   +0x598 Sqlite3Schema    : Ptr64 to Char
-   +0x5a0 Sqlite3VirtualTableName : Ptr64 to Char
-   +0x5a8 Sqlite3Column    : Ptr64 to     long 
-   +0x5b0 Sqlite3Module    : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
-   +0x668 Sqlite3VirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x680 Sqlite3IntervalSchema : Ptr64 to Char
-   +0x688 Sqlite3IntervalVirtualTableName : Ptr64 to Char
-   +0x690 Sqlite3IntervalColumn : Ptr64 to     long 
-   +0x698 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
-   +0x750 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x768 Padding6         : [19] Uint8B
+   +0x464 Padding2         : Uint4B
+   +0x468 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x4f8 IntervalFramesPerSecond : Uint8B
+   +0x500 Intervals        : struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
+   +0x580 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
+   +0x588 Sqlite3Schema    : Ptr64 to Char
+   +0x590 Sqlite3VirtualTableName : Ptr64 to Char
+   +0x598 Sqlite3Column    : Ptr64 to     long 
+   +0x5a0 Sqlite3Module    : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
+   +0x658 Sqlite3VirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
+   +0x670 Sqlite3IntervalSchema : Ptr64 to Char
+   +0x678 Sqlite3IntervalVirtualTableName : Ptr64 to Char
+   +0x680 Sqlite3IntervalColumn : Ptr64 to     long 
+   +0x688 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
+   +0x740 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
+   +0x758 Padding3         : [21] Uint8B
 0:000> dt -v TraceStore!_TRACE_STORES
 struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -4788,18 +4787,18 @@ struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x058 StoresListHead   : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x080 RelocationCompleteEvents : [60] Ptr64 to Void
    +0x400 Relocations      : [60] struct _TRACE_STORE_RELOC, 9 elements, 0x48 bytes
-   +0x2000 Stores           : [600] struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x2000 Stores           : [600] struct _TRACE_STORE, 148 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_METADATA_STORES
 struct _TRACE_STORE_METADATA_STORES, 9 elements, 0x48 bytes
-   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORES_RUNDOWN_FLAGS
 struct _TRACE_STORES_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
    +0x000 IsActive         : Bitfield Pos 0, 1 Bit
@@ -4849,7 +4848,7 @@ struct _TRACE_STORE_SQLITE3_CURSOR, 38 elements, 0x108 bytes
    +0x088 Allocation       : Ptr64 to struct _TRACE_STORE_ALLOCATION, 2 elements, 0x10 bytes
    +0x090 CurrentCoalescedAllocationNumber : Int8B
    +0x098 TotalCoalescedAllocations : Int8B
-   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x0a8 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x0b0 Intervals        : Ptr64 to struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
    +0x0b8 IntervalRecordSize : Uint8B

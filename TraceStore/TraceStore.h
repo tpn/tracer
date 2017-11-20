@@ -3477,7 +3477,7 @@ typedef struct _TRACE_STORE {
     HANDLE FlatMappingHandle;
     TRACE_STORE_ADDRESS FlatAddress;
     TRACE_STORE_ADDRESS_RANGE FlatAddressRange;
-    ULONGLONG Padding4;
+    ULONGLONG Padding1;
     TRACE_STORE_MEMORY_MAP FlatMemoryMap;
 
     //
@@ -3651,16 +3651,7 @@ typedef struct _TRACE_STORE {
 
     volatile ULONG ReadonlyPreferredAddressUnavailable;
 
-    ULONG Padding5;
-
-    //
-    // Optional pointers to text data type representations.
-    //
-
-    struct {
-        PSTRING Ctypes;
-        PSTRING NumpyDtype;
-    } DataType;
+    ULONG Padding2;
 
     //
     // Allocator structure.
@@ -3711,7 +3702,7 @@ typedef struct _TRACE_STORE {
     // Final padding.
     //
 
-    ULONGLONG Padding6[19];
+    ULONGLONG Padding3[21];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
