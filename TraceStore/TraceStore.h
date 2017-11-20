@@ -3711,7 +3711,7 @@ typedef struct _TRACE_STORE {
     // Final padding.
     //
 
-    ULONGLONG Padding6[18];
+    ULONGLONG Padding6[19];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
