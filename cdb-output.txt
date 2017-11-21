@@ -1570,6 +1570,14 @@ struct _PYTHON, 120 elements, 0xb20 bytes
    +0x350 Allocators       : struct _PYTHON_ALLOCATORS, 14 elements, 0x6c8 bytes
    +0xa18 NumberOfCacheElements : Uint2B
    +0xa20 CodeObjectCache  : [32] Ptr64 to struct _PYOBJECT, 5 elements, 0x10 bytes
+0:000> dt -v Python!_DLL_FILES
+struct _DLL_FILES, 3 elements, 0x10 bytes
+   +0x000 Size             : Uint2B
+   +0x002 NumberOfFiles    : Uint2B
+   +0x008 Files            : Ptr64 to Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+0:000> dt -v PythonProject!_PYTHON_PROJECT
+Loading module PythonProject.
+Symbol PythonProject!_PYTHON_PROJECT not found.
 0:000> dt -v PythonTracer!_PYTHON_TRACE_EVENT1
 *** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\PythonTracer.dll
 struct _PYTHON_TRACE_EVENT1, 28 elements, 0x80 bytes
@@ -2796,6 +2804,26 @@ struct _RTL_PATH_LINK, 6 elements, 0x50 bytes
    +0x010 SListEntry       : struct _SLIST_ENTRY, 1 elements, 0x10 bytes
    +0x010 PrefixTableEntry : struct _UNICODE_PREFIX_TABLE_ENTRY, 7 elements, 0x38 bytes
    +0x010 HashTableEntry   : struct _RTL_DYNAMIC_HASH_TABLE_ENTRY, 2 elements, 0x18 bytes
+0:000> dt -v Rtl!_RTL_PATH
+struct _RTL_PATH, 18 elements, 0xc0 bytes
+   +0x000 StructSize       : Uint2B
+   +0x002 Drive            : Wchar
+   +0x004 NumberOfSlashes  : Uint2B
+   +0x006 NumberOfDots     : Uint2B
+   +0x008 SizeOfReversedSlashesBitMap : Uint4B
+   +0x00c AllocSize        : Uint4B
+   +0x010 ReversedSlashesBitMapBuffer : Ptr64 to Uint4B
+   +0x008 ReversedSlashesBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x018 SizeOfReversedDotsBitMap : Uint4B
+   +0x01c Flags            : union _RTL_PATH_FLAGS, 11 elements, 0x4 bytes
+   +0x020 ReversedDotsBitMapBuffer : Ptr64 to Uint4B
+   +0x018 ReversedDotsBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x028 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x030 Full             : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x040 Name             : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x050 Directory        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x060 Extension        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x070 Link             : struct _RTL_PATH_LINK, 6 elements, 0x50 bytes
 0:000> dt -v Rtl!_RTL_TEXT_FILE
 struct _RTL_TEXT_FILE, 11 elements, 0x50 bytes
    +0x000 StructSizeInBytes : Uint4B
@@ -2821,6 +2849,41 @@ struct _RTL_IMAGE_FILE, 10 elements, 0x40 bytes
    +0x028 PdbPath          : Ptr64 to struct _RTL_PATH, 18 elements, 0xc0 bytes
    +0x030 ModuleHandle     : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
    +0x038 ModuleInfo       : Ptr64 to struct _IMAGEHLP_MODULEW64, 25 elements, 0xcc0 bytes
+0:000> dt -v Rtl!_RTL_FILE
+struct _RTL_FILE, 32 elements, 0x200 bytes
+   +0x000 ListEntry        : struct _SLIST_ENTRY, 1 elements, 0x10 bytes
+   +0x000 Next             : Ptr64 to struct _SLIST_ENTRY, 1 elements, 0x10 bytes
+   +0x008 Unused           : Ptr64 to Void
+   +0x010 BasicInfo        : struct _FILE_BASIC_INFO, 5 elements, 0x28 bytes
+   +0x010 CreationTime     : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x018 LastAccessTime   : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x020 LastWriteTime    : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x028 ChangeTime       : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x030 FileAttributes   : Uint4B
+   +0x034 NumberOfPages    : Uint4B
+   +0x038 EndOfFile        : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x040 AllocationSize   : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x048 FileId           : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x050 FileIdInfo       : struct _FILE_ID_INFO, 2 elements, 0x18 bytes
+   +0x050 VolumeSerialNumber : Uint8B
+   +0x058 FileId128        : struct _FILE_ID_128, 1 elements, 0x10 bytes
+   +0x068 MD5              : [16] UChar
+   +0x078 SHA1             : [20] UChar
+   +0x08c Type             : Enum _RTL_FILE_TYPE,  4 total enums
+
+   +0x090 Flags            : union _RTL_FILE_FLAGS, 5 elements, 0x4 bytes
+   +0x094 Elapsed          : Uint4B
+   +0x098 Content          : Ptr64 to Char
+   +0x0a0 Path             : struct _RTL_PATH, 18 elements, 0xc0 bytes
+   +0x160 CopyTimeInMicroseconds : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x168 CopiedBytesPerSecond : union _LARGE_INTEGER, 4 elements, 0x8 bytes
+   +0x170 SourceCode       : struct _RTL_TEXT_FILE, 11 elements, 0x50 bytes
+   +0x170 ImageFile        : struct _RTL_IMAGE_FILE, 10 elements, 0x40 bytes
+   +0x170 Reserved         : [112] UChar
+   +0x1e0 FileHandle       : Ptr64 to Void
+   +0x1e8 MappingHandle    : Ptr64 to Void
+   +0x1f0 MappedAddress    : Ptr64 to Void
+   +0x1f8 Reserved2        : [8] UChar
 0:000> dt -v Rtl!_RTLFUNCTIONS
 struct _RTLFUNCTIONS, 178 elements, 0x590 bytes
    +0x000 RtlCharToInteger : Ptr64 to     long 
@@ -3023,6 +3086,36 @@ struct _PAGE_COPY_TYPE, 5 elements, 0x4 bytes
    +0x000 Movsq            : Bitfield Pos 2, 1 Bit
    +0x000 Avx2C            : Bitfield Pos 3, 1 Bit
    +0x000 Avx2NonTemporal  : Bitfield Pos 4, 1 Bit
+0:000> dt -v Rtl!_DIRECTORY_CONTAINING_FILES
+struct _DIRECTORY_CONTAINING_FILES, 7 elements, 0x40 bytes
+   +0x000 Size             : Uint2B
+   +0x002 NumberOfFiles    : Uint2B
+   +0x004 Padding          : [2] Uint2B
+   +0x008 Directory        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x020 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x030 Children         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+0:000> dt -v Rtl!_DIRECTORIES_CONTAINING_FILES
+struct _DIRECTORIES_CONTAINING_FILES, 1 elements, 0x2 bytes
+   +0x000 Size             : Uint2B
+0:000> dt -v Rtl!_PATH_ENV_VAR
+struct _PATH_ENV_VAR, 16 elements, 0xa8 bytes
+   +0x000 StructSize       : Uint2B
+   +0x002 FirstAlignedAllocSizeInBytes : Uint2B
+   +0x004 SecondAlignedAllocSizeInBytes : Uint2B
+   +0x006 NumberOfElements : Uint2B
+   +0x008 ReservedUnicodeBufferSizeInBytes : Uint2B
+   +0x00a Padding          : [3] Uint2B
+   +0x010 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x018 Bitmap           : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x028 Paths            : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x038 NewPaths         : struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x048 PathsPrefixTable : struct _UNICODE_PREFIX_TABLE, 5 elements, 0x18 bytes
+   +0x060 PathsToAddPrefixTable : struct _UNICODE_PREFIX_TABLE, 5 elements, 0x18 bytes
+   +0x078 PathsToRemovePrefixTable : struct _UNICODE_PREFIX_TABLE, 5 elements, 0x18 bytes
+   +0x090 Directories      : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x098 PathsPrefixTableEntries : Ptr64 to struct _UNICODE_PREFIX_TABLE_ENTRY, 7 elements, 0x38 bytes
+   +0x0a0 PathsToRemovePrefixTableEntries : Ptr64 to struct _UNICODE_PREFIX_TABLE_ENTRY, 7 elements, 0x38 bytes
 0:000> dt -v Rtl!_DLL_NOTIFICATION_DATA
 struct _DLL_NOTIFICATION_DATA, 5 elements, 0x20 bytes
    +0x000 LoaderDataTableEntry : Ptr64 to struct _LDR_DATA_TABLE_ENTRY, 17 elements, 0x88 bytes
@@ -3800,6 +3893,14 @@ struct _GUARDED_LIST, 3 elements, 0x20 bytes
 0:000> dt -v Rtl!_RTL_ATEXIT_RUNDOWN_FLAGS
 struct _RTL_ATEXIT_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
    +0x000 IsActive         : Bitfield Pos 0, 1 Bit
+0:000> dt -v Rtl!_RTL_ATEXIT_RUNDOWN
+struct _RTL_ATEXIT_RUNDOWN, 6 elements, 0x48 bytes
+   +0x000 SizeOfStruct     : Uint2B
+   +0x002 Padding1         : Uint2B
+   +0x004 Flags            : struct _RTL_ATEXIT_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
+   +0x008 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
+   +0x030 ListHead         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x040 HeapHandle       : Ptr64 to Void
 0:000> dt -v Rtl!_RTL_ATEXIT_ENTRY_FLAGS
 struct _RTL_ATEXIT_ENTRY_FLAGS, 3 elements, 0x4 bytes
    +0x000 IsExtended       : Bitfield Pos 0, 1 Bit
@@ -3856,8 +3957,20 @@ Symbol Rtl!_SQLITE3_INDEX_INFO not found.
 Symbol Rtl!_SQLITE3_MODULE not found.
 0:000> dt -v Rtl!_SQLITE3_API_ROUTINES
 Symbol Rtl!_SQLITE3_API_ROUTINES not found.
-0:000> dt -v StringTable!_STRING_TABLE
+0:000> dt -v StringTable!_STRING_ARRAY
 *** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\StringTable.dll
+struct _STRING_ARRAY, 6 elements, 0x20 bytes
+   +0x000 SizeInQuadwords  : Uint2B
+   +0x002 NumberOfElements : Uint2B
+   +0x004 MinimumLength    : Uint2B
+   +0x006 MaximumLength    : Uint2B
+   +0x008 StringTable      : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
+   +0x010 Strings          : [1] struct _STRING, 5 elements, 0x10 bytes
+0:000> dt -v StringTable!_STRING_TABLE_FLAGS
+struct _STRING_TABLE_FLAGS, 2 elements, 0x4 bytes
+   +0x000 CopiedArray      : Bitfield Pos 0, 1 Bit
+   +0x000 Unused           : Bitfield Pos 1, 31 Bits
+0:000> dt -v StringTable!_STRING_TABLE
 struct _STRING_TABLE, 16 elements, 0x200 bytes
    +0x000 OccupiedBitmap   : Uint2B
    +0x002 ContinuationBitmap : Uint2B
@@ -3943,8 +4056,12 @@ Symbol StringTable!_STRING_ARRAY30 not found.
 Symbol StringTable!_STRING_ARRAY31 not found.
 0:000> dt -v StringTable!_STRING_ARRAY32
 Symbol StringTable!_STRING_ARRAY32 not found.
-0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION
+0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION_FLAGS
 *** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TracedPythonSession.dll
+struct _TRACED_PYTHON_SESSION_FLAGS, 2 elements, 0x4 bytes
+   +0x000 IsReadonly       : Bitfield Pos 0, 1 Bit
+   +0x000 Unused           : Bitfield Pos 1, 31 Bits
+0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION
 struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
    +0x000 Size             : Uint2B
    +0x002 PythonMajorVersion : Char
@@ -4042,6 +4159,12 @@ struct _PYTHON_HOME, 9 elements, 0x30 bytes
    +0x010 Directory        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x020 DllPath          : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x028 ExePath          : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+0:000> dt -v TracerConfig!_TRACER_PATHS
+Loading module TracerConfig.
+Symbol TracerConfig!_TRACER_PATHS not found.
+0:000> dt -v TracerConfig!_TRACER_FLAGS
+Loading module TracerConfig.
+Symbol TracerConfig!_TRACER_FLAGS not found.
 0:000> dt -v TracerConfig!_TRACER_RUNTIME_PARAMETERS
 Loading module TracerConfig.
 Symbol TracerConfig!_TRACER_RUNTIME_PARAMETERS not found.
@@ -4051,6 +4174,9 @@ Symbol TracerConfig!_TRACE_SESSION_DIRECTORY not found.
 0:000> dt -v TracerConfig!_TRACE_SESSION_DIRECTORIES
 Loading module TracerConfig.
 Symbol TracerConfig!_TRACE_SESSION_DIRECTORIES not found.
+0:000> dt -v TracerConfig!_TRACER_CONFIG
+Loading module TracerConfig.
+Symbol TracerConfig!_TRACER_CONFIG not found.
 0:000> dt -v TracerConfig!_TRACER_INJECTION_MODULES
 Loading module TracerConfig.
 Symbol TracerConfig!_TRACER_INJECTION_MODULES not found.
@@ -4242,6 +4368,17 @@ struct _TRACE_STORE_FIELD_RELOCS, 2 elements, 0x10 bytes
    +0x000 TraceStoreId     : Enum _TRACE_STORE_ID,  62 total enums
 
    +0x008 Relocations      : Ptr64 to struct _TRACE_STORE_FIELD_RELOC, 2 elements, 0x8 bytes
+0:000> dt -v TraceStore!_TRACE_STORE_RELOC
+struct _TRACE_STORE_RELOC, 9 elements, 0x48 bytes
+   +0x000 SizeOfStruct     : Uint4B
+   +0x004 NumberOfRelocations : Uint4B
+   +0x008 NumberOfRelocationBackReferences : Uint4B
+   +0x00c BitmapBufferSizeInQuadwords : Uint4B
+   +0x010 Relocations      : Ptr64 to struct _TRACE_STORE_FIELD_RELOC, 2 elements, 0x8 bytes
+   +0x018 ForwardRefBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x028 ForwardRefBitmapBuffer : [1] Uint8B
+   +0x030 BackRefBitmap    : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x040 BackRefBitmapBuffer : [1] Uint8B
 0:000> dt -v TraceStore!_TRACE_STORE_BITMAP
 struct _TRACE_STORE_BITMAP, 4 elements, 0x10 bytes
    +0x000 SizeOfBitMap     : Uint4B
@@ -4307,7 +4444,7 @@ struct _TRACE_PAGE_FAULT, 8 elements, 0x40 bytes
    +0x008 FaultingThreadFlags : union _TRACE_PAGE_FAULT_THREAD_FLAGS, 5 elements, 0x4 bytes
    +0x00c Padding          : Uint4B
    +0x010 FaultingPcModule : Ptr64 to struct _TRACE_MODULE_TABLE_ENTRY, 25 elements, 0x3e0 bytes
-   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x020 Disassembly      : Ptr64 to struct _LINKED_STRING, 8 elements, 0x20 bytes
    +0x028 Reserved         : [3] Uint8B
 0:000> dt -v TraceStore!_TRACE_MODULE_TABLE_FLAGS
@@ -4616,7 +4753,7 @@ struct _TRACE_STORE_FLAGS, 20 elements, 0x4 bytes
    +0x000 FlatMappingLoaded : Bitfield Pos 18, 1 Bit
    +0x000 Unused           : Bitfield Pos 19, 13 Bits
 0:000> dt -v TraceStore!_TRACE_STORE
-struct _TRACE_STORE, 148 elements, 0x800 bytes
+struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x000 TraceStoreId     : Enum _TRACE_STORE_ID,  62 total enums
 
    +0x004 TraceStoreMetadataId : Enum _TRACE_STORE_METADATA_ID,  11 total enums
@@ -4708,18 +4845,18 @@ struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x288 FlatAddressRange : struct _TRACE_STORE_ADDRESS_RANGE, 7 elements, 0x40 bytes
    +0x2c8 Padding1         : Uint8B
    +0x2d0 FlatMemoryMap    : struct _TRACE_STORE_MEMORY_MAP, 10 elements, 0x40 bytes
-   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x368 AllocateRecords  : Ptr64 to     void* 
    +0x370 AllocateRecordsWithTimestamp : Ptr64 to     void* 
    +0x378 TryAllocateRecords : Ptr64 to     void* 
@@ -4767,7 +4904,8 @@ struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x680 Sqlite3IntervalColumn : Ptr64 to     long 
    +0x688 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
    +0x740 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x758 Padding3         : [21] Uint8B
+   +0x758 Cuda             : Ptr64 to struct _TRACE_STORE_CUDA, 15 elements, 0x1c0 bytes
+   +0x760 Padding3         : [20] Uint8B
 0:000> dt -v TraceStore!_TRACE_STORES
 struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -4787,21 +4925,28 @@ struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x058 StoresListHead   : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x080 RelocationCompleteEvents : [60] Ptr64 to Void
    +0x400 Relocations      : [60] struct _TRACE_STORE_RELOC, 9 elements, 0x48 bytes
-   +0x2000 Stores           : [600] struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x2000 Stores           : [600] struct _TRACE_STORE, 149 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_METADATA_STORES
 struct _TRACE_STORE_METADATA_STORES, 9 elements, 0x48 bytes
-   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
-   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORES_RUNDOWN_FLAGS
 struct _TRACE_STORES_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
    +0x000 IsActive         : Bitfield Pos 0, 1 Bit
+0:000> dt -v TraceStore!_TRACE_STORES_RUNDOWN
+struct _TRACE_STORES_RUNDOWN, 5 elements, 0x40 bytes
+   +0x000 SizeOfStruct     : Uint2B
+   +0x002 Padding1         : Uint2B
+   +0x004 Flags            : struct _TRACE_STORES_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
+   +0x008 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
+   +0x030 ListHead         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_SQLITE3_FUNCTION
 struct _TRACE_STORE_SQLITE3_FUNCTION, 9 elements, 0x38 bytes
    +0x000 Id               : Enum _TRACE_STORE_SQLITE3_FUNCTION_ID,  5 total enums
@@ -4848,7 +4993,7 @@ struct _TRACE_STORE_SQLITE3_CURSOR, 38 elements, 0x108 bytes
    +0x088 Allocation       : Ptr64 to struct _TRACE_STORE_ALLOCATION, 2 elements, 0x10 bytes
    +0x090 CurrentCoalescedAllocationNumber : Int8B
    +0x098 TotalCoalescedAllocations : Int8B
-   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 148 elements, 0x800 bytes
+   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x0a8 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x0b0 Intervals        : Ptr64 to struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
    +0x0b8 IntervalRecordSize : Uint8B
@@ -4904,5 +5049,23 @@ struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x498 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
    +0x4a0 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
    +0x4a8 TraceStores      : Ptr64 to struct _TRACE_STORES, 18 elements, 0x12e000 bytes
+0:000> dt -v TraceStore!_TRACE_STORE_CUDA
+struct _TRACE_STORE_CUDA, 15 elements, 0x1c0 bytes
+   +0x000 SizeOfStruct     : Uint4B
+   +0x004 Flags            : union TRACE_STORE_CUDA_FLAGS, 4 elements, 0x4 bytes
+   +0x008 State            : union _TRACE_STORE_CUDA_STATE, 3 elements, 0x4 bytes
+   +0x010 Cu               : Ptr64 to struct _CU, 58 elements, 0x1b8 bytes
+   +0x018 CuLoadingCompleteEvent : Ptr64 to Void
+   +0x020 CuModule         : Ptr64 to struct CU_MODULE, 0 elements, 0x0 bytes
+   +0x028 CuContext        : Ptr64 to struct CU_CONTEXT, 0 elements, 0x0 bytes
+   +0x030 CuDevice         : Int4B
+   +0x034 CuDeviceAttributes : struct _CU_DEVICE_ATTRIBUTES, 91 elements, 0x16c bytes
+   +0x1a0 NumberOfPtxPaths : Uint2B
+   +0x1a2 NumberOfFunctions : Uint2B
+   +0x1a4 Padding          : Uint4B
+   +0x1a8 PtxPathIds       : Ptr64 to Enum _TRACER_PTX_PATH_ID,  3 total enums
+
+   +0x1b0 PtxFunctionNames : Ptr64 to Ptr64 to Char
+   +0x1b8 CuFunctions      : Ptr64 to Ptr64 to struct CU_FUNCTION, 0 elements, 0x0 bytes
 0:000> .logclose
 Closing open log file cdb-output.txt

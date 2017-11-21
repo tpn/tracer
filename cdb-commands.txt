@@ -74,6 +74,8 @@ dt -v Python!_PYTHONOBJECTOFFSETS
 dt -v Python!_PYTHONEX_OFFSETS
 dt -v Python!_PYTHONEXDATA
 dt -v Python!_PYTHON
+dt -v Python!_DLL_FILES
+dt -v PythonProject!_PYTHON_PROJECT
 dt -v PythonTracer!_PYTHON_TRACE_EVENT1
 dt -v PythonTracer!_PYTHON_TRACE_EVENT2
 dt -v PythonTracer!_PYTHON_CALL_STACK_ENTRY
@@ -151,12 +153,17 @@ dt -v Rtl!_RTL_BITMAP_EX
 dt -v Rtl!_RTL_SPARSE_BITMAP_RANGE
 dt -v Rtl!_RTL_SPARSE_BITMAP_CTX
 dt -v Rtl!_RTL_PATH_LINK
+dt -v Rtl!_RTL_PATH
 dt -v Rtl!_RTL_TEXT_FILE
 dt -v Rtl!_RTL_IMAGE_FILE
+dt -v Rtl!_RTL_FILE
 dt -v Rtl!_RTLFUNCTIONS
 dt -v Rtl!_BITMAP_INDEX
 dt -v Rtl!_STRINGEX
 dt -v Rtl!_PAGE_COPY_TYPE
+dt -v Rtl!_DIRECTORY_CONTAINING_FILES
+dt -v Rtl!_DIRECTORIES_CONTAINING_FILES
+dt -v Rtl!_PATH_ENV_VAR
 dt -v Rtl!_DLL_NOTIFICATION_DATA
 dt -v Rtl!_DLL_NOTIFICATION_FLAGS
 dt -v Rtl!_RTLEXFUNCTIONS
@@ -170,6 +177,7 @@ dt -v Rtl!_ICLASS_FACTORY_VTBL
 dt -v Rtl!_RTL
 dt -v Rtl!_GUARDED_LIST
 dt -v Rtl!_RTL_ATEXIT_RUNDOWN_FLAGS
+dt -v Rtl!_RTL_ATEXIT_RUNDOWN
 dt -v Rtl!_RTL_ATEXIT_ENTRY_FLAGS
 dt -v Rtl!_RTL_ATEXIT_ENTRY
 dt -v Rtl!_RTL_LDR_NOTIFICATION_TABLE_FLAGS
@@ -183,6 +191,8 @@ dt -v Rtl!_SQLITE3_INDEX_CONSTRAINT_USAGE
 dt -v Rtl!_SQLITE3_INDEX_INFO
 dt -v Rtl!_SQLITE3_MODULE
 dt -v Rtl!_SQLITE3_API_ROUTINES
+dt -v StringTable!_STRING_ARRAY
+dt -v StringTable!_STRING_TABLE_FLAGS
 dt -v StringTable!_STRING_TABLE
 dt -v StringTable!_STRING_MATCH
 dt -v StringTable!_STRING_ARRAY2
@@ -216,11 +226,15 @@ dt -v StringTable!_STRING_ARRAY29
 dt -v StringTable!_STRING_ARRAY30
 dt -v StringTable!_STRING_ARRAY31
 dt -v StringTable!_STRING_ARRAY32
+dt -v TracedPythonSession!_TRACED_PYTHON_SESSION_FLAGS
 dt -v TracedPythonSession!_TRACED_PYTHON_SESSION
 dt -v TracedPythonSession!_PYTHON_HOME
+dt -v TracerConfig!_TRACER_PATHS
+dt -v TracerConfig!_TRACER_FLAGS
 dt -v TracerConfig!_TRACER_RUNTIME_PARAMETERS
 dt -v TracerConfig!_TRACE_SESSION_DIRECTORY
 dt -v TracerConfig!_TRACE_SESSION_DIRECTORIES
+dt -v TracerConfig!_TRACER_CONFIG
 dt -v TracerConfig!_TRACER_INJECTION_MODULES
 dt -v TracerConfig!_TRACER_OFFSET_TO_PATH_ENTRY
 dt -v TracerConfig!_TRACER_PATH_OFFSETS
@@ -244,6 +258,7 @@ dt -v TraceStore!_TRACE_STORE_SYNC_FLAGS
 dt -v TraceStore!_TRACE_STORE_SYNC
 dt -v TraceStore!_TRACE_STORE_FIELD_RELOC
 dt -v TraceStore!_TRACE_STORE_FIELD_RELOCS
+dt -v TraceStore!_TRACE_STORE_RELOC
 dt -v TraceStore!_TRACE_STORE_BITMAP
 dt -v TraceStore!_TRACE_SESSION
 dt -v TraceStore!_TIMER_FUNCTION
@@ -276,9 +291,11 @@ dt -v TraceStore!_TRACE_STORE
 dt -v TraceStore!_TRACE_STORES
 dt -v TraceStore!_TRACE_STORE_METADATA_STORES
 dt -v TraceStore!_TRACE_STORES_RUNDOWN_FLAGS
+dt -v TraceStore!_TRACE_STORES_RUNDOWN
 dt -v TraceStore!_TRACE_STORE_SQLITE3_FUNCTION
 dt -v TraceStore!_TRACE_STORE_COLUMN
 dt -v TraceStore!_TRACE_STORE_SQLITE3_CURSOR
 dt -v TraceStore!_TRACE_STORE_SQLITE3_DB
+dt -v TraceStore!_TRACE_STORE_CUDA
 .logclose
 q

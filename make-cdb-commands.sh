@@ -12,8 +12,9 @@ EOF
 ) > $OUTPUT
 
 find . -type f -iname "*.h" |
-    xargs grep -ni '^typedef struct _.* {$' |
+    xargs grep -ni '^typedef.*struct _.* {$' |
     sed -e 's/_Struct_size.* _/_/'      \
+        -e 's/ DECLSPEC_ALIGN.\d+. / /' \
         -e 's/^../dt -v /'              \
         -e 's/\/.*typedef struct _/!_/' \
         -e 's/ {$//' >> $OUTPUT
