@@ -195,7 +195,7 @@ typedef struct _TRACE_STORES_RUNDOWN_FLAGS {
     ULONG IsActive:1;
 } TRACE_STORES_RUNDOWN_FLAGS, *PTRACE_STORES_RUNDOWN_FLAGS;
 
-typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORES_RUNDOWN {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES_RUNDOWN {
 
     //
     // Size of the structure, in bytes.
@@ -228,7 +228,8 @@ typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORES_RUNDOWN {
     _Guarded_by_(CriticalSection)
     LIST_ENTRY ListHead;
 
-} TRACE_STORES_RUNDOWN, *PTRACE_STORES_RUNDOWN;
+} TRACE_STORES_RUNDOWN;
+typedef TRACE_STORES_RUNDOWN *PTRACE_STORES_RUNDOWN;
 
 typedef
 _Requires_lock_not_held_(Rundown->CriticalSection)

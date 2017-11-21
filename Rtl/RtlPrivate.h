@@ -35,7 +35,7 @@ typedef struct _RTL_ATEXIT_RUNDOWN_FLAGS {
     ULONG IsActive:1;
 } RTL_ATEXIT_RUNDOWN_FLAGS, *PRTL_ATEXIT_RUNDOWN_FLAGS;
 
-typedef _Struct_size_bytes_(SizeOfStruct) struct _RTL_ATEXIT_RUNDOWN {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL_ATEXIT_RUNDOWN {
 
     //
     // Size of the structure, in bytes.

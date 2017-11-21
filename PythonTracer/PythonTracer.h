@@ -159,8 +159,6 @@ typedef PYTHON_TRACE_CONTEXT *PPYTHON_TRACE_CONTEXT;
 //
 
 typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
-    ULONG AsLong;
-
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
@@ -244,6 +242,9 @@ typedef union _PYTHON_TRACE_CONTEXT_FLAGS {
 
         ULONG DisablePathTableEntryProcessing:1;
     };
+
+    LONG AsLong;
+    ULONG AsULong;
 
 } PYTHON_TRACE_CONTEXT_FLAGS, *PPYTHON_TRACE_CONTEXT_FLAGS;
 C_ASSERT(sizeof(PYTHON_TRACE_CONTEXT_FLAGS) == sizeof(ULONG));

@@ -72,7 +72,7 @@ extern "C" {
 
 #endif
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACED_PYTHON_SESSION_FLAGS {
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACED_PYTHON_SESSION_FLAGS {
 
     //
     // When set, indicates that this is a readonly trace session.
@@ -80,7 +80,15 @@ typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACED_PYTHON_SESSION_FLAGS {
 
     ULONG IsReadonly:1;
 
-} TRACED_PYTHON_SESSION_FLAGS, *PTRACED_PYTHON_SESSION_FLAGS;
+    //
+    // Unused bits.
+    //
+
+    ULONG Unused:31;
+
+} TRACED_PYTHON_SESSION_FLAGS;
+typedef TRACED_PYTHON_SESSION_FLAGS *PTRACED_PYTHON_SESSION_FLAGS;
+C_ASSERT(sizeof(TRACED_PYTHON_SESSION_FLAGS) == sizeof(ULONG));
 
 //
 // Forward declaration of the destroy function such that it can be included

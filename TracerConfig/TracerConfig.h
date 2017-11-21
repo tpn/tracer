@@ -236,7 +236,7 @@ typedef union _TRACER_PTX_PATH_TYPE {
 C_ASSERT(sizeof(TRACER_PTX_PATH_TYPE) == sizeof(ULONGLONG));
 
 
-typedef _Struct_size_bytes_(Size) struct _TRACER_PATHS {
+typedef struct _Struct_size_bytes_(Size) _TRACER_PATHS {
 
     //
     // Size of the structure, in bytes.
@@ -413,7 +413,7 @@ GetNextTracerInjectionDll(
 // Tracer configuration flags.  Map to REG_DWORD entries of the same name.
 //
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _TRACER_FLAGS {
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACER_FLAGS {
 
     //
     // When set, entry routines such as InitializeTracerConfig() and
@@ -701,7 +701,7 @@ typedef struct _TRACE_SESSION_DIRECTORIES {
 // registry has set in HKCU\Software\Tracer.
 //
 
-typedef _Struct_size_bytes_(Size) struct _TRACER_CONFIG {
+typedef struct _Struct_size_bytes_(Size) _TRACER_CONFIG {
 
     //
     // Size of the structure, in bytes.

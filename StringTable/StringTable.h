@@ -78,7 +78,7 @@ extern "C" {
 // Structures
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
+typedef struct _Struct_size_bytes_(SizeInQuadwords>>3) _STRING_ARRAY {
 
     //
     // Size of the structure, in quadwords.  Why quadwords?  It allows us to
@@ -126,7 +126,9 @@ typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
 
     STRING Strings[ANYSIZE_ARRAY];
 
-} STRING_ARRAY, *PSTRING_ARRAY, **PPSTRING_ARRAY;
+} STRING_ARRAY;
+typedef STRING_ARRAY *PSTRING_ARRAY;
+typedef STRING_ARRAY **PPSTRING_ARRAY;
 
 
 //
@@ -136,7 +138,7 @@ typedef _Struct_size_bytes_(SizeInQuadwords >> 3) struct _STRING_ARRAY {
 // construct.
 //
 
-typedef __declspec(align(16)) union _STRING_SLOT {
+typedef union DECLSPEC_ALIGN(16) _STRING_SLOT {
     CHAR Char[16];
     WIDE_CHARACTER WideChar[8];
     struct {
@@ -221,7 +223,7 @@ VOID
     );
 typedef DESTROY_STRING_TABLE *PDESTROY_STRING_TABLE;
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _STRING_TABLE_FLAGS {
+typedef struct _Struct_size_bytes_(sizeof(ULONG)) _STRING_TABLE_FLAGS {
 
     //
     // When set, indicates that the CopyArray flag was set to TRUE when the

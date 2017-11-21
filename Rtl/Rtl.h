@@ -3826,10 +3826,17 @@ typedef union _RTL_PATH_FLAGS {
 C_ASSERT(sizeof(RTL_PATH_FLAGS) == sizeof(ULONG));
 typedef RTL_PATH_FLAGS *PRTL_PATH_FLAGS;
 
-typedef _Struct_size_bytes_(sizeof(ULONG)) struct _RTL_PATH_CREATE_FLAGS {
-    ULONG CheckType:1;
-    ULONG EnsureQualified:1;
-} RTL_PATH_CREATE_FLAGS, *PRTL_PATH_CREATE_FLAGS;
+typedef union _RTL_PATH_CREATE_FLAGS {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG CheckType:1;
+        ULONG EnsureQualified:1;
+        ULONG Unused:30;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} RTL_PATH_CREATE_FLAGS;
+C_ASSERT(sizeof(RTL_PATH_CREATE_FLAGS) == sizeof(ULONG));
+typedef RTL_PATH_CREATE_FLAGS *PRTL_PATH_CREATE_FLAGS;
 
 typedef enum _RTL_PATH_TYPE_INTENT {
 
@@ -3841,7 +3848,7 @@ typedef enum _RTL_PATH_TYPE_INTENT {
 
 } RTL_PATH_TYPE_INTENT;
 
-typedef _Struct_size_bytes_(StructSize) struct _RTL_PATH {
+typedef struct _Struct_size_bytes_(StructSize) _RTL_PATH {
 
     //
     // Size of the structure, in bytes.
@@ -3915,7 +3922,9 @@ typedef _Struct_size_bytes_(StructSize) struct _RTL_PATH {
 
     RTL_PATH_LINK Link;                                         // 112  80  192
 
-} RTL_PATH, *PRTL_PATH, **PPRTL_PATH;
+} RTL_PATH;
+typedef RTL_PATH *PRTL_PATH;
+typedef RTL_PATH **PPRTL_PATH;
 C_ASSERT(FIELD_OFFSET(RTL_PATH, ReversedSlashesBitmap) == 8);
 C_ASSERT(FIELD_OFFSET(RTL_PATH, ReversedDotsBitmap) == 24);
 C_ASSERT(FIELD_OFFSET(RTL_PATH, Allocator) == 40);
@@ -4187,7 +4196,7 @@ C_ASSERT(sizeof(RTL_IMAGE_FILE) == 64);
 // in a trace session some how (e.g. text source code, binary image, etc).
 //
 
-typedef DECLSPEC_ALIGN(16) struct _RTL_FILE {
+typedef struct _RTL_FILE {
 
     //
     // Singly-linked list entry allowing the record to be pushed and popped
@@ -4903,7 +4912,7 @@ BOOL
 
 typedef FILES_EXISTA *PFILES_EXISTA;
 
-typedef _Struct_size_bytes_(Size) struct _DIRECTORY_CONTAINING_FILES {
+typedef struct _Struct_size_bytes_(Size) _DIRECTORY_CONTAINING_FILES {
 
     //
     // Size of the structure, in bytes.
@@ -4949,7 +4958,7 @@ typedef _Struct_size_bytes_(Size) struct _DIRECTORY_CONTAINING_FILES {
 
 } DIRECTORY_CONTAINING_FILE, *PDIRECTORY_CONTAINING_FILE;
 
-typedef _Struct_size_bytes_(Size) struct _DIRECTORIES_CONTAINING_FILES {
+typedef struct _Struct_size_bytes_(Size) _DIRECTORIES_CONTAINING_FILES {
 
     //
     // Size of the structure, in bytes.
@@ -5019,7 +5028,7 @@ typedef BOOL (*PPATH_CANONICALIZEA)(
 
 #define PATH_ENV_NAME L"Path"
 
-typedef _Struct_size_bytes_(StructSize) struct _PATH_ENV_VAR {
+typedef struct _Struct_size_bytes_(StructSize) _PATH_ENV_VAR {
 
     _Field_range_(==, sizeof(struct _PATH_ENV_VAR)) USHORT StructSize;
 

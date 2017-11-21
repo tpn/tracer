@@ -93,7 +93,7 @@ typedef DESTROY_PYTHON_PROJECT **PPDESTROY_PYTHON_PROJECT;
 PYTHON_PROJECT_API DESTROY_PYTHON_PROJECT \
                           DestroyPythonProject;
 
-typedef _Struct_size_bytes_(StructSize) struct _PYTHON_PROJECT {
+typedef struct _Struct_size_bytes_(StructSize) _PYTHON_PROJECT {
 
     //
     // Size of the entire structure, in bytes.
@@ -110,7 +110,9 @@ typedef _Struct_size_bytes_(StructSize) struct _PYTHON_PROJECT {
     CHAR PythonMinorVersion;
 
 
-} PYTHON_PROJECT, *PPYTHON_PROJECT, **PPPYTHON_PROJECT;
+} PYTHON_PROJECT;
+typedef PYTHON_PROJECT *PPYTHON_PROJECT;
+typedef PYTHON_PROJECT **PPPYTHON_PROJECT;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Type Definitions
@@ -124,8 +126,7 @@ BOOL
     _In_     PUNICODE_STRING Directory
     );
 typedef INITIALIZE_PYTHON_PROJECT *PINITIALIZE_PYTHON_PROJECT;
-PYTHON_PROJECT_API INITIALIZE_PYTHON_PROJECT \
-                   InitializePythonProject;
+PYTHON_PROJECT_API INITIALIZE_PYTHON_PROJECT InitializePythonProject;
 
 
 ////////////////////////////////////////////////////////////////////////////////

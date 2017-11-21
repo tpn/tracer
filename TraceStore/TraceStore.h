@@ -1055,7 +1055,7 @@ AssertAlignedTraceStoreFieldRelocs(
 // array, etc.
 //
 
-typedef _Struct_size_bytes_(SizeOfStruct) struct _TRACE_STORE_RELOC {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_RELOC {
 
     //
     // Size of the structure, in bytes.

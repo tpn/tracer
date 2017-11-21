@@ -89,7 +89,7 @@ static CONST PUNICODE_STRING PythonDllFilesW[] = {
 
 static CONST USHORT NumberOfPythonDllFiles = NUMBER_OF_PYTHON_DLL_FILES;
 
-typedef _Struct_size_bytes_(Size) struct _DLL_FILES {
+typedef struct _Struct_size_bytes_(Size) _DLL_FILES {
 
     //
     // Size of the structure, in bytes.
@@ -105,7 +105,8 @@ typedef _Struct_size_bytes_(Size) struct _DLL_FILES {
 
     PPUNICODE_STRING Files;
 
-} DLL_FILES, *PDLL_FILES;
+} DLL_FILES;
+typedef DLL_FILES *PDLL_FILES;
 
 static CONST DLL_FILES PythonDllFiles = {
     sizeof(DLL_FILES),
