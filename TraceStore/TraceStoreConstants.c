@@ -1176,7 +1176,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
-        0,  // Compress
+        1,  // Compress
         0   // Unused
     },
 
@@ -1728,7 +1728,7 @@ CONST TRACE_STORE_TRAITS TraceStoreTraits[] = {
         0,  // Periodic
         0,  // ConcurrentDataStructure
         0,  // NoAllocationAlignment
-        0,  // Compress
+        1,  // Compress
         0   // Unused
     },
 
