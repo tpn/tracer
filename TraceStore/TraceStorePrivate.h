@@ -3806,6 +3806,107 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
 } TRACE_STORE_SQLITE3_DB;
 typedef TRACE_STORE_SQLITE3_DB *PTRACE_STORE_SQLITE3_DB;
 
+//
+// Cuda-related type and function definitions.
+//
+
+typedef union _Struct_size_bytes_(sizeof(ULONG)) {
+
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+
+        //
+        // When set, indicates CUDA has been initialized and is ready for use
+        // (via the Cu interface pointer).
+        //
+
+        ULONG CuAvailable:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:31;
+    };
+
+    LONG AsLong;
+    ULONG AsULong;
+
+} TRACE_STORE_CUDA_FLAGS;
+C_ASSERT(sizeof(TRACE_STORE_CUDA_FLAGS) == sizeof(ULONG));
+
+typedef union _TRACE_STORE_CUDA_STATE {
+    struct _Struct_size_bytes_(sizeof(ULONG)) {
+        ULONG Unused:32;
+    };
+    LONG AsLong;
+    ULONG AsULong;
+} TRACE_STORE_CUDA_STATE;
+C_ASSERT(sizeof(TRACE_STORE_CUDA_STATE) == sizeof(ULONG));
+
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_CUDA {
+
+    //
+    // Structure size, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _TRACE_STORE_CUDA)) ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TRACE_STORE_CUDA_FLAGS Flags;
+
+    //
+    // State.
+    //
+
+    TRACE_STORE_CUDA_STATE State;
+
+    //
+    // Pointer to a CUDA Device structure if available.
+    //
+
+    PCU Cu;
+
+    //
+    // We prepare CUDA in a separate thread.  The following event is set when
+    // the InitCu() threadpool callback has completed.  Note that completion
+    // doesn't imply success; the caller must check the CuAvailable flag.
+    //
+
+    HANDLE CuLoadingCompleteEvent;
+
+    //
+    // Our CU_MODULE for TraceStoreKernels, plus context.
+    //
+
+    PCU_MODULE CuModule;
+    PCU_CONTEXT CuContext;
+
+    //
+    // Device and attributes.
+    //
+
+    CU_DEVICE CuDevice;
+    CU_DEVICE_ATTRIBUTES CuDeviceAttributes;
+
+    //
+    // Ptx paths and functions.
+    //
+
+    USHORT NumberOfPtxPaths;
+    USHORT NumberOfFunctions;
+    ULONG Padding;
+
+    PTRACER_PTX_PATH_ID PtxPathIds;
+    PCSZ *PtxFunctionNames;
+    PPCU_FUNCTION CuFunctions;
+
+} TRACE_STORE_CUDA;
+typedef TRACE_STORE_CUDA *PTRACE_STORE_CUDA;
+
 #ifdef __cplusplus
 }; // extern "C"
 #endif

@@ -3699,10 +3699,16 @@ typedef struct _TRACE_STORE {
     TRACE_STORE_SQLITE3_VTAB Sqlite3IntervalVirtualTable;
 
     //
+    // Pointer to Cuda-related structure if applicable.
+    //
+
+    struct _TRACE_STORE_CUDA *Cuda;
+
+    //
     // Final padding.
     //
 
-    ULONGLONG Padding3[21];
+    ULONGLONG Padding3[20];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
