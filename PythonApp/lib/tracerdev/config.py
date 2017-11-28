@@ -72,6 +72,8 @@ CONF_DIR = join_path(LIB_DIR, '../conf')
 LOGS_DIR = join_path(LIB_DIR, '../logs')
 DATA_DIR = join_path(LIB_DIR, '../data')
 ROOT_DIR = join_path(LIB_DIR, '../../')
+DEBUG_DIR = join_path(ROOT_DIR, 'x64/Debug')
+RELEASE_DIR = join_path(ROOT_DIR, 'x64/Release')
 
 #fixme: revisit these assertions
 #assert LIB_DIR.endswith('lib'), LIB_DIR

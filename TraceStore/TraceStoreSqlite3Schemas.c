@@ -6333,6 +6333,189 @@ TraceStoreSqlite3WsWatchInfoExColumn(
 }
 
 //
+// TraceStore_ExaminedSymbol.
+//
+
+CONST CHAR TraceStoreExaminedSymbolSchema[] =
+    "CREATE TABLE ExaminedSymbol("
+        "SizeOfStruct INT, "
+        "Flags INT, "
+        "Flags_IsPointer INT, "
+        "Flags_IsArray INT, "
+        "Flags_IsCpp INT, "
+        "Flags_IsUnknownType INT, "
+        "Type INT, "
+        "Type_UnknownType INT, "
+        "Type_NoType INT, "
+        "Type_FunctionType INT, "
+        "Type
+    ")";
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3ExaminedSymbolColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    PDEBUG_ENGINE_EXAMINED_SYMBOL ExaminedSymbol;
+    STRING Name;
+
+    ExaminedSymbol = (PSYMBOL_INFO)Cursor->CurrentRowRaw;
+
+    if (ExaminedSymbol->SizeOfStruct != sizeof(*ExaminedSymbol)) {
+        __debugbreak();
+    }
+
+    if (ColumnNumber == 13) {
+        if (ExaminedSymbol->NameLen == 0) {
+            ZeroStruct(Name);
+        } else {
+            Name.Length = (USHORT)ExaminedSymbol->NameLen;
+            Name.MaximumLength = (USHORT)ExaminedSymbol->MaxNameLen;
+            Name.Buffer = (PCHAR)&ExaminedSymbol->Name;
+        }
+    }
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: SizeOfStruct INT
+        //
+
+        case 0:
+            RESULT_ULONG(ExaminedSymbol->SizeOfStruct);
+            break;
+
+        //
+        // 1: TypeIndex INT
+        //
+
+        case 1:
+            RESULT_ULONG(ExaminedSymbol->TypeIndex);
+            break;
+
+        //
+        // 2: SymbolIndex INT
+        //
+
+        case 2:
+            RESULT_ULONG(ExaminedSymbol->Index);
+            break;
+
+        //
+        // 3: Size INT
+        //
+
+        case 3:
+            RESULT_ULONG(ExaminedSymbol->Size);
+            break;
+
+        //
+        // 4: ModBase BIGINT
+        //
+
+        case 4:
+            RESULT_ULONGLONG(ExaminedSymbol->ModBase);
+            break;
+
+        //
+        // 5: Flags INT
+        //
+
+        case 5:
+            RESULT_ULONG(ExaminedSymbol->Flags);
+            break;
+
+        //
+        // 6: Value BIGINT
+        //
+
+        case 6:
+            RESULT_ULONGLONG(ExaminedSymbol->Value);
+            break;
+
+        //
+        // 7: Address BIGINT
+        //
+
+        case 7:
+            RESULT_ULONGLONG(ExaminedSymbol->Address);
+            break;
+
+        //
+        // 8: Register INT
+        //
+
+        case 8:
+            RESULT_ULONG(ExaminedSymbol->Register);
+            break;
+
+        //
+        // 9: Scope INT
+        //
+
+        case 9:
+            RESULT_ULONG(ExaminedSymbol->Scope);
+            break;
+
+        //
+        // 10: Tag INT
+        //
+
+        case 10:
+            RESULT_ULONG(ExaminedSymbol->Tag);
+            break;
+
+        //
+        // 11: NameLen INT
+        //
+
+        case 11:
+            RESULT_ULONG(ExaminedSymbol->NameLen);
+            break;
+
+        //
+        // 12: MaxNameLen INT
+        //
+
+        case 12:
+            RESULT_ULONG(ExaminedSymbol->MaxNameLen);
+            break;
+
+        //
+        // 13: Name TEXT
+        //
+
+        case 13:
+            if (!((ExaminedSymbol->NameLen > 0))) {
+                RESULT_NULL();
+            } else {
+                RESULT_STRING(Name);
+            }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+
+//
 // N.B. Having the Python stuff here is an encapsulation violation, however,
 //      it does the job for now.
 //
@@ -8575,7 +8758,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbol
+    TraceStoreExaminedSymbolSchema, // TraceStore_ExaminedSymbol
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,

@@ -1,6 +1,5 @@
 Opened log file 'cdb-output.txt'
 0:000> dt -v Asm!_PAGE_COPY_TYPE
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Asm.dll
 struct _PAGE_COPY_TYPE, 5 elements, 0x4 bytes
    +0x000 Movsb            : Bitfield Pos 0, 1 Bit
    +0x000 Movsw            : Bitfield Pos 1, 1 Bit
@@ -14,12 +13,11 @@ struct _COPY_PAGES_FUNCTIONS, 4 elements, 0x20 bytes
    +0x010 CopyPagesNonTemporalAvx2_v3 : Ptr64 to     void 
    +0x018 CopyPagesNonTemporalAvx2_v4 : Ptr64 to     void 
 0:000> dt -v DebugEngine!_DEBUG_ENGINE
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\DebugEngine.dll
 struct _DEBUG_ENGINE, 64 elements, 0x2d0 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _DEBUG_ENGINE_FLAGS, 3 elements, 0x4 bytes
    +0x008 State            : union _DEBUG_ENGINE_STATE, 8 elements, 0x4 bytes
-   +0x010 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x010 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x018 Session          : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x020 IID_Client       : Ptr64 to struct _GUID, 4 elements, 0x10 bytes
    +0x028 IClient          : Ptr64 to struct IDebugClient7, 1 elements, 0x8 bytes
@@ -238,7 +236,7 @@ struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x118 ListSettings     : Ptr64 to     int 
    +0x120 ExecuteStaticCommand : Ptr64 to     int 
    +0x128 ExecuteDynamicCommand : Ptr64 to     int 
-   +0x130 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x130 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x138 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x140 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x148 CommandLineA     : Ptr64 to Char
@@ -287,7 +285,6 @@ struct _DEBUG_ENGINE_COMMAND_FLAGS, 7 elements, 0x4 bytes
 struct _DEBUG_ENGINE_COMMAND_OPTIONS, 1 elements, 0x8 bytes
    +0x000 OptionStrings    : Ptr64 to Ptr64 to Wchar
 0:000> dt -v Python!_PYOBJECT
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Python.dll
 struct _PYOBJECT, 5 elements, 0x10 bytes
    +0x000 ob_refcnt        : Int8B
    +0x000 ReferenceCount   : Int8B
@@ -1453,7 +1450,7 @@ struct _PYTHON, 120 elements, 0xb20 bytes
    +0x000 Size             : Uint4B
    +0x008 PythonModule     : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
    +0x010 PythonExModule   : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x020 RegisterNewPathEntry : Ptr64 to     int 
    +0x028 RegisterNewPathEntryContext : Ptr64 to Void
    +0x030 PythonFunctions  : struct _PYTHONFUNCTIONS, 54 elements, 0x1b0 bytes
@@ -1571,7 +1568,6 @@ struct _PYTHON, 120 elements, 0xb20 bytes
    +0xa18 NumberOfCacheElements : Uint2B
    +0xa20 CodeObjectCache  : [32] Ptr64 to struct _PYOBJECT, 5 elements, 0x10 bytes
 0:000> dt -v PythonTracer!_PYTHON_TRACE_EVENT1
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\PythonTracer.dll
 struct _PYTHON_TRACE_EVENT1, 28 elements, 0x80 bytes
    +0x000 Timestamp        : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x008 Function         : Ptr64 to struct _PYTHON_FUNCTION, 23 elements, 0x7d0 bytes
@@ -1632,7 +1628,7 @@ struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
    +0x004 Flags            : union _PYTHON_TRACE_CONTEXT_FLAGS, 13 elements, 0x4 bytes
    +0x008 RuntimeParameters : struct _PYTHON_TRACER_RUNTIME_PARAMETERS, 2 elements, 0x8 bytes
    +0x010 RuntimeState     : union _PYTHON_TRACER_RUNTIME_STATE, 5 elements, 0x4 bytes
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x020 Python           : Ptr64 to struct _PYTHON, 120 elements, 0xb20 bytes
    +0x028 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
    +0x030 CallbackWorker   : Ptr64 to     int 
@@ -1693,7 +1689,6 @@ struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
    +0x308 ActiveNewPythonPathTableEntryCallbacks : Uint4B
    +0x310 ThreadpoolCleanupGroup : Ptr64 to struct _TP_CLEANUP_GROUP, 0 elements, 0x0 bytes
 0:000> dt -v PythonTracerInjection!_PYTHON_TRACER_INJECTION_BREAKPOINT
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\PythonTracerInjection.dll
 struct _PYTHON_TRACER_INJECTION_BREAKPOINT, 1 elements, 0x88 bytes
    +0x000 InjectionBreakpoint : struct _TRACER_INJECTION_BREAKPOINT, 22 elements, 0x88 bytes
 0:000> dt -v PythonTracerInjection!_PYTHON_TRACER_INJECTION_CONTEXT
@@ -1713,7 +1708,6 @@ struct _PYTHON_TRACER_INJECTED_CONTEXT, 5 elements, 0x20 bytes
    +0x010 SuspendedMainThreadId : Uint4B
    +0x018 PythonDllModule  : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
 0:000> dt -v Rtl!_ATEXITEX_FLAGS
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Rtl.dll
 struct _ATEXITEX_FLAGS, 1 elements, 0x4 bytes
    +0x000 SuppressExceptions : Bitfield Pos 0, 1 Bit
 0:000> dt -v Rtl!_CU_DEVICE_ATTRIBUTES
@@ -2720,16 +2714,7 @@ struct _RTL_DYNAMIC_HASH_TABLE_ENUMERATOR, 5 elements, 0x28 bytes
    +0x020 BucketIndex      : Uint4B
    +0x024 Padding1         : Uint4B
 0:000> dt -v Rtl!_RTL_DYNAMIC_HASH_TABLE
-struct _RTL_DYNAMIC_HASH_TABLE, 9 elements, 0x28 bytes
-   +0x000 Flags            : Uint4B
-   +0x004 Shift            : Uint4B
-   +0x008 TableSize        : Uint4B
-   +0x00c Pivot            : Uint4B
-   +0x010 DivisorMask      : Uint4B
-   +0x014 NumEntries       : Uint4B
-   +0x018 NonEmptyBuckets  : Uint4B
-   +0x01c NumEnumerators   : Uint4B
-   +0x020 Directory        : Ptr64 to Void
+Exit on Control-C
 0:000> dt -v Rtl!_PREFIX_TABLE_ENTRY
 struct _PREFIX_TABLE_ENTRY, 5 elements, 0x30 bytes
    +0x000 NodeTypeCode     : Int2B
@@ -3308,7 +3293,7 @@ struct _ICLASS_FACTORY_VTBL, 5 elements, 0x28 bytes
    +0x018 CreateInstance   : Ptr64 to     HRESULT 
    +0x020 LockServer       : Ptr64 to     HRESULT 
 0:000> dt -v Rtl!_RTL
-struct _RTL, 483 elements, 0x1020 bytes
+struct _RTL, 481 elements, 0x1010 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _RTL_FLAGS, 7 elements, 0x4 bytes
    +0x008 NtdllModule      : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
@@ -3790,8 +3775,6 @@ struct _RTL, 483 elements, 0x1020 bytes
    +0x1000 ImageRvaToV      : Ptr64 to     void* 
    +0x1008 DbgEng           : struct _DBGENG, 1 elements, 0x8 bytes
    +0x1008 DebugCreate      : Ptr64 to     HRESULT 
-   +0x1010 TestLoadSymbols  : Ptr64 to     int 
-   +0x1018 TestLoadSymbolsFromMultipleModules : Ptr64 to     int 
 0:000> dt -v Rtl!_GUARDED_LIST
 struct _GUARDED_LIST, 3 elements, 0x20 bytes
    +0x000 Lock             : struct _RTL_SRWLOCK, 1 elements, 0x8 bytes
@@ -3827,7 +3810,7 @@ struct _RTL_LDR_NOTIFICATION_TABLE, 9 elements, 0x60 bytes
    +0x008 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
    +0x030 ListHead         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x040 HeapHandle       : Ptr64 to Void
-   +0x048 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x048 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x050 NotificationFunction : Ptr64 to     void 
    +0x058 Cookie           : Ptr64 to Void
 0:000> dt -v Rtl!_RTL_LDR_NOTIFICATION_ENTRY
@@ -3857,7 +3840,6 @@ Symbol Rtl!_SQLITE3_MODULE not found.
 0:000> dt -v Rtl!_SQLITE3_API_ROUTINES
 Symbol Rtl!_SQLITE3_API_ROUTINES not found.
 0:000> dt -v StringTable!_STRING_TABLE
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\StringTable.dll
 struct _STRING_TABLE, 16 elements, 0x200 bytes
    +0x000 OccupiedBitmap   : Uint2B
    +0x002 ContinuationBitmap : Uint2B
@@ -3944,7 +3926,6 @@ Symbol StringTable!_STRING_ARRAY31 not found.
 0:000> dt -v StringTable!_STRING_ARRAY32
 Symbol StringTable!_STRING_ARRAY32 not found.
 0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TracedPythonSession.dll
 struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
    +0x000 Size             : Uint2B
    +0x002 PythonMajorVersion : Char
@@ -3992,7 +3973,7 @@ struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
    +0x138 PythonArgvA      : Ptr64 to Ptr64 to Char
    +0x140 PythonArgvW      : Ptr64 to Ptr64 to Wchar
    +0x148 InitializeRtl    : Ptr64 to     int 
-   +0x150 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x150 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x158 CreateStringTable : Ptr64 to     _STRING_TABLE* 
    +0x160 DestroyStringTable : Ptr64 to     void 
    +0x168 CreateStringTableFromDelimitedString : Ptr64 to     _STRING_TABLE* 
@@ -4064,7 +4045,6 @@ Symbol TracerConfig!_TRACER_PATH_OFFSETS not found.
 Loading module TracerControlDriver.
 Symbol TracerControlDriver!_TRACER_CONTROL_DEV_EXT not found.
 0:000> dt -v TracerCore!_TRACER_INJECTION_BREAKPOINT_SPEC
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TracerCore.dll
 struct _TRACER_INJECTION_BREAKPOINT_SPEC, 3 elements, 0x18 bytes
    +0x000 OffsetExpression : Ptr64 to Char
    +0x008 HandleBreakpoint : Ptr64 to     HRESULT 
@@ -4100,7 +4080,7 @@ struct _TRACER_INJECTION_CONTEXT, 15 elements, 0x60 bytes
    +0x008 Flags            : union _TRACER_INJECTION_CONTEXT_FLAGS, 4 elements, 0x4 bytes
    +0x00c DebugEngineThreadId : Uint4B
    +0x010 DebugEngineThreadHandle : Ptr64 to Void
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x020 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x028 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x030 ParentDebugEngineSession : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
@@ -4111,7 +4091,6 @@ struct _TRACER_INJECTION_CONTEXT, 15 elements, 0x60 bytes
    +0x050 ResumeEvent      : Ptr64 to Void
    +0x058 CurrentInjectionBreakpoint : Ptr64 to struct _TRACER_INJECTION_BREAKPOINT, 22 elements, 0x88 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_ALLOCATION
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TraceStore.dll
 struct _TRACE_STORE_ALLOCATION, 2 elements, 0x10 bytes
    +0x000 NumberOfRecords  : union <unnamed-tag>, 6 elements, 0x8 bytes
    +0x008 RecordSize       : union _LARGE_INTEGER, 4 elements, 0x8 bytes
@@ -4250,7 +4229,7 @@ struct _TRACE_STORE_BITMAP, 4 elements, 0x10 bytes
    +0x008 Buffer           : Ptr64 to Uint4B
 0:000> dt -v TraceStore!_TRACE_SESSION
 struct _TRACE_SESSION, 8 elements, 0x48 bytes
-   +0x000 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x000 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x008 SessionId        : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x010 MachineGuid      : struct _GUID, 4 elements, 0x10 bytes
    +0x020 Sid              : Ptr64 to struct _SID, 4 elements, 0xc bytes
@@ -4372,7 +4351,7 @@ struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
    +0x004 Flags            : union _TRACE_CONTEXT_FLAGS, 6 elements, 0x4 bytes
    +0x008 FailedCount      : Uint4B
    +0x00c LastError        : Uint4B
-   +0x010 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x010 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x020 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x028 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
@@ -4665,7 +4644,7 @@ struct _TRACE_STORE, 148 elements, 0x800 bytes
    +0x100 ListEntry        : struct _SLIST_ENTRY, 1 elements, 0x10 bytes
    +0x100 Next             : Ptr64 to struct _SLIST_ENTRY, 1 elements, 0x10 bytes
    +0x108 Unused           : Ptr64 to Void
-   +0x110 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x110 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x118 pAllocator       : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x120 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
    +0x128 InitialSize      : union _LARGE_INTEGER, 4 elements, 0x8 bytes
@@ -4779,7 +4758,7 @@ struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x010 Padding2         : Uint4B
    +0x014 Flags            : struct _TRACE_FLAGS, 20 elements, 0x4 bytes
    +0x018 BaseDirectory    : struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x028 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x028 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x030 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x038 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x040 RundownListEntry : struct _LIST_ENTRY, 2 elements, 0x10 bytes
@@ -4870,7 +4849,7 @@ struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x010 Sqlite3Allocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x018 Sqlite3Db        : Ptr64 to struct sqlite3, 0 elements, 0x0 bytes
    +0x020 Sqlite3          : Ptr64 to struct _SQLITE3_API_ROUTINES, 217 elements, 0x6c8 bytes
-   +0x028 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x028 Rtl              : Ptr64 to struct _RTL, 481 elements, 0x1010 bytes
    +0x030 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x038 TraceSessionDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x040 OwningModule     : Ptr64 to Void

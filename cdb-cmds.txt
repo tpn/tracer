@@ -1,0 +1,4 @@
+bp ModuleLoader!MaybeBreak
+g
+dt -v TraceStore!_TRACE_STORE
+q

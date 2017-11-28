@@ -112,6 +112,8 @@ ModuleLoaderExeMain(VOID)
 
     while (TRUE) {
 
+        MaybeBreak(FALSE);
+
         Success = ReadConsoleW(StandardInput,
                                &Path,
                                sizeof(Path) >> 1,

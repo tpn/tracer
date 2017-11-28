@@ -7,6 +7,29 @@ from tracer.dbgeng import (
 )
 
 #===============================================================================
+# Tests
+#===============================================================================
+
+def test_struct_load_1():
+    s = Struct.load(struct__TEST1)
+    assert s.has_implicit_padding
+    assert s.has_trailing_padding
+
+def test_struct_load_2():
+    s = Struct.load(struct__TEST2)
+    assert s.has_implicit_padding
+    assert s.has_trailing_padding
+
+def test_struct_load_3():
+    s = Struct.load(struct__TEST3)
+
+def test_struct_load_trace_store():
+    s = Struct.load(struct__TRACE_STORE)
+
+def test_struct_load_trace_stores():
+    s = Struct.load(struct__TRACE_STORES)
+
+#===============================================================================
 # Constants
 #===============================================================================
 
@@ -219,27 +242,5 @@ struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x400 Relocations      : [60] struct _TRACE_STORE_RELOC, 9 elements, 0x48 bytes
    +0x2000 Stores           : [600] struct _TRACE_STORE, 148 elements, 0x800 bytes"""
 
-#===============================================================================
-# Tests
-#===============================================================================
-
-def test_struct_load_1():
-    s = Struct.load(struct__TEST1)
-    assert s.has_implicit_padding
-    assert s.has_trailing_padding
-
-def test_struct_load_2():
-    s = Struct.load(struct__TEST2)
-    assert s.has_implicit_padding
-    assert s.has_trailing_padding
-
-def test_struct_load_3():
-    s = Struct.load(struct__TEST3)
-
-def test_struct_load_trace_store():
-    s = Struct.load(struct__TRACE_STORE)
-
-def test_struct_load_trace_stores():
-    s = Struct.load(struct__TRACE_STORES)
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
