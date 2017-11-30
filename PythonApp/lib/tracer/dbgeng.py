@@ -6,6 +6,8 @@ from .logic import (
     Mutex,
 )
 
+import itertools
+
 from .util import (
     defaultdict,
 
@@ -237,6 +239,8 @@ def extract_type(line):
 class BaseLine(object):
     name = None
     line = None
+    offset = None
+    field_name = None
     is_numeric = False
     is_integer = False
     is_decimal = False
@@ -250,6 +254,8 @@ class BaseLine(object):
     __default_keys__ = [
         'name',
         'line',
+        'offset',
+        'field_name',
         'size_in_bytes',
         'number_of_elements',
     ]
@@ -709,7 +715,7 @@ class Bitmap(object):
                 self._size_in_bytes = 2
                 self._implicit_padding_bits = 16 - self.total_number_of_bits
 
-            if self.total_number_of_bits < 32:
+            elif self.total_number_of_bits < 32:
                 self._size_in_bytes = 4
                 self._implicit_padding_bits = 32 - self.total_number_of_bits
 
@@ -778,6 +784,40 @@ class ImplicitPadding(object):
 class TrailingPadding(ImplicitPadding):
     pass
 
+class _AnonymousStruct(object):
+    def __init__(self):
+        self.lines = []
+        self.line_types = []
+        self._field_names = None
+        self._size_in_bytes = None
+        self.finalized = False
+
+    def add_line_type(self, offset, line_type):
+        assert not self.finalized
+        self.line_types.append(line_type)
+
+    def finalize(self):
+        assert not self.finalized
+        self._field_names = tuple(t.field_name for t in self.line_types)
+
+        self.finalized = True
+
+    @property
+    def field_names(self):
+        assert self._finalized
+        return self._field_names
+
+class AnonymousUnion(object):
+    def __repr__(self):
+        fmt = "<%s offset=%d expected=%d size_in_bytes=%d line=%s>"
+        return fmt % (
+            self.__class__.__name__,
+            self.offset,
+            self.expected_offset,
+            self.size_in_bytes,
+            self.line,
+        )
+
 class Struct(StructLine):
 
     __keys__ = [
@@ -788,6 +828,9 @@ class Struct(StructLine):
 
     def __init__(self, *args, **kwds):
         StructLine.__init__(self, *args, **kwds)
+        self._init()
+
+    def _init(self):
         self.lines = []
         self.dt_line = None
         self.module_name = None
@@ -798,13 +841,14 @@ class Struct(StructLine):
         self.offset_to_line_type = OrderedDefaultDict(list)
         self.offset_to_field_name = OrderedDefaultDict(list)
         self.inline_union_offsets = []
+        self.anonymous_struct_offsets = []
         self.inline_bitfields = {}
         self.inline_bitfields_by_offset = OrderedDefaultDict(list)
         self.enums = {}
         self.enums_by_offset = OrderedDefaultDict(list)
         self.expected_next_offset = 0
         self.line_types = []
-        self.field_names = set()
+        self.field_names = []
         self.field_name_to_line_type = OrderedDict()
         self.last_line_was_bitfield = False
         self.bitmaps_by_offset = {}
@@ -816,7 +860,27 @@ class Struct(StructLine):
         self.offset_to_max_size_in_bytes = OrderedDict()
         self.implicit_paddings = OrderedDict()
         self.trailing_padding = None
+        self.children_by_offset = OrderedDict()
         self.finalized = False
+
+    def extract_anonymous_struct(self, offset):
+
+        import ipdb
+        ipdb.set_trace()
+
+        count = itertools.count(-1, -1)
+        for i in count:
+            line_type = self.line_types[i]
+            if line_type.offset == offset:
+                break
+
+        field_names = self.field_names[i:]
+        line_types = self.line_types[i:]
+
+        #anon_struct = AnonymousStructure(offset, last_offset)
+
+        #for (field_name, line_type) in zip(field_names, line_types):
+        #    anon_struct.add(line_type)
 
     def add_line(self, line):
         assert not self.finalized
@@ -832,15 +896,26 @@ class Struct(StructLine):
         offset = int(offset, 16)
 
         if self.last_offset:
-            #assert self.last_offset <= offset, (self.last_offset, offset)
-            pass
+            if offset < self.last_offset:
+                assert offset in self.offsets, offset
+                self.anonymous_struct_offsets.append((offset, self.last_offset))
 
-        assert field_name not in self.field_names
-        self.field_names.add(field_name)
+                # We've detected an anonymous structure within an anonymous
+                # union.  The union would have started at the byte offset
+                # indicated by the current value of `offset`.  This also marks
+                # the starting offset of the anonymous structure, which extends
+                # to and includes the immediately previous field offsets from
+                # the offset to the last offset.
+                #anon_struct = self.extract_anonymous_struct(offset)
+
+        assert field_name not in self.field_name_to_line_type
+        self.field_names.append(field_name)
 
         self.offsets[offset].append(line)
 
         t = extract_type(right)
+        t.offset = offset
+        t.field_name = field_name
 
         if not t.is_bitfield:
             self.line_types.append(t)
@@ -914,7 +989,6 @@ class Struct(StructLine):
         else:
             assert t.is_bitfield
 
-        self.line_types.append(t)
         self.field_name_to_line_type[field_name] = t
 
         self.last_offset = offset
@@ -1020,6 +1094,13 @@ class Struct(StructLine):
         struct.finalize()
 
         return struct
+
+    @classmethod
+    def load_from_cdb(cls, module_name, type_name):
+        from .cdb import run_single
+        command = 'dt -v %s!%s' % (module_name, type_name)
+        output = run_single(command)
+        return cls.load(output)
 
     @classmethod
     def load_all_from_text(cls, text):
@@ -1224,12 +1305,19 @@ class Struct(StructLine):
         }
 
 
+    def get_ctypes_decl(self):
+        pass
+
+    def get_ctypes_defi(self):
+        pass
+
     def as_ctypes_struct(self):
         buf = StringIO.StringIO()
 
         w = lambda chunk: buf.write(chunk)
         wl = lambda line: buf.write(line + '\n')
 
-
+class AnonymousStruct(Struct):
+    pass
 
 # vim:set ts=8 sw=4 sts=4 tw=80 et                                             :
