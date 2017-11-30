@@ -47,8 +47,8 @@ TracerExeMain(VOID)
     // Zero the allocators for the StringTable component.
     //
 
-    SecureZeroMemory(&StringArrayAllocator, sizeof(StringArrayAllocator));
-    SecureZeroMemory(&StringTableAllocator, sizeof(StringTableAllocator));
+    ZeroStruct(StringArrayAllocator);
+    ZeroStruct(StringTableAllocator);
 
     //
     // Initialize TracerConfig and Rtl.
