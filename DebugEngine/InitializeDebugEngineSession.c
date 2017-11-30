@@ -199,8 +199,8 @@ InitializeDebugEngineSessionStringTables(
     _In_ PRTL Rtl,
     _Inout_ PDEBUG_ENGINE_SESSION Session,
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
-    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
     _In_ PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
         CreateStringTableFromDelimitedString
     )
