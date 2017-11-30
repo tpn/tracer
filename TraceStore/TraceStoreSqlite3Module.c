@@ -556,9 +556,6 @@ TraceStoreSqlite3ModuleFilter(
     return SQLITE_OK;
 }
 
-typedef SYMBOL_INFO SYMBOL_INFO_30[30];
-typedef SYMBOL_INFO_30 *PSYMBOL_INFO_30;
-
 _Use_decl_annotations_
 LONG
 TraceStoreSqlite3ModuleNext(

@@ -842,6 +842,9 @@ Return Value:
 
     }
 
+    Success = TRUE;
+    goto End;
+
     //
     // Register all of our functions.
     //
@@ -884,8 +887,6 @@ Return Value:
     }
 #endif
 
-    Result = SQLITE_OK_LOAD_PERMANENTLY;
-
     goto End;
 
 Error:
@@ -920,6 +921,8 @@ End:
 
     if (!Success) {
         Result = SQLITE_ERROR;
+    } else {
+        Result = SQLITE_OK_LOAD_PERMANENTLY;
     }
 
     return Result;

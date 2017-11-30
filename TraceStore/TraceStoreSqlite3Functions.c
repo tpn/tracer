@@ -33,6 +33,16 @@ TraceStoreSqlite3CountStep(
     Cursor = TraceStoreSqlite3TlsGetCursor();
 
     //
+    // If there are any filter arguments, we can't use the count(*) optimization
+    // below.
+    //
+
+    if (Cursor->FilterArguments) {
+        Cursor->InternalCount++;
+        return;
+    }
+
+    //
     // Force the next Eof() callback to indicate we've reached the end of our
     // data set.  This avoids the need to stream through the entire record set.
     //
@@ -61,10 +71,14 @@ TraceStoreSqlite3CountFinal(
     ULONGLONG RecordCount;
 
     Cursor = TraceStoreSqlite3TlsGetCursor();
+
+    if (Cursor->FilterArguments) {
+        RecordCount = Cursor->InternalCount;
+    } else {
+        RecordCount = (Cursor->LastRowid - Cursor->FirstRowid) + 1;
+    }
+
     Sqlite3 = Cursor->Sqlite3;
-
-    RecordCount = (Cursor->LastRowid - Cursor->FirstRowid) + 1;
-
     Sqlite3->ResultInt64(Context, (SQLITE3_INT64)RecordCount);
 
     return;
