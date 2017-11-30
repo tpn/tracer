@@ -45,6 +45,47 @@ class RTL_FILE(Structure):
     ]
 PRTL_FILE = POINTER(RTL_FILE)
 
+#
+
+from ctypes import *
+from ..wintypes import *
+
+class _LINKED_STRING_INNER_UNION_1(Union):
+    pass
+
+class _LINKED_STRING_INNER_STRUCT_1(Structure):
+    _anonymous_ = ('u1',)
+
+class _LINKED_STRING_INNER_UNION_2(Union):
+    _anonymous_ = ('s1',)
+
+class LINKED_STRING(Structure):
+    _anonymous_ = ('u1',)
+PLINKED_STRING = POINTER(LINKED_STRING)
+
+_LINKED_STRING_INNER_UNION_1._fields_ = [
+    ('Buffer', PCHAR),
+    ('WideBuffer', PWCHAR),
+]
+
+_LINKED_STRING_INNER_STRUCT_1._fields_ = [
+    ('Length', USHORT),
+    ('MaximumLength', USHORT),
+    ('Hash', LONG),
+    ('u1', _LINKED_STRING_INNER_UNION_1),
+]
+
+_LINKED_STRING_INNER_UNION_2._fields_ = [
+    ('s1', _LINKED_STRING_INNER_STRUCT_1),
+    ('String', STRING),
+    ('Unicode', UNICODE_STRING),
+]
+
+LINKED_STRING._fields_ = [
+    ('ListEntry', LIST_ENTRY),
+    ('u1', _LINKED_STRING_INNER_UNION_2),
+]
+
 #===============================================================================
 # Functions
 #===============================================================================
