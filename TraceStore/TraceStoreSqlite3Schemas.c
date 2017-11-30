@@ -6333,6 +6333,431 @@ TraceStoreSqlite3WsWatchInfoExColumn(
 }
 
 //
+// TraceStore_ExaminedSymbol.
+//
+
+CONST CHAR TraceStoreExaminedSymbolSchema[] =
+    "CREATE TABLE ExaminedSymbol("
+        "SizeOfStruct INT, "
+        "Flags INT, "                                   // Flags.AsULong
+        "Flags_IsPointer TINYINT, "                     // Flags.IsPointer
+        "Flags_IsArray TINYINT, "                       // Flags.IsArray
+        "Flags_IsCpp TINYINT, "                         // Flags.IsCpp
+        "Flags_IsUnknownType TINYINT, "                 // Flags.UnknownType
+        "Type INT, "                                    // Type
+        "Type_UnknownType TINYINT, "                    // (Type == UnknownType)
+        "Type_NoType TINYINT, "                         // (Type == NoType)
+        "Type_FunctionType TINYINT, "                   // (Type == FunctionType)
+        "Type_CharType TINYINT, "                       // (Type == CharType)
+        "Type_WideCharType TINYINT, "                   // (Type == WideCharType)
+        "Type_ShortType TINYINT, "                      // (Type == ShortType)
+        "Type_LongType TINYINT, "                       // (Type == LongType)
+        "Type_Integer64Type TINYINT, "                  // (Type == Integer64Type)
+        "Type_IntegerType TINYINT, "                    // (Type == IntegerType)
+        "Type_UnsignedCharType TINYINT, "               // (Type == UnsignedCharType)
+        "Type_UnsignedWideCharType TINYINT, "           // (Type == UnsignedWideCharType)
+        "Type_UnsignedShortType TINYINT, "              // (Type == UnsignedShortType)
+        "Type_UnsignedLongType TINYINT, "               // (Type == UnsignedLongType)
+        "Type_InlineCallerType TINYINT, "               // (Type == InlineCallerType)
+        "Scope INT, "                                   // Scope
+        "Scope_PrivateGlobalScope TINYINT, "            // (Scope == PrivateGlobalScope)
+        "Scope_PrivateInlineScope TINYINT, "            // (Scope == PrivateInlineScope)
+        "Scope_PrivateFunctionScope TINYINT, "          // (Scope == PrivateFunctionScope)
+        "Scope_PublicGlobalScope TINYINT, "             // (Scope == PublicGlobalScope)
+        "Scope_PublicFunctionScope TINYINT, "           // (Scope == PublicFunctionScope)
+        "Address BIGINT, "                              // LARGE_INTEGER
+        "Strings_Line TEXT, "                           // Strings->Line, STRING
+        "Strings_Scope TEXT, "                          // Strings->Scope, STRING
+        "Strings_Address TEXT, "                        // Strings->Address, STRING
+        "Strings_Size TEXT, "                           // Strings->Size, STRING
+        "Strings_BasicType TEXT, "                      // Strings->BasicType, STRING
+        "Strings_TypeName TEXT, "                       // Strings->TypeName, STRING
+        "Strings_Array TEXT, "                          // Strings->Array, STRING
+        "Strings_ModuleName TEXT, "                     // Strings->ModuleName, STRING
+        "Strings_SymbolName TEXT, "                     // Strings->SymbolName, STRING
+        "Strings_Remaining TEXT, "                      // Strings->Remaining, STRING
+        "Strings_Value TEXT, "                          // Strings->Value, STRING
+        "Function_NumberOfArguments INT"                // [(Function != NULL)]
+    ")";
+
+_Use_decl_annotations_
+LONG
+TraceStoreSqlite3ExaminedSymbolColumn(
+    PCSQLITE3 Sqlite3,
+    PTRACE_STORE TraceStore,
+    PTRACE_STORE_SQLITE3_CURSOR Cursor,
+    PSQLITE3_CONTEXT Context,
+    LONG ColumnNumber
+    )
+{
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE Type;
+    DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE Scope;
+    DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS Flags;
+    PDEBUG_ENGINE_EXAMINED_SYMBOL ExaminedSymbol;
+    PDEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS Strings;
+    PDEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION Function;
+
+    ExaminedSymbol = (PDEBUG_ENGINE_EXAMINED_SYMBOL)Cursor->CurrentRowRaw;
+
+    if (ExaminedSymbol->SizeOfStruct != sizeof(*ExaminedSymbol)) {
+        __debugbreak();
+    }
+
+    Type = ExaminedSymbol->Type;
+    Flags = ExaminedSymbol->Flags;
+    Scope = ExaminedSymbol->Scope;
+    Strings = &ExaminedSymbol->Strings;
+
+    if (Type == FunctionType) {
+        Function = &ExaminedSymbol->Function;
+    } else {
+        Function = NULL;
+    }
+
+    switch (ColumnNumber) {
+
+        //
+        // Begin auto-generated section.
+        //
+
+        //
+        // 0: SizeOfStruct INT
+        //
+
+        case 0:
+            RESULT_ULONG(ExaminedSymbol->SizeOfStruct);
+            break;
+
+        //
+        // 1: Flags INT
+        //
+
+        case 1:
+            RESULT_ULONG(Flags.AsULong);
+            break;
+
+        //
+        // 2: Flags_IsPointer TINYINT
+        //
+
+        case 2:
+            RESULT_ULONG(Flags.IsPointer);
+            break;
+
+        //
+        // 3: Flags_IsArray TINYINT
+        //
+
+        case 3:
+            RESULT_ULONG(Flags.IsArray);
+            break;
+
+        //
+        // 4: Flags_IsCpp TINYINT
+        //
+
+        case 4:
+            RESULT_ULONG(Flags.IsCpp);
+            break;
+
+        //
+        // 5: Flags_IsUnknownType TINYINT
+        //
+
+        case 5:
+            RESULT_ULONG(Flags.UnknownType);
+            break;
+
+        //
+        // 6: Type INT
+        //
+
+        case 6:
+            RESULT_ULONG(Type);
+            break;
+
+        //
+        // 7: Type_UnknownType TINYINT
+        //
+
+        case 7:
+            RESULT_ULONG((Type == UnknownType));
+            break;
+
+        //
+        // 8: Type_NoType TINYINT
+        //
+
+        case 8:
+            RESULT_ULONG((Type == NoType));
+            break;
+
+        //
+        // 9: Type_FunctionType TINYINT
+        //
+
+        case 9:
+            RESULT_ULONG((Type == FunctionType));
+            break;
+
+        //
+        // 10: Type_CharType TINYINT
+        //
+
+        case 10:
+            RESULT_ULONG((Type == CharType));
+            break;
+
+        //
+        // 11: Type_WideCharType TINYINT
+        //
+
+        case 11:
+            RESULT_ULONG((Type == WideCharType));
+            break;
+
+        //
+        // 12: Type_ShortType TINYINT
+        //
+
+        case 12:
+            RESULT_ULONG((Type == ShortType));
+            break;
+
+        //
+        // 13: Type_LongType TINYINT
+        //
+
+        case 13:
+            RESULT_ULONG((Type == LongType));
+            break;
+
+        //
+        // 14: Type_Integer64Type TINYINT
+        //
+
+        case 14:
+            RESULT_ULONG((Type == Integer64Type));
+            break;
+
+        //
+        // 15: Type_IntegerType TINYINT
+        //
+
+        case 15:
+            RESULT_ULONG((Type == IntegerType));
+            break;
+
+        //
+        // 16: Type_UnsignedCharType TINYINT
+        //
+
+        case 16:
+            RESULT_ULONG((Type == UnsignedCharType));
+            break;
+
+        //
+        // 17: Type_UnsignedWideCharType TINYINT
+        //
+
+        case 17:
+            RESULT_ULONG((Type == UnsignedWideCharType));
+            break;
+
+        //
+        // 18: Type_UnsignedShortType TINYINT
+        //
+
+        case 18:
+            RESULT_ULONG((Type == UnsignedShortType));
+            break;
+
+        //
+        // 19: Type_UnsignedLongType TINYINT
+        //
+
+        case 19:
+            RESULT_ULONG((Type == UnsignedLongType));
+            break;
+
+        //
+        // 20: Type_InlineCallerType TINYINT
+        //
+
+        case 20:
+            RESULT_ULONG((Type == InlineCallerType));
+            break;
+
+        //
+        // 21: Scope INT
+        //
+
+        case 21:
+            RESULT_ULONG(Scope);
+            break;
+
+        //
+        // 22: Scope_PrivateGlobalScope TINYINT
+        //
+
+        case 22:
+            RESULT_ULONG((Scope == PrivateGlobalScope));
+            break;
+
+        //
+        // 23: Scope_PrivateInlineScope TINYINT
+        //
+
+        case 23:
+            RESULT_ULONG((Scope == PrivateInlineScope));
+            break;
+
+        //
+        // 24: Scope_PrivateFunctionScope TINYINT
+        //
+
+        case 24:
+            RESULT_ULONG((Scope == PrivateFunctionScope));
+            break;
+
+        //
+        // 25: Scope_PublicGlobalScope TINYINT
+        //
+
+        case 25:
+            RESULT_ULONG((Scope == PublicGlobalScope));
+            break;
+
+        //
+        // 26: Scope_PublicFunctionScope TINYINT
+        //
+
+        case 26:
+            RESULT_ULONG((Scope == PublicFunctionScope));
+            break;
+
+        //
+        // 27: Address BIGINT
+        //
+
+        case 27:
+            RESULT_LARGE_INTEGER(ExaminedSymbol->Address);
+            break;
+
+        //
+        // 28: Strings_Line TEXT
+        //
+
+        case 28:
+            RESULT_STRING(Strings->Line);
+            break;
+
+        //
+        // 29: Strings_Scope TEXT
+        //
+
+        case 29:
+            RESULT_STRING(Strings->Scope);
+            break;
+
+        //
+        // 30: Strings_Address TEXT
+        //
+
+        case 30:
+            RESULT_STRING(Strings->Address);
+            break;
+
+        //
+        // 31: Strings_Size TEXT
+        //
+
+        case 31:
+            RESULT_STRING(Strings->Size);
+            break;
+
+        //
+        // 32: Strings_BasicType TEXT
+        //
+
+        case 32:
+            RESULT_STRING(Strings->BasicType);
+            break;
+
+        //
+        // 33: Strings_TypeName TEXT
+        //
+
+        case 33:
+            RESULT_STRING(Strings->TypeName);
+            break;
+
+        //
+        // 34: Strings_Array TEXT
+        //
+
+        case 34:
+            RESULT_STRING(Strings->Array);
+            break;
+
+        //
+        // 35: Strings_ModuleName TEXT
+        //
+
+        case 35:
+            RESULT_STRING(Strings->ModuleName);
+            break;
+
+        //
+        // 36: Strings_SymbolName TEXT
+        //
+
+        case 36:
+            RESULT_STRING(Strings->SymbolName);
+            break;
+
+        //
+        // 37: Strings_Remaining TEXT
+        //
+
+        case 37:
+            RESULT_STRING(Strings->Remaining);
+            break;
+
+        //
+        // 38: Strings_Value TEXT
+        //
+
+        case 38:
+            RESULT_STRING(Strings->Value);
+            break;
+
+        //
+        // 39: Function_NumberOfArguments INT
+        //
+
+        case 39:
+            if (!((Function != NULL))) {
+                RESULT_NULL();
+            } else {
+                RESULT_ULONG(Function->NumberOfArguments);
+            }
+            break;
+
+        default:
+           INVALID_COLUMN();
+
+        //
+        // End auto-generated section.
+        //
+
+    }
+
+    return SQLITE_OK;
+}
+
+
+//
 // N.B. Having the Python stuff here is an encapsulation violation, however,
 //      it does the job for now.
 //
@@ -8575,7 +9000,7 @@ CONST LPCSTR TraceStoreSchemas[] = {
     TraceStoreSynchronizationSchema,
     TraceStoreInfoSchema,
 
-    PLACEHOLDER_SCHEMA, // TraceStore_ExaminedSymbol
+    TraceStoreExaminedSymbolSchema, // TraceStore_ExaminedSymbol
     TraceStoreMetadataInfoSchema,
     TraceStoreAllocationSchema,
     TraceStoreRelocationSchema,
@@ -9238,7 +9663,7 @@ CONST PTRACE_STORE_SQLITE3_COLUMN TraceStoreSqlite3Columns[] = {
     TraceStoreSqlite3SynchronizationColumn,
     TraceStoreSqlite3InfoColumn,
 
-    TraceStoreSqlite3DefaultColumnImpl, // TraceStore_ExaminedSymbol,
+    TraceStoreSqlite3ExaminedSymbolColumn, // TraceStore_ExaminedSymbol,
     TraceStoreSqlite3MetadataInfoColumn,
     TraceStoreSqlite3AllocationColumn,
     TraceStoreSqlite3RelocationColumn,
