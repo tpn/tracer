@@ -156,8 +156,14 @@ Routine Description:
 
     OriginalAllocationSize = AllocationSize = RecordSize * NumberOfRecords;
 
-    if (RecordSize == 1) {
+    if (RecordSize == 1 && NumberOfRecords > 1) {
         __debugbreak();
+    }
+
+    if (TraceStore->TraceStoreIndex == TraceStoreStringTableIndex) {
+        if (!(RecordSize == 512 && NumberOfRecords == 1)) {
+            __debugbreak();
+        }
     }
 
     //
