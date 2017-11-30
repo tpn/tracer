@@ -198,6 +198,7 @@ Return Value:
     PALLOCATOR ExaminedSymbolSecondaryAllocator;
     PSTRING_TABLE StringTable;
     PDEBUG_ENGINE_SESSION Session;
+    PDEBUG_ENGINE_FUNCTION_ARGUMENT FirstArgument;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_TYPE SymbolType;
     DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE SymbolScope;
     PDEBUG_ENGINE_EXAMINED_SYMBOL Symbol;
@@ -207,6 +208,12 @@ Return Value:
     CHAR StackBitmapBuffer[32];
     RTL_BITMAP Bitmap = { 32 << 3, (PULONG)&StackBitmapBuffer };
     PRTL_BITMAP BitmapPointer = &Bitmap;
+
+    //
+    // Temp debugging helper.
+    //
+
+    Output->Flags.DebugBreakOnLineParsingError = TRUE;
 
     //
     // Initialize aliases.
@@ -412,6 +419,7 @@ Return Value:
     MatchOffset = 0;
     MatchAttempts = 0;
     NumberOfStringTables = Session->NumberOfBasicTypeStringTables;
+    ZeroStruct(Match);
 
 RetryBasicTypeMatch:
 
@@ -488,7 +496,7 @@ RetryBasicTypeMatch:
     //      pointer-to-symbol-string-struct approach, e.g.:
     //
     //          PSTRING Address;
-    //          Address = &Symbol->String.Address;
+    //          Address = &Symbol->Strings.Address;
     //
     //      Instead of the current approach:
     //
@@ -504,16 +512,16 @@ RetryBasicTypeMatch:
     //
 
 #define COPY_PSTRING_EX(Name, Source)                                  \
-    Symbol->String.##Name##.Length = ##Source##->Length;               \
-    Symbol->String.##Name##.MaximumLength = ##Source##->MaximumLength; \
-    Symbol->String.##Name##.Buffer = ##Source##->Buffer
+    Symbol->Strings.##Name##.Length = ##Source##->Length;               \
+    Symbol->Strings.##Name##.MaximumLength = ##Source##->MaximumLength; \
+    Symbol->Strings.##Name##.Buffer = ##Source##->Buffer
 
 #define COPY_PSTRING(Name) COPY_PSTRING_EX(Name, Name)
 
 #define COPY_STRING_EX(Name, Source)                                  \
-    Symbol->String.##Name##.Length = ##Source##.Length;               \
-    Symbol->String.##Name##.MaximumLength = ##Source##.MaximumLength; \
-    Symbol->String.##Name##.Buffer = ##Source##.Buffer
+    Symbol->Strings.##Name##.Length = ##Source##.Length;               \
+    Symbol->Strings.##Name##.MaximumLength = ##Source##.MaximumLength; \
+    Symbol->Strings.##Name##.Buffer = ##Source##.Buffer
 
 #define COPY_STRING(Name) COPY_STRING_EX(Name, Name)
 
@@ -529,13 +537,44 @@ RetryBasicTypeMatch:
 
     Symbol->Address.QuadPart = Addr.QuadPart;
 
-    //
-    // Update our Char pointer past the length of the matched string (the basic
-    // type name).
-    //
+    if (SymbolType != EnumType) {
 
-    Char += Match.NumberOfMatchedCharacters;
-    BytesRemaining -= Match.NumberOfMatchedCharacters;
+        if (Match.NumberOfMatchedCharacters == 0) {
+            MAYBE_BREAK();
+            goto Error;
+        }
+
+        //
+        // Update our Char pointer past the length of the matched string (the
+        // basic type name).
+        //
+
+        Char += Match.NumberOfMatchedCharacters;
+        BytesRemaining -= Match.NumberOfMatchedCharacters;
+
+    } else {
+
+        //
+        // If this was an enum, verify the Match structure is zeroed.  Then,
+        // advance the Char pointer past the enum name, to the first space.
+        //
+
+        if (Match.NumberOfMatchedCharacters != 0) {
+            MAYBE_BREAK();
+            goto Error;
+        }
+
+        while (BytesRemaining > 0 && *Char != ' ') {
+            BytesRemaining--;
+            Char++;
+        }
+
+        if (BytesRemaining <= 0) {
+            MAYBE_BREAK();
+            goto Error;
+        }
+
+    }
 
     if (BytesRemaining <= 0) {
         MAYBE_BREAK();
@@ -600,7 +639,7 @@ RetryBasicTypeMatch:
     if (SymbolType == ClassType  || SymbolType == UnionType ||
         SymbolType == StructType) {
 
-        TypeName = &Symbol->String.TypeName;
+        TypeName = &Symbol->Strings.TypeName;
         TypeName->Buffer = Char;
 
         while (BytesRemaining > 0 && *Char != ' ') {
@@ -733,7 +772,7 @@ RetryBasicTypeMatch:
     // Char will currently be pointing.
     //
 
-    ModuleName = &Symbol->String.ModuleName;
+    ModuleName = &Symbol->Strings.ModuleName;
     ModuleName->Buffer = NextChar;
     ModuleName->Length = (USHORT)(Char - NextChar);
     ModuleName->MaximumLength = ModuleName->Length;
@@ -764,7 +803,7 @@ RetryBasicTypeMatch:
         // but before the module name.  Capture that information now.
         //
 
-        Array = &Symbol->String.Array;
+        Array = &Symbol->Strings.Array;
         Array->Buffer = Marker;
 
         //
@@ -810,7 +849,7 @@ RetryBasicTypeMatch:
     // Capture the current position as the start of the symbol name buffer.
     //
 
-    SymbolName = &Symbol->String.SymbolName;
+    SymbolName = &Symbol->Strings.SymbolName;
     SymbolName->Buffer = Char;
 
     //
@@ -854,7 +893,7 @@ RetryBasicTypeMatch:
     // processed.
     //
 
-    Remaining = &Symbol->String.Remaining;
+    Remaining = &Symbol->Strings.Remaining;
     Remaining->Buffer = Char;
     Remaining->Length = (USHORT)BytesRemaining;
     Remaining->MaximumLength = (USHORT)BytesRemaining;
@@ -951,9 +990,9 @@ RetryBasicTypeMatch:
     // Update the function arguments string with the buffer offsets.
     //
 
-    Arguments = &Symbol->String.FunctionArguments;
+    Arguments = &Symbol->Strings.FunctionArguments;
     Arguments->Buffer = Marker;
-    Arguments->Length = (USHORT)((Char - 1) - Arguments->Buffer);
+    Arguments->Length = (USHORT)(Char - Arguments->Buffer);
     Arguments->MaximumLength = Arguments->Length;
 
     //
@@ -1005,8 +1044,21 @@ RetryBasicTypeMatch:
     }
 
     //
-    // Create a new argument record for each argument.
+    // Allocate an array of function argument records.
     //
+
+    FirstArgument = (PDEBUG_ENGINE_FUNCTION_ARGUMENT)(
+        ExaminedSymbolSecondaryAllocator->CallocWithTimestamp(
+            ExaminedSymbolSecondaryAllocator->Context,
+            NumberOfArguments,
+            sizeof(*FirstArgument),
+            &Output->Timestamp.CommandStart
+        )
+    );
+
+    if (!FirstArgument) {
+        goto Error;
+    }
 
     Char = Arguments->Buffer;
     Marker = Arguments->Buffer;
@@ -1017,31 +1069,16 @@ RetryBasicTypeMatch:
         PCHAR ArgChar;
         PSTRING ArgumentType;
         PSTRING ArgumentTypeName;
-        PDEBUG_ENGINE_FUNCTION_ARGUMENT Argument;
         DEBUG_ENGINE_FUNCTION_ARGUMENT_TYPE ArgType;
-
-        //
-        // Allocate an argument record.
-        //
-
-        Argument = (PDEBUG_ENGINE_FUNCTION_ARGUMENT)(
-            ExaminedSymbolSecondaryAllocator->CallocWithTimestamp(
-                ExaminedSymbolSecondaryAllocator->Context,
-                1,
-                sizeof(*Argument),
-                &Output->Timestamp.CommandStart
-            )
-        );
-
-        if (!Argument) {
-            goto Error;
-        }
+        PDEBUG_ENGINE_FUNCTION_ARGUMENT Argument;
 
         //
         // Initialize the argument.
         //
 
+        Argument = FirstArgument + Index;
         Argument->ArgumentNumber = Index + 1;
+        Argument->SizeOfStruct = sizeof(*Argument);
 
         //
         // If the argument number is four or less, set register information.
@@ -1069,7 +1106,7 @@ RetryBasicTypeMatch:
         //
 
         if (Index == NumberOfArguments - 1) {
-            Char = Arguments->Buffer + (Arguments->Length + 1);
+            Char = Arguments->Buffer + Arguments->Length;
         } else {
             while (*Char != ',') {
                 Char++;
@@ -1131,6 +1168,8 @@ RetryBasicTypeMatch:
 
         MatchOffset = 0;
         MatchAttempts = 0;
+        ZeroStruct(Match);
+
         StringTable = Session->FunctionArgumentTypeStringTable1;
         IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
         NumberOfStringTables = (

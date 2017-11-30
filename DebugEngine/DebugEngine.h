@@ -1184,6 +1184,7 @@ typedef union _DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS {
     LONG AsLong;
     ULONG AsULong;
 } DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
+typedef DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS *PDEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS;
 C_ASSERT(sizeof(DEBUG_ENGINE_EXAMINED_SYMBOL_FLAGS) == sizeof(ULONG));
 
 //
@@ -1533,6 +1534,124 @@ typedef struct _DEBUG_ENGINE_FUNCTION_ARGUMENT {
 } DEBUG_ENGINE_FUNCTION_ARGUMENT;
 typedef DEBUG_ENGINE_FUNCTION_ARGUMENT *PDEBUG_ENGINE_FUNCTION_ARGUMENT;
 
+//
+// This structure is wired up such that each STRING structure points to the
+// relevant part of the line output.
+//
+
+typedef struct _DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS {
+
+    //
+    // Points to the raw line.
+    //
+
+    STRING Line;
+
+    //
+    // Points to the initial scope part of the line, e.g. "prv global".
+    //
+
+    STRING Scope;
+
+    //
+    // Points to the hex address of the symbol.
+    //
+
+    STRING Address;
+
+    //
+    // Points to the size element of the symbol.
+    //
+
+    STRING Size;
+
+    //
+    // Points to the basic type name of the symbol.
+    //
+
+    STRING BasicType;
+
+    //
+    // For user defined types (UDT) -- classes, structs and unions, this
+    // will point to the name of the type.
+    //
+
+    STRING TypeName;
+
+    //
+    // Points to any array information present after the type name but
+    // before the module name.  For example, given:
+    //
+    //      double [5] python27!bigtens = ...
+    //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
+    //
+    // Array will capture the "[5]" and "[95]" respectively.  (The presence
+    // of one or more preceeding asterisks will be captured in the flag
+    // 'IsPointer'.)
+    //
+
+    STRING Array;
+
+    //
+    // Points to the module name, if applicable.
+    //
+
+    STRING ModuleName;
+
+    //
+    // Points to the symbol name, if applicable.
+    //
+
+    union {
+        STRING SymbolName;
+        STRING Function;
+        STRING Structure;
+        STRING Union;
+    };
+
+    //
+    // Remaining string after the space that trails the symbol name will
+    // be specific to the type being examined.
+    //
+
+    STRING Remaining;
+
+    //
+    // Specific symbol types can refine the range of bytes that the
+    // "Remaining" string above points to via this Value field.
+    //
+
+    union {
+        STRING Value;
+        STRING FunctionArguments;
+    };
+
+} DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS;
+typedef DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS *PDEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS;
+
+typedef struct _DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION {
+
+    //
+    // Number of arguments to the function.
+    //
+
+    USHORT NumberOfArguments;
+
+    //
+    // Pad out to a pointer boundary.
+    //
+
+    USHORT Reserved[3];
+
+    //
+    // Linked-list head of all function arguments.
+    //
+
+    LIST_ENTRY ArgumentsListHead;
+
+} DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION;
+typedef DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION *PDEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION;
+
 typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
     //
@@ -1561,6 +1680,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
     DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE Scope;
 
     //
+    // String structures representing various parts of the line.
+    //
+
+    DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS Strings;
+
+    //
     // Pointer to the owning Output structure; this allows navigation back to
     // the debug engine and calling context.
     //
@@ -1577,99 +1702,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
     LARGE_INTEGER Address;
 
-    //
-    // The following strings are wired up to point to the relevant part of the
-    // line output.
-    //
-
-    struct {
-
-        //
-        // Points to the raw line.
-        //
-
-        STRING Line;
-
-        //
-        // Points to the initial scope part of the line, e.g. "prv global".
-        //
-
-        STRING Scope;
-
-        //
-        // Points to the hex address of the symbol.
-        //
-
-        STRING Address;
-
-        //
-        // Points to the size element of the symbol.
-        //
-
-        STRING Size;
-
-        //
-        // Points to the basic type name of the symbol.
-        //
-
-        STRING BasicType;
-
-        //
-        // For user defined types (UDT) -- classes, structs and unions, this
-        // will point to the name of the type.
-        //
-
-        STRING TypeName;
-
-        //
-        // Points to any array information present after the type name but
-        // before the module name.  For example, given:
-        //
-        //      double [5] python27!bigtens = ...
-        //      struct _UNICODE_STRING *[95] Python!ApiSetFilesW ...
-        //
-        // Array will capture the "[5]" and "[95]" respectively.  (The presence
-        // of one or more preceeding asterisks will be captured in the flag
-        // 'IsPointer'.)
-        //
-
-        STRING Array;
-
-        //
-        // Points to the module name, if applicable.
-        //
-
-        STRING ModuleName;
-
-        //
-        // Points to the symbol name, if applicable.
-        //
-
-        union {
-            STRING SymbolName;
-            STRING Function;
-            STRING Structure;
-            STRING Union;
-        };
-
-        //
-        // Remaining string after the space that trails the symbol name will
-        // be specific to the type being examined.
-        //
-
-        STRING Remaining;
-
-        //
-        // Specific symbol types can refine the range of bytes that the
-        // "Remaining" string above points to via this Value field.
-        //
-
-        union {
-            STRING Value;
-            STRING FunctionArguments;
-        };
-
-    } String;
 
     //
     // Linked list entry that links to the parent output.
@@ -1683,27 +1715,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_EXAMINED_SYMBOL {
 
     union {
 
-        struct {
+        DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION Function;
 
-            //
-            // Number of arguments to the function.
-            //
-
-            USHORT NumberOfArguments;
-
-            //
-            // Pad out to a pointer boundary.
-            //
-
-            USHORT Reserved[3];
-
-            //
-            // Linked-list head of all function arguments.
-            //
-
-            LIST_ENTRY ArgumentsListHead;
-
-        } Function;
     };
 
 } DEBUG_ENGINE_EXAMINED_SYMBOL;
