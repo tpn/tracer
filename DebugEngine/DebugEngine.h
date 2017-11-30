@@ -2899,13 +2899,13 @@ Arguments:
     StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
         the fully-qualified path of the StringTable DLL to load.
 
-    StringArrayAllocator- Supplies a pointer to an allocator to use for string
+    StringArrayAllocator - Supplies a pointer to an allocator to use for string
         array allocations.  If the allocator has not yet been initialized (as
         indicated by a NULL value in the Context field), the standard string
         table allocator initialization routine will be called against the
         structure first.
 
-    StringTableAllocator- Supplies a pointer to an allocator to use for string
+    StringTableAllocator - Supplies a pointer to an allocator to use for string
         table allocations.  If the allocator has not yet been initialized (as
         indicated by a NULL value in the Context field), the standard string
         table allocator initialization routine will be called against the
@@ -3158,13 +3158,13 @@ Arguments:
     StringTableDllPath - Supplies a pointer to a UNICODE_STRING that contains
         the fully-qualified path of the StringTable DLL to load.
 
-    StringArrayAllocator- Supplies a pointer to an allocator to use for string
+    StringArrayAllocator - Supplies a pointer to an allocator to use for string
         array allocations.  If the allocator has not yet been initialized (as
         indicated by a NULL value in the Context field), the standard string
         table allocator initialization routine will be called against the
         structure first.
 
-    StringTableAllocator- Supplies a pointer to an allocator to use for string
+    StringTableAllocator - Supplies a pointer to an allocator to use for string
         table allocations.  If the allocator has not yet been initialized (as
         indicated by a NULL value in the Context field), the standard string
         table allocator initialization routine will be called against the
