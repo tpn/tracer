@@ -3535,6 +3535,12 @@ typedef struct _TRACE_STORE_SQLITE3_CURSOR {
     STRING FilterIndexString;
 
     //
+    // Internal counter if count(*) is called with filter arguments present.
+    //
+
+    ULONGLONG InternalCount;
+
+    //
     // Inline SQLITE3_VTAB_CURSOR structure.
     //
     // N.B.: This structure must always come last.
