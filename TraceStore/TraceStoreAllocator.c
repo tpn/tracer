@@ -162,7 +162,9 @@ TraceStoreAllocatorCallocWithTimestamp(
     TraceContext = TraceStore->TraceContext;
 
     if (ElementSize == 1) {
-        __debugbreak();
+        if (NumberOfElements > 1) {
+            __debugbreak();
+        }
     }
 
     Address = TraceStore->AllocateRecordsWithTimestamp(TraceContext,
