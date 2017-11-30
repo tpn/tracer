@@ -829,6 +829,8 @@ Return Value:
     PRTL Rtl;
     BOOL Success;
     ULONG ExitCode;
+    PTRACE_STORE StringTableStore;
+    PTRACE_STORE StringArrayStore;
     PTRACE_STORES TraceStores;
     PTRACE_CONTEXT TraceContext;
     PALLOCATOR StringTableAllocator;
@@ -844,19 +846,14 @@ Return Value:
     InitFlags.InitializeFromCurrentProcess = TRUE;
     TracerConfig = TraceContext->TracerConfig;
 
-    StringTableAllocator = &(
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreStringTableId
-        )
-    )->Allocator;
+    StringTableStore = TraceStoreIdToTraceStore(TraceStores,
+                                                TraceStoreStringTableId);
 
-    StringArrayAllocator = &(
-        TraceStoreIdToTraceStore(
-            TraceStores,
-            TraceStoreStringArrayId
-        )
-    )->Allocator;
+    StringArrayStore = TraceStoreIdToTraceStore(TraceStores,
+                                                TraceStoreStringArrayId);
+
+    StringTableAllocator = &StringTableStore->Allocator;
+    StringArrayAllocator = &StringArrayStore->Allocator;
 
     Success = LoadAndInitializeDebugEngineSession(
         &TracerConfig->Paths.DebugEngineDllPath,
@@ -1254,17 +1251,17 @@ Return Value:
     // DEBUG_ENGINE_EXAMINED_SYMBOL structure.
     //
 
-#define INITIALIZE_ARGUMENT(Name)                           \
-                                                            \
-    Success = ConvertStringToWide(&Symbol->String.##Name##, \
-                                  &ArgumentWide,            \
-                                  Allocator,                \
-                                  &ArgumentWidePointer);    \
-                                                            \
-    if (!Success) {                                         \
-        __debugbreak();                                     \
-        ConvertStringToWideFailed++;                        \
-        break;                                              \
+#define INITIALIZE_ARGUMENT(Name)                            \
+                                                             \
+    Success = ConvertStringToWide(&Symbol->Strings.##Name##, \
+                                  &ArgumentWide,             \
+                                  Allocator,                 \
+                                  &ArgumentWidePointer);     \
+                                                             \
+    if (!Success) {                                          \
+        __debugbreak();                                      \
+        ConvertStringToWideFailed++;                         \
+        break;                                               \
     }
 
     //
@@ -1354,7 +1351,7 @@ Return Value:
 
                 Skip = (
                     Symbol->Flags.IsPointer ||
-                    Rtl->RtlEqualString(&Symbol->String.SymbolName,
+                    Rtl->RtlEqualString(&Symbol->Strings.SymbolName,
                                         &CSpecificHandler,
                                         FALSE)
                 );
