@@ -2857,6 +2857,7 @@ RemoveHeadModuleTableEntryFromDebugContext(
     }
 
     ListEntry = RemoveHeadList(ListHead);
+    GuardedList->NumberOfEntries--;
 
     *ModuleTableEntry = CONTAINING_RECORD(ListEntry,
                                           TRACE_MODULE_TABLE_ENTRY,
