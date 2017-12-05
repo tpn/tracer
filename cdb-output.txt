@@ -163,6 +163,28 @@ struct _DEBUG_ENGINE_FUNCTION_ARGUMENT, 12 elements, 0x58 bytes
    +0x038 Register         : union <unnamed-tag>, 1 elements, 0x4 bytes
    +0x040 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x050 Type             : Ptr64 to struct _DEBUG_ENGINE_DISPLAYED_TYPE, 7 elements, 0x38 bytes
+0:000> dt -v DebugEngine!_DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS
+struct _DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS, 15 elements, 0xb0 bytes
+   +0x000 Line             : struct _STRING, 5 elements, 0x10 bytes
+   +0x010 Scope            : struct _STRING, 5 elements, 0x10 bytes
+   +0x020 Address          : struct _STRING, 5 elements, 0x10 bytes
+   +0x030 Size             : struct _STRING, 5 elements, 0x10 bytes
+   +0x040 BasicType        : struct _STRING, 5 elements, 0x10 bytes
+   +0x050 TypeName         : struct _STRING, 5 elements, 0x10 bytes
+   +0x060 Array            : struct _STRING, 5 elements, 0x10 bytes
+   +0x070 ModuleName       : struct _STRING, 5 elements, 0x10 bytes
+   +0x080 SymbolName       : struct _STRING, 5 elements, 0x10 bytes
+   +0x080 Function         : struct _STRING, 5 elements, 0x10 bytes
+   +0x080 Structure        : struct _STRING, 5 elements, 0x10 bytes
+   +0x080 Union            : struct _STRING, 5 elements, 0x10 bytes
+   +0x090 Remaining        : struct _STRING, 5 elements, 0x10 bytes
+   +0x0a0 Value            : struct _STRING, 5 elements, 0x10 bytes
+   +0x0a0 FunctionArguments : struct _STRING, 5 elements, 0x10 bytes
+0:000> dt -v DebugEngine!_DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION
+struct _DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION, 3 elements, 0x18 bytes
+   +0x000 NumberOfArguments : Uint2B
+   +0x002 Reserved         : [3] Uint2B
+   +0x008 ArgumentsListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
 0:000> dt -v DebugEngine!_DEBUG_ENGINE_EXAMINED_SYMBOL
 struct _DEBUG_ENGINE_EXAMINED_SYMBOL, 11 elements, 0x100 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -171,13 +193,13 @@ struct _DEBUG_ENGINE_EXAMINED_SYMBOL, 11 elements, 0x100 bytes
 
    +0x00c Scope            : Enum _DEBUG_ENGINE_EXAMINE_SYMBOLS_SCOPE,  7 total enums
 
-   +0x010 Output           : Ptr64 to struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
-   +0x018 Size             : Uint4B
-   +0x01c Padding1         : Uint4B
-   +0x020 Address          : union _LARGE_INTEGER, 4 elements, 0x8 bytes
-   +0x028 String           : struct <unnamed-tag>, 15 elements, 0xb0 bytes
+   +0x010 Strings          : struct _DEBUG_ENGINE_EXAMINED_SYMBOL_LINE_STRINGS, 15 elements, 0xb0 bytes
+   +0x0c0 Output           : Ptr64 to struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
+   +0x0c8 Size             : Uint4B
+   +0x0cc Padding1         : Uint4B
+   +0x0d0 Address          : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x0d8 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
-   +0x0e8 Function         : struct <unnamed-tag>, 3 elements, 0x18 bytes
+   +0x0e8 Function         : struct _DEBUG_ENGINE_EXAMINED_SYMBOL_FUNCTION, 3 elements, 0x18 bytes
 0:000> dt -v DebugEngine!_DEBUG_ENGINE_UNASSEMBLED_FUNCTION
 struct _DEBUG_ENGINE_UNASSEMBLED_FUNCTION, 7 elements, 0x30 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -1637,7 +1659,7 @@ struct _EVENT_TYPE, 6 elements, 0x8 bytes
 0:000> dt -v PythonTracer!_PYTHON_TRACE_CONTEXT
 struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
    +0x000 Size             : Uint4B
-   +0x004 Flags            : union _PYTHON_TRACE_CONTEXT_FLAGS, 13 elements, 0x4 bytes
+   +0x004 Flags            : union _PYTHON_TRACE_CONTEXT_FLAGS, 14 elements, 0x4 bytes
    +0x008 RuntimeParameters : struct _PYTHON_TRACER_RUNTIME_PARAMETERS, 2 elements, 0x8 bytes
    +0x010 RuntimeState     : union _PYTHON_TRACER_RUNTIME_STATE, 5 elements, 0x4 bytes
    +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
@@ -4968,7 +4990,7 @@ struct _TRACE_STORE_COLUMN, 6 elements, 0x28 bytes
    +0x018 PointedToColumn  : Ptr64 to struct _TRACE_STORE_COLUMN, 6 elements, 0x28 bytes
    +0x020 Name             : Ptr64 to Char
 0:000> dt -v TraceStore!_TRACE_STORE_SQLITE3_CURSOR
-struct _TRACE_STORE_SQLITE3_CURSOR, 38 elements, 0x108 bytes
+struct _TRACE_STORE_SQLITE3_CURSOR, 39 elements, 0x110 bytes
    +0x000 Traits           : struct _TRACE_STORE_TRAITS, 17 elements, 0x4 bytes
    +0x004 Flags            : union _TRACE_STORE_SQLITE3_CURSOR_FLAGS, 8 elements, 0x4 bytes
    +0x008 Rowid            : Uint8B
@@ -5005,8 +5027,9 @@ struct _TRACE_STORE_SQLITE3_CURSOR, 38 elements, 0x108 bytes
    +0x0e4 FilterIndexNumber : Int4B
    +0x0e8 FilterIndexStringBuffer : Ptr64 to Char
    +0x0f0 FilterIndexString : struct _STRING, 5 elements, 0x10 bytes
-   +0x100 VirtualTable     : Ptr64 to struct _SQLITE3_VTAB, 4 elements, 0x18 bytes
-   +0x100 AsSqlite3VtabCursor : struct _SQLITE3_VTAB_CURSOR, 1 elements, 0x8 bytes
+   +0x100 InternalCount    : Uint8B
+   +0x108 VirtualTable     : Ptr64 to struct _SQLITE3_VTAB, 4 elements, 0x18 bytes
+   +0x108 AsSqlite3VtabCursor : struct _SQLITE3_VTAB_CURSOR, 1 elements, 0x8 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_SQLITE3_DB
 struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x000 SizeOfStruct     : Uint4B
