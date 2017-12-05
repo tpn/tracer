@@ -903,6 +903,7 @@ Return Value:
     TRY_MAPPED_MEMORY_OP {
         ExitCode = DebugContext->ThreadEntry(DebugContext);
     } CATCH_STATUS_IN_PAGE_ERROR {
+        __debugbreak();
         ExitCode = 1;
     }
 
@@ -958,7 +959,7 @@ Return Value:
         WaitResult = WaitForMultipleObjects(NumberOfWaits,
                                             Events,
                                             WaitAny,
-                                            INFINITE);
+                                            1000);
 
         AcquireTraceDebugContextLock(DebugContext);
 
@@ -972,7 +973,8 @@ Return Value:
             Result = 0;
             break;
 
-        } else if (WaitResult == WAIT_OBJECT_0+1) {
+        } else if (WaitResult == WAIT_OBJECT_0+1 ||
+                   WaitResult == WAIT_TIMEOUT) {
 
             //
             // Work available event.  Pop an item off the work queue and
@@ -1024,28 +1026,40 @@ Return Value:
     BOOL Success;
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
-    Success = RemoveHeadModuleTableEntryFromDebugContext(DebugContext,
-                                                         &ModuleTableEntry);
+    while (TRUE) {
 
-    if (!Success) {
-#ifdef _DEBUG
-        __debugbreak();
-#endif
-        return FALSE;
+        Success = RemoveHeadModuleTableEntryFromDebugContext(
+            DebugContext,
+            &ModuleTableEntry
+        );
+
+        if (!Success) {
+            Success = TRUE;
+            break;
+        }
+
+        if (1) {
+            OutputDebugStringA("ProcessTraceDebugEngineWork: ");
+            PrintUnicodeStringToDebugStream(
+                &ModuleTableEntry->File.Path.Full
+            );
+        }
+
+        Success = CreateTypeInfoTableForModuleTableEntry(
+            DebugContext,
+            ModuleTableEntry
+        );
+
+        if (!Success) {
+            DebugContext->NumberOfWorkItemsFailed++;
+        } else {
+            DebugContext->NumberOfWorkItemsSucceeded++;
+        }
+
+        DebugContext->NumberOfWorkItemsProcessed++;
     }
 
-    Success = CreateTypeInfoTableForModuleTableEntry(DebugContext,
-                                                     ModuleTableEntry);
-
-    if (!Success) {
-        DebugContext->NumberOfWorkItemsFailed++;
-    } else {
-        DebugContext->NumberOfWorkItemsSucceeded++;
-    }
-
-    DebugContext->NumberOfWorkItemsProcessed++;
-
-    return TRUE;
+    return Success;
 }
 
 _Use_decl_annotations_
@@ -1189,6 +1203,7 @@ Return Value:
     );                                                      \
                                                             \
     if (!Success) {                                         \
+        __debugbreak();                                     \
         return FALSE;                                       \
     }
 

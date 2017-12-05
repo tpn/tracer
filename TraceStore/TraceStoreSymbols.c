@@ -712,7 +712,7 @@ Return Value:
         WaitResult = WaitForMultipleObjects(NumberOfWaits,
                                             Events,
                                             WaitAny,
-                                            INFINITE);
+                                            1000);
 
         AcquireTraceSymbolContextLock(SymbolContext);
 
@@ -726,7 +726,8 @@ Return Value:
             Result = 0;
             break;
 
-        } else if (WaitResult == WAIT_OBJECT_0+1) {
+        } else if (WaitResult == WAIT_OBJECT_0+1 ||
+                   WaitResult == WAIT_TIMEOUT) {
 
             //
             // Work available event.  Pop an item off the work queue and
@@ -778,28 +779,40 @@ Return Value:
     BOOL Success;
     PTRACE_MODULE_TABLE_ENTRY ModuleTableEntry;
 
-    Success = RemoveHeadModuleTableEntryFromSymbolContext(SymbolContext,
-                                                          &ModuleTableEntry);
+    while (TRUE) {
 
-    if (!Success) {
-#ifdef _DEUBG
-        __debugbreak();
-#endif
-        return FALSE;
+        Success = RemoveHeadModuleTableEntryFromSymbolContext(
+            SymbolContext,
+            &ModuleTableEntry
+        );
+
+        if (!Success) {
+            Success = TRUE;
+            break;
+        }
+
+        Success = CreateSymbolTableForModuleTableEntry(
+            SymbolContext,
+            ModuleTableEntry
+        );
+
+        if (1) {
+            OutputDebugStringA("ProcessTraceSymbolWork: ");
+            PrintUnicodeStringToDebugStream(
+                &ModuleTableEntry->File.Path.Full
+            );
+        }
+
+        if (!Success) {
+            SymbolContext->NumberOfWorkItemsFailed++;
+        } else {
+            SymbolContext->NumberOfWorkItemsSucceeded++;
+        }
+
+        SymbolContext->NumberOfWorkItemsProcessed++;
     }
 
-    Success = CreateSymbolTableForModuleTableEntry(SymbolContext,
-                                                   ModuleTableEntry);
-
-    if (!Success) {
-        SymbolContext->NumberOfWorkItemsFailed++;
-    } else {
-        SymbolContext->NumberOfWorkItemsSucceeded++;
-    }
-
-    SymbolContext->NumberOfWorkItemsProcessed++;
-
-    return TRUE;
+    return Success;
 }
 
 _Use_decl_annotations_
@@ -868,7 +881,7 @@ Return Value:
         goto Error;
     }
 
-    if (0) {
+    if (1) {
         OutputDebugStringA("CreateSymbolTableForModuleTableEntry: ");
         PrintUnicodeStringToDebugStream(&Path->Full);
     }
