@@ -76,7 +76,7 @@ typedef struct _TRACE_STORE_ALLOCATION {
 } TRACE_STORE_ALLOCATION, *PTRACE_STORE_ALLOCATION;
 C_ASSERT(sizeof(TRACE_STORE_ALLOCATION) == 16);
 
-#define IsDummyAllocation(Allocation) \
+#define IsDummyAllocation(Allocation)                \
     (Allocation->NumberOfRecords.SignedQuadPart < 0)
 
 typedef struct _TRACE_STORE_ALLOCATION_TIMESTAMP {
@@ -2513,22 +2513,22 @@ C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_SYMBOL_CONTEXT, Reserved) == 184);
 C_ASSERT(sizeof(TRACE_SYMBOL_CONTEXT) == 256);
 
-#define AcquireTraceSymbolContextLock(SymbolContext) \
+#define AcquireTraceSymbolContextLock(SymbolContext)      \
     EnterCriticalSection(&SymbolContext->CriticalSection)
 
-#define TryAcquireTraceSymbolContextLock(SymbolContext) \
+#define TryAcquireTraceSymbolContextLock(SymbolContext)      \
     TryEnterCriticalSection(&SymbolContext->CriticalSection)
 
-#define ReleaseTraceSymbolContextLock(SymbolContext) \
+#define ReleaseTraceSymbolContextLock(SymbolContext)      \
     LeaveCriticalSection(&SymbolContext->CriticalSection)
 
-#define SymbolContextIsStructureCreated(SymbolContext) \
+#define SymbolContextIsStructureCreated(SymbolContext)                \
     (SymbolContext->State == TraceSymbolContextStructureCreatedState)
 
-#define SymbolContextIsThreadCreated(SymbolContext) \
+#define SymbolContextIsThreadCreated(SymbolContext)                \
     (SymbolContext->State == TraceSymbolContextThreadCreatedState)
 
-#define SymbolContextIsThreadRunningCreated(SymbolContext) \
+#define SymbolContextIsThreadRunningCreated(SymbolContext)         \
     (SymbolContext->State == TraceSymbolContextThreadRunningState)
 
 
@@ -2780,22 +2780,22 @@ C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkList) == 64);
 //C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
 //C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 512);
 
-#define AcquireTraceDebugContextLock(DebugContext) \
+#define AcquireTraceDebugContextLock(DebugContext)       \
     EnterCriticalSection(&DebugContext->CriticalSection)
 
-#define TryAcquireTraceDebugContextLock(DebugContext) \
+#define TryAcquireTraceDebugContextLock(DebugContext)       \
     TryEnterCriticalSection(&DebugContext->CriticalSection)
 
-#define ReleaseTraceDebugContextLock(DebugContext) \
+#define ReleaseTraceDebugContextLock(DebugContext)       \
     LeaveCriticalSection(&DebugContext->CriticalSection)
 
-#define DebugContextIsStructureCreated(DebugContext) \
+#define DebugContextIsStructureCreated(DebugContext)                \
     (DebugContext->State == TraceDebugContextStructureCreatedState)
 
-#define DebugContextIsThreadCreated(DebugContext) \
+#define DebugContextIsThreadCreated(DebugContext)                \
     (DebugContext->State == TraceDebugContextThreadCreatedState)
 
-#define DebugContextIsThreadRunningCreated(DebugContext) \
+#define DebugContextIsThreadRunningCreated(DebugContext)         \
     (DebugContext->State == TraceDebugContextThreadRunningState)
 
 
