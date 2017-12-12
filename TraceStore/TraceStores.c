@@ -93,6 +93,7 @@ Return Value:
     BOOL Success;
     BOOL Readonly;
     BOOL Compress;
+    BOOL DisableAllocationTimestamps;
     HRESULT Result;
     DWORD Index;
     DWORD StoreIndex;
@@ -174,6 +175,9 @@ Return Value:
     Flags = *TraceFlags;
     Compress = Flags.Compress;
     Readonly = Flags.Readonly;
+    DisableAllocationTimestamps = (
+        TracerConfig->Flags.DisableAllocationTimestamps
+    );
 
     if (!Sizes) {
         Sizes = InitialTraceStoreFileSizes;
@@ -593,6 +597,7 @@ Return Value:
         TraceStore->IntervalFramesPerSecond = (
             TracerConfig->RuntimeParameters.IntervalFramesPerSecond
         );
+        TraceStore->NoAllocationTimestamps = DisableAllocationTimestamps;
 
         Reloc = &TraceStores->Relocations[Index];
 

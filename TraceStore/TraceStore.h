@@ -3260,7 +3260,8 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_FLAGS {
     ULONG HasFlatMapping:1;
     ULONG FlatMappingLoaded:1;
     ULONG Excluded:1;
-    ULONG Unused:12;
+    ULONG NoAllocationTimestamps:1;
+    ULONG Unused:11;
 } TRACE_STORE_FLAGS;
 typedef TRACE_STORE_FLAGS *PTRACE_STORE_FLAGS;
 C_ASSERT(sizeof(TRACE_STORE_FLAGS) == sizeof(ULONG));
@@ -3298,7 +3299,8 @@ typedef struct _TRACE_STORE {
             ULONG HasFlatMapping:1;
             ULONG FlatMappingLoaded:1;
             ULONG Excluded:1;
-            ULONG UnusedStoreFlagBits:12;
+            ULONG NoAllocationTimestamps:1;
+            ULONG UnusedStoreFlagBits:11;
         };
 
         TRACE_STORE_FLAGS StoreFlags;

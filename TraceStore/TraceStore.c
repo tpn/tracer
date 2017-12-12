@@ -191,14 +191,36 @@ Return Value:
 
     TraceStore->MappingSize.QuadPart = MappingSize.QuadPart;
 
-    //
-    // Initialize allocators now for metadata.  They don't participate in the
-    // suspended allocation machinery as we control them entirely.  Normal
-    // trace stores have their allocators initialized when bound to a trace
-    // context.
-    //
-
     if (TraceStore->IsMetadata) {
+
+        //
+        // Temporary hack: if disable allocation timestamp functionality is
+        // toggled, force the sizes to minimum.
+        //
+
+        if (TraceStore->TraceStore->NoAllocationTimestamps) {
+            TRACE_STORE_METADATA_ID Id;
+
+            Id = TraceStore->TraceStoreMetadataId;
+
+            if (Id == TraceStoreMetadataAllocationTimestampId ||
+                Id == TraceStoreMetadataAllocationTimestampDeltaId) {
+                ULONGLONG MinimumSize = MinimumMappingSize.QuadPart;
+
+                TraceStore->InitialSize.QuadPart = MinimumSize;
+                TraceStore->ExtensionSize.QuadPart = MinimumSize;
+                TraceStore->MappingSize.QuadPart = MinimumSize;
+            }
+        }
+
+
+        //
+        // Initialize allocators now for metadata.  They don't participate in
+        // the suspended allocation machinery as we control them entirely.
+        // Normal trace stores have their allocators initialized when bound to
+        // a trace context.
+        //
+
         TraceStore->AllocateRecords = TraceStoreAllocateRecords;
         TraceStore->AllocateRecordsWithTimestamp = (
             TraceStoreAllocateRecordsWithTimestamp

@@ -561,10 +561,16 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACER_FLAGS {
     ULONG TraceStoreSqlite3ModuleDebugBreakOnEntry:1;
 
     //
+    // When set, allocation timestamps are not recorded for trace stores.
+    //
+
+    ULONG DisableAllocationTimestamps:1;
+
+    //
     // Unused bits.
     //
 
-    ULONG Unused:11;
+    ULONG Unused:10;
 } TRACER_FLAGS;
 C_ASSERT(sizeof(TRACER_FLAGS) == sizeof(ULONG));
 typedef TRACER_FLAGS *PTRACER_FLAGS;

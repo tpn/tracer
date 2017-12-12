@@ -197,6 +197,7 @@ Return Value:
     READ_REG_DWORD_FLAG(DisableAsynchronousInitialization, FALSE);
     READ_REG_DWORD_FLAG(InjectionThunkDebugBreakOnEntry, FALSE);
     READ_REG_DWORD_FLAG(TraceStoreSqlite3ModuleDebugBreakOnEntry, FALSE);
+    READ_REG_DWORD_FLAG(DisableAllocationTimestamps, FALSE);
 
     //
     // We only need to enforce one invariant: if FILE_FLAG_RANDOM_ACCESS has

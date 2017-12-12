@@ -106,6 +106,27 @@ Return Value:
     return Address;
 }
 
+//
+// Helper macro for initializing a timestamp.  If allocation timestamps have
+// been disabled, zero the timestamp.  If no timestamp has been provided and the
+// trace store is not marked as linked, capture a timestamp.  Otherwise, use the
+// caller's timestamp.
+//
+
+#define INIT_TIMESTAMP(Timestamp)                        \
+    if (TraceStore->NoAllocationTimestamps) {            \
+        Timestamp.QuadPart = 0;                          \
+    } else if (!ARGUMENT_PRESENT(TimestampPointer)) {    \
+        if (!IsLinkedStore(Traits)) {                    \
+            QueryPerformanceCounter(&Timestamp);         \
+        } else {                                         \
+            Timestamp.QuadPart = 0;                      \
+        }                                                \
+    } else {                                             \
+        Timestamp.QuadPart = TimestampPointer->QuadPart; \
+    }
+
+
 _Use_decl_annotations_
 PVOID
 TraceStoreAllocateRecordsWithTimestampImpl(
@@ -197,20 +218,7 @@ Routine Description:
         PreventPageSpill(Traits)
     );
 
-    //
-    // If no timestamp has been provided and the trace store is not marked as
-    // linked, capture a timestamp.  Otherwise, use the caller's timestamp.
-    //
-
-    if (!ARGUMENT_PRESENT(TimestampPointer)) {
-        if (!IsLinkedStore(Traits)) {
-            QueryPerformanceCounter(&Timestamp);
-        } else {
-            Timestamp.QuadPart = 0;
-        }
-    } else {
-        Timestamp.QuadPart = TimestampPointer->QuadPart;
-    }
+    INIT_TIMESTAMP(Timestamp);
 
 CalculateAddresses:
     NextAddress = (
@@ -627,20 +635,7 @@ Return Value:
 
     Traits = *TraceStore->pTraits;
 
-    //
-    // If no timestamp has been provided and the trace store is not marked as
-    // linked, capture a timestamp.  Otherwise, use the caller's timestamp.
-    //
-
-    if (!ARGUMENT_PRESENT(TimestampPointer)) {
-        if (!IsLinkedStore(Traits)) {
-            QueryPerformanceCounter(&Timestamp);
-        } else {
-            Timestamp.QuadPart = 0;
-        }
-    } else {
-        Timestamp.QuadPart = TimestampPointer->QuadPart;
-    }
+    INIT_TIMESTAMP(Timestamp);
 
 #ifdef _DEBUG
 
