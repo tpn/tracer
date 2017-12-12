@@ -440,7 +440,8 @@ Return Value:
         NULL,           // MappingSizes
         &TraceFlags,    // TraceFlags
         NULL,           // FieldRelocations
-        NULL            // TraitsArray
+        NULL,           // TraitsArray
+        NULL            // ExcludeBitmap
     );
 
     //
@@ -502,6 +503,7 @@ Return Value:
         NULL,
         &TraceFlags,
         Session->PythonTracerTraceStoreRelocations,
+        NULL,
         NULL
     );
 

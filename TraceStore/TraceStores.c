@@ -31,7 +31,8 @@ InitializeTraceStores(
     PLARGE_INTEGER MappingSizes,
     PTRACE_FLAGS TraceFlags,
     PTRACE_STORE_FIELD_RELOCS FieldRelocations,
-    PCTRACE_STORE_TRAITS TraitsArray
+    PCTRACE_STORE_TRAITS TraitsArray,
+    PRTL_BITMAP ExcludeBitmap
     )
 /*++
 
@@ -73,6 +74,12 @@ Arguments:
 
     TraitsArray - Supplies a pointer to the first element of an array of trace
         store traits.
+
+    ExcludeBitmap - Optionally supplies a pointer to an RTL_BITMAP structure.
+        A trace store is considered "excluded" when the corresponding bit for
+        the trace store's ID is set in this bitmap.  An excluded trace store is
+        effectively ignored, no files for it will be opened etc.  If this value
+        is non-NULL, the NumberOfBits must match the maximum trace store ID.
 
 Return Value:
 
@@ -147,6 +154,23 @@ Return Value:
         return FALSE;
     }
 
+    if (!ARGUMENT_PRESENT(TracerConfig)) {
+        return FALSE;
+    }
+
+    if (ARGUMENT_PRESENT(ExcludeBitmap)) {
+
+        //
+        // Verify that the number of bits in the exclude bitmap matches our max
+        // trace store ID.
+        //
+
+        if (ExcludeBitmap->SizeOfBitMap < MAX_TRACE_STORE_IDS) {
+            __debugbreak();
+            return FALSE;
+        }
+    }
+
     Flags = *TraceFlags;
     Compress = Flags.Compress;
     Readonly = Flags.Readonly;
@@ -198,6 +222,12 @@ Return Value:
     //
 
     SetCSpecificHandler(Rtl->__C_specific_handler);
+
+    //
+    // Save the excluded bitmap, if applicable.
+    //
+
+    TraceStores->ExcludeBitmap = ExcludeBitmap;
 
     //
     // Sanity check the directory length in bytes, then copy to BaseDirectory.
@@ -506,11 +536,24 @@ Return Value:
         TRACE_STORE_DECLS();
         PTRACE_STORE_RELOC Reloc;
 
-        LPCWSTR FileName = TraceStoreFileNames[Index];
+        LPCWSTR FileName;
         LARGE_INTEGER InitialSize;
         LARGE_INTEGER MappingSize;
         TRACE_STORE_TRAITS Traits;
+        TRACE_STORE_ID TraceStoreId;
 
+        TraceStoreId = ArrayIndexToTraceStoreId((USHORT)Index);
+
+        //
+        // If this trace store is being excluded, skip it.
+        //
+
+        if (IsExcludedTraceStoreId(TraceStores, TraceStoreId)) {
+            TraceStore->Excluded = TRUE;
+            continue;
+        }
+
+        FileName = TraceStoreFileNames[Index];
         InitialSize.QuadPart = Sizes[Index].QuadPart;
         MappingSize.QuadPart = InitialSize.QuadPart;
         Traits = BaseTraits[Index];
@@ -605,7 +648,8 @@ InitializeReadonlyTraceStores(
     PWSTR BaseDirectory,
     PTRACE_STORES TraceStores,
     PULONG SizeOfTraceStores,
-    PTRACE_FLAGS TraceFlags
+    PTRACE_FLAGS TraceFlags,
+    PRTL_BITMAP ExcludeBitmap
     )
 /*++
 
@@ -644,6 +688,12 @@ Arguments:
         The Readonly flag will automatically be set by this routine before the
         flags are passed on to InitializeTraceStores().
 
+    ExcludeBitmap - Optionally supplies a pointer to an RTL_BITMAP structure.
+        A trace store is considered "excluded" when the corresponding bit for
+        the trace store's ID is set in this bitmap.  An excluded trace store is
+        effectively ignored, no files for it will be opened etc.  If this value
+        is non-NULL, the NumberOfBits must match the maximum trace store ID.
+
 Return Value:
 
     TRUE on success, FALSE on failure.  The required size of the TraceStores
@@ -679,7 +729,8 @@ Return Value:
                                  NULL,
                                  &Flags,
                                  NULL,
-                                 NULL);
+                                 NULL,
+                                 ExcludeBitmap);
 }
 
 _Use_decl_annotations_

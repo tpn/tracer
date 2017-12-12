@@ -3259,7 +3259,8 @@ typedef struct _Struct_size_bytes_(sizeof(ULONG)) _TRACE_STORE_FLAGS {
     ULONG RundownComplete:1;
     ULONG HasFlatMapping:1;
     ULONG FlatMappingLoaded:1;
-    ULONG Unused:13;
+    ULONG Excluded:1;
+    ULONG Unused:12;
 } TRACE_STORE_FLAGS;
 typedef TRACE_STORE_FLAGS *PTRACE_STORE_FLAGS;
 C_ASSERT(sizeof(TRACE_STORE_FLAGS) == sizeof(ULONG));
@@ -3296,7 +3297,8 @@ typedef struct _TRACE_STORE {
             ULONG RundownComplete:1;
             ULONG HasFlatMapping:1;
             ULONG FlatMappingLoaded:1;
-            ULONG UnusedStoreFlagBits:13;
+            ULONG Excluded:1;
+            ULONG UnusedStoreFlagBits:12;
         };
 
         TRACE_STORE_FLAGS StoreFlags;
@@ -3713,10 +3715,23 @@ typedef struct _TRACE_STORE {
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
 
+#define IS_EXCLUDED(TraceStore) IsExcludedTraceStore(TraceStores, TraceStore)
+#define IS_EXCLUDED_ID(Id) IsExcludedTraceStoreId(TraceStores, Id)
+#define IS_EXCLUDED_INDEX(Index) IsExcludedTraceStoreIndex(TraceStores, Index)
+#define IS_EXCLUDED_NAME(Name) IS_EXCLUDED_ID(TraceStore##Name##Id)
+
 #define FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex)        \
     for (Index = 0, StoreIndex = 0;                                 \
          Index < TraceStores->NumberOfTraceStores;                  \
          Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
+
+
+#define FOR_EACH_INCLUDED_TRACE_STORE(TraceStores, Index, StoreIndex) \
+    for (Index = 0, StoreIndex = 0;                                   \
+         Index < TraceStores->NumberOfTraceStores &&                  \
+         !IsExcludedTraceStoreIndex(TraceStores, Index);              \
+         Index++, StoreIndex += TraceStores->ElementsPerTraceStore)
+
 
 #define TRACE_STORE_METADATA_DECL(Name)                                  \
     PTRACE_STORE Name##Store = TraceStore + TraceStoreMetadata##Name##Id
@@ -3749,6 +3764,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORES {
     LIST_ENTRY        RundownListEntry;
     struct _TRACE_STORES_RUNDOWN *Rundown;
     LIST_ENTRY        StoresListHead;
+    PRTL_BITMAP       ExcludeBitmap;
 
     DECLSPEC_ALIGN(128)
     HANDLE RelocationCompleteEvents[MAX_TRACE_STORE_IDS];
@@ -3841,7 +3857,8 @@ BOOL
     _In_opt_    PLARGE_INTEGER  MappingSizes,
     _In_opt_    PTRACE_FLAGS    TraceFlags,
     _In_opt_    PTRACE_STORE_FIELD_RELOCS FieldRelocations,
-    _In_opt_    PCTRACE_STORE_TRAITS TraitsArray
+    _In_opt_    PCTRACE_STORE_TRAITS TraitsArray,
+    _In_opt_    PRTL_BITMAP     ExcludeBitmap
     );
 typedef INITIALIZE_TRACE_STORES *PINITIALIZE_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_TRACE_STORES InitializeTraceStores;
@@ -3856,7 +3873,8 @@ BOOL
     _In_opt_    PWSTR           BaseDirectory,
     _Inout_opt_ PTRACE_STORES   TraceStores,
     _Inout_     PULONG          SizeOfTraceStores,
-    _In_opt_    PTRACE_FLAGS    TraceFlags
+    _In_opt_    PTRACE_FLAGS    TraceFlags,
+    _In_opt_    PRTL_BITMAP     ExcludeBitmap
     );
 typedef INITIALIZE_READONLY_TRACE_STORES *PINITIALIZE_READONLY_TRACE_STORES;
 TRACE_STORE_API INITIALIZE_READONLY_TRACE_STORES InitializeReadonlyTraceStores;
@@ -4203,6 +4221,84 @@ NumberOfTraceStoreAddressRanges(
     )
 {
     return TraceStore->AddressRangeStore->Totals->NumberOfAllocations.QuadPart;
+}
+
+FORCEINLINE
+USHORT
+NumberOfExcludedTraceStores(
+    _In_ PTRACE_STORES TraceStores
+    )
+{
+    PRTL_BITMAP Bitmap;
+
+    Bitmap = TraceStores->ExcludeBitmap;
+
+    if (!Bitmap) {
+        return 0;
+    }
+
+    return (USHORT)TraceStores->Rtl->RtlNumberOfSetBits(Bitmap);
+}
+
+FORCEINLINE
+BOOL
+IsExcludedTraceStoreId(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    PRTL_BITMAP Bitmap;
+
+    Bitmap = TraceStores->ExcludeBitmap;
+
+    if (!Bitmap) {
+        return FALSE;
+    }
+
+    return TraceStores->Rtl->RtlTestBit(Bitmap, TraceStoreId);
+}
+
+FORCEINLINE
+BOOL
+IsExcludedTraceStoreIndex(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ TRACE_STORE_INDEX TraceStoreIndex
+    )
+{
+    TRACE_STORE_ID Id = ArrayIndexToTraceStoreId(TraceStoreIndex);
+    return IsExcludedTraceStoreId(TraceStores, Id);
+}
+
+FORCEINLINE
+BOOL
+IsExcludedTraceStore(
+    _In_ PTRACE_STORES TraceStores,
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    return IsExcludedTraceStoreId(TraceStores, TraceStore->TraceStoreId);
+}
+
+FORCEINLINE
+VOID
+ExcludeTraceStoreId(
+    _In_ PRTL Rtl,
+    _In_ PRTL_BITMAP Bitmap,
+    _In_ TRACE_STORE_ID TraceStoreId
+    )
+{
+    Rtl->RtlSetBit(Bitmap, TraceStoreId);
+}
+
+FORCEINLINE
+BOOL
+ExcludeTraceStore(
+    _In_ PRTL Rtl,
+    _In_ PRTL_BITMAP Bitmap,
+    _In_ PTRACE_STORE TraceStore
+    )
+{
+    ExcludeTraceStoreId(Rtl, Bitmap, TraceStore->TraceStoreId);
 }
 
 FORCEINLINE

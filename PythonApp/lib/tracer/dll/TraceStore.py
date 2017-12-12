@@ -59,6 +59,7 @@ from ..wintypes import (
     SYSTEMTIME,
     PULONGLONG,
     LIST_ENTRY,
+    PRTL_BITMAP,
     SLIST_ENTRY,
     SLIST_HEADER,
     LARGE_INTEGER,
@@ -341,6 +342,7 @@ class TRACE_STORE_FLAGS(Structure):
         ('RundownComplete', ULONG, 1),
         ('HasFlatMapping', ULONG, 1),
         ('FlatMappingLoaded', ULONG, 1),
+        ('Excluded', ULONG, 1),
     ]
 PTRACE_STORE_FLAGS = POINTER(TRACE_STORE_FLAGS)
 
@@ -1753,10 +1755,11 @@ TRACE_STORES._fields_ = [
     ('RundownListEntry', LIST_ENTRY),
     ('Rundown', PTRACE_STORES_RUNDOWN),
     ('StoresListHead', TRACE_STORE_LIST_ENTRY),
+    ('ExcludeBitmap', PRTL_BITMAP),
 
     (
         '__Reserved1__',
-        BYTE * 24
+        BYTE * 16
     ),
 
     # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
@@ -2645,9 +2648,10 @@ class TRACE_STORE_ARRAY(Structure):
         ('RundownListEntry', LIST_ENTRY),
         ('Rundown', PTRACE_STORES_RUNDOWN),
         ('StoresListHead', TRACE_STORE_LIST_ENTRY),
+        ('ExcludeBitmap', PRTL_BITMAP),
 
         ( '__Reserved1__',
-            BYTE * 24
+            BYTE * 16
         ),
 
         # Start of RelocationCompleteEvents[MAX_TRACE_STORE_IDS].
@@ -2889,6 +2893,7 @@ INITIALIZE_READONLY_TRACE_STORES = CFUNCTYPE(
     PTRACE_STORES,
     PULONG,
     PTRACE_FLAGS,
+    PRTL_BITMAP,
 )
 
 INITIALIZE_TRACE_CONTEXT = CFUNCTYPE(
@@ -2957,6 +2962,7 @@ def bind(path=None, dll=None):
             (1, 'TraceStores'),
             (1, 'SizeOfTraceStores'),
             (1, 'TraceFlags'),
+            (1, 'ExcludeBitmap'),
         )
     )
 
@@ -3020,6 +3026,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
         cast(0, PTRACE_STORES),
         byref(size),
         cast(0, PTRACE_FLAGS),
+        cast(0, PRTL_BITMAP),
     )
 
     expected = sizeof(TRACE_STORES)
@@ -3033,6 +3040,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
     flags = TRACE_FLAGS()
     prtl = byref(rtl)
     pallocator = byref(allocator)
+    pexclude_bitmap = cast(0, PRTL_BITMAP)
 
     success = InitializeReadonlyTraceStores(
         prtl,
@@ -3042,6 +3050,7 @@ def create_and_initialize_readonly_trace_stores(rtl, allocator, basedir,
         ptrace_stores,
         byref(size),
         byref(flags),
+        pexclude_bitmap,
     )
     assert success
 

@@ -403,6 +403,7 @@ Return Value:
     );
 
     NumberOfTraceStores = TraceStores->NumberOfTraceStores;
+    NumberOfTraceStores -= NumberOfExcludedTraceStores(TraceStores);
 
     //
     // We subtract 2 from ElementsPerTraceStore to account for the normal trace
@@ -448,18 +449,20 @@ Return Value:
     // Initialize custom allocators.
     //
 
-#define INIT_ALLOCATOR(Name)                 \
-    Success = (                              \
-        InitializeAllocatorFromTraceStore(   \
-            TraceStoreIdToTraceStore(        \
-                TraceStores,                 \
-                TraceStore##Name##Id         \
-            ),                               \
-            &TraceContext->##Name##Allocator \
-        )                                    \
-    );                                       \
-    if (!Success) {                          \
-        goto Error;                          \
+#define INIT_ALLOCATOR(Name)                     \
+    if (!IS_EXCLUDED_NAME(Name)) {               \
+        Success = (                              \
+            InitializeAllocatorFromTraceStore(   \
+                TraceStoreIdToTraceStore(        \
+                    TraceStores,                 \
+                    TraceStore##Name##Id         \
+                ),                               \
+                &TraceContext->##Name##Allocator \
+            )                                    \
+        );                                       \
+        if (!Success) {                          \
+            goto Error;                          \
+        }                                        \
     }
 
     INIT_ALLOCATOR(Bitmap);
@@ -482,7 +485,7 @@ Return Value:
         // we want them.
         //
 
-        FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+        FOR_EACH_INCLUDED_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
             //
             // N.B. We use ManualReset == TRUE because we want the event to
@@ -517,6 +520,12 @@ Return Value:
     //
     // Process additional customizations like timers and loader tracing.
     //
+
+    if (TraceStores->Flags.EnableWorkingSetTracing) {
+        if (IS_EXCLUDED_NAME(WsWatchInfoEx)) {
+            TraceStores->Flags.EnableWorkingSetTracing = FALSE;
+        }
+    }
 
     if (TraceStores->Flags.EnableWorkingSetTracing) {
         PTRACE_STORE WsWatchInfoExStore;
@@ -567,6 +576,17 @@ Return Value:
         WsWatchInfoExStore->BindComplete = WsWatchInfoExStoreBindComplete;
     }
 
+
+    if (TraceStores->Flags.EnablePerformanceTracing) {
+        BOOL Excluded = (
+            IS_EXCLUDED_NAME(Performance) |
+            IS_EXCLUDED_NAME(PerformanceDelta)
+        );
+        if (Excluded) {
+            TraceStores->Flags.EnablePerformanceTracing = FALSE;
+        }
+    }
+
     if (TraceStores->Flags.EnablePerformanceTracing) {
         PTRACE_STORE PerformanceStore;
 
@@ -603,6 +623,16 @@ Return Value:
         );
 
         PerformanceStore->BindComplete = PerformanceStoreBindComplete;
+    }
+
+    if (TraceStores->Flags.EnableLoaderTracing) {
+        BOOL Excluded = (
+            IS_EXCLUDED_NAME(ModuleTable) |
+            IS_EXCLUDED_NAME(ModuleLoadEvent)
+        );
+        if (Excluded) {
+            TraceStores->Flags.EnableLoaderTracing = FALSE;
+        }
     }
 
     if (TraceStores->Flags.EnableLoaderTracing) {
@@ -643,6 +673,16 @@ Return Value:
         //
 
         InitializeSRWLock(&TraceContext->ModuleNamePrefixTableLock);
+    }
+
+    if (TraceStores->Flags.EnableSymbolTracing) {
+        BOOL Excluded = (
+            IS_EXCLUDED_NAME(SymbolTable) |
+            IS_EXCLUDED_NAME(SymbolType)
+        );
+        if (Excluded) {
+            TraceStores->Flags.EnableSymbolTracing = FALSE;
+        }
     }
 
     if (TraceStores->Flags.EnableSymbolTracing) {
@@ -688,6 +728,34 @@ Return Value:
 
         SymbolTableStore->BindComplete = SymbolTableStoreBindComplete;
         SymbolTypeStore->BindComplete = SymbolTypeStoreBindComplete;
+    }
+
+    if (TraceStores->Flags.EnableTypeInfoTracing ||
+        TraceStores->Flags.EnableAssemblyTracing) {
+        BOOL Excluded = (
+            IS_EXCLUDED_NAME(TypeInfoTable)                 |
+            IS_EXCLUDED_NAME(TypeInfoTableEntry)            |
+            IS_EXCLUDED_NAME(FunctionTable)                 |
+            IS_EXCLUDED_NAME(FunctionTableEntry)            |
+            IS_EXCLUDED_NAME(FunctionAssembly)              |
+            IS_EXCLUDED_NAME(FunctionSourceCode)            |
+            IS_EXCLUDED_NAME(ExamineSymbolsLine)            |
+            IS_EXCLUDED_NAME(ExamineSymbolsText)            |
+            IS_EXCLUDED_NAME(ExaminedSymbol)                |
+            IS_EXCLUDED_NAME(ExaminedSymbolSecondary)       |
+            IS_EXCLUDED_NAME(UnassembleFunctionLine)        |
+            IS_EXCLUDED_NAME(UnassembleFunctionText)        |
+            IS_EXCLUDED_NAME(UnassembledFunction)           |
+            IS_EXCLUDED_NAME(UnassembledFunctionSecondary)  |
+            IS_EXCLUDED_NAME(DisplayTypeLine)               |
+            IS_EXCLUDED_NAME(DisplayTypeText)               |
+            IS_EXCLUDED_NAME(DisplayedType)                 |
+            IS_EXCLUDED_NAME(DisplayedTypeSecondary)
+        );
+        if (Excluded) {
+            TraceStores->Flags.EnableTypeInfoTracing = FALSE;
+            TraceStores->Flags.EnableAssemblyTracing = FALSE;
+        }
     }
 
     if (TraceStores->Flags.EnableTypeInfoTracing ||
@@ -766,7 +834,7 @@ InitializeAllocators:
 
     SuspendedAllocator = SuspendedTraceStoreAllocateRecordsWithTimestamp;
 
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+    FOR_EACH_INCLUDED_TRACE_STORE(TraceStores, Index, StoreIndex) {
 
         //
         // N.B. We use ManualReset == TRUE here because we explicitly control
@@ -871,7 +939,7 @@ InitializeAllocators:
      StoreIndex == TraceStorePythonModuleTableIndex || \
      StoreIndex == TraceStoreUnicodeStringBufferIndex)
 
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+    FOR_EACH_INCLUDED_TRACE_STORE(TraceStores, Index, StoreIndex) {
         if (!NEEDS_PRIORITY_BUMP(StoreIndex)) {
             continue;
         }
@@ -884,7 +952,7 @@ InitializeAllocators:
     // threadpool.
     //
 
-    FOR_EACH_TRACE_STORE(TraceStores, Index, StoreIndex) {
+    FOR_EACH_INCLUDED_TRACE_STORE(TraceStores, Index, StoreIndex) {
         if (NEEDS_PRIORITY_BUMP(StoreIndex)) {
             continue;
         }

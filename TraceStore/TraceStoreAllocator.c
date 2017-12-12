@@ -304,6 +304,11 @@ InitializeAllocatorFromTraceStore(
     PALLOCATOR Allocator
     )
 {
+    if (TraceStore->Excluded) {
+        __debugbreak();
+        return FALSE;
+    }
+
     if (!TraceStoreInitializeAllocator(Allocator)) {
         return FALSE;
     }
@@ -320,6 +325,11 @@ InitializeTraceStoreAllocator(
     )
 {
     PALLOCATOR Allocator;
+
+    if (TraceStore->Excluded) {
+        __debugbreak();
+        return FALSE;
+    }
 
     Allocator = &TraceStore->Allocator;
 

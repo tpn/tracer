@@ -1414,6 +1414,14 @@ Return Value:
     }
 
     //
+    // Skip the trace store if it's excluded.
+    //
+
+    if (TraceStore->Excluded) {
+        return;
+    }
+
+    //
     // Rundown the trace store first before the metadata stores.  This is
     // important because closing the trace store will retire any active memory
     // maps, which will update the underlying MemoryMap->pAddress structures,
