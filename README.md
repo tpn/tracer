@@ -2,9 +2,7 @@
 
 An experimental tracing framework for Python.
 
-Work in progress.
-
-Side-note: I'm available for hire starting 2018!  David Cutler, if you're reading this, please hire me before you retire.
+Some code snippets: [FillPages](https://github.com/tpn/tracer/blob/master/Asm/FillPages.asm), an AVX2-optimized assembly routine for filling pages with a particular byte pattern.  [InjectionThunk](https://github.com/tpn/tracer/blob/master/Asm/InjectionThunk.asm#L357), an assembly routine used for remote process code injection -- includes support for injection events and shared memory as well.  [PrefixSearchStringTable](https://github.com/tpn/tracer/blob/master/StringTable/PrefixSearchStringTable.c), an AVX2-optimized routine for searching whether or not a given string prefix-matches a set of strings in a custom string table.  [RegisterFrame](https://github.com/tpn/tracer/blob/master/Python/PythonFunction.c), the main frame registration routine used by the Python tracing component.
 
 # Introduction
 ## Motivation, Existing Works
