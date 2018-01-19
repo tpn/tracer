@@ -5840,6 +5840,7 @@ typedef INITIALIZE_COM *PINITIALIZE_COM;
 
 typedef
 _Check_return_
+HRESULT
 (STDAPICALLTYPE DLL_GET_CLASS_OBJECT)(
     _In_ REFCLSID rclsid,
     _In_ REFIID riid,
@@ -5849,6 +5850,7 @@ typedef DLL_GET_CLASS_OBJECT *PDLL_GET_CLASS_OBJECT;
 
 typedef
 __control_entrypoint(DllExport)
+HRESULT
 (STDAPICALLTYPE DLL_CAN_UNLOAD_NOW)(
     VOID
     );
