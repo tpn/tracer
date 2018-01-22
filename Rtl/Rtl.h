@@ -2994,7 +2994,7 @@ typedef PVOID (NTAPI *PRTL_GET_ELEMENT_GENERIC_TABLE_AVL)(
     _In_ ULONG I
     );
 
-typedef PVOID (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)(
+typedef ULONG (NTAPI *PRTL_NUMBER_GENERIC_TABLE_ELEMENTS_AVL)(
     _In_ PRTL_AVL_TABLE Table
     );
 
@@ -5425,7 +5425,8 @@ BOOL
     _In_ BOOL SkipJumpInstructions,
     _Out_ PULONG NumberOfResolvedSymbolsPointer
     );
-typedef LOAD_SYMBOLS *PLOAD_SYMBOLS;
+typedef LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
+      *PLOAD_SYMBOLS_FROM_MULTIPLE_MODULES;
 
 typedef union _LOAD_FILE_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
@@ -6008,6 +6009,7 @@ extern RUNDOWN_GLOBAL_ATEXIT_FUNCTIONS RundownGlobalAtExitFunctions;
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
 (CALLBACK RTL_CREATE_NAMED_EVENT)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
@@ -6024,6 +6026,7 @@ typedef RTL_CREATE_NAMED_EVENT *PRTL_CREATE_NAMED_EVENT;
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
 (CALLBACK PROBE_FOR_READ)(
     _In_ PRTL Rtl,
     _In_reads_(ROUND_TO_PAGES(NumberOfBytes)) PVOID Address,
@@ -6062,6 +6065,7 @@ typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
 (CALLBACK INITIALIZE_INJECTION)(
     _In_ struct _RTL *Rtl
     );
@@ -6070,6 +6074,7 @@ typedef INITIALIZE_INJECTION *PINITIALIZE_INJECTION;
 typedef
 _Check_return_
 _Success_(return != 0)
+BOOL
 (GET_CU)(
     _Inout_ PRTL Rtl,
     _Outptr_result_nullonfailure_ struct _CU **CuPointer
@@ -6212,6 +6217,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PADJUST_THUNK_POINTERS AdjustThunkPointers;
 
     INJECTION_FUNCTIONS InjectionFunctions;
+
+    PLOAD_SYMBOLS LoadSymbols;
+    PLOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
