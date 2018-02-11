@@ -6330,7 +6330,7 @@ PopulationCount32(
 }
 
 FORCEINLINE
-USHORT
+ULONGLONG
 GetAddressAlignment(_In_ PVOID Address)
 {
     ULONGLONG Integer = (ULONGLONG)Address;
