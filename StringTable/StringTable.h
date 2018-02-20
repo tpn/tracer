@@ -1073,8 +1073,8 @@ IsPrefixMatch(
 {
     USHORT SearchStringRemaining;
     USHORT TargetStringRemaining;
-    USHORT SearchStringAlignment;
-    USHORT TargetStringAlignment;
+    ULONGLONG SearchStringAlignment;
+    ULONGLONG TargetStringAlignment;
     USHORT CharactersMatched = Offset;
 
     LONG Count;
