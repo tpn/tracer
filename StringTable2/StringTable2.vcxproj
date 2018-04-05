@@ -103,7 +103,6 @@
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="PrefixSearchStringTable.c" />
-    <ClCompile Include="SearchStringTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
