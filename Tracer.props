@@ -3,53 +3,9 @@
   <Import Project="TracerBase.props" />
 
   <PropertyGroup Label="Configuration">
-    <PlatformToolset></PlatformToolset>
-    <DefaultPlatformToolset>v140</DefaultPlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
+    <DefaultPlatformToolset>v141</DefaultPlatformToolset>
   </PropertyGroup>
-
-  <Choose>
-    <When Condition="'$(VCTargetsPath14)' != ''">
-      <PropertyGroup Label="Configuration">
-        <PlatformToolset>v140</PlatformToolset>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <Choose>
-        <When Condition="'$(VCTargetsPath12)' != ''">
-          <PropertyGroup Label="Configuration">
-            <PlatformToolset>v120</PlatformToolset>
-          </PropertyGroup>
-        </When>
-        <Otherwise>
-          <Choose>
-            <When Condition="'$(VCTargetsPath11)' != ''">
-              <PropertyGroup Label="Configuration">
-                <PlatformToolset>v110</PlatformToolset>
-              </PropertyGroup>
-            </When>
-            <Otherwise>
-              <Choose>
-                <When Condition="'$(VCTargetsPath10)' != ''">
-                  <PropertyGroup Label="Configuration">
-                    <PlatformToolset>v100</PlatformToolset>
-                  </PropertyGroup>
-                </When>
-              </Choose>
-            </Otherwise>
-          </Choose>
-        </Otherwise>
-      </Choose>
-    </Otherwise>
-  </Choose>
-
-  <Target Name="Validate">
-      <Warning
-          Text="PlatformToolset not detected."
-          Condition="'$(PlatformToolset)' == ''" />
-      <Warning
-          Text="PlatformToolset: $(PlatformToolset)."
-          Condition="'$(PlatformToolset)' != ''" />
-  </Target>
 
   <PropertyGroup>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>

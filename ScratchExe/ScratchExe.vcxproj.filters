@@ -37,8 +37,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Scratch.asm">
+    <MASM Include="Scratch.asm">
       <Filter>Source Files</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

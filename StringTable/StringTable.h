@@ -559,6 +559,16 @@ STRING_TABLE_INDEX
 typedef   SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
         *PSEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH;
 
+typedef
+_Success_(return != 0)
+STRING_TABLE_INDEX
+(IS_STRING_IN_TABLE)(
+    _In_ struct _STRING_TABLE *StringTable,
+    _In_ PSTRING String,
+    _In_opt_ struct _STRING_MATCH *StringMatch
+    );
+typedef IS_STRING_IN_TABLE *PIS_STRING_IN_TABLE;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1401,8 +1411,6 @@ typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
 // Public exported function defs.
 //
 
-#pragma component(browser, off)
-
 STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR
     InitializeStringTableAllocator;
 
@@ -1426,8 +1434,6 @@ STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE
     IsPrefixOfStringInSingleTableInline;
-
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"

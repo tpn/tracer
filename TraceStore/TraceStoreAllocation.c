@@ -113,6 +113,10 @@ Return Value:
 // caller's timestamp.
 //
 
+#ifdef INIT_TIMESTAMP
+#undef INIT_TIMESTAMP
+#endif
+
 #define INIT_TIMESTAMP(Timestamp)                        \
     if (TraceStore->NoAllocationTimestamps) {            \
         Timestamp.QuadPart = 0;                          \

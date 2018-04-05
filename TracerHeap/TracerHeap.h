@@ -151,6 +151,13 @@ InitializeHeapAllocatorExInline(
         return FALSE;
     }
 
+    //
+    // Disable this for now whilst we experiment with an Rtl-based solution.
+    //
+
+    __debugbreak();
+
+    /*
     InitializeAllocator(
         Allocator,
         Allocator,
@@ -169,6 +176,7 @@ InitializeHeapAllocatorExInline(
         DefaultHeapTryCallocWithTimestamp,
         HeapHandle
     );
+    */
 
     return TRUE;
 }

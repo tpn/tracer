@@ -45,6 +45,9 @@
       <OptimizeReferences>false</OptimizeReferences>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
+    <ClCompile Condition="$(Configuration) == 'PGOptimize'">
+      <TreatWarningAsError>false</TreatWarningAsError>
+    </ClCompile>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
     </Bscmake>

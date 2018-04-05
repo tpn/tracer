@@ -1,0 +1,22 @@
+LIBRARY StringTable2
+EXPORTS
+    SetCSpecificHandler
+    CopyStringArray
+    CreateStringTable
+    DestroyStringTable
+    InitializeStringTableAllocator
+    CreateStringArrayFromDelimitedString
+    CreateStringTableFromDelimitedString
+    CreateStringTableFromDelimitedEnvironmentVariable
+    IsStringInTable
+    IsPrefixOfStringInTable
+    IsPrefixOfStringInTable_2
+    IsPrefixOfStringInTable_3
+    IsPrefixOfStringInTable_4
+    IsPrefixOfStringInTable_5
+    IsPrefixOfStringInTable_6
+    IsPrefixOfStringInTable_7
+    IsPrefixOfStringInTable_8
+    IsPrefixOfStringInTable_x64_1
+    IsPrefixOfStringInTable_x64_2
+    IsPrefixOfCStrInArray

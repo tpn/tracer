@@ -151,6 +151,8 @@ CONST PCSTR RtlFunctionNames[] = {
     "ZwTerminateThread",
     "NtQueueApcThread",
     "NtTestAlert",
+    "NtYieldExecution",
+    "NtDelayExecution",
     "SearchPathW",
     "CreateToolhelp32Snapshot",
     "LoadLibraryA",
@@ -257,6 +259,10 @@ CONST PCSTR RtlExFunctionNames[] = {
     "UnregisterDllNotification",
     "WriteEnvVarToRegistry",
     "WriteRegistryString",
+    "AppendIntegerToCharBuffer",
+    "AppendStringToCharBuffer",
+    "AppendCharBufferToCharBuffer",
+    "AppendCharToCharBuffer",
 };
 
 CONST PCSTR DbgHelpFunctionNames[] = {

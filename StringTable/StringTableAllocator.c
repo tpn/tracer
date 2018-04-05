@@ -138,6 +138,10 @@ StringTableInitializeAllocator(
         return FALSE;
     }
 
+    __debugbreak();
+    return FALSE;
+
+    /*
     InitializeAllocator(
         Allocator,
         Allocator,
@@ -156,6 +160,7 @@ StringTableInitializeAllocator(
         NULL,
         HeapHandle
     );
+    */
 
     return TRUE;
 }
