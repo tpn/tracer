@@ -88,9 +88,6 @@
     </ClCompile>
     <ClCompile Include="main.c" />
   </ItemGroup>
-  <ItemGroup>
-    <MASM Include="Benchmark.asm" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
