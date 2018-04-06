@@ -89,9 +89,9 @@ SLOT_INDEX struct 16
 SLOT_INDEX ends
 
 STRING_MATCH struct
-    Index LONG ?
-    NumberOfMatchedCharacters USHORT ?
-    Padding USHORT ?
+    Index BYTE ?
+    NumberOfMatchedCharacters BYTE ?
+    Padding USHORT 3 dup (?)
     String PSTRING ?
 STRING_MATCH ends
 
@@ -130,6 +130,7 @@ PSTRING_TABLE typedef ptr STRING_TABLE
 
 StringTable typedef STRING_TABLE
 StringArray typedef STRING_ARRAY
+StringMatch typedef STRING_MATCH
 
 PARAMS struct
     ReturnAddress dq ?

@@ -318,7 +318,7 @@ Scratch4(
     LARGE_INTEGER Frequency;
     const STRING_TABLE_INDEX NoMatchFound = NO_MATCH_FOUND;
     PSTRING_TABLE StringTable;
-    LARGE_INTEGER Delay = { 0, 1 };
+    LARGE_INTEGER Delay = { 0, 0 };
     STRING_ARRAY16 StringArray16 = CONSTANT_STRING_ARRAY16(
         NtfsAttrDefName,
         NtfsBadClusName,
@@ -560,6 +560,323 @@ Scratch4(
 
         //for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
         for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
+            Func = &NamedFunctions[FuncIndex];
+            IsPrefix = Func->Function;
+
+            /*
+            if (InputIndex == 12 && IsPrefix == Api->IsPrefixOfStringInTable_x64_2) {
+                __debugbreak();
+            }
+            */
+
+            Result = IsPrefix(StringTable, &AlignedInput, NULL);
+
+            if (IsPrefix != Api->IsPrefixOfStringInTable_x64_1) {
+                ASSERT(Result == Input->Expected);
+            }
+
+            //ASSERT(Result == Input->Expected);
+
+            INIT_TIMESTAMP_FROM_STRING(1, (&Func->Name));
+
+            YIELD_EXECUTION();
+            for (Index = 0; Index < Warmup; Index++) {
+                Result = IsPrefix(StringTable, &AlignedInput, NULL);
+            }
+
+            RESET_TIMESTAMP(1);
+            START_TIMESTAMP(1);
+            for (Index = 0; Index < Iterations; Index++) {
+                Result = IsPrefix(StringTable, &AlignedInput, NULL);
+            }
+            END_TIMESTAMP(1);
+            FINISH_TIMESTAMP(1, Input->String);
+        }
+    }
+
+    OUTPUT_FLUSH();
+
+    DESTROY_TABLE(StringTable);
+
+    ASSERT(SetConsoleCP(OldCodePage));
+
+}
+
+VOID
+Scratch5(
+    PRTL Rtl,
+    PALLOCATOR Allocator
+    )
+{
+    BOOL Success;
+    ULONG Index;
+    ULONG Warmup;
+    ULONG Iterations;
+    ULONG OldCodePage;
+    ULARGE_INTEGER BytesToWrite;
+    HANDLE OutputHandle;
+    ULONG BytesWritten;
+    ULONG CharsWritten;
+    PCHAR Output;
+    PCHAR OutputBuffer;
+    ULONGLONG Alignment;
+    ULONGLONG OutputBufferSize;
+    STRING_TABLE_INDEX Result;
+    TIMESTAMP Timestamp1;
+    LARGE_INTEGER Frequency;
+    const STRING_TABLE_INDEX NoMatchFound = NO_MATCH_FOUND;
+    PSTRING_TABLE StringTable;
+    STRING_MATCH StringMatch;
+    LARGE_INTEGER Delay = { 0, 1 };
+    STRING_ARRAY16 StringArray16 = CONSTANT_STRING_ARRAY16(
+        NtfsAttrDefName,
+        NtfsBadClusName,
+        NtfsBitmapName,
+        NtfsBootName,
+        NtfsExtendName,
+        NtfsLogFileName,
+        NtfsMftMirrName,
+        NtfsMftName,
+        NtfsSecureName,
+        NtfsUpCaseName,
+        NtfsVolumeName,
+        NtfsCairoName,
+        NtfsIndexAllocationName,
+        NtfsDataName,
+        NtfsUnknownName,
+        NtfsDotName
+    );
+
+#define NTFS_TEST_INPUT(N) { Ntfs##N, (PSTRING)&Ntfs##N##Name }
+
+    TEST_INPUT Inputs[] = {
+        NTFS_TEST_INPUT(AttrDef),
+        NTFS_TEST_INPUT(BadClus),
+        NTFS_TEST_INPUT(Bitmap),
+        NTFS_TEST_INPUT(Boot),
+        NTFS_TEST_INPUT(Extend),
+        NTFS_TEST_INPUT(LogFile),
+        NTFS_TEST_INPUT(MftMirr),
+        NTFS_TEST_INPUT(Mft),
+        NTFS_TEST_INPUT(Secure),
+        NTFS_TEST_INPUT(Volume),
+        NTFS_TEST_INPUT(UpCase),
+        NTFS_TEST_INPUT(Cairo),
+        NTFS_TEST_INPUT(IndexAllocation),
+        NTFS_TEST_INPUT(Data),
+        NTFS_TEST_INPUT(Unknown),
+        NTFS_TEST_INPUT(Dot),
+        { -1, &a },
+        { -1, &ab },
+        { -1, &abc },
+        { -1, &fox1 },
+        { -1, &abcd },
+        { -1, &abcdefghijkl },
+        { -1, &abcdefghijklmnopqr },
+        { -1, &abcdefghijklmnopqrstuvw },
+    };
+
+    ULONG NumberOfInputs = ARRAYSIZE(Inputs);
+
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
+
+    NAMED_FUNCTION NamedFunctions[] = {
+        NAMED_FUNC(IsPrefixOfStringInTable),
+        NAMED_FUNC(IsPrefixOfStringInTable_2),
+        NAMED_FUNC(IsPrefixOfStringInTable_3),
+        NAMED_FUNC(IsPrefixOfStringInTable_4),
+        NAMED_FUNC(IsPrefixOfStringInTable_5),
+        NAMED_FUNC(IsPrefixOfStringInTable_6),
+        NAMED_FUNC(IsPrefixOfStringInTable_7),
+        NAMED_FUNC(IsPrefixOfStringInTable_8),
+        NAMED_FUNC(IsPrefixOfStringInTable_x64_1),
+        NAMED_FUNC(IsPrefixOfStringInTable_x64_2),
+    };
+    ULONG NumberOfFuncs = ARRAYSIZE(NamedFunctions);
+
+    ULONG InputIndex;
+    ULONG FuncIndex;
+    PTEST_INPUT Input;
+    PNAMED_FUNCTION Func;
+
+    ALIGNED_BUFFER InputBuffer;
+    STRING AlignedInput;
+
+    ZeroStruct(StringMatch);
+    ZeroStruct(InputBuffer);
+    Alignment = GetAddressAlignment(&InputBuffer);
+    ASSERT(Alignment >= 32);
+
+    OutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    ASSERT(OutputHandle);
+
+    QueryPerformanceFrequency(&Frequency);
+
+    Success = Rtl->CreateBuffer(Rtl,
+                                NULL,
+                                10,
+                                0,
+                                &OutputBufferSize,
+                                &OutputBuffer);
+    ASSERT(Success);
+
+    Output = OutputBuffer;
+
+    OldCodePage = GetConsoleCP();
+
+    ASSERT(SetConsoleCP(20127));
+
+    DELIMITED_TABLE(&NtfsReservedNames);
+
+    if (0) {
+
+        //
+        // Alignment output:
+        //
+        //      $AttrDef,8
+        //      $BadClus,8
+        //      $Bitmap,8
+        //      $Boot,4
+        //      $Extend,256
+        //      $MftMirr,32
+        //      $LogFile,16
+        //      $Mft,4
+        //      $Secure,8
+        //      $Volume,8
+        //      $UpCase,8
+        //      $Cairo,4
+        //      $INDEX_ALLOCATION,16
+        //      $DATA,8
+        //      ????,16
+        //      .,8
+        //      a,512
+        //      ab,4
+        //      abc,8
+        //      fox1,8
+        //      abcd,4
+        //      abcdefghijkl,8
+        //      abcdefghijklmnopqr,8
+        //      abcdefghijklmnopqrstuvw,8
+        //
+
+        for (Index = 0; Index < NumberOfInputs; Index++) {
+            Input = &Inputs[Index];
+
+            Alignment = GetAddressAlignment(Input->String->Buffer);
+            OUTPUT_STRING(Input->String);
+            OUTPUT_SEP();
+            OUTPUT_INT(Alignment);
+            OUTPUT_LF();
+        }
+        OUTPUT_FLUSH();
+        return;
+    }
+
+    Warmup = 500;
+    Iterations = 5000;
+
+    OUTPUT_RAW("Name,String,MinimumCycles\n");
+
+    /*
+        PSTRING_ARRAY StringArray = StringTable->pStringArray;
+        PSTRING BaseString = &StringArray->Strings[0];
+        PSTRING TargetString = &StringArray->Strings[12];
+        PCHAR TargetBuffer = TargetString->Buffer;
+        ULONG Sz1 = sizeof(STRING_ARRAY);
+        ULONG Offset = FIELD_OFFSET(STRING_ARRAY, Strings);
+    */
+
+#define COPY_TEST_INPUT(Ix)                                              \
+    __movsq((PDWORD64)&InputBuffer,                                      \
+            (PDWORD64)Inputs[Ix].String->Buffer,                         \
+            sizeof(InputBuffer) >> 3);                                   \
+    AlignedInput.Length = Inputs[Ix].String->Length;                     \
+    AlignedInput.MaximumLength = Inputs[Ix].String->MaximumLength;       \
+    AlignedInput.Buffer = (PCHAR)&InputBuffer.Chars;
+
+#define COPY_STRING_MATCH(Ix)                                            \
+    StringMatch.Index = Ix;                                              \
+    StringMatch.NumberOfMatchedCharacters = Inputs[Ix].String->Length;   \
+    StringMatch.String = &StringTable->pStringArray->Strings[Ix];
+
+    COPY_TEST_INPUT(12);
+
+    Result = Api->IsPrefixOfStringInTable_x64_2(StringTable,
+                                                &AlignedInput,
+                                                &StringMatch);
+
+    ASSERT(StringMatch.Index == 12);
+    ASSERT(StringMatch.NumberOfMatchedCharacters == 17);
+    ASSERT(StringMatch.String == &StringTable->pStringArray->Strings[12]);
+
+    ZeroStruct(StringMatch);
+
+    COPY_TEST_INPUT(6);
+
+    Result = Api->IsPrefixOfStringInTable_x64_2(StringTable,
+                                                &AlignedInput,
+                                                &StringMatch);
+
+    ASSERT(StringMatch.Index == 6);
+    ASSERT(StringMatch.NumberOfMatchedCharacters == 8);
+    ASSERT(StringMatch.String == &StringTable->pStringArray->Strings[6]);
+
+#if 0
+#define YIELD_EXECUTION() Rtl->NtYieldExecution()
+#endif
+#if 1
+#define YIELD_EXECUTION() Rtl->NtDelayExecution(TRUE, &Delay)
+#endif
+
+    for (InputIndex = 0; InputIndex < NumberOfInputs; InputIndex++) {
+        Input = &Inputs[InputIndex];
+
+        //
+        // Copy the input string into our aligned buffer.
+        //
+
+        COPY_TEST_INPUT(InputIndex);
+
+        //
+        // Do the c-string based version manually, as it has a different
+        // signature to the other methods.
+        //
+
+        Result = Api->IsPrefixOfCStrInArray((PCSZ *)NtfsReservedNamesCStrings,
+                                            AlignedInput.Buffer,
+                                            NULL);
+
+        ASSERT(Result == Input->Expected);
+
+        INIT_TIMESTAMP(1, "IsPrefixOfCStrInArray");
+
+        YIELD_EXECUTION();
+        for (Index = 0; Index < Warmup; Index++) {
+            Result = Api->IsPrefixOfCStrInArray(
+                (PCSZ *)NtfsReservedNamesCStrings,
+                AlignedInput.Buffer,
+                NULL
+            );
+        }
+
+        RESET_TIMESTAMP(1);
+        START_TIMESTAMP(1);
+        for (Index = 0; Index < Iterations; Index++) {
+            Result = Api->IsPrefixOfCStrInArray(
+                (PCSZ *)NtfsReservedNamesCStrings,
+                AlignedInput.Buffer,
+                NULL
+            );
+        }
+        END_TIMESTAMP(1);
+        FINISH_TIMESTAMP(1, Input->String);
+
+        //
+        // Continue with the remaining functions.
+        //
+
+        for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
+        //for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
             Func = &NamedFunctions[FuncIndex];
             IsPrefix = Func->Function;
 

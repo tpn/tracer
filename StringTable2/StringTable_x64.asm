@@ -17,66 +17,10 @@
 include StringTable.inc
 
 ;
-; Define a Locals structure used for referencing our register homing space from
-; rsp.
-;
-
-Locals struct
-    Temp dq ?
-
-    ;
-    ; Define non-volatile register storage.
-    ;
-
-    union
-        FirstNvRegister     dq      ?
-        SavedRbp            dq      ?
-    ends
-
-    SavedRbx                dq      ?
-    SavedRdi                dq      ?
-    SavedRsi                dq      ?
-    SavedR12                dq      ?
-    SavedR13                dq      ?
-    SavedR14                dq      ?
-
-    SavedXmm6               XMMWORD { }
-    SavedXmm7               XMMWORD { }
-    SavedXmm8               XMMWORD { }
-    SavedXmm9               XMMWORD { }
-    SavedXmm10              XMMWORD { }
-    SavedXmm11              XMMWORD { }
-    SavedXmm12              XMMWORD { }
-    SavedXmm13              XMMWORD { }
-    SavedXmm14              XMMWORD { }
-    SavedXmm15              XMMWORD { }
-
-    ;
-    ; Stash R15 after the return address to ensure the XMM register space
-    ; is aligned on a 16 byte boundary, as we use movdqa (i.e. aligned move)
-    ; which will fault if we're only 8 byte aligned.
-    ;
-
-    SavedR15                dq  ?
-
-    ReturnAddress           dq  ?
-    HomeRcx                 dq  ?
-    HomeRdx                 dq  ?
-    HomeR8                  dq  ?
-    HomeR9                  dq  ?
-Locals ends
-
-;
-; Exclude the return address onward from the frame calculation size.
-;
-
-LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
-
-
 ;++
 ;
 ; BOOL
-; IsPrefixOfStringInTable_x64_SSE42(
+; IsPrefixOfStringInTable_x64_1(
 ;     _In_ PSTRING_TABLE StringTable,
 ;     _In_ PSTRING String,
 ;     _Out_ PSTRING_MATCH StringMatch
@@ -408,7 +352,7 @@ Pfx20:  tzcnt       r8d, edx                    ; Count trailing zeros.
         vpextrb     rax, xmm1, 0                ; And extract back into rax.
         cmp         al, 16                      ; Compare length to 16.
         ja          Pfx50                       ; Length is > 16.
-        je          short Pfx40                 ; Lengths match!
+        je          short Pfx35                 ; Lengths match!
                                                 ; Length <= 16, fall through...
 
 ;
@@ -417,7 +361,7 @@ Pfx20:  tzcnt       r8d, edx                    ; Count trailing zeros.
 ;
 
 Pfx30:  cmp         r8d, r10d                   ; Compare against search string.
-        je          short Pfx40                 ; Match found!
+        je          short Pfx35                 ; Match found!
 
 ;
 ; No match against this slot, decrement counter and either continue the loop
@@ -432,16 +376,53 @@ Pfx30:  cmp         r8d, r10d                   ; Compare against search string.
         ret
 
 ;
-; The prefix match succeeded.  Load the match parameter back into r9 and test
-; to see if it's not-NULL, in which case we need to fill out a STRING_MATCH
-; structure for the match.
+; Pfx35 and Pfx40 are the jump targets for when the prefix match succeeds.  The
+; former is used when we need to copy the number of characters matched from r8
+; back to rax.  The latter jump target doesn't require this.
 ;
 
-Pfx40:
+Pfx35:  mov         rax, r8                     ; Copy numbers of chars matched.
 
-        ; xxx todo: load r9 and fill out.
+;
+; Load the match parameter back into r8 and test to see if it's not-NULL, in
+; which case we need to fill out a STRING_MATCH structure for the match.
+;
+
+Pfx40:  vpextrq     r8, xmm5, 0                 ; Extract StringMatch.
+        test        r8, r8                      ; Is NULL?
+        jnz         short @F                    ; Not zero, need to fill out.
+
+;
+; StringMatch is NULL, we're done. Extract index of match back into rax and ret.
+;
 
         vpextrd     eax, xmm5, 3                ; Extract raw index for match.
+        ret                                     ; StringMatch == NULL, finish.
+
+;
+; StringMatch is not NULL.  Fill out characters matched (currently rax), then
+; reload the index from xmm5 into rax and save.
+;
+
+@@:     mov         byte ptr StringMatch.NumberOfMatchedCharacters[r8], al
+        vpextrd     eax, xmm5, 3                ; Extract raw index for match.
+        mov         byte ptr StringMatch.Index[r8], al
+
+;
+; Final step, loading the address of the string in the string array.  This
+; involves going through the StringTable, so we need to load that parameter
+; back into rcx, then resolving the string array address via pStringArray,
+; then the relevant STRING offset within the StringArray.Strings structure.
+;
+
+        vpextrq     rcx, xmm2, 0            ; Extract StringTable into rcx.
+        mov         rcx, StringTable.pStringArray[rcx] ; Load string array.
+
+        shl         eax, 4                  ; Scale the index; sizeof STRING=16.
+        lea         rdx, [rax + StringArray.Strings[rcx]] ; Resolve address.
+        mov         qword ptr StringMatch.String[r8], rdx ; Save STRING ptr.
+        shr         eax, 4                  ; Revert the scaling.
+
         ret
 
 ;
@@ -509,17 +490,15 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
 ; the loop.
 ;
 
-       ;inc         rax                         ; Increment index.
-        add         rax, 1                      ; Increment index.
-       ;loopnz      @B                          ; Decrement cx and loop back.
-        dec         cx
-        jnz         short @B
-        ;loopnz      @B                          ; Decrement cx and loop back.
+        inc         rax                         ; Increment index.
+        loopnz      @B                          ; Decrement cx and loop back.
 
 ;
-; All bytes matched!  Jump to Pfx40 for finalization.
+; All bytes matched!  Add 16 (still in r10) back to rax such that it captures
+; how many characters we matched, and then jump to Pfx40 for finalization.
 ;
 
+        add         rax, r10
         jmp         Pfx40
 
 ;
