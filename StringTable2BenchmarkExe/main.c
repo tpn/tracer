@@ -14,6 +14,8 @@ Abstract:
 
 #include "stdafx.h"
 
+#pragma optimize("", off)
+
 #define PTR(p) ((ULONG_PTR)(p))
 #define LEN(String) ((LONG)((STRING)(String)).Length)
 
@@ -111,6 +113,16 @@ MAKE_STRING(eighteen1818181818);
         DELIM                                                \
     );                                                       \
     ASSERT(StringTable != NULL)
+
+#if 0
+#define END_TIMESTAMP END_TIMESTAMP_RDTSC
+#define START_TIMESTAMP START_TIMESTAMP_RDTSC
+#endif
+
+#if 1
+#define END_TIMESTAMP END_TIMESTAMP_RDTSCP
+#define START_TIMESTAMP START_TIMESTAMP_RDTSCP
+#endif
 
 
 RTL GlobalRtl;
@@ -318,7 +330,7 @@ Scratch4(
     LARGE_INTEGER Frequency;
     const STRING_TABLE_INDEX NoMatchFound = NO_MATCH_FOUND;
     PSTRING_TABLE StringTable;
-    LARGE_INTEGER Delay = { 0, 0 };
+    LARGE_INTEGER Delay = { 0, 1 };
     STRING_ARRAY16 StringArray16 = CONSTANT_STRING_ARRAY16(
         NtfsAttrDefName,
         NtfsBadClusName,
@@ -382,6 +394,7 @@ Scratch4(
         NAMED_FUNC(IsPrefixOfStringInTable_8),
         NAMED_FUNC(IsPrefixOfStringInTable_x64_1),
         NAMED_FUNC(IsPrefixOfStringInTable_x64_2),
+        NAMED_FUNC(IsPrefixOfStringInTable_x64_3),
     };
     ULONG NumberOfFuncs = ARRAYSIZE(NamedFunctions);
 
@@ -462,8 +475,8 @@ Scratch4(
         return;
     }
 
-    Warmup = 500;
-    Iterations = 5000;
+    Warmup = 100;
+    Iterations = 1000;
 
     OUTPUT_RAW("Name,String,MinimumCycles\n");
 
@@ -488,7 +501,7 @@ Scratch4(
                                    Inputs[0].String,
                                    NULL);
 
-    Result = Api->IsPrefixOfStringInTable_x64_2(StringTable,
+    Result = Api->IsPrefixOfStringInTable_x64_3(StringTable,
                                                 &AlignedInput,
                                                 NULL);
 
@@ -542,6 +555,7 @@ Scratch4(
             );
         }
 
+#if 1
         RESET_TIMESTAMP(1);
         START_TIMESTAMP(1);
         for (Index = 0; Index < Iterations; Index++) {
@@ -553,13 +567,29 @@ Scratch4(
         }
         END_TIMESTAMP(1);
         FINISH_TIMESTAMP(1, Input->String);
+#endif
+
+#if 0
+        RESET_TIMESTAMP(1);
+        for (Index = 0; Index < Iterations; Index++) {
+            START_TIMESTAMP(1);
+            Result = Api->IsPrefixOfCStrInArray(
+                (PCSZ *)NtfsReservedNamesCStrings,
+                AlignedInput.Buffer,
+                NULL
+            );
+            END_TIMESTAMP(1);
+        }
+        FINISH_TIMESTAMP(1, Input->String);
+#endif
+
 
         //
         // Continue with the remaining functions.
         //
 
-        //for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
-        for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
+        for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
+        //for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
             Func = &NamedFunctions[FuncIndex];
             IsPrefix = Func->Function;
 
@@ -567,11 +597,24 @@ Scratch4(
             if (InputIndex == 12 && IsPrefix == Api->IsPrefixOfStringInTable_x64_2) {
                 __debugbreak();
             }
+            if (IsPrefix == Api->IsPrefixOfStringInTable_8) {
+                __debugbreak();
+            }
+            */
+
+            /*
+            if (IsPrefix == Api->IsPrefixOfStringInTable_x64_3) {
+                __debugbreak();
+            }
             */
 
             Result = IsPrefix(StringTable, &AlignedInput, NULL);
 
-            if (IsPrefix != Api->IsPrefixOfStringInTable_x64_1) {
+            if (IsPrefix != Api->IsPrefixOfStringInTable_x64_1 &&
+                //IsPrefix != Api->IsPrefixOfStringInTable_x64_2 &&
+                //IsPrefix != Api->IsPrefixOfStringInTable_x64_3 &&
+                //IsPrefix != Api->IsPrefixOfStringInTable_x64_4 &&
+                1) {
                 ASSERT(Result == Input->Expected);
             }
 
@@ -584,6 +627,7 @@ Scratch4(
                 Result = IsPrefix(StringTable, &AlignedInput, NULL);
             }
 
+#if 1
             RESET_TIMESTAMP(1);
             START_TIMESTAMP(1);
             for (Index = 0; Index < Iterations; Index++) {
@@ -591,6 +635,17 @@ Scratch4(
             }
             END_TIMESTAMP(1);
             FINISH_TIMESTAMP(1, Input->String);
+#endif
+
+#if 0
+            RESET_TIMESTAMP(1);
+            for (Index = 0; Index < Iterations; Index++) {
+                START_TIMESTAMP(1);
+                Result = IsPrefix(StringTable, &AlignedInput, NULL);
+                END_TIMESTAMP(1);
+            }
+            FINISH_TIMESTAMP(1, Input->String);
+#endif
         }
     }
 
@@ -875,8 +930,8 @@ Scratch5(
         // Continue with the remaining functions.
         //
 
-        for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
-        //for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
+        //for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
+        for (FuncIndex = NumberOfFuncs-1; FuncIndex != 0; FuncIndex--) {
             Func = &NamedFunctions[FuncIndex];
             IsPrefix = Func->Function;
 
@@ -916,6 +971,50 @@ Scratch5(
     DESTROY_TABLE(StringTable);
 
     ASSERT(SetConsoleCP(OldCodePage));
+
+}
+
+VOID
+Scratch6(
+    PRTL Rtl,
+    PALLOCATOR Allocator
+    )
+{
+    BOOL Success;
+    PCHAR Buffer;
+    PCHAR End;
+    ULONGLONG BufferSize;
+    STRING String;
+    HANDLE ProcessHandle = NULL;
+    PSTRING_TABLE StringTable;
+    STRING_TABLE_INDEX Index;
+    STRING Filler = RTL_CONSTANT_STRING("Filler12");
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
+
+    DELIMITED_TABLE(&NtfsReservedNames);
+
+    Success = Rtl->CreateBuffer(Rtl,
+                                &ProcessHandle,
+                                1,
+                                0,
+                                &BufferSize,
+                                (PPVOID)&Buffer);
+
+    ASSERT(Success);
+
+    End = (Buffer + BufferSize) - 8;
+    CopyMemory(End, Filler.Buffer, Filler.Length);
+
+    String.Length = 9;
+    String.MaximumLength = 9;
+    String.Buffer = End;
+
+    IsPrefix = Api->IsPrefixOfStringInTable_x64_2;
+
+    Index = IsPrefix(StringTable, &String, NULL);
+    ASSERT(Index == NO_MATCH_FOUND);
+
+    Rtl->VirtualFreeEx(ProcessHandle, Buffer, 0, MEM_RELEASE);
 
 }
 
@@ -961,6 +1060,7 @@ mainCRTStartup()
 
     ASSERT(LoadStringTableModule(Rtl,
                                  &GlobalStringTableModule,
+                                 NULL,
                                  &GlobalApi));
     Api = &GlobalApi;
 
