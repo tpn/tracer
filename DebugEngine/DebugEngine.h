@@ -74,7 +74,7 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable2/StringTable.h"
 
 //
 // Disable source browsing for DbgEng.h to avoid this:
@@ -2712,11 +2712,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _DEBUG_ENGINE_SESSION {
     HKEY RunHistoryRegistryKey;
 
     //
-    // StringTable-specific functions.
+    // StringTable API.
     //
 
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
-        CreateStringTableFromDelimitedString;
+    PSTRING_TABLE_FUNCTIONS StringTableApi;
 
     PALLOCATOR StringTableAllocator;
     PALLOCATOR StringArrayAllocator;
@@ -2833,6 +2832,7 @@ BOOL
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
     _In_ struct _TRACER_CONFIG *TracerConfig,
     _In_opt_ HMODULE StringTableModule,
+    _In_opt_ PSTRING_TABLE_FUNCTIONS StringTableApi,
     _In_opt_ PALLOCATOR StringArrayAllocator,
     _In_opt_ PALLOCATOR StringTableAllocator,
     _Outptr_result_nullonfailure_ PPDEBUG_ENGINE_SESSION SessionPointer
@@ -2849,6 +2849,7 @@ BOOL
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS Flags,
     _In_ struct _TRACER_CONFIG *TracerConfig,
     _In_opt_ HMODULE StringTableModule,
+    _In_opt_ PSTRING_TABLE_FUNCTIONS StringTableApi,
     _In_opt_ PALLOCATOR StringArrayAllocator,
     _In_opt_ PALLOCATOR StringTableAllocator,
     _In_ struct _TRACER_INJECTION_MODULES *InjectionModules,
@@ -2939,12 +2940,11 @@ See Also:
 --*/
 {
     BOOL Success;
-    DWORD LastError;
     HMODULE Module = NULL;
     HMODULE StringTableModule = NULL;
+    STRING_TABLE_FUNCTIONS StringTableApi;
     PINITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
         InitializeDebugEngineSessionWithInjectionIntent;
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
 
     //
     // Validate arguments.
@@ -3008,27 +3008,13 @@ See Also:
     // Attempt to load the StringTable module.
     //
 
-    StringTableModule = LoadLibraryW(StringTableDllPath->Buffer);
+    Success = LoadStringTableModule(Rtl,
+                                    &StringTableModule,
+                                    StringTableDllPath,
+                                    &StringTableApi);
 
-    if (!StringTableModule) {
-        LastError = GetLastError();
-        OutputDebugStringA("Failed to load StringTable.dll.\n");
-        goto Error;
-    }
-
-    //
-    // Resolve the StringTable's custom allocator initialization function.
-    //
-
-    InitializeStringTableAllocator = (PINITIALIZE_STRING_TABLE_ALLOCATOR)(
-        GetProcAddress(
-            StringTableModule,
-            "InitializeStringTableAllocator"
-        )
-    );
-
-    if (!InitializeStringTableAllocator) {
-        OutputDebugStringA("Failed resolve: InitializeStringTableAllocator\n");
+    if (!Success) {
+        OutputDebugStringA("LoadStringTableModule failed.\n");
         goto Error;
     }
 
@@ -3040,15 +3026,15 @@ See Also:
 
     if (!StringArrayAllocator->Context) {
         CHECKED_MSG(
-            InitializeStringTableAllocator(StringArrayAllocator),
-            "InitializeStringTableAllocator(StringArrayAllocator)"
+            Rtl->InitializeHeapAllocator(StringArrayAllocator),
+            "Rtl->InitializeHeapAllocator(StringArrayAllocator)"
         );
     }
 
     if (!StringTableAllocator->Context) {
         CHECKED_MSG(
-            InitializeStringTableAllocator(StringTableAllocator),
-            "InitializeStringTableAllocator(StringTableAllocator)"
+            Rtl->InitializeHeapAllocator(StringTableAllocator),
+            "Rtl->InitializeHeapAllocator(StringTableAllocator)"
         );
     }
 
@@ -3062,6 +3048,7 @@ See Also:
         InitFlags,
         TracerConfig,
         StringTableModule,
+        &StringTableApi,
         StringArrayAllocator,
         StringTableAllocator,
         InjectionModules,
@@ -3215,11 +3202,9 @@ See Also:
 // Public function declarations.
 //
 
-#pragma component(browser, off)
 DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
                  InitializeDebugEngineSessionWithInjectionIntent;
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"

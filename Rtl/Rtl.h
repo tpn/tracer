@@ -6322,6 +6322,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PLOAD_SYMBOLS LoadSymbols;
     PLOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
 
+    PINITIALIZE_ALLOCATOR InitializeHeapAllocator;
+    PDESTROY_ALLOCATOR DestroyHeapAllocator;
+
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;
         struct {
@@ -8902,6 +8905,10 @@ typedef struct _TIMESTAMP {
     ULONGLONG Id;
     ULONGLONG Count;
     STRING Name;
+    union {
+        ULONG Aux;
+        ULONG CpuId[4];
+    };
     LARGE_INTEGER Start;
     LARGE_INTEGER End;
     ULARGE_INTEGER StartTsc;
@@ -8959,14 +8966,23 @@ typedef TIMESTAMP *PTIMESTAMP;
     Timestamp##Id##.MinimumNanoseconds.QuadPart = (ULONGLONG)-1; \
     Timestamp##Id##.MaximumNanoseconds.QuadPart = 0
 
-#define START_TIMESTAMP(Id)                          \
+#define START_TIMESTAMP_CPUID(Id)                    \
     ++Timestamp##Id##.Count;                         \
     QueryPerformanceCounter(&Timestamp##Id##.Start); \
+    __cpuid((PULONG)&Timestamp##Id##.CpuId, 0);      \
     Timestamp##Id##.StartTsc.QuadPart = __rdtsc()
 
-#define END_TIMESTAMP(Id)                                       \
-    Timestamp##Id##.EndTsc.QuadPart = __rdtsc();                \
-    QueryPerformanceCounter(&Timestamp##Id##.End);              \
+#define START_TIMESTAMP_RDTSCP(Id)                                      \
+    ++Timestamp##Id##.Count;                                            \
+    QueryPerformanceCounter(&Timestamp##Id##.Start);                    \
+    Timestamp##Id##.StartTsc.QuadPart = __rdtscp(&Timestamp##Id##.Aux)
+
+#define START_TIMESTAMP_RDTSC(Id)                                       \
+    ++Timestamp##Id##.Count;                                            \
+    QueryPerformanceCounter(&Timestamp##Id##.Start);                    \
+    Timestamp##Id##.StartTsc.QuadPart = __rdtsc()
+
+#define END_TIMESTAMP_COMMON(Id)                                \
     Timestamp##Id##.Tsc.QuadPart = (                            \
         Timestamp##Id##.EndTsc.QuadPart -                       \
         Timestamp##Id##.StartTsc.QuadPart                       \
@@ -9025,6 +9041,22 @@ typedef TIMESTAMP *PTIMESTAMP;
                 Timestamp##Id##.Cycles.QuadPart                 \
             );                                                  \
     }
+
+#define END_TIMESTAMP_CPUID(Id)                                 \
+    __cpuid((PULONG)&Timestamp##Id##.CpuId, 0);                 \
+    Timestamp##Id##.EndTsc.QuadPart = __rdtsc();                \
+    QueryPerformanceCounter(&Timestamp##Id##.End);              \
+    END_TIMESTAMP_COMMON(Id)
+
+#define END_TIMESTAMP_RDTSCP(Id)                                      \
+    Timestamp##Id##.EndTsc.QuadPart = __rdtscp(&Timestamp##Id##.Aux); \
+    QueryPerformanceCounter(&Timestamp##Id##.End);                    \
+    END_TIMESTAMP_COMMON(Id)
+
+#define END_TIMESTAMP_RDTSC(Id)                     \
+    Timestamp##Id##.EndTsc.QuadPart = __rdtsc();    \
+    QueryPerformanceCounter(&Timestamp##Id##.End);  \
+    END_TIMESTAMP_COMMON(Id)
 
 #define FINISH_TIMESTAMP_EXAMPLE(Id, Length, Iterations)     \
     OUTPUT_STRING(&Timestamp##Id##.Name);                    \

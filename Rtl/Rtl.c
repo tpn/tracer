@@ -338,6 +338,9 @@ CreateBuffer(
     if (!ARGUMENT_PRESENT(TargetProcessHandle)) {
         ProcessHandle = GetCurrentProcess();
     } else {
+        if (!*TargetProcessHandle) {
+            *TargetProcessHandle = GetCurrentProcess();
+        }
         ProcessHandle = *TargetProcessHandle;
     }
 
@@ -4278,6 +4281,9 @@ InitializeRtl(
 
     Rtl->LoadSymbols = LoadSymbols;
     Rtl->LoadSymbolsFromMultipleModules = LoadSymbolsFromMultipleModules;
+
+    Rtl->InitializeHeapAllocator = RtlHeapAllocatorInitialize;
+    Rtl->DestroyHeapAllocator = RtlHeapAllocatorDestroy;
 
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;

@@ -1435,6 +1435,98 @@ STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
 STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE
     IsPrefixOfStringInSingleTableInline;
 
+//
+// Public exported API.
+//
+
+typedef struct _STRING_TABLE_FUNCTIONS {
+
+    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+
+    PCOPY_STRING_ARRAY CopyStringArray;
+    PCREATE_STRING_TABLE CreateStringTable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
+
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE CreateStringTableFromDelimitedEnvironmentVariable;
+
+    PIS_STRING_IN_TABLE IsStringInTable;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+} STRING_TABLE_FUNCTIONS;
+typedef STRING_TABLE_FUNCTIONS *PSTRING_TABLE_FUNCTIONS;
+
+FORCEINLINE
+BOOLEAN
+LoadStringTableModule(
+    PRTL Rtl,
+    HMODULE *ModulePointer,
+    PSTRING_TABLE_FUNCTIONS Functions
+    )
+{
+    BOOL Success;
+    HMODULE Module;
+    ULONG NumberOfResolvedSymbols;
+    ULONG ExpectedNumberOfResolvedSymbols;
+
+    CONST PCSTR Names[] = {
+        "SetCSpecificHandler",
+        "CopyStringArray",
+        "CreateStringTable",
+        "DestroyStringTable",
+        "InitializeStringTableAllocator",
+        "CreateStringArrayFromDelimitedString",
+        "CreateStringTableFromDelimitedString",
+        "CreateStringTableFromDelimitedEnvironmentVariable",
+        "IsStringInTable",
+        "IsPrefixOfStringInTable",
+    };
+
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
+
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
+
+    Module = LoadLibraryA("StringTable.dll");
+    if (!Module) {
+        return FALSE;
+    }
+
+    Success = Rtl->LoadSymbols(
+        Names,
+        ARRAYSIZE(Names),
+        (PULONG_PTR)Functions,
+        sizeof(*Functions) / sizeof(ULONG_PTR),
+        Module,
+        &FailedBitmap,
+        TRUE,
+        &NumberOfResolvedSymbols
+    );
+
+    ASSERT(Success);
+
+    if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol-1];
+        __debugbreak();
+    }
+
+    Functions->SetCSpecificHandler(Rtl->__C_specific_handler);
+
+    *ModulePointer = Module;
+
+    return TRUE;
+}
+
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

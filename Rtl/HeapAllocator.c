@@ -235,7 +235,6 @@ RtlHeapAllocatorAlignedOffsetMalloc(
 
     ReturnAddress = ((Buffer + Overhead + Offset) & ~Align) - Offset;
     AddressPointer = (ReturnAddress - Padding) - sizeof(ULONG_PTR);
-    //*((ULONG_PTR)AddressPointer = Buffer;
     ((ULONG_PTR *)(ReturnAddress - Padding))[-1] = Buffer;
 
     return (PVOID)ReturnAddress;

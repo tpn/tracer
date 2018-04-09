@@ -155,6 +155,8 @@ Return Value:
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
 
+    //__debugbreak();
+
     Allocator = (PALLOCATOR)(
         HeapAlloc(
             GetProcessHeap(),
@@ -167,12 +169,7 @@ Return Value:
         goto Error;
     }
 
-    //
-    // Initialize the default heap allocator.  This is a thin wrapper around
-    // the generic Win32 Heap functions.
-    //
-
-    if (!DefaultHeapInitializeAllocator(Allocator)) {
+    if (!RtlHeapAllocatorInitialize(Allocator)) {
         goto Error;
     }
 

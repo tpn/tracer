@@ -56,5 +56,8 @@
     <ClCompile Include="InitializeTracedPythonSessionFromPythonDllModule.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Rtl\HeapAllocator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
