@@ -17,7 +17,7 @@ Abstract:
 
 _Use_decl_annotations_
 STRING_TABLE_INDEX
-IsPrefixOfStringInTable(
+IsPrefixOfStringInTable_1(
     PSTRING_TABLE StringTable,
     PSTRING String,
     PSTRING_MATCH Match
@@ -275,7 +275,7 @@ Return Value:
 
             TargetString = &StringTable->pStringArray->Strings[Index];
 
-            CharactersMatched = IsPrefixMatch(String, TargetString, 16);
+            CharactersMatched = IsPrefixMatchAvx2(String, TargetString, 16);
 
             if (CharactersMatched == NO_MATCH_FOUND) {
 
@@ -2180,7 +2180,7 @@ Return Value:
     ULONG NumberOfTrailingZeros;
     ULONG SearchLength;
     PSTRING TargetString;
-    PSTRING_ARRAY StringArray;
+    //PSTRING_ARRAY StringArray;
     STRING_SLOT Slot;
     STRING_SLOT Search;
     STRING_SLOT Compare;
@@ -2194,7 +2194,7 @@ Return Value:
     XMMWORD IncludeSlots;
     const XMMWORD AllOnesXmm = _mm_set1_epi8(0xff);
 
-    StringArray = StringTable->pStringArray;
+    //StringArray = StringTable->pStringArray;
 
     //
     // If the minimum length of the string array is greater than the length of
@@ -2388,23 +2388,27 @@ Return Value:
 
             TargetString = &StringTable->pStringArray->Strings[Index];
 
-            {
-                PBYTE Left;
-                PBYTE Right;
-                ULONG Matched = 0;
-                ULONG Remaining = (String->Length - 16) + 1;
+            CharactersMatched = IsPrefixMatch(String, TargetString, 16);
 
-                Left = (PBYTE)RtlOffsetToPointer(String->Buffer, 16);
-                Right = (PBYTE)RtlOffsetToPointer(TargetString->Buffer, 16);
+            if (CharactersMatched == NO_MATCH_FOUND) {
 
-                while (--Remaining && *Left && *Right && *Left++ == *Right++) {
-                    Matched++;
-                }
+                //
+                // The prefix match failed, continue our search.
+                //
 
-                if (Matched > 0 && !*Right) {
-                    CharactersMatched += Matched;
-                    goto FoundMatch;
-                }
+                continue;
+
+            } else {
+
+                //
+                // We successfully prefix matched the search string against
+                // this slot.  The code immediately following us deals with
+                // handling a successful prefix match at the initial slot
+                // level; let's avoid an unnecessary branch and just jump
+                // directly into it.
+                //
+
+                goto FoundMatch;
             }
 
             //

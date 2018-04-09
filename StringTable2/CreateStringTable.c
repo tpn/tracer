@@ -373,8 +373,8 @@ Routine Description:
         Slot = &StringTable->Slots[Entry->Index];
 
         //
-        // Iterate over each character in the slot and find the first one without
-        // a corresponding bit set.
+	// Iterate over each character in the slot and find the first one
+	// without a corresponding bit set.
         //
 
         for (Index = 0; Index < Length; Index++) {

@@ -330,7 +330,7 @@ typedef struct _STRING_TABLE {
     // We want the structure size to be a power of 2 such that an even number
     // can fit into a 4KB page (and reducing the likelihood of crossing page
     // boundaries, which complicates SIMD boundary handling), so we have an
-    // extra 192-bytes to play with here.  The CopyStringArray() routine is
+    // extra 184-bytes to play with here.  The CopyStringArray() routine is
     // special-cased to allocate the backing STRING_ARRAY structure plus the
     // accommodating buffers in this space if it can fit.
     //
@@ -341,7 +341,7 @@ typedef struct _STRING_TABLE {
 
     union {
         STRING_ARRAY StringArray;
-        CHAR Padding[192];
+        CHAR Padding[184];
     };
 
 } STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
@@ -931,7 +931,7 @@ ComputeCrc32ForString(
 
 FORCEINLINE
 USHORT
-IsPrefixMatch(
+IsPrefixMatchAvx2(
     _In_ PCSTRING SearchString,
     _In_ PCSTRING TargetString,
     _In_ USHORT Offset
@@ -1223,6 +1223,33 @@ StartXmm:
     return NO_MATCH_FOUND;
 }
 
+FORCEINLINE
+BYTE
+IsPrefixMatch(
+    _In_ PCSTRING SearchString,
+    _In_ PCSTRING TargetString,
+    _In_ BYTE Offset
+    )
+{
+    PBYTE Left;
+    PBYTE Right;
+    BYTE Matched = 0;
+    BYTE Remaining = (SearchString->Length - Offset) + 1;
+
+    Left = (PBYTE)RtlOffsetToPointer(SearchString->Buffer, Offset);
+    Right = (PBYTE)RtlOffsetToPointer(TargetString->Buffer, Offset);
+
+    while (--Remaining && *Left++ == *Right++) {
+        Matched++;
+    }
+
+    Matched += Offset;
+    if (Matched != TargetString->Length) {
+        return NO_MATCH_FOUND;
+    }
+
+    return Matched;
+}
 
 _Success_(return != 0)
 FORCEINLINE
@@ -1259,8 +1286,19 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(INITIALIZE_STRING_TABLE_ALLOCATOR)(
+(INITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP)(
     _In_ PRTL_BOOTSTRAP RtlBootstrap,
+    _In_ PALLOCATOR Allocator
+    );
+typedef INITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
+      *PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_STRING_TABLE_ALLOCATOR)(
+    _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator
     );
 typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
@@ -1271,6 +1309,9 @@ typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
 
 STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR
     InitializeStringTableAllocator;
+
+STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
+    InitializeStringTableAllocatorFromRtlBootstrap;
 
 STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
 STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
@@ -1308,6 +1349,7 @@ typedef struct _STRING_TABLE_FUNCTIONS {
     PDESTROY_STRING_TABLE DestroyStringTable;
 
     PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP InitializeStringTableAllocatorFromRtlBootstrap;
 
     PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
     PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
@@ -1318,6 +1360,7 @@ typedef struct _STRING_TABLE_FUNCTIONS {
     PIS_PREFIX_OF_CSTR_IN_ARRAY IsPrefixOfCStrInArray;
 
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_1;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_2;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_3;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_4;
@@ -1327,6 +1370,7 @@ typedef struct _STRING_TABLE_FUNCTIONS {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_8;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_1;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_2;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_3;
 
 } STRING_TABLE_FUNCTIONS;
 typedef STRING_TABLE_FUNCTIONS *PSTRING_TABLE_FUNCTIONS;
@@ -1334,13 +1378,14 @@ typedef STRING_TABLE_FUNCTIONS *PSTRING_TABLE_FUNCTIONS;
 FORCEINLINE
 BOOLEAN
 LoadStringTableModule(
-    PRTL Rtl,
-    HMODULE *ModulePointer,
-    PSTRING_TABLE_FUNCTIONS Functions
+    _In_ PRTL Rtl,
+    _Inout_ HMODULE *ModulePointer,
+    _In_opt_ PUNICODE_STRING ModulePath,
+    _Out_ PSTRING_TABLE_FUNCTIONS Functions
     )
 {
     BOOL Success;
-    HMODULE Module;
+    HMODULE Module = NULL;
     ULONG NumberOfResolvedSymbols;
     ULONG ExpectedNumberOfResolvedSymbols;
 
@@ -1350,12 +1395,14 @@ LoadStringTableModule(
         "CreateStringTable",
         "DestroyStringTable",
         "InitializeStringTableAllocator",
+        "InitializeStringTableAllocatorFromRtlBootstrap",
         "CreateStringArrayFromDelimitedString",
         "CreateStringTableFromDelimitedString",
         "CreateStringTableFromDelimitedEnvironmentVariable",
         "IsStringInTable",
         "IsPrefixOfCStrInArray",
         "IsPrefixOfStringInTable",
+        "IsPrefixOfStringInTable_1",
         "IsPrefixOfStringInTable_2",
         "IsPrefixOfStringInTable_3",
         "IsPrefixOfStringInTable_4",
@@ -1365,6 +1412,7 @@ LoadStringTableModule(
         "IsPrefixOfStringInTable_8",
         "IsPrefixOfStringInTable_x64_1",
         "IsPrefixOfStringInTable_x64_2",
+        "IsPrefixOfStringInTable_x64_3",
     };
 
     ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
@@ -1372,7 +1420,18 @@ LoadStringTableModule(
 
     ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
 
-    Module = LoadLibraryA("StringTable2.dll");
+    if (ARGUMENT_PRESENT(ModulePointer)) {
+        Module = *ModulePointer;
+    }
+
+    if (!Module) {
+        if (ARGUMENT_PRESENT(ModulePath)) {
+            Module = LoadLibraryW(ModulePath->Buffer);
+        } else {
+            Module = LoadLibraryA("StringTable2.dll");
+        }
+    }
+
     if (!Module) {
         return FALSE;
     }
