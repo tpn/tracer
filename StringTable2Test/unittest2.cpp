@@ -58,6 +58,8 @@ MAKE_STRING(Bar);
     NameId = NtfsIsPrefixInTable4(&Ntfs##N##Name); \
     Assert::IsTrue(NameId == Ntfs##N)
 
+#define ASSERT_TRUE(Cond) (Assert::IsTrue(Cond))
+
 
 extern PRTL Rtl;
 extern PALLOCATOR Allocator;
@@ -146,6 +148,52 @@ namespace TestStringTable
             ASSERT_SIZE(1);
             DESTROY_TABLE(StringTable);
         }
+
+        //
+        // The following is useful when needing to test boundary conditions.
+        //
+
+#if 0
+        TEST_METHOD(TestPageBoundaryCrossFault)
+        {
+            BOOL Success;
+            PCHAR Buffer;
+            PCHAR End;
+            ULONGLONG BufferSize;
+            STRING String;
+            HANDLE ProcessHandle = NULL;
+            PSTRING_TABLE StringTable;
+            STRING_TABLE_INDEX Index;
+            STRING Filler = RTL_CONSTANT_STRING("Filler12");
+            PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
+
+            DELIMITED_TABLE(&NtfsReservedNames);
+
+            Success = Rtl->CreateBuffer(Rtl,
+                                        &ProcessHandle,
+                                        1,
+                                        0,
+                                        &BufferSize,
+                                        (PPVOID)&Buffer);
+
+            ASSERT_TRUE(Success);
+
+            End = (Buffer + BufferSize) - 8;
+            CopyMemory(End, Filler.Buffer, Filler.Length);
+
+            String.Length = 9;
+            String.MaximumLength = 9;
+            String.Buffer = End;
+
+            IsPrefix = Api->IsPrefixOfStringInTable_x64_3;
+
+            Index = IsPrefix(StringTable, &String, NULL);
+            ASSERT_TRUE(Index == NO_MATCH_FOUND);
+
+            Rtl->VirtualFreeEx(ProcessHandle, Buffer, 0, MEM_RELEASE);
+
+        }
+#endif
 
         TEST_METHOD(TestNtfsNames)
         {

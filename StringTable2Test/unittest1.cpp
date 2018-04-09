@@ -119,6 +119,7 @@ TEST_MODULE_INITIALIZE(UnitTest1Init)
 
     Assert::IsTrue(LoadStringTableModule(Rtl,
                                          &GlobalStringTableModule,
+                                         NULL,
                                          &GlobalApi));
 
     Api = &GlobalApi;
@@ -444,9 +445,13 @@ namespace TestStringTable
         TEST_METHOD(TestMethod5_0)
         {
             STRING_TABLE_INDEX Index;
+            STRING_TABLE_INDEX Index1;
+            STRING_TABLE_INDEX Index2;
             PSTRING_TABLE StringTable;
             PSTRING_ARRAY StringArray;
             PSTRING_ARRAY6 pStringArray6;
+            PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix1;
+            PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix2;
             PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
             STRING_ARRAY6 StringArray6 = CONSTANT_STRING_ARRAY6(
                 abcdefghijklmnopqrstuvw,
@@ -479,43 +484,49 @@ namespace TestStringTable
                              LEN(abcdefghijklmnopqrstuvw));
 
             IsPrefixOfStringInTable = Api->IsPrefixOfStringInTable;
+            IsPrefix1 = Api->IsPrefixOfStringInTable_8;
+            IsPrefix2 = Api->IsPrefixOfStringInTable_x64_2;
+
             Index = IsPrefixOfStringInTable(StringTable, &abcd, NULL);
-            Assert::IsTrue(Index == NO_MATCH_FOUND);
+            ASSERT(Index == NO_MATCH_FOUND);
 
             Index = IsPrefixOfStringInTable(StringTable, &abcdefghijklm, NULL);
-            Assert::AreEqual((LONG)Index, (LONG)4);
+
+            Index1 = IsPrefix1(StringTable, &abcdefghijklm, NULL);
+            Index2 = IsPrefix2(StringTable, &abcdefghijklm, NULL);
+
+            ASSERT(Index == 4);
 
             Index = IsPrefixOfStringInTable(StringTable, &fox1, NULL);
-            Assert::AreEqual((LONG)Index, (LONG)2);
+            ASSERT(Index == 2);
 
             Index = IsPrefixOfStringInTable(StringTable, &lmnopqrstuv, NULL);
-            Assert::AreEqual((LONG)Index, (LONG)5);
+            ASSERT(Index == 5);
 
             Index = IsPrefixOfStringInTable(StringTable, &lmno, NULL);
-            Assert::IsTrue(Index == NO_MATCH_FOUND);
+            ASSERT(Index == NO_MATCH_FOUND);
 
             Index = IsPrefixOfStringInTable(StringTable,
                                             &abcdefghijklmnopqrstu,
                                             NULL);
-            Assert::AreEqual((LONG)Index, (LONG)4);
+            ASSERT(Index == 4);
 
             Index = IsPrefixOfStringInTable(StringTable,
                                             &abcdefghijklmnopqrstuvwyxz,
                                             NULL);
-            Assert::AreEqual((ULONG)Index, (ULONG)0);
+            ASSERT(Index == 0);
 
             Index = IsPrefixOfStringInTable(StringTable,
                                             &abcdefghijklmnopqrstuvw,
                                             NULL);
-            Assert::AreEqual((ULONG)Index, (ULONG)0);
+            ASSERT(Index == 0);
 
             Index = IsPrefixOfStringInTable(StringTable,
                                             &nopqrstuvwy,
                                             NULL);
-            Assert::AreEqual((ULONG)Index, (ULONG)1);
+            ASSERT(Index == 1);
 
             DESTROY_TABLE(StringTable);
-
         }
 
         TEST_METHOD(TestMethod5_1)
@@ -593,7 +604,6 @@ namespace TestStringTable
 
             DESTROY_TABLE(StringTable);
 
-            Assert::IsTrue(1 == 1);
         }
 
         TEST_METHOD(TestMethod5_1_0)
