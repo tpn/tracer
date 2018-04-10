@@ -463,7 +463,7 @@ UnfreezeThreadApc(
     UnfreezeThreadCommand.MaximumLength = ARRAYSIZE(Buffer) << 1;
     UnfreezeThreadCommand.Buffer = Buffer;
 
-    NumberOfDigits = CountNumberOfDigits(SuspendedThreadId);
+    NumberOfDigits = CountNumberOfDigitsInline(SuspendedThreadId);
 
     Success = AppendIntegerToUnicodeString(&UnfreezeThreadCommand,
                                            SuspendedThreadId,
