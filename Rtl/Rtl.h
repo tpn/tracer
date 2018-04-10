@@ -369,6 +369,7 @@ extern "C" {
 
 #define TRY_TSX __try
 #define TRY_AVX __try
+#define TRY_AVX512 __try
 #define TRY_AVX_ALIGNED __try
 #define TRY_AVX_UNALIGNED __try
 
@@ -6479,7 +6480,25 @@ IsAligned(
 
 typedef __m128i DECLSPEC_ALIGN(16) XMMWORD, *PXMMWORD, **PPXMMWORD;
 typedef __m256i DECLSPEC_ALIGN(32) YMMWORD, *PYMMWORD, **PPYMMWORD;
-//typedef __m512i DECLSPEC_ALIGN(64) ZMMWORD, *PZMMWORD, **PPZMMWORD;
+typedef __m512i DECLSPEC_ALIGN(64) ZMMWORD, *PZMMWORD, **PPZMMWORD;
+
+#pragma optimize("", off)
+static
+NOINLINE
+VOID
+CanWeUseAvx512(PBOOLEAN UseAvx512Pointer)
+{
+    BOOLEAN UseAvx512 = TRUE;
+    TRY_AVX512 {
+        ZMMWORD Test1 = _mm512_set1_epi64(1);
+        ZMMWORD Test2 = _mm512_add_epi64(Test1, Test1);
+        UNREFERENCED_PARAMETER(Test2);
+    } CATCH_EXCEPTION_ILLEGAL_INSTRUCTION{
+        UseAvx512 = FALSE;
+    }
+    *UseAvx512Pointer = UseAvx512;
+}
+#pragma optimize("", on)
 
 FORCEINLINE
 VOID
