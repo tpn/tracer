@@ -82,6 +82,7 @@
     <ClInclude Include="TracedPythonSessionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Rtl\HeapAllocator.c" />
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="DestroyTracedPythonSession.c" />
     <ClCompile Include="dllmain.c" />
