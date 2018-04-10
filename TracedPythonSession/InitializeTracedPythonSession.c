@@ -349,11 +349,11 @@ Return Value:
     // StringTable
     //
 
-    Success = LoadStringTableModule(Rtl,
-                                    &Session->StringTableModule,
-                                    NULL,
-                                    sizeof(Session->StringTableApi),
-                                    (PSTRING_TABLE_ANY_API)&Session->StringTableApi);
+    Success = LoadStringTableApi(Rtl,
+                                 &Session->StringTableModule,
+                                 NULL,
+                                 sizeof(Session->StringTableApi),
+                                 (PSTRING_TABLE_ANY_API)&Session->StringTableApi);
 
     if (!Success) {
         OutputDebugStringA("LoadStringTableModule() failed.\n");
