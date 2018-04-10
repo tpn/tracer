@@ -72,6 +72,9 @@
     <ClInclude Include="Cu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HeapAllocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.c">
@@ -129,6 +132,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CopyFunction.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HeapAllocator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="String.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

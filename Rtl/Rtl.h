@@ -1863,6 +1863,20 @@ typedef NT_TERMINATE_THREAD *PNT_TERMINATE_THREAD;
 typedef NT_TERMINATE_THREAD   ZW_TERMINATE_THREAD;
 typedef ZW_TERMINATE_THREAD *PZW_TERMINATE_THREAD;
 
+typedef
+NTSTATUS
+(NTAPI NT_YIELD_EXECUTION)(
+    VOID
+    );
+typedef NT_YIELD_EXECUTION *PNT_YIELD_EXECUTION;
+
+typedef
+NTSTATUS
+(NTAPI NT_DELAY_EXECUTION)(
+    _In_ BOOLEAN Alertable,
+    _In_ PLARGE_INTEGER DelayInterval
+    );
+typedef NT_DELAY_EXECUTION *PNT_DELAY_EXECUTION;
 
 //
 // SystemTime-related functions.
@@ -2151,25 +2165,29 @@ DWORD
 typedef WAIT_FOR_INPUT_IDLE *PWAIT_FOR_INPUT_IDLE;
 
 typedef
-_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
 LPVOID
 (WINAPI VIRTUAL_ALLOC)(
     _In_opt_ LPVOID lpAddress,
-    _In_ SIZE_T dwSize,
-    _In_ DWORD flAllocationType,
-    _In_ DWORD flProtect
+    _In_     SIZE_T dwSize,
+    _In_     DWORD  flAllocationType,
+    _In_     DWORD  flProtect
     );
 typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
 
 typedef
-_Ret_maybenull_ _Post_writable_byte_size_(dwSize)
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
 LPVOID
 (WINAPI VIRTUAL_ALLOC_EX)(
-    _In_ HANDLE hProcess,
+    _In_     HANDLE hProcess,
     _In_opt_ LPVOID lpAddress,
-    _In_ SIZE_T dwSize,
-    _In_ DWORD flAllocationType,
-    _In_ DWORD flProtect
+    _In_     SIZE_T dwSize,
+    _In_     DWORD  flAllocationType,
+    _In_     DWORD  flProtect
     );
 typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
 
@@ -4604,6 +4622,8 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PZW_TERMINATE_THREAD ZwTerminateThread;                                                            \
     PNT_QUEUE_APC_THREAD NtQueueApcThread;                                                             \
     PNT_TEST_ALERT NtTestAlert;                                                                        \
+    PNT_YIELD_EXECUTION NtYieldExecution;                                                              \
+    PNT_DELAY_EXECUTION NtDelayExecution;                                                              \
     PSEARCHPATHW SearchPathW;                                                                          \
     PCREATE_TOOLHELP32_SNAPSHOT CreateToolhelp32Snapshot;                                              \
     PLOAD_LIBRARY_A LoadLibraryA;                                                                      \
@@ -4843,6 +4863,57 @@ BOOL
     );
 
 typedef FIND_CHARS_IN_STRING *PFIND_CHARS_IN_STRING;
+
+typedef
+ULONGLONG
+(NTAPI FIND_AND_REPLACE_BYTE)(
+    _In_ ULONGLONG SizeOfBufferInBytes,
+    _Inout_bytecap_(SizeOfBufferInBytes) PBYTE Buffer,
+    _In_ BYTE Find,
+    _In_ BYTE Replace
+    );
+typedef FIND_AND_REPLACE_BYTE *PFIND_AND_REPLACE_BYTE;
+
+typedef
+_Success_(return != 0)
+BOOL
+(NTAPI MAKE_RANDOM_STRING)(
+    _In_ struct _RTL *Rtl,
+    _In_ struct _ALLOCATOR *Allocator,
+    _In_ ULONG BufferSize,
+    _Outptr_result_buffer_(BufferSize) PBYTE *Buffer
+    );
+typedef MAKE_RANDOM_STRING *PMAKE_RANDOM_STRING;
+
+typedef
+_Success_(return != 0)
+BOOL
+(NTAPI CREATE_BUFFER)(
+    _In_ struct _RTL *Rtl,
+    _In_opt_ PHANDLE TargetProcessHandle,
+    _In_ USHORT NumberOfPages,
+    _In_opt_ PULONG AdditionalProtectionFlags,
+    _Out_ PULONGLONG UsableBufferSizeInBytes,
+    _Out_ PPVOID BufferAddress
+    );
+typedef CREATE_BUFFER *PCREATE_BUFFER;
+
+typedef
+BOOL
+(NTAPI TEST_CREATE_BUFFER)(
+    _In_ struct _RTL *Rtl,
+    _In_ PCREATE_BUFFER CreateBuffer
+    );
+typedef TEST_CREATE_BUFFER *PTEST_CREATE_BUFFER;
+
+typedef
+VOID
+(NTAPI FILL_BUFFER_WITH_256_BYTES)(
+    _Out_writes_all_(SizeOfDest) PBYTE Dest,
+    _In_reads_bytes_(256) PCBYTE Source,
+    ULONGLONG SizeOfDest
+    );
+typedef FILL_BUFFER_WITH_256_BYTES *PFILL_BUFFER_WITH_256_BYTES;
 
 typedef
 BOOL
@@ -5478,6 +5549,44 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
       *PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES;
 #endif
 
+//
+// Helper string routines for buffer manipulation.
+//
+
+typedef
+VOID
+(NTAPI APPEND_INTEGER_TO_CHAR_BUFFER)(
+    _Inout_ PPCHAR BufferPointer,
+    _In_ ULONGLONG Integer
+    );
+typedef APPEND_INTEGER_TO_CHAR_BUFFER *PAPPEND_INTEGER_TO_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_STRING_TO_CHAR_BUFFER)(
+    _Inout_ PPCHAR BufferPointer,
+    _In_ PSTRING String
+    );
+typedef APPEND_STRING_TO_CHAR_BUFFER *PAPPEND_STRING_TO_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_CHAR_BUFFER_TO_CHAR_BUFFER)(
+    _Inout_ PPCHAR BufferPointer,
+    _In_ PCHAR String,
+    _In_ ULONG SizeInBytes
+    );
+typedef APPEND_CHAR_BUFFER_TO_CHAR_BUFFER *PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_CHAR_TO_CHAR_BUFFER)(
+    _Inout_ PPCHAR BufferPointer,
+    _In_ CHAR Char
+    );
+typedef APPEND_CHAR_TO_CHAR_BUFFER *PAPPEND_CHAR_TO_CHAR_BUFFER;
+
+
 #define _RTLEXFUNCTIONS_HEAD                                                        \
     PDESTROY_RTL DestroyRtl;                                                        \
     PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
@@ -5539,7 +5648,11 @@ typedef TEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES
     PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                             \
     PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                         \
     PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                               \
-    PWRITE_REGISTRY_STRING WriteRegistryString;
+    PWRITE_REGISTRY_STRING WriteRegistryString;                                     \
+    PAPPEND_INTEGER_TO_CHAR_BUFFER AppendIntegerToCharBuffer;                       \
+    PAPPEND_STRING_TO_CHAR_BUFFER AppendStringToCharBuffer;                         \
+    PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER AppendCharBufferToCharBuffer;                \
+    PAPPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -6041,38 +6154,11 @@ _Success_(return != 0)
 BOOL
 (CALLBACK PROBE_FOR_READ)(
     _In_ PRTL Rtl,
-    _In_reads_(ROUND_TO_PAGES(NumberOfBytes)) PVOID Address,
+    _In_reads_bytes_((NumberOfBytes + 4096 - 1) & ~(4096 - 1)) PVOID Address,
     _In_ SIZE_T NumberOfBytes,
-    _Outptr_opt_result_maybenull_ PULONG NumberOfValidPages
+    _Outptr_result_maybenull_ PULONG NumberOfValidPages
     );
 typedef PROBE_FOR_READ *PPROBE_FOR_READ;
-
-typedef
-_Check_return_
-_Ret_maybenull_
-_Post_writable_byte_size_(dwSize)
-LPVOID
-(WINAPI VIRTUAL_ALLOC)(
-    _In_opt_ LPVOID lpAddress,
-    _In_     SIZE_T dwSize,
-    _In_     DWORD  flAllocationType,
-    _In_     DWORD  flProtect
-    );
-typedef VIRTUAL_ALLOC *PVIRTUAL_ALLOC;
-
-typedef
-_Check_return_
-_Ret_maybenull_
-_Post_writable_byte_size_(dwSize)
-LPVOID
-(WINAPI VIRTUAL_ALLOC_EX)(
-    _In_     HANDLE hProcess,
-    _In_opt_ LPVOID lpAddress,
-    _In_     SIZE_T dwSize,
-    _In_     DWORD  flAllocationType,
-    _In_     DWORD  flProtect
-    );
-typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
 
 typedef
 _Check_return_
@@ -6222,6 +6308,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCOPY_FUNCTION CopyFunction;
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
     PCREATE_SINGLE_RANDOM_OBJECT_NAME CreateSingleRandomObjectName;
+    PCREATE_BUFFER CreateBuffer;
+    PMAKE_RANDOM_STRING MakeRandomString;
+    PFIND_AND_REPLACE_BYTE FindAndReplaceByte;
 
     PVOID InjectionThunkRoutine;
     PINJECT Inject;
@@ -6281,6 +6370,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 #ifdef _RTL_TEST
     PTEST_LOAD_SYMBOLS TestLoadSymbols;
     PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
+    PTEST_CREATE_BUFFER TestCreateBuffer;
 #endif
 
 } RTL, *PRTL, **PPRTL;
@@ -8012,6 +8102,7 @@ Return Value:
     ULONG_INTEGER AllocSize;
     ULONG_INTEGER AlignedBufferSizeInBytes;
     PUNICODE_STRING Utf16;
+    LARGE_INTEGER LocalTimestamp;
 
     //
     // Validate arguments.
@@ -8027,6 +8118,10 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(Allocator)) {
         return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TimestampPointer)) {
+        TimestampPointer = &LocalTimestamp;
     }
 
     //
@@ -8176,7 +8271,7 @@ Error:
         // Try free the underlying buffer.
         //
 
-        Allocator->FreePointer(Allocator->Context, &Utf16);
+        Allocator->FreePointer(Allocator->Context, (PPVOID)&Utf16);
     }
 
     return FALSE;
@@ -8440,7 +8535,7 @@ static CONST WCHAR IntegerToWCharTable[] = {
 
 FORCEINLINE
 USHORT
-CountNumberOfDigits(_In_ ULONG Value)
+CountNumberOfDigitsInline(_In_ ULONG Value)
 {
     USHORT Count = 0;
 
@@ -8454,7 +8549,7 @@ CountNumberOfDigits(_In_ ULONG Value)
 
 FORCEINLINE
 USHORT
-CountNumberOfLongLongDigits(_In_ ULONGLONG Value)
+CountNumberOfLongLongDigitsInline(_In_ ULONGLONG Value)
 {
     USHORT Count = 0;
 
@@ -8535,7 +8630,7 @@ Return Value:
     // specified.
     //
 
-    ActualNumberOfDigits = CountNumberOfDigits(Integer);
+    ActualNumberOfDigits = CountNumberOfDigitsInline(Integer);
 
     if (ActualNumberOfDigits > NumberOfDigits) {
         return FALSE;
@@ -8675,7 +8770,7 @@ Return Value:
     // specified.
     //
 
-    ActualNumberOfDigits = CountNumberOfLongLongDigits(Integer);
+    ActualNumberOfDigits = CountNumberOfLongLongDigitsInline(Integer);
 
     if (ActualNumberOfDigits > NumberOfDigits) {
         return FALSE;
@@ -9421,14 +9516,6 @@ VOID
 typedef APPEND_TAIL_GUARDED_LIST_TSX *PAPPEND_TAIL_GUARDED_LIST_TSX;
 RTL_API APPEND_TAIL_GUARDED_LIST_TSX AppendTailGuardedListTsx;
 
-//
-// Disable browsing information generation when declaring instances of
-// functions; if we don't do this, 'Go To Definition' ends up here, instead
-// of the implementation body in the relevant .c file.
-//
-
-#pragma component(browser, off)
-
 RTL_API
 LONG
 CompareStringCaseInsensitive(
@@ -9580,8 +9667,88 @@ RTL_API UNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;
 RTL_API UNREGISTER_RTL_ATEXIT_ENTRY UnregisterRtlAtExitEntry;
 RTL_API WRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;
 RTL_API WRITE_REGISTRY_STRING WriteRegistryString;
+RTL_API APPEND_INTEGER_TO_CHAR_BUFFER AppendIntegerToCharBuffer;
+RTL_API APPEND_STRING_TO_CHAR_BUFFER AppendStringToCharBuffer;
+RTL_API APPEND_CHAR_BUFFER_TO_CHAR_BUFFER AppendCharBufferToCharBuffer;
+RTL_API APPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;
 
-#pragma component(browser, on)
+//
+// Inline function for helping loading Rtl and the heap allocator routines.
+//
+
+typedef struct _RTL_BOOTSTRAP {
+    PINITIALIZE_RTL InitializeRtl;
+    PINITIALIZE_ALLOCATOR InitializeHeapAllocator;
+    PDESTROY_ALLOCATOR DestroyHeapAllocator;
+    PLOAD_SYMBOLS LoadSymbols;
+} RTL_BOOTSTRAP;
+typedef RTL_BOOTSTRAP *PRTL_BOOTSTRAP;
+
+FORCEINLINE
+BOOLEAN
+BootstrapRtl(
+    HMODULE *RtlModulePointer,
+    PRTL_BOOTSTRAP Bootstrap
+    )
+{
+    BOOL Success;
+    PROC Proc;
+    HMODULE Module;
+    ULONG NumberOfResolvedSymbols;
+    ULONG ExpectedNumberOfResolvedSymbols;
+    PLOAD_SYMBOLS LoadSymbols;
+
+    CONST PCSTR Names[] = {
+        "InitializeRtl",
+        "RtlHeapAllocatorInitialize",
+        "RtlHeapAllocatorDestroy",
+        "LoadSymbols",
+    };
+
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
+
+    ExpectedNumberOfResolvedSymbols = ARRAYSIZE(Names);
+
+    Module = LoadLibraryA("Rtl.dll");
+    if (!Module) {
+        return FALSE;
+    }
+
+    Proc = GetProcAddress(Module, "LoadSymbols");
+    if (!Proc) {
+        FreeLibrary(Module);
+        return FALSE;
+    }
+
+    LoadSymbols = (PLOAD_SYMBOLS)Proc;
+
+    Success = LoadSymbols(
+        Names,
+        ARRAYSIZE(Names),
+        (PULONG_PTR)Bootstrap,
+        sizeof(*Bootstrap) / sizeof(ULONG_PTR),
+        Module,
+        &FailedBitmap,
+        TRUE,
+        &NumberOfResolvedSymbols
+    );
+
+    if (!Success) {
+        FreeLibrary(Module);
+        return FALSE;
+    }
+
+    if (ExpectedNumberOfResolvedSymbols != NumberOfResolvedSymbols) {
+        FreeLibrary(Module);
+        return FALSE;
+    }
+
+    *RtlModulePointer = Module;
+
+    return TRUE;
+}
+
 
 #ifdef __cplusplus
 } // extern "C"

@@ -154,6 +154,401 @@ PrefaultPages(
     return TRUE;
 }
 
+FIND_AND_REPLACE_BYTE FindAndReplaceByte;
+
+_Use_decl_annotations_
+ULONGLONG
+FindAndReplaceByte(
+    ULONGLONG SizeOfBufferInBytes,
+    PBYTE Buffer,
+    BYTE Find,
+    BYTE Replace
+    )
+{
+    BYTE Byte;
+    ULONG Mask;
+    ULONG Count;
+    ULONGLONG Total;
+    ULONGLONG Index;
+    ULONGLONG TrailingBytes;
+    ULONGLONG NumberOfYmmWords;
+    YMMWORD Chunk;
+    YMMWORD Found;
+    YMMWORD Replaced;
+    YMMWORD FindYmm;
+    YMMWORD ReplaceYmm;
+    PYMMWORD BufferYmm;
+    PBYTE Dest;
+    PBYTE TrailingBuffer;
+
+    TrailingBytes = SizeOfBufferInBytes % sizeof(YMMWORD);
+    NumberOfYmmWords = SizeOfBufferInBytes >> 5;
+
+    FindYmm = _mm256_broadcastb_epi8(_mm_set1_epi8(Find));
+    ReplaceYmm = _mm256_broadcastb_epi8(_mm_set1_epi8(Replace));
+
+    BufferYmm = (PYMMWORD)Buffer;
+
+    Total = 0;
+
+    if (NumberOfYmmWords) {
+
+        for (Index = 0; Index < NumberOfYmmWords; Index++) {
+
+            //
+            // Load a 32 byte chunk of the input buffer.
+            //
+
+            Chunk = _mm256_load_si256(BufferYmm + Index);
+
+            //
+            // Intersect the buffer with the character to find.
+            //
+
+            Found = _mm256_cmpeq_epi8(Chunk, FindYmm);
+
+            //
+            // Create a mask and then do a popcount to determine how many
+            // bytes were matched.
+            //
+
+            Mask = _mm256_movemask_epi8(Found);
+            Count = __popcnt(Mask);
+
+            if (Count != 0) {
+
+                //
+                // Blend the chunk with replacement characters via the mask we
+                // just generated.
+                //
+
+                Replaced = _mm256_blendv_epi8(Chunk, ReplaceYmm, Found);
+
+                //
+                // Store this copy back in memory.
+                //
+
+                _mm256_store_si256(BufferYmm + Index, Replaced);
+
+                //
+                // Update the total count.
+                //
+
+                Total += Count;
+            }
+        }
+
+    }
+
+    if (TrailingBytes) {
+
+        TrailingBuffer = Buffer + (SizeOfBufferInBytes - TrailingBytes);
+
+        for (Index = 0; Index < TrailingBytes; Index++) {
+            Dest = TrailingBuffer + Index;
+            Byte = *Dest;
+            if (Byte == Find) {
+                *Dest = Replace;
+                ++Total;
+            }
+        }
+
+    }
+
+    return Total;
+}
+
+_Use_decl_annotations_
+BOOL
+MakeRandomString(
+    PRTL Rtl,
+    PALLOCATOR Allocator,
+    ULONG BufferSize,
+    PBYTE *BufferPointer
+    )
+{
+    BOOLEAN Success;
+    PBYTE Buffer;
+    ULONGLONG BytesReplaced;
+
+    *BufferPointer = NULL;
+
+    Buffer = (PBYTE)Allocator->Malloc(Allocator, BufferSize);
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    if (!Rtl->CryptGenRandom(Rtl, BufferSize, Buffer)) {
+        goto Error;
+    }
+
+    BytesReplaced = Rtl->FindAndReplaceByte(BufferSize,
+                                            Buffer,
+                                            0x0,
+                                            ' ');
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+    Allocator->FreePointer(Allocator, (PPVOID)&Buffer);
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    *BufferPointer = Buffer;
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
+CreateBuffer(
+    PRTL Rtl,
+    PHANDLE TargetProcessHandle,
+    USHORT NumberOfPages,
+    PULONG AdditionalProtectionFlags,
+    PULONGLONG UsableBufferSizeInBytes,
+    PPVOID BufferAddress
+    )
+{
+    BOOL Success;
+    PVOID Buffer;
+    PBYTE Unusable;
+    HANDLE ProcessHandle;
+    ULONG ProtectionFlags;
+    ULONG OldProtectionFlags;
+    LONG_INTEGER TotalNumberOfPages;
+    ULARGE_INTEGER AllocSizeInBytes;
+    ULARGE_INTEGER UsableSizeInBytes;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(TargetProcessHandle)) {
+        ProcessHandle = GetCurrentProcess();
+    } else {
+        if (!*TargetProcessHandle) {
+            *TargetProcessHandle = GetCurrentProcess();
+        }
+        ProcessHandle = *TargetProcessHandle;
+    }
+
+    if (!ARGUMENT_PRESENT(UsableBufferSizeInBytes)) {
+        return FALSE;
+    } else {
+        *UsableBufferSizeInBytes = 0;
+    }
+
+    if (!ARGUMENT_PRESENT(BufferAddress)) {
+        return FALSE;
+    } else {
+        *BufferAddress = NULL;
+    }
+
+    TotalNumberOfPages.LongPart = (ULONG)NumberOfPages + 1;
+
+    //
+    // Verify the number of pages hasn't overflowed (i.e. exceeds max USHORT).
+    //
+
+    if (TotalNumberOfPages.HighPart) {
+        return FALSE;
+    }
+
+    //
+    // Convert total number of pages into total number of bytes (alloc size)
+    // and verify it hasn't overflowed either (thus, 4GB is the current maximum
+    // size allowed by this routine).
+    //
+
+    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LongPart;
+    AllocSizeInBytes.QuadPart <<= PAGE_SHIFT;
+
+    if (AllocSizeInBytes.HighPart) {
+        return FALSE;
+    }
+
+    ProtectionFlags = PAGE_READWRITE;
+    if (ARGUMENT_PRESENT(AdditionalProtectionFlags)) {
+        ProtectionFlags |= *AdditionalProtectionFlags;
+    }
+
+    //
+    // Validation of parameters complete.  Proceed with buffer allocation.
+    //
+
+    Buffer = Rtl->VirtualAllocEx(ProcessHandle,
+                                 NULL,
+                                 AllocSizeInBytes.QuadPart,
+                                 MEM_COMMIT,
+                                 ProtectionFlags);
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    //
+    // Buffer was successfully allocated.  Any failures after this point should
+    // `goto Error` to ensure the memory is freed.
+    //
+    // Calculate the usable size and corresponding unusable address.
+    //
+
+    UsableSizeInBytes.QuadPart = (
+        (ULONGLONG)NumberOfPages <<
+        (ULONGLONG)PAGE_SHIFT
+    );
+
+    Unusable = (PBYTE)Buffer;
+    Unusable += UsableSizeInBytes.QuadPart;
+
+    //
+    // Change the protection of the trailing page to PAGE_NOACCESS.
+    //
+
+    ProtectionFlags = PAGE_NOACCESS;
+    Success = Rtl->VirtualProtectEx(ProcessHandle,
+                                    Unusable,
+                                    PAGE_SIZE,
+                                    ProtectionFlags,
+                                    &OldProtectionFlags);
+
+    if (!Success) {
+        goto Error;
+    }
+
+    //
+    // We're done, goto End.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Buffer should be non-NULL at this point.  Assert this invariant, free the
+    // allocated memory, clear the buffer pointer and set the alloc size to 0.
+    //
+
+    ASSERT(Buffer);
+    Rtl->VirtualFreeEx(ProcessHandle, Buffer, 0, MEM_RELEASE);
+    Buffer = NULL;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Update caller's parameters and return.
+    //
+
+    *BufferAddress = Buffer;
+    *UsableBufferSizeInBytes = UsableSizeInBytes.QuadPart;
+
+    return Success;
+
+}
+
+_Use_decl_annotations_
+BOOL
+TestCreateBuffer(
+    PRTL Rtl,
+    PCREATE_BUFFER CreateBuffer
+    )
+{
+    PVOID Address;
+    PBYTE Unusable;
+    BOOLEAN Success;
+    BOOLEAN CaughtException;
+    ULONGLONG Size;
+    USHORT NumberOfPages;
+    ULONG AdditionalProtectionFlags;
+
+    NumberOfPages = 1;
+    AdditionalProtectionFlags = 0;
+
+    Success = Rtl->CreateBuffer(Rtl,
+                                NULL,
+                                NumberOfPages,
+                                &AdditionalProtectionFlags,
+                                &Size,
+                                &Address);
+
+    if (!Success) {
+        return FALSE;
+    }
+
+    Unusable = (PBYTE)RtlOffsetToPointer(Address, Size);
+
+    CaughtException = FALSE;
+
+    TRY_PROBE_MEMORY {
+
+        *Unusable = 1;
+
+    } CATCH_EXCEPTION_ACCESS_VIOLATION {
+
+        CaughtException = TRUE;
+    }
+
+    Rtl->VirtualFreeEx(GetCurrentProcess(), Address, 0, MEM_RELEASE);
+
+    if (!CaughtException) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+VOID
+FillBufferWith256Bytes(
+    PBYTE Dest,
+    PCBYTE Source,
+    ULONGLONG SizeOfDest,
+    ULONGLONG SizeOfSource
+    )
+{
+    ULONGLONG Index;
+    ULONGLONG Count;
+    ULONGLONG Total;
+    YMMWORD Chunk1;
+    YMMWORD Chunk2;
+    PYMMWORD DestYmm;
+    PYMMWORD SourceYmm;
+
+    DestYmm = (PYMMWORD)Dest;
+    SourceYmm = (PYMMWORD)Source;
+
+    Total = SizeOfDest;
+    Count = Total >> 6;
+
+    Chunk1 = _mm256_loadu_si256((PYMMWORD)SourceYmm);
+    Chunk2 = _mm256_loadu_si256((PYMMWORD)SourceYmm+1);
+
+    for (Index = 0; Index < Count; Index++) {
+        _mm256_store_si256((PYMMWORD)DestYmm, Chunk1);
+        _mm256_store_si256((PYMMWORD)DestYmm+1, Chunk2);
+        DestYmm += 2;
+    }
+}
+
 BOOL
 LoadShlwapiFunctions(
     _In_    HMODULE             ShlwapiModule,
@@ -3872,6 +4267,10 @@ InitializeRtl(
     Rtl->FillPages = FillPagesNonTemporalAvx2_v1;
     Rtl->ProbeForRead = ProbeForRead;
 
+    Rtl->FindAndReplaceByte = FindAndReplaceByte;
+    Rtl->MakeRandomString = MakeRandomString;
+    Rtl->CreateBuffer = CreateBuffer;
+
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
     Rtl->CopyFunction = CopyFunction;
@@ -3891,6 +4290,7 @@ InitializeRtl(
     Rtl->TestLoadSymbolsFromMultipleModules = (
         TestLoadSymbolsFromMultipleModules
     );
+    Rtl->TestCreateBuffer = TestCreateBuffer;
 #endif
 
     return Success;

@@ -115,6 +115,7 @@
     <ClCompile Include="PathEnvironmentVariable.c" />
     <ClCompile Include="Commandline.c" />
     <ClCompile Include="Path.c" />
+    <ClCompile Include="String.c" />
     <ClCompile Include="SymbolLoader.c" />
     <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c" />
   </ItemGroup>
