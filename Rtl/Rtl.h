@@ -253,6 +253,16 @@ extern "C" {
 #define ClearFlag(_F,_SF)     ((_F) &= ~(_SF))
 #endif
 
+#ifndef ASSERT
+#define ASSERT(Condition) \
+    if (!(Condition)) {   \
+        __debugbreak();   \
+    }
+#endif
+
+#define NOT_IMPLEMENTED() __debugbreak(); return
+#define NOT_IMPLEMENTED_RETURN_NULL() __debugbreak(); return NULL
+
 //
 // Helper macros.
 //
