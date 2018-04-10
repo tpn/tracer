@@ -21,7 +21,7 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Rtl\__C_specific_handler.h">
+    <ClInclude Include="..\Rtl\HeapAllocator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,10 +32,10 @@
     <ClCompile Include="stdafx.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Rtl\__C_specific_handler.c">
+    <ClCompile Include="ModuleLoaderExeMain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModuleLoaderExeMain.c">
+    <ClCompile Include="..\Rtl\HeapAllocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
