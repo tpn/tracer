@@ -3215,11 +3215,9 @@ See Also:
 // Public function declarations.
 //
 
-#pragma component(browser, off)
 DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION InitializeDebugEngineSession;
 DEBUG_ENGINE_API INITIALIZE_DEBUG_ENGINE_SESSION_WITH_INJECTION_INTENT
                  InitializeDebugEngineSessionWithInjectionIntent;
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 } // extern "C"
