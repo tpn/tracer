@@ -230,7 +230,7 @@ INJECTION_OBJECT_EVENT struct
     DesiredAccess           dd                      ?
     InheritHandle           dd                      ?
 INJECTION_OBJECT_EVENT ends
-.erre (size INJECTION_OBJECT_EVENT eq 40), @catstr(<Size error: INJECTION_OBJECT_EVENT: >, %(size INJECTION_OBJECT_EVENT))
+.erre (size INJECTION_OBJECT_EVENT eq 40), @CatStr(<Size error: INJECTION_OBJECT_EVENT: >, %(size INJECTION_OBJECT_EVENT))
 
 INJECTION_OBJECT_FILE_MAPPING struct
     ObjectType              dd                      ?
@@ -253,7 +253,7 @@ INJECTION_OBJECT_FILE_MAPPING struct
     FileHandle              dq                      ?
     Padding                 dq                      ?
 INJECTION_OBJECT_FILE_MAPPING ends
-.erre (size INJECTION_OBJECT_FILE_MAPPING eq 128), @catstr(<Size error: INJECTION_OBJECT_FILE_MAPPING: >, %(size INJECTION_OBJECT_FILE_MAPPING))
+.erre (size INJECTION_OBJECT_FILE_MAPPING eq 128), @CatStr(<Size error: INJECTION_OBJECT_FILE_MAPPING: >, %(size INJECTION_OBJECT_FILE_MAPPING))
 
 INJECTION_OBJECT union
     struct
@@ -268,7 +268,7 @@ INJECTION_OBJECT union
     AsEvent         INJECTION_OBJECT_EVENT          { }
     AsFileMapping   INJECTION_OBJECT_FILE_MAPPING   { }
 INJECTION_OBJECT ends
-.erre (size INJECTION_OBJECT eq 128), @catstr(<Size error: INJECTION_OBJECT: >, %(size INJECTION_OBJECT))
+.erre (size INJECTION_OBJECT eq 128), @CatStr(<Size error: INJECTION_OBJECT: >, %(size INJECTION_OBJECT))
 
 PINJECTION_OBJECT typedef ptr INJECTION_OBJECT
 
@@ -283,7 +283,7 @@ INJECTION_OBJECTS struct
     FunctionPointer                 dq              ?
     Padding                         dq 11 dup       (?)
 INJECTION_OBJECTS ends
-.erre (size INJECTION_OBJECTS eq 128), @catstr(<Size error: INJECTION_OBJECTS: >, %(size INJECTION_OBJECTS))
+.erre (size INJECTION_OBJECTS eq 128), @CatStr(<Size error: INJECTION_OBJECTS: >, %(size INJECTION_OBJECTS))
 PINJECTION_OBJECTS typedef ptr INJECTION_OBJECT
 
 ;
