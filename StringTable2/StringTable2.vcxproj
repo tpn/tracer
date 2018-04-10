@@ -112,11 +112,13 @@
     <ClCompile Include="StringTableTypes.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="StringTable_x64.asm" Condition="'$(Platform)' == 'x64'" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="StringTable.def" />
     <None Include="StringTable.inc" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="IsPrefixOfStringInTable_x64_1.asm" />
+    <MASM Include="IsPrefixOfStringInTable_x64_2.asm" />
+    <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
