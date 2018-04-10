@@ -243,6 +243,7 @@ typedef GET_APPROXIMATE_FUNCTION_BOUNDARIES
 extern GET_APPROXIMATE_FUNCTION_BOUNDARIES GetApproximateFunctionBoundaries;
 
 FORCEINLINE
+_Success_(return != 0)
 BOOL
 GetApproximateFunctionBoundariesInline(
     _In_ ULONG_PTR Address,
@@ -291,8 +292,8 @@ Return Value:
 
 --*/
 {
-    PWORD Start;
-    PWORD End;
+    PBYTE Start;
+    PBYTE End;
     const WORD Int3x2 = 0xCCCC;
 
     //
@@ -316,22 +317,22 @@ Return Value:
     // using this instruction as both the Start and End address.
     //
 
-    Start = End = (PWORD)SkipJumpsInline((PBYTE)Address);
+    Start = End = SkipJumpsInline((PBYTE)Address);
 
     //
     // Search backward through memory until we find two `int 3` instructions.
     //
 
-    while (*Start != Int3x2) {
-        --((PBYTE)Start);
+    while (*((PWORD)Start) != Int3x2) {
+        --Start;
     }
 
     //
     // Search forward through memory until we find two `int 3` instructions.
     //
 
-    while (*End != Int3x2) {
-        ++((PBYTE)End);
+    while (*((PWORD)End) != Int3x2) {
+        ++End;
     }
 
     //
