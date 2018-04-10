@@ -197,6 +197,14 @@ DefaultHeapInitializeAllocator(
         return FALSE;
     }
 
+    //
+    // Disable for now.
+    //
+
+    __debugbreak();
+    return FALSE;
+
+    /*
     InitializeAllocator(
         Allocator,
         Allocator,
@@ -215,6 +223,7 @@ DefaultHeapInitializeAllocator(
         DefaultHeapTryCallocWithTimestamp,
         HeapHandle
     );
+    */
 
     return TRUE;
 }

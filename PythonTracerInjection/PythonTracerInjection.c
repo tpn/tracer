@@ -136,7 +136,7 @@ Return Value:
     //
 
     HeapFlags = HEAP_NO_SERIALIZE;
-    Success = InitializeHeapAllocatorExInline(Allocator, HeapFlags, 0, 0);
+    Success = RtlInitializeHeapAllocatorExInline(Allocator, HeapFlags, 0, 0);
     if (!Success) {
         goto Error;
     }
@@ -192,7 +192,7 @@ Error:
     Success = FALSE;
 
     if (Allocator) {
-        DestroyHeapAllocatorInline(Allocator);
+        RtlDestroyHeapAllocatorInline(Allocator);
         Parent->Allocator->FreePointer(Parent->Allocator->Context, &Allocator);
     }
 

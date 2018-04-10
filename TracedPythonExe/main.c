@@ -25,7 +25,7 @@ Main(VOID)
     PRTL Rtl;
     ALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
-    PTRACED_PYTHON_SESSION Session;
+    PTRACED_PYTHON_SESSION Session = NULL;
     PPYTHON Python;
     PPYTHON_TRACE_CONTEXT PythonTraceContext;
     PUNICODE_STRING RegistryPath;
@@ -38,7 +38,7 @@ Main(VOID)
     // the generic Win32 Heap functions.
     //
 
-    if (!DefaultHeapInitializeAllocator(&Allocator)) {
+    if (!RtlHeapAllocatorInitialize(&Allocator)) {
         goto Error;
     }
 

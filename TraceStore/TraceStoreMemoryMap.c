@@ -236,10 +236,11 @@ Return Value:
 
     Allocator = TraceStore->pAllocator;
     MemoryMaps = (PTRACE_STORE_MEMORY_MAP)(
-        Allocator->Calloc(
+        Allocator->AlignedCalloc(
             Allocator->Context,
             NumberOfMaps,
-            sizeof(TRACE_STORE_MEMORY_MAP)
+            sizeof(TRACE_STORE_MEMORY_MAP),
+            MEMORY_ALLOCATION_ALIGNMENT
         )
     );
 
@@ -256,7 +257,7 @@ Return Value:
 
     if (!IS_ALIGNED(MemoryMaps)) {
         __debugbreak();
-        Allocator->Free(Allocator->Context, MemoryMaps);
+        Allocator->AlignedFree(Allocator->Context, MemoryMaps);
         return FALSE;
     }
 

@@ -32,6 +32,9 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Rtl\HeapAllocator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="TracedPythonExe.def">

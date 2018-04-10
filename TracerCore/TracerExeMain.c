@@ -39,7 +39,7 @@ TracerExeMain(VOID)
     // the generic Win32 Heap functions.
     //
 
-    if (!DefaultHeapInitializeAllocator(&Allocator)) {
+    if (!RtlHeapAllocatorInitialize(&Allocator)) {
         goto Error;
     }
 

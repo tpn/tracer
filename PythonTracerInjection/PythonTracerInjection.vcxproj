@@ -82,6 +82,7 @@
     <ClInclude Include="PythonTracerInjectionPrivate.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Rtl\HeapAllocator.c" />
     <ClCompile Include="PythonTracerDebugEventCallbacks.c" />
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
