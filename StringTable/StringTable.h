@@ -39,30 +39,13 @@ Abstract:
 // This is an internal build of the StringTable component.
 //
 
-#define STRING_TABLE_API __declspec(dllexport)
-#define STRING_TABLE_DATA extern __declspec(dllexport)
-
 #include "stdafx.h"
-
-#elif _STRING_TABLE_NO_API_EXPORT_IMPORT
-
-//
-// We're being included by someone who doesn't want dllexport or dllimport.
-// This is useful for creating new .exe-based projects for things like unit
-// testing or performance testing/profiling.
-//
-
-#define STRING_TABLE_API
-#define STRING_TABLE_DATA extern
 
 #else
 
 //
 // We're being included by an external component.
 //
-
-#define STRING_TABLE_API __declspec(dllimport)
-#define STRING_TABLE_DATA extern __declspec(dllimport)
 
 #include "../Rtl/Rtl.h"
 
@@ -559,6 +542,16 @@ STRING_TABLE_INDEX
 typedef   SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH \
         *PSEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH;
 
+typedef
+_Success_(return != 0)
+STRING_TABLE_INDEX
+(IS_STRING_IN_TABLE)(
+    _In_ struct _STRING_TABLE *StringTable,
+    _In_ PSTRING String,
+    _In_opt_ struct _STRING_MATCH *StringMatch
+    );
+typedef IS_STRING_IN_TABLE *PIS_STRING_IN_TABLE;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
 ////////////////////////////////////////////////////////////////////////////////
@@ -963,8 +956,7 @@ IsFirstCharacterInStringTable(
     return Index.LowPart;
 }
 
-STRING_TABLE_DATA PARALLEL_SUFFIX_MOVE_MASK32 \
-    ParallelSuffix32HighBitFromEveryOtherByte;
+extern PARALLEL_SUFFIX_MOVE_MASK32 ParallelSuffix32HighBitFromEveryOtherByte;
 
 #define LoadParallelSuffix32HighBitFromEveryOtherByte() \
     _mm256_load_si256(&ParallelSuffix32HighBitFromEveryOtherByte.Move256);
@@ -1397,37 +1389,168 @@ BOOL
     );
 typedef INITIALIZE_STRING_TABLE_ALLOCATOR *PINITIALIZE_STRING_TABLE_ALLOCATOR;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOL
+(INITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP)(
+    _In_ PRTL_BOOTSTRAP RtlBootstrap,
+    _In_ PALLOCATOR Allocator
+    );
+typedef INITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
+      *PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP;
+
 //
-// Public exported function defs.
+// Public exported API.
 //
 
-#pragma component(browser, off)
+typedef struct _STRING_TABLE_API {
 
-STRING_TABLE_API INITIALIZE_STRING_TABLE_ALLOCATOR
-    InitializeStringTableAllocator;
+    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
-STRING_TABLE_API COPY_STRING_ARRAY CopyStringArray;
-STRING_TABLE_API CREATE_STRING_TABLE CreateStringTable;
-STRING_TABLE_API DESTROY_STRING_TABLE DestroyStringTable;
+    PCOPY_STRING_ARRAY CopyStringArray;
+    PCREATE_STRING_TABLE CreateStringTable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
 
-STRING_TABLE_API CREATE_STRING_ARRAY_FROM_DELIMITED_STRING
-    CreateStringArrayFromDelimitedString;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP InitializeStringTableAllocatorFromRtlBootstrap;
 
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
-    CreateStringTableFromDelimitedEnvironmentVariable;
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE CreateStringTableFromDelimitedEnvironmentVariable;
 
-STRING_TABLE_API CREATE_STRING_TABLE_FROM_DELIMITED_STRING
-    CreateStringTableFromDelimitedString;
+    PIS_STRING_IN_TABLE IsStringInTable;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
-STRING_TABLE_API SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH
-    SearchStringTableSlotsForFirstPrefixMatch;
+} STRING_TABLE_API;
+typedef STRING_TABLE_API *PSTRING_TABLE_API;
 
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInSingleTable_C;
-STRING_TABLE_API IS_PREFIX_OF_STRING_IN_TABLE
-    IsPrefixOfStringInSingleTableInline;
+typedef struct _STRING_TABLE_API_EX {
 
-#pragma component(browser, on)
+    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+
+    PCOPY_STRING_ARRAY CopyStringArray;
+    PCREATE_STRING_TABLE CreateStringTable;
+    PDESTROY_STRING_TABLE DestroyStringTable;
+
+    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
+
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE CreateStringTableFromDelimitedEnvironmentVariable;
+
+    PIS_STRING_IN_TABLE IsStringInTable;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
+
+} STRING_TABLE_API_EX;
+typedef STRING_TABLE_API_EX *PSTRING_TABLE_API_EX;
+
+typedef struct _STRING_TABLE_ANY_API {
+    STRING_TABLE_API Api;
+    STRING_TABLE_API_EX ApiEx;
+} STRING_TABLE_ANY_API;
+typedef STRING_TABLE_ANY_API *PSTRING_TABLE_ANY_API;
+
+FORCEINLINE
+BOOLEAN
+LoadStringTableApi(
+    _In_ PRTL Rtl,
+    _Inout_ HMODULE *ModulePointer,
+    _In_opt_ PUNICODE_STRING ModulePath,
+    _In_ ULONG SizeOfAnyApi,
+    _Out_writes_bytes_all_(SizeOfAnyApi) PSTRING_TABLE_ANY_API AnyApi
+)
+{
+    BOOL Success;
+    HMODULE Module = NULL;
+    ULONG NumberOfSymbols;
+    ULONG NumberOfResolvedSymbols;
+
+    CONST PCSTR Names[] = {
+        "SetCSpecificHandler",
+        "CopyStringArray",
+        "CreateStringTable",
+        "DestroyStringTable",
+        "InitializeStringTableAllocator",
+        "InitializeStringTableAllocatorFromRtlBootstrap",
+        "CreateStringArrayFromDelimitedString",
+        "CreateStringTableFromDelimitedString",
+        "CreateStringTableFromDelimitedEnvironmentVariable",
+        "IsStringInTable",
+        "IsPrefixOfStringInTable",
+        "IsPrefixOfStringInTable_1",
+        "IsPrefixOfStringInTable_2",
+        "IsPrefixOfStringInTable_3",
+        "IsPrefixOfStringInTable_4",
+        "IsPrefixOfStringInTable_5",
+        "IsPrefixOfStringInTable_6",
+        "IsPrefixOfStringInTable_7",
+        "IsPrefixOfStringInTable_8",
+        "IsPrefixOfStringInTable_x64_1",
+        "IsPrefixOfStringInTable_x64_2",
+        "IsPrefixOfStringInTable_x64_3",
+    };
+
+    ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5) + 1];
+    RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names) + 1, (PULONG)&BitmapBuffer };
+
+    if (SizeOfAnyApi == sizeof(AnyApi->Api)) {
+        NumberOfSymbols = sizeof(AnyApi->Api) / sizeof(ULONG_PTR);
+    }
+    else if (SizeOfAnyApi == sizeof(AnyApi->ApiEx)) {
+        NumberOfSymbols = sizeof(AnyApi->ApiEx) / sizeof(ULONG_PTR);
+    } else {
+        return FALSE;
+    }
+
+    if (ARGUMENT_PRESENT(ModulePointer)) {
+        Module = *ModulePointer;
+    }
+
+    if (!Module) {
+        if (ARGUMENT_PRESENT(ModulePath)) {
+            Module = LoadLibraryW(ModulePath->Buffer);
+        }
+        else {
+            Module = LoadLibraryA("StringTable.dll");
+        }
+    }
+
+    if (!Module) {
+        return FALSE;
+    }
+
+    Success = Rtl->LoadSymbols(
+        Names,
+        NumberOfSymbols,
+        (PULONG_PTR)AnyApi,
+        NumberOfSymbols,
+        Module,
+        &FailedBitmap,
+        TRUE,
+        &NumberOfResolvedSymbols
+    );
+
+    ASSERT(Success);
+
+    if (NumberOfSymbols != NumberOfResolvedSymbols) {
+        PCSTR FirstFailedSymbolName;
+        ULONG FirstFailedSymbol;
+        ULONG NumberOfFailedSymbols;
+
+        NumberOfFailedSymbols = Rtl->RtlNumberOfSetBits(&FailedBitmap);
+        FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
+        FirstFailedSymbolName = Names[FirstFailedSymbol - 1];
+        __debugbreak();
+    }
+
+    AnyApi->Api.SetCSpecificHandler(Rtl->__C_specific_handler);
+
+    *ModulePointer = Module;
+
+    return TRUE;
+}
+
 
 #ifdef __cplusplus
 } // extern "C"

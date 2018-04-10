@@ -78,4 +78,7 @@
       <Filter>Header Files</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="StringTable_x64.asm" />
+  </ItemGroup>
 </Project>
