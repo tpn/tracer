@@ -132,7 +132,6 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
-    //ULONG WaitResult;
     volatile ULONG *Status;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
@@ -167,12 +166,7 @@ Return Value:
         goto Error;
     }
 
-    //
-    // Initialize the default heap allocator.  This is a thin wrapper around
-    // the generic Win32 Heap functions.
-    //
-
-    if (!DefaultHeapInitializeAllocator(Allocator)) {
+    if (!RtlHeapAllocatorInitialize(Allocator)) {
         goto Error;
     }
 
