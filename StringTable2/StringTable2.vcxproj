@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGOptimize|Win32">
+      <Configuration>PGOptimize</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGOptimize|x64">
+      <Configuration>PGOptimize</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGInstrument|Win32">
+      <Configuration>PGInstrument</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGInstrument|x64">
+      <Configuration>PGInstrument</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGUpdate|Win32">
+      <Configuration>PGUpdate</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="PGUpdate|x64">
+      <Configuration>PGUpdate</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{55053E34-1F6E-447A-AA44-0C86636D3C81}</ProjectGuid>
+    <RootNamespace>StringTable2</RootNamespace>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <PlatformToolset>v141</PlatformToolset>
+    <ProjectName>StringTable2</ProjectName>
+    <LoadSearchStringStrategy>AlwaysMovsb</LoadSearchStringStrategy>
+    <!--
+    <LoadSearchStringStrategy>SEH</LoadSearchStringStrategy>
+    <LoadSearchStringStrategy>AlignmentCheck</LoadSearchStringStrategy>
+    <LoadSearchStringStrategy>AlwaysUnaligned</LoadSearchStringStrategy>
+    -->
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="..\Tracer.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_STRING_TABLE_INTERNAL_BUILD;LOAD_SEARCH_STRING_STRATEGY=$(LoadSearchStringStrategy);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Bscmake>
+      <PreserveSbr>false</PreserveSbr>
+    </Bscmake>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <ModuleDefinitionFile>StringTable.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Rtl\__C_specific_handler.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringLoadStoreOperations.h" />
+    <ClInclude Include="StringTableConstants.h" />
+    <ClInclude Include="StringTableTestGlue.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="StringTable.h" />
+    <ClInclude Include="StringTablePrivate.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="CopyStringArray.c" />
+    <ClCompile Include="CreateStringArray.c" />
+    <ClCompile Include="CreateStringTable.c" />
+    <ClCompile Include="DestroyStringTable.c" />
+    <ClCompile Include="dllmain.c" />
+    <ClCompile Include="PrefixSearchStringTable.c" />
+    <ClCompile Include="SearchStringTable.c" />
+    <ClCompile Include="stdafx.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="StringTableAllocator.c" />
+    <ClCompile Include="StringTableConstants_C.c" />
+    <ClCompile Include="StringTableTypes.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="StringTable_x64.asm" Condition="'$(Platform)' == 'x64'" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="StringTable.def" />
+    <None Include="StringTable.inc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
+</Project>
