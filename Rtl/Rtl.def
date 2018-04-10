@@ -1,0 +1,4 @@
+LIBRARY Rtl
+EXPORTS
+    RtlHeapAllocatorInitialize
+    RtlHeapAllocatorDestroy

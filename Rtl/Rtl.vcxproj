@@ -64,6 +64,7 @@
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>AsmLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>Rtl.def</ModuleDefinitionFile>
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;_ASM_NO_API_EXPORT_IMPORT;_DEBUG_ENGINE_NO_API_EXPORT_IMPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
