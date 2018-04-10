@@ -24,7 +24,7 @@
     <ClInclude Include="TraceStoreSqlite3ExtLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TraceStoreSqlite3ExtLoader.h">
+    <ClInclude Include="TraceStoreSqlite3Ext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,11 +44,6 @@
     <ClCompile Include="Sqlite3Allocator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\TraceStoreSqlite3Ext\TraceStoreSqlite3Ext.def">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
   <!--
   <ItemGroup>
