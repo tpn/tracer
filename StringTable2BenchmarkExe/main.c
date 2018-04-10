@@ -383,7 +383,7 @@ Scratch4(
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
 
     NAMED_FUNCTION NamedFunctions[] = {
-        NAMED_FUNC(IsPrefixOfStringInTable),
+        NAMED_FUNC(IsPrefixOfStringInTable_1),
         NAMED_FUNC(IsPrefixOfStringInTable_2),
         NAMED_FUNC(IsPrefixOfStringInTable_3),
         NAMED_FUNC(IsPrefixOfStringInTable_4),
@@ -391,6 +391,8 @@ Scratch4(
         NAMED_FUNC(IsPrefixOfStringInTable_6),
         NAMED_FUNC(IsPrefixOfStringInTable_7),
         NAMED_FUNC(IsPrefixOfStringInTable_8),
+        NAMED_FUNC(IsPrefixOfStringInTable_9),
+        NAMED_FUNC(IsPrefixOfStringInTable_10),
         NAMED_FUNC(IsPrefixOfStringInTable_x64_1),
         NAMED_FUNC(IsPrefixOfStringInTable_x64_2),
         NAMED_FUNC(IsPrefixOfStringInTable_x64_3),
@@ -503,6 +505,10 @@ Scratch4(
     Result = Api->IsPrefixOfStringInTable_x64_3(StringTable,
                                                 &AlignedInput,
                                                 NULL);
+
+    Result = Api->IsPrefixOfStringInTable_10(StringTable,
+                                             &AlignedInput,
+                                             NULL);
 
 #if 0
 #define YIELD_EXECUTION() Rtl->NtYieldExecution()

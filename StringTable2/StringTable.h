@@ -1342,6 +1342,8 @@ typedef struct _STRING_TABLE_API_EX {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_6;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_7;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_8;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_9;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_10;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_1;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_2;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_3;
@@ -1391,6 +1393,8 @@ LoadStringTableApi(
         "IsPrefixOfStringInTable_6",
         "IsPrefixOfStringInTable_7",
         "IsPrefixOfStringInTable_8",
+        "IsPrefixOfStringInTable_9",
+        "IsPrefixOfStringInTable_10",
         "IsPrefixOfStringInTable_x64_1",
         "IsPrefixOfStringInTable_x64_2",
         "IsPrefixOfStringInTable_x64_3",

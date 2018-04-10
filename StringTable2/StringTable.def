@@ -18,6 +18,8 @@ EXPORTS
     IsPrefixOfStringInTable_6
     IsPrefixOfStringInTable_7
     IsPrefixOfStringInTable_8
+    IsPrefixOfStringInTable_9
+    IsPrefixOfStringInTable_10
     IsPrefixOfStringInTable_x64_1
     IsPrefixOfStringInTable_x64_2
     IsPrefixOfStringInTable_x64_3

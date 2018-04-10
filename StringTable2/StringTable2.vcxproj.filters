@@ -34,9 +34,6 @@
     <ClCompile Include="SearchStringTable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PrefixSearchStringTable.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CreateStringArray.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -47,6 +44,39 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfCStrInArray_1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_4.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_5.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_6.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_7.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_8.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_9.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_10.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

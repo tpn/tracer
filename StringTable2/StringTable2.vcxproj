@@ -102,7 +102,17 @@
     <ClCompile Include="CreateStringTable.c" />
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
-    <ClCompile Include="PrefixSearchStringTable.c" />
+    <ClCompile Include="IsPrefixOfCStrInArray_1.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_1.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_10.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_2.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_3.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_4.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_5.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_6.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_7.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_8.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_9.c" />
     <ClCompile Include="SearchStringTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
