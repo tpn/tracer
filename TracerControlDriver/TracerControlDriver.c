@@ -311,8 +311,8 @@ TracerControlDeviceControl(
 
     OutputBufferLength = IoStack->Parameters.DeviceIoControl.OutputBufferLength;
 
-    DEBUG2("DeviceControl: Received Ioctl: 0x%0x/%d.\n", Code, Code);
-    DEBUG1("DeviceControl: OutputBufferLength: %d.\n", OutputBufferLength);
+    DEBUG2("DeviceControl: Received Ioctl: 0x%0x/%u.\n", Code, Code);
+    DEBUG1("DeviceControl: OutputBufferLength: %u.\n", OutputBufferLength);
 
     switch (Code) {
 
