@@ -220,13 +220,14 @@ Return Value:
 
     //
     // Initialize NumberOfElements to the NumberOfSymbolNames, then make sure
-    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap-1.
+    // it equals NumberOfSymbolAddresses, and that FailedBitmap->SizeOfBitMap-1
+    // is at least greater than or equal to this amount.
     //
 
     NumberOfElements = NumberOfSymbolNames;
 
     if (NumberOfElements != NumberOfSymbolAddresses ||
-        NumberOfElements != FailedSymbols->SizeOfBitMap-1) {
+        NumberOfElements > FailedSymbols->SizeOfBitMap-1) {
         return FALSE;
     }
 
