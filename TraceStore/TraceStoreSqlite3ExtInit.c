@@ -293,6 +293,7 @@ Return Value:
     PSET_ATEXITEX SetAtExitEx;
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
     PCTRACE_STORE_SQLITE3_FUNCTION Function;
+    PSTRING_TABLE_API Api;
 
 
     //
@@ -388,6 +389,17 @@ Return Value:
 
     LOAD_DLL(TracerHeap);
     LOAD_DLL(StringTable);
+
+    Success = LoadStringTableApi(Rtl,
+                                 &Db->StringTableModule,
+                                 NULL,
+                                 sizeof(Db->StringTableApi),
+                                 (PSTRING_TABLE_ANY_API)&Db->StringTableApi);
+
+    if (!Success) {
+        OutputDebugStringA("LoadStringTableModule() failed.\n");
+        goto Error;
+    }
 
     //
     // Resolve the functions.
@@ -493,26 +505,6 @@ Return Value:
     }
 
     //
-    // StringTable
-    //
-
-    RESOLVE(StringTableModule,
-            PINITIALIZE_STRING_TABLE_ALLOCATOR,
-            InitializeStringTableAllocator);
-
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE,
-            CreateStringTable);
-
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE_FROM_DELIMITED_STRING,
-            CreateStringTableFromDelimitedString);
-
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE,
-            CreateStringTableFromDelimitedEnvironmentVariable);
-
-    //
     // If any of our DLLs use structured exception handling (i.e. contain
     // code that uses __try/__except), they'll also export SetCSpecificHandler
     // which needs to be called now with the __C_specific_handler that Rtl will
@@ -551,7 +543,9 @@ Return Value:
     // Initialize string table allocators then create string tables.
     //
 
-    Success = Db->InitializeStringTableAllocator(&Db->StringTableAllocator);
+    Api = &Db->StringTableApi;
+    Success = Api->InitializeStringTableAllocator(Rtl,
+                                                  &Db->StringTableAllocator);
     if (!Success) {
         *ErrorMessagePointer = (
             "InitializeStringTableAllocator(StringTable) failed.\n"
@@ -559,7 +553,8 @@ Return Value:
         goto Error;
     }
 
-    Success = Db->InitializeStringTableAllocator(&Db->StringArrayAllocator);
+    Success = Api->InitializeStringTableAllocator(Rtl,
+                                                  &Db->StringArrayAllocator);
     if (!Success) {
         *ErrorMessagePointer = (
             "InitializeStringTableAllocator(StringArray) failed.\n"
@@ -568,7 +563,7 @@ Return Value:
     }
 
     Db->FunctionStringTable1 = (
-        Db->CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             &Db->StringTableAllocator,
             &Db->StringArrayAllocator,

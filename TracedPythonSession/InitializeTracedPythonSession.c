@@ -349,17 +349,16 @@ Return Value:
     // StringTable
     //
 
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE,
-            CreateStringTable);
+    Success = LoadStringTableModule(Rtl,
+                                    &Session->StringTableModule,
+                                    NULL,
+                                    sizeof(Session->StringTableApi),
+                                    (PSTRING_TABLE_ANY_API)&Session->StringTableApi);
 
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE_FROM_DELIMITED_STRING,
-            CreateStringTableFromDelimitedString);
-
-    RESOLVE(StringTableModule,
-            PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE,
-            CreateStringTableFromDelimitedEnvironmentVariable);
+    if (!Success) {
+        OutputDebugStringA("LoadStringTableModule() failed.\n");
+        goto Error;
+    }
 
     //
     // All of our modules modules use the same pattern for initialization
@@ -1071,6 +1070,7 @@ LoadPythonDll:
         &RequiredSize,  // SizeOfPythonTraceContext
         NULL,           // Python
         NULL,           // TraceContext
+        NULL,           // StringTableApi
         NULL            // UserData
     );
 
@@ -1086,6 +1086,7 @@ LoadPythonDll:
         &RequiredSize,
         Session->Python,
         Session->TraceContext,
+        &Session->StringTableApi,
         (PVOID)Session
     );
 

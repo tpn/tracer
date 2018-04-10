@@ -63,7 +63,7 @@ MAKE_STRING(Bar);
 
 extern PRTL Rtl;
 extern PALLOCATOR Allocator;
-extern PSTRING_TABLE_FUNCTIONS Api;
+extern PSTRING_TABLE_API_EX Api;
 
 namespace TestStringTable
 {

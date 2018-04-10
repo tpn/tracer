@@ -97,14 +97,15 @@ PRTL_BOOTSTRAP Bootstrap;
 PRTL Rtl;
 PALLOCATOR Allocator;
 
-STRING_TABLE_FUNCTIONS GlobalApi;
-PSTRING_TABLE_FUNCTIONS Api;
+STRING_TABLE_API_EX GlobalApi;
+PSTRING_TABLE_API_EX Api;
 
 HMODULE GlobalRtlModule = 0;
 HMODULE GlobalStringTableModule = 0;
 
 TEST_MODULE_INITIALIZE(UnitTest1Init)
 {
+    PSTRING_TABLE_ANY_API AnyApi = (PSTRING_TABLE_ANY_API)&GlobalApi;
     ULONG SizeOfRtl = sizeof(GlobalRtl);
 
     Assert::IsTrue(BootstrapRtl(&GlobalRtlModule, &GlobalBootstrap));
@@ -117,10 +118,11 @@ TEST_MODULE_INITIALIZE(UnitTest1Init)
     Rtl = &GlobalRtl;
     Allocator = &GlobalAllocator;
 
-    Assert::IsTrue(LoadStringTableModule(Rtl,
-                                         &GlobalStringTableModule,
-                                         NULL,
-                                         &GlobalApi));
+    Assert::IsTrue(LoadStringTableApi(Rtl,
+                                      &GlobalStringTableModule,
+                                      NULL,
+                                      sizeof(*AnyApi),
+                                      AnyApi));
 
     Api = &GlobalApi;
 }

@@ -133,12 +133,11 @@ PALLOCATOR Allocator;
 
 HMODULE GlobalModule = 0;
 
-STRING_TABLE_FUNCTIONS GlobalApi;
-PSTRING_TABLE_FUNCTIONS Api;
+STRING_TABLE_API_EX GlobalApi;
+PSTRING_TABLE_API_EX Api;
 
 HMODULE GlobalRtlModule = 0;
 HMODULE GlobalStringTableModule = 0;
-
 
 //
 // Slow version with strlen().
@@ -1058,10 +1057,11 @@ mainCRTStartup()
 
     SetCSpecificHandler(Rtl->__C_specific_handler);
 
-    ASSERT(LoadStringTableModule(Rtl,
-                                 &GlobalStringTableModule,
-                                 NULL,
-                                 &GlobalApi));
+    ASSERT(LoadStringTableApi(Rtl,
+                              &GlobalStringTableModule,
+                              NULL,
+                              sizeof(GlobalApi),
+                              (PSTRING_TABLE_ANY_API)&GlobalApi));
     Api = &GlobalApi;
 
     GetSystemInfo(&SystemInfo);

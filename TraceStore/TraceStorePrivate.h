@@ -3768,18 +3768,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_STORE_SQLITE3_DB {
     PINITIALIZE_HEAP_ALLOCATOR_EX InitializeHeapAllocatorEx;
 
     //
-    // StringTable-specific functions.
+    // StringTable API.
     //
 
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
-    PCREATE_STRING_TABLE CreateStringTable;
-    PDESTROY_STRING_TABLE DestroyStringTable;
-
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
-        CreateStringTableFromDelimitedString;
-
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
-        CreateStringTableFromDelimitedEnvironmentVariable;
+    STRING_TABLE_API StringTableApi;
 
     ALLOCATOR StringTableAllocator;
     ALLOCATOR StringArrayAllocator;

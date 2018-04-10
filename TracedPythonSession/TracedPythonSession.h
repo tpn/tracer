@@ -66,7 +66,7 @@ extern "C" {
 #include "../Rtl/Rtl.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 #include "../PythonTracer/PythonTracer.h"
 #include "../TracerConfig/TracerConfig.h"
 
@@ -305,17 +305,10 @@ typedef struct _Struct_size_bytes_(Size) _TRACED_PYTHON_SESSION {
     PRTL Rtl;
 
     //
-    // StringTable-specific functions.
+    // StringTable API.
     //
 
-    PCREATE_STRING_TABLE CreateStringTable;
-    PDESTROY_STRING_TABLE DestroyStringTable;
-
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
-        CreateStringTableFromDelimitedString;
-
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
-        CreateStringTableFromDelimitedEnvironmentVariable;
+    STRING_TABLE_API StringTableApi;
 
     PALLOCATOR StringTableAllocator;
     PALLOCATOR StringArrayAllocator;

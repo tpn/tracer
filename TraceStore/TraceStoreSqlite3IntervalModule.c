@@ -690,7 +690,7 @@ TraceStoreSqlite3IntervalModuleFindFunction(
     String.Buffer = (PSTR)FunctionName;
 
     StringTable = Db->FunctionStringTable1;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    IsPrefixOfStringInTable = Db->StringTableApi.IsPrefixOfStringInTable;
 
     MatchIndex = IsPrefixOfStringInTable(StringTable, &String, &Match);
     if (MatchIndex == NO_MATCH_FOUND) {

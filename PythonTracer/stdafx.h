@@ -23,7 +23,7 @@ Abstract:
 #include "../Rtl/AtExitEx.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 #include "PythonTracer.h"
 
 #ifdef _PYTHON_TRACER_INTERNAL_BUILD

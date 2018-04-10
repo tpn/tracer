@@ -53,8 +53,12 @@ Return Value:
 
 --*/
 {
+    PSTRING_TABLE_API Api;
+
+    Api = &Session->StringTableApi;
+
     Session->ModuleNamesStringTable = (
-        Session->CreateStringTableFromDelimitedEnvironmentVariable(
+        Api->CreateStringTableFromDelimitedEnvironmentVariable(
             Session->Rtl,
             Session->Allocator,
             Session->StringTableAllocator,

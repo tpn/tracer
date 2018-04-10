@@ -403,6 +403,7 @@ InitializePythonTraceContext(
     PULONG SizeOfContext,
     PPYTHON Python,
     PTRACE_CONTEXT TraceContext,
+    PSTRING_TABLE_API StringTableApi,
     PVOID UserData
     )
 {
@@ -464,6 +465,10 @@ InitializePythonTraceContext(
     };
 
     if (!ARGUMENT_PRESENT(TraceContext)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(StringTableApi)) {
         return FALSE;
     }
 
@@ -532,6 +537,7 @@ InitializePythonTraceContext(
 
     Context->Depth = 0;
     Context->SkipFrames = 1;
+    Context->StringTableApi = StringTableApi;
 
     //
     // Initialize threadpool related members if applicable.

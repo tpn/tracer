@@ -122,7 +122,7 @@ Return Value:
     OptionString.MaximumLength = OptionString.Length;
 
     StringTable = Session->CommandLineOptionsStringTable;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
 
     MatchIndex = IsPrefixOfStringInTable(StringTable, &OptionString, &Match);
 
@@ -201,8 +201,7 @@ InitializeDebugEngineSessionStringTables(
     _In_ DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
     _In_ PALLOCATOR StringTableAllocator,
     _In_ PALLOCATOR StringArrayAllocator,
-    _In_ PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
-        CreateStringTableFromDelimitedString
+    _In_ PSTRING_TABLE_API Api
     )
 {
 
@@ -211,9 +210,7 @@ InitializeDebugEngineSessionStringTables(
     // string array and table allocators.
     //
 
-    Session->CreateStringTableFromDelimitedString = (
-        CreateStringTableFromDelimitedString
-    );
+    Session->StringTableApi = Api;
     Session->StringArrayAllocator = StringArrayAllocator;
     Session->StringTableAllocator = StringTableAllocator;
 
@@ -222,7 +219,7 @@ InitializeDebugEngineSessionStringTables(
     //
 
     Session->ExamineSymbolsPrefixStringTable = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -240,7 +237,7 @@ InitializeDebugEngineSessionStringTables(
     //
 
     Session->ExamineSymbolsBasicTypeStringTable1 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -254,7 +251,7 @@ InitializeDebugEngineSessionStringTables(
     }
 
     Session->ExamineSymbolsBasicTypeStringTable2 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -274,7 +271,7 @@ InitializeDebugEngineSessionStringTables(
     //
 
     Session->FunctionArgumentTypeStringTable1 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -288,7 +285,7 @@ InitializeDebugEngineSessionStringTables(
     }
 
     Session->FunctionArgumentTypeStringTable2 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -302,7 +299,7 @@ InitializeDebugEngineSessionStringTables(
     }
 
     Session->FunctionArgumentVectorTypeStringTable1 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -329,7 +326,7 @@ InitializeDebugEngineSessionStringTables(
     //
 
     Session->DisplayTypesStringTable1 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -343,7 +340,7 @@ InitializeDebugEngineSessionStringTables(
     }
 
     Session->DisplayTypesStringTable2 = (
-        CreateStringTableFromDelimitedString(
+        Api->CreateStringTableFromDelimitedString(
             Rtl,
             StringTableAllocator,
             StringArrayAllocator,
@@ -366,7 +363,7 @@ InitializeDebugEngineSessionStringTables(
     if (InitFlags.InitializeFromCommandLine) {
 
         Session->CommandLineOptionsStringTable = (
-            CreateStringTableFromDelimitedString(
+            Api->CreateStringTableFromDelimitedString(
                 Rtl,
                 StringTableAllocator,
                 StringArrayAllocator,
@@ -392,6 +389,7 @@ InitializeDebugEngineSession(
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
     PTRACER_CONFIG TracerConfig,
     HMODULE StringTableModule,
+    PSTRING_TABLE_API StringTableApi,
     PALLOCATOR StringArrayAllocator,
     PALLOCATOR StringTableAllocator,
     PPDEBUG_ENGINE_SESSION SessionPointer
@@ -444,6 +442,7 @@ Return Value:
                        InitFlags,
                        TracerConfig,
                        StringTableModule,
+                       StringTableApi,
                        StringArrayAllocator,
                        StringTableAllocator,
                        NULL,
@@ -693,6 +692,7 @@ InitializeDebugEngineSessionWithInjectionIntent(
     DEBUG_ENGINE_SESSION_INIT_FLAGS InitFlags,
     PTRACER_CONFIG TracerConfig,
     HMODULE StringTableModule,
+    PSTRING_TABLE_API StringTableApi,
     PALLOCATOR StringArrayAllocator,
     PALLOCATOR StringTableAllocator,
     PTRACER_INJECTION_MODULES InjectionModules,
@@ -720,6 +720,9 @@ Arguments:
 
     StringTableModule - Optionally supplies a handle to the StringTable module
         obtained via an earlier LoadLibrary() call.
+
+    StringTableApi - Optionally supplies a pointer to a STRING_TABLE_API
+        structure that has been initialized.
 
     StringArrayAllocator - Optionally supplies a pointer to an allocator to
         use for string array allocations.
@@ -753,8 +756,7 @@ Return Value:
     ULONGLONG ModuleBaseAddress;
     PCUNICODE_STRING DebuggerSettingsXmlPath;
     PDEBUG_ENGINE_SESSION Session = NULL;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
-        CreateStringTableFromDelimitedString;
+    PSTRING_TABLE_API Api;
 
     //
     // Clear the caller's session pointer up-front.
@@ -770,8 +772,8 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(StringTableModule)) {
-        CreateStringTableFromDelimitedString = NULL;
+    if (!ARGUMENT_PRESENT(StringTableApi)) {
+        Api = NULL;
     } else {
         if (!ARGUMENT_PRESENT(StringArrayAllocator)) {
             return FALSE;
@@ -780,16 +782,8 @@ Return Value:
             return FALSE;
         }
 
-        CreateStringTableFromDelimitedString = (
-            (PCREATE_STRING_TABLE_FROM_DELIMITED_STRING)(
-                GetProcAddress(
-                    StringTableModule,
-                    "CreateStringTableFromDelimitedString"
-                )
-            )
-        );
-
-        if (!CreateStringTableFromDelimitedString) {
+        Api = StringTableApi;
+        if (!Api) {
             return FALSE;
         }
     }
@@ -809,8 +803,7 @@ Return Value:
     // one if applicable.
     //
 
-    if (InitFlags.InitializeFromCommandLine &&
-        !CreateStringTableFromDelimitedString) {
+    if (InitFlags.InitializeFromCommandLine && !Api) {
         __debugbreak();
         return FALSE;
     }
@@ -873,7 +866,7 @@ Return Value:
     // Set StringTable related fields.
     //
 
-    if (CreateStringTableFromDelimitedString) {
+    if (Api) {
         CHECKED_MSG(
             InitializeDebugEngineSessionStringTables(
                 Rtl,
@@ -881,7 +874,7 @@ Return Value:
                 InitFlags,
                 StringTableAllocator,
                 StringArrayAllocator,
-                CreateStringTableFromDelimitedString
+                Api
             ),
             "InitializeDebugEngineSessionStringTables()"
         );

@@ -22,7 +22,7 @@ extern "C" {
 
 #include <Windows.h>
 #include "../Rtl/Rtl.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 
 //
 // Disable source browsing for DbgEng.h to avoid this:

@@ -67,7 +67,7 @@ CONST UNICODE_STRING DebugEngineDllFilename =
     RTL_CONSTANT_STRING(L"DebugEngine.dll");
 
 CONST UNICODE_STRING StringTableDllFilename =
-    RTL_CONSTANT_STRING(L"StringTable.dll");
+    RTL_CONSTANT_STRING(L"StringTable2.dll");
 
 CONST UNICODE_STRING PythonTracerDllFilename =
     RTL_CONSTANT_STRING(L"PythonTracer.dll");

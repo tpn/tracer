@@ -26,7 +26,7 @@ Abstract:
 #include "../TracerCore/TracerCore.h"
 #include "../TracerHeap/TracerHeap.h"
 #include "../TraceStore/TraceStore.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 #include "../PythonTracer/PythonTracer.h"
 #include "../TracedPythonSession/TracedPythonSession.h"
 #include "PythonTracerInjection.h"

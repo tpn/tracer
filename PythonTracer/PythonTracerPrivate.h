@@ -218,6 +218,7 @@ IsFunctionOfInterestStringTable(
     PSTRING ModuleName;
     PSTRING_TABLE StringTable = Context->ModuleFilterStringTable;
     STRING_TABLE_INDEX Index;
+    PSTRING_TABLE_API StringTableApi;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
     if (Context->Flags.TraceEverything) {
@@ -238,7 +239,8 @@ IsFunctionOfInterestStringTable(
         return FALSE;
     }
 
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    StringTableApi = Context->StringTableApi;
+    IsPrefixOfStringInTable = StringTableApi->IsPrefixOfStringInTable;
     Index = IsPrefixOfStringInTable(StringTable, ModuleName, NULL);
 
     return (Index != NO_MATCH_FOUND);

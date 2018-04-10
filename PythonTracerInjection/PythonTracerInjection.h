@@ -64,7 +64,7 @@ extern "C" {
 #include "../DebugEngine/DebugEngineInterfaces.h"
 #include "../TraceStore/TraceStore.h"
 #include "../TracerCore/TracerCore.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 #include "../PythonTracer/PythonTracer.h"
 #include "../TracerConfig/TracerConfig.h"
 #include "../TracedPythonSession/TracedPythonSession.h"

@@ -45,7 +45,7 @@ extern "C" {
 #include "../Rtl/__C_specific_handler.h"
 #include "../Python/Python.h"
 #include "../TraceStore/TraceStore.h"
-#include "../StringTable/StringTable.h"
+#include "../StringTable.h"
 #include "PythonTracer.h"
 
 #endif
@@ -473,6 +473,7 @@ typedef struct _Struct_size_bytes_(Size) _PYTHON_TRACE_CONTEXT {
     LARGE_INTEGER MaxZeroRefCount;
     LARGE_INTEGER MaxFalseRefCount;
 
+    PSTRING_TABLE_API StringTableApi;
     PSTRING_TABLE ModuleFilterStringTable;
 
     PREFIX_TABLE ModuleFilterPrefixTree;
@@ -654,6 +655,7 @@ BOOL
     _Inout_ PULONG SizeOfPythonTraceContext,
     _In_opt_ PPYTHON Python,
     _In_opt_ PTRACE_CONTEXT TraceContext,
+    _In_opt_ PSTRING_TABLE_API StringTableApi,
     _In_opt_ PVOID UserData
     );
 typedef INITIALIZE_PYTHON_TRACE_CONTEXT *PINITIALIZE_PYTHON_TRACE_CONTEXT;

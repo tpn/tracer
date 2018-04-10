@@ -10,7 +10,7 @@
 // Headers for CppUnitTest
 #include "CppUnitTest.h"
 
-#include "../StringTable2/StringTable.h"
+#include "../StringTable.h"
 #include "../StringTable2/StringTableTestGlue.h"
 #include "../TracerHeap/TracerHeap.h"
 

@@ -221,7 +221,7 @@ Return Value:
 
     Session = Output->Session;
     StringTable = Session->ExamineSymbolsPrefixStringTable;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
 
     MatchIndex = IsPrefixOfStringInTable(StringTable, Line, &Match);
 
@@ -415,7 +415,7 @@ Return Value:
     BasicType.MaximumLength = (USHORT)BytesRemaining;
 
     StringTable = Session->ExamineSymbolsBasicTypeStringTable1;
-    IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+    IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
     MatchOffset = 0;
     MatchAttempts = 0;
     NumberOfStringTables = Session->NumberOfBasicTypeStringTables;
@@ -1171,7 +1171,7 @@ RetryBasicTypeMatch:
         ZeroStruct(Match);
 
         StringTable = Session->FunctionArgumentTypeStringTable1;
-        IsPrefixOfStringInTable = StringTable->IsPrefixOfStringInTable;
+        IsPrefixOfStringInTable = Session->StringTableApi->IsPrefixOfStringInTable;
         NumberOfStringTables = (
             Session->NumberOfFunctionArgumentTypeStringTables
         );
