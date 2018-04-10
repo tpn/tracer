@@ -341,14 +341,6 @@ Routine Description:
     StringTable->pStringArray = StringArray;
 
     //
-    // Initialize the IsPrefixOfStringInTable and DestroyStringTable function
-    // pointers.
-    //
-
-    StringTable->IsPrefixOfStringInTable = IsPrefixOfStringInSingleTableInline;
-    StringTable->DestroyStringTable = DestroyStringTable;
-
-    //
     // And we're done, return the table.
     //
 

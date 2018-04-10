@@ -27,8 +27,12 @@ extern "C" {
 // Function typedefs and inline functions for internal modules.
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma component(browser, off)
+COPY_STRING_ARRAY CopyStringArray;
+DESTROY_STRING_TABLE DestroyStringTable;
+CREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
 CREATE_STRING_TABLE CreateSingleStringTable;
+SEARCH_STRING_TABLE_SLOTS_FOR_FIRST_PREFIX_MATCH
+    SearchStringTableSlotsForFirstPrefixMatch;
 MALLOC StringTableMalloc;
 CALLOC StringTableCalloc;
 REALLOC StringTableRealloc;
@@ -36,7 +40,6 @@ FREE StringTableFree;
 FREE_POINTER StringTableFreePointer;
 INITIALIZE_ALLOCATOR StringTableInitializeAllocator;
 DESTROY_ALLOCATOR StringTableDestroyAllocator;
-#pragma component(browser, on)
 
 #ifdef __cplusplus
 }; // extern "C"
