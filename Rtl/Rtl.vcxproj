@@ -64,6 +64,7 @@
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>AsmLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>Rtl.def</ModuleDefinitionFile>
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>_RTL_INTERNAL_BUILD;_ASM_NO_API_EXPORT_IMPORT;_DEBUG_ENGINE_NO_API_EXPORT_IMPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -76,6 +77,7 @@
     <ClInclude Include="Cu.h" />
     <ClInclude Include="Cuda.h" />
     <ClInclude Include="DbghelpFunctionPointerTypedefs.h" />
+    <ClInclude Include="HeapAllocator.h" />
     <ClInclude Include="Injection.h" />
     <ClInclude Include="InjectionInline.h" />
     <ClInclude Include="Memory.h" />
@@ -99,6 +101,7 @@
       <PrecompiledHeader />
     </ClCompile>
     <ClCompile Include="File.c" />
+    <ClCompile Include="HeapAllocator.c" />
     <ClCompile Include="Injection.c" />
     <ClCompile Include="Loader.c" />
     <ClCompile Include="Privilege.c" />
