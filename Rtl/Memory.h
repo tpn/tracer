@@ -584,7 +584,7 @@ typedef struct _ALLOCATOR {
 } ALLOCATOR;
 typedef ALLOCATOR *PALLOCATOR;
 typedef ALLOCATOR **PPALLOCATOR;
-//C_ASSERT(sizeof(ALLOCATOR) == 144);
+C_ASSERT(sizeof(ALLOCATOR) == 296);
 
 typedef
 _Success_(return != 0)
