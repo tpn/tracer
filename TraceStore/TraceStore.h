@@ -2394,7 +2394,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_CONTEXT {
 } TRACE_CONTEXT;
 typedef TRACE_CONTEXT *PTRACE_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_CONTEXT, BindMetadataInfoStoreWork) == 112);
-C_ASSERT(sizeof(TRACE_CONTEXT) == 1312);
+C_ASSERT(sizeof(TRACE_CONTEXT) == 1760);
 
 //
 // Symbol tracing functions and structures.
@@ -2723,7 +2723,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     DECLSPEC_ALIGN(64) GUARDED_LIST WorkList;
 
     //
-    // (88 bytes consumed.)
+    // (96 bytes consumed.)
     //
 
     PTRACE_CONTEXT TraceContext;
@@ -2735,7 +2735,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     struct _RTL_ATEXIT_ENTRY *AtExitExEntry;
 
     //
-    // (120 bytes consumed.)
+    // (136 bytes consumed.)
     //
 
     ULONG LastError;
@@ -2746,39 +2746,39 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TRACE_DEBUG_CONTEXT {
     ULONG Padding;
 
     //
-    // (144 bytes consumed.)
+    // (160 bytes consumed.)
     //
 
     PTRACE_MODULE_TABLE_ENTRY CurrentModuleTableEntry;
     LARGE_INTEGER CurrentTimestamp;
 
     //
-    // (160 bytes consumed.)
+    // (176 bytes consumed.)
     //
 
     PDEBUG_ENGINE_SESSION DebugEngineSession;
     PDESTROY_DEBUG_ENGINE_SESSION DestroyDebugEngineSession;
 
     //
-    // (216 bytes consumed.)
+    // (192 bytes consumed.)
     //
 
     ALLOCATOR Allocator;
 
     //
-    // (368 bytes consumed.)
+    // (488 bytes consumed.)
     //
 
-    BYTE Reserved[112];
+    BYTE Reserved[24];
 
 } TRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT *PTRACE_DEBUG_CONTEXT;
 typedef TRACE_DEBUG_CONTEXT **PPTRACE_DEBUG_CONTEXT;
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, CriticalSection) == 24);
 C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, WorkList) == 64);
-//C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 80);
-//C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 240);
-//C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 512);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, TraceContext) == 96);
+C_ASSERT(FIELD_OFFSET(TRACE_DEBUG_CONTEXT, DebugEngineSession) == 176);
+C_ASSERT(sizeof(TRACE_DEBUG_CONTEXT) == 512);
 
 #define AcquireTraceDebugContextLock(DebugContext)       \
     EnterCriticalSection(&DebugContext->CriticalSection)
@@ -3707,12 +3707,6 @@ typedef struct _TRACE_STORE {
     //
 
     struct _TRACE_STORE_CUDA *Cuda;
-
-    //
-    // Final padding.
-    //
-
-    ULONGLONG Padding3[20];
 
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
