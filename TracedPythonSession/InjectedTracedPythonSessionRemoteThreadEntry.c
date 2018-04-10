@@ -132,7 +132,6 @@ Return Value:
     PRTL Rtl;
     PPYTHON Python;
     LONG ExitCode = -1;
-    //ULONG WaitResult;
     volatile ULONG *Status;
     PALLOCATOR Allocator;
     PTRACER_CONFIG TracerConfig;
@@ -154,8 +153,6 @@ Return Value:
     Status = (PULONG)Shared1->BaseAddress;
 
     OutputDebugStringA("InjectedTracedPythonSessionRemoteThreadEntry()!\n");
-
-    //__debugbreak();
 
     Allocator = (PALLOCATOR)(
         HeapAlloc(
