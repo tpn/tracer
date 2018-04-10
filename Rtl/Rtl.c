@@ -3883,6 +3883,9 @@ InitializeRtl(
     Rtl->LoadSymbols = LoadSymbols;
     Rtl->LoadSymbolsFromMultipleModules = LoadSymbolsFromMultipleModules;
 
+    Rtl->InitializeHeapAllocator = RtlHeapAllocatorInitialize;
+    Rtl->DestroyHeapAllocator = RtlHeapAllocatorDestroy;
+
 #ifdef _RTL_TEST
     Rtl->TestLoadSymbols = TestLoadSymbols;
     Rtl->TestLoadSymbolsFromMultipleModules = (

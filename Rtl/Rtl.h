@@ -478,6 +478,7 @@ typedef LINKED_LINE **PPLINKED_LINE;
 #include "../Asm/Asm.h"
 #include "Time.h"
 #include "Memory.h"
+#include "HeapAllocator.h"
 #include "Commandline.h"
 
 typedef CONST char *PCSZ;
@@ -6220,6 +6221,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PLOAD_SYMBOLS LoadSymbols;
     PLOAD_SYMBOLS_FROM_MULTIPLE_MODULES LoadSymbolsFromMultipleModules;
+
+    PINITIALIZE_ALLOCATOR InitializeHeapAllocator;
+    PDESTROY_ALLOCATOR DestroyHeapAllocator;
 
     union {
         SYSTEM_TIMER_FUNCTION   SystemTimerFunction;

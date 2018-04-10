@@ -1,3 +1,20 @@
+/*++
+
+Copyright (c) 2018 Trent Nelson <trent@trent.me>
+
+Module Name:
+
+    Memory.h
+
+Abstract:
+
+    This is the header file for memory-related functionality of the Rtl
+    component.  It defines function pointer typedefs for standard C memory
+    allocation functions like malloc, calloc and free, as well as an ALLOCATOR
+    interface.
+
+--*/
+
 #pragma once
 
 #include <minwindef.h>
@@ -5,7 +22,7 @@
 #include <specstrings.h>
 
 //
-// Function pointer typedefs for standard C memory allocation functions.
+// Define malloc-oriented functions.
 //
 
 typedef
@@ -48,8 +65,126 @@ PVOID
     );
 typedef TRY_MALLOC_WITH_TIMESTAMP *PTRY_MALLOC_WITH_TIMESTAMP;
 
+//
+// Define aligned malloc-oriented functions.
+//
+
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(ALIGNED_MALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment
+    );
+typedef ALIGNED_MALLOC *PALIGNED_MALLOC;
+
+typedef
+_Check_return_
+PVOID
+(TRY_ALIGNED_MALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment
+    );
+typedef TRY_ALIGNED_MALLOC *PTRY_ALIGNED_MALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(ALIGNED_MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef ALIGNED_MALLOC_WITH_TIMESTAMP *PALIGNED_MALLOC_WITH_TIMESTAMP;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(TRY_ALIGNED_MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_ALIGNED_MALLOC_WITH_TIMESTAMP *PTRY_ALIGNED_MALLOC_WITH_TIMESTAMP;
+
+//
+// Define aligned offset malloc-oriented functions.
+//
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(ALIGNED_OFFSET_MALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset
+    );
+typedef ALIGNED_OFFSET_MALLOC *PALIGNED_OFFSET_MALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(TRY_ALIGNED_OFFSET_MALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset
+    );
+typedef TRY_ALIGNED_OFFSET_MALLOC *PTRY_ALIGNED_OFFSET_MALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP
+      *PALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(Size)
+PVOID
+(TRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T Size,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP
+      *PTRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP;
+
+//
+// Define calloc-oriented functions.
+//
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
 PVOID
 (CALLOC)(
     _In_ PVOID Context,
@@ -59,7 +194,9 @@ PVOID
 typedef CALLOC *PCALLOC;
 
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
 PVOID
 (TRY_CALLOC)(
     _In_ PVOID Context,
@@ -69,7 +206,9 @@ PVOID
 typedef TRY_CALLOC *PTRY_CALLOC;
 
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
 PVOID
 (CALLOC_WITH_TIMESTAMP)(
     _In_ PVOID Context,
@@ -80,7 +219,9 @@ PVOID
 typedef CALLOC_WITH_TIMESTAMP *PCALLOC_WITH_TIMESTAMP;
 
 typedef
-_Must_inspect_result_
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
 PVOID
 (TRY_CALLOC_WITH_TIMESTAMP)(
     _In_ PVOID Context,
@@ -89,6 +230,132 @@ PVOID
     _In_ PLARGE_INTEGER TimestampPointer
     );
 typedef TRY_CALLOC_WITH_TIMESTAMP *PTRY_CALLOC_WITH_TIMESTAMP;
+
+//
+// Define aligned calloc-oriented functions.
+//
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(ALIGNED_CALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment
+    );
+typedef ALIGNED_CALLOC *PALIGNED_CALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(TRY_ALIGNED_CALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment
+    );
+typedef TRY_ALIGNED_CALLOC *PTRY_ALIGNED_CALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(ALIGNED_CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef ALIGNED_CALLOC_WITH_TIMESTAMP *PALIGNED_CALLOC_WITH_TIMESTAMP;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(TRY_ALIGNED_CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_ALIGNED_CALLOC_WITH_TIMESTAMP *PTRY_ALIGNED_CALLOC_WITH_TIMESTAMP;
+
+//
+// Define aligned offset calloc-oriented functions.
+//
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(ALIGNED_OFFSET_CALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset
+    );
+typedef ALIGNED_OFFSET_CALLOC *PALIGNED_OFFSET_CALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(TRY_ALIGNED_OFFSET_CALLOC)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset
+    );
+typedef TRY_ALIGNED_OFFSET_CALLOC *PTRY_ALIGNED_OFFSET_CALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP
+      *PALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(NumberOfElements * ElementSize)
+PVOID
+(TRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP)(
+    _In_ PVOID Context,
+    _In_ SIZE_T NumberOfElements,
+    _In_ SIZE_T ElementSize,
+    _In_ SIZE_T Alignment,
+    _In_ SIZE_T Offset,
+    _In_ PLARGE_INTEGER TimestampPointer
+    );
+typedef TRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP
+      *PTRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP;
+
+//
+// Define realloc-oriented functions.
+//
 
 typedef
 _Check_return_
@@ -101,6 +368,10 @@ PVOID
     _In_ SIZE_T NewSize
     );
 typedef REALLOC *PREALLOC;
+
+//
+// Define free-oriented functions.
+//
 
 typedef
 VOID
@@ -117,6 +388,39 @@ VOID
     _In_ PPVOID PointerToBuffer
     );
 typedef FREE_POINTER *PFREE_POINTER;
+
+typedef
+VOID
+(ALIGNED_FREE)(
+    _In_ PVOID Context,
+    _Pre_maybenull_ _Post_invalid_ PVOID Buffer
+    );
+typedef ALIGNED_FREE *PALIGNED_FREE;
+
+typedef
+VOID
+(ALIGNED_FREE_POINTER)(
+    _In_ PVOID Context,
+    _In_ PPVOID PointerToBuffer
+    );
+typedef ALIGNED_FREE_POINTER *PALIGNED_FREE_POINTER;
+
+//
+// Define copy memory functions.
+//
+
+typedef
+BOOLEAN
+(WRITE_BYTES)(
+    _In_ PVOID Context,
+    _In_ const VOID *Source,
+    _In_ SIZE_T SizeInBytes
+    );
+typedef WRITE_BYTES *PWRITE_BYTES;
+
+//
+// Define initialization functions.
+//
 
 typedef
 BOOLEAN
@@ -196,6 +500,7 @@ typedef struct _ALLOCATOR {
     PFREE_POINTER FreePointer;
     PINITIALIZE_ALLOCATOR Initialize;
     PDESTROY_ALLOCATOR Destroy;
+    PWRITE_BYTES WriteBytes;
 
     union {
         PVOID Context2;
@@ -222,6 +527,33 @@ typedef struct _ALLOCATOR {
 
     PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp;
     PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp;
+
+    //
+    // These will be set if an aligned allocation interface is present.
+    //
+
+    PALIGNED_MALLOC AlignedMalloc;
+    PTRY_ALIGNED_MALLOC TryAlignedMalloc;
+    PALIGNED_MALLOC_WITH_TIMESTAMP AlignedMallocWithTimestamp;
+    PTRY_ALIGNED_MALLOC_WITH_TIMESTAMP TryAlignedMallocWithTimestamp;
+
+    PALIGNED_OFFSET_MALLOC AlignedOffsetMalloc;
+    PTRY_ALIGNED_OFFSET_MALLOC TryAlignedOffsetMalloc;
+    PALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP AlignedOffsetMallocWithTimestamp;
+    PTRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP TryAlignedOffsetMallocWithTimestamp;
+
+    PALIGNED_CALLOC AlignedCalloc;
+    PTRY_ALIGNED_CALLOC TryAlignedCalloc;
+    PALIGNED_CALLOC_WITH_TIMESTAMP AlignedCallocWithTimestamp;
+    PTRY_ALIGNED_CALLOC_WITH_TIMESTAMP TryAlignedCallocWithTimestamp;
+
+    PALIGNED_OFFSET_CALLOC AlignedOffsetCalloc;
+    PTRY_ALIGNED_OFFSET_CALLOC TryAlignedOffsetCalloc;
+    PALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP AlignedOffsetCallocWithTimestamp;
+    PTRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP TryAlignedOffsetCallocWithTimestamp;
+
+    PALIGNED_FREE AlignedFree;
+    PALIGNED_FREE_POINTER AlignedFreePointer;
 
     //
     // Id of the thread that created this structure.
@@ -252,7 +584,7 @@ typedef struct _ALLOCATOR {
 } ALLOCATOR;
 typedef ALLOCATOR *PALLOCATOR;
 typedef ALLOCATOR **PPALLOCATOR;
-C_ASSERT(sizeof(ALLOCATOR) == 144);
+//C_ASSERT(sizeof(ALLOCATOR) == 144);
 
 typedef
 _Success_(return != 0)
@@ -275,12 +607,31 @@ InitializeAllocator(
     _In_ PFREE_POINTER FreePointer,
     _In_ PINITIALIZE_ALLOCATOR Initialize,
     _In_ PDESTROY_ALLOCATOR Destroy,
+    _In_opt_ PWRITE_BYTES WriteBytes,
     _In_opt_ PTRY_MALLOC TryMalloc,
     _In_opt_ PTRY_CALLOC TryCalloc,
     _In_opt_ PMALLOC_WITH_TIMESTAMP MallocWithTimestamp,
     _In_opt_ PCALLOC_WITH_TIMESTAMP CallocWithTimestamp,
     _In_opt_ PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp,
     _In_opt_ PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp,
+    _In_opt_ PALIGNED_MALLOC AlignedMalloc,
+    _In_opt_ PTRY_ALIGNED_MALLOC TryAlignedMalloc,
+    _In_opt_ PALIGNED_MALLOC_WITH_TIMESTAMP AlignedMallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_MALLOC_WITH_TIMESTAMP TryAlignedMallocWithTimestamp,
+    _In_opt_ PALIGNED_OFFSET_MALLOC AlignedOffsetMalloc,
+    _In_opt_ PTRY_ALIGNED_OFFSET_MALLOC TryAlignedOffsetMalloc,
+    _In_opt_ PALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP AlignedOffsetMallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP TryAlignedOffsetMallocWithTimestamp,
+    _In_opt_ PALIGNED_CALLOC AlignedCalloc,
+    _In_opt_ PTRY_ALIGNED_CALLOC TryAlignedCalloc,
+    _In_opt_ PALIGNED_CALLOC_WITH_TIMESTAMP AlignedCallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_CALLOC_WITH_TIMESTAMP TryAlignedCallocWithTimestamp,
+    _In_opt_ PALIGNED_OFFSET_CALLOC AlignedOffsetCalloc,
+    _In_opt_ PTRY_ALIGNED_OFFSET_CALLOC TryAlignedOffsetCalloc,
+    _In_opt_ PALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP AlignedOffsetCallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP TryAlignedOffsetCallocWithTimestamp,
+    _In_opt_ PALIGNED_FREE AlignedFree,
+    _In_opt_ PALIGNED_FREE_POINTER AlignedFreePointer,
     _In_opt_ PVOID Context2
     )
 {
@@ -294,6 +645,7 @@ InitializeAllocator(
     Allocator->FreePointer = FreePointer;
     Allocator->Initialize = Initialize;
     Allocator->Destroy = Destroy;
+    Allocator->WriteBytes = WriteBytes;
 
     Allocator->Context2 = Context2;
 
@@ -305,6 +657,26 @@ InitializeAllocator(
 
     Allocator->TryMallocWithTimestamp = TryMallocWithTimestamp;
     Allocator->TryCallocWithTimestamp = TryCallocWithTimestamp;
+
+    Allocator->AlignedMalloc = AlignedMalloc;
+    Allocator->TryAlignedMalloc = TryAlignedMalloc;
+    Allocator->AlignedMallocWithTimestamp = AlignedMallocWithTimestamp;
+    Allocator->TryAlignedMallocWithTimestamp = TryAlignedMallocWithTimestamp;
+    Allocator->AlignedOffsetMalloc = AlignedOffsetMalloc;
+    Allocator->TryAlignedOffsetMalloc = TryAlignedOffsetMalloc;
+    Allocator->AlignedOffsetMallocWithTimestamp = AlignedOffsetMallocWithTimestamp;
+    Allocator->TryAlignedOffsetMallocWithTimestamp = TryAlignedOffsetMallocWithTimestamp;
+    Allocator->AlignedCalloc = AlignedCalloc;
+    Allocator->TryAlignedCalloc = TryAlignedCalloc;
+    Allocator->AlignedCallocWithTimestamp = AlignedCallocWithTimestamp;
+    Allocator->TryAlignedCallocWithTimestamp = TryAlignedCallocWithTimestamp;
+    Allocator->AlignedOffsetCalloc = AlignedOffsetCalloc;
+    Allocator->TryAlignedOffsetCalloc = TryAlignedOffsetCalloc;
+    Allocator->AlignedOffsetCallocWithTimestamp = AlignedOffsetCallocWithTimestamp;
+    Allocator->TryAlignedOffsetCallocWithTimestamp = TryAlignedOffsetCallocWithTimestamp;
+
+    Allocator->AlignedFree = AlignedFree;
+    Allocator->AlignedFreePointer = AlignedFreePointer;
 
     Allocator->TlsIndex = TLS_OUT_OF_INDEXES;
     Allocator->ThreadId = GetCurrentThreadId();
@@ -323,12 +695,31 @@ InitializeTlsAllocator(
     _In_ PFREE_POINTER FreePointer,
     _In_ PINITIALIZE_ALLOCATOR Initialize,
     _In_ PDESTROY_ALLOCATOR Destroy,
+    _In_opt_ PWRITE_BYTES WriteBytes,
     _In_opt_ PTRY_MALLOC TryMalloc,
     _In_opt_ PTRY_CALLOC TryCalloc,
     _In_opt_ PMALLOC_WITH_TIMESTAMP MallocWithTimestamp,
     _In_opt_ PCALLOC_WITH_TIMESTAMP CallocWithTimestamp,
     _In_opt_ PTRY_MALLOC_WITH_TIMESTAMP TryMallocWithTimestamp,
     _In_opt_ PTRY_CALLOC_WITH_TIMESTAMP TryCallocWithTimestamp,
+    _In_opt_ PALIGNED_MALLOC AlignedMalloc,
+    _In_opt_ PTRY_ALIGNED_MALLOC TryAlignedMalloc,
+    _In_opt_ PALIGNED_MALLOC_WITH_TIMESTAMP AlignedMallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_MALLOC_WITH_TIMESTAMP TryAlignedMallocWithTimestamp,
+    _In_opt_ PALIGNED_OFFSET_MALLOC AlignedOffsetMalloc,
+    _In_opt_ PTRY_ALIGNED_OFFSET_MALLOC TryAlignedOffsetMalloc,
+    _In_opt_ PALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP AlignedOffsetMallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_OFFSET_MALLOC_WITH_TIMESTAMP TryAlignedOffsetMallocWithTimestamp,
+    _In_opt_ PALIGNED_CALLOC AlignedCalloc,
+    _In_opt_ PTRY_ALIGNED_CALLOC TryAlignedCalloc,
+    _In_opt_ PALIGNED_CALLOC_WITH_TIMESTAMP AlignedCallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_CALLOC_WITH_TIMESTAMP TryAlignedCallocWithTimestamp,
+    _In_opt_ PALIGNED_OFFSET_CALLOC AlignedOffsetCalloc,
+    _In_opt_ PTRY_ALIGNED_OFFSET_CALLOC TryAlignedOffsetCalloc,
+    _In_opt_ PALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP AlignedOffsetCallocWithTimestamp,
+    _In_opt_ PTRY_ALIGNED_OFFSET_CALLOC_WITH_TIMESTAMP TryAlignedOffsetCallocWithTimestamp,
+    _In_opt_ PALIGNED_FREE AlignedFree,
+    _In_opt_ PALIGNED_FREE_POINTER AlignedFreePointer,
     _In_opt_ PVOID Context2,
     _In_ PALLOCATOR Parent,
     _In_ ULONG TlsIndex
@@ -344,12 +735,31 @@ InitializeTlsAllocator(
         FreePointer,
         Initialize,
         Destroy,
+        WriteBytes,
         TryMalloc,
         TryCalloc,
         MallocWithTimestamp,
         CallocWithTimestamp,
         TryMallocWithTimestamp,
         TryCallocWithTimestamp,
+        AlignedMalloc,
+        TryAlignedMalloc,
+        AlignedMallocWithTimestamp,
+        TryAlignedMallocWithTimestamp,
+        AlignedOffsetMalloc,
+        TryAlignedOffsetMalloc,
+        AlignedOffsetMallocWithTimestamp,
+        TryAlignedOffsetMallocWithTimestamp,
+        AlignedCalloc,
+        TryAlignedCalloc,
+        AlignedCallocWithTimestamp,
+        TryAlignedCallocWithTimestamp,
+        AlignedOffsetCalloc,
+        TryAlignedOffsetCalloc,
+        AlignedOffsetCallocWithTimestamp,
+        TryAlignedOffsetCallocWithTimestamp,
+        AlignedFree,
+        AlignedFreePointer,
         Context2
     );
 
