@@ -356,9 +356,9 @@ Arguments:
         is returned.
 
     FailedSymbols - Supplies a pointer to an RTL_BITMAP structure, whose
-        SizeOfBitmap field is equal to NumberOfSymbolNames.  The entire bitmap
-        buffer will be zeroed up-front and then a bit will be set for any failed
-        lookup attempts.
+        SizeOfBitmap field is equal to or greater than NumberOfSymbolNames.
+        The entire bitmap buffer will be zeroed up-front and then a bit will
+        be set for any failed lookup attempts.
 
         N.B. As the names and addresses arrays are 0-based, the array index is
              obtained from the failed bit position by subtracting 1.  E.g. if
@@ -430,13 +430,14 @@ Return Value:
 
     //
     // Initialize NumberOfElements to the NumberOfSymbolNames, then make sure
-    // it equals NumberOfSymbolAddresses and FailedBitmap->SizeOfBitMap-1.
+    // it equals NumberOfSymbolAddresses, and that FailedBitmap->SizeOfBitMap-1
+    // is at least greater than or equal to this amount.
     //
 
     NumberOfElements = NumberOfSymbolNames;
 
     if (NumberOfElements != NumberOfSymbolAddresses ||
-        NumberOfElements != FailedSymbols->SizeOfBitMap-1) {
+        NumberOfElements > FailedSymbols->SizeOfBitMap-1) {
         return FALSE;
     }
 
