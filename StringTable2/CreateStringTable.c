@@ -244,7 +244,7 @@ Routine Description:
     // At this point, we have copied the incoming StringArray if necessary,
     // and we've allocated sufficient space for the StringTable structure.
     // Enumerate over all of the strings, set the continuation bit if the
-    // length > 16, set the relevant slot length, set the relevant first
+    // length > 16, set the relevant slot length, set the relevant unique
     // character entry, then move the first 16-bytes of the string into the
     // relevant slot via an aligned SSE mov.
     //
