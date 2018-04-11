@@ -156,9 +156,9 @@ Arguments:
     Module - Supplies the HMODULE to use in the GetProcAddress() call.
 
     FailedSymbols - Supplies a pointer to an RTL_BITMAP structure, whose
-        SizeOfBitmap field is equal to NumberOfSymbolNames.  The entire bitmap
-        buffer will be zeroed up-front and then a bit will be set for any failed
-        lookup attempts.
+        SizeOfBitmap field is equal to or greater than NumberOfSymbolNames.
+        The entire bitmap buffer will be zeroed up-front and then a bit will
+        be set for any failed lookup attempts.
 
         N.B. As the names and addresses arrays are 0-based, the array index is
              obtained by the failed bit position by subtracting 1.  E.g. if the
