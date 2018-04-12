@@ -583,7 +583,7 @@ Inj20:  lea     rbx, [rdi + rsi]                        ; Load next inj. obj.
         jz      Inj25                                   ; No, check set event.
 
         mov     rcx, rax                                ; Load handle param 1.
-        xor     rdx, rdx                                ; Clear rdx.
+        xor     edx, edx                                ; Clear rdx.
         not     rdx                                     ; Invert to all 1s.
         call    Functions.WaitForSingleObject[r13]      ; Invoke wait.
         test    rax, rax                                ; Wait result == 0?
@@ -727,7 +727,7 @@ Inj47:  mov     rax, Locals.PreferredBaseAddress[rsp]   ; Load pref. base.
 ; Clear the preferred address and re-try the mapping.
 ;
 
-@@:     xor     rax, rax                                ; Clear rax.
+@@:     xor     eax, eax                                ; Clear rax.
         mov     Locals.PreferredBaseAddress[rsp], rax   ; Zero address.
         jmp     short Inj45
 
@@ -769,7 +769,7 @@ Inj57:  mov     rcx, r12                                ; Load thunk into arg 1.
 ; Check to see if we've been requested to load a module and resolve a function.
 ;
 
-Inj60:  xor     rax, rax                                ; Clear rax.
+Inj60:  xor     eax, eax                                ; Clear rax.
         movzx   r8, word ptr Thunk.Flags[r12]           ; Move flags into r8d.
         test    r8, HasModuleAndFunction                ; Has module+func?
         jz      Inj90                                   ; No; we're done.
@@ -779,7 +779,7 @@ Inj60:  xor     rax, rax                                ; Clear rax.
 ;
 
         mov     rcx, Thunk.ModulePath.Buffer[r12]       ; Load ModulePath.
-        xor     rdx, rdx                                ; Clear 2nd parameter.
+        xor     edx, edx                                ; Clear 2nd parameter.
         xor     r8, r8                                  ; Clear 3rd parameter.
         call    Functions.LoadLibraryExW[r13]           ; Call LoadLibraryExW().
         test    rax, rax                                ; Check Handle != NULL.
