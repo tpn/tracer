@@ -3708,7 +3708,10 @@ typedef struct _TRACE_STORE {
 
     struct _TRACE_STORE_CUDA *Cuda;
 
+    ULONGLONG Padding3;
+
 } TRACE_STORE, *PTRACE_STORE, **PPTRACE_STORE;
+C_ASSERT(FIELD_OFFSET(TRACE_STORE, Cuda) == 2032);
 C_ASSERT(sizeof(TRACE_STORE) == 2048);
 
 #define IS_EXCLUDED(TraceStore) IsExcludedTraceStore(TraceStores, TraceStore)
