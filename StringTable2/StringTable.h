@@ -1297,6 +1297,10 @@ typedef STRING_TABLE_API *PSTRING_TABLE_API;
 
 typedef struct _STRING_TABLE_API_EX {
 
+    //
+    // Inline STRING_TABLE_API.
+    //
+
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
     PCOPY_STRING_ARRAY CopyStringArray;
@@ -1351,11 +1355,74 @@ LoadStringTableApi(
     _In_ ULONG SizeOfAnyApi,
     _Out_writes_bytes_all_(SizeOfAnyApi) PSTRING_TABLE_ANY_API AnyApi
     )
+/*++
+
+Routine Description:
+
+    Loads the string table module and resolves all API functions for either
+    the STRING_TABLE_API or STRING_TABLE_API_EX structure.  The desired API
+    is indicated by the SizeOfAnyApi parameter.
+
+    Example use:
+
+        STRING_TABLE_API_EX GlobalApi;
+        PSTRING_TABLE_API_EX Api;
+
+        Success = LoadStringTableApi(Rtl,
+                                     NULL,
+                                     NULL,
+                                     sizeof(GlobalApi),
+                                     (PSTRING_TABLE_ANY_API)&GlobalApi);
+        ASSERT(Success);
+        Api = &GlobalApi;
+
+    In this example, the extended API will be provided as our sizeof(GlobalApi)
+    will indicate the structure size used by STRING_TABLE_API_EX.
+
+    See ../StringTable2BenchmarkExe/main.c for a complete example.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    ModulePointer - Optionally supplies a pointer to an existing module handle
+        for which the API symbols are to be resolved.  May be NULL.  If not
+        NULL, but the pointed-to value is NULL, then this parameter will
+        receive the handle obtained by LoadLibrary() as part of this call.
+        If the string table module is no longer needed, but the program will
+        keep running, the caller should issue a FreeLibrary() against this
+        module handle.
+
+    ModulePath - Optionally supplies a pointer to a UNICODE_STRING structure
+        representing a path name of the string table module to be loaded.
+        If *ModulePointer is not NULL, it takes precedence over this parameter.
+        If NULL, and no module has been provided via *ModulePointer, an attempt
+        will be made to load the library via 'LoadLibraryA("StringTable.dll")'.
+
+    SizeOfAnyApi - Supplies the size, in bytes, of the underlying structure
+        pointed to by the AnyApi parameter.
+
+    AnyApi - Supplies the address of a structure which will receive resolved
+        API function pointers.  The API furnished will depend on the size
+        indicated by the SizeOfAnyApi parameter.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
 {
     BOOL Success;
     HMODULE Module = NULL;
     ULONG NumberOfSymbols;
     ULONG NumberOfResolvedSymbols;
+
+    //
+    // Define the API names.
+    //
+    // N.B. These names must match STRING_TABLE_API_EX exactly (including the
+    //      order).
+    //
 
     CONST PCSTR Names[] = {
         "SetCSpecificHandler",
@@ -1386,8 +1453,17 @@ LoadStringTableApi(
         "IntegerDivision_x64_1",
     };
 
+    //
+    // Define an appropriately sized bitmap we can passed to Rtl->LoadSymbols().
+    //
+
     ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];
     RTL_BITMAP FailedBitmap = { ARRAYSIZE(Names)+1, (PULONG)&BitmapBuffer };
+
+    //
+    // Determine the number of symbols we want to resolve based on the size of
+    // the API indicated by the caller.
+    //
 
     if (SizeOfAnyApi == sizeof(AnyApi->Api)) {
         NumberOfSymbols = sizeof(AnyApi->Api) / sizeof(ULONG_PTR);
@@ -1396,6 +1472,10 @@ LoadStringTableApi(
     } else {
         return FALSE;
     }
+
+    //
+    // Attempt to load the underlying string table module if necessary.
+    //
 
     if (ARGUMENT_PRESENT(ModulePointer)) {
         Module = *ModulePointer;
@@ -1413,6 +1493,11 @@ LoadStringTableApi(
         return FALSE;
     }
 
+    //
+    // We've got a handle to the string table module.  Load the symbols we want
+    // dynamically via Rtl->LoadSymbols().
+    //
+
     Success = Rtl->LoadSymbols(
         Names,
         NumberOfSymbols,
@@ -1426,6 +1511,12 @@ LoadStringTableApi(
 
     ASSERT(Success);
 
+    //
+    // Debug helper: if the breakpoint below is hit, then the symbol names
+    // have potentially become out of sync.  Look at the value of first failed
+    // symbol to assist in determining the cause.
+    //
+
     if (NumberOfSymbols != NumberOfResolvedSymbols) {
         PCSTR FirstFailedSymbolName;
         ULONG FirstFailedSymbol;
@@ -1437,9 +1528,20 @@ LoadStringTableApi(
         __debugbreak();
     }
 
+    //
+    // Set the C specific handler for the module, such that structured
+    // exception handling will work.
+    //
+
     AnyApi->Api.SetCSpecificHandler(Rtl->__C_specific_handler);
 
-    *ModulePointer = Module;
+    //
+    // Update the caller's pointer and return success.
+    //
+
+    if (ARGUMENT_PRESENT(ModulePointer)) {
+        *ModulePointer = Module;
+    }
 
     return TRUE;
 }
