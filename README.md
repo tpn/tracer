@@ -46,13 +46,13 @@ From the perspective of the downstream module author, the Rtl pointer (obtained 
 	1. Multiple C runtimes.
 	2. A runtime dependency on the CRT (i.e. the binary has an imports section with msvcrt stuff).
 	3. Avoid peturbing the traced environment.
-	
+
 ## The Mechanics of C without the C Runtime Library
-	
+
 	1. Visual Studio setup.
 	2. __chkstack
 	3. __C_runtime_handler
-	
+
 # Style
 The Tracer project uses the Cutler Normal Form (CNF) coding style for the C language.  This is the style used for the NT kernel; the name Cutler Normal Form parallels the Kernel Normal Form style that has guided UNIX kernel development over the years.  For those with exposure to the NT kernel style (e.g. via Windows headers or NT driver development), the Tracer project will have a familiar feel.  For those coming from a UNIX or Linux background, the style can appear quite jarring, as it shares almost no traits with the type of C style programs in that domain.  The only commonality between the two styles is that they're both very consistent internally, and produce very clean looking code.  Each style is an artefact of the environment it was created in.
 
@@ -72,10 +72,10 @@ Structures, unions and enumerations all follow the same pattern:
 	typedef struct _FOO {
 		USHORT SizeOfStruct;
 		USHORT Padding[3];
-		
+
 		ULONG SequenceId;
 		ULONG Checksum;
-		
+
 		PRUNTIME_CONTEXT Context;
 	} FOO;
 	typedef FOO *PFOO;
@@ -91,7 +91,7 @@ The same rules apply for unions and enumerations.  For example:
 		ULONG Integer;
 	} BAR;
 	typedef BAR *PBAR;
-	
+
 ## Function Pointers
 
 The Tracer project makes extensive use of named function pointer types via typedef.  The public procedures for a module will be declared via a function typedef with SAL annotations, plus a supporting function pointer typedef.  This allows subsequent definition of the procedure implementation to use the _Use_decl_annotations_ SAL annotation, removing the need to duplicate annotations.
@@ -111,17 +111,17 @@ The Tracer project makes extensive use of named function pointer types via typed
 	    _Out_writes_bytes_all_(*SizeOfWideBufferInBytes) PPWSTR WideBufferPointer
 	    );
 	typedef CREATE_RANDOM_OBJECT_NAMES *PCREATE_RANDOM_OBJECT_NAMES;
-	
+
 ## Bitfields, Flags and State
 
 	typedef union _FOO_STATE {
 		struct _Struct_size_bytes_(sizeof(ULONG)) {
 			ULONG Initialized:1;
 			ULONG Executing:1;
-			
+
 			ULONG Unused:30;
 		};
-		
+
 		LONG AsLong;
 		ULONG AsULong;
 	} FOO_STATE;
@@ -135,25 +135,25 @@ Comments are always preceeded with an empty leading and trailing line consisting
 
 Invariant checks are frequent.  If an invariant test fails, it is followed by a __debugbreak(), and then typically via a `return FALSE;` type statement, e.g.:
 
-	
+
 	    //
 	    // Adjust the runtime function entry details for RtlAddFunctionTable().
 	    //
-	
+
 	    Thunk->EntryCount = EntryCount;
 	    Thunk->FunctionTable = RemoteRuntimeFunction;
 	    Thunk->BaseCodeAddress = RemoteCodeBaseAddress;
-	
+
 	    //
 	    // Invariant checks.
 	    //
-	
+
 	    NewUserData = Base + TotalBytes;
 	    if (NewUserData != Dest) {
 	        __debugbreak();
 	        return FALSE;
 	    }
-	
+
 This results in an `int 3` instruction (on x86/x64 processors) being executed as soon as an invariant fails.  If the program is being interactively debugged (via Visual Studio or WinDbg, for example), program execution will immediately halt.  If no debugger is attached, the standard protocol for debugging on Windows will kick in, and will allow a debugger to be attached.
 
 Gotos are acceptable, and are used extensively for handling errors and facilitating single-point-of-exit procedures.  Procedures that implement state-driven logic also make use of gotos.
@@ -174,58 +174,60 @@ The definition of procedures should include documentation that includes (at leas
 	    PPYFRAMEOBJECT FrameObject
 	    )
 	/*++
-	
+
 	Routine Description:
-	
+
 	    This method is responsible for finalizing details about a function, such
 	    as the function name, class name (if any), module name and first line
 	    number.  A frame object is provided to assist with resolution of names.
-	
+
 	    It is called once per function after a new PYTHON_PATH_TABLE_ENTRY has been
 	    inserted into the path prefix table.
-	
+
 	Arguments:
-	
+
 	    Python - Supplies a pointer to a PYTHON structure.
-	
+
 	    Function - Supplies a pointer to a PYTHON_FUNCTION structure to be
 	        registered by this routine.
-	
+
 	    FrameObject - Supplies a pointer to the PYFRAMEOBJECT structure for which
 	        this function is being registered.  This is required in order to assist
 	        with the resolution of names.
-	
+
 	Return Value:
-	
+
 	    TRUE on success, FALSE on failure.
-	
+
 	--*/
 	{
 
 
 ## File Header Documentation
 
-Each file should have a header that contains (at least) a copyright string, the module name, and an abstract briefly describing the role of the module and the functions it provides.
+Each file should have a header that contains (at least) a copyright string, the
+module name, and an abstract briefly describing the role of the module and the
+functions it provides.
 
 	/*++
-	
+
 	Copyright (c) 2016 Trent Nelson <trent@trent.me>
-	
+
 	Module Name:
-	
+
 	    PythonFunction.c
-	
+
 	Abstract:
-	
+
 	    This module implements functionality related to the PYTHON_FUNCTION
 	    structure, which is based on the PYTHON_PATH_TABLE_ENTRY structure,
 	    additionally capturing Python function information such as the code
 	    object, number of lines, etc.
-	
+
 	    This module is consumed by Python tracing components, which interface
 	    to it via the RegisterFrame method, which returns the corresponding
 	    PYTHON_FUNCTION structure for a given Python frame object.
-	
+
 	--*/
 
 ## Interfacing with External Components
