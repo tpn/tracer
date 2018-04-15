@@ -150,32 +150,13 @@ typedef union DECLSPEC_ALIGN(16) _SLOT_LENGTHS {
 } SLOT_LENGTHS, *PSLOT_LENGTHS, **PPSLOT_LENGTHS;
 C_ASSERT(sizeof(SLOT_LENGTHS) == 16);
 
-typedef struct _LENGTH_INDEX_ENTRY {
-    BYTE Length;
-    BYTE Index;
-} LENGTH_INDEX_ENTRY;
-typedef LENGTH_INDEX_ENTRY *PLENGTH_INDEX_ENTRY;
 
-typedef struct _LENGTH_INDEX_TABLE {
-    LENGTH_INDEX_ENTRY Entry[16];
-} LENGTH_INDEX_TABLE;
-typedef LENGTH_INDEX_TABLE *PLENGTH_INDEX_TABLE;
+//
+// Our string table index is simply a char, with -1 indicating no match found.
+//
 
 typedef CHAR STRING_TABLE_INDEX;
 #define NO_MATCH_FOUND -1
-
-typedef union DECLSPEC_ALIGN(32) _CHARACTER_BITMAP {
-    YMMWORD Ymm;
-    XMMWORD Xmm[2];
-    LONG Bits[(256 / (4 << 3))];
-} CHARACTER_BITMAP;
-C_ASSERT(sizeof(CHARACTER_BITMAP) == 32);
-typedef CHARACTER_BITMAP *PCHARACTER_BITMAP;
-
-typedef struct _SLOT_BITMAPS {
-    CHARACTER_BITMAP Bitmap[16];
-} SLOT_BITMAPS;
-typedef SLOT_BITMAPS *PSLOT_BITMAPS;
 
 //
 // Define the string table flags structure.

@@ -14,6 +14,38 @@ Abstract:
 
 #include "stdafx.h"
 
+//
+// Define private types used by this module.
+//
+
+typedef struct _LENGTH_INDEX_ENTRY {
+    BYTE Length;
+    BYTE Index;
+} LENGTH_INDEX_ENTRY;
+typedef LENGTH_INDEX_ENTRY *PLENGTH_INDEX_ENTRY;
+
+typedef struct _LENGTH_INDEX_TABLE {
+    LENGTH_INDEX_ENTRY Entry[16];
+} LENGTH_INDEX_TABLE;
+typedef LENGTH_INDEX_TABLE *PLENGTH_INDEX_TABLE;
+
+typedef union DECLSPEC_ALIGN(32) _CHARACTER_BITMAP {
+    YMMWORD Ymm;
+    XMMWORD Xmm[2];
+    LONG Bits[(256 / (4 << 3))];
+} CHARACTER_BITMAP;
+C_ASSERT(sizeof(CHARACTER_BITMAP) == 32);
+typedef CHARACTER_BITMAP *PCHARACTER_BITMAP;
+
+typedef struct _SLOT_BITMAPS {
+    CHARACTER_BITMAP Bitmap[16];
+} SLOT_BITMAPS;
+typedef SLOT_BITMAPS *PSLOT_BITMAPS;
+
+//
+// Implement CreateStringTable() function.
+//
+
 _Use_decl_annotations_
 PSTRING_TABLE
 CreateStringTable(
