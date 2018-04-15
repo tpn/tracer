@@ -1,6 +1,5 @@
 Opened log file 'cdb-output.txt'
 0:000> dt -v Asm!_PAGE_COPY_TYPE
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Asm.dll
 struct _PAGE_COPY_TYPE, 5 elements, 0x4 bytes
    +0x000 Movsb            : Bitfield Pos 0, 1 Bit
    +0x000 Movsw            : Bitfield Pos 1, 1 Bit
@@ -14,12 +13,11 @@ struct _COPY_PAGES_FUNCTIONS, 4 elements, 0x20 bytes
    +0x010 CopyPagesNonTemporalAvx2_v3 : Ptr64 to     void 
    +0x018 CopyPagesNonTemporalAvx2_v4 : Ptr64 to     void 
 0:000> dt -v DebugEngine!_DEBUG_ENGINE
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\DebugEngine.dll
 struct _DEBUG_ENGINE, 64 elements, 0x2d0 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _DEBUG_ENGINE_FLAGS, 3 elements, 0x4 bytes
    +0x008 State            : union _DEBUG_ENGINE_STATE, 8 elements, 0x4 bytes
-   +0x010 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x010 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
    +0x018 Session          : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x020 IID_Client       : Ptr64 to struct _GUID, 4 elements, 0x10 bytes
    +0x028 IClient          : Ptr64 to struct IDebugClient7, 1 elements, 0x8 bytes
@@ -105,7 +103,7 @@ struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
    +0x034 LastResult       : HRESULT
    +0x038 Session          : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x040 Context          : Ptr64 to Void
-   +0x048 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x048 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x050 ModulePath       : Ptr64 to struct _RTL_PATH, 18 elements, 0xc0 bytes
    +0x058 Command          : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x060 CommandTemplate  : Ptr64 to struct _DEBUG_ENGINE_COMMAND_TEMPLATE, 9 elements, 0x38 bytes
@@ -115,10 +113,10 @@ struct _DEBUG_ENGINE_OUTPUT, 61 elements, 0x188 bytes
    +0x088 PartialOutputCallback : Ptr64 to     int 
    +0x090 OutputCompleteCallback : Ptr64 to     int 
    +0x098 SaveOutputLine   : Ptr64 to     int 
-   +0x0a0 LineAllocator    : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x0a8 TextAllocator    : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x0b0 CustomStructureAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x0b8 CustomStructureSecondaryAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x0a0 LineAllocator    : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x0a8 TextAllocator    : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x0b0 CustomStructureAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x0b8 CustomStructureSecondaryAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x0c0 CustomStructureName : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
    +0x0c8 CustomStructureSecondaryName : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
    +0x0d0 NumberOfCustomStructures : Uint4B
@@ -260,8 +258,8 @@ struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x118 ListSettings     : Ptr64 to     int 
    +0x120 ExecuteStaticCommand : Ptr64 to     int 
    +0x128 ExecuteDynamicCommand : Ptr64 to     int 
-   +0x130 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x138 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x130 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x138 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x140 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x148 CommandLineA     : Ptr64 to Char
    +0x150 CommandLineW     : Ptr64 to Wchar
@@ -280,22 +278,22 @@ struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x264 InitialThreadId  : Uint4B
    +0x268 InitialModuleNameW : struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x278 RunHistoryRegistryKey : Ptr64 to struct HKEY__, 1 elements, 0x4 bytes
-   +0x280 CreateStringTableFromDelimitedString : Ptr64 to     _STRING_TABLE* 
-   +0x288 StringTableAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x290 StringArrayAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x298 ExamineSymbolsPrefixStringTable : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
+   +0x280 StringTableApi   : Ptr64 to struct _STRING_TABLE_API, 11 elements, 0x58 bytes
+   +0x288 StringTableAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x290 StringArrayAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x298 ExamineSymbolsPrefixStringTable : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
    +0x2a0 NumberOfBasicTypeStringTables : Uint2B
    +0x2a2 NumberOfFunctionArgumentTypeStringTables : Uint2B
    +0x2a4 NumberOfDisplayTypesStringTables : Uint2B
    +0x2a6 Padding          : Uint2B
-   +0x2a8 ExamineSymbolsBasicTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2b0 ExamineSymbolsBasicTypeStringTable2 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2b8 FunctionArgumentTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2c0 FunctionArgumentTypeStringTable2 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2c8 FunctionArgumentVectorTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2d0 DisplayTypesStringTable1 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2d8 DisplayTypesStringTable2 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x2e0 CommandLineOptionsStringTable : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
+   +0x2a8 ExamineSymbolsBasicTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2b0 ExamineSymbolsBasicTypeStringTable2 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2b8 FunctionArgumentTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2c0 FunctionArgumentTypeStringTable2 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2c8 FunctionArgumentVectorTypeStringTable1 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2d0 DisplayTypesStringTable1 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2d8 DisplayTypesStringTable2 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x2e0 CommandLineOptionsStringTable : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
 0:000> dt -v DebugEngine!_DEBUG_ENGINE_COMMAND_FLAGS
 struct _DEBUG_ENGINE_COMMAND_FLAGS, 7 elements, 0x4 bytes
    +0x000 HasOptions       : Bitfield Pos 0, 1 Bit
@@ -309,7 +307,6 @@ struct _DEBUG_ENGINE_COMMAND_FLAGS, 7 elements, 0x4 bytes
 struct _DEBUG_ENGINE_COMMAND_OPTIONS, 1 elements, 0x8 bytes
    +0x000 OptionStrings    : Ptr64 to Ptr64 to Wchar
 0:000> dt -v Python!_PYOBJECT
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Python.dll
 struct _PYOBJECT, 5 elements, 0x10 bytes
    +0x000 ob_refcnt        : Int8B
    +0x000 ReferenceCount   : Int8B
@@ -1227,21 +1224,21 @@ struct _PYTHONVERSION, 4 elements, 0x10 bytes
    +0x00a MinorVersion     : Uint2B
    +0x00c PatchLevel       : Uint2B
 0:000> dt -v Python!_PYTHON_ALLOCATORS
-struct _PYTHON_ALLOCATORS, 14 elements, 0x6c8 bytes
+struct _PYTHON_ALLOCATORS, 14 elements, 0xde8 bytes
    +0x000 SizeInBytes      : Uint4B
    +0x004 NumberOfAllocators : Uint4B
-   +0x008 StringBuffer     : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x098 PythonFunctionTable : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x128 PythonFunctionTableEntry : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x1b8 PythonPathTable  : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x248 PythonPathTableEntry : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x2d8 StringArray      : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x368 StringTable      : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x3f8 PythonModuleTable : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x488 PythonModuleTableEntry : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x518 LineTable        : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x5a8 LineTableEntry   : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x638 LineStringBuffer : struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x008 StringBuffer     : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x130 PythonFunctionTable : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x258 PythonFunctionTableEntry : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x380 PythonPathTable  : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x4a8 PythonPathTableEntry : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x5d0 StringArray      : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x6f8 StringTable      : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x820 PythonModuleTable : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x948 PythonModuleTableEntry : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0xa70 LineTable        : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0xb98 LineTableEntry   : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0xcc0 LineStringBuffer : struct _ALLOCATOR, 47 elements, 0x128 bytes
 0:000> dt -v Python!_PYTHON_HASHED_STRING
 struct _PYTHON_HASHED_STRING, 6 elements, 0x18 bytes
    +0x000 Atom             : Uint4B
@@ -1373,7 +1370,7 @@ struct _PYTHON_FUNCTION_TABLE, 13 elements, 0x48 bytes
    +0x030 AllocateRoutine  : Ptr64 to     void* 
    +0x038 FreeRoutine      : Ptr64 to     void 
    +0x040 TableContext     : Ptr64 to Void
-   +0x040 Python           : Ptr64 to struct _PYTHON, 120 elements, 0xb20 bytes
+   +0x040 Python           : Ptr64 to struct _PYTHON, 120 elements, 0x1240 bytes
 0:000> dt -v Python!_PYTHON_MODULE_TABLE
 struct _PYTHON_MODULE_TABLE, 4 elements, 0x10 bytes
    +0x000 PrefixTable      : struct _PREFIX_TABLE, 4 elements, 0x10 bytes
@@ -1400,7 +1397,7 @@ struct _PYTHON_MODULE_TABLE_ENTRY, 17 elements, 0x80 bytes
    +0x060 SubmoduleListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x070 SubmoduleListEntry : struct _LIST_ENTRY, 2 elements, 0x10 bytes
 0:000> dt -v Python!_PYTHONEXRUNTIME
-struct _PYTHONEXRUNTIME, 10 elements, 0x710 bytes
+struct _PYTHONEXRUNTIME, 10 elements, 0xe30 bytes
    +0x000 HeapHandle       : Ptr64 to Void
    +0x008 ModuleTable      : Ptr64 to struct _PYTHON_MODULE_TABLE, 4 elements, 0x10 bytes
    +0x010 PathTable        : Ptr64 to struct _PYTHON_PATH_TABLE, 4 elements, 0x10 bytes
@@ -1410,7 +1407,7 @@ struct _PYTHONEXRUNTIME, 10 elements, 0x710 bytes
    +0x030 FunctionTableFreeRoutine : Ptr64 to     void 
    +0x038 ThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
    +0x040 CancellationThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x048 Allocators       : struct _PYTHON_ALLOCATORS, 14 elements, 0x6c8 bytes
+   +0x048 Allocators       : struct _PYTHON_ALLOCATORS, 14 elements, 0xde8 bytes
 0:000> dt -v Python!_PYTHON_PATH_TABLE_ENTRY_OFFSETS
 struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS, 36 elements, 0x48 bytes
    +0x000 Size             : Uint2B
@@ -1471,11 +1468,11 @@ struct _PYTHONEXDATA, 2 elements, 0x4 bytes
    +0x000 IsDebug          : UChar
    +0x002 FilenameStringObjectOffsetFromCodeObject : Uint2B
 0:000> dt -v Python!_PYTHON
-struct _PYTHON, 120 elements, 0xb20 bytes
+struct _PYTHON, 120 elements, 0x1240 bytes
    +0x000 Size             : Uint4B
    +0x008 PythonModule     : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
    +0x010 PythonExModule   : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
    +0x020 RegisterNewPathEntry : Ptr64 to     int 
    +0x028 RegisterNewPathEntryContext : Ptr64 to Void
    +0x030 PythonFunctions  : struct _PYTHONFUNCTIONS, 54 elements, 0x1b0 bytes
@@ -1579,7 +1576,7 @@ struct _PYTHON, 120 elements, 0xb20 bytes
    +0x2f8 PythonExOffsets  : struct _PYTHONEX_OFFSETS, 2 elements, 0x10 bytes
    +0x2f8 PythonPathTableEntryOffsets : Ptr64 to struct _PYTHON_PATH_TABLE_ENTRY_OFFSETS, 36 elements, 0x48 bytes
    +0x300 PythonFunctionOffsets : Ptr64 to struct _PYTHON_FUNCTION_OFFSETS, 7 elements, 0xe bytes
-   +0x308 PythonExRuntime  : struct _PYTHONEXRUNTIME, 10 elements, 0x710 bytes
+   +0x308 PythonExRuntime  : struct _PYTHONEXRUNTIME, 10 elements, 0xe30 bytes
    +0x308 HeapHandle       : Ptr64 to Void
    +0x310 ModuleTable      : Ptr64 to struct _PYTHON_MODULE_TABLE, 4 elements, 0x10 bytes
    +0x318 PathTable        : Ptr64 to struct _PYTHON_PATH_TABLE, 4 elements, 0x10 bytes
@@ -1589,9 +1586,9 @@ struct _PYTHON, 120 elements, 0xb20 bytes
    +0x338 FunctionTableFreeRoutine : Ptr64 to     void 
    +0x340 ThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
    +0x348 CancellationThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x350 Allocators       : struct _PYTHON_ALLOCATORS, 14 elements, 0x6c8 bytes
-   +0xa18 NumberOfCacheElements : Uint2B
-   +0xa20 CodeObjectCache  : [32] Ptr64 to struct _PYOBJECT, 5 elements, 0x10 bytes
+   +0x350 Allocators       : struct _PYTHON_ALLOCATORS, 14 elements, 0xde8 bytes
+   +0x1138 NumberOfCacheElements : Uint2B
+   +0x1140 CodeObjectCache  : [32] Ptr64 to struct _PYOBJECT, 5 elements, 0x10 bytes
 0:000> dt -v Python!_DLL_FILES
 struct _DLL_FILES, 3 elements, 0x10 bytes
    +0x000 Size             : Uint2B
@@ -1601,7 +1598,6 @@ struct _DLL_FILES, 3 elements, 0x10 bytes
 Loading module PythonProject.
 Symbol PythonProject!_PYTHON_PROJECT not found.
 0:000> dt -v PythonTracer!_PYTHON_TRACE_EVENT1
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\PythonTracer.dll
 struct _PYTHON_TRACE_EVENT1, 28 elements, 0x80 bytes
    +0x000 Timestamp        : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x008 Function         : Ptr64 to struct _PYTHON_FUNCTION, 23 elements, 0x7d0 bytes
@@ -1657,18 +1653,18 @@ struct _EVENT_TYPE, 6 elements, 0x8 bytes
    +0x004 IsException      : Bitfield Pos 3, 1 Bit
    +0x004 IsC              : Bitfield Pos 4, 1 Bit
 0:000> dt -v PythonTracer!_PYTHON_TRACE_CONTEXT
-struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
+struct _PYTHON_TRACE_CONTEXT, 64 elements, 0x450 bytes
    +0x000 Size             : Uint4B
    +0x004 Flags            : union _PYTHON_TRACE_CONTEXT_FLAGS, 14 elements, 0x4 bytes
    +0x008 RuntimeParameters : struct _PYTHON_TRACER_RUNTIME_PARAMETERS, 2 elements, 0x8 bytes
    +0x010 RuntimeState     : union _PYTHON_TRACER_RUNTIME_STATE, 5 elements, 0x4 bytes
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x020 Python           : Ptr64 to struct _PYTHON, 120 elements, 0xb20 bytes
-   +0x028 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x020 Python           : Ptr64 to struct _PYTHON, 120 elements, 0x1240 bytes
+   +0x028 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
    +0x030 CallbackWorker   : Ptr64 to     int 
    +0x038 TraceEventFunction : Ptr64 to     int 
    +0x040 UserData         : Ptr64 to Void
-   +0x048 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x048 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x050 SystemTime       : struct _SYSTEMTIME, 8 elements, 0x10 bytes
    +0x060 RunHistoryRegistryKey : Ptr64 to struct HKEY__, 1 elements, 0x4 bytes
    +0x068 Depth            : Uint8B
@@ -1697,33 +1693,33 @@ struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
    +0x108 MaxTrueRefCount  : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x110 MaxZeroRefCount  : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x118 MaxFalseRefCount : union _LARGE_INTEGER, 4 elements, 0x8 bytes
-   +0x120 ModuleFilterStringTable : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x128 ModuleFilterPrefixTree : struct _PREFIX_TABLE, 4 elements, 0x10 bytes
-   +0x138 Start            : Ptr64 to     int 
-   +0x140 Stop             : Ptr64 to     int 
-   +0x148 EnableMemoryTracing : Ptr64 to     void 
-   +0x150 DisableMemoryTracing : Ptr64 to     void 
-   +0x158 EnableIoCountersTracing : Ptr64 to     void 
-   +0x160 DisableIoCountersTracing : Ptr64 to     void 
-   +0x168 EnableHandleCountTracing : Ptr64 to     void 
-   +0x170 DisableHandleCountTracing : Ptr64 to     void 
-   +0x178 AddModuleName    : Ptr64 to     int 
-   +0x180 SetModuleNamesStringTable : Ptr64 to     int 
-   +0x188 SetSystemTimeForRunHistory : Ptr64 to     int 
-   +0x190 SaveMaxCountsAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
-   +0x198 SaveCountsToRunHistoryAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
-   +0x1a0 SavePerformanceMetricsAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
-   +0x1a8 BitmapAllocator  : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x238 UnicodeStringBufferAllocator : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x2c8 ThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x2d0 CancellationThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x2d8 CallStackListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
-   +0x2f0 NewPythonPathTableEntryListHead : union _SLIST_HEADER, 3 elements, 0x10 bytes
-   +0x300 NewPythonPathTableEntryWork : Ptr64 to struct _TP_WORK, 0 elements, 0x0 bytes
-   +0x308 ActiveNewPythonPathTableEntryCallbacks : Uint4B
-   +0x310 ThreadpoolCleanupGroup : Ptr64 to struct _TP_CLEANUP_GROUP, 0 elements, 0x0 bytes
+   +0x120 StringTableApi   : Ptr64 to struct _STRING_TABLE_API, 11 elements, 0x58 bytes
+   +0x128 ModuleFilterStringTable : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x130 ModuleFilterPrefixTree : struct _PREFIX_TABLE, 4 elements, 0x10 bytes
+   +0x140 Start            : Ptr64 to     int 
+   +0x148 Stop             : Ptr64 to     int 
+   +0x150 EnableMemoryTracing : Ptr64 to     void 
+   +0x158 DisableMemoryTracing : Ptr64 to     void 
+   +0x160 EnableIoCountersTracing : Ptr64 to     void 
+   +0x168 DisableIoCountersTracing : Ptr64 to     void 
+   +0x170 EnableHandleCountTracing : Ptr64 to     void 
+   +0x178 DisableHandleCountTracing : Ptr64 to     void 
+   +0x180 AddModuleName    : Ptr64 to     int 
+   +0x188 SetModuleNamesStringTable : Ptr64 to     int 
+   +0x190 SetSystemTimeForRunHistory : Ptr64 to     int 
+   +0x198 SaveMaxCountsAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
+   +0x1a0 SaveCountsToRunHistoryAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
+   +0x1a8 SavePerformanceMetricsAtExitEntry : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
+   +0x1b0 BitmapAllocator  : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x2d8 UnicodeStringBufferAllocator : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x400 ThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x408 CancellationThreadpoolCallbackEnvironment : Ptr64 to struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x410 CallStackListHead : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x420 NewPythonPathTableEntryListHead : union _SLIST_HEADER, 3 elements, 0x10 bytes
+   +0x430 NewPythonPathTableEntryWork : Ptr64 to struct _TP_WORK, 0 elements, 0x0 bytes
+   +0x438 ActiveNewPythonPathTableEntryCallbacks : Uint4B
+   +0x440 ThreadpoolCleanupGroup : Ptr64 to struct _TP_CLEANUP_GROUP, 0 elements, 0x0 bytes
 0:000> dt -v PythonTracerInjection!_PYTHON_TRACER_INJECTION_BREAKPOINT
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\PythonTracerInjection.dll
 struct _PYTHON_TRACER_INJECTION_BREAKPOINT, 1 elements, 0x88 bytes
    +0x000 InjectionBreakpoint : struct _TRACER_INJECTION_BREAKPOINT, 22 elements, 0x88 bytes
 0:000> dt -v PythonTracerInjection!_PYTHON_TRACER_INJECTION_CONTEXT
@@ -1743,7 +1739,6 @@ struct _PYTHON_TRACER_INJECTED_CONTEXT, 5 elements, 0x20 bytes
    +0x010 SuspendedMainThreadId : Uint4B
    +0x018 PythonDllModule  : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
 0:000> dt -v Rtl!_ATEXITEX_FLAGS
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\Rtl.dll
 struct _ATEXITEX_FLAGS, 1 elements, 0x4 bytes
    +0x000 SuppressExceptions : Bitfield Pos 0, 1 Bit
 0:000> dt -v Rtl!_CU_DEVICE_ATTRIBUTES
@@ -2240,10 +2235,10 @@ struct _INJECTION_THUNK_CONTEXT, 10 elements, 0x188 bytes
    +0x040 UserApc          : struct _APC, 4 elements, 0x20 bytes
    +0x060 Functions        : struct _INJECTION_FUNCTIONS, 37 elements, 0x128 bytes
 0:000> dt -v Rtl!_ALLOCATOR
-struct _ALLOCATOR, 28 elements, 0x90 bytes
+struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x000 Context          : Ptr64 to Void
    +0x000 ctx              : Ptr64 to Void
-   +0x000 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x000 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x008 Malloc           : Ptr64 to     void* 
    +0x008 malloc           : Ptr64 to     void* 
    +0x010 Calloc           : Ptr64 to     void* 
@@ -2255,20 +2250,39 @@ struct _ALLOCATOR, 28 elements, 0x90 bytes
    +0x028 FreePointer      : Ptr64 to     void 
    +0x030 Initialize       : Ptr64 to     unsigned char 
    +0x038 Destroy          : Ptr64 to     void 
-   +0x040 Context2         : Ptr64 to Void
-   +0x040 HeapHandle       : Ptr64 to Void
-   +0x040 TraceStore       : Ptr64 to struct _TRACE_STORE, 0 elements, 0x0 bytes
-   +0x048 Parent           : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x050 TryMalloc        : Ptr64 to     void* 
-   +0x058 TryCalloc        : Ptr64 to     void* 
-   +0x060 MallocWithTimestamp : Ptr64 to     void* 
-   +0x068 CallocWithTimestamp : Ptr64 to     void* 
-   +0x070 TryMallocWithTimestamp : Ptr64 to     void* 
-   +0x078 TryCallocWithTimestamp : Ptr64 to     void* 
-   +0x080 ThreadId         : Uint4B
-   +0x084 TlsIndex         : Uint4B
-   +0x088 Flags            : union _ALLOCATOR_FLAGS, 6 elements, 0x4 bytes
-   +0x08c NumberOfThreads  : Uint4B
+   +0x040 WriteBytes       : Ptr64 to     unsigned char 
+   +0x048 Context2         : Ptr64 to Void
+   +0x048 HeapHandle       : Ptr64 to Void
+   +0x048 TraceStore       : Ptr64 to struct _TRACE_STORE, 0 elements, 0x0 bytes
+   +0x050 Parent           : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x058 TryMalloc        : Ptr64 to     void* 
+   +0x060 TryCalloc        : Ptr64 to     void* 
+   +0x068 MallocWithTimestamp : Ptr64 to     void* 
+   +0x070 CallocWithTimestamp : Ptr64 to     void* 
+   +0x078 TryMallocWithTimestamp : Ptr64 to     void* 
+   +0x080 TryCallocWithTimestamp : Ptr64 to     void* 
+   +0x088 AlignedMalloc    : Ptr64 to     void* 
+   +0x090 TryAlignedMalloc : Ptr64 to     void* 
+   +0x098 AlignedMallocWithTimestamp : Ptr64 to     void* 
+   +0x0a0 TryAlignedMallocWithTimestamp : Ptr64 to     void* 
+   +0x0a8 AlignedOffsetMalloc : Ptr64 to     void* 
+   +0x0b0 TryAlignedOffsetMalloc : Ptr64 to     void* 
+   +0x0b8 AlignedOffsetMallocWithTimestamp : Ptr64 to     void* 
+   +0x0c0 TryAlignedOffsetMallocWithTimestamp : Ptr64 to     void* 
+   +0x0c8 AlignedCalloc    : Ptr64 to     void* 
+   +0x0d0 TryAlignedCalloc : Ptr64 to     void* 
+   +0x0d8 AlignedCallocWithTimestamp : Ptr64 to     void* 
+   +0x0e0 TryAlignedCallocWithTimestamp : Ptr64 to     void* 
+   +0x0e8 AlignedOffsetCalloc : Ptr64 to     void* 
+   +0x0f0 TryAlignedOffsetCalloc : Ptr64 to     void* 
+   +0x0f8 AlignedOffsetCallocWithTimestamp : Ptr64 to     void* 
+   +0x100 TryAlignedOffsetCallocWithTimestamp : Ptr64 to     void* 
+   +0x108 AlignedFree      : Ptr64 to     void 
+   +0x110 AlignedFreePointer : Ptr64 to     void 
+   +0x118 ThreadId         : Uint4B
+   +0x11c TlsIndex         : Uint4B
+   +0x120 Flags            : union _ALLOCATOR_FLAGS, 6 elements, 0x4 bytes
+   +0x124 NumberOfThreads  : Uint4B
 0:000> dt -v Rtl!_STRING
 struct _STRING, 5 elements, 0x10 bytes
    +0x000 Length           : Uint2B
@@ -2840,7 +2854,7 @@ struct _RTL_PATH, 18 elements, 0xc0 bytes
    +0x01c Flags            : union _RTL_PATH_FLAGS, 11 elements, 0x4 bytes
    +0x020 ReversedDotsBitMapBuffer : Ptr64 to Uint4B
    +0x018 ReversedDotsBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
-   +0x028 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x028 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x030 Full             : struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x040 Name             : struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x050 Directory        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
@@ -2907,7 +2921,7 @@ struct _RTL_FILE, 32 elements, 0x200 bytes
    +0x1f0 MappedAddress    : Ptr64 to Void
    +0x1f8 Reserved2        : [8] UChar
 0:000> dt -v Rtl!_RTLFUNCTIONS
-struct _RTLFUNCTIONS, 178 elements, 0x590 bytes
+struct _RTLFUNCTIONS, 181 elements, 0x5a8 bytes
    +0x000 RtlCharToInteger : Ptr64 to     long 
    +0x008 RtlInitializeGenericTable : Ptr64 to     void 
    +0x010 RtlInsertElementGenericTable : Ptr64 to     void* 
@@ -2931,7 +2945,7 @@ struct _RTLFUNCTIONS, 178 elements, 0x590 bytes
    +0x0a0 RtlLookupFirstMatchingElementGenericTableAvl : Ptr64 to     void* 
    +0x0a8 RtlEnumerateGenericTableLikeADirectory : Ptr64 to     void* 
    +0x0b0 RtlGetElementGenericTableAvl : Ptr64 to     void* 
-   +0x0b8 RtlNumberGenericTableElementsAvl : Ptr64 to     void* 
+   +0x0b8 RtlNumberGenericTableElementsAvl : Ptr64 to     unsigned long 
    +0x0c0 RtlIsGenericTableEmptyAvl : Ptr64 to     unsigned char 
    +0x0c8 PfxInitialize    : Ptr64 to     void 
    +0x0d0 PfxInsertPrefix  : Ptr64 to     unsigned char 
@@ -2999,93 +3013,96 @@ struct _RTLFUNCTIONS, 178 elements, 0x590 bytes
    +0x2c0 bsearch          : Ptr64 to     void* 
    +0x2c8 qsort            : Ptr64 to     void 
    +0x2d0 memset           : Ptr64 to     void* 
-   +0x2d8 MmGetMaximumFileSectionSize : Ptr64 to     void* 
-   +0x2e0 K32GetProcessMemoryInfo : Ptr64 to     int 
-   +0x2e8 K32GetPerformanceInfo : Ptr64 to     int 
-   +0x2f0 GetProcessIoCounters : Ptr64 to     int 
-   +0x2f8 GetProcessHandleCount : Ptr64 to     int 
-   +0x300 K32InitializeProcessForWsWatch : Ptr64 to     int 
-   +0x308 K32GetWsChanges  : Ptr64 to     int 
-   +0x310 K32GetWsChangesEx : Ptr64 to     int 
-   +0x318 K32QueryWorkingSet : Ptr64 to     int 
-   +0x320 K32QueryWorkingSetEx : Ptr64 to     int 
-   +0x328 ZwQueryInformationProcess : Ptr64 to     long 
-   +0x330 LdrRegisterDllNotification : Ptr64 to     long 
-   +0x338 LdrUnregisterDllNotification : Ptr64 to     long 
-   +0x340 LdrLockLoaderLock : Ptr64 to     long 
-   +0x348 LdrUnlockLoaderLock : Ptr64 to     long 
-   +0x350 ZwAllocateVirtualMemory : Ptr64 to     long 
-   +0x358 ZwFreeVirtualMemory : Ptr64 to     long 
-   +0x360 AllocateUserPhysicalPages : Ptr64 to     int 
-   +0x368 AllocateUserPhysicalPagesNuma : Ptr64 to     int 
-   +0x370 MapUserPhysicalPages : Ptr64 to     int 
-   +0x378 MapUserPhysicalPagesScatter : Ptr64 to     int 
-   +0x380 FreeUserPhysicalPages : Ptr64 to     int 
-   +0x388 RtlCreateHeap    : Ptr64 to     void* 
-   +0x390 RtlDestroyHeap   : Ptr64 to     void* 
-   +0x398 RtlAllocateHeap  : Ptr64 to     void* 
-   +0x3a0 RtlFreeHeap      : Ptr64 to     unsigned char 
-   +0x3a8 RtlCaptureStackBackTrace : Ptr64 to     unsigned short 
-   +0x3b0 RtlPcToFileHeader : Ptr64 to     void* 
-   +0x3b8 RtlLookupFunctionEntry : Ptr64 to     _IMAGE_RUNTIME_FUNCTION_ENTRY* 
-   +0x3c0 RtlAddFunctionTable : Ptr64 to     unsigned char 
-   +0x3c8 RtlDeleteFunctionTable : Ptr64 to     unsigned char 
-   +0x3d0 RtlInstallFunctionTableCallback : Ptr64 to     unsigned char 
-   +0x3d8 RtlAddGrowableFunctionTable : Ptr64 to     unsigned long 
-   +0x3e0 RtlGrowFunctionTable : Ptr64 to     void 
-   +0x3e8 RtlDeleteGrowableFunctionTable : Ptr64 to     void 
-   +0x3f0 ZwCreateSection  : Ptr64 to     long 
-   +0x3f8 ZwMapViewOfSection : Ptr64 to     long 
-   +0x400 ZwUnmapViewOfSection : Ptr64 to     long 
-   +0x408 ZwCreateProcess  : Ptr64 to     long 
-   +0x410 ZwCreateProcessEx : Ptr64 to     long 
-   +0x418 ZwCreateThread   : Ptr64 to     long 
-   +0x420 ZwOpenThread     : Ptr64 to     long 
-   +0x428 ZwTerminateThread : Ptr64 to     long 
-   +0x430 NtQueueApcThread : Ptr64 to     long 
-   +0x438 NtTestAlert      : Ptr64 to     long 
-   +0x440 SearchPathW      : Ptr64 to     unsigned long 
-   +0x448 CreateToolhelp32Snapshot : Ptr64 to     void* 
-   +0x450 LoadLibraryA     : Ptr64 to     HINSTANCE__* 
-   +0x458 LoadLibraryW     : Ptr64 to     HINSTANCE__* 
-   +0x460 LoadLibraryExW   : Ptr64 to     HINSTANCE__* 
-   +0x468 GetProcAddress   : Ptr64 to     <function>* 
-   +0x470 CloseHandle      : Ptr64 to     int 
-   +0x478 OpenEventA       : Ptr64 to     void* 
-   +0x480 OpenEventW       : Ptr64 to     void* 
-   +0x488 GetLastError     : Ptr64 to     unsigned long 
-   +0x490 SetLastError     : Ptr64 to     void 
-   +0x498 SetEvent         : Ptr64 to     int 
-   +0x4a0 ResetEvent       : Ptr64 to     int 
-   +0x4a8 SuspendThread    : Ptr64 to     unsigned long 
-   +0x4b0 ResumeThread     : Ptr64 to     unsigned long 
-   +0x4b8 GetThreadContext : Ptr64 to     int 
-   +0x4c0 SetThreadContext : Ptr64 to     int 
-   +0x4c8 WaitForSingleObject : Ptr64 to     unsigned long 
-   +0x4d0 WaitForSingleObjectEx : Ptr64 to     unsigned long 
-   +0x4d8 SignalObjectAndWait : Ptr64 to     unsigned long 
-   +0x4e0 SleepEx          : Ptr64 to     unsigned long 
-   +0x4e8 ExitThread       : Ptr64 to     void 
-   +0x4f0 GetExitCodeThread : Ptr64 to     int 
-   +0x4f8 TerminateThread  : Ptr64 to     int 
-   +0x500 QueueUserAPC     : Ptr64 to     unsigned long 
-   +0x508 DeviceIoControl  : Ptr64 to     int 
-   +0x510 GetModuleHandleA : Ptr64 to     HINSTANCE__* 
-   +0x518 GetModuleHandleW : Ptr64 to     HINSTANCE__* 
-   +0x520 CreateFileW      : Ptr64 to     void* 
-   +0x528 CreateFileMappingW : Ptr64 to     void* 
-   +0x530 OpenFileMappingW : Ptr64 to     void* 
-   +0x538 MapViewOfFileEx  : Ptr64 to     void* 
-   +0x540 FlushViewOfFile  : Ptr64 to     int 
-   +0x548 UnmapViewOfFileEx : Ptr64 to     int 
-   +0x550 VirtualAllocEx   : Ptr64 to     void* 
-   +0x558 VirtualFreeEx    : Ptr64 to     int 
-   +0x560 VirtualProtectEx : Ptr64 to     int 
-   +0x568 VirtualQueryEx   : Ptr64 to     unsigned int64 
-   +0x570 DebugActiveProcessStop : Ptr64 to     int 
-   +0x578 DebugSetProcessKillOnExit : Ptr64 to     int 
-   +0x580 Thread32First    : Ptr64 to     int 
-   +0x588 Thread32Next     : Ptr64 to     int 
+   +0x2d8 SetConsoleCtrlHandler : Ptr64 to     int 
+   +0x2e0 MmGetMaximumFileSectionSize : Ptr64 to     void* 
+   +0x2e8 K32GetProcessMemoryInfo : Ptr64 to     int 
+   +0x2f0 K32GetPerformanceInfo : Ptr64 to     int 
+   +0x2f8 GetProcessIoCounters : Ptr64 to     int 
+   +0x300 GetProcessHandleCount : Ptr64 to     int 
+   +0x308 K32InitializeProcessForWsWatch : Ptr64 to     int 
+   +0x310 K32GetWsChanges  : Ptr64 to     int 
+   +0x318 K32GetWsChangesEx : Ptr64 to     int 
+   +0x320 K32QueryWorkingSet : Ptr64 to     int 
+   +0x328 K32QueryWorkingSetEx : Ptr64 to     int 
+   +0x330 ZwQueryInformationProcess : Ptr64 to     long 
+   +0x338 LdrRegisterDllNotification : Ptr64 to     long 
+   +0x340 LdrUnregisterDllNotification : Ptr64 to     long 
+   +0x348 LdrLockLoaderLock : Ptr64 to     long 
+   +0x350 LdrUnlockLoaderLock : Ptr64 to     long 
+   +0x358 ZwAllocateVirtualMemory : Ptr64 to     long 
+   +0x360 ZwFreeVirtualMemory : Ptr64 to     long 
+   +0x368 AllocateUserPhysicalPages : Ptr64 to     int 
+   +0x370 AllocateUserPhysicalPagesNuma : Ptr64 to     int 
+   +0x378 MapUserPhysicalPages : Ptr64 to     int 
+   +0x380 MapUserPhysicalPagesScatter : Ptr64 to     int 
+   +0x388 FreeUserPhysicalPages : Ptr64 to     int 
+   +0x390 RtlCreateHeap    : Ptr64 to     void* 
+   +0x398 RtlDestroyHeap   : Ptr64 to     void* 
+   +0x3a0 RtlAllocateHeap  : Ptr64 to     void* 
+   +0x3a8 RtlFreeHeap      : Ptr64 to     unsigned char 
+   +0x3b0 RtlCaptureStackBackTrace : Ptr64 to     unsigned short 
+   +0x3b8 RtlPcToFileHeader : Ptr64 to     void* 
+   +0x3c0 RtlLookupFunctionEntry : Ptr64 to     _IMAGE_RUNTIME_FUNCTION_ENTRY* 
+   +0x3c8 RtlAddFunctionTable : Ptr64 to     unsigned char 
+   +0x3d0 RtlDeleteFunctionTable : Ptr64 to     unsigned char 
+   +0x3d8 RtlInstallFunctionTableCallback : Ptr64 to     unsigned char 
+   +0x3e0 RtlAddGrowableFunctionTable : Ptr64 to     unsigned long 
+   +0x3e8 RtlGrowFunctionTable : Ptr64 to     void 
+   +0x3f0 RtlDeleteGrowableFunctionTable : Ptr64 to     void 
+   +0x3f8 ZwCreateSection  : Ptr64 to     long 
+   +0x400 ZwMapViewOfSection : Ptr64 to     long 
+   +0x408 ZwUnmapViewOfSection : Ptr64 to     long 
+   +0x410 ZwCreateProcess  : Ptr64 to     long 
+   +0x418 ZwCreateProcessEx : Ptr64 to     long 
+   +0x420 ZwCreateThread   : Ptr64 to     long 
+   +0x428 ZwOpenThread     : Ptr64 to     long 
+   +0x430 ZwTerminateThread : Ptr64 to     long 
+   +0x438 NtQueueApcThread : Ptr64 to     long 
+   +0x440 NtTestAlert      : Ptr64 to     long 
+   +0x448 NtYieldExecution : Ptr64 to     long 
+   +0x450 NtDelayExecution : Ptr64 to     long 
+   +0x458 SearchPathW      : Ptr64 to     unsigned long 
+   +0x460 CreateToolhelp32Snapshot : Ptr64 to     void* 
+   +0x468 LoadLibraryA     : Ptr64 to     HINSTANCE__* 
+   +0x470 LoadLibraryW     : Ptr64 to     HINSTANCE__* 
+   +0x478 LoadLibraryExW   : Ptr64 to     HINSTANCE__* 
+   +0x480 GetProcAddress   : Ptr64 to     <function>* 
+   +0x488 CloseHandle      : Ptr64 to     int 
+   +0x490 OpenEventA       : Ptr64 to     void* 
+   +0x498 OpenEventW       : Ptr64 to     void* 
+   +0x4a0 GetLastError     : Ptr64 to     unsigned long 
+   +0x4a8 SetLastError     : Ptr64 to     void 
+   +0x4b0 SetEvent         : Ptr64 to     int 
+   +0x4b8 ResetEvent       : Ptr64 to     int 
+   +0x4c0 SuspendThread    : Ptr64 to     unsigned long 
+   +0x4c8 ResumeThread     : Ptr64 to     unsigned long 
+   +0x4d0 GetThreadContext : Ptr64 to     int 
+   +0x4d8 SetThreadContext : Ptr64 to     int 
+   +0x4e0 WaitForSingleObject : Ptr64 to     unsigned long 
+   +0x4e8 WaitForSingleObjectEx : Ptr64 to     unsigned long 
+   +0x4f0 SignalObjectAndWait : Ptr64 to     unsigned long 
+   +0x4f8 SleepEx          : Ptr64 to     unsigned long 
+   +0x500 ExitThread       : Ptr64 to     void 
+   +0x508 GetExitCodeThread : Ptr64 to     int 
+   +0x510 TerminateThread  : Ptr64 to     int 
+   +0x518 QueueUserAPC     : Ptr64 to     unsigned long 
+   +0x520 DeviceIoControl  : Ptr64 to     int 
+   +0x528 GetModuleHandleA : Ptr64 to     HINSTANCE__* 
+   +0x530 GetModuleHandleW : Ptr64 to     HINSTANCE__* 
+   +0x538 CreateFileW      : Ptr64 to     void* 
+   +0x540 CreateFileMappingW : Ptr64 to     void* 
+   +0x548 OpenFileMappingW : Ptr64 to     void* 
+   +0x550 MapViewOfFileEx  : Ptr64 to     void* 
+   +0x558 FlushViewOfFile  : Ptr64 to     int 
+   +0x560 UnmapViewOfFileEx : Ptr64 to     int 
+   +0x568 VirtualAllocEx   : Ptr64 to     void* 
+   +0x570 VirtualFreeEx    : Ptr64 to     int 
+   +0x578 VirtualProtectEx : Ptr64 to     int 
+   +0x580 VirtualQueryEx   : Ptr64 to     unsigned int64 
+   +0x588 DebugActiveProcessStop : Ptr64 to     int 
+   +0x590 DebugSetProcessKillOnExit : Ptr64 to     int 
+   +0x598 Thread32First    : Ptr64 to     int 
+   +0x5a0 Thread32Next     : Ptr64 to     int 
 0:000> dt -v Rtl!_BITMAP_INDEX
 struct _BITMAP_INDEX, 5 elements, 0x30 bytes
    +0x000 NumberOfUniqueChars : Uint2B
@@ -3114,7 +3131,7 @@ struct _DIRECTORY_CONTAINING_FILES, 7 elements, 0x40 bytes
    +0x002 NumberOfFiles    : Uint2B
    +0x004 Padding          : [2] Uint2B
    +0x008 Directory        : struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x020 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x030 Children         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
 0:000> dt -v Rtl!_DIRECTORIES_CONTAINING_FILES
@@ -3128,7 +3145,7 @@ struct _PATH_ENV_VAR, 16 elements, 0xa8 bytes
    +0x006 NumberOfElements : Uint2B
    +0x008 ReservedUnicodeBufferSizeInBytes : Uint2B
    +0x00a Padding          : [3] Uint2B
-   +0x010 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x010 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x018 Bitmap           : struct _RTL_BITMAP, 2 elements, 0x10 bytes
    +0x028 Paths            : struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x038 NewPaths         : struct _UNICODE_STRING, 5 elements, 0x10 bytes
@@ -3149,7 +3166,7 @@ struct _DLL_NOTIFICATION_DATA, 5 elements, 0x20 bytes
 struct _DLL_NOTIFICATION_FLAGS, 1 elements, 0x4 bytes
    +0x000 Unused           : Bitfield Pos 0, 1 Bit
 0:000> dt -v Rtl!_RTLEXFUNCTIONS
-struct _RTLEXFUNCTIONS, 61 elements, 0x1e8 bytes
+struct _RTLEXFUNCTIONS, 65 elements, 0x208 bytes
    +0x000 DestroyRtl       : Ptr64 to     void 
    +0x008 ArgvWToArgvA     : Ptr64 to     int 
    +0x010 CopyPagesMovsq   : Ptr64 to     void 
@@ -3211,6 +3228,10 @@ struct _RTLEXFUNCTIONS, 61 elements, 0x1e8 bytes
    +0x1d0 UnregisterDllNotification : Ptr64 to     int 
    +0x1d8 WriteEnvVarToRegistry : Ptr64 to     int 
    +0x1e0 WriteRegistryString : Ptr64 to     int 
+   +0x1e8 AppendIntegerToCharBuffer : Ptr64 to     void 
+   +0x1f0 AppendStringToCharBuffer : Ptr64 to     void 
+   +0x1f8 AppendCharBufferToCharBuffer : Ptr64 to     void 
+   +0x200 AppendCharToCharBuffer : Ptr64 to     void 
 0:000> dt -v Rtl!_SHLWAPI_FUNCTIONS
 struct _SHLWAPI_FUNCTIONS, 1 elements, 0x8 bytes
    +0x000 PathCanonicalizeA : Ptr64 to     int 
@@ -3423,7 +3444,7 @@ struct _ICLASS_FACTORY_VTBL, 5 elements, 0x28 bytes
    +0x018 CreateInstance   : Ptr64 to     HRESULT 
    +0x020 LockServer       : Ptr64 to     HRESULT 
 0:000> dt -v Rtl!_RTL
-struct _RTL, 483 elements, 0x1020 bytes
+struct _RTL, 495 elements, 0x1080 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _RTL_FLAGS, 7 elements, 0x4 bytes
    +0x008 NtdllModule      : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
@@ -3444,7 +3465,7 @@ struct _RTL, 483 elements, 0x1020 bytes
    +0x080 LastError        : Uint4B
    +0x084 Padding          : Uint4B
    +0x088 LargePageMinimum : Uint8B
-   +0x090 LargePageAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x090 LargePageAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x098 TryLargePageVirtualAlloc : Ptr64 to     void* 
    +0x0a0 TryLargePageVirtualAllocEx : Ptr64 to     void* 
    +0x0a8 MapViewOfFileExNuma : Ptr64 to     void* 
@@ -3482,431 +3503,443 @@ struct _RTL, 483 elements, 0x1020 bytes
    +0x1d0 CopyFunction     : Ptr64 to     int 
    +0x1d8 CreateRandomObjectNames : Ptr64 to     int 
    +0x1e0 CreateSingleRandomObjectName : Ptr64 to     int 
-   +0x1e8 InjectionThunkRoutine : Ptr64 to Void
-   +0x1f0 Inject           : Ptr64 to     int 
-   +0x1f8 InitializeInjection : Ptr64 to     int 
-   +0x200 AdjustThunkPointers : Ptr64 to     int 
-   +0x208 InjectionFunctions : struct _INJECTION_FUNCTIONS, 37 elements, 0x128 bytes
-   +0x330 SystemTimerFunction : struct _SYSTEM_TIMER_FUNCTION, 2 elements, 0x10 bytes
-   +0x330 GetSystemTimePreciseAsFileTime : Ptr64 to     void 
-   +0x338 NtQuerySystemTime : Ptr64 to     long 
-   +0x340 RtlFunctions     : struct _RTLFUNCTIONS, 178 elements, 0x590 bytes
-   +0x340 RtlCharToInteger : Ptr64 to     long 
-   +0x348 RtlInitializeGenericTable : Ptr64 to     void 
-   +0x350 RtlInsertElementGenericTable : Ptr64 to     void* 
-   +0x358 RtlInsertElementGenericTableFull : Ptr64 to     void* 
-   +0x360 RtlDeleteElementGenericTable : Ptr64 to     unsigned char 
-   +0x368 RtlLookupElementGenericTable : Ptr64 to     void* 
-   +0x370 RtlLookupElementGenericTableFull : Ptr64 to     void* 
-   +0x378 RtlEnumerateGenericTable : Ptr64 to     void* 
-   +0x380 RtlEnumerateGenericTableWithoutSplaying : Ptr64 to     void* 
-   +0x388 RtlGetElementGenericTable : Ptr64 to     void* 
-   +0x390 RtlNumberGenericTableElements : Ptr64 to     void* 
-   +0x398 RtlIsGenericTableEmpty : Ptr64 to     unsigned char 
-   +0x3a0 RtlInitializeGenericTableAvl : Ptr64 to     void 
-   +0x3a8 RtlInsertElementGenericTableAvl : Ptr64 to     void* 
-   +0x3b0 RtlInsertElementGenericTableFullAvl : Ptr64 to     void* 
-   +0x3b8 RtlDeleteElementGenericTableAvl : Ptr64 to     unsigned char 
-   +0x3c0 RtlLookupElementGenericTableAvl : Ptr64 to     void* 
-   +0x3c8 RtlLookupElementGenericTableFullAvl : Ptr64 to     void* 
-   +0x3d0 RtlEnumerateGenericTableAvl : Ptr64 to     void* 
-   +0x3d8 RtlEnumerateGenericTableWithoutSplayingAvl : Ptr64 to     void* 
-   +0x3e0 RtlLookupFirstMatchingElementGenericTableAvl : Ptr64 to     void* 
-   +0x3e8 RtlEnumerateGenericTableLikeADirectory : Ptr64 to     void* 
-   +0x3f0 RtlGetElementGenericTableAvl : Ptr64 to     void* 
-   +0x3f8 RtlNumberGenericTableElementsAvl : Ptr64 to     void* 
-   +0x400 RtlIsGenericTableEmptyAvl : Ptr64 to     unsigned char 
-   +0x408 PfxInitialize    : Ptr64 to     void 
-   +0x410 PfxInsertPrefix  : Ptr64 to     unsigned char 
-   +0x418 PfxRemovePrefix  : Ptr64 to     void 
-   +0x420 PfxFindPrefix    : Ptr64 to     _PREFIX_TABLE_ENTRY* 
-   +0x428 RtlPrefixString  : Ptr64 to     unsigned char 
-   +0x430 RtlPrefixUnicodeString : Ptr64 to     unsigned char 
-   +0x438 RtlCreateHashTable : Ptr64 to     unsigned char 
-   +0x440 RtlDeleteHashTable : Ptr64 to     void 
-   +0x448 RtlInsertEntryHashTable : Ptr64 to     unsigned char 
-   +0x450 RtlRemoveEntryHashTable : Ptr64 to     unsigned char 
-   +0x458 RtlLookupEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
-   +0x460 RtlGetNextEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
-   +0x468 RtlEnumerateEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
-   +0x470 RtlEndEnumerationHashTable : Ptr64 to     void 
-   +0x478 RtlInitWeakEnumerationHashTable : Ptr64 to     unsigned char 
-   +0x480 RtlWeaklyEnumerateEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
-   +0x488 RtlEndWeakEnumerationHashTable : Ptr64 to     void 
-   +0x490 RtlExpandHashTable : Ptr64 to     unsigned char 
-   +0x498 RtlContractHashTable : Ptr64 to     unsigned char 
-   +0x4a0 RtlInitializeBitMap : Ptr64 to     void 
-   +0x4a8 RtlClearBit      : Ptr64 to     void 
-   +0x4b0 RtlSetBit        : Ptr64 to     void 
-   +0x4b8 RtlTestBit       : Ptr64 to     unsigned char 
-   +0x4c0 RtlClearAllBits  : Ptr64 to     void 
-   +0x4c8 RtlSetAllBits    : Ptr64 to     void 
-   +0x4d0 RtlFindClearBits : Ptr64 to     unsigned long 
-   +0x4d8 RtlFindSetBits   : Ptr64 to     unsigned long 
-   +0x4e0 RtlFindClearBitsAndSet : Ptr64 to     unsigned long 
-   +0x4e8 RtlFindSetBitsAndClear : Ptr64 to     unsigned long 
-   +0x4f0 RtlClearBits     : Ptr64 to     void 
-   +0x4f8 RtlSetBits       : Ptr64 to     void 
-   +0x500 RtlFindClearRuns : Ptr64 to     unsigned long 
-   +0x508 RtlFindLongestRunClear : Ptr64 to     unsigned long 
-   +0x510 RtlNumberOfClearBits : Ptr64 to     unsigned long 
-   +0x518 RtlNumberOfSetBits : Ptr64 to     unsigned long 
-   +0x520 RtlAreBitsClear  : Ptr64 to     unsigned char 
-   +0x528 RtlAreBitsSet    : Ptr64 to     unsigned char 
-   +0x530 RtlFindFirstRunClear : Ptr64 to     unsigned long 
-   +0x538 RtlFindNextForwardRunClear : Ptr64 to     unsigned long 
-   +0x540 RtlFindLastBackwardRunClear : Ptr64 to     unsigned long 
-   +0x548 RtlInitializeUnicodePrefix : Ptr64 to     void 
-   +0x550 RtlInsertUnicodePrefix : Ptr64 to     unsigned char 
-   +0x558 RtlRemoveUnicodePrefix : Ptr64 to     void 
-   +0x560 RtlFindUnicodePrefix : Ptr64 to     _UNICODE_PREFIX_TABLE_ENTRY* 
-   +0x568 RtlNextUnicodePrefix : Ptr64 to     _UNICODE_PREFIX_TABLE_ENTRY* 
-   +0x570 RtlCopyUnicodeString : Ptr64 to     void 
-   +0x578 RtlInitString    : Ptr64 to     void 
-   +0x580 RtlCopyString    : Ptr64 to     void 
-   +0x588 RtlAppendUnicodeToString : Ptr64 to     long 
-   +0x590 RtlAppendUnicodeStringToString : Ptr64 to     long 
-   +0x598 RtlUnicodeStringToAnsiSize : Ptr64 to     unsigned long 
-   +0x5a0 RtlUnicodeStringToAnsiString : Ptr64 to     long 
-   +0x5a8 RtlEqualString   : Ptr64 to     unsigned char 
-   +0x5b0 RtlEqualUnicodeString : Ptr64 to     unsigned char 
-   +0x5b8 RtlCompareString : Ptr64 to     long 
-   +0x5c0 RtlCompareMemory : Ptr64 to     unsigned int64 
-   +0x5c8 RtlPrefetchMemoryNonTemporal : Ptr64 to     void 
-   +0x5d0 RtlMoveMemory    : Ptr64 to     void 
-   +0x5d8 RtlCopyMemory    : Ptr64 to     void* 
-   +0x5e0 RtlCopyMappedMemory : Ptr64 to     long 
-   +0x5e8 RtlFillMemory    : Ptr64 to     void* 
-   +0x5f0 RtlLocalTimeToSystemTime : Ptr64 to     unsigned char 
-   +0x5f8 RtlTimeToSecondsSince1970 : Ptr64 to     unsigned char 
-   +0x600 bsearch          : Ptr64 to     void* 
-   +0x608 qsort            : Ptr64 to     void 
-   +0x610 memset           : Ptr64 to     void* 
-   +0x618 MmGetMaximumFileSectionSize : Ptr64 to     void* 
-   +0x620 K32GetProcessMemoryInfo : Ptr64 to     int 
-   +0x628 K32GetPerformanceInfo : Ptr64 to     int 
-   +0x630 GetProcessIoCounters : Ptr64 to     int 
-   +0x638 GetProcessHandleCount : Ptr64 to     int 
-   +0x640 K32InitializeProcessForWsWatch : Ptr64 to     int 
-   +0x648 K32GetWsChanges  : Ptr64 to     int 
-   +0x650 K32GetWsChangesEx : Ptr64 to     int 
-   +0x658 K32QueryWorkingSet : Ptr64 to     int 
-   +0x660 K32QueryWorkingSetEx : Ptr64 to     int 
-   +0x668 ZwQueryInformationProcess : Ptr64 to     long 
-   +0x670 LdrRegisterDllNotification : Ptr64 to     long 
-   +0x678 LdrUnregisterDllNotification : Ptr64 to     long 
-   +0x680 LdrLockLoaderLock : Ptr64 to     long 
-   +0x688 LdrUnlockLoaderLock : Ptr64 to     long 
-   +0x690 ZwAllocateVirtualMemory : Ptr64 to     long 
-   +0x698 ZwFreeVirtualMemory : Ptr64 to     long 
-   +0x6a0 AllocateUserPhysicalPages : Ptr64 to     int 
-   +0x6a8 AllocateUserPhysicalPagesNuma : Ptr64 to     int 
-   +0x6b0 MapUserPhysicalPages : Ptr64 to     int 
-   +0x6b8 MapUserPhysicalPagesScatter : Ptr64 to     int 
-   +0x6c0 FreeUserPhysicalPages : Ptr64 to     int 
-   +0x6c8 RtlCreateHeap    : Ptr64 to     void* 
-   +0x6d0 RtlDestroyHeap   : Ptr64 to     void* 
-   +0x6d8 RtlAllocateHeap  : Ptr64 to     void* 
-   +0x6e0 RtlFreeHeap      : Ptr64 to     unsigned char 
-   +0x6e8 RtlCaptureStackBackTrace : Ptr64 to     unsigned short 
-   +0x6f0 RtlPcToFileHeader : Ptr64 to     void* 
-   +0x6f8 RtlLookupFunctionEntry : Ptr64 to     _IMAGE_RUNTIME_FUNCTION_ENTRY* 
-   +0x700 RtlAddFunctionTable : Ptr64 to     unsigned char 
-   +0x708 RtlDeleteFunctionTable : Ptr64 to     unsigned char 
-   +0x710 RtlInstallFunctionTableCallback : Ptr64 to     unsigned char 
-   +0x718 RtlAddGrowableFunctionTable : Ptr64 to     unsigned long 
-   +0x720 RtlGrowFunctionTable : Ptr64 to     void 
-   +0x728 RtlDeleteGrowableFunctionTable : Ptr64 to     void 
-   +0x730 ZwCreateSection  : Ptr64 to     long 
-   +0x738 ZwMapViewOfSection : Ptr64 to     long 
-   +0x740 ZwUnmapViewOfSection : Ptr64 to     long 
-   +0x748 ZwCreateProcess  : Ptr64 to     long 
-   +0x750 ZwCreateProcessEx : Ptr64 to     long 
-   +0x758 ZwCreateThread   : Ptr64 to     long 
-   +0x760 ZwOpenThread     : Ptr64 to     long 
-   +0x768 ZwTerminateThread : Ptr64 to     long 
-   +0x770 NtQueueApcThread : Ptr64 to     long 
-   +0x778 NtTestAlert      : Ptr64 to     long 
-   +0x780 SearchPathW      : Ptr64 to     unsigned long 
-   +0x788 CreateToolhelp32Snapshot : Ptr64 to     void* 
-   +0x790 LoadLibraryA     : Ptr64 to     HINSTANCE__* 
-   +0x798 LoadLibraryW     : Ptr64 to     HINSTANCE__* 
-   +0x7a0 LoadLibraryExW   : Ptr64 to     HINSTANCE__* 
-   +0x7a8 GetProcAddress   : Ptr64 to     <function>* 
-   +0x7b0 CloseHandle      : Ptr64 to     int 
-   +0x7b8 OpenEventA       : Ptr64 to     void* 
-   +0x7c0 OpenEventW       : Ptr64 to     void* 
-   +0x7c8 GetLastError     : Ptr64 to     unsigned long 
-   +0x7d0 SetLastError     : Ptr64 to     void 
-   +0x7d8 SetEvent         : Ptr64 to     int 
-   +0x7e0 ResetEvent       : Ptr64 to     int 
-   +0x7e8 SuspendThread    : Ptr64 to     unsigned long 
-   +0x7f0 ResumeThread     : Ptr64 to     unsigned long 
-   +0x7f8 GetThreadContext : Ptr64 to     int 
-   +0x800 SetThreadContext : Ptr64 to     int 
-   +0x808 WaitForSingleObject : Ptr64 to     unsigned long 
-   +0x810 WaitForSingleObjectEx : Ptr64 to     unsigned long 
-   +0x818 SignalObjectAndWait : Ptr64 to     unsigned long 
-   +0x820 SleepEx          : Ptr64 to     unsigned long 
-   +0x828 ExitThread       : Ptr64 to     void 
-   +0x830 GetExitCodeThread : Ptr64 to     int 
-   +0x838 TerminateThread  : Ptr64 to     int 
-   +0x840 QueueUserAPC     : Ptr64 to     unsigned long 
-   +0x848 DeviceIoControl  : Ptr64 to     int 
-   +0x850 GetModuleHandleA : Ptr64 to     HINSTANCE__* 
-   +0x858 GetModuleHandleW : Ptr64 to     HINSTANCE__* 
-   +0x860 CreateFileW      : Ptr64 to     void* 
-   +0x868 CreateFileMappingW : Ptr64 to     void* 
-   +0x870 OpenFileMappingW : Ptr64 to     void* 
-   +0x878 MapViewOfFileEx  : Ptr64 to     void* 
-   +0x880 FlushViewOfFile  : Ptr64 to     int 
-   +0x888 UnmapViewOfFileEx : Ptr64 to     int 
-   +0x890 VirtualAllocEx   : Ptr64 to     void* 
-   +0x898 VirtualFreeEx    : Ptr64 to     int 
-   +0x8a0 VirtualProtectEx : Ptr64 to     int 
-   +0x8a8 VirtualQueryEx   : Ptr64 to     unsigned int64 
-   +0x8b0 DebugActiveProcessStop : Ptr64 to     int 
-   +0x8b8 DebugSetProcessKillOnExit : Ptr64 to     int 
-   +0x8c0 Thread32First    : Ptr64 to     int 
-   +0x8c8 Thread32Next     : Ptr64 to     int 
-   +0x8d0 RtlExFunctions   : struct _RTLEXFUNCTIONS, 61 elements, 0x1e8 bytes
-   +0x8d0 DestroyRtl       : Ptr64 to     void 
-   +0x8d8 ArgvWToArgvA     : Ptr64 to     int 
-   +0x8e0 CopyPagesMovsq   : Ptr64 to     void 
-   +0x8e8 CopyPagesAvx2    : Ptr64 to     void 
-   +0x8f0 CopyPagesMovsq_C : Ptr64 to     void 
-   +0x8f8 CopyPagesAvx2_C  : Ptr64 to     void 
-   +0x900 CopyToMemoryMappedMemory : Ptr64 to     void* 
-   +0x908 CreateBitmapIndexForString : Ptr64 to     int 
-   +0x910 CreateBitmapIndexForUnicodeString : Ptr64 to     int 
-   +0x918 CurrentDirectoryToRtlPath : Ptr64 to     _RTL_PATH* 
-   +0x920 CurrentDirectoryToUnicodeString : Ptr64 to     _UNICODE_STRING* 
-   +0x928 DestroyPathEnvironmentVariable : Ptr64 to     void 
-   +0x930 DestroyRtlPath   : Ptr64 to     int 
-   +0x938 DisableCreateSymbolicLinkPrivilege : Ptr64 to     int 
-   +0x940 DisableDebugPrivilege : Ptr64 to     int 
-   +0x948 DisableIncreaseWorkingSetPrivilege : Ptr64 to     int 
-   +0x950 DisableLockMemoryPrivilege : Ptr64 to     int 
-   +0x958 DisableManageVolumePrivilege : Ptr64 to     int 
-   +0x960 DisablePrivilege : Ptr64 to     int 
-   +0x968 DisableProfileSingleProcessPrivilege : Ptr64 to     int 
-   +0x970 DisableSystemProfilePrivilege : Ptr64 to     int 
-   +0x978 EnableCreateSymbolicLinkPrivilege : Ptr64 to     int 
-   +0x980 EnableDebugPrivilege : Ptr64 to     int 
-   +0x988 EnableIncreaseWorkingSetPrivilege : Ptr64 to     int 
-   +0x990 EnableLockMemoryPrivilege : Ptr64 to     int 
-   +0x998 EnableManageVolumePrivilege : Ptr64 to     int 
-   +0x9a0 EnablePrivilege  : Ptr64 to     int 
-   +0x9a8 EnableProfileSingleProcessPrivilege : Ptr64 to     int 
-   +0x9b0 EnableSystemProfilePrivilege : Ptr64 to     int 
-   +0x9b8 FilesExistA      : Ptr64 to     int 
-   +0x9c0 FilesExistW      : Ptr64 to     int 
-   +0x9c8 FindCharsInString : Ptr64 to     int 
-   +0x9d0 FindCharsInUnicodeString : Ptr64 to     int 
-   +0x9d8 GetModuleRtlPath : Ptr64 to     int 
-   +0x9e0 InitializeRtlFile : Ptr64 to     int 
-   +0x9e8 LoadFile         : Ptr64 to     int 
-   +0x9f0 LoadDbgEng       : Ptr64 to     int 
-   +0x9f8 LoadDbgHelp      : Ptr64 to     int 
-   +0xa00 LoadPathEnvironmentVariable : Ptr64 to     _PATH_ENV_VAR* 
-   +0xa08 LoadShlwapi      : Ptr64 to     int 
-   +0xa10 PrefaultPages    : Ptr64 to     int 
-   +0xa18 RegisterDllNotification : Ptr64 to     int 
-   +0xa20 RtlCheckBit      : Ptr64 to     unsigned char 
-   +0xa28 RtlInitializeSplayLinks : Ptr64 to     void 
-   +0xa30 RtlInsertAsLeftChild : Ptr64 to     void 
-   +0xa38 RtlInsertAsRightChild : Ptr64 to     void 
-   +0xa40 RtlIsLeftChild   : Ptr64 to     unsigned char 
-   +0xa48 RtlIsRightChild  : Ptr64 to     unsigned char 
-   +0xa50 RtlIsRoot        : Ptr64 to     unsigned char 
-   +0xa58 RtlLeftChild     : Ptr64 to     _RTL_SPLAY_LINKS* 
-   +0xa60 RtlParent        : Ptr64 to     _RTL_SPLAY_LINKS* 
-   +0xa68 RtlRightChild    : Ptr64 to     _RTL_SPLAY_LINKS* 
-   +0xa70 SetPrivilege     : Ptr64 to     int 
-   +0xa78 StringToExistingRtlPath : Ptr64 to     int 
-   +0xa80 StringToRtlPath  : Ptr64 to     int 
-   +0xa88 TestExceptionHandler : Ptr64 to     int 
-   +0xa90 UnicodeStringToExistingRtlPath : Ptr64 to     int 
-   +0xa98 UnicodeStringToRtlPath : Ptr64 to     int 
-   +0xaa0 UnregisterDllNotification : Ptr64 to     int 
-   +0xaa8 WriteEnvVarToRegistry : Ptr64 to     int 
-   +0xab0 WriteRegistryString : Ptr64 to     int 
-   +0xab8 ShlwapiFunctions : struct _SHLWAPI_FUNCTIONS, 1 elements, 0x8 bytes
-   +0xab8 PathCanonicalizeA : Ptr64 to     int 
-   +0xac0 Dbg              : struct _DBG, 169 elements, 0x548 bytes
-   +0xac0 EnumDirTree      : Ptr64 to     int 
-   +0xac8 EnumDirTreeW     : Ptr64 to     int 
-   +0xad0 EnumerateLoadedModules64 : Ptr64 to     int 
-   +0xad8 EnumerateLoadedModules : Ptr64 to     int 
-   +0xae0 EnumerateLoadedModulesEx : Ptr64 to     int 
-   +0xae8 EnumerateLoadedModulesExW : Ptr64 to     int 
-   +0xaf0 EnumerateLoadedModulesW64 : Ptr64 to     int 
-   +0xaf8 FindFileInPath   : Ptr64 to     int 
-   +0xb00 FindFileInSearchPath : Ptr64 to     int 
-   +0xb08 GetSymLoadError  : Ptr64 to     unsigned long 
-   +0xb10 GetTimestampForLoadedLibrary : Ptr64 to     unsigned long 
-   +0xb18 MakeSureDirectoryPathExists : Ptr64 to     int 
-   +0xb20 RangeMapAddPeImageSections : Ptr64 to     int 
-   +0xb28 RangeMapRead     : Ptr64 to     int 
-   +0xb30 RangeMapRemove   : Ptr64 to     int 
-   +0xb38 RangeMapWrite    : Ptr64 to     int 
-   +0xb40 ReportSymbolLoadSummary : Ptr64 to     int 
-   +0xb48 SearchTreeForFile : Ptr64 to     int 
-   +0xb50 SearchTreeForFileW : Ptr64 to     int 
-   +0xb58 StackWalk64      : Ptr64 to     int 
-   +0xb60 StackWalkEx      : Ptr64 to     int 
-   +0xb68 StackWalk        : Ptr64 to     int 
-   +0xb70 SymAddrIncludeInlineTrace : Ptr64 to     unsigned long 
-   +0xb78 SymAddSourceStreamA : Ptr64 to     int 
-   +0xb80 SymAddSourceStream : Ptr64 to     int 
-   +0xb88 SymAddSourceStreamW : Ptr64 to     int 
-   +0xb90 SymAddSymbol     : Ptr64 to     int 
-   +0xb98 SymAddSymbolW    : Ptr64 to     int 
-   +0xba0 SymCleanup       : Ptr64 to     int 
-   +0xba8 SymCompareInlineTrace : Ptr64 to     unsigned long 
-   +0xbb0 SymDeleteSymbol  : Ptr64 to     int 
-   +0xbb8 SymDeleteSymbolW : Ptr64 to     int 
-   +0xbc0 SymEnumerateModules64 : Ptr64 to     int 
-   +0xbc8 SymEnumerateModules : Ptr64 to     int 
-   +0xbd0 SymEnumerateModulesW64 : Ptr64 to     int 
-   +0xbd8 SymEnumerateSymbols64 : Ptr64 to     int 
-   +0xbe0 SymEnumerateSymbols : Ptr64 to     int 
-   +0xbe8 SymEnumerateSymbolsW64 : Ptr64 to     int 
-   +0xbf0 SymEnumerateSymbolsW : Ptr64 to     int 
-   +0xbf8 SymEnumLines     : Ptr64 to     int 
-   +0xc00 SymEnumLinesW    : Ptr64 to     int 
-   +0xc08 SymEnumProcesses : Ptr64 to     int 
-   +0xc10 SymEnumSourceFiles : Ptr64 to     int 
-   +0xc18 SymEnumSourceFilesW : Ptr64 to     int 
-   +0xc20 SymEnumSourceFileTokens : Ptr64 to     int 
-   +0xc28 SymEnumSourceLines : Ptr64 to     int 
-   +0xc30 SymEnumSourceLinesW : Ptr64 to     int 
-   +0xc38 SymEnumSymbolsEx : Ptr64 to     int 
-   +0xc40 SymEnumSymbolsExW : Ptr64 to     int 
-   +0xc48 SymEnumSymbolsForAddr : Ptr64 to     int 
-   +0xc50 SymEnumSymbolsForAddrW : Ptr64 to     int 
-   +0xc58 SymEnumSymbols   : Ptr64 to     int 
-   +0xc60 SymEnumSymbolsW  : Ptr64 to     int 
-   +0xc68 SymEnumSym       : Ptr64 to     int 
-   +0xc70 SymEnumTypesByName : Ptr64 to     int 
-   +0xc78 SymEnumTypesByNameW : Ptr64 to     int 
-   +0xc80 SymEnumTypes     : Ptr64 to     int 
-   +0xc88 SymEnumTypesW    : Ptr64 to     int 
-   +0xc90 SymFindFileInPath : Ptr64 to     int 
-   +0xc98 SymFindFileInPathW : Ptr64 to     int 
-   +0xca0 SymFromAddr      : Ptr64 to     int 
-   +0xca8 SymFromAddrW     : Ptr64 to     int 
-   +0xcb0 SymFromIndex     : Ptr64 to     int 
-   +0xcb8 SymFromIndexW    : Ptr64 to     int 
-   +0xcc0 SymFromInlineContext : Ptr64 to     int 
-   +0xcc8 SymFromInlineContextW : Ptr64 to     int 
-   +0xcd0 SymFromName      : Ptr64 to     int 
-   +0xcd8 SymFromNameW     : Ptr64 to     int 
-   +0xce0 SymFromToken     : Ptr64 to     int 
-   +0xce8 SymFromTokenW    : Ptr64 to     int 
-   +0xcf0 SymGetFileLineOffsets64 : Ptr64 to     unsigned long 
-   +0xcf8 SymGetLineFromAddr64 : Ptr64 to     int 
-   +0xd00 SymGetLineFromAddr : Ptr64 to     int 
-   +0xd08 SymGetLineFromAddrW64 : Ptr64 to     int 
-   +0xd10 SymGetLineFromInlineContext : Ptr64 to     int 
-   +0xd18 SymGetLineFromInlineContextW : Ptr64 to     int 
-   +0xd20 SymGetLineFromName64 : Ptr64 to     int 
-   +0xd28 SymGetLineFromName : Ptr64 to     int 
-   +0xd30 SymGetLineFromNameW64 : Ptr64 to     int 
-   +0xd38 SymGetLineNext64 : Ptr64 to     int 
-   +0xd40 SymGetLineNext   : Ptr64 to     int 
-   +0xd48 SymGetLineNextW64 : Ptr64 to     int 
-   +0xd50 SymGetLinePrev64 : Ptr64 to     int 
-   +0xd58 SymGetLinePrev   : Ptr64 to     int 
-   +0xd60 SymGetLinePrevW64 : Ptr64 to     int 
-   +0xd68 SymGetModuleBase : Ptr64 to     unsigned long 
-   +0xd70 SymGetModuleInfo64 : Ptr64 to     int 
-   +0xd78 SymGetModuleInfo : Ptr64 to     int 
-   +0xd80 SymGetModuleInfoW64 : Ptr64 to     int 
-   +0xd88 SymGetModuleInfoW : Ptr64 to     int 
-   +0xd90 SymGetOmaps      : Ptr64 to     int 
-   +0xd98 SymGetOptions    : Ptr64 to     unsigned long 
-   +0xda0 SymGetScope      : Ptr64 to     int 
-   +0xda8 SymGetScopeW     : Ptr64 to     int 
-   +0xdb0 SymGetSearchPath : Ptr64 to     int 
-   +0xdb8 SymGetSearchPathW : Ptr64 to     int 
-   +0xdc0 SymGetSourceFileFromToken : Ptr64 to     int 
-   +0xdc8 SymGetSourceFileFromTokenW : Ptr64 to     int 
-   +0xdd0 SymGetSourceFile : Ptr64 to     int 
-   +0xdd8 SymGetSourceFileToken : Ptr64 to     int 
-   +0xde0 SymGetSourceFileTokenW : Ptr64 to     int 
-   +0xde8 SymGetSourceFileW : Ptr64 to     int 
-   +0xdf0 SymGetSourceVarFromToken : Ptr64 to     int 
-   +0xdf8 SymGetSourceVarFromTokenW : Ptr64 to     int 
-   +0xe00 SymGetSymbolFile : Ptr64 to     int 
-   +0xe08 SymGetSymbolFileW : Ptr64 to     int 
-   +0xe10 SymGetSymFromAddr64 : Ptr64 to     int 
-   +0xe18 SymGetSymFromAddr : Ptr64 to     int 
-   +0xe20 SymGetSymFromName64 : Ptr64 to     int 
-   +0xe28 SymGetSymFromName : Ptr64 to     int 
-   +0xe30 SymGetSymNext64  : Ptr64 to     int 
-   +0xe38 SymGetSymNext    : Ptr64 to     int 
-   +0xe40 SymGetSymPrev64  : Ptr64 to     int 
-   +0xe48 SymGetSymPrev    : Ptr64 to     int 
-   +0xe50 SymGetTypeFromName : Ptr64 to     int 
-   +0xe58 SymGetTypeFromNameW : Ptr64 to     int 
-   +0xe60 SymGetTypeInfoEx : Ptr64 to     int 
-   +0xe68 SymGetTypeInfo   : Ptr64 to     int 
-   +0xe70 SymGetUnwindInfo : Ptr64 to     int 
-   +0xe78 SymInitialize    : Ptr64 to     int 
-   +0xe80 SymInitializeW   : Ptr64 to     int 
-   +0xe88 SymLoadModule    : Ptr64 to     unsigned long 
-   +0xe90 SymLoadModuleEx  : Ptr64 to     unsigned int64 
-   +0xe98 SymLoadModuleExW : Ptr64 to     unsigned int64 
-   +0xea0 SymMatchFileName : Ptr64 to     int 
-   +0xea8 SymMatchFileNameW : Ptr64 to     int 
-   +0xeb0 SymMatchStringA  : Ptr64 to     int 
-   +0xeb8 SymMatchString   : Ptr64 to     int 
-   +0xec0 SymMatchStringW  : Ptr64 to     int 
-   +0xec8 SymNext          : Ptr64 to     int 
-   +0xed0 SymNextW         : Ptr64 to     int 
-   +0xed8 SymPrev          : Ptr64 to     int 
-   +0xee0 SymPrevW         : Ptr64 to     int 
-   +0xee8 SymQueryInlineTrace : Ptr64 to     int 
-   +0xef0 SymRefreshModuleList : Ptr64 to     int 
-   +0xef8 SymRegisterCallback64 : Ptr64 to     int 
-   +0xf00 SymRegisterCallback : Ptr64 to     int 
-   +0xf08 SymRegisterCallbackW64 : Ptr64 to     int 
-   +0xf10 SymRegisterFunctionEntryCallback64 : Ptr64 to     int 
-   +0xf18 SymRegisterFunctionEntryCallback : Ptr64 to     int 
-   +0xf20 SymSearch        : Ptr64 to     int 
-   +0xf28 SymSearchW       : Ptr64 to     int 
-   +0xf30 SymSetContext    : Ptr64 to     int 
-   +0xf38 SymSetOptions    : Ptr64 to     unsigned long 
-   +0xf40 SymSetParentWindow : Ptr64 to     int 
-   +0xf48 SymSetScopeFromAddr : Ptr64 to     int 
-   +0xf50 SymSetScopeFromIndex : Ptr64 to     int 
-   +0xf58 SymSetScopeFromInlineContext : Ptr64 to     int 
-   +0xf60 SymSetSearchPath : Ptr64 to     int 
-   +0xf68 SymSetSearchPathW : Ptr64 to     int 
-   +0xf70 SymSrvGetFileIndexes : Ptr64 to     int 
-   +0xf78 SymSrvGetFileIndexesW : Ptr64 to     int 
-   +0xf80 SymSrvGetFileIndexInfo : Ptr64 to     int 
-   +0xf88 SymSrvGetFileIndexInfoW : Ptr64 to     int 
-   +0xf90 SymSrvGetFileIndexString : Ptr64 to     int 
-   +0xf98 SymSrvGetFileIndexStringW : Ptr64 to     int 
-   +0xfa0 SymSrvIsStore    : Ptr64 to     int 
-   +0xfa8 SymSrvIsStoreW   : Ptr64 to     int 
-   +0xfb0 SymUnDName64     : Ptr64 to     int 
-   +0xfb8 SymUnDName       : Ptr64 to     int 
-   +0xfc0 SymUnloadModule64 : Ptr64 to     int 
-   +0xfc8 SymUnloadModule  : Ptr64 to     int 
-   +0xfd0 UnDecorateSymbolName : Ptr64 to     unsigned long 
-   +0xfd8 UnDecorateSymbolNameW : Ptr64 to     unsigned long 
-   +0xfe0 ImageNtHeader    : Ptr64 to     _IMAGE_NT_HEADERS64* 
-   +0xfe8 ImageDirectoryEntryToData : Ptr64 to     void* 
-   +0xff0 ImageDirectoryEntryToDataEx : Ptr64 to     void* 
-   +0xff8 ImageRvaToSection : Ptr64 to     _IMAGE_SECTION_HEADER* 
-   +0x1000 ImageRvaToV      : Ptr64 to     void* 
-   +0x1008 DbgEng           : struct _DBGENG, 1 elements, 0x8 bytes
-   +0x1008 DebugCreate      : Ptr64 to     HRESULT 
-   +0x1010 TestLoadSymbols  : Ptr64 to     int 
-   +0x1018 TestLoadSymbolsFromMultipleModules : Ptr64 to     int 
+   +0x1e8 CreateBuffer     : Ptr64 to     int 
+   +0x1f0 MakeRandomString : Ptr64 to     int 
+   +0x1f8 FindAndReplaceByte : Ptr64 to     unsigned int64 
+   +0x200 InjectionThunkRoutine : Ptr64 to Void
+   +0x208 Inject           : Ptr64 to     int 
+   +0x210 InitializeInjection : Ptr64 to     int 
+   +0x218 AdjustThunkPointers : Ptr64 to     int 
+   +0x220 InjectionFunctions : struct _INJECTION_FUNCTIONS, 37 elements, 0x128 bytes
+   +0x348 LoadSymbols      : Ptr64 to     int 
+   +0x350 LoadSymbolsFromMultipleModules : Ptr64 to     int 
+   +0x358 InitializeHeapAllocator : Ptr64 to     unsigned char 
+   +0x360 DestroyHeapAllocator : Ptr64 to     void 
+   +0x368 SystemTimerFunction : struct _SYSTEM_TIMER_FUNCTION, 2 elements, 0x10 bytes
+   +0x368 GetSystemTimePreciseAsFileTime : Ptr64 to     void 
+   +0x370 NtQuerySystemTime : Ptr64 to     long 
+   +0x378 RtlFunctions     : struct _RTLFUNCTIONS, 181 elements, 0x5a8 bytes
+   +0x378 RtlCharToInteger : Ptr64 to     long 
+   +0x380 RtlInitializeGenericTable : Ptr64 to     void 
+   +0x388 RtlInsertElementGenericTable : Ptr64 to     void* 
+   +0x390 RtlInsertElementGenericTableFull : Ptr64 to     void* 
+   +0x398 RtlDeleteElementGenericTable : Ptr64 to     unsigned char 
+   +0x3a0 RtlLookupElementGenericTable : Ptr64 to     void* 
+   +0x3a8 RtlLookupElementGenericTableFull : Ptr64 to     void* 
+   +0x3b0 RtlEnumerateGenericTable : Ptr64 to     void* 
+   +0x3b8 RtlEnumerateGenericTableWithoutSplaying : Ptr64 to     void* 
+   +0x3c0 RtlGetElementGenericTable : Ptr64 to     void* 
+   +0x3c8 RtlNumberGenericTableElements : Ptr64 to     void* 
+   +0x3d0 RtlIsGenericTableEmpty : Ptr64 to     unsigned char 
+   +0x3d8 RtlInitializeGenericTableAvl : Ptr64 to     void 
+   +0x3e0 RtlInsertElementGenericTableAvl : Ptr64 to     void* 
+   +0x3e8 RtlInsertElementGenericTableFullAvl : Ptr64 to     void* 
+   +0x3f0 RtlDeleteElementGenericTableAvl : Ptr64 to     unsigned char 
+   +0x3f8 RtlLookupElementGenericTableAvl : Ptr64 to     void* 
+   +0x400 RtlLookupElementGenericTableFullAvl : Ptr64 to     void* 
+   +0x408 RtlEnumerateGenericTableAvl : Ptr64 to     void* 
+   +0x410 RtlEnumerateGenericTableWithoutSplayingAvl : Ptr64 to     void* 
+   +0x418 RtlLookupFirstMatchingElementGenericTableAvl : Ptr64 to     void* 
+   +0x420 RtlEnumerateGenericTableLikeADirectory : Ptr64 to     void* 
+   +0x428 RtlGetElementGenericTableAvl : Ptr64 to     void* 
+   +0x430 RtlNumberGenericTableElementsAvl : Ptr64 to     unsigned long 
+   +0x438 RtlIsGenericTableEmptyAvl : Ptr64 to     unsigned char 
+   +0x440 PfxInitialize    : Ptr64 to     void 
+   +0x448 PfxInsertPrefix  : Ptr64 to     unsigned char 
+   +0x450 PfxRemovePrefix  : Ptr64 to     void 
+   +0x458 PfxFindPrefix    : Ptr64 to     _PREFIX_TABLE_ENTRY* 
+   +0x460 RtlPrefixString  : Ptr64 to     unsigned char 
+   +0x468 RtlPrefixUnicodeString : Ptr64 to     unsigned char 
+   +0x470 RtlCreateHashTable : Ptr64 to     unsigned char 
+   +0x478 RtlDeleteHashTable : Ptr64 to     void 
+   +0x480 RtlInsertEntryHashTable : Ptr64 to     unsigned char 
+   +0x488 RtlRemoveEntryHashTable : Ptr64 to     unsigned char 
+   +0x490 RtlLookupEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
+   +0x498 RtlGetNextEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
+   +0x4a0 RtlEnumerateEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
+   +0x4a8 RtlEndEnumerationHashTable : Ptr64 to     void 
+   +0x4b0 RtlInitWeakEnumerationHashTable : Ptr64 to     unsigned char 
+   +0x4b8 RtlWeaklyEnumerateEntryHashTable : Ptr64 to     _RTL_DYNAMIC_HASH_TABLE_ENTRY* 
+   +0x4c0 RtlEndWeakEnumerationHashTable : Ptr64 to     void 
+   +0x4c8 RtlExpandHashTable : Ptr64 to     unsigned char 
+   +0x4d0 RtlContractHashTable : Ptr64 to     unsigned char 
+   +0x4d8 RtlInitializeBitMap : Ptr64 to     void 
+   +0x4e0 RtlClearBit      : Ptr64 to     void 
+   +0x4e8 RtlSetBit        : Ptr64 to     void 
+   +0x4f0 RtlTestBit       : Ptr64 to     unsigned char 
+   +0x4f8 RtlClearAllBits  : Ptr64 to     void 
+   +0x500 RtlSetAllBits    : Ptr64 to     void 
+   +0x508 RtlFindClearBits : Ptr64 to     unsigned long 
+   +0x510 RtlFindSetBits   : Ptr64 to     unsigned long 
+   +0x518 RtlFindClearBitsAndSet : Ptr64 to     unsigned long 
+   +0x520 RtlFindSetBitsAndClear : Ptr64 to     unsigned long 
+   +0x528 RtlClearBits     : Ptr64 to     void 
+   +0x530 RtlSetBits       : Ptr64 to     void 
+   +0x538 RtlFindClearRuns : Ptr64 to     unsigned long 
+   +0x540 RtlFindLongestRunClear : Ptr64 to     unsigned long 
+   +0x548 RtlNumberOfClearBits : Ptr64 to     unsigned long 
+   +0x550 RtlNumberOfSetBits : Ptr64 to     unsigned long 
+   +0x558 RtlAreBitsClear  : Ptr64 to     unsigned char 
+   +0x560 RtlAreBitsSet    : Ptr64 to     unsigned char 
+   +0x568 RtlFindFirstRunClear : Ptr64 to     unsigned long 
+   +0x570 RtlFindNextForwardRunClear : Ptr64 to     unsigned long 
+   +0x578 RtlFindLastBackwardRunClear : Ptr64 to     unsigned long 
+   +0x580 RtlInitializeUnicodePrefix : Ptr64 to     void 
+   +0x588 RtlInsertUnicodePrefix : Ptr64 to     unsigned char 
+   +0x590 RtlRemoveUnicodePrefix : Ptr64 to     void 
+   +0x598 RtlFindUnicodePrefix : Ptr64 to     _UNICODE_PREFIX_TABLE_ENTRY* 
+   +0x5a0 RtlNextUnicodePrefix : Ptr64 to     _UNICODE_PREFIX_TABLE_ENTRY* 
+   +0x5a8 RtlCopyUnicodeString : Ptr64 to     void 
+   +0x5b0 RtlInitString    : Ptr64 to     void 
+   +0x5b8 RtlCopyString    : Ptr64 to     void 
+   +0x5c0 RtlAppendUnicodeToString : Ptr64 to     long 
+   +0x5c8 RtlAppendUnicodeStringToString : Ptr64 to     long 
+   +0x5d0 RtlUnicodeStringToAnsiSize : Ptr64 to     unsigned long 
+   +0x5d8 RtlUnicodeStringToAnsiString : Ptr64 to     long 
+   +0x5e0 RtlEqualString   : Ptr64 to     unsigned char 
+   +0x5e8 RtlEqualUnicodeString : Ptr64 to     unsigned char 
+   +0x5f0 RtlCompareString : Ptr64 to     long 
+   +0x5f8 RtlCompareMemory : Ptr64 to     unsigned int64 
+   +0x600 RtlPrefetchMemoryNonTemporal : Ptr64 to     void 
+   +0x608 RtlMoveMemory    : Ptr64 to     void 
+   +0x610 RtlCopyMemory    : Ptr64 to     void* 
+   +0x618 RtlCopyMappedMemory : Ptr64 to     long 
+   +0x620 RtlFillMemory    : Ptr64 to     void* 
+   +0x628 RtlLocalTimeToSystemTime : Ptr64 to     unsigned char 
+   +0x630 RtlTimeToSecondsSince1970 : Ptr64 to     unsigned char 
+   +0x638 bsearch          : Ptr64 to     void* 
+   +0x640 qsort            : Ptr64 to     void 
+   +0x648 memset           : Ptr64 to     void* 
+   +0x650 SetConsoleCtrlHandler : Ptr64 to     int 
+   +0x658 MmGetMaximumFileSectionSize : Ptr64 to     void* 
+   +0x660 K32GetProcessMemoryInfo : Ptr64 to     int 
+   +0x668 K32GetPerformanceInfo : Ptr64 to     int 
+   +0x670 GetProcessIoCounters : Ptr64 to     int 
+   +0x678 GetProcessHandleCount : Ptr64 to     int 
+   +0x680 K32InitializeProcessForWsWatch : Ptr64 to     int 
+   +0x688 K32GetWsChanges  : Ptr64 to     int 
+   +0x690 K32GetWsChangesEx : Ptr64 to     int 
+   +0x698 K32QueryWorkingSet : Ptr64 to     int 
+   +0x6a0 K32QueryWorkingSetEx : Ptr64 to     int 
+   +0x6a8 ZwQueryInformationProcess : Ptr64 to     long 
+   +0x6b0 LdrRegisterDllNotification : Ptr64 to     long 
+   +0x6b8 LdrUnregisterDllNotification : Ptr64 to     long 
+   +0x6c0 LdrLockLoaderLock : Ptr64 to     long 
+   +0x6c8 LdrUnlockLoaderLock : Ptr64 to     long 
+   +0x6d0 ZwAllocateVirtualMemory : Ptr64 to     long 
+   +0x6d8 ZwFreeVirtualMemory : Ptr64 to     long 
+   +0x6e0 AllocateUserPhysicalPages : Ptr64 to     int 
+   +0x6e8 AllocateUserPhysicalPagesNuma : Ptr64 to     int 
+   +0x6f0 MapUserPhysicalPages : Ptr64 to     int 
+   +0x6f8 MapUserPhysicalPagesScatter : Ptr64 to     int 
+   +0x700 FreeUserPhysicalPages : Ptr64 to     int 
+   +0x708 RtlCreateHeap    : Ptr64 to     void* 
+   +0x710 RtlDestroyHeap   : Ptr64 to     void* 
+   +0x718 RtlAllocateHeap  : Ptr64 to     void* 
+   +0x720 RtlFreeHeap      : Ptr64 to     unsigned char 
+   +0x728 RtlCaptureStackBackTrace : Ptr64 to     unsigned short 
+   +0x730 RtlPcToFileHeader : Ptr64 to     void* 
+   +0x738 RtlLookupFunctionEntry : Ptr64 to     _IMAGE_RUNTIME_FUNCTION_ENTRY* 
+   +0x740 RtlAddFunctionTable : Ptr64 to     unsigned char 
+   +0x748 RtlDeleteFunctionTable : Ptr64 to     unsigned char 
+   +0x750 RtlInstallFunctionTableCallback : Ptr64 to     unsigned char 
+   +0x758 RtlAddGrowableFunctionTable : Ptr64 to     unsigned long 
+   +0x760 RtlGrowFunctionTable : Ptr64 to     void 
+   +0x768 RtlDeleteGrowableFunctionTable : Ptr64 to     void 
+   +0x770 ZwCreateSection  : Ptr64 to     long 
+   +0x778 ZwMapViewOfSection : Ptr64 to     long 
+   +0x780 ZwUnmapViewOfSection : Ptr64 to     long 
+   +0x788 ZwCreateProcess  : Ptr64 to     long 
+   +0x790 ZwCreateProcessEx : Ptr64 to     long 
+   +0x798 ZwCreateThread   : Ptr64 to     long 
+   +0x7a0 ZwOpenThread     : Ptr64 to     long 
+   +0x7a8 ZwTerminateThread : Ptr64 to     long 
+   +0x7b0 NtQueueApcThread : Ptr64 to     long 
+   +0x7b8 NtTestAlert      : Ptr64 to     long 
+   +0x7c0 NtYieldExecution : Ptr64 to     long 
+   +0x7c8 NtDelayExecution : Ptr64 to     long 
+   +0x7d0 SearchPathW      : Ptr64 to     unsigned long 
+   +0x7d8 CreateToolhelp32Snapshot : Ptr64 to     void* 
+   +0x7e0 LoadLibraryA     : Ptr64 to     HINSTANCE__* 
+   +0x7e8 LoadLibraryW     : Ptr64 to     HINSTANCE__* 
+   +0x7f0 LoadLibraryExW   : Ptr64 to     HINSTANCE__* 
+   +0x7f8 GetProcAddress   : Ptr64 to     <function>* 
+   +0x800 CloseHandle      : Ptr64 to     int 
+   +0x808 OpenEventA       : Ptr64 to     void* 
+   +0x810 OpenEventW       : Ptr64 to     void* 
+   +0x818 GetLastError     : Ptr64 to     unsigned long 
+   +0x820 SetLastError     : Ptr64 to     void 
+   +0x828 SetEvent         : Ptr64 to     int 
+   +0x830 ResetEvent       : Ptr64 to     int 
+   +0x838 SuspendThread    : Ptr64 to     unsigned long 
+   +0x840 ResumeThread     : Ptr64 to     unsigned long 
+   +0x848 GetThreadContext : Ptr64 to     int 
+   +0x850 SetThreadContext : Ptr64 to     int 
+   +0x858 WaitForSingleObject : Ptr64 to     unsigned long 
+   +0x860 WaitForSingleObjectEx : Ptr64 to     unsigned long 
+   +0x868 SignalObjectAndWait : Ptr64 to     unsigned long 
+   +0x870 SleepEx          : Ptr64 to     unsigned long 
+   +0x878 ExitThread       : Ptr64 to     void 
+   +0x880 GetExitCodeThread : Ptr64 to     int 
+   +0x888 TerminateThread  : Ptr64 to     int 
+   +0x890 QueueUserAPC     : Ptr64 to     unsigned long 
+   +0x898 DeviceIoControl  : Ptr64 to     int 
+   +0x8a0 GetModuleHandleA : Ptr64 to     HINSTANCE__* 
+   +0x8a8 GetModuleHandleW : Ptr64 to     HINSTANCE__* 
+   +0x8b0 CreateFileW      : Ptr64 to     void* 
+   +0x8b8 CreateFileMappingW : Ptr64 to     void* 
+   +0x8c0 OpenFileMappingW : Ptr64 to     void* 
+   +0x8c8 MapViewOfFileEx  : Ptr64 to     void* 
+   +0x8d0 FlushViewOfFile  : Ptr64 to     int 
+   +0x8d8 UnmapViewOfFileEx : Ptr64 to     int 
+   +0x8e0 VirtualAllocEx   : Ptr64 to     void* 
+   +0x8e8 VirtualFreeEx    : Ptr64 to     int 
+   +0x8f0 VirtualProtectEx : Ptr64 to     int 
+   +0x8f8 VirtualQueryEx   : Ptr64 to     unsigned int64 
+   +0x900 DebugActiveProcessStop : Ptr64 to     int 
+   +0x908 DebugSetProcessKillOnExit : Ptr64 to     int 
+   +0x910 Thread32First    : Ptr64 to     int 
+   +0x918 Thread32Next     : Ptr64 to     int 
+   +0x920 RtlExFunctions   : struct _RTLEXFUNCTIONS, 65 elements, 0x208 bytes
+   +0x920 DestroyRtl       : Ptr64 to     void 
+   +0x928 ArgvWToArgvA     : Ptr64 to     int 
+   +0x930 CopyPagesMovsq   : Ptr64 to     void 
+   +0x938 CopyPagesAvx2    : Ptr64 to     void 
+   +0x940 CopyPagesMovsq_C : Ptr64 to     void 
+   +0x948 CopyPagesAvx2_C  : Ptr64 to     void 
+   +0x950 CopyToMemoryMappedMemory : Ptr64 to     void* 
+   +0x958 CreateBitmapIndexForString : Ptr64 to     int 
+   +0x960 CreateBitmapIndexForUnicodeString : Ptr64 to     int 
+   +0x968 CurrentDirectoryToRtlPath : Ptr64 to     _RTL_PATH* 
+   +0x970 CurrentDirectoryToUnicodeString : Ptr64 to     _UNICODE_STRING* 
+   +0x978 DestroyPathEnvironmentVariable : Ptr64 to     void 
+   +0x980 DestroyRtlPath   : Ptr64 to     int 
+   +0x988 DisableCreateSymbolicLinkPrivilege : Ptr64 to     int 
+   +0x990 DisableDebugPrivilege : Ptr64 to     int 
+   +0x998 DisableIncreaseWorkingSetPrivilege : Ptr64 to     int 
+   +0x9a0 DisableLockMemoryPrivilege : Ptr64 to     int 
+   +0x9a8 DisableManageVolumePrivilege : Ptr64 to     int 
+   +0x9b0 DisablePrivilege : Ptr64 to     int 
+   +0x9b8 DisableProfileSingleProcessPrivilege : Ptr64 to     int 
+   +0x9c0 DisableSystemProfilePrivilege : Ptr64 to     int 
+   +0x9c8 EnableCreateSymbolicLinkPrivilege : Ptr64 to     int 
+   +0x9d0 EnableDebugPrivilege : Ptr64 to     int 
+   +0x9d8 EnableIncreaseWorkingSetPrivilege : Ptr64 to     int 
+   +0x9e0 EnableLockMemoryPrivilege : Ptr64 to     int 
+   +0x9e8 EnableManageVolumePrivilege : Ptr64 to     int 
+   +0x9f0 EnablePrivilege  : Ptr64 to     int 
+   +0x9f8 EnableProfileSingleProcessPrivilege : Ptr64 to     int 
+   +0xa00 EnableSystemProfilePrivilege : Ptr64 to     int 
+   +0xa08 FilesExistA      : Ptr64 to     int 
+   +0xa10 FilesExistW      : Ptr64 to     int 
+   +0xa18 FindCharsInString : Ptr64 to     int 
+   +0xa20 FindCharsInUnicodeString : Ptr64 to     int 
+   +0xa28 GetModuleRtlPath : Ptr64 to     int 
+   +0xa30 InitializeRtlFile : Ptr64 to     int 
+   +0xa38 LoadFile         : Ptr64 to     int 
+   +0xa40 LoadDbgEng       : Ptr64 to     int 
+   +0xa48 LoadDbgHelp      : Ptr64 to     int 
+   +0xa50 LoadPathEnvironmentVariable : Ptr64 to     _PATH_ENV_VAR* 
+   +0xa58 LoadShlwapi      : Ptr64 to     int 
+   +0xa60 PrefaultPages    : Ptr64 to     int 
+   +0xa68 RegisterDllNotification : Ptr64 to     int 
+   +0xa70 RtlCheckBit      : Ptr64 to     unsigned char 
+   +0xa78 RtlInitializeSplayLinks : Ptr64 to     void 
+   +0xa80 RtlInsertAsLeftChild : Ptr64 to     void 
+   +0xa88 RtlInsertAsRightChild : Ptr64 to     void 
+   +0xa90 RtlIsLeftChild   : Ptr64 to     unsigned char 
+   +0xa98 RtlIsRightChild  : Ptr64 to     unsigned char 
+   +0xaa0 RtlIsRoot        : Ptr64 to     unsigned char 
+   +0xaa8 RtlLeftChild     : Ptr64 to     _RTL_SPLAY_LINKS* 
+   +0xab0 RtlParent        : Ptr64 to     _RTL_SPLAY_LINKS* 
+   +0xab8 RtlRightChild    : Ptr64 to     _RTL_SPLAY_LINKS* 
+   +0xac0 SetPrivilege     : Ptr64 to     int 
+   +0xac8 StringToExistingRtlPath : Ptr64 to     int 
+   +0xad0 StringToRtlPath  : Ptr64 to     int 
+   +0xad8 TestExceptionHandler : Ptr64 to     int 
+   +0xae0 UnicodeStringToExistingRtlPath : Ptr64 to     int 
+   +0xae8 UnicodeStringToRtlPath : Ptr64 to     int 
+   +0xaf0 UnregisterDllNotification : Ptr64 to     int 
+   +0xaf8 WriteEnvVarToRegistry : Ptr64 to     int 
+   +0xb00 WriteRegistryString : Ptr64 to     int 
+   +0xb08 AppendIntegerToCharBuffer : Ptr64 to     void 
+   +0xb10 AppendStringToCharBuffer : Ptr64 to     void 
+   +0xb18 AppendCharBufferToCharBuffer : Ptr64 to     void 
+   +0xb20 AppendCharToCharBuffer : Ptr64 to     void 
+   +0xb28 ShlwapiFunctions : struct _SHLWAPI_FUNCTIONS, 1 elements, 0x8 bytes
+   +0xb28 PathCanonicalizeA : Ptr64 to     int 
+   +0xb30 Dbg              : struct _DBG, 169 elements, 0x548 bytes
+   +0xb30 EnumDirTree      : Ptr64 to     int 
+   +0xb38 EnumDirTreeW     : Ptr64 to     int 
+   +0xb40 EnumerateLoadedModules64 : Ptr64 to     int 
+   +0xb48 EnumerateLoadedModules : Ptr64 to     int 
+   +0xb50 EnumerateLoadedModulesEx : Ptr64 to     int 
+   +0xb58 EnumerateLoadedModulesExW : Ptr64 to     int 
+   +0xb60 EnumerateLoadedModulesW64 : Ptr64 to     int 
+   +0xb68 FindFileInPath   : Ptr64 to     int 
+   +0xb70 FindFileInSearchPath : Ptr64 to     int 
+   +0xb78 GetSymLoadError  : Ptr64 to     unsigned long 
+   +0xb80 GetTimestampForLoadedLibrary : Ptr64 to     unsigned long 
+   +0xb88 MakeSureDirectoryPathExists : Ptr64 to     int 
+   +0xb90 RangeMapAddPeImageSections : Ptr64 to     int 
+   +0xb98 RangeMapRead     : Ptr64 to     int 
+   +0xba0 RangeMapRemove   : Ptr64 to     int 
+   +0xba8 RangeMapWrite    : Ptr64 to     int 
+   +0xbb0 ReportSymbolLoadSummary : Ptr64 to     int 
+   +0xbb8 SearchTreeForFile : Ptr64 to     int 
+   +0xbc0 SearchTreeForFileW : Ptr64 to     int 
+   +0xbc8 StackWalk64      : Ptr64 to     int 
+   +0xbd0 StackWalkEx      : Ptr64 to     int 
+   +0xbd8 StackWalk        : Ptr64 to     int 
+   +0xbe0 SymAddrIncludeInlineTrace : Ptr64 to     unsigned long 
+   +0xbe8 SymAddSourceStreamA : Ptr64 to     int 
+   +0xbf0 SymAddSourceStream : Ptr64 to     int 
+   +0xbf8 SymAddSourceStreamW : Ptr64 to     int 
+   +0xc00 SymAddSymbol     : Ptr64 to     int 
+   +0xc08 SymAddSymbolW    : Ptr64 to     int 
+   +0xc10 SymCleanup       : Ptr64 to     int 
+   +0xc18 SymCompareInlineTrace : Ptr64 to     unsigned long 
+   +0xc20 SymDeleteSymbol  : Ptr64 to     int 
+   +0xc28 SymDeleteSymbolW : Ptr64 to     int 
+   +0xc30 SymEnumerateModules64 : Ptr64 to     int 
+   +0xc38 SymEnumerateModules : Ptr64 to     int 
+   +0xc40 SymEnumerateModulesW64 : Ptr64 to     int 
+   +0xc48 SymEnumerateSymbols64 : Ptr64 to     int 
+   +0xc50 SymEnumerateSymbols : Ptr64 to     int 
+   +0xc58 SymEnumerateSymbolsW64 : Ptr64 to     int 
+   +0xc60 SymEnumerateSymbolsW : Ptr64 to     int 
+   +0xc68 SymEnumLines     : Ptr64 to     int 
+   +0xc70 SymEnumLinesW    : Ptr64 to     int 
+   +0xc78 SymEnumProcesses : Ptr64 to     int 
+   +0xc80 SymEnumSourceFiles : Ptr64 to     int 
+   +0xc88 SymEnumSourceFilesW : Ptr64 to     int 
+   +0xc90 SymEnumSourceFileTokens : Ptr64 to     int 
+   +0xc98 SymEnumSourceLines : Ptr64 to     int 
+   +0xca0 SymEnumSourceLinesW : Ptr64 to     int 
+   +0xca8 SymEnumSymbolsEx : Ptr64 to     int 
+   +0xcb0 SymEnumSymbolsExW : Ptr64 to     int 
+   +0xcb8 SymEnumSymbolsForAddr : Ptr64 to     int 
+   +0xcc0 SymEnumSymbolsForAddrW : Ptr64 to     int 
+   +0xcc8 SymEnumSymbols   : Ptr64 to     int 
+   +0xcd0 SymEnumSymbolsW  : Ptr64 to     int 
+   +0xcd8 SymEnumSym       : Ptr64 to     int 
+   +0xce0 SymEnumTypesByName : Ptr64 to     int 
+   +0xce8 SymEnumTypesByNameW : Ptr64 to     int 
+   +0xcf0 SymEnumTypes     : Ptr64 to     int 
+   +0xcf8 SymEnumTypesW    : Ptr64 to     int 
+   +0xd00 SymFindFileInPath : Ptr64 to     int 
+   +0xd08 SymFindFileInPathW : Ptr64 to     int 
+   +0xd10 SymFromAddr      : Ptr64 to     int 
+   +0xd18 SymFromAddrW     : Ptr64 to     int 
+   +0xd20 SymFromIndex     : Ptr64 to     int 
+   +0xd28 SymFromIndexW    : Ptr64 to     int 
+   +0xd30 SymFromInlineContext : Ptr64 to     int 
+   +0xd38 SymFromInlineContextW : Ptr64 to     int 
+   +0xd40 SymFromName      : Ptr64 to     int 
+   +0xd48 SymFromNameW     : Ptr64 to     int 
+   +0xd50 SymFromToken     : Ptr64 to     int 
+   +0xd58 SymFromTokenW    : Ptr64 to     int 
+   +0xd60 SymGetFileLineOffsets64 : Ptr64 to     unsigned long 
+   +0xd68 SymGetLineFromAddr64 : Ptr64 to     int 
+   +0xd70 SymGetLineFromAddr : Ptr64 to     int 
+   +0xd78 SymGetLineFromAddrW64 : Ptr64 to     int 
+   +0xd80 SymGetLineFromInlineContext : Ptr64 to     int 
+   +0xd88 SymGetLineFromInlineContextW : Ptr64 to     int 
+   +0xd90 SymGetLineFromName64 : Ptr64 to     int 
+   +0xd98 SymGetLineFromName : Ptr64 to     int 
+   +0xda0 SymGetLineFromNameW64 : Ptr64 to     int 
+   +0xda8 SymGetLineNext64 : Ptr64 to     int 
+   +0xdb0 SymGetLineNext   : Ptr64 to     int 
+   +0xdb8 SymGetLineNextW64 : Ptr64 to     int 
+   +0xdc0 SymGetLinePrev64 : Ptr64 to     int 
+   +0xdc8 SymGetLinePrev   : Ptr64 to     int 
+   +0xdd0 SymGetLinePrevW64 : Ptr64 to     int 
+   +0xdd8 SymGetModuleBase : Ptr64 to     unsigned long 
+   +0xde0 SymGetModuleInfo64 : Ptr64 to     int 
+   +0xde8 SymGetModuleInfo : Ptr64 to     int 
+   +0xdf0 SymGetModuleInfoW64 : Ptr64 to     int 
+   +0xdf8 SymGetModuleInfoW : Ptr64 to     int 
+   +0xe00 SymGetOmaps      : Ptr64 to     int 
+   +0xe08 SymGetOptions    : Ptr64 to     unsigned long 
+   +0xe10 SymGetScope      : Ptr64 to     int 
+   +0xe18 SymGetScopeW     : Ptr64 to     int 
+   +0xe20 SymGetSearchPath : Ptr64 to     int 
+   +0xe28 SymGetSearchPathW : Ptr64 to     int 
+   +0xe30 SymGetSourceFileFromToken : Ptr64 to     int 
+   +0xe38 SymGetSourceFileFromTokenW : Ptr64 to     int 
+   +0xe40 SymGetSourceFile : Ptr64 to     int 
+   +0xe48 SymGetSourceFileToken : Ptr64 to     int 
+   +0xe50 SymGetSourceFileTokenW : Ptr64 to     int 
+   +0xe58 SymGetSourceFileW : Ptr64 to     int 
+   +0xe60 SymGetSourceVarFromToken : Ptr64 to     int 
+   +0xe68 SymGetSourceVarFromTokenW : Ptr64 to     int 
+   +0xe70 SymGetSymbolFile : Ptr64 to     int 
+   +0xe78 SymGetSymbolFileW : Ptr64 to     int 
+   +0xe80 SymGetSymFromAddr64 : Ptr64 to     int 
+   +0xe88 SymGetSymFromAddr : Ptr64 to     int 
+   +0xe90 SymGetSymFromName64 : Ptr64 to     int 
+   +0xe98 SymGetSymFromName : Ptr64 to     int 
+   +0xea0 SymGetSymNext64  : Ptr64 to     int 
+   +0xea8 SymGetSymNext    : Ptr64 to     int 
+   +0xeb0 SymGetSymPrev64  : Ptr64 to     int 
+   +0xeb8 SymGetSymPrev    : Ptr64 to     int 
+   +0xec0 SymGetTypeFromName : Ptr64 to     int 
+   +0xec8 SymGetTypeFromNameW : Ptr64 to     int 
+   +0xed0 SymGetTypeInfoEx : Ptr64 to     int 
+   +0xed8 SymGetTypeInfo   : Ptr64 to     int 
+   +0xee0 SymGetUnwindInfo : Ptr64 to     int 
+   +0xee8 SymInitialize    : Ptr64 to     int 
+   +0xef0 SymInitializeW   : Ptr64 to     int 
+   +0xef8 SymLoadModule    : Ptr64 to     unsigned long 
+   +0xf00 SymLoadModuleEx  : Ptr64 to     unsigned int64 
+   +0xf08 SymLoadModuleExW : Ptr64 to     unsigned int64 
+   +0xf10 SymMatchFileName : Ptr64 to     int 
+   +0xf18 SymMatchFileNameW : Ptr64 to     int 
+   +0xf20 SymMatchStringA  : Ptr64 to     int 
+   +0xf28 SymMatchString   : Ptr64 to     int 
+   +0xf30 SymMatchStringW  : Ptr64 to     int 
+   +0xf38 SymNext          : Ptr64 to     int 
+   +0xf40 SymNextW         : Ptr64 to     int 
+   +0xf48 SymPrev          : Ptr64 to     int 
+   +0xf50 SymPrevW         : Ptr64 to     int 
+   +0xf58 SymQueryInlineTrace : Ptr64 to     int 
+   +0xf60 SymRefreshModuleList : Ptr64 to     int 
+   +0xf68 SymRegisterCallback64 : Ptr64 to     int 
+   +0xf70 SymRegisterCallback : Ptr64 to     int 
+   +0xf78 SymRegisterCallbackW64 : Ptr64 to     int 
+   +0xf80 SymRegisterFunctionEntryCallback64 : Ptr64 to     int 
+   +0xf88 SymRegisterFunctionEntryCallback : Ptr64 to     int 
+   +0xf90 SymSearch        : Ptr64 to     int 
+   +0xf98 SymSearchW       : Ptr64 to     int 
+   +0xfa0 SymSetContext    : Ptr64 to     int 
+   +0xfa8 SymSetOptions    : Ptr64 to     unsigned long 
+   +0xfb0 SymSetParentWindow : Ptr64 to     int 
+   +0xfb8 SymSetScopeFromAddr : Ptr64 to     int 
+   +0xfc0 SymSetScopeFromIndex : Ptr64 to     int 
+   +0xfc8 SymSetScopeFromInlineContext : Ptr64 to     int 
+   +0xfd0 SymSetSearchPath : Ptr64 to     int 
+   +0xfd8 SymSetSearchPathW : Ptr64 to     int 
+   +0xfe0 SymSrvGetFileIndexes : Ptr64 to     int 
+   +0xfe8 SymSrvGetFileIndexesW : Ptr64 to     int 
+   +0xff0 SymSrvGetFileIndexInfo : Ptr64 to     int 
+   +0xff8 SymSrvGetFileIndexInfoW : Ptr64 to     int 
+   +0x1000 SymSrvGetFileIndexString : Ptr64 to     int 
+   +0x1008 SymSrvGetFileIndexStringW : Ptr64 to     int 
+   +0x1010 SymSrvIsStore    : Ptr64 to     int 
+   +0x1018 SymSrvIsStoreW   : Ptr64 to     int 
+   +0x1020 SymUnDName64     : Ptr64 to     int 
+   +0x1028 SymUnDName       : Ptr64 to     int 
+   +0x1030 SymUnloadModule64 : Ptr64 to     int 
+   +0x1038 SymUnloadModule  : Ptr64 to     int 
+   +0x1040 UnDecorateSymbolName : Ptr64 to     unsigned long 
+   +0x1048 UnDecorateSymbolNameW : Ptr64 to     unsigned long 
+   +0x1050 ImageNtHeader    : Ptr64 to     _IMAGE_NT_HEADERS64* 
+   +0x1058 ImageDirectoryEntryToData : Ptr64 to     void* 
+   +0x1060 ImageDirectoryEntryToDataEx : Ptr64 to     void* 
+   +0x1068 ImageRvaToSection : Ptr64 to     _IMAGE_SECTION_HEADER* 
+   +0x1070 ImageRvaToV      : Ptr64 to     void* 
+   +0x1078 DbgEng           : struct _DBGENG, 1 elements, 0x8 bytes
+   +0x1078 DebugCreate      : Ptr64 to     HRESULT 
 0:000> dt -v Rtl!_GUARDED_LIST
 struct _GUARDED_LIST, 3 elements, 0x20 bytes
    +0x000 Lock             : struct _RTL_SRWLOCK, 1 elements, 0x8 bytes
@@ -3950,7 +3983,7 @@ struct _RTL_LDR_NOTIFICATION_TABLE, 9 elements, 0x60 bytes
    +0x008 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
    +0x030 ListHead         : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x040 HeapHandle       : Ptr64 to Void
-   +0x048 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x048 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
    +0x050 NotificationFunction : Ptr64 to     void 
    +0x058 Cookie           : Ptr64 to Void
 0:000> dt -v Rtl!_RTL_LDR_NOTIFICATION_ENTRY
@@ -3980,111 +4013,116 @@ Symbol Rtl!_SQLITE3_MODULE not found.
 0:000> dt -v Rtl!_SQLITE3_API_ROUTINES
 Symbol Rtl!_SQLITE3_API_ROUTINES not found.
 0:000> dt -v StringTable!_STRING_ARRAY
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\StringTable.dll
-struct _STRING_ARRAY, 6 elements, 0x20 bytes
-   +0x000 SizeInQuadwords  : Uint2B
-   +0x002 NumberOfElements : Uint2B
-   +0x004 MinimumLength    : Uint2B
-   +0x006 MaximumLength    : Uint2B
-   +0x008 StringTable      : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x010 Strings          : [1] struct _STRING, 5 elements, 0x10 bytes
+Loading module StringTable.
+Symbol StringTable!_STRING_ARRAY not found.
 0:000> dt -v StringTable!_STRING_TABLE_FLAGS
-struct _STRING_TABLE_FLAGS, 2 elements, 0x4 bytes
-   +0x000 CopiedArray      : Bitfield Pos 0, 1 Bit
-   +0x000 Unused           : Bitfield Pos 1, 31 Bits
+Loading module StringTable.
+Symbol StringTable!_STRING_TABLE_FLAGS not found.
 0:000> dt -v StringTable!_STRING_TABLE
-struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x000 OccupiedBitmap   : Uint2B
-   +0x002 ContinuationBitmap : Uint2B
-   +0x004 HorizontalDepth  : UChar
-   +0x005 VerticalDepth    : UChar
-   +0x006 NextHorizontalOffsetInQuadwords : UChar
-   +0x007 NextVerticalOffsetInQuadwords : UChar
-   +0x008 pStringArray     : Ptr64 to struct _STRING_ARRAY, 6 elements, 0x20 bytes
-   +0x010 FirstChars       : union _STRING_SLOT, 5 elements, 0x10 bytes
-   +0x020 Lengths          : union _SLOT_LENGTHS, 24 elements, 0x20 bytes
-   +0x040 Slots            : [16] union _STRING_SLOT, 5 elements, 0x10 bytes
-   +0x140 IsPrefixOfStringInTable : Ptr64 to     short 
-   +0x148 DestroyStringTable : Ptr64 to     void 
-   +0x150 Flags            : struct _STRING_TABLE_FLAGS, 2 elements, 0x4 bytes
-   +0x154 Padding1         : [3] Uint4B
-   +0x160 StringArray      : struct _STRING_ARRAY, 6 elements, 0x20 bytes
-   +0x160 Padding          : [160] Char
+Loading module StringTable.
+Symbol StringTable!_STRING_TABLE not found.
 0:000> dt -v StringTable!_STRING_MATCH
-struct _STRING_MATCH, 4 elements, 0x10 bytes
-   +0x000 Index            : Int4B
-   +0x004 NumberOfMatchedCharacters : Uint2B
-   +0x006 Padding1         : Uint2B
-   +0x008 String           : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
+Loading module StringTable.
+Symbol StringTable!_STRING_MATCH not found.
 0:000> dt -v StringTable!_STRING_ARRAY2
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY2 not found.
 0:000> dt -v StringTable!_STRING_ARRAY3
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY3 not found.
 0:000> dt -v StringTable!_STRING_ARRAY4
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY4 not found.
 0:000> dt -v StringTable!_STRING_ARRAY5
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY5 not found.
 0:000> dt -v StringTable!_STRING_ARRAY6
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY6 not found.
 0:000> dt -v StringTable!_STRING_ARRAY7
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY7 not found.
 0:000> dt -v StringTable!_STRING_ARRAY8
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY8 not found.
 0:000> dt -v StringTable!_STRING_ARRAY9
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY9 not found.
 0:000> dt -v StringTable!_STRING_ARRAY10
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY10 not found.
 0:000> dt -v StringTable!_STRING_ARRAY11
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY11 not found.
 0:000> dt -v StringTable!_STRING_ARRAY12
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY12 not found.
 0:000> dt -v StringTable!_STRING_ARRAY13
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY13 not found.
 0:000> dt -v StringTable!_STRING_ARRAY14
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY14 not found.
 0:000> dt -v StringTable!_STRING_ARRAY15
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY15 not found.
 0:000> dt -v StringTable!_STRING_ARRAY16
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY16 not found.
 0:000> dt -v StringTable!_STRING_ARRAY17
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY17 not found.
 0:000> dt -v StringTable!_STRING_ARRAY18
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY18 not found.
 0:000> dt -v StringTable!_STRING_ARRAY19
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY19 not found.
 0:000> dt -v StringTable!_STRING_ARRAY20
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY20 not found.
 0:000> dt -v StringTable!_STRING_ARRAY21
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY21 not found.
 0:000> dt -v StringTable!_STRING_ARRAY22
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY22 not found.
 0:000> dt -v StringTable!_STRING_ARRAY23
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY23 not found.
 0:000> dt -v StringTable!_STRING_ARRAY24
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY24 not found.
 0:000> dt -v StringTable!_STRING_ARRAY25
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY25 not found.
 0:000> dt -v StringTable!_STRING_ARRAY26
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY26 not found.
 0:000> dt -v StringTable!_STRING_ARRAY27
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY27 not found.
 0:000> dt -v StringTable!_STRING_ARRAY28
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY28 not found.
 0:000> dt -v StringTable!_STRING_ARRAY29
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY29 not found.
 0:000> dt -v StringTable!_STRING_ARRAY30
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY30 not found.
 0:000> dt -v StringTable!_STRING_ARRAY31
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY31 not found.
 0:000> dt -v StringTable!_STRING_ARRAY32
+Loading module StringTable.
 Symbol StringTable!_STRING_ARRAY32 not found.
 0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION_FLAGS
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TracedPythonSession.dll
 struct _TRACED_PYTHON_SESSION_FLAGS, 2 elements, 0x4 bytes
    +0x000 IsReadonly       : Bitfield Pos 0, 1 Bit
    +0x000 Unused           : Bitfield Pos 1, 31 Bits
 0:000> dt -v TracedPythonSession!_TRACED_PYTHON_SESSION
-struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
+struct _TRACED_PYTHON_SESSION, 82 elements, 0x348 bytes
    +0x000 Size             : Uint2B
    +0x002 PythonMajorVersion : Char
    +0x003 PythonMinorVersion : Char
@@ -4094,7 +4132,7 @@ struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
    +0x018 PathEntries      : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x020 PathDirectoryCookies : Ptr64 to Ptr64 to Void
    +0x028 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
-   +0x030 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x030 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x038 RundownListEntry : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x048 ListEntry        : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x058 OwningModule     : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
@@ -4131,45 +4169,42 @@ struct _TRACED_PYTHON_SESSION, 85 elements, 0x310 bytes
    +0x138 PythonArgvA      : Ptr64 to Ptr64 to Char
    +0x140 PythonArgvW      : Ptr64 to Ptr64 to Wchar
    +0x148 InitializeRtl    : Ptr64 to     int 
-   +0x150 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x158 CreateStringTable : Ptr64 to     _STRING_TABLE* 
-   +0x160 DestroyStringTable : Ptr64 to     void 
-   +0x168 CreateStringTableFromDelimitedString : Ptr64 to     _STRING_TABLE* 
-   +0x170 CreateStringTableFromDelimitedEnvironmentVariable : Ptr64 to     _STRING_TABLE* 
-   +0x178 StringTableAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x180 StringArrayAllocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x188 ModuleNamesStringTable : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x190 InitializeTraceStores : Ptr64 to     int 
-   +0x198 InitializeTraceContext : Ptr64 to     int 
-   +0x1a0 InitializeTraceSession : Ptr64 to     int 
-   +0x1a8 CloseTraceStores : Ptr64 to     int 
-   +0x1b0 CloseTraceContext : Ptr64 to     void 
-   +0x1b8 InitializeAllocatorFromTraceStore : Ptr64 to     int 
-   +0x1c0 TraceStores      : Ptr64 to struct _TRACE_STORES, 18 elements, 0x12e000 bytes
-   +0x1c8 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
-   +0x1d0 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
-   +0x1d8 TraceSessionDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x1e0 MaximumProcessorCount : Uint4B
-   +0x1e8 Threadpool       : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
-   +0x1f0 ThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x238 CancellationThreadpool : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
-   +0x240 CancellationThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x288 FindPythonDllAndExe : Ptr64 to     int 
-   +0x290 InitializePython : Ptr64 to     int 
-   +0x298 InitializePythonTraceContext : Ptr64 to     int 
-   +0x2a0 ClosePythonTraceContext : Ptr64 to     void 
-   +0x2a8 DestroyTracedPythonSession : Ptr64 to     void 
-   +0x2b0 PythonDllPath    : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x2b8 PythonExePath    : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x2c0 PythonHomePath   : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x2c8 OriginalDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x2d0 PythonExePathA   : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
-   +0x2d8 PythonHomePathA  : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
-   +0x2e0 Python           : Ptr64 to struct _PYTHON, 120 elements, 0xb20 bytes
-   +0x2e8 PythonTraceContext : Ptr64 to struct _PYTHON_TRACE_CONTEXT, 63 elements, 0x320 bytes
-   +0x2f0 PythonTracerTraceStoreRelocations : Ptr64 to struct _TRACE_STORE_FIELD_RELOCS, 2 elements, 0x10 bytes
-   +0x2f8 NumberOfBuffers  : Uint8B
-   +0x300 Buffers          : [2] Ptr64 to Void
+   +0x150 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x158 StringTableApi   : struct _STRING_TABLE_API, 11 elements, 0x58 bytes
+   +0x1b0 StringTableAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x1b8 StringArrayAllocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x1c0 ModuleNamesStringTable : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x1c8 InitializeTraceStores : Ptr64 to     int 
+   +0x1d0 InitializeTraceContext : Ptr64 to     int 
+   +0x1d8 InitializeTraceSession : Ptr64 to     int 
+   +0x1e0 CloseTraceStores : Ptr64 to     int 
+   +0x1e8 CloseTraceContext : Ptr64 to     void 
+   +0x1f0 InitializeAllocatorFromTraceStore : Ptr64 to     int 
+   +0x1f8 TraceStores      : Ptr64 to struct _TRACE_STORES, 19 elements, 0x12e000 bytes
+   +0x200 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
+   +0x208 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
+   +0x210 TraceSessionDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x218 MaximumProcessorCount : Uint4B
+   +0x220 Threadpool       : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
+   +0x228 ThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x270 CancellationThreadpool : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
+   +0x278 CancellationThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x2c0 FindPythonDllAndExe : Ptr64 to     int 
+   +0x2c8 InitializePython : Ptr64 to     int 
+   +0x2d0 InitializePythonTraceContext : Ptr64 to     int 
+   +0x2d8 ClosePythonTraceContext : Ptr64 to     void 
+   +0x2e0 DestroyTracedPythonSession : Ptr64 to     void 
+   +0x2e8 PythonDllPath    : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x2f0 PythonExePath    : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x2f8 PythonHomePath   : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x300 OriginalDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
+   +0x308 PythonExePathA   : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
+   +0x310 PythonHomePathA  : Ptr64 to struct _STRING, 5 elements, 0x10 bytes
+   +0x318 Python           : Ptr64 to struct _PYTHON, 120 elements, 0x1240 bytes
+   +0x320 PythonTraceContext : Ptr64 to struct _PYTHON_TRACE_CONTEXT, 64 elements, 0x450 bytes
+   +0x328 PythonTracerTraceStoreRelocations : Ptr64 to struct _TRACE_STORE_FIELD_RELOCS, 2 elements, 0x10 bytes
+   +0x330 NumberOfBuffers  : Uint8B
+   +0x338 Buffers          : [2] Ptr64 to Void
 0:000> dt -v TracedPythonSession!_PYTHON_HOME
 struct _PYTHON_HOME, 9 elements, 0x30 bytes
    +0x000 Size             : Uint2B
@@ -4212,7 +4247,6 @@ Symbol TracerConfig!_TRACER_PATH_OFFSETS not found.
 Loading module TracerControlDriver.
 Symbol TracerControlDriver!_TRACER_CONTROL_DEV_EXT not found.
 0:000> dt -v TracerCore!_TRACER_INJECTION_BREAKPOINT_SPEC
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TracerCore.dll
 struct _TRACER_INJECTION_BREAKPOINT_SPEC, 3 elements, 0x18 bytes
    +0x000 OffsetExpression : Ptr64 to Char
    +0x008 HandleBreakpoint : Ptr64 to     HRESULT 
@@ -4248,8 +4282,8 @@ struct _TRACER_INJECTION_CONTEXT, 15 elements, 0x60 bytes
    +0x008 Flags            : union _TRACER_INJECTION_CONTEXT_FLAGS, 4 elements, 0x4 bytes
    +0x00c DebugEngineThreadId : Uint4B
    +0x010 DebugEngineThreadHandle : Ptr64 to Void
-   +0x018 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x020 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x018 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x020 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x028 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x030 ParentDebugEngineSession : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x038 DebugEngineSession : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
@@ -4259,7 +4293,6 @@ struct _TRACER_INJECTION_CONTEXT, 15 elements, 0x60 bytes
    +0x050 ResumeEvent      : Ptr64 to Void
    +0x058 CurrentInjectionBreakpoint : Ptr64 to struct _TRACER_INJECTION_BREAKPOINT, 22 elements, 0x88 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_ALLOCATION
-*** WARNING: Unable to verify checksum for S:\Source\tracer\x64\Debug\TraceStore.dll
 struct _TRACE_STORE_ALLOCATION, 2 elements, 0x10 bytes
    +0x000 NumberOfRecords  : union <unnamed-tag>, 6 elements, 0x8 bytes
    +0x008 RecordSize       : union _LARGE_INTEGER, 4 elements, 0x8 bytes
@@ -4409,7 +4442,7 @@ struct _TRACE_STORE_BITMAP, 4 elements, 0x10 bytes
    +0x008 Buffer           : Ptr64 to Uint4B
 0:000> dt -v TraceStore!_TRACE_SESSION
 struct _TRACE_SESSION, 8 elements, 0x48 bytes
-   +0x000 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x000 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
    +0x008 SessionId        : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x010 MachineGuid      : struct _GUID, 4 elements, 0x10 bytes
    +0x020 Sid              : Ptr64 to struct _SID, 4 elements, 0xc bytes
@@ -4466,7 +4499,7 @@ struct _TRACE_PAGE_FAULT, 8 elements, 0x40 bytes
    +0x008 FaultingThreadFlags : union _TRACE_PAGE_FAULT_THREAD_FLAGS, 5 elements, 0x4 bytes
    +0x00c Padding          : Uint4B
    +0x010 FaultingPcModule : Ptr64 to struct _TRACE_MODULE_TABLE_ENTRY, 25 elements, 0x3e0 bytes
-   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x018 FaultingVaTraceStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
    +0x020 Disassembly      : Ptr64 to struct _LINKED_STRING, 8 elements, 0x20 bytes
    +0x028 Reserved         : [3] Uint8B
 0:000> dt -v TraceStore!_TRACE_MODULE_TABLE_FLAGS
@@ -4526,16 +4559,16 @@ struct _TRACE_MODULE_LOAD_EVENT, 15 elements, 0x200 bytes
    +0x05c Reserved         : [4] UChar
    +0x060 BackTrace        : [52] Uint8B
 0:000> dt -v TraceStore!_TRACE_CONTEXT
-struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
+struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _TRACE_CONTEXT_FLAGS, 6 elements, 0x4 bytes
    +0x008 FailedCount      : Uint4B
    +0x00c LastError        : Uint4B
-   +0x010 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x010 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x018 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x020 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x028 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
-   +0x030 TraceStores      : Ptr64 to struct _TRACE_STORES, 18 elements, 0x12e000 bytes
+   +0x030 TraceStores      : Ptr64 to struct _TRACE_STORES, 19 elements, 0x12e000 bytes
    +0x038 TimerFunction    : Ptr64 to struct _TIMER_FUNCTION, 2 elements, 0x10 bytes
    +0x040 UserData         : Ptr64 to Void
    +0x048 InitializeAllocatorFromTraceStore : Ptr64 to     int 
@@ -4577,29 +4610,29 @@ struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
    +0x2c0 Time             : struct _TRACE_STORE_TIME, 3 elements, 0x58 bytes
    +0x318 RunHistoryRegistryKey : Ptr64 to struct HKEY__, 1 elements, 0x4 bytes
    +0x320 ModuleNamePrefixTableLock : struct _RTL_SRWLOCK, 1 elements, 0x8 bytes
-   +0x328 BitmapAllocator  : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x3b8 UnicodeStringBufferAllocator : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x448 ImageFileAllocator : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x4d8 AtExitExEntry    : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
-   +0x4e0 SymbolContext    : Ptr64 to struct _TRACE_SYMBOL_CONTEXT, 21 elements, 0x100 bytes
-   +0x4e8 DebugContext     : Ptr64 to struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x1c0 bytes
-   +0x4f0 DllNotificationCookie : Ptr64 to Void
-   +0x4f8 BitmapBufferSizeInQuadwords : Uint4B
-   +0x500 IgnorePreferredAddressesBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
-   +0x510 BitmapBuffer     : [1] Uint8B
-   +0x510 TraceStoreNullId : Bitfield Pos 0, 1 Bit
-   +0x510 TraceStoreEventId : Bitfield Pos 1, 1 Bit
-   +0x510 TraceStoreStringBufferId : Bitfield Pos 2, 1 Bit
-   +0x510 TraceStoreFunctionTableId : Bitfield Pos 3, 1 Bit
-   +0x510 TraceStoreFunctionTableEntryId : Bitfield Pos 4, 1 Bit
-   +0x510 TraceStorePathTableId : Bitfield Pos 5, 1 Bit
-   +0x510 TraceStorePathTableEntryId : Bitfield Pos 6, 1 Bit
-   +0x510 TraceStoreSessionId : Bitfield Pos 7, 1 Bit
-   +0x510 TraceStoreStringArrayId : Bitfield Pos 8, 1 Bit
-   +0x510 TraceStoreStringTableId : Bitfield Pos 9, 1 Bit
-   +0x510 TraceStoreEventTraitsExId : Bitfield Pos 10, 1 Bit
-   +0x510 TraceStoreWsWatchInfoExId : Bitfield Pos 11, 1 Bit
-   +0x510 TraceStoreWorkingSetExId : Bitfield Pos 12, 1 Bit
+   +0x328 BitmapAllocator  : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x450 UnicodeStringBufferAllocator : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x578 ImageFileAllocator : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x6a0 AtExitExEntry    : Ptr64 to struct _RTL_ATEXIT_ENTRY, 0 elements, 0x0 bytes
+   +0x6a8 SymbolContext    : Ptr64 to struct _TRACE_SYMBOL_CONTEXT, 21 elements, 0x100 bytes
+   +0x6b0 DebugContext     : Ptr64 to struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x200 bytes
+   +0x6b8 DllNotificationCookie : Ptr64 to Void
+   +0x6c0 BitmapBufferSizeInQuadwords : Uint4B
+   +0x6c8 IgnorePreferredAddressesBitmap : struct _RTL_BITMAP, 2 elements, 0x10 bytes
+   +0x6d8 BitmapBuffer     : [1] Uint8B
+   +0x6d8 TraceStoreNullId : Bitfield Pos 0, 1 Bit
+   +0x6d8 TraceStoreEventId : Bitfield Pos 1, 1 Bit
+   +0x6d8 TraceStoreStringBufferId : Bitfield Pos 2, 1 Bit
+   +0x6d8 TraceStoreFunctionTableId : Bitfield Pos 3, 1 Bit
+   +0x6d8 TraceStoreFunctionTableEntryId : Bitfield Pos 4, 1 Bit
+   +0x6d8 TraceStorePathTableId : Bitfield Pos 5, 1 Bit
+   +0x6d8 TraceStorePathTableEntryId : Bitfield Pos 6, 1 Bit
+   +0x6d8 TraceStoreSessionId : Bitfield Pos 7, 1 Bit
+   +0x6d8 TraceStoreStringArrayId : Bitfield Pos 8, 1 Bit
+   +0x6d8 TraceStoreStringTableId : Bitfield Pos 9, 1 Bit
+   +0x6d8 TraceStoreEventTraitsExId : Bitfield Pos 10, 1 Bit
+   +0x6d8 TraceStoreWsWatchInfoExId : Bitfield Pos 11, 1 Bit
+   +0x6d8 TraceStoreWorkingSetExId : Bitfield Pos 12, 1 Bit
 0:000> dt -v TraceStore!_TRACE_SYMBOL_CONTEXT
 struct _TRACE_SYMBOL_CONTEXT, 21 elements, 0x100 bytes
    +0x000 SizeOfStruct     : Uint4B
@@ -4610,7 +4643,7 @@ struct _TRACE_SYMBOL_CONTEXT, 21 elements, 0x100 bytes
    +0x010 ThreadHandle     : Ptr64 to Void
    +0x018 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
    +0x040 WorkList         : struct _GUARDED_LIST, 3 elements, 0x20 bytes
-   +0x060 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
+   +0x060 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
    +0x068 ThreadEntry      : Ptr64 to     unsigned long 
    +0x070 ShutdownEvent    : Ptr64 to Void
    +0x078 WorkAvailableEvent : Ptr64 to Void
@@ -4644,7 +4677,7 @@ struct _TRACE_SYMBOL_TABLE_ENTRY, 5 elements, 0x40 bytes
    +0x00c Flags            : struct _TRACE_SYMBOL_TABLE_ENTRY_FLAGS, 1 elements, 0x4 bytes
    +0x010 PrefixTableEntry : struct _PREFIX_TABLE_ENTRY, 5 elements, 0x30 bytes
 0:000> dt -v TraceStore!_TRACE_DEBUG_CONTEXT
-struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x1c0 bytes
+struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x200 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _TRACE_DEBUG_CONTEXT_FLAGS, 2 elements, 0x4 bytes
    +0x008 State            : Enum _TRACE_DEBUG_CONTEXT_STATE,  7 total enums
@@ -4653,7 +4686,7 @@ struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x1c0 bytes
    +0x010 ThreadHandle     : Ptr64 to Void
    +0x018 CriticalSection  : struct _RTL_CRITICAL_SECTION, 6 elements, 0x28 bytes
    +0x040 WorkList         : struct _GUARDED_LIST, 3 elements, 0x20 bytes
-   +0x060 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
+   +0x060 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
    +0x068 ThreadEntry      : Ptr64 to     unsigned long 
    +0x070 ShutdownEvent    : Ptr64 to Void
    +0x078 WorkAvailableEvent : Ptr64 to Void
@@ -4668,8 +4701,8 @@ struct _TRACE_DEBUG_CONTEXT, 24 elements, 0x1c0 bytes
    +0x0a8 CurrentTimestamp : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x0b0 DebugEngineSession : Ptr64 to struct _DEBUG_ENGINE_SESSION, 67 elements, 0x2f0 bytes
    +0x0b8 DestroyDebugEngineSession : Ptr64 to     void 
-   +0x0c0 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x150 Reserved         : [112] UChar
+   +0x0c0 Allocator        : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x1e8 Reserved         : [24] UChar
 0:000> dt -v TraceStore!_TRACE_TYPE_INFO_TABLE_FLAGS
 struct _TRACE_TYPE_INFO_TABLE_FLAGS, 1 elements, 0x4 bytes
    +0x000 Initialized      : Bitfield Pos 0, 1 Bit
@@ -4753,7 +4786,7 @@ struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
    +0x010 ErrorMessage     : Ptr64 to Char
    +0x000 AsSqlite3Vtab    : struct _SQLITE3_VTAB, 4 elements, 0x18 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_FLAGS
-struct _TRACE_STORE_FLAGS, 20 elements, 0x4 bytes
+struct _TRACE_STORE_FLAGS, 22 elements, 0x4 bytes
    +0x000 NoRetire         : Bitfield Pos 0, 1 Bit
    +0x000 NoPrefaulting    : Bitfield Pos 1, 1 Bit
    +0x000 IgnorePreferredAddresses : Bitfield Pos 2, 1 Bit
@@ -4773,9 +4806,11 @@ struct _TRACE_STORE_FLAGS, 20 elements, 0x4 bytes
    +0x000 RundownComplete  : Bitfield Pos 16, 1 Bit
    +0x000 HasFlatMapping   : Bitfield Pos 17, 1 Bit
    +0x000 FlatMappingLoaded : Bitfield Pos 18, 1 Bit
-   +0x000 Unused           : Bitfield Pos 19, 13 Bits
+   +0x000 Excluded         : Bitfield Pos 19, 1 Bit
+   +0x000 NoAllocationTimestamps : Bitfield Pos 20, 1 Bit
+   +0x000 Unused           : Bitfield Pos 21, 11 Bits
 0:000> dt -v TraceStore!_TRACE_STORE
-struct _TRACE_STORE, 149 elements, 0x800 bytes
+struct _TRACE_STORE, 151 elements, 0x800 bytes
    +0x000 TraceStoreId     : Enum _TRACE_STORE_ID,  62 total enums
 
    +0x004 TraceStoreMetadataId : Enum _TRACE_STORE_METADATA_ID,  11 total enums
@@ -4801,8 +4836,10 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x00c RundownComplete  : Bitfield Pos 16, 1 Bit
    +0x00c HasFlatMapping   : Bitfield Pos 17, 1 Bit
    +0x00c FlatMappingLoaded : Bitfield Pos 18, 1 Bit
-   +0x00c UnusedStoreFlagBits : Bitfield Pos 19, 13 Bits
-   +0x00c StoreFlags       : struct _TRACE_STORE_FLAGS, 20 elements, 0x4 bytes
+   +0x00c Excluded         : Bitfield Pos 19, 1 Bit
+   +0x00c NoAllocationTimestamps : Bitfield Pos 20, 1 Bit
+   +0x00c UnusedStoreFlagBits : Bitfield Pos 21, 11 Bits
+   +0x00c StoreFlags       : struct _TRACE_STORE_FLAGS, 22 elements, 0x4 bytes
    +0x010 TraceFlags       : struct _TRACE_FLAGS, 20 elements, 0x4 bytes
    +0x014 InitialTraits    : struct _TRACE_STORE_TRAITS, 17 elements, 0x4 bytes
    +0x018 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
@@ -4824,9 +4861,9 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x100 ListEntry        : struct _SLIST_ENTRY, 1 elements, 0x10 bytes
    +0x100 Next             : Ptr64 to struct _SLIST_ENTRY, 1 elements, 0x10 bytes
    +0x108 Unused           : Ptr64 to Void
-   +0x110 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x118 pAllocator       : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x120 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
+   +0x110 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x118 pAllocator       : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x120 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
    +0x128 InitialSize      : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x130 ExtensionSize    : union _LARGE_INTEGER, 4 elements, 0x8 bytes
    +0x138 MappingSize      : union _LARGE_INTEGER, 4 elements, 0x8 bytes
@@ -4867,18 +4904,18 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x288 FlatAddressRange : struct _TRACE_STORE_ADDRESS_RANGE, 7 elements, 0x40 bytes
    +0x2c8 Padding1         : Uint8B
    +0x2d0 FlatMemoryMap    : struct _TRACE_STORE_MEMORY_MAP, 10 elements, 0x40 bytes
-   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x310 TraceStore       : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x318 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x320 AllocationStore  : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x328 RelocationStore  : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x330 AddressStore     : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x338 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x340 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x348 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x350 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x358 InfoStore        : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x360 RelocationDependencyStores : Ptr64 to Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x360 RelocationDependencyStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
    +0x368 AllocateRecords  : Ptr64 to     void* 
    +0x370 AllocateRecordsWithTimestamp : Ptr64 to     void* 
    +0x378 TryAllocateRecords : Ptr64 to     void* 
@@ -4912,24 +4949,24 @@ struct _TRACE_STORE, 149 elements, 0x800 bytes
    +0x458 ReadonlyMappingSizes : Ptr64 to union _ULARGE_INTEGER, 4 elements, 0x8 bytes
    +0x460 ReadonlyPreferredAddressUnavailable : Uint4B
    +0x464 Padding2         : Uint4B
-   +0x468 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x4f8 IntervalFramesPerSecond : Uint8B
-   +0x500 Intervals        : struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
-   +0x580 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
-   +0x588 Sqlite3Schema    : Ptr64 to Char
-   +0x590 Sqlite3VirtualTableName : Ptr64 to Char
-   +0x598 Sqlite3Column    : Ptr64 to     long 
-   +0x5a0 Sqlite3Module    : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
-   +0x658 Sqlite3VirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x670 Sqlite3IntervalSchema : Ptr64 to Char
-   +0x678 Sqlite3IntervalVirtualTableName : Ptr64 to Char
-   +0x680 Sqlite3IntervalColumn : Ptr64 to     long 
-   +0x688 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
-   +0x740 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
-   +0x758 Cuda             : Ptr64 to struct _TRACE_STORE_CUDA, 15 elements, 0x1c0 bytes
-   +0x760 Padding3         : [20] Uint8B
+   +0x468 Allocator        : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x590 IntervalFramesPerSecond : Uint8B
+   +0x598 Intervals        : struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
+   +0x618 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 36 elements, 0x6a8 bytes
+   +0x620 Sqlite3Schema    : Ptr64 to Char
+   +0x628 Sqlite3VirtualTableName : Ptr64 to Char
+   +0x630 Sqlite3Column    : Ptr64 to     long 
+   +0x638 Sqlite3Module    : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
+   +0x6f0 Sqlite3VirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
+   +0x708 Sqlite3IntervalSchema : Ptr64 to Char
+   +0x710 Sqlite3IntervalVirtualTableName : Ptr64 to Char
+   +0x718 Sqlite3IntervalColumn : Ptr64 to     long 
+   +0x720 Sqlite3IntervalModule : struct _SQLITE3_MODULE, 24 elements, 0xb8 bytes
+   +0x7d8 Sqlite3IntervalVirtualTable : struct _TRACE_STORE_SQLITE3_VTAB, 6 elements, 0x18 bytes
+   +0x7f0 Cuda             : Ptr64 to struct _TRACE_STORE_CUDA, 15 elements, 0x1c0 bytes
+   +0x7f8 Padding3         : Uint8B
 0:000> dt -v TraceStore!_TRACE_STORES
-struct _TRACE_STORES, 18 elements, 0x12e000 bytes
+struct _TRACE_STORES, 19 elements, 0x12e000 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 SizeOfAllocation : Uint4B
    +0x008 NumberOfTraceStores : Uint2B
@@ -4939,26 +4976,27 @@ struct _TRACE_STORES, 18 elements, 0x12e000 bytes
    +0x010 Padding2         : Uint4B
    +0x014 Flags            : struct _TRACE_FLAGS, 20 elements, 0x4 bytes
    +0x018 BaseDirectory    : struct _UNICODE_STRING, 5 elements, 0x10 bytes
-   +0x028 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
-   +0x030 Allocator        : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x028 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
+   +0x030 Allocator        : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x038 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x040 RundownListEntry : struct _LIST_ENTRY, 2 elements, 0x10 bytes
    +0x050 Rundown          : Ptr64 to struct _TRACE_STORES_RUNDOWN, 5 elements, 0x40 bytes
    +0x058 StoresListHead   : struct _LIST_ENTRY, 2 elements, 0x10 bytes
+   +0x068 ExcludeBitmap    : Ptr64 to struct _RTL_BITMAP, 2 elements, 0x10 bytes
    +0x080 RelocationCompleteEvents : [60] Ptr64 to Void
    +0x400 Relocations      : [60] struct _TRACE_STORE_RELOC, 9 elements, 0x48 bytes
-   +0x2000 Stores           : [600] struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x2000 Stores           : [600] struct _TRACE_STORE, 151 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_METADATA_STORES
 struct _TRACE_STORE_METADATA_STORES, 9 elements, 0x48 bytes
-   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
+   +0x000 MetadataInfoStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x008 AllocationStore  : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x010 RelocationStore  : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x018 AddressStore     : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x020 AddressRangeStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x028 AllocationTimestampStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x030 AllocationTimestampDeltaStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x038 SynchronizationStore : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x040 InfoStore        : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
 0:000> dt -v TraceStore!_TRACE_STORES_RUNDOWN_FLAGS
 struct _TRACE_STORES_RUNDOWN_FLAGS, 1 elements, 0x4 bytes
    +0x000 IsActive         : Bitfield Pos 0, 1 Bit
@@ -5015,8 +5053,8 @@ struct _TRACE_STORE_SQLITE3_CURSOR, 39 elements, 0x110 bytes
    +0x088 Allocation       : Ptr64 to struct _TRACE_STORE_ALLOCATION, 2 elements, 0x10 bytes
    +0x090 CurrentCoalescedAllocationNumber : Int8B
    +0x098 TotalCoalescedAllocations : Int8B
-   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 149 elements, 0x800 bytes
-   +0x0a8 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
+   +0x0a0 TraceStore       : Ptr64 to struct _TRACE_STORE, 151 elements, 0x800 bytes
+   +0x0a8 Db               : Ptr64 to struct _TRACE_STORE_SQLITE3_DB, 36 elements, 0x6a8 bytes
    +0x0b0 Intervals        : Ptr64 to struct _TRACE_STORE_INTERVALS, 16 elements, 0x80 bytes
    +0x0b8 IntervalRecordSize : Uint8B
    +0x0c0 Sqlite3Column    : Ptr64 to     long 
@@ -5031,14 +5069,14 @@ struct _TRACE_STORE_SQLITE3_CURSOR, 39 elements, 0x110 bytes
    +0x108 VirtualTable     : Ptr64 to struct _SQLITE3_VTAB, 4 elements, 0x18 bytes
    +0x108 AsSqlite3VtabCursor : struct _SQLITE3_VTAB_CURSOR, 1 elements, 0x8 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_SQLITE3_DB
-struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
+struct _TRACE_STORE_SQLITE3_DB, 36 elements, 0x6a8 bytes
    +0x000 SizeOfStruct     : Uint4B
    +0x004 Flags            : union _TRACE_STORE_SQLITE3_DB_FLAGS, 4 elements, 0x4 bytes
    +0x008 State            : union _TRACE_STORE_SQLITE3_DB_STATE, 3 elements, 0x4 bytes
-   +0x010 Sqlite3Allocator : Ptr64 to struct _ALLOCATOR, 28 elements, 0x90 bytes
+   +0x010 Sqlite3Allocator : Ptr64 to struct _ALLOCATOR, 47 elements, 0x128 bytes
    +0x018 Sqlite3Db        : Ptr64 to struct sqlite3, 0 elements, 0x0 bytes
    +0x020 Sqlite3          : Ptr64 to struct _SQLITE3_API_ROUTINES, 217 elements, 0x6c8 bytes
-   +0x028 Rtl              : Ptr64 to struct _RTL, 483 elements, 0x1020 bytes
+   +0x028 Rtl              : Ptr64 to struct _RTL, 495 elements, 0x1080 bytes
    +0x030 TracerConfig     : Ptr64 to struct _TRACER_CONFIG, 15 elements, 0x1c0 bytes
    +0x038 TraceSessionDirectory : Ptr64 to struct _UNICODE_STRING, 5 elements, 0x10 bytes
    +0x040 OwningModule     : Ptr64 to Void
@@ -5053,25 +5091,21 @@ struct _TRACE_STORE_SQLITE3_DB, 40 elements, 0x4b0 bytes
    +0x1f0 TracerHeapModule : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
    +0x1f8 StringTableModule : Ptr64 to struct HINSTANCE__, 1 elements, 0x4 bytes
    +0x200 InitializeHeapAllocatorEx : Ptr64 to     int 
-   +0x208 InitializeStringTableAllocator : Ptr64 to     int 
-   +0x210 CreateStringTable : Ptr64 to     _STRING_TABLE* 
-   +0x218 DestroyStringTable : Ptr64 to     void 
-   +0x220 CreateStringTableFromDelimitedString : Ptr64 to     _STRING_TABLE* 
-   +0x228 CreateStringTableFromDelimitedEnvironmentVariable : Ptr64 to     _STRING_TABLE* 
-   +0x230 StringTableAllocator : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x2c0 StringArrayAllocator : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x350 NumberOfFunctionStringTables : Uint2B
-   +0x352 Padding          : [3] Uint2B
-   +0x358 FunctionStringTable1 : Ptr64 to struct _STRING_TABLE, 16 elements, 0x200 bytes
-   +0x360 MaximumProcessorCount : Uint4B
-   +0x368 Threadpool       : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
-   +0x370 ThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x3b8 CancellationThreadpool : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
-   +0x3c0 CancellationThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
-   +0x408 Allocator        : struct _ALLOCATOR, 28 elements, 0x90 bytes
-   +0x498 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
-   +0x4a0 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x520 bytes
-   +0x4a8 TraceStores      : Ptr64 to struct _TRACE_STORES, 18 elements, 0x12e000 bytes
+   +0x208 StringTableApi   : struct _STRING_TABLE_API, 11 elements, 0x58 bytes
+   +0x260 StringTableAllocator : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x388 StringArrayAllocator : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x4b0 NumberOfFunctionStringTables : Uint2B
+   +0x4b2 Padding          : [3] Uint2B
+   +0x4b8 FunctionStringTable1 : Ptr64 to struct _STRING_TABLE, 10 elements, 0x200 bytes
+   +0x4c0 MaximumProcessorCount : Uint4B
+   +0x4c8 Threadpool       : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
+   +0x4d0 ThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x518 CancellationThreadpool : Ptr64 to struct _TP_POOL, 0 elements, 0x0 bytes
+   +0x520 CancellationThreadpoolCallbackEnviron : struct _TP_CALLBACK_ENVIRON_V3, 10 elements, 0x48 bytes
+   +0x568 Allocator        : struct _ALLOCATOR, 47 elements, 0x128 bytes
+   +0x690 TraceSession     : Ptr64 to struct _TRACE_SESSION, 8 elements, 0x48 bytes
+   +0x698 TraceContext     : Ptr64 to struct _TRACE_CONTEXT, 73 elements, 0x6e0 bytes
+   +0x6a0 TraceStores      : Ptr64 to struct _TRACE_STORES, 19 elements, 0x12e000 bytes
 0:000> dt -v TraceStore!_TRACE_STORE_CUDA
 struct _TRACE_STORE_CUDA, 15 elements, 0x1c0 bytes
    +0x000 SizeOfStruct     : Uint4B
