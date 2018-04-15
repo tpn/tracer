@@ -1361,9 +1361,10 @@ TRACE_STORE._fields_ = [
     ('Sqlite3IntervalColumn', PTRACE_STORE_SQLITE3_COLUMN),
     ('Sqlite3IntervalModule', SQLITE3_MODULE),
     ('Sqlite3IntervalVirtualTable', TRACE_STORE_SQLITE3_VTAB),
-    ('Padding3', BYTE * 168),
+    ('Cuda', PVOID),
+    ('Padding3', ULONGLONG),
 ]
-#assert sizeof(TRACE_STORE) == 2048, sizeof(TRACE_STORE)
+assert sizeof(TRACE_STORE) == 2048, sizeof(TRACE_STORE)
 
 class METADATA_STORE(TRACE_STORE):
     is_metadata = True

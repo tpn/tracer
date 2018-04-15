@@ -2,13 +2,13 @@
 # Imports
 #===============================================================================
 
-from .logic import (
+from ..logic import (
     Mutex,
 )
 
 import itertools
 
-from .util import (
+from ..util import (
     defaultdict,
 
     Dict,

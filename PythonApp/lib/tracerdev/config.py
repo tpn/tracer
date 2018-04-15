@@ -544,7 +544,7 @@ class Config(RawConfigParser):
 
     @property
     def structs(self):
-        from tracer.dbgeng import Struct
+        from tracer.dbgeng.display_type import Struct
         text = self.cdb_output_text
         return Struct.load_all_from_text(text)
 

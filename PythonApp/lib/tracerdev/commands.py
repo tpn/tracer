@@ -896,6 +896,10 @@ class CheckCtypes(InvariantAwareCommand):
         ts = structs.by_module['TraceStore']['TRACE_STORE']
         diff = ts.offset_and_fields_diff(TraceStore.TRACE_STORE)
 
+        from pprint import pprint
+
+        print("Tip: type pprint(diff) to see TRACE_STORE struct diffs.")
+
         import ipdb
         ipdb.set_trace()
 
