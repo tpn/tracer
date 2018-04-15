@@ -298,7 +298,7 @@ Routine Description:
     //
     // Set all the slot lengths to 0x7f up front instead of defaulting
     // to zero.  This allows for simpler logic when searching for a prefix
-    // string, which involves broadcasting a search string's length to a Xmm
+    // string, which involves broadcasting a search string's length to an XMM
     // register, then doing _mm_cmpgt_epi8() against the lengths array and
     // the string length.  If we left the lengths as 0 for unused slots, they
     // would get included in the resulting comparison register (i.e. the high

@@ -104,9 +104,9 @@ Return Value:
     //
     //  2. Load the string table's unique character array into an Xmm register.
     //
-    //  3. Broadcast the search string's length into a Xmm register.
+    //  3. Broadcast the search string's length into an XMM register.
     //
-    //  3. Load the string table's slot lengths array into a Xmm register.
+    //  3. Load the string table's slot lengths array into an XMM register.
     //
     //  4. Compare the unique character from step 1 to the string table's unique
     //     character array set up in step 2.  The result of this comparison
@@ -166,13 +166,13 @@ Return Value:
     }
 
     //
-    // Load the slot length array into a XMM register.
+    // Load the slot length array into an XMM register.
     //
 
     Lengths.SlotsXmm = _mm_load_si128(&StringTable->Lengths.SlotsXmm);
 
     //
-    // Broadcast the search string's length into a XMM register.
+    // Broadcast the search string's length into an XMM register.
     //
 
     LengthXmm.m128i_u8[0] = (BYTE)String->Length;
