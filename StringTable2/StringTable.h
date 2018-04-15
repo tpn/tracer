@@ -219,6 +219,9 @@ typedef struct _STRING_TABLE {
     //
     // For each unique character identified above, the following structure
     // captures the 0-based index of that character in the underlying string.
+    // This is used as an input to vpshufb to rearrange the search string's
+    // characters such that it can be vpcmpeqb'd against the unique characters
+    // above.
     //
 
     SLOT_INDEX UniqueIndex;
