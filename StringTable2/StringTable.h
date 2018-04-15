@@ -313,7 +313,7 @@ typedef struct _STRING_TABLE {
     // We want the structure size to be a power of 2 such that an even number
     // can fit into a 4KB page (and reducing the likelihood of crossing page
     // boundaries, which complicates SIMD boundary handling), so we have an
-    // extra 184-bytes to play with here.  The CopyStringArray() routine is
+    // extra 192-bytes to play with here.  The CopyStringArray() routine is
     // special-cased to allocate the backing STRING_ARRAY structure plus the
     // accommodating buffers in this space if it can fit.
     //
@@ -324,7 +324,7 @@ typedef struct _STRING_TABLE {
 
     union {
         STRING_ARRAY StringArray;
-        CHAR Padding[184];
+        CHAR Padding[192];
     };
 
 } STRING_TABLE, *PSTRING_TABLE, **PPSTRING_TABLE;
