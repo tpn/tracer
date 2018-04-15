@@ -28,6 +28,7 @@ DriverEntry(
 {
     NTSTATUS Status;
     ULONG Attributes;
+    HANDLE RegistryHandle = NULL;
     PDEVICE_OBJECT DeviceObject;
     PTRACER_CONTROL_DEV_EXT DevExt;
     OBJECT_ATTRIBUTES ObjectAttributes;
@@ -92,12 +93,10 @@ DriverEntry(
     );
 
     //
-    // Open a handle to our driver's registry path.  This is kept open for the
-    // duration of our driver's existence, and accessible from the device
-    // extension's RegistryHandle field.
+    // Open a handle to our driver's registry path.
     //
 
-    Status = ZwOpenKey(&DevExt->RegistryHandle,
+    Status = ZwOpenKey(&RegistryHandle,
                        KEY_ALL_ACCESS,
                        &ObjectAttributes);
 
@@ -137,15 +136,6 @@ DriverEntry(
 Error:
 
     //
-    // Close our handle to RegistryPath if we opened it.
-    //
-
-    if (DevExt->RegistryHandle) {
-        ZwClose(DevExt->RegistryHandle);
-        DevExt->RegistryHandle = NULL;
-    }
-
-    //
     // Delete our device.
     //
 
@@ -154,6 +144,16 @@ Error:
     ASSERT(!NT_SUCCESS(Status));
 
 End:
+
+    //
+    // Close our handle to RegistryPath if we opened it.
+    //
+
+    if (RegistryHandle) {
+        ZwClose(RegistryHandle);
+        RegistryHandle = NULL;
+    }
+
     LEAVE_STATUS("DriverEntry", Status);
 
     return Status;
@@ -184,15 +184,7 @@ TracerControlUnload(
     DevExt = (PTRACER_CONTROL_DEV_EXT)Device->DeviceExtension;
 
     if (DevExt) {
-
-        //
-        // Close our registry key if set.
-        //
-
-        if (DevExt->RegistryHandle) {
-            ZwClose(DevExt->RegistryHandle);
-            DevExt->RegistryHandle = NULL;
-        }
+        NOTHING;
     }
 
     //

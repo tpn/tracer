@@ -11,13 +11,9 @@
 // TracerControl Driver's Device Extension Object.
 //
 
-typedef struct _TRACER_CONTROL_DEV_EXT {
+typedef struct _Struct_size_bytes_(SizeInBytes) _TRACER_CONTROL_DEV_EXT {
     USHORT Size;
-    USHORT Unused1;
-    ULONG Unused2;
-
-    HANDLE RegistryHandle;
-
+    USHORT Padding[3];
 } TRACER_CONTROL_DEV_EXT, *PTRACER_CONTROL_DEV_EXT;
 
 //
