@@ -818,12 +818,12 @@ HasEmbeddedStringArray(
 #pragma intrinsic(__popcnt16)
 
 FORCEINLINE
-USHORT
+BYTE
 GetNumberOfStringsInTable(
     _In_ PSTRING_TABLE StringTable
     )
 {
-    return (USHORT)__popcnt16(StringTable->OccupiedBitmap);
+    return (BYTE)__popcnt16(StringTable->OccupiedBitmap);
 }
 
 FORCEINLINE
