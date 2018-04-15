@@ -767,6 +767,25 @@ BOOL
 typedef QUERY_WORKING_SET_EX *PQUERY_WORKING_SET_EX;
 
 //
+// Console Handler routines.
+//
+
+typedef
+BOOL
+(WINAPI HANDLER_ROUTINE)(
+    _In_ ULONG ControlType
+    );
+typedef HANDLER_ROUTINE *PHANDLER_ROUTINE;
+
+typedef
+BOOL
+(WINAPI SET_CONSOLE_CTRL_HANDLER)(
+    _In_opt_ PHANDLER_ROUTINE HandlerRoutine,
+    _In_ BOOL Add
+    );
+typedef SET_CONSOLE_CTRL_HANDLER *PSET_CONSOLE_CTRL_HANDLER;
+
+//
 // Rtl Heap related functions.
 //
 
@@ -4577,6 +4596,7 @@ typedef INITIALIZE_RTL_FILE *PINITIALIZE_RTL_FILE;
     PBSEARCH bsearch;                                                                                  \
     PQSORT qsort;                                                                                      \
     PMEMSET memset;                                                                                    \
+    PSET_CONSOLE_CTRL_HANDLER SetConsoleCtrlHandler;                                                   \
     PMM_GET_MAXIMUM_FILE_SECTION_SIZE MmGetMaximumFileSectionSize;                                     \
     PGET_PROCESS_MEMORY_INFO K32GetProcessMemoryInfo;                                                  \
     PGET_PERFORMANCE_INFO K32GetPerformanceInfo;                                                       \

@@ -106,6 +106,7 @@ CONST PCSTR RtlFunctionNames[] = {
     "bsearch",
     "qsort",
     "memset",
+    "SetConsoleCtrlHandler",
     "MmGetMaximumFileSectionSize",
     "K32GetProcessMemoryInfo",
     "K32GetPerformanceInfo",
