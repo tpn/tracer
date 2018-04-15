@@ -1347,6 +1347,7 @@ typedef struct _STRING_TABLE_API_EX {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_1;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_2;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_3;
+    PIS_PREFIX_OF_STRING_IN_TABLE IntegerDivision_x64_1;
 
 } STRING_TABLE_API_EX;
 typedef STRING_TABLE_API_EX *PSTRING_TABLE_API_EX;
@@ -1398,6 +1399,7 @@ LoadStringTableApi(
         "IsPrefixOfStringInTable_x64_1",
         "IsPrefixOfStringInTable_x64_2",
         "IsPrefixOfStringInTable_x64_3",
+        "IntegerDivision_x64_1",
     };
 
     ULONG BitmapBuffer[(ALIGN_UP(ARRAYSIZE(Names), sizeof(ULONG) << 3) >> 5)+1];

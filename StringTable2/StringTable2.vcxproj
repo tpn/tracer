@@ -126,6 +126,7 @@
     <None Include="StringTable.inc" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="IntegerDivision_x64.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_1.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_2.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />

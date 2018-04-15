@@ -124,5 +124,8 @@
     <MASM Include="IsPrefixOfStringInTable_x64_3.asm">
       <Filter>Source Files</Filter>
     </MASM>
+    <MASM Include="IntegerDivision_x64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

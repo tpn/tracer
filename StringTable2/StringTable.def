@@ -24,4 +24,5 @@ EXPORTS
     IsPrefixOfStringInTable_x64_2
     IsPrefixOfStringInTable_x64_3
     IsPrefixOfCStrInArray
-    IsPrefixOfStringInTable=IsPrefixOfStringInTable_x64_2
+    IntegerDivision_x64_1
+    IsPrefixOfStringInTable=IsPrefixOfStringInTable_10
