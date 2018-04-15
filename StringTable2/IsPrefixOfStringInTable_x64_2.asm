@@ -470,7 +470,7 @@ Pfx60:  vpextrb     rcx, xmm4, 2                ; Restore rcx counter.
         vpextrd     edx, xmm5, 2                ; Restore rdx bitmap.
         jmp         Pfx20                       ; Continue comparisons.
 
-        IACA_VC_END
+        ;IACA_VC_END
 
         LEAF_END   IsPrefixOfStringInTable_x64_2, _TEXT$00
 
