@@ -232,7 +232,7 @@ typedef struct _STRING_TABLE {
     STRING_SLOT UniqueChars;
 
     //
-    // (16-bytes aligned.)
+    // (16 bytes consumed.)
     //
 
     //
@@ -243,7 +243,7 @@ typedef struct _STRING_TABLE {
     SLOT_INDEX UniqueIndex;
 
     //
-    // (32-bytes aligned.)
+    // (32 bytes consumed.)
     //
 
     //
@@ -253,7 +253,7 @@ typedef struct _STRING_TABLE {
     SLOT_LENGTHS Lengths;
 
     //
-    // (48-bytes aligned.)
+    // (48 bytes consumed, aligned at 16 bytes.)
     //
 
     //
@@ -269,7 +269,7 @@ typedef struct _STRING_TABLE {
     PSTRING_ARRAY pStringArray;
 
     //
-    // (56-bytes aligned.)
+    // (56 bytes consumed, aligned at 8 bytes.)
     //
 
     //
@@ -279,7 +279,7 @@ typedef struct _STRING_TABLE {
     STRING_TABLE_FLAGS Flags;
 
     //
-    // (60-bytes aligned.)
+    // (60 bytes consumed, aligned at 4 bytes.)
     //
 
     //
@@ -295,7 +295,7 @@ typedef struct _STRING_TABLE {
     USHORT ContinuationBitmap;
 
     //
-    // (64-bytes aligned.)
+    // (64 bytes consumed, aligned at 64 bytes.)
     //
 
     //
@@ -306,7 +306,7 @@ typedef struct _STRING_TABLE {
     STRING_SLOT Slots[16];
 
     //
-    // (320-bytes consumed, aligned at 64-bytes.)
+    // (320 bytes consumed, aligned at 64 bytes.)
     //
 
     //
@@ -524,7 +524,7 @@ Routine Description:
 
     Calculates the total number of bytes required to copy all of the STRING
     structs and their buffers in a given STRING_ARRAY struct, aligning each
-    string's maximum buffer length up to the given Alignment (or 16-bytes if
+    string's maximum buffer length up to the given Alignment (or 16 bytes if
     not provided).
 
     The allocation size can be restricted to a subset of an array (i.e. a
@@ -544,7 +544,7 @@ Arguments:
         size to a slice of the string array.
 
     Alignment - Optionally supplies a MaximumLength size to align up to.
-        Defaults to 16-bytes.  (The individual String->Length field is
+        Defaults to 16 bytes.  (The individual String->Length field is
         unaffected.)
 
     AllocationSizePointer - Supplies a pointer to the address of a variable
@@ -730,7 +730,7 @@ GetStringArrayAllocationInfo(
 Routine Description:
 
     This routine calculates the total size, in bytes, required to copy the
-    entire StringArray table and all string buffers (aligned at 16-bytes).
+    entire StringArray table and all string buffers (aligned at 16 bytes).
 
 --*/
 {
@@ -744,7 +744,7 @@ Routine Description:
 
     //
     // Get the number of bytes required to copy all string buffers in the string
-    // array, factoring in alignment up to 16-bytes.
+    // array, factoring in alignment up to 16 bytes.
     //
 
     Success = GetStringArrayBuffersAllocationSize(
@@ -769,7 +769,7 @@ Routine Description:
     //
     // Calculate the offset where the first string buffer will reside, and the
     // aligned value of the offset.  Make sure the final buffer offset is
-    // 16-bytes aligned, adjusting padding as necessary.
+    // 16 bytes aligned, adjusting padding as necessary.
     //
 
     BufferOffset = sizeof(STRING_ARRAY) + StringElementsSize;
