@@ -14,7 +14,7 @@ Abstract:
 
 #include "stdafx.h"
 
-#if 1
+#if 0
 
 typedef struct _TEST1 {
     CHAR Char;
@@ -132,12 +132,108 @@ extern TEST_PARAMS2 TestParams2;
 
 #endif
 
+RTL GlobalRtl;
+ALLOCATOR GlobalAllocator;
+
+PRTL Rtl;
+PALLOCATOR Allocator;
+
+HMODULE GlobalModule = 0;
+
+STRING_TABLE_API_EX GlobalApi;
+PSTRING_TABLE_API_EX Api;
+
+HMODULE GlobalRtlModule = 0;
+HMODULE GlobalStringTableModule = 0;
+
+VOID
+Scratch1(
+    VOID
+    )
+{
+    LONG ExitCode = 0;
+    LONG SizeOfRtl = sizeof(GlobalRtl);
+    HMODULE RtlModule;
+    RTL_BOOTSTRAP Bootstrap;
+
+    if (!BootstrapRtl(&RtlModule, &Bootstrap)) {
+        ExitCode = 1;
+        goto Error;
+    }
+
+    if (!Bootstrap.InitializeHeapAllocator(&GlobalAllocator)) {
+        ExitCode = 1;
+        goto Error;
+    }
+
+    CHECKED_MSG(
+        Bootstrap.InitializeRtl(&GlobalRtl, &SizeOfRtl),
+        "InitializeRtl()"
+    );
+
+    Rtl = &GlobalRtl;
+    Allocator = &GlobalAllocator;
+
+    SetCSpecificHandler(Rtl->__C_specific_handler);
+
+Error:
+    return;
+
+}
+
+VOID
+AlignmentScratch(
+    VOID
+    )
+{
+    BYTE Index;
+    BYTE Count;
+    ULONG_PTR Address;
+    ULONG_PTR AlignedUpAddress[10];
+    ULONG_PTR AlignedDownAddress[10];
+    ULONG_PTR AddressAlignment[40];
+    ULONG_PTR Addresses[] = {
+        0x00007ffd11483294,
+        0x00007ffd114832c1,
+        0x00007ffd1148329d,
+    };
+
+    ZeroStruct(AlignedUpAddress);
+    ZeroStruct(AlignedDownAddress);
+    ZeroStruct(AddressAlignment);
+
+    Count = ARRAYSIZE(Addresses);
+
+    for (Index = 0; Index < Count; Index++) {
+        Address = Addresses[Index];
+
+        AddressAlignment[Index] = GetAddressAlignment((PVOID)Address);
+
+        AlignedUpAddress[0] = ALIGN_UP(Address, 2);
+        AlignedUpAddress[1] = ALIGN_UP(Address, 4);
+        AlignedUpAddress[2] = ALIGN_UP(Address, 8);
+        AlignedUpAddress[3] = ALIGN_UP(Address, 16);
+        AlignedUpAddress[4] = ALIGN_UP(Address, 256);
+        AlignedUpAddress[5] = ALIGN_UP(Address, 512);
+
+        AlignedDownAddress[0] = ALIGN_DOWN(Address, 2);
+        AlignedDownAddress[1] = ALIGN_DOWN(Address, 4);
+        AlignedDownAddress[2] = ALIGN_DOWN(Address, 8);
+        AlignedDownAddress[3] = ALIGN_DOWN(Address, 16);
+        AlignedDownAddress[4] = ALIGN_DOWN(Address, 256);
+        AlignedDownAddress[5] = ALIGN_DOWN(Address, 512);
+    }
+}
+
 DECLSPEC_NORETURN
 VOID
 WINAPI
 mainCRTStartup()
 {
     LONG ExitCode = 0;
+
+    AlignmentScratch();
+    //Scratch1();
 
 #if 0
 
