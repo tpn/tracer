@@ -76,7 +76,7 @@ _Use_decl_annotations_
 VOID
 AppendStringToCharBuffer(
     PPCHAR BufferPointer,
-    PSTRING String
+    PCSTRING String
     )
 {
     PVOID Buffer;

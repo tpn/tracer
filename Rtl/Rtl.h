@@ -5565,7 +5565,7 @@ typedef
 VOID
 (NTAPI APPEND_STRING_TO_CHAR_BUFFER)(
     _Inout_ PPCHAR BufferPointer,
-    _In_ PSTRING String
+    _In_ PCSTRING String
     );
 typedef APPEND_STRING_TO_CHAR_BUFFER *PAPPEND_STRING_TO_CHAR_BUFFER;
 
