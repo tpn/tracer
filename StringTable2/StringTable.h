@@ -487,6 +487,84 @@ STRING_TABLE_INDEX
 typedef IS_STRING_IN_TABLE *PIS_STRING_IN_TABLE;
 
 ////////////////////////////////////////////////////////////////////////////////
+// Test-related Structures and Function Pointer Typedefs.
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct _STRING_TABLE_TEST_INPUT {
+    STRING_TABLE_INDEX Expected;
+    PSTRING String;
+} STRING_TABLE_TEST_INPUT;
+typedef STRING_TABLE_TEST_INPUT *PSTRING_TABLE_TEST_INPUT;
+typedef const STRING_TABLE_TEST_INPUT *PCSTRING_TABLE_TEST_INPUT;
+
+typedef DECLSPEC_ALIGN(32) union _ALIGNED_BUFFER {
+    CHAR Chars[32];
+    WCHAR WideChars[16];
+} ALIGNED_BUFFER;
+typedef ALIGNED_BUFFER *PALIGNED_BUFFER;
+C_ASSERT(sizeof(ALIGNED_BUFFER) == 32);
+
+#define COPY_TEST_INPUT(Inputs, Ix)                                      \
+    __movsq((PDWORD64)&InputBuffer,                                      \
+            (PDWORD64)Inputs[Ix].String->Buffer,                         \
+            sizeof(InputBuffer) >> 3);                                   \
+    AlignedInput.Length = Inputs[Ix].String->Length;                     \
+    AlignedInput.MaximumLength = Inputs[Ix].String->MaximumLength;       \
+    AlignedInput.Buffer = (PCHAR)&InputBuffer.Chars;
+
+#define COPY_STRING_MATCH(Inputs, Ix)                                    \
+    StringMatch.Index = Ix;                                              \
+    StringMatch.NumberOfMatchedCharacters = Inputs[Ix].String->Length;   \
+    StringMatch.String = &StringTable->pStringArray->Strings[Ix];
+
+typedef struct _STRING_TABLE_FUNCTION_OFFSET {
+        STRING Name;
+        USHORT Offset;
+        USHORT Verify;
+} STRING_TABLE_FUNCTION_OFFSET;
+typedef STRING_TABLE_FUNCTION_OFFSET *PSTRING_TABLE_FUNCTION_OFFSET;
+typedef const STRING_TABLE_FUNCTION_OFFSET *PCSTRING_TABLE_FUNCTION_OFFSET;
+
+#define DEFINE_STRING_TABLE_FUNCTION_OFFSET(Name, Verify) { \
+    RTL_CONSTANT_STRING(#Name),                             \
+    FIELD_OFFSET(STRING_TABLE_API_EX, Name),                \
+    Verify                                                  \
+}
+
+#define LOAD_FUNCTION_FROM_OFFSET(Api, Offset) \
+    (PIS_PREFIX_OF_STRING_IN_TABLE)(           \
+        *((PULONG_PTR)(                        \
+            RtlOffsetToPointer(                \
+                Api,                           \
+                Offset                         \
+            )                                  \
+        ))                                     \
+    )
+
+typedef
+_Success_(return != 0)
+BOOLEAN
+(NTAPI TEST_IS_PREFIX_OF_STRING_IN_TABLE_FUNCTIONS)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR StringTableAllocator,
+    _In_ PALLOCATOR StringArrayAllocator,
+    _In_ PSTRING_ARRAY StringArray,
+    _In_reads_bytes_(SizeOfAnyApi) union _STRING_TABLE_ANY_API *AnyApi,
+    _In_ ULONG SizeOfAnyApi,
+    _In_reads_(NumberOfFunctions) PCSTRING_TABLE_FUNCTION_OFFSET Functions,
+    _In_ ULONG NumberOfFunctions,
+    _In_reads_(NumberOfTestInputs) PCSTRING_TABLE_TEST_INPUT TestInput,
+    _In_ ULONG NumberOfTestInputs,
+    _In_ BOOLEAN DebugBreakOnTestFailure,
+    _In_ BOOLEAN AlignInputs,
+    _Out_ PULONG NumberOfFailedTests,
+    _Out_ PULONG NumberOfPassedTests
+    );
+typedef TEST_IS_PREFIX_OF_STRING_IN_TABLE_FUNCTIONS
+      *PTEST_IS_PREFIX_OF_STRING_IN_TABLE_FUNCTIONS;
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Inline functions.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1297,6 +1375,9 @@ typedef struct _STRING_TABLE_API {
     PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
         CreateStringTableFromDelimitedEnvironmentVariable;
 
+    PTEST_IS_PREFIX_OF_STRING_IN_TABLE_FUNCTIONS
+        TestIsPrefixOfStringInTableFunctions;
+
     PIS_STRING_IN_TABLE IsStringInTable;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
 
@@ -1329,6 +1410,9 @@ typedef struct _STRING_TABLE_API_EX {
 
     PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
         CreateStringTableFromDelimitedEnvironmentVariable;
+
+    PTEST_IS_PREFIX_OF_STRING_IN_TABLE_FUNCTIONS
+        TestIsPrefixOfStringInTableFunctions;
 
     PIS_STRING_IN_TABLE IsStringInTable;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
@@ -1450,6 +1534,7 @@ Return Value:
         "CreateStringArrayFromDelimitedString",
         "CreateStringTableFromDelimitedString",
         "CreateStringTableFromDelimitedEnvironmentVariable",
+        "TestIsPrefixOfStringInTableFunctions",
         "IsStringInTable",
         "IsPrefixOfStringInTable",
         "IsPrefixOfCStrInArray",

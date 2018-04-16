@@ -259,6 +259,114 @@ namespace TestStringTable
             Assert::IsTrue(NameId == NotNtfsReservedName);
         }
 
+        TEST_METHOD(TestAllNtfs1AlignedInput)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                (PSTRING_ARRAY)&NtfsStringArray16,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                IsPrefixFunctions,
+                NumberOfIsPrefixFunctions,
+                NtfsTestInputs,
+                NumberOfNtfsTestInputs,
+                TRUE,
+                TRUE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
+        TEST_METHOD(TestAllNtfs1NoAlignedInput)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                (PSTRING_ARRAY)&NtfsStringArray16,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                IsPrefixFunctions,
+                NumberOfIsPrefixFunctions,
+                NtfsTestInputs,
+                NumberOfNtfsTestInputs,
+                FALSE,
+                FALSE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
+        TEST_METHOD(TestAllNtfs2AlignedInput)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                (PSTRING_ARRAY)&Ntfs2StringArray16,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                IsPrefixFunctions,
+                NumberOfIsPrefixFunctions,
+                Ntfs2TestInputs,
+                NumberOfNtfsTestInputs,
+                TRUE,
+                TRUE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
+        TEST_METHOD(TestAllNtfs2NoAlignedInput)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                (PSTRING_ARRAY)&Ntfs2StringArray16,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                IsPrefixFunctions,
+                NumberOfIsPrefixFunctions,
+                Ntfs2TestInputs,
+                NumberOfNtfs2TestInputs,
+                TRUE,
+                FALSE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
     };
 }
 

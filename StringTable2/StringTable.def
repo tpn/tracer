@@ -9,6 +9,7 @@ EXPORTS
     CreateStringArrayFromDelimitedString
     CreateStringTableFromDelimitedString
     CreateStringTableFromDelimitedEnvironmentVariable
+    TestIsPrefixOfStringInTableFunctions
     IsStringInTable
     IsPrefixOfStringInTable_1
     IsPrefixOfStringInTable_2

@@ -319,7 +319,8 @@ typedef struct _STRING_ARRAY32 {
 #define INIT_ALLOCATOR(Allocator) RtlInitializeHeapAllocator(Allocator)
 #define DESTROY_ALLOCATOR(Allocator) RtlDestroyHeapAllocator(Allocator)
 
-#define MAKE_STRING(Name) static STRING Name = RTL_CONSTANT_STRING(#Name)
+#define MAKE_STRING(Name) STRING Name = RTL_CONSTANT_STRING(#Name)
+#define DECLARE_STRING(Name) extern STRING Name
 
 #define MAKE_TABLE(Array)                          \
     Api->CreateStringTable(Rtl,                    \
@@ -387,69 +388,124 @@ typedef struct _STRING_ARRAY32 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Dummy Test Strings
+////////////////////////////////////////////////////////////////////////////////
+
+DECLARE_STRING(falcon);
+DECLARE_STRING(tomcat);
+DECLARE_STRING(warthog);
+DECLARE_STRING(viper);
+DECLARE_STRING(fox);
+DECLARE_STRING(fox1);
+DECLARE_STRING(fox2);
+DECLARE_STRING(lightning_storm);
+DECLARE_STRING(really_bad_lightning_storm);
+
+DECLARE_STRING(a);
+DECLARE_STRING(ab);
+DECLARE_STRING(abc);
+DECLARE_STRING(abcd);
+DECLARE_STRING(abcde);
+DECLARE_STRING(abcdef);
+DECLARE_STRING(abcdefg);
+DECLARE_STRING(abcdefgh);
+DECLARE_STRING(abcdefghi);
+DECLARE_STRING(abcdefghij);
+DECLARE_STRING(abcdefghijk);
+DECLARE_STRING(abcdefghijkl);
+DECLARE_STRING(abcdefghijklm);
+DECLARE_STRING(abcdefghijklmn);
+DECLARE_STRING(abcdefghijklmno);
+DECLARE_STRING(abcdefghijklmnop);
+DECLARE_STRING(abcdefghijklmnopq);
+DECLARE_STRING(abcdefghijklmnopqr);
+DECLARE_STRING(abcdefghijklmnopqrs);
+DECLARE_STRING(abcdefghijklmnopqrst);
+DECLARE_STRING(abcdefghijklmnopqrstu);
+DECLARE_STRING(abcdefghijklmnopqrstuv);
+DECLARE_STRING(abcdefghijklmnopqrstuvw);
+DECLARE_STRING(abcdefghijklmnopqrstuvwy);
+DECLARE_STRING(abcdefghijklmnopqrstuvwyx);
+DECLARE_STRING(abcdefghijklmnopqrstuvwyxz);
+
+
+DECLARE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij);
+DECLARE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklm);
+DECLARE_STRING(abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn);
+DECLARE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij);
+DECLARE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn);
+DECLARE_STRING(bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmno);
+
+#define ABC_LONG \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij
+
+#define ABCD_LONG \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklm
+
+#define ABCD_LONGEST \
+    abcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn
+
+#define BCD_LONG \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghij
+
+#define BCDE_LONG \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmn
+
+#define BCDE_LONGEST \
+    bcdefghijklmnopqrstuvwyxzabcdefghijklmnopqrstuvwyxzabcdefghijklmno
+
+DECLARE_STRING(bcdefgefh);
+DECLARE_STRING(efghijklmn);
+DECLARE_STRING(ghibdefjf);
+DECLARE_STRING(jklmnopqrst);
+DECLARE_STRING(klmn);
+DECLARE_STRING(klmnopqrstu);
+DECLARE_STRING(lmnopqrstuv);
+DECLARE_STRING(lmnopqr);
+DECLARE_STRING(lmno);
+DECLARE_STRING(mnopqrstu);
+DECLARE_STRING(mnopqrstuvw);
+DECLARE_STRING(nop);
+DECLARE_STRING(nopqrstuvwy);
+
+DECLARE_STRING(fourteen141414);
+DECLARE_STRING(fifteen15151515);
+DECLARE_STRING(sixteen161616161);
+DECLARE_STRING(seventeen17171717);
+DECLARE_STRING(eighteen1818181818);
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Example Data
 ////////////////////////////////////////////////////////////////////////////////
 
 #undef DSTR
 #define DSTR(String) String ";"
 
-static const CHAR StringTableDelimiter = ';';
+extern const CHAR StringTableDelimiter;
+extern const STRING NtfsReservedNames;
+extern const PCSZ NtfsReservedNamesCStrings[];
 
-static const STRING NtfsReservedNames = RTL_CONSTANT_STRING(
-    DSTR("$AttrDef")
-    DSTR("$BadClus")
-    DSTR("$Bitmap")
-    DSTR("$Boot")
-    DSTR("$Extend")
-    DSTR("$LogFile")
-    DSTR("$MftMirr")
-    DSTR("$Mft")
-    DSTR("$Secure")
-    DSTR("$UpCase")
-    DSTR("$Volume")
-    DSTR("$Cairo")
-    DSTR("$INDEX_ALLOCATION")
-    DSTR("$DATA")
-    DSTR("????")
-    DSTR(".")
-);
+#define DECLARE_NTFS1(Id, Value) extern const STRING Ntfs##Id##Name
+#define MAKE_NTFS1(Id, Value) \
+    const STRING Ntfs##Id##Name = RTL_CONSTANT_STRING(Value)
 
-static const PCSZ NtfsReservedNamesCStrings[] = {
-    "$AttrDef",
-    "$BadClus",
-    "$Bitmap",
-    "$Boot",
-    "$Extend",
-    "$LogFile",
-    "$MftMirr",
-    "$Mft",
-    "$Secure",
-    "$UpCase",
-    "$Volume",
-    "$Cairo",
-    "$INDEX_ALLOCATION",
-    "$DATA",
-    "????",
-    ".",
-    NULL
-};
-
-static const STRING NtfsAttrDefName = RTL_CONSTANT_STRING("$AttrDef");
-static const STRING NtfsBadClusName = RTL_CONSTANT_STRING("$BadClus");
-static const STRING NtfsBitmapName = RTL_CONSTANT_STRING("$Bitmap");
-static const STRING NtfsBootName = RTL_CONSTANT_STRING("$Boot");
-static const STRING NtfsExtendName = RTL_CONSTANT_STRING("$Extend");
-static const STRING NtfsLogFileName = RTL_CONSTANT_STRING("$LogFile");
-static const STRING NtfsMftMirrName = RTL_CONSTANT_STRING("$MftMirr");
-static const STRING NtfsMftName = RTL_CONSTANT_STRING("$Mft");
-static const STRING NtfsSecureName = RTL_CONSTANT_STRING("$Secure");
-static const STRING NtfsUpCaseName = RTL_CONSTANT_STRING("$UpCase");
-static const STRING NtfsVolumeName = RTL_CONSTANT_STRING("$Volume");
-static const STRING NtfsCairoName = RTL_CONSTANT_STRING("$Cairo");
-static const STRING NtfsIndexAllocationName = RTL_CONSTANT_STRING("$INDEX_ALLOCATION");
-static const STRING NtfsDataName = RTL_CONSTANT_STRING("$DATA");
-static const STRING NtfsUnknownName = RTL_CONSTANT_STRING("????");
-static const STRING NtfsDotName = RTL_CONSTANT_STRING(".");
+DECLARE_NTFS1(AttrDef,         "$AttrDef");
+DECLARE_NTFS1(BadClus,         "$BadClus");
+DECLARE_NTFS1(Bitmap,          "$Bitmap");
+DECLARE_NTFS1(Boot,            "$Boot");
+DECLARE_NTFS1(Extend,          "$Extend");
+DECLARE_NTFS1(LogFile,         "$LogFile");
+DECLARE_NTFS1(MftMirr,         "$MftMirr");
+DECLARE_NTFS1(Mft,             "$Mft");
+DECLARE_NTFS1(Secure,          "$Secure");
+DECLARE_NTFS1(UpCase,          "$UpCase");
+DECLARE_NTFS1(Volume,          "$Volume");
+DECLARE_NTFS1(Cairo,           "$Cairo");
+DECLARE_NTFS1(IndexAllocation, "$INDEX_ALLOCATION");
+DECLARE_NTFS1(Data,            "$DATA");
+DECLARE_NTFS1(Unknown,         "????");
+DECLARE_NTFS1(Dot,             ".");
 
 typedef enum _NTFS_RESERVED_NAME_ID {
     NotNtfsReservedName = -1,
@@ -471,6 +527,79 @@ typedef enum _NTFS_RESERVED_NAME_ID {
     NtfsDot,
 } NTFS_RESERVED_NAME_ID;
 
+//
+// Slight twist with lots of $MftMirr variants.
+//
+
+extern const STRING Ntfs2ReservedNames;
+
+#define DECLARE_NTFS2(Id, Value) extern const STRING Ntfs2##Id##Name
+#define MAKE_NTFS2(Id, Value) \
+    const STRING Ntfs2##Id##Name = RTL_CONSTANT_STRING(Value)
+
+DECLARE_NTFS2(MftMirr1234567890, "$MftMirr1234567890");
+DECLARE_NTFS2(MftMirr123456789, "$MftMirr123456789");
+DECLARE_NTFS2(MftMirr12345678, "$MftMirr12345678");
+DECLARE_NTFS2(MftMirr1234567, "$MftMirr1234567");
+DECLARE_NTFS2(MftMirr123456, "$MftMirr123456");
+DECLARE_NTFS2(MftMirr12345, "$MftMirr12345");
+DECLARE_NTFS2(MftMirr1234, "$MftMirr1234");
+DECLARE_NTFS2(MftMirr123, "$MftMirr123");
+DECLARE_NTFS2(MftMirr12, "$MftMirr12");
+DECLARE_NTFS2(MftMirr1, "$MftMirr1");
+DECLARE_NTFS2(MftMirr, "$MftMirr");
+DECLARE_NTFS2(Mft, "$Mft");
+DECLARE_NTFS2(IndexAllocation, "$INDEX_ALLOCATION");
+DECLARE_NTFS2(Data, "$DATA");
+DECLARE_NTFS2(Unknown, "????");
+DECLARE_NTFS2(Dot, ".");
+
+typedef enum _NTFS2_RESERVED_NAME_ID {
+    NotNtfs2ReservedName = -1,
+    Ntfs2MftMirr1234567890 = 0,
+    Ntfs2MftMirr123456789,
+    Ntfs2MftMirr12345678,
+    Ntfs2MftMirr1234567,
+    Ntfs2MftMirr123456,
+    Ntfs2MftMirr12345,
+    Ntfs2MftMirr1234,
+    Ntfs2MftMirr123,
+    Ntfs2MftMirr12,
+    Ntfs2MftMirr1,
+    Ntfs2MftMirr,
+    Ntfs2Mft,
+    Ntfs2IndexAllocation,
+    Ntfs2Data,
+    Ntfs2Unknown,
+    Ntfs2Dot,
+} NTFS2_RESERVED_NAME_ID;
+
+//
+// Declare various constants defined in StringTableTestGlue.c.
+//
+
+extern const STRING_TABLE_FUNCTION_OFFSET IsPrefixFunctions[];
+extern const ULONG NumberOfIsPrefixFunctions;
+
+//
+// Ntfs Test Inputs
+//
+
+#define NTFS_TEST_INPUT(N) { Ntfs##N, (PSTRING)&Ntfs##N##Name }
+
+extern const STRING_TABLE_TEST_INPUT NtfsTestInputs[];
+extern const ULONG NumberOfNtfsTestInputs;
+extern STRING_ARRAY16 NtfsStringArray16;
+
+//
+// Ntfs2 Test Inputs
+//
+
+#define NTFS2_TEST_INPUT(N) { Ntfs2##N, (PSTRING)&Ntfs2##N##Name }
+
+extern const STRING_TABLE_TEST_INPUT Ntfs2TestInputs[];
+extern const ULONG NumberOfNtfs2TestInputs;
+extern STRING_ARRAY16 Ntfs2StringArray16;
 
 #ifdef __cplusplus
 } // extern "C"

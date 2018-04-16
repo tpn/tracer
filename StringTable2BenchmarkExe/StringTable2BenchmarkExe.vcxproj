@@ -83,6 +83,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="..\StringTable2\StringTableTestGlue.c">
+      <PrecompiledHeader/>
+    </ClCompile>
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

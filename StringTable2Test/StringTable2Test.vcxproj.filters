@@ -32,5 +32,8 @@
     <ClCompile Include="unittest2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\StringTable2\StringTableTestGlue.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

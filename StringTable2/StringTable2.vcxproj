@@ -120,6 +120,7 @@
     <ClCompile Include="StringTableAllocator.c" />
     <ClCompile Include="StringTableConstants_C.c" />
     <ClCompile Include="StringTableTypes.c" />
+    <ClCompile Include="TestStringTable.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="StringTable.def" />

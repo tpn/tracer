@@ -12,6 +12,5 @@
 
 #include "../StringTable.h"
 #include "../StringTable2/StringTableTestGlue.h"
-#include "../TracerHeap/TracerHeap.h"
 
 // TODO: reference additional headers your program requires here

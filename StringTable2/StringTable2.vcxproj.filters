@@ -79,6 +79,9 @@
     <ClCompile Include="IsPrefixOfStringInTable_10.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TestStringTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringTable.h">

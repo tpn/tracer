@@ -35,5 +35,8 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\StringTable2\StringTableTestGlue.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

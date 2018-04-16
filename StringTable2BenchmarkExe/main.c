@@ -110,150 +110,6 @@ HMODULE GlobalStringTableModule = 0;
 #define START_TIMESTAMP START_TIMESTAMP_RDTSCP
 #endif
 
-typedef struct _NAMED_FUNCTION {
-        STRING Name;
-        PIS_PREFIX_OF_STRING_IN_TABLE Function;
-} NAMED_FUNCTION;
-typedef NAMED_FUNCTION *PNAMED_FUNCTION;
-
-#define NAMED_FUNC(Name) { RTL_CONSTANT_STRING(#Name), Api->Name }
-
-typedef struct _NAMED_FUNCTION_OFFSET {
-        STRING Name;
-        USHORT Offset;
-        USHORT Verify;
-} NAMED_FUNCTION_OFFSET;
-typedef NAMED_FUNCTION_OFFSET *PNAMED_FUNCTION_OFFSET;
-typedef const NAMED_FUNCTION_OFFSET *PCNAMED_FUNCTION_OFFSET;
-
-#define NAMED_FUNC_OFFSET(Name, Verify) {    \
-    RTL_CONSTANT_STRING(#Name),              \
-    FIELD_OFFSET(STRING_TABLE_API_EX, Name), \
-    Verify                                   \
-}
-
-#define LOAD_FUNCTION_FROM_OFFSET(FuncOffset)   \
-    (PIS_PREFIX_OF_STRING_IN_TABLE)(            \
-        *((PULONG_PTR)(                         \
-            RtlOffsetToPointer(                 \
-                Api,                            \
-                FuncOffset->Offset              \
-            )                                   \
-        ))                                      \
-    )
-
-const NAMED_FUNCTION_OFFSET NamedFunctionOffsets[] = {
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_1,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_2,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_3,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_4,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_5,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_6,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_7,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_8,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_9,        TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_10,       TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_x64_1,    FALSE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_x64_2,    TRUE),
-    NAMED_FUNC_OFFSET(IsPrefixOfStringInTable_x64_3,    TRUE),
-    NAMED_FUNC_OFFSET(IntegerDivision_x64_1,            FALSE),
-};
-
-const ULONG NumberOfFuncs = ARRAYSIZE(NamedFunctionOffsets);
-
-//
-// Test inputs.
-//
-
-typedef struct _TEST_INPUT {
-    STRING_TABLE_INDEX Expected;
-    PSTRING String;
-} TEST_INPUT;
-typedef TEST_INPUT *PTEST_INPUT;
-
-typedef DECLSPEC_ALIGN(32) union _ALIGNED_BUFFER {
-    CHAR Chars[32];
-    WCHAR WideChars[16];
-} ALIGNED_BUFFER;
-typedef ALIGNED_BUFFER *PALIGNED_BUFFER;
-C_ASSERT(sizeof(ALIGNED_BUFFER) == 32);
-
-#define COPY_TEST_INPUT(Ix)                                              \
-    __movsq((PDWORD64)&InputBuffer,                                      \
-            (PDWORD64)Inputs[Ix].String->Buffer,                         \
-            sizeof(InputBuffer) >> 3);                                   \
-    AlignedInput.Length = Inputs[Ix].String->Length;                     \
-    AlignedInput.MaximumLength = Inputs[Ix].String->MaximumLength;       \
-    AlignedInput.Buffer = (PCHAR)&InputBuffer.Chars;
-
-#define COPY_STRING_MATCH(Ix)                                            \
-    StringMatch.Index = Ix;                                              \
-    StringMatch.NumberOfMatchedCharacters = Inputs[Ix].String->Length;   \
-    StringMatch.String = &StringTable->pStringArray->Strings[Ix];
-
-//
-// Define the main test details.
-//
-
-STRING_ARRAY16 StringArray16 = CONSTANT_STRING_ARRAY16(
-    RTL_CONSTANT_STRING("$AttrDef"),
-    RTL_CONSTANT_STRING("$BadClus"),
-    RTL_CONSTANT_STRING("$Bitmap"),
-    RTL_CONSTANT_STRING("$Boot"),
-    RTL_CONSTANT_STRING("$Extend"),
-    RTL_CONSTANT_STRING("$LogFile"),
-    RTL_CONSTANT_STRING("$MftMirr"),
-    RTL_CONSTANT_STRING("$Mft"),
-    RTL_CONSTANT_STRING("$Secure"),
-    RTL_CONSTANT_STRING("$UpCase"),
-    RTL_CONSTANT_STRING("$Volume"),
-    RTL_CONSTANT_STRING("$Cairo"),
-    RTL_CONSTANT_STRING("$INDEX_ALLOCATION"),
-    RTL_CONSTANT_STRING("$DATA"),
-    RTL_CONSTANT_STRING("????"),
-    RTL_CONSTANT_STRING(".")
-);
-
-MAKE_STRING(a);
-MAKE_STRING(ab);
-MAKE_STRING(abc);
-MAKE_STRING(fox1);
-MAKE_STRING(abcd);
-MAKE_STRING(abcdefghijkl);
-MAKE_STRING(abcdefghijklmnopqr);
-MAKE_STRING(abcdefghijklmnopqrstuvw);
-
-#define NTFS_TEST_INPUT(N) { Ntfs##N, (PSTRING)&Ntfs##N##Name }
-
-TEST_INPUT Inputs[] = {
-    NTFS_TEST_INPUT(AttrDef),
-    NTFS_TEST_INPUT(BadClus),
-    NTFS_TEST_INPUT(Bitmap),
-    NTFS_TEST_INPUT(Boot),
-    NTFS_TEST_INPUT(Extend),
-    NTFS_TEST_INPUT(MftMirr),
-    NTFS_TEST_INPUT(LogFile),
-    NTFS_TEST_INPUT(Mft),
-    NTFS_TEST_INPUT(Secure),
-    NTFS_TEST_INPUT(Volume),
-    NTFS_TEST_INPUT(UpCase),
-    NTFS_TEST_INPUT(Cairo),
-    NTFS_TEST_INPUT(IndexAllocation),
-    NTFS_TEST_INPUT(Data),
-    NTFS_TEST_INPUT(Unknown),
-    NTFS_TEST_INPUT(Dot),
-    { -1, &a },
-    { -1, &ab },
-    { -1, &abc },
-    { -1, &fox1 },
-    { -1, &abcd },
-    { -1, &abcdefghijkl },
-    { -1, &abcdefghijklmnopqr },
-    { -1, &abcdefghijklmnopqrstuvw },
-};
-
-const ULONG NumberOfInputs = ARRAYSIZE(Inputs);
-
 //
 // Benchmark functions.
 //
@@ -283,8 +139,8 @@ Benchmark1(
     LARGE_INTEGER Delay = { 0, 1 };
     ULONG InputIndex;
     ULONG FuncIndex;
-    PTEST_INPUT Input;
-    PCNAMED_FUNCTION_OFFSET Func;
+    PCSTRING_TABLE_TEST_INPUT Input;
+    PCSTRING_TABLE_FUNCTION_OFFSET Func;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
 
     ALIGNED_BUFFER InputBuffer;
@@ -346,8 +202,8 @@ Benchmark1(
         //      abcdefghijklmnopqrstuvw,8
         //
 
-        for (Index = 0; Index < NumberOfInputs; Index++) {
-            Input = &Inputs[Index];
+        for (Index = 0; Index < NumberOfNtfsTestInputs; Index++) {
+            Input = &NtfsTestInputs[Index];
 
             Alignment = GetAddressAlignment(Input->String->Buffer);
             OUTPUT_STRING(Input->String);
@@ -368,14 +224,14 @@ Benchmark1(
 #define YIELD_EXECUTION() Rtl->NtDelayExecution(TRUE, &Delay)
 #endif
 
-    for (InputIndex = 0; InputIndex < NumberOfInputs; InputIndex++) {
-        Input = &Inputs[InputIndex];
+    for (InputIndex = 0; InputIndex < NumberOfNtfsTestInputs; InputIndex++) {
+        Input = &NtfsTestInputs[InputIndex];
 
         //
         // Copy the input string into our aligned buffer.
         //
 
-        COPY_TEST_INPUT(InputIndex);
+        COPY_TEST_INPUT(NtfsTestInputs, InputIndex);
 
         //
         // Do the c-string based version manually, as it has a different
@@ -431,9 +287,9 @@ Benchmark1(
         // Continue with the remaining functions.
         //
 
-        for (FuncIndex = 0; FuncIndex < NumberOfFuncs; FuncIndex++) {
-            Func = &NamedFunctionOffsets[FuncIndex];
-            IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Func);
+        for (FuncIndex = 0; FuncIndex < NumberOfIsPrefixFunctions; FuncIndex++) {
+            Func = &IsPrefixFunctions[FuncIndex];
+            IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Api, Func->Offset);
 
             Result = IsPrefix(StringTable, &AlignedInput, NULL);
 
@@ -517,8 +373,8 @@ RunSingleFunction(
     LARGE_INTEGER Delay = { 0, 1 };
     ULONG InputIndex = TargetInputId;
     ULONG FuncIndex = TargetFunctionId;
-    PTEST_INPUT Input;
-    PCNAMED_FUNCTION_OFFSET Func;
+    PCSTRING_TABLE_TEST_INPUT Input;
+    PCSTRING_TABLE_FUNCTION_OFFSET Func;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefix;
     CtrlCPressed = 0;
 
@@ -550,11 +406,11 @@ RunSingleFunction(
 
     DELIMITED_TABLE(&NtfsReservedNames);
 
-    Input = &Inputs[InputIndex];
-    Func = &NamedFunctionOffsets[FuncIndex];
-    IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Func);
+    Input = &NtfsTestInputs[InputIndex];
+    Func = &IsPrefixFunctions[FuncIndex];
+    IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Api, Func->Offset);
 
-    COPY_TEST_INPUT(InputIndex);
+    COPY_TEST_INPUT(NtfsTestInputs, InputIndex);
 
     OUTPUT_STRING(&Func->Name);
     OUTPUT_SEP();
