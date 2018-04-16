@@ -254,7 +254,7 @@ Return Value:
 
         CharactersMatched = __popcnt(Mask);
 
-        if ((USHORT)CharactersMatched < Length && Length < 16) {
+        if ((USHORT)CharactersMatched < Length && Length <= 16) {
 
             //
             // The slot length is longer than the number of characters matched
