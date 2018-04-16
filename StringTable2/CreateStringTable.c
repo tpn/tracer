@@ -67,9 +67,8 @@ Routine Description:
     assumed that sufficient space has already been allocated for the string
     table and this pointer will be used to initialize the rest of the structure.
 
-    The Allocator will be used for all memory allocations. DestroyStringTable()
-    must be called against the returned PSTRING_TABLE when the structure is no
-    longer needed in order to ensure resources are released.
+    DestroyStringTable() must be called against the returned PSTRING_TABLE when
+    the structure is no longer needed in order to ensure resources are released.
 
 Arguments:
 
