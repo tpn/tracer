@@ -31,8 +31,8 @@ Routine Description:
     search string.  That is, whether any string in the table "starts with
     or is equal to" the search string.
 
-    This version is based of version 8, but rewrites the inner loop that checks
-    for comparisons.
+    This version is based off version 8, but rewrites the inner loop that
+    checks for comparisons.
 
 Arguments:
 
