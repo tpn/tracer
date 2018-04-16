@@ -1282,12 +1282,20 @@ typedef struct _STRING_TABLE_API {
     PCREATE_STRING_TABLE CreateStringTable;
     PDESTROY_STRING_TABLE DestroyStringTable;
 
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
-    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP InitializeStringTableAllocatorFromRtlBootstrap;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR
+        InitializeStringTableAllocator;
 
-    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE CreateStringTableFromDelimitedEnvironmentVariable;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
+        InitializeStringTableAllocatorFromRtlBootstrap;
+
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+        CreateStringArrayFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+        CreateStringTableFromDelimitedEnvironmentVariable;
 
     PIS_STRING_IN_TABLE IsStringInTable;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
@@ -1307,12 +1315,20 @@ typedef struct _STRING_TABLE_API_EX {
     PCREATE_STRING_TABLE CreateStringTable;
     PDESTROY_STRING_TABLE DestroyStringTable;
 
-    PINITIALIZE_STRING_TABLE_ALLOCATOR InitializeStringTableAllocator;
-    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP InitializeStringTableAllocatorFromRtlBootstrap;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR
+        InitializeStringTableAllocator;
 
-    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING CreateStringTableFromDelimitedString;
-    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE CreateStringTableFromDelimitedEnvironmentVariable;
+    PINITIALIZE_STRING_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
+        InitializeStringTableAllocatorFromRtlBootstrap;
+
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+        CreateStringArrayFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_STRING
+        CreateStringTableFromDelimitedString;
+
+    PCREATE_STRING_TABLE_FROM_DELIMITED_ENVIRONMENT_VARIABLE
+        CreateStringTableFromDelimitedEnvironmentVariable;
 
     PIS_STRING_IN_TABLE IsStringInTable;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable;
