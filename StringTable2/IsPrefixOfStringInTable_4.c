@@ -186,7 +186,7 @@ Return Value:
     //
     // We're now ready to intersect the two XMM registers to determine which
     // slots should still be included in the comparison (i.e. which slots have
-    // the exact same first character as the string and a length less than or
+    // the exact same unique character as the string and a length less than or
     // equal to the length of the search string).
     //
 
