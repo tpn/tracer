@@ -1433,9 +1433,13 @@ typedef struct _STRING_TABLE_API_EX {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_8;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_9;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_10;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_11;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_12;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_13;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_1;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_2;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_3;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_4;
     PIS_PREFIX_OF_STRING_IN_TABLE IntegerDivision_x64_1;
 
 } STRING_TABLE_API_EX;
@@ -1549,9 +1553,13 @@ Return Value:
         "IsPrefixOfStringInTable_8",
         "IsPrefixOfStringInTable_9",
         "IsPrefixOfStringInTable_10",
+        "IsPrefixOfStringInTable_11",
+        "IsPrefixOfStringInTable_12",
+        "IsPrefixOfStringInTable_13",
         "IsPrefixOfStringInTable_x64_1",
         "IsPrefixOfStringInTable_x64_2",
         "IsPrefixOfStringInTable_x64_3",
+        "IsPrefixOfStringInTable_x64_4",
         "IntegerDivision_x64_1",
     };
 
