@@ -15,6 +15,13 @@ Abstract:
 
 #include "stdafx.h"
 
+//
+// Disable optimizations to prevent the MaybeBreak() call being optimized away,
+// preventing us from setting a breakpoint on it.
+//
+
+#pragma optimize("", off)
+
 VOID
 MaybeBreak(BOOL Break)
 {
