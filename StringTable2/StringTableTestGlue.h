@@ -506,6 +506,9 @@ DECLARE_NTFS1(IndexAllocation, "$INDEX_ALLOCATION");
 DECLARE_NTFS1(Data,            "$DATA");
 DECLARE_NTFS1(Unknown,         "????");
 DECLARE_NTFS1(Dot,             ".");
+DECLARE_NTFS1(WorstCase,       "$Bai123456789012");
+
+#define NTFS_WORST_CASE_TEST_INPUT() { -1, (PSTRING)&NtfsWorstCaseName }
 
 typedef enum _NTFS_RESERVED_NAME_ID {
     NotNtfsReservedName = -1,
