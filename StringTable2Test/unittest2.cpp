@@ -367,7 +367,53 @@ namespace TestStringTable
             Assert::IsTrue(Failed == 0);
         }
 
+        TEST_METHOD(TestSubsetHelper)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+            PSTRING_ARRAY StringArray;
+
+            //
+            // Change this if you want to quickly test/debug a subset of
+            // functions and/or test inputs.
+            //
+
+            STRING_TABLE_TEST_INPUT TestInputs[] = {
+                NTFS_WORST_CASE_TEST_INPUT(),
+                { -1, &a }
+            };
+
+#define DSTFO DEFINE_STRING_TABLE_FUNCTION_OFFSET
+
+            STRING_TABLE_FUNCTION_OFFSET Functions[] = {
+                //DSTFO(IsPrefixOfStringInTable_x64_4, TRUE)
+                DSTFO(IsPrefixOfStringInTable_13, TRUE)
+            };
+
+            //StringArray = (PSTRING_ARRAY)&NtfsStringArray16;
+            StringArray = (PSTRING_ARRAY)&NtfsStringArray16;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                StringArray,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                (PCSTRING_TABLE_FUNCTION_OFFSET)&Functions,
+                ARRAYSIZE(Functions),
+                (PCSTRING_TABLE_TEST_INPUT)&TestInputs,
+                ARRAYSIZE(TestInputs),
+                TRUE,
+                TRUE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
     };
 }
-
-
