@@ -82,7 +82,7 @@ include StringTable.inc
         vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]      ; Load lengths.
 
 ;
-; Set xmm5 to all ones.  We use this later to invert the length comparison.
+; Set xmm2 to all ones.  We use this later to invert the length comparison.
 ;
 
         vpcmpeqq    xmm2, xmm2, xmm2            ; Set xmm2 to all ones.
