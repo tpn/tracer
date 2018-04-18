@@ -505,9 +505,10 @@ typedef ALIGNED_BUFFER *PALIGNED_BUFFER;
 C_ASSERT(sizeof(ALIGNED_BUFFER) == 32);
 
 #define COPY_TEST_INPUT(Inputs, Ix)                                      \
-    __movsq((PDWORD64)&InputBuffer,                                      \
-            (PDWORD64)Inputs[Ix].String->Buffer,                         \
-            sizeof(InputBuffer) >> 3);                                   \
+    ZeroStruct(InputBuffer);                                             \
+    CopyMemory((PDWORD64)&InputBuffer,                                   \
+               (PDWORD64)Inputs[Ix].String->Buffer,                      \
+               Inputs[Ix].String->Length);                               \
     AlignedInput.Length = Inputs[Ix].String->Length;                     \
     AlignedInput.MaximumLength = Inputs[Ix].String->MaximumLength;       \
     AlignedInput.Buffer = (PCHAR)&InputBuffer.Chars;
