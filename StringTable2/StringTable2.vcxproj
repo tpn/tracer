@@ -108,6 +108,7 @@
     <ClCompile Include="IsPrefixOfStringInTable_11.c" />
     <ClCompile Include="IsPrefixOfStringInTable_12.c" />
     <ClCompile Include="IsPrefixOfStringInTable_13.c" />
+    <ClCompile Include="IsPrefixOfStringInTable_14.c" />
     <ClCompile Include="IsPrefixOfStringInTable_2.c" />
     <ClCompile Include="IsPrefixOfStringInTable_3.c" />
     <ClCompile Include="IsPrefixOfStringInTable_4.c" />
@@ -135,6 +136,7 @@
     <MASM Include="IsPrefixOfStringInTable_x64_2.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_4.asm" />
+    <MASM Include="IsPrefixOfStringInTable_x64_5.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

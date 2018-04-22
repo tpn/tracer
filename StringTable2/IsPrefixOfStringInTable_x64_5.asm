@@ -33,8 +33,13 @@ include StringTable.inc
 ;     This routine searches for a prefix match of String in the given
 ;     StringTable structure.
 ;
-;     This routine is based off version 2, but uses vpandn instead of the
-;     vpcmpeqq+vpxor approach at the start.
+;     This routine is based off version 2, but leverages the fact that
+;     vptest sets the carry flag if '(xmm0 and (not xmm1))' evaluates
+;     to all 0s, avoiding the the need to do the pxor or pandn steps.
+;     The initial negative-match instructions have been re-ordered and
+;     tweaked in order to reduce the block throughput reported by IACA
+;     (currently at 3.48).
+;
 ;
 ; Arguments:
 ;
@@ -55,74 +60,28 @@ include StringTable.inc
         LEAF_ENTRY IsPrefixOfStringInTable_x64_5, _TEXT$00
 
 ;
-; Load the string buffer into xmm0, and the unique indexes from the string table
-; into xmm1.  Shuffle the buffer according to the unique indexes, and store the
-; result into xmm5.
+; Load the address of the string buffer into rax, broadcast string length
+; across xmm4, load table lengths into xmm3, load string into xmm0.  Compare
+; the string length with slot lengths and store the mask of those greater than
+; in xmm1.  Shuffle the search buffer according to the unique character index
+; and store results in xmm5.  Test (vptest) the two masks; if carry flag is set,
+; there's no match.
 ;
 
         ;IACA_VC_START
 
-        mov     rax, String.Buffer[rdx]
-        vmovdqu xmm0, xmmword ptr [rax]                 ; Load search buffer.
-        vmovdqa xmm1, xmmword ptr StringTable.UniqueIndex[rcx] ; Load indexes.
-        vpshufb xmm5, xmm0, xmm1
-
-;
-; Load the string table's unique character array into xmm2.
-
-        vmovdqa xmm2, xmmword ptr StringTable.UniqueChars[rcx]  ; Load chars.
-
-;
-; Compare the search string's unique character array (xmm5) against the string
-; table's unique chars (xmm2), saving the result back into xmm5.
-;
-
-        vpcmpeqb    xmm5, xmm5, xmm2            ; Compare unique chars.
-
-;
-; Load the lengths of each string table slot into xmm3.
-;
-        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]      ; Load lengths.
-
-;
-; Set xmm2 to all ones.  We use this later to invert the length comparison.
-;
-
-        vpcmpeqq    xmm2, xmm2, xmm2            ; Set xmm2 to all ones.
-
-;
-; Broadcast the byte-sized string length into xmm4.
-;
-
-        vpbroadcastb xmm4, byte ptr String.Length[rdx]  ; Broadcast length.
-
-;
-; Compare the search string's length, which we've broadcasted to all 8-byte
-; elements of the xmm4 register, to the lengths of the slots in the string
-; table, to find those that are greater in length.  Invert the result, such
-; that we're left with a masked register where each 0xff element indicates
-; a slot with a length less than or equal to our search string's length.
-;
-
-        vpcmpgtb    xmm1, xmm3, xmm4            ; Identify long slots.
-        vpxor       xmm1, xmm1, xmm2            ; Invert the result.
-
-;
-; Intersect-and-test the unique character match xmm mask register (xmm5) with
-; the length match mask xmm register (xmm1).  This affects flags, allowing us
-; to do a fast-path exit for the no-match case (where ZF = 1).
-;
-
-        vptest      xmm5, xmm1                  ; Check for no match.
-        jnz         short Pfx10                 ; There was a match.
-
-;
-; No match, set rax to -1 and return.
-;
-
-        xor         eax, eax                    ; Clear rax.
-        not         al                          ; al = -1
-        ret                                     ; Return.
+        mov rax, String.Buffer[rdx]                 ; Load string buffer addr.
+        vpbroadcastb xmm4, byte ptr String.Length[rdx] ; Broadcast length.
+        vmovdqa  xmm3, xmmword ptr StringTable.Lengths[rcx] ; Load tbl lengths.
+        vmovdqu  xmm0, xmmword ptr [rax]            ; Load search buffer.
+        vpcmpgtb xmm1, xmm3, xmm4                   ; Identify long slots.
+        vpshufb  xmm5, xmm0, StringTable.UniqueIndex[rcx] ; Rearrange string.
+        vpcmpeqb xmm5, xmm5, StringTable.UniqueChars[rcx] ; Compare rearranged.
+        vptest   xmm1, xmm5                         ; Unique slots AND (!long).
+        jnc      Short Pfx10                        ; CY=0, continue.
+        xor      eax, eax                           ; CY=1, no match.
+        not      al                                 ; al = -1 (NO_MATCH_FOUND).
+        ret                                         ; Return NO_MATCH_FOUND.
 
         ;IACA_VC_END
 
@@ -161,12 +120,12 @@ Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
         vpinsrq     xmm2, xmm2, rdx, 1          ; Save rdx into xmm2q[1].
 
 ;
-; Intersect xmm5 and xmm1 (as we did earlier with the 'vptest xmm5, xmm1'),
+; Intersect xmm5 and xmm1 (as we did earlier with the 'vptest xmm1, xmm5'),
 ; yielding a mask identifying indices we need to perform subsequent matches
 ; upon.  Convert this into a bitmap and save in xmm2d[2].
 ;
 
-        vpand       xmm5, xmm5, xmm1            ; Intersect unique + lengths.
+        vpandn      xmm5, xmm1, xmm5            ; Intersect unique + lengths.
         vpmovmskb   edx, xmm5                   ; Generate a bitmap from mask.
 
 ;

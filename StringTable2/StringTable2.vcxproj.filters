@@ -91,6 +91,9 @@
     <ClCompile Include="TestStringTable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IsPrefixOfStringInTable_14.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringTable.h">
@@ -140,6 +143,9 @@
       <Filter>Source Files</Filter>
     </MASM>
     <MASM Include="IntegerDivision_x64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="IsPrefixOfStringInTable_x64_5.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>
