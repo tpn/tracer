@@ -60,28 +60,70 @@ include StringTable.inc
         LEAF_ENTRY IsPrefixOfStringInTable_x64_5, _TEXT$00
 
 ;
-; Load the address of the string buffer into rax, broadcast string length
-; across xmm4, load table lengths into xmm3, load string into xmm0.  Compare
-; the string length with slot lengths and store the mask of those greater than
-; in xmm1.  Shuffle the search buffer according to the unique character index
-; and store results in xmm5.  Test (vptest) the two masks; if carry flag is set,
-; there's no match.
+; Load the address of the string buffer into rax.
 ;
 
         ;IACA_VC_START
 
-        mov rax, String.Buffer[rdx]                 ; Load string buffer addr.
-        vpbroadcastb xmm4, byte ptr String.Length[rdx] ; Broadcast length.
-        vmovdqa  xmm3, xmmword ptr StringTable.Lengths[rcx] ; Load tbl lengths.
-        vmovdqu  xmm0, xmmword ptr [rax]            ; Load search buffer.
-        vpcmpgtb xmm1, xmm3, xmm4                   ; Identify long slots.
-        vpshufb  xmm5, xmm0, StringTable.UniqueIndex[rcx] ; Rearrange string.
-        vpcmpeqb xmm5, xmm5, StringTable.UniqueChars[rcx] ; Compare rearranged.
-        vptest   xmm1, xmm5                         ; Unique slots AND (!long).
-        jnc      Short Pfx10                        ; CY=0, continue.
-        xor      eax, eax                           ; CY=1, no match.
-        not      al                                 ; al = -1 (NO_MATCH_FOUND).
-        ret                                         ; Return NO_MATCH_FOUND.
+        mov     rax, String.Buffer[rdx]         ; Load buffer addr.
+
+;
+; Broadcast the byte-sized string length into xmm4.
+;
+
+        vpbroadcastb xmm4, byte ptr String.Length[rdx]  ; Broadcast length.
+
+;
+; Load the lengths of each string table slot into xmm3.
+;
+
+        vmovdqa     xmm3, xmmword ptr StringTable.Lengths[rcx] ; Load lengths.
+
+;
+; Load the search string buffer into xmm0.
+;
+
+        vmovdqu xmm0, xmmword ptr [rax]         ; Load search buffer.
+
+;
+; Compare the search string's length, which we've broadcasted to all 8-byte
+; elements of the xmm4 register, to the lengths of the slots in the string
+; table, to find those that are greater in length.
+;
+
+        vpcmpgtb    xmm1, xmm3, xmm4            ; Identify long slots.
+
+;
+; Shuffle the buffer in xmm0 according to the unique indexes, and store the
+; result into xmm5.
+;
+
+        vpshufb     xmm5, xmm0, StringTable.UniqueIndex[rcx] ; Rearrange string.
+
+;
+; Compare the search string's unique character array (xmm5) against the string
+; table's unique chars (xmm2), saving the result back into xmm5.
+;
+
+        vpcmpeqb    xmm5, xmm5, StringTable.UniqueChars[rcx] ; Compare to uniq.
+
+;
+; Intersect-and-test the unique character match xmm mask register (xmm5) with
+; the length match mask xmm register (xmm1).  This affects flags, allowing us
+; to do a fast-path exit for the no-match case (where CF = 1 after xmm1 has
+; been inverted).
+;
+
+        vptest      xmm1, xmm5                  ; Check for no match.
+        jnc         short Pfx10                 ; There was a match.
+
+;
+; No match, set rax to -1 and return.
+;
+
+        xor         eax, eax                    ; Clear rax.
+        not         al                          ; al = -1
+        ret                                     ; Return.
 
         ;IACA_VC_END
 
