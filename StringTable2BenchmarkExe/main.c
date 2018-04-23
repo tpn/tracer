@@ -27,6 +27,7 @@ Abstract:
 //
 
 const ULONG Warmup = 100;
+const ULONG Batches = 100;
 const ULONG Iterations = 1000;
 
 //
@@ -121,6 +122,7 @@ Benchmark1(
     )
 {
     BOOL Success;
+    ULONG Count;
     ULONG Index;
     ULONG OldCodePage;
     ULARGE_INTEGER BytesToWrite;
@@ -257,15 +259,18 @@ Benchmark1(
 
 #if 1
         RESET_TIMESTAMP(1);
-        START_TIMESTAMP(1);
-        for (Index = 0; Index < Iterations; Index++) {
-            Result = Api->IsPrefixOfCStrInArray(
-                (PCSZ *)NtfsReservedNamesCStrings,
-                AlignedInput.Buffer,
-                NULL
-            );
+        Count = Batches;
+        while (Count--) {
+            START_TIMESTAMP(1);
+            for (Index = 0; Index < Iterations; Index++) {
+                Result = Api->IsPrefixOfCStrInArray(
+                    (PCSZ *)NtfsReservedNamesCStrings,
+                    AlignedInput.Buffer,
+                    NULL
+                );
+            }
+            END_TIMESTAMP(1);
         }
-        END_TIMESTAMP(1);
         FINISH_TIMESTAMP(1, Input->String);
 #endif
 
@@ -306,11 +311,14 @@ Benchmark1(
 
 #if 1
             RESET_TIMESTAMP(1);
-            START_TIMESTAMP(1);
-            for (Index = 0; Index < Iterations; Index++) {
-                Result = IsPrefix(StringTable, &AlignedInput, NULL);
+            Count = Batches;
+            while (Count--) {
+                START_TIMESTAMP(1);
+                for (Index = 0; Index < Iterations; Index++) {
+                    Result = IsPrefix(StringTable, &AlignedInput, NULL);
+                }
+                END_TIMESTAMP(1);
             }
-            END_TIMESTAMP(1);
             FINISH_TIMESTAMP(1, Input->String);
 #endif
 
