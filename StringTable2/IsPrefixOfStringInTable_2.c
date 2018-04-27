@@ -123,7 +123,7 @@ Return Value:
     // Load the first 16-bytes of the search string into an XMM register.
     //
 
-    LoadSearchStringIntoXmmRegister(Search, String, SearchLength);
+    LoadSearchStringIntoXmmRegister_AlwaysMovsb(Search, String, SearchLength);
 
     //
     // Broadcast the search string's unique characters according to the string

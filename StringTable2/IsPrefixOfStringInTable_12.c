@@ -16,6 +16,7 @@ Abstract:
 
 #include "stdafx.h"
 
+
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInTable_12(
@@ -213,8 +214,20 @@ Return Value:
     //
 
     Bitmap = _mm_movemask_epi8(IncludeSlots);
-    Count = __popcnt(Bitmap);
+
+    //
+    // Calculate the "search length" of the incoming string, which ensures we
+    // only compare up to the first 16 characters.
+    //
+
     SearchLength = min(String->Length, 16);
+
+    //
+    // A popcount against the mask will tell us how many slots we matched, and
+    // thus, need to compare.
+    //
+
+    Count = __popcnt(Bitmap);
 
     do {
 

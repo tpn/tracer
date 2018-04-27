@@ -10,7 +10,7 @@ Abstract:
 
     These modules implement the IsPrefixOfStringInTable routine.
 
-;   N.B. Keep this header identical between files to declutter diff output.
+    N.B. Keep this header identical between files to declutter diff output.
 
 --*/
 
@@ -31,7 +31,10 @@ Routine Description:
     search string.  That is, whether any string in the table "starts with
     or is equal to" the search string.
 
-    This routine is based off version 3, but alters when we
+    This routine is based off version 6, but alters when we calculate the
+    "search length" for the given string, which is done via the expression
+    'min(String->Length, 16)'.  We don't need this value until later in the
+    routine, when we're ready to start comparing strings.
 
 Arguments:
 
@@ -123,7 +126,7 @@ Return Value:
     // Load the first 16-bytes of the search string into an XMM register.
     //
 
-    Search.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);
+    Search.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);
 
     //
     // Broadcast the search string's unique characters according to the string
@@ -209,7 +212,17 @@ Return Value:
         goto NoMatch;
     }
 
+    //
+    // Calculate the "search length" of the incoming string, which ensures we
+    // only compare up to the first 16 characters.
+    //
+
     SearchLength = min(String->Length, 16);
+
+    //
+    // A popcount against the mask will tell us how many slots we matched, and
+    // thus, need to compare.
+    //
 
     Count = __popcnt(Bitmap);
 
@@ -297,13 +310,6 @@ Return Value:
 
                 goto FoundMatch;
             }
-
-            //
-            // Prefix match failed, continue the search.
-            //
-
-            continue;
-
         }
 
         if ((USHORT)CharactersMatched == Length) {
@@ -338,9 +344,9 @@ FoundMatch:
     // If we get here, we didn't find a match.
     //
 
-    //IACA_VC_END();
-
 NoMatch:
+
+    //IACA_VC_END();
 
     return NO_MATCH_FOUND;
 }

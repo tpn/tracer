@@ -18,42 +18,44 @@
 
 include StringTable.inc
 
-;
 ;++
 ;
-; BOOL
+; STRING_TABLE_INDEX
 ; IsPrefixOfStringInTable_x64_*(
 ;     _In_ PSTRING_TABLE StringTable,
 ;     _In_ PSTRING String,
-;     _Out_ PSTRING_MATCH StringMatch
+;     _Out_opt_ PSTRING_MATCH Match
 ;     )
 ;
 ; Routine Description:
 ;
-;     This routine searches for a prefix match of String in the given
-;     StringTable structure.
+;   Searches a string table to see if any strings "prefix match" the given
+;   search string.  That is, whether any string in the table "starts with
+;   or is equal to" the search string.
 ;
-;     This routine is based off version 2, but leverages the fact that
-;     vptest sets the carry flag if '(xmm0 and (not xmm1))' evaluates
-;     to all 0s, avoiding the the need to do the pxor or pandn steps.
-;     The initial negative-match instructions have been re-ordered and
-;     tweaked in order to reduce the block throughput reported by IACA
-;     (currently at 3.48).
+;   This routine is identical to version 4, but has the initial negative match
+;   instructions re-ordered and tweaked in order to reduce the block throughput
+;   reported by IACA (from 3.74 to 3.48).
 ;
+;   N.B. Although this does result in a measurable speedup, the clarity suffers
+;        somewhat due to the fact that instructions that were previously paired
+;        together are now spread out (e.g. moving the string buffer address into
+;        rax and then loading that into xmm0 three instructions later).
 ;
 ; Arguments:
 ;
-;     StringTable - Supplies a pointer to a STRING_TABLE structure to search.
+;   StringTable - Supplies a pointer to a STRING_TABLE struct.
 ;
-;     String - Supplies a pointer to a STRING structure that a prefix match
-;         is searched for.
+;   String - Supplies a pointer to a STRING struct that contains the string to
+;       search for.
 ;
-;     StringMatch - Supplies a pointer to a STRING_MATCH structure that will
-;         receive the results of the string match.
+;   Match - Optionally supplies a pointer to a variable that contains the
+;       address of a STRING_MATCH structure.  This will be populated with
+;       additional details about the match if a non-NULL pointer is supplied.
 ;
 ; Return Value:
 ;
-;    Returns TRUE on sucess, FALSE on failure.
+;   Index of the prefix match if one was found, NO_MATCH_FOUND if not.
 ;
 ;--
 
@@ -77,7 +79,7 @@ include StringTable.inc
 ; Load the lengths of each string table slot into xmm3.
 ;
 
-        vmovdqa     xmm3, xmmword ptr StringTable.Lengths[rcx] ; Load lengths.
+        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]  ; Load lengths.
 
 ;
 ; Load the search string buffer into xmm0.
@@ -110,7 +112,7 @@ include StringTable.inc
 ;
 ; Intersect-and-test the unique character match xmm mask register (xmm5) with
 ; the length match mask xmm register (xmm1).  This affects flags, allowing us
-; to do a fast-path exit for the no-match case (where CF = 1 after xmm1 has
+; to do a fast-path exit for the no-match case (where CY = 1 after xmm1 has
 ; been inverted).
 ;
 

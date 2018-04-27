@@ -18,37 +18,39 @@
 
 include StringTable.inc
 
-;
 ;++
 ;
-; BOOL
+; STRING_TABLE_INDEX
 ; IsPrefixOfStringInTable_x64_*(
 ;     _In_ PSTRING_TABLE StringTable,
 ;     _In_ PSTRING String,
-;     _Out_ PSTRING_MATCH StringMatch
+;     _Out_opt_ PSTRING_MATCH Match
 ;     )
 ;
 ; Routine Description:
 ;
-;     This routine searches for a prefix match of String in the given
-;     StringTable structure.
+;   Searches a string table to see if any strings "prefix match" the given
+;   search string.  That is, whether any string in the table "starts with
+;   or is equal to" the search string.
 ;
-;     This routine is based off version 2, but uses vpandn instead of the
-;     vpcmpeqq+vpxor approach at the start.
+;   This routine is based off version 2, but leverages the fact that
+;   vptest sets the carry flag if '(xmm0 and (not xmm1))' evaluates
+;   to all 0s, avoiding the the need to do the pxor or pandn steps.
 ;
 ; Arguments:
 ;
-;     StringTable - Supplies a pointer to a STRING_TABLE structure to search.
+;   StringTable - Supplies a pointer to a STRING_TABLE struct.
 ;
-;     String - Supplies a pointer to a STRING structure that a prefix match
-;         is searched for.
+;   String - Supplies a pointer to a STRING struct that contains the string to
+;       search for.
 ;
-;     StringMatch - Supplies a pointer to a STRING_MATCH structure that will
-;         receive the results of the string match.
+;   Match - Optionally supplies a pointer to a variable that contains the
+;       address of a STRING_MATCH structure.  This will be populated with
+;       additional details about the match if a non-NULL pointer is supplied.
 ;
 ; Return Value:
 ;
-;    Returns TRUE on sucess, FALSE on failure.
+;   Index of the prefix match if one was found, NO_MATCH_FOUND if not.
 ;
 ;--
 
@@ -82,7 +84,8 @@ include StringTable.inc
 ;
 ; Load the lengths of each string table slot into xmm3.
 ;
-        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]      ; Load lengths.
+
+        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]  ; Load lengths.
 
 ;
 ; Broadcast the byte-sized string length into xmm4.
@@ -100,8 +103,6 @@ include StringTable.inc
 
         vpcmpgtb    xmm1, xmm3, xmm4            ; Identify long slots.
 
-        ;vpxor       xmm1, xmm1, xmm2            ; Invert the result.
-
 ;
 ; Intersect-and-test the unique character match xmm mask register (xmm5) with
 ; the inverted length match mask xmm register (xmm1).  This will set the carry
@@ -110,9 +111,7 @@ include StringTable.inc
 ;
 
         vptest      xmm1, xmm5                  ; Check for no match.
-        jnc         Short Pfx10
-
-        ;jnz         short Pfx10                 ; There was a match.
+        jnc         short Pfx10                 ; There was a match.
 
 ;
 ; No match, set rax to -1 and return.

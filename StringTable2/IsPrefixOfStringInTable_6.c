@@ -31,9 +31,8 @@ Routine Description:
     search string.  That is, whether any string in the table "starts with
     or is equal to" the search string.
 
-    This routine differs from version 3 in that we do an aligned load of the
-    search string buffer without any SEH wrappers or alignment checks.  (Thus,
-    this routine will fault if the buffer is unaligned.)
+    This routine differs from version 3 in that we do an unaligned load of
+    the search string buffer without any SEH wrappers or alignment checks.
 
 Arguments:
 
@@ -126,7 +125,7 @@ Return Value:
     //
 
     SearchLength = min(String->Length, 16);
-    Search.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);
+    Search.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);
 
     //
     // Broadcast the search string's unique characters according to the string

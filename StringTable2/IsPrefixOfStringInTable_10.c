@@ -16,6 +16,7 @@ Abstract:
 
 #include "stdafx.h"
 
+
 _Use_decl_annotations_
 STRING_TABLE_INDEX
 IsPrefixOfStringInTable_10(
@@ -112,7 +113,7 @@ Return Value:
     // Load the first 16-bytes of the search string into an XMM register.
     //
 
-    Search.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);
+    Search.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);
 
     //
     // Broadcast the search string's unique characters according to the string
@@ -198,7 +199,17 @@ Return Value:
         return NO_MATCH_FOUND;
     }
 
+    //
+    // Calculate the "search length" of the incoming string, which ensures we
+    // only compare up to the first 16 characters.
+    //
+
     SearchLength = min(String->Length, 16);
+
+    //
+    // A popcount against the mask will tell us how many slots we matched, and
+    // thus, need to compare.
+    //
 
     Count = __popcnt(Bitmap);
 

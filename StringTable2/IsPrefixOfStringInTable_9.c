@@ -31,7 +31,7 @@ Routine Description:
     search string.  That is, whether any string in the table "starts with
     or is equal to" the search string.
 
-    This is a tweaked version of version 8 that does 'return NO_MATCH_FOUND'
+    This is a tweaked version of version 9 that does 'return NO_MATCH_FOUND'
     after the initial bitmap check versus 'goto NoMatch'.
 
 Arguments:
@@ -112,7 +112,7 @@ Return Value:
     // Load the first 16-bytes of the search string into an XMM register.
     //
 
-    Search.CharsXmm = _mm_load_si128((PXMMWORD)String->Buffer);
+    Search.CharsXmm = _mm_loadu_si128((PXMMWORD)String->Buffer);
 
     //
     // Broadcast the search string's unique characters according to the string
@@ -198,7 +198,17 @@ Return Value:
         return NO_MATCH_FOUND;
     }
 
+    //
+    // Calculate the "search length" of the incoming string, which ensures we
+    // only compare up to the first 16 characters.
+    //
+
     SearchLength = min(String->Length, 16);
+
+    //
+    // A popcount against the mask will tell us how many slots we matched, and
+    // thus, need to compare.
+    //
 
     Count = __popcnt(Bitmap);
 
@@ -286,13 +296,6 @@ Return Value:
 
                 goto FoundMatch;
             }
-
-            //
-            // Prefix match failed, continue the search.
-            //
-
-            continue;
-
         }
 
         if ((USHORT)CharactersMatched == Length) {

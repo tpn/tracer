@@ -18,34 +18,35 @@
 
 include StringTable.inc
 
-;
 ;++
 ;
-; BOOL
+; STRING_TABLE_INDEX
 ; IsPrefixOfStringInTable_x64_*(
 ;     _In_ PSTRING_TABLE StringTable,
 ;     _In_ PSTRING String,
-;     _Out_ PSTRING_MATCH StringMatch
+;     _Out_opt_ PSTRING_MATCH Match
 ;     )
 ;
 ; Routine Description:
 ;
-;     This routine searches for a prefix match of String in the given
-;     StringTable structure.
+;   Searches a string table to see if any strings "prefix match" the given
+;   search string.  That is, whether any string in the table "starts with
+;   or is equal to" the search string.
 ;
 ; Arguments:
 ;
-;     StringTable - Supplies a pointer to a STRING_TABLE structure to search.
+;   StringTable - Supplies a pointer to a STRING_TABLE struct.
 ;
-;     String - Supplies a pointer to a STRING structure that a prefix match
-;         is searched for.
+;   String - Supplies a pointer to a STRING struct that contains the string to
+;       search for.
 ;
-;     StringMatch - Supplies a pointer to a STRING_MATCH structure that will
-;         receive the results of the string match.
+;   Match - Optionally supplies a pointer to a variable that contains the
+;       address of a STRING_MATCH structure.  This will be populated with
+;       additional details about the match if a non-NULL pointer is supplied.
 ;
 ; Return Value:
 ;
-;    Returns TRUE on sucess, FALSE on failure.
+;   Index of the prefix match if one was found, NO_MATCH_FOUND if not.
 ;
 ;--
 

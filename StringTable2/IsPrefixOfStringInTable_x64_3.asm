@@ -43,34 +43,43 @@ Locals ends
 
 LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
 
-;
 ;++
 ;
-; BOOL
+; STRING_TABLE_INDEX
 ; IsPrefixOfStringInTable_x64_*(
 ;     _In_ PSTRING_TABLE StringTable,
 ;     _In_ PSTRING String,
-;     _Out_ PSTRING_MATCH StringMatch
+;     _Out_opt_ PSTRING_MATCH Match
 ;     )
 ;
 ; Routine Description:
 ;
-;     This routine searches for a prefix match of String in the given
-;     StringTable structure.
+;   Searches a string table to see if any strings "prefix match" the given
+;   search string.  That is, whether any string in the table "starts with
+;   or is equal to" the search string.
+;
+;   This routine is based off version 2.  It has been converted into a nested
+;   entry (version 2 is a leaf entry), and uses 'rep cmpsb' to do the string
+;   comparison for long strings (instead of the byte-by-byte comparison used
+;   in version 2).  This requires use of the rsi and rdi registers, and the
+;   direction flag.  These are all non-volatile registers and thus, must be
+;   saved to the stack in the function prologue (hence the need to make this
+;   a nested entry).
 ;
 ; Arguments:
 ;
-;     StringTable - Supplies a pointer to a STRING_TABLE structure to search.
+;   StringTable - Supplies a pointer to a STRING_TABLE struct.
 ;
-;     String - Supplies a pointer to a STRING structure that a prefix match
-;         is searched for.
+;   String - Supplies a pointer to a STRING struct that contains the string to
+;       search for.
 ;
-;     StringMatch - Supplies a pointer to a STRING_MATCH structure that will
-;         receive the results of the string match.
+;   Match - Optionally supplies a pointer to a variable that contains the
+;       address of a STRING_MATCH structure.  This will be populated with
+;       additional details about the match if a non-NULL pointer is supplied.
 ;
 ; Return Value:
 ;
-;    Returns TRUE on sucess, FALSE on failure.
+;   Index of the prefix match if one was found, NO_MATCH_FOUND if not.
 ;
 ;--
 
@@ -91,7 +100,7 @@ LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
 ;
 ; Load the string buffer into xmm0, and the unique indexes from the string table
 ; into xmm1.  Shuffle the buffer according to the unique indexes, and store the
-; result back into xmm5.
+; result into xmm5.
 ;
 
         ;IACA_VC_START
@@ -102,18 +111,9 @@ LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
         vpshufb xmm5, xmm0, xmm1
 
 ;
-; Load the string table's unique character array into xmm2, and the lengths for
-; each string slot into xmm3.
-;
+; Load the string table's unique character array into xmm2.
 
         vmovdqa xmm2, xmmword ptr StringTable.UniqueChars[rcx]  ; Load chars.
-        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]      ; Load lengths.
-
-;
-; Broadcast the byte-sized string length into xmm4.
-;
-
-        vpbroadcastb xmm4, byte ptr String.Length[rdx]  ; Broadcast length.
 
 ;
 ; Compare the search string's unique character array (xmm5) against the string
@@ -123,6 +123,23 @@ LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
         vpcmpeqb    xmm5, xmm5, xmm2            ; Compare unique chars.
 
 ;
+; Load the lengths of each string table slot into xmm3.
+;
+        vmovdqa xmm3, xmmword ptr StringTable.Lengths[rcx]      ; Load lengths.
+
+;
+; Set xmm2 to all ones.  We use this later to invert the length comparison.
+;
+
+        vpcmpeqq    xmm2, xmm2, xmm2            ; Set xmm2 to all ones.
+
+;
+; Broadcast the byte-sized string length into xmm4.
+;
+
+        vpbroadcastb xmm4, byte ptr String.Length[rdx]  ; Broadcast length.
+
+;
 ; Compare the search string's length, which we've broadcasted to all 8-byte
 ; elements of the xmm4 register, to the lengths of the slots in the string
 ; table, to find those that are greater in length.  Invert the result, such
@@ -130,7 +147,6 @@ LOCALS_SIZE  equ ((sizeof Locals) + (Locals.ReturnAddress - (sizeof Locals)))
 ; a slot with a length less than or equal to our search string's length.
 ;
 
-        vpcmpeqq    xmm2, xmm2, xmm2            ; Set xmm2 to all ones.
         vpcmpgtb    xmm1, xmm3, xmm4            ; Identify long slots.
         vpxor       xmm1, xmm1, xmm2            ; Invert the result.
 
@@ -486,6 +502,8 @@ Pfx60:  vpextrb     rcx, xmm4, 2                ; Restore rcx counter.
         jmp         Pfx20                       ; Continue comparisons.
 
         ;IACA_VC_END
+
+        align   16
 
 Pfx90:  mov     rsi, Locals.SavedRsi[rsp]       ; Restore rsi.
         mov     rdi, Locals.SavedRdi[rsp]       ; Restore rdi.
