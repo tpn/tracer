@@ -84,6 +84,8 @@ HMODULE GlobalStringTableModule = 0;
 #define FINISH_TIMESTAMP(Id, String)                         \
     OUTPUT_STRING(&Timestamp##Id##.Name);                    \
     OUTPUT_SEP();                                            \
+    OUTPUT_RAW(BuildConfigString);                           \
+    OUTPUT_SEP();                                            \
     OUTPUT_STRING(String);                                   \
     OUTPUT_SEP();                                            \
     OUTPUT_INT(Timestamp##Id##.MinimumTsc.QuadPart);         \
@@ -217,7 +219,7 @@ Benchmark1(
         return;
     }
 
-    OUTPUT_RAW("Name,String,MinimumCycles\n");
+    OUTPUT_RAW("Name,BuildConfig,String,MinimumCycles\n");
 
 #if 0
 #define YIELD_EXECUTION() Rtl->NtYieldExecution()
@@ -272,6 +274,7 @@ Benchmark1(
             END_TIMESTAMP(1);
         }
         FINISH_TIMESTAMP(1, Input->String);
+
 #endif
 
 #if 0

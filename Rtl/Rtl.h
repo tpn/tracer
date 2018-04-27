@@ -406,6 +406,24 @@ extern "C" {
     )
 
 //
+// Build type static strings.
+//
+
+#ifdef _BUILD_CONFIG_PGI
+static const char BuildConfigString[] = "PGI";
+#elif defined(_BUILD_CONFIG_PGU)
+static const char BuildConfigString[] = "PGU";
+#elif defined(_BUILD_CONFIG_PGO)
+static const char BuildConfigString[] = "PGO";
+#elif defined(_BUILD_CONFIG_RELEASE)
+static const char BuildConfigString[] = "Release";
+#elif defined(_BUILD_CONFIG_DEBUG)
+static const char BuildConfigString[] = "Debug";
+#else
+#error Unknown build config type.
+#endif
+
+//
 // Define start/end markers for IACA.
 //
 
@@ -492,7 +510,8 @@ typedef LINKED_LINE **PPLINKED_LINE;
 #include "HeapAllocator.h"
 #include "Commandline.h"
 
-typedef CONST char *PCSZ;
+typedef _Null_terminated_ CONST CHAR *PCSZ;
+typedef CONST CHAR *PCCHAR;
 
 #ifdef _M_X64
 #pragma intrinsic(__readgsdword)
@@ -5593,7 +5612,7 @@ typedef
 VOID
 (NTAPI APPEND_CHAR_BUFFER_TO_CHAR_BUFFER)(
     _Inout_ PPCHAR BufferPointer,
-    _In_ PCHAR String,
+    _In_ PCCHAR String,
     _In_ ULONG SizeInBytes
     );
 typedef APPEND_CHAR_BUFFER_TO_CHAR_BUFFER *PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER;

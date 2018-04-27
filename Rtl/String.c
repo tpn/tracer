@@ -92,7 +92,7 @@ _Use_decl_annotations_
 VOID
 AppendCharBufferToCharBuffer(
     PPCHAR BufferPointer,
-    PCHAR String,
+    PCCHAR String,
     ULONG SizeInBytes
     )
 {
