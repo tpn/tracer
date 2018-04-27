@@ -275,12 +275,7 @@ const STRING_TABLE_TEST_INPUT NtfsTestInputs[] = {
     NTFS_TEST_INPUT(Dot),
     NTFS_WORST_CASE_TEST_INPUT(),
     { -1, &a },
-    { -1, &ab },
-    { -1, &abc },
     { -1, &fox1 },
-    { -1, &abcd },
-    { -1, &abcdefghijkl },
-    { -1, &abcdefghijklmnopqr },
     { -1, &abcdefghijklmnopqrstuvw },
 };
 
