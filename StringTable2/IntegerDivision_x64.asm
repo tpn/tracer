@@ -86,7 +86,6 @@ Eh90:   ret                                         ; Return.
 
         LEAF_END ExceptionHandler, _TEXT$00
 
-;
 ;++
 ;
 ; ULONGLONG
