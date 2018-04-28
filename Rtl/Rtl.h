@@ -8573,10 +8573,10 @@ static CONST WCHAR IntegerToWCharTable[] = {
 };
 
 FORCEINLINE
-USHORT
+BYTE
 CountNumberOfDigitsInline(_In_ ULONG Value)
 {
-    USHORT Count = 0;
+    BYTE Count = 0;
 
     do {
         Count++;
@@ -8587,10 +8587,10 @@ CountNumberOfDigitsInline(_In_ ULONG Value)
 }
 
 FORCEINLINE
-USHORT
+BYTE
 CountNumberOfLongLongDigitsInline(_In_ ULONGLONG Value)
 {
-    USHORT Count = 0;
+    BYTE Count = 0;
 
     do {
         Count++;
