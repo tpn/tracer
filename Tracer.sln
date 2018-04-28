@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		CallStack1.dgml = CallStack1.dgml
 		Graph1.dgml = Graph1.dgml
 		IncludeFileDependencies1.dgml = IncludeFileDependencies1.dgml
+		Tracer.props = Tracer.props
+		TracerBase.props = TracerBase.props
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Python", "Python\Python.vcxproj", "{B24F2B53-8B08-4CF7-8AE3-0C3DDD86373C}"
