@@ -55,40 +55,47 @@ HMODULE GlobalStringTableModule = 0;
 #define PTR(p) ((ULONG_PTR)(p))
 #define LEN(String) ((LONG)((STRING)(String)).Length)
 
-#define FINISH_TIMESTAMP_2(Id, String, Iterations)           \
-    OUTPUT_STRING(&Timestamp##Id##.Name);                    \
-    OUTPUT_SEP();                                            \
-    OUTPUT_STRING(String);                                   \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Iterations);                                  \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MinimumTsc.QuadPart);         \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MaximumTsc.QuadPart);         \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.TotalTsc.QuadPart);           \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MinimumCycles.QuadPart);      \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MaximumCycles.QuadPart);      \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.TotalCycles.QuadPart);        \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MinimumNanoseconds.QuadPart); \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MaximumNanoseconds.QuadPart); \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.TotalNanoseconds.QuadPart);   \
+#define FINISH_TIMESTAMP_2(Id, String, Iterations)      \
+    OUTPUT_STRING(&Timestamp->Name);                    \
+    OUTPUT_SEP();                                       \
+    OUTPUT_STRING(String);                              \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Iterations);                             \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MinimumTsc.QuadPart);         \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MaximumTsc.QuadPart);         \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->TotalTsc.QuadPart);           \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MinimumCycles.QuadPart);      \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MaximumCycles.QuadPart);      \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->TotalCycles.QuadPart);        \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MinimumNanoseconds.QuadPart); \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->MaximumNanoseconds.QuadPart); \
+    OUTPUT_SEP();                                       \
+    OUTPUT_INT(Timestamp->TotalNanoseconds.QuadPart);   \
     OUTPUT_LF()
 
-#define FINISH_TIMESTAMP(Id, String)                         \
-    OUTPUT_STRING(&Timestamp##Id##.Name);                    \
-    OUTPUT_SEP();                                            \
-    OUTPUT_RAW(BuildConfigString);                           \
-    OUTPUT_SEP();                                            \
-    OUTPUT_STRING(String);                                   \
-    OUTPUT_SEP();                                            \
-    OUTPUT_INT(Timestamp##Id##.MinimumTsc.QuadPart);         \
+#define OUTPUT_INT_EX(Value)                                     \
+    Rtl->AppendIntegerToCharBufferEx(&Output, Value, 2, ' ', 0);
+
+#define FINISH_TIMESTAMP(InputIndex, String)    \
+    OUTPUT_STRING(&Timestamp->Name);            \
+    OUTPUT_SEP();                               \
+    OUTPUT_INT(Timestamp->Id);                  \
+    OUTPUT_SEP();                               \
+    OUTPUT_RAW(BuildConfigString);              \
+    OUTPUT_SEP();                               \
+    OUTPUT_INT_EX(InputIndex);                  \
+    OUTPUT_CHR(' ');                            \
+    OUTPUT_STRING(String);                      \
+    OUTPUT_SEP();                               \
+    OUTPUT_INT(Timestamp->MinimumTsc.QuadPart); \
     OUTPUT_LF()
 
 #define DELIM ';'
@@ -136,7 +143,8 @@ Benchmark1(
     ULONGLONG Alignment;
     ULONGLONG OutputBufferSize;
     STRING_TABLE_INDEX Result;
-    TIMESTAMP Timestamp1;
+    PTIMESTAMP Timestamps;
+    PTIMESTAMP Timestamp;
     LARGE_INTEGER Frequency;
     const STRING_TABLE_INDEX NoMatchFound = NO_MATCH_FOUND;
     PSTRING_TABLE StringTable;
@@ -172,6 +180,20 @@ Benchmark1(
     OldCodePage = GetConsoleCP();
 
     ASSERT(SetConsoleCP(20127));
+
+    //
+    // Allocate space for the timestamps.  The + 1 accounts for the
+    // manual IsPrefixOfCStrInArray() call we do.
+    //
+
+    Timestamps = (PTIMESTAMP)(
+        Allocator->AlignedCalloc(Allocator->Context,
+                                 NumberOfIsPrefixFunctions + 1,
+                                 sizeof(*Timestamps),
+                                 32)
+    );
+
+    ASSERT(Timestamps);
 
     DELIMITED_TABLE(&NtfsReservedNames);
 
@@ -219,7 +241,7 @@ Benchmark1(
         return;
     }
 
-    OUTPUT_RAW("Name,BuildConfig,String,MinimumCycles\n");
+    OUTPUT_RAW("Name,FuncIndex,BuildConfig,String,MinimumCycles\n");
 
 #if 0
 #define YIELD_EXECUTION() Rtl->NtYieldExecution()
@@ -248,7 +270,8 @@ Benchmark1(
 
         ASSERT(Result == Input->Expected);
 
-        INIT_TIMESTAMP(1, "IsPrefixOfCStrInArray");
+        Timestamp = &Timestamps[0];
+        INIT_TIMESTAMP(0, "IsPrefixOfCStrInArray");
 
         YIELD_EXECUTION();
         for (Index = 0; Index < Warmup; Index++) {
@@ -259,11 +282,10 @@ Benchmark1(
             );
         }
 
-#if 1
-        RESET_TIMESTAMP(1);
+        RESET_TIMESTAMP();
         Count = Batches;
         while (Count--) {
-            START_TIMESTAMP(1);
+            START_TIMESTAMP();
             for (Index = 0; Index < Iterations; Index++) {
                 Result = Api->IsPrefixOfCStrInArray(
                     (PCSZ *)NtfsReservedNamesCStrings,
@@ -271,25 +293,9 @@ Benchmark1(
                     NULL
                 );
             }
-            END_TIMESTAMP(1);
+            END_TIMESTAMP();
         }
-        FINISH_TIMESTAMP(1, Input->String);
-
-#endif
-
-#if 0
-        RESET_TIMESTAMP(1);
-        for (Index = 0; Index < Iterations; Index++) {
-            START_TIMESTAMP(1);
-            Result = Api->IsPrefixOfCStrInArray(
-                (PCSZ *)NtfsReservedNamesCStrings,
-                AlignedInput.Buffer,
-                NULL
-            );
-            END_TIMESTAMP(1);
-        }
-        FINISH_TIMESTAMP(1, Input->String);
-#endif
+        FINISH_TIMESTAMP(InputIndex, Input->String);
 
         //
         // Continue with the remaining functions.
@@ -305,35 +311,25 @@ Benchmark1(
                 ASSERT(Result == Input->Expected);
             }
 
-            INIT_TIMESTAMP_FROM_STRING(1, (&Func->Name));
+            ++Timestamp;
+            INIT_TIMESTAMP_FROM_STRING(FuncIndex+1, (&Func->Name));
 
             YIELD_EXECUTION();
             for (Index = 0; Index < Warmup; Index++) {
                 Result = IsPrefix(StringTable, &AlignedInput, NULL);
             }
 
-#if 1
-            RESET_TIMESTAMP(1);
+            RESET_TIMESTAMP();
             Count = Batches;
             while (Count--) {
-                START_TIMESTAMP(1);
+                START_TIMESTAMP();
                 for (Index = 0; Index < Iterations; Index++) {
                     Result = IsPrefix(StringTable, &AlignedInput, NULL);
                 }
-                END_TIMESTAMP(1);
+                END_TIMESTAMP();
             }
-            FINISH_TIMESTAMP(1, Input->String);
-#endif
+            FINISH_TIMESTAMP(InputIndex, Input->String);
 
-#if 0
-            RESET_TIMESTAMP(1);
-            for (Index = 0; Index < Iterations; Index++) {
-                START_TIMESTAMP(1);
-                Result = IsPrefix(StringTable, &AlignedInput, NULL);
-                END_TIMESTAMP(1);
-            }
-            FINISH_TIMESTAMP(1, Input->String);
-#endif
         }
     }
 

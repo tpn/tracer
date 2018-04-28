@@ -2,3 +2,4 @@ LIBRARY Rtl
 EXPORTS
     RtlHeapAllocatorInitialize
     RtlHeapAllocatorDestroy
+    AppendIntegerToCharBufferEx

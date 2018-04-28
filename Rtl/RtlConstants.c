@@ -261,6 +261,7 @@ CONST PCSTR RtlExFunctionNames[] = {
     "WriteEnvVarToRegistry",
     "WriteRegistryString",
     "AppendIntegerToCharBuffer",
+    "AppendIntegerToCharBufferEx",
     "AppendStringToCharBuffer",
     "AppendCharBufferToCharBuffer",
     "AppendCharToCharBuffer",

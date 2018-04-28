@@ -72,6 +72,127 @@ AppendIntegerToCharBuffer(
     return;
 }
 
+
+_Use_decl_annotations_
+VOID
+AppendIntegerToCharBufferEx(
+    PPCHAR BufferPointer,
+    ULONGLONG Integer,
+    BYTE NumberOfDigits,
+    CHAR Pad,
+    CHAR Trailer
+    )
+/*++
+
+Routine Description:
+
+    This is a helper routine that appends an integer to a character buffer,
+    with optional support for padding and trailer characters.
+
+Arguments:
+
+    BufferPointer - Supplies a pointer to a variable that contains the address
+        of a character buffer to which the string representation of the integer
+        will be written.  The pointer is adjusted to point after the length of
+        the written bytes prior to returning.
+
+    Integer - Supplies the long long integer value to be appended to the string.
+
+    NumberOfDigits - The expected number of digits for the value.  If Integer
+        has less digits than this number, it will be left-padded with the char
+        indicated by the Pad parameter.
+
+    Pad - A character to use for padding, if applicable.
+
+    Trailer - An optional trailing wide character to append.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    BYTE Offset;
+    BYTE NumberOfCharsToPad;
+    BYTE ActualNumberOfDigits;
+    ULONGLONG Digit;
+    ULONGLONG Value;
+    ULONGLONG Count;
+    ULONGLONG Bytes;
+    CHAR Char;
+    PCHAR End;
+    PCHAR Dest;
+    PCHAR Start;
+    PCHAR Expected;
+
+    Start = *BufferPointer;
+
+    //
+    // Make sure the integer value doesn't have more digits than specified.
+    //
+
+    ActualNumberOfDigits = CountNumberOfLongLongDigitsInline(Integer);
+    ASSERT(ActualNumberOfDigits <= NumberOfDigits);
+
+    //
+    // Initialize our destination pointer to the last digit.  (We write
+    // back-to-front.)
+    //
+
+    Offset = (NumberOfDigits - 1) * sizeof(Char);
+    Dest = (PCHAR)RtlOffsetToPointer(Start, Offset);
+    End = Dest + 1;
+
+    Count = 0;
+    Bytes = 0;
+
+    //
+    // Convert each digit into the corresponding character and copy to the
+    // string buffer, retreating the pointer as we go.
+    //
+
+    Value = Integer;
+
+    do {
+        Count++;
+        Bytes += sizeof(Char);
+        Digit = Value % 10;
+        Value = Value / 10;
+        Char = ((CHAR)Digit + '0');
+        *Dest-- = Char;
+    } while (Value != 0);
+
+    //
+    // Pad the string with zeros if necessary.
+    //
+
+    NumberOfCharsToPad = NumberOfDigits - ActualNumberOfDigits;
+
+    if (NumberOfCharsToPad && Pad) {
+        do {
+            Count++;
+            Bytes += sizeof(Char);
+            *Dest-- = Pad;
+        } while (--NumberOfCharsToPad);
+    }
+
+    //
+    // Add the trailer if applicable.
+    //
+
+    if (Trailer) {
+        Bytes += sizeof(Char);
+        *End++ = Trailer;
+    }
+
+    Expected = (PCHAR)RtlOffsetToPointer(Start, Bytes);
+    ASSERT(Expected == End);
+
+    *BufferPointer = End;
+
+    return;
+}
+
 _Use_decl_annotations_
 VOID
 AppendStringToCharBuffer(
