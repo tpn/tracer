@@ -137,6 +137,7 @@
     <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_4.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_5.asm" />
+    <MASM Include="IsPrefixOfStringInTable_x64_6.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

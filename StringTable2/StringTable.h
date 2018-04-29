@@ -1431,6 +1431,7 @@ typedef struct _STRING_TABLE_API_EX {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_3;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_4;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_5;
+    PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_6;
     PIS_PREFIX_OF_STRING_IN_TABLE IntegerDivision_x64_1;
 
 } STRING_TABLE_API_EX;
@@ -1553,6 +1554,7 @@ Return Value:
         "IsPrefixOfStringInTable_x64_3",
         "IsPrefixOfStringInTable_x64_4",
         "IsPrefixOfStringInTable_x64_5",
+        "IsPrefixOfStringInTable_x64_6",
         "IntegerDivision_x64_1",
     };
 
