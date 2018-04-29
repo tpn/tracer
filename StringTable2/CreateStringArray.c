@@ -536,7 +536,7 @@ Return Value:
         // Copy the source string over.
         //
 
-        __movsb(DestString->Buffer, Source, StringLength);
+        CopyMemory(DestString->Buffer, Source, StringLength);
 
         //
         // Carve out the next destination buffer.
