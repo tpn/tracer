@@ -104,16 +104,13 @@ include StringTable.inc
         vpxor       xmm1, xmm1, xmm5            ; Invert the result.
 
 ;
-; Intersect xmm0 and xmm1 to identify string slots of a suitable length with
-; a matching unique character.
-;
-
-;
-; Test the final xmm0 register for all zeros (indicating no match).
+; Intersect-via-test xmm0 and xmm1 to identify string slots of a suitable
+; length with a matching unique character.
 ;
 
         vptest      xmm0, xmm1                  ; Check for no match.
-        ;jnz         short @F                    ; There was a match.
+        ;jnz        short @F                    ; There was a match.
+                                                ; (Not yet implemented.)
 
 ;
 ; No match, set rax to -1 and return.
