@@ -15,6 +15,347 @@ Abstract:
 
 #include "stdafx.h"
 
+BOOL
+InitializeInstallationAndBaseTraceDirectoryRegistryKeys(
+    PTRACER_CONFIG TracerConfig,
+    PALLOCATOR Allocator,
+    HKEY RegistryKey
+    )
+/*++
+
+Routine Description:
+
+    This is an internal helper routine.  It provides default values for the
+    InstallationDirectory and BaseTraceDirectory registry keys if no value is
+    present, based on the directory of the currently loaded module.
+
+Arguments:
+
+    TracerConfig - Supplies a pointer to a TRACER_CONFIG structure for which
+        the paths are to be initialized.
+
+    Allocator - Supplies a pointer to an ALLOCATOR structure which will be used
+        for any memory allocations required.
+
+    RegistryKey - Supplies the registry key that has been opened for the
+        Tracer registry path.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    BOOL IsValid;
+    BOOL Success;
+    ULONG Count;
+    ULONG Result;
+    ULONG Slashes;
+    ULONG LastError;
+    ULONG SizeInChars;
+    ULONG SizeInBytes = 0;
+    ULONG AllocSizeInBytes;
+    PWCHAR Char;
+    PWSTR Buffer = NULL;
+    PWSTR Dest;
+    PWSTR Source;
+    PTRACER_PATHS Paths;
+    PUNICODE_STRING InstallationDirectory;
+    PUNICODE_STRING BaseTraceDirectory;
+    const BOOL Mandatory = FALSE;
+
+    //
+    // Initialize pointers.
+    //
+
+    Paths = &TracerConfig->Paths;
+    InstallationDirectory = &TracerConfig->Paths.InstallationDirectory;
+    BaseTraceDirectory = &TracerConfig->Paths.BaseTraceDirectory;
+
+    //
+    // Determine if the registry key for InstallationDirectory: a) exists, b)
+    // is of the correct type (REG_SZ), and c) is within the appropriate size
+    // constraints.
+    //
+
+    Result = RegGetValueW(RegistryKey,
+                          NULL,
+                          L"InstallationDirectory",
+                          RRF_RT_REG_SZ,
+                          NULL,
+                          NULL,
+                          &SizeInBytes);
+
+    IsValid = (
+        Result == ERROR_SUCCESS &&
+        SizeInBytes >= MINIMUM_PATH_SIZE_IN_BYTES &&
+        SizeInBytes <= MAXIMUM_PATH_SIZE_IN_BYTES
+    );
+
+    if (IsValid) {
+
+        //
+        // Load the value normally.
+        //
+
+        READ_REG_SZ_PATH(InstallationDirectory, Mandatory);
+
+    } else {
+
+        ULONG Flags;
+        HMODULE Module;
+        WCHAR Path[_MAX_PATH];
+        ULONG BufferSizeInChars = _MAX_PATH;
+
+        //
+        // InstallationDirectory is invalid for one of the reasons above.
+        // Obtain the full path name of the DLL we're currently loaded in,
+        // back up two directories, and use that as the InstallationDirectory.
+        //
+        // For example, if the module name is:
+        //
+        //      S:\Source\tracer\x64\Release\TracerConfig.dll
+        //
+        // Then find the third slash from the end, and use that minus 1
+        // character; e.g. S:\Source\tracer.
+        //
+
+        Flags = GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+        if (!GetModuleHandleExW(Flags, NULL, &Module)) {
+            return FALSE;
+        }
+
+        SizeInChars = GetModuleFileNameW(Module,
+                                         (PWSTR)Path,
+                                         BufferSizeInChars);
+
+        LastError = GetLastError();
+        if (LastError != ERROR_SUCCESS) {
+            return FALSE;
+        }
+
+        //
+        // Calculate the size required in bytes by shifting the character size
+        // left once, to account for the wide character (2 byte) size.
+        //
+
+        SizeInBytes = SizeInChars << 1;
+
+        //
+        // Allocate sufficient buffer space.
+        //
+
+        Buffer = (PWSTR)Allocator->Calloc(Allocator->Context, 1, SizeInBytes);
+        if (!Buffer) {
+            return FALSE;
+        }
+
+        //
+        // Copy the string over.
+        //
+
+        __movsw(Buffer, Path, SizeInChars);
+
+        //
+        // Reverse through the string until we find 3 slashes.
+        //
+
+        Slashes = 0;
+        for (Char = (Buffer + SizeInChars) - 1; Char > Buffer && *Char; Char--) {
+            if (*Char != L'\\') {
+                continue;
+            }
+            if (++Slashes == 3) {
+                break;
+            }
+        }
+
+        if (Slashes != 3) {
+            goto Error;
+        }
+
+        //
+        // Char will now be pointing to the slash before the architecture part
+        // of the path, e.g. "x64".  So, stash a NULL there to terminate it,
+        // then fill in the InstallationDirectory UNICODE_STRING details, using
+        // the distance between the Char pointer and the Buffer address minus
+        // 1 (to account for the NULL) as the Length.
+        //
+
+        *Char = L'\0';
+        InstallationDirectory->Length = (USHORT)((Char - Buffer) << 1);
+        InstallationDirectory->MaximumLength = (USHORT)SizeInBytes;
+        InstallationDirectory->Buffer = Buffer;
+
+        //
+        // Now, write this string to the registry.
+        //
+
+        Result = RegSetValueExW(RegistryKey,
+                                L"InstallationDirectory",
+                                0,
+                                REG_SZ,
+                                (const BYTE *)InstallationDirectory->Buffer,
+                                InstallationDirectory->Length + sizeof(WCHAR));
+
+        if (Result != ERROR_SUCCESS) {
+            LastError = GetLastError();
+            goto Error;
+        }
+
+    }
+
+    //
+    // Determine if the registry key for BaseTraceDirectory: a) exists, b)
+    // is of the correct type (REG_SZ), and c) is within the appropriate size
+    // constraints.
+    //
+
+    Result = RegGetValueW(RegistryKey,
+                          NULL,
+                          L"BaseTraceDirectory",
+                          RRF_RT_REG_SZ,
+                          NULL,
+                          NULL,
+                          &SizeInBytes);
+
+    IsValid = (
+        Result == ERROR_SUCCESS &&
+        SizeInBytes >= MINIMUM_PATH_SIZE_IN_BYTES &&
+        SizeInBytes <= MAXIMUM_PATH_SIZE_IN_BYTES
+    );
+
+    if (IsValid) {
+
+        //
+        // Load the value normally.
+        //
+
+        READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
+
+    } else {
+
+        UNICODE_STRING TraceData = RTL_CONSTANT_STRING(L"\\TraceData");
+
+        //
+        // For the base trace directory, we append L"\\TraceData" to the
+        // installation directory.  Calculate the length (size in bytes).
+        // The sizeof(WCHAR) accounts for the terminating NULL.
+        //
+
+        SizeInBytes = (
+            InstallationDirectory->Length +
+            TraceData.Length +
+            sizeof(WCHAR)
+        );
+
+        AllocSizeInBytes = ALIGN_UP_POINTER(SizeInBytes);
+
+        //
+        // Allocate sufficient space.
+        //
+
+        BaseTraceDirectory->Buffer = (PWCHAR)(
+            Allocator->Calloc(Allocator->Context,
+                              1,
+                              AllocSizeInBytes)
+        );
+
+        if (!BaseTraceDirectory->Buffer) {
+            goto Error;
+        }
+
+        //
+        // Allocation was successful.  Copy the installation directory over.
+        //
+
+        Dest = BaseTraceDirectory->Buffer;
+        Source = InstallationDirectory->Buffer;
+        Count = InstallationDirectory->Length >> 1;
+        __movsw(Dest, Source, Count);
+
+        //
+        // Copy the trace data suffix over.
+        //
+
+        Dest += Count;
+        Source = TraceData.Buffer;
+        Count = TraceData.Length >> 1;
+        __movsw(Dest, Source, Count);
+
+        //
+        // Write the trailing NULL.
+        //
+
+        Dest += Count;
+        *Dest++ = L'\0';
+
+        //
+        // Initialize the lengths.
+        //
+
+        BaseTraceDirectory->Length = (
+            InstallationDirectory->Length +
+            TraceData.Length
+        );
+
+        BaseTraceDirectory->MaximumLength = (USHORT)AllocSizeInBytes;
+
+        //
+        // Now, write this value back to the registry.
+        //
+
+        Result = RegSetValueExW(RegistryKey,
+                                L"BaseTraceDirectory",
+                                0,
+                                REG_SZ,
+                                (const BYTE *)BaseTraceDirectory->Buffer,
+                                BaseTraceDirectory->Length + sizeof(WCHAR));
+
+        if (Result != ERROR_SUCCESS) {
+            LastError = GetLastError();
+
+            //
+            // Free the buffer we just allocated.
+            //
+
+            Allocator->FreePointer(Allocator->Context,
+                                   &BaseTraceDirectory->Buffer);
+
+            goto Error;
+        }
+
+    }
+
+    //
+    // We're done, indicate success and return.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    //
+    // Free the buffer, if applicable.
+    //
+
+    if (Buffer) {
+        Allocator->FreePointer(Allocator->Context, &Buffer);
+    }
+
+    Success = FALSE;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    return Success;
+
+}
+
 
 _Use_decl_annotations_
 PTRACER_CONFIG
@@ -60,6 +401,7 @@ Return Value:
 
 --*/
 {
+    BOOL Success;
     const BOOL Mandatory = FALSE;
     const BOOL Optional = TRUE;
     USHORT Index;
@@ -261,8 +603,18 @@ Return Value:
     Paths->SizeOfStruct = sizeof(*Paths);
 
     //
-    // Load InstallationDirectory and BaseTraceDirectory.
+    // Initialize InstallationDirectory and BaseTraceDirectory.
     //
+
+    Success = InitializeInstallationAndBaseTraceDirectoryRegistryKeys(
+        TracerConfig,
+        Allocator,
+        RegistryKey
+    );
+
+    if (!Success) {
+        goto Error;
+    }
 
     READ_REG_SZ_PATH(InstallationDirectory, Mandatory);
     READ_REG_SZ_PATH(BaseTraceDirectory, Mandatory);
