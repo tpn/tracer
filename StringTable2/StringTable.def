@@ -25,12 +25,15 @@ EXPORTS
     IsPrefixOfStringInTable_12
     IsPrefixOfStringInTable_13
     IsPrefixOfStringInTable_14
+    IsPrefixOfStringInTable_15
     IsPrefixOfStringInTable_x64_1
     IsPrefixOfStringInTable_x64_2
     IsPrefixOfStringInTable_x64_3
     IsPrefixOfStringInTable_x64_4
     IsPrefixOfStringInTable_x64_5
     IsPrefixOfStringInTable_x64_6
+    IsPrefixOfStringInTable_x64_7
+    IsPrefixOfStringInTable_x64_8
     IsPrefixOfCStrInArray
     IntegerDivision_x64_1
     IsPrefixOfStringInTable=IsPrefixOfStringInTable_13
