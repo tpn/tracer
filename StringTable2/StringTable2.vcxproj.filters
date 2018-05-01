@@ -160,5 +160,11 @@
     <MASM Include="IsPrefixOfStringInTable_x64_8.asm">
       <Filter>Source Files</Filter>
     </MASM>
+    <MASM Include="IsPrefixOfStringInTable_x64_9.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="IsPrefixOfStringInTable_x64_10.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

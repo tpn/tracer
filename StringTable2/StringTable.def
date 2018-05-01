@@ -34,6 +34,8 @@ EXPORTS
     IsPrefixOfStringInTable_x64_6
     IsPrefixOfStringInTable_x64_7
     IsPrefixOfStringInTable_x64_8
+    IsPrefixOfStringInTable_x64_9
+    IsPrefixOfStringInTable_x64_10
     IsPrefixOfCStrInArray
     IntegerDivision_x64_1
     IsPrefixOfStringInTable=IsPrefixOfStringInTable_13
