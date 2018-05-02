@@ -360,7 +360,8 @@ RunSingleFunction(
     PRTL Rtl,
     PALLOCATOR Allocator,
     ULONG TargetFunctionId,
-    ULONG TargetInputId
+    ULONG TargetInputId,
+    ULONG RunCount
     )
 {
     BOOL Success;
@@ -422,6 +423,12 @@ RunSingleFunction(
     OUTPUT_STRING(&Func->Name);
     OUTPUT_SEP();
     OUTPUT_STRING(Input->String);
+
+    if (RunCount) {
+        OUTPUT_SEP();
+        OUTPUT_INT(RunCount);
+    }
+
     OUTPUT_LF();
     OUTPUT_FLUSH();
 
@@ -433,8 +440,14 @@ RunSingleFunction(
 
     ASSERT(Rtl->SetConsoleCtrlHandler(RunSingleFunctionCtrlCHandler, TRUE));
 
-    while (!CtrlCPressed) {
-        IsPrefix(StringTable, &AlignedInput, NULL);
+    if (!RunCount) {
+        while (!CtrlCPressed) {
+            IsPrefix(StringTable, &AlignedInput, NULL);
+        }
+    } else {
+        while (!CtrlCPressed && --RunCount) {
+            IsPrefix(StringTable, &AlignedInput, NULL);
+        }
     }
 
     OUTPUT_RAW("Finished.\n");
@@ -476,6 +489,7 @@ mainCRTStartup()
     PPWSTR ArgvW;
     ULONG TargetFunctionId;
     ULONG TargetInputId;
+    ULONG RunCount;
     NTSTATUS Status;
 
     if (!BootstrapRtl(&RtlModule, &Bootstrap)) {
@@ -561,6 +575,7 @@ mainCRTStartup()
             break;
 
         case 3:
+        case 4:
             CHECKED_NTSTATUS_MSG(
                 Rtl->RtlCharToInteger(
                     ArgvA[1],
@@ -579,11 +594,26 @@ mainCRTStartup()
                 "Rtl->RtlCharToInteger(ArgvA[2])"
             );
 
+            if (NumberOfArguments == 4) {
+
+                CHECKED_NTSTATUS_MSG(
+                    Rtl->RtlCharToInteger(
+                        ArgvA[3],
+                        10,
+                        &RunCount
+                    ),
+                    "Rtl->RtlCharToInteger(ArgvA[3])"
+                );
+
+            } else {
+                RunCount = 0;
+            }
 
             RunSingleFunction(Rtl,
                               Allocator,
                               TargetFunctionId,
-                              TargetInputId);
+                              TargetInputId,
+                              RunCount);
 
             break;
 
