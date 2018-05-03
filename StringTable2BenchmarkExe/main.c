@@ -440,7 +440,7 @@ RunSingleFunction(
     DELIMITED_TABLE(&NtfsReservedNames);
 
     Input = &NtfsTestInputs[InputIndex];
-    Func = &IsPrefixFunctions[FuncIndex];
+    Func = &IsPrefixFunctions[FuncIndex-1];
     IsPrefix = LOAD_FUNCTION_FROM_OFFSET(Api, Func->Offset);
 
     COPY_TEST_INPUT(NtfsTestInputs, InputIndex);
