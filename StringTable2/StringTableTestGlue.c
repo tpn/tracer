@@ -227,6 +227,9 @@ const STRING_TABLE_FUNCTION_OFFSET IsPrefixFunctions[] = {
     DSTFO(IsPrefixOfStringInTable_x64_8,   TRUE),
     DSTFO(IsPrefixOfStringInTable_x64_9,   TRUE),
     DSTFO(IsPrefixOfStringInTable_x64_10,  TRUE),
+    DSTFO(IsPrefixOfStringInTable_x64_11,  TRUE),
+    //DSTFO(IsPrefixOfStringInTable_x64_12,  TRUE),
+    //DSTFO(IsPrefixOfStringInTable_x64_13,  TRUE),
     DSTFO(IntegerDivision_x64_1,           FALSE),
 };
 
