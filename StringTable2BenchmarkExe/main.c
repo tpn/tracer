@@ -356,12 +356,37 @@ RunSingleFunctionCtrlCHandler(
 }
 
 VOID
+CALLBACK
+CancelRunSingleFunctionThreadpoolCallback(
+    _Inout_ PTP_CALLBACK_INSTANCE Instance,
+    _Inout_opt_ PVOID Context
+    )
+{
+    ULONG Seconds = *((PULONG)Context);
+    ULONG Milliseconds = Seconds * 1000;
+
+    //
+    // Detach from the threadpool.
+    //
+
+    DisassociateCurrentThreadFromCallback(Instance);
+
+    //
+    // Simulate pressing Ctrl-C after an elapsed time.
+    //
+
+    SleepEx(Milliseconds, TRUE);
+    CtrlCPressed = 1;
+}
+
+VOID
 RunSingleFunction(
     PRTL Rtl,
     PALLOCATOR Allocator,
     ULONG TargetFunctionId,
     ULONG TargetInputId,
-    ULONG RunCount
+    ULONG RunCount,
+    PCHAR Seconds
     )
 {
     BOOL Success;
@@ -427,6 +452,9 @@ RunSingleFunction(
     if (RunCount) {
         OUTPUT_SEP();
         OUTPUT_INT(RunCount);
+    } else if (Seconds) {
+        OUTPUT_SEP();
+        OUTPUT_CSTR(Seconds);
     }
 
     OUTPUT_LF();
@@ -469,6 +497,7 @@ mainCRTStartup()
 {
     LONG ExitCode = 0;
     LONG SizeOfRtl = sizeof(GlobalRtl);
+    BOOLEAN UseSeconds = FALSE;
     HMODULE RtlModule;
     RTL_BOOTSTRAP Bootstrap;
     HANDLE ProcessHandle;
@@ -485,6 +514,7 @@ mainCRTStartup()
     PSTR CommandLineA;
     PWSTR CommandLineW;
     LONG NumberOfArguments;
+    PSTR Seconds = NULL;
     PPSTR ArgvA;
     PPWSTR ArgvW;
     ULONG TargetFunctionId;
@@ -596,14 +626,53 @@ mainCRTStartup()
 
             if (NumberOfArguments == 4) {
 
+                ULONG Number;
+                PCHAR Char = ArgvA[3];
+
+                //
+                // Advance to the NULL terminator, and then back one.
+                //
+
+                while (*++Char);
+                Char--;
+
+                //
+                // Check to see if the last character is 's', implying seconds.
+                //
+
+                if (*Char == 's') {
+
+                    //
+                    // Make a note that seconds have been requested, then clear
+                    // the character with a NULL, such that RtlCharToInteger
+                    // will work.
+                    //
+
+                    UseSeconds = TRUE;
+                    *Char = '\0';
+                }
+
                 CHECKED_NTSTATUS_MSG(
                     Rtl->RtlCharToInteger(
                         ArgvA[3],
                         10,
-                        &RunCount
+                        &Number
                     ),
                     "Rtl->RtlCharToInteger(ArgvA[3])"
                 );
+
+                if (UseSeconds) {
+                    PTP_SIMPLE_CALLBACK Callback;
+
+                    Seconds = ArgvA[3];
+                    *Char = 's';
+                    Callback = CancelRunSingleFunctionThreadpoolCallback;
+
+                    Result = TrySubmitThreadpoolCallback(Callback, &Number, NULL);
+                    ASSERT(Result);
+
+                    RunCount = 0;
+                }
 
             } else {
                 RunCount = 0;
@@ -613,10 +682,10 @@ mainCRTStartup()
                               Allocator,
                               TargetFunctionId,
                               TargetInputId,
-                              RunCount);
+                              RunCount,
+                              Seconds);
 
             break;
-
 
         default:
             break;
