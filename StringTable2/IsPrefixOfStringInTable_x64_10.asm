@@ -33,11 +33,8 @@ include StringTable.inc
 ;   search string.  That is, whether any string in the table "starts with
 ;   or is equal to" the search string.
 ;
-;   This routine is based off version 8, but reverts the 'repe cmps' to the
-;   same byte-by-byte comparison loop we used in all the previous version.
-;   As this removes the dependency on rsi, rdi and the direction flag, we
-;   no longer need to push those values to the stack, so we also revert back
-;   to a LEAF_ENTRY.
+;   This routine is identical to version 9, except the 'jmp Pfx90' lines have
+;   been replaced by normal 'ret' lines.
 ;
 ; Arguments:
 ;
