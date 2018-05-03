@@ -1,0 +1,1 @@
+x64\Release\StringTable2BenchmarkExe.exe %*

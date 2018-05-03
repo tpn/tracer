@@ -1,0 +1,1 @@
+x64\PGOptimize\StringTable2BenchmarkExe.exe %*
