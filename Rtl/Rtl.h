@@ -5636,6 +5636,13 @@ VOID
     );
 typedef APPEND_CHAR_TO_CHAR_BUFFER *PAPPEND_CHAR_TO_CHAR_BUFFER;
 
+typedef
+VOID
+(NTAPI APPEND_CSTR_TO_CHAR_BUFFER)(
+    _Inout_ PPCHAR BufferPointer,
+    _In_ PCSZ String
+    );
+typedef APPEND_CSTR_TO_CHAR_BUFFER *PAPPEND_CSTR_TO_CHAR_BUFFER;
 
 #define _RTLEXFUNCTIONS_HEAD                                                        \
     PDESTROY_RTL DestroyRtl;                                                        \
@@ -5703,6 +5710,7 @@ typedef APPEND_CHAR_TO_CHAR_BUFFER *PAPPEND_CHAR_TO_CHAR_BUFFER;
     PAPPEND_INTEGER_TO_CHAR_BUFFER_EX AppendIntegerToCharBufferEx;                  \
     PAPPEND_STRING_TO_CHAR_BUFFER AppendStringToCharBuffer;                         \
     PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER AppendCharBufferToCharBuffer;                \
+    PAPPEND_CSTR_TO_CHAR_BUFFER AppendCStrToCharBuffer;                             \
     PAPPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;
 
 typedef struct _RTLEXFUNCTIONS {
@@ -8901,6 +8909,7 @@ Return Value:
 
 #define OUTPUT_STRING(String) Rtl->AppendStringToCharBuffer(&Output, String)
 
+#define OUTPUT_CSTR(Str) Rtl->AppendCStrToCharBuffer(&Output, Str)
 #define OUTPUT_CHR(Char) Rtl->AppendCharToCharBuffer(&Output, Char)
 #define OUTPUT_SEP() Rtl->AppendCharToCharBuffer(&Output, ',')
 #define OUTPUT_LF() Rtl->AppendCharToCharBuffer(&Output, '\n')

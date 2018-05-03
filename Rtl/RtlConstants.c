@@ -264,6 +264,7 @@ CONST PCSTR RtlExFunctionNames[] = {
     "AppendIntegerToCharBufferEx",
     "AppendStringToCharBuffer",
     "AppendCharBufferToCharBuffer",
+    "AppendCStrToCharBuffer",
     "AppendCharToCharBuffer",
 };
 

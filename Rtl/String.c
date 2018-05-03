@@ -240,5 +240,24 @@ AppendCharToCharBuffer(
     *BufferPointer = Buffer + 1;
 }
 
+_Use_decl_annotations_
+VOID
+AppendCStrToCharBuffer(
+    PPCHAR BufferPointer,
+    PCSZ String
+    )
+{
+    PCHAR Dest = *BufferPointer;
+    PCHAR Source = (PCHAR)String;
+
+    while (*Source) {
+        *Dest++ = *Source++;
+    }
+
+    *BufferPointer = Dest;
+
+    return;
+}
+
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
