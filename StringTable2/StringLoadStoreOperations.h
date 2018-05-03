@@ -34,8 +34,8 @@ extern "C" {
 Routine Description:
 
     Attempts an aligned 128-bit load of String->Buffer into Slot.CharXmm via
-    the _mm_stream_load_si128() intrinsic.  The intrinsic is surrounded in a
-    __try/__except block that catches EXCEPTION_ACCESS_VIOLATION exceptions.
+    the _mm_load_si128() intrinsic.  The intrinsic is surrounded in a __try/
+    __except block that catches EXCEPTION_ACCESS_VIOLATION exceptions.
 
     If such an exception is caught, the routine will check to see if the string
     buffer's address will cross a page boundary if 16-bytes are loaded.  If a
@@ -90,8 +90,7 @@ Routine Description:
     If no page boundary will be crossed by a 128-bit load, the alignment of
     the address supplied by String->Buffer is checked.  If the alignment isn't
     at least on a 16-byte boundary, an unaligned load will be issued via the
-    _mm_loadu_si128() intrinsic, otherwise, an _mm_stream_load_si128() will be
-    used.
+    _mm_loadu_si128() intrinsic, otherwise, an _mm_load_si128() will be used.
 
 Arguments:
 
