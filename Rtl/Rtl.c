@@ -2586,6 +2586,7 @@ ResolveRtlFunctions(
         FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
         FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
+        return FALSE;
     }
 
 #undef Names
@@ -2640,6 +2641,7 @@ ResolveRtlExFunctions(
         FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
         FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
+        return FALSE;
     }
 
 #undef Names
@@ -2698,6 +2700,7 @@ ResolveDbgHelpFunctions(
         FirstFailedSymbol = Rtl->RtlFindSetBits(&FailedBitmap, 1, 0);
         FirstFailedSymbolName = Names[FirstFailedSymbol-1];
         __debugbreak();
+        return FALSE;
     }
 
 #undef Names
