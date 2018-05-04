@@ -33,9 +33,11 @@ include StringTable.inc
 ;   search string.  That is, whether any string in the table "starts with
 ;   or is equal to" the search string.
 ;
-;   *** PLACEHOLDER ***
-;   Curently identical to version 11.
-;   *** PLACEHOLDER ***
+;   This routine is based on version 11, but leverages the inner loop logic
+;   tweak we used in version 13 of the C version, pointed out by Fabian Giesen
+;   (@rygorous).  That is, we do away with the shifting logic and explicit loop
+;   counting, and simply use blsr to keep iterating through the bitmap until it
+;   is empty.
 ;
 ; Arguments:
 ;
@@ -130,9 +132,7 @@ include StringTable.inc
 
 ;
 ; Calculate the "search length" for the incoming search string, which is
-; equivalent of 'min(String->Length, 16)'.  (The search string's length
-; currently lives in xmm4, albeit as a byte-value broadcasted across the
-; entire register, so extract that first.)
+; equivalent of 'min(String->Length, 16)'.
 ;
 ; Once the search length is calculated, deposit it back at the second byte
 ; location of xmm4.
@@ -142,11 +142,12 @@ include StringTable.inc
 ;   r11 - String length (String->Length)
 ;
 
-Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
-        mov         rax, 16                     ; Load 16 into rax.
-        mov         r10, r11                    ; Copy into r10.
-        cmp         r10w, ax                    ; Compare against 16.
-        cmova       r10w, ax                    ; Use 16 if length is greater.
+Pfx10:  vpextrb     r11, xmm4, 0                ; Load string length.
+       ;movzx       r11d, byte ptr String.Length[rdx] ; Load string length.
+        mov         r9, 16                      ; Load 16 into r9.
+        mov         r10, r11                    ; Copy length into r10.
+        cmp         r10w, r9w                   ; Compare against 16.
+        cmova       r10w, r9w                   ; Use 16 if length is greater.
         vpinsrb     xmm4, xmm4, r10d, 1         ; Save back to xmm4b[1].
 
 ;
@@ -155,7 +156,7 @@ Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
 ;
 
         vpxor       xmm2, xmm2, xmm2            ; Clear xmm2.
-        vpinsrq     xmm2, xmm2, rcx, 0          ; Save rcx into xmm2q[0].
+        vmovq       xmm2, rcx                   ; Save rcx into xmm2q[0].
         vpinsrq     xmm2, xmm2, rdx, 1          ; Save rdx into xmm2q[1].
 
 ;
@@ -172,7 +173,7 @@ Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
 ;
 
         vpxor       xmm5, xmm5, xmm5            ; Clear xmm5.
-        vpinsrq     xmm5, xmm5, r8, 0           ; Save r8 into xmm5q[0].
+        vmovq       xmm5, r8                    ; Save r8 into xmm5q[0].
 
 ;
 ; Summary of xmm register stashing for the rest of the routine:
@@ -184,8 +185,8 @@ Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
 ; xmm4:
 ;       0:7     (vpinsrb 0)     length of search string
 ;       8:15    (vpinsrb 1)     min(String->Length, 16)
-;      16:23    (vpinsrb 2)     loop counter (when doing long string compares)
-;      24:31    (vpinsrb 3)     shift count
+;      16:23    (vpinsrb 2)     <free>
+;      24:31    (vpinsrb 3)     <free>
 ;
 ; xmm5:
 ;       0:63    (vpinsrq 0)     r8 (3rd function parameter, StringMatch)
@@ -193,44 +194,36 @@ Pfx10:  vpextrb     r11, xmm4, 0                ; Load length.
 ;      96:127   (vpinsrd 3)     index of slot currently being processed
 ;
 
-;
-; Initialize rcx as our counter register by doing a popcnt against the bitmap
-; we just generated in edx, and clear our shift count register (r9).
-;
-
-        popcnt      ecx, edx                    ; Count bits in bitmap.
-        xor         r9, r9                      ; Clear r9.
-
         align 16
 
 ;
 ; Top of the main comparison loop.  The bitmap will be present in rdx.  Count
-; trailing zeros of the bitmap, and then add in the shift count, producing an
-; index (rax) we can use to load the corresponding slot.
+; trailing zeros of the bitmap, producing an index (rax) we can use to load the
+; corresponding slot.
 ;
-; Register usage at top of loop:
+; Volatile register usage at top of loop:
 ;
 ;   rax - Index.
 ;
-;   rcx - Loop counter.
+;   rcx - StringTable.
 ;
 ;   rdx - Bitmap.
 ;
-;   r9 - Shift count.
+;   r9 - Constant value of 16.
 ;
 ;   r10 - Search length.
 ;
 ;   r11 - String length.
 ;
+; Use of remaining volatile registers during loop:
+;
+;   r8 - Freebie!
+;
 
-Pfx20:  tzcnt       r8d, edx                    ; Count trailing zeros.
-        mov         eax, r8d                    ; Copy tzcnt to rax,
-        add         rax, r9                     ; Add shift to create index.
-        inc         r8                          ; tzcnt + 1
-        shrx        rdx, rdx, r8                ; Reposition bitmap.
-        mov         r9, rax                     ; Copy index back to shift.
-        inc         r9                          ; Shift = Index + 1
-        vpinsrd     xmm5, xmm5, eax, 3          ; Store the raw index xmm5d[3].
+Pfx20:  tzcnt       eax, edx                    ; Count trailing zeros.
+
+       ;blsr        edx, edx                    ; Reposition bitmap.
+       ;vpinsrd     xmm5, xmm5, eax, 3          ; Store the raw index xmm5d[3].
 
 ;
 ; "Scale" the index (such that we can use it in a subsequent vmovdqa) by
@@ -239,10 +232,9 @@ Pfx20:  tzcnt       r8d, edx                    ; Count trailing zeros.
 ; Then, load the string table slot at this index into xmm1, then shift rax back.
 ;
 
-        shl         eax, 4
-        vpextrq     r8, xmm2, 0
-        vmovdqa     xmm1, xmmword ptr [rax + StringTable.Slots[r8]]
-        shr         eax, 4
+        mov         r8, rax                     ; Copy index (rax) into r8.
+        shl         r8, 4                       ; "Scale" the index.
+        vmovdqa     xmm1, xmmword ptr [r8 + StringTable.Slots[rcx]]
 
 ;
 ; The search string's first 16 characters are already in xmm0.  Compare this
@@ -265,120 +257,112 @@ Pfx20:  tzcnt       r8d, edx                    ; Count trailing zeros.
         popcnt      r8d, r8d                    ; Count bits.
 
 ;
-; If 16 characters matched, and the search string's length is longer than 16,
-; we're going to need to do a comparison of the remaining strings.
+; Determine if less than 16 characters matched, as this avoids needing to do
+; a more convoluted test to see if a byte-by-byte string comparison is needed
+; (for lengths longer than 16).
 ;
 
-        cmp         r8w, 16                     ; Compare chars matched to 16.
-        je          short @F                    ; 16 chars matched.
-        jmp         Pfx30                       ; Less than 16 matched.
+        cmp         r8w, r9w                    ; Compare chars matched to 16.
+        jl          short Pfx30                 ; Less than 16 matched.
 
 ;
 ; All 16 characters matched.  Load the underlying slot's length from the
-; relevant offset in the xmm3 register, then check to see if it's greater than,
-; equal or less than 16.
+; relevant offset in the xmm3 register into r11, then check to see if it's
+; greater than 16.  If it is, we're going to need to do a string compare,
+; handled by Pfx50.
+;
+; N.B. The approach for loading the slot length here is a little quirky.  We
+;      have all the lengths for slots in xmm3, and we have the current match
+;      index in rax.  If we move rax into an xmm register (xmm1 in this case),
+;      we can use it to shuffle xmm3, such that the length we're interested in
+;      will be deposited back into the lowest byte, which we can then extract
+;      via vpextrb.
 ;
 
-@@:     movd        xmm1, rax                   ; Load into xmm1.
-        vpshufb     xmm1, xmm3, xmm1            ; Shuffle length...
-        vpextrb     rax, xmm1, 0                ; And extract back into rax.
-        cmp         al, 16                      ; Compare length to 16.
-        ja          Pfx50                       ; Length is > 16.
-        je          short Pfx35                 ; Lengths match!
-                                                ; Length <= 16, fall through...
+;@@:     
+        movd        xmm1, rax                   ; Load index into xmm1.
+        vpshufb     xmm1, xmm3, xmm1            ; Shuffle length by index.
+        vpextrb     r11, xmm1, 0                ; Extract slot length into r11.
+        cmp         r11w, r9w                   ; Compare length to 16.
+        ja          short Pfx50                 ; Length is > 16.
+        je          short Pfx40                 ; Lengths match!
 
 ;
-; Less than or equal to 16 characters were matched.  Compare this against the
-; length of the search string; if equal, this is a match.
+; (Can this bit be reached?!  I don't think it can.  Which makes the `je` bit
+; above moot, as it'll always be equal, so could be converted into a direct
+; jump to Pfx40 to finish handling the match processing.)
+;
+
+        int         3                           ; Length < 16, fall through...
+
+;
+; Less than 16 characters were matched.  Compare this against the length of the
+; search string; if equal, this is a match.
 ;
 
 Pfx30:  cmp         r8d, r10d                   ; Compare against search string.
-        je          short Pfx35                 ; Match found!
+        je          short Pfx40                 ; Match found!
 
 ;
-; No match against this slot, decrement counter and either continue the loop
-; or terminate the search and return no match.
+; No match against this slot.  Clear the lowest set bit of the bitmap and check
+; to see if there are any bits remaining in it.
 ;
 
-        dec         cx                          ; Decrement counter.
-        jnz         Pfx20                       ; cx != 0, continue.
+        blsr        edx, edx                    ; Reposition bitmap.
+        test        edx, edx                    ; Is bitmap empty?
+        jnz         short Pfx20                 ; Bits remain, continue loop.
+
+;
+; No more bits remain set in the bitmap, we're done.  Indicate no match found
+; and return.
+;
 
         xor         eax, eax                    ; Clear rax.
         not         al                          ; al = -1
         ret                                     ; Return.
 
 ;
-; Pfx35 and Pfx40 are the jump targets for when the prefix match succeeds.  The
-; former is used when we need to copy the number of characters matched from r8
-; back to rax.  The latter jump target doesn't require this.
+; Load the match parameter into r9 and test to see if it's not-NULL, in which
+; case we need to fill out a STRING_MATCH structure for the match, handled by
+; jump target Pfx80 at the end of this routine.
 ;
 
-Pfx35:  mov         rax, r8                     ; Copy numbers of chars matched.
+Pfx40:  vpextrq     r9, xmm5, 0                 ; Extract StringMatch.
+        test        r9, r9                      ; Is NULL?
+        jnz         Pfx80                       ; Not zero, need to fill out.
 
 ;
-; Load the match parameter back into r8 and test to see if it's not-NULL, in
-; which case we need to fill out a STRING_MATCH structure for the match.
+; StringMatch is NULL, we're done.  We can return straight from here, rax will
+; still have the index stored.
 ;
 
-Pfx40:  vpextrq     r8, xmm5, 0                 ; Extract StringMatch.
-        test        r8, r8                      ; Is NULL?
-        jnz         short @F                    ; Not zero, need to fill out.
-
-;
-; StringMatch is NULL, we're done. Extract index of match back into rax and ret.
-;
-
-        vpextrd     eax, xmm5, 3                ; Extract raw index for match.
         ret                                     ; StringMatch == NULL, finish.
-
-;
-; StringMatch is not NULL.  Fill out characters matched (currently rax), then
-; reload the index from xmm5 into rax and save.
-;
-
-@@:     mov         byte ptr StringMatch.NumberOfMatchedCharacters[r8], al
-        vpextrd     eax, xmm5, 3                ; Extract raw index for match.
-        mov         byte ptr StringMatch.Index[r8], al
-
-;
-; Final step, loading the address of the string in the string array.  This
-; involves going through the StringTable, so we need to load that parameter
-; back into rcx, then resolving the string array address via pStringArray,
-; then the relevant STRING offset within the StringArray.Strings structure.
-;
-
-        vpextrq     rcx, xmm2, 0            ; Extract StringTable into rcx.
-        mov         rcx, StringTable.pStringArray[rcx] ; Load string array.
-
-        shl         eax, 4                  ; Scale the index; sizeof STRING=16.
-        lea         rdx, [rax + StringArray.Strings[rcx]] ; Resolve address.
-        mov         qword ptr StringMatch.String[r8], rdx ; Save STRING ptr.
-        shr         eax, 4                  ; Revert the scaling.
-
-        ret
 
 ;
 ; 16 characters matched and the length of the underlying slot is greater than
 ; 16, so we need to do a little memory comparison to determine if the search
 ; string is a prefix match.
 ;
-; The slot length is stored in rax at this point, and the search string's
-; length is stored in r11.  We know that the search string's length will
-; always be longer than or equal to the slot length at this point, so, we
-; can subtract 16 (currently stored in r10) from rax, and use the resulting
-; value as a loop counter, comparing the search string with the underlying
-; string slot byte-by-byte to determine if there's a match.
+; Register use during the block (after we've freed things up and loaded the
+; values we need):
+;
+;   rax - Misc.
+;
+;   rcx - Loop counter (for byte comparison).
+;
+;   rdx - Byte loaded into dl for comparison.
+;
+;   r8 - Target string buffer.
+;
+;   r11 - Seach string buffer.
 ;
 
-Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
-
-;
-; Free up some registers by stashing their values into various xmm offsets.
-;
-
+Pfx50:  vpinsrd     xmm5, xmm5, eax, 3      ; Free up rax register.
         vpinsrd     xmm5, xmm5, edx, 2      ; Free up rdx register.
-        vpinsrb     xmm4, xmm4, ecx, 2      ; Free up rcx register.
-        mov         rcx, rax                ; Free up rax, rcx is now counter.
+        vpinsrq     xmm4, xmm4, rcx, 2      ; Free up rcx register.
+
+        mov         rcx, r11                ; Copy search length into rcx.
+        sub         cl, 16                  ; Subtract 16.
 
 ;
 ; Load the search string buffer and advance it 16 bytes.
@@ -386,7 +370,7 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
 
         vpextrq     r11, xmm2, 1            ; Extract String into r11.
         mov         r11, String.Buffer[r11] ; Load buffer address.
-        add         r11, r10                ; Advance buffer 16 bytes.
+        add         r11, 16                 ; Advance buffer 16 bytes.
 
 ;
 ; Loading the slot is more involved as we have to go to the string table, then
@@ -412,7 +396,7 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
 ; Do a byte-by-byte comparison.
 ;
 
-        align 16
+        align       16
 @@:     mov         dl, byte ptr [rax + r11]    ; Load byte from search string.
         cmp         dl, byte ptr [rax + r8]     ; Compare against target.
         jne         short Pfx60                 ; If not equal, jump.
@@ -460,6 +444,40 @@ Pfx60:  vpextrb     rcx, xmm4, 2                ; Restore rcx counter.
         vpextrb     r11, xmm4, 0                ; Restore r11.
         vpextrd     edx, xmm5, 2                ; Restore rdx bitmap.
         jmp         Pfx20                       ; Continue comparisons.
+
+;
+; This is the target for when we need to fill out the StringMatch structure.
+; It's located at the end of this routine because we're optimizing for the
+; case where the parameter is NULL in the loop body above, and we don't want
+; to pollute the code cache with this logic (which is quite convoluted).
+;
+; Expected register use at this point:
+;
+;   rax - Index of match.
+;
+;   rcx - StringTable.
+;
+;   r8 - Number of characters matched.
+;
+;   r9 - StringMatch.
+;
+
+Pfx80:  mov         byte ptr StringMatch.NumberOfMatchedCharacters[r9], r8b
+        mov         byte ptr StringMatch.Index[r9], al
+
+;
+; Final step, loading the address of the string in the string array.  This
+; involves going through the StringTable to find the string array address via
+; pStringArray, then the relevant STRING offset within the StringArray.Strings
+; structure.
+;
+
+        mov         rcx, StringTable.pStringArray[rcx]      ; Load string array.
+        mov         r8, rax                                 ; Copy index to r8.
+        shl         r8, 4                                   ; "Scale" index.
+        lea         rdx, [r8 + StringArray.Strings[rcx]]    ; Resolve address.
+        mov         qword ptr StringMatch.String[r9], rdx   ; Save STRING ptr.
+        ret                                                 ; Return!
 
         ;IACA_VC_END
 
