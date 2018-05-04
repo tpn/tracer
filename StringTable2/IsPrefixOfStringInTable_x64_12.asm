@@ -229,7 +229,7 @@ Pfx20:  tzcnt       eax, edx                    ; Count trailing zeros.
 ; "Scale" the index (such that we can use it in a subsequent vmovdqa) by
 ; shifting left by 4 (i.e. multiply by '(sizeof STRING_SLOT)', which is 16).
 ;
-; Then, load the string table slot at this index into xmm1, then shift rax back.
+; Then, load the string table slot at this index into xmm1.
 ;
 
         mov         r8, rax                     ; Copy index (rax) into r8.
