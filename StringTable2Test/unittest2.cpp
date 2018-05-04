@@ -380,16 +380,17 @@ namespace TestStringTable
             //
 
             STRING_TABLE_TEST_INPUT TestInputs[] = {
-                NTFS_TEST_INPUT(Bitmap),      // $Bitmap
+                NTFS_TEST_INPUT(IndexAllocation), // $INDEX_ALLOCATION
+                NTFS_WORST_CASE_TEST_INPUT(),     // $Bai123456789012
+                NTFS_TEST_INPUT(Bitmap),          // $Bitmap
                 { -1, &fox1 },
-                NTFS_WORST_CASE_TEST_INPUT(), // $Bai123456789012
                 { -1, &a }
             };
 
 #define DSTFO DEFINE_STRING_TABLE_FUNCTION_OFFSET
 
             STRING_TABLE_FUNCTION_OFFSET Functions[] = {
-                DSTFO(IsPrefixOfStringInTable_x64_5, TRUE),
+                DSTFO(IsPrefixOfStringInTable_x64_12, TRUE),
                 //DSTFO(IsPrefixOfStringInTable_13, TRUE)
             };
 
