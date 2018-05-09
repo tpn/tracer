@@ -56,7 +56,7 @@ include StringTable.inc
 ;
 ;--
 
-        LEAF_ENTRY IsPrefixOfStringInTable_x64_13, _TEXT$00
+        LEAF_ENTRY IsPrefixOfStringInTable_x64_14, _TEXT$00
 
 ;
 ; Load the address of the string buffer into rax.
@@ -225,20 +225,16 @@ Pfx20:  tzcnt       eax, edx                    ; Count trailing zeros = index.
 ; "Scale" the index (such that we can use it in a subsequent vmovdqa) by
 ; shifting left by 4 (i.e. multiply by '(sizeof STRING_SLOT)', which is 16).
 ;
-; Then, load the string table slot at this index into xmm1.
-;
 
         mov         r8, rax                     ; Copy index (rax) into r8.
         shl         r8, 4                       ; "Scale" the index.
-        vmovdqa     xmm1, xmmword ptr [r8 + StringTable.Slots[rcx]]
 
 ;
 ; The search string's first 16 characters are already in xmm0.  Compare this
-; against the slot that has just been loaded into xmm1, storing the result back
-; into xmm1.
+; against the slot at the relevant index, storing the result back into xmm1.
 ;
 
-        vpcmpeqb    xmm1, xmm0, xmm1            ; Compare search string to slot.
+        vpcmpeqb    xmm1, xmm0, xmmword ptr [r8 + StringTable.Slots[rcx]]
 
 ;
 ; Convert the XMM mask into a 32-bit representation, then zero high bits after
@@ -532,7 +528,7 @@ Pfx80:  mov         byte ptr StringMatch.NumberOfMatchedCharacters[r9], r8b
 
         ;IACA_VC_END
 
-        LEAF_END   IsPrefixOfStringInTable_x64_13, _TEXT$00
+        LEAF_END   IsPrefixOfStringInTable_x64_14, _TEXT$00
 
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=\:;           :

@@ -56,7 +56,7 @@ include StringTable.inc
 ;
 ;--
 
-        LEAF_ENTRY IsPrefixOfStringInTable_x64_13, _TEXT$00
+        LEAF_ENTRY IsPrefixOfStringInTable_x64_15, _TEXT$00
 
 ;
 ; Load the address of the string buffer into rax.
@@ -132,21 +132,18 @@ include StringTable.inc
 
 ;
 ; Calculate the "search length" for the incoming search string, which is
-; equivalent of 'min(String->Length, 16)'.
+; equivalent of 'min(String->Length, 16)'.  Use vpminub to do this.
 ;
-; Once the search length is calculated, deposit it back at the second byte
-; location of xmm4.
-;
-;   r10 and xmm4[15:8] - Search length (min(String->Length, 16))
+;   r10 - Search length (min(String->Length, 16))
 ;
 ;   r11 - String length (String->Length)
 ;
 
-Pfx10:  vpextrb     r11, xmm4, 0                ; Load string length.
-        mov         r9, 16                      ; Load 16 into r9.
-        mov         r10, r11                    ; Copy length into r10.
-        cmp         r10w, r9w                   ; Compare against 16.
-        cmova       r10w, r9w                   ; Use 16 if length is greater.
+Pfx10:  mov         r9, 16                      ; Load 16 into r9.
+        vmovq       xmm2, r9                    ; Copy 16 into xmm2.
+        vpminub     xmm2, xmm4, xmm2            ; Find minimum slot length.
+        vpextrb     r11, xmm4, 0                ; Load string length.
+        vpextrb     r10, xmm2, 0                ; Load search length.
 
 ;
 ; Home our parameter register rdx into the base of xmm2.
@@ -225,20 +222,16 @@ Pfx20:  tzcnt       eax, edx                    ; Count trailing zeros = index.
 ; "Scale" the index (such that we can use it in a subsequent vmovdqa) by
 ; shifting left by 4 (i.e. multiply by '(sizeof STRING_SLOT)', which is 16).
 ;
-; Then, load the string table slot at this index into xmm1.
-;
 
         mov         r8, rax                     ; Copy index (rax) into r8.
         shl         r8, 4                       ; "Scale" the index.
-        vmovdqa     xmm1, xmmword ptr [r8 + StringTable.Slots[rcx]]
 
 ;
 ; The search string's first 16 characters are already in xmm0.  Compare this
-; against the slot that has just been loaded into xmm1, storing the result back
-; into xmm1.
+; against the slot at the relevant index, storing the result back into xmm1.
 ;
 
-        vpcmpeqb    xmm1, xmm0, xmm1            ; Compare search string to slot.
+        vpcmpeqb    xmm1, xmm0, xmmword ptr [r8 + StringTable.Slots[rcx]]
 
 ;
 ; Convert the XMM mask into a 32-bit representation, then zero high bits after
@@ -532,7 +525,7 @@ Pfx80:  mov         byte ptr StringMatch.NumberOfMatchedCharacters[r9], r8b
 
         ;IACA_VC_END
 
-        LEAF_END   IsPrefixOfStringInTable_x64_13, _TEXT$00
+        LEAF_END   IsPrefixOfStringInTable_x64_15, _TEXT$00
 
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 et syntax=masm fo=croql comments=\:;           :
