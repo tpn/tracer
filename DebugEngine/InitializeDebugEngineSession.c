@@ -1089,6 +1089,7 @@ Return Value:
         );
 
     } else if (Session->Flags.CreatedNewProcess && InjectionModules) {
+
         ULONG Index;
         ULONG WaitResult;
         HMODULE Module;
