@@ -2999,8 +2999,9 @@ See Also:
     );
 
     if (!InitializeDebugEngineSessionWithInjectionIntent) {
-        OutputDebugStringA("Failed to resolve InitializeDebugEngineSession"
-                           "WithInjectionIntent.\n");
+        OutputDebugStringA("Failed to resolve "
+                           "InitializeDebugEngineSessionWithInjectionIntent"
+                           ".\n");
         goto Error;
     }
 
