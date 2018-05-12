@@ -1328,8 +1328,7 @@ Return Value:
         CHECKED_HRESULT_MSG(
             Engine->Client->StartServer(
                 Engine->IClient,
-                //"npipe:pipe=tracer_%d"
-                "npipe:pipe=tracer"
+                "npipe:pipe=tracer_%d"
             ),
             "Client->StartServer()"
         );
