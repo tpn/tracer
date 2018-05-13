@@ -102,6 +102,8 @@ namespace TestStringTable
             STRING Test4 = RTL_CONSTANT_STRING("Foo;Bar;;;");
             STRING Test5 = RTL_CONSTANT_STRING(";;;;;Foo;B");
             STRING Test6 = RTL_CONSTANT_STRING("Foo;;;;;;;B;");
+            STRING Test7 = RTL_CONSTANT_STRING("Foo;Bar;");
+            STRING Test8 = RTL_CONSTANT_STRING("Foo;");
 
             DELIMITED_TABLE(&Test1);
             ASSERT_SIZE(2);
@@ -125,6 +127,14 @@ namespace TestStringTable
 
             DELIMITED_TABLE(&Test6);
             ASSERT_SIZE(2);
+            DESTROY_TABLE(StringTable);
+
+            DELIMITED_TABLE(&Test7);
+            ASSERT_SIZE(2);
+            DESTROY_TABLE(StringTable);
+
+            DELIMITED_TABLE(&Test8);
+            ASSERT_SIZE(1);
             DESTROY_TABLE(StringTable);
 
         }

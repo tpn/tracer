@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{59C053FA-119E-4A21-BC3E-71072C024E8A}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tga;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{888ADF0C-B6D6-45E0-9BA8-411CA7BB2BC8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{6F04BC10-843B-489C-929A-8429D1480CA9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="../StringTable2/CreateStringTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/DestroyStringTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/stdafx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/dllmain.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/CopyStringArray.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/StringTableConstants_C.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/SearchStringTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/CreateStringArray.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/StringTableAllocator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/StringTableTypes.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Rtl\__C_specific_handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfCStrInArray_1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_4.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_5.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_6.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_7.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_8.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_9.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_10.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_11.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_12.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_13.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/TestStringTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_14.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_15.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="../StringTable2/StringTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/StringTableConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/StringTablePrivate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/StringLoadStoreOperations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/StringTableTestGlue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="../StringTable2/..\Rtl\__C_specific_handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../StringTable2/StringTable.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="../StringTable2/StringTable.def">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_1.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_2.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_3.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_4.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IntegerDivision_x64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_5.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_6.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_7.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_8.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_9.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_10.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_11.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_12.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_13.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>

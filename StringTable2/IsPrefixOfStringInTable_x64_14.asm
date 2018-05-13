@@ -56,6 +56,16 @@ include StringTable.inc
 ;
 ;--
 
+;       _TEXT$00 segment para 'CODE'
+;       db 6 dup (0cch)
+;       align 16
+;       public IsPrefixOfStringInTable_x64_14
+;IsPrefixOfStringInTable_x64_14 proc frame StringTableParam:PSTRING_TABLE, StringParam:PSTRING, MatchParam:PSTRING_MATCH
+;
+;        END_PROLOGUE
+
+;_LEAF_ENTRY_ARG3 IsPrefixOfStringInTable_x64_14, _TEXT$00, StringTable:PSTRING_TABLE, String:PSTRING, Match:PSTRING_MATCH
+
         LEAF_ENTRY IsPrefixOfStringInTable_x64_14, _TEXT$00
 
 ;

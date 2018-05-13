@@ -142,8 +142,8 @@ include StringTable.inc
 Pfx10:  mov         r9, 16                      ; Load 16 into r9.
         vmovq       xmm2, r9                    ; Copy 16 into xmm2.
         vpminub     xmm2, xmm4, xmm2            ; Find minimum slot length.
-        vpextrb     r11, xmm4, 0                ; Load string length.
         vpextrb     r10, xmm2, 0                ; Load search length.
+        vpextrb     r11, xmm4, 0                ; Load string length.
 
 ;
 ; Home our parameter register rdx into the base of xmm2.

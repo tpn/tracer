@@ -43,18 +43,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{55053E34-1F6E-447A-AA44-0C86636D3C81}</ProjectGuid>
-    <RootNamespace>StringTable2</RootNamespace>
+    <ProjectGuid>{4DF42139-6B20-4611-9572-0FDD2BAD3F45}</ProjectGuid>
+    <RootNamespace>StringTable2Ex</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
     <PlatformToolset>v141</PlatformToolset>
-    <ProjectName>StringTable2</ProjectName>
-    <LoadSearchStringStrategy>AlwaysMovsb</LoadSearchStringStrategy>
-    <!--
-    <LoadSearchStringStrategy>SEH</LoadSearchStringStrategy>
-    <LoadSearchStringStrategy>AlignmentCheck</LoadSearchStringStrategy>
-    <LoadSearchStringStrategy>AlwaysUnaligned</LoadSearchStringStrategy>
-    -->
+    <ProjectName>StringTable2Ex</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -75,7 +69,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_STRING_TABLE_INTERNAL_BUILD;LOAD_SEARCH_STRING_STRATEGY=$(LoadSearchStringStrategy);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_STRING_TABLE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Bscmake>
       <PreserveSbr>false</PreserveSbr>
@@ -88,67 +82,63 @@
   <ItemGroup>
     <ClInclude Include="..\Rtl\__C_specific_handler.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="StringLoadStoreOperations.h" />
-    <ClInclude Include="StringTableConstants.h" />
-    <ClInclude Include="StringTableTestGlue.h" />
-    <ClInclude Include="targetver.h" />
-    <ClInclude Include="StringTable.h" />
-    <ClInclude Include="StringTablePrivate.h" />
+    <ClInclude Include="../StringTable2/StringLoadStoreOperations.h" />
+    <ClInclude Include="../StringTable2/StringTableConstants.h" />
+    <ClInclude Include="../StringTable2/StringTableTestGlue.h" />
+    <ClInclude Include="../StringTable2/targetver.h" />
+    <ClInclude Include="../StringTable2/StringTable.h" />
+    <ClInclude Include="../StringTable2/StringTablePrivate.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="CopyStringArray.c" />
-    <ClCompile Include="CreateStringArray.c" />
-    <ClCompile Include="CreateStringArray_2.c" />
-    <ClCompile Include="CreateStringTable.c" />
-    <ClCompile Include="DestroyStringTable.c" />
-    <ClCompile Include="dllmain.c" />
-    <ClCompile Include="IsPrefixOfCStrInArray_1.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_1.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_10.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_11.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_12.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_13.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_14.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_15.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_2.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_3.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_4.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_5.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_6.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_7.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_8.c" />
-    <ClCompile Include="IsPrefixOfStringInTable_9.c" />
-    <ClCompile Include="SearchStringTable.c" />
+    <ClCompile Include="../StringTable2/CopyStringArray.c" />
+    <ClCompile Include="../StringTable2/CreateStringArray.c" />
+    <ClCompile Include="../StringTable2/CreateStringTable.c" />
+    <ClCompile Include="../StringTable2/DestroyStringTable.c" />
+    <ClCompile Include="../StringTable2/dllmain.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfCStrInArray_1.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_1.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_10.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_11.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_12.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_13.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_14.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_15.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_2.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_3.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_4.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_5.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_6.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_7.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_8.c" />
+    <ClCompile Include="../StringTable2/IsPrefixOfStringInTable_9.c" />
+    <ClCompile Include="../StringTable2/SearchStringTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="StringTableAllocator.c" />
-    <ClCompile Include="StringTableConstants_C.c" />
-    <ClCompile Include="StringTableTypes.c" />
-    <ClCompile Include="TestStringTable.c" />
+    <ClCompile Include="../StringTable2/StringTableAllocator.c" />
+    <ClCompile Include="../StringTable2/StringTableConstants_C.c" />
+    <ClCompile Include="../StringTable2/StringTableTypes.c" />
+    <ClCompile Include="../StringTable2/TestStringTable.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="StringTable.def" />
-    <None Include="StringTable.inc" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="IntegerDivision_x64.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_1.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_2.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_4.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_5.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_6.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_7.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_8.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_9.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_10.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_11.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_12.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_13.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_14.asm" />
-    <MASM Include="IsPrefixOfStringInTable_x64_15.asm" />
+    <MASM Include="../StringTable2/IntegerDivision_x64.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_1.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_2.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_3.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_4.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_5.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_6.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_7.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_8.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_9.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_10.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_11.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_12.asm" />
+    <MASM Include="../StringTable2/IsPrefixOfStringInTable_x64_13.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

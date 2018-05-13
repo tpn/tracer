@@ -1442,6 +1442,15 @@ typedef struct _STRING_TABLE_API_EX {
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_13;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_14;
     PIS_PREFIX_OF_STRING_IN_TABLE IsPrefixOfStringInTable_x64_15;
+
+    /*
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+        CreateStringArrayFromDelimitedString_1;
+
+    PCREATE_STRING_ARRAY_FROM_DELIMITED_STRING
+        CreateStringArrayFromDelimitedString_2;
+        */
+
     PIS_PREFIX_OF_STRING_IN_TABLE IntegerDivision_x64_1;
 
 } STRING_TABLE_API_EX;
@@ -1575,6 +1584,8 @@ Return Value:
         "IsPrefixOfStringInTable_x64_13",
         "IsPrefixOfStringInTable_x64_14",
         "IsPrefixOfStringInTable_x64_15",
+        //"CreateStringArrayFromDelimitedString_1",
+        //"CreateStringArrayFromDelimitedString_2",
         "IntegerDivision_x64_1",
     };
 

@@ -94,6 +94,7 @@ STRING_MATCH struct
     Padding USHORT 3 dup (?)
     String PSTRING ?
 STRING_MATCH ends
+PSTRING_MATCH typedef ptr STRING_MATCH
 
 STRING_TABLE struct
     UniqueChars         CHAR 16 dup  (?)
@@ -164,6 +165,37 @@ HOME_PARAMS struct
 HOME_PARAMS ends
 
 Home typedef HOME_PARAMS
+
+;++
+;
+; LEAF_ENTRY_ARG3 <Name>, <Section>, <Arg1>, <Arg2>, <Arg3>, <NoPad>
+;
+; Macro Description:
+;
+; As LEAF_ENTRY_ARG1 above, marks the entry to a leaf function
+; and defines 3 input parameters.
+;
+;--
+
+_LEAF_ENTRY_ARG3 macro Name, Section, Arg1, Arg2, Arg3, NoPad
+
+Section segment para 'CODE'
+
+ifb <NoPad>
+
+        db      6 dup (0cch)
+
+endif
+
+        align   16
+
+        public  Name
+Name    proc    frame, Arg1, Arg2, Arg3
+
+        END_PROLOGUE
+
+        endm
+
 
 ; vim:set tw=80 ts=8 sw=4 sts=4 expandtab syntax=masm                          :
 
