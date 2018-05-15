@@ -399,10 +399,13 @@ Pfx50:  mov         r8, StringTable.pStringArray[rcx] ; Load string array addr.
 ; We'd also like to use rax as the accumulator within the loop.  It currently
 ; stores the index, which is important, so, stash that in r10 for now.  (We
 ; know r10 is always 16 at this point, so it's easy to restore afterward.)
+; We set it to -1 as the first instruction in the byte-comparison loop is
+; 'inc al'.
 ;
 
         mov         r10, rax                ; Save rax to r10.
         xor         eax, eax                ; Clear rax.
+        not         al                      ; al = -1
 
 ;
 ; And we'd also like to use rdx/dl to load each byte of the search string.  It
@@ -417,30 +420,32 @@ Pfx50:  mov         r8, StringTable.pStringArray[rcx] ; Load string array addr.
 ;
 ; We've got both buffer addresses + 16 bytes loaded in r8 and r9 respectively.
 ; We need to do a byte-by-byte comparison.  The loop count is in rcx, and rax
-; is initialized to 0.  We're ready to go!
+; is initialized to -1.  We're ready to go!
 ;
 
-@@:     mov         dl, byte ptr [rax + r9] ; Load byte from search string.
+@@:     inc         al                      ; Increment index.
+        mov         dl, byte ptr [rax + r9] ; Load byte from search string.
         cmp         dl, byte ptr [rax + r8] ; Compare to byte in slot.
         jne         short Pfx60             ; Bytes didn't match, exit loop.
 
 ;
-; The two bytes were equal, update rax, decrement rcx, and potentially continue
-; the loop.
+; The two bytes were equal, decrement rcx, and potentially continue the loop.
 ;
-        inc         al                      ; Increment index.
+
         dec         cl                      ; Decrement counter.
         jnz         short @B                ; Continue if not 0.
 
 ;
-; All bytes matched!  The number of characters matched will live in rax, and
-; we also need to add 16 to it to account for the first chunk that was already
-; matched.  However, rax is also our return value, and needs to point at the
-; index of the slot that matched.  Exchange it with r8 first, as if we do have
-; a StringMatch parameter, the jump target Pfx80 will be expecting r8 to hold
-; the number of characters matched.
+; All bytes matched!  The number of characters matched minus 1 will live in rax,
+; and we also need to add 16 to it to account for the first chunk that was
+; already matched.  However, rax is also our return value, and needs to point at
+; the index of the slot that matched.  Exchange it with r8 first, as if we do
+; have a StringMatch parameter, the jump target Pfx80 will be expecting r8 to
+; hold the number of characters matched, excluding the initial 16 (it adds that
+; in itself).
 ;
 
+        inc         al                          ; Increment counter.
         mov         r8, rax                     ; Save characters matched.
         mov         rax, r10                    ; Re-load index from r10.
         vpextrq     r9, xmm5, 0                 ; Extract StringMatch.

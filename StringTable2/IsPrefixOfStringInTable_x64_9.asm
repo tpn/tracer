@@ -411,31 +411,32 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
         add         r8, r10                 ; Advance buffer 16 bytes.
 
         mov         rax, rcx                ; Copy counter.
+        xor         eax, eax                ; Clear rax.
+        not         al                      ; al = -1
 
 ;
 ; We've got both buffer addresses + 16 bytes loaded in r11 and r8 respectively.
 ; Do a byte-by-byte comparison.
 ;
 
-        align 16
-@@:     mov         dl, byte ptr [rax + r11]    ; Load byte from search string.
+        align       16
+@@:     inc         al                          ; Increment index.
+        mov         dl, byte ptr [rax + r11]    ; Load byte from search string.
         cmp         dl, byte ptr [rax + r8]     ; Compare against target.
         jne         short Pfx60                 ; If not equal, jump.
 
 ;
-; The two bytes were equal, update rax, decrement rcx and potentially continue
-; the loop.
+; The two bytes were equal, decrement rcx and potentially continue the loop.
 ;
 
-        inc         ax                          ; Increment index.
         loopnz      @B                          ; Decrement cx and loop back.
 
 ;
-; All bytes matched!  Add 16 (still in r10) back to rax such that it captures
-; how many characters we matched, and then jump to Pfx40 for finalization.
+; All bytes matched!  Add 17 to al such that it captures how many characters we
+; actually matched, and then jump to Pfx40 for finalization.
 ;
 
-        add         rax, r10
+        add         al, 17
         jmp         Pfx40
 
 ;
