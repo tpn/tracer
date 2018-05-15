@@ -33,11 +33,14 @@ include StringTable.inc
 ;   search string.  That is, whether any string in the table "starts with
 ;   or is equal to" the search string.
 ;
-;   This routine is based on version 11, but leverages the inner loop logic
-;   tweak we used in version 13 of the C version, pointed out by Fabian Giesen
-;   (@rygorous).  That is, we do away with the shifting logic and explicit loop
-;   counting, and simply use blsr to keep iterating through the bitmap until it
-;   is empty.
+;   This routine is based on version 13, but uses a load-op for the vpcmpeqb
+;   instruction used to compare the input string against the relevant string
+;   slot at a given index (versus loading the slot into an XMM register in one
+;   step, only to have it used once in the vpcmpeqb comparison).
+;
+;   Credit to /u/YumiYumiYumi from reddit:
+;
+;       https://www.reddit.com/r/programming/comments/8hns4s/a_journey_into_simd_string_processing_and_micro/dymmjrq/
 ;
 ; Arguments:
 ;

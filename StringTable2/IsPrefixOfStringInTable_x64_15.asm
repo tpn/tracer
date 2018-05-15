@@ -33,11 +33,12 @@ include StringTable.inc
 ;   search string.  That is, whether any string in the table "starts with
 ;   or is equal to" the search string.
 ;
-;   This routine is based on version 11, but leverages the inner loop logic
-;   tweak we used in version 13 of the C version, pointed out by Fabian Giesen
-;   (@rygorous).  That is, we do away with the shifting logic and explicit loop
-;   counting, and simply use blsr to keep iterating through the bitmap until it
-;   is empty.
+;   This routine is based on version 14, but uses a vpminub instead of cmov
+;   to obtain the input string's "search length".
+;
+;   Credit to /u/YumiYumiYumi from reddit:
+;
+;       https://www.reddit.com/r/programming/comments/8hns4s/a_journey_into_simd_string_processing_and_micro/dymmjrq/
 ;
 ; Arguments:
 ;
@@ -382,8 +383,6 @@ Pfx50:  mov         r8, StringTable.pStringArray[rcx] ; Load string array addr.
 ; slot length, currently in r11, and then subtracting 16 (currently in r10),
 ; in order to account for the fact that we've already matched 16 bytes.  This
 ; allows us to then use rcx as the loop counter for the byte-by-byte comparison.
-; We set it to -1 as the first instruction in the byte-comparison loop is
-; 'inc al'.
 ;
 
         vmovq       xmm1, rcx               ; Free up rcx.
@@ -394,6 +393,8 @@ Pfx50:  mov         r8, StringTable.pStringArray[rcx] ; Load string array addr.
 ; We'd also like to use rax as the accumulator within the loop.  It currently
 ; stores the index, which is important, so, stash that in r10 for now.  (We
 ; know r10 is always 16 at this point, so it's easy to restore afterward.)
+; We set it to -1 as the first instruction in the byte-comparison loop is
+; 'inc al'.
 ;
 
         mov         r10, rax                ; Save rax to r10.
