@@ -445,7 +445,7 @@ Pfx50:  mov         r8, StringTable.pStringArray[rcx] ; Load string array addr.
 ; in itself).
 ;
 
-        inc         al                          ; Increment counter.
+        inc         al                          ; Increment chars matched.
         mov         r8, rax                     ; Save characters matched.
         mov         rax, r10                    ; Re-load index from r10.
         vpextrq     r9, xmm5, 0                 ; Extract StringMatch.
