@@ -545,7 +545,7 @@ Return Value:
     // Create the string array from the delimited string.
     //
 
-    StringArray = CreateStringArrayFromDelimitedString(
+    StringArray = CreateStringArrayFromDelimitedString_2(
         Rtl,
         StringTableAllocator,
         StringArrayAllocator,

@@ -30,6 +30,7 @@ extern "C" {
 COPY_STRING_ARRAY CopyStringArray;
 DESTROY_STRING_TABLE DestroyStringTable;
 CREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString;
+CREATE_STRING_ARRAY_FROM_DELIMITED_STRING CreateStringArrayFromDelimitedString_2;
 CREATE_STRING_TABLE CreateSingleStringTable;
 MALLOC StringTableMalloc;
 CALLOC StringTableCalloc;

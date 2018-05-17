@@ -99,6 +99,7 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="CopyStringArray.c" />
     <ClCompile Include="CreateStringArray.c" />
+    <ClCompile Include="CreateStringArray_2.c" />
     <ClCompile Include="CreateStringTable.c" />
     <ClCompile Include="DestroyStringTable.c" />
     <ClCompile Include="dllmain.c" />
@@ -134,6 +135,7 @@
   <ItemGroup>
     <MASM Include="IntegerDivision_x64.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_1.asm" />
+    <MASM Include="IsPrefixOfStringInTable_x64_16.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_2.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_3.asm" />
     <MASM Include="IsPrefixOfStringInTable_x64_4.asm" />

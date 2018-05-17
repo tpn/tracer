@@ -97,6 +97,9 @@
     <ClCompile Include="IsPrefixOfStringInTable_15.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CreateStringArray_2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="StringTable.h">
@@ -179,6 +182,9 @@
       <Filter>Source Files</Filter>
     </MASM>
     <MASM Include="IsPrefixOfStringInTable_x64_15.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="IsPrefixOfStringInTable_x64_16.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>

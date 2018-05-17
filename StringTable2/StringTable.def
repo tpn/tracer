@@ -41,6 +41,9 @@ EXPORTS
     IsPrefixOfStringInTable_x64_13
     IsPrefixOfStringInTable_x64_14
     IsPrefixOfStringInTable_x64_15
+    IsPrefixOfStringInTable_x64_16
     IsPrefixOfCStrInArray
+    CreateStringArrayFromDelimitedString_1=CreateStringArrayFromDelimitedString
+    CreateStringArrayFromDelimitedString_2
     IntegerDivision_x64_1
-    IsPrefixOfStringInTable=IsPrefixOfStringInTable_13
+    IsPrefixOfStringInTable=IsPrefixOfStringInTable_x64_12
