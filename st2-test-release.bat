@@ -1,0 +1,1 @@
+vstest.console.exe /platform:x64 x64\Release\StringTable2Test.dll
