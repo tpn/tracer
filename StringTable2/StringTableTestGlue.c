@@ -196,6 +196,66 @@ MAKE_NTFS2(Data, "$DATA");
 MAKE_NTFS2(Unknown, "????");
 MAKE_NTFS2(Dot, ".");
 
+//
+// Ntfs3
+//
+
+const STRING Ntfs3ReservedNames = RTL_CONSTANT_STRING(
+    DSTR("$MftMirr1334567890123456789012")
+    DSTR("$MftMirr1334567890123456789")
+    DSTR("$MftMirr1334567890123456")
+    DSTR("$MftMirr133456789012345")
+    DSTR("$MftMirr13345678901234")
+    DSTR("$MftMirr1334567890123")
+    DSTR("$MftMirr133456789012")
+    DSTR("$MftMirr1334567890")
+    DSTR("$MftMirr133456789")
+    DSTR("$MftMirr13345678")
+    DSTR("$MftMirr1334567")
+    DSTR("$MftMirr133456")
+    DSTR("$MftMirr13345")
+    DSTR("$MftMirr1334")
+    DSTR("$MftMirr133")
+    DSTR("$MftMirr13")
+);
+
+MAKE_NTFS3(MftMirr1334567890123456789012, "$MftMirr1334567890123456789012");
+MAKE_NTFS3(MftMirr1334567890123456789, "$MftMirr1334567890123456789");
+MAKE_NTFS3(MftMirr1334567890123456, "$MftMirr1334567890123456");
+MAKE_NTFS3(MftMirr133456789012345, "$MftMirr133456789012345");
+MAKE_NTFS3(MftMirr13345678901234, "$MftMirr13345678901234");
+MAKE_NTFS3(MftMirr1334567890123, "$MftMirr1334567890123");
+MAKE_NTFS3(MftMirr133456789012, "$MftMirr133456789012");
+MAKE_NTFS3(MftMirr1334567890, "$MftMirr1334567890");
+MAKE_NTFS3(MftMirr133456789, "$MftMirr133456789");
+MAKE_NTFS3(MftMirr13345678, "$MftMirr13345678");
+MAKE_NTFS3(MftMirr1334567, "$MftMirr1334567");
+MAKE_NTFS3(MftMirr133456, "$MftMirr133456");
+MAKE_NTFS3(MftMirr13345, "$MftMirr13345");
+MAKE_NTFS3(MftMirr1334, "$MftMirr1334");
+MAKE_NTFS3(MftMirr133, "$MftMirr133");
+MAKE_NTFS3(MftMirr13, "$MftMirr13");
+
+//
+// Misc 1
+//
+
+const STRING Misc1ReservedNames = RTL_CONSTANT_STRING(
+    DSTR("abcdefghijklmnopqrstuvw")
+    DSTR("nop")
+    DSTR("fox1")
+    DSTR("klmnopqrstu")
+    DSTR("abcdefghijk")
+    DSTR("lmnopqr")
+);
+
+MAKE_MISC1(abcdefghijklmnopqrstuvw, "abcdefghijklmnopqrstuvw");
+MAKE_MISC1(nop, "nop");
+MAKE_MISC1(fox1, "fox1");
+MAKE_MISC1(klmnopqrstu, "klmnopqrstu");
+MAKE_MISC1(abcdefghijk, "abcdefghijk");
+MAKE_MISC1(lmnopqr, "lmnopqr");
+
 ////////////////////////////////////////////////////////////////////////////////
 // Test Functions & Input Glue
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,6 +292,7 @@ const STRING_TABLE_FUNCTION_OFFSET IsPrefixFunctions[] = {
     DSTFO(IsPrefixOfStringInTable_x64_13,  TRUE),
     DSTFO(IsPrefixOfStringInTable_x64_14,  TRUE),
     DSTFO(IsPrefixOfStringInTable_x64_15,  TRUE),
+    DSTFO(IsPrefixOfStringInTable_x64_16,  TRUE),
     DSTFO(IntegerDivision_x64_1,           FALSE),
 };
 
@@ -347,6 +408,91 @@ const STRING_TABLE_TEST_INPUT Ntfs2TestInputs[] = {
 };
 
 const ULONG NumberOfNtfs2TestInputs = ARRAYSIZE(Ntfs2TestInputs);
+
+//
+// Ntfs3 Test Inputs
+//
+
+STRING_ARRAY16 Ntfs3StringArray16 = CONSTANT_STRING_ARRAY16(
+    RTL_CONSTANT_STRING("$MftMirr1334567890123456789012"),
+    RTL_CONSTANT_STRING("$MftMirr1334567890123456789"),
+    RTL_CONSTANT_STRING("$MftMirr1334567890123456"),
+    RTL_CONSTANT_STRING("$MftMirr133456789012345"),
+    RTL_CONSTANT_STRING("$MftMirr13345678901234"),
+    RTL_CONSTANT_STRING("$MftMirr1334567890123"),
+    RTL_CONSTANT_STRING("$MftMirr133456789012"),
+    RTL_CONSTANT_STRING("$MftMirr1334567890"),
+    RTL_CONSTANT_STRING("$MftMirr133456789"),
+    RTL_CONSTANT_STRING("$MftMirr13345678"),
+    RTL_CONSTANT_STRING("$MftMirr1334567"),
+    RTL_CONSTANT_STRING("$MftMirr133456"),
+    RTL_CONSTANT_STRING("$MftMirr13345"),
+    RTL_CONSTANT_STRING("$MftMirr1334"),
+    RTL_CONSTANT_STRING("$MftMirr133"),
+    RTL_CONSTANT_STRING("$MftMirr13")
+);
+
+const STRING_TABLE_TEST_INPUT Ntfs3TestInputs[] = {
+    NTFS3_TEST_INPUT(MftMirr1334567890123456789012),
+    NTFS3_TEST_INPUT(MftMirr1334567890123456789),
+    NTFS3_TEST_INPUT(MftMirr1334567890123456),
+    NTFS3_TEST_INPUT(MftMirr133456789012345),
+    NTFS3_TEST_INPUT(MftMirr13345678901234),
+    NTFS3_TEST_INPUT(MftMirr1334567890123),
+    NTFS3_TEST_INPUT(MftMirr133456789012),
+    NTFS3_TEST_INPUT(MftMirr1334567890),
+    NTFS3_TEST_INPUT(MftMirr133456789),
+    NTFS3_TEST_INPUT(MftMirr13345678),
+    NTFS3_TEST_INPUT(MftMirr1334567),
+    NTFS3_TEST_INPUT(MftMirr133456),
+    NTFS3_TEST_INPUT(MftMirr13345),
+    NTFS3_TEST_INPUT(MftMirr1334),
+    NTFS3_TEST_INPUT(MftMirr133),
+    NTFS3_TEST_INPUT(MftMirr13),
+    { -1, &a },
+    { -1, &ab },
+    { -1, &abc },
+    { -1, &fox1 },
+    { -1, &abcd },
+    { -1, &abcdefghijkl },
+    { -1, &abcdefghijklmnopqr },
+    { -1, &abcdefghijklmnopqrstuvw },
+};
+
+const ULONG NumberOfNtfs3TestInputs = ARRAYSIZE(Ntfs3TestInputs);
+
+//
+// Misc 1 Test Inputs
+//
+
+STRING_ARRAY6 Misc1StringArray6 = CONSTANT_STRING_ARRAY6(
+    RTL_CONSTANT_STRING("abcdefghijklmnopqrstuvw"),
+    RTL_CONSTANT_STRING("nop"),
+    RTL_CONSTANT_STRING("fox1"),
+    RTL_CONSTANT_STRING("klmnopqrstu"),
+    RTL_CONSTANT_STRING("abcdefghijk"),
+    RTL_CONSTANT_STRING("lmnopqr")
+);
+
+const STRING_TABLE_TEST_INPUT Misc1TestInputs[] = {
+    MISC1_TEST_INPUT(abcdefghijklmnopqrstuvw),
+    MISC1_TEST_INPUT(nop),
+    MISC1_TEST_INPUT(fox1),
+    MISC1_TEST_INPUT(klmnopqrstu),
+    MISC1_TEST_INPUT(abcdefghijk),
+    MISC1_TEST_INPUT(lmnopqr),
+    { -1, &a },
+    { -1, &ab },
+    { -1, &abc },
+    { -1, &fox1 },
+    { -1, &abcd },
+    { -1, &abcdefghij },
+    {  4, &abcdefghijklm },
+    { -1, &abcdefghijklmnopqr },
+    { -1, &abcdefghijklmnopqrstuvw },
+};
+
+const ULONG NumberOfMisc1TestInputs = ARRAYSIZE(Misc1TestInputs);
 
 #ifdef __cplusplus
 } // extern "C"

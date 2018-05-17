@@ -578,6 +578,80 @@ typedef enum _NTFS2_RESERVED_NAME_ID {
 } NTFS2_RESERVED_NAME_ID;
 
 //
+// Another twist with exclusively $MftMirr variants..
+//
+
+extern const STRING Ntfs3ReservedNames;
+
+#define DECLARE_NTFS3(Id, Value) extern const STRING Ntfs3##Id##Name
+#define MAKE_NTFS3(Id, Value) \
+    const STRING Ntfs3##Id##Name = RTL_CONSTANT_STRING(Value)
+
+DECLARE_NTFS3(MftMirr1334567890123456789012, "$MftMirr1334567890123456789012");
+DECLARE_NTFS3(MftMirr1334567890123456789, "$MftMirr1334567890123456789");
+DECLARE_NTFS3(MftMirr1334567890123456, "$MftMirr1334567890123456");
+DECLARE_NTFS3(MftMirr133456789012345, "$MftMirr133456789012345");
+DECLARE_NTFS3(MftMirr13345678901234, "$MftMirr13345678901234");
+DECLARE_NTFS3(MftMirr1334567890123, "$MftMirr1334567890123");
+DECLARE_NTFS3(MftMirr133456789012, "$MftMirr133456789012");
+DECLARE_NTFS3(MftMirr1334567890, "$MftMirr1334567890");
+DECLARE_NTFS3(MftMirr133456789, "$MftMirr133456789");
+DECLARE_NTFS3(MftMirr13345678, "$MftMirr13345678");
+DECLARE_NTFS3(MftMirr1334567, "$MftMirr1334567");
+DECLARE_NTFS3(MftMirr133456, "$MftMirr133456");
+DECLARE_NTFS3(MftMirr13345, "$MftMirr13345");
+DECLARE_NTFS3(MftMirr1334, "$MftMirr1334");
+DECLARE_NTFS3(MftMirr133, "$MftMirr133");
+DECLARE_NTFS3(MftMirr13, "$MftMirr13");
+
+typedef enum _NTFS3_RESERVED_NAME_ID {
+    NotNtfs3ReservedName = -1,
+    Ntfs3MftMirr1334567890123456789012 = 0,
+    Ntfs3MftMirr1334567890123456789,
+    Ntfs3MftMirr1334567890123456,
+    Ntfs3MftMirr133456789012345,
+    Ntfs3MftMirr13345678901234,
+    Ntfs3MftMirr1334567890123,
+    Ntfs3MftMirr133456789012,
+    Ntfs3MftMirr1334567890,
+    Ntfs3MftMirr133456789,
+    Ntfs3MftMirr13345678,
+    Ntfs3MftMirr1334567,
+    Ntfs3MftMirr133456,
+    Ntfs3MftMirr13345,
+    Ntfs3MftMirr1334,
+    Ntfs3MftMirr133,
+    Ntfs3MftMirr13,
+} NTFS3_RESERVED_NAME_ID;
+
+//
+// Miscellaneous Test Inputs.
+//
+
+extern const STRING Misc1ReservedNames;
+
+#define DECLARE_MISC1(Id, Value) extern const STRING Misc1##Id##Name
+#define MAKE_MISC1(Id, Value) \
+    const STRING Misc1##Id##Name = RTL_CONSTANT_STRING(Value)
+
+DECLARE_MISC1(abcdefghijklmnopqrstuvw, "abcdefghijklmnopqrstuvw");
+DECLARE_MISC1(nop, "nop");
+DECLARE_MISC1(fox1, "fox1");
+DECLARE_MISC1(klmnopqrstu, "klmnopqrstu");
+DECLARE_MISC1(abcdefghijk, "abcdefghijk");
+DECLARE_MISC1(lmnopqr, "lmnopqr");
+
+typedef enum _MISC1_NAME_ID {
+    NotMisc1Name = -1,
+    Misc1abcdefghijklmnopqrstuvw = 0,
+    Misc1nop,
+    Misc1fox1,
+    Misc1klmnopqrstu,
+    Misc1abcdefghijk,
+    Misc1lmnopqr,
+} MISC1_NAME_ID;
+
+//
 // Declare various constants defined in StringTableTestGlue.c.
 //
 
@@ -603,6 +677,26 @@ extern STRING_ARRAY16 NtfsStringArray16;
 extern const STRING_TABLE_TEST_INPUT Ntfs2TestInputs[];
 extern const ULONG NumberOfNtfs2TestInputs;
 extern STRING_ARRAY16 Ntfs2StringArray16;
+
+//
+// Ntfs3 Test Inputs
+//
+
+#define NTFS3_TEST_INPUT(N) { Ntfs3##N, (PSTRING)&Ntfs3##N##Name }
+
+extern const STRING_TABLE_TEST_INPUT Ntfs3TestInputs[];
+extern const ULONG NumberOfNtfs3TestInputs;
+extern STRING_ARRAY16 Ntfs3StringArray16;
+
+//
+// Miscellaneous Test Inputs.
+//
+
+#define MISC1_TEST_INPUT(N) { Misc1##N, (PSTRING)&Misc1##N##Name }
+
+extern const STRING_TABLE_TEST_INPUT Misc1TestInputs[];
+extern const ULONG NumberOfMisc1TestInputs;
+extern STRING_ARRAY16 Misc1StringArray16;
 
 #ifdef __cplusplus
 } // extern "C"
