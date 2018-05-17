@@ -457,7 +457,7 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
         mov         rdi, r8
         repe        cmpsb
 
-        test        cl, 0
+        test        cl, cl
         jnz         short Pfx60                 ; Not all bytes compared, jump.
 
 ;

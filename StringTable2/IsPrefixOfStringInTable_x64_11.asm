@@ -404,7 +404,7 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
         mov         r8, String.Buffer[r8]   ; Load string table buffer address.
         add         r8, r10                 ; Advance buffer 16 bytes.
 
-        mov         rax, rcx                ; Copy counter.
+        xor         edx, edx                ; Clear rdx.
         xor         eax, eax                ; Clear rax.
         not         al                      ; al = -1
 
@@ -417,17 +417,26 @@ Pfx50:  sub         rax, r10                ; Subtract 16 from search length.
 @@:     inc         al                          ; Increment index.
         mov         dl, byte ptr [rax + r11]    ; Load byte from search string.
         cmp         dl, byte ptr [rax + r8]     ; Compare against target.
-        jne         short Pfx60                 ; If not equal, jump.
 
 ;
-; The two bytes were equal, decrement rcx and potentially continue the loop.
+; Decrement cl and continue the loop whilst cl != 0 and the bytes matched
+; (ZF = 1).
 ;
 
-        loopnz      @B                          ; Decrement cx and loop back.
+        loope       @B                          ; Decrement cl and loop back.
+
+;
+; If all bytes matched, cl should be 0 here.  Test for this now.
+;
+
+        test        cl, cl                      ; Is cl == 0? (ZF=1)
+        jnz         short Pfx60                 ; No -> not all bytes matched.
 
 ;
 ; All bytes matched!  Add 17 to al such that it captures how many characters we
-; actually matched, and then jump to Pfx40 for finalization.
+; actually matched, and then jump to Pfx40 for finalization.  (It's 17, not 16,
+; because the first byte we compare in the loop above is at index 16, and as it
+; is a 0-based index array, we're dealing with byte 17.)
 ;
 
         add         al, 17

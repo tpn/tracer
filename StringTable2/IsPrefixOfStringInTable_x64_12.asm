@@ -282,7 +282,8 @@ Pfx20:  tzcnt       eax, edx                    ; Count trailing zeros = index.
         vpextrb     r11, xmm1, 0                ; Extract slot length into r11.
         cmp         r11w, r9w                   ; Compare length to 16.
         ja          short Pfx50                 ; Length is > 16.
-        jmp         short Pfx40                 ; Lengths match!
+        je          short Pfx35                 ; Lengths match!
+                                                ; Length < 16, fall through.
 
 ;
 ; Less than 16 characters were matched.  Compare this against the length of the
@@ -309,6 +310,14 @@ Pfx30:  cmp         r8d, r10d                   ; Compare against search string.
         xor         eax, eax                    ; Clear rax.
         not         al                          ; al = -1
         ret                                     ; Return.
+
+;
+; Pfx35 and Pfx40 are the jump targets for when the prefix match succeeds.  The
+; former is used when we need to copy the number of characters matched from r8
+; back to rax.  The latter jump target doesn't require this.
+;
+
+Pfx35:  mov         rax, r8                     ; Copy numbers of chars matched.
 
 ;
 ; Load the match parameter into r9 and test to see if it's not-NULL, in which
