@@ -159,6 +159,19 @@ namespace TestStringTable
             DESTROY_TABLE(StringTable);
         }
 
+        TEST_METHOD(TestCreateStringTableFromDelimitedString5)
+        {
+            PSTRING_TABLE StringTable;
+
+            STRING Test1 = RTL_CONSTANT_STRING("foobar;offer;bars;rams;arms;fooz;");
+
+            DELIMITED_TABLE(&Test1);
+            ASSERT_SIZE(6);
+            DESTROY_TABLE(StringTable);
+
+        }
+
+
         //
         // The following is useful when needing to test boundary conditions.
         //
@@ -400,12 +413,57 @@ namespace TestStringTable
 #define DSTFO DEFINE_STRING_TABLE_FUNCTION_OFFSET
 
             STRING_TABLE_FUNCTION_OFFSET Functions[] = {
-                DSTFO(IsPrefixOfStringInTable_x64_12, TRUE),
+                DSTFO(IsPrefixOfStringInTable_x64_16, TRUE),
                 //DSTFO(IsPrefixOfStringInTable_13, TRUE)
             };
 
             //StringArray = (PSTRING_ARRAY)&NtfsStringArray16;
             StringArray = (PSTRING_ARRAY)&NtfsStringArray16;
+
+            Success = Api->TestIsPrefixOfStringInTableFunctions(
+                Rtl,
+                Allocator,
+                Allocator,
+                StringArray,
+                (PSTRING_TABLE_ANY_API)Api,
+                sizeof(*Api),
+                (PCSTRING_TABLE_FUNCTION_OFFSET)&Functions,
+                ARRAYSIZE(Functions),
+                (PCSTRING_TABLE_TEST_INPUT)&TestInputs,
+                ARRAYSIZE(TestInputs),
+                TRUE,
+                TRUE,
+                &Failed,
+                &Passed
+            );
+
+            Assert::IsTrue(Success);
+            Assert::IsTrue(Failed == 0);
+        }
+
+        TEST_METHOD(TestSubsetHelper2)
+        {
+            ULONG Failed;
+            ULONG Passed;
+            BOOLEAN Success;
+            PSTRING_ARRAY StringArray;
+
+            //
+            // Change this if you want to quickly test/debug a subset of
+            // functions and/or test inputs.
+            //
+
+            STRING_TABLE_TEST_INPUT TestInputs[] = {
+                NTFS2_TEST_INPUT(MftMirr1234567890),
+            };
+
+            STRING_TABLE_FUNCTION_OFFSET Functions[] = {
+                DSTFO(IsPrefixOfStringInTable_x64_9, TRUE),
+                //DSTFO(IsPrefixOfStringInTable_13, TRUE)
+            };
+
+            //StringArray = (PSTRING_ARRAY)&NtfsStringArray16;
+            StringArray = (PSTRING_ARRAY)&Ntfs2StringArray16;
 
             Success = Api->TestIsPrefixOfStringInTableFunctions(
                 Rtl,
