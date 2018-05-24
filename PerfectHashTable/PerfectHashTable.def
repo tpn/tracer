@@ -1,0 +1,10 @@
+LIBRARY PerfectHashTable
+EXPORTS
+    SetCSpecificHandler
+    LoadPerfectHashTableKeys
+    CreatePerfectHashTable
+    LoadPerfectHashTable
+    DestroyPerfectHashTable
+    InitializePerfectHashTableAllocator
+    InitializePerfectHashTableAllocatorFromRtlBootstrap
+    SelfTestPerfectHashTable
