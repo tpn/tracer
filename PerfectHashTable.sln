@@ -50,6 +50,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerConfigLib", "TracerConfigLib\TracerConfigLib.vcxproj", "{8A5AAEC6-FB14-49C3-8837-FE8A54D23C1D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerConfig", "TracerConfig\TracerConfig.vcxproj", "{76F2056F-6A65-4BA3-A49F-3CBF5D1E2CDF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142} = {4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerHeapLib", "TracerHeapLib\TracerHeapLib.vcxproj", "{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -364,6 +369,26 @@ Global
 		{76F2056F-6A65-4BA3-A49F-3CBF5D1E2CDF}.Release|x64.Build.0 = Release|x64
 		{76F2056F-6A65-4BA3-A49F-3CBF5D1E2CDF}.Release|x86.ActiveCfg = Release|Win32
 		{76F2056F-6A65-4BA3-A49F-3CBF5D1E2CDF}.Release|x86.Build.0 = Release|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Debug|x64.ActiveCfg = Debug|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Debug|x64.Build.0 = Debug|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Debug|x86.ActiveCfg = Debug|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Debug|x86.Build.0 = Debug|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGInstrument|x64.ActiveCfg = PGInstrument|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGInstrument|x64.Build.0 = PGInstrument|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGInstrument|x86.ActiveCfg = PGInstrument|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGInstrument|x86.Build.0 = PGInstrument|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGOptimize|x64.ActiveCfg = PGOptimize|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGOptimize|x64.Build.0 = PGOptimize|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGOptimize|x86.ActiveCfg = PGOptimize|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGOptimize|x86.Build.0 = PGOptimize|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGUpdate|x64.ActiveCfg = PGUpdate|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGUpdate|x64.Build.0 = PGUpdate|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGUpdate|x86.ActiveCfg = PGUpdate|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.PGUpdate|x86.Build.0 = PGUpdate|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x64.ActiveCfg = Release|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x64.Build.0 = Release|x64
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x86.ActiveCfg = Release|Win32
+		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
