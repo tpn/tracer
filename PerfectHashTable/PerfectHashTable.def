@@ -5,6 +5,7 @@ EXPORTS
     DestroyPerfectHashTableKeys
     CreatePerfectHashTable
     LoadPerfectHashTable
+    TestPerfectHashTable
     DestroyPerfectHashTable
     InitializePerfectHashTableAllocator
     InitializePerfectHashTableAllocatorFromRtlBootstrap

@@ -8,7 +8,9 @@ Module Name:
 
 Abstract:
 
-    This module implements the creation routine for the PerfectHash component.
+    This module implements the loader routine for the PerfectHashTable
+    component.  It is responsible for loading a perfect hash table that was
+    created via CreatePerfectHashTable();
 
 --*/
 
@@ -19,7 +21,6 @@ BOOLEAN
 LoadPerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PPERFECT_HASH_TABLE_API Api,
     PERFECT_HASH_TABLE_LOAD_FLAGS LoadFlags,
     PCUNICODE_STRING Path,
     PPERFECT_HASH_TABLE *PerfectHashTablePointer
@@ -28,7 +29,8 @@ LoadPerfectHashTable(
 
 Routine Description:
 
-    TBD.
+    Initializes a new PERFECT_HASH_TABLE structure based on an on-disk persisted
+    version of the table created via CreatePerfectHashTable().
 
 Arguments:
 
@@ -37,6 +39,12 @@ Arguments:
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
         will be used to allocate memory for the underlying PERFECT_HASH
         structure.
+
+    LoadFlags - Currently unused.
+
+    Path - Supplies a pointer to a UNICODE_STRING structure representing the
+        fully-qualified, NULL-terminated path of the file to be used to load
+        the table.
 
     PerfectHashTablePointer - Supplies the address of a variable that will
         receive the address of the newly created PERFECT_HASH_TABLE structure

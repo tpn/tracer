@@ -49,6 +49,9 @@
     <ClCompile Include="DestroyPerfectHashTableKeys.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TestPerfectHashTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfectHashTable.h">

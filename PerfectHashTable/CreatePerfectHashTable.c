@@ -65,7 +65,7 @@ Return Value:
     LARGE_INTEGER AllocSize;
     LONG_INTEGER PathBufferSize;
     PPERFECT_HASH_TABLE Table;
-    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht");
+    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht1");
 
     //
     // Validate arguments.

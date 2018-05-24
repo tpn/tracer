@@ -47,7 +47,7 @@ Arguments:
         structure.
 
     TestDataDirectory - Supplies a pointer to a UNICODE_STRING structure that
-        represents a fully-qualifed path of the test data directory.
+        represents a fully-qualified path of the test data directory.
 
 Return Value:
 
@@ -59,7 +59,10 @@ Return Value:
     PWSTR Source;
     USHORT Length;
     USHORT BaseLength;
+    USHORT NumberOfPages;
     BOOLEAN Success;
+    BOOLEAN Failed;
+    BOOLEAN IsProcessTerminating = FALSE;
     PWCHAR Buffer;
     PWCHAR BaseBuffer;
     PWCHAR WideOutput;
@@ -78,10 +81,14 @@ Return Value:
     WIN32_FIND_DATAW FindData;
     UNICODE_STRING SearchPath;
     UNICODE_STRING KeysPath;
-    PPERFECT_HASH_TABLE PerfectHashTable;
+    UNICODE_STRING TablePath;
+    PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
-    PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS KeysLoadFlags;
+    PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
+    PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
+    PERFECT_HASH_TABLE_LOAD_FLAGS LoadTableFlags;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
+    UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
 
     //
     // Validate arguments.
@@ -116,12 +123,13 @@ Return Value:
     //
 
     //
-    // Create a buffer we can use for stdout.
+    // Create a buffer we can use for stdout, using a very generous buffer size.
     //
 
+    NumberOfPages = 10;
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
-                                10,
+                                NumberOfPages,
                                 0,
                                 &WideOutputBufferSize,
                                 &WideOutputBuffer);
@@ -138,9 +146,10 @@ Return Value:
     // the number of pages we need.
     //
 
+    NumberOfPages = (1 << 16) >> PAGE_SHIFT;
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
-                                (1 << 16) >> PAGE_SHIFT,
+                                NumberOfPages,
                                 0,
                                 &BufferSize,
                                 &BaseBuffer);
@@ -227,6 +236,7 @@ Return Value:
             WIDE_OUTPUT_RAW(WideOutput,
                             L"No files matching pattern '*.keys' found in "
                             "test data directory.\n");
+            WIDE_OUTPUT_FLUSH();
             goto End;
         } else {
             goto Error;
@@ -257,13 +267,21 @@ Return Value:
     BaseLength = Length;
 
     //
-    // Clear the keys load flags and failure count.
+    // Initialize remaining variables prior to entering the loop.
     //
 
-    KeysLoadFlags.AsULong = 0;
     Failures = 0;
+    LoadKeysFlags.AsULong = 0;
+    LoadTableFlags.AsULong = 0;
+    CreateTableFlags.AsULong = 0;
 
     do {
+
+        //
+        // Clear the failure flag at the top of every loop invocation.
+        //
+
+        Failed = FALSE;
 
         WIDE_OUTPUT_RAW(WideOutput, L"Processing key file: ");
         WIDE_OUTPUT_WCSTR(WideOutput, (PCWSZ)FindData.cFileName);
@@ -290,7 +308,7 @@ Return Value:
 
         Success = Api->LoadPerfectHashTableKeys(Rtl,
                                                 Allocator,
-                                                KeysLoadFlags,
+                                                LoadKeysFlags,
                                                 &KeysPath,
                                                 &Keys);
 
@@ -305,6 +323,201 @@ Return Value:
             continue;
         }
 
+        //
+        // Keys were loaded successfully.  Construct the equivalent path name
+        // for the backing perfect hash table when persisted to disk.  Although
+        // this can be automated for us as part of CreatePerfectHashTable(),
+        // having it backed by our memory simplifies things a little further
+        // down the track when we want to load the table via the path but have
+        // destroyed the original table that came from CreatePerfectHashTable().
+        //
+
+        //
+        // Align the Dest pointer up to a 16-byte boundary.  (We add 1 to its
+        // current value to advance it past the terminating NULL of the keys
+        // path.)
+        //
+
+        Dest = (PWSTR)ALIGN_UP(Dest + 1, 16);
+
+        //
+        // We know the keys file ended with ".keys".  We're going to use the
+        // identical name for the backing hash table file, except replace the
+        // ".keys" extension at the end with ".pht1".  So, we can just copy the
+        // lengths used for KeysPath, plus the entire buffer, then just copy the
+        // new extension over the old one.  The 1 doesn't have any significance
+        // other than it padding out the extension length such that it matches
+        // the length of ".keys".  (Although it may act as a nice versioning
+        // tool down the track.)
+        //
+
+        TablePath.Length = KeysPath.Length;
+        TablePath.MaximumLength = KeysPath.MaximumLength;
+        TablePath.Buffer = Dest;
+
+        //
+        // Copy the keys path over.
+        //
+
+        CopyMemory(Dest, KeysPath.Buffer, KeysPath.MaximumLength);
+
+        //
+        // Advance the Dest pointer to the end of the buffer, then retreat it
+        // four characters, such that it's positioned on the 'k' of keys.
+        //
+
+        Dest += (KeysPath.MaximumLength >> 1) - 5;
+        ASSERT(*Dest == L'k');
+        ASSERT(*(Dest - 1) == L'.');
+
+        //
+        // Copy the "pht1" extension over "keys".
+        //
+
+        Source = TableSuffix.Buffer;
+        while (*Source) {
+            *Dest++ = *Source++;
+        }
+        *Dest = L'\0';
+
+        //
+        // Sanity check invariants.
+        //
+
+        ASSERT(TablePath.Buffer[TablePath.Length >> 1] == L'\0');
+        ASSERT(&TablePath.Buffer[TablePath.Length >> 1] == Dest);
+
+        //
+        // We now have the fully-qualified path name of the backing perfect
+        // hash table file living in TablePath.  Continue with creation of the
+        // perfect hash table, using this path we've just created and the keys
+        // that were loaded.
+        //
+
+        Success = Api->CreatePerfectHashTable(Rtl,
+                                              Allocator,
+                                              CreateTableFlags,
+                                              Keys,
+                                              &TablePath,
+                                              &Table);
+
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Failed to create perfect hash "
+                                         "table for keys: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failed = TRUE;
+            Failures++;
+            goto DestroyKeys;
+        }
+
+        //
+        // Test the table that we just created.
+        //
+
+        Success = Api->TestPerfectHashTable(Table);
+
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Test failed for perfect hash table "
+                                         "created from keys: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            Failed = TRUE;
+        }
+
+        //
+        // Destroy the table.
+        //
+
+        Success = Api->DestroyPerfectHashTable(&Table, &IsProcessTerminating);
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
+                                         "created from keys: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            goto DestroyKeys;
+        }
+
+        //
+        // If the test against the newly-created table failed, we don't attempt
+        // to test the file-backed version.
+        //
+
+        if (Failed) {
+            goto DestroyKeys;
+        }
+
+        //
+        // If we get here, the newly-created perfect hash table passed its
+        // tests and was successfully destroyed.  We now attempt to load it
+        // from the backing file and repeat the test.
+        //
+
+        Success = Api->LoadPerfectHashTable(Rtl,
+                                            Allocator,
+                                            LoadTableFlags,
+                                            &TablePath,
+                                            &Table);
+
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Failed to load perfect hash table: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            goto DestroyKeys;
+
+        }
+
+        //
+        // Table was loaded successfully from disk.  Repeat the tests.
+        //
+
+        Success = Api->TestPerfectHashTable(Table);
+
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Test failed for perfect hash table "
+                                         "loaded from disk: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            Failed = TRUE;
+        }
+
+        //
+        // Destroy the table.
+        //
+
+        Success = Api->DestroyPerfectHashTable(&Table, &IsProcessTerminating);
+        if (!Success) {
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
+                                         "loaded from disk: ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+        }
+
+DestroyKeys:
+
         Success = Api->DestroyPerfectHashTableKeys(&Keys);
         if (!Success) {
 
@@ -316,9 +529,8 @@ Return Value:
             Failures++;
             continue;
         }
-    } while (FindNextFile(FindHandle, &FindData));
 
-    PerfectHashTable = NULL;
+    } while (FindNextFile(FindHandle, &FindData));
 
     //
     // Self test complete!

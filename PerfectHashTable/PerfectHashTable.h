@@ -100,6 +100,7 @@ BOOLEAN
     _In_ PALLOCATOR Allocator,
     _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
+    _In_opt_ PCUNICODE_STRING HashTablePath,
     _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable
     );
 typedef CREATE_PERFECT_HASH_TABLE *PCREATE_PERFECT_HASH_TABLE;
@@ -152,7 +153,7 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(INITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP)(
+(NTAPI INITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP)(
     _In_ PRTL_BOOTSTRAP RtlBootstrap,
     _In_ PALLOCATOR Allocator
     );
@@ -163,7 +164,7 @@ typedef
 _Check_return_
 _Success_(return != 0)
 BOOL
-(INITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR)(
+(NTAPI INITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator
     );
@@ -177,7 +178,7 @@ typedef INITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR
 typedef
 _Success_(return != 0)
 BOOLEAN
-(SELF_TEST_PERFECT_HASH_TABLE)(
+(NTAPI SELF_TEST_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ struct _PERFECT_HASH_TABLE_API_EX *Api,
@@ -185,6 +186,14 @@ BOOLEAN
     _In_ PCUNICODE_STRING TestDataDirectory
     );
 typedef SELF_TEST_PERFECT_HASH_TABLE *PSELF_TEST_PERFECT_HASH_TABLE;
+
+typedef
+_Success_(return != 0)
+BOOLEAN
+(NTAPI TEST_PERFECT_HASH_TABLE)(
+    _In_ PPERFECT_HASH_TABLE Table
+    );
+typedef TEST_PERFECT_HASH_TABLE *PTEST_PERFECT_HASH_TABLE;
 
 //
 // Define the main PerfectHash API structure.
@@ -199,6 +208,7 @@ typedef struct _PERFECT_HASH_TABLE_API {
 
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
+    PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
     PDESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
@@ -226,6 +236,7 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
 
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
+    PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
     PDESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR
@@ -331,6 +342,7 @@ Return Value:
         "DestroyPerfectHashTableKeys",
         "CreatePerfectHashTable",
         "LoadPerfectHashTable",
+        "TestPerfectHashTable",
         "DestroyPerfectHashTable",
         "InitializePerfectHashTableAllocator",
         "InitializePerfectHashTableAllocatorFromRtlBootstrap",
