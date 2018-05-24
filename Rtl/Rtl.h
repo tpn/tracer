@@ -4941,12 +4941,24 @@ BOOL
 typedef CREATE_BUFFER *PCREATE_BUFFER;
 
 typedef
+_Success_(return != 0)
 BOOL
-(NTAPI TEST_CREATE_BUFFER)(
+(NTAPI DESTROY_BUFFER)(
     _In_ struct _RTL *Rtl,
-    _In_ PCREATE_BUFFER CreateBuffer
+    _In_ HANDLE ProcessHandle,
+    _Out_ PPVOID BufferAddress
     );
-typedef TEST_CREATE_BUFFER *PTEST_CREATE_BUFFER;
+typedef DESTROY_BUFFER *PDESTROY_BUFFER;
+
+typedef
+BOOL
+(NTAPI TEST_CREATE_AND_DESTROY_BUFFER)(
+    _In_ struct _RTL *Rtl,
+    _In_ PCREATE_BUFFER CreateBuffer,
+    _In_ PDESTROY_BUFFER DestroyBuffer
+    );
+typedef TEST_CREATE_AND_DESTROY_BUFFER *PTEST_CREATE_AND_DESTROY_BUFFER;
+
 
 typedef
 VOID
@@ -6439,6 +6451,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
     PCREATE_SINGLE_RANDOM_OBJECT_NAME CreateSingleRandomObjectName;
     PCREATE_BUFFER CreateBuffer;
+    PDESTROY_BUFFER DestroyBuffer;
     PMAKE_RANDOM_STRING MakeRandomString;
     PFIND_AND_REPLACE_BYTE FindAndReplaceByte;
 
@@ -6500,7 +6513,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 #ifdef _RTL_TEST
     PTEST_LOAD_SYMBOLS TestLoadSymbols;
     PTEST_LOAD_SYMBOLS_FROM_MULTIPLE_MODULES TestLoadSymbolsFromMultipleModules;
-    PTEST_CREATE_BUFFER TestCreateBuffer;
+    PTEST_CREATE_AND_DESTROY_BUFFER TestCreateAndDestroyBuffer;
 #endif
 
 } RTL, *PRTL, **PPRTL;

@@ -467,9 +467,50 @@ End:
 
 _Use_decl_annotations_
 BOOL
-TestCreateBuffer(
+DestroyBuffer(
     PRTL Rtl,
-    PCREATE_BUFFER CreateBuffer
+    HANDLE ProcessHandle,
+    PPVOID Address
+    )
+{
+    BOOL Success;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(ProcessHandle)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Address)) {
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(*Address)) {
+        return FALSE;
+    }
+
+    Success = Rtl->VirtualFreeEx(ProcessHandle, *Address, 0, MEM_RELEASE);
+    if (!Success) {
+        return FALSE;
+    }
+
+    *Address = NULL;
+    return TRUE;
+}
+
+
+_Use_decl_annotations_
+BOOL
+TestCreateAndDestroyBuffer(
+    PRTL Rtl,
+    PCREATE_BUFFER CreateBuffer,
+    PDESTROY_BUFFER DestroyBuffer
     )
 {
     PVOID Address;
@@ -507,7 +548,9 @@ TestCreateBuffer(
         CaughtException = TRUE;
     }
 
-    Rtl->VirtualFreeEx(GetCurrentProcess(), Address, 0, MEM_RELEASE);
+    if (!DestroyBuffer(Rtl, GetCurrentProcess(), &Address)) {
+        return FALSE;
+    }
 
     if (!CaughtException) {
         return FALSE;
@@ -4273,6 +4316,7 @@ InitializeRtl(
     Rtl->FindAndReplaceByte = FindAndReplaceByte;
     Rtl->MakeRandomString = MakeRandomString;
     Rtl->CreateBuffer = CreateBuffer;
+    Rtl->DestroyBuffer = DestroyBuffer;
 
     Rtl->SetDllPath = RtlpSetDllPath;
     Rtl->SetInjectionThunkDllPath = RtlpSetInjectionThunkDllPath;
@@ -4293,7 +4337,7 @@ InitializeRtl(
     Rtl->TestLoadSymbolsFromMultipleModules = (
         TestLoadSymbolsFromMultipleModules
     );
-    Rtl->TestCreateBuffer = TestCreateBuffer;
+    Rtl->TestCreateAndDestroyBuffer = TestCreateAndDestroyBuffer;
 #endif
 
     return Success;
