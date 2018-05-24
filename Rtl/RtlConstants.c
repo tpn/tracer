@@ -266,6 +266,11 @@ CONST PCSTR RtlExFunctionNames[] = {
     "AppendCharBufferToCharBuffer",
     "AppendCStrToCharBuffer",
     "AppendCharToCharBuffer",
+    "AppendUnicodeStringToWideCharBuffer",
+    "AppendWideCStrToWideCharBuffer",
+    "AppendWideCharBufferToWideCharBuffer",
+    "AppendWideCharToWideCharBuffer",
+    "AppendIntegerToWideCharBuffer",
 };
 
 CONST PCSTR DbgHelpFunctionNames[] = {

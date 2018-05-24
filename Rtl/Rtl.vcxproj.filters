@@ -140,5 +140,8 @@
     <ClCompile Include="String.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UnicodeString.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

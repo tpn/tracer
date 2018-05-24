@@ -118,6 +118,7 @@
     <ClCompile Include="String.c" />
     <ClCompile Include="SymbolLoader.c" />
     <ClCompile Include="..\DebugEngine\DebugEngineInterfaces.c" />
+    <ClCompile Include="UnicodeString.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AsmLib\AsmLib.vcxproj">
