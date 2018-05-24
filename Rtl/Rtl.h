@@ -513,6 +513,9 @@ typedef LINKED_LINE **PPLINKED_LINE;
 typedef _Null_terminated_ CONST CHAR *PCSZ;
 typedef CONST CHAR *PCCHAR;
 
+typedef _Null_terminated_ CONST WCHAR *PCWSZ;
+typedef CONST WCHAR *PCWCHAR;
+
 #ifdef _M_X64
 #pragma intrinsic(__readgsdword)
 FORCEINLINE
@@ -5644,74 +5647,142 @@ VOID
     );
 typedef APPEND_CSTR_TO_CHAR_BUFFER *PAPPEND_CSTR_TO_CHAR_BUFFER;
 
-#define _RTLEXFUNCTIONS_HEAD                                                        \
-    PDESTROY_RTL DestroyRtl;                                                        \
-    PARGVW_TO_ARGVA ArgvWToArgvA;                                                   \
-    PCOPY_PAGES_EX CopyPagesMovsq;                                                  \
-    PCOPY_PAGES_EX CopyPagesAvx2;                                                   \
-    PCOPY_PAGES CopyPagesMovsq_C;                                                   \
-    PCOPY_PAGES CopyPagesAvx2_C;                                                    \
-    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                         \
-    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                     \
-    PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString;      \
-    PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                       \
-    PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;           \
-    PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;              \
-    PDESTROY_RTL_PATH DestroyRtlPath;                                               \
-    PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE DisableCreateSymbolicLinkPrivilege;     \
-    PDISABLE_DEBUG_PRIVILEGE DisableDebugPrivilege;                                 \
-    PDISABLE_INCREASE_WORKING_SET_PRIVILEGE DisableIncreaseWorkingSetPrivilege;     \
-    PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                      \
-    PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;                  \
-    PDISABLE_PRIVILEGE DisablePrivilege;                                            \
-    PDISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE DisableProfileSingleProcessPrivilege; \
-    PDISABLE_SYSTEM_PROFILE_PRIVILEGE DisableSystemProfilePrivilege;                \
-    PENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE EnableCreateSymbolicLinkPrivilege;       \
-    PENABLE_DEBUG_PRIVILEGE EnableDebugPrivilege;                                   \
-    PENABLE_INCREASE_WORKING_SET_PRIVILEGE EnableIncreaseWorkingSetPrivilege;       \
-    PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                        \
-    PENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;                    \
-    PENABLE_PRIVILEGE EnablePrivilege;                                              \
-    PENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE EnableProfileSingleProcessPrivilege;   \
-    PENABLE_SYSTEM_PROFILE_PRIVILEGE EnableSystemProfilePrivilege;                  \
-    PFILES_EXISTA FilesExistA;                                                      \
-    PFILES_EXISTW FilesExistW;                                                      \
-    PFIND_CHARS_IN_STRING FindCharsInString;                                        \
-    PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                         \
-    PGET_MODULE_RTL_PATH GetModuleRtlPath;                                          \
-    PINITIALIZE_RTL_FILE InitializeRtlFile;                                         \
-    PLOAD_FILE LoadFile;                                                            \
-    PLOAD_DBGENG LoadDbgEng;                                                        \
-    PLOAD_DBGHELP LoadDbgHelp;                                                      \
-    PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;                    \
-    PLOAD_SHLWAPI LoadShlwapi;                                                      \
-    PPREFAULT_PAGES PrefaultPages;                                                  \
-    PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                             \
-    PRTL_CHECK_BIT RtlCheckBit;                                                     \
-    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                            \
-    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                                 \
-    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                               \
-    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                                              \
-    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                            \
-    PRTL_IS_ROOT RtlIsRoot;                                                         \
-    PRTL_LEFT_CHILD RtlLeftChild;                                                   \
-    PRTL_PARENT RtlParent;                                                          \
-    PRTL_RIGHT_CHILD RtlRightChild;                                                 \
-    PSET_PRIVILEGE SetPrivilege;                                                    \
-    PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                           \
-    PSTRING_TO_RTL_PATH StringToRtlPath;                                            \
-    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                                   \
-    PUNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;            \
-    PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                             \
-    PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                         \
-    PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                               \
-    PWRITE_REGISTRY_STRING WriteRegistryString;                                     \
-    PAPPEND_INTEGER_TO_CHAR_BUFFER AppendIntegerToCharBuffer;                       \
-    PAPPEND_INTEGER_TO_CHAR_BUFFER_EX AppendIntegerToCharBufferEx;                  \
-    PAPPEND_STRING_TO_CHAR_BUFFER AppendStringToCharBuffer;                         \
-    PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER AppendCharBufferToCharBuffer;                \
-    PAPPEND_CSTR_TO_CHAR_BUFFER AppendCStrToCharBuffer;                             \
-    PAPPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;
+//
+// Wide character versions.
+//
+
+typedef
+VOID
+(NTAPI APPEND_INTEGER_TO_WIDE_CHAR_BUFFER)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ ULONGLONG Integer
+    );
+typedef APPEND_INTEGER_TO_WIDE_CHAR_BUFFER *PAPPEND_INTEGER_TO_WIDE_CHAR_BUFFER;
+
+typedef
+BOOLEAN
+(NTAPI APPEND_INTEGER_TO_WIDE_CHAR_BUFFER_EX)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ ULONGLONG Integer,
+    _In_ BYTE NumberOfDigits,
+    _In_ WCHAR Pad,
+    _In_opt_ WCHAR Trailer
+    );
+typedef APPEND_INTEGER_TO_WIDE_CHAR_BUFFER_EX
+      *PAPPEND_INTEGER_TO_WIDE_CHAR_BUFFER_EX;
+
+typedef
+VOID
+(NTAPI APPEND_UNICODE_STRING_TO_WIDE_CHAR_BUFFER)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ PCUNICODE_STRING UnicodeString
+    );
+typedef APPEND_UNICODE_STRING_TO_WIDE_CHAR_BUFFER
+      *PAPPEND_UNICODE_STRING_TO_WIDE_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_WIDE_CHAR_BUFFER_TO_WIDE_CHAR_BUFFER)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ PCWCHAR String,
+    _In_ ULONG SizeInBytes
+    );
+typedef APPEND_WIDE_CHAR_BUFFER_TO_WIDE_CHAR_BUFFER
+      *PAPPEND_WIDE_CHAR_BUFFER_TO_WIDE_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_WIDE_CHAR_TO_WIDE_CHAR_BUFFER)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ WCHAR Char
+    );
+typedef APPEND_WIDE_CHAR_TO_WIDE_CHAR_BUFFER
+      *PAPPEND_WIDE_CHAR_TO_WIDE_CHAR_BUFFER;
+
+typedef
+VOID
+(NTAPI APPEND_WIDE_CSTR_TO_WIDE_CHAR_BUFFER)(
+    _Inout_ PPWCHAR BufferPointer,
+    _In_ PCWSZ String
+    );
+typedef APPEND_WIDE_CSTR_TO_WIDE_CHAR_BUFFER
+      *PAPPEND_WIDE_CSTR_TO_WIDE_CHAR_BUFFER;
+
+
+#define _RTLEXFUNCTIONS_HEAD                                                           \
+    PDESTROY_RTL DestroyRtl;                                                           \
+    PARGVW_TO_ARGVA ArgvWToArgvA;                                                      \
+    PCOPY_PAGES_EX CopyPagesMovsq;                                                     \
+    PCOPY_PAGES_EX CopyPagesAvx2;                                                      \
+    PCOPY_PAGES CopyPagesMovsq_C;                                                      \
+    PCOPY_PAGES CopyPagesAvx2_C;                                                       \
+    PCOPY_TO_MEMORY_MAPPED_MEMORY CopyToMemoryMappedMemory;                            \
+    PCREATE_BITMAP_INDEX_FOR_STRING CreateBitmapIndexForString;                        \
+    PCREATE_BITMAP_INDEX_FOR_UNICODE_STRING CreateBitmapIndexForUnicodeString;         \
+    PCURRENT_DIRECTORY_TO_RTL_PATH CurrentDirectoryToRtlPath;                          \
+    PCURRENT_DIRECTORY_TO_UNICODE_STRING CurrentDirectoryToUnicodeString;              \
+    PDESTROY_PATH_ENVIRONMENT_VARIABLE DestroyPathEnvironmentVariable;                 \
+    PDESTROY_RTL_PATH DestroyRtlPath;                                                  \
+    PDISABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE DisableCreateSymbolicLinkPrivilege;        \
+    PDISABLE_DEBUG_PRIVILEGE DisableDebugPrivilege;                                    \
+    PDISABLE_INCREASE_WORKING_SET_PRIVILEGE DisableIncreaseWorkingSetPrivilege;        \
+    PDISABLE_LOCK_MEMORY_PRIVILEGE DisableLockMemoryPrivilege;                         \
+    PDISABLE_MANAGE_VOLUME_PRIVILEGE DisableManageVolumePrivilege;                     \
+    PDISABLE_PRIVILEGE DisablePrivilege;                                               \
+    PDISABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE DisableProfileSingleProcessPrivilege;    \
+    PDISABLE_SYSTEM_PROFILE_PRIVILEGE DisableSystemProfilePrivilege;                   \
+    PENABLE_CREATE_SYMBOLIC_LINK_PRIVILEGE EnableCreateSymbolicLinkPrivilege;          \
+    PENABLE_DEBUG_PRIVILEGE EnableDebugPrivilege;                                      \
+    PENABLE_INCREASE_WORKING_SET_PRIVILEGE EnableIncreaseWorkingSetPrivilege;          \
+    PENABLE_LOCK_MEMORY_PRIVILEGE EnableLockMemoryPrivilege;                           \
+    PENABLE_MANAGE_VOLUME_PRIVILEGE EnableManageVolumePrivilege;                       \
+    PENABLE_PRIVILEGE EnablePrivilege;                                                 \
+    PENABLE_PROFILE_SINGLE_PROCESS_PRIVILEGE EnableProfileSingleProcessPrivilege;      \
+    PENABLE_SYSTEM_PROFILE_PRIVILEGE EnableSystemProfilePrivilege;                     \
+    PFILES_EXISTA FilesExistA;                                                         \
+    PFILES_EXISTW FilesExistW;                                                         \
+    PFIND_CHARS_IN_STRING FindCharsInString;                                           \
+    PFIND_CHARS_IN_UNICODE_STRING FindCharsInUnicodeString;                            \
+    PGET_MODULE_RTL_PATH GetModuleRtlPath;                                             \
+    PINITIALIZE_RTL_FILE InitializeRtlFile;                                            \
+    PLOAD_FILE LoadFile;                                                               \
+    PLOAD_DBGENG LoadDbgEng;                                                           \
+    PLOAD_DBGHELP LoadDbgHelp;                                                         \
+    PLOAD_PATH_ENVIRONMENT_VARIABLE LoadPathEnvironmentVariable;                       \
+    PLOAD_SHLWAPI LoadShlwapi;                                                         \
+    PPREFAULT_PAGES PrefaultPages;                                                     \
+    PREGISTER_DLL_NOTIFICATION RegisterDllNotification;                                \
+    PRTL_CHECK_BIT RtlCheckBit;                                                        \
+    PRTL_INITIALIZE_SPLAY_LINKS RtlInitializeSplayLinks;                               \
+    PRTL_INSERT_AS_LEFT_CHILD RtlInsertAsLeftChild;                                    \
+    PRTL_INSERT_AS_RIGHT_CHILD RtlInsertAsRightChild;                                  \
+    PRTL_IS_LEFT_CHILD RtlIsLeftChild;                                                 \
+    PRTL_IS_RIGHT_CHILD RtlIsRightChild;                                               \
+    PRTL_IS_ROOT RtlIsRoot;                                                            \
+    PRTL_LEFT_CHILD RtlLeftChild;                                                      \
+    PRTL_PARENT RtlParent;                                                             \
+    PRTL_RIGHT_CHILD RtlRightChild;                                                    \
+    PSET_PRIVILEGE SetPrivilege;                                                       \
+    PSTRING_TO_EXISTING_RTL_PATH StringToExistingRtlPath;                              \
+    PSTRING_TO_RTL_PATH StringToRtlPath;                                               \
+    PTEST_EXCEPTION_HANDLER TestExceptionHandler;                                      \
+    PUNICODE_STRING_TO_EXISTING_RTL_PATH UnicodeStringToExistingRtlPath;               \
+    PUNICODE_STRING_TO_RTL_PATH UnicodeStringToRtlPath;                                \
+    PUNREGISTER_DLL_NOTIFICATION UnregisterDllNotification;                            \
+    PWRITE_ENV_VAR_TO_REGISTRY WriteEnvVarToRegistry;                                  \
+    PWRITE_REGISTRY_STRING WriteRegistryString;                                        \
+    PAPPEND_INTEGER_TO_CHAR_BUFFER AppendIntegerToCharBuffer;                          \
+    PAPPEND_INTEGER_TO_CHAR_BUFFER_EX AppendIntegerToCharBufferEx;                     \
+    PAPPEND_STRING_TO_CHAR_BUFFER AppendStringToCharBuffer;                            \
+    PAPPEND_CHAR_BUFFER_TO_CHAR_BUFFER AppendCharBufferToCharBuffer;                   \
+    PAPPEND_CSTR_TO_CHAR_BUFFER AppendCStrToCharBuffer;                                \
+    PAPPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;                                \
+    PAPPEND_UNICODE_STRING_TO_WIDE_CHAR_BUFFER AppendUnicodeStringToWideCharBuffer;    \
+    PAPPEND_WIDE_CSTR_TO_WIDE_CHAR_BUFFER AppendWideCStrToWideCharBuffer;              \
+    PAPPEND_WIDE_CHAR_BUFFER_TO_WIDE_CHAR_BUFFER AppendWideCharBufferToWideCharBuffer; \
+    PAPPEND_WIDE_CHAR_TO_WIDE_CHAR_BUFFER AppendWideCharToWideCharBuffer;              \
+    PAPPEND_INTEGER_TO_WIDE_CHAR_BUFFER AppendIntegerToWideCharBuffer;
+
 
 typedef struct _RTLEXFUNCTIONS {
     _RTLEXFUNCTIONS_HEAD
@@ -8953,6 +9024,83 @@ Return Value:
         ASSERT(Success);                                                     \
     }                                                                        \
     Output = OutputBuffer
+
+//
+// Wide output helpers.
+//
+
+#define WIDE_OUTPUT_RAW(WideOutput, WideString)  \
+    Rtl->AppendWideCharBufferToWideCharBuffer(   \
+        &WideOutput,                             \
+        WideString,                              \
+        sizeof(WideString)-sizeof(WideString[0]) \
+    )
+
+#define WIDE_OUTPUT_UNICODE_STRING(WideOutput, UnicodeString)            \
+    Rtl->AppendUnicodeStringToWideCharBuffer(&WideOutput, UnicodeString)
+
+#define WIDE_OUTPUT_WCSTR(WideOutput, WideCStr)                \
+    Rtl->AppendWideCStrToWideCharBuffer(&WideOutput, WideCStr)
+
+#define WIDE_OUTPUT_WCHR(WideOutput, WideChar)                 \
+    Rtl->AppendWideCharToWideCharBuffer(&WideOutput, WideChar)
+
+#define WIDE_OUTPUT_SEP(WideOutput)                        \
+    Rtl->AppendWideCharToWideCharBuffer(&WideOutput, L',')
+
+#define WIDE_OUTPUT_LF(WideOutput)                          \
+    Rtl->AppendWideCharToWideCharBuffer(&WideOutput, L'\n')
+
+#define WIDE_OUTPUT_INT(WideOutputValue)                    \
+    Rtl->AppendIntegerToWideCharBuffer(&WideOutput, Value);
+
+#define WIDE_OUTPUT_FLUSH_CONSOLE()                         \
+    BytesToWrite.QuadPart = (                               \
+        ((ULONG_PTR)WideOutput) -                           \
+        ((ULONG_PTR)WideOutputBuffer)                       \
+    );                                                      \
+    WideCharsToWrite.QuadPart = BytesToWrite.QuadPart >> 1; \
+    Success = WriteConsoleW(WideOutputHandle,               \
+                            WideOutputBuffer,               \
+                            WideCharsToWrite.LowPart,       \
+                            &WideCharsWritten,              \
+                            NULL);                          \
+    ASSERT(Success);                                        \
+    WideOutput = WideOutputBuffer
+
+#define WIDE_OUTPUT_FLUSH_FILE()              \
+    BytesToWrite.QuadPart = (                 \
+        ((ULONG_PTR)WideOutput) -             \
+        ((ULONG_PTR)WideOutputBuffer)         \
+    ) - 1;                                    \
+    Success = WriteFile(WideOutputHandle,     \
+                        WideOutputBuffer,     \
+                        BytesToWrite.LowPart, \
+                        &BytesWritten,        \
+                        NULL);                \
+    ASSERT(Success);                          \
+    WideOutput = WideOutputBuffer
+
+#define WIDE_OUTPUT_FLUSH()                                 \
+    BytesToWrite.QuadPart = (                               \
+        ((ULONG_PTR)WideOutput) -                           \
+        ((ULONG_PTR)WideOutputBuffer)                       \
+    );                                                      \
+    WideCharsToWrite.QuadPart = BytesToWrite.QuadPart >> 1; \
+    Success = WriteConsoleW(WideOutputHandle,               \
+                            WideOutputBuffer,               \
+                            WideCharsToWrite.LowPart,       \
+                            &WideCharsWritten,              \
+                            NULL);                          \
+    if (!Success) {                                         \
+        Success = WriteFile(WideOutputHandle,               \
+                            WideOutputBuffer,               \
+                            BytesToWrite.LowPart,           \
+                            &BytesWritten,                  \
+                            NULL);                          \
+        ASSERT(Success);                                    \
+    }                                                       \
+    WideOutput = WideOutputBuffer
 
 //
 // Timestamp glue for benchmarking.
