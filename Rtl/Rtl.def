@@ -4,3 +4,8 @@ EXPORTS
     RtlHeapAllocatorDestroy
     AppendIntegerToCharBufferEx
     AppendCStrToCharBuffer
+    AppendUnicodeStringToWideCharBuffer
+    AppendWideCStrToWideCharBuffer
+    AppendWideCharBufferToWideCharBuffer
+    AppendWideCharToWideCharBuffer
+    AppendIntegerToWideCharBuffer
