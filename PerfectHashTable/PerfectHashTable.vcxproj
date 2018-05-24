@@ -93,6 +93,7 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="CreatePerfectHashTable.c" />
     <ClCompile Include="DestroyPerfectHashTable.c" />
+    <ClCompile Include="DestroyPerfectHashTableKeys.c" />
     <ClCompile Include="LoadPerfectHashTable.c" />
     <ClCompile Include="LoadPerfectHashTableKeys.c" />
     <ClCompile Include="PerfectHashTableTls.c" />

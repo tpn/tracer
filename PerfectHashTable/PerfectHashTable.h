@@ -55,6 +55,15 @@ BOOLEAN
     );
 typedef LOAD_PERFECT_HASH_TABLE_KEYS *PLOAD_PERFECT_HASH_TABLE_KEYS;
 
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI DESTROY_PERFECT_HASH_TABLE_KEYS)(
+    _Inout_ PPERFECT_HASH_TABLE_KEYS *Keys
+    );
+typedef DESTROY_PERFECT_HASH_TABLE_KEYS *PDESTROY_PERFECT_HASH_TABLE_KEYS;
+
 //
 // Define an opaque PERFECT_HASH_TABLE structure.
 //
@@ -186,6 +195,7 @@ typedef struct _PERFECT_HASH_TABLE_API {
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
+    PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
 
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
@@ -212,6 +222,7 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
     PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
 
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
+    PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
 
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
@@ -317,6 +328,7 @@ Return Value:
     CONST PCSTR Names[] = {
         "SetCSpecificHandler",
         "LoadPerfectHashTableKeys",
+        "DestroyPerfectHashTableKeys",
         "CreatePerfectHashTable",
         "LoadPerfectHashTable",
         "DestroyPerfectHashTable",

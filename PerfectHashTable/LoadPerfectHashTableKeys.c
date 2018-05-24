@@ -227,6 +227,8 @@ Return Value:
     //
 
     Keys->SizeOfStruct = sizeof(*Keys);
+    Keys->Rtl = Rtl;
+    Keys->Allocator = Allocator;
     Keys->FileHandle = FileHandle;
     Keys->MappingHandle = MappingHandle;
     Keys->BaseAddress = BaseAddress;

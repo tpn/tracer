@@ -2,6 +2,7 @@ LIBRARY PerfectHashTable
 EXPORTS
     SetCSpecificHandler
     LoadPerfectHashTableKeys
+    DestroyPerfectHashTableKeys
     CreatePerfectHashTable
     LoadPerfectHashTable
     DestroyPerfectHashTable

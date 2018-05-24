@@ -299,24 +299,39 @@ Return Value:
             WIDE_OUTPUT_RAW(WideOutput, L"Failed to load keys for ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
 
             Failures++;
             continue;
         }
 
-        //Success = Api->DestroyPerfectHashTableKeys(&Keys);
+        Success = Api->DestroyPerfectHashTableKeys(&Keys);
+        if (!Success) {
 
+            WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy keys for ");
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            continue;
+        }
     } while (FindNextFile(FindHandle, &FindData));
 
     PerfectHashTable = NULL;
 
     //
-    // Self test complete!  Indicate success and jump to end.
+    // Self test complete!
     //
 
-    Success = TRUE;
+    if (!Failures) {
+        Success = TRUE;
+        goto End;
+    }
 
-    goto End;
+    //
+    // Intentional follow-on to Error.
+    //
 
 Error:
 

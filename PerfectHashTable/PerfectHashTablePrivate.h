@@ -76,6 +76,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_KEYS {
     PERFECT_HASH_TABLE_KEYS_FLAGS Flags;
 
     //
+    // Pointer to an initialized RTL structure.
+    //
+
+    PRTL Rtl;
+
+    //
+    // Pointer to an initialized ALLOCATOR structure.
+    //
+
+    PALLOCATOR Allocator;
+
+    //
     // Number of keys in the mapping.
     //
 
