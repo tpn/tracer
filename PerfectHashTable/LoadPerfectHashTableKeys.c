@@ -232,7 +232,7 @@ Return Value:
     Keys->SizeOfStruct = sizeof(*Keys);
     Keys->Rtl = Rtl;
     Keys->Allocator = Allocator;
-    Keys->AnyApi->Api = AnyApi->Api;
+    Keys->AnyApi = AnyApi;
     Keys->FileHandle = FileHandle;
     Keys->MappingHandle = MappingHandle;
     Keys->BaseAddress = BaseAddress;

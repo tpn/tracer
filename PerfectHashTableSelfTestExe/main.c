@@ -57,6 +57,7 @@ mainCRTStartup()
         "Usage: PerfectHashTableSelfTest.exe <Test Data Directory>\n"
     );
     UNICODE_STRING Path;
+    PPERFECT_HASH_TABLE_ANY_API AnyApi;
 
     if (!BootstrapRtl(&RtlModule, &Bootstrap)) {
         ExitCode = 1;
@@ -75,6 +76,8 @@ mainCRTStartup()
 
     Rtl = &GlobalRtl;
     Allocator = &GlobalAllocator;
+    Api = &GlobalApi;
+    AnyApi = (PPERFECT_HASH_TABLE_ANY_API)&GlobalApi;
 
     SetCSpecificHandler(Rtl->__C_specific_handler);
 
@@ -82,8 +85,7 @@ mainCRTStartup()
                                    &GlobalPerfectHashTableModule,
                                    NULL,
                                    sizeof(GlobalApi),
-                                   (PPERFECT_HASH_TABLE_ANY_API)&GlobalApi));
-    Api = &GlobalApi;
+                                   AnyApi));
 
     //
     // Extract the command line for the current process.
@@ -111,7 +113,7 @@ mainCRTStartup()
 
             Success = Api->SelfTestPerfectHashTable(Rtl,
                                                     Allocator,
-                                                    Api,
+                                                    AnyApi,
                                                     &PerfectHashTableTestData,
                                                     &Path);
             ExitCode = (Success ? 0 : 1);

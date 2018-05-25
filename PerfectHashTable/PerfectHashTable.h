@@ -467,6 +467,15 @@ Return Value:
     }
 
     //
+    // Subtract the structure header (size, number of symbols, etc).
+    //
+
+    NumberOfSymbols -= (
+        (FIELD_OFFSET(PERFECT_HASH_TABLE_API, FirstFunctionPointer)) /
+        sizeof(ULONG_PTR)
+    );
+
+    //
     // Attempt to load the underlying perfect hash table module if necessary.
     //
 
@@ -493,7 +502,7 @@ Return Value:
 
     Success = Rtl->LoadSymbols(Names,
                                NumberOfSymbols,
-                               (PULONG_PTR)AnyApi->Api.FirstFunctionPointer,
+                               (PULONG_PTR)&AnyApi->Api.FirstFunctionPointer,
                                NumberOfSymbols,
                                Module,
                                &FailedBitmap,

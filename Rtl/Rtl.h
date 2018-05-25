@@ -9064,7 +9064,7 @@ Return Value:
 #define WIDE_OUTPUT_LF(WideOutput)                          \
     Rtl->AppendWideCharToWideCharBuffer(&WideOutput, L'\n')
 
-#define WIDE_OUTPUT_INT(WideOutputValue)                    \
+#define WIDE_OUTPUT_INT(WideOutput, Value)                  \
     Rtl->AppendIntegerToWideCharBuffer(&WideOutput, Value);
 
 #define WIDE_OUTPUT_FLUSH_CONSOLE()                         \
