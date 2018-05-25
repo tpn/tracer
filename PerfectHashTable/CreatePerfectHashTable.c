@@ -14,7 +14,6 @@ Abstract:
 --*/
 
 #include "stdafx.h"
-#include "PerfectHashTableConstants.h"
 
 _Use_decl_annotations_
 BOOLEAN
@@ -22,6 +21,7 @@ CreatePerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
     PPERFECT_HASH_TABLE_ANY_API AnyApi,
+    PPERFECT_HASH_TABLE_CONTEXT Context,
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     PERFECT_HASH_TABLE_ALGORITHM Algorithm,
     PPERFECT_HASH_TABLE_KEYS Keys,
@@ -40,10 +40,13 @@ Arguments:
     Rtl - Supplies a pointer to an initialized RTL structure.
 
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
-        will be used to allocate memory for the underlying PERFECT_HASH
-        structure.
+        will be used for all memory allocations.
 
     AnyApi - Supplies a pointer to the active API structure in use.
+
+    Context - Supplies a pointer to an initialized PERFECT_HASH_TABLE_CONTEXT
+        structure that can be used by the underlying algorithm in order to
+        search for perfect hash solutions in parallel.
 
     CreateFlags - Supplies creation flags that affect the underlying behavior
         of the perfect hash table creation.
@@ -207,6 +210,7 @@ Return Value:
     Table->Flags.AsULong = 0;
     Table->Keys = Keys;
     Table->AnyApi = AnyApi;
+    Table->Context = Context;
 
     //
     // Common initialization is complete, dispatch remaining work to the
@@ -260,7 +264,7 @@ End:
     //
     // Update the caller's pointer and return.
     //
-    // N.B. PerfectHashTable could be NULL here, which is fine.
+    // N.B. Table could be NULL here, which is fine.
     //
 
     *PerfectHashTablePointer = Table;

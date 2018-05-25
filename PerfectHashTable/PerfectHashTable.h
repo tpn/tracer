@@ -124,6 +124,44 @@ IsValidPerfectHashTableAlgorithm(
 }
 
 //
+// Define an opaque runtime context to encapsulate threadpool resources.  This
+// is created via CreatePerfectHashTableContext() with a desired concurrency,
+// and then passed to CreatePerfectHashTable(), allowing it to search for
+// perfect hash solutions in parallel.
+//
+
+typedef struct _PERFECT_HASH_TABLE_CONTEXT PERFECT_HASH_TABLE_CONTEXT;
+typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
+
+//
+// Define the create and destroy functions for the runtime context.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI CREATE_PERFECT_HASH_TABLE_CONTEXT)(
+    _In_ PRTL Rtl,
+    _In_ PALLOCATOR Allocator,
+    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
+    _In_opt_ PULONG MaximumConcurrency,
+    _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE_CONTEXT *Context
+    );
+typedef CREATE_PERFECT_HASH_TABLE_CONTEXT *PCREATE_PERFECT_HASH_TABLE_CONTEXT;
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI DESTROY_PERFECT_HASH_TABLE_CONTEXT)(
+    _Pre_notnull_ _Post_satisfies_(*ContextPointer == 0)
+        PPERFECT_HASH_TABLE_CONTEXT *ContextPointer,
+    _In_opt_ PBOOLEAN IsProcessTerminating
+    );
+typedef DESTROY_PERFECT_HASH_TABLE_CONTEXT *PDESTROY_PERFECT_HASH_TABLE_CONTEXT;
+
+//
 // Define the PERFECT_HASH_TABLE interface function pointers (and supporting
 // flag enumerations, if applicable).
 //
@@ -150,6 +188,7 @@ BOOLEAN
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
+    _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     _In_ PERFECT_HASH_TABLE_ALGORITHM Algorithm,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
@@ -283,6 +322,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_API {
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
     PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
 
+    PCREATE_PERFECT_HASH_TABLE_CONTEXT CreatePerfectHashTableContext;
+    PDESTROY_PERFECT_HASH_TABLE_CONTEXT DestroyPerfectHashTableContext;
+
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
@@ -333,6 +375,9 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
 
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
     PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
+
+    PCREATE_PERFECT_HASH_TABLE_CONTEXT CreatePerfectHashTableContext;
+    PDESTROY_PERFECT_HASH_TABLE_CONTEXT DestroyPerfectHashTableContext;
 
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
@@ -439,6 +484,8 @@ Return Value:
         "SetCSpecificHandler",
         "LoadPerfectHashTableKeys",
         "DestroyPerfectHashTableKeys",
+        "CreatePerfectHashTableContext",
+        "DestroyPerfectHashTableContext",
         "CreatePerfectHashTable",
         "LoadPerfectHashTable",
         "TestPerfectHashTable",

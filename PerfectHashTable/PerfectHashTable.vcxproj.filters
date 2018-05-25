@@ -55,6 +55,12 @@
     <ClCompile Include="Chm_01.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DestroyPerfectHashTableContext.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CreatePerfectHashTableContext.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfectHashTable.h">

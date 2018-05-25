@@ -27,6 +27,15 @@ extern "C" {
 
 const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];
 
+//
+// Object (e.g. events, shared memory sections) name prefixes for the runtime
+// context.
+//
+
+const UNICODE_STRING ContextObjectPrefixes[];
+const USHORT NumberOfContextEventPrefixes;
+const USHORT NumberOfContextObjectPrefixes;
+
 #ifdef __cplusplus
 }; // extern "C" {
 #endif

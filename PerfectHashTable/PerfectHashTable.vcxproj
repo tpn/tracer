@@ -94,7 +94,9 @@
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
     <ClCompile Include="Chm_01.c" />
     <ClCompile Include="CreatePerfectHashTable.c" />
+    <ClCompile Include="CreatePerfectHashTableContext.c" />
     <ClCompile Include="DestroyPerfectHashTable.c" />
+    <ClCompile Include="DestroyPerfectHashTableContext.c" />
     <ClCompile Include="DestroyPerfectHashTableKeys.c" />
     <ClCompile Include="LoadPerfectHashTable.c" />
     <ClCompile Include="LoadPerfectHashTableKeys.c" />

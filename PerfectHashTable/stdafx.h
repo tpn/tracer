@@ -36,6 +36,7 @@ Abstract:
 
 #ifdef _PERFECT_HASH_TABLE_INTERNAL_BUILD
 #include "PerfectHashTablePrivate.h"
+#include "PerfectHashTableConstants.h"
 #include "PerfectHashTableTestData.h"
 #include "Chm_01.h"
 #endif

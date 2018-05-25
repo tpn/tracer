@@ -3,6 +3,8 @@ EXPORTS
     SetCSpecificHandler
     LoadPerfectHashTableKeys
     DestroyPerfectHashTableKeys
+    CreatePerfectHashTableContext
+    DestroyPerfectHashTableContext
     CreatePerfectHashTable
     LoadPerfectHashTable
     TestPerfectHashTable

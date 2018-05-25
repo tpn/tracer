@@ -85,6 +85,7 @@ Return Value:
     UNICODE_STRING TablePath;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
+    PPERFECT_HASH_TABLE_CONTEXT Context;
     PERFECT_HASH_TABLE_ALGORITHM Algorithm;
     PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
@@ -344,6 +345,28 @@ Return Value:
         WIDE_OUTPUT_FLUSH();
 
         //
+        // Create a new perfect hash table context.
+        //
+
+        Success = Api->CreatePerfectHashTableContext(Rtl,
+                                                     Allocator,
+                                                     AnyApi,
+                                                     NULL,
+                                                     &Context);
+
+        if (!Success) {
+
+            //
+            // We can't do anything without a context.
+            //
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Fatal: failed to create context.\n");
+            WIDE_OUTPUT_FLUSH();
+            Failures++;
+            break;
+        }
+
+        //
         // Copy the filename over to the fully-qualified keys path.
         //
 
@@ -376,7 +399,7 @@ Return Value:
             WIDE_OUTPUT_FLUSH();
 
             Failures++;
-            continue;
+            goto DestroyContext;
         }
 
         //
@@ -463,6 +486,7 @@ Return Value:
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
                                               AnyApi,
+                                              Context,
                                               CreateTableFlags,
                                               Algorithm,
                                               Keys,
@@ -596,7 +620,23 @@ DestroyKeys:
             WIDE_OUTPUT_FLUSH();
 
             Failures++;
-            continue;
+        }
+
+DestroyContext:
+
+        Success = Api->DestroyPerfectHashTableContext(&Context, NULL);
+        if (!Success) {
+
+            //
+            // Failure to destroy a context is a fatal error that we can't
+            // recover from.  Bomb out now.
+            //
+
+            WIDE_OUTPUT_RAW(WideOutput, L"Fatal: failed to destroy context.\n");
+            WIDE_OUTPUT_FLUSH();
+
+            Failures++;
+            break;
         }
 
     } while (FindNextFile(FindHandle, &FindData));
