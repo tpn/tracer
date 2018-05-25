@@ -56,6 +56,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerConfig", "TracerConfi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TracerHeapLib", "TracerHeapLib\TracerHeapLib.vcxproj", "{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TraceStore", "TraceStore\TraceStore.vcxproj", "{C6FBB103-535C-4BCD-A463-B60C09481854}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -389,6 +391,26 @@ Global
 		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x64.Build.0 = Release|x64
 		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x86.ActiveCfg = Release|Win32
 		{4868DDA6-86D8-4FDF-AB71-8F9EA51A1142}.Release|x86.Build.0 = Release|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Debug|x64.ActiveCfg = Debug|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Debug|x64.Build.0 = Debug|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Debug|x86.ActiveCfg = Debug|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Debug|x86.Build.0 = Debug|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGInstrument|x64.ActiveCfg = PGInstrument|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGInstrument|x64.Build.0 = PGInstrument|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGInstrument|x86.ActiveCfg = PGInstrument|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGInstrument|x86.Build.0 = PGInstrument|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGOptimize|x64.ActiveCfg = PGOptimize|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGOptimize|x64.Build.0 = PGOptimize|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGOptimize|x86.ActiveCfg = PGOptimize|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGOptimize|x86.Build.0 = PGOptimize|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGUpdate|x64.ActiveCfg = PGUpdate|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGUpdate|x64.Build.0 = PGUpdate|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGUpdate|x86.ActiveCfg = PGUpdate|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.PGUpdate|x86.Build.0 = PGUpdate|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Release|x64.ActiveCfg = Release|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Release|x64.Build.0 = Release|x64
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Release|x86.ActiveCfg = Release|Win32
+		{C6FBB103-535C-4BCD-A463-B60C09481854}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
