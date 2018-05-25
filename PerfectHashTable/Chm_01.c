@@ -24,45 +24,6 @@ Abstract:
 
 #include "stdafx.h"
 
-#define MAX_RDRAND_RETRY_COUNT 10
-
-FORCEINLINE
-BOOLEAN
-GetRandomSeeds(
-    _Out_ PULARGE_INTEGER Output,
-    _Out_opt_ PULARGE_INTEGER Cycles,
-    _Out_opt_ PULONG Attempts
-    )
-{
-    ULONG Index;
-    BOOLEAN Success = FALSE;
-    ULARGE_INTEGER Start;
-    ULARGE_INTEGER End;
-
-    if (ARGUMENT_PRESENT(Cycles)) {
-        Start.QuadPart = ReadTimeStampCounter();
-    }
-
-    for (Index = 0; Index < MAX_RDRAND_RETRY_COUNT; Index++) {
-        if (_rdseed64_step(&Output->QuadPart)) {
-            Success = TRUE;
-            break;
-        }
-        YieldProcessor();
-    }
-
-    if (ARGUMENT_PRESENT(Cycles)) {
-        End.QuadPart = ReadTimeStampCounter();
-        Cycles->QuadPart = End.QuadPart - Start.QuadPart;
-    }
-
-    if (ARGUMENT_PRESENT(Attempts)) {
-        *Attempts = Index + 1;
-    }
-
-    return Success;
-}
-
 _Use_decl_annotations_
 BOOLEAN
 CreatePerfectHashTableImplChm01(

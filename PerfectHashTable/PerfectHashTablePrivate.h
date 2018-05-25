@@ -512,4 +512,76 @@ typedef PERFECT_HASH_TABLE_TLS_GET_CONTEXT *PPERFECT_HASH_TABLE_TLS_GET_CONTEXT;
 extern PERFECT_HASH_TABLE_TLS_SET_CONTEXT PerfectHashTableTlsSetContext;
 extern PERFECT_HASH_TABLE_TLS_GET_CONTEXT PerfectHashTableTlsGetContext;
 
+//
+// Inline helper functions.
+//
+
+#define MAX_RDRAND_RETRY_COUNT 10
+
+FORCEINLINE
+BOOLEAN
+GetRandomSeeds(
+    _Out_ PULARGE_INTEGER Output,
+    _Out_opt_ PULARGE_INTEGER Cycles,
+    _Out_opt_ PULONG Attempts
+    )
+/*++
+
+Routine Description:
+
+    Generates a 64-bit random seed using the rdrand64 intrinisic.
+
+Arguments:
+
+    Output - Supplies a pointer to a ULARGE_INTEGER structure that will receive
+        the random seed value.
+
+    Cycles - Optionally supplies a pointer to a variable that will receive the
+        approximate number of CPU cycles that were required in order to fulfil
+        the random seed request.
+
+        N.B. This calls __rdtsc() before and after the __rdseed64_step() call.
+             If the pointer is NULL, __rdtsc() is not called either before or
+             after.
+
+    Attempts - Optionally supplies the address of a variable that receives the
+        number of attempts it took before __rdseed64_step() succeeded.  (This
+        is bound by the MAX_RDRAND_RETRY_COUNT constant.)
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    ULONG Index;
+    BOOLEAN Success = FALSE;
+    ULARGE_INTEGER Start;
+    ULARGE_INTEGER End;
+
+    if (ARGUMENT_PRESENT(Cycles)) {
+        Start.QuadPart = ReadTimeStampCounter();
+    }
+
+    for (Index = 0; Index < MAX_RDRAND_RETRY_COUNT; Index++) {
+        if (_rdseed64_step(&Output->QuadPart)) {
+            Success = TRUE;
+            break;
+        }
+        YieldProcessor();
+    }
+
+    if (ARGUMENT_PRESENT(Cycles)) {
+        End.QuadPart = ReadTimeStampCounter();
+        Cycles->QuadPart = End.QuadPart - Start.QuadPart;
+    }
+
+    if (ARGUMENT_PRESENT(Attempts)) {
+        *Attempts = Index + 1;
+    }
+
+    return Success;
+}
+
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
