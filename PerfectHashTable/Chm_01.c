@@ -24,6 +24,45 @@ Abstract:
 
 #include "stdafx.h"
 
+#define MAX_RDRAND_RETRY_COUNT 10
+
+FORCEINLINE
+BOOLEAN
+GetRandomSeeds(
+    _Out_ PULARGE_INTEGER Output,
+    _Out_opt_ PULARGE_INTEGER Cycles,
+    _Out_opt_ PULONG Attempts
+    )
+{
+    ULONG Index;
+    BOOLEAN Success = FALSE;
+    ULARGE_INTEGER Start;
+    ULARGE_INTEGER End;
+
+    if (ARGUMENT_PRESENT(Cycles)) {
+        Start.QuadPart = ReadTimeStampCounter();
+    }
+
+    for (Index = 0; Index < MAX_RDRAND_RETRY_COUNT; Index++) {
+        if (_rdseed64_step(&Output->QuadPart)) {
+            Success = TRUE;
+            break;
+        }
+        YieldProcessor();
+    }
+
+    if (ARGUMENT_PRESENT(Cycles)) {
+        End.QuadPart = ReadTimeStampCounter();
+        Cycles->QuadPart = End.QuadPart - Start.QuadPart;
+    }
+
+    if (ARGUMENT_PRESENT(Attempts)) {
+        *Attempts = Index + 1;
+    }
+
+    return Success;
+}
+
 _Use_decl_annotations_
 BOOLEAN
 CreatePerfectHashTableImplChm01(
@@ -49,6 +88,7 @@ Return Value:
 {
     PRTL Rtl;
     PULONG Keys;
+    ULONG Attempts;
     PGRAPH Graph;
     BOOLEAN Success;
     PBYTE Buffer;
@@ -60,6 +100,8 @@ Return Value:
     ULONGLONG FirstSizeInBytes;
     ULONGLONG EdgesSizeInBytes;
     ULONGLONG AssignedSizeInBytes;
+    ULARGE_INTEGER Seeds;
+    ULARGE_INTEGER Cycles;
     ULARGE_INTEGER AllocSize;
     ULARGE_INTEGER NumberOfEdges;
     ULARGE_INTEGER NumberOfVertices;
@@ -81,6 +123,14 @@ Return Value:
     Rtl = Table->Rtl;
     Keys = (PULONG)Table->Keys->BaseAddress;;
     Allocator = Table->Allocator;
+
+    //
+    // Capture two random seeds up front.
+    //
+
+    if (!GetRandomSeeds(&Seeds, &Cycles, &Attempts)) {
+        return FALSE;
+    }
 
     //
     // The number of edges in our graph is equal to the number of keys in the
@@ -258,6 +308,8 @@ Return Value:
     Graph->NumberOfEdges = NumberOfEdges.LowPart;
     Graph->NumberOfVertices = NumberOfVertices.LowPart;
     Graph->TotalNumberOfEdges = TotalNumberOfEdges.LowPart;
+    Graph->Seed1 = Seeds.LowPart;
+    Graph->Seed2 = Seeds.HighPart;
 
     //
     // Carve out the backing memory structures for arrays and bitmap buffers.
