@@ -102,7 +102,7 @@ Return Value:
     //
 
     TotalNumberOfEdges.QuadPart = NumberOfEdges.QuadPart;
-    TotalNumberOfEdges.QuadPart <<= 2;
+    TotalNumberOfEdges.QuadPart <<= 1;
 
     //
     // Another overflow sanity check.
@@ -114,11 +114,11 @@ Return Value:
     // chm.c uses a size muliplier (c) of 2.09.  Let's avoid the need for
     // doubles and linking with a math library in order to get ceil(), and
     // just use 2.5, which we can calculate by adding the result of right
-    // shifting the number of edges by 2 to the result of left shifting
+    // shifting the number of edges by 1 to the result of left shifting
     // said edge count by 1 (simulating multiplication by 0.5).
     //
 
-    NumberOfVertices.QuadPart = NumberOfEdges.LowPart << 2;
+    NumberOfVertices.QuadPart = NumberOfEdges.LowPart << 1;
     NumberOfVertices.QuadPart += NumberOfEdges.LowPart >> 1;
 
     //
