@@ -419,7 +419,7 @@ Return Value:
 
         //
         // Advance the Dest pointer to the end of the buffer, then retreat it
-        // four characters, such that it's positioned on the 'k' of keys.
+        // five characters, such that it's positioned on the 'k' of keys.
         //
 
         Dest += (KeysPath.MaximumLength >> 1) - 5;
