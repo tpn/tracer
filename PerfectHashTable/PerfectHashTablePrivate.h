@@ -271,6 +271,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     PTP_POOL MainThreadpool;
     PTP_WORK MainWork;
     SLIST_HEADER MainListHead;
+    ULONG MinimumConcurrency;
+    ULONG MaximumConcurrency;
 
     //
     // The algorithm is responsible for registering an appropriate callback

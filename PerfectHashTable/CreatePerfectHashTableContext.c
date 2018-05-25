@@ -338,6 +338,9 @@ Return Value:
         MaximumConcurrency = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
     }
 
+    Context->MinimumConcurrency = MaximumConcurrency;
+    Context->MaximumConcurrency = MaximumConcurrency;
+
     //
     // Create the Main threadpool structures.  This threadpool creates a fixed
     // number of threads equal to the maximum concurrency specified by the user
