@@ -277,7 +277,7 @@ Return Value:
 
             WIDE_OUTPUT_RAW(WideOutput,
                             L"No files matching pattern '*.keys' found in "
-                            "test data directory.\n");
+                            L"test data directory.\n");
             WIDE_OUTPUT_FLUSH();
 
             goto End;
@@ -472,7 +472,7 @@ Return Value:
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Failed to create perfect hash "
-                                         "table for keys: ");
+                                        L"table for keys: ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
             WIDE_OUTPUT_FLUSH();
@@ -491,7 +491,7 @@ Return Value:
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Test failed for perfect hash table "
-                                         "created from keys: ");
+                                        L"created from keys: ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
             WIDE_OUTPUT_FLUSH();
@@ -508,7 +508,7 @@ Return Value:
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
-                                         "created from keys: ");
+                                        L"created from keys: ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
             WIDE_OUTPUT_FLUSH();
@@ -560,7 +560,7 @@ Return Value:
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Test failed for perfect hash table "
-                                         "loaded from disk: ");
+                                        L"loaded from disk: ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
             WIDE_OUTPUT_FLUSH();
@@ -577,7 +577,7 @@ Return Value:
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
-                                         "loaded from disk: ");
+                                        L"loaded from disk: ");
             WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
             WIDE_OUTPUT_RAW(WideOutput, L".\n");
             WIDE_OUTPUT_FLUSH();
