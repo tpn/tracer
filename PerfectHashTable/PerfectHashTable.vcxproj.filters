@@ -52,6 +52,9 @@
     <ClCompile Include="TestPerfectHashTable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Chm_01.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfectHashTable.h">
@@ -67,6 +70,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Chm_01.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -14,13 +14,16 @@ Abstract:
 --*/
 
 #include "stdafx.h"
+#include "PerfectHashTableConstants.h"
 
 _Use_decl_annotations_
 BOOLEAN
 CreatePerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
+    PERFECT_HASH_TABLE_ALGORITHM Algorithm,
     PPERFECT_HASH_TABLE_KEYS Keys,
     PCUNICODE_STRING HashTablePath,
     PPERFECT_HASH_TABLE *PerfectHashTablePointer
@@ -29,7 +32,8 @@ CreatePerfectHashTable(
 
 Routine Description:
 
-    Creates and initializes a PERFECT_HASH structure using the given allocator.
+    Creates and initializes a PERFECT_HASH_TABLE structure from a given set
+    of keys, using the requested algorithm.
 
 Arguments:
 
@@ -39,8 +43,12 @@ Arguments:
         will be used to allocate memory for the underlying PERFECT_HASH
         structure.
 
+    AnyApi - Supplies a pointer to the active API structure in use.
+
     CreateFlags - Supplies creation flags that affect the underlying behavior
         of the perfect hash table creation.
+
+    Algorithm - Supplies the algorithm to use.
 
     Keys - Supplies a pointer to a PERFECT_HASH_TABLE_KEYS structure obtained
         from LoadPerfectHashTableKeys().
@@ -64,8 +72,9 @@ Return Value:
     HANDLE FileHandle = NULL;
     LARGE_INTEGER AllocSize;
     LONG_INTEGER PathBufferSize;
-    PPERFECT_HASH_TABLE Table;
+    PPERFECT_HASH_TABLE Table = NULL;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht1");
+    PPERFECT_HASH_TABLE_API Api;
 
     //
     // Validate arguments.
@@ -77,6 +86,20 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(Allocator)) {
         return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(AnyApi)) {
+
+        return FALSE;
+
+    } else {
+
+        //
+        // Initialize Api alias.  We'll use this during error handling in order
+        // to call the table destroy routine.
+        //
+
+        Api = &AnyApi->Api;
     }
 
     if (!ARGUMENT_PRESENT(Keys)) {
@@ -98,6 +121,10 @@ Return Value:
     //
 
     if (CreateFlags.AsULong != 0) {
+        return FALSE;
+    }
+
+    if (!IsValidPerfectHashTableAlgorithm(Algorithm)) {
         return FALSE;
     }
 
@@ -178,22 +205,51 @@ Return Value:
     Table->Rtl = Rtl;
     Table->Allocator = Allocator;
     Table->Flags.AsULong = 0;
+    Table->Keys = Keys;
+    Table->AnyApi = AnyApi;
 
-    if (0) {
+    //
+    // Common initialization is complete, dispatch remaining work to the
+    // algorithm's creation routine.
+    //
+
+    Success = CreationRoutines[Algorithm](Table);
+    if (!Success) {
         goto Error;
     }
 
     //
-    // We've completed initialization, indicate success and jump to the end.
+    // We're done!  Jump to the end of the routine to finish up.
     //
-
-    Success = TRUE;
 
     goto End;
 
 Error:
 
     Success = FALSE;
+
+    //
+    // Call the destroy routine on the table if one is present.
+    //
+
+    if (Table) {
+
+        if (!Api->DestroyPerfectHashTable(&Table, NULL)) {
+
+            //
+            // There's nothing we can do here.
+            //
+
+            NOTHING;
+        }
+
+        //
+        // N.B. DestroyPerfectHashTable() should clear the Table pointer.
+        //      Assert that invariant now.
+        //
+
+        ASSERT(Table == NULL);
+    }
 
     //
     // Intentional follow-on to End.

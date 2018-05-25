@@ -49,6 +49,7 @@ BOOLEAN
 (NTAPI LOAD_PERFECT_HASH_TABLE_KEYS)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
+    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_ PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadFlags,
     _In_ PCUNICODE_STRING Path,
     _Outptr_result_nullonfailure_ PPERFECT_HASH_TABLE_KEYS *Keys
@@ -71,6 +72,54 @@ typedef DESTROY_PERFECT_HASH_TABLE_KEYS *PDESTROY_PERFECT_HASH_TABLE_KEYS;
 typedef struct _PERFECT_HASH_TABLE PERFECT_HASH_TABLE;
 typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
 typedef const PERFECT_HASH_TABLE *PCPERFECT_HASH_TABLE;
+
+//
+// Define an enumeration for identifying which backend algorithm variant to
+// use for creating the perfect hash table.
+//
+
+typedef enum _PERFECT_HASH_TABLE_ALGORITHM {
+
+    //
+    // Explicitly define a null algorithm to
+    //
+    PerfectHashTableNullAlgorithm = 0,
+
+    //
+    // Begin valid algorithms.
+    //
+
+    PerfectHashTableDefaultAlgorithm = 1,
+    PerfectHashTableChm01Algorithm = 1,
+
+    //
+    // End valid algorithms.
+    //
+
+    //
+    // N.B. Keep the next value last.
+    //
+
+    PerfectHashTableInvalidAlgorithm,
+
+} PERFECT_HASH_TABLE_ALGORITHM;
+typedef PERFECT_HASH_TABLE_ALGORITHM *PPERFECT_HASH_TABLE_ALGORITHM;
+
+//
+// Provide a simple inline algorithm validation routine.
+//
+
+FORCEINLINE
+BOOLEAN
+IsValidPerfectHashTableAlgorithm(
+    _In_ PERFECT_HASH_TABLE_ALGORITHM Algorithm
+    )
+{
+    return (
+        Algorithm > PerfectHashTableNullAlgorithm &&
+        Algorithm < PerfectHashTableInvalidAlgorithm
+    );
+}
 
 //
 // Define the PERFECT_HASH_TABLE interface function pointers (and supporting
@@ -98,7 +147,9 @@ BOOLEAN
 (NTAPI CREATE_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
+    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
+    _In_ PERFECT_HASH_TABLE_ALGORITHM Algorithm,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
     _In_opt_ PCUNICODE_STRING HashTablePath,
     _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable
@@ -126,6 +177,7 @@ BOOLEAN
 (NTAPI LOAD_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
+    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_opt_ PERFECT_HASH_TABLE_LOAD_FLAGS LoadFlags,
     _In_ PCUNICODE_STRING Path,
     _Outptr_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable
@@ -181,7 +233,7 @@ BOOLEAN
 (NTAPI SELF_TEST_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ struct _PERFECT_HASH_TABLE_API_EX *Api,
+    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_ struct _PERFECT_HASH_TABLE_TEST_DATA *TestData,
     _In_ PCUNICODE_STRING TestDataDirectory
     );
@@ -199,9 +251,32 @@ typedef TEST_PERFECT_HASH_TABLE *PTEST_PERFECT_HASH_TABLE;
 // Define the main PerfectHash API structure.
 //
 
-typedef struct _PERFECT_HASH_TABLE_API {
+typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_API {
 
-    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+    //
+    // Size of the structure, in bytes.  This is filled in automatically by
+    // LoadPerfectHashTableApi() based on the initial SizeOfAnyApi parameter.
+    //
+
+    _In_range_(sizeof(struct _PERFECT_HASH_TABLE_API),
+               sizeof(struct _PERFECT_HASH_TABLE_API_EX)) ULONG SizeOfStruct;
+
+    //
+    // Number of function pointers contained in the structure.  This is filled
+    // in automatically by LoadPerfectHashTableApi() based on the initial
+    // SizeOfAnyApi parameter divided by the size of a function pointer.
+    //
+
+    ULONG NumberOfFunctions;
+
+    //
+    // Begin function pointers.
+    //
+
+    union {
+        PVOID FirstFunctionPointer;
+        PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+    };
 
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
     PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
@@ -229,7 +304,30 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
     // Inline PERFECT_HASH_TABLE_API.
     //
 
-    PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+    //
+    // Size of the structure, in bytes.  This is filled in automatically by
+    // LoadPerfectHashTableApi() based on the initial SizeOfAnyApi parameter.
+    //
+
+    _In_range_(sizeof(struct _PERFECT_HASH_TABLE_API),
+               sizeof(struct _PERFECT_HASH_TABLE_API_EX)) ULONG SizeOfStruct;
+
+    //
+    // Number of function pointers contained in the structure.  This is filled
+    // in automatically by LoadPerfectHashTableApi() based on the initial
+    // SizeOfAnyApi parameter divided by the size of a function pointer.
+    //
+
+    ULONG NumberOfFunctions;
+
+    //
+    // Begin function pointers.
+    //
+
+    union {
+        PVOID FirstFunctionPointer;
+        PSET_C_SPECIFIC_HANDLER SetCSpecificHandler;
+    };
 
     PLOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
     PDESTROY_PERFECT_HASH_TABLE_KEYS DestroyPerfectHashTableKeys;
@@ -239,11 +337,10 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
     PDESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
 
-    PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR
-        InitializePerfectHashTableAllocator;
+    PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR_FROM_RTL_BOOTSTRAP
-        InitializePerfectHashTableAllocatorFromRtlBootstrap;
+        InitializePerfectHashAllocatorFromRtlBootstrap;
 
     //
     // Extended API functions used for testing and benchmarking.
@@ -396,7 +493,7 @@ Return Value:
 
     Success = Rtl->LoadSymbols(Names,
                                NumberOfSymbols,
-                               (PULONG_PTR)AnyApi,
+                               (PULONG_PTR)AnyApi->Api.FirstFunctionPointer,
                                NumberOfSymbols,
                                Module,
                                &FailedBitmap,
@@ -428,6 +525,13 @@ Return Value:
     //
 
     AnyApi->Api.SetCSpecificHandler(Rtl->__C_specific_handler);
+
+    //
+    // Save the structure size and number of function pointers.
+    //
+
+    AnyApi->Api.SizeOfStruct = SizeOfAnyApi;
+    AnyApi->Api.NumberOfFunctions = NumberOfSymbols;
 
     //
     // Update the caller's pointer and return success.

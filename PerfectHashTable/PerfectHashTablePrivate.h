@@ -88,6 +88,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_KEYS {
     PALLOCATOR Allocator;
 
     //
+    // Pointer to the API structure in use.
+    //
+
+    PPERFECT_HASH_TABLE_ANY_API AnyApi;
+
+    //
     // Number of keys in the mapping.
     //
 
@@ -177,6 +183,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     PALLOCATOR Allocator;
 
     //
+    // Pointer to the API structure in use.
+    //
+
+    PPERFECT_HASH_TABLE_ANY_API AnyApi;
+
+    //
     // Pointer to the keys corresponding to this perfect hash table.  May be
     // NULL.
     //
@@ -226,6 +238,28 @@ extern ULONG PerfectHashTableTlsIndex;
 // Function typedefs for private functions.
 //
 
+//
+// Each algorithm implements a creation routine that matches the following
+// signature.  It is called by CreatePerfectHashTable() after it has done all
+// the initial heavy-lifting (e.g. parameter validation, table allocation and
+// initialization), and thus, has a much simpler function signature.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI CREATE_PERFECT_HASH_TABLE_IMPL)(
+    _Inout_ PPERFECT_HASH_TABLE Table
+    );
+typedef CREATE_PERFECT_HASH_TABLE_IMPL *PCREATE_PERFECT_HASH_TABLE_IMPL;
+
+//
+// For each algorithm, declare the creation impl routine.  These are gathered
+// in an array named CreationRoutines[] (see PerfectHashTableConstants.[ch]).
+//
+
+CREATE_PERFECT_HASH_TABLE_IMPL CreatePerfectHashTableImplChm01;
 
 //
 // The PROCESS_ATTACH and PROCESS_ATTACH functions share the same signature.

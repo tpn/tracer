@@ -16,14 +16,13 @@ Abstract:
 --*/
 
 #include "stdafx.h"
-#include "PerfectHashTableTestData.h"
 
 _Use_decl_annotations_
 BOOLEAN
 SelfTestPerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PPERFECT_HASH_TABLE_API_EX Api,
+    PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PPERFECT_HASH_TABLE_TEST_DATA TestData,
     PCUNICODE_STRING TestDataDirectory
     )
@@ -40,8 +39,10 @@ Arguments:
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
         will be used for all memory allocations.
 
-    Api - Supplies a pointer to an initialized PERFECT_HASH_TABLE_API_EX
-        structure.
+    AnyApi - Supplies a pointer to an initialized PERFECT_HASH_TABLE_ANY_API
+        structure.  Note that this must be an instance of the extended API;
+        this is verified by looking at the Api->SizeOfStruct field and ensuring
+        it matches our expected size of the extended API structure.
 
     TestData - Supplies a pointer to an initialized PERFECT_HASH_TABLE_TEST_DATA
         structure.
@@ -84,11 +85,14 @@ Return Value:
     UNICODE_STRING TablePath;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
+    PERFECT_HASH_TABLE_ALGORITHM Algorithm;
     PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
     PERFECT_HASH_TABLE_LOAD_FLAGS LoadTableFlags;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
+    PPERFECT_HASH_TABLE_API Api;
+    PPERFECT_HASH_TABLE_API_EX ApiEx;
 
     //
     // Validate arguments.
@@ -102,8 +106,28 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Api)) {
+    if (!ARGUMENT_PRESENT(AnyApi)) {
+
         return FALSE;
+
+    } else {
+
+        Api = &AnyApi->Api;
+
+        if (Api->SizeOfStruct == sizeof(*ApiEx)) {
+
+            ApiEx = &AnyApi->ApiEx;
+
+        } else {
+
+            //
+            // The API should be the extended version.  (Otherwise, how did
+            // the caller even find this function?)
+            //
+
+            return FALSE;
+        }
+
     }
 
     if (!ARGUMENT_PRESENT(TestData)) {
@@ -230,15 +254,46 @@ Return Value:
     WIDE_OUTPUT_RAW(WideOutput, L".\n");
     WIDE_OUTPUT_FLUSH();
 
+    //
+    // Create a find handle for the <test data>\*.keys search pattern we
+    // created.
+    //
+
     FindHandle = FindFirstFileW(SearchPath.Buffer, &FindData);
+
     if (!FindHandle || FindHandle == INVALID_HANDLE_VALUE) {
-        if (GetLastError() == ERROR_FILE_NOT_FOUND) {
+
+        ULONG LastError;
+
+        //
+        // Check to see if we failed because there were no files matching the
+        // wildcard *.keys in the test directory.  In this case, GetLastError()
+        // will report ERROR_FILE_NOT_FOUND.
+        //
+
+        LastError = GetLastError();
+
+        if (LastError == ERROR_FILE_NOT_FOUND) {
+
             WIDE_OUTPUT_RAW(WideOutput,
                             L"No files matching pattern '*.keys' found in "
                             "test data directory.\n");
             WIDE_OUTPUT_FLUSH();
+
             goto End;
+
         } else {
+
+            //
+            // We failed for some other reason.
+            //
+
+            WIDE_OUTPUT_RAW(WideOutput, 
+                            L"FindFirstFileW() failed with error code: ");
+            WIDE_OUTPUT_INT(WideOutput, LastError);
+            WIDE_OUTPUT_LF(WideOutput);
+            WIDE_OUTPUT_FLUSH();
+
             goto Error;
         }
     }
@@ -308,6 +363,7 @@ Return Value:
 
         Success = Api->LoadPerfectHashTableKeys(Rtl,
                                                 Allocator,
+                                                AnyApi,
                                                 LoadKeysFlags,
                                                 &KeysPath,
                                                 &Keys);
@@ -394,9 +450,21 @@ Return Value:
         // that were loaded.
         //
 
+        //
+        // N.B. For now, to keep things simple as we only have one algorithm
+        //      implementation, we just pass that directly to the creation
+        //      routine.  If we implement multiple algorithms, we can refactor
+        //      this method to iterate over each one and perform the same logic
+        //      (create, test, destroy, load, test, destroy).
+        //
+
+        Algorithm = PerfectHashTableChm01Algorithm;
+
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
+                                              AnyApi,
                                               CreateTableFlags,
+                                              Algorithm,
                                               Keys,
                                               &TablePath,
                                               &Table);
@@ -466,6 +534,7 @@ Return Value:
 
         Success = Api->LoadPerfectHashTable(Rtl,
                                             Allocator,
+                                            AnyApi,
                                             LoadTableFlags,
                                             &TablePath,
                                             &Table);

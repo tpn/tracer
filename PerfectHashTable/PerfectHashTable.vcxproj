@@ -83,6 +83,7 @@
     <None Include="PerfectHashTable.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Chm_01.h" />
     <ClInclude Include="PerfectHashTable.h" />
     <ClInclude Include="PerfectHashTablePrivate.h" />
     <ClInclude Include="PerfectHashTableConstants.h" />
@@ -91,6 +92,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
+    <ClCompile Include="Chm_01.c" />
     <ClCompile Include="CreatePerfectHashTable.c" />
     <ClCompile Include="DestroyPerfectHashTable.c" />
     <ClCompile Include="DestroyPerfectHashTableKeys.c" />

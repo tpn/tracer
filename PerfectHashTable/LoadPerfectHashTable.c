@@ -21,6 +21,7 @@ BOOLEAN
 LoadPerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
+    PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PERFECT_HASH_TABLE_LOAD_FLAGS LoadFlags,
     PCUNICODE_STRING Path,
     PPERFECT_HASH_TABLE *PerfectHashTablePointer
@@ -39,6 +40,8 @@ Arguments:
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
         will be used to allocate memory for the underlying PERFECT_HASH
         structure.
+
+    AnyApi - Supplies a pointer to the active API structure in use.
 
     LoadFlags - Currently unused.
 

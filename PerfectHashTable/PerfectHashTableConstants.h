@@ -20,6 +20,13 @@ extern "C" {
 
 #include "stdafx.h"
 
+//
+// Declare an array of creation routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_ALGORITHM enumeration.
+//
+
+const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];
+
 #ifdef __cplusplus
 }; // extern "C" {
 #endif
