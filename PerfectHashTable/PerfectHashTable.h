@@ -81,8 +81,10 @@ typedef const PERFECT_HASH_TABLE *PCPERFECT_HASH_TABLE;
 typedef enum _PERFECT_HASH_TABLE_ALGORITHM {
 
     //
-    // Explicitly define a null algorithm to
+    // Explicitly define a null algorithm to take the 0-index slot.
+    // This enum validation easier.
     //
+
     PerfectHashTableNullAlgorithm = 0,
 
     //
