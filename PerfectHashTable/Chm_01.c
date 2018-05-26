@@ -620,7 +620,7 @@ ShouldWeContinueTryingToSolveGraph(
     //
     // N.B. We should probably switch this to simply use volatile field of the
     //      context structure to indicate whether or not the context is active.
-    //      WaitForMultipleObjects() has a bit of unnecessary overhead.
+    //      WaitForMultipleObjects() on four events seems a bit... excessive.
     //
 
     WaitResult = WaitForMultipleObjects(NumberOfEvents,
