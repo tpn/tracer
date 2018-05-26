@@ -165,12 +165,13 @@ typedef enum _Enum_is_bitflag_ _TRACER_DLL_PATH_ID {
     TracedPythonSessionDllPathId          =  1 << 11,
     TraceStoreSqlite3ExtDllPathId         =  1 << 12,
     PythonTracerInjectionDllPathId        =  1 << 13,
+    PerfectHashTableDllPathId             =  1 << 14,
 
     //
     // Make sure the right shift value matches the last value in the line above.
     //
 
-    TracerInvalidDllPathId                = (1 << 13) + 1,
+    TracerInvalidDllPathId                = (1 << 14) + 1,
 
 } TRACER_DLL_PATH_ID;
 typedef TRACER_DLL_PATH_ID *PTRACER_DLL_PATH_ID;
@@ -194,8 +195,9 @@ typedef union _TRACER_DLL_PATH_TYPE {
         ULONGLONG TracedPythonSessionDllPath:1;
         ULONGLONG TraceStoreSqlite3ExtDllPath:1;
         ULONGLONG PythonTracerInjectionDllPath:1;
+        ULONGLONG PerfectHashTableDllPath:1;
 
-        ULONGLONG Unused:50;
+        ULONGLONG Unused:49;
     };
     LONGLONG AsLongLong;
     ULONGLONG AsULongLong;
@@ -307,6 +309,7 @@ typedef struct _Struct_size_bytes_(Size) _TRACER_PATHS {
             UNICODE_STRING TracedPythonSessionDllPath;
             UNICODE_STRING TraceStoreSqlite3ExtDllPath;
             UNICODE_STRING PythonTracerInjectionDllPath;
+            UNICODE_STRING PerfectHashTableDllPath;
         };
 
         //
