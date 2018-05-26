@@ -497,6 +497,7 @@ InitializeGraph(
     PGRAPH Graph
     )
 {
+    ULONG Index;
     PBYTE Buffer;
     PBYTE ExpectedBuffer;
     USHORT BitmapCount = 0;
@@ -596,6 +597,20 @@ InitializeGraph(
     Graph->Info = Info;
 
     //
+    // "Empty" all of the nodes; which they've chosen to mean setting them
+    // all to -1.  (Can't we use 0 here?  This seems unnecessarily inefficient.)
+    //
+
+    for (Index = 0; Index < Info->NumberOfVertices; Index++) {
+        Graph->First[Index] = EMPTY;
+    }
+
+    for (Index = 0; Index < Info->TotalNumberOfEdges; Index++) {
+        Graph->Next[Index] = EMPTY;
+        Graph->Edges[Index] = EMPTY;
+    }
+
+    //
     // Initialization complete!
     //
 
@@ -638,11 +653,150 @@ ShouldWeContinueTryingToSolveGraph(
     return (WaitResult == WAIT_TIMEOUT ? TRUE : FALSE);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Algorithm Implementation
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// The guts of the CHM algorithm implementation begins here.  (Everything else
+// up to this point has been scaffolding for the graph creation and threadpool
+// setup.)
+//
+
+//
+// The algorithm is as follows:
+//
+//  For each key:
+//      Generate unique hash 1 (h1/v1) and hash 2 (h2/v2)
+//      Add edge to graph for h1<->h2
+//  Determine if graph is cyclic.  If so, restart.
+//  If not, we've found a solution; perform assignment and finish up.
+//
+
+//
+// Forward definitions.
+//
+
+GRAPH_ADD_EDGE GraphAddEdge;
+GRAPH_FIND_DEGREE1_EDGE GraphFindDegree1Edge;
+GRAPH_IS_CYCLIC GraphIsCyclic;
+GRAPH_ITERATOR GraphIterator;
+GRAPH_NEXT_NEIGHBOR GraphNextNeighbor;
+GRAPH_EDGE_ID GraphEdgeId;
+GRAPH_DELETE_EDGE GraphDeleteEdge;
+GRAPH_CONTAINS_EDGE GraphContainsEdge;
+GRAPH_CYCLIC_DELETE_EDGE GraphCyclicDeleteEdge;
+GRAPH_ASSIGN GraphAssign;
+
+_Use_decl_annotations_
+VOID
+GraphAddEdge(
+    PGRAPH Graph,
+    VERTEX Vertex1,
+    VERTEX Vertex2
+    )
+{
+    EDGE Edge1;
+    EDGE Edge2;
+    PGRAPH_INFO Info;
+    ULONG NumberOfEdges;
+
+    Info = Graph->Info;
+    NumberOfEdges = Info->NumberOfEdges;
+    Edge1 = Graph->CurrentEdge;
+    Edge2 = Edge1 + NumberOfEdges;
+
+#ifdef _DEBUG
+    ASSERT(Vertex1 < Info->NumberOfVertices);
+    ASSERT(Vertex2 < Info->NumberOfVertices);
+    ASSERT(Edge1 < Info->NumberOfEdges);
+    ASSERT(!Graph->Flags.Shrinking);
+#endif
+
+    Graph->Next[Edge1] = Graph->First[Vertex1];
+    Graph->First[Vertex1] = Edge1;
+    Graph->Edges[Edge1] = Vertex2;
+
+    Graph->Next[Edge2] = Graph->First[Vertex2];
+    Graph->First[Vertex2] = Edge2;
+    Graph->Edges[Edge2] = Vertex1;
+
+    Graph->CurrentEdge++;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+GraphIsCyclic(
+    PGRAPH Graph
+    )
+{
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+GraphAssign(
+    PGRAPH Graph
+    )
+{
+    return FALSE;
+}
+
+
+
 _Use_decl_annotations_
 BOOLEAN
 SolveGraph(PGRAPH Graph)
 {
-    return TRUE;
+    EDGE Index;
+    EDGE Key;
+    PEDGE Keys;
+    VERTEX Vertex1;
+    VERTEX Vertex2;
+    PGRAPH_INFO Info;
+    ULONG NumberOfEdges;
+    BOOLEAN Success;
+    PPERFECT_HASH_TABLE Table;
+    PPERFECT_HASH_TABLE_CONTEXT Context;
+
+    Info = Graph->Info;
+    Context = Info->Context;
+    Table = Context->Table;
+    NumberOfEdges = Info->NumberOfEdges;
+    Keys = (PEDGE)Table->Keys->BaseAddress;
+
+    for (Index = 0; Index < NumberOfEdges; Index++) {
+        Key = Keys[Index];
+
+        if (!HashKey(Graph, Key, &Vertex1, &Vertex2)) {
+
+            //
+            // Failed to hash the key to two unique vertices.
+            //
+
+            return FALSE;
+        }
+
+        GraphAddEdge(Graph, Vertex1, Vertex2);
+    }
+
+    if (GraphIsCyclic(Graph)) {
+
+        //
+        // Failed to create an acyclic graph.
+        //
+
+        return FALSE;
+    }
+
+    //
+    // We created an acyclic graph.  Perform the assignment step and return
+    // the result.
+    //
+
+    Success = GraphAssign(Graph);
+
+    return Success;
 }
 
 

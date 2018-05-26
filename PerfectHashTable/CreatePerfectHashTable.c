@@ -211,6 +211,7 @@ Return Value:
     Table->Keys = Keys;
     Table->AnyApi = AnyApi;
     Table->Context = Context;
+    Context->Table = Table;
 
     //
     // Common initialization is complete, dispatch remaining work to the

@@ -25,13 +25,59 @@ typedef ULONG VERTEX;
 typedef EDGE *PEDGE;
 typedef VERTEX *PVERTEX;
 
+typedef struct _VERTEX_EDGE {
+    VERTEX Vertex;
+    EDGE Edge;
+} VERTEX_EDGE;
+typedef VERTEX_EDGE *PVERTEX_EDGE;
+
+typedef union _VERTICES {
+    struct {
+        VERTEX V1;
+        VERTEX V2;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
+} VERTICES;
+typedef VERTICES *PVERTICES;
+
+typedef union _EDGES {
+    struct {
+        EDGE E1;
+        EDGE E2;
+    };
+    LONGLONG AsLongLong;
+    ULONGLONG AsULongLong;
+} EDGES;
+typedef EDGES *PEDGES;
+
 //
-// Define graph flags.  Currently unused.
+// N.B. I'm not sure why they don't use NULL/0 for the empty edge case.  Using
+//      -1 means the edge array needs to be filled with -1s as part of graph
+//      initialization, which seems inefficient and unnecessary.
+//
+
+#define EMPTY ((ULONG)-1)
+#define IsEmpty(Value) ((ULONG)Value == EMPTY)
+
+//
+// Define graph flags.
 //
 
 typedef union _GRAPH_FLAGS {
     struct {
-        ULONG Unused:32;
+
+        //
+        // Indicates we've started deletion of edges from the graph.
+        //
+
+        ULONG Shrinking:1;
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:31;
     };
     LONG AsLong;
     ULONG AsULong;
@@ -220,6 +266,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     ULONG ThreadId;
 
     //
+    // Graph flags.
+    //
+
+    GRAPH_FLAGS Flags;
+
+    //
+    // Current edge being processed.
+    //
+
+    EDGE CurrentEdge;
+
+    //
     // Edges array.  The number of elements in this array is governed by the
     // TotalNumberOfEdges field, and will be twice the number of edges.
     //
@@ -308,9 +366,182 @@ BOOLEAN
 typedef SHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH
       *PSHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH;
 
-
 SOLVE_GRAPH SolveGraph;
 INITIALIZE_GRAPH InitializeGraph;
 SHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH ShouldWeContinueTryingToSolveGraph;
+
+////////////////////////////////////////////////////////////////////////////////
+// Algorithm Implementation Typedefs
+////////////////////////////////////////////////////////////////////////////////
+
+typedef
+VOID
+(NTAPI GRAPH_ADD_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_ADD_EDGE *PGRAPH_ADD_EDGE;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_CYCLIC_DELETE_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex
+    );
+typedef GRAPH_CYCLIC_DELETE_EDGE *PGRAPH_CYCLIC_DELETE_EDGE;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_FIND_DEGREE1_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex,
+    _Out_ PEDGE Edge
+    );
+typedef GRAPH_FIND_DEGREE1_EDGE *PGRAPH_FIND_DEGREE1_EDGE;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_IS_CYCLIC)(
+    _In_ PGRAPH Graph
+    );
+typedef GRAPH_IS_CYCLIC *PGRAPH_IS_CYCLIC;
+
+typedef
+VERTEX_EDGE
+(NTAPI GRAPH_ITERATOR)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex
+    );
+typedef GRAPH_ITERATOR *PGRAPH_ITERATOR;
+
+typedef
+VERTEX
+(NTAPI GRAPH_NEXT_NEIGHBOR)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_NEXT_NEIGHBOR *PGRAPH_NEXT_NEIGHBOR;
+
+typedef
+EDGE
+(NTAPI GRAPH_EDGE_ID)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_EDGE_ID *PGRAPH_EDGE_ID;
+
+typedef
+VOID
+(NTAPI GRAPH_DELETE_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_DELETE_EDGE *PGRAPH_DELETE_EDGE;
+
+typedef
+VOID
+(NTAPI GRAPH_DELETE_VERTICES)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_DELETE_VERTICES *PGRAPH_DELETE_VERTICES;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_CONTAINS_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_CONTAINS_EDGE *PGRAPH_CONTAINS_EDGE;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_CHECK_EDGE)(
+    _In_ PGRAPH Graph,
+    _In_ EDGE Edge,
+    _In_ VERTEX Vertex1,
+    _In_ VERTEX Vertex2
+    );
+typedef GRAPH_CHECK_EDGE *PGRAPH_CHECK_EDGE;
+
+typedef
+BOOLEAN
+(NTAPI GRAPH_ASSIGN)(
+    _In_ PGRAPH Graph
+    );
+typedef GRAPH_ASSIGN *PGRAPH_ASSIGN;
+
+FORCEINLINE
+EDGE
+GetEdge(
+    _In_ PGRAPH Graph,
+    _In_ EDGE Edge,
+    _In_ BOOLEAN Index
+    )
+{
+    ULONG NumberOfEdges = Graph->Info->NumberOfEdges;
+    return (Edge % NumberOfEdges + (Index * NumberOfEdges));
+}
+
+#define FastGraphBitTest(Name, BitNumber) \
+    BitTest((PLONG)Graph->##Name##Edges.Buffer, BitNumber)
+
+FORCEINLINE
+BOOLEAN
+IsDeletedEdge(
+    _In_ PGRAPH Graph,
+    _In_ EDGE Edge
+    )
+{
+    return FastGraphBitTest(Deleted, Edge);
+}
+
+FORCEINLINE
+BOOLEAN
+HaveVisitedEdge(
+    _In_ PGRAPH Graph,
+    _In_ EDGE Edge
+    )
+{
+    return FastGraphBitTest(Visited, Edge);
+}
+
+FORCEINLINE
+BOOLEAN
+HashKey(
+    _In_ PGRAPH Graph,
+    _In_ ULONG Key,
+    _Out_ PVERTEX Vertex1Pointer,
+    _Out_ PVERTEX Vertex2Pointer
+    )
+{
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULONG NumberOfEdges = Graph->Info->NumberOfEdges;
+
+    Vertex1 = _mm_crc32_u32(Graph->Seed1, Key) % NumberOfEdges;
+    Vertex2 = _mm_crc32_u32(Graph->Seed2, Key) % NumberOfEdges;
+
+    if (Vertex1 == Vertex2) {
+        if (++Vertex2 >= NumberOfEdges) {
+            Vertex2 = 0;
+        }
+    }
+
+    if (Vertex1 == Vertex2) {
+        return FALSE;
+    }
+
+    *Vertex1Pointer = Vertex1;
+    *Vertex2Pointer = Vertex2;
+
+    return TRUE;
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -191,6 +191,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     PPERFECT_HASH_TABLE_ANY_API AnyApi;
 
     //
+    // Pointer to the active perfect hash table.
+    //
+
+    struct _PERFECT_HASH_TABLE *Table;
+
+    //
     // Define the events used to communicate various internal state changes
     // between the CreatePerfectHashTable() function and the algorithm-specific
     // creation routine.
