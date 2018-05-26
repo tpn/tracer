@@ -54,6 +54,8 @@ Return Value:
     PBYTE Buffer;
     BOOLEAN Success;
     USHORT PageSize;
+    ULONG_PTR LastPage;
+    ULONG_PTR ThisPage;
     PVOID BaseAddress = NULL;
     ULONG WaitResult;
     GRAPH_INFO Info;
@@ -80,7 +82,8 @@ Return Value:
     ULARGE_INTEGER NumberOfEdges;
     ULARGE_INTEGER NumberOfVertices;
     ULARGE_INTEGER TotalNumberOfEdges;
-    ULARGE_INTEGER BitmapBufferSizeInBytes;
+    ULARGE_INTEGER DeletedEdgesBitmapBufferSizeInBytes;
+    ULARGE_INTEGER VisitedVerticesBitmapBufferSizeInBytes;
     PPERFECT_HASH_TABLE_CONTEXT Context = Table->Context;
     HANDLE Events[4];
     USHORT NumberOfEvents = ARRAYSIZE(Events);
@@ -132,7 +135,7 @@ Return Value:
     ASSERT(!TotalNumberOfEdges.HighPart);
 
     //
-    // chm.c uses a size muliplier (c) of 2.09.  Let's avoid the need for
+    // chm.c uses a size multiplier (c) of 2.09.  Let's avoid the need for
     // doubles and linking with a math library in order to get ceil(), and
     // just use 2.5, which we can calculate by adding the result of right
     // shifting the number of edges by 1 to the result of left shifting
@@ -149,16 +152,28 @@ Return Value:
     ASSERT(!NumberOfVertices.HighPart);
 
     //
-    // Calculate the size required for the buffers used by the bitmaps in the
-    // graph structure.  Each bitmap consumes 1 bit per edge, and requires the
-    // double sizing via the TotalNumberOfEdges count.  Convert the number of
-    // bits into a byte representation by shifting right 3 (dividing by 8),
-    // then align it up to a 16 byte boundary.
+    // Calculate the size required for the DeletedEdges bitmap buffer.  One
+    // bit is used per TotalNumberOfEdges.  Convert the bits into bytes by
+    // shifting right 3 (dividing by 8) then align it up to a 16 byte boundary.
     //
 
-    BitmapBufferSizeInBytes.QuadPart = (
+    DeletedEdgesBitmapBufferSizeInBytes.QuadPart = (
         ALIGN_UP((TotalNumberOfEdges.QuadPart >> 3), 16)
     );
+
+    ASSERT(!DeletedEdgesBitmapBufferSizeInBytes.HighPart);
+
+    //
+    // Calculate the size required for the VisitedVertices bitmap buffer.  One
+    // bit is used per NumberOfVertices.  Convert the bits into bytes by
+    // shifting right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    //
+
+    VisitedVerticesBitmapBufferSizeInBytes.QuadPart = (
+        ALIGN_UP((NumberOfVertices.QuadPart >> 3), 16)
+    );
+
+    ASSERT(!VisitedVerticesBitmapBufferSizeInBytes.HighPart);
 
     //
     // Calculate the sizes required for each of the arrays.  We collect them
@@ -235,13 +250,13 @@ Return Value:
         // Account for the size of the bitmap buffer for Graph->DeletedEdges.
         //
 
-        BitmapBufferSizeInBytes.QuadPart +
+        DeletedEdgesBitmapBufferSizeInBytes.QuadPart +
 
         //
-        // Account for the size of the bitmap buffer for Graph->VisitedEdges.
+        // Account for the size of the bitmap buffer for Graph->VisitedVertices.
         //
 
-        BitmapBufferSizeInBytes.QuadPart
+        VisitedVerticesBitmapBufferSizeInBytes.QuadPart
 
     );
 
@@ -331,9 +346,16 @@ Return Value:
     Info.FirstSizeInBytes = FirstSizeInBytes;
     Info.PrevSizeInBytes = PrevSizeInBytes;
     Info.AssignedSizeInBytes = AssignedSizeInBytes;
-    Info.BitmapBufferSizeInBytes = BitmapBufferSizeInBytes.QuadPart;
     Info.AllocSize = AllocSize.QuadPart;
     Info.FinalSize = UsableBufferSizeInBytesPerBuffer;
+
+    Info.DeletedEdgesBitmapBufferSizeInBytes = (
+        DeletedEdgesBitmapBufferSizeInBytes.QuadPart
+    );
+
+    Info.VisitedVerticesBitmapBufferSizeInBytes = (
+        VisitedVerticesBitmapBufferSizeInBytes.QuadPart
+    );
 
     //
     // Copy the dimensions over.
@@ -361,10 +383,38 @@ Return Value:
     for (Index = 0; Index < NumberOfGraphs; Index++) {
 
         //
-        // Verify the guard page is working properly.
+        // Invariant check: at the top of the loop, Buffer and Unusable should
+        // point to the same address (which will be the base of the current
+        // graph being processed).  Assert this invariant now.
         //
 
-        Unusable += UsableBufferSizeInBytesPerBuffer;
+        ASSERT(Buffer == Unusable);
+
+        //
+        // Carve out the graph pointer, and bump the unusable pointer past the
+        // graph's pages, such that it points to the first byte of the guard
+        // page.
+        //
+
+        Graph = (PGRAPH)Buffer;
+        Unusable = Buffer + UsableBufferSizeInBytesPerBuffer;
+
+        //
+        // Sanity check the page alignment logic.  If we subtract 1 byte from
+        // Unusable, it should reside on a different page.  Additionally, the
+        // two pages should be separated by at most a single page size.
+        //
+
+        ThisPage = ALIGN_DOWN(Unusable,   PageSize);
+        LastPage = ALIGN_DOWN(Unusable-1, PageSize);
+        ASSERT(LastPage < ThisPage);
+        ASSERT((ThisPage - LastPage) == PageSize);
+
+        //
+        // Verify the guard page is working properly by wrapping an attempt to
+        // write to it in a structured exception handler that will catch the
+        // access violation trap.
+        //
 
         CaughtException = FALSE;
 
@@ -381,16 +431,31 @@ Return Value:
         ASSERT(CaughtException);
 
         //
-        // Guard page is working properly.  Buffer points to the base address
-        // for this graph.
+        // Guard page is working properly.  Push the graph onto the context's
+        // main work list head and submit the corresponding threadpool work.
         //
 
+        InterlockedPushEntrySList(&Context->MainListHead, &Graph->ListEntry);
+        SubmitThreadpoolWork(Context->MainWork);
+
         //
-        // Advance the buffer past the graph size and guard page.
+        // Advance the buffer past the graph size and guard page.  Copy the
+        // same address to the Unusable variable as well, such that our top
+        // of the loop invariants hold true.
         //
 
         Buffer += GraphSizeInBytesIncludingGuardPage;
+        Unusable = Buffer;
 
+        //
+        // If our key set size is small and our maximum concurrency is large,
+        // we may have already solved the graph, in which case, we can stop
+        // submitting new solver attempts and just break out of the loop here.
+        //
+
+        if (!ShouldWeContinueTryingToSolveGraph(Context)) {
+            break;
+        }
     }
 
     //
@@ -414,11 +479,15 @@ Return Value:
 
     Success = (Context->FinishedCount > 0);
 
-    if (BaseAddress) {
+    //
+    // Destroy the buffer we created earlier.
+    //
+    // N.B. Although we used Rtl->CreateMultipleBuffers(), we can still free
+    //      the underlying buffer via Rtl->DestroyBuffer(), as only a single
+    //      VirtualAllocEx() call was dispatched for the entire buffer.
+    //
 
-        Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
-
-    }
+    Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
 
     return Success;
 }
@@ -560,16 +629,16 @@ InitializeGraph(
 
     Graph->DeletedEdges.Buffer = (PULONG)Buffer;
     Graph->DeletedEdges.SizeOfBitMap = Info->TotalNumberOfEdges;
-    Buffer += Info->BitmapBufferSizeInBytes;
+    Buffer += Info->DeletedEdgesBitmapBufferSizeInBytes;
     BitmapCount++;
 
     //
     // Carve out the bitmap buffer for Graph->VisitedEdges.
     //
 
-    Graph->VisitedEdges.Buffer = (PULONG)Buffer;
-    Graph->VisitedEdges.SizeOfBitMap = Info->TotalNumberOfEdges;
-    Buffer += Info->BitmapBufferSizeInBytes;
+    Graph->VisitedVertices.Buffer = (PULONG)Buffer;
+    Graph->VisitedVertices.SizeOfBitMap = Info->NumberOfVertices;
+    Buffer += Info->VisitedVerticesBitmapBufferSizeInBytes;
     BitmapCount++;
 
     //
@@ -595,6 +664,20 @@ InitializeGraph(
     Graph->ThreadId = GetCurrentThreadId();
     Graph->Attempt = InterlockedIncrement(&Info->Context->Attempts);
     Graph->Info = Info;
+
+    //
+    // Replicate the graph dimensions.
+    //
+
+    Graph->NumberOfEdges = Info->NumberOfEdges;
+    Graph->TotalNumberOfEdges = Info->TotalNumberOfEdges;
+    Graph->NumberOfVertices = Info->NumberOfVertices;
+
+    //
+    // Set the context.
+    //
+
+    Graph->Context = Info->Context;
 
     //
     // "Empty" all of the nodes; which they've chosen to mean setting them
@@ -677,16 +760,21 @@ ShouldWeContinueTryingToSolveGraph(
 // Forward definitions.
 //
 
-GRAPH_ADD_EDGE GraphAddEdge;
-GRAPH_FIND_DEGREE1_EDGE GraphFindDegree1Edge;
-GRAPH_IS_CYCLIC GraphIsCyclic;
-GRAPH_ITERATOR GraphIterator;
-GRAPH_NEXT_NEIGHBOR GraphNextNeighbor;
-GRAPH_EDGE_ID GraphEdgeId;
-GRAPH_DELETE_EDGE GraphDeleteEdge;
-GRAPH_CONTAINS_EDGE GraphContainsEdge;
-GRAPH_CYCLIC_DELETE_EDGE GraphCyclicDeleteEdge;
 GRAPH_ASSIGN GraphAssign;
+GRAPH_EDGE_ID GraphEdgeId;
+GRAPH_ADD_EDGE GraphAddEdge;
+GRAPH_ITERATOR GraphIterator;
+GRAPH_TRAVERSE GraphTraverse;
+IS_GRAPH_ACYCLIC IsGraphAcyclic;
+GRAPH_DELETE_EDGE GraphDeleteEdge;
+GRAPH_NEXT_NEIGHBOR GraphNextNeighbor;
+GRAPH_CONTAINS_EDGE GraphContainsEdge;
+GRAPH_FIND_DEGREE1_EDGE GraphFindDegree1Edge;
+GRAPH_CYCLIC_DELETE_EDGE GraphCyclicDeleteEdge;
+
+//
+// Implementations.
+//
 
 _Use_decl_annotations_
 VOID
@@ -695,21 +783,38 @@ GraphAddEdge(
     VERTEX Vertex1,
     VERTEX Vertex2
     )
+/*++
+
+Routine Description:
+
+    This routine adds an edge to the hypergraph for two vertices.  The current
+    edge is determined via Graph->CurrentEdge, which is also incremented as part
+    of this routine.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph for which the edge is to be added.
+
+    Vertex1 - Supplies the first vertex.
+
+    Vertex2 - Supplies the second vertex.
+
+Return Value:
+
+    None.
+
+--*/
 {
     EDGE Edge1;
     EDGE Edge2;
-    PGRAPH_INFO Info;
-    ULONG NumberOfEdges;
 
-    Info = Graph->Info;
-    NumberOfEdges = Info->NumberOfEdges;
     Edge1 = Graph->CurrentEdge;
-    Edge2 = Edge1 + NumberOfEdges;
+    Edge2 = Edge1 + Graph->NumberOfEdges;
 
 #ifdef _DEBUG
-    ASSERT(Vertex1 < Info->NumberOfVertices);
-    ASSERT(Vertex2 < Info->NumberOfVertices);
-    ASSERT(Edge1 < Info->NumberOfEdges);
+    ASSERT(Vertex1 < Graph->NumberOfVertices);
+    ASSERT(Vertex2 < Graph->NumberOfVertices);
+    ASSERT(Edge1 < Graph->NumberOfEdges);
     ASSERT(!Graph->Flags.Shrinking);
 #endif
 
@@ -726,27 +831,561 @@ GraphAddEdge(
 
 _Use_decl_annotations_
 BOOLEAN
-GraphIsCyclic(
-    PGRAPH Graph
+GraphFindDegree1Edge(
+    PGRAPH Graph,
+    VERTEX Vertex,
+    PEDGE EdgePointer
     )
+/*++
+
+Routine Description:
+
+    This routine determines if a vertex has degree 1 within the graph, and if
+    so, returns the edge associated with it.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph.
+
+    Vertex - Supplies the vertex for which the degree 1 test is made.
+
+    EdgePointer - Supplies the address of a variable that receives the EDGE
+        owning this vertex if it degree 1.
+
+Return Value:
+
+    TRUE if the vertex has degree 1, FALSE otherwise.  EdgePointer will be
+    updated if TRUE is returned.
+
+    N.B. Actually, in the CHM implementation, they seem to update the edge
+         regardless if it was a degree 1 connection.  I guess we should mirror
+         that behavior now too.
+
+--*/
 {
-    return TRUE;
+    EDGE Edge;
+    EDGE Edge1;
+    BOOLEAN Found = FALSE;
+
+    //
+    // Get the edge for this vertex.
+    //
+
+    Edge = Graph->First[Vertex];
+
+    //
+    // If edge is empty, we're done.
+    //
+
+    if (IsEmpty(Edge)) {
+        return FALSE;
+    }
+
+    //
+    // If the edge has not been deleted, capture it.
+    //
+
+    if (!IsDeletedEdge(Graph, Edge)) {
+        Found = TRUE;
+        *EdgePointer = Edge;
+    }
+
+    //
+    // Determine if this is a degree 1 connection.
+    //
+    // (This seems a bit... quirky.)
+    //
+
+    while (TRUE) {
+
+        Edge = Graph->Next[Edge];
+
+        if (IsEmpty(Edge)) {
+            break;
+        }
+
+        Edge1 = GetFirstEdgeDebug(Graph, Edge);
+
+        if (IsDeletedEdge(Graph, Edge1)) {
+            continue;
+        }
+
+        if (Found) {
+            return FALSE;
+        }
+
+        //
+        // We've found the first edge.
+        //
+
+        *EdgePointer = Edge;
+        Found = TRUE;
+    }
+
+    return Found;
+}
+
+_Use_decl_annotations_
+VOID
+GraphCyclicDeleteEdge(
+    PGRAPH Graph,
+    VERTEX Vertex
+    )
+/*++
+
+Routine Description:
+
+    This routine deletes edges from a graph connected by vertices of degree 1.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph for which the edge is to be deleted.
+
+    Vertex - Supplies the vertex for which the initial edge is obtained.
+
+Return Value:
+
+    None.
+
+    N.B. If an edge is deleted, its corresponding bit will be set in the bitmap
+         Graph->DeletedEdges.
+
+--*/
+{
+    EDGE Edge;
+    EDGE Edge1;
+    EDGE Edge2;
+    VERTEX Vertex1;
+    VERTEX Vertex2;
+    BOOLEAN IsDegree1;
+
+    //
+    // Determine if the vertex has a degree of 1, and if so, obtain the edge.
+    //
+
+    IsDegree1 = GraphFindDegree1Edge(Graph, Vertex, &Edge);
+
+    //
+    // If this isn't a degree 1 edge, there's nothing left to do.
+    //
+
+    if (!IsDegree1) {
+        return;
+    }
+
+    //
+    // We've found an edge of degree 1 to delete.
+    //
+
+    Vertex1 = Vertex;
+    Vertex2 = 0;
+
+    while (TRUE) {
+
+        Edge1 = GetFirstEdgeDebug(Graph, Edge);
+        RegisterEdgeDeletion(Graph, Edge1);
+
+        //
+        // Find the other vertex the edge connected.
+        //
+
+        Vertex2 = Graph->Edges[Edge1];
+
+        if (Vertex1 == Vertex2) {
+            Edge2 = GetSecondEdgeDebug(Graph, Edge);
+            Vertex2 = Graph->Edges[Edge2];
+        }
+
+        IsDegree1 = GraphFindDegree1Edge(Graph, Vertex2, &Edge);
+
+        if (!IsDegree1) {
+            break;
+        }
+
+        //
+        // This vertex is also degree 1, so continue the inspection.
+        //
+
+        Vertex1 = Vertex2;
+    }
 }
 
 _Use_decl_annotations_
 BOOLEAN
+IsGraphAcyclic(
+    PGRAPH Graph
+    )
+/*++
+
+Routine Description:
+
+    This routine determines whether or not the graph is acyclic.  An acyclic
+    graph is one where, after deletion of all edges in the graph with vertices
+    of degree 1, no edges remain.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to operate on.
+
+Return Value:
+
+    TRUE if the graph is acyclic, FALSE if it's cyclic.
+
+--*/
+{
+    VERTEX Vertex;
+    BOOLEAN IsAcyclic;
+    ULONG NumberOfEdges;
+    ULONG NumberOfVertices;
+    ULONG NumberOfEdgesDeleted;
+    PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
+
+    //
+    // Resolve aliases.
+    //
+
+    NumberOfEdges = Graph->NumberOfEdges;
+    NumberOfVertices = Graph->NumberOfVertices;
+    RtlNumberOfSetBits = Graph->Context->Rtl->RtlNumberOfSetBits;
+
+    //
+    // Invariant check: we should not be shrinking prior to this point.
+    //
+
+    ASSERT(!Graph->Flags.Shrinking);
+
+    //
+    // Toggle the shrinking bit to indicate we've started edge deletion.
+    //
+
+    Graph->Flags.Shrinking = TRUE;
+
+    //
+    // Enumerate through all vertices in the graph and attempt to delete those
+    // connected by edges that have degree 1.
+    //
+
+    for (Vertex = 0; Vertex < NumberOfVertices; Vertex++) {
+        GraphCyclicDeleteEdge(Graph, Vertex);
+    }
+
+    //
+    // As each edge of degree 1 is deleted, a bit is set in the deleted bitmap,
+    // indicating the edge at that bit offset was deleted.  Thus, we can simply
+    // count the number of set bits in the bitmap and compare that to the number
+    // of edges in the graph.  If the values do not match, the graph is cyclic;
+    // if they do match, the graph is acyclic.
+    //
+
+    NumberOfEdgesDeleted = RtlNumberOfSetBits(&Graph->DeletedEdges);
+
+    IsAcyclic = (NumberOfEdges == NumberOfEdgesDeleted);
+
+    //
+    // Make a note that we're acyclic if applicable in the graph's flags.
+    // This is checked by GraphAssign() to ensure we only operate on acyclic
+    // graphs.
+    //
+
+    if (IsAcyclic) {
+        Graph->Flags.IsAcyclic = TRUE;
+    }
+
+    return IsAcyclic;
+}
+
+_Use_decl_annotations_
+VOID
 GraphAssign(
     PGRAPH Graph
     )
+/*++
+
+Routine Description:
+
+    This routine is called after a graph has determined to be acyclic.  It is
+    responsible for walking the graph and assigning values to edges in order to
+    complete the perfect hash solution.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to operate on.
+
+Return Value:
+
+    TRUE if the graph is acyclic, FALSE if it's cyclic.
+
+--*/
 {
-    return FALSE;
+    VERTEX Vertex;
+
+    //
+    // Invariant check: the acyclic flag should be set.  (Indicating that
+    // IsGraphAcyclic() successfully determined that, yes, the graph is
+    // acyclic.)
+    //
+
+    ASSERT(Graph->Flags.IsAcyclic);
+
+    //
+    // Walk the graph and assign values.
+    //
+
+    for (Vertex = 0; Vertex < Graph->NumberOfVertices; Vertex++) {
+
+        if (!IsVisitedVertex(Graph, Vertex)) {
+
+            //
+            // Assign an initial value of 0, then walk the subgraph.
+            //
+
+            Graph->Assigned[Vertex] = 0;
+            GraphTraverse(Graph, Vertex);
+        }
+    }
+
+    return;
 }
 
+_Use_decl_annotations_
+GRAPH_ITERATOR
+GraphNeighborsIterator(
+    PGRAPH Graph,
+    VERTEX Vertex
+    )
+/*++
+
+Routine Description:
+
+    For a given vertex in graph, create an iterator such that the neighboring
+    vertices can be iterated over.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to operate on.
+
+    Vertex - Supplies the vertex for which the iterator will be initialized.
+
+Return Value:
+
+    An instance of a GRAPH_ITERATOR with the Vertex member set to the Vertex
+    parameter, and the Edge member set to the first edge in the graph for the
+    given vertex.
+
+--*/
+{
+    GRAPH_ITERATOR Iterator;
+
+    Iterator.Vertex = Vertex;
+    Iterator.Edge = Graph->First[Vertex];
+
+    return Iterator;
+}
+
+_Use_decl_annotations_
+VERTEX
+GraphNextNeighbor(
+    PGRAPH Graph,
+    PGRAPH_ITERATOR Iterator
+    )
+/*++
+
+Routine Description:
+
+    Return the next vertex for a given graph iterator.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to operate on.
+
+    Iterator - Supplies a pointer to the graph iterator structure to use.
+
+Return Value:
+
+    The neighboring vertex, or GRAPH_NO_NEIGHBOR if no vertices remain.
+
+--*/
+{
+    EDGE Edge;
+    VERTEX Vertex;
+    VERTEX Neighbor;
+
+    //
+    // If the edge is empty, the graph iteration has finished.
+    //
+
+    Edge = Iterator->Edge;
+
+    if (IsEmpty(Edge)) {
+        return GRAPH_NO_NEIGHBOR;
+    }
+
+    //
+    // Find the vertex for this edge.
+    //
+
+    Vertex = Graph->Edges[Edge];
+
+    //
+    // If the vertex matches the one in our iterator, the edge we've been
+    // provided is the first edge.  Otherwise, it's the second edge.
+    //
+
+    if (Vertex == Iterator->Vertex) {
+
+        Neighbor = Graph->Edges[Edge + Graph->NumberOfEdges];
+
+    } else {
+
+        Neighbor = Vertex;
+    }
+
+    //
+    // Update the edge and return the neighbor.
+    //
+
+    Iterator->Edge = Graph->Next[Edge];
+
+    return Neighbor;
+}
+
+
+_Use_decl_annotations_
+EDGE
+GraphEdgeId(
+    PGRAPH Graph,
+    VERTEX Vertex1,
+    VERTEX Vertex2
+    )
+/*++
+
+Routine Description:
+
+    Generates an ID for two vertices as part of the assignment step.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph for which the edge is to be added.
+
+    Vertex1 - Supplies the first vertex.
+
+    Vertex2 - Supplies the second vertex.
+
+Return Value:
+
+    An EDGE value.
+
+--*/
+{
+    EDGE Edge;
+    EDGE EdgeId;
+
+    Edge = Graph->First[Vertex1];
+
+    ASSERT(!IsEmpty(Edge));
+
+    if (GraphCheckEdge(Graph, Edge, Vertex1, Vertex2)) {
+
+        EdgeId = GetFirstEdgeDebug(Graph, Edge);
+
+    } else {
+
+        do {
+
+            Edge = Graph->Next[Edge];
+            ASSERT(!IsEmpty(Edge));
+
+        } while (!GraphCheckEdge(Graph, Edge, Vertex1, Vertex2));
+
+        EdgeId = GetFirstEdgeDebug(Graph, Edge);
+    }
+
+    return EdgeId;
+}
+
+_Use_decl_annotations_
+VOID
+GraphTraverse(
+    PGRAPH Graph,
+    VERTEX Vertex
+    )
+/*++
+
+Routine Description:
+
+    This routine is called as part of graph assignment.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to operate on.
+
+    Vertex - Supplies the vertex to traverse.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    ULONG Id1;
+    ULONG Id2;
+    ULONG Id3;
+    VERTEX Neighbor;
+    GRAPH_ITERATOR Iterator;
+
+    //
+    // Register the vertex as visited.
+    //
+
+    RegisterVertexVisit(Graph, Vertex);
+
+    //
+    // Initialize a graph iterator for visiting neighbors.
+    //
+
+    Iterator = GraphNeighborsIterator(Graph, Vertex);
+
+    while (TRUE) {
+
+        Neighbor = GraphNextNeighbor(Graph, &Iterator);
+
+        if (IsNeighborEmpty(Neighbor)) {
+            break;
+        }
+
+        //
+        // If the neighbor has already been visited, skip it.
+        //
+
+        if (IsVisitedVertex(Graph, Neighbor)) {
+            continue;
+        }
+
+        //
+        // Construct the unique ID for this particular visit.  We break it out
+        // into three distinct steps in order to assist with debugging.
+        //
+
+        Id1 = GraphEdgeId(Graph, Vertex, Neighbor);
+        Id2 = Graph->Assigned[Vertex];
+        Id3 = Id1 - Id2;
+
+        Graph->Assigned[Neighbor] = Id3;
+
+        //
+        // Recursively traverse the neighbor.
+        //
+
+        GraphTraverse(Graph, Neighbor);
+    }
+}
 
 
 _Use_decl_annotations_
 BOOLEAN
-SolveGraph(PGRAPH Graph)
+SolveGraph(
+    _In_ PGRAPH Graph
+    )
 {
     EDGE Index;
     EDGE Key;
@@ -755,14 +1394,13 @@ SolveGraph(PGRAPH Graph)
     VERTEX Vertex2;
     PGRAPH_INFO Info;
     ULONG NumberOfEdges;
-    BOOLEAN Success;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_CONTEXT Context;
 
     Info = Graph->Info;
     Context = Info->Context;
     Table = Context->Table;
-    NumberOfEdges = Info->NumberOfEdges;
+    NumberOfEdges = Graph->NumberOfEdges;
     Keys = (PEDGE)Table->Keys->BaseAddress;
 
     for (Index = 0; Index < NumberOfEdges; Index++) {
@@ -780,7 +1418,7 @@ SolveGraph(PGRAPH Graph)
         GraphAddEdge(Graph, Vertex1, Vertex2);
     }
 
-    if (GraphIsCyclic(Graph)) {
+    if (!IsGraphAcyclic(Graph)) {
 
         //
         // Failed to create an acyclic graph.
@@ -790,14 +1428,16 @@ SolveGraph(PGRAPH Graph)
     }
 
     //
-    // We created an acyclic graph.  Perform the assignment step and return
-    // the result.
+    // We created an acyclic graph.  Perform the assignment step.
     //
 
-    Success = GraphAssign(Graph);
+    GraphAssign(Graph);
 
-    return Success;
+    //
+    // XXX TODO: persist the graph.
+    //
+
+    return TRUE;
 }
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
