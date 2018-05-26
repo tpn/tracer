@@ -262,6 +262,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     ULONG NumberOfObjects;
 
     //
+    // Number of attempts made by the algorithm to find a solution.
+    //
+
+    volatile ULONG Attempts;
+
+    //
     // The main threadpool callback environment, used for processing general
     // work items (such as parallel perfect hash solution finding).
     //
@@ -327,6 +333,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     TP_CALLBACK_ENVIRON ErrorCallbackEnv;
     PTP_POOL ErrorThreadpool;
     PTP_WORK ErrorWork;
+
+    //
+    // An opaque pointer that can be used by the algorithm to stash additional
+    // context.
+    //
+
+    PVOID AlgorithmContext;
 
 } PERFECT_HASH_TABLE_CONTEXT;
 typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
@@ -583,6 +596,33 @@ Return Value:
     }
 
     return Success;
+}
+
+FORCEINLINE
+VOID
+GetRandomSeedsBlocking(
+    _Out_ PULARGE_INTEGER Output
+    )
+/*++
+
+Routine Description:
+
+    Calls __rdseed64_step() in a loop until it returns successfully.
+
+Arguments:
+
+    Output - Supplies a pointer to a ULARGE_INTEGER structure that will receive
+        the random seed value.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    while (!_rdseed64_step(&Output->QuadPart)) {
+        YieldProcessor();
+    }
 }
 
 
