@@ -4943,6 +4943,23 @@ typedef CREATE_BUFFER *PCREATE_BUFFER;
 typedef
 _Success_(return != 0)
 BOOL
+(NTAPI CREATE_MULTIPLE_BUFFERS)(
+    _In_ struct _RTL *Rtl,
+    _In_opt_ PHANDLE TargetProcessHandle,
+    _In_ USHORT PageSize,
+    _In_ USHORT NumberOfBuffers,
+    _In_ USHORT NumberOfPagesPerBuffer,
+    _In_opt_ PULONG AdditionalProtectionFlags,
+    _In_opt_ PULONG AdditionalAllocationTypeFlags,
+    _Out_ PULONGLONG UsableBufferSizeInBytesPerBuffer,
+    _Out_ PULONGLONG TotalBufferSizeInBytes,
+    _Out_ PPVOID BufferAddress
+    );
+typedef CREATE_MULTIPLE_BUFFERS *PCREATE_MULTIPLE_BUFFERS;
+
+typedef
+_Success_(return != 0)
+BOOL
 (NTAPI DESTROY_BUFFER)(
     _In_ struct _RTL *Rtl,
     _In_ HANDLE ProcessHandle,
@@ -6451,6 +6468,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     PCREATE_RANDOM_OBJECT_NAMES CreateRandomObjectNames;
     PCREATE_SINGLE_RANDOM_OBJECT_NAME CreateSingleRandomObjectName;
     PCREATE_BUFFER CreateBuffer;
+    PCREATE_MULTIPLE_BUFFERS CreateMultipleBuffers;
     PDESTROY_BUFFER DestroyBuffer;
     PMAKE_RANDOM_STRING MakeRandomString;
     PFIND_AND_REPLACE_BYTE FindAndReplaceByte;

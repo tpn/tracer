@@ -467,6 +467,278 @@ End:
 
 _Use_decl_annotations_
 BOOL
+CreateMultipleBuffers(
+    PRTL Rtl,
+    PHANDLE TargetProcessHandle,
+    USHORT PageSize,
+    USHORT NumberOfBuffers,
+    USHORT NumberOfPagesPerBuffer,
+    PULONG AdditionalProtectionFlags,
+    PULONG AdditionalAllocationTypeFlags,
+    PULONGLONG UsableBufferSizeInBytesPerBuffer,
+    PULONGLONG TotalBufferSizeInBytes,
+    PPVOID BufferAddress
+    )
+/*++
+
+Routine Description:
+
+    Allocates a single buffer using VirtualAllocEx() sized using the following:
+
+        (PageSize * NumberOfPagesPerBuffer * NumberOfBuffers) +
+        (NumberOfBuffers * PageSize)
+
+    This includes a guard page following each buffer's set of pages.  Memory
+    protection is set on the guard page such that any access will trap.
+
+Arguments:
+
+    Rtl - Supplies a pointer to an initialized RTL structure.
+
+    TargetProcessHandle - Optionally supplies a pointer to a variable that
+        contains a process handle for which the memory is to be allocated.
+        If non-NULL, but pointed-to value is 0, this will receive the handle
+        of the current process.
+
+    PageSize - Indicates the page size indicated by the NumberOfPagesPerBuffer
+        parameter.  This should be either 4096 or 2MB.  If 2MB, the caller
+        should also ensure a) MEM_LARGE_PAGES is also provided as the value in
+        the parameter AdditionalAllocationTypeFlags, and b) relevant privileges
+        have been obtained (e.g. Rtl->EnableManageVolumePrivilege() and
+        Rtl->EnableLockMemoryPrivilege()).
+
+    NumberOfBuffers - Supplies the number of individual buffers being serviced
+        by this request.  This will also reflect the number of implict guard
+        pages included in the allocation.
+
+    NumberOfPagesPerBuffer - Supplies the number of pages to assign for each
+        buffer.
+
+    AdditionalProtectionFlags - Optionally supplies flags that will be OR'd
+        with the flProtect flags parameter of VirtualAllocEx() (e.g.
+        PAGE_NOCACHE or PAGE_WRITECOMBINE).
+
+    AdditionalAllocationTypeFlags - Optionally supplies flags that will be OR'd
+        with the flAllocationType flags parameter of VirtualAllocEx().  This
+        should include MEM_LARGE_PAGES if large pages are desired.
+
+    UsableBufferSizeInBytesPerBuffer - Supplies the address of a variable that
+        receives the number of usable bytes per buffer.
+
+    TotalBufferSizeInBytes - Supplies the address of a variable that receives
+        the total allocation size provided to VirtualAllocEx().
+
+    BufferAddress - Supplies the address of a variable that receives the
+        base address of the allocation if successful.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+
+{
+    BOOL Success;
+    USHORT Index;
+    PVOID Buffer;
+    PBYTE Unusable;
+    HANDLE ProcessHandle;
+    ULONG ProtectionFlags;
+    ULONG OldProtectionFlags;
+    ULONG AllocationFlags;
+    LONG_INTEGER TotalNumberOfPages;
+    ULARGE_INTEGER AllocSizeInBytes;
+    ULONGLONG UsableBufferSizeInBytes;
+
+    //
+    // Validate arguments.
+    //
+
+    if (!ARGUMENT_PRESENT(Rtl)) {
+        return FALSE;
+    }
+
+    if (!NumberOfPagesPerBuffer) {
+        return FALSE;
+    }
+
+    if (!NumberOfBuffers) {
+        return FALSE;
+    }
+
+    //
+    // Verify page size is either 4KB or 2MB.
+    //
+
+    if (PageSize != 4096 || PageSize != (1 << 21)) {
+        return FALSE;
+    }
+
+    //
+    // If page size is 2MB, verify MEM_LARGE_PAGES has also been requested.
+    //
+
+    if (PageSize == (1 << 21)) {
+        if (!ARGUMENT_PRESENT(AdditionalAllocationTypeFlags)) {
+            return FALSE;
+        }
+        if (!(*AdditionalAllocationTypeFlags & MEM_LARGE_PAGES)) {
+            return FALSE;
+        }
+    }
+
+    if (!ARGUMENT_PRESENT(TargetProcessHandle)) {
+        ProcessHandle = GetCurrentProcess();
+    } else {
+        if (!*TargetProcessHandle) {
+            *TargetProcessHandle = GetCurrentProcess();
+        }
+        ProcessHandle = *TargetProcessHandle;
+    }
+
+    if (!ARGUMENT_PRESENT(UsableBufferSizeInBytesPerBuffer)) {
+        return FALSE;
+    } else {
+        *UsableBufferSizeInBytesPerBuffer = 0;
+    }
+
+    if (!ARGUMENT_PRESENT(TotalBufferSizeInBytes)) {
+        return FALSE;
+    } else {
+        *TotalBufferSizeInBytes = 0;
+    }
+
+
+    if (!ARGUMENT_PRESENT(BufferAddress)) {
+        return FALSE;
+    } else {
+        *BufferAddress = NULL;
+    }
+
+    TotalNumberOfPages.LongPart = (
+        ((ULONG)NumberOfPagesPerBuffer) +
+        ((ULONG)NumberOfBuffers)
+    );
+
+    //
+    // Verify the number of pages hasn't overflowed (i.e. exceeds max USHORT).
+    //
+
+    if (TotalNumberOfPages.HighPart) {
+        return FALSE;
+    }
+
+    //
+    // Calculate the total allocation size required.
+    //
+
+    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LowPart * PageSize;
+
+    ProtectionFlags = PAGE_READWRITE;
+    if (ARGUMENT_PRESENT(AdditionalProtectionFlags)) {
+        ProtectionFlags |= *AdditionalProtectionFlags;
+    }
+
+    AllocationFlags = MEM_RESERVE | MEM_COMMIT;
+    if (ARGUMENT_PRESENT(AdditionalAllocationTypeFlags)) {
+        AllocationFlags |= *AdditionalAllocationTypeFlags;
+    }
+
+    //
+    // Validation of parameters complete.  Proceed with buffer allocation.
+    //
+
+    Buffer = Rtl->VirtualAllocEx(ProcessHandle,
+                                 NULL,
+                                 AllocSizeInBytes.QuadPart,
+                                 AllocationFlags,
+                                 ProtectionFlags);
+
+    if (!Buffer) {
+        return FALSE;
+    }
+
+    //
+    // Buffer was successfully allocated.  Any failures after this point should
+    // `goto Error` to ensure the memory is freed.
+    //
+
+    UsableBufferSizeInBytes = (ULONGLONG)(
+        (ULONGLONG)NumberOfPagesPerBuffer *
+        (ULONGLONG)PageSize
+    );
+
+    //
+    // Loop through the assigned memory and toggle protection to PAGE_NOACCESS
+    // for the guard pages.
+    //
+
+    Unusable = (PBYTE)Buffer;
+    ProtectionFlags = PAGE_NOACCESS;
+
+    for (Index = 0; Index < NumberOfBuffers; Index++) {
+
+        Unusable += UsableBufferSizeInBytes;
+
+        Success = Rtl->VirtualProtectEx(ProcessHandle,
+                                        Unusable,
+                                        PageSize,
+                                        ProtectionFlags,
+                                        &OldProtectionFlags);
+
+        if (!Success) {
+            goto Error;
+        }
+
+        //
+        // Advance past this guard page.
+        //
+
+        Unusable += PageSize;
+    }
+
+    //
+    // We're done, indicate success and finish up.
+    //
+
+    Success = TRUE;
+    goto End;
+
+Error:
+
+    Success = FALSE;
+
+    //
+    // Buffer should be non-NULL at this point.  Assert this invariant, free the
+    // allocated memory, clear the buffer pointer and set the alloc size to 0.
+    //
+
+    ASSERT(Buffer);
+    Rtl->VirtualFreeEx(ProcessHandle, Buffer, 0, MEM_RELEASE);
+    Buffer = NULL;
+
+    //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
+    // Update caller's parameters and return.
+    //
+
+    *BufferAddress = Buffer;
+
+    if (Success) {
+        *TotalBufferSizeInBytes = AllocSizeInBytes.QuadPart;
+        *UsableBufferSizeInBytesPerBuffer = UsableBufferSizeInBytes;
+    }
+
+    return Success;
+}
+
+_Use_decl_annotations_
+BOOL
 DestroyBuffer(
     PRTL Rtl,
     HANDLE ProcessHandle,
@@ -4316,6 +4588,7 @@ InitializeRtl(
     Rtl->FindAndReplaceByte = FindAndReplaceByte;
     Rtl->MakeRandomString = MakeRandomString;
     Rtl->CreateBuffer = CreateBuffer;
+    Rtl->CreateMultipleBuffers = CreateMultipleBuffers;
     Rtl->DestroyBuffer = DestroyBuffer;
 
     Rtl->SetDllPath = RtlpSetDllPath;
