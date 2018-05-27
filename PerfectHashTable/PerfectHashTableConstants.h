@@ -32,7 +32,8 @@ const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];
 // context.
 //
 
-const UNICODE_STRING ContextObjectPrefixes[];
+const PCUNICODE_STRING ContextObjectPrefixes[];
+
 const USHORT NumberOfContextEventPrefixes;
 const USHORT NumberOfContextObjectPrefixes;
 

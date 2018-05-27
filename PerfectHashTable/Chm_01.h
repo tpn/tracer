@@ -538,7 +538,7 @@ GetEdge(
 
 //
 // Temporary debug helper that debugbreaks if we are passed an edge that
-// exceeds the number of edges in the graph.  This is in support of determing
+// exceeds the number of edges in the graph.  This is in support of determining
 // the feasibility of a non-mod-based solution.
 //
 // N.B. This functionality corresponds to their abs_edge() macro, which seems
@@ -556,7 +556,7 @@ GetEdgeDebug(
 {
     ULONG NumberOfEdges = Graph->NumberOfEdges;
     if (Edge >= NumberOfEdges) {
-        __debugbreak();
+        //__debugbreak();
     }
     return (Edge % NumberOfEdges + (Index * NumberOfEdges));
 }
@@ -570,7 +570,7 @@ GetFirstEdgeDebug(
 {
     ULONG NumberOfEdges = Graph->NumberOfEdges;
     if (Edge >= NumberOfEdges) {
-        __debugbreak();
+        //__debugbreak();
     }
     return Edge % NumberOfEdges;
 }
@@ -589,17 +589,18 @@ GetSecondEdgeDebug(
     // Edge should be within the range (NumberOfEdges .. TotalNumberOfEdges).
     //
 
-    Edge += NumberOfEdges;
+    Edge = (Edge % NumberOfEdges) + NumberOfEdges;
 
     if (Edge < NumberOfEdges) {
-        __debugbreak();
+        //__debugbreak();
     }
 
     if (Edge > TotalNumberOfEdges) {
-        __debugbreak();
+        //__debugbreak();
     }
 
-    return Edge % NumberOfEdges;
+    //return Edge % NumberOfEdges;
+    return Edge;
 }
 
 

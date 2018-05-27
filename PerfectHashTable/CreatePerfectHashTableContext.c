@@ -107,7 +107,9 @@ Return Value:
     PTP_POOL Threadpool;
     ULARGE_INTEGER AllocSize;
     ULARGE_INTEGER ObjectNameArraySize;
+    ULARGE_INTEGER ObjectNamePointersArraySize;
     PUNICODE_STRING Name;
+    PPUNICODE_STRING Names;
     PPUNICODE_STRING Prefixes;
     PPERFECT_HASH_TABLE_API Api;
     PPERFECT_HASH_TABLE_CONTEXT Context = NULL;
@@ -164,15 +166,20 @@ Return Value:
     *ContextPointer = NULL;
 
     //
-    // Calculate the size required by the array of object names that will
-    // trail the context structure, filled in by Rtl->CreateRandomObjectNames().
+    // Calculate the size required by the array of UNICODE_STRING structures
+    // that trail the context, then the array of addresses to those structures.
     //
 
     ObjectNameArraySize.QuadPart = (
-        NumberOfContextObjectPrefixes * sizeof(PPUNICODE_STRING)
+        (NumberOfContextObjectPrefixes * sizeof(UNICODE_STRING))
+    );
+
+    ObjectNamePointersArraySize.QuadPart = (
+        (NumberOfContextObjectPrefixes * sizeof(PUNICODE_STRING))
     );
 
     ASSERT(!ObjectNameArraySize.HighPart);
+    ASSERT(!ObjectNamePointersArraySize.HighPart);
 
     //
     // Calculate allocation size required by the structure.
@@ -187,10 +194,11 @@ Return Value:
         sizeof(PERFECT_HASH_TABLE_CONTEXT) +
 
         //
-        // Account for the array of object names trailing the structure.
+        // Account for the object name overhead.
         //
 
-        ObjectNameArraySize.QuadPart
+        ObjectNameArraySize.QuadPart +
+        ObjectNamePointersArraySize.QuadPart
 
     );
 
@@ -225,15 +233,23 @@ Return Value:
     Context->AnyApi = AnyApi;
 
     //
-    // Wire up the array of PUNICODE_STRING pointers that will be filled in by
-    // Rtl->CreateRandomObjectNames().
+    // The context structure will be trailed by an array of UNICODE_STRING
+    // structures that will be filled in by Rtl->CreateRandomObjectNames().
+    // This is then followed by an array of PUNICODE_STRING pointers, with
+    // each one initialized to point to the corresponding offset into the
+    // first array.  This is a bit quirky, but it's required by the Rtl
+    // method (which allows for prefixes to be ignored for certain objects
+    // if desired).
     //
 
     Buffer = (PBYTE)Context;
     Buffer += sizeof(*Context);
-    Context->ObjectNames = (PPUNICODE_STRING)Buffer;
+    Context->ObjectNames = (PUNICODE_STRING)Buffer;
 
     Buffer += ObjectNameArraySize.LowPart;
+    Context->ObjectNamesPointerArray = (PPUNICODE_STRING)Buffer;
+
+    Buffer += ObjectNamePointersArraySize.LowPart;
 
     //
     // If our pointer arithmetic was correct, Buffer should match the base
@@ -245,10 +261,20 @@ Return Value:
     ASSERT(Buffer == ExpectedBuffer);
 
     //
+    // Wire up the pointer array to the object names.
+    //
+
+    Names = Context->ObjectNamesPointerArray;
+
+    for (Index = 0; Index < NumberOfContextObjectPrefixes; Index++) {
+        Names[Index] = Context->ObjectNames + Index;
+    }
+
+    //
     // Create the random object names for our underlying events.
     //
 
-    Prefixes = (PPUNICODE_STRING)ContextObjectPrefixes;
+    Prefixes = (PPUNICODE_STRING)&ContextObjectPrefixes;
 
 
     Success = Rtl->CreateRandomObjectNames(Rtl,
@@ -257,7 +283,7 @@ Return Value:
                                            NumberOfContextObjectPrefixes,
                                            64,
                                            NULL,
-                                           Context->ObjectNames,
+                                           Context->ObjectNamesPointerArray,
                                            Prefixes,
                                            &SizeOfNamesWideBuffer,
                                            &NamesWideBuffer);
@@ -276,13 +302,16 @@ Return Value:
 
     //
     // Calculate the number of event handles based on the first and last event
-    // indicators in the context structure.
+    // indicators in the context structure.  The additional sizeof(HANDLE)
+    // accounts for the fact that we're going from 0-based address offsets
+    // to 1-based counts.
     //
 
     NumberOfEvents = (USHORT)(
+        sizeof(HANDLE) +
         RtlOffsetFromPointer(
-            &Context->FirstEvent,
-            &Context->LastEvent
+            &Context->LastEvent,
+            &Context->FirstEvent
         )
     );
 
@@ -300,13 +329,13 @@ Return Value:
     //
 
     Event = (PHANDLE)&Context->FirstEvent;
-    Name = Context->ObjectNames[0];
+    Name = &Context->ObjectNames[0];
 
     for (Index = 0; Index < NumberOfEvents; Index++, Event++, Name++) {
 
         //
         // We want all of our events to be manual reset, such that they stay
-        // signalled even after they've satisfied a wait.
+        // signaled even after they've satisfied a wait.
         //
 
         BOOLEAN ManualReset = TRUE;
@@ -318,7 +347,7 @@ Return Value:
 
         LastError = GetLastError();
 
-        if (*Event || LastError == ERROR_ALREADY_EXISTS) {
+        if (!*Event || LastError == ERROR_ALREADY_EXISTS) {
 
             //
             // As the event names are random, a last error that indicates the

@@ -256,7 +256,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     //      allocation (provided by the Rtl routine).
     //
 
-    PPUNICODE_STRING ObjectNames;
+    PUNICODE_STRING ObjectNames;
+    PPUNICODE_STRING ObjectNamesPointerArray;
     PWSTR ObjectNamesWideBuffer;
     ULONG SizeOfObjectNamesWideBuffer;
 

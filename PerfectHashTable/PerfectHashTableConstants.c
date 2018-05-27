@@ -28,12 +28,23 @@ const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[] = {
 // Array of UNICODE_STRING event prefix names used by the runtime context.
 //
 
+const UNICODE_STRING ContextShutdownEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_ShutdownEvent_");
 
-const UNICODE_STRING ContextObjectPrefixes[] = {
-    RTL_CONSTANT_STRING(L"PerfectHashTableContext_ShutdownEvent_"),
-    RTL_CONSTANT_STRING(L"PerfectHashTableContext_SucceededEvent_"),
-    RTL_CONSTANT_STRING(L"PerfectHashTableContext_FailedEvent_"),
-    RTL_CONSTANT_STRING(L"PerfectHashTableContext_CompletedEvent_"),
+const UNICODE_STRING ContextSucceededEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_SucceededEvent_");
+
+const UNICODE_STRING ContextFailedEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_FailedEvent_");
+
+const UNICODE_STRING ContextCompletedEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_CompletedEvent_");
+
+const PCUNICODE_STRING ContextObjectPrefixes[] = {
+    &ContextShutdownEventPrefix,
+    &ContextSucceededEventPrefix,
+    &ContextFailedEventPrefix,
+    &ContextCompletedEventPrefix,
 };
 
 //

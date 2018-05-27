@@ -54,6 +54,7 @@ Return Value:
     PBYTE Buffer;
     BOOLEAN Success;
     USHORT PageSize;
+    USHORT PageShift;
     ULONG_PTR LastPage;
     ULONG_PTR ThisPage;
     PVOID BaseAddress = NULL;
@@ -281,10 +282,14 @@ Return Value:
     //
 
     PageSize = PAGE_SIZE;
+    PageShift = (USHORT)TrailingZeros(PageSize);
     NumberOfGraphs = (USHORT)Context->MaximumConcurrency;
-    NumberOfPagesPerGraph = ROUND_TO_PAGES(AllocSize.LowPart);
+    NumberOfPagesPerGraph = ROUND_TO_PAGES(AllocSize.LowPart) >> PageShift;
     NumberOfGuardPages = (USHORT)Context->MaximumConcurrency;
-    TotalNumberOfPages = NumberOfPagesPerGraph + NumberOfGuardPages;
+    TotalNumberOfPages = (
+        (NumberOfGraphs * NumberOfPagesPerGraph) +
+        NumberOfGuardPages
+    );
     GraphSizeInBytesIncludingGuardPage = (
         (NumberOfPagesPerGraph * PageSize) + PageSize
     );
@@ -293,6 +298,8 @@ Return Value:
     // Create multiple buffers separated by guard pages using a single call
     // to VirtualAllocEx().
     //
+
+    ProcessHandle = NULL;
 
     Success = Rtl->CreateMultipleBuffers(Rtl,
                                          &ProcessHandle,
@@ -415,20 +422,27 @@ Return Value:
         // write to it in a structured exception handler that will catch the
         // access violation trap.
         //
+        // N.B. We only do this if we're not actively being debugged, as the
+        //      traps get dispatched to the debugger engine first as part of
+        //      the "first-pass" handling logic of the kernel.
+        //
 
-        CaughtException = FALSE;
+        if (!IsDebuggerPresent()) {
 
-        TRY_PROBE_MEMORY {
+            CaughtException = FALSE;
 
-            *Unusable = 1;
+            TRY_PROBE_MEMORY{
 
-        } CATCH_EXCEPTION_ACCESS_VIOLATION {
+                *Unusable = 1;
 
-            CaughtException = TRUE;
+            } CATCH_EXCEPTION_ACCESS_VIOLATION{
 
+                CaughtException = TRUE;
+
+            }
+
+            ASSERT(CaughtException);
         }
-
-        ASSERT(CaughtException);
 
         //
         // Guard page is working properly.  Push the graph onto the context's
@@ -700,7 +714,6 @@ InitializeGraph(
     return;
 }
 
-_Use_decl_annotations_
 BOOLEAN
 ShouldWeContinueTryingToSolveGraph(
     PPERFECT_HASH_TABLE_CONTEXT Context
@@ -714,6 +727,15 @@ ShouldWeContinueTryingToSolveGraph(
         Context->CompletedEvent,
     };
     USHORT NumberOfEvents = ARRAYSIZE(Events);
+
+    //
+    // Fast-path exit: if the finished count is not 0, then someone has already
+    // solved the solution, and we don't need to wait on any of the events.
+    //
+
+    if (Context->FinishedCount > 0) {
+        return FALSE;
+    }
 
     //
     // N.B. We should probably switch this to simply use volatile field of the
@@ -983,7 +1005,7 @@ Return Value:
     while (TRUE) {
 
         Edge1 = GetFirstEdgeDebug(Graph, Edge);
-        RegisterEdgeDeletion(Graph, Edge1);
+        RegisterEdgeDeletion(Graph, Edge);
 
         //
         // Find the other vertex the edge connected.
@@ -1428,6 +1450,21 @@ SolveGraph(
     }
 
     //
+    // We created an acyclic graph.  Increment the finished count; if the value
+    // is 1, we're the winning thread.  Continue with graph assignment.
+    // Otherwise, just return TRUE immediately and let the other thread win.
+    //
+
+    if (InterlockedIncrement64(&Context->FinishedCount) != 1) {
+
+        //
+        // Some other thread beat us.  Nothing left to do.
+        //
+
+        return TRUE;
+    }
+
+    //
     // We created an acyclic graph.  Perform the assignment step.
     //
 
@@ -1436,6 +1473,17 @@ SolveGraph(
     //
     // XXX TODO: persist the graph.
     //
+
+
+    //
+    // Set the succeeded and completed events, then submit the finished work
+    // item to the threadpool, such that the necessary cleanups can take place
+    // once all our worker threads have completed.
+    //
+
+    SetEvent(Context->SucceededEvent);
+    SetEvent(Context->CompletedEvent);
+    SubmitThreadpoolWork(Context->FinishedWork);
 
     return TRUE;
 }
