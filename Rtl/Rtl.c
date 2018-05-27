@@ -508,7 +508,7 @@ Arguments:
         Rtl->EnableLockMemoryPrivilege()).
 
     NumberOfBuffers - Supplies the number of individual buffers being serviced
-        by this request.  This will also reflect the number of implict guard
+        by this request.  This will also reflect the number of implicit guard
         pages included in the allocation.
 
     NumberOfPagesPerBuffer - Supplies the number of pages to assign for each
@@ -570,7 +570,7 @@ Return Value:
     // Verify page size is either 4KB or 2MB.
     //
 
-    if (PageSize != 4096 || PageSize != (1 << 21)) {
+    if (PageSize != 4096 && PageSize != (1 << 21)) {
         return FALSE;
     }
 
@@ -616,7 +616,16 @@ Return Value:
     }
 
     TotalNumberOfPages.LongPart = (
-        ((ULONG)NumberOfPagesPerBuffer) +
+
+        //
+        // Account for the buffer related pages.
+        //
+        ((ULONG)NumberOfPagesPerBuffer * (ULONG)NumberOfBuffers) +
+
+        //
+        // Account for the guard pagees; one for each buffer.
+        //
+
         ((ULONG)NumberOfBuffers)
     );
 
@@ -655,6 +664,7 @@ Return Value:
                                  ProtectionFlags);
 
     if (!Buffer) {
+        ULONG LastError = GetLastError();
         return FALSE;
     }
 
