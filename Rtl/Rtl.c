@@ -623,7 +623,7 @@ Return Value:
         ((ULONG)NumberOfPagesPerBuffer * (ULONG)NumberOfBuffers) +
 
         //
-        // Account for the guard pagees; one for each buffer.
+        // Account for the guard pages; one for each buffer.
         //
 
         ((ULONG)NumberOfBuffers)
