@@ -10160,6 +10160,7 @@ RTL_API APPEND_CHAR_TO_CHAR_BUFFER AppendCharToCharBuffer;
 typedef struct _RTL_BOOTSTRAP {
     PINITIALIZE_RTL InitializeRtl;
     PINITIALIZE_ALLOCATOR InitializeHeapAllocator;
+    PRTL_INITIALIZE_HEAP_ALLOCATOR_EX InitializeHeapAllocatorEx;
     PDESTROY_ALLOCATOR DestroyHeapAllocator;
     PLOAD_SYMBOLS LoadSymbols;
 } RTL_BOOTSTRAP;
@@ -10182,6 +10183,7 @@ BootstrapRtl(
     CONST PCSTR Names[] = {
         "InitializeRtl",
         "RtlHeapAllocatorInitialize",
+        "RtlHeapAllocatorInitializeEx",
         "RtlHeapAllocatorDestroy",
         "LoadSymbols",
     };

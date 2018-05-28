@@ -1,6 +1,7 @@
 LIBRARY Rtl
 EXPORTS
     RtlHeapAllocatorInitialize
+    RtlHeapAllocatorInitializeEx
     RtlHeapAllocatorDestroy
     AppendIntegerToCharBufferEx
     AppendCStrToCharBuffer
