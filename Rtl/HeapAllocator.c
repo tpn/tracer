@@ -25,11 +25,7 @@ RtlHeapAllocatorMalloc(
     SIZE_T Size
     )
 {
-    return HeapAlloc(
-        ContextToHeapHandle(Context),
-        HEAP_ZERO_MEMORY,
-        Size
-    );
+    return HeapAlloc(ContextToHeapHandle(Context), 0, Size);
 }
 
 _Use_decl_annotations_
@@ -599,7 +595,7 @@ RtlHeapAllocatorInitialize(
 
 _Use_decl_annotations_
 BOOL
-InitializeHeapAllocatorEx(
+RtlHeapAllocatorInitializeEx(
     PALLOCATOR Allocator,
     DWORD HeapCreateOptions,
     SIZE_T InitialSize,
