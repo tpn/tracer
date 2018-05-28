@@ -630,18 +630,10 @@ Return Value:
     );
 
     //
-    // Verify the number of pages hasn't overflowed (i.e. exceeds max USHORT).
-    //
-
-    if (TotalNumberOfPages.HighPart) {
-        return FALSE;
-    }
-
-    //
     // Calculate the total allocation size required.
     //
 
-    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LowPart * PageSize;
+    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LongPart * PageSize;
 
     ProtectionFlags = PAGE_READWRITE;
     if (ARGUMENT_PRESENT(AdditionalProtectionFlags)) {
