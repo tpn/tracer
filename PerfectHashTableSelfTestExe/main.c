@@ -64,7 +64,12 @@ mainCRTStartup()
         goto Error;
     }
 
-    if (!Bootstrap.InitializeHeapAllocator(&GlobalAllocator)) {
+    Success = Bootstrap.InitializeHeapAllocatorEx(&GlobalAllocator,
+                                                  HEAP_GENERATE_EXCEPTIONS,
+                                                  0,
+                                                  0);
+
+    if (!Success) {
         ExitCode = 1;
         goto Error;
     }
