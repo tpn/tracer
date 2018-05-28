@@ -3887,7 +3887,7 @@ Return Value:
     // to get the exact conversion right.
     //
 
-    SizeOfWideBase64BufferInBytes = (
+    SizeOfWideBase64BufferInBytes = ALIGN_UP_POINTER(
         NumberOfNames *
         LengthOfNameInChars *
         sizeof(WCHAR) *
