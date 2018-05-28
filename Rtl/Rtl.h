@@ -6722,7 +6722,52 @@ IsAligned(
 
 #define IsPageAligned(Address)  IsAligned4096(Address)
 
-#define IsPowerOf2(X) ((X) > 0 && (((X) & ((X)-1)) == 0))
+FORCEINLINE
+BOOLEAN
+IsPowerOf2(
+    _In_ ULONGLONG Value
+    )
+{
+    if (Value <= 1) {
+        return FALSE;
+    }
+
+    return ((Value & (Value - 1)) == 0);
+}
+
+FORCEINLINE
+ULONGLONG
+RoundUpPowerOf2(
+    _In_ ULONG Input
+    )
+{
+    if (Input <= 1) {
+        return 2;
+    }
+
+    if (IsPowerOf2(Input)) {
+        return Input;
+    }
+
+    return 1ULL << (32 - LeadingZeros(Input - 1));
+}
+
+FORCEINLINE
+ULONGLONG
+RoundUpNextPowerOf2(
+    _In_ ULONG Input
+    )
+{
+    if (Input <= 1) {
+        return 2;
+    }
+
+    if (IsPowerOf2(Input)) {
+        Input += 1;
+    }
+
+    return 1ULL << (32 - LeadingZeros(Input - 1));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // SIMD Utilities
