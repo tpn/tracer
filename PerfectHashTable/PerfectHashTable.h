@@ -78,21 +78,21 @@ typedef const PERFECT_HASH_TABLE *PCPERFECT_HASH_TABLE;
 // use for creating the perfect hash table.
 //
 
-typedef enum _PERFECT_HASH_TABLE_ALGORITHM {
+typedef enum _PERFECT_HASH_TABLE_ALGORITHM_ID {
 
     //
     // Explicitly define a null algorithm to take the 0-index slot.
-    // This enum validation easier.
+    // This makes enum validation easier.
     //
 
-    PerfectHashTableNullAlgorithm = 0,
+    PerfectHashTableNullAlgorithmId = 0,
 
     //
     // Begin valid algorithms.
     //
 
-    PerfectHashTableDefaultAlgorithm = 1,
-    PerfectHashTableChm01Algorithm = 1,
+    PerfectHashTableDefaultAlgorithmId = 1,
+    PerfectHashTableChm01AlgorithmId = 1,
 
     //
     // End valid algorithms.
@@ -102,10 +102,10 @@ typedef enum _PERFECT_HASH_TABLE_ALGORITHM {
     // N.B. Keep the next value last.
     //
 
-    PerfectHashTableInvalidAlgorithm,
+    PerfectHashTableInvalidAlgorithmId,
 
-} PERFECT_HASH_TABLE_ALGORITHM;
-typedef PERFECT_HASH_TABLE_ALGORITHM *PPERFECT_HASH_TABLE_ALGORITHM;
+} PERFECT_HASH_TABLE_ALGORITHM_ID;
+typedef PERFECT_HASH_TABLE_ALGORITHM_ID *PPERFECT_HASH_TABLE_ALGORITHM_ID;
 
 //
 // Provide a simple inline algorithm validation routine.
@@ -113,13 +113,62 @@ typedef PERFECT_HASH_TABLE_ALGORITHM *PPERFECT_HASH_TABLE_ALGORITHM;
 
 FORCEINLINE
 BOOLEAN
-IsValidPerfectHashTableAlgorithm(
-    _In_ PERFECT_HASH_TABLE_ALGORITHM Algorithm
+IsValidPerfectHashTableAlgorithmId(
+    _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId
     )
 {
     return (
-        Algorithm > PerfectHashTableNullAlgorithm &&
-        Algorithm < PerfectHashTableInvalidAlgorithm
+        AlgorithmId > PerfectHashTableNullAlgorithmId &&
+        AlgorithmId < PerfectHashTableInvalidAlgorithmId
+    );
+}
+
+//
+// Define an enumeration for identifying which hash function variant to use.
+//
+
+typedef enum _PERFECT_HASH_TABLE_HASH_FUNCTION_ID {
+
+    //
+    // Explicitly define a null algorithm to take the 0-index slot.
+    // This makes enum validation easier.
+    //
+
+    PerfectHashTableNullHashFunctionId = 0,
+
+    //
+    // Begin valid hash functions.
+    //
+
+    PerfectHashTableDefaultHashFunctionId = 1,
+
+    //
+    // End valid hash functions.
+    //
+
+    //
+    // N.B. Keep the next value last.
+    //
+
+    PerfectHashTableInvalidHashFunctionId,
+
+} PERFECT_HASH_TABLE_HASH_FUNCTION_ID;
+typedef PERFECT_HASH_TABLE_HASH_FUNCTION_ID
+      *PPERFECT_HASH_TABLE_HASH_FUNCTION_ID;
+
+//
+// Provide a simple inline hash function validation routine.
+//
+
+FORCEINLINE
+BOOLEAN
+IsValidPerfectHashTableHashFunctionId(
+    _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId
+    )
+{
+    return (
+        HashFunctionId > PerfectHashTableNullHashFunctionId &&
+        HashFunctionId < PerfectHashTableInvalidHashFunctionId
     );
 }
 
@@ -190,7 +239,8 @@ BOOLEAN
     _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
-    _In_ PERFECT_HASH_TABLE_ALGORITHM Algorithm,
+    _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
     _In_opt_ PCUNICODE_STRING HashTablePath,
     _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable

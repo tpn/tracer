@@ -23,7 +23,8 @@ CreatePerfectHashTable(
     PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PPERFECT_HASH_TABLE_CONTEXT Context,
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
-    PERFECT_HASH_TABLE_ALGORITHM Algorithm,
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     PPERFECT_HASH_TABLE_KEYS Keys,
     PCUNICODE_STRING HashTablePath,
     PPERFECT_HASH_TABLE *PerfectHashTablePointer
@@ -51,7 +52,9 @@ Arguments:
     CreateFlags - Supplies creation flags that affect the underlying behavior
         of the perfect hash table creation.
 
-    Algorithm - Supplies the algorithm to use.
+    AlgorithmId - Supplies the algorithm to use.
+
+    HashFunctionId - Supplies the hash function to use.
 
     Keys - Supplies a pointer to a PERFECT_HASH_TABLE_KEYS structure obtained
         from LoadPerfectHashTableKeys().
@@ -127,7 +130,11 @@ Return Value:
         return FALSE;
     }
 
-    if (!IsValidPerfectHashTableAlgorithm(Algorithm)) {
+    if (!IsValidPerfectHashTableAlgorithmId(AlgorithmId)) {
+        return FALSE;
+    }
+
+    if (!IsValidPerfectHashTableHashFunctionId(HashFunctionId)) {
         return FALSE;
     }
 
@@ -191,7 +198,7 @@ Return Value:
     //
 
     Table = (PPERFECT_HASH_TABLE)(
-        Allocator->Calloc(Allocator,
+        Allocator->Calloc(Allocator->Context,
                           1,
                           AllocSize.LowPart)
     );
@@ -212,13 +219,15 @@ Return Value:
     Table->AnyApi = AnyApi;
     Table->Context = Context;
     Context->Table = Table;
+    Context->AlgorithmId = AlgorithmId;
+    Context->HashFunctionId = HashFunctionId;
 
     //
     // Common initialization is complete, dispatch remaining work to the
     // algorithm's creation routine.
     //
 
-    Success = CreationRoutines[Algorithm](Table);
+    Success = CreationRoutines[AlgorithmId](Table);
     if (!Success) {
         goto Error;
     }

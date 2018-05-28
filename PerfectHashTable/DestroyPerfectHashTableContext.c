@@ -170,7 +170,7 @@ Return Value:
     // Free the underlying memory and clear the caller's pointer.
     //
 
-    Allocator->FreePointer(Allocator, ContextPointer);
+    Allocator->FreePointer(Allocator->Context, ContextPointer);
 
     Success = TRUE;
 

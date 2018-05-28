@@ -276,7 +276,6 @@ Return Value:
 
     Prefixes = (PPUNICODE_STRING)&ContextObjectPrefixes;
 
-
     Success = Rtl->CreateRandomObjectNames(Rtl,
                                            Allocator,
                                            Allocator,
@@ -641,13 +640,6 @@ Return Value:
     Context = (PPERFECT_HASH_TABLE_CONTEXT)Ctx;
 
     //
-    // Signal the shutdown and succeeded events.
-    //
-
-    SetEvent(Context->ShutdownEvent);
-    SetEvent(Context->SucceededEvent);
-
-    //
     // Cancel the main thread work group members.  This should block until all
     // the workers have returned.
     //
@@ -666,6 +658,12 @@ Return Value:
     // Set the completed event and return.
     //
 
+    //
+    // Signal the shutdown, succeeded and completed events.
+    //
+
+    SetEvent(Context->ShutdownEvent);
+    SetEvent(Context->SucceededEvent);
     SetEvent(Context->CompletedEvent);
 
     return;

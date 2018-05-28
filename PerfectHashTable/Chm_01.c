@@ -23,6 +23,7 @@ Abstract:
 --*/
 
 #include "stdafx.h"
+#include "Chm_01.h"
 
 _Use_decl_annotations_
 BOOLEAN
@@ -67,8 +68,10 @@ Return Value:
     USHORT NumberOfGraphs;
     USHORT NumberOfPagesPerGraph;
     USHORT NumberOfGuardPages;
-    USHORT TotalNumberOfPages;
+    ULONG TotalNumberOfPages;
     USHORT NumberOfBitmaps;
+    PGRAPH_DIMENSIONS Dim;
+    PSLIST_ENTRY ListEntry;
     ULONGLONG NextSizeInBytes;
     ULONGLONG PrevSizeInBytes;
     ULONGLONG FirstSizeInBytes;
@@ -85,10 +88,10 @@ Return Value:
     ULARGE_INTEGER TotalNumberOfEdges;
     ULARGE_INTEGER DeletedEdgesBitmapBufferSizeInBytes;
     ULARGE_INTEGER VisitedVerticesBitmapBufferSizeInBytes;
+    ULARGE_INTEGER AssignedBitmapBufferSizeInBytes;
     PPERFECT_HASH_TABLE_CONTEXT Context = Table->Context;
     HANDLE Events[4];
     USHORT NumberOfEvents = ARRAYSIZE(Events);
-
 
     //
     // Validate arguments.
@@ -177,6 +180,19 @@ Return Value:
     ASSERT(!VisitedVerticesBitmapBufferSizeInBytes.HighPart);
 
     //
+    // Calculate the size required for the AssignedBitmap bitmap buffer.  One
+    // bit is used per NumberOfEdges.  Convert the bits into bytes by shifting
+    // right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    //
+
+    AssignedBitmapBufferSizeInBytes.QuadPart = (
+        ALIGN_UP((NumberOfEdges.QuadPart >> 3), 16)
+    );
+
+    ASSERT(!AssignedBitmapBufferSizeInBytes.HighPart);
+
+
+    //
     // Calculate the sizes required for each of the arrays.  We collect them
     // into independent variables as it makes carving up the allocated buffer
     // easier down the track.
@@ -257,7 +273,13 @@ Return Value:
         // Account for the size of the bitmap buffer for Graph->VisitedVertices.
         //
 
-        VisitedVerticesBitmapBufferSizeInBytes.QuadPart
+        VisitedVerticesBitmapBufferSizeInBytes.QuadPart +
+
+        //
+        // Account for the size of the bitmap buffer for Graph->AssignedBitmap.
+        //
+
+        AssignedBitmapBufferSizeInBytes.QuadPart
 
     );
 
@@ -267,7 +289,7 @@ Return Value:
     // of bitmaps accounted for above should match this number.
     //
 
-    NumberOfBitmaps = 2;
+    NumberOfBitmaps = 3;
 
     //
     // Sanity check the size hasn't overflowed.
@@ -313,6 +335,7 @@ Return Value:
                                          &BaseAddress);
 
     if (!Success) {
+        __debugbreak();
         return FALSE;
     }
 
@@ -364,13 +387,34 @@ Return Value:
         VisitedVerticesBitmapBufferSizeInBytes.QuadPart
     );
 
+    Info.AssignedBitmapBufferSizeInBytes = (
+        AssignedBitmapBufferSizeInBytes.QuadPart
+    );
+
     //
     // Copy the dimensions over.
     //
 
-    Info.NumberOfEdges = NumberOfEdges.LowPart;
-    Info.TotalNumberOfEdges = TotalNumberOfEdges.LowPart;
-    Info.NumberOfVertices = NumberOfVertices.LowPart;
+    Dim = &Info.Dimensions;
+    Dim->NumberOfEdges = NumberOfEdges.LowPart;
+    Dim->TotalNumberOfEdges = TotalNumberOfEdges.LowPart;
+    Dim->NumberOfVertices = NumberOfVertices.LowPart;
+
+    Dim->NumberOfEdgesPowerOf2Exponent = (BYTE)(
+        TrailingZeros64(RoundUpPowerOf2(NumberOfEdges.LowPart))
+    );
+
+    Dim->NumberOfEdgesNextPowerOf2Exponent = (BYTE)(
+        TrailingZeros64(RoundUpNextPowerOf2(NumberOfEdges.LowPart))
+    );
+
+    Dim->NumberOfVerticesPowerOf2Exponent = (BYTE)(
+        TrailingZeros64(RoundUpPowerOf2(NumberOfVertices.LowPart))
+    );
+
+    Dim->NumberOfVerticesNextPowerOf2Exponent = (BYTE)(
+        TrailingZeros64(RoundUpNextPowerOf2(NumberOfVertices.LowPart))
+    );
 
     //
     // Set the context work callback to our worker routine, and the algo
@@ -493,6 +537,28 @@ Return Value:
 
     Success = (Context->FinishedCount > 0);
 
+    ASSERT(Success);
+
+    if (!Success) {
+        goto End;
+    }
+
+    //
+    // Pop the winning graph off the finished list head.
+    //
+
+    ListEntry = InterlockedPopEntrySList(&Context->FinishedListHead);
+    ASSERT(ListEntry);
+
+    Graph = CONTAINING_RECORD(ListEntry, GRAPH, ListEntry);
+
+    Success = VerifySolvedGraph(Graph);
+    ASSERT(Success);
+
+    //
+    // XXX TODO: persist this graph.
+    //
+
     //
     // Destroy the buffer we created earlier.
     //
@@ -500,6 +566,8 @@ Return Value:
     //      the underlying buffer via Rtl->DestroyBuffer(), as only a single
     //      VirtualAllocEx() call was dispatched for the entire buffer.
     //
+
+End:
 
     Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
 
@@ -520,6 +588,7 @@ ProcessGraphCallbackChm01(
 {
     PRTL Rtl;
     PGRAPH Graph;
+    ULONG Attempt = 0;
     PGRAPH_INFO Info;
     PFILL_PAGES FillPages;
 
@@ -552,6 +621,8 @@ ProcessGraphCallbackChm01(
 
         InitializeGraph(Info, Graph);
 
+        Graph->ThreadAttempt = ++Attempt;
+
         if (SolveGraph(Graph)) {
 
             //
@@ -579,6 +650,27 @@ InitializeGraph(
     PGRAPH_INFO Info,
     PGRAPH Graph
     )
+/*++
+
+Routine Description:
+
+    Initialize a graph structure given the provided information.  This routine
+    is called at the top of each worker thread's infinite loop around the solve
+    graph function.  It is responsible for resetting the block of memory for the
+    graph back to its initial state, including generation of two new random seed
+    values that can be used by the hash function when generating vertices.
+
+Arguments:
+
+    Info - Supplies a pointer to the graph info to use for initialization.
+
+    Graph - Supplies a pointer to the graph to be initialized.
+
+Return Value:
+
+    None.
+
+--*/
 {
     ULONG Index;
     PBYTE Buffer;
@@ -586,10 +678,10 @@ InitializeGraph(
     USHORT BitmapCount = 0;
 
     //
-    // Obtain new seed data.
+    // Obtain new seed data for the first two seeds.
     //
 
-    GetRandomSeedsBlocking(&Graph->Seeds);
+    GetRandomSeedsBlocking(&Graph->Seeds12);
 
     //
     // Carve out the backing memory structures for arrays and bitmap buffers.
@@ -638,11 +730,19 @@ InitializeGraph(
     Buffer += Info->AssignedSizeInBytes;
 
     //
+    // Replicate the graph dimensions.
+    //
+
+    CopyMemory(&Graph->Dimensions,
+               &Info->Dimensions,
+               sizeof(Graph->Dimensions));
+
+    //
     // Carve out the bitmap buffer for Graph->DeletedEdges.
     //
 
     Graph->DeletedEdges.Buffer = (PULONG)Buffer;
-    Graph->DeletedEdges.SizeOfBitMap = Info->TotalNumberOfEdges;
+    Graph->DeletedEdges.SizeOfBitMap = Graph->TotalNumberOfEdges;
     Buffer += Info->DeletedEdgesBitmapBufferSizeInBytes;
     BitmapCount++;
 
@@ -651,8 +751,17 @@ InitializeGraph(
     //
 
     Graph->VisitedVertices.Buffer = (PULONG)Buffer;
-    Graph->VisitedVertices.SizeOfBitMap = Info->NumberOfVertices;
+    Graph->VisitedVertices.SizeOfBitMap = Graph->NumberOfVertices;
     Buffer += Info->VisitedVerticesBitmapBufferSizeInBytes;
+    BitmapCount++;
+
+    //
+    // Carve out the bitmap buffer for Graph->AssignedBitmap.
+    //
+
+    Graph->AssignedBitmap.Buffer = (PULONG)Buffer;
+    Graph->AssignedBitmap.SizeOfBitMap = Graph->NumberOfEdges;
+    Buffer += Info->AssignedBitmapBufferSizeInBytes;
     BitmapCount++;
 
     //
@@ -680,14 +789,6 @@ InitializeGraph(
     Graph->Info = Info;
 
     //
-    // Replicate the graph dimensions.
-    //
-
-    Graph->NumberOfEdges = Info->NumberOfEdges;
-    Graph->TotalNumberOfEdges = Info->TotalNumberOfEdges;
-    Graph->NumberOfVertices = Info->NumberOfVertices;
-
-    //
     // Set the context.
     //
 
@@ -698,14 +799,20 @@ InitializeGraph(
     // all to -1.  (Can't we use 0 here?  This seems unnecessarily inefficient.)
     //
 
-    for (Index = 0; Index < Info->NumberOfVertices; Index++) {
+    for (Index = 0; Index < Graph->NumberOfVertices; Index++) {
         Graph->First[Index] = EMPTY;
     }
 
-    for (Index = 0; Index < Info->TotalNumberOfEdges; Index++) {
+    for (Index = 0; Index < Graph->TotalNumberOfEdges; Index++) {
         Graph->Next[Index] = EMPTY;
         Graph->Edges[Index] = EMPTY;
     }
+
+    //
+    // Obtain seed data for the last two seeds.
+    //
+
+    GetRandomSeedsBlocking(&Graph->Seeds34);
 
     //
     // Initialization complete!
@@ -788,9 +895,7 @@ GRAPH_ADD_EDGE GraphAddEdge;
 GRAPH_ITERATOR GraphIterator;
 GRAPH_TRAVERSE GraphTraverse;
 IS_GRAPH_ACYCLIC IsGraphAcyclic;
-GRAPH_DELETE_EDGE GraphDeleteEdge;
 GRAPH_NEXT_NEIGHBOR GraphNextNeighbor;
-GRAPH_CONTAINS_EDGE GraphContainsEdge;
 GRAPH_FIND_DEGREE1_EDGE GraphFindDegree1Edge;
 GRAPH_CYCLIC_DELETE_EDGE GraphCyclicDeleteEdge;
 
@@ -802,6 +907,7 @@ _Use_decl_annotations_
 VOID
 GraphAddEdge(
     PGRAPH Graph,
+    EDGE Edge,
     VERTEX Vertex1,
     VERTEX Vertex2
     )
@@ -809,13 +915,13 @@ GraphAddEdge(
 
 Routine Description:
 
-    This routine adds an edge to the hypergraph for two vertices.  The current
-    edge is determined via Graph->CurrentEdge, which is also incremented as part
-    of this routine.
+    This routine adds an edge to the hypergraph for two vertices.
 
 Arguments:
 
     Graph - Supplies a pointer to the graph for which the edge is to be added.
+
+    Edge - Supplies the edge to add to the graph.
 
     Vertex1 - Supplies the first vertex.
 
@@ -830,7 +936,7 @@ Return Value:
     EDGE Edge1;
     EDGE Edge2;
 
-    Edge1 = Graph->CurrentEdge;
+    Edge1 = Edge;
     Edge2 = Edge1 + Graph->NumberOfEdges;
 
 #ifdef _DEBUG
@@ -847,8 +953,6 @@ Return Value:
     Graph->Next[Edge2] = Graph->First[Vertex2];
     Graph->First[Vertex2] = Edge2;
     Graph->Edges[Edge2] = Vertex1;
-
-    Graph->CurrentEdge++;
 }
 
 _Use_decl_annotations_
@@ -886,7 +990,7 @@ Return Value:
 --*/
 {
     EDGE Edge;
-    EDGE Edge1;
+    EDGE AbsEdge;
     BOOLEAN Found = FALSE;
 
     //
@@ -903,11 +1007,13 @@ Return Value:
         return FALSE;
     }
 
+    AbsEdge = AbsoluteEdge(Graph, Edge, 0);
+
     //
     // If the edge has not been deleted, capture it.
     //
 
-    if (!IsDeletedEdge(Graph, Edge)) {
+    if (!IsDeletedEdge(Graph, AbsEdge)) {
         Found = TRUE;
         *EdgePointer = Edge;
     }
@@ -926,13 +1032,18 @@ Return Value:
             break;
         }
 
-        Edge1 = GetFirstEdgeDebug(Graph, Edge);
+        AbsEdge = AbsoluteEdge(Graph, Edge, 0);
 
-        if (IsDeletedEdge(Graph, Edge1)) {
+        if (IsDeletedEdge(Graph, AbsEdge)) {
             continue;
         }
 
         if (Found) {
+
+            //
+            // If we've already found an edge by this point, we're not 1 degree.
+            //
+
             return FALSE;
         }
 
@@ -974,9 +1085,8 @@ Return Value:
 
 --*/
 {
-    EDGE Edge;
-    EDGE Edge1;
-    EDGE Edge2;
+    EDGE Edge = 0;
+    EDGE AbsEdge;
     VERTEX Vertex1;
     VERTEX Vertex2;
     BOOLEAN IsDegree1;
@@ -1004,28 +1114,46 @@ Return Value:
 
     while (TRUE) {
 
-        Edge1 = GetFirstEdgeDebug(Graph, Edge);
-        RegisterEdgeDeletion(Graph, Edge);
+        //
+        // Obtain the absolute edge and register it as deleted.
+        //
+
+        AbsEdge = AbsoluteEdge(Graph, Edge, 0);
+        RegisterEdgeDeletion(Graph, AbsEdge);
 
         //
         // Find the other vertex the edge connected.
         //
 
-        Vertex2 = Graph->Edges[Edge1];
+        Vertex2 = Graph->Edges[AbsEdge];
 
-        if (Vertex1 == Vertex2) {
-            Edge2 = GetSecondEdgeDebug(Graph, Edge);
-            Vertex2 = Graph->Edges[Edge2];
+        if (Vertex2 == Vertex1) {
+
+            //
+            // We had the first vertex; get the other one.
+            //
+
+            AbsEdge = AbsoluteEdge(Graph, Edge, 1);
+            Vertex2 = Graph->Edges[AbsEdge];
         }
+
+        //
+        // Determine if the other vertex is degree 1.
+        //
 
         IsDegree1 = GraphFindDegree1Edge(Graph, Vertex2, &Edge);
 
         if (!IsDegree1) {
+
+            //
+            // Other vertex isn't degree 1, we can stop the loop.
+            //
+
             break;
         }
 
         //
-        // This vertex is also degree 1, so continue the inspection.
+        // This vertex is also degree 1, so continue the deletion.
         //
 
         Vertex1 = Vertex2;
@@ -1055,8 +1183,10 @@ Return Value:
 
 --*/
 {
+    EDGE Edge;
     VERTEX Vertex;
     BOOLEAN IsAcyclic;
+    BOOLEAN IsAcyclicSlow;
     ULONG NumberOfEdges;
     ULONG NumberOfVertices;
     ULONG NumberOfEdgesDeleted;
@@ -1104,6 +1234,30 @@ Return Value:
     IsAcyclic = (NumberOfEdges == NumberOfEdgesDeleted);
 
     //
+    // Temporary slow version to verify our assumption about counting bits is
+    // correct.
+    //
+
+    IsAcyclicSlow = TRUE;
+
+    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+        if (!IsDeletedEdge(Graph, Edge)) {
+            IsAcyclicSlow = FALSE;
+            break;
+        }
+    }
+
+    ASSERT(IsAcyclic == IsAcyclicSlow);
+
+    //
+    // Temporary assert to determine if the number of edges deleted will always
+    // meet our deleted edge count.  (If so, we can just test this value,
+    // instead of having to count the bitmap bits.)
+    //
+
+    ASSERT(NumberOfEdgesDeleted == Graph->DeletedEdgeCount);
+
+    //
     // Make a note that we're acyclic if applicable in the graph's flags.
     // This is checked by GraphAssign() to ensure we only operate on acyclic
     // graphs.
@@ -1115,6 +1269,7 @@ Return Value:
 
     return IsAcyclic;
 }
+
 
 _Use_decl_annotations_
 VOID
@@ -1301,25 +1456,44 @@ Return Value:
 {
     EDGE Edge;
     EDGE EdgeId;
+    ULONG Iterations = 0;
+
+    //
+    // Obtain the first edge for this vertex from the Graph->First array.
+    // Subsequent edges are obtained from the Graph->Next array.
+    //
 
     Edge = Graph->First[Vertex1];
 
     ASSERT(!IsEmpty(Edge));
 
+    //
+    // Find the first ID of the edge where the first part contains vertex 1 and
+    // the second part contains vertex 2.  This is achieved via the check edge
+    // call.  If this returns TRUE, the resulting absolute edge is our ID.
+    //
+
     if (GraphCheckEdge(Graph, Edge, Vertex1, Vertex2)) {
 
-        EdgeId = GetFirstEdgeDebug(Graph, Edge);
+        EdgeId = AbsoluteEdge(Graph, Edge, 0);
 
     } else {
 
+        //
+        // Continue looking for an edge in the graph that satisfies the edge
+        // check condition.  Track the number of iterations for debugging
+        // purposes.
+        //
+
         do {
 
+            Iterations++;
             Edge = Graph->Next[Edge];
             ASSERT(!IsEmpty(Edge));
 
         } while (!GraphCheckEdge(Graph, Edge, Vertex1, Vertex2));
 
-        EdgeId = GetFirstEdgeDebug(Graph, Edge);
+        EdgeId = AbsoluteEdge(Graph, Edge, 0);
     }
 
     return EdgeId;
@@ -1335,7 +1509,9 @@ GraphTraverse(
 
 Routine Description:
 
-    This routine is called as part of graph assignment.
+    This routine is called as part of graph assignment.  It is responsible for
+    doing a depth-first traversal of the graph and obtaining edge IDs that can
+    be saved in the Graph->Assigned array.
 
 Arguments:
 
@@ -1349,9 +1525,9 @@ Return Value:
 
 --*/
 {
-    ULONG Id1;
-    ULONG Id2;
-    ULONG Id3;
+    ULONG EdgeId;
+    ULONG FinalId;
+    ULONG ExistingId;
     VERTEX Neighbor;
     GRAPH_ITERATOR Iterator;
 
@@ -1388,11 +1564,11 @@ Return Value:
         // into three distinct steps in order to assist with debugging.
         //
 
-        Id1 = GraphEdgeId(Graph, Vertex, Neighbor);
-        Id2 = Graph->Assigned[Vertex];
-        Id3 = Id1 - Id2;
+        EdgeId = GraphEdgeId(Graph, Vertex, Neighbor);
+        ExistingId = Graph->Assigned[Vertex];
+        FinalId = EdgeId - ExistingId;
 
-        Graph->Assigned[Neighbor] = Id3;
+        Graph->Assigned[Neighbor] = FinalId;
 
         //
         // Recursively traverse the neighbor.
@@ -1402,20 +1578,38 @@ Return Value:
     }
 }
 
-
 _Use_decl_annotations_
 BOOLEAN
 SolveGraph(
     _In_ PGRAPH Graph
     )
+/*++
+
+Routine Description:
+
+    Add all keys to the hypergraph using the unique seeds to hash each key into
+    two vertex values, connected by a "hyper-edge".  Determine if the graph is
+    acyclic, if it is, we've "solved" the graph.  If not, we haven't, return
+    FALSE such that another attempt can be made with new random unique seeds.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to be solved.
+
+Return Value:
+
+    TRUE if the graph was solved successfully, FALSE otherwise.
+
+--*/
 {
-    EDGE Index;
-    EDGE Key;
-    PEDGE Keys;
+    KEY Key;
+    PKEY Keys;
+    EDGE Edge;
     VERTEX Vertex1;
     VERTEX Vertex2;
     PGRAPH_INFO Info;
     ULONG NumberOfEdges;
+    ULARGE_INTEGER Hash;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_CONTEXT Context;
 
@@ -1423,12 +1617,18 @@ SolveGraph(
     Context = Info->Context;
     Table = Context->Table;
     NumberOfEdges = Graph->NumberOfEdges;
-    Keys = (PEDGE)Table->Keys->BaseAddress;
+    Keys = (PKEY)Table->Keys->BaseAddress;
 
-    for (Index = 0; Index < NumberOfEdges; Index++) {
-        Key = Keys[Index];
+    //
+    // Enumerate all keys in the input set, hash them into two unique vertices,
+    // then add them to the hypergraph.
+    //
 
-        if (!HashKey(Graph, Key, &Vertex1, &Vertex2)) {
+    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+        Key = Keys[Edge];
+
+        Hash.QuadPart = HashKey(Graph, Key);
+        if (!Hash.QuadPart) {
 
             //
             // Failed to hash the key to two unique vertices.
@@ -1437,8 +1637,26 @@ SolveGraph(
             return FALSE;
         }
 
-        GraphAddEdge(Graph, Vertex1, Vertex2);
+        ASSERT(Hash.HighPart != Hash.LowPart);
+
+        //
+        // Extract the individual vertices.
+        //
+
+        Vertex1 = Hash.LowPart;
+        Vertex2 = Hash.HighPart;
+
+        //
+        // Add the edge to the graph connecting these two vertices.
+        //
+
+        GraphAddEdge(Graph, Edge, Vertex1, Vertex2);
     }
+
+    //
+    // We've added all of the vertices to the graph.  Determine if the graph
+    // is acyclic.
+    //
 
     if (!IsGraphAcyclic(Graph)) {
 
@@ -1452,7 +1670,8 @@ SolveGraph(
     //
     // We created an acyclic graph.  Increment the finished count; if the value
     // is 1, we're the winning thread.  Continue with graph assignment.
-    // Otherwise, just return TRUE immediately and let the other thread win.
+    // Otherwise, just return TRUE immediately and let the other thread finish
+    // up (i.e. perform the assignment step and then persist the result).
     //
 
     if (InterlockedIncrement64(&Context->FinishedCount) != 1) {
@@ -1471,19 +1690,106 @@ SolveGraph(
     GraphAssign(Graph);
 
     //
-    // XXX TODO: persist the graph.
+    // Push this graph onto the finished list head.
     //
 
+    InterlockedPushEntrySList(&Context->FinishedListHead,
+                              &Graph->ListEntry);
 
     //
-    // Set the succeeded and completed events, then submit the finished work
-    // item to the threadpool, such that the necessary cleanups can take place
-    // once all our worker threads have completed.
+    // Submit the finished work item to the finished threadpool, such that the
+    // necessary cleanups can take place once all our worker threads have
+    // completed.
     //
 
-    SetEvent(Context->SucceededEvent);
-    SetEvent(Context->CompletedEvent);
     SubmitThreadpoolWork(Context->FinishedWork);
+
+    return TRUE;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+VerifySolvedGraph(
+    _In_ PGRAPH Graph
+    )
+/*++
+
+Routine Description:
+
+    Verify a solved graph is working correctly.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph to be tested.
+
+Return Value:
+
+    TRUE if the graph was solved successfully, FALSE otherwise.
+
+--*/
+{
+    PRTL Rtl;
+    KEY Key;
+    PKEY Keys;
+    EDGE Edge;
+    VERTEX Vertex1;
+    VERTEX Vertex2;
+    VERTEX Result;
+    PVERTEX Assigned;
+    PGRAPH_INFO Info;
+    ULONG NumberOfEdges;
+    ULONG NumberOfAssignments;
+    ULARGE_INTEGER Hash;
+    PPERFECT_HASH_TABLE Table;
+    PPERFECT_HASH_TABLE_CONTEXT Context;
+
+    Info = Graph->Info;
+    Context = Info->Context;
+    Rtl = Context->Rtl;
+    Table = Context->Table;
+    NumberOfEdges = Graph->NumberOfEdges;
+    Keys = (PKEY)Table->Keys->BaseAddress;
+    Assigned = Graph->Assigned;
+
+    //
+    // Enumerate all keys in the input set and verify they can be resolved
+    // correctly from the assigned vertex array.
+    //
+
+    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+        Key = Keys[Edge];
+
+        Hash.QuadPart = HashKey(Graph, Key);
+
+        ASSERT(Hash.QuadPart);
+        ASSERT(Hash.HighPart != Hash.LowPart);
+
+        //
+        // Extract the individual vertices.
+        //
+
+        Vertex1 = Assigned[Hash.LowPart];
+        Vertex2 = Assigned[Hash.HighPart];
+
+        Result = Vertex1 + Vertex2;
+        Result %= Graph->NumberOfVertices;
+
+        //
+        // Make sure we haven't seen this bit before.
+        //
+
+        ASSERT(!TestGraphBit(AssignedBitmap, Result));
+
+        //
+        // Set the bit.
+        //
+
+        SetGraphBit(AssignedBitmap, Result);
+    }
+
+    NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+
+    ASSERT(NumberOfAssignments == Graph->NumberOfEdges);
 
     return TRUE;
 }

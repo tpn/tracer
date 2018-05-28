@@ -74,6 +74,7 @@ Return Value:
     ULONG Failures;
     ULONG BytesWritten;
     ULONG WideCharsWritten;
+    ULONG MaximumConcurrency;
     ULONGLONG BufferSize;
     ULONGLONG WideOutputBufferSize;
     LONG_INTEGER AllocSize;
@@ -86,7 +87,8 @@ Return Value:
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
     PPERFECT_HASH_TABLE_CONTEXT Context;
-    PERFECT_HASH_TABLE_ALGORITHM Algorithm;
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
     PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
     PERFECT_HASH_TABLE_LOAD_FLAGS LoadTableFlags;
@@ -348,10 +350,11 @@ Return Value:
         // Create a new perfect hash table context.
         //
 
+        MaximumConcurrency = 0;
         Success = Api->CreatePerfectHashTableContext(Rtl,
                                                      Allocator,
                                                      AnyApi,
-                                                     NULL,
+                                                     &MaximumConcurrency,
                                                      &Context);
 
         if (!Success) {
@@ -481,14 +484,21 @@ Return Value:
         //      (create, test, destroy, load, test, destroy).
         //
 
-        Algorithm = PerfectHashTableChm01Algorithm;
+        AlgorithmId = PerfectHashTableChm01AlgorithmId;
+
+        //
+        // N.B. The hash function ID is currently ignored.
+        //
+
+        HashFunctionId = PerfectHashTableDefaultHashFunctionId;
 
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
                                               AnyApi,
                                               Context,
                                               CreateTableFlags,
-                                              Algorithm,
+                                              AlgorithmId,
+                                              HashFunctionId,
                                               Keys,
                                               &TablePath,
                                               &Table);

@@ -22,7 +22,7 @@ extern "C" {
 
 //
 // Declare an array of creation routines.  This is intended to be indexed by
-// the PERFECT_HASH_TABLE_ALGORITHM enumeration.
+// the PERFECT_HASH_TABLE_ALGORITHM_ID enumeration.
 //
 
 const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];

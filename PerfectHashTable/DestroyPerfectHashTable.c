@@ -61,6 +61,10 @@ Return Value:
         goto Error;
     }
 
+    if (!ARGUMENT_PRESENT(*PerfectHashTablePointer)) {
+        goto Error;
+    }
+
     if (ARGUMENT_PRESENT(IsProcessTerminating)) {
         if (*IsProcessTerminating) {
 
@@ -92,7 +96,7 @@ Return Value:
     // Free the underlying memory and clear the caller's pointer.
     //
 
-    Allocator->FreePointer(Allocator, PerfectHashTablePointer);
+    Allocator->FreePointer(Allocator->Context, PerfectHashTablePointer);
 
     Success = TRUE;
 

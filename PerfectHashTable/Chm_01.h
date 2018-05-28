@@ -17,13 +17,19 @@ Abstract:
 #include "stdafx.h"
 
 //
-// Define the primitive edge and vertex structures.
+// Define the primitive key, edge and vertex types and pointers to said types.
 //
 
+typedef ULONG KEY;
 typedef ULONG EDGE;
 typedef ULONG VERTEX;
+typedef KEY *PKEY;
 typedef EDGE *PEDGE;
 typedef VERTEX *PVERTEX;
+
+//
+// Define a graph iterator structure use to facilitate graph traversal.
+//
 
 typedef struct _GRAPH_ITERATOR {
     VERTEX Vertex;
@@ -31,26 +37,8 @@ typedef struct _GRAPH_ITERATOR {
 } GRAPH_ITERATOR;
 typedef GRAPH_ITERATOR *PGRAPH_ITERATOR;
 
-typedef union _VERTICES {
-    struct {
-        VERTEX V1;
-        VERTEX V2;
-    };
-    LONGLONG AsLongLong;
-    ULONGLONG AsULongLong;
-} VERTICES;
-typedef VERTICES *PVERTICES;
-
-typedef union _EDGES {
-    struct {
-        EDGE E1;
-        EDGE E2;
-    };
-    LONGLONG AsLongLong;
-    ULONGLONG AsULongLong;
-} EDGES;
-typedef EDGES *PEDGES;
-
+//
+// Define helper macros for EMPTY and GRAPH_NO_NEIGHBOR constants.
 //
 // N.B. I'm not sure why they don't use NULL/0 for the empty edge case.  Using
 //      -1 means the edge array needs to be filled with -1s as part of graph
@@ -128,12 +116,33 @@ typedef struct _GRAPH_DIMENSIONS {
     ULONG NumberOfVertices;
 
     //
-    // Pad out to an 8 byte boundary.
+    // The number of edges in the graph, rounded up to a power of 2, and then
+    // shifted the appropriate amount to extract the exponent part for 2^n.
     //
 
-    ULONG Unused;
+    BYTE NumberOfEdgesPowerOf2Exponent;
+
+    //
+    // As above, but rounded up to the next power of 2 first.
+    //
+
+    BYTE NumberOfEdgesNextPowerOf2Exponent;
+
+    //
+    // The same exponent logic applied to the number of vertices as per the
+    // NumberOfVertices field above.
+    //
+
+    BYTE NumberOfVerticesPowerOf2Exponent;
+
+    //
+    // And again for the next value.
+    //
+
+    BYTE NumberOfVerticesNextPowerOf2Exponent;
 
 } GRAPH_DIMENSIONS;
+C_ASSERT(sizeof(GRAPH_DIMENSIONS) == 16);
 typedef GRAPH_DIMENSIONS *PGRAPH_DIMENSIONS;
 
 //
@@ -176,20 +185,11 @@ typedef struct _GRAPH_INFO {
     USHORT SizeOfGraphStruct;
 
     //
-    // Inline the GRAPH_DIMENSIONS structure.
+    // Graph dimensions.  This information is duplicated in the graph due to
+    // it being accessed frequently.
     //
 
-    union {
-
-        struct {
-            ULONG NumberOfEdges;
-            ULONG TotalNumberOfEdges;
-            ULONG NumberOfVertices;
-            ULONG Unused;
-        };
-
-        GRAPH_DIMENSIONS Dimensions;
-    };
+    GRAPH_DIMENSIONS Dimensions;
 
     //
     // Pointer to the owning context.
@@ -227,6 +227,12 @@ typedef struct _GRAPH_INFO {
     //
 
     ULONGLONG VisitedVerticesBitmapBufferSizeInBytes;
+
+    //
+    // Assigned bitmap buffer size.
+    //
+
+    ULONGLONG AssignedBitmapBufferSizeInBytes;
 
     //
     // The allocation size of the graph, including structure size and all
@@ -267,10 +273,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
 
     //
     // Graph attempt.  This ID is derived from an interlocked increment against
-    // Context->Attempts.
+    // Context->Attempts, and represents the attempt number across all threads.
     //
 
     ULONG Attempt;
+
+    //
+    // A localized attempt number that reflects the number of attempts made
+    // by just this thread.
+    //
+
+    ULONG ThreadAttempt;
 
     //
     // Thread ID of the thread that owns us.  Each callback thread is provided
@@ -288,10 +301,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     GRAPH_FLAGS Flags;
 
     //
-    // Current edge being processed.
+    // Counter that is incremented each time we delete an edge during the
+    // acyclic graph detection stage.
     //
 
-    EDGE CurrentEdge;
+    ULONG DeletedEdgeCount;
+
+    //
+    // Counter that is incremented each time we visit a vertex during the
+    // assignment stage.
+    //
+
+    ULONG VisitedVerticesCount;
 
     //
     // Inline the GRAPH_DIMENSIONS structure.  This is available from the
@@ -305,7 +326,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
             ULONG NumberOfEdges;
             ULONG TotalNumberOfEdges;
             ULONG NumberOfVertices;
-            ULONG Unused;
+            ULONG NumberOfVerticesRoundedUpToPowerOf2;
         };
 
         GRAPH_DIMENSIONS Dimensions;
@@ -367,15 +388,30 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     RTL_BITMAP VisitedVertices;
 
     //
+    // Bitmap used to test the correctness of the Assigned array.
+    //
+
+    RTL_BITMAP AssignedBitmap;
+
+    //
     // Capture the seeds used for each hash function employed by the graph.
     //
 
-    union {
-        struct {
-            ULONG Seed1;
-            ULONG Seed2;
+    struct {
+        union {
+            struct {
+                ULONG Seed1;
+                ULONG Seed2;
+            };
+            ULARGE_INTEGER Seeds12;
         };
-        ULARGE_INTEGER Seeds;
+        union {
+            struct {
+                ULONG Seed3;
+                ULONG Seed4;
+            };
+            ULARGE_INTEGER Seeds34;
+        };
     };
 
 } GRAPH;
@@ -400,6 +436,13 @@ typedef SOLVE_GRAPH *PSOLVE_GRAPH;
 
 typedef
 BOOLEAN
+(NTAPI VERIFY_SOLVED_GRAPH)(
+    _In_ PGRAPH Graph
+    );
+typedef VERIFY_SOLVED_GRAPH *PVERIFY_SOLVED_GRAPH;
+
+typedef
+BOOLEAN
 (NTAPI SHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH)(
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context
     );
@@ -407,6 +450,7 @@ typedef SHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH
       *PSHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH;
 
 SOLVE_GRAPH SolveGraph;
+VERIFY_SOLVED_GRAPH VerifySolvedGraph;
 INITIALIZE_GRAPH InitializeGraph;
 SHOULD_WE_CONTINUE_TRYING_TO_SOLVE_GRAPH ShouldWeContinueTryingToSolveGraph;
 
@@ -418,6 +462,7 @@ typedef
 VOID
 (NTAPI GRAPH_ADD_EDGE)(
     _In_ PGRAPH Graph,
+    _In_ EDGE Edge,
     _In_ VERTEX Vertex1,
     _In_ VERTEX Vertex2
     );
@@ -482,24 +527,6 @@ VOID
 typedef GRAPH_DELETE_EDGE *PGRAPH_DELETE_EDGE;
 
 typedef
-VOID
-(NTAPI GRAPH_DELETE_VERTICES)(
-    _In_ PGRAPH Graph,
-    _In_ VERTEX Vertex1,
-    _In_ VERTEX Vertex2
-    );
-typedef GRAPH_DELETE_VERTICES *PGRAPH_DELETE_VERTICES;
-
-typedef
-BOOLEAN
-(NTAPI GRAPH_CONTAINS_EDGE)(
-    _In_ PGRAPH Graph,
-    _In_ VERTEX Vertex1,
-    _In_ VERTEX Vertex2
-    );
-typedef GRAPH_CONTAINS_EDGE *PGRAPH_CONTAINS_EDGE;
-
-typedef
 BOOLEAN
 (NTAPI GRAPH_CHECK_EDGE)(
     _In_ PGRAPH Graph,
@@ -524,85 +551,21 @@ VOID
     );
 typedef GRAPH_ASSIGN *PGRAPH_ASSIGN;
 
+//
+// Inline function helpers.
+//
+
 FORCEINLINE
 EDGE
-GetEdge(
+AbsoluteEdge(
     _In_ PGRAPH Graph,
     _In_ EDGE Edge,
-    _In_ BOOLEAN Index
+    _In_ ULONG Index
     )
 {
     ULONG NumberOfEdges = Graph->NumberOfEdges;
-    return (Edge % NumberOfEdges + (Index * NumberOfEdges));
+    return (Edge % NumberOfEdges + Index * NumberOfEdges);
 }
-
-//
-// Temporary debug helper that debugbreaks if we are passed an edge that
-// exceeds the number of edges in the graph.  This is in support of determining
-// the feasibility of a non-mod-based solution.
-//
-// N.B. This functionality corresponds to their abs_edge() macro, which seems
-//      needlessly inefficient as its constantly mod'ing the input with the
-//      number of edges.
-//
-
-FORCEINLINE
-EDGE
-GetEdgeDebug(
-    _In_ PGRAPH Graph,
-    _In_ EDGE Edge,
-    _In_ BOOLEAN Index
-    )
-{
-    ULONG NumberOfEdges = Graph->NumberOfEdges;
-    if (Edge >= NumberOfEdges) {
-        //__debugbreak();
-    }
-    return (Edge % NumberOfEdges + (Index * NumberOfEdges));
-}
-
-FORCEINLINE
-EDGE
-GetFirstEdgeDebug(
-    _In_ PGRAPH Graph,
-    _In_ EDGE Edge
-    )
-{
-    ULONG NumberOfEdges = Graph->NumberOfEdges;
-    if (Edge >= NumberOfEdges) {
-        //__debugbreak();
-    }
-    return Edge % NumberOfEdges;
-}
-
-FORCEINLINE
-EDGE
-GetSecondEdgeDebug(
-    _In_ PGRAPH Graph,
-    _In_ EDGE Edge
-    )
-{
-    ULONG NumberOfEdges = Graph->NumberOfEdges;
-    ULONG TotalNumberOfEdges = Graph->TotalNumberOfEdges;
-
-    //
-    // Edge should be within the range (NumberOfEdges .. TotalNumberOfEdges).
-    //
-
-    Edge = (Edge % NumberOfEdges) + NumberOfEdges;
-
-    if (Edge < NumberOfEdges) {
-        //__debugbreak();
-    }
-
-    if (Edge > TotalNumberOfEdges) {
-        //__debugbreak();
-    }
-
-    //return Edge % NumberOfEdges;
-    return Edge;
-}
-
 
 #define TestGraphBit(Name, BitNumber) \
     BitTest((PLONG)Graph->##Name##.Buffer, BitNumber)
@@ -638,6 +601,7 @@ RegisterEdgeDeletion(
     )
 {
     SetGraphBit(DeletedEdges, Edge);
+    Graph->DeletedEdgeCount++;
 }
 
 FORCEINLINE
@@ -648,6 +612,7 @@ RegisterVertexVisit(
     )
 {
     SetGraphBit(VisitedVertices, Vertex);
+    Graph->VisitedVerticesCount++;
 }
 
 FORCEINLINE
@@ -662,8 +627,8 @@ GraphCheckEdge(
     EDGE Edge1;
     EDGE Edge2;
 
-    Edge1 = GetFirstEdgeDebug(Graph, Edge);
-    Edge2 = GetSecondEdgeDebug(Graph, Edge);
+    Edge1 = AbsoluteEdge(Graph, Edge, 0);
+    Edge2 = AbsoluteEdge(Graph, Edge, 1);
 
     if (Graph->Edges[Edge1] == Vertex1 && Graph->Edges[Edge2] == Vertex2) {
         return TRUE;
@@ -677,35 +642,92 @@ GraphCheckEdge(
 }
 
 FORCEINLINE
-BOOLEAN
-HashKey(
+ULONGLONG
+HashKey_01(
     _In_ PGRAPH Graph,
-    _In_ ULONG Key,
-    _Out_ PVERTEX Vertex1Pointer,
-    _Out_ PVERTEX Vertex2Pointer
+    _In_ ULONG Key
     )
 {
     ULONG Vertex1;
     ULONG Vertex2;
-    ULONG NumberOfEdges = Graph->NumberOfEdges;
+    ULONG NumberOfVertices = Graph->NumberOfVertices;
+    ULARGE_INTEGER Result;
 
-    Vertex1 = _mm_crc32_u32(Graph->Seed1, Key) % NumberOfEdges;
-    Vertex2 = _mm_crc32_u32(Graph->Seed2, Key) % NumberOfEdges;
+    Vertex1 = _mm_crc32_u32(Graph->Seed1, Key);
+    Vertex1 %= NumberOfVertices;
+
+    Vertex2 = _mm_crc32_u32(Graph->Seed2, Key);
+    Vertex2 %= NumberOfVertices;
 
     if (Vertex1 == Vertex2) {
-        if (++Vertex2 >= NumberOfEdges) {
+        if (++Vertex2 >= NumberOfVertices) {
             Vertex2 = 0;
         }
     }
 
     if (Vertex1 == Vertex2) {
-        return FALSE;
+        return 0;
     }
 
-    *Vertex1Pointer = Vertex1;
-    *Vertex2Pointer = Vertex2;
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
 
-    return TRUE;
+    return Result.QuadPart;
 }
+
+FORCEINLINE
+ULONGLONG
+HashKey_02(
+    _In_ PGRAPH Graph,
+    _In_ ULONG Key
+    )
+{
+    ULONG A;
+    ULONG B;
+    ULONG C;
+    ULONG D;
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Seed3;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULONG NumberOfVertices;
+    ULARGE_INTEGER Result;
+
+    //
+    // Initialize aliases.
+    //
+
+    Seed1 = Graph->Seed1;
+    Seed2 = Graph->Seed2;
+    Seed3 = Graph->Seed3;
+    NumberOfVertices = Graph->NumberOfVertices;
+
+    //
+    // Calculate the individual hash parts.
+    //
+
+    A = _mm_crc32_u32(Seed1, Key);
+    B = _mm_crc32_u32(Seed2, _rotl(Key, 15));
+    C = Seed3 ^ Key;
+    D = _mm_crc32_u32(B, C);
+
+    Vertex1 = A;
+    Vertex2 = D;
+
+    Vertex1 %= NumberOfVertices;
+    Vertex2 %= NumberOfVertices;
+
+    if (Vertex1 == Vertex2) {
+        return 0;
+    }
+
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
+
+    return Result.QuadPart;
+}
+
+#define HashKey HashKey_02
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

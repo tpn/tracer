@@ -247,7 +247,7 @@ Return Value:
     Keys->Path.MaximumLength = Path->Length + sizeof(Path->Buffer[0]);
     Keys->Path.Buffer = (PWSTR)RtlOffsetToPointer(Keys, sizeof(*Keys));
     CopyMemory(Keys->Path.Buffer, Path->Buffer, Path->Length);
-    Keys->Path.Buffer[Path->Length] = L'\0';
+    Keys->Path.Buffer[Path->Length >> 1] = L'\0';
 
     //
     // We've completed initialization, indicate success and jump to the end.

@@ -173,13 +173,25 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     PERFECT_HASH_TABLE_CONTEXT_FLAGS Flags;
 
     //
+    // The algorithm in use.
+    //
+
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+
+    //
+    // The hash function in use.
+    //
+
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+
+    //
     // Pointer to an initialized RTL structure.
     //
 
     PRTL Rtl;
 
     //
-    // Pointer to an intialized allocator.
+    // Pointer to an initialized allocator.
     //
 
     PALLOCATOR Allocator;
@@ -347,6 +359,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     //
 
     PVOID AlgorithmContext;
+
+    //
+    // An opaque pointer that can be used by the hash function to stash
+    // additional context.
+    //
+
+    PVOID HashFunctionContext;
 
 } PERFECT_HASH_TABLE_CONTEXT;
 typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
@@ -631,6 +650,5 @@ Return Value:
         YieldProcessor();
     }
 }
-
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :
