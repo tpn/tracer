@@ -1015,6 +1015,20 @@ Return Value:
                     __debugbreak();
                     break;
                 }
+
+                //
+                // Commit the new end of file.
+                //
+
+                Success = SetEndOfFile(Table->FileHandle);
+
+                if (!Success) {
+                    Context->FileWorkLastError = GetLastError();
+                    InterlockedIncrement(&Context->FileWorkErrors);
+                    __debugbreak();
+                    break;
+                }
+
             }
 
             break;
