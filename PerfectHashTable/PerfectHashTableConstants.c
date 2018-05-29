@@ -40,11 +40,19 @@ const UNICODE_STRING ContextFailedEventPrefix =
 const UNICODE_STRING ContextCompletedEventPrefix =
     RTL_CONSTANT_STRING(L"PerfectHashTableContext_CompletedEvent_");
 
+const UNICODE_STRING ContextPreparedFileEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_PreparedFileEvent_");
+
+const UNICODE_STRING ContextSavedFileEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_SavedFileEvent_");
+
 const PCUNICODE_STRING ContextObjectPrefixes[] = {
     &ContextShutdownEventPrefix,
     &ContextSucceededEventPrefix,
     &ContextFailedEventPrefix,
     &ContextCompletedEventPrefix,
+    &ContextPreparedFileEventPrefix,
+    &ContextSavedFileEventPrefix,
 };
 
 //

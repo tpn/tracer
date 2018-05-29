@@ -173,6 +173,60 @@ IsValidPerfectHashTableHashFunctionId(
 }
 
 //
+// Define an enumeration for identifying the type of table masking used by the
+// underlying perfect hash table.  This has performance and size implications.
+// Modulus masking typically results in smaller tables at the expenses of slower
+// modulus-based hash functions, whereas shifting results in larger tables but
+// faster hash functions.
+//
+
+typedef enum _PERFECT_HASH_TABLE_MASKING_TYPE {
+
+    //
+    // Null masking type.
+    //
+
+    PerfectHashTableNullMaskingType = 0,
+
+    //
+    // Being valid masking types.
+    //
+
+    PerfectHashTableModulusMaskingType = 1,
+    PerfectHashTableShiftMaskingType,
+
+    //
+    // End valid masking types.
+    //
+
+    //
+    // N.B. Keep the next value last.
+    //
+
+    PerfectHashTableInvalidMaskingType,
+
+
+} PERFECT_HASH_TABLE_MASKING_TYPE;
+typedef PERFECT_HASH_TABLE_MASKING_TYPE
+      *PPERFECT_HASH_TABLE_MASKING_TYPE;
+
+//
+// Provide a simple inline masking type validation routine.
+//
+
+FORCEINLINE
+BOOLEAN
+IsValidPerfectHashTableMaskingType(
+    _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType
+    )
+{
+    return (
+        MaskingType > PerfectHashTableNullMaskingType &&
+        MaskingType < PerfectHashTableInvalidMaskingType
+    );
+}
+
+//
 // Define an opaque runtime context to encapsulate threadpool resources.  This
 // is created via CreatePerfectHashTableContext() with a desired concurrency,
 // and then passed to CreatePerfectHashTable(), allowing it to search for
@@ -240,7 +294,9 @@ BOOLEAN
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
     _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
+    _Inout_opt_ PULARGE_INTEGER NumberOfTableElements,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
     _In_opt_ PCUNICODE_STRING HashTablePath,
     _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable

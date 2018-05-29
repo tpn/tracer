@@ -51,7 +51,7 @@ Return Value:
     PRTL Rtl;
     BOOLEAN Success;
     PALLOCATOR Allocator;
-    PPERFECT_HASH_TABLE PerfectHashTable;
+    PPERFECT_HASH_TABLE Table;
 
     //
     // Validate arguments.
@@ -82,15 +82,53 @@ Return Value:
     // Initialize aliases and continue with destroy logic.
     //
 
-    PerfectHashTable = *PerfectHashTablePointer;
-    Rtl = PerfectHashTable->Rtl;
-    Allocator = PerfectHashTable->Allocator;
+    Table = *PerfectHashTablePointer;
+    Rtl = Table->Rtl;
+    Allocator = Table->Allocator;
 
     //
     // Sanity check the perfect hash structure size matches what we expect.
     //
 
-    ASSERT(PerfectHashTable->SizeOfStruct == sizeof(*PerfectHashTable));
+    ASSERT(Table->SizeOfStruct == sizeof(*Table));
+
+    //
+    // Close resources associated with the :Info stream.
+    //
+
+    if (Table->InfoStreamBaseAddress) {
+        UnmapViewOfFile(Table->InfoStreamBaseAddress);
+        Table->InfoStreamBaseAddress = NULL;
+    }
+
+    if (Table->InfoStreamMappingHandle) {
+        CloseHandle(Table->InfoStreamMappingHandle);
+        Table->InfoStreamMappingHandle = NULL;
+    }
+
+    if (Table->InfoStreamFileHandle) {
+        CloseHandle(Table->InfoStreamFileHandle);
+        Table->InfoStreamFileHandle = NULL;
+    }
+
+    //
+    // Clean up any resources that are still active.
+    //
+
+    if (Table->BaseAddress) {
+        UnmapViewOfFile(Table->BaseAddress);
+        Table->BaseAddress = NULL;
+    }
+
+    if (Table->MappingHandle) {
+        CloseHandle(Table->MappingHandle);
+        Table->MappingHandle = NULL;
+    }
+
+    if (Table->FileHandle) {
+        CloseHandle(Table->FileHandle);
+        Table->FileHandle = NULL;
+    }
 
     //
     // Free the underlying memory and clear the caller's pointer.

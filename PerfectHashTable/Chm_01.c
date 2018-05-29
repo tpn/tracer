@@ -54,6 +54,8 @@ Return Value:
     PGRAPH Graph;
     PBYTE Buffer;
     BOOLEAN Success;
+    BOOLEAN IsModulusMasking;
+    BOOLEAN IsShiftMasking;
     USHORT PageSize;
     USHORT PageShift;
     ULONG_PTR LastPage;
@@ -72,6 +74,9 @@ Return Value:
     USHORT NumberOfBitmaps;
     PGRAPH_DIMENSIONS Dim;
     PSLIST_ENTRY ListEntry;
+    FILE_WORK_ITEM SaveFile;
+    FILE_WORK_ITEM PrepareFile;
+    PGRAPH_INFO_ON_DISK OnDiskInfo;
     ULONGLONG NextSizeInBytes;
     ULONGLONG PrevSizeInBytes;
     ULONGLONG FirstSizeInBytes;
@@ -82,6 +87,7 @@ Return Value:
     ULONGLONG ExpectedTotalBufferSizeInBytes;
     ULONGLONG ExpectedUsableBufferSizeInBytesPerBuffer;
     ULONGLONG GraphSizeInBytesIncludingGuardPage;
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
     ULARGE_INTEGER AllocSize;
     ULARGE_INTEGER NumberOfEdges;
     ULARGE_INTEGER NumberOfVertices;
@@ -109,6 +115,15 @@ Return Value:
     Keys = (PULONG)Table->Keys->BaseAddress;;
     Allocator = Table->Allocator;
     Context = Table->Context;
+
+    //
+    // Obtain the masking type and set some boolean aliases that are easier
+    // to work with.
+    //
+
+    MaskingType = Context->MaskingType;
+    IsShiftMasking = (MaskingType == PerfectHashTableShiftMaskingType);
+    IsModulusMasking = (MaskingType == PerfectHashTableModulusMaskingType);
 
     //
     // The number of edges in our graph is equal to the number of keys in the
@@ -190,7 +205,6 @@ Return Value:
     );
 
     ASSERT(!AssignedBitmapBufferSizeInBytes.HighPart);
-
 
     //
     // Calculate the sizes required for each of the arrays.  We collect them
@@ -417,12 +431,57 @@ Return Value:
     );
 
     //
-    // Set the context work callback to our worker routine, and the algo
+    // Save the on-disk representation of the graph information.  This is a
+    // smaller subset of data needed in order to load a previously-solved
+    // graph as a perfect hash table.  The data resides in an NTFS stream named
+    // :Info off the main perfect hash table file.  It will have been mapped for
+    // us already at Table->InfoStreamBaseAddress.
+    //
+
+    OnDiskInfo = (PGRAPH_INFO_ON_DISK)Table->InfoStreamBaseAddress;
+    ASSERT(OnDiskInfo);
+    OnDiskInfo->SizeOfStruct = sizeof(*OnDiskInfo);
+    OnDiskInfo->Flags.AsULong = 0;
+    OnDiskInfo->AlgorithmId = Context->AlgorithmId;
+    OnDiskInfo->MaskingType = Context->MaskingType;
+    OnDiskInfo->HashFunctionId = Context->HashFunctionId;
+
+    //
+    // This will change based on masking type and whether or not the caller
+    // has provided a value for NumberOfTableElements.  For now, keep it as
+    // the number of vertices.
+    //
+
+    OnDiskInfo->NumberOfTableElements.QuadPart = (
+        NumberOfVertices.QuadPart
+    );
+
+    CopyMemory(&OnDiskInfo->Dimensions, Dim, sizeof(*Dim));
+
+    //
+    // Set the context's main work callback to our worker routine, and the algo
     // context to our graph info structure.
     //
 
-    Context->MainCallback = ProcessGraphCallbackChm01;
+    Context->MainWorkCallback = ProcessGraphCallbackChm01;
     Context->AlgorithmContext = &Info;
+
+    //
+    // Set the context's file work callback to our worker routine.
+    //
+
+    Context->FileWorkCallback = FileWorkCallbackChm01;
+
+    //
+    // Prepare the initial "file preparation" work callback.  This will extend
+    // the backing file to the appropriate size.
+    //
+
+    ZeroStruct(PrepareFile);
+    PrepareFile.FileWorkId = FileWorkPrepareId;
+    InterlockedPushEntrySList(&Context->FileWorkListHead,
+                              &PrepareFile.ListEntry);
+    SubmitThreadpoolWork(Context->FileWork);
 
     //
     // We're ready to create threadpool work for the graph.
@@ -493,7 +552,8 @@ Return Value:
         // main work list head and submit the corresponding threadpool work.
         //
 
-        InterlockedPushEntrySList(&Context->MainListHead, &Graph->ListEntry);
+        InterlockedPushEntrySList(&Context->MainWorkListHead,
+                                  &Graph->ListEntry);
         SubmitThreadpoolWork(Context->MainWork);
 
         //
@@ -547,17 +607,67 @@ Return Value:
     // Pop the winning graph off the finished list head.
     //
 
-    ListEntry = InterlockedPopEntrySList(&Context->FinishedListHead);
+    ListEntry = InterlockedPopEntrySList(&Context->FinishedWorkListHead);
     ASSERT(ListEntry);
 
     Graph = CONTAINING_RECORD(ListEntry, GRAPH, ListEntry);
+
+    //
+    // Note this graph as the one solved to the context.  This is used by the
+    // save file work callback we dispatch below.
+    //
+
+    Context->SolvedContext = Graph;
+
+    //
+    // Graphs always pass verification in normal circumstances.  The only time
+    // they don't is if there's an internal bug in our code.  So, knowing that
+    // the graph is probably correct, we can dispatch the file work required to
+    // save it to disk to the main threadpool whilst we verify it has been
+    // solved correctly.
+    //
+
+    ZeroStruct(SaveFile);
+    SaveFile.FileWorkId = FileWorkSaveId;
+
+    //
+    // Before we dispatch the save file work, make sure the preparation has
+    // completed.
+    //
+
+    WaitResult = WaitForSingleObject(Context->PreparedFileEvent, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0 || Context->FileWorkErrors > 0) {
+        __debugbreak();
+        Success = FALSE;
+        goto End;
+    }
+
+    //
+    // Push this work item to the file work list head and submit the threadpool
+    // work for it.
+    //
+
+    InterlockedPushEntrySList(&Context->FileWorkListHead, &SaveFile.ListEntry);
+    SubmitThreadpoolWork(Context->FileWork);
+
+    //
+    // Continue with verification of the solution.
+    //
 
     Success = VerifySolvedGraph(Graph);
     ASSERT(Success);
 
     //
-    // XXX TODO: persist this graph.
+    // Wait on the saved file event before returning.
     //
+
+    WaitResult = WaitForSingleObject(Context->SavedFileEvent, INFINITE);
+    if (WaitResult != WAIT_OBJECT_0 || Context->FileWorkErrors > 0) {
+        __debugbreak();
+        Success = FALSE;
+    }
+
+End:
 
     //
     // Destroy the buffer we created earlier.
@@ -566,8 +676,6 @@ Return Value:
     //      the underlying buffer via Rtl->DestroyBuffer(), as only a single
     //      VirtualAllocEx() call was dispatched for the entire buffer.
     //
-
-End:
 
     Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
 
@@ -582,9 +690,37 @@ End:
 _Use_decl_annotations_
 VOID
 ProcessGraphCallbackChm01(
+    PTP_CALLBACK_INSTANCE Instance,
     PPERFECT_HASH_TABLE_CONTEXT Context,
     PSLIST_ENTRY ListEntry
     )
+/*++
+
+Routine Description:
+
+    This routine is the callback entry point for graph solving threads.  It
+    will enter an infinite loop attempting to solve the graph; terminating
+    only when the graph is solved or we detect another thread has solved it.
+
+Arguments:
+
+    Instance - Supplies a pointer to the callback instance for this invocation.
+
+    Context - Supplies a pointer to the active context for the graph solving.
+
+    ListEntry - Supplies a pointer to the list entry that was popped off the
+        context's main work interlocked singly-linked list head.  The list
+        entry will be the address of Graph->ListEntry, and thus, the Graph
+        address can be obtained via the following CONTAINING_RECORD() construct:
+
+            Graph = CONTAINING_RECORD(ListEntry, GRAPH, ListEntry);
+
+
+Return Value:
+
+    None.
+
+--*/
 {
     PRTL Rtl;
     PGRAPH Graph;
@@ -640,6 +776,255 @@ ProcessGraphCallbackChm01(
         FillPages((PCHAR)Graph, 0, Info->NumberOfPagesPerGraph);
 
     }
+
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+FileWorkCallbackChm01(
+    PTP_CALLBACK_INSTANCE Instance,
+    PPERFECT_HASH_TABLE_CONTEXT Context,
+    PSLIST_ENTRY ListEntry
+    )
+/*++
+
+Routine Description:
+
+    This routine is the callback entry point for file-oriented work we want
+    to perform in the main threadpool context.
+
+Arguments:
+
+    Instance - Supplies a pointer to the callback instance for this invocation.
+
+    Context - Supplies a pointer to the active context for the graph solving.
+
+    ListEntry - Supplies a pointer to the list entry that was popped off the
+        context's file work interlocked singly-linked list head.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    HANDLE SavedEvent;
+    HANDLE PreparedEvent;
+    HANDLE SetOnReturnEvent;
+    PGRAPH_INFO Info;
+    PFILE_WORK_ITEM Item;
+    PGRAPH_INFO_ON_DISK OnDiskInfo;
+
+    //
+    // Initialize aliases.
+    //
+
+    Info = (PGRAPH_INFO)Context->AlgorithmContext;
+    SavedEvent = Context->SavedFileEvent;
+    PreparedEvent = Context->PreparedFileEvent;
+    OnDiskInfo = (PGRAPH_INFO_ON_DISK)Context->Table->InfoStreamBaseAddress;
+
+    //
+    // Resolve the work item base address from the list entry.
+    //
+
+    Item = CONTAINING_RECORD(ListEntry, FILE_WORK_ITEM, ListEntry);
+
+    ASSERT(IsValidFileWorkId(Item->FileWorkId));
+
+    switch (Item->FileWorkId) {
+
+        case FileWorkPrepareId: {
+
+            PVOID BaseAddress;
+            ULONG ProtectionFlags;
+            HANDLE MappingHandle;
+            PPERFECT_HASH_TABLE Table;
+            ULARGE_INTEGER SectorAlignedSize;
+
+            //
+            // Indicate we've completed the preparation work when this callback
+            // completes.
+            //
+
+            SetOnReturnEvent = PreparedEvent;
+
+            //
+            // We need to extend the file to accomodate for the solved graph.
+            //
+
+            SectorAlignedSize.QuadPart = ALIGN_UP(Info->AssignedSizeInBytes,
+                                                  Info->AllocationGranularity);
+
+            Table = Context->Table;
+
+            ProtectionFlags = PAGE_READWRITE | SEC_WRITECOMBINE;
+
+            //
+            // Create the file mapping for the sector-aligned size.  This will
+            // extend the underlying file size accordingly.
+            //
+
+            MappingHandle = CreateFileMappingW(Table->FileHandle,
+                                               NULL,
+                                               ProtectionFlags,
+                                               SectorAlignedSize.HighPart,
+                                               SectorAlignedSize.LowPart,
+                                               NULL);
+
+            Table->MappingHandle = MappingHandle;
+
+            if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
+
+                //
+                // Fatal error: debugbreak for now.
+                //
+
+                Context->FileWorkLastError = GetLastError();
+                InterlockedIncrement(&Context->FileWorkErrors);
+                __debugbreak();
+                break;
+            }
+
+            BaseAddress = MapViewOfFile(MappingHandle,
+                                        FILE_MAP_READ | FILE_MAP_WRITE,
+                                        0,
+                                        0,
+                                        SectorAlignedSize.QuadPart);
+
+            Table->BaseAddress = BaseAddress;
+
+            if (!BaseAddress) {
+
+                //
+                // Also a fatal error.
+                //
+
+                Context->FileWorkLastError = GetLastError();
+                InterlockedIncrement(&Context->FileWorkErrors);
+                __debugbreak();
+                break;
+            }
+
+            //
+            // We've successfully mapped an area of sufficient space to store
+            // the underlying table array if a perfect hash table solution is
+            // found.  Nothing more to do.
+            //
+
+            break;
+        }
+
+        case FileWorkSaveId: {
+
+            PULONG Dest;
+            PULONG Source;
+            PGRAPH Graph;
+            BOOLEAN Success;
+            ULONGLONG SizeInBytes;
+            LARGE_INTEGER EndOfFile;
+            PPERFECT_HASH_TABLE Table;
+            FILE_STANDARD_INFO FileInfo;
+
+            //
+            // Indicate the save event has completed upon return of this
+            // callback.
+            //
+
+            SetOnReturnEvent = SavedEvent;
+
+            //
+            // Initialize aliases.
+            //
+
+            Table = Context->Table;
+            Dest = (PULONG)Table->BaseAddress;
+            Graph = (PGRAPH)Context->SolvedContext;
+            Source = Graph->Assigned;
+            SizeInBytes = Info->AssignedSizeInBytes;
+
+            //
+            // The graph has been solved.  Copy the array of assigned values
+            // to the mapped area we prepared earlier (above).
+            //
+
+            CopyMemory(Dest, Source, SizeInBytes);
+
+            //
+            // Save the seed values used by this graph.  (Everything else in
+            // the on-disk info representation was saved earlier.)
+            //
+
+            OnDiskInfo->Seed1 = Graph->Seed1;
+            OnDiskInfo->Seed2 = Graph->Seed2;
+            OnDiskInfo->Seed3 = Graph->Seed3;
+            OnDiskInfo->Seed4 = Graph->Seed4;
+
+            //
+            // When we mapped the array in the work item above, we used a size
+            // that was aligned with the system allocation granularity.  We now
+            // want to set the end of file explicitly to the exact size of the
+            // underlying array.  So, obtain the current end of file value,
+            // and compare it to the size of the assigned array in bytes.  Then,
+            // assuming they differ (they almost always will, unless the table
+            // size happened to be a perfect multiple of the system allocation
+            // granularity), set the file's pointer to where we want it to be,
+            // then commit via SetEndOfFile().
+            //
+
+            Success = GetFileInformationByHandleEx(
+                Table->FileHandle,
+                (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo,
+                &FileInfo,
+                sizeof(FileInfo)
+            );
+
+            if (!Success) {
+                Context->FileWorkLastError = GetLastError();
+                InterlockedIncrement(&Context->FileWorkErrors);
+                __debugbreak();
+                break;
+            }
+
+            //
+            // We've successfully obtained the file info.  Initialize what
+            // we want EndOfFile to be (based on the assigned size in bytes),
+            // and compare that to the current value.  If it differs, proceed
+            // with SetFilePointerEx() and then SetEndOfFile() to update it.
+            //
+
+            EndOfFile.QuadPart = Info->AssignedSizeInBytes;
+
+            if (FileInfo.EndOfFile.QuadPart != EndOfFile.QuadPart) {
+
+                Success = SetFilePointerEx(Table->FileHandle,
+                                           EndOfFile,
+                                           NULL,
+                                           FILE_BEGIN);
+
+                if (!Success) {
+                    Context->FileWorkLastError = GetLastError();
+                    InterlockedIncrement(&Context->FileWorkErrors);
+                    __debugbreak();
+                    break;
+                }
+            }
+
+            break;
+        }
+
+        default:
+            break;
+
+    }
+
+    //
+    // Register the relevant event to be set when this threadpool callback
+    // returns, then return.
+    //
+
+    SetEventWhenCallbackReturns(Instance, SetOnReturnEvent);
 
     return;
 }
@@ -1608,10 +1993,12 @@ Return Value:
     VERTEX Vertex1;
     VERTEX Vertex2;
     PGRAPH_INFO Info;
+    ULONG Iterations;
     ULONG NumberOfEdges;
     ULARGE_INTEGER Hash;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_CONTEXT Context;
+    const ULONG CheckForTerminationAfterIterations = 1024;
 
     Info = Graph->Info;
     Context = Info->Context;
@@ -1623,6 +2010,8 @@ Return Value:
     // Enumerate all keys in the input set, hash them into two unique vertices,
     // then add them to the hypergraph.
     //
+
+    Iterations = CheckForTerminationAfterIterations;
 
     for (Edge = 0; Edge < NumberOfEdges; Edge++) {
         Key = Keys[Edge];
@@ -1651,6 +2040,23 @@ Return Value:
         //
 
         GraphAddEdge(Graph, Edge, Vertex1, Vertex2);
+
+        //
+        // Every 1024 iterations, check to see if someone else has already
+        // solved the graph, and if so, do a fast-path exit.
+        //
+
+        if (!--Iterations) {
+            if (Context->FinishedCount > 0) {
+                return FALSE;
+            }
+
+            //
+            // Reset the iteration counter.
+            //
+
+            Iterations = CheckForTerminationAfterIterations;
+        }
     }
 
     //
@@ -1693,7 +2099,7 @@ Return Value:
     // Push this graph onto the finished list head.
     //
 
-    InterlockedPushEntrySList(&Context->FinishedListHead,
+    InterlockedPushEntrySList(&Context->FinishedWorkListHead,
                               &Graph->ListEntry);
 
     //

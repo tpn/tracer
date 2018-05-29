@@ -42,9 +42,14 @@ VOID
     _Inout_opt_ PVOID CleanupContext
     );
 
-TP_WORK_CALLBACK MainCallback;
-TP_WORK_CALLBACK ErrorCallback;
-TP_WORK_CALLBACK FinishedCallback;
+//
+// Forward definitions.
+//
+
+TP_WORK_CALLBACK MainWorkCallback;
+TP_WORK_CALLBACK FileWorkCallback;
+TP_WORK_CALLBACK ErrorWorkCallback;
+TP_WORK_CALLBACK FinishedWorkCallback;
 TP_CLEANUP_GROUP_CANCEL_CALLBACK CleanupCallback;
 
 //
@@ -80,9 +85,10 @@ Arguments:
     MaximumConcurrency - Optionally supplies a pointer to a variable that
         contains the desired maximum concurrency to be used for the underlying
         threadpool.  If NULL, or non-NULL but points to a value of 0, then the
-        number of system processors * 2 will be used as a default value.
+        number of system processors will be used as a default value.
 
-        N.B. This value is passed directly to SetThreadpoolThreadMaximum().
+        N.B. This value is passed directly to SetThreadpoolThreadMinimum() and
+             SetThreadpoolThreadMaximum().
 
     ContextPointer - Supplies the address of a variable that receives the
         address of the newly created PERFECT_HASH_TABLE_CONTEXT structure on
@@ -412,7 +418,7 @@ Return Value:
     // Create a work object for the Main threadpool.
     //
 
-    Context->MainWork = CreateThreadpoolWork(MainCallback,
+    Context->MainWork = CreateThreadpoolWork(MainWorkCallback,
                                              Context,
                                              &Context->MainCallbackEnv);
 
@@ -421,10 +427,28 @@ Return Value:
     }
 
     //
-    // Initialize the main list head.
+    // Initialize the main work list head.
     //
 
-    InitializeSListHead(&Context->MainListHead);
+    InitializeSListHead(&Context->MainWorkListHead);
+
+    //
+    // Create a file work object for the Main threadpool.
+    //
+
+    Context->FileWork = CreateThreadpoolWork(FileWorkCallback,
+                                             Context,
+                                             &Context->MainCallbackEnv);
+
+    if (!Context->FileWork) {
+        goto Error;
+    }
+
+    //
+    // Initialize the file work list head.
+    //
+
+    InitializeSListHead(&Context->FileWorkListHead);
 
     //
     // Create the Finished and Error threadpools and associated resources.
@@ -443,7 +467,7 @@ Return Value:
 
     SetThreadpoolThreadMaximum(Context->FinishedThreadpool, 1);
 
-    Context->FinishedWork = CreateThreadpoolWork(FinishedCallback,
+    Context->FinishedWork = CreateThreadpoolWork(FinishedWorkCallback,
                                                  Context,
                                                  &Context->FinishedCallbackEnv);
     if (!Context->FinishedWork) {
@@ -454,7 +478,7 @@ Return Value:
     // Initialize the finished list head.
     //
 
-    InitializeSListHead(&Context->FinishedListHead);
+    InitializeSListHead(&Context->FinishedWorkListHead);
 
     //
     // Create the Error threadpool.
@@ -471,7 +495,7 @@ Return Value:
 
     SetThreadpoolThreadMaximum(Context->ErrorThreadpool, 1);
 
-    Context->ErrorWork = CreateThreadpoolWork(ErrorCallback,
+    Context->ErrorWork = CreateThreadpoolWork(ErrorWorkCallback,
                                               Context,
                                               &Context->ErrorCallbackEnv);
     if (!Context->ErrorWork) {
@@ -536,7 +560,7 @@ End:
 
 _Use_decl_annotations_
 VOID
-MainCallback(
+MainWorkCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PVOID Ctx,
     PTP_WORK Work
@@ -548,10 +572,10 @@ Routine Description:
     This is the callback routine for the Main threadpool's work.  It will be
     invoked by a thread in the Main group whenever SubmitThreadpoolWork()
     is called against Context->MainWork.  The caller is responsible for pushing
-    a work item to Context->MainListHead prior to submission.
+    a work item to Context->MainWorkListHead prior to submission.
 
-    This routine pops an item off Context->MainListHead, then calls the worker
-    routine that was registered with the context.
+    This routine pops an item off Context->MainWorkListHead, then calls the
+    worker routine that was registered with the context.
 
 Arguments:
 
@@ -577,7 +601,7 @@ Return Value:
     //
 
     Context = (PPERFECT_HASH_TABLE_CONTEXT)Ctx;
-    ListEntry = InterlockedPopEntrySList(&Context->MainListHead);
+    ListEntry = InterlockedPopEntrySList(&Context->MainWorkListHead);
 
     if (!ListEntry) {
 
@@ -595,14 +619,80 @@ Return Value:
     // Dispatch the work item to the routine registered with the context.
     //
 
-    Context->MainCallback(Context, ListEntry);
+    Context->MainWorkCallback(Instance, Context, ListEntry);
 
     return;
 }
 
 _Use_decl_annotations_
 VOID
-FinishedCallback(
+FileWorkCallback(
+    PTP_CALLBACK_INSTANCE Instance,
+    PVOID Ctx,
+    PTP_WORK Work
+    )
+/*++
+
+Routine Description:
+
+    This is the callback routine for the Main threadpool's file work.  It will
+    be invoked by a thread in the Main group whenever SubmitThreadpoolWork()
+    is called against Context->FileWork.  The caller is responsible for pushing
+    a work item to Context->FileWorkListHead prior to submission.
+
+    This routine pops an item off Context->FileWorkListHead, then calls the
+    worker routine that was registered with the context.
+
+Arguments:
+
+    Instance - Supplies a pointer to the callback instance responsible for this
+        threadpool callback invocation.
+
+    Ctx - Supplies a pointer to the owning PERFECT_HASH_TABLE_CONTEXT.
+
+    Work - Supplies a pointer to the TP_WORK object for this routine.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    PSLIST_ENTRY ListEntry;
+    PPERFECT_HASH_TABLE_CONTEXT Context;
+
+    //
+    // Cast the Ctx variable into a suitable type, then pop a list entry off
+    // the file work list head.
+    //
+
+    Context = (PPERFECT_HASH_TABLE_CONTEXT)Ctx;
+    ListEntry = InterlockedPopEntrySList(&Context->FileWorkListHead);
+
+    if (!ListEntry) {
+
+        //
+        // A spurious work item was requested but no corresponding element was
+        // pushed to the list.  This typically indicates API misuse.  We could
+        // terminate here, however, that's pretty drastic, so let's just ignore
+        // it.
+        //
+
+        return;
+    }
+
+    //
+    // Dispatch the work item to the routine registered with the context.
+    //
+
+    Context->FileWorkCallback(Instance, Context, ListEntry);
+
+    return;
+}
+
+_Use_decl_annotations_
+VOID
+FinishedWorkCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PVOID Ctx,
     PTP_WORK Work
@@ -671,7 +761,7 @@ Return Value:
 
 _Use_decl_annotations_
 VOID
-ErrorCallback(
+ErrorWorkCallback(
     PTP_CALLBACK_INSTANCE Instance,
     PVOID Ctx,
     PTP_WORK Work

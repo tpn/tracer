@@ -185,6 +185,19 @@ typedef struct _GRAPH_INFO {
     USHORT SizeOfGraphStruct;
 
     //
+    // System allocation granularity.  We align the memory map for the on-disk
+    // structure using this value initially.
+    //
+
+    ULONG AllocationGranularity;
+
+    //
+    // Pad out to 8 bytes.
+    //
+
+    ULONG Padding1;
+
+    //
     // Graph dimensions.  This information is duplicated in the graph due to
     // it being accessed frequently.
     //
@@ -326,7 +339,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
             ULONG NumberOfEdges;
             ULONG TotalNumberOfEdges;
             ULONG NumberOfVertices;
-            ULONG NumberOfVerticesRoundedUpToPowerOf2;
+            BYTE NumberOfEdgesPowerOf2Exponent;
+            BYTE NumberOfEdgesNextPowerOf2Exponent;
+            BYTE NumberOfVerticesPowerOf2Exponent;
+            BYTE NumberOfVerticesNextPowerOf2Exponent;
         };
 
         GRAPH_DIMENSIONS Dimensions;
@@ -417,7 +433,109 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
 } GRAPH;
 typedef GRAPH *PGRAPH;
 
-PERFECT_HASH_TABLE_WORK_CALLBACK ProcessGraphCallbackChm01;
+//
+// Define an on-disk representation of the graph's information.  This is stored
+// in the NTFS stream extending from the backing file named :Info.  It is
+// responsible for storing information about the on-disk mapping such that it
+// can be reloaded from disk and used as a perfect hash table.
+//
+
+typedef union _GRAPH_INFO_ON_DISK_FLAGS {
+
+    struct {
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:32;
+
+    };
+
+    LONG AsLong;
+    ULONG AsULong;
+
+} GRAPH_INFO_ON_DISK_FLAGS;
+C_ASSERT(sizeof(GRAPH_INFO_ON_DISK_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH_INFO_ON_DISK {
+
+    //
+    // Size of the structure, in bytes.
+    //
+
+    _Field_range_(==, sizeof(struct _GRAPH_INFO_ON_DISK))
+        ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    GRAPH_INFO_ON_DISK_FLAGS Flags;
+
+    //
+    // Algorithm that was used.
+    //
+
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+
+    //
+    // Hash function that was used.
+    //
+
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+
+    //
+    // Masking type.
+    //
+
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+
+    //
+    // Inline the GRAPH_DIMENSIONS structure.
+    //
+
+    union {
+
+        struct {
+            ULONG NumberOfEdges;
+            ULONG TotalNumberOfEdges;
+            ULONG NumberOfVertices;
+            BYTE NumberOfEdgesPowerOf2Exponent;
+            BYTE NumberOfEdgesNextPowerOf2Exponent;
+            BYTE NumberOfVerticesPowerOf2Exponent;
+            BYTE NumberOfVerticesNextPowerOf2Exponent;
+        };
+
+        GRAPH_DIMENSIONS Dimensions;
+    };
+
+    //
+    // Final number of elements in the underlying table.  This will vary
+    // depending on how the graph was created.
+    //
+
+    ULARGE_INTEGER NumberOfTableElements;
+
+    //
+    // Seed data.
+    //
+
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Seed3;
+    ULONG Seed4;
+
+} GRAPH_INFO_ON_DISK;
+C_ASSERT(sizeof(GRAPH_INFO_ON_DISK) <= PAGE_SIZE);
+typedef GRAPH_INFO_ON_DISK *PGRAPH_INFO_ON_DISK;
+
+//
+// Declare the main work and file work callback functions.
+//
+
+PERFECT_HASH_TABLE_MAIN_WORK_CALLBACK ProcessGraphCallbackChm01;
+PERFECT_HASH_TABLE_FILE_WORK_CALLBACK FileWorkCallbackChm01;
 
 typedef
 VOID

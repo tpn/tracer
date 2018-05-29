@@ -97,7 +97,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_KEYS {
     // Number of keys in the mapping.
     //
 
-    LARGE_INTEGER NumberOfElements;
+    ULARGE_INTEGER NumberOfElements;
 
     //
     // Handle to the underlying keys file.
@@ -135,11 +135,30 @@ typedef PERFECT_HASH_TABLE_KEYS *PPERFECT_HASH_TABLE_KEYS;
 
 typedef
 VOID
-(CALLBACK PERFECT_HASH_TABLE_WORK_CALLBACK)(
+(CALLBACK PERFECT_HASH_TABLE_MAIN_WORK_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE Instance,
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_ PSLIST_ENTRY ListEntry
     );
-typedef PERFECT_HASH_TABLE_WORK_CALLBACK *PPERFECT_HASH_TABLE_WORK_CALLBACK;
+typedef PERFECT_HASH_TABLE_MAIN_WORK_CALLBACK
+      *PPERFECT_HASH_TABLE_MAIN_WORK_CALLBACK;
+
+//
+// Additionally, algorithms can register a callback routine for performing
+// file-oriented operations in the main threadpool (not directly related to
+// graph solving).
+//
+
+typedef
+VOID
+(CALLBACK PERFECT_HASH_TABLE_FILE_WORK_CALLBACK)(
+    _In_ PTP_CALLBACK_INSTANCE Instance,
+    _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
+    _In_ PSLIST_ENTRY ListEntry
+    );
+typedef PERFECT_HASH_TABLE_FILE_WORK_CALLBACK
+      *PPERFECT_HASH_TABLE_FILE_WORK_CALLBACK;
+
 
 //
 // Define a runtime context to encapsulate threadpool resources.  This is
@@ -177,6 +196,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     //
 
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+
+    //
+    // The masking type in use.
+    //
+
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
 
     //
     // The hash function in use.
@@ -254,8 +279,23 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     // finding.
     //
 
+    HANDLE CompletedEvent;
+
+    //
+    // The following event is set when a worker thread has completed preparing
+    // the underlying backing file in order for the solved graph to be persisted
+    // to disk.
+    //
+
+    HANDLE PreparedFileEvent;
+
+    //
+    // The following event is set when a worker thread has completed saving the
+    // solved graph to disk.
+    //
+
     union {
-        HANDLE CompletedEvent;
+        HANDLE SavedFileEvent;
         PVOID LastEvent;
     };
 
@@ -295,16 +335,33 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     PTP_CLEANUP_GROUP MainCleanupGroup;
     PTP_POOL MainThreadpool;
     PTP_WORK MainWork;
-    SLIST_HEADER MainListHead;
+    PTP_WORK FileWork;
+    SLIST_HEADER MainWorkListHead;
+    SLIST_HEADER FileWorkListHead;
     ULONG MinimumConcurrency;
     ULONG MaximumConcurrency;
+
+    //
+    // Provide a means for file work callbacks to indicate an error back to
+    // the creation routine by incrementing the following counter.
+    //
+
+    volatile ULONG FileWorkErrors;
+    volatile ULONG FileWorkLastError;
 
     //
     // The algorithm is responsible for registering an appropriate callback
     // for main thread work items in this next field.
     //
 
-    PPERFECT_HASH_TABLE_WORK_CALLBACK MainCallback;
+    PPERFECT_HASH_TABLE_MAIN_WORK_CALLBACK MainWorkCallback;
+
+    //
+    // The algorithm is responsible for registering an appropriate callback
+    // for file work threadpool work items in this next field.
+    //
+
+    PPERFECT_HASH_TABLE_FILE_WORK_CALLBACK FileWorkCallback;
 
     //
     // If a threadpool worker thread finds a perfect hash solution, it will
@@ -319,7 +376,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     TP_CALLBACK_ENVIRON FinishedCallbackEnv;
     PTP_POOL FinishedThreadpool;
     PTP_WORK FinishedWork;
-    SLIST_HEADER FinishedListHead;
+    SLIST_HEADER FinishedWorkListHead;
 
     //
     // If a worker thread successfully finds a perfect hash solution, it will
@@ -367,6 +424,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 
     PVOID HashFunctionContext;
 
+    //
+    // An opaque pointer to the winning solution (i.e. the solved graph).
+    //
+
+    PVOID SolvedContext;
+
 } PERFECT_HASH_TABLE_CONTEXT;
 typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
 
@@ -413,6 +476,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     //
 
     PERFECT_HASH_TABLE_FLAGS Flags;
+
+    //
+    // Generic singly-linked list entry.
+    //
+
+    SLIST_ENTRY ListEntry;
 
     //
     // Pointer to an initialized RTL structure.
@@ -470,8 +539,115 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
     UNICODE_STRING Path;
 
+    //
+    // Handle to the info stream backing file.
+    //
+
+    HANDLE InfoStreamFileHandle;
+
+    //
+    // Handle to the memory mapping for the backing file.
+    //
+
+    HANDLE InfoStreamMappingHandle;
+
+    //
+    // Base address of the memory map for the backing file.
+    //
+
+    PVOID InfoStreamBaseAddress;
+
+    //
+    // Fully-qualified, NULL-terminated path of the :Info stream associated with
+    // the path above.
+    //
+
+    UNICODE_STRING InfoStreamPath;
+
+    //
+    // Capture the mapping size and actual structure size for the :Info stream.
+    //
+
+    ULARGE_INTEGER InfoMappingSizeInBytes;
+    ULARGE_INTEGER InfoActualStructureSizeInBytes;
+
 } PERFECT_HASH_TABLE;
 typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
+
+//
+// Define an enumeration to capture the type of file work operations we want
+// to be able to dispatch to the file work threadpool callback.
+//
+
+typedef enum _FILE_WORK_ID {
+
+    //
+    // Null ID.
+    //
+
+    FileWorkNullId = 0,
+
+    //
+    // Initial file preparation once the underlying sizes required are known.
+    //
+
+    FileWorkPrepareId = 1,
+
+    //
+    // Perfect hash solution has been solved and is ready to be saved to disk.
+    //
+
+    FileWorkSaveId,
+
+    //
+    // Invalid ID, this must come last.
+    //
+
+    FileWorkInvalidId
+
+} FILE_WORK_ID;
+
+FORCEINLINE
+BOOLEAN
+IsValidFileWorkId(
+    _In_ FILE_WORK_ID FileWorkId
+    )
+{
+    return (
+        FileWorkId > FileWorkNullId &&
+        FileWorkId < FileWorkInvalidId
+    );
+}
+
+//
+// Define a file work item structure that will be pushed to the context's
+// file work list head.
+//
+
+typedef struct _FILE_WORK_ITEM {
+
+    //
+    // Singly-linked list entry for the structure.
+    //
+
+    SLIST_ENTRY ListEntry;
+
+    //
+    // Type of work requested.
+    //
+
+    FILE_WORK_ID FileWorkId;
+
+    //
+    // Pad out to an 8 byte boundary.
+    //
+
+    ULONG Unused;
+
+} FILE_WORK_ITEM;
+//C_ASSERT(sizeof(FILE_WORK_ITEM) == 16);
+typedef FILE_WORK_ITEM *PFILE_WORK_ITEM;
+
 
 //
 // TLS-related structures and functions.

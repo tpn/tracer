@@ -24,7 +24,9 @@ CreatePerfectHashTable(
     PPERFECT_HASH_TABLE_CONTEXT Context,
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
+    PULARGE_INTEGER NumberOfTableElementsPointer,
     PPERFECT_HASH_TABLE_KEYS Keys,
     PCUNICODE_STRING HashTablePath,
     PPERFECT_HASH_TABLE *PerfectHashTablePointer
@@ -54,7 +56,22 @@ Arguments:
 
     AlgorithmId - Supplies the algorithm to use.
 
+    MaskingType - Supplies the type of masking to use.  The algorithm and hash
+        function must both support the requested masking type.
+
     HashFunctionId - Supplies the hash function to use.
+
+    NumberOfTableElementsPointer - Optionally supplies a pointer to a
+        ULARGE_INTEGER structure that, if non-zero, indicates the number of
+        elements to assume when sizing the hash table.  If a non-NULL pointer
+        is supplied, it will receive the final number of elements in the table
+        if a solution could be found.
+
+        N.B. If this value is non-zero, it must be equal to or greater than
+             the number of keys indicated by the Keys parameter.  (It should be
+             at least 2.09 times the number of keys; the higher the value, the
+             larger the hash table, the faster a perfect hash solution will be
+             found.)
 
     Keys - Supplies a pointer to a PERFECT_HASH_TABLE_KEYS structure obtained
         from LoadPerfectHashTableKeys().
@@ -75,11 +92,31 @@ Return Value:
 --*/
 {
     BOOLEAN Success;
-    HANDLE FileHandle = NULL;
+    BOOLEAN UsingKeysPath;
+    PWSTR Dest;
+    PWSTR Source;
+    PBYTE Buffer;
+    PWSTR PathBuffer;
+    ULONG Result;
+    ULONG ShareMode;
+    ULONG LastError;
+    ULONG DesiredAccess;
+    ULONG FlagsAndAttributes;
+    ULONG IncomingPathBufferSizeInBytes;
+    ULONG InfoMappingSize;
+    PVOID BaseAddress;
+    SYSTEM_INFO SystemInfo;
+    HANDLE FileHandle;
+    HANDLE MappingHandle;
     LARGE_INTEGER AllocSize;
     LONG_INTEGER PathBufferSize;
+    LONG_INTEGER InfoStreamPathBufferSize;
+    ULARGE_INTEGER AlignedPathBufferSize;
+    ULARGE_INTEGER AlignedInfoStreamPathBufferSize;
+    ULARGE_INTEGER NumberOfTableElements;
     PPERFECT_HASH_TABLE Table = NULL;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht1");
+    UNICODE_STRING InfoStreamSuffix = RTL_CONSTANT_STRING(L":Info");
     PPERFECT_HASH_TABLE_API Api;
 
     //
@@ -112,6 +149,31 @@ Return Value:
         return FALSE;
     }
 
+    if (ARGUMENT_PRESENT(NumberOfTableElementsPointer)) {
+
+        //
+        // If the number of table elements is non-zero, verify it is greater
+        // than or equal to the number of keys present.
+        //
+
+        NumberOfTableElements.QuadPart = (
+            NumberOfTableElementsPointer->QuadPart
+        );
+
+        if (NumberOfTableElements.QuadPart > 0) {
+
+            if (NumberOfTableElements.QuadPart <
+                Keys->NumberOfElements.QuadPart) {
+
+                //
+                // Requested table size is too small, abort.
+                //
+
+                return FALSE;
+            }
+        }
+    }
+
     if (!ARGUMENT_PRESENT(PerfectHashTablePointer)) {
         return FALSE;
     }
@@ -131,6 +193,10 @@ Return Value:
     }
 
     if (!IsValidPerfectHashTableAlgorithmId(AlgorithmId)) {
+        return FALSE;
+    }
+
+    if (!IsValidPerfectHashTableMaskingType(MaskingType)) {
         return FALSE;
     }
 
@@ -162,11 +228,15 @@ Return Value:
             sizeof(HashTablePath->Buffer[0])
         );
 
+        UsingKeysPath = FALSE;
+        IncomingPathBufferSizeInBytes = HashTablePath->Length;
+        PathBuffer = HashTablePath->Buffer;
+
     } else {
 
         //
         // No path has been provided by the caller, so we'll use the path of
-        // the keys file with ".pht" appended.  Perform a quick invariant check
+        // the keys file with ".pht1" appended.  Perform a quick invariant check
         // first: maximum length should be 1 character (2 bytes) larger than
         // length.  (This is handled in LoadPerfectHashTableKeys().)
         //
@@ -176,25 +246,72 @@ Return Value:
 
         PathBufferSize.LongPart = (Keys->Path.MaximumLength + Suffix.Length);
 
+        UsingKeysPath = TRUE;
+        IncomingPathBufferSizeInBytes = Keys->Path.Length;
+        PathBuffer = Keys->Path.Buffer;
     }
+
+    //
+    // Align the path buffer up to a 16 byte boundary.
+    //
+
+    AlignedPathBufferSize.QuadPart = ALIGN_UP(PathBufferSize.LongPart, 16);
 
     //
     // Sanity check we haven't overflowed MAX_USHORT for the path buffer size.
     //
 
-    ASSERT(!PathBufferSize.HighPart);
+    ASSERT(!AlignedPathBufferSize.HighPart);
 
     //
     // Add the path buffer size to the structure allocation size, then check
     // we haven't overflowed MAX_ULONG.
     //
 
-    AllocSize.QuadPart += PathBufferSize.LongPart;
+    AllocSize.QuadPart += AlignedPathBufferSize.LowPart;
 
     ASSERT(!AllocSize.HighPart);
 
     //
-    // Allocate space for the structure and backing path.
+    // Calculate the size required by the :Info stream that will be created
+    // for the on-disk metadata.  We derive this by adding the length of the
+    // path to the length of the :Info suffix, plus an additional trailing NULL.
+    //
+
+    InfoStreamPathBufferSize.LongPart = (
+        PathBufferSize.LowPart +
+        InfoStreamSuffix.Length +
+        sizeof(InfoStreamSuffix.Buffer[0])
+    );
+
+    //
+    // Align the size up to a 16 byte boundary.
+    //
+
+    AlignedInfoStreamPathBufferSize.QuadPart = (
+        ALIGN_UP(
+            InfoStreamPathBufferSize.LongPart,
+            16
+        )
+    );
+
+    //
+    // Sanity check we haved overflowed MAX_USHORT.
+    //
+
+    ASSERT(!AlignedInfoStreamPathBufferSize.HighPart);
+
+    //
+    // Add the stream path size to the total size and perform a final overflow
+    // check.
+    //
+
+    AllocSize.QuadPart += AlignedInfoStreamPathBufferSize.LowPart;
+
+    ASSERT(!AllocSize.HighPart);
+
+    //
+    // Allocate space for the structure and backing paths.
     //
 
     Table = (PPERFECT_HASH_TABLE)(
@@ -220,7 +337,256 @@ Return Value:
     Table->Context = Context;
     Context->Table = Table;
     Context->AlgorithmId = AlgorithmId;
+    Context->MaskingType = MaskingType;
     Context->HashFunctionId = HashFunctionId;
+
+    //
+    // Carve out the backing memory structures for the unicode string buffers
+    // for the path names.
+    //
+
+    Buffer = RtlOffsetToPointer(Table, sizeof(*Table));
+    Table->Path.Buffer = (PWSTR)Buffer;
+    CopyMemory(Table->Path.Buffer, PathBuffer, IncomingPathBufferSizeInBytes);
+
+    if (UsingKeysPath) {
+
+        //
+        // Replace the ".keys" suffix with ".pht1".
+        //
+
+        Dest = Table->Path.Buffer;
+        Dest += (Keys->Path.MaximumLength >> 1) - 5;
+
+        ASSERT(*Dest == L'k');
+        ASSERT(*(Dest - 1) == L'.');
+
+        Source = Suffix.Buffer;
+
+        while (*Source) {
+            *Dest++ = *Source++;
+        }
+
+        *Dest = L'\0';
+
+        //
+        // We can use the Keys->Path lengths directly.
+        //
+
+        Table->Path.Length = Keys->Path.Length;
+        Table->Path.MaximumLength = Keys->Path.MaximumLength;
+    }
+
+    //
+    // Advance past the aligned path buffer size such that we're positioned at
+    // the start of the info stream buffer.
+    //
+
+    Buffer += AlignedPathBufferSize.QuadPart;
+    Table->InfoStreamPath.Buffer = (PWSTR)Buffer;
+    Table->InfoStreamPath.MaximumLength = InfoStreamPathBufferSize.LowPart;
+    Table->InfoStreamPath.Length = (
+        Table->InfoStreamPath.MaximumLength -
+        sizeof(Table->InfoStreamPath.Buffer[0])
+    );
+
+    //
+    // Copy the full .pht1 path into the info stream buffer.
+    //
+
+    CopyMemory(Table->InfoStreamPath.Buffer,
+               Table->Path.Buffer,
+               Table->Path.Length);
+
+    Dest = Table->InfoStreamPath.Buffer;
+    Dest += Table->InfoStreamPath.Length;
+    ASSERT(*Dest == L'\0');
+
+    //
+    // Copy the :Info suffix over.
+    //
+
+    Source = InfoStreamSuffix.Buffer;
+
+    while (*Source) {
+        *Dest++ = *Source++;
+    }
+
+    *Dest = L'\0';
+
+    //
+    // We've finished initializing our two unicode string buffers for the
+    // backing file and it's :Info counterpart.  Now, let's open file handles
+    // to them.
+    //
+
+    //
+    // Open the file handle for the backing hash table store.
+    //
+
+    ShareMode = (
+        FILE_SHARE_READ  |
+        FILE_SHARE_WRITE |
+        FILE_SHARE_DELETE
+    );
+
+    DesiredAccess = (
+        GENERIC_READ |
+        GENERIC_WRITE
+    );
+
+    FlagsAndAttributes = FILE_FLAG_OVERLAPPED;
+
+    FileHandle = Rtl->CreateFileW(Table->Path.Buffer,
+                                  DesiredAccess,
+                                  ShareMode,
+                                  NULL,
+                                  OPEN_ALWAYS,
+                                  FlagsAndAttributes,
+                                  NULL);
+
+    LastError = GetLastError();
+
+    Table->FileHandle = FileHandle;
+
+    if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
+
+        //
+        // Failed to open the file successfully.
+        //
+
+        goto Error;
+
+    } else if (LastError == ERROR_ALREADY_EXISTS) {
+
+        //
+        // The file was opened successfully, but it already existed.  Clear the
+        // local last error variable then truncate the file.
+        //
+
+        LastError = ERROR_SUCCESS;
+
+        Result = SetFilePointer(FileHandle, 0, NULL, FILE_BEGIN);
+        if (Result == INVALID_SET_FILE_POINTER) {
+            LastError = GetLastError();
+            goto Error;
+        }
+
+        Success = SetEndOfFile(FileHandle);
+        if (!Success) {
+            LastError = GetLastError();
+            goto Error;
+        }
+
+        //
+        // We've successfully truncated the file.  The creation routine
+        // implementation can now allocate the space required for it as part
+        // of successful graph solving.
+        //
+
+    }
+
+    //
+    // The :Info stream is slightly different.  As it's a fixed size metadata
+    // record, we can memory map an entire section up-front prior to calling
+    // the algorithm implementation.  So, do that now.
+    //
+
+    FileHandle = Rtl->CreateFileW(Table->InfoStreamPath.Buffer,
+                                  DesiredAccess,
+                                  ShareMode,
+                                  NULL,
+                                  OPEN_ALWAYS,
+                                  FlagsAndAttributes,
+                                  NULL);
+
+    Table->InfoStreamFileHandle = FileHandle;
+
+    LastError = GetLastError();
+
+    if (!FileHandle || FileHandle == INVALID_HANDLE_VALUE) {
+
+        //
+        // Failed to open the file successfully.
+        //
+
+        goto Error;
+
+    } else if (LastError == ERROR_ALREADY_EXISTS) {
+
+        //
+        // The file was opened successfully, but it already existed.  Clear the
+        // local last error variable then truncate the file.
+        //
+
+        LastError = ERROR_SUCCESS;
+
+        Result = SetFilePointer(FileHandle, 0, NULL, FILE_BEGIN);
+        if (Result == INVALID_SET_FILE_POINTER) {
+            LastError = GetLastError();
+            goto Error;
+        }
+
+        Success = SetEndOfFile(FileHandle);
+        if (!Success) {
+            LastError = GetLastError();
+            goto Error;
+        }
+
+        //
+        // We've successfully truncated the :Info file.
+        //
+
+    }
+
+    //
+    // Get the system allocation granularity, as we use this to govern the size
+    // we request of the underlying file mapping.
+    //
+
+    GetSystemInfo(&SystemInfo);
+
+    InfoMappingSize = SystemInfo.dwAllocationGranularity;
+    ASSERT(InfoMappingSize >= PAGE_SIZE);
+
+    //
+    // Create a file mapping for the :Info stream.
+    //
+
+    MappingHandle = CreateFileMappingW(FileHandle,
+                                       NULL,
+                                       PAGE_READWRITE,
+                                       0,
+                                       InfoMappingSize,
+                                       NULL);
+
+    Table->InfoStreamMappingHandle = MappingHandle;
+    Table->InfoMappingSizeInBytes.QuadPart = InfoMappingSize;
+
+    if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
+
+        goto Error;
+
+    }
+
+    //
+    // We successfully created a file mapping.  Proceed with mapping it into
+    // memory.
+    //
+
+    BaseAddress = MapViewOfFile(MappingHandle,
+                                FILE_MAP_READ | FILE_MAP_WRITE,
+                                0,
+                                0,
+                                InfoMappingSize);
+
+    Table->InfoStreamBaseAddress = BaseAddress;
+
+    if (!BaseAddress) {
+
+        goto Error;
+
+    }
 
     //
     // Common initialization is complete, dispatch remaining work to the

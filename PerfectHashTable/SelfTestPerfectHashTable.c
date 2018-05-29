@@ -80,6 +80,7 @@ Return Value:
     LONG_INTEGER AllocSize;
     LARGE_INTEGER BytesToWrite;
     LARGE_INTEGER WideCharsToWrite;
+    ULARGE_INTEGER NumberOfTableElements;
     WIN32_FIND_DATAW FindData;
     UNICODE_STRING SearchPath;
     UNICODE_STRING KeysPath;
@@ -88,6 +89,7 @@ Return Value:
     PPERFECT_HASH_TABLE_KEYS Keys;
     PPERFECT_HASH_TABLE_CONTEXT Context;
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
     PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
     PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
@@ -291,7 +293,7 @@ Return Value:
             // We failed for some other reason.
             //
 
-            WIDE_OUTPUT_RAW(WideOutput, 
+            WIDE_OUTPUT_RAW(WideOutput,
                             L"FindFirstFileW() failed with error code: ");
             WIDE_OUTPUT_INT(WideOutput, LastError);
             WIDE_OUTPUT_LF(WideOutput);
@@ -487,10 +489,23 @@ Return Value:
         AlgorithmId = PerfectHashTableChm01AlgorithmId;
 
         //
+        // N.B. The masking type is currently ignored.
+        //
+
+        MaskingType = PerfectHashTableModulusMaskingType;
+
+        //
         // N.B. The hash function ID is currently ignored.
         //
 
         HashFunctionId = PerfectHashTableDefaultHashFunctionId;
+
+        //
+        // Clear our number of table elements variable; we currently let the
+        // algorithm pick the internal table size.
+        //
+
+        NumberOfTableElements.QuadPart = 0;
 
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
@@ -498,7 +513,9 @@ Return Value:
                                               Context,
                                               CreateTableFlags,
                                               AlgorithmId,
+                                              MaskingType,
                                               HashFunctionId,
+                                              &NumberOfTableElements,
                                               Keys,
                                               &TablePath,
                                               &Table);
