@@ -74,6 +74,7 @@ Return Value:
     USHORT NumberOfBitmaps;
     PGRAPH_DIMENSIONS Dim;
     PSLIST_ENTRY ListEntry;
+    SYSTEM_INFO SystemInfo;
     FILE_WORK_ITEM SaveFile;
     FILE_WORK_ITEM PrepareFile;
     PGRAPH_INFO_ON_DISK OnDiskInfo;
@@ -404,6 +405,14 @@ Return Value:
     Info.AssignedBitmapBufferSizeInBytes = (
         AssignedBitmapBufferSizeInBytes.QuadPart
     );
+
+    //
+    // Capture the system allocation granularity.  This is used to align the
+    // backing memory maps used for the table array.
+    //
+
+    GetSystemInfo(&SystemInfo);
+    Info.AllocationGranularity = SystemInfo.dwAllocationGranularity;
 
     //
     // Copy the dimensions over.
@@ -838,7 +847,6 @@ Return Value:
         case FileWorkPrepareId: {
 
             PVOID BaseAddress;
-            ULONG ProtectionFlags;
             HANDLE MappingHandle;
             PPERFECT_HASH_TABLE Table;
             ULARGE_INTEGER SectorAlignedSize;
@@ -859,8 +867,6 @@ Return Value:
 
             Table = Context->Table;
 
-            ProtectionFlags = PAGE_READWRITE | SEC_WRITECOMBINE;
-
             //
             // Create the file mapping for the sector-aligned size.  This will
             // extend the underlying file size accordingly.
@@ -868,7 +874,7 @@ Return Value:
 
             MappingHandle = CreateFileMappingW(Table->FileHandle,
                                                NULL,
-                                               ProtectionFlags,
+                                               PAGE_READWRITE,
                                                SectorAlignedSize.HighPart,
                                                SectorAlignedSize.LowPart,
                                                NULL);
