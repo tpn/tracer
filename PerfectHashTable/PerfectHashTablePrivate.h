@@ -31,6 +31,15 @@ Abstract:
 #endif
 
 //
+// Define a minimum size for on-disk representations of perfect hash table
+// metadata (stored in an NTFS stream named :Info).  This is a loose minimum
+// that's mostly used to weed out files that are grossly too small; it doesn't
+// need to be an exact measure of the absolute minimum size supported.
+//
+
+#define MINIMUM_INFO_ON_DISK_SIZE 32
+
+//
 // Define the PERFECT_HASH_TABLE_KEYS_FLAGS structure.
 //
 
@@ -472,7 +481,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     _Field_range_(==, sizeof(struct _PERFECT_HASH_TABLE)) ULONG SizeOfStruct;
 
     //
-    // PerfectHashTable flags.
+    // Flags.
     //
 
     PERFECT_HASH_TABLE_FLAGS Flags;
@@ -645,9 +654,7 @@ typedef struct _FILE_WORK_ITEM {
     ULONG Unused;
 
 } FILE_WORK_ITEM;
-//C_ASSERT(sizeof(FILE_WORK_ITEM) == 16);
 typedef FILE_WORK_ITEM *PFILE_WORK_ITEM;
-
 
 //
 // TLS-related structures and functions.
