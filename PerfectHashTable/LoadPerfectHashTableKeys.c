@@ -19,8 +19,6 @@ BOOLEAN
 LoadPerfectHashTableKeys(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PPERFECT_HASH_TABLE_ANY_API AnyApi,
-    PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadFlags,
     PCUNICODE_STRING Path,
     PPERFECT_HASH_TABLE_KEYS *KeysPointer
     )
@@ -36,10 +34,6 @@ Arguments:
 
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
         will be used for al memory allocations.
-
-    AnyApi - Supplies a pointer to the active API structure in use.
-
-    LoadFlags - Supplies load flags.
 
     Path - Supplies a pointer to a UNICODE_STRING structure that represents
         a fully-qualified path of the keys to use for the perfect hash table.
@@ -232,7 +226,6 @@ Return Value:
     Keys->SizeOfStruct = sizeof(*Keys);
     Keys->Rtl = Rtl;
     Keys->Allocator = Allocator;
-    Keys->AnyApi = AnyApi;
     Keys->FileHandle = FileHandle;
     Keys->MappingHandle = MappingHandle;
     Keys->BaseAddress = BaseAddress;

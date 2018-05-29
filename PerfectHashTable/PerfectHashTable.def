@@ -8,7 +8,6 @@ EXPORTS
     CreatePerfectHashTable
     LoadPerfectHashTable
     TestPerfectHashTable
-    DestroyPerfectHashTable
     InitializePerfectHashTableAllocator
     InitializePerfectHashTableAllocatorFromRtlBootstrap
     SelfTestPerfectHashTable

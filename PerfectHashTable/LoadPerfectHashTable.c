@@ -382,14 +382,14 @@ Return Value:
     }
 
     //
-    // The file is a sensible non-zero size.  Proceed with creating a file
-    // mapping.  We use 0 as the file size such that we inherit whatever the
-    // current file size is.
+    // The file is a sensible non-zero size.  Proceed with creating a mapping.
+    // We use 0 as the mapping size such that it defaults to whatever the file
+    // size is.
     //
 
     MappingHandle = CreateFileMappingW(FileHandle,
                                        NULL,
-                                       PAGE_READWRITE,
+                                       PAGE_READONLY,
                                        0,
                                        0,
                                        NULL);
@@ -584,13 +584,14 @@ Return Value:
     }
 
     //
-    // File size is valid, proceed with creating a mapping section.  Don't
-    // specify a mapping size; just inherit the default.
+    // File size is valid.  Proceed with creating a mapping.  As with :Info,
+    // we don't specify a size, allowing instead to just default to the
+    // underlying file size.
     //
 
     MappingHandle = CreateFileMappingW(FileHandle,
                                        NULL,
-                                       PAGE_READWRITE,
+                                       PAGE_READONLY,
                                        0,
                                        0,
                                        NULL);

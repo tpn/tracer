@@ -91,9 +91,6 @@ Return Value:
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
     PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
-    PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadKeysFlags;
-    PERFECT_HASH_TABLE_CREATE_FLAGS CreateTableFlags;
-    PERFECT_HASH_TABLE_LOAD_FLAGS LoadTableFlags;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
     PPERFECT_HASH_TABLE_API Api;
@@ -327,13 +324,10 @@ Return Value:
     BaseLength = Length;
 
     //
-    // Initialize remaining variables prior to entering the loop.
+    // Zero the failure count and begin the main loop.
     //
 
     Failures = 0;
-    LoadKeysFlags.AsULong = 0;
-    LoadTableFlags.AsULong = 0;
-    CreateTableFlags.AsULong = 0;
 
     do {
 
@@ -355,7 +349,6 @@ Return Value:
         MaximumConcurrency = 1;
         Success = Api->CreatePerfectHashTableContext(Rtl,
                                                      Allocator,
-                                                     AnyApi,
                                                      &MaximumConcurrency,
                                                      &Context);
 
@@ -391,8 +384,6 @@ Return Value:
 
         Success = Api->LoadPerfectHashTableKeys(Rtl,
                                                 Allocator,
-                                                AnyApi,
-                                                LoadKeysFlags,
                                                 &KeysPath,
                                                 &Keys);
 
@@ -509,16 +500,13 @@ Return Value:
 
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
-                                              AnyApi,
                                               Context,
-                                              CreateTableFlags,
                                               AlgorithmId,
                                               MaskingType,
                                               HashFunctionId,
                                               &NumberOfTableElements,
                                               Keys,
-                                              &TablePath,
-                                              &Table);
+                                              &TablePath);
 
         if (!Success) {
 
@@ -534,59 +522,12 @@ Return Value:
         }
 
         //
-        // Test the table that we just created.
-        //
-
-        Success = Api->TestPerfectHashTable(Table);
-
-        if (!Success) {
-
-            WIDE_OUTPUT_RAW(WideOutput, L"Test failed for perfect hash table "
-                                        L"created from keys: ");
-            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
-            WIDE_OUTPUT_RAW(WideOutput, L".\n");
-            WIDE_OUTPUT_FLUSH();
-
-            Failures++;
-            Failed = TRUE;
-        }
-
-        //
-        // Destroy the table.
-        //
-
-        Success = Api->DestroyPerfectHashTable(&Table, &IsProcessTerminating);
-        if (!Success) {
-
-            WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
-                                        L"created from keys: ");
-            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &KeysPath);
-            WIDE_OUTPUT_RAW(WideOutput, L".\n");
-            WIDE_OUTPUT_FLUSH();
-
-            Failures++;
-            goto DestroyKeys;
-        }
-
-        //
-        // If the test against the newly-created table failed, we don't attempt
-        // to test the file-backed version.
-        //
-
-        if (Failed) {
-            goto DestroyKeys;
-        }
-
-        //
-        // If we get here, the newly-created perfect hash table passed its
-        // tests and was successfully destroyed.  We now attempt to load it
-        // from the backing file and repeat the test.
+        // Load the perfect hash table we just created.
         //
 
         Success = Api->LoadPerfectHashTable(Rtl,
                                             Allocator,
-                                            AnyApi,
-                                            LoadTableFlags,
+                                            Keys,
                                             &TablePath,
                                             &Table);
 
@@ -624,17 +565,7 @@ Return Value:
         // Destroy the table.
         //
 
-        Success = Api->DestroyPerfectHashTable(&Table, &IsProcessTerminating);
-        if (!Success) {
-
-            WIDE_OUTPUT_RAW(WideOutput, L"Failed to destroy perfect hash table "
-                                        L"loaded from disk: ");
-            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
-            WIDE_OUTPUT_RAW(WideOutput, L".\n");
-            WIDE_OUTPUT_FLUSH();
-
-            Failures++;
-        }
+        Table->Vtbl->Release(Table);
 
 DestroyKeys:
 

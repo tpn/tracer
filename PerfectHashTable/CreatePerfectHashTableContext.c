@@ -61,7 +61,6 @@ BOOLEAN
 CreatePerfectHashTableContext(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PULONG MaximumConcurrencyPointer,
     PPERFECT_HASH_TABLE_CONTEXT *ContextPointer
     )
@@ -118,7 +117,6 @@ Return Value:
     PUNICODE_STRING Name;
     PPUNICODE_STRING Names;
     PPUNICODE_STRING Prefixes;
-    PPERFECT_HASH_TABLE_API Api;
     PPERFECT_HASH_TABLE_CONTEXT Context = NULL;
 
     //
@@ -135,20 +133,6 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(ContextPointer)) {
         return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(AnyApi)) {
-
-        return FALSE;
-
-    } else {
-
-        //
-        // Initialize Api alias.  We'll use this during error handling in order
-        // to call the context destroy routine.
-        //
-
-        Api = &AnyApi->Api;
     }
 
     //
@@ -237,7 +221,6 @@ Return Value:
     Context->Rtl = Rtl;
     Context->Allocator = Allocator;
     Context->Flags.AsULong = 0;
-    Context->AnyApi = AnyApi;
 
     //
     // The context structure will be trailed by an array of UNICODE_STRING
@@ -557,7 +540,7 @@ Error:
 
     if (Context) {
 
-        if (!Api->DestroyPerfectHashTableContext(&Context, NULL)) {
+        if (!DestroyPerfectHashTableContext(&Context, NULL)) {
 
             //
             // There's nothing we can do here.

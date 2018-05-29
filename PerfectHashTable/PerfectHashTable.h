@@ -33,17 +33,6 @@ typedef const PERFECT_HASH_TABLE_KEYS *PCPERFECT_HASH_TABLE_KEYS;
 // Define the PERFECT_HASH_TABLE_KEYS interface function pointers.
 //
 
-typedef union _PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS {
-    struct {
-        ULONG Unused:32;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS;
-typedef PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS
-      *PPERFECT_HASH_TABLE_KEYS_LOAD_FLAGS;
-C_ASSERT(sizeof(PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS) == sizeof(ULONG));
-
 typedef
 _Check_return_
 _Success_(return != 0)
@@ -51,8 +40,6 @@ BOOLEAN
 (NTAPI LOAD_PERFECT_HASH_TABLE_KEYS)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
-    _In_ PERFECT_HASH_TABLE_KEYS_LOAD_FLAGS LoadFlags,
     _In_ PCUNICODE_STRING Path,
     _Outptr_result_nullonfailure_ PPERFECT_HASH_TABLE_KEYS *Keys
     );
@@ -241,7 +228,6 @@ BOOLEAN
 (NTAPI CREATE_PERFECT_HASH_TABLE_CONTEXT)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_opt_ PULONG MaximumConcurrency,
     _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE_CONTEXT *Context
     );
@@ -276,7 +262,6 @@ BOOLEAN
 (NTAPI CREATE_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
@@ -317,7 +302,6 @@ BOOLEAN
 (NTAPI LOAD_PERFECT_HASH_TABLE)(
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
-    _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_opt_ PPERFECT_HASH_TABLE_KEYS Keys,
     _In_ PCUNICODE_STRING Path,
     _Out_ PPERFECT_HASH_TABLE *TablePointer
@@ -627,12 +611,8 @@ Return Value:
         "CreatePerfectHashTableContext",
         "DestroyPerfectHashTableContext",
         "CreatePerfectHashTable",
-        "LoadPerfectHashTableInstance",
-        "TestPerfectHashTableInstance",
-        "PerfectHashTableInstanceAddRef",
-        "PerfectHashTableInstanceRelease",
-        "PerfectHashTableInstanceInsert",
-        "PerfectHashTableInstanceLookup",
+        "LoadPerfectHashTable",
+        "TestPerfectHashTable",
         "InitializePerfectHashTableAllocator",
         "InitializePerfectHashTableAllocatorFromRtlBootstrap",
         "SelfTestPerfectHashTable",

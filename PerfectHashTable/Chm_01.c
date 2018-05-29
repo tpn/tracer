@@ -459,6 +459,7 @@ Return Value:
     OnDiskHeader->MaskingType = Context->MaskingType;
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
     OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
+    OnDiskHeader->NumberOfKeys.QuadPart = NumberOfEdges.QuadPart;
 
     //
     // This will change based on masking type and whether or not the caller
@@ -961,7 +962,6 @@ Return Value:
             ULONGLONG SizeInBytes;
             LARGE_INTEGER EndOfFile;
             PPERFECT_HASH_TABLE Table;
-            FILE_STANDARD_INFO FileInfo;
             PTABLE_INFO_ON_DISK_HEADER Header;
 
             //
@@ -980,7 +980,11 @@ Return Value:
             Graph = (PGRAPH)Context->SolvedContext;
             Source = Graph->Assigned;
             Header = Table->Header;
-            SizeInBytes = Info->AssignedSizeInBytes;
+
+            SizeInBytes = (
+                Header->NumberOfTableElements.QuadPart *
+                Header->KeySizeInBytes
+            );
 
             //
             // The graph has been solved.  Copy the array of assigned values
@@ -1003,65 +1007,60 @@ Return Value:
             // When we mapped the array in the work item above, we used a size
             // that was aligned with the system allocation granularity.  We now
             // want to set the end of file explicitly to the exact size of the
-            // underlying array.  So, obtain the current end of file value,
-            // and compare it to the size of the assigned array in bytes.  Then,
-            // assuming they differ (they almost always will, unless the table
-            // size happened to be a perfect multiple of the system allocation
-            // granularity), set the file's pointer to where we want it to be,
-            // then commit via SetEndOfFile().
+            // underlying array.  To do this, we unmap the view, delete the
+            // section, set the file pointer to where we want, set the end of
+            // file (which will apply the file pointer position as EOF), then
+            // close the file handle.
             //
 
-            Success = GetFileInformationByHandleEx(
-                Table->FileHandle,
-                (FILE_INFO_BY_HANDLE_CLASS)FileStandardInfo,
-                &FileInfo,
-                sizeof(FileInfo)
-            );
+            ASSERT(UnmapViewOfFile(Table->BaseAddress));
+            Table->BaseAddress = NULL;
 
-            if (!Success) {
-                Context->FileWorkLastError = GetLastError();
-                InterlockedIncrement(&Context->FileWorkErrors);
-                __debugbreak();
-                break;
-            }
+            ASSERT(CloseHandle(Table->MappingHandle));
+            Table->MappingHandle = NULL;
+
+            EndOfFile.QuadPart = SizeInBytes;
+
+            Success = SetFilePointerEx(Table->FileHandle,
+                                       EndOfFile,
+                                       NULL,
+                                       FILE_BEGIN);
+
+            ASSERT(Success);
+
+            ASSERT(SetEndOfFile(Table->FileHandle));
+
+            ASSERT(CloseHandle(Table->FileHandle));
+            Table->FileHandle = NULL;
 
             //
-            // We've successfully obtained the file info.  Initialize what
-            // we want EndOfFile to be (based on the assigned size in bytes),
-            // and compare that to the current value.  If it differs, proceed
-            // with SetFilePointerEx() and then SetEndOfFile() to update it.
+            // Perform exactly the same actions for the :Info stream.
             //
 
-            EndOfFile.QuadPart = Info->AssignedSizeInBytes;
+            ASSERT(UnmapViewOfFile(Table->InfoStreamBaseAddress));
+            Table->InfoStreamBaseAddress = NULL;
 
-            if (FileInfo.EndOfFile.QuadPart != EndOfFile.QuadPart) {
+            ASSERT(CloseHandle(Table->InfoStreamMappingHandle));
+            Table->InfoStreamMappingHandle = NULL;
 
-                Success = SetFilePointerEx(Table->FileHandle,
-                                           EndOfFile,
-                                           NULL,
-                                           FILE_BEGIN);
+            //
+            // The file size for the :Info stream will be the size of our
+            // on-disk info structure.
+            //
 
-                if (!Success) {
-                    Context->FileWorkLastError = GetLastError();
-                    InterlockedIncrement(&Context->FileWorkErrors);
-                    __debugbreak();
-                    break;
-                }
+            EndOfFile.QuadPart = sizeof(*OnDiskInfo);
 
-                //
-                // Commit the new end of file.
-                //
+            Success = SetFilePointerEx(Table->InfoStreamFileHandle,
+                                       EndOfFile,
+                                       NULL,
+                                       FILE_BEGIN);
 
-                Success = SetEndOfFile(Table->FileHandle);
+            ASSERT(Success);
 
-                if (!Success) {
-                    Context->FileWorkLastError = GetLastError();
-                    InterlockedIncrement(&Context->FileWorkErrors);
-                    __debugbreak();
-                    break;
-                }
+            ASSERT(SetEndOfFile(Table->InfoStreamFileHandle));
 
-            }
+            ASSERT(CloseHandle(Table->InfoStreamFileHandle));
+            Table->InfoStreamFileHandle = NULL;
 
             break;
         }

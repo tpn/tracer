@@ -446,6 +446,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
 
 //
+// Forward definition of the hash table context destructor.
+//
+
+DESTROY_PERFECT_HASH_TABLE_CONTEXT DestroyPerfectHashTableContext;
+
+//
 // Define the PERFECT_HASH_TABLE_FLAGS structure.
 //
 
@@ -494,10 +500,10 @@ typedef PERFECT_HASH_TABLE_FLAGS *PPERFECT_HASH_TABLE_FLAGS;
 typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
     //
-    // Reserve a slot for a vtable.
+    // Vtbl slot comes first.
     //
 
-    PPVOID Vtbl;
+    PPERFECT_HASH_TABLE_VTBL Vtbl;
 
     //
     // Size of the structure, in bytes.
@@ -530,10 +536,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     PALLOCATOR Allocator;
 
     //
-    // Pointer to the API structure in use.
+    // Reference count.  Affected by AddRef() and Release().
     //
 
-    PPERFECT_HASH_TABLE_ANY_API AnyApi;
+    volatile ULONG ReferenceCount;
+
+    //
+    // Pad out to an 8 byte boundary.
+    //
+
+    ULONG Padding;
 
     //
     // Pointer to the keys corresponding to this perfect hash table.  May be
@@ -575,6 +587,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     //
 
     UNICODE_STRING Path;
+
+    //
+    // Capture the mapping size of the underlying array, which will be aligned
+    // up to a system allocation granularity.
+    //
+
+    ULARGE_INTEGER MappingSizeInBytes;
 
     //
     // Handle to the info stream backing file.
@@ -624,6 +643,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
 } PERFECT_HASH_TABLE;
 typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
+
+//
+// Declare the AddRef and Release functions for the hash table.
+//
+
+PERFECT_HASH_TABLE_ADD_REF PerfectHashTableAddRef;
+PERFECT_HASH_TABLE_RELEASE PerfectHashTableRelease;
 
 //
 // Metadata about a perfect hash table is stored in an NTFS stream named :Info
