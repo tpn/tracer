@@ -4,13 +4,15 @@ Copyright (c) 2018 Trent Nelson <trent@trent.me>
 
 Module Name:
 
-    PerfectHash.h
+    PerfectHashTable.h
 
 Abstract:
 
-    This is the main public header file for the PerfectHash component.
+    This is the main public header file for the PerfectHashTable component.
 
 --*/
+
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
