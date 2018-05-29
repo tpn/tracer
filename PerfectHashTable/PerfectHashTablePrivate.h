@@ -31,15 +31,6 @@ Abstract:
 #endif
 
 //
-// Define a minimum size for on-disk representations of perfect hash table
-// metadata (stored in an NTFS stream named :Info).  This is a loose minimum
-// that's mostly used to weed out files that are grossly too small; it doesn't
-// need to be an exact measure of the absolute minimum size supported.
-//
-
-#define MINIMUM_INFO_ON_DISK_SIZE 32
-
-//
 // Define the PERFECT_HASH_TABLE_KEYS_FLAGS structure.
 //
 
@@ -336,19 +327,34 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     volatile ULONG Attempts;
 
     //
-    // The main threadpool callback environment, used for processing general
-    // work items (such as parallel perfect hash solution finding).
+    // The main threadpool callback environment, used for solving perfect hash
+    // solutions in parallel.
     //
 
     TP_CALLBACK_ENVIRON MainCallbackEnv;
     PTP_CLEANUP_GROUP MainCleanupGroup;
     PTP_POOL MainThreadpool;
     PTP_WORK MainWork;
-    PTP_WORK FileWork;
     SLIST_HEADER MainWorkListHead;
-    SLIST_HEADER FileWorkListHead;
     ULONG MinimumConcurrency;
     ULONG MaximumConcurrency;
+
+    //
+    // The algorithm is responsible for registering an appropriate callback
+    // for main thread work items in this next field.
+    //
+
+    PPERFECT_HASH_TABLE_MAIN_WORK_CALLBACK MainWorkCallback;
+
+    //
+    // A threadpool for offloading file operations.
+    //
+
+    TP_CALLBACK_ENVIRON FileCallbackEnv;
+    PTP_CLEANUP_GROUP FileCleanupGroup;
+    PTP_POOL FileThreadpool;
+    PTP_WORK FileWork;
+    SLIST_HEADER FileWorkListHead;
 
     //
     // Provide a means for file work callbacks to indicate an error back to
@@ -357,13 +363,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 
     volatile ULONG FileWorkErrors;
     volatile ULONG FileWorkLastError;
-
-    //
-    // The algorithm is responsible for registering an appropriate callback
-    // for main thread work items in this next field.
-    //
-
-    PPERFECT_HASH_TABLE_MAIN_WORK_CALLBACK MainWorkCallback;
 
     //
     // The algorithm is responsible for registering an appropriate callback
@@ -380,6 +379,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     // and outstanding perfect hash solution attempts without deadlocking.
     //
     // This threadpool environment is serviced by a single thread.
+    //
+    // N.B. This cleanup only refers to the main graph solving thread pool.
+    //      The file threadpool is managed by the implicit lifetime of the
+    //      algorithm's creation routine (e.g. CreatePerfectHashTableImplChm01).
     //
 
     TP_CALLBACK_ENVIRON FinishedCallbackEnv;
@@ -450,10 +453,32 @@ typedef union _PERFECT_HASH_TABLE_FLAGS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
+        // When set, indicates the table came from CreatePerfectHashTable().
+        //
+        // Invariant:
+        //
+        //  - If Created == TRUE:
+        //      Assert Loaded == FALSE
+        //
+
+        ULONG Created:1;
+
+        //
+        // When set, indicates the table came from LoadPerfectHashTable().
+        //
+        // Invariant:
+        //
+        //  - If Loaded == TRUE:
+        //      Assert Created == FALSE
+        //
+
+        ULONG Loaded:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:32;
+        ULONG Unused:30;
     };
 
     LONG AsLong;
@@ -469,7 +494,7 @@ typedef PERFECT_HASH_TABLE_FLAGS *PPERFECT_HASH_TABLE_FLAGS;
 typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
     //
-    // Reserve a slot for a vtable.  Currently unused.
+    // Reserve a slot for a vtable.
     //
 
     PPVOID Vtbl;
@@ -539,7 +564,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     // Base address of the memory map for the backing file.
     //
 
-    PVOID BaseAddress;
+    union {
+        PVOID BaseAddress;
+        PULONG Data;
+    };
 
     //
     // Fully-qualified, NULL-terminated path of the backing file.  The path is
@@ -561,10 +589,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     HANDLE InfoStreamMappingHandle;
 
     //
-    // Base address of the memory map for the backing file.
+    // Base address of the memory map for the :Info stream.
     //
 
-    PVOID InfoStreamBaseAddress;
+    union {
+        PVOID InfoStreamBaseAddress;
+        struct _TABLE_INFO_ON_DISK_HEADER *Header;
+    };
 
     //
     // Fully-qualified, NULL-terminated path of the :Info stream associated with
@@ -580,8 +611,120 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     ULARGE_INTEGER InfoMappingSizeInBytes;
     ULARGE_INTEGER InfoActualStructureSizeInBytes;
 
+    //
+    // If a table is loaded successfully, an array will be allocated for storing
+    // values (as part of the Insert()/Lookup() API), the base address for which
+    // is captured by the next field.
+    //
+
+    union {
+        PVOID ValuesBaseAddress;
+        PULONG Values;
+    };
+
 } PERFECT_HASH_TABLE;
 typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
+
+//
+// Metadata about a perfect hash table is stored in an NTFS stream named :Info
+// that is tacked onto the end of the perfect hash table's file name.  Define
+// a structure, TABLE_INFO_ON_DISK_HEADER, that literally represents the on-disk
+// layout of this metadata.  Each algorithm implementation must write out an
+// info record that conforms with this common header.  They are free to extend
+// it with additional details.
+//
+
+typedef union _TABLE_INFO_ON_DISK_HEADER_FLAGS {
+
+    struct {
+
+        //
+        // Unused bits.
+        //
+
+        ULONG Unused:32;
+
+    };
+
+    LONG AsLong;
+    ULONG AsULong;
+
+} TABLE_INFO_ON_DISK_HEADER_FLAGS;
+C_ASSERT(sizeof(TABLE_INFO_ON_DISK_HEADER_FLAGS) == sizeof(ULONG));
+
+typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
+
+    //
+    // A magic value used to identify if the structure.
+    //
+
+    ULARGE_INTEGER Magic;
+
+    //
+    // Size of the structure, in bytes.
+    //
+    // N.B. We don't allocate this with a _Field_range_ SAL annotation as the
+    //      value will vary depending on which parameters were used to create
+    //      the table.
+    //
+
+    ULONG SizeOfStruct;
+
+    //
+    // Flags.
+    //
+
+    TABLE_INFO_ON_DISK_HEADER_FLAGS Flags;
+
+    //
+    // Algorithm that was used.
+    //
+
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+
+    //
+    // Hash function that was used.
+    //
+
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+
+    //
+    // Masking type.
+    //
+
+    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+
+    //
+    // Size of an individual key element, in bytes.
+    //
+
+    ULONG KeySizeInBytes;
+
+    //
+    // Number of keys in the input set.  This is used to size an appropriate
+    // array for storing values.
+    //
+
+    ULARGE_INTEGER NumberOfKeys;
+
+    //
+    // Final number of elements in the underlying table.  This will vary
+    // depending on how the graph was created.
+    //
+
+    ULARGE_INTEGER NumberOfTableElements;
+
+    //
+    // Seed data.
+    //
+
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Seed3;
+    ULONG Seed4;
+
+} TABLE_INFO_ON_DISK_HEADER;
+typedef TABLE_INFO_ON_DISK_HEADER *PTABLE_INFO_ON_DISK_HEADER;
 
 //
 // Define an enumeration to capture the type of file work operations we want
@@ -657,6 +800,24 @@ typedef struct _FILE_WORK_ITEM {
 typedef FILE_WORK_ITEM *PFILE_WORK_ITEM;
 
 //
+// Private function definition for destroying a hash table.  We don't make
+// this a public function as the CreatePerfectHashTable() does not return
+// a table to the caller, and LoadPerfectHashTable() returns a vtbl pointer
+// that we expect the caller to use AddRef()/Release() on correctly in order
+// to manage lifetime.
+//
+
+typedef
+BOOLEAN
+(NTAPI DESTROY_PERFECT_HASH_TABLE)(
+    _Pre_notnull_ _Post_satisfies_(*PerfectHashTablePointer == 0)
+    PPERFECT_HASH_TABLE *PerfectHashTablePointer,
+    _In_opt_ PBOOLEAN IsProcessTerminating
+    );
+typedef DESTROY_PERFECT_HASH_TABLE *PDESTROY_PERFECT_HASH_TABLE;
+DESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
+
+//
 // TLS-related structures and functions.
 //
 
@@ -693,6 +854,30 @@ typedef CREATE_PERFECT_HASH_TABLE_IMPL *PCREATE_PERFECT_HASH_TABLE_IMPL;
 //
 
 CREATE_PERFECT_HASH_TABLE_IMPL CreatePerfectHashTableImplChm01;
+
+//
+// Likewise, each algorithm implements a loader routine that matches the
+// following signature.  It is called by LoadPerfectHashTable() after it
+// has done the initial heavy-lifting (e.g. parameter validation, table
+// allocation and initialization), and, thus, has a much simpler function
+// signature.
+//
+
+typedef
+_Check_return_
+_Success_(return != 0)
+BOOLEAN
+(NTAPI LOAD_PERFECT_HASH_TABLE_IMPL)(
+    _Inout_ PPERFECT_HASH_TABLE Table
+    );
+typedef LOAD_PERFECT_HASH_TABLE_IMPL *PLOAD_PERFECT_HASH_TABLE_IMPL;
+
+//
+// For each algorithm, declare the loader impl routine.  These are gathered
+// in an array named LoaderRoutines[] (see PerfectHashTableConstants.[ch]).
+//
+
+LOAD_PERFECT_HASH_TABLE_IMPL LoadPerfectHashTableImplChm01;
 
 //
 // The PROCESS_ATTACH and PROCESS_ATTACH functions share the same signature.

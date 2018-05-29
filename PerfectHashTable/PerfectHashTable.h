@@ -68,14 +68,6 @@ BOOLEAN
 typedef DESTROY_PERFECT_HASH_TABLE_KEYS *PDESTROY_PERFECT_HASH_TABLE_KEYS;
 
 //
-// Define an opaque PERFECT_HASH_TABLE structure.
-//
-
-typedef struct _PERFECT_HASH_TABLE PERFECT_HASH_TABLE;
-typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
-typedef const PERFECT_HASH_TABLE *PCPERFECT_HASH_TABLE;
-
-//
 // Define an enumeration for identifying which backend algorithm variant to
 // use for creating the perfect hash table.
 //
@@ -267,23 +259,15 @@ BOOLEAN
 typedef DESTROY_PERFECT_HASH_TABLE_CONTEXT *PDESTROY_PERFECT_HASH_TABLE_CONTEXT;
 
 //
-// Define the PERFECT_HASH_TABLE interface function pointers (and supporting
-// flag enumerations, if applicable).
+// Perfect hash tables are created via the CreatePerfectHashTable() routine,
+// the signature for which is defined below.  This routine returns a TRUE value
+// if a perfect hash table was successfully created from the given parameters.
+// If creation was successful, an on-disk representation of the table will be
+// saved at the given hash table path.
 //
-
+// N.B. Perfect hash tables are used via the IPERFECT_HASH_TABLE interface,
+//      which is obtained via LoadPerfectHashTableInstance().
 //
-// Create
-//
-
-typedef union _PERFECT_HASH_TABLE_CREATE_FLAGS {
-    struct {
-        ULONG Unused:32;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} PERFECT_HASH_TABLE_CREATE_FLAGS;
-typedef PERFECT_HASH_TABLE_CREATE_FLAGS *PPERFECT_HASH_TABLE_CREATE_FLAGS;
-C_ASSERT(sizeof(PERFECT_HASH_TABLE_CREATE_FLAGS) == sizeof(ULONG));
 
 typedef
 _Check_return_
@@ -294,30 +278,37 @@ BOOLEAN
     _In_ PALLOCATOR Allocator,
     _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
-    _In_opt_ PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
     _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     _Inout_opt_ PULARGE_INTEGER NumberOfTableElements,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
-    _In_opt_ PCUNICODE_STRING HashTablePath,
-    _Outptr_opt_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable
+    _Inout_opt_ PCUNICODE_STRING HashTablePath
     );
 typedef CREATE_PERFECT_HASH_TABLE *PCREATE_PERFECT_HASH_TABLE;
 
 //
-// Load
+// Forward definition of the interface.
 //
 
-typedef union _PERFECT_HASH_TABLE_LOAD_FLAGS {
-    struct {
-        ULONG Unused:32;
-    };
-    LONG AsLong;
-    ULONG AsULong;
-} PERFECT_HASH_TABLE_LOAD_FLAGS;
-typedef PERFECT_HASH_TABLE_LOAD_FLAGS *PPERFECT_HASH_TABLE_LOAD_FLAGS;
-C_ASSERT(sizeof(PERFECT_HASH_TABLE_LOAD_FLAGS) == sizeof(ULONG));
+typedef struct _PERFECT_HASH_TABLE_VTBL PERFECT_HASH_TABLE_VTBL;
+typedef PERFECT_HASH_TABLE_VTBL *PPERFECT_HASH_TABLE_VTBL;
+typedef PERFECT_HASH_TABLE_VTBL **PPPERFECT_HASH_TABLE;
+
+//
+// Define a minimal vtbl encapsulation structure if we're a public
+// (i.e. non-internal) build.  The actual structure is defined in
+// PerfectHashTablePrivate.h.
+//
+
+#ifndef _PERFECT_HASH_TABLE_INTERNAL_BUILD
+typedef struct _PERFECT_HASH_TABLE {
+    PPERFECT_HASH_TABLE_VTBL Vtbl;
+} PERFECT_HASH_TABLE;
+#else
+typedef struct _PERFECT_HASH_TABLE PERFECT_HASH_TABLE;
+#endif
+typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
 
 typedef
 _Check_return_
@@ -327,24 +318,67 @@ BOOLEAN
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
-    _In_opt_ PERFECT_HASH_TABLE_LOAD_FLAGS LoadFlags,
+    _In_opt_ PPERFECT_HASH_TABLE_KEYS Keys,
     _In_ PCUNICODE_STRING Path,
-    _Outptr_result_nullonfailure_ PPERFECT_HASH_TABLE *PerfectHashTable
+    _Out_ PPERFECT_HASH_TABLE *TablePointer
     );
 typedef LOAD_PERFECT_HASH_TABLE *PLOAD_PERFECT_HASH_TABLE;
 
 //
-// Destroy
+// A loaded hash table supports insert and lookup methods.
 //
 
 typedef
-BOOLEAN
-(NTAPI DESTROY_PERFECT_HASH_TABLE)(
-    _Pre_notnull_ _Post_satisfies_(*PerfectHashTablePointer == 0)
-        PPERFECT_HASH_TABLE *PerfectHashTablePointer,
-    _In_opt_ PBOOLEAN IsProcessTerminating
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_INSERT)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Key,
+    _In_ ULONG Value,
+    _Out_opt_ PULONG PreviousValue
     );
-typedef DESTROY_PERFECT_HASH_TABLE *PDESTROY_PERFECT_HASH_TABLE;
+typedef PERFECT_HASH_TABLE_INSERT *PPERFECT_HASH_TABLE_INSERT;
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_LOOKUP)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Key,
+    _Out_ PULONG Value
+    );
+typedef PERFECT_HASH_TABLE_LOOKUP *PPERFECT_HASH_TABLE_LOOKUP;
+
+//
+// Loaded hash tables are reference counted using the AddRef()/Release() COM
+// semantics.  The number of AddRef() calls should match the number of Release()
+// calls.  The resources will be released when the final Release() is called.
+//
+
+typedef
+ULONG
+(NTAPI PERFECT_HASH_TABLE_ADD_REF)(
+    _In_ PPERFECT_HASH_TABLE Table
+    );
+typedef PERFECT_HASH_TABLE_ADD_REF *PPERFECT_HASH_TABLE_ADD_REF;
+
+typedef
+ULONG
+(NTAPI PERFECT_HASH_TABLE_RELEASE)(
+    _In_ PPERFECT_HASH_TABLE Table
+    );
+typedef PERFECT_HASH_TABLE_RELEASE *PPERFECT_HASH_TABLE_RELEASE;
+
+//
+// The interface as a vtbl.
+//
+
+typedef struct _PERFECT_HASH_TABLE_VTBL {
+    PVOID Unused;
+    PPERFECT_HASH_TABLE_ADD_REF AddRef;
+    PPERFECT_HASH_TABLE_RELEASE Release;
+    PPERFECT_HASH_TABLE_INSERT Insert;
+    PPERFECT_HASH_TABLE_LOOKUP Lookup;
+} PERFECT_HASH_TABLE_VTBL;
+typedef PERFECT_HASH_TABLE_VTBL *PPERFECT_HASH_TABLE_VTBL;
 
 //
 // Allocator-specific typedefs.
@@ -436,7 +470,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_API {
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
-    PDESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
 
@@ -490,7 +523,6 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
-    PDESTROY_PERFECT_HASH_TABLE DestroyPerfectHashTable;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
 
@@ -595,9 +627,12 @@ Return Value:
         "CreatePerfectHashTableContext",
         "DestroyPerfectHashTableContext",
         "CreatePerfectHashTable",
-        "LoadPerfectHashTable",
-        "TestPerfectHashTable",
-        "DestroyPerfectHashTable",
+        "LoadPerfectHashTableInstance",
+        "TestPerfectHashTableInstance",
+        "PerfectHashTableInstanceAddRef",
+        "PerfectHashTableInstanceRelease",
+        "PerfectHashTableInstanceInsert",
+        "PerfectHashTableInstanceLookup",
         "InitializePerfectHashTableAllocator",
         "InitializePerfectHashTableAllocatorFromRtlBootstrap",
         "SelfTestPerfectHashTable",

@@ -352,7 +352,7 @@ Return Value:
         // Create a new perfect hash table context.
         //
 
-        MaximumConcurrency = 0;
+        MaximumConcurrency = 1;
         Success = Api->CreatePerfectHashTableContext(Rtl,
                                                      Allocator,
                                                      AnyApi,

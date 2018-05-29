@@ -108,6 +108,7 @@ Return Value:
     PBYTE Buffer;
     PBYTE ExpectedBuffer;
     ULONG MaximumConcurrency;
+    ULONG NumberOfProcessors;
     ULONG SizeOfNamesWideBuffer;
     PWSTR NamesWideBuffer;
     PTP_POOL Threadpool;
@@ -368,8 +369,10 @@ Return Value:
     // If the maximum concurrency is 0, default to the number of processors.
     //
 
+    NumberOfProcessors = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
+
     if (MaximumConcurrency == 0) {
-        MaximumConcurrency = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
+        MaximumConcurrency = NumberOfProcessors;
     }
 
     Context->MinimumConcurrency = MaximumConcurrency;
@@ -433,19 +436,53 @@ Return Value:
     InitializeSListHead(&Context->MainWorkListHead);
 
     //
-    // Create a file work object for the Main threadpool.
+    // Create the File threadpool structures.  We currently use the default
+    // number of system threads for this threadpool.  We don't have to clamp
+    // it at the moment as we don't bulk-enqueue work items (that can cause
+    // the threadpool machinery to think more threads need to be created).
+    //
+
+    Threadpool = Context->FileThreadpool = CreateThreadpool(NULL);
+    if (!Threadpool) {
+        goto Error;
+    }
+
+    //
+    // Initialize the File threadpool environment and associate it with the
+    // File threadpool.
+    //
+
+    InitializeThreadpoolEnvironment(&Context->FileCallbackEnv);
+    SetThreadpoolCallbackPool(&Context->FileCallbackEnv,
+                              Context->FileThreadpool);
+
+    //
+    // Create a cleanup group for the File threadpool and register it.
+    //
+
+    Context->FileCleanupGroup = CreateThreadpoolCleanupGroup();
+    if (!Context->FileCleanupGroup) {
+        goto Error;
+    }
+
+    SetThreadpoolCallbackCleanupGroup(&Context->FileCallbackEnv,
+                                      Context->FileCleanupGroup,
+                                      CleanupCallback);
+
+    //
+    // Create a work object for the File threadpool.
     //
 
     Context->FileWork = CreateThreadpoolWork(FileWorkCallback,
                                              Context,
-                                             &Context->MainCallbackEnv);
+                                             &Context->FileCallbackEnv);
 
     if (!Context->FileWork) {
         goto Error;
     }
 
     //
-    // Initialize the file work list head.
+    // Initialize the main work list head.
     //
 
     InitializeSListHead(&Context->FileWorkListHead);

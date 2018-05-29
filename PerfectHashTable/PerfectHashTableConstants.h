@@ -21,11 +21,26 @@ extern "C" {
 #include "stdafx.h"
 
 //
+// Define two magic numbers for the Magic field of the TABLE_INFO_ON_DISK_HEADER
+// structure.
+//
+
+#define TABLE_INFO_ON_DISK_MAGIC_LOWPART  0x25101981
+#define TABLE_INFO_ON_DISK_MAGIC_HIGHPART 0x17071953
+
+//
 // Declare an array of creation routines.  This is intended to be indexed by
 // the PERFECT_HASH_TABLE_ALGORITHM_ID enumeration.
 //
 
 const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];
+
+//
+// Declare an array of loader routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_ALGORITHM_ID enumeration.
+//
+
+const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[];
 
 //
 // Object (e.g. events, shared memory sections) name prefixes for the runtime

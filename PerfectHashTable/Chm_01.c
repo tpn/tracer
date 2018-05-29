@@ -78,6 +78,7 @@ Return Value:
     FILE_WORK_ITEM SaveFile;
     FILE_WORK_ITEM PrepareFile;
     PGRAPH_INFO_ON_DISK OnDiskInfo;
+    PTABLE_INFO_ON_DISK_HEADER OnDiskHeader;
     ULONGLONG NextSizeInBytes;
     ULONGLONG PrevSizeInBytes;
     ULONGLONG FirstSizeInBytes;
@@ -449,11 +450,15 @@ Return Value:
 
     OnDiskInfo = (PGRAPH_INFO_ON_DISK)Table->InfoStreamBaseAddress;
     ASSERT(OnDiskInfo);
-    OnDiskInfo->SizeOfStruct = sizeof(*OnDiskInfo);
-    OnDiskInfo->Flags.AsULong = 0;
-    OnDiskInfo->AlgorithmId = Context->AlgorithmId;
-    OnDiskInfo->MaskingType = Context->MaskingType;
-    OnDiskInfo->HashFunctionId = Context->HashFunctionId;
+    OnDiskHeader = &OnDiskInfo->Header;
+    OnDiskHeader->Magic.LowPart = TABLE_INFO_ON_DISK_MAGIC_LOWPART;
+    OnDiskHeader->Magic.HighPart = TABLE_INFO_ON_DISK_MAGIC_HIGHPART;
+    OnDiskHeader->SizeOfStruct = sizeof(*OnDiskInfo);
+    OnDiskHeader->Flags.AsULong = 0;
+    OnDiskHeader->AlgorithmId = Context->AlgorithmId;
+    OnDiskHeader->MaskingType = Context->MaskingType;
+    OnDiskHeader->HashFunctionId = Context->HashFunctionId;
+    OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
 
     //
     // This will change based on masking type and whether or not the caller
@@ -461,7 +466,7 @@ Return Value:
     // the number of vertices.
     //
 
-    OnDiskInfo->NumberOfTableElements.QuadPart = (
+    OnDiskHeader->NumberOfTableElements.QuadPart = (
         NumberOfVertices.QuadPart
     );
 
@@ -689,6 +694,31 @@ End:
     Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
 
     return Success;
+}
+
+_Use_decl_annotations_
+BOOLEAN
+LoadPerfectHashTableImplChm01(
+    PPERFECT_HASH_TABLE Table
+    )
+/*++
+
+Routine Description:
+
+    Loads a previously created perfect hash table.
+
+Arguments:
+
+    Table - Supplies a pointer to a partially-initialized PERFECT_HASH_TABLE
+        structure.
+
+Return Value:
+
+    TRUE on success, FALSE on failure.
+
+--*/
+{
+    return FALSE;
 }
 
 //
@@ -932,6 +962,7 @@ Return Value:
             LARGE_INTEGER EndOfFile;
             PPERFECT_HASH_TABLE Table;
             FILE_STANDARD_INFO FileInfo;
+            PTABLE_INFO_ON_DISK_HEADER Header;
 
             //
             // Indicate the save event has completed upon return of this
@@ -948,6 +979,7 @@ Return Value:
             Dest = (PULONG)Table->BaseAddress;
             Graph = (PGRAPH)Context->SolvedContext;
             Source = Graph->Assigned;
+            Header = Table->Header;
             SizeInBytes = Info->AssignedSizeInBytes;
 
             //
@@ -962,10 +994,10 @@ Return Value:
             // the on-disk info representation was saved earlier.)
             //
 
-            OnDiskInfo->Seed1 = Graph->Seed1;
-            OnDiskInfo->Seed2 = Graph->Seed2;
-            OnDiskInfo->Seed3 = Graph->Seed3;
-            OnDiskInfo->Seed4 = Graph->Seed4;
+            Header->Seed1 = Graph->Seed1;
+            Header->Seed2 = Graph->Seed2;
+            Header->Seed3 = Graph->Seed3;
+            Header->Seed4 = Graph->Seed4;
 
             //
             // When we mapped the array in the work item above, we used a size

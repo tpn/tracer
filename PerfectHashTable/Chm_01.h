@@ -437,59 +437,25 @@ typedef GRAPH *PGRAPH;
 // Define an on-disk representation of the graph's information.  This is stored
 // in the NTFS stream extending from the backing file named :Info.  It is
 // responsible for storing information about the on-disk mapping such that it
-// can be reloaded from disk and used as a perfect hash table.
+// can be reloaded from disk and used as a perfect hash table.  The structure
+// must always embed the TABLE_INFO_ON_DISK_HEADER structure such that the
+// generic loader routine can access on-disk versions saved by different algos
+// in order to extract the algorithm ID and determine a suitable loader func to
+// use.
 //
-
-typedef union _GRAPH_INFO_ON_DISK_FLAGS {
-
-    struct {
-
-        //
-        // Unused bits.
-        //
-
-        ULONG Unused:32;
-
-    };
-
-    LONG AsLong;
-    ULONG AsULong;
-
-} GRAPH_INFO_ON_DISK_FLAGS;
-C_ASSERT(sizeof(GRAPH_INFO_ON_DISK_FLAGS) == sizeof(ULONG));
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH_INFO_ON_DISK {
 
     //
-    // Size of the structure, in bytes.
+    // Include the required header.
     //
 
-    _Field_range_(==, sizeof(struct _GRAPH_INFO_ON_DISK))
-        ULONG SizeOfStruct;
+    TABLE_INFO_ON_DISK_HEADER Header;
 
     //
-    // Flags.
+    // Additional information we capture is mostly just for informational
+    // and debugging purposes.
     //
-
-    GRAPH_INFO_ON_DISK_FLAGS Flags;
-
-    //
-    // Algorithm that was used.
-    //
-
-    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
-
-    //
-    // Hash function that was used.
-    //
-
-    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
-
-    //
-    // Masking type.
-    //
-
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
 
     //
     // Inline the GRAPH_DIMENSIONS structure.
@@ -509,22 +475,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH_INFO_ON_DISK {
 
         GRAPH_DIMENSIONS Dimensions;
     };
-
-    //
-    // Final number of elements in the underlying table.  This will vary
-    // depending on how the graph was created.
-    //
-
-    ULARGE_INTEGER NumberOfTableElements;
-
-    //
-    // Seed data.
-    //
-
-    ULONG Seed1;
-    ULONG Seed2;
-    ULONG Seed3;
-    ULONG Seed4;
 
 } GRAPH_INFO_ON_DISK;
 C_ASSERT(sizeof(GRAPH_INFO_ON_DISK) <= PAGE_SIZE);

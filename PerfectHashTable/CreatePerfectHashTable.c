@@ -20,16 +20,13 @@ BOOLEAN
 CreatePerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
-    PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PPERFECT_HASH_TABLE_CONTEXT Context,
-    PERFECT_HASH_TABLE_CREATE_FLAGS CreateFlags,
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     PULARGE_INTEGER NumberOfTableElementsPointer,
     PPERFECT_HASH_TABLE_KEYS Keys,
-    PCUNICODE_STRING HashTablePath,
-    PPERFECT_HASH_TABLE *PerfectHashTablePointer
+    PCUNICODE_STRING HashTablePath
     )
 /*++
 
@@ -45,14 +42,9 @@ Arguments:
     Allocator - Supplies a pointer to an initialized ALLOCATOR structure that
         will be used for all memory allocations.
 
-    AnyApi - Supplies a pointer to the active API structure in use.
-
     Context - Supplies a pointer to an initialized PERFECT_HASH_TABLE_CONTEXT
         structure that can be used by the underlying algorithm in order to
         search for perfect hash solutions in parallel.
-
-    CreateFlags - Supplies creation flags that affect the underlying behavior
-        of the perfect hash table creation.
 
     AlgorithmId - Supplies the algorithm to use.
 
@@ -79,15 +71,15 @@ Arguments:
     HashTablePath - Optionally supplies a pointer to a UNICODE_STRING structure
         that represents the fully-qualified, NULL-terminated path of the backing
         file used to save the hash table.  If NULL, the file name of the keys
-        file will be used, with ".pht" appended to it.
-
-    PerfectHashTablePointer - Supplies the address of a variable that will
-        receive the address of the newly created PERFECT_HASH structure if
-        the routine is successful (returns TRUE), or NULL if the routine failed.
+        file will be used, with ".pht1" appended to it.
 
 Return Value:
 
     TRUE on success, FALSE on failure.
+
+    If TRUE, the table will be persisted at the path described by for the
+    HashTablePath parameter above.  This can be subsequently interacted with
+    once loaded via LoadPerfectHashTable().
 
 --*/
 {
@@ -108,16 +100,15 @@ Return Value:
     SYSTEM_INFO SystemInfo;
     HANDLE FileHandle;
     HANDLE MappingHandle;
-    LARGE_INTEGER AllocSize;
-    LONG_INTEGER PathBufferSize;
-    LONG_INTEGER InfoStreamPathBufferSize;
-    ULARGE_INTEGER AlignedPathBufferSize;
-    ULARGE_INTEGER AlignedInfoStreamPathBufferSize;
+    ULARGE_INTEGER AllocSize;
+    ULONG_INTEGER PathBufferSize;
+    ULONG_INTEGER InfoStreamPathBufferSize;
+    ULONG_INTEGER AlignedPathBufferSize;
+    ULONG_INTEGER AlignedInfoStreamPathBufferSize;
     ULARGE_INTEGER NumberOfTableElements;
     PPERFECT_HASH_TABLE Table = NULL;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht1");
     UNICODE_STRING InfoStreamSuffix = RTL_CONSTANT_STRING(L":Info");
-    PPERFECT_HASH_TABLE_API Api;
 
     //
     // Validate arguments.
@@ -129,20 +120,6 @@ Return Value:
 
     if (!ARGUMENT_PRESENT(Allocator)) {
         return FALSE;
-    }
-
-    if (!ARGUMENT_PRESENT(AnyApi)) {
-
-        return FALSE;
-
-    } else {
-
-        //
-        // Initialize Api alias.  We'll use this during error handling in order
-        // to call the table destroy routine.
-        //
-
-        Api = &AnyApi->Api;
     }
 
     if (!ARGUMENT_PRESENT(Keys)) {
@@ -174,21 +151,9 @@ Return Value:
         }
     }
 
-    if (!ARGUMENT_PRESENT(PerfectHashTablePointer)) {
-        return FALSE;
-    }
-
     if (ARGUMENT_PRESENT(HashTablePath) &&
         !IsValidMinimumDirectoryNullTerminatedUnicodeString(HashTablePath)) {
 
-        return FALSE;
-    }
-
-    //
-    // CreateFlags aren't currently used.
-    //
-
-    if (CreateFlags.AsULong != 0) {
         return FALSE;
     }
 
@@ -203,12 +168,6 @@ Return Value:
     if (!IsValidPerfectHashTableHashFunctionId(HashFunctionId)) {
         return FALSE;
     }
-
-    //
-    // Clear the caller's pointer up-front.
-    //
-
-    *PerfectHashTablePointer = NULL;
 
     //
     // Calculate the allocation size required for the structure, including the
@@ -255,7 +214,7 @@ Return Value:
     // Align the path buffer up to a 16 byte boundary.
     //
 
-    AlignedPathBufferSize.QuadPart = ALIGN_UP(PathBufferSize.LongPart, 16);
+    AlignedPathBufferSize.LongPart = ALIGN_UP(PathBufferSize.LongPart, 16);
 
     //
     // Sanity check we haven't overflowed MAX_USHORT for the path buffer size.
@@ -288,9 +247,9 @@ Return Value:
     // Align the size up to a 16 byte boundary.
     //
 
-    AlignedInfoStreamPathBufferSize.QuadPart = (
+    AlignedInfoStreamPathBufferSize.LongPart = (
         ALIGN_UP(
-            InfoStreamPathBufferSize.LongPart,
+            InfoStreamPathBufferSize.LowPart,
             16
         )
     );
@@ -333,7 +292,6 @@ Return Value:
     Table->Allocator = Allocator;
     Table->Flags.AsULong = 0;
     Table->Keys = Keys;
-    Table->AnyApi = AnyApi;
     Table->Context = Context;
     Context->Table = Table;
     Context->AlgorithmId = AlgorithmId;
@@ -391,7 +349,7 @@ Return Value:
     // the start of the info stream buffer.
     //
 
-    Buffer += AlignedPathBufferSize.QuadPart;
+    Buffer += AlignedPathBufferSize.LongPart;
     Table->InfoStreamPath.Buffer = (PWSTR)Buffer;
     Table->InfoStreamPath.MaximumLength = InfoStreamPathBufferSize.LowPart;
     Table->InfoStreamPath.Length = (
@@ -400,7 +358,7 @@ Return Value:
     );
 
     //
-    // Copy the full .pht1 path into the info stream buffer.
+    // Copy the full path into the info stream buffer.
     //
 
     CopyMemory(Table->InfoStreamPath.Buffer,
@@ -618,12 +576,22 @@ Error:
     Success = FALSE;
 
     //
+    // Intentional follow-on to End.
+    //
+
+End:
+
+    //
     // Call the destroy routine on the table if one is present.
+    //
+    // N.B. We currently always delete the table if it is created successfully
+    //      so as to ensure the only way to use a table is by loading one from
+    //      disk via LoadPerfectHashTable().
     //
 
     if (Table) {
 
-        if (!Api->DestroyPerfectHashTable(&Table, NULL)) {
+        if (!DestroyPerfectHashTable(&Table, NULL)) {
 
             //
             // There's nothing we can do here.
@@ -639,20 +607,6 @@ Error:
 
         ASSERT(Table == NULL);
     }
-
-    //
-    // Intentional follow-on to End.
-    //
-
-End:
-
-    //
-    // Update the caller's pointer and return.
-    //
-    // N.B. Table could be NULL here, which is fine.
-    //
-
-    *PerfectHashTablePointer = Table;
 
     return Success;
 }

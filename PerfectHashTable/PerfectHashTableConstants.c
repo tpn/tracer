@@ -8,19 +8,29 @@ Module Name:
 
 Abstract:
 
-    This module defines constants used by the PerfectHashTable component.
+    This module declares constants used by the PerfectHashTable component.
 
 --*/
 
 #include "stdafx.h"
 
 //
-// Define the array of creation routines.
+// Declare the array of creation routines.
 //
 
 const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[] = {
     NULL,
     CreatePerfectHashTableImplChm01,
+    NULL
+};
+
+//
+// Define the array of loader routines.
+//
+
+const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[] = {
+    NULL,
+    LoadPerfectHashTableImplChm01,
     NULL
 };
 
