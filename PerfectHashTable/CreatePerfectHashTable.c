@@ -349,7 +349,16 @@ Return Value:
     Table->Path.Buffer = (PWSTR)Buffer;
     CopyMemory(Table->Path.Buffer, PathBuffer, IncomingPathBufferSizeInBytes);
 
-    if (UsingKeysPath) {
+    if (!UsingKeysPath) {
+
+        //
+        // Inherit the lengths provided by the input parameter string.
+        //
+
+        Table->Path.Length = HashTablePath->Length;
+        Table->Path.MaximumLength = HashTablePath->MaximumLength;
+
+    } else {
 
         //
         // Replace the ".keys" suffix with ".pht1".
@@ -399,7 +408,7 @@ Return Value:
                Table->Path.Length);
 
     Dest = Table->InfoStreamPath.Buffer;
-    Dest += Table->InfoStreamPath.Length;
+    Dest += (Table->Path.Length >> 1);
     ASSERT(*Dest == L'\0');
 
     //
