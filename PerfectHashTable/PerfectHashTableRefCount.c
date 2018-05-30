@@ -64,12 +64,13 @@ Return Value:
 --*/
 {
     ULONG Count = InterlockedDecrement(&Table->ReferenceCount);
+    PPERFECT_HASH_TABLE TablePointer = Table;
 
     if (Count > 0) {
         return Count;
     }
 
-    DestroyPerfectHashTable(Table, NULL);
+    DestroyPerfectHashTable(&TablePointer, NULL);
 
     return Count;
 }

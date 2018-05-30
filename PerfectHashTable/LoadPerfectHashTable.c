@@ -63,6 +63,8 @@ Return Value:
     ULONG LastError;
     ULONG ShareMode;
     ULONG FlagsAndAttributes;
+    USHORT VtblExSize;
+    USHORT ActualVtblExSize;
     PVOID BaseAddress;
     HANDLE FileHandle;
     HANDLE MappingHandle;
@@ -78,6 +80,7 @@ Return Value:
     PPERFECT_HASH_TABLE Table;
     PTABLE_INFO_ON_DISK_HEADER Header;
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+    PPERFECT_HASH_TABLE_VTBL_EX Vtbl;
     UNICODE_STRING InfoSuffix = RTL_CONSTANT_STRING(L":Info");
 
     //
@@ -217,6 +220,17 @@ Return Value:
     ASSERT(!AllocSize.HighPart);
 
     //
+    // Account for the vtbl interface size.  We haven't derived the algorithm
+    // ID yet so we need to default this to the maximum size known.  There's
+    // an assertion later in the routine that verifies this.
+    //
+
+    VtblExSize = sizeof(PERFECT_HASH_TABLE_VTBL_EX);
+    AllocSize.QuadPart += VtblExSize;
+
+    ASSERT(!AllocSize.HighPart);
+
+    //
     // Proceed with allocation.
     //
 
@@ -287,6 +301,15 @@ Return Value:
         Table->InfoStreamPath.MaximumLength -
         sizeof(Table->InfoStreamPath.Buffer[0])
     );
+
+    //
+    // Advance the buffer to the vtbl interface area.  Don't initialize it
+    // yet; we need to postpone that until the enumeration IDs have been
+    // loaded from the :Info stream.
+    //
+
+    Buffer += AlignedInfoPathBufferSize.LongPart;
+    Vtbl = (PPERFECT_HASH_TABLE_VTBL_EX)Buffer;
 
     //
     // Copy the full path into the info stream buffer.
@@ -480,10 +503,31 @@ Return Value:
     // Validate the masking type.
     //
 
-    if (!IsValidPerfectHashTableMaskingType(Header->MaskingType)) {
+    if (!IsValidPerfectHashTableMaskFunctionId(Header->MaskFunctionId)) {
         __debugbreak();
         goto Error;
     }
+
+    //
+    // Make sure the vtbl size we used was large enough.
+    //
+
+    ActualVtblExSize = GetVtblExSizeRoutines[AlgorithmId]();
+    ASSERT(VtblExSize >= ActualVtblExSize);
+
+    //
+    // Copy the enumeration IDs back into the table structure.
+    //
+
+    Table->AlgorithmId = AlgorithmId;
+    Table->MaskFunctionId = Header->MaskFunctionId;
+    Table->HashFunctionId = Header->HashFunctionId;
+
+    //
+    // We can initialize the vtbl now that the enuemration IDs have been set.
+    //
+
+    InitializeExtendedVtbl(Table, Vtbl);
 
     //
     // We only support 32-bit (4 byte) keys at the moment.  Enforce this
@@ -654,8 +698,10 @@ Return Value:
     if (Success) {
 
         //
-        // We're finally done!
+        // We're finally done!  Set the reference count to 1 and goto end.
         //
+
+        Table->ReferenceCount = 1;
 
         goto End;
     }

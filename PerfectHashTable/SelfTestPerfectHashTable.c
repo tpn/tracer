@@ -89,7 +89,7 @@ Return Value:
     PPERFECT_HASH_TABLE_KEYS Keys;
     PPERFECT_HASH_TABLE_CONTEXT Context;
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
@@ -483,7 +483,7 @@ Return Value:
         // N.B. The masking type is currently ignored.
         //
 
-        MaskingType = PerfectHashTableModulusMaskingType;
+        MaskFunctionId = PerfectHashTableModulusMaskFunctionId;
 
         //
         // N.B. The hash function ID is currently ignored.
@@ -502,7 +502,7 @@ Return Value:
                                               Allocator,
                                               Context,
                                               AlgorithmId,
-                                              MaskingType,
+                                              MaskFunctionId,
                                               HashFunctionId,
                                               &NumberOfTableElements,
                                               Keys,

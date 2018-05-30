@@ -43,6 +43,59 @@ const PCREATE_PERFECT_HASH_TABLE_IMPL CreationRoutines[];
 const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[];
 
 //
+// Declare an array of index routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_ALGORITHM_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_INDEX IndexRoutines[];
+
+//
+// Declare an array of hash routines.  This is intended to be indexed by the
+// PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_HASH HashRoutines[];
+
+//
+// Declare an array of mask routines.  This is intended to be indexed by the
+// PERFECT_HASH_TABLE_MASK_FUNCTION_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_MASK MaskRoutines[];
+
+//
+// Helper inline routine for initializing the extended vtbl interface.
+//
+
+FORCEINLINE
+VOID
+InitializeExtendedVtbl(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _Inout_ PPERFECT_HASH_TABLE_VTBL_EX Vtbl
+    )
+{
+    Vtbl->AddRef = PerfectHashTableAddRef;
+    Vtbl->Release = PerfectHashTableRelease;
+    Vtbl->Insert = PerfectHashTableInsert;
+    Vtbl->Lookup = PerfectHashTableLookup;
+    Vtbl->Index = IndexRoutines[Table->AlgorithmId];
+    Vtbl->Hash = HashRoutines[Table->HashFunctionId];
+    Vtbl->Mask = MaskRoutines[Table->MaskFunctionId];
+    Table->Vtbl = Vtbl;
+}
+
+//
+// Declare an array of routines used to obtain the size in bytes of the extended
+// vtbl used by each routine.  The Create and Load routines factor this into the
+// allocation size of the PERFECT_HASH_TABLE structure.
+//
+// This is intended to be indexed by the PERFECT_HASH_TABLE_ALGORITHM_ID
+// enumeration.
+//
+
+const PGET_VTBL_EX_SIZE GetVtblExSizeRoutines[];
+
+//
 // Object (e.g. events, shared memory sections) name prefixes for the runtime
 // context.
 //

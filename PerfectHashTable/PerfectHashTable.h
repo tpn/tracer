@@ -122,6 +122,9 @@ typedef enum _PERFECT_HASH_TABLE_HASH_FUNCTION_ID {
     //
 
     PerfectHashTableDefaultHashFunctionId = 1,
+    PerfectHashTableHash01FunctionId = 1,
+
+    PerfectHashTableHash02FunctionId,
 
     //
     // End valid hash functions.
@@ -161,20 +164,22 @@ IsValidPerfectHashTableHashFunctionId(
 // faster hash functions.
 //
 
-typedef enum _PERFECT_HASH_TABLE_MASKING_TYPE {
+typedef enum _PERFECT_HASH_TABLE_MASK_FUNCTION_ID {
 
     //
     // Null masking type.
     //
 
-    PerfectHashTableNullMaskingType = 0,
+    PerfectHashTableNullMaskFunctionId = 0,
 
     //
     // Being valid masking types.
     //
 
-    PerfectHashTableModulusMaskingType = 1,
-    PerfectHashTableShiftMaskingType,
+    PerfectHashTableModulusMaskFunctionId = 1,
+    PerfectHashTableShiftMaskFunctionId,
+    PerfectHashTableAndMaskFunctionId,
+    PerfectHashTableXorAndMaskFunctionId,
 
     //
     // End valid masking types.
@@ -184,12 +189,12 @@ typedef enum _PERFECT_HASH_TABLE_MASKING_TYPE {
     // N.B. Keep the next value last.
     //
 
-    PerfectHashTableInvalidMaskingType,
+    PerfectHashTableInvalidMaskFunctionId,
 
 
-} PERFECT_HASH_TABLE_MASKING_TYPE;
-typedef PERFECT_HASH_TABLE_MASKING_TYPE
-      *PPERFECT_HASH_TABLE_MASKING_TYPE;
+} PERFECT_HASH_TABLE_MASK_FUNCTION_ID;
+typedef PERFECT_HASH_TABLE_MASK_FUNCTION_ID
+      *PPERFECT_HASH_TABLE_MASK_FUNCTION_ID;
 
 //
 // Provide a simple inline masking type validation routine.
@@ -197,13 +202,13 @@ typedef PERFECT_HASH_TABLE_MASKING_TYPE
 
 FORCEINLINE
 BOOLEAN
-IsValidPerfectHashTableMaskingType(
-    _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType
+IsValidPerfectHashTableMaskFunctionId(
+    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId
     )
 {
     return (
-        MaskingType > PerfectHashTableNullMaskingType &&
-        MaskingType < PerfectHashTableInvalidMaskingType
+        MaskFunctionId > PerfectHashTableNullMaskFunctionId &&
+        MaskFunctionId < PerfectHashTableInvalidMaskFunctionId
     );
 }
 
@@ -264,7 +269,7 @@ BOOLEAN
     _In_ PALLOCATOR Allocator,
     _In_ PPERFECT_HASH_TABLE_CONTEXT Context,
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
-    _In_ PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
+    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
     _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     _Inout_opt_ PULARGE_INTEGER NumberOfTableElements,
     _In_ PPERFECT_HASH_TABLE_KEYS Keys,
@@ -309,7 +314,7 @@ BOOLEAN
 typedef LOAD_PERFECT_HASH_TABLE *PLOAD_PERFECT_HASH_TABLE;
 
 //
-// A loaded hash table supports insert and lookup methods.
+// Define the public perfect hash table functions.
 //
 
 typedef
@@ -330,6 +335,39 @@ HRESULT
     _Out_ PULONG Value
     );
 typedef PERFECT_HASH_TABLE_LOOKUP *PPERFECT_HASH_TABLE_LOOKUP;
+
+//
+// Given a key, this routine returns the relative index of the key in the
+// underlying hash table.  This is guaranteed to be within the bounds of the
+// table size.
+//
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_INDEX)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Key,
+    _In_ PULONG Index
+    );
+typedef PERFECT_HASH_TABLE_INDEX *PPERFECT_HASH_TABLE_INDEX;
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_HASH)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Input,
+    _Out_ PULONGLONG Hash
+    );
+typedef PERFECT_HASH_TABLE_HASH *PPERFECT_HASH_TABLE_HASH;
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_MASK)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONGLONG Input,
+    _Out_ PULONG Masked
+    );
+typedef PERFECT_HASH_TABLE_MASK *PPERFECT_HASH_TABLE_MASK;
 
 //
 // Loaded hash tables are reference counted using the AddRef()/Release() COM
@@ -361,6 +399,9 @@ typedef struct _PERFECT_HASH_TABLE_VTBL {
     PPERFECT_HASH_TABLE_RELEASE Release;
     PPERFECT_HASH_TABLE_INSERT Insert;
     PPERFECT_HASH_TABLE_LOOKUP Lookup;
+    PPERFECT_HASH_TABLE_INDEX Index;
+    PPERFECT_HASH_TABLE_HASH Hash;
+    PPERFECT_HASH_TABLE_MASK Mask;
 } PERFECT_HASH_TABLE_VTBL;
 typedef PERFECT_HASH_TABLE_VTBL *PPERFECT_HASH_TABLE_VTBL;
 

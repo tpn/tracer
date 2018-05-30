@@ -22,7 +22,7 @@ CreatePerfectHashTable(
     PALLOCATOR Allocator,
     PPERFECT_HASH_TABLE_CONTEXT Context,
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType,
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     PULARGE_INTEGER NumberOfTableElementsPointer,
     PPERFECT_HASH_TABLE_KEYS Keys,
@@ -48,7 +48,7 @@ Arguments:
 
     AlgorithmId - Supplies the algorithm to use.
 
-    MaskingType - Supplies the type of masking to use.  The algorithm and hash
+    MaskFunctionId - Supplies the type of masking to use.  The algorithm and hash
         function must both support the requested masking type.
 
     HashFunctionId - Supplies the hash function to use.
@@ -96,6 +96,7 @@ Return Value:
     ULONG FlagsAndAttributes;
     ULONG IncomingPathBufferSizeInBytes;
     ULONG InfoMappingSize;
+    USHORT VtblExSize;
     PVOID BaseAddress;
     SYSTEM_INFO SystemInfo;
     HANDLE FileHandle;
@@ -106,6 +107,7 @@ Return Value:
     ULONG_INTEGER AlignedPathBufferSize;
     ULONG_INTEGER AlignedInfoStreamPathBufferSize;
     ULARGE_INTEGER NumberOfTableElements;
+    PPERFECT_HASH_TABLE_VTBL_EX Vtbl;
     PPERFECT_HASH_TABLE Table = NULL;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L".pht1");
     UNICODE_STRING InfoStreamSuffix = RTL_CONSTANT_STRING(L":Info");
@@ -161,7 +163,7 @@ Return Value:
         return FALSE;
     }
 
-    if (!IsValidPerfectHashTableMaskingType(MaskingType)) {
+    if (!IsValidPerfectHashTableMaskFunctionId(MaskFunctionId)) {
         return FALSE;
     }
 
@@ -270,6 +272,15 @@ Return Value:
     ASSERT(!AllocSize.HighPart);
 
     //
+    // Account for the vtbl interface size.
+    //
+
+    VtblExSize = GetVtblExSizeRoutines[AlgorithmId]();
+    AllocSize.QuadPart += VtblExSize;
+
+    ASSERT(!AllocSize.HighPart);
+
+    //
     // Allocate space for the structure and backing paths.
     //
 
@@ -294,9 +305,14 @@ Return Value:
     Table->Keys = Keys;
     Table->Context = Context;
     Context->Table = Table;
-    Context->AlgorithmId = AlgorithmId;
-    Context->MaskingType = MaskingType;
-    Context->HashFunctionId = HashFunctionId;
+
+    //
+    // Our main enumeration IDs get replicated in both structures.
+    //
+
+    Table->AlgorithmId = Context->AlgorithmId = AlgorithmId;
+    Table->MaskFunctionId = Context->MaskFunctionId = MaskFunctionId;
+    Table->HashFunctionId = Context->HashFunctionId = HashFunctionId;
 
     //
     // Carve out the backing memory structures for the unicode string buffers
@@ -358,6 +374,14 @@ Return Value:
     );
 
     //
+    // Advance the buffer to the vtbl interface area and initialize it.
+    //
+
+    Buffer += AlignedInfoStreamPathBufferSize.LongPart;
+    Vtbl = (PPERFECT_HASH_TABLE_VTBL_EX)Buffer;
+    InitializeExtendedVtbl(Table, Vtbl);
+
+    //
     // Copy the full path into the info stream buffer.
     //
 
@@ -380,6 +404,17 @@ Return Value:
     }
 
     *Dest = L'\0';
+
+    //
+    // Carve out the vtbl from the final chunk of memory remaining.
+    //
+
+    Vtbl = Table->Vtbl = (PPERFECT_HASH_TABLE_VTBL_EX)Buffer;
+
+    //
+    // Fill out the vtbl as best we can.
+    //
+
 
     //
     // We've finished initializing our two unicode string buffers for the
@@ -566,9 +601,10 @@ Return Value:
     }
 
     //
-    // We're done!  Jump to the end of the routine to finish up.
+    // We're done!  Set the reference count to 1 and finish up.
     //
 
+    Table->ReferenceCount = 1;
     goto End;
 
 Error:

@@ -35,6 +35,50 @@ const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[] = {
 };
 
 //
+// Define the array of hash routines.
+//
+
+const PPERFECT_HASH_TABLE_HASH HashRoutines[] = {
+    NULL,
+    PerfectHashTableHash01,
+    PerfectHashTableHash02,
+    NULL
+};
+
+//
+// Define the array of mask routines.
+//
+
+const PPERFECT_HASH_TABLE_MASK MaskRoutines[] = {
+    NULL,
+    PerfectHashTableMaskModulus,
+    PerfectHashTableMaskShift,
+    PerfectHashTableMaskAnd,
+    PerfectHashTableMaskXorAnd,
+    NULL
+};
+
+//
+// Define the array of lookup-index routines.
+//
+
+const PPERFECT_HASH_TABLE_INDEX IndexRoutines[] = {
+    NULL,
+    PerfectHashTableIndexImplChm01,
+    NULL
+};
+
+//
+// Define the array of vtbl sizes.
+//
+
+const PGET_VTBL_EX_SIZE GetVtblExSizeRoutines[] = {
+    NULL,
+    GetVtblExSizeChm01,
+    NULL,
+};
+
+//
 // Array of UNICODE_STRING event prefix names used by the runtime context.
 //
 

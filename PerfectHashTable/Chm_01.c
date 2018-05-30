@@ -89,7 +89,7 @@ Return Value:
     ULONGLONG ExpectedTotalBufferSizeInBytes;
     ULONGLONG ExpectedUsableBufferSizeInBytesPerBuffer;
     ULONGLONG GraphSizeInBytesIncludingGuardPage;
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
     ULARGE_INTEGER AllocSize;
     ULARGE_INTEGER NumberOfEdges;
     ULARGE_INTEGER NumberOfVertices;
@@ -123,9 +123,9 @@ Return Value:
     // to work with.
     //
 
-    MaskingType = Context->MaskingType;
-    IsShiftMasking = (MaskingType == PerfectHashTableShiftMaskingType);
-    IsModulusMasking = (MaskingType == PerfectHashTableModulusMaskingType);
+    MaskFunctionId = Context->MaskFunctionId;
+    IsShiftMasking = (MaskFunctionId == PerfectHashTableShiftMaskFunctionId);
+    IsModulusMasking = (MaskFunctionId == PerfectHashTableModulusMaskFunctionId);
 
     //
     // The number of edges in our graph is equal to the number of keys in the
@@ -456,7 +456,7 @@ Return Value:
     OnDiskHeader->SizeOfStruct = sizeof(*OnDiskInfo);
     OnDiskHeader->Flags.AsULong = 0;
     OnDiskHeader->AlgorithmId = Context->AlgorithmId;
-    OnDiskHeader->MaskingType = Context->MaskingType;
+    OnDiskHeader->MaskFunctionId = Context->MaskFunctionId;
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
     OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
     OnDiskHeader->NumberOfKeys.QuadPart = NumberOfEdges.QuadPart;
@@ -695,6 +695,15 @@ End:
     Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
 
     return Success;
+}
+
+_Use_decl_annotations_
+USHORT
+GetVtblExSizeChm01(
+    VOID
+    )
+{
+    return sizeof(PERFECT_HASH_TABLE_VTBL_EX);
 }
 
 _Use_decl_annotations_
@@ -2249,6 +2258,85 @@ Return Value:
     ASSERT(NumberOfAssignments == Graph->NumberOfEdges);
 
     return TRUE;
+}
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableIndexImplChm01(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Key,
+    PULONG Index
+    )
+/*++
+
+Routine Description:
+
+    Looks up given key in a perfect hash table and returns its index.
+
+Arguments:
+
+    Table - Supplies a pointer to the table for which the key lookup is to be
+        performed.
+
+    Key - Supplies the key to look up.
+
+    Index - Receives the index associated with this key.
+
+Return Value:
+
+    S_OK on success, E_FAIL if the underlying hash function returned a failure.
+    This will happen if the two hash values for a key happen to be identical.
+    It shouldn't happen once a perfect graph has been created (i.e. it only
+    happens when attempting to solve the graph).  The Index parameter will
+    be cleared in the case of E_FAIL.
+
+--*/
+{
+    ULONG Masked;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    HRESULT Result;
+    PULONG Assigned;
+    ULONGLONG Combined;
+    ULARGE_INTEGER Hash;
+
+    Result = Table->Vtbl->Hash(Table, Key, &Hash.QuadPart);
+
+    if (FAILED(Result)) {
+
+        //
+        // Clear the caller's pointer and return the error code.
+        //
+
+        *Index = 0;
+        return Result;
+    }
+
+    Assigned = Table->Data;
+    Vertex1 = Assigned[Hash.LowPart];
+    Vertex2 = Assigned[Hash.HighPart];
+    Combined = Vertex1 + Vertex2;
+
+    Result = Table->Vtbl->Mask(Table, Combined, &Masked);
+
+    if (FAILED(Result)) {
+
+        //
+        // Mask functions are supposed to always S_OK, so this should never
+        // actually happen.
+        //
+
+        *Index = 0;
+        return Result;
+    }
+
+    //
+    // Update the caller's pointer and return.
+    //
+
+    *Index = Masked;
+
+    return S_OK;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

@@ -201,7 +201,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     // The masking type in use.
     //
 
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
 
     //
     // The hash function in use.
@@ -500,10 +500,10 @@ typedef PERFECT_HASH_TABLE_FLAGS *PPERFECT_HASH_TABLE_FLAGS;
 typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
 
     //
-    // Vtbl slot comes first.
+    // Our extended vtbl slot comes first, COM-style.
     //
 
-    PPERFECT_HASH_TABLE_VTBL Vtbl;
+    struct _PERFECT_HASH_TABLE_VTBL_EX *Vtbl;
 
     //
     // Size of the structure, in bytes.
@@ -542,10 +542,42 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     volatile ULONG ReferenceCount;
 
     //
-    // Pad out to an 8 byte boundary.
+    // Capture the number of elements in the underlying perfect hash table.
+    // This refers to the number of vertices for the CHM algorithm, or can
+    // mean the rounded-up power-of-2 size.  The masking implementations need
+    // an agnostic way to access this value, which is why it is provided here
+    // at the table level (despite being obtainable from things like the number
+    // of vertices or Keys->NumberOfElements).
     //
 
-    ULONG Padding;
+    ULONG Size;
+
+    //
+    // Similarly, provide a convenient way to access the table "shift" amount
+    // if a shifting mask routine is active.  This value is the number of
+    // trailing zeros of the Size above for tables whose size is a power of 2.
+    // It is not used if modulus masking is active.
+    //
+
+    ULONG Shift;
+
+    //
+    // The algorithm in use.
+    //
+
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+
+    //
+    // The masking type in use.
+    //
+
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+
+    //
+    // The hash function in use.
+    //
+
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
 
     //
     // Pointer to the keys corresponding to this perfect hash table.  May be
@@ -652,6 +684,61 @@ PERFECT_HASH_TABLE_ADD_REF PerfectHashTableAddRef;
 PERFECT_HASH_TABLE_RELEASE PerfectHashTableRelease;
 
 //
+// Extend the public vtable with internal methods we need for the hash table.
+//
+// N.B. Initially, the public vtbl structure only had the Insert and Lookup
+//      methods, as per the original specification.  The extended vtbl below
+//      then added Index, Hash and Mask functions.
+//
+//      However, all three of those functions are useful to expose publicly,
+//      so, we currently do not have any "extended" private vtbl routines.
+//      We still might, in the future, so we'll keep the "extended vtbl"
+//      paradigm for now (even though the structure is identical to the
+//      public one).
+//
+
+typedef struct _PERFECT_HASH_TABLE_VTBL_EX {
+
+    //
+    // Inline PERFECT_HASH_TABLE_VTBL.
+    //
+
+    PVOID Unused;
+    PPERFECT_HASH_TABLE_ADD_REF AddRef;
+    PPERFECT_HASH_TABLE_RELEASE Release;
+    PPERFECT_HASH_TABLE_INSERT Insert;
+    PPERFECT_HASH_TABLE_LOOKUP Lookup;
+    PPERFECT_HASH_TABLE_INDEX Index;
+    PPERFECT_HASH_TABLE_HASH Hash;
+    PPERFECT_HASH_TABLE_MASK Mask;
+
+} PERFECT_HASH_TABLE_VTBL_EX;
+typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
+
+//
+// This assert can be removed once the public/private interfaces diverge again.
+//
+
+C_ASSERT(sizeof(PERFECT_HASH_TABLE_VTBL) == sizeof(PERFECT_HASH_TABLE_VTBL_EX));
+
+//
+// Forward definitions of our generic (i.e. non-algorithm specific) routines
+// for insert, index, lookup, hashing and masking.
+//
+
+PERFECT_HASH_TABLE_INSERT PerfectHashTableInsert;
+PERFECT_HASH_TABLE_LOOKUP PerfectHashTableLookup;
+PERFECT_HASH_TABLE_INDEX PerfectHashTableIndex;
+
+PERFECT_HASH_TABLE_HASH PerfectHashTableHash01;
+PERFECT_HASH_TABLE_HASH PerfectHashTableHash02;
+
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskModulus;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskShift;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskAnd;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskXorAnd;
+
+//
 // Metadata about a perfect hash table is stored in an NTFS stream named :Info
 // that is tacked onto the end of the perfect hash table's file name.  Define
 // a structure, TABLE_INFO_ON_DISK_HEADER, that literally represents the on-disk
@@ -718,7 +805,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // Masking type.
     //
 
-    PERFECT_HASH_TABLE_MASKING_TYPE MaskingType;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
 
     //
     // Size of an individual key element, in bytes.
@@ -904,6 +991,32 @@ typedef LOAD_PERFECT_HASH_TABLE_IMPL *PLOAD_PERFECT_HASH_TABLE_IMPL;
 //
 
 LOAD_PERFECT_HASH_TABLE_IMPL LoadPerfectHashTableImplChm01;
+
+//
+// Each algorithm implements a routine that returns the required size of the
+// extended vtbl.
+//
+
+typedef
+USHORT
+(NTAPI GET_VTBL_EX_SIZE)(
+    VOID
+    );
+typedef GET_VTBL_EX_SIZE *PGET_VTBL_EX_SIZE;
+
+//
+// For each algorithm, declare the index impl routine.  These are gathered in an
+// array named LookupIndexRoutines[] (see PerfectHashTableConstants.[ch]).
+//
+
+PERFECT_HASH_TABLE_INDEX PerfectHashTableIndexImplChm01;
+
+//
+// For each algorithm, declare a routine that returns the size of the vtbl used
+// by that algorithm.
+//
+
+GET_VTBL_EX_SIZE GetVtblExSizeChm01;
 
 //
 // The PROCESS_ATTACH and PROCESS_ATTACH functions share the same signature.
