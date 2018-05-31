@@ -566,9 +566,7 @@ Return Value:
     Table->InfoMappingSizeInBytes.QuadPart = InfoMappingSize;
 
     if (!MappingHandle || MappingHandle == INVALID_HANDLE_VALUE) {
-
         goto Error;
-
     }
 
     //
