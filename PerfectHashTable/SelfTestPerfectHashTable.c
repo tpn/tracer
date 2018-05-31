@@ -578,6 +578,7 @@ Return Value:
         WIDE_OUTPUT_RAW(WideOutput, L"Microseconds to verify: ");
         WIDE_OUTPUT_INT(WideOutput, Table->Header->VerifyMicroseconds.QuadPart);
         WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        WIDE_OUTPUT_FLUSH();
 
         //
         // Destroy the table.

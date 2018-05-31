@@ -59,7 +59,8 @@ mainCRTStartup()
         "<AlgorithmId (1)> "
         "<HashFunctionId (1-4)> "
         "<MaskFunctionId (1-4)> "
-        "<MaximumConcurrency (0-ncpu)>\n"
+        "<MaximumConcurrency (0-ncpu)> "
+        "<NumberOfTableElements (0..)>\n"
     );
     UNICODE_STRING Path;
     PPERFECT_HASH_TABLE_ANY_API AnyApi;
