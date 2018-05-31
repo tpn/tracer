@@ -228,4 +228,182 @@ PerfectHashTableHash02(
                                         Hash);
 }
 
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableSeededHash03(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    ULONG NumberOfSeeds,
+    PULONG Seeds,
+    PULONGLONG Hash
+    )
+/*++
+
+Routine Description:
+
+    This hash routine is based off version 2, with fewer rotates and xors.
+
+Arguments:
+
+    Table - Supplies a pointer to the table for which the hash is being created.
+
+    Input - Supplies the input value to hash.
+
+    NumberOfSeeds - Supplies the number of elements in the Seeds array.
+
+    Seeds - Supplies an array of ULONG seed values.
+
+    Masked - Receives two 32-bit hashes merged into a 64-bit value.
+
+Return Value:
+
+    S_OK on success.  If the two 32-bit hash values are identical, E_FAIL.
+
+--*/
+{
+    ULONG A;
+    ULONG B;
+    ULONG C;
+    ULONG D;
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Seed3;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULARGE_INTEGER Result;
+
+    ASSERT(NumberOfSeeds >= 3);
+
+    //
+    // Initialize aliases.
+    //
+
+    Seed1 = Seeds[0];
+    Seed2 = Seeds[1];
+    Seed3 = Seeds[2];
+
+    //
+    // Calculate the individual hash parts.
+    //
+
+    A = Input + Seed1;
+    B = Input - Seed2;
+    C = A ^ B;
+    D = C ^ Seed3;
+
+    Vertex1 = A;
+    Vertex2 = D;
+
+    if (Vertex1 == Vertex2) {
+        __debugbreak();
+        return E_FAIL;
+    }
+
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
+
+    *Hash = Result.QuadPart;
+    return S_OK;
+}
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableHash03(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    PULONGLONG Hash
+    )
+{
+    return PerfectHashTableSeededHash03(Table,
+                                        Input,
+                                        Table->Header->NumberOfSeeds,
+                                        &Table->Header->FirstSeed,
+                                        Hash);
+}
+
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableSeededHash04(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    ULONG NumberOfSeeds,
+    PULONG Seeds,
+    PULONGLONG Hash
+    )
+/*++
+
+Routine Description:
+
+    This hash routine is based off version 2, with fewer rotates and xors.
+
+Arguments:
+
+    Table - Supplies a pointer to the table for which the hash is being created.
+
+    Input - Supplies the input value to hash.
+
+    NumberOfSeeds - Supplies the number of elements in the Seeds array.
+
+    Seeds - Supplies an array of ULONG seed values.
+
+    Masked - Receives two 32-bit hashes merged into a 64-bit value.
+
+Return Value:
+
+    S_OK on success.  If the two 32-bit hash values are identical, E_FAIL.
+
+--*/
+{
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULARGE_INTEGER Result;
+
+    ASSERT(NumberOfSeeds >= 2);
+
+    //
+    // Initialize aliases.
+    //
+
+    Seed1 = Seeds[0];
+    Seed2 = Seeds[1];
+
+    //
+    // Calculate the individual hash parts.
+    //
+
+    Vertex1 = Input ^ Seed1;
+    Vertex2 = Input ^ Seed2;
+
+    if (Vertex1 == Vertex2) {
+        __debugbreak();
+        return E_FAIL;
+    }
+
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
+
+    *Hash = Result.QuadPart;
+    return S_OK;
+}
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableHash04(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    PULONGLONG Hash
+    )
+{
+    return PerfectHashTableSeededHash04(Table,
+                                        Input,
+                                        Table->Header->NumberOfSeeds,
+                                        &Table->Header->FirstSeed,
+                                        Hash);
+}
+
+
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

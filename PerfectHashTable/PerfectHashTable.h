@@ -125,6 +125,8 @@ typedef enum _PERFECT_HASH_TABLE_HASH_FUNCTION_ID {
     PerfectHashTableHash01FunctionId = 1,
 
     PerfectHashTableHash02FunctionId,
+    PerfectHashTableHash03FunctionId,
+    PerfectHashTableHash04FunctionId,
 
     //
     // End valid hash functions.

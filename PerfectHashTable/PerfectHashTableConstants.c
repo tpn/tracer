@@ -42,6 +42,8 @@ const PPERFECT_HASH_TABLE_HASH HashRoutines[] = {
     NULL,
     PerfectHashTableHash01,
     PerfectHashTableHash02,
+    PerfectHashTableHash03,
+    PerfectHashTableHash04,
     NULL
 };
 
@@ -53,6 +55,8 @@ const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[] = {
     NULL,
     PerfectHashTableSeededHash01,
     PerfectHashTableSeededHash02,
+    PerfectHashTableSeededHash03,
+    PerfectHashTableSeededHash04,
     NULL
 };
 

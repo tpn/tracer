@@ -346,7 +346,7 @@ Return Value:
         // Create a new perfect hash table context.
         //
 
-        MaximumConcurrency = 1;
+        MaximumConcurrency = 0;
         Success = Api->CreatePerfectHashTableContext(Rtl,
                                                      Allocator,
                                                      &MaximumConcurrency,
@@ -479,13 +479,16 @@ Return Value:
 
         AlgorithmId = PerfectHashTableChm01AlgorithmId;
 
-        MaskFunctionId = PerfectHashTableModulusMaskFunctionId;
+        //MaskFunctionId = PerfectHashTableModulusMaskFunctionId;
         //MaskFunctionId = PerfectHashTableShiftMaskFunctionId;
-        MaskFunctionId = PerfectHashTableXorAndMaskFunctionId;
-        //MaskFunctionId = PerfectHashTableAndMaskFunctionId;
+        //MaskFunctionId = PerfectHashTableXorAndMaskFunctionId;
+        MaskFunctionId = PerfectHashTableAndMaskFunctionId;
 
         //HashFunctionId = PerfectHashTableDefaultHashFunctionId;
-        HashFunctionId = PerfectHashTableHash01FunctionId;
+        //HashFunctionId = PerfectHashTableHash01FunctionId;
+        //HashFunctionId = PerfectHashTableHash02FunctionId;
+        //HashFunctionId = PerfectHashTableHash03FunctionId;
+        HashFunctionId = PerfectHashTableHash04FunctionId;
 
         //
         // Clear our number of table elements variable; we currently let the
