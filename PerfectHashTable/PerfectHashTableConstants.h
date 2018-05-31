@@ -57,6 +57,13 @@ const PPERFECT_HASH_TABLE_INDEX IndexRoutines[];
 const PPERFECT_HASH_TABLE_HASH HashRoutines[];
 
 //
+// Declare an array of seeded hash routines.  This is intended to be indexed by the
+// PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[];
+
+//
 // Declare an array of mask routines.  This is intended to be indexed by the
 // PERFECT_HASH_TABLE_MASK_FUNCTION_ID enumeration.
 //
@@ -81,6 +88,7 @@ InitializeExtendedVtbl(
     Vtbl->Index = IndexRoutines[Table->AlgorithmId];
     Vtbl->Hash = HashRoutines[Table->HashFunctionId];
     Vtbl->Mask = MaskRoutines[Table->MaskFunctionId];
+    Vtbl->SeededHash = SeededHashRoutines[Table->HashFunctionId];
     Table->Vtbl = Vtbl;
 }
 

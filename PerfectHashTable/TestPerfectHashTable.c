@@ -82,10 +82,6 @@ Return Value:
 
     ASSERT(Table->SizeOfStruct == sizeof(*Table));
 
-    //
-    // XXX TODO: implement internal tests.
-    //
-
     Result = Table->Vtbl->Insert(Table, 0x2e, 0xe2, &Previous);
     ASSERT(!FAILED(Result));
 

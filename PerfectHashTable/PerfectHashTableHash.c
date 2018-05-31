@@ -18,6 +18,85 @@ Abstract:
 
 _Use_decl_annotations_
 HRESULT
+PerfectHashTableSeededHash01(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    ULONG NumberOfSeeds,
+    PULONG Seeds,
+    PULONGLONG Hash
+    )
+/*++
+
+Routine Description:
+
+    This hash routine uses a combination of CRC32 and rotates.  It is loosely
+    inspired by the intel_hash64() routine.
+
+Arguments:
+
+    Table - Supplies a pointer to the table for which the hash is being created.
+
+    Input - Supplies the input value to hash.
+
+    NumberOfSeeds - Supplies the number of elements in the Seeds array.
+
+    Seeds - Supplies an array of ULONG seed values.
+
+    Masked - Receives two 32-bit hashes merged into a 64-bit value.
+
+Return Value:
+
+    S_OK on success.  If the two 32-bit hash values are identical, E_FAIL.
+
+--*/
+{
+    ULONG A;
+    ULONG B;
+    ULONG C;
+    ULONG D;
+    ULONG Seed1;
+    ULONG Seed2;
+    ULONG Seed3;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULARGE_INTEGER Result;
+
+    ASSERT(NumberOfSeeds >= 3);
+
+    //
+    // Initialize aliases.
+    //
+
+    Seed1 = Seeds[0];
+    Seed2 = Seeds[1];
+    Seed3 = Seeds[2];
+
+    //
+    // Calculate the individual hash parts.
+    //
+
+    A = _mm_crc32_u32(Seed1, Input);
+    B = _mm_crc32_u32(Seed2, _rotl(Input, 15));
+    C = Seed3 ^ Input;
+    D = _mm_crc32_u32(B, C);
+
+    Vertex1 = A;
+    Vertex2 = D;
+
+    if (Vertex1 == Vertex2) {
+        __debugbreak();
+        return E_FAIL;
+    }
+
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
+
+    *Hash = Result.QuadPart;
+    return S_OK;
+}
+
+_Use_decl_annotations_
+HRESULT
 PerfectHashTableHash01(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
@@ -44,53 +123,20 @@ Return Value:
 
 --*/
 {
-    ULONG A;
-    ULONG B;
-    ULONG C;
-    ULONG D;
-    ULONG Seed1;
-    ULONG Seed2;
-    ULONG Seed3;
-    ULONG Vertex1;
-    ULONG Vertex2;
-    ULARGE_INTEGER Result;
-
-    //
-    // Initialize aliases.
-    //
-
-    Seed1 = Table->Header->Seed1;
-    Seed2 = Table->Header->Seed2;
-    Seed3 = Table->Header->Seed3;
-
-    //
-    // Calculate the individual hash parts.
-    //
-
-    A = _mm_crc32_u32(Seed1, Input);
-    B = _mm_crc32_u32(Seed2, _rotl(Input, 15));
-    C = Seed3 ^ Input;
-    D = _mm_crc32_u32(B, C);
-
-    Vertex1 = A;
-    Vertex2 = D;
-
-    if (Vertex1 == Vertex2) {
-        return E_FAIL;
-    }
-
-    Result.LowPart = Vertex1;
-    Result.HighPart = Vertex2;
-
-    *Hash = Result.QuadPart;
-    return S_OK;
+    return PerfectHashTableSeededHash01(Table,
+                                        Input,
+                                        Table->Header->NumberOfSeeds,
+                                        &Table->Header->FirstSeed,
+                                        Hash);
 }
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableHash02(
+PerfectHashTableSeededHash02(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
+    ULONG NumberOfSeeds,
+    PULONG Seeds,
     PULONGLONG Hash
     )
 /*++
@@ -108,6 +154,10 @@ Arguments:
 
     Input - Supplies the input value to hash.
 
+    NumberOfSeeds - Supplies the number of elements in the Seeds array.
+
+    Seeds - Supplies an array of ULONG seed values.
+
     Masked - Receives two 32-bit hashes merged into a 64-bit value.
 
 Return Value:
@@ -123,17 +173,21 @@ Return Value:
     ULONG Seed1;
     ULONG Seed2;
     ULONG Seed3;
+    ULONG Seed4;
     ULONG Vertex1;
     ULONG Vertex2;
     ULARGE_INTEGER Result;
+
+    ASSERT(NumberOfSeeds >= 3);
 
     //
     // Initialize aliases.
     //
 
-    Seed1 = Table->Header->Seed1;
-    Seed2 = Table->Header->Seed2;
-    Seed3 = Table->Header->Seed3;
+    Seed1 = Seeds[0];
+    Seed2 = Seeds[1];
+    Seed3 = Seeds[2];
+    Seed4 = Seeds[3];
 
     //
     // Calculate the individual hash parts.
@@ -142,12 +196,13 @@ Return Value:
     A = _rotl(Input ^ Seed1, 15);
     B = _rotl(Input + Seed2, 7);
     C = _rotr(Input - Seed3, 11);
-    D = _rotr(Input ^ Seed3, 20);
+    D = _rotr(Input ^ Seed4, 20);
 
     Vertex1 = A ^ C;
     Vertex2 = B ^ D;
 
     if (Vertex1 == Vertex2) {
+        __debugbreak();
         return E_FAIL;
     }
 
@@ -156,6 +211,21 @@ Return Value:
 
     *Hash = Result.QuadPart;
     return S_OK;
+}
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableHash02(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    PULONGLONG Hash
+    )
+{
+    return PerfectHashTableSeededHash02(Table,
+                                        Input,
+                                        Table->Header->NumberOfSeeds,
+                                        &Table->Header->FirstSeed,
+                                        Hash);
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

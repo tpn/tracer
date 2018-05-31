@@ -192,10 +192,20 @@ typedef struct _GRAPH_INFO {
     ULONG AllocationGranularity;
 
     //
-    // Pad out to 8 bytes.
+    // If a masking type other than modulus is active, the AbsoluteEdge() needs
+    // a way to mask edge values that exceed the number of edges in the table.
+    // It does this via EdgeMask, which is initialized to the number of edges
+    // (which will be power-of-2 sized for non-modulus masking), minus 1, such
+    // that all lower bits will be set.
     //
 
-    ULONG Padding1;
+    ULONG EdgeMask;
+
+    //
+    // Also capture the mask required to isolate vertices.
+    //
+
+    ULONG VertexMask;
 
     //
     // Graph dimensions.  This information is duplicated in the graph due to
@@ -279,6 +289,29 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     SLIST_ENTRY ListEntry;
 
     //
+    // Edge and vertex masks that can be used when non-modulus masking is in
+    // place.  Both of these values are duplicated from the info structure as
+    // they are accessed frequently.
+    //
+    //
+
+    ULONG EdgeMask;
+    ULONG VertexMask;
+
+    //
+    // Duplicate the mask type, as well, as this directs AbsoluteEdge()'s
+    // decision to use the two masks above.
+    //
+
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+
+    //
+    // Graph flags.
+    //
+
+    GRAPH_FLAGS Flags;
+
+    //
     // Pointer to the info structure describing various sizes.
     //
 
@@ -306,12 +339,6 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     //
 
     ULONG ThreadId;
-
-    //
-    // Graph flags.
-    //
-
-    GRAPH_FLAGS Flags;
 
     //
     // Counter that is incremented each time we delete an edge during the
@@ -413,10 +440,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     // Capture the seeds used for each hash function employed by the graph.
     //
 
+    ULONG NumberOfSeeds;
+
     struct {
         union {
             struct {
-                ULONG Seed1;
+                union {
+                    ULONG Seed1;
+                    ULONG FirstSeed;
+                };
                 ULONG Seed2;
             };
             ULARGE_INTEGER Seeds12;
@@ -424,7 +456,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
         union {
             struct {
                 ULONG Seed3;
-                ULONG Seed4;
+                union {
+                    ULONG Seed4;
+                    ULONG LastSeed;
+                };
             };
             ULARGE_INTEGER Seeds34;
         };
@@ -432,6 +467,23 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
 
 } GRAPH;
 typedef GRAPH *PGRAPH;
+
+//
+// Define a helper macro for hashing keys during graph creation.  Assumes a
+// variable named Graph is in scope.
+//
+
+#define SEEDED_HASH(Key, Result)                             \
+    if (FAILED(Table->Vtbl->SeededHash(Table,                \
+                                       Key,                  \
+                                       Graph->NumberOfSeeds, \
+                                       &Graph->FirstSeed,    \
+                                       Result))) {           \
+        __debugbreak();                                      \
+        goto Error;                                          \
+    }
+
+
 
 //
 // Define an on-disk representation of the graph's information.  This is stored
@@ -631,8 +683,23 @@ AbsoluteEdge(
     _In_ ULONG Index
     )
 {
-    ULONG NumberOfEdges = Graph->NumberOfEdges;
-    return (Edge % NumberOfEdges + Index * NumberOfEdges);
+    ULONG MaskedEdge;
+    ULONG NumberOfEdges;
+
+    NumberOfEdges = Graph->NumberOfEdges;
+
+    if (IsModulusMasking(Graph->MaskFunctionId)) {
+
+        MaskedEdge = Edge % NumberOfEdges;
+
+    } else {
+
+        MaskedEdge = Edge & Graph->EdgeMask;
+
+    }
+
+    return (MaskedEdge + (Index * NumberOfEdges));
+
 }
 
 #define TestGraphBit(Name, BitNumber) \

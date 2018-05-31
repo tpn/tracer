@@ -479,17 +479,13 @@ Return Value:
 
         AlgorithmId = PerfectHashTableChm01AlgorithmId;
 
-        //
-        // N.B. The masking type is currently ignored.
-        //
-
         MaskFunctionId = PerfectHashTableModulusMaskFunctionId;
+        //MaskFunctionId = PerfectHashTableShiftMaskFunctionId;
+        MaskFunctionId = PerfectHashTableXorAndMaskFunctionId;
+        //MaskFunctionId = PerfectHashTableAndMaskFunctionId;
 
-        //
-        // N.B. The hash function ID is currently ignored.
-        //
-
-        HashFunctionId = PerfectHashTableDefaultHashFunctionId;
+        //HashFunctionId = PerfectHashTableDefaultHashFunctionId;
+        HashFunctionId = PerfectHashTableHash01FunctionId;
 
         //
         // Clear our number of table elements variable; we currently let the

@@ -119,7 +119,8 @@ Return Value:
 
     //
     // The number of edges in our graph is equal to the number of keys in the
-    // input data set.
+    // input data set if modulus masking is in use.  It will be rounded up to
+    // a power of 2 otherwise.
     //
 
     NumberOfEdges.QuadPart = Table->Keys->NumberOfElements.QuadPart;
@@ -129,6 +130,80 @@ Return Value:
     //
 
     ASSERT(!NumberOfEdges.HighPart);
+
+    //
+    // Determine the number of vertices.  If a caller has requested a certain
+    // table size, Table->RequestedNumberOfTableElements will be non-zero, and
+    // takes precedence.
+    //
+
+    if (Table->RequestedNumberOfTableElements.QuadPart) {
+
+        //
+        // Invariant check: the masking type must be modulus in order for the
+        // caller to specify a table size.
+        //
+
+        ASSERT(IsModulusMasking(MaskFunctionId));
+
+        NumberOfVertices.QuadPart = (
+            Table->RequestedNumberOfTableElements.QuadPart
+        );
+
+    } else {
+
+        //
+        // No table size was requested, so we need to determine how many
+        // vertices to use heuristically.  The main factor is what type of
+        // masking has been requested.  The chm.c implementation, which is
+        // modulus based, uses a size multiplier (c) of 2.09, and calculates
+        // the final size via ceil(nedges * (double)2.09).  We can avoid the
+        // need for doubles and linking with a math library (to get ceil())
+        // and just use ~2.25, which we can calculate by adding the result
+        // of right shifting the number of edges by 1 to the result of left
+        // shifting said edge count by 2 (simulating multiplication by 0.25).
+        //
+        // If we're dealing with modulus masking, this will be the exact number
+        // of vertices used.  For other types of masking, we need the edges size
+        // to be a power of 2, and the vertices size to be the next power of 2.
+        //
+
+        if (IsModulusMasking(MaskFunctionId)) {
+
+            NumberOfVertices.QuadPart = NumberOfEdges.LowPart << 1;
+            NumberOfVertices.QuadPart += NumberOfEdges.LowPart >> 2;
+
+        } else {
+
+            //
+            // Round up the edges to a power of 2.
+            //
+
+            NumberOfEdges.QuadPart = RoundUpPowerOf2(NumberOfEdges.LowPart);
+
+            //
+            // Make sure we haven't overflowed.
+            //
+
+            ASSERT(!NumberOfEdges.HighPart);
+
+            //
+            // For the number of vertices, round the number of edges up to the
+            // next power of 2.
+            //
+
+            NumberOfVertices.QuadPart = (
+                RoundUpNextPowerOf2(NumberOfEdges.LowPart)
+            );
+
+        }
+    }
+
+    //
+    // Another sanity check we haven't exceeded MAX_ULONG.
+    //
+
+    ASSERT(!NumberOfVertices.HighPart);
 
     //
     // The r-graph (r = 2) nature of this implementation results in various
@@ -145,97 +220,6 @@ Return Value:
 
     ASSERT(!TotalNumberOfEdges.HighPart);
 
-    //
-    // Determine the number of vertices.  If a caller has requested a certain
-    // table size, Table->RequestedNumberOfTableElements will be non-zero, and
-    // takes precedence.
-    //
-
-    if (Table->RequestedNumberOfTableElements.QuadPart) {
-
-        NumberOfVertices.QuadPart = (
-            Table->RequestedNumberOfTableElements.QuadPart
-        );
-
-    } else {
-
-        ULONGLONG Threshold;
-
-        //
-        // No table size was requested, so we need to determine how many
-        // vertices to use heuristically.  The main factor is what type of
-        // masking has been requested.  The chm.c implementation, which is
-        // modulus based, uses a size multiplier (c) of 2.09, and calculates
-        // the final size via ceil(nedges * (double)2.09).  We can avoid the
-        // need for doubles and linking with a math library (to get ceil())
-        // and just use ~2.25, which we can calculate by adding the result
-        // of right shifting the number of edges by 1 to the result of left
-        // shifting said edge count by 2 (simulating multiplication by 0.25).
-        //
-        // Stash this as Threshold for now.  If we're dealing with modulus
-        // masking, this will be the exact number of vertices used.  For shift
-        // masking, we need to do some power-of-2 fiddling.
-        //
-
-        Threshold = NumberOfEdges.LowPart << 1;
-        Threshold += NumberOfEdges.LowPart >> 2;
-
-        if (IsModulusMasking(MaskFunctionId)) {
-
-            NumberOfVertices.QuadPart = Threshold;
-
-        } else {
-
-            ULONGLONG PowerOf2Size;
-
-            //
-            // Shift masking is in use, so we need to have a table size that is
-            // a power of 2.  However, we also need to be cognizant of the edge
-            // cases where the number of edges is *close* to a power of 2, such
-            // that rounding up only yields a small difference between the
-            // number of vertices and edges.  The smaller the gap, the less
-            // likely the chance we'll be able to solve the graph, as the
-            // probability of collision will be much higher (because there are
-            // less slots for the vertex values to live in).
-            //
-            // We use the ~2.25x threshold calculated above to determine whether
-            // or not we should bump the size up to the next power of 2.
-            //
-
-            PowerOf2Size = RoundUpPowerOf2(NumberOfEdges.LowPart);
-
-            if (PowerOf2Size & (1ULL << 31)) {
-
-                //
-                // We have no more bits left in our ULONG to shift.  Treat this
-                // as an error.
-                //
-
-                return FALSE;
-            }
-
-            //
-            // If the power-of-2 size is under our threshold, bump it up to the
-            // next power of 2.
-            //
-
-            if (PowerOf2Size < Threshold) {
-
-                PowerOf2Size = RoundUpNextPowerOf2((ULONG)PowerOf2Size);
-
-            }
-
-            NumberOfVertices.QuadPart = PowerOf2Size;
-
-            ASSERT(IsPowerOf2(NumberOfVertices.QuadPart));
-        }
-    }
-
-    //
-    // Another sanity check we haven't exceeded MAX_ULONG.
-    //
-
-    ASSERT(!NumberOfVertices.HighPart);
 
     //
     // Calculate the size required for the DeletedEdges bitmap buffer.  One
@@ -506,6 +490,39 @@ Return Value:
     );
 
     //
+    // If non-modulus masking is active, initialize the edge and vertex masks.
+    //
+
+    if (!IsModulusMasking(MaskFunctionId)) {
+
+        Info.EdgeMask = NumberOfEdges.LowPart - 1;
+        Info.VertexMask = NumberOfVertices.LowPart - 1;
+
+        //
+        // Sanity check our masks are correct: their popcnts should match the
+        // exponent value identified above whilst filling out the dimensions
+        // structure.
+        //
+
+        ASSERT(_mm_popcnt_u32(Info.EdgeMask) ==
+               Dim->NumberOfEdgesPowerOf2Exponent);
+
+        ASSERT(_mm_popcnt_u32(Info.VertexMask) ==
+               Dim->NumberOfVerticesPowerOf2Exponent);
+
+    }
+
+    //
+    // Set the Size and Shift fields of the table, such that the Hash and
+    // Mask vtbl functions operate correctly.
+    //
+    // N.B. Table->Shift is meaningless for modulus masking.
+    //
+
+    Table->Size = NumberOfVertices.LowPart;
+    Table->Shift = TrailingZeros(Table->Size);
+
+    //
     // Save the on-disk representation of the graph information.  This is a
     // smaller subset of data needed in order to load a previously-solved
     // graph as a perfect hash table.  The data resides in an NTFS stream named
@@ -525,6 +542,10 @@ Return Value:
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
     OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
     OnDiskHeader->NumberOfKeys.QuadPart = NumberOfEdges.QuadPart;
+    OnDiskHeader->NumberOfSeeds = ((
+        FIELD_OFFSET(GRAPH, LastSeed) -
+        FIELD_OFFSET(GRAPH, FirstSeed)
+    ) / sizeof(ULONG)) + 1;
 
     //
     // This will change based on masking type and whether or not the caller
@@ -746,16 +767,6 @@ Return Value:
         __debugbreak();
         Success = FALSE;
     }
-
-    //
-    // Set the Size and Shift fields of the table, such that the Hash and
-    // Mask vtbl functions operate correctly.
-    //
-    // N.B. Table->Shift is meaningless for modulus masking.
-    //
-
-    Table->Size = NumberOfVertices.LowPart;
-    Table->Shift = TrailingZeros(Table->Size);
 
 End:
 
@@ -1208,10 +1219,12 @@ Return Value:
     USHORT BitmapCount = 0;
 
     //
-    // Obtain new seed data for the first two seeds.
+    // Obtain new seed data for the first two seeds and initialize the number
+    // of seeds.
     //
 
     GetRandomSeedsBlocking(&Graph->Seeds12);
+    Graph->NumberOfSeeds = Info->Context->Table->Header->NumberOfSeeds;
 
     //
     // Carve out the backing memory structures for arrays and bitmap buffers.
@@ -1317,6 +1330,14 @@ Return Value:
     Graph->ThreadId = GetCurrentThreadId();
     Graph->Attempt = InterlockedIncrement(&Info->Context->Attempts);
     Graph->Info = Info;
+
+    //
+    // Copy the edge and vertex masks, and the masking type.
+    //
+
+    Graph->EdgeMask = Info->EdgeMask;
+    Graph->VertexMask = Info->VertexMask;
+    Graph->MaskFunctionId = Info->Context->MaskFunctionId;
 
     //
     // Set the context.
@@ -2161,24 +2182,16 @@ Return Value:
     for (Edge = 0; Edge < NumberOfEdges; Edge++) {
         Key = Keys[Edge];
 
-        Hash.QuadPart = HashKey(Graph, Key);
-        if (!Hash.QuadPart) {
-
-            //
-            // Failed to hash the key to two unique vertices.
-            //
-
-            return FALSE;
-        }
+        SEEDED_HASH(Key, &Hash.QuadPart);
 
         ASSERT(Hash.HighPart != Hash.LowPart);
 
         //
-        // Extract the individual vertices.
+        // Mask the individual vertices.
         //
 
-        Vertex1 = Hash.LowPart;
-        Vertex2 = Hash.HighPart;
+        MASK(Hash.LowPart, &Vertex1);
+        MASK(Hash.HighPart, &Vertex2);
 
         //
         // Add the edge to the graph connecting these two vertices.
@@ -2256,6 +2269,14 @@ Return Value:
     SubmitThreadpoolWork(Context->FinishedWork);
 
     return TRUE;
+
+Error:
+
+    //
+    // If any of the HASH/MASK macros fail, they'll jump to this Error: label.
+    //
+
+    return FALSE;
 }
 
 _Use_decl_annotations_
@@ -2283,9 +2304,11 @@ Return Value:
     KEY Key;
     PKEY Keys;
     EDGE Edge;
+    VERTEX Result;
     VERTEX Vertex1;
     VERTEX Vertex2;
-    VERTEX Result;
+    VERTEX MaskedLow;
+    VERTEX MaskedHigh;
     PVERTEX Assigned;
     PGRAPH_INFO Info;
     ULONG NumberOfEdges;
@@ -2310,20 +2333,36 @@ Return Value:
     for (Edge = 0; Edge < NumberOfEdges; Edge++) {
         Key = Keys[Edge];
 
-        Hash.QuadPart = HashKey(Graph, Key);
+        //
+        // Hash the key.
+        //
+
+        SEEDED_HASH(Key, &Hash.QuadPart);
 
         ASSERT(Hash.QuadPart);
         ASSERT(Hash.HighPart != Hash.LowPart);
 
         //
+        // Mask the high and low parts of the hash.
+        //
+
+        MASK(Hash.LowPart, &MaskedLow);
+        MASK(Hash.HighPart, &MaskedHigh);
+
+        //
         // Extract the individual vertices.
         //
 
-        Vertex1 = Assigned[Hash.LowPart];
-        Vertex2 = Assigned[Hash.HighPart];
+        Vertex1 = Assigned[MaskedLow];
+        Vertex2 = Assigned[MaskedHigh];
+
+        //
+        // Mask the result.
+        //
 
         Result = Vertex1 + Vertex2;
-        Result %= Graph->NumberOfVertices;
+
+        MASK(Result, &Result);
 
         //
         // Make sure we haven't seen this bit before.
@@ -2343,6 +2382,10 @@ Return Value:
     ASSERT(NumberOfAssignments == Graph->NumberOfEdges);
 
     return TRUE;
+
+Error:
+
+    return FALSE;
 }
 
 _Use_decl_annotations_

@@ -46,6 +46,17 @@ const PPERFECT_HASH_TABLE_HASH HashRoutines[] = {
 };
 
 //
+// Define the array of seeded hash routines.
+//
+
+const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[] = {
+    NULL,
+    PerfectHashTableSeededHash01,
+    PerfectHashTableSeededHash02,
+    NULL
+};
+
+//
 // Define the array of mask routines.
 //
 

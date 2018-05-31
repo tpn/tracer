@@ -128,6 +128,10 @@ Return Value:
         return FALSE;
     }
 
+    if (!IsValidPerfectHashTableMaskFunctionId(MaskFunctionId)) {
+        return FALSE;
+    }
+
     if (ARGUMENT_PRESENT(NumberOfTableElementsPointer)) {
 
         //
@@ -140,6 +144,16 @@ Return Value:
         );
 
         if (NumberOfTableElements.QuadPart > 0) {
+
+            //
+            // The masking type needs to be modulus based if a caller provides
+            // a custom table size.  This is because the other types of masking
+            // require very specific powers-of-2 sizes for internal structures.
+            //
+
+            if (!IsModulusMasking(MaskFunctionId)) {
+                return FALSE;
+            }
 
             if (NumberOfTableElements.QuadPart <
                 Keys->NumberOfElements.QuadPart) {
@@ -160,10 +174,6 @@ Return Value:
     }
 
     if (!IsValidPerfectHashTableAlgorithmId(AlgorithmId)) {
-        return FALSE;
-    }
-
-    if (!IsValidPerfectHashTableMaskFunctionId(MaskFunctionId)) {
         return FALSE;
     }
 

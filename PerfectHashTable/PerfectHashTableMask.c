@@ -76,7 +76,16 @@ Return Value:
 
 --*/
 {
-    *Masked = (ULONG)(Input >> Table->Shift);
+    ULONG Shift;
+    ULARGE_INTEGER Value;
+
+    Shift = (31 - Table->Shift);
+    Value.QuadPart = Input >> Shift;
+
+    ASSERT(!Value.HighPart);
+
+    *Masked = Value.LowPart;
+    //*Masked = (ULONG)(Input >> (31 - Table->Shift));
     return S_OK;
 }
 
@@ -107,7 +116,7 @@ Return Value:
 
 --*/
 {
-    *Masked = (ULONG)(Input & (Table->Shift - 1));
+    *Masked = (ULONG)(Input & (Table->Size - 1));
     return S_OK;
 }
 
@@ -143,7 +152,7 @@ Return Value:
 
     Mask.QuadPart = Input;
 
-    *Masked = (ULONG)((Mask.HighPart ^ Mask.LowPart) & (Table->Shift - 1));
+    *Masked = (ULONG)((Mask.HighPart ^ Mask.LowPart) & (Table->Size - 1));
     return S_OK;
 }
 

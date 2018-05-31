@@ -562,6 +562,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     ULONG Shift;
 
     //
+    // Pad out to an 8 byte boundary.
+    //
+
+    ULONG Padding;
+
+    //
     // If a caller provided the number of table elements as a parameter to the
     // CreatePerfectHashTable() function, that value will be captured here.  It
     // overrides the default sizing heuristics.  (If non-zero, it will be at
@@ -693,17 +699,26 @@ PERFECT_HASH_TABLE_ADD_REF PerfectHashTableAddRef;
 PERFECT_HASH_TABLE_RELEASE PerfectHashTableRelease;
 
 //
+// Define the seeded hash routine, which explicitly takes an array of seeds.
+// This is used by the solving routines when attempting to create a perfect
+// hash table, and seed values are being generated randomly.  It is not used
+// for loaded tables, as those have hash values that can be accessed easily
+// via the Table->Header->Seed fields.
+//
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_SEEDED_HASH)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Input,
+    _In_ ULONG NumberOfSeeds,
+    _In_reads_(NumberOfSeeds) PULONG Seeds,
+    _Out_ PULONGLONG Hash
+    );
+typedef PERFECT_HASH_TABLE_SEEDED_HASH *PPERFECT_HASH_TABLE_SEEDED_HASH;
+
+//
 // Extend the public vtable with internal methods we need for the hash table.
-//
-// N.B. Initially, the public vtbl structure only had the Insert and Lookup
-//      methods, as per the original specification.  The extended vtbl below
-//      then added Index, Hash and Mask functions.
-//
-//      However, all three of those functions are useful to expose publicly,
-//      so, we currently do not have any "extended" private vtbl routines.
-//      We still might, in the future, so we'll keep the "extended vtbl"
-//      paradigm for now (even though the structure is identical to the
-//      public one).
 //
 
 typedef struct _PERFECT_HASH_TABLE_VTBL_EX {
@@ -721,14 +736,40 @@ typedef struct _PERFECT_HASH_TABLE_VTBL_EX {
     PPERFECT_HASH_TABLE_HASH Hash;
     PPERFECT_HASH_TABLE_MASK Mask;
 
+    //
+    // Begin extended functions.
+    //
+
+    PPERFECT_HASH_TABLE_SEEDED_HASH SeededHash;
+
 } PERFECT_HASH_TABLE_VTBL_EX;
 typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
 
 //
-// This assert can be removed once the public/private interfaces diverge again.
+// Add some helper macros that improve the aesthetics of using the index,
+// hash and mask COM-style routines.  All macros assume a Table variable is
+// in scope, as well as an Error: label that can be jumped to if the method
+// fails.
 //
 
-C_ASSERT(sizeof(PERFECT_HASH_TABLE_VTBL) == sizeof(PERFECT_HASH_TABLE_VTBL_EX));
+
+#define INDEX(Key, Result)                                 \
+    if (FAILED(Table->Vtbl->Index(Table, Key, Result))) {  \
+        goto Error;                                        \
+    }
+
+#define HASH(Key, Result)                                 \
+    if (FAILED(Table->Vtbl->Hash(Table, Key, Result))) {  \
+        __debugbreak();                                   \
+        goto Error;                                       \
+    }
+
+#define MASK(Hash, Result)                                \
+    if (FAILED(Table->Vtbl->Mask(Table, Hash, Result))) { \
+        __debugbreak();                                   \
+        goto Error;                                       \
+    }
+
 
 //
 // Forward definitions of our generic (i.e. non-algorithm specific) routines
@@ -741,6 +782,8 @@ PERFECT_HASH_TABLE_INDEX PerfectHashTableIndex;
 
 PERFECT_HASH_TABLE_HASH PerfectHashTableHash01;
 PERFECT_HASH_TABLE_HASH PerfectHashTableHash02;
+PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash01;
+PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash02;
 
 PERFECT_HASH_TABLE_MASK PerfectHashTableMaskModulus;
 PERFECT_HASH_TABLE_MASK PerfectHashTableMaskShift;
@@ -840,10 +883,26 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // Seed data.
     //
 
-    ULONG Seed1;
+    ULONG NumberOfSeeds;
+
+    union {
+        ULONG Seed1;
+        ULONG FirstSeed;
+    };
+
     ULONG Seed2;
     ULONG Seed3;
-    ULONG Seed4;
+
+    union {
+        ULONG Seed4;
+        ULONG LastSeed;
+    };
+
+    //
+    // Pad out to an 8 byte boundary.
+    //
+
+    ULONG Padding;
 
 } TABLE_INFO_ON_DISK_HEADER;
 typedef TABLE_INFO_ON_DISK_HEADER *PTABLE_INFO_ON_DISK_HEADER;
