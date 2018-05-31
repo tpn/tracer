@@ -562,6 +562,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     ULONG Shift;
 
     //
+    // If a caller provided the number of table elements as a parameter to the
+    // CreatePerfectHashTable() function, that value will be captured here.  It
+    // overrides the default sizing heuristics.  (If non-zero, it will be at
+    // least equal to or greater than the number of keys.)
+    //
+
+    ULARGE_INTEGER RequestedNumberOfTableElements;
+
+    //
     // The algorithm in use.
     //
 

@@ -585,10 +585,17 @@ Return Value:
     Table->InfoStreamBaseAddress = BaseAddress;
 
     if (!BaseAddress) {
-
         goto Error;
-
     }
+
+    //
+    // Set the number of table elements requested by the user (0 is a valid
+    // value here).
+    //
+
+    Table->RequestedNumberOfTableElements.QuadPart = (
+        NumberOfTableElements.QuadPart
+    );
 
     //
     // Common initialization is complete, dispatch remaining work to the
@@ -609,6 +616,14 @@ Return Value:
         ASSERT(Table->Size);
     } else {
         ASSERT(Table->Shift);
+    }
+
+    //
+    // Update the caller's number of table elements pointer, if applicable.
+    //
+
+    if (ARGUMENT_PRESENT(NumberOfTableElementsPointer)) {
+        NumberOfTableElementsPointer->QuadPart = Table->Size;
     }
 
     //

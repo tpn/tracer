@@ -213,6 +213,21 @@ IsValidPerfectHashTableMaskFunctionId(
 }
 
 //
+// Masking tends to fall into one of two buckets: modulus and shifting.
+// Provide an inline routine that guarantees to match all current and
+// future modulus masking function IDs.
+//
+
+FORCEINLINE
+BOOLEAN
+IsModulusMasking(
+    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId
+    )
+{
+    return MaskFunctionId == PerfectHashTableModulusMaskFunctionId;
+}
+
+//
 // Define an opaque runtime context to encapsulate threadpool resources.  This
 // is created via CreatePerfectHashTableContext() with a desired concurrency,
 // and then passed to CreatePerfectHashTable(), allowing it to search for

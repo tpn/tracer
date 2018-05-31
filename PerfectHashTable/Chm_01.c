@@ -54,8 +54,6 @@ Return Value:
     PGRAPH Graph;
     PBYTE Buffer;
     BOOLEAN Success;
-    BOOLEAN IsModulusMasking;
-    BOOLEAN IsShiftMasking;
     USHORT PageSize;
     USHORT PageShift;
     ULONG_PTR LastPage;
@@ -117,15 +115,7 @@ Return Value:
     Keys = (PULONG)Table->Keys->BaseAddress;;
     Allocator = Table->Allocator;
     Context = Table->Context;
-
-    //
-    // Obtain the masking type and set some boolean aliases that are easier
-    // to work with.
-    //
-
     MaskFunctionId = Context->MaskFunctionId;
-    IsShiftMasking = (MaskFunctionId == PerfectHashTableShiftMaskFunctionId);
-    IsModulusMasking = (MaskFunctionId == PerfectHashTableModulusMaskFunctionId);
 
     //
     // The number of edges in our graph is equal to the number of keys in the
@@ -156,15 +146,90 @@ Return Value:
     ASSERT(!TotalNumberOfEdges.HighPart);
 
     //
-    // chm.c uses a size multiplier (c) of 2.09.  Let's avoid the need for
-    // doubles and linking with a math library in order to get ceil(), and
-    // just use 2.5, which we can calculate by adding the result of right
-    // shifting the number of edges by 1 to the result of left shifting
-    // said edge count by 1 (simulating multiplication by 0.5).
+    // Determine the number of vertices.  If a caller has requested a certain
+    // table size, Table->RequestedNumberOfTableElements will be non-zero, and
+    // takes precedence.
     //
 
-    NumberOfVertices.QuadPart = NumberOfEdges.LowPart << 1;
-    NumberOfVertices.QuadPart += NumberOfEdges.LowPart >> 1;
+    if (Table->RequestedNumberOfTableElements.QuadPart) {
+
+        NumberOfVertices.QuadPart = (
+            Table->RequestedNumberOfTableElements.QuadPart
+        );
+
+    } else {
+
+        ULONGLONG Threshold;
+
+        //
+        // No table size was requested, so we need to determine how many
+        // vertices to use heuristically.  The main factor is what type of
+        // masking has been requested.  The chm.c implementation, which is
+        // modulus based, uses a size multiplier (c) of 2.09, and calculates
+        // the final size via ceil(nedges * (double)2.09).  We can avoid the
+        // need for doubles and linking with a math library (to get ceil())
+        // and just use ~2.25, which we can calculate by adding the result
+        // of right shifting the number of edges by 1 to the result of left
+        // shifting said edge count by 2 (simulating multiplication by 0.25).
+        //
+        // Stash this as Threshold for now.  If we're dealing with modulus
+        // masking, this will be the exact number of vertices used.  For shift
+        // masking, we need to do some power-of-2 fiddling.
+        //
+
+        Threshold = NumberOfEdges.LowPart << 1;
+        Threshold += NumberOfEdges.LowPart >> 2;
+
+        if (IsModulusMasking(MaskFunctionId)) {
+
+            NumberOfVertices.QuadPart = Threshold;
+
+        } else {
+
+            ULONGLONG PowerOf2Size;
+
+            //
+            // Shift masking is in use, so we need to have a table size that is
+            // a power of 2.  However, we also need to be cognizant of the edge
+            // cases where the number of edges is *close* to a power of 2, such
+            // that rounding up only yields a small difference between the
+            // number of vertices and edges.  The smaller the gap, the less
+            // likely the chance we'll be able to solve the graph, as the
+            // probability of collision will be much higher (because there are
+            // less slots for the vertex values to live in).
+            //
+            // We use the ~2.25x threshold calculated above to determine whether
+            // or not we should bump the size up to the next power of 2.
+            //
+
+            PowerOf2Size = RoundUpPowerOf2(NumberOfEdges.LowPart);
+
+            if (PowerOf2Size & (1ULL << 31)) {
+
+                //
+                // We have no more bits left in our ULONG to shift.  Treat this
+                // as an error.
+                //
+
+                return FALSE;
+            }
+
+            //
+            // If the power-of-2 size is under our threshold, bump it up to the
+            // next power of 2.
+            //
+
+            if (PowerOf2Size < Threshold) {
+
+                PowerOf2Size = RoundUpNextPowerOf2((ULONG)PowerOf2Size);
+
+            }
+
+            NumberOfVertices.QuadPart = PowerOf2Size;
+
+            ASSERT(IsPowerOf2(NumberOfVertices.QuadPart));
+        }
+    }
 
     //
     // Another sanity check we haven't exceeded MAX_ULONG.
