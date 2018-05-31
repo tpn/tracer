@@ -84,13 +84,13 @@ Return Value:
     // Get the existing value.
     //
 
-    Existing = Table->Data[Index];
+    Existing = Table->Values[Index];
 
     //
     // Write the new value.
     //
 
-    Table->Data[Index] = Value;
+    Table->Values[Index] = Value;
 
     //
     // Update the caller's pointer if applicable.

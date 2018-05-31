@@ -638,7 +638,7 @@ Return Value:
     // Graphs always pass verification in normal circumstances.  The only time
     // they don't is if there's an internal bug in our code.  So, knowing that
     // the graph is probably correct, we can dispatch the file work required to
-    // save it to disk to the main threadpool whilst we verify it has been
+    // save it to disk to the file work threadpool whilst we verify it has been
     // solved correctly.
     //
 
@@ -681,6 +681,16 @@ Return Value:
         __debugbreak();
         Success = FALSE;
     }
+
+    //
+    // Set the Size and Shift fields of the table, such that the Hash and
+    // Mask vtbl functions operate correctly.
+    //
+    // N.B. Table->Shift is meaningless for modulus masking.
+    //
+
+    Table->Size = NumberOfVertices.LowPart;
+    Table->Shift = TrailingZeros(Table->Size);
 
 End:
 
@@ -728,7 +738,17 @@ Return Value:
 
 --*/
 {
-    return FALSE;
+    //
+    // Set the Size and Shift fields of the table, such that the Hash and
+    // Mask vtbl functions operate correctly.
+    //
+    // N.B. Table->Shift is meaningless for modulus masking.
+    //
+
+    Table->Size = Table->Header->NumberOfTableElements.LowPart;
+    Table->Shift = TrailingZeros(Table->Size);
+
+    return TRUE;
 }
 
 //
@@ -2295,48 +2315,45 @@ Return Value:
     ULONG Masked;
     ULONG Vertex1;
     ULONG Vertex2;
-    HRESULT Result;
+    ULONG MaskedLow;
+    ULONG MaskedHigh;
     PULONG Assigned;
     ULONGLONG Combined;
     ULARGE_INTEGER Hash;
 
-    Result = Table->Vtbl->Hash(Table, Key, &Hash.QuadPart);
+    if (FAILED(Table->Vtbl->Hash(Table, Key, &Hash.QuadPart))) {
+        goto Error;
+    }
 
-    if (FAILED(Result)) {
+    if (FAILED(Table->Vtbl->Mask(Table, Hash.LowPart, &MaskedLow))) {
+        goto Error;
+    }
 
-        //
-        // Clear the caller's pointer and return the error code.
-        //
-
-        *Index = 0;
-        return Result;
+    if (FAILED(Table->Vtbl->Mask(Table, Hash.HighPart, &MaskedHigh))) {
+        goto Error;
     }
 
     Assigned = Table->Data;
-    Vertex1 = Assigned[Hash.LowPart];
-    Vertex2 = Assigned[Hash.HighPart];
+    Vertex1 = Assigned[MaskedLow];
+    Vertex2 = Assigned[MaskedHigh];
     Combined = Vertex1 + Vertex2;
 
-    Result = Table->Vtbl->Mask(Table, Combined, &Masked);
-
-    if (FAILED(Result)) {
-
-        //
-        // Mask functions are supposed to always S_OK, so this should never
-        // actually happen.
-        //
-
-        *Index = 0;
-        return Result;
+    if (FAILED(Table->Vtbl->Mask(Table, Combined, &Masked))) {
+        goto Error;
     }
 
     //
-    // Update the caller's pointer and return.
+    // Update the caller's pointer and return success.
     //
 
     *Index = Masked;
 
     return S_OK;
+
+Error:
+
+    *Index = Masked;
+    return E_FAIL;
 }
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

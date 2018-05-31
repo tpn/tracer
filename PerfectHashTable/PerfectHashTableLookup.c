@@ -72,7 +72,7 @@ Return Value:
         return E_FAIL;
     }
 
-    *Value = Table->Data[Index];
+    *Value = Table->Values[Index];
 
     return S_OK;
 }

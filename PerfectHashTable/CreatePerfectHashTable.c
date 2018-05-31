@@ -601,6 +601,17 @@ Return Value:
     }
 
     //
+    // Invariant check: if the modulus masking routine has been requested,
+    // Table->Size should be set.  Otherwise, Table->Shift should be set.
+    //
+
+    if (MaskFunctionId == PerfectHashTableModulusMaskFunctionId) {
+        ASSERT(Table->Size);
+    } else {
+        ASSERT(Table->Shift);
+    }
+
+    //
     // We're done!  Set the reference count to 1 and finish up.
     //
 

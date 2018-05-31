@@ -55,7 +55,10 @@ Return Value:
 --*/
 {
     PRTL Rtl;
+    ULONG Value;
+    ULONG Previous;
     BOOLEAN Success;
+    HRESULT Result;
     PALLOCATOR Allocator;
 
     //
@@ -82,6 +85,14 @@ Return Value:
     //
     // XXX TODO: implement internal tests.
     //
+
+    Result = Table->Vtbl->Insert(Table, 0x2e, 0xe2, &Previous);
+    ASSERT(!FAILED(Result));
+
+    Result = Table->Vtbl->Lookup(Table, 0x2e, &Value);
+    ASSERT(!FAILED(Result));
+
+    ASSERT(Value == 0xe2);
 
     Success = TRUE;
 
