@@ -52,9 +52,14 @@ mainCRTStartup()
     PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
     PWSTR CommandLineW;
     LONG NumberOfArguments;
+    PPSTR ArgvA;
     PPWSTR ArgvW;
     const STRING Usage = RTL_CONSTANT_STRING(
-        "Usage: PerfectHashTableSelfTest.exe <Test Data Directory>\n"
+        "Usage: PerfectHashTableSelfTest.exe <Test Data Directory> "
+        "<AlgorithmId (1)> "
+        "<HashFunctionId (1-4)> "
+        "<MaskFunctionId (1-4)> "
+        "<MaximumConcurrency (0-ncpu)>\n"
     );
     UNICODE_STRING Path;
     PPERFECT_HASH_TABLE_ANY_API AnyApi;
@@ -109,21 +114,100 @@ mainCRTStartup()
 
     CHECKED_MSG(ArgvW, "Shell32!CommandLineToArgvW()");
 
+    CHECKED_MSG(
+        Rtl->ArgvWToArgvA(
+            ArgvW,
+            NumberOfArguments,
+            &ArgvA,
+            NULL,
+            Allocator
+        ),
+        "Rtl!ArgvWToArgA"
+    );
+
     switch (NumberOfArguments) {
-        case 2:
+        case 7: {
+
+            ULONG MaxConcurrency;
+            ULARGE_INTEGER NumberOfTableElements;
+            PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+            PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+            PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+
+            //
+            // Extract test data directory.
+            //
 
             Path.Buffer = ArgvW[1];
             Path.Length = (USHORT)wcslen(Path.Buffer) << 1;
             Path.MaximumLength = Path.Length + sizeof(Path.Buffer[0]);
 
+            //
+            // Extract algorithm ID.
+            //
+
+            if (FAILED(Rtl->RtlCharToInteger(ArgvA[2],
+                                             10,
+                                             (PULONG)&AlgorithmId))) {
+                goto PrintUsage;
+            }
+
+            //
+            // Extract hash function ID.
+            //
+
+            if (FAILED(Rtl->RtlCharToInteger(ArgvA[3],
+                                             10,
+                                             (PULONG)&HashFunctionId))) {
+                goto PrintUsage;
+            }
+
+            //
+            // Extract mask function ID.
+            //
+
+            if (FAILED(Rtl->RtlCharToInteger(ArgvA[4],
+                                             10,
+                                             (PULONG)&MaskFunctionId))) {
+                goto PrintUsage;
+            }
+
+            //
+            // Extract maximum concurrency.
+            //
+
+            if (FAILED(Rtl->RtlCharToInteger(ArgvA[5], 10, &MaxConcurrency))) {
+                goto PrintUsage;
+            }
+
+            //
+            // Extract number of table elements.
+            //
+
+            NumberOfTableElements.QuadPart = 0;
+            if (FAILED(Rtl->RtlCharToInteger(ArgvA[5],
+                                             10,
+                                             &NumberOfTableElements.LowPart))) {
+                goto PrintUsage;
+            }
+
+
             Success = Api->SelfTestPerfectHashTable(Rtl,
                                                     Allocator,
                                                     AnyApi,
                                                     &PerfectHashTableTestData,
-                                                    &Path);
+                                                    &Path,
+                                                    &MaxConcurrency,
+                                                    AlgorithmId,
+                                                    HashFunctionId,
+                                                    MaskFunctionId,
+                                                    &NumberOfTableElements);
+
             ExitCode = (Success ? 0 : 1);
             break;
+        }
 
+PrintUsage:
         default:
             StdErrorHandle = GetStdHandle(STD_ERROR_HANDLE);
             ASSERT(StdErrorHandle);

@@ -550,6 +550,7 @@ Return Value:
 
             Failures++;
             Failed = TRUE;
+            goto DestroyTable;
         }
 
         WIDE_OUTPUT_RAW(WideOutput, L"Successfully loaded and tested perfect "
@@ -581,6 +582,8 @@ Return Value:
         //
         // Destroy the table.
         //
+
+DestroyTable:
 
         Table->Vtbl->Release(Table);
 
