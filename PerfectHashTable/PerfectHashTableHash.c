@@ -84,7 +84,6 @@ Return Value:
     Vertex2 = D;
 
     if (Vertex1 == Vertex2) {
-        __debugbreak();
         return E_FAIL;
     }
 
@@ -363,6 +362,8 @@ Return Value:
 
     ASSERT(NumberOfSeeds >= 2);
 
+    IACA_VC_START();
+
     //
     // Initialize aliases.
     //
@@ -386,6 +387,9 @@ Return Value:
     Result.HighPart = Vertex2;
 
     *Hash = Result.QuadPart;
+
+    IACA_VC_END();
+
     return S_OK;
 }
 

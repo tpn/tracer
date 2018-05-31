@@ -24,7 +24,12 @@ SelfTestPerfectHashTable(
     PALLOCATOR Allocator,
     PPERFECT_HASH_TABLE_ANY_API AnyApi,
     PPERFECT_HASH_TABLE_TEST_DATA TestData,
-    PCUNICODE_STRING TestDataDirectory
+    PCUNICODE_STRING TestDataDirectory,
+    PULONG MaximumConcurrency,
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
+    PULARGE_INTEGER NumberOfTableElements
     )
 /*++
 
@@ -50,6 +55,27 @@ Arguments:
     TestDataDirectory - Supplies a pointer to a UNICODE_STRING structure that
         represents a fully-qualified path of the test data directory.
 
+    MaximumConcurrency - Optionally supplies a pointer to a variable that
+        contains the desired maximum concurrency to be used for the underlying
+        threadpool.  If NULL, or non-NULL but points to a value of 0, then the
+        number of system processors will be used as a default value.
+
+        N.B. This value is passed directly to SetThreadpoolThreadMinimum() and
+             SetThreadpoolThreadMaximum().
+
+    AlgorithmId - Supplies the algorithm to use.
+
+    MaskFunctionId - Supplies the type of masking to use.  The algorithm and hash
+        function must both support the requested masking type.
+
+    HashFunctionId - Supplies the hash function to use.
+
+    NumberOfTableElements - Optionally supplies a pointer to a ULARGE_INTEGER
+        structure that, if non-zero, indicates the number of elements to assume
+        when sizing the hash table.  If a non-NULL pointer is supplied, it will
+        receive the final number of elements in the table if a solution could
+        be found.
+
 Return Value:
 
     TRUE on success, FALSE on failure.
@@ -74,13 +100,11 @@ Return Value:
     ULONG Failures;
     ULONG BytesWritten;
     ULONG WideCharsWritten;
-    ULONG MaximumConcurrency;
     ULONGLONG BufferSize;
     ULONGLONG WideOutputBufferSize;
     LONG_INTEGER AllocSize;
     LARGE_INTEGER BytesToWrite;
     LARGE_INTEGER WideCharsToWrite;
-    ULARGE_INTEGER NumberOfTableElements;
     WIN32_FIND_DATAW FindData;
     UNICODE_STRING SearchPath;
     UNICODE_STRING KeysPath;
@@ -88,9 +112,6 @@ Return Value:
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
     PPERFECT_HASH_TABLE_CONTEXT Context;
-    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
-    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
-    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
     PPERFECT_HASH_TABLE_API Api;
@@ -346,10 +367,9 @@ Return Value:
         // Create a new perfect hash table context.
         //
 
-        MaximumConcurrency = 0;
         Success = Api->CreatePerfectHashTableContext(Rtl,
                                                      Allocator,
-                                                     &MaximumConcurrency,
+                                                     MaximumConcurrency,
                                                      &Context);
 
         if (!Success) {
@@ -469,41 +489,13 @@ Return Value:
         // that were loaded.
         //
 
-        //
-        // N.B. For now, to keep things simple as we only have one algorithm
-        //      implementation, we just pass that directly to the creation
-        //      routine.  If we implement multiple algorithms, we can refactor
-        //      this method to iterate over each one and perform the same logic
-        //      (create, test, destroy, load, test, destroy).
-        //
-
-        AlgorithmId = PerfectHashTableChm01AlgorithmId;
-
-        //MaskFunctionId = PerfectHashTableModulusMaskFunctionId;
-        //MaskFunctionId = PerfectHashTableShiftMaskFunctionId;
-        //MaskFunctionId = PerfectHashTableXorAndMaskFunctionId;
-        MaskFunctionId = PerfectHashTableAndMaskFunctionId;
-
-        //HashFunctionId = PerfectHashTableDefaultHashFunctionId;
-        //HashFunctionId = PerfectHashTableHash01FunctionId;
-        //HashFunctionId = PerfectHashTableHash02FunctionId;
-        //HashFunctionId = PerfectHashTableHash03FunctionId;
-        HashFunctionId = PerfectHashTableHash04FunctionId;
-
-        //
-        // Clear our number of table elements variable; we currently let the
-        // algorithm pick the internal table size.
-        //
-
-        NumberOfTableElements.QuadPart = 0;
-
         Success = Api->CreatePerfectHashTable(Rtl,
                                               Allocator,
                                               Context,
                                               AlgorithmId,
                                               MaskFunctionId,
                                               HashFunctionId,
-                                              &NumberOfTableElements,
+                                              NumberOfTableElements,
                                               Keys,
                                               &TablePath);
 
@@ -543,7 +535,7 @@ Return Value:
         }
 
         //
-        // Table was loaded successfully from disk.  Repeat the tests.
+        // Table was loaded successfully from disk.  Test it.
         //
 
         Success = Api->TestPerfectHashTable(Table);
@@ -559,6 +551,32 @@ Return Value:
             Failures++;
             Failed = TRUE;
         }
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Successfully loaded and tested perfect "
+                                    L"hash table: ");
+
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Total number of attempts: ");
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->TotalNumberOfAttempts);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Cycles to solve: ");
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->SolveCycles.QuadPart);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Microseconds to solve: ");
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->SolveMicroseconds.QuadPart);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Cycles to verify: ");
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->VerifyCycles.QuadPart);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Microseconds to verify: ");
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->VerifyMicroseconds.QuadPart);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
 
         //
         // Destroy the table.

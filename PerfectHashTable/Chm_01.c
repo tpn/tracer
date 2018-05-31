@@ -585,6 +585,18 @@ Return Value:
     SubmitThreadpoolWork(Context->FileWork);
 
     //
+    // Capture initial cycles as reported by __rdtsc() and the performance
+    // counter.  The former is used to report a raw cycle count, the latter
+    // is used to convert to microseconds reliably (i.e. unaffected by turbo
+    // boosting).
+    //
+
+    QueryPerformanceFrequency(&Context->Frequency);
+    QueryPerformanceCounter(&Context->SolveStartCounter);
+
+    Context->SolveStartCycles.QuadPart = __rdtsc();
+
+    //
     // We're ready to create threadpool work for the graph.
     //
 
@@ -752,10 +764,26 @@ Return Value:
     SubmitThreadpoolWork(Context->FileWork);
 
     //
-    // Continue with verification of the solution.
+    // Capture another round of cycles and performance counter values, then
+    // continue with verification of the solution.
     //
 
+    QueryPerformanceCounter(&Context->VerifyStartCounter);
+    Context->VerifyStartCycles.QuadPart = __rdtsc();
+
     Success = VerifySolvedGraph(Graph);
+
+    Context->VerifyEndCycles.QuadPart = __rdtsc();
+    QueryPerformanceCounter(&Context->VerifyEndCounter);
+
+    //
+    // Set the verified event (regardless of whether or not we succeeded in
+    // verification).  The save file work will be waiting upon it in order to
+    // write the final timing details to the on-disk header.
+    //
+
+    SetEvent(Context->VerifiedEvent);
+
     ASSERT(Success);
 
     //
@@ -1063,9 +1091,11 @@ Return Value:
             PULONG Dest;
             PULONG Source;
             PGRAPH Graph;
+            ULONG WaitResult;
             BOOLEAN Success;
             ULONGLONG SizeInBytes;
             LARGE_INTEGER EndOfFile;
+            ULARGE_INTEGER Elapsed;
             PPERFECT_HASH_TABLE Table;
             PTABLE_INFO_ON_DISK_HEADER Header;
 
@@ -1109,6 +1139,19 @@ Return Value:
             Header->Seed4 = Graph->Seed4;
 
             //
+            // Kick off a flush file buffers now, before we enter a wait state.
+            //
+
+            ASSERT(FlushFileBuffers(Table->FileHandle));
+
+            //
+            // Wait on the verification complete event.
+            //
+
+            WaitResult = WaitForSingleObject(Context->VerifiedEvent, INFINITE);
+            ASSERT(WaitResult == WAIT_OBJECT_0);
+
+            //
             // When we mapped the array in the work item above, we used a size
             // that was aligned with the system allocation granularity.  We now
             // want to set the end of file explicitly to the exact size of the
@@ -1139,7 +1182,58 @@ Return Value:
             Table->FileHandle = NULL;
 
             //
-            // Perform exactly the same actions for the :Info stream.
+            // Calculate the timings and update the header before closing the
+            // :Info stream.
+            //
+
+            //
+            // Calculate the solve timings.
+            //
+
+            Header->SolveCycles.QuadPart = (
+                Context->SolveEndCycles.QuadPart -
+                Context->SolveStartCycles.QuadPart
+            );
+
+            Elapsed.QuadPart = (
+                Context->SolveEndCounter.QuadPart -
+                Context->SolveStartCounter.QuadPart
+            );
+
+            Elapsed.QuadPart *= 1000000;
+            Elapsed.QuadPart /= Context->Frequency.QuadPart;
+
+            Header->SolveMicroseconds.QuadPart = Elapsed.QuadPart;
+
+            //
+            // Perform the same calculations for the verification time.
+            //
+
+            Header->VerifyCycles.QuadPart = (
+                Context->VerifyEndCycles.QuadPart -
+                Context->VerifyStartCycles.QuadPart
+            );
+
+            Elapsed.QuadPart = (
+                Context->VerifyEndCounter.QuadPart -
+                Context->VerifyStartCounter.QuadPart
+            );
+
+            Elapsed.QuadPart *= 1000000;
+            Elapsed.QuadPart /= Context->Frequency.QuadPart;
+
+            Header->VerifyMicroseconds.QuadPart = Elapsed.QuadPart;
+
+            //
+            // Save the number of attempts.
+            //
+
+            Header->TotalNumberOfAttempts = Context->Attempts;
+
+            //
+            // Finalize the :Info stream the same way we handled the backing
+            // file above; unmap, delete section, set file pointer, set eof,
+            // close file.
             //
 
             ASSERT(UnmapViewOfFile(Table->InfoStreamBaseAddress));
@@ -2160,7 +2254,7 @@ Return Value:
     VERTEX Vertex2;
     PGRAPH_INFO Info;
     ULONG Iterations;
-    ULONG NumberOfEdges;
+    ULONG NumberOfKeys;
     ULARGE_INTEGER Hash;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_CONTEXT Context;
@@ -2169,7 +2263,7 @@ Return Value:
     Info = Graph->Info;
     Context = Info->Context;
     Table = Context->Table;
-    NumberOfEdges = Graph->NumberOfEdges;
+    NumberOfKeys = Table->Keys->NumberOfElements.LowPart;
     Keys = (PKEY)Table->Keys->BaseAddress;
 
     //
@@ -2179,7 +2273,7 @@ Return Value:
 
     Iterations = CheckForTerminationAfterIterations;
 
-    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+    for (Edge = 0; Edge < NumberOfKeys; Edge++) {
         Key = Keys[Edge];
 
         SEEDED_HASH(Key, &Hash.QuadPart);
@@ -2252,6 +2346,13 @@ Return Value:
     //
 
     GraphAssign(Graph);
+
+    //
+    // Capture the end time.
+    //
+
+    QueryPerformanceCounter(&Context->SolveEndCounter);
+    Context->SolveEndCycles.QuadPart = __rdtsc();
 
     //
     // Push this graph onto the finished list head.

@@ -479,7 +479,6 @@ typedef GRAPH *PGRAPH;
                                        Graph->NumberOfSeeds, \
                                        &Graph->FirstSeed,    \
                                        Result))) {           \
-        __debugbreak();                                      \
         goto Error;                                          \
     }
 

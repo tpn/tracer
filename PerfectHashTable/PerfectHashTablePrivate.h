@@ -290,6 +290,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     HANDLE PreparedFileEvent;
 
     //
+    // The following event is set by the main thread when it has completed
+    // verification of the solved graph.  It is used to signal to the save
+    // file worker that verification has finished such that cycle counts can
+    // be captured in order to calculate the number of cycles and microseconds
+    // it took to verify the graph.
+    //
+
+    HANDLE VerifiedEvent;
+
+    //
     // The following event is set when a worker thread has completed saving the
     // solved graph to disk.
     //
@@ -325,6 +335,24 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     //
 
     volatile ULONG Attempts;
+
+    //
+    // Counters.
+    //
+
+    LARGE_INTEGER Frequency;
+
+    ULARGE_INTEGER SolveStartCycles;
+    LARGE_INTEGER SolveStartCounter;
+
+    ULARGE_INTEGER SolveEndCycles;
+    LARGE_INTEGER SolveEndCounter;
+
+    ULARGE_INTEGER VerifyStartCycles;
+    LARGE_INTEGER VerifyStartCounter;
+
+    ULARGE_INTEGER VerifyEndCycles;
+    LARGE_INTEGER VerifyEndCounter;
 
     //
     // The main threadpool callback environment, used for solving perfect hash
@@ -903,10 +931,35 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     };
 
     //
-    // Pad out to an 8 byte boundary.
+    // Total number of attempts at solving the solution.
     //
 
-    ULONG Padding;
+    ULONG TotalNumberOfAttempts;
+
+    //
+    // Number of cycles it took to solve the solution for the winning thread.
+    // (This does not factor in the total cycle time consumed by all threads.)
+    //
+
+    ULARGE_INTEGER SolveCycles;
+
+    //
+    // Number of microseconds taken to solve the solution.
+    //
+
+    ULARGE_INTEGER SolveMicroseconds;
+
+    //
+    // Number of cycles taken to verify the solution.
+    //
+
+    ULARGE_INTEGER VerifyCycles;
+
+    //
+    // Number of microseconds taken to verify the solution.
+    //
+
+    ULARGE_INTEGER VerifyMicroseconds;
 
 } TABLE_INFO_ON_DISK_HEADER;
 typedef TABLE_INFO_ON_DISK_HEADER *PTABLE_INFO_ON_DISK_HEADER;
