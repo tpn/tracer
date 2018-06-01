@@ -75,7 +75,12 @@ Return Value:
 
 --*/
 {
-    *Masked = (ULONG)(Input & (Table->Size - 1));
+    ULARGE_INTEGER Mask;
+
+    Mask.QuadPart = Input;
+    Mask.QuadPart &= (Table->Size - 1);
+
+    *Masked = Mask.LowPart;
     return S_OK;
 }
 
@@ -110,8 +115,10 @@ Return Value:
     ULARGE_INTEGER Mask;
 
     Mask.QuadPart = Input;
+    Mask.LowPart ^= Mask.HighPart;
+    Mask.LowPart &= Table->Size - 1;
 
-    *Masked = (ULONG)((Mask.HighPart ^ Mask.LowPart) & (Table->Size - 1));
+    *Masked = Mask.LowPart;
     return S_OK;
 }
 
