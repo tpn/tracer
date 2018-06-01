@@ -201,7 +201,6 @@ Return Value:
     Vertex2 = B ^ D;
 
     if (Vertex1 == Vertex2) {
-        __debugbreak();
         return E_FAIL;
     }
 
@@ -294,7 +293,6 @@ Return Value:
     Vertex2 = D;
 
     if (Vertex1 == Vertex2) {
-        __debugbreak();
         return E_FAIL;
     }
 
@@ -379,7 +377,6 @@ Return Value:
     Vertex2 = Input ^ Seed2;
 
     if (Vertex1 == Vertex2) {
-        __debugbreak();
         return E_FAIL;
     }
 
