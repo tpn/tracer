@@ -67,7 +67,6 @@ const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[] = {
 const PPERFECT_HASH_TABLE_MASK MaskRoutines[] = {
     NULL,
     PerfectHashTableMaskModulus,
-    PerfectHashTableMaskShift,
     PerfectHashTableMaskAnd,
     PerfectHashTableMaskXorAnd,
     NULL
