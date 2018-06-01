@@ -379,11 +379,13 @@ Return Value:
     SetThreadpoolThreadMaximum(Threadpool, MaximumConcurrency);
 
     //
-    // Initialize the Main threadpool environment and associate it with the
-    // Main threadpool.
+    // Initialize the Main threadpool environment, set its priority to
+    // low, then associate it with the Main threadpool.
     //
 
     InitializeThreadpoolEnvironment(&Context->MainCallbackEnv);
+    SetThreadpoolCallbackPriority(&Context->MainCallbackEnv,
+                                  TP_CALLBACK_PRIORITY_LOW);
     SetThreadpoolCallbackPool(&Context->MainCallbackEnv,
                               Context->MainThreadpool);
 
