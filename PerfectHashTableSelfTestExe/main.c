@@ -42,11 +42,15 @@ WINAPI
 mainCRTStartup()
 {
     BOOL Success;
+    BOOL PauseBeforeExit = FALSE;
+    WCHAR WideChar;
     LONG ExitCode;
     LONG SizeOfRtl = sizeof(GlobalRtl);
     ULONG OldCodePage;
     HMODULE RtlModule;
+    HANDLE StdInputHandle;
     HANDLE StdErrorHandle;
+    HANDLE StdOutputHandle;
     RTL_BOOTSTRAP Bootstrap;
     HMODULE Shell32Module = NULL;
     PCOMMAND_LINE_TO_ARGVW CommandLineToArgvW;
@@ -127,6 +131,7 @@ mainCRTStartup()
     );
 
     switch (NumberOfArguments) {
+        case 8:
         case 7: {
 
             PPSTR Arg;
@@ -199,6 +204,9 @@ mainCRTStartup()
                 goto PrintUsage;
             }
 
+            if (NumberOfArguments == 8) {
+                PauseBeforeExit = TRUE;
+            }
 
             Success = Api->SelfTestPerfectHashTable(Rtl,
                                                     Allocator,
@@ -233,6 +241,33 @@ PrintUsage:
     }
 
 Error:
+
+    if (PauseBeforeExit) {
+
+        UNICODE_STRING PressAnyKey = RTL_CONSTANT_STRING(L"Press any key to "
+                                                         L"continue.\r\n");
+
+        StdOutputHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        ASSERT(StdOutputHandle);
+
+        Success = WriteConsoleW(StdOutputHandle,
+                                PressAnyKey.Buffer,
+                                PressAnyKey.Length,
+                                NULL,
+                                NULL);
+
+        ASSERT(Success);
+
+        StdInputHandle = GetStdHandle(STD_INPUT_HANDLE);
+        ASSERT(StdInputHandle);
+
+        Success = ReadConsoleW(StdInputHandle,
+                               &WideChar,
+                               sizeof(WideChar),
+                               NULL,
+                               NULL);
+
+    }
 
     ExitProcess(ExitCode);
 }
