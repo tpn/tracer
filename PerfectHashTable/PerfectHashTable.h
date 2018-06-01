@@ -162,8 +162,9 @@ IsValidPerfectHashTableHashFunctionId(
 // Define an enumeration for identifying the type of table masking used by the
 // underlying perfect hash table.  This has performance and size implications.
 // Modulus masking typically results in smaller tables at the expenses of slower
-// modulus-based hash functions, whereas shifting results in larger tables but
-// faster hash functions.
+// modulus-based hash functions.  Non-modulus masking requires power-of-2 sized
+// tables, which will be larger, but the resulting mask function can be done
+// by logical AND instructions, which are fast.
 //
 
 typedef enum _PERFECT_HASH_TABLE_MASK_FUNCTION_ID {
