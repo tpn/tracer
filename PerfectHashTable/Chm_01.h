@@ -738,6 +738,7 @@ RegisterEdgeDeletion(
 {
     SetGraphBit(DeletedEdges, Edge);
     Graph->DeletedEdgeCount++;
+    ASSERT(Graph->DeletedEdgeCount <= Graph->NumberOfKeys);
 }
 
 FORCEINLINE
@@ -749,6 +750,7 @@ RegisterVertexVisit(
 {
     SetGraphBit(VisitedVertices, Vertex);
     Graph->VisitedVerticesCount++;
+    ASSERT(Graph->VisitedVerticesCount <= Graph->NumberOfVertices);
 }
 
 FORCEINLINE
