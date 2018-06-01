@@ -305,6 +305,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
 
     PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
 
+    ULONG NumberOfKeys;
+
     //
     // Graph flags.
     //

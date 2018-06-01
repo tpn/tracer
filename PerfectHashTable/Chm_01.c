@@ -541,7 +541,9 @@ Return Value:
     OnDiskHeader->MaskFunctionId = Context->MaskFunctionId;
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
     OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
-    OnDiskHeader->NumberOfKeys.QuadPart = NumberOfEdges.QuadPart;
+    OnDiskHeader->NumberOfKeys.QuadPart = (
+        Table->Keys->NumberOfElements.QuadPart
+    );
     OnDiskHeader->NumberOfSeeds = ((
         FIELD_OFFSET(GRAPH, LastSeed) -
         FIELD_OFFSET(GRAPH, FirstSeed)
@@ -1311,6 +1313,13 @@ Return Value:
     PBYTE Buffer;
     PBYTE ExpectedBuffer;
     USHORT BitmapCount = 0;
+    PPERFECT_HASH_TABLE Table;
+
+    //
+    // Initialize aliases.
+    //
+
+    Table = Info->Context->Table;
 
     //
     // Obtain new seed data for the first two seeds and initialize the number
@@ -1318,7 +1327,13 @@ Return Value:
     //
 
     GetRandomSeedsBlocking(&Graph->Seeds12);
-    Graph->NumberOfSeeds = Info->Context->Table->Header->NumberOfSeeds;
+    Graph->NumberOfSeeds = Table->Header->NumberOfSeeds;
+
+    //
+    // Initialize the number of keys.
+    //
+
+    Graph->NumberOfKeys = Table->Keys->NumberOfElements.LowPart;
 
     //
     // Carve out the backing memory structures for arrays and bitmap buffers.
@@ -1832,6 +1847,7 @@ Return Value:
     VERTEX Vertex;
     BOOLEAN IsAcyclic;
     BOOLEAN IsAcyclicSlow;
+    ULONG NumberOfKeys;
     ULONG NumberOfEdges;
     ULONG NumberOfVertices;
     ULONG NumberOfEdgesDeleted;
@@ -1841,6 +1857,7 @@ Return Value:
     // Resolve aliases.
     //
 
+    NumberOfKeys = Graph->NumberOfKeys;
     NumberOfEdges = Graph->NumberOfEdges;
     NumberOfVertices = Graph->NumberOfVertices;
     RtlNumberOfSetBits = Graph->Context->Rtl->RtlNumberOfSetBits;
@@ -1876,7 +1893,7 @@ Return Value:
 
     NumberOfEdgesDeleted = RtlNumberOfSetBits(&Graph->DeletedEdges);
 
-    IsAcyclic = (NumberOfEdges == NumberOfEdgesDeleted);
+    IsAcyclic = (NumberOfKeys == NumberOfEdgesDeleted);
 
     //
     // Temporary slow version to verify our assumption about counting bits is
@@ -1885,7 +1902,7 @@ Return Value:
 
     IsAcyclicSlow = TRUE;
 
-    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+    for (Edge = 0; Edge < NumberOfKeys; Edge++) {
         if (!IsDeletedEdge(Graph, Edge)) {
             IsAcyclicSlow = FALSE;
             break;
@@ -2412,7 +2429,8 @@ Return Value:
     VERTEX MaskedHigh;
     PVERTEX Assigned;
     PGRAPH_INFO Info;
-    ULONG NumberOfEdges;
+    ULONG Index;
+    ULONG NumberOfKeys;
     ULONG NumberOfAssignments;
     ULARGE_INTEGER Hash;
     PPERFECT_HASH_TABLE Table;
@@ -2422,7 +2440,7 @@ Return Value:
     Context = Info->Context;
     Rtl = Context->Rtl;
     Table = Context->Table;
-    NumberOfEdges = Graph->NumberOfEdges;
+    NumberOfKeys = Graph->NumberOfKeys;
     Keys = (PKEY)Table->Keys->BaseAddress;
     Assigned = Graph->Assigned;
 
@@ -2431,7 +2449,7 @@ Return Value:
     // correctly from the assigned vertex array.
     //
 
-    for (Edge = 0; Edge < NumberOfEdges; Edge++) {
+    for (Edge = 0; Edge < NumberOfKeys; Edge++) {
         Key = Keys[Edge];
 
         //
@@ -2480,7 +2498,23 @@ Return Value:
 
     NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
 
-    ASSERT(NumberOfAssignments == Graph->NumberOfEdges);
+    ASSERT(NumberOfAssignments == NumberOfKeys);
+
+    NumberOfAssignments = 0;
+
+    for (Index = 0; Index < Graph->NumberOfVertices; Index++) {
+
+        if (Assigned[Index]) {
+            NumberOfAssignments++;
+        }
+    }
+
+    //
+    // Add 1 to account for the fact that the first ID given out is 0, and thus,
+    // not counted by the logic above.
+    //
+
+    ASSERT(NumberOfAssignments+1 == NumberOfKeys);
 
     return TRUE;
 
