@@ -684,6 +684,7 @@ AbsoluteEdge(
     _In_ ULONG Index
     )
 {
+    ULONG AbsEdge;
     ULONG MaskedEdge;
     ULONG NumberOfEdges;
 
@@ -699,8 +700,8 @@ AbsoluteEdge(
 
     }
 
-    return (MaskedEdge + (Index * NumberOfEdges));
-
+    AbsEdge = (MaskedEdge + (Index * NumberOfEdges));
+    return AbsEdge;
 }
 
 #define TestGraphBit(Name, BitNumber) \
