@@ -129,11 +129,18 @@ mainCRTStartup()
     switch (NumberOfArguments) {
         case 7: {
 
+            PPSTR Arg;
             ULONG MaxConcurrency;
             ULARGE_INTEGER NumberOfTableElements;
             PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
             PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
             PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+
+            //
+            // Initialize argument pointer.
+            //
+
+            Arg = &ArgvA[2];
 
             //
             // Extract test data directory.
@@ -147,7 +154,7 @@ mainCRTStartup()
             // Extract algorithm ID.
             //
 
-            if (FAILED(Rtl->RtlCharToInteger(ArgvA[2],
+            if (FAILED(Rtl->RtlCharToInteger(*Arg++,
                                              10,
                                              (PULONG)&AlgorithmId))) {
                 goto PrintUsage;
@@ -157,7 +164,7 @@ mainCRTStartup()
             // Extract hash function ID.
             //
 
-            if (FAILED(Rtl->RtlCharToInteger(ArgvA[3],
+            if (FAILED(Rtl->RtlCharToInteger(*Arg++,
                                              10,
                                              (PULONG)&HashFunctionId))) {
                 goto PrintUsage;
@@ -167,7 +174,7 @@ mainCRTStartup()
             // Extract mask function ID.
             //
 
-            if (FAILED(Rtl->RtlCharToInteger(ArgvA[4],
+            if (FAILED(Rtl->RtlCharToInteger(*Arg++,
                                              10,
                                              (PULONG)&MaskFunctionId))) {
                 goto PrintUsage;
@@ -177,7 +184,7 @@ mainCRTStartup()
             // Extract maximum concurrency.
             //
 
-            if (FAILED(Rtl->RtlCharToInteger(ArgvA[5], 10, &MaxConcurrency))) {
+            if (FAILED(Rtl->RtlCharToInteger(*Arg++, 10, &MaxConcurrency))) {
                 goto PrintUsage;
             }
 
@@ -186,7 +193,7 @@ mainCRTStartup()
             //
 
             NumberOfTableElements.QuadPart = 0;
-            if (FAILED(Rtl->RtlCharToInteger(ArgvA[5],
+            if (FAILED(Rtl->RtlCharToInteger(*Arg++,
                                              10,
                                              &NumberOfTableElements.LowPart))) {
                 goto PrintUsage;
