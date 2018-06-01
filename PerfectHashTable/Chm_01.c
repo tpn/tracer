@@ -1599,12 +1599,19 @@ Return Value:
     Edge1 = Edge;
     Edge2 = Edge1 + Graph->NumberOfEdges;
 
-#ifdef _DEBUG
+    //
+    // Invariant checks:
+    //
+    //      - Vertex1 should be less than the number of vertices.
+    //      - Vertex2 should be less than the number of vertices.
+    //      - Edge1 should be less than the number of edges.
+    //      - The graph must not have started deletions.
+    //
+
     ASSERT(Vertex1 < Graph->NumberOfVertices);
     ASSERT(Vertex2 < Graph->NumberOfVertices);
     ASSERT(Edge1 < Graph->NumberOfEdges);
     ASSERT(!Graph->Flags.Shrinking);
-#endif
 
     Graph->Next[Edge1] = Graph->First[Vertex1];
     Graph->First[Vertex1] = Edge1;
