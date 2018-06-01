@@ -1806,10 +1806,11 @@ Return Value:
         AbsEdge = AbsoluteEdge(Graph, Edge, 0);
 
         //
-        // Invariant check: Edge should always be equal to AbsEdge here.
+        // Invariant check: Edge should always be greater than or
+        // equal to AbsEdge here.
         //
 
-        ASSERT(Edge == AbsEdge);
+        ASSERT(Edge >= AbsEdge);
 
         //
         // Invariant check: AbsEdge should not have been deleted yet.
