@@ -10,7 +10,7 @@ Abstract:
 
     This module implements routines that mask a value such that it remains
     within the bounds of a given hash table's underlying size.  Each routine
-    corresponds to one of the PERFECT_HASH_TABLE_MASKING_TYPE enumeration
+    corresponds to one of the PERFECT_HASH_TABLE_MASK_FUNCTION_ID enumeration
     values.
 
 --*/
@@ -45,47 +45,6 @@ Return Value:
 --*/
 {
     *Masked = (ULONG)(Input % Table->Size);
-    return S_OK;
-}
-
-_Use_decl_annotations_
-HRESULT
-PerfectHashTableMaskShift(
-    PPERFECT_HASH_TABLE Table,
-    ULONGLONG Input,
-    PULONG Masked
-    )
-/*++
-
-Routine Description:
-
-    Returns the input value shifted by the table shift amount.  This routine
-    should only be used for tables that are powers-of-2 sized.
-
-Arguments:
-
-    Table - Supplies a pointer to the table for which the mask will be derived.
-
-    Input - Supplies the input value to mask.
-
-    Masked - Receives the masked value.
-
-Return Value:
-
-    S_OK.
-
---*/
-{
-    ULONG Shift;
-    ULARGE_INTEGER Value;
-
-    Shift = (31 - Table->Shift);
-    Value.QuadPart = Input >> Shift;
-
-    ASSERT(!Value.HighPart);
-
-    *Masked = Value.LowPart;
-    //*Masked = (ULONG)(Input >> (31 - Table->Shift));
     return S_OK;
 }
 
