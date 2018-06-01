@@ -76,6 +76,9 @@
     <ClCompile Include="PerfectHashTableInsert.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PerfectHashTablePrime.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfectHashTable.h">
@@ -94,6 +97,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Chm_01.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PerfectHashTablePrime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -85,6 +85,7 @@
   <ItemGroup>
     <ClInclude Include="Chm_01.h" />
     <ClInclude Include="PerfectHashTable.h" />
+    <ClInclude Include="PerfectHashTablePrime.h" />
     <ClInclude Include="PerfectHashTablePrivate.h" />
     <ClInclude Include="PerfectHashTableConstants.h" />
     <ClInclude Include="stdafx.h" />
@@ -104,6 +105,7 @@
     <ClCompile Include="PerfectHashTableInsert.c" />
     <ClCompile Include="PerfectHashTableLookup.c" />
     <ClCompile Include="PerfectHashTableMask.c" />
+    <ClCompile Include="PerfectHashTablePrime.c" />
     <ClCompile Include="PerfectHashTableRefCount.c" />
     <ClCompile Include="PerfectHashTableTls.c" />
     <ClCompile Include="PerfectHashTableAllocator.c" />

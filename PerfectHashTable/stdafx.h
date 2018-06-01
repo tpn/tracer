@@ -35,6 +35,7 @@ Abstract:
 #include "PerfectHashTable.h"
 
 #ifdef _PERFECT_HASH_TABLE_INTERNAL_BUILD
+#include "PerfectHashTablePrime.h"
 #include "PerfectHashTablePrivate.h"
 #include "PerfectHashTableConstants.h"
 #include "PerfectHashTableTestData.h"
