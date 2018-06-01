@@ -1677,6 +1677,12 @@ Return Value:
     AbsEdge = AbsoluteEdge(Graph, Edge, 0);
 
     //
+    // AbsEdge should always be less than or equal to Edge here.
+    //
+
+    ASSERT(AbsEdge <= Edge);
+
+    //
     // If the edge has not been deleted, capture it.
     //
 
@@ -1688,10 +1694,12 @@ Return Value:
     //
     // Determine if this is a degree 1 connection.
     //
-    // (This seems a bit... quirky.)
-    //
 
     while (TRUE) {
+
+        //
+        // Load the next edge.
+        //
 
         Edge = Graph->Next[Edge];
 
@@ -1699,7 +1707,16 @@ Return Value:
             break;
         }
 
+        //
+        // Obtain the absolute edge for this edge.
+        //
+
         AbsEdge = AbsoluteEdge(Graph, Edge, 0);
+
+        //
+        // If we've already deleted this edge, we can skip it and look at the
+        // next edge in the graph.
+        //
 
         if (IsDeletedEdge(Graph, AbsEdge)) {
             continue;
@@ -1753,6 +1770,7 @@ Return Value:
 --*/
 {
     EDGE Edge = 0;
+    EDGE PrevEdge;
     EDGE AbsEdge;
     VERTEX Vertex1;
     VERTEX Vertex2;
@@ -1786,10 +1804,27 @@ Return Value:
         //
 
         AbsEdge = AbsoluteEdge(Graph, Edge, 0);
+
+        //
+        // Invariant check: Edge should always be equal to AbsEdge here.
+        //
+
+        ASSERT(Edge == AbsEdge);
+
+        //
+        // Invariant check: AbsEdge should not have been deleted yet.
+        //
+
+        ASSERT(!IsDeletedEdge(Graph, AbsEdge));
+
+        //
+        // Register the deletion of this edge.
+        //
+
         RegisterEdgeDeletion(Graph, AbsEdge);
 
         //
-        // Find the other vertex the edge connected.
+        // Find the other vertex the edge is connecting.
         //
 
         Vertex2 = Graph->Edges[AbsEdge];
@@ -1797,12 +1832,19 @@ Return Value:
         if (Vertex2 == Vertex1) {
 
             //
-            // We had the first vertex; get the other one.
+            // We had the first vertex; get the second one.
             //
 
             AbsEdge = AbsoluteEdge(Graph, Edge, 1);
             Vertex2 = Graph->Edges[AbsEdge];
         }
+
+        //
+        // Stash a copy of the current edge before it gets potentially
+        // mutated by GraphFindDegree1Edge();.
+        //
+
+        PrevEdge = Edge;
 
         //
         // Determine if the other vertex is degree 1.
@@ -1813,11 +1855,18 @@ Return Value:
         if (!IsDegree1) {
 
             //
-            // Other vertex isn't degree 1, we can stop the loop.
+            // Other vertex isn't degree 1, we can stop the search.
             //
 
             break;
         }
+
+        //
+        // Invariant check: Edge should have been modified by
+        // GraphFindDegree1Edge().
+        //
+
+        ASSERT(PrevEdge != Edge);
 
         //
         // This vertex is also degree 1, so continue the deletion.
@@ -2310,6 +2359,15 @@ Return Value:
 
         MASK(Hash.LowPart, &Vertex1);
         MASK(Hash.HighPart, &Vertex2);
+
+        //
+        // We can't have two vertices point to the same location.
+        // Abort this graph attempt.
+        //
+
+        if (Vertex1 == Vertex2) {
+            return FALSE;
+        }
 
         //
         // Add the edge to the graph connecting these two vertices.
