@@ -2494,7 +2494,6 @@ Return Value:
     VERTEX MaskedHigh;
     PVERTEX Assigned;
     PGRAPH_INFO Info;
-    ULONG Index;
     ULONG NumberOfKeys;
     ULONG NumberOfAssignments;
     ULARGE_INTEGER Hash;
@@ -2564,22 +2563,6 @@ Return Value:
     NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
 
     ASSERT(NumberOfAssignments == NumberOfKeys);
-
-    NumberOfAssignments = 0;
-
-    for (Index = 0; Index < Graph->NumberOfVertices; Index++) {
-
-        if (Assigned[Index]) {
-            NumberOfAssignments++;
-        }
-    }
-
-    //
-    // Add 1 to account for the fact that the first ID given out is 0, and thus,
-    // not counted by the logic above.
-    //
-
-    ASSERT(NumberOfAssignments+1 == NumberOfKeys);
 
     return TRUE;
 
