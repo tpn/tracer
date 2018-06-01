@@ -788,13 +788,11 @@ typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
 
 #define HASH(Key, Result)                                 \
     if (FAILED(Table->Vtbl->Hash(Table, Key, Result))) {  \
-        __debugbreak();                                   \
         goto Error;                                       \
     }
 
 #define MASK(Hash, Result)                                \
     if (FAILED(Table->Vtbl->Mask(Table, Hash, Result))) { \
-        __debugbreak();                                   \
         goto Error;                                       \
     }
 
