@@ -20,3 +20,4 @@ TestResults
 *.pgd
 .idea
 .cache
+*.dgml
