@@ -499,6 +499,13 @@ Return Value:
                                               Keys,
                                               &TablePath);
 
+        //
+        // Clear the NumberOfTableElements pointer after the first file, such
+        // that it doesn't interfere with subsequent file processing.
+        //
+
+        NumberOfTableElements->QuadPart = 0;
+
         if (!Success) {
 
             WIDE_OUTPUT_RAW(WideOutput, L"Failed to create perfect hash "
