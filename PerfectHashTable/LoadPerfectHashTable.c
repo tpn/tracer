@@ -672,13 +672,13 @@ Return Value:
 
     //
     // Allocate an array for the table values (i.e. the things stored when the
-    // Insert(Key, Value) routine is called).  This will have the same
-    // dimensions as the key array and can be indexed directly by the result
-    // of the perfect hash routine.
+    // Insert(Key, Value) routine is called).  The dimensions will be the same
+    // as the number of table elements * key size, and can be indexed directly
+    // by the result of the Index() routine.
     //
 
     BaseAddress = Allocator->Calloc(Allocator->Context,
-                                    NumberOfKeys,
+                                    Header->NumberOfTableElements.QuadPart,
                                     Header->KeySizeInBytes);
 
     Table->ValuesBaseAddress = BaseAddress;
