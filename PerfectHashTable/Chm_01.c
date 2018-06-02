@@ -1013,7 +1013,7 @@ FileWorkCallbackChm01(
 Routine Description:
 
     This routine is the callback entry point for file-oriented work we want
-    to perform in the main threadpool context.
+    to perform in the file work threadpool context.
 
 Arguments:
 
