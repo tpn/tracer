@@ -65,8 +65,7 @@ Arguments:
 
     AlgorithmId - Supplies the algorithm to use.
 
-    MaskFunctionId - Supplies the type of masking to use.  The algorithm and hash
-        function must both support the requested masking type.
+    MaskFunctionId - Supplies the type of masking to use.
 
     HashFunctionId - Supplies the hash function to use.
 
