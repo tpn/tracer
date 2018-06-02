@@ -576,6 +576,7 @@ Return Value:
         WIDE_OUTPUT_RAW(WideOutput, L".\n")
 
         STATS_INT(L"Total number of attempts: ", TotalNumberOfAttempts);
+        STATS_INT(L"Number of failed attempts: ", NumberOfFailedAttempts);
         STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);
 
         STATS_QUAD(L"Cycles to solve: ", SolveCycles);
