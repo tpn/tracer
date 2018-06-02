@@ -1028,10 +1028,25 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     };
 
     //
+    // Capture statistics about the perfect hash table solution that can be
+    // useful during analysis and performance comparision.
+    //
+
+    //
     // Total number of attempts at solving the solution.
     //
 
     ULONG TotalNumberOfAttempts;
+
+    //
+    // If solutions are being sought in parallel, more than one thread may
+    // find a solution before it detects that someone else has already found
+    // a solution (in which case, it stops solving and returns from the pool
+    // callback).  This counter measures the number of solutions that were
+    // found in parallel.  It corresponds to the Context->FinishedCount value.
+    //
+
+    ULONG NumberOfSolutionsFound;
 
     //
     // Number of cycles it took to solve the solution for the winning thread.

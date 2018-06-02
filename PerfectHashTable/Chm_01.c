@@ -1252,10 +1252,11 @@ Return Value:
             CONTEXT_SAVE_TIMERS_TO_HEADER(SaveFile);
 
             //
-            // Save the number of attempts.
+            // Save the number of attempts and number of finished solutions.
             //
 
             Header->TotalNumberOfAttempts = Context->Attempts;
+            Header->NumberOfSolutionsFound = (ULONG)Context->FinishedCount;
 
             //
             // Finalize the :Info stream the same way we handled the backing
