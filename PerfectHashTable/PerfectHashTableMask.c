@@ -96,7 +96,7 @@ PerfectHashTableMaskXorAnd(
 Routine Description:
 
     Returns the high dword and low dword of the input XORd, then masked
-    by the table shift value minus 1.
+    by the table size value minus 1.
 
 Arguments:
 
