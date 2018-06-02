@@ -243,7 +243,7 @@ PrintUsage:
 Error:
 
     if (PauseBeforeExit) {
-
+        ULONG BytesRead;
         UNICODE_STRING PressAnyKey = RTL_CONSTANT_STRING(L"Press any key to "
                                                          L"continue.\r\n");
 
@@ -263,8 +263,8 @@ Error:
 
         Success = ReadConsoleW(StdInputHandle,
                                &WideChar,
-                               sizeof(WideChar),
-                               NULL,
+                               1,
+                               &BytesRead,
                                NULL);
 
     }
