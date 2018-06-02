@@ -277,8 +277,9 @@ typedef DESTROY_PERFECT_HASH_TABLE_CONTEXT *PDESTROY_PERFECT_HASH_TABLE_CONTEXT;
 // If creation was successful, an on-disk representation of the table will be
 // saved at the given hash table path.
 //
-// N.B. Perfect hash tables are used via the IPERFECT_HASH_TABLE interface,
-//      which is obtained via LoadPerfectHashTableInstance().
+// N.B. Perfect hash tables are used via the PERFECT_HASH_TABLE_VTBL interface,
+//      which is obtained from the Vtbl field of the PERFECT_HASH_TABLE struct
+//      returned by LoadPerfectHashTableInstance().
 //
 
 typedef
@@ -411,7 +412,9 @@ ULONG
 typedef PERFECT_HASH_TABLE_RELEASE *PPERFECT_HASH_TABLE_RELEASE;
 
 //
-// The interface as a vtbl.
+// The interface as a vtbl.  Note that we're *almost* a valid COM interface,
+// except for the NULL pointer that will occupy the first slot where the impl
+// for QueryInterface() is meant to live.
 //
 
 typedef struct _PERFECT_HASH_TABLE_VTBL {
@@ -469,7 +472,7 @@ BOOLEAN
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
     _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
-    _In_ PULARGE_INTEGER NumberOfTableElements
+    _In_opt_ PULARGE_INTEGER NumberOfTableElements
     );
 typedef SELF_TEST_PERFECT_HASH_TABLE *PSELF_TEST_PERFECT_HASH_TABLE;
 
