@@ -337,7 +337,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     volatile ULONG Attempts;
 
     //
-    // Counters.
+    // Counters used for capturing performance information.  We capture both a
+    // cycle count, using __rdtsc(), plus a "performance counter" count, via
+    // QueryPerformanceCounter().  The former provides a finer resolution, but
+    // can't be used to calculate elapsed microseconds due to turbo boost and
+    // variable frequencies.  The latter provides a coarser resolution, but
+    // can be used to convert into elapsed microseconds (via the frequency,
+    // also captured below).
     //
 
     LARGE_INTEGER Frequency;
