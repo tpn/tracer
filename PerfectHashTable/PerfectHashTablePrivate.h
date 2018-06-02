@@ -1000,7 +1000,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
 
     //
     // Final number of elements in the underlying table.  This will vary
-    // depending on how the graph was created.
+    // depending on how the graph was created.  If modulus masking is in use,
+    // this will reflect the number of keys (unless a custom table size was
+    // requested during creation).  Otherwise, this will be the number of keys
+    // rounded up to the next power of 2.
     //
 
     ULARGE_INTEGER NumberOfTableElements;
