@@ -67,6 +67,8 @@ Return Value:
     // Initialize aliases.
     //
 
+    //IACA_VC_START();
+
     Seed1 = Seeds[0];
     Seed2 = Seeds[1];
     Seed3 = Seeds[2];
@@ -80,6 +82,8 @@ Return Value:
     C = Seed3 ^ Input;
     D = _mm_crc32_u32(B, C);
 
+    //IACA_VC_END();
+
     Vertex1 = A;
     Vertex2 = D;
 
@@ -91,6 +95,7 @@ Return Value:
     Result.HighPart = Vertex2;
 
     *Hash = Result.QuadPart;
+
     return S_OK;
 }
 
