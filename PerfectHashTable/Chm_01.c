@@ -1256,7 +1256,8 @@ Return Value:
             //
 
             Header->TotalNumberOfAttempts = Context->Attempts;
-            Header->NumberOfSolutionsFound = (ULONG)Context->FinishedCount;
+            Header->NumberOfFailedAttempts = Context->FailedAttempts;
+            Header->NumberOfSolutionsFound = Context->FinishedCount;
 
             //
             // Finalize the :Info stream the same way we handled the backing
@@ -1463,7 +1464,7 @@ Return Value:
     //
 
     Graph->ThreadId = GetCurrentThreadId();
-    Graph->Attempt = InterlockedIncrement(&Info->Context->Attempts);
+    Graph->Attempt = InterlockedIncrement64(&Info->Context->Attempts);
     Graph->Info = Info;
 
     //
@@ -2393,7 +2394,7 @@ Return Value:
         //
 
         if (Vertex1 == Vertex2) {
-            return FALSE;
+            goto Failed;
         }
 
         //
@@ -2431,7 +2432,7 @@ Return Value:
         // Failed to create an acyclic graph.
         //
 
-        return FALSE;
+        goto Failed;
     }
 
     //
@@ -2478,6 +2479,18 @@ Return Value:
     SubmitThreadpoolWork(Context->FinishedWork);
 
     return TRUE;
+
+Failed:
+
+    //
+    // Increment the failed attempts counter.
+    //
+
+    InterlockedIncrement64(&Context->FailedAttempts);
+
+    //
+    // Intentional follow-on to Error.
+    //
 
 Error:
 

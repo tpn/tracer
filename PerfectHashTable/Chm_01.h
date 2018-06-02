@@ -324,7 +324,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     // Context->Attempts, and represents the attempt number across all threads.
     //
 
-    ULONG Attempt;
+    ULONGLONG Attempt;
 
     //
     // A localized attempt number that reflects the number of attempts made

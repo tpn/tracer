@@ -322,19 +322,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     PPUNICODE_STRING ObjectNamesPointerArray;
     PWSTR ObjectNamesWideBuffer;
     ULONG SizeOfObjectNamesWideBuffer;
-
-    //
-    // We fill in the following field for convenience.  This also aligns us
-    // out to an 8 byte boundary.
-    //
-
     ULONG NumberOfObjects;
 
     //
     // Number of attempts made by the algorithm to find a solution.
     //
 
-    volatile ULONG Attempts;
+    volatile ULONGLONG Attempts;
 
     //
     // Counters used for capturing performance information.  We capture both a
@@ -416,6 +410,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 
     ULARGE_INTEGER SaveFileElapsedCycles;
     ULARGE_INTEGER SaveFileElapsedMicroseconds;
+
+    //
+    // Number of failed attempts at solving the graph across all threads.
+    //
+
+    volatile ULONGLONG FailedAttempts;
 
     //
     // The main threadpool callback environment, used for solving perfect hash
@@ -1036,7 +1036,13 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // Total number of attempts at solving the solution.
     //
 
-    ULONG TotalNumberOfAttempts;
+    ULONGLONG TotalNumberOfAttempts;
+
+    //
+    // Number of failed attempts at solving the solution.
+    //
+
+    ULONGLONG NumberOfFailedAttempts;
 
     //
     // If solutions are being sought in parallel, more than one thread may
@@ -1046,7 +1052,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // found in parallel.  It corresponds to the Context->FinishedCount value.
     //
 
-    ULONG NumberOfSolutionsFound;
+    ULONGLONG NumberOfSolutionsFound;
 
     //
     // Number of cycles it took to solve the solution for the winning thread.
