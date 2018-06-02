@@ -348,17 +348,74 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 
     LARGE_INTEGER Frequency;
 
+    //
+    // Capture the time required to solve the perfect hash table.  This is not
+    // a sum of all cycles consumed by all worker threads; it is the cycles
+    // consumed between the "main" thread (i.e. the CreatePerfectHashTable()
+    // impl routine (CreatePerfectHashTableImplChm01())) dispatching parallel
+    // work to the threadpool, and a solution being found.
+    //
+
     ULARGE_INTEGER SolveStartCycles;
     LARGE_INTEGER SolveStartCounter;
 
     ULARGE_INTEGER SolveEndCycles;
     LARGE_INTEGER SolveEndCounter;
 
+    ULARGE_INTEGER SolveElapsedCycles;
+    ULARGE_INTEGER SolveElapsedMicroseconds;
+
+    //
+    // Capture the time required to verify the solution.  This involves walking
+    // the entire key set, applying the perfect hash function to derive an index
+    // into the Assigned array, and verifying that we only saw each index value
+    // at most once.
+    //
+    // This is a reasonably good measure of the combined performance of the
+    // chosen hash and mask algorithm, with lower cycles and counter values
+    // indicating better performance.
+    //
+
     ULARGE_INTEGER VerifyStartCycles;
     LARGE_INTEGER VerifyStartCounter;
 
     ULARGE_INTEGER VerifyEndCycles;
     LARGE_INTEGER VerifyEndCounter;
+
+    ULARGE_INTEGER VerifyElapsedCycles;
+    ULARGE_INTEGER VerifyElapsedMicroseconds;
+
+    //
+    // Capture the time required to prepare the backing .pht1 file in the file
+    // work threadpool.
+    //
+
+    ULARGE_INTEGER PrepareFileStartCycles;
+    LARGE_INTEGER PrepareFileStartCounter;
+
+    ULARGE_INTEGER PrepareFileEndCycles;
+    LARGE_INTEGER PrepareFileEndCounter;
+
+    ULARGE_INTEGER PrepareFileElapsedCycles;
+    ULARGE_INTEGER PrepareFileElapsedMicroseconds;
+
+    //
+    // Capture the time required to save the final Assigned array to the backing
+    // file prepared in an earlier step.  This is also dispatched to the file
+    // work thread pool, and consists of a memory copy from the assigned array
+    // of the graph to the base address of the backing file's memory map, then
+    // flushing the map, unmapping it, closing the section, and closing the
+    // file.
+    //
+
+    ULARGE_INTEGER SaveFileStartCycles;
+    LARGE_INTEGER SaveFileStartCounter;
+
+    ULARGE_INTEGER SaveFileEndCycles;
+    LARGE_INTEGER SaveFileEndCounter;
+
+    ULARGE_INTEGER SaveFileElapsedCycles;
+    ULARGE_INTEGER SaveFileElapsedMicroseconds;
 
     //
     // The main threadpool callback environment, used for solving perfect hash
@@ -478,6 +535,39 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
 
 } PERFECT_HASH_TABLE_CONTEXT;
 typedef PERFECT_HASH_TABLE_CONTEXT *PPERFECT_HASH_TABLE_CONTEXT;
+
+//
+// Define helper macros for marking start/end points for the context's
+// cycle/counter fields.  When starting, we put __rdtsc() last, and when
+// stopping we put it first, as its resolution is more sensitive than the
+// QueryPerformanceCounter() routine.
+//
+
+#define CONTEXT_START_TIMERS(Name)                           \
+    QueryPerformanceCounter(&Context->##Name##StartCounter); \
+    Context->##Name##StartCycles.QuadPart = __rdtsc()
+
+#define CONTEXT_END_TIMERS(Name)                              \
+    Context->##Name##EndCycles.QuadPart = __rdtsc();          \
+    QueryPerformanceCounter(&Context->##Name##EndCounter);    \
+    Context->##Name##ElapsedCycles.QuadPart = (               \
+        Context->##Name##EndCycles.QuadPart -                 \
+        Context->##Name##StartCycles.QuadPart                 \
+    );                                                        \
+    Context->##Name##ElapsedMicroseconds.QuadPart = (         \
+        Context->##Name##EndCounter.QuadPart -                \
+        Context->##Name##StartCounter.QuadPart                \
+    );                                                        \
+    Context->##Name##ElapsedMicroseconds.QuadPart *= 1000000; \
+    Context->##Name##ElapsedMicroseconds.QuadPart /= (        \
+        Context->Frequency.QuadPart                           \
+    )
+
+#define CONTEXT_SAVE_TIMERS_TO_HEADER(Name)                                    \
+    Header->##Name##Cycles.QuadPart = Context->##Name##ElapsedCycles.QuadPart; \
+    Header->##Name##Microseconds.QuadPart = (                                  \
+        Context->##Name##ElapsedMicroseconds.QuadPart                          \
+    )
 
 //
 // Forward definition of the hash table context destructor.
@@ -964,6 +1054,30 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     //
 
     ULARGE_INTEGER VerifyMicroseconds;
+
+    //
+    // Number of cycles taken to prepare the file.
+    //
+
+    ULARGE_INTEGER PrepareFileCycles;
+
+    //
+    // Number of microseconds taken to prepare the file.
+    //
+
+    ULARGE_INTEGER PrepareFileMicroseconds;
+
+    //
+    // Number of cycles taken to save the file.
+    //
+
+    ULARGE_INTEGER SaveFileCycles;
+
+    //
+    // Number of microseconds taken to save the file.
+    //
+
+    ULARGE_INTEGER SaveFileMicroseconds;
 
 } TABLE_INFO_ON_DISK_HEADER;
 typedef TABLE_INFO_ON_DISK_HEADER *PTABLE_INFO_ON_DISK_HEADER;

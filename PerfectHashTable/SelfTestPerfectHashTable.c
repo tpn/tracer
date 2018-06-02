@@ -559,25 +559,31 @@ Return Value:
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
         WIDE_OUTPUT_RAW(WideOutput, L".\n");
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Total number of attempts: ");
-        WIDE_OUTPUT_INT(WideOutput, Table->Header->TotalNumberOfAttempts);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+#define STATS_INT(String, Name)                               \
+        WIDE_OUTPUT_RAW(WideOutput, String);                  \
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->##Name##); \
+        WIDE_OUTPUT_RAW(WideOutput, L".\n")
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Cycles to solve: ");
-        WIDE_OUTPUT_INT(WideOutput, Table->Header->SolveCycles.QuadPart);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+#define STATS_QUAD(String, Name)                                       \
+        WIDE_OUTPUT_RAW(WideOutput, String);                           \
+        WIDE_OUTPUT_INT(WideOutput, Table->Header->##Name##.QuadPart); \
+        WIDE_OUTPUT_RAW(WideOutput, L".\n")
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Microseconds to solve: ");
-        WIDE_OUTPUT_INT(WideOutput, Table->Header->SolveMicroseconds.QuadPart);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        STATS_INT(L"Total number of attempts: ", TotalNumberOfAttempts);
+        STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Cycles to verify: ");
-        WIDE_OUTPUT_INT(WideOutput, Table->Header->VerifyCycles.QuadPart);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        STATS_QUAD(L"Cycles to solve: ", SolveCycles);
+        STATS_QUAD(L"Microseconds to solve: ", SolveMicroseconds);
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Microseconds to verify: ");
-        WIDE_OUTPUT_INT(WideOutput, Table->Header->VerifyMicroseconds.QuadPart);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        STATS_QUAD(L"Cycles to verify: ", VerifyCycles);
+        STATS_QUAD(L"Microseconds to verify: ", VerifyMicroseconds);
+
+        STATS_QUAD(L"Cycles to prepare file: ", PrepareFileCycles);
+        STATS_QUAD(L"Microseconds to prepare file: ", PrepareFileMicroseconds);
+
+        STATS_QUAD(L"Cycles to save file: ", SaveFileCycles);
+        STATS_QUAD(L"Microseconds to save file: ", SaveFileMicroseconds);
+
         WIDE_OUTPUT_FLUSH();
 
         //

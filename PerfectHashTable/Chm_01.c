@@ -584,6 +584,9 @@ Return Value:
     PrepareFile.FileWorkId = FileWorkPrepareId;
     InterlockedPushEntrySList(&Context->FileWorkListHead,
                               &PrepareFile.ListEntry);
+
+    CONTEXT_START_TIMERS(PrepareFile);
+
     SubmitThreadpoolWork(Context->FileWork);
 
     //
@@ -594,9 +597,8 @@ Return Value:
     //
 
     QueryPerformanceFrequency(&Context->Frequency);
-    QueryPerformanceCounter(&Context->SolveStartCounter);
 
-    Context->SolveStartCycles.QuadPart = __rdtsc();
+    CONTEXT_START_TIMERS(Solve);
 
     //
     // We're ready to create threadpool work for the graph.
@@ -806,6 +808,8 @@ Return Value:
     // work for it.
     //
 
+    CONTEXT_START_TIMERS(SaveFile);
+
     InterlockedPushEntrySList(&Context->FileWorkListHead, &SaveFile.ListEntry);
     SubmitThreadpoolWork(Context->FileWork);
 
@@ -814,13 +818,11 @@ Return Value:
     // continue with verification of the solution.
     //
 
-    QueryPerformanceCounter(&Context->VerifyStartCounter);
-    Context->VerifyStartCycles.QuadPart = __rdtsc();
+    CONTEXT_START_TIMERS(Verify);
 
     Success = VerifySolvedGraph(Graph);
 
-    Context->VerifyEndCycles.QuadPart = __rdtsc();
-    QueryPerformanceCounter(&Context->VerifyEndCounter);
+    CONTEXT_END_TIMERS(Verify);
 
     //
     // Set the verified event (regardless of whether or not we succeeded in
@@ -1123,6 +1125,8 @@ Return Value:
                 break;
             }
 
+            CONTEXT_END_TIMERS(PrepareFile);
+
             //
             // We've successfully mapped an area of sufficient space to store
             // the underlying table array if a perfect hash table solution is
@@ -1141,7 +1145,6 @@ Return Value:
             BOOLEAN Success;
             ULONGLONG SizeInBytes;
             LARGE_INTEGER EndOfFile;
-            ULARGE_INTEGER Elapsed;
             PPERFECT_HASH_TABLE Table;
             PTABLE_INFO_ON_DISK_HEADER Header;
 
@@ -1185,13 +1188,24 @@ Return Value:
             Header->Seed4 = Graph->Seed4;
 
             //
-            // Kick off a flush file buffers now, before we enter a wait state.
+            // Kick off a flush file buffers now, before we potentially enter
+            // a wait state.
             //
 
             ASSERT(FlushFileBuffers(Table->FileHandle));
 
             //
-            // Wait on the verification complete event.
+            // Stop the save file timer here, after flushing the file buffers,
+            // but before we potentially wait on the verified state.
+            //
+
+            CONTEXT_END_TIMERS(SaveFile);
+
+            //
+            // Wait on the verification complete event.  This is done in the
+            // main thread straight after it dispatches our file work callback
+            // (that ended up here).  We need to block on this event as we want
+            // to save the timings for verification to the header.
             //
 
             WaitResult = WaitForSingleObject(Context->VerifiedEvent, INFINITE);
@@ -1228,47 +1242,14 @@ Return Value:
             Table->FileHandle = NULL;
 
             //
-            // Calculate the timings and update the header before closing the
-            // :Info stream.
+            // Stop the save file timers, then copy all the timer values into
+            // the header (before closing the :Info stream).
             //
 
-            //
-            // Calculate the solve timings.
-            //
-
-            Header->SolveCycles.QuadPart = (
-                Context->SolveEndCycles.QuadPart -
-                Context->SolveStartCycles.QuadPart
-            );
-
-            Elapsed.QuadPart = (
-                Context->SolveEndCounter.QuadPart -
-                Context->SolveStartCounter.QuadPart
-            );
-
-            Elapsed.QuadPart *= 1000000;
-            Elapsed.QuadPart /= Context->Frequency.QuadPart;
-
-            Header->SolveMicroseconds.QuadPart = Elapsed.QuadPart;
-
-            //
-            // Perform the same calculations for the verification time.
-            //
-
-            Header->VerifyCycles.QuadPart = (
-                Context->VerifyEndCycles.QuadPart -
-                Context->VerifyStartCycles.QuadPart
-            );
-
-            Elapsed.QuadPart = (
-                Context->VerifyEndCounter.QuadPart -
-                Context->VerifyStartCounter.QuadPart
-            );
-
-            Elapsed.QuadPart *= 1000000;
-            Elapsed.QuadPart /= Context->Frequency.QuadPart;
-
-            Header->VerifyMicroseconds.QuadPart = Elapsed.QuadPart;
+            CONTEXT_SAVE_TIMERS_TO_HEADER(Solve);
+            CONTEXT_SAVE_TIMERS_TO_HEADER(Verify);
+            CONTEXT_SAVE_TIMERS_TO_HEADER(PrepareFile);
+            CONTEXT_SAVE_TIMERS_TO_HEADER(SaveFile);
 
             //
             // Save the number of attempts.
@@ -2475,11 +2456,10 @@ Return Value:
     GraphAssign(Graph);
 
     //
-    // Capture the end time.
+    // Stop the solve timers here.
     //
 
-    QueryPerformanceCounter(&Context->SolveEndCounter);
-    Context->SolveEndCycles.QuadPart = __rdtsc();
+    CONTEXT_END_TIMERS(Solve);
 
     //
     // Push this graph onto the finished list head.
