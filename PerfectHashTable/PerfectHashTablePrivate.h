@@ -686,6 +686,22 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     ULONG Shift;
 
     //
+    // Mask value.  This will be set to (Table->Size - 1).
+    //
+
+    ULONG Mask;
+
+    //
+    // The following value represents how many times we need to XOR the high
+    // part of a word with the low part of a word -- where word is being used
+    // in the general computer word sense (i.e. not a 2-byte short) -- such
+    // that the final value is within the bounds of the table mask.  It is
+    // also the value of log2(Table->Shift).
+    //
+
+    ULONG Fold;
+
+    //
     // Pad out to an 8 byte boundary.
     //
 
@@ -912,9 +928,11 @@ PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash03;
 PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash04;
 
 PERFECT_HASH_TABLE_MASK PerfectHashTableMaskModulus;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskShift;
 PERFECT_HASH_TABLE_MASK PerfectHashTableMaskAnd;
 PERFECT_HASH_TABLE_MASK PerfectHashTableMaskXorAnd;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldOnce;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldTwice;
+PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldThrice;
 
 //
 // Metadata about a perfect hash table is stored in an NTFS stream named :Info

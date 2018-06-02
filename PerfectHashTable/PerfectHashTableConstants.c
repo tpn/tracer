@@ -69,6 +69,22 @@ const PPERFECT_HASH_TABLE_MASK MaskRoutines[] = {
     PerfectHashTableMaskModulus,
     PerfectHashTableMaskAnd,
     PerfectHashTableMaskXorAnd,
+
+    //
+    // The PerfectHashTableFoldAutoMaskFunctionId slot is next.  This is a
+    // psuedo ID that don't actually match to a mask implementation.  The
+    // algorithm is required to detect when this mask function is being used
+    // and swap out the Vtbl pointer to one of the following fold methods
+    // depending on the table size.  Thus, we use a NULL pointer in this array
+    // such that we'll trap on the first attempt to mask if this hasn't been
+    // done.
+    //
+
+    NULL,
+
+    PerfectHashTableMaskFoldOnce,
+    PerfectHashTableMaskFoldTwice,
+    PerfectHashTableMaskFoldThrice,
     NULL
 };
 

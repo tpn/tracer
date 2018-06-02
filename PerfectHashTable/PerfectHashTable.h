@@ -173,15 +173,19 @@ typedef enum _PERFECT_HASH_TABLE_MASK_FUNCTION_ID {
     // Null masking type.
     //
 
-    PerfectHashTableNullMaskFunctionId = 0,
+    PerfectHashTableNullMaskFunctionId          = 0,
 
     //
     // Being valid masking types.
     //
 
-    PerfectHashTableModulusMaskFunctionId   = 1,
-    PerfectHashTableAndMaskFunctionId       = 2,
-    PerfectHashTableXorAndMaskFunctionId    = 3,
+    PerfectHashTableModulusMaskFunctionId       = 1,
+    PerfectHashTableAndMaskFunctionId           = 2,
+    PerfectHashTableXorAndMaskFunctionId        = 3,
+    PerfectHashTableFoldAutoMaskFunctionId      = 4,
+    PerfectHashTableFoldOnceMaskFunctionId      = 5,
+    PerfectHashTableFoldTwiceMaskFunctionId     = 6,
+    PerfectHashTableFoldThriceMaskFunctionId    = 7,
 
     //
     // End valid masking types.

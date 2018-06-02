@@ -513,14 +513,49 @@ Return Value:
     }
 
     //
-    // Set the Size and Shift fields of the table, such that the Hash and
-    // Mask vtbl functions operate correctly.
+    // Set the Size, Shift, Mask and Fold fields of the table, such that the
+    // Hash and Mask vtbl functions operate correctly.
     //
-    // N.B. Table->Shift is meaningless for modulus masking.
+    // N.B. Shift, Mask and Fold are meaningless for modulus masking.
+    //
+    // N.B. If you change these fields, you'll probably need to change something
+    //      in LoadPerfectHashTableImplChm01() too.
     //
 
     Table->Size = NumberOfVertices.LowPart;
     Table->Shift = TrailingZeros(Table->Size);
+    Table->Mask = (Table->Size - 1);
+    Table->Fold = Table->Shift >> 3;
+
+    //
+    // If auto folding has been requested, set the appropriate function ID based
+    // on the table fold and update the vtbl.
+    //
+
+    if (MaskFunctionId == PerfectHashTableFoldAutoMaskFunctionId) {
+
+        ASSERT(Table->Fold >= 0 && Table->Fold <= 4);
+
+        switch (Table->Fold) {
+            case 4:
+            case 3:
+            case 2:
+                MaskFunctionId = PerfectHashTableFoldOnceMaskFunctionId;
+                break;
+
+            case 1:
+                MaskFunctionId = PerfectHashTableFoldTwiceMaskFunctionId;
+                break;
+
+            case 0:
+                MaskFunctionId = PerfectHashTableFoldThriceMaskFunctionId;
+                break;
+        }
+
+        Table->MaskFunctionId = MaskFunctionId;
+        Context->MaskFunctionId = MaskFunctionId;
+        Table->Vtbl->Mask = MaskRoutines[MaskFunctionId];
+    }
 
     //
     // Save the on-disk representation of the graph information.  This is a
@@ -899,6 +934,7 @@ Return Value:
 
     Table->Size = Table->Header->NumberOfTableElements.LowPart;
     Table->Shift = TrailingZeros(Table->Size);
+    Table->Mask = (Table->Size - 1);
 
     return TRUE;
 }
