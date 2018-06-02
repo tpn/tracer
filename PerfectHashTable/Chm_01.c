@@ -706,13 +706,57 @@ Return Value:
                                         INFINITE);
 
     //
-    // Ignore the wait result; determine if the graph solving was successful
-    // by the finished count of the context.
+    // Ignore the wait result initially; determine if the graph solving was
+    // successful by the finished count of the context.
     //
 
     Success = (Context->FinishedCount > 0);
 
-    ASSERT(Success);
+    if (!Success) {
+
+        //
+        // Invariant check: if no worker thread registered a solved graph (i.e.
+        // Context->FinishedCount > 0), then verify that the shutdown event was
+        // set.  If our WaitResult above indicates WAIT_OBJECT_2, we're done.
+        // If not, verify explicitly.
+        //
+
+        if (WaitResult != WAIT_OBJECT_0+2) {
+
+            //
+            // Manually test that the shutdown event has been signalled.
+            //
+
+            WaitResult = WaitForSingleObject(Context->ShutdownEvent, 0);
+
+            ASSERT(WaitResult == WAIT_OBJECT_0);
+        }
+
+        //
+        // Clean up the main thread work group members and clear the work field.
+        // This will block until all the worker threads have returned.  We need
+        // to put this in place prior to jumping to the End: label as that step
+        // will destroy the buffer we allocated earlier for the parallel graphs,
+        // which we mustn't do if any threads are still working.
+        //
+
+        Context->MainWork = NULL;
+        CloseThreadpoolCleanupGroupMembers(Context->MainCleanupGroup,
+                                           TRUE,
+                                           NULL);
+
+        //
+        // Perform the same operation for the file work threadpool.  Note that
+        // the only work we've dispatched to this pool at this point is the
+        // initial file preparation work.
+        //
+
+        Context->FileWork = NULL;
+        CloseThreadpoolCleanupGroupMembers(Context->FileCleanupGroup,
+                                           TRUE,
+                                           NULL);
+
+    }
 
     if (!Success) {
         goto End;
