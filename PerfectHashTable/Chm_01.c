@@ -1868,7 +1868,7 @@ Return Value:
 
         //
         // Stash a copy of the current edge before it gets potentially
-        // mutated by GraphFindDegree1Edge();.
+        // mutated by GraphFindDegree1Edge().
         //
 
         PrevEdge = Edge;
