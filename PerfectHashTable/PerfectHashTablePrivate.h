@@ -24,9 +24,9 @@ Abstract:
 #include "stdafx.h"
 
 #ifndef ASSERT
-#define ASSERT(Condition)   \
-    if (!(Condition)) {     \
-        __debugbreak();     \
+#define ASSERT(Condition) \
+    if (!(Condition)) {   \
+        __debugbreak();   \
     }
 #endif
 
@@ -787,14 +787,14 @@ typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
 //
 
 
-#define INDEX(Key, Result)                                 \
-    if (FAILED(Table->Vtbl->Index(Table, Key, Result))) {  \
-        goto Error;                                        \
+#define INDEX(Key, Result)                                \
+    if (FAILED(Table->Vtbl->Index(Table, Key, Result))) { \
+        goto Error;                                       \
     }
 
-#define HASH(Key, Result)                                 \
-    if (FAILED(Table->Vtbl->Hash(Table, Key, Result))) {  \
-        goto Error;                                       \
+#define HASH(Key, Result)                                \
+    if (FAILED(Table->Vtbl->Hash(Table, Key, Result))) { \
+        goto Error;                                      \
     }
 
 #define MASK(Hash, Result)                                \
