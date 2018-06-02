@@ -579,15 +579,13 @@ Return Value:
         STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);
 
         STATS_QUAD(L"Cycles to solve: ", SolveCycles);
-        STATS_QUAD(L"Microseconds to solve: ", SolveMicroseconds);
-
         STATS_QUAD(L"Cycles to verify: ", VerifyCycles);
-        STATS_QUAD(L"Microseconds to verify: ", VerifyMicroseconds);
-
         STATS_QUAD(L"Cycles to prepare file: ", PrepareFileCycles);
-        STATS_QUAD(L"Microseconds to prepare file: ", PrepareFileMicroseconds);
-
         STATS_QUAD(L"Cycles to save file: ", SaveFileCycles);
+
+        STATS_QUAD(L"Microseconds to solve: ", SolveMicroseconds);
+        STATS_QUAD(L"Microseconds to verify: ", VerifyMicroseconds);
+        STATS_QUAD(L"Microseconds to prepare file: ", PrepareFileMicroseconds);
         STATS_QUAD(L"Microseconds to save file: ", SaveFileMicroseconds);
 
         WIDE_OUTPUT_FLUSH();
