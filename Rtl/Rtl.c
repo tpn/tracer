@@ -4193,10 +4193,26 @@ RtlpLargePageVirtualAlloc(
     DWORD  flProtect
     )
 {
-    return VirtualAlloc(lpAddress,
-                        max(dwSize, GetLargePageMinimum()),
-                        flAllocationType | MEM_LARGE_PAGES,
-                        flProtect);
+    PVOID BaseAddress;
+
+    BaseAddress = VirtualAlloc(lpAddress,
+                               max(dwSize, GetLargePageMinimum()),
+                               flAllocationType | MEM_LARGE_PAGES,
+                               flProtect);
+
+    if (!BaseAddress) {
+
+        //
+        // Try again without large pages.
+        //
+
+        BaseAddress = VirtualAlloc(lpAddress,
+                                   dwSize,
+                                   flAllocationType,
+                                   flProtect);
+    }
+
+    return BaseAddress;
 }
 
 VIRTUAL_ALLOC_EX RtlpTryLargePageVirtualAllocEx;
@@ -4211,11 +4227,29 @@ RtlpLargePageVirtualAllocEx(
     DWORD  flProtect
     )
 {
-    return VirtualAllocEx(hProcess,
-                          lpAddress,
-                          max(dwSize, GetLargePageMinimum()),
-                          flAllocationType | MEM_LARGE_PAGES,
-                          flProtect);
+    PVOID BaseAddress;
+
+    BaseAddress = VirtualAllocEx(hProcess,
+                                 lpAddress,
+                                 max(dwSize, GetLargePageMinimum()),
+                                 flAllocationType | MEM_LARGE_PAGES,
+                                 flProtect);
+
+    if (!BaseAddress) {
+
+        //
+        // Try again without large pages.
+        //
+
+
+        BaseAddress = VirtualAllocEx(hProcess,
+                                     lpAddress,
+                                     dwSize,
+                                     flAllocationType,
+                                     flProtect);
+    }
+
+    return BaseAddress;
 }
 
 BOOL
