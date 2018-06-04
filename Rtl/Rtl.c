@@ -311,7 +311,7 @@ BOOL
 CreateBuffer(
     PRTL Rtl,
     PHANDLE TargetProcessHandle,
-    USHORT NumberOfPages,
+    ULONG NumberOfPages,
     PULONG AdditionalProtectionFlags,
     PULONGLONG UsableBufferSizeInBytes,
     PPVOID BufferAddress
@@ -359,25 +359,13 @@ CreateBuffer(
     TotalNumberOfPages.LongPart = (ULONG)NumberOfPages + 1;
 
     //
-    // Verify the number of pages hasn't overflowed (i.e. exceeds max USHORT).
-    //
-
-    if (TotalNumberOfPages.HighPart) {
-        return FALSE;
-    }
-
-    //
     // Convert total number of pages into total number of bytes (alloc size)
     // and verify it hasn't overflowed either (thus, 4GB is the current maximum
     // size allowed by this routine).
     //
 
     AllocSizeInBytes.QuadPart = TotalNumberOfPages.LongPart;
-    AllocSizeInBytes.QuadPart <<= PAGE_SHIFT;
-
-    if (AllocSizeInBytes.HighPart) {
-        return FALSE;
-    }
+    AllocSizeInBytes.QuadPart <<= (ULONGLONG)PAGE_SHIFT;
 
     ProtectionFlags = PAGE_READWRITE;
     if (ARGUMENT_PRESENT(AdditionalProtectionFlags)) {
@@ -470,9 +458,9 @@ BOOL
 CreateMultipleBuffers(
     PRTL Rtl,
     PHANDLE TargetProcessHandle,
-    USHORT PageSize,
-    USHORT NumberOfBuffers,
-    USHORT NumberOfPagesPerBuffer,
+    ULONG PageSize,
+    ULONG NumberOfBuffers,
+    ULONG NumberOfPagesPerBuffer,
     PULONG AdditionalProtectionFlags,
     PULONG AdditionalAllocationTypeFlags,
     PULONGLONG UsableBufferSizeInBytesPerBuffer,
@@ -539,14 +527,14 @@ Return Value:
 
 {
     BOOL Success;
-    USHORT Index;
+    ULONG Index;
     PVOID Buffer;
     PBYTE Unusable;
     HANDLE ProcessHandle;
     ULONG ProtectionFlags;
     ULONG OldProtectionFlags;
     ULONG AllocationFlags;
-    LONG_INTEGER TotalNumberOfPages;
+    ULARGE_INTEGER TotalNumberOfPages;
     ULARGE_INTEGER AllocSizeInBytes;
     ULONGLONG UsableBufferSizeInBytes;
 
@@ -615,25 +603,28 @@ Return Value:
         *BufferAddress = NULL;
     }
 
-    TotalNumberOfPages.LongPart = (
+    TotalNumberOfPages.QuadPart = (
 
         //
         // Account for the buffer related pages.
         //
-        ((ULONG)NumberOfPagesPerBuffer * (ULONG)NumberOfBuffers) +
+
+        ((ULONGLONG)NumberOfPagesPerBuffer * (ULONGLONG)NumberOfBuffers) +
 
         //
         // Account for the guard pages; one for each buffer.
         //
 
-        ((ULONG)NumberOfBuffers)
+        ((ULONGLONG)NumberOfBuffers)
     );
 
     //
     // Calculate the total allocation size required.
     //
 
-    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LongPart * PageSize;
+    AllocSizeInBytes.QuadPart = (
+        TotalNumberOfPages.QuadPart * (ULONGLONG)PageSize;
+    );
 
     ProtectionFlags = PAGE_READWRITE;
     if (ARGUMENT_PRESENT(AdditionalProtectionFlags)) {
