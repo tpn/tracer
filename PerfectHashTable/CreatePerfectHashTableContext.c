@@ -52,6 +52,8 @@ TP_WORK_CALLBACK ErrorWorkCallback;
 TP_WORK_CALLBACK FinishedWorkCallback;
 TP_CLEANUP_GROUP_CANCEL_CALLBACK CleanupCallback;
 
+CREATE_PERFECT_HASH_TABLE_CONTEXT CreatePerfectHashTableContext;
+
 //
 // Main context creation routine.
 //
@@ -99,8 +101,8 @@ Return Value:
 
 --*/
 {
-    USHORT Index;
-    USHORT NumberOfEvents;
+    BYTE Index;
+    BYTE NumberOfEvents;
     ULONG LastError;
     PHANDLE Event;
     BOOLEAN Success;
@@ -289,36 +291,15 @@ Return Value:
     Context->SizeOfObjectNamesWideBuffer = SizeOfNamesWideBuffer;
     Context->NumberOfObjects = NumberOfContextObjectPrefixes;
 
-    //
-    // Calculate the number of event handles based on the first and last event
-    // indicators in the context structure.  The additional sizeof(HANDLE)
-    // accounts for the fact that we're going from 0-based address offsets
-    // to 1-based counts.
-    //
-
-    NumberOfEvents = (USHORT)(
-        sizeof(HANDLE) +
-        RtlOffsetFromPointer(
-            &Context->LastEvent,
-            &Context->FirstEvent
-        )
-    );
-
-    NumberOfEvents /= sizeof(HANDLE);
-
-    //
-    // Sanity check the number of events matches the number of event prefixes.
-    //
-
-    ASSERT(NumberOfEvents == NumberOfContextEventPrefixes);
 
     //
     // Initialize the event pointer to the first handle, and the name pointer
-    // to the first UNICODE_STRING pointer.
+    // to the first UNICODE_STRING pointer.  Obtain the number of events.
     //
 
     Event = (PHANDLE)&Context->FirstEvent;
     Name = &Context->ObjectNames[0];
+    NumberOfEvents = GetNumberOfContextEvents(Context);
 
     for (Index = 0; Index < NumberOfEvents; Index++, Event++, Name++) {
 

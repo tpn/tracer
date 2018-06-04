@@ -252,7 +252,7 @@ Error:
 
         Success = WriteConsoleW(StdOutputHandle,
                                 PressAnyKey.Buffer,
-                                PressAnyKey.Length,
+                                PressAnyKey.Length >> 1,
                                 NULL,
                                 NULL);
 

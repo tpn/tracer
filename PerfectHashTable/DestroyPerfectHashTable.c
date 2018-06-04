@@ -131,6 +131,24 @@ Return Value:
     }
 
     //
+    // Free the buffer created as part of key validation, if applicable.
+    //
+
+    if (Table->KeysBitmap.Buffer) {
+        VirtualFree(Table->KeysBitmap.Buffer, 0, MEM_RELEASE);
+        Table->KeysBitmap.Buffer = NULL;
+        Table->KeysBitmap.SizeOfBitMap = 0;
+    }
+
+    //
+    // Free the memory used for the values array, if applicable.
+    //
+
+    if (Table->ValuesBaseAddress) {
+        Allocator->FreePointer(Allocator->Context, &Table->ValuesBaseAddress);
+    }
+
+    //
     // Free the underlying memory and clear the caller's pointer.
     //
 

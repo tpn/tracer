@@ -62,6 +62,8 @@ Return Value:
     ULONG WaitResult;
     GRAPH_INFO Info;
     PBYTE Unusable;
+    ULONG LastError;
+    ULONG NumberOfKeys;
     BOOLEAN CaughtException;
     PALLOCATOR Allocator;
     HANDLE ProcessHandle;
@@ -81,6 +83,7 @@ Return Value:
     ULONGLONG PrevSizeInBytes;
     ULONGLONG FirstSizeInBytes;
     ULONGLONG EdgesSizeInBytes;
+    ULONGLONG ValuesSizeInBytes;
     ULONGLONG AssignedSizeInBytes;
     ULONGLONG TotalBufferSizeInBytes;
     ULONGLONG UsableBufferSizeInBytesPerBuffer;
@@ -95,8 +98,9 @@ Return Value:
     ULARGE_INTEGER DeletedEdgesBitmapBufferSizeInBytes;
     ULARGE_INTEGER VisitedVerticesBitmapBufferSizeInBytes;
     ULARGE_INTEGER AssignedBitmapBufferSizeInBytes;
+    ULARGE_INTEGER IndexBitmapBufferSizeInBytes;
     PPERFECT_HASH_TABLE_CONTEXT Context = Table->Context;
-    HANDLE Events[4];
+    HANDLE Events[5];
     USHORT NumberOfEvents = ARRAYSIZE(Events);
 
     //
@@ -108,6 +112,16 @@ Return Value:
     }
 
     //
+    // The following label is jumped to by code later in this routine when we
+    // detect that we've exceeded a plausible number of attempts at finding a
+    // graph solution with the given number of vertices, and have bumped up
+    // the vertex count (by adjusting Table->RequestedNumberOfElements) and
+    // want to try again.
+    //
+
+RetryWithLargerTableSize:
+
+    //
     // Initialize aliases.
     //
 
@@ -116,6 +130,15 @@ Return Value:
     Allocator = Table->Allocator;
     Context = Table->Context;
     MaskFunctionId = Context->MaskFunctionId;
+
+    //
+    // If no threshold has been set, use the default.
+    //
+
+    if (!Context->ResizeTableThreshold) {
+        Context->ResizeTableThreshold = GRAPH_SOLVING_ATTEMPTS_THRESHOLD;
+        Context->ResizeLimit = GRAPH_SOLVING_RESIZE_TABLE_LIMIT;
+    }
 
     //
     // The number of edges in our graph is equal to the number of keys in the
@@ -131,6 +154,8 @@ Return Value:
 
     ASSERT(!NumberOfEdges.HighPart);
 
+    NumberOfKeys = NumberOfEdges.LowPart;
+
     //
     // Determine the number of vertices.  If a caller has requested a certain
     // table size, Table->RequestedNumberOfTableElements will be non-zero, and
@@ -139,16 +164,36 @@ Return Value:
 
     if (Table->RequestedNumberOfTableElements.QuadPart) {
 
-        //
-        // Invariant check: the masking type must be modulus in order for the
-        // caller to specify a table size.
-        //
-
-        ASSERT(IsModulusMasking(MaskFunctionId));
-
         NumberOfVertices.QuadPart = (
             Table->RequestedNumberOfTableElements.QuadPart
         );
+
+        if (IsModulusMasking(MaskFunctionId)) {
+
+            //
+            // Nothing more to do with modulus masking; we'll verify the number
+            // of vertices below.
+            //
+
+            NOTHING;
+
+        } else {
+
+            //
+            // For non-modulus masking, make sure the number of vertices are
+            // rounded up to a power of 2.  The number of edges will be rounded
+            // up to a power of 2 from the number of keys.
+            //
+
+            NumberOfVertices.QuadPart = (
+                RoundUpPowerOf2(NumberOfVertices.LowPart)
+            );
+
+            NumberOfEdges.QuadPart = (
+                RoundUpPowerOf2(NumberOfEdges.LowPart)
+            );
+
+        }
 
     } else {
 
@@ -170,8 +215,8 @@ Return Value:
 
         if (IsModulusMasking(MaskFunctionId)) {
 
-            NumberOfVertices.QuadPart = NumberOfEdges.LowPart << 1;
-            NumberOfVertices.QuadPart += NumberOfEdges.LowPart >> 2;
+            NumberOfVertices.QuadPart = NumberOfEdges.QuadPart << 1ULL;
+            NumberOfVertices.QuadPart += NumberOfEdges.QuadPart >> 2ULL;
 
         } else {
 
@@ -212,7 +257,7 @@ Return Value:
     //
 
     TotalNumberOfEdges.QuadPart = NumberOfEdges.QuadPart;
-    TotalNumberOfEdges.QuadPart <<= 1;
+    TotalNumberOfEdges.QuadPart <<= 1ULL;
 
     //
     // Another overflow sanity check.
@@ -220,15 +265,21 @@ Return Value:
 
     ASSERT(!TotalNumberOfEdges.HighPart);
 
+    //
+    // Make sure vertices > edges.
+    //
+
+    ASSERT(NumberOfVertices.QuadPart > NumberOfEdges.QuadPart);
 
     //
     // Calculate the size required for the DeletedEdges bitmap buffer.  One
     // bit is used per TotalNumberOfEdges.  Convert the bits into bytes by
     // shifting right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    // We add 1 before shifting to account 1-based bitmaps vs 0-based indices.
     //
 
     DeletedEdgesBitmapBufferSizeInBytes.QuadPart = (
-        ALIGN_UP((TotalNumberOfEdges.QuadPart >> 3), 16)
+        ALIGN_UP(((ALIGN_UP(TotalNumberOfEdges.QuadPart + 1, 8)) >> 3), 16)
     );
 
     ASSERT(!DeletedEdgesBitmapBufferSizeInBytes.HighPart);
@@ -237,25 +288,40 @@ Return Value:
     // Calculate the size required for the VisitedVertices bitmap buffer.  One
     // bit is used per NumberOfVertices.  Convert the bits into bytes by
     // shifting right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    // We add 1 before shifting to account 1-based bitmaps vs 0-based indices.
     //
 
     VisitedVerticesBitmapBufferSizeInBytes.QuadPart = (
-        ALIGN_UP((NumberOfVertices.QuadPart >> 3), 16)
+        ALIGN_UP(((ALIGN_UP(NumberOfVertices.QuadPart + 1, 8)) >> 3), 16)
     );
 
     ASSERT(!VisitedVerticesBitmapBufferSizeInBytes.HighPart);
 
     //
     // Calculate the size required for the AssignedBitmap bitmap buffer.  One
-    // bit is used per NumberOfEdges.  Convert the bits into bytes by shifting
+    // bit is used per NumberOfVertices.  Convert the bits into bytes by shifting
     // right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    // We add 1 before shifting to account 1-based bitmaps vs 0-based indices.
     //
 
     AssignedBitmapBufferSizeInBytes.QuadPart = (
-        ALIGN_UP((NumberOfEdges.QuadPart >> 3), 16)
+        ALIGN_UP(((ALIGN_UP(NumberOfVertices.QuadPart + 1, 8)) >> 3), 16)
     );
 
     ASSERT(!AssignedBitmapBufferSizeInBytes.HighPart);
+
+    //
+    // Calculate the size required for the IndexBitmap bitmap buffer.  One
+    // bit is used per NumberOfVertices.  Convert the bits into bytes by shifting
+    // right 3 (dividing by 8) then align it up to a 16 byte boundary.
+    // We add 1 before shifting to account 1-based bitmaps vs 0-based indices.
+    //
+
+    IndexBitmapBufferSizeInBytes.QuadPart = (
+        ALIGN_UP(((ALIGN_UP(NumberOfVertices.QuadPart + 1, 8)) >> 3), 16)
+    );
+
+    ASSERT(!IndexBitmapBufferSizeInBytes.HighPart);
 
     //
     // Calculate the sizes required for each of the arrays.  We collect them
@@ -281,6 +347,18 @@ Return Value:
 
     AssignedSizeInBytes = (
         ALIGN_UP_POINTER(sizeof(*Graph->Assigned) * NumberOfVertices.QuadPart)
+    );
+
+    //
+    // Calculate the size required for the values array.  This is used as part
+    // of verification, where we essentially do Insert(Key, Key) in combination
+    // with bitmap tracking of assigned indices, which allows us to detect if
+    // there are any colliding indices, and if so, what was the previous key
+    // that mapped to the same index.
+    //
+
+    ValuesSizeInBytes = (
+        ALIGN_UP_POINTER(sizeof(*Graph->Values) * NumberOfVertices.QuadPart)
     );
 
     //
@@ -329,6 +407,13 @@ Return Value:
         AssignedSizeInBytes +
 
         //
+        // Account for the Table->Values array of values for the perfect hash
+        // table, indexed via the result of the table's Index() method.
+        //
+
+        ValuesSizeInBytes +
+
+        //
         // Account for the size of the bitmap buffer for Graph->DeletedEdges.
         //
 
@@ -344,7 +429,21 @@ Return Value:
         // Account for the size of the bitmap buffer for Graph->AssignedBitmap.
         //
 
-        AssignedBitmapBufferSizeInBytes.QuadPart
+        AssignedBitmapBufferSizeInBytes.QuadPart +
+
+        //
+        // Account for the size of the bitmap buffer for Graph->IndexBitmap.
+        //
+
+        IndexBitmapBufferSizeInBytes.QuadPart +
+
+        //
+        // Keep a dummy 0 at the end such that the last item above can use an
+        // addition sign at the end of it, which minimizes the diff churn when
+        // adding a new size element.
+        //
+
+        0
 
     );
 
@@ -354,7 +453,7 @@ Return Value:
     // of bitmaps accounted for above should match this number.
     //
 
-    NumberOfBitmaps = 3;
+    NumberOfBitmaps = 4;
 
     //
     // Sanity check the size hasn't overflowed.
@@ -378,7 +477,8 @@ Return Value:
         NumberOfGuardPages
     );
     GraphSizeInBytesIncludingGuardPage = (
-        (NumberOfPagesPerGraph * PageSize) + PageSize
+        (ULONGLONG)PageSize +
+        ((ULONGLONG)NumberOfPagesPerGraph * (ULONGLONG)PageSize)
     );
 
     //
@@ -400,7 +500,8 @@ Return Value:
                                          &BaseAddress);
 
     if (!Success) {
-        __debugbreak();
+        LastError = GetLastError();
+        //__debugbreak();
         return FALSE;
     }
 
@@ -414,8 +515,15 @@ Return Value:
     // expecting.
     //
 
-    ExpectedTotalBufferSizeInBytes = TotalNumberOfPages * PageSize;
-    ExpectedUsableBufferSizeInBytesPerBuffer = NumberOfPagesPerGraph * PageSize;
+    ExpectedTotalBufferSizeInBytes = (
+        (ULONGLONG)TotalNumberOfPages *
+        (ULONGLONG)PageSize
+    );
+
+    ExpectedUsableBufferSizeInBytesPerBuffer = (
+        (ULONGLONG)NumberOfPagesPerGraph *
+        (ULONGLONG)PageSize
+    );
 
     ASSERT(TotalBufferSizeInBytes == ExpectedTotalBufferSizeInBytes);
     ASSERT(UsableBufferSizeInBytesPerBuffer ==
@@ -441,6 +549,7 @@ Return Value:
     Info.FirstSizeInBytes = FirstSizeInBytes;
     Info.PrevSizeInBytes = PrevSizeInBytes;
     Info.AssignedSizeInBytes = AssignedSizeInBytes;
+    Info.ValuesSizeInBytes = ValuesSizeInBytes;
     Info.AllocSize = AllocSize.QuadPart;
     Info.FinalSize = UsableBufferSizeInBytesPerBuffer;
 
@@ -454,6 +563,10 @@ Return Value:
 
     Info.AssignedBitmapBufferSizeInBytes = (
         AssignedBitmapBufferSizeInBytes.QuadPart
+    );
+
+    Info.IndexBitmapBufferSizeInBytes = (
+        IndexBitmapBufferSizeInBytes.QuadPart
     );
 
     //
@@ -513,8 +626,8 @@ Return Value:
     }
 
     //
-    // Set the Size, Shift, Mask and Fold fields of the table, such that the
-    // Hash and Mask vtbl functions operate correctly.
+    // Set the Modulus, Size, Shift, Mask and Fold fields of the table, such
+    // that the Hash and Mask vtbl functions operate correctly.
     //
     // N.B. Shift, Mask and Fold are meaningless for modulus masking.
     //
@@ -522,10 +635,16 @@ Return Value:
     //      in LoadPerfectHashTableImplChm01() too.
     //
 
-    Table->Size = NumberOfVertices.LowPart;
-    Table->Shift = TrailingZeros(Table->Size);
-    Table->Mask = (Table->Size - 1);
-    Table->Fold = Table->Shift >> 3;
+    Table->HashModulus = NumberOfVertices.LowPart;
+    Table->IndexModulus = NumberOfEdges.LowPart;
+    Table->HashSize = NumberOfVertices.LowPart;
+    Table->IndexSize = NumberOfEdges.LowPart;
+    Table->HashShift = TrailingZeros(Table->HashSize);
+    Table->IndexShift = TrailingZeros(Table->IndexSize);
+    Table->HashMask = (Table->HashSize - 1);
+    Table->IndexMask = (Table->IndexSize - 1);
+    Table->HashFold = Table->HashShift >> 3;
+    Table->IndexFold = Table->IndexShift >> 3;
 
     //
     // If auto folding has been requested, set the appropriate function ID based
@@ -534,9 +653,9 @@ Return Value:
 
     if (MaskFunctionId == PerfectHashTableFoldAutoMaskFunctionId) {
 
-        ASSERT(Table->Fold >= 0 && Table->Fold <= 4);
+        ASSERT(Table->HashFold >= 0 && Table->HashFold <= 4);
 
-        switch (Table->Fold) {
+        switch (Table->HashFold) {
             case 4:
             case 3:
             case 2:
@@ -554,7 +673,8 @@ Return Value:
 
         Table->MaskFunctionId = MaskFunctionId;
         Context->MaskFunctionId = MaskFunctionId;
-        Table->Vtbl->Mask = MaskRoutines[MaskFunctionId];
+        Table->Vtbl->MaskHash = MaskHashRoutines[MaskFunctionId];
+        Table->Vtbl->MaskIndex = MaskIndexRoutines[MaskFunctionId];
     }
 
     //
@@ -576,6 +696,16 @@ Return Value:
     OnDiskHeader->MaskFunctionId = Context->MaskFunctionId;
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
     OnDiskHeader->KeySizeInBytes = sizeof(ULONG);
+    OnDiskHeader->HashSize = Table->HashSize;
+    OnDiskHeader->IndexSize = Table->IndexSize;
+    OnDiskHeader->HashShift = Table->HashShift;
+    OnDiskHeader->IndexShift = Table->IndexShift;
+    OnDiskHeader->HashMask = Table->HashMask;
+    OnDiskHeader->IndexMask = Table->IndexMask;
+    OnDiskHeader->HashFold = Table->HashFold;
+    OnDiskHeader->IndexFold = Table->IndexFold;
+    OnDiskHeader->HashModulus = Table->HashModulus;
+    OnDiskHeader->IndexModulus = Table->IndexModulus;
     OnDiskHeader->NumberOfKeys.QuadPart = (
         Table->Keys->NumberOfElements.QuadPart
     );
@@ -736,6 +866,7 @@ Return Value:
     Events[1] = Context->CompletedEvent;
     Events[2] = Context->ShutdownEvent;
     Events[3] = Context->FailedEvent;
+    Events[4] = Context->TryLargerTableSizeEvent;
 
     WaitResult = WaitForMultipleObjects(NumberOfEvents,
                                         Events,
@@ -743,8 +874,98 @@ Return Value:
                                         INFINITE);
 
     //
-    // Ignore the wait result initially; determine if the graph solving was
-    // successful by the finished count of the context.
+    // If the wait result indicates the try larger table size event was set,
+    // deal with that, first.
+    //
+
+    if (WaitResult == WAIT_OBJECT_0+4) {
+
+        //
+        // The number of attempts at solving this graph have exceeded the
+        // threshold.  Set the shutdown event in order to trigger all worker
+        // threads to abort their current attempts and wait on the main thread
+        // work to complete.
+        //
+
+        SetEvent(Context->ShutdownEvent);
+        WaitForThreadpoolWorkCallbacks(Context->MainWork, TRUE);
+
+        //
+        // Perform a blocking wait for the prepare file work to complete.  (It
+        // would be highly unlikely that this event hasn't been set yet.)
+        //
+
+        WaitResult = WaitForSingleObject(Context->PreparedFileEvent, INFINITE);
+
+        ASSERT(WaitResult == WAIT_OBJECT_0);
+
+        //
+        // There are no more threadpool callbacks running.  However, a thread
+        // could have finished a solution between the time the try larger table
+        // size event was set, and this point.  So, check the finished count
+        // first.  If it indicates a solution, jump to that handler code.
+        //
+
+        if (Context->FinishedCount > 0) {
+            goto FinishedSolution;
+        }
+
+        //
+        // Reset everything back to an initial state, then jump back to the
+        // start of the routine and try again with a larger table size.  For
+        // now, we just double the existing number of vertices.
+        //
+
+        ASSERT(ResetEvent(Context->SucceededEvent));
+        ASSERT(ResetEvent(Context->CompletedEvent));
+        ASSERT(ResetEvent(Context->ShutdownEvent));
+        ASSERT(ResetEvent(Context->FailedEvent));
+        ASSERT(ResetEvent(Context->TryLargerTableSizeEvent));
+
+        //
+        // Destroy the existing buffer we allocated for this attempt.
+        //
+
+        ASSERT(Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress));
+
+        //
+        // Increment the resize counter, double the threshold, and reset the
+        // attempt counters.
+        //
+
+        Context->NumberOfTableResizeEvents++;
+        //Context->ResizeTableThreshold <<= 1;
+        Context->HighestDeletedEdgesCount = 0;
+        Context->Attempts = 0;
+        Context->FailedAttempts = 0;
+
+        //
+        // Double the vertex count.  If we have overflowed max ULONG, abort.
+        //
+
+        Table->RequestedNumberOfTableElements.QuadPart = (
+            NumberOfVertices.QuadPart
+        );
+
+        Table->RequestedNumberOfTableElements.QuadPart <<= 1ULL;
+
+        if (Table->RequestedNumberOfTableElements.HighPart) {
+            Success = FALSE;
+            goto End;
+        }
+
+        //
+        // Jump back to the start and try again with a larger vertex count.
+        //
+
+        goto RetryWithLargerTableSize;
+    }
+
+    //
+    // The wait result didn't not indicate a resize event.  Ignore the wait
+    // result for now; determine if the graph solving was successful by the
+    // finished count of the context.  We'll corroborate that with whatever
+    // events have been signaled shortly.
     //
 
     Success = (Context->FinishedCount > 0);
@@ -761,7 +982,7 @@ Return Value:
         if (WaitResult != WAIT_OBJECT_0+2) {
 
             //
-            // Manually test that the shutdown event has been signalled.
+            // Manually test that the shutdown event has been signaled.
             //
 
             WaitResult = WaitForSingleObject(Context->ShutdownEvent, 0);
@@ -802,6 +1023,8 @@ Return Value:
     //
     // Pop the winning graph off the finished list head.
     //
+
+FinishedSolution:
 
     ListEntry = InterlockedPopEntrySList(&Context->FinishedWorkListHead);
     ASSERT(ListEntry);
@@ -889,7 +1112,9 @@ End:
     //      VirtualAllocEx() call was dispatched for the entire buffer.
     //
 
-    Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
+    if (BaseAddress) {
+        Rtl->DestroyBuffer(Rtl, ProcessHandle, &BaseAddress);
+    }
 
     return Success;
 }
@@ -925,16 +1150,20 @@ Return Value:
 
 --*/
 {
-    //
-    // Set the Size and Shift fields of the table, such that the Hash and
-    // Mask vtbl functions operate correctly.
-    //
-    // N.B. Table->Shift is meaningless for modulus masking.
-    //
+    PTABLE_INFO_ON_DISK_HEADER Header;
 
-    Table->Size = Table->Header->NumberOfTableElements.LowPart;
-    Table->Shift = TrailingZeros(Table->Size);
-    Table->Mask = (Table->Size - 1);
+    Header = Table->Header;
+
+    Table->HashSize = Header->HashSize;
+    Table->IndexSize = Header->IndexSize;
+    Table->HashShift = Header->HashShift;
+    Table->IndexShift = Header->IndexShift;
+    Table->HashMask = Header->HashMask;
+    Table->IndexMask = Header->IndexMask;
+    Table->HashFold = Header->HashFold;
+    Table->IndexFold = Header->IndexFold;
+    Table->HashModulus = Header->HashModulus;
+    Table->IndexModulus = Header->IndexModulus;
 
     return TRUE;
 }
@@ -1330,7 +1559,13 @@ Return Value:
         }
 
         default:
-            break;
+
+            //
+            // Should never get here.
+            //
+
+            ASSERT(FALSE);
+            return;
 
     }
 
@@ -1377,12 +1612,14 @@ Return Value:
     PBYTE ExpectedBuffer;
     USHORT BitmapCount = 0;
     PPERFECT_HASH_TABLE Table;
+    PPERFECT_HASH_TABLE_CONTEXT Context;
 
     //
     // Initialize aliases.
     //
 
-    Table = Info->Context->Table;
+    Context = Info->Context;
+    Table = Context->Table;
 
     //
     // Obtain new seed data for the first two seeds and initialize the number
@@ -1445,6 +1682,13 @@ Return Value:
     Buffer += Info->AssignedSizeInBytes;
 
     //
+    // Carve out the Graph->Values array.
+    //
+
+    Graph->Values = (PVERTEX)Buffer;
+    Buffer += Info->ValuesSizeInBytes;
+
+    //
     // Replicate the graph dimensions.
     //
 
@@ -1457,7 +1701,7 @@ Return Value:
     //
 
     Graph->DeletedEdges.Buffer = (PULONG)Buffer;
-    Graph->DeletedEdges.SizeOfBitMap = Graph->TotalNumberOfEdges;
+    Graph->DeletedEdges.SizeOfBitMap = Graph->TotalNumberOfEdges + 1;
     Buffer += Info->DeletedEdgesBitmapBufferSizeInBytes;
     BitmapCount++;
 
@@ -1466,7 +1710,7 @@ Return Value:
     //
 
     Graph->VisitedVertices.Buffer = (PULONG)Buffer;
-    Graph->VisitedVertices.SizeOfBitMap = Graph->NumberOfVertices;
+    Graph->VisitedVertices.SizeOfBitMap = Graph->NumberOfVertices + 1;
     Buffer += Info->VisitedVerticesBitmapBufferSizeInBytes;
     BitmapCount++;
 
@@ -1475,8 +1719,17 @@ Return Value:
     //
 
     Graph->AssignedBitmap.Buffer = (PULONG)Buffer;
-    Graph->AssignedBitmap.SizeOfBitMap = Graph->NumberOfEdges;
+    Graph->AssignedBitmap.SizeOfBitMap = Graph->NumberOfVertices + 1;
     Buffer += Info->AssignedBitmapBufferSizeInBytes;
+    BitmapCount++;
+
+    //
+    // Carve out the bitmap buffer for Graph->IndexBitmap.
+    //
+
+    Graph->IndexBitmap.Buffer = (PULONG)Buffer;
+    Graph->IndexBitmap.SizeOfBitMap = Graph->NumberOfVertices + 1;
+    Buffer += Info->IndexBitmapBufferSizeInBytes;
     BitmapCount++;
 
     //
@@ -1499,16 +1752,26 @@ Return Value:
     // Save the info address.
     //
 
-    Graph->ThreadId = GetCurrentThreadId();
-    Graph->Attempt = InterlockedIncrement64(&Info->Context->Attempts);
     Graph->Info = Info;
+    Graph->ThreadId = GetCurrentThreadId();
+    Graph->Attempt = InterlockedIncrement64(&Context->Attempts);
+
+    //
+    // If this attempt has exceeded our threshold, inform our parent.
+    //
+
+    if (Graph->Attempt == Context->ResizeTableThreshold &&
+        Context->NumberOfTableResizeEvents < Context->ResizeLimit) {
+
+        ASSERT(SetEvent(Context->TryLargerTableSizeEvent));
+    }
 
     //
     // Copy the edge and vertex masks, and the masking type.
     //
 
-    Graph->EdgeMask = Info->EdgeMask;
-    Graph->VertexMask = Info->VertexMask;
+    Graph->EdgeMask = Table->IndexMask;
+    Graph->VertexMask = Table->HashMask;
     Graph->MaskFunctionId = Info->Context->MaskFunctionId;
 
     //
@@ -1524,6 +1787,7 @@ Return Value:
 
     for (Index = 0; Index < Graph->NumberOfVertices; Index++) {
         Graph->First[Index] = EMPTY;
+        Graph->Prev[Index] = EMPTY;
     }
 
     for (Index = 0; Index < Graph->TotalNumberOfEdges; Index++) {
@@ -1658,6 +1922,8 @@ Return Value:
 {
     EDGE Edge1;
     EDGE Edge2;
+    EDGE First1;
+    EDGE First2;
 
     Edge1 = Edge;
     Edge2 = Edge1 + Graph->NumberOfEdges;
@@ -1676,13 +1942,98 @@ Return Value:
     ASSERT(Edge1 < Graph->NumberOfEdges);
     ASSERT(!Graph->Flags.Shrinking);
 
-    Graph->Next[Edge1] = Graph->First[Vertex1];
+    //
+    // Insert the first edge.  If we've already seen this edge value, insert it
+    // into the previous edges array.
+    //
+
+    First1 = Graph->First[Vertex1];
+    if (!IsEmpty(First1)) {
+        Graph->Prev[First1] = Edge1;
+    }
+
+    Graph->Next[Edge1] = First1;
     Graph->First[Vertex1] = Edge1;
     Graph->Edges[Edge1] = Vertex2;
+    Graph->Prev[Edge1] = EMPTY;
 
-    Graph->Next[Edge2] = Graph->First[Vertex2];
+    //
+    // Insert the second edge.  If we've already seen this edge value, insert it
+    // into the previous edges array.
+    //
+
+    First2 = Graph->First[Vertex2];
+    if (!IsEmpty(First2)) {
+        Graph->Prev[First2] = Edge2;
+    }
+
+    Graph->Next[Edge2] = First2;
     Graph->First[Vertex2] = Edge2;
     Graph->Edges[Edge2] = Vertex1;
+    Graph->Prev[Edge2] = EMPTY;
+
+}
+
+_Use_decl_annotations_
+VOID
+GraphDeleteEdge(
+    PGRAPH Graph,
+    EDGE Edge
+    )
+/*++
+
+Routine Description:
+
+    This routine deletes an edge from the hypergraph.
+
+Arguments:
+
+    Graph - Supplies a pointer to the graph for which the edge is to be deleted.
+
+    Edge - Supplies the edge to delete from the graph.
+
+Return Value:
+
+    None.
+
+--*/
+{
+    EDGE Prev;
+    EDGE Next;
+    VERTEX Vertex;
+
+    Vertex = Graph->Edges[Edge];
+
+    Prev = Graph->Prev[Vertex];
+
+    if (IsEmpty(Prev)) {
+
+        //
+        // This is the initial edge.
+        //
+
+        Graph->First[Vertex] = Graph->Next[Edge];
+
+    } else {
+
+        //
+        // Not the initial edge.
+        //
+
+        Graph->Next[Prev] = Graph->Next[Edge];
+
+    }
+
+    Next = Graph->Next[Edge];
+
+    if (!IsEmpty(Next)) {
+
+        //
+        // Not at the end.
+        //
+
+        Graph->Prev[Next] = Prev;
+    }
 }
 
 _Use_decl_annotations_
@@ -1833,17 +2184,29 @@ Return Value:
 --*/
 {
     EDGE Edge = 0;
+    EDGE Edge2 = 0;
     EDGE PrevEdge;
     EDGE AbsEdge;
     VERTEX Vertex1;
     VERTEX Vertex2;
     BOOLEAN IsDegree1;
+    BOOLEAN IsDegree1B;
 
     //
     // Determine if the vertex has a degree of 1, and if so, obtain the edge.
     //
 
     IsDegree1 = GraphFindDegree1Edge(Graph, Vertex, &Edge);
+
+    IsDegree1B = IsDegree1V2(Graph, Vertex, &Edge2);
+
+    if (IsDegree1 != IsDegree1B) {
+        IsDegree1B = IsDegree1V2(Graph, Vertex, &Edge2);
+    }
+
+    if (IsDegree1 && IsDegree1B) {
+        ASSERT(Edge == Edge2);
+    }
 
     //
     // If this isn't a degree 1 edge, there's nothing left to do.
@@ -1887,6 +2250,8 @@ Return Value:
 
         RegisterEdgeDeletion(Graph, AbsEdge);
 
+        //GraphDeleteEdge(Graph, AbsEdge);
+
         //
         // Find the other vertex the edge is connecting.
         //
@@ -1901,6 +2266,14 @@ Return Value:
 
             AbsEdge = AbsoluteEdge(Graph, Edge, 1);
             Vertex2 = Graph->Edges[AbsEdge];
+        }
+
+        //
+        // If the second vertex is empty, break.
+        //
+
+        if (IsEmpty(Vertex2)) {
+            break;
         }
 
         //
@@ -1971,6 +2344,7 @@ Return Value:
     ULONG NumberOfEdges;
     ULONG NumberOfVertices;
     ULONG NumberOfEdgesDeleted;
+    ULONG AcyclicCount;
     PRTL_NUMBER_OF_SET_BITS RtlNumberOfSetBits;
 
     //
@@ -2013,6 +2387,14 @@ Return Value:
 
     NumberOfEdgesDeleted = RtlNumberOfSetBits(&Graph->DeletedEdges);
 
+    //
+    // Temporary assert to determine if the number of edges deleted will always
+    // meet our deleted edge count.  (If so, we can just test this value,
+    // instead of having to count the bitmap bits.)
+    //
+
+    ASSERT(NumberOfEdgesDeleted == Graph->DeletedEdgeCount);
+
     IsAcyclic = (NumberOfKeys == NumberOfEdgesDeleted);
 
     //
@@ -2031,13 +2413,45 @@ Return Value:
 
     ASSERT(IsAcyclic == IsAcyclicSlow);
 
-    //
-    // Temporary assert to determine if the number of edges deleted will always
-    // meet our deleted edge count.  (If so, we can just test this value,
-    // instead of having to count the bitmap bits.)
-    //
+    AcyclicCount = 0;
 
-    ASSERT(NumberOfEdgesDeleted == Graph->DeletedEdgeCount);
+#if 0
+    for (Edge = 0; Edge < NumberOfKeys; Edge++) {
+        EDGE Edge1;
+        EDGE Edge2;
+        EDGE Next1;
+        EDGE Next2;
+        EDGE Prev1;
+        EDGE Prev2;
+        EDGE First1;
+        EDGE First2;
+        VERTEX Vertex1;
+        VERTEX Vertex2;
+        BOOLEAN BothEmpty;
+        BOOLEAN FirstDegree1;
+        BOOLEAN SecondDegree1;
+
+        Edge1 = Edge;
+        Edge2 = Edge + Graph->NumberOfEdges;
+
+        Vertex1 = Graph->Edges[Edge1];
+        Vertex2 = Graph->Edges[Edge2];
+
+        First1 = Graph->First[Vertex1];
+        First2 = Graph->First[Vertex2];
+
+        Next1 = Graph->Next[Edge1];
+        Next2 = Graph->Next[Edge2];
+
+        Prev1 = Graph->Prev[Edge1];
+        Prev2 = Graph->Prev[Edge2];
+
+        BothEmpty = (IsEmpty(Edge1) && IsEmpty(Edge2));
+
+        FirstDegree1 = (!IsEmpty(First1) && IsEmpty(Next1));
+        SecondDegree1 = (!IsEmpty(First2) && IsEmpty(Next2));
+    }
+#endif
 
     //
     // Make a note that we're acyclic if applicable in the graph's flags.
@@ -2046,7 +2460,36 @@ Return Value:
     //
 
     if (IsAcyclic) {
+
         Graph->Flags.IsAcyclic = TRUE;
+
+    } else {
+
+        ULONG HighestDeletedEdges;
+        PPERFECT_HASH_TABLE_CONTEXT Context;
+
+        Context = Graph->Info->Context;
+
+        if (NumberOfEdgesDeleted > Context->HighestDeletedEdgesCount) {
+
+            //
+            // Register as the highest deleted edges count if applicable.
+            //
+
+            while (TRUE) {
+
+                HighestDeletedEdges = Context->HighestDeletedEdgesCount;
+
+                if (NumberOfEdgesDeleted <= HighestDeletedEdges) {
+                    break;
+                }
+
+                InterlockedCompareExchange(&Context->HighestDeletedEdgesCount,
+                                           NumberOfEdgesDeleted,
+                                           HighestDeletedEdges);
+
+            }
+        }
     }
 
     return IsAcyclic;
@@ -2076,7 +2519,11 @@ Return Value:
 
 --*/
 {
+    PRTL Rtl;
     VERTEX Vertex;
+    ULONG Depth;
+    ULONG MaximumDepth;
+    ULONG NumberOfSetBits;
 
     //
     // Invariant check: the acyclic flag should be set.  (Indicating that
@@ -2085,6 +2532,13 @@ Return Value:
     //
 
     ASSERT(Graph->Flags.IsAcyclic);
+
+    //
+    // Initialize the depth and maximum depth counters.
+    //
+
+    Depth = 0;
+    MaximumDepth = 0;
 
     //
     // Walk the graph and assign values.
@@ -2099,9 +2553,15 @@ Return Value:
             //
 
             Graph->Assigned[Vertex] = 0;
-            GraphTraverse(Graph, Vertex);
+            GraphTraverse(Graph, Vertex, &Depth, &MaximumDepth);
         }
     }
+
+    Rtl = Graph->Context->Rtl;
+    NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->VisitedVertices);
+
+    ASSERT(Graph->VisitedVerticesCount == NumberOfSetBits);
+    ASSERT(Graph->VisitedVerticesCount == Graph->NumberOfVertices);
 
     return;
 }
@@ -2257,7 +2717,8 @@ Return Value:
 
     if (GraphCheckEdge(Graph, Edge, Vertex1, Vertex2)) {
 
-        EdgeId = AbsoluteEdge(Graph, Edge, 0);
+        EdgeId = Edge;
+        //EdgeId = AbsoluteEdge(Graph, Edge, 0);
 
     } else {
 
@@ -2275,7 +2736,8 @@ Return Value:
 
         } while (!GraphCheckEdge(Graph, Edge, Vertex1, Vertex2));
 
-        EdgeId = AbsoluteEdge(Graph, Edge, 0);
+        //EdgeId = AbsoluteEdge(Graph, Edge, 0);
+        EdgeId = Edge;
     }
 
     return EdgeId;
@@ -2285,7 +2747,9 @@ _Use_decl_annotations_
 VOID
 GraphTraverse(
     PGRAPH Graph,
-    VERTEX Vertex
+    VERTEX Vertex,
+    PULONG Depth,
+    PULONG MaximumDepth
     )
 /*++
 
@@ -2301,17 +2765,38 @@ Arguments:
 
     Vertex - Supplies the vertex to traverse.
 
+    Depth - Supplies a pointer to a variable that is used to capture the call
+        stack depth of the recursive graph traversal.  This is incremented
+        on entry and decremented on exit.
+
+    MaximumDepth - Supplies a pointer to a variable that will be used to track
+        the maximum depth observed during recursive graph traversal.
+
 Return Value:
 
     None.
 
 --*/
 {
-    ULONG EdgeId;
-    ULONG FinalId;
-    ULONG ExistingId;
+    PRTL Rtl;
+    ULONG Bit;
+    //ULONG Temp;
+    LONG EdgeId;
+    //LONG NextId;
+    LONG ThisId;
+    LONG FinalId;
+    ULONG MaskedEdgeId;
+    ULONG MaskedThisId;
+    ULONG MaskedFinalId;
+    //LONG DeltaId;
+    LONG ExistingId;
+    LONG OriginalExistingId;
     VERTEX Neighbor;
+    //ULONG NumberOfSetBits;
     GRAPH_ITERATOR Iterator;
+    PPERFECT_HASH_TABLE Table;
+
+    ASSERT(!IsEmpty(Vertex));
 
     //
     // Register the vertex as visited.
@@ -2324,6 +2809,22 @@ Return Value:
     //
 
     Iterator = GraphNeighborsIterator(Graph, Vertex);
+
+    //
+    // Initialize aliases.
+    //
+
+    Rtl = Graph->Context->Rtl;
+    Table = Graph->Context->Table;
+
+    //
+    // Update the depth.
+    //
+
+    *Depth += 1;
+    if (*Depth > *MaximumDepth) {
+        *MaximumDepth = *Depth;
+    }
 
     while (TRUE) {
 
@@ -2347,17 +2848,181 @@ Return Value:
         //
 
         EdgeId = GraphEdgeId(Graph, Vertex, Neighbor);
-        ExistingId = Graph->Assigned[Vertex];
-        FinalId = EdgeId - ExistingId;
 
-        Graph->Assigned[Neighbor] = FinalId;
+        MASK_INDEX(EdgeId, &MaskedEdgeId);
+
+        OriginalExistingId = ExistingId = Graph->Assigned[Vertex];
+
+        ASSERT(ExistingId >= 0);
+
+//Retry:
+        ThisId = EdgeId - ExistingId;
+
+        MASK_INDEX(ThisId, &MaskedThisId);
+
+        ASSERT(MaskedThisId >= 0 && MaskedThisId <= Graph->NumberOfVertices);
+
+        if (ThisId < 0) {
+            //MASK_INDEX(ThisId, &ThisId);
+            NOTHING;
+        }
+
+        FinalId = EdgeId + ExistingId;
+
+        MASK_INDEX(FinalId, &MaskedFinalId);
+
+        //ASSERT(FinalId >= 0 && FinalId <= (LONG)Graph->NumberOfVertices);
+        ASSERT(MaskedFinalId >= 0 && MaskedFinalId <= Graph->NumberOfVertices);
+
+        Bit = MaskedFinalId + 1;
+        if (Bit >= Graph->NumberOfVertices) {
+            __debugbreak();
+            Bit = 0;
+        }
+
+        if (TestGraphBit(IndexBitmap, Bit)) {
+
+            Graph->Collisions++;
+
+            //ExistingId += 1;
+            //goto Retry;
+
+        } else {
+
+            SetGraphBit(IndexBitmap, Bit);
+
+        }
+
+        //NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->IndexBitmap);
+
+        Graph->Assigned[Neighbor] = (ULONG)MaskedThisId;
+
+        if (OriginalExistingId != ExistingId) {
+            //Graph->Assigned[Vertex] = ExistingId;
+            NOTHING;
+        }
 
         //
         // Recursively traverse the neighbor.
         //
 
-        GraphTraverse(Graph, Neighbor);
+        GraphTraverse(Graph, Neighbor, Depth, MaximumDepth);
+
+
+#if 0
+        NextId = 0;
+        DeltaId = 0;
+
+        EdgeId = GraphEdgeId(Graph, Vertex, Neighbor);
+        ExistingId = Graph->Assigned[Vertex];
+
+        if (EdgeId > ExistingId) {
+            FinalId = EdgeId - ExistingId;
+        } else {
+            FinalId = ExistingId - EdgeId;
+        }
+
+        Bit = FinalId + 1;
+        if (Bit >= Graph->NumberOfVertices) {
+            __debugbreak();
+            Bit = 0;
+        }
+
+        if (0 && TestGraphBit(IndexBitmap, Bit)) {
+
+            //__debugbreak();
+
+            NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+            ASSERT(NumberOfSetBits == 0);
+            Temp = Rtl->RtlFindSetBits(&Graph->AssignedBitmap, 1, 0);
+
+            NextId = Rtl->RtlFindClearBitsAndSet(&Graph->IndexBitmap, 1, Bit);
+
+            NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+            ASSERT(NumberOfSetBits == 0);
+            Temp = Rtl->RtlFindSetBits(&Graph->AssignedBitmap, 1, 0);
+
+            DeltaId = NextId - EdgeId;
+
+            EdgeId = NextId;
+            Bit = EdgeId + 1;
+            ExistingId -= DeltaId;
+
+            if (EdgeId > ExistingId) {
+                FinalId = EdgeId - ExistingId;
+            } else {
+                FinalId = ExistingId - EdgeId;
+            }
+            //FinalId = EdgeId - ExistingId;
+
+            Graph->Assigned[Vertex] = ExistingId;
+
+            NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+            ASSERT(NumberOfSetBits == 0);
+            Temp = Rtl->RtlFindSetBits(&Graph->AssignedBitmap, 1, 0);
+
+        } else {
+
+            SetGraphBit(IndexBitmap, Bit);
+
+        }
+
+        ASSERT(Neighbor <= Graph->NumberOfVertices);
+
+        NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+        ASSERT(NumberOfSetBits == 0);
+        Temp = Rtl->RtlFindSetBits(&Graph->AssignedBitmap, 1, 0);
+
+        Graph->Assigned[Neighbor] = (ULONG)FinalId;
+
+        NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+        ASSERT(NumberOfSetBits == 0);
+
+        //
+        // Recursively traverse the neighbor.
+        //
+
+        GraphTraverse(Graph, Neighbor, Depth, MaximumDepth);
+
+        NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+        ASSERT(NumberOfSetBits == 0);
+#endif
+
+#if 0
+        if (EdgeId < ExistingId) {
+            FinalId = ExistingId - EdgeId;
+        } else {
+            FinalId = EdgeId - ExistingId;
+        }
+
+        //ASSERT(FinalId >= 0 && FinalId <= (LONG)Graph->NumberOfVertices);
+
+        Bit = EdgeId + 1;
+
+        if (TestGraphBit(IndexBitmap, Bit)) {
+
+            NextId = RtlFindClearBitsAndSet(&Graph->IndexBitmap, 1, Bit);
+
+            DeltaId = NextId - FinalId;
+            ExistingId += DeltaId;
+            Graph->Assigned[Vertex] = ExistingId;
+
+            FinalId = NextId;
+            Bit = FinalId + 1;
+        }
+#endif
     }
+
+    goto End;
+
+Error:
+
+    __debugbreak();
+
+End:
+    *Depth -= 1;
+
+
 }
 
 _Use_decl_annotations_
@@ -2421,8 +3086,8 @@ Return Value:
         // Mask the individual vertices.
         //
 
-        MASK(Hash.LowPart, &Vertex1);
-        MASK(Hash.HighPart, &Vertex2);
+        MASK_HASH(Hash.LowPart, &Vertex1);
+        MASK_HASH(Hash.HighPart, &Vertex2);
 
         //
         // We can't have two vertices point to the same location.
@@ -2560,18 +3225,30 @@ Return Value:
 {
     PRTL Rtl;
     KEY Key;
+    KEY PreviousKey;
     PKEY Keys;
     EDGE Edge;
-    VERTEX Result;
+    ULONG Bit;
+    ULONG Index;
+    ULONG PrevIndex;
+    PULONG Values;
     VERTEX Vertex1;
     VERTEX Vertex2;
     VERTEX MaskedLow;
     VERTEX MaskedHigh;
+    VERTEX PrevVertex1;
+    VERTEX PrevVertex2;
+    VERTEX PrevMaskedLow;
+    VERTEX PrevMaskedHigh;
     PVERTEX Assigned;
     PGRAPH_INFO Info;
     ULONG NumberOfKeys;
     ULONG NumberOfAssignments;
+    ULONG Collisions = 0;
+    LONGLONG Combined;
+    LONGLONG PrevCombined;
     ULARGE_INTEGER Hash;
+    ULARGE_INTEGER PrevHash;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_CONTEXT Context;
 
@@ -2582,6 +3259,11 @@ Return Value:
     NumberOfKeys = Graph->NumberOfKeys;
     Keys = (PKEY)Table->Keys->BaseAddress;
     Assigned = Graph->Assigned;
+
+    NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+    ASSERT(NumberOfAssignments == 0);
+
+    Values = Graph->Values;
 
     //
     // Enumerate all keys in the input set and verify they can be resolved
@@ -2604,8 +3286,8 @@ Return Value:
         // Mask the high and low parts of the hash.
         //
 
-        MASK(Hash.LowPart, &MaskedLow);
-        MASK(Hash.HighPart, &MaskedHigh);
+        MASK_HASH(Hash.LowPart, &MaskedLow);
+        MASK_HASH(Hash.HighPart, &MaskedHigh);
 
         //
         // Extract the individual vertices.
@@ -2618,22 +3300,53 @@ Return Value:
         // Mask the result.
         //
 
-        Result = Vertex1 + Vertex2;
+        Combined = (LONGLONG)Vertex1 + (LONGLONG)Vertex2;
 
-        MASK(Result, &Result);
+        MASK_INDEX(Combined, &Index);
+
+        Bit = Index + 1;
 
         //
         // Make sure we haven't seen this bit before.
         //
 
-        ASSERT(!TestGraphBit(AssignedBitmap, Result));
+        if (TestGraphBit(AssignedBitmap, Bit)) {
+
+            //
+            // We've seen this index before!  Get the key that previously
+            // mapped to it.
+            //
+
+            PreviousKey = Values[Index];
+
+            SEEDED_HASH(PreviousKey, &PrevHash.QuadPart);
+
+            MASK_HASH(PrevHash.LowPart, &PrevMaskedLow);
+            MASK_HASH(PrevHash.HighPart, &PrevMaskedHigh);
+
+            PrevVertex1 = Assigned[MaskedLow];
+            PrevVertex2 = Assigned[MaskedHigh];
+
+            PrevCombined = (LONGLONG)PrevVertex1 + (LONGLONG)PrevVertex2;
+
+            MASK_INDEX(PrevCombined, &PrevIndex);
+
+            Collisions++;
+            //__debugbreak();
+        }
 
         //
-        // Set the bit.
+        // Set the bit and store this key in the underlying values array.
         //
 
-        SetGraphBit(AssignedBitmap, Result);
+        SetGraphBit(AssignedBitmap, Bit);
+        Values[Index] = Key;
+
+        //NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
+        //ASSERT(NumberOfAssignments == Edge + 1);
     }
+
+    ASSERT(Collisions == 0);
 
     NumberOfAssignments = Rtl->RtlNumberOfSetBits(&Graph->AssignedBitmap);
 
@@ -2691,20 +3404,20 @@ Return Value:
         goto Error;
     }
 
-    if (FAILED(Table->Vtbl->Mask(Table, Hash.LowPart, &MaskedLow))) {
+    if (FAILED(Table->Vtbl->MaskHash(Table, Hash.LowPart, &MaskedLow))) {
         goto Error;
     }
 
-    if (FAILED(Table->Vtbl->Mask(Table, Hash.HighPart, &MaskedHigh))) {
+    if (FAILED(Table->Vtbl->MaskHash(Table, Hash.HighPart, &MaskedHigh))) {
         goto Error;
     }
 
     Assigned = Table->Data;
     Vertex1 = Assigned[MaskedLow];
     Vertex2 = Assigned[MaskedHigh];
-    Combined = Vertex1 + Vertex2;
+    Combined = (ULONGLONG)Vertex1 + (ULONGLONG)Vertex2;
 
-    if (FAILED(Table->Vtbl->Mask(Table, Combined, &Masked))) {
+    if (FAILED(Table->Vtbl->MaskIndex(Table, Combined, &Masked))) {
         goto Error;
     }
 
@@ -2718,7 +3431,7 @@ Return Value:
 
 Error:
 
-    *Index = Masked;
+    *Index = 0;
     return E_FAIL;
 }
 

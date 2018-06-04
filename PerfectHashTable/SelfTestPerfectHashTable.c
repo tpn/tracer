@@ -176,7 +176,7 @@ Return Value:
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
                                 NumberOfPages,
-                                0,
+                                NULL,
                                 &WideOutputBufferSize,
                                 &WideOutputBuffer);
 
@@ -196,7 +196,7 @@ Return Value:
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
                                 NumberOfPages,
-                                0,
+                                NULL,
                                 &BufferSize,
                                 &BaseBuffer);
 
@@ -544,7 +544,7 @@ Return Value:
         // Table was loaded successfully from disk.  Test it.
         //
 
-        Success = Api->TestPerfectHashTable(Table);
+        Success = Api->TestPerfectHashTable(Table, TRUE);
 
         if (!Success) {
 
@@ -565,6 +565,12 @@ Return Value:
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
         WIDE_OUTPUT_RAW(WideOutput, L".\n");
 
+        if (Context->NumberOfTableResizeEvents > 0) {
+            WIDE_OUTPUT_RAW(WideOutput, L"Number of table resize events: ");
+            WIDE_OUTPUT_INT(WideOutput, Context->NumberOfTableResizeEvents);
+            WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        }
+
 #define STATS_INT(String, Name)                               \
         WIDE_OUTPUT_RAW(WideOutput, String);                  \
         WIDE_OUTPUT_INT(WideOutput, Table->Header->##Name##); \
@@ -579,6 +585,16 @@ Return Value:
         STATS_INT(L"Number of failed attempts: ", NumberOfFailedAttempts);
         STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);
 
+        STATS_QUAD(L"Number of keys: ", NumberOfKeys);
+        STATS_QUAD(L"Number of table elements (vertices): ",
+                   NumberOfTableElements);
+
+        STATS_INT(L"Seed 1: ", Seed1);
+        STATS_INT(L"Seed 2: ", Seed2);
+        STATS_INT(L"Seed 3: ", Seed3);
+        STATS_INT(L"Seed 4: ", Seed4);
+
+
         STATS_QUAD(L"Cycles to solve: ", SolveCycles);
         STATS_QUAD(L"Cycles to verify: ", VerifyCycles);
         STATS_QUAD(L"Cycles to prepare file: ", PrepareFileCycles);
@@ -589,6 +605,8 @@ Return Value:
         STATS_QUAD(L"Microseconds to prepare file: ", PrepareFileMicroseconds);
         STATS_QUAD(L"Microseconds to save file: ", SaveFileMicroseconds);
 
+
+        WIDE_OUTPUT_RAW(WideOutput, L"\n\n");
         WIDE_OUTPUT_FLUSH();
 
         //

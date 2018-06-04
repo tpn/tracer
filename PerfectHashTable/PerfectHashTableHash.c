@@ -29,8 +29,7 @@ PerfectHashTableSeededHash01(
 
 Routine Description:
 
-    This hash routine uses a combination of CRC32 and rotates.  It is loosely
-    inspired by the intel_hash64() routine.
+    This hash routine uses a combination of CRC32 and rotates.
 
 Arguments:
 
@@ -106,26 +105,6 @@ PerfectHashTableHash01(
     ULONG Input,
     PULONGLONG Hash
     )
-/*++
-
-Routine Description:
-
-    This hash routine uses a combination of CRC32 and rotates.  It is loosely
-    inspired by the intel_hash64() routine.
-
-Arguments:
-
-    Table - Supplies a pointer to the table for which the hash is being created.
-
-    Input - Supplies the input value to hash.
-
-    Masked - Receives two 32-bit hashes merged into a 64-bit value.
-
-Return Value:
-
-    S_OK on success.  If the two 32-bit hash values are identical, E_FAIL.
-
---*/
 {
     return PerfectHashTableSeededHash01(Table,
                                         Input,
@@ -337,7 +316,8 @@ PerfectHashTableSeededHash04(
 
 Routine Description:
 
-    This hash routine is based off version 2, with fewer rotates and xors.
+    This is the simplest possible hash I could think of, simply xor'ing the
+    input with each seed value.
 
 Arguments:
 

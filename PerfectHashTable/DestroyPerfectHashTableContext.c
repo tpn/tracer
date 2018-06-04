@@ -49,7 +49,10 @@ Return Value:
 --*/
 {
     PRTL Rtl;
+    BYTE Index;
+    BYTE NumberOfEvents;
     BOOLEAN Success;
+    PHANDLE Event;
     PALLOCATOR Allocator;
     PPERFECT_HASH_TABLE_CONTEXT Context;
 
@@ -89,28 +92,27 @@ Return Value:
     ASSERT(Context->SizeOfStruct == sizeof(*Context));
 
     //
-    // Release all the resources associated with the context.
+    // Loop through all the events associated with the context and check if
+    // they need to be closed.  (We do this instead of explicit calls to each
+    // named event (e.g. CloseHandle(Context->ShutdownEvent)) as it means we
+    // don't have to add new destructor code here every time we add an event.)
+    //
     //
 
-    if (Context->ShutdownEvent) {
-        CloseHandle(Context->ShutdownEvent);
-        Context->ShutdownEvent = NULL;
+    Event = (PHANDLE)&Context->FirstEvent;
+    NumberOfEvents = GetNumberOfContextEvents(Context);
+
+    for (Index = 0; Index < NumberOfEvents; Index++, Event++) {
+
+        if (*Event && *Event != INVALID_HANDLE_VALUE) {
+            CloseHandle(*Event);
+            *Event = NULL;
+        }
     }
 
-    if (Context->SucceededEvent) {
-        CloseHandle(Context->SucceededEvent);
-        Context->SucceededEvent = NULL;
-    }
-
-    if (Context->FailedEvent) {
-        CloseHandle(Context->FailedEvent);
-        Context->FailedEvent = NULL;
-    }
-
-    if (Context->CompletedEvent) {
-        CloseHandle(Context->CompletedEvent);
-        Context->CompletedEvent = NULL;
-    }
+    //
+    // Continue with cleanup of remaining resources.
+    //
 
     if (Context->ObjectNamesWideBuffer) {
         Allocator->FreePointer(Allocator->Context,

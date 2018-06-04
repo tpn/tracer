@@ -358,6 +358,15 @@ HRESULT
     );
 typedef PERFECT_HASH_TABLE_LOOKUP *PPERFECT_HASH_TABLE_LOOKUP;
 
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_DELETE)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Key,
+    _Out_opt_ PULONG PreviousValue
+    );
+typedef PERFECT_HASH_TABLE_DELETE *PPERFECT_HASH_TABLE_DELETE;
+
 //
 // Given a key, this routine returns the relative index of the key in the
 // underlying hash table.  This is guaranteed to be within the bounds of the
@@ -384,12 +393,21 @@ typedef PERFECT_HASH_TABLE_HASH *PPERFECT_HASH_TABLE_HASH;
 
 typedef
 HRESULT
-(NTAPI PERFECT_HASH_TABLE_MASK)(
+(NTAPI PERFECT_HASH_TABLE_MASK_HASH)(
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_ ULONG Input,
+    _Out_ PULONG Masked
+    );
+typedef PERFECT_HASH_TABLE_MASK_HASH *PPERFECT_HASH_TABLE_MASK_HASH;
+
+typedef
+HRESULT
+(NTAPI PERFECT_HASH_TABLE_MASK_INDEX)(
     _In_ PPERFECT_HASH_TABLE Table,
     _In_ ULONGLONG Input,
     _Out_ PULONG Masked
     );
-typedef PERFECT_HASH_TABLE_MASK *PPERFECT_HASH_TABLE_MASK;
+typedef PERFECT_HASH_TABLE_MASK_INDEX *PPERFECT_HASH_TABLE_MASK_INDEX;
 
 //
 // Loaded hash tables are reference counted using the AddRef()/Release() COM
@@ -423,9 +441,11 @@ typedef struct _PERFECT_HASH_TABLE_VTBL {
     PPERFECT_HASH_TABLE_RELEASE Release;
     PPERFECT_HASH_TABLE_INSERT Insert;
     PPERFECT_HASH_TABLE_LOOKUP Lookup;
+    PPERFECT_HASH_TABLE_DELETE Delete;
     PPERFECT_HASH_TABLE_INDEX Index;
     PPERFECT_HASH_TABLE_HASH Hash;
-    PPERFECT_HASH_TABLE_MASK Mask;
+    PPERFECT_HASH_TABLE_MASK_HASH MaskHash;
+    PPERFECT_HASH_TABLE_MASK_INDEX MaskIndex;
 } PERFECT_HASH_TABLE_VTBL;
 typedef PERFECT_HASH_TABLE_VTBL *PPERFECT_HASH_TABLE_VTBL;
 
@@ -480,7 +500,8 @@ typedef
 _Success_(return != 0)
 BOOLEAN
 (NTAPI TEST_PERFECT_HASH_TABLE)(
-    _In_ PPERFECT_HASH_TABLE Table
+    _In_ PPERFECT_HASH_TABLE Table,
+    _In_opt_ BOOLEAN DebugBreakOnFailure
     );
 typedef TEST_PERFECT_HASH_TABLE *PTEST_PERFECT_HASH_TABLE;
 
