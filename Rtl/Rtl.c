@@ -323,7 +323,7 @@ CreateBuffer(
     HANDLE ProcessHandle;
     ULONG ProtectionFlags;
     ULONG OldProtectionFlags;
-    LONG_INTEGER TotalNumberOfPages;
+    ULARGE_INTEGER TotalNumberOfPages;
     ULARGE_INTEGER AllocSizeInBytes;
     ULARGE_INTEGER UsableSizeInBytes;
 
@@ -356,7 +356,7 @@ CreateBuffer(
         *BufferAddress = NULL;
     }
 
-    TotalNumberOfPages.LongPart = (ULONG)NumberOfPages + 1;
+    TotalNumberOfPages.QuadPart = (ULONGLONG)NumberOfPages + 1;
 
     //
     // Convert total number of pages into total number of bytes (alloc size)
@@ -364,7 +364,7 @@ CreateBuffer(
     // size allowed by this routine).
     //
 
-    AllocSizeInBytes.QuadPart = TotalNumberOfPages.LongPart;
+    AllocSizeInBytes.QuadPart = TotalNumberOfPages.QuadPart;
     AllocSizeInBytes.QuadPart <<= (ULONGLONG)PAGE_SHIFT;
 
     ProtectionFlags = PAGE_READWRITE;
