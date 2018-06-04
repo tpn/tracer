@@ -4933,7 +4933,7 @@ BOOL
 (NTAPI CREATE_BUFFER)(
     _In_ struct _RTL *Rtl,
     _In_opt_ PHANDLE TargetProcessHandle,
-    _In_ USHORT NumberOfPages,
+    _In_ ULONG NumberOfPages,
     _In_opt_ PULONG AdditionalProtectionFlags,
     _Out_ PULONGLONG UsableBufferSizeInBytes,
     _Out_ PPVOID BufferAddress
@@ -4946,9 +4946,9 @@ BOOL
 (NTAPI CREATE_MULTIPLE_BUFFERS)(
     _In_ struct _RTL *Rtl,
     _In_opt_ PHANDLE TargetProcessHandle,
-    _In_ USHORT PageSize,
-    _In_ USHORT NumberOfBuffers,
-    _In_ USHORT NumberOfPagesPerBuffer,
+    _In_ ULONG PageSize,
+    _In_ ULONG NumberOfBuffers,
+    _In_ ULONG NumberOfPagesPerBuffer,
     _In_opt_ PULONG AdditionalProtectionFlags,
     _In_opt_ PULONG AdditionalAllocationTypeFlags,
     _Out_ PULONGLONG UsableBufferSizeInBytesPerBuffer,

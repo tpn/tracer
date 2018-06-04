@@ -623,7 +623,7 @@ Return Value:
     //
 
     AllocSizeInBytes.QuadPart = (
-        TotalNumberOfPages.QuadPart * (ULONGLONG)PageSize;
+        TotalNumberOfPages.QuadPart * (ULONGLONG)PageSize
     );
 
     ProtectionFlags = PAGE_READWRITE;
