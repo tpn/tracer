@@ -60,11 +60,11 @@ mainCRTStartup()
     PPWSTR ArgvW;
     const STRING Usage = RTL_CONSTANT_STRING(
         "Usage: PerfectHashTableSelfTest.exe <Test Data Directory> "
-        "<AlgorithmId (1)> "
-        "<HashFunctionId (1-4)> "
-        "<MaskFunctionId (1-4)> "
+        "<AlgorithmId> "
+        "<HashFunctionId> "
+        "<MaskFunctionId> "
         "<MaximumConcurrency (0-ncpu)> "
-        "<NumberOfTableElements (0..)>\n"
+        "[PauseBeforeExit (can be any character)]\n\n"
     );
     UNICODE_STRING Path;
     PPERFECT_HASH_TABLE_ANY_API AnyApi;
@@ -131,12 +131,11 @@ mainCRTStartup()
     );
 
     switch (NumberOfArguments) {
-        case 8:
-        case 7: {
+        case 7:
+        case 6: {
 
             PPSTR Arg;
             ULONG MaxConcurrency;
-            ULARGE_INTEGER NumberOfTableElements;
             PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
             PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
             PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
@@ -193,31 +192,18 @@ mainCRTStartup()
                 goto PrintUsage;
             }
 
-            //
-            // Extract number of table elements.
-            //
-
-            NumberOfTableElements.QuadPart = 0;
-            if (FAILED(Rtl->RtlCharToInteger(*Arg++,
-                                             10,
-                                             &NumberOfTableElements.LowPart))) {
-                goto PrintUsage;
-            }
-
-            if (NumberOfArguments == 8) {
+            if (NumberOfArguments == 7) {
                 PauseBeforeExit = TRUE;
             }
 
             Success = Api->SelfTestPerfectHashTable(Rtl,
                                                     Allocator,
                                                     AnyApi,
-                                                    &PerfectHashTableTestData,
                                                     &Path,
                                                     &MaxConcurrency,
                                                     AlgorithmId,
                                                     HashFunctionId,
-                                                    MaskFunctionId,
-                                                    &NumberOfTableElements);
+                                                    MaskFunctionId);
 
             ExitCode = (Success ? 0 : 1);
             break;

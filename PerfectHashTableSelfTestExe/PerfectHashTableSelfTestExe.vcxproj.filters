@@ -21,12 +21,6 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Rtl\__C_specific_handler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\PerfectHashTable\PerfectHashTableTestData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -36,9 +30,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Rtl\__C_specific_handler.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\PerfectHashTable\PerfectHashTableTestData.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

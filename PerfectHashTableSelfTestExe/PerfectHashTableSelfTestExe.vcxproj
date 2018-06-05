@@ -85,9 +85,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="..\PerfectHashTable\PerfectHashTableTestData.c">
-      <PrecompiledHeader />
-    </ClCompile>
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

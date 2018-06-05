@@ -486,13 +486,11 @@ BOOLEAN
     _In_ PRTL Rtl,
     _In_ PALLOCATOR Allocator,
     _In_ struct _PERFECT_HASH_TABLE_ANY_API *AnyApi,
-    _In_ struct _PERFECT_HASH_TABLE_TEST_DATA *TestData,
     _In_ PCUNICODE_STRING TestDataDirectory,
     _In_ PULONG MaximumConcurrency,
     _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
-    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
-    _In_opt_ PULARGE_INTEGER NumberOfTableElements
+    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId
     );
 typedef SELF_TEST_PERFECT_HASH_TABLE *PSELF_TEST_PERFECT_HASH_TABLE;
 

@@ -23,13 +23,11 @@ SelfTestPerfectHashTable(
     PRTL Rtl,
     PALLOCATOR Allocator,
     PPERFECT_HASH_TABLE_ANY_API AnyApi,
-    PPERFECT_HASH_TABLE_TEST_DATA TestData,
     PCUNICODE_STRING TestDataDirectory,
     PULONG MaximumConcurrency,
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
-    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
-    PULARGE_INTEGER NumberOfTableElements
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId
     )
 /*++
 
@@ -49,9 +47,6 @@ Arguments:
         this is verified by looking at the Api->SizeOfStruct field and ensuring
         it matches our expected size of the extended API structure.
 
-    TestData - Supplies a pointer to an initialized PERFECT_HASH_TABLE_TEST_DATA
-        structure.
-
     TestDataDirectory - Supplies a pointer to a UNICODE_STRING structure that
         represents a fully-qualified path of the test data directory.
 
@@ -68,12 +63,6 @@ Arguments:
     MaskFunctionId - Supplies the type of masking to use.
 
     HashFunctionId - Supplies the hash function to use.
-
-    NumberOfTableElements - Optionally supplies a pointer to a ULARGE_INTEGER
-        structure that, if non-zero, indicates the number of elements to assume
-        when sizing the hash table.  If a non-NULL pointer is supplied, it will
-        receive the final number of elements in the table if a solution could
-        be found.
 
 Return Value:
 
@@ -151,10 +140,6 @@ Return Value:
             return FALSE;
         }
 
-    }
-
-    if (!ARGUMENT_PRESENT(TestData)) {
-        return FALSE;
     }
 
     if (!ARGUMENT_PRESENT(TestDataDirectory)) {
@@ -495,16 +480,9 @@ Return Value:
                                               AlgorithmId,
                                               MaskFunctionId,
                                               HashFunctionId,
-                                              NumberOfTableElements,
+                                              NULL,
                                               Keys,
                                               &TablePath);
-
-        //
-        // Clear the NumberOfTableElements pointer after the first file, such
-        // that it doesn't interfere with subsequent file processing.
-        //
-
-        NumberOfTableElements->QuadPart = 0;
 
         if (!Success) {
 
