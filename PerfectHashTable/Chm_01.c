@@ -3391,10 +3391,16 @@ Return Value:
     //
 
     *Index = Masked;
-
     return S_OK;
 
 Error:
+
+    //
+    // Clear the caller's pointer and return failure.  We should only hit this
+    // point if the caller supplies a key that both: a) wasn't in the original
+    // input set, and b) happens to result in a hash value where both the high
+    // part and low part are identical, which is rare, but not impossible.
+    //
 
     *Index = 0;
     return E_FAIL;
