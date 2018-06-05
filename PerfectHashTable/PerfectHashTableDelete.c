@@ -33,7 +33,7 @@ Routine Description:
     returning 0 as the previous value.  That is, a caller can safely issue
     deletes of keys regardless of whether or not said keys were inserted first.
 
-    N.B. If key did not appear in the original set the hash table was created
+    N.B. If Key did not appear in the original set the hash table was created
          from, the behavior of this routine is undefined.  (In practice, the
          key will hash to either an existing key's location or an empty slot,
          so there is potential to corrupt the table in the sense that a
