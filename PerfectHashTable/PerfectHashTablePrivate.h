@@ -127,7 +127,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_KEYS {
     };
 
     //
-    // Fully-qualifed, NULL-terminated path of the source keys file.
+    // Fully-qualified, NULL-terminated path of the source keys file.
     //
 
     UNICODE_STRING Path;
