@@ -30,7 +30,7 @@ Routine Description:
     the Insert() routine.  If no insertion has taken place for this key, this
     routine guarantees to return 0 as the value.
 
-    N.B. If key did not appear in the original set the hash table was created
+    N.B. If Key did not appear in the original set the hash table was created
          from, the behavior of this routine is undefined.  (In practice, the
          value returned will be the value for some other key in the table that
          hashes to the same location -- or potentially an empty slot in the
