@@ -8,10 +8,10 @@ Module Name:
 
 Abstract:
 
-    This is the private header file for the PerfectHashTable component.  It defines
-    function typedefs and function declarations for all major (i.e. not local
-    to the module) functions available for use by individual modules within
-    this component.
+    This is the private header file for the PerfectHashTable component.  It
+    defines function typedefs and function declarations for all major (i.e. not
+    local to the module) functions available for use by individual modules
+    within this component.
 
 --*/
 
