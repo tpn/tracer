@@ -109,7 +109,9 @@ typedef struct _GRAPH_DIMENSIONS {
 
     //
     // Number of edges in the graph.  This corresponds to the number of keys
-    // in our input set.
+    // in our input set.  If modulus masking is active, the number of keys and
+    // the number of edges will be identical.  Otherwise, the number of edges
+    // will be the number of keys rounded up to a power of 2.
     //
 
     ULONG NumberOfEdges;
@@ -118,18 +120,16 @@ typedef struct _GRAPH_DIMENSIONS {
     // Total number of edges in the graph.  This will be twice the size of the
     // NumberOfEdges value above, due to the quirky way the underlying r-graph
     // algorithm captures two hash values in the same list and offsets the
-    // second set after the first.
+    // second set after the first, e.g.:
+    //
+    //      Edge2 = Edge1 + Graph->NumberOfEdges;
     //
 
     ULONG TotalNumberOfEdges;
 
     //
-    // Number of vertices in the graph.  This is currently calculated by taking
-    // the number of edges and multiplying it by 2.5.
-    //
-    // N.B. The chm.c algorithm uses 2.09 + doubles and ceils().  If we use
-    //      2.5 we can calculate that with bit shifts, thus avoiding the need
-    //      to link with a math library.
+    // Number of vertices in the graph.  This will vary based on the masking
+    // type.  It is doubled every time a graph resize event is encountered.
     //
 
     ULONG NumberOfVertices;
@@ -166,8 +166,8 @@ typedef GRAPH_DIMENSIONS *PGRAPH_DIMENSIONS;
 
 //
 // Define various memory offsets associated with a given graph structure.
-// This allows parallel worker threads to reset their local graph copy back
-// to the initial state each time they want to try a new random seed.
+// This allows parallel worker threads to reset their local GRAPH instance
+// back to the initial state each time they want to try a new random seed.
 //
 
 typedef struct _GRAPH_INFO {
@@ -300,10 +300,10 @@ typedef struct _GRAPH_INFO {
 typedef GRAPH_INFO *PGRAPH_INFO;
 
 //
-// Define the graph structure.  This represents an r-graph, and a hypergraph,
-// and an r-partite 2-uniform graph, and any other seemingly unlimited number
-// of names floating around in academia for what appears to be exactly the same
-// thing.
+// Define the graph structure.  This represents an r-graph, or a hypergraph,
+// or an r-partite 2-uniform graph, or any other seemingly unlimited number
+// of names floating around in academia for what appears to be exactly the
+// same thing.
 //
 
 typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
