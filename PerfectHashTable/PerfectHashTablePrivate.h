@@ -1136,7 +1136,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
 
     //
     // Capture statistics about the perfect hash table solution that can be
-    // useful during analysis and performance comparision.
+    // useful during analysis and performance comparison.
     //
 
     //
