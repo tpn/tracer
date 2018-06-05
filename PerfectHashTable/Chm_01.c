@@ -3301,6 +3301,11 @@ Routine Description:
 
     Looks up given key in a perfect hash table and returns its index.
 
+    N.B. If Key did not appear in the original set the hash table was created
+         from, the behavior of this routine is undefined.  (In practice, the
+         key will hash to either an existing key's location or an empty slot,
+         so there is potential for returning a non-unique index.)
+
 Arguments:
 
     Table - Supplies a pointer to the table for which the key lookup is to be
@@ -3308,7 +3313,9 @@ Arguments:
 
     Key - Supplies the key to look up.
 
-    Index - Receives the index associated with this key.
+    Index - Receives the index associated with this key.  The index will be
+        between 0 and NumberOfKeys-1, and can be safely used to offset directly
+        into an appropriately sized array (e.g. Table->Values[]).
 
 Return Value:
 
@@ -3329,9 +3336,20 @@ Return Value:
     ULONGLONG Combined;
     ULARGE_INTEGER Hash;
 
+    //
+    // Hash the incoming key into the 64-bit representation, which is two
+    // 32-bit ULONGs in disguise, each one driven by a separate seed value.
+    //
+
     if (FAILED(Table->Vtbl->Hash(Table, Key, &Hash.QuadPart))) {
         goto Error;
     }
+
+    //
+    // Mask each hash value such that it falls within the confines of the
+    // number of vertices.  That is, make sure the value is between 0 and
+    // Table->NumberOfVertices-1.
+    //
 
     if (FAILED(Table->Vtbl->MaskHash(Table, Hash.LowPart, &MaskedLow))) {
         goto Error;
@@ -3341,9 +3359,24 @@ Return Value:
         goto Error;
     }
 
+    //
+    // Obtain the corresponding vertex values for the masked high and low hash
+    // values.  These are derived from the "assigned" array that we construct
+    // during the creation routine's assignment step (GraphAssign()).
+    //
+
     Assigned = Table->Data;
+
     Vertex1 = Assigned[MaskedLow];
     Vertex2 = Assigned[MaskedHigh];
+
+    //
+    // Combine the two values, then perform the index masking operation, such
+    // that our final index into the array falls within the confines of the
+    // number of edges, or keys, in the table.  That is, make sure the index
+    // value is between 0 and Table->Keys->NumberOfElements-1.
+    //
+
     Combined = (ULONGLONG)Vertex1 + (ULONGLONG)Vertex2;
 
     if (FAILED(Table->Vtbl->MaskIndex(Table, Combined, &Masked))) {
@@ -3351,7 +3384,10 @@ Return Value:
     }
 
     //
-    // Update the caller's pointer and return success.
+    // Update the caller's pointer and return success.  The resulting index
+    // value represents the array offset index for this given key in the
+    // underlying table, and is guaranteed to be unique amongst the original
+    // keys in the input set.
     //
 
     *Index = Masked;
