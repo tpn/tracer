@@ -440,7 +440,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     PEDGE Next;
 
     //
-    // Array of vertices.
+    // Array of vertices.  Number of elements is governed by the
+    // NumberOfVertices field.
     //
 
     PVERTEX First;
@@ -528,7 +529,12 @@ typedef GRAPH *PGRAPH;
 
 //
 // Define a helper macro for hashing keys during graph creation.  Assumes a
-// variable named Graph is in scope.
+// variable named Graph is in scope.  We can't use the Table->Vtbl->Hash()
+// vtbl function during graph creation because it obtains the seed data
+// from the table header -- which is the appropriate place to find it once
+// we're dealing with a previously-created table that has been loaded, but
+// won't have a value during the graph solving step because the seed data
+// is located in the graph itself.
 //
 
 #define SEEDED_HASH(Key, Result)                             \

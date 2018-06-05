@@ -467,9 +467,14 @@ RetryWithLargerTableSize:
     );
 
     //
-    // Capture the number of bitmaps here, where it's close to the two lines
-    // above that indicate how many bitmaps we're dealing with.  The number
-    // of bitmaps accounted for above should match this number.
+    // Capture the number of bitmaps here, where it's close to the lines above
+    // that indicate how many bitmaps we're dealing with.  The number of bitmaps
+    // accounted for above should match this number.  Visually confirm this any
+    // time a new bitmap buffer is accounted for.
+    //
+    // N.B. We ASSERT() in InitializeGraph() if we detect a mismatch between
+    //      Info->NumberOfBitmaps and a local counter incremented each time
+    //      we initialize a bitmap.
     //
 
     NumberOfBitmaps = 4;
