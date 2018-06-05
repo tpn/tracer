@@ -632,9 +632,9 @@ LoadPerfectHashTableApi(
 
 Routine Description:
 
-    Loads the string table module and resolves all API functions for either
-    the PERFECT_HASH_TABLE_API or PERFECT_HASH_TABLE_API_EX structure.  The
-    desired API is indicated by the SizeOfAnyApi parameter.
+    Loads the perfect hash table module and resolves all API functions for
+    either the PERFECT_HASH_TABLE_API or PERFECT_HASH_TABLE_API_EX structure.
+    The desired API is indicated by the SizeOfAnyApi parameter.
 
     Example use:
 
