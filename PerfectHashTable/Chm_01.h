@@ -17,6 +17,25 @@ Abstract:
 #include "stdafx.h"
 
 //
+// Define the threshold for how many attempts need to be made at finding a
+// perfect hash solution before we double our number of vertices and try again.
+//
+// N.B. 100 is quite generous; normally, solutions are found on average within
+//      3 attempts, and there's a 99.9% chance a solution will be found by the
+//      18th attempt.
+//
+
+#define GRAPH_SOLVING_ATTEMPTS_THRESHOLD 100
+
+//
+// Define a limit for how many times the table resizing will be attempted before
+// giving up.  For large table sizes and large concurrency values, note that we
+// may hit memory limits before we hit this resize limit.
+//
+
+#define GRAPH_SOLVING_RESIZE_TABLE_LIMIT 10
+
+//
 // Define the primitive key, edge and vertex types and pointers to said types.
 //
 
@@ -238,6 +257,7 @@ typedef struct _GRAPH_INFO {
     ULONGLONG FirstSizeInBytes;
     ULONGLONG PrevSizeInBytes;
     ULONGLONG AssignedSizeInBytes;
+    ULONGLONG ValuesSizeInBytes;
 
     //
     // Deleted edges bitmap buffer size.
@@ -256,6 +276,12 @@ typedef struct _GRAPH_INFO {
     //
 
     ULONGLONG AssignedBitmapBufferSizeInBytes;
+
+    //
+    // Index bitmap buffer size.
+    //
+
+    ULONGLONG IndexBitmapBufferSizeInBytes;
 
     //
     // The allocation size of the graph, including structure size and all
@@ -305,7 +331,17 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
 
     PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
 
+    //
+    // Duplicate the number of keys, as this is also frequently referenced.
+    //
+
     ULONG NumberOfKeys;
+
+    //
+    // Structure size, in bytes.
+    //
+
+    _Field_range_(== , sizeof(struct _GRAPH)) ULONG SizeOfStruct;
 
     //
     // Graph flags.
@@ -355,6 +391,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     //
 
     ULONG VisitedVerticesCount;
+
+    //
+    // Capture collisions during assignment step.
+    //
+
+    ULONG Collisions;
 
     //
     // Inline the GRAPH_DIMENSIONS structure.  This is available from the
@@ -419,6 +461,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     PVERTEX Assigned;
 
     //
+    // Array of values indexed by the offsets in the Assigned array.  This
+    // essentially allows us to simulate a loaded table that supports the
+    // Insert(), Index() and Lookup() routines as part of graph validation.
+    //
+
+    PULONG Values;
+
+    //
     // Bitmap used to capture deleted edges as part of the acyclic detection
     // stage.  The SizeOfBitMap will reflect TotalNumberOfEdges.
     //
@@ -437,6 +487,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH {
     //
 
     RTL_BITMAP AssignedBitmap;
+
+    //
+    // Bitmap used to track indices during the assignment step.
+    //
+
+    RTL_BITMAP IndexBitmap;
 
     //
     // Capture the seeds used for each hash function employed by the graph.
@@ -598,6 +654,7 @@ VOID
 typedef GRAPH_CYCLIC_DELETE_EDGE *PGRAPH_CYCLIC_DELETE_EDGE;
 
 typedef
+_Success_(return != 0)
 BOOLEAN
 (NTAPI GRAPH_FIND_DEGREE1_EDGE)(
     _In_ PGRAPH Graph,
@@ -607,6 +664,7 @@ BOOLEAN
 typedef GRAPH_FIND_DEGREE1_EDGE *PGRAPH_FIND_DEGREE1_EDGE;
 
 typedef
+_Check_return_
 BOOLEAN
 (NTAPI IS_GRAPH_ACYCLIC)(
     _In_ PGRAPH Graph
@@ -614,6 +672,7 @@ BOOLEAN
 typedef IS_GRAPH_ACYCLIC *PIS_GRAPH_ACYCLIC;
 
 typedef
+_Check_return_
 GRAPH_ITERATOR
 (NTAPI GRAPH_NEIGHBORS_ITERATOR)(
     _In_ PGRAPH Graph,
@@ -661,7 +720,9 @@ typedef
 VOID
 (NTAPI GRAPH_TRAVERSE)(
     _In_ PGRAPH Graph,
-    _In_ EDGE Edge
+    _In_ EDGE Edge,
+    _Inout_ PULONG Depth,
+    _Inout_ PULONG MaximumDepth
     );
 typedef GRAPH_TRAVERSE *PGRAPH_TRAVERSE;
 
@@ -700,12 +761,12 @@ AbsoluteEdge(
 
     }
 
-    AbsEdge = (MaskedEdge + (Index * NumberOfEdges));
+    AbsEdge = (MaskedEdge + (Index * Graph->NumberOfEdges));
     return AbsEdge;
 }
 
 #define TestGraphBit(Name, BitNumber) \
-    BitTest((PLONG)Graph->##Name##.Buffer, BitNumber)
+    BitTest64((PLONGLONG)Graph->##Name##.Buffer, (LONGLONG)BitNumber)
 
 FORCEINLINE
 BOOLEAN
@@ -714,7 +775,7 @@ IsDeletedEdge(
     _In_ EDGE Edge
     )
 {
-    return TestGraphBit(DeletedEdges, Edge);
+    return TestGraphBit(DeletedEdges, Edge + 1);
 }
 
 FORCEINLINE
@@ -724,11 +785,11 @@ IsVisitedVertex(
     _In_ VERTEX Vertex
     )
 {
-    return TestGraphBit(VisitedVertices, Vertex);
+    return TestGraphBit(VisitedVertices, Vertex + 1);
 }
 
 #define SetGraphBit(Name, BitNumber) \
-    BitTestAndSet((PLONG)Graph->##Name##.Buffer, BitNumber)
+    BitTestAndSet64((PLONGLONG)Graph->##Name##.Buffer, (LONGLONG)BitNumber)
 
 FORCEINLINE
 VOID
@@ -737,9 +798,14 @@ RegisterEdgeDeletion(
     _In_ EDGE Edge
     )
 {
-    SetGraphBit(DeletedEdges, Edge);
+    //
+    // We add 1 to the edge to account for the fact that they're 0-based, but
+    // the bitmaps are 1-based.
+    //
+
+    SetGraphBit(DeletedEdges, Edge + 1);
     Graph->DeletedEdgeCount++;
-    ASSERT(Graph->DeletedEdgeCount <= Graph->NumberOfKeys);
+    ASSERT(Graph->DeletedEdgeCount <= Graph->TotalNumberOfEdges);
 }
 
 FORCEINLINE
@@ -749,7 +815,12 @@ RegisterVertexVisit(
     _In_ VERTEX Vertex
     )
 {
-    SetGraphBit(VisitedVertices, Vertex);
+    //
+    // We add 1 to the vertex to account for the fact that they're 0-based, but
+    // the bitmaps are 1-based.
+    //
+
+    SetGraphBit(VisitedVertices, Vertex + 1);
     Graph->VisitedVerticesCount++;
     ASSERT(Graph->VisitedVerticesCount <= Graph->NumberOfVertices);
 }
@@ -780,93 +851,48 @@ GraphCheckEdge(
     return FALSE;
 }
 
+//
+// This is an alternate IsDegree1()-type implementation that was being
+// experimented with.  It is a closer match to the algorithm described in
+// the original paper (versus using the bitmaps, as the cmph project does).
+// It is not currently used.
+//
+
+#if 0
 FORCEINLINE
-ULONGLONG
-HashKey_01(
+BOOLEAN
+IsDegree1V2(
     _In_ PGRAPH Graph,
-    _In_ ULONG Key
+    _In_ VERTEX Vertex,
+    _Out_opt_ PEDGE Edge
     )
 {
-    ULONG Vertex1;
-    ULONG Vertex2;
-    ULONG NumberOfVertices = Graph->NumberOfVertices;
-    ULARGE_INTEGER Result;
+    EDGE Next;
+    EDGE First;
+    BOOLEAN IsDegree1;
 
-    Vertex1 = _mm_crc32_u32(Graph->Seed1, Key);
-    Vertex1 %= NumberOfVertices;
+    if (IsEmpty(Vertex)) {
+        return FALSE;
+    }
 
-    Vertex2 = _mm_crc32_u32(Graph->Seed2, Key);
-    Vertex2 %= NumberOfVertices;
+    First = Graph->First[Vertex];
 
-    if (Vertex1 == Vertex2) {
-        if (++Vertex2 >= NumberOfVertices) {
-            Vertex2 = 0;
+    if (IsEmpty(First)) {
+        return FALSE;
+    }
+
+    Next = Graph->Next[First];
+
+    IsDegree1 = IsEmpty(Next);
+
+    if (IsDegree1) {
+        if (ARGUMENT_PRESENT(Edge)) {
+            *Edge = First;
         }
     }
 
-    if (Vertex1 == Vertex2) {
-        return 0;
-    }
-
-    Result.LowPart = Vertex1;
-    Result.HighPart = Vertex2;
-
-    return Result.QuadPart;
+    return IsDegree1;
 }
-
-FORCEINLINE
-ULONGLONG
-HashKey_02(
-    _In_ PGRAPH Graph,
-    _In_ ULONG Key
-    )
-{
-    ULONG A;
-    ULONG B;
-    ULONG C;
-    ULONG D;
-    ULONG Seed1;
-    ULONG Seed2;
-    ULONG Seed3;
-    ULONG Vertex1;
-    ULONG Vertex2;
-    ULONG NumberOfVertices;
-    ULARGE_INTEGER Result;
-
-    //
-    // Initialize aliases.
-    //
-
-    Seed1 = Graph->Seed1;
-    Seed2 = Graph->Seed2;
-    Seed3 = Graph->Seed3;
-    NumberOfVertices = Graph->NumberOfVertices;
-
-    //
-    // Calculate the individual hash parts.
-    //
-
-    A = _mm_crc32_u32(Seed1, Key);
-    B = _mm_crc32_u32(Seed2, _rotl(Key, 15));
-    C = Seed3 ^ Key;
-    D = _mm_crc32_u32(B, C);
-
-    Vertex1 = A;
-    Vertex2 = D;
-
-    Vertex1 %= NumberOfVertices;
-    Vertex2 %= NumberOfVertices;
-
-    if (Vertex1 == Vertex2) {
-        return 0;
-    }
-
-    Result.LowPart = Vertex1;
-    Result.HighPart = Vertex2;
-
-    return Result.QuadPart;
-}
-
-#define HashKey HashKey_02
+#endif
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

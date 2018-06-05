@@ -50,11 +50,25 @@ const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[];
 const PPERFECT_HASH_TABLE_INDEX IndexRoutines[];
 
 //
-// Declare an array of hash routines.  This is intended to be indexed by the
-// PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
+// Declare an array of hash routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
 //
 
 const PPERFECT_HASH_TABLE_HASH HashRoutines[];
+
+//
+// Declare an array of hash mask routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_MASK_HASH MaskHashRoutines[];
+
+//
+// Declare an array of index mask routines.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
+//
+
+const PPERFECT_HASH_TABLE_MASK_INDEX MaskIndexRoutines[];
 
 //
 // Declare an array of seeded hash routines.  This is intended to be indexed by the
@@ -62,13 +76,6 @@ const PPERFECT_HASH_TABLE_HASH HashRoutines[];
 //
 
 const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[];
-
-//
-// Declare an array of mask routines.  This is intended to be indexed by the
-// PERFECT_HASH_TABLE_MASK_FUNCTION_ID enumeration.
-//
-
-const PPERFECT_HASH_TABLE_MASK MaskRoutines[];
 
 //
 // Helper inline routine for initializing the extended vtbl interface.
@@ -85,9 +92,11 @@ InitializeExtendedVtbl(
     Vtbl->Release = PerfectHashTableRelease;
     Vtbl->Insert = PerfectHashTableInsert;
     Vtbl->Lookup = PerfectHashTableLookup;
+    Vtbl->Delete = PerfectHashTableDelete;
     Vtbl->Index = IndexRoutines[Table->AlgorithmId];
     Vtbl->Hash = HashRoutines[Table->HashFunctionId];
-    Vtbl->Mask = MaskRoutines[Table->MaskFunctionId];
+    Vtbl->MaskHash = MaskHashRoutines[Table->MaskFunctionId];
+    Vtbl->MaskIndex = MaskIndexRoutines[Table->MaskFunctionId];
     Vtbl->SeededHash = SeededHashRoutines[Table->HashFunctionId];
     Table->Vtbl = Vtbl;
 }
@@ -110,8 +119,53 @@ const PGET_VTBL_EX_SIZE GetVtblExSizeRoutines[];
 
 const PCUNICODE_STRING ContextObjectPrefixes[];
 
-const USHORT NumberOfContextEventPrefixes;
-const USHORT NumberOfContextObjectPrefixes;
+const BYTE NumberOfContextEventPrefixes;
+const BYTE NumberOfContextObjectPrefixes;
+
+//
+// Helper inline function for programmatically determining how many events
+// are present in the context based on the FirstEvent and LastEvent addresses.
+// Used by CreatePerfectHashTableContext() and DestroyPerfectHashTableContext().
+//
+
+FORCEINLINE
+BYTE
+GetNumberOfContextEvents(
+    _In_ PPERFECT_HASH_TABLE_CONTEXT Context
+    )
+{
+    BYTE NumberOfEvents;
+
+    //
+    // Calculate the number of event handles based on the first and last event
+    // indicators in the context structure.  The additional sizeof(HANDLE)
+    // accounts for the fact that we're going from 0-based address offsets
+    // to 1-based counts.
+    //
+
+    NumberOfEvents = (BYTE)(
+
+        (ULONG_PTR)(
+
+            sizeof(HANDLE) +
+
+            RtlOffsetFromPointer(
+                &Context->LastEvent,
+                &Context->FirstEvent
+            )
+
+        ) / (ULONG_PTR)sizeof(HANDLE)
+    );
+
+    //
+    // Sanity check the number of events matches the number of event prefixes.
+    //
+
+    ASSERT(NumberOfEvents == NumberOfContextEventPrefixes);
+
+    return NumberOfEvents;
+}
+
 
 #ifdef __cplusplus
 }; // extern "C" {

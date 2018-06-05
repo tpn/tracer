@@ -15,6 +15,8 @@ Abstract:
 
 #include "stdafx.h"
 
+CREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
+
 _Use_decl_annotations_
 BOOLEAN
 CreatePerfectHashTable(
@@ -89,22 +91,30 @@ Return Value:
     PWSTR Source;
     PBYTE Buffer;
     PWSTR PathBuffer;
+    ULONG Key;
+    ULONG Index;
     ULONG Result;
+    ULONGLONG Bit;
     ULONG ShareMode;
     ULONG LastError;
+    ULONG NumberOfKeys;
     ULONG DesiredAccess;
-    ULONG FlagsAndAttributes;
-    ULONG IncomingPathBufferSizeInBytes;
+    ULONG NumberOfSetBits;
     ULONG InfoMappingSize;
+    ULONG FlagsAndAttributes;
+    PLONGLONG BitmapBuffer;
     USHORT VtblExSize;
     PVOID BaseAddress;
-    SYSTEM_INFO SystemInfo;
     HANDLE FileHandle;
     HANDLE MappingHandle;
+    HANDLE ProcessHandle;
+    SYSTEM_INFO SystemInfo;
     ULARGE_INTEGER AllocSize;
     ULONG_INTEGER PathBufferSize;
-    ULONG_INTEGER InfoStreamPathBufferSize;
+    ULONGLONG KeysBitmapBufferSize;
+    ULONG IncomingPathBufferSizeInBytes;
     ULONG_INTEGER AlignedPathBufferSize;
+    ULONG_INTEGER InfoStreamPathBufferSize;
     ULONG_INTEGER AlignedInfoStreamPathBufferSize;
     ULARGE_INTEGER NumberOfTableElements;
     PPERFECT_HASH_TABLE_VTBL_EX Vtbl;
@@ -124,8 +134,36 @@ Return Value:
         return FALSE;
     }
 
-    if (!ARGUMENT_PRESENT(Keys)) {
+    if (!ARGUMENT_PRESENT(Context)) {
+
         return FALSE;
+
+    } else if (Context->Table) {
+
+        //
+        // We don't support a context being used more than once at the moment.
+        // If it has been used before, Context->Table will have a value, and
+        // thus, we need to error out.
+        //
+
+        return FALSE;
+    }
+
+    if (!ARGUMENT_PRESENT(Keys)) {
+
+        return FALSE;
+
+    } else {
+
+        //
+        // Ensure the number of keys is within our maximum tested limit.
+        //
+
+        if (Keys->NumberOfElements.QuadPart > MAXIMUM_NUMBER_OF_KEYS) {
+
+            return FALSE;
+
+        }
     }
 
     if (!IsValidPerfectHashTableMaskFunctionId(MaskFunctionId)) {
@@ -145,16 +183,6 @@ Return Value:
 
         if (NumberOfTableElements.QuadPart > 0) {
 
-            //
-            // The masking type needs to be modulus based if a caller provides
-            // a custom table size.  This is because the other types of masking
-            // require very specific powers-of-2 sizes for internal structures.
-            //
-
-            if (!IsModulusMasking(MaskFunctionId)) {
-                return FALSE;
-            }
-
             if (NumberOfTableElements.QuadPart <
                 Keys->NumberOfElements.QuadPart) {
 
@@ -165,6 +193,10 @@ Return Value:
                 return FALSE;
             }
         }
+    } else {
+
+        NumberOfTableElements.QuadPart = 0;
+
     }
 
     if (ARGUMENT_PRESENT(HashTablePath) &&
@@ -349,7 +381,7 @@ Return Value:
         //
 
         Dest = Table->Path.Buffer;
-        Dest += (Keys->Path.MaximumLength >> 1) - 5;
+        Dest += (Keys->Path.MaximumLength >> 1) - 5ULL;
 
         ASSERT(*Dest == L'k');
         ASSERT(*(Dest - 1) == L'.');
@@ -414,17 +446,6 @@ Return Value:
     }
 
     *Dest = L'\0';
-
-    //
-    // Carve out the vtbl from the final chunk of memory remaining.
-    //
-
-    Vtbl = Table->Vtbl = (PPERFECT_HASH_TABLE_VTBL_EX)Buffer;
-
-    //
-    // Fill out the vtbl as best we can.
-    //
-
 
     //
     // We've finished initializing our two unicode string buffers for the
@@ -606,6 +627,68 @@ Return Value:
     );
 
     //
+    // Allocate a 512MB buffer for the keys bitmap.
+    //
+
+    KeysBitmapBufferSize = ((1ULL << 32ULL) >> 3ULL);
+
+    //
+    // Try a large page allocation for the bitmap buffer.
+    //
+
+    ProcessHandle = GetCurrentProcess();
+
+    BaseAddress = Rtl->TryLargePageVirtualAllocEx(ProcessHandle,
+                                                  NULL,
+                                                  KeysBitmapBufferSize,
+                                                  MEM_COMMIT,
+                                                  PAGE_READWRITE);
+
+    Table->KeysBitmap.Buffer = (PULONG)BaseAddress;
+
+    if (!BaseAddress) {
+
+        //
+        // Failed to create a bitmap buffer, abort.
+        //
+
+        LastError = GetLastError();
+        goto Error;
+    }
+
+    //
+    // Initialize the keys bitmap.
+    //
+
+    Table->KeysBitmap.SizeOfBitMap = (ULONG)-1;
+    BitmapBuffer = (PLONGLONG)Table->KeysBitmap.Buffer;
+
+    ASSERT(!Keys->NumberOfElements.HighPart);
+
+    NumberOfKeys = Keys->NumberOfElements.LowPart;
+
+    //
+    // Loop through all the keys, obtain the bitmap bit representation, verify
+    // that the bit hasn't been set yet, and set it.
+    //
+
+    for (Index = 0; Index < NumberOfKeys; Index++) {
+
+        Key = Keys->Keys[Index];
+        Bit = Key + 1;
+
+        ASSERT(!BitTestAndSet64(BitmapBuffer, Bit));
+
+    }
+
+    //
+    // Count all bits set.  It should match the number of keys.
+    //
+
+    NumberOfSetBits = Rtl->RtlNumberOfSetBits(&Table->KeysBitmap);
+    ASSERT(NumberOfSetBits == NumberOfKeys);
+
+    //
     // Common initialization is complete, dispatch remaining work to the
     // algorithm's creation routine.
     //
@@ -616,22 +699,11 @@ Return Value:
     }
 
     //
-    // Invariant check: if the modulus masking routine has been requested,
-    // Table->Size should be set.  Otherwise, Table->Shift should be set.
-    //
-
-    if (MaskFunctionId == PerfectHashTableModulusMaskFunctionId) {
-        ASSERT(Table->Size);
-    } else {
-        ASSERT(Table->Shift);
-    }
-
-    //
     // Update the caller's number of table elements pointer, if applicable.
     //
 
     if (ARGUMENT_PRESENT(NumberOfTableElementsPointer)) {
-        NumberOfTableElementsPointer->QuadPart = Table->Size;
+        NumberOfTableElementsPointer->QuadPart = Table->HashSize;
     }
 
     //

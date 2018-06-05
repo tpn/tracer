@@ -101,6 +101,7 @@
     <ClCompile Include="DestroyPerfectHashTableKeys.c" />
     <ClCompile Include="LoadPerfectHashTable.c" />
     <ClCompile Include="LoadPerfectHashTableKeys.c" />
+    <ClCompile Include="PerfectHashTableDelete.c" />
     <ClCompile Include="PerfectHashTableHash.c" />
     <ClCompile Include="PerfectHashTableInsert.c" />
     <ClCompile Include="PerfectHashTableLookup.c" />

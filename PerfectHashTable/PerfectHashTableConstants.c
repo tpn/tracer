@@ -61,14 +61,14 @@ const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[] = {
 };
 
 //
-// Define the array of mask routines.
+// Define the array of hash mask routines.
 //
 
-const PPERFECT_HASH_TABLE_MASK MaskRoutines[] = {
+const PPERFECT_HASH_TABLE_MASK_HASH MaskHashRoutines[] = {
     NULL,
-    PerfectHashTableMaskModulus,
-    PerfectHashTableMaskAnd,
-    PerfectHashTableMaskXorAnd,
+    PerfectHashTableMaskHashModulus,
+    PerfectHashTableMaskHashAnd,
+    PerfectHashTableMaskHashXorAnd,
 
     //
     // The PerfectHashTableFoldAutoMaskFunctionId slot is next.  This is a
@@ -82,9 +82,31 @@ const PPERFECT_HASH_TABLE_MASK MaskRoutines[] = {
 
     NULL,
 
-    PerfectHashTableMaskFoldOnce,
-    PerfectHashTableMaskFoldTwice,
-    PerfectHashTableMaskFoldThrice,
+    PerfectHashTableMaskHashFoldOnce,
+    PerfectHashTableMaskHashFoldTwice,
+    PerfectHashTableMaskHashFoldThrice,
+    NULL
+};
+
+//
+// Define the array of index mask routines.
+//
+
+const PPERFECT_HASH_TABLE_MASK_INDEX MaskIndexRoutines[] = {
+    NULL,
+    PerfectHashTableMaskIndexModulus,
+    PerfectHashTableMaskIndexAnd,
+    PerfectHashTableMaskIndexXorAnd,
+
+    //
+    // See above description regarding the following NULL slot.
+    //
+
+    NULL,
+
+    PerfectHashTableMaskIndexFoldOnce,
+    PerfectHashTableMaskIndexFoldTwice,
+    PerfectHashTableMaskIndexFoldThrice,
     NULL
 };
 
@@ -124,6 +146,9 @@ const UNICODE_STRING ContextFailedEventPrefix =
 const UNICODE_STRING ContextCompletedEventPrefix =
     RTL_CONSTANT_STRING(L"PerfectHashTableContext_CompletedEvent_");
 
+const UNICODE_STRING ContextTryLargerTableSizeEventPrefix =
+    RTL_CONSTANT_STRING(L"PerfectHashTableContext_TryLargerTableSizeEvent_");
+
 const UNICODE_STRING ContextPreparedFileEventPrefix =
     RTL_CONSTANT_STRING(L"PerfectHashTableContext_PreparedFileEvent_");
 
@@ -138,6 +163,7 @@ const PCUNICODE_STRING ContextObjectPrefixes[] = {
     &ContextSucceededEventPrefix,
     &ContextFailedEventPrefix,
     &ContextCompletedEventPrefix,
+    &ContextTryLargerTableSizeEventPrefix,
     &ContextPreparedFileEventPrefix,
     &ContextVerifiedEventPrefix,
     &ContextSavedFileEventPrefix,
@@ -148,7 +174,7 @@ const PCUNICODE_STRING ContextObjectPrefixes[] = {
 // number of object prefixes.
 //
 
-const USHORT NumberOfContextEventPrefixes = ARRAYSIZE(ContextObjectPrefixes);
-const USHORT NumberOfContextObjectPrefixes = ARRAYSIZE(ContextObjectPrefixes);
+const BYTE NumberOfContextEventPrefixes = ARRAYSIZE(ContextObjectPrefixes);
+const BYTE NumberOfContextObjectPrefixes = ARRAYSIZE(ContextObjectPrefixes);
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

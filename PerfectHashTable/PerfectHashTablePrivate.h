@@ -31,6 +31,12 @@ Abstract:
 #endif
 
 //
+// Cap the maximum key set size we're willing to process.
+//
+
+#define MAXIMUM_NUMBER_OF_KEYS 500000
+
+//
 // Define the PERFECT_HASH_TABLE_KEYS_FLAGS structure.
 //
 
@@ -115,7 +121,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_KEYS {
     // Base address of the memory map.
     //
 
-    PVOID BaseAddress;
+    union {
+        PVOID BaseAddress;
+        PULONG Keys;
+    };
 
     //
     // Fully-qualifed, NULL-terminated path of the source keys file.
@@ -234,6 +243,27 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     struct _PERFECT_HASH_TABLE *Table;
 
     //
+    // The highest number of deleted edges count encountered by a worker thread.
+    // This is useful when debugging a poorly performing hash/mask combo that is
+    // failing to find a solution.
+    //
+
+    volatile ULONG HighestDeletedEdgesCount;
+
+    //
+    // The number of attempts we'll make at trying to solve the graph before
+    // giving up and resizing with a larger underlying table.
+    //
+
+    ULONG ResizeTableThreshold;
+
+    //
+    // Limit on how many times a resize will be kicked off.
+    //
+
+    ULONG ResizeLimit;
+
+    //
     // Define the events used to communicate various internal state changes
     // between the CreatePerfectHashTable() function and the algorithm-specific
     // creation routine.
@@ -280,6 +310,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_CONTEXT {
     //
 
     HANDLE CompletedEvent;
+
+    //
+    // The following event is set when a worker thread detects that the number
+    // of attempts has exceeded a specified threshold, and that the main thread
+    // should cancel the current attempts and try again with a larger vertex
+    // table size.
+    //
+
+    HANDLE TryLargerTableSizeEvent;
 
     //
     // The following event is set when a worker thread has completed preparing
@@ -674,7 +713,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     // of vertices or Keys->NumberOfElements).
     //
 
-    ULONG Size;
+    ULONG HashSize;
+    ULONG IndexSize;
 
     //
     // Similarly, provide a convenient way to access the table "shift" amount
@@ -683,13 +723,15 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     // It is not used if modulus masking is active.
     //
 
-    ULONG Shift;
+    ULONG HashShift;
+    ULONG IndexShift;
 
     //
-    // Mask value.  This will be set to (Table->Size - 1).
+    // Mask.
     //
 
-    ULONG Mask;
+    ULONG HashMask;
+    ULONG IndexMask;
 
     //
     // The following value represents how many times we need to XOR the high
@@ -699,13 +741,16 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
     // also the value of log2(Table->Shift).
     //
 
-    ULONG Fold;
+    ULONG HashFold;
+    ULONG IndexFold;
 
     //
-    // Pad out to an 8 byte boundary.
+    // If modulus masking is active, this represents the modulus that will be
+    // used for masking, e.g. Input %= Table->Modulus.
     //
 
-    ULONG Padding;
+    ULONG HashModulus;
+    ULONG IndexModulus;
 
     //
     // If a caller provided the number of table elements as a parameter to the
@@ -828,6 +873,14 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE {
         PULONG Values;
     };
 
+    //
+    // During creation, a large bitmap is created to cover the entire range of
+    // possible ULONG keys.  This is used to ensure no duplicate keys appear in
+    // the input key set, and also assists in debugging.
+    //
+
+    RTL_BITMAP KeysBitmap;
+
 } PERFECT_HASH_TABLE;
 typedef PERFECT_HASH_TABLE *PPERFECT_HASH_TABLE;
 
@@ -872,9 +925,11 @@ typedef struct _PERFECT_HASH_TABLE_VTBL_EX {
     PPERFECT_HASH_TABLE_RELEASE Release;
     PPERFECT_HASH_TABLE_INSERT Insert;
     PPERFECT_HASH_TABLE_LOOKUP Lookup;
+    PPERFECT_HASH_TABLE_DELETE Delete;
     PPERFECT_HASH_TABLE_INDEX Index;
     PPERFECT_HASH_TABLE_HASH Hash;
-    PPERFECT_HASH_TABLE_MASK Mask;
+    PPERFECT_HASH_TABLE_MASK_HASH MaskHash;
+    PPERFECT_HASH_TABLE_MASK_INDEX MaskIndex;
 
     //
     // Begin extended functions.
@@ -903,9 +958,14 @@ typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
         goto Error;                                      \
     }
 
-#define MASK(Hash, Result)                                \
-    if (FAILED(Table->Vtbl->Mask(Table, Hash, Result))) { \
-        goto Error;                                       \
+#define MASK_HASH(Hash, Result)                               \
+    if (FAILED(Table->Vtbl->MaskHash(Table, Hash, Result))) { \
+        goto Error;                                           \
+    }
+
+#define MASK_INDEX(Hash, Result)                               \
+    if (FAILED(Table->Vtbl->MaskIndex(Table, Hash, Result))) { \
+        goto Error;                                            \
     }
 
 
@@ -916,6 +976,7 @@ typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
 
 PERFECT_HASH_TABLE_INSERT PerfectHashTableInsert;
 PERFECT_HASH_TABLE_LOOKUP PerfectHashTableLookup;
+PERFECT_HASH_TABLE_DELETE PerfectHashTableDelete;
 PERFECT_HASH_TABLE_INDEX PerfectHashTableIndex;
 
 PERFECT_HASH_TABLE_HASH PerfectHashTableHash01;
@@ -927,12 +988,19 @@ PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash02;
 PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash03;
 PERFECT_HASH_TABLE_SEEDED_HASH PerfectHashTableSeededHash04;
 
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskModulus;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskAnd;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskXorAnd;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldOnce;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldTwice;
-PERFECT_HASH_TABLE_MASK PerfectHashTableMaskFoldThrice;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashModulus;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashAnd;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashXorAnd;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashFoldOnce;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashFoldTwice;
+PERFECT_HASH_TABLE_MASK_HASH PerfectHashTableMaskHashFoldThrice;
+
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexModulus;
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexAnd;
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexXorAnd;
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexFoldOnce;
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexFoldTwice;
+PERFECT_HASH_TABLE_MASK_INDEX PerfectHashTableMaskIndexFoldThrice;
 
 //
 // Metadata about a perfect hash table is stored in an NTFS stream named :Info
@@ -1021,10 +1089,31 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // depending on how the graph was created.  If modulus masking is in use,
     // this will reflect the number of keys (unless a custom table size was
     // requested during creation).  Otherwise, this will be the number of keys
-    // rounded up to the next power of 2.
+    // rounded up to the next power of 2.  (That is, the number of keys, round
+    // up to a power of 2, then round that up to the next power of 2.)
     //
 
     ULARGE_INTEGER NumberOfTableElements;
+
+    //
+    // Capture the hash and index details required by MaskHash(), MaskIndex()
+    // and Index() routines.
+    //
+
+    ULONG HashSize;
+    ULONG IndexSize;
+
+    ULONG HashShift;
+    ULONG IndexShift;
+
+    ULONG HashMask;
+    ULONG IndexMask;
+
+    ULONG HashFold;
+    ULONG IndexFold;
+
+    ULONG HashModulus;
+    ULONG IndexModulus;
 
     //
     // Seed data.
@@ -1051,10 +1140,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     //
 
     //
-    // Total number of attempts at solving the solution.
+    // Number of attempts at solving the solution.
     //
 
-    ULONGLONG TotalNumberOfAttempts;
+    ULONGLONG NumberOfAttempts;
 
     //
     // Number of failed attempts at solving the solution.
@@ -1071,6 +1160,50 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     //
 
     ULONGLONG NumberOfSolutionsFound;
+
+    //
+    // If a solution can't be found within a configurable threshold, a "table
+    // resize" event will be generated.  This results in doubling the number
+    // of vertices being used for the backing table and trying the solution
+    // again.  The following field captures how many times this occurred.
+    //
+
+    ULONGLONG NumberOfTableResizeEvents;
+
+    //
+    // This counter captures the sum of all prior attempts at solving the
+    // solution before giving up and resizing the table.  It excludes the
+    // attempts made by the winning table size (captured by NumberOfAttempts).
+    // It will be zero if no resize events occurred.  We don't keep a separate
+    // failed counter here, as the resize event implies all attempts failed.
+    //
+
+    ULONGLONG TotalNumberOfAttemptsWithSmallerTableSizes;
+
+    //
+    // The following counter captures the initial table size that was attempted
+    // in order to solve the solution.  It will differ from the final table size
+    // if there were resize events.  As we simply double the size of the table
+    // on each resize event, we can extrapolate the different table sizes that
+    // were tried prior to finding a winning one by looking at the initial size
+    // attempted and the number of resize events.
+    //
+
+    ULONGLONG InitialTableSize;
+
+    //
+    // The following counter captures the closest we came to solving the graph
+    // in previous attempts before a resize event occurred.  This is calculated
+    // by taking the number of edges and subtracting the value of the context's
+    // HighestDeletedEdgesCount counter.  The value represents the additional
+    // number of 1 degree edges we needed to delete in order to obtain an
+    // acyclic graph.  A very low number indicates that we came very close to
+    // solving it as there were very few hash collisions with the seed values
+    // we picked.  A very high number indicates we had no chance and there were
+    // collisions galore.
+    //
+
+    ULONGLONG ClosestWeCameToSolvingGraphWithSmallerTableSizes;
 
     //
     // Number of cycles it took to solve the solution for the winning thread.
@@ -1283,6 +1416,7 @@ LOAD_PERFECT_HASH_TABLE_IMPL LoadPerfectHashTableImplChm01;
 //
 
 typedef
+_Check_return_
 USHORT
 (NTAPI GET_VTBL_EX_SIZE)(
     VOID

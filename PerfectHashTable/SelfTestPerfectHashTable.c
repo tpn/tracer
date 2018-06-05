@@ -110,11 +110,12 @@ Return Value:
     UNICODE_STRING TablePath;
     PPERFECT_HASH_TABLE Table;
     PPERFECT_HASH_TABLE_KEYS Keys;
+    PTABLE_INFO_ON_DISK_HEADER Header;
     PPERFECT_HASH_TABLE_CONTEXT Context;
-    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
-    UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
     PPERFECT_HASH_TABLE_API Api;
     PPERFECT_HASH_TABLE_API_EX ApiEx;
+    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
+    UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
 
     //
     // Validate arguments.
@@ -176,7 +177,7 @@ Return Value:
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
                                 NumberOfPages,
-                                0,
+                                NULL,
                                 &WideOutputBufferSize,
                                 &WideOutputBuffer);
 
@@ -196,7 +197,7 @@ Return Value:
     Success = Rtl->CreateBuffer(Rtl,
                                 &ProcessHandle,
                                 NumberOfPages,
-                                0,
+                                NULL,
                                 &BufferSize,
                                 &BaseBuffer);
 
@@ -544,7 +545,7 @@ Return Value:
         // Table was loaded successfully from disk.  Test it.
         //
 
-        Success = Api->TestPerfectHashTable(Table);
+        Success = Api->TestPerfectHashTable(Table, TRUE);
 
         if (!Success) {
 
@@ -565,6 +566,16 @@ Return Value:
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
         WIDE_OUTPUT_RAW(WideOutput, L".\n");
 
+        //
+        // Initialize header alias.
+        //
+
+        Header = Table->Header;
+
+        //
+        // Define some helper macros here for dumping stats.
+        //
+
 #define STATS_INT(String, Name)                               \
         WIDE_OUTPUT_RAW(WideOutput, String);                  \
         WIDE_OUTPUT_INT(WideOutput, Table->Header->##Name##); \
@@ -575,9 +586,36 @@ Return Value:
         WIDE_OUTPUT_INT(WideOutput, Table->Header->##Name##.QuadPart); \
         WIDE_OUTPUT_RAW(WideOutput, L".\n")
 
-        STATS_INT(L"Total number of attempts: ", TotalNumberOfAttempts);
+        if (Header->NumberOfTableResizeEvents > 0) {
+
+            STATS_INT(L"Number of table resize events: ",
+                      NumberOfTableResizeEvents);
+
+            STATS_INT(L"Total number of attempts with smaller table sizes: ",
+                      TotalNumberOfAttemptsWithSmallerTableSizes);
+
+            STATS_INT(L"First table size attempted: ",
+                      InitialTableSize);
+
+            STATS_INT(L"Closest we came to solving the graph in previous "
+                      L"attempts by number of deleted edges away: ",
+                      ClosestWeCameToSolvingGraphWithSmallerTableSizes);
+
+        }
+
+        STATS_INT(L"Number of attempts: ", NumberOfAttempts);
         STATS_INT(L"Number of failed attempts: ", NumberOfFailedAttempts);
         STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);
+
+        STATS_QUAD(L"Number of keys: ", NumberOfKeys);
+        STATS_QUAD(L"Number of table elements (vertices): ",
+                   NumberOfTableElements);
+
+        STATS_INT(L"Seed 1: ", Seed1);
+        STATS_INT(L"Seed 2: ", Seed2);
+        STATS_INT(L"Seed 3: ", Seed3);
+        STATS_INT(L"Seed 4: ", Seed4);
+
 
         STATS_QUAD(L"Cycles to solve: ", SolveCycles);
         STATS_QUAD(L"Cycles to verify: ", VerifyCycles);
@@ -589,6 +627,8 @@ Return Value:
         STATS_QUAD(L"Microseconds to prepare file: ", PrepareFileMicroseconds);
         STATS_QUAD(L"Microseconds to save file: ", SaveFileMicroseconds);
 
+
+        WIDE_OUTPUT_RAW(WideOutput, L"\n\n");
         WIDE_OUTPUT_FLUSH();
 
         //
