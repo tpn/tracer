@@ -556,15 +556,21 @@ Return Value:
 
         WIDE_OUTPUT_RAW(WideOutput, L"Algorithm: ");
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, AlgorithmName);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        WIDE_OUTPUT_RAW(WideOutput, L" (");
+        WIDE_OUTPUT_INT(WideOutput, Table->AlgorithmId);
+        WIDE_OUTPUT_RAW(WideOutput, L").\n");
 
         WIDE_OUTPUT_RAW(WideOutput, L"Hash Function: ");
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, HashFunctionName);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        WIDE_OUTPUT_RAW(WideOutput, L" (");
+        WIDE_OUTPUT_INT(WideOutput, Table->HashFunctionId);
+        WIDE_OUTPUT_RAW(WideOutput, L").\n");
 
         WIDE_OUTPUT_RAW(WideOutput, L"Mask Function: ");
         WIDE_OUTPUT_UNICODE_STRING(WideOutput, MaskFunctionName);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        WIDE_OUTPUT_RAW(WideOutput, L" (");
+        WIDE_OUTPUT_INT(WideOutput, Table->MaskFunctionId);
+        WIDE_OUTPUT_RAW(WideOutput, L").\n");
 
         WIDE_OUTPUT_FLUSH();
 
