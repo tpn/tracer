@@ -18,7 +18,7 @@ Abstract:
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableSeededHash01(
+PerfectHashTableSeededHashCrc32Rotate(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     ULONG NumberOfSeeds,
@@ -29,7 +29,8 @@ PerfectHashTableSeededHash01(
 
 Routine Description:
 
-    This hash routine uses a combination of CRC32 and rotates.
+    This hash routine uses a combination of CRC32 and rotates.  It is simple,
+    fast, and generates reasonable quality hashes.  It is currently our default.
 
 Arguments:
 
@@ -100,22 +101,22 @@ Return Value:
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableHash01(
+PerfectHashTableHashCrc32Rotate(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     PULONGLONG Hash
     )
 {
-    return PerfectHashTableSeededHash01(Table,
-                                        Input,
-                                        Table->Header->NumberOfSeeds,
-                                        &Table->Header->FirstSeed,
-                                        Hash);
+    return PerfectHashTableSeededHashCrc32Rotate(Table,
+                                                 Input,
+                                                 Table->Header->NumberOfSeeds,
+                                                 &Table->Header->FirstSeed,
+                                                 Hash);
 }
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableSeededHash02(
+PerfectHashTableSeededHashRotateXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     ULONG NumberOfSeeds,
@@ -197,22 +198,22 @@ Return Value:
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableHash02(
+PerfectHashTableHashRotateXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     PULONGLONG Hash
     )
 {
-    return PerfectHashTableSeededHash02(Table,
-                                        Input,
-                                        Table->Header->NumberOfSeeds,
-                                        &Table->Header->FirstSeed,
-                                        Hash);
+    return PerfectHashTableSeededHashRotateXor(Table,
+                                               Input,
+                                               Table->Header->NumberOfSeeds,
+                                               &Table->Header->FirstSeed,
+                                               Hash);
 }
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableSeededHash03(
+PerfectHashTableSeededHashAddSubXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     ULONG NumberOfSeeds,
@@ -223,7 +224,8 @@ PerfectHashTableSeededHash03(
 
 Routine Description:
 
-    This hash routine is based off version 2, with fewer rotates and xors.
+    This hash routine is even simpler than the previous versions, using an
+    add, sub and xor.
 
 Arguments:
 
@@ -289,23 +291,23 @@ Return Value:
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableHash03(
+PerfectHashTableHashAddSubXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     PULONGLONG Hash
     )
 {
-    return PerfectHashTableSeededHash03(Table,
-                                        Input,
-                                        Table->Header->NumberOfSeeds,
-                                        &Table->Header->FirstSeed,
-                                        Hash);
+    return PerfectHashTableSeededHashAddSubXor(Table,
+                                               Input,
+                                               Table->Header->NumberOfSeeds,
+                                               &Table->Header->FirstSeed,
+                                               Hash);
 }
 
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableSeededHash04(
+PerfectHashTableSeededHashXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     ULONG NumberOfSeeds,
@@ -377,19 +379,147 @@ Return Value:
 
 _Use_decl_annotations_
 HRESULT
-PerfectHashTableHash04(
+PerfectHashTableHashXor(
     PPERFECT_HASH_TABLE Table,
     ULONG Input,
     PULONGLONG Hash
     )
 {
-    return PerfectHashTableSeededHash04(Table,
-                                        Input,
-                                        Table->Header->NumberOfSeeds,
-                                        &Table->Header->FirstSeed,
-                                        Hash);
+    return PerfectHashTableSeededHashXor(Table,
+                                         Input,
+                                         Table->Header->NumberOfSeeds,
+                                         &Table->Header->FirstSeed,
+                                         Hash);
 }
 
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableSeededHashJenkins(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    ULONG NumberOfSeeds,
+    PULONG Seeds,
+    PULONGLONG Hash
+    )
+/*++
 
+Routine Description:
+
+    This routine implements the Jenkins hash routine.
+
+Arguments:
+
+    Table - Supplies a pointer to the table for which the hash is being created.
+
+    Input - Supplies the input value to hash.
+
+    NumberOfSeeds - Supplies the number of elements in the Seeds array.
+
+    Seeds - Supplies an array of ULONG seed values.
+
+    Masked - Receives two 32-bit hashes merged into a 64-bit value.
+
+Return Value:
+
+    S_OK on success.  If the two 32-bit hash values are identical, E_FAIL.
+
+--*/
+{
+    ULONG A;
+    ULONG B;
+    ULONG C;
+    ULONG D;
+    ULONG E;
+    ULONG F;
+    PBYTE Byte;
+    ULONG Vertex1;
+    ULONG Vertex2;
+    ULARGE_INTEGER Result;
+
+    ASSERT(NumberOfSeeds >= 2);
+
+    //
+    // Initialize aliases.
+    //
+
+    //IACA_VC_START();
+
+    Byte = (PBYTE)&Input;
+
+    //
+    // Generate the first hash.
+    //
+
+    A = B = 0x9e3779b9;
+    C = Seeds[0];
+
+    A += (((ULONG)Byte[3]) << 24);
+    A += (((ULONG)Byte[2]) << 16);
+    A += (((ULONG)Byte[1]) <<  8);
+    A += ((ULONG)Byte[0]);
+
+    A -= B; A -= C; A ^= (C >> 13);
+    B -= C; B -= A; B ^= (A <<  8);
+    C -= A; C -= B; C ^= (B >> 13);
+    A -= B; A -= C; A ^= (C >> 12);
+    B -= C; B -= A; B ^= (A << 16);
+    C -= A; C -= B; C ^= (B >>  5);
+    A -= B; A -= C; A ^= (C >>  3);
+    B -= C; B -= A; B ^= (A << 10);
+    C -= A; C -= B; C ^= (B >> 15);
+
+    //
+    // Generate the second hash.
+    //
+
+    D = E = 0x9e3779b9;
+    F = Seeds[1];
+
+    D += (((ULONG)Byte[3]) << 24);
+    D += (((ULONG)Byte[2]) << 16);
+    D += (((ULONG)Byte[1]) <<  8);
+    D += ((ULONG)Byte[0]);
+
+    D -= E; D -= F; D ^= (F >> 13);
+    E -= F; E -= D; E ^= (D <<  8);
+    F -= D; F -= E; F ^= (E >> 13);
+    D -= E; D -= F; D ^= (F >> 12);
+    E -= F; E -= D; E ^= (D << 16);
+    F -= D; F -= E; F ^= (E >>  5);
+    D -= E; D -= F; D ^= (F >>  3);
+    E -= F; E -= D; E ^= (D << 10);
+    F -= D; F -= E; F ^= (E >> 15);
+
+    //IACA_VC_END();
+
+    Vertex1 = C;
+    Vertex2 = F;
+
+    if (Vertex1 == Vertex2) {
+        return E_FAIL;
+    }
+
+    Result.LowPart = Vertex1;
+    Result.HighPart = Vertex2;
+
+    *Hash = Result.QuadPart;
+
+    return S_OK;
+}
+
+_Use_decl_annotations_
+HRESULT
+PerfectHashTableHashJenkins(
+    PPERFECT_HASH_TABLE Table,
+    ULONG Input,
+    PULONGLONG Hash
+    )
+{
+    return PerfectHashTableSeededHashJenkins(Table,
+                                             Input,
+                                             Table->Header->NumberOfSeeds,
+                                             &Table->Header->FirstSeed,
+                                             Hash);
+}
 
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab                                     :

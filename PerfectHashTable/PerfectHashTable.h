@@ -66,14 +66,14 @@ typedef enum _PERFECT_HASH_TABLE_ALGORITHM_ID {
     // This makes enum validation easier.
     //
 
-    PerfectHashTableNullAlgorithmId = 0,
+    PerfectHashTableNullAlgorithmId         = 0,
 
     //
     // Begin valid algorithms.
     //
 
-    PerfectHashTableDefaultAlgorithmId = 1,
-    PerfectHashTableChm01AlgorithmId = 1,
+    PerfectHashTableChm01AlgorithmId        = 1,
+    PerfectHashTableDefaultAlgorithmId      = 1,
 
     //
     // End valid algorithms.
@@ -115,18 +115,28 @@ typedef enum _PERFECT_HASH_TABLE_HASH_FUNCTION_ID {
     // This makes enum validation easier.
     //
 
-    PerfectHashTableNullHashFunctionId = 0,
+    PerfectHashTableNullHashFunctionId              = 0,
 
     //
     // Begin valid hash functions.
     //
 
-    PerfectHashTableDefaultHashFunctionId = 1,
-    PerfectHashTableHash01FunctionId = 1,
+    PerfectHashTableHashCrc32RotateFunctionId       = 1,
+    PerfectHashTableDefaultHashFunctionId           = 1,
 
-    PerfectHashTableHash02FunctionId,
-    PerfectHashTableHash03FunctionId,
-    PerfectHashTableHash04FunctionId,
+    PerfectHashTableHashJenkinsFunctionId           = 2,
+
+    //
+    // N.B. The following three hash functions are purposefully terrible from
+    //      the perspective of generating a good distribution of hash values.
+    //      They all have very simple operations and are intended to test the
+    //      theory that even with a poor hash function, once we find the right
+    //      seed, the hash quality is unimportant.
+    //
+
+    PerfectHashTableHashRotateXorFunctionId         = 3,
+    PerfectHashTableHashAddSubXorFunctionId         = 4,
+    PerfectHashTableHashXorFunctionId               = 5,
 
     //
     // End valid hash functions.
@@ -180,7 +190,10 @@ typedef enum _PERFECT_HASH_TABLE_MASK_FUNCTION_ID {
     //
 
     PerfectHashTableModulusMaskFunctionId       = 1,
+
     PerfectHashTableAndMaskFunctionId           = 2,
+    PerfectHashTableDefaultMaskFunctionId       = 2,
+
     PerfectHashTableXorAndMaskFunctionId        = 3,
     PerfectHashTableFoldAutoMaskFunctionId      = 4,
     PerfectHashTableFoldOnceMaskFunctionId      = 5,
@@ -219,9 +232,9 @@ IsValidPerfectHashTableMaskFunctionId(
 }
 
 //
-// Masking tends to fall into one of two buckets: modulus and shifting.
-// Provide an inline routine that guarantees to match all current and
-// future modulus masking function IDs.
+// Masking tends to fall into one of two buckets: modulus and not-modulus.
+// Provide an inline routine that guarantees to match all current and future
+// modulus masking function IDs.
 //
 
 FORCEINLINE
@@ -504,6 +517,40 @@ BOOLEAN
 typedef TEST_PERFECT_HASH_TABLE *PTEST_PERFECT_HASH_TABLE;
 
 //
+// Helper functions for obtaining the string representation of enumeration IDs.
+//
+
+typedef
+_Success_(return != 0)
+BOOLEAN
+(NTAPI GET_PERFECT_HASH_TABLE_ALGORITHM_NAME)(
+    _In_ PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId,
+    _Out_ PCUNICODE_STRING *Name
+    );
+typedef GET_PERFECT_HASH_TABLE_ALGORITHM_NAME
+      *PGET_PERFECT_HASH_TABLE_ALGORITHM_NAME;
+
+typedef
+_Success_(return != 0)
+BOOLEAN
+(NTAPI GET_PERFECT_HASH_TABLE_HASH_FUNCTION_NAME)(
+    _In_ PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId,
+    _Out_ PCUNICODE_STRING *Name
+    );
+typedef GET_PERFECT_HASH_TABLE_HASH_FUNCTION_NAME
+      *PGET_PERFECT_HASH_TABLE_HASH_FUNCTION_NAME;
+
+typedef
+_Success_(return != 0)
+BOOLEAN
+(NTAPI GET_PERFECT_HASH_TABLE_MASK_FUNCTION_NAME)(
+    _In_ PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId,
+    _Out_ PCUNICODE_STRING *Name
+    );
+typedef GET_PERFECT_HASH_TABLE_MASK_FUNCTION_NAME
+      *PGET_PERFECT_HASH_TABLE_MASK_FUNCTION_NAME;
+
+//
 // Define the main PerfectHash API structure.
 //
 
@@ -543,6 +590,10 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _PERFECT_HASH_TABLE_API {
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
+
+    PGET_PERFECT_HASH_TABLE_ALGORITHM_NAME GetAlgorithmName;
+    PGET_PERFECT_HASH_TABLE_HASH_FUNCTION_NAME GetHashFunctionName;
+    PGET_PERFECT_HASH_TABLE_MASK_FUNCTION_NAME GetMaskFunctionName;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
 
@@ -596,6 +647,10 @@ typedef struct _PERFECT_HASH_TABLE_API_EX {
     PCREATE_PERFECT_HASH_TABLE CreatePerfectHashTable;
     PLOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
     PTEST_PERFECT_HASH_TABLE TestPerfectHashTable;
+
+    PGET_PERFECT_HASH_TABLE_ALGORITHM_NAME GetAlgorithmName;
+    PGET_PERFECT_HASH_TABLE_HASH_FUNCTION_NAME GetHashFunctionName;
+    PGET_PERFECT_HASH_TABLE_MASK_FUNCTION_NAME GetMaskFunctionName;
 
     PINITIALIZE_PERFECT_HASH_TABLE_ALLOCATOR InitializePerfectHashAllocator;
 
@@ -702,6 +757,9 @@ Return Value:
         "CreatePerfectHashTable",
         "LoadPerfectHashTable",
         "TestPerfectHashTable",
+        "GetPerfectHashTableAlgorithmName",
+        "GetPerfectHashTableHashFunctionName",
+        "GetPerfectHashTableMaskFunctionName",
         "InitializePerfectHashTableAllocator",
         "InitializePerfectHashTableAllocatorFromRtlBootstrap",
         "SelfTestPerfectHashTable",

@@ -8,6 +8,9 @@ EXPORTS
     CreatePerfectHashTable
     LoadPerfectHashTable
     TestPerfectHashTable
+    GetPerfectHashTableAlgorithmName
+    GetPerfectHashTableHashFunctionName
+    GetPerfectHashTableMaskFunctionName
     InitializePerfectHashTableAllocator
     InitializePerfectHashTableAllocatorFromRtlBootstrap
     SelfTestPerfectHashTable

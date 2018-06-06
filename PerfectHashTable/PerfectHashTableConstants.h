@@ -113,6 +113,24 @@ InitializeExtendedVtbl(
 const PGET_VTBL_EX_SIZE GetVtblExSizeRoutines[];
 
 //
+// Declare the array of algorithm names.
+//
+
+const PCUNICODE_STRING AlgorithmNames[];
+
+//
+// Declare the array of hash function names.
+//
+
+const PCUNICODE_STRING HashFunctionNames[];
+
+//
+// Declare the array of mask function names.
+//
+
+const PCUNICODE_STRING MaskFunctionNames[];
+
+//
 // Object (e.g. events, shared memory sections) name prefixes for the runtime
 // context.
 //

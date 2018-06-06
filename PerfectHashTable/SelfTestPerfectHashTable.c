@@ -103,6 +103,9 @@ Return Value:
     PPERFECT_HASH_TABLE_CONTEXT Context;
     PPERFECT_HASH_TABLE_API Api;
     PPERFECT_HASH_TABLE_API_EX ApiEx;
+    PUNICODE_STRING AlgorithmName;
+    PUNICODE_STRING HashFunctionName;
+    PUNICODE_STRING MaskFunctionName;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
 
@@ -148,6 +151,15 @@ Return Value:
 
     if (!IsValidMinimumDirectoryUnicodeString(TestDataDirectory)) {
         return FALSE;
+    }
+
+    if (!IsValidPerfectHashTableAlgorithmId(AlgorithmId)) {
+
+        return FALSE;
+
+    } else {
+
+
     }
 
     //
@@ -520,7 +532,44 @@ Return Value:
         }
 
         //
-        // Table was loaded successfully from disk.  Test it.
+        // Table was loaded successfully from disk.  Obtain the names of all
+        // the enumeration IDs.  Currently these should always match the same
+        // enums provided as input parameters to this routine.
+        //
+        // N.B. I'm being lazy with the ASSERT()s here instead of reporting the
+        //      error properly like we do with other failures.
+        //
+
+        ASSERT(Api->GetAlgorithmName(Table->AlgorithmId, &AlgorithmName));
+
+        ASSERT(Api->GetHashFunctionName(Table->HashFunctionId,
+                                        &HashFunctionName));
+
+        ASSERT(Api->GetMaskFunctionName(Table->MaskFunctionId,
+                                        &MaskFunctionName));
+
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Successfully loaded perfect "
+                                    L"hash table: ");
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Algorithm: ");
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, AlgorithmName);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Hash Function: ");
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, HashFunctionName);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Mask Function: ");
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, MaskFunctionName);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
+        WIDE_OUTPUT_FLUSH();
+
+        //
+        // Test the table.
         //
 
         Success = Api->TestPerfectHashTable(Table, TRUE);
@@ -538,11 +587,8 @@ Return Value:
             goto DestroyTable;
         }
 
-        WIDE_OUTPUT_RAW(WideOutput, L"Successfully loaded and tested perfect "
-                                    L"hash table: ");
-
-        WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
-        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+        WIDE_OUTPUT_RAW(WideOutput, L"Successfully tested perfect hash "
+                                    L"table.\n");
 
         //
         // Initialize header alias.

@@ -106,6 +106,7 @@
     <ClCompile Include="PerfectHashTableInsert.c" />
     <ClCompile Include="PerfectHashTableLookup.c" />
     <ClCompile Include="PerfectHashTableMask.c" />
+    <ClCompile Include="PerfectHashTableNames.c" />
     <ClCompile Include="PerfectHashTablePrime.c" />
     <ClCompile Include="PerfectHashTableRefCount.c" />
     <ClCompile Include="PerfectHashTableTls.c" />

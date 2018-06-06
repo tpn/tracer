@@ -40,10 +40,11 @@ const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[] = {
 
 const PPERFECT_HASH_TABLE_HASH HashRoutines[] = {
     NULL,
-    PerfectHashTableHash01,
-    PerfectHashTableHash02,
-    PerfectHashTableHash03,
-    PerfectHashTableHash04,
+    PerfectHashTableHashCrc32Rotate,
+    PerfectHashTableHashJenkins,
+    PerfectHashTableHashRotateXor,
+    PerfectHashTableHashAddSubXor,
+    PerfectHashTableHashXor,
     NULL
 };
 
@@ -53,10 +54,11 @@ const PPERFECT_HASH_TABLE_HASH HashRoutines[] = {
 
 const PPERFECT_HASH_TABLE_SEEDED_HASH SeededHashRoutines[] = {
     NULL,
-    PerfectHashTableSeededHash01,
-    PerfectHashTableSeededHash02,
-    PerfectHashTableSeededHash03,
-    PerfectHashTableSeededHash04,
+    PerfectHashTableSeededHashCrc32Rotate,
+    PerfectHashTableSeededHashJenkins,
+    PerfectHashTableSeededHashRotateXor,
+    PerfectHashTableSeededHashAddSubXor,
+    PerfectHashTableSeededHashXor,
     NULL
 };
 
@@ -127,6 +129,100 @@ const PPERFECT_HASH_TABLE_INDEX IndexRoutines[] = {
 const PGET_VTBL_EX_SIZE GetVtblExSizeRoutines[] = {
     NULL,
     GetVtblExSizeChm01,
+    NULL,
+};
+
+//
+// Define UNICODE_STRING structures for each algorithm name.
+//
+
+const UNICODE_STRING PerfectHashTableChm01AlgorithmName =
+    RTL_CONSTANT_STRING(L"Chm01");
+
+//
+// Define the array of algorithm names.  This is intended to be indexed by the
+// PERFECT_HASH_TABLE_ALGORITHM_ID enum.
+//
+
+const PCUNICODE_STRING AlgorithmNames[] = {
+    NULL,
+    &PerfectHashTableChm01AlgorithmName,
+    NULL,
+};
+
+//
+// Define UNICODE_STRING structures for each hash function name.
+//
+
+const UNICODE_STRING PerfectHashTableHashCrc32RotateFunctionName =
+    RTL_CONSTANT_STRING(L"Crc32Rotate");
+
+const UNICODE_STRING PerfectHashTableHashJenkinsFunctionName =
+    RTL_CONSTANT_STRING(L"Jenkins");
+
+const UNICODE_STRING PerfectHashTableHashRotateXorFunctionName =
+    RTL_CONSTANT_STRING(L"RotateXor");
+
+const UNICODE_STRING PerfectHashTableHashAddSubXorFunctionName =
+    RTL_CONSTANT_STRING(L"AddSubXor");
+
+const UNICODE_STRING PerfectHashTableHashXorFunctionName =
+    RTL_CONSTANT_STRING(L"Xor");
+
+//
+// Define the array of hash function names.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_HASH_FUNCTION_ID enum.
+//
+
+const PCUNICODE_STRING HashFunctionNames[] = {
+    NULL,
+    &PerfectHashTableHashCrc32RotateFunctionName,
+    &PerfectHashTableHashJenkinsFunctionName,
+    &PerfectHashTableHashRotateXorFunctionName,
+    &PerfectHashTableHashAddSubXorFunctionName,
+    &PerfectHashTableHashXorFunctionName,
+    NULL,
+};
+
+//
+// Define UNICODE_STRING structures for each mask function name.
+//
+
+const UNICODE_STRING PerfectHashTableModulusMaskFunctionName =
+    RTL_CONSTANT_STRING(L"Modulus");
+
+const UNICODE_STRING PerfectHashTableAndMaskFunctionName =
+    RTL_CONSTANT_STRING(L"And");
+
+const UNICODE_STRING PerfectHashTableXorAndMaskFunctionName =
+    RTL_CONSTANT_STRING(L"XorAnd");
+
+const UNICODE_STRING PerfectHashTableFoldAutoMaskFunctionName =
+    RTL_CONSTANT_STRING(L"FoldAuto");
+
+const UNICODE_STRING PerfectHashTableFoldOnceMaskFunctionName =
+    RTL_CONSTANT_STRING(L"FoldOnce");
+
+const UNICODE_STRING PerfectHashTableFoldTwiceMaskFunctionName =
+    RTL_CONSTANT_STRING(L"FoldTwice");
+
+const UNICODE_STRING PerfectHashTableFoldThriceMaskFunctionName =
+    RTL_CONSTANT_STRING(L"FoldThrice");
+
+//
+// Define the array of mask function names.  This is intended to be indexed by
+// the PERFECT_HASH_TABLE_MASK_FUNCTION_ID enum.
+//
+
+const PCUNICODE_STRING MaskFunctionNames[] = {
+    NULL,
+    &PerfectHashTableModulusMaskFunctionName,
+    &PerfectHashTableAndMaskFunctionName,
+    &PerfectHashTableXorAndMaskFunctionName,
+    &PerfectHashTableFoldAutoMaskFunctionName,
+    &PerfectHashTableFoldOnceMaskFunctionName,
+    &PerfectHashTableFoldTwiceMaskFunctionName,
+    &PerfectHashTableFoldThriceMaskFunctionName,
     NULL,
 };
 
