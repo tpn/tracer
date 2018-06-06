@@ -627,6 +627,7 @@ Return Value:
 
         }
 
+        STATS_INT(L"Concurrency: ", Concurrency);
         STATS_INT(L"Number of attempts: ", NumberOfAttempts);
         STATS_INT(L"Number of failed attempts: ", NumberOfFailedAttempts);
         STATS_INT(L"Number of solutions found: ", NumberOfSolutionsFound);

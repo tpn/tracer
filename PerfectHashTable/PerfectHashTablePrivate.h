@@ -1081,6 +1081,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     ULONG KeySizeInBytes;
 
     //
+    // The concurrency level used to generate the hash.
+    //
+
+    ULONG Concurrency;
+
+    //
+    // Pad out to 8 bytes.
+    //
+
+    ULONG Padding;
+
+    //
     // Number of keys in the input set.  This is used to size an appropriate
     // array for storing values.
     //

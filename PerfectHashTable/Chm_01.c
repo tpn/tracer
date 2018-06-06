@@ -715,6 +715,7 @@ RetryWithLargerTableSize:
     OnDiskHeader->Magic.HighPart = TABLE_INFO_ON_DISK_MAGIC_HIGHPART;
     OnDiskHeader->SizeOfStruct = sizeof(*OnDiskInfo);
     OnDiskHeader->Flags.AsULong = 0;
+    OnDiskHeader->Concurrency = Context->MaximumConcurrency;
     OnDiskHeader->AlgorithmId = Context->AlgorithmId;
     OnDiskHeader->MaskFunctionId = Context->MaskFunctionId;
     OnDiskHeader->HashFunctionId = Context->HashFunctionId;
