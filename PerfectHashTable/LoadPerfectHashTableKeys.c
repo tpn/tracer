@@ -28,7 +28,8 @@ LoadPerfectHashTableKeys(
 
 Routine Description:
 
-    TBD.
+    Loads a keys file from the file system and returns a PERFECT_HASH_TABLE_KEYS
+    structure.
 
 Arguments:
 
