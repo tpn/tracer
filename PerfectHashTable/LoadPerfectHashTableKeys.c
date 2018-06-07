@@ -14,6 +14,8 @@ Abstract:
 
 #include "stdafx.h"
 
+LOAD_PERFECT_HASH_TABLE_KEYS LoadPerfectHashTableKeys;
+
 _Use_decl_annotations_
 BOOLEAN
 LoadPerfectHashTableKeys(

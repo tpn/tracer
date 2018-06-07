@@ -559,7 +559,7 @@ typedef GRAPH *PGRAPH;
 // use.
 //
 
-typedef struct _Struct_size_bytes_(SizeOfStruct) _GRAPH_INFO_ON_DISK {
+typedef struct _Struct_size_bytes_(Header.SizeOfStruct) _GRAPH_INFO_ON_DISK {
 
     //
     // Include the required header.

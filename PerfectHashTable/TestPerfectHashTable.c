@@ -38,6 +38,8 @@ Abstract:
         goto Error;                \
     }
 
+TEST_PERFECT_HASH_TABLE TestPerfectHashTable;
+
 _Use_decl_annotations_
 BOOLEAN
 TestPerfectHashTable(

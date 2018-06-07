@@ -16,6 +16,8 @@ Abstract:
 
 #include "stdafx.h"
 
+LOAD_PERFECT_HASH_TABLE LoadPerfectHashTable;
+
 _Use_decl_annotations_
 BOOLEAN
 LoadPerfectHashTable(
