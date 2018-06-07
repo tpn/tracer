@@ -1519,8 +1519,11 @@ Return Value:
             Header->Seed4 = Graph->Seed4;
 
             //
-            // Kick off a flush file buffers now, before we potentially enter
-            // a wait state.
+            // Kick off a flush file buffers now before we wait on the verified
+            // event.  The flush will be a blocking call.  The wait on verified
+            // will be blocking if the event isn't signaled.  So, we may as well
+            // get some useful blocking work done, before potentially going into
+            // another wait state where we're not doing anything useful.
             //
 
             ASSERT(FlushFileBuffers(Table->FileHandle));
