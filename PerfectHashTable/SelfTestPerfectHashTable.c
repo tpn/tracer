@@ -509,6 +509,11 @@ Return Value:
             goto DestroyKeys;
         }
 
+        WIDE_OUTPUT_RAW(WideOutput, L"Successfully created perfect "
+                                    L"hash table: ");
+        WIDE_OUTPUT_UNICODE_STRING(WideOutput, &TablePath);
+        WIDE_OUTPUT_RAW(WideOutput, L".\n");
+
         //
         // Load the perfect hash table we just created.
         //
