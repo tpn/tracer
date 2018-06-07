@@ -59,12 +59,16 @@ mainCRTStartup()
     PPSTR ArgvA;
     PPWSTR ArgvW;
     const STRING Usage = RTL_CONSTANT_STRING(
-        "Usage: PerfectHashTableSelfTest.exe <Test Data Directory> "
+        "Usage: PerfectHashTableSelfTest.exe "
+        "<TestDataDirectory (must be fully-qualified)> "
         "<AlgorithmId> "
         "<HashFunctionId> "
         "<MaskFunctionId> "
         "<MaximumConcurrency (0-ncpu)> "
-        "[PauseBeforeExit (can be any character)]\n\n"
+        "[PauseBeforeExit (can be any character)]\n"
+        "E.g.: PerfectHashTableSelfTest.exe "
+        "C:\\Users\\Trent\\Home\\src\\perfecthash\\data "
+        "1 1 2 0\n"
     );
     UNICODE_STRING Path;
     PPERFECT_HASH_TABLE_ANY_API AnyApi;
