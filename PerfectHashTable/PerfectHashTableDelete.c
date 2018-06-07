@@ -43,7 +43,7 @@ Arguments:
 
     Table - Supplies a pointer to the table for which the key is to be deleted.
 
-    Key - Supplies the key to insert.
+    Key - Supplies the key to delete.
 
     PreviousValue - Optionally supplies a pointer that will receive the previous
         value at the relevant table location prior to this deletion.  If no
