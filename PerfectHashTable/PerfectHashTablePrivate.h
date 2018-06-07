@@ -1035,7 +1035,7 @@ C_ASSERT(sizeof(TABLE_INFO_ON_DISK_HEADER_FLAGS) == sizeof(ULONG));
 typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
 
     //
-    // A magic value used to identify if the structure.
+    // A magic value used to identify the structure.
     //
 
     ULARGE_INTEGER Magic;
@@ -1104,8 +1104,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // depending on how the graph was created.  If modulus masking is in use,
     // this will reflect the number of keys (unless a custom table size was
     // requested during creation).  Otherwise, this will be the number of keys
-    // rounded up to the next power of 2.  (That is, the number of keys, round
-    // up to a power of 2, then round that up to the next power of 2.)
+    // rounded up to the next power of 2.  (That is, take the number of keys,
+    // round up to a power of 2, then round that up to the next power of 2.)
     //
 
     ULARGE_INTEGER NumberOfTableElements;
@@ -1151,7 +1151,7 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
 
     //
     // Capture statistics about the perfect hash table solution that can be
-    // useful during analysis and performance comparison.
+    // useful during analysis and performance comparisons.
     //
 
     //
@@ -1172,6 +1172,18 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _TABLE_INFO_ON_DISK_HEADER {
     // a solution (in which case, it stops solving and returns from the pool
     // callback).  This counter measures the number of solutions that were
     // found in parallel.  It corresponds to the Context->FinishedCount value.
+    //
+    // With a good hashing function and large concurrency value, this value
+    // may often be relatively large.  E.g. with a concurrency level of 12, it
+    // would not be surprising to see 12 attempts reported, and 10 solutions
+    // found.  (Meaning that our concurrency level was a tad unnecessary, or
+    // our hash function is unnecessarily good (which usually means expensive).)
+    //
+    // N.B. Finding multiple solutions in parallel is harmless, if not a little
+    //      wasteful of CPU time.  The threads can detect if they are the first
+    //      ones to find a solution prior to continuing with the assignment
+    //      step, such that the assignment can be avoided if another thread has
+    //      beaten them to that point.
     //
 
     ULONGLONG NumberOfSolutionsFound;
