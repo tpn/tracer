@@ -1017,7 +1017,7 @@ RetryWithLargerTableSize:
     }
 
     //
-    // The wait result didn't not indicate a resize event.  Ignore the wait
+    // The wait result did not indicate a resize event.  Ignore the wait
     // result for now; determine if the graph solving was successful by the
     // finished count of the context.  We'll corroborate that with whatever
     // events have been signaled shortly.
