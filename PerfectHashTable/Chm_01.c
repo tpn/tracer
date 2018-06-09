@@ -3323,8 +3323,8 @@ Arguments:
     Key - Supplies the key to look up.
 
     Index - Receives the index associated with this key.  The index will be
-        between 0 and NumberOfKeys-1, and can be safely used to offset directly
-        into an appropriately sized array (e.g. Table->Values[]).
+        between 0 and Table->HashSize-1, and can be safely used to offset
+        directly into an appropriately sized array (e.g. Table->Values[]).
 
 Return Value:
 
