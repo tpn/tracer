@@ -936,6 +936,8 @@ typedef struct _PERFECT_HASH_TABLE_VTBL_EX {
     //
 
     PPERFECT_HASH_TABLE_SEEDED_HASH SeededHash;
+    PPERFECT_HASH_TABLE_INDEX FastIndex;
+    PPERFECT_HASH_TABLE_INDEX SlowIndex;
 
 } PERFECT_HASH_TABLE_VTBL_EX;
 typedef PERFECT_HASH_TABLE_VTBL_EX *PPERFECT_HASH_TABLE_VTBL_EX;
@@ -1456,6 +1458,28 @@ typedef GET_VTBL_EX_SIZE *PGET_VTBL_EX_SIZE;
 //
 
 PERFECT_HASH_TABLE_INDEX PerfectHashTableIndexImplChm01;
+
+//
+// For each algorithm, declare fast-index impl routines.  These differ from the
+// normal index routines in that they inline the hash and mask logic (for a
+// given hash and mask combo), removing the vtbl overhead.
+//
+
+PERFECT_HASH_TABLE_INDEX
+    PerfectHashTableFastIndexImplChm01Crc32RotateHashAndMask;
+
+PERFECT_HASH_TABLE_INDEX PerfectHashTableFastIndexImplChm01JenkinsHashAndMask;
+
+typedef struct _PERFECT_HASH_TABLE_FAST_INDEX_TUPLE {
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+    PPERFECT_HASH_TABLE_INDEX FastIndex;
+} PERFECT_HASH_TABLE_FAST_INDEX_TUPLE;
+typedef PERFECT_HASH_TABLE_FAST_INDEX_TUPLE
+      *PPERFECT_HASH_TABLE_FAST_INDEX_TUPLE;
+typedef const PERFECT_HASH_TABLE_FAST_INDEX_TUPLE
+           *PCPERFECT_HASH_TABLE_FAST_INDEX_TUPLE;
 
 //
 // For each algorithm, declare a routine that returns the size of the vtbl used

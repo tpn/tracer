@@ -113,7 +113,7 @@ const PPERFECT_HASH_TABLE_MASK_INDEX MaskIndexRoutines[] = {
 };
 
 //
-// Define the array of lookup-index routines.
+// Define the array of index routines.
 //
 
 const PPERFECT_HASH_TABLE_INDEX IndexRoutines[] = {
@@ -121,6 +121,30 @@ const PPERFECT_HASH_TABLE_INDEX IndexRoutines[] = {
     PerfectHashTableIndexImplChm01,
     NULL
 };
+
+//
+// Define the array of fast-index routines.
+//
+
+const PERFECT_HASH_TABLE_FAST_INDEX_TUPLE FastIndexRoutines[] = {
+
+    {
+        PerfectHashTableChm01AlgorithmId,
+        PerfectHashTableHashCrc32RotateFunctionId,
+        PerfectHashTableAndMaskFunctionId,
+        PerfectHashTableFastIndexImplChm01Crc32RotateHashAndMask,
+    },
+
+    {
+        PerfectHashTableChm01AlgorithmId,
+        PerfectHashTableHashJenkinsFunctionId,
+        PerfectHashTableAndMaskFunctionId,
+        PerfectHashTableFastIndexImplChm01JenkinsHashAndMask,
+    },
+
+};
+
+const BYTE NumberOfFastIndexRoutines = ARRAYSIZE(FastIndexRoutines);
 
 //
 // Define the array of vtbl sizes.

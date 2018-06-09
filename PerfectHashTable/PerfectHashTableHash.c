@@ -347,7 +347,7 @@ Return Value:
 
     ASSERT(NumberOfSeeds >= 2);
 
-    IACA_VC_START();
+    //IACA_VC_START();
 
     //
     // Initialize aliases.
@@ -372,7 +372,7 @@ Return Value:
 
     *Hash = Result.QuadPart;
 
-    IACA_VC_END();
+    //IACA_VC_END();
 
     return S_OK;
 }

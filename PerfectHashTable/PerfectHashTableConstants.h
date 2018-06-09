@@ -50,6 +50,19 @@ const PLOAD_PERFECT_HASH_TABLE_IMPL LoaderRoutines[];
 const PPERFECT_HASH_TABLE_INDEX IndexRoutines[];
 
 //
+// Declare an array of fast-index routines.  Unlike our other arrays that are
+// all indexed by enumeration IDs, this array captures <algorith, hash, mask,
+// func> tuples of supporting fast index routines.  The InitializeExtendedVtbl()
+// routine below is responsible for walking the array and determining if there
+// is an entry present for the requested IDs.  This approach has been selected
+// over a 3-dimensional array as there will only typically be a small number of
+// fast-index routines and maintaining a 3D array of mostly NULLs is cumbersome.
+//
+
+const PERFECT_HASH_TABLE_FAST_INDEX_TUPLE FastIndexRoutines[];
+const BYTE NumberOfFastIndexRoutines;
+
+//
 // Declare an array of hash routines.  This is intended to be indexed by
 // the PERFECT_HASH_TABLE_HASH_FUNCTION_ID enumeration.
 //
@@ -88,17 +101,77 @@ InitializeExtendedVtbl(
     _Inout_ PPERFECT_HASH_TABLE_VTBL_EX Vtbl
     )
 {
+    BYTE Index;
+    PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
+    PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
+    PERFECT_HASH_TABLE_MASK_FUNCTION_ID MaskFunctionId;
+    PCPERFECT_HASH_TABLE_FAST_INDEX_TUPLE Tuple;
+
+    //
+    // Initialize aliases.
+    //
+
+    AlgorithmId = Table->AlgorithmId;
+    HashFunctionId = Table->HashFunctionId;
+    MaskFunctionId = Table->MaskFunctionId;
+
+    //
+    // Wire up the table to the vtbl.
+    //
+
+    Table->Vtbl = Vtbl;
+
+    //
+    // Initialize the generic routines.
+    //
+
     Vtbl->AddRef = PerfectHashTableAddRef;
     Vtbl->Release = PerfectHashTableRelease;
     Vtbl->Insert = PerfectHashTableInsert;
     Vtbl->Lookup = PerfectHashTableLookup;
     Vtbl->Delete = PerfectHashTableDelete;
-    Vtbl->Index = IndexRoutines[Table->AlgorithmId];
-    Vtbl->Hash = HashRoutines[Table->HashFunctionId];
-    Vtbl->MaskHash = MaskHashRoutines[Table->MaskFunctionId];
-    Vtbl->MaskIndex = MaskIndexRoutines[Table->MaskFunctionId];
-    Vtbl->SeededHash = SeededHashRoutines[Table->HashFunctionId];
-    Table->Vtbl = Vtbl;
+
+    //
+    // Initialize the specific routines.
+    //
+
+    Vtbl->Hash = HashRoutines[HashFunctionId];
+    Vtbl->MaskHash = MaskHashRoutines[MaskFunctionId];
+    Vtbl->MaskIndex = MaskIndexRoutines[MaskFunctionId];
+    Vtbl->SeededHash = SeededHashRoutines[HashFunctionId];
+
+    //
+    // Default the slow index to the normal index routine.
+    //
+
+    Vtbl->SlowIndex = IndexRoutines[AlgorithmId];
+
+    //
+    // Walk the fast index routine tuples and see if any of the entries match
+    // the IDs being requested.  If so, save the routine to Vtbl->FastIndex.
+    //
+
+    Vtbl->FastIndex = NULL;
+
+    for (Index = 0; Index < NumberOfFastIndexRoutines; Index++) {
+        BOOLEAN IsMatch;
+
+        Tuple = &FastIndexRoutines[Index];
+
+        IsMatch = (
+            AlgorithmId == Tuple->AlgorithmId &&
+            HashFunctionId == Tuple->HashFunctionId &&
+            MaskFunctionId == Tuple->MaskFunctionId
+        );
+
+        if (IsMatch) {
+            Vtbl->FastIndex = Tuple->FastIndex;
+            break;
+        }
+
+    }
+
+    Vtbl->Index = (Vtbl->FastIndex ? Vtbl->FastIndex : Vtbl->SlowIndex);
 }
 
 //
