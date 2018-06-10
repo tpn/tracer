@@ -642,8 +642,7 @@ Return Value:
                                        PAGE_READONLY,
                                        0,
                                        0,
-                                       NULL,
-                                       &LargePagesForMapping);
+                                       NULL);
 
     Table->MappingHandle = MappingHandle;
 
