@@ -2233,6 +2233,35 @@ LPVOID
 typedef VIRTUAL_ALLOC_EX *PVIRTUAL_ALLOC_EX;
 
 typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI TRY_LARGE_PAGE_VIRTUAL_ALLOC)(
+    _In_opt_  LPVOID lpAddress,
+    _In_      SIZE_T dwSize,
+    _In_      DWORD  flAllocationType,
+    _In_      DWORD  flProtect,
+    _Inout_   PBOOLEAN LargePages
+    );
+typedef TRY_LARGE_PAGE_VIRTUAL_ALLOC *PTRY_LARGE_PAGE_VIRTUAL_ALLOC;
+
+typedef
+_Check_return_
+_Ret_maybenull_
+_Post_writable_byte_size_(dwSize)
+LPVOID
+(WINAPI TRY_LARGE_PAGE_VIRTUAL_ALLOC_EX)(
+    _In_      HANDLE hProcess,
+    _In_opt_  LPVOID lpAddress,
+    _In_      SIZE_T dwSize,
+    _In_      DWORD  flAllocationType,
+    _In_      DWORD  flProtect,
+    _Inout_   PBOOLEAN LargePages
+    );
+typedef TRY_LARGE_PAGE_VIRTUAL_ALLOC_EX *PTRY_LARGE_PAGE_VIRTUAL_ALLOC_EX;
+
+typedef
 BOOL
 (WINAPI VIRTUAL_FREE)(
 
@@ -2376,6 +2405,21 @@ HANDLE
     _In_opt_ LPCWSTR lpName
     );
 typedef CREATE_FILE_MAPPING_W *PCREATE_FILE_MAPPING_W;
+
+typedef
+_Ret_maybenull_
+HANDLE
+(WINAPI TRY_LARGE_PAGE_CREATE_FILE_MAPPING_W)(
+    _In_ HANDLE hFile,
+    _In_opt_ LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+    _In_ DWORD flProtect,
+    _In_ DWORD dwMaximumSizeHigh,
+    _In_ DWORD dwMaximumSizeLow,
+    _In_opt_ LPCWSTR lpName,
+    _Inout_ PBOOLEAN LargePages
+    );
+typedef TRY_LARGE_PAGE_CREATE_FILE_MAPPING_W
+      *PTRY_LARGE_PAGE_CREATE_FILE_MAPPING_W;
 
 typedef
 _Ret_maybenull_
@@ -6406,8 +6450,9 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     SIZE_T LargePageMinimum;
     PALLOCATOR LargePageAllocator;
-    PVIRTUAL_ALLOC TryLargePageVirtualAlloc;
-    PVIRTUAL_ALLOC_EX TryLargePageVirtualAllocEx;
+    PTRY_LARGE_PAGE_VIRTUAL_ALLOC TryLargePageVirtualAlloc;
+    PTRY_LARGE_PAGE_VIRTUAL_ALLOC_EX TryLargePageVirtualAllocEx;
+    PTRY_LARGE_PAGE_CREATE_FILE_MAPPING_W TryLargePageCreateFileMappingW;
 
     PMAP_VIEW_OF_FILE_EX_NUMA MapViewOfFileExNuma;
     PMAP_VIEW_OF_FILE_NUMA2 MapViewOfFileNuma2;

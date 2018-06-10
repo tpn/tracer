@@ -107,11 +107,11 @@ Return Value:
     PVOID BaseAddress;
     HANDLE FileHandle;
     HANDLE MappingHandle;
-    HANDLE ProcessHandle;
     SYSTEM_INFO SystemInfo;
     ULARGE_INTEGER AllocSize;
     ULONG_INTEGER PathBufferSize;
     ULONGLONG KeysBitmapBufferSize;
+    BOOLEAN LargePagesForBitmapBuffer;
     ULONG IncomingPathBufferSizeInBytes;
     ULONG_INTEGER AlignedPathBufferSize;
     ULONG_INTEGER InfoStreamPathBufferSize;
@@ -636,13 +636,12 @@ Return Value:
     // Try a large page allocation for the bitmap buffer.
     //
 
-    ProcessHandle = GetCurrentProcess();
-
-    BaseAddress = Rtl->TryLargePageVirtualAllocEx(ProcessHandle,
-                                                  NULL,
-                                                  KeysBitmapBufferSize,
-                                                  MEM_COMMIT,
-                                                  PAGE_READWRITE);
+    LargePagesForBitmapBuffer = TRUE;
+    BaseAddress = Rtl->TryLargePageVirtualAlloc(NULL,
+                                                KeysBitmapBufferSize,
+                                                MEM_RESERVE | MEM_COMMIT,
+                                                PAGE_READWRITE,
+                                                &LargePagesForBitmapBuffer);
 
     Table->KeysBitmap.Buffer = (PULONG)BaseAddress;
 

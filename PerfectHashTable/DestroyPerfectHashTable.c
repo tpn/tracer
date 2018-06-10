@@ -145,7 +145,8 @@ Return Value:
     //
 
     if (Table->ValuesBaseAddress) {
-        Allocator->FreePointer(Allocator->Context, &Table->ValuesBaseAddress);
+        VirtualFree(Table->ValuesBaseAddress, 0, MEM_RELEASE);
+        Table->ValuesBaseAddress = NULL;
     }
 
     //

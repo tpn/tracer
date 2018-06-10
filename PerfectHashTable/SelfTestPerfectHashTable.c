@@ -108,6 +108,8 @@ Return Value:
     PUNICODE_STRING MaskFunctionName;
     UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
     UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
+    UNICODE_STRING Yes = RTL_CONSTANT_STRING(L"Yes.\n");
+    UNICODE_STRING No = RTL_CONSTANT_STRING(L"No.\n");
 
     //
     // Validate arguments.
@@ -576,6 +578,21 @@ Return Value:
         WIDE_OUTPUT_RAW(WideOutput, L" (");
         WIDE_OUTPUT_INT(WideOutput, Table->MaskFunctionId);
         WIDE_OUTPUT_RAW(WideOutput, L").\n");
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Table data mapped with large pages: ");
+        if (Table->Flags.TableDataUsesLargePages) {
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &Yes);
+        } else {
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &No);
+        }
+
+        WIDE_OUTPUT_RAW(WideOutput, L"Values array allocated with large "
+                                    L"pages: ");
+        if (Table->Flags.ValuesArrayUsesLargePages) {
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &Yes);
+        } else {
+            WIDE_OUTPUT_UNICODE_STRING(WideOutput, &No);
+        }
 
         WIDE_OUTPUT_FLUSH();
 

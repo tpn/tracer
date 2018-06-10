@@ -287,6 +287,7 @@ Return Value:
     PTRACE_CONTEXT TraceContext;
     PTRACE_SESSION TraceSession;
     PTRACE_STORE_SQLITE3_DB Db;
+    BOOLEAN LargePagesForTraceStores;
     HANDLE LoadingCompleteEvent = NULL;
     TRACE_FLAGS TraceFlags;
     TRACE_CONTEXT_FLAGS TraceContextFlags;
@@ -626,10 +627,12 @@ Return Value:
     //
 
     RequiredSize = ALIGN_UP(RequiredSize, (ULONG)Rtl->LargePageMinimum);
+    LargePagesForTraceStores = TRUE;
     Buffer = Rtl->TryLargePageVirtualAlloc(NULL,
                                            RequiredSize,
-                                           MEM_COMMIT,
-                                           PAGE_READWRITE);
+                                           MEM_RESERVE | MEM_COMMIT,
+                                           PAGE_READWRITE,
+                                           &LargePagesForTraceStores);
     if (!Buffer) {
         __debugbreak();
         goto Error;

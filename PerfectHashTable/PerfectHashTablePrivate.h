@@ -44,10 +44,16 @@ typedef union _PERFECT_HASH_TABLE_FLAGS_KEYS {
     struct _Struct_size_bytes_(sizeof(ULONG)) {
 
         //
+        // When set, indicates the keys were mapped using large pages.
+        //
+
+        ULONG MappedWithLargePages:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:32;
+        ULONG Unused:31;
     };
 
     LONG AsLong;
@@ -644,10 +650,23 @@ typedef union _PERFECT_HASH_TABLE_FLAGS {
         ULONG Loaded:1;
 
         //
+        // When set, indicates the table data was mapped using large pages.
+        //
+
+        ULONG TableDataUsesLargePages:1;
+
+        //
+        // When set, indicates the Table->Values[] array was allocated with
+        // large pages.
+        //
+
+        ULONG ValuesArrayUsesLargePages:1;
+
+        //
         // Unused bits.
         //
 
-        ULONG Unused:30;
+        ULONG Unused:28;
     };
 
     LONG AsLong;

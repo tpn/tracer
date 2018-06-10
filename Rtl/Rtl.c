@@ -4182,52 +4182,103 @@ InitializeTsx(PRTL Rtl)
     return TRUE;
 }
 
-VIRTUAL_ALLOC RtlpTryLargePageVirtualAlloc;
+TRY_LARGE_PAGE_VIRTUAL_ALLOC RtlpTryLargePageVirtualAlloc;
 
 _Use_decl_annotations_
 LPVOID
-RtlpLargePageVirtualAlloc(
-    LPVOID lpAddress,
-    SIZE_T dwSize,
-    DWORD  flAllocationType,
-    DWORD  flProtect
+RtlpTryLargePageVirtualAlloc(
+    LPVOID   lpAddress,
+    SIZE_T   dwSize,
+    DWORD    flAllocationType,
+    DWORD    flProtect,
+    PBOOLEAN LargePages
     )
 {
     PVOID BaseAddress;
+
+    if (!*LargePages) {
+        goto Fallback;
+    }
+
+    //
+    // Attempt a large page VirtualAlloc().
+    //
 
     BaseAddress = VirtualAlloc(lpAddress,
                                max(dwSize, GetLargePageMinimum()),
                                flAllocationType | MEM_LARGE_PAGES,
                                flProtect);
 
-    if (!BaseAddress) {
-
-        //
-        // Try again without large pages.
-        //
-
-        BaseAddress = VirtualAlloc(lpAddress,
-                                   dwSize,
-                                   flAllocationType,
-                                   flProtect);
+    if (BaseAddress) {
+        return BaseAddress;
     }
+
+    //
+    // Indicate large pages failed.
+    //
+
+    *LargePages = FALSE;
+
+    //
+    // Try again.
+    //
+
+Fallback:
+
+    BaseAddress = VirtualAlloc(lpAddress,
+                               dwSize,
+                               flAllocationType,
+                               flProtect);
 
     return BaseAddress;
 }
 
-VIRTUAL_ALLOC_EX RtlpTryLargePageVirtualAllocEx;
+TRY_LARGE_PAGE_VIRTUAL_ALLOC RtlpNoLargePageVirtualAlloc;
 
 _Use_decl_annotations_
 LPVOID
-RtlpLargePageVirtualAllocEx(
-    HANDLE hProcess,
-    LPVOID lpAddress,
-    SIZE_T dwSize,
-    DWORD  flAllocationType,
-    DWORD  flProtect
+RtlpNoLargePageVirtualAlloc(
+    LPVOID   lpAddress,
+    SIZE_T   dwSize,
+    DWORD    flAllocationType,
+    DWORD    flProtect,
+    PBOOLEAN LargePages
     )
 {
     PVOID BaseAddress;
+
+    *LargePages = FALSE;
+
+    BaseAddress = VirtualAlloc(lpAddress,
+                               dwSize,
+                               flAllocationType,
+                               flProtect);
+
+    return BaseAddress;
+}
+
+TRY_LARGE_PAGE_VIRTUAL_ALLOC_EX RtlpTryLargePageVirtualAllocEx;
+
+_Use_decl_annotations_
+LPVOID
+RtlpTryLargePageVirtualAllocEx(
+    HANDLE   hProcess,
+    LPVOID   lpAddress,
+    SIZE_T   dwSize,
+    DWORD    flAllocationType,
+    DWORD    flProtect,
+    PBOOLEAN LargePages
+    )
+{
+    PVOID BaseAddress;
+
+    if (!*LargePages) {
+        goto Fallback;
+    }
+
+    //
+    // Attempt a large page VirtualAllocEx().
+    //
 
     BaseAddress = VirtualAllocEx(hProcess,
                                  lpAddress,
@@ -4235,21 +4286,149 @@ RtlpLargePageVirtualAllocEx(
                                  flAllocationType | MEM_LARGE_PAGES,
                                  flProtect);
 
-    if (!BaseAddress) {
-
-        //
-        // Try again without large pages.
-        //
-
-
-        BaseAddress = VirtualAllocEx(hProcess,
-                                     lpAddress,
-                                     dwSize,
-                                     flAllocationType,
-                                     flProtect);
+    if (BaseAddress) {
+        return BaseAddress;
     }
 
+    //
+    // Indicate large pages failed.
+    //
+
+    *LargePages = FALSE;
+
+    //
+    // Try again.
+    //
+
+Fallback:
+
+    BaseAddress = VirtualAllocEx(hProcess,
+                                 lpAddress,
+                                 dwSize,
+                                 flAllocationType,
+                                 flProtect);
+
     return BaseAddress;
+}
+
+TRY_LARGE_PAGE_VIRTUAL_ALLOC_EX RtlpNoLargePageVirtualAllocEx;
+
+_Use_decl_annotations_
+LPVOID
+RtlpNoLargePageVirtualAllocEx(
+    HANDLE   hProcess,
+    LPVOID   lpAddress,
+    SIZE_T   dwSize,
+    DWORD    flAllocationType,
+    DWORD    flProtect,
+    PBOOLEAN LargePages
+    )
+{
+    PVOID BaseAddress;
+
+    *LargePages = FALSE;
+
+    BaseAddress = VirtualAllocEx(hProcess,
+                                 lpAddress,
+                                 dwSize,
+                                 flAllocationType,
+                                 flProtect);
+
+    return BaseAddress;
+}
+
+TRY_LARGE_PAGE_CREATE_FILE_MAPPING_W RtlpTryLargePageCreateFileMappingW;
+
+_Use_decl_annotations_
+HANDLE
+RtlpTryLargePageCreateFileMappingW(
+    HANDLE hFile,
+    LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+    DWORD flProtect,
+    DWORD dwMaximumSizeHigh,
+    DWORD dwMaximumSizeLow,
+    LPCWSTR lpName,
+    PBOOLEAN LargePages
+    )
+{
+    HANDLE Handle;
+    ULARGE_INTEGER Size;
+
+    if (!*LargePages) {
+        goto Fallback;
+    }
+
+    Size.HighPart = dwMaximumSizeHigh;
+
+    if (!Size.HighPart && dwMaximumSizeLow) {
+        Size.LowPart = max(dwMaximumSizeLow, (DWORD)GetLargePageMinimum());
+    } else {
+        Size.LowPart = dwMaximumSizeLow;
+    }
+
+    //
+    // Attempt to create a file mapping using large pages.
+    //
+
+    Handle = CreateFileMappingW(hFile,
+                                lpFileMappingAttributes,
+                                flProtect | SEC_LARGE_PAGES,
+                                Size.HighPart,
+                                Size.LowPart,
+                                lpName);
+
+    if (Handle && Handle != INVALID_HANDLE_VALUE) {
+        return Handle;
+    }
+
+    //
+    // Indicate large pages failed.
+    //
+
+    *LargePages = FALSE;
+
+    //
+    // Try again without large pages.
+    //
+
+Fallback:
+
+    Handle = CreateFileMappingW(hFile,
+                                lpFileMappingAttributes,
+                                flProtect,
+                                dwMaximumSizeHigh,
+                                dwMaximumSizeLow,
+                                lpName);
+
+    return Handle;
+}
+
+TRY_LARGE_PAGE_CREATE_FILE_MAPPING_W RtlpNoLargePageCreateFileMappingW;
+
+_Use_decl_annotations_
+HANDLE
+RtlpNoLargePageCreateFileMappingW(
+    HANDLE hFile,
+    LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+    DWORD flProtect,
+    DWORD dwMaximumSizeHigh,
+    DWORD dwMaximumSizeLow,
+    LPCWSTR lpName,
+    PBOOLEAN LargePages
+    )
+{
+    HANDLE Handle;
+
+    *LargePages = FALSE;
+
+    Handle = CreateFileMappingW(hFile,
+                                lpFileMappingAttributes,
+                                flProtect,
+                                dwMaximumSizeHigh,
+                                dwMaximumSizeLow,
+                                lpName);
+
+    return Handle;
 }
 
 BOOL
@@ -4259,11 +4438,14 @@ InitializeLargePages(PRTL Rtl)
     Rtl->LargePageMinimum = GetLargePageMinimum();
 
     if (Rtl->Flags.IsLargePageEnabled) {
-        Rtl->TryLargePageVirtualAlloc = RtlpLargePageVirtualAlloc;
-        Rtl->TryLargePageVirtualAllocEx = RtlpLargePageVirtualAllocEx;
+        Rtl->TryLargePageVirtualAlloc = RtlpTryLargePageVirtualAlloc;
+        Rtl->TryLargePageVirtualAllocEx = RtlpTryLargePageVirtualAllocEx;
+        Rtl->TryLargePageCreateFileMappingW =
+            RtlpTryLargePageCreateFileMappingW;
     } else {
-        Rtl->TryLargePageVirtualAlloc = VirtualAlloc;
-        Rtl->TryLargePageVirtualAllocEx = VirtualAllocEx;
+        Rtl->TryLargePageVirtualAlloc = RtlpNoLargePageVirtualAlloc;
+        Rtl->TryLargePageVirtualAllocEx = RtlpNoLargePageVirtualAllocEx;
+        Rtl->TryLargePageCreateFileMappingW = RtlpNoLargePageCreateFileMappingW;
     }
 
     return TRUE;

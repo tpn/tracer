@@ -72,6 +72,8 @@ Return Value:
     HANDLE MappingHandle;
     ULARGE_INTEGER AllocSize;
     FILE_STANDARD_INFO FileInfo;
+    BOOLEAN LargePagesForMapping;
+    BOOLEAN LargePagesForValues;
     ULONG_INTEGER PathBufferSize;
     ULONG_INTEGER InfoPathBufferSize;
     ULARGE_INTEGER ExpectedEndOfFile;
@@ -79,6 +81,7 @@ Return Value:
     ULONG_INTEGER AlignedInfoPathBufferSize;
     ULONGLONG NumberOfKeys;
     ULONGLONG NumberOfTableElements;
+    ULONGLONG ValuesSizeInBytes;
     PPERFECT_HASH_TABLE Table;
     PTABLE_INFO_ON_DISK_HEADER Header;
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
@@ -635,12 +638,14 @@ Return Value:
     // underlying file size.
     //
 
-    MappingHandle = CreateFileMappingW(FileHandle,
-                                       NULL,
-                                       PAGE_READONLY,
-                                       0,
-                                       0,
-                                       NULL);
+    LargePagesForMapping = TRUE;
+    MappingHandle = Rtl->TryLargePageCreateFileMappingW(FileHandle,
+                                                        NULL,
+                                                        PAGE_READONLY,
+                                                        0,
+                                                        0,
+                                                        NULL,
+                                                        &LargePagesForMapping);
 
     Table->MappingHandle = MappingHandle;
 
@@ -653,6 +658,12 @@ Return Value:
         LastError = GetLastError();
         goto Error;
     }
+
+    //
+    // Update the large pages flag if applicable.
+    //
+
+    Table->Flags.TableDataUsesLargePages = LargePagesForMapping;
 
     //
     // Created the mapping successfully.  Now, map it.
@@ -679,15 +690,30 @@ Return Value:
     // by the result of the Index() routine.
     //
 
-    BaseAddress = Allocator->Calloc(Allocator->Context,
-                                    Header->NumberOfTableElements.QuadPart,
-                                    Header->KeySizeInBytes);
+    LargePagesForValues = TRUE;
+
+    ValuesSizeInBytes = (
+        Header->NumberOfTableElements.QuadPart *
+        (ULONGLONG)Header->KeySizeInBytes
+    );
+
+    BaseAddress = Rtl->TryLargePageVirtualAlloc(NULL,
+                                                ValuesSizeInBytes,
+                                                MEM_RESERVE | MEM_COMMIT,
+                                                PAGE_READWRITE,
+                                                &LargePagesForValues);
 
     Table->ValuesBaseAddress = BaseAddress;
 
     if (!BaseAddress) {
         goto Error;
     }
+
+    //
+    // Update flags with large page result for values array.
+    //
+
+    Table->Flags.ValuesArrayUsesLargePages = LargePagesForValues;
 
     //
     // We've completed loading the :Info structure and corresponding data array.
