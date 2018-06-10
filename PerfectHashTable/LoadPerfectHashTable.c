@@ -72,7 +72,6 @@ Return Value:
     HANDLE MappingHandle;
     ULARGE_INTEGER AllocSize;
     FILE_STANDARD_INFO FileInfo;
-    BOOLEAN LargePagesForMapping;
     BOOLEAN LargePagesForValues;
     ULONG_INTEGER PathBufferSize;
     ULONG_INTEGER InfoPathBufferSize;
@@ -638,14 +637,13 @@ Return Value:
     // underlying file size.
     //
 
-    LargePagesForMapping = TRUE;
-    MappingHandle = Rtl->TryLargePageCreateFileMappingW(FileHandle,
-                                                        NULL,
-                                                        PAGE_READONLY,
-                                                        0,
-                                                        0,
-                                                        NULL,
-                                                        &LargePagesForMapping);
+    MappingHandle = CreateFileMappingW(FileHandle,
+                                       NULL,
+                                       PAGE_READONLY,
+                                       0,
+                                       0,
+                                       NULL,
+                                       &LargePagesForMapping);
 
     Table->MappingHandle = MappingHandle;
 
@@ -658,12 +656,6 @@ Return Value:
         LastError = GetLastError();
         goto Error;
     }
-
-    //
-    // Update the large pages flag if applicable.
-    //
-
-    Table->Flags.TableDataUsesLargePages = LargePagesForMapping;
 
     //
     // Created the mapping successfully.  Now, map it.

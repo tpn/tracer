@@ -650,7 +650,10 @@ typedef union _PERFECT_HASH_TABLE_FLAGS {
         ULONG Loaded:1;
 
         //
-        // When set, indicates the table data was mapped using large pages.
+        // When set, indicates large pages are in use for the memory backing
+        // Table->Data.
+        //
+        // N.B. This is not currently supported.
         //
 
         ULONG TableDataUsesLargePages:1;
