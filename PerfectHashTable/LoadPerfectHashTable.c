@@ -363,7 +363,7 @@ Return Value:
                              ShareMode,
                              NULL,
                              OPEN_EXISTING,
-                             FILE_FLAG_OVERLAPPED,
+                             FlagsAndAttributes,
                              NULL);
 
     Table->InfoStreamFileHandle = FileHandle;
