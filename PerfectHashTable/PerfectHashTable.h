@@ -250,20 +250,20 @@ IsModulusMasking(
 // Define an enumeration for identifying benchmark routines.
 //
 
-typedef enum _PERFECT_HASH_TABLE_BENCHMARK_ID {
+typedef enum _PERFECT_HASH_TABLE_BENCHMARK_FUNCTION_ID {
 
     //
     // Explicitly define a null algorithm to take the 0-index slot.
     // This makes enum validation easier.
     //
 
-    PerfectHashTableNullBenchmarkId         = 0,
+    PerfectHashTableNullBenchmarkFunctionId         = 0,
 
     //
     // Begin valid benchmarks.
     //
 
-    PerfectHashTableFastIndexBenchmarkId    = 1,
+    PerfectHashTableFastIndexBenchmarkFunctionId    = 1,
 
     //
     // End valid benchmarks.
@@ -273,9 +273,9 @@ typedef enum _PERFECT_HASH_TABLE_BENCHMARK_ID {
     // N.B. Keep the next value last.
     //
 
-    PerfectHashTableInvalidBenchmarkId,
+    PerfectHashTableInvalidBenchmarkFunctionId,
 
-} PERFECT_HASH_TABLE_BENCHMARK_ID;
+} PERFECT_HASH_TABLE_BENCHMARK_FUNCTION_ID;
 
 //
 // Provide a simple inline benchmark validation routine.
@@ -283,15 +283,65 @@ typedef enum _PERFECT_HASH_TABLE_BENCHMARK_ID {
 
 FORCEINLINE
 BOOLEAN
-IsValidPerfectHashTableBenchmarkId(
-    _In_ PERFECT_HASH_TABLE_BENCHMARK_ID BenchmarkId
+IsValidPerfectHashTableBenchmarkFunctionId(
+    _In_ PERFECT_HASH_TABLE_BENCHMARK_FUNCTION_ID BenchmarkFunctionId
     )
 {
     return (
-        BenchmarkId > PerfectHashTableNullBenchmarkId &&
-        BenchmarkId < PerfectHashTableInvalidBenchmarkId
+        BenchmarkFunctionId > PerfectHashTableNullBenchmarkFunctionId &&
+        BenchmarkFunctionId < PerfectHashTableInvalidBenchmarkFunctionId
     );
 }
+
+//
+// Define an enumeration for identifying benchmark types.
+//
+
+typedef enum _PERFECT_HASH_TABLE_BENCHMARK_TYPE {
+
+    //
+    // Explicitly define a null benchmark type to take the 0-index slot.
+    // This makes enum validation easier.
+    //
+
+    PerfectHashTableNullBenchmarkType       = 0,
+
+    //
+    // Begin valid benchmark typess.
+    //
+
+    PerfectHashTableSingleBenchmarkType     = 1,
+    PerfectHashTableAllBenchmarkType        = 2,
+
+    //
+    // End valid benchmark typess.
+    //
+
+    //
+    // N.B. Keep the next value last.
+    //
+
+    PerfectHashTableInvalidBenchmarkType,
+
+} PERFECT_HASH_TABLE_BENCHMARK_TYPE;
+typedef PERFECT_HASH_TABLE_BENCHMARK_TYPE *PPERFECT_HASH_TABLE_BENCHMARK_TYPE;
+
+//
+// Provide a simple inline benchmark type validation routine.
+//
+
+FORCEINLINE
+BOOLEAN
+IsValidPerfectHashTableBenchmarkType(
+    _In_ PERFECT_HASH_TABLE_BENCHMARK_TYPE BenchmarkType
+    )
+{
+    return (
+        BenchmarkType > PerfectHashTableNullBenchmarkType &&
+        BenchmarkType < PerfectHashTableInvalidBenchmarkType
+    );
+}
+
 
 //
 // Define an opaque runtime context to encapsulate threadpool resources.  This
