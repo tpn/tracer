@@ -5247,10 +5247,27 @@ typedef BOOL (*PLOAD_SHLWAPI)(PRTL Rtl);
 typedef BOOL (*PLOAD_DBGHELP)(PRTL Rtl);
 typedef BOOL (*PLOAD_DBGENG)(PRTL Rtl);
 
-typedef BOOL (*PPATH_CANONICALIZEA)(
-        _Out_   LPSTR   Dest,
-        _In_    LPCSTR  Source
+typedef
+BOOL
+(NTAPI PATH_CANONICALIZEA)(
+    _Out_   LPSTR   Dest,
+    _In_    LPCSTR  Source
     );
+typedef PATH_CANONICALIZEA *PPATH_CANONICALIZEA;
+
+typedef
+BOOL
+(NTAPI PATH_STRIP_PATH_W)(
+    _Inout_ LPWSTR Path
+    );
+typedef PATH_STRIP_PATH_W *PPATH_STRIP_PATH_W;
+
+typedef
+BOOL
+(NTAPI PATH_STRIP_PATH_A)(
+    _Inout_ LPSTR Path
+    );
+typedef PATH_STRIP_PATH_A *PPATH_STRIP_PATH_A;
 
 #define PATH_ENV_NAME L"Path"
 
@@ -5890,7 +5907,9 @@ typedef struct _RTLEXFUNCTIONS {
 } RTLEXFUNCTIONS, *PRTLEXFUNCTIONS, **PPRTLEXFUNCTIONS;
 
 #define _SHLWAPIFUNCTIONS_HEAD             \
-    PPATH_CANONICALIZEA PathCanonicalizeA;
+    PPATH_CANONICALIZEA PathCanonicalizeA; \
+    PPATH_STRIP_PATH_A PathStripPathA;     \
+    PPATH_STRIP_PATH_W PathStripPathW;
 
 typedef struct _SHLWAPI_FUNCTIONS {
     _SHLWAPIFUNCTIONS_HEAD
@@ -6450,7 +6469,6 @@ typedef union _RTL_FLAGS {
         //
 
         ULONG CrtInitialized:1;
-
 
     };
     LONG AsLong;

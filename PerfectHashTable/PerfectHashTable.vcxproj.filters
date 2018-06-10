@@ -85,6 +85,9 @@
     <ClCompile Include="PerfectHashTableNames.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BenchmarkPerfectHashTable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfectHashTable.h">

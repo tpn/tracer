@@ -14,3 +14,5 @@ EXPORTS
     InitializePerfectHashTableAllocator
     InitializePerfectHashTableAllocatorFromRtlBootstrap
     SelfTestPerfectHashTable
+    PerfectHashTableBenchmarkSingleMain
+    PerfectHashTableBenchmarkAllMain

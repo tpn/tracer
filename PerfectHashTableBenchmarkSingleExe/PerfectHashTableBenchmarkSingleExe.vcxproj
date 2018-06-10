@@ -43,16 +43,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{14D9F1FD-1EC4-47FF-BF73-3868ED05FEB8}</ProjectGuid>
-    <RootNamespace>PerfectHashTable</RootNamespace>
-    <DefaultLanguage>en-US</DefaultLanguage>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{741C0AD4-D461-4E15-96E3-C6D30B7068EB}</ProjectGuid>
+    <RootNamespace>PerfectHashTableBenchmarkExe</RootNamespace>
     <PlatformToolset>v141</PlatformToolset>
-    <ProjectName>PerfectHashTable</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <ProjectName>PerfectHashTableBenchmarkSingleExe</ProjectName>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetName>PerfectHashTableBenchmarkSingle</TargetName>
+    <TargetExt>.exe</TargetExt>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
   <Import Project="..\Tracer.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -68,57 +71,24 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
-    <ClCompile>
-      <PreprocessorDefinitions>_PERFECT_HASH_TABLE_INTERNAL_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
     <Bscmake>
       <PreserveSbr>false</PreserveSbr>
     </Bscmake>
     <Link>
       <SubSystem>Console</SubSystem>
-      <ModuleDefinitionFile>PerfectHashTable.def</ModuleDefinitionFile>
+      <AdditionalDependencies>kernel32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="PerfectHashTable.def" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Chm_01.h" />
-    <ClInclude Include="PerfectHashTable.h" />
-    <ClInclude Include="PerfectHashTablePrime.h" />
-    <ClInclude Include="PerfectHashTablePrivate.h" />
-    <ClInclude Include="PerfectHashTableConstants.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Rtl\__C_specific_handler.c" />
-    <ClCompile Include="BenchmarkPerfectHashTable.c" />
-    <ClCompile Include="Chm_01.c" />
-    <ClCompile Include="CreatePerfectHashTable.c" />
-    <ClCompile Include="CreatePerfectHashTableContext.c" />
-    <ClCompile Include="DestroyPerfectHashTable.c" />
-    <ClCompile Include="DestroyPerfectHashTableContext.c" />
-    <ClCompile Include="DestroyPerfectHashTableKeys.c" />
-    <ClCompile Include="LoadPerfectHashTable.c" />
-    <ClCompile Include="LoadPerfectHashTableKeys.c" />
-    <ClCompile Include="PerfectHashTableDelete.c" />
-    <ClCompile Include="PerfectHashTableHash.c" />
-    <ClCompile Include="PerfectHashTableInsert.c" />
-    <ClCompile Include="PerfectHashTableLookup.c" />
-    <ClCompile Include="PerfectHashTableMask.c" />
-    <ClCompile Include="PerfectHashTableNames.c" />
-    <ClCompile Include="PerfectHashTablePrime.c" />
-    <ClCompile Include="PerfectHashTableRefCount.c" />
-    <ClCompile Include="PerfectHashTableTls.c" />
-    <ClCompile Include="PerfectHashTableAllocator.c" />
-    <ClCompile Include="PerfectHashTableConstants.c" />
-    <ClCompile Include="dllmain.c" />
-    <ClCompile Include="SelfTestPerfectHashTable.c" />
     <ClCompile Include="stdafx.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TestPerfectHashTable.c" />
+    <ClCompile Include="main.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

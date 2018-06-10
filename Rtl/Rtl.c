@@ -888,15 +888,17 @@ LoadShlwapiFunctions(
 
 
     RESOLVE_SHLWAPI_FUNCTION(PPATH_CANONICALIZEA, PathCanonicalizeA);
+    RESOLVE_SHLWAPI_FUNCTION(PPATH_STRIP_PATH_W, PathStripPathW);
+    RESOLVE_SHLWAPI_FUNCTION(PPATH_STRIP_PATH_A, PathStripPathA);
 
     return TRUE;
-
 }
 
 RTL_API
 BOOL
 LoadShlwapi(PRTL Rtl)
 {
+
     if (!ARGUMENT_PRESENT(Rtl)) {
         return FALSE;
     }
