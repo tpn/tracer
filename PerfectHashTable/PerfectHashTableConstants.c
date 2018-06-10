@@ -297,4 +297,14 @@ const PCUNICODE_STRING ContextObjectPrefixes[] = {
 const BYTE NumberOfContextEventPrefixes = ARRAYSIZE(ContextObjectPrefixes);
 const BYTE NumberOfContextObjectPrefixes = ARRAYSIZE(ContextObjectPrefixes);
 
+//
+// Miscellaneous string constants.
+//
+
+const UNICODE_STRING No = RTL_CONSTANT_STRING(L"No.\n");
+const UNICODE_STRING Yes = RTL_CONSTANT_STRING(L"Yes.\n");
+const UNICODE_STRING KeysSuffix = RTL_CONSTANT_STRING(L"keys");
+const UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
+const UNICODE_STRING KeysWildcardSuffix = RTL_CONSTANT_STRING(L"*.keys");
+
 // vim:set ts=8 sw=4 sts=4 tw=80 expandtab nowrap                              :

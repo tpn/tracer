@@ -257,6 +257,15 @@ GetNumberOfContextEvents(
     return NumberOfEvents;
 }
 
+//
+// Declare miscellaneous strings.
+//
+
+const UNICODE_STRING No;
+const UNICODE_STRING Yes;
+const UNICODE_STRING KeysSuffix;
+const UNICODE_STRING TableSuffix;
+const UNICODE_STRING KeysWildcardSuffix;
 
 #ifdef __cplusplus
 }; // extern "C" {
