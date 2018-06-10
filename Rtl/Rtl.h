@@ -516,6 +516,17 @@ typedef CONST CHAR *PCCHAR;
 typedef _Null_terminated_ CONST WCHAR *PCWSZ;
 typedef CONST WCHAR *PCWCHAR;
 
+typedef _Null_terminated_ char* STRSAFE_LPSTR;
+typedef _Null_terminated_ const char* STRSAFE_LPCSTR;
+typedef _Null_terminated_ wchar_t* STRSAFE_LPWSTR;
+typedef _Null_terminated_ const wchar_t* STRSAFE_LPCWSTR;
+typedef _Null_terminated_ const wchar_t UNALIGNED* STRSAFE_LPCUWSTR;
+
+typedef  const char* STRSAFE_PCNZCH;
+typedef  const wchar_t* STRSAFE_PCNZWCH;
+typedef  const wchar_t UNALIGNED* STRSAFE_PCUNZWCH;
+
+
 #ifdef _M_X64
 #pragma intrinsic(__readgsdword)
 FORCEINLINE
@@ -2012,6 +2023,23 @@ VOID
     _In_ PCRTCOMPARE Compare
     );
 typedef QSORT *PQSORT;
+
+typedef
+ULONG
+(__cdecl VSPRINTF_S)(
+    _Out_writes_(cchDest) _Always_(_Post_z_) STRSAFE_LPSTR pszDest,
+    _In_ size_t cchDest,
+    _In_ _Printf_format_string_ STRSAFE_LPCSTR pszFormat,
+    _In_ va_list argList
+    );
+typedef VSPRINTF_S *PVSPRINTF_S;
+
+typedef
+BOOL
+(NTAPI INITIALIZE_CRT)(
+    _In_ struct _RTL *Rtl
+    );
+typedef INITIALIZE_CRT *PINITIALIZE_CRT;
 
 //
 // atexit-related functions and structures.
@@ -6416,6 +6444,14 @@ typedef union _RTL_FLAGS {
 
         ULONG Crypt32Initialized:1;
 
+        //
+        // When set, indicates a CRT module has been load and the various
+        // CRT functions in RTL are available.
+        //
+
+        ULONG CrtInitialized:1;
+
+
     };
     LONG AsLong;
     ULONG AsULong;
@@ -6438,9 +6474,12 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
     HMODULE     InjectionThunkModule;
     HMODULE     NvcudaModule;
     HMODULE     Crypt32Module;
+    HMODULE     CrtModule;
 
     PINITIALIZE_COM InitializeCom;
     PCO_INITIALIZE_EX CoInitializeEx;
+
+    PINITIALIZE_CRT InitializeCrt;
 
     PGET_CU GetCu;
     struct _CU *Cu;
@@ -6494,6 +6533,8 @@ typedef struct _Struct_size_bytes_(SizeOfStruct) _RTL {
 
     PCREATE_EVENT_A CreateEventA;
     PCREATE_EVENT_W CreateEventW;
+
+    PVSPRINTF_S vsprintf_s;
 
     //
     // Fully-qualified module path name set by SetDllPath().

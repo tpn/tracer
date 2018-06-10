@@ -4647,6 +4647,31 @@ End:
     return Success;
 }
 
+INITIALIZE_CRT InitializeCrt;
+
+BOOL
+InitializeCrt(
+    PRTL Rtl
+    )
+{
+    if (Rtl->Flags.CrtInitialized) {
+        return TRUE;
+    }
+
+    Rtl->CrtModule = LoadLibraryA("msvcrt.dll");
+    if (!Rtl->CrtModule) {
+        return FALSE;
+    }
+
+    Rtl->vsprintf_s = (PVSPRINTF_S)GetProcAddress(Rtl->CrtModule, "vsprintf_s");
+    if (!Rtl->vsprintf_s) {
+        return FALSE;
+    }
+
+    Rtl->Flags.CrtInitialized = TRUE;
+    return TRUE;
+}
+
 
 _Use_decl_annotations_
 BOOL
@@ -4720,6 +4745,8 @@ InitializeRtl(
 
     Rtl->InitializeInjection = InitializeInjection;
     Rtl->Inject = Inject;
+
+    Rtl->InitializeCrt = InitializeCrt;
 
     Rtl->GetCu = GetCu;
 
