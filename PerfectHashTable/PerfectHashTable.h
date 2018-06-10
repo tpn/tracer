@@ -247,6 +247,53 @@ IsModulusMasking(
 }
 
 //
+// Define an enumeration for identifying benchmark routines.
+//
+
+typedef enum _PERFECT_HASH_TABLE_BENCHMARK_ID {
+
+    //
+    // Explicitly define a null algorithm to take the 0-index slot.
+    // This makes enum validation easier.
+    //
+
+    PerfectHashTableNullBenchmarkId         = 0,
+
+    //
+    // Begin valid benchmarks.
+    //
+
+    PerfectHashTableFastIndexBenchmarkId    = 1,
+
+    //
+    // End valid benchmarks.
+    //
+
+    //
+    // N.B. Keep the next value last.
+    //
+
+    PerfectHashTableInvalidBenchmarkId,
+
+} PERFECT_HASH_TABLE_BENCHMARK_ID;
+
+//
+// Provide a simple inline benchmark validation routine.
+//
+
+FORCEINLINE
+BOOLEAN
+IsValidPerfectHashTableBenchmarkId(
+    _In_ PERFECT_HASH_TABLE_BENCHMARK_ID BenchmarkId
+    )
+{
+    return (
+        BenchmarkId > PerfectHashTableNullBenchmarkId &&
+        BenchmarkId < PerfectHashTableInvalidBenchmarkId
+    );
+}
+
+//
 // Define an opaque runtime context to encapsulate threadpool resources.  This
 // is created via CreatePerfectHashTableContext() with a desired concurrency,
 // and then passed to CreatePerfectHashTable(), allowing it to search for
