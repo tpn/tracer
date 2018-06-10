@@ -1470,6 +1470,13 @@ PERFECT_HASH_TABLE_INDEX
 
 PERFECT_HASH_TABLE_INDEX PerfectHashTableFastIndexImplChm01JenkinsHashAndMask;
 
+//
+// Define a helper structure for capturing fast index routines for a subset
+// of hash/mask combinations.  These routines inline the hashing and masking
+// such that they're essentially leaf entries, and avoid the COM vtbl overhead.
+// This is used by our constants module.
+//
+
 typedef struct _PERFECT_HASH_TABLE_FAST_INDEX_TUPLE {
     PERFECT_HASH_TABLE_ALGORITHM_ID AlgorithmId;
     PERFECT_HASH_TABLE_HASH_FUNCTION_ID HashFunctionId;
