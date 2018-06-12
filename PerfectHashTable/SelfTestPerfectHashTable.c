@@ -103,13 +103,10 @@ Return Value:
     PPERFECT_HASH_TABLE_CONTEXT Context;
     PPERFECT_HASH_TABLE_API Api;
     PPERFECT_HASH_TABLE_API_EX ApiEx;
+    PCUNICODE_STRING Suffix = &KeysWildcardSuffix;
     PUNICODE_STRING AlgorithmName;
     PUNICODE_STRING HashFunctionName;
     PUNICODE_STRING MaskFunctionName;
-    UNICODE_STRING Suffix = RTL_CONSTANT_STRING(L"*.keys");
-    UNICODE_STRING TableSuffix = RTL_CONSTANT_STRING(L"pht1");
-    UNICODE_STRING Yes = RTL_CONSTANT_STRING(L"Yes.\n");
-    UNICODE_STRING No = RTL_CONSTANT_STRING(L"No.\n");
 
     //
     // Validate arguments.
@@ -220,7 +217,7 @@ Return Value:
     //
 
     AllocSize.LongPart = TestDataDirectory->Length;
-    AllocSize.LongPart += Suffix.Length + (2 * sizeof(*Dest));
+    AllocSize.LongPart += Suffix->Length + (2 * sizeof(*Dest));
 
     ASSERT(!AllocSize.HighPart);
 
@@ -246,7 +243,7 @@ Return Value:
 
     Dest = (PWSTR)RtlOffsetToPointer(SearchPath.Buffer, Length);
     *Dest++ = L'\\';
-    CopyMemory(Dest, Suffix.Buffer, Suffix.Length);
+    CopyMemory(Dest, Suffix->Buffer, Suffix->Length);
 
     //
     // Wire up the search path length and maximum length variables.  The max
