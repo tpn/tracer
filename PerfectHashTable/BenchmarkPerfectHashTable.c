@@ -288,6 +288,7 @@ InitializeBenchmarkContext(
     ASSERT(Rtl->LoadShlwapi(Rtl));
 
     Ctx->AnyApi = (PPERFECT_HASH_TABLE_ANY_API)&Ctx->GlobalApi;
+    Ctx->Api = (PPERFECT_HASH_TABLE_API_EX)&Ctx->GlobalApi;
 
     ASSERT(LoadPerfectHashTableApi(Rtl,
                                    &Ctx->PerfectHashTableModule,
@@ -513,7 +514,6 @@ InitializeBenchmarkContextSingle(
     ULONG RunCount;
     NTSTATUS Status;
     BOOLEAN Success;
-    PWCHAR Original;
     PWCHAR WideOutput;
     PWCHAR WideOutputBuffer;
     ULONG BytesWritten;
@@ -600,12 +600,9 @@ InitializeBenchmarkContextSingle(
             InitializeUnicodeStringFromUnicodeString(&Ctx->KeysNameWide,
                                                      &Ctx->KeysPath);
 
-            Original = Ctx->KeysNameWide.Buffer;
-
             Rtl->PathStripPathW(Ctx->KeysNameWide.Buffer);
             Ctx->KeysNameWide.Length = (USHORT)(
-                sizeof(WCHAR) +
-                RtlPointerToOffset(Ctx->KeysNameWide.Buffer, Original)
+                wcslen(Ctx->KeysNameWide.Buffer) << 1
             );
 
             ASSERT(
@@ -626,7 +623,9 @@ InitializeBenchmarkContextSingle(
             //
 
             Ctx->TablePath.Buffer = Ctx->ArgvW[2];
-            Ctx->TablePath.Length = (USHORT)wcslen(Ctx->TablePath.Buffer) << 1;
+            Ctx->TablePath.Length = (USHORT)(
+                wcslen(Ctx->TablePath.Buffer) << 1
+            );
             Ctx->TablePath.MaximumLength = (
                 Ctx->TablePath.Length +
                 sizeof(Ctx->TablePath.Buffer[0])
@@ -662,12 +661,9 @@ InitializeBenchmarkContextSingle(
             InitializeUnicodeStringFromUnicodeString(&Ctx->TableNameWide,
                                                      &Ctx->TablePath);
 
-            Original = Ctx->TableNameWide.Buffer;
-
             Rtl->PathStripPathW(Ctx->TableNameWide.Buffer);
             Ctx->TableNameWide.Length = (USHORT)(
-                sizeof(WCHAR) +
-                RtlPointerToOffset(Ctx->TableNameWide.Buffer, Original)
+                wcslen(Ctx->TableNameWide.Buffer) << 1
             );
 
             ASSERT(
