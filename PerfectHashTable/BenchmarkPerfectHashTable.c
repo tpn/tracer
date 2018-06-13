@@ -12,15 +12,15 @@ Abstract:
     component.  Two types of benchmarking activities are supported: "single"
     and "all".  Single is intended to be used when profiling with tools like
     VTune or xperf; it takes a target perfect hash table file, loads it, then
-    launches into a loop calling a single benchmark ID until a) a number of
-    iterations have completed, b) a number of seconds have passed, or b) until
-    the user presses Ctrl-C.  No timings are recorded, the sole purpose is to
-    get the library to repetitively execute a single routine such that perf
-    counters can be captured.
+    launches into a loop calling a single benchmark function until a) a number
+    of iterations have completed, b) a number of seconds have passed, or b)
+    until the user presses Ctrl-C.  No timings are recorded, the sole purpose
+    is to get the library to repetitively execute a single routine such that
+    performance counters can be captured for the area of interest.
 
     Benchmarking "all", on the other hand, is geared toward loading either
     a single perfect hash table file, or all files in a directory, running all
-    benchmark IDs, then saving timings to a CSV file for offline analysis.
+    benchmark functions, then saving timings to a CSV file for offline analysis.
 
 --*/
 

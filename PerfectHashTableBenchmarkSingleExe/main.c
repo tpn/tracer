@@ -9,8 +9,8 @@ Module Name:
 Abstract:
 
     This is the main file for the PerfectHashTableBenchmarkSingle executable.
-    It implements mainCRTStartup(), which simply calls the
-    PerfectHashTableBenchmarkSingleMain() routine.
+    It implements mainCRTStartup(), which simply loads "PerfectHashTable.dll"
+    and calls the PerfectHashTableBenchmarkSingleMain().
 
 --*/
 
